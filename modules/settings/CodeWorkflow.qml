@@ -2151,6 +2151,7 @@ Item {
 
             CodeWorkflowIrCanvas {
                 id: canvas
+                showInternals: root.inspectShowInternals
                 SplitView.fillWidth: true
                 SplitView.minimumWidth: 360
             }

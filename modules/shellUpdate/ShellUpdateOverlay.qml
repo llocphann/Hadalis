@@ -1435,22 +1435,11 @@ Scope {
                             anchors.centerIn: parent
                             spacing: 6
 
-                            // Spinner when updating
-                            MaterialSymbol {
+                            LoadingText {
                                 visible: ShellUpdates.isUpdating
-                                text: "settings"
-                                iconSize: Appearance.font.pixelSize.small
+                                font.pixelSize: Appearance.font.pixelSize.small
                                 color: Appearance.colors.colOnPrimary
-
-                                RotationAnimation on rotation {
-                                    running: ShellUpdates.isUpdating
-                                    loops: Animation.Infinite
-                                    from: 0
-                                    to: 360
-                                    duration: 1000
-                                }
                             }
-
                             MaterialSymbol {
                                 visible: !ShellUpdates.isUpdating
                                 text: "upgrade"
@@ -1458,11 +1447,8 @@ Scope {
                                 color: Appearance.colors.colOnPrimary
                             }
                             StyledText {
-                                text: ShellUpdates.isUpdating
-                                    ? (ShellUpdates.updateStepMessage.length > 0
-                                        ? Translation.tr(ShellUpdates.updateStepMessage) + "..."
-                                        : Translation.tr("Updating..."))
-                                    : Translation.tr("Update Now")
+                                visible: !ShellUpdates.isUpdating
+                                text: Translation.tr("Update Now")
                                 font {
                                     pixelSize: Appearance.font.pixelSize.small
                                     weight: Font.DemiBold

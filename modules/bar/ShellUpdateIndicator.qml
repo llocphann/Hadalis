@@ -184,28 +184,26 @@ MouseArea {
 
                     MaterialSymbol {
                         anchors.verticalCenter: parent.verticalCenter
-                        fill: 0
-                        font.weight: Font.Medium
-                        text: ShellUpdates.isUpdating ? "settings" : "deployed_code_update"
+                        visible: !ShellUpdates.isUpdating
+                        text: "deployed_code_update"
                         iconSize: Appearance.font.pixelSize.large
                         color: Appearance.colors.colOnSurfaceVariant
-
-                        RotationAnimation on rotation {
-                            loops: Animation.Infinite
-                            running: ShellUpdates.isUpdating && updatePopup.active
-                            from: 0
-                            to: 360
-                            duration: 1200
-                        }
                     }
 
                     StyledText {
                         anchors.verticalCenter: parent.verticalCenter
-                        text: ShellUpdates.isUpdating ? Translation.tr("Updating...") : Translation.tr("iNiR Update")
+                        visible: !ShellUpdates.isUpdating
+                        text: Translation.tr("iNiR Update")
                         font {
                             weight: Font.Medium
                             pixelSize: Appearance.font.pixelSize.normal
                         }
+                        color: Appearance.colors.colOnSurfaceVariant
+                    }
+
+                    LoadingText {
+                        anchors.verticalCenter: parent.verticalCenter
+                        visible: ShellUpdates.isUpdating
                         color: Appearance.colors.colOnSurfaceVariant
                     }
                 }

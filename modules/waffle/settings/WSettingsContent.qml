@@ -679,11 +679,11 @@ Item {
                                 
                                 Keys.onPressed: event => {
                                     if (event.key === Qt.Key_Down && root.searchResults.length > 0) {
-                                        searchResultsList.forceActiveFocus();
-                                        searchResultsList.currentIndex = 0;
+                                        waffleLiveResults.currentIndex = 0
+                                        waffleLiveResults.forceActiveFocus()
                                         event.accepted = true;
                                     } else if ((event.key === Qt.Key_Return || event.key === Qt.Key_Enter) && root.searchResults.length > 0) {
-                                        root.openSearchResult(root.searchResults[0]);
+                                        root.openSearchResult(root.searchResults[Math.max(0, waffleLiveResults.currentIndex)])
                                         event.accepted = true;
                                     } else if (event.key === Qt.Key_Escape) {
                                         root.openSearchResult({});
@@ -740,203 +740,6 @@ Item {
                 }
                 }
                 
-                // Search results dropdown
-                Revealer {
-                    vertical: true
-                    reveal: root.searchText.length > 0 && root.searchResults.length > 0
-                    Layout.fillWidth: true
-                Rectangle {
-                    id: searchResultsDropdown
-                    // Revealer sizes itself from its child's implicit size.
-                    implicitWidth: parent.width
-                    implicitHeight: Math.min(
-                        (searchResultsList.contentHeight || 0) + Looks.dp(8),
-                        Looks.dp(300))
-                    radius: Looks.settings.radiusLarge
-                    color: Looks.settings.tile
-                    border.width: 1
-                    border.color: Looks.settings.strokeStrong
-                    
-                    layer.enabled: Looks.effectsEnabled && searchResultsDropdown.visible
-                    layer.effect: DropShadow {
-                        color: Looks.colors.shadow
-                        radius: 6
-                        samples: 7
-                        verticalOffset: 2
-                    }
-                    
-                    ListView {
-                        id: searchResultsList
-                        anchors {
-                            fill: parent
-                            margins: 4
-                        }
-                        spacing: 2
-                        model: root.searchResults
-                        clip: true
-                        currentIndex: -1
-                        boundsBehavior: Flickable.StopAtBounds
-                        
-                        Keys.onPressed: event => {
-                            if (event.key === Qt.Key_Up) {
-                                if (currentIndex > 0) currentIndex--;
-                                else searchInput.forceActiveFocus();
-                                event.accepted = true;
-                            } else if (event.key === Qt.Key_Down) {
-                                if (currentIndex < count - 1) currentIndex++;
-                                event.accepted = true;
-                            } else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
-                                if (currentIndex >= 0) root.openSearchResult(root.searchResults[currentIndex]);
-                                event.accepted = true;
-                            } else if (event.key === Qt.Key_Escape) {
-                                root.openSearchResult({});
-                                searchInput.forceActiveFocus();
-                                event.accepted = true;
-                            }
-                        }
-                        
-                        delegate: Rectangle {
-                            id: resultDelegate
-                            required property var modelData
-                            required property int index
-                            
-                            width: searchResultsList.width
-                            height: 44
-                            radius: Looks.radius.medium
-                            color: {
-                                if (ListView.isCurrentItem) return Looks.colors.accent;
-                                if (resultMouse.containsMouse) return Looks.settings.tileHover;
-                                return "transparent";
-                            }
-                            
-                              Behavior on color {
-                                  animation: ColorAnimation { duration: Looks.transition.enabled ? 70 : 0; easing.type: Easing.BezierSpline; easing.bezierCurve: Looks.transition.easing.bezierCurve.standard }
-                              }
-                            
-                            MouseArea {
-                                id: resultMouse
-                                anchors.fill: parent
-                                hoverEnabled: true
-                                cursorShape: Qt.PointingHandCursor
-                                onClicked: root.openSearchResult(resultDelegate.modelData)
-                            }
-                            
-                            RowLayout {
-                                anchors {
-                                    fill: parent
-                                    leftMargin: 10
-                                    rightMargin: 10
-                                }
-                                spacing: 10
-                                
-                                // Page icon
-                                FluentIcon {
-                                    icon: {
-                                        const pageIndex = resultDelegate.modelData.pageIndex
-                                        const page = pageIndex >= 0 && pageIndex < root.pages.length
-                                            ? root.pages[pageIndex]
-                                            : null
-                                        return page?.icon || "settings"
-                                    }
-                                    implicitSize: 16
-                                    color: resultDelegate.ListView.isCurrentItem 
-                                        ? Looks.colors.accentFg 
-                                        : Looks.colors.accent
-                                }
-                                
-                                // Text content
-                                ColumnLayout {
-                                    Layout.fillWidth: true
-                                    spacing: 0
-                                    
-                                    Text {
-                                        Layout.fillWidth: true
-                                        text: resultDelegate.modelData.labelHighlighted || resultDelegate.modelData.label || ""
-                                        textFormat: Text.StyledText
-                                        font.family: Looks.font.family.ui
-                                        font.pixelSize: Looks.font.pixelSize.normal
-                                        font.weight: Font.Medium
-                                        color: resultDelegate.ListView.isCurrentItem 
-                                            ? Looks.colors.accentFg 
-                                            : Looks.colors.fg
-                                        elide: Text.ElideRight
-                                    }
-                                    
-                                    WText {
-                                        Layout.fillWidth: true
-                                        text: resultDelegate.modelData.pageName + (resultDelegate.modelData.section ? " › " + resultDelegate.modelData.section : "")
-                                        font.pixelSize: Looks.font.pixelSize.small
-                                        color: resultDelegate.ListView.isCurrentItem 
-                                            ? Looks.colors.accentFg 
-                                            : Looks.colors.subfg
-                                        elide: Text.ElideRight
-                                        opacity: 0.8
-                                    }
-                                }
-                                
-                                // Arrow
-                                FluentIcon {
-                                    icon: "chevron-right"
-                                    implicitSize: 12
-                                    color: resultDelegate.ListView.isCurrentItem 
-                                        ? Looks.colors.accentFg 
-                                        : Looks.colors.subfg
-                                    opacity: resultMouse.containsMouse || resultDelegate.ListView.isCurrentItem ? 1 : 0
-                                    
-                                      Behavior on opacity {
-                                          animation: NumberAnimation { duration: Looks.transition.enabled ? Looks.transition.duration.normal : 0; easing.type: Easing.BezierSpline; easing.bezierCurve: Looks.transition.easing.bezierCurve.standard }
-                                      }
-                                }
-                            }
-                        }
-                    }
-                }
-                }
-                
-                // No results indicator
-                Revealer {
-                    vertical: true
-                    reveal: root.searchText.length > 0 && root.searchResults.length === 0
-                    Layout.fillWidth: true
-                Rectangle {
-                    implicitWidth: parent.width
-                    implicitHeight: noResultsCol.implicitHeight + 16
-                    radius: Looks.radius.medium
-                    color: Looks.settings.tile
-
-                    ColumnLayout {
-                        id: noResultsCol
-                        anchors.centerIn: parent
-                        spacing: 6
-
-                        MascotImage {
-                            Layout.alignment: Qt.AlignHCenter
-                            Layout.preferredWidth: 88
-                            Layout.preferredHeight: 88
-                            pose: "settings-judging"
-                            surface: "emptyStates"
-                        }
-
-                        RowLayout {
-                            Layout.alignment: Qt.AlignHCenter
-                            spacing: 8
-
-                            FluentIcon {
-                                icon: "search"
-                                implicitSize: 14
-                                color: Looks.colors.subfg
-                            }
-
-                            WText {
-                                text: Translation.tr("No results")
-                                font.pixelSize: Looks.font.pixelSize.small
-                                color: Looks.colors.subfg
-                            }
-                        }
-                    }
-                }
-                }
-
                 Item { height: Looks.dp(4) }
                 
                 // Navigation items
@@ -1093,6 +896,8 @@ Item {
             Item {
                 id: pageStack
                 anchors.fill: parent
+                visible: root.searchText.trim().length === 0
+                enabled: visible
                 
                 // Keep only the active page alive. Search navigates to an
                 // unloaded page and the targetLabel focus retry waits for it to

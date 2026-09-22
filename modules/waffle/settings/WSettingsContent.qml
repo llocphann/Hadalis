@@ -938,9 +938,172 @@ Item {
                      }
                  }
              }
+
+             // Search replaces the page canvas, rather than adding a dropdown
+             // to the navigation sidebar or intercepting clicks on the page.
+             Item {
+                 id: waffleLiveSearchView
+                 anchors.fill: parent
+                 visible: root.searchText.trim().length > 0
+                 enabled: visible
+
+                 ColumnLayout {
+                     anchors.fill: parent
+                     anchors.margins: Looks.dp(18)
+                     spacing: Looks.dp(12)
+
+                     RowLayout {
+                         Layout.fillWidth: true
+                         spacing: Looks.dp(10)
+                         FluentIcon {
+                             icon: "search"
+                             implicitSize: Looks.dp(20)
+                             color: Looks.colors.accent
+                         }
+                         WText {
+                             Layout.fillWidth: true
+                             text: Translation.tr("Search results")
+                             font.pixelSize: Looks.font.pixelSize.larger
+                             font.weight: Looks.font.weight.strong
+                             color: Looks.colors.fg
+                         }
+                         WText {
+                             text: root.searchResults.length.toString()
+                             font.pixelSize: Looks.font.pixelSize.normal
+                             color: Looks.colors.subfg
+                         }
+                     }
+
+                     Rectangle {
+                         Layout.fillWidth: true
+                         Layout.fillHeight: true
+                         radius: Looks.settings.radiusLarge
+                         color: Looks.settings.tile
+                         border.width: 1
+                         border.color: Looks.settings.strokeStrong
+                         clip: true
+
+                         ListView {
+                             id: waffleLiveResults
+                             anchors.fill: parent
+                             anchors.margins: Looks.dp(8)
+                             visible: root.searchResults.length > 0
+                             model: root.searchResults
+                             spacing: Looks.dp(4)
+                             clip: true
+                             currentIndex: -1
+                             boundsBehavior: Flickable.StopAtBounds
+                             onCountChanged: currentIndex = count > 0 ? 0 : -1
+
+                             Keys.onPressed: event => {
+                                 if (event.key === Qt.Key_Up) {
+                                     if (currentIndex > 0) currentIndex--
+                                     else searchInput.forceActiveFocus()
+                                     event.accepted = true
+                                 } else if (event.key === Qt.Key_Down) {
+                                     if (currentIndex < count - 1) currentIndex++
+                                     event.accepted = true
+                                 } else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
+                                     if (currentIndex >= 0)
+                                         root.openSearchResult(root.searchResults[currentIndex])
+                                     event.accepted = true
+                                 } else if (event.key === Qt.Key_Escape) {
+                                     root.openSearchResult({})
+                                     searchInput.forceActiveFocus()
+                                     event.accepted = true
+                                 }
+                             }
+
+                             delegate: Rectangle {
+                                 id: resultRow
+                                 required property var modelData
+                                 required property int index
+                                 width: waffleLiveResults.width
+                                 height: Looks.dp(60)
+                                 radius: Looks.radius.medium
+                                 color: resultMouse.containsMouse || resultRow.ListView.isCurrentItem
+                                     ? Looks.settings.tileHover : "transparent"
+
+                                 MouseArea {
+                                     id: resultMouse
+                                     anchors.fill: parent
+                                     hoverEnabled: true
+                                     cursorShape: Qt.PointingHandCursor
+                                     onClicked: root.openSearchResult(resultRow.modelData)
+                                 }
+                                 RowLayout {
+                                     anchors.fill: parent
+                                     anchors.leftMargin: Looks.dp(12)
+                                     anchors.rightMargin: Looks.dp(12)
+                                     spacing: Looks.dp(12)
+                                     Rectangle {
+                                         Layout.preferredWidth: Looks.dp(3)
+                                         Layout.preferredHeight: Looks.dp(28)
+                                         radius: width / 2
+                                         color: Looks.colors.accent
+                                         opacity: resultRow.ListView.isCurrentItem ? 1 : 0.45
+                                     }
+                                     FluentIcon {
+                                         icon: root.pages[resultRow.modelData.pageIndex]?.icon ?? "settings"
+                                         implicitSize: Looks.dp(18)
+                                         color: Looks.colors.accent
+                                     }
+                                     ColumnLayout {
+                                         Layout.fillWidth: true
+                                         spacing: 2
+                                         Text {
+                                             Layout.fillWidth: true
+                                             text: resultRow.modelData.labelHighlighted
+                                                 || resultRow.modelData.label || ""
+                                             textFormat: Text.StyledText
+                                             font.family: Looks.font.family.ui
+                                             font.pixelSize: Looks.font.pixelSize.normal
+                                             color: Looks.colors.fg
+                                             elide: Text.ElideRight
+                                         }
+                                         WText {
+                                             Layout.fillWidth: true
+                                             text: (resultRow.modelData.pageName || "")
+                                                 + (resultRow.modelData.section
+                                                     ? " › " + resultRow.modelData.section : "")
+                                             font.pixelSize: Looks.font.pixelSize.small
+                                             color: Looks.colors.subfg
+                                             elide: Text.ElideRight
+                                         }
+                                     }
+                                     FluentIcon {
+                                         icon: "chevron-right"
+                                         implicitSize: Looks.dp(14)
+                                         color: Looks.colors.subfg
+                                     }
+                                 }
+                             }
+                         }
+
+                         ColumnLayout {
+                             visible: root.searchResults.length === 0
+                             anchors.centerIn: parent
+                             spacing: Looks.dp(12)
+                             MascotImage {
+                                 Layout.alignment: Qt.AlignHCenter
+                                 Layout.preferredWidth: Looks.dp(96)
+                                 Layout.preferredHeight: Looks.dp(96)
+                                 pose: "settings-judging"
+                                 surface: "emptyStates"
+                             }
+                             WText {
+                                 Layout.alignment: Qt.AlignHCenter
+                                 text: Translation.tr("No results found")
+                                 font.pixelSize: Looks.font.pixelSize.normal
+                                 color: Looks.colors.subfg
+                             }
+                         }
+                     }
+                 }
+             }
          }
      }
-    
+
     // Keyboard shortcut for search
     Shortcut {
         sequences: [StandardKey.Find]

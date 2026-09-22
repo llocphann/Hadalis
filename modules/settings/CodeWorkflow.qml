@@ -3802,9 +3802,7 @@ Item {
                         onStatusMessage: message =>
                             root.sourceEditorStatus = message
                     }
-                    }
                 }
-            }
             }
 
             onResizingChanged: {

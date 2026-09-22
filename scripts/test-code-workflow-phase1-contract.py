@@ -933,6 +933,24 @@ for token in (
 ):
     require(popup_tooltip, token,
             "moving-control tooltip dismissal missing " + token)
+for token in (
+    'buttonText: "Find in source"',
+    'buttonText: "Find and replace in source"',
+    '"Enter edit mode"',
+    '"Return to view mode"',
+    'onClicked: sourceEditor.openFind(false)',
+    'onClicked: sourceEditor.openFind(true)',
+):
+    require(page, token,
+            "Source Editor mode and search controls must remain discoverable")
+for token in (
+    "property bool useParentHover: true",
+    "if (!root.useParentHover)",
+    "if (parent.containsMouse !== undefined)",
+    "return false",
+):
+    require(popup_tooltip, token,
+            "shared tooltip must not interpret unknown parent hover as true")
 require(source_editor, 'readOnly: root.mode !== "insert"',
         "Source Editor must accept guarded edits only in insert mode")
 require(page, "FileView {", "Source Editor must read selected source")

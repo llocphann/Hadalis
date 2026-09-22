@@ -183,6 +183,48 @@ Item {
         }
     }
 
+    function handleKeyEvent(event): bool {
+        if (!root.active || !CodeWorkflowNvim.ready)
+            return false
+
+        // While the platform IME owns a composition, do not steal its
+        // Backspace/arrows/etc. Qt will commit the final text through
+        // TextInput.textEdited below.
+        if (nvimImeProxy.inputMethodComposing)
+            return false
+
+        const ctrl =
+            (event.modifiers & Qt.ControlModifier) !== 0
+        const shift =
+            (event.modifiers & Qt.ShiftModifier) !== 0
+        const alt =
+            (event.modifiers & Qt.AltModifier) !== 0
+        const meta =
+            (event.modifiers & Qt.MetaModifier) !== 0
+        const clipboardPaste =
+            (ctrl && shift && event.key === Qt.Key_V)
+            || (shift && event.key === Qt.Key_Insert)
+        if (clipboardPaste) {
+            root.requestClipboardPaste()
+            return true
+        }
+
+        // Printable text without Ctrl/Alt/Meta must flow through TextInput so
+        // dead keys and composed input reach Qt's input-method pipeline.
+        if (!ctrl && !alt && !meta
+                && String(event.text ?? "").length > 0
+                && event.key !== Qt.Key_Return
+                && event.key !== Qt.Key_Enter
+                && event.key !== Qt.Key_Tab
+                && event.key !== Qt.Key_Backtab)
+            return false
+
+        const token = root.eventKeyToken(event)
+        if (token.length === 0)
+            return false
+        return CodeWorkflowNvim.input(token)
+    }
+
     function requestClipboardPaste(): void {
         if (!root.active || !CodeWorkflowNvim.ready
                 || clipboardPasteProcess.running)
@@ -237,11 +279,11 @@ Item {
             return
         CodeWorkflowNvim.start(
             root.sourcePath, root.requestedCols, root.requestedRows)
-        Qt.callLater(() => editorSurface.forceActiveFocus())
+        Qt.callLater(() => nvimImeProxy.forceActiveFocus())
     }
 
     function forceEditorFocus(): void {
-        editorSurface.forceActiveFocus()
+        nvimImeProxy.forceActiveFocus()
     }
 
     onActiveChanged: {
@@ -332,7 +374,7 @@ Item {
             root.resetCursorBlink()
             editorCanvas.requestPaint()
             if (root.active && CodeWorkflowNvim.ready)
-                Qt.callLater(() => editorSurface.forceActiveFocus())
+                Qt.callLater(() => nvimImeProxy.forceActiveFocus())
         }
 
         function onCursorRowChanged(): void {
@@ -373,28 +415,41 @@ Item {
             Accessible.description:
                 "Neovim UI embedded in the Code Workflow source pane"
 
-            Keys.onPressed: event => {
-                if (!root.active || !CodeWorkflowNvim.ready)
-                    return
+            TextInput {
+                id: nvimImeProxy
+                x: Math.max(
+                    0, Math.min(
+                        editorSurface.width - width,
+                        CodeWorkflowNvim.cursorCol * root.cellWidth))
+                y: Math.max(
+                    0, Math.min(
+                        editorSurface.height - height,
+                        CodeWorkflowNvim.cursorRow * root.cellHeight))
+                width: Math.max(1, root.cellWidth)
+                height: Math.max(1, root.cellHeight)
+                opacity: 0
+                color: "transparent"
+                selectionColor: "transparent"
+                selectedTextColor: "transparent"
+                cursorVisible: false
+                activeFocusOnTab: true
+                inputMethodHints: Qt.ImhNone
+                font.family: Appearance.font.family.monospace
+                font.pixelSize: Appearance.font.pixelSize.small
 
-                const ctrl =
-                    (event.modifiers & Qt.ControlModifier) !== 0
-                const shift =
-                    (event.modifiers & Qt.ShiftModifier) !== 0
-                const clipboardPaste =
-                    (ctrl && shift && event.key === Qt.Key_V)
-                    || (shift && event.key === Qt.Key_Insert)
-                if (clipboardPaste) {
-                    root.requestClipboardPaste()
-                    event.accepted = true
-                    return
+                onTextEdited: {
+                    const committed = String(text ?? "")
+                    if (committed.length === 0)
+                        return
+                    CodeWorkflowNvim.input(
+                        root.escapeInputText(committed))
+                    clear()
                 }
 
-                const token = root.eventKeyToken(event)
-                if (token.length === 0)
-                    return
-                if (CodeWorkflowNvim.input(token))
-                    event.accepted = true
+                Keys.onPressed: event => {
+                    if (root.handleKeyEvent(event))
+                        event.accepted = true
+                }
             }
 
             MouseArea {
@@ -404,7 +459,7 @@ Item {
                     Qt.LeftButton | Qt.RightButton | Qt.MiddleButton
 
                 onPressed: mouse => {
-                    editorSurface.forceActiveFocus()
+                    nvimImeProxy.forceActiveFocus()
                     if (!CodeWorkflowNvim.mouseEnabled)
                         return
                     const cell = root.mouseCell(mouse.x, mouse.y)
@@ -445,7 +500,7 @@ Item {
                 }
 
                 onWheel: wheel => {
-                    editorSurface.forceActiveFocus()
+                    nvimImeProxy.forceActiveFocus()
                     if (!CodeWorkflowNvim.mouseEnabled)
                         return
                     const cell = root.mouseCell(wheel.x, wheel.y)

@@ -1200,6 +1200,7 @@ Scope {
                                             Layout.fillWidth: true
                                             spacing: 0
                                             readonly property color headerAccentColor: Appearance.colors.colPrimary
+                                            readonly property Item navButton: navBtn
 
                                             // ── Category header ──
                                             Item {
@@ -1215,8 +1216,7 @@ Scope {
                                                 StyledText {
                                                     anchors.left: parent.left
                                                     anchors.leftMargin: 12
-                                                    anchors.bottom: parent.bottom
-                                                    anchors.bottomMargin: 4
+                                                    anchors.verticalCenter: parent.verticalCenter
                                                     text: navItem.modelData.label || ""
                                                     anchors.right: parent.right
                                                     anchors.rightMargin: 34
@@ -1279,6 +1279,9 @@ Scope {
                                                 colBackgroundHover: Appearance.colors.colLayer1Hover
 
                                                 onClicked: overlayCurrentPage = pageRealIndex
+                                                onYChanged: Qt.callLater(sharedNavIndicator.updatePosition)
+                                                onHeightChanged: Qt.callLater(sharedNavIndicator.updatePosition)
+                                                onVisibleChanged: Qt.callLater(sharedNavIndicator.updatePosition)
 
                                                 contentItem: Item {
                                                     anchors.fill: parent
@@ -1369,9 +1372,9 @@ Scope {
                                             for (var i = 0; i < navRepeater.count; i++) {
                                                 var item = navRepeater.itemAt(i);
                                                 if (item && item.modelData && item.modelData.type === "page" && item.modelData.realIndex === overlayCurrentPage) {
-                                                    var btn = item.children[1];
+                                                    var btn = item.navButton;
                                                     if (btn && btn.visible) {
-                                                        targetY = item.y + btn.y;
+                                                        targetY = btn.mapToItem(navCol, 0, 0).y;
                                                         targetH = btn.height;
                                                         hasTarget = true;
                                                         return;
@@ -2074,7 +2077,17 @@ Scope {
     }
 
     // Ordered page indices matching nav rail order (for keyboard nav)
-    readonly property var navPageOrder: visibleNavItems.filter(i => i.type === "page").map(i => i.realIndex)
+    readonly property var navPageOrder: {
+        const order = []
+        for (const group of SettingsPageRegistry.categories) {
+            for (const index of group.pages) {
+                const page = overlayPages[index]
+                if (page && (!easyMode || page.essential === true))
+                    order.push(index)
+            }
+        }
+        return order
+    }
 
     function nextNavPage(current) {
         var idx = navPageOrder.indexOf(current);

@@ -224,7 +224,11 @@ Singleton {
                 output: "",
                 sourcePath: descriptor.sourcePath,
                 depth: Number(descriptor.depth ?? 0),
-                state: String(descriptor.state ?? "inactive"),
+                configured: descriptor.configured !== false,
+                presented: descriptor.presented === true,
+                state: String(descriptor.state ?? "unloaded"),
+                lifecycle: String(
+                    descriptor.lifecycle ?? descriptor.state ?? "unloaded"),
                 runtimeToken: token,
                 rect: null,
                 values: null
@@ -242,7 +246,10 @@ Singleton {
                 output: String(registration.outputName ?? ""),
                 sourcePath: descriptor.sourcePath,
                 depth: Number(descriptor.depth ?? 0),
+                configured: descriptor.configured !== false,
+                presented: descriptor.presented !== false,
                 state: "resident",
+                lifecycle: String(descriptor.lifecycle ?? "visible"),
                 runtimeToken: registration.token ?? null,
                 rect: registration.rectSnapshot(),
                 values: registration.safeValues()

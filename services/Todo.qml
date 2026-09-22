@@ -21,11 +21,16 @@ Singleton {
     readonly property bool useObsidian: root.requestedBackend === "obsidian"
     readonly property string backend: root.useObsidian ? "obsidian" : "internal"
     readonly property string obsidianSourceMode:
-        String(Config.options?.todo?.obsidian?.sourceMode ?? "managed-note")
-    readonly property bool useDailyNote:
-        root.obsidianSourceMode === "daily-note"
+        String(Config.options?.todo?.obsidian?.sourceMode ?? "markdown-note")
+    // One heading-based Markdown task source is the normal path. The old
+    // managed-marker backend remains only as a persisted compatibility mode.
+    readonly property bool useLegacyManagedNote:
+        root.obsidianSourceMode === "managed-note"
+    readonly property bool useMarkdownNote:
+        !root.useLegacyManagedNote
+    readonly property bool useDailyNote: root.useMarkdownNote
     readonly property var obsidianBackend:
-        root.useDailyNote ? dailyObsidian : obsidian
+        root.useLegacyManagedNote ? obsidian : dailyObsidian
 
     // Setup is deliberately separate from canonical ownership. While this is
     // true the Obsidian backend may scan/initialize/preview, but public Todo
@@ -62,8 +67,8 @@ Singleton {
     readonly property string sourceLabel: {
         if (!root.useObsidian)
             return "Hadalis"
-        if (root.useDailyNote)
-            return "Obsidian · Today"
+        if (root.useMarkdownNote)
+            return "Obsidian · Markdown"
         return "Obsidian · " + String(Config.options?.todo?.obsidian?.notePath ?? "")
     }
     readonly property int internalItemCount: internal.list.length
@@ -79,7 +84,7 @@ Singleton {
 
     ObsidianTodoBackend {
         id: obsidian
-        active: (root.useObsidian || root._obsidianSetupActive) && !root.useDailyNote
+        active: (root.useObsidian || root._obsidianSetupActive) && root.useLegacyManagedNote
         vaultPath: String(Config.options?.todo?.obsidian?.vaultPath ?? "")
         notePath: String(Config.options?.todo?.obsidian?.notePath ?? "Hadalis/Todo.md")
         preferTasksPlugin: Config.options?.todo?.obsidian?.preferTasksPlugin ?? true
@@ -89,14 +94,14 @@ Singleton {
 
     DailyNoteTodoBackend {
         id: dailyObsidian
-        active: (root.useObsidian || root._obsidianSetupActive) && root.useDailyNote
+        active: (root.useObsidian || root._obsidianSetupActive) && root.useMarkdownNote
         vaultPath: String(Config.options?.todo?.obsidian?.vaultPath ?? "")
         folder: String(Config.options?.todo?.obsidian?.dailyNote?.folder
             ?? "00_Capture/01_Journal")
         noteFormat: String(Config.options?.todo?.obsidian?.dailyNote?.format
             ?? "YYYY/MMMM/DD-MM-YYYY-dddd")
         plannerHeading: String(Config.options?.todo?.obsidian?.dailyNote?.plannerHeading
-            ?? "Day Planner")
+            ?? "Tasks")
         plannerHeadingLevel: Number(
             Config.options?.todo?.obsidian?.dailyNote?.plannerHeadingLevel ?? 2)
         defaultDurationMinutes: Number(

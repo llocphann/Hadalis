@@ -2760,13 +2760,13 @@ Singleton {
                 property string backend: "internal"
                 property JsonObject obsidian: JsonObject {
                     property string vaultPath: ""
-                    property string sourceMode: "managed-note"
+                    property string sourceMode: "markdown-note"
                     property string notePath: "Hadalis/Todo.md"
                     property string scope: "managed-section"
                     property JsonObject dailyNote: JsonObject {
                         property string folder: "00_Capture/01_Journal"
                         property string format: "YYYY/MMMM/DD-MM-YYYY-dddd"
-                        property string plannerHeading: "Day Planner"
+                        property string plannerHeading: "Tasks"
                         property int plannerHeadingLevel: 2
                         property int defaultDurationMinutes: 30
                     }

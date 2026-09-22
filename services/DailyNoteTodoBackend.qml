@@ -5,10 +5,10 @@ import Quickshell
 import Quickshell.Io
 
 /**
- * Independent Daily Note Todo backend.
+ * Independent heading-based Markdown Todo backend.
  *
- * Reads and mutates Markdown under the configured Day Planner heading without
- * invoking Obsidian, Day Planner, Templater, or any other plugin.
+ * Reads and mutates checkbox lines under one configured Markdown heading.
+ * Obsidian and third-party plugins may share the file, but none are required.
  */
 Scope {
     id: root
@@ -17,7 +17,7 @@ Scope {
     property string vaultPath: ""
     property string folder: "00_Capture/01_Journal"
     property string noteFormat: "YYYY/MMMM/DD-MM-YYYY-dddd"
-    property string plannerHeading: "Day Planner"
+    property string plannerHeading: "Tasks"
     property int plannerHeadingLevel: 2
     property int defaultDurationMinutes: 30
 
@@ -33,7 +33,7 @@ Scope {
     property var migrationPreview: null
     readonly property var capabilities: ({
         backend: "obsidian",
-        sourceMode: "daily-note",
+        sourceMode: "markdown-note",
         noteReadable: root.ready,
         noteWritable: root.ready,
         pluginIndependent: true,
@@ -51,7 +51,6 @@ Scope {
     readonly property bool configured:
         root.active
         && root.vaultPath.trim().length > 0
-        && root.folder.trim().length > 0
         && root.noteFormat.trim().length > 0
         && root.plannerHeading.trim().length > 0
         && root.plannerHeadingLevel >= 1
@@ -119,7 +118,7 @@ Scope {
 
     function refresh(): void {
         if (!root.configured) {
-            root._clearUnavailable("not_configured", "Daily Note Todo source is not configured")
+            root._clearUnavailable("not_configured", "Markdown Todo source is not configured")
             return
         }
         if (scanProc.running || mutationProc.running) {
@@ -139,13 +138,13 @@ Scope {
     }
 
     function refreshCapabilities(): void {
-        // Daily Note mode intentionally does not need Obsidian or plugin state.
+        // Markdown source mode intentionally does not need Obsidian or plugin state.
     }
 
     function initializeSection(): bool {
         root._setError(
             "daily_note_heading_required",
-            "Create today's Daily Note from its normal template so the Day Planner heading exists"
+            "Create the configured Markdown note from its normal template so the configured task heading exists"
         )
         return false
     }
@@ -182,7 +181,7 @@ Scope {
         if (!root.ready || clean.length === 0) {
             root._setError(
                 clean.length === 0 ? "invalid_task_text" : "not_ready",
-                clean.length === 0 ? "Task text is empty" : "Daily Note Todo source is not ready"
+                clean.length === 0 ? "Task text is empty" : "Markdown Todo source is not ready"
             )
             return false
         }
@@ -242,7 +241,7 @@ Scope {
 
     function _startMutation(kind: string, command): bool {
         if (!root.configured || !root.ready) {
-            root._setError("not_ready", "Daily Note Todo source is not ready")
+            root._setError("not_ready", "Markdown Todo source is not ready")
             return false
         }
         if (mutationProc.running) {
@@ -263,7 +262,7 @@ Scope {
             const error = payload?.error ?? ({})
             root._clearUnavailable(
                 String(error.code ?? "scan_failed"),
-                String(error.message ?? "Failed to scan Daily Note Todo source")
+                String(error.message ?? "Failed to scan Markdown Todo source")
             )
             return false
         }
@@ -387,7 +386,7 @@ Scope {
             if (scanProc.startObserved)
                 return
             scanTimeout.stop()
-            root._clearUnavailable("scanner_start_failed", "Failed to start Daily Note Todo scanner")
+            root._clearUnavailable("scanner_start_failed", "Failed to start Markdown Todo scanner")
             root._finishScan()
         }
 
@@ -405,20 +404,20 @@ Scope {
                 return
             }
             if (scanProc.timedOut) {
-                root._clearUnavailable("scanner_timeout", "Daily Note Todo scanner timed out")
+                root._clearUnavailable("scanner_timeout", "Markdown Todo scanner timed out")
                 root._finishScan()
                 return
             }
             const output = String(scanCollector.text ?? "").trim()
             if (output.length === 0) {
-                root._clearUnavailable("scanner_failed", "Daily Note Todo scanner returned no result")
+                root._clearUnavailable("scanner_failed", "Markdown Todo scanner returned no result")
                 root._finishScan()
                 return
             }
             try {
                 root._applyPayload(JSON.parse(output))
             } catch (error) {
-                root._clearUnavailable("scanner_invalid_output", "Daily Note Todo scanner returned invalid JSON")
+                root._clearUnavailable("scanner_invalid_output", "Markdown Todo scanner returned invalid JSON")
             }
             root._finishScan()
         }
@@ -440,7 +439,7 @@ Scope {
             if (mutationProc.startObserved)
                 return
             mutationTimeout.stop()
-            root._setError("mutation_start_failed", "Failed to start Daily Note Todo mutation helper")
+            root._setError("mutation_start_failed", "Failed to start Markdown Todo mutation helper")
             root._notifyMigrationFinished(false, null)
             root._finishMutation()
         }
@@ -460,14 +459,14 @@ Scope {
                 return
             }
             if (mutationProc.timedOut) {
-                root._setError("mutation_timeout", "Daily Note Todo mutation timed out")
+                root._setError("mutation_timeout", "Markdown Todo mutation timed out")
                 root._notifyMigrationFinished(false, null)
                 root._finishMutation()
                 return
             }
             const output = String(mutationCollector.text ?? "").trim()
             if (output.length === 0) {
-                root._setError("mutation_failed", "Daily Note Todo mutation returned no result")
+                root._setError("mutation_failed", "Markdown Todo mutation returned no result")
                 root._notifyMigrationFinished(false, null)
                 root._finishMutation()
                 return
@@ -493,12 +492,12 @@ Scope {
 
                 const error = payload?.error ?? ({})
                 const code = String(error.code ?? "mutation_failed")
-                root._setError(code, String(error.message ?? "Daily Note Todo mutation failed"))
+                root._setError(code, String(error.message ?? "Markdown Todo mutation failed"))
                 root._notifyMigrationFinished(false, payload)
                 if (code === "conflict" || code === "migration_source_conflict")
                     root._refreshQueued = true
             } catch (error) {
-                root._setError("mutation_invalid_output", "Daily Note Todo mutation returned invalid JSON")
+                root._setError("mutation_invalid_output", "Markdown Todo mutation returned invalid JSON")
                 root._notifyMigrationFinished(false, null)
             }
             root._finishMutation()

@@ -9,7 +9,11 @@
 
 // Export XDG_MENU_PREFIX into the systemd user session and rebuild the
 // sycoca database so KDE/Qt apps see the correct .desktop entries.
-spawn-at-startup "bash" "-c" "systemctl --user import-environment XDG_MENU_PREFIX && kbuildsycoca6"
+spawn-at-startup "bash" "-c" "systemctl --user import-environment XDG_MENU_PREFIX QT_IM_MODULE XMODIFIERS && kbuildsycoca6"
+
+// Use the launcher so repo-sync and packaged installs share the same helper.
+// It creates an EN/VI profile only on first use and leaves existing IMEs intact.
+spawn-at-startup "inir" "input-method" "start"
 
 // Clipboard history: wl-paste watches the clipboard and cliphist stores it.
 // Text goes through clipboard-store.py, which strips browser markup: `--type

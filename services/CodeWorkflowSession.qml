@@ -42,6 +42,12 @@ Singleton {
     function restore(): void {
         if (!Persistent.ready || !CodeWorkflowIr.ready)
             return
+        const runtimeInventoryReady =
+            CodeWorkflowRuntime.hasLocalDeclarations
+            || CodeWorkflowRuntime.remoteSnapshot !== null
+            || CodeWorkflowRuntime.remoteError.length > 0
+        if (!runtimeInventoryReady)
+            return
         const state = root._state()
         if (!state)
             return
@@ -450,6 +456,18 @@ Singleton {
         target: CodeWorkflowIr
         function onReadyChanged(): void {
             if (CodeWorkflowIr.ready)
+                root.restore()
+        }
+    }
+
+    Connections {
+        target: CodeWorkflowRuntime
+        function onRevisionChanged(): void {
+            if (!root._ready)
+                root.restore()
+        }
+        function onRemoteErrorChanged(): void {
+            if (!root._ready && CodeWorkflowRuntime.remoteError.length > 0)
                 root.restore()
         }
     }

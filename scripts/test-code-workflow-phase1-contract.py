@@ -36,6 +36,8 @@ ii_panels = read("modules/ii/ShellIiPanelsImpl.qml")
 ii_critical = read("modules/ii/critical/ShellIiCriticalPanels.qml")
 waffle_panels = read("modules/waffle/ShellWafflePanelsImpl.qml")
 waffle_critical = read("modules/waffle/critical/ShellWaffleCriticalPanels.qml")
+ii_host = read("ShellIiPanels.qml")
+waffle_host = read("ShellWafflePanels.qml")
 session = read("services/CodeWorkflowSession.qml")
 ripple_button = read("modules/common/widgets/RippleButton.qml")
 capture_script = read("scripts/capture-code-workflow-ui.sh")
@@ -143,6 +145,17 @@ for token in (
     "return JSON.stringify(CodeWorkflowRuntime.localSnapshot())",
 ):
     require(shell, token, "shell runtime snapshot IPC missing " + token)
+
+for source, target_id in (
+    (ii_host, 'targetId: "runtime/ii-panels-impl"'),
+    (waffle_host, 'targetId: "runtime/waffle-panels-impl"'),
+):
+    require(source, "CodeWorkflowRuntimeDeclaration",
+            "family implementation host missing runtime declaration")
+    require(source, target_id,
+            "family implementation host missing internal runtime target")
+    require(source, "internal: true",
+            "family implementation host must stay hidden by default")
 
 for token in (
     'targetId: "runtime/alt-switcher-router"',

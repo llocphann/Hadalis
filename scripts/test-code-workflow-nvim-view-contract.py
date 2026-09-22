@@ -19,6 +19,8 @@ for token in (
     "function markFrameDirty(): void",
     "CodeWorkflowNvim.lastDirtyRows",
     "CodeWorkflowNvim.fullRepaintRequested",
+    "if (CodeWorkflowNvim.fullRepaintRequested) {",
+    "editorCanvas.requestPaint()",
     "onPaint: region =>",
     "const firstRow =",
     "const lastRow =",

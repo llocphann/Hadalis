@@ -256,7 +256,7 @@ Item {
         if (!editorCanvas.available)
             return
         if (CodeWorkflowNvim.fullRepaintRequested) {
-            root.markCursorRowsDirty()
+            editorCanvas.requestPaint()
             return
         }
         for (const row of (CodeWorkflowNvim.lastDirtyRows ?? []))

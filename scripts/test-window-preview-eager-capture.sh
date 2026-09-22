@@ -64,7 +64,7 @@ const ctx = {
 for (const name of ['previewDir', 'sessionKey', 'initialized', 'sessionReady',
     'capturing', 'observedWindowIds','captureAllRequested','requestedWindowIds',
     'captureRequestedWhileInitializing','forceRefreshRequestedWhileInitializing',
-    'previewCache', 'overviewWarmRequestedIds']) {
+    'previewCache', 'overviewWarmRequestedIds', 'overviewWarmLimit']) {
     Object.defineProperty(ctx, name, {
         get() { return root[name]; },
         set(value) { root[name] = value; }

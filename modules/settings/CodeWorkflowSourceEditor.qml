@@ -12,6 +12,7 @@ Item {
     property string yankBuffer: ""
     property int visualAnchor: -1
     property int visualCursor: -1
+    property int preferredColumn: -1
     property bool syncingFromHost: false
     property string documentText: root.draft
     property bool findVisible: false
@@ -62,7 +63,7 @@ Item {
     readonly property int lineCount:
         Math.max(1, root.documentText.split("\n").length)
     readonly property int currentLineNumber:
-        root.lineNumberAt(editor.cursorPosition)
+        root.lineNumberAt(root.modalCursorPosition)
     readonly property int gutterWidth:
         20 + Math.max(2, String(root.lineCount).length) * 8
     readonly property string lineNumberText: {
@@ -264,7 +265,8 @@ Item {
     function targetLinePosition(position: int, direction: int): int {
         const pos = root.clampPosition(position)
         const start = root.lineStart(pos)
-        const column = pos - start
+        const column = root.preferredColumn >= 0
+            ? root.preferredColumn : pos - start
         if (direction < 0) {
             if (start === 0)
                 return pos
@@ -282,6 +284,7 @@ Item {
     }
 
     function setCursor(position: int): void {
+        root.preferredColumn = -1
         const pos = root.clampPosition(position)
         if (root.mode === "visual") {
             root.visualCursor = pos
@@ -303,12 +306,50 @@ Item {
     function moveVertical(delta: int): void {
         const current = root.mode === "visual"
             ? root.visualCursor : editor.cursorPosition
+        const column = root.preferredColumn >= 0
+            ? root.preferredColumn : current - root.lineStart(current)
         root.setCursor(root.targetLinePosition(current, delta))
+        root.preferredColumn = column
     }
 
     // One motion dispatcher for both focused TextEdit keys and the
     // window-shortcut fallback. Read-only TextEdit must not be relied on
     // as the only route for bare-letter modal commands.
+    // Normal/Visual motion must scroll the *custom* modal caret into view:
+    // TextEdit's native auto-scroll only follows its editable INSERT caret.
+    function ensureCursorVisible(): void {
+        if (root.findVisible || root.mode === "insert")
+            return
+        const position = root.modalCursorPosition
+        Qt.callLater(() => {
+            if (!root.visible || root.findVisible || root.mode === "insert"
+                    || root.modalCursorPosition !== position)
+                return
+            const rect = editor.positionToRectangle(position)
+            const x = rect.x + root.gutterWidth + editorRow.spacing
+            const right = x + Math.max(7, rect.width)
+            const bottom = rect.y + Math.max(1, rect.height)
+            const maxX = Math.max(0,
+                editorFlick.contentWidth - editorFlick.width)
+            const maxY = Math.max(0,
+                editorFlick.contentHeight - editorFlick.height)
+            if (x < editorFlick.contentX + root.gutterWidth + 12)
+                editorFlick.contentX = Math.max(0,
+                    Math.min(maxX, x - root.gutterWidth - 12))
+            else if (right > editorFlick.contentX + editorFlick.width - 18)
+                editorFlick.contentX = Math.max(0,
+                    Math.min(maxX, right - editorFlick.width + 18))
+            if (rect.y < editorFlick.contentY + 18)
+                editorFlick.contentY = Math.max(0,
+                    Math.min(maxY, rect.y - 18))
+            else if (bottom > editorFlick.contentY + editorFlick.height - 18)
+                editorFlick.contentY = Math.max(0,
+                    Math.min(maxY, bottom - editorFlick.height + 18))
+        })
+    }
+
+    onModalCursorPositionChanged: root.ensureCursorVisible()
+
     function handleMotionKey(key: int, modifiers: int): bool {
         if (root.mode === "insert" || root.findVisible
                 || (modifiers & (Qt.ControlModifier | Qt.AltModifier
@@ -335,6 +376,7 @@ Item {
     }
 
     function setMode(nextMode: string): void {
+        root.preferredColumn = -1
         const requested = ["normal", "insert", "visual"].includes(nextMode)
             ? nextMode : "normal"
         if (requested === "visual") {
@@ -767,6 +809,7 @@ Item {
                             eventPoint.position.x, eventPoint.position.y)
                         root.setMode("normal")
                         editor.cursorPosition = root.clampPosition(position)
+                        root.preferredColumn = -1
                         editor.deselect()
                         editor.forceActiveFocus()
                     }

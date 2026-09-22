@@ -33,8 +33,15 @@ Item {
         // Local Loader declarations register incrementally. Debounce their
         // arrivals instead of fitting the first partial inventory. An IPC
         // error is not a complete inventory; wait for a real snapshot.
-        if (root.initialFitDone || !root.inventoryReady
-                || root.width < 240 || root.height < 160
+        // A restored or manually changed viewport takes precedence over Fit.
+        if (root.initialFitDone)
+            return
+        if (CodeWorkflowSession.viewportInitialized) {
+            initialFitTimer.stop()
+            root.initialFitDone = true
+            return
+        }
+        if (!root.inventoryReady || root.width < 240 || root.height < 160
                 || root.nodes.length === 0)
             return
         initialFitTimer.restart()
@@ -44,9 +51,13 @@ Item {
         interval: 450
         repeat: false
         onTriggered: {
-            if (root.initialFitDone || !root.inventoryReady
-                    || root.width < 240 || root.height < 160
-                    || root.nodes.length === 0)
+            if (root.initialFitDone
+                    || CodeWorkflowSession.viewportInitialized) {
+                root.initialFitDone = true
+                return
+            }
+            if (!root.inventoryReady || root.width < 240
+                    || root.height < 160 || root.nodes.length === 0)
                 return
             root.initialFitDone = true
             root.fitGraph()
@@ -1307,6 +1318,10 @@ Item {
 
     Connections {
         target: CodeWorkflowSession
+
+        function onViewportInitializedChanged(): void {
+            root.fitInitialGraph()
+        }
 
         function onSubflowTargetIdChanged(): void {
             root.hoveredEdgeLabelId = ""

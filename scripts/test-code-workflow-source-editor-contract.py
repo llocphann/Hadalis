@@ -42,13 +42,15 @@ for token in (
     "cursorVisible: activeFocus",
     "cursorShape: Qt.IBeamCursor",
     "editor.positionAt(",
-    "root.enterInsertAt(position)",
+    "Keys.onShortcutOverride: event =>",
 ):
     require(editor, token, "modal editing contract missing")
 
 for token in (
     "readonly property int lineCount:",
+    "readonly property int currentLineNumber:",
     "readonly property string lineNumberText:",
+    "Math.abs(line - root.currentLineNumber)",
     "text: root.lineNumberText",
     "font.family: Appearance.font.family.monospace",
 ):
@@ -61,6 +63,14 @@ for token in (
     "function moveHorizontal(delta: int): void",
     "function moveVertical(delta: int): void",
     "function revealSelection(start: int, end: int): void",
+    "function computeFindMatches()",
+    "function findNext(backward: bool, fromStart: bool): bool",
+    "function replaceCurrentFind(): bool",
+    "function replaceAllFind(): int",
+    "root.openFind(false)",
+    "root.openFind(true)",
+    "event.key === Qt.Key_Slash",
+    "event.key === Qt.Key_N",
 ):
     require(editor, token, "cursor/navigation helper missing")
 
@@ -72,10 +82,27 @@ for token in (
     "onSaveRequested: root.saveSourceEditor()",
     '"Source Editor · " + root.sourcePath',
     'SplitView.maximumHeight: 720',
-    'buttonText: CodeWorkflowSession.targetsPaneCollapsed',
-    'buttonText: CodeWorkflowSession.inspectorPaneCollapsed',
 ):
     require(page, token, "Code Workflow page missing modal Source Editor integration")
+
+tap_start = editor.index("TapHandler {")
+tap_end = editor.index("Keys.onShortcutOverride: event =>", tap_start)
+tap_block = editor[tap_start:tap_end]
+require(tap_block, 'root.setMode("normal")',
+        "pointer click must enter Normal/view mode")
+require(tap_block, "editor.cursorPosition = root.clampPosition(position)",
+        "pointer click must place the Normal-mode cursor")
+if "root.enterInsertAt(position)" in tap_block:
+    fail("pointer click must not enter Insert mode")
+
+require(editor, "event.key === Qt.Key_Escape",
+        "Source Editor must consume Escape while it owns focus")
+require(editor, "event.key === Qt.Key_F",
+        "Source Editor must intercept Find before Settings shortcuts")
+require(editor, "event.key === Qt.Key_H",
+        "Source Editor must intercept Replace before Settings shortcuts")
+if "id: targetsToolbarToggle" in page or "id: inspectorToolbarToggle" in page:
+    fail("global toolbar must not duplicate Targets/Inspector pane toggles")
 
 require(
     settings_qmldir,

@@ -170,7 +170,7 @@ def main() -> None:
         "readonly property rect weldedBodyRect:",
         "property real ownerThickness: 10",
         "ConnectedSurfaceIrisFrame {",
-        "externalFrameThickness: root.ownerThickness",
+        "externalFrameThickness: root.tangentFrameThickness",
     ):
         check(token in iris_edge, f"iRiS edge adapter contract missing: {token}")
 

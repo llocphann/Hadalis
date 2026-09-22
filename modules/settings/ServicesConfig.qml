@@ -1750,7 +1750,7 @@ ContentPage {
                     Layout.fillWidth: true
                     text: Todo.internalItemCount > 0
                         ? Translation.tr("Activate without importing tasks.")
-                        : Translation.tr("Activate this verified Markdown note as the canonical Todo store.")
+                        : Translation.tr("Activate verified source.")
                     color: Appearance.colors.colOnSurfaceVariant
                     font.pixelSize: Appearance.font.pixelSize.small
                     wrapMode: Text.WordWrap

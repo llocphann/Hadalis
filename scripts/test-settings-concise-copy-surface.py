@@ -21,6 +21,7 @@ for token in (
     'Translation.tr("Fixed or date-based Markdown path.")',
     'Translation.tr("Checkboxes under this heading only.")',
     'Translation.tr("Direct Markdown sync.")',
+    'Translation.tr("Activate verified source.")',
     'Translation.tr("Capture to Zettelkasten; keep the draft.")',
     'Translation.tr("Blank = reuse Todo vault.")',
     'Translation.tr("Vault-relative capture folder.")',

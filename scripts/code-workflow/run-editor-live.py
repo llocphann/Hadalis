@@ -54,7 +54,8 @@ def instrument(config: Path) -> None:
     replace_once(
         page, "    id: root\n",
         "    id: root\n"
-        "    Component.onDestruction: CodeWorkflowSession.modalTestEditor = null\n"\n        "    TapHandler { target: null; onTapped: sourceEditor.testPageTapCount++ }\n",
+        "    Component.onDestruction: CodeWorkflowSession.modalTestEditor = null\n"
+        "    TapHandler { target: null; onTapped: sourceEditor.testPageTapCount++ }\n",
     )
     # Prevent tests from touching the actual source buffer, even inside the
     # temporary archive. This fixture still instantiates the real editor.
@@ -104,7 +105,10 @@ def instrument(config: Path) -> None:
                 line: modal.currentLineNumber,
                 text: modal.documentText,
                 focused: modal.testTextEditFocus,
-                tapCount: modal.testTapCount,\n                pressCount: modal.testPressCount,\n                pageTapCount: modal.testPageTapCount,\n                settingsTapCount: modal.testSettingsTapCount,
+                tapCount: modal.testTapCount,
+                pressCount: modal.testPressCount,
+                pageTapCount: modal.testPageTapCount,
+                settingsTapCount: modal.testSettingsTapCount,
                 clickX: modal.testClickPoint.x,
                 clickY: modal.testClickPoint.y,
                 clickOutput: modal.testClickOutput,

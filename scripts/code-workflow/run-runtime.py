@@ -132,17 +132,16 @@ class Probe:
             shell_command = [
                 'bash', '-c',
                 'fcitx5 -d || exit 96; '
-                'method=""; '
+                'ready=""; '
                 'for attempt in $(seq 1 40); do '
                 'if dbus-send --session --print-reply '
                 '--dest=org.freedesktop.DBus /org/freedesktop/DBus '
                 'org.freedesktop.DBus.NameHasOwner '
                 'string:org.fcitx.Fcitx5 | grep -q "boolean true"; '
-                'then method="$(fcitx5-remote -n 2>/dev/null || true)"; '
-                'test -n "$method" && break; fi; sleep 0.1; '
+                'then ready="owner"; break; fi; sleep 0.1; '
                 'done; '
-                'test -n "$method" || exit 97; '
-                'echo "HADALIS_FCITX_READY:$method"; '
+                'test -n "$ready" || exit 97; '
+                'echo "HADALIS_FCITX_READY:$ready"; '
                 'exec "$@"',
                 'hadalis-fcitx', *shell_command,
             ]

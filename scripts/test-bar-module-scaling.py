@@ -29,11 +29,14 @@ def main() -> None:
     assert [max(24, min(80, n)) / 40 for n in (24, 40, 80)] == [0.6, 1.0, 2.0]
     assert [round(46 * n / 40) for n in (24, 40, 80)] == [28, 46, 92]
     assert "property real barModuleScale:" in appearance
+    # At 1000px output width, a 10-workspace pivot respects the 40% budget.
+    assert [min(round(26 * n / 40), max(16, int(1000 * 0.4 / 10)))
+            for n in (24, 40, 80)] == [16, 26, 40]
 
     for path, contracts in {
         "modules/bar/BarContent.qml": ("moduleGap:", "buttonPadding: 5 * " + SCALE),
         "modules/bar/BarGroup.qml": ("property real padding: 8 * " + SCALE, "moduleSpacing: (root.vertical ? 12 : 4) * " + SCALE),
-        "modules/bar/Workspaces.qml": ("workspaceButtonWidth: Math.round(26 * " + SCALE + ")",),
+        "modules/bar/Workspaces.qml": ("requestedWorkspaceButtonWidth: Math.round(26 * " + SCALE + ")", "workspaceStripBudget:", "Math.floor(root.workspaceStripBudget / Math.max(1, root.columnsShown))"),
         "modules/bar/ClockWidget.qml": ("_timePixelSize * " + SCALE, "_datePixelSize * " + SCALE),
         "modules/bar/Media.qml": ("implicitSize: Math.round(22 * " + SCALE + ")",),
         "modules/bar/Resource.qml": ("implicitSize: Math.round(20 * " + SCALE + ")",),

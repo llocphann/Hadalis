@@ -797,14 +797,9 @@ Item {
                         }
                     }
 
-                    RowLayout {
-                        Layout.fillWidth: true; spacing: 8
-                        MaterialLoadingIndicator { implicitSize: 18; loading: true }
-                        StyledText {
-                            text: Translation.tr("Waiting for authorization...")
-                            font.pixelSize: Appearance.font.pixelSize.smaller
-                            color: root.colTextSecondary
-                        }
+                    LoadingText {
+                        Layout.fillWidth: true
+                        color: root.colTextSecondary
                     }
 
                     RippleButton {
@@ -822,12 +817,9 @@ Item {
                 Layout.fillWidth: true
                 active: YtMusic.oauthSetupActive && !YtMusic.oauthUserCode
                 visible: active
-                sourceComponent: RowLayout {
-                    spacing: 8
-                    Item { Layout.fillWidth: true }
-                    MaterialLoadingIndicator { implicitSize: 24; loading: true }
-                    StyledText { text: Translation.tr("Requesting code..."); color: root.colTextSecondary }
-                    Item { Layout.fillWidth: true }
+                sourceComponent: LoadingText {
+                    anchors.centerIn: parent
+                    color: root.colTextSecondary
                 }
             }
         }
@@ -1231,12 +1223,9 @@ Item {
                         width: parent.width
                         active: YtMusic.searching
                         height: active ? 40 : 0
-                        sourceComponent: RowLayout {
-                            spacing: 8
-                            Item { Layout.fillWidth: true }
-                            MaterialLoadingIndicator { implicitSize: 24; loading: true }
-                            StyledText { text: Translation.tr("Searching..."); color: root.colTextSecondary }
-                            Item { Layout.fillWidth: true }
+                        sourceComponent: LoadingText {
+                            anchors.centerIn: parent
+                            color: root.colTextSecondary
                         }
                     }
                 }
@@ -2024,26 +2013,9 @@ Item {
             spacing: 10
             visible: YtMusic.googleChecking
 
-            MaterialLoadingIndicator {
-                implicitSize: 20
-                loading: visible
-            }
-
-            ColumnLayout {
+            LoadingText {
                 Layout.fillWidth: true
-                spacing: 0
-                StyledText {
-                    text: Translation.tr("Connecting...")
-                    font.pixelSize: Appearance.font.pixelSize.small
-                    font.weight: Font.Medium
-                    color: root.colText
-                }
-                StyledText {
-                    visible: YtMusic.googleBrowser
-                    text: Translation.tr("Trying %1...").arg(YtMusic.getBrowserDisplayName(YtMusic.googleBrowser))
-                    font.pixelSize: Appearance.font.pixelSize.smaller
-                    color: root.colPrimary
-                }
+                color: root.colText
             }
 
             YtActionChip {

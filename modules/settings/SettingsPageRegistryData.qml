@@ -384,11 +384,11 @@ Singleton {
             keywords: ["wallpaper", "colors", "palette", "theme", "background"]
         },
         {
-            pageIndex: 0, pageName: root.pages[0].name,
-            section: Translation.tr("Bar & screen"),
-            label: Translation.tr("Bar & screen"),
-            description: Translation.tr("Bar position and screen rounding"),
-            keywords: ["bar", "position", "screen", "round", "corner"]
+            pageIndex: 2, pageName: root.pages[2].name,
+            section: Translation.tr("Appearance & Layout"),
+            label: Translation.tr("Bar position"),
+            description: Translation.tr("Choose the Classic Bar screen edge"),
+            keywords: ["bar", "position", "top", "bottom", "left", "right", "screen", "edge"]
         },
         {
             pageIndex: 0, pageName: root.pages[0].name,

@@ -306,56 +306,26 @@ Source Preview has now become a guarded Source Editor. It reuses the production
 `org.kde.syntaxhighlighting` backend, keeps per-source draft buffers across
 inspect-selection switches, exposes dirty/save/conflict state, and writes only
 through an atomic compare-and-swap helper scoped to the Hadalis shell root.
-External edits (including Neovim) therefore become explicit conflicts instead
-of silent overwrites. `Ctrl+S`, Revert and `Open in Neovim` are available in
-the pane header; Save is disabled while a Code Workflow transaction is dirty.
+External edits therefore become explicit conflicts instead of silent
+overwrites. `Ctrl+S` and Revert stay in the pane header; Save is disabled
+while a Code Workflow transaction is dirty.
 
-Neovim-native editor direction is now implemented as an initial embedded UI,
-not merely a roadmap. `CodeWorkflowNvim.qml` owns a long-lived bridge process
-that launches `nvim --embed`; `code-workflow-nvim-bridge.py` implements the
-required MessagePack-RPC subset without external Python dependencies, attaches
-with `ext_linegrid`, normalizes redraw batches, and streams JSONL frames back
-to Quickshell. `CodeWorkflowNvimView.qml` renders the grid with Canvas, forwards
-keyboard input and Neovim-authorized mouse events, resizes with the pane, honors
-highlight/default colors plus cursor shape/busy state, and preserves the nvim
-session when the user temporarily switches back to the inline guarded editor.
-Source switches are committed only after the nvim `:edit` RPC succeeds, so an
-unsaved buffer cannot silently desynchronize the source label from the actual
-buffer. Starting embedded nvim is also blocked while an inline draft/conflict
-or Code Workflow transaction is active.
+The Source Editor is intentionally an in-process hot-fix editor rather than a
+second full IDE. It has three modes: `NORMAL`, `INSERT`, and `VISUAL`.
+Normal/Visual navigation supports `h/j/k/l`, `0`, and `$`; edit entry
+supports `i/a/I/A/o/O`; `v` begins character Visual selection; `y` yanks,
+`x` deletes a character, Visual `d/x` deletes the selection, Visual `c`
+deletes then enters Insert, and `p/P` pastes the internal yank buffer.
+Visual yank also copies to the system clipboard, Ctrl+V can paste the system
+clipboard, Insert mode preserves native TextEdit clipboard/IME behavior, Escape
+returns to Normal, and the gutter shows synchronized line numbers.
 
-The dependency-free bridge has unit/static contracts plus
-`test-code-workflow-nvim-runtime.py`: on hosts with `nvim` installed it starts
-a hermetic embedded instance, waits for UI attach/frame delivery, sends real
-input, verifies buffer modified/saved notifications, verifies a write and
-`nvim_paste()`, and verifies grid resize. This repository session has not
-executed those tests or a live Niri Settings run, so embedded nvim remains
-runtime-unqualified here.
+This modal surface is deliberately small. It does not implement command-line
+editing, macros, named registers, plugins, terminal sessions, multi-buffer
+management, or a complete clone of any standalone editor. Its scope is quick
+temporary inspection and hot fixes while preserving the existing guarded
+source-save lifecycle.
 
-Clipboard paste now uses `wl-paste -n` on the Hadalis side and the dedicated
-Neovim `nvim_paste()` API; Ctrl+Shift+V/Shift+Insert are intercepted while
-Ctrl+V remains Vim's Visual Block command. Cursor rendering honors Neovim's
-`blinkwait/blinkon/blinkoff` values and repaints only the affected cursor row.
-Qt input methods are bridged through an invisible TextInput positioned at the
-actual Neovim cursor cell: committed composed text is forwarded once through
-`nvim_input()`, while preedit text is shown locally and IME-owned keys are not
-stolen during composition. This covers the previous IME/composed-text gap in
-the frontend design, subject to live fcitx/ibus verification.
-
-The renderer no longer repaints the full Canvas for every redraw. It exposes
-Neovim `dirtyRows`, uses `Canvas.markDirty()` for changed rows and cursor
-transitions/blink, and reserves full repaint for resize/default-color changes.
-Buffer path + modified state are also emitted by Neovim itself through a scoped
-autocmd/RPC notification. Embedded source switching is blocked while the real
-buffer is modified; the header therefore displays the actual active nvim buffer
-rather than merely the current Code Workflow selection.
-
-Remaining deliberate gaps are multigrid/externalized popupmenu/messages and
-full compositor/runtime qualification. Those extensions are not required for
-the current single-grid frontend because Neovim continues rendering cmdline,
-messages and popupmenu into grid 1 while their `ext_*` options remain disabled.
-The existing external `Open in Neovim` terminal action and inline editor remain
-fallbacks.
 
 **Supersession note:** the Phase 0 renderer decision and “no production editor
 UI” statements later in this document are preserved as historical experiment

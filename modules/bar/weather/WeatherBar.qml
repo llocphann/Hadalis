@@ -10,6 +10,14 @@ import QtQuick.Layouts
 
 MouseArea {
     id: root
+    // A pointer click can retain activeFocus after hover ends. Keep popup
+    // keyboard focus affordance without treating pointer focus as hover.
+    property bool _pointerFocused: false
+    onPressed: root._pointerFocused = true
+    onActiveFocusChanged: {
+        if (!root.activeFocus)
+            root._pointerFocused = false
+    }
     property bool vertical: false
     property color foregroundColor: root.vertical
         ? Appearance.colors.colOnLayer0
@@ -85,6 +93,6 @@ MouseArea {
     WeatherPopup {
         id: weatherPopup
         hoverTarget: root
-        alternativeVisibleCondition: root.activeFocus
+        alternativeVisibleCondition: root.activeFocus && !root._pointerFocused
     }
 }

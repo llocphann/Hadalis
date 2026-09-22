@@ -452,6 +452,30 @@ Item {
                 }
             }
 
+            Rectangle {
+                id: imePreeditBubble
+                x: nvimImeProxy.x
+                y: nvimImeProxy.y
+                visible: nvimImeProxy.inputMethodComposing
+                    && nvimImeProxy.preeditText.length > 0
+                z: 4
+                height: Math.max(root.cellHeight, preeditLabel.implicitHeight + 4)
+                width: Math.max(root.cellWidth, preeditLabel.implicitWidth + 8)
+                radius: Math.min(4, height / 3)
+                color: Appearance.colors.colLayer2
+                border.width: 1
+                border.color: Appearance.colors.colPrimary
+
+                StyledText {
+                    id: preeditLabel
+                    anchors.centerIn: parent
+                    text: nvimImeProxy.preeditText
+                    color: Appearance.colors.colOnLayer2
+                    font.family: Appearance.font.family.monospace
+                    font.pixelSize: Appearance.font.pixelSize.small
+                }
+            }
+
             MouseArea {
                 anchors.fill: parent
                 hoverEnabled: CodeWorkflowNvim.mouseEnabled

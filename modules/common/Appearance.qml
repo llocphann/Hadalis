@@ -512,9 +512,10 @@ Singleton {
         property color colTooltip: m3colors.m3inverseSurface
         property color colOnTooltip: m3colors.m3inverseOnSurface
         property color colScrim: ColorUtils.transparentize(m3colors.m3scrim, 0.5)
-        property color colShadow: m3colors.transparent
-            ? "transparent"
-            : ColorUtils.transparentize(m3colors.m3shadow, 0.7)
+        // Surface transparency must not erase elevation. Shadow ink is a
+        // separate physical layer, including in transparent Material themes.
+        // Callers that expose a shadow-opacity setting apply it explicitly.
+        property color colShadow: Qt.alpha(m3colors.m3shadow, 0.45)
         property color colOutline: m3colors.m3outline
         property color colOutlineVariant: m3colors.m3outlineVariant
         property color colError: m3colors.m3error

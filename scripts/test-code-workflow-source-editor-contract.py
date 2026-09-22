@@ -95,6 +95,15 @@ require(tap_block, "editor.cursorPosition = root.clampPosition(position)",
 if "root.enterInsertAt(position)" in tap_block:
     fail("pointer click must not enter Insert mode")
 
+root_key_handlers = editor[:editor.index("readonly property int lineCount:")]
+require(root_key_handlers, "Keys.onShortcutOverride: event =>",
+        "editor root must intercept Escape before the Settings window shortcut")
+require(root_key_handlers, "Keys.onPressed: event =>",
+        "editor root must consume Escape from focused toolbar children")
+require(root_key_handlers, "root.closeFind()",
+        "Escape from a Find toolbar child must close Find, not Settings")
+require(editor, "if (!root.findVisible)",
+        "deferred Find focus must not resurrect a closed Find surface")
 require(editor, "event.key === Qt.Key_Escape",
         "Source Editor must consume Escape while it owns focus")
 require(editor, "event.key === Qt.Key_F",

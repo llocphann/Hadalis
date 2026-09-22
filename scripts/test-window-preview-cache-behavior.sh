@@ -47,7 +47,7 @@ const root = {
     captureComplete() { completed++; }, previewUpdated() {}
 };
 const scope = {
-    root, PreviewPolicy: p, NiriService: {windows: [{id: 11}, {id: 12}]},
+    root, PreviewPolicy: p, NiriService: {windowListReady: true, windows: [{id: 11}, {id: 12}]},
     captureDebounceTimer: {restart() {scheduled++;}},
     captureProcess: {idsToCapture: [], command: [], running: false},
     Cliphist: {suppressRefresh: false},

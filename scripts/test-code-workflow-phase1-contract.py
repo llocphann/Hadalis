@@ -260,8 +260,8 @@ require(page, '"Use embedded Neovim"',
         "Source Editor must expose an embedded Neovim mode")
 require(page, "readonly property string sourceEditorNvimDisplayPath:",
         "embedded Neovim header must derive from the real active buffer path")
-require(page, "CodeWorkflowNvim.bufferModified",
-        "embedded Neovim must surface real buffer modified state")
+require(page, "root.embeddedNvimBufferModified",
+        "embedded Neovim must surface real buffer modified state through the lazy view")
 require(page, "&& !CodeWorkflowTransaction.dirty",
         "embedded Neovim must not start over an active graph transaction")
 require(page, 'source: active ? "CodeWorkflowNvimView.qml" : ""',

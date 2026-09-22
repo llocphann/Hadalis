@@ -1140,7 +1140,6 @@ ContentPage {
                             font.pixelSize: Appearance.font.pixelSize.small
                             font.weight: Font.DemiBold
                         }
-
                     }
 
                     RippleButton {
@@ -1232,8 +1231,6 @@ ContentPage {
                 tooltip: Todo.useLegacyManagedNote
                     ? Translation.tr("Legacy managed-note mode.")
                     : Translation.tr("Tasks are read from one Markdown file and heading.")
-
-
             }
 
             ColumnLayout {
@@ -1279,7 +1276,6 @@ ContentPage {
                         text: Translation.tr("Shared by To-do and Zettelkasten.")
                     }
                 }
-
             }
 
             ColumnLayout {
@@ -1743,7 +1739,6 @@ ContentPage {
                     }
                 }
             }
-
         }
 
         SettingsGroup {
@@ -1788,7 +1783,6 @@ ContentPage {
                             Config.setNestedValue("notes.zettelkasten.folder", value)
                     }
                 }
-
             }
 
             ContentSubsection {
@@ -1817,7 +1811,6 @@ ContentPage {
                         }
                     ]
                 }
-
             }
 
             Rectangle {

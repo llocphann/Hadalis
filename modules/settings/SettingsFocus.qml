@@ -2106,6 +2106,8 @@ Scope {
 
                             pages: root.pages
                             requestedIndex: root.currentPage
+                            workflowHostId: "settings-focus"
+                            workflowDiscoveryEnabled: true
                             // Keep recently visited pages warm while Settings is open,
                             // including home ↔ page navigation, but release them when
                             // the Settings surface itself closes.

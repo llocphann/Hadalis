@@ -31,7 +31,7 @@ Item {
             id: resourceCircProg
             visible: true
             Layout.alignment: Qt.AlignVCenter
-            lineWidth: Appearance.rounding.unsharpen
+            lineWidth: Math.round(Appearance.rounding.unsharpen * Appearance.sizes.barModuleScale)
             value: root.normalizedPercentage
             implicitSize: Math.round(20 * Appearance.sizes.barModuleScale)
             colPrimary: root.warning ? Appearance.colors.colError

@@ -622,7 +622,7 @@ Item {
                         horizontalAlignment: Text.AlignHCenter
                         verticalAlignment: Text.AlignVCenter
                         font {
-                            pixelSize: Math.round(Appearance.font.pixelSize.small * Appearance.sizes.barModuleScale) - ((text.length - 1) * (text !== "10") * 2)
+                            pixelSize: Math.max(8, Math.round(Appearance.font.pixelSize.small * Appearance.sizes.barModuleScale) - ((text.length - 1) * (text !== "10") * 2))
                             family: root.useNerdFont ? (Appearance.font.family.iconNerd ?? "") : (defaultFont ?? "")
                         }
                         text: {

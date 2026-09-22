@@ -76,7 +76,7 @@ Item {
                     visible: root.hasUrgentState
                     width: 6 * Appearance.sizes.barModuleScale
                     height: 6 * Appearance.sizes.barModuleScale
-                    radius: 3
+                    radius: 3 * Appearance.sizes.barModuleScale
                     color: root.dangerIconColor
                     anchors {
                         top: parent.top
@@ -164,7 +164,7 @@ Item {
                             visible: scale > 0
                             width: 6 * Appearance.sizes.barModuleScale
                             height: 6 * Appearance.sizes.barModuleScale
-                            radius: 3
+                            radius: 3 * Appearance.sizes.barModuleScale
                             color: root.dangerIconColor
                             anchors {
                                 top: parent.top
@@ -306,7 +306,7 @@ Item {
                         visible: scale > 0
                         width: 6 * Appearance.sizes.barModuleScale
                         height: 6 * Appearance.sizes.barModuleScale
-                        radius: 3
+                        radius: 3 * Appearance.sizes.barModuleScale
                         color: root.dangerIconColor
                         anchors { top: parent.top; right: parent.right }
 
@@ -377,7 +377,7 @@ Item {
                         visible: scale > 0
                         width: 6 * Appearance.sizes.barModuleScale
                         height: 6 * Appearance.sizes.barModuleScale
-                        radius: 3
+                        radius: 3 * Appearance.sizes.barModuleScale
                         color: root.dangerIconColor
                         anchors {
                             top: parent.top

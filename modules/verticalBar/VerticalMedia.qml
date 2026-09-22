@@ -54,7 +54,7 @@ MouseArea {
         anchors.centerIn: parent
         implicitSize: Math.round(20 * Appearance.sizes.barModuleScale)
 
-        lineWidth: Appearance.rounding.unsharpen
+        lineWidth: Math.round(Appearance.rounding.unsharpen * Appearance.sizes.barModuleScale)
         value: activePlayer?.position / activePlayer?.length
         colPrimary: Appearance.colors.colOnLayer0
         enableAnimation: false

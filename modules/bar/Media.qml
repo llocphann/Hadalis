@@ -166,7 +166,7 @@ Item {
             ClippedFilledCircularProgress {
                 id: mediaCircProg
                 anchors.centerIn: parent
-                lineWidth: Appearance.rounding.unsharpen
+                lineWidth: Math.round(Appearance.rounding.unsharpen * Appearance.sizes.barModuleScale)
                 value: (activePlayer && activePlayer.length > 0) ? (activePlayer.position / activePlayer.length) : 0
                 implicitSize: Math.round(22 * Appearance.sizes.barModuleScale)
                 colPrimary: Appearance.colors.colOnLayer0

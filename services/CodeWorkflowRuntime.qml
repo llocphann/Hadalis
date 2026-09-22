@@ -96,8 +96,7 @@ Singleton {
     }
 
     function _rememberStale(
-        descriptor, token: string, instanceId: string = "",
-        outputName: string = ""
+        descriptor, token, instanceId, outputName
     ): void {
         if (!descriptor || String(descriptor.targetId ?? "").length === 0)
             return

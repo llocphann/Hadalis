@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import json
+import re
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -76,6 +77,12 @@ for token in (
     "function relativeSourcePath(rawSource): string",
 ):
     require(runtime, token, "runtime declaration registry missing " + token)
+
+if re.search(r":\s*(?:string|int|bool|real|double|var)\s*=", runtime):
+    raise SystemExit(
+        "FAIL: CodeWorkflowRuntime uses a typed default parameter unsupported "
+        "by the deployed Quickshell QML parser"
+    )
 for token in (
     "required property var loader",
     "required property string panelId",

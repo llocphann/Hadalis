@@ -15,6 +15,7 @@ Singleton {
     property string error: ""
     property string path: ""
     property string pendingPath: ""
+    property bool bufferModified: false
     property int cols: 80
     property int rows: 24
     property int cursorRow: 0
@@ -123,6 +124,19 @@ Singleton {
             root._applyFrame(message)
             return
         }
+        if (type === "buffer") {
+            const activePath = String(message?.path ?? "")
+            if (activePath.length > 0) {
+                root.path = activePath
+                if (root.pendingPath === activePath)
+                    root.pendingPath = ""
+            }
+            root.bufferModified = message?.modified === true
+            if (!root.bufferModified
+                    && root.error.startsWith("Modified Neovim buffer"))
+                root.error = ""
+            return
+        }
         if (type === "state") {
             root.state = String(message?.state ?? "error")
             if (message?.path) {
@@ -158,14 +172,22 @@ Singleton {
         const safeRows = Math.max(2, Math.floor(Number(nextRows ?? 24)))
 
         if (nvimBridgeProcess.running) {
-            if (root.path !== requestedPath)
+            if (root.path !== requestedPath) {
+                if (root.bufferModified) {
+                    root.error =
+                        "Modified Neovim buffer · save before switching source"
+                    root.resize(safeCols, safeRows)
+                    return false
+                }
                 root.open(requestedPath)
+            }
             root.resize(safeCols, safeRows)
             return true
         }
 
         root.path = requestedPath
         root.pendingPath = ""
+        root.bufferModified = false
         root.cols = safeCols
         root.rows = safeRows
         root.cursorRow = 0

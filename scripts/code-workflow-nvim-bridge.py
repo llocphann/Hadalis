@@ -481,6 +481,33 @@ class Bridge:
         self._rpc([0, msgid, method, params])
         return msgid
 
+    def install_buffer_watch(self, channel_id: int) -> None:
+        lua = r'''
+local chan = ...
+local group = vim.api.nvim_create_augroup("HadalisCodeWorkflow", { clear = true })
+local function emit_state()
+    local path = vim.api.nvim_buf_get_name(0)
+    local modified = vim.bo.modified
+    vim.rpcnotify(chan, "hadalis_buffer_state", path, modified)
+end
+vim.api.nvim_create_autocmd({ "BufEnter", "BufWritePost" }, {
+    group = group,
+    callback = emit_state,
+})
+vim.api.nvim_create_autocmd("OptionSet", {
+    group = group,
+    pattern = "modified",
+    callback = emit_state,
+})
+emit_state()
+return true
+'''
+        self.request(
+            "nvim_exec_lua",
+            [lua, [int(channel_id)]],
+            "buffer-watch",
+        )
+
     def response(self, msgid: int, error: Any, result: Any) -> None:
         tag = self.pending.pop(msgid, "")
         if error not in (None, False):
@@ -489,6 +516,10 @@ class Bridge:
             emit({"type": "rpc-error", "request": tag, "error": error})
             if tag == "attach":
                 self.stopping = True
+            return
+        if tag == "api-info":
+            if isinstance(result, list) and result:
+                self.install_buffer_watch(int(result[0]))
             return
         if tag == "open":
             opened = self.pending_open.pop(msgid, None)
@@ -513,6 +544,15 @@ class Bridge:
             })
 
     def notification(self, method: str, params: list[Any]) -> None:
+        if method == "hadalis_buffer_state":
+            path = str(params[0]) if params else ""
+            modified = bool(params[1]) if len(params) >= 2 else False
+            emit({
+                "type": "buffer",
+                "path": path,
+                "modified": modified,
+            })
+            return
         if method != "redraw" or not params:
             return
         batch = params[0]
@@ -622,6 +662,7 @@ class Bridge:
             ],
             "client-info",
         )
+        self.request("nvim_get_api_info", [], "api-info")
         self.request(
             "nvim_ui_attach",
             [self.ui.cols, self.ui.rows, {"rgb": True, "ext_linegrid": True}],

@@ -71,9 +71,10 @@ for token in (
 for token in (
     "property bool sourceEditorUseNvim: false",
     '"Use embedded Neovim"',
-    "CodeWorkflowNvimView {",
-    "id: embeddedNvimEditor",
-    "sourcePath: root.sourceEditorTargetPath",
+    'source: active ? "CodeWorkflowNvimView.qml" : ""',
+    "id: embeddedNvimLoader",
+    "item.sourcePath = root.sourceEditorTargetPath",
+    '"Embedded Neovim failed to load · using inline editor"',
     '"Save Neovim buffer"',
     "CodeWorkflowNvim.save()",
 ):

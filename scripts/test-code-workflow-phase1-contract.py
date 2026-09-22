@@ -262,10 +262,12 @@ require(page, "CodeWorkflowNvim.bufferModified",
         "embedded Neovim must surface real buffer modified state")
 require(page, "&& !CodeWorkflowTransaction.dirty",
         "embedded Neovim must not start over an active graph transaction")
-require(page, "CodeWorkflowNvimView {",
-        "Source Editor must render embedded Neovim through the dedicated view")
-require(page, "active: visible",
-        "embedded Neovim lifecycle must follow its visible editor surface")
+require(page, 'source: active ? "CodeWorkflowNvimView.qml" : ""',
+        "embedded Neovim must be lazy-loaded so view failures cannot take down the page")
+require(page, "status !== Loader.Error",
+        "embedded Neovim loader must contain QML load failures")
+require(page, '"Embedded Neovim failed to load · using inline editor"',
+        "embedded Neovim load failure must fall back to the inline editor")
 require(page, "root.sourceEditorConflict",
         "Source Editor must surface external-write conflicts")
 require(page, "visible: root.sourceEditorStatus.length > 0",

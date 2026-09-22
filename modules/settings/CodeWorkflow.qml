@@ -1433,6 +1433,26 @@ Item {
         sourceEditor.revealSelection(safeStart, safeEnd)
     }
 
+    // A cached Settings page can be instantiated before it is presented.
+    // Focus the Source Editor only after its page and pane become active;
+    // otherwise hjkl have no recipient until the user explicitly clicks it.
+    function focusSourceEditorWhenActive(): void {
+        Qt.callLater(() => {
+            if (root.enabled && root.visible && sourcePane.visible
+                    && sourceEditor.visible && !sourceEditor.findVisible)
+                sourceEditor.focusEditor()
+        })
+    }
+
+    onEnabledChanged: {
+        if (root.enabled)
+            root.focusSourceEditorWhenActive()
+    }
+    onVisibleChanged: {
+        if (root.visible)
+            root.focusSourceEditorWhenActive()
+    }
+
     function focusSourceAnchor(): void {
         sourceEditor.clearSelection()
         if (root.sourceText.length === 0)
@@ -1565,6 +1585,7 @@ Item {
             CodeWorkflowSession.setOutputName(outputs[0])
         Qt.callLater(root.reloadSource)
         Qt.callLater(() => root.requestAnalysis(false))
+        root.focusSourceEditorWhenActive()
     }
 
     FileView {
@@ -3769,6 +3790,10 @@ Item {
                 SplitView.minimumHeight: 120
                 SplitView.maximumHeight: 720
                 visible: CodeWorkflowSession.sourcePreviewVisible
+                onVisibleChanged: {
+                    if (visible)
+                        root.focusSourceEditorWhenActive()
+                }
             radius: Appearance.rounding.normal
             color: Appearance.colors.colLayer1
             border.width: 1

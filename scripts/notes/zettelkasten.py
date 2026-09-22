@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Create filesystem-canonical Zettelkasten notes for Hadalis quick capture.
+"""Filesystem-canonical Zettelkasten capture and Notepad migration.
 
-The format mirrors the user's Obsidian Zettelkasten template but does not invoke
-Templater or Obsidian. Filesystem Markdown is canonical.
+The generated Markdown mirrors the user's Obsidian Zettelkasten structure but
+does not invoke Obsidian, Templater, or any plugin.
 """
 from __future__ import annotations
 
@@ -10,8 +10,8 @@ import argparse
 import hashlib
 import json
 import os
-import stat
 import re
+import stat
 import sys
 from datetime import datetime, timedelta
 from pathlib import Path, PurePosixPath
@@ -21,12 +21,18 @@ ALLOWED_TYPES = ("Permanent", "Literature", "Fleeting")
 DEFAULT_FOLDER = "00_Capture/03_Zettelkasten"
 DEFAULT_TYPE = "Fleeting"
 
+_IMPORT_RE = re.compile(r'^hadalis_import_id:\s*"([^"]+)"\s*$')
+
 
 class ZettelError(Exception):
     def __init__(self, code: str, message: str) -> None:
         super().__init__(message)
         self.code = code
         self.message = message
+
+
+def _sha256_bytes(value: bytes) -> str:
+    return hashlib.sha256(value).hexdigest()
 
 
 def _resolve_vault(vault_path: str) -> Path:
@@ -54,21 +60,48 @@ def _normalize_folder(folder: str) -> str:
     return pure.as_posix()
 
 
-def _resolve_folder(vault: Path, folder: str) -> tuple[str, Path]:
+def _candidate_folder(vault: Path, folder: str) -> tuple[str, Path]:
     normalized = _normalize_folder(folder)
-    target = vault.joinpath(*PurePosixPath(normalized).parts)
+    candidate = vault.joinpath(*PurePosixPath(normalized).parts)
     try:
-        unresolved = target.resolve(strict=False)
-        if os.path.commonpath((str(vault), str(unresolved))) != str(vault):
+        resolved = candidate.resolve(strict=False)
+        if os.path.commonpath((str(vault), str(resolved))) != str(vault):
             raise ZettelError("folder_outside_vault", "Zettelkasten folder escapes the vault")
-        target.mkdir(parents=True, exist_ok=True)
-        resolved = target.resolve(strict=True)
+    except ZettelError:
+        raise
+    except (OSError, RuntimeError, ValueError) as exc:
+        raise ZettelError("folder_read_failed", f"cannot resolve Zettelkasten folder: {exc}") from exc
+    return normalized, candidate
+
+
+def _resolve_folder(vault: Path, folder: str) -> tuple[str, Path]:
+    normalized, candidate = _candidate_folder(vault, folder)
+    try:
+        candidate.mkdir(parents=True, exist_ok=True)
+        resolved = candidate.resolve(strict=True)
         if os.path.commonpath((str(vault), str(resolved))) != str(vault):
             raise ZettelError("folder_outside_vault", "Zettelkasten folder escapes the vault")
     except ZettelError:
         raise
     except (OSError, RuntimeError, ValueError) as exc:
         raise ZettelError("folder_create_failed", f"cannot prepare Zettelkasten folder: {exc}") from exc
+    if not resolved.is_dir():
+        raise ZettelError("invalid_folder", "Zettelkasten target is not a directory")
+    return normalized, resolved
+
+
+def _readonly_target_dir(vault: Path, folder: str) -> tuple[str, Path | None]:
+    normalized, candidate = _candidate_folder(vault, folder)
+    if not candidate.exists():
+        return normalized, None
+    try:
+        resolved = candidate.resolve(strict=True)
+        if os.path.commonpath((str(vault), str(resolved))) != str(vault):
+            raise ZettelError("folder_outside_vault", "Zettelkasten folder escapes the vault")
+    except ZettelError:
+        raise
+    except (OSError, RuntimeError, ValueError) as exc:
+        raise ZettelError("folder_read_failed", f"cannot inspect Zettelkasten folder: {exc}") from exc
     if not resolved.is_dir():
         raise ZettelError("invalid_folder", "Zettelkasten target is not a directory")
     return normalized, resolved
@@ -106,7 +139,13 @@ def _normalize_type(note_type: str) -> str:
 
 
 def _clean_body(body: str) -> str:
-    return str(body or "").replace("\x00", "").replace("\r\n", "\n").replace("\r", "\n").strip()
+    return (
+        str(body or "")
+        .replace("\x00", "")
+        .replace("\r\n", "\n")
+        .replace("\r", "\n")
+        .strip()
+    )
 
 
 def _render_markdown(
@@ -117,10 +156,9 @@ def _render_markdown(
     created: datetime,
     import_id: str = "",
 ) -> str:
-    """Render the static structure of 90_System/91_Templates/Zettelkasten_Template.md."""
+    """Render the static schema of 90_System/91_Templates/Zettelkasten_Template.md."""
 
     clean_body = _clean_body(body)
-    core_idea = title
     content = clean_body if clean_body else title
 
     parts = [
@@ -134,13 +172,14 @@ def _render_markdown(
     ]
     if import_id:
         parts.append(f"hadalis_import_id: {json.dumps(import_id, ensure_ascii=False)}")
+
     parts.extend([
         "---",
         "",
         f"# {title}",
         "",
         "## Core Idea",
-        core_idea,
+        title,
         "",
         "## Content",
         content,
@@ -182,24 +221,22 @@ def capture(
     clean_type = _normalize_type(note_type)
     filename_title = _filename_title(clean_title)
 
-    created_path: Path | None = None
-    allocated_time: datetime | None = None
-    allocated_id = ""
-
-    # Zettelkasten IDs are second-resolution timestamps. Never reuse an ID just
-    # because a different title would make the filename distinct; advance to
-    # the next free second instead.
-    for attempt in range(0, 100):
+    for attempt in range(100):
         candidate_time = requested_time + timedelta(seconds=attempt)
         note_id = candidate_time.strftime("%Y%m%d%H%M%S")
         if _id_in_use(target_dir, note_id):
             continue
 
         candidate = target_dir / f"{note_id} - {filename_title}.md"
-        markdown = _render_markdown(
-            note_id, clean_title, body, clean_type, candidate_time, import_id
-        )
-        payload = markdown.encode("utf-8")
+        payload = _render_markdown(
+            note_id,
+            clean_title,
+            body,
+            clean_type,
+            candidate_time,
+            import_id,
+        ).encode("utf-8")
+
         try:
             fd = os.open(
                 candidate,
@@ -228,33 +265,24 @@ def capture(
                 pass
             raise ZettelError("note_write_failed", f"cannot persist Zettelkasten note: {exc}") from exc
 
-        created_path = candidate
-        allocated_time = candidate_time
-        allocated_id = note_id
-        break
+        relative = PurePosixPath(normalized_folder, candidate.name).as_posix()
+        return {
+            "ok": True,
+            "id": note_id,
+            "date": candidate_time.strftime("%Y-%m-%d"),
+            "title": clean_title,
+            "type": clean_type,
+            "notePath": relative,
+            "noteFullPath": str(candidate),
+            "templateCompatible": True,
+        }
 
-    if created_path is None or allocated_time is None:
-        raise ZettelError("note_collision", "could not allocate a unique Zettelkasten ID")
-
-    relative = PurePosixPath(normalized_folder, created_path.name).as_posix()
-    return {
-        "ok": True,
-        "id": allocated_id,
-        "date": allocated_time.strftime("%Y-%m-%d"),
-        "title": clean_title,
-        "type": clean_type,
-        "notePath": relative,
-        "noteFullPath": str(created_path),
-        "templateCompatible": True,
-    }
+    raise ZettelError("note_collision", "could not allocate a unique Zettelkasten ID")
 
 
-
-def _sha256_bytes(value: bytes) -> str:
-    return hashlib.sha256(value).hexdigest()
-
-
-def _load_notepad_tabs(notepad_json_path: str) -> tuple[Path, bytes, list[dict[str, str]]]:
+def _load_notepad_tabs(
+    notepad_json_path: str,
+) -> tuple[Path, bytes, list[dict[str, str]]]:
     try:
         source = Path(str(notepad_json_path or "")).expanduser().resolve(strict=True)
     except (OSError, RuntimeError) as exc:
@@ -277,10 +305,12 @@ def _load_notepad_tabs(notepad_json_path: str) -> tuple[Path, bytes, list[dict[s
     for item in tabs:
         if not isinstance(item, dict):
             continue
+
         raw_title = str(item.get("title", "") or "").strip()
         body = str(item.get("text", "") or "").replace("\x00", "")
-        is_default_title = re.fullmatch(r"Note \d+", raw_title) is not None
-        requested_title = "" if is_default_title else raw_title
+        default_title = re.fullmatch(r"Note \d+", raw_title) is not None
+        requested_title = "" if default_title else raw_title
+
         if not requested_title.strip() and not body.strip():
             continue
 
@@ -295,82 +325,20 @@ def _load_notepad_tabs(notepad_json_path: str) -> tuple[Path, bytes, list[dict[s
             "body": body,
             "importId": f"notepad-{digest}-{ordinal}",
         })
+
     return source, raw, entries
-
-
-def _readonly_target_dir(vault: Path, folder: str) -> Path | None:
-    normalized = _normalize_folder(folder)
-    candidate = vault.joinpath(*PurePosixPath(normalized).parts)
-    try:
-        resolved = candidate.resolve(strict=False)
-        if os.path.commonpath((str(vault), str(resolved))) != str(vault):
-            raise ZettelError("folder_outside_vault", "Zettelkasten folder escapes the vault")
-        if not candidate.exists():
-            return None
-        resolved = candidate.resolve(strict=True)
-        if os.path.commonpath((str(vault), str(resolved))) != str(vault):
-            raise ZettelError("folder_outside_vault", "Zettelkasten folder escapes the vault")
-    except ZettelError:
-        raise
-    except (OSError, RuntimeError, ValueError) as exc:
-        raise ZettelError("folder_read_failed", f"cannot inspect Zettelkasten folder: {exc}") from exc
-    if not resolved.is_dir():
-        raise ZettelError("invalid_folder", "Zettelkasten target is not a directory")
-    return resolved
-
-
-_IMPORT_RE = re.compile(r'^hadalis_import_id:\s*"([^"]+)"\s*    json.dump(payload, sys.stdout, ensure_ascii=False, separators=(",", ":"))
-    sys.stdout.write("\n")
-
-
-def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--vault", required=True)
-    parser.add_argument("--folder", default=DEFAULT_FOLDER)
-    parser.add_argument("--title", default="")
-    parser.add_argument("--body", default="")
-    parser.add_argument("--type", default=DEFAULT_TYPE)
-    parser.add_argument("--preview-notepad", default="")
-    parser.add_argument("--migrate-notepad", default="")
-    parser.add_argument("--expected-source-sha", default="")
-    args = parser.parse_args(argv)
-    try:
-        if args.preview_notepad:
-            payload = preview_notepad_migration(
-                args.vault, args.folder, args.preview_notepad, args.type
-            )
-        elif args.migrate_notepad:
-            payload = migrate_notepad_json(
-                args.vault, args.folder, args.migrate_notepad,
-                args.expected_source_sha, args.type,
-            )
-        else:
-            payload = capture(
-                args.vault, args.folder, args.title, args.body, args.type
-            )
-        _emit(payload)
-        return 0
-    except ZettelError as exc:
-        _emit({"ok": False, "error": {"code": exc.code, "message": exc.message}})
-        return 2
-    except Exception as exc:
-        _emit({"ok": False, "error": {"code": "internal_error", "message": str(exc)}})
-        return 3
-
-
-if __name__ == "__main__":
-    raise SystemExit(main())
-)
 
 
 def _import_marker_counts(target_dir: Path | None) -> dict[str, int]:
     counts: dict[str, int] = {}
     if target_dir is None:
         return counts
+
     try:
         paths = list(target_dir.glob("*.md"))
     except OSError as exc:
         raise ZettelError("folder_read_failed", f"cannot list Zettelkasten notes: {exc}") from exc
+
     for path in paths:
         try:
             text = path.read_text(encoding="utf-8")
@@ -392,9 +360,9 @@ def preview_notepad_migration(
     note_type: str = DEFAULT_TYPE,
 ) -> dict[str, Any]:
     vault = _resolve_vault(vault_path)
-    _normalize_type(note_type)
+    clean_type = _normalize_type(note_type)
     source, raw, entries = _load_notepad_tabs(notepad_json_path)
-    target_dir = _readonly_target_dir(vault, folder)
+    normalized_folder, target_dir = _readonly_target_dir(vault, folder)
     markers = _import_marker_counts(target_dir)
 
     added = 0
@@ -412,13 +380,14 @@ def preview_notepad_migration(
     return {
         "ok": True,
         "mutation": "preview-notepad-migration",
+        "type": clean_type,
         "source": {
             "path": str(source),
             "sha256": _sha256_bytes(raw),
             "tabCount": len(entries),
         },
         "target": {
-            "folder": _normalize_folder(folder),
+            "folder": normalized_folder,
             "exists": target_dir is not None,
         },
         "preview": {
@@ -432,6 +401,7 @@ def preview_notepad_migration(
 def _backup_notepad_source(source: Path, raw: bytes) -> tuple[Path, bool]:
     digest = _sha256_bytes(raw)
     backup = source.parent / f".{source.name}.hadalis-zettel-backup-{digest[:12]}"
+
     try:
         if source.read_bytes() != raw:
             raise ZettelError(
@@ -476,7 +446,20 @@ def _backup_notepad_source(source: Path, raw: bytes) -> tuple[Path, bool]:
         except OSError:
             pass
         raise ZettelError("migration_backup_failed", f"cannot persist migration backup: {exc}") from exc
+
     return backup, True
+
+
+def _revalidate_source(source: Path, raw: bytes, stage: str) -> None:
+    try:
+        current = source.read_bytes()
+    except OSError as exc:
+        raise ZettelError("migration_source_missing", f"cannot revalidate Notepad store: {exc}") from exc
+    if current != raw:
+        raise ZettelError(
+            "migration_source_conflict",
+            f"Notepad store changed {stage}",
+        )
 
 
 def migrate_notepad_json(
@@ -499,7 +482,7 @@ def migrate_notepad_json(
         )
 
     vault = _resolve_vault(vault_path)
-    target_dir = _readonly_target_dir(vault, folder)
+    _, target_dir = _readonly_target_dir(vault, folder)
     markers = _import_marker_counts(target_dir)
     if any(markers.get(entry["importId"], 0) > 1 for entry in entries):
         raise ZettelError(
@@ -507,37 +490,18 @@ def migrate_notepad_json(
             "duplicate Hadalis import markers exist in the Zettelkasten target",
         )
 
-    try:
-        if source.read_bytes() != raw:
-            raise ZettelError(
-                "migration_source_conflict",
-                "Notepad store changed while preparing migration",
-            )
-    except ZettelError:
-        raise
-    except OSError as exc:
-        raise ZettelError("migration_source_missing", f"cannot revalidate Notepad store: {exc}") from exc
-
+    _revalidate_source(source, raw, "while preparing migration")
     backup, backup_created = _backup_notepad_source(source, raw)
+    _revalidate_source(source, raw, "after migration backup")
+
     created_paths: list[str] = []
     skipped = 0
-
     for entry in entries:
         if markers.get(entry["importId"], 0) == 1:
             skipped += 1
             continue
 
-        try:
-            if source.read_bytes() != raw:
-                raise ZettelError(
-                    "migration_source_conflict",
-                    "Notepad store changed while importing tabs",
-                )
-        except ZettelError:
-            raise
-        except OSError as exc:
-            raise ZettelError("migration_source_missing", f"cannot revalidate Notepad store: {exc}") from exc
-
+        _revalidate_source(source, raw, "while importing tabs")
         result = capture(
             vault_path,
             folder,
@@ -548,7 +512,8 @@ def migrate_notepad_json(
         )
         created_paths.append(result["notePath"])
 
-    final_dir = _readonly_target_dir(vault, folder)
+    _revalidate_source(source, raw, "before verification")
+    _, final_dir = _readonly_target_dir(vault, folder)
     final_markers = _import_marker_counts(final_dir)
     for entry in entries:
         if final_markers.get(entry["importId"], 0) != 1:
@@ -583,9 +548,36 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--title", default="")
     parser.add_argument("--body", default="")
     parser.add_argument("--type", default=DEFAULT_TYPE)
+    parser.add_argument("--preview-notepad", default="")
+    parser.add_argument("--migrate-notepad", default="")
+    parser.add_argument("--expected-source-sha", default="")
     args = parser.parse_args(argv)
+
     try:
-        _emit(capture(args.vault, args.folder, args.title, args.body, args.type))
+        if args.preview_notepad:
+            payload = preview_notepad_migration(
+                args.vault,
+                args.folder,
+                args.preview_notepad,
+                args.type,
+            )
+        elif args.migrate_notepad:
+            payload = migrate_notepad_json(
+                args.vault,
+                args.folder,
+                args.migrate_notepad,
+                args.expected_source_sha,
+                args.type,
+            )
+        else:
+            payload = capture(
+                args.vault,
+                args.folder,
+                args.title,
+                args.body,
+                args.type,
+            )
+        _emit(payload)
         return 0
     except ZettelError as exc:
         _emit({"ok": False, "error": {"code": exc.code, "message": exc.message}})

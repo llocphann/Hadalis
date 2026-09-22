@@ -872,22 +872,17 @@ ApplicationWindow {
                                 root.recomputeSettingsSearchResults();
                             }
 
-                            Keys.onPressed: (event) => {
+                            Keys.onPressed: event => {
                                 if (event.key === Qt.Key_Down && root.settingsSearchResults.length > 0) {
-                                    resultsListView.forceActiveFocus();
-                                    if ((resultsListView.currentIndex < 0 || resultsListView.currentIndex >= resultsListView.count) && resultsListView.count > 0) {
-                                        resultsListView.currentIndex = 0;
-                                    }
-                                    event.accepted = true;
-                                } else if ((event.key === Qt.Key_Return || event.key === Qt.Key_Enter) && root.settingsSearchResults.length > 0) {
-                                    var idx = (resultsListView.currentIndex >= 0 && resultsListView.currentIndex < root.settingsSearchResults.length)
-                                        ? resultsListView.currentIndex
-                                        : 0;
-                                    root.openSearchResult(root.settingsSearchResults[idx]);
-                                    event.accepted = true;
+                                    settingsLiveSearch.focusResults()
+                                    event.accepted = true
+                                } else if ((event.key === Qt.Key_Return || event.key === Qt.Key_Enter)
+                                        && root.settingsSearchResults.length > 0) {
+                                    settingsLiveSearch.activateCurrent()
+                                    event.accepted = true
                                 } else if (event.key === Qt.Key_Escape) {
-                                    root.openSearchResult({});
-                                    event.accepted = true;
+                                    root.openSearchResult({})
+                                    event.accepted = true
                                 }
                             }
                         }
@@ -1506,8 +1501,8 @@ ApplicationWindow {
                     readonly property var meta: root.pages[root.currentPage] ?? {}
                     readonly property bool delegatedToPage:
                         String(meta.key ?? "") === "code-workflow"
-                    height: delegatedToPage ? 0 : 48
-                    visible: !delegatedToPage
+                    height: delegatedToPage || root.settingsSearchText.trim().length > 0 ? 0 : 48
+                    visible: !delegatedToPage && root.settingsSearchText.trim().length === 0
 
                     RowLayout {
                         id: windowPageHeaderRow
@@ -1565,6 +1560,8 @@ ApplicationWindow {
 
                     pages: root.pages
                     requestedIndex: root.currentPage
+                    visible: root.settingsSearchText.trim().length === 0
+                    enabled: visible
                     // This is a separate process: keep the shell's runtime
                     // catalog sourced through IPC rather than local page probes.
                     workflowDiscoveryEnabled: false
@@ -1578,253 +1575,19 @@ ApplicationWindow {
 
                 }
 
-                // Search results overlay - Simple dropdown style
-                Rectangle {
-                    id: settingsSearchOverlay
+                // Live search is the page content, never a floating dropdown.
+                // The page host stays loaded but hidden so leaving search restores
+                // the same page/section state without another expensive load.
+                SettingsLiveSearchResults {
+                    id: settingsLiveSearch
                     anchors.fill: parent
-                    visible: root.settingsSearchText.length > 0 && root.settingsSearchResults.length > 0
-                    color: "transparent"
-                    z: 100
-
-                    // Click outside to close
-                    MouseArea {
-                        anchors.fill: parent
-                        onClicked: root.openSearchResult({})
-                    }
-
-                    // Results card
-                    StyledRectangularShadow {
-                        target: searchResultsCard
-                    }
-                    Rectangle {
-                        id: searchResultsCard
-                        width: Math.max(searchContainer.width, Math.min(parent.width - 40, 480))
-                        height: Math.min(resultsListView.contentHeight + 16, 400)
-                        // Centered under the search box, not the content pane
-                        x: {
-                            var dep = searchContainer.x + searchContainer.width + root.width;
-                            var p = searchContainer.mapToItem(settingsSearchOverlay, 0, 0);
-                            return Math.max(8, Math.min(p.x + (searchContainer.width - width) / 2, parent.width - width - 8));
-                        }
-                        anchors.top: parent.top
-                        anchors.topMargin: 8
-                        radius: Appearance.rounding.normal
-                        color: "transparent"
-                        border.width: 1
-                        border.color: Appearance.m3colors.m3outlineVariant
-
-                        GlassBackground {
-                            anchors.fill: parent
-                            radius: searchResultsCard.radius
-                            screenX: searchResultsCard.mapToGlobal(0, 0).x
-                            screenY: searchResultsCard.mapToGlobal(0, 0).y
-                            screenWidth: Quickshell.screens[0]?.width ?? root.width
-                            screenHeight: Quickshell.screens[0]?.height ?? root.height
-                            hovered: false
-                            fallbackColor: Appearance.colors.colLayer1
-                            inirColor: Appearance.inir.colLayer2
-                            auroraTransparency: Math.max(0.22, Appearance.aurora.popupTransparentize - 0.12)
-                        }
-
-                        layer.enabled: Appearance.effectsEnabled
-                        layer.effect: DropShadow {
-                            color: Qt.rgba(0, 0, 0, 0.3)
-                            radius: 12
-                            samples: 13
-                            verticalOffset: 4
-                        }
-
-                        ListView {
-                            id: resultsListView
-                            anchors.fill: parent
-                            anchors.margins: 8
-                            spacing: 2
-                            model: root.settingsSearchResults
-                            clip: true
-                            currentIndex: 0
-                            boundsBehavior: Flickable.StopAtBounds
-
-                            Keys.onPressed: (event) => {
-                                if (event.key === Qt.Key_Up) {
-                                    if (resultsListView.currentIndex > 0) {
-                                        resultsListView.currentIndex--;
-                                    } else {
-                                        settingsSearchField.forceActiveFocus();
-                                    }
-                                    event.accepted = true;
-                                } else if (event.key === Qt.Key_Down) {
-                                    if (resultsListView.currentIndex < resultsListView.count - 1) {
-                                        resultsListView.currentIndex++;
-                                    }
-                                    event.accepted = true;
-                                } else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
-                                    if (resultsListView.currentIndex >= 0) {
-                                        root.openSearchResult(root.settingsSearchResults[resultsListView.currentIndex]);
-                                    }
-                                    event.accepted = true;
-                                } else if (event.key === Qt.Key_Escape) {
-                                    root.openSearchResult({});
-                                    settingsSearchField.forceActiveFocus();
-                                    event.accepted = true;
-                                }
-                            }
-
-                            delegate: RippleButton {
-                                id: resultItem
-                                required property var modelData
-                                required property int index
-
-                                width: resultsListView.width
-                                implicitHeight: 52
-                                buttonRadius: Appearance.rounding.small
-
-                                colBackground: ListView.isCurrentItem
-                                    ? Appearance.colors.colPrimaryContainer
-                                    : "transparent"
-                                colBackgroundHover: Appearance.colors.colLayer2
-
-                                Keys.forwardTo: [resultsListView]
-                                onClicked: root.openSearchResult(modelData)
-
-                                contentItem: RowLayout {
-                                    anchors.fill: parent
-                                    anchors.leftMargin: 12
-                                    anchors.rightMargin: 12
-                                    spacing: 12
-
-                                    // Page icon
-                                    MaterialSymbol {
-                                        text: SettingsPageRegistry.iconForPage(resultItem.modelData.pageIndex)
-                                        iconSize: 20
-                                        color: resultItem.ListView.isCurrentItem
-                                            ? Appearance.colors.colOnPrimaryContainer
-                                            : Appearance.colors.colPrimary
-                                    }
-
-                                    // Text content
-                                    ColumnLayout {
-                                        Layout.fillWidth: true
-                                        spacing: 2
-
-                                        Text {
-                                            Layout.fillWidth: true
-                                            text: resultItem.modelData.labelHighlighted || resultItem.modelData.label || ""
-                                            textFormat: Text.StyledText
-                                            font {
-                                                family: Appearance.font.family.main
-                                                pixelSize: Appearance.font.pixelSize.small
-                                                weight: Font.Medium
-                                            }
-                                            color: resultItem.ListView.isCurrentItem
-                                                ? Appearance.colors.colOnPrimaryContainer
-                                                : Appearance.colors.colOnLayer1
-                                            elide: Text.ElideRight
-                                        }
-
-                                        // Breadcrumb path with arrows
-                                        Row {
-                                            Layout.fillWidth: true
-                                            spacing: 4
-
-                                            readonly property string sectionDisplay: {
-                                                var sect = resultItem.modelData.section || "";
-                                                var page = resultItem.modelData.pageName || "";
-                                                var parts = sect.split(/\s*[·›]\s*/).filter(t => t.length > 0);
-                                                if (parts.length > 1 && parts[0] === page) parts.shift();
-                                                return parts.join(" › ");
-                                            }
-                                            StyledText {
-                                                text: resultItem.modelData.pageName || ""
-                                                font.pixelSize: Appearance.font.pixelSize.smaller
-                                                color: resultItem.ListView.isCurrentItem
-                                                    ? Appearance.colors.colOnPrimaryContainer
-                                                    : Appearance.colors.colSubtext
-                                                opacity: 0.9
-                                            }
-                                            MaterialSymbol {
-                                                visible: parent.sectionDisplay.length > 0 && parent.sectionDisplay !== resultItem.modelData.pageName
-                                                text: "chevron_right"
-                                                iconSize: Appearance.font.pixelSize.smaller
-                                                color: resultItem.ListView.isCurrentItem
-                                                    ? Appearance.colors.colOnPrimaryContainer
-                                                    : Appearance.colors.colSubtext
-                                                opacity: 0.6
-                                                anchors.verticalCenter: parent.verticalCenter
-                                            }
-                                            StyledText {
-                                                visible: parent.sectionDisplay.length > 0 && parent.sectionDisplay !== resultItem.modelData.pageName
-                                                text: parent.sectionDisplay
-                                                font.pixelSize: Appearance.font.pixelSize.smaller
-                                                color: resultItem.ListView.isCurrentItem
-                                                    ? Appearance.colors.colOnPrimaryContainer
-                                                    : Appearance.colors.colSubtext
-                                                opacity: 0.9
-                                            }
-                                        }
-                                    }
-
-                                    // Arrow
-                                    MaterialSymbol {
-                                        text: "arrow_forward"
-                                        iconSize: 16
-                                        color: resultItem.ListView.isCurrentItem
-                                            ? Appearance.colors.colOnPrimaryContainer
-                                            : Appearance.colors.colSubtext
-                                        opacity: resultItem.hovered || resultItem.ListView.isCurrentItem ? 1 : 0
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-
-                // No results indicator (inline, not overlay)
-                Rectangle {
-                    id: noResultsCard
-                    visible: root.settingsSearchText.length > 0 && root.settingsSearchResults.length === 0
-                    x: {
-                        var dep = searchContainer.x + searchContainer.width + root.width;
-                        var p = searchContainer.mapToItem(parent, 0, 0);
-                        return p.x + (searchContainer.width - width) / 2;
-                    }
-                    anchors.top: parent.top
-                    anchors.topMargin: 8
-                    width: noResultsRow.implicitWidth + 24
-                    height: 36
-                    radius: Appearance.rounding.full
-                    color: "transparent"
-                    z: 100
-
-                    GlassBackground {
-                        anchors.fill: parent
-                        radius: noResultsCard.radius
-                        screenX: noResultsCard.mapToGlobal(0, 0).x
-                        screenY: noResultsCard.mapToGlobal(0, 0).y
-                        screenWidth: Quickshell.screens[0]?.width ?? root.width
-                        screenHeight: Quickshell.screens[0]?.height ?? root.height
-                        hovered: false
-                        fallbackColor: Appearance.colors.colLayer1
-                        inirColor: Appearance.inir.colLayer2
-                        auroraTransparency: Math.max(0.22, Appearance.aurora.popupTransparentize - 0.12)
-                    }
-
-                    RowLayout {
-                        id: noResultsRow
-                        anchors.centerIn: parent
-                        spacing: 8
-
-                        MaterialSymbol {
-                            text: "search_off"
-                            iconSize: 18
-                            color: Appearance.colors.colSubtext
-                        }
-
-                        StyledText {
-                            text: Translation.tr("No results found")
-                            font.pixelSize: Appearance.font.pixelSize.small
-                            color: Appearance.colors.colSubtext
-                        }
-                    }
+                    z: 20
+                    query: root.settingsSearchText
+                    results: root.settingsSearchResults
+                    searchField: settingsSearchField
+                    iconForPage: index => SettingsPageRegistry.iconForPage(index)
+                    onActivated: entry => root.openSearchResult(entry)
+                    onCloseRequested: root.openSearchResult({})
                 }
 
             }

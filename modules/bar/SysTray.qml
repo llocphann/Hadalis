@@ -6,6 +6,7 @@ import QtQuick.Layouts
 import Quickshell
 import Quickshell.Hyprland
 import Quickshell.Services.SystemTray
+import qs.services
 
 Item {
     id: root
@@ -51,8 +52,10 @@ Item {
         return item && item.id;
     }
     
+    // The native Fcitx5 SNI is an always-visible member of this tray group.
+    property list<var> fcitxItems: SystemTray.items.values.filter(i => TrayService.isFcitxItem(i))
     property list<var> itemsInUserList: SystemTray.items.values.filter(i => {
-        if (!isValidItem(i)) return false;
+        if (!isValidItem(i) || TrayService.isFcitxItem(i)) return false;
         const id = (i.id || "").toLowerCase();
         const title = (i.title || "").toLowerCase();
         const isSpotify = id.indexOf("spotify") !== -1 || title.indexOf("spotify") !== -1;
@@ -60,7 +63,7 @@ Item {
                 && (!smartTray || i.status !== Status.Passive || isSpotify);
     })
     property list<var> itemsNotInUserList: SystemTray.items.values.filter(i => {
-        if (!isValidItem(i)) return false;
+        if (!isValidItem(i) || TrayService.isFcitxItem(i)) return false;
         const id = (i.id || "").toLowerCase();
         const title = (i.title || "").toLowerCase();
         const isSpotify = id.indexOf("spotify") !== -1 || title.indexOf("spotify") !== -1;
@@ -69,7 +72,7 @@ Item {
     })
 
     property bool invertPins: Config.options?.bar?.tray?.invertPinnedItems ?? false
-    property list<var> pinnedItems: invertPins ? itemsNotInUserList : itemsInUserList
+    property list<var> pinnedItems: root.fcitxItems.concat(invertPins ? itemsNotInUserList : itemsInUserList)
     property list<var> unpinnedItems: invertPins ? itemsInUserList : itemsNotInUserList
     onUnpinnedItemsChanged: {
         if (unpinnedItems.length == 0) root.closeOverflowMenu();

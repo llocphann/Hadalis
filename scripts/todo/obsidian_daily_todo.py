@@ -19,7 +19,7 @@ import obsidian_todo as core
 
 DEFAULT_FOLDER = "00_Capture/01_Journal"
 DEFAULT_FORMAT = "YYYY/MMMM/DD-MM-YYYY-dddd"
-DEFAULT_HEADING = "Day Planner"
+DEFAULT_HEADING = "Tasks"
 DEFAULT_HEADING_LEVEL = 2
 DEFAULT_DURATION_MINUTES = 30
 
@@ -44,10 +44,8 @@ def _parse_date(value: str | None) -> Date:
 def _render_daily_path(folder: str, fmt: str, day: Date) -> str:
     raw_folder = str(folder or "").strip().strip("/")
     raw_format = str(fmt or "").strip().strip("/")
-    if not raw_folder:
-        raise core.TodoError("invalid_daily_folder", "daily-note folder is empty")
     if not raw_format:
-        raise core.TodoError("invalid_daily_format", "daily-note format is empty")
+        raise core.TodoError("invalid_daily_format", "Markdown note path pattern is empty")
     tokens = {
         "YYYY": f"{day.year:04d}",
         "MMMM": day.strftime("%B"),
@@ -62,7 +60,7 @@ def _render_daily_path(folder: str, fmt: str, day: Date) -> str:
         raise core.TodoError("invalid_daily_format", "strftime-style '%' tokens are not supported")
     if not rendered.lower().endswith(".md"):
         rendered += ".md"
-    joined = PurePosixPath(raw_folder, rendered).as_posix()
+    joined = PurePosixPath(raw_folder, rendered).as_posix() if raw_folder else PurePosixPath(rendered).as_posix()
     core._normalize_note_path(joined)
     return joined
 
@@ -80,7 +78,7 @@ def resolve_daily_note(
     except core.TodoError as exc:
         if exc.code == "note_not_found":
             raise core.TodoError(
-                "daily_note_not_found", f"daily note does not exist: {note_path}"
+                "daily_note_not_found", f"task note does not exist: {note_path}"
             ) from exc
         raise
     return vault, normalized, resolved, resolved_day
@@ -98,7 +96,7 @@ def _load_document(
         raise core.TodoError("invalid_planner_heading", "heading level must be between 1 and 6")
     clean_heading = str(heading or "").strip()
     if not clean_heading:
-        raise core.TodoError("invalid_planner_heading", "planner heading is empty")
+        raise core.TodoError("invalid_planner_heading", "task heading is empty")
 
     vault, note_path, resolved, resolved_day = resolve_daily_note(
         vault_path, folder, fmt, day
@@ -106,14 +104,14 @@ def _load_document(
     try:
         raw = resolved.read_bytes()
     except OSError as exc:
-        raise core.TodoError("note_read_failed", f"cannot read daily note: {exc}") from exc
+        raise core.TodoError("note_read_failed", f"cannot read task note: {exc}") from exc
 
     has_bom = raw.startswith(codecs.BOM_UTF8)
     payload = raw[len(codecs.BOM_UTF8):] if has_bom else raw
     try:
         text = payload.decode("utf-8")
     except UnicodeDecodeError as exc:
-        raise core.TodoError("invalid_utf8", f"daily note is not valid UTF-8: {exc}") from exc
+        raise core.TodoError("invalid_utf8", f"task note is not valid UTF-8: {exc}") from exc
 
     lines = text.splitlines(keepends=True)
     outside = core._outside_fence_flags(lines)
@@ -244,7 +242,7 @@ def _public_task(task: dict[str, Any]) -> dict[str, Any]:
 def _scan_payload(doc: dict[str, Any], default_duration: int) -> dict[str, Any]:
     return {
         "ok": True,
-        "mode": "daily-note",
+        "mode": "markdown-note",
         "vaultPath": str(doc["vault"]),
         "notePath": doc["notePath"],
         "noteFullPath": str(doc["resolved"]),
@@ -290,7 +288,7 @@ def _require_hashes(
     if core._sha256_bytes(doc["raw"]) != expected_document_sha:
         raise core.TodoError("conflict", "daily note changed since the last scan")
     if expected_section_sha is not None and core._sha256_text(_section_text(doc)) != expected_section_sha:
-        raise core.TodoError("conflict", "Day Planner section changed since the last scan")
+        raise core.TodoError("conflict", "configured task section changed since the last scan")
 
 
 def _find_task(doc: dict[str, Any], task_id: str, default_duration: int) -> dict[str, Any]:
@@ -470,7 +468,7 @@ def preview_internal_migration(
 
     return {
         "ok": True,
-        "mode": "daily-note",
+        "mode": "markdown-note",
         "mutation": "preview-migration",
         "source": {
             "path": str(source),
@@ -504,7 +502,7 @@ def migrate_internal_json(
     if _tasks(doc, default_duration):
         raise core.TodoError(
             "migration_target_not_empty",
-            "Day Planner must contain no tasks before importing the internal store",
+            "configured task heading must contain no tasks before importing the internal store",
         )
 
     source, source_raw, imported = core._load_internal_tasks(internal_json_path)

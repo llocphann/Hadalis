@@ -130,8 +130,8 @@ ColumnLayout {
                 : root.englishActive ? Translation.tr("English input active")
                 : Translation.tr("Active input method: %1").arg(root.inputState.current || "Fcitx5")
         }
-        Button {
-            text: Translation.tr("Refresh")
+        DialogButton {
+            buttonText: Translation.tr("Refresh")
             enabled: !root.busy
             onClicked: root.refresh()
         }
@@ -153,8 +153,8 @@ ColumnLayout {
     RowLayout {
         Layout.fillWidth: true
         visible: root.canConfigure && !root.inputState.running
-        Button {
-            text: Translation.tr("Start Fcitx5")
+        DialogButton {
+            buttonText: Translation.tr("Start Fcitx5")
             enabled: !root.busy
             onClicked: root.runAction("start")
         }
@@ -170,8 +170,8 @@ ColumnLayout {
             color: Appearance.colors.colSubtext
             wrapMode: Text.WordWrap
         }
-        Button {
-            text: Translation.tr("Add Unikey")
+        DialogButton {
+            buttonText: Translation.tr("Add Unikey")
             enabled: !root.busy
             onClicked: root.runAction("add-unikey")
         }
@@ -184,17 +184,17 @@ ColumnLayout {
         RowLayout {
             Layout.fillWidth: true
             spacing: 8
-            Button {
+            GroupButton {
                 Layout.fillWidth: true
-                text: Translation.tr("English")
-                highlighted: root.englishActive
+                buttonText: Translation.tr("English")
+                toggled: root.englishActive
                 enabled: !root.busy
                 onClicked: root.runAction("set-language", "en")
             }
-            Button {
+            GroupButton {
                 Layout.fillWidth: true
-                text: Translation.tr("Vietnamese")
-                highlighted: root.vietnameseActive
+                buttonText: Translation.tr("Vietnamese")
+                toggled: root.vietnameseActive
                 enabled: !root.busy
                 onClicked: root.runAction("set-language", "vi")
             }
@@ -241,10 +241,10 @@ ColumnLayout {
             color: Appearance.colors.colOnLayer1
             font.pixelSize: Appearance.font.pixelSize.small
         }
-        Button {
+        DialogButton {
             visible: root.inputState.charset !== "0"
             enabled: !root.busy
-            text: Translation.tr("Use Unicode")
+            buttonText: Translation.tr("Use Unicode")
             onClicked: root.runAction("set-charset", "0")
         }
     }
@@ -273,8 +273,8 @@ ColumnLayout {
 
     RowLayout {
         Layout.fillWidth: true
-        Button {
-            text: Translation.tr("Advanced Fcitx5 settings")
+        DialogButton {
+            buttonText: Translation.tr("Advanced Fcitx5 settings")
             enabled: root.inputState.configtoolInstalled ?? false
             onClicked: ShellExec.execDetachedArgs(["fcitx5-configtool"], Translation.tr("Fcitx5 settings"))
         }

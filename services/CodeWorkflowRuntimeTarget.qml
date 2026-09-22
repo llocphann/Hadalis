@@ -16,6 +16,7 @@ Scope {
     property string parentId: ""
     property int depth: 0
     property string sourcePath: ""
+    property bool internal: false
 
     readonly property var window: root.runtimeObject ? root.runtimeObject.QsWindow.window : null
     readonly property string outputName: root.window?.screen?.name ?? ""
@@ -64,6 +65,7 @@ Scope {
             parentId: root.parentId,
             depth: root.depth,
             sourcePath: root.sourcePath,
+            internal: root.internal,
             configured: true,
             presented: presented,
             state: "resident",

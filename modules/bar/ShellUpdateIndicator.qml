@@ -23,9 +23,9 @@ MouseArea {
 
     visible: implicitWidth > 0
     implicitWidth: (ShellUpdates.showUpdate || ShellUpdates.isUpdating)
-        ? (root.vertical ? 34 : pill.width) : 0
+        ? (root.vertical ? 34 * Appearance.sizes.barModuleScale : pill.width) : 0
     implicitHeight: root.vertical
-        ? ((ShellUpdates.showUpdate || ShellUpdates.isUpdating) ? 34 : 0)
+        ? ((ShellUpdates.showUpdate || ShellUpdates.isUpdating) ? 34 * Appearance.sizes.barModuleScale : 0)
         : Appearance.sizes.barHeight
 
     Behavior on implicitWidth {
@@ -74,8 +74,8 @@ MouseArea {
     Rectangle {
         id: pill
         anchors.centerIn: parent
-        width: root.vertical ? 30 : contentRow.implicitWidth + 16
-        height: root.vertical ? 30 : contentRow.implicitHeight + 8
+        width: root.vertical ? 30 * Appearance.sizes.barModuleScale : contentRow.implicitWidth + 16 * Appearance.sizes.barModuleScale
+        height: root.vertical ? 30 * Appearance.sizes.barModuleScale : contentRow.implicitHeight + 8 * Appearance.sizes.barModuleScale
         radius: height / 2
         scale: (!ShellUpdates.isUpdating && root.pressed) ? 0.93 : ((!ShellUpdates.isUpdating && root.containsMouse) ? 1.03 : 1.0)
         color: {
@@ -110,12 +110,12 @@ MouseArea {
     RowLayout {
         id: contentRow
         anchors.centerIn: pill
-        spacing: 5
+        spacing: 5 * Appearance.sizes.barModuleScale
 
         MaterialSymbol {
             id: updateIcon
             text: ShellUpdates.isUpdating ? "settings" : "upgrade"
-            iconSize: Appearance.font.pixelSize.normal
+            iconSize: Math.round(Appearance.font.pixelSize.normal * Appearance.sizes.barModuleScale)
             color: root.accentColor
             Layout.alignment: Qt.AlignVCenter
 
@@ -148,7 +148,7 @@ MouseArea {
                     ? ShellUpdates.commitsBehind.toString()
                     : "!"
             }
-            font.pixelSize: Appearance.font.pixelSize.smaller
+            font.pixelSize: Math.round(Appearance.font.pixelSize.smaller * Appearance.sizes.barModuleScale)
             font.weight: Font.DemiBold
             color: root.accentColor
             Layout.alignment: Qt.AlignVCenter

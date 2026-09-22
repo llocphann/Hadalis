@@ -21,13 +21,13 @@ Loader {
             id: indicatorRow
             visible: !root.vertical
             anchors.centerIn: parent
-            spacing: Appearance.sizes.spacingSmall
+            spacing: Appearance.sizes.spacingSmall * Appearance.sizes.barModuleScale
 
             MaterialSymbol {
                 opacity: KeyboardIndicators.capsLockVisible ? 1 : 0
                 visible: opacity > 0
                 text: KeyboardIndicators.capsMaterialIcon
-                iconSize: Appearance.font.pixelSize.large
+                iconSize: Math.round(Appearance.font.pixelSize.large * Appearance.sizes.barModuleScale)
                 fill: 1
                 color: root.color
                 Behavior on opacity {
@@ -40,7 +40,7 @@ Loader {
                 opacity: KeyboardIndicators.touchpadVisible ? 1 : 0
                 visible: opacity > 0
                 text: KeyboardIndicators.touchpadMaterialIcon
-                iconSize: Appearance.font.pixelSize.large
+                iconSize: Math.round(Appearance.font.pixelSize.large * Appearance.sizes.barModuleScale)
                 fill: 1
                 color: root.color
 
@@ -58,7 +58,7 @@ Loader {
                 opacity: KeyboardIndicators.numLockVisible ? 1 : 0
                 visible: opacity > 0
                 text: KeyboardIndicators.numMaterialIcon
-                iconSize: Appearance.font.pixelSize.large
+                iconSize: Math.round(Appearance.font.pixelSize.large * Appearance.sizes.barModuleScale)
                 fill: 1
                 color: root.color
                 Behavior on opacity {
@@ -72,7 +72,7 @@ Loader {
                 visible: opacity > 0
                 horizontalAlignment: Text.AlignHCenter
                 text: KeyboardIndicators.currentLayoutCodeInline
-                font.pixelSize: Appearance.font.pixelSize.small
+                font.pixelSize: Math.round(Appearance.font.pixelSize.small * Appearance.sizes.barModuleScale)
                 color: root.color
                 Behavior on opacity {
                     enabled: Appearance.animationsEnabled
@@ -85,14 +85,14 @@ Loader {
             id: indicatorColumn
             visible: root.vertical
             anchors.centerIn: parent
-            spacing: Appearance.sizes.spacingSmall / 2
+            spacing: Appearance.sizes.spacingSmall * Appearance.sizes.barModuleScale / 2
 
             MaterialSymbol {
                 opacity: KeyboardIndicators.capsLockVisible ? 1 : 0
                 visible: opacity > 0
                 anchors.horizontalCenter: parent.horizontalCenter
                 text: KeyboardIndicators.capsMaterialIcon
-                iconSize: Appearance.font.pixelSize.large
+                iconSize: Math.round(Appearance.font.pixelSize.large * Appearance.sizes.barModuleScale)
                 fill: 1
                 color: root.color
                 Behavior on opacity {
@@ -106,7 +106,7 @@ Loader {
                 visible: opacity > 0
                 anchors.horizontalCenter: parent.horizontalCenter
                 text: KeyboardIndicators.touchpadMaterialIcon
-                iconSize: Appearance.font.pixelSize.large
+                iconSize: Math.round(Appearance.font.pixelSize.large * Appearance.sizes.barModuleScale)
                 fill: 1
                 color: root.color
 
@@ -125,7 +125,7 @@ Loader {
                 visible: opacity > 0
                 anchors.horizontalCenter: parent.horizontalCenter
                 text: KeyboardIndicators.numMaterialIcon
-                iconSize: Appearance.font.pixelSize.large
+                iconSize: Math.round(Appearance.font.pixelSize.large * Appearance.sizes.barModuleScale)
                 fill: 1
                 color: root.color
                 Behavior on opacity {

@@ -22,8 +22,8 @@ MouseArea {
     cursorShape: Qt.PointingHandCursor
     acceptedButtons: Qt.LeftButton | Qt.MiddleButton | Qt.RightButton
     activeFocusOnTab: true
-    implicitWidth: 18
-    implicitHeight: 18
+    implicitWidth: 18 * Appearance.sizes.barModuleScale
+    implicitHeight: 18 * Appearance.sizes.barModuleScale
 
     Accessible.role: Accessible.Button
     Accessible.name: root.item?.tooltipTitle || root.item?.title || Translation.tr("System tray item")

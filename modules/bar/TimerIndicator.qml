@@ -95,9 +95,9 @@ MouseArea {
 
     visible: implicitWidth > 0
     implicitWidth: (anyActive || showPinnedIdle)
-        ? (root.vertical ? 34 : pill.width + 4) : 0
+        ? (root.vertical ? 34 * Appearance.sizes.barModuleScale : pill.width + 4 * Appearance.sizes.barModuleScale) : 0
     implicitHeight: root.vertical
-        ? ((anyActive || showPinnedIdle) ? 34 : 0)
+        ? ((anyActive || showPinnedIdle) ? 34 * Appearance.sizes.barModuleScale : 0)
         : Appearance.sizes.barHeight
 
     hoverEnabled: true
@@ -178,8 +178,8 @@ MouseArea {
     Rectangle {
         id: pill
         anchors.centerIn: parent
-        width: root.vertical ? 30 : contentRow.implicitWidth + 12
-        height: root.vertical ? 30 : contentRow.implicitHeight + 8
+        width: root.vertical ? 30 * Appearance.sizes.barModuleScale : contentRow.implicitWidth + 12 * Appearance.sizes.barModuleScale
+        height: root.vertical ? 30 * Appearance.sizes.barModuleScale : contentRow.implicitHeight + 8 * Appearance.sizes.barModuleScale
         radius: height / 2
         scale: root.pressed ? 0.95 : 1.0
         color: {
@@ -213,11 +213,11 @@ MouseArea {
     RowLayout {
         id: contentRow
         anchors.centerIn: pill
-        spacing: 4
+        spacing: 4 * Appearance.sizes.barModuleScale
 
         MaterialSymbol {
             text: root.showPinnedIdle ? "schedule" : root.iconName
-            iconSize: Appearance.font.pixelSize.normal
+            iconSize: Math.round(Appearance.font.pixelSize.normal * Appearance.sizes.barModuleScale)
             color: root.paused
                 ? Appearance.colors.colOnLayer1Inactive
                 : root.accentColor
@@ -234,7 +234,7 @@ MouseArea {
         StyledText {
             visible: !root.vertical
             text: root.showPinnedIdle ? Translation.tr("Timer") : root.timeText
-            font.pixelSize: Appearance.font.pixelSize.small
+            font.pixelSize: Math.round(Appearance.font.pixelSize.small * Appearance.sizes.barModuleScale)
             color: root.paused
                 ? Appearance.colors.colOnLayer1Inactive
                 : Appearance.colors.colOnLayer1
@@ -262,7 +262,7 @@ MouseArea {
                 id: pauseIcon
                 anchors.centerIn: parent
                 text: "pause"
-                iconSize: Appearance.font.pixelSize.small
+                iconSize: Math.round(Appearance.font.pixelSize.small * Appearance.sizes.barModuleScale)
                 color: Appearance.colors.colOnLayer1Inactive
             }
         }

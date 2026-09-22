@@ -47,8 +47,8 @@ Item {
         id: inlineLayout
         anchors.centerIn: parent
         columns: root.vertical ? 1 : 2
-        columnSpacing: root.vertical ? 0 : 4
-        rowSpacing: root.vertical ? 4 : 0
+        columnSpacing: root.vertical ? 0 : 4 * Appearance.sizes.barModuleScale
+        rowSpacing: root.vertical ? 4 * Appearance.sizes.barModuleScale : 0
 
         CircleUtilButton {
             id: compactTrigger
@@ -67,15 +67,15 @@ Item {
                     horizontalAlignment: Qt.AlignHCenter
                     fill: root.inlineExpanded ? 1 : 0
                     text: "settings"
-                    iconSize: Appearance.font.pixelSize.large
+                    iconSize: Math.round(Appearance.font.pixelSize.large * Appearance.sizes.barModuleScale)
                     color: root.hasUrgentState
                         ? root.dangerIconColor : root.neutralIconColor
                 }
 
                 Rectangle {
                     visible: root.hasUrgentState
-                    width: 6
-                    height: 6
+                    width: 6 * Appearance.sizes.barModuleScale
+                    height: 6 * Appearance.sizes.barModuleScale
                     radius: 3
                     color: root.dangerIconColor
                     anchors {
@@ -96,8 +96,8 @@ Item {
                 id: controlsLayout
 
                 columns: root.vertical ? 1 : Math.max(1, children.length)
-                columnSpacing: root.vertical ? 0 : 4
-                rowSpacing: root.vertical ? 4 : 0
+                columnSpacing: root.vertical ? 0 : 4 * Appearance.sizes.barModuleScale
+                rowSpacing: root.vertical ? 4 * Appearance.sizes.barModuleScale : 0
 
         Loader {
             active: Config.options?.bar?.utilButtons?.showScreenSnip ?? true
@@ -110,7 +110,7 @@ Item {
                     horizontalAlignment: Qt.AlignHCenter
                     fill: 1
                     text: "screenshot_region"
-                    iconSize: Appearance.font.pixelSize.large
+                    iconSize: Math.round(Appearance.font.pixelSize.large * Appearance.sizes.barModuleScale)
                     color: root.neutralIconColor
                 }
             }
@@ -152,7 +152,7 @@ Item {
                             horizontalAlignment: Qt.AlignHCenter
                             fill: 1
                             text: "videocam"
-                            iconSize: Appearance.font.pixelSize.large
+                            iconSize: Math.round(Appearance.font.pixelSize.large * Appearance.sizes.barModuleScale)
                             color: recordButtonWrapper.isRecording
                                 ? root.dangerIconColor
                                 : root.neutralIconColor
@@ -162,8 +162,8 @@ Item {
                         Rectangle {
                             scale: recordButtonWrapper.isRecording ? 1 : 0
                             visible: scale > 0
-                            width: 6
-                            height: 6
+                            width: 6 * Appearance.sizes.barModuleScale
+                            height: 6 * Appearance.sizes.barModuleScale
                             radius: 3
                             color: root.dangerIconColor
                             anchors {
@@ -203,7 +203,7 @@ Item {
                     horizontalAlignment: Qt.AlignHCenter
                     fill: 1
                     text: "colorize"
-                    iconSize: Appearance.font.pixelSize.large
+                    iconSize: Math.round(Appearance.font.pixelSize.large * Appearance.sizes.barModuleScale)
                     color: root.neutralIconColor
                 }
             }
@@ -223,7 +223,7 @@ Item {
                     horizontalAlignment: Qt.AlignHCenter
                     fill: 0
                     text: "edit_note"
-                    iconSize: Appearance.font.pixelSize.large
+                    iconSize: Math.round(Appearance.font.pixelSize.large * Appearance.sizes.barModuleScale)
                     color: root.neutralIconColor
                 }
             }
@@ -240,7 +240,7 @@ Item {
                     horizontalAlignment: Qt.AlignHCenter
                     fill: 0
                     text: "keyboard"
-                    iconSize: Appearance.font.pixelSize.large
+                    iconSize: Math.round(Appearance.font.pixelSize.large * Appearance.sizes.barModuleScale)
                     color: root.neutralIconColor
                 }
             }
@@ -263,7 +263,7 @@ Item {
                         horizontalAlignment: Qt.AlignHCenter
                         fill: 0
                         text: "language"
-                        iconSize: Appearance.font.pixelSize.large
+                        iconSize: Math.round(Appearance.font.pixelSize.large * Appearance.sizes.barModuleScale)
                         color: root.neutralIconColor
                     }
                 }
@@ -295,7 +295,7 @@ Item {
                         fill: micButton.isInUse ? 1 : 0
                         animateFill: true
                         text: micButton.isMuted ? "mic_off" : "mic"
-                        iconSize: Appearance.font.pixelSize.large
+                        iconSize: Math.round(Appearance.font.pixelSize.large * Appearance.sizes.barModuleScale)
                         color: micButton.isInUse && !micButton.isMuted
                             ? root.dangerIconColor
                             : root.neutralIconColor
@@ -304,8 +304,8 @@ Item {
                     Rectangle {
                         scale: micButton.isInUse && !micButton.isMuted ? 1 : 0
                         visible: scale > 0
-                        width: 6
-                        height: 6
+                        width: 6 * Appearance.sizes.barModuleScale
+                        height: 6 * Appearance.sizes.barModuleScale
                         radius: 3
                         color: root.dangerIconColor
                         anchors { top: parent.top; right: parent.right }
@@ -366,7 +366,7 @@ Item {
                         fill: screenCastButton.isCasting ? 1 : 0
                         animateFill: true
                         text: "visibility"
-                        iconSize: Appearance.font.pixelSize.large
+                        iconSize: Math.round(Appearance.font.pixelSize.large * Appearance.sizes.barModuleScale)
                         color: screenCastButton.isCasting
                             ? root.dangerIconColor
                             : root.neutralIconColor
@@ -375,8 +375,8 @@ Item {
                     Rectangle {
                         scale: screenCastButton.isCasting ? 1 : 0
                         visible: scale > 0
-                        width: 6
-                        height: 6
+                        width: 6 * Appearance.sizes.barModuleScale
+                        height: 6 * Appearance.sizes.barModuleScale
                         radius: 3
                         color: root.dangerIconColor
                         anchors {
@@ -419,7 +419,7 @@ Item {
                     horizontalAlignment: Qt.AlignHCenter
                     fill: 0
                     text: Appearance.m3colors.darkmode ? "light_mode" : "dark_mode"
-                    iconSize: Appearance.font.pixelSize.large
+                    iconSize: Math.round(Appearance.font.pixelSize.large * Appearance.sizes.barModuleScale)
                     color: root.neutralIconColor
                 }
             }
@@ -453,7 +453,7 @@ Item {
                         case PowerProfile.Balanced: return "settings_slow_motion"
                         case PowerProfile.Performance: return "local_fire_department"
                     }
-                    iconSize: Appearance.font.pixelSize.large
+                    iconSize: Math.round(Appearance.font.pixelSize.large * Appearance.sizes.barModuleScale)
                     color: root.neutralIconColor
                 }
             }

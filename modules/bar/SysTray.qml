@@ -121,8 +121,8 @@ Item {
         id: gridLayout
         columns: root.vertical ? 1 : -1
         anchors.fill: parent
-        rowSpacing: 8
-        columnSpacing: 15
+        rowSpacing: 8 * Appearance.sizes.barModuleScale
+        columnSpacing: 15 * Appearance.sizes.barModuleScale
 
         RippleButton {
             id: trayOverflowButton
@@ -136,8 +136,8 @@ Item {
 
             Layout.fillHeight: !root.vertical
             Layout.fillWidth: root.vertical
-            background.implicitWidth: 24
-            background.implicitHeight: 24
+            background.implicitWidth: 24 * Appearance.sizes.barModuleScale
+            background.implicitHeight: 24 * Appearance.sizes.barModuleScale
             background.anchors.centerIn: this
             colBackgroundToggled: Appearance.colors.colSecondaryContainer
             colBackgroundToggledHover: Appearance.colors.colSecondaryContainerHover
@@ -145,7 +145,7 @@ Item {
 
             contentItem: MaterialSymbol {
                 anchors.centerIn: parent
-                iconSize: Appearance.font.pixelSize.larger
+                iconSize: Math.round(Appearance.font.pixelSize.larger * Appearance.sizes.barModuleScale)
                 text: "expand_more"
                 horizontalAlignment: Text.AlignHCenter
                 color: root.trayOverflowOpen
@@ -212,7 +212,7 @@ Item {
 
         StyledText {
             Layout.alignment: Qt.AlignVCenter | Qt.AlignHCenter
-            font.pixelSize: Appearance.font.pixelSize.larger
+            font.pixelSize: Math.round(Appearance.font.pixelSize.larger * Appearance.sizes.barModuleScale)
             color: Appearance.colors.colSubtext
             text: "•"
             visible: root.showSeparator && SystemTray.items.values.length > 0

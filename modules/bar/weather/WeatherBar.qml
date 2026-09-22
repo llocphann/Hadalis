@@ -23,8 +23,8 @@ MouseArea {
         ? Appearance.colors.colOnLayer0
         : Appearance.colors.colOnLayer1
 
-    implicitWidth: root.vertical ? 34 : rowLayout.implicitWidth + 10 * 2
-    implicitHeight: root.vertical ? 34 : Appearance.sizes.barHeight
+    implicitWidth: root.vertical ? 34 * Appearance.sizes.barModuleScale : rowLayout.implicitWidth + 20 * Appearance.sizes.barModuleScale
+    implicitHeight: root.vertical ? 34 * Appearance.sizes.barModuleScale : Appearance.sizes.barHeight
 
     hoverEnabled: true
     cursorShape: Qt.PointingHandCursor
@@ -76,14 +76,14 @@ MouseArea {
         MaterialSymbol {
             fill: 0
             text: Icons.getWeatherIcon(Weather.data?.wCode, Weather.isNightNow()) ?? "cloud"
-            iconSize: Appearance.font.pixelSize.large
+            iconSize: Math.round(Appearance.font.pixelSize.large * Appearance.sizes.barModuleScale)
             color: root.foregroundColor
             Layout.alignment: Qt.AlignVCenter
         }
 
         StyledText {
             visible: !root.vertical
-            font.pixelSize: Appearance.font.pixelSize.small
+            font.pixelSize: Math.round(Appearance.font.pixelSize.small * Appearance.sizes.barModuleScale)
             color: root.foregroundColor
             text: Weather.data?.temp ?? "--°"
             Layout.alignment: Qt.AlignVCenter

@@ -7,27 +7,27 @@ MaterialSymbol {
     id: root
     readonly property bool showUnreadCount: Config.options.bar.indicators.notifications.showUnreadCount
     text: Notifications.silent ? "notifications_paused" : "notifications"
-    iconSize: Appearance.font.pixelSize.larger
+    iconSize: Math.round(Appearance.font.pixelSize.larger * Appearance.sizes.barModuleScale)
     color: rightSidebarButton.colText
 
     Rectangle {
         id: notifPing
-        readonly property real badgeHeight: root.showUnreadCount ? Math.max(notificationCounterText.implicitHeight + 2, 8) : 8
+        readonly property real badgeHeight: root.showUnreadCount ? Math.max(notificationCounterText.implicitHeight + 2 * Appearance.sizes.barModuleScale, 8 * Appearance.sizes.barModuleScale) : 8 * Appearance.sizes.barModuleScale
 
         opacity: !Notifications.silent && Notifications.unread > 0 ? 1 : 0
         visible: opacity > 0
         anchors {
             right: parent.right
             top: parent.top
-            rightMargin: root.showUnreadCount ? 0 : 1
-            topMargin: root.showUnreadCount ? 0 : 3
+            rightMargin: root.showUnreadCount ? 0 : Appearance.sizes.barModuleScale
+            topMargin: root.showUnreadCount ? 0 : 3 * Appearance.sizes.barModuleScale
         }
         radius: Math.min(width, height) / 2
         color: Appearance.colors.colOnLayer0
         z: 1
 
         implicitHeight: badgeHeight
-        implicitWidth: root.showUnreadCount ? Math.max(badgeHeight, notificationCounterText.implicitWidth + 6) : badgeHeight
+        implicitWidth: root.showUnreadCount ? Math.max(badgeHeight, notificationCounterText.implicitWidth + 6 * Appearance.sizes.barModuleScale) : badgeHeight
 
         Behavior on opacity {
             enabled: Appearance.animationsEnabled
@@ -55,7 +55,7 @@ MaterialSymbol {
             opacity: root.showUnreadCount ? 1 : 0
             visible: opacity > 0
             anchors.centerIn: parent
-            font.pixelSize: Appearance.font.pixelSize.smallest
+            font.pixelSize: Math.round(Appearance.font.pixelSize.smallest * Appearance.sizes.barModuleScale)
             color: Appearance.colors.colLayer0
             text: root.showUnreadCount ? Notifications.unread : ""
 

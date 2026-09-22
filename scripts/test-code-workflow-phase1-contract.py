@@ -893,6 +893,8 @@ for token in (
 for token in (
     "property bool suppressUntilHoverExit: false",
     "readonly property bool parentPressedState:",
+    "readonly property bool parentVisibleState:",
+    "&& root.parentVisibleState",
     "&& !root.suppressUntilHoverExit",
     "onParentPressedStateChanged:",
     "onParentHoverStateChanged:",

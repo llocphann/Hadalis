@@ -60,9 +60,13 @@ for token in ("singleton CodeWorkflowRuntime 1.0 CodeWorkflowRuntime.qml",
 
 for token in (
     "property var declarations: ({})",
+    "property var staleDescriptors: ({})",
     "function registerDeclaration(registration): string",
     "function unregisterDeclaration(",
     "function touchDeclaration(token: string): void",
+    "function _rememberStale(",
+    'lifecycle: "stale/unloading"',
+    "id: stalePruneTimer",
     "readonly property var discoveredCatalog:",
     "function targetIdForPanel(panelId: string): string",
     "function relativeSourcePath(rawSource): string",
@@ -675,6 +679,8 @@ require(page, "ColorUtils.readableAccentInk(",
         "Code Workflow chips must derive readable foreground ink")
 require(page, '"LOADED · HIDDEN"',
         "Inspector must distinguish loaded-hidden runtime state")
+require(page, '"STALE · UNLOADING"',
+        "Inspector must surface stale/unloading lifecycle")
 require(page, '"VISIBLE"',
         "Inspector must distinguish visible loader lifecycle")
 require(page, '"UNLOADED · SOURCE"',

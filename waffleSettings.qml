@@ -197,38 +197,26 @@ ApplicationWindow {
         anchors.fill: parent
         visible: !root.uiReady
         
-        ColumnLayout {
+        WText {
             anchors.centerIn: parent
-            spacing: 16
-            
-            FluentIcon {
-                Layout.alignment: Qt.AlignHCenter
-                icon: "settings"
-                implicitSize: 32
-                color: Looks.colors.accent
-                opacity: loadingPulse.running ? 1 : 0.6
-                
-                SequentialAnimation on opacity {
-                    id: loadingPulse
-                    running: !root.uiReady
-                    loops: Animation.Infinite
-                    NumberAnimation { to: 0.3; duration: 800; easing.type: Easing.InOutQuad }
-                    NumberAnimation { to: 0.9; duration: 800; easing.type: Easing.InOutQuad }
-                }
-                
-                RotationAnimation on rotation {
-                    running: !root.uiReady
-                    from: 0; to: 360
-                    duration: 3000
-                    loops: Animation.Infinite
-                }
+            text: Translation.tr("Loading")
+            font.pixelSize: Looks.font.pixelSize.normal
+            font.weight: Font.DemiBold
+            color: Looks.colors.subfg
+
+            SequentialAnimation on opacity {
+                running: !root.uiReady && Looks.transition.enabled
+                loops: Animation.Infinite
+                NumberAnimation { from: 0.55; to: 1; duration: 780; easing.type: Easing.InOutSine }
+                NumberAnimation { from: 1; to: 0.55; duration: 780; easing.type: Easing.InOutSine }
+                onRunningChanged: { if (!running) parent.opacity = 1 }
             }
-            
-            WText {
-                Layout.alignment: Qt.AlignHCenter
-                text: Translation.tr("Loading...")
-                font.pixelSize: Looks.font.pixelSize.normal
-                color: Looks.colors.subfg
+            SequentialAnimation on scale {
+                running: !root.uiReady && Looks.transition.enabled
+                loops: Animation.Infinite
+                NumberAnimation { from: 0.98; to: 1.04; duration: 780; easing.type: Easing.InOutSine }
+                NumberAnimation { from: 1.04; to: 0.98; duration: 780; easing.type: Easing.InOutSine }
+                onRunningChanged: { if (!running) parent.scale = 1 }
             }
         }
     }

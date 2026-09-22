@@ -631,7 +631,7 @@ Scope {
                 shadowEnabled: Config.options?.appearance?.screenEdge?.shadow?.enabled ?? true
                 shadowExtent: Math.max(0, Math.min(32,
                     Math.round(Config.options?.appearance?.screenEdge?.shadow?.size ?? 15)))
-                shadowColor: CF.ColorUtils.applyAlpha(Appearance.colors.colShadow,
+                shadowColor: CF.ColorUtils.applyAlpha(Appearance.m3colors.m3shadow,
                     Math.max(0, Math.min(1.0,
                         Number(Config.options?.appearance?.screenEdge?.shadow?.opacity ?? 0.70))))
             }

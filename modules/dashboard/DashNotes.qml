@@ -20,6 +20,9 @@ DashCard {
     icon: ""
     Layout.fillHeight: true
 
+    readonly property bool constrainedHeight:
+        root.height > 0 && root.height < 210
+
     readonly property string zettelStatusText: {
         if (Zettelkasten.errorMessage.length > 0)
             return Zettelkasten.errorMessage
@@ -47,22 +50,26 @@ DashCard {
 
             MaterialSymbol {
                 text: "note_stack"
-                iconSize: Appearance.font.pixelSize.larger
+                iconSize: root.constrainedHeight
+                    ? Appearance.font.pixelSize.normal
+                    : Appearance.font.pixelSize.larger
                 color: root.colAccent
             }
 
             StyledText {
                 Layout.fillWidth: true
                 text: Translation.tr("Quick Notes")
-                font.pixelSize: Appearance.font.pixelSize.normal
+                font.pixelSize: root.constrainedHeight
+                    ? Appearance.font.pixelSize.small
+                    : Appearance.font.pixelSize.normal
                 font.weight: Font.Medium
                 color: root.colText
                 elide: Text.ElideRight
             }
 
             RippleButton {
-                implicitWidth: 30
-                implicitHeight: 30
+                implicitWidth: root.constrainedHeight ? 28 : 30
+                implicitHeight: implicitWidth
                 buttonRadius: height / 2
                 colBackground: "transparent"
                 colBackgroundHover: Appearance.colors.colLayer2Hover
@@ -90,8 +97,8 @@ DashCard {
             }
 
             RippleButton {
-                implicitWidth: 32
-                implicitHeight: 32
+                implicitWidth: root.constrainedHeight ? 28 : 32
+                implicitHeight: implicitWidth
                 buttonRadius: height / 2
                 enabled: notepad.canSaveZettel
                 colBackground: Appearance.colors.colPrimaryContainer
@@ -118,7 +125,7 @@ DashCard {
             id: notepad
             Layout.fillWidth: true
             Layout.fillHeight: true
-            Layout.minimumHeight: 130
+            Layout.minimumHeight: root.constrainedHeight ? 76 : 130
             compactPresentation: true
             margin: 0
         }

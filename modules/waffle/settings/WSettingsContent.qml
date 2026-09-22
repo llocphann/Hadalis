@@ -37,10 +37,23 @@ Item {
         { label: Translation.tr("Features & Services"), keys: ["ai", "mascot"] },
         { label: Translation.tr("Advanced & Help"), keys: ["shortcuts", "about"] }
     ]
+    property var expandedNavGroups: ({})
+    function groupExpanded(index, pageIndices): bool {
+        if (Object.prototype.hasOwnProperty.call(expandedNavGroups, index))
+            return expandedNavGroups[index] === true
+        return pageIndices.includes(root.currentPage)
+    }
+    function toggleNavGroup(index, pageIndices): void {
+        const next = Object.assign({}, expandedNavGroups)
+        next[index] = !groupExpanded(index, pageIndices)
+        expandedNavGroups = next
+    }
+
     readonly property var navigationItems: {
         const items = []
         const seen = new Set()
-        for (const group of navigationGroups) {
+        for (let groupIndex = 0; groupIndex < navigationGroups.length; groupIndex++) {
+            const group = navigationGroups[groupIndex]
             const entries = []
             for (const key of group.keys) {
                 const index = root.pages.findIndex(page => page.key === key)
@@ -50,8 +63,11 @@ Item {
                     name: root.pages[index].name, icon: root.pages[index].icon })
             }
             if (entries.length === 0) continue
-            items.push({ type: "header", label: group.label })
-            entries.forEach(entry => items.push(entry))
+            const pageIndices = entries.map(entry => entry.pageIndex)
+            const expanded = root.groupExpanded(groupIndex, pageIndices)
+            items.push({ type: "header", label: group.label, groupIndex: groupIndex,
+                pageIndices: pageIndices, expanded: expanded })
+            if (expanded) entries.forEach(entry => items.push(entry))
         }
         const ungrouped = []
         for (let index = 0; index < root.pages.length; index++) {
@@ -60,8 +76,12 @@ Item {
                     name: root.pages[index].name, icon: root.pages[index].icon })
         }
         if (ungrouped.length > 0) {
-            items.push({ type: "header", label: Translation.tr("More") })
-            ungrouped.forEach(entry => items.push(entry))
+            const pageIndices = ungrouped.map(entry => entry.pageIndex)
+            const expanded = root.groupExpanded(navigationGroups.length, pageIndices)
+            items.push({ type: "header", label: Translation.tr("More"),
+                groupIndex: navigationGroups.length, pageIndices: pageIndices,
+                expanded: expanded })
+            if (expanded) ungrouped.forEach(entry => items.push(entry))
         }
         return items
     }
@@ -937,6 +957,8 @@ Item {
                                         anchors.bottom: parent.bottom
                                         anchors.bottomMargin: Looks.dp(5)
                                         text: navEntry.modelData.label ?? ""
+                                        width: Math.max(0, parent.width - Looks.dp(42))
+                                        elide: Text.ElideRight
                                         font.pixelSize: Looks.font.pixelSize.small
                                         font.weight: Looks.font.weight.strong
                                         color: Looks.colors.subfg
@@ -951,6 +973,24 @@ Item {
                                         height: 1
                                         color: Looks.settings.stroke
                                         opacity: 0.45
+                                    }
+
+                                    FluentIcon {
+                                        visible: root.navExpanded
+                                        anchors.right: parent.right
+                                        anchors.rightMargin: Looks.dp(12)
+                                        anchors.verticalCenter: parent.verticalCenter
+                                        icon: navEntry.modelData.expanded ? "chevron-up" : "chevron-down"
+                                        implicitSize: Looks.dp(13)
+                                        color: Looks.colors.subfg
+                                    }
+
+                                    MouseArea {
+                                        anchors.fill: parent
+                                        cursorShape: Qt.PointingHandCursor
+                                        onClicked: root.toggleNavGroup(
+                                            navEntry.modelData.groupIndex,
+                                            navEntry.modelData.pageIndices)
                                     }
                                 }
 

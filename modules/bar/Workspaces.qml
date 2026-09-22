@@ -220,7 +220,13 @@ Item {
     readonly property int workspaceGroup: Math.floor((currentWorkspaceNumber - 1) / root.workspacesShown)
     property list<bool> workspaceOccupied: []
     property int widgetPadding: Math.round(4 * Appearance.sizes.barModuleScale)
-    property int workspaceButtonWidth: Math.round(26 * Appearance.sizes.barModuleScale)
+    // The centered pivot must not consume the side zones on narrow outputs.
+    // Vertical strips use the requested cross-axis sizing without this cap.
+    readonly property int requestedWorkspaceButtonWidth: Math.round(26 * Appearance.sizes.barModuleScale)
+    readonly property real workspaceStripBudget: (root.QsWindow.window?.screen?.width ?? 1920) * 0.4
+    property int workspaceButtonWidth: root.vertical ? root.requestedWorkspaceButtonWidth
+        : Math.max(16, Math.min(root.requestedWorkspaceButtonWidth,
+            Math.floor(root.workspaceStripBudget / Math.max(1, root.columnsShown))))
     property real activeWorkspaceMargin: 2 * Appearance.sizes.barModuleScale
     property real workspaceIconSize: workspaceButtonWidth * 0.69
     property real workspaceIconSizeShrinked: workspaceButtonWidth * 0.55

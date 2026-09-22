@@ -3766,6 +3766,42 @@ Item {
                                 : Appearance.colors.colPrimary
                     }
                     RippleButtonWithIcon {
+                        implicitWidth: 32
+                        horizontalPadding: 5
+                        mainText: ""
+                        materialIcon: root.sourceEditorMode === "insert"
+                            ? "visibility" : "edit"
+                        buttonText: root.sourceEditorMode === "insert"
+                            ? "Return to view mode" : "Enter edit mode"
+                        onClicked: {
+                            sourceEditor.setMode(root.sourceEditorMode === "insert"
+                                ? "normal" : "insert")
+                            sourceEditor.focusEditor()
+                        }
+                        StyledToolTip {
+                            text: root.sourceEditorMode === "insert"
+                                ? "View mode · Esc" : "Edit mode · i"
+                        }
+                    }
+                    RippleButtonWithIcon {
+                        implicitWidth: 32
+                        horizontalPadding: 5
+                        mainText: ""
+                        materialIcon: "search"
+                        buttonText: "Find in source"
+                        onClicked: sourceEditor.openFind(false)
+                        StyledToolTip { text: "Find · / or Ctrl+F" }
+                    }
+                    RippleButtonWithIcon {
+                        implicitWidth: 32
+                        horizontalPadding: 5
+                        mainText: ""
+                        materialIcon: "find_replace"
+                        buttonText: "Find and replace in source"
+                        onClicked: sourceEditor.openFind(true)
+                        StyledToolTip { text: "Find & Replace · Ctrl+H" }
+                    }
+                    RippleButtonWithIcon {
                         buttonText: "Revert source editor"
                         mainText: ""
                         materialIcon: "restart_alt"

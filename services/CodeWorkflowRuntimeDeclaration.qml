@@ -24,6 +24,9 @@ Scope {
     property bool internal: false
     property bool configured: true
     property bool presented: root.loader?.active === true
+    // A standalone Settings process must not shadow the shell's IPC catalog.
+    property bool registrationEnabled: true
+    property bool _registrationReady: false
 
     property string registrationToken: ""
     readonly property string resolvedSourcePath:
@@ -34,9 +37,16 @@ Scope {
     function lifecycleState(): string {
         if (!root.configured)
             return "unloaded"
-        if (root.loader?.loading === true)
+        // QtQuick Loader reports incubation through status, whereas
+        // Quickshell LazyLoader exposes loading/active. Never dereference item.
+        if (root.loader?.status === Loader.Loading)
+            return "loading"
+        if (root.loader?.loading === true && root.loader?.active !== true)
             return "loading"
         if (root.loader?.active !== true)
+            return "unloaded"
+        if (root.loader?.status !== undefined
+                && root.loader?.status !== Loader.Ready)
             return "unloaded"
         if (!root.presented)
             return "loaded-hidden"
@@ -78,11 +88,25 @@ Scope {
         CodeWorkflowRuntime.touchDeclaration(root.registrationToken)
     }
 
+    function syncRegistration(): void {
+        if (!root._registrationReady)
+            return
+        if (root.registrationEnabled) {
+            if (root.registrationToken.length === 0)
+                root.registrationToken = CodeWorkflowRuntime.registerDeclaration(root)
+        } else if (root.registrationToken.length > 0) {
+            const token = root.registrationToken
+            root.registrationToken = ""
+            CodeWorkflowRuntime.unregisterDeclaration(token, root)
+        }
+    }
+
     Connections {
         target: root.loader
         ignoreUnknownSignals: true
         function onActiveChanged(): void { root.notifyChanged() }
         function onLoadingChanged(): void { root.notifyChanged() }
+        function onStatusChanged(): void { root.notifyChanged() }
         function onSourceChanged(): void { root.notifyChanged() }
     }
 
@@ -97,10 +121,15 @@ Scope {
     onInternalChanged: root.notifyChanged()
     onConfiguredChanged: root.notifyChanged()
     onPresentedChanged: root.notifyChanged()
+    onRegistrationEnabledChanged: root.syncRegistration()
 
-    Component.onCompleted:
-        root.registrationToken = CodeWorkflowRuntime.registerDeclaration(root)
-    Component.onDestruction:
+    Component.onCompleted: {
+        root._registrationReady = true
+        root.syncRegistration()
+    }
+    Component.onDestruction: {
+        root._registrationReady = false
         CodeWorkflowRuntime.unregisterDeclaration(
             root.registrationToken, root)
+    }
 }

@@ -90,6 +90,7 @@ LazyLoader {
     readonly property var _anchorScreen: root._anchorWindow
         ? root._anchorWindow.screen : null
     readonly property bool _anchorReady: root.hoverTarget !== null
+        && root.hoverTarget.visible
         && root._anchorWindow !== null
         && root._anchorScreen !== null
         && root.hoverTarget.width > 0
@@ -123,6 +124,22 @@ LazyLoader {
     signal requestClose()
 
     active: root._anchorReady && (root.requestedVisible || root._lingerVisible)
+
+    // Hover handlers belong to the lazily-created presentation window. Their
+    // last true state must not survive eviction, anchor replacement or a
+    // hidden bar: otherwise requestedVisible can resurrect a stale popup.
+    onActiveChanged: {
+        if (active)
+            return
+        root._bodyHovered = false
+        root._contentHovered = false
+        root._lingerVisible = false
+        root.offsetScale = 1
+    }
+    onHoverTargetChanged: {
+        root._bodyHovered = false
+        root._contentHovered = false
+    }
 
     function _beginRetract(): void {
         if (!root._lingerVisible)

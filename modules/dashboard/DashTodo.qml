@@ -49,7 +49,7 @@ DashCard {
         root.currentTab === 0 ? root.unfinishedTasks : root.doneTasks
 
     function openTodoSettings(): void {
-        GlobalStates.openSettingsSection(7, "Todo & Obsidian")
+        GlobalStates.openSettingsSection(7, "To-do & Quick Notes")
     }
 
     function toggleTask(item): void {
@@ -188,7 +188,7 @@ DashCard {
                 }
 
                 StyledToolTip {
-                    text: Translation.tr("Todo & Obsidian")
+                    text: Translation.tr("To-do & Quick Notes")
                 }
             }
         }

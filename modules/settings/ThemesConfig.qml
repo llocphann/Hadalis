@@ -71,6 +71,17 @@ ContentPage {
     settingsPageName: Translation.tr("Themes")
     property string activeSection: "colors"
 
+    function activateSettingsSearchSection(section: string): bool {
+        const label = String(section ?? "").toLowerCase()
+        if (label.includes("type") || label.includes("font")
+                || label.includes("scale")) root.activeSection = "type"
+        else if (label.includes("motion") || label.includes("animation"))
+            root.activeSection = "motion"
+        else if (label.includes("advanced")) root.activeSection = "advanced"
+        else root.activeSection = "colors"
+        return true
+    }
+
     SettingsTaskNavigator {
         icon: "palette"
         title: Translation.tr("Themes")

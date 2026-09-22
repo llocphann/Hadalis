@@ -599,7 +599,7 @@ if "RegExp" in ir_service or ".match(" in ir_service:
     fail("IR service must not regex-parse QML as a source model")
 
 for token in (
-    "CodeWorkflowIr.graphFor(CodeWorkflowSession.subflowTargetId)",
+    "CodeWorkflowIr.unifiedGraphFor(root.showInternals)",
     "function onGraphLayoutRevisionChanged(): void",
     "Qt.callLater(root.rebuildEdgeRouteCache)",
     "function nodeLayoutOffset(node): var",
@@ -724,7 +724,7 @@ for token in (
     "Appearance.colors.colLayer0",
     "function onSelectedNodeIdChanged(): void",
     "Layout.maximumWidth: node.width - 20",
-    "CodeWorkflowSession.selectNode",
+    "CodeWorkflowSession.selectUnifiedNode(node.modelData)",
     "CodeWorkflowSession.openSubflow",
 ):
     if token not in canvas:

@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Layouts
+import qs
 import qs.services
 import qs.modules.common
 import qs.modules.common.widgets
@@ -10,78 +11,98 @@ import qs.modules.sidebarRight.notepad
  *
  * Notepad tabs are draft buffers; a successful Dashboard capture creates a
  * filesystem-canonical Zettelkasten note while preserving the source draft.
+ * Dashboard presentation is deliberately terse: secondary state lives behind
+ * icons/tooltips so the editor owns nearly all available height.
  */
 DashCard {
     id: root
-    title: Translation.tr("Quick Notes")
-    icon: "note_stack"
+    title: ""
+    icon: ""
     Layout.fillHeight: true
+
+    readonly property string zettelStatusText: {
+        if (Zettelkasten.errorMessage.length > 0)
+            return Zettelkasten.errorMessage
+        if (Zettelkasten.ready)
+            return Translation.tr("%1 note · draft stays in Notepad")
+                .arg(Zettelkasten.defaultType)
+        return Translation.tr("Configure an Obsidian vault to capture notes")
+    }
+
+    function openZettelkastenSettings(): void {
+        GlobalStates.openSettingsSection(7, "Quick Notes & Zettelkasten")
+    }
 
     ColumnLayout {
         Layout.fillWidth: true
         Layout.fillHeight: true
-        spacing: 6
+        spacing: 4
 
+        // One compact identity/action row replaces the old title + two lines of
+        // Zettelkasten prose. Hover exposes the same information without
+        // permanently consuming editor space.
         RowLayout {
             Layout.fillWidth: true
             spacing: 6
 
-            ColumnLayout {
+            MaterialSymbol {
+                text: "note_stack"
+                iconSize: Appearance.font.pixelSize.larger
+                color: root.colAccent
+            }
+
+            StyledText {
                 Layout.fillWidth: true
-                spacing: 1
+                text: Translation.tr("Quick Notes")
+                font.pixelSize: Appearance.font.pixelSize.normal
+                font.weight: Font.Medium
+                color: root.colText
+                elide: Text.ElideRight
+            }
 
-                StyledText {
-                    Layout.fillWidth: true
-                    text: Translation.tr("Zettelkasten capture")
-                    font.pixelSize: Appearance.font.pixelSize.small
-                    font.weight: Font.DemiBold
-                    color: Appearance.colors.colOnLayer1
-                }
+            RippleButton {
+                implicitWidth: 30
+                implicitHeight: 30
+                buttonRadius: height / 2
+                colBackground: "transparent"
+                colBackgroundHover: Appearance.colors.colLayer2Hover
+                onClicked: root.openZettelkastenSettings()
 
-                StyledText {
-                    Layout.fillWidth: true
-                    text: {
-                        if (Zettelkasten.errorMessage.length > 0)
-                            return Zettelkasten.errorMessage
-                        if (Zettelkasten.ready)
-                            return Translation.tr("%1 note · draft stays in Notepad")
-                                .arg(Zettelkasten.defaultType)
-                        return Translation.tr("Configure an Obsidian vault to capture notes")
-                    }
-                    font.pixelSize: Appearance.font.pixelSize.small
+                contentItem: MaterialSymbol {
+                    anchors.centerIn: parent
+                    text: Zettelkasten.errorMessage.length > 0
+                        ? "error"
+                        : (Zettelkasten.ready ? "hub" : "link_off")
+                    iconSize: 17
                     color: Zettelkasten.errorMessage.length > 0
                         ? Appearance.colors.colError
-                        : Appearance.colors.colOnSurfaceVariant
-                    elide: Text.ElideRight
+                        : (Zettelkasten.ready ? root.colAccent : root.colSubtext)
+                }
+
+                StyledToolTip {
+                    text: Zettelkasten.errorMessage.length > 0
+                        ? root.zettelStatusText
+                        : (Zettelkasten.ready
+                            ? Translation.tr("Zettelkasten capture") + " · "
+                                + root.zettelStatusText
+                            : root.zettelStatusText)
                 }
             }
 
             RippleButton {
-                Layout.preferredWidth: quickNoteRow.implicitWidth + 18
+                implicitWidth: 32
                 implicitHeight: 32
-                buttonRadius: Appearance.rounding.full
+                buttonRadius: height / 2
                 enabled: notepad.canSaveZettel
-                colBackground: Appearance.colors.colLayer2
-                colBackgroundHover: Appearance.colors.colLayer2Hover
+                colBackground: Appearance.colors.colPrimaryContainer
+                colBackgroundHover: Appearance.colors.colPrimaryContainerHover
                 onClicked: notepad.captureQuickNote()
 
-                contentItem: RowLayout {
-                    id: quickNoteRow
+                contentItem: MaterialSymbol {
                     anchors.centerIn: parent
-                    spacing: 5
-
-                    MaterialSymbol {
-                        text: "note_add"
-                        iconSize: 16
-                        color: Appearance.colors.colPrimary
-                    }
-
-                    StyledText {
-                        text: Translation.tr("Capture")
-                        font.pixelSize: Appearance.font.pixelSize.small
-                        font.weight: Font.Medium
-                        color: Appearance.colors.colOnLayer1
-                    }
+                    text: "note_add"
+                    iconSize: 17
+                    color: Appearance.colors.colOnPrimaryContainer
                 }
 
                 StyledToolTip {
@@ -97,7 +118,9 @@ DashCard {
             id: notepad
             Layout.fillWidth: true
             Layout.fillHeight: true
-            Layout.minimumHeight: 180
+            Layout.minimumHeight: 130
+            compactPresentation: true
+            margin: 0
         }
     }
 }

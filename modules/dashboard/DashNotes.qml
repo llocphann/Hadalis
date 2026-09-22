@@ -6,12 +6,15 @@ import qs.modules.common.widgets
 import qs.modules.sidebarRight.notepad
 
 /**
- * Notes card: shared multi-tab notepad plus explicit Zettelkasten quick capture.
+ * Quick Notes card.
+ *
+ * Notepad tabs are draft buffers; a successful Dashboard capture becomes a
+ * filesystem-canonical Zettelkasten note and removes the unchanged draft.
  */
 DashCard {
     id: root
-    title: Translation.tr("Notes")
-    icon: "edit_note"
+    title: Translation.tr("Quick Notes")
+    icon: "note_stack"
     Layout.fillHeight: true
 
     ColumnLayout {
@@ -23,7 +26,28 @@ DashCard {
             Layout.fillWidth: true
             spacing: 6
 
-            Item { Layout.fillWidth: true }
+            ColumnLayout {
+                Layout.fillWidth: true
+                spacing: 1
+
+                StyledText {
+                    Layout.fillWidth: true
+                    text: Translation.tr("Zettelkasten capture")
+                    font.pixelSize: Appearance.font.pixelSize.small
+                    font.weight: Font.DemiBold
+                    color: Appearance.colors.colOnLayer1
+                }
+
+                StyledText {
+                    Layout.fillWidth: true
+                    text: Zettelkasten.ready
+                        ? Translation.tr("Fleeting note · draft clears after verified save")
+                        : Translation.tr("Configure an Obsidian vault to capture notes")
+                    font.pixelSize: Appearance.font.pixelSize.smallest
+                    color: Appearance.colors.colSubtext
+                    elide: Text.ElideRight
+                }
+            }
 
             RippleButton {
                 Layout.preferredWidth: quickNoteRow.implicitWidth + 18
@@ -32,7 +56,7 @@ DashCard {
                 enabled: notepad.canSaveZettel
                 colBackground: Appearance.colors.colLayer2
                 colBackgroundHover: Appearance.colors.colLayer2Hover
-                onClicked: notepad.saveAsZettel()
+                onClicked: notepad.captureQuickNote()
 
                 contentItem: RowLayout {
                     id: quickNoteRow
@@ -46,7 +70,7 @@ DashCard {
                     }
 
                     StyledText {
-                        text: Translation.tr("Quick note → Zettelkasten")
+                        text: Translation.tr("Capture")
                         font.pixelSize: Appearance.font.pixelSize.smallest
                         font.weight: Font.Medium
                         color: Appearance.colors.colOnLayer1
@@ -55,7 +79,7 @@ DashCard {
 
                 StyledToolTip {
                     text: Zettelkasten.ready
-                        ? Translation.tr("Save the current note as a Fleeting Zettelkasten note")
+                        ? Translation.tr("Create a Fleeting Zettelkasten note. The unchanged draft is cleared only after the file is saved successfully.")
                         : Translation.tr("Configure an Obsidian vault to enable Zettelkasten")
                 }
             }

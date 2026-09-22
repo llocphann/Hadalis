@@ -27,7 +27,8 @@ preview_delegate = ov.split("delegate: Item {", 1)[1].split("id: focusedWorkspac
 for old in (
     "pendingWorkspaceSlot", "dragCleanupTimer", 'property string previewUrl: ""',
     "onPreviewUpdated(updatedId", "onCaptureComplete()", "Behavior on x {", "Behavior on y {",
-    'objectProp: "id"', "Qt.callLater(() => windowSpace.rebuildWindowItems())",
+    'objectProp: "id"', "localGeometryAnimationReady",
+    "Qt.callLater(() => windowSpace.rebuildWindowItems())",
 ):
     assert old not in preview_delegate, f"retired visual patch remains: {old}"
 assert '"window_id": windowId' in niri and '"focus": focus === undefined ? false : focus' in niri

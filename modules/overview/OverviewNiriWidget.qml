@@ -17,12 +17,9 @@ Item {
     property bool taskViewMode: false
     property bool embeddedSurface: false
     property bool presentationActive: GlobalStates.overviewOpen
-    // Embedded Bar presentation disables local spatial motion until the
-    // parent connected popup has finished its reveal. The focus ring and window
-    // previews must not compose x/y tweens with the popup's vertical slide.
+    // Delay focus-indicator motion until the parent connected popup finishes
+    // its reveal. Window previews settle directly from Niri geometry.
     property bool focusIndicatorAnimationReady: true
-    readonly property bool localGeometryAnimationReady:
-        !root.embeddedSurface || root.focusIndicatorAnimationReady
     property var preferredWorkspaceId: null
     signal presentationCloseRequested()
 

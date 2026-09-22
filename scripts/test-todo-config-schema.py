@@ -19,7 +19,7 @@ required_qml = [
     "property JsonObject dailyNote: JsonObject {",
     'property string folder: "00_Capture/01_Journal"',
     'property string format: "YYYY/MMMM/DD-MM-YYYY-dddd"',
-    'property string plannerHeading: "Tasks"',
+    'property string plannerHeading: "Day Planner"',
     "property int plannerHeadingLevel: 2",
     "property int defaultDurationMinutes: 30",
     "property bool preferTasksPlugin: true",
@@ -38,7 +38,7 @@ expected = {
         "dailyNote": {
             "folder": "00_Capture/01_Journal",
             "format": "YYYY/MMMM/DD-MM-YYYY-dddd",
-            "plannerHeading": "Tasks",
+            "plannerHeading": "Day Planner",
             "plannerHeadingLevel": 2,
             "defaultDurationMinutes": 30,
         },

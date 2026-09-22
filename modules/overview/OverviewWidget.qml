@@ -16,9 +16,11 @@ Item {
     required property var panelWindow
     property bool embeddedSurface: false
     property bool presentationActive: GlobalStates.overviewOpen
-    // Keep the active-workspace indicator static during popup materialization;
-    // once fully revealed, later workspace focus changes may animate normally.
+    // Keep local spatial motion static during popup materialization; once fully
+    // revealed, later workspace/window changes may animate normally.
     property bool focusIndicatorAnimationReady: true
+    readonly property bool localGeometryAnimationReady:
+        !root.embeddedSurface || root.focusIndicatorAnimationReady
     property var preferredWorkspaceId: null
     signal presentationCloseRequested()
 
@@ -267,6 +269,7 @@ Item {
                 scale: root.scale
                 widgetMonitor: HyprlandData.monitors.find(m => m.id == root.monitor.id)
                 windowData: windowByAddress[address]
+                motionAnimationsEnabled: root.localGeometryAnimationReady
 
                 property bool atInitPosition: (initX == x && initY == y)
 

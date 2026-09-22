@@ -16,10 +16,12 @@ Item {
     property bool taskViewMode: false
     property bool embeddedSurface: false
     property bool presentationActive: GlobalStates.overviewOpen
-    // Embedded Bar presentation disables focus-indicator motion until the
-    // parent connected popup has finished its own reveal. This prevents the
-    // focus ring from composing an x/y tween with the popup's vertical slide.
+    // Embedded Bar presentation disables local spatial motion until the
+    // parent connected popup has finished its reveal. The focus ring and window
+    // previews must not compose x/y tweens with the popup's vertical slide.
     property bool focusIndicatorAnimationReady: true
+    readonly property bool localGeometryAnimationReady:
+        !root.embeddedSurface || root.focusIndicatorAnimationReady
     property var preferredWorkspaceId: null
     signal presentationCloseRequested()
 
@@ -78,15 +80,13 @@ Item {
         const total = totalWorkspacesForOutput;
         if (total <= 0)
             return 0;
-        const cur = presentationWorkspaceSlot;
         const slots = workspacesShown <= 0 ? 1 : workspacesShown;
-        const half = Math.floor(slots / 2);
-        var start = cur - half;
-        if (start < 0)
-            start = 0;
-        if (start + slots > total)
-            start = Math.max(0, total - slots);
-        return start;
+        const cur = Math.max(0, Math.min(presentationWorkspaceSlot, total - 1));
+        // Keep physical preview slots stable inside a page. The previous
+        // centered window made hovering slot 4 of a 1..5 strip shift the
+        // viewport to 2..6, so the previews appeared to move under the pointer.
+        // Only crossing a page boundary is allowed to replace the visible group.
+        return Math.floor(cur / slots) * slots;
     }
 
     property real scale: root.overviewScale
@@ -668,7 +668,9 @@ Item {
                     z: root.windowZ
 
                     Behavior on x {
-                        enabled: !windowItem.Drag.active && Appearance.animationsEnabled
+                        enabled: !windowItem.Drag.active
+                            && root.localGeometryAnimationReady
+                            && Appearance.animationsEnabled
                         NumberAnimation {
                             duration: Appearance.animation.elementMoveFast.duration
                             easing.type: Appearance.animation.elementMoveFast.type
@@ -676,7 +678,9 @@ Item {
                         }
                     }
                     Behavior on y {
-                        enabled: !windowItem.Drag.active && Appearance.animationsEnabled
+                        enabled: !windowItem.Drag.active
+                            && root.localGeometryAnimationReady
+                            && Appearance.animationsEnabled
                         NumberAnimation {
                             duration: Appearance.animation.elementMoveFast.duration
                             easing.type: Appearance.animation.elementMoveFast.type

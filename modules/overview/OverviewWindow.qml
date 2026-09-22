@@ -16,6 +16,9 @@ Item { // Window
     property var monitorData
     property var scale
     property bool restrictToWorkspace: true
+    // Parent presentations can suppress local geometry tweens while an outer
+    // connected surface owns the entrance/exit motion.
+    property bool motionAnimationsEnabled: true
     property real widthRatio: {
         const widgetWidth = widgetMonitor.transform & 1 ? widgetMonitor.height : widgetMonitor.width;
         const monitorWidth = monitorData.transform & 1 ? monitorData.height : monitorData.width;
@@ -79,19 +82,19 @@ Item { // Window
     }
 
     Behavior on x {
-        enabled: Appearance.animationsEnabled
+        enabled: root.motionAnimationsEnabled && Appearance.animationsEnabled
         animation: NumberAnimation { duration: Appearance.animation.elementMoveEnter.duration; easing.type: Appearance.animation.elementMoveEnter.type; easing.bezierCurve: Appearance.animation.elementMoveEnter.bezierCurve }
     }
     Behavior on y {
-        enabled: Appearance.animationsEnabled
+        enabled: root.motionAnimationsEnabled && Appearance.animationsEnabled
         animation: NumberAnimation { duration: Appearance.animation.elementMoveEnter.duration; easing.type: Appearance.animation.elementMoveEnter.type; easing.bezierCurve: Appearance.animation.elementMoveEnter.bezierCurve }
     }
     Behavior on width {
-        enabled: Appearance.animationsEnabled
+        enabled: root.motionAnimationsEnabled && Appearance.animationsEnabled
         animation: NumberAnimation { duration: Appearance.animation.elementMoveEnter.duration; easing.type: Appearance.animation.elementMoveEnter.type; easing.bezierCurve: Appearance.animation.elementMoveEnter.bezierCurve }
     }
     Behavior on height {
-        enabled: Appearance.animationsEnabled
+        enabled: root.motionAnimationsEnabled && Appearance.animationsEnabled
         animation: NumberAnimation { duration: Appearance.animation.elementMoveEnter.duration; easing.type: Appearance.animation.elementMoveEnter.type; easing.bezierCurve: Appearance.animation.elementMoveEnter.bezierCurve }
     }
 
@@ -144,11 +147,11 @@ Item { // Window
             sourceSize: Qt.size(iconSize, iconSize)
 
             Behavior on width {
-                enabled: Appearance.animationsEnabled
+                enabled: root.motionAnimationsEnabled && Appearance.animationsEnabled
                 animation: NumberAnimation { duration: Appearance.animation.elementMoveEnter.duration; easing.type: Appearance.animation.elementMoveEnter.type; easing.bezierCurve: Appearance.animation.elementMoveEnter.bezierCurve }
             }
             Behavior on height {
-                enabled: Appearance.animationsEnabled
+                enabled: root.motionAnimationsEnabled && Appearance.animationsEnabled
                 animation: NumberAnimation { duration: Appearance.animation.elementMoveEnter.duration; easing.type: Appearance.animation.elementMoveEnter.type; easing.bezierCurve: Appearance.animation.elementMoveEnter.bezierCurve }
             }
         }

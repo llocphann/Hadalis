@@ -20,6 +20,7 @@ def main() -> None:
     popup = read("modules/bar/BarWorkspaceOverview.qml")
     niri = read("modules/overview/OverviewNiriWidget.qml")
     hypr = read("modules/overview/OverviewWidget.qml")
+    overview_window = read("modules/overview/OverviewWindow.qml")
     runtime = read("modules/overview/Overview.qml")
     panels = read("modules/settings/InterfaceConfig.qml")
     overview_settings = read("modules/settings/OverviewConfig.qml")
@@ -69,6 +70,25 @@ def main() -> None:
             "Hyprland Overview must expose a presentation-phase focus-animation gate")
     require(hypr, "&& root.focusIndicatorAnimationReady",
             "Hyprland focused workspace indicator must not tween during popup reveal")
+    require(niri, "return Math.floor(cur / slots) * slots;",
+            "Niri workspace hover must keep a fixed page instead of centering later slots")
+    forbid(niri, "const half = Math.floor(slots / 2);",
+           "Niri workspace hover must not recenter the visible strip around the hovered slot")
+    forbid(niri, "start = Math.max(0, total - slots);",
+           "Niri final workspace page must not back-shift preview positions")
+    require(niri, "readonly property bool localGeometryAnimationReady:",
+            "Niri Overview must gate local geometry while the parent popup is moving")
+    require(niri, "&& root.localGeometryAnimationReady",
+            "Niri window previews must not tween x/y during connected reveal")
+    require(hypr, "readonly property bool localGeometryAnimationReady:",
+            "Hyprland Overview must gate local geometry while the parent popup is moving")
+    require(hypr, "motionAnimationsEnabled: root.localGeometryAnimationReady",
+            "Hyprland window previews must inherit the connected-reveal motion gate")
+    require(overview_window, "property bool motionAnimationsEnabled: true",
+            "OverviewWindow must expose a parent-controlled geometry animation gate")
+    require(overview_window,
+            "enabled: root.motionAnimationsEnabled && Appearance.animationsEnabled",
+            "OverviewWindow geometry must obey the parent presentation motion gate")
     require(niri, "function restoreOverviewPosition(): void",
             "Niri Overview drag release must restore x/y bindings")
     require(niri, "property int pendingWorkspaceSlot: -1",

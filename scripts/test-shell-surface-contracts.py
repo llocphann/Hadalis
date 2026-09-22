@@ -711,10 +711,11 @@ def main() -> None:
               and "SurfaceMotion.easingType" in settings_surface,
               "Connected Settings overlays must use the immutable slide-only SurfaceMotion contract")
         check("Appearance.m3colors.m3shadow" in settings_surface
-              and "screenEdge?.shadow?.size" in settings_surface
-              and "screenEdge?.shadow?.opacity" in settings_surface
+              and "screenEdge?.physicalShadow?.enabled" in settings_surface
+              and "screenEdge?.physicalShadow?.size" in settings_surface
+              and "screenEdge?.physicalShadow?.opacity" in settings_surface
               and "shadowExtent:" in settings_surface,
-              "Connected Settings iRiS surfaces must share the Screen Edge shadow contract")
+              "Connected Settings iRiS surfaces must share the physical Screen Edge shadow controls")
         check("ConnectedSurfaceJoinFlares" not in settings_surface,
               "Settings must not reintroduce floating endpoint wedge geometry")
 
@@ -1176,13 +1177,16 @@ def main() -> None:
         check("physicalShadow" not in connected_shadow_source,
               f"{connected_shadow_path} must not consume the physical Screen Edge shadow owner")
 
-    for independent_connected_shadow_path in (
+    for shared_settings_shadow_path in (
         "modules/settings/SettingsOverlay.qml",
         "modules/settings/SettingsFocus.qml",
     ):
-        independent_connected_shadow_source = read(independent_connected_shadow_path)
-        check("physicalShadow" not in independent_connected_shadow_source,
-              f"{independent_connected_shadow_path} must remain independent from the physical Screen Edge shadow owner")
+        shared_settings_shadow_source = read(shared_settings_shadow_path)
+        check("screenEdge?.physicalShadow?.enabled ?? true" in shared_settings_shadow_source
+              and "screenEdge?.physicalShadow?.size ?? 15" in shared_settings_shadow_source
+              and "screenEdge?.physicalShadow?.opacity ?? 0.70" in shared_settings_shadow_source
+              and "Appearance.m3colors.m3shadow" in shared_settings_shadow_source,
+              f"{shared_settings_shadow_path} must use the same physical elevation tokens")
 
     check("screenEdge?.physicalShadow?.enabled ?? true" in styled_popup
           and "screenEdge?.physicalShadow?.size ?? 15" in styled_popup

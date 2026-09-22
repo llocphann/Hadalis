@@ -14,6 +14,7 @@ import re
 import shutil
 import subprocess
 import sys
+import time
 
 HERE = Path(__file__).resolve().parent
 
@@ -156,8 +157,21 @@ def main() -> int:
     }
     probe = runtime.Probe(directory, report, pointer=None, sway=args.sway.resolve())
     probe.env["QT_QUICK_BACKEND"] = "software"
+    keyboard_keeper = None
     try:
         probe.launch()
+        # wtype creates and destroys a virtual keyboard on every invocation.
+        # On headless Sway this otherwise toggles wl_seat keyboard capability,
+        # triggering a wl_keyboard.leave and dropping Qt's activeFocus between
+        # commands. Keep an idle virtual keyboard registered for this test.
+        keyboard_keeper = subprocess.Popen(
+            ["wtype", "-s", "120000"], env=probe.env,
+            stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
+            stderr=subprocess.PIPE, text=True,
+        )
+        time.sleep(0.4)
+        probe.record("Virtual keyboard seat remains registered",
+                     keyboard_keeper.poll() is None)
         runtime.wait_for(
             lambda: value if (
                 (value := probe.snapshot())["editorConfigReady"]
@@ -298,6 +312,15 @@ def main() -> int:
         except Exception:
             pass
     finally:
+        if keyboard_keeper is not None:
+            keyboard_keeper.terminate()
+            try:
+                keyboard_keeper.wait(timeout=5)
+            except subprocess.TimeoutExpired:
+                keyboard_keeper.kill()
+                keyboard_keeper.wait(timeout=5)
+            if keyboard_keeper.stderr:
+                keyboard_keeper.stderr.close()
         probe.close()
         (directory / "editor-live-report.json").write_text(
             json.dumps(report, indent=2, ensure_ascii=False) + "\n",

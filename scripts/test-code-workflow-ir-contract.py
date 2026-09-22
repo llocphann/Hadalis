@@ -602,8 +602,13 @@ for token in (
     "function nodeX(node): real",
     "function nodeY(node): real",
     "id: canvasPanArea",
+    "z: 2",
+    "enabled: root.activeNodeDragHandler === null",
     "acceptedButtons: Qt.LeftButton | Qt.MiddleButton",
+    "preventStealing: true",
+    "hoverEnabled: false",
     "root.nodeAtScreen(mouse.x, mouse.y)",
+    "mouse.accepted = false",
     "id: nodeDrag",
     "dragThreshold: 3",
     "centroid.scenePosition.x - startSceneX",
@@ -775,6 +780,8 @@ if "function selectableEdgeAt(" in canvas or "function previewableEdgeAt(" in ca
     fail("canvas must not restrict inspect hit-testing to mutation-eligible edges")
 if "acceptedButtons: Qt.MiddleButton\n" in canvas:
     fail("empty-space pan must not regress to middle-button-only interaction")
+if "id: canvasPanArea\n        anchors.fill: parent\n        z: -1" in canvas:
+    fail("empty-space pan surface must stay above the transformed graph world")
 if "Qt.OpenHandCursor" in canvas:
     fail("Code Workflow cursor must stay normal until a drag is actually active")
 

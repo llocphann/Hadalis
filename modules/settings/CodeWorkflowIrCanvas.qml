@@ -1308,9 +1308,14 @@ Item {
     MouseArea {
         id: canvasPanArea
         anchors.fill: parent
-        z: -1
+        // Keep the empty-space gesture surface above the transformed world.
+        // Presses on nodes/edges are explicitly rejected below, so their own
+        // handlers still receive input while true canvas space always pans.
+        z: 2
+        enabled: root.activeNodeDragHandler === null
         acceptedButtons: Qt.LeftButton | Qt.MiddleButton
-        hoverEnabled: true
+        preventStealing: true
+        hoverEnabled: false
         cursorShape: pressed ? Qt.ClosedHandCursor : Qt.ArrowCursor
         property real pressX: 0
         property real pressY: 0

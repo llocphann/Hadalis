@@ -1805,7 +1805,8 @@ Item {
 
                 StyledText {
                     Layout.fillWidth: true
-                    text: root.graph?.title ?? "Code Workflow"
+                    text: "Code Workflow · "
+                        + String(root.graph?.title ?? "Workflow")
                     font.pixelSize: Appearance.font.pixelSize.normal
                     font.weight: Font.DemiBold
                     color: Appearance.colors.colOnLayer1

@@ -522,12 +522,21 @@ Item {
             ?? root.selectedIrNode?.sourcePath
             ?? root.descriptor?.sourcePath
             ?? ""
+    function syncEmbeddedNvimView(): void {
+        const item = embeddedNvimLoader.item
+        if (!item)
+            return
+        item.sourcePath = root.sourceEditorTargetPath
+        item.active = root.sourceEditorUseNvim
+        if (item.active && item.sourcePath.length > 0)
+            item.ensureSession()
+    }
+
     onSourcePathChanged: {
         root.stashSourceEditorBuffer()
         root.sourceEditorStatus = ""
-        if (root.sourceEditorUseNvim
-                && root.sourceEditorTargetPath.length > 0)
-            Qt.callLater(() => embeddedNvimLoader.item?.ensureSession())
+        if (root.sourceEditorUseNvim)
+            Qt.callLater(root.syncEmbeddedNvimView)
     }
 
     function stashSourceEditorBuffer(): void {
@@ -3723,8 +3732,7 @@ Item {
                             root.sourceEditorUseNvim =
                                 !root.sourceEditorUseNvim
                             if (root.sourceEditorUseNvim)
-                                Qt.callLater(() =>
-                                    embeddedNvimLoader.item?.ensureSession())
+                                Qt.callLater(root.syncEmbeddedNvimView)
                         }
                         StyledToolTip {
                             text: root.sourceEditorUseNvim
@@ -3813,13 +3821,7 @@ Item {
                         source: active ? "CodeWorkflowNvimView.qml" : ""
                         asynchronous: true
 
-                        onLoaded: {
-                            if (!item)
-                                return
-                            item.sourcePath = root.sourceEditorTargetPath
-                            item.active = true
-                            Qt.callLater(() => item.ensureSession())
-                        }
+                        onLoaded: Qt.callLater(root.syncEmbeddedNvimView)
 
                         onStatusChanged: {
                             if (status !== Loader.Error)
@@ -3828,31 +3830,6 @@ Item {
                             root.sourceEditorStatus =
                                 "Embedded Neovim failed to load · using inline editor"
                         }
-                    }
-
-                    Connections {
-                        target: embeddedNvimLoader.item
-                        enabled: embeddedNvimLoader.status === Loader.Ready
-
-                        function onSourcePathChanged(): void {
-                            // Keep the dynamically loaded view aligned with the
-                            // current inspected source without making it a
-                            // compile-time dependency of the whole page.
-                        }
-                    }
-
-                    Binding {
-                        target: embeddedNvimLoader.item
-                        property: "sourcePath"
-                        value: root.sourceEditorTargetPath
-                        when: embeddedNvimLoader.status === Loader.Ready
-                    }
-
-                    Binding {
-                        target: embeddedNvimLoader.item
-                        property: "active"
-                        value: root.sourceEditorUseNvim
-                        when: embeddedNvimLoader.status === Loader.Ready
                     }
 
                     Flickable {

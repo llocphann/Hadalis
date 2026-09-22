@@ -268,6 +268,8 @@ require(page, "status !== Loader.Error",
         "embedded Neovim loader must contain QML load failures")
 require(page, '"Embedded Neovim failed to load · using inline editor"',
         "embedded Neovim load failure must fall back to the inline editor")
+require(page, "function syncEmbeddedNvimView(): void",
+        "embedded Neovim dynamic item must be synchronized only after Loader readiness")
 require(page, "root.sourceEditorConflict",
         "Source Editor must surface external-write conflicts")
 require(page, "visible: root.sourceEditorStatus.length > 0",

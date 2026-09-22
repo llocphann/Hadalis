@@ -11,7 +11,7 @@ qmldir = (ROOT / "services" / "qmldir").read_text(encoding="utf-8")
 for token in (
     'property string folder: "00_Capture/01_Journal"',
     'property string noteFormat: "YYYY/MMMM/DD-MM-YYYY-dddd"',
-    'property string plannerHeading: "Tasks"',
+    'property string plannerHeading: "Day Planner"',
     "property int plannerHeadingLevel: 2",
     "property int defaultDurationMinutes: 30",
     'sourceMode: "markdown-note"',
@@ -33,7 +33,7 @@ for token in (
 for token in (
     'DEFAULT_FOLDER = "00_Capture/01_Journal"',
     'DEFAULT_FORMAT = "YYYY/MMMM/DD-MM-YYYY-dddd"',
-    'DEFAULT_HEADING = "Tasks"',
+    'DEFAULT_HEADING = "Day Planner"',
     "def scan_daily_note(",
     "def add_task(",
     "def toggle_task(",

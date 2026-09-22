@@ -212,17 +212,12 @@ ContentPage {
                 
                 ContentSubsection {
                     title: Translation.tr("AI")
-                    tooltip: Translation.tr("Control AI features availability")
-                    ConfigSelectionArray {
-                        currentValue: Config.options?.policies?.ai ?? 0
-                        onSelected: newValue => {
-                            Config.setNestedValue("policies.ai", newValue);
-                        }
-                        options: [
-                            { displayName: Translation.tr("No"), icon: "close", value: 0 },
-                            { displayName: Translation.tr("Yes"), icon: "check", value: 1 },
-                            { displayName: Translation.tr("Local only"), icon: "sync_saved_locally", value: 2 }
-                        ]
+
+                    RippleButtonWithIcon {
+                        Layout.fillWidth: true
+                        materialIcon: "neurology"
+                        mainText: Translation.tr("AI privacy settings")
+                        onClicked: SettingsPageRegistry.navigateToKey("ai", "Privacy")
                     }
                 }
                 

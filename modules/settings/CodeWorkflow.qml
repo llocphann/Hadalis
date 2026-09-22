@@ -22,12 +22,19 @@ Item {
     property bool sourceEditorConflict: false
     property bool sourceEditorSaving: false
     property bool sourceEditorStagePending: false
+    // Freeze the exact file, base revision and text for the async save.
+    property string sourceEditorPendingPath: ""
+    property string sourceEditorPendingTargetPath: ""
+    property string sourceEditorPendingBaseHash: ""
+    property string sourceEditorPendingText: ""
     property string sourceEditorStatus: ""
     property var sourceEditorBuffers: ({})
     readonly property bool sourceEditorDirty:
         root.sourceDraft !== root.sourceEditorBaseText
     readonly property bool sourceEditorCanSave:
         root.sourcePath.length > 0
+        && root.sourceEditorPath === root.sourcePath
+        && root.sourceEditorTargetPath.length > 0
         && root.sourceEditorDirty
         && !root.sourceEditorConflict
         && !root.sourceEditorSaving
@@ -622,10 +629,15 @@ Item {
     function saveSourceEditor(): bool {
         if (!root.sourceEditorCanSave)
             return false
+        root.sourceEditorPendingPath = root.sourceEditorPath
+        root.sourceEditorPendingTargetPath = root.sourceEditorTargetPath
+        root.sourceEditorPendingBaseHash =
+            String(Qt.md5(root.sourceEditorBaseText))
+        root.sourceEditorPendingText = root.sourceDraft
         root.sourceEditorSaving = true
         root.sourceEditorStagePending = true
         root.sourceEditorStatus = "Staging source draft"
-        sourceDraftWriter.setText(root.sourceDraft)
+        sourceDraftWriter.setText(root.sourceEditorPendingText)
         return true
     }
 
@@ -1592,8 +1604,8 @@ Item {
                 "/usr/bin/python3",
                 Quickshell.shellPath("scripts/code-workflow-editor-save.py"),
                 root.sourceEditorShellRoot,
-                root.sourceEditorTargetPath,
-                String(Qt.md5(root.sourceEditorBaseText)),
+                root.sourceEditorPendingTargetPath,
+                root.sourceEditorPendingBaseHash,
                 root.sourceEditorTempPath
             ]
             sourceEditorCommitProcess.running = true

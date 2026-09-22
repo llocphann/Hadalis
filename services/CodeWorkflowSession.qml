@@ -433,6 +433,8 @@ Singleton {
     onSourcePreviewVisibleChanged: root.persist()
     onTargetsPaneWidthChanged: root.persist()
     onInspectorPaneWidthChanged: root.persist()
+    onTargetsPaneCollapsedChanged: root.persist()
+    onInspectorPaneCollapsedChanged: root.persist()
     onSourcePreviewHeightChanged: root.persist()
     Component.onCompleted: root.restore()
 

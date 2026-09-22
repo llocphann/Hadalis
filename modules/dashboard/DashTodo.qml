@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
+import QtQuick.Shapes
 import qs
 import qs.services
 import qs.modules.common
@@ -192,67 +193,166 @@ DashCard {
             }
         }
 
-        Rectangle {
+        Item {
             id: tabShell
             Layout.fillWidth: true
             Layout.leftMargin: root.safeEdgeInset
             Layout.rightMargin: root.safeEdgeInset
             implicitHeight: root.tabControlHeight
-            color: "transparent"
             clip: false
 
             readonly property real halfWidth: width / 2
             readonly property real inset: 3
             readonly property real innerHeight: height - inset * 2
-            readonly property real innerRadius: innerHeight / 2
-            // Both tabs remain ordinary pills. Their fixed surfaces overlap at
-            // the seam; whichever tab is active simply renders above the other.
-            // This makes the active pill appear to sit slightly inside the
-            // inactive pill without cutting a notch into either shape.
-            readonly property real seamOverlap:
-                Math.min(root.narrowLayout ? 8 : 10, innerHeight * 0.30)
-            readonly property real tabSurfaceWidth:
-                halfWidth + seamOverlap / 2 - inset
+            readonly property real cornerRadius: innerHeight / 2
 
-            Rectangle {
-                id: leftTabSurface
+            // The inactive tab is not a normal pill hidden behind the active
+            // tab. Its contact side is a true inward semicircle. That concave
+            // arc uses exactly the same radius as the tab's outer pill corner,
+            // so the active pill and inactive cutout are complementary.
+            Shape {
+                id: inactiveLeftShape
+                visible: root.currentTab === 1
                 x: tabShell.inset
                 y: tabShell.inset
-                width: tabShell.tabSurfaceWidth
+                width: tabShell.halfWidth - tabShell.inset
                 height: tabShell.innerHeight
-                radius: tabShell.innerRadius
-                z: root.currentTab === 0 ? 2 : 1
-                color: root.currentTab === 0
-                    ? (leftTabHover.hovered
-                        ? Appearance.colors.colPrimaryContainerHover
-                        : Appearance.colors.colPrimaryContainer)
-                    : (leftTabHover.hovered
-                        ? Appearance.colors.colLayer1Hover
-                        : Appearance.colors.colLayer1)
+                z: 1
+                preferredRendererType: Shape.CurveRenderer
 
-                Behavior on color {
-                    enabled: Appearance.animationsEnabled
-                    ColorAnimation {
-                        duration: Appearance.animation.elementMoveFast.duration
+                ShapePath {
+                    strokeWidth: 0
+                    fillColor: leftTabHover.hovered
+                        ? Appearance.colors.colLayer1Hover
+                        : Appearance.colors.colLayer1
+
+                    startX: tabShell.cornerRadius
+                    startY: 0
+
+                    PathLine {
+                        x: inactiveLeftShape.width
+                        y: 0
+                    }
+
+                    // Concave contact edge: one inward half-circle, radius R.
+                    PathArc {
+                        x: inactiveLeftShape.width
+                        y: inactiveLeftShape.height
+                        radiusX: tabShell.cornerRadius
+                        radiusY: tabShell.cornerRadius
+                        direction: PathArc.Counterclockwise
+                    }
+
+                    PathLine {
+                        x: tabShell.cornerRadius
+                        y: inactiveLeftShape.height
+                    }
+
+                    PathArc {
+                        x: 0
+                        y: inactiveLeftShape.height - tabShell.cornerRadius
+                        radiusX: tabShell.cornerRadius
+                        radiusY: tabShell.cornerRadius
+                    }
+
+                    PathLine {
+                        x: 0
+                        y: tabShell.cornerRadius
+                    }
+
+                    PathArc {
+                        x: tabShell.cornerRadius
+                        y: 0
+                        radiusX: tabShell.cornerRadius
+                        radiusY: tabShell.cornerRadius
+                    }
+                }
+            }
+
+            Shape {
+                id: inactiveRightShape
+                visible: root.currentTab === 0
+                x: tabShell.halfWidth
+                y: tabShell.inset
+                width: tabShell.halfWidth - tabShell.inset
+                height: tabShell.innerHeight
+                z: 1
+                preferredRendererType: Shape.CurveRenderer
+
+                ShapePath {
+                    strokeWidth: 0
+                    fillColor: rightTabHover.hovered
+                        ? Appearance.colors.colLayer1Hover
+                        : Appearance.colors.colLayer1
+
+                    startX: 0
+                    startY: 0
+
+                    // Mirror of the left inactive tab: same R, opposite side.
+                    PathArc {
+                        x: 0
+                        y: inactiveRightShape.height
+                        radiusX: tabShell.cornerRadius
+                        radiusY: tabShell.cornerRadius
+                        direction: PathArc.Clockwise
+                    }
+
+                    PathLine {
+                        x: inactiveRightShape.width - tabShell.cornerRadius
+                        y: inactiveRightShape.height
+                    }
+
+                    PathArc {
+                        x: inactiveRightShape.width
+                        y: inactiveRightShape.height - tabShell.cornerRadius
+                        radiusX: tabShell.cornerRadius
+                        radiusY: tabShell.cornerRadius
+                    }
+
+                    PathLine {
+                        x: inactiveRightShape.width
+                        y: tabShell.cornerRadius
+                    }
+
+                    PathArc {
+                        x: inactiveRightShape.width - tabShell.cornerRadius
+                        y: 0
+                        radiusX: tabShell.cornerRadius
+                        radiusY: tabShell.cornerRadius
+                    }
+
+                    PathLine {
+                        x: 0
+                        y: 0
                     }
                 }
             }
 
             Rectangle {
-                id: rightTabSurface
-                x: tabShell.halfWidth - tabShell.seamOverlap / 2
+                id: activeTabPill
+                x: root.currentTab === 0
+                    ? tabShell.inset
+                    : tabShell.halfWidth - tabShell.cornerRadius
                 y: tabShell.inset
-                width: tabShell.tabSurfaceWidth
+                width: tabShell.halfWidth + tabShell.cornerRadius
+                    - tabShell.inset
                 height: tabShell.innerHeight
-                radius: tabShell.innerRadius
-                z: root.currentTab === 1 ? 2 : 1
-                color: root.currentTab === 1
-                    ? (rightTabHover.hovered
-                        ? Appearance.colors.colPrimaryContainerHover
-                        : Appearance.colors.colPrimaryContainer)
-                    : (rightTabHover.hovered
-                        ? Appearance.colors.colLayer1Hover
-                        : Appearance.colors.colLayer1)
+                radius: tabShell.cornerRadius
+                z: 2
+                color: (root.currentTab === 0
+                        ? leftTabHover.hovered : rightTabHover.hovered)
+                    ? Appearance.colors.colPrimaryContainerHover
+                    : Appearance.colors.colPrimaryContainer
+
+                Behavior on x {
+                    enabled: Appearance.animationsEnabled
+                    NumberAnimation {
+                        duration: Appearance.animation.elementMoveFast.duration
+                        easing.type: Appearance.animation.elementMoveFast.type
+                        easing.bezierCurve:
+                            Appearance.animation.elementMoveFast.bezierCurve
+                    }
+                }
 
                 Behavior on color {
                     enabled: Appearance.animationsEnabled
@@ -273,6 +373,7 @@ DashCard {
                     id: leftTabHover
                     cursorShape: Qt.PointingHandCursor
                 }
+
                 TapHandler {
                     onTapped: root.currentTab = 0
                 }
@@ -289,6 +390,7 @@ DashCard {
                     id: rightTabHover
                     cursorShape: Qt.PointingHandCursor
                 }
+
                 TapHandler {
                     onTapped: root.currentTab = 1
                 }
@@ -327,7 +429,8 @@ DashCard {
 
                     Rectangle {
                         implicitWidth: Math.max(root.narrowLayout ? 19 : 22,
-                            leftCountText.implicitWidth + (root.narrowLayout ? 7 : 10))
+                            leftCountText.implicitWidth
+                                + (root.narrowLayout ? 7 : 10))
                         implicitHeight: root.narrowLayout ? 19 : 22
                         radius: height / 2
                         color: root.currentTab === 0
@@ -381,7 +484,8 @@ DashCard {
 
                     Rectangle {
                         implicitWidth: Math.max(root.narrowLayout ? 19 : 22,
-                            rightCountText.implicitWidth + (root.narrowLayout ? 7 : 10))
+                            rightCountText.implicitWidth
+                                + (root.narrowLayout ? 7 : 10))
                         implicitHeight: root.narrowLayout ? 19 : 22
                         radius: height / 2
                         color: root.currentTab === 1
@@ -403,7 +507,8 @@ DashCard {
             }
 
             WheelHandler {
-                acceptedDevices: PointerDevice.Mouse | PointerDevice.TouchPad
+                acceptedDevices:
+                    PointerDevice.Mouse | PointerDevice.TouchPad
                 onWheel: event => {
                     if (event.angleDelta.y < 0)
                         root.currentTab = 1

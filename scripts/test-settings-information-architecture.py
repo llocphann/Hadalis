@@ -62,8 +62,12 @@ def main() -> None:
         require(source, "function onNavigateRequested(pageIndex, section)",
                 path)
         require(source, slot, path)
-        require(source, "function toggleNavGroup(", path)
-        require(source, "function revealCurrentNavGroup()", path)
+        if path != "modules/settings/SettingsFocus.qml":
+            require(source, "function toggleNavGroup(", path)
+            require(source, "function revealCurrentNavGroup()", path)
+        else:
+            require(source, "readonly property var visibleGroups:", path)
+            require(source, "readonly property var currentGroup:", path)
 
     waffle = read("waffleSettings.qml")
     wcontent = read("modules/waffle/settings/WSettingsContent.qml")

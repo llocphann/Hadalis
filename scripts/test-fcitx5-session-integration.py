@@ -99,9 +99,9 @@ def test_other_ime_and_uninstalled_engine():
 
 def test_preserved_niri_config_migration():
     source = INSTALLER.read_text()
-    start = source.index("      # Preserve users' existing input-method selections")
+    start = source.index("      # A pre-existing non-Fcitx IME is user-owned")
     end = source.index("      sed -i \\\n        -e 's|spawn \"bash\"", start)
-    snippet = source[start:end]
+    snippet = "log_info() { :; }\n" + source[start:end]
     with tempfile.TemporaryDirectory() as directory:
         env, root = fixture(directory)
         config = root / "user-config.kdl"
@@ -119,8 +119,19 @@ def test_preserved_niri_config_migration():
         check(data.count('QT_IM_MODULE "ibus"') == 1
               and 'QT_IM_MODULE "fcitx"' not in data,
               "migration must preserve configured IME")
-        check(data.count('XMODIFIERS "@im=fcitx"') == 1,
-              "migration must insert missing XIM environment once")
+        check('XMODIFIERS "@im=fcitx"' not in data,
+              "migration must not mix Fcitx XIM with another configured IME")
+        check("input-method" not in startup.read_text(),
+              "migration must not start Fcitx when another IME is selected")
+        # No configured input method: provision only missing values, once.
+        config.write_text('environment {\n}\n')
+        startup.write_text("// user startup\n")
+        for _ in range(2):
+            subprocess.run(["bash", "-e", "-c", snippet], env=env, check=True)
+        data = config.read_text()
+        check(data.count('QT_IM_MODULE "fcitx"') == 1
+              and data.count('XMODIFIERS "@im=fcitx"') == 1,
+              "migration must insert both environment variables once")
         lines = startup.read_text().splitlines()
         check(lines.count('spawn-at-startup "/opt/test/inir" "input-method" "start"') == 1,
               "migration must add exactly one path-safe startup entry")

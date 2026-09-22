@@ -298,7 +298,7 @@ def main() -> int:
             )
             probe.record("Real click then literal lowercase " + letter,
                          moved["focused"] and moved["mode"] == "normal"
-                         and moved["text"] == "alpha\\n\\nbeta gamma", moved)
+                         and moved["text"] == before_click["text"], moved)
         subprocess.run(["wtype", "v"], env=probe.env, check=True,
                        capture_output=True, text=True, timeout=12)
         entered_visual = runtime.wait_for(

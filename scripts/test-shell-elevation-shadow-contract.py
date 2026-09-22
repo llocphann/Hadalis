@@ -90,11 +90,17 @@ for surface in settings:
     require(surface,
         "ConnectedSurfaceIrisEdgeSurface {",
         "Appearance.m3colors.m3shadow",
-        "screenEdge?.shadow?.size ?? 15",
-        "screenEdge?.shadow?.opacity ?? 0.70",
+        "screenEdge?.physicalShadow?.enabled ?? true",
+        "screenEdge?.physicalShadow?.size ?? 15",
+        "screenEdge?.physicalShadow?.opacity ?? 0.70",
     )
     assert "sourceComponent: StyledRectangularShadow" not in surface
 
+require(dashboard,
+    "screenEdge?.physicalShadow?.enabled ?? true",
+    "screenEdge?.physicalShadow?.size ?? 15",
+    "screenEdge?.physicalShadow?.opacity ?? 0.70",
+)
 # The normal Bar is part of the physical perimeter, not a second local shadow.
 for bar in bars:
     assert "sourceComponent: StyledRectangularShadow" not in bar

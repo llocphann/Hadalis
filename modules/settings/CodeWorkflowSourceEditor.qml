@@ -827,7 +827,7 @@ Item {
                 persistentSelection: true
                 Accessible.name: "Source editor"
                 Accessible.description:
-                    "Hot-fix source editor. Click places the cursor in Normal view mode; i enters Insert; v enters Visual; slash or Ctrl+F finds text."
+                    "Hot-fix source editor. NORMAL and VISUAL: h j k l move, w b e move by word. i enters INSERT, v selects, slash or Ctrl+F finds, Ctrl+S saves."
 
                 HoverHandler {
                     cursorShape: root.mode === "insert"

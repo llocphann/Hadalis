@@ -263,39 +263,73 @@ Item {
             radius: 0, fuse: 0, id: "popup-end-join"
         })
 
+    // A box shadow cannot follow the iRiS smooth-union contact fillets. Sample
+    // the *same SDF silhouette* as the visible plate, excluding physical owners
+    // before blurring and once more after blurring. The extra fuse reach gives
+    // the contact shoulders and the complete blur enough transparent texture
+    // margin even at fractional scale; it changes no visible/input geometry.
     readonly property real shadowTextureExtent:
-        Math.max(0, root.shadowExtent) + 2
+        Math.max(0, root.shadowExtent) + root.fuse + root.aaReach + 2
     readonly property rect rawShadowBounds: Qt.rect(
         root.body.x - root.shadowTextureExtent,
         root.body.y - root.shadowTextureExtent,
         root.body.width + root.shadowTextureExtent * 2,
         root.body.height + root.shadowTextureExtent * 2)
+    readonly property rect shadowMaskBounds:
+        root.clipExternalOwners(root.rawShadowBounds, 0)
     readonly property rect shadowPaintBounds:
         root.clipExternalOwners(root.rawShadowBounds, 0)
 
-    Item {
+    // Do not modify IrisField.frag / its locked QSB: this mask is another
+    // viewport of the exact production union, not an independently drawn
+    // approximation of the body or the inverse join.
+    ConnectedSurfaceIrisField {
+        id: shadowMaskField
+        z: -101
+        width: root.width
+        height: root.height
+        paintBounds: root.shadowMaskBounds
+        shapes: field.shapes
+        tint: root.shadowColor
+        smoothing: root.fuse
+        visible: false
+    }
+
+    // Source capture is bounded to the body + fillet + blur reach. Never blur
+    // the entire output-sized owner, which would create a duplicated dark band
+    // beneath the physical Screen Edge away from the popup.
+    ShaderEffectSource {
         id: shadowTextureSource
         z: -100
+        visible: false
+        x: root.rawShadowBounds.x
+        y: root.rawShadowBounds.y
+        width: root.rawShadowBounds.width
+        height: root.rawShadowBounds.height
+        sourceItem: shadowMaskField
+        sourceRect: root.rawShadowBounds
+        hideSource: true
+        live: true
+        recursive: false
+        smooth: true
+    }
+
+    // Blur the silhouette mask, not a rounded rectangle. The source texture
+    // already has explicit transparent padding, so automatic effect padding
+    // would shift the crop/scissor coordinates and risk clipped corners again.
+    MultiEffect {
+        id: blurredShadow
+        z: -99
         visible: root.shadowEnabled
         x: root.rawShadowBounds.x
         y: root.rawShadowBounds.y
         width: root.rawShadowBounds.width
         height: root.rawShadowBounds.height
-        clip: true
-
-        RectangularShadow {
-            x: root.shadowTextureExtent
-            y: root.shadowTextureExtent
-            width: root.body.width
-            height: root.body.height
-            radius: Number(root.geometry?.outerRadius ?? 0)
-                + Math.max(0, root.shadowExtent) * 0.75
-            blur: Math.max(0, root.shadowExtent)
-            spread: 0
-            offset: Qt.vector2d(0, 0)
-            color: root.shadowColor
-            cached: false
-        }
+        source: shadowTextureSource
+        blurEnabled: true
+        blurMax: Math.max(2, Math.ceil(root.shadowExtent))
+        blur: 1.0
+        autoPaddingEnabled: false
     }
 
     ShaderEffectSource {
@@ -308,7 +342,7 @@ Item {
         y: root.shadowPaintBounds.y
         width: root.shadowPaintBounds.width
         height: root.shadowPaintBounds.height
-        sourceItem: shadowTextureSource
+        sourceItem: blurredShadow
         sourceRect: Qt.rect(
             root.shadowPaintBounds.x - root.rawShadowBounds.x,
             root.shadowPaintBounds.y - root.rawShadowBounds.y,

@@ -1120,15 +1120,12 @@ Scope {
 
                                         Keys.onPressed: event => {
                                             if (event.key === Qt.Key_Down && root.searchResults.length > 0) {
-                                                resultsList.forceActiveFocus();
-                                                if (resultsList.currentIndex < 0)
-                                                    resultsList.currentIndex = 0;
-                                                event.accepted = true;
+                                                focusLiveSearch.focusResults()
+                                                event.accepted = true
                                             } else if ((event.key === Qt.Key_Return || event.key === Qt.Key_Enter)
                                                     && root.searchResults.length > 0) {
-                                                var i = Math.max(0, resultsList.currentIndex);
-                                                root.openSearchResult(root.searchResults[i]);
-                                                event.accepted = true;
+                                                focusLiveSearch.activateCurrent()
+                                                event.accepted = true
                                             }
                                         }
                                     }
@@ -1268,10 +1265,10 @@ Scope {
                     Item {
                         id: homeView
                         anchors.fill: parent
-                        x: root.level === 0 ? 0 : -body.slide
-                        opacity: root.level === 0 ? 1 : 0
-                        visible: opacity > 0
-                        enabled: root.level === 0
+                        x: root.level === 0 && root.searchText.trim().length === 0 ? 0 : -body.slide
+                        opacity: root.level === 0 && root.searchText.trim().length === 0 ? 1 : 0
+                        visible: opacity > 0 && root.searchText.trim().length === 0
+                        enabled: root.level === 0 && root.searchText.trim().length === 0
 
                         Behavior on x {
                             enabled: Appearance.animationsEnabled
@@ -1595,10 +1592,10 @@ Scope {
                     Item {
                         id: pageView
                         anchors.fill: parent
-                        x: root.level === 1 ? 0 : body.slide
-                        opacity: root.level === 1 ? 1 : 0
-                        visible: opacity > 0
-                        enabled: root.level === 1
+                        x: root.level === 1 && root.searchText.trim().length === 0 ? 0 : body.slide
+                        opacity: root.level === 1 && root.searchText.trim().length === 0 ? 1 : 0
+                        visible: opacity > 0 && root.searchText.trim().length === 0
+                        enabled: root.level === 1 && root.searchText.trim().length === 0
 
                         Behavior on x {
                             enabled: Appearance.animationsEnabled
@@ -2171,179 +2168,20 @@ Scope {
                     }
                 }
 
-                // ── Search results ──
-                MouseArea {
+                // Search has its own full-width content view, in the same body
+                // as the home grid and page host, without a modal hit target.
+                SettingsLiveSearchResults {
+                    id: focusLiveSearch
                     anchors.fill: parent
-                    visible: root.searchResults.length > 0
-                    onClicked: root.clearSearch()
-                    z: 90
+                    z: 20
+                    query: root.searchText
+                    results: root.searchResults
+                    searchField: focusSearchField
+                    iconForPage: index => SettingsPageRegistry.iconForPage(index)
+                    onActivated: entry => root.openSearchResult(entry)
+                    onCloseRequested: root.clearSearch()
                 }
 
-                // Without this a query that matches nothing just showed an empty
-                // grid, which reads as the search being broken.
-                Rectangle {
-                    id: noResultsPill
-                    visible: root.searchText.length > 0 && root.searchResults.length === 0
-                    z: 100
-                    anchors.top: header.bottom
-                    anchors.topMargin: 6
-                    anchors.right: parent.right
-                    anchors.rightMargin: 14
-                    width: noResultsRow.implicitWidth + 26
-                    height: 36
-                    radius: Appearance.rounding.full
-                    color: Appearance.inirEverywhere ? Appearance.inir.colLayer2
-                         : Appearance.zzzEverywhere ? Appearance.zzz.bg2
-                         : Appearance.colors.colLayer1
-                    border.width: 1
-                    border.color: Appearance.angelEverywhere ? Appearance.angel.colCardBorder
-                        : Appearance.inirEverywhere ? Appearance.inir.colBorder
-                        : Appearance.m3colors.m3outlineVariant
-
-                    RowLayout {
-                        id: noResultsRow
-                        anchors.centerIn: parent
-                        spacing: 8
-
-                        MaterialSymbol {
-                            text: "search_off"
-                            iconSize: 18
-                            color: Appearance.colors.colSubtext
-                        }
-
-                        StyledText {
-                            text: Translation.tr("No results found")
-                            color: Appearance.colors.colSubtext
-                            font.pixelSize: Appearance.font.pixelSize.small
-                        }
-                    }
-                }
-
-                Rectangle {
-                    id: resultsCard
-                    visible: root.searchText.length > 0 && root.searchResults.length > 0
-                    z: 100
-                    width: Math.min(420, card.width - 28)
-                    height: Math.min(resultsList.contentHeight + 12, 360)
-                    anchors.top: header.bottom
-                    anchors.topMargin: 6
-                    anchors.right: parent.right
-                    anchors.rightMargin: 14
-                    radius: Appearance.angelEverywhere ? Appearance.angel.roundingNormal
-                          : Appearance.inirEverywhere ? Appearance.inir.roundingNormal
-                          : Appearance.rounding.normal
-                    color: Appearance.inirEverywhere ? Appearance.inir.colLayer2
-                         : Appearance.zzzEverywhere ? Appearance.zzz.bg2
-                         : Appearance.colors.colLayer1
-                    border.width: 1
-                    border.color: Appearance.angelEverywhere ? Appearance.angel.colCardBorder
-                        : Appearance.inirEverywhere ? Appearance.inir.colBorder
-                        : Appearance.m3colors.m3outlineVariant
-
-                    ListView {
-                        id: resultsList
-                        anchors.fill: parent
-                        anchors.margins: 6
-                        spacing: 2
-                        model: root.searchResults
-                        clip: true
-                        currentIndex: 0
-                        boundsBehavior: Flickable.StopAtBounds
-
-                        Keys.onPressed: event => {
-                            if (event.key === Qt.Key_Up) {
-                                if (resultsList.currentIndex > 0)
-                                    resultsList.currentIndex--;
-                                else
-                                    focusSearchField.forceActiveFocus();
-                                event.accepted = true;
-                            } else if (event.key === Qt.Key_Down) {
-                                if (resultsList.currentIndex < resultsList.count - 1)
-                                    resultsList.currentIndex++;
-                                event.accepted = true;
-                            } else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
-                                if (resultsList.currentIndex >= 0)
-                                    root.openSearchResult(root.searchResults[resultsList.currentIndex]);
-                                event.accepted = true;
-                            }
-                        }
-
-                        delegate: RippleButton {
-                            id: resultRow
-                            required property var modelData
-                            required property int index
-
-                            width: resultsList.width
-                            implicitHeight: 46
-                            buttonRadius: Appearance.inirEverywhere ? Appearance.inir.roundingSmall
-                                        : Appearance.rounding.small
-                            // A wash of the accent, not the accent container. The
-                            // container pairs with an on-container ink this row
-                            // does not use, so under zzz the selected result came
-                            // out light-on-orange. A low alpha keeps the row's own
-                            // ink readable in every style. headerHoverColor is not
-                            // an option here either — under zzz it resolves to the
-                            // same bg2 this results card is painted with.
-                            colBackground: resultRow.index === resultsList.currentIndex
-                                ? CF.ColorUtils.applyAlpha(SettingsMaterialPreset.accentColor, 0.16)
-                                : "transparent"
-                            colBackgroundHover: CF.ColorUtils.applyAlpha(
-                                SettingsMaterialPreset.accentColor, 0.09)
-
-                            Keys.forwardTo: [resultsList]
-                            onClicked: root.openSearchResult(resultRow.modelData)
-
-                            contentItem: RowLayout {
-                                anchors.fill: parent
-                                anchors.leftMargin: 10
-                                anchors.rightMargin: 10
-                                spacing: 10
-
-                                MaterialSymbol {
-                                    text: SettingsPageRegistry.iconForPage(resultRow.modelData.pageIndex)
-                                    iconSize: 18
-                                    color: resultRow.index === resultsList.currentIndex
-                                        ? SettingsMaterialPreset.accentColor
-                                        : (Appearance.zzzEverywhere ? Appearance.zzz.inkMuted
-                                          : Appearance.colors.colOnSurfaceVariant)
-                                }
-
-                                ColumnLayout {
-                                    Layout.fillWidth: true
-                                    Layout.minimumWidth: 0
-                                    spacing: 1
-
-                                    Text {
-                                        Layout.fillWidth: true
-                                        Layout.minimumWidth: 0
-                                        text: resultRow.modelData.labelHighlighted || resultRow.modelData.label || ""
-                                        textFormat: Text.StyledText
-                                        color: Appearance.zzzEverywhere ? Appearance.zzz.ink
-                                             : Appearance.colors.colOnLayer1
-                                        elide: Text.ElideRight
-                                        wrapMode: Text.NoWrap
-                                        font {
-                                            family: Appearance.font.family.main
-                                            pixelSize: Appearance.font.pixelSize.small
-                                            weight: Font.Medium
-                                        }
-                                    }
-
-                                    StyledText {
-                                        Layout.fillWidth: true
-                                        Layout.minimumWidth: 0
-                                        text: resultRow.modelData.pageName || ""
-                                        color: Appearance.colors.colSubtext
-                                        font.pixelSize: Appearance.font.pixelSize.smaller
-                                        elide: Text.ElideRight
-                                        wrapMode: Text.NoWrap
-                                        opacity: 0.9
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
             }
         }
     }

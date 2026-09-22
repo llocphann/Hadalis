@@ -21,6 +21,7 @@ Scope {
     property string parentId: ""
     property int depth: 0
     property string sourcePath: ""
+    property bool internal: false
     property bool configured: true
     property bool presented: root.loader?.active === true
 
@@ -64,6 +65,7 @@ Scope {
             parentId: root.parentId,
             depth: root.depth,
             sourcePath: root.resolvedSourcePath,
+            internal: root.internal,
             configured: root.configured,
             presented: root.presented,
             state: state,
@@ -92,6 +94,7 @@ Scope {
     onParentIdChanged: root.notifyChanged()
     onDepthChanged: root.notifyChanged()
     onSourcePathChanged: root.notifyChanged()
+    onInternalChanged: root.notifyChanged()
     onConfiguredChanged: root.notifyChanged()
     onPresentedChanged: root.notifyChanged()
 

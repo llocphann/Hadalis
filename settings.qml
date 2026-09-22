@@ -57,7 +57,10 @@ ApplicationWindow {
         }
     }
 
-    onCurrentPageChanged: root._persistCurrentPage()
+    onCurrentPageChanged: {
+        root._persistCurrentPage()
+        root.revealCurrentNavGroup()
+    }
 
     property bool uiReady: Config.ready
 
@@ -74,6 +77,15 @@ ApplicationWindow {
     function toggleNavGroup(index: int, pageIndices): void {
         const next = Object.assign({}, expandedNavGroups)
         next[index] = !groupExpanded(index, pageIndices)
+        expandedNavGroups = next
+    }
+
+    function revealCurrentNavGroup(): void {
+        const groupIndex = SettingsPageRegistry.categories.findIndex(
+            group => group.pages.includes(root.currentPage))
+        if (groupIndex < 0 || expandedNavGroups[groupIndex] !== false) return
+        const next = Object.assign({}, expandedNavGroups)
+        delete next[groupIndex]
         expandedNavGroups = next
     }
 
@@ -1060,6 +1072,9 @@ ApplicationWindow {
                                         anchors.bottom: parent.bottom
                                         anchors.bottomMargin: 4
                                         text: navItem.modelData.label || ""
+                                        anchors.right: parent.right
+                                        anchors.rightMargin: 34
+                                        elide: Text.ElideRight
                                         font {
                                             family: Appearance.font.family.main
                                             pixelSize: Appearance.font.pixelSize.smaller

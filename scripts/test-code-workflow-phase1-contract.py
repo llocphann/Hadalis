@@ -75,6 +75,7 @@ for token in (
     'return "loaded-hidden"',
     'return "loading"',
     'return "unloaded"',
+    "internal: root.internal",
     "configured: root.configured",
     "lifecycle: state",
     "function descriptorSnapshot(): var",
@@ -573,6 +574,14 @@ require(page, '"No targets match the current filter"',
         "Targets filter must expose an explicit empty state")
 require(page, "property bool inspectShowInternals: false",
         "Targets must use progressive disclosure for parser internals")
+for token in (
+    "item => item?.internal !== true",
+    "const revealInternal = root.inspectShowInternals || query.length > 0",
+    "if (target?.internal === true && !revealInternal)",
+    "internal: target?.internal === true",
+):
+    require(page, token,
+            "runtime internals progressive disclosure missing " + token)
 require(page, "function semanticEntryVisible(entry, discloseInternals: bool): bool",
         "Targets must suppress anonymous parser noise by default")
 require(page, '"pragma", "opaque"',
@@ -755,6 +764,10 @@ for path, (target_id, source_path) in hooks.items():
     require(source, "CodeWorkflowRuntimeTarget {", path + " missing runtime registration")
     require(source, target_id, path + " has wrong semantic target ID")
     require(source, source_path, path + " missing runtime source metadata")
+require(target, "property bool internal: false",
+        "runtime instances must classify internal targets")
+require(target, "internal: root.internal",
+        "live runtime descriptor must carry internal classification")
 require(target, "function descriptorSnapshot(): var",
         "runtime instances must expose dynamic descriptor metadata")
 require(target, 'lifecycle: presented ? "visible" : "loaded-hidden"',

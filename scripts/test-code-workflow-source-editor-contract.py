@@ -40,7 +40,12 @@ for token in (
     "editor.paste()",
     "root.saveRequested()",
     "cursorVisible: activeFocus",
-    "cursorShape: Qt.IBeamCursor",
+    "cursorShape: root.mode === \"insert\"",
+    "id: modalCaret",
+    'visible: editor.activeFocus && root.mode !== "insert"',
+    "x: root.modalCursorRect.x",
+    "y: root.modalCursorRect.y",
+    "width: Math.max(7, modalCaretMetrics.width)",
     "editor.positionAt(",
     "Keys.onShortcutOverride: event =>",
 ):

@@ -1,5 +1,7 @@
 import QtQuick
+import QtQuick.Layouts
 import qs.modules.common
+import qs.modules.common.widgets
 
 Item {
     id: root
@@ -12,6 +14,13 @@ Item {
     property int visualCursor: -1
     property bool syncingFromHost: false
     property string documentText: root.draft
+    property bool findVisible: false
+    property bool replaceVisible: false
+    property string findText: ""
+    property string replaceText: ""
+    property bool findCaseSensitive: false
+    property int activeFindStart: -1
+    property int activeFindEnd: -1
 
     signal draftEdited(string text)
     signal saveRequested()
@@ -19,17 +28,181 @@ Item {
 
     readonly property int lineCount:
         Math.max(1, root.documentText.split("\n").length)
+    readonly property int currentLineNumber:
+        root.lineNumberAt(editor.cursorPosition)
     readonly property int gutterWidth:
         20 + Math.max(2, String(root.lineCount).length) * 8
     readonly property string lineNumberText: {
         const result = []
-        for (let line = 1; line <= root.lineCount; line++)
-            result.push(String(line))
+        for (let line = 1; line <= root.lineCount; line++) {
+            result.push(line === root.currentLineNumber
+                ? String(line)
+                : String(Math.abs(line - root.currentLineNumber)))
+        }
         return result.join("\n")
+    }
+    readonly property var findMatches: root.computeFindMatches()
+    readonly property int activeFindIndex: {
+        for (let i = 0; i < root.findMatches.length; i++) {
+            if (root.findMatches[i].start === root.activeFindStart)
+                return i
+        }
+        return -1
     }
 
     function clampPosition(position: int): int {
         return Math.max(0, Math.min(root.documentText.length, position))
+    }
+
+    function lineNumberAt(position: int): int {
+        const pos = root.clampPosition(position)
+        if (pos <= 0)
+            return 1
+        return root.documentText.slice(0, pos).split("\n").length
+    }
+
+    function computeFindMatches() {
+        const rawNeedle = root.findText
+        if (rawNeedle.length === 0)
+            return []
+        const haystack = root.findCaseSensitive
+            ? root.documentText : root.documentText.toLocaleLowerCase()
+        const needle = root.findCaseSensitive
+            ? rawNeedle : rawNeedle.toLocaleLowerCase()
+        const matches = []
+        let offset = 0
+        while (offset <= haystack.length - needle.length) {
+            const start = haystack.indexOf(needle, offset)
+            if (start < 0)
+                break
+            matches.push({ start: start, end: start + rawNeedle.length })
+            offset = start + Math.max(1, rawNeedle.length)
+        }
+        return matches
+    }
+
+    function clearFindSelection(): void {
+        root.activeFindStart = -1
+        root.activeFindEnd = -1
+        if (root.mode !== "visual")
+            editor.deselect()
+    }
+
+    function revealFindMatch(start: int, end: int): void {
+        root.activeFindStart = root.clampPosition(start)
+        root.activeFindEnd = root.clampPosition(end)
+        editor.select(root.activeFindStart, root.activeFindEnd)
+        Qt.callLater(() => {
+            const rect = editor.positionToRectangle(root.activeFindStart)
+            const margin = 18
+            editorFlick.contentX = Math.max(
+                0, Math.min(
+                    Math.max(0, editorFlick.contentWidth - editorFlick.width),
+                    rect.x + root.gutterWidth - margin))
+            editorFlick.contentY = Math.max(
+                0, Math.min(
+                    Math.max(0, editorFlick.contentHeight - editorFlick.height),
+                    rect.y - editorFlick.height / 3))
+        })
+    }
+
+    function findNext(backward: bool, fromStart: bool): bool {
+        const matches = root.findMatches
+        if (matches.length === 0) {
+            root.clearFindSelection()
+            return false
+        }
+
+        let index = -1
+        if (fromStart) {
+            index = backward ? matches.length - 1 : 0
+        } else if (root.activeFindIndex >= 0) {
+            index = (root.activeFindIndex
+                + (backward ? -1 : 1) + matches.length) % matches.length
+        } else {
+            const cursor = editor.cursorPosition
+            if (backward) {
+                for (let i = matches.length - 1; i >= 0; i--) {
+                    if (matches[i].start < cursor) {
+                        index = i
+                        break
+                    }
+                }
+                if (index < 0)
+                    index = matches.length - 1
+            } else {
+                for (let i = 0; i < matches.length; i++) {
+                    if (matches[i].start >= cursor) {
+                        index = i
+                        break
+                    }
+                }
+                if (index < 0)
+                    index = 0
+            }
+        }
+
+        root.revealFindMatch(matches[index].start, matches[index].end)
+        return true
+    }
+
+    function openFind(withReplace: bool): void {
+        if (root.mode === "visual")
+            root.setMode("normal")
+        root.findVisible = true
+        root.replaceVisible = withReplace
+        Qt.callLater(() => {
+            findField.forceActiveFocus()
+            findField.selectAll()
+            if (root.findText.length > 0)
+                root.findNext(false, true)
+        })
+    }
+
+    function closeFind(): void {
+        root.findVisible = false
+        root.replaceVisible = false
+        root.clearFindSelection()
+        editor.forceActiveFocus()
+    }
+
+    function replaceCurrentFind(): bool {
+        if (root.mode !== "insert") {
+            root.statusMessage("Enter INSERT mode before replacing source text")
+            return false
+        }
+        if (root.activeFindIndex < 0 && !root.findNext(false, false))
+            return false
+
+        const start = root.activeFindStart
+        const end = root.activeFindEnd
+        root.replaceRange(start, end, root.replaceText)
+        root.activeFindStart = -1
+        root.activeFindEnd = -1
+        Qt.callLater(() => root.findNext(false, false))
+        return true
+    }
+
+    function replaceAllFind(): int {
+        if (root.mode !== "insert") {
+            root.statusMessage("Enter INSERT mode before replacing source text")
+            return 0
+        }
+        const matches = root.findMatches
+        if (matches.length === 0)
+            return 0
+
+        let nextText = root.documentText
+        for (let i = matches.length - 1; i >= 0; i--) {
+            nextText = nextText.slice(0, matches[i].start)
+                + root.replaceText + nextText.slice(matches[i].end)
+        }
+        root.documentText = nextText
+        root.activeFindStart = -1
+        root.activeFindEnd = -1
+        root.statusMessage(String(matches.length) + " replacements applied")
+        Qt.callLater(() => root.findNext(false, true))
+        return matches.length
     }
 
     function lineStart(position: int): int {
@@ -239,9 +412,203 @@ Item {
             root.draftEdited(root.documentText)
     }
 
+    Rectangle {
+        id: findPanel
+        anchors.top: parent.top
+        anchors.left: parent.left
+        anchors.right: parent.right
+        height: root.replaceVisible ? 70 : 36
+        visible: root.findVisible
+        z: 4
+        color: Appearance.colors.colLayer1
+        border.width: 1
+        border.color: Appearance.colors.colOutlineVariant
+        radius: Appearance.rounding.small
+
+        ColumnLayout {
+            anchors.fill: parent
+            anchors.margins: 4
+            spacing: 3
+
+            RowLayout {
+                Layout.fillWidth: true
+                Layout.preferredHeight: 28
+                spacing: 4
+
+                ToolbarTextField {
+                    id: findField
+                    Layout.fillWidth: true
+                    Layout.fillHeight: false
+                    Layout.preferredHeight: 28
+                    implicitHeight: 28
+                    placeholderText: "Find"
+                    text: root.findText
+                    colBackground: Appearance.colors.colLayer0
+                    Accessible.name: "Find in source"
+                    onTextChanged: {
+                        if (root.findText === text)
+                            return
+                        root.findText = text
+                        root.activeFindStart = -1
+                        root.activeFindEnd = -1
+                        Qt.callLater(() => root.findNext(false, true))
+                    }
+                    Keys.onShortcutOverride: event => {
+                        if (event.key === Qt.Key_Escape)
+                            event.accepted = true
+                    }
+                    Keys.onPressed: event => {
+                        const shift =
+                            (event.modifiers & Qt.ShiftModifier) !== 0
+                        if (event.key === Qt.Key_Escape) {
+                            root.closeFind()
+                            event.accepted = true
+                        } else if (event.key === Qt.Key_Return
+                                || event.key === Qt.Key_Enter) {
+                            root.findNext(shift, false)
+                            event.accepted = true
+                        }
+                    }
+                }
+
+                StyledText {
+                    text: root.findMatches.length === 0
+                        ? "0/0"
+                        : String(Math.max(1, root.activeFindIndex + 1))
+                            + "/" + String(root.findMatches.length)
+                    color: Appearance.colors.colSubtext
+                    font.pixelSize: Appearance.font.pixelSize.smallest
+                }
+
+                RippleButtonWithIcon {
+                    implicitWidth: 28
+                    implicitHeight: 28
+                    horizontalPadding: 4
+                    materialIcon: "keyboard_arrow_up"
+                    mainText: ""
+                    buttonText: "Previous match"
+                    enabled: root.findMatches.length > 0
+                    onClicked: root.findNext(true, false)
+                    StyledToolTip { text: "Previous match · Shift+Enter" }
+                }
+                RippleButtonWithIcon {
+                    implicitWidth: 28
+                    implicitHeight: 28
+                    horizontalPadding: 4
+                    materialIcon: "keyboard_arrow_down"
+                    mainText: ""
+                    buttonText: "Next match"
+                    enabled: root.findMatches.length > 0
+                    onClicked: root.findNext(false, false)
+                    StyledToolTip { text: "Next match · Enter / n" }
+                }
+                RippleButtonWithIcon {
+                    implicitWidth: 28
+                    implicitHeight: 28
+                    horizontalPadding: 4
+                    materialIcon: "match_case"
+                    mainText: ""
+                    buttonText: "Match case"
+                    toggled: root.findCaseSensitive
+                    onClicked: {
+                        root.findCaseSensitive = !root.findCaseSensitive
+                        root.activeFindStart = -1
+                        root.activeFindEnd = -1
+                        root.findNext(false, true)
+                    }
+                    StyledToolTip {
+                        text: root.findCaseSensitive
+                            ? "Case sensitive" : "Case insensitive"
+                    }
+                }
+                RippleButtonWithIcon {
+                    implicitWidth: 28
+                    implicitHeight: 28
+                    horizontalPadding: 4
+                    materialIcon: root.replaceVisible
+                        ? "find_replace" : "find_in_page"
+                    mainText: ""
+                    buttonText: root.replaceVisible
+                        ? "Hide replace" : "Show replace"
+                    onClicked: root.replaceVisible = !root.replaceVisible
+                    StyledToolTip { text: buttonText }
+                }
+                RippleButtonWithIcon {
+                    implicitWidth: 28
+                    implicitHeight: 28
+                    horizontalPadding: 4
+                    materialIcon: "close"
+                    mainText: ""
+                    buttonText: "Close find"
+                    onClicked: root.closeFind()
+                    StyledToolTip { text: "Close find · Esc" }
+                }
+            }
+
+            RowLayout {
+                Layout.fillWidth: true
+                Layout.preferredHeight: 28
+                visible: root.replaceVisible
+                spacing: 4
+
+                ToolbarTextField {
+                    id: replaceField
+                    Layout.fillWidth: true
+                    Layout.fillHeight: false
+                    Layout.preferredHeight: 28
+                    implicitHeight: 28
+                    placeholderText: root.mode === "insert"
+                        ? "Replace with" : "Replace with · enter INSERT first"
+                    text: root.replaceText
+                    colBackground: Appearance.colors.colLayer0
+                    Accessible.name: "Replace in source"
+                    onTextChanged: root.replaceText = text
+                    Keys.onShortcutOverride: event => {
+                        if (event.key === Qt.Key_Escape)
+                            event.accepted = true
+                    }
+                    Keys.onPressed: event => {
+                        if (event.key === Qt.Key_Escape) {
+                            root.closeFind()
+                            event.accepted = true
+                        } else if (event.key === Qt.Key_Return
+                                || event.key === Qt.Key_Enter) {
+                            root.replaceCurrentFind()
+                            event.accepted = true
+                        }
+                    }
+                }
+
+                RippleButtonWithIcon {
+                    implicitHeight: 28
+                    horizontalPadding: 7
+                    materialIcon: "find_replace"
+                    mainText: "Replace"
+                    buttonText: "Replace current match"
+                    enabled: root.mode === "insert"
+                        && root.findMatches.length > 0
+                    onClicked: root.replaceCurrentFind()
+                }
+                RippleButtonWithIcon {
+                    implicitHeight: 28
+                    horizontalPadding: 7
+                    materialIcon: "done_all"
+                    mainText: "All"
+                    buttonText: "Replace all matches"
+                    enabled: root.mode === "insert"
+                        && root.findMatches.length > 0
+                    onClicked: root.replaceAllFind()
+                }
+            }
+        }
+    }
+
     Flickable {
         id: editorFlick
-        anchors.fill: parent
+        anchors.top: root.findVisible ? findPanel.bottom : parent.top
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.bottom: parent.bottom
         contentWidth: Math.max(width, editorRow.width)
         contentHeight: Math.max(height, editorRow.height)
         clip: true
@@ -289,7 +656,7 @@ Item {
                 persistentSelection: true
                 Accessible.name: "Source editor"
                 Accessible.description:
-                    "Hot-fix source editor. Click to insert; Escape returns to normal mode; v enters visual; hjkl moves."
+                    "Hot-fix source editor. Click places the cursor in Normal view mode; i enters Insert; v enters Visual; slash or Ctrl+F finds text."
 
                 HoverHandler {
                     cursorShape: Qt.IBeamCursor
@@ -301,8 +668,19 @@ Item {
                     onTapped: eventPoint => {
                         const position = editor.positionAt(
                             eventPoint.position.x, eventPoint.position.y)
-                        root.enterInsertAt(position)
+                        root.setMode("normal")
+                        editor.cursorPosition = root.clampPosition(position)
+                        editor.deselect()
                     }
+                }
+
+                Keys.onShortcutOverride: event => {
+                    const ctrl =
+                        (event.modifiers & Qt.ControlModifier) !== 0
+                    if (event.key === Qt.Key_Escape
+                            || (ctrl && (event.key === Qt.Key_F
+                                || event.key === Qt.Key_H)))
+                        event.accepted = true
                 }
 
                 onTextChanged: {
@@ -318,8 +696,21 @@ Item {
                         event.accepted = true
                         return
                     }
+                    if (ctrl && event.key === Qt.Key_F) {
+                        root.openFind(false)
+                        event.accepted = true
+                        return
+                    }
+                    if (ctrl && event.key === Qt.Key_H) {
+                        root.openFind(true)
+                        event.accepted = true
+                        return
+                    }
                     if (event.key === Qt.Key_Escape) {
-                        root.setMode("normal")
+                        if (root.findVisible)
+                            root.closeFind()
+                        else
+                            root.setMode("normal")
                         event.accepted = true
                         return
                     }
@@ -372,7 +763,11 @@ Item {
                     }
 
                     const cursor = editor.cursorPosition
-                    if (event.key === Qt.Key_H)
+                    if (event.key === Qt.Key_Slash) {
+                        root.openFind(false)
+                    } else if (event.key === Qt.Key_N) {
+                        root.findNext(shift, false)
+                    } else if (event.key === Qt.Key_H)
                         root.moveHorizontal(-1)
                     else if (event.key === Qt.Key_L)
                         root.moveHorizontal(1)

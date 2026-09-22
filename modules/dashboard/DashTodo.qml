@@ -1,7 +1,6 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
-import QtQuick.Shapes
 import qs
 import qs.services
 import qs.modules.common
@@ -199,162 +198,62 @@ DashCard {
             Layout.leftMargin: root.safeEdgeInset
             Layout.rightMargin: root.safeEdgeInset
             implicitHeight: root.tabControlHeight
-            radius: height / 2
-            color: Appearance.colors.colLayer2
+            color: "transparent"
             clip: false
 
             readonly property real halfWidth: width / 2
             readonly property real inset: 3
             readonly property real innerHeight: height - inset * 2
             readonly property real innerRadius: innerHeight / 2
-            readonly property real seamRadius: innerRadius
+            // Both tabs remain ordinary pills. Their fixed surfaces overlap at
+            // the seam; whichever tab is active simply renders above the other.
+            // This makes the active pill appear to sit slightly inside the
+            // inactive pill without cutting a notch into either shape.
+            readonly property real seamOverlap:
+                Math.min(root.narrowLayout ? 8 : 10, innerHeight * 0.30)
+            readonly property real tabSurfaceWidth:
+                halfWidth + seamOverlap / 2 - inset
 
-            // Both halves use the same pill-height and outer radius. The only
-            // asymmetry is the contact edge: the inactive tab turns that same
-            // radius inward, producing a true inverse-rounded seam.
-            Shape {
-                id: inactiveRightShape
-                visible: root.currentTab === 0
-                x: tabShell.halfWidth - tabShell.inset
-                y: tabShell.inset
-                width: tabShell.halfWidth
-                height: tabShell.innerHeight
-                z: 1
-                preferredRendererType: Shape.CurveRenderer
-
-                ShapePath {
-                    strokeWidth: 0
-                    fillColor: rightTabHover.hovered
-                        ? Appearance.colors.colLayer1Hover
-                        : Appearance.colors.colLayer1
-                    startX: tabShell.seamRadius
-                    startY: 0
-                    PathLine {
-                        x: inactiveRightShape.width - tabShell.innerRadius
-                        y: 0
-                    }
-                    PathQuad {
-                        x: inactiveRightShape.width
-                        y: tabShell.innerRadius
-                        controlX: inactiveRightShape.width
-                        controlY: 0
-                    }
-                    PathLine {
-                        x: inactiveRightShape.width
-                        y: inactiveRightShape.height - tabShell.innerRadius
-                    }
-                    PathQuad {
-                        x: inactiveRightShape.width - tabShell.innerRadius
-                        y: inactiveRightShape.height
-                        controlX: inactiveRightShape.width
-                        controlY: inactiveRightShape.height
-                    }
-                    PathLine {
-                        x: tabShell.seamRadius
-                        y: inactiveRightShape.height
-                    }
-                    PathQuad {
-                        x: 0
-                        y: inactiveRightShape.height - tabShell.seamRadius
-                        controlX: tabShell.seamRadius
-                        controlY: inactiveRightShape.height - tabShell.seamRadius
-                    }
-                    PathLine {
-                        x: 0
-                        y: tabShell.seamRadius
-                    }
-                    PathQuad {
-                        x: tabShell.seamRadius
-                        y: 0
-                        controlX: tabShell.seamRadius
-                        controlY: tabShell.seamRadius
-                    }
-                }
-            }
-
-            Shape {
-                id: inactiveLeftShape
-                visible: root.currentTab === 1
+            Rectangle {
+                id: leftTabSurface
                 x: tabShell.inset
                 y: tabShell.inset
-                width: tabShell.halfWidth
+                width: tabShell.tabSurfaceWidth
                 height: tabShell.innerHeight
-                z: 1
-                preferredRendererType: Shape.CurveRenderer
-
-                ShapePath {
-                    strokeWidth: 0
-                    fillColor: leftTabHover.hovered
+                radius: tabShell.innerRadius
+                z: root.currentTab === 0 ? 2 : 1
+                color: root.currentTab === 0
+                    ? (leftTabHover.hovered
+                        ? Appearance.colors.colPrimaryContainerHover
+                        : Appearance.colors.colPrimaryContainer)
+                    : (leftTabHover.hovered
                         ? Appearance.colors.colLayer1Hover
-                        : Appearance.colors.colLayer1
-                    startX: tabShell.innerRadius
-                    startY: 0
-                    PathLine {
-                        x: inactiveLeftShape.width - tabShell.seamRadius
-                        y: 0
-                    }
-                    PathQuad {
-                        x: inactiveLeftShape.width
-                        y: tabShell.seamRadius
-                        controlX: inactiveLeftShape.width - tabShell.seamRadius
-                        controlY: tabShell.seamRadius
-                    }
-                    PathLine {
-                        x: inactiveLeftShape.width
-                        y: inactiveLeftShape.height - tabShell.seamRadius
-                    }
-                    PathQuad {
-                        x: inactiveLeftShape.width - tabShell.seamRadius
-                        y: inactiveLeftShape.height
-                        controlX: inactiveLeftShape.width - tabShell.seamRadius
-                        controlY: inactiveLeftShape.height - tabShell.seamRadius
-                    }
-                    PathLine {
-                        x: tabShell.innerRadius
-                        y: inactiveLeftShape.height
-                    }
-                    PathQuad {
-                        x: 0
-                        y: inactiveLeftShape.height - tabShell.innerRadius
-                        controlX: 0
-                        controlY: inactiveLeftShape.height
-                    }
-                    PathLine {
-                        x: 0
-                        y: tabShell.innerRadius
-                    }
-                    PathQuad {
-                        x: tabShell.innerRadius
-                        y: 0
-                        controlX: 0
-                        controlY: 0
+                        : Appearance.colors.colLayer1)
+
+                Behavior on color {
+                    enabled: Appearance.animationsEnabled
+                    ColorAnimation {
+                        duration: Appearance.animation.elementMoveFast.duration
                     }
                 }
             }
 
             Rectangle {
-                id: activeTabPill
-                x: root.currentTab === 0
-                    ? tabShell.inset
-                    : tabShell.halfWidth + tabShell.inset
+                id: rightTabSurface
+                x: tabShell.halfWidth - tabShell.seamOverlap / 2
                 y: tabShell.inset
-                width: tabShell.halfWidth - tabShell.inset * 2
-                height: tabShell.height - tabShell.inset * 2
-                radius: height / 2
-                color: (root.currentTab === 0
-                        ? leftTabHover.hovered : rightTabHover.hovered)
-                    ? Appearance.colors.colPrimaryContainerHover
-                    : Appearance.colors.colPrimaryContainer
-                z: 2
+                width: tabShell.tabSurfaceWidth
+                height: tabShell.innerHeight
+                radius: tabShell.innerRadius
+                z: root.currentTab === 1 ? 2 : 1
+                color: root.currentTab === 1
+                    ? (rightTabHover.hovered
+                        ? Appearance.colors.colPrimaryContainerHover
+                        : Appearance.colors.colPrimaryContainer)
+                    : (rightTabHover.hovered
+                        ? Appearance.colors.colLayer1Hover
+                        : Appearance.colors.colLayer1)
 
-                Behavior on x {
-                    enabled: Appearance.animationsEnabled
-                    NumberAnimation {
-                        duration: Appearance.animation.elementMoveFast.duration
-                        easing.type: Appearance.animation.elementMoveFast.type
-                        easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve
-                    }
-                }
                 Behavior on color {
                     enabled: Appearance.animationsEnabled
                     ColorAnimation {

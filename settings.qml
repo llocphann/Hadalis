@@ -63,6 +63,20 @@ ApplicationWindow {
 
     // Easy mode helpers — derived list filtered to essentials when on
     readonly property bool easyMode: Config.options?.settingsUi?.easyMode ?? false
+    // Collapse inactive groups by default: a navigation category is not another
+    // flat list of every settings page. Explicit user toggles survive page swaps.
+    property var expandedNavGroups: ({})
+    function groupExpanded(index, pageIndices): bool {
+        if (Object.prototype.hasOwnProperty.call(expandedNavGroups, index))
+            return expandedNavGroups[index] === true
+        return pageIndices.includes(root.currentPage)
+    }
+    function toggleNavGroup(index: int, pageIndices): void {
+        const next = Object.assign({}, expandedNavGroups)
+        next[index] = !groupExpanded(index, pageIndices)
+        expandedNavGroups = next
+    }
+
     // Nav model: category headers + page entries, filtered by easy mode (same as overlay)
     readonly property var visibleNavItems: {
         var items = [];
@@ -77,12 +91,17 @@ ApplicationWindow {
                 catPages.push(pageIdx);
             }
             if (catPages.length === 0) continue;
-            items.push({ type: "header", label: cat.label });
-            for (var j = 0; j < catPages.length; j++) {
-                var entry = Object.assign({}, pages[catPages[j]]);
-                entry.type = "page";
-                entry.realIndex = catPages[j];
-                items.push(entry);
+            const expanded = root.groupExpanded(c, catPages);
+            items.push({ type: "header", label: cat.label, groupIndex: c,
+                pageIndices: catPages, expanded: expanded,
+                containsCurrent: catPages.includes(root.currentPage) });
+            if (expanded) {
+                for (var j = 0; j < catPages.length; j++) {
+                    var entry = Object.assign({}, pages[catPages[j]]);
+                    entry.type = "page";
+                    entry.realIndex = catPages[j];
+                    items.push(entry);
+                }
             }
         }
         return items;
@@ -1016,7 +1035,7 @@ ApplicationWindow {
                                 // ── Category header ──
                                 Item {
                                     width: parent.width
-                                    height: visible ? (navItem.index > 0 ? 32 : 20) : 0
+                                    height: visible ? 36 : 0
                                     visible: navItem.modelData.type === "header"
 
                                     Behavior on height {
@@ -1045,6 +1064,21 @@ ApplicationWindow {
                                             animation: ColorAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve }
                                         }
                                     }
+                                        MaterialSymbol {
+                                            anchors.right: parent.right
+                                            anchors.rightMargin: 12
+                                            anchors.verticalCenter: parent.verticalCenter
+                                            text: navItem.modelData.expanded ? "expand_less" : "expand_more"
+                                            iconSize: 17
+                                            color: navItem.headerAccentColor
+                                        }
+
+                                        MouseArea {
+                                            anchors.fill: parent
+                                            cursorShape: Qt.PointingHandCursor
+                                            onClicked: root.toggleNavGroup(
+                                                navItem.modelData.groupIndex, navItem.modelData.pageIndices)
+                                        }
                                 }
 
                                 // ── Nav button ──

@@ -7,20 +7,22 @@ ROOT = Path(__file__).resolve().parents[1]
 todo = (ROOT / "modules" / "dashboard" / "DashTodo.qml").read_text(encoding="utf-8")
 
 for token in (
+    "import QtQuick.Shapes",
     "readonly property bool narrowLayout:",
     "readonly property bool shallowLayout:",
     "readonly property bool veryShallowLayout:",
     "id: tabShell",
     "readonly property real innerHeight:",
-    "readonly property real innerRadius:",
-    "readonly property real seamOverlap:",
-    "readonly property real tabSurfaceWidth:",
-    "id: leftTabSurface",
-    "id: rightTabSurface",
-    "x: tabShell.halfWidth - tabShell.seamOverlap / 2",
-    "radius: tabShell.innerRadius",
-    "z: root.currentTab === 0 ? 2 : 1",
-    "z: root.currentTab === 1 ? 2 : 1",
+    "readonly property real cornerRadius: innerHeight / 2",
+    "id: inactiveLeftShape",
+    "id: inactiveRightShape",
+    "id: activeTabPill",
+    "PathArc.Counterclockwise",
+    "PathArc.Clockwise",
+    "radiusX: tabShell.cornerRadius",
+    "radiusY: tabShell.cornerRadius",
+    "x: tabShell.halfWidth - tabShell.cornerRadius",
+    "radius: tabShell.cornerRadius",
     "id: leftTabHover",
     "id: rightTabHover",
     'Translation.tr("Unfinished")',
@@ -37,15 +39,18 @@ for token in (
 ):
     assert token in todo, f"Dashboard Todo adaptive UI contract lost: {token}"
 
-# The two tab surfaces must remain ordinary rounded rectangles. The center seam
-# comes only from a small overlap plus z-order: active pill above inactive pill.
-assert "import QtQuick.Shapes" not in todo
-assert "Shape {" not in todo
-assert "PathQuad {" not in todo
-assert "id: activeTabPill" not in todo
-assert "inactiveRightShape" not in todo
-assert "inactiveLeftShape" not in todo
-assert todo.count("radius: tabShell.innerRadius") >= 2
+# The inactive contact edge must be a true inward semicircle whose radius is
+# exactly the same as the ordinary outer pill radius. The active pill uses that
+# same R, so the two silhouettes are complementary rather than approximate.
+assert todo.count("id: inactiveLeftShape") == 1
+assert todo.count("id: inactiveRightShape") == 1
+assert todo.count("id: activeTabPill") == 1
+assert todo.count("radiusX: tabShell.cornerRadius") >= 6
+assert todo.count("radiusY: tabShell.cornerRadius") >= 6
+assert "seamOverlap" not in todo
+assert "tabSurfaceWidth" not in todo
+assert "id: leftTabSurface" not in todo
+assert "id: rightTabSurface" not in todo
 assert "implicitHeight: root.tabControlHeight" in todo
 assert "Layout.minimumHeight: root.veryShallowLayout" in todo
 assert todo.count("Layout.preferredWidth: root.actionButtonSize") >= 4
@@ -53,6 +58,5 @@ assert "id: setupRow" not in todo
 assert "id: editRow" not in todo
 assert "id: addRow" not in todo
 assert "tabShell.notch" not in todo
-assert "tabShell.seamRadius" not in todo
 
 print("Dashboard Todo adaptive layout contract: PASS")

@@ -280,9 +280,9 @@ Item {
     readonly property rect shadowPaintBounds:
         root.clipExternalOwners(root.rawShadowBounds, 0)
 
-    // Do not modify IrisField.frag / its locked QSB: this mask is another
-    // viewport of the exact production union, not an independently drawn
-    // approximation of the body or the inverse join.
+    // Reuse the exact field instance/type that paints the production union.
+    // This changes neither IrisField.frag nor its compiled QSB, and avoids
+    // inventing a second body/fillet geometry for elevation.
     ConnectedSurfaceIrisField {
         id: shadowMaskField
         z: -101

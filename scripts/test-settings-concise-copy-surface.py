@@ -17,19 +17,35 @@ assert "Settings copy stays terse." in README
 assert "only a few words or one short clause" in README
 assert "paragraph-length explanation" in README
 
+# Keep the combined page concise without throwing away explanatory help:
+# operational labels remain visible and longer guidance lives in tooltips.
 for token in (
+    'title: Translation.tr("To-do & Quick Notes")',
+    'title: Translation.tr("To-do")',
+    'title: Translation.tr("Quick Notes")',
+    'Translation.tr("Vault path")',
+    'Translation.tr("Note path pattern")',
+    'Translation.tr("Heading")',
+    'Translation.tr("Zettelkasten folder")',
+    'Translation.tr("Default Zettelkasten type")',
+    'Translation.tr("Shared by To-do and Zettelkasten.")',
+    'Translation.tr("Activate verified source.")',
+):
+    assert token in SERVICES, f"combined Settings label/help lost: {token}"
+
+for removed_copy in (
     'Translation.tr("One Markdown file and heading.")',
     'Translation.tr("Obsidian vault root.")',
     'Translation.tr("Fixed or date-based Markdown path.")',
     'Translation.tr("Checkboxes under this heading only.")',
     'Translation.tr("Direct Markdown sync.")',
-    'Translation.tr("Activate verified source.")',
     'Translation.tr("Capture to Zettelkasten; keep the draft.")',
     'Translation.tr("Blank = reuse Todo vault.")',
     'Translation.tr("Vault-relative capture folder.")',
     'Translation.tr("Uses the vault Zettelkasten template.")',
+    'Translation.tr("Vault path override")',
 ):
-    assert token in SERVICES, f"concise Settings copy lost: {token}"
+    assert removed_copy not in SERVICES, f"redundant Settings copy returned: {removed_copy}"
 
 for stale in (
     "Use one Markdown note source. The path may be fixed or contain date tokens",

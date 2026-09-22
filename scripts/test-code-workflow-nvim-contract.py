@@ -7,6 +7,7 @@ SERVICE = ROOT / "services" / "CodeWorkflowNvim.qml"
 BRIDGE = ROOT / "scripts" / "code-workflow-nvim-bridge.py"
 SERVICES_QMLDIR = ROOT / "services" / "qmldir"
 SETTINGS_QMLDIR = ROOT / "modules" / "settings" / "qmldir"
+NVIM_VIEW = ROOT / "modules" / "settings" / "CodeWorkflowNvimView.qml"
 
 def fail(message):
     print("FAIL:", message)
@@ -16,6 +17,7 @@ service = SERVICE.read_text(encoding="utf-8")
 bridge = BRIDGE.read_text(encoding="utf-8")
 services_qmldir = SERVICES_QMLDIR.read_text(encoding="utf-8")
 settings_qmldir = SETTINGS_QMLDIR.read_text(encoding="utf-8")
+nvim_view = NVIM_VIEW.read_text(encoding="utf-8")
 
 for token in (
     "pragma Singleton",
@@ -40,6 +42,11 @@ for token in (
     "property var cursorStyle: ({})",
     "property var lastDirtyRows: []",
     "property bool fullRepaintRequested: true",
+    "property int frameCount: 0",
+    "property int nonEmptyCellCount: 0",
+    'property string lastRpcError: ""',
+    "root.frameCount += 1",
+    "root.nonEmptyCellCount = nonEmptyCells",
     "const dirtyRowIndexes = []",
     "root.lastDirtyRows = dirtyRowIndexes",
     "const nextCursorStyle =",
@@ -94,6 +101,18 @@ if "CodeWorkflowNvimView 1.0 CodeWorkflowNvimView.qml" not in settings_qmldir:
 
 if "pynvim" in bridge or "import msgpack" in bridge:
     fail("Neovim bridge must remain dependency-free")
+
+for token in (
+    "property bool redrawWatchdogExpired: false",
+    'return "Neovim UI attached, but no redraw frame arrived"',
+    'return "Neovim UI attached, but the rendered grid is empty"',
+    "CodeWorkflowNvim.frameCount",
+    "CodeWorkflowNvim.nonEmptyCellCount",
+    "CodeWorkflowNvim.lastRpcError",
+    "id: redrawWatchdog",
+):
+    if token not in nvim_view:
+        fail("CodeWorkflowNvimView diagnostics missing " + token)
 
 print("ok - Code Workflow Neovim service/bridge contract")
 

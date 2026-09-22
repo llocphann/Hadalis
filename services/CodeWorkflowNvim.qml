@@ -25,6 +25,10 @@ Singleton {
     property var cursorStyle: ({})
     property bool mouseEnabled: false
     property int revision: 0
+    property int frameCount: 0
+    property int nonEmptyCellCount: 0
+    property double lastFrameAtMs: 0
+    property string lastRpcError: ""
     property var lastDirtyRows: []
     property bool fullRepaintRequested: true
     property var gridRows: []
@@ -99,6 +103,18 @@ Singleton {
             root.cursorStyle = nextCursorStyle
         root.mouseEnabled = frame?.mouseEnabled === true
         root.gridRows = nextRows
+
+        let nonEmptyCells = 0
+        for (const rowCells of nextRows) {
+            for (const cell of (rowCells ?? [])) {
+                const cellText = String(cell?.[0] ?? "")
+                if (cellText.trim().length > 0)
+                    nonEmptyCells++
+            }
+        }
+        root.frameCount += 1
+        root.nonEmptyCellCount = nonEmptyCells
+        root.lastFrameAtMs = Date.now()
         root.lastDirtyRows = dirtyRowIndexes
         root.fullRepaintRequested =
             nextCols !== previousCols
@@ -153,7 +169,8 @@ Singleton {
         if (type === "rpc-error" || type === "command-error") {
             if (String(message?.request ?? "") === "open")
                 root.pendingPath = ""
-            root.error = String(message?.error ?? type)
+            root.lastRpcError = String(message?.error ?? type)
+            root.error = root.lastRpcError
             return
         }
         if (type === "stderr") {
@@ -196,6 +213,10 @@ Singleton {
         root.cursorVisible = true
         root.cursorStyle = ({})
         root.mouseEnabled = false
+        root.frameCount = 0
+        root.nonEmptyCellCount = 0
+        root.lastFrameAtMs = 0
+        root.lastRpcError = ""
         root.gridRows = root._blankGrid(safeRows)
         root.highlights = ({})
         root.defaultColors = ({

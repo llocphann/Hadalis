@@ -25,6 +25,24 @@ Item {
         Math.max(2, Math.floor(width / Math.max(1, root.cellWidth)))
     readonly property int requestedRows:
         Math.max(2, Math.floor(height / Math.max(1, root.cellHeight)))
+    property bool redrawWatchdogExpired: false
+    readonly property string redrawDiagnosticText: {
+        if (!root.redrawWatchdogExpired || !CodeWorkflowNvim.ready)
+            return ""
+        if (CodeWorkflowNvim.frameCount === 0)
+            return "Neovim UI attached, but no redraw frame arrived"
+        if (CodeWorkflowNvim.nonEmptyCellCount === 0)
+            return "Neovim UI attached, but the rendered grid is empty"
+        return ""
+    }
+    readonly property string redrawDiagnosticSummary:
+        "state=" + CodeWorkflowNvim.state
+        + " · path=" + String(CodeWorkflowNvim.path ?? "")
+        + " · grid=" + CodeWorkflowNvim.cols + "×" + CodeWorkflowNvim.rows
+        + " · frames=" + CodeWorkflowNvim.frameCount
+        + " · non-empty=" + CodeWorkflowNvim.nonEmptyCellCount
+        + (CodeWorkflowNvim.lastRpcError.length > 0
+            ? " · rpc=" + CodeWorkflowNvim.lastRpcError : "")
 
     function rgbColor(value, fallback): var {
         const numeric = Number(value ?? -1)
@@ -361,6 +379,16 @@ Item {
     }
 
     Timer {
+        id: redrawWatchdog
+        interval: 1200
+        repeat: false
+        onTriggered: {
+            root.redrawWatchdogExpired = true
+            editorCanvas.requestPaint()
+        }
+    }
+
+    Timer {
         id: cursorBlinkTimer
         repeat: false
         onTriggered: {
@@ -407,13 +435,22 @@ Item {
 
         function onRevisionChanged(): void {
             root.markFrameDirty()
+            if (CodeWorkflowNvim.nonEmptyCellCount > 0) {
+                redrawWatchdog.stop()
+                root.redrawWatchdogExpired = false
+            }
         }
 
         function onStateChanged(): void {
             root.resetCursorBlink()
             editorCanvas.requestPaint()
-            if (root.active && CodeWorkflowNvim.ready)
+            root.redrawWatchdogExpired = false
+            if (root.active && CodeWorkflowNvim.ready) {
+                redrawWatchdog.restart()
                 Qt.callLater(() => nvimImeProxy.forceActiveFocus())
+            } else {
+                redrawWatchdog.stop()
+            }
         }
 
         function onCursorRowChanged(): void {
@@ -729,7 +766,8 @@ Item {
                 anchors.right: parent.right
                 anchors.margins: 8
                 visible: CodeWorkflowNvim.ready
-                    && CodeWorkflowNvim.error.length > 0
+                    && (CodeWorkflowNvim.error.length > 0
+                        || root.redrawDiagnosticText.length > 0)
                 z: 6
                 width: Math.min(
                     Math.max(220, readyErrorText.implicitWidth + 24),
@@ -744,11 +782,17 @@ Item {
                     id: readyErrorText
                     anchors.centerIn: parent
                     width: parent.width - 16
-                    text: CodeWorkflowNvim.error
+                    text: CodeWorkflowNvim.error.length > 0
+                        ? CodeWorkflowNvim.error
+                        : root.redrawDiagnosticText
                     color: Appearance.colors.colOnErrorContainer
                     font.pixelSize: Appearance.font.pixelSize.smallest
                     elide: Text.ElideRight
                     maximumLineCount: 1
+                }
+
+                StyledToolTip {
+                    text: root.redrawDiagnosticSummary
                 }
             }
 

@@ -918,12 +918,13 @@ Item {
                             model: root.navigationItems
 
                             delegate: ColumnLayout {
+                                id: navEntry
                                 required property var modelData
                                 Layout.fillWidth: true
                                 spacing: 0
 
                                 Item {
-                                    readonly property bool isHeader: modelData.type === "header"
+                                    readonly property bool isHeader: navEntry.modelData.type === "header"
                                     visible: isHeader
                                     Layout.fillWidth: true
                                     Layout.preferredHeight: isHeader
@@ -935,7 +936,7 @@ Item {
                                         anchors.leftMargin: Looks.dp(12)
                                         anchors.bottom: parent.bottom
                                         anchors.bottomMargin: Looks.dp(5)
-                                        text: modelData.label ?? ""
+                                        text: navEntry.modelData.label ?? ""
                                         font.pixelSize: Looks.font.pixelSize.small
                                         font.weight: Looks.font.weight.strong
                                         color: Looks.colors.subfg
@@ -954,16 +955,16 @@ Item {
                                 }
 
                                 WSettingsNavItem {
-                                    readonly property bool isPage: modelData.type === "page"
+                                    readonly property bool isPage: navEntry.modelData.type === "page"
                                     visible: isPage
                                     Layout.fillWidth: true
                                     Layout.preferredHeight: isPage ? implicitHeight : 0
-                                    text: modelData.name ?? ""
-                                    navIcon: modelData.icon ?? ""
-                                    selected: isPage && root.currentPage === modelData.pageIndex
+                                    text: navEntry.modelData.name ?? ""
+                                    navIcon: navEntry.modelData.icon ?? ""
+                                    selected: isPage && root.currentPage === navEntry.modelData.pageIndex
                                     expanded: root.navExpanded
 
-                                    onClicked: if (isPage) root.currentPage = modelData.pageIndex
+                                    onClicked: if (isPage) root.currentPage = navEntry.modelData.pageIndex
                                 }
                             }
                         }

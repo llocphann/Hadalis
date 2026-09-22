@@ -88,6 +88,8 @@ Item {
     }
     readonly property var descriptor:
         CodeWorkflowRuntime.descriptor(CodeWorkflowSession.selectedTargetId)
+            ?? CodeWorkflowRuntime.activeCatalog.find(
+                item => item?.internal !== true)
             ?? CodeWorkflowRuntime.activeCatalog[0]
             ?? null
     readonly property var record: root.recordFor(CodeWorkflowSession.selectedTargetId)
@@ -151,6 +153,9 @@ Item {
         }
 
         for (const target of CodeWorkflowRuntime.activeCatalog) {
+            const revealInternal = root.inspectShowInternals || query.length > 0
+            if (target?.internal === true && !revealInternal)
+                continue
             const rowRecord = root.recordFor(target.targetId)
             append(runtimeItems, {
                 category: "runtime",
@@ -176,6 +181,7 @@ Item {
                     return "unloaded · source"
                 },
                 icon: target.icon,
+                internal: target?.internal === true,
                 depth: Math.min(5, Math.max(
                     0, Number(target.depth ?? 0)))
             })

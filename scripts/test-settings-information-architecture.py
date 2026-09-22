@@ -47,7 +47,9 @@ def main() -> None:
 
     require(arrangement, "layoutSchemaVersion: 8", "navigation migration")
     require(arrangement, "const untouchedStock =", "navigation migration")
-    require(arrangement, "SettingsPageRegistry.defaultCategories.map(", "navigation migration")
+    require(arrangement, "const defaults = SettingsPageRegistry.defaultCategories", "navigation migration")
+    require(arrangement, "sourceVersion < 8 && untouchedStock", "legacy customized navigation migration")
+    require(arrangement, "grouped[owner.get(page)].pages.push(page)", "legacy relative order")
     require(arrangement, "root.save({ groups: migratedGroups, hidden: migratedHidden })",
             "custom navigation preservation")
     for token in ("function pageIndexForKey(", "function navigateToKey(",

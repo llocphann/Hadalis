@@ -275,15 +275,10 @@ Scope {
         }
 
         var terms = q.split(/\s+/).filter(t => t.length > 0);
-        var isWaffle = Config.options?.panelFamily === "waffle";
-        var wafflePage = SettingsPageRegistry.pages.findIndex(
-            p => String(p.component || "").indexOf("WaffleConfig.qml") >= 0);
         var results = [];
 
         function allowed(pageIndex) {
-            if (pageIndex < 0 || pageIndex >= root.pages.length)
-                return false;
-            if (wafflePage >= 0 && pageIndex === wafflePage && !isWaffle)
+            if (!SettingsPageRegistry.isPageApplicable(pageIndex))
                 return false;
             if (root.easyMode && root.pages[pageIndex].essential !== true)
                 return false;

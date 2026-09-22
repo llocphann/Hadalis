@@ -107,7 +107,7 @@ Item {
     // Lock both rows to baselines derived from the configured UI font. Emoji,
     // Nerd Font symbols and other fallback glyphs may report taller bounds, but
     // they can no longer move either row or change the gap between them.
-    readonly property real rowOverlap: root.showTitle ? 2 : 0
+    readonly property real rowOverlap: root.showTitle ? 2 * Appearance.sizes.barModuleScale : 0
     readonly property real textBlockHeight: root.showTitle
         ? appNameMetrics.height + titleMetrics.height - root.rowOverlap
         : appNameMetrics.height
@@ -134,7 +134,7 @@ Item {
         y: root.appNameBaseline - baselineOffset
         maximumLineCount: 1
         wrapMode: Text.NoWrap
-        font.pixelSize: Appearance.font.pixelSize.smaller
+        font.pixelSize: Math.round(Appearance.font.pixelSize.smaller * Appearance.sizes.barModuleScale)
         color: root.appNameColor
         elide: Text.ElideRight
         text: root.displayAppName
@@ -147,7 +147,7 @@ Item {
         visible: root.showTitle
         maximumLineCount: 1
         wrapMode: Text.NoWrap
-        font.pixelSize: Appearance.font.pixelSize.small
+        font.pixelSize: Math.round(Appearance.font.pixelSize.small * Appearance.sizes.barModuleScale)
         color: root.titleColor
         elide: Text.ElideRight
         text: root.stableDisplayTitle

@@ -12,6 +12,8 @@ MouseArea {
     id: root
     required property SystemTrayItem item
     property var trayParent: null  // Reference to SysTray for closing other menus
+    // The overflow popup shares this component, but keeps its own native size.
+    property real sizeScale: Appearance.sizes.barModuleScale
     property bool targetMenuOpen: false
     property bool keyboardMenuMode: false
 
@@ -22,8 +24,8 @@ MouseArea {
     cursorShape: Qt.PointingHandCursor
     acceptedButtons: Qt.LeftButton | Qt.MiddleButton | Qt.RightButton
     activeFocusOnTab: true
-    implicitWidth: 18 * Appearance.sizes.barModuleScale
-    implicitHeight: 18 * Appearance.sizes.barModuleScale
+    implicitWidth: 18 * root.sizeScale
+    implicitHeight: 18 * root.sizeScale
 
     Accessible.role: Accessible.Button
     Accessible.name: root.item?.tooltipTitle || root.item?.title || Translation.tr("System tray item")

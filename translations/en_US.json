@@ -3735,6 +3735,7 @@
   "Background fill opacity. Widgets stay fully opaque.": "Background fill opacity. Widgets stay fully opaque.",
   "Bar appearance": "Bar appearance",
   "Bar height (px)": "Bar height (px)",
+  "Bar width (px)": "Bar width (px)",
   "Bar opacity (%)": "Bar opacity (%)",
   "Bar surface style: classic, islands, scenic or frame": "Bar surface style: classic, islands, scenic or frame",
   "Bar, dock, and media controls": "Bar, dock, and media controls",

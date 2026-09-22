@@ -12,6 +12,7 @@ Singleton {
     // the temporary static catalog below; it deliberately records lifecycle
     // truth without forcing LazyLoader.item while asynchronous loading is active.
     property var declarations: ({})
+    property var staleDescriptors: ({})
     property int declarationSerial: 0
     property var remoteSnapshot: null
     property string remoteError: ""
@@ -94,16 +95,58 @@ Singleton {
         return token
     }
 
+    function _rememberStale(
+        descriptor, token: string, instanceId: string = "",
+        outputName: string = ""
+    ): void {
+        if (!descriptor || String(descriptor.targetId ?? "").length === 0)
+            return
+        const staleToken = String(token ?? "")
+        const key = staleToken.length > 0
+            ? staleToken : String(descriptor.targetId)
+        const next = Object.assign({}, root.staleDescriptors)
+        next[key] = Object.assign({}, descriptor, {
+            state: "stale",
+            lifecycle: "stale/unloading",
+            stateRank: 2,
+            staleToken: staleToken,
+            staleInstanceId: String(instanceId ?? ""),
+            staleOutput: String(outputName ?? ""),
+            expiresAtMs: Date.now() + 1500
+        })
+        root.staleDescriptors = next
+        root.revision++
+    }
+
+    function _pruneStale(): void {
+        const now = Date.now()
+        const next = Object.assign({}, root.staleDescriptors)
+        let changed = false
+        for (const key of Object.keys(next)) {
+            if (Number(next[key]?.expiresAtMs ?? 0) > now)
+                continue
+            delete next[key]
+            changed = true
+        }
+        if (!changed)
+            return
+        root.staleDescriptors = next
+        root.revision++
+    }
+
     function unregisterDeclaration(
         token: string, registration
     ): void {
         if (String(token ?? "").length === 0
                 || root.declarations[token] !== registration)
             return
-        const targetId = String(registration?.targetId ?? "")
+        const descriptor = registration?.descriptorSnapshot?.() ?? null
+        const targetId = String(descriptor?.targetId
+            ?? registration?.targetId ?? "")
         const next = Object.assign({}, root.declarations)
         delete next[token]
         root.declarations = next
+        root._rememberStale(descriptor, token)
         root._event("declaration-stale", targetId, token)
     }
 
@@ -131,6 +174,19 @@ Singleton {
             const registration = root.entries[key]
             const descriptor = registration?.descriptorSnapshot?.() ?? null
             if (!descriptor || String(descriptor.targetId ?? "").length === 0)
+                continue
+            const current = byTarget[descriptor.targetId]
+            const nextRank = Number(descriptor.stateRank ?? 0)
+            const currentRank = Number(current?.stateRank ?? -1)
+            if (!current || nextRank > currentRank)
+                byTarget[descriptor.targetId] = descriptor
+        }
+        const now = Date.now()
+        for (const key of Object.keys(root.staleDescriptors)) {
+            const descriptor = root.staleDescriptors[key]
+            if (!descriptor
+                    || Number(descriptor.expiresAtMs ?? 0) <= now
+                    || String(descriptor.targetId ?? "").length === 0)
                 continue
             const current = byTarget[descriptor.targetId]
             const nextRank = Number(descriptor.stateRank ?? 0)
@@ -203,9 +259,12 @@ Singleton {
     function detach(instanceId: string, registration, token: string): void {
         if (root.entries[instanceId] !== registration)
             return
+        const descriptor = registration?.descriptorSnapshot?.() ?? null
+        const outputName = String(registration?.outputName ?? "")
         const next = Object.assign({}, root.entries)
         delete next[instanceId]
         root.entries = next
+        root._rememberStale(descriptor, token, instanceId, outputName)
         root._event("stale/unloading", instanceId, token)
     }
 
@@ -256,6 +315,27 @@ Singleton {
             })
         }
 
+        const now = Date.now()
+        for (const key of Object.keys(root.staleDescriptors)) {
+            const descriptor = root.staleDescriptors[key]
+            if (!descriptor || Number(descriptor.expiresAtMs ?? 0) <= now)
+                continue
+            records.push({
+                targetId: descriptor.targetId,
+                instanceId: String(descriptor.staleInstanceId ?? ""),
+                output: String(descriptor.staleOutput ?? ""),
+                sourcePath: descriptor.sourcePath,
+                depth: Number(descriptor.depth ?? 0),
+                configured: descriptor.configured !== false,
+                presented: false,
+                state: "stale",
+                lifecycle: "stale/unloading",
+                runtimeToken: descriptor.staleToken ?? null,
+                rect: null,
+                values: null
+            })
+        }
+
         return {
             epoch: root.epoch,
             outputs: outputs,
@@ -269,6 +349,14 @@ Singleton {
         if (!root.hasLocalDeclarations && root.remoteSnapshot !== null)
             return root.remoteSnapshot
         return root.localSnapshot()
+    }
+
+    Timer {
+        id: stalePruneTimer
+        interval: 500
+        repeat: true
+        running: Object.keys(root.staleDescriptors).length > 0
+        onTriggered: root._pruneStale()
     }
 
     Process {

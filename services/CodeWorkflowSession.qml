@@ -140,7 +140,7 @@ Singleton {
         root.inspectorPaneCollapsed =
             state.codeWorkflowInspectorPaneCollapsed === true
         root.sourcePreviewHeight = Math.max(120, Math.min(
-            420, Number(state.codeWorkflowSourcePreviewHeight ?? 190)))
+            720, Number(state.codeWorkflowSourcePreviewHeight ?? 190)))
         root._restoring = false
         root._ready = true
     }

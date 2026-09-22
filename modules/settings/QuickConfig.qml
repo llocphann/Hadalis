@@ -39,7 +39,6 @@ ContentPage {
         onSelected: value => root.activeSection = value
         options: [
             { displayName: Translation.tr("Wallpaper"), icon: "format_paint", value: "wallpaper" },
-            { displayName: Translation.tr("Bar & screen"), icon: "screenshot_monitor", value: "screen" },
             { displayName: Translation.tr("Game mode"), icon: "sports_esports", value: "game" },
             { displayName: Translation.tr("Capture"), icon: "photo_camera", value: "capture" },
             { displayName: Translation.tr("Actions"), icon: "bolt", value: "actions" }
@@ -1580,127 +1579,9 @@ ContentPage {
         }
     }
 
-    SettingsCardSection {
-        settingsTaskSection: "screen"
-        visible: root.activeSection === "screen"
-        expanded: true
-        icon: "screenshot_monitor"
-        title: Translation.tr("Bar & screen")
-
-        SettingsGroup {
-            ConfigRow {
-                ContentSubsection {
-                    title: Translation.tr("Bar position")
-                    ConfigSelectionArray {
-                        currentValue: ((Config.options?.bar?.bottom ?? false) ? 1 : 0) | ((Config.options?.bar?.vertical ?? false) ? 2 : 0)
-                        onSelected: newValue => {
-                            Config.setNestedValue("bar.bottom", (newValue & 1) !== 0)
-                            Config.setNestedValue("bar.vertical", (newValue & 2) !== 0)
-                        }
-                        options: [
-                            {
-                                displayName: Translation.tr("Top"),
-                                icon: "arrow_upward",
-                                value: 0 // bottom: false, vertical: false
-                            },
-                            {
-                                displayName: Translation.tr("Left"),
-                                icon: "arrow_back",
-                                value: 2 // bottom: false, vertical: true
-                            },
-                            {
-                                displayName: Translation.tr("Bottom"),
-                                icon: "arrow_downward",
-                                value: 1 // bottom: true, vertical: false
-                            },
-                            {
-                                displayName: Translation.tr("Right"),
-                                icon: "arrow_forward",
-                                value: 3 // bottom: true, vertical: true
-                            }
-                        ]
-                    }
-                }
-                ContentSubsection {
-                    title: Translation.tr("Bar style")
-
-                    ConfigSelectionArray {
-                        currentValue: Config.options?.bar?.cornerStyle ?? 0
-                        onSelected: newValue => {
-                            // HUG mode (0) is incompatible with Angel style — revert to Float
-                            if (newValue === 0 && Appearance.angelEverywhere) {
-                                Config.setNestedValue("bar.cornerStyle", 1);
-                                return;
-                            }
-                            Config.setNestedValue("bar.cornerStyle", newValue);
-                        }
-                        options: [
-                            {
-                                displayName: Translation.tr("Hug"),
-                                icon: "line_curve",
-                                previewKind: "hug",
-                                value: 0
-                            },
-                            {
-                                displayName: Translation.tr("Float"),
-                                icon: "page_header",
-                                previewKind: "float",
-                                value: 1
-                            },
-                            {
-                                displayName: Translation.tr("Rect"),
-                                icon: "toolbar",
-                                previewKind: "rect",
-                                value: 2
-                            },
-                            {
-                                displayName: Translation.tr("Card"),
-                                icon: "branding_watermark",
-                                previewKind: "card",
-                                value: 3
-                            }
-                        ]
-                    }
-                }
-            }
-
-            ConfigRow {
-                ContentSubsection {
-                    title: Translation.tr("Wallpaper mode")
-
-                    ConfigSelectionArray {
-                        currentValue: Config.options?.background?.backdrop?.hideWallpaper ? 1 : 0
-                        onSelected: newValue => {
-                            Config.setNestedValue("background.backdrop.hideWallpaper", newValue === 1);
-                        }
-                        options: [
-                            {
-                                displayName: Translation.tr("Normal"),
-                                icon: "image",
-                                value: 0
-                            },
-                            {
-                                displayName: Translation.tr("Backdrop only"),
-                                icon: "blur_on",
-                                value: 1
-                            }
-                        ]
-                    }
-
-                    SettingsSwitch {
-                        visible: Config.options?.background?.backdrop?.hideWallpaper ?? false
-                        buttonIcon: "fit_screen"
-                        text: Translation.tr("Show entire backdrop")
-                        checked: (Config.options?.background?.backdrop?.fillMode ?? "fill") === "fit"
-                        onCheckedChanged: Config.setNestedValue("background.backdrop.fillMode", checked ? "fit" : "fill")
-                        StyledToolTip {
-                            text: Translation.tr("Fit the full backdrop inside the screen instead of cropping it. Bars may appear when the image aspect ratio differs from the display.")
-                        }
-                    }
-                }
-            }
-        }
-    }
+    // Bar position and wallpaper/backdrop appearance have one owner each:
+    // Bar -> Appearance and Wallpaper -> Screens/Effects. Quick only provides
+    // fast interactions; it must not recreate those configuration forms.
 
     SettingsCardSection {
         settingsTaskSection: "game"

@@ -17,7 +17,7 @@ ContentPage {
     function activateSettingsSearchSection(section: string): bool {
         const parts = String(section ?? "").toLowerCase().split(/[·›]/)
         const label = parts[parts.length - 1].trim()
-        if (label.includes("todo") || label.includes("obsidian")
+        if (label.includes("todo") || label.includes("to-do") || label.includes("obsidian")
                 || label.includes("zettelkasten") || label.includes("quick note")
                 || label.includes("calendar") || label === "data") {
             root.activeSection = "data"
@@ -1111,11 +1111,12 @@ ContentPage {
         visible: root.activeSection === "data"
         expanded: true
         icon: "checklist"
-        title: Translation.tr("Todo & Obsidian")
+        title: Translation.tr("To-do & Quick Notes")
 
         SettingsGroup {
             ContentSubsection {
-                title: Translation.tr("Canonical task store")
+                title: Translation.tr("To-do")
+                tooltip: Translation.tr("Choose the task store; your Hadalis backup is preserved.")
 
                 RowLayout {
                     Layout.fillWidth: true
@@ -1140,15 +1141,6 @@ ContentPage {
                             font.weight: Font.DemiBold
                         }
 
-                        StyledText {
-                            Layout.fillWidth: true
-                            text: Todo.backend === "obsidian"
-                                ? Translation.tr("Hadalis backup preserved.")
-                                : Translation.tr("Setup keeps Hadalis active.")
-                            color: Appearance.colors.colOnSurfaceVariant
-                            font.pixelSize: Appearance.font.pixelSize.small
-                            wrapMode: Text.WordWrap
-                        }
                     }
 
                     RippleButton {
@@ -1236,24 +1228,12 @@ ContentPage {
             }
 
             ContentSubsection {
-                title: Translation.tr("Obsidian Markdown task source")
+                title: Translation.tr("Task source")
+                tooltip: Todo.useLegacyManagedNote
+                    ? Translation.tr("Legacy managed-note mode.")
+                    : Translation.tr("Tasks are read from one Markdown file and heading.")
 
-                StyledText {
-                    Layout.fillWidth: true
-                    text: Translation.tr("One Markdown file and heading.")
-                    color: Appearance.colors.colOnSurfaceVariant
-                    font.pixelSize: Appearance.font.pixelSize.small
-                    wrapMode: Text.WordWrap
-                }
 
-                StyledText {
-                    Layout.fillWidth: true
-                    visible: Todo.useLegacyManagedNote
-                    text: Translation.tr("Legacy source compatibility mode.")
-                    color: Appearance.colors.colOnSurfaceVariant
-                    font.pixelSize: Appearance.font.pixelSize.small
-                    wrapMode: Text.WordWrap
-                }
             }
 
             ColumnLayout {
@@ -1272,7 +1252,7 @@ ContentPage {
                     placeholderText: ""
                     font.pixelSize: Appearance.font.pixelSize.small
                     color: Appearance.colors.colOnSurface
-                    text: String(Config.options?.todo?.obsidian?.vaultPath ?? "")
+                    text: Todo.sharedVaultPath
                     background: Rectangle {
                         color: Appearance.colors.colLayer1
                         radius: Appearance.rounding.small
@@ -1283,18 +1263,23 @@ ContentPage {
                     }
                     onEditingFinished: {
                         const value = text.trim()
-                        if (value !== String(Config.options?.todo?.obsidian?.vaultPath ?? ""))
+                        const canonical = String(Config.options?.todo?.obsidian?.vaultPath ?? "").trim()
+                        const legacy = String(Config.options?.notes?.zettelkasten?.vaultPath ?? "").trim()
+                        // Clear the old override so clearing the shared field
+                        // never resurrects a separate Quick Notes vault.
+                        if (value.length === 0 && legacy.length > 0)
+                            Config.setNestedValue("notes.zettelkasten.vaultPath", "")
+                        if (value !== canonical)
                             Config.setNestedValue("todo.obsidian.vaultPath", value)
+                        if (value.length > 0 && legacy.length > 0)
+                            Config.setNestedValue("notes.zettelkasten.vaultPath", "")
+                    }
+
+                    StyledToolTip {
+                        text: Translation.tr("Shared by To-do and Zettelkasten.")
                     }
                 }
 
-                StyledText {
-                    Layout.fillWidth: true
-                    text: Translation.tr("Obsidian vault root.")
-                    color: Appearance.colors.colOnSurfaceVariant
-                    font.pixelSize: Appearance.font.pixelSize.small
-                    wrapMode: Text.WordWrap
-                }
             }
 
             ColumnLayout {
@@ -1348,13 +1333,6 @@ ContentPage {
                     }
                 }
 
-                StyledText {
-                    Layout.fillWidth: true
-                    text: Translation.tr("Fixed or date-based Markdown path.")
-                    color: Appearance.colors.colOnSurfaceVariant
-                    font.pixelSize: Appearance.font.pixelSize.small
-                    wrapMode: Text.WordWrap
-                }
             }
 
             ColumnLayout {
@@ -1421,13 +1399,6 @@ ContentPage {
                     }
                 }
 
-                StyledText {
-                    Layout.fillWidth: true
-                    text: Translation.tr("Checkboxes under this heading only.")
-                    color: Appearance.colors.colOnSurfaceVariant
-                    font.pixelSize: Appearance.font.pixelSize.small
-                    wrapMode: Text.WordWrap
-                }
             }
 
             Rectangle {
@@ -1485,16 +1456,6 @@ ContentPage {
                         }
                     }
 
-                    StyledText {
-                        Layout.fillWidth: true
-                        visible: Todo.backend === "obsidian" || Todo.obsidianSetupActive
-                        text: Todo.useLegacyManagedNote
-                            ? Translation.tr("Legacy managed-marker compatibility mode")
-                            : Translation.tr("Filesystem CAS · plugin independent · shared Markdown")
-                        color: Appearance.colors.colOnSurfaceVariant
-                        font.pixelSize: Appearance.font.pixelSize.small
-                        wrapMode: Text.WordWrap
-                    }
                 }
             }
 
@@ -1783,81 +1744,12 @@ ContentPage {
                 }
             }
 
-            StyledText {
-                Layout.fillWidth: true
-                visible: Todo.backend === "obsidian" || Todo.obsidianSetupActive
-                text: Todo.useLegacyManagedNote
-                    ? Translation.tr("Legacy compatibility mode.")
-                    : Translation.tr("Direct Markdown sync.")
-                color: Appearance.colors.colOnSurfaceVariant
-                font.pixelSize: Appearance.font.pixelSize.small
-                wrapMode: Text.WordWrap
-            }
         }
-    }
-
-    SettingsCardSection {
-        settingsTaskSection: "data"
-        visible: root.activeSection === "data"
-        expanded: true
-        icon: "note_stack"
-        title: Translation.tr("Quick Notes & Zettelkasten")
 
         SettingsGroup {
             ContentSubsection {
-                title: Translation.tr("Canonical quick-note target")
-
-                StyledText {
-                    Layout.fillWidth: true
-                    text: Translation.tr("Capture to Zettelkasten; keep the draft.")
-                    color: Appearance.colors.colOnSurfaceVariant
-                    font.pixelSize: Appearance.font.pixelSize.small
-                    wrapMode: Text.WordWrap
-                }
-            }
-
-            ColumnLayout {
-                Layout.fillWidth: true
-                spacing: 6
-
-                StyledText {
-                    text: Translation.tr("Vault path override")
-                    color: Appearance.colors.colOnSurfaceVariant
-                    font.pixelSize: Appearance.font.pixelSize.small
-                }
-
-                MaterialTextField {
-                    id: zettelkastenVaultPath
-                    Layout.fillWidth: true
-                    placeholderText: ""
-                    font.pixelSize: Appearance.font.pixelSize.small
-                    color: Appearance.colors.colOnSurface
-                    placeholderTextColor: Appearance.colors.colSubtext
-                    text: String(Config.options?.notes?.zettelkasten?.vaultPath ?? "")
-                    background: Rectangle {
-                        color: Appearance.colors.colLayer1
-                        radius: Appearance.rounding.small
-                        border.width: zettelkastenVaultPath.activeFocus ? 2 : 1
-                        border.color: zettelkastenVaultPath.activeFocus
-                            ? Appearance.colors.colPrimary
-                            : Appearance.colors.colLayer0Border
-                    }
-                    onEditingFinished: {
-                        const value = text.trim()
-                        if (value !== String(Config.options?.notes?.zettelkasten?.vaultPath ?? ""))
-                            Config.setNestedValue("notes.zettelkasten.vaultPath", value)
-                    }
-                }
-
-                StyledText {
-                    Layout.fillWidth: true
-                    text: String(Config.options?.notes?.zettelkasten?.vaultPath ?? "").trim().length > 0
-                        ? Translation.tr("Using dedicated vault.")
-                        : Translation.tr("Blank = reuse Todo vault.")
-                    color: Appearance.colors.colOnSurfaceVariant
-                    font.pixelSize: Appearance.font.pixelSize.small
-                    wrapMode: Text.WordWrap
-                }
+                title: Translation.tr("Quick Notes")
+                tooltip: Translation.tr("Capture to Zettelkasten without clearing the Notepad draft.")
             }
 
             ColumnLayout {
@@ -1897,13 +1789,6 @@ ContentPage {
                     }
                 }
 
-                StyledText {
-                    Layout.fillWidth: true
-                    text: Translation.tr("Vault-relative capture folder.")
-                    color: Appearance.colors.colOnSurfaceVariant
-                    font.pixelSize: Appearance.font.pixelSize.small
-                    wrapMode: Text.WordWrap
-                }
             }
 
             ContentSubsection {
@@ -1933,13 +1818,6 @@ ContentPage {
                     ]
                 }
 
-                StyledText {
-                    Layout.fillWidth: true
-                    text: Translation.tr("Uses the vault Zettelkasten template.")
-                    color: Appearance.colors.colOnSurfaceVariant
-                    font.pixelSize: Appearance.font.pixelSize.small
-                    wrapMode: Text.WordWrap
-                }
             }
 
             Rectangle {
@@ -1965,10 +1843,8 @@ ContentPage {
                     StyledText {
                         Layout.fillWidth: true
                         text: Zettelkasten.ready
-                            ? Translation.tr("Target: %1/%2")
-                                .arg(Zettelkasten.configuredVaultPath)
-                                .arg(Zettelkasten.folder)
-                            : Translation.tr("Set a vault path.")
+                            ? Translation.tr("Capture folder: %1").arg(Zettelkasten.folder)
+                            : Translation.tr("Set the shared vault path above.")
                         color: Zettelkasten.ready
                             ? Appearance.colors.colOnLayer1
                             : Appearance.colors.colError

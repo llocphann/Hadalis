@@ -22,7 +22,7 @@ for token in (
     'Todo.openSource("")',
     'Todo.backend === "obsidian"',
     "Todo.sourceLabel",
-    'Todo.obsidianSourceMode === "daily-note"',
+    "Todo.useMarkdownNote",
     "Todo.addTaskWithTime(text, start, end)",
     'Translation.tr("Start time")',
     'Translation.tr("End time")',

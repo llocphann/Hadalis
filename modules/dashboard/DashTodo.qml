@@ -594,9 +594,9 @@ DashCard {
                         const text = todoInput.text.trim()
                         if (text.length === 0 || Todo.busy)
                             return
-                        const start = Todo.obsidianSourceMode === "daily-note"
+                        const start = Todo.useMarkdownNote
                             ? todoStartTime.text.trim() : ""
-                        const end = Todo.obsidianSourceMode === "daily-note"
+                        const end = Todo.useMarkdownNote
                             ? todoEndTime.text.trim() : ""
                         if (Todo.addTaskWithTime(text, start, end)) {
                             todoInput.text = ""
@@ -621,7 +621,7 @@ DashCard {
                     Layout.fillWidth: true
                     spacing: 8
                     visible: Todo.backend === "obsidian"
-                        && Todo.obsidianSourceMode === "daily-note"
+                        && Todo.useMarkdownNote
 
                     ColumnLayout {
                         Layout.fillWidth: true

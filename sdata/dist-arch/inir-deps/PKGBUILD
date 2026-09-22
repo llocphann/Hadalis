@@ -137,6 +137,13 @@ depends=(
   tlp-rdw
   ethtool
 
+  #--- Desktop input method ---
+  fcitx5
+  fcitx5-qt
+  fcitx5-gtk
+  fcitx5-unikey
+  fcitx5-configtool
+
   #--- Input / HW ---
   upower
   wtype

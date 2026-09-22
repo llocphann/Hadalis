@@ -52,7 +52,7 @@ for token in (
     "if (root.nodeAtWorld(worldX, worldY))",
     "const tolerance = 8 / zoom",
     "for (const edge of root.edges)",
-    "CodeWorkflowSession.selectEdge(edgeId)",
+    "CodeWorkflowSession.selectUnifiedEdge(edge)",
     "CodeWorkflowSession.selectedEdgeId === modelData.id",
 ):
     if token not in canvas:

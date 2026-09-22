@@ -97,6 +97,8 @@ require(tap_block, 'root.setMode("normal")',
         "pointer click must enter Normal/view mode")
 require(tap_block, "editor.cursorPosition = root.clampPosition(position)",
         "pointer click must place the Normal-mode cursor")
+require(tap_block, "editor.forceActiveFocus()",
+        "pointer click must visibly focus the modal caret even in read-only mode")
 if "root.enterInsertAt(position)" in tap_block:
     fail("pointer click must not enter Insert mode")
 

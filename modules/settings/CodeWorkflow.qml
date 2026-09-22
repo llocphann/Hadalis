@@ -1881,32 +1881,6 @@ Item {
                     }
                 }
                 RippleButtonWithIcon {
-                    id: targetsToolbarToggle
-                    implicitWidth: 32
-                    horizontalPadding: 5
-                    materialIcon: CodeWorkflowSession.targetsPaneCollapsed
-                        ? "left_panel_open" : "left_panel_close"
-                    buttonText: CodeWorkflowSession.targetsPaneCollapsed
-                        ? "Show Targets" : "Hide Targets"
-                    mainText: ""
-                    onClicked: CodeWorkflowSession.setTargetsPaneCollapsed(
-                        !CodeWorkflowSession.targetsPaneCollapsed)
-                    StyledToolTip { text: targetsToolbarToggle.buttonText }
-                }
-                RippleButtonWithIcon {
-                    id: inspectorToolbarToggle
-                    implicitWidth: 32
-                    horizontalPadding: 5
-                    materialIcon: CodeWorkflowSession.inspectorPaneCollapsed
-                        ? "right_panel_open" : "right_panel_close"
-                    buttonText: CodeWorkflowSession.inspectorPaneCollapsed
-                        ? "Show Inspector" : "Hide Inspector"
-                    mainText: ""
-                    onClicked: CodeWorkflowSession.setInspectorPaneCollapsed(
-                        !CodeWorkflowSession.inspectorPaneCollapsed)
-                    StyledToolTip { text: inspectorToolbarToggle.buttonText }
-                }
-                RippleButtonWithIcon {
                     materialIcon: "code"
                     buttonText: CodeWorkflowSession.sourcePreviewVisible
                         ? "Hide source preview" : "Show source preview"

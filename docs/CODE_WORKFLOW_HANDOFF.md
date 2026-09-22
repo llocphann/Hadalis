@@ -1,9 +1,38 @@
-# Code Workflow Phase 0 — completed investigation and online handoff
+# Code Workflow — production continuation and archived Phase 0 evidence
 
-Updated 2026-09-20. The maintainer explicitly requested **Phase 0 A–E and its
-complete evidence**, not the production editor. Refetch current `dev` before
-audit and every write, read AGENTS.md, work directly on `dev`, preserve concurrent
-work, commit atomic milestones, never mutate `stable`. This handoff is requested.
+Updated 2026-09-22. The current production work is described first. Sections
+dated 2026-09-20/21 below preserve historical milestones and their evidence;
+their earlier viewport limits and Phase 0-only scope are **not** current design
+instructions. Refetch `dev` and file SHAs before each write, preserve concurrent
+module work, commit directly to `dev`, and never force-push or modify `stable`.
+
+## Current production state — 2026-09-22
+
+- Source Editor is a native QML modal editor, not an embedded Neovim instance.
+  Click places and focuses the caret in read-only NORMAL mode; `i/a/I/A/o/O`
+  enter INSERT, `v` enters VISUAL, and NORMAL/VISUAL draw a rectangular caret.
+  Native INSERT text editing and IME remain with TextEdit. Escape is intercepted
+  at the editor/Find surface rather than closing Settings.
+- Find/Replace, relative line numbers and guarded source Save are present.
+  Save snapshots the target path, CAS base hash and exact staged bytes before
+  asynchronous FileView/process work. A later keystroke or source selection
+  must not redirect the write or overwrite a newer draft. Save conflict must
+  remain visible and must never silently replace external changes.
+- The canvas composes all *discovered* runtime declarations, including unrelated
+  modules, with the four reviewed source-backed Bar graphs. Group boundaries
+  are presentation-only: only reviewed source edges are drawn. Each node/edge
+  retains its originating graph ID for Inspector selection; changing Inspector
+  scope does not discard the common canvas pan/zoom. Internal Settings pages
+  require Show internals. Undiscovered/uninstrumented modules are **not** a
+  fabricated catalog and should not be claimed to be present.
+- The first automatic Fit waits for reviewed IR and runtime inventory readiness.
+  A separate Qt `qmlformat` parse step now runs before static acceptance.
+  Parsing is not a substitute for QML type/property resolution, focus behavior,
+  actual Quickshell lifecycle or compositor input checks.
+- Code Workflow acceptance, CI, documentation, packaging and Nix results must
+  be reported for the **same final HEAD**. Documentation failures referencing
+  removed Iris paths and unrelated shell regressions are not evidence that
+  Code Workflow itself passed or failed. Do not conflate them.
 
 ## Production UI refinement continuation — 2026-09-21
 

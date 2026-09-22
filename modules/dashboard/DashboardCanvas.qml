@@ -10,7 +10,9 @@ import qs.modules.common.functions
 
 Item {
     id: root
-    clip: true
+    // The owning Dashboard surface clips to its rounded outer boundary.
+    // Clipping here would erase every card's outward shadow at canvas edges.
+    clip: false
 
     property bool editMode: false
     property bool presentationActive: true
@@ -1316,7 +1318,9 @@ Item {
     Item {
         id: canvas
         anchors.fill: parent
-        clip: true
+        // Per-card content remains clipped by cardViewport; elevation is a
+        // sibling outside that clip and needs to reach into shell padding.
+        clip: false
 
         DashboardEditGrid {
             anchors.fill: parent
@@ -1413,6 +1417,24 @@ Item {
                     NumberAnimation {
                         duration: Appearance.animation.elementMoveFast.duration
                     }
+                }
+
+                // Paint one elevation layer per visible module, outside
+                // cardViewport's content clip. Keep freeform geometry and hit
+                // regions untouched; the outer Dashboard clips final pixels.
+                StyledRectangularShadow {
+                    target: cardWrap
+                    z: -1
+                    radius: Appearance.rounding.small
+                    blur: Math.max(0, Math.min(16, Number(
+                        Config.options?.appearance?.screenEdge?.shadow?.size ?? 15)))
+                    spread: 0
+                    offset: Qt.vector2d(0, 1)
+                    color: Qt.alpha(Appearance.m3colors.m3shadow, Math.min(0.40,
+                        Number(Config.options?.appearance?.screenEdge?.shadow?.opacity ?? 0.70) * 0.5))
+                    visible: cardWrap.visible && Appearance.effectsEnabled
+                        && !Appearance.gameModeMinimal
+                        && (Config.options?.appearance?.screenEdge?.shadow?.enabled ?? true)
                 }
 
                 Item {

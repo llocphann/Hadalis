@@ -1742,6 +1742,17 @@ Item {
         }
     }
 
+    component WorkflowPaneToggle: RippleButtonWithIcon {
+        implicitWidth: 28
+        implicitHeight: 28
+        horizontalPadding: 4
+        mainText: ""
+        buttonRadius: Appearance.rounding.small
+        colBackground: "transparent"
+        colBackgroundHover: Appearance.colors.colLayer2
+        pressScaleEnabled: false
+    }
+
     ColumnLayout {
         anchors.fill: parent
         anchors.margins: 10
@@ -1870,6 +1881,30 @@ Item {
                     }
                 }
                 RippleButtonWithIcon {
+                    implicitWidth: 32
+                    horizontalPadding: 5
+                    materialIcon: CodeWorkflowSession.targetsPaneCollapsed
+                        ? "left_panel_open" : "left_panel_close"
+                    buttonText: CodeWorkflowSession.targetsPaneCollapsed
+                        ? "Show Targets" : "Hide Targets"
+                    mainText: ""
+                    onClicked: CodeWorkflowSession.setTargetsPaneCollapsed(
+                        !CodeWorkflowSession.targetsPaneCollapsed)
+                    StyledToolTip { text: buttonText }
+                }
+                RippleButtonWithIcon {
+                    implicitWidth: 32
+                    horizontalPadding: 5
+                    materialIcon: CodeWorkflowSession.inspectorPaneCollapsed
+                        ? "right_panel_open" : "right_panel_close"
+                    buttonText: CodeWorkflowSession.inspectorPaneCollapsed
+                        ? "Show Inspector" : "Hide Inspector"
+                    mainText: ""
+                    onClicked: CodeWorkflowSession.setInspectorPaneCollapsed(
+                        !CodeWorkflowSession.inspectorPaneCollapsed)
+                    StyledToolTip { text: buttonText }
+                }
+                RippleButtonWithIcon {
                     materialIcon: "code"
                     buttonText: CodeWorkflowSession.sourcePreviewVisible
                         ? "Hide source preview" : "Show source preview"
@@ -1910,32 +1945,25 @@ Item {
             Rectangle {
                 id: targetsPane
                 SplitView.preferredWidth: CodeWorkflowSession.targetsPaneCollapsed
-                    ? 42 : CodeWorkflowSession.targetsPaneWidth
+                    ? 36 : CodeWorkflowSession.targetsPaneWidth
                 SplitView.minimumWidth: CodeWorkflowSession.targetsPaneCollapsed
-                    ? 42 : 180
+                    ? 36 : 180
                 SplitView.maximumWidth: CodeWorkflowSession.targetsPaneCollapsed
-                    ? 42 : 420
+                    ? 36 : 420
                 radius: Appearance.rounding.normal
                 color: Appearance.colors.colLayer1
                 border.width: 1
                 border.color: Appearance.colors.colOutlineVariant
 
-                RippleButtonWithIcon {
+                WorkflowPaneToggle {
                     anchors.top: parent.top
-                    anchors.right: parent.right
-                    anchors.margins: 5
-                    z: 5
-                    materialIcon: CodeWorkflowSession.targetsPaneCollapsed
-                        ? "chevron_right" : "chevron_left"
-                    buttonText: CodeWorkflowSession.targetsPaneCollapsed
-                        ? "Expand Targets" : "Collapse Targets"
-                    mainText: ""
-                    onClicked: CodeWorkflowSession.setTargetsPaneCollapsed(
-                        !CodeWorkflowSession.targetsPaneCollapsed)
-                    StyledToolTip {
-                        text: CodeWorkflowSession.targetsPaneCollapsed
-                            ? "Expand Targets" : "Collapse Targets"
-                    }
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    anchors.topMargin: 5
+                    visible: CodeWorkflowSession.targetsPaneCollapsed
+                    materialIcon: "chevron_right"
+                    buttonText: "Show Targets"
+                    onClicked: CodeWorkflowSession.setTargetsPaneCollapsed(false)
+                    StyledToolTip { text: "Show Targets" }
                 }
 
                 ColumnLayout {
@@ -1944,12 +1972,28 @@ Item {
                     visible: !CodeWorkflowSession.targetsPaneCollapsed
                     spacing: 7
 
-                    StyledText {
-                        Layout.rightMargin: 30
-                        text: "Targets"
-                        color: Appearance.colors.colOnLayer1
-                        font.pixelSize: Appearance.font.pixelSize.normal
-                        font.weight: Font.DemiBold
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: 6
+
+                        MaterialSymbol {
+                            text: "target"
+                            iconSize: Appearance.font.pixelSize.normal
+                            color: Appearance.colors.colPrimary
+                        }
+                        StyledText {
+                            Layout.fillWidth: true
+                            text: "Targets"
+                            color: Appearance.colors.colOnLayer1
+                            font.pixelSize: Appearance.font.pixelSize.normal
+                            font.weight: Font.DemiBold
+                        }
+                        WorkflowPaneToggle {
+                            materialIcon: "chevron_left"
+                            buttonText: "Hide Targets"
+                            onClicked: CodeWorkflowSession.setTargetsPaneCollapsed(true)
+                            StyledToolTip { text: "Hide Targets" }
+                        }
                     }
                     StyledText {
                         Layout.fillWidth: true
@@ -2138,33 +2182,26 @@ Item {
             Rectangle {
                 id: inspectorPane
                 SplitView.preferredWidth: CodeWorkflowSession.inspectorPaneCollapsed
-                    ? 42 : CodeWorkflowSession.inspectorPaneWidth
+                    ? 36 : CodeWorkflowSession.inspectorPaneWidth
                 SplitView.minimumWidth: CodeWorkflowSession.inspectorPaneCollapsed
-                    ? 42 : 240
+                    ? 36 : 240
                 SplitView.maximumWidth: CodeWorkflowSession.inspectorPaneCollapsed
-                    ? 42 : 520
+                    ? 36 : 520
                 radius: Appearance.rounding.normal
                 color: Appearance.colors.colLayer1
                 border.width: 1
                 border.color: Appearance.colors.colOutlineVariant
                 clip: true
 
-                RippleButtonWithIcon {
+                WorkflowPaneToggle {
                     anchors.top: parent.top
-                    anchors.right: parent.right
-                    anchors.margins: 5
-                    z: 5
-                    materialIcon: CodeWorkflowSession.inspectorPaneCollapsed
-                        ? "chevron_left" : "chevron_right"
-                    buttonText: CodeWorkflowSession.inspectorPaneCollapsed
-                        ? "Expand Inspector" : "Collapse Inspector"
-                    mainText: ""
-                    onClicked: CodeWorkflowSession.setInspectorPaneCollapsed(
-                        !CodeWorkflowSession.inspectorPaneCollapsed)
-                    StyledToolTip {
-                        text: CodeWorkflowSession.inspectorPaneCollapsed
-                            ? "Expand Inspector" : "Collapse Inspector"
-                    }
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    anchors.topMargin: 5
+                    visible: CodeWorkflowSession.inspectorPaneCollapsed
+                    materialIcon: "chevron_left"
+                    buttonText: "Show Inspector"
+                    onClicked: CodeWorkflowSession.setInspectorPaneCollapsed(false)
+                    StyledToolTip { text: "Show Inspector" }
                 }
 
                 StyledFlickable {
@@ -2183,12 +2220,28 @@ Item {
                         width: Math.max(0, inspectorScroll.width - 18)
                         spacing: 8
 
-                    StyledText {
-                        Layout.rightMargin: 30
-                        text: "Inspector"
-                        color: Appearance.colors.colOnLayer1
-                        font.pixelSize: Appearance.font.pixelSize.normal
-                        font.weight: Font.DemiBold
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: 6
+
+                        MaterialSymbol {
+                            text: "manage_search"
+                            iconSize: Appearance.font.pixelSize.normal
+                            color: Appearance.colors.colPrimary
+                        }
+                        StyledText {
+                            Layout.fillWidth: true
+                            text: "Inspector"
+                            color: Appearance.colors.colOnLayer1
+                            font.pixelSize: Appearance.font.pixelSize.normal
+                            font.weight: Font.DemiBold
+                        }
+                        WorkflowPaneToggle {
+                            materialIcon: "chevron_right"
+                            buttonText: "Hide Inspector"
+                            onClicked: CodeWorkflowSession.setInspectorPaneCollapsed(true)
+                            StyledToolTip { text: "Hide Inspector" }
+                        }
                     }
                     StyledText {
                         Layout.fillWidth: true
@@ -3694,7 +3747,7 @@ Item {
                 id: sourcePane
                 SplitView.preferredHeight: CodeWorkflowSession.sourcePreviewHeight
                 SplitView.minimumHeight: 120
-                SplitView.maximumHeight: 420
+                SplitView.maximumHeight: 720
                 visible: CodeWorkflowSession.sourcePreviewVisible
             radius: Appearance.rounding.normal
             color: Appearance.colors.colLayer1

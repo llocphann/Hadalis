@@ -109,3 +109,4 @@ assert "_clearCapturedDraft" not in widget
 assert "_pendingZettelCapture" not in widget
 assert "Notepad.removeTab(index)" not in widget
 assert "draft clears after verified save" not in dash
+assert 'text: Translation.tr("Capture")' not in dash

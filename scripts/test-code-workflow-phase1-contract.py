@@ -31,6 +31,8 @@ canvas = read("modules/settings/CodeWorkflowIrCanvas.qml")
 runtime = read("services/CodeWorkflowRuntime.qml")
 runtime_declaration = read("services/CodeWorkflowRuntimeDeclaration.qml")
 target = read("services/CodeWorkflowRuntimeTarget.qml")
+ii_panels = read("modules/ii/ShellIiPanelsImpl.qml")
+ii_critical = read("modules/ii/critical/ShellIiCriticalPanels.qml")
 session = read("services/CodeWorkflowSession.qml")
 ripple_button = read("modules/common/widgets/RippleButton.qml")
 capture_script = read("scripts/capture-code-workflow-ui.sh")
@@ -74,6 +76,25 @@ for token in (
 ):
     require(runtime_declaration, token,
             "runtime loader declaration missing " + token)
+
+for token in (
+    "property CodeWorkflowRuntimeDeclaration workflowDeclaration:",
+    "configured: panelLoader.enabledPanel",
+    "configured: deferredPanelLoader.enabledPanel",
+    "presented: onDemandLoader.open",
+    'workflowSourcePath: "modules/notificationPopup/NotificationPopup.qml"',
+    'workflowSourcePath: "modules/ii/overlay/Overlay.qml"',
+    'workflowSourcePath: "modules/tilingOverlay/TilingOverlay.qml"',
+):
+    require(ii_panels, token, "ii runtime discovery instrumentation missing " + token)
+for token in (
+    "property CodeWorkflowRuntimeDeclaration workflowDeclaration:",
+    'panelId: "iiScreenEdges"',
+    'sourcePath: "modules/screenCorners/ScreenEdges.qml"',
+    "configured: criticalPanelLoader.enabledPanel",
+):
+    require(ii_critical, token,
+            "ii critical runtime discovery instrumentation missing " + token)
 
 for token in (
     'targetId: "bar"', 'targetId: "bar/media"',

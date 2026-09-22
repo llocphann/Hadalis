@@ -32,21 +32,43 @@ Item {
     id: panelsRoot
 
     component PanelLoader: LazyLoader {
+        id: panelLoader
         required property string identifier
         property bool extraCondition: true
+        property string workflowSourcePath: ""
         readonly property bool enabledPanel: Config.ready
             && (Config.options?.enabledPanels ?? []).includes(identifier)
             && extraCondition
         loading: enabledPanel
         activeAsync: enabledPanel
+        property CodeWorkflowRuntimeDeclaration workflowDeclaration:
+            CodeWorkflowRuntimeDeclaration {
+                loader: panelLoader
+                panelId: panelLoader.identifier
+                sourcePath: panelLoader.workflowSourcePath
+                configured: panelLoader.enabledPanel
+                presented: panelLoader.active
+            }
     }
 
     component DeferredPanelLoader: LazyLoader {
+        id: deferredPanelLoader
         required property string identifier
         property bool extraCondition: true
-        loading: Config.ready && GlobalStates.shellEntryReady
-            && (Config.options?.enabledPanels ?? []).includes(identifier) && extraCondition
-        activeAsync: Config.ready && GlobalStates.deferredPanelsReady && (Config.options?.enabledPanels ?? []).includes(identifier) && extraCondition
+        property string workflowSourcePath: ""
+        readonly property bool enabledPanel: Config.ready
+            && (Config.options?.enabledPanels ?? []).includes(identifier)
+            && extraCondition
+        loading: Config.ready && GlobalStates.shellEntryReady && enabledPanel
+        activeAsync: Config.ready && GlobalStates.deferredPanelsReady && enabledPanel
+        property CodeWorkflowRuntimeDeclaration workflowDeclaration:
+            CodeWorkflowRuntimeDeclaration {
+                loader: deferredPanelLoader
+                panelId: deferredPanelLoader.identifier
+                sourcePath: deferredPanelLoader.workflowSourcePath
+                configured: deferredPanelLoader.enabledPanel
+                presented: deferredPanelLoader.active
+            }
     }
 
     component OnDemandPanelLoader: LazyLoader {
@@ -69,6 +91,15 @@ Item {
         }
         readonly property bool enabledPanel: Config.ready
             && (Config.options?.enabledPanels ?? []).includes(identifier)
+        property string workflowSourcePath: ""
+        property CodeWorkflowRuntimeDeclaration workflowDeclaration:
+            CodeWorkflowRuntimeDeclaration {
+                loader: onDemandLoader
+                panelId: onDemandLoader.identifier
+                sourcePath: onDemandLoader.workflowSourcePath
+                configured: onDemandLoader.enabledPanel
+                presented: onDemandLoader.open
+            }
 
         onOpenChanged: {
             if (open) {
@@ -112,10 +143,10 @@ Item {
     }
 
     PanelLoader { identifier: "iiBackdrop"; extraCondition: Config.options?.background?.backdrop?.enable ?? false; source: "../background/Backdrop.qml" }
-    PanelLoader { identifier: "iiNotificationPopup"; component: NotificationPopup {} }
-    PanelLoader { identifier: "iiOnScreenDisplay"; component: OnScreenDisplay {} }
+    PanelLoader { identifier: "iiNotificationPopup"; workflowSourcePath: "modules/notificationPopup/NotificationPopup.qml"; component: NotificationPopup {} }
+    PanelLoader { identifier: "iiOnScreenDisplay"; workflowSourcePath: "modules/onScreenDisplay/OnScreenDisplay.qml"; component: OnScreenDisplay {} }
 
-    DeferredPanelLoader { identifier: "iiBootGreeting"; component: BootGreeting {} }
+    DeferredPanelLoader { identifier: "iiBootGreeting"; workflowSourcePath: "modules/bootGreeting/BootGreeting.qml"; component: BootGreeting {} }
     OnDemandPanelLoader { identifier: "iiCheatsheet"; open: GlobalStates.cheatsheetOpen; source: "../cheatsheet/Cheatsheet.qml" }
     OnDemandPanelLoader {
         identifier: "iiControlPanel"
@@ -129,20 +160,21 @@ Item {
         keepLoaded: Config.options?.dashboard?.keepLoaded ?? false
         source: "../dashboard/Dashboard.qml"
     }
-    DeferredPanelLoader { identifier: "iiLock"; component: Lock {} }
-    DeferredPanelLoader { identifier: "iiMediaControls"; component: MediaControls {} }
-    OnDemandPanelLoader { identifier: "iiOnScreenKeyboard"; open: GlobalStates.oskOpen; component: OnScreenKeyboard {} }
+    DeferredPanelLoader { identifier: "iiLock"; workflowSourcePath: "modules/lock/Lock.qml"; component: Lock {} }
+    DeferredPanelLoader { identifier: "iiMediaControls"; workflowSourcePath: "modules/mediaControls/MediaControls.qml"; component: MediaControls {} }
+    OnDemandPanelLoader { identifier: "iiOnScreenKeyboard"; open: GlobalStates.oskOpen; workflowSourcePath: "modules/onScreenKeyboard/OnScreenKeyboard.qml"; component: OnScreenKeyboard {} }
     OnDemandPanelLoader {
         identifier: "iiOverlay"
         open: GlobalStates.overlayOpen || OverlayContext.hasPinnedWidgets || OverlayContext.nativeDialogOpen
+        workflowSourcePath: "modules/ii/overlay/Overlay.qml"
         component: Overlay {}
     }
     OnDemandPanelLoader { identifier: "iiOverview"; open: GlobalStates.overviewOpen; retainAfterUse: true; closeGraceMs: 300; source: "../overview/Overview.qml" }
-    DeferredPanelLoader { identifier: "iiPolkit"; component: Polkit {} }
+    DeferredPanelLoader { identifier: "iiPolkit"; workflowSourcePath: "modules/polkit/Polkit.qml"; component: Polkit {} }
 
-    DeferredPanelLoader { identifier: "iiRegionSelector"; component: RegionSelector {} }
-    DeferredPanelLoader { identifier: "iiScreenCorners"; component: ScreenCorners {} }
-    OnDemandPanelLoader { identifier: "iiSessionScreen"; open: GlobalStates.sessionOpen; component: SessionScreen {} }
+    DeferredPanelLoader { identifier: "iiRegionSelector"; workflowSourcePath: "modules/regionSelector/RegionSelector.qml"; component: RegionSelector {} }
+    DeferredPanelLoader { identifier: "iiScreenCorners"; workflowSourcePath: "modules/screenCorners/ScreenCorners.qml"; component: ScreenCorners {} }
+    OnDemandPanelLoader { identifier: "iiSessionScreen"; open: GlobalStates.sessionOpen; workflowSourcePath: "modules/sessionScreen/SessionScreen.qml"; component: SessionScreen {} }
 
     Variants {
         model: panelsRoot.screensFor(Config.options?.sidebar?.screenList ?? [])
@@ -201,15 +233,16 @@ Item {
         identifier: "iiTilingOverlay"
         open: GlobalStates.tilingOverlayPickerOpen || GlobalStates.tilingOverlayOsdOpen
         closeGraceMs: 250
+        workflowSourcePath: "modules/tilingOverlay/TilingOverlay.qml"
         component: TilingOverlay {}
     }
 
-    OnDemandPanelLoader { identifier: "iiWallpaperSelector"; open: GlobalStates.wallpaperSelectorOpen; retainAfterUse: true; closeGraceMs: 250; component: WallpaperSelector {} }
-    OnDemandPanelLoader { identifier: "iiWallpaperLauncher"; open: GlobalStates.wallpaperLauncherOpen; retainAfterUse: true; closeGraceMs: 250; component: WallpaperLauncher {} }
-    OnDemandPanelLoader { identifier: "iiCoverflowSelector"; open: GlobalStates.coverflowSelectorOpen; retainAfterUse: true; closeGraceMs: 300; component: WallpaperCoverflow {} }
-    OnDemandPanelLoader { identifier: "iiClipboard"; open: GlobalStates.clipboardOpen; retainAfterUse: true; closeGraceMs: 250; component: ClipboardModule.ClipboardPanel {} }
-    OnDemandPanelLoader { identifier: "iiShellUpdate"; open: ShellUpdates.overlayOpen; closeGraceMs: 250; component: ShellUpdateOverlay {} }
-    OnDemandPanelLoader { identifier: "iiRecordingOsd"; open: RecorderStatus.isRecording; closeGraceMs: 250; component: RecordingOsd {} }
+    OnDemandPanelLoader { identifier: "iiWallpaperSelector"; open: GlobalStates.wallpaperSelectorOpen; retainAfterUse: true; closeGraceMs: 250; workflowSourcePath: "modules/wallpaperSelector/WallpaperSelector.qml"; component: WallpaperSelector {} }
+    OnDemandPanelLoader { identifier: "iiWallpaperLauncher"; open: GlobalStates.wallpaperLauncherOpen; retainAfterUse: true; closeGraceMs: 250; workflowSourcePath: "modules/wallpaperLauncher/WallpaperLauncher.qml"; component: WallpaperLauncher {} }
+    OnDemandPanelLoader { identifier: "iiCoverflowSelector"; open: GlobalStates.coverflowSelectorOpen; retainAfterUse: true; closeGraceMs: 300; workflowSourcePath: "modules/wallpaperSelector/WallpaperCoverflow.qml"; component: WallpaperCoverflow {} }
+    OnDemandPanelLoader { identifier: "iiClipboard"; open: GlobalStates.clipboardOpen; retainAfterUse: true; closeGraceMs: 250; workflowSourcePath: "modules/clipboard/ClipboardPanel.qml"; component: ClipboardModule.ClipboardPanel {} }
+    OnDemandPanelLoader { identifier: "iiShellUpdate"; open: ShellUpdates.overlayOpen; closeGraceMs: 250; workflowSourcePath: "modules/shellUpdate/ShellUpdateOverlay.qml"; component: ShellUpdateOverlay {} }
+    OnDemandPanelLoader { identifier: "iiRecordingOsd"; open: RecorderStatus.isRecording; closeGraceMs: 250; workflowSourcePath: "modules/recordingOsd/RecordingOsd.qml"; component: RecordingOsd {} }
 
     Loader {
         active: CompositorService.isHyprland

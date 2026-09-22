@@ -21,8 +21,24 @@ Item {
         renderType: Text.QtRendering
     }
 
+    property bool showInternals: false
     readonly property var graph:
-        CodeWorkflowIr.graphFor(CodeWorkflowSession.subflowTargetId)
+        CodeWorkflowIr.unifiedGraphFor(root.showInternals)
+    readonly property var groups: root.graph?.groups ?? []
+    property bool initialFitDone: false
+    function fitInitialGraph(): void {
+        if (root.initialFitDone || root.width <= 0 || root.height <= 0
+                || root.nodes.length === 0)
+            return
+        root.initialFitDone = true
+        Qt.callLater(root.fitGraph)
+    }
+    onWidthChanged: root.fitInitialGraph()
+    onHeightChanged: root.fitInitialGraph()
+    onGraphChanged: {
+        Qt.callLater(root.rebuildEdgeRouteCache)
+        root.fitInitialGraph()
+    }
     readonly property var nodes: root.graph?.nodes ?? []
     readonly property var edges: root.graph?.edges ?? []
 
@@ -55,7 +71,8 @@ Item {
             }
         }
         return CodeWorkflowSession.nodeLayoutOffset(
-            CodeWorkflowSession.subflowTargetId, nodeId)
+            String(node?.graphId ?? CodeWorkflowSession.subflowTargetId),
+            nodeId)
     }
 
     function nodeX(node): real {
@@ -76,6 +93,11 @@ Item {
             const size = axis === "x" ? root.nodeWidth : root.nodeHeight
             extent = Math.max(extent, position + size + 80)
         }
+        for (const group of root.groups)
+            extent = Math.max(extent,
+                Number(group[axis] ?? 0)
+                    + Number(axis === "x" ? group.width : group.height)
+                    + 40)
         return extent
     }
 
@@ -841,6 +863,16 @@ Item {
             maxY = Math.max(maxY, y + root.nodeHeight)
         }
 
+        // Section labels and backgrounds belong to the same fitted board.
+        for (const group of root.groups) {
+            minX = Math.min(minX, Number(group.x ?? 0))
+            minY = Math.min(minY, Number(group.y ?? 0))
+            maxX = Math.max(maxX,
+                Number(group.x ?? 0) + Number(group.width ?? 0))
+            maxY = Math.max(maxY,
+                Number(group.y ?? 0) + Number(group.height ?? 0))
+        }
+
         // Fit the same geometry that the renderer and hit-test use.
         for (const edge of root.edges) {
             const route = root.routeForEdge(edge)
@@ -1246,8 +1278,10 @@ Item {
         onTapped: (eventPoint, button) => {
             const edgeId = root.edgeAt(
                 eventPoint.position.x, eventPoint.position.y)
-            if (edgeId.length > 0)
-                CodeWorkflowSession.selectEdge(edgeId)
+            if (edgeId.length > 0) {
+                const edge = root.edges.find(item => item.id === edgeId)
+                CodeWorkflowSession.selectUnifiedEdge(edge)
+            }
         }
     }
 
@@ -1259,8 +1293,9 @@ Item {
             root.activeNodeDragId = ""
             root.activeNodeDragHandler = null
             root.dragEdgeRouteCache = ({})
-            Qt.callLater(root.rebuildEdgeRouteCache)
-            Qt.callLater(root.fitGraph)
+            // The inspected module changes; the shared canvas remains in
+            // place. Revealing selection never resets pan or zoom.
+            Qt.callLater(root.revealPrimarySelection)
         }
 
         function onGraphLayoutRevisionChanged(): void {
@@ -1315,7 +1350,10 @@ Item {
         onActiveTranslationChanged: updateViewport()
     }
 
-    Component.onCompleted: Qt.callLater(root.rebuildEdgeRouteCache)
+    Component.onCompleted: {
+        Qt.callLater(root.rebuildEdgeRouteCache)
+        root.fitInitialGraph()
+    }
 
     Rectangle {
         anchors.fill: parent
@@ -1371,6 +1409,33 @@ Item {
         y: CodeWorkflowSession.panY
         scale: CodeWorkflowSession.zoom
         transformOrigin: Item.TopLeft
+
+        // Source-reviewed groups and lifecycle declarations share the same
+        // transform, viewport, pan/zoom and node interaction surface.
+        Repeater {
+            model: root.groups
+            delegate: Rectangle {
+                required property var modelData
+                x: modelData.x
+                y: modelData.y
+                width: modelData.width
+                height: modelData.height
+                radius: Appearance.rounding.normal
+                color: "transparent"
+                border.width: 1
+                border.color: ColorUtils.applyAlpha(
+                    Appearance.colors.colOutlineVariant, 0.45)
+                z: -1
+                GraphText {
+                    x: 12
+                    y: 8
+                    text: modelData.title
+                    color: Appearance.colors.colSubtext
+                    font.pixelSize: Appearance.font.pixelSize.small
+                    font.weight: Font.DemiBold
+                }
+            }
+        }
 
         Repeater {
             model: root.edges
@@ -1662,7 +1727,7 @@ Item {
                     modelData.description ?? "Read-only workflow node"
                 Accessible.focusable: true
                 Accessible.onPressAction: {
-                    CodeWorkflowSession.selectNode(node.modelData.id)
+                    CodeWorkflowSession.selectUnifiedNode(node.modelData)
                 }
 
                 DragHandler {
@@ -1707,7 +1772,8 @@ Item {
                         if (!active) {
                             if (root.activeNodeDragHandler === nodeDrag) {
                                 const graphId =
-                                    CodeWorkflowSession.subflowTargetId
+                                    String(node.modelData.graphId
+                                        ?? CodeWorkflowSession.subflowTargetId)
                                 const nodeId = root.activeNodeDragId
                                 const finalOffsetX =
                                     root.activeNodeDragOffsetX
@@ -1727,7 +1793,8 @@ Item {
                         }
                         const nodeId = String(node.modelData.id ?? "")
                         const offset = CodeWorkflowSession.nodeLayoutOffset(
-                            CodeWorkflowSession.subflowTargetId, nodeId)
+                            String(node.modelData.graphId
+                                ?? CodeWorkflowSession.subflowTargetId), nodeId)
                         baseOffsetX = Number(offset?.x ?? 0)
                         baseOffsetY = Number(offset?.y ?? 0)
                         startSceneX = centroid.scenePosition.x
@@ -1743,7 +1810,7 @@ Item {
                         root.dragRoutesDirty = true
                         root.rebuildDragEdgeRouteCache()
                         root.hoveredEdgeLabelId = ""
-                        CodeWorkflowSession.selectNode(node.modelData.id)
+                        CodeWorkflowSession.selectUnifiedNode(node.modelData)
                         node.forceActiveFocus()
                     }
                     onCentroidChanged: {
@@ -1764,7 +1831,7 @@ Item {
                                 eventPoint.position.x,
                                 eventPoint.position.y))
                             return
-                        CodeWorkflowSession.selectNode(node.modelData.id)
+                        CodeWorkflowSession.selectUnifiedNode(node.modelData)
                         node.forceActiveFocus()
                     }
                 }
@@ -1777,7 +1844,7 @@ Item {
                         return
                     }
 
-                    CodeWorkflowSession.selectNode(node.modelData.id)
+                    CodeWorkflowSession.selectUnifiedNode(node.modelData)
                     event.accepted = true
                 }
 

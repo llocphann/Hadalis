@@ -17,17 +17,17 @@ Item { // Full hitbox
     Item { // Boundaries for date numbers
         id: content
         anchors.centerIn: parent
-        implicitWidth: 24
-        implicitHeight: 30
+        implicitWidth: 24 * Appearance.sizes.barModuleScale
+        implicitHeight: 30 * Appearance.sizes.barModuleScale
 
         Shape {
             id: diagonalLine
-            property real padding: 4
+            property real padding: 4 * Appearance.sizes.barModuleScale
             anchors.fill: parent
             preferredRendererType: Shape.CurveRenderer
 
             ShapePath {
-                strokeWidth: 1.2
+                strokeWidth: 1.2 * Appearance.sizes.barModuleScale
                 strokeColor: Appearance.colors.colSubtext
                 fillColor: "transparent"
                 startX: content.width - diagonalLine.padding
@@ -45,7 +45,7 @@ Item { // Full hitbox
                 top: parent.top
                 left: parent.left
             }
-            font.pixelSize: Appearance.font.pixelSize.smallie
+            font.pixelSize: Math.round(Appearance.font.pixelSize.smallie * Appearance.sizes.barModuleScale)
             color: Appearance.colors.colOnLayer1
             text: dayOfMonth
         }
@@ -56,7 +56,7 @@ Item { // Full hitbox
                 bottom: parent.bottom
                 right: parent.right
             }
-            font.pixelSize: Appearance.font.pixelSize.smallie
+            font.pixelSize: Math.round(Appearance.font.pixelSize.smallie * Appearance.sizes.barModuleScale)
             color: Appearance.colors.colOnLayer1
             text: monthOfYear
         }

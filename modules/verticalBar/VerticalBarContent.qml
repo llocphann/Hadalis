@@ -93,14 +93,14 @@ Item { // Bar content region
     readonly property bool rightSidebarButtonEnabled: root.moduleEnabled("rightSidebarButton", true)
 
     readonly property real edgeInset: Math.max(4, Appearance.rounding.screenRounding)
-    readonly property real moduleGap: Math.max(3, Math.round(4 * Appearance.fontSizeScale))
-    readonly property real zoneGapNominal: Math.max(root.moduleGap + 2, Math.round(8 * Appearance.fontSizeScale))
-    readonly property real zoneGapMinimum: Math.max(2, Math.round(4 * Appearance.fontSizeScale))
-    readonly property real pivotGapNominal: Math.max(root.moduleGap + 1, Math.round(6 * Appearance.fontSizeScale))
-    readonly property real pivotGapMinimum: Math.max(2, Math.round(3 * Appearance.fontSizeScale))
+    readonly property real moduleGap: Math.max(2, Math.round(4 * Appearance.fontSizeScale * Appearance.sizes.barModuleScale))
+    readonly property real zoneGapNominal: Math.max(root.moduleGap + 2, Math.round(8 * Appearance.fontSizeScale * Appearance.sizes.barModuleScale))
+    readonly property real zoneGapMinimum: Math.max(2, Math.round(4 * Appearance.fontSizeScale * Appearance.sizes.barModuleScale))
+    readonly property real pivotGapNominal: Math.max(root.moduleGap + 1, Math.round(6 * Appearance.fontSizeScale * Appearance.sizes.barModuleScale))
+    readonly property real pivotGapMinimum: Math.max(2, Math.round(3 * Appearance.fontSizeScale * Appearance.sizes.barModuleScale))
 
     readonly property real _spacerMinimumHeight: Math.max(0,
-        Config.options?.bar?.verticalLayout?.spacerHeight ?? 0) * Appearance.fontSizeScale
+        Config.options?.bar?.verticalLayout?.spacerHeight ?? 0) * Appearance.fontSizeScale * Appearance.sizes.barModuleScale
     readonly property string _spacerMode: Config.options?.bar?.verticalLayout?.spacerMode ?? "auto"
 
     function _verticalZone(name, fallback) {
@@ -230,7 +230,7 @@ Item { // Bar content region
         ColumnLayout {
             id: clockStack
             width: parent.width
-            spacing: 12
+            spacing: 12 * Appearance.sizes.barModuleScale
 
             VerticalClockWidget {
                 Layout.fillWidth: true
@@ -305,7 +305,7 @@ Item { // Bar content region
             }
             vertical: true
             bare: zoneRoot.edgeZone
-            padding: zoneRoot.edgeZone ? 0 : 6
+            padding: zoneRoot.edgeZone ? 0 : 6 * Appearance.sizes.barModuleScale
             moduleSpacing: root.moduleGap
             Repeater {
                 model: zoneRoot.ids
@@ -337,7 +337,7 @@ Item { // Bar content region
     Component {
         id: leftSidebarButtonComponent
         Bar.LeftSidebarButton {
-            implicitWidth: 34
+            implicitWidth: 34 * Appearance.sizes.barModuleScale
             colBackground: buttonHovered ? Appearance.colors.colLayer1Hover
                 : ColorUtils.transparentize(Appearance.colors.colLayer1Hover, 1)
         }
@@ -346,12 +346,12 @@ Item { // Bar content region
         id: activeWindowComponent
         Item {
             id: activeWindowCompact
-            implicitWidth: 34; implicitHeight: 34
+            implicitWidth: 34 * Appearance.sizes.barModuleScale; implicitHeight: 34 * Appearance.sizes.barModuleScale
             readonly property var activeWindow: ToplevelManager.activeToplevel
             SmartAppIcon {
                 anchors.centerIn: parent
                 icon: String(activeWindowCompact.activeWindow?.appId ?? "")
-                fallback: "window"; iconSize: 20
+                fallback: "window"; iconSize: Math.round(20 * Appearance.sizes.barModuleScale)
             }
             HoverHandler {}
             StyledToolTip {
@@ -400,8 +400,8 @@ Item { // Bar content region
         id: rightSidebarButtonComponent
         RippleButton {
             id: rightSidebarButton
-            implicitWidth: Math.max(34, indicatorsColumnLayout.implicitWidth + 12)
-            implicitHeight: Math.max(34, indicatorsColumnLayout.implicitHeight + 8)
+            implicitWidth: Math.max(34 * Appearance.sizes.barModuleScale, indicatorsColumnLayout.implicitWidth + 12 * Appearance.sizes.barModuleScale)
+            implicitHeight: Math.max(34 * Appearance.sizes.barModuleScale, indicatorsColumnLayout.implicitHeight + 8 * Appearance.sizes.barModuleScale)
             buttonRadius: Appearance.rounding.full
             colBackground: buttonHovered ? Appearance.colors.colLayer1Hover
                 : ColorUtils.transparentize(Appearance.colors.colLayer1Hover, 1)
@@ -417,17 +417,17 @@ Item { // Bar content region
             ColumnLayout {
                 id: indicatorsColumnLayout
                 anchors.centerIn: parent
-                property real realSpacing: 6
+                property real realSpacing: 6 * Appearance.sizes.barModuleScale
                 spacing: 0
                 Revealer {
                     vertical: true; reveal: Audio.sink?.audio?.muted ?? false; Layout.fillWidth: true
                     Layout.bottomMargin: reveal ? indicatorsColumnLayout.realSpacing : 0
-                    MaterialSymbol { text: "volume_off"; iconSize: Appearance.font.pixelSize.larger; color: rightSidebarButton.colText }
+                    MaterialSymbol { text: "volume_off"; iconSize: Math.round(Appearance.font.pixelSize.larger * Appearance.sizes.barModuleScale); color: rightSidebarButton.colText }
                 }
                 Revealer {
                     vertical: true; reveal: Audio.micMuted; Layout.fillWidth: true
                     Layout.bottomMargin: reveal ? indicatorsColumnLayout.realSpacing : 0
-                    MaterialSymbol { text: "mic_off"; iconSize: Appearance.font.pixelSize.larger; color: rightSidebarButton.colText }
+                    MaterialSymbol { text: "mic_off"; iconSize: Math.round(Appearance.font.pixelSize.larger * Appearance.sizes.barModuleScale); color: rightSidebarButton.colText }
                 }
                 Loader {
                     active: CompositorService.isHyprland
@@ -442,11 +442,11 @@ Item { // Bar content region
                 }
                 MaterialSymbol {
                     Layout.bottomMargin: indicatorsColumnLayout.realSpacing
-                    text: Network.materialSymbol; iconSize: Appearance.font.pixelSize.larger; color: rightSidebarButton.colText
+                    text: Network.materialSymbol; iconSize: Math.round(Appearance.font.pixelSize.larger * Appearance.sizes.barModuleScale); color: rightSidebarButton.colText
                 }
                 MaterialSymbol {
                     visible: BluetoothStatus.available
-                    text: BluetoothStatus.activeIcon; iconSize: Appearance.font.pixelSize.larger; color: rightSidebarButton.colText
+                    text: BluetoothStatus.activeIcon; iconSize: Math.round(Appearance.font.pixelSize.larger * Appearance.sizes.barModuleScale); color: rightSidebarButton.colText
                 }
             }
         }

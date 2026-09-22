@@ -40,7 +40,7 @@ MouseArea {
 
     ColumnLayout {
         id: columnLayout
-        spacing: 10
+        spacing: 10 * Appearance.sizes.barModuleScale
         anchors.fill: parent
 
         Resource {

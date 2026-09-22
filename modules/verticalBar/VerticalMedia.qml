@@ -52,7 +52,7 @@ MouseArea {
     ClippedFilledCircularProgress {
         id: mediaCircProg
         anchors.centerIn: parent
-        implicitSize: 20
+        implicitSize: Math.round(20 * Appearance.sizes.barModuleScale)
 
         lineWidth: Appearance.rounding.unsharpen
         value: activePlayer?.position / activePlayer?.length
@@ -68,7 +68,7 @@ MouseArea {
                 anchors.centerIn: parent
                 fill: 1
                 text: activePlayer?.isPlaying ? "pause" : "music_note"
-                iconSize: Appearance.font.pixelSize.normal
+                iconSize: Math.round(Appearance.font.pixelSize.normal * Appearance.sizes.barModuleScale)
                 color: Appearance.colors.colOnLayer0
             }
         }

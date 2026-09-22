@@ -342,7 +342,7 @@ Singleton {
             section: Translation.tr("Code Workflow"),
             label: Translation.tr("Workflow editor"),
             description: Translation.tr("Inspect, trace, and edit live QML components and source"),
-            keywords: ["workflow", "qml", "graph", "dataflow", "binding", "event", "lifecycle", "source", "inspect", "debug", "editor", "neovim", "nvim", "bar", "media", "clock", "resources"]
+            keywords: ["workflow", "qml", "graph", "dataflow", "binding", "event", "lifecycle", "source", "inspect", "debug", "editor", "modal", "hotfix", "bar", "media", "clock", "resources"]
         },
         {
             pageIndex: 28, pageName: root.pages[28].name,

@@ -2,6 +2,7 @@ pragma ComponentBehavior: Bound
 
 import QtQuick
 import Quickshell
+import Quickshell.Io
 import qs.services
 import qs.modules.common
 import qs.modules.common.widgets
@@ -11,6 +12,8 @@ Item {
 
     property string sourcePath: ""
     property bool active: false
+    property bool cursorBlinkVisible: true
+    property string cursorBlinkPhase: "steady"
     readonly property real cellWidth: Math.max(1, Math.ceil(cellMetrics.width))
     readonly property real cellHeight: Math.max(1, Math.ceil(fontMetrics.height))
     readonly property int requestedCols:
@@ -180,6 +183,44 @@ Item {
         }
     }
 
+    function requestClipboardPaste(): void {
+        if (!root.active || !CodeWorkflowNvim.ready
+                || clipboardPasteProcess.running)
+            return
+        clipboardPasteProcess.running = true
+    }
+
+    function resetCursorBlink(): void {
+        cursorBlinkTimer.stop()
+        root.cursorBlinkVisible = true
+        root.cursorBlinkPhase = "steady"
+
+        if (!root.active || !CodeWorkflowNvim.ready
+                || !CodeWorkflowNvim.cursorVisible) {
+            editorCanvas.requestPaint()
+            return
+        }
+
+        const style = CodeWorkflowNvim.cursorStyle ?? ({})
+        const blinkWait = Math.max(
+            0, Number(style.blinkwait ?? 0))
+        const blinkOn = Math.max(
+            0, Number(style.blinkon ?? 0))
+        const blinkOff = Math.max(
+            0, Number(style.blinkoff ?? 0))
+
+        if (blinkOn <= 0 || blinkOff <= 0) {
+            editorCanvas.requestPaint()
+            return
+        }
+
+        root.cursorBlinkPhase = blinkWait > 0 ? "wait" : "on"
+        cursorBlinkTimer.interval = Math.max(
+            1, blinkWait > 0 ? blinkWait : blinkOn)
+        cursorBlinkTimer.restart()
+        editorCanvas.requestPaint()
+    }
+
     function updateNvimSize(): void {
         if (!root.active || root.width <= 0 || root.height <= 0)
             return
@@ -238,6 +279,48 @@ Item {
         onTriggered: root.updateNvimSize()
     }
 
+    Timer {
+        id: cursorBlinkTimer
+        repeat: false
+        onTriggered: {
+            const style = CodeWorkflowNvim.cursorStyle ?? ({})
+            const blinkOn = Math.max(
+                1, Number(style.blinkon ?? 500))
+            const blinkOff = Math.max(
+                1, Number(style.blinkoff ?? 500))
+
+            if (root.cursorBlinkPhase === "wait") {
+                root.cursorBlinkVisible = false
+                root.cursorBlinkPhase = "off"
+                interval = blinkOff
+            } else if (root.cursorBlinkPhase === "off") {
+                root.cursorBlinkVisible = true
+                root.cursorBlinkPhase = "on"
+                interval = blinkOn
+            } else {
+                root.cursorBlinkVisible = false
+                root.cursorBlinkPhase = "off"
+                interval = blinkOff
+            }
+            editorCanvas.requestPaint()
+            restart()
+        }
+    }
+
+    Process {
+        id: clipboardPasteProcess
+        command: ["wl-paste", "-n"]
+        running: false
+        stdout: SplitParser {
+            splitMarker: ""
+            onRead: data => {
+                const text = String(data ?? "")
+                if (text.length > 0)
+                    CodeWorkflowNvim.paste(text)
+            }
+        }
+    }
+
     Connections {
         target: CodeWorkflowNvim
 
@@ -246,9 +329,30 @@ Item {
         }
 
         function onStateChanged(): void {
+            root.resetCursorBlink()
             editorCanvas.requestPaint()
             if (root.active && CodeWorkflowNvim.ready)
                 Qt.callLater(() => editorSurface.forceActiveFocus())
+        }
+
+        function onCursorRowChanged(): void {
+            root.resetCursorBlink()
+        }
+
+        function onCursorColChanged(): void {
+            root.resetCursorBlink()
+        }
+
+        function onModeChanged(): void {
+            root.resetCursorBlink()
+        }
+
+        function onCursorStyleChanged(): void {
+            root.resetCursorBlink()
+        }
+
+        function onCursorVisibleChanged(): void {
+            root.resetCursorBlink()
         }
     }
 
@@ -272,6 +376,20 @@ Item {
             Keys.onPressed: event => {
                 if (!root.active || !CodeWorkflowNvim.ready)
                     return
+
+                const ctrl =
+                    (event.modifiers & Qt.ControlModifier) !== 0
+                const shift =
+                    (event.modifiers & Qt.ShiftModifier) !== 0
+                const clipboardPaste =
+                    (ctrl && shift && event.key === Qt.Key_V)
+                    || (shift && event.key === Qt.Key_Insert)
+                if (clipboardPaste) {
+                    root.requestClipboardPaste()
+                    event.accepted = true
+                    return
+                }
+
                 const token = root.eventKeyToken(event)
                 if (token.length === 0)
                     return
@@ -425,6 +543,7 @@ Item {
 
                     if (CodeWorkflowNvim.ready
                             && CodeWorkflowNvim.cursorVisible
+                            && root.cursorBlinkVisible
                             && CodeWorkflowNvim.cursorRow >= 0
                             && CodeWorkflowNvim.cursorCol >= 0) {
                         const cursorX =

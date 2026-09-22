@@ -18,6 +18,16 @@ Singleton {
 
     readonly property string requestedBackend:
         String(Config.options?.todo?.backend ?? "internal")
+    // Shared vault for Todo and Zettelkasten. Older installations may have
+    // configured only the former Quick Notes override; reuse it when the
+    // canonical Todo vault is empty rather than losing their capture target.
+    // New edits write todo.obsidian.vaultPath and retire the legacy override.
+    readonly property string sharedVaultPath: {
+        const canonical = String(Config.options?.todo?.obsidian?.vaultPath ?? "").trim()
+        return canonical.length > 0
+            ? canonical
+            : String(Config.options?.notes?.zettelkasten?.vaultPath ?? "").trim()
+    }
     readonly property bool useObsidian: root.requestedBackend === "obsidian"
     readonly property string backend: root.useObsidian ? "obsidian" : "internal"
     readonly property string obsidianSourceMode:
@@ -84,7 +94,7 @@ Singleton {
     ObsidianTodoBackend {
         id: obsidian
         active: (root.useObsidian || root._obsidianSetupActive) && root.useLegacyManagedNote
-        vaultPath: String(Config.options?.todo?.obsidian?.vaultPath ?? "")
+        vaultPath: root.sharedVaultPath
         notePath: String(Config.options?.todo?.obsidian?.notePath ?? "Hadalis/Todo.md")
         preferTasksPlugin: Config.options?.todo?.obsidian?.preferTasksPlugin ?? true
         allowBasicOfflineMutation:
@@ -94,7 +104,7 @@ Singleton {
     DailyNoteTodoBackend {
         id: dailyObsidian
         active: (root.useObsidian || root._obsidianSetupActive) && root.useMarkdownNote
-        vaultPath: String(Config.options?.todo?.obsidian?.vaultPath ?? "")
+        vaultPath: root.sharedVaultPath
         folder: String(Config.options?.todo?.obsidian?.dailyNote?.folder
             ?? "00_Capture/01_Journal")
         noteFormat: String(Config.options?.todo?.obsidian?.dailyNote?.format

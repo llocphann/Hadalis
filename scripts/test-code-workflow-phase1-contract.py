@@ -605,12 +605,12 @@ for token in (
     require(session, token,
             "runtime-aware session restore contract missing " + token)
 for token in (
-    'buttonText: CodeWorkflowSession.targetsPaneCollapsed',
-    'buttonText: CodeWorkflowSession.inspectorPaneCollapsed',
     'visible: !CodeWorkflowSession.targetsPaneCollapsed',
     'visible: !CodeWorkflowSession.inspectorPaneCollapsed',
 ):
     require(page, token, "Code Workflow collapsible pane UI missing " + token)
+if "id: targetsToolbarToggle" in page or "id: inspectorToolbarToggle" in page:
+    fail("top workflow toolbar must not duplicate local pane collapse controls")
 
 for token in (
     "component WorkflowPaneToggle: RippleButtonWithIcon",
@@ -670,10 +670,31 @@ for token in (
     "cursorVisible: activeFocus",
     "cursorShape: Qt.IBeamCursor",
     "editor.positionAt(",
-    "root.enterInsertAt(position)",
+    "Keys.onShortcutOverride: event =>",
 ):
     require(source_editor, token,
-            "Source Editor pointer-edit contract missing " + token)
+            "Source Editor pointer/view contract missing " + token)
+tap_start = source_editor.index("TapHandler {")
+tap_end = source_editor.index("Keys.onShortcutOverride: event =>", tap_start)
+tap_block = source_editor[tap_start:tap_end]
+require(tap_block, 'root.setMode("normal")',
+        "Source Editor pointer click must stay in Normal/view mode")
+if "root.enterInsertAt(position)" in tap_block:
+    fail("Source Editor pointer click must not enter Insert mode")
+for token in (
+    "readonly property int currentLineNumber:",
+    "Math.abs(line - root.currentLineNumber)",
+    "function computeFindMatches()",
+    "function findNext(backward: bool, fromStart: bool): bool",
+    "function replaceCurrentFind(): bool",
+    "function replaceAllFind(): int",
+    "root.openFind(false)",
+    "root.openFind(true)",
+    "event.key === Qt.Key_Slash",
+    "event.key === Qt.Key_N",
+):
+    require(source_editor, token,
+            "Source Editor relative-line/find-replace contract missing " + token)
 require(page, "CodeWorkflowRuntime.activeCatalog[0]",
         "Code Workflow selection fallback must use the active shell inventory")
 require(page, 'category: "section"',
@@ -894,6 +915,15 @@ for token in (
     "property bool suppressUntilHoverExit: false",
     "readonly property bool parentPressedState:",
     "readonly property bool parentVisibleState:",
+    "readonly property bool parentKeyboardFocusState:",
+    "parent.visualFocus !== undefined",
+    "Qt.MouseFocusReason",
+    "property bool alternativeVisibleCondition: root.parentKeyboardFocusState",
+    "property int anchorRevision: 0",
+    "id: _anchorRefreshTimer",
+    "root.anchorRevision += 1",
+    "root.updateAnchor()",
+    "const revision = root.anchorRevision",
     "&& root.parentVisibleState",
     "&& !root.suppressUntilHoverExit",
     "onParentPressedStateChanged:",

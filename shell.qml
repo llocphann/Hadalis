@@ -450,6 +450,16 @@ ShellRoot {
         }
     }
 
+    // Code Workflow may run inside the shell overlay or in settings.qml as a
+    // separate process. Expose only plain JSON runtime evidence across that
+    // boundary; QObject references remain process-local.
+    IpcHandler {
+        target: "codeWorkflowRuntime"
+        function snapshot(): string {
+            return JSON.stringify(CodeWorkflowRuntime.localSnapshot())
+        }
+    }
+
     // IPC for settings - overlay mode or separate window based on config
     // Note: waffle family ALWAYS uses its own window (waffleSettings.qml), never the Material overlay
     IpcHandler {

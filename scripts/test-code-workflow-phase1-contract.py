@@ -28,6 +28,7 @@ persistent = read("modules/common/Persistent.qml")
 qmldir = read("services/qmldir")
 page = read("modules/settings/CodeWorkflow.qml")
 canvas = read("modules/settings/CodeWorkflowIrCanvas.qml")
+shell = read("shell.qml")
 runtime = read("services/CodeWorkflowRuntime.qml")
 runtime_declaration = read("services/CodeWorkflowRuntimeDeclaration.qml")
 target = read("services/CodeWorkflowRuntimeTarget.qml")
@@ -117,6 +118,23 @@ for token in (
 ):
     require(waffle_critical, token,
             "waffle critical runtime discovery instrumentation missing " + token)
+
+for token in (
+    "function localSnapshot(): var",
+    "function snapshot(): var",
+    "property var remoteSnapshot: null",
+    "readonly property bool hasLocalDeclarations:",
+    'Quickshell.shellPath("scripts/inir")',
+    '"ipc", "codeWorkflowRuntime", "snapshot"',
+    "id: remoteSnapshotProcess",
+    "id: remoteSnapshotErrorCollector",
+):
+    require(runtime, token, "runtime cross-process snapshot bridge missing " + token)
+for token in (
+    'target: "codeWorkflowRuntime"',
+    "return JSON.stringify(CodeWorkflowRuntime.localSnapshot())",
+):
+    require(shell, token, "shell runtime snapshot IPC missing " + token)
 
 for token in (
     'targetId: "bar"', 'targetId: "bar/media"',

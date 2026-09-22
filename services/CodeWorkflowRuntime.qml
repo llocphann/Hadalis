@@ -1,6 +1,7 @@
 pragma Singleton
 import QtQuick
 import Quickshell
+import Quickshell.Io
 import qs.modules.common
 
 Singleton {
@@ -12,6 +13,20 @@ Singleton {
     // truth without forcing LazyLoader.item while asynchronous loading is active.
     property var declarations: ({})
     property int declarationSerial: 0
+    property var remoteSnapshot: null
+    property string remoteError: ""
+    property double remoteUpdatedAtMs: 0
+    property bool remoteRefreshing: false
+    readonly property bool hasLocalDeclarations:
+        Object.keys(root.declarations).length > 0
+
+    function refreshRemoteSnapshot(): void {
+        if (root.hasLocalDeclarations || remoteSnapshotProcess.running)
+            return
+        root.remoteRefreshing = true
+        root.remoteError = ""
+        remoteSnapshotProcess.running = true
+    }
 
     function _kebabCase(value: string): string {
         return String(value ?? "")
@@ -231,7 +246,7 @@ Singleton {
         root._event("stale/unloading", instanceId, token)
     }
 
-    function snapshot(): var {
+    function localSnapshot(): var {
         const outputs = Quickshell.screens.map(screen => screen.name)
         const records = []
 
@@ -262,8 +277,81 @@ Singleton {
                 }
             }
         }
-        return { epoch: root.epoch, outputs: outputs, records: records, events: root.events }
+        return {
+            epoch: root.epoch,
+            outputs: outputs,
+            descriptors: root.discoveredCatalog,
+            records: records,
+            events: root.events
+        }
     }
+
+    function snapshot(): var {
+        if (!root.hasLocalDeclarations && root.remoteSnapshot !== null)
+            return root.remoteSnapshot
+        return root.localSnapshot()
+    }
+
+    Process {
+        id: remoteSnapshotProcess
+        running: false
+        command: [
+            Quickshell.shellPath("scripts/inir"),
+            "ipc", "codeWorkflowRuntime", "snapshot"
+        ]
+
+        stdout: StdioCollector {
+            onStreamFinished: {
+                const payload = String(text ?? "").trim()
+                if (payload.length === 0)
+                    return
+                try {
+                    const next = JSON.parse(payload)
+                    if (!Array.isArray(next?.records)
+                            || !Array.isArray(next?.descriptors))
+                        throw new Error("invalid runtime snapshot payload")
+                    root.remoteSnapshot = next
+                    root.remoteUpdatedAtMs = Date.now()
+                    root.remoteError = ""
+                    root.revision++
+                } catch (error) {
+                    root.remoteError =
+                        "Runtime snapshot decode failed: " + String(error)
+                }
+            }
+        }
+
+        stderr: StdioCollector {
+            id: remoteSnapshotErrorCollector
+        }
+
+        onExited: (exitCode, exitStatus) => {
+            root.remoteRefreshing = false
+            if (exitCode !== 0 && root.remoteError.length === 0) {
+                const detail = String(remoteSnapshotErrorCollector.text ?? "").trim()
+                root.remoteError = detail.length > 0
+                    ? detail : "Runtime snapshot IPC exited with " + exitCode
+            }
+        }
+    }
+
+    Timer {
+        interval: 1200
+        repeat: true
+        running: !root.hasLocalDeclarations
+        onTriggered: root.refreshRemoteSnapshot()
+    }
+
+    onHasLocalDeclarationsChanged: {
+        if (root.hasLocalDeclarations) {
+            root.remoteSnapshot = null
+            root.remoteError = ""
+        } else {
+            Qt.callLater(root.refreshRemoteSnapshot)
+        }
+    }
+
+    Component.onCompleted: Qt.callLater(root.refreshRemoteSnapshot)
 
     function hit(output: string, x: real, y: real): string {
         const candidates = root.snapshot().records.filter(record => {

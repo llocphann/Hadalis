@@ -8,6 +8,7 @@ import qs.services
 import qs.services.deferred
 import qs.modules.common
 import qs.modules.common.functions
+import "WindowPreviewPolicy.js" as PreviewPolicy
 
 /**
  * WindowPreviewService - Window preview caching for TaskView
@@ -15,7 +16,7 @@ import qs.modules.common.functions
  * Strategy:
  * - Capture previews ONLY when TaskView opens
  * - Cache in ~/.cache/inir/window-previews/
- * - Only capture windows that don't have a recent preview
+ * - Keep snapshots until window close/session reset; no arbitrary hover TTL
  * - Clean up on window close
  */
 Singleton {
@@ -29,7 +30,7 @@ Singleton {
     readonly property string sessionMarkerPath: previewDir + "/.niri-session"
     readonly property string sessionKey: NiriService.socketPath ?? ""
     
-    // Map of windowId -> { path, timestamp }
+    // Map of windowId -> { path, timestamp }; timestamp revises URLs on capture.
     property var previewCache: ({})
     
     property bool initialized: false
@@ -39,9 +40,6 @@ Singleton {
     property bool captureAllRequested: false
     property var requestedWindowIds: []
     
-    // Preview validity duration (5 minutes)
-    readonly property int previewValidityMs: 300000
-
     // Debounce: coalesce rapid capture requests (e.g. hovering across multiple dock icons)
     Timer {
         id: captureDebounceTimer
@@ -49,9 +47,7 @@ Singleton {
         repeat: false
         onTriggered: root._doCapture()
     }
-    // Cooldown: prevent captures from firing back-to-back after one completes
-    property double _lastCaptureEndTime: 0
-    readonly property int _captureCooldownMs: 2000  // 2 seconds between capture cycles
+
     
     signal captureComplete()
     signal previewUpdated(int windowId)
@@ -100,13 +96,11 @@ Singleton {
     }
 
     function _pendingRequestNeedsCapture(): bool {
-        const now = Date.now()
         const currentIds = captureAllRequested
             ? (NiriService.windows ?? []).map(window => window.id)
             : requestedWindowIds
         for (const id of currentIds) {
-            const cached = previewCache[id]
-            if (!cached || (now - cached.timestamp) > previewValidityMs)
+            if (PreviewPolicy.needsCapture(previewCache[id]))
                 return true
         }
         return false
@@ -276,8 +270,7 @@ Singleton {
         }
     }
 
-    // Track if we've done initial capture this session
-    property bool initialCapturesDone: false
+
     
     // Called when TaskView/dock preview opens - debounced to coalesce rapid hover events
     function captureForTaskView(windowIds = null): void {
@@ -294,9 +287,8 @@ Singleton {
 
         if (capturing) return
 
-        // Cooldown: don't re-capture if we just finished one
-        if (Date.now() - _lastCaptureEndTime < _captureCooldownMs
-                && initialCapturesDone && !root._pendingRequestNeedsCapture()) {
+        // A prior capture is a cache hit even after hours of idle.
+        if (!root._pendingRequestNeedsCapture()) {
             root._clearCaptureRequest()
             return
         }
@@ -317,15 +309,12 @@ Singleton {
             : allWindows.filter(window => requestedIds.has(window.id))
         if (windows.length === 0) return
         
-        const now = Date.now()
         const idsToCapture = []
         
         for (const win of windows) {
             const cached = previewCache[win.id]
-            // Capture if: no preview or preview is stale
-            const needsCapture = !cached || 
-                                 (now - cached.timestamp) > previewValidityMs
-            if (needsCapture) {
+            // Normal requests only fill missing previews.
+            if (PreviewPolicy.needsCapture(cached)) {
                 idsToCapture.push(win.id)
             }
         }
@@ -337,7 +326,6 @@ Singleton {
         
         _log("[WindowPreviewService] Capturing", idsToCapture.length, "windows")
         capturing = true
-        initialCapturesDone = true
         Cliphist.suppressRefresh = true
         
         // Build command with IDs
@@ -396,7 +384,6 @@ Singleton {
 
             console.warn("[WindowPreviewService] capture process failed to start")
             root.capturing = false
-            root._lastCaptureEndTime = Date.now()
             idsToCapture = []
             Cliphist.suppressRefresh = false
             Cliphist.refresh()
@@ -408,7 +395,6 @@ Singleton {
         
         onExited: (exitCode, exitStatus) => {
             root.capturing = false
-            root._lastCaptureEndTime = Date.now()
 
             if (exitCode !== 0) {
                 console.log("[WindowPreviewService] capture process failed", exitCode, exitStatus)
@@ -455,12 +441,12 @@ Singleton {
     // Public API
     function getPreviewUrl(windowId: int): string {
         const cached = previewCache[windowId]
-        if (!cached) return ""
+        if (PreviewPolicy.needsCapture(cached)) return ""
         return "file://" + cached.path + "?" + cached.timestamp
     }
     
     function hasPreview(windowId: int): bool {
-        return previewCache[windowId] !== undefined
+        return !PreviewPolicy.needsCapture(previewCache[windowId])
     }
     
     function clearPreviews(): void {

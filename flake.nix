@@ -59,6 +59,7 @@
             QT_PLUGIN_PATH = lib.makeSearchPath
               "lib/qt-6/plugins"
               package.passthru.qmlDependencies;
+            HADALIS_WORKFLOW_MESA_DRIVERS = "${pkgs.mesa.drivers}";
             HADALIS_WORKFLOW_GRAMMAR =
               "${workflowParser}/lib/inir/code-workflow/qmljs.so";
             HADALIS_TREE_SITTER_LIBRARY =

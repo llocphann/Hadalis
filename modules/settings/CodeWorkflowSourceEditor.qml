@@ -285,9 +285,26 @@ Item {
                 readOnly: root.mode !== "insert"
                 selectByMouse: true
                 activeFocusOnTab: true
+                cursorVisible: activeFocus
+                persistentSelection: true
                 Accessible.name: "Source editor"
                 Accessible.description:
-                    "Hot-fix source editor. Escape returns to normal mode; i enters insert; v enters visual; hjkl moves."
+                    "Hot-fix source editor. Click to insert; Escape returns to normal mode; v enters visual; hjkl moves."
+
+                HoverHandler {
+                    cursorShape: Qt.IBeamCursor
+                }
+
+                TapHandler {
+                    target: null
+                    acceptedButtons: Qt.LeftButton
+                    onTapped: eventPoint => {
+                        const position = editor.positionAt(
+                            eventPoint.position.x, eventPoint.position.y)
+                        root.enterInsertAt(position)
+                    }
+                }
+
                 onTextChanged: {
                     if (root.documentText !== text)
                         root.documentText = text

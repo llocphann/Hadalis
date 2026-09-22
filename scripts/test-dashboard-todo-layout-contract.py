@@ -15,7 +15,12 @@ for token in (
     "id: inactiveRightShape",
     "id: inactiveLeftShape",
     "PathQuad {",
-    "x: tabShell.halfWidth - tabShell.notch",
+    "readonly property real innerHeight:",
+    "readonly property real innerRadius:",
+    "readonly property real seamRadius:",
+    "x: tabShell.halfWidth - tabShell.inset",
+    "y: tabShell.inset",
+    "clip: false",
     "id: activeTabPill",
     "width: tabShell.halfWidth - tabShell.inset * 2",
     "id: leftTabHover",
@@ -24,7 +29,10 @@ for token in (
     'Translation.tr("Done")',
     "root.unfinishedTasks.length",
     "root.doneTasks.length",
-    "visible: !root.narrowLayout && !root.veryShallowLayout",
+    "readonly property int safeEdgeInset: 2",
+    "readonly property int actionButtonSize:",
+    "Layout.leftMargin: root.safeEdgeInset",
+    "Layout.rightMargin: root.safeEdgeInset",
     'Translation.tr("Prepare Obsidian")',
     'Translation.tr("Edit task source")',
     'Translation.tr("Add task")',
@@ -38,5 +46,10 @@ assert todo.count("Shape {") >= 2
 assert todo.count("PathQuad {") >= 8
 assert "implicitHeight: root.tabControlHeight" in todo
 assert "Layout.minimumHeight: root.veryShallowLayout" in todo
+assert todo.count("Layout.preferredWidth: root.actionButtonSize") >= 4
+assert "id: setupRow" not in todo
+assert "id: editRow" not in todo
+assert "id: addRow" not in todo
+assert "tabShell.notch" not in todo
 
 print("Dashboard Todo adaptive layout contract: PASS")

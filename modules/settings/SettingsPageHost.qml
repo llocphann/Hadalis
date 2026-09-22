@@ -14,6 +14,10 @@ Item {
     required property int requestedIndex
     property bool loadEnabled: true
     property int cacheLimit: 2
+    // Host IDs disambiguate the Focus and Rail page caches. Standalone
+    // Settings keeps IPC discovery remote and does not register local pages.
+    property string workflowHostId: "settings"
+    property bool workflowDiscoveryEnabled: false
 
     readonly property int currentIndex: _currentIndex
     readonly property bool error: _errorIndex === requestedIndex
@@ -311,6 +315,29 @@ Item {
                 && !root._transitionRunning
             z: index === root._pendingIndex ? 1 : 0
             layer.enabled: root._transitionRunning && visible
+
+            // Register each real Loader without forcing item creation. Cached
+            // pages remain loaded-hidden; evicted pages become unloaded.
+            property CodeWorkflowRuntimeDeclaration workflowDeclaration:
+                CodeWorkflowRuntimeDeclaration {
+                    loader: pageLoader
+                    panelId: "settings-page-" + root.workflowHostId + "-" + pageLoader.index
+                    targetId: "runtime/" + root.workflowHostId + "/page/"
+                        + String(root.pages[pageLoader.index]?.key ?? pageLoader.index)
+                    label: "Settings · "
+                        + String(root.pages[pageLoader.index]?.name ?? pageLoader.index)
+                    icon: String(root.pages[pageLoader.index]?.icon ?? "settings")
+                    kind: "component"
+                    family: "shared"
+                    parentId: "settings"
+                    depth: 2
+                    sourcePath: CodeWorkflowRuntime.relativeSourcePath(
+                        root._sourceFor(pageLoader.index))
+                    internal: true
+                    configured: root.loadEnabled
+                    presented: pageLoader.visible && root.visible
+                    registrationEnabled: root.workflowDiscoveryEnabled
+                }
 
             onStatusChanged: root._handleStatus(index, status)
             onActiveChanged: {

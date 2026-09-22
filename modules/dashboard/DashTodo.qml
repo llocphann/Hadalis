@@ -205,137 +205,118 @@ DashCard {
             readonly property real inset: 3
             readonly property real innerHeight: height - inset * 2
             readonly property real cornerRadius: innerHeight / 2
+            readonly property real arcKappa: 0.5522847498
+            readonly property int iconSlotSize: root.narrowLayout ? 17 : 18
+            readonly property int tabIconSize: root.narrowLayout ? 15 : 16
+            readonly property int badgeSize: root.narrowLayout ? 19 : 21
+            readonly property real contentPadding: root.narrowLayout ? 7 : 9
+            readonly property real contentSpacing: root.narrowLayout ? 3 : 5
 
-            // The inactive tab is not a normal pill hidden behind the active
-            // tab. Its contact side is a true inward semicircle. That concave
-            // arc uses exactly the same radius as the tab's outer pill corner,
-            // so the active pill and inactive cutout are complementary.
+            // One canonical inactive silhouette is mirrored between left/right.
+            // The outer end and the inward contact end are built from the same
+            // radius R and the same cubic-circle constant, so both states are
+            // mathematically identical instead of being maintained separately.
             Shape {
-                id: inactiveLeftShape
-                visible: root.currentTab === 1
-                x: tabShell.inset
-                y: tabShell.inset
-                width: tabShell.halfWidth - tabShell.inset
-                height: tabShell.innerHeight
-                z: 1
-                preferredRendererType: Shape.CurveRenderer
-
-                ShapePath {
-                    strokeWidth: 0
-                    fillColor: leftTabHover.hovered
-                        ? Appearance.colors.colLayer1Hover
-                        : Appearance.colors.colLayer1
-
-                    startX: tabShell.cornerRadius
-                    startY: 0
-
-                    PathLine {
-                        x: inactiveLeftShape.width
-                        y: 0
-                    }
-
-                    // Concave contact edge: one inward half-circle, radius R.
-                    PathArc {
-                        x: inactiveLeftShape.width
-                        y: inactiveLeftShape.height
-                        radiusX: tabShell.cornerRadius
-                        radiusY: tabShell.cornerRadius
-                        direction: PathArc.Counterclockwise
-                    }
-
-                    PathLine {
-                        x: tabShell.cornerRadius
-                        y: inactiveLeftShape.height
-                    }
-
-                    PathArc {
-                        x: 0
-                        y: inactiveLeftShape.height - tabShell.cornerRadius
-                        radiusX: tabShell.cornerRadius
-                        radiusY: tabShell.cornerRadius
-                    }
-
-                    PathLine {
-                        x: 0
-                        y: tabShell.cornerRadius
-                    }
-
-                    PathArc {
-                        x: tabShell.cornerRadius
-                        y: 0
-                        radiusX: tabShell.cornerRadius
-                        radiusY: tabShell.cornerRadius
-                    }
-                }
-            }
-
-            Shape {
-                id: inactiveRightShape
-                visible: root.currentTab === 0
-                x: tabShell.halfWidth
-                y: tabShell.inset
-                width: tabShell.halfWidth - tabShell.inset
-                height: tabShell.innerHeight
-                z: 1
-                preferredRendererType: Shape.CurveRenderer
-
-                ShapePath {
-                    strokeWidth: 0
-                    fillColor: rightTabHover.hovered
-                        ? Appearance.colors.colLayer1Hover
-                        : Appearance.colors.colLayer1
-
-                    startX: 0
-                    startY: 0
-
-                    // Mirror of the left inactive tab: same R, opposite side.
-                    PathArc {
-                        x: 0
-                        y: inactiveRightShape.height
-                        radiusX: tabShell.cornerRadius
-                        radiusY: tabShell.cornerRadius
-                        direction: PathArc.Clockwise
-                    }
-
-                    PathLine {
-                        x: inactiveRightShape.width - tabShell.cornerRadius
-                        y: inactiveRightShape.height
-                    }
-
-                    PathArc {
-                        x: inactiveRightShape.width
-                        y: inactiveRightShape.height - tabShell.cornerRadius
-                        radiusX: tabShell.cornerRadius
-                        radiusY: tabShell.cornerRadius
-                    }
-
-                    PathLine {
-                        x: inactiveRightShape.width
-                        y: tabShell.cornerRadius
-                    }
-
-                    PathArc {
-                        x: inactiveRightShape.width - tabShell.cornerRadius
-                        y: 0
-                        radiusX: tabShell.cornerRadius
-                        radiusY: tabShell.cornerRadius
-                    }
-
-                    PathLine {
-                        x: 0
-                        y: 0
-                    }
-                }
-            }
-
-            Rectangle {
-                id: activeTabPill
-                x: root.currentTab === 0
+                id: inactiveTabShape
+                x: root.currentTab === 1
                     ? tabShell.inset
                     : tabShell.halfWidth - tabShell.cornerRadius
                 y: tabShell.inset
                 width: tabShell.halfWidth + tabShell.cornerRadius
                     - tabShell.inset
+                height: tabShell.innerHeight
+                z: 1
+                preferredRendererType: Shape.CurveRenderer
+
+                transform: Scale {
+                    origin.x: inactiveTabShape.width / 2
+                    origin.y: inactiveTabShape.height / 2
+                    xScale: root.currentTab === 0 ? -1 : 1
+                    yScale: 1
+                }
+
+                ShapePath {
+                    strokeWidth: 0
+                    fillColor: {
+                        const hovered = root.currentTab === 1
+                            ? leftTabHover.hovered
+                            : rightTabHover.hovered
+                        return hovered
+                            ? Appearance.colors.colLayer1Hover
+                            : Appearance.colors.colLayer1
+                    }
+
+                    startX: tabShell.cornerRadius
+                    startY: 0
+
+                    PathLine {
+                        x: inactiveTabShape.width
+                        y: 0
+                    }
+
+                    // Concave half-circle, radius R.
+                    PathCubic {
+                        control1X: inactiveTabShape.width
+                            - tabShell.arcKappa * tabShell.cornerRadius
+                        control1Y: 0
+                        control2X: inactiveTabShape.width
+                            - tabShell.cornerRadius
+                        control2Y: tabShell.cornerRadius
+                            - tabShell.arcKappa * tabShell.cornerRadius
+                        x: inactiveTabShape.width - tabShell.cornerRadius
+                        y: tabShell.cornerRadius
+                    }
+                    PathCubic {
+                        control1X: inactiveTabShape.width
+                            - tabShell.cornerRadius
+                        control1Y: tabShell.cornerRadius
+                            + tabShell.arcKappa * tabShell.cornerRadius
+                        control2X: inactiveTabShape.width
+                            - tabShell.arcKappa * tabShell.cornerRadius
+                        control2Y: inactiveTabShape.height
+                        x: inactiveTabShape.width
+                        y: inactiveTabShape.height
+                    }
+
+                    PathLine {
+                        x: tabShell.cornerRadius
+                        y: inactiveTabShape.height
+                    }
+
+                    // Outer half-circle, the exact same R and kappa as above.
+                    PathCubic {
+                        control1X: tabShell.cornerRadius
+                            - tabShell.arcKappa * tabShell.cornerRadius
+                        control1Y: inactiveTabShape.height
+                        control2X: 0
+                        control2Y: tabShell.cornerRadius
+                            + tabShell.arcKappa * tabShell.cornerRadius
+                        x: 0
+                        y: tabShell.cornerRadius
+                    }
+                    PathCubic {
+                        control1X: 0
+                        control1Y: tabShell.cornerRadius
+                            - tabShell.arcKappa * tabShell.cornerRadius
+                        control2X: tabShell.cornerRadius
+                            - tabShell.arcKappa * tabShell.cornerRadius
+                        control2Y: 0
+                        x: tabShell.cornerRadius
+                        y: 0
+                    }
+                }
+            }
+
+            // Active tabs are equal-sized half-width pills. Their rounded end
+            // uses the same R as the inactive concavity, so the two boundaries
+            // meet cleanly without one state becoming wider than the other.
+            Rectangle {
+                id: activeTabPill
+                x: root.currentTab === 0
+                    ? tabShell.inset
+                    : tabShell.halfWidth
+                y: tabShell.inset
+                width: tabShell.halfWidth - tabShell.inset
                 height: tabShell.innerHeight
                 radius: tabShell.cornerRadius
                 z: 2
@@ -403,23 +384,34 @@ DashCard {
                 z: 4
 
                 RowLayout {
-                    anchors.centerIn: parent
-                    spacing: root.narrowLayout ? 3 : 5
+                    anchors.fill: parent
+                    anchors.leftMargin: tabShell.contentPadding
+                    anchors.rightMargin: tabShell.contentPadding
+                    spacing: tabShell.contentSpacing
 
-                    MaterialSymbol {
-                        text: "checklist"
-                        iconSize: root.narrowLayout ? 15 : 17
-                        color: root.currentTab === 0
-                            ? Appearance.colors.colOnPrimaryContainer
-                            : root.colSubtext
+                    Item {
+                        Layout.preferredWidth: tabShell.iconSlotSize
+                        Layout.preferredHeight: tabShell.iconSlotSize
+                        Layout.alignment: Qt.AlignVCenter
+
+                        MaterialSymbol {
+                            anchors.centerIn: parent
+                            text: "checklist"
+                            iconSize: tabShell.tabIconSize
+                            color: root.currentTab === 0
+                                ? Appearance.colors.colOnPrimaryContainer
+                                : root.colSubtext
+                        }
                     }
 
                     StyledText {
-                        Layout.maximumWidth: root.narrowLayout ? 62 : 92
+                        Layout.fillWidth: true
+                        Layout.alignment: Qt.AlignVCenter
                         text: Translation.tr("Unfinished")
+                        horizontalAlignment: Text.AlignHCenter
+                        verticalAlignment: Text.AlignVCenter
                         font.pixelSize: Appearance.font.pixelSize.small
-                        font.weight: root.currentTab === 0
-                            ? Font.DemiBold : Font.Medium
+                        font.weight: Font.Medium
                         color: root.currentTab === 0
                             ? Appearance.colors.colOnPrimaryContainer
                             : root.colSubtext
@@ -428,10 +420,9 @@ DashCard {
                     }
 
                     Rectangle {
-                        implicitWidth: Math.max(root.narrowLayout ? 19 : 22,
-                            leftCountText.implicitWidth
-                                + (root.narrowLayout ? 7 : 10))
-                        implicitHeight: root.narrowLayout ? 19 : 22
+                        Layout.preferredWidth: tabShell.badgeSize
+                        Layout.preferredHeight: tabShell.badgeSize
+                        Layout.alignment: Qt.AlignVCenter
                         radius: height / 2
                         color: root.currentTab === 0
                             ? Appearance.colors.colPrimary
@@ -458,23 +449,34 @@ DashCard {
                 z: 4
 
                 RowLayout {
-                    anchors.centerIn: parent
-                    spacing: root.narrowLayout ? 3 : 5
+                    anchors.fill: parent
+                    anchors.leftMargin: tabShell.contentPadding
+                    anchors.rightMargin: tabShell.contentPadding
+                    spacing: tabShell.contentSpacing
 
-                    MaterialSymbol {
-                        text: "check_circle"
-                        iconSize: root.narrowLayout ? 15 : 17
-                        color: root.currentTab === 1
-                            ? Appearance.colors.colOnPrimaryContainer
-                            : root.colSubtext
+                    Item {
+                        Layout.preferredWidth: tabShell.iconSlotSize
+                        Layout.preferredHeight: tabShell.iconSlotSize
+                        Layout.alignment: Qt.AlignVCenter
+
+                        MaterialSymbol {
+                            anchors.centerIn: parent
+                            text: "check_circle"
+                            iconSize: tabShell.tabIconSize
+                            color: root.currentTab === 1
+                                ? Appearance.colors.colOnPrimaryContainer
+                                : root.colSubtext
+                        }
                     }
 
                     StyledText {
-                        Layout.maximumWidth: root.narrowLayout ? 48 : 72
+                        Layout.fillWidth: true
+                        Layout.alignment: Qt.AlignVCenter
                         text: Translation.tr("Done")
+                        horizontalAlignment: Text.AlignHCenter
+                        verticalAlignment: Text.AlignVCenter
                         font.pixelSize: Appearance.font.pixelSize.small
-                        font.weight: root.currentTab === 1
-                            ? Font.DemiBold : Font.Medium
+                        font.weight: Font.Medium
                         color: root.currentTab === 1
                             ? Appearance.colors.colOnPrimaryContainer
                             : root.colSubtext
@@ -483,10 +485,9 @@ DashCard {
                     }
 
                     Rectangle {
-                        implicitWidth: Math.max(root.narrowLayout ? 19 : 22,
-                            rightCountText.implicitWidth
-                                + (root.narrowLayout ? 7 : 10))
-                        implicitHeight: root.narrowLayout ? 19 : 22
+                        Layout.preferredWidth: tabShell.badgeSize
+                        Layout.preferredHeight: tabShell.badgeSize
+                        Layout.alignment: Qt.AlignVCenter
                         radius: height / 2
                         color: root.currentTab === 1
                             ? Appearance.colors.colPrimary

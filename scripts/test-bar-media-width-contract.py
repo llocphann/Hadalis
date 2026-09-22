@@ -27,6 +27,27 @@ def main() -> None:
     require(media, "Math.max(120, Math.min(320, configured))",
             "Bar Media width must stay inside the supported runtime range.")
 
+    # A stable Media pill must keep the glyph and label aligned at all bar
+    # heights. Centering only short titles produces an unpredictable icon gap.
+    for token in (
+        "mediaInset: Math.max(2, Math.round(4 * Appearance.sizes.barModuleScale))",
+        "mediaTextGap: Math.max(4, Math.round(7 * Appearance.sizes.barModuleScale))",
+        "anchors.leftMargin: root.mediaInset",
+        "anchors.rightMargin: root.mediaInset",
+        "Layout.minimumWidth: 0",
+        "horizontalAlignment: Text.AlignLeft",
+        "font.pixelSize: Math.max(11, Math.round(Appearance.font.pixelSize.small * Appearance.sizes.barModuleScale))",
+        "titleScroller.resetMarquee()",
+        "onWidthChanged: resetMarquee()",
+        "onOverflowingChanged: resetMarquee()",
+        "Component.onCompleted: {",
+        "if (!_marqueeReady) return",
+    ):
+        require(media, token, f"Bar Media label alignment contract missing: {token}")
+
+    if "horizontalAlignment: titleScroller.overflowing ? Text.AlignLeft : Text.AlignHCenter" in media:
+        raise SystemExit("Bar Media must not shift the title between centered and leading alignment.")
+
     require(config, "property JsonObject media: JsonObject {",
             "Typed Bar config lost the media subsection.")
     require(config, "property int width: 180",

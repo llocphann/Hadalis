@@ -21,6 +21,23 @@ Singleton {
     readonly property int barPageIndex: 2
     readonly property int themesPageIndex: 4
     readonly property int panelsPageIndex: 5
+
+    // Stable route keys survive page reordering and legacy numeric slot
+    // retirement. The active Settings chrome navigates inside its own window
+    // instead of spawning a second instance when a related-settings link runs.
+    signal navigateRequested(int pageIndex, string section)
+    function pageIndexForKey(key: string): int {
+        const value = String(key ?? "").trim()
+        if (!value) return -1
+        return root.pages.findIndex(page => page.key === value
+            && page.devNavigationHidden !== true)
+    }
+    function navigateToKey(key: string, section: string): bool {
+        const index = root.pageIndexForKey(key)
+        if (index < 0) return false
+        root.navigateRequested(index, String(section ?? ""))
+        return true
+    }
     property bool _legacyTlpPowerRedirectPending: false
     property bool _legacyDockStyleMigrationDone: false
     property bool _legacyUiLocaleMigrationDone: false

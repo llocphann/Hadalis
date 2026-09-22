@@ -1881,6 +1881,7 @@ Item {
                     }
                 }
                 RippleButtonWithIcon {
+                    id: targetsToolbarToggle
                     implicitWidth: 32
                     horizontalPadding: 5
                     materialIcon: CodeWorkflowSession.targetsPaneCollapsed
@@ -1890,9 +1891,10 @@ Item {
                     mainText: ""
                     onClicked: CodeWorkflowSession.setTargetsPaneCollapsed(
                         !CodeWorkflowSession.targetsPaneCollapsed)
-                    StyledToolTip { text: buttonText }
+                    StyledToolTip { text: targetsToolbarToggle.buttonText }
                 }
                 RippleButtonWithIcon {
+                    id: inspectorToolbarToggle
                     implicitWidth: 32
                     horizontalPadding: 5
                     materialIcon: CodeWorkflowSession.inspectorPaneCollapsed
@@ -1902,7 +1904,7 @@ Item {
                     mainText: ""
                     onClicked: CodeWorkflowSession.setInspectorPaneCollapsed(
                         !CodeWorkflowSession.inspectorPaneCollapsed)
-                    StyledToolTip { text: buttonText }
+                    StyledToolTip { text: inspectorToolbarToggle.buttonText }
                 }
                 RippleButtonWithIcon {
                     materialIcon: "code"

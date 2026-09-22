@@ -187,6 +187,8 @@ Scope {
                 var idx = cat.pages[p];
                 if (idx < 0 || idx >= pages.length)
                     continue;
+                if (!SettingsPageRegistry.isPageApplicable(idx))
+                    continue;
                 if (easyMode && pages[idx].essential !== true)
                     continue;
                 var entry = Object.assign({}, pages[idx]);

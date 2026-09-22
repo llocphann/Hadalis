@@ -13,6 +13,7 @@ Item {
     property int visualAnchor: -1
     property int visualCursor: -1
     property int preferredColumn: -1
+    property int editRevision: 0
     property bool syncingFromHost: false
     property string documentText: root.draft
     property bool findVisible: false
@@ -458,13 +459,25 @@ Item {
     }
 
     function replaceRange(start: int, end: int, replacement: string): void {
+        root.replaceRangeWithCursor(
+            start, end, replacement, Math.min(start, end) + replacement.length)
+    }
+
+    function replaceRangeWithCursor(
+        start: int, end: int, replacement: string, cursorAfter: int
+    ): void {
         const safeStart = root.clampPosition(Math.min(start, end))
         const safeEnd = root.clampPosition(Math.max(start, end))
-        root.documentText = root.documentText.slice(0, safeStart)
+        const nextText = root.documentText.slice(0, safeStart)
             + replacement + root.documentText.slice(safeEnd)
-        const nextCursor = safeStart + replacement.length
+        const revision = ++root.editRevision
+        root.documentText = nextText
         Qt.callLater(() => {
-            editor.cursorPosition = root.clampPosition(nextCursor)
+            // A later edit, source refresh or native INSERT keystroke wins.
+            // Never move its caret using an older queued source operation.
+            if (revision !== root.editRevision || root.documentText !== nextText)
+                return
+            editor.cursorPosition = root.clampPosition(cursorAfter)
             if (root.mode === "visual") {
                 root.visualCursor = editor.cursorPosition
                 root.applyVisualSelection()
@@ -562,6 +575,7 @@ Item {
         if (root.documentText === root.draft)
             return
         root.syncingFromHost = true
+        root.editRevision += 1
         root.documentText = root.draft
         root.syncingFromHost = false
     }
@@ -1041,8 +1055,9 @@ Item {
                         const start = root.lineStart(cursor)
                         const end = root.lineEnd(cursor)
                         const at = shift ? start : end
-                        root.replaceRange(at, at, "\n")
-                        root.enterInsertAt(shift ? at : at + 1)
+                        const insertAt = shift ? at : at + 1
+                        root.replaceRangeWithCursor(at, at, "\n", insertAt)
+                        root.enterInsertAt(insertAt)
                     } else if (event.key === Qt.Key_V) {
                         root.setMode("visual")
                     } else if (event.key === Qt.Key_X) {

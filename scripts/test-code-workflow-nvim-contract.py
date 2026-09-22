@@ -61,6 +61,7 @@ for token in (
     'self.request("nvim_ui_attach"',
     '{"rgb": True, "ext_linegrid": True}',
     'if method != "redraw"',
+    "batch = params",
     'name == "grid_line"',
     'name == "grid_scroll"',
     'name == "grid_cursor_goto"',
@@ -95,3 +96,6 @@ if "pynvim" in bridge or "import msgpack" in bridge:
     fail("Neovim bridge must remain dependency-free")
 
 print("ok - Code Workflow Neovim service/bridge contract")
+
+if "batch = params[0]" in bridge:
+    fail("Neovim redraw batch must not be unwrapped; RPC params already are the update batch")

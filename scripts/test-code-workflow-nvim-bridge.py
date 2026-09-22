@@ -30,10 +30,10 @@ for value in values:
     assert decoded == value, (value, decoded)
 
 decoder = mod.StreamDecoder()
-payload = mod.pack([2, "redraw", [[["flush"]]]])
+payload = mod.pack([2, "redraw", [["flush", []]]])
 assert decoder.feed(payload[:2]) == []
 assert decoder.feed(payload[2:5]) == []
-assert decoder.feed(payload[5:]) == [[2, "redraw", [[["flush"]]]]]
+assert decoder.feed(payload[5:]) == [[2, "redraw", [["flush", []]]]]
 
 ui = mod.UiState(6, 4)
 ui.event("default_colors_set", [0xEEEEEE, 0x111111, 0xFF0000, 0, 0])
@@ -59,6 +59,29 @@ assert meta_frame is not None
 assert meta_frame["dirtyRows"] == []
 assert meta_frame["cursorRow"] == 2 and meta_frame["cursorCol"] == 4
 assert meta_frame["mode"] == "normal"
+
+# The real remote-UI RPC envelope carries the redraw update batch directly in
+# message[2]. Regressing to params[0] silently drops grid_line/flush and leaves
+# the embedded editor as an empty canvas.
+bridge = mod.Bridge(Path("."), Path("dummy.qml"), 6, 4, "nvim")
+emitted = []
+original_emit = mod.emit
+mod.emit = emitted.append
+try:
+    bridge.rpc_message([
+        2,
+        "redraw",
+        [
+            ["grid_line", [1, 0, 0, [["X", 0]], False]],
+            ["grid_cursor_goto", [1, 0, 1]],
+            ["flush", []],
+        ],
+    ])
+finally:
+    mod.emit = original_emit
+assert emitted, "remote-UI redraw envelope produced no frame"
+assert emitted[-1]["type"] == "frame"
+assert emitted[-1]["dirtyRows"][0]["cells"][0][0] == "X"
 
 # No-argument redraw events must still be dispatched by the batched protocol.
 bridge_ui = mod.UiState(6, 4)

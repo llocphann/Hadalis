@@ -555,9 +555,10 @@ return true
             return
         if method != "redraw" or not params:
             return
-        batch = params[0]
-        if not isinstance(batch, list):
-            return
+        # Neovim's remote-UI redraw notification exposes the update batch
+        # directly as the RPC params array. Each entry is one packed UI event;
+        # there is no additional one-argument wrapper at this layer.
+        batch = params
         flush_seen = False
         for packed_event in batch:
             if not isinstance(packed_event, list) or not packed_event:

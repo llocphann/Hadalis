@@ -10,6 +10,8 @@ workspaces="$repo_root/modules/bar/Workspaces.qml"
 waffle_preview="$repo_root/modules/waffle/bar/tasks/TaskPreview.qml"
 waffle_tasks="$repo_root/modules/waffle/bar/tasks/Tasks.qml"
 waffle_bar_popup="$repo_root/modules/waffle/bar/BarPopup.qml"
+preview_policy="$repo_root/services/WindowPreviewPolicy.js"
+overview_renderer="$repo_root/modules/overview/OverviewNiriWidget.qml"
 
 fail() {
     printf 'window preview lifecycle guard failed: %s\n' "$1" >&2
@@ -72,6 +74,48 @@ require 'root.captureComplete()' \
     'capture failure must notify consumers that the cycle ended'
 require 'root._resumeRequestedCapture()' \
     'initialization failures must resume deferred capture requests'
+
+# Previously the five-minute TTL forced Niri screenshot-window and a changed
+# Image URL on the very next hover, although the window's ID was unchanged.
+require 'import "WindowPreviewPolicy.js" as PreviewPolicy' \
+    'service must use the shared session-cache policy'
+require 'PreviewPolicy.needsCapture(previewCache[id])' \
+    'pending capture requests must reuse cached window IDs'
+require 'PreviewPolicy.needsCapture(cached)' \
+    'capture selection must use session-cache policy'
+require 'if (!root._pendingRequestNeedsCapture()) {' \
+    'cached hover requests must not start a new capture process'
+require 'function captureAllWindows(): void {' \
+    'explicit force refresh must remain available'
+if grep -Fq 'previewValidityMs' "$service"; then
+    fail 'window previews must not expire solely due to wall-clock time'
+fi
+grep -Fq 'cache: true' "$overview_renderer" \
+    || fail 'Overview preview must use the Qt image cache'
+grep -Fq 'sourceSize.width: Math.max(1, Math.min(768' "$overview_renderer" \
+    || fail 'Overview preview decode width must be bounded'
+grep -Fq 'sourceSize.height: Math.max(1, Math.min(512' "$overview_renderer" \
+    || fail 'Overview preview decode height must be bounded'
+
+node - "$preview_policy" <<'NODE'
+const fs = require('node:fs');
+const vm = require('node:vm');
+const assert = require('node:assert/strict');
+const scope = {};
+vm.createContext(scope);
+vm.runInContext(fs.readFileSync(process.argv[2], 'utf8'), scope);
+const needsCapture = scope.needsCapture;
+assert.equal(typeof needsCapture, 'function');
+assert.equal(needsCapture(undefined), true, 'first visit captures missing window');
+assert.equal(needsCapture({path: ''}), true, 'invalid cache entry captures');
+assert.equal(needsCapture({path: '/tmp/window-42.png', timestamp: 1}), false,
+    'old but valid window preview survives any idle duration');
+assert.equal(needsCapture({path: '/tmp/window-42.png', timestamp: Date.now()}), false,
+    'fresh preview is reused without recapture');
+assert.equal(needsCapture({path: '/tmp/window-43.png', timestamp: 1}), false,
+    'separate window IDs retain independent snapshots');
+console.log('window preview session-cache behavior: PASS');
+NODE
 
 require_capture 'capture_timeout_seconds="${INIR_WINDOW_PREVIEW_CAPTURE_TIMEOUT_SECONDS:-90}"' \
     'window preview capture must have a finite default lifetime'

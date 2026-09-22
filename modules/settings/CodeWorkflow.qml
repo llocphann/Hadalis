@@ -88,6 +88,7 @@ Item {
     }
     readonly property var descriptor:
         CodeWorkflowRuntime.descriptor(CodeWorkflowSession.selectedTargetId)
+            ?? CodeWorkflowRuntime.activeCatalog[0]
             ?? CodeWorkflowRuntime.catalog[0]
     readonly property var record: root.recordFor(CodeWorkflowSession.selectedTargetId)
     readonly property var graph:
@@ -149,7 +150,7 @@ Item {
                 items.push(item)
         }
 
-        for (const target of CodeWorkflowRuntime.catalog) {
+        for (const target of CodeWorkflowRuntime.activeCatalog) {
             const rowRecord = root.recordFor(target.targetId)
             append(runtimeItems, {
                 category: "runtime",

@@ -51,9 +51,21 @@ for token in ("singleton CodeWorkflowRuntime 1.0 CodeWorkflowRuntime.qml",
               "CodeWorkflowRuntimeTarget 1.0 CodeWorkflowRuntimeTarget.qml"):
     require(qmldir, token, "services/qmldir missing " + token)
 
-for token in ('targetId: "bar"', 'targetId: "bar/media"',
-              'targetId: "bar/clock"', 'targetId: "bar/resources"'):
-    require(runtime, token, "runtime catalog missing " + token)
+for token in (
+    'targetId: "bar"', 'targetId: "bar/media"',
+    'targetId: "bar/clock"', 'targetId: "bar/resources"',
+    'targetId: "dashboard"', 'targetId: "dock"',
+    'targetId: "overview"', 'targetId: "sidebar/left"',
+    'targetId: "sidebar/right"', 'targetId: "waffle/bar"',
+    'targetId: "waffle/action-center"', 'targetId: "waffle/task-view"',
+):
+    require(runtime, token, "runtime catalog missing shell surface " + token)
+require(runtime, "readonly property var activeCatalog:",
+        "runtime inventory must filter to the active shell family")
+require(runtime, "root.enabledPanels.includes(panelId)",
+        "runtime inventory must respect configured panel membership")
+require(page, "for (const target of CodeWorkflowRuntime.activeCatalog)",
+        "Targets must enumerate all configured active-family shell surfaces")
 
 require(page, 'Quickshell.env("QS_CODE_WORKFLOW_CAPTURE") === "1"',
         "capture harness must be opt-in through an explicit environment gate")
@@ -421,6 +433,8 @@ source_preview_end = page.index("font.pixelSize: Appearance.font.pixelSize.small
 source_preview_block = page[source_preview_start:source_preview_end]
 require(source_preview_block, "renderType: Text.QtRendering",
         "Source Preview must use Qt text rendering for clean monospace antialiasing")
+require(page, "CodeWorkflowRuntime.activeCatalog[0]",
+        "Code Workflow selection fallback must use the active shell inventory")
 require(page, 'category: "section"',
         "Targets must group runtime, graph and parsed QML sources")
 require(page, "appendSection(",

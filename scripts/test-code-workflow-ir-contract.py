@@ -586,6 +586,8 @@ if "id: edgeLabelTooltip" in world_block:
 for token in (
     "defaults/code-workflow-ir.json",
     'parsed?.mode !== "reviewed-source-projection"',
+    "function sourceGraphFor(targetId: string): var",
+    "CodeWorkflowRuntime.descriptor(targetId)",
     "function graphFor(targetId: string): var",
     "function nodeFor(targetId: string, nodeId: string): var",
 ):
@@ -827,3 +829,7 @@ if page.count("setText(") != 1 \
     fail("Code Workflow editor may only stage its draft through sourceDraftWriter")
 
 print("ok - Code Workflow source-backed semantic IR contract")
+
+
+if '?? root.document?.graphs?.["bar"]' in ir_service:
+    fail("missing target graphs must not silently fall back to the Bar workflow")

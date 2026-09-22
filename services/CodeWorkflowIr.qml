@@ -25,14 +25,42 @@ Singleton {
         connectTargets: []
     })
 
+    function sourceGraphFor(targetId: string): var {
+        const descriptor = CodeWorkflowRuntime.descriptor(targetId)
+        if (!descriptor)
+            return root.emptyGraph
+        const nodeId = String(targetId ?? "") + ".component"
+        return {
+            title: String(descriptor.label ?? targetId),
+            rootNodeId: nodeId,
+            sourcePath: String(descriptor.sourcePath ?? ""),
+            nodes: [{
+                id: nodeId,
+                kind: String(descriptor.kind ?? "component"),
+                title: String(descriptor.label ?? targetId),
+                description: "Source-backed shell component",
+                sourcePath: String(descriptor.sourcePath ?? ""),
+                sourceNeedle: "",
+                runtimeTargetId: String(targetId ?? ""),
+                subflowTargetId: String(targetId ?? ""),
+                x: 80,
+                y: 80,
+                editable: false
+            }],
+            edges: [],
+            connectTargets: [],
+            signalActionTargets: []
+        }
+    }
+
     function hasGraph(targetId: string): bool {
         return !!root.document?.graphs?.[targetId]
+            || CodeWorkflowRuntime.descriptor(targetId) !== null
     }
 
     function graphFor(targetId: string): var {
         return root.document?.graphs?.[targetId]
-            ?? root.document?.graphs?.["bar"]
-            ?? root.emptyGraph
+            ?? root.sourceGraphFor(targetId)
     }
 
     function nodeFor(targetId: string, nodeId: string): var {

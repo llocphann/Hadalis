@@ -3804,12 +3804,11 @@ Item {
                     }
                 }
             }
+        }
 
-            onResizingChanged: {
-                if (!resizing && sourcePane.visible)
-                    CodeWorkflowSession.sourcePreviewHeight = sourcePane.height
-            }
+        onResizingChanged: {
+            if (!resizing && sourcePane.visible)
+                CodeWorkflowSession.sourcePreviewHeight = sourcePane.height
         }
     }
-}
 }

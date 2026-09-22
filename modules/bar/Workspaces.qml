@@ -219,13 +219,13 @@ Item {
 
     readonly property int workspaceGroup: Math.floor((currentWorkspaceNumber - 1) / root.workspacesShown)
     property list<bool> workspaceOccupied: []
-    property int widgetPadding: 4
-    property int workspaceButtonWidth: 26
-    property real activeWorkspaceMargin: 2
+    property int widgetPadding: Math.round(4 * Appearance.sizes.barModuleScale)
+    property int workspaceButtonWidth: Math.round(26 * Appearance.sizes.barModuleScale)
+    property real activeWorkspaceMargin: 2 * Appearance.sizes.barModuleScale
     property real workspaceIconSize: workspaceButtonWidth * 0.69
     property real workspaceIconSizeShrinked: workspaceButtonWidth * 0.55
     property real workspaceIconOpacityShrinked: 1
-    property real workspaceIconMarginShrinked: -4
+    property real workspaceIconMarginShrinked: -4 * Appearance.sizes.barModuleScale
     property int workspaceIndexInGroup: (currentWorkspaceNumber - 1) % root.workspacesShown
 
     Timer {
@@ -616,7 +616,7 @@ Item {
                         horizontalAlignment: Text.AlignHCenter
                         verticalAlignment: Text.AlignVCenter
                         font {
-                            pixelSize: Appearance.font.pixelSize.small - ((text.length - 1) * (text !== "10") * 2)
+                            pixelSize: Math.round(Appearance.font.pixelSize.small * Appearance.sizes.barModuleScale) - ((text.length - 1) * (text !== "10") * 2)
                             family: root.useNerdFont ? (Appearance.font.family.iconNerd ?? "") : (defaultFont ?? "")
                         }
                         text: {

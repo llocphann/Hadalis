@@ -154,13 +154,13 @@ Item {
     RowLayout { // Real content
         id: rowLayout
 
-        spacing: 4
+        spacing: 4 * Appearance.sizes.barModuleScale
         anchors.fill: parent
 
         Item {
             id: compactMediaGlyph
             Layout.alignment: Qt.AlignVCenter
-            implicitWidth: 22
+            implicitWidth: Math.round(22 * Appearance.sizes.barModuleScale)
             implicitHeight: implicitWidth
 
             ClippedFilledCircularProgress {
@@ -168,7 +168,7 @@ Item {
                 anchors.centerIn: parent
                 lineWidth: Appearance.rounding.unsharpen
                 value: (activePlayer && activePlayer.length > 0) ? (activePlayer.position / activePlayer.length) : 0
-                implicitSize: 22
+                implicitSize: Math.round(22 * Appearance.sizes.barModuleScale)
                 colPrimary: Appearance.colors.colOnLayer0
                 enableAnimation: activePlayer?.playbackState === MprisPlaybackState.Playing
 
@@ -181,7 +181,7 @@ Item {
                         anchors.centerIn: parent
                         fill: 1
                         text: activePlayer?.isPlaying ? "pause" : "music_note"
-                        iconSize: Appearance.font.pixelSize.normal
+                        iconSize: Math.round(Appearance.font.pixelSize.normal * Appearance.sizes.barModuleScale)
                         color: Appearance.colors.colOnLayer0
                         Behavior on color {
                             enabled: Appearance.animationsEnabled

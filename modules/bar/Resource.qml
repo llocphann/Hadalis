@@ -21,7 +21,7 @@ Item {
 
     RowLayout {
         id: resourceRowLayout
-        spacing: 2
+        spacing: 2 * Appearance.sizes.barModuleScale
         x: shown ? 0 : -resourceRowLayout.width
         anchors {
             verticalCenter: parent.verticalCenter
@@ -33,7 +33,7 @@ Item {
             Layout.alignment: Qt.AlignVCenter
             lineWidth: Appearance.rounding.unsharpen
             value: root.normalizedPercentage
-            implicitSize: 20
+            implicitSize: Math.round(20 * Appearance.sizes.barModuleScale)
             colPrimary: root.warning ? Appearance.colors.colError
                 : root.caution ? Appearance.colors.colTertiary
                 : Appearance.colors.colOnSurfaceVariant
@@ -50,7 +50,7 @@ Item {
                     font.weight: Font.DemiBold
                     fill: 1
                     text: iconName
-                    iconSize: Appearance.font.pixelSize.normal
+                    iconSize: Math.round(Appearance.font.pixelSize.normal * Appearance.sizes.barModuleScale)
                     color: Appearance.colors.colOnSurfaceVariant
                 }
             }
@@ -64,7 +64,7 @@ Item {
             TextMetrics {
                 id: fullPercentageTextMetrics
                 text: "100"
-                font.pixelSize: Appearance.font.pixelSize.small
+                font.pixelSize: Math.round(Appearance.font.pixelSize.small * Appearance.sizes.barModuleScale)
             }
 
             StyledText {
@@ -77,7 +77,7 @@ Item {
                     enabled: Appearance.animationsEnabled
                     ColorAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve }
                 }
-                font.pixelSize: Appearance.font.pixelSize.small
+                font.pixelSize: Math.round(Appearance.font.pixelSize.small * Appearance.sizes.barModuleScale)
                 font.family: Appearance.font.family.main
                 font.weight: Font.Normal
                 font.italic: false

@@ -32,13 +32,14 @@ Item {
     RowLayout {
         id: rowLayout
         anchors.centerIn: parent
-        spacing: 4
+        spacing: 4 * Appearance.sizes.barModuleScale
 
         StyledText {
             font.family: root._timeFontFamily.length > 0
                 ? root._timeFontFamily : Appearance.font.family.main
             font.pixelSize: root._timePixelSize > 0
-                ? root._timePixelSize : Appearance.font.pixelSize.large
+                ? root._timePixelSize * Appearance.sizes.barModuleScale
+                : Appearance.font.pixelSize.large * Appearance.sizes.barModuleScale
             color: Appearance.colors.colOnLayer1
             text: DateTime.timeDisplay
         }
@@ -46,7 +47,7 @@ Item {
         Revealer {
             reveal: root.showDate
             StyledText {
-                font.pixelSize: Appearance.font.pixelSize.small
+                font.pixelSize: Math.round(Appearance.font.pixelSize.small * Appearance.sizes.barModuleScale)
                 color: Appearance.colors.colOnLayer1
                 text: "•"
             }
@@ -58,7 +59,8 @@ Item {
                 font.family: root._dateFontFamily.length > 0
                     ? root._dateFontFamily : Appearance.font.family.main
                 font.pixelSize: root._datePixelSize > 0
-                    ? root._datePixelSize : Appearance.font.pixelSize.small
+                    ? root._datePixelSize * Appearance.sizes.barModuleScale
+                    : Appearance.font.pixelSize.small * Appearance.sizes.barModuleScale
                 color: Appearance.colors.colOnLayer1
                 text: DateTime.date
             }

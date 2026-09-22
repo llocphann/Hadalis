@@ -63,8 +63,8 @@ MouseArea {
 
         spacing: 0
         anchors.fill: parent
-        anchors.leftMargin: 4
-        anchors.rightMargin: 4
+        anchors.leftMargin: 4 * Appearance.sizes.barModuleScale
+        anchors.rightMargin: 4 * Appearance.sizes.barModuleScale
 
         Resource {
             iconName: "memory"
@@ -80,7 +80,7 @@ MouseArea {
                 ((Config.options?.bar?.resources?.alwaysShowTemp ?? true) ||
                     !(MprisController.activePlayer?.trackTitle?.length > 0) ||
                     root.alwaysShowAllResources)
-            Layout.leftMargin: shown ? 6 : 0
+            Layout.leftMargin: shown ? 6 * Appearance.sizes.barModuleScale : 0
             cautionThreshold: Config.options?.bar?.resources?.tempCautionThreshold ?? 65
             warningThreshold: Config.options?.bar?.resources?.tempWarningThreshold ?? 80
         }
@@ -92,7 +92,7 @@ MouseArea {
                 ((Config.options?.bar?.resources?.alwaysShowCpu ?? true) ||
                     !(MprisController.activePlayer?.trackTitle?.length > 0) ||
                     root.alwaysShowAllResources)
-            Layout.leftMargin: shown ? 6 : 0
+            Layout.leftMargin: shown ? 6 * Appearance.sizes.barModuleScale : 0
             warningThreshold: Config.options?.bar?.resources?.cpuWarningThreshold ?? 90
         }
 
@@ -103,7 +103,7 @@ MouseArea {
                 ((Config.options?.bar?.resources?.alwaysShowGpu ?? true) ||
                     !(MprisController.activePlayer?.trackTitle?.length > 0) ||
                     root.alwaysShowAllResources)
-            Layout.leftMargin: shown ? 6 : 0
+            Layout.leftMargin: shown ? 6 * Appearance.sizes.barModuleScale : 0
             warningThreshold: Config.options?.bar?.resources?.gpuWarningThreshold ?? 90
         }
 

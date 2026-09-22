@@ -18,7 +18,7 @@ for token in (
     "Todo.deleteItem(item.originalIndex)",
     'Translation.tr("Add task")',
     'Translation.tr("Prepare Obsidian")',
-    'GlobalStates.openSettingsSection(7, "Todo & Obsidian")',
+    'GlobalStates.openSettingsSection(7, "To-do & Quick Notes")',
     'Todo.openSource("")',
     'Todo.backend === "obsidian"',
     "Todo.sourceLabel",

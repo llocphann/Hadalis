@@ -63,11 +63,13 @@ def instrument(config: Path) -> None:
         '                        draft: "alpha\\n\\nbeta gamma"\n',
     )
     editor = config / "modules/settings/CodeWorkflowSourceEditor.qml"
+    replace_once(editor, "import QtQuick.Layouts\n",
+                 "import QtQuick.Layouts\nimport QtQuick.Window\n")
     replace_once(
         editor, "    id: root\n",
         "    id: root\n"
         "    readonly property bool testTextEditFocus: editor.activeFocus\n"
-        "    readonly property bool testFindFocus: findField.activeFocus\n    property int testTapCount: 0\n    readonly property point testClickPoint: editor.mapToItem(null, 2, Math.max(2, editor.font.pixelSize / 2))\n    readonly property string testClickOutput: editor.window?.screen?.name ?? ""\n",
+        "    readonly property bool testFindFocus: findField.activeFocus\n    property int testTapCount: 0\n    readonly property point testClickPoint: editor.mapToItem(null, 2, Math.max(2, editor.font.pixelSize / 2))\n    readonly property string testClickOutput: editor.Screen.name\n",
     )
     replace_once(
         editor, "                    onTapped: eventPoint => {\n",

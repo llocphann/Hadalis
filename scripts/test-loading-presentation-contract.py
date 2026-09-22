@@ -82,4 +82,27 @@ assert "id: startupLoadingLabel" in waffle
 assert "SequentialAnimation on opacity" in waffle
 assert "SequentialAnimation on scale" in waffle
 
+# Intentional icon-only activity (buffering, session login and update badge)
+# must use a gear. Action-specific status/progress text stays available.
+assert "MaterialLoadingIndicator {" in read("modules/sidebarLeft/innertune/ITPlayer.qml")
+assert '"progress_activity"' not in read("modules/sidebarLeft/innertune/ITPlayer.qml")
+assert 'root.loginInProgress ? "settings" : "arrow_forward"' in read("dots/sddm/pixel/Main.qml")
+for path in ("modules/bar/ShellUpdateIndicator.qml",
+             "modules/shellUpdate/ShellUpdateOverlay.qml"):
+    assert '"progress_activity"' not in read(path), path
+
+# Preserve non-loading icons (Preview, success, errors), but never render one
+# alongside a busy/loading label in the wallpaper and encoder settings.
+for path in ("modules/settings/GowallWallpaperEditor.qml",
+             "modules/waffle/settings/pages/WGowallPage.qml",
+             "modules/settings/ToolsConfig.qml",
+             "modules/wallpaperLauncher/WallpaperLauncherContent.qml"):
+    content = read(path)
+    assert "LoadingText {" in content, path
+    assert '"progress_activity"' not in content, path
+
+ytmusic = read("modules/sidebarLeft/YtMusicView.qml")
+assert "MaterialLoadingIndicator {" not in ytmusic
+assert '"progress_activity"' not in ytmusic
+
 print("Shared loading presentation contracts: PASS")

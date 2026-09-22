@@ -308,7 +308,7 @@ def main() -> int:
             lambda: value if (
                 (value := state())["mode"] == "insert"
                 and value["caret"] == 6
-                and value["text"] == "alpha\\n\\n\\nbeta gamma"
+                and value["text"] == "alpha\n\n\nbeta gamma"
             ) else None,
             "physical o opens blank line below with caret on new line",
         )
@@ -324,7 +324,7 @@ def main() -> int:
             lambda: value if (
                 (value := state())["mode"] == "insert"
                 and value["caret"] == 6
-                and value["text"] == "alpha\\n\\n\\n\\nbeta gamma"
+                and value["text"] == "alpha\n\n\n\nbeta gamma"
             ) else None,
             "physical O opens blank line above with caret on new line",
         )

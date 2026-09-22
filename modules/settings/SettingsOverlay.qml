@@ -630,14 +630,9 @@ Scope {
                     1080,
                     Math.max(720, settingsPanel.height * 0.92),
                     Math.max(0, settingsPanel.height - 24))
-                // Keep the Material panel opaque enough for readable content while
-                // allowing the supported overlay background-opacity control to tune it.
-                // This alpha belongs to the panel fill, never Item opacity, so child
-                // content remains unaffected.
-                readonly property real panelBgOpacity: Math.max(0.6,
-                    Config.options?.settingsUi?.overlayAppearance?.backgroundOpacity ?? 1.0)
-                readonly property color surfaceFillColor: CF.ColorUtils.applyAlpha(
-                    Appearance.colors.colLayer0, settingsCard.panelBgOpacity)
+                // Structural connected chrome: exact same opaque Material surface
+                // as Screen Edge and normal ii Bar. Do not alpha-tint this fill.
+                readonly property color surfaceFillColor: Appearance.colors.colLayer0
 
                 anchors.horizontalCenter: parent.horizontalCenter
                 y: settingsPanel.height - root._screenEdgeThickness - height

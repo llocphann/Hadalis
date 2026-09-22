@@ -30,6 +30,7 @@ Working rules:
 - Canonical local validator: `bash scripts/validate-maintainer-local.sh`.
 - A task is not release-complete merely because code exists. Runtime-sensitive items remain open until locally validated on the intended desktop environment.
 - **Settings copy stays terse.** Visible helper/description text should be only a few words or one short clause; never put paragraph-length explanation on the main Settings surface. Put necessary detail in a tooltip or documentation instead.
+- **Settings base-surface color is locked to the ii perimeter.** In Material, the connected Settings body uses opaque `Appearance.colors.colLayer0`, exactly like normal ii Bar and Screen Edge; do not apply a Settings-local background opacity or tint to that structural surface.
 
 ### 1.1 Fresh-chat handoff — read before editing perimeter/UI geometry
 

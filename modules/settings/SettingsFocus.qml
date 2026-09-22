@@ -638,14 +638,12 @@ Scope {
             Rectangle {
                 id: card
 
-                // Same legibility clamp as the rail host — see SettingsOverlay.
+                // Keep the connected Material body identical to physical Screen Edge
+                // and normal ii Bar. Legacy backdrop branches may still read
+                // panelBgOpacity below, but they must not tint this structural fill.
                 readonly property real panelBgOpacity: Math.max(0.6,
                     Config.options?.settingsUi?.overlayAppearance?.backgroundOpacity ?? 1.0)
-                readonly property color surfaceFillColor: CF.ColorUtils.applyAlpha(
-                    Appearance.inirEverywhere ? Appearance.inir.colLayer0
-                  : Appearance.zzzEverywhere ? Appearance.zzz.chrome
-                  : Appearance.colors.colLayer0,
-                    card.panelBgOpacity)
+                readonly property color surfaceFillColor: Appearance.colors.colLayer0
 
                 anchors.horizontalCenter: parent.horizontalCenter
                 y: settingsPanel.height - root._screenEdgeThickness - height
@@ -665,9 +663,8 @@ Scope {
                       : Appearance.rounding.windowRounding
                 bottomLeftRadius: 0
                 bottomRightRadius: 0
-                // Same contract as the rail overlay: backgroundOpacity lands on
-                // the fill alpha (solid) or the blur transparentize (glass),
-                // never on Item opacity, which children inherit.
+                // The connected Material fill stays opaque. panelBgOpacity is
+                // retained only for legacy glass/backdrop compatibility below.
                 color: "transparent"
                 // angel's panel tokens, not its card tokens: this rectangle is
                 // the panel now that the body carries its own plate, and the

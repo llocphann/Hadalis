@@ -1096,22 +1096,6 @@ ContentPage {
                     }
                 }
 
-                // Floor is 60, not 20: the panel is a reading surface and the
-                // solid styles carry no backdrop of their own, so anything lower
-                // put the wallpaper straight behind the text. Both settings
-                // hosts clamp on read too, so an older stored value cannot reach
-                // the panel even if this page is never opened.
-                ConfigSpinBox {
-                    icon: "opacity"
-                    text: Translation.tr("Panel background opacity (%)")
-                    value: Math.round((Config.options?.settingsUi?.overlayAppearance?.backgroundOpacity ?? 1.0) * 100)
-                    from: 60
-                    to: 100
-                    stepSize: 5
-                    onValueChanged: Config.setNestedValue("settingsUi.overlayAppearance.backgroundOpacity", value / 100)
-                    StyledToolTip {
-                        text: Translation.tr("Opacity of the Settings panel background. Lower values let the shell show through; with a glass style it thins the frosted tint instead.")
-                    }
                 }
             }
 

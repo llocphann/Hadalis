@@ -830,8 +830,8 @@ if 'Node { targetId: "bar/media"' in page:
 if "setText(" in ir_service:
     fail("semantic IR service must remain source-read-only")
 if page.count("setText(") != 1 \
-        or "sourceDraftWriter.setText(root.sourceDraft)" not in page:
-    fail("Code Workflow editor may only stage its draft through sourceDraftWriter")
+        or "sourceDraftWriter.setText(root.sourceEditorPendingText)" not in page:
+    fail("Code Workflow editor may only stage the captured CAS draft through sourceDraftWriter")
 
 print("ok - Code Workflow source-backed semantic IR contract")
 

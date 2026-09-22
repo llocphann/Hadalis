@@ -11,6 +11,14 @@ import qs.modules.common.functions
  */
 MouseArea {
     id: root
+    // A pointer click can retain activeFocus after hover ends. Keep popup
+    // keyboard focus affordance without treating pointer focus as hover.
+    property bool _pointerFocused: false
+    onPressed: root._pointerFocused = true
+    onActiveFocusChanged: {
+        if (!root.activeFocus)
+            root._pointerFocused = false
+    }
     property bool vertical: false
 
     visible: implicitWidth > 0
@@ -151,7 +159,7 @@ MouseArea {
     StyledPopup {
         id: updatePopup
         hoverTarget: root
-        alternativeVisibleCondition: root.activeFocus
+        alternativeVisibleCondition: root.activeFocus && !root._pointerFocused
 
         // Wrapper caps implicitWidth so StyledPopup doesn't grow unbounded
         // (monospace hashes + branch names exceed the visual area otherwise)

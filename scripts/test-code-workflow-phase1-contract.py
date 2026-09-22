@@ -12,6 +12,67 @@ def require(text, token, message):
     if token not in text:
         raise SystemExit("FAIL: " + message)
 
+def require_balanced_qml_braces(text, message):
+    stack = []
+    index = 0
+    line = 1
+    state = "code"
+    quote = ""
+    escaped = False
+    while index < len(text):
+        char = text[index]
+        nxt = text[index + 1] if index + 1 < len(text) else ""
+        if char == "\n":
+            line += 1
+            if state == "line-comment":
+                state = "code"
+            index += 1
+            continue
+        if state == "line-comment":
+            index += 1
+            continue
+        if state == "block-comment":
+            if char == "*" and nxt == "/":
+                state = "code"
+                index += 2
+            else:
+                index += 1
+            continue
+        if state == "string":
+            if escaped:
+                escaped = False
+            elif char == "\\":
+                escaped = True
+            elif char == quote:
+                state = "code"
+                quote = ""
+            index += 1
+            continue
+        if char == "/" and nxt == "/":
+            state = "line-comment"
+            index += 2
+            continue
+        if char == "/" and nxt == "*":
+            state = "block-comment"
+            index += 2
+            continue
+        if char in ("'", '"', "`"):
+            state = "string"
+            quote = char
+            index += 1
+            continue
+        if char == "{":
+            stack.append(line)
+        elif char == "}":
+            if not stack:
+                raise SystemExit(
+                    f"FAIL: {message}: unexpected closing brace at line {line}")
+            stack.pop()
+        index += 1
+    if stack:
+        raise SystemExit(
+            f"FAIL: {message}: unclosed brace opened at line {stack[-1]}")
+
 def utf16_index_for_utf8_byte_offset(text, byte_offset):
     target = max(0, int(byte_offset))
     consumed = 0
@@ -29,6 +90,8 @@ persistent = read("modules/common/Persistent.qml")
 qmldir = read("services/qmldir")
 settings_qmldir = read("modules/settings/qmldir")
 page = read("modules/settings/CodeWorkflow.qml")
+require_balanced_qml_braces(
+    page, "CodeWorkflow.qml must remain structurally balanced")
 source_editor = read("modules/settings/CodeWorkflowSourceEditor.qml")
 canvas = read("modules/settings/CodeWorkflowIrCanvas.qml")
 shell = read("shell.qml")

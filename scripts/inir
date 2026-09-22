@@ -79,6 +79,7 @@ Quick start:
   inir logs              View runtime logs (--full: all categories, --debug: foreground debug, -f: follow)
   inir status            Shell status info
   inir doctor            Health checks (--perf: runtime graphics/media snapshot)
+  inir input-method start Initialize Fcitx5/Unikey for the desktop session
 
 EOF
 
@@ -113,7 +114,7 @@ Other:
   theme <list-targets|inspect|doctor|apply|scaffold> [args...]
   completions <bash|zsh|fish>
   service <install|uninstall|enable|disable|start|stop|restart|status|logs>
-  repair, path, test-local, settings-window, waffle-settings-window
+  repair, path, test-local, input-method start, settings-window, waffle-settings-window
 EOF
 }
 
@@ -1780,7 +1781,7 @@ apply_qt_runtime_env() {
                        DISPLAY XCURSOR_THEME XCURSOR_SIZE \
                        LANG LC_ALL XDG_MENU_PREFIX \
                        ELECTRON_OZONE_PLATFORM_HINT QT_STYLE_OVERRIDE \
-                       GDK_BACKEND; do
+                       QT_IM_MODULE XMODIFIERS GDK_BACKEND; do
             if [[ -z "${!_qs_var:-}" ]]; then
                 _qs_val="$(grep "^${_qs_var}=" <<< "$_qs_sys_env" | head -1 | cut -d= -f2- || true)"
                 [[ -n "$_qs_val" ]] && export "${_qs_var}=${_qs_val}"
@@ -2065,6 +2066,17 @@ ensure_systemd_graphical_env() {
     # session env instead, which misses this variable.
     if ! grep -q '^ELECTRON_OZONE_PLATFORM_HINT=' <<< "$sys_env" 2>/dev/null; then
         vars_to_import+=("ELECTRON_OZONE_PLATFORM_HINT=auto")
+    fi
+
+    # Qt on Niri uses the Fcitx input context; XWayland clients use XIM.
+    # Do not replace an input method explicitly selected in the user manager.
+    if command -v fcitx5 >/dev/null 2>&1; then
+        if ! grep -q '^QT_IM_MODULE=' <<< "$sys_env" 2>/dev/null && [[ -z "${QT_IM_MODULE+x}" ]]; then
+            vars_to_import+=("QT_IM_MODULE=fcitx")
+        fi
+        if ! grep -q '^XMODIFIERS=' <<< "$sys_env" 2>/dev/null && [[ -z "${XMODIFIERS+x}" ]]; then
+            vars_to_import+=("XMODIFIERS=@im=fcitx")
+        fi
     fi
 
     # QT_QPA_PLATFORM — tells Qt apps to use the Wayland backend.  Qt usually
@@ -3964,6 +3976,17 @@ case "$command_name" in
         done
         resolve_config_dir
         run_repair "$config_dir"
+        ;;
+    input-method)
+        case "${1:-start}" in
+            start)
+                resolve_config_dir
+                if [[ -f "$config_dir/scripts/input-method/fcitx5-session.sh" ]]; then
+                    bash "$config_dir/scripts/input-method/fcitx5-session.sh"
+                fi
+                ;;
+            *) echo "Usage: inir input-method start" >&2; exit 2 ;;
+        esac
         ;;
     path)
         while [[ $# -gt 0 ]]; do

@@ -87,18 +87,19 @@ Item {
         const rawNeedle = root.findText
         if (rawNeedle.length === 0)
             return []
-        const haystack = root.findCaseSensitive
-            ? root.documentText : root.documentText.toLocaleLowerCase()
-        const needle = root.findCaseSensitive
-            ? rawNeedle : rawNeedle.toLocaleLowerCase()
+
+        // Search the original UTF-16 document: Unicode case conversion can
+        // alter string length, making offsets from a folded copy incorrect.
+        const escaped = rawNeedle.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+        const expression = new RegExp(escaped,
+            root.findCaseSensitive ? "gu" : "giu")
         const matches = []
-        let offset = 0
-        while (offset <= haystack.length - needle.length) {
-            const start = haystack.indexOf(needle, offset)
-            if (start < 0)
-                break
-            matches.push({ start: start, end: start + rawNeedle.length })
-            offset = start + Math.max(1, rawNeedle.length)
+        let match
+        while ((match = expression.exec(root.documentText)) !== null) {
+            matches.push({
+                start: match.index,
+                end: match.index + match[0].length
+            })
         }
         return matches
     }
@@ -438,6 +439,14 @@ Item {
     }
 
     onDocumentTextChanged: {
+        // Do not reuse a stale selection after an edit or a source refresh.
+        if (root.activeFindStart >= 0
+                && !root.findMatches.some(match =>
+                    match.start === root.activeFindStart
+                        && match.end === root.activeFindEnd)) {
+            root.activeFindStart = -1
+            root.activeFindEnd = -1
+        }
         if (!root.syncingFromHost && root.documentText !== root.draft)
             root.draftEdited(root.documentText)
     }
@@ -507,7 +516,7 @@ Item {
                 StyledText {
                     text: root.findMatches.length === 0
                         ? "0/0"
-                        : String(Math.max(1, root.activeFindIndex + 1))
+                        : String(root.activeFindIndex + 1)
                             + "/" + String(root.findMatches.length)
                     color: Appearance.colors.colSubtext
                     font.pixelSize: Appearance.font.pixelSize.smallest

@@ -327,12 +327,35 @@ or Code Workflow transaction is active.
 The dependency-free bridge has unit/static contracts plus
 `test-code-workflow-nvim-runtime.py`: on hosts with `nvim` installed it starts
 a hermetic embedded instance, waits for UI attach/frame delivery, sends real
-input, verifies a write, and verifies grid resize. This repository session has
-not executed those tests or a live Niri Settings run, so embedded nvim remains
-runtime-unqualified here. Current deliberate gaps are IME/composed-text handling,
-a dedicated host-clipboard paste path, blink timing, and Neovim extensions such
-as multigrid/externalized popupmenu/messages. The existing external
-`Open in Neovim` terminal action and inline editor remain fallbacks.
+input, verifies buffer modified/saved notifications, verifies a write and
+`nvim_paste()`, and verifies grid resize. This repository session has not
+executed those tests or a live Niri Settings run, so embedded nvim remains
+runtime-unqualified here.
+
+Clipboard paste now uses `wl-paste -n` on the Hadalis side and the dedicated
+Neovim `nvim_paste()` API; Ctrl+Shift+V/Shift+Insert are intercepted while
+Ctrl+V remains Vim's Visual Block command. Cursor rendering honors Neovim's
+`blinkwait/blinkon/blinkoff` values and repaints only the affected cursor row.
+Qt input methods are bridged through an invisible TextInput positioned at the
+actual Neovim cursor cell: committed composed text is forwarded once through
+`nvim_input()`, while preedit text is shown locally and IME-owned keys are not
+stolen during composition. This covers the previous IME/composed-text gap in
+the frontend design, subject to live fcitx/ibus verification.
+
+The renderer no longer repaints the full Canvas for every redraw. It exposes
+Neovim `dirtyRows`, uses `Canvas.markDirty()` for changed rows and cursor
+transitions/blink, and reserves full repaint for resize/default-color changes.
+Buffer path + modified state are also emitted by Neovim itself through a scoped
+autocmd/RPC notification. Embedded source switching is blocked while the real
+buffer is modified; the header therefore displays the actual active nvim buffer
+rather than merely the current Code Workflow selection.
+
+Remaining deliberate gaps are multigrid/externalized popupmenu/messages and
+full compositor/runtime qualification. Those extensions are not required for
+the current single-grid frontend because Neovim continues rendering cmdline,
+messages and popupmenu into grid 1 while their `ext_*` options remain disabled.
+The existing external `Open in Neovim` terminal action and inline editor remain
+fallbacks.
 
 **Supersession note:** the Phase 0 renderer decision and “no production editor
 UI” statements later in this document are preserved as historical experiment

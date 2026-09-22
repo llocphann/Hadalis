@@ -1638,24 +1638,55 @@ Item {
             }
         }
         onExited: (exitCode, exitStatus) => {
+            const savedPath = root.sourceEditorPendingPath
+            const editingSavedPath = savedPath.length > 0
+                && root.sourceEditorPath === savedPath
+                && root.sourcePath === savedPath
+            const buffers = Object.assign({}, root.sourceEditorBuffers)
+            const previous = buffers[savedPath] ?? null
+            const draftNow = editingSavedPath
+                ? root.sourceDraft
+                : String(previous?.draft ?? root.sourceEditorPendingText)
+            root.sourceEditorSaving = false
+
             if (exitCode === 0) {
-                root.sourceEditorBaseText = root.sourceDraft
-                root.sourceText = root.sourceDraft
-                root.sourceEditorConflict = false
-                root.sourceEditorSaving = false
-                root.sourceEditorStatus = "Saved"
-                root.stashSourceEditorBuffer()
-                sourceReader.reload()
-                root.requestAnalysis(true)
+                // A successful CAS commits the staged bytes, not the latest
+                // keystrokes or a different source selected while saving.
+                buffers[savedPath] = {
+                    draft: draftNow,
+                    base: root.sourceEditorPendingText,
+                    conflict: false
+                }
+                root.sourceEditorBuffers = buffers
+                if (editingSavedPath) {
+                    root.sourceEditorBaseText = root.sourceEditorPendingText
+                    root.sourceText = root.sourceEditorPendingText
+                    root.sourceEditorConflict = false
+                    root.sourceEditorStatus = root.sourceEditorDirty
+                        ? "Saved snapshot · newer edits remain" : "Saved"
+                    root.stashSourceEditorBuffer()
+                    sourceReader.reload()
+                    root.requestAnalysis(true)
+                } else {
+                    root.sourceEditorStatus = "Saved " + savedPath
+                }
                 return
             }
-            root.sourceEditorSaving = false
             if (exitCode === 3) {
-                root.sourceEditorConflict = true
+                buffers[savedPath] = {
+                    draft: draftNow,
+                    base: String(previous?.base
+                        ?? root.sourceEditorPendingText),
+                    conflict: true
+                }
+                root.sourceEditorBuffers = buffers
                 root.sourceEditorStatus =
-                    "Conflict: source changed before save"
-                root.stashSourceEditorBuffer()
-                sourceReader.reload()
+                    "Conflict: source changed before save · " + savedPath
+                if (editingSavedPath) {
+                    root.sourceEditorConflict = true
+                    root.stashSourceEditorBuffer()
+                    sourceReader.reload()
+                }
                 return
             }
             root.sourceEditorStatus =

@@ -136,21 +136,24 @@ for token in (
 ):
     require(shell, token, "shell runtime snapshot IPC missing " + token)
 
+if "readonly property var catalog: [" in runtime:
+    raise SystemExit("FAIL: runtime discovery must not use a hard-coded target catalog")
 for token in (
-    'targetId: "bar"', 'targetId: "bar/media"',
-    'targetId: "bar/clock"', 'targetId: "bar/resources"',
-    'targetId: "dashboard"', 'targetId: "dock"',
-    'targetId: "overview"', 'targetId: "sidebar/left"',
-    'targetId: "sidebar/right"', 'targetId: "waffle/bar"',
-    'targetId: "waffle/action-center"', 'targetId: "waffle/task-view"',
+    "for (const key of Object.keys(root.entries))",
+    "registration?.descriptorSnapshot?.()",
+    "readonly property var localCatalog: root.discoveredCatalog",
+    "readonly property var catalog: root.activeCatalog",
+    "Array.isArray(root.remoteSnapshot?.descriptors)",
+    'id === "iiOnScreenKeyboard"',
+    'return "osk"',
+    'id === "iiOnScreenDisplay"',
+    'return "osd"',
+    'id === "wOnScreenDisplay"',
+    'return "waffle/osd"',
 ):
-    require(runtime, token, "runtime catalog missing shell surface " + token)
-require(runtime, "readonly property var activeCatalog:",
-        "runtime inventory must filter to the active shell family")
-require(runtime, "root.enabledPanels.includes(panelId)",
-        "runtime inventory must respect configured panel membership")
+    require(runtime, token, "dynamic runtime inventory missing " + token)
 require(page, "for (const target of CodeWorkflowRuntime.activeCatalog)",
-        "Targets must enumerate all configured active-family shell surfaces")
+        "Targets must enumerate discovered runtime surfaces")
 
 require(page, 'Quickshell.env("QS_CODE_WORKFLOW_CAPTURE") === "1"',
         "capture harness must be opt-in through an explicit environment gate")
@@ -633,8 +636,12 @@ require(canvas, "function onSubflowTargetIdChanged(): void",
         "subflow navigation must refit the graph")
 require(page, "ColorUtils.readableAccentInk(",
         "Code Workflow chips must derive readable foreground ink")
-require(page, '"UNLOADED · STATIC SOURCE"',
-        "Inspector must distinguish unloaded runtime from live residency")
+require(page, '"LOADED · HIDDEN"',
+        "Inspector must distinguish loaded-hidden runtime state")
+require(page, '"INACTIVE · SOURCE"',
+        "Inspector must distinguish inactive source-backed runtime state")
+require(page, '"DISABLED · SOURCE"',
+        "Inspector must distinguish disabled runtime declarations")
 require(page, "readonly property bool selectedLive:",
         "Header runtime badge must reflect the selected target")
 require(page, '" · " + CodeWorkflowAnalyzer.error',
@@ -722,14 +729,19 @@ if page.count("setText(") != 1 \
         "FAIL: Source Editor may only stage its guarded draft write")
 
 hooks = {
-    "modules/bar/BarContent.qml": 'targetId: "bar"',
-    "modules/bar/Media.qml": 'targetId: "bar/media"',
-    "modules/bar/ClockWidget.qml": 'targetId: "bar/clock"',
-    "modules/bar/Resources.qml": 'targetId: "bar/resources"',
+    "modules/bar/BarContent.qml": ('targetId: "bar"', 'sourcePath: "modules/bar/BarContent.qml"'),
+    "modules/bar/Media.qml": ('targetId: "bar/media"', 'sourcePath: "modules/bar/Media.qml"'),
+    "modules/bar/ClockWidget.qml": ('targetId: "bar/clock"', 'sourcePath: "modules/bar/ClockWidget.qml"'),
+    "modules/bar/Resources.qml": ('targetId: "bar/resources"', 'sourcePath: "modules/bar/Resources.qml"'),
 }
-for path, target_id in hooks.items():
+for path, (target_id, source_path) in hooks.items():
     source = read(path)
     require(source, "CodeWorkflowRuntimeTarget {", path + " missing runtime registration")
     require(source, target_id, path + " has wrong semantic target ID")
+    require(source, source_path, path + " missing runtime source metadata")
+require(target, "function descriptorSnapshot(): var",
+        "runtime instances must expose dynamic descriptor metadata")
+require(target, 'stateRank: 6',
+        "live runtime descriptors must outrank loader declarations")
 
 print("ok - Code Workflow Phase 1 production foundation contract")

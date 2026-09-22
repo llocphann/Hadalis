@@ -330,6 +330,23 @@ case "${SKIP_NIRI}" in
         log_warning "Qt theme: qt6ct (plasma-integration not found — install it for proper Qt theming)"
       fi
 
+      # Preserve users' existing input-method selections while enabling Telex
+      # on sessions that do not already define an IME. Re-running setup is safe.
+      if command -v fcitx5 >/dev/null 2>&1 && [[ -f "$NIRI_ENV_TARGET" ]]; then
+        if grep -Eq '^[[:space:]]*environment[[:space:]]*\\{' "$NIRI_ENV_TARGET"; then
+          if ! grep -Eq '^[[:space:]]*QT_IM_MODULE[[:space:]]+' "$NIRI_ENV_TARGET"; then
+            sed -i '/^[[:space:]]*environment[[:space:]]*{/a\\    QT_IM_MODULE "fcitx"' "$NIRI_ENV_TARGET"
+          fi
+          if ! grep -Eq '^[[:space:]]*XMODIFIERS[[:space:]]+' "$NIRI_ENV_TARGET"; then
+            sed -i '/^[[:space:]]*environment[[:space:]]*{/a\\    XMODIFIERS "@im=fcitx"' "$NIRI_ENV_TARGET"
+          fi
+        fi
+      fi
+      if command -v fcitx5 >/dev/null 2>&1 && [[ -f "$NIRI_STARTUP_TARGET" ]] \\
+          && ! grep -Fq '"input-method" "start"' "$NIRI_STARTUP_TARGET"; then
+        printf '\\n%s\\n' 'spawn-at-startup "inir" "input-method" "start"' >> "$NIRI_STARTUP_TARGET"
+      fi
+
       _launcher_path_escaped="${INIR_LAUNCHER_PATH//&/\\&}"
       sed -i \
         -e 's|spawn "bash" "-lc" "exec \"\$(inir path)/scripts/launch-terminal.sh\""|spawn "'"${_launcher_path_escaped}"'" "terminal"|' \

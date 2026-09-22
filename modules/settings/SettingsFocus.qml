@@ -594,15 +594,16 @@ Scope {
                     && !GlobalStates.settingsNativeDialogOpen
             }
 
-            // ── Scrim ──
-            Rectangle {
+            // Dim only the workspace, never the physical Screen Edge or the
+            // translucent connected body. The card cutout follows its slide.
+            SettingsWorkspaceScrim {
                 id: scrimBg
                 anchors.fill: parent
-                color: Appearance.colors.colScrim
-                opacity: (GlobalStates.settingsOverlayOpen ?? false)
+                outputName: String(settingsPanel.screen?.name ?? "")
+                cardRect: Qt.rect(card.x, card.y, card.width, card.height)
+                cardRadius: card.radius
+                dim: (GlobalStates.settingsOverlayOpen ?? false)
                     ? (Config.options?.settingsUi?.overlayAppearance?.scrimDim ?? 35) / 100 : 0
-                visible: opacity > 0
-
             }
 
             // Sibling of the scrim on purpose: scrimBg goes invisible at

@@ -570,16 +570,17 @@ Scope {
                     && !GlobalStates.settingsNativeDialogOpen
             }
 
-            // ── Scrim backdrop ──
-            Rectangle {
+            // Dim only the workspace, never the physical Screen Edge or the
+            // translucent connected body. The card cutout follows its slide.
+            SettingsWorkspaceScrim {
                 id: scrimBg
                 anchors.fill: parent
-                color: Appearance.colors.colScrim
-                opacity: (GlobalStates.settingsOverlayOpen ?? false) ? (Config.options?.settingsUi?.overlayAppearance?.scrimDim ?? 35) / 100 : 0
-                // visible tracks opacity (not settingsOpen) so the close fade-out
-                // actually renders before the Loader tears the panel down.
-                visible: opacity > 0
-
+                outputName: String(settingsPanel.screen?.name ?? "")
+                cardRect: Qt.rect(settingsCard.x, settingsCard.y,
+                    settingsCard.width, settingsCard.height)
+                cardRadius: settingsCard.radius
+                dim: (GlobalStates.settingsOverlayOpen ?? false)
+                    ? (Config.options?.settingsUi?.overlayAppearance?.scrimDim ?? 35) / 100 : 0
             }
 
             // Click-outside-to-close hit area — a sibling of scrimBg, not a child.

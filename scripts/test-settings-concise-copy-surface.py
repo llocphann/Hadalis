@@ -87,4 +87,23 @@ assert "Settings base surface has one owner." in README
 assert "if (Config.ready) {" in WINDOW
 assert "Qt.callLater(() => ThemeService.applyCurrentTheme())" in WINDOW
 
+
+# Overlay dimming must never tint the physical Screen Edge or the connected
+# colLayer0 body. Both presentation modes share the same curved workspace mask.
+SCRIM = (ROOT / "modules" / "settings" / "SettingsWorkspaceScrim.qml").read_text(encoding="utf-8")
+for host, card_id in ((OVERLAY, "settingsCard"), (FOCUS, "card")):
+    assert "SettingsWorkspaceScrim {" in host
+    assert 'outputName: String(settingsPanel.screen?.name ?? "")' in host
+    assert f"cardRect: Qt.rect({card_id}.x, {card_id}.y," in host
+    assert f"cardRadius: {card_id}.radius" in host
+    assert "Appearance.colors.colScrim" not in host
+assert "ShapePath {" in SCRIM
+assert "PerimeterTokens.frameRadius" in SCRIM
+assert "Appearance.sizes.verticalBarWidth" in SCRIM
+assert "Appearance.sizes.barHeight" in SCRIM
+assert "layer.effect: OpacityMask {" in SCRIM
+assert "invert: true" in SCRIM
+assert "bottomLeftRadius: 0" in SCRIM and "bottomRightRadius: 0" in SCRIM
+assert "fillColor: Appearance.colors.colScrim" in SCRIM
+
 print("Settings concise-copy/shared-surface contract: PASS")

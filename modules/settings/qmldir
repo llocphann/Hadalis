@@ -21,6 +21,7 @@ AutostartConfig 1.0 AutostartConfig.qml
 DockConfig 1.0 DockConfig.qml
 SidebarsConfig 1.0 SidebarsConfig.qml
 SettingsOverlay 1.0 SettingsOverlay.qml
+SettingsWorkspaceScrim 1.0 SettingsWorkspaceScrim.qml
 SettingsFocus 1.0 SettingsFocus.qml
 CodeWorkflowPickerHost 1.0 CodeWorkflowPickerHost.qml
 CodeWorkflowIrCanvas 1.0 CodeWorkflowIrCanvas.qml

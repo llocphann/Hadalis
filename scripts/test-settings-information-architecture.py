@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Regression contract for v7 intent-based Settings navigation and ownership."""
+"""Regression contract for v8 intent-based Settings navigation and ownership."""
 
 import re
 from pathlib import Path
@@ -45,7 +45,7 @@ def main() -> None:
         "active Material pages must have exactly one default owner", page_indices
     )
 
-    require(arrangement, "layoutSchemaVersion: 7", "navigation migration")
+    require(arrangement, "layoutSchemaVersion: 8", "navigation migration")
     require(arrangement, "const untouchedStock =", "navigation migration")
     require(arrangement, "SettingsPageRegistry.defaultCategories.map(", "navigation migration")
     require(arrangement, "root.save({ groups: migratedGroups, hidden: migratedHidden })",
@@ -117,7 +117,7 @@ def main() -> None:
     require(data, "pageIndex: 2, pageName: root.pages[2].name,\n"
                   '            section: Translation.tr("Appearance & Layout"),',
             "Bar search destination")
-    print("Settings v7 information architecture, routing and ownership: OK")
+    print("Settings v8 information architecture, routing and ownership: OK")
 
 
 if __name__ == "__main__":

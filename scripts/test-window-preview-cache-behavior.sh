@@ -39,7 +39,8 @@ let scheduled = 0, captures = 0, destroyed = 0, created = 0, completed = 0;
 const root = {
     initialized: true, sessionReady: true, capturing: false,
     captureAllRequested: false, requestedWindowIds: [],
-    captureRequestedWhileInitializing: false, previewCache: {},
+    captureRequestedWhileInitializing: false,
+    forceRefreshRequestedWhileInitializing: false, previewCache: {},
     overviewWarmImages: {}, overviewWarmOrder: [],
     overviewWarmRequestedIds: [], overviewWarmLimit: 2,
     previewDir: '/tmp/previews', sessionKey: 'current-socket',
@@ -63,7 +64,7 @@ const scope = {
 scope._log = root._log;
 for (const key of ['previewCache','requestedWindowIds','captureAllRequested',
     'capturing','initialized','sessionReady','captureRequestedWhileInitializing',
-    'overviewWarmImages','overviewWarmOrder','overviewWarmRequestedIds',
+    'forceRefreshRequestedWhileInitializing','overviewWarmImages','overviewWarmOrder','overviewWarmRequestedIds',
     'overviewWarmLimit','previewDir','sessionKey']) {
     Object.defineProperty(scope, key, {
         get() { return root[key]; },

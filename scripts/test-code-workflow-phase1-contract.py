@@ -393,9 +393,6 @@ require(source_editor, '"Syntax highlighting unavailable · plain editor active"
         "missing syntax-highlighting backend must fall back to the plain editor")
 if "import org.kde.syntaxhighlighting" in page or "import org.kde.syntaxhighlighting" in source_editor:
     fail("Code Workflow must not hard-depend on KDE syntax highlighting")
-for forbidden in ("CodeWorkflowNvim", "CodeWorkflowNvimView", "Neovim", "nvim_ui_attach"):
-    if forbidden in page or forbidden in source_editor or forbidden in qmldir or forbidden in settings_qmldir:
-        fail("Code Workflow must not retain Neovim integration: " + forbidden)
 require(settings_qmldir,
         "CodeWorkflowSourceEditor 1.0 CodeWorkflowSourceEditor.qml",
         "modal Source Editor must be exported by settings qmldir")

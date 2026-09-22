@@ -67,7 +67,8 @@ for token in (
     "CodeWorkflowNvim.mouse(",
     "hoverEnabled: CodeWorkflowNvim.mouseEnabled",
     "visible: CodeWorkflowNvim.ready",
-    "&& CodeWorkflowNvim.error.length > 0",
+    "CodeWorkflowNvim.error.length > 0",
+    "root.redrawDiagnosticText.length > 0",
     "id: readyErrorText",
 ):
     if token not in view:

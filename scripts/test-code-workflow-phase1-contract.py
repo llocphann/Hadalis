@@ -689,8 +689,8 @@ require(page, "const runtimeOwnsRoot = id === rootNodeId",
         "graph root and runtime row must not both claim primary selection")
 require(page, "&& !runtimeOwnsRoot",
         "child graph selection must remain uniquely revealable in Targets")
-require(page, 'mainText: root.compactHeader ? "" : "Fit graph"',
-        "graph fit control must describe its actual behavior")
+require(page, 'buttonText: "Fit graph"',
+        "graph fit control must retain its accessible description")
 require(page, "onClicked: canvas.fitGraph()",
         "Fit graph control must use actual graph extents")
 require(canvas, "function onSubflowTargetIdChanged(): void",

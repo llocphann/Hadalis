@@ -618,16 +618,8 @@ Item {
         }
     }
 
-    Loader {
-        // Detached Float/Card shadow is retired. The supported Hug Bar uses the
-        // dedicated inward edge shadow owned by Bar.qml.
-        active: false
-        anchors.fill: barBackground
-        sourceComponent: StyledRectangularShadow {
-            anchors.fill: undefined
-            target: barBackground
-        }
-    }
+    // The physical Screen Edge's single inverted frame owns the inward
+    // shadow, including this Bar's corners. No local duplicate renderer.
 
     Rectangle {
         id: barBackground

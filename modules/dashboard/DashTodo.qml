@@ -35,6 +35,8 @@ DashCard {
     readonly property int tabControlHeight:
         root.veryShallowLayout ? 34 : (root.narrowLayout ? 36 : 38)
     readonly property int safeEdgeInset: 2
+    readonly property int actionButtonSize:
+        root.veryShallowLayout ? 30 : 32
 
     readonly property var indexedTasks: Todo.list.map(function(item, index) {
         return Object.assign({}, item, { originalIndex: index })
@@ -89,6 +91,8 @@ DashCard {
 
         RowLayout {
             Layout.fillWidth: true
+            Layout.leftMargin: root.safeEdgeInset
+            Layout.rightMargin: root.safeEdgeInset
             spacing: root.narrowLayout ? 6 : 10
 
             MaterialShapeWrappedMaterialSymbol {
@@ -163,9 +167,15 @@ DashCard {
             }
 
             RippleButton {
-                implicitWidth: root.narrowLayout ? 30 : 34
-                implicitHeight: implicitWidth
-                buttonRadius: height / 2
+                Layout.preferredWidth: root.actionButtonSize
+                Layout.minimumWidth: root.actionButtonSize
+                Layout.maximumWidth: root.actionButtonSize
+                Layout.preferredHeight: root.actionButtonSize
+                Layout.minimumHeight: root.actionButtonSize
+                Layout.alignment: Qt.AlignVCenter
+                implicitWidth: root.actionButtonSize
+                implicitHeight: root.actionButtonSize
+                buttonRadius: root.actionButtonSize / 2
                 colBackground: Appearance.colors.colLayer2
                 colBackgroundHover: Appearance.colors.colLayer2Hover
                 onClicked: root.openTodoSettings()
@@ -173,7 +183,7 @@ DashCard {
                 contentItem: MaterialSymbol {
                     anchors.centerIn: parent
                     text: "more_horiz"
-                    iconSize: 20
+                    iconSize: 18
                     color: root.colSubtext
                 }
 
@@ -693,40 +703,34 @@ DashCard {
 
         RowLayout {
             Layout.fillWidth: true
-            spacing: root.narrowLayout ? 4 : 6
+            Layout.leftMargin: root.safeEdgeInset
+            Layout.rightMargin: root.safeEdgeInset
+            spacing: root.narrowLayout ? 5 : 7
 
             RippleButton {
                 visible: Todo.backend !== "obsidian"
-                Layout.preferredWidth: (root.narrowLayout || root.veryShallowLayout)
-                    ? 34 : setupRow.implicitWidth + 18
-                implicitHeight: root.veryShallowLayout ? 30 : 34
-                buttonRadius: Appearance.rounding.full
+                Layout.preferredWidth: root.actionButtonSize
+                Layout.minimumWidth: root.actionButtonSize
+                Layout.maximumWidth: root.actionButtonSize
+                Layout.preferredHeight: root.actionButtonSize
+                Layout.minimumHeight: root.actionButtonSize
+                Layout.alignment: Qt.AlignVCenter
+                implicitWidth: root.actionButtonSize
+                implicitHeight: root.actionButtonSize
+                buttonRadius: root.actionButtonSize / 2
                 colBackground: Appearance.colors.colLayer2
                 colBackgroundHover: Appearance.colors.colLayer2Hover
                 onClicked: root.openTodoSettings()
 
-                StyledToolTip {
-                    text: Translation.tr("Prepare Obsidian")
+                contentItem: MaterialSymbol {
+                    anchors.centerIn: parent
+                    text: "link"
+                    iconSize: 17
+                    color: root.colAccent
                 }
 
-                contentItem: RowLayout {
-                    id: setupRow
-                    anchors.centerIn: parent
-                    spacing: 5
-
-                    MaterialSymbol {
-                        text: "link"
-                        iconSize: 16
-                        color: root.colAccent
-                    }
-
-                    StyledText {
-                        visible: !root.narrowLayout && !root.veryShallowLayout
-                        text: Translation.tr("Prepare Obsidian")
-                        font.pixelSize: Appearance.font.pixelSize.smallest
-                        font.weight: Font.Medium
-                        color: root.colText
-                    }
+                StyledToolTip {
+                    text: Translation.tr("Prepare Obsidian")
                 }
             }
 
@@ -735,74 +739,56 @@ DashCard {
             }
 
             RippleButton {
-                implicitWidth: (root.compact || root.narrowLayout
-                        || root.veryShallowLayout)
-                    ? 34 : editRow.implicitWidth + 16
-                implicitHeight: root.veryShallowLayout ? 30 : 34
-                buttonRadius: Appearance.rounding.full
+                Layout.preferredWidth: root.actionButtonSize
+                Layout.minimumWidth: root.actionButtonSize
+                Layout.maximumWidth: root.actionButtonSize
+                Layout.preferredHeight: root.actionButtonSize
+                Layout.minimumHeight: root.actionButtonSize
+                Layout.alignment: Qt.AlignVCenter
+                implicitWidth: root.actionButtonSize
+                implicitHeight: root.actionButtonSize
+                buttonRadius: root.actionButtonSize / 2
                 enabled: Todo.ready
                 colBackground: Appearance.colors.colLayer2
                 colBackgroundHover: Appearance.colors.colLayer2Hover
                 onClicked: Todo.openSource("")
 
-                StyledToolTip {
-                    text: Translation.tr("Edit task source")
+                contentItem: MaterialSymbol {
+                    anchors.centerIn: parent
+                    text: "edit_note"
+                    iconSize: 17
+                    color: root.colAccent
                 }
 
-                contentItem: RowLayout {
-                    id: editRow
-                    anchors.centerIn: parent
-                    spacing: 5
-
-                    MaterialSymbol {
-                        text: "edit_note"
-                        iconSize: 17
-                        color: root.colAccent
-                    }
-
-                    StyledText {
-                        visible: !root.compact && !root.narrowLayout
-                            && !root.veryShallowLayout
-                        text: Translation.tr("Edit")
-                        font.pixelSize: Appearance.font.pixelSize.small
-                        font.weight: Font.Medium
-                        color: root.colText
-                    }
+                StyledToolTip {
+                    text: Translation.tr("Edit task source")
                 }
             }
 
             RippleButton {
-                Layout.preferredWidth: (root.narrowLayout || root.veryShallowLayout)
-                    ? 34 : addRow.implicitWidth + 18
-                implicitHeight: root.veryShallowLayout ? 30 : 34
-                buttonRadius: Appearance.rounding.full
+                Layout.preferredWidth: root.actionButtonSize
+                Layout.minimumWidth: root.actionButtonSize
+                Layout.maximumWidth: root.actionButtonSize
+                Layout.preferredHeight: root.actionButtonSize
+                Layout.minimumHeight: root.actionButtonSize
+                Layout.alignment: Qt.AlignVCenter
+                implicitWidth: root.actionButtonSize
+                implicitHeight: root.actionButtonSize
+                buttonRadius: root.actionButtonSize / 2
                 enabled: Todo.ready && !Todo.busy
                 colBackground: Appearance.colors.colPrimary
                 colBackgroundHover: Appearance.colors.colPrimaryHover
                 onClicked: root.showAddDialog = true
 
-                StyledToolTip {
-                    text: Translation.tr("Add task")
+                contentItem: MaterialSymbol {
+                    anchors.centerIn: parent
+                    text: "add"
+                    iconSize: 18
+                    color: Appearance.colors.colOnPrimary
                 }
 
-                contentItem: RowLayout {
-                    id: addRow
-                    anchors.centerIn: parent
-                    spacing: 5
-
-                    MaterialSymbol {
-                        text: "add"
-                        iconSize: 17
-                        color: Appearance.colors.colOnPrimary
-                    }
-
-                    StyledText {
-                        visible: !root.narrowLayout && !root.veryShallowLayout
-                        text: Translation.tr("Add task")
-                        font.pixelSize: Appearance.font.pixelSize.small
-                        font.weight: Font.DemiBold
-                        color: Appearance.colors.colOnPrimary
-                    }
+                StyledToolTip {
+                    text: Translation.tr("Add task")
                 }
             }
         }

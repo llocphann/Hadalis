@@ -1487,6 +1487,9 @@ ApplicationWindow {
 
                     pages: root.pages
                     requestedIndex: root.currentPage
+                    // This is a separate process: keep the shell's runtime
+                    // catalog sourced through IPC rather than local page probes.
+                    workflowDiscoveryEnabled: false
                     loadEnabled: Config.ready && root._navigationInitialized
 
                     SettingsPageLoadingOverlay {

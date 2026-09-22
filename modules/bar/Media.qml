@@ -37,6 +37,8 @@ Item {
     readonly property bool hasTrackMetadata: (activePlayer?.trackTitle?.length ?? 0) > 0
         || (activePlayer?.trackArtist?.length ?? 0) > 0
     readonly property bool lockMediaWidth: showVerboseLabel && hasTrackMetadata
+    readonly property real mediaInset: Math.max(2, Math.round(4 * Appearance.sizes.barModuleScale))
+    readonly property real mediaTextGap: Math.max(4, Math.round(7 * Appearance.sizes.barModuleScale))
     // The title scroller owns its own HoverHandler to pause the marquee, so the
     // legacy MouseArea does not report containsMouse over that child. Expose one
     // module-wide hover state for the connected Media popup instead.
@@ -57,7 +59,7 @@ Item {
     }
     implicitWidth: lockMediaWidth
         ? maxMediaWidth
-        : Math.min(rowLayout.implicitWidth + rowLayout.spacing * 2, maxMediaWidth)
+        : Math.min(rowLayout.implicitWidth + root.mediaInset * 2, maxMediaWidth)
     implicitHeight: Appearance.sizes.barHeight
     clip: true
 
@@ -154,8 +156,10 @@ Item {
     RowLayout { // Real content
         id: rowLayout
 
-        spacing: 4 * Appearance.sizes.barModuleScale
+        spacing: root.mediaTextGap
         anchors.fill: parent
+        anchors.leftMargin: root.mediaInset
+        anchors.rightMargin: root.mediaInset
 
         Item {
             id: compactMediaGlyph
@@ -197,7 +201,7 @@ Item {
             visible: root.showVerboseLabel
             Layout.alignment: Qt.AlignVCenter
             Layout.fillWidth: true
-            Layout.rightMargin: rowLayout.spacing
+            Layout.minimumWidth: 0
             implicitWidth: titleText.implicitWidth
             implicitHeight: titleText.implicitHeight
             clip: true
@@ -207,7 +211,7 @@ Item {
             // Continuous wraparound: scroll one text width + gap, then loop. The
             // trailing copy enters from the right exactly as the first exits left,
             // so it reads as a single seamless ribbon with no fade-snap.
-            readonly property real gap: 40
+            readonly property real gap: Math.round(28 * Appearance.sizes.barModuleScale)
             readonly property real loopDistance: titleText.implicitWidth + gap
 
             Row {
@@ -220,7 +224,10 @@ Item {
                     id: titleText
                     height: marqueeRow.height
                     verticalAlignment: Text.AlignVCenter
-                    horizontalAlignment: titleScroller.overflowing ? Text.AlignLeft : Text.AlignHCenter
+                    // The label always starts beside the glyph; short titles must
+                    // not jump toward the center when the marquee stops.
+                    horizontalAlignment: Text.AlignLeft
+                    font.pixelSize: Math.max(11, Math.round(Appearance.font.pixelSize.small * Appearance.sizes.barModuleScale))
                     width: titleScroller.overflowing ? implicitWidth : titleScroller.width
                     elide: Text.ElideNone
                     animateChange: true
@@ -234,12 +241,7 @@ Item {
                     text: titleScroller.fullText
                     onTextChanged: {
                         root.pendingTrackDirection = 0
-                        if (!titleScroller.overflowing) marqueeRow.x = 0
-                        if (!titleScroller._marqueeHovered && titleScroller.overflowing && Appearance.animationsEnabled) {
-                            scrollAnim.stop()
-                            titleScroller._marqueeHolding = true
-                            titleScroller._startHoldTimer()
-                        }
+                        titleScroller.resetMarquee()
                     }
                 }
 
@@ -259,6 +261,16 @@ Item {
             // Hover pauses mid-scroll; on exit it resumes from the paused position.
             property bool _marqueeHolding: true
             property bool _marqueeHovered: false
+
+            // Track/width/font changes must never leave a clipped mid-scroll
+            // fragment beside the media icon. Restart at the first glyph.
+            function resetMarquee() {
+                holdTimer.stop()
+                scrollAnim.stop()
+                marqueeRow.x = 0
+                _marqueeHolding = true
+                _startHoldTimer()
+            }
 
             function _startHoldTimer() {
                 if (!titleScroller.visible || !titleScroller.overflowing
@@ -292,18 +304,10 @@ Item {
                 }
             }
 
-            // Kick off on geometry/overflow changes
-            onOverflowingChanged: {
-                if (!overflowing) {
-                    marqueeRow.x = 0
-                    scrollAnim.stop()
-                    titleScroller._marqueeHolding = true
-                } else if (!_marqueeHovered) {
-                    scrollAnim.stop()
-                    titleScroller._marqueeHolding = true
-                    titleScroller._startHoldTimer()
-                }
-            }
+            // The reserved label area can resize without changing the boolean
+            // overflow state (e.g. via the Media width or Bar height sliders).
+            onWidthChanged: resetMarquee()
+            onOverflowingChanged: resetMarquee()
 
             onVisibleChanged: {
                 if (!visible) {

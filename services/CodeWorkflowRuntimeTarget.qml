@@ -53,6 +53,7 @@ Scope {
     }
 
     function descriptorSnapshot(): var {
+        const presented = root.runtimeObject?.visible !== false
         return {
             targetId: root.targetId,
             label: root.label,
@@ -63,7 +64,10 @@ Scope {
             parentId: root.parentId,
             depth: root.depth,
             sourcePath: root.sourcePath,
+            configured: true,
+            presented: presented,
             state: "resident",
+            lifecycle: presented ? "visible" : "loaded-hidden",
             stateRank: 6
         }
     }

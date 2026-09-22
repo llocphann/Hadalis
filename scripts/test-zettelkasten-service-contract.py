@@ -16,7 +16,7 @@ for token in (
     'Translation.tr("Save as Zettelkasten quick note")',
     "Zettelkasten.capture(title, textArea.text)",
     'Translation.tr("Saved to Zettelkasten")',
-    '/^Note \\\\d+$/.test(tabTitle)',
+    '/^Note \\d+$/.test(tabTitle)',
 ):
     assert token in widget, f"Notepad Zettelkasten UI contract lost: {token}"
 

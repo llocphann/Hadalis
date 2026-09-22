@@ -269,7 +269,7 @@ Item {
                     const tabTitle = String(
                         Notepad.tabs[Notepad.currentTab]?.title ?? ""
                     ).trim()
-                    const title = /^Note \\d+$/.test(tabTitle) ? "" : tabTitle
+                    const title = /^Note \d+$/.test(tabTitle) ? "" : tabTitle
                     Zettelkasten.capture(title, textArea.text)
                 }
             }

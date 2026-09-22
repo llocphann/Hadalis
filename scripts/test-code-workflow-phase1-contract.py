@@ -33,6 +33,8 @@ runtime_declaration = read("services/CodeWorkflowRuntimeDeclaration.qml")
 target = read("services/CodeWorkflowRuntimeTarget.qml")
 ii_panels = read("modules/ii/ShellIiPanelsImpl.qml")
 ii_critical = read("modules/ii/critical/ShellIiCriticalPanels.qml")
+waffle_panels = read("modules/waffle/ShellWafflePanelsImpl.qml")
+waffle_critical = read("modules/waffle/critical/ShellWaffleCriticalPanels.qml")
 session = read("services/CodeWorkflowSession.qml")
 ripple_button = read("modules/common/widgets/RippleButton.qml")
 capture_script = read("scripts/capture-code-workflow-ui.sh")
@@ -95,6 +97,26 @@ for token in (
 ):
     require(ii_critical, token,
             "ii critical runtime discovery instrumentation missing " + token)
+
+for token in (
+    "property CodeWorkflowRuntimeDeclaration workflowDeclaration:",
+    "configured: panelLoader.enabledPanel",
+    "configured: deferredPanelLoader.enabledPanel",
+    "presented: onDemandLoader.open",
+    'panelId: "wClipboard"',
+    'panelId: "wAltSwitcher"',
+    'workflowSourcePath: "modules/waffle/actionCenter/WaffleActionCenter.qml"',
+):
+    require(waffle_panels, token,
+            "waffle runtime discovery instrumentation missing " + token)
+for token in (
+    "property CodeWorkflowRuntimeDeclaration workflowDeclaration:",
+    'workflowSourcePath: "modules/waffle/bar/WaffleBar.qml"',
+    'workflowSourcePath: "modules/waffle/background/WaffleBackground.qml"',
+    'workflowSourcePath: "modules/waffle/backdrop/WaffleBackdrop.qml"',
+):
+    require(waffle_critical, token,
+            "waffle critical runtime discovery instrumentation missing " + token)
 
 for token in (
     'targetId: "bar"', 'targetId: "bar/media"',

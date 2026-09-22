@@ -1126,6 +1126,10 @@ Scope {
                                                     && root.searchResults.length > 0) {
                                                 focusLiveSearch.activateCurrent()
                                                 event.accepted = true
+                                            } else if (event.key === Qt.Key_Escape
+                                                    && root.searchText.length > 0) {
+                                                root.clearSearch()
+                                                event.accepted = true
                                             }
                                         }
                                     }

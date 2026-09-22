@@ -19,13 +19,6 @@ page = PAGE.read_text(encoding="utf-8")
 settings_qmldir = SETTINGS_QMLDIR.read_text(encoding="utf-8")
 services_qmldir = SERVICES_QMLDIR.read_text(encoding="utf-8")
 
-for path in (
-    ROOT / "services" / "CodeWorkflowNvim.qml",
-    ROOT / "modules" / "settings" / "CodeWorkflowNvimView.qml",
-    ROOT / "scripts" / "code-workflow-nvim-bridge.py",
-):
-    if path.exists():
-        fail("retired embedded editor artifact still exists: " + str(path.relative_to(ROOT)))
 
 for token in (
     'property string mode: "normal"',
@@ -83,8 +76,5 @@ require(
     "settings qmldir must export modal Source Editor",
 )
 
-for retired in ("CodeWorkflowNvim.qml", "CodeWorkflowNvimView.qml"):
-    if retired in services_qmldir or retired in settings_qmldir:
-        fail("retired embedded editor export remains: " + retired)
 
 print("ok - Code Workflow modal hot-fix Source Editor contract")

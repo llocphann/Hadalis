@@ -847,7 +847,15 @@ def main() -> None:
         "readonly property var popupShape:",
         "readonly property bool needsEndJoinAux:",
         "ShaderEffectSource {",
-        "sourceItem: shadowTextureSource",
+        "id: shadowMaskField",
+        "shapes: field.shapes",
+        "sourceItem: shadowMaskField",
+        "sourceRect: root.rawShadowBounds",
+        "id: blurredShadow",
+        "source: shadowTextureSource",
+        "blurEnabled: true",
+        "autoPaddingEnabled: false",
+        "sourceItem: blurredShadow",
         "hideSource: true",
         "smooth: true",
         "ConnectedSurfaceIrisField {",
@@ -856,8 +864,9 @@ def main() -> None:
         check(token in iris_frame,
               f"Production iRiS frame contract missing: {token}")
     check("ConnectedSurfaceJoinFlares" not in iris_frame
-          and "ConnectedSurfaceConnector" not in iris_frame,
-          "Production iRiS popup renderer must not retain flare/connector patch geometry")
+          and "ConnectedSurfaceConnector" not in iris_frame
+          and "RectangularShadow {" not in iris_frame,
+          "Connected shadow must use the same smooth-union SDF instead of patch or box shadow geometry")
     check('fragmentShader: Qt.resolvedUrl("IrisField.frag.qsb")' in iris_field
           and "readonly property vector4d viewport:" in iris_field
           and "pass.x, pass.y" in iris_field,

@@ -129,8 +129,13 @@ LazyLoader {
     // last true state must not survive eviction, anchor replacement or a
     // hidden bar: otherwise requestedVisible can resurrect a stale popup.
     onActiveChanged: {
-        if (active)
+        if (active) {
+            // A hidden anchor can become ready while requestedVisible was
+            // already true; resume the reveal without waiting for a new hover.
+            if (root.requestedVisible && !root._lingerVisible)
+                root._syncRequestedVisibility()
             return
+        }
         root._bodyHovered = false
         root._contentHovered = false
         root._lingerVisible = false

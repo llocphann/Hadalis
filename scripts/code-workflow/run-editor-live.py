@@ -110,6 +110,10 @@ def instrument(config: Path) -> None:
             if (command === "home") {
                 item.setMode("normal")
                 item.setCursor(0)
+            } else if (command === "reset") {
+                item.setMode("normal")
+                item.documentText = "alpha\\n\\nbeta gamma"
+                item.setCursor(0)
             } else if (command === "focus") {
                 item.focusEditor()
             } else if (command === "normal") {
@@ -288,7 +292,7 @@ def main() -> int:
         probe.record("Escape from Find keeps Settings open",
                      probe.snapshot()["settingsOpen"])
 
-        command("home")
+        command("reset")
         command("focus")
         key("w")
         runtime.wait_for(lambda: state() if state()["caret"] == 7 else None,

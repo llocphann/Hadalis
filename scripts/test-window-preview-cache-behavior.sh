@@ -95,7 +95,9 @@ assert.equal(scheduled, 1, 'long-idle cached hit does not schedule capture');
 assert.equal(root.getPreviewUrl(11), stable, 'cache hit never changes URL');
 root.captureAllWindows(); sync();
 assert.equal(scope.captureProcess.running, true, 'force refresh starts Process');
-assert.ok(scope.captureProcess.command.includes('--all'), 'force refresh bypasses cache');
+assert.ok(scope.captureProcess.command.includes('11')
+    && scope.captureProcess.command.includes('12'),
+    'force refresh requests the exact live window IDs');
 root.capturing = false;
 root.previewCache[11].timestamp = p.nextRevision(1, 1);
 assert.notEqual(root.getPreviewUrl(11), stable, 'force refresh produces a new URL revision');

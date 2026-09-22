@@ -36,6 +36,7 @@ Singleton {
     property bool initialized: false
     property bool sessionReady: false
     property bool captureRequestedWhileInitializing: false
+    property bool forceRefreshRequestedWhileInitializing: false
     property bool capturing: false
     property bool captureAllRequested: false
     property var requestedWindowIds: []
@@ -162,6 +163,10 @@ Singleton {
     }
 
     function _resumeRequestedCapture(): void {
+        if (forceRefreshRequestedWhileInitializing) {
+            forceRefreshRequestedWhileInitializing = false
+            root.captureAllWindows()
+        }
         if (!captureRequestedWhileInitializing)
             return
         captureRequestedWhileInitializing = false
@@ -506,10 +511,14 @@ Singleton {
         if (capturing) return
 
         if (!initialized) initialize()
-        
+        if (!sessionReady) {
+            forceRefreshRequestedWhileInitializing = true
+            return
+        }
+
         const windows = NiriService.windows ?? []
         if (windows.length === 0) return
-        
+
         _log("[WindowPreviewService] Force capturing all", windows.length, "windows")
         capturing = true
         Cliphist.suppressRefresh = true
@@ -518,9 +527,15 @@ Singleton {
         captureProcess.idsToCapture = ids
         captureProcess.publishedIds = []
         captureProcess.captureSessionKey = root.sessionKey
-        captureProcess.command = ShellExec.supportsFish()
-            ? ["/usr/bin/fish", Quickshell.shellPath("scripts/capture-windows.fish"), "--all"]
-            : ["/usr/bin/bash", Quickshell.shellPath("scripts/capture-windows.sh"), "--all"]
+        const cmd = ShellExec.supportsFish()
+            ? ["/usr/bin/fish", Quickshell.shellPath("scripts/capture-windows.fish")]
+            : ["/usr/bin/bash", Quickshell.shellPath("scripts/capture-windows.sh")]
+        // Pass the exact snapshot of requested IDs. The helper now fails if
+        // even one ID is no longer available, so clean exit cannot falsely
+        // publish a file left behind by a previous capture.
+        for (const id of ids)
+            cmd.push(id.toString())
+        captureProcess.command = cmd
         captureProcess.running = true
     }
     

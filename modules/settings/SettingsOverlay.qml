@@ -374,6 +374,18 @@ Scope {
         pendingSpotlightIsSection = false;
     }
 
+    Connections {
+        target: SettingsPageRegistry
+        function onNavigateRequested(pageIndex, section) {
+            if (!root.settingsOpen) return
+            if (section.length > 0)
+                root.openOverlaySearchResult({ pageIndex: pageIndex,
+                    section: section, label: section, isSection: true })
+            else
+                root.overlayCurrentPage = pageIndex
+        }
+    }
+
     function consumeSettingsDeepLink(): bool {
         if (!root.settingsOpen)
             return false

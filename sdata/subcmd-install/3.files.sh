@@ -363,6 +363,12 @@ case "${SKIP_NIRI}" in
     ;;
 esac
 
+# A running Niri session can start Telex immediately after setup/update; apps
+# already running still need to be relaunched to inherit the new IME environment.
+if command -v fcitx5 >/dev/null 2>&1 && [[ -n "${NIRI_SOCKET:-}" ]] && [[ -x "$INIR_LAUNCHER_PATH" ]]; then
+  "$INIR_LAUNCHER_PATH" input-method start || log_warning "Fcitx5 will be started on next login"
+fi
+
 # Theming templates — defaults/ is the primary source (kept in sync with dots/)
 if [[ -d "defaults/matugen" ]]; then
   install_dir__sync "defaults/matugen" "${XDG_CONFIG_HOME}/matugen"

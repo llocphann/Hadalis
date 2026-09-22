@@ -137,31 +137,31 @@ Item {
             if (target?.internal === true && !revealInternal)
                 continue
             const rowRecord = root.recordFor(target.targetId)
+            const state = String(rowRecord?.state ?? target?.state ?? "")
+            const lifecycle = String(
+                rowRecord?.lifecycle
+                ?? target?.lifecycle
+                ?? (state === "resident" ? "visible" : "unloaded"))
+            let detail = "unloaded · source"
+            if (state === "resident" && lifecycle === "visible")
+                detail = String(rowRecord?.output ?? "") + " · live"
+            else if (lifecycle === "visible")
+                detail = "visible"
+            else if (lifecycle === "loaded-hidden")
+                detail = "loaded · hidden"
+            else if (lifecycle === "loading")
+                detail = "loading"
+            else if (lifecycle === "stale/unloading")
+                detail = "stale · unloading"
+            else if (rowRecord?.configured === false
+                    || target?.configured === false)
+                detail = "unloaded · disabled"
+
             append(runtimeItems, {
                 category: "runtime",
                 id: target.targetId,
                 label: target.label,
-                detail: {
-                    const state = String(rowRecord?.state ?? target?.state ?? "")
-                    const lifecycle = String(
-                        rowRecord?.lifecycle
-                        ?? target?.lifecycle
-                        ?? (state === "resident" ? "visible" : "unloaded"))
-                    if (state === "resident" && lifecycle === "visible")
-                        return String(rowRecord?.output ?? "") + " · live"
-                    if (lifecycle === "visible")
-                        return "visible"
-                    if (lifecycle === "loaded-hidden")
-                        return "loaded · hidden"
-                    if (lifecycle === "loading")
-                        return "loading"
-                    if (lifecycle === "stale/unloading")
-                        return "stale · unloading"
-                    if (rowRecord?.configured === false
-                            || target?.configured === false)
-                        return "unloaded · disabled"
-                    return "unloaded · source"
-                },
+                detail: detail,
                 icon: target.icon,
                 internal: target?.internal === true,
                 depth: Math.min(5, Math.max(

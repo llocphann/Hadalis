@@ -7,6 +7,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 widget = (ROOT / "modules/sidebarRight/notepad/NotepadWidget.qml").read_text(encoding="utf-8")
 service = (ROOT / "services/Zettelkasten.qml").read_text(encoding="utf-8")
+dash = (ROOT / "modules/dashboard/DashNotes.qml").read_text(encoding="utf-8")
 qmldir = (ROOT / "services/qmldir").read_text(encoding="utf-8")
 config = (ROOT / "modules/common/Config.qml").read_text(encoding="utf-8")
 defaults = json.loads((ROOT / "defaults/config.json").read_text(encoding="utf-8"))
@@ -15,6 +16,8 @@ for token in (
     'icon: "note_add"',
     'Translation.tr("Save as Zettelkasten quick note")',
     "Zettelkasten.capture(title, textArea.text)",
+    "function saveAsZettel(): bool",
+    "readonly property bool canSaveZettel:",
     'Translation.tr("Saved to Zettelkasten")',
     '/^Note \\d+$/.test(tabTitle)',
 ):
@@ -31,6 +34,13 @@ for token in (
     "signal captured(var payload)",
 ):
     assert token in service, f"Zettelkasten service contract lost: {token}"
+
+for token in (
+    'Translation.tr("Quick note → Zettelkasten")',
+    "enabled: notepad.canSaveZettel",
+    "onClicked: notepad.saveAsZettel()",
+):
+    assert token in dash, f"Dashboard Notes Zettelkasten contract lost: {token}"
 
 assert "singleton Zettelkasten 1.0 Zettelkasten.qml" in qmldir
 assert "property JsonObject notes: JsonObject {" in config

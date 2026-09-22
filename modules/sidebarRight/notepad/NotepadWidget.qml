@@ -34,6 +34,20 @@ Item {
     readonly property int wordCount: textArea.text.trim().length > 0
         ? textArea.text.trim().split(/\s+/).length : 0
     readonly property int tabCount: Notepad.tabs.length
+    readonly property bool canSaveZettel: Notepad.ready
+        && Zettelkasten.ready
+        && !Zettelkasten.busy
+        && textArea.text.trim().length > 0
+
+    function saveAsZettel(): bool {
+        if (!root.canSaveZettel)
+            return false
+        const tabTitle = String(
+            Notepad.tabs[Notepad.currentTab]?.title ?? ""
+        ).trim()
+        const title = /^Note \d+$/.test(tabTitle) ? "" : tabTitle
+        return Zettelkasten.capture(title, textArea.text)
+    }
 
     // When this widget gets focus (from BottomWidgetGroup.focusActiveItem),
     // move focus to the internal text area on the next event loop tick.
@@ -261,17 +275,8 @@ Item {
                 tooltipText: Zettelkasten.ready
                     ? Translation.tr("Save as Zettelkasten quick note")
                     : Translation.tr("Configure an Obsidian vault to enable Zettelkasten")
-                enabled: Notepad.ready
-                    && Zettelkasten.ready
-                    && !Zettelkasten.busy
-                    && textArea.text.trim().length > 0
-                onClicked: {
-                    const tabTitle = String(
-                        Notepad.tabs[Notepad.currentTab]?.title ?? ""
-                    ).trim()
-                    const title = /^Note \d+$/.test(tabTitle) ? "" : tabTitle
-                    Zettelkasten.capture(title, textArea.text)
-                }
+                enabled: root.canSaveZettel
+                onClicked: root.saveAsZettel()
             }
 
             Item { Layout.fillWidth: true }

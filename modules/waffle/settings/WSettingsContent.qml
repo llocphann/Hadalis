@@ -49,6 +49,24 @@ Item {
         expandedNavGroups = next
     }
 
+    function revealCurrentNavGroup(): void {
+        let target = -1
+        for (let index = 0; index < navigationGroups.length; index++) {
+            if (navigationGroups[index].keys.some(key =>
+                    root.pages[root.currentPage]?.key === key)) {
+                target = index
+                break
+            }
+        }
+        if (target < 0) target = navigationGroups.length
+        if (expandedNavGroups[target] !== false) return
+        const next = Object.assign({}, expandedNavGroups)
+        delete next[target]
+        expandedNavGroups = next
+    }
+
+    onCurrentPageChanged: root.revealCurrentNavGroup()
+
     readonly property var navigationItems: {
         const items = []
         const seen = new Set()

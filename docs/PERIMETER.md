@@ -56,8 +56,12 @@ Do not add a Bar-local shadow or another Screen Edge painter.
 
 Transparent Material surfaces still use independent Material shadow ink:
 surface alpha must never turn `Appearance.colors.colShadow` transparent.
-Connected iRiS shadows remain owner-clipped at the physical seam, while
-Dashboard cards draw their elevation outside the card content clip.
+Connected iRiS elevation is derived from a second viewport of the same
+locked SDF field as the visible body, then blurred and texture-cropped to
+the real owner boundary. The shadow mask includes the smooth-union fillets;
+a separate rectangular body shadow does not. Screen Edge retains its own
+physical frame shadow, and Dashboard cards draw their elevation outside the
+card content clip.
 
 `ScreenCorners.qml` is interaction-only: Sidebar hot corners, Orbit and
 brightness/volume gestures. It must not paint fake rounded corners.

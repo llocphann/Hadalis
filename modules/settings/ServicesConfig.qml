@@ -1315,9 +1315,9 @@ ContentPage {
                     color: Appearance.colors.colOnSurface
                     text: {
                         const folder = String(Config.options?.todo?.obsidian?.dailyNote?.folder
-                            ?? "00_Capture/01_Journal").trim().replace(/^\\/+|\\/+$/g, "")
+                            ?? "00_Capture/01_Journal").trim().replace(/^\/+|\/+$/g, "")
                         let format = String(Config.options?.todo?.obsidian?.dailyNote?.format
-                            ?? "YYYY/MMMM/DD-MM-YYYY-dddd").trim().replace(/^\\/+|\\/+$/g, "")
+                            ?? "YYYY/MMMM/DD-MM-YYYY-dddd").trim().replace(/^\/+|\/+$/g, "")
                         if (!format.toLowerCase().endsWith(".md"))
                             format += ".md"
                         return folder.length > 0 ? folder + "/" + format : format
@@ -1331,7 +1331,7 @@ ContentPage {
                             : Appearance.colors.colLayer0Border
                     }
                     onEditingFinished: {
-                        let value = text.trim().replace(/^\\/+|\\/+$/g, "")
+                        let value = text.trim().replace(/^\/+|\/+$/g, "")
                         if (value.length === 0)
                             return
                         const slash = value.lastIndexOf("/")

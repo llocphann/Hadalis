@@ -54,3 +54,6 @@ assert "readonly property bool useLegacyManagedNote:" in facade
 assert "readonly property bool persistenceBusy:" in internal
 
 print("Unified Todo/Obsidian settings UI contract: PASS")
+
+assert '/^\\/+|\\/+$/g' in services
+assert '/^\\\\/+|\\\\/+$/g' not in services

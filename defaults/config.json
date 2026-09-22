@@ -2092,6 +2092,13 @@
             "allowBasicOfflineMutation": true
         }
     },
+    "notes": {
+        "zettelkasten": {
+            "vaultPath": "",
+            "folder": "00_Capture/03_Zettelkasten",
+            "defaultType": "Fleeting"
+        }
+    },
     "voiceSearch": {
         "duration": 5,
         "provider": "auto",

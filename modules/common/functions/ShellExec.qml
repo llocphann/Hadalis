@@ -116,6 +116,7 @@ Singleton {
                 XDG_RUNTIME_DIR XDG_SESSION_TYPE XDG_CURRENT_DESKTOP \
                 XDG_SESSION_DESKTOP DESKTOP_SESSION XCURSOR_THEME XCURSOR_SIZE \
                 LANG LC_ALL XDG_MENU_PREFIX GDK_BACKEND XAUTHORITY \
+                QT_IM_MODULE XMODIFIERS \
                 DBUS_SESSION_BUS_ADDRESS SSH_AUTH_SOCK; do
                 import_if_missing "$_var"
             done

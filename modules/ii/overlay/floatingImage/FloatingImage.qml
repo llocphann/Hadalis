@@ -176,23 +176,25 @@ StyledOverlayWidget {
             spacing: 8
             visible: !root.hasImage
 
+            LoadingText {
+                Layout.fillWidth: true
+                visible: root.imageSource.trim().length > 0 && !root.imageFailed
+                color: Appearance.colors.colOnLayer2
+            }
+
             MaterialSymbol {
                 Layout.alignment: Qt.AlignHCenter
-                text: root.imageSource.trim().length > 0 && !root.imageFailed
-                    ? "progress_activity"
-                    : root.imageFailed ? "broken_image" : "add_photo_alternate"
+                visible: root.imageSource.trim().length === 0 || root.imageFailed
+                text: root.imageFailed ? "broken_image" : "add_photo_alternate"
                 iconSize: 38
                 color: Appearance.colors.colOnLayer2
             }
 
             StyledText {
                 Layout.fillWidth: true
+                visible: root.imageSource.trim().length === 0 || root.imageFailed
                 horizontalAlignment: Text.AlignHCenter
-                text: root.imageSource.trim().length > 0 && !root.imageFailed
-                    ? Translation.tr("Loading...")
-                    : root.imageFailed
-                        ? Translation.tr("Error")
-                        : Translation.tr("Choose file")
+                text: root.imageFailed ? Translation.tr("Error") : Translation.tr("Choose file")
                 color: Appearance.colors.colOnLayer2
                 font.pixelSize: Appearance.font.pixelSize.small
                 wrapMode: Text.WordWrap

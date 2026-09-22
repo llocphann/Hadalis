@@ -136,6 +136,36 @@ jobs:
               --pointer "$RUNNER_TEMP/hadalis-workflow-pointer/pointer"
           '
 
+      - name: Exercise Source Editor in Settings Focus with real pointer
+        env:
+          WORK_DIR: ${{ runner.temp }}/hadalis-workflow-editor-focus
+        run: |
+          rm -rf "$WORK_DIR"
+          nix develop .#workflow-acceptance --command bash -lc '
+            set -euo pipefail
+            python3 scripts/code-workflow/run-editor-live.py \
+              --work-dir "$WORK_DIR" \
+              --revision "${GITHUB_SHA}" \
+              --surface focus \
+              --sway "$(command -v sway)" \
+              --pointer "$RUNNER_TEMP/hadalis-workflow-pointer/pointer"
+          '
+
+      - name: Exercise Source Editor in Settings Focus on nested Niri
+        env:
+          WORK_DIR: ${{ runner.temp }}/hadalis-workflow-editor-focus-niri
+        run: |
+          rm -rf "$WORK_DIR"
+          nix develop .#workflow-acceptance --command bash -lc '
+            set -euo pipefail
+            python3 scripts/code-workflow/run-editor-headless-niri.py \
+              --work-dir "$WORK_DIR" \
+              --revision "${GITHUB_SHA}" \
+              --surface focus \
+              --sway "$(command -v sway)" \
+              --pointer "$RUNNER_TEMP/hadalis-workflow-pointer/pointer"
+          '
+
       - name: Validate Code Workflow production foundation
         run: nix develop .#workflow-acceptance --command bash -lc 'python3 scripts/test-code-workflow-phase1-contract.py'
 
@@ -325,6 +355,11 @@ jobs:
             ${{ runner.temp }}/hadalis-workflow-editor-niri/probe/editor-live-report.json
             ${{ runner.temp }}/hadalis-workflow-editor-niri/probe/*.log
             ${{ runner.temp }}/hadalis-workflow-editor-niri/*.log
+            ${{ runner.temp }}/hadalis-workflow-editor-focus/editor-live-report.json
+            ${{ runner.temp }}/hadalis-workflow-editor-focus/*.log
+            ${{ runner.temp }}/hadalis-workflow-editor-focus-niri/probe/editor-live-report.json
+            ${{ runner.temp }}/hadalis-workflow-editor-focus-niri/probe/*.log
+            ${{ runner.temp }}/hadalis-workflow-editor-focus-niri/*.log
             ${{ runner.temp }}/hadalis-workflow-apply/apply-lifecycle-report.json
             ${{ runner.temp }}/hadalis-workflow-apply/manifest.json
             ${{ runner.temp }}/hadalis-workflow-apply/*.log

@@ -1628,7 +1628,10 @@ Singleton {
          property real spacingSmall: Math.round(8 * root.fontSizeScale)
          property real spacingMedium: Math.round(12 * root.fontSizeScale)
          property real spacingLarge: Math.round(16 * root.fontSizeScale)
-        property real baseBarHeight: Math.round(Math.max(24, Math.min(80, (Config.options?.bar?.height ?? 40))) * root.fontSizeScale)
+        // Cross-axis thickness drives every Classic Bar module. Font size is
+        // a separate accessibility scale, so the 40px default stays at 1.0.
+        property real barModuleScale: Math.max(24, Math.min(80, Config.options?.bar?.height ?? 40)) / 40
+        property real baseBarHeight: Math.round(40 * barModuleScale * root.fontSizeScale)
         // Hug is the sole supported Classic Bar geometry; persisted legacy
         // cornerStyle values must never add detached float gaps to runtime size.
         property real barHeight: baseBarHeight
@@ -1649,7 +1652,7 @@ Singleton {
         property real searchWidth: Math.round(360 * root.fontSizeScale)
         property real sidebarWidth: Math.round(460 * root.fontSizeScale)
         property real sidebarWidthExtended: Math.round(750 * root.fontSizeScale)
-        property real baseVerticalBarWidth: Math.round(46 * root.fontSizeScale)
+        property real baseVerticalBarWidth: Math.round(46 * root.fontSizeScale * barModuleScale)
         property real verticalBarWidth: baseVerticalBarWidth
         // Legacy selector fixed-card sizing (kept for compatibility; skwd-wall selector computes layout internally)
         property real wallpaperSelectorWidth: 1200

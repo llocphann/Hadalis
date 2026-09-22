@@ -80,16 +80,16 @@ Item {
     // Adaptive horizontal packing. Physical-edge inset is independent from
     // module/zone/pivot spacing, and each half reacts to its own pressure.
     readonly property real edgeInset: Math.max(4, Appearance.rounding.screenRounding)
-    readonly property real moduleGap: Math.max(3,
-        Math.round(4 * Appearance.fontSizeScale))
+    readonly property real moduleGap: Math.max(2,
+        Math.round(4 * Appearance.fontSizeScale * Appearance.sizes.barModuleScale))
     readonly property real zoneGapNominal: Math.max(root.moduleGap + 2,
-        Math.round(8 * Appearance.fontSizeScale))
+        Math.round(8 * Appearance.fontSizeScale * Appearance.sizes.barModuleScale))
     readonly property real zoneGapMinimum: Math.max(2,
-        Math.round(4 * Appearance.fontSizeScale))
+        Math.round(4 * Appearance.fontSizeScale * Appearance.sizes.barModuleScale))
     readonly property real pivotGapNominal: Math.max(root.moduleGap + 1,
-        Math.round(6 * Appearance.fontSizeScale))
+        Math.round(6 * Appearance.fontSizeScale * Appearance.sizes.barModuleScale))
     readonly property real pivotGapMinimum: Math.max(2,
-        Math.round(3 * Appearance.fontSizeScale))
+        Math.round(3 * Appearance.fontSizeScale * Appearance.sizes.barModuleScale))
 
     readonly property bool _leftEdgeHasContent: leftSectionRowLayout.implicitWidth > 1
     readonly property bool _rightEdgeHasContent: rightSectionRowLayout.implicitWidth > 1
@@ -443,7 +443,7 @@ Item {
 
     readonly property bool _layoutMigrated: Config.options?.bar?.layout?.migrated === true
     readonly property real _spacerMinimumWidth: Math.max(0,
-        Config.options?.bar?.layout?.spacerWidth ?? 0) * Appearance.fontSizeScale
+        Config.options?.bar?.layout?.spacerWidth ?? 0) * Appearance.fontSizeScale * Appearance.sizes.barModuleScale
     function _zone(name, fallback) {
         const a = Config.options?.bar?.layout?.[name]
         return (root._layoutMigrated && a && a.length >= 0) ? a : fallback
@@ -574,7 +574,7 @@ Item {
         LeftSidebarButton {
             visible: root._moduleVisible("leftSidebarButton")
             Layout.alignment: Qt.AlignVCenter
-            buttonPadding: 5
+            buttonPadding: 5 * Appearance.sizes.barModuleScale
             colBackground: buttonHovered
                 ? (root.auroraEverywhere
                     ? Appearance.aurora.colSubSurfaceHover
@@ -588,7 +588,7 @@ Item {
         Item {
             id: awWrapper
             property bool fillSlot: true
-            implicitWidth: fillSlot ? 0 : Math.min(_awItem.contentImplicitWidth, 220)
+            implicitWidth: fillSlot ? 0 : Math.min(_awItem.contentImplicitWidth, 220 * Appearance.sizes.barModuleScale)
             implicitHeight: Appearance.sizes.baseBarHeight
             clip: true
             Behavior on implicitWidth {
@@ -993,7 +993,7 @@ Item {
             id: middleCenterGroup
             anchors.verticalCenter: parent.verticalCenter
             anchors.horizontalCenter: parent.horizontalCenter
-            padding: 4
+            padding: 4 * Appearance.sizes.barModuleScale
             moduleSpacing: root.moduleGap
             visible: !empty
 
@@ -1290,8 +1290,8 @@ Item {
             Layout.alignment: Qt.AlignRight | Qt.AlignVCenter
             Layout.fillWidth: false
 
-            implicitWidth: indicatorsRowLayout.implicitWidth + 10 * 2
-            implicitHeight: indicatorsRowLayout.implicitHeight + 5 * 2
+            implicitWidth: indicatorsRowLayout.implicitWidth + 20 * Appearance.sizes.barModuleScale
+            implicitHeight: indicatorsRowLayout.implicitHeight + 10 * Appearance.sizes.barModuleScale
 
             buttonRadius: Appearance.rounding.full
             colBackground: buttonHovered
@@ -1324,7 +1324,7 @@ Item {
             RowLayout {
                 id: indicatorsRowLayout
                 anchors.centerIn: parent
-                property real realSpacing: 15
+                property real realSpacing: 15 * Appearance.sizes.barModuleScale
                 spacing: 0
 
                 Revealer {
@@ -1340,7 +1340,7 @@ Item {
                     }
                     MaterialSymbol {
                         text: "volume_off"
-                        iconSize: Appearance.font.pixelSize.larger
+                        iconSize: Math.round(Appearance.font.pixelSize.larger * Appearance.sizes.barModuleScale)
                         color: rightSidebarButton.colText
                     }
                 }
@@ -1357,7 +1357,7 @@ Item {
                     }
                     MaterialSymbol {
                         text: "mic_off"
-                        iconSize: Appearance.font.pixelSize.larger
+                        iconSize: Math.round(Appearance.font.pixelSize.larger * Appearance.sizes.barModuleScale)
                         color: rightSidebarButton.colText
                     }
                 }
@@ -1387,7 +1387,7 @@ Item {
                 }
                 MaterialSymbol {
                     text: Network.materialSymbol
-                    iconSize: Appearance.font.pixelSize.larger
+                    iconSize: Math.round(Appearance.font.pixelSize.larger * Appearance.sizes.barModuleScale)
                     color: rightSidebarButton.colText
                     Layout.rightMargin: BluetoothStatus.available
                         ? indicatorsRowLayout.realSpacing : 0
@@ -1421,7 +1421,7 @@ Item {
                     Layout.rightMargin: indicatorsRowLayout.realSpacing
                     MaterialSymbol {
                         text: BluetoothStatus.activeIcon
-                        iconSize: Appearance.font.pixelSize.larger
+                        iconSize: Math.round(Appearance.font.pixelSize.larger * Appearance.sizes.barModuleScale)
                         color: rightSidebarButton.colText
 
                         HoverHandler { id: btHover }

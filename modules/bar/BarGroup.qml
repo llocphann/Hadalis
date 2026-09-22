@@ -7,13 +7,13 @@ import QtQuick.Layouts
 Item {
     id: root
     property bool vertical: false
-    property real padding: 8
+    property real padding: 8 * Appearance.sizes.barModuleScale
     readonly property bool cardStyleEverywhere: (Config.options?.dock?.cardStyle ?? false)
         && (Config.options?.sidebar?.cardStyle ?? false)
         && (Config.options?.bar?.cornerStyle === 3)
     property bool bare: false
     property bool clipContent: false
-    property real moduleSpacing: root.vertical ? 12 : 4
+    property real moduleSpacing: (root.vertical ? 12 : 4) * Appearance.sizes.barModuleScale
     property int contentHorizontalAlignment: Qt.AlignHCenter
     readonly property bool zzzPlate: false
     implicitWidth: vertical ? Appearance.sizes.baseVerticalBarWidth
@@ -28,10 +28,10 @@ Item {
         id: background
         anchors {
             fill: parent
-            topMargin: root.vertical ? 0 : 4
-            bottomMargin: root.vertical ? 0 : 4
-            leftMargin: root.vertical ? 4 : 0
-            rightMargin: root.vertical ? 4 : 0
+            topMargin: root.vertical ? 0 : 4 * Appearance.sizes.barModuleScale
+            bottomMargin: root.vertical ? 0 : 4 * Appearance.sizes.barModuleScale
+            leftMargin: root.vertical ? 4 * Appearance.sizes.barModuleScale : 0
+            rightMargin: root.vertical ? 4 * Appearance.sizes.barModuleScale : 0
         }
         visible: !root.bare
         cardStyle: root.cardStyleEverywhere

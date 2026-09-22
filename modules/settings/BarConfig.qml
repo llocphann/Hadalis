@@ -157,7 +157,7 @@ ContentPage {
 
                 ConfigSpinBox {
                     icon: "height"
-                    text: Translation.tr("Bar height (px)")
+                    text: root.isVertical ? Translation.tr("Bar width (px)") : Translation.tr("Bar height (px)")
                     value: Config.options?.bar?.height ?? 40
                     from: 24
                     to: 80

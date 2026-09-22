@@ -11,6 +11,12 @@ import Quickshell.Io
 Item {
     id: root
     property int margin: 10
+    // Dashboard can opt into a denser chrome while Sidebar keeps the full
+    // title/stats/toolbar presentation. The editor and draft semantics stay
+    // identical across both surfaces.
+    property bool compactPresentation: false
+    readonly property bool narrowCompact:
+        root.compactPresentation && root.width > 0 && root.width < 260
 
     // Style tokens (5-style support)
     readonly property color colText: Appearance.angelEverywhere ? Appearance.angel.colText
@@ -98,12 +104,14 @@ Item {
     ColumnLayout {
         anchors.fill: parent
         anchors.margins: root.margin
-        spacing: 6
+        spacing: root.compactPresentation ? 4 : 6
 
-        // Header with title and stats
+        // Header with title and stats. Dashboard already owns the module title,
+        // so compactPresentation removes this duplicate row entirely.
         RowLayout {
             Layout.fillWidth: true
             spacing: 8
+            visible: !root.compactPresentation
 
             StyledText {
                 text: Translation.tr("Notepad")
@@ -201,7 +209,8 @@ Item {
                                         : root.colTextSecondary
                                     elide: Text.ElideRight
                                     maximumLineCount: 1
-                                    width: Math.min(implicitWidth, 80)
+                                    width: Math.min(implicitWidth,
+                                        root.compactPresentation ? 64 : 80)
                                 }
 
                                 // Close button (only when multiple tabs)
@@ -252,12 +261,73 @@ Item {
                 enabled: Notepad.ready
                 onClicked: Notepad.addTab()
             }
+
+            // Dashboard compact mode keeps the tab strip and editing tools on
+            // one line. This returns almost an entire row to the note editor.
+            Rectangle {
+                visible: root.compactPresentation
+                Layout.preferredWidth: 1
+                Layout.preferredHeight: 18
+                color: root.colBorder
+            }
+
+            NotepadToolButton {
+                visible: root.compactPresentation
+                    && textArea.text.length > 0
+                    && !root.narrowCompact
+                icon: "text_fields"
+                tooltipText: root.wordCount + " "
+                    + (root.wordCount === 1
+                        ? Translation.tr("word") : Translation.tr("words"))
+                enabled: true
+            }
+
+            NotepadToolButton {
+                visible: root.compactPresentation
+                icon: "content_copy"
+                tooltipText: Translation.tr("Copy all")
+                enabled: textArea.text.length > 0
+                onClicked: {
+                    Quickshell.execDetached(["wl-copy", textArea.text])
+                    copiedToast.show(Translation.tr("Copied!"))
+                }
+            }
+
+            NotepadToolButton {
+                visible: root.compactPresentation
+                icon: "content_paste"
+                tooltipText: Translation.tr("Paste from clipboard")
+                enabled: Notepad.ready
+                onClicked: clipboardProc.running = true
+            }
+
+            NotepadToolButton {
+                visible: root.compactPresentation && !root.narrowCompact
+                icon: "select_all"
+                tooltipText: Translation.tr("Select all")
+                enabled: textArea.text.length > 0
+                onClicked: textArea.selectAll()
+            }
+
+            NotepadToolButton {
+                visible: root.compactPresentation
+                icon: "delete"
+                tooltipText: Translation.tr("Clear all")
+                enabled: Notepad.ready && textArea.text.length > 0
+                destructive: true
+                onClicked: {
+                    textArea.text = ""
+                    Notepad.setTextValue("")
+                }
+            }
         }
 
-        // Toolbar
+        // Full toolbar remains unchanged for Sidebar; Dashboard folds these
+        // actions into the tab row above.
         RowLayout {
             Layout.fillWidth: true
             spacing: 4
+            visible: !root.compactPresentation
 
             NotepadToolButton {
                 icon: "content_copy"
@@ -323,7 +393,7 @@ Item {
             ScrollView {
                 id: scrollView
                 anchors.fill: parent
-                anchors.margins: 8
+                anchors.margins: root.compactPresentation ? 6 : 8
                 ScrollBar.vertical.policy: ScrollBar.AsNeeded
                 ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
 
@@ -473,8 +543,8 @@ Item {
 
         signal clicked()
 
-        implicitWidth: 32
-        implicitHeight: 28
+        implicitWidth: root.compactPresentation ? 28 : 32
+        implicitHeight: root.compactPresentation ? 26 : 28
 
         opacity: enabled ? 1 : 0.4
 
@@ -503,7 +573,7 @@ Item {
             MaterialSymbol {
                 anchors.centerIn: parent
                 text: toolBtn.icon
-                iconSize: 18
+                iconSize: root.compactPresentation ? 16 : 18
                 color: toolBtn.destructive && toolBtn.enabled
                     ? Appearance.colors.colError
                     : root.colTextSecondary

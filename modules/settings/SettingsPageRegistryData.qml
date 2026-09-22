@@ -267,7 +267,7 @@ Singleton {
             key: "code-workflow",
             name: Translation.tr("Code Workflow"),
             icon: "account_tree",
-            desc: Translation.tr("Inspect live QML as a read-only workflow"),
+            desc: Translation.tr("Inspect, trace, and edit live QML workflows"),
             essential: false,
             component: "modules/settings/CodeWorkflow.qml"
         }

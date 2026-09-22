@@ -1017,7 +1017,15 @@ Item {
     }
 
     function edgeStrokeWidth(selected: bool, highlighted: bool): real {
-        const screenWidth = selected ? 3.6 : highlighted ? 3.0 : 2.4
+        const screenWidth = selected ? 2.8 : highlighted ? 2.5 : 1.1
+        const zoom = Math.max(
+            CodeWorkflowSession.minimumZoom,
+            CodeWorkflowSession.zoom)
+        return screenWidth / zoom
+    }
+
+    function edgeHaloWidth(focused: bool, hovered: bool): real {
+        const screenWidth = focused ? 7.0 : hovered ? 4.0 : 2.4
         const zoom = Math.max(
             CodeWorkflowSession.minimumZoom,
             CodeWorkflowSession.zoom)
@@ -1162,6 +1170,16 @@ Item {
             emphasized ? 4.5 : 3.0,
             Appearance.colors.colOnLayer0)
         return readable
+    }
+
+    function edgeWireInk(
+        kind: string, focused: bool, hovered: bool, halo: bool
+    ): color {
+        const ink = root.edgeInk(kind, focused || hovered)
+        const alpha = halo
+            ? (focused ? 0.20 : hovered ? 0.08 : 0.025)
+            : (focused ? 0.94 : hovered ? 0.46 : 0.22)
+        return ColorUtils.applyAlpha(ink, alpha)
     }
 
     Timer {
@@ -1369,7 +1387,6 @@ Item {
                     root.hoveredEdgeId === modelData.id
                 readonly property bool highlighted:
                     selectedEdge
-                    || hoveredEdge
                     || (CodeWorkflowSession.selectedEdgeId.length === 0
                         && CodeWorkflowSession.selectedSemanticAnchor.length === 0
                         && (CodeWorkflowSession.selectedNodeId
@@ -1386,14 +1403,39 @@ Item {
                 // (z 0.5) or nodes (z 1).
                 z: selectedEdge ? 0.4 : hoveredEdge ? 0.3 : 0
 
+                // EQ/DSP-inspired cable: a broad, very faint sheath sits
+                // behind a narrow conductor. Only the focused relation carries
+                // enough luminance to dominate the graph.
                 ShapePath {
-                    id: edgePath
+                    id: edgeHaloPath
                     readonly property var route:
                         root.routeForEdge(edgeShape.modelData)
 
-                    strokeColor: root.edgeInk(
+                    strokeColor: root.edgeWireInk(
                         edgeShape.modelData.kind,
-                        edgeShape.highlighted)
+                        edgeShape.highlighted,
+                        edgeShape.hoveredEdge,
+                        true)
+                    strokeWidth: root.edgeHaloWidth(
+                        edgeShape.highlighted,
+                        edgeShape.hoveredEdge)
+                    capStyle: ShapePath.RoundCap
+                    joinStyle: ShapePath.RoundJoin
+                    fillColor: "transparent"
+                    PathSvg {
+                        path: edgeHaloPath.route?.svg ?? ""
+                    }
+                }
+
+                ShapePath {
+                    id: edgePath
+                    readonly property var route: edgeHaloPath.route
+
+                    strokeColor: root.edgeWireInk(
+                        edgeShape.modelData.kind,
+                        edgeShape.highlighted,
+                        edgeShape.hoveredEdge,
+                        false)
                     strokeWidth: root.edgeStrokeWidth(
                         edgeShape.selectedEdge,
                         edgeShape.highlighted)
@@ -1439,9 +1481,11 @@ Item {
                         tipX - unitX * worldArrowLength
                     readonly property real backY:
                         tipY - unitY * worldArrowLength
-                    readonly property color ink: root.edgeInk(
+                    readonly property color ink: root.edgeWireInk(
                         edgeShape.modelData.kind,
-                        edgeShape.highlighted)
+                        edgeShape.highlighted,
+                        edgeShape.hoveredEdge,
+                        false)
 
                     strokeColor: "transparent"
                     fillColor: ink

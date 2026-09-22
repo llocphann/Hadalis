@@ -49,7 +49,7 @@ Item {
 
         const index = Notepad.currentTab
         const tabTitle = String(Notepad.tabs[index]?.title ?? "").trim()
-        const title = /^Note \\d+$/.test(tabTitle) ? "" : tabTitle
+        const title = /^Note \d+$/.test(tabTitle) ? "" : tabTitle
         const draftText = String(textArea.text)
         return Zettelkasten.capture(title, draftText)
     }

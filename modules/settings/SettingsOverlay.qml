@@ -1216,6 +1216,9 @@ Scope {
                                                     anchors.bottom: parent.bottom
                                                     anchors.bottomMargin: 4
                                                     text: navItem.modelData.label || ""
+                                                    anchors.right: parent.right
+                                                    anchors.rightMargin: 34
+                                                    elide: Text.ElideRight
                                                     font {
                                                         family: Appearance.font.family.main
                                                         pixelSize: Appearance.font.pixelSize.smaller
@@ -1990,6 +1993,7 @@ Scope {
         root._slideDir = root.overlayCurrentPage > root._prevPage ? 1 : -1
         root._prevPage = root.overlayCurrentPage
         root._persistOverlayPage()
+        root.revealCurrentNavGroup()
         // Published for settingsNav, which shell.qml owns for both chromes.
         GlobalStates.settingsOverlayCurrentPage = root.overlayCurrentPage
     }
@@ -2025,6 +2029,15 @@ Scope {
     function toggleNavGroup(index: int, pageIndices): void {
         const next = Object.assign({}, expandedNavGroups)
         next[index] = !groupExpanded(index, pageIndices)
+        expandedNavGroups = next
+    }
+
+    function revealCurrentNavGroup(): void {
+        const groupIndex = navCategories.findIndex(
+            group => group.pages.includes(root.overlayCurrentPage))
+        if (groupIndex < 0 || expandedNavGroups[groupIndex] !== false) return
+        const next = Object.assign({}, expandedNavGroups)
+        delete next[groupIndex]
         expandedNavGroups = next
     }
 

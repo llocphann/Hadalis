@@ -76,7 +76,7 @@ def instrument(config: Path) -> None:
         editor, "    id: root\n",
         "    id: root\n"
         "    readonly property bool testTextEditFocus: editor.activeFocus\n"
-        "    readonly property bool testFindFocus: findField.activeFocus\n    property int testTapCount: 0\n    property int testPageTapCount: 0\n    property int testSettingsTapCount: 0\n    property int testPressCount: 0\n    readonly property point testClickPoint: editor.mapToItem(null, 2, Math.max(2, editor.font.pixelSize / 2))\n    readonly property string testClickOutput: editor.Screen.name\n",
+        "    readonly property bool testFindFocus: findField.activeFocus\n    property int testTapCount: 0\n    property int testPageTapCount: 0\n    property int testSettingsTapCount: 0\n    property int testPressCount: 0\n    readonly property point testClickPoint: editor.mapToItem(null, 2, Math.max(2, editor.font.pixelSize / 2))\n    function testClickPointNow() { return editor.mapToItem(null, 2, Math.max(2, editor.font.pixelSize / 2)) }\n    readonly property string testClickOutput: editor.Screen.name\n",
     )
     replace_once(
         editor, "                    onTapped: eventPoint => {\n",
@@ -109,8 +109,10 @@ def instrument(config: Path) -> None:
                 pressCount: modal.testPressCount,
                 pageTapCount: modal.testPageTapCount,
                 settingsTapCount: modal.testSettingsTapCount,
-                clickX: modal.testClickPoint.x,
-                clickY: modal.testClickPoint.y,
+                clickX: modal.testClickPointNow().x,
+                clickY: modal.testClickPointNow().y,
+                staleClickX: modal.testClickPoint.x,
+                staleClickY: modal.testClickPoint.y,
                 clickOutput: modal.testClickOutput,
                 visible: modal.visible,
                 findFocused: modal.testFindFocus,

@@ -54,7 +54,8 @@ def instrument(config: Path) -> None:
     replace_once(
         page, "    id: root\n",
         "    id: root\n"
-        "    Component.onDestruction: CodeWorkflowSession.modalTestEditor = null\n",
+        "    Component.onDestruction: CodeWorkflowSession.modalTestEditor = null\n"
+        "    TapHandler { target: null; onTapped: sourceEditor.testPageTapCount++ }\n",
     )
     # Prevent tests from touching the actual source buffer, even inside the
     # temporary archive. This fixture still instantiates the real editor.
@@ -62,12 +63,29 @@ def instrument(config: Path) -> None:
         page, "                        draft: root.sourceDraft\n",
         '                        draft: "alpha\\n\\nbeta gamma"\n',
     )
+    overlay = config / "modules/settings/SettingsOverlay.qml"
+    replace_once(
+        overlay, "                id: settingsCard\n",
+        "                id: settingsCard\n"
+        "                TapHandler { target: null; onTapped: { if (CodeWorkflowSession.modalTestEditor) CodeWorkflowSession.modalTestEditor.testSettingsTapCount++ } }\n",
+    )
     editor = config / "modules/settings/CodeWorkflowSourceEditor.qml"
+    replace_once(editor, "import QtQuick.Layouts\n",
+                 "import QtQuick.Layouts\nimport QtQuick.Window\n")
     replace_once(
         editor, "    id: root\n",
         "    id: root\n"
         "    readonly property bool testTextEditFocus: editor.activeFocus\n"
-        "    readonly property bool testFindFocus: findField.activeFocus\n",
+        "    readonly property bool testFindFocus: findField.activeFocus\n    property int testTapCount: 0\n    property int testPageTapCount: 0\n    property int testSettingsTapCount: 0\n    property int testPressCount: 0\n    readonly property point testClickPoint: editor.mapToItem(null, 2, Math.max(2, editor.font.pixelSize / 2))\n    function testClickPointNow() { return editor.mapToItem(null, 2, Math.max(2, editor.font.pixelSize / 2)) }\n    readonly property string testClickOutput: editor.Screen.name\n",
+    )
+    replace_once(
+        editor, "                    onTapped: eventPoint => {\n",
+        "                    onTapped: eventPoint => {\n                        root.testTapCount++\n",
+    )
+    replace_once(
+        editor, "                    acceptedButtons: Qt.LeftButton\n",
+        "                    acceptedButtons: Qt.LeftButton\n"
+        "                    onPressedChanged: if (pressed) root.testPressCount++\n",
     )
     shell = config / "shell.qml"
     replace_once(
@@ -87,6 +105,15 @@ def instrument(config: Path) -> None:
                 line: modal.currentLineNumber,
                 text: modal.documentText,
                 focused: modal.testTextEditFocus,
+                tapCount: modal.testTapCount,
+                pressCount: modal.testPressCount,
+                pageTapCount: modal.testPageTapCount,
+                settingsTapCount: modal.testSettingsTapCount,
+                clickX: modal.testClickPointNow().x,
+                clickY: modal.testClickPointNow().y,
+                staleClickX: modal.testClickPoint.x,
+                staleClickY: modal.testClickPoint.y,
+                clickOutput: modal.testClickOutput,
                 visible: modal.visible,
                 findFocused: modal.testFindFocus,
                 findVisible: modal.findVisible,
@@ -146,7 +173,8 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--work-dir", type=Path, required=True)
     parser.add_argument("--revision", default="HEAD")
-    parser.add_argument("--sway", type=Path, required=True)
+    parser.add_argument("--sway", type=Path, default=None)
+    parser.add_argument("--pointer", type=Path, required=True)
     args = parser.parse_args()
     directory = args.work_dir.resolve()
     if directory.exists():
@@ -156,7 +184,8 @@ def main() -> int:
     report = {
         "schema": 1,
         "manifest": manifest,
-        "environment": "headless Sway, private bus/XDG, staged page 30 QML",
+        "environment": ("headless Sway" if args.sway else "nested Niri")
+                       + ", private bus/XDG, staged page 30 QML",
         "checks": [],
         "limitations": [
             "Virtual keyboard tests only the isolated compositor, not user hardware/IME.",
@@ -164,7 +193,8 @@ def main() -> int:
             "Instrumentation exists only in the staged temporary config.",
         ],
     }
-    probe = runtime.Probe(directory, report, pointer=None, sway=args.sway.resolve())
+    probe = runtime.Probe(directory, report, pointer=args.pointer.resolve(),
+                          sway=args.sway.resolve() if args.sway else None)
     probe.env["QT_QUICK_BACKEND"] = "software"
     keyboard_keeper = None
     try:
@@ -238,6 +268,100 @@ def main() -> int:
         )
         probe.record("Page opens with Source Editor keyboard focus without IPC focus",
                      auto_focused["mode"] == "normal", auto_focused)
+        # User interaction: compositor pointer click, then literal lowercase
+        # input. No IPC command can set focus/mode between these operations.
+        before_click = state()
+        probe.record("Editor click target has a real compositor output",
+                     before_click["clickOutput"] in probe.outputs(), before_click)
+        # Compute the location at event time, after the asynchronous page Loader
+        # and parent layouts have settled; the original bound mapToItem point
+        # was frozen at (152,169) while the real editor moved to (324,801).
+        probe.move(before_click["clickX"], before_click["clickY"], "left",
+                   output=before_click["clickOutput"])
+        clicked = runtime.wait_for(
+            lambda: value if (value := state())["tapCount"] > before_click["tapCount"]
+                else None,
+            "real compositor pointer click reaches Source Editor",
+        )
+        probe.record("Real pointer click focuses Source Editor in NORMAL",
+                     clicked["focused"] and clicked["mode"] == "normal"
+                     and probe.snapshot()["settingsPage"] == 30, clicked)
+        probe.record("Real pointer click sets caret at first character",
+                     clicked["caret"] == 0, clicked)
+
+        # No editorCommand/home/focus/setMode before or during this entire
+        # user journey: use literal unmodified letters over the real seat.
+        for letter, expected in (("l", 1), ("j", 6), ("k", 1), ("h", 0)):
+            subprocess.run(["wtype", letter], env=probe.env, check=True,
+                           capture_output=True, text=True, timeout=12)
+            moved = runtime.wait_for(
+                lambda: value if (value := state())["caret"] == expected else None,
+                "lowercase " + letter + " after real click moves modal cursor",
+            )
+            probe.record("Real click then literal lowercase " + letter,
+                         moved["focused"] and moved["mode"] == "normal"
+                         and moved["text"] == before_click["text"], moved)
+        subprocess.run(["wtype", "v"], env=probe.env, check=True,
+                       capture_output=True, text=True, timeout=12)
+        entered_visual = runtime.wait_for(
+            lambda: value if (value := state())["mode"] == "visual" else None,
+            "physical v after pointer click enters VISUAL",
+        )
+        probe.record("Physical v enters VISUAL with true editor focus",
+                     entered_visual["focused"] and entered_visual["visualAnchor"] == 0,
+                     entered_visual)
+        for letter, expected in (("l", 1), ("j", 6), ("k", 1), ("h", 0)):
+            subprocess.run(["wtype", letter], env=probe.env, check=True,
+                           capture_output=True, text=True, timeout=12)
+            moved = runtime.wait_for(
+                lambda: value if (value := state())["visualCursor"] == expected
+                    else None,
+                "literal " + letter + " moves VISUAL cursor",
+            )
+            probe.record("Physical VISUAL " + letter + " selection",
+                         moved["mode"] == "visual" and moved["focused"], moved)
+        key("Escape")
+        runtime.wait_for(lambda: state() if state()["mode"] == "normal" else None,
+                         "physical Escape returns to NORMAL from VISUAL")
+        subprocess.run(["wtype", "i"], env=probe.env, check=True,
+                       capture_output=True, text=True, timeout=12)
+        runtime.wait_for(lambda: state() if state()["mode"] == "insert" else None,
+                         "physical i enters INSERT")
+        subprocess.run(["wtype", "hjkl"], env=probe.env, check=True,
+                       capture_output=True, text=True, timeout=12)
+        inserted = runtime.wait_for(
+            lambda: value if (value := state())["text"].startswith("hjklalpha")
+                else None, "literal hjkl are inserted as text in INSERT")
+        probe.record("INSERT accepts all literal hjkl without modal motion",
+                     inserted["mode"] == "insert", inserted)
+        key("Escape")
+        runtime.wait_for(lambda: state() if state()["mode"] == "normal" else None,
+                         "physical Escape returns to NORMAL from INSERT")
+        subprocess.run(["wtype", "-M", "ctrl", "-k", "f", "-m", "ctrl"],
+                       env=probe.env, check=True, capture_output=True,
+                       text=True, timeout=12)
+        found = runtime.wait_for(
+            lambda: value if (value := state())["findFocused"] else None,
+            "physical Ctrl+F focuses Source Find, not global Settings search")
+        subprocess.run(["wtype", "hjkl"], env=probe.env, check=True,
+                       capture_output=True, text=True, timeout=12)
+        found = runtime.wait_for(
+            lambda: value if (value := state())["findText"] == "hjkl" else None,
+            "Find accepts literal hjkl without modal motion")
+        probe.record("Find accepts all literal hjkl as a query",
+                     found["findVisible"] and found["text"].startswith("hjklalpha"),
+                     found)
+        key("Escape")
+        back = runtime.wait_for(
+            lambda: value if (value := state())["focused"]
+                and not value["findVisible"] else None,
+            "physical Escape closes Find and returns to editor")
+        probe.record("Escape from Find restores editor focus without closing Settings",
+                     probe.snapshot()["settingsOpen"], back)
+
+        # The remaining historical modal regression tests use deterministic
+        # IPC document resets only after the physical user journey succeeds.
+        command("reset")
         command("home")
         key("l")
         runtime.wait_for(lambda: state() if state()["caret"] == 1 else None,

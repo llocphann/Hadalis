@@ -7,7 +7,7 @@ import qs.modules.common
 QtObject {
     id: root
 
-    readonly property int layoutSchemaVersion: 7
+    readonly property int layoutSchemaVersion: 8
     readonly property int retiredTlpPageIndex: 28
     readonly property int overviewPageIndex: 29
     readonly property int codeWorkflowPageIndex: 30
@@ -186,40 +186,47 @@ QtObject {
             }
         }
 
-        // Old stock navigation should adopt the six intent-based groups.
-        // Compare only page order: translated labels can differ by locale.
-        // Explicitly rearranged/hidden pages and renamed groups are preserved.
-        const previousStock = [
-            [0],
-            [4, 25, 3, 14],
-            [2, 26, 5, 29, 22, 23, 16, 10, 11, 20],
-            [1, 24, 7, 6, 12, 15, 8, 17],
-            [30, 9, 13]
-        ]
-        const stockPages = previousStock.every((pages, index) => {
-            const actual = migratedGroups[index]?.pages ?? []
-            const visibleStock = pages.filter(page => !migratedHidden.includes(page))
-            return actual.length === visibleStock.length
-                && actual.every((page, offset) => page === visibleStock[offset])
-        })
-        const stockLabels = [
+        // v8 upgrades the five legacy category labels even when the user
+        // rearranged their pages. v7 only upgraded the exact default order,
+        // leaving real installations displaying ESSENTIALS/APPEARANCE/SHELL.
+        // Preserve existing relative page order and hidden page preferences.
+        // Custom/renamed groups remain untouched.
+        const legacyLabels = [
             Translation.tr("Essentials"), Translation.tr("Appearance"),
             Translation.tr("Shell"), Translation.tr("System"),
             Translation.tr("Reference")
         ]
-        const stockGroupNames = migratedGroups.every((group, index) =>
-            group?.label === stockLabels[index])
-        const untouchedStock = migratedGroups.length === previousStock.length
-            && stockPages && stockGroupNames
-            && migratedHidden.every(page => page === root.retiredTlpPageIndex)
+        const untouchedStock = migratedGroups.length === legacyLabels.length
+            && migratedGroups.every((group, index) =>
+                group?.label === legacyLabels[index])
 
-        if (sourceVersion < 7 && untouchedStock) {
-            root.save({
-                groups: SettingsPageRegistry.defaultCategories.map(group => ({
-                    label: group.label, pages: group.pages.slice()
-                })),
-                hidden: migratedHidden
-            })
+        if (sourceVersion < 8 && untouchedStock) {
+            const defaults = SettingsPageRegistry.defaultCategories
+            const owner = new Map()
+            const grouped = defaults.map(group => ({
+                label: group.label, pages: []
+            }))
+            for (let i = 0; i < defaults.length; i++)
+                for (const page of defaults[i].pages)
+                    owner.set(page, i)
+            const seen = new Set(migratedHidden)
+            for (const group of migratedGroups) {
+                for (const page of group?.pages ?? []) {
+                    if (seen.has(page) || !owner.has(page)) continue
+                    grouped[owner.get(page)].pages.push(page)
+                    seen.add(page)
+                }
+            }
+            // Include pages introduced after the saved arrangement, in the
+            // canonical group, instead of silently relegating them to More.
+            for (const group of defaults) {
+                for (const page of group.pages) {
+                    if (seen.has(page)) continue
+                    grouped[owner.get(page)].pages.push(page)
+                    seen.add(page)
+                }
+            }
+            root.save({ groups: grouped, hidden: migratedHidden })
             return
         }
 

@@ -174,16 +174,14 @@ ColumnLayout {
             Button {
                 Layout.fillWidth: true
                 text: Translation.tr("English")
-                checkable: true
-                checked: root.englishActive
+                highlighted: root.englishActive
                 enabled: !root.busy
                 onClicked: root.runAction("set-language", "en")
             }
             Button {
                 Layout.fillWidth: true
                 text: Translation.tr("Vietnamese")
-                checkable: true
-                checked: root.vietnameseActive
+                highlighted: root.vietnameseActive
                 enabled: !root.busy
                 onClicked: root.runAction("set-language", "vi")
             }

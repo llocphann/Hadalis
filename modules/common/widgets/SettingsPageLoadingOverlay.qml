@@ -4,35 +4,32 @@ import QtQuick
 import qs.modules.common
 import qs.modules.common.widgets
 
+// A quiet, floating gear is visible only while the selected Settings page
+// has no presented content. No card/pill backing, no icon/text pair.
 Item {
     id: root
 
     property bool loading: false
     property int showDelay: 90
-    property int minimumVisibleDuration: 180
-
     property bool _shown: false
-    property bool _hidePending: false
 
-    visible: root._shown || opacity > 0.001
-    opacity: root._shown ? 1 : 0
+    // When the page becomes ready, remove the loader immediately. A minimum
+    // visible timer or exit animation must not linger over interactive content.
+    visible: root.loading && root._shown
 
     onLoadingChanged: {
-        if (loading) {
-            root._hidePending = false
+        if (root.loading) {
             if (!root._shown)
                 showDelayTimer.restart()
-            return
-        }
-
-        showDelayTimer.stop()
-        if (!root._shown)
-            return
-
-        if (minimumVisibleTimer.running)
-            root._hidePending = true
-        else
+        } else {
+            showDelayTimer.stop()
             root._shown = false
+        }
+    }
+
+    Component.onCompleted: {
+        if (root.loading && !root._shown)
+            showDelayTimer.restart()
     }
 
     Timer {
@@ -40,62 +37,34 @@ Item {
         interval: root.showDelay
         repeat: false
         onTriggered: {
-            if (!root.loading)
-                return
-            root._shown = true
-            root._hidePending = false
-            minimumVisibleTimer.restart()
+            if (root.loading)
+                root._shown = true
         }
     }
 
-    Timer {
-        id: minimumVisibleTimer
-        interval: root.minimumVisibleDuration
-        repeat: false
-        onTriggered: {
-            if (!root.loading || root._hidePending)
-                root._shown = false
-            root._hidePending = false
-        }
-    }
-
-    Behavior on opacity {
-        enabled: Appearance.animationsEnabled
-        NumberAnimation {
-            duration: Appearance.animation.elementMoveFast.duration
-            easing.type: Appearance.animation.elementMoveFast.type
-            easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve
-        }
-    }
-
-    Rectangle {
+    Item {
         anchors.centerIn: parent
-        // Fixed-size square plate: the former label-measured width could
-        // collapse to an empty pill before text/font metrics became available.
-        width: 92
+        width: 64
         height: width
-        radius: SettingsMaterialPreset.cardRadius
-        color: SettingsMaterialPreset.cardColor
-        border.width: 1
-        border.color: SettingsMaterialPreset.cardBorderColor
-        scale: root._shown ? 1 : 0.96
 
-        Behavior on scale {
-            enabled: Appearance.animationsEnabled
-            NumberAnimation {
-                duration: Appearance.animation.elementMoveFast.duration
-                easing.type: Appearance.animation.elementMoveFast.type
-                easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve
-            }
+        // Static ring gives the gear a legible silhouette without creating
+        // a separate surface or competing with the Settings card elevation.
+        Rectangle {
+            anchors.fill: parent
+            radius: width / 2
+            color: "transparent"
+            border.width: 1
+            border.color: SettingsMaterialPreset.accentColor
+            opacity: 0.24
         }
 
-        // Gear-only Settings page load. Keep the glyph prominent and centered
-        // regardless of the current page's asynchronous text lifecycle.
+        // Shared indicator uses a 0.8 glyph/box ratio: 50 -> 40 px gear.
+        // Only the glyph rotates; the ring never animates or scales.
         MaterialLoadingIndicator {
             anchors.centerIn: parent
-            implicitSize: 76
-            color: Appearance.colors.colOnSurface
-            loading: root._shown
+            implicitSize: 50
+            color: SettingsMaterialPreset.accentColor
+            loading: root.loading && root._shown
         }
     }
 }

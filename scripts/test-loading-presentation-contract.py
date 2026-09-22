@@ -31,8 +31,8 @@ assert "MaterialLoadingIndicator {" not in label
 assert "LoadingText 1.0 LoadingText.qml" in qmldir
 assert '"Loading": "Loading"' in locale
 
-# Text-bearing task rows retain the animated Loading label; Settings page
-# navigation is gear-only, with a fixed square plate and centered large glyph.
+# Task rows with a label remain text-only. Full-page navigation is
+# deliberately the icon-only Floating Gear variant, without an elevated card.
 task = read("modules/common/widgets/SettingsTaskLoadingState.qml")
 assert "LoadingText {" in task
 assert "MaterialLoadingIndicator {" not in task
@@ -43,16 +43,33 @@ assert "MaterialLoadingIndicator {" in page
 assert "LoadingText {" not in page
 assert "property string text:" not in page
 assert "loadingLabel.implicitWidth" not in page
+assert "SettingsMaterialPreset.cardColor" not in page
+assert "SettingsMaterialPreset.cardRadius" not in page
+assert "minimumVisibleTimer" not in page
+assert "_hidePending" not in page
+assert "Behavior on scale" not in page
+assert "visible: root.loading && root._shown" in page
+assert "root._shown = false" in page
+assert 'color: "transparent"' in page
+assert "border.color: SettingsMaterialPreset.accentColor" in page
+assert "color: SettingsMaterialPreset.accentColor" in page
 assert "anchors.centerIn: parent" in page
-assert "color: Appearance.colors.colOnSurface" in page
-assert "loading: root._shown" in page
 import re
-plate = re.search(r"width:\s*(\d+)\s*height:\s*width", page)
-glyph = re.search(r"MaterialLoadingIndicator\s*\{[^}]*implicitSize:\s*(\d+)", page, re.S)
-assert plate and glyph, "Settings page must size both plate and gear"
-plate_size, gear_size = int(plate[1]), int(glyph[1])
-assert plate_size >= gear_size + 16
-assert gear_size * 0.8 >= 56, "Settings gear glyph must remain visually prominent"
+ring = re.search(r"Item\\s*\\{\\s*anchors.centerIn: parent\\s*width: (\\d+)\\s*height: width", page)
+glyph = re.search(r"MaterialLoadingIndicator\\s*\\{[^}]*implicitSize: (\\d+)", page, re.S)
+assert ring and glyph, "Floating Gear must size the ring and glyph"
+ring_size, indicator_size = int(ring[1]), int(glyph[1])
+assert 60 <= ring_size <= 68
+assert 36 <= indicator_size * 0.8 <= 40
+assert "RotationAnimation on rotation" not in page, "Ring must remain static"
+
+for path, host in (
+    ("settings.qml", "pagesStack"),
+    ("modules/settings/SettingsFocus.qml", "pageHost"),
+    ("modules/settings/SettingsOverlay.qml", "overlayPagesHost"),
+):
+    content = read(path)
+    assert ("loading: " + host + ".loading && !" + host + ".currentItem && !" + host + ".error") in content, path
 
 for path in (
     "settings.qml",

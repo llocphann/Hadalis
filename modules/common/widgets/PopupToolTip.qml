@@ -36,9 +36,35 @@ Item {
             return parent.hovered
         return true
     }
+    readonly property bool parentPressedState: {
+        if (!parent)
+            return false
+        if (parent.down !== undefined)
+            return parent.down
+        if (parent.pressed !== undefined)
+            return parent.pressed
+        return false
+    }
+    // A click can move/collapse the anchor while Qt still reports the old
+    // hover state for a frame (or until the pointer moves). Keep that tooltip
+    // closed until the pointer genuinely leaves the control.
+    property bool suppressUntilHoverExit: false
     readonly property bool hasContent: root.text.trim().length > 0
     readonly property bool internalVisibleCondition: root.enabled && root.hasContent
+        && !root.suppressUntilHoverExit
         && ((extraVisibleCondition && parentHoverState) || alternativeVisibleCondition)
+
+    onParentPressedStateChanged: {
+        if (!root.parentPressedState)
+            return
+        root.suppressUntilHoverExit = true
+        _showDelayTimer.stop()
+        root.setContentShown(false)
+    }
+    onParentHoverStateChanged: {
+        if (!root.parentHoverState)
+            root.suppressUntilHoverExit = false
+    }
     property var anchorEdges: Edges.Top
     property var anchorGravity: anchorEdges
 

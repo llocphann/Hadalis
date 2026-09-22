@@ -99,6 +99,7 @@ ApplicationWindow {
             for (var p = 0; p < cat.pages.length; p++) {
                 var pageIdx = cat.pages[p];
                 if (pageIdx >= pages.length) continue;
+                if (!SettingsPageRegistry.isPageApplicable(pageIdx)) continue;
                 if (easyMode && pages[pageIdx].essential !== true) continue;
                 catPages.push(pageIdx);
             }

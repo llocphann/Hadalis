@@ -24,96 +24,115 @@ ApplicationWindow {
     
     property var pages: [
         {
+            key: "quick",
             name: Translation.tr("Quick"),
             icon: "flash-on",
             component: Qt.resolvedUrl("modules/waffle/settings/pages/WQuickPage.qml")
         },
         {
+            key: "system",
             name: Translation.tr("General"),
             icon: "settings",
             component: Qt.resolvedUrl("modules/waffle/settings/pages/WGeneralPage.qml")
         },
         {
+            key: "bar",
             name: Translation.tr("Taskbar"),
             icon: "desktop",
             component: Qt.resolvedUrl("modules/waffle/settings/pages/WBarPage.qml")
         },
         {
+            key: "wallpaper",
             name: Translation.tr("Background"),
             icon: "image",
             component: Qt.resolvedUrl("modules/waffle/settings/pages/WBackgroundPage.qml")
         },
         {
+            key: "themes",
             name: Translation.tr("Themes"),
             icon: "dark-theme",
             component: Qt.resolvedUrl("modules/waffle/settings/pages/WThemesPage.qml")
         },
         {
+            key: "gowall",
             name: Translation.tr("Gowall"),
             icon: "wand",
             component: Qt.resolvedUrl("modules/waffle/settings/pages/WGowallPage.qml")
         },
         {
+            key: "panels",
             name: Translation.tr("Interface"),
             icon: "apps",
             component: Qt.resolvedUrl("modules/waffle/settings/pages/WInterfacePage.qml")
         },
         {
+            key: "modules",
             name: Translation.tr("Modules"),
             icon: "settings-cog-multiple",
             component: Qt.resolvedUrl("modules/waffle/settings/pages/WModulesPage.qml")
         },
         {
+            key: "waffle-style",
             name: Translation.tr("Waffle Style"),
             icon: "desktop",
             component: Qt.resolvedUrl("modules/waffle/settings/pages/WWaffleStylePage.qml")
         },
         {
+            key: "shortcuts",
             name: Translation.tr("Shortcuts"),
             icon: "keyboard",
             component: Qt.resolvedUrl("modules/waffle/settings/pages/WShortcutsPage.qml")
         },
         {
+            key: "about",
             name: Translation.tr("About"),
             icon: "info",
             component: Qt.resolvedUrl("modules/waffle/settings/pages/WAboutPage.qml")
         },
         {
+            key: "monitors",
             name: Translation.tr("Monitors"),
             icon: "desktop",
             component: Qt.resolvedUrl("modules/waffle/settings/pages/WMonitorVisibilityPage.qml")
         },
         {
+            key: "autostart",
             name: Translation.tr("Autostart"),
             icon: "power",
             component: Qt.resolvedUrl("modules/waffle/settings/pages/WAutostartPage.qml")
         },
         {
+            key: "workspace-strip",
             name: Translation.tr("Workspace Strip"),
             icon: "desktop",
             component: Qt.resolvedUrl("modules/waffle/settings/pages/WWorkspaceStripPage.qml")
         },
         {
+            key: "mascot",
             name: Translation.tr("Mascot"),
             icon: "image",
             component: Qt.resolvedUrl("modules/waffle/settings/pages/WMascotPage.qml")
         },
         {
+            key: "ai",
             name: Translation.tr("AI"),
             icon: "wand",
             component: Qt.resolvedUrl("modules/waffle/settings/pages/WAiPage.qml")
         },
         {
+            key: "effects",
             name: Translation.tr("Effects"),
             icon: "eye",
             component: Qt.resolvedUrl("modules/waffle/settings/pages/WEffectsPage.qml")
         },
         {
+            key: "shell-layout",
             name: Translation.tr("Shell Layout"),
             icon: "desktop",
             component: Qt.resolvedUrl("modules/waffle/settings/pages/WShellLayoutPage.qml")
         },
         {
+            key: "power",
             name: Translation.tr("Battery"),
             icon: "battery-saver",
             component: Qt.resolvedUrl("modules/waffle/settings/pages/WTlpPage.qml")

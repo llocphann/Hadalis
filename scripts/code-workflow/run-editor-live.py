@@ -249,7 +249,10 @@ def main() -> int:
         # User interaction: compositor pointer click, then literal lowercase
         # input. No IPC command can set focus/mode between these operations.
         before_click = state()
-        probe.record("Editor click target has a real compositor output",\n                     before_click["clickOutput"] in probe.outputs(), before_click)\n        probe.move(before_click["clickX"], before_click["clickY"], "left",\n                   output=before_click["clickOutput"])
+        probe.record("Editor click target has a real compositor output",
+                     before_click["clickOutput"] in probe.outputs(), before_click)
+        probe.move(before_click["clickX"], before_click["clickY"], "left",
+                   output=before_click["clickOutput"])
         clicked = runtime.wait_for(
             lambda: value if (value := state())["tapCount"] > before_click["tapCount"]
                 else None,

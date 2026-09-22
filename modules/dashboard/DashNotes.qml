@@ -33,7 +33,7 @@ DashCard {
     }
 
     function openZettelkastenSettings(): void {
-        GlobalStates.openSettingsSection(7, "Quick Notes & Zettelkasten")
+        GlobalStates.openSettingsSection(7, "To-do & Quick Notes")
     }
 
     ColumnLayout {

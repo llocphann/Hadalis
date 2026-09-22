@@ -116,6 +116,10 @@ def instrument(config: Path) -> None:
                 item.setCursor(0)
             } else if (command === "focus") {
                 item.focusEditor()
+            } else if (command === "hideSource") {
+                CodeWorkflowSession.sourcePreviewVisible = false
+            } else if (command === "showSource") {
+                CodeWorkflowSession.sourcePreviewVisible = true
             } else if (command === "normal") {
                 item.setMode("normal")
             } else if (command === "visual") {
@@ -224,10 +228,16 @@ def main() -> int:
                      and stable["codeWorkflowPage"]["state"] == "visible",
                      {"page": stable["settingsPage"],
                       "lifecycle": stable["codeWorkflowPage"]["state"]})
+        # This must succeed before any IPC command calls setMode/focusEditor.
+        # The old fixture explicitly focused the TextEdit and concealed the
+        # actual user-visible failure after opening the Settings page.
+        auto_focused = runtime.wait_for(
+            lambda: state() if state()["focused"] else None,
+            "Source Editor auto-focus on actual page activation", timeout=20,
+        )
+        probe.record("Page opens with Source Editor keyboard focus without IPC focus",
+                     auto_focused["mode"] == "normal", auto_focused)
         command("home")
-        command("focus")
-        runtime.wait_for(lambda: state() if state()["focused"] else None,
-                         "native TextEdit keyboard focus", timeout=20)
         key("l")
         runtime.wait_for(lambda: state() if state()["caret"] == 1 else None,
                          "physical l moves NORMAL caret")
@@ -245,6 +255,17 @@ def main() -> int:
                          "physical k restores column above empty line")
         probe.record("Physical hjkl obey empty lines and preferred column",
                      state()["caret"] == 1 and state()["line"] == 1, state())
+
+        command("hideSource")
+        runtime.wait_for(lambda: state() if not state()["focused"] else None,
+                         "hidden Source Editor relinquishes focus")
+        command("showSource")
+        reopened = runtime.wait_for(
+            lambda: state() if state()["focused"] else None,
+            "Source Editor regains focus when preview is shown",
+        )
+        probe.record("Showing Source preview restores modal keyboard focus",
+                     reopened["mode"] == "normal", reopened)
 
         command("visual")
         key("j")

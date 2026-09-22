@@ -246,6 +246,24 @@ if "import org.kde.syntaxhighlighting" in page:
     fail("CodeWorkflow base page must not hard-depend on KDE syntax highlighting")
 if "CodeWorkflowNvim." in page:
     fail("CodeWorkflow base page must not hard-depend on embedded Neovim service")
+if page.count("onSourcePathChanged:") != 1:
+    fail("Code Workflow must keep exactly one source-path change handler")
+source_path_handler_start = page.index("    onSourcePathChanged:")
+source_path_handler_end = page.index(
+    "\n    function stashSourceEditorBuffer", source_path_handler_start)
+source_path_handler = page[source_path_handler_start:source_path_handler_end]
+for token in (
+    "root.stashSourceEditorBuffer()",
+    'root.sourceEditorStatus = ""',
+    'CodeWorkflowSession.selectSemantic("")',
+    "Qt.callLater(root.reloadSource)",
+    "Qt.callLater(() => root.requestAnalysis(false))",
+    "Qt.callLater(root.evaluatePreApplyGate)",
+    "Qt.callLater(root.syncEmbeddedNvimView)",
+    "Qt.callLater(root.syncSourceSyntaxHighlighter)",
+):
+    require(source_path_handler, token,
+            "source-path change handler missing merged editor/analysis action " + token)
 require(page, '"Source Editor · " + root.sourcePath',
         "Source pane must present an editor rather than a read-only preview")
 require(page, "readOnly: false",

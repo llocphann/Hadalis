@@ -238,7 +238,7 @@ Item {
                 enabled: textArea.text.length > 0
                 onClicked: {
                     Quickshell.execDetached(["wl-copy", textArea.text])
-                    copiedToast.show()
+                    copiedToast.show(Translation.tr("Copied!"))
                 }
             }
 
@@ -254,6 +254,24 @@ Item {
                 tooltipText: Translation.tr("Select all")
                 enabled: textArea.text.length > 0
                 onClicked: textArea.selectAll()
+            }
+
+            NotepadToolButton {
+                icon: "note_add"
+                tooltipText: Zettelkasten.ready
+                    ? Translation.tr("Save as Zettelkasten quick note")
+                    : Translation.tr("Configure an Obsidian vault to enable Zettelkasten")
+                enabled: Notepad.ready
+                    && Zettelkasten.ready
+                    && !Zettelkasten.busy
+                    && textArea.text.trim().length > 0
+                onClicked: {
+                    const tabTitle = String(
+                        Notepad.tabs[Notepad.currentTab]?.title ?? ""
+                    ).trim()
+                    const title = /^Note \\d+$/.test(tabTitle) ? "" : tabTitle
+                    Zettelkasten.capture(title, textArea.text)
+                }
             }
 
             Item { Layout.fillWidth: true }
@@ -367,6 +385,14 @@ Item {
     }
 
     // Copied toast notification
+    Connections {
+        target: Zettelkasten
+
+        function onCaptured(payload): void {
+            copiedToast.show(Translation.tr("Saved to Zettelkasten"))
+        }
+    }
+
     Rectangle {
         id: copiedToast
         anchors.horizontalCenter: parent.horizontalCenter
@@ -378,8 +404,10 @@ Item {
         color: root.colPrimary
         opacity: 0
         visible: opacity > 0
+        property string message: Translation.tr("Copied!")
 
-        function show() {
+        function show(message) {
+            copiedToast.message = String(message ?? Translation.tr("Copied!"))
             opacity = 1
             toastTimer.restart()
         }
@@ -403,7 +431,7 @@ Item {
             }
 
             StyledText {
-                text: Translation.tr("Copied!")
+                text: copiedToast.message
                 font.pixelSize: Appearance.font.pixelSize.smaller
                 color: Appearance.angelEverywhere ? Appearance.angel.colOnPrimary
                     : Appearance.inirEverywhere ? Appearance.inir.colOnPrimary

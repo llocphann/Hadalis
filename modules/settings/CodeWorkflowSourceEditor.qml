@@ -522,6 +522,7 @@ Item {
                     }
                 }
                 RippleButtonWithIcon {
+                    id: replaceVisibilityButton
                     implicitWidth: 28
                     implicitHeight: 28
                     horizontalPadding: 4
@@ -531,7 +532,9 @@ Item {
                     buttonText: root.replaceVisible
                         ? "Hide replace" : "Show replace"
                     onClicked: root.replaceVisible = !root.replaceVisible
-                    StyledToolTip { text: buttonText }
+                    StyledToolTip {
+                        text: replaceVisibilityButton.buttonText
+                    }
                 }
                 RippleButtonWithIcon {
                     implicitWidth: 28

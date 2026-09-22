@@ -82,7 +82,7 @@ for token in (
     'value: "Fleeting"',
     'value: "Literature"',
     'value: "Permanent"',
-    "Zettelkasten.configuredVaultPath",
+    "Zettelkasten.folder",
 ):
     assert token in settings, f"Zettelkasten settings contract lost: {token}"
 

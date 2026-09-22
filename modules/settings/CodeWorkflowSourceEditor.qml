@@ -350,6 +350,59 @@ Item {
 
     onModalCursorPositionChanged: root.ensureCursorVisible()
 
+    // A compact Vim-style word model for QML hotfixes. Non-ASCII letters
+    // remain word characters; punctuation is a separate run.
+    function wordClassAt(position: int): int {
+        if (position < 0 || position >= root.documentText.length)
+            return -1
+        const char = root.documentText[position]
+        if (/\\s/.test(char))
+            return 0
+        const code = char.charCodeAt(0)
+        return (code >= 48 && code <= 57)
+            || (code >= 65 && code <= 90)
+            || (code >= 97 && code <= 122)
+            || char === "_" || code >= 128 ? 1 : 2
+    }
+
+    function moveWord(direction: int, toEnd: bool): void {
+        const length = root.documentText.length
+        let pos = root.modalCursorPosition
+        if (length === 0)
+            return
+        if (direction < 0) {
+            pos = Math.max(0, pos - 1)
+            while (pos > 0 && root.wordClassAt(pos) === 0)
+                pos--
+            const kind = root.wordClassAt(pos)
+            while (pos > 0 && root.wordClassAt(pos - 1) === kind)
+                pos--
+        } else {
+            let kind = root.wordClassAt(pos)
+            if (toEnd) {
+                if (kind !== 0 && root.wordClassAt(pos + 1) !== kind) {
+                    pos++
+                    while (pos < length && root.wordClassAt(pos) === 0)
+                        pos++
+                    kind = root.wordClassAt(pos)
+                } else if (kind === 0) {
+                    while (pos < length && root.wordClassAt(pos) === 0)
+                        pos++
+                    kind = root.wordClassAt(pos)
+                }
+                while (pos + 1 < length
+                        && root.wordClassAt(pos + 1) === kind)
+                    pos++
+            } else {
+                while (pos < length && root.wordClassAt(pos) === kind)
+                    pos++
+                while (pos < length && root.wordClassAt(pos) === 0)
+                    pos++
+            }
+        }
+        root.setCursor(Math.min(length, pos))
+    }
+
     function handleMotionKey(key: int, modifiers: int): bool {
         if (root.mode === "insert" || root.findVisible
                 || (modifiers & (Qt.ControlModifier | Qt.AltModifier
@@ -360,6 +413,9 @@ Item {
         case Qt.Key_J: root.moveVertical(1); return true
         case Qt.Key_K: root.moveVertical(-1); return true
         case Qt.Key_L: root.moveHorizontal(1); return true
+        case Qt.Key_W: root.moveWord(1, false); return true
+        case Qt.Key_B: root.moveWord(-1, false); return true
+        case Qt.Key_E: root.moveWord(1, true); return true
         }
         return false
     }
@@ -847,6 +903,28 @@ Item {
                     enabled: editor.activeFocus && root.mode !== "insert"
                         && !root.findVisible
                     onActivated: root.handleMotionKey(Qt.Key_L, 0)
+                }
+
+                Shortcut {
+                    sequence: "W"
+                    context: Qt.WindowShortcut
+                    enabled: editor.activeFocus && root.mode !== "insert"
+                        && !root.findVisible
+                    onActivated: root.handleMotionKey(Qt.Key_W, 0)
+                }
+                Shortcut {
+                    sequence: "B"
+                    context: Qt.WindowShortcut
+                    enabled: editor.activeFocus && root.mode !== "insert"
+                        && !root.findVisible
+                    onActivated: root.handleMotionKey(Qt.Key_B, 0)
+                }
+                Shortcut {
+                    sequence: "E"
+                    context: Qt.WindowShortcut
+                    enabled: editor.activeFocus && root.mode !== "insert"
+                        && !root.findVisible
+                    onActivated: root.handleMotionKey(Qt.Key_E, 0)
                 }
 
                 Keys.priority: Keys.BeforeItem

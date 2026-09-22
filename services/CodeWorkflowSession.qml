@@ -266,8 +266,8 @@ Singleton {
             root.selectedConnectTargetId = ""
             root.selectedSemanticAnchor = ""
             root.clearSemanticAnchor()
-            if (changedSubflow)
-                root.resetViewport()
+            // Selection changes inspector context, not the unified board viewport.
+            // Keep pan/zoom while switching between unrelated components.
         }
         root.persist()
     }
@@ -284,6 +284,31 @@ Singleton {
             root.clearSemanticAnchor()
         else
             root.persist()
+    }
+
+    function selectUnifiedNode(node): bool {
+        const graphId = String(node?.graphId ?? "")
+        const nodeId = String(node?.id ?? "")
+        if (!CodeWorkflowIr.nodeFor(graphId, nodeId))
+            return false
+        root.subflowTargetId = graphId
+        if (String(node.runtimeTargetId ?? "") === graphId
+                && CodeWorkflowRuntime.descriptor(graphId)) {
+            root.selectedTargetId = graphId
+            root.selectedInstanceId = root.outputName.length > 0
+                ? graphId + "@" + root.outputName : ""
+        }
+        root.selectNode(nodeId)
+        return true
+    }
+
+    function selectUnifiedEdge(edge): bool {
+        const graphId = String(edge?.graphId ?? "")
+        const edgeId = String(edge?.id ?? "")
+        if (!CodeWorkflowIr.edgeFor(graphId, edgeId))
+            return false
+        root.subflowTargetId = graphId
+        return root.selectEdge(edgeId)
     }
 
     function selectEdge(edgeId: string): bool {
@@ -393,7 +418,7 @@ Singleton {
                 : ""
         }
 
-        root.resetViewport()
+        // Subflow selection changes the inspector scope, not the canvas.
         root.persist()
         return true
     }

@@ -42,8 +42,11 @@ class ZettelkastenTests(unittest.TestCase):
         self.assertIn("type: Fleeting", text)
         self.assertIn("aliases: []", text)
         self.assertIn("# Atomic notes", text)
-        self.assertIn("## Core Idea\nAtomic notes", text)
-        self.assertIn("## Content\nA short capture.", text)
+        self.assertIn("## Core Idea\nAbstract\nAtomic notes", text)
+        self.assertIn(
+            "## Content\n> [!info] Explanation\n> A short capture.",
+            text,
+        )
         self.assertIn("## Context & Connections", text)
         self.assertIn("## Sources & References", text)
         self.assertNotIn("created:", text)

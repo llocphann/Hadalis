@@ -160,6 +160,7 @@ def _render_markdown(
 
     clean_body = _clean_body(body)
     content = clean_body if clean_body else title
+    explanation_lines = content.splitlines() or [title]
 
     parts = [
         "---",
@@ -179,10 +180,12 @@ def _render_markdown(
         f"# {title}",
         "",
         "## Core Idea",
+        "Abstract",
         title,
         "",
         "## Content",
-        content,
+        "> [!info] Explanation",
+        *[(f"> {line}" if line else ">") for line in explanation_lines],
         "",
         "## Context & Connections",
         "*Link to existing notes using [[]] with explicit context on how they relate:*",

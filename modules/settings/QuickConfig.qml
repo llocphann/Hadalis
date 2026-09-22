@@ -1791,6 +1791,44 @@ ContentPage {
                 }
             }
 
+            // Related settings are routes, not duplicate editors. The active
+            // Settings host handles navigation without opening another window.
+            ConfigRow {
+                uniform: true
+
+                RippleButtonWithIcon {
+                    Layout.fillWidth: true
+                    materialIcon: "toast"
+                    mainText: Translation.tr("Bar & layout")
+                    onClicked: SettingsPageRegistry.navigateToKey("bar", "Appearance & Layout")
+                }
+
+                RippleButtonWithIcon {
+                    Layout.fillWidth: true
+                    materialIcon: "wallpaper"
+                    mainText: Translation.tr("Wallpaper settings")
+                    onClicked: SettingsPageRegistry.navigateToKey("wallpaper", "Source")
+                }
+            }
+
+            ConfigRow {
+                uniform: true
+
+                RippleButtonWithIcon {
+                    Layout.fillWidth: true
+                    materialIcon: "palette"
+                    mainText: Translation.tr("Theme settings")
+                    onClicked: SettingsPageRegistry.navigateToKey("themes", "Colors")
+                }
+
+                RippleButtonWithIcon {
+                    Layout.fillWidth: true
+                    materialIcon: "screen_record"
+                    mainText: Translation.tr("Capture settings")
+                    onClicked: SettingsPageRegistry.navigateToKey("tools", "Recording")
+                }
+            }
+
             SettingsSwitch {
                 buttonIcon: "notifications_active"
                 text: Translation.tr("Show reload toasts")

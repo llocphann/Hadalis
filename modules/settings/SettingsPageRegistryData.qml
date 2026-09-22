@@ -273,12 +273,16 @@ Singleton {
         }
     ]
 
+    // v7 information architecture: navigation reflects the user's intent,
+    // not the QML implementation folder or renderer. Historical page slots are
+    // stable for saved routes, search results and existing deep links.
     readonly property var defaultCategories: [
-        { label: Translation.tr("Essentials"), pages: [0] },
-        { label: Translation.tr("Appearance"), pages: [4, 25, 3, 14] },
-        { label: Translation.tr("Shell"), pages: [2, 26, 5, 29, 22, 23, 16, 10, 11, 20] },
-        { label: Translation.tr("System"), pages: [1, 24, 7, 6, 12, 15, 8, 17] },
-        { label: Translation.tr("Reference"), pages: [30, 9, 13] }
+        { label: Translation.tr("Home"), pages: [0] },
+        { label: Translation.tr("Appearance"), pages: [4, 3, 25, 8] },
+        { label: Translation.tr("Desktop & Layout"), pages: [15, 26, 2, 22, 23, 5, 16, 14, 29, 10, 11] },
+        { label: Translation.tr("System"), pages: [1, 12, 17] },
+        { label: Translation.tr("Features & Services"), pages: [24, 7, 6] },
+        { label: Translation.tr("Advanced & Help"), pages: [20, 30, 9, 13] }
     ]
 
     readonly property var _arrangement: {

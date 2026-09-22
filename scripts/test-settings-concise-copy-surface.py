@@ -42,16 +42,21 @@ for stale in (
 overlay_start = OVERLAY.index("id: overlayContentContainer")
 overlay_end = OVERLAY.index("// ── Page header", overlay_start)
 overlay_content = OVERLAY[overlay_start:overlay_end]
-assert "color: Appearance.colors.colLayer0" in overlay_content
+assert 'color: "transparent"' in overlay_content
+assert "Appearance.colors.colLayer0" not in overlay_content
 assert "colSurfaceContainerLow" not in overlay_content
 
-assert """color: root.uiReady
-        ? Appearance.colors.colLayer0
-        : "transparent"""" in WINDOW
+assert 'color: "transparent"' in WINDOW
+window_surface_start = WINDOW.index("id: windowBaseSurface")
+window_surface_end = WINDOW.index("Shortcut {", window_surface_start)
+window_surface = WINDOW[window_surface_start:window_surface_end]
+assert 'color: root.uiReady ? Appearance.colors.colLayer0 : "transparent"' in window_surface
+
 window_start = WINDOW.index("id: contentContainer")
 window_end = WINDOW.index("// ── Page header", window_start)
 window_content = WINDOW[window_start:window_end]
-assert "color: Appearance.colors.colLayer0" in window_content
+assert 'color: "transparent"' in window_content
+assert "Appearance.colors.colLayer0" not in window_content
 assert "colSurfaceContainerLow" not in window_content
 
 # Source-of-truth comparison: physical Screen Edge and normal ii Bar use the
@@ -59,8 +64,8 @@ assert "colSurfaceContainerLow" not in window_content
 assert ": Appearance.colors.colLayer0" in SCREEN_EDGE
 assert "return Appearance.colors.colLayer0" in BAR
 
-# The actual connected surface, not only the inner content rectangle, must
-# use the same opaque token as Screen Edge/bar.
+# The connected surface owns colLayer0 exactly once; inner content must not
+# repaint it because colLayer0 may carry global transparency.
 overlay_surface_start = OVERLAY.index("id: settingsCard")
 overlay_surface_end = OVERLAY.index("anchors.horizontalCenter", overlay_surface_start)
 overlay_surface = OVERLAY[overlay_surface_start:overlay_surface_end]
@@ -75,6 +80,6 @@ assert "readonly property color surfaceFillColor: Appearance.colors.colLayer0" i
 assert "CF.ColorUtils.applyAlpha(" not in focus_surface
 
 assert 'Translation.tr("Panel background opacity (%)")' not in MODULES
-assert "Settings base-surface color is locked to the ii perimeter." in README
+assert "Settings base surface has one owner." in README
 
 print("Settings concise-copy/shared-surface contract: PASS")

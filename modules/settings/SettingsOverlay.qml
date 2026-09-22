@@ -630,8 +630,8 @@ Scope {
                     1080,
                     Math.max(720, settingsPanel.height * 0.92),
                     Math.max(0, settingsPanel.height - 24))
-                // Structural connected chrome: exact same opaque Material surface
-                // as Screen Edge and normal ii Bar. Do not alpha-tint this fill.
+                // Structural connected chrome: the same Material surface token as
+                // Screen Edge. Preserve colLayer0's global transparency as-is.
                 readonly property color surfaceFillColor: Appearance.colors.colLayer0
 
                 anchors.horizontalCenter: parent.horizontalCenter
@@ -1528,8 +1528,9 @@ Scope {
                             Layout.fillWidth: true
                             Layout.fillHeight: true
                             radius: Appearance.rounding.normal
-                            // Match the physical Screen Edge and normal ii Bar surface.
-                            color: Appearance.colors.colLayer0
+                            // settingsIrisSurface already paints the structural
+                            // colLayer0 body; keep inner content transparent.
+                            color: "transparent"
                             border.width: 0
                             border.color: "transparent"
                             clip: true

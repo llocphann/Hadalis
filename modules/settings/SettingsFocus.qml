@@ -663,8 +663,8 @@ Scope {
                       : Appearance.rounding.windowRounding
                 bottomLeftRadius: 0
                 bottomRightRadius: 0
-                // The connected Material fill stays opaque. panelBgOpacity is
-                // retained only for legacy glass/backdrop compatibility below.
+                // Preserve the connected Material fill exactly as colLayer0.
+                // panelBgOpacity is retained only for legacy backdrop compatibility.
                 color: "transparent"
                 // angel's panel tokens, not its card tokens: this rectangle is
                 // the panel now that the body carries its own plate, and the

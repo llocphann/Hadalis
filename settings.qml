@@ -480,10 +480,16 @@ ApplicationWindow {
     minimumHeight: 500
     width: 1100
     height: 750
-    // Keep standalone Settings on the same base surface as Screen Edge/bar.
-    color: root.uiReady
-        ? Appearance.colors.colLayer0
-        : "transparent"
+    // Match Screen Edge's render path: keep the native window transparent and
+    // let one QML surface own colLayer0, including any global transparency.
+    color: "transparent"
+
+    Rectangle {
+        id: windowBaseSurface
+        anchors.fill: parent
+        z: 0
+        color: root.uiReady ? Appearance.colors.colLayer0 : "transparent"
+    }
 
     Shortcut {
         sequences: [StandardKey.Find]
@@ -1401,8 +1407,9 @@ ApplicationWindow {
                 id: contentContainer
                 Layout.fillWidth: true
                 Layout.fillHeight: true
-                // Same Material base surface as Screen Edge and normal ii Bar.
-                color: Appearance.colors.colLayer0
+                // The windowBaseSurface owns the structural fill. Repainting
+                // colLayer0 here would double-composite global transparency.
+                color: "transparent"
                 radius: Appearance.rounding.windowRounding - root.contentPadding
                 border.width: 0
                 border.color: "transparent"

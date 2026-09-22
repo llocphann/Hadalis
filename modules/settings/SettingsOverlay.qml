@@ -114,6 +114,7 @@ Scope {
         // 1. Static index
         for (var i = 0; i < overlaySearchIndex.length; i++) {
             var entry = overlaySearchIndex[i];
+            if (!SettingsPageRegistry.isPageApplicable(entry.pageIndex)) continue;
             if (wafflePageIndex >= 0 && entry.pageIndex === wafflePageIndex && !isWaffleActive)
                 continue;
             if (easyOn && entry.pageIndex >= 0 && entry.pageIndex < overlayPages.length
@@ -159,6 +160,7 @@ Scope {
         // 2. Dynamic widget registry
         if (typeof SettingsSearchRegistry !== "undefined") {
             var widgetResults = SettingsSearchRegistry.buildResults(overlaySearchText);
+            widgetResults = widgetResults.filter(r => SettingsPageRegistry.isPageApplicable(r.pageIndex));
             if (!isWaffleActive && wafflePageIndex >= 0) {
                 widgetResults = widgetResults.filter(r => r.pageIndex !== wafflePageIndex);
             }

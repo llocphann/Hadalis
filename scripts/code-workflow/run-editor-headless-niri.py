@@ -34,6 +34,17 @@ def main():
                WLR_HEADLESS_OUTPUTS='1', WLR_RENDERER='pixman',
                XDG_CONFIG_HOME=str(directory/'config'), XDG_CACHE_HOME=str(directory/'cache'),
                LD_LIBRARY_PATH=str(args.sway.resolve().parent.parent/'lib'))
+    mesa = env.get('HADALIS_WORKFLOW_MESA_DRIVERS', '')
+    if not mesa:
+        raise RuntimeError('Nix Mesa driver path is required for nested EGL')
+    graphics_env = {
+        '__EGL_VENDOR_LIBRARY_FILENAMES':
+            str(Path(mesa)/'share/glvnd/egl_vendor.d/50_mesa.json'),
+        'LIBGL_DRIVERS_PATH': str(Path(mesa)/'lib/dri'),
+        'LIBGL_ALWAYS_SOFTWARE': '1',
+        'MESA_LOADER_DRIVER_OVERRIDE': 'llvmpipe',
+    }
+    env.update(graphics_env)
     report = {'driver_sha256':sha256(Path(__file__).read_bytes()).hexdigest(),
               'sway_binary_sha256':sha256(args.sway.read_bytes()).hexdigest(),
               'inner_report':'probe/editor-live-report.json',
@@ -61,6 +72,7 @@ def main():
                 time.sleep(.1)
             child_env = os.environ.copy()
             child_env.update(json.loads(display.read_text()))
+            child_env.update(graphics_env)
             command = [sys.executable,str(Path(__file__).with_name('run-editor-live.py')),
                        '--work-dir',str(directory/'probe'), '--revision', args.revision,
                        '--pointer',str(args.pointer.resolve())]
@@ -78,6 +90,13 @@ def main():
                     os.killpg(process.pid,signal.SIGKILL)
                     process.wait(timeout=5)
     (directory/'report.json').write_text(json.dumps(report,indent=2)+'\n')
+    if report['failure']:
+        print(json.dumps(report, indent=2), flush=True)
+        for name in ('host.log', 'probe/niri.log', 'probe/quickshell.log'):
+            path = directory/name
+            if path.exists():
+                print('--- ' + name + ' ---', flush=True)
+                print(path.read_text(errors='replace')[-3500:], flush=True)
     return int(report['failure'] is not None)
 
 

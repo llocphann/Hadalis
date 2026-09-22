@@ -67,7 +67,11 @@ def instrument(config: Path) -> None:
         editor, "    id: root\n",
         "    id: root\n"
         "    readonly property bool testTextEditFocus: editor.activeFocus\n"
-        "    readonly property bool testFindFocus: findField.activeFocus\n",
+        "    readonly property bool testFindFocus: findField.activeFocus\n    property int testTapCount: 0\n    readonly property point testClickPoint: editor.mapToItem(null, 2, Math.max(2, editor.font.pixelSize / 2))\n",
+    )
+    replace_once(
+        editor, "                    onTapped: eventPoint => {\n",
+        "                    onTapped: eventPoint => {\n                        root.testTapCount++\n",
     )
     shell = config / "shell.qml"
     replace_once(
@@ -87,6 +91,9 @@ def instrument(config: Path) -> None:
                 line: modal.currentLineNumber,
                 text: modal.documentText,
                 focused: modal.testTextEditFocus,
+                tapCount: modal.testTapCount,
+                clickX: modal.testClickPoint.x,
+                clickY: modal.testClickPoint.y,
                 visible: modal.visible,
                 findFocused: modal.testFindFocus,
                 findVisible: modal.findVisible,
@@ -147,6 +154,7 @@ def main() -> int:
     parser.add_argument("--work-dir", type=Path, required=True)
     parser.add_argument("--revision", default="HEAD")
     parser.add_argument("--sway", type=Path, required=True)
+    parser.add_argument("--pointer", type=Path, required=True)
     args = parser.parse_args()
     directory = args.work_dir.resolve()
     if directory.exists():
@@ -164,7 +172,7 @@ def main() -> int:
             "Instrumentation exists only in the staged temporary config.",
         ],
     }
-    probe = runtime.Probe(directory, report, pointer=None, sway=args.sway.resolve())
+    probe = runtime.Probe(directory, report, pointer=args.pointer.resolve(), sway=args.sway.resolve())
     probe.env["QT_QUICK_BACKEND"] = "software"
     keyboard_keeper = None
     try:
@@ -238,6 +246,29 @@ def main() -> int:
         )
         probe.record("Page opens with Source Editor keyboard focus without IPC focus",
                      auto_focused["mode"] == "normal", auto_focused)
+        # User interaction: compositor pointer click, then literal lowercase
+        # input. No IPC command can set focus/mode between these operations.
+        before_click = state()
+        probe.move(before_click["clickX"], before_click["clickY"], "left")
+        clicked = runtime.wait_for(
+            lambda: value if (value := state())["tapCount"] > before_click["tapCount"]
+                else None,
+            "actual compositor click reaches TextEdit TapHandler",
+        )
+        probe.record("Real pointer click is delivered to Source Editor",
+                     clicked["focused"] and clicked["mode"] == "normal", clicked)
+        probe.record("Real pointer click places caret at start",
+                     clicked["caret"] == 0, clicked)
+        for letter, expected in (("l", 1), ("j", 6), ("k", 1), ("h", 0)):
+            subprocess.run(["wtype", letter], env=probe.env, check=True,
+                           capture_output=True, text=True, timeout=12)
+            moved = runtime.wait_for(
+                lambda: value if (value := state())["caret"] == expected else None,
+                "lowercase " + letter + " after actual click moves modal cursor",
+            )
+            probe.record("Click then literal lowercase " + letter + " navigates",
+                         moved["focused"] and moved["mode"] == "normal", moved)
+
         command("home")
         key("l")
         runtime.wait_for(lambda: state() if state()["caret"] == 1 else None,

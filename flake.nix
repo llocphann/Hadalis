@@ -46,6 +46,9 @@
                 pkgs.python3
                 pkgs.sway
                 pkgs.dbus
+                pkgs.pkg-config
+                pkgs.wayland
+                pkgs.stdenv.cc
                 workflowParser
               ];
 

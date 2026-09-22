@@ -103,6 +103,9 @@ jobs:
       - name: Validate modal hot-fix Source Editor
         run: nix develop .#workflow-acceptance --command bash -lc 'python3 scripts/test-code-workflow-source-editor-contract.py'
 
+      - name: Build isolated Wayland pointer for real editor clicks
+        run: nix develop .#workflow-acceptance --command bash -lc 'scripts/code-workflow/build-pointer.sh "$RUNNER_TEMP/hadalis-workflow-pointer"'
+
       - name: Exercise live Settings Source Editor modal keys
         env:
           WORK_DIR: ${{ runner.temp }}/hadalis-workflow-editor
@@ -114,7 +117,8 @@ jobs:
             python3 scripts/code-workflow/run-editor-live.py \
               --work-dir "$WORK_DIR" \
               --revision "${GITHUB_SHA}" \
-              --sway "$(command -v sway)"
+              --sway "$(command -v sway)" \
+              --pointer "$RUNNER_TEMP/hadalis-workflow-pointer/pointer"
           '
 
       - name: Validate Code Workflow production foundation

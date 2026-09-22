@@ -288,6 +288,52 @@ def main() -> int:
         probe.record("Escape from Find keeps Settings open",
                      probe.snapshot()["settingsOpen"])
 
+        command("home")
+        command("focus")
+        key("w")
+        runtime.wait_for(lambda: state() if state()["caret"] == 7 else None,
+                         "physical w reaches next word after blank line")
+        key("b")
+        runtime.wait_for(lambda: state() if state()["caret"] == 0 else None,
+                         "physical b returns to previous word")
+        key("e")
+        runtime.wait_for(lambda: state() if state()["caret"] == 4 else None,
+                         "physical e reaches word end")
+        probe.record("Physical w/b/e preserve word boundaries",
+                     state()["caret"] == 4, state())
+
+        command("home")
+        key("o")
+        opened_below = runtime.wait_for(
+            lambda: value if (
+                (value := state())["mode"] == "insert"
+                and value["caret"] == 6
+                and value["text"] == "alpha\\n\\n\\nbeta gamma"
+            ) else None,
+            "physical o opens blank line below with caret on new line",
+        )
+        probe.record("Physical o enters INSERT on new line below",
+                     True, opened_below)
+        key("Escape")
+        runtime.wait_for(lambda: state() if state()["mode"] == "normal" else None,
+                         "Escape after o")
+        subprocess.run(["wtype", "-M", "shift", "-k", "o", "-m", "shift"],
+                       env=probe.env, check=True, capture_output=True,
+                       text=True, timeout=12)
+        opened_above = runtime.wait_for(
+            lambda: value if (
+                (value := state())["mode"] == "insert"
+                and value["caret"] == 6
+                and value["text"] == "alpha\\n\\n\\n\\nbeta gamma"
+            ) else None,
+            "physical O opens blank line above with caret on new line",
+        )
+        probe.record("Physical O enters INSERT on new line above",
+                     True, opened_above)
+        key("Escape")
+        runtime.wait_for(lambda: state() if state()["mode"] == "normal" else None,
+                         "Escape after O")
+
         probe.ipc("settingsClose")
         closed = runtime.wait_for(
             lambda: value if not (value := probe.snapshot())["settingsLoaded"]

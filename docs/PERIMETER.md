@@ -27,7 +27,8 @@ ii Bar popup, Dock, Sidebar and Dashboard shadows share the public Screen Edge
 shadow controls (`appearance.screenEdge.physicalShadow`) and raw Material
 `m3shadow` ink. This keeps connected-edge depth visually aligned with the
 physical perimeter while the existing owner clip prevents shadow from painting
-across Bar/Screen Edge pixels. Settings/OSK keep their older connected-body
+across Bar/Screen Edge pixels. Connected Settings uses the same physical
+elevation controls; the standalone OSK retains its independent legacy
 shadow owner.
 
 The old standalone corner/wedge painters are retired and must remain absent:

@@ -421,10 +421,14 @@ require(session, "import Quickshell", "Singleton session must import Quickshell 
 require(session, "Persistent.states", "session must survive Settings page eviction")
 require(session, "const changedSubflow = root.subflowTargetId !== targetId",
         "reselecting the current runtime target must preserve graph viewport")
-require(session, "if (changedSubflow)\n                root.resetViewport()",
-        "viewport reset must occur only when runtime selection changes subflow")
-require(session, "readonly property real minimumZoom: 0.20",
-        "session must allow low enough overview zoom for Fit graph")
+require(session, "function selectUnifiedNode(node): bool",
+        "shared graph nodes must preserve their own inspector source scope")
+require(session, "function selectUnifiedEdge(edge): bool",
+        "shared graph edges must preserve their own source scope")
+require(session, "Selection changes inspector context, not the unified board viewport.",
+        "target changes must no longer discard the shared canvas viewport")
+require(session, "readonly property real minimumZoom: 0.06",
+        "session must allow full-board Fit with disconnected modules")
 require(session, "readonly property real maximumZoom: 2.5",
         "session must centralize the graph zoom ceiling")
 require(canvas, "CodeWorkflowSession.minimumZoom",

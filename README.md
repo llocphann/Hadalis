@@ -29,6 +29,7 @@ Working rules:
 - **Do not stack patches on top of a failed fix.** If local/runtime tests or maintainer evidence show that a fix commit did not solve the reported defect, revert that ineffective change before trying another implementation. Prefer a dedicated revert commit; if concurrent work makes a whole-commit revert unsafe, surgically revert the exact failed change set in its own commit. Re-establish the last known-good baseline, re-investigate the root cause, then implement a different approach. Never retain a disproven workaround merely as a base for another compensating patch.
 - Canonical local validator: `bash scripts/validate-maintainer-local.sh`.
 - A task is not release-complete merely because code exists. Runtime-sensitive items remain open until locally validated on the intended desktop environment.
+- **Settings copy stays terse.** Visible helper/description text should be only a few words or one short clause; never put paragraph-length explanation on the main Settings surface. Put necessary detail in a tooltip or documentation instead.
 
 ### 1.1 Fresh-chat handoff — read before editing perimeter/UI geometry
 

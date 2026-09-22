@@ -480,8 +480,9 @@ ApplicationWindow {
     minimumHeight: 500
     width: 1100
     height: 750
+    // Keep standalone Settings on the same base surface as Screen Edge/bar.
     color: root.uiReady
-        ? Appearance.m3colors.m3background
+        ? Appearance.colors.colLayer0
         : "transparent"
 
     Shortcut {
@@ -1400,7 +1401,8 @@ ApplicationWindow {
                 id: contentContainer
                 Layout.fillWidth: true
                 Layout.fillHeight: true
-                color: Appearance.colors.colSurfaceContainerLow
+                // Same Material base surface as Screen Edge and normal ii Bar.
+                color: Appearance.colors.colLayer0
                 radius: Appearance.rounding.windowRounding - root.contentPadding
                 border.width: 0
                 border.color: "transparent"

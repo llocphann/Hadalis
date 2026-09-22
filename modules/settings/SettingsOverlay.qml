@@ -1533,7 +1533,8 @@ Scope {
                             Layout.fillWidth: true
                             Layout.fillHeight: true
                             radius: Appearance.rounding.normal
-                            color: Appearance.colors.colSurfaceContainerLow
+                            // Match the physical Screen Edge and normal ii Bar surface.
+                            color: Appearance.colors.colLayer0
                             border.width: 0
                             border.color: "transparent"
                             clip: true

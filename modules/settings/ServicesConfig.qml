@@ -1143,8 +1143,8 @@ ContentPage {
                         StyledText {
                             Layout.fillWidth: true
                             text: Todo.backend === "obsidian"
-                                ? Translation.tr("The preserved Hadalis store is dormant and available for rollback.")
-                                : Translation.tr("Preparing Obsidian does not switch the writable canonical store.")
+                                ? Translation.tr("Hadalis backup preserved.")
+                                : Translation.tr("Setup keeps Hadalis active.")
                             color: Appearance.colors.colOnSurfaceVariant
                             font.pixelSize: Appearance.font.pixelSize.small
                             wrapMode: Text.WordWrap
@@ -1229,7 +1229,7 @@ ContentPage {
                         }
 
                         StyledToolTip {
-                            text: Translation.tr("Reactivate the preserved internal store. No Obsidian tasks are copied or deleted.")
+                            text: Translation.tr("Restore the preserved Hadalis store.")
                         }
                     }
                 }
@@ -1240,7 +1240,7 @@ ContentPage {
 
                 StyledText {
                     Layout.fillWidth: true
-                    text: Translation.tr("Use one Markdown note source. The path may be fixed or contain date tokens, and Heading is any Markdown heading you choose. Other Obsidian plugins can use the same file independently.")
+                    text: Translation.tr("One Markdown file and heading.")
                     color: Appearance.colors.colOnSurfaceVariant
                     font.pixelSize: Appearance.font.pixelSize.small
                     wrapMode: Text.WordWrap
@@ -1249,7 +1249,7 @@ ContentPage {
                 StyledText {
                     Layout.fillWidth: true
                     visible: Todo.useLegacyManagedNote
-                    text: Translation.tr("A legacy managed-marker source is still active for compatibility. Editing the unified source below switches future setup to the heading-based Markdown source.")
+                    text: Translation.tr("Legacy source compatibility mode.")
                     color: Appearance.colors.colOnSurfaceVariant
                     font.pixelSize: Appearance.font.pixelSize.small
                     wrapMode: Text.WordWrap
@@ -1290,7 +1290,7 @@ ContentPage {
 
                 StyledText {
                     Layout.fillWidth: true
-                    text: Translation.tr("Physical Obsidian vault folder. Hadalis resolves the configured note strictly inside this directory.")
+                    text: Translation.tr("Obsidian vault root.")
                     color: Appearance.colors.colOnSurfaceVariant
                     font.pixelSize: Appearance.font.pixelSize.small
                     wrapMode: Text.WordWrap
@@ -1350,7 +1350,7 @@ ContentPage {
 
                 StyledText {
                     Layout.fillWidth: true
-                    text: Translation.tr("Examples: Hadalis/Todo.md or 00_Capture/01_Journal/YYYY/MMMM/DD-MM-YYYY-dddd.md. Date tokens are resolved for the current day.")
+                    text: Translation.tr("Fixed or date-based Markdown path.")
                     color: Appearance.colors.colOnSurfaceVariant
                     font.pixelSize: Appearance.font.pixelSize.small
                     wrapMode: Text.WordWrap
@@ -1423,7 +1423,7 @@ ContentPage {
 
                 StyledText {
                     Layout.fillWidth: true
-                    text: Translation.tr("Hadalis only reads and writes checkbox items under this exact heading. The heading is plain Markdown and does not imply any plugin dependency.")
+                    text: Translation.tr("Checkboxes under this heading only.")
                     color: Appearance.colors.colOnSurfaceVariant
                     font.pixelSize: Appearance.font.pixelSize.small
                     wrapMode: Text.WordWrap
@@ -1661,7 +1661,7 @@ ContentPage {
                     StyledText {
                         Layout.fillWidth: true
                         visible: Todo.obsidianMigrationPreview?.target?.empty !== true
-                        text: Translation.tr("Import is blocked because the configured task heading already contains tasks. Use the existing Markdown source or clear/review those tasks first.")
+                        text: Translation.tr("Import blocked: target heading already has tasks.")
                         color: Appearance.colors.colError
                         font.pixelSize: Appearance.font.pixelSize.small
                         wrapMode: Text.WordWrap
@@ -1749,7 +1749,7 @@ ContentPage {
                 StyledText {
                     Layout.fillWidth: true
                     text: Todo.internalItemCount > 0
-                        ? Translation.tr("Activating without import keeps the current Hadalis Todo store dormant and unchanged.")
+                        ? Translation.tr("Activate without importing tasks.")
                         : Translation.tr("Activate this verified Markdown note as the canonical Todo store.")
                     color: Appearance.colors.colOnSurfaceVariant
                     font.pixelSize: Appearance.font.pixelSize.small
@@ -1787,8 +1787,8 @@ ContentPage {
                 Layout.fillWidth: true
                 visible: Todo.backend === "obsidian" || Todo.obsidianSetupActive
                 text: Todo.useLegacyManagedNote
-                    ? Translation.tr("Legacy managed-marker mode keeps its existing Tasks-aware behavior for compatibility.")
-                    : Translation.tr("Hadalis reads and writes the configured Markdown heading directly. Obsidian and third-party plugins do not need to be running for synchronization.")
+                    ? Translation.tr("Legacy compatibility mode.")
+                    : Translation.tr("Direct Markdown sync.")
                 color: Appearance.colors.colOnSurfaceVariant
                 font.pixelSize: Appearance.font.pixelSize.small
                 wrapMode: Text.WordWrap
@@ -1809,7 +1809,7 @@ ContentPage {
 
                 StyledText {
                     Layout.fillWidth: true
-                    text: Translation.tr("Dashboard Quick Notes are drafts until capture. A successful capture creates one filesystem-canonical Zettelkasten note, then clears the unchanged draft.")
+                    text: Translation.tr("Capture to Zettelkasten; keep the draft.")
                     color: Appearance.colors.colOnSurfaceVariant
                     font.pixelSize: Appearance.font.pixelSize.small
                     wrapMode: Text.WordWrap
@@ -1852,8 +1852,8 @@ ContentPage {
                 StyledText {
                     Layout.fillWidth: true
                     text: String(Config.options?.notes?.zettelkasten?.vaultPath ?? "").trim().length > 0
-                        ? Translation.tr("Using the dedicated Zettelkasten vault override.")
-                        : Translation.tr("Leave blank to reuse Todo's configured Obsidian vault.")
+                        ? Translation.tr("Using dedicated vault.")
+                        : Translation.tr("Blank = reuse Todo vault.")
                     color: Appearance.colors.colOnSurfaceVariant
                     font.pixelSize: Appearance.font.pixelSize.small
                     wrapMode: Text.WordWrap
@@ -1899,7 +1899,7 @@ ContentPage {
 
                 StyledText {
                     Layout.fillWidth: true
-                    text: Translation.tr("Vault-relative folder for captured Zettelkasten notes.")
+                    text: Translation.tr("Vault-relative capture folder.")
                     color: Appearance.colors.colOnSurfaceVariant
                     font.pixelSize: Appearance.font.pixelSize.small
                     wrapMode: Text.WordWrap
@@ -1935,7 +1935,7 @@ ContentPage {
 
                 StyledText {
                     Layout.fillWidth: true
-                    text: Translation.tr("The generated Markdown follows the vault's Zettelkasten schema: id, date, type, zettelkasten tag, aliases, Core Idea, Content, Context & Connections, and Sources & References.")
+                    text: Translation.tr("Uses the vault Zettelkasten template.")
                     color: Appearance.colors.colOnSurfaceVariant
                     font.pixelSize: Appearance.font.pixelSize.small
                     wrapMode: Text.WordWrap
@@ -1965,10 +1965,10 @@ ContentPage {
                     StyledText {
                         Layout.fillWidth: true
                         text: Zettelkasten.ready
-                            ? Translation.tr("Capture target configured: %1/%2")
+                            ? Translation.tr("Target: %1/%2")
                                 .arg(Zettelkasten.configuredVaultPath)
                                 .arg(Zettelkasten.folder)
-                            : Translation.tr("Configure a Zettelkasten vault override or the Todo Obsidian vault.")
+                            : Translation.tr("Set a vault path.")
                         color: Zettelkasten.ready
                             ? Appearance.colors.colOnLayer1
                             : Appearance.colors.colError

@@ -76,6 +76,11 @@ for token in (
     require(editor, token, "cursor/navigation helper missing")
 
 for token in (
+    "function focusSourceEditorWhenActive(): void",
+    "root.enabled && root.visible && sourcePane.visible",
+    "sourceEditor.focusEditor()",
+    "sourceEditor.keyboardFocusWithin",
+    "root.forceActiveFocus()",
     "CodeWorkflowSourceEditor {",
     "draft: root.sourceDraft",
     "definitionName: root.sourceHighlightDefinition",
@@ -115,8 +120,12 @@ for key, call in (
             "modal motion needs a shortcut fallback")
     require(editor, "onActivated: root.handleMotionKey(Qt.Key_" + key + ", 0)",
             "shortcut must share the TextEdit motion dispatcher")
-require(motion, 'root.mode === "insert" || root.findVisible',
-        "modal motion must not intercept Insert or Find/Replace typing")
+require(motion, 'root.mode === "insert"',
+        "modal motion must not intercept Insert typing")
+require(motion, "root.findVisible",
+        "modal motion must not intercept Find/Replace typing")
+require(motion, "!root.visible || !root.enabled",
+        "hidden or inactive Source Editor must not dispatch modal motions")
 require(motion, "Qt.ControlModifier | Qt.AltModifier",
         "modal motion must not swallow modified shortcuts")
 require(editor, "Keys.priority: Keys.BeforeItem",
@@ -125,6 +134,10 @@ require(editor, "root.handleMotionKey(event.key, event.modifiers)",
         "focused TextEdit must dispatch modal motions")
 require(editor, 'enabled: editor.activeFocus && root.mode !== "insert"',
         "fallback must require editor focus and non-Insert mode")
+require(editor, "&& root.visible && root.enabled && !root.findVisible",
+        "fallback must be disabled for hidden or inactive editor")
+require(editor, "readonly property bool keyboardFocusWithin:",
+        "Source Editor must expose child focus for pane lifecycle")
 require(editor, "&& !root.findVisible",
         "fallback must never steal text from Find/Replace")
 for key, call in (

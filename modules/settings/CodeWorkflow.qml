@@ -3793,6 +3793,9 @@ Item {
                 onVisibleChanged: {
                     if (visible)
                         root.focusSourceEditorWhenActive()
+                    else if (root.enabled && root.visible
+                            && sourceEditor.keyboardFocusWithin)
+                        root.forceActiveFocus()
                 }
             radius: Appearance.rounding.normal
             color: Appearance.colors.colLayer1

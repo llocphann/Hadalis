@@ -1373,7 +1373,7 @@ ContentPage {
                     font.pixelSize: Appearance.font.pixelSize.small
                     color: Appearance.colors.colOnSurface
                     text: String(Config.options?.todo?.obsidian?.dailyNote?.plannerHeading
-                        ?? "Tasks")
+                        ?? "Day Planner")
                     background: Rectangle {
                         color: Appearance.colors.colLayer1
                         radius: Appearance.rounding.small
@@ -1386,7 +1386,7 @@ ContentPage {
                         const value = text.trim()
                         if (value.length > 0
                                 && value !== String(Config.options?.todo?.obsidian?.dailyNote?.plannerHeading
-                                    ?? "Tasks"))
+                                    ?? "Day Planner"))
                             Config.setNestedValue("todo.obsidian.dailyNote.plannerHeading", value)
                     }
                 }

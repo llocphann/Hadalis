@@ -39,6 +39,16 @@ ContentPage {
     // Wallpaper section
     property string activeSection: "wallpaper"
 
+    function activateSettingsSearchSection(section: string): bool {
+        const label = String(section ?? "").toLowerCase()
+        if (label.includes("taskbar")) root.activeSection = "taskbar"
+        else if (label.includes("style") || label.includes("theme"))
+            root.activeSection = "style"
+        else if (label.includes("transition")) root.activeSection = "transition"
+        else root.activeSection = "wallpaper"
+        return true
+    }
+
     SettingsTaskNavigator {
         icon: "window"
         title: Translation.tr("Waffle Style")

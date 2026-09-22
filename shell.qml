@@ -973,9 +973,23 @@ ShellRoot {
     // Family transition overlay stays absent outside a real family switch, so
     // the inactive family's visual tree and font/token imports are not retained.
     Loader {
+        id: familyTransitionLoader
         active: Config.ready
             && (GlobalStates.familyTransitionActive || root._transitionInProgress)
         source: "FamilyTransitionOverlay.qml"
+        property CodeWorkflowRuntimeDeclaration workflowDeclaration:
+            CodeWorkflowRuntimeDeclaration {
+                loader: familyTransitionLoader
+                panelId: "familyTransitionOverlay"
+                targetId: "runtime/family-transition-overlay"
+                label: "Family Transition Overlay"
+                icon: "swap_horiz"
+                family: "shared"
+                sourcePath: "FamilyTransitionOverlay.qml"
+                internal: true
+                configured: Config.ready
+                presented: familyTransitionLoader.active && familyTransitionLoader.visible
+            }
         onLoaded: {
             item.exitComplete.connect(root.applyPendingFamily)
             item.enterComplete.connect(root.finishFamilyTransition)

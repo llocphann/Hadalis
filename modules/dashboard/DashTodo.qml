@@ -30,7 +30,10 @@ DashCard {
     // most of the size change.
     readonly property bool narrowLayout: root.width > 0 && root.width < 285
     readonly property bool shallowLayout: root.height > 0 && root.height < 300
-    readonly property int tabControlHeight: root.narrowLayout ? 36 : 38
+    readonly property bool veryShallowLayout:
+        root.height > 0 && root.height < 210
+    readonly property int tabControlHeight:
+        root.veryShallowLayout ? 34 : (root.narrowLayout ? 36 : 38)
 
     readonly property var indexedTasks: Todo.list.map(function(item, index) {
         return Object.assign({}, item, { originalIndex: index })
@@ -80,19 +83,23 @@ DashCard {
     ColumnLayout {
         Layout.fillWidth: true
         Layout.fillHeight: true
-        spacing: root.narrowLayout ? 5 : (root.compact ? 6 : 8)
+        spacing: root.veryShallowLayout
+            ? 4 : (root.narrowLayout ? 5 : (root.compact ? 6 : 8))
 
         RowLayout {
             Layout.fillWidth: true
             spacing: root.narrowLayout ? 6 : 10
 
             MaterialShapeWrappedMaterialSymbol {
-                Layout.preferredWidth: root.narrowLayout ? 34 : (root.compact ? 38 : 44)
+                Layout.preferredWidth: root.veryShallowLayout
+                    ? 32 : (root.narrowLayout ? 34 : (root.compact ? 38 : 44))
                 Layout.preferredHeight: Layout.preferredWidth
                 text: "checklist"
                 shape: MaterialShape.Shape.Cookie4Sided
-                padding: root.narrowLayout ? 5 : (root.compact ? 6 : 8)
-                iconSize: root.narrowLayout ? 19 : (root.compact ? 21 : 24)
+                padding: root.veryShallowLayout
+                    ? 5 : (root.narrowLayout ? 5 : (root.compact ? 6 : 8))
+                iconSize: root.veryShallowLayout
+                    ? 18 : (root.narrowLayout ? 19 : (root.compact ? 21 : 24))
             }
 
             ColumnLayout {
@@ -111,6 +118,7 @@ DashCard {
                 RowLayout {
                     Layout.fillWidth: true
                     spacing: 6
+                    visible: !root.veryShallowLayout
 
                     Rectangle {
                         implicitWidth: Math.min(sourceRow.implicitWidth + 12,
@@ -479,7 +487,8 @@ DashCard {
         Item {
             Layout.fillWidth: true
             Layout.fillHeight: true
-            Layout.minimumHeight: root.shallowLayout ? 56 : 72
+            Layout.minimumHeight: root.veryShallowLayout
+                ? 8 : (root.shallowLayout ? 56 : 72)
             clip: true
 
             Flickable {
@@ -637,6 +646,7 @@ DashCard {
 
                 MaterialShapeWrappedMaterialSymbol {
                     Layout.alignment: Qt.AlignHCenter
+                    visible: !root.veryShallowLayout
                     width: root.shallowLayout ? 42 : (root.compact ? 46 : 54)
                     height: width
                     text: root.currentTab === 0 ? "task_alt" : "done_all"
@@ -667,9 +677,9 @@ DashCard {
 
             RippleButton {
                 visible: Todo.backend !== "obsidian"
-                Layout.preferredWidth: root.narrowLayout
+                Layout.preferredWidth: (root.narrowLayout || root.veryShallowLayout)
                     ? 34 : setupRow.implicitWidth + 18
-                implicitHeight: 34
+                implicitHeight: root.veryShallowLayout ? 30 : 34
                 buttonRadius: Appearance.rounding.full
                 colBackground: Appearance.colors.colLayer2
                 colBackgroundHover: Appearance.colors.colLayer2Hover
@@ -691,7 +701,7 @@ DashCard {
                     }
 
                     StyledText {
-                        visible: !root.narrowLayout
+                        visible: !root.narrowLayout && !root.veryShallowLayout
                         text: Translation.tr("Prepare Obsidian")
                         font.pixelSize: Appearance.font.pixelSize.smallest
                         font.weight: Font.Medium
@@ -705,9 +715,10 @@ DashCard {
             }
 
             RippleButton {
-                implicitWidth: (root.compact || root.narrowLayout)
+                implicitWidth: (root.compact || root.narrowLayout
+                        || root.veryShallowLayout)
                     ? 34 : editRow.implicitWidth + 16
-                implicitHeight: 34
+                implicitHeight: root.veryShallowLayout ? 30 : 34
                 buttonRadius: Appearance.rounding.full
                 enabled: Todo.ready
                 colBackground: Appearance.colors.colLayer2
@@ -731,6 +742,7 @@ DashCard {
 
                     StyledText {
                         visible: !root.compact && !root.narrowLayout
+                            && !root.veryShallowLayout
                         text: Translation.tr("Edit")
                         font.pixelSize: Appearance.font.pixelSize.small
                         font.weight: Font.Medium
@@ -740,9 +752,9 @@ DashCard {
             }
 
             RippleButton {
-                Layout.preferredWidth: root.narrowLayout
+                Layout.preferredWidth: (root.narrowLayout || root.veryShallowLayout)
                     ? 34 : addRow.implicitWidth + 18
-                implicitHeight: 34
+                implicitHeight: root.veryShallowLayout ? 30 : 34
                 buttonRadius: Appearance.rounding.full
                 enabled: Todo.ready && !Todo.busy
                 colBackground: Appearance.colors.colPrimary
@@ -765,7 +777,7 @@ DashCard {
                     }
 
                     StyledText {
-                        visible: !root.narrowLayout
+                        visible: !root.narrowLayout && !root.veryShallowLayout
                         text: Translation.tr("Add task")
                         font.pixelSize: Appearance.font.pixelSize.small
                         font.weight: Font.DemiBold

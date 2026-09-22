@@ -241,18 +241,12 @@ Item {
                     iconSize: 36
                     color: Appearance.colors.colOnSurface
                 }
-                MaterialSymbol {
-                    id: bufferGlyph
+                MaterialLoadingIndicator {
                     anchors.centerIn: parent
                     visible: YtMusic.loading
-                    text: "progress_activity"
-                    iconSize: 30
+                    loading: visible
+                    implicitSize: 30
                     color: Appearance.colors.colOnSurface
-                    RotationAnimator on rotation {
-                        running: bufferGlyph.visible && Appearance.animationsEnabled
-                        loops: Animation.Infinite
-                        from: 0; to: 360; duration: 900
-                    }
                 }
                 MouseArea {
                     id: playMouse

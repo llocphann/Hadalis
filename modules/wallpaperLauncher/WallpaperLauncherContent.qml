@@ -251,10 +251,10 @@ FocusScope {
                 }
 
                 IconToolbarButton {
-                    visible: root.mode === "animated"
+                    visible: root.mode === "animated" && !root.loading
                     implicitWidth: Appearance.sizes.baseBarHeight
                     implicitHeight: Appearance.sizes.baseBarHeight
-                    text: root.loading ? "progress_activity" : "refresh"
+                    text: "refresh"
                     enabled: !root.loading
                     onClicked: {
                         root.refreshLibrary(true)
@@ -263,10 +263,8 @@ FocusScope {
                     StyledToolTip { text: Translation.tr("Refresh animated wallpapers") }
                 }
 
-                StyledText {
+                LoadingText {
                     visible: root.loading
-                    text: Translation.tr("Processing...")
-                    font.pixelSize: Appearance.font.pixelSize.smaller
                     color: Appearance.colors.colSecondary
                 }
             }

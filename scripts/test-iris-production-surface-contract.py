@@ -73,7 +73,7 @@ for token in ("ConnectedSurfaceFrame {", "ConnectedSurfaceMask {"):
 forbid(styled, "screenEdge?.shadow?.enabled", "StyledPopup obsolete private shadow owner")
 
 for token in (
-    "function clipExternalOwners(raw)",
+    "function clipExternalOwners(raw, primaryOverlap)",
     "readonly property rect rawPaintBounds:",
     "readonly property rect paintBounds:",
     "readonly property rect visibleBodyRect:",
@@ -87,7 +87,15 @@ for token in (
     "readonly property bool needsEndJoinAux:",
     'joins: ["frame-end"]',
     "ShaderEffectSource {",
-    "sourceItem: shadowTextureSource",
+    "id: shadowMaskField",
+    "shapes: field.shapes",
+    "sourceItem: shadowMaskField",
+    "sourceRect: root.rawShadowBounds",
+    "id: blurredShadow",
+    "source: shadowTextureSource",
+    "blurEnabled: true",
+    "autoPaddingEnabled: false",
+    "sourceItem: blurredShadow",
     "sourceRect: Qt.rect(",
     "hideSource: true",
     "smooth: true",
@@ -96,8 +104,14 @@ for token in (
 ):
     require(frame, token, "ConnectedSurfaceIrisFrame")
 
-for token in ("ConnectedSurfaceJoinFlares", "ConnectedSurfaceConnector", "Canvas {"):
+for token in ("ConnectedSurfaceJoinFlares", "ConnectedSurfaceConnector", "Canvas {", "RectangularShadow {"):
     forbid(frame, token, "production renderer patch geometry")
+assert frame.count("ConnectedSurfaceIrisField {") == 2, (
+    "Visible surface and shadow mask must use the same iRiS field implementation"
+)
+assert frame.index("id: shadowMaskField") < frame.index("id: isolatedShadow") < frame.index("id: field"), (
+    "The shadow mask and clipped blur must render below the visible field"
+)
 
 for token in (
     'fragmentShader: Qt.resolvedUrl("IrisField.frag.qsb")',
@@ -187,7 +201,7 @@ for token in (
     "id: dockIrisSurface",
     "edge: root.position",
     "ownerThickness: dockRoot.screenEdgeThickness",
-    "dockMouseArea.x + dockBackground.x + dockVisualBackground.x",
+    "dockMouseArea.x + dockBackground.x + dockConnectedBody.x",
     "screenEdge?.physicalShadow?.enabled ?? true",
     "screenEdge?.physicalShadow?.size ?? 15",
     "screenEdge?.physicalShadow?.opacity ?? 0.70",

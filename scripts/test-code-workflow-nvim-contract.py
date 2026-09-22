@@ -65,7 +65,7 @@ for token in (
         fail("CodeWorkflowNvim service missing " + token)
 
 for token in (
-    'self.request("nvim_ui_attach"',
+    '"nvim_ui_attach",',
     '{"rgb": True, "ext_linegrid": True}',
     'if method != "redraw"',
     "batch = params",

@@ -92,6 +92,97 @@ class ZettelkastenTests(unittest.TestCase):
             zettel.capture(str(vault), "Zettel", "bad", "body", "Scratch")
         self.assertEqual(error.exception.code, "invalid_note_type")
 
+    def test_notepad_migration_preview_is_read_only(self):
+        vault = self.vault()
+        source = vault.parent / "state" / "notepad-tabs.json"
+        source.parent.mkdir()
+        source.write_text(
+            '{"currentTab":0,"tabs":['
+            '{"title":"Note 1","text":"first body"},'
+            '{"title":"Custom","text":"second body"},'
+            '{"title":"Note 3","text":""}'
+            ']}',
+            encoding="utf-8",
+        )
+        target = vault / "00_Capture/03_Zettelkasten"
+        result = zettel.preview_notepad_migration(
+            str(vault), "00_Capture/03_Zettelkasten", str(source), "Fleeting"
+        )
+        self.assertFalse(target.exists())
+        self.assertEqual(result["source"]["tabCount"], 2)
+        self.assertEqual(result["preview"], {
+            "added": 2,
+            "duplicates": 0,
+            "conflicts": 0,
+        })
+
+    def test_notepad_migration_is_backed_up_verified_and_idempotent(self):
+        vault = self.vault()
+        source = vault.parent / "state" / "notepad-tabs.json"
+        source.parent.mkdir()
+        source.write_text(
+            '{"currentTab":0,"tabs":['
+            '{"title":"Note 1","text":"first body"},'
+            '{"title":"Custom","text":"second body"}'
+            ']}',
+            encoding="utf-8",
+        )
+        source_raw = source.read_bytes()
+        source_sha = zettel._sha256_bytes(source_raw)
+
+        first = zettel.migrate_notepad_json(
+            str(vault), "00_Capture/03_Zettelkasten",
+            str(source), source_sha, "Fleeting",
+        )
+        self.assertTrue(first["verified"])
+        self.assertTrue(first["sourcePreserved"])
+        self.assertEqual(first["migratedCount"], 2)
+        self.assertEqual(first["duplicateCount"], 0)
+        self.assertEqual(source.read_bytes(), source_raw)
+        self.assertEqual(Path(first["backupPath"]).read_bytes(), source_raw)
+
+        notes = sorted((vault / "00_Capture/03_Zettelkasten").glob("*.md"))
+        self.assertEqual(len(notes), 2)
+        marker_count = sum(
+            "hadalis_import_id:" in note.read_text(encoding="utf-8")
+            for note in notes
+        )
+        self.assertEqual(marker_count, 2)
+
+        second = zettel.migrate_notepad_json(
+            str(vault), "00_Capture/03_Zettelkasten",
+            str(source), source_sha, "Fleeting",
+        )
+        self.assertEqual(second["migratedCount"], 0)
+        self.assertEqual(second["duplicateCount"], 2)
+        self.assertEqual(
+            len(list((vault / "00_Capture/03_Zettelkasten").glob("*.md"))),
+            2,
+        )
+
+    def test_notepad_migration_rejects_stale_preview_sha(self):
+        vault = self.vault()
+        source = vault.parent / "state" / "notepad-tabs.json"
+        source.parent.mkdir()
+        source.write_text(
+            '{"currentTab":0,"tabs":[{"title":"Note 1","text":"old"}]}',
+            encoding="utf-8",
+        )
+        preview = zettel.preview_notepad_migration(
+            str(vault), "00_Capture/03_Zettelkasten", str(source)
+        )
+        source.write_text(
+            '{"currentTab":0,"tabs":[{"title":"Note 1","text":"new"}]}',
+            encoding="utf-8",
+        )
+        with self.assertRaises(zettel.ZettelError) as error:
+            zettel.migrate_notepad_json(
+                str(vault), "00_Capture/03_Zettelkasten",
+                str(source), preview["source"]["sha256"],
+            )
+        self.assertEqual(error.exception.code, "migration_source_conflict")
+        self.assertFalse((vault / "00_Capture/03_Zettelkasten").exists())
+
     def test_folder_escape_is_rejected(self):
         vault = self.vault()
         with self.assertRaises(zettel.ZettelError) as error:

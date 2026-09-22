@@ -257,6 +257,17 @@ ApplicationWindow {
         settingsSearchResults = unique.slice(0, 50);
     }
 
+    Connections {
+        target: SettingsPageRegistry
+        function onNavigateRequested(pageIndex, section) {
+            if (section.length > 0)
+                root.openSearchResult({ pageIndex: pageIndex, section: section,
+                    label: section, isSection: true })
+            else
+                root.currentPage = pageIndex
+        }
+    }
+
     // Pending search navigation target data
     property int pendingSpotlightOptionId: -1
     property string pendingSpotlightLabel: ""

@@ -53,6 +53,8 @@ for token in (
     "onClicked: notepad.captureQuickNote()",
     "compactPresentation: true",
     "margin: 0",
+    "readonly property bool constrainedHeight:",
+    "Layout.minimumHeight: root.constrainedHeight ? 76 : 130",
 ):
     assert token in dash, f"Dashboard Notes Zettelkasten contract lost: {token}"
 

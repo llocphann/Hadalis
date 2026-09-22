@@ -129,18 +129,15 @@ ContentPage {
                     }
                 }
 
-                SettingsSwitch {
-                    buttonIcon: "neurology"
-                    text: Translation.tr("AI Chat")
-                    readonly property int currentAiPolicy: Config.options?.policies?.ai ?? 0
-                    checked: currentAiPolicy !== 0
-                    onCheckedChanged: {
-                        // Preserve "Local only" (2) if it was set, otherwise use "Yes" (1)
-                        const newValue = checked ? (currentAiPolicy === 2 ? 2 : 1) : 0
-                        Config.setNestedValue("policies.ai", newValue)
-                    }
+                RippleButtonWithIcon {
+                    Layout.fillWidth: true
+                    materialIcon: "neurology"
+                    mainText: Translation.tr("AI Chat") + " · "
+                        + ((Config.options?.policies?.ai ?? 0) === 0
+                            ? Translation.tr("Off") : Translation.tr("On"))
+                    onClicked: SettingsPageRegistry.navigateToKey("ai", "Privacy")
                     StyledToolTip {
-                        text: Translation.tr("Chat with AI assistants (OpenAI, Gemini, local models)")
+                        text: Translation.tr("Configure AI availability in AI → Privacy")
                     }
                 }
 
@@ -154,18 +151,15 @@ ContentPage {
                     }
                 }
 
-                SettingsSwitch {
-                    buttonIcon: "bookmark_heart"
-                    text: Translation.tr("Anime")
-                    readonly property int currentWeebPolicy: Config.options?.policies?.weeb ?? 0
-                    checked: currentWeebPolicy !== 0
-                    onCheckedChanged: {
-                        // Preserve "Closet" (2) if it was set, otherwise use "Yes" (1)
-                        const newValue = checked ? (currentWeebPolicy === 2 ? 2 : 1) : 0
-                        Config.setNestedValue("policies.weeb", newValue)
-                    }
+                RippleButtonWithIcon {
+                    Layout.fillWidth: true
+                    materialIcon: "bookmark_heart"
+                    mainText: Translation.tr("Anime") + " · "
+                        + ((Config.options?.policies?.weeb ?? 0) === 0
+                            ? Translation.tr("Off") : Translation.tr("On"))
+                    onClicked: SettingsPageRegistry.navigateToKey("system", "Policies")
                     StyledToolTip {
-                        text: Translation.tr("Browse anime artwork from booru sites")
+                        text: Translation.tr("Configure content visibility in System → Safety")
                     }
                 }
 

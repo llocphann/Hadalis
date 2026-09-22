@@ -8,8 +8,8 @@ import qs.modules.sidebarRight.notepad
 /**
  * Quick Notes card.
  *
- * Notepad tabs are draft buffers; a successful Dashboard capture becomes a
- * filesystem-canonical Zettelkasten note and removes the unchanged draft.
+ * Notepad tabs are draft buffers; a successful Dashboard capture creates a
+ * filesystem-canonical Zettelkasten note while preserving the source draft.
  */
 DashCard {
     id: root
@@ -44,7 +44,7 @@ DashCard {
                         if (Zettelkasten.errorMessage.length > 0)
                             return Zettelkasten.errorMessage
                         if (Zettelkasten.ready)
-                            return Translation.tr("%1 note · draft clears after verified save")
+                            return Translation.tr("%1 note · draft stays in Notepad")
                                 .arg(Zettelkasten.defaultType)
                         return Translation.tr("Configure an Obsidian vault to capture notes")
                     }
@@ -86,7 +86,7 @@ DashCard {
 
                 StyledToolTip {
                     text: Zettelkasten.ready
-                        ? Translation.tr("Create a %1 Zettelkasten note. The unchanged draft is cleared only after the file is saved successfully.")
+                        ? Translation.tr("Create a %1 Zettelkasten note while keeping the Notepad draft unchanged.")
                             .arg(Zettelkasten.defaultType)
                         : Translation.tr("Configure an Obsidian vault to enable Zettelkasten")
                 }

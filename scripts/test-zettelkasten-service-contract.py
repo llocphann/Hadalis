@@ -17,16 +17,14 @@ defaults = json.loads((ROOT / "defaults/config.json").read_text(encoding="utf-8"
 for token in (
     'icon: "note_add"',
     'Translation.tr("Save as Zettelkasten quick note")',
-    "Zettelkasten.capture(title, snapshot.text)",
+    "Zettelkasten.capture(title, draftText)",
     "function saveAsZettel(): bool",
     "function captureQuickNote(): bool",
-    "function _clearCapturedDraft(snapshot): void",
-    "property var _pendingZettelCapture: null",
     "readonly property bool canSaveZettel:",
     'Translation.tr("Saved to Zettelkasten")',
     '/^Note \\d+$/.test(tabTitle)',
-    "snapshot.clearDraft !== true",
-    "Notepad.removeTab(index)",
+    "Notepad.setTextValue(textArea.text)",
+    "draft cleanup remains an explicit user action",
 ):
     assert token in widget, f"Notepad Zettelkasten UI contract lost: {token}"
 
@@ -45,7 +43,7 @@ for token in (
 for token in (
     'Translation.tr("Quick Notes")',
     'Translation.tr("Zettelkasten capture")',
-    'Translation.tr("%1 note · draft clears after verified save")',
+    'Translation.tr("%1 note · draft stays in Notepad")',
     ".arg(Zettelkasten.defaultType)",
     "Zettelkasten.errorMessage.length > 0",
     "enabled: notepad.canSaveZettel",
@@ -100,3 +98,7 @@ assert 'placeholderText: "00_Capture/03_Zettelkasten"' not in zettel_settings
 
 assert 'Translation.tr("Create a Fleeting Zettelkasten note.' not in dash
 assert "font.pixelSize: Appearance.font.pixelSize.smallest" not in dash
+assert "_clearCapturedDraft" not in widget
+assert "_pendingZettelCapture" not in widget
+assert "Notepad.removeTab(index)" not in widget
+assert "draft clears after verified save" not in dash

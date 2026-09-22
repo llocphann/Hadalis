@@ -954,12 +954,17 @@ ContentPage {
                 onCheckedChanged: Config.setNestedValue("bar.weather.enable", checked)
             }
 
-            SettingsSwitch {
-                buttonIcon: "view_timeline"
-                text: Translation.tr("Show in top bar")
-                checked: Config.options?.bar?.modules?.weather ?? false
-                onCheckedChanged: Config.setNestedValue("bar.modules.weather", checked)
-                enabled: Config.options?.bar?.weather?.enable ?? false
+            RippleButtonWithIcon {
+                Layout.fillWidth: true
+                visible: Config.options?.panelFamily !== "waffle"
+                materialIcon: "view_timeline"
+                mainText: Translation.tr("Bar weather module") + " · "
+                    + ((Config.options?.bar?.modules?.weather ?? false)
+                        ? Translation.tr("On") : Translation.tr("Off"))
+                onClicked: SettingsPageRegistry.navigateToKey("bar", "Modules")
+                StyledToolTip {
+                    text: Translation.tr("Visibility is configured in Bar → Modules")
+                }
             }
 
             SettingsSwitch {

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Contract guard for the unified Todo/Obsidian settings surface."""
+"""Contract guard for the unified To-do and Quick Notes settings surface."""
 
 from pathlib import Path
 
@@ -9,8 +9,8 @@ facade = (ROOT / "services" / "Todo.qml").read_text(encoding="utf-8")
 internal = (ROOT / "services" / "InternalTodoBackend.qml").read_text(encoding="utf-8")
 
 required = [
-    'title: Translation.tr("Todo & Obsidian")',
-    'title: Translation.tr("Obsidian Markdown task source")',
+    'title: Translation.tr("To-do & Quick Notes")',
+    'title: Translation.tr("Task source")',
     'Translation.tr("Note path pattern")',
     'Translation.tr("Heading")',
     'id: todoMarkdownNotePattern',
@@ -30,12 +30,12 @@ required = [
     'Todo.activateObsidian()',
     'Todo.openObsidianSource()',
     'Translation.tr("Use Obsidian source")',
-    'Translation.tr("Filesystem CAS · plugin independent · shared Markdown")',
+    'text: Todo.sharedVaultPath',
 ]
 for token in required:
     assert token in services, f"unified Todo settings contract lost: {token}"
 
-todo_start = services.index('title: Translation.tr("Todo & Obsidian")')
+todo_start = services.index('title: Translation.tr("To-do & Quick Notes")')
 todo_end = services.index('title: Translation.tr("Calendar Sync")', todo_start)
 todo = services[todo_start:todo_end]
 

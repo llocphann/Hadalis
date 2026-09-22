@@ -18,7 +18,6 @@ singleton ConflictKiller 1.0 ConflictKiller.qml
 singleton CodeWorkflowRuntime 1.0 CodeWorkflowRuntime.qml
 singleton CodeWorkflowAnalyzer 1.0 CodeWorkflowAnalyzer.qml
 singleton CodeWorkflowIr 1.0 CodeWorkflowIr.qml
-singleton CodeWorkflowNvim 1.0 CodeWorkflowNvim.qml
 singleton CodeWorkflowPicker 1.0 CodeWorkflowPicker.qml
 singleton CodeWorkflowSession 1.0 CodeWorkflowSession.qml
 singleton CodeWorkflowTransaction 1.0 CodeWorkflowTransaction.qml

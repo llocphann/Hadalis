@@ -15,6 +15,8 @@ Item {
     property int preferredColumn: -1
     property int editRevision: 0
     property bool syncingFromHost: false
+    readonly property bool keyboardFocusWithin:
+        editor.activeFocus || findField.activeFocus || replaceField.activeFocus
     property string documentText: root.draft
     property bool findVisible: false
     property bool replaceVisible: false
@@ -407,7 +409,8 @@ Item {
     }
 
     function handleMotionKey(key: int, modifiers: int): bool {
-        if (root.mode === "insert" || root.findVisible
+        if (!root.visible || !root.enabled || root.mode === "insert"
+                || root.findVisible
                 || (modifiers & (Qt.ControlModifier | Qt.AltModifier
                     | Qt.MetaModifier)) !== 0)
             return false
@@ -896,28 +899,28 @@ Item {
                     sequence: "H"
                     context: Qt.WindowShortcut
                     enabled: editor.activeFocus && root.mode !== "insert"
-                        && !root.findVisible
+                        && root.visible && root.enabled && !root.findVisible
                     onActivated: root.handleMotionKey(Qt.Key_H, 0)
                 }
                 Shortcut {
                     sequence: "J"
                     context: Qt.WindowShortcut
                     enabled: editor.activeFocus && root.mode !== "insert"
-                        && !root.findVisible
+                        && root.visible && root.enabled && !root.findVisible
                     onActivated: root.handleMotionKey(Qt.Key_J, 0)
                 }
                 Shortcut {
                     sequence: "K"
                     context: Qt.WindowShortcut
                     enabled: editor.activeFocus && root.mode !== "insert"
-                        && !root.findVisible
+                        && root.visible && root.enabled && !root.findVisible
                     onActivated: root.handleMotionKey(Qt.Key_K, 0)
                 }
                 Shortcut {
                     sequence: "L"
                     context: Qt.WindowShortcut
                     enabled: editor.activeFocus && root.mode !== "insert"
-                        && !root.findVisible
+                        && root.visible && root.enabled && !root.findVisible
                     onActivated: root.handleMotionKey(Qt.Key_L, 0)
                 }
 
@@ -925,21 +928,21 @@ Item {
                     sequence: "W"
                     context: Qt.WindowShortcut
                     enabled: editor.activeFocus && root.mode !== "insert"
-                        && !root.findVisible
+                        && root.visible && root.enabled && !root.findVisible
                     onActivated: root.handleMotionKey(Qt.Key_W, 0)
                 }
                 Shortcut {
                     sequence: "B"
                     context: Qt.WindowShortcut
                     enabled: editor.activeFocus && root.mode !== "insert"
-                        && !root.findVisible
+                        && root.visible && root.enabled && !root.findVisible
                     onActivated: root.handleMotionKey(Qt.Key_B, 0)
                 }
                 Shortcut {
                     sequence: "E"
                     context: Qt.WindowShortcut
                     enabled: editor.activeFocus && root.mode !== "insert"
-                        && !root.findVisible
+                        && root.visible && root.enabled && !root.findVisible
                     onActivated: root.handleMotionKey(Qt.Key_E, 0)
                 }
 
@@ -958,6 +961,10 @@ Item {
                         root.documentText = text
                 }
                 Keys.onPressed: event => {
+                    if (!root.visible || !root.enabled) {
+                        event.accepted = false
+                        return
+                    }
                     const ctrl = (event.modifiers & Qt.ControlModifier) !== 0
                     const shift = (event.modifiers & Qt.ShiftModifier) !== 0
 

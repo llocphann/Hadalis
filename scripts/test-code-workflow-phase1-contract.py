@@ -436,7 +436,7 @@ for token in (
             "modal Source Editor missing hot-fix behavior " + token)
 require(page, "root.sourceEditorConflict",
         "Source Editor must surface external-write conflicts")
-require(page, "&& root.sourceEditorStatus.length > 0",
+require(page, "visible: root.sourceEditorStatus.length > 0",
         "Source Editor must show save/conflict status instead of failing silently")
 require(page, "sourceDraftWriter.setText(root.sourceDraft)",
         "Source Editor must stage draft text before atomic compare-and-swap")

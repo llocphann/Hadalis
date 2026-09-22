@@ -52,6 +52,10 @@ Item {
             event.accepted = true
     }
     Keys.onPressed: event => {
+        if (editor.activeFocus && root.mode === "insert" && editor.inputMethodComposing) {
+            event.accepted = false
+            return
+        }
         if (event.key === Qt.Key_Escape) {
             if (root.findVisible)
                 root.closeFind()
@@ -961,6 +965,10 @@ Item {
                         root.documentText = text
                 }
                 Keys.onPressed: event => {
+                    if (root.mode === "insert" && editor.inputMethodComposing) {
+                        event.accepted = false
+                        return
+                    }
                     if (!root.visible || !root.enabled) {
                         event.accepted = false
                         return

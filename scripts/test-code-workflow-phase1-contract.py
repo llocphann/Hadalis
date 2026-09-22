@@ -120,7 +120,7 @@ capture_script = read("scripts/capture-code-workflow-ui.sh")
 ir = json.loads(read("defaults/code-workflow-ir.json"))
 
 require(registry, 'key: "code-workflow"', "registry missing Code Workflow")
-require(registry, 'pages: [30, 9, 13]', "Reference ordering must be Code Workflow, Shortcuts, About")
+require(registry, 'pages: [20, 30, 9, 13]', "Advanced & Help must retain Settings UI, Code Workflow, Shortcuts, About")
 require(arrangement, "layoutSchemaVersion: 6", "saved layouts need v6 migration")
 require(arrangement, "codeWorkflowPageIndex: 30", "Code Workflow must keep appended index 30")
 

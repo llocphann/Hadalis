@@ -25,6 +25,9 @@ for token in (
     '/^Note \\d+$/.test(tabTitle)',
     "Notepad.setTextValue(textArea.text)",
     "draft cleanup remains an explicit user action",
+    "property bool compactPresentation: false",
+    "visible: !root.compactPresentation",
+    "visible: root.compactPresentation",
 ):
     assert token in widget, f"Notepad Zettelkasten UI contract lost: {token}"
 
@@ -48,6 +51,8 @@ for token in (
     "Zettelkasten.errorMessage.length > 0",
     "enabled: notepad.canSaveZettel",
     "onClicked: notepad.captureQuickNote()",
+    "compactPresentation: true",
+    "margin: 0",
 ):
     assert token in dash, f"Dashboard Notes Zettelkasten contract lost: {token}"
 

@@ -3,8 +3,8 @@
 Status: Phase 0 A–E investigation is complete within the documented prototype
 scope. Phase 1 production work is now in progress: Reference -> Code Workflow,
 primitive session persistence, horizontal ii Bar runtime registration, production
-picker, Geometry canvas, Source Preview and a source-backed semantic projection IR
-now form the production read-only foundation. Selected reviewed anchors gain
+picker, Geometry canvas, a guarded modal Source Editor and a source-backed semantic
+projection IR now form the production foundation. Selected reviewed anchors gain
 transient CST byte-range evidence when native parser capability is present;
 missing/ambiguous anchors fail closed and no ranges are persisted into the IR
 manifest. Generic semantic extraction and stable Arch parser promotion remain unfinished.

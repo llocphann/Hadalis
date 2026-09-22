@@ -356,7 +356,7 @@ Item {
         if (position < 0 || position >= root.documentText.length)
             return -1
         const char = root.documentText[position]
-        if (/\\s/.test(char))
+        if (/\s/.test(char))
             return 0
         const code = char.charCodeAt(0)
         return (code >= 48 && code <= 57)

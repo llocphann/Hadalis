@@ -59,18 +59,18 @@ const scope = {
     sessionFileView: {setText(value) {root.marker = value;}},
     console
 };
-scope.previewCache = root.previewCache;
-scope.requestedWindowIds = root.requestedWindowIds;
-scope.captureAllRequested = false;
-scope.capturing = false;
-scope.initialized = true;
-scope.sessionReady = true;
-scope.overviewWarmImages = root.overviewWarmImages;
-scope.overviewWarmOrder = root.overviewWarmOrder;
-scope.overviewWarmRequestedIds = root.overviewWarmRequestedIds;
-scope.overviewWarmLimit = root.overviewWarmLimit;
-scope.previewDir = root.previewDir;
-scope.sessionKey = root.sessionKey;
+// Mirror QML's unqualified singleton properties in the behavior harness.
+scope._log = root._log;
+for (const key of ['previewCache','requestedWindowIds','captureAllRequested',
+    'capturing','initialized','sessionReady','captureRequestedWhileInitializing',
+    'overviewWarmImages','overviewWarmOrder','overviewWarmRequestedIds',
+    'overviewWarmLimit','previewDir','sessionKey']) {
+    Object.defineProperty(scope, key, {
+        get() { return root[key]; },
+        set(value) { root[key] = value; },
+        configurable: true
+    });
+}
 vm.createContext(scope);
 vm.runInContext(methods.map(extract).join('\n') +
     '\n' + methods.map(n => 'root.' + n + ' = ' + n + ';').join('\n'), scope);

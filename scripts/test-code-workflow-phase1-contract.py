@@ -207,9 +207,10 @@ for source, host_id in (
             "embedded Settings must register page runtime targets")
 require(standalone_settings, "SettingsPageHost {",
         "standalone Settings must use the shared page host")
-if "workflowDiscoveryEnabled: true" in standalone_settings:
-    raise SystemExit("FAIL: standalone Settings must not shadow shell IPC discovery")
-if '"neovim"' in registry or '"nvim"' in registry:
+require(standalone_settings, "workflowDiscoveryEnabled: false",
+        "standalone Settings must not shadow shell IPC discovery")
+code_workflow_search = registry.split("pageIndex: 30, pageName:", 1)[1].split("},", 1)[0]
+if '"neovim"' in code_workflow_search or '"nvim"' in code_workflow_search:
     raise SystemExit("FAIL: retired Code Workflow search keywords remain")
 
 for token in (

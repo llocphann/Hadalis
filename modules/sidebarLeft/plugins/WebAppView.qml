@@ -305,22 +305,10 @@ Item {
             NumberAnimation { duration: 200 }
         }
 
-        ColumnLayout {
+        LoadingText {
             anchors.centerIn: parent
-            spacing: 12
-
-            MaterialSymbol {
-                Layout.alignment: Qt.AlignHCenter
-                text: root.pluginIcon
-                iconSize: 48
-                color: root.colTextSecondary
-            }
-            StyledText {
-                Layout.alignment: Qt.AlignHCenter
-                text: root.pluginName || Translation.tr("Loading...")
-                font.pixelSize: Appearance.font.pixelSize.normal
-                color: root.colText
-            }
+            color: root.colText
+            font.pixelSize: Appearance.font.pixelSize.normal
         }
     }
 }

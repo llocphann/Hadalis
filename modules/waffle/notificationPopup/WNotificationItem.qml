@@ -154,9 +154,8 @@ Item {
                         visible: imageContent.status === Image.Loading
                         color: Looks.colors.bg1Base
 
-                        WText {
+                        LoadingText {
                             anchors.centerIn: parent
-                            text: Translation.tr("Loading...")
                             font.pixelSize: Looks.font.pixelSize.small
                             color: Looks.colors.subfg
                         }

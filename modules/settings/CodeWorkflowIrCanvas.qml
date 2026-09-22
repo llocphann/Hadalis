@@ -28,17 +28,29 @@ Item {
     property bool initialFitDone: false
     readonly property bool inventoryReady: CodeWorkflowIr.ready
         && (CodeWorkflowRuntime.hasLocalDeclarations
-            || CodeWorkflowRuntime.remoteSnapshot !== null
-            || CodeWorkflowRuntime.remoteError.length > 0)
+            || CodeWorkflowRuntime.remoteSnapshot !== null)
     function fitInitialGraph(): void {
-        // Waiting for both the reviewed IR and the real declaration inventory
-        // avoids fitting a partial board, then hiding the later runtime groups.
+        // Local Loader declarations register incrementally. Debounce their
+        // arrivals instead of fitting the first partial inventory. An IPC
+        // error is not a complete inventory; wait for a real snapshot.
         if (root.initialFitDone || !root.inventoryReady
                 || root.width < 240 || root.height < 160
                 || root.nodes.length === 0)
             return
-        root.initialFitDone = true
-        Qt.callLater(root.fitGraph)
+        initialFitTimer.restart()
+    }
+    Timer {
+        id: initialFitTimer
+        interval: 450
+        repeat: false
+        onTriggered: {
+            if (root.initialFitDone || !root.inventoryReady
+                    || root.width < 240 || root.height < 160
+                    || root.nodes.length === 0)
+                return
+            root.initialFitDone = true
+            root.fitGraph()
+        }
     }
     onInventoryReadyChanged: root.fitInitialGraph()
     onWidthChanged: root.fitInitialGraph()

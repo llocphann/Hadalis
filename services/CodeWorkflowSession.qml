@@ -294,11 +294,14 @@ Singleton {
         if (!CodeWorkflowIr.nodeFor(graphId, nodeId))
             return false
         root.subflowTargetId = graphId
-        if (String(node.runtimeTargetId ?? "") === graphId
-                && CodeWorkflowRuntime.descriptor(graphId)) {
-            root.selectedTargetId = graphId
+        // The source graph and the runtime object are separate identities:
+        // e.g. bar.media belongs to the Bar graph but inspects bar/media.
+        const runtimeId = String(node.runtimeTargetId ?? "")
+        if (runtimeId.length > 0
+                && CodeWorkflowRuntime.descriptor(runtimeId)) {
+            root.selectedTargetId = runtimeId
             root.selectedInstanceId = root.outputName.length > 0
-                ? graphId + "@" + root.outputName : ""
+                ? runtimeId + "@" + root.outputName : ""
         }
         root.selectNode(nodeId)
         return true

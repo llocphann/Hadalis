@@ -75,7 +75,8 @@ vm.createContext(ctx);
 const names = ['_startPrewarming','_observeWindowSet','_queueWindowIds',
     '_hasPendingCaptureRequest','_clearCaptureRequest','_pendingRequestNeedsCapture',
     'captureForTaskView','captureAllWindows','_doCapture','_publishCapturedPreview',
-    '_handleCaptureOutput','_completeCapture','getPreviewUrl','_resumeRequestedCapture'];
+    '_handleCaptureOutput','_completeCapture','_primeCachedPreviews',
+    'getPreviewUrl','_resumeRequestedCapture'];
 vm.runInContext(names.map(method).join('\n') + '\n' +
     names.map(name => 'root.' + name + ' = ' + name + ';').join('\n'), ctx);
 
@@ -93,13 +94,13 @@ root._doCapture();
 assert.deepEqual(Array.from(captureProcess.idsToCapture), [11,12],
     'first batch includes both new IDs before Overview is opened');
 assert.equal(root.previewUpdates.length, 0, 'no false publication before rename');
-root.overviewWarmRequestedIds = [11];
+root.overviewWarmRequestedIds = [];
 root._handleCaptureOutput('PREVIEW_READY 11');
 const first = root.getPreviewUrl(11);
 assert.equal(first, 'file:///preview/window-11.png?' + root.previewCache[11].timestamp,
     'first capture becomes visible while process still running');
 assert.deepEqual(root.previewUpdates, [11]);
-assert.deepEqual(root.warmed, [11], 'visible preview warmed as soon as ready');
+assert.deepEqual(root.warmed, [11], 'new preview is decoded before first hover');
 assert.equal(root.capturing, true, 'one window ready does not wait for whole batch');
 root._handleCaptureOutput('PREVIEW_READY 11');
 root._handleCaptureOutput('PREVIEW_READY 999');
@@ -111,6 +112,10 @@ assert.deepEqual(Array.from(root.requestedWindowIds), [13],
     'new window arriving during capture stays queued for next batch');
 root._handleCaptureOutput('PREVIEW_READY 12');
 assert.deepEqual(root.previewUpdates, [11,12], 'second PNG independently published');
+const warmedBeforeScan = root.warmed.length;
+root._primeCachedPreviews();
+assert.ok(root.warmed.length > warmedBeforeScan,
+    'session-matched disk cache is proactively decoded');
 root._completeCapture(0, null);
 assert.deepEqual(root.previewUpdates, [11,12], 'clean exit does not duplicate a published ID');
 root._doCapture();

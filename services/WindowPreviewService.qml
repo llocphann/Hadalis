@@ -113,6 +113,19 @@ Singleton {
         root._syncOverviewWarmImages()
     }
 
+    function _primeCachedPreviews(): void {
+        if (!NiriService.windowListReady)
+            return
+        // Warm only a bounded initial set restored from disk; newly completed
+        // screenshots are warmed separately at publication time.
+        const ids = PreviewPolicy.boundedWindowIds(
+            (NiriService.windows ?? []).map(window => window.id), overviewWarmLimit)
+        for (const id of ids) {
+            if (!PreviewPolicy.needsCapture(previewCache[id]))
+                root._touchOverviewWarmImage(id)
+        }
+    }
+
     // Debounce: coalesce rapid capture requests (e.g. hovering across multiple dock icons)
     Timer {
         id: captureDebounceTimer
@@ -152,6 +165,10 @@ Singleton {
         observedWindowIds = ids
         cleanupTimer.restart()
         const newIds = ids.filter(id => !previousIds.has(id))
+        for (const id of newIds) {
+            if (!PreviewPolicy.needsCapture(previewCache[id]))
+                root._touchOverviewWarmImage(id)
+        }
         if (newIds.length > 0)
             root.captureForTaskView(newIds)
     }
@@ -333,6 +350,7 @@ Singleton {
             root.cleanupOrphans()
             root.previewCache = Object.assign({}, root.previewCache)
             root.sessionReady = true
+            root._primeCachedPreviews()
             root._syncOverviewWarmImages()
             root.captureComplete()
             root._resumeRequestedCapture()
@@ -343,6 +361,7 @@ Singleton {
             root.cleanupOrphans()
             root.previewCache = Object.assign({}, root.previewCache)
             root.sessionReady = true
+            root._primeCachedPreviews()
             root._syncOverviewWarmImages()
             root.captureComplete()
             root._resumeRequestedCapture()
@@ -471,8 +490,9 @@ Singleton {
         }
         captureProcess.publishedIds = captureProcess.publishedIds.concat([windowId])
         root.previewCache = Object.assign({}, root.previewCache)
-        if (root.overviewWarmRequestedIds.includes(windowId))
-            root._touchOverviewWarmImage(windowId)
+        // Decode immediately, even before Overview has been opened once.
+        // The bounded resident cache survives the popup's LazyLoader teardown.
+        root._touchOverviewWarmImage(windowId)
         root.previewUpdated(windowId)
     }
 

@@ -15,6 +15,8 @@ on:
       - 'modules/waffle/ShellWafflePanelsImpl.qml'
       - 'modules/waffle/critical/ShellWaffleCriticalPanels.qml'
       - 'modules/settings/CodeWorkflow*.qml'
+      - 'modules/common/widgets/PopupToolTip.qml'
+      - 'modules/waffle/altSwitcher/WaffleAltSwitcherTile.qml'
       - 'modules/settings/SettingsPageHost.qml'
       - 'modules/settings/SettingsFocus.qml'
       - 'modules/settings/SettingsOverlay.qml'
@@ -39,6 +41,8 @@ on:
       - 'modules/waffle/ShellWafflePanelsImpl.qml'
       - 'modules/waffle/critical/ShellWaffleCriticalPanels.qml'
       - 'modules/settings/CodeWorkflow*.qml'
+      - 'modules/common/widgets/PopupToolTip.qml'
+      - 'modules/waffle/altSwitcher/WaffleAltSwitcherTile.qml'
       - 'modules/settings/SettingsPageHost.qml'
       - 'modules/settings/SettingsFocus.qml'
       - 'modules/settings/SettingsOverlay.qml'
@@ -74,6 +78,27 @@ jobs:
 
       - name: Evaluate acceptance environment
         run: nix develop .#workflow-acceptance --command bash -lc 'command -v quickshell; command -v sway; test -f "$HADALIS_WORKFLOW_GRAMMAR"; test -f "$HADALIS_TREE_SITTER_LIBRARY"'
+
+      # Unlike source-string contracts, Qt parses the actual QML/JavaScript
+      # grammar here. Keep a separate failure step for parse regressions.
+      - name: Parse changed Code Workflow and shared tooltip QML
+        run: |
+          nix develop .#workflow-acceptance --command bash -lc '
+            set -euo pipefail
+            command -v qmlformat
+            for qml in \
+              modules/settings/CodeWorkflow.qml \
+              modules/settings/CodeWorkflowIrCanvas.qml \
+              modules/settings/CodeWorkflowSourceEditor.qml \
+              modules/settings/SettingsPageHost.qml \
+              modules/common/widgets/PopupToolTip.qml \
+              modules/waffle/altSwitcher/WaffleAltSwitcherTile.qml \
+              services/CodeWorkflowIr.qml \
+              services/CodeWorkflowSession.qml; do
+              echo "Parsing $qml"
+              qmlformat --ignore-settings "$qml" >/dev/null
+            done
+          '
 
       - name: Validate Code Workflow production foundation
         run: nix develop .#workflow-acceptance --command bash -lc 'python3 scripts/test-code-workflow-phase1-contract.py'

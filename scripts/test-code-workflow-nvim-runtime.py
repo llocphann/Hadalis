@@ -117,7 +117,23 @@ with tempfile.TemporaryDirectory() as tmp:
         )
         assert isinstance(first_frame.get("dirtyRows"), list)
 
-        send(proc, {"op": "input", "keys": "gg0iHELLO<Esc>:w<CR>"})
+        send(proc, {"op": "input", "keys": "gg0iHELLO"})
+        modified = wait_message(
+            proc,
+            lambda message:
+                message.get("type") == "buffer"
+                and message.get("modified") is True,
+        )
+        assert Path(modified["path"]).resolve() == source.resolve()
+
+        send(proc, {"op": "input", "keys": "<Esc>:w<CR>"})
+        saved = wait_message(
+            proc,
+            lambda message:
+                message.get("type") == "buffer"
+                and message.get("modified") is False,
+        )
+        assert Path(saved["path"]).resolve() == source.resolve()
         deadline = time.monotonic() + 8.0
         while time.monotonic() < deadline:
             if source.read_text(encoding="utf-8").startswith("HELLO"):

@@ -61,6 +61,9 @@ for token in (
     "function mouseCell(x: real, y: real): var",
     "CodeWorkflowNvim.mouse(",
     "hoverEnabled: CodeWorkflowNvim.mouseEnabled",
+    "visible: CodeWorkflowNvim.ready",
+    "&& CodeWorkflowNvim.error.length > 0",
+    "id: readyErrorText",
 ):
     if token not in view:
         fail("embedded Neovim view missing " + token)

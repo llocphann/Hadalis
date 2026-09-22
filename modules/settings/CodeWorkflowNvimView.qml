@@ -717,6 +717,34 @@ Item {
             }
 
             Rectangle {
+                anchors.top: parent.top
+                anchors.right: parent.right
+                anchors.margins: 8
+                visible: CodeWorkflowNvim.ready
+                    && CodeWorkflowNvim.error.length > 0
+                z: 6
+                width: Math.min(
+                    Math.max(220, readyErrorText.implicitWidth + 24),
+                    Math.max(220, parent.width - 16))
+                height: readyErrorText.implicitHeight + 14
+                radius: Appearance.rounding.small
+                color: Appearance.colors.colErrorContainer
+                border.width: 1
+                border.color: Appearance.colors.colError
+
+                StyledText {
+                    id: readyErrorText
+                    anchors.centerIn: parent
+                    width: parent.width - 16
+                    text: CodeWorkflowNvim.error
+                    color: Appearance.colors.colOnErrorContainer
+                    font.pixelSize: Appearance.font.pixelSize.smallest
+                    elide: Text.ElideRight
+                    maximumLineCount: 1
+                }
+            }
+
+            Rectangle {
                 anchors.centerIn: parent
                 visible: !CodeWorkflowNvim.ready
                 width: Math.min(parent.width - 24, statusColumn.implicitWidth + 28)

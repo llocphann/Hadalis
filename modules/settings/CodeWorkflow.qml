@@ -43,6 +43,17 @@ Item {
     readonly property string sourceEditorTempPath:
         "/tmp/hadalis-code-workflow-editor-"
             + String(Quickshell.processId) + ".tmp"
+    readonly property string sourceEditorNvimDisplayPath: {
+        const activePath = String(CodeWorkflowNvim.path ?? "")
+        if (activePath.length === 0)
+            return root.sourcePath
+        const prefix = root.sourceEditorShellRoot.endsWith("/")
+            ? root.sourceEditorShellRoot
+            : root.sourceEditorShellRoot + "/"
+        return activePath.startsWith(prefix)
+            ? activePath.slice(prefix.length)
+            : activePath
+    }
     readonly property bool compactHeader: root.width < 1080
     readonly property string sourceHighlightDefinition: {
         const path = String(root.sourcePath ?? "").toLowerCase()
@@ -3667,9 +3678,9 @@ Item {
                     }
                     StyledText {
                         Layout.fillWidth: true
-                        text: (root.sourceEditorUseNvim
-                            ? "Neovim · " : "Source Editor · ")
-                            + root.sourcePath
+                        text: root.sourceEditorUseNvim
+                            ? "Neovim · " + root.sourceEditorNvimDisplayPath
+                            : "Source Editor · " + root.sourcePath
                         color: Appearance.colors.colOnLayer1
                         font.pixelSize: Appearance.font.pixelSize.small
                         font.weight: Font.Medium
@@ -3677,7 +3688,9 @@ Item {
                     }
                     Pill {
                         label: root.sourceEditorUseNvim
-                            ? "NVIM · " + CodeWorkflowNvim.mode.toUpperCase()
+                            ? (CodeWorkflowNvim.bufferModified
+                                ? "NVIM · MODIFIED"
+                                : "NVIM · " + CodeWorkflowNvim.mode.toUpperCase())
                             : root.sourceEditorConflict
                                 ? "CONFLICT"
                                 : root.sourceEditorSaving
@@ -3685,7 +3698,9 @@ Item {
                                     : root.sourceEditorDirty
                                         ? "MODIFIED" : "SYNCED"
                         accent: root.sourceEditorUseNvim
-                            ? Appearance.colors.colPrimary
+                            ? (CodeWorkflowNvim.bufferModified
+                                ? Appearance.colors.colTertiary
+                                : Appearance.colors.colPrimary)
                             : root.sourceEditorConflict
                                 ? Appearance.colors.colError
                                 : root.sourceEditorDirty
@@ -3740,6 +3755,7 @@ Item {
                         materialIcon: "save"
                         enabled: root.sourceEditorUseNvim
                             ? CodeWorkflowNvim.ready
+                                && CodeWorkflowNvim.bufferModified
                             : root.sourceEditorCanSave
                         onClicked: {
                             if (root.sourceEditorUseNvim)

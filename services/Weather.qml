@@ -708,7 +708,7 @@ Singleton {
         stdout: StdioCollector {
             onStreamFinished: {
                 if (text.length === 0) {
-                    console.warn("[Weather] Forward geocode empty, falling back to city name");
+                    console.info("[Weather] Forward geocode empty, falling back to city name");
                     root.location = { valid: true, lat: 0, lon: 0, name: root.configCity };
                     root.fetchWeather();
                     return;

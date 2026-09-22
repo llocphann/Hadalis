@@ -2155,7 +2155,7 @@ Scope {
 
                             SettingsPageLoadingOverlay {
                                 anchors.fill: parent
-                                loading: pageHost.loading && !pageHost.currentItem && !pageHost.error
+                                loading: pageHost.loading && !pageHost.error
                                 z: 15
                             }
                         }

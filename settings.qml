@@ -1494,7 +1494,7 @@ ApplicationWindow {
 
                     SettingsPageLoadingOverlay {
                         anchors.fill: parent
-                        loading: pagesStack.loading && !pagesStack.currentItem && !pagesStack.error
+                        loading: pagesStack.loading && !pagesStack.error
                         z: 15
                     }
 

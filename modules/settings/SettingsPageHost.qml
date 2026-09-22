@@ -6,6 +6,7 @@ import QtQuick.Layouts
 import qs.modules.common
 import qs.modules.common.widgets
 import qs.services
+import "SettingsPageLoadingState.js" as PageLoadState
 
 Item {
     id: root
@@ -29,10 +30,12 @@ Item {
     readonly property bool loading: {
         void(_statusRevision)
         const currentLoader = _loaderFor(_currentIndex)
-        if (currentLoader?.status === Loader.Loading)
-            return true
         const pendingLoader = _loaderFor(_pendingIndex)
-        return pendingLoader?.status === Loader.Loading
+        return PageLoadState.shouldShow(
+            loadEnabled, requestedIndex, pages.length,
+            _sourceFor(requestedIndex) !== "",
+            _errorIndex, _currentIndex, currentLoader?.status ?? Loader.Null,
+            _pendingIndex, pendingLoader?.status ?? Loader.Null, Loader.Ready)
     }
 
     property int _currentIndex: -1

@@ -1618,7 +1618,7 @@ Scope {
 
                             SettingsPageLoadingOverlay {
                                 anchors.fill: overlayPagesHost
-                                loading: overlayPagesHost.loading && !overlayPagesHost.currentItem && !overlayPagesHost.error
+                                loading: overlayPagesHost.loading && !overlayPagesHost.error
                                 z: 15
                             }
 

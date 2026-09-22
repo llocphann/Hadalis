@@ -31,8 +31,7 @@ assert "MaterialLoadingIndicator {" not in label
 assert "LoadingText 1.0 LoadingText.qml" in qmldir
 assert '"Loading": "Loading"' in locale
 
-# Task rows with a label remain text-only. Full-page navigation is
-# deliberately the icon-only Floating Gear variant, without an elevated card.
+# Text-only task status; page navigation remains the separate Floating Gear.
 task = read("modules/common/widgets/SettingsTaskLoadingState.qml")
 assert "LoadingText {" in task
 assert "MaterialLoadingIndicator {" not in task
@@ -42,34 +41,67 @@ page = read("modules/common/widgets/SettingsPageLoadingOverlay.qml")
 assert "MaterialLoadingIndicator {" in page
 assert "LoadingText {" not in page
 assert "property string text:" not in page
-assert "loadingLabel.implicitWidth" not in page
 assert "SettingsMaterialPreset.cardColor" not in page
 assert "SettingsMaterialPreset.cardRadius" not in page
-assert "minimumVisibleTimer" not in page
-assert "_hidePending" not in page
-assert "Behavior on scale" not in page
-assert "visible: root.loading && root._shown" in page
-assert "root._shown = false" in page
+assert "showDelayTimer" not in page and "_shown" not in page
+assert "visible: root.loading" in page and "loading: root.loading" in page
 assert 'color: "transparent"' in page
 assert "border.color: SettingsMaterialPreset.accentColor" in page
 assert "color: SettingsMaterialPreset.accentColor" in page
-assert "anchors.centerIn: parent" in page
 import re
 ring = re.search(r"Item\s*\{\s*anchors.centerIn: parent\s*width: (\d+)\s*height: width", page)
 glyph = re.search(r"MaterialLoadingIndicator\s*\{[^}]*implicitSize: (\d+)", page, re.S)
-assert ring and glyph, "Floating Gear must size the ring and glyph"
-ring_size, indicator_size = int(ring[1]), int(glyph[1])
-assert 60 <= ring_size <= 68
-assert 36 <= indicator_size * 0.8 <= 40
+assert ring and glyph, "Floating Gear must size its ring and glyph"
+assert 60 <= int(ring[1]) <= 68
+assert 36 <= int(glyph[1]) * 0.8 <= 40
 assert "RotationAnimation on rotation" not in page, "Ring must remain static"
 
-for path, host in (
+host = read("modules/settings/SettingsPageHost.qml")
+assert 'import "SettingsPageLoadingState.js" as PageLoadState' in host
+assert "PageLoadState.shouldShow(" in host
+assert "currentLoader?.status ?? Loader.Null" in host
+assert "pendingLoader?.status ?? Loader.Null" in host
+
+for path, name in (
     ("settings.qml", "pagesStack"),
     ("modules/settings/SettingsFocus.qml", "pageHost"),
     ("modules/settings/SettingsOverlay.qml", "overlayPagesHost"),
 ):
     content = read(path)
-    assert ("loading: " + host + ".loading && !" + host + ".currentItem && !" + host + ".error") in content, path
+    assert ("loading: " + name + ".loading && !" + name + ".error") in content, path
+    assert ("!" + name + ".currentItem") not in content, path
+
+# Exercise the QML-imported production policy across initial, pending, Ready,
+# stale pending, Error and disabled states, not merely spelling assertions.
+import subprocess
+policy_test = r"""
+const fs = require('node:fs');
+const vm = require('node:vm');
+const assert = require('node:assert/strict');
+const context = {};
+vm.createContext(context);
+vm.runInContext(fs.readFileSync(process.argv[1], 'utf8'), context);
+const cases = [
+    ['initial pre-request', [true,2,4,true,-1,-1,0,-1,0,1], true],
+    ['initial Loading', [true,2,4,true,-1,2,2,-1,0,1], true],
+    ['initial Null', [true,2,4,true,-1,2,0,-1,0,1], true],
+    ['initial Ready', [true,2,4,true,-1,2,1,-1,0,1], false],
+    ['old Ready pending Loading', [true,3,4,true,-1,2,1,3,2,1], true],
+    ['old Ready pending Null', [true,3,4,true,-1,2,1,3,0,1], true],
+    ['old Ready pending Ready', [true,3,4,true,-1,2,1,3,1,1], false],
+    ['request before processing', [true,3,4,true,-1,2,1,-1,0,1], true],
+    ['return to current Ready', [true,2,4,true,-1,2,1,3,2,1], false],
+    ['requested Error', [true,3,4,true,3,2,1,3,3,1], false],
+    ['host disabled', [false,3,4,true,-1,2,1,3,2,1], false],
+    ['missing source', [true,3,4,false,-1,2,1,3,2,1], false],
+    ['invalid index', [true,-1,4,true,-1,2,1,-1,0,1], false]
+];
+for (const [name, args, expected] of cases)
+    assert.equal(context.shouldShow(...args), expected, name);
+console.log('Settings requested-page loading policy: PASS (' + cases.length + ' cases)');
+"""
+subprocess.run(["node", "-e", policy_test,
+                str(ROOT / "modules/settings/SettingsPageLoadingState.js")], check=True)
 
 for path in (
     "settings.qml",

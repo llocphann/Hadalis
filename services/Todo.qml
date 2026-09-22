@@ -28,7 +28,6 @@ Singleton {
         root.obsidianSourceMode === "managed-note"
     readonly property bool useMarkdownNote:
         !root.useLegacyManagedNote
-    readonly property bool useDailyNote: root.useMarkdownNote
     readonly property var obsidianBackend:
         root.useLegacyManagedNote ? obsidian : dailyObsidian
 
@@ -223,7 +222,7 @@ Singleton {
             return internal.addItem(item)
         }
         const content = String(item?.content ?? item?.description ?? "")
-        return root.useDailyNote
+        return root.useMarkdownNote
             ? dailyObsidian.addTask(content, "", "")
             : obsidian.addTask(content)
     }
@@ -239,7 +238,7 @@ Singleton {
             return internal.addTask(desc)
         }
         const content = String(desc ?? "")
-        if (root.useDailyNote)
+        if (root.useMarkdownNote)
             return dailyObsidian.addTask(
                 content,
                 String(startTime ?? ""),

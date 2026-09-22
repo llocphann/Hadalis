@@ -10,6 +10,14 @@ MouseArea {
     CodeWorkflowRuntimeTarget {
         runtimeObject: root
         targetId: "bar/resources"
+        label: "Bar · Resources"
+        icon: "memory"
+        kind: "component"
+        family: "ii"
+        panelId: "iiBar"
+        parentId: "bar"
+        depth: 1
+        sourcePath: "modules/bar/Resources.qml"
     }
 
     property bool alwaysShowAllResources: false

@@ -38,6 +38,9 @@ Singleton {
 
     property var outputs: ({})
     property var windows: []
+    // Initial WindowsChanged has arrived, including an authoritative empty list.
+    // Do not treat the pre-event [] as proof that cached previews are orphaned.
+    property bool windowListReady: false
     property var displayScales: ({})
     property var mruWindowIds: []
     property var activeWindow: null  // Currently focused window object
@@ -78,6 +81,8 @@ Singleton {
                 send('"EventStream"')
                 fetchOutputs()
                 refreshOverviewHotCorners()
+            } else {
+                root.windowListReady = false
             }
         }
 
@@ -532,6 +537,7 @@ Singleton {
 
     function handleWindowsChanged(data) {
         scheduleWindowsUpdate(data.windows)
+        windowListReady = true
     }
 
     function handleWindowClosed(data) {

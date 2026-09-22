@@ -39,6 +39,7 @@ Singleton {
     property bool capturing: false
     property bool captureAllRequested: false
     property var requestedWindowIds: []
+    property var observedWindowIds: []
 
     // Decoded CPU pixmaps outlive StyledPopup's lazy visual delegate, without
     // holding the popup window or its FBO. At most 12 x 768 x 512 x 4 bytes
@@ -123,10 +124,37 @@ Singleton {
     signal captureComplete()
     signal previewUpdated(int windowId)
 
-    Component.onCompleted: {
-        // Lazy init: only when TaskView actually requests previews.
+    // Prime missing snapshots from the compositor event stream, rather than
+    // starting the first screenshot only after a user hovers Overview.
+    Component.onCompleted: root._startPrewarming()
+
+    Connections {
+        target: CompositorService
+        function onIsNiriChanged(): void {
+            root._startPrewarming()
+        }
     }
-    
+
+    function _startPrewarming(): void {
+        if (!CompositorService.isNiri)
+            return
+        root.initialize()
+        root._observeWindowSet()
+    }
+
+    function _observeWindowSet(): void {
+        if (!NiriService.windowListReady)
+            return
+        const ids = (NiriService.windows ?? []).map(window => window.id)
+            .filter(id => Number.isSafeInteger(id) && id > 0)
+        const previousIds = new Set(observedWindowIds)
+        observedWindowIds = ids
+        cleanupTimer.restart()
+        const newIds = ids.filter(id => !previousIds.has(id))
+        if (newIds.length > 0)
+            root.captureForTaskView(newIds)
+    }
+
     function initialize(): void {
         if (initialized) return
         initialized = true
@@ -316,8 +344,10 @@ Singleton {
         }
     }
     
-    // Remove previews for windows that no longer exist
+    // Remove previews only against an authoritative compositor window list.
     function cleanupOrphans(): void {
+        if (!NiriService.windowListReady)
+            return
         const windows = NiriService.windows ?? []
         const windowIds = new Set(windows.map(w => w.id))
         
@@ -412,8 +442,41 @@ Singleton {
         }
         
         captureProcess.idsToCapture = idsToCapture
+        captureProcess.publishedIds = []
+        captureProcess.captureSessionKey = root.sessionKey
         captureProcess.command = cmd
         captureProcess.running = true
+    }
+
+    // The capture script writes each PNG by atomic rename and immediately
+    // reports it on stdout. Publish that window before clipboard cleanup and
+    // before slower members of the same batch finish.
+    function _publishCapturedPreview(windowId: int): void {
+        if (!root.capturing || !captureProcess.idsToCapture.includes(windowId)
+                || captureProcess.publishedIds.includes(windowId)
+                || captureProcess.captureSessionKey !== root.sessionKey
+                || !(NiriService.windows ?? []).some(window => window.id === windowId))
+            return
+
+        const path = root.previewDir + "/window-" + windowId + ".png"
+        const previous = root.previewCache[windowId]
+        root.previewCache[windowId] = {
+            path: path,
+            timestamp: PreviewPolicy.nextRevision(previous?.timestamp, Date.now())
+        }
+        captureProcess.publishedIds = captureProcess.publishedIds.concat([windowId])
+        root.previewCache = Object.assign({}, root.previewCache)
+        if (root.overviewWarmRequestedIds.includes(windowId))
+            root._touchOverviewWarmImage(windowId)
+        root.previewUpdated(windowId)
+    }
+
+    function _handleCaptureOutput(line: string): void {
+        const match = String(line).trim().match(/^PREVIEW_READY ([1-9][0-9]*)$/)
+        if (match)
+            root._publishCapturedPreview(Number(match[1]))
+        else
+            root._log("[WindowPreviewService:capture]", line)
     }
     
     // Capture ALL windows (force refresh)
@@ -431,6 +494,8 @@ Singleton {
         
         const ids = windows.map(w => w.id)
         captureProcess.idsToCapture = ids
+        captureProcess.publishedIds = []
+        captureProcess.captureSessionKey = root.sessionKey
         captureProcess.command = ShellExec.supportsFish()
             ? ["/usr/bin/fish", Quickshell.shellPath("scripts/capture-windows.fish"), "--all"]
             : ["/usr/bin/bash", Quickshell.shellPath("scripts/capture-windows.sh"), "--all"]
@@ -440,10 +505,12 @@ Singleton {
     Process {
         id: captureProcess
         property var idsToCapture: []
+        property var publishedIds: []
+        property string captureSessionKey: ""
         property bool startObserved: false
 
         stdout: SplitParser {
-            onRead: (line) => _log("[WindowPreviewService:capture]", line)
+            onRead: line => root._handleCaptureOutput(line)
         }
         stderr: SplitParser {
             onRead: (line) => _log("[WindowPreviewService:capture][err]", line)
@@ -460,6 +527,8 @@ Singleton {
             console.warn("[WindowPreviewService] capture process failed to start")
             root.capturing = false
             idsToCapture = []
+            publishedIds = []
+            captureSessionKey = ""
             Cliphist.suppressRefresh = false
             Cliphist.refresh()
             root.captureComplete()
@@ -472,26 +541,15 @@ Singleton {
             root.capturing = false
 
             if (exitCode !== 0) {
-                console.log("[WindowPreviewService] capture process failed", exitCode, exitStatus)
-            } else {
-                const timestamp = Date.now()
-                const liveIds = new Set((NiriService.windows ?? []).map(win => win.id))
-                for (const id of idsToCapture) {
-                    if (!liveIds.has(id))
-                        continue
-                    const path = root.previewDir + "/window-" + id + ".png"
-                    const previous = root.previewCache[id]
-                    root.previewCache[id] = {
-                        path: path,
-                        timestamp: PreviewPolicy.nextRevision(previous?.timestamp, timestamp)
-                    }
-                    root.previewUpdated(id)
-                }
-                root.previewCache = Object.assign({}, root.previewCache)
-                root._syncOverviewWarmImages()
+                console.warn("[WindowPreviewService] capture process failed", exitCode, exitStatus)
             }
-            
+            // Successes were published individually as their PNGs became ready;
+            // do not give failed captures a revision merely because an old
+            // snapshot still exists at that path.
             idsToCapture = []
+            publishedIds = []
+            captureSessionKey = ""
+            root.cleanupOrphans()
             // The capture script has already removed only its own entries and
             // conditionally restored the clipboard before returning.
             Cliphist.suppressRefresh = false
@@ -508,7 +566,13 @@ Singleton {
         enabled: root.initialized  // Skip event processing until initialized
         
         function onWindowsChanged(): void {
-            cleanupTimer.restart()
+            root._observeWindowSet()
+        }
+        function onWindowListReadyChanged(): void {
+            if (NiriService.windowListReady)
+                root._observeWindowSet()
+            else
+                root.observedWindowIds = []
         }
     }
     

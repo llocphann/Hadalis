@@ -85,6 +85,12 @@ require 'PreviewPolicy.needsCapture(cached)' \
     'capture selection must use session-cache policy'
 require 'if (!root._pendingRequestNeedsCapture()) {' \
     'cached hover requests must not start a new capture process'
+require 'root._observeWindowSet()' \
+    'new compositor windows must be queued before the next hover'
+require 'root._handleCaptureOutput(line)' \
+    'completed images must be published per-window before process exit'
+require_capture "printf 'PREVIEW_READY %s" \
+    'capture script must publish a completion record on atomic rename'
 require 'function captureAllWindows(): void {' \
     'explicit force refresh must remain available'
 if grep -Fq 'previewValidityMs' "$service"; then

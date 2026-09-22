@@ -160,6 +160,7 @@ if [[ ! "$max_concurrent" =~ ^[1-4]$ ]]; then
 fi
 pids=()
 count=0
+capture_failed=0
 
 # Publish each preview by rename. The shell polls this directory with a plain
 # Image source, so a reader must never open a half-written PNG, and a capture
@@ -178,6 +179,10 @@ for id in "${windows_to_capture[@]}"; do
       done
       if [[ -s "$tmp" ]]; then
         mv -f "$tmp" "$path"
+        # A single atomic, newline-delimited completion record lets the QML
+        # service expose this window immediately; clipboard cleanup continues
+        # asynchronously in the same process.
+        printf 'PREVIEW_READY %s\n' "$id"
         exit 0
       fi
     fi
@@ -189,7 +194,7 @@ for id in "${windows_to_capture[@]}"; do
 
   if [[ $count -ge $max_concurrent ]]; then
     for pid in "${pids[@]}"; do
-      wait "$pid" || true
+      wait "$pid" || capture_failed=1
     done
     pids=()
     count=0
@@ -197,7 +202,7 @@ for id in "${windows_to_capture[@]}"; do
 done
 
 for pid in "${pids[@]}"; do
-  wait "$pid" || true
+  wait "$pid" || capture_failed=1
 done
 
 preview_hashes=()
@@ -249,15 +254,9 @@ if [[ -n "$current_clip_hash" ]] && hash_matches_preview "$current_clip_hash"; t
   fi
 fi
 
-missing=0
-for id in "${windows_to_capture[@]}"; do
-  path="$preview_dir/window-$id.png"
-  if [[ ! -s "$path" ]]; then
-    echo "[capture-windows] missing output file: $path" >&2
-    missing=1
-  fi
-done
-
-if [[ $missing -ne 0 ]]; then
+# A stale file from a previous capture must not turn a failed refresh into
+# a reported success. The service keeps old previews and only revises IDs
+# that emitted PREVIEW_READY after their atomic rename.
+if [[ $capture_failed -ne 0 ]]; then
   exit 1
 fi

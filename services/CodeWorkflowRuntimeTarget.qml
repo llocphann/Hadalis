@@ -8,6 +8,14 @@ Scope {
 
     required property Item runtimeObject
     required property string targetId
+    property string label: root.targetId
+    property string icon: "account_tree"
+    property string kind: "component"
+    property string family: ""
+    property string panelId: ""
+    property string parentId: ""
+    property int depth: 0
+    property string sourcePath: ""
 
     readonly property var window: root.runtimeObject ? root.runtimeObject.QsWindow.window : null
     readonly property string outputName: root.window?.screen?.name ?? ""
@@ -42,6 +50,22 @@ Scope {
             CodeWorkflowRuntime.detach(root.attachedId, root, root.token)
         root.attachedId = root.instanceId
         root.token = root.attachedId.length > 0 ? CodeWorkflowRuntime.attach(root) : ""
+    }
+
+    function descriptorSnapshot(): var {
+        return {
+            targetId: root.targetId,
+            label: root.label,
+            icon: root.icon,
+            kind: root.kind,
+            family: root.family,
+            panelId: root.panelId,
+            parentId: root.parentId,
+            depth: root.depth,
+            sourcePath: root.sourcePath,
+            state: "resident",
+            stateRank: 6
+        }
     }
 
     function rectSnapshot(): var {

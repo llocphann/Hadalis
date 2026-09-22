@@ -102,13 +102,6 @@ def instrument(config: Path, surface: str = "rail") -> None:
             shell, "    SettingsOverlay { id: settings }",
             "    SettingsFocus { id: settings }",
         )
-        replace_once(shell, "report.settingsPage = settings.overlayCurrentPage",
-                     "report.settingsPage = settings.currentPage")
-        replace_once(shell, "report.editorNavigationInitialized = settings._navigationInitialized",
-                     "report.editorNavigationInitialized = Config.ready")
-        replace_once(shell,
-                     '"runtime/settings-overlay/page/code-workflow"',
-                     '"runtime/settings-focus/page/code-workflow"')
     replace_once(
         shell,
         "            report.settingsPublishedPage = GlobalStates.settingsOverlayCurrentPage\n",
@@ -149,6 +142,14 @@ def instrument(config: Path, surface: str = "rail") -> None:
             } : { loaded: false }
 """,
     )
+    if surface == "focus":
+        replace_once(shell, "report.settingsPage = settings.overlayCurrentPage",
+                     "report.settingsPage = settings.currentPage")
+        replace_once(shell, "report.editorNavigationInitialized = settings._navigationInitialized",
+                     "report.editorNavigationInitialized = Config.ready")
+        replace_once(shell,
+                     '"runtime/settings-overlay/page/code-workflow"',
+                     '"runtime/settings-focus/page/code-workflow"')
     replace_once(
         shell,
         "        function settingsClose(): void { GlobalStates.settingsOverlayOpen = false }\n",

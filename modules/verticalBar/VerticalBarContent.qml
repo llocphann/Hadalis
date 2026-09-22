@@ -452,16 +452,8 @@ Item { // Bar content region
         }
     }
 
-    // Detached Float/Card shadow is retired; VerticalBar.qml owns the one
-    // inward Hug shadow shared with Screen Edge and horizontal Bar.
-    Loader {
-        active: false
-        anchors.fill: barBackground
-        sourceComponent: StyledRectangularShadow {
-            anchors.fill: undefined // The loader's anchors act on this, and this should not have any anchor
-            target: barBackground
-        }
-    }
+    // The physical Screen Edge's single inverted frame owns the inward
+    // shadow, including this Bar's corners. No local duplicate renderer.
 
     // Background
     Rectangle {

@@ -26,7 +26,9 @@ registry = read("modules/settings/SettingsPageRegistryData.qml")
 arrangement = read("modules/settings/SettingsArrangement.qml")
 persistent = read("modules/common/Persistent.qml")
 qmldir = read("services/qmldir")
+settings_qmldir = read("modules/settings/qmldir")
 page = read("modules/settings/CodeWorkflow.qml")
+source_editor = read("modules/settings/CodeWorkflowSourceEditor.qml")
 canvas = read("modules/settings/CodeWorkflowIrCanvas.qml")
 shell = read("shell.qml")
 runtime = read("services/CodeWorkflowRuntime.qml")
@@ -378,14 +380,18 @@ require(page, 'buttonText: "Back to Bar workflow"',
         "compact subflow navigation must retain an accessibility label")
 require(page, 'text: "Fit graph to viewport"',
         "compact graph controls must retain discoverable tooltips")
-require(page, 'source: active\n                                ? "CodeWorkflowSyntaxHighlighter.qml" : ""',
-        "Source Editor syntax highlighting must be isolated behind a lazy loader")
-require(page, '"Syntax highlighting unavailable · plain editor active"',
+require(source_editor, 'source: "CodeWorkflowSyntaxHighlighter.qml"',
+        "Source Editor syntax highlighting must stay lazy-loaded inside the editor")
+require(source_editor, '"Syntax highlighting unavailable · plain editor active"',
         "missing syntax-highlighting backend must fall back to the plain editor")
-if "import org.kde.syntaxhighlighting" in page:
-    fail("CodeWorkflow base page must not hard-depend on KDE syntax highlighting")
-if "CodeWorkflowNvim." in page:
-    fail("CodeWorkflow base page must not hard-depend on embedded Neovim service")
+if "import org.kde.syntaxhighlighting" in page or "import org.kde.syntaxhighlighting" in source_editor:
+    fail("Code Workflow must not hard-depend on KDE syntax highlighting")
+for forbidden in ("CodeWorkflowNvim", "CodeWorkflowNvimView", "Neovim", "nvim_ui_attach"):
+    if forbidden in page or forbidden in source_editor or forbidden in qmldir or forbidden in settings_qmldir:
+        fail("Code Workflow must not retain Neovim integration: " + forbidden)
+require(settings_qmldir,
+        "CodeWorkflowSourceEditor 1.0 CodeWorkflowSourceEditor.qml",
+        "modal Source Editor must be exported by settings qmldir")
 if page.count("onSourcePathChanged:") != 1:
     fail("Code Workflow must keep exactly one source-path change handler")
 source_path_handler_start = page.index("    onSourcePathChanged:")
@@ -399,35 +405,35 @@ for token in (
     "Qt.callLater(root.reloadSource)",
     "Qt.callLater(() => root.requestAnalysis(false))",
     "Qt.callLater(root.evaluatePreApplyGate)",
-    "Qt.callLater(root.syncEmbeddedNvimView)",
-    "Qt.callLater(root.syncSourceSyntaxHighlighter)",
+    'sourceEditor.setMode("normal")',
+    "sourceEditor.clearSelection()",
 ):
     require(source_path_handler, token,
             "source-path change handler missing merged editor/analysis action " + token)
 require(page, '"Source Editor · " + root.sourcePath',
         "Source pane must present an editor rather than a read-only preview")
-require(page, "readOnly: false",
-        "Source Editor must accept direct text edits")
 require(page, '"Save source editor"',
         "Source Editor must expose an explicit guarded save control")
-require(page, 'buttonText: "Open source in Neovim"',
-        "Source Editor must expose the Neovim handoff path")
-require(page, '"Use embedded Neovim"',
-        "Source Editor must expose an embedded Neovim mode")
-require(page, "readonly property string sourceEditorNvimDisplayPath:",
-        "embedded Neovim header must derive from the real active buffer path")
-require(page, "root.embeddedNvimBufferModified",
-        "embedded Neovim must surface real buffer modified state through the lazy view")
-require(page, "&& !CodeWorkflowTransaction.dirty",
-        "embedded Neovim must not start over an active graph transaction")
-require(page, 'source: active ? "CodeWorkflowNvimView.qml" : ""',
-        "embedded Neovim must be lazy-loaded so view failures cannot take down the page")
-require(page, "status !== Loader.Error",
-        "embedded Neovim loader must contain QML load failures")
-require(page, '"Embedded Neovim failed to load · using inline editor"',
-        "embedded Neovim load failure must fall back to the inline editor")
-require(page, "function syncEmbeddedNvimView(): void",
-        "embedded Neovim dynamic item must be synchronized only after Loader readiness")
+for token in (
+    'property string mode: "normal"',
+    '["normal", "insert", "visual"].includes(nextMode)',
+    'readOnly: root.mode !== "insert"',
+    "root.moveHorizontal(-1)",
+    "root.moveHorizontal(1)",
+    "root.moveVertical(1)",
+    "root.moveVertical(-1)",
+    'root.setMode("visual")',
+    'root.setMode("insert")',
+    "root.yankSelection()",
+    "root.deleteSelection(false)",
+    "root.pasteYank(!shift)",
+    "root.yankCurrentLine()",
+    "editor.paste()",
+    "root.saveRequested()",
+    "root.lineNumberText",
+):
+    require(source_editor, token,
+            "modal Source Editor missing hot-fix behavior " + token)
 require(page, "root.sourceEditorConflict",
         "Source Editor must surface external-write conflicts")
 require(page, "&& root.sourceEditorStatus.length > 0",
@@ -560,16 +566,14 @@ require(page, "if (!root.inspectSelectionFromTargets)",
         "external selection may clear filters while list selection preserves them")
 require(page, 'Accessible.name: "Filter inspect targets"',
         "Targets filter must expose an explicit accessibility label")
-require(page, 'Accessible.name: "Source editor"',
+require(source_editor, 'Accessible.name: "Source editor"',
         "Source Editor must expose an explicit accessibility label")
-require(page, "activeFocusOnTab: true",
+require(source_editor, "activeFocusOnTab: true",
         "Source Editor must remain keyboard-focusable")
-source_preview_start = page.index("id: sourcePreviewText")
-source_preview_end = page.index("font.pixelSize: Appearance.font.pixelSize.small",
-                                source_preview_start)
-source_preview_block = page[source_preview_start:source_preview_end]
-require(source_preview_block, "renderType: Text.QtRendering",
-        "Source Preview must use Qt text rendering for clean monospace antialiasing")
+require(source_editor, "renderType: Text.QtRendering",
+        "Source Editor must use Qt text rendering for clean monospace antialiasing")
+require(source_editor, "text: root.lineNumberText",
+        "Source Editor must expose synchronized line numbers")
 require(page, "CodeWorkflowRuntime.activeCatalog[0]",
         "Code Workflow selection fallback must use the active shell inventory")
 require(page, 'category: "section"',
@@ -776,10 +780,11 @@ require(canvas, 'Accessible.name: "Open "',
         "graph subflow drill-down must expose an accessibility label")
 require(canvas, "preferredRendererType: Shape.CurveRenderer",
         "IR canvas must use the qualified Curve renderer")
-require(page, "readOnly: false", "Source Editor must accept guarded edits")
+require(source_editor, 'readOnly: root.mode !== "insert"',
+        "Source Editor must accept guarded edits only in insert mode")
 require(page, "FileView {", "Source Editor must read selected source")
-require(page, "contentHeight: Math.max(height, sourcePreviewText.implicitHeight)",
-        "Source Editor scroll extent must follow its TextEdit")
+require(source_editor, "contentHeight: Math.max(height, editorRow.height)",
+        "Source Editor scroll extent must follow editor content")
 if page.count("function stateLabel(item): string {") != 1:
     raise SystemExit("FAIL: Code Workflow page has duplicate stateLabel declarations")
 if "setText(" in canvas:

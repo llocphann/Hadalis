@@ -87,6 +87,7 @@ def instrument(config: Path) -> None:
                 line: modal.currentLineNumber,
                 text: modal.documentText,
                 focused: modal.testTextEditFocus,
+                visible: modal.visible,
                 findFocused: modal.testFindFocus,
                 findVisible: modal.findVisible,
                 findText: modal.findText,
@@ -257,8 +258,14 @@ def main() -> int:
                      state()["caret"] == 1 and state()["line"] == 1, state())
 
         command("hideSource")
-        runtime.wait_for(lambda: state() if not state()["focused"] else None,
-                         "hidden Source Editor relinquishes focus")
+        hidden = runtime.wait_for(
+            lambda: value if not (value := state())["focused"]
+                and not value["visible"] else None,
+            "hidden Source Editor relinquishes focus",
+        )
+        key("l")
+        probe.record("Hidden Source Editor does not intercept modal keys",
+                     state()["caret"] == hidden["caret"], state())
         command("showSource")
         reopened = runtime.wait_for(
             lambda: state() if state()["focused"] else None,

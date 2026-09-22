@@ -100,22 +100,8 @@ jobs:
             done
           '
 
-      - name: Validate Code Workflow production foundation
-        run: nix develop .#workflow-acceptance --command bash -lc 'python3 scripts/test-code-workflow-phase1-contract.py'
-
       - name: Validate modal hot-fix Source Editor
         run: nix develop .#workflow-acceptance --command bash -lc 'python3 scripts/test-code-workflow-source-editor-contract.py'
-
-      - name: Validate semantic IR and unified edge provenance
-        run: |
-          nix develop .#workflow-acceptance --command bash -lc '
-            set -euo pipefail
-            python3 scripts/test-code-workflow-ir-contract.py
-            python3 scripts/test-code-workflow-edge-selection.py
-          '
-
-      - name: Exercise atomic source editor CAS helper
-        run: nix develop .#workflow-acceptance --command bash -lc 'python3 scripts/test-code-workflow-editor-save.py'
 
       - name: Exercise live Settings Source Editor modal keys
         env:
@@ -130,6 +116,20 @@ jobs:
               --revision "${GITHUB_SHA}" \
               --sway "$(command -v sway)"
           '
+
+      - name: Validate Code Workflow production foundation
+        run: nix develop .#workflow-acceptance --command bash -lc 'python3 scripts/test-code-workflow-phase1-contract.py'
+
+      - name: Validate semantic IR and unified edge provenance
+        run: |
+          nix develop .#workflow-acceptance --command bash -lc '
+            set -euo pipefail
+            python3 scripts/test-code-workflow-ir-contract.py
+            python3 scripts/test-code-workflow-edge-selection.py
+          '
+
+      - name: Exercise atomic source editor CAS helper
+        run: nix develop .#workflow-acceptance --command bash -lc 'python3 scripts/test-code-workflow-editor-save.py'
 
       - name: Prove deterministic Connect preview coordinator
         run: nix develop .#workflow-acceptance --command bash -lc 'python3 scripts/test-code-workflow-connect-preview-coordinator.py'

@@ -30,6 +30,21 @@ for token in (
 ):
     require(overview, token, "Overview drag identity")
 
+# Rebuilt window records must preserve identity by Niri window id. Without a
+# key, ScriptModel compares whole mutable records, so workspace/layout changes
+# can remove/reinsert multiple delegates during a single-window move.
+require(overview, 'objectProp: "id"', "Overview stable window model identity")
+require(
+    overview,
+    "&& root.draggingWindowId < 0",
+    "Overview drag reflow animation isolation",
+)
+forbid(
+    overview,
+    "Qt.callLater(() => windowSpace.rebuildWindowItems())",
+    "Overview drop must wait for authoritative Niri state",
+)
+
 # A fast reverse drag must cancel the previous delayed cleanup before publishing
 # the next transaction, otherwise the old timer can erase from/target state.
 require(overview, "dragCleanupTimer.stop()", "Overview reverse-drag lifecycle")

@@ -160,13 +160,6 @@ Item {
     property int draggingWindowId: -1
     property int draggingFromWorkspace: -1
     property int draggingTargetWorkspace: -1
-    property int dragTransactionSerial: 0
-    property int activeDragTransactionId: 0
-
-    function traceDrag(phase, details): void {
-        console.info("[OverviewDragTrace] tx=" + root.activeDragTransactionId
-            + " phase=" + phase + " " + details)
-    }
 
     readonly property real presentationMargin:
         root.embeddedSurface ? 0 : Appearance.sizes.elevationMargin
@@ -177,15 +170,9 @@ Item {
         id: dragCleanupTimer
         interval: 100
         onTriggered: {
-            if (root.activeDragTransactionId > 0)
-                root.traceDrag("cleanup",
-                    "window=" + root.draggingWindowId
-                    + " from=" + root.draggingFromWorkspace
-                    + " target=" + root.draggingTargetWorkspace)
             root.draggingWindowId = -1
             root.draggingFromWorkspace = -1
             root.draggingTargetWorkspace = -1
-            root.activeDragTransactionId = 0
         }
     }
 
@@ -468,22 +455,11 @@ Item {
                                 anchors.fill: parent
                                 onEntered: {
                                     root.draggingTargetWorkspace = workspace.workspaceObj ? workspace.workspaceObj.id : -1
-                                    if (root.activeDragTransactionId > 0)
-                                        root.traceDrag("drop-enter",
-                                            "window=" + root.draggingWindowId
-                                            + " from=" + root.draggingFromWorkspace
-                                            + " target=" + root.draggingTargetWorkspace)
                                     if (root.draggingFromWorkspace === root.draggingTargetWorkspace)
                                         return
                                     hoveredWhileDragging = true
                                 }
                                 onExited: {
-                                    if (root.activeDragTransactionId > 0)
-                                        root.traceDrag("drop-exit",
-                                            "window=" + root.draggingWindowId
-                                            + " workspace="
-                                            + (workspace.workspaceObj ? workspace.workspaceObj.id : -1)
-                                            + " currentTarget=" + root.draggingTargetWorkspace)
                                     hoveredWhileDragging = false
                                     if (workspace.workspaceObj && root.draggingTargetWorkspace === workspace.workspaceObj.id)
                                         root.draggingTargetWorkspace = -1
@@ -618,6 +594,11 @@ Item {
 
             Repeater {
                 model: ScriptModel {
+                    // rebuildWindowItems() creates fresh records whenever Niri
+                    // publishes layout/workspace changes. Track them by the
+                    // stable compositor window id so delegate-local drag state
+                    // cannot migrate to a sibling during workspace reflow.
+                    objectProp: "id"
                     values: windowSpace.windowItems
                 }
 
@@ -693,6 +674,7 @@ Item {
 
                     Behavior on x {
                         enabled: !windowItem.Drag.active
+                            && root.draggingWindowId < 0
                             && root.localGeometryAnimationReady
                             && Appearance.animationsEnabled
                         NumberAnimation {
@@ -703,6 +685,7 @@ Item {
                     }
                     Behavior on y {
                         enabled: !windowItem.Drag.active
+                            && root.draggingWindowId < 0
                             && root.localGeometryAnimationReady
                             && Appearance.animationsEnabled
                         NumberAnimation {
@@ -868,18 +851,12 @@ Item {
                                 // Cancel that stale timer before publishing the
                                 // new transaction so it cannot clear this drag.
                                 dragCleanupTimer.stop()
-                                root.dragTransactionSerial += 1
-                                root.activeDragTransactionId = root.dragTransactionSerial
                                 root.draggingWindowId = draggedId
                                 root.draggingTargetWorkspace = -1
 
                                 windowItem.pressed = true
                                 const ws = NiriService.workspaces[windowData.workspace_id]
                                 root.draggingFromWorkspace = ws ? ws.id : -1
-                                root.traceDrag("press",
-                                    "window=" + draggedId
-                                    + " source=" + root.draggingFromWorkspace
-                                    + " delegateWorkspace=" + windowData.workspace_id)
                                 windowItem.Drag.active = true
                                 windowItem.Drag.source = windowItem
                                 windowItem.Drag.hotSpot.x = mouse.x
@@ -904,13 +881,6 @@ Item {
 
                                 const fromWorkspace = root.draggingFromWorkspace
                                 const targetWorkspace = root.draggingTargetWorkspace
-                                root.traceDrag("release",
-                                    "window=" + draggedWindowId
-                                    + " from=" + fromWorkspace
-                                    + " target=" + targetWorkspace
-                                    + " delegateWindow="
-                                    + (windowData ? Number(windowData.id) : -1)
-                                    + " click=" + isClick)
                                 windowItem.pressed = false
                                 windowItem.Drag.active = false
                                 dragCleanupTimer.restart()
@@ -952,20 +922,12 @@ Item {
                                     // layout events act on the wrong workspace.
                                     // Address the exact captured window id and keep
                                     // focus on the user's current workspace.
-                                    root.traceDrag("move-request",
-                                        "window=" + draggedWindowId
-                                        + " from=" + fromWorkspace
-                                        + " to=" + targetWorkspace)
-                                    const moveQueued = NiriService.moveWindowToWorkspaceById(
+                                    NiriService.moveWindowToWorkspaceById(
                                         draggedWindowId, targetWorkspace, false)
-                                    root.traceDrag("move-queued",
-                                        "window=" + draggedWindowId
-                                        + " to=" + targetWorkspace
-                                        + " accepted=" + moveQueued)
 
-                                    // Force immediate rebuild after move; the restored
-                                    // bindings then follow authoritative Niri layout data.
-                                    Qt.callLater(() => windowSpace.rebuildWindowItems())
+                                    // Do not rebuild from the pre-move cache here.
+                                    // NiriService.windows will publish the authoritative
+                                    // workspace/layout update and trigger the model rebuild.
                                 } else {
                                     windowItem.pendingWorkspaceSlot = -1
                                     // Same-workspace/cancelled drops also need to repair

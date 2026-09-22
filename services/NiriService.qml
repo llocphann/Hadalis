@@ -530,28 +530,7 @@ Singleton {
         root.workspaces = updatedWorkspaces
     }
 
-    function _traceWorkspaceMembershipChanges(nextWindows, source) {
-        if (!Array.isArray(nextWindows))
-            return
-
-        const currentList = root._windowsDirty ? root._pendingWindows : root.windows
-        const previousById = new Map()
-        for (const window of currentList)
-            previousById.set(window.id, window)
-
-        for (const window of nextWindows) {
-            const previous = previousById.get(window.id)
-            if (!previous || previous.workspace_id === window.workspace_id)
-                continue
-            console.info("[NiriWorkspaceTrace] source=" + source
-                + " window=" + window.id
-                + " from=" + previous.workspace_id
-                + " to=" + window.workspace_id)
-        }
-    }
-
     function handleWindowsChanged(data) {
-        root._traceWorkspaceMembershipChanges(data.windows, "WindowsChanged")
         scheduleWindowsUpdate(data.windows)
     }
 
@@ -580,14 +559,6 @@ Singleton {
         const currentList = _windowsDirty ? _pendingWindows : windows
         const existingIndex = currentList.findIndex(w => w.id === window.id)
         let updatedWindows
-
-        if (existingIndex >= 0
-                && currentList[existingIndex].workspace_id !== window.workspace_id) {
-            console.info("[NiriWorkspaceTrace] source=WindowOpenedOrChanged"
-                + " window=" + window.id
-                + " from=" + currentList[existingIndex].workspace_id
-                + " to=" + window.workspace_id)
-        }
 
         if (existingIndex >= 0) {
             updatedWindows = [...currentList]
@@ -890,29 +861,17 @@ Singleton {
     // resolve against the focused output and could land the window on the wrong
     // monitor in a multi-output setup.
     function moveWindowToWorkspaceById(windowId, workspaceId, focus) {
-        const effectiveFocus = focus === undefined ? false : focus
-        const currentList = root._windowsDirty ? root._pendingWindows : root.windows
-        const currentWindow = currentList.find(window => window.id === windowId)
-        console.info("[NiriMoveTrace] request window=" + windowId
-            + " from=" + (currentWindow ? currentWindow.workspace_id : -1)
-            + " to=" + workspaceId
-            + " focus=" + effectiveFocus)
-
-        const accepted = send({
+        return send({
                         "Action": {
                             "MoveWindowToWorkspace": {
                                 "window_id": windowId,
                                 "reference": {
                                     "Id": workspaceId
                                 },
-                                "focus": effectiveFocus
+                                "focus": focus === undefined ? false : focus
                             }
                         }
                     })
-        console.info("[NiriMoveTrace] queued window=" + windowId
-            + " to=" + workspaceId
-            + " accepted=" + accepted)
-        return accepted
     }
 
     function closeWindow(windowId) {

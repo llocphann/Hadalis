@@ -64,7 +64,8 @@ for token in (
 for token in (
     "function edgeAt(screenX: real, screenY: real): string",
     "const edgeId = root.edgeAt(",
-    "CodeWorkflowSession.selectEdge(edgeId)",
+    "CodeWorkflowSession.selectUnifiedEdge(edge)",
+    "root.edges.find(item => item.id === edgeId)",
 ):
     if token not in CANVAS:
         fail("2K-W-D canvas selection boundary missing " + token)

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Guard Todo/Obsidian Settings deep links from dashboard surfaces."""
+"""Guard unified To-do and Quick Notes Settings deep links from dashboard surfaces."""
 
 from pathlib import Path
 
@@ -22,12 +22,12 @@ assert 'Quickshell.env("QS_SETTINGS_SECTION")' in window
 assert "function activateSettingsSearchSection(section: string): bool" in services
 assert overlay.count("if (requestedPage < 0)") >= 1
 assert focus.count("if (requestedPage < 0)") >= 1
-assert 'label.includes("todo") || label.includes("obsidian")' in services
+assert 'label.includes("todo") || label.includes("to-do") || label.includes("obsidian")' in services
 assert 'root.activeSection = "data"' in services
 
 assert 'pageIndex: 7, pageName: root.pages[7].name' in registry
-assert 'section: Translation.tr("Todo & Obsidian")' in registry
-assert '"obsidian"' in registry and '"vault"' in registry
+assert 'section: Translation.tr("To-do & Quick Notes")' in registry
+assert '"quick notes"' in registry and '"vault"' in registry
 
 for name, source in (("rail", overlay), ("focus", focus)):
     assert "settingsOverlayRequestedSection" in source, f"{name} overlay lost section deep link"

@@ -71,9 +71,12 @@ for token in (
 for token in (
     "required property var loader",
     "required property string panelId",
+    'return "visible"',
     'return "loaded-hidden"',
     'return "loading"',
-    'return "inactive"',
+    'return "unloaded"',
+    "configured: root.configured",
+    "lifecycle: state",
     "function descriptorSnapshot(): var",
     "ignoreUnknownSignals: true",
 ):
@@ -649,9 +652,11 @@ require(page, "ColorUtils.readableAccentInk(",
         "Code Workflow chips must derive readable foreground ink")
 require(page, '"LOADED · HIDDEN"',
         "Inspector must distinguish loaded-hidden runtime state")
-require(page, '"INACTIVE · SOURCE"',
-        "Inspector must distinguish inactive source-backed runtime state")
-require(page, '"DISABLED · SOURCE"',
+require(page, '"VISIBLE"',
+        "Inspector must distinguish visible loader lifecycle")
+require(page, '"UNLOADED · SOURCE"',
+        "Inspector must distinguish unloaded source-backed runtime state")
+require(page, '"UNLOADED · DISABLED"',
         "Inspector must distinguish disabled runtime declarations")
 require(page, "readonly property bool selectedLive:",
         "Header runtime badge must reflect the selected target")
@@ -752,6 +757,8 @@ for path, (target_id, source_path) in hooks.items():
     require(source, source_path, path + " missing runtime source metadata")
 require(target, "function descriptorSnapshot(): var",
         "runtime instances must expose dynamic descriptor metadata")
+require(target, 'lifecycle: presented ? "visible" : "loaded-hidden"',
+        "live runtime descriptors must expose visible/hidden lifecycle")
 require(target, 'stateRank: 6',
         "live runtime descriptors must outrank loader declarations")
 

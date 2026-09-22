@@ -11,6 +11,9 @@ depends=(
   cliphist
   curl
   fish
+  fcitx5
+  fcitx5-qt
+  fcitx5-unikey
   grim
   jq
   kirigami
@@ -60,6 +63,8 @@ optdepends=(
   'easyeffects: optional audio effects and equalizer backend'
   'ffmpeg: recording and video wallpaper helpers'
   'fprintd: fingerprint authentication integration'
+  'fcitx5-gtk: GTK/XWayland input method compatibility'
+  'fcitx5-configtool: configure Vietnamese input and shortcuts'
   'geoclue: GPS-backed weather location detection'
   'gnome-keyring: secret storage for API keys and credentials'
   'gowall-bin: wallpaper theme conversion and effects editor'

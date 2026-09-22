@@ -175,6 +175,8 @@ Item {
                         return "loaded · hidden"
                     if (lifecycle === "loading")
                         return "loading"
+                    if (lifecycle === "stale/unloading")
+                        return "stale · unloading"
                     if (rowRecord?.configured === false
                             || target?.configured === false)
                         return "unloaded · disabled"
@@ -1261,6 +1263,8 @@ Item {
             return "LOADED · HIDDEN"
         if (lifecycle === "loading")
             return "LOADING"
+        if (lifecycle === "stale/unloading")
+            return "STALE · UNLOADING"
         if (lifecycle === "unloaded" && item.configured === false)
             return "UNLOADED · DISABLED"
         if (lifecycle === "unloaded")

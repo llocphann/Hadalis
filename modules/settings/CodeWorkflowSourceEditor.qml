@@ -886,7 +886,11 @@ Item {
                     onTapped: eventPoint => {
                         const position = editor.positionAt(
                             eventPoint.position.x, eventPoint.position.y)
-                        root.setMode("normal")
+                        // A caret click must not silently leave INSERT:
+                        // native TextEdit and IME keep their editing context.
+                        // A click does end a VISUAL selection (Vim-like).
+                        if (root.mode !== "insert")
+                            root.setMode("normal")
                         editor.cursorPosition = root.clampPosition(position)
                         root.preferredColumn = -1
                         editor.deselect()

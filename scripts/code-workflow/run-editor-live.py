@@ -412,6 +412,30 @@ def main() -> int:
         )
         probe.record("Toolbar edit action restores TextEdit focus",
                      mode_insert["mode"] == "insert", mode_insert)
+        # A subsequent source click must reposition the caret, not switch
+        # back to read-only NORMAL behind the user's back.
+        before_insert_tap = state()
+        probe.move(before_insert_tap["clickX"], before_insert_tap["clickY"],
+                   "left", output=before_insert_tap["clickOutput"])
+        insert_tap = runtime.wait_for(
+            lambda: value if (value := state())["tapCount"] > before_insert_tap["tapCount"]
+                else None,
+            "real source click while INSERT is active",
+        )
+        probe.record("Source click preserves INSERT mode and TextEdit focus",
+                     insert_tap["mode"] == "insert"
+                     and insert_tap["focused"] and insert_tap["caret"] == 0,
+                     insert_tap)
+        before_native = insert_tap["text"]
+        subprocess.run(["wtype", "j"], env=probe.env, check=True,
+                       capture_output=True, text=True, timeout=12)
+        native = runtime.wait_for(
+            lambda: value if (value := state())["text"] == "j" + before_native
+                else None,
+            "native text input remains active after clicking in INSERT",
+        )
+        probe.record("Source click leaves INSERT text entry usable",
+                     native["mode"] == "insert" and native["focused"], native)
         probe.move(mode_insert["modeClickX"], mode_insert["modeClickY"],
                    "left", output=mode_insert["clickOutput"])
         mode_normal = runtime.wait_for(

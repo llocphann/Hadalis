@@ -94,8 +94,10 @@ for token in (
 tap_start = editor.index("TapHandler {")
 tap_end = editor.index("Keys.onShortcutOverride: event =>", tap_start)
 tap_block = editor[tap_start:tap_end]
+require(tap_block, 'if (root.mode !== "insert")',
+        "click must preserve active INSERT and its native IME input context")
 require(tap_block, 'root.setMode("normal")',
-        "pointer click must enter Normal/view mode")
+        "pointer click must leave VISUAL in Normal/view mode")
 require(tap_block, "editor.cursorPosition = root.clampPosition(position)",
         "pointer click must place the Normal-mode cursor")
 require(tap_block, "editor.forceActiveFocus()",

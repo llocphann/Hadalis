@@ -18,18 +18,21 @@ canvas = read("modules/settings/CodeWorkflowIrCanvas.qml")
 page = read("modules/settings/CodeWorkflow.qml")
 phase2 = read("docs/CODE_WORKFLOW_PHASE2.md")
 
+# The old 2K-B contract expected mutation-only hit testing against a cubic
+# previewableEdgeAt surface. The reviewed smooth-step graph now makes every
+# source-backed edge inspectable; only the transaction path is preview-gated.
 for token in (
     'property string selectedEdgeId: ""',
     "function selectEdge(edgeId: string): bool",
     "CodeWorkflowIr.edgeFor(",
-    "edge.previewable !== true",
+    "if (edge.previewable === true && target.kind !== \"binding\")",
     "root.selectedEdgeId = edge.id",
     "root.selectedNodeId = target.id",
     'root.selectedEdgeId = ""',
     "onSelectedEdgeIdChanged: root.persist()",
 ):
     if token not in session:
-        fail("edge session identity missing " + token)
+        fail("edge session identity or mutation boundary missing " + token)
 
 if 'property string codeWorkflowEdgeId: ""' not in persistent:
     fail("persistent workflow state must include primitive edge id")
@@ -40,18 +43,30 @@ if 'state.codeWorkflowEdgeId ?? ""' not in session:
 
 for token in (
     "function pointSegmentDistance(",
-    "function cubicCoordinate(",
     "function edgeDistance(edge, px: real, py: real): real",
+    "const route = root.routeForEdge(edge)",
     "function nodeAtWorld(px: real, py: real): bool",
-    "function previewableEdgeAt(screenX: real, screenY: real): string",
-    "const steps = 20",
-    "const tolerance = 9 / zoom",
-    "edge.previewable !== true",
+    "function viewportContains(screenX: real, screenY: real): bool",
+    "function edgeAt(screenX: real, screenY: real): string",
+    "if (!root.viewportContains(screenX, screenY))",
+    "if (root.nodeAtWorld(worldX, worldY))",
+    "const tolerance = 8 / zoom",
+    "for (const edge of root.edges)",
     "CodeWorkflowSession.selectEdge(edgeId)",
     "CodeWorkflowSession.selectedEdgeId === modelData.id",
 ):
     if token not in canvas:
-        fail("canvas edge hit-test/selection missing " + token)
+        fail("all-edge route-backed hit test/selection missing " + token)
+
+edge_hit_test = canvas.split(
+    "function edgeAt(screenX: real, screenY: real): string", 1)[1].split(
+    "function accentForKind(", 1)[0]
+if "edge.previewable" in edge_hit_test:
+    fail("read-only edges must remain selectable, not mutation-filtered")
+if "function previewableEdgeAt(" in canvas:
+    fail("retired mutation-only edge hit-test API must not return")
+if "function cubicCoordinate(" in canvas:
+    fail("retired cubic hit-test must not diverge from routed edge geometry")
 
 edge_delegate_start = canvas.index("model: root.edges")
 node_delegate_start = canvas.index("model: root.nodes", edge_delegate_start)

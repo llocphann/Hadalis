@@ -261,10 +261,16 @@ Item {
             // Hover pauses mid-scroll; on exit it resumes from the paused position.
             property bool _marqueeHolding: true
             property bool _marqueeHovered: false
+            property bool _marqueeReady: false
+            Component.onCompleted: {
+                _marqueeReady = true
+                resetMarquee()
+            }
 
             // Track/width/font changes must never leave a clipped mid-scroll
             // fragment beside the media icon. Restart at the first glyph.
             function resetMarquee() {
+                if (!_marqueeReady) return
                 holdTimer.stop()
                 scrollAnim.stop()
                 marqueeRow.x = 0

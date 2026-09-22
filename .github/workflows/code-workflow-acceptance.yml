@@ -68,6 +68,9 @@ jobs:
       - name: Validate Code Workflow production foundation
         run: nix develop .#workflow-acceptance --command bash -lc 'python3 scripts/test-code-workflow-phase1-contract.py'
 
+      - name: Validate modal hot-fix Source Editor
+        run: nix develop .#workflow-acceptance --command bash -lc 'python3 scripts/test-code-workflow-source-editor-contract.py'
+
       - name: Prove deterministic Connect preview coordinator
         run: nix develop .#workflow-acceptance --command bash -lc 'python3 scripts/test-code-workflow-connect-preview-coordinator.py'
 

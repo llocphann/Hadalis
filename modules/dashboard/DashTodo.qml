@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
+import QtQuick.Shapes
 import qs
 import qs.services
 import qs.modules.common
@@ -23,6 +24,13 @@ DashCard {
 
     property int currentTab: 0
     property bool showAddDialog: false
+
+    // The dashboard card can be resized independently from the Sidebar. Keep
+    // chrome proportional so the task viewport, not fixed controls, absorbs
+    // most of the size change.
+    readonly property bool narrowLayout: root.width > 0 && root.width < 285
+    readonly property bool shallowLayout: root.height > 0 && root.height < 300
+    readonly property int tabControlHeight: root.narrowLayout ? 36 : 38
 
     readonly property var indexedTasks: Todo.list.map(function(item, index) {
         return Object.assign({}, item, { originalIndex: index })
@@ -72,19 +80,19 @@ DashCard {
     ColumnLayout {
         Layout.fillWidth: true
         Layout.fillHeight: true
-        spacing: root.compact ? 6 : 8
+        spacing: root.narrowLayout ? 5 : (root.compact ? 6 : 8)
 
         RowLayout {
             Layout.fillWidth: true
-            spacing: 10
+            spacing: root.narrowLayout ? 6 : 10
 
             MaterialShapeWrappedMaterialSymbol {
-                Layout.preferredWidth: root.compact ? 38 : 44
+                Layout.preferredWidth: root.narrowLayout ? 34 : (root.compact ? 38 : 44)
                 Layout.preferredHeight: Layout.preferredWidth
                 text: "checklist"
                 shape: MaterialShape.Shape.Cookie4Sided
-                padding: root.compact ? 6 : 8
-                iconSize: root.compact ? 21 : 24
+                padding: root.narrowLayout ? 5 : (root.compact ? 6 : 8)
+                iconSize: root.narrowLayout ? 19 : (root.compact ? 21 : 24)
             }
 
             ColumnLayout {
@@ -105,7 +113,8 @@ DashCard {
                     spacing: 6
 
                     Rectangle {
-                        implicitWidth: sourceRow.implicitWidth + 12
+                        implicitWidth: Math.min(sourceRow.implicitWidth + 12,
+                            root.narrowLayout ? 110 : 150)
                         implicitHeight: sourceRow.implicitHeight + 5
                         radius: height / 2
                         color: Appearance.colors.colLayer2
@@ -123,10 +132,13 @@ DashCard {
                             }
 
                             StyledText {
+                                Layout.maximumWidth: root.narrowLayout ? 72 : 112
                                 text: Todo.sourceLabel
                                 font.pixelSize: Appearance.font.pixelSize.smallest
                                 font.weight: Font.Medium
                                 color: root.colSubtext
+                                elide: Text.ElideRight
+                                maximumLineCount: 1
                             }
                         }
                     }
@@ -142,8 +154,8 @@ DashCard {
             }
 
             RippleButton {
-                implicitWidth: 34
-                implicitHeight: 34
+                implicitWidth: root.narrowLayout ? 30 : 34
+                implicitHeight: implicitWidth
                 buttonRadius: height / 2
                 colBackground: Appearance.colors.colLayer2
                 colBackgroundHover: Appearance.colors.colLayer2Hover
@@ -163,88 +175,303 @@ DashCard {
         }
 
         Rectangle {
+            id: tabShell
             Layout.fillWidth: true
-            implicitHeight: 38
-            radius: Appearance.rounding.full
+            implicitHeight: root.tabControlHeight
+            radius: height / 2
             color: Appearance.colors.colLayer2
+            clip: true
 
-            RowLayout {
-                anchors.fill: parent
-                anchors.margins: 3
-                spacing: 3
+            readonly property real halfWidth: width / 2
+            readonly property real inset: 3
+            readonly property real notch: Math.min(9, height * 0.24)
+            readonly property real outerRadius: height / 2
 
-                Repeater {
-                    model: [
-                        {
-                            label: Translation.tr("Unfinished"),
-                            icon: "checklist",
-                            count: root.unfinishedTasks.length
-                        },
-                        {
-                            label: Translation.tr("Done"),
-                            icon: "check_circle",
-                            count: root.doneTasks.length
-                        }
-                    ]
+            // The inactive half is not another ordinary pill. Its seam recedes
+            // around the focused inner pill with inverse-rounded shoulders,
+            // while the outer edge remains part of the single parent pill.
+            Shape {
+                id: inactiveRightShape
+                visible: root.currentTab === 0
+                x: tabShell.halfWidth - tabShell.notch
+                width: tabShell.halfWidth + tabShell.notch
+                height: tabShell.height
+                preferredRendererType: Shape.CurveRenderer
 
-                    delegate: RippleButton {
-                        required property int index
-                        required property var modelData
+                ShapePath {
+                    strokeWidth: 0
+                    fillColor: rightTabHover.hovered
+                        ? Appearance.colors.colLayer1Hover
+                        : Appearance.colors.colLayer1
+                    startX: 0
+                    startY: 0
+                    PathLine {
+                        x: inactiveRightShape.width - tabShell.outerRadius
+                        y: 0
+                    }
+                    PathQuad {
+                        x: inactiveRightShape.width
+                        y: tabShell.outerRadius
+                        controlX: inactiveRightShape.width
+                        controlY: 0
+                    }
+                    PathLine {
+                        x: inactiveRightShape.width
+                        y: inactiveRightShape.height - tabShell.outerRadius
+                    }
+                    PathQuad {
+                        x: inactiveRightShape.width - tabShell.outerRadius
+                        y: inactiveRightShape.height
+                        controlX: inactiveRightShape.width
+                        controlY: inactiveRightShape.height
+                    }
+                    PathLine { x: 0; y: inactiveRightShape.height }
+                    PathQuad {
+                        x: tabShell.notch
+                        y: inactiveRightShape.height - tabShell.notch
+                        controlX: tabShell.notch
+                        controlY: inactiveRightShape.height
+                    }
+                    PathLine { x: tabShell.notch; y: tabShell.notch }
+                    PathQuad {
+                        x: 0
+                        y: 0
+                        controlX: tabShell.notch
+                        controlY: 0
+                    }
+                }
+            }
 
-                        Layout.fillWidth: true
-                        Layout.fillHeight: true
-                        buttonRadius: Appearance.rounding.full
-                        colBackground: root.currentTab === index
-                            ? Appearance.colors.colPrimaryContainer
-                            : "transparent"
-                        colBackgroundHover: root.currentTab === index
-                            ? Appearance.colors.colPrimaryContainer
-                            : Appearance.colors.colLayer2Hover
-                        onClicked: root.currentTab = index
+            Shape {
+                id: inactiveLeftShape
+                visible: root.currentTab === 1
+                x: 0
+                width: tabShell.halfWidth + tabShell.notch
+                height: tabShell.height
+                preferredRendererType: Shape.CurveRenderer
 
-                        contentItem: RowLayout {
+                ShapePath {
+                    strokeWidth: 0
+                    fillColor: leftTabHover.hovered
+                        ? Appearance.colors.colLayer1Hover
+                        : Appearance.colors.colLayer1
+                    startX: tabShell.outerRadius
+                    startY: 0
+                    PathLine { x: inactiveLeftShape.width; y: 0 }
+                    PathQuad {
+                        x: inactiveLeftShape.width - tabShell.notch
+                        y: tabShell.notch
+                        controlX: inactiveLeftShape.width - tabShell.notch
+                        controlY: 0
+                    }
+                    PathLine {
+                        x: inactiveLeftShape.width - tabShell.notch
+                        y: inactiveLeftShape.height - tabShell.notch
+                    }
+                    PathQuad {
+                        x: inactiveLeftShape.width
+                        y: inactiveLeftShape.height
+                        controlX: inactiveLeftShape.width - tabShell.notch
+                        controlY: inactiveLeftShape.height
+                    }
+                    PathLine {
+                        x: tabShell.outerRadius
+                        y: inactiveLeftShape.height
+                    }
+                    PathQuad {
+                        x: 0
+                        y: inactiveLeftShape.height - tabShell.outerRadius
+                        controlX: 0
+                        controlY: inactiveLeftShape.height
+                    }
+                    PathLine { x: 0; y: tabShell.outerRadius }
+                    PathQuad {
+                        x: tabShell.outerRadius
+                        y: 0
+                        controlX: 0
+                        controlY: 0
+                    }
+                }
+            }
+
+            Rectangle {
+                id: activeTabPill
+                x: root.currentTab === 0
+                    ? tabShell.inset
+                    : tabShell.halfWidth + tabShell.inset
+                y: tabShell.inset
+                width: tabShell.halfWidth - tabShell.inset * 2
+                height: tabShell.height - tabShell.inset * 2
+                radius: height / 2
+                color: (root.currentTab === 0
+                        ? leftTabHover.hovered : rightTabHover.hovered)
+                    ? Appearance.colors.colPrimaryContainerHover
+                    : Appearance.colors.colPrimaryContainer
+                z: 2
+
+                Behavior on x {
+                    enabled: Appearance.animationsEnabled
+                    NumberAnimation {
+                        duration: Appearance.animation.elementMoveFast.duration
+                        easing.type: Appearance.animation.elementMoveFast.type
+                        easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve
+                    }
+                }
+                Behavior on color {
+                    enabled: Appearance.animationsEnabled
+                    ColorAnimation {
+                        duration: Appearance.animation.elementMoveFast.duration
+                    }
+                }
+            }
+
+            Item {
+                id: leftTabHit
+                x: 0
+                width: tabShell.halfWidth
+                height: tabShell.height
+                z: 5
+
+                HoverHandler {
+                    id: leftTabHover
+                    cursorShape: Qt.PointingHandCursor
+                }
+                TapHandler {
+                    onTapped: root.currentTab = 0
+                }
+            }
+
+            Item {
+                id: rightTabHit
+                x: tabShell.halfWidth
+                width: tabShell.halfWidth
+                height: tabShell.height
+                z: 5
+
+                HoverHandler {
+                    id: rightTabHover
+                    cursorShape: Qt.PointingHandCursor
+                }
+                TapHandler {
+                    onTapped: root.currentTab = 1
+                }
+            }
+
+            Item {
+                x: 0
+                width: tabShell.halfWidth
+                height: tabShell.height
+                z: 4
+
+                RowLayout {
+                    anchors.centerIn: parent
+                    spacing: root.narrowLayout ? 3 : 5
+
+                    MaterialSymbol {
+                        text: "checklist"
+                        iconSize: root.narrowLayout ? 15 : 17
+                        color: root.currentTab === 0
+                            ? Appearance.colors.colOnPrimaryContainer
+                            : root.colSubtext
+                    }
+
+                    StyledText {
+                        Layout.maximumWidth: root.narrowLayout ? 62 : 92
+                        text: Translation.tr("Unfinished")
+                        font.pixelSize: Appearance.font.pixelSize.small
+                        font.weight: root.currentTab === 0
+                            ? Font.DemiBold : Font.Medium
+                        color: root.currentTab === 0
+                            ? Appearance.colors.colOnPrimaryContainer
+                            : root.colSubtext
+                        elide: Text.ElideRight
+                        maximumLineCount: 1
+                    }
+
+                    Rectangle {
+                        implicitWidth: Math.max(root.narrowLayout ? 19 : 22,
+                            leftCountText.implicitWidth + (root.narrowLayout ? 7 : 10))
+                        implicitHeight: root.narrowLayout ? 19 : 22
+                        radius: height / 2
+                        color: root.currentTab === 0
+                            ? Appearance.colors.colPrimary
+                            : Appearance.colors.colLayer2
+
+                        StyledText {
+                            id: leftCountText
                             anchors.centerIn: parent
-                            spacing: 5
-
-                            MaterialSymbol {
-                                text: modelData.icon
-                                iconSize: 17
-                                color: root.currentTab === index
-                                    ? Appearance.colors.colOnPrimaryContainer
-                                    : root.colSubtext
-                            }
-
-                            StyledText {
-                                text: modelData.label
-                                font.pixelSize: Appearance.font.pixelSize.small
-                                font.weight: root.currentTab === index
-                                    ? Font.DemiBold : Font.Medium
-                                color: root.currentTab === index
-                                    ? Appearance.colors.colOnPrimaryContainer
-                                    : root.colSubtext
-                            }
-
-                            Rectangle {
-                                implicitWidth: Math.max(22, countText.implicitWidth + 10)
-                                implicitHeight: 22
-                                radius: height / 2
-                                color: root.currentTab === index
-                                    ? Appearance.colors.colPrimary
-                                    : Appearance.colors.colLayer1
-
-                                StyledText {
-                                    id: countText
-                                    anchors.centerIn: parent
-                                    text: modelData.count
-                                    font.pixelSize: Appearance.font.pixelSize.smallest
-                                    font.weight: Font.DemiBold
-                                    color: root.currentTab === index
-                                        ? Appearance.colors.colOnPrimary
-                                        : root.colSubtext
-                                }
-                            }
+                            text: root.unfinishedTasks.length
+                            font.pixelSize: Appearance.font.pixelSize.smallest
+                            font.weight: Font.DemiBold
+                            color: root.currentTab === 0
+                                ? Appearance.colors.colOnPrimary
+                                : root.colSubtext
                         }
                     }
+                }
+            }
+
+            Item {
+                x: tabShell.halfWidth
+                width: tabShell.halfWidth
+                height: tabShell.height
+                z: 4
+
+                RowLayout {
+                    anchors.centerIn: parent
+                    spacing: root.narrowLayout ? 3 : 5
+
+                    MaterialSymbol {
+                        text: "check_circle"
+                        iconSize: root.narrowLayout ? 15 : 17
+                        color: root.currentTab === 1
+                            ? Appearance.colors.colOnPrimaryContainer
+                            : root.colSubtext
+                    }
+
+                    StyledText {
+                        Layout.maximumWidth: root.narrowLayout ? 48 : 72
+                        text: Translation.tr("Done")
+                        font.pixelSize: Appearance.font.pixelSize.small
+                        font.weight: root.currentTab === 1
+                            ? Font.DemiBold : Font.Medium
+                        color: root.currentTab === 1
+                            ? Appearance.colors.colOnPrimaryContainer
+                            : root.colSubtext
+                        elide: Text.ElideRight
+                        maximumLineCount: 1
+                    }
+
+                    Rectangle {
+                        implicitWidth: Math.max(root.narrowLayout ? 19 : 22,
+                            rightCountText.implicitWidth + (root.narrowLayout ? 7 : 10))
+                        implicitHeight: root.narrowLayout ? 19 : 22
+                        radius: height / 2
+                        color: root.currentTab === 1
+                            ? Appearance.colors.colPrimary
+                            : Appearance.colors.colLayer2
+
+                        StyledText {
+                            id: rightCountText
+                            anchors.centerIn: parent
+                            text: root.doneTasks.length
+                            font.pixelSize: Appearance.font.pixelSize.smallest
+                            font.weight: Font.DemiBold
+                            color: root.currentTab === 1
+                                ? Appearance.colors.colOnPrimary
+                                : root.colSubtext
+                        }
+                    }
+                }
+            }
+
+            WheelHandler {
+                acceptedDevices: PointerDevice.Mouse | PointerDevice.TouchPad
+                onWheel: event => {
+                    if (event.angleDelta.y < 0)
+                        root.currentTab = 1
+                    else if (event.angleDelta.y > 0)
+                        root.currentTab = 0
                 }
             }
         }
@@ -252,7 +479,7 @@ DashCard {
         Item {
             Layout.fillWidth: true
             Layout.fillHeight: true
-            Layout.minimumHeight: 72
+            Layout.minimumHeight: root.shallowLayout ? 56 : 72
             clip: true
 
             Flickable {
@@ -403,18 +630,19 @@ DashCard {
 
             ColumnLayout {
                 anchors.centerIn: parent
-                width: Math.min(parent.width - 24, 220)
-                spacing: 5
+                width: Math.min(parent.width - (root.narrowLayout ? 12 : 24),
+                    root.narrowLayout ? 190 : 220)
+                spacing: root.shallowLayout ? 3 : 5
                 visible: root.visibleTasks.length === 0
 
                 MaterialShapeWrappedMaterialSymbol {
                     Layout.alignment: Qt.AlignHCenter
-                    width: root.compact ? 46 : 54
+                    width: root.shallowLayout ? 42 : (root.compact ? 46 : 54)
                     height: width
                     text: root.currentTab === 0 ? "task_alt" : "done_all"
                     shape: MaterialShape.Shape.Clover4Leaf
-                    padding: 8
-                    iconSize: root.compact ? 24 : 28
+                    padding: root.shallowLayout ? 6 : 8
+                    iconSize: root.shallowLayout ? 22 : (root.compact ? 24 : 28)
                 }
 
                 StyledText {
@@ -435,16 +663,21 @@ DashCard {
 
         RowLayout {
             Layout.fillWidth: true
-            spacing: 6
+            spacing: root.narrowLayout ? 4 : 6
 
             RippleButton {
                 visible: Todo.backend !== "obsidian"
-                Layout.preferredWidth: setupRow.implicitWidth + 18
+                Layout.preferredWidth: root.narrowLayout
+                    ? 34 : setupRow.implicitWidth + 18
                 implicitHeight: 34
                 buttonRadius: Appearance.rounding.full
                 colBackground: Appearance.colors.colLayer2
                 colBackgroundHover: Appearance.colors.colLayer2Hover
                 onClicked: root.openTodoSettings()
+
+                StyledToolTip {
+                    text: Translation.tr("Prepare Obsidian")
+                }
 
                 contentItem: RowLayout {
                     id: setupRow
@@ -458,6 +691,7 @@ DashCard {
                     }
 
                     StyledText {
+                        visible: !root.narrowLayout
                         text: Translation.tr("Prepare Obsidian")
                         font.pixelSize: Appearance.font.pixelSize.smallest
                         font.weight: Font.Medium
@@ -471,13 +705,18 @@ DashCard {
             }
 
             RippleButton {
-                implicitWidth: root.compact ? 34 : editRow.implicitWidth + 16
+                implicitWidth: (root.compact || root.narrowLayout)
+                    ? 34 : editRow.implicitWidth + 16
                 implicitHeight: 34
                 buttonRadius: Appearance.rounding.full
                 enabled: Todo.ready
                 colBackground: Appearance.colors.colLayer2
                 colBackgroundHover: Appearance.colors.colLayer2Hover
                 onClicked: Todo.openSource("")
+
+                StyledToolTip {
+                    text: Translation.tr("Edit task source")
+                }
 
                 contentItem: RowLayout {
                     id: editRow
@@ -491,7 +730,7 @@ DashCard {
                     }
 
                     StyledText {
-                        visible: !root.compact
+                        visible: !root.compact && !root.narrowLayout
                         text: Translation.tr("Edit")
                         font.pixelSize: Appearance.font.pixelSize.small
                         font.weight: Font.Medium
@@ -501,13 +740,18 @@ DashCard {
             }
 
             RippleButton {
-                Layout.preferredWidth: addRow.implicitWidth + 18
+                Layout.preferredWidth: root.narrowLayout
+                    ? 34 : addRow.implicitWidth + 18
                 implicitHeight: 34
                 buttonRadius: Appearance.rounding.full
                 enabled: Todo.ready && !Todo.busy
                 colBackground: Appearance.colors.colPrimary
                 colBackgroundHover: Appearance.colors.colPrimaryHover
                 onClicked: root.showAddDialog = true
+
+                StyledToolTip {
+                    text: Translation.tr("Add task")
+                }
 
                 contentItem: RowLayout {
                     id: addRow
@@ -521,6 +765,7 @@ DashCard {
                     }
 
                     StyledText {
+                        visible: !root.narrowLayout
                         text: Translation.tr("Add task")
                         font.pixelSize: Appearance.font.pixelSize.small
                         font.weight: Font.DemiBold

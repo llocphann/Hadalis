@@ -1,100 +1,79 @@
 #!/usr/bin/env python3
-"""Regression contract for Niri Overview exact-window drag/drop semantics."""
+"""Behavioral Niri Overview visual-identity and drag regression."""
 from pathlib import Path
+import subprocess
 
 ROOT = Path(__file__).resolve().parents[1]
-OVERVIEW = ROOT / "modules" / "overview" / "OverviewNiriWidget.qml"
-WAFFLE = ROOT / "modules" / "waffle" / "taskview" / "WaffleTaskViewContent.qml"
-NIRI = ROOT / "services" / "NiriService.qml"
-
-overview = OVERVIEW.read_text(encoding="utf-8")
-waffle = WAFFLE.read_text(encoding="utf-8")
-niri = NIRI.read_text(encoding="utf-8")
-
-failures = []
-
-def require(source: str, token: str, label: str) -> None:
-    if token not in source:
-        failures.append(f"{label}: missing {token!r}")
-
-def forbid(source: str, token: str, label: str) -> None:
-    if token in source:
-        failures.append(f"{label}: forbidden {token!r}")
-
-# Each pointer drag owns an immutable Niri window id from press through release.
+ov = (ROOT / "modules/overview/OverviewNiriWidget.qml").read_text(encoding="utf-8")
+niri = (ROOT / "services/NiriService.qml").read_text(encoding="utf-8")
+waffle = (ROOT / "modules/waffle/taskview/WaffleTaskViewContent.qml").read_text(encoding="utf-8")
+js = ROOT / "modules/overview/NiriOverviewModel.js"
 for token in (
-    "property int draggingWindowId: -1",
-    "root.draggingWindowId = draggedId",
-    "const draggedWindowId = root.draggingWindowId",
-    "Number(windowData.id) === draggedWindowId",
-):
-    require(overview, token, "Overview drag identity")
-
-# Rebuilt window records must preserve identity by Niri window id. Without a
-# key, ScriptModel compares whole mutable records, so workspace/layout changes
-# can remove/reinsert multiple delegates during a single-window move.
-require(overview, 'objectProp: "id"', "Overview stable window model identity")
-require(
-    overview,
-    "&& root.draggingWindowId < 0",
-    "Overview drag reflow animation isolation",
-)
-forbid(
-    overview,
-    "Qt.callLater(() => windowSpace.rebuildWindowItems())",
-    "Overview drop must wait for authoritative Niri state",
-)
-
-# A fast reverse drag must cancel the previous delayed cleanup before publishing
-# the next transaction, otherwise the old timer can erase from/target state.
-require(overview, "dragCleanupTimer.stop()", "Overview reverse-drag lifecycle")
-require(
-    overview,
-    "root.draggingTargetWorkspace = -1",
-    "Overview reverse-drag lifecycle",
-)
-require(
-    overview,
-    "root.draggingWindowId = -1\n            root.draggingFromWorkspace = -1",
-    "Overview cleanup",
-)
-
-# Workspace reorganization is non-focusing: only the captured window moves.
-require(
-    overview,
+    'import "NiriOverviewModel.js" as OverviewModel',
+    "OverviewModel.buildWindowItems(",
+    "values: windowSpace.windowItems.map(record => record.id)",
+    "readonly property int windowId: modelData",
+    "OverviewModel.findWindowRecord(windowSpace.windowItems, windowItem.windowId)",
+    "readonly property var windowData: windowRecord?.window ?? null",
+    "const cache = WindowPreviewService.previewCache",
+    "WindowPreviewService.getPreviewUrl(windowItem.windowId)",
+    "AppSearch.getIconSource(windowItem.windowData.app_id",
+    "root.resetDragState()",
+    "draggedWindowId !== windowItem.windowId",
     "NiriService.moveWindowToWorkspaceById(\n                                        draggedWindowId, targetWorkspace, false)",
-    "Overview exact-window drop",
-)
-forbid(
-    overview,
-    "NiriService.moveWindowToWorkspaceById(\n                                        windowData.id, targetWorkspace, true)",
-    "Overview exact-window drop",
-)
-forbid(
-    overview,
-    "NiriService.moveWindowToWorkspaceById(windowData.id, targetWorkspace, true)",
-    "Overview exact-window drop",
-)
-
-# The sibling Waffle task-view already uses the same Niri-safe no-focus rule.
-for token in (
-    '"--window-id", windowId.toString()',
-    '"--focus", "false"',
 ):
-    require(waffle, token, "Waffle drag parity")
-
-# Service transport must keep explicit window_id and caller-controlled focus.
-for token in (
-    "function moveWindowToWorkspaceById(windowId, workspaceId, focus)",
-    '"window_id": windowId',
-    '"focus": focus === undefined ? false : focus',
+    assert token in ov, f"missing visual/drag invariant: {token}"
+preview_delegate = ov.split("delegate: Item {", 1)[1].split("id: focusedWorkspaceIndicator", 1)[0]
+for old in (
+    "pendingWorkspaceSlot", "dragCleanupTimer", 'property string previewUrl: ""',
+    "onPreviewUpdated(updatedId", "onCaptureComplete()", "Behavior on x {", "Behavior on y {",
+    'objectProp: "id"', "Qt.callLater(() => windowSpace.rebuildWindowItems())",
 ):
-    require(niri, token, "Niri move service")
+    assert old not in preview_delegate, f"retired visual patch remains: {old}"
+assert '"window_id": windowId' in niri and '"focus": focus === undefined ? false : focus' in niri
+assert '"--window-id", windowId.toString()' in waffle and '"--focus", "false"' in waffle
 
-if failures:
-    print("Niri Overview drag/drop contract regression(s):")
-    for failure in failures:
-        print("  - " + failure)
-    raise SystemExit(1)
-
-print("Niri Overview drag/drop contract: PASS")
+# Execute the SAME QML-imported pure JS projection in Node. Assert that
+# repeated A->B->A drags, source column reflow and model reordering never
+# change a sibling's window/app identity.
+program = r"""
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const vm = require('node:vm');
+const context = {};
+vm.createContext(context);
+vm.runInContext(fs.readFileSync(process.argv[1], 'utf8'), context);
+const ws = [{id: 2, idx: 2}, {id: 3, idx: 3}];
+const w = (id, app_id, workspace_id, col) => ({
+    id, app_id, workspace_id, layout: {pos_in_scrolling_layout: [col, 1]}
+});
+const project = windows => context.buildWindowItems(windows, ws, 0, 2);
+const states = [
+    [w(41, 'kitty', 2, 1), w(4, 'ChatGPT', 3, 1)],
+    [w(41, 'kitty', 3, 2), w(4, 'ChatGPT', 3, 1)],
+    [w(4, 'ChatGPT', 3, 1), w(41, 'kitty', 2, 1)],
+    [w(41, 'kitty', 3, 1), w(4, 'ChatGPT', 2, 1)],
+    [w(4, 'ChatGPT', 3, 1), w(41, 'kitty', 2, 1)],
+];
+for (const windows of states) {
+    const records = project(windows);
+    assert.equal(records.length, 2);
+    assert.equal(new Set(Array.from(records, r => r.id)).size, 2);
+    for (const window of windows) {
+        const record = context.findWindowRecord(records, window.id);
+        assert.ok(record);
+        assert.equal(record.id, window.id);
+        assert.equal(record.window.id, window.id);
+        assert.equal(record.window.app_id, window.app_id);
+        assert.equal(record.window.workspace_id, window.workspace_id);
+        assert.equal(record.window.layout.pos_in_scrolling_layout[0],
+                     window.layout.pos_in_scrolling_layout[0]);
+    }
+}
+assert.equal(context.findWindowRecord(project(states[0]), 999), null);
+assert.equal(project([]).length, 0);
+assert.equal(project([states[0][0], states[0][0]]).length, 1);
+console.log('Niri Overview authoritative identity/reflow: PASS (5 states)');
+"""
+subprocess.run(["node", "-e", program, str(js)], check=True)
+print("Niri Overview drag/render contracts: PASS")

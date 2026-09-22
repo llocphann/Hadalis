@@ -9,6 +9,7 @@ import QtQuick
 import QtQuick.Layouts
 import Quickshell
 import Quickshell.Wayland
+import "NiriOverviewModel.js" as OverviewModel
 
 Item {
     id: root
@@ -161,20 +162,16 @@ Item {
     property int draggingFromWorkspace: -1
     property int draggingTargetWorkspace: -1
 
+    function resetDragState(): void {
+        root.draggingWindowId = -1
+        root.draggingFromWorkspace = -1
+        root.draggingTargetWorkspace = -1
+    }
+
     readonly property real presentationMargin:
         root.embeddedSurface ? 0 : Appearance.sizes.elevationMargin
     implicitWidth: overviewBackground.implicitWidth + root.presentationMargin * 2
     implicitHeight: overviewBackground.implicitHeight + root.presentationMargin * 2
-
-    Timer {
-        id: dragCleanupTimer
-        interval: 100
-        onTriggered: {
-            root.draggingWindowId = -1
-            root.draggingFromWorkspace = -1
-            root.draggingTargetWorkspace = -1
-        }
-    }
 
     function openWindowContext(windowItem, mouseX, mouseY) {
         if (!windowItem || !windowItem.windowData) return
@@ -454,10 +451,11 @@ Item {
                             DropArea {
                                 anchors.fill: parent
                                 onEntered: {
-                                    root.draggingTargetWorkspace = workspace.workspaceObj ? workspace.workspaceObj.id : -1
-                                    if (root.draggingFromWorkspace === root.draggingTargetWorkspace)
+                                    if (root.draggingWindowId < 0)
                                         return
-                                    hoveredWhileDragging = true
+                                    root.draggingTargetWorkspace = workspace.workspaceObj?.id ?? -1
+                                    hoveredWhileDragging = root.draggingTargetWorkspace >= 0
+                                        && root.draggingFromWorkspace !== root.draggingTargetWorkspace
                                 }
                                 onExited: {
                                     hoveredWhileDragging = false
@@ -480,82 +478,15 @@ Item {
             property var windowItems: []
             
             function rebuildWindowItems() {
-                if (!root.presentationActive) {
-                    windowItems = []
-                    return
-                }
-                
-                const wins = NiriService.windows || []
-                const wsList = root.workspacesForOutput || []
-                if (wsList.length === 0 || wins.length === 0) {
-                    windowItems = []
-                    return
-                }
-
-                const workspaceSlotById = {}
-                for (let i = 0; i < wsList.length; ++i) {
-                    const ws = wsList[i]
-                    if (ws)
-                        workspaceSlotById[ws.id] = i
-                }
-
-                const startSlot = root.firstVisibleWorkspaceSlot
-                const endSlot = Math.min(startSlot + root.workspacesShown - 1, wsList.length - 1)
-
-                const collected = []
-                const counters = {}
-                const countsPerWorkspace = {}
-                const maxPerWorkspace = {}
-
-                for (let i = 0; i < wins.length; ++i) {
-                    const w = wins[i]
-                    const slot = workspaceSlotById[w.workspace_id]
-                    if (slot === undefined)
-                        continue
-                    if (slot < startSlot || slot > endSlot)
-                        continue
-
-                    const wsNumber = slot + 1
-
-                    const pos = w.layout && w.layout.pos_in_scrolling_layout ? w.layout.pos_in_scrolling_layout : [1, 1]
-                    const col = pos.length >= 1 && pos[0] ? pos[0] : 1
-                    const row = pos.length >= 2 && pos[1] ? pos[1] : 1
-
-                    const keyWs = wsNumber.toString()
-                    countsPerWorkspace[keyWs] = (countsPerWorkspace[keyWs] || 0) + 1
-                    const info = maxPerWorkspace[keyWs] || { maxCol: 1, maxRow: 1 }
-                    info.maxCol = Math.max(info.maxCol, col)
-                    info.maxRow = Math.max(info.maxRow, row)
-                    maxPerWorkspace[keyWs] = info
-
-                    collected.push({ window: w, workspaceNumber: wsNumber, workspaceSlot: slot })
-                }
-
-                const result = []
-                for (let i = 0; i < collected.length; ++i) {
-                    const entry = collected[i]
-                    const wsKey = entry.workspaceNumber.toString()
-                    const key = wsKey
-                    const count = counters[key] || 0
-                    counters[key] = count + 1
-
-                    const gridInfo = maxPerWorkspace[wsKey] || { maxCol: 1, maxRow: 1 }
-
-                    result.push({
-                        "id": entry.window.id,
-                        "window": entry.window,
-                        "workspaceNumber": entry.workspaceNumber,
-                        "workspaceSlot": entry.workspaceSlot,
-                        "indexInWorkspace": count,
-                        "windowCount": countsPerWorkspace[wsKey] || 1,
-                        "maxCol": gridInfo.maxCol,
-                        "maxRow": gridInfo.maxRow
-                    })
-                }
-
-                windowItems = result
+                windowItems = root.presentationActive
+                    ? OverviewModel.buildWindowItems(
+                        NiriService.windows || [],
+                        root.workspacesForOutput || [],
+                        root.firstVisibleWorkspaceSlot,
+                        root.workspacesShown)
+                    : []
             }
-            
+
             Connections {
                 target: NiriService
                 enabled: root.presentationActive
@@ -581,6 +512,7 @@ Item {
                         windowSpace.rebuildWindowItems()
                         WindowPreviewService.captureForTaskView()
                     } else {
+                        root.resetDragState()
                         windowSpace.windowItems = []
                     }
                 }
@@ -594,44 +526,33 @@ Item {
 
             Repeater {
                 model: ScriptModel {
-                    // rebuildWindowItems() creates fresh records whenever Niri
-                    // publishes layout/workspace changes. Track them by the
-                    // stable compositor window id so delegate-local drag state
-                    // cannot migrate to a sibling during workspace reflow.
-                    objectProp: "id"
-                    values: windowSpace.windowItems
+                    // Delegate identity is a primitive compositor window ID.
+                    // Reflow updates the record, never the identity.
+                    values: windowSpace.windowItems.map(record => record.id)
                 }
 
                 delegate: Item {
                     id: windowItem
-                    required property var modelData
+                    required property int modelData
+                    readonly property int windowId: modelData
+                    readonly property var windowRecord:
+                        OverviewModel.findWindowRecord(windowSpace.windowItems, windowItem.windowId)
+                    readonly property var windowData: windowRecord?.window ?? null
+                    readonly property int workspaceNumber: windowRecord?.workspaceNumber ?? 0
+                    readonly property int workspaceSlot: windowRecord?.workspaceSlot ?? -1
+                    readonly property int indexInWorkspace: windowRecord?.indexInWorkspace ?? 0
+                    readonly property int windowCount: windowRecord?.windowCount ?? 1
+                    readonly property int workspaceMaxCol: windowRecord?.maxCol ?? 1
+                    readonly property int workspaceMaxRow: windowRecord?.maxRow ?? 1
 
-                    readonly property var windowData: modelData.window
-                    readonly property int workspaceNumber: modelData.workspaceNumber
-                    readonly property int workspaceSlot: modelData.workspaceSlot
-                    readonly property int indexInWorkspace: modelData.indexInWorkspace
-                    readonly property int windowCount: modelData.windowCount || 1
-
-                    readonly property int workspaceMaxCol: modelData.maxCol || 1
-                    readonly property int workspaceMaxRow: modelData.maxRow || 1
-
-                    // MouseArea.drag.target writes x/y imperatively, which breaks the
-                    // bindings below for the lifetime of a reused delegate. Keep a
-                    // transient destination slot during a cross-workspace drop so
-                    // the preview snaps inside the target frame immediately; once
-                    // Niri publishes the authoritative workspace, drop the override.
-                    property int pendingWorkspaceSlot: -1
-                    readonly property int effectiveWorkspaceSlot:
-                        pendingWorkspaceSlot >= 0 ? pendingWorkspaceSlot : workspaceSlot
-                    readonly property int workspaceIndex:
-                        effectiveWorkspaceSlot - root.firstVisibleWorkspaceSlot
+                    readonly property int workspaceIndex: workspaceSlot - root.firstVisibleWorkspaceSlot
                     readonly property int workspaceColIndex: workspaceIndex % root.overviewColumns
                     readonly property int workspaceRowIndex: Math.floor(workspaceIndex / root.overviewColumns)
-
                     readonly property real xOffset: (root.workspaceImplicitWidth + workspaceSpacing) * workspaceColIndex
                     readonly property real yOffset: (root.workspaceImplicitHeight + workspaceSpacing) * workspaceRowIndex
 
                     function restoreOverviewPosition(): void {
+                        // MouseArea.drag.target changes x/y imperatively.
                         windowItem.x = Qt.binding(function() {
                             return windowItem.baseX + windowItem.tileMargin
                         })
@@ -640,13 +561,12 @@ Item {
                         })
                     }
 
-                    onWorkspaceSlotChanged: {
-                        if (pendingWorkspaceSlot >= 0
-                                && workspaceSlot === pendingWorkspaceSlot)
-                            pendingWorkspaceSlot = -1
+                    Component.onDestruction: {
+                        if (root.draggingWindowId === windowItem.windowId)
+                            root.resetDragState()
                     }
 
-                    readonly property var layoutPos: (windowData.layout && windowData.layout.pos_in_scrolling_layout) ? windowData.layout.pos_in_scrolling_layout : [1, 1]
+                    readonly property var layoutPos: windowData?.layout?.pos_in_scrolling_layout ?? [1, 1]
                     readonly property int layoutCol: layoutPos.length >= 1 && layoutPos[0] ? layoutPos[0] : 1
                     readonly property int layoutRow: layoutPos.length >= 2 && layoutPos[1] ? layoutPos[1] : 1
 
@@ -670,46 +590,12 @@ Item {
                     y: baseY + tileMargin
                     width: Math.max(10, tileWidth - 2 * tileMargin)
                     height: Math.max(10, tileHeight - 2 * tileMargin)
-                    z: root.windowZ
+                    z: windowItem.Drag.active ? root.windowDraggingZ : root.windowZ
 
-                    Behavior on x {
-                        enabled: !windowItem.Drag.active
-                            && root.draggingWindowId < 0
-                            && root.localGeometryAnimationReady
-                            && Appearance.animationsEnabled
-                        NumberAnimation {
-                            duration: Appearance.animation.elementMoveFast.duration
-                            easing.type: Appearance.animation.elementMoveFast.type
-                            easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve
-                        }
-                    }
-                    Behavior on y {
-                        enabled: !windowItem.Drag.active
-                            && root.draggingWindowId < 0
-                            && root.localGeometryAnimationReady
-                            && Appearance.animationsEnabled
-                        NumberAnimation {
-                            duration: Appearance.animation.elementMoveFast.duration
-                            easing.type: Appearance.animation.elementMoveFast.type
-                            easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve
-                        }
-                    }
-
-                    readonly property var toplevel: {
-                        const tlMap = ToplevelManager.toplevels
-                        if (!tlMap || !tlMap.values)
-                            return null
-                        const arr = Array.from(tlMap.values)
-                        for (let i = 0; i < arr.length; ++i) {
-                            const tl = arr[i]
-                            if (!tl)
-                                continue
-                            const match = NiriService.findNiriWindow(tl)
-                            if (match && match.niriWindow && match.niriWindow.id === windowData.id)
-                                return tl
-                        }
-                        return null
-                    }
+                    // A sibling may change Niri column when another window
+                    // leaves. Never animate it as if it followed the drag.
+                    // The unused heuristic toplevel match is also retired:
+                    // this surface renders directly from exact Niri IDs.
 
                     property bool hovered: false
                     property bool pressed: false
@@ -741,51 +627,34 @@ Item {
                             border.width: windowItem.hovered || windowItem.pressed ? 1 : 0
                         }
 
-                        // Window preview image
+                        // Preview source is a binding on the current immutable
+                        // window id and reactive cache; never retain another
+                        // window's URL in delegate-local mutable state.
                         readonly property bool showPreviews: root.taskViewMode || Config.options?.overview?.showPreviews !== false
                         Image {
                             id: windowPreview
                             anchors.fill: parent
                             anchors.margins: 2
-                            property string previewUrl: ""
-                            source: parent.showPreviews ? previewUrl : ""
+                            source: {
+                                const cache = WindowPreviewService.previewCache
+                                if (!parent.showPreviews || !windowItem.windowData
+                                        || !cache?.[windowItem.windowId])
+                                    return ""
+                                return WindowPreviewService.getPreviewUrl(windowItem.windowId)
+                            }
                             asynchronous: true
                             fillMode: root.taskViewMode ? Image.PreserveAspectFit : Image.PreserveAspectCrop
                             smooth: true
                             mipmap: true
                             visible: parent.showPreviews && status === Image.Ready
                             opacity: status === Image.Ready ? 1 : 0
-
                             Behavior on opacity {
                                 enabled: Appearance.animationsEnabled
-                                NumberAnimation { 
+                                NumberAnimation {
                                     duration: Appearance.animation.elementMoveFast.duration
                                     easing.type: Appearance.animation.elementMoveFast.type
                                     easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve
                                 }
-                            }
-
-                            // Listen for preview updates
-                            Connections {
-                                target: WindowPreviewService
-                                function onPreviewUpdated(updatedId: int): void {
-                                    if (updatedId === windowData.id) {
-                                        windowPreview.previewUrl = WindowPreviewService.getPreviewUrl(updatedId)
-                                    }
-                                }
-                                function onCaptureComplete(): void {
-                                    const url = WindowPreviewService.getPreviewUrl(windowData.id)
-                                    if (url) windowPreview.previewUrl = url
-                                }
-                            }
-                            
-                            Component.onCompleted: {
-                                Qt.callLater(() => {
-                                    if (windowData && windowData.id) {
-                                        const url = WindowPreviewService.getPreviewUrl(windowData.id)
-                                        if (url) previewUrl = url
-                                    }
-                                })
                             }
                         }
 
@@ -802,8 +671,9 @@ Item {
                                 return size;
                             }
                             height: width
-                            source: AppSearch.getIconSource(windowData.app_id || windowData.appId || "")
-                            asynchronous: true
+                            source: windowItem.windowData
+                                ? AppSearch.getIconSource(windowItem.windowData.app_id || windowItem.windowData.appId || "")
+                                : ""
                             fillMode: Image.PreserveAspectFit
                             opacity: windowPreview.visible ? (root.taskViewMode ? 0 : 0.6) : 1.0
                             Behavior on opacity {
@@ -825,7 +695,7 @@ Item {
                             id: windowMouseArea
                             anchors.fill: parent
                             hoverEnabled: true
-                            drag.target: windowItem
+                            drag.target: (windowMouseArea.pressedButtons & Qt.LeftButton) ? windowItem : null
                             acceptedButtons: Qt.LeftButton | Qt.MiddleButton | Qt.RightButton
                             property real pressX: 0
                             property real pressY: 0
@@ -834,23 +704,16 @@ Item {
                             onPressed: (mouse) => {
                                 if (!windowData)
                                     return
-                                pressX = mouse.x
-                                pressY = mouse.y
-                                if (mouse.button === Qt.RightButton) {
-                                    // Right click opens the context menu; it must
-                                    // never create or reuse a drag transaction.
+                                const point = windowMouseArea.mapToItem(windowSpace, mouse.x, mouse.y)
+                                pressX = point.x
+                                pressY = point.y
+                                if (mouse.button !== Qt.LeftButton)
                                     return
-                                }
 
-                                const draggedId = Number(windowData.id ?? -1)
+                                const draggedId = windowItem.windowId
                                 if (!Number.isFinite(draggedId) || draggedId < 0)
                                     return
 
-                                // A quick A -> B -> A reverse drag can start
-                                // before the previous 100 ms cleanup fires.
-                                // Cancel that stale timer before publishing the
-                                // new transaction so it cannot clear this drag.
-                                dragCleanupTimer.stop()
                                 root.draggingWindowId = draggedId
                                 root.draggingTargetWorkspace = -1
 
@@ -863,87 +726,51 @@ Item {
                                 windowItem.Drag.hotSpot.y = mouse.y
                             }
                             onReleased: (event) => {
-                                const dx = Math.abs(event.x - pressX)
-                                const dy = Math.abs(event.y - pressY)
-                                const isClick = dx <= 4 && dy <= 4
-                                const draggedWindowId = root.draggingWindowId
-
+                                const point = windowMouseArea.mapToItem(windowSpace, event.x, event.y)
+                                const isClick = Math.abs(point.x - pressX) <= 4
+                                    && Math.abs(point.y - pressY) <= 4
                                 if (event.button === Qt.RightButton) {
                                     if (isClick && windowData)
                                         root.openWindowContext(windowItem, event.x, event.y)
-                                    windowItem.pressed = false
-                                    windowItem.Drag.active = false
-                                    root.draggingWindowId = -1
-                                    root.draggingFromWorkspace = -1
-                                    root.draggingTargetWorkspace = -1
+                                    return
+                                }
+                                if (event.button === Qt.MiddleButton) {
+                                    if (isClick && windowData)
+                                        NiriService.closeWindow(windowItem.windowId)
                                     return
                                 }
 
+                                const draggedWindowId = root.draggingWindowId
                                 const fromWorkspace = root.draggingFromWorkspace
                                 const targetWorkspace = root.draggingTargetWorkspace
                                 windowItem.pressed = false
                                 windowItem.Drag.active = false
-                                dragCleanupTimer.restart()
+                                windowItem.restoreOverviewPosition()
+                                root.resetDragState()
 
-                                // The delegate/model can legally rebuild after
-                                // compositor events. Never substitute a new
-                                // modelData window for the one captured at press.
-                                if (draggedWindowId < 0) {
-                                    windowItem.pendingWorkspaceSlot = -1
-                                    windowItem.restoreOverviewPosition()
+                                if (draggedWindowId !== windowItem.windowId)
                                     return
-                                }
 
-                                const movedToOtherWorkspace =
-                                    targetWorkspace !== -1
-                                    && targetWorkspace !== fromWorkspace
-
-                                if (movedToOtherWorkspace) {
-                                    const targetSlot = root.workspacesForOutput.findIndex(
-                                        workspace => workspace?.id === targetWorkspace)
-                                    const delegateStillOwnsDraggedWindow =
-                                        !!windowData
-                                        && Number(windowData.id) === draggedWindowId
-                                    windowItem.pendingWorkspaceSlot =
-                                        delegateStillOwnsDraggedWindow && targetSlot >= 0
-                                            ? targetSlot : -1
-
-                                    // Restore declarative x/y immediately. Without this,
-                                    // drag.target leaves the reused delegate at the raw
-                                    // pointer drop coordinate, which can sit above/below
-                                    // the target workspace even after the backend move.
-                                    windowItem.restoreOverviewPosition()
-
-                                    // Overview reorganization must not change the
-                                    // compositor's focused workspace. Niri's
-                                    // focus=true follows a focused dragged window
-                                    // across workspaces; on a reverse drag that
-                                    // perturbs focus/history and can make subsequent
-                                    // layout events act on the wrong workspace.
-                                    // Address the exact captured window id and keep
-                                    // focus on the user's current workspace.
+                                if (targetWorkspace >= 0
+                                        && targetWorkspace !== fromWorkspace
+                                        && root.workspacesForOutput.some(ws => ws?.id === targetWorkspace)) {
+                                    // Never apply an optimistic workspace slot.
+                                    // NiriService.windows triggers the authoritative
+                                    // projection refresh for this one window ID.
                                     NiriService.moveWindowToWorkspaceById(
                                         draggedWindowId, targetWorkspace, false)
-
-                                    // Do not rebuild from the pre-move cache here.
-                                    // NiriService.windows will publish the authoritative
-                                    // workspace/layout update and trigger the model rebuild.
-                                } else {
-                                    windowItem.pendingWorkspaceSlot = -1
-                                    // Same-workspace/cancelled drops also need to repair
-                                    // the x/y bindings broken by MouseArea.drag.target.
-                                    windowItem.restoreOverviewPosition()
-
-                                    // Click behavior (no real drag) uses the same
-                                    // immutable id captured at press.
-                                    if (isClick && event.button === Qt.LeftButton) {
-                                        NiriService.focusWindow(draggedWindowId)
-                                        if (!root.keepOverviewOpenOnWindowClick)
-                                            root.requestPresentationClose()
-                                    } else if (isClick && event.button === Qt.MiddleButton) {
-                                        NiriService.closeWindow(draggedWindowId)
-                                    }
+                                } else if (isClick) {
+                                    NiriService.focusWindow(draggedWindowId)
+                                    if (!root.keepOverviewOpenOnWindowClick)
+                                        root.requestPresentationClose()
                                 }
+                            }
+                            onCanceled: {
+                                windowItem.pressed = false
+                                windowItem.Drag.active = false
+                                windowItem.restoreOverviewPosition()
+                                if (root.draggingWindowId === windowItem.windowId)
+                                    root.resetDragState()
                             }
                         }
                     }

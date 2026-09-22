@@ -564,6 +564,7 @@ if not seen_same_column_edge:
 ir_service = read("services/CodeWorkflowIr.qml")
 canvas = read("modules/settings/CodeWorkflowIrCanvas.qml")
 page = read("modules/settings/CodeWorkflow.qml")
+source_editor = read("modules/settings/CodeWorkflowSourceEditor.qml")
 session = read("services/CodeWorkflowSession.qml")
 persistent = read("modules/common/Persistent.qml")
 
@@ -738,37 +739,41 @@ for token in (
     "CodeWorkflowSession.hasGraphLayout(",
     "CodeWorkflowSession.resetGraphLayout(",
     "readonly property string sourceHighlightDefinition:",
-    "id: sourceSyntaxLoader",
-    "function syncSourceSyntaxHighlighter(): void",
-    '"CodeWorkflowSyntaxHighlighter.qml"',
     "property string sourceDraft:",
     "readonly property bool sourceEditorDirty:",
     "readonly property bool sourceEditorCanSave:",
     "function syncSourceEditorFromDisk(force: bool): void",
     "function saveSourceEditor(): bool",
-    "function openSourceInNeovim(): bool",
-    'AppLauncher.commandFor("terminal")',
-    '"nvim", target',
     'text: "Source Editor · " + root.sourcePath',
     'buttonText: "Save source editor"',
-    'buttonText: "Open source in Neovim"',
-    "text: root.sourceDraft",
-    "readOnly: false",
-    "Keys.onPressed: event =>",
-    "property bool sourceEditorUseNvim: false",
-    'buttonText: root.sourceEditorUseNvim',
-    '"Use embedded Neovim"',
-    "readonly property var embeddedNvimView:",
-    "readonly property bool embeddedNvimBufferModified:",
-    "readonly property string embeddedNvimMode:",
-    "readonly property bool embeddedNvimReady:",
-    "function syncEmbeddedNvimView(): void",
-    "function saveEmbeddedNvim(): bool",
-    "id: embeddedNvimLoader",
-    '"CodeWorkflowNvimView.qml"',
+    "CodeWorkflowSourceEditor {",
+    "draft: root.sourceDraft",
+    "definitionName: root.sourceHighlightDefinition",
+    "onDraftEdited: text =>",
+    "onSaveRequested: root.saveSourceEditor()",
 ):
     if token not in page:
         fail("Code Workflow page missing IR integration " + token)
+
+for token in (
+    'source: "CodeWorkflowSyntaxHighlighter.qml"',
+    'property string mode: "normal"',
+    'readOnly: root.mode !== "insert"',
+    "Keys.onPressed: event =>",
+    "root.moveHorizontal(-1)",
+    "root.moveVertical(1)",
+    'root.setMode("visual")',
+    "root.yankSelection()",
+    "root.deleteSelection(false)",
+    "root.pasteYank(!shift)",
+    "text: root.lineNumberText",
+):
+    if token not in source_editor:
+        fail("Code Workflow modal Source Editor missing " + token)
+
+for forbidden in ("CodeWorkflowNvim", "CodeWorkflowNvimView", "Neovim", "nvim_ui_attach"):
+    if forbidden in page or forbidden in source_editor:
+        fail("Code Workflow must not retain Neovim integration: " + forbidden)
 
 for token in (
     "Inspection and mutation eligibility are separate concerns.",

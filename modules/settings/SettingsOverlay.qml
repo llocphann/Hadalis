@@ -387,6 +387,11 @@ Scope {
         if (requestedPage < 0)
             return false
 
+        // A deep link can arrive before Persistent finishes loading. Preserve
+        // it across navigation initialization; the persisted page must not
+        // silently evict the requested page (and its focused editor).
+        if (!root._navigationInitialized)
+            root._initialDeepLinkPage = requestedPage
         GlobalStates.settingsOverlayRequestedPage = -1
         GlobalStates.settingsOverlayRequestedSection = ""
 
@@ -1928,6 +1933,7 @@ Scope {
     // ── Page definitions (same as settings.qml) ──
     property int overlayCurrentPage: 0
     property bool _navigationInitialized: false
+    property int _initialDeepLinkPage: -1
     property int _prevPage: 0
     property int _slideDir: 1
 
@@ -1941,9 +1947,15 @@ Scope {
         if (root._navigationInitialized || !Persistent.ready)
             return
         const persisted = Persistent.states?.settings?.iiPage ?? 0
-        root.overlayCurrentPage = Math.max(0, Math.min(persisted, root.overlayPages.length - 1))
+        const pending = GlobalStates.settingsOverlayRequestedPage ?? -1
+        const initialPage = root._initialDeepLinkPage >= 0
+            ? root._initialDeepLinkPage
+            : pending >= 0 ? pending : persisted
+        root.overlayCurrentPage = Math.max(0, Math.min(
+            initialPage, root.overlayPages.length - 1))
         root._prevPage = root.overlayCurrentPage
         root._navigationInitialized = true
+        root._initialDeepLinkPage = -1
         root._persistOverlayPage()
     }
 

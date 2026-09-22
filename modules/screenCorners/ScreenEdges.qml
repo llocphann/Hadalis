@@ -205,7 +205,13 @@ Scope {
             layer.enabled: frameShape.physicalShadowActive
             layer.effect: MultiEffect {
                 shadowEnabled: frameShape.physicalShadowActive
+                // blurMax alone only sets the kernel ceiling; without
+                // shadowBlur the effect paints no soft falloff into the
+                // workspace at the four inverted rounded corners.
                 blurMax: Math.max(1, root.physicalShadowSize)
+                shadowBlur: 1.0
+                shadowHorizontalOffset: 0
+                shadowVerticalOffset: 0
                 shadowColor: Qt.alpha(
                     Appearance.m3colors.m3shadow,
                     root.physicalShadowOpacity)

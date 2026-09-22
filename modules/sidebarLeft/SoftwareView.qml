@@ -242,23 +242,11 @@ Item {
             }
 
             // ─── Loading state ───────────────────────────────────
-            ColumnLayout {
+            LoadingText {
                 Layout.fillWidth: true
                 Layout.topMargin: 40
                 visible: AppCatalog.loading
-                spacing: 10
-
-                MaterialLoadingIndicator {
-                    Layout.alignment: Qt.AlignHCenter
-                    loading: true
-                    implicitSize: 32
-                }
-                StyledText {
-                    Layout.alignment: Qt.AlignHCenter
-                    text: Translation.tr("Loading catalog...")
-                    font.pixelSize: Appearance.font.pixelSize.small
-                    color: root.colTextSecondary
-                }
+                color: root.colTextSecondary
             }
 
             // ─── PM not detected ─────────────────────────────────

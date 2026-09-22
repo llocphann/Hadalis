@@ -18,7 +18,7 @@ Item {
     ClippedFilledCircularProgress {
         id: resourceProgress
         anchors.centerIn: parent
-        implicitSize: Math.round(24 * Appearance.fontSizeScale * Appearance.sizes.barModuleScale)
+        implicitSize: Math.round(18 * Appearance.fontSizeScale * Appearance.sizes.barModuleScale)
         value: percentage
         enableAnimation: false
         colPrimary: root.warning ? Appearance.colors.colError : Appearance.colors.colOnLayer0

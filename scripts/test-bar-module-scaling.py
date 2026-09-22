@@ -51,7 +51,7 @@ def main() -> None:
         "modules/verticalBar/VerticalClockWidget.qml": ("Math.round(Appearance.font.pixelSize.large * " + SCALE + ")",),
         "modules/verticalBar/VerticalDateWidget.qml": ("implicitWidth: 24 * " + SCALE,),
         "modules/verticalBar/VerticalMedia.qml": ("implicitSize: Math.round(20 * " + SCALE + ")",),
-        "modules/verticalBar/Resource.qml": ("implicitSize: Math.round(24 * Appearance.fontSizeScale * " + SCALE + ")",),
+        "modules/verticalBar/Resource.qml": ("implicitSize: Math.round(18 * Appearance.fontSizeScale * " + SCALE + ")",),
     }.items():
         check(path, *contracts)
 

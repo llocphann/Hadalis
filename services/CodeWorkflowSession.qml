@@ -24,6 +24,8 @@ Singleton {
     readonly property real minimumZoom: 0.015
     readonly property real maximumZoom: 2.5
     property real zoom: 1
+    // Restored or user-changed viewport must survive Settings page eviction.
+    property bool viewportInitialized: false
     property bool sourcePreviewVisible: true
     property real targetsPaneWidth: 224
     property real inspectorPaneWidth: 280
@@ -127,6 +129,9 @@ Singleton {
             root.semanticAnchor = ""
             root.semanticAnchorNodeId = ""
         }
+        root.viewportInitialized = state.codeWorkflowPanX !== undefined
+            && state.codeWorkflowPanY !== undefined
+            && state.codeWorkflowZoom !== undefined
         root.panX = Number(state.codeWorkflowPanX ?? 32)
         root.panY = Number(state.codeWorkflowPanY ?? 28)
         root.zoom = Math.max(root.minimumZoom, Math.min(
@@ -438,6 +443,7 @@ Singleton {
     function setViewportTransient(
         x: real, y: real, nextZoom: real
     ): void {
+        root.viewportInitialized = true
         root.panX = Number(x)
         root.panY = Number(y)
         root.zoom = Math.max(root.minimumZoom, Math.min(

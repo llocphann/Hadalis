@@ -10,6 +10,7 @@ for token in (
     "import QtQuick.Shapes",
     "readonly property bool narrowLayout:",
     "readonly property bool shallowLayout:",
+    "readonly property bool veryShallowLayout:",
     "id: tabShell",
     "id: inactiveRightShape",
     "id: inactiveLeftShape",
@@ -36,5 +37,6 @@ assert todo.count("id: activeTabPill") == 1
 assert todo.count("Shape {") >= 2
 assert todo.count("PathQuad {") >= 8
 assert "implicitHeight: root.tabControlHeight" in todo
+assert "Layout.minimumHeight: root.veryShallowLayout" in todo
 
 print("Dashboard Todo adaptive layout contract: PASS")

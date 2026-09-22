@@ -24,7 +24,7 @@ for token in (
     'Translation.tr("Done")',
     "root.unfinishedTasks.length",
     "root.doneTasks.length",
-    "visible: !root.narrowLayout",
+    "visible: !root.narrowLayout && !root.veryShallowLayout",
     'Translation.tr("Prepare Obsidian")',
     'Translation.tr("Edit task source")',
     'Translation.tr("Add task")',

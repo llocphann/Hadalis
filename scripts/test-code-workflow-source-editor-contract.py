@@ -102,6 +102,36 @@ require(tap_block, "editor.forceActiveFocus()",
 if "root.enterInsertAt(position)" in tap_block:
     fail("pointer click must not enter Insert mode")
 
+# Modal navigation must have a focus-gated shortcut route in addition to
+# TextEdit's Keys handler: read-only TextEdit can lose bare-letter events.
+motion_start = editor.index("function handleMotionKey(")
+motion_end = editor.index("function applyVisualSelection(", motion_start)
+motion = editor[motion_start:motion_end]
+for key, call in (
+    ("H", "root.moveHorizontal(-1)"),
+    ("J", "root.moveVertical(1)"),
+    ("K", "root.moveVertical(-1)"),
+    ("L", "root.moveHorizontal(1)"),
+):
+    require(motion, "case Qt.Key_" + key + ": " + call,
+            "modal " + key.lower() + " must navigate through shared dispatcher")
+    require(editor, 'sequence: "' + key + '"',
+            "modal motion needs a shortcut fallback")
+    require(editor, "onActivated: root.handleMotionKey(Qt.Key_" + key + ", 0)",
+            "shortcut must share the TextEdit motion dispatcher")
+require(motion, 'root.mode === "insert" || root.findVisible',
+        "modal motion must not intercept Insert or Find/Replace typing")
+require(motion, "Qt.ControlModifier | Qt.AltModifier",
+        "modal motion must not swallow modified shortcuts")
+require(editor, "Keys.priority: Keys.BeforeItem",
+        "modal key handling must precede native read-only TextEdit handling")
+require(editor, "root.handleMotionKey(event.key, event.modifiers)",
+        "focused TextEdit must dispatch modal motions")
+require(editor, 'enabled: editor.activeFocus && root.mode !== "insert"',
+        "fallback must require editor focus and non-Insert mode")
+require(editor, "&& !root.findVisible",
+        "fallback must never steal text from Find/Replace")
+
 root_key_handlers = editor[:editor.index("readonly property int lineCount:")]
 require(root_key_handlers, "Keys.onShortcutOverride: event =>",
         "editor root must intercept Escape before the Settings window shortcut")

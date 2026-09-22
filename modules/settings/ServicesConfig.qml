@@ -18,6 +18,7 @@ ContentPage {
         const parts = String(section ?? "").toLowerCase().split(/[·›]/)
         const label = parts[parts.length - 1].trim()
         if (label.includes("todo") || label.includes("obsidian")
+                || label.includes("zettelkasten") || label.includes("quick note")
                 || label.includes("calendar") || label === "data") {
             root.activeSection = "data"
             return true
@@ -1791,6 +1792,182 @@ ContentPage {
                 color: Appearance.colors.colOnSurfaceVariant
                 font.pixelSize: Appearance.font.pixelSize.small
                 wrapMode: Text.WordWrap
+            }
+        }
+    }
+
+    SettingsCardSection {
+        settingsTaskSection: "data"
+        visible: root.activeSection === "data"
+        expanded: true
+        icon: "note_stack"
+        title: Translation.tr("Quick Notes & Zettelkasten")
+
+        SettingsGroup {
+            ContentSubsection {
+                title: Translation.tr("Canonical quick-note target")
+
+                StyledText {
+                    Layout.fillWidth: true
+                    text: Translation.tr("Dashboard Quick Notes are drafts until capture. A successful capture creates one filesystem-canonical Zettelkasten note, then clears the unchanged draft.")
+                    color: Appearance.colors.colOnSurfaceVariant
+                    font.pixelSize: Appearance.font.pixelSize.small
+                    wrapMode: Text.WordWrap
+                }
+            }
+
+            ColumnLayout {
+                Layout.fillWidth: true
+                spacing: 6
+
+                StyledText {
+                    text: Translation.tr("Vault path override")
+                    color: Appearance.colors.colOnSurfaceVariant
+                    font.pixelSize: Appearance.font.pixelSize.small
+                }
+
+                MaterialTextField {
+                    id: zettelkastenVaultPath
+                    Layout.fillWidth: true
+                    placeholderText: Translation.tr("Leave blank to reuse the Todo Obsidian vault")
+                    font.pixelSize: Appearance.font.pixelSize.small
+                    color: Appearance.colors.colOnSurface
+                    placeholderTextColor: Appearance.colors.colSubtext
+                    text: String(Config.options?.notes?.zettelkasten?.vaultPath ?? "")
+                    background: Rectangle {
+                        color: Appearance.colors.colLayer1
+                        radius: Appearance.rounding.small
+                        border.width: zettelkastenVaultPath.activeFocus ? 2 : 1
+                        border.color: zettelkastenVaultPath.activeFocus
+                            ? Appearance.colors.colPrimary
+                            : Appearance.colors.colLayer0Border
+                    }
+                    onEditingFinished: {
+                        const value = text.trim()
+                        if (value !== String(Config.options?.notes?.zettelkasten?.vaultPath ?? ""))
+                            Config.setNestedValue("notes.zettelkasten.vaultPath", value)
+                    }
+                }
+
+                StyledText {
+                    Layout.fillWidth: true
+                    text: String(Config.options?.notes?.zettelkasten?.vaultPath ?? "").trim().length > 0
+                        ? Translation.tr("Using the dedicated Zettelkasten vault override.")
+                        : Translation.tr("Using Todo's configured Obsidian vault when available.")
+                    color: Appearance.colors.colSubtext
+                    font.pixelSize: Appearance.font.pixelSize.smallest
+                    wrapMode: Text.WordWrap
+                }
+            }
+
+            ColumnLayout {
+                Layout.fillWidth: true
+                spacing: 6
+
+                StyledText {
+                    text: Translation.tr("Zettelkasten folder")
+                    color: Appearance.colors.colOnSurfaceVariant
+                    font.pixelSize: Appearance.font.pixelSize.small
+                }
+
+                MaterialTextField {
+                    id: zettelkastenFolder
+                    Layout.fillWidth: true
+                    placeholderText: "00_Capture/03_Zettelkasten"
+                    font.pixelSize: Appearance.font.pixelSize.small
+                    font.family: Appearance.font.family.monospace
+                    color: Appearance.colors.colOnSurface
+                    placeholderTextColor: Appearance.colors.colSubtext
+                    text: String(Config.options?.notes?.zettelkasten?.folder
+                        ?? "00_Capture/03_Zettelkasten")
+                    background: Rectangle {
+                        color: Appearance.colors.colLayer1
+                        radius: Appearance.rounding.small
+                        border.width: zettelkastenFolder.activeFocus ? 2 : 1
+                        border.color: zettelkastenFolder.activeFocus
+                            ? Appearance.colors.colPrimary
+                            : Appearance.colors.colLayer0Border
+                    }
+                    onEditingFinished: {
+                        const value = text.trim()
+                        if (value.length > 0
+                                && value !== String(Config.options?.notes?.zettelkasten?.folder
+                                    ?? "00_Capture/03_Zettelkasten"))
+                            Config.setNestedValue("notes.zettelkasten.folder", value)
+                    }
+                }
+            }
+
+            ContentSubsection {
+                title: Translation.tr("Default Zettelkasten type")
+
+                ConfigSelectionArray {
+                    Layout.fillWidth: true
+                    currentValue: Config.options?.notes?.zettelkasten?.defaultType ?? "Fleeting"
+                    onSelected: newValue =>
+                        Config.setNestedValue("notes.zettelkasten.defaultType", newValue)
+                    options: [
+                        {
+                            displayName: Translation.tr("Fleeting"),
+                            icon: "bolt",
+                            value: "Fleeting"
+                        },
+                        {
+                            displayName: Translation.tr("Literature"),
+                            icon: "menu_book",
+                            value: "Literature"
+                        },
+                        {
+                            displayName: Translation.tr("Permanent"),
+                            icon: "deployed_code",
+                            value: "Permanent"
+                        }
+                    ]
+                }
+
+                StyledText {
+                    Layout.fillWidth: true
+                    text: Translation.tr("The generated Markdown follows the vault's Zettelkasten schema: id, date, type, zettelkasten tag, aliases, Core Idea, Content, Context & Connections, and Sources & References.")
+                    color: Appearance.colors.colSubtext
+                    font.pixelSize: Appearance.font.pixelSize.smallest
+                    wrapMode: Text.WordWrap
+                }
+            }
+
+            Rectangle {
+                Layout.fillWidth: true
+                implicitHeight: zettelkastenStatusRow.implicitHeight + 18
+                radius: Appearance.rounding.small
+                color: Appearance.colors.colLayer1
+
+                RowLayout {
+                    id: zettelkastenStatusRow
+                    anchors.fill: parent
+                    anchors.margins: 9
+                    spacing: 8
+
+                    MaterialSymbol {
+                        text: Zettelkasten.ready ? "check_circle" : "warning"
+                        iconSize: 18
+                        color: Zettelkasten.ready
+                            ? Appearance.colors.colPrimary
+                            : Appearance.colors.colError
+                    }
+
+                    StyledText {
+                        Layout.fillWidth: true
+                        text: Zettelkasten.ready
+                            ? Translation.tr("Capture target configured: %1/%2")
+                                .arg(Zettelkasten.configuredVaultPath)
+                                .arg(Zettelkasten.folder)
+                            : Translation.tr("Configure a Zettelkasten vault override or the Todo Obsidian vault.")
+                        color: Zettelkasten.ready
+                            ? Appearance.colors.colOnLayer1
+                            : Appearance.colors.colError
+                        font.pixelSize: Appearance.font.pixelSize.small
+                        wrapMode: Text.WrapAnywhere
+                    }
+                }
             }
         }
     }

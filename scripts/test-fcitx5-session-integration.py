@@ -90,7 +90,7 @@ def test_other_ime_and_uninstalled_engine():
         subprocess.run(["bash", str(SESSION)], env=env, check=True)
         check(not (root / "sets.log").exists(),
               "must not override another configured input method")
-        (root / "config/fcitx5/profile").unlink()
+        (root / "config/fcitx5/profile").unlink(missing_ok=True)
         (root / "fcitx-data/unikey.conf").unlink()
         subprocess.run(["bash", str(SESSION)], env=env, check=True)
         check(not (root / "config/fcitx5/profile").exists(),

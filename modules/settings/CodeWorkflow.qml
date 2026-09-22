@@ -157,19 +157,23 @@ Item {
                 id: target.targetId,
                 label: target.label,
                 detail: {
-                    const state = String(
-                        rowRecord?.state ?? target?.state ?? "inactive")
-                    if (state === "resident")
+                    const state = String(rowRecord?.state ?? target?.state ?? "")
+                    const lifecycle = String(
+                        rowRecord?.lifecycle
+                        ?? target?.lifecycle
+                        ?? (state === "resident" ? "visible" : "unloaded"))
+                    if (state === "resident" && lifecycle === "visible")
                         return String(rowRecord?.output ?? "") + " · live"
-                    if (state === "loaded")
-                        return "loaded"
-                    if (state === "loaded-hidden")
+                    if (lifecycle === "visible")
+                        return "visible"
+                    if (lifecycle === "loaded-hidden")
                         return "loaded · hidden"
-                    if (state === "loading")
+                    if (lifecycle === "loading")
                         return "loading"
-                    if (state === "disabled")
-                        return "disabled · source"
-                    return "inactive · source"
+                    if (rowRecord?.configured === false
+                            || target?.configured === false)
+                        return "unloaded · disabled"
+                    return "unloaded · source"
                 },
                 icon: target.icon,
                 depth: Math.min(5, Math.max(
@@ -691,11 +695,13 @@ Item {
                 : ""
     readonly property bool live:
         root.snapshot.records?.some(item =>
-            ["resident", "loaded", "loaded-hidden"].includes(
-                String(item?.state ?? ""))) ?? false
+            String(item?.state ?? "") === "resident"
+            || ["visible", "loaded-hidden"].includes(
+                String(item?.lifecycle ?? item?.state ?? ""))) ?? false
     readonly property bool selectedLive:
-        ["resident", "loaded", "loaded-hidden"].includes(
-            String(root.record?.state ?? ""))
+        String(root.record?.state ?? "") === "resident"
+        || ["visible", "loaded-hidden"].includes(
+            String(root.record?.lifecycle ?? root.record?.state ?? ""))
     readonly property bool pickerAvailable: CodeWorkflowPicker.canBegin
     readonly property bool analyzerMatchesSource:
         CodeWorkflowAnalyzer.sourcePath === root.sourcePath
@@ -1236,19 +1242,24 @@ Item {
     function stateLabel(item): string {
         if (!item)
             return "RUNTIME TARGET NOT DISCOVERED"
-        if (item.state === "resident")
+        const state = String(item.state ?? "")
+        const lifecycle = String(
+            item.lifecycle ?? (state === "resident" ? "visible" : state))
+        if (state === "resident" && lifecycle === "loaded-hidden")
+            return "LIVE · HIDDEN"
+        if (state === "resident")
             return "LIVE · RESIDENT"
-        if (item.state === "loaded")
-            return "LIVE · LOADED"
-        if (item.state === "loaded-hidden")
+        if (lifecycle === "visible")
+            return "VISIBLE"
+        if (lifecycle === "loaded-hidden")
             return "LOADED · HIDDEN"
-        if (item.state === "loading")
+        if (lifecycle === "loading")
             return "LOADING"
-        if (item.state === "inactive")
-            return "INACTIVE · SOURCE"
-        if (item.state === "disabled")
-            return "DISABLED · SOURCE"
-        return String(item.state ?? "unknown").toUpperCase()
+        if (lifecycle === "unloaded" && item.configured === false)
+            return "UNLOADED · DISABLED"
+        if (lifecycle === "unloaded")
+            return "UNLOADED · SOURCE"
+        return lifecycle.length > 0 ? lifecycle.toUpperCase() : "UNKNOWN"
     }
 
     function n(value): string {
@@ -1848,17 +1859,17 @@ Item {
                 }
 
                 Pill {
-                    label: root.record?.state === "loaded-hidden"
+                    label: String(root.record?.lifecycle ?? "") === "loaded-hidden"
                         ? "HIDDEN"
                         : root.selectedLive ? "LIVE" : "SOURCE"
                     accent: root.selectedLive
                         ? Appearance.colors.colPrimary
                         : Appearance.colors.colSubtext
                     StyledToolTip {
-                        text: root.record?.state === "loaded-hidden"
+                        text: String(root.record?.lifecycle ?? "") === "loaded-hidden"
                             ? "Selected target is loaded but currently hidden"
                             : root.selectedLive
-                                ? "Selected target is loaded in the running shell"
+                                ? "Selected target is visible or resident in the running shell"
                                 : "Selected target is available from runtime source metadata"
                     }
                 }
@@ -2319,7 +2330,7 @@ Item {
                         Layout.fillWidth: true
                         visible: root.inspectedSemanticEntry === null
                         text: root.stateLabel(root.record)
-                        color: root.record?.state === "resident"
+                        color: root.selectedLive
                             ? Appearance.colors.colPrimary
                             : Appearance.colors.colSubtext
                     }

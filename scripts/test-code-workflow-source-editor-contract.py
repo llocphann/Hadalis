@@ -142,6 +142,10 @@ require(editor, "onModalCursorPositionChanged: root.ensureCursorVisible()",
         "Normal/Visual motions must keep the modal caret in the viewport")
 require(editor, "property int preferredColumn: -1",
         "vertical motions must retain the desired column across short lines")
+require(editor, "const previousStart = root.lineStart(previousEnd)",
+        "k must land on the immediately previous line, including empty lines")
+if "root.lineStart(Math.max(0, previousEnd - 1))" in editor:
+    fail("k still skips blank lines")
 require(editor, "root.lineNumberAt(root.modalCursorPosition)",
         "Visual line numbers must follow the modal selection cursor")
 

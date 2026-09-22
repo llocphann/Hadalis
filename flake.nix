@@ -37,6 +37,10 @@
         let
           package = pkgs.callPackage ./nix/package.nix { inherit pkgs; };
           workflowParser = pkgs.callPackage ./nix/workflow-parser.nix { inherit pkgs; };
+          workflowFcitx = pkgs.qt6Packages.fcitx5-with-addons.override {
+            withConfigtool = false;
+            addons = [ pkgs.qt6Packages.fcitx5-unikey ];
+          };
         in
         {
           workflow-acceptance = pkgs.mkShell {
@@ -50,6 +54,7 @@
                 pkgs.pkg-config
                 pkgs.wayland
                 pkgs.stdenv.cc
+                workflowFcitx
                 workflowParser
               ];
 
@@ -58,7 +63,7 @@
               package.passthru.qmlDependencies;
             QT_PLUGIN_PATH = lib.makeSearchPath
               "lib/qt-6/plugins"
-              package.passthru.qmlDependencies;
+              (package.passthru.qmlDependencies ++ [ workflowFcitx ]);
             HADALIS_WORKFLOW_MESA_DRIVERS = "${pkgs.mesa.drivers}";
             HADALIS_WORKFLOW_GRAMMAR =
               "${workflowParser}/lib/inir/code-workflow/qmljs.so";

@@ -216,7 +216,8 @@ def main() -> int:
                        + ", " + args.surface + " Settings, private bus/XDG, staged page 30 QML",
         "checks": [],
         "limitations": [
-            "Virtual keyboard tests only the isolated compositor, not user hardware/IME.",
+            "Virtual keyboard tests only the isolated compositor, not user hardware.",
+            "Optional Fcitx5 probe uses keyboard-us rather than a production Unikey profile.",
             "No source Save is triggered; a fixed in-memory test draft is used.",
             "Instrumentation exists only in the staged temporary config.",
         ],
@@ -583,6 +584,14 @@ def main() -> int:
         ]
         probe.record("Real page 30 loaded without QML parse/property errors",
                      not parse_or_type, parse_or_type[-15:])
+        if probe.env.get("HADALIS_WORKFLOW_FCITX") == "1":
+            probe.record("Isolated Fcitx5 daemon responds on Qt session bus",
+                         "HADALIS_FCITX_READY:" in log)
+            qt_fcitx = [line for line in log.splitlines()
+                        if "loaded library" in line.lower()
+                        and "libfcitx5platforminputcontextplugin" in line]
+            probe.record("Qt loaded actual Fcitx5 platform input context",
+                         bool(qt_fcitx), qt_fcitx[-3:])
     except Exception as exc:
         report["failure"] = repr(exc)
         try:

@@ -123,16 +123,26 @@ class Probe:
         self.env['QT_QUICK_CONTROLS_STYLE']='Basic'
         self.env['WAYLAND_DEBUG']='client'
         self.env.pop('HYPRLAND_INSTANCE_SIGNATURE',None)
-        self.start(
-            self.dbus_session([
-                'quickshell',
-                '-p',
-                str(self.directory/'config'),
-                '--no-color',
-            ]),
-            self.env,
-            'quickshell',
-        )
+        shell_command = ['quickshell', '-p', str(self.directory/'config'),
+                         '--no-color']
+        if self.env.get('HADALIS_WORKFLOW_FCITX') == '1':
+            # Start Fcitx inside the same isolated D-Bus session as Qt. An IME
+            # process in another dbus-run-session cannot exercise Qt's real
+            # platform input context. Never touch the user's session daemon.
+            shell_command = [
+                'bash', '-c',
+                'fcitx5 -d || exit 96; '
+                'method=""; '
+                'for attempt in $(seq 1 40); do '
+                'method="$(fcitx5-remote -n 2>/dev/null || true)"; '
+                'test -n "$method" && break; sleep 0.1; '
+                'done; '
+                'test -n "$method" || exit 97; '
+                'echo "HADALIS_FCITX_READY:$method"; '
+                'exec "$@"',
+                'hadalis-fcitx', *shell_command,
+            ]
+        self.start(self.dbus_session(shell_command), self.env, 'quickshell')
         wait_for(lambda: self.snapshot().get('ready'),'Quickshell Bar ready')
 
     def ipc(self, method, *args):

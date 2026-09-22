@@ -166,6 +166,23 @@ jobs:
               --pointer "$RUNNER_TEMP/hadalis-workflow-pointer/pointer"
           '
 
+      - name: Exercise Source Editor with active Fcitx5 on nested Niri
+        env:
+          WORK_DIR: ${{ runner.temp }}/hadalis-wf-fcitx-niri
+          HADALIS_WORKFLOW_FCITX: "1"
+          QT_IM_MODULE: fcitx
+          QT_DEBUG_PLUGINS: "1"
+        run: |
+          rm -rf "$WORK_DIR"
+          nix develop .#workflow-acceptance --command bash -lc '
+            set -euo pipefail
+            python3 scripts/code-workflow/run-editor-headless-niri.py \
+              --work-dir "$WORK_DIR" \
+              --revision "${GITHUB_SHA}" \
+              --sway "$(command -v sway)" \
+              --pointer "$RUNNER_TEMP/hadalis-workflow-pointer/pointer"
+          '
+
       - name: Validate Code Workflow production foundation
         run: nix develop .#workflow-acceptance --command bash -lc 'python3 scripts/test-code-workflow-phase1-contract.py'
 
@@ -360,6 +377,9 @@ jobs:
             ${{ runner.temp }}/hadalis-wf-focus-niri/p/editor-live-report.json
             ${{ runner.temp }}/hadalis-wf-focus-niri/p/*.log
             ${{ runner.temp }}/hadalis-wf-focus-niri/*.log
+            ${{ runner.temp }}/hadalis-wf-fcitx-niri/p/editor-live-report.json
+            ${{ runner.temp }}/hadalis-wf-fcitx-niri/p/*.log
+            ${{ runner.temp }}/hadalis-wf-fcitx-niri/*.log
             ${{ runner.temp }}/hadalis-workflow-apply/apply-lifecycle-report.json
             ${{ runner.temp }}/hadalis-workflow-apply/manifest.json
             ${{ runner.temp }}/hadalis-workflow-apply/*.log

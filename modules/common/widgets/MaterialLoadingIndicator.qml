@@ -1,89 +1,40 @@
 pragma ComponentBehavior: Bound
 import QtQuick
 import qs.modules.common
-import qs.modules.common.functions
 import qs.modules.common.widgets
 
-Rectangle {
+// Gear-only loading state. Preserve size, tint and pull-to-refresh semantics.
+Item {
     id: root
 
     property bool loading: true
-    property double pullProgress: 0
+    property real pullProgress: 0
+    property real implicitSize: 48
+    property color color: Appearance.colors.colPrimary
 
-    // Size, color
-    property double implicitSize: 48
     implicitWidth: implicitSize
     implicitHeight: implicitSize
-    radius: Math.min(width, height) / 2
-    color: Appearance.colors.colPrimaryContainer
-    property double baseShapeSize: root.implicitSize * 0.7
-    property double leapZoomSize: root.baseShapeSize * 1.2
-    property double leapZoomProgress: 0
+    rotation: root.loading ? 0 : -Math.max(0, Math.min(1, root.pullProgress)) * 360
 
-    // Shape
-    property list<var> shapes: [
-        MaterialShape.Shape.SoftBurst,
-        MaterialShape.Shape.Cookie9Sided,
-        MaterialShape.Shape.Pentagon,
-        MaterialShape.Shape.Pill,
-        MaterialShape.Shape.Sunny,
-        MaterialShape.Shape.Cookie4Sided,
-        MaterialShape.Shape.Oval,
-    ]
-    property int shapeIndex: 0
-    property double pullRotation: root.loading ? 0 : -(root.pullProgress * 360)
-    property double continuousRotation: 0
-    property double leapRotation: 0
-    rotation: pullRotation + continuousRotation + leapRotation
-
-    RotationAnimation on continuousRotation {
-        running: root.loading && Appearance.animationsEnabled
-        duration: 12000
-        easing.type: Easing.Linear
-        loops: Animation.Infinite
-        from: 0
-        to: 360
-    }
-    Timer {
-        interval: 800
-        running: root.loading
-        repeat: true
-        onTriggered: leapAnimation.start()
-    }
-    ParallelAnimation {
-        id: leapAnimation
-        PropertyAction { target: root; property: "shapeIndex"; value: (root.shapeIndex + 1) % root.shapes.length }
-        RotationAnimation {
-            target: root
-            direction: RotationAnimation.Shortest
-            property: "leapRotation"
-            to: (root.leapRotation + 90) % 360
-            duration: 350
-            easing.type: Easing.InOutQuad
-        }
-        NumberAnimation {
-            target: root
-            property: "leapZoomProgress"
-            from: 0
-            to: 1
-            duration: 750
-            easing.type: Easing.BezierSpline
-            easing.bezierCurve: Appearance.animationCurves.standard
-        }
-    }
-
-    MaterialShape {
-        id: shape
+    MaterialSymbol {
+        id: gear
         anchors.centerIn: parent
-        shape: root.shapes[root.shapeIndex]
-        implicitSize: {
-            const leapZoomDiff = root.leapZoomSize - root.baseShapeSize
-            const progressFirstHalf = Math.min(root.leapZoomProgress, 0.5) * 2;
-            const progressSecondHalf = Math.max(root.leapZoomProgress - 0.5, 0) * 2;
-            return root.baseShapeSize + leapZoomDiff * progressFirstHalf - leapZoomDiff * progressSecondHalf;
-        }
-        color: Appearance.colors.colOnPrimaryContainer
+        text: "settings"
+        fill: 1
+        iconSize: Math.max(12, Math.min(root.width, root.height) * 0.8)
+        color: root.color
 
-        animation: NumberAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve }
+        RotationAnimation on rotation {
+            running: root.loading && root.visible && Appearance.animationsEnabled
+            from: 0
+            to: 360
+            duration: 1800
+            loops: Animation.Infinite
+            easing.type: Easing.Linear
+            onRunningChanged: {
+                if (!running)
+                    gear.rotation = 0
+            }
+        }
     }
 }

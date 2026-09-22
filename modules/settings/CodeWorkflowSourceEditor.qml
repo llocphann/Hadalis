@@ -21,6 +21,17 @@ Item {
     property bool findCaseSensitive: false
     property int activeFindStart: -1
     property int activeFindEnd: -1
+    // Visual selection moves TextEdit's native caret to the selection end.
+    // Track the actual modal cursor even when selection direction reverses.
+    readonly property int modalCursorPosition: root.mode === "visual"
+        && root.visualCursor >= 0
+        ? root.clampPosition(root.visualCursor) : editor.cursorPosition
+    readonly property rect modalCursorRect: {
+        void(root.documentText)
+        void(editor.width)
+        void(editor.font.pixelSize)
+        return editor.positionToRectangle(root.modalCursorPosition)
+    }
 
     signal draftEdited(string text)
     signal saveRequested()
@@ -697,14 +708,38 @@ Item {
                 readOnly: root.mode !== "insert"
                 selectByMouse: true
                 activeFocusOnTab: true
-                cursorVisible: activeFocus
+                cursorVisible: activeFocus && root.mode === "insert"
                 persistentSelection: true
                 Accessible.name: "Source editor"
                 Accessible.description:
                     "Hot-fix source editor. Click places the cursor in Normal view mode; i enters Insert; v enters Visual; slash or Ctrl+F finds text."
 
                 HoverHandler {
-                    cursorShape: Qt.IBeamCursor
+                    cursorShape: root.mode === "insert"
+                        ? Qt.IBeamCursor : Qt.ArrowCursor
+                }
+
+                TextMetrics {
+                    id: modalCaretMetrics
+                    font: editor.font
+                    text: "M"
+                }
+
+                // Block cursor is independent of the TextEdit selection
+                // and native INSERT caret; reversed Visual selection is valid.
+                Rectangle {
+                    id: modalCaret
+                    visible: editor.activeFocus && root.mode !== "insert"
+                        && !root.findVisible
+                    x: root.modalCursorRect.x
+                    y: root.modalCursorRect.y
+                    width: Math.max(7, modalCaretMetrics.width)
+                    height: Math.max(1, root.modalCursorRect.height)
+                    color: Appearance.colors.colPrimary
+                    opacity: root.mode === "visual" ? 0.48 : 0.66
+                    border.width: 1
+                    border.color: Appearance.colors.colOnLayer1
+                    z: 5
                 }
 
                 TapHandler {
@@ -831,7 +866,7 @@ Item {
                     } else if (event.key === Qt.Key_A) {
                         const at = shift
                             ? root.lineEnd(cursor)
-                            : Math.min(root.documentText.length, cursor + 1)
+                            : Math.min(root.lineEnd(cursor), cursor + 1)
                         root.enterInsertAt(at)
                     } else if (event.key === Qt.Key_O) {
                         const start = root.lineStart(cursor)

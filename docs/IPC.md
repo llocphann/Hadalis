@@ -57,6 +57,32 @@ excluded.
 
 ---
 
+### codeWorkflowRuntime
+
+Internal Code Workflow runtime inspection bridge. This target exists so a
+standalone Settings process can read plain runtime evidence from the main shell
+without sharing QObject references across processes.
+
+| Function | Description |
+|----------|-------------|
+| `snapshot` | Return the current Code Workflow runtime descriptors, lifecycle records, outputs, and recent events as JSON |
+
+---
+
+### codeWorkflowCapture
+
+Internal deterministic capture harness for Code Workflow UI regression tests.
+It is enabled only when the dedicated capture environment is active.
+
+| Function | Description |
+|----------|-------------|
+| `begin` | Snapshot the current Code Workflow UI/session state for a deterministic capture run |
+| `status` | Return the current Code Workflow capture state and geometry diagnostics as JSON |
+| `scenario(name)` | Apply a named deterministic Code Workflow capture scenario |
+| `restore` | Restore the Code Workflow UI/session state saved by `begin` |
+
+---
+
 ### overview
 
 Toggle the workspace overview panel. The one with all your windows looking tiny and organized.

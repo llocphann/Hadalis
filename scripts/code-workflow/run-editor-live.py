@@ -61,7 +61,16 @@ def instrument(config: Path) -> None:
     # temporary archive. This fixture still instantiates the real editor.
     replace_once(
         page, "                        draft: root.sourceDraft\n",
-        '                        draft: "alpha\\n\\nbeta gamma"\n',
+        '                        draft: "alpha\\n\\nbeta gamma"\n'
+        '                        readonly property bool testTargetFilterFocus: targetFilter.activeFocus\n'
+        '                        function testTargetFilterPointNow() { return targetFilter.mapToItem(null, targetFilter.width / 2, targetFilter.height / 2) }\n'
+        '                        function testModeButtonPointNow() { return fixtureModeButton.mapToItem(null, fixtureModeButton.width / 2, fixtureModeButton.height / 2) }\n',
+    )
+    replace_once(
+        page,
+        '                        materialIcon: root.sourceEditorMode === "insert"\n',
+        '                        id: fixtureModeButton\n'
+        '                        materialIcon: root.sourceEditorMode === "insert"\n',
     )
     overlay = config / "modules/settings/SettingsOverlay.qml"
     replace_once(
@@ -105,6 +114,11 @@ def instrument(config: Path) -> None:
                 line: modal.currentLineNumber,
                 text: modal.documentText,
                 focused: modal.testTextEditFocus,
+                filterFocused: modal.testTargetFilterFocus,
+                filterClickX: modal.testTargetFilterPointNow().x,
+                filterClickY: modal.testTargetFilterPointNow().y,
+                modeClickX: modal.testModeButtonPointNow().x,
+                modeClickY: modal.testModeButtonPointNow().y,
                 tapCount: modal.testTapCount,
                 pressCount: modal.testPressCount,
                 pageTapCount: modal.testPageTapCount,
@@ -268,8 +282,20 @@ def main() -> int:
         )
         probe.record("Page opens with Source Editor keyboard focus without IPC focus",
                      auto_focused["mode"] == "normal", auto_focused)
-        # User interaction: compositor pointer click, then literal lowercase
-        # input. No IPC command can set focus/mode between these operations.
+        # The original test began with an *already focused* TextEdit. Reproduce
+        # a genuine user focus transfer first by clicking the Targets filter.
+        before_blur = state()
+        probe.move(before_blur["filterClickX"], before_blur["filterClickY"],
+                   "left", output=before_blur["clickOutput"])
+        blurred = runtime.wait_for(
+            lambda: value if (value := state())["filterFocused"]
+                and not value["focused"] else None,
+            "real filter click transfers focus away from Source Editor",
+        )
+        probe.record("Pointer click on Targets filter genuinely blurs editor",
+                     blurred["mode"] == "normal", blurred)
+
+        # Return through a real compositor click, never a fixture focus call.
         before_click = state()
         probe.record("Editor click target has a real compositor output",
                      before_click["clickOutput"] in probe.outputs(), before_click)
@@ -358,6 +384,42 @@ def main() -> int:
             "physical Escape closes Find and returns to editor")
         probe.record("Escape from Find restores editor focus without closing Settings",
                      probe.snapshot()["settingsOpen"], back)
+
+        # Exercise the real mode toolbar (not setMode via IPC), then
+        # validate navigation again after its pointer/focus transition.
+        before_mode = state()
+        probe.move(before_mode["modeClickX"], before_mode["modeClickY"],
+                   "left", output=before_mode["clickOutput"])
+        mode_insert = runtime.wait_for(
+            lambda: value if (value := state())["mode"] == "insert"
+                and value["focused"] else None,
+            "real mode toolbar click enters INSERT and returns keyboard focus",
+        )
+        probe.record("Toolbar edit action restores TextEdit focus",
+                     mode_insert["mode"] == "insert", mode_insert)
+        probe.move(mode_insert["modeClickX"], mode_insert["modeClickY"],
+                   "left", output=mode_insert["clickOutput"])
+        mode_normal = runtime.wait_for(
+            lambda: value if (value := state())["mode"] == "normal"
+                and value["focused"] else None,
+            "real mode toolbar click returns to NORMAL with keyboard focus",
+        )
+        probe.record("Toolbar view action restores modal keyboard focus",
+                     mode_normal["mode"] == "normal", mode_normal)
+        before_motion = mode_normal["caret"]
+        if before_motion > 0:
+            key("h")
+            expected = before_motion - 1
+        else:
+            key("l")
+            expected = before_motion + 1
+        after_toolbar = runtime.wait_for(
+            lambda: value if (value := state())["caret"] == expected else None,
+            "bare modal motion works after clicking mode toolbar",
+        )
+        probe.record("Modal motion survives toolbar focus transitions",
+                     after_toolbar["focused"] and after_toolbar["mode"] == "normal",
+                     after_toolbar)
 
         # The remaining historical modal regression tests use deterministic
         # IPC document resets only after the physical user journey succeeds.

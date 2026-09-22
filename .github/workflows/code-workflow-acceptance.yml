@@ -123,7 +123,7 @@ jobs:
 
       - name: Exercise Source Editor in nested Niri via real pointer and keyboard
         env:
-          WORK_DIR: ${{ runner.temp }}/hadalis-workflow-editor-niri
+          WORK_DIR: ${{ runner.temp }}/hadalis-wf-editor-niri
         run: |
           rm -rf "$WORK_DIR"
           nix develop .#workflow-acceptance --command bash -lc '
@@ -153,7 +153,7 @@ jobs:
 
       - name: Exercise Source Editor in Settings Focus on nested Niri
         env:
-          WORK_DIR: ${{ runner.temp }}/hadalis-workflow-editor-focus-niri
+          WORK_DIR: ${{ runner.temp }}/hadalis-wf-focus-niri
         run: |
           rm -rf "$WORK_DIR"
           nix develop .#workflow-acceptance --command bash -lc '
@@ -352,14 +352,14 @@ jobs:
             ${{ runner.temp }}/hadalis-workflow-editor/editor-live-report.json
             ${{ runner.temp }}/hadalis-workflow-editor/manifest.json
             ${{ runner.temp }}/hadalis-workflow-editor/*.log
-            ${{ runner.temp }}/hadalis-workflow-editor-niri/probe/editor-live-report.json
-            ${{ runner.temp }}/hadalis-workflow-editor-niri/probe/*.log
-            ${{ runner.temp }}/hadalis-workflow-editor-niri/*.log
+            ${{ runner.temp }}/hadalis-wf-editor-niri/p/editor-live-report.json
+            ${{ runner.temp }}/hadalis-wf-editor-niri/p/*.log
+            ${{ runner.temp }}/hadalis-wf-editor-niri/*.log
             ${{ runner.temp }}/hadalis-workflow-editor-focus/editor-live-report.json
             ${{ runner.temp }}/hadalis-workflow-editor-focus/*.log
-            ${{ runner.temp }}/hadalis-workflow-editor-focus-niri/probe/editor-live-report.json
-            ${{ runner.temp }}/hadalis-workflow-editor-focus-niri/probe/*.log
-            ${{ runner.temp }}/hadalis-workflow-editor-focus-niri/*.log
+            ${{ runner.temp }}/hadalis-wf-focus-niri/p/editor-live-report.json
+            ${{ runner.temp }}/hadalis-wf-focus-niri/p/*.log
+            ${{ runner.temp }}/hadalis-wf-focus-niri/*.log
             ${{ runner.temp }}/hadalis-workflow-apply/apply-lifecycle-report.json
             ${{ runner.temp }}/hadalis-workflow-apply/manifest.json
             ${{ runner.temp }}/hadalis-workflow-apply/*.log

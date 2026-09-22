@@ -21,6 +21,14 @@ def main():
     parser.add_argument('--surface', choices=('rail', 'focus'), default='rail')
     args = parser.parse_args()
     directory = args.work_dir.resolve()
+    # The nested probe also creates Quickshell's by-id IPC socket below its
+    # XDG_RUNTIME_DIR. Linux sockaddr_un.sun_path allows only 107 pathname
+    # bytes plus NUL; a longer CI work-directory silently disables IPC.
+    probe_dir = directory / 'p'
+    projected_ipc = probe_dir / 'runtime/quickshell/by-id/123456789/ipc.sock'
+    if len(os.fsencode(projected_ipc)) > 107:
+        raise ValueError('Nested Quickshell IPC path exceeds Unix socket limit: '
+                         + str(projected_ipc))
     directory.mkdir(parents=True, exist_ok=False)
     runtime = directory/'runtime'
     runtime.mkdir(mode=0o700)
@@ -48,7 +56,7 @@ def main():
     env.update(graphics_env)
     report = {'driver_sha256':sha256(Path(__file__).read_bytes()).hexdigest(),
               'sway_binary_sha256':sha256(args.sway.read_bytes()).hexdigest(),
-              'inner_report':'probe/editor-live-report.json',
+              'inner_report':'p/editor-live-report.json',
               'input_isolation':'Niri winit backend in an owned headless Sway; no desktop pointer ingress',
               'failure':None}
     with (directory/'host.log').open('w') as log:
@@ -75,7 +83,7 @@ def main():
             child_env.update(json.loads(display.read_text()))
             child_env.update(graphics_env)
             command = [sys.executable,str(Path(__file__).with_name('run-editor-live.py')),
-                       '--work-dir',str(directory/'probe'), '--revision', args.revision,
+                       '--work-dir',str(probe_dir), '--revision', args.revision,
                        '--surface', args.surface,
                        '--pointer',str(args.pointer.resolve())]
             report['command'] = command
@@ -94,7 +102,7 @@ def main():
     (directory/'report.json').write_text(json.dumps(report,indent=2)+'\n')
     if report['failure']:
         print(json.dumps(report, indent=2), flush=True)
-        for name in ('host.log', 'probe/niri.log', 'probe/quickshell.log'):
+        for name in ('host.log', 'p/niri.log', 'p/quickshell.log'):
             path = directory/name
             if path.exists():
                 print('--- ' + name + ' ---', flush=True)

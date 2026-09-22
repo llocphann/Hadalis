@@ -149,6 +149,22 @@ if "root.lineStart(Math.max(0, previousEnd - 1))" in editor:
 require(editor, "root.lineNumberAt(root.modalCursorPosition)",
         "Visual line numbers must follow the modal selection cursor")
 
+# o/O must insert above/below with distinct caret destinations. Qt.callLater
+# must never move the caret after a newer native keystroke or source refresh.
+for token in (
+    "function replaceRangeWithCursor(",
+    "const revision = ++root.editRevision",
+    "revision !== root.editRevision || root.documentText !== nextText",
+    "root.editRevision += 1",
+    'const insertAt = shift ? at : at + 1',
+    'root.replaceRangeWithCursor(at, at, "\\n", insertAt)',
+    "root.enterInsertAt(insertAt)",
+):
+    require(editor, token, "o/O must preserve the inserted line's caret")
+if 'root.replaceRange(at, at, "\\n")' in editor:
+    fail("o/O must not use the default queued end-of-insert cursor")
+
+
 root_key_handlers = editor[:editor.index("readonly property int lineCount:")]
 require(root_key_handlers, "Keys.onShortcutOverride: event =>",
         "editor root must intercept Escape before the Settings window shortcut")

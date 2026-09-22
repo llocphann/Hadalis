@@ -182,6 +182,7 @@ ApplicationWindow {
         const settingsSearchIndex = SettingsPageRegistry.searchIndex();
         for (var i = 0; i < settingsSearchIndex.length; i++) {
             var entry = settingsSearchIndex[i];
+            if (!SettingsPageRegistry.isPageApplicable(entry.pageIndex)) continue;
 
             // Skip Waffle Style page if waffle family is not active
             if (wafflePageIndex >= 0 && entry.pageIndex === wafflePageIndex && !isWaffleActive) {
@@ -233,6 +234,7 @@ ApplicationWindow {
         // 2. Buscar en el registro dinámico de widgets
         if (typeof SettingsSearchRegistry !== "undefined") {
             var widgetResults = SettingsSearchRegistry.buildResults(settingsSearchText);
+            widgetResults = widgetResults.filter(r => SettingsPageRegistry.isPageApplicable(r.pageIndex));
             // Filter out Waffle Style widgets if waffle family is not active
             if (!isWaffleActive) {
                 widgetResults = widgetResults.filter(r => r.pageIndex !== wafflePageIndex);

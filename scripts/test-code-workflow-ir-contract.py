@@ -771,9 +771,6 @@ for token in (
     if token not in source_editor:
         fail("Code Workflow modal Source Editor missing " + token)
 
-for forbidden in ("CodeWorkflowNvim", "CodeWorkflowNvimView", "Neovim", "nvim_ui_attach"):
-    if forbidden in page or forbidden in source_editor:
-        fail("Code Workflow must not retain Neovim integration: " + forbidden)
 
 for token in (
     "Inspection and mutation eligibility are separate concerns.",

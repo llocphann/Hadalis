@@ -76,10 +76,18 @@ def main() -> None:
            "Niri workspace hover must not recenter the visible strip around the hovered slot")
     forbid(niri, "start = Math.max(0, total - slots);",
            "Niri final workspace page must not back-shift preview positions")
-    require(niri, "readonly property bool localGeometryAnimationReady:",
-            "Niri Overview must gate local geometry while the parent popup is moving")
-    require(niri, "&& root.localGeometryAnimationReady",
-            "Niri window previews must not tween x/y during connected reveal")
+    # Niri previews now settle compositor-acknowledged positions immediately:
+    # there is no local x/y tween to gate during connected popup reveal.
+    # Retaining the old guard would be a dead patch, not a presentation contract.
+    require(niri, "values: windowSpace.windowItems.map(record => record.id)",
+            "Niri Overview must bind preview delegates to immutable compositor IDs")
+    niri_window_delegate = niri.split("delegate: Item {", 1)[1].split("id: focusedWorkspaceIndicator", 1)[0]
+    forbid(niri_window_delegate, "Behavior on x {",
+           "Niri window tiles must not animate sibling x geometry during reflow")
+    forbid(niri_window_delegate, "Behavior on y {",
+           "Niri window tiles must not animate sibling y geometry during reflow")
+    forbid(niri, "localGeometryAnimationReady",
+           "Niri must not retain the retired local geometry animation guard")
     require(hypr, "readonly property bool localGeometryAnimationReady:",
             "Hyprland Overview must gate local geometry while the parent popup is moving")
     require(hypr, "motionAnimationsEnabled: root.localGeometryAnimationReady",
@@ -91,8 +99,8 @@ def main() -> None:
             "OverviewWindow geometry must obey the parent presentation motion gate")
     require(niri, "function restoreOverviewPosition(): void",
             "Niri Overview drag release must restore x/y bindings")
-    require(niri, "property int pendingWorkspaceSlot: -1",
-            "Niri cross-workspace drag must stage the destination workspace slot")
+    forbid(niri_window_delegate, "pendingWorkspaceSlot",
+           "Niri Overview must not stage an unconfirmed destination workspace")
     require(niri, "windowItem.restoreOverviewPosition()",
             "Niri cross-workspace drop must snap the reused delegate back into workspace geometry")
     require(hypr, "function restoreOverviewPosition(): void",

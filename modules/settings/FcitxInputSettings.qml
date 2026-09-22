@@ -33,6 +33,7 @@ ColumnLayout {
     }
     onInputStateChanged: Qt.callLater(root.syncMethod)
     property string errorText: ""
+    property bool operationFailed: false
     property string infoText: ""
     readonly property bool busy: readProcess.running || writeProcess.running
     readonly property bool canConfigure: inputState.installed && inputState.engineInstalled
@@ -44,16 +45,21 @@ ColumnLayout {
             const response = JSON.parse(String(raw ?? "").trim())
             if (!response || typeof response !== "object")
                 throw new Error("Invalid input method response")
+            root.inputState = response
+            root.loaded = true
             if (exitCode !== 0 || response.ok !== true) {
                 root.errorText = String(response.error ?? Translation.tr("Fcitx5 operation failed."))
-                if (isWrite)
+                if (isWrite) {
+                    root.operationFailed = true
                     root.infoText = ""
+                }
             } else {
-                root.inputState = response
-                root.loaded = true
-                root.errorText = ""
-                if (isWrite)
+                if (isWrite) {
+                    root.operationFailed = false
                     root.infoText = String(response.notice ?? "")
+                }
+                if (!root.operationFailed)
+                    root.errorText = ""
             }
         } catch (error) {
             root.errorText = Translation.tr("Unable to read the Fcitx5 status.")
@@ -70,6 +76,7 @@ ColumnLayout {
         if (root.busy)
             return
         root.errorText = ""
+        root.operationFailed = false
         root.infoText = ""
         writeProcess.command = ["python3", root.bridge, action]
         if (value !== undefined && value !== null)

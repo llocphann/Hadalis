@@ -14,14 +14,44 @@ Item {
 
     property bool editing: false
     property string draft: ""
+    property string draftTabId: ""
+
+    function beginEditing(): void {
+        if (!Notepad.ready)
+            return
+        const tabId = String(Notepad.tabs[Notepad.currentTab]?.id ?? "")
+        if (!tabId)
+            return
+        root.draftTabId = tabId
+        root.draft = Notepad.text
+        root.editing = true
+    }
+
+    function saveDraft(): bool {
+        if (!Notepad.ready || !root.draftTabId)
+            return false
+        // currentTab is shared by Sidebar, Dashboard and corner Quick Notes.
+        // Save back to the note this editor actually opened, even if another
+        // surface switched the global active tab while this draft was open.
+        if (!Notepad.setTabTextById(root.draftTabId, root.draft))
+            return false
+        root.editing = false
+        root.draftTabId = ""
+        textArea.focus = false
+        return true
+    }
+
+    function cancelEditing(): void {
+        root.editing = false
+        root.draftTabId = ""
+        textArea.focus = false
+    }
 
     Connections {
         target: GlobalStates
         function onSidebarLeftOpenChanged() {
-            if (!GlobalStates.sidebarLeftOpen && root.editing) {
-                root.editing = false
-                textArea.focus = false
-            }
+            if (!GlobalStates.sidebarLeftOpen && root.editing)
+                root.cancelEditing()
         }
     }
 
@@ -125,27 +155,20 @@ Item {
                         padding: 0
 
                         onActiveFocusChanged: {
-                            if (activeFocus) {
-                                root.draft = Notepad.text
-                                root.editing = true
-                            }
+                            if (activeFocus && !root.editing)
+                                root.beginEditing()
                         }
 
                         onTextChanged: {
                             if (root.editing) root.draft = text
                         }
 
-                        Keys.onEscapePressed: {
-                            root.editing = false
-                            focus = false
-                        }
+                        Keys.onEscapePressed: root.cancelEditing()
 
                         Keys.onPressed: (event) => {
                             if (event.key === Qt.Key_Return && event.modifiers & Qt.ControlModifier) {
-                                Notepad.setTextValue(root.draft)
-                                root.editing = false
-                                focus = false
-                                event.accepted = true
+                                if (root.saveDraft())
+                                    event.accepted = true
                             }
                         }
                     }
@@ -180,11 +203,7 @@ Item {
                         : Appearance.auroraEverywhere ? Appearance.aurora.colSubSurfaceHover : Appearance.colors.colLayer2Hover
                     colRipple: Appearance.inirEverywhere ? Appearance.inir.colLayer2Active
                         : Appearance.auroraEverywhere ? Appearance.aurora.colSubSurfaceActive : Appearance.colors.colLayer2Active
-                    onClicked: {
-                        root.draft = Notepad.text
-                        root.editing = false
-                        textArea.focus = false
-                    }
+                    onClicked: root.cancelEditing()
 
                     contentItem: Item {
                         MaterialSymbol {
@@ -206,11 +225,7 @@ Item {
                     colBackground: Appearance.inirEverywhere ? Appearance.inir.colPrimary : Appearance.colors.colPrimary
                     colBackgroundHover: Appearance.inirEverywhere ? Appearance.inir.colPrimaryHover : Appearance.colors.colPrimaryHover
                     colRipple: Appearance.inirEverywhere ? Appearance.inir.colPrimaryActive : Appearance.colors.colPrimaryActive
-                    onClicked: {
-                        Notepad.setTextValue(root.draft)
-                        root.editing = false
-                        textArea.focus = false
-                    }
+                    onClicked: root.saveDraft()
 
                     contentItem: RowLayout {
                         id: saveRow

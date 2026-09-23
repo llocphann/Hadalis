@@ -85,6 +85,7 @@ def main() -> None:
         "root.formatLoadAverage(",
         "root.formatUptime(",
         "root.sampleIntervalLabel()",
+        'Translation.tr("history")',
         "function shellGpuBusy(): var {",
         "function shellGpuMemoryKiB(): var {",
         "return found ? total : null",
@@ -162,7 +163,7 @@ def main() -> None:
         "shellWriteBytesPerSec:",
         "if (used === null || used === undefined",
         "const raw = engines[key]",
-        "slice(-60)",
+        "slice(-root.historyLimit)",
         'running: root.samplingEnabled',
     ):
         require(runtime, token, "RuntimeDiagnostics.qml")

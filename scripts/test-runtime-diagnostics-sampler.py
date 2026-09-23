@@ -110,6 +110,18 @@ assert ticks["cpu0"] == (500, 425), ticks
 # values must never be confused with attributed or experimental target metrics.
 source = SAMPLER.read_text(encoding="utf-8")
 for token in (
+    '"childrenRows": child_rows',
+    '"childrenState": child_state',
+    'child_rows = slow_previous.get("childrenRows", [])',
+    'child_state = slow_previous.get("childrenState", {})',
+):
+    if token not in source:
+        raise AssertionError(
+            "process-tree sampling must stay on the slow diagnostics cadence: "
+            + token
+        )
+
+for token in (
     '"scope": "system"',
     '"scope": "shell-process"',
     '"confidence": "kernel"',

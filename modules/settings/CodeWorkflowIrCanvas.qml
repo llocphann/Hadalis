@@ -141,12 +141,39 @@ Item {
         root.marqueeBaseNodeIds = []
         root.clearMarqueeReasoningSnapshot()
         root.clearReasoningSelection()
+        root.rebuildStructureCache()
         if (root.workflowActive)
             root.scheduleEdgeRouteCacheRebuild()
         root.fitInitialGraph()
     }
     readonly property var nodes: root.graph?.nodes ?? []
     readonly property var edges: root.graph?.edges ?? []
+    // Hot routing and hit-test paths resolve node IDs repeatedly. Index graph
+    // structure once per graph replacement instead of linearly scanning the
+    // node array for every edge candidate.
+    property var nodeIndexCache: ({})
+    property var outgoingEdgesCache: ({})
+
+    function rebuildStructureCache(): void {
+        const nodeIndex = ({})
+        for (const node of root.nodes) {
+            const id = String(node?.id ?? "")
+            if (id.length > 0)
+                nodeIndex[id] = node
+        }
+
+        const outgoing = ({})
+        for (const edge of root.edges) {
+            const fromId = String(edge?.from ?? "")
+            if (fromId.length === 0)
+                continue
+            if (!outgoing[fromId])
+                outgoing[fromId] = []
+            outgoing[fromId].push(edge)
+        }
+        root.nodeIndexCache = nodeIndex
+        root.outgoingEdgesCache = outgoing
+    }
 
     readonly property real nodeWidth: 190
     readonly property real nodeHeight: 88
@@ -303,7 +330,7 @@ Item {
     }
 
     function nodeById(nodeId: string): var {
-        const node = root.nodes.find(item => item.id === nodeId) ?? null
+        const node = root.nodeIndexCache[String(nodeId ?? "")] ?? null
         if (!node)
             return null
         const resolved = Object.assign({}, node)
@@ -750,8 +777,7 @@ Item {
         edge, vertical: bool, direction: real
     ): real {
         const fromId = String(edge?.from ?? "")
-        const siblings = root.edges.filter(candidate =>
-            String(candidate?.from ?? "") === fromId)
+        const siblings = (root.outgoingEdgesCache[fromId] ?? []).slice()
         if (siblings.length <= 1)
             return 0
 

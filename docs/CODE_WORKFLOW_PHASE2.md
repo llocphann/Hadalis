@@ -626,8 +626,9 @@ authorization:
 
 - `prove_local_dependency_closure()` now accepts only the exact reviewed source
   expressions `true` and `false` as immediate acyclic terminals. They produce
-  `acyclic-closed-local-closure`, an empty dependency path, and explicit
-  terminal kind/text evidence.
+  `acyclic-closed-local-closure`, reason
+  `reviewed-source-expression-is-direct-boolean-literal`, an empty dependency
+  path, and explicit terminal kind/text evidence.
 - Whitespace-padded literals, numbers, `null`, binary expressions and every
   other source shape outside the existing explicit member subset remain
   UNKNOWN. This gate does not infer safety from generic JavaScript truthiness.

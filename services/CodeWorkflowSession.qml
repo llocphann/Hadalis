@@ -396,7 +396,7 @@ Singleton {
             root.selectedEdgeId = ""
             root.selectedConnectTargetId = ""
             root.selectedSemanticAnchor = ""
-        root.selectedSemanticSourcePath = ""
+            root.selectedSemanticSourcePath = ""
             root.clearSemanticAnchor()
             // Selection changes inspector context, not the unified board viewport.
             // Keep pan/zoom while switching between unrelated components.
@@ -467,7 +467,7 @@ Singleton {
             root.selectedEdgeId = edge.id
             root.selectedConnectTargetId = ""
             root.selectedSemanticAnchor = ""
-        root.selectedSemanticSourcePath = ""
+            root.selectedSemanticSourcePath = ""
             root.selectedNodeId = actionNode.id
             root.clearSemanticAnchor()
             root.persist()

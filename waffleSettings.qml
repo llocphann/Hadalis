@@ -136,6 +136,12 @@ ApplicationWindow {
             name: Translation.tr("Battery"),
             icon: "battery-saver",
             component: Qt.resolvedUrl("modules/waffle/settings/pages/WTlpPage.qml")
+        },
+        {
+            key: "diagnostics",
+            name: Translation.tr("Diagnostics"),
+            icon: "info",
+            component: Qt.resolvedUrl("modules/waffle/settings/pages/WDiagnosticsPage.qml")
         }
     ]
     

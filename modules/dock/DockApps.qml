@@ -581,7 +581,6 @@ Item {
             required property int index
             appToplevel: modelData
             appListRoot: root
-            listIndex: index
             vertical: root.vertical
             dockPosition: root.dockPosition
 

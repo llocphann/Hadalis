@@ -17,8 +17,7 @@ import qs.modules.common.widgets
 Scope {
     id: bar
     // Vertical Hug uses the same structural Bar ownership as horizontal Bar;
-    // legacy transparent-bar state must not remove its body/shadow.
-    readonly property bool showBarBackground: true
+    // its body/shadow stay resident without a compatibility visibility flag.
 
     Variants {
         // For each monitor

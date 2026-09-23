@@ -58,7 +58,7 @@ Bar.StyledPopup {
         root.entryBridgeHeld = false
         if (notesEditorLoader.item) {
             notesEditorLoader.item.flushPendingSave()
-            notesEditorLoader.item.focus = false
+            notesEditorLoader.item.releaseEditorFocus()
         }
         root.editorFocused = false
     }
@@ -76,7 +76,7 @@ Bar.StyledPopup {
         root.entryBridgeHeld = false
         if (notesEditorLoader.item) {
             notesEditorLoader.item.flushPendingSave()
-            notesEditorLoader.item.focus = false
+            notesEditorLoader.item.releaseEditorFocus()
         }
         root.editorFocused = false
     }

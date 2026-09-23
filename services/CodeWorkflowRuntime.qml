@@ -183,6 +183,111 @@ Singleton {
         root.revision++
     }
 
+    function _identitySignature(descriptor): var {
+        return {
+            targetId: String(descriptor?.targetId ?? ""),
+            label: String(descriptor?.label ?? ""),
+            family: String(descriptor?.family ?? ""),
+            kind: String(descriptor?.kind ?? ""),
+            parentId: String(descriptor?.parentId ?? ""),
+            sourcePath: String(descriptor?.sourcePath ?? "")
+        }
+    }
+
+    function identityConflictFields(left, right): var {
+        const conflicts = []
+        for (const field of ["label", "family", "kind", "parentId"]) {
+            const leftValue = String(left?.[field] ?? "").trim()
+            const rightValue = String(right?.[field] ?? "").trim()
+            if (leftValue.length > 0 && rightValue.length > 0
+                    && leftValue !== rightValue)
+                conflicts.push(field)
+        }
+        return conflicts
+    }
+
+    function _identityDescriptors(): var {
+        const descriptors = []
+        for (const token of Object.keys(root.declarations)) {
+            const descriptor =
+                root.declarations[token]?.descriptorSnapshot?.() ?? null
+            if (descriptor
+                    && String(descriptor.targetId ?? "").length > 0)
+                descriptors.push(descriptor)
+        }
+        for (const key of Object.keys(root.entries)) {
+            const descriptor =
+                root.entries[key]?.descriptorSnapshot?.() ?? null
+            if (descriptor
+                    && String(descriptor.targetId ?? "").length > 0)
+                descriptors.push(descriptor)
+        }
+        return descriptors
+    }
+
+    function computeIdentityCollisions(): var {
+        const byTarget = ({})
+        for (const descriptor of root._identityDescriptors()) {
+            const targetId = String(descriptor.targetId ?? "")
+            if (!Array.isArray(byTarget[targetId]))
+                byTarget[targetId] = []
+            byTarget[targetId].push(descriptor)
+        }
+
+        const collisions = []
+        for (const targetId of Object.keys(byTarget).sort()) {
+            const descriptors = byTarget[targetId]
+            if (descriptors.length < 2)
+                continue
+            const baseline = descriptors[0]
+            for (let index = 1; index < descriptors.length; ++index) {
+                const candidate = descriptors[index]
+                const fields = root.identityConflictFields(
+                    baseline, candidate)
+                if (fields.length === 0)
+                    continue
+                collisions.push({
+                    targetId: targetId,
+                    fields: fields,
+                    left: root._identitySignature(baseline),
+                    right: root._identitySignature(candidate)
+                })
+            }
+        }
+        return collisions
+    }
+
+    readonly property var localIdentityCollisions: {
+        const dependency = root.revision
+        if (dependency < 0)
+            return []
+        return root.computeIdentityCollisions()
+    }
+
+    readonly property var identityCollisions: {
+        const dependency = root.revision
+        if (dependency < 0)
+            return []
+        if (!root.hasLocalDeclarations
+                && Array.isArray(root.remoteSnapshot?.identityCollisions))
+            return root.remoteSnapshot.identityCollisions
+        return root.localIdentityCollisions
+    }
+
+    function hasIdentityCollision(targetId: string): bool {
+        const id = String(targetId ?? "")
+        return root.identityCollisions.some(collision =>
+            String(collision?.targetId ?? "") === id)
+    }
+
+    function canonicalTargetRef(targetId: string): var {
+        const id = String(targetId ?? "").trim()
+        if (id.length === 0 || !root.descriptor(id)
+                || root.hasIdentityCollision(id))
+            return null
+        return CodeWorkflowIdentity.targetRef(id)
+    }
+
     function discoveredDescriptors(): var {
         const byTarget = ({})
         for (const token of Object.keys(root.declarations)) {
@@ -413,7 +518,8 @@ Singleton {
             outputs: outputs,
             descriptors: root.discoveredCatalog,
             records: records,
-            events: root.events
+            events: root.events,
+            identityCollisions: root.localIdentityCollisions
         }
     }
 

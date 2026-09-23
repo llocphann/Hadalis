@@ -256,6 +256,7 @@ Item {
         compactRequested: false
     }
 
+    readonly property bool cardStyleEverywhere: false
     readonly property string surfaceDialect: Appearance.surfaceDialectFor("")
     readonly property bool zzzEverywhere: root.surfaceDialect === "zzz"
     readonly property color separatorColor: root.zzzEverywhere
@@ -296,10 +297,13 @@ Item {
     readonly property bool auroraEverywhere: root.surfaceDialect === "aurora" || root.angelEverywhere
 
     readonly property string nativeBlurTopology: Appearance.blurTopology.unsupported
+    readonly property bool nativeBlurGeometryExact:
+        Appearance.blurTopologyExact(root.nativeBlurTopology)
     readonly property bool nativeBlurActive: Appearance.useCompositorBlur(
             "bar", root.nativeBlurTopology)
         && root.nativeBlurAllowed
         && !Appearance.gameModeMinimal
+    readonly property bool zzzDetachedRounded: false
 
     readonly property string leftAction: Config.options?.bar?.leftScrollAction ?? "brightness"
     readonly property string rightAction: Config.options?.bar?.rightScrollAction ?? "volume"
@@ -622,14 +626,17 @@ Item {
         readonly property bool auroraEverywhere:
             root.surfaceDialect === "aurora" || root.angelEverywhere
         readonly property bool gameModeMinimal: Appearance.gameModeMinimal
+        readonly property int cornerStyle: 0
         readonly property bool zzzGlassActive: root.zzzEverywhere
             && Appearance.effectsEnabled
             && (Config.options?.appearance?.zzz?.glass ?? true)
+        readonly property bool floatingStyle: false
 
         anchors {
             fill: parent
             margins: 0
         }
+        readonly property real barMargin: 0
         readonly property bool isBottom: Config.options?.bar?.bottom ?? false
         readonly property QtObject blendedColors: root.blendedColors
 
@@ -650,8 +657,11 @@ Item {
         }
 
         color: {
-            if (root.zzzEverywhere)
-                return barBackground.zzzGlassActive ? "transparent" : Appearance.zzz.chrome
+            if (root.zzzEverywhere) {
+                const zzzBase = cornerStyle === 3
+                    ? Appearance.zzz.chromeAlt : Appearance.zzz.chrome
+                return barBackground.zzzGlassActive ? "transparent" : zzzBase
+            }
             if (root.regaliaEverywhere) return "transparent"
             if (root.angelEverywhere) {
                 const base = blendedColors?.colLayer0 ?? Appearance.colors.colLayer0
@@ -668,6 +678,8 @@ Item {
                         base, Appearance.aurora.compositorOverlayTransparentize)
                 return ColorUtils.applyAlpha(base, 1)
             }
+            if (root.cardStyleEverywhere || cornerStyle === 3)
+                return Appearance.colors.colLayer1
             return Appearance.colors.colLayer0
         }
         Behavior on color {
@@ -682,28 +694,45 @@ Item {
         RegaliaPlate {
             anchors.fill: parent
             visible: root.regaliaEverywhere
-            fillColor: Appearance.regalia.barSurface
+            fillColor: barBackground.floatingStyle
+                ? Appearance.regalia.barSurfaceFloating
+                : Appearance.regalia.barSurface
             radius: barBackground.radius
-            inset: Appearance.regalia.controlInset
-            elevated: false
-            deepFrame: true
+            inset: barBackground.floatingStyle
+                ? Appearance.regalia.surfaceInset : Appearance.regalia.controlInset
+            elevated: barBackground.floatingStyle
+            deepFrame: !barBackground.floatingStyle
             glassEnabled: true
         }
 
         radius: {
             if (root.zzzEverywhere) return 0
             const customRounding = Config.options?.bar?.customRounding ?? -1
-            return customRounding >= 0 ? customRounding : 0
+            if (customRounding >= 0) return customRounding
+            if (root.regaliaEverywhere)
+                return (cornerStyle === 1 || cornerStyle === 3)
+                    ? Appearance.regalia.roundLarge : 0
+            if (root.angelEverywhere)
+                return (cornerStyle === 1 || cornerStyle === 3)
+                    ? Appearance.angel.roundingNormal : 0
+            if (root.inirEverywhere)
+                return (cornerStyle === 1 || cornerStyle === 3)
+                    ? Appearance.inir.roundingNormal : 0
+            if (floatingStyle)
+                return cornerStyle === 3
+                    ? Appearance.rounding.normal : Appearance.rounding.windowRounding
+            return 0
         }
 
         readonly property real zzzRoundEdge:
             (root.zzzEverywhere && Appearance.zzz.round)
                 ? Appearance.zzz.panelRadius : -1
-        readonly property bool zzzHugCorners: zzzRoundEdge >= 0
-        topLeftRadius: zzzHugCorners ? zzzRoundEdge : radius
-        topRightRadius: zzzHugCorners ? zzzRoundEdge : radius
-        bottomLeftRadius: zzzHugCorners ? zzzRoundEdge : radius
-        bottomRightRadius: zzzHugCorners ? zzzRoundEdge : radius
+        readonly property bool zzzHugCorners: zzzRoundEdge >= 0 && cornerStyle === 0
+        readonly property bool zzzAllCorners: zzzRoundEdge >= 0 && floatingStyle
+        topLeftRadius: (zzzAllCorners || zzzHugCorners) ? zzzRoundEdge : radius
+        topRightRadius: (zzzAllCorners || zzzHugCorners) ? zzzRoundEdge : radius
+        bottomLeftRadius: (zzzAllCorners || zzzHugCorners) ? zzzRoundEdge : radius
+        bottomRightRadius: (zzzAllCorners || zzzHugCorners) ? zzzRoundEdge : radius
         Behavior on topLeftRadius {
             enabled: Appearance.animationsEnabled
             NumberAnimation {
@@ -737,8 +766,15 @@ Item {
             }
         }
 
-        border.width: root.zzzEverywhere ? 1
-            : root.angelEverywhere ? Appearance.angel.panelBorderWidth : 0
+        border.width: {
+            if (root.zzzEverywhere) return 1
+            if (root.regaliaEverywhere) return 0
+            if (root.angelEverywhere) return Appearance.angel.panelBorderWidth
+            if (root.inirEverywhere)
+                return (cornerStyle === 1 || cornerStyle === 3) ? 1 : 0
+            if (auroraEverywhere) return floatingStyle ? 1 : 0
+            return floatingStyle ? 1 : 0
+        }
         Behavior on border.width {
             enabled: Appearance.animationsEnabled
             NumberAnimation {
@@ -789,10 +825,10 @@ Item {
 
         Image {
             id: blurredWallpaper
-            x: 0
+            x: -barBackground.barMargin
             y: barBackground.isBottom
-                ? -(root.screen?.height ?? 1080) + barBackground.height
-                : 0
+                ? -(root.screen?.height ?? 1080) + barBackground.height + barBackground.barMargin
+                : -barBackground.barMargin
             width: root.screen?.width ?? 1920
             height: root.screen?.height ?? 1080
             visible: barBackground.auroraEverywhere

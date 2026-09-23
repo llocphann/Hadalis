@@ -37,9 +37,7 @@ MaterialShape { // App icon
     ]
     shape: isUrgent ? urgentShapes[Math.floor(Math.random() * urgentShapes.length)] : MaterialShape.Shape.Circle
 
-    color: Appearance.zzzEverywhere
-        ? (isUrgent ? Appearance.zzz.secondary : Appearance.zzz.paperAlt)
-        : isUrgent ? Appearance.colors.colPrimaryContainer : "transparent"
+    color: isUrgent ? Appearance.colors.colPrimaryContainer : "transparent"
     Loader {
         id: materialSymbolLoader
         // Icon-theme hints such as notify-send's `-i camera-photo` are not
@@ -55,9 +53,7 @@ MaterialShape { // App icon
                     ? "priority_high" : root.guessedMaterialSymbol
             }
             anchors.fill: parent
-            color: Appearance.zzzEverywhere
-                ? (isUrgent ? Appearance.zzz.onSecondary : Appearance.zzz.ink)
-                : isUrgent ? Appearance.colors.colOnPrimaryContainer : Appearance.colors.colOnSecondaryContainer
+            color: isUrgent ? Appearance.colors.colOnPrimaryContainer : Appearance.colors.colOnSecondaryContainer
             iconSize: root.materialIconSize
             horizontalAlignment: Text.AlignHCenter
             verticalAlignment: Text.AlignVCenter
@@ -111,7 +107,7 @@ MaterialShape { // App icon
                     maskSource: Rectangle {
                         width: notifImage.size
                         height: notifImage.size
-                        radius: Appearance.zzzEverywhere ? Appearance.zzz.controlRadius : Appearance.rounding.full
+                        radius: Appearance.rounding.full
                         Behavior on radius {
                             enabled: Appearance.animationsEnabled
                             NumberAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve }

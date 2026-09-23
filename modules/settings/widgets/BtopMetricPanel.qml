@@ -44,6 +44,7 @@ Item {
                     Layout.fillWidth: true
                     spacing: 1
                     StyledText {
+                        textFormat: Text.PlainText
                         Layout.fillWidth: true
                         text: root.title
                         font.weight: Font.DemiBold
@@ -51,6 +52,7 @@ Item {
                         elide: Text.ElideRight
                     }
                     StyledText {
+                        textFormat: Text.PlainText
                         Layout.fillWidth: true
                         visible: root.subtitle.length > 0
                         text: root.subtitle
@@ -61,6 +63,8 @@ Item {
                 }
 
                 StyledText {
+
+                    textFormat: Text.PlainText
                     text: root.valueAvailable
                         ? Math.round(root.numericValue) + "%" : "—"
                     color: root.accentColor
@@ -87,6 +91,8 @@ Item {
             }
 
             StyledText {
+
+                textFormat: Text.PlainText
                 Layout.fillWidth: true
                 text: root.detail
                 color: Appearance.colors.colSubtext
@@ -104,6 +110,8 @@ Item {
             }
 
             StyledText {
+
+                textFormat: Text.PlainText
                 Layout.fillWidth: true
                 text: root.provenance.length > 0
                     ? root.provenance : "—"

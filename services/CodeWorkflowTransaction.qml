@@ -2800,6 +2800,11 @@ Singleton {
     function _finishSignalActionPostconditionIfReady(): void {
         if (reloadState.pendingSignalActionPhase !== "postcondition-checking")
             return
+        if (CodeWorkflowAnalyzer.sourcePath
+                !== reloadState.pendingSignalActionSourcePath
+                || CodeWorkflowAnalyzer.semanticAnchor
+                    !== reloadState.pendingSignalActionInsertedHandlerSemanticAnchor)
+            return
         if (CodeWorkflowAnalyzer.status === "analyzing"
                 || CodeWorkflowAnalyzer.status === "idle")
             return

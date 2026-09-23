@@ -15,10 +15,11 @@ Item {
         && root.value !== undefined
         && Number.isFinite(root.numericValue)
     property string detail: ""
+    property string provenance: ""
     property var samples: []
     property color accentColor: Appearance.colors.colPrimary
 
-    implicitHeight: 126
+    implicitHeight: provenance.length > 0 ? 144 : 126
 
     Rectangle {
         anchors.fill: parent
@@ -90,6 +91,16 @@ Item {
                 samples: root.samples
                 maxValue: 100
                 lineColor: root.accentColor
+            }
+
+            StyledText {
+                Layout.fillWidth: true
+                visible: root.provenance.length > 0
+                text: root.provenance
+                color: Appearance.colors.colSubtext
+                opacity: 0.78
+                font.pixelSize: Appearance.font.pixelSize.smallest
+                elide: Text.ElideRight
             }
         }
     }

@@ -30,6 +30,7 @@ SHELL = ROOT / "shell.qml"
 IPC = ROOT / "scripts" / "lib" / "ipc-registry.sh"
 LAUNCHER = ROOT / "scripts" / "inir"
 DEV_NAV = ROOT / "services" / "DevNavigation.qml"
+CONFIG_DOC = ROOT / "docs" / "CONFIG_SYSTEM.md"
 
 
 def fail(message: str) -> None:
@@ -70,6 +71,7 @@ shell = SHELL.read_text(encoding="utf-8")
 ipc = IPC.read_text(encoding="utf-8")
 launcher = LAUNCHER.read_text(encoding="utf-8")
 dev_nav = DEV_NAV.read_text(encoding="utf-8")
+config_doc = CONFIG_DOC.read_text(encoding="utf-8")
 
 # The physical Screen Edge renderer stays the sole owner of screen rounding.
 forbid(screen_edges, "notificationCenter",
@@ -222,6 +224,11 @@ forbid(layout_editor, 'notifications: { icon: "notifications"',
        "layout editor still exposes retired notification section")
 forbid(layout_editor, "sectionWeights.notifications",
        "layout editor still exposes retired notification/widget balance")
+require(
+    config_doc,
+    "Notification history itself lives in the standalone bottom-right Notification Center.",
+    "config docs must not describe notification history as a Right Sidebar section",
+)
 
 # Shared overlay history uses the same canonical content rather than copying a
 # third renderer.

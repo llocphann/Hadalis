@@ -602,10 +602,13 @@ for token in (
 if "RegExp" in ir_service or ".match(" in ir_service:
     fail("IR service must not regex-parse QML as a source model")
 
+if "Shape.CurveRenderer" in canvas:
+    fail("production Workflow canvas must not use the Phase-0 HOLD Curve renderer")
+
 for token in (
     "CodeWorkflowIr.unifiedGraphFor(root.showInternals)",
     "function onGraphLayoutRevisionChanged(): void",
-    "Qt.callLater(root.rebuildEdgeRouteCache)",
+    "root.scheduleEdgeRouteCacheRebuild()",
     "function nodeLayoutOffset(node): var",
     "function nodeX(node): real",
     "function nodeY(node): real",
@@ -642,7 +645,7 @@ for token in (
     "root.rebuildDragEdgeRouteCache()",
     "CodeWorkflowSession.panX - startPanX",
     "CodeWorkflowSession.panY - startPanY",
-    "Shape.CurveRenderer",
+    "Shape.GeometryRenderer",
     "antialiasing: true",
     "asynchronous: true",
     "z: selectedEdge ? 0.4 : reasoningEdge ? 0.35",
@@ -652,6 +655,11 @@ for token in (
     "id: edgePath",
     'root.graphExtent("x", 1050)',
     'root.graphExtent("y", 570)',
+    "property real cachedWorldWidth: 1050",
+    "property real cachedWorldHeight: 570",
+    "property var graphBoundsCache:",
+    "function computeGraphBounds(): var",
+    "function refreshGeometryCache(): void",
     "function normalizeRoutePoints(points): var",
     "function smoothStepSvg(points): string",
     "function routeFromPoints(points, vertical: bool, direction: real): var",
@@ -679,6 +687,9 @@ for token in (
     "function buildEdgeRouteCache(): var",
     "function rebuildEdgeRouteCache(): void",
     "root.edgeRouteCache = root.buildEdgeRouteCache()",
+    "root.refreshGeometryCache()",
+    "function scheduleEdgeRouteCacheRebuild(): void",
+    "id: edgeRouteRebuildTimer",
     "function edgeTouchesNode(edge, nodeId: string): bool",
     "function rebuildDragEdgeRouteCache(): void",
     "root.dragEdgeRouteCache = cache",
@@ -770,6 +781,12 @@ for token in (
     "availableWidth / Math.max(1, bounds.width)",
     "availableHeight / Math.max(1, bounds.height)",
     "function edgeAt(screenX: real, screenY: real): string",
+    "id: edgeHoverTimer",
+    "interval: 16",
+    "edgeHoverTimer.restart()",
+    "&& !canvasPanArea.pressed",
+    "&& root.activeNodeDragHandler === null",
+    "&& !pinch.active",
     "const edgeId = root.edgeAt(",
     "function edgeInk(kind: string, emphasized: bool): color",
     "id: arrowPath",

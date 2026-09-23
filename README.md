@@ -6,7 +6,7 @@
 > **Target:** `1.0`  
 > **Primary development branch:** `dev`  
 > **Stable baseline:** `stable`  
-> **Scope refresh:** 2026-09-20
+> **Scope refresh:** 2026-09-23
 
 ## 1. Source-of-truth and workflow
 
@@ -20,7 +20,7 @@ Requirement precedence:
 
 Working rules:
 
-- Work directly on **`dev`** unless the maintainer explicitly requests another branch.
+- Work directly on **`dev`**. Do not create or switch to another branch unless the maintainer explicitly requests it.
 - Refetch the latest **`dev` and `stable`** before every significant group of changes and immediately before a write that may conflict with concurrent work.
 - Re-read the current target file and its caller/consumer before changing architecture.
 - Do **not** create a pull request unless explicitly requested.
@@ -35,6 +35,8 @@ Working rules:
 ### 1.1 Fresh-chat handoff — read before editing perimeter/UI geometry
 
 This section is the **maintainer handoff for new chat sessions**. Read it before touching Screen Edge, Bar, popup, Sidebar, Dashboard, Settings overlay or any shared perimeter primitive. If another section appears to conflict with this handoff, the maintainer's newest explicit instruction wins.
+
+**Maintainer workflow lock (2026-09-23):** Hadalis development is `dev`-only. Do not create feature/fix branches and do not open pull requests unless the maintainer explicitly asks for them. Refetch and re-read the latest `dev` target before every write, then commit focused changes directly to `dev`.
 
 **Failed-fix rule — no patch stacking:** when a proposed fix is shown by runtime evidence, regression testing or maintainer acceptance to be ineffective, revert that fix before attempting a replacement. Do not layer a second workaround over the failed approach. Restore the last known-good behavior, identify why the previous approach failed, then implement a materially different root-cause fix. Preserve concurrent unrelated work by reverting only the failed change set when necessary.
 
@@ -145,7 +147,7 @@ The maintainer requires the physical Screen Edge corners to match Caelestia with
 
 Checkboxes below are **release gates**, not an assertion that no partial implementation exists. Check an item only after source review and the relevant local/runtime validation.
 
-> **Current release status (2026-09-20):** completed source-side work is removed from this README once it is no longer active work; historical implementation detail belongs in Git history / `CHANGELOG.md`. The release gates below remain open until their required source audit and authoritative local/runtime validation are complete. Current `dev` already contains the source-side Dashboard/Search crossfade, SongRec geometry cleanup, redesigned Dashboard System Monitor, horizontal Available Modules row, Local Music stop/resume fallback, unified media controls/CAVA work, connected-surface/iRiS implementation, Material-only public theme boundary, ThinkFan integration and broad legacy perimeter-runtime removal. Those implementations are not repeated as completed tasks below; only unresolved validation or cleanup work remains listed.
+> **Current release status (2026-09-23):** completed source-side work is removed from this README once it is no longer active work; historical implementation detail belongs in Git history / `CHANGELOG.md`. The release gates below remain open until their required source audit and authoritative local/runtime validation are complete. Current `dev` already contains the source-side Dashboard/Search crossfade, SongRec geometry cleanup, redesigned Dashboard System Monitor, horizontal Available Modules row, Local Music stop/resume fallback, unified media controls/CAVA work, connected-surface/iRiS implementation, Material-only public theme boundary, ThinkFan integration, broad legacy perimeter-runtime removal and the compact System Monitor popup refinement that reserves a two-digit CPU Load width and adds RPM/Level icons. Material-only cleanup is still actively collapsing remaining live surfaces and is not complete until the active-tree residue audit plus local/runtime validation pass. Those implementations are not repeated as completed tasks below; only unresolved validation or cleanup work remains listed.
 
 ### A. Screen Edge and connected surfaces — P0
 
@@ -234,6 +236,8 @@ Material is the **single canonical Global Theme** for Hadalis 1.0.
 
 Only unresolved runtime findings belong here. Remove an item after the maintainer accepts the fix on the target desktop instead of retaining a completed-history checklist.
 
+- **Settings navigation indicator:** still unresolved. Expanding/collapsing **Headings** can make the active task-tab indicator jump downward. The latest source attempt improved stability but did not eliminate the defect, so it is not accepted. Do not stack another workaround on top; re-audit and remove/replace the failed geometry/lifecycle approach before the next implementation.
+- **System Monitor popup refinement:** the source-side two-digit CPU Load width floor and RPM/Level Material icons are on `dev`; live-validate that CPU changes across one/two digits no longer resize the popup and that the fan metrics remain aligned/readable.
 - **Shell boot integrity:** the duplicate `bindingPhase` declaration in `CodeWorkflowTransaction.qml` has a source fix, but the installed/runtime shell must still be updated and confirmed to start without `Type ... unavailable`, duplicate-identifier or Code Workflow singleton construction failures.
 - **Connected-surface acceptance:** Popup, Left/Right Sidebar, Dashboard, Settings and OSK still require live Niri validation for outward contact geometry, no seam/gap, correct edge ownership, hover transfer/retract and fractional-scale/multi-output behavior. If a visual fix fails acceptance, revert it before trying a different geometry strategy.
 - **Screen Edge / Bar lifecycle:** validate idle/maximized visibility, width/radius/shadow settings, auto-hide ownership and fullscreen enter/exit without stranded or blank Bar content.
@@ -241,7 +245,7 @@ Only unresolved runtime findings belong here. Remove an item after the maintaine
 - **Dashboard/Overview:** validate that SongRec no longer leaves stray geometry, the first mapped Dashboard frame performs the same bottom-owner slide as later opens, Dashboard <-> Applications uses a debounce-aware fade-through as one visual surface without a blank intermediate model/height bounce, the redesigned System Monitor remains readable at compact sizes, Available Modules stay horizontal with overflow scrolling instead of vertical stacking, and Niri Overview drag/drop moves only the captured window while preserving the currently focused workspace across A -> B -> A reverse drags.
 - **Calendar/Weather:** validate responsive Calendar sizing/event interaction and the fixed-footprint two-tab Weather wheel/slide behavior across supported scaling.
 - **ThinkFan/TLP:** validate the installed helper/polkit bridge, profile-level synchronization, promptless active-session authorization and uninstall ownership on the maintainer's hardware.
-- **Material-only cleanup:** run a fresh active-tree residue audit and remove remaining live non-Material Global Theme branches/assets/docs outside intentional migration compatibility.
+- **Material-only cleanup:** source cleanup is actively progressing across remaining leaf/widget/plugin/overlay surfaces. Run a fresh active-tree residue audit and remove any remaining live non-Material Global Theme branches/assets/docs outside intentional migration compatibility before calling this gate complete.
 - **Release gate:** run `bash scripts/validate-maintainer-local.sh` and the Niri/Quickshell live smoke pass on the exact candidate SHA before closing any runtime-sensitive P0 gate.
 
 ## 4. Connected-surface architecture contract
@@ -370,19 +374,21 @@ To avoid future contradictions:
 
 If the maintainer gives a newer explicit instruction, that instruction supersedes this document and this README should be refreshed to match it.
 
-## 11. Current unfinished handoff (2026-09-20)
+## 11. Current unfinished handoff (2026-09-23)
 
 This section contains **unfinished work only**. When an item is source-complete *and* its required local/runtime acceptance has passed, delete it from this section rather than leaving a checked task or a historical implementation narrative.
 
 1. **Boot integrity:** update/reload the maintainer runtime and confirm the Code Workflow Binding lifecycle fix eliminates the startup crash chain through `CodeWorkflowTransaction -> CodeWorkflowSession -> CodeWorkflowRuntime -> CodeWorkflowPicker`. Any new boot blocker takes precedence over visual polish.
-2. **Connected surfaces:** complete live acceptance for iRiS/direct-seam contact geometry across normal ii Popups, Left/Right Sidebar, Dashboard, Settings, Dock and OSK on top/bottom/left/right ownership, fractional scale and multi-output. Preserve the locked physical Screen Edge/Bar geometry.
-3. **Screen Edge / Bar lifecycle:** verify idle/maximized visibility, configurable width/radius/shadow, auto-hide ownership, fullscreen enter/exit, lock/unlock and output transitions without blank or stranded surfaces.
-4. **Music/media:** live-test Local Music Stop/resume after long idle, bulk selection actions, queue operations and the unified Shuffle/Repeat/CAVA surfaces. Validate the 10-band EasyEffects DSP and CAVA lifecycle through pause/resume, player switching and reopen.
-5. **Dashboard/Overview:** visually accept SongRec geometry cleanup, Dashboard <-> Search Applications crossfade, the redesigned System Monitor, the horizontal Available Modules row including narrow-width overflow behavior, and Niri Overview window drag/drop with exact-window ownership and focus-stable A -> B -> A reverse moves.
-6. **Calendar/Weather:** finish responsive layout and gesture/transition smoke tests without introducing a second date/weather backend or screenshot-specific geometry.
-7. **ThinkFan/TLP:** validate installed helper/polkit reconciliation, profile-follow synchronization, active-session authorization and uninstall ownership on supported hardware.
-8. **Material-only cleanup:** continue the active-tree residue audit outside intentional migration shims; remove live non-Material theme branches/assets/docs only when their callers are proven dead.
-9. **Release validation:** run the canonical local validator plus Niri live smoke tests on the exact candidate SHA; keep Hyprland as a compatibility smoke pass.
+2. **Settings task-tab indicator:** the Headings expand/collapse path still makes the indicator jump downward. The previous fix is not accepted; before another attempt, re-audit and remove/replace the failed indicator geometry/lifecycle approach instead of stacking a compensating patch.
+3. **System Monitor popup:** source refinement is present on `dev` (two-digit CPU Load width floor plus RPM/Level icons). Live-validate that one/two-digit CPU changes no longer resize the popup and that the fan row remains aligned.
+4. **Connected surfaces:** complete live acceptance for iRiS/direct-seam contact geometry across normal ii Popups, Left/Right Sidebar, Dashboard, Settings, Dock and OSK on top/bottom/left/right ownership, fractional scale and multi-output. Preserve the locked physical Screen Edge/Bar geometry.
+5. **Screen Edge / Bar lifecycle:** verify idle/maximized visibility, configurable width/radius/shadow, auto-hide ownership, fullscreen enter/exit, lock/unlock and output transitions without blank or stranded surfaces.
+6. **Music/media:** live-test Local Music Stop/resume after long idle, bulk selection actions, queue operations and the unified Shuffle/Repeat/CAVA surfaces. Validate the 10-band EasyEffects DSP and CAVA lifecycle through pause/resume, player switching and reopen.
+7. **Dashboard/Overview:** visually accept SongRec geometry cleanup, Dashboard <-> Search Applications crossfade, the redesigned System Monitor, the horizontal Available Modules row including narrow-width overflow behavior, and Niri Overview window drag/drop with exact-window ownership and focus-stable A -> B -> A reverse moves.
+8. **Calendar/Weather:** finish responsive layout and gesture/transition smoke tests without introducing a second date/weather backend or screenshot-specific geometry.
+9. **ThinkFan/TLP:** validate installed helper/polkit reconciliation, profile-follow synchronization, active-session authorization and uninstall ownership on supported hardware.
+10. **Material-only cleanup:** continue the active-tree residue audit outside intentional migration shims. Recent source work is collapsing remaining Material-incompatible leaf/widget/plugin/overlay branches; keep removing live non-Material theme branches/assets/docs only when their callers are proven dead.
+11. **Release validation:** run the canonical local validator plus Niri live smoke tests on the exact candidate SHA; keep Hyprland as a compatibility smoke pass.
 
 **Failure-handling requirement:** do not fix a failed fix with another patch on top. Once a commit is demonstrated to be ineffective, revert that failed change first (or revert only its exact change set if unrelated concurrent work shares the commit range), then investigate and implement a different root-cause approach.
 
@@ -393,7 +399,7 @@ Copy/paste the following into a new conversation when continuing Hadalis work:
 ```text
 Bạn đang tiếp tục phát triển repo GitHub `llocphann/Hadalis` cho Hadalis 1.0.
 
-Đọc `README.md` trên branch `dev` trước vì đó là development contract + handoff hiện tại. Làm trực tiếp trên `dev`, không tạo PR trừ khi tôi yêu cầu. Trước mỗi nhóm thay đổi quan trọng và ngay trước mỗi write có khả năng conflict, phải refetch cả `dev` và `stable`, kiểm tra commit concurrent, rồi đọc lại target file/caller trên đúng HEAD mới nhất. Không force push và không rewrite shared history.
+Đọc `README.md` trên branch `dev` trước vì đó là development contract + handoff hiện tại. Làm và commit trực tiếp trên `dev`; KHÔNG tạo branch khác và KHÔNG tạo PR trừ khi tôi yêu cầu rõ ràng. Trước mỗi nhóm thay đổi quan trọng và ngay trước mỗi write có khả năng conflict, phải refetch cả `dev` và `stable`, kiểm tra commit concurrent, rồi đọc lại target file/caller trên đúng HEAD mới nhất. Không force push và không rewrite shared history.
 
 TUYỆT ĐỐI không patch chồng patch. Nếu local/runtime test hoặc tôi xác nhận một commit fix không giải quyết được lỗi, phải revert commit/change-set fix không hiệu quả đó trước, khôi phục baseline tốt gần nhất, phân tích lại root cause rồi chọn hướng triển khai khác. Nếu commit chứa cả thay đổi concurrent không liên quan thì revert chính xác phần change-set thất bại bằng một commit riêng; không được giữ workaround sai rồi bồi thêm workaround thứ hai.
 
@@ -410,14 +416,16 @@ Các invariant phải giữ:
 
 Việc còn mở:
 1. Xác nhận shell boot sạch sau fix Code Workflow Binding lifecycle; không còn `Type ... unavailable` hoặc duplicate identifier.
-2. Live-validate connected surfaces Popup/Sidebar/Dashboard/Settings/OSK: đúng edge, không gap, outward contact geometry, hover/retract, fractional scale và multi-output.
-3. Validate Screen Edge/Bar lifecycle: idle/maximized, width/radius/shadow, auto-hide, fullscreen enter/exit, lock/unlock.
-4. Live-test Local Music Stop -> chờ lâu -> Play, bulk selection/Play Selection/Add to Queue, queue ops, Shuffle/Repeat/CAVA trên mọi media surface; validate CAVA + EasyEffects DSP lifecycle.
-5. Visually accept Dashboard: SongRec không còn geometry thừa, Dashboard <-> Search Applications crossfade liền mạch, System Monitor layout mới, Available Modules luôn horizontal và scroll ngang khi thiếu chỗ.
-6. Validate Calendar/Weather responsive layout và wheel/slide behavior.
-7. Validate ThinkFan/TLP helper/polkit/profile sync/uninstall ownership trên hardware thật.
-8. Tiếp tục audit active-tree Material-only residue ngoài migration compatibility.
-9. Chạy canonical local validator + Niri live smoke trên exact candidate SHA; Hyprland chỉ cần compatibility smoke.
+2. Fix dứt điểm Settings task-tab indicator: expand/collapse Headings vẫn làm indicator nhảy xuống dưới; fix trước chưa được accept, không patch chồng lên nó.
+3. Live-validate System Monitor popup refinement: CPU Load đổi giữa 1/2 chữ số không còn làm popup co giãn; RPM/Level icon và alignment đúng.
+4. Live-validate connected surfaces Popup/Sidebar/Dashboard/Settings/OSK: đúng edge, không gap, outward contact geometry, hover/retract, fractional scale và multi-output.
+5. Validate Screen Edge/Bar lifecycle: idle/maximized, width/radius/shadow, auto-hide, fullscreen enter/exit, lock/unlock.
+6. Live-test Local Music Stop -> chờ lâu -> Play, bulk selection/Play Selection/Add to Queue, queue ops, Shuffle/Repeat/CAVA trên mọi media surface; validate CAVA + EasyEffects DSP lifecycle.
+7. Visually accept Dashboard: SongRec không còn geometry thừa, Dashboard <-> Search Applications crossfade liền mạch, System Monitor layout mới, Available Modules luôn horizontal và scroll ngang khi thiếu chỗ.
+8. Validate Calendar/Weather responsive layout và wheel/slide behavior.
+9. Validate ThinkFan/TLP helper/polkit/profile sync/uninstall ownership trên hardware thật.
+10. Tiếp tục audit active-tree Material-only residue ngoài migration compatibility.
+11. Chạy canonical local validator + Niri live smoke trên exact candidate SHA; Hyprland chỉ cần compatibility smoke.
 
 Sau mỗi nhóm thay đổi: refetch trước write, giữ commit atomic, cập nhật README chỉ với việc còn mở, xác nhận HEAD sau commit và báo root cause/goal, file đổi, SHA, source contract và phần local/runtime validation còn lại.
 ```

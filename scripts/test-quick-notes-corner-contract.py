@@ -124,8 +124,11 @@ for token in (
             "shared Notepad must preserve stable tab identity across surfaces")
 
 for token in (
+    'property string quickNotesEditorOutput: ""',
+    "function setQuickNotesEditorOutput(outputName, focused): void",
     "readonly property bool shouldShowQuickNotesCorner:",
     "cornerPanelWindow.quickNotesMonitorAllowed",
+    "screenCorners.quickNotesEditorOutput === outputName",
     "function quickNotesBarTargetsOutput(): bool",
     "quickNotesBarOwnsLeft ? \"left\" : \"bottom\"",
     "Appearance.sizes.verticalBarWidth",
@@ -145,6 +148,9 @@ for token in (
     "GlobalStates.settingsNativeDialogOpen",
     "&& !shouldShowQuickNotesCorner",
     "id: quickNotesCornerLoader",
+    "onActiveChanged:",
+    "onEditorFocusedChanged:",
+    "screenCorners.setQuickNotesEditorOutput(",
     "property bool dwellReady: false",
     "id: quickNotesDwellTimer",
     "Config.options?.quickNotes?.hoverDelayMs ?? 220",

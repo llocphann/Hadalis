@@ -104,6 +104,16 @@ module work, commit directly to `dev`, and never force-push or modify `stable`.
   shell/system evidence only: per-component CPU/RAM/Swap/GPU/Network remains
   unavailable until a reviewed attribution method exists, so Diagnostics must
   still not be described as full btop-equivalent component attribution.
+- Future-target discovery has started at the existing ownership boundaries.
+  Dynamic desktop custom widgets now register loaded instances through
+  `CodeWorkflowRuntimeTarget` using the manifest ID under the Workflow-owned
+  `desktop-widget/custom/<id>` namespace, so a widget installed after build does
+  not require a Diagnostics catalog edit. The shared Tree-sitter semantics also
+  marks Loader/LazyLoader/Repeater, Timer, Process, FileView, dynamic
+  `createObject`/`Qt.createComponent`/`Qt.createQmlObject`/`setSource` and
+  XMLHttpRequest creation as read-only runtime-boundary evidence. Whole-tree
+  cached indexing/reconciliation is still the next discovery step; these parser
+  entries must not yet be described as live runtime instrumentation.
 
 ## Production UI refinement continuation — 2026-09-21
 

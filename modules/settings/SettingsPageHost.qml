@@ -7,6 +7,7 @@ import qs.modules.common
 import qs.modules.common.widgets
 import qs.services
 import "SettingsPageLoadingState.js" as PageLoadState
+import "RuntimeDiagnosticsPageState.js" as DiagnosticsPageState
 
 Item {
     id: root
@@ -56,9 +57,10 @@ Item {
     function _syncDiagnosticsLease() {
         RuntimeDiagnosticsSession.setOwnerCurrent(
             root.diagnosticsLeaseOwner,
-            root.loadEnabled
-                && root.diagnosticsPageIndex >= 0
-                && root.requestedIndex === root.diagnosticsPageIndex)
+            DiagnosticsPageState.shouldLease(
+                root.loadEnabled, root.visible,
+                root.requestedIndex, root.currentIndex,
+                root.diagnosticsPageIndex))
     }
 
     function _sourceFor(index) {
@@ -294,6 +296,8 @@ Item {
         root._syncDiagnosticsLease()
         Qt.callLater(root._requestPage)
     }
+    onCurrentIndexChanged: root._syncDiagnosticsLease()
+    onVisibleChanged: root._syncDiagnosticsLease()
     onLoadEnabledChanged: {
         root._syncDiagnosticsLease()
         if (loadEnabled)

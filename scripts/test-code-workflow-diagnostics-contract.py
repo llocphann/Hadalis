@@ -82,8 +82,8 @@ for token in (
     "function setOwnerCurrent(ownerId: string, current: bool): void",
     "function _remoteCommand(action: string): var",
     '"ipc", "runtimeDiagnostics"',
-    'root._remoteCommand("acquire")',
-    'root._remoteCommand("heartbeat")',
+    'root._pulseRemote("acquire")',
+    'root._pulseRemote("heartbeat")',
     'root._remoteCommand("release")',
     "running: root.pageCurrent",
 ):
@@ -99,16 +99,18 @@ for token in (
     require(shell, token, "main-shell Diagnostics IPC missing " + token)
 
 # Material LRU pages can remain instantiated; lease ownership must follow the
-# requested/current route plus host load state, not Loader visibility or
-# destruction of the Diagnostics page.
+# route that is actually current, plus host visibility and load state.
 for token in (
     'SettingsPageRegistry.pageIndexForKey("diagnostics")',
     'root.workflowHostId + ":diagnostics"',
     "function _syncDiagnosticsLease()",
     "RuntimeDiagnosticsSession.setOwnerCurrent(",
+    'DiagnosticsPageState.shouldLease(',
     "root.loadEnabled",
-    "root.requestedIndex === root.diagnosticsPageIndex",
+    "root.requestedIndex, root.currentIndex,",
     "onRequestedIndexChanged:",
+    "onCurrentIndexChanged: root._syncDiagnosticsLease()",
+    "onVisibleChanged: root._syncDiagnosticsLease()",
     "onLoadEnabledChanged:",
 ):
     require(host, token, "Material current-page Diagnostics lease missing")

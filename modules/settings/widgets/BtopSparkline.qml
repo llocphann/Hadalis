@@ -15,9 +15,13 @@ Item {
         const source = Array.isArray(root.samples) ? root.samples : []
         const values = []
         for (const sample of source) {
+            if (sample === null || sample === undefined) {
+                values.push(null)
+                continue
+            }
             const value = Number(sample)
-            if (Number.isFinite(value))
-                values.push(Math.max(0, value))
+            values.push(Number.isFinite(value)
+                ? Math.max(0, value) : null)
         }
         return values
     }
@@ -61,7 +65,8 @@ Item {
             }
 
             const values = root.safeSamples()
-            if (values.length === 0)
+            if (values.length === 0
+                    || !values.some(value => value !== null))
                 return
 
             const denominator = Math.max(1, Number(root.maxValue))
@@ -73,28 +78,51 @@ Item {
                 0, Math.min(1, value / denominator)) * (h - 2) - 1
 
             if (root.fillGraph) {
-                ctx.beginPath()
-                ctx.moveTo(0, h)
-                for (let index = 0; index < values.length; index++)
-                    ctx.lineTo(pointX(index), pointY(values[index]))
-                ctx.lineTo(w, h)
-                ctx.closePath()
-                ctx.fillStyle = Qt.rgba(
-                    root.lineColor.r,
-                    root.lineColor.g,
-                    root.lineColor.b,
-                    0.16)
-                ctx.fill()
+                let segmentStart = -1
+                for (let index = 0; index <= values.length; index++) {
+                    const value = index < values.length
+                        ? values[index] : null
+                    if (value !== null && segmentStart < 0)
+                        segmentStart = index
+                    if (value !== null)
+                        continue
+                    if (segmentStart < 0)
+                        continue
+
+                    const segmentEnd = index - 1
+                    ctx.beginPath()
+                    ctx.moveTo(pointX(segmentStart), h)
+                    for (let point = segmentStart;
+                            point <= segmentEnd; point++)
+                        ctx.lineTo(pointX(point), pointY(values[point]))
+                    ctx.lineTo(pointX(segmentEnd), h)
+                    ctx.closePath()
+                    ctx.fillStyle = Qt.rgba(
+                        root.lineColor.r,
+                        root.lineColor.g,
+                        root.lineColor.b,
+                        0.16)
+                    ctx.fill()
+                    segmentStart = -1
+                }
             }
 
             ctx.beginPath()
+            let drawing = false
             for (let index = 0; index < values.length; index++) {
+                const value = values[index]
+                if (value === null) {
+                    drawing = false
+                    continue
+                }
                 const x = pointX(index)
-                const y = pointY(values[index])
-                if (index === 0)
+                const y = pointY(value)
+                if (!drawing) {
                     ctx.moveTo(x, y)
-                else
+                    drawing = true
+                } else {
                     ctx.lineTo(x, y)
+                }
             }
             ctx.lineWidth = 1.5
             ctx.lineJoin = "round"
@@ -102,12 +130,17 @@ Item {
             ctx.strokeStyle = root.lineColor
             ctx.stroke()
 
-            const lastX = pointX(values.length - 1)
-            const lastY = pointY(values[values.length - 1])
-            ctx.beginPath()
-            ctx.arc(lastX, lastY, 2.2, 0, Math.PI * 2)
-            ctx.fillStyle = root.lineColor
-            ctx.fill()
+            let lastIndex = values.length - 1
+            while (lastIndex >= 0 && values[lastIndex] === null)
+                lastIndex--
+            if (lastIndex >= 0) {
+                const lastX = pointX(lastIndex)
+                const lastY = pointY(values[lastIndex])
+                ctx.beginPath()
+                ctx.arc(lastX, lastY, 2.2, 0, Math.PI * 2)
+                ctx.fillStyle = root.lineColor
+                ctx.fill()
+            }
         }
     }
 }

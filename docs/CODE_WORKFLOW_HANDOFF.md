@@ -516,7 +516,9 @@ tick. Idle edges also stop tessellating the decorative halo stroke entirely;
 the halo is retained only for selected/reasoning/hovered relations. These changes
 are presentation-only and do not alter graph identity, routing, hit testing,
 selection or transaction authority. Regression contracts lock the indexed lookup,
-atomic culling state and focused-only halo behavior.
+atomic culling state and focused-only halo behavior. Hidden minimaps now also
+drop their per-node marker delegates instead of retaining a duplicate node-binding
+tree while the graph already fits the viewport.
 
 Targets filtering now debounces parser/workspace-index scans for 90 ms, while the
 capture harness keeps synchronous semantics. The Targets ListView recycles its

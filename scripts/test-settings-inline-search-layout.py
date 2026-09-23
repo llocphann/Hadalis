@@ -52,20 +52,51 @@ window = read("settings.qml")
 overlay = read("modules/settings/SettingsOverlay.qml")
 focus = read("modules/settings/SettingsFocus.qml")
 waffle = read("modules/waffle/settings/WSettingsContent.qml")
-for path, source in (("Window", window), ("Overlay", overlay)):
+for path, source, indicator_parent in (
+    ("Window", window, "navRailFlickable.contentItem"),
+    ("Overlay", overlay, "navFlickable.contentItem"),
+):
     for token in (
         "readonly property Item navButton: navBtn",
-        "var btn = item.navButton;",
-        "btn.mapToItem(navCol, 0, 0).y;",
+        "readonly property bool groupIsExpanded:",
+        'visible: navItem.modelData.type === "page" && (navItem.groupIsExpanded || navBtn.toggled)',
+        "function _setTargetGeometry(targetItem)",
+        "targetY = targetItem.mapToItem(sharedNavIndicator.parent, 0, 0).y",
+        "_setTargetGeometry(item.navButton)",
+        "target: navCol",
+        "function onImplicitHeightChanged() { Qt.callLater(sharedNavIndicator.updatePosition); }",
         "anchors.verticalCenter: parent.verticalCenter",
         "function toggleNavGroup(",
         "onYChanged: Qt.callLater(sharedNavIndicator.updatePosition)",
     ):
         assert token in source, f"{path}: nav alignment contract missing {token}"
     assert "item.children[1]" not in source, f"{path}: positional child lookup returned"
+    assert f"parent: {indicator_parent}" in source, (
+        f"{path}: indicator must live on the Flickable content layer"
+    )
+    assert "parent: navCol" not in source, (
+        f"{path}: indicator returned to ColumnLayout-managed geometry"
+    )
     assert 'navPageOrder: visibleNavItems.filter' not in source, (
         f"{path}: collapsed groups must remain keyboard-reachable"
     )
+
+    assert "_setTargetGeometry(header.navHeaderItem)" not in source, (
+        f"{path}: selected indicator must never retarget to a category heading"
+    )
+    assert "var activeGroupIndex = -1" not in source, (
+        f"{path}: heading fallback state returned"
+    )
+
+    nav_model = source.split("readonly property var visibleNavItems: {", 1)[1].split(
+        "// Ordered page indices", 1
+    )[0]
+    for token in ("entry.groupIndex = c;", "entry.groupPageIndices = catPages;"):
+        assert token in nav_model, f"{path}: stable nav model lost {token}"
+    for token in ("groupExpanded(", "containsCurrent", "if (expanded)"):
+        assert token not in nav_model, (
+            f"{path}: heading state must not rebuild Repeater delegates: {token}"
+        )
 
 for token in ("settingsSearchOverlay", "searchResultsCard", "resultsListView",
               "id: noResultsCard"):

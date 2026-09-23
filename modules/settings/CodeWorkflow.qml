@@ -14,7 +14,7 @@ Item {
     id: root
 
     property int settingsPageIndex: 30
-    property string settingsPageName: Translation.tr("Code Workflow")
+    property string settingsPageName: Translation.tr("Workflow")
     property string sourceText: ""
     property string sourceDraft: ""
     property string sourceEditorPath: ""

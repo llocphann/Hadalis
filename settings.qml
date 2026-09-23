@@ -104,17 +104,18 @@ ApplicationWindow {
                 catPages.push(pageIdx);
             }
             if (catPages.length === 0) continue;
-            const expanded = root.groupExpanded(c, catPages);
+            // Keep the Repeater model stable while groups open/close. Rebuilding
+            // this array on every heading click destroys the active delegate for
+            // a frame, which makes the shared selection pill lose its target.
             items.push({ type: "header", label: cat.label, groupIndex: c,
-                pageIndices: catPages, expanded: expanded,
-                containsCurrent: catPages.includes(root.currentPage) });
-            if (expanded) {
-                for (var j = 0; j < catPages.length; j++) {
-                    var entry = Object.assign({}, pages[catPages[j]]);
-                    entry.type = "page";
-                    entry.realIndex = catPages[j];
-                    items.push(entry);
-                }
+                pageIndices: catPages });
+            for (var j = 0; j < catPages.length; j++) {
+                var entry = Object.assign({}, pages[catPages[j]]);
+                entry.type = "page";
+                entry.realIndex = catPages[j];
+                entry.groupIndex = c;
+                entry.groupPageIndices = catPages;
+                items.push(entry);
             }
         }
         return items;
@@ -1064,6 +1065,16 @@ ApplicationWindow {
                                 spacing: 0
                                 readonly property color headerAccentColor: Appearance.colors.colPrimary
                                 readonly property Item navButton: navBtn
+                                readonly property bool groupIsExpanded: {
+                                    if (!navItem.modelData) return false
+                                    if (navItem.modelData.type === "header")
+                                        return root.groupExpanded(
+                                            navItem.modelData.groupIndex, navItem.modelData.pageIndices)
+                                    if (navItem.modelData.type === "page")
+                                        return root.groupExpanded(
+                                            navItem.modelData.groupIndex, navItem.modelData.groupPageIndices)
+                                    return false
+                                }
 
                                 // ── Category header ──
                                 Item {
@@ -1103,7 +1114,7 @@ ApplicationWindow {
                                             anchors.right: parent.right
                                             anchors.rightMargin: 12
                                             anchors.verticalCenter: parent.verticalCenter
-                                            text: navItem.modelData.expanded ? "expand_less" : "expand_more"
+                                            text: navItem.groupIsExpanded ? "expand_less" : "expand_more"
                                             iconSize: 17
                                             color: navItem.headerAccentColor
                                         }
@@ -1119,7 +1130,7 @@ ApplicationWindow {
                                 // ── Nav button ──
                                 RippleButton {
                                     id: navBtn
-                                    visible: navItem.modelData.type === "page"
+                                    visible: navItem.modelData.type === "page" && (navItem.groupIsExpanded || navBtn.toggled)
                                     width: parent.width
                                     implicitHeight: visible ? 34 : 0
                                     z: 1
@@ -1190,11 +1201,14 @@ ApplicationWindow {
                             }
                         }
 
-                        // Active Material indicator: pill travelling behind the active item.
+                        // Active Material indicator: keep it on the Flickable content layer, not
+                        // as a ColumnLayout child. Layout-managed children have their y
+                        // rewritten during heading relayouts, which used to push this pill
+                        // to the bottom of the navigation rail.
                         Rectangle {
                             id: sharedNavIndicator
                             z: -1
-                            parent: navCol
+                            parent: navRailFlickable.contentItem
                             x: 0
                             width: navCol.width
                             radius: Appearance.rounding.small
@@ -1226,22 +1240,30 @@ ApplicationWindow {
                                 animation: NumberAnimation { duration: Math.round(Appearance.animation.elementResize.duration * 1.18); easing.type: Appearance.animation.elementResize.type; easing.bezierCurve: Appearance.animation.elementResize.bezierCurve }
                             }
 
-                            function updatePosition() {
-                                for (var i = 0; i < navRepeater.count; i++) {
-                                    var item = navRepeater.itemAt(i);
-                                    if (item && item.modelData && item.modelData.type === "page" && item.modelData.realIndex === root.currentPage) {
-                                        var btn = item.navButton;
-                                        if (btn && btn.visible) {
-                                            targetY = btn.mapToItem(navCol, 0, 0).y;
-                                            targetH = btn.height;
-                                            hasTarget = true;
-                                            return;
-                                        }
-                                    }
-                                }
-                                hasTarget = false;
+                            function _setTargetGeometry(targetItem) {
+                                if (!targetItem || !targetItem.visible || targetItem.height <= 0)
+                                    return false
+                                targetY = targetItem.mapToItem(sharedNavIndicator.parent, 0, 0).y
+                                targetH = targetItem.height
+                                hasTarget = true
+                                return true
                             }
 
+                            function updatePosition() {
+                                for (var i = 0; i < navRepeater.count; i++) {
+                                    var item = navRepeater.itemAt(i)
+                                    if (item && item.modelData && item.modelData.type === "page"
+                                            && item.modelData.realIndex === root.currentPage) {
+                                        // The selected row remains mounted and visible even when its
+                                        // group is collapsed. Never retarget the indicator to a heading.
+                                        // If geometry is transiently zero during relayout, keep the last
+                                        // valid target until the row reports its next geometry.
+                                        _setTargetGeometry(item.navButton)
+                                        return
+                                    }
+                                }
+                                hasTarget = false
+                            }
                             y: Math.min(edgeTop, edgeBottom)
                             height: hasTarget ? Math.abs(edgeBottom - edgeTop) : 0
                             opacity: hasTarget ? 1 : 0
@@ -1273,6 +1295,10 @@ ApplicationWindow {
                             Connections {
                                 target: navRepeater
                                 function onCountChanged() { Qt.callLater(sharedNavIndicator.updatePosition); }
+                            }
+                            Connections {
+                                target: navCol
+                                function onImplicitHeightChanged() { Qt.callLater(sharedNavIndicator.updatePosition); }
                             }
                             Component.onCompleted: Qt.callLater(updatePosition)
                         }

@@ -7,7 +7,6 @@ import qs.modules.common.perimeter
 import qs.modules.common.models
 import qs.modules.common.widgets
 import qs.modules.common.functions
-import qs.modules.pill
 import qs.modules.sidebarLeft.animeSchedule
 import qs.modules.sidebarLeft.news
 // DISABLED: webapps — requires quickshell-webengine rebuild, re-enable when ready
@@ -250,7 +249,7 @@ Item {
         joinRight: root.attachedEdge === "right"
     }
 
-    IslandPanel {
+    RicelinSurface {
         anchors.fill: sidebarLeftBackground
         visible: sidebarLeftBackground.islandStyle
         radius: sidebarLeftBackground.radius

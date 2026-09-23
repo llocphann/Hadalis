@@ -2592,6 +2592,7 @@ Item {
                 ShapePath {
                     id: edgeHaloPath
                     readonly property var route: edgeShape.route
+                    pathHints: ShapePath.PathQuadratic
 
                     strokeColor: root.edgeWireInk(
                         edgeShape.modelData.kind,
@@ -2612,6 +2613,7 @@ Item {
                 ShapePath {
                     id: edgePath
                     readonly property var route: edgeHaloPath.route
+                    pathHints: ShapePath.PathQuadratic
 
                     strokeColor: root.edgeWireInk(
                         edgeShape.modelData.kind,
@@ -2632,6 +2634,7 @@ Item {
                 ShapePath {
                     id: arrowPath
                     readonly property var route: edgePath.route
+                    pathHints: ShapePath.PathLinear
                     readonly property var points: route?.points ?? []
                     readonly property var tipPoint: points.length > 0
                         ? points[points.length - 1] : ({ x: 0, y: 0 })

@@ -27,7 +27,7 @@ def main() -> None:
     system_settings = read("modules/settings/GeneralConfigCore.qml")
     system_facade = read("modules/settings/GeneralConfig.qml")
     settings_registry = read("modules/settings/SettingsPageRegistryData.qml")
-    bar_settings = read("modules/settings/BarConfigHugOnly.qml")
+    bar_settings = read("modules/settings/BarConfig.qml")
     bar_config = read("modules/settings/BarConfig.qml")
     source_setup = read("sdata/subcmd-install/2.setups.sh")
     thinkfan_migration = read("sdata/migrations/041-thinkfan-helper-bridge.sh")

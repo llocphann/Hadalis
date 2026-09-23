@@ -83,6 +83,8 @@ for token in (
     '"--pid", String(Quickshell.processId)',
     "id: leasePruneTimer",
     "running: root.sessionActive",
+    "function _setSourceBoundaryReconciliation(",
+    "if (unchanged)",
     "function _reconcileSourceBoundaries(): void",
     'if (CodeWorkflowIndex.status === "indexing")',
     "CodeWorkflowRuntime.relativeSourcePath(",

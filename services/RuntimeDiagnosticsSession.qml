@@ -18,6 +18,9 @@ Singleton {
     readonly property bool pageCurrent:
         Object.keys(root.activeOwners).length > 0
     property string remoteError: ""
+    readonly property var evidence: root.localShell
+        ? RuntimeDiagnostics.snapshot()
+        : (CodeWorkflowRuntime.remoteSnapshot?.diagnostics ?? null)
 
     function _ownerId(raw): string {
         const value = String(raw ?? "").trim()

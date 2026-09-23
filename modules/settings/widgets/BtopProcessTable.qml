@@ -1,0 +1,208 @@
+import QtQuick
+import QtQuick.Layouts
+import qs.modules.common
+import qs.modules.common.widgets
+
+Item {
+    id: root
+
+    property var processes: []
+    property int maxRows: 12
+
+    function formatPercent(value): string {
+        const number = Number(value)
+        return Number.isFinite(number) ? number.toFixed(1) + "%" : "—"
+    }
+
+    function formatKiB(value): string {
+        const kib = Number(value)
+        if (!Number.isFinite(kib) || kib < 0)
+            return "—"
+        if (kib >= 1024 * 1024)
+            return (kib / (1024 * 1024)).toFixed(2) + " GiB"
+        if (kib >= 1024)
+            return (kib / 1024).toFixed(1) + " MiB"
+        return kib.toFixed(0) + " KiB"
+    }
+
+    readonly property var visibleProcesses:
+        Array.isArray(root.processes)
+            ? root.processes.slice(0, Math.max(0, root.maxRows))
+            : []
+
+    implicitHeight: processColumn.implicitHeight + 24
+
+    Rectangle {
+        anchors.fill: parent
+        radius: Appearance.rounding.normal
+        color: Appearance.colors.colLayer1
+        border.color: Appearance.colors.colOutline
+
+        ColumnLayout {
+            id: processColumn
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.top: parent.top
+            anchors.margins: 12
+            spacing: 0
+
+            RowLayout {
+                Layout.fillWidth: true
+                Layout.bottomMargin: 8
+
+                StyledText {
+                    Layout.fillWidth: true
+                    text: "Owned processes"
+                    color: Appearance.colors.colOnLayer1
+                    font.weight: Font.DemiBold
+                }
+
+                StyledText {
+                    text: String(root.processes.length)
+                    color: Appearance.colors.colPrimary
+                    font.weight: Font.DemiBold
+                }
+            }
+
+            RowLayout {
+                Layout.fillWidth: true
+                Layout.preferredHeight: 24
+                spacing: 8
+
+                StyledText {
+                    Layout.preferredWidth: 64
+                    text: "PID"
+                    color: Appearance.colors.colSubtext
+                    font.pixelSize: Appearance.font.pixelSize.smallest
+                }
+
+                StyledText {
+                    Layout.fillWidth: true
+                    text: "COMMAND"
+                    color: Appearance.colors.colSubtext
+                    font.pixelSize: Appearance.font.pixelSize.smallest
+                }
+
+                StyledText {
+                    Layout.preferredWidth: 72
+                    horizontalAlignment: Text.AlignRight
+                    text: "CPU"
+                    color: Appearance.colors.colSubtext
+                    font.pixelSize: Appearance.font.pixelSize.smallest
+                }
+
+                StyledText {
+                    Layout.preferredWidth: 86
+                    horizontalAlignment: Text.AlignRight
+                    text: "RSS"
+                    color: Appearance.colors.colSubtext
+                    font.pixelSize: Appearance.font.pixelSize.smallest
+                }
+
+                StyledText {
+                    Layout.preferredWidth: 86
+                    horizontalAlignment: Text.AlignRight
+                    text: "SWAP"
+                    color: Appearance.colors.colSubtext
+                    font.pixelSize: Appearance.font.pixelSize.smallest
+                }
+            }
+
+            Rectangle {
+                Layout.fillWidth: true
+                height: 1
+                color: Appearance.colors.colOutline
+                opacity: 0.65
+            }
+
+            Repeater {
+                model: root.visibleProcesses
+
+                Item {
+                    Layout.fillWidth: true
+                    implicitHeight: 38
+
+                    readonly property var process: modelData
+
+                    RowLayout {
+                        anchors.fill: parent
+                        spacing: 8
+
+                        StyledText {
+                            Layout.preferredWidth: 64
+                            text: String(parent.parent.process?.pid ?? "—")
+                            color: Appearance.colors.colOnLayer1
+                            font.pixelSize: Appearance.font.pixelSize.small
+                        }
+
+                        StyledText {
+                            Layout.fillWidth: true
+                            text: String(parent.parent.process?.command ?? "—")
+                            color: Appearance.colors.colOnLayer1
+                            font.pixelSize: Appearance.font.pixelSize.small
+                            elide: Text.ElideMiddle
+                        }
+
+                        StyledText {
+                            Layout.preferredWidth: 72
+                            horizontalAlignment: Text.AlignRight
+                            text: root.formatPercent(
+                                parent.parent.process?.cpu?.percent)
+                            color: Appearance.colors.colPrimary
+                            font.pixelSize: Appearance.font.pixelSize.small
+                        }
+
+                        StyledText {
+                            Layout.preferredWidth: 86
+                            horizontalAlignment: Text.AlignRight
+                            text: root.formatKiB(
+                                parent.parent.process?.memory
+                                    ?.valuesKiB?.Rss)
+                            color: Appearance.colors.colSubtext
+                            font.pixelSize: Appearance.font.pixelSize.small
+                        }
+
+                        StyledText {
+                            Layout.preferredWidth: 86
+                            horizontalAlignment: Text.AlignRight
+                            text: root.formatKiB(
+                                parent.parent.process?.memory
+                                    ?.valuesKiB?.Swap)
+                            color: Appearance.colors.colSubtext
+                            font.pixelSize: Appearance.font.pixelSize.small
+                        }
+                    }
+
+                    Rectangle {
+                        anchors.left: parent.left
+                        anchors.right: parent.right
+                        anchors.bottom: parent.bottom
+                        height: 1
+                        color: Appearance.colors.colOutline
+                        opacity: 0.35
+                    }
+                }
+            }
+
+            StyledText {
+                Layout.fillWidth: true
+                visible: root.processes.length === 0
+                Layout.topMargin: 10
+                text: "No shell child processes"
+                color: Appearance.colors.colSubtext
+                font.pixelSize: Appearance.font.pixelSize.small
+            }
+
+            StyledText {
+                Layout.fillWidth: true
+                visible: root.processes.length > root.visibleProcesses.length
+                Layout.topMargin: 8
+                text: "+" + String(
+                    root.processes.length - root.visibleProcesses.length)
+                    + " more processes"
+                color: Appearance.colors.colSubtext
+                font.pixelSize: Appearance.font.pixelSize.small
+            }
+        }
+    }
+}

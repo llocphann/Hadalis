@@ -20,11 +20,13 @@ Bar.StyledPopup {
 
     required property Item anchorItem
     property bool editorFocused: false
+    property string cornerAttachmentEdge: "bottom"
+    property real cornerAttachmentThickness: Math.max(1, Math.min(32,
+        Math.round(Config.options?.appearance?.screenEdge?.width ?? 10)))
 
     hoverTarget: root.anchorItem
-    attachmentEdgeOverride: "bottom"
-    attachmentThicknessOverride: Math.max(1, Math.min(32,
-        Math.round(Config.options?.appearance?.screenEdge?.width ?? 10)))
+    attachmentEdgeOverride: root.cornerAttachmentEdge
+    attachmentThicknessOverride: root.cornerAttachmentThickness
     hoverActivates: true
     alternativeVisibleCondition: root.editorFocused
     keyboardFocus: root.editorFocused

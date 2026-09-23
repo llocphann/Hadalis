@@ -19,6 +19,10 @@ Item {
     // Settings keeps IPC discovery remote and does not register local pages.
     property string workflowHostId: "settings"
     property bool workflowDiscoveryEnabled: false
+    readonly property int diagnosticsPageIndex:
+        SettingsPageRegistry.pageIndexForKey("diagnostics")
+    readonly property string diagnosticsLeaseOwner:
+        root.workflowHostId + ":diagnostics"
 
     readonly property int currentIndex: _currentIndex
     readonly property bool error: _errorIndex === requestedIndex
@@ -48,6 +52,14 @@ Item {
     property int _errorIndex: -1
 
     clip: _transitionRunning
+
+    function _syncDiagnosticsLease() {
+        RuntimeDiagnosticsSession.setOwnerCurrent(
+            root.diagnosticsLeaseOwner,
+            root.loadEnabled
+                && root.diagnosticsPageIndex >= 0
+                && root.requestedIndex === root.diagnosticsPageIndex)
+    }
 
     function _sourceFor(index) {
         if (index < 0 || index >= pages.length)
@@ -278,8 +290,12 @@ Item {
             Qt.callLater(root._requestPage)
     }
 
-    onRequestedIndexChanged: Qt.callLater(root._requestPage)
+    onRequestedIndexChanged: {
+        root._syncDiagnosticsLease()
+        Qt.callLater(root._requestPage)
+    }
     onLoadEnabledChanged: {
+        root._syncDiagnosticsLease()
         if (loadEnabled)
             Qt.callLater(root._requestPage)
         else
@@ -288,8 +304,12 @@ Item {
     onCacheLimitChanged: _trimCache()
     Component.onCompleted: {
         SettingsArrangement.migrateLegacyPageIndices()
+        root._syncDiagnosticsLease()
         Qt.callLater(root._requestPage)
     }
+    Component.onDestruction:
+        RuntimeDiagnosticsSession.setOwnerCurrent(
+            root.diagnosticsLeaseOwner, false)
 
     Connections {
         target: Config

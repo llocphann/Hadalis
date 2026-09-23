@@ -13,6 +13,8 @@ Item {
     property string txPrefix: "↑ "
     property string rx: "—"
     property string tx: "—"
+    property string rxTotal: ""
+    property string txTotal: ""
     property string provenance: ""
     property var rxSamples: []
     property var txSamples: []
@@ -33,7 +35,9 @@ Item {
         root.peak(root.rxSamples),
         root.peak(root.txSamples))
 
-    implicitHeight: provenance.length > 0 ? 150 : 132
+    implicitHeight: (rxTotal.length > 0 || txTotal.length > 0)
+        ? (provenance.length > 0 ? 168 : 150)
+        : (provenance.length > 0 ? 150 : 132)
 
     Rectangle {
         anchors.fill: parent
@@ -108,6 +112,33 @@ Item {
                         maxValue: root.graphMax
                         lineColor: root.txColor
                     }
+                }
+            }
+
+            RowLayout {
+                Layout.fillWidth: true
+                visible: root.rxTotal.length > 0
+                    || root.txTotal.length > 0
+
+                StyledText {
+                    Layout.fillWidth: true
+                    text: "Σ " + root.rxLabel + " "
+                        + (root.rxTotal || "—")
+                    color: Appearance.colors.colSubtext
+                    font.family: Appearance.font.family.monospace
+                    font.pixelSize: Appearance.font.pixelSize.smallest
+                    elide: Text.ElideRight
+                }
+
+                StyledText {
+                    Layout.fillWidth: true
+                    horizontalAlignment: Text.AlignRight
+                    text: "Σ " + root.txLabel + " "
+                        + (root.txTotal || "—")
+                    color: Appearance.colors.colSubtext
+                    font.family: Appearance.font.family.monospace
+                    font.pixelSize: Appearance.font.pixelSize.smallest
+                    elide: Text.ElideLeft
                 }
             }
 

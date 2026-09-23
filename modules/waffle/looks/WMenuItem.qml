@@ -62,7 +62,7 @@ MenuItem {
         id: backgroundRect
         radius: Looks.radius.medium
         color: root.color
-        border.width: Looks.glassActive && (root.hovered || root.checked || root.down) ? 1 : 0
+        border.width: 0
         border.color: Looks.colors.tooltipBorder
         Behavior on color {
             animation: ColorAnimation { duration: Looks.transition.enabled ? 70 : 0; easing.type: Easing.BezierSpline; easing.bezierCurve: Looks.transition.easing.bezierCurve.standard }

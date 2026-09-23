@@ -74,6 +74,7 @@ for token in (
 for token in (
     'property string selectedSemanticSourcePath: ""',
     "function selectIndexedSemantic(sourcePath: string, anchor: string): bool",
+    "const sourceRef = CodeWorkflowIdentity.sourceRef(sourcePath, anchor)",
     "root.selectedSemanticSourcePath = nextPath",
 ):
     require(session, token, "indexed semantic session boundary missing " + token)

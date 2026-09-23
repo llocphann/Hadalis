@@ -86,6 +86,8 @@ for token in (
     "readonly property bool localShell:",
     "property var activeOwners: ({})",
     "property int heartbeatTick: 0",
+    "property int pageOpenedHeartbeatTick: 0",
+    "root.pageOpenedHeartbeatTick = root.heartbeatTick",
     "root.heartbeatTick++",
     'property string leaseTransport: ""',
     'property string remoteEvidenceFloorKey: ""',
@@ -179,6 +181,16 @@ for source, text in (
         text,
         "RuntimeDiagnosticsSession.heartbeatTick",
         f"{source} must refresh stalled-sample detection",
+    )
+    require(
+        text,
+        "RuntimeDiagnosticsSession.pageOpenedHeartbeatTick",
+        f"{source} must bound sampler startup time",
+    )
+    require(
+        text,
+        "return heartbeatAge >= 3",
+        f"{source} must surface a delayed sampler startup",
     )
     require(
         text,

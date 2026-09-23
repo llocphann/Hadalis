@@ -51,6 +51,10 @@ Scope {
         readonly property bool isLeft: isTopLeft || isBottomLeft
         readonly property bool isRight: isTopRight || isBottomRight
 
+        Component.onDestruction:
+            screenCorners.setQuickNotesEditorOutput(
+                cornerPanelWindow.outputName, false)
+
         // Interaction-only corner windows. Physical rounding is owned exclusively
         // by ScreenEdges.qml's canonical full-screen frame.
         readonly property bool cornerOpenEnabled: Config?.options?.sidebar?.cornerOpen?.enable ?? false

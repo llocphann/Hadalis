@@ -32,6 +32,9 @@ PAGE_PLACEHOLDER = ROOT / "modules" / "common" / "widgets" / "PagePlaceholder.qm
 SELECTION_DIALOG = ROOT / "modules" / "common" / "widgets" / "SelectionDialog.qml"
 TOAST_NOTIFICATION = ROOT / "modules" / "common" / "widgets" / "ToastNotification.qml"
 WINDOW_DIALOG = ROOT / "modules" / "common" / "widgets" / "WindowDialog.qml"
+CHEATSHEET_KEYBIND_ROW = ROOT / "modules" / "cheatsheet" / "CheatsheetKeybindRow.qml"
+STATUS_RINGS = ROOT / "modules" / "sidebarLeft" / "widgets" / "StatusRings.qml"
+QUICK_LAUNCH = ROOT / "modules" / "sidebarLeft" / "widgets" / "QuickLaunch.qml"
 NOTIFICATION_ITEM = ROOT / "modules" / "common" / "widgets" / "NotificationItem.qml"
 NOTIFICATION_GROUP = ROOT / "modules" / "common" / "widgets" / "NotificationGroup.qml"
 NOTIFICATION_ACTION_BUTTON = ROOT / "modules" / "common" / "widgets" / "NotificationActionButton.qml"
@@ -161,6 +164,9 @@ def main() -> None:
     selection_dialog = SELECTION_DIALOG.read_text(encoding="utf-8")
     toast_notification = TOAST_NOTIFICATION.read_text(encoding="utf-8")
     window_dialog = WINDOW_DIALOG.read_text(encoding="utf-8")
+    cheatsheet_keybind_row = CHEATSHEET_KEYBIND_ROW.read_text(encoding="utf-8")
+    status_rings = STATUS_RINGS.read_text(encoding="utf-8")
+    quick_launch = QUICK_LAUNCH.read_text(encoding="utf-8")
     notification_item = NOTIFICATION_ITEM.read_text(encoding="utf-8")
     notification_group = NOTIFICATION_GROUP.read_text(encoding="utf-8")
     notification_action_button = NOTIFICATION_ACTION_BUTTON.read_text(encoding="utf-8")
@@ -309,6 +315,9 @@ def main() -> None:
         "SelectionDialog.qml": selection_dialog,
         "ToastNotification.qml": toast_notification,
         "WindowDialog.qml": window_dialog,
+        "CheatsheetKeybindRow.qml": cheatsheet_keybind_row,
+        "StatusRings.qml": status_rings,
+        "QuickLaunch.qml": quick_launch,
         "NotificationItem.qml": notification_item,
         "NotificationGroup.qml": notification_group,
         "NotificationActionButton.qml": notification_action_button,
@@ -440,6 +449,35 @@ def main() -> None:
         require(window_dialog, token, "WindowDialog.qml")
     for token in ("RegaliaPlate {", "ZzzPanelBackdrop {"):
         forbid(window_dialog, token, "WindowDialog.qml")
+
+    for token in (
+        "color: hovered ? Appearance.colors.colLayer2Hover",
+        "radius: Appearance.rounding.verysmall",
+        "color: Appearance.colors.colSubtext",
+        "color: Appearance.colors.colOnLayer1",
+        "color: Appearance.colors.colOutlineVariant",
+        "opacity: 0.3",
+    ):
+        require(cheatsheet_keybind_row, token, "CheatsheetKeybindRow.qml")
+    for token in (
+        "ResourceUsage.cpuUsage >= 0.9 ? Appearance.colors.colError",
+        "Battery.isCritical ? Appearance.colors.colError",
+        "property color ringColor: Appearance.colors.colPrimary",
+        "border.color: Appearance.colors.colLayer2",
+        "font.weight: Font.Medium",
+        "font.italic: false",
+    ):
+        require(status_rings, token, "StatusRings.qml")
+    for token in (
+        "buttonRadius: Appearance.rounding.full",
+        "colBackground: isRunning ? Appearance.colors.colPrimaryContainer",
+        "colBackgroundHover: isRunning",
+        "colRipple: isRunning",
+        "width: 6",
+        "height: 6",
+        "radius: 3",
+    ):
+        require(quick_launch, token, "QuickLaunch.qml")
 
     for token in (
         "radius: Appearance.rounding.small",

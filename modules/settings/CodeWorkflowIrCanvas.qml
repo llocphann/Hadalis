@@ -231,6 +231,15 @@ Item {
     property real activeNodeDragOffsetX: 0
     property real activeNodeDragOffsetY: 0
     property bool dragRoutesDirty: false
+    // Edge labels are text-heavy and add a second route-visibility binding per
+    // edge. They are not useful while the viewport itself is moving. Suspend
+    // them during direct manipulation/wheel bursts and restore after the short
+    // settle window; wires and nodes remain continuously visible.
+    readonly property bool viewportPresentationBusy:
+        canvasPanArea.pressed
+        || pinch.active
+        || root.activeNodeDragHandler !== null
+        || viewportMotionTimer.running
     // Full smart routing is committed only when layout state changes. During a
     // pointer drag we keep this cache stable and recompute only attached edges.
     property var edgeRouteCache: ({})
@@ -1882,6 +1891,12 @@ Item {
     }
 
     Timer {
+        id: viewportMotionTimer
+        interval: 96
+        repeat: false
+    }
+
+    Timer {
         id: dragFrameTimer
         interval: 16
         repeat: true
@@ -1914,6 +1929,7 @@ Item {
                 event.x - graphX * nextZoom,
                 event.y - graphY * nextZoom,
                 nextZoom)
+            viewportMotionTimer.restart()
             viewportCommitTimer.restart()
             event.accepted = true
         }
@@ -2092,6 +2108,7 @@ Item {
         initialFitTimer.stop()
         runtimePulseTimer.stop()
         viewportCommitTimer.stop()
+        viewportMotionTimer.stop()
         root.activeNodeDragId = ""
         root.activeNodeDragHandler = null
         root.dragRoutesDirty = false
@@ -2577,7 +2594,8 @@ Item {
                             edgeLabelHover.point.position.y))
                     || root.hoveredEdgeId === String(modelData.id ?? "")
 
-                visible: edgeLabel.endpointsPresent
+                visible: !root.viewportPresentationBusy
+                    && edgeLabel.endpointsPresent
                     && String(modelData.label ?? "").length > 0
                     && root.routeVisible(route, 80)
                 x: midX - width / 2

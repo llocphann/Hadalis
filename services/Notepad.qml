@@ -39,13 +39,17 @@ Singleton {
         return normalized
     }
 
-    function setTextValue(newText) {
-        if (!root.ready || currentTab < 0 || currentTab >= tabs.length) return false
+    function setTabText(index, newText) {
+        if (!root.ready || index < 0 || index >= tabs.length) return false
         const t = tabs.slice()
-        t[currentTab] = Object.assign({}, t[currentTab], { text: String(newText ?? "") })
+        t[index] = Object.assign({}, t[index], { text: String(newText ?? "") })
         tabs = t
         _save()
         return true
+    }
+
+    function setTextValue(newText) {
+        return root.setTabText(currentTab, newText)
     }
 
     function setTabTitle(index, title) {
@@ -72,10 +76,22 @@ Singleton {
     function removeTab(index) {
         if (!root.ready || index < 0 || index >= tabs.length) return false
         if (tabs.length <= 1) return false // Keep at least one tab
+
+        const previousCurrent = currentTab
         const t = tabs.slice()
         t.splice(index, 1)
         tabs = t
-        if (currentTab >= t.length) currentTab = t.length - 1
+
+        // Preserve the same logical active note when a tab before it is
+        // removed. Removing the active tab selects the next note when possible,
+        // otherwise the new last note.
+        if (index < previousCurrent)
+            currentTab = previousCurrent - 1
+        else if (previousCurrent >= t.length)
+            currentTab = t.length - 1
+        else
+            currentTab = previousCurrent
+
         _save()
         return true
     }

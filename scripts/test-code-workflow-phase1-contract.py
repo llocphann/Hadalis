@@ -372,8 +372,8 @@ for token in (
     "function scheduleWorkflowActivation(): void",
     "id: workflowActivationTimer",
     "interval: 75",
-    "watchChanges: root.workflowActive && !root.workflowDestroying",
-    "enabled: root.workflowActive && !root.workflowDestroying",
+    "watchChanges: root.workflowOperational",
+    "enabled: root.workflowOperational",
     "workflowActivationTimer.stop()",
     "workflowActive: root.workflowOperational",
 ):
@@ -441,8 +441,8 @@ for function_name in (
     function_start = page.index("function " + function_name + "(): void")
     function_prefix = page[function_start:function_start + 220]
     require(function_prefix,
-            "if (!root.workflowActive || root.workflowDestroying)",
-            "deferred Workflow callback must stop while hidden: " + function_name)
+            "if (!root.workflowOperational)",
+            "deferred Workflow callback must stop before hydration/while hidden: " + function_name)
 
 for token in (
     "property bool _activeForce: false",

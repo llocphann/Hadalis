@@ -1214,6 +1214,7 @@
     },
     "quickNotes": {
         "enable": true,
+        "monitorMode": "all",
         "hoverDelayMs": 220,
         "cornerSize": 14,
         "popupWidth": 420,

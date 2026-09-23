@@ -216,19 +216,29 @@ def main() -> int:
                 record = cached
                 cache_hits += 1
             else:
-                with native_parser.parse(source) as (_, nodes):
-                    verify_ranges(source, nodes)
-                    semantic = extract(relative, source, nodes)
-                projected = [
-                    boundary_projection(relative, source_sha, entry)
-                    for entry in semantic["entries"]
-                    if str(entry.get("runtime_boundary") or "")
-                ]
-                record = {
-                    "sourceSha256": source_sha,
-                    "boundaries": projected,
-                    "diagnostics": list(semantic["diagnostics"]),
-                }
+                try:
+                    with native_parser.parse(source) as (_, nodes):
+                        verify_ranges(source, nodes)
+                        semantic = extract(relative, source, nodes)
+                    projected = [
+                        boundary_projection(relative, source_sha, entry)
+                        for entry in semantic["entries"]
+                        if str(entry.get("runtime_boundary") or "")
+                    ]
+                    record = {
+                        "sourceSha256": source_sha,
+                        "boundaries": projected,
+                        "diagnostics": list(semantic["diagnostics"]),
+                    }
+                except (RuntimeError, AssertionError, UnicodeError, ValueError) as exc:
+                    record = {
+                        "sourceSha256": source_sha,
+                        "boundaries": [],
+                        "diagnostics": [{
+                            "kind": "parse-failed",
+                            "detail": str(exc),
+                        }],
+                    }
                 parsed_files += 1
 
             next_files[relative] = record
@@ -240,7 +250,7 @@ def main() -> int:
                 })
     except OSError as exc:
         return unavailable("tree-sitter-library-missing", str(exc))
-    except (RuntimeError, AssertionError, UnicodeError, ValueError) as exc:
+    except RuntimeError as exc:
         return emit({
             "status": "error",
             "reason": "index-failed",

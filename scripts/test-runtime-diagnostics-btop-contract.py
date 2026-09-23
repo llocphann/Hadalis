@@ -160,6 +160,18 @@ def main() -> None:
             f"{source} plain diagnostics text",
         )
 
+    for token in (
+        "id: rateHeader",
+        "columns: width >= 360 ? 2 : 1",
+        "id: totalsGrid",
+        "horizontalAlignment: rateHeader.width >= 360",
+        "horizontalAlignment: totalsGrid.width >= 360",
+    ):
+        require(
+            network_panel, token,
+            "BtopNetworkPanel.qml narrow responsive layout",
+        )
+
     require(
         runtime_panel,
         "columns: width >= 520 ? 3 : 1",

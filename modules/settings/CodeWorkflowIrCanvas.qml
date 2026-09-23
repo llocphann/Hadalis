@@ -1763,7 +1763,13 @@ Item {
     }
 
     function edgeHaloWidth(focused: bool, hovered: bool): real {
-        const screenWidth = focused ? 7.0 : hovered ? 4.0 : 2.4
+        // The halo is an interaction affordance, not structural geometry.
+        // A faint halo on every idle edge doubled stroke tessellation for the
+        // whole graph while being nearly invisible. Keep it only for focused
+        // or hovered relations.
+        if (!focused && !hovered)
+            return 0
+        const screenWidth = focused ? 7.0 : 4.0
         return screenWidth / Math.max(
             CodeWorkflowSession.minimumZoom, root.wireMetricZoom)
     }

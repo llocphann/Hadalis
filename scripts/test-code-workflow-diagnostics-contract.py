@@ -112,6 +112,27 @@ if "CodeWorkflowIndex.cancel()" in server:
 require(workflow_index, "function cancel(): void",
         "Workflow index should remain explicitly cancellable by its own owner")
 
+for token in (
+    "property var remoteRuntimeSnapshot: null",
+    "property string remoteRuntimeSnapshotFingerprint:",
+    "function _runtimeSnapshotProjection(snapshot): var",
+    "const runtimeChanged =",
+    "root.remoteRuntimeSnapshot = runtimeProjection",
+    "root.remoteSnapshot = next",
+    "root.remoteRuntimeSnapshot?.descriptors",
+    "root.remoteRuntimeSnapshot?.identityCollisions",
+    "root.remoteRuntimeSnapshot !== null",
+):
+    require(
+        workflow_runtime, token,
+        "Diagnostics samples must not republish unchanged Workflow runtime structure",
+    )
+require(
+    client,
+    "CodeWorkflowRuntime.remoteSnapshot?.diagnostics",
+    "Diagnostics evidence must keep using the full remote transport snapshot",
+)
+
 for forbidden in (
     "diagnosticsLeases",
     "acquireDiagnosticsLease",

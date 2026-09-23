@@ -163,6 +163,9 @@ Singleton {
     }
 
     function _historyPercent(used, total): var {
+        if (used === null || used === undefined
+                || total === null || total === undefined)
+            return null
         const usedValue = Number(used)
         const totalValue = Number(total)
         if (!Number.isFinite(usedValue)
@@ -177,7 +180,10 @@ Singleton {
         const engines = sample?.shell?.gpu?.engineBusyPercent ?? ({})
         let peak = null
         for (const key of Object.keys(engines)) {
-            const value = Number(engines[key])
+            const raw = engines[key]
+            if (raw === null || raw === undefined)
+                continue
+            const value = Number(raw)
             if (!Number.isFinite(value))
                 continue
             peak = peak === null ? value : Math.max(peak, value)

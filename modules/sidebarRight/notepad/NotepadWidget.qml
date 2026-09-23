@@ -97,6 +97,11 @@ Item {
         })
     }
 
+    function releaseEditorFocus(): void {
+        textArea.focus = false
+        root.focus = false
+    }
+
     function _activeTabId(): string {
         return String(Notepad.tabs[Notepad.currentTab]?.id ?? "")
     }
@@ -179,6 +184,13 @@ Item {
     // delayed autosave must always write back to the tab it actually displays.
     property bool _loadingTab: false
     property string _loadedTabId: ""
+    readonly property string displayedTabId: root._loadedTabId
+    readonly property int displayedTabIndex:
+        Notepad.indexForTabId(root._loadedTabId)
+    readonly property string displayedTabTitle:
+        root.displayedTabIndex >= 0
+            ? String(Notepad.tabs[root.displayedTabIndex]?.title ?? "")
+            : ""
 
     function _loadTabById(tabId): bool {
         if (!Notepad.ready)

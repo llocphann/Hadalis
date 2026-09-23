@@ -14,6 +14,7 @@ Bar.StyledPopup {
     required property string outputName
     property bool hoverAllowed: true
     property bool entryBridgeHeld: false
+    property bool exitGraceHeld: false
     property bool keyboardInteraction: false
     property bool hoverSessionArmed: true
     property string cornerAttachmentEdge: "bottom"
@@ -44,6 +45,7 @@ Bar.StyledPopup {
     hoverActivates: root.hoverAllowed && root.hoverSessionArmed
     alternativeVisibleCondition: root.explicitForThisOutput
         || root.entryBridgeHeld
+        || root.exitGraceHeld
         || root.keyboardInteraction
         || (contentLoader.item?.dragActive ?? false)
     keyboardFocus: root.keyboardInteraction
@@ -64,7 +66,9 @@ Bar.StyledPopup {
 
     function dismissAndDisarm(): void {
         entryBridgeTimer.stop()
+        exitGraceTimer.stop()
         root.entryBridgeHeld = false
+        root.exitGraceHeld = false
         root.keyboardInteraction = false
         root.hoverSessionArmed = false
         if (contentLoader.item)
@@ -87,9 +91,22 @@ Bar.StyledPopup {
         }
     }
 
-    onHoverLeaseRequestedChanged:
-        GlobalStates.setNotificationCenterHoverOutput(
-            root.outputName, root.hoverLeaseRequested)
+    onHoverLeaseRequestedChanged: {
+        if (root.hoverLeaseRequested) {
+            exitGraceTimer.stop()
+            root.exitGraceHeld = false
+            GlobalStates.setNotificationCenterHoverOutput(root.outputName, true)
+            return
+        }
+
+        if (root.active && !root.explicitForThisOutput) {
+            root.exitGraceHeld = true
+            exitGraceTimer.restart()
+            return
+        }
+
+        GlobalStates.setNotificationCenterHoverOutput(root.outputName, false)
+    }
 
     onActiveChanged: {
         if (active) {
@@ -101,7 +118,9 @@ Bar.StyledPopup {
         }
 
         entryBridgeTimer.stop()
+        exitGraceTimer.stop()
         root.entryBridgeHeld = false
+        root.exitGraceHeld = false
         root.keyboardInteraction = false
         if (contentLoader.item)
             contentLoader.item.clearSearchFocus()
@@ -118,6 +137,19 @@ Bar.StyledPopup {
         interval: 260
         repeat: false
         onTriggered: root.entryBridgeHeld = false
+    }
+
+    property QtObject _exitGraceTimer: Timer {
+        id: exitGraceTimer
+        interval: Math.max(0,
+            Config.options?.notificationCenter?.closeGraceMs ?? 280)
+        repeat: false
+        onTriggered: {
+            if (root.hoverLeaseRequested)
+                return
+            root.exitGraceHeld = false
+            GlobalStates.setNotificationCenterHoverOutput(root.outputName, false)
+        }
     }
 
     Item {

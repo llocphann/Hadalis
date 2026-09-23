@@ -38,6 +38,20 @@ module work, commit directly to `dev`, and never force-push or modify `stable`.
   be reported for the **same final HEAD**. Documentation failures referencing
   removed Iris paths and unrelated shell regressions are not evidence that
   Code Workflow itself passed or failed. Do not conflate them.
+- Settings/Workflow reopen lifecycle is now explicitly Loader-owned. A Workflow
+  instance does not hydrate Analyzer, Index, runtime snapshots, FileView watching,
+  canvas work or remote-runtime demand while its Settings Loader is only
+  incubating/transitioning; hydration starts after that Loader becomes current,
+  and hiding/destruction suspends it immediately. SettingsPageHost invalidates
+  deferred navigation generations on reset, while singleton Analyzer/Index work
+  is reused instead of restarted on every remount. The live page-30 acceptance
+  reproduces the reported immediate close/reopen race plus three repeated
+  Settings -> base page -> Workflow cycles and requires exactly one destroy/mount
+  pair per cycle. The 2026-09-23 run at 4e2130a3 completed all live compositor
+  editor checks with no freeze; the immediate race recovered in 2.858s and the
+  three later cycles in 2.428s, 2.627s and 2.531s on the CI fixture. New coverage
+  also latches any hydration that occurs while Loader ownership is disabled and
+  treats Workflow QML TypeError/ReferenceError warnings as live-test failures.
 - Graph reasoning controls now operate on the reviewed unified graph without
   widening mutation authority: **Trace upstream**, **Trace downstream** and
   **Focus connected path** compute a presentation-only reachable set, emphasize

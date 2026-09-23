@@ -1752,7 +1752,6 @@ Item {
             Appearance.colors.colPrimaryContainer, 0.24)
         border.width: 1
         border.color: Appearance.colors.colPrimary
-        pointerHandlers: []
     }
 
     Item {

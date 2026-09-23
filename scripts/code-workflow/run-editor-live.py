@@ -74,6 +74,8 @@ def instrument(config: Path, surface: str = "rail") -> None:
         page, "                        draft: root.sourceDraft\n",
         '                        draft: "alpha\\n\\nbeta gamma"\n'
         '                        readonly property bool testTargetFilterFocus: targetFilter.activeFocus\n'
+        '                        readonly property bool testWorkflowHydrated: root.workflowHydrated\n'
+        '                        readonly property bool testWorkflowOperational: root.workflowOperational\n'
         '                        function testTargetFilterPointNow() { return targetFilter.mapToItem(null, targetFilter.width / 2, targetFilter.height / 2) }\n'
         '                        function testModeButtonPointNow() { return fixtureModeButton.mapToItem(null, fixtureModeButton.width / 2, fixtureModeButton.height / 2) }\n',
     )
@@ -129,6 +131,8 @@ def instrument(config: Path, surface: str = "rail") -> None:
             const modal = CodeWorkflowSession.modalTestEditor
             report.modalEditor = modal ? {
                 loaded: true,
+                workflowHydrated: modal.testWorkflowHydrated,
+                workflowOperational: modal.testWorkflowOperational,
                 mode: modal.mode,
                 caret: modal.modalCursorPosition,
                 line: modal.currentLineNumber,
@@ -271,6 +275,8 @@ def main() -> int:
                     (state := probe.snapshot())["settingsOpen"]
                     and state["settingsPage"] == 30
                     and state["modalEditor"]["loaded"]
+                    and state["modalEditor"]["workflowHydrated"]
+                    and state["modalEditor"]["workflowOperational"]
                     and state["codeWorkflowPage"] is not None
                     and state["codeWorkflowPage"]["state"] == "visible"
                 ) else None
@@ -319,6 +325,8 @@ def main() -> int:
                 (value := probe.snapshot())["settingsOpen"]
                 and value["settingsPage"] == 30
                 and value["modalEditor"]["loaded"]
+                and value["modalEditor"]["workflowHydrated"]
+                and value["modalEditor"]["workflowOperational"]
                 and value["codeWorkflowPage"] is not None
                 and value["codeWorkflowPage"]["state"] == "visible"
                 and value["workflowMountCount"] == race_mounts + 1
@@ -703,6 +711,8 @@ def main() -> int:
                     (value := probe.snapshot())["settingsOpen"]
                     and value["settingsPage"] == 30
                     and value["modalEditor"]["loaded"]
+                    and value["modalEditor"]["workflowHydrated"]
+                    and value["modalEditor"]["workflowOperational"]
                     and value["codeWorkflowPage"] is not None
                     and value["codeWorkflowPage"]["state"] == "visible"
                     and value["workflowMountCount"] == mounts_before + 1

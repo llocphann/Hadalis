@@ -1190,7 +1190,6 @@ def main() -> None:
     ):
         forbid(bar, token, "Bar.qml")
     for token in (
-        "readonly property bool showBarBackground: true",
         "readonly property bool rightDeadPixelWorkaround:",
         "readonly property bool bottomDeadPixelWorkaround:",
         "id: barRoot",
@@ -1214,6 +1213,8 @@ def main() -> None:
         "AuroraBlurCorner",
     ):
         forbid(vertical_bar, token, "VerticalBar.qml")
+    forbid(bar, "showBarBackground", "Bar.qml")
+    forbid(vertical_bar, "showBarBackground", "VerticalBar.qml")
     for token in (
         "readonly property bool showBarBackground: true",
         "id: barRoot",

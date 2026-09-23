@@ -136,6 +136,11 @@ for token in (
 ):
     require(popup, token, "Notification Center popup lifecycle contract missing")
 
+if popup.count("Config.options?.notificationCenter?.closeGraceMs ?? 280") < 2:
+    fail("Notification Center transfer grace must control both entry and exit")
+forbid(popup, "interval: 260",
+       "Notification Center entry bridge still bypasses the public grace setting")
+
 # Global state is authoritative and opening the old Right Sidebar must no longer
 # mark history read or suppress transient toasts.
 for token in (

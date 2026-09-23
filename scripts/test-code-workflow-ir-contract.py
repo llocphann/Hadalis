@@ -755,6 +755,11 @@ for token in (
     "id: minimapViewport",
     "CodeWorkflowSession.minimapEnabled",
     "function reasoningSelectionFor(mode: string): var",
+    "const traversedEdges = ({})",
+    'const selectedEdgeId = String(selectedEdge?.id ?? "")',
+    "traversedEdges[selectedEdgeId] = true",
+    "traversedEdges[edgeId] = true",
+    "edges: Object.keys(traversedEdges)",
     "function focusReasoning(mode: string): void",
     'property string reasoningMode: ""',
     "readonly property bool reasoningSelected:",
@@ -778,6 +783,9 @@ for token in (
 ):
     if token not in canvas:
         fail("IR canvas missing " + token)
+
+if "if (visited[fromId] && visited[toId])" in canvas:
+    fail("directional graph reasoning must not infer wires from the visited node set")
 
 if canvas.count("function edgeRoute(edge, occupiedRoutes = []): var") != 1:
     fail("IR canvas must keep one authoritative edgeRoute geometry function")

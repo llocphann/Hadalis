@@ -107,6 +107,16 @@ ContentPage {
 
             StyledText {
                 Layout.fillWidth: true
+                visible: RuntimeDiagnosticsSession.remoteError.length > 0
+                text: Translation.tr("Runtime bridge error") + " · "
+                    + RuntimeDiagnosticsSession.remoteError
+                color: Appearance.colors.colError
+                font.pixelSize: Appearance.font.pixelSize.small
+                wrapMode: Text.WordWrap
+            }
+
+            StyledText {
+                Layout.fillWidth: true
                 visible: String(root.evidence?.sampler?.error ?? "").length > 0
                 text: Translation.tr("Sampler error") + " · "
                     + String(root.evidence?.sampler?.error ?? "")

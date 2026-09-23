@@ -53,14 +53,38 @@ Scope {
             && cornerName === orbitCorner
             && !orbitConflictsWithNiriOverview
             && !fullscreen
+        readonly property bool quickNotesInteractionBlocked:
+            GlobalStates.screenLocked
+            || GlobalStates.overviewOpen
+            || GlobalStates.overlayOpen
+            || GlobalStates.settingsOverlayOpen
+            || GlobalStates.regionSelectorOpen
+            || GlobalStates.sessionOpen
+            || GlobalStates.widgetEditMode
+            || GlobalStates.shellLayoutEditMode
+            || GlobalStates.sidebarLeftOpen
+            || GlobalStates.sidebarRightOpen
+        readonly property bool shouldShowQuickNotesCorner:
+            (Config.options?.panelFamily ?? "ii") !== "waffle"
+            && (Config.options?.quickNotes?.enable ?? true)
+            && cornerPanelWindow.isBottomLeft
+            && !cornerPanelWindow.shouldShowOrbitHotCorner
+            && !cornerPanelWindow.quickNotesInteractionBlocked
+            && !fullscreen
+        // Explicit corner features own their physical corner before the legacy
+        // sidebar trigger. This lets bottom-left become Quick Notes without
+        // deleting the old corner-open compatibility settings.
         readonly property bool shouldShowSidebarCornerOpen: shouldShowCornerOpen
             && !shouldShowOrbitHotCorner
+            && !shouldShowQuickNotesCorner
 
-        visible: !fullscreen && (shouldShowSidebarCornerOpen || shouldShowOrbitHotCorner)
+        visible: !fullscreen && (shouldShowSidebarCornerOpen
+            || shouldShowOrbitHotCorner || shouldShowQuickNotesCorner)
 
         exclusionMode: ExclusionMode.Ignore
         mask: Region {
             item: orbitHotCornerLoader.active ? orbitHotCornerLoader
+                : quickNotesCornerLoader.active ? quickNotesCornerLoader
                 : (sidebarCornerOpenInteractionLoader.active ? sidebarCornerOpenInteractionLoader : null)
         }
         WlrLayershell.namespace: "quickshell:screenCorners"
@@ -94,13 +118,17 @@ Scope {
                 Config.options?.orbit?.hotCornerActivationDistance ?? 2))
             readonly property int orbitHotCornerHitSize: Math.max(
                 orbitHotCornerSize, orbitHotCornerActivationDistance)
+            readonly property int quickNotesCornerSize: Math.max(4, Math.min(48,
+                Config.options?.quickNotes?.cornerSize ?? 14))
 
             implicitWidth: Math.max(0,
                 cornerPanelWindow.shouldShowSidebarCornerOpen ? cornerOpenWidth : 0,
-                cornerPanelWindow.shouldShowOrbitHotCorner ? orbitHotCornerHitSize : 0)
+                cornerPanelWindow.shouldShowOrbitHotCorner ? orbitHotCornerHitSize : 0,
+                cornerPanelWindow.shouldShowQuickNotesCorner ? quickNotesCornerSize : 0)
             implicitHeight: Math.max(0,
                 cornerPanelWindow.shouldShowSidebarCornerOpen ? cornerOpenHeight : 0,
-                cornerPanelWindow.shouldShowOrbitHotCorner ? orbitHotCornerHitSize : 0)
+                cornerPanelWindow.shouldShowOrbitHotCorner ? orbitHotCornerHitSize : 0,
+                cornerPanelWindow.shouldShowQuickNotesCorner ? quickNotesCornerSize : 0)
 
             Loader {
                 id: orbitHotCornerLoader
@@ -159,6 +187,64 @@ Scope {
                         id: orbitDwellTimer
                         interval: Math.max(1, Config.options?.orbit?.hotCornerDwellMs ?? 0)
                         onTriggered: orbitHotCornerArea.triggerOrbit()
+                    }
+                }
+            }
+
+            // Bottom-left Quick Notes uses a dwell-gated synthetic
+            // containsMouse property. StyledPopup can therefore keep its normal
+            // pointer bridge between the tiny corner anchor and the popup body
+            // without opening on accidental high-speed corner passes.
+            Loader {
+                id: quickNotesCornerLoader
+                active: cornerPanelWindow.shouldShowQuickNotesCorner
+                anchors {
+                    bottom: parent.bottom
+                    left: parent.left
+                }
+
+                sourceComponent: Item {
+                    id: quickNotesAnchor
+                    implicitWidth: cornerWidget.quickNotesCornerSize
+                    implicitHeight: cornerWidget.quickNotesCornerSize
+                    property bool dwellReady: false
+                    property bool containsMouse:
+                        dwellReady && quickNotesHitArea.containsMouse
+
+                    MouseArea {
+                        id: quickNotesHitArea
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        acceptedButtons: Qt.NoButton
+
+                        onEntered: {
+                            if (quickNotesPopup.active) {
+                                quickNotesDwellTimer.stop()
+                                quickNotesAnchor.dwellReady = true
+                            } else {
+                                quickNotesDwellTimer.restart()
+                            }
+                        }
+                        onExited: {
+                            quickNotesDwellTimer.stop()
+                            quickNotesAnchor.dwellReady = false
+                        }
+                    }
+
+                    Timer {
+                        id: quickNotesDwellTimer
+                        interval: Math.max(1,
+                            Config.options?.quickNotes?.hoverDelayMs ?? 220)
+                        repeat: false
+                        onTriggered: {
+                            if (quickNotesHitArea.containsMouse)
+                                quickNotesAnchor.dwellReady = true
+                        }
+                    }
+
+                    QuickNotesPopup {
+                        id: quickNotesPopup
+                        anchorItem: quickNotesAnchor
                     }
                 }
             }

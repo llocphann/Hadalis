@@ -8,6 +8,8 @@ CORNERS = ROOT / "modules" / "screenCorners" / "ScreenCorners.qml"
 POPUP = ROOT / "modules" / "screenCorners" / "QuickNotesPopup.qml"
 SCREEN_EDGES = ROOT / "modules" / "screenCorners" / "ScreenEdges.qml"
 NOTEPAD = ROOT / "modules" / "sidebarRight" / "notepad" / "NotepadWidget.qml"
+QUICK_NOTES_VIEW = ROOT / "modules" / "sidebarRight" / "notepad" / "QuickNotesView.qml"
+DASH_NOTES = ROOT / "modules" / "dashboard" / "DashNotes.qml"
 SIDEBAR_QUICK_NOTE = ROOT / "modules" / "sidebarLeft" / "widgets" / "QuickNote.qml"
 NOTEPAD_SERVICE = ROOT / "services" / "Notepad.qml"
 CONFIG = ROOT / "modules" / "common" / "Config.qml"
@@ -26,10 +28,17 @@ def require(source: str, token: str, message: str) -> None:
         fail(message + " (" + token + ")")
 
 
+def forbid(source: str, token: str, message: str) -> None:
+    if token in source:
+        fail(message + " (" + token + ")")
+
+
 corners = CORNERS.read_text(encoding="utf-8")
 popup = POPUP.read_text(encoding="utf-8")
 screen_edges = SCREEN_EDGES.read_text(encoding="utf-8")
 notepad = NOTEPAD.read_text(encoding="utf-8")
+quick_notes_view = QUICK_NOTES_VIEW.read_text(encoding="utf-8")
+dash_notes = DASH_NOTES.read_text(encoding="utf-8")
 sidebar_quick_note = SIDEBAR_QUICK_NOTE.read_text(encoding="utf-8")
 notepad_service = NOTEPAD_SERVICE.read_text(encoding="utf-8")
 config = CONFIG.read_text(encoding="utf-8")
@@ -82,6 +91,7 @@ for token in (
     "sourceComponent: NotepadWidget {",
     "compactPresentation: true",
     "quickCapturePresentation: true",
+    "surfaceLocalTabSelection: true",
     "Notepad.tabs[Notepad.currentTab]?.title",
     "contentRoot.width < 340 ? 80 : 150",
     "visible: contentRoot.width >= 340",
@@ -111,12 +121,20 @@ for token in (
     "function flushPendingSave(): void",
     "saveTimer.stop()",
     'property string _loadedTabId: ""',
+    "property bool surfaceLocalTabSelection: false",
+    "readonly property bool veryNarrowCompact:",
     "function _activeTabId(): string",
+    "function _loadTabById(tabId): bool",
     "Notepad.setTabTextById(root._loadedTabId, textArea.text)",
     "if (root.focus)",
     "function switchToTab(index): void",
     "function addTabSafely(): void",
     "function removeTabSafely(index): void",
+    "if (root.surfaceLocalTabSelection) {",
+    "root._loadTabById(targetId)",
+    "Notepad.indexForTabId(root._loadedTabId) < 0",
+    "String(modelData?.id ?? \"\") === root._loadedTabId",
+    "visible: root.compactPresentation && !root.veryNarrowCompact",
     "onClicked: root.switchToTab(tabPill.index)",
     "onClicked: root.addTabSafely()",
     "onClicked: root.removeTabSafely(tabPill.index)",
@@ -125,17 +143,52 @@ for token in (
     require(notepad, token, "shared Notepad must expose safe Quick Notes hooks")
 
 for token in (
-    'property string draftTabId: ""',
-    "id: textArea\n                        enabled: Notepad.ready",
-    "function beginEditing(): void",
-    "function saveDraft(): bool",
-    "Notepad.setTabTextById(root.draftTabId, root.draft)",
-    "root.draft.trim() : Notepad.text.trim()",
-    'if (root.editing)\n                            root.draft = ""',
-    "function cancelEditing(): void",
+    "QuickNotesView {",
+    "preferredHeight: 210",
+    "surfaceLocalTabSelection: true",
+    "showZettelkastenActions: true",
+    "root.flushPendingSave()",
+    "root.releaseEditorFocus()",
 ):
     require(sidebar_quick_note, token,
-            "Sidebar Quick Note must save to the tab identity it opened")
+            "Sidebar Quick Note must delegate to the shared presentation")
+
+for retired in (
+    "property string draftTabId:",
+    "function beginEditing()",
+    "function saveDraft()",
+    "function cancelEditing()",
+    "TextArea {",
+    "RippleButton {",
+):
+    forbid(sidebar_quick_note, retired,
+           "Sidebar Quick Note must not restore its legacy private editor")
+
+for token in (
+    "NotepadWidget {",
+    "compactPresentation: true",
+    "surfaceLocalTabSelection: root.surfaceLocalTabSelection",
+    'text: Translation.tr("Quick Notes")',
+    "readonly property bool narrowHeader:",
+    "readonly property bool veryNarrowHeader:",
+    "function focusEditor(): void",
+    "function flushPendingSave(): void",
+    "function releaseEditorFocus(): void",
+    "showZettelkastenActions",
+):
+    require(quick_notes_view, token,
+            "shared Quick Notes presentation contract missing")
+
+if dash_notes.count("QuickNotesView {") != 1:
+    fail("Dashboard Quick Notes must own exactly one shared QuickNotesView")
+for token in (
+    "surfaceLocalTabSelection: true",
+    "showZettelkastenActions: true",
+):
+    require(dash_notes, token,
+            "Dashboard Quick Notes must configure the shared presentation")
+forbid(dash_notes, "NotepadWidget {",
+       "Dashboard must not bypass the shared Quick Notes presentation")
 
 tabs_loaded_start = notepad_service.index("        onLoaded: {")
 tabs_saved_start = notepad_service.index("        onSaved:", tabs_loaded_start)

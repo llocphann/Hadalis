@@ -40,6 +40,9 @@ for token in (
         fail("2K-V-B ProbeShell contract missing " + token)
 
 for token in (
+    'CONTENTION_DISCONNECT_EDGE_ID = "clock.data.time"',
+    "disconnect.prepare_disconnect(",
+    "probe, clock_path, CONTENTION_DISCONNECT_EDGE_ID",
     "def prepare_four_pipelines(",
     "def force_binding_postcondition_failure(",
     "def authorize_siblings_and_owner(",

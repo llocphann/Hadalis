@@ -66,6 +66,12 @@ def main() -> None:
     for token in (
         'settingsPageIndex: 31',
         'settingsPageName: Translation.tr("Diagnostics")',
+        "readonly property bool diagnosticsActive:",
+        "RuntimeDiagnosticsSession.pageCurrent",
+        "readonly property var runtimeCatalog: root.diagnosticsActive",
+        "readonly property var runtimeSnapshot: root.diagnosticsActive",
+        "? CodeWorkflowRuntime.snapshot() : ({ records: [], events: [] })",
+        "targets: root.runtimeCatalog",
         "BtopMetricPanel {",
         "BtopNetworkPanel {",
         "BtopCoreGrid {",

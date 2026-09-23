@@ -1,0 +1,3 @@
+module qs.modules.notificationCenter
+NotificationCenterContent 1.0 NotificationCenterContent.qml
+NotificationCenterPopup 1.0 NotificationCenterPopup.qml

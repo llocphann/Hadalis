@@ -18,6 +18,12 @@ RippleButton {
         StyledText {
             visible: text !== ""
             text: buttonWithIconRoot.mainText
+            // Icon buttons are frequently placed inside narrow settings panes.
+            // Respect the loader's assigned width instead of painting the label
+            // past the button/pane boundary when the text is wider than it.
+            elide: Text.ElideRight
+            maximumLineCount: 1
+            clip: true
             font.pixelSize: Appearance.font.pixelSize.small
             color: buttonWithIconRoot.contentColor
             Behavior on color {
@@ -47,6 +53,7 @@ RippleButton {
         }
         Loader {
             Layout.fillWidth: true
+            Layout.minimumWidth: 0
             sourceComponent: buttonWithIconRoot.mainContentComponent
             Layout.alignment: Qt.AlignVCenter
         }

@@ -69,26 +69,6 @@ Scope {
 
                     nativeBlurAllowed: true
 
-                    // Mascot chaos: her ground slam rattles the taskbar; a kick more so
-                    property real _quakeY: 0
-                    property real _quakeScale: 1
-                    transform: Translate { y: content._quakeY }
-                    SequentialAnimation {
-                        id: _quakeAnim
-                        NumberAnimation { target: content; property: "_quakeY"; to: (root.isBottom ? -7 : 7) * content._quakeScale; duration: 60; easing.type: Easing.OutQuad }
-                        NumberAnimation { target: content; property: "_quakeY"; to: (root.isBottom ? 5 : -5) * content._quakeScale; duration: 70; easing.type: Easing.InOutQuad }
-                        NumberAnimation { target: content; property: "_quakeY"; to: (root.isBottom ? -3 : 3) * content._quakeScale; duration: 70; easing.type: Easing.InOutQuad }
-                        NumberAnimation { target: content; property: "_quakeY"; to: 0; duration: 90; easing.type: Easing.OutBack }
-                    }
-                    Connections {
-                        target: MascotChaos
-                        enabled: MascotChaos.enabled
-                        function onPanelShake(intensity) {
-                            content._quakeScale = Math.max(1, intensity)
-                            if (Looks.transition.enabled) _quakeAnim.restart()
-                        }
-                    }
-
                     anchors {
                         left: parent.left
                         right: parent.right

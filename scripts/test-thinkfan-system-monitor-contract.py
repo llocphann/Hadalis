@@ -102,8 +102,6 @@ def main() -> None:
         'property string minimumValueSample: ""',
         'Layout.minimumWidth: minimumValueText.implicitWidth',
         'minimumValueSample: "99%"',
-        'width: Math.max(implicitWidth, speedRow.implicitWidth)',
-        'width: Math.max(implicitWidth, levelRow.implicitWidth)',
         'text: "speed"',
         'text: "tune"',
         "width: thermalColumn.width",

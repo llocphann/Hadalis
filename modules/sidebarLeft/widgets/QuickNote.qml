@@ -148,6 +148,7 @@ Item {
 
                     TextArea {
                         id: textArea
+                        enabled: Notepad.ready
                         width: parent.width
                         text: root.editing ? root.draft : Notepad.text
                         placeholderText: Translation.tr("Type something...")

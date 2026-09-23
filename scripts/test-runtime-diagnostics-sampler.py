@@ -58,6 +58,20 @@ assert module._rate(300, 100, 2.0) == 100.0
 assert module._rate(100, 300, 2.0) is None
 assert module._rate(100, 100, 0.0) is None
 
+# /proc/stat guest counters are already included in user/nice and must not be
+# counted twice when deriving total CPU time.
+original_read_text = module._read_text
+try:
+    module._read_text = lambda _path: (
+        "cpu 100 0 50 850 0 0 0 0 20 10\n"
+        "cpu0 50 0 25 425 0 0 0 0 10 5\n"
+    )
+    ticks = module.read_system_cpu_ticks()
+finally:
+    module._read_text = original_read_text
+assert ticks["cpu"] == (1000, 850), ticks
+assert ticks["cpu0"] == (500, 425), ticks
+
 # Provenance vocabulary is part of the product truth model. Kernel/process
 # values must never be confused with attributed or experimental target metrics.
 source = SAMPLER.read_text(encoding="utf-8")

@@ -12,10 +12,26 @@ Item {
     property string selectedTargetId: ""
     signal targetActivated(string targetId, string instanceId)
 
-    readonly property var visibleTargets:
-        Array.isArray(root.targets)
-            ? root.targets.slice(0, Math.max(0, root.maxRows))
-            : []
+    readonly property var visibleTargets: {
+        const source = Array.isArray(root.targets) ? root.targets : []
+        const limit = Math.max(0, root.maxRows)
+        const visible = source.slice(0, limit)
+        const selectedId = String(root.selectedTargetId ?? "")
+        if (limit <= 0 || selectedId.length === 0
+                || visible.some(target =>
+                    String(target?.targetId ?? "") === selectedId))
+            return visible
+
+        const selected = source.find(target =>
+            String(target?.targetId ?? "") === selectedId)
+        if (!selected)
+            return visible
+        if (visible.length < limit)
+            visible.push(selected)
+        else
+            visible[visible.length - 1] = selected
+        return visible
+    }
 
     readonly property var recordIndex: root.buildRecordIndex()
 

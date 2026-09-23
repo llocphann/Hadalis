@@ -347,10 +347,7 @@ Item { // Notification item area
                                     text: "close"
                                 }
 
-                                StyledToolTip {
-                                    visible: root.modernLayout && parent.hovered
-                                    text: Translation.tr("Dismiss")
-                                }
+                                StyledToolTip { text: Translation.tr("Dismiss") }
                             }
 
                             Repeater {
@@ -405,10 +402,7 @@ Item { // Notification item area
                                     text: "content_copy"
                                 }
 
-                                StyledToolTip {
-                                    visible: root.modernLayout && parent.hovered
-                                    text: Translation.tr("Copy")
-                                }
+                                StyledToolTip { text: Translation.tr("Copy") }
                             }
 
                         }

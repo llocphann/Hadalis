@@ -26,11 +26,15 @@ Item {
     }
 
     function formatPercent(value): string {
+        if (value === null || value === undefined)
+            return "—"
         const number = Number(value)
         return Number.isFinite(number) ? number.toFixed(1) + "%" : "—"
     }
 
     function formatKiB(value): string {
+        if (value === null || value === undefined)
+            return "—"
         const kib = Number(value)
         if (!Number.isFinite(kib) || kib < 0)
             return "—"

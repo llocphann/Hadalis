@@ -270,6 +270,7 @@ Singleton {
                 property bool codeWorkflowTargetsPaneCollapsed: false
                 property bool codeWorkflowInspectorPaneCollapsed: false
                 property real codeWorkflowSourcePreviewHeight: 190
+                property bool codeWorkflowMinimap: true
                 // Presentation-only graph positions. Stored as JSON because
                 // JsonObject needs a typed property while graph/node ids are dynamic.
                 property string codeWorkflowGraphNodeLayoutOffsets: "{}"

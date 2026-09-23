@@ -166,6 +166,111 @@ def read_io(pid: int) -> dict[str, int]:
     return result
 
 
+def read_process_status(pid: int) -> dict[str, int]:
+    text = _read_text(Path("/proc") / str(pid) / "status")
+    values: dict[str, int] = {}
+    for key, out_key in (("VmRSS", "Rss"), ("VmSwap", "Swap")):
+        match = re.search(rf"^{key}:\s+(\d+)\s+kB\s*$", text, re.MULTILINE)
+        if match:
+            values[out_key] = int(match.group(1))
+    return values
+
+
+def read_process_command(pid: int) -> str:
+    proc = Path("/proc") / str(pid)
+    comm = _read_text(proc / "comm").strip()
+    cmdline = _read_text(proc / "cmdline").replace("\x00", " ").strip()
+    return cmdline or comm or f"pid-{pid}"
+
+
+def read_descendants(pid: int) -> list[tuple[int, int]]:
+    result: list[tuple[int, int]] = []
+    queue = [pid]
+    seen = {pid}
+    while queue:
+        parent = queue.pop(0)
+        text = _read_text(
+            Path("/proc") / str(parent) / "task" / str(parent) / "children"
+        ).strip()
+        if not text:
+            continue
+        for raw in text.split():
+            try:
+                child = int(raw)
+            except ValueError:
+                continue
+            if child <= 0 or child in seen:
+                continue
+            seen.add(child)
+            result.append((child, parent))
+            queue.append(child)
+    return result
+
+
+def sample_children(
+    shell_pid: int,
+    previous: dict[str, Any],
+    elapsed_ns: int,
+) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    rows: list[dict[str, Any]] = []
+    next_state: dict[str, Any] = {}
+    previous_children = previous.get("children", {})
+    if not isinstance(previous_children, dict):
+        previous_children = {}
+
+    for child_pid, parent_pid in read_descendants(shell_pid):
+        proc_dir = Path("/proc") / str(child_pid)
+        if not proc_dir.exists():
+            continue
+        command = read_process_command(child_pid)
+        runtime_ns = read_sched_runtime_ns(child_pid)
+        old = previous_children.get(str(child_pid), {})
+        cpu = None
+        if (
+            runtime_ns is not None
+            and elapsed_ns > 0
+            and isinstance(old, dict)
+            and old.get("command") == command
+            and isinstance(old.get("runtimeNs"), int)
+            and runtime_ns >= old["runtimeNs"]
+        ):
+            cpu = (runtime_ns - old["runtimeNs"]) / elapsed_ns * 100.0
+
+        memory = read_process_status(child_pid)
+        rows.append(
+            {
+                "pid": child_pid,
+                "parentPid": parent_pid,
+                "command": command,
+                "cpu": {
+                    "scope": "child-process",
+                    "method": "schedstat",
+                    "confidence": "kernel",
+                    "percent": cpu,
+                },
+                "memory": {
+                    "scope": "child-process",
+                    "method": "proc-status",
+                    "confidence": "kernel",
+                    "valuesKiB": memory,
+                },
+            }
+        )
+        next_state[str(child_pid)] = {
+            "runtimeNs": runtime_ns,
+            "command": command,
+        }
+
+    rows.sort(
+        key=lambda row: (
+            -(row["cpu"]["percent"] or 0.0),
+            -row["memory"]["valuesKiB"].get("Rss", 0),
+            row["pid"],
+        )
+    )
+    return rows, next_state
+
+
 def read_network() -> dict[str, dict[str, int]]:
     interfaces: dict[str, dict[str, int]] = {}
     text = _read_text(Path("/proc/net/dev"))
@@ -322,6 +427,8 @@ def sample(pid: int, previous: dict[str, Any] | None) -> tuple[dict[str, Any], d
             )
         )
 
+    child_rows, child_state = sample_children(pid, previous, elapsed_ns)
+
     prev_io = previous.get("io", {})
     io_rates = {
         "readBytesPerSec": _rate(
@@ -397,6 +504,7 @@ def sample(pid: int, previous: dict[str, Any] | None) -> tuple[dict[str, Any], d
                 "counters": io_now,
                 "rates": io_rates,
             },
+            "children": child_rows,
             "gpu": {
                 "scope": "shell-process",
                 "method": "drm-fdinfo",
@@ -430,6 +538,7 @@ def sample(pid: int, previous: dict[str, Any] | None) -> tuple[dict[str, Any], d
         "io": io_now,
         "network": net_now,
         "drm": drm_now,
+        "children": child_state,
     }
     return payload, state
 

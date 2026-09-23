@@ -433,7 +433,12 @@ ContentPage {
                 BtopMetricPanel {
                     Layout.fillWidth: true
                     title: Translation.tr("Memory")
-                    subtitle: Translation.tr("Physical RAM")
+                    subtitle: Translation.tr("Available") + " "
+                        + root.formatKiB(
+                            root.systemEvidence?.memory?.valuesKiB?.MemAvailable)
+                        + " · " + Translation.tr("Cached") + " "
+                        + root.formatKiB(
+                            root.systemEvidence?.memory?.valuesKiB?.Cached)
                     value: root.systemRamPercent()
                     detail: root.formatKiB(
                             root.systemEvidence?.memory?.valuesKiB?.MemUsed)

@@ -40,6 +40,10 @@ Singleton {
     property bool capturing: false
     property bool captureAllRequested: false
     property var requestedWindowIds: []
+    // Overview is a spatial snapshot, so it may refresh the bounded set of
+    // currently visible windows without invalidating the session cache used by
+    // hover previews. These IDs bypass needsCapture for one consumed batch.
+    property var forceRequestedWindowIds: []
     property var observedWindowIds: []
 
     // Decoded CPU pixmaps outlive StyledPopup's lazy visual delegate, without
@@ -207,16 +211,33 @@ Singleton {
         requestedWindowIds = Array.from(merged)
     }
 
+    function _queueForcedWindowIds(windowIds): void {
+        if (!Array.isArray(windowIds))
+            return
+        const merged = new Set(forceRequestedWindowIds)
+        for (const rawId of windowIds) {
+            const id = Number(rawId)
+            if (Number.isSafeInteger(id) && id > 0)
+                merged.add(id)
+        }
+        forceRequestedWindowIds = Array.from(merged)
+    }
+
     function _hasPendingCaptureRequest(): bool {
-        return captureAllRequested || requestedWindowIds.length > 0
+        return captureAllRequested
+            || requestedWindowIds.length > 0
+            || forceRequestedWindowIds.length > 0
     }
 
     function _clearCaptureRequest(): void {
         captureAllRequested = false
         requestedWindowIds = []
+        forceRequestedWindowIds = []
     }
 
     function _pendingRequestNeedsCapture(): bool {
+        if (forceRequestedWindowIds.length > 0)
+            return true
         const currentIds = captureAllRequested
             ? (NiriService.windows ?? []).map(window => window.id)
             : requestedWindowIds
@@ -425,25 +446,54 @@ Singleton {
         captureDebounceTimer.restart()
     }
 
+    // Unlike a hover preview, Overview represents the current workspace state.
+    // Keep the cached image on screen immediately, then refresh only the bounded
+    // set of visible window IDs so long-lived Kitty/browser windows do not keep
+    // the snapshot they happened to have when they were first created.
+    function refreshForOverview(windowIds): void {
+        const ids = PreviewPolicy.boundedWindowIds(windowIds, overviewWarmLimit)
+        if (ids.length === 0)
+            return
+
+        root.warmForOverview(ids)
+        root._queueForcedWindowIds(ids)
+        if (!initialized) initialize()
+
+        root.captureComplete()
+
+        if (!sessionReady) {
+            captureRequestedWhileInitializing = true
+            return
+        }
+
+        if (capturing)
+            return
+
+        captureDebounceTimer.restart()
+    }
+
     // Internal: actual capture logic, called after debounce
     function _doCapture(): void {
         if (capturing) return
         
         const allWindows = NiriService.windows ?? []
         const requestedIds = new Set(root.requestedWindowIds)
+        const forcedIds = new Set(root.forceRequestedWindowIds)
         const captureEverything = root.captureAllRequested
         root._clearCaptureRequest()
         const windows = captureEverything
             ? allWindows
-            : allWindows.filter(window => requestedIds.has(window.id))
+            : allWindows.filter(window =>
+                requestedIds.has(window.id) || forcedIds.has(window.id))
         if (windows.length === 0) return
         
         const idsToCapture = []
         
         for (const win of windows) {
             const cached = previewCache[win.id]
-            // Normal requests only fill missing previews.
-            if (PreviewPolicy.needsCapture(cached)) {
+            // Normal requests only fill missing previews. Overview may force one
+            // bounded visible ID so an existing snapshot can be refreshed.
+            if (forcedIds.has(win.id) || PreviewPolicy.needsCapture(cached)) {
                 idsToCapture.push(win.id)
             }
         }

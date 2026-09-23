@@ -621,7 +621,10 @@ for token in (
         fail("edge Shape route delegate drifted: " + token)
 
 edge_label_start = canvas.index("                id: edgeLabel")
-edge_label_end = canvas.index("\n        Loader {", edge_label_start)
+edge_label_end = canvas.index(
+    "\n        Repeater {\n            model: root.nodes",
+    edge_label_start,
+)
 edge_label_block = canvas[edge_label_start:edge_label_end]
 for token in (
     "required property var modelData",

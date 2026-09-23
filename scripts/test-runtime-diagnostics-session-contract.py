@@ -85,6 +85,8 @@ for token in (
     '"settings:" + String(Quickshell.processId)',
     "readonly property bool localShell:",
     "property var activeOwners: ({})",
+    "property int heartbeatTick: 0",
+    "root.heartbeatTick++",
     'property string leaseTransport: ""',
     "property var remoteEvidenceFloor: null",
     "readonly property bool remoteEvidenceFresh:",
@@ -164,6 +166,21 @@ for source, text in (
         text,
         "root.samplerRunning",
         f"{source} must report actual sampler startup state",
+    )
+    require(
+        text,
+        "function sampleIsStale(): bool",
+        f"{source} must detect stalled diagnostics sampling",
+    )
+    require(
+        text,
+        "RuntimeDiagnosticsSession.heartbeatTick",
+        f"{source} must refresh stalled-sample detection",
+    )
+    require(
+        text,
+        "root.sessionStalled",
+        f"{source} must expose stalled diagnostics sampling",
     )
     require(
         text,

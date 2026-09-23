@@ -565,6 +565,8 @@ def main() -> None:
     ):
         check(token in dock,
               f"Dock iRiS Screen Edge / shadow contract missing: {token}")
+    check("nativeBlurGeometryExact" not in dock,
+          "Dock must not retain an unused blur-proof compatibility alias")
     for stale_corner_override in (
         'topLeftRadius: (root.isTop || root.isLeft) ? 0 : radius',
         'topRightRadius: (root.isTop || root.position === "right") ? 0 : radius',

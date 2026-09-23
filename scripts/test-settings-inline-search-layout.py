@@ -52,13 +52,16 @@ window = read("settings.qml")
 overlay = read("modules/settings/SettingsOverlay.qml")
 focus = read("modules/settings/SettingsFocus.qml")
 waffle = read("modules/waffle/settings/WSettingsContent.qml")
-for path, source in (("Window", window), ("Overlay", overlay)):
+for path, source, indicator_parent in (
+    ("Window", window, "navRailFlickable.contentItem"),
+    ("Overlay", overlay, "navFlickable.contentItem"),
+):
     for token in (
         "readonly property Item navButton: navBtn",
         "readonly property bool groupIsExpanded:",
         'visible: navItem.modelData.type === "page" && (navItem.groupIsExpanded || navBtn.toggled)',
         "function _setTargetGeometry(targetItem)",
-        "targetY = targetItem.mapToItem(navCol, 0, 0).y",
+        "targetY = targetItem.mapToItem(sharedNavIndicator.parent, 0, 0).y",
         "_setTargetGeometry(item.navButton)",
         "target: navCol",
         "function onImplicitHeightChanged() { Qt.callLater(sharedNavIndicator.updatePosition); }",
@@ -68,6 +71,12 @@ for path, source in (("Window", window), ("Overlay", overlay)):
     ):
         assert token in source, f"{path}: nav alignment contract missing {token}"
     assert "item.children[1]" not in source, f"{path}: positional child lookup returned"
+    assert f"parent: {indicator_parent}" in source, (
+        f"{path}: indicator must live on the Flickable content layer"
+    )
+    assert "parent: navCol" not in source, (
+        f"{path}: indicator returned to ColumnLayout-managed geometry"
+    )
     assert 'navPageOrder: visibleNavItems.filter' not in source, (
         f"{path}: collapsed groups must remain keyboard-reachable"
     )

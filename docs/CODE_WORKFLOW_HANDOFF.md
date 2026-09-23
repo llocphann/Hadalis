@@ -67,6 +67,14 @@ module work, commit directly to `dev`, and never force-push or modify `stable`.
   at a stale static `remoteSnapshot.descriptors` contract after runtime
   inventory had intentionally moved to `remoteRuntimeSnapshot`; the contract
   was updated rather than reverting the runtime projection optimization.
+- Fresh acceptance at `e174a0ef` then completed the full Code Workflow job,
+  including all five live editor/compositor fixtures and every Phase 2 static
+  and live mutation gate. Across the five page-30 fixtures, the immediate
+  close/reopen race recovered in 1.776–1.945s and the three repeated reopen
+  cycles in 1.601–1.762s. Each cycle advanced mount/destroy counts by exactly
+  one replacement instance, `hydratedWhileHostDisabled` remained false, and
+  every fixture retained the "Real page 30 loaded without QML parse/property
+  errors" check.
 - Graph reasoning controls now operate on the reviewed unified graph without
   widening mutation authority: **Trace upstream**, **Trace downstream** and
   **Focus connected path** compute a presentation-only reachable set, emphasize
@@ -189,6 +197,16 @@ module work, commit directly to `dev`, and never force-push or modify `stable`.
   acceptance harness exercises authorized success plus forced postcondition
   rollback for each reviewed edge, without introducing TYPE/CYCLE proof or
   generalizing deletion to arbitrary bindings.
+- The 2K-V-B live contention fixture now pins its Disconnect sibling explicitly
+  to `clock.data.time` when calling the shared T-C preparation helper. T-C made
+  `edge_id` mandatory after adding `clock.data.date`; leaving the old implicit
+  call caused the live fixture to stop before contention began. Acceptance at
+  `e174a0ef` records 2/2 contention checks with `failure=null`: the Binding
+  owner rejects concurrent Literal/Connect/Disconnect starts, then the owner
+  write stales same-source siblings while preserving exact rollback identity.
+  The separate T-C Disconnect production report still exercises both reviewed
+  edges with 4/4 checks and `failure=null`, so the contention fixture's pinned
+  sibling does not narrow Disconnect production authority.
 
 ## Production UI refinement continuation — 2026-09-21
 

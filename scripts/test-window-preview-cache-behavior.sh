@@ -64,8 +64,9 @@ const scope = {
 };
 // Mirror QML's unqualified singleton properties in the behavior harness.
 scope._log = root._log;
-for (const key of ['previewCache','requestedWindowIds','captureAllRequested',
-    'capturing','initialized','sessionReady','captureRequestedWhileInitializing',
+for (const key of ['previewCache','requestedWindowIds','forceRequestedWindowIds',
+    'captureAllRequested','capturing','initialized','sessionReady',
+    'captureRequestedWhileInitializing',
     'forceRefreshRequestedWhileInitializing','overviewWarmImages','overviewWarmOrder','overviewWarmRequestedIds',
     'overviewWarmLimit','previewDir','sessionKey']) {
     Object.defineProperty(scope, key, {

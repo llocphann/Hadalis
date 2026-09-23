@@ -66,8 +66,8 @@ ContentPage {
                 onCheckedChanged: Config.setNestedValue("dashboard.showPowerButtons", checked)
             }
             ConfigSwitch {
-                text: Translation.tr("Preload Dashboard")
-                description: Translation.tr("Load before first open; stays warm after use")
+                text: Translation.tr("Keep loaded in memory")
+                description: Translation.tr("Faster opening at the cost of RAM")
                 checked: Config.options?.dashboard?.keepLoaded ?? false
                 onCheckedChanged: Config.setNestedValue("dashboard.keepLoaded", checked)
             }

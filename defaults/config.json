@@ -1198,7 +1198,6 @@
         "popupWidth": 420,
         "popupHeight": 560,
         "markReadOnOpen": true,
-        "dismissToastsOnOpen": true,
         "allowInFullscreen": false,
         "screenList": []
     },

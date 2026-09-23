@@ -5,6 +5,8 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 PAGE = ROOT / "modules" / "settings" / "RuntimeDiagnosticsConfig.qml"
+WAFFLE_PAGE = ROOT / "modules" / "waffle" / "settings" / "pages" / "WDiagnosticsPage.qml"
+BOARD = ROOT / "modules" / "settings" / "widgets" / "BtopDashboard.qml"
 SPARKLINE = ROOT / "modules" / "settings" / "widgets" / "BtopSparkline.qml"
 METRIC_PANEL = ROOT / "modules" / "settings" / "widgets" / "BtopMetricPanel.qml"
 NETWORK_PANEL = ROOT / "modules" / "settings" / "widgets" / "BtopNetworkPanel.qml"
@@ -19,6 +21,7 @@ RUNTIME = ROOT / "services" / "RuntimeDiagnostics.qml"
 TARGET_RUNTIME = ROOT / "services" / "CodeWorkflowRuntimeTarget.qml"
 SAMPLER = ROOT / "scripts" / "runtime-diagnostics-sampler.py"
 WIDGETS = ROOT / "modules" / "settings" / "widgets"
+WIDGET_QMLDIR = WIDGETS / "qmldir"
 
 
 def require(text: str, token: str, source: str) -> None:
@@ -33,6 +36,8 @@ def forbid(text: str, token: str, source: str) -> None:
 
 def main() -> None:
     page = PAGE.read_text(encoding="utf-8")
+    waffle_page = WAFFLE_PAGE.read_text(encoding="utf-8")
+    board = BOARD.read_text(encoding="utf-8")
     session = SESSION.read_text(encoding="utf-8")
     runtime = RUNTIME.read_text(encoding="utf-8")
     target_runtime = TARGET_RUNTIME.read_text(encoding="utf-8")
@@ -46,6 +51,9 @@ def main() -> None:
     interface_table = INTERFACE_TABLE.read_text(encoding="utf-8")
     target_table = TARGET_TABLE.read_text(encoding="utf-8")
     target_inspector = TARGET_INSPECTOR.read_text(encoding="utf-8")
+    widget_qmldir = WIDGET_QMLDIR.read_text(encoding="utf-8")
+    require(widget_qmldir, "module qs.modules.settings.widgets",
+            "shared Diagnostics widgets module")
 
     for widget in (
         "BtopMetricPanel.qml",
@@ -58,10 +66,13 @@ def main() -> None:
         "BtopCoveragePanel.qml",
         "BtopTargetInspector.qml",
         "BtopInterfaceTable.qml",
+        "BtopDashboard.qml",
     ):
         path = WIDGETS / widget
         if not path.is_file():
             raise AssertionError(f"missing diagnostics widget: {path}")
+        require(widget_qmldir, f"{path.stem} 1.0 {widget}",
+                "shared Diagnostics widgets module")
 
     for token in (
         'settingsPageIndex: 31',
@@ -105,7 +116,19 @@ def main() -> None:
         "function shellGpuMemoryKiB(): var {",
         "return found ? total : null",
     ):
-        require(page, token, "RuntimeDiagnosticsConfig.qml")
+        require(page + board, token, "Material Diagnostics and shared dashboard")
+
+    for source, text in (("Material", page), ("Waffle", waffle_page)):
+        require(text, "BtopDashboard {", f"{source} shared diagnostics dashboard")
+        require(text, "evidence: root.evidence", f"{source} shared diagnostics evidence")
+        require(text, "targets: root.runtimeCatalog", f"{source} Workflow target catalog")
+        require(text, "records: root.runtimeRecords", f"{source} Workflow runtime records")
+    require(waffle_page, "import qs.modules.settings.widgets",
+            "Waffle must load the registered shared widgets module")
+    require(board, "processes: root.shellEvidence?.children ?? []",
+            "shared process table must contain shell descendants")
+    require(board, "history: root.evidence?.history ?? []",
+            "shared core grid must consume sampled histories")
 
     for token in (
         "function safeValues(): var {",
@@ -280,7 +303,7 @@ def main() -> None:
         "if rx_rate is None:",
         "if tx_rate is None:",
         'return comm or f"pid-{pid}"',
-        're.fullmatch(r"cpu(?:\d+)?"',
+        r're.fullmatch(r"cpu(?:\d+)?"',
     ):
         require(sampler, token, "runtime-diagnostics-sampler.py")
 

@@ -55,7 +55,7 @@ Item {
                     || data.txBytesPerSec === undefined
                 ? null : Number(data.txBytesPerSec)
             result.push({
-                name: name,
+                interfaceName: name,
                 rxBytes: Number(data.rxBytes ?? 0),
                 txBytes: Number(data.txBytes ?? 0),
                 rxBytesPerSec: rxRate !== null
@@ -127,7 +127,8 @@ Item {
 
                     textFormat: Text.PlainText
                     Layout.fillWidth: true
-                    Layout.preferredWidth: 1.2
+                    Layout.minimumWidth: 105
+                    Layout.preferredWidth: 150
                     text: "IFACE"
                     color: Appearance.colors.colSubtext
                     font.family: Appearance.font.family.monospace
@@ -137,7 +138,7 @@ Item {
                 StyledText {
 
                     textFormat: Text.PlainText
-                    Layout.fillWidth: true
+                    Layout.preferredWidth: root.showTotalColumn ? 145 : 105
                     horizontalAlignment: Text.AlignRight
                     text: "RX"
                     color: Appearance.colors.colSubtext
@@ -148,7 +149,7 @@ Item {
                 StyledText {
 
                     textFormat: Text.PlainText
-                    Layout.fillWidth: true
+                    Layout.preferredWidth: root.showTotalColumn ? 145 : 105
                     horizontalAlignment: Text.AlignRight
                     text: "TX"
                     color: Appearance.colors.colSubtext
@@ -160,7 +161,7 @@ Item {
 
                     textFormat: Text.PlainText
                     visible: root.showTotalColumn
-                    Layout.fillWidth: true
+                    Layout.preferredWidth: 100
                     horizontalAlignment: Text.AlignRight
                     text: "TOTAL"
                     color: Appearance.colors.colSubtext
@@ -188,8 +189,9 @@ Item {
 
                         textFormat: Text.PlainText
                         Layout.fillWidth: true
-                        Layout.preferredWidth: 1.2
-                        text: String(modelData.name)
+                        Layout.minimumWidth: 105
+                        Layout.preferredWidth: 150
+                        text: String(root.visibleRows[index]?.interfaceName ?? "")
                         color: Appearance.colors.colOnLayer1
                         font.family: Appearance.font.family.monospace
                         font.pixelSize: Appearance.font.pixelSize.small
@@ -199,7 +201,7 @@ Item {
                     StyledText {
 
                         textFormat: Text.PlainText
-                        Layout.fillWidth: true
+                        Layout.preferredWidth: root.showTotalColumn ? 145 : 105
                         horizontalAlignment: Text.AlignRight
                         text: "↓ " + root.formatRate(
                             modelData.rxBytesPerSec)
@@ -212,7 +214,7 @@ Item {
                     StyledText {
 
                         textFormat: Text.PlainText
-                        Layout.fillWidth: true
+                        Layout.preferredWidth: root.showTotalColumn ? 145 : 105
                         horizontalAlignment: Text.AlignRight
                         text: "↑ " + root.formatRate(
                             modelData.txBytesPerSec)
@@ -226,7 +228,7 @@ Item {
 
                         textFormat: Text.PlainText
                         visible: root.showTotalColumn
-                        Layout.fillWidth: true
+                        Layout.preferredWidth: 100
                         horizontalAlignment: Text.AlignRight
                         text: root.formatBytes(
                             modelData.rxBytes + modelData.txBytes)

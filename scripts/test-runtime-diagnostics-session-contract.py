@@ -22,6 +22,7 @@ shell = read("shell.qml")
 page_host = read("modules/settings/SettingsPageHost.qml")
 material_page = read("modules/settings/RuntimeDiagnosticsConfig.qml")
 waffle_page = read("modules/waffle/settings/pages/WDiagnosticsPage.qml")
+dashboard = read("modules/settings/widgets/BtopDashboard.qml")
 sampler = read("scripts/runtime-diagnostics-sampler.py")
 
 for token in (
@@ -218,21 +219,15 @@ for source, text in (
         'String(root.discoveryEvidence?.error ?? "")',
         f"{source} must surface runtime boundary index failures",
     )
-    require(
-        text,
-        "if (value === null || value === undefined)",
-        f"{source} must preserve unavailable metrics instead of coercing null to zero",
-    )
-    require(
-        text,
-        "function shellGpuBusy(): var",
-        f"{source} must allow unavailable GPU utilization",
-    )
-    require(
-        text,
-        "return found ? total : null",
-        f"{source} must allow unavailable GPU resident memory",
-    )
+    require(text, "BtopDashboard {",
+            f"{source} must show the shared resource dashboard")
+
+require(dashboard, "if (value === null || value === undefined)",
+        "Shared dashboard must preserve unavailable metrics instead of coercing null to zero")
+require(dashboard, "function shellGpuBusy(): var",
+        "Shared dashboard must allow unavailable GPU utilization")
+require(dashboard, "return found ? total : null",
+        "Shared dashboard must allow unavailable GPU resident memory")
 
 # CodeWorkflowRuntime remains canonical identity/runtime evidence only. It must
 # not grow a second Diagnostics lease table, heartbeat client or sampler.

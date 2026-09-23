@@ -17,6 +17,7 @@ Item {
     property string detail: ""
     property string provenance: ""
     property var samples: []
+    property real graphHeight: 28
     property color accentColor: Appearance.colors.colPrimary
 
     implicitHeight: metricColumn.implicitHeight + 24
@@ -103,7 +104,7 @@ Item {
 
             BtopSparkline {
                 Layout.fillWidth: true
-                Layout.preferredHeight: 28
+                Layout.preferredHeight: root.graphHeight
                 samples: root.samples
                 maxValue: 100
                 lineColor: root.accentColor

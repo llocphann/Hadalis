@@ -26,6 +26,8 @@ sampler = read("scripts/runtime-diagnostics-sampler.py")
 workflow_runtime = read("services/CodeWorkflowRuntime.qml")
 workflow_index = read("services/CodeWorkflowIndex.qml")
 metric_panel = read("modules/settings/widgets/BtopMetricPanel.qml")
+dashboard = read("modules/settings/widgets/BtopDashboard.qml")
+target_table = read("modules/settings/widgets/BtopTargetTable.qml")
 
 # Material keeps historical page indices and appends Diagnostics at 31.
 require(registry, 'key: "diagnostics"', "Material Diagnostics page missing")
@@ -265,8 +267,11 @@ for forbidden in ('"targetId"', '"componentCpu"', '"componentRam"', '"componentG
         )
 
 for page in (material_page, waffle_page):
-    require(page, "CPU · RAM · Swap · GPU · Network",
-            "Diagnostics page must preserve required resource scope")
+    require(page, "BtopDashboard {",
+            "Both Settings styles must show the shared diagnostics dashboard")
+    require(page, "evidence: root.evidence",
+            "Dashboard must consume the leased diagnostics evidence")
+    presentation = page + dashboard
     for token in (
         "readonly property bool diagnosticsActive:",
         "RuntimeDiagnosticsSession.pageCurrent",
@@ -290,60 +295,69 @@ for page in (material_page, waffle_page):
         "root.shellEvidence?.memory?.valuesKiB?.Pss",
         "root.shellEvidence?.memory?.valuesKiB?.Swap",
         "root.shellEvidence?.gpu?.available === true",
-        "root.networkEvidence?.aggregateNonLoopback",
-        "root.shellEvidence?.io?.rates?.readBytesPerSec",
-        "root.shellEvidence?.io?.rates?.writeBytesPerSec",
+        "?.aggregateNonLoopback?.rxBytesPerSec",
+        "root.shellEvidence?.io?.rates",
+        "?.readBytesPerSec)",
+        "?.writeBytesPerSec)",
         "root.evidence?.discovery ?? null",
         "Source boundaries are parser evidence, not proof that a component executed.",
     ):
-        require(page, token, "Diagnostics UI must render exact shell evidence: " + token)
+        require(presentation, token,
+                "Diagnostics UI must render exact shell evidence: " + token)
     # Provenance paths are presentation text; Settings must not open its own
     # sampler process or direct /proc FileView. The shell-owned sampler remains
     # the sole measurement authority.
     for forbidden in ("Process {", "FileView {", "Quickshell.Io"):
-        if forbidden in page:
+        if forbidden in presentation:
             raise SystemExit(
                 "FAIL: Settings pages must consume shell evidence, not sample locally: "
                 + forbidden
             )
 
-require(material_page, "function shellGpuMemoryKiB(): var",
+for token in ('Translation.tr("CPU")', 'Translation.tr("Memory")',
+              'Translation.tr("Swap")', 'Translation.tr("GPU")',
+              'Translation.tr("Network")'):
+    require(dashboard, token, "Dashboard must retain the full resource scope")
+
+require(dashboard, "function shellGpuMemoryKiB(): var",
         "Material Diagnostics should expose exact resident DRM memory when available")
 for token in (
     'Translation.tr("Hadalis disk I/O")',
     'root.provenance(root.shellEvidence?.io)',
-    'Translation.tr("Runtime targets")',
-    'Translation.tr("Matched source boundaries")',
     'Translation.tr("No synthetic per-QML resource estimates.")',
 ):
-    require(material_page, token,
-            "Material btop Diagnostics presentation missing " + token)
-require(material_page, "pid: root.shellEvidence?.pid",
+    require(dashboard, token,
+            "Shared btop Diagnostics presentation missing " + token)
+require(target_table, 'text: "Runtime targets"',
+        "Shared dashboard must identify Workflow targets")
+require(material_page, 'Translation.tr("Matched source boundaries")',
+        "Material must explain source-boundary reconciliation")
+require(dashboard, "pid: root.shellEvidence?.pid",
         "Material Diagnostics must identify the sampled shell process")
 require(waffle_page, "Main shell PID",
         "Waffle Diagnostics must identify the sampled shell process")
 for token in (
-    "Shell disk I/O",
-    "/proc/<pid>/io",
     "Runtime boundaries",
     "Canonical source matches",
-    "Per-component CPU, RAM, Swap, GPU and Network",
 ):
     require(waffle_page, token,
             "Waffle Diagnostics presentation missing " + token)
 
 for token in (
     'import "widgets"',
+    "BtopDashboard {",
+):
+    require(material_page, token,
+            "Material btop-style history presentation missing " + token)
+for token in (
     "function systemRamPercent(): var",
-    "BtopMetricPanel {",
     "function historyValues(key: string): var",
     'root.historyValues("systemCpuPercent")',
     'root.historyValues("systemRamPercent")',
 ):
-    require(material_page, token,
-            "Material btop-style history presentation missing " + token)
-if material_page.count("BtopMetricPanel {") < 2:
-    raise SystemExit("FAIL: Material Diagnostics needs CPU and RAM history panels")
+    require(dashboard, token, "Shared btop history presentation missing " + token)
+if dashboard.count("BtopMetricPanel {") < 2:
+    raise SystemExit("FAIL: Diagnostics needs CPU and RAM history panels")
 
 for token in (
     "property var value: null",

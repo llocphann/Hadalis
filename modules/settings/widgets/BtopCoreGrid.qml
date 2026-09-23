@@ -10,6 +10,7 @@ Item {
     property var coreNames: []
     property var history: []
     property int columns: 4
+    property bool compact: false
 
     function coreLabel(index): string {
         const raw = Array.isArray(root.coreNames)
@@ -52,14 +53,14 @@ Item {
         anchors.top: parent.top
         columns: Math.max(1, root.columns)
         columnSpacing: 8
-        rowSpacing: 6
+        rowSpacing: root.compact ? 2 : 6
 
         Repeater {
             model: root.cores
 
             Rectangle {
                 Layout.fillWidth: true
-                Layout.preferredHeight: 74
+                Layout.preferredHeight: root.compact ? 26 : 74
                 radius: Appearance.rounding.small
                 color: Appearance.colors.colLayer1
                 border.color: Qt.rgba(
@@ -69,6 +70,7 @@ Item {
                     0.30)
 
                 ColumnLayout {
+                    visible: !root.compact
                     anchors.fill: parent
                     anchors.margins: 6
                     spacing: 2
@@ -127,6 +129,44 @@ Item {
                             radius: parent.radius
                             color: Appearance.colors.colPrimary
                         }
+                    }
+                }
+
+                RowLayout {
+                    visible: root.compact
+                    anchors.fill: parent
+                    anchors.margins: 4
+                    spacing: 6
+
+                    StyledText {
+                        textFormat: Text.PlainText
+                        Layout.preferredWidth: 24
+                        text: root.coreLabel(index)
+                        font.family: Appearance.font.family.monospace
+                        font.pixelSize: Appearance.font.pixelSize.smallest
+                        color: Appearance.colors.colSubtext
+                    }
+
+                    BtopSparkline {
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: 14
+                        samples: root.samplesForCore(index)
+                        maxValue: 100
+                        lineColor: Appearance.colors.colPrimary
+                        fillGraph: false
+                    }
+
+                    StyledText {
+                        textFormat: Text.PlainText
+                        Layout.preferredWidth: 34
+                        horizontalAlignment: Text.AlignRight
+                        text: modelData !== null
+                            && modelData !== undefined
+                            && Number.isFinite(Number(modelData))
+                            ? Math.round(Number(modelData)) + "%" : "—"
+                        font.family: Appearance.font.family.monospace
+                        font.pixelSize: Appearance.font.pixelSize.smallest
+                        color: Appearance.colors.colPrimary
                     }
                 }
             }

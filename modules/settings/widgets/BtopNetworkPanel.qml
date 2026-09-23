@@ -18,6 +18,7 @@ Item {
     property string provenance: ""
     property var rxSamples: []
     property var txSamples: []
+    property real graphHeight: 38
     property color rxColor: Appearance.colors.colPrimary
     property color txColor: Appearance.colors.colSecondary
 
@@ -123,7 +124,7 @@ Item {
 
                     BtopSparkline {
                         Layout.fillWidth: true
-                        Layout.fillHeight: true
+                        Layout.preferredHeight: root.graphHeight
                         samples: root.rxSamples
                         maxValue: root.graphMax
                         lineColor: root.rxColor
@@ -145,7 +146,7 @@ Item {
 
                     BtopSparkline {
                         Layout.fillWidth: true
-                        Layout.fillHeight: true
+                        Layout.preferredHeight: root.graphHeight
                         samples: root.txSamples
                         maxValue: root.graphMax
                         lineColor: root.txColor

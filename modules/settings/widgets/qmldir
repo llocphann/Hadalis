@@ -1,0 +1,13 @@
+module qs.modules.settings.widgets
+
+BtopDashboard 1.0 BtopDashboard.qml
+BtopCoreGrid 1.0 BtopCoreGrid.qml
+BtopCoveragePanel 1.0 BtopCoveragePanel.qml
+BtopInterfaceTable 1.0 BtopInterfaceTable.qml
+BtopMetricPanel 1.0 BtopMetricPanel.qml
+BtopNetworkPanel 1.0 BtopNetworkPanel.qml
+BtopProcessTable 1.0 BtopProcessTable.qml
+BtopRuntimePanel 1.0 BtopRuntimePanel.qml
+BtopSparkline 1.0 BtopSparkline.qml
+BtopTargetInspector 1.0 BtopTargetInspector.qml
+BtopTargetTable 1.0 BtopTargetTable.qml

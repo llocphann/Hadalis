@@ -3,6 +3,7 @@ import QtQuick
 import QtQuick.Layouts
 import qs.services
 import qs.modules.common
+import qs.modules.settings.widgets
 import qs.modules.waffle.looks
 import qs.modules.waffle.settings
 
@@ -11,18 +12,22 @@ WSettingsPage {
     settingsPageIndex: 19
     pageTitle: Translation.tr("Diagnostics")
     pageIcon: "info"
-    pageDescription: Translation.tr("On-demand runtime resource diagnostics")
+    pageDescription: Translation.tr("CPU · RAM · Swap · GPU · Network")
 
     readonly property bool diagnosticsActive:
         RuntimeDiagnosticsSession.pageCurrent
-    readonly property int targetCount: root.diagnosticsActive
-        ? CodeWorkflowRuntime.activeCatalog.length : 0
+    readonly property var runtimeCatalog: root.diagnosticsActive
+        ? CodeWorkflowRuntime.activeCatalog : []
+    readonly property int targetCount: root.runtimeCatalog.length
+    readonly property var runtimeSnapshot: root.diagnosticsActive
+        ? CodeWorkflowRuntime.snapshot() : ({ records: [], events: [] })
+    readonly property var runtimeRecords:
+        root.runtimeSnapshot?.records ?? []
     readonly property int collisionCount: root.diagnosticsActive
         ? CodeWorkflowRuntime.identityCollisions.length : 0
     readonly property var evidence: RuntimeDiagnosticsSession.evidence
     readonly property var systemEvidence: root.evidence?.system ?? null
     readonly property var shellEvidence: root.evidence?.shell ?? null
-    readonly property var networkEvidence: root.evidence?.network ?? null
     readonly property var discoveryEvidence: root.evidence?.discovery ?? null
     readonly property string samplerError:
         String(root.evidence?.sampler?.error ?? "")
@@ -65,71 +70,6 @@ WSettingsPage {
         return Translation.tr("Diagnostics session active")
     }
 
-    function formatPercent(value): string {
-        if (value === null || value === undefined)
-            return "—"
-        const number = Number(value)
-        return Number.isFinite(number) ? number.toFixed(1) + "%" : "—"
-    }
-
-    function formatKiB(value): string {
-        if (value === null || value === undefined)
-            return "—"
-        const kib = Number(value)
-        if (!Number.isFinite(kib) || kib < 0)
-            return "—"
-        if (kib >= 1024 * 1024)
-            return (kib / (1024 * 1024)).toFixed(2) + " GiB"
-        if (kib >= 1024)
-            return (kib / 1024).toFixed(1) + " MiB"
-        return kib.toFixed(0) + " KiB"
-    }
-
-    function formatRate(value): string {
-        if (value === null || value === undefined)
-            return "—"
-        const bytes = Number(value)
-        if (!Number.isFinite(bytes) || bytes < 0)
-            return "—"
-        if (bytes >= 1024 * 1024 * 1024)
-            return (bytes / (1024 * 1024 * 1024)).toFixed(2) + " GiB/s"
-        if (bytes >= 1024 * 1024)
-            return (bytes / (1024 * 1024)).toFixed(1) + " MiB/s"
-        if (bytes >= 1024)
-            return (bytes / 1024).toFixed(1) + " KiB/s"
-        return bytes.toFixed(0) + " B/s"
-    }
-
-    function shellGpuBusy(): var {
-        const engines = root.shellEvidence?.gpu?.engineBusyPercent ?? ({})
-        let peak = null
-        for (const key of Object.keys(engines)) {
-            const raw = engines[key]
-            if (raw === null || raw === undefined)
-                continue
-            const value = Number(raw)
-            if (Number.isFinite(value))
-                peak = peak === null ? value : Math.max(peak, value)
-        }
-        return peak
-    }
-
-    function shellGpuMemoryKiB(): var {
-        const memory = root.shellEvidence?.gpu?.memoryKiB ?? ({})
-        let total = 0
-        let found = false
-        for (const key of Object.keys(memory)) {
-            if (!key.startsWith("resident-"))
-                continue
-            const value = Number(memory[key])
-            if (!Number.isFinite(value))
-                continue
-            total += value
-            found = true
-        }
-        return found ? total : null
-    }
-
     WSettingsCard {
         title: Translation.tr("Runtime diagnostics")
         icon: "info"
@@ -168,120 +108,16 @@ WSettingsPage {
             icon: "info"
         }
 
-        WText {
-
-            textFormat: Text.PlainText
-            Layout.fillWidth: true
-            text: Translation.tr("Leaving Diagnostics stops diagnostics-owned sampling immediately; a short server TTL also cleans up crashed standalone Settings clients.")
-            color: Looks.colors.subfg
-            font.pixelSize: Looks.font.pixelSize.small
-            wrapMode: Text.WordWrap
-        }
     }
 
-    WSettingsCard {
-        title: Translation.tr("CPU · RAM · Swap · GPU · Network")
-        icon: "info"
-
-        WSettingsRow {
-            label: Translation.tr("CPU")
-            description: root.formatPercent(root.systemEvidence?.cpu?.percent)
-                + " " + Translation.tr("system")
-                + " · "
-                + root.formatPercent(root.shellEvidence?.cpu?.percent)
-                + " " + Translation.tr("shell")
-            icon: "info"
-        }
-
-        WSettingsRow {
-            label: Translation.tr("RAM")
-            description: root.formatKiB(
-                    root.systemEvidence?.memory?.valuesKiB?.MemUsed)
-                + " / "
-                + root.formatKiB(
-                    root.systemEvidence?.memory?.valuesKiB?.MemTotal)
-                + " " + Translation.tr("system")
-                + " · "
-                + root.formatKiB(
-                    root.shellEvidence?.memory?.valuesKiB?.Pss
-                        ?? root.shellEvidence?.memory?.valuesKiB?.Rss)
-                + " " + Translation.tr("shell") + " "
-                + (root.shellEvidence?.memory?.valuesKiB?.Pss !== null
-                    && root.shellEvidence?.memory?.valuesKiB?.Pss !== undefined
-                    ? "PSS" : "RSS")
-            icon: "apps"
-        }
-
-        WSettingsRow {
-            label: Translation.tr("Swap")
-            description: root.formatKiB(
-                    root.systemEvidence?.memory?.valuesKiB?.SwapUsed)
-                + " / "
-                + root.formatKiB(
-                    root.systemEvidence?.memory?.valuesKiB?.SwapTotal)
-                + " " + Translation.tr("system")
-                + " · "
-                + root.formatKiB(
-                    root.shellEvidence?.memory?.valuesKiB?.SwapPss
-                        ?? root.shellEvidence?.memory?.valuesKiB?.Swap)
-                + " " + Translation.tr("shell")
-            icon: "apps"
-        }
-
-        WSettingsRow {
-            label: Translation.tr("GPU")
-            description: root.shellEvidence?.gpu?.available === true
-                ? root.formatPercent(root.shellGpuBusy())
-                    + " " + Translation.tr("shell engine peak")
-                    + " · "
-                    + root.formatKiB(root.shellGpuMemoryKiB())
-                    + " " + Translation.tr("resident")
-                : Translation.tr("DRM fdinfo unavailable")
-            icon: "info"
-        }
-
-        WSettingsRow {
-            label: Translation.tr("Network")
-            description: "↓ "
-                + root.formatRate(
-                    root.networkEvidence?.aggregateNonLoopback?.rxBytesPerSec)
-                + "   ↑ "
-                + root.formatRate(
-                    root.networkEvidence?.aggregateNonLoopback?.txBytesPerSec)
-                + " " + Translation.tr("system non-loopback")
-            icon: "info"
-        }
-
-        WSettingsRow {
-            label: Translation.tr("Shell disk I/O")
-            description: "R "
-                + root.formatRate(
-                    root.shellEvidence?.io?.rates?.readBytesPerSec)
-                + "   W "
-                + root.formatRate(
-                    root.shellEvidence?.io?.rates?.writeBytesPerSec)
-            icon: "info"
-        }
-
-        WText {
-
-            textFormat: Text.PlainText
-            Layout.fillWidth: true
-            text: Translation.tr("Kernel provenance: system CPU /proc/stat · memory /proc/meminfo · shell CPU schedstat · shell memory smaps_rollup · shell I/O /proc/<pid>/io · shell GPU DRM fdinfo · network /proc/net/dev.")
-            color: Looks.colors.subfg
-            font.pixelSize: Looks.font.pixelSize.small
-            wrapMode: Text.WordWrap
-        }
-
-        WText {
-
-            textFormat: Text.PlainText
-            Layout.fillWidth: true
-            text: Translation.tr("Per-component CPU, RAM, Swap, GPU and Network stay unavailable until reviewed attribution exists.")
-            color: Looks.colors.subfg
-            font.pixelSize: Looks.font.pixelSize.small
-            wrapMode: Text.WordWrap
-        }
+    BtopDashboard {
+        Layout.fillWidth: true
+        evidence: root.evidence
+        targets: root.runtimeCatalog
+        records: root.runtimeRecords
+        selectedTargetId: CodeWorkflowSession.selectedTargetId
+        onTargetActivated: (targetId, instanceId) =>
+            CodeWorkflowSession.selectTarget(targetId, instanceId)
     }
 
     WSettingsCard {

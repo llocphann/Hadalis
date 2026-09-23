@@ -236,7 +236,7 @@ Singleton {
     }
 
     function computeIdentityCollisions(): var {
-        const byTarget = ({})
+        const byTarget = Object.create(null)
         for (const descriptor of root._identityDescriptors()) {
             const targetId = String(descriptor.targetId ?? "")
             if (!Array.isArray(byTarget[targetId]))
@@ -249,19 +249,24 @@ Singleton {
             const descriptors = byTarget[targetId]
             if (descriptors.length < 2)
                 continue
-            const baseline = descriptors[0]
-            for (let index = 1; index < descriptors.length; ++index) {
-                const candidate = descriptors[index]
-                const fields = root.identityConflictFields(
-                    baseline, candidate)
-                if (fields.length === 0)
-                    continue
-                collisions.push({
-                    targetId: targetId,
-                    fields: fields,
-                    left: root._identitySignature(baseline),
-                    right: root._identitySignature(candidate)
-                })
+            // A sparse host descriptor may omit metadata. Compare every pair
+            // so two later, incompatible providers cannot hide behind it.
+            for (let leftIndex = 0; leftIndex < descriptors.length - 1;
+                    ++leftIndex) {
+                for (let rightIndex = leftIndex + 1;
+                        rightIndex < descriptors.length; ++rightIndex) {
+                    const left = descriptors[leftIndex]
+                    const right = descriptors[rightIndex]
+                    const fields = root.identityConflictFields(left, right)
+                    if (fields.length === 0)
+                        continue
+                    collisions.push({
+                        targetId: targetId,
+                        fields: fields,
+                        left: root._identitySignature(left),
+                        right: root._identitySignature(right)
+                    })
+                }
             }
         }
         return collisions
@@ -298,8 +303,57 @@ Singleton {
         return CodeWorkflowIdentity.targetRef(id)
     }
 
+    // Telemetry carries IDs and the shell epoch only. Presentation always
+    // comes from this Workflow snapshot; unknown or stale IDs stay unresolved.
+    function resolveRuntimeTelemetry(telemetry, runtimeSnapshot): var {
+        const ref = CodeWorkflowIdentity.sanitize(telemetry?.ref)
+        if (!ref || (ref.kind !== "target" && ref.kind !== "instance"))
+            return { status: "invalid-ref", ref: null }
+
+        const evidence = runtimeSnapshot ?? root.snapshot()
+        if (!evidence || !Array.isArray(evidence.descriptors)
+                || !Array.isArray(evidence.records))
+            return { status: "unavailable", ref: ref }
+
+        const epoch = String(evidence.epoch ?? "")
+        const observedEpoch = String(telemetry?.epoch ?? "")
+        if (epoch.length === 0 || observedEpoch.length === 0)
+            return { status: "missing-generation", ref: ref }
+        if (observedEpoch !== epoch)
+            return { status: "stale-generation", ref: ref }
+
+        const collisions = Array.isArray(evidence.identityCollisions)
+            ? evidence.identityCollisions : []
+        if (collisions.some(collision =>
+                String(collision?.targetId ?? "") === ref.targetId))
+            return { status: "identity-collision", ref: ref }
+
+        const descriptors = evidence.descriptors.filter(descriptor =>
+            String(descriptor?.targetId ?? "") === ref.targetId)
+        if (descriptors.length === 0)
+            return { status: "orphan-target", ref: ref }
+        if (descriptors.length !== 1)
+            return { status: "identity-collision", ref: ref }
+        const descriptor = descriptors[0]
+        if (ref.kind === "target")
+            return { status: "resolved", ref: ref, descriptor: descriptor }
+
+        const instances = evidence.records.filter(record =>
+            String(record?.targetId ?? "") === ref.targetId
+                && String(record?.instanceId ?? "") === ref.instanceId
+                && record?.state === "resident"
+                && String(record?.runtimeToken ?? "")
+                    .startsWith(epoch + ":"))
+        if (instances.length !== 1)
+            return { status: "orphan-instance", ref: ref }
+        return {
+            status: "resolved", ref: ref,
+            descriptor: descriptor, instance: instances[0]
+        }
+    }
+
     function discoveredDescriptors(): var {
-        const byTarget = ({})
+        const byTarget = Object.create(null)
         for (const token of Object.keys(root.declarations)) {
             const declaration = root.declarations[token]
             const descriptor = declaration?.descriptorSnapshot?.() ?? null

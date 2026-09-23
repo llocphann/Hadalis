@@ -269,7 +269,9 @@ for token in (
     require(runtime, token, "runtime cross-process snapshot bridge missing " + token)
 for token in (
     'target: "codeWorkflowRuntime"',
-    "return JSON.stringify(CodeWorkflowRuntime.localSnapshot())",
+    "const payload = CodeWorkflowRuntime.localSnapshot()",
+    "payload.diagnostics = RuntimeDiagnostics.snapshot()",
+    "return JSON.stringify(payload)",
 ):
     require(shell, token, "shell runtime snapshot IPC missing " + token)
 

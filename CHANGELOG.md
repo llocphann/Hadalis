@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - **Bottom-left Quick Notes**: hovering the physical bottom-left corner reveals the shared Notepad without stealing focus; clicking enters a focused capture mode with Escape/outside-click release, monitor scope and geometry controls, Bar/Screen Edge-aware placement, and Orbit/native hot-corner priority. Sidebar, Dashboard and corner editors share stable tab identities so delayed autosaves cannot land in a different note, and FileView save completion keeps later autosaves from stalling behind the first write.
+- **Bottom-right Notification Center**: notification history is detached from the Right Sidebar into its own Material connected popup at the physical bottom-right corner, with hover/explicit opening, monitor routing, fullscreen policy, read-state behavior, transfer grace and popup geometry controls in Settings. Transient notification toasts remain independently positioned.
 
 ## [2.29.3] - 2026-08-25
 

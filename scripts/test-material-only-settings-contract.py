@@ -9,6 +9,9 @@ REGISTRY_DATA = ROOT / "modules" / "settings" / "SettingsPageRegistryData.qml"
 THEMES = ROOT / "modules" / "settings" / "ThemesConfig.qml"
 FACADE = ROOT / "modules" / "settings" / "ThemesConfigMaterial.qml"
 QMLDIR = ROOT / "modules" / "settings" / "qmldir"
+WAFFLE_THEMES = ROOT / "modules" / "waffle" / "settings" / "pages" / "WThemesPage.qml"
+WELCOME = ROOT / "welcome.qml"
+GLOBAL_ACTIONS = ROOT / "services" / "GlobalActions.qml"
 
 
 def require(text: str, token: str, source: str) -> None:
@@ -31,6 +34,9 @@ def main() -> None:
     themes = THEMES.read_text(encoding="utf-8")
     facade = FACADE.read_text(encoding="utf-8")
     qmldir = QMLDIR.read_text(encoding="utf-8")
+    waffle_themes = WAFFLE_THEMES.read_text(encoding="utf-8")
+    welcome = WELCOME.read_text(encoding="utf-8")
+    global_actions = GLOBAL_ACTIONS.read_text(encoding="utf-8")
 
     for token in (
         "readonly property int themesPageIndex: 4",
@@ -96,6 +102,28 @@ def main() -> None:
 
     require(qmldir, "ThemesConfig 1.0 ThemesConfig.qml", "qmldir")
     require(qmldir, "ThemesConfigMaterial 1.0 ThemesConfigMaterial.qml", "qmldir")
+
+    for token in (
+        "id: globalStyleCard",
+        'title: Translation.tr("Global Style")',
+        'description: Translation.tr("Choose the visual language used across the shell")',
+        "ThemeService.setGlobalStyle(",
+    ):
+        forbid(waffle_themes, token, "WThemesPage.qml")
+
+    for token in (
+        "Config.options?.appearance?.globalStyle",
+        'Config.setNestedValue("appearance.globalStyle"',
+        'Translation.tr("More experimental styles remain available in Settings.")',
+    ):
+        forbid(welcome, token, "welcome.qml")
+
+    for token in (
+        "function applyGlobalStyle(",
+        'id: "style-',
+        "ThemeService.setGlobalStyle(",
+    ):
+        forbid(global_actions, token, "GlobalActions.qml")
 
     print("Material-only public Themes settings contract: PASS")
 

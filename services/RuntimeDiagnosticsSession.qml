@@ -22,6 +22,8 @@ Singleton {
     property bool releaseAfterPulse: false
     property string leaseTransport: ""
     property string remoteError: ""
+    readonly property string evidenceError:
+        root.localShell ? "" : CodeWorkflowRuntime.remoteError
     readonly property var evidence: root.localShell
         ? RuntimeDiagnostics.snapshot()
         : (CodeWorkflowRuntime.remoteSnapshot?.diagnostics ?? null)

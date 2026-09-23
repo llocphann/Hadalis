@@ -55,8 +55,9 @@ Item {
             anchors.margins: 12
             spacing: 8
 
-            RowLayout {
+            ColumnLayout {
                 Layout.fillWidth: true
+                spacing: 3
 
                 StyledText {
 
@@ -69,22 +70,35 @@ Item {
                     elide: Text.ElideRight
                 }
 
-                StyledText {
+                GridLayout {
+                    Layout.fillWidth: true
+                    columns: width >= 360 ? 2 : 1
+                    columnSpacing: 12
+                    rowSpacing: 2
 
-                    textFormat: Text.PlainText
-                    text: root.rxPrefix + root.rx
-                    color: root.rxColor
-                    font.family: Appearance.font.family.monospace
-                    font.weight: Font.DemiBold
-                }
+                    StyledText {
 
-                StyledText {
+                        textFormat: Text.PlainText
+                        Layout.fillWidth: true
+                        text: root.rxPrefix + root.rx
+                        color: root.rxColor
+                        font.family: Appearance.font.family.monospace
+                        font.weight: Font.DemiBold
+                        elide: Text.ElideRight
+                    }
 
-                    textFormat: Text.PlainText
-                    text: root.txPrefix + root.tx
-                    color: root.txColor
-                    font.family: Appearance.font.family.monospace
-                    font.weight: Font.DemiBold
+                    StyledText {
+
+                        textFormat: Text.PlainText
+                        Layout.fillWidth: true
+                        horizontalAlignment: width >= 360
+                            ? Text.AlignRight : Text.AlignLeft
+                        text: root.txPrefix + root.tx
+                        color: root.txColor
+                        font.family: Appearance.font.family.monospace
+                        font.weight: Font.DemiBold
+                        elide: Text.ElideRight
+                    }
                 }
             }
 
@@ -138,10 +152,13 @@ Item {
                 }
             }
 
-            RowLayout {
+            GridLayout {
                 Layout.fillWidth: true
                 visible: root.rxTotal.length > 0
                     || root.txTotal.length > 0
+                columns: width >= 360 ? 2 : 1
+                columnSpacing: 12
+                rowSpacing: 2
 
                 StyledText {
 
@@ -159,13 +176,14 @@ Item {
 
                     textFormat: Text.PlainText
                     Layout.fillWidth: true
-                    horizontalAlignment: Text.AlignRight
+                    horizontalAlignment: width >= 360
+                        ? Text.AlignRight : Text.AlignLeft
                     text: "Σ " + root.txLabel + " "
                         + (root.txTotal || "—")
                     color: Appearance.colors.colSubtext
                     font.family: Appearance.font.family.monospace
                     font.pixelSize: Appearance.font.pixelSize.smallest
-                    elide: Text.ElideLeft
+                    elide: Text.ElideRight
                 }
             }
 

@@ -134,6 +134,18 @@ require(
     "CodeWorkflowRuntime.remoteSnapshot?.diagnostics",
     "Diagnostics evidence must keep using the full remote transport snapshot",
 )
+remote_stream_start = workflow_runtime.index("onStreamFinished:")
+remote_stream_end = workflow_runtime.index(
+    "stderr: StdioCollector", remote_stream_start
+)
+remote_stream = workflow_runtime[remote_stream_start:remote_stream_end]
+runtime_changed_start = remote_stream.index("if (runtimeChanged) {")
+runtime_transport_publish = remote_stream.index("root.remoteSnapshot = next")
+if "root.revision++" not in remote_stream[
+        runtime_changed_start:runtime_transport_publish]:
+    raise SystemExit(
+        "FAIL: diagnostics-only remote snapshots must not advance Workflow revision"
+    )
 
 for forbidden in (
     "diagnosticsLeases",

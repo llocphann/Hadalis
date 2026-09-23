@@ -244,26 +244,11 @@ Singleton {
                 && root._outputEnabled(barOutputs, outputName)
                 && (GlobalStates.barOpen ?? true)) {
             const barState = root.currentState("iiBar", outputName)
-            const appearanceStyle = Config.options?.bar?.appearanceStyle ?? "classic"
-            let thickness = 0
-            if (appearanceStyle === "pill" && !barVertical) {
-                const screen = Quickshell.screens.find(item => (item?.name ?? "") === outputName)
-                    ?? Quickshell.screens[0]
-                const shortEdge = Math.min(screen?.width ?? 1920, screen?.height ?? 1080)
-                const resolutionScale = Math.max(0.78, Math.min(1.6, shortEdge / 1080))
-                const scale = resolutionScale * 1.1 * (Config.options?.bar?.pill?.scale ?? 1)
-                const restHeight = (Config.options?.bar?.pill?.barMode ?? false)
-                    ? Math.max(58, Config.options?.bar?.pill?.expandedHeight ?? 66) * scale
-                    : Math.max(38, Config.options?.bar?.pill?.restHeight ?? 44) * scale
-                const topGap = 8 * (Config.options?.bar?.pill?.topGap ?? 1) * scale
-                const appGap = Config.options?.bar?.pill?.appGap ?? 1
-                thickness = Math.max(0, restHeight + topGap - 12 * (1 - appGap) * scale)
-            } else if (barVertical) {
-                thickness = Appearance.sizes.verticalBarWidth
-            } else {
-                // Square Screen Edge baseline: normal Bar owns only its body.
-                thickness = Appearance.sizes.barHeight
-            }
+            // Classic Hug is the only ii Bar geometry. Persisted retired style
+            // values are migration input only and never affect layout reservation.
+            const thickness = barVertical
+                ? Appearance.sizes.verticalBarWidth
+                : Appearance.sizes.barHeight
             result.barEdge = barState.ok ? barState.slot : ""
             root._applyInset(result, result.barEdge, thickness)
         }

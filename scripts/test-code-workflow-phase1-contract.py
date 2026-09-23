@@ -330,6 +330,9 @@ for token in (
     "readonly property var localCatalog: root.discoveredCatalog",
     "readonly property var catalog: root.activeCatalog",
     "Array.isArray(root.remoteSnapshot?.descriptors)",
+    "property string remoteSnapshotFingerprint: \"\"",
+    "payload === root.remoteSnapshotFingerprint",
+    "root.remoteSnapshotFingerprint = payload",
     'id === "iiOnScreenKeyboard"',
     'return "osk"',
     'id === "iiOnScreenDisplay"',
@@ -388,6 +391,7 @@ for token in (
     "interval: 90",
     "runtimeSnapshotRefreshTimer.restart()",
     "runtimeSnapshotRefreshTimer.stop()",
+    "preload: root.workflowOperational",
     "watchChanges: root.workflowOperational",
     "enabled: root.workflowOperational",
     "workflowActivationTimer.stop()",
@@ -403,6 +407,7 @@ for token in (
     "function refreshGraph(force: bool): void",
     "root.graph = CodeWorkflowIr.unifiedGraphFor(root.showInternals)",
     "id: graphRefreshTimer",
+    "Appearance.animation.elementMoveFast.duration + 24",
     "graphRefreshTimer.restart()",
     "if (!root.workflowActive)",
     "function activateCanvas(): void",
@@ -429,6 +434,14 @@ if 'Qt.callLater(() => CodeWorkflowIndex.refresh(false))' in page:
     fail("Workflow mount must not queue an unconditional duplicate workspace index")
 if 'Qt.callLater(() => root.requestAnalysis(false))' in page:
     fail("Workflow must cancel deferred presentation analysis with page lifetime")
+reload_source_start = page.index("function reloadSource(): void")
+reload_source_block = page[reload_source_start:reload_source_start + 360]
+if 'root.sourceText = ""' in reload_source_block:
+    fail("Workflow source reload must retain last good presentation bytes")
+deactivate_canvas_start = canvas.index("function deactivateCanvas(): void")
+deactivate_canvas_block = canvas[deactivate_canvas_start:deactivate_canvas_start + 700]
+if "root.graph = null" in deactivate_canvas_block:
+    fail("cached Workflow page revisits must not destroy the warm graph")
 if "for (const target of CodeWorkflowRuntime.activeCatalog)" in page:
     fail("Targets must not bind directly to polling runtime catalog arrays")
 if "readonly property int runtimeRevision: CodeWorkflowRuntime.revision" in page:

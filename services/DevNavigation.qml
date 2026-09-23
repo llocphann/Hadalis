@@ -24,7 +24,6 @@ Singleton {
         { id: "sidebar-left/tools", family: "shared", surface: "sidebar-left", view: "tools", safe: true, settleMs: 350 },
         { id: "sidebar-left/software", family: "shared", surface: "sidebar-left", view: "software", safe: true, settleMs: 450 },
         { id: "sidebar-right/controls", family: "shared", surface: "sidebar-right", view: "controls", safe: true, settleMs: 350 },
-        { id: "sidebar-right/notifications", family: "shared", surface: "sidebar-right", view: "notifications", safe: true, settleMs: 350 },
         { id: "sidebar-right/calendar", family: "shared", surface: "sidebar-right", view: "calendar", safe: true, settleMs: 350 },
         { id: "sidebar-right/events", family: "shared", surface: "sidebar-right", view: "events", safe: true, settleMs: 350 },
         { id: "sidebar-right/todo", family: "shared", surface: "sidebar-right", view: "todo", safe: true, settleMs: 350 },
@@ -36,6 +35,7 @@ Singleton {
         { id: "sidebar-right/screentime", family: "shared", surface: "sidebar-right", view: "screentime", safe: true, settleMs: 350 },
         { id: "control-panel", family: "ii", surface: "control-panel", view: "", safe: true, settleMs: 350 },
         { id: "dashboard", family: "ii", surface: "dashboard", view: "", safe: true, settleMs: 450 },
+        { id: "notification-center", family: "ii", surface: "notification-center", view: "", safe: true, settleMs: 350 },
         { id: "media-controls", family: "shared", surface: "media-controls", view: "", safe: true, settleMs: 350 },
         { id: "clipboard", family: "shared", surface: "clipboard", view: "", safe: true, settleMs: 350 },
         { id: "cheatsheet", family: "shared", surface: "cheatsheet", view: "", safe: true, settleMs: 350 },
@@ -79,6 +79,7 @@ Singleton {
     function closeAll(): void {
         GlobalStates.sidebarLeftOpen = false
         GlobalStates.sidebarRightOpen = false
+        GlobalStates.closeNotificationCenter()
         GlobalStates.controlPanelOpen = false
         GlobalStates.dashboardOpen = false
         GlobalStates.mediaControlsOpen = false
@@ -115,6 +116,12 @@ Singleton {
         case "sidebar-right":
             GlobalStates.sidebarRightRequestedWidget = entry.view
             GlobalStates.openSidebarRight("")
+            break
+        case "notification-center":
+            if (!GlobalStates.openNotificationCenter("")) {
+                currentDestination = ""
+                return "error:notification-center-unavailable"
+            }
             break
         case "control-panel": GlobalStates.controlPanelOpen = true; break
         case "dashboard": GlobalStates.dashboardOpen = true; break

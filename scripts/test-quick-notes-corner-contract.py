@@ -77,6 +77,7 @@ for token in (
     "onClicked: root.switchToTab(tabPill.index)",
     "onClicked: root.addTabSafely()",
     "onClicked: root.removeTabSafely(tabPill.index)",
+    "Component.onDestruction: root.flushPendingSave()",
 ):
     require(notepad, token, "shared Notepad must expose safe Quick Notes hooks")
 

@@ -541,10 +541,12 @@ Singleton {
     }
 
     onNotificationCenterOpenChanged: {
-        if (notificationCenterOpen) {
+        if (!notificationCenterOpen)
+            return
+        if (Config.options?.notificationCenter?.dismissToastsOnOpen ?? true)
             Notifications.timeoutAll()
+        if (Config.options?.notificationCenter?.markReadOnOpen ?? true)
             Notifications.markAllRead()
-        }
     }
 
     onScreenLockedChanged: {

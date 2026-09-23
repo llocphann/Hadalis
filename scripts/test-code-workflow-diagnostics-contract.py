@@ -227,7 +227,7 @@ for page in (material_page, waffle_page):
         "function formatPercent(value): string",
         "function formatKiB(value): string",
         "function formatRate(value): string",
-        "function shellGpuMemoryKiB(): real",
+        "function shellGpuMemoryKiB(): var",
         "root.systemEvidence?.cpu?.percent",
         "root.shellEvidence?.cpu?.percent",
         "root.systemEvidence?.memory?.valuesKiB?.MemUsed",

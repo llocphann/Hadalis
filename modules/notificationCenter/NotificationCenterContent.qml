@@ -135,6 +135,11 @@ Item {
                 clip: true
                 dataMode: "history"
                 popupPresentation: root.popupPresentation
+                // History should consume the available canvas before hiding
+                // information. If it grows beyond the viewport the list scrolls;
+                // groups are collapsed only by an explicit user action.
+                preferExpanded: true
+                modernCards: true
                 filterQuery: searchField.text
                 onExternalLinkOpened: root.externalNavigationRequested()
                 onNotificationActionInvoked:

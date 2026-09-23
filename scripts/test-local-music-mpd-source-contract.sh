@@ -11,6 +11,7 @@ editor="$root/modules/common/widgets/SidebarLayoutEditor.qml"
 defaults="$root/defaults/config.json"
 schema="$root/modules/common/Config.qml"
 registry="$root/modules/settings/SettingsPageRegistryData.qml"
+migration="$root/sdata/migrations/044-local-music-mpd-state-cleanup.sh"
 
 grep -Fq 'local_music_mpd.py' "$service" || fail 'LocalMusic must use MPD helper'
 grep -Fq 'readonly property var mprisPlayer: MprisController.mpdPlayer' "$service" || fail 'LocalMusic must use MPD MPRIS player'
@@ -74,6 +75,16 @@ grep -Fq '"wallhaven", "news", "music", "tools", "software"' "$schema" \
     || fail 'canonical sidebar schema order must use music instead of ytmusic'
 grep -Fq '"music"' "$defaults" \
     || fail 'default sidebar order must contain the canonical music id'
+for retired_state in normalizeVolume shuffleMode repeatMode volume; do
+    if sed -n '/property JsonObject music: JsonObject {/,/^                }/p' "$schema" | grep -Fq "property" | grep -Fq "$retired_state"; then
+        fail "local Music schema still exposes retired mpv state: $retired_state"
+    fi
+    if jq -e --arg key "$retired_state" '.sidebar.music | has($key)' "$defaults" >/dev/null; then
+        fail "local Music defaults still expose retired mpv state: $retired_state"
+    fi
+    grep -Fq ".sidebar.music.$retired_state" "$migration" \
+        || fail "migration 044 does not remove retired local Music state: $retired_state"
+done
 grep -Fq 'leftDefaultOrder: ["widgets", "ai", "translator", "anime", "animeSchedule", "wallhaven", "news", "music", "tools", "software"]' "$editor" \
     || fail 'Sidebar layout editor must arrange the canonical Music tab'
 grep -Fq 'id === "ytmusic" ? "music" : id' "$editor" \

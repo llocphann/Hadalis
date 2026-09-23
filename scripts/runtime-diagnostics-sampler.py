@@ -606,7 +606,13 @@ def sample(pid: int, previous: dict[str, Any] | None) -> tuple[dict[str, Any], d
                     or slow_elapsed_ns <= 0
                     or counter < old
                 )
-                else (counter - old) / slow_elapsed_ns * 100.0
+                else max(
+                    0.0,
+                    min(
+                        100.0,
+                        (counter - old) / slow_elapsed_ns * 100.0,
+                    ),
+                )
             )
         slow_state = {
             "atNs": now_ns,

@@ -37,6 +37,7 @@ STATUS_RINGS = ROOT / "modules" / "sidebarLeft" / "widgets" / "StatusRings.qml"
 QUICK_LAUNCH = ROOT / "modules" / "sidebarLeft" / "widgets" / "QuickLaunch.qml"
 EVENT_CARD = ROOT / "modules" / "sidebarRight" / "events" / "EventCard.qml"
 SYSMON_WIDGET = ROOT / "modules" / "sidebarRight" / "sysmon" / "SysMonWidget.qml"
+STOPWATCH = ROOT / "modules" / "sidebarRight" / "pomodoro" / "Stopwatch.qml"
 NOTIFICATION_ITEM = ROOT / "modules" / "common" / "widgets" / "NotificationItem.qml"
 NOTIFICATION_GROUP = ROOT / "modules" / "common" / "widgets" / "NotificationGroup.qml"
 NOTIFICATION_ACTION_BUTTON = ROOT / "modules" / "common" / "widgets" / "NotificationActionButton.qml"
@@ -171,6 +172,7 @@ def main() -> None:
     quick_launch = QUICK_LAUNCH.read_text(encoding="utf-8")
     event_card = EVENT_CARD.read_text(encoding="utf-8")
     sysmon_widget = SYSMON_WIDGET.read_text(encoding="utf-8")
+    stopwatch = STOPWATCH.read_text(encoding="utf-8")
     notification_item = NOTIFICATION_ITEM.read_text(encoding="utf-8")
     notification_group = NOTIFICATION_GROUP.read_text(encoding="utf-8")
     notification_action_button = NOTIFICATION_ACTION_BUTTON.read_text(encoding="utf-8")
@@ -324,6 +326,7 @@ def main() -> None:
         "QuickLaunch.qml": quick_launch,
         "EventCard.qml": event_card,
         "SysMonWidget.qml": sysmon_widget,
+        "Stopwatch.qml": stopwatch,
         "NotificationItem.qml": notification_item,
         "NotificationGroup.qml": notification_group,
         "NotificationActionButton.qml": notification_action_button,
@@ -504,6 +507,20 @@ def main() -> None:
         "trackColor: Appearance.colors.colSecondaryContainer",
     ):
         require(sysmon_widget, token, "SysMonWidget.qml")
+
+    for token in (
+        "color: Appearance.colors.colOnSurface",
+        "color: Appearance.colors.colSubtext",
+        "color: Appearance.colors.colLayer2",
+        "buttonRadius: Appearance.rounding.full",
+        "? Appearance.colors.colSecondaryContainer",
+        "? Appearance.colors.colOnSecondaryContainer",
+        "colBackground: Appearance.colors.colLayer2",
+        "colBackgroundHover: Appearance.colors.colLayer2Hover",
+        "colRipple: Appearance.colors.colLayer2Active",
+    ):
+        require(stopwatch, token, "Stopwatch.qml")
+    forbid(stopwatch, "Qt5Compat.GraphicalEffects", "Stopwatch.qml")
 
     for token in (
         "radius: Appearance.rounding.small",

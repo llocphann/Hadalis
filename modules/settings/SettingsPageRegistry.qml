@@ -18,7 +18,6 @@ Singleton {
     readonly property int retiredTlpPageIndex: 28
     readonly property int systemPageIndex: 1
     readonly property int barPageIndex: 2
-    readonly property int themesPageIndex: 4
     readonly property int panelsPageIndex: 5
 
     // A renderer-specific page is shown only for its active panel family.
@@ -66,14 +65,6 @@ Singleton {
             const panelsPage = SettingsPageRegistryData.pages[root.panelsPageIndex]
             return Object.assign({}, panelsPage, {
                 devNavigationHidden: true
-            })
-        }
-        if (index === root.themesPageIndex) {
-            return Object.assign({}, page, {
-                // Public v1.0 theme settings expose the supported Material
-                // color, typography, motion and advanced tooling only.
-                component: "modules/settings/ThemesConfigMaterial.qml",
-                desc: Translation.tr("Material colors, typography and motion")
             })
         }
         if (index !== root.retiredTlpPageIndex)

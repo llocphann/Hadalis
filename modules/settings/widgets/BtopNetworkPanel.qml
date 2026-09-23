@@ -70,6 +70,7 @@ Item {
                 StyledText {
                     text: root.rxPrefix + root.rx
                     color: root.rxColor
+                    font.family: Appearance.font.family.monospace
                     font.weight: Font.DemiBold
                 }
 

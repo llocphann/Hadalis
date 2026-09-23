@@ -49,6 +49,7 @@ Item {
                 StyledText {
                     text: "PID " + root.pid
                     color: Appearance.colors.colPrimary
+                    font.family: Appearance.font.family.monospace
                     font.weight: Font.DemiBold
                 }
             }

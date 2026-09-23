@@ -72,6 +72,7 @@ def main() -> None:
         'root.historyValues("shellGpuPeakPercent")',
         'root.historyValues("shellReadBytesPerSec")',
         'root.historyValues("shellWriteBytesPerSec")',
+        "result.push(null)",
         "root.formatLoadAverage(",
         "root.formatUptime(",
         "root.sampleIntervalLabel()",
@@ -106,6 +107,9 @@ def main() -> None:
         "ctx.lineTo(",
         "ctx.strokeStyle = root.lineColor",
         "ctx.fillStyle = Qt.rgba(",
+        "values.push(null)",
+        "values.some(value => value !== null)",
+        "while (lastIndex >= 0 && values[lastIndex] === null)",
     ):
         require(sparkline, token, "BtopSparkline.qml")
 

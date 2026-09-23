@@ -1162,6 +1162,21 @@ def main() -> None:
               and "RicelinSurface {" in source,
               f"{ricelin_consumer} must use the canonical active Ricelin surface directly")
 
+    check(not (ROOT / "services/MascotChaos.qml").exists(),
+          "Retired MascotChaos service must stay absent")
+    services_qmldir = read("services/qmldir")
+    check("MascotChaos" not in services_qmldir,
+          "Retired MascotChaos service must not be exported")
+    for mascot_consumer in (
+        "modules/waffle/bar/WaffleBar.qml",
+        "modules/background/widgets/AbstractBackgroundWidget.qml",
+    ):
+        source = read(mascot_consumer)
+        check("MascotChaos" not in source
+              and "_chaos" not in source
+              and "_quake" not in source,
+              f"{mascot_consumer} must not retain dead mascot response machinery")
+
     settings_registry = read("modules/settings/SettingsPageRegistry.qml")
     check('Config.setNestedValue("dock.style", "panel")' in settings_registry,
           "Legacy Dock styles must normalize to Panel")

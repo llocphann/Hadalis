@@ -81,6 +81,18 @@ ContentPage {
                 .join("  ")
     }
 
+    function sampleIntervalLabel(): string {
+        const ms = Number(root.evidence?.status?.sampleIntervalMs)
+        if (!Number.isFinite(ms) || ms <= 0)
+            return "—"
+        if (ms >= 1000) {
+            const seconds = ms / 1000
+            return (Math.round(seconds) === seconds
+                ? seconds.toFixed(0) : seconds.toFixed(1)) + " s"
+        }
+        return Math.round(ms) + " ms"
+    }
+
     function formatUptime(value): string {
         if (value === null || value === undefined)
             return "—"
@@ -228,7 +240,8 @@ ContentPage {
                         }
 
                         StyledText {
-                            text: Translation.tr("1 s kernel sampling · stops automatically when this page is not current")
+                            text: root.sampleIntervalLabel() + " "
+                                + Translation.tr("kernel sampling · stops automatically when this page is not current")
                             color: Appearance.colors.colSubtext
                             font.pixelSize: Appearance.font.pixelSize.small
                         }

@@ -1190,6 +1190,20 @@ def main() -> None:
         check(not (ROOT / "modules/dock" / retired_dock_component).exists(),
               f"Retired Dock style component must stay absent: {retired_dock_component}")
     dock_app_button = read("modules/dock/DockAppButton.qml")
+    dock_button = read("modules/dock/DockButton.qml")
+    dock_window_preview = read("modules/dock/DockWindowPreview.qml")
+    dock_qmldir = read("modules/dock/qmldir")
+    check(not (ROOT / "modules/dock/DockSeparator.qml").exists()
+          and "DockSeparator" not in dock_qmldir,
+          "Unused DockSeparator component must stay removed")
+    check("property string dockPosition:" not in dock_button
+          and "dockPosition: root.position" not in dock,
+          "Dock buttons must not retain the unused position API")
+    check("property alias hoverTimer:" not in dock_app_button,
+          "Dock app buttons must not export an unused hover timer alias")
+    for dead_preview_api in ("previewWidthConstraint", "previewHeightConstraint"):
+        check(dead_preview_api not in dock_window_preview,
+              f"Dock window preview must not retain unused constraint API: {dead_preview_api}")
     for retired_dock_token in (
         "pillStyle",
         "macosStyle",

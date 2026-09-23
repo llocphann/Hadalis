@@ -166,7 +166,11 @@ for token in (
     "onClicked: root.switchToTab(tabPill.index)",
     "onClicked: root.addTabSafely()",
     "onClicked: root.removeTabSafely(tabPill.index)",
-    "onActiveFocusChanged:",
+    "TapHandler {",
+    "acceptedButtons: Qt.LeftButton",
+    "gesturePolicy: TapHandler.ReleaseWithinBounds",
+    "onPressedChanged:",
+    "if (pressed && Notepad.ready)",
     "root.editorActivated()",
     "Component.onDestruction: root.flushPendingSave()",
 ):

@@ -66,13 +66,13 @@ Once more than three notifications are stored, a search field appears above the 
 
 ### Grouping
 
-Notifications from the same app collapse into groups. Each group shows:
+Notifications from the same app are collected into groups. Each group shows:
 - App name and icon
 - Number of notifications
 - Whether any are critical
 - Most recent notification time
 
-Expand a group to see individual notifications.
+The standalone Material center starts history groups expanded so available canvas is used for readable content; overflow scrolls instead of pre-collapsing cards. You can still collapse a group explicitly when you want a denser view.
 
 ## Actions
 

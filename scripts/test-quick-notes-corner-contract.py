@@ -142,12 +142,18 @@ tabs_load_failed_start = notepad_service.index("        onLoadFailed:", tabs_loa
 tabs_loaded_block = notepad_service[tabs_loaded_start:tabs_load_failed_start]
 if "legacyFileView.path" in tabs_loaded_block:
     fail("Existing invalid multi-tab storage must never fall back to stale legacy data")
+if "root._saving" in tabs_loaded_block:
+    fail("Notepad writes must complete from FileView saved(), never loaded()")
 require(tabs_loaded_block, "Tabs file contains no valid tabs; preserving it",
         "Notepad must fail closed when an existing tabs file has no valid tabs")
 require(tabs_loaded_block, "Invalid tabs file; preserving it:",
         "Notepad must preserve malformed existing tabs storage for recovery")
 
 for token in (
+    "function _finishSave(): void",
+    "onSaved: root._finishSave()",
+    "onSaveFailed: (error) =>",
+    "tabsFileView.loaded && tabsFileView.text() === serialized",
     "function _allocateTabId()",
     "function _makeTab(title, text)",
     "while (seenIds.includes(id))",

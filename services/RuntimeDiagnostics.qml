@@ -193,11 +193,17 @@ Singleton {
             shellCpuPercent: sample?.shell?.cpu?.percent ?? null,
             systemRamPercent: root._historyPercent(
                 memory.MemUsed, memory.MemTotal),
+            systemSwapPercent: root._historyPercent(
+                memory.SwapUsed, memory.SwapTotal),
             shellGpuPeakPercent: root._historyGpuPeak(sample),
             rxBytesPerSec:
                 sample?.network?.aggregateNonLoopback?.rxBytesPerSec ?? null,
             txBytesPerSec:
-                sample?.network?.aggregateNonLoopback?.txBytesPerSec ?? null
+                sample?.network?.aggregateNonLoopback?.txBytesPerSec ?? null,
+            shellReadBytesPerSec:
+                sample?.shell?.io?.rates?.readBytesPerSec ?? null,
+            shellWriteBytesPerSec:
+                sample?.shell?.io?.rates?.writeBytesPerSec ?? null
         }]).slice(-60)
     }
 

@@ -69,12 +69,14 @@ Singleton {
     }
 
     function _acquireLease(): void {
-        root.releaseAfterPulse = false
         if (root.localShell) {
+            // Preserve a deferred remote release while switching ownership
+            // from a remote shell to this process.
             RuntimeDiagnostics.acquire(root.clientId)
             root.leaseTransport = "local"
             return
         }
+        root.releaseAfterPulse = false
         root.leaseTransport = "remote"
         root._pulseRemote("acquire")
     }

@@ -40,6 +40,8 @@ for token in (
     "function status(): var",
     "id: leasePruneTimer",
     "running: root.sessionActive",
+    "function _setSamplerError(value): void",
+    "root.revision += 1",
     "function _consumeSample(rawLine): void",
     "function snapshot(): var",
     "id: diagnosticsSampler",

@@ -739,6 +739,13 @@ for token in (
     'root.reasoningMode === "manual"',
     "id: marqueeSelectionRect",
     "readonly property bool minimapVisible: minimap.visible",
+    'property string runtimePulseTargetId: ""',
+    'property string runtimePulseKind: ""',
+    "function consumeRuntimeLifecycleEvent(): void",
+    "function nodeMatchesRuntimeTarget(node, targetId: string): bool",
+    "id: runtimePulseTimer",
+    "readonly property bool runtimePulseActive:",
+    "id: runtimeLifecyclePulse",
     "readonly property bool minimapNeeded:",
     "id: minimap",
     "readonly property real fittedWidth:",
@@ -782,6 +789,8 @@ for token in (
     "readonly property var runtimeActivityEvents:",
     'text: "Lifecycle activity · "',
     "runtimeActivityEventCount: root.runtimeActivityEvents.length",
+    "runtimePulseTargetId: canvas.runtimePulseTargetId",
+    "runtimePulseKind: canvas.runtimePulseKind",
     "root.selectedIrNode?.sourcePath",
     "root.selectedIrNode?.sourceNeedle",
     "focusSourceAnchor",
@@ -841,6 +850,9 @@ if 'const explicitTargetId = String(event?.targetId ?? "")' not in page:
     fail("runtime activity UI must prefer explicit event target identity")
 if "modelData.token" in page:
     fail("runtime lifecycle Inspector must not expose internal runtime tokens")
+
+if "runtimePulseEdge" in canvas:
+    fail("runtime lifecycle evidence must not imply edge execution")
 
 if "function selectableEdgeAt(" in canvas or "function previewableEdgeAt(" in canvas:
     fail("canvas must not restrict inspect hit-testing to mutation-eligible edges")

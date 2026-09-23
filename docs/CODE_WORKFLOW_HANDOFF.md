@@ -52,6 +52,20 @@ module work, commit directly to `dev`, and never force-push or modify `stable`.
   three later cycles in 2.428s, 2.627s and 2.531s on the CI fixture. New coverage
   also latches any hydration that occurs while Loader ownership is disabled and
   treats Workflow QML TypeError/ReferenceError warnings as live-test failures.
+- A later page-30 regression at `c9d3dbaa` was traced from the live artifact to
+  QML type construction, not Analyzer/Index/session leakage:
+  `CodeWorkflowSourceEditor.qml` assigned unsupported `lineHeight` state to
+  the editor `TextEdit`, so `CodeWorkflowSourceEditor` was unavailable and
+  `SettingsPageHost` failed to load page 30. Commit `b8d61cb7` removed those
+  unsupported TextEdit bindings. Live acceptance at descendant `97d93cb5`
+  then passed the rail Settings, nested Niri, Settings Focus, nested Focus and
+  Fcitx5 editor checks; the immediate close/reopen race recovered in 1.553s and
+  three additional cycles in 1.520s, 1.535s and 1.547s with one replacement
+  mount per destroy, no hydration while Loader ownership was disabled, and
+  "Real page 30 loaded without QML parse/property errors". The run later stopped
+  at a stale static `remoteSnapshot.descriptors` contract after runtime
+  inventory had intentionally moved to `remoteRuntimeSnapshot`; the contract
+  was updated rather than reverting the runtime projection optimization.
 - Graph reasoning controls now operate on the reviewed unified graph without
   widening mutation authority: **Trace upstream**, **Trace downstream** and
   **Focus connected path** compute a presentation-only reachable set, emphasize

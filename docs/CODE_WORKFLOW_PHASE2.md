@@ -1368,6 +1368,38 @@ reviewed Media fixture:
   arbitrary handlers, script bodies, Connections creation/removal or multi-file
   writes.
 
+## Workflow presentation performance hardening — 2026-09-23
+
+The production Settings presentation now treats runtime discovery, graph structure
+and pointer interaction as bounded presentation work rather than a reason to
+rebuild the complete graph continuously:
+
+- standalone runtime IPC snapshots keep a raw payload fingerprint; identical
+  polls refresh freshness/error state without publishing a new runtime revision;
+- the Settings page keeps a second plain-data snapshot fingerprint so unchanged
+  runtime evidence cannot churn Targets/Inspector bindings;
+- unified graph structure is signature-cached and a retained Settings page keeps
+  its materialized graph/route caches warm while hidden; runtime/session listeners
+  remain suspended and the cache is destroyed naturally with the page Loader;
+- first graph materialization or a hidden-time structural change is reconciled
+  after the Settings slide duration instead of competing with transition frames;
+- graph node lookup and outgoing-edge fanout are indexed once per graph, full
+  route rebuild requests are coalesced, and graph extents/bounds are cached
+  outside pan/zoom and pointer-drag hot paths;
+- edge hover hit-testing is frame-coalesced and suspended during pan, pinch and
+  node drag; screen-space wire/arrow compensation samples zoom at a bounded
+  cadence instead of invalidating every ShapePath on every touchpad sample;
+- production wires use asynchronous `Shape.GeometryRenderer`. This follows the
+  retained Phase-0 evidence: Geometry was viable in the observed matrix while
+  Curve remained HOLD because its 600-second soak showed sustained RSS growth;
+- source FileView preload/watch work is gated by active Workflow ownership and a
+  reload keeps the last good source bytes visible until the asynchronous load
+  publishes its replacement.
+
+This hardening deliberately preserves CodeWorkflowSession state and the shared
+Runtime/Analyzer/Index singletons. It does not reset semantic selection, viewport,
+layout offsets or source-editor buffers merely to make page navigation cheaper.
+
 ## Not implemented yet
 
 - additional reviewed Connect targets beyond the first Clock fixture;

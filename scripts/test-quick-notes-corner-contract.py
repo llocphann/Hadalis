@@ -55,6 +55,7 @@ for token in (
     "closeOnOutsideClick: root.editorFocused",
     "NotepadWidget {",
     "compactPresentation: true",
+    "notesEditor.focus = true",
     "notesEditor.focusEditor()",
     "notesEditor.flushPendingSave()",
     "Component.onDestruction: notesEditor.flushPendingSave()",
@@ -67,6 +68,7 @@ for token in (
     "textArea.forceActiveFocus()",
     "function flushPendingSave(): void",
     "saveTimer.stop()",
+    "if (root.focus)",
     "Notepad.setTextValue(textArea.text)",
 ):
     require(notepad, token, "shared Notepad must expose safe Quick Notes hooks")

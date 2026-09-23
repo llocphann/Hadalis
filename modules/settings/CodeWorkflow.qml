@@ -18,7 +18,14 @@ Item {
     readonly property string runtimeRemoteConsumerId:
         "workflow-page:" + String(Quickshell.processId) + ":"
             + Math.random().toString(36).slice(2)
-    readonly property bool workflowActive: root.enabled && root.visible
+    // Loader.enabled is the authoritative Settings-page ownership bit.
+    // A loaded item's own enabled/visible signals do not reliably mirror an
+    // ancestor Loader transition, so include the Loader parent explicitly.
+    readonly property bool workflowHostActive:
+        root.parent === null
+        || (root.parent.enabled && root.parent.visible)
+    readonly property bool workflowActive:
+        root.enabled && root.visible && root.workflowHostActive
     property bool workflowHydrated: false
     property bool workflowDestroying: false
     readonly property bool workflowOperational:
@@ -1733,11 +1740,7 @@ Item {
         onTriggered: root.activateWorkflowWhenCurrent()
     }
 
-    onEnabledChanged: {
-        root.syncRemoteRuntimeDemand()
-        root.scheduleWorkflowActivation()
-    }
-    onVisibleChanged: {
+    onWorkflowActiveChanged: {
         root.syncRemoteRuntimeDemand()
         root.scheduleWorkflowActivation()
     }

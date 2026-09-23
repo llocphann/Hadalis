@@ -123,8 +123,10 @@ module work, commit directly to `dev`, and never force-push or modify `stable`.
   responsive btop-style dashboard with 60-sample CPU/RAM/Swap/GPU/network/IO
   graphs, core meters, interface/process tables, Hadalis runtime metrics and the
   Workflow-owned target/instance inspector. Remote Settings suppresses cached
-  Diagnostics evidence until the Diagnostics generation advances after reopen;
-  lease rejection, IPC/sampler failures and stalled startup/live sampling remain
+  Diagnostics evidence until the Diagnostics generation advances after reopen,
+  while a diagnostics-free runtime projection prevents 1 Hz resource samples
+  from republishing unchanged Workflow catalogs/records. Lease rejection,
+  IPC/sampler failures and stalled startup/live sampling remain
   visible without keeping the sampler alive off-page. Waffle consumes the same
   backend/lifecycle and exact detail evidence. This is shell/system evidence only:
   per-component CPU/RAM/Swap/GPU/Network remains unavailable until a reviewed

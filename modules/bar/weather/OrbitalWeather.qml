@@ -142,19 +142,164 @@ Item {
             ctx.globalAlpha = 0.5
             ctx.lineWidth = 1.5
             ctx.setLineDash([4, 9])
-           ÝœÝ›ÚÙJ
-BˆÝ™ÛØ˜[[HHBˆBˆB‚ˆÛÛ[[“^[Ý]Âˆ[˜ÚÜœË˜Ù[\’[Žˆ\™[ˆÜXÚ[™Îˆ›ÛÝ›\]ZY[ÙHÈˆˆBˆŽˆÂˆÚYˆX]›Z[Š›ÛÝ›\]ZY[ÙHÈNLˆN›ÛÝÚY
-ˆL
-B‚ˆX]\šX[Þ[X›ÛÂˆš\ÚX›Nˆ›ÛÝ›\]ZY[ÙBˆ^[Ý]˜[YÛ›Y[ˆ][YÛ’Ù[\‚ˆ^[Ý]˜›ÝÛSX\™Ú[ŽˆBˆ^ˆXÛÛœË™Ù]ÙX]\’XÛÛŠˆÙX]\‹™]OËÐÛÙKˆÙX]\‹š\ÓšYÚ›ÝÊ
-JHÏÈ˜ÛÝY‚ˆXÛÛ”Ú^™NˆX]›X^
-\X\˜[˜ÙK™›Ûœ^[Ú^™K›\™Ù\ŠBˆÛÛÜŽˆ\X\˜[˜ÙK˜ÛÛÜœË˜ÛÛš[X\žBˆB‚ˆÝ[Y^Âˆ^[Ý]™š[ÚYˆYBˆÜš^›Û[[YÛ›Y[ˆ^[YÛ’Ù[\‚ˆ^ˆ›ÛÝÚYHÎˆÈ]™›Ü›X]]J›ÛÝ››ÝË™SSHŠBˆˆ]™›Ü›X]]J›ÛÝ››ÝË™SSHŠBˆ›ÛÙZYÚˆ›ÛÝ›\]ZY[ÙHÈ›Û“YY][Hˆ›Û‘[ZP›Ûˆ›Ûœ^[Ú^™Nˆ›ÛÝ›\]ZY[ÙBˆÈ\X\˜[˜ÙK™›Ûœ^[Ú^™KœÛX[ˆˆ\X\˜[˜ÙK™›Ûœ^[Ú^™KœÛX[ˆÛÛÜŽˆ\X\˜[˜ÙK˜ÛÛÜœË˜ÛÛÛ”Ý\™˜XÙU˜\šX[ˆ[YNˆ^‘[YTšYÚˆB‚ˆ›ÝÓ^[Ý]Âˆ^[Ý]˜[YÛ›Y[ˆ][YÛ’Ù[\‚ˆ^[Ý]ÜX\™Ú[Žˆ›ÛÝ›\]ZY[ÙHÈˆ‚ˆÜXÚ[™Îˆ‚ˆX]\šX[Þ[X›ÛÂˆš\ÚX›Nˆ\›ÛÝ›\]ZY[ÙBˆ^ˆXÛÛœË™Ù]ÙX]\’XÛÛŠˆÙX]\‹™]OËÐÛÙKˆÙX]\‹š\ÓšYÚ›ÝÊ
-JHÏÈ˜ÛÝY‚ˆXÛÛ”Ú^™Nˆ\X\˜[˜ÙK™›Ûœ^[Ú^™K››Ü›X[ˆÛÛÜŽˆ\X\˜[˜ÙK˜ÛÛÜœË˜ÛÛš[X\žBˆB‚ˆÝ[Y^Âˆ^ˆÙX]\‹™]OË[\ÏÈ‹Kp¬‚ˆ›ÛÙZYÚˆ›ÛÝ›\]ZY[ÙHÈ›Û“YY][Hˆ›Û‘[ZP›Ûˆ›Ûœ^[Ú^™Nˆ›ÛÝ›\]ZY[ÙBˆÈX]›X^
-K\X\˜[˜ÙK™›Ûœ^[Ú^™K›\™Ù\ŠBˆˆ\X\˜[˜ÙK™›Ûœ^[Ú^™K››Ü›X[ˆÛÛÜŽˆ\X\˜[˜ÙK˜ÛÛÜœË˜ÛÛÛ”Ý\™˜XÙBˆBˆB‚ˆÝ[Y^Âˆ^[Ý]™š[ÚYˆYBˆÜš^›Û[[YÛ›Y[ˆ^[YÛ’Ù[\‚ˆ^ˆÙX]\‹™]OË™\ØÜš\[Û‚ˆÏÈÙX]\‹™\ØÜšX™UÙX]\ŠÙX]\‹™]OËÐÛÙHÏÈŒLLÈŠBˆ›Ûœ^[Ú^™Nˆ›ÛÝ›\]ZY[ÙBˆÈ\X\˜[˜ÙK™›Ûœ^[Ú^™KœÛX[\‚ˆˆ\X\˜[˜ÙK™›Ûœ^[Ú^™KœÛX[\ÝˆÛÛÜŽˆ\X\˜[˜ÙK˜ÛÛÜœË˜ÛÛÛ”Ý\™˜XÙU˜\šX[ˆ[YNˆ^‘[YTšYÚˆBˆB‚ˆ™\X]\ˆÂˆYˆÜ˜š]Ý\œÂˆ[Ù[ˆ›ÛÝšÝ\œÂ‚ˆ[YØ]Nˆ][HÂˆYˆÝ\”Ú[ˆ™\]Z\™Y›Ü\H[[™^ˆ™\]Z\™Y›Ü\H˜\ˆ[Ù[]B‚ˆ™XYÛ›H›Ü\H™X[[™ÛNˆ›ÛÝšÝ\[™Û\ÖÚ[™^BˆÏÈ›ÛÝ›Ü˜š][™ÛQ›Ü’Ý\Š[Ù[]OË›X™[
-Bˆ™XYÛ›H›Ü\H›ÛÛYÚYÚYˆ[™^OOH‚ˆÚYˆ›ÛÝœÚ[ÚYˆZYÚˆ›ÛÝœÚ[ZYÚˆˆ›ÛÝÚYÈ‚ˆ
-ÈX]˜ÛÜÊ[™ÛJH
-ˆ›ÛÝ›Ü˜š]˜Y]\ÖHÚYÈ‚ˆNˆ›ÛÝšZYÚÈ‚ˆ
-ÈX]œÚ[Š[™ÛJH
-ˆ›ÛÝ›Ü˜š]˜Y]\ÖHHZYÚÈ‚ˆŽˆ‚ˆ™XÝ[™ÛHÂˆ[˜ÚÜœË™š[ˆ\™[ˆš\ÚX›Nˆ\›ÛÝ›\]ZY[ÙH›ÛÝ›\]ZY˜[˜XÚÂˆ˜Y]\Îˆ\X\˜[˜ÙKœ›Ý[™[™Ë››Ü›X[ˆÛÛÜŽˆÝ\”Ú[šYÚYÚYˆÈ\X\˜[˜ÙK˜ÛÛÜœË˜ÛÛš[X\žPÛÛZ[™\‚ˆˆ\X\˜[˜ÙK˜ÛÛÜœË˜ÛÛÝ\™˜XÙPÛÛZ[™\’YÚˆ›Ü™\‹ÚYˆBˆ›Ü™\‹˜ÛÛÜŽˆÝ\”Ú[šYÚYÚYˆÈ\X\˜[˜ÙK˜ÛÛÜœË˜ÛÛš[X\žBˆˆ\X\˜[˜ÙK˜ÛÛÜœË˜ÛÛÝ][™U˜\šX[ˆB‚ˆÛÛ[[“^[Ý]Âˆ[˜ÚÜœË˜Ù[\’[Žˆ\™[ˆÜXÚ[™Îˆ›ÛÝ›\]ZY[ÙHÈˆˆB‚ˆÝ[Y^Âˆ^[Ý]˜[YÛ›Y[ˆ][YÛ’Ù[\‚ˆ^ˆÝ\”Ú[›[Ù[]OË›X™[ÏÈˆ‚ˆ›ÛÙZYÚˆÝ\”Ú[šYÚYÚYˆÈ›Û‘[ZP›Ûˆ›Û“YY][Bˆ›Ûœ^[Ú^™Nˆ\X\˜[˜ÙK™›Ûœ^[Ú^™KœÛX[\ÝˆÛÛÜŽˆ›ÛÝ›\]ZY[ÙBˆÈ\X\˜[˜ÙK˜ÛÛÜœË˜ÛÛÛ”Ý\™˜XÙBˆˆÝ\”Ú[šYÚYÚYˆÈ\X\˜[˜ÙK˜ÛÛÜœË˜ÛÛÛ”š[X\žPÛÛZ[™\‚ˆˆ\X\˜[˜ÙK˜ÛÛÜœË˜ÛÛÛ”Ý\™˜XÙU˜\šX[ˆB‚ˆX]\šX[Þ[X›ÛÂˆ^[Ý]˜[YÛ›Y[ˆ][YÛ’Ù[\‚ˆ^ˆXÛÛœË™Ù]ÙX]\’XÛÛŠˆÝ\”Ú[›[Ù[]OË˜ÛÙKˆÝ\”Ú[›[Ù[]OËš\ÓšYÚÏÈ˜[ÙJHÏÈ˜ÛÝY‚ˆXÛÛ”Ú^™NˆX]›X^
-MKˆX]›Z[Š›ÛÝ›\]ZY[ÙHÈŒHˆŒˆÝ\”Ú[ÚY
-ˆ
-JBˆÛÛÜŽˆ\X\˜[˜ÙK˜ÛÛÜœË˜ÛÛš[X\žBˆB‚ˆÝ[Y^Âˆ^[Ý]˜[YÛ›Y[ˆ][YÛ’Ù[\‚ˆ^ˆÝ\”Ú[›[Ù[]OË[\ÏÈ‹Kp¬‚ˆ›ÛÙZYÚˆÝ\”Ú[šYÚYÚYˆÈ›Û‘[ZP›Ûˆ›Û“YY][Bˆ›Ûœ^[Ú^™Nˆ\X\˜[˜ÙK™›Ûœ^[Ú^™KœÛX[\ÝˆÛÛÜŽˆ›ÛÝ›\]ZY[ÙBˆÈ\X\˜[˜ÙK˜ÛÛÜœË˜ÛÛÛ”Ý\™˜XÙBˆˆÝ\”Ú[šYÚYÚYˆÈ\X\˜[˜ÙK˜ÛÛÜœË˜ÛÛÛ”š[X\žPÛÛZ[™\‚ˆˆ\X\˜[˜ÙK˜ÛÛÜœË˜ÛÛÛ”Ý\™˜XÙBˆBˆBˆBˆB‚ˆÝ[Y^Âˆ[˜ÚÜœË˜Ù[\’[Žˆ\™[ˆ[˜ÚÜœË™\XØ[Ù[\“Ù™œÙ]ˆNˆŽˆBˆš\ÚX›Nˆ›ÛÝœÚÝÕ[˜]˜Z[X›SY\ÜØYÙH	‰ˆ›ÛÝšÝ\œË›[™ÝOOHˆ^ˆ˜[œÛ][Û‹Š’Ý\›H›Ü™XØ\Ý[˜]˜Z[X›HŠBˆ›Ûœ^[Ú^™Nˆ\X\˜[˜ÙK™›Ûœ^[Ú^™KœÛX[\‚ˆÛÛÜŽˆ\X\˜[˜ÙK˜ÛÛÜœË˜ÛÛÛ”Ý\™˜XÙU˜\šX[ˆBŸB
+            ctx.stroke()
+            ctx.globalAlpha = 1
+        }
+    }
+
+    ColumnLayout {
+        anchors.centerIn: parent
+        spacing: root.liquidMode ? 2 : 1
+        z: 3
+        width: Math.min(root.liquidMode ? 190 : 180, root.width * 0.50)
+
+        MaterialSymbol {
+            visible: root.liquidMode
+            Layout.alignment: Qt.AlignHCenter
+            Layout.bottomMargin: 1
+            text: Icons.getWeatherIcon(
+                Weather.data?.wCode,
+                Weather.isNightNow()) ?? "cloud"
+            iconSize: Math.max(24, Appearance.font.pixelSize.larger)
+            color: Appearance.colors.colPrimary
+        }
+
+        StyledText {
+            Layout.fillWidth: true
+            horizontalAlignment: Text.AlignHCenter
+            text: root.width >= 380
+                ? Qt.formatDate(root.now, "dddd, MMM d")
+                : Qt.formatDate(root.now, "ddd, MMM d")
+            font.weight: root.liquidMode ? Font.Medium : Font.DemiBold
+            font.pixelSize: root.liquidMode
+                ? Appearance.font.pixelSize.small
+                : Appearance.font.pixelSize.small
+            color: Appearance.colors.colOnSurfaceVariant
+            elide: Text.ElideRight
+        }
+
+        RowLayout {
+            Layout.alignment: Qt.AlignHCenter
+            Layout.topMargin: root.liquidMode ? 0 : 2
+            spacing: 4
+
+            MaterialSymbol {
+                visible: !root.liquidMode
+                text: Icons.getWeatherIcon(
+                    Weather.data?.wCode,
+                    Weather.isNightNow()) ?? "cloud"
+                iconSize: Appearance.font.pixelSize.normal
+                color: Appearance.colors.colPrimary
+            }
+
+            StyledText {
+                text: Weather.data?.temp ?? "--Â°"
+                font.weight: root.liquidMode ? Font.Medium : Font.DemiBold
+                font.pixelSize: root.liquidMode
+                    ? Math.max(25, Appearance.font.pixelSize.larger)
+                    : Appearance.font.pixelSize.normal
+                color: Appearance.colors.colOnSurface
+            }
+        }
+
+        StyledText {
+            Layout.fillWidth: true
+            horizontalAlignment: Text.AlignHCenter
+            text: Weather.data?.description
+                ?? Weather.describeWeather(Weather.data?.wCode ?? "113")
+            font.pixelSize: root.liquidMode
+                ? Appearance.font.pixelSize.smaller
+                : Appearance.font.pixelSize.smallest
+            color: Appearance.colors.colOnSurfaceVariant
+            elide: Text.ElideRight
+        }
+    }
+
+    Repeater {
+        id: orbitHours
+        model: root.hours
+
+        delegate: Item {
+            id: hourPoint
+            required property int index
+            required property var modelData
+
+            readonly property real angle: root.hourAngles[index]
+                ?? root.orbitAngleForHour(modelData?.label)
+            readonly property bool highlighted: index === 0
+
+            width: root.pointWidth
+            height: root.pointHeight
+            x: root.width / 2
+                + Math.cos(angle) * root.orbitRadiusX - width / 2
+            y: root.height / 2
+                + Math.sin(angle) * root.orbitRadiusY - height / 2
+            z: 4
+
+            Rectangle {
+                anchors.fill: parent
+                visible: !root.liquidMode || root.liquidFallback
+                radius: Appearance.rounding.normal
+                color: hourPoint.highlighted
+                    ? Appearance.colors.colPrimaryContainer
+                    : Appearance.colors.colSurfaceContainerHigh
+                border.width: 1
+                border.color: hourPoint.highlighted
+                    ? Appearance.colors.colPrimary
+                    : Appearance.colors.colOutlineVariant
+            }
+
+            ColumnLayout {
+                anchors.centerIn: parent
+                spacing: root.liquidMode ? 2 : 1
+
+                StyledText {
+                    Layout.alignment: Qt.AlignHCenter
+                    text: hourPoint.modelData?.label ?? ""
+                    font.weight: hourPoint.highlighted
+                        ? Font.DemiBold : Font.Medium
+                    font.pixelSize: Appearance.font.pixelSize.smallest
+                    color: root.liquidMode
+                        ? Appearance.colors.colOnSurface
+                        : hourPoint.highlighted
+                            ? Appearance.colors.colOnPrimaryContainer
+                            : Appearance.colors.colOnSurfaceVariant
+                }
+
+                MaterialSymbol {
+                    Layout.alignment: Qt.AlignHCenter
+                    text: Icons.getWeatherIcon(
+                        hourPoint.modelData?.code,
+                        hourPoint.modelData?.isNight ?? false) ?? "cloud"
+                    iconSize: Math.max(15,
+                        Math.min(root.liquidMode ? 21 : 20,
+                            hourPoint.width * 0.40))
+                    color: Appearance.colors.colPrimary
+                }
+
+                StyledText {
+                    Layout.alignment: Qt.AlignHCenter
+                    text: hourPoint.modelData?.temp ?? "--Â°"
+                    font.weight: hourPoint.highlighted
+                        ? Font.DemiBold : Font.Medium
+                    font.pixelSize: Appearance.font.pixelSize.smallest
+                    color: root.liquidMode
+                        ? Appearance.colors.colOnSurface
+                        : hourPoint.highlighted
+                            ? Appearance.colors.colOnPrimaryContainer
+                            : Appearance.colors.colOnSurface
+                }
+            }
+        }
+    }
+
+    StyledText {
+        anchors.centerIn: parent
+        anchors.verticalCenterOffset: 58
+        z: 5
+        visible: root.showUnavailableMessage && root.hours.length === 0
+        text: Translation.tr("Hourly forecast unavailable")
+        font.pixelSize: Appearance.font.pixelSize.smaller
+        color: Appearance.colors.colOnSurfaceVariant
+    }
+}

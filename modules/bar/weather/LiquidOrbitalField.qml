@@ -214,7 +214,7 @@ Item {
     readonly property var liquidShapes: [
         ribbon0, ribbon1, ribbon2, ribbon3,
         ribbon4, ribbon5, ribbon6, ribbon7,
-        ribbon8, ribon9, ribbon10, ribbon11,
+        ribbon8, ribbon9, ribbon10, ribbon11,
         hour0, hour1, hour2, hour3,
         hour4, hour5, hour6, hour7
     ]

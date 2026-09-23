@@ -33,6 +33,9 @@ Singleton {
     property bool inspectorPaneCollapsed: false
     property real sourcePreviewHeight: 190
     property bool minimapEnabled: true
+    property string pinnedTargetId: ""
+    property var recentTargetIds: []
+    readonly property int maximumRecentTargets: 8
     // Visual graph layout is presentation-only. It never mutates reviewed IR
     // or source. Persist it in workspace state so manual organization survives
     // Settings eviction and shell restarts.
@@ -44,6 +47,45 @@ Singleton {
 
     function _state(): var {
         return Persistent.states?.settings ?? null
+    }
+
+    function _sanitizeRecentTargetIds(raw): var {
+        if (!Array.isArray(raw))
+            return []
+        const seen = ({})
+        const safe = []
+        for (const value of raw) {
+            const targetId = String(value ?? "").trim()
+            if (targetId.length === 0 || seen[targetId])
+                continue
+            seen[targetId] = true
+            safe.push(targetId)
+            if (safe.length >= root.maximumRecentTargets)
+                break
+        }
+        return safe
+    }
+
+    function rememberTarget(targetId: string): void {
+        const nextTargetId = String(targetId ?? "").trim()
+        if (nextTargetId.length === 0
+                || !CodeWorkflowRuntime.descriptor(nextTargetId))
+            return
+        root.recentTargetIds = [nextTargetId].concat(
+            root.recentTargetIds.filter(id =>
+                String(id ?? "") !== nextTargetId))
+            .slice(0, root.maximumRecentTargets)
+    }
+
+    function togglePinnedTarget(targetId: string): bool {
+        const nextTargetId = String(targetId ?? "").trim()
+        if (nextTargetId.length === 0
+                || !CodeWorkflowRuntime.descriptor(nextTargetId))
+            return false
+        root.pinnedTargetId = root.pinnedTargetId === nextTargetId
+            ? "" : nextTargetId
+        root.persist()
+        return true
     }
 
     function _decodeGraphNodeLayoutOffsets(raw): var {
@@ -197,6 +239,10 @@ Singleton {
         root.sourcePreviewHeight = Math.max(120, Math.min(
             720, Number(state.codeWorkflowSourcePreviewHeight ?? 190)))
         root.minimapEnabled = state.codeWorkflowMinimap !== false
+        root.pinnedTargetId = String(
+            state.codeWorkflowPinnedTargetId ?? "").trim()
+        root.recentTargetIds = root._sanitizeRecentTargetIds(
+            state.codeWorkflowRecentTargetIds ?? [])
         root.graphNodeLayoutOffsets = root._decodeGraphNodeLayoutOffsets(
             state.codeWorkflowGraphNodeLayoutOffsets ?? "{}")
         root.graphLayoutRevision += 1
@@ -230,6 +276,8 @@ Singleton {
         state.codeWorkflowInspectorPaneCollapsed = root.inspectorPaneCollapsed
         state.codeWorkflowSourcePreviewHeight = root.sourcePreviewHeight
         state.codeWorkflowMinimap = root.minimapEnabled
+        state.codeWorkflowPinnedTargetId = root.pinnedTargetId
+        state.codeWorkflowRecentTargetIds = root.recentTargetIds
         state.codeWorkflowGraphNodeLayoutOffsets = JSON.stringify(
             root.graphNodeLayoutOffsets ?? ({}))
     }
@@ -329,6 +377,7 @@ Singleton {
         if (!CodeWorkflowRuntime.descriptor(targetId))
             return
         root.selectedTargetId = targetId
+        root.rememberTarget(targetId)
         root.selectedInstanceId = String(instanceId ?? "")
         const split = root.selectedInstanceId.lastIndexOf("@")
         if (split > 0)
@@ -376,6 +425,7 @@ Singleton {
         if (runtimeId.length > 0
                 && CodeWorkflowRuntime.descriptor(runtimeId)) {
             root.selectedTargetId = runtimeId
+            root.rememberTarget(runtimeId)
             root.selectedInstanceId = root.outputName.length > 0
                 ? runtimeId + "@" + root.outputName : ""
         }
@@ -550,6 +600,8 @@ Singleton {
     onInspectorPaneCollapsedChanged: root.persist()
     onSourcePreviewHeightChanged: root.persist()
     onMinimapEnabledChanged: root.persist()
+    onPinnedTargetIdChanged: root.persist()
+    onRecentTargetIdsChanged: root.persist()
     Component.onCompleted: root.restore()
 
     Connections {

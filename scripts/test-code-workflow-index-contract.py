@@ -79,6 +79,10 @@ for token in (
     "CodeWorkflowSession.selectedSemanticSourcePath.length > 0",
     "CodeWorkflowSession.selectIndexedSemantic(",
     '" · read only · " + sourcePath',
+    "readonly property var selectedIndexedBoundary:",
+    '"Indexed parser boundary · "',
+    '"Indexed runtime-boundary evidence · READ ONLY · "',
+    "visible: root.inspectedSemanticAnchor.length === 0",
 ):
     require(page, token, "workspace boundary navigation missing " + token)
 

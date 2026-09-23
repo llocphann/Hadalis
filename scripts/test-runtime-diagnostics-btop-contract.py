@@ -109,13 +109,14 @@ def main() -> None:
     ):
         require(sparkline, token, "BtopSparkline.qml")
 
-    require(
-        process_table,
-        "if (value === null || value === undefined)",
-        "BtopProcessTable.qml",
-    )
     for token in (
         "if (value === null || value === undefined)",
+        "readonly property bool showSwapColumn: width >= 520",
+    ):
+        require(process_table, token, "BtopProcessTable.qml")
+    for token in (
+        "if (value === null || value === undefined)",
+        "readonly property bool showTotalColumn: width >= 520",
         "? null : Number(data.rxBytesPerSec)",
         "? null : Number(data.txBytesPerSec)",
     ):

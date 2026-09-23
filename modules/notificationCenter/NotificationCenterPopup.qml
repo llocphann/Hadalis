@@ -143,6 +143,7 @@ Bar.StyledPopup {
             anchors.fill: parent
             active: root.active
             sourceComponent: NotificationCenterContent {
+                popupPresentation: true
                 onSearchFocusRequested: root.enterKeyboardMode()
                 onExternalNavigationRequested: root.dismissAndDisarm()
             }

@@ -17,6 +17,7 @@ Singleton {
     readonly property bool sessionActive: root.leaseCount > 0
     readonly property bool samplingEnabled: root.sessionActive
     property var latestSample: null
+    property var sampleHistory: []
     property double sampleUpdatedAtMs: 0
     property string samplerError: ""
     property var sourceBoundaryReconciliation: ({
@@ -161,6 +162,45 @@ Singleton {
         }
     }
 
+    function _historyPercent(used, total): var {
+        const usedValue = Number(used)
+        const totalValue = Number(total)
+        if (!Number.isFinite(usedValue)
+                || !Number.isFinite(totalValue)
+                || totalValue <= 0)
+            return null
+        return Math.max(0, Math.min(100,
+            usedValue / totalValue * 100))
+    }
+
+    function _historyGpuPeak(sample): var {
+        const engines = sample?.shell?.gpu?.engineBusyPercent ?? ({})
+        let peak = null
+        for (const key of Object.keys(engines)) {
+            const value = Number(engines[key])
+            if (!Number.isFinite(value))
+                continue
+            peak = peak === null ? value : Math.max(peak, value)
+        }
+        return peak
+    }
+
+    function _appendHistory(sample): void {
+        const memory = sample?.system?.memory?.valuesKiB ?? ({})
+        root.sampleHistory = root.sampleHistory.concat([{
+            atMs: Number(sample?.atMs ?? Date.now()),
+            systemCpuPercent: sample?.system?.cpu?.percent ?? null,
+            shellCpuPercent: sample?.shell?.cpu?.percent ?? null,
+            systemRamPercent: root._historyPercent(
+                memory.MemUsed, memory.MemTotal),
+            shellGpuPeakPercent: root._historyGpuPeak(sample),
+            rxBytesPerSec:
+                sample?.network?.aggregateNonLoopback?.rxBytesPerSec ?? null,
+            txBytesPerSec:
+                sample?.network?.aggregateNonLoopback?.txBytesPerSec ?? null
+        }]).slice(-60)
+    }
+
     function _consumeSample(rawLine): void {
         const line = String(rawLine ?? "").trim()
         if (line.length === 0)
@@ -175,6 +215,7 @@ Singleton {
             if (!sample?.system || !sample?.shell || !sample?.network)
                 throw new Error("incomplete diagnostics sample")
             root.latestSample = sample
+            root._appendHistory(sample)
             root.sampleUpdatedAtMs = Number(sample.atMs ?? Date.now())
             root.samplerError = ""
             root.revision += 1
@@ -192,6 +233,7 @@ Singleton {
             system: root.latestSample?.system ?? null,
             shell: root.latestSample?.shell ?? null,
             network: root.latestSample?.network ?? null,
+            history: root.sampleHistory,
             sampler: {
                 running: diagnosticsSampler.running,
                 error: root.samplerError
@@ -209,6 +251,7 @@ Singleton {
         // resource sampler. Do not cancel a scan that may also be serving a
         // concurrently visible Workflow surface.
         root.latestSample = null
+        root.sampleHistory = []
         root.sampleUpdatedAtMs = 0
         root.samplerError = ""
         root.revision += 1

@@ -34,11 +34,13 @@ Singleton {
         && root.remoteEvidenceKey !== root.remoteEvidenceFloorKey
     readonly property string evidenceError:
         root.localShell ? "" : CodeWorkflowRuntime.remoteError
-    readonly property var evidence: root.localShell
-        ? RuntimeDiagnostics.snapshot()
-        : (root.remoteEvidenceFresh
-            ? (CodeWorkflowRuntime.remoteSnapshot?.diagnostics ?? null)
-            : null)
+    readonly property var evidence: !root.pageCurrent
+        ? null
+        : root.localShell
+            ? RuntimeDiagnostics.snapshot()
+            : (root.remoteEvidenceFresh
+                ? (CodeWorkflowRuntime.remoteSnapshot?.diagnostics ?? null)
+                : null)
 
     function _remoteEvidenceKey(): string {
         const diagnostics = CodeWorkflowRuntime.remoteSnapshot?.diagnostics

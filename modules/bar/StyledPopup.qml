@@ -30,6 +30,12 @@ LazyLoader {
     property bool alternativeVisibleCondition: false
     property bool closeOnOutsideClick: false
     property bool keyboardFocus: false
+    // Some click-activated editors become keyboard owners only after the
+    // pointer event that requested editing has already reached the popup.
+    // OnDemand cannot retroactively focus that first click on Niri, so those
+    // surfaces may opt into Exclusive focus once keyboardFocus flips true.
+    // The default remains OnDemand for existing focused popups such as Media.
+    property bool exclusiveKeyboardFocus: false
     property bool _bodyHovered: false
     property bool _contentHovered: false
     readonly property bool popupHovered: root._bodyHovered || root._contentHovered
@@ -331,7 +337,10 @@ LazyLoader {
         WlrLayershell.namespace: "quickshell:popup"
         WlrLayershell.layer: WlrLayer.Overlay
         WlrLayershell.keyboardFocus: root.keyboardFocus && root.requestedVisible
-            ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
+            ? (root.exclusiveKeyboardFocus
+                ? WlrKeyboardFocus.Exclusive
+                : WlrKeyboardFocus.OnDemand)
+            : WlrKeyboardFocus.None
 
         Component.onCompleted: root.presentationWindow = popupWindow
         Component.onDestruction: {

@@ -1064,8 +1064,10 @@ def main() -> None:
               f"{path} must not restore a detached PopupWindow surface")
 
     bar_runtime = read("modules/bar/Bar.qml")
-    check('Config.setNestedValue("bar.cornerStyle", 0)' in bar_runtime,
-          "Classic Bar startup must normalize persisted legacy corner styles to Hug")
+    check("cornerStyle" not in bar_runtime
+          and "appearance?.globalStyle" not in bar_runtime
+          and "rebuildKey" not in bar_runtime,
+          "Live Classic Bar must leave legacy normalization to SettingsPageRegistry")
     config_qml = read("modules/common/Config.qml")
     defaults_json = read("defaults/config.json")
     appearance_qml = read("modules/common/Appearance.qml")

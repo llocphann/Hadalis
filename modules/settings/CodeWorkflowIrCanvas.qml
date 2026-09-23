@@ -2217,7 +2217,10 @@ Item {
                 anchors.fill: parent
                 preferredRendererType: Shape.CurveRenderer
                 antialiasing: true
-                asynchronous: false
+                // CurveRenderer still performs CPU path preprocessing. Keep it
+                // off the GUI thread so graph activation and route updates do
+                // not stall the Settings transition.
+                asynchronous: true
                 // Shared endpoint trunks are intentional. Lift the active
                 // relation above sibling wires without painting over labels
                 // (z 0.5) or nodes (z 1).

@@ -1143,6 +1143,25 @@ def main() -> None:
     check("Dock uses the Panel surface style." in dock_config,
           "Dock settings must describe Panel as the canonical surface style")
 
+    check(not (ROOT / "modules/pill").exists(),
+          "Retired Pill compatibility module must stay absent")
+    dock_button = read("modules/dock/DockAppButton.qml")
+    check("qs.modules.pill" not in dock_button
+          and "PillTheme" not in dock_button
+          and "Appearance.colors.colPrimary" in dock_button,
+          "Dock Ricelin interactions must consume active Appearance tokens directly")
+    for ricelin_consumer in (
+        "modules/overview/SearchWidget.qml",
+        "modules/sidebarLeft/SidebarLeftContent.qml",
+        "modules/sidebarRight/SidebarRightContent.qml",
+        "modules/sidebarRight/CompactSidebarRightContent.qml",
+    ):
+        source = read(ricelin_consumer)
+        check("qs.modules.pill" not in source
+              and "IslandPanel" not in source
+              and "RicelinSurface {" in source,
+              f"{ricelin_consumer} must use the canonical active Ricelin surface directly")
+
     settings_registry = read("modules/settings/SettingsPageRegistry.qml")
     check('Config.setNestedValue("dock.style", "panel")' in settings_registry,
           "Legacy Dock styles must normalize to Panel")

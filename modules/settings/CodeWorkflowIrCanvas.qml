@@ -701,6 +701,8 @@ Item {
     }
 
     function routeBounds(route): var {
+        if (route?.bounds)
+            return route.bounds
         if (!route?.points || route.points.length === 0)
             return { minX: 0, minY: 0, maxX: 0, maxY: 0 }
 
@@ -1149,6 +1151,10 @@ Item {
             bestRoute.edgeId = String(edge?.id ?? "")
             bestRoute.fromId = String(edge?.from ?? "")
             bestRoute.toId = String(edge?.to ?? "")
+            // Route geometry is immutable until the route cache is rebuilt.
+            // Cache its AABB once so viewport culling and 60 Hz pointer hit
+            // testing do not rescan every route point.
+            bestRoute.bounds = root.routeBounds(bestRoute)
         }
         return bestRoute
     }
@@ -1471,8 +1477,7 @@ Item {
         return Math.sqrt(sx * sx + sy * sy)
     }
 
-    function edgeDistance(edge, px: real, py: real): real {
-        const route = root.routeForEdge(edge)
+    function routeDistance(route, px: real, py: real): real {
         const points = route?.points ?? []
         if (points.length < 2)
             return 1e9
@@ -1485,6 +1490,10 @@ Item {
                 points[index].x, points[index].y))
         }
         return best
+    }
+
+    function edgeDistance(edge, px: real, py: real): real {
+        return root.routeDistance(root.routeForEdge(edge), px, py)
     }
 
     function fitGraph(): void {
@@ -1754,7 +1763,16 @@ Item {
         let bestId = ""
         let bestDistance = tolerance
         for (const edge of root.edges) {
-            const distance = root.edgeDistance(edge, worldX, worldY)
+            const route = root.routeForEdge(edge)
+            if (!route)
+                continue
+            const bounds = root.routeBounds(route)
+            if (worldX < bounds.minX - tolerance
+                    || worldX > bounds.maxX + tolerance
+                    || worldY < bounds.minY - tolerance
+                    || worldY > bounds.maxY + tolerance)
+                continue
+            const distance = root.routeDistance(route, worldX, worldY)
             if (distance <= bestDistance) {
                 bestDistance = distance
                 bestId = String(edge.id ?? "")

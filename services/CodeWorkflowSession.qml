@@ -15,6 +15,9 @@ Singleton {
     property string selectedEdgeId: ""
     property string selectedConnectTargetId: ""
     property string selectedSemanticAnchor: ""
+    // Non-empty only for read-only whole-tree parser discovery. It is
+    // intentionally not persisted across shell restarts.
+    property string selectedSemanticSourcePath: ""
     property string semanticAnchor: ""
     property string semanticAnchorNodeId: ""
     property real panX: 32
@@ -158,6 +161,7 @@ Singleton {
         root.selectedConnectTargetId = String(
             state.codeWorkflowConnectTargetId ?? "")
         root.selectedSemanticAnchor = ""
+        root.selectedSemanticSourcePath = ""
         if (!CodeWorkflowIr.hasGraph(root.subflowTargetId))
             root.subflowTargetId = "bar"
         if (!CodeWorkflowIr.nodeFor(root.subflowTargetId, root.selectedNodeId))
@@ -392,6 +396,7 @@ Singleton {
             root.selectedEdgeId = ""
             root.selectedConnectTargetId = ""
             root.selectedSemanticAnchor = ""
+        root.selectedSemanticSourcePath = ""
             root.clearSemanticAnchor()
             // Selection changes inspector context, not the unified board viewport.
             // Keep pan/zoom while switching between unrelated components.
@@ -407,6 +412,7 @@ Singleton {
         root.selectedEdgeId = ""
         root.selectedConnectTargetId = ""
         root.selectedSemanticAnchor = ""
+        root.selectedSemanticSourcePath = ""
         if (changed)
             root.clearSemanticAnchor()
         else
@@ -461,6 +467,7 @@ Singleton {
             root.selectedEdgeId = edge.id
             root.selectedConnectTargetId = ""
             root.selectedSemanticAnchor = ""
+        root.selectedSemanticSourcePath = ""
             root.selectedNodeId = actionNode.id
             root.clearSemanticAnchor()
             root.persist()
@@ -482,6 +489,7 @@ Singleton {
         root.selectedEdgeId = edge.id
         root.selectedConnectTargetId = ""
         root.selectedSemanticAnchor = ""
+        root.selectedSemanticSourcePath = ""
         root.selectedNodeId = target.id
         if (changedNode)
             root.clearSemanticAnchor()
@@ -492,11 +500,27 @@ Singleton {
 
     function selectSemantic(anchor: string): bool {
         const nextAnchor = String(anchor ?? "")
+        root.selectedSemanticSourcePath = ""
         if (nextAnchor.length === 0) {
             root.selectedSemanticAnchor = ""
             root.persist()
             return true
         }
+        root.selectedSemanticAnchor = nextAnchor
+        root.selectedEdgeId = ""
+        root.selectedConnectTargetId = ""
+        root.persist()
+        return true
+    }
+
+    function selectIndexedSemantic(sourcePath: string, anchor: string): bool {
+        const nextPath = String(sourcePath ?? "").trim()
+        const nextAnchor = String(anchor ?? "").trim()
+        if (nextPath.length === 0 || nextAnchor.length === 0)
+            return false
+        if (nextPath.startsWith("/") || nextPath.includes(".."))
+            return false
+        root.selectedSemanticSourcePath = nextPath
         root.selectedSemanticAnchor = nextAnchor
         root.selectedEdgeId = ""
         root.selectedConnectTargetId = ""
@@ -523,6 +547,7 @@ Singleton {
         root.selectedConnectTargetId = String(target.id ?? "")
         root.selectedEdgeId = ""
         root.selectedSemanticAnchor = ""
+        root.selectedSemanticSourcePath = ""
         root.selectedNodeId = parentNode.id
         root.clearSemanticAnchor()
         root.persist()
@@ -540,6 +565,7 @@ Singleton {
         root.selectedEdgeId = ""
         root.selectedConnectTargetId = ""
         root.selectedSemanticAnchor = ""
+        root.selectedSemanticSourcePath = ""
         root.clearSemanticAnchor()
 
         if (CodeWorkflowRuntime.descriptor(targetId)) {

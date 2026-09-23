@@ -33,7 +33,8 @@ ContentPage {
     readonly property string samplerError:
         String(root.evidence?.sampler?.error ?? "")
     readonly property bool sessionHasError:
-        RuntimeDiagnosticsSession.remoteError.length > 0
+        RuntimeDiagnosticsSession.leaseError.length > 0
+        || RuntimeDiagnosticsSession.remoteError.length > 0
         || RuntimeDiagnosticsSession.evidenceError.length > 0
         || root.samplerError.length > 0
     readonly property bool samplerRunning:
@@ -332,6 +333,16 @@ ContentPage {
                         }
                     }
                 }
+            }
+
+            StyledText {
+                Layout.fillWidth: true
+                visible: RuntimeDiagnosticsSession.leaseError.length > 0
+                text: Translation.tr("Diagnostics lease error") + " · "
+                    + RuntimeDiagnosticsSession.leaseError
+                color: Appearance.colors.colError
+                font.pixelSize: Appearance.font.pixelSize.small
+                wrapMode: Text.WordWrap
             }
 
             StyledText {

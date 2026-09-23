@@ -231,21 +231,23 @@ Item {
             selected.push(primaryId)
 
         const existingIndex = selected.indexOf(nodeId)
-        if (existingIndex >= 0 && selected.length > 1) {
+        if (existingIndex >= 0) {
             selected.splice(existingIndex, 1)
-            if (primaryId === nodeId) {
+            if (selected.length > 0 && primaryId === nodeId) {
                 const fallbackId = selected[selected.length - 1]
                 const fallbackNode = root.nodes.find(candidate =>
                     String(candidate?.id ?? "") === fallbackId) ?? null
                 if (fallbackNode)
                     CodeWorkflowSession.selectUnifiedNode(fallbackNode)
             }
+            // An empty manual set clears only reasoning emphasis. The primary
+            // Inspector selection remains intact and therefore retains the sole
+            // mutation authority.
             root.setManualReasoningSelection(selected)
             return
         }
 
-        if (existingIndex < 0)
-            selected.push(nodeId)
+        selected.push(nodeId)
         CodeWorkflowSession.selectUnifiedNode(node)
         root.setManualReasoningSelection(selected)
     }

@@ -117,9 +117,9 @@ assert "id: searchResultsDropdown" not in waffle
 assert "searchResultsList" not in waffle
 
 arrangement = read("modules/settings/SettingsArrangement.qml")
-assert "layoutSchemaVersion: 8" in arrangement
+assert "layoutSchemaVersion: 9" in arrangement
 assert "sourceVersion < 8 && untouchedStock" in arrangement
 assert "owner.get(page)" in arrangement
 assert "seen.has(page)" in arrangement
 
-print("Settings inline search, geometry and v8 navigation migration: PASS")
+print("Settings inline search, geometry and v9 navigation migration: PASS")

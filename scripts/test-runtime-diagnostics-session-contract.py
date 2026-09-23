@@ -93,7 +93,10 @@ for token in (
     'SettingsPageRegistry.pageIndexForKey("diagnostics")',
     'root.workflowHostId + ":diagnostics"',
     "RuntimeDiagnosticsSession.setOwnerCurrent(",
-    "root.requestedIndex === root.diagnosticsPageIndex",
+    "DiagnosticsPageState.shouldLease(",
+    "root.requestedIndex, root.currentIndex,",
+    "onCurrentIndexChanged: root._syncDiagnosticsLease()",
+    "onVisibleChanged: root._syncDiagnosticsLease()",
 ):
     require(page_host, token, "Settings current-page Diagnostics ownership regressed")
 

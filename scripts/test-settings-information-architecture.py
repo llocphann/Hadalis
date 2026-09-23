@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Regression contract for v8 intent-based Settings navigation and ownership."""
+"""Regression contract for v9 intent-based Settings navigation and ownership."""
 
 import re
 from pathlib import Path
@@ -41,11 +41,11 @@ def main() -> None:
     ], groups
     page_indices = [index for _, pages in groups for index in pages]
     assert len(page_indices) == len(set(page_indices)), "duplicate Material page"
-    assert set(page_indices) == set(range(31)) - {18, 19, 21, 27, 28}, (
+    assert set(page_indices) == set(range(32)) - {18, 19, 21, 27, 28}, (
         "active Material pages must have exactly one default owner", page_indices
     )
 
-    require(arrangement, "layoutSchemaVersion: 8", "navigation migration")
+    require(arrangement, "layoutSchemaVersion: 9", "navigation migration")
     require(arrangement, "const untouchedStock =", "navigation migration")
     require(arrangement, "const defaults = SettingsPageRegistry.defaultCategories", "navigation migration")
     require(arrangement, "sourceVersion < 8 && untouchedStock", "legacy customized navigation migration")
@@ -76,7 +76,7 @@ def main() -> None:
     wkeys = re.findall(r'key: "([^"]+)"', waffle.split("property var pages: [", 1)[1].split(
         "property int currentPage:", 1
     )[0])
-    assert len(wkeys) == 19 and len(set(wkeys)) == 19, "Waffle page keys"
+    assert len(wkeys) == 20 and len(set(wkeys)) == 20, "Waffle page keys"
     wgroups = wcontent.split("readonly property var navigationGroups: [", 1)[1].split(
         "readonly property var navigationItems:", 1
     )[0]
@@ -119,7 +119,7 @@ def main() -> None:
     require(data, "pageIndex: 2, pageName: root.pages[2].name,\n"
                   '            section: Translation.tr("Appearance & Layout"),',
             "Bar search destination")
-    print("Settings v8 information architecture, routing and ownership: OK")
+    print("Settings v9 information architecture, routing and ownership: OK")
 
 
 if __name__ == "__main__":

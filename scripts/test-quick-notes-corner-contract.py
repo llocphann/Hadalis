@@ -118,6 +118,7 @@ for token in (
 for token in (
     "function _allocateTabId()",
     "function _makeTab(title, text)",
+    "while (seenIds.includes(id))",
     "function indexForTabId(tabId)",
     "function setTabTextById(tabId, newText)",
     "property bool _normalizedTabsNeedSave: false",

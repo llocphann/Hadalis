@@ -61,7 +61,10 @@ ContentPage {
         onTriggered: root.refreshSavedThemes()
     }
 
-    Component.onCompleted: root.refreshSavedThemes()
+    Component.onCompleted: {
+        ThemeService.normalizeGlobalStyle()
+        root.refreshSavedThemes()
+    }
 
     function _log(...args): void {
         if (Quickshell.env("QS_DEBUG") === "1") console.log(...args);
@@ -70,6 +73,12 @@ ContentPage {
     settingsPageIndex: 4
     settingsPageName: Translation.tr("Themes")
     property string activeSection: "colors"
+
+    onActiveSectionChanged: {
+        // "style" belonged to the retired shell-wide Global Style page.
+        if (activeSection === "style")
+            activeSection = "colors"
+    }
 
     function activateSettingsSearchSection(section: string): bool {
         const label = String(section ?? "").toLowerCase()

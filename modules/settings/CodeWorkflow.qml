@@ -872,8 +872,9 @@ Item {
         "identifier", "member_expression"
     ]
     readonly property bool directMutationSelectionEligible:
-        root.selectedIrEdge === null
-        || root.selectedIrEdge?.previewable === true
+        CodeWorkflowSession.selectedSemanticSourcePath.length === 0
+        && (root.selectedIrEdge === null
+            || root.selectedIrEdge?.previewable === true)
     readonly property bool literalPreviewEligible:
         root.directMutationSelectionEligible
         && root.analyzerMatchesAnchor
@@ -918,7 +919,8 @@ Item {
 
     readonly property bool transactionMatchesSelection: {
         const command = CodeWorkflowTransaction.activeCommand
-        if (!command)
+        if (!command
+                || CodeWorkflowSession.selectedSemanticSourcePath.length > 0)
             return false
         if (String(command.kind ?? "") === "connect-binding") {
             return root.selectedConnectTarget !== null

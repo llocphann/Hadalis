@@ -184,9 +184,10 @@ Singleton {
             sizeMode: sizeMode,
             customHeight: Math.round(customHeight),
             width: Math.round(width),
+            // Only the feature sidebar still has a legacy fit toggle.
+            // Notification history no longer owns system-sidebar geometry.
             legacyFitEnabled: surfaceId === "featureSidebar"
-                ? (Config.options?.sidebar?.collapseWidgetsTab ?? false)
-                : (Config.options?.sidebar?.collapseEmptyNotifications ?? false)
+                && (Config.options?.sidebar?.collapseWidgetsTab ?? false)
         }
     }
 

@@ -13,10 +13,12 @@ WSettingsPage {
     pageIcon: "info"
     pageDescription: Translation.tr("On-demand runtime resource diagnostics")
 
-    readonly property int targetCount:
-        CodeWorkflowRuntime.activeCatalog.length
-    readonly property int collisionCount:
-        CodeWorkflowRuntime.identityCollisions.length
+    readonly property bool diagnosticsActive:
+        RuntimeDiagnosticsSession.pageCurrent
+    readonly property int targetCount: root.diagnosticsActive
+        ? CodeWorkflowRuntime.activeCatalog.length : 0
+    readonly property int collisionCount: root.diagnosticsActive
+        ? CodeWorkflowRuntime.identityCollisions.length : 0
     readonly property var evidence: RuntimeDiagnosticsSession.evidence
     readonly property var systemEvidence: root.evidence?.system ?? null
     readonly property var shellEvidence: root.evidence?.shell ?? null

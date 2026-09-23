@@ -2936,6 +2936,34 @@ Scope {
                         required property var modelData
                         required property int index
 
+                        // Custom widgets are runtime-discovered components.
+                        // Register the loaded instance at this dynamic setSource
+                        // boundary so future user widgets appear in Workflow and
+                        // Diagnostics without a hardcoded component catalog.
+                        property CodeWorkflowRuntimeTarget workflowRuntimeTarget:
+                            CodeWorkflowRuntimeTarget {
+                                runtimeObject: customWidgetLoader.item
+                                targetId: CodeWorkflowRuntime.targetIdForCustomWidget(
+                                    String(customWidgetLoader.modelData?.id ?? ""))
+                                label: String(
+                                    customWidgetLoader.modelData?.name
+                                        ?? customWidgetLoader.modelData?.id
+                                        ?? "Custom widget")
+                                icon: String(
+                                    customWidgetLoader.modelData?.icon
+                                        ?? "widgets")
+                                kind: "widget"
+                                family: "custom-widget"
+                                panelId: "custom."
+                                    + String(
+                                        customWidgetLoader.modelData?.id ?? "")
+                                parentId: "background"
+                                depth: 1
+                                sourcePath: String(
+                                    customWidgetLoader.modelData?.qmlPath ?? "")
+                                internal: false
+                            }
+
                         active: false
 
                         function _configEnabled(): bool {

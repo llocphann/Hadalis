@@ -514,13 +514,24 @@ def sample(pid: int, previous: dict[str, Any] | None) -> tuple[dict[str, Any], d
     if refresh_slow:
         memory_now = read_memory(pid)
         drm_now = read_drm(pid)
+        child_rows, child_state = sample_children(
+            pid,
+            {"children": slow_previous.get("childrenState", {})},
+            slow_elapsed_ns,
+        )
     else:
         memory_now = slow_previous.get("memory")
         drm_now = slow_previous.get("drm")
+        child_rows = slow_previous.get("childrenRows", [])
+        child_state = slow_previous.get("childrenState", {})
         if not isinstance(memory_now, dict):
             memory_now = read_memory(pid)
         if not isinstance(drm_now, dict):
             drm_now = read_drm(pid)
+        if not isinstance(child_rows, list):
+            child_rows = []
+        if not isinstance(child_state, dict):
+            child_state = {}
     prev_ns = previous.get("monotonicNs")
     elapsed_ns = now_ns - prev_ns if isinstance(prev_ns, int) else 0
     elapsed_s = elapsed_ns / 1_000_000_000 if elapsed_ns > 0 else 0.0
@@ -553,8 +564,9 @@ def sample(pid: int, previous: dict[str, Any] | None) -> tuple[dict[str, Any], d
             )
         )
 
-    child_rows, child_state = sample_children(pid, previous, elapsed_ns)
-
+    # Descendant traversal/status reads are intentionally sampled on the
+    # slower cadence above. The process table can reuse the last exact rows
+    # between refreshes without walking every child on every 1 Hz sample.
     prev_io = previous.get("io", {})
     io_rates = {
         "readBytesPerSec": _rate(
@@ -626,6 +638,8 @@ def sample(pid: int, previous: dict[str, Any] | None) -> tuple[dict[str, Any], d
             "memory": memory_now,
             "drm": drm_now,
             "engineBusy": engine_busy,
+            "childrenRows": child_rows,
+            "childrenState": child_state,
         }
     else:
         cached_busy = slow_previous.get("engineBusy", {})

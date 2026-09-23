@@ -10,7 +10,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import os
 import re
 import signal
 import time
@@ -79,6 +78,47 @@ def read_memory(pid: int) -> dict[str, Any]:
         "method": "proc-status",
         "confidence": "kernel",
         "valuesKiB": fallback,
+    }
+
+
+def read_system_cpu_ticks() -> tuple[int, int] | None:
+    text = _read_text(Path("/proc/stat"))
+    line = next((line for line in text.splitlines() if line.startswith("cpu ")), "")
+    fields = line.split()
+    if len(fields) < 5:
+        return None
+    try:
+        values = [int(value) for value in fields[1:]]
+    except ValueError:
+        return None
+    total = sum(values)
+    idle = values[3] + (values[4] if len(values) > 4 else 0)
+    return total, idle
+
+
+def read_system_memory() -> dict[str, Any]:
+    text = _read_text(Path("/proc/meminfo"))
+    values: dict[str, int] = {}
+    for key in ("MemTotal", "MemAvailable", "SwapTotal", "SwapFree"):
+        match = re.search(rf"^{key}:\s+(\d+)\s+kB\s*$", text, re.MULTILINE)
+        if match:
+            values[key] = int(match.group(1))
+    return {
+        "scope": "system",
+        "method": "proc-meminfo",
+        "confidence": "kernel",
+        "valuesKiB": {
+            "MemTotal": values.get("MemTotal", 0),
+            "MemAvailable": values.get("MemAvailable", 0),
+            "MemUsed": max(
+                0, values.get("MemTotal", 0) - values.get("MemAvailable", 0)
+            ),
+            "SwapTotal": values.get("SwapTotal", 0),
+            "SwapFree": values.get("SwapFree", 0),
+            "SwapUsed": max(
+                0, values.get("SwapTotal", 0) - values.get("SwapFree", 0)
+            ),
+        },
     }
 
 
@@ -228,6 +268,7 @@ def sample(pid: int, previous: dict[str, Any] | None) -> tuple[dict[str, Any], d
         raise ProcessLookupError(pid)
 
     runtime_ns = read_sched_runtime_ns(pid)
+    system_cpu_now = read_system_cpu_ticks()
     io_now = read_io(pid)
     net_now = read_network()
     drm_now = read_drm(pid)
@@ -245,6 +286,18 @@ def sample(pid: int, previous: dict[str, Any] | None) -> tuple[dict[str, Any], d
         and runtime_ns >= previous_runtime
     ):
         cpu_percent = (runtime_ns - previous_runtime) / elapsed_ns * 100.0
+
+    system_cpu_percent = None
+    previous_system_cpu = previous.get("systemCpu")
+    if (
+        system_cpu_now is not None
+        and isinstance(previous_system_cpu, (list, tuple))
+        and len(previous_system_cpu) == 2
+    ):
+        total_delta = system_cpu_now[0] - int(previous_system_cpu[0])
+        idle_delta = system_cpu_now[1] - int(previous_system_cpu[1])
+        if total_delta > 0 and idle_delta >= 0:
+            system_cpu_percent = (1.0 - idle_delta / total_delta) * 100.0
 
     prev_io = previous.get("io", {})
     io_rates = {
@@ -295,6 +348,15 @@ def sample(pid: int, previous: dict[str, Any] | None) -> tuple[dict[str, Any], d
 
     payload = {
         "atMs": now_ms,
+        "system": {
+            "cpu": {
+                "scope": "system",
+                "method": "proc-stat",
+                "confidence": "kernel",
+                "percent": system_cpu_percent,
+            },
+            "memory": read_system_memory(),
+        },
         "shell": {
             "pid": pid,
             "cpu": {
@@ -338,6 +400,7 @@ def sample(pid: int, previous: dict[str, Any] | None) -> tuple[dict[str, Any], d
     state = {
         "monotonicNs": now_ns,
         "runtimeNs": runtime_ns,
+        "systemCpu": list(system_cpu_now) if system_cpu_now is not None else None,
         "io": io_now,
         "network": net_now,
         "drm": drm_now,

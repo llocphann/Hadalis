@@ -22,6 +22,7 @@ STYLED_PROGRESS_BAR = ROOT / "modules" / "common" / "widgets" / "StyledProgressB
 MATERIAL_SYMBOL = ROOT / "modules" / "common" / "widgets" / "MaterialSymbol.qml"
 TOOLBAR_TEXT_FIELD = ROOT / "modules" / "common" / "widgets" / "ToolbarTextField.qml"
 TOOLBAR_TAB_BUTTON = ROOT / "modules" / "common" / "widgets" / "ToolbarTabButton.qml"
+TOOLBAR_TAB_BAR = ROOT / "modules" / "common" / "widgets" / "ToolbarTabBar.qml"
 MATERIAL_TEXT_AREA = ROOT / "modules" / "common" / "widgets" / "MaterialTextArea.qml"
 STYLED_DROP_SHADOW = ROOT / "modules" / "common" / "widgets" / "StyledDropShadow.qml"
 CIRCULAR_PROGRESS = ROOT / "modules" / "common" / "widgets" / "CircularProgress.qml"
@@ -126,6 +127,7 @@ def main() -> None:
     material_symbol = MATERIAL_SYMBOL.read_text(encoding="utf-8")
     toolbar_text_field = TOOLBAR_TEXT_FIELD.read_text(encoding="utf-8")
     toolbar_tab_button = TOOLBAR_TAB_BUTTON.read_text(encoding="utf-8")
+    toolbar_tab_bar = TOOLBAR_TAB_BAR.read_text(encoding="utf-8")
     material_text_area = MATERIAL_TEXT_AREA.read_text(encoding="utf-8")
     styled_drop_shadow = STYLED_DROP_SHADOW.read_text(encoding="utf-8")
     circular_progress = CIRCULAR_PROGRESS.read_text(encoding="utf-8")
@@ -249,6 +251,7 @@ def main() -> None:
         "MaterialSymbol.qml": material_symbol,
         "ToolbarTextField.qml": toolbar_text_field,
         "ToolbarTabButton.qml": toolbar_tab_button,
+        "ToolbarTabBar.qml": toolbar_tab_bar,
         "MaterialTextArea.qml": material_text_area,
         "StyledDropShadow.qml": styled_drop_shadow,
         "CircularProgress.qml": circular_progress,
@@ -290,6 +293,14 @@ def main() -> None:
         "font.family: Appearance.font.family.main",
     ):
         require(toolbar_tab_button, token, "ToolbarTabButton.qml")
+    for token in (
+        "height: 40",
+        "color: Appearance.colors.colSurfaceContainer",
+        "color: Appearance.colors.colSecondaryContainer",
+        "implicitHeight: targetItem ? targetItem.implicitHeight : 0",
+        "color: Appearance.colors.colPrimary",
+    ):
+        require(toolbar_tab_bar, token, "ToolbarTabBar.qml")
     for token in (
         "Material.accent: Appearance.colors.colPrimary",
         "Material.background: Appearance.colors.colLayer1",

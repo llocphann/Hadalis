@@ -112,6 +112,7 @@ Scope {
             || GlobalStates.settingsNativeDialogOpen
             || GlobalStates.regionSelectorOpen
             || GlobalStates.tilingOverlayPickerOpen
+            || GlobalStates.tilingOverlayOsdOpen
             || GlobalStates.annotationEditorOpen
             || GlobalStates.sessionOpen
             || GlobalStates.wallpaperSelectorOpen

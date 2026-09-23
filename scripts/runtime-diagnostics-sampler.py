@@ -100,6 +100,28 @@ def read_system_cpu_ticks() -> dict[str, tuple[int, int]]:
     return result
 
 
+def read_load_average() -> list[float]:
+    text = _read_text(Path("/proc/loadavg")).strip()
+    fields = text.split()
+    values: list[float] = []
+    for raw in fields[:3]:
+        try:
+            values.append(float(raw))
+        except ValueError:
+            break
+    return values
+
+
+def read_uptime_seconds() -> float | None:
+    text = _read_text(Path("/proc/uptime")).strip()
+    if not text:
+        return None
+    try:
+        return max(0.0, float(text.split()[0]))
+    except (ValueError, IndexError):
+        return None
+
+
 def _cpu_percent_from_ticks(
     current: tuple[int, int] | None,
     previous: tuple[int, int] | list[int] | None,
@@ -415,6 +437,8 @@ def sample(pid: int, previous: dict[str, Any] | None) -> tuple[dict[str, Any], d
 
     runtime_ns = read_sched_runtime_ns(pid)
     system_cpu_now = read_system_cpu_ticks()
+    load_average = read_load_average()
+    uptime_seconds = read_uptime_seconds()
     io_now = read_io(pid)
     net_now = read_network()
     drm_now = read_drm(pid)
@@ -509,8 +533,10 @@ def sample(pid: int, previous: dict[str, Any] | None) -> tuple[dict[str, Any], d
                 "confidence": "kernel",
                 "percent": system_cpu_percent,
                 "coresPercent": core_cpu_percent,
+                "loadAverage": load_average,
             },
             "memory": read_system_memory(),
+            "uptimeSeconds": uptime_seconds,
         },
         "shell": {
             "pid": pid,

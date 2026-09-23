@@ -372,6 +372,7 @@ for token in (
             "Workflow reopen lifecycle guard missing " + token)
 for token in (
     "property bool workflowActive: true",
+    "root.workflowActive\n            ? CodeWorkflowIr.unifiedGraphFor(root.showInternals)\n            : null",
     "if (!root.workflowActive)",
     "function activateCanvas(): void",
     "function deactivateCanvas(): void",

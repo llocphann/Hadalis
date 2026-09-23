@@ -217,6 +217,14 @@ Singleton {
         }]).slice(-root.historyLimit)
     }
 
+    function _setSamplerError(value): void {
+        const next = String(value ?? "")
+        if (root.samplerError === next)
+            return
+        root.samplerError = next
+        root.revision += 1
+    }
+
     function _consumeSample(rawLine): void {
         const line = String(rawLine ?? "").trim()
         if (line.length === 0)
@@ -224,8 +232,10 @@ Singleton {
         try {
             const sample = JSON.parse(line)
             if (sample?.error) {
-                root.samplerError = String(sample.error)
-                    + (sample?.detail ? ": " + String(sample.detail) : "")
+                root._setSamplerError(
+                    String(sample.error)
+                        + (sample?.detail
+                            ? ": " + String(sample.detail) : ""))
                 return
             }
             if (!sample?.system || !sample?.shell || !sample?.network)
@@ -236,8 +246,8 @@ Singleton {
             root.samplerError = ""
             root.revision += 1
         } catch (error) {
-            root.samplerError =
-                "Diagnostics sample decode failed: " + String(error)
+            root._setSamplerError(
+                "Diagnostics sample decode failed: " + String(error))
         }
     }
 
@@ -311,14 +321,14 @@ Singleton {
             onRead: line => {
                 const detail = String(line ?? "").trim()
                 if (detail.length > 0)
-                    root.samplerError = detail
+                    root._setSamplerError(detail)
             }
         }
 
         onExited: (exitCode, exitStatus) => {
             if (root.samplingEnabled && exitCode !== 0)
-                root.samplerError =
-                    "Runtime Diagnostics sampler exited with " + exitCode
+                root._setSamplerError(
+                    "Runtime Diagnostics sampler exited with " + exitCode)
         }
     }
 

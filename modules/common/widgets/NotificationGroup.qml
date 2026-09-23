@@ -22,11 +22,13 @@ MouseArea { // Notification group area
     property var notifications: notificationGroup?.notifications ?? []
     property int notificationCount: notifications.length
     property bool multipleNotifications: notificationCount > 1
-    property bool expanded: false
+    property bool expandedByDefault: false
+    property bool modernLayout: false
+    property bool expanded: expandedByDefault
     property bool popup: false
     signal externalLinkOpened()
     signal notificationActionInvoked()
-    property real padding: 10
+    property real padding: modernLayout ? 12 : 10
     property bool _expandAnimating: false
     implicitHeight: background.implicitHeight
 
@@ -167,7 +169,7 @@ MouseArea { // Notification group area
 
         implicitHeight: root.expanded ?
             row.implicitHeight + padding * 2 :
-            Math.min(80, row.implicitHeight + padding * 2)
+            Math.min(root.modernLayout ? 104 : 80, row.implicitHeight + padding * 2)
 
         Behavior on implicitHeight {
             id: implicitHeightAnim
@@ -187,9 +189,10 @@ MouseArea { // Notification group area
             anchors.left: parent.left
             anchors.right: parent.right
             anchors.margins: root.padding
-            spacing: 10
+            spacing: root.modernLayout ? 0 : 10
 
-            NotificationAppIcon { // Icons
+            NotificationAppIcon { // Legacy leading icon
+                visible: !root.modernLayout
                 Layout.alignment: Qt.AlignTop
                 Layout.fillWidth: false
                 image: root?.multipleNotifications ? "" : notificationGroup?.notifications[0]?.image ?? ""
@@ -201,9 +204,11 @@ MouseArea { // Notification group area
 
             ColumnLayout { // Content
                 Layout.fillWidth: true
-                spacing: expanded ? (root.multipleNotifications ?
-                    (notificationGroup?.notifications[root.notificationCount - 1].image != "") ? 35 :
-                    5 : 0) : 0
+                spacing: root.modernLayout
+                    ? (root.expanded ? 8 : 4)
+                    : (expanded ? (root.multipleNotifications
+                        ? (notificationGroup?.notifications[root.notificationCount - 1].image != "" ? 35 : 5)
+                        : 0) : 0)
 
                 Behavior on spacing {
                     // Sidebar: smooth spacing transition; Popup: instant
@@ -216,14 +221,34 @@ MouseArea { // Notification group area
                     Layout.fillWidth: true
                     property real fontSize: Appearance.font.pixelSize.smaller
                     property bool showAppName: root.multipleNotifications
-                    implicitHeight: Math.max(topTextRow.implicitHeight, expandButton.implicitHeight)
+                    implicitHeight: Math.max(
+                        topTextRow.implicitHeight,
+                        expandButton.implicitHeight,
+                        modernHeaderIcon.visible ? modernHeaderIcon.implicitHeight : 0)
+
+                    NotificationAppIcon {
+                        id: modernHeaderIcon
+                        visible: root.modernLayout
+                        anchors.left: parent.left
+                        anchors.verticalCenter: parent.verticalCenter
+                        scale: 0.72
+                        image: root.multipleNotifications ? ""
+                            : notificationGroup?.notifications[0]?.image ?? ""
+                        appIcon: root.notificationGroup?.appIcon
+                        summary: root.notificationGroup
+                            ?.notifications[root.notificationCount - 1]?.summary
+                        urgency: root.notificationGroup?.hasCritical
+                            ? NotificationUrgency.Critical : NotificationUrgency.Normal
+                    }
 
                     RowLayout {
                         id: topTextRow
-                        anchors.left: parent.left
+                        anchors.left: root.modernLayout
+                            ? modernHeaderIcon.right : parent.left
+                        anchors.leftMargin: root.modernLayout ? 8 : 0
                         anchors.right: expandButton.left
                         anchors.verticalCenter: parent.verticalCenter
-                        spacing: 5
+                        spacing: 6
                         StyledText {
                             id: appName
                             elide: Text.ElideRight
@@ -234,7 +259,11 @@ MouseArea { // Notification group area
                             font.pixelSize: topRow.showAppName ?
                                 topRow.fontSize :
                                 Appearance.font.pixelSize.small
-                            color: topRow.showAppName ? Appearance.colors.colSubtext : Appearance.colors.colOnLayer2
+                            color: root.modernLayout
+                                ? Appearance.colors.colOnLayer2
+                                : (topRow.showAppName
+                                    ? Appearance.colors.colSubtext
+                                    : Appearance.colors.colOnLayer2)
                         }
                         StyledText {
                             id: timeText
@@ -265,7 +294,7 @@ MouseArea { // Notification group area
                     id: notificationsColumn
                     implicitHeight: contentHeight
                     Layout.fillWidth: true
-                    spacing: expanded ? 5 : 3
+                    spacing: root.modernLayout ? 6 : (expanded ? 5 : 3)
                     interactive: false
 
                     // Disable built-in transitions — we provide custom ones below
@@ -306,6 +335,7 @@ MouseArea { // Notification group area
                         notificationObject: modelData
                         expanded: root.expanded
                         popup: root.popup
+                        modernLayout: root.modernLayout
                         onlyNotification: (root.notificationCount === 1)
                         opacity: (!root.expanded && index == 1 && root.notificationCount > 2) ? 0.5 : 1
                         visible: root.expanded || (index < 2)

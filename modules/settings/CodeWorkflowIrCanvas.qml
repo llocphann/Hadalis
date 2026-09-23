@@ -19,6 +19,10 @@ Item {
     // while the Qt renderer remains stable under scene transforms.
     component GraphText: StyledText {
         renderType: Text.QtRendering
+        // Graph labels never contain markup. Avoid AutoText parsing and
+        // OpenType kerning work across dozens of transformed labels.
+        textFormat: Text.PlainText
+        font.kerning: false
     }
 
     property bool showInternals: false
@@ -2739,6 +2743,12 @@ Item {
                 readonly property bool runtimePulseActive:
                     root.nodeMatchesRuntimeTarget(
                         modelData, root.runtimePulseTargetId)
+                // Description/source strings are illegible at overview scale
+                // but still require text shaping and scene-graph nodes. Keep
+                // the identity row, and materialize detail text only once it is
+                // useful or when this node is the primary selection.
+                readonly property bool detailTextVisible:
+                    selected || root.wireMetricZoom >= 0.58
                 readonly property color accent:
                     root.accentForKind(modelData.kind)
                 readonly property color foreground: selected
@@ -3072,6 +3082,7 @@ Item {
                     GraphText {
                         Layout.fillWidth: true
                         Layout.maximumWidth: node.width - 20
+                        visible: node.detailTextVisible
                         text: node.modelData.description ?? ""
                         color: node.subtext
                         font.pixelSize: Appearance.font.pixelSize.smallest
@@ -3081,6 +3092,7 @@ Item {
                     GraphText {
                         Layout.fillWidth: true
                         Layout.maximumWidth: node.width - 20
+                        visible: node.detailTextVisible
                         text: node.modelData.sourceNeedle ?? ""
                         color: node.subtext
                         font.family: Appearance.font.family.monospace

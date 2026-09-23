@@ -12,6 +12,9 @@ Singleton {
     // the temporary static catalog below; it deliberately records lifecycle
     // truth without forcing LazyLoader.item while asynchronous loading is active.
     property var declarations: ({})
+    // Last observed loader lifecycle per declaration token. This is diagnostic
+    // state only; it never activates a loader or dereferences loader.item.
+    property var declarationStates: ({})
     property var staleDescriptors: ({})
     property int declarationSerial: 0
     property var remoteSnapshot: null
@@ -88,8 +91,15 @@ Singleton {
         const next = Object.assign({}, root.declarations)
         next[token] = registration
         root.declarations = next
+        const descriptor = registration?.descriptorSnapshot?.() ?? null
+        const state = String(
+            descriptor?.lifecycle ?? descriptor?.state ?? "")
+        const nextStates = Object.assign({}, root.declarationStates)
+        nextStates[token] = state
+        root.declarationStates = nextStates
         const targetId = String(
-            registration.targetId ?? registration.panelId ?? "")
+            descriptor?.targetId
+                ?? registration.targetId ?? registration.panelId ?? "")
         root._event("declared", targetId, token, targetId)
         return token
     }
@@ -144,14 +154,32 @@ Singleton {
         const next = Object.assign({}, root.declarations)
         delete next[token]
         root.declarations = next
+        const nextStates = Object.assign({}, root.declarationStates)
+        delete nextStates[token]
+        root.declarationStates = nextStates
         root._rememberStale(descriptor, token)
         root._event("declaration-stale", targetId, token, targetId)
     }
 
     function touchDeclaration(token: string): void {
-        if (String(token ?? "").length === 0
-                || !root.declarations[token])
+        const tokenId = String(token ?? "")
+        const registration = root.declarations[tokenId]
+        if (tokenId.length === 0 || !registration)
             return
+
+        const descriptor = registration?.descriptorSnapshot?.() ?? null
+        const nextState = String(
+            descriptor?.lifecycle ?? descriptor?.state ?? "")
+        const previousState = String(root.declarationStates[tokenId] ?? "")
+        if (nextState.length > 0 && nextState !== previousState) {
+            const nextStates = Object.assign({}, root.declarationStates)
+            nextStates[tokenId] = nextState
+            root.declarationStates = nextStates
+            const targetId = String(
+                descriptor?.targetId ?? registration?.targetId ?? "")
+            root._event(nextState, targetId, tokenId, targetId)
+            return
+        }
         root.revision++
     }
 

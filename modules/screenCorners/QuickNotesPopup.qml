@@ -39,13 +39,16 @@ Bar.StyledPopup {
     popupBackgroundMargin: 0
 
     function enterEditorMode(): void {
-        if (!root.active)
+        const editor = notesEditorLoader.item
+        if (!root.active || !Notepad.ready || !editor)
             return
+        // Hover preview must stay non-focusable until the shared Notepad is
+        // actually ready to accept input. Otherwise an early click during
+        // startup can grab the keyboard while presenting a disabled editor.
         root.editorFocused = true
-        if (notesEditorLoader.item)
-            notesEditorLoader.item.focus = true
+        editor.focus = true
         Qt.callLater(() => {
-            if (notesEditorLoader.item)
+            if (root.editorFocused && notesEditorLoader.item)
                 notesEditorLoader.item.focusEditor()
         })
     }

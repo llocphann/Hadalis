@@ -113,6 +113,7 @@ require(workflow_index, "function cancel(): void",
         "Workflow index should remain explicitly cancellable by its own owner")
 
 for token in (
+    '"Runtime snapshot IPC returned no data"',
     "property var remoteRuntimeSnapshot: null",
     "property string remoteRuntimeSnapshotFingerprint:",
     "function _runtimeSnapshotProjection(snapshot): var",

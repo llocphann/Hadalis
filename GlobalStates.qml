@@ -30,6 +30,19 @@ Singleton {
     property bool aiChatDetached: false
     property bool sidebarRightOpen: false
     property string sidebarRightTargetOutput: ""
+    // Material notification center: explicit opens are held independently
+    // from transient bottom-right hover ownership published by the popup.
+    property bool notificationCenterExplicitOpen: false
+    property string notificationCenterTargetOutput: ""
+    property string notificationCenterHoverOutput: ""
+    readonly property bool notificationCenterAvailable:
+        (Config.options?.panelFamily ?? "ii") !== "waffle"
+        && (Config.options?.notificationCenter?.enable ?? true)
+        && (Config.options?.enabledPanels ?? []).includes("iiScreenCorners")
+    readonly property bool notificationCenterOpen:
+        root.notificationCenterAvailable
+        && (root.notificationCenterExplicitOpen
+            || root.notificationCenterHoverOutput.length > 0)
     property bool mediaControlsOpen: false
     property bool osdBrightnessOpen: false
     property bool osdVolumeOpen: false
@@ -332,6 +345,10 @@ Singleton {
         root.resolveOutputName(root.sidebarRightTargetOutput,
             Config.options?.sidebar?.screenList ?? [])
 
+    readonly property string notificationCenterPresentationOutput:
+        root.resolveOutputName(root.notificationCenterTargetOutput,
+            Config.options?.notificationCenter?.screenList ?? [])
+
     function openOverview(outputName): void {
         overviewMode = "default"
         overviewTargetOutput = root.resolveOutputName(outputName, [])
@@ -388,6 +405,46 @@ Singleton {
         sidebarRightTargetOutput = root.resolveOutputName(outputName,
             Config.options?.sidebar?.screenList ?? [])
         sidebarRightOpen = true
+    }
+
+    function openNotificationCenter(outputName): bool {
+        if (!root.notificationCenterAvailable)
+            return false
+        notificationCenterTargetOutput = root.resolveOutputName(outputName,
+            Config.options?.notificationCenter?.screenList ?? [])
+        notificationCenterExplicitOpen = true
+        return true
+    }
+
+    function closeNotificationCenter(): void {
+        notificationCenterExplicitOpen = false
+        notificationCenterTargetOutput = ""
+        notificationCenterHoverOutput = ""
+    }
+
+    function toggleNotificationCenter(outputName): bool {
+        if (!root.notificationCenterAvailable)
+            return false
+        const resolved = root.resolveOutputName(outputName,
+            Config.options?.notificationCenter?.screenList ?? [])
+        if (notificationCenterExplicitOpen
+                && notificationCenterPresentationOutput === resolved) {
+            root.closeNotificationCenter()
+            return false
+        }
+        return root.openNotificationCenter(resolved)
+    }
+
+    function setNotificationCenterHoverOutput(outputName, open): void {
+        const name = String(outputName ?? "")
+        if (!open) {
+            if (notificationCenterHoverOutput === name)
+                notificationCenterHoverOutput = ""
+            return
+        }
+        if (!root.notificationCenterAvailable || name.length === 0)
+            return
+        notificationCenterHoverOutput = name
     }
 
     function closeSidebarRight(): void {
@@ -480,6 +537,23 @@ Singleton {
             Notifications.timeoutAll()
             Notifications.markAllRead()
         }
+    }
+
+    onNotificationCenterAvailableChanged: {
+        if (!notificationCenterAvailable)
+            root.closeNotificationCenter()
+    }
+
+    onNotificationCenterOpenChanged: {
+        if (notificationCenterOpen) {
+            Notifications.timeoutAll()
+            Notifications.markAllRead()
+        }
+    }
+
+    onScreenLockedChanged: {
+        if (screenLocked)
+            root.closeNotificationCenter()
     }
 
     property real screenZoom: 1

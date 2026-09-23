@@ -105,6 +105,8 @@ canvas = read("modules/settings/CodeWorkflowIrCanvas.qml")
 shell = read("shell.qml")
 runtime = read("services/CodeWorkflowRuntime.qml")
 runtime_declaration = read("services/CodeWorkflowRuntimeDeclaration.qml")
+analyzer = read("services/CodeWorkflowAnalyzer.qml")
+workflow_index = read("services/CodeWorkflowIndex.qml")
 settings_host = read("modules/settings/SettingsPageHost.qml")
 settings_focus = read("modules/settings/SettingsFocus.qml")
 settings_overlay = read("modules/settings/SettingsOverlay.qml")
@@ -341,6 +343,35 @@ require(page, 'let detail = "unloaded · source"',
         "runtime target lifecycle detail must be computed before the row object")
 if "detail: {\n                    const state =" in page:
     fail("runtime target detail must not use an executable block as an object value")
+
+for token in (
+    "readonly property bool workflowActive: root.enabled && root.visible",
+    "property bool workflowDestroying: false",
+    "function activateWorkflowWhenCurrent(): void",
+    "function scheduleWorkflowActivation(): void",
+    "id: workflowActivationTimer",
+    "interval: 75",
+    "watchChanges: root.workflowActive && !root.workflowDestroying",
+    "enabled: root.workflowActive && !root.workflowDestroying",
+    "workflowActivationTimer.stop()",
+):
+    require(page, token,
+            "Workflow reopen lifecycle guard missing " + token)
+if 'Qt.callLater(() => CodeWorkflowIndex.refresh(false))' in page:
+    fail("Workflow mount must not queue an unconditional duplicate workspace index")
+if 'Component.onCompleted: {\n        root.syncRemoteRuntimeDemand()\n        root.syncInitialOutput()' in page:
+    fail("Workflow mount must defer source/index work until the page is active")
+
+for token in (
+    "property bool _activeForce: false",
+    "const sameActiveRequest =",
+    "if (sameActiveRequest && (!force || root._activeForce))",
+    "const samePendingRequest =",
+    "function _runPendingRequest(): void",
+    "root._runPendingRequest()",
+):
+    require(analyzer, token,
+            "analyzer reopen request coalescing missing " + token)
 
 require(page, 'Quickshell.env("QS_CODE_WORKFLOW_CAPTURE") === "1"',
         "capture harness must be opt-in through an explicit environment gate")

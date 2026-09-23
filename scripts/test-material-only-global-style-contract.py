@@ -48,6 +48,8 @@ FILTER_CHIP = ROOT / "modules" / "common" / "widgets" / "FilterChip.qml"
 GROUP_BUTTON = ROOT / "modules" / "common" / "widgets" / "GroupButton.qml"
 NAVIGATION_RAIL_BUTTON = ROOT / "modules" / "common" / "widgets" / "NavigationRailButton.qml"
 INPUT_CHIP = ROOT / "modules" / "common" / "widgets" / "InputChip.qml"
+SELECTION_GROUP_BUTTON = ROOT / "modules" / "common" / "widgets" / "SelectionGroupButton.qml"
+MATERIAL_PLACEHOLDER_MESSAGE = ROOT / "modules" / "common" / "widgets" / "MaterialPlaceholderMessage.qml"
 NOTIFICATION_ITEM = ROOT / "modules" / "common" / "widgets" / "NotificationItem.qml"
 NOTIFICATION_GROUP = ROOT / "modules" / "common" / "widgets" / "NotificationGroup.qml"
 NOTIFICATION_ACTION_BUTTON = ROOT / "modules" / "common" / "widgets" / "NotificationActionButton.qml"
@@ -193,6 +195,8 @@ def main() -> None:
     group_button = GROUP_BUTTON.read_text(encoding="utf-8")
     navigation_rail_button = NAVIGATION_RAIL_BUTTON.read_text(encoding="utf-8")
     input_chip = INPUT_CHIP.read_text(encoding="utf-8")
+    selection_group_button = SELECTION_GROUP_BUTTON.read_text(encoding="utf-8")
+    material_placeholder_message = MATERIAL_PLACEHOLDER_MESSAGE.read_text(encoding="utf-8")
     notification_item = NOTIFICATION_ITEM.read_text(encoding="utf-8")
     notification_group = NOTIFICATION_GROUP.read_text(encoding="utf-8")
     notification_action_button = NOTIFICATION_ACTION_BUTTON.read_text(encoding="utf-8")
@@ -357,6 +361,8 @@ def main() -> None:
         "GroupButton.qml": group_button,
         "NavigationRailButton.qml": navigation_rail_button,
         "InputChip.qml": input_chip,
+        "SelectionGroupButton.qml": selection_group_button,
+        "MaterialPlaceholderMessage.qml": material_placeholder_message,
         "NotificationItem.qml": notification_item,
         "NotificationGroup.qml": notification_group,
         "NotificationActionButton.qml": notification_action_button,
@@ -660,6 +666,29 @@ def main() -> None:
     ):
         require(input_chip, token, "InputChip.qml")
     forbid(input_chip, "RegaliaControlFace {", "InputChip.qml")
+
+    for token in (
+        "horizontalPadding: 11",
+        "verticalPadding: 6",
+        "readonly property bool showZzzPreview: false",
+        "colBackground: Appearance.colors.colSecondaryContainer",
+        "colBackgroundHover: Appearance.colors.colSecondaryContainerHover",
+        "colBackgroundActive: Appearance.colors.colSecondaryContainerActive",
+        "buttonPreviewKind",
+    ):
+        require(selection_group_button, token, "SelectionGroupButton.qml")
+    for token in ("ZzzCornerPreview", "cornerPreview", "Appearance.zzz."):
+        forbid(selection_group_button, token, "SelectionGroupButton.qml")
+    for token in (
+        "spacing: root.compact ? 6 : 10",
+        "implicitWidth: materialShape.implicitWidth",
+        "implicitHeight: materialShape.implicitHeight",
+        "MaterialShapeWrappedMaterialSymbol {",
+        "color: Appearance.colors.colOnSurface",
+        "color: Appearance.colors.colSubtext",
+    ):
+        require(material_placeholder_message, token, "MaterialPlaceholderMessage.qml")
+    forbid(material_placeholder_message, "Appearance.inir.", "MaterialPlaceholderMessage.qml")
 
     for token in (
         "radius: Appearance.rounding.small",

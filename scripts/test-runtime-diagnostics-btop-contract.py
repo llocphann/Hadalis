@@ -67,6 +67,7 @@ def main() -> None:
         "BtopCoreGrid {",
         "coreNames: root.cpuCoreNames",
         "BtopRuntimePanel {",
+        "swap: root.formatKiB(",
         "BtopTargetTable {",
         "BtopProcessTable {",
         "BtopCoveragePanel {",

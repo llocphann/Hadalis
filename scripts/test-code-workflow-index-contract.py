@@ -92,6 +92,9 @@ for token in (
     "currentSourceBoundaryCount: root.sourceRuntimeBoundaries.length",
     '" parser boundaries · "',
     '" · source evidence only"',
+    '"Refresh workspace index"',
+    'enabled: CodeWorkflowIndex.status !== "indexing"',
+    "onClicked: CodeWorkflowIndex.refresh(false)",
 ):
     require(page, token, "workspace boundary navigation missing " + token)
 

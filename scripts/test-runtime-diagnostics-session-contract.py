@@ -156,6 +156,11 @@ for source, text in (
     )
     require(
         text,
+        'String(root.discoveryEvidence?.error ?? "")',
+        f"{source} must surface runtime boundary index failures",
+    )
+    require(
+        text,
         "if (value === null || value === undefined)",
         f"{source} must preserve unavailable metrics instead of coercing null to zero",
     )

@@ -216,7 +216,7 @@ for source, text in (
     ("RuntimeDiagnosticsConfig.qml", material_page),
     ("WDiagnosticsPage.qml", waffle_page),
 ):
-    for forbidden in ("Process {", "smaps_rollup", "/proc/net/dev", "drm-fdinfo"):
+    for forbidden in ("Process {", "FileView {"):
         if forbidden in text:
             raise SystemExit(
                 f"FAIL: {source} must consume main-shell evidence, not sample locally: "

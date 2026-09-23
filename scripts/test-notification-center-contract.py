@@ -28,6 +28,7 @@ MONITORS = ROOT / "modules" / "settings" / "MonitorVisibilityConfig.qml"
 REGISTRY = ROOT / "modules" / "settings" / "SettingsPageRegistryData.qml"
 SHELL = ROOT / "shell.qml"
 IPC = ROOT / "scripts" / "lib" / "ipc-registry.sh"
+LAUNCHER = ROOT / "scripts" / "inir"
 DEV_NAV = ROOT / "services" / "DevNavigation.qml"
 
 
@@ -67,6 +68,7 @@ monitors = MONITORS.read_text(encoding="utf-8")
 registry = REGISTRY.read_text(encoding="utf-8")
 shell = SHELL.read_text(encoding="utf-8")
 ipc = IPC.read_text(encoding="utf-8")
+launcher = LAUNCHER.read_text(encoding="utf-8")
 dev_nav = DEV_NAV.read_text(encoding="utf-8")
 
 # The physical Screen Edge renderer stays the sole owner of screen rounding.
@@ -334,5 +336,13 @@ require(dev_nav, '{ id: "notification-center", family: "ii"',
         "DevNavigation must open the standalone Material center")
 forbid(dev_nav, 'id: "sidebar-right/notifications"',
        "DevNavigation still points notification history at Right Sidebar")
+require(launcher,
+        'modules/sidebarRight/notifications/*)\n                    select_prefix "notification-center"; select_prefix "dashboard" ;;',
+        "changed notification modules must audit the standalone center")
+require(launcher,
+        'services/Notifications.qml)\n                    select_prefix "notification-center"; select_prefix "waffle/notification-center"; select_prefix "dashboard" ;;',
+        "Notifications service changes must audit current notification surfaces")
+forbid(launcher, 'select_prefix "sidebar-right/notifications"',
+       "developer audit routing still targets the retired sidebar notification view")
 
 print("PASS: standalone Material Notification Center contract")

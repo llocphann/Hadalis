@@ -4,9 +4,7 @@ singleton SettingsPageRegistry 1.0 SettingsPageRegistry.qml
 singleton SettingsArrangement 1.0 SettingsArrangement.qml
 singleton SettingsChromeLayout 1.0 SettingsChromeLayout.qml
 QuickConfig 1.0 QuickConfig.qml
-QuickConfigHugOnly 1.0 QuickConfigHugOnly.qml
 BarConfig 1.0 BarConfig.qml
-BarConfigHugOnly 1.0 BarConfigHugOnly.qml
 ThemesConfig 1.0 ThemesConfig.qml
 ThemesConfigMaterial 1.0 ThemesConfigMaterial.qml
 QuickWallpaperItem 1.0 QuickWallpaperItem.qml

@@ -31,7 +31,7 @@ Item {
 
     ColumnLayout {
         anchors.fill: parent
-        spacing: 8
+        spacing: 10
 
         RowLayout {
             Layout.fillWidth: true
@@ -61,7 +61,8 @@ Item {
                         ? Translation.tr("Silent · %1 total").arg(Notifications.list.length)
                         : Translation.tr("%1 unread · %2 total")
                             .arg(Notifications.unread).arg(Notifications.list.length)
-                    color: Appearance.colors.colSubtext
+                    color: Appearance.colors.colOnLayer1
+                    opacity: 0.78
                     font.pixelSize: Appearance.font.pixelSize.smallest
                 }
             }

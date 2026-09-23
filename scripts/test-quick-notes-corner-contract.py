@@ -69,6 +69,8 @@ for token in (
     "Math.round(root.cornerAttachmentThickness * 6)",
     "keyboardFocus: root.editorFocused",
     "closeOnOutsideClick: root.editorFocused",
+    "if (!root.active || !Notepad.ready || !editor)",
+    "if (root.editorFocused && notesEditorLoader.item)",
     "readonly property real requestedPopupWidth:",
     "readonly property real requestedPopupHeight:",
     "root.requestedPopupWidth - root._contentPadding * 2",
@@ -232,6 +234,7 @@ for key, value in expected_defaults.items():
 
 for token in (
     'title: Translation.tr("Bottom-left Quick Notes")',
+    'text: Translation.tr("Hover to reveal; click to type.")',
     'Config.options?.quickNotes?.enable ?? true',
     'Config.setNestedValue("quickNotes.enable", checked)',
     'Config.options?.quickNotes?.monitorMode ?? "all"',

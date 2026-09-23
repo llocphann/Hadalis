@@ -136,7 +136,9 @@ Item {
             ?? CodeWorkflowSession.selectedTargetId
             ?? "")
     readonly property var runtimeActivityEvents: {
-        if (!root.workflowOperational)
+        if (!root.workflowOperational
+                || (CodeWorkflowSession.inspectorPaneCollapsed
+                    && !root.captureHarnessEnabled))
             return []
         const targetId = root.runtimeActivityTargetId
         if (targetId.length === 0)
@@ -183,6 +185,8 @@ Item {
             ?? null
     readonly property var selectedIndexedBoundary:
         root.workflowOperational
+            && (!CodeWorkflowSession.inspectorPaneCollapsed
+                || root.captureHarnessEnabled)
             && CodeWorkflowSession.selectedSemanticSourcePath.length > 0
             ? (CodeWorkflowIndex.boundaries.find(boundary =>
                 String(boundary.sourcePath ?? "")
@@ -194,6 +198,8 @@ Item {
         CodeWorkflowRuntime.relativeSourcePath(root.sourcePath)
     readonly property var sourceRuntimeBoundaries:
         root.workflowOperational
+            && (!CodeWorkflowSession.inspectorPaneCollapsed
+                || root.captureHarnessEnabled)
             && CodeWorkflowIndex.status === "ready"
             && root.indexedSourcePath.length > 0
             ? CodeWorkflowIndex.boundaries.filter(boundary =>

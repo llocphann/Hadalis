@@ -512,6 +512,9 @@ ContentPage {
                     root.shellEvidence?.memory?.valuesKiB?.Pss !== null
                     && root.shellEvidence?.memory?.valuesKiB?.Pss !== undefined
                         ? "PSS" : "RSS"
+                swap: root.formatKiB(
+                    root.shellEvidence?.memory?.valuesKiB?.SwapPss
+                        ?? root.shellEvidence?.memory?.valuesKiB?.Swap)
                 readRate: root.formatRate(
                     root.shellEvidence?.io?.rates?.readBytesPerSec)
                 writeRate: root.formatRate(

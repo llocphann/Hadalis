@@ -13,8 +13,11 @@ Singleton {
     property bool _pendingForce: false
     property bool _cancelled: false
 
+    // Keep the last qualified snapshot visible while a cache-aware refresh
+    // is in flight; status still says "indexing", so consumers can distinguish
+    // stale presentation evidence from the newly reconciled result.
     readonly property var boundaries:
-        root.status === "ready"
+        root.status === "ready" || root.status === "indexing"
             ? (root.result?.boundaries ?? [])
             : []
     readonly property int boundaryCount: root.boundaries.length

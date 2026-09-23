@@ -391,6 +391,55 @@ ShellRoot {
     }
 
     IpcHandler {
+        target: "notificationCenter"
+
+        function _isWaffle(): bool {
+            return (Config.options?.panelFamily ?? "ii") === "waffle"
+        }
+
+        function toggle(): string {
+            if (_isWaffle()) {
+                GlobalStates.waffleNotificationCenterOpen =
+                    !GlobalStates.waffleNotificationCenterOpen
+                return GlobalStates.waffleNotificationCenterOpen
+                    ? "ok:open-waffle" : "ok:closed-waffle"
+            }
+            if (!GlobalStates.notificationCenterAvailable)
+                return "error:unavailable"
+            const opened = GlobalStates.toggleNotificationCenter("")
+            return opened ? "ok:open-ii" : "ok:closed-ii"
+        }
+
+        function close(): string {
+            GlobalStates.closeNotificationCenter()
+            GlobalStates.waffleNotificationCenterOpen = false
+            return "ok:closed"
+        }
+
+        function open(): string {
+            if (_isWaffle()) {
+                GlobalStates.waffleNotificationCenterOpen = true
+                return "ok:open-waffle"
+            }
+            return GlobalStates.openNotificationCenter("")
+                ? "ok:open-ii" : "error:unavailable"
+        }
+
+        function status(): string {
+            return JSON.stringify({
+                family: Config.options?.panelFamily ?? "ii",
+                open: _isWaffle()
+                    ? GlobalStates.waffleNotificationCenterOpen
+                    : GlobalStates.notificationCenterOpen,
+                available: _isWaffle()
+                    ? true : GlobalStates.notificationCenterAvailable,
+                output: _isWaffle()
+                    ? "" : GlobalStates.notificationCenterPresentationOutput,
+            })
+        }
+    }
+
+    IpcHandler {
         target: "mediaControls"
         function toggle(): void {
             GlobalStates.mediaControlsOpen = !GlobalStates.mediaControlsOpen

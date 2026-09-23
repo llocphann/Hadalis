@@ -58,6 +58,20 @@ assert module._rate(300, 100, 2.0) == 100.0
 assert module._rate(100, 300, 2.0) is None
 assert module._rate(100, 100, 0.0) is None
 
+# Missing /proc/meminfo fields stay unavailable instead of being rendered as
+# real zero-byte measurements.
+original_read_text = module._read_text
+try:
+    module._read_text = lambda _path: "MemTotal:       16384 kB\n"
+    system_memory = module.read_system_memory()["valuesKiB"]
+finally:
+    module._read_text = original_read_text
+assert system_memory["MemTotal"] == 16384, system_memory
+assert system_memory["MemAvailable"] is None, system_memory
+assert system_memory["MemUsed"] is None, system_memory
+assert system_memory["SwapTotal"] is None, system_memory
+assert system_memory["SwapUsed"] is None, system_memory
+
 # PID identity uses /proc/<pid>/stat starttime so a recycled PID with the same
 # comm cannot create a false CPU spike.
 original_read_text = module._read_text

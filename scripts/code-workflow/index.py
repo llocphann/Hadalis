@@ -153,12 +153,28 @@ def main() -> int:
     except OSError as exc:
         return unavailable("grammar-unreadable", str(exc))
 
+    helper_dir = Path(__file__).resolve().parent
+    try:
+        helper_hashes = {
+            name: sha256((helper_dir / name).read_bytes()).hexdigest()
+            for name in ("index.py", "native.py", "semantics.py")
+        }
+    except OSError as exc:
+        return emit({
+            "status": "error",
+            "reason": "index-helper-read-failed",
+            "detail": str(exc),
+        }, 5)
+
     parser_signature = {
         "qmljsVersion": QMLJS_VERSION,
         "grammarPath": str(grammar),
         "grammarSize": grammar_stat.st_size,
         "grammarMtimeNs": grammar_stat.st_mtime_ns,
         "treeSitterLibrary": library or "system",
+        "indexerSha256": helper_hashes["index.py"],
+        "nativeAdapterSha256": helper_hashes["native.py"],
+        "semanticsSha256": helper_hashes["semantics.py"],
     }
     cache_path = Path(args.cache).expanduser()
     cache = {"files": {}} if args.force else load_cache(

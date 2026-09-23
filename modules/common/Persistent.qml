@@ -271,6 +271,8 @@ Singleton {
                 property bool codeWorkflowInspectorPaneCollapsed: false
                 property real codeWorkflowSourcePreviewHeight: 190
                 property bool codeWorkflowMinimap: true
+                property string codeWorkflowPinnedTargetId: ""
+                property list<string> codeWorkflowRecentTargetIds: []
                 // Presentation-only graph positions. Stored as JSON because
                 // JsonObject needs a typed property while graph/node ids are dynamic.
                 property string codeWorkflowGraphNodeLayoutOffsets: "{}"

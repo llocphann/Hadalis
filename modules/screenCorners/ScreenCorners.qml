@@ -69,6 +69,7 @@ Scope {
             && (Config.options?.quickNotes?.enable ?? true)
             && cornerPanelWindow.isBottomLeft
             && !cornerPanelWindow.shouldShowOrbitHotCorner
+            && !cornerPanelWindow.orbitConflictsWithNiriOverview
             && !cornerPanelWindow.quickNotesInteractionBlocked
             && !fullscreen
         // Explicit corner features own their physical corner before the legacy

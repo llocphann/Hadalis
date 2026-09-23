@@ -29,6 +29,19 @@ Scope {
             screenCorners.quickNotesEditorOutput = ""
     }
 
+    Connections {
+        target: Quickshell
+        function onScreensChanged(): void {
+            const owner = screenCorners.quickNotesEditorOutput
+            if (!owner)
+                return
+            const ownerStillConnected = Quickshell.screens.some(
+                screen => String(screen?.name ?? "") === owner)
+            if (!ownerStillConnected)
+                screenCorners.quickNotesEditorOutput = ""
+        }
+    }
+
     property var actionForCorner: ({
         "topLeft": outputName => GlobalStates.toggleSidebarLeft(outputName),
         "bottomLeft": outputName => GlobalStates.toggleSidebarLeft(outputName),

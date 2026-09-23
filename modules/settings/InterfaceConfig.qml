@@ -234,6 +234,23 @@ ContentPage {
                 }
             }
 
+            ConfigSpinBox {
+                icon: "timer"
+                text: Translation.tr("Close grace (ms)")
+                value: Config.options?.notificationCenter?.closeGraceMs ?? 280
+                from: 0
+                to: 1200
+                stepSize: 20
+                enabled: (Config.options?.notificationCenter?.enable ?? true)
+                    && (Config.options?.notificationCenter?.hoverEnable ?? true)
+                opacity: enabled ? 1 : 0.5
+                onValueChanged:
+                    Config.setNestedValue("notificationCenter.closeGraceMs", value)
+                StyledToolTip {
+                    text: Translation.tr("Keeps the center open briefly while the pointer moves between the corner and popup.")
+                }
+            }
+
             ConfigRow {
                 uniform: true
 
@@ -808,6 +825,51 @@ ContentPage {
                     opacity: enabled ? 1 : 0.5
                     onValueChanged:
                         Config.setNestedValue("notificationCenter.popupHeight", value)
+                }
+            }
+
+            ConfigSwitch {
+                buttonIcon: "done_all"
+                text: Translation.tr("Mark history read when opened")
+                checked: Config.options?.notificationCenter?.markReadOnOpen ?? true
+                enabled: Config.options?.notificationCenter?.enable ?? true
+                opacity: enabled ? 1 : 0.5
+                onCheckedChanged:
+                    Config.setNestedValue("notificationCenter.markReadOnOpen", checked)
+            }
+
+            ConfigSwitch {
+                buttonIcon: "notifications_off"
+                text: Translation.tr("Dismiss transient popups when opened")
+                checked: Config.options?.notificationCenter?.dismissToastsOnOpen ?? true
+                enabled: Config.options?.notificationCenter?.enable ?? true
+                opacity: enabled ? 1 : 0.5
+                onCheckedChanged:
+                    Config.setNestedValue("notificationCenter.dismissToastsOnOpen", checked)
+            }
+
+            ConfigSwitch {
+                buttonIcon: "fullscreen"
+                text: Translation.tr("Allow over fullscreen apps")
+                checked: Config.options?.notificationCenter?.allowInFullscreen ?? false
+                enabled: Config.options?.notificationCenter?.enable ?? true
+                opacity: enabled ? 1 : 0.5
+                onCheckedChanged:
+                    Config.setNestedValue("notificationCenter.allowInFullscreen", checked)
+            }
+
+            RippleButtonWithIcon {
+                Layout.fillWidth: true
+                materialIcon: "preview"
+                mainText: GlobalStates.notificationCenterExplicitOpen
+                    ? Translation.tr("Close notification center")
+                    : Translation.tr("Preview notification center")
+                enabled: GlobalStates.notificationCenterAvailable
+                onClicked: GlobalStates.toggleNotificationCenter("")
+                StyledToolTip {
+                    text: GlobalStates.notificationCenterAvailable
+                        ? Translation.tr("Open the center on its resolved output without moving the pointer to the corner.")
+                        : Translation.tr("Enable the Material Screen Corners panel to preview this surface.")
                 }
             }
         }

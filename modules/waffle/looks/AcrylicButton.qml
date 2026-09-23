@@ -8,7 +8,7 @@ import qs.modules.waffle.looks
 WButton {
     id: root
 
-    colBackground: Looks.glassActive ? "transparent" : Looks.colors.bg1
+    colBackground: Looks.colors.bg1
     colBackgroundHover: Looks.colors.interactiveSurfaceHover
     colBackgroundActive: Looks.colors.interactiveSurfaceActive
     property color colBackgroundBorder
@@ -16,10 +16,7 @@ WButton {
     property alias border: background.border
     property alias shinyColor: background.borderColor
 
-    colBackgroundBorder: Looks.glassActive
-        ? ((root.checked || root.hovered || root.down) ? Looks.colors.tooltipBorder : "transparent")
-        : ColorUtils.transparentize(color, (root.checked || root.hovered) ? Looks.backgroundTransparency : 0)
-    color: {
+    colBackgroundBorder: ColorUtils.transparentize(color,\n        (root.checked || root.hovered) ? Looks.backgroundTransparency : 0)\n    color: {
         if (root.down) {
             return root.colBackgroundActive
         } else if ((root.hovered && !root.down) || root.checked) {

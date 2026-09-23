@@ -733,6 +733,19 @@ Shell update checker. Monitors the git repo for new commits and shows an update 
 
 ---
 
+### notificationCenter
+
+Family-aware notification history surface. On Material ii this opens the standalone bottom-right Notification Center; on Waffle it routes to the native Waffle notification center. The CLI alias is `notification-center`.
+
+| Function | Description |
+|----------|-------------|
+| `toggle` | Open/close notification history |
+| `open` | Open notification history |
+| `close` | Close notification history |
+| `status` | Return family, open state and resolved output as JSON |
+
+---
+
 ### notifications
 
 Notification management.

@@ -23,12 +23,13 @@ Singleton {
     property bool releaseAfterPulse: false
     property string leaseTransport: ""
     property string remoteError: ""
-    property var remoteEvidenceFloor: null
+    property string remoteEvidenceFloorKey: ""
+    readonly property string remoteEvidenceKey: root._remoteEvidenceKey()
     readonly property bool remoteEvidenceFresh:
         root.pageCurrent
         && !root.localShell
-        && CodeWorkflowRuntime.remoteSnapshot !== null
-        && CodeWorkflowRuntime.remoteSnapshot !== root.remoteEvidenceFloor
+        && CodeWorkflowRuntime.remoteSnapshot?.diagnostics !== undefined
+        && root.remoteEvidenceKey !== root.remoteEvidenceFloorKey
     readonly property string evidenceError:
         root.localShell ? "" : CodeWorkflowRuntime.remoteError
     readonly property var evidence: root.localShell
@@ -36,6 +37,20 @@ Singleton {
         : (root.remoteEvidenceFresh
             ? (CodeWorkflowRuntime.remoteSnapshot?.diagnostics ?? null)
             : null)
+
+    function _remoteEvidenceKey(): string {
+        const diagnostics = CodeWorkflowRuntime.remoteSnapshot?.diagnostics
+        if (diagnostics === null || diagnostics === undefined)
+            return ""
+        const sampleAtMs = Number(diagnostics?.sampleAtMs ?? 0)
+        const sampleKey = Number.isFinite(sampleAtMs) && sampleAtMs > 0
+            ? String(sampleAtMs) : "0"
+        return [
+            sampleKey,
+            diagnostics?.sampler?.running === true ? "1" : "0",
+            String(diagnostics?.sampler?.error ?? "")
+        ].join("|")
+    }
 
     function _syncRemoteRuntimeDemand(): void {
         CodeWorkflowRuntime.setRemoteConsumerActive(
@@ -173,9 +188,9 @@ Singleton {
 
     onPageCurrentChanged: {
         if (root.pageCurrent && !root.localShell)
-            root.remoteEvidenceFloor = CodeWorkflowRuntime.remoteSnapshot
+            root.remoteEvidenceFloorKey = root.remoteEvidenceKey
         else if (!root.pageCurrent)
-            root.remoteEvidenceFloor = null
+            root.remoteEvidenceFloorKey = ""
         root._syncRemoteRuntimeDemand()
         if (root.pageCurrent)
             root._acquireLease()
@@ -218,10 +233,10 @@ Singleton {
 
     onLocalShellChanged: {
         if (root.localShell) {
-            root.remoteEvidenceFloor = null
+            root.remoteEvidenceFloorKey = ""
             root.remoteError = ""
         } else if (root.pageCurrent) {
-            root.remoteEvidenceFloor = CodeWorkflowRuntime.remoteSnapshot
+            root.remoteEvidenceFloorKey = root.remoteEvidenceKey
         }
         root._syncRemoteRuntimeDemand()
         if (!root.pageCurrent)

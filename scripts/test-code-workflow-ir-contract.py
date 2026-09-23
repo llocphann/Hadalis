@@ -588,6 +588,9 @@ if "id: edgeLabelTooltip" in world_block:
 if "existingIndex >= 0 && selected.length > 1" in canvas:
     fail("manual reasoning toggle must allow clearing the final emphasized node")
 
+if "function buildEdgeRouteCache(): var" in canvas:
+    fail("Workflow canvas must not retain a synchronous full-graph route pass")
+
 for token in (
     "defaults/code-workflow-ir.json",
     'parsed?.mode !== "reviewed-source-projection"',
@@ -711,14 +714,25 @@ for token in (
     "const perimeterPortLanes = [",
     "const verticalPortLanes = [",
     "property var edgeRouteCache: ({})",
+    "property var routeBuildEdges: []",
+    "property var routeBuildCache: ({})",
+    "property var routeBuildOccupiedRoutes: []",
+    "property int routeBuildCursor: 0",
     "property var dragEdgeRouteCache: ({})",
-    "function buildEdgeRouteCache(): var",
+    "function cancelEdgeRouteBuild(): void",
+    "function finalizeEdgeRouteBuild(): void",
+    "function processEdgeRouteBuildSlice(): void",
+    "root.routeBuildCursor + 6",
     "function rebuildEdgeRouteCache(): void",
-    "root.edgeRouteCache = root.buildEdgeRouteCache()",
+    "root.routeBuildEdges = root.edges.slice()",
+    "root.edgeRouteCache = cache",
     "root.refreshGeometryCache()",
     "function scheduleEdgeRouteCacheRebuild(): void",
     "id: edgeRouteRebuildTimer",
     "interval: 24",
+    "id: edgeRouteSliceTimer",
+    "interval: 0",
+    "onTriggered: root.processEdgeRouteBuildSlice()",
     "function edgeTouchesNode(edge, nodeId: string): bool",
     "function rebuildDragEdgeRouteCache(): void",
     "root.dragEdgeRouteCache = cache",

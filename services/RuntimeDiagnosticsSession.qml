@@ -158,23 +158,31 @@ Singleton {
                 : "Diagnostics lease command exited with " + exitCode
         } else {
             const payload = String(remotePulseOutput.text ?? "").trim()
-            try {
-                const reply = payload.length > 0 ? JSON.parse(payload) : null
-                if (reply?.ok === true) {
-                    root.remoteError = ""
-                    root.leaseError = ""
-                } else if (remotePulse.action === "heartbeat"
-                        && root.pageCurrent) {
-                    // TTL expiry is recoverable while the page still owns the
-                    // session; heartbeat itself never resurrects a dead lease.
-                    Qt.callLater(() => root._pulseRemote("acquire"))
-                } else if (remotePulse.action === "acquire") {
-                    root.remoteError = ""
-                    root.leaseError = "Diagnostics lease was rejected"
-                }
-            } catch (error) {
+            if (payload.length === 0) {
                 root.remoteError =
-                    "Diagnostics lease decode failed: " + String(error)
+                    "Diagnostics lease command returned no data"
+            } else {
+                try {
+                    const reply = JSON.parse(payload)
+                    if (reply?.ok === true) {
+                        root.remoteError = ""
+                        root.leaseError = ""
+                    } else if (reply?.ok !== false) {
+                        root.remoteError =
+                            "Diagnostics lease response was invalid"
+                    } else if (remotePulse.action === "heartbeat"
+                            && root.pageCurrent) {
+                        // TTL expiry is recoverable while the page still owns
+                        // the session; heartbeat never resurrects a dead lease.
+                        Qt.callLater(() => root._pulseRemote("acquire"))
+                    } else if (remotePulse.action === "acquire") {
+                        root.remoteError = ""
+                        root.leaseError = "Diagnostics lease was rejected"
+                    }
+                } catch (error) {
+                    root.remoteError =
+                        "Diagnostics lease decode failed: " + String(error)
+                }
             }
         }
         remotePulse.action = ""

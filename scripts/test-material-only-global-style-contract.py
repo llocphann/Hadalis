@@ -2281,9 +2281,9 @@ def main() -> None:
     ):
         require(sidebar_left_content, token, "sidebarLeft/SidebarLeftContent.qml")
 
-    # VerticalBarContent owns the supported ii vertical bar chrome. Keep the
-    # independent islands/cornerStyle/cardStyle, compositor blur and connected
-    # BarContextMenu behavior while removing retired Global Theme routing.
+    # VerticalBarContent owns the supported ii vertical Hug chrome. Keep its
+    # compositor blur and connected BarContextMenu behavior while ensuring
+    # retired Islands/Card/Floating routing cannot become an intermediate path.
     for token in legacy_style_tokens:
         forbid(vertical_bar_content, token, "verticalBar/VerticalBarContent.qml")
     for token in (
@@ -2292,19 +2292,17 @@ def main() -> None:
         "root.auroraEverywhere",
         "root.zzzEverywhere",
         "AngelPartialBorder {",
+        "appearanceStyle",
+        "isIslands",
+        "cardStyleEverywhere",
+        "floatingStyle",
     ):
         forbid(vertical_bar_content, token, "verticalBar/VerticalBarContent.qml")
     for token in (
-        'readonly property bool isIslands: root.barAppearance === "islands"',
-        "readonly property bool cardStyleEverywhere:",
         'Appearance.useCompositorBlur("bar", root.nativeBlurTopology)',
         "readonly property color separatorColor: Appearance.colors.colOutlineVariant",
-        "color: root.cardStyleEverywhere",
         "Appearance.colors.colLayer0",
         "Appearance.colors.colLayer1",
-        "Appearance.rounding.windowRounding",
-        "Appearance.rounding.normal",
-        "border.width: floatingStyle ? 1 : 0",
         "border.color: Appearance.colors.colLayer0Border",
         "Bar.BarContextMenu {",
         "barContextMenu.requestOpen()",

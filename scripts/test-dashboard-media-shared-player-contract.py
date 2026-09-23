@@ -68,10 +68,14 @@ forbid(dash, "readonly property bool presentationActive:",
        "Dashboard writable presentation lifecycle")
 require(canvas, "presentationActive: root.presentationActive",
         "DashboardCanvas media lifecycle binding")
-require(dash, "active: root.presentationActive && root.hasPlayer",
-        "Dashboard shared-player lifecycle")
+require(dash, "active: root.hasPlayer",
+        "Dashboard shared-player visual residency")
+forbid(dash, "active: root.presentationActive && root.hasPlayer",
+       "Dashboard shared-player visual residency")
 require(dash, "active: root.presentationActive && root.hasPlayer && root.isPlaying",
         "Dashboard CAVA lifecycle")
+require(dash, "active: root.presentationActive && root.visible",
+        "Dashboard equalizer lifecycle")
 
 # The shared control must remain usable in narrow Dashboard tiles: preserve
 # both time labels and compact the artwork/transport metrics before overflow.

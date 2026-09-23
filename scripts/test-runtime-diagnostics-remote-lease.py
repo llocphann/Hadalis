@@ -25,7 +25,7 @@ def function_source(name: str) -> str:
 
 names = (
     "_remoteEvidenceKey", "_pulseRemote", "_releaseRemote",
-    "_acquireLease", "_releaseLease", "_remotePulseExited",
+    "_acquireLease", "_renewLease", "_releaseLease", "_remotePulseExited",
     "_remoteReleaseExited",
 )
 payload = {name: function_source(name) for name in names}

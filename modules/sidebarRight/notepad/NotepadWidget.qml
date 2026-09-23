@@ -616,6 +616,25 @@ Item {
                         cursorShape: Qt.IBeamCursor
                     }
 
+                    // Mirror the proven desktop NotesWidget focus contract:
+                    // the first left-click explicitly gives TextArea focus and
+                    // places its caret. Once activeFocus is established this
+                    // catcher disappears, so drag selection and ordinary editor
+                    // pointer handling go directly to TextArea afterwards.
+                    MouseArea {
+                        id: editorFocusCatcher
+                        anchors.fill: parent
+                        visible: Notepad.ready && !textArea.activeFocus
+                        acceptedButtons: Qt.LeftButton
+                        cursorShape: Qt.IBeamCursor
+                        onPressed: mouse => {
+                            textArea.forceActiveFocus()
+                            textArea.cursorPosition = textArea.positionAt(
+                                mouse.x, mouse.y)
+                            mouse.accepted = true
+                        }
+                    }
+
                     TextInputContextMenu {
                         target: textArea
                     }

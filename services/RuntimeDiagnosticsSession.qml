@@ -50,7 +50,7 @@ Singleton {
     function _pulseRemote(action: string): void {
         if (!root.pageCurrent || remotePulse.running || remoteRelease.running)
             return
-        root.remoteError = ""
+        // Keep the last failure visible until a command actually succeeds.
         remotePulse.action = action
         remotePulse.command = root._remoteCommand(action)
         remotePulse.running = true

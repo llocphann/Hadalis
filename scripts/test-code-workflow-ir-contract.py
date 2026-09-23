@@ -605,6 +605,11 @@ if "RegExp" in ir_service or ".match(" in ir_service:
 if "Shape.CurveRenderer" in canvas:
     fail("production Workflow canvas must not use the Phase-0 HOLD Curve renderer")
 
+route_for_edge = canvas.split("function routeForEdge(edge): var", 1)[1].split(
+    "function routeDiagnostics(): var", 1)[0]
+if "root.edgeRoute(edge)" in route_for_edge:
+    fail("routeForEdge must not synchronously score routes on delegate cache misses")
+
 for token in (
     "CodeWorkflowIr.unifiedGraphFor(root.showInternals)",
     "function onGraphLayoutRevisionChanged(): void",
@@ -656,6 +661,9 @@ for token in (
     "root.activeNodeDragOffsetY = nextY - baseY",
     "root.dragRoutesDirty = true",
     "id: dragFrameTimer",
+    "onTriggered: root.autoPanDraggedNode()",
+    "id: dragRouteTimer",
+    "interval: 32",
     "root.rebuildDragEdgeRouteCache()",
     "CodeWorkflowSession.panX - startPanX",
     "CodeWorkflowSession.panY - startPanY",
@@ -710,10 +718,12 @@ for token in (
     "root.refreshGeometryCache()",
     "function scheduleEdgeRouteCacheRebuild(): void",
     "id: edgeRouteRebuildTimer",
+    "interval: 24",
     "function edgeTouchesNode(edge, nodeId: string): bool",
     "function rebuildDragEdgeRouteCache(): void",
     "root.dragEdgeRouteCache = cache",
     "function routeForEdge(edge): var",
+    "return root.edgeRouteCache[edgeId] ?? null",
     "function routeDiagnostics(): var",
     'style: "smooth-step-lane-v2"',
     "overlapLength: Math.round(overlapLength)",
@@ -829,7 +839,7 @@ for token in (
     "worldX < bounds.minX - tolerance",
     "root.routeDistance(route, worldX, worldY)",
     "id: edgeHoverTimer",
-    "interval: 16",
+    "interval: 32",
     "edgeHoverTimer.restart()",
     "&& !canvasPanArea.pressed",
     "&& root.activeNodeDragHandler === null",

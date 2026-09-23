@@ -235,7 +235,12 @@ Singleton {
     }
 
     function _event(kind: string, instanceId: string, token: string): void {
-        root.events = root.events.concat([{ kind: kind, instanceId: instanceId, token: token }]).slice(-64)
+        root.events = root.events.concat([{
+            kind: kind,
+            instanceId: instanceId,
+            token: token,
+            atMs: Date.now()
+        }]).slice(-64)
         root.revision++
     }
 

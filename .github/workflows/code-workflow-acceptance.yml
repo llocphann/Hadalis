@@ -7,6 +7,7 @@ on:
       - 'flake.nix'
       - 'nix/**'
       - 'services/CodeWorkflow*.qml'
+      - 'services/RuntimeDiagnostics*.qml'
       - 'shell.qml'
       - 'ShellIiPanels.qml'
       - 'ShellWafflePanels.qml'
@@ -15,6 +16,10 @@ on:
       - 'modules/waffle/ShellWafflePanelsImpl.qml'
       - 'modules/waffle/critical/ShellWaffleCriticalPanels.qml'
       - 'modules/settings/CodeWorkflow*.qml'
+      - 'modules/settings/RuntimeDiagnostics*.qml'
+      - 'waffleSettings.qml'
+      - 'modules/waffle/settings/WSettingsContent.qml'
+      - 'modules/waffle/settings/pages/WDiagnosticsPage.qml'
       - 'modules/common/widgets/PopupToolTip.qml'
       - 'modules/waffle/altSwitcher/WaffleAltSwitcherTile.qml'
       - 'modules/settings/SettingsPageHost.qml'
@@ -33,6 +38,7 @@ on:
       - 'flake.nix'
       - 'nix/**'
       - 'services/CodeWorkflow*.qml'
+      - 'services/RuntimeDiagnostics*.qml'
       - 'shell.qml'
       - 'ShellIiPanels.qml'
       - 'ShellWafflePanels.qml'
@@ -41,6 +47,10 @@ on:
       - 'modules/waffle/ShellWafflePanelsImpl.qml'
       - 'modules/waffle/critical/ShellWaffleCriticalPanels.qml'
       - 'modules/settings/CodeWorkflow*.qml'
+      - 'modules/settings/RuntimeDiagnostics*.qml'
+      - 'waffleSettings.qml'
+      - 'modules/waffle/settings/WSettingsContent.qml'
+      - 'modules/waffle/settings/pages/WDiagnosticsPage.qml'
       - 'modules/common/widgets/PopupToolTip.qml'
       - 'modules/waffle/altSwitcher/WaffleAltSwitcherTile.qml'
       - 'modules/settings/SettingsPageHost.qml'
@@ -90,7 +100,10 @@ jobs:
             shopt -s nullglob
             qml_files=(
               modules/settings/CodeWorkflow*.qml
+              modules/settings/RuntimeDiagnostics*.qml
               services/CodeWorkflow*.qml
+              services/RuntimeDiagnostics*.qml
+              modules/waffle/settings/pages/WDiagnosticsPage.qml
               modules/settings/SettingsPageHost.qml
               modules/common/widgets/PopupToolTip.qml
               modules/waffle/altSwitcher/WaffleAltSwitcherTile.qml
@@ -190,6 +203,9 @@ jobs:
 
       - name: Validate canonical Workflow identity
         run: nix develop .#workflow-acceptance --command bash -lc 'python3 scripts/test-code-workflow-identity-contract.py'
+
+      - name: Validate Runtime Diagnostics session foundation
+        run: nix develop .#workflow-acceptance --command bash -lc 'python3 scripts/test-code-workflow-diagnostics-contract.py'
 
       - name: Validate passive Runtime Diagnostics sessions
         run: nix develop .#workflow-acceptance --command bash -lc 'python3 scripts/test-runtime-diagnostics-session-contract.py'

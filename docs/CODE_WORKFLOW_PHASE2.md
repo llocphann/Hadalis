@@ -619,6 +619,28 @@ Implemented research/proof:
 - Native acceptance now replays the real Clock/Config closure twice and requires
   deterministic source hashes, semantic terminal identity and dependency path.
 
+## Milestone 2K-J-A — exact boolean Connect source closure
+
+Expanded the read-only cycle research subset without widening production
+authorization:
+
+- `prove_local_dependency_closure()` now accepts only the exact reviewed source
+  expressions `true` and `false` as immediate acyclic terminals. They produce
+  `acyclic-closed-local-closure`, an empty dependency path, and explicit
+  terminal kind/text evidence.
+- Whitespace-padded literals, numbers, `null`, binary expressions and every
+  other source shape outside the existing explicit member subset remain
+  UNKNOWN. This gate does not infer safety from generic JavaScript truthiness.
+- The parent semantic anchor must still resolve to one unique non-opaque object
+  before the direct literal proof is emitted, so proof identity remains tied to
+  the reviewed Connect parent rather than to free-standing text.
+- `connect_qualify.py` and the production transaction boundary are unchanged:
+  qualification still requires the 2K-J
+  `acyclic-source-backed-cross-file-closure` proof. The new local proof cannot
+  authorize writes, stage artifacts, or enable Apply.
+- Focused acceptance covers both boolean literals plus negative controls for
+  padded, compound, `null` and numeric source expressions.
+
 ## Milestone 2K-K — composed Connect research qualification
 
 Implemented research/proof:
@@ -1433,7 +1455,7 @@ layout offsets or source-editor buffers merely to make page navigation cheaper.
 
 - additional reviewed Connect targets beyond the first Clock fixture;
 - additional reviewed Disconnect targets beyond the exact `clock.data.time` / `clock.data.date` Clock fixtures;
-- dependency coverage beyond the 2K-J local-singleton/JsonObject closure subset;
+- dependency coverage beyond the 2K-J cross-file and 2K-J-A exact-boolean closure subsets;
 - additional reviewed signal/action targets beyond `media.signal.doubleClickToggle`;
 - Connections creation/removal;
 - multi-file transactions;

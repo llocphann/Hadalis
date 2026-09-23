@@ -6,7 +6,8 @@ connect_prepare.py coordinator. It deliberately does not authorize Connect
 source writes and proves only a
 small parser-resolved local dependency subset:
 
-- the reviewed source expression is one explicit parent-id member reference;
+- the reviewed source expression is either the exact boolean literal `true` /
+  `false`, or one explicit parent-id member reference;
 - every traversed same-object property/binding is uniquely resolved by semantic
   scope and remains non-opaque;
 - each dependency value is either another explicit parent-id member reference or
@@ -45,6 +46,7 @@ PROVEN_ACYCLIC_CROSS_FILE = "acyclic-source-backed-cross-file-closure"
 PROOF_UNKNOWN = "unknown-incomplete-local-closure"
 _LITERAL_VALUE_KINDS = {"true", "false", "number", "string"}
 _LITERAL_FALLBACKS = {"true", "false"}
+_DIRECT_BOOLEAN_EXPRESSIONS = {"true", "false"}
 _SIMPLE_MEMBER = re.compile(
     r"^([A-Za-z_][A-Za-z0-9_]*)\.([A-Za-z_][A-Za-z0-9_]*)$"
 )
@@ -689,6 +691,17 @@ def prove_local_dependency_closure(
             "reason": "parent-cycle-identity-incomplete",
             "cycleSafetyProof": PROOF_UNKNOWN,
             "dependencyPath": [],
+        }
+
+    direct_expression = str(source_expression)
+    if direct_expression in _DIRECT_BOOLEAN_EXPRESSIONS:
+        return {
+            "status": "proven-acyclic",
+            "reason": "reviewed-source-expression-is-direct-boolean-literal",
+            "cycleSafetyProof": PROVEN_ACYCLIC,
+            "dependencyPath": [],
+            "terminalValueKind": direct_expression,
+            "terminalValueText": direct_expression,
         }
 
     def parse_member(expression: str) -> tuple[str, str] | None:

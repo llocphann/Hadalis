@@ -78,6 +78,50 @@ if result.get("dependencyPath") != ["a", "b"]:
     fail("acyclic dependency path drifted")
 
 
+direct_source = b"Item { id: root }\n"
+for direct_boolean in ("true", "false"):
+    result = connect_cycle.prove_local_dependency_closure(
+        direct_source,
+        [parent_entry()],
+        "parent",
+        direct_boolean,
+        "visible",
+    )
+    if result.get("status") != "proven-acyclic":
+        fail("exact direct boolean source must prove acyclic: " + direct_boolean)
+    if result.get("cycleSafetyProof") != connect_cycle.PROVEN_ACYCLIC:
+        fail("direct boolean acyclic proof token drifted")
+    if result.get("reason") != (
+        "reviewed-source-expression-is-direct-boolean-literal"
+    ):
+        fail("direct boolean proof reason drifted")
+    if result.get("dependencyPath") != []:
+        fail("direct boolean proof must not invent dependencies")
+    if result.get("terminalValueKind") != direct_boolean:
+        fail("direct boolean terminal kind drifted")
+    if result.get("terminalValueText") != direct_boolean:
+        fail("direct boolean terminal text drifted")
+
+for unsupported_direct in (
+    " true",
+    "false ",
+    "true || root.visible",
+    "null",
+    "1",
+):
+    result = connect_cycle.prove_local_dependency_closure(
+        direct_source,
+        [parent_entry()],
+        "parent",
+        unsupported_direct,
+        "visible",
+    )
+    if result.get("status") != "unknown":
+        fail("non-exact direct source must remain UNKNOWN: " + unsupported_direct)
+    if result.get("reason") != "source-expression-outside-explicit-member-subset":
+        fail("non-exact direct source UNKNOWN reason drifted")
+
+
 cycle_source = b"Item { id: root; property bool a: root.visible }\n"
 cycle_entries = [
     parent_entry(),
@@ -344,6 +388,8 @@ for token in (
     '"dependency-closure-reaches-connect-target"',
     '"dependency-leaves-reviewed-parent-scope"',
     '"dependency-value-kind-outside-closed-subset"',
+    '_DIRECT_BOOLEAN_EXPRESSIONS = {"true", "false"}',
+    '"reviewed-source-expression-is-direct-boolean-literal"',
     "def parse_optional_member_chain_with_literal_fallback(",
     "def _resolve_imported_local_singleton(",
     "def _resolve_alias_nested_literal(",
@@ -393,6 +439,8 @@ if "scripts/code-workflow/connect_cycle.py" not in set(payload):
 for token in (
     "Milestone 2K-I — parser-closed Connect cycle proof",
     "Milestone 2K-J — source-backed cross-file Connect closure",
+    "Milestone 2K-J-A — exact boolean Connect source closure",
+    "reviewed-source-expression-is-direct-boolean-literal",
     "cycle-proven-local-closure",
     "acyclic-closed-local-closure",
     "acyclic-source-backed-cross-file-closure",

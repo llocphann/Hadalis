@@ -175,6 +175,12 @@ module work, commit directly to `dev`, and never force-push or modify `stable`.
   the boundary kinds for the currently inspected source. None of these source
   matches are promoted to execution evidence or per-component resource attribution.
 
+- Connect cycle research now includes one additional fail-closed terminal shape:
+  an exact reviewed source expression of `true` or `false` is proven locally
+  acyclic with no invented dependency path. Any padded/compound/non-boolean
+  direct expression remains UNKNOWN. This is research evidence only:
+  `connect_qualify.py` still requires the existing cross-file proof, so no
+  Connect write authorization or Apply surface is widened.
 - Reviewed Disconnect production write authority now covers exactly two Clock
   bindings: `clock.data.time` (`DateTime.timeDisplay`) and
   `clock.data.date` (`DateTime.date`). Preparation, manifest validation,

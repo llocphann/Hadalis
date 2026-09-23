@@ -80,6 +80,14 @@ module work, commit directly to `dev`, and never force-push or modify `stable`.
   one replacement instance, `hydratedWhileHostDisabled` remained false, and
   every fixture retained the "Real page 30 loaded without QML parse/property
   errors" check.
+- Research-only J-B was then added at `a8755e67`. Code Workflow acceptance
+  run 35886722423 completed successfully end-to-end: the cycle coverage boundary
+  accepted the exact decimal regression set, composed qualification still
+  required the unchanged cross-file proof, and steps 40–49 all passed through
+  final V-B live contention. Canonical validation on descendant `22215d25`
+  also reports `test-code-workflow-connect-cycle.py` and
+  `test-code-workflow-connect-qualify.py` PASS; the repository-wide validator
+  remains red only in its existing unrelated 30-failure set.
 - Graph reasoning controls now operate on the reviewed unified graph without
   widening mutation authority: **Trace upstream**, **Trace downstream** and
   **Focus connected path** compute a presentation-only reachable set, emphasize
@@ -188,12 +196,15 @@ module work, commit directly to `dev`, and never force-push or modify `stable`.
   the boundary kinds for the currently inspected source. None of these source
   matches are promoted to execution evidence or per-component resource attribution.
 
-- Connect cycle research now includes one additional fail-closed terminal shape:
-  an exact reviewed source expression of `true` or `false` is proven locally
-  acyclic with no invented dependency path. Any padded/compound/non-boolean
-  direct expression remains UNKNOWN. This is research evidence only:
-  `connect_qualify.py` still requires the existing cross-file proof, so no
-  Connect write authorization or Apply surface is widened.
+- Connect cycle research now includes two additional fail-closed terminal
+  shapes. J-A proves exact `true` / `false`; J-B additionally proves only a
+  narrow exact unsigned decimal syntax (for example `0`, `42`, `1.5`,
+  `6.02e23`, `9E-3`) as locally acyclic with no invented dependency path.
+  Whitespace, leading signs, leading zeroes, hexadecimal forms, leading/trailing
+  decimal points and compound expressions remain UNKNOWN. This is research
+  evidence only: `connect_qualify.py` still requires the existing cross-file
+  proof, so no Connect write authorization, Apply surface or second Connect
+  target is widened.
 - Reviewed Disconnect production write authority now covers exactly two Clock
   bindings: `clock.data.time` (`DateTime.timeDisplay`) and
   `clock.data.date` (`DateTime.date`). Preparation, manifest validation,

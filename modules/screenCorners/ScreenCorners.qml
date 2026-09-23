@@ -210,6 +210,8 @@ Scope {
         readonly property bool notificationCenterExplicitForOutput:
             GlobalStates.notificationCenterExplicitOpen
             && GlobalStates.notificationCenterPresentationOutput === outputName
+        readonly property bool notificationCenterAllowedInFullscreen:
+            Config.options?.notificationCenter?.allowInFullscreen ?? false
         readonly property bool notificationCenterBarVertical:
             Config.options?.bar?.vertical ?? false
         readonly property bool notificationCenterBarTrailing:
@@ -249,19 +251,21 @@ Scope {
             && !cornerPanelWindow.notificationCenterInteractionBlocked
             && (!GlobalStates.notificationCenterExplicitOpen
                 || cornerPanelWindow.notificationCenterExplicitForOutput)
-            && !fullscreen
+            && (!fullscreen || notificationCenterAllowedInFullscreen)
         readonly property bool notificationCenterHostNeeded:
             (Config.options?.panelFamily ?? "ii") !== "waffle"
             && (Config.options?.notificationCenter?.enable ?? true)
             && cornerPanelWindow.notificationCenterTargetsOutput()
             && cornerPanelWindow.isBottomRight
-            && !fullscreen
+            && (!fullscreen || notificationCenterAllowedInFullscreen)
             && (cornerPanelWindow.shouldShowNotificationCenterCorner
                 || cornerPanelWindow.notificationCenterExplicitForOutput
                 || GlobalStates.notificationCenterHoverOutput === outputName)
 
         onFullscreenChanged: {
-            if (fullscreen && cornerPanelWindow.notificationCenterExplicitForOutput)
+            if (fullscreen
+                    && !cornerPanelWindow.notificationCenterAllowedInFullscreen
+                    && cornerPanelWindow.notificationCenterExplicitForOutput)
                 GlobalStates.closeNotificationCenter()
         }
         // Explicit corner features own their physical corner before the legacy
@@ -272,9 +276,9 @@ Scope {
             && !shouldShowQuickNotesCorner
             && !shouldShowNotificationCenterCorner
 
-        visible: !fullscreen && (shouldShowSidebarCornerOpen
-            || shouldShowOrbitHotCorner || shouldShowQuickNotesCorner
-            || notificationCenterHostNeeded)
+        visible: (!fullscreen && (shouldShowSidebarCornerOpen
+            || shouldShowOrbitHotCorner || shouldShowQuickNotesCorner))
+            || notificationCenterHostNeeded
 
         exclusionMode: ExclusionMode.Ignore
         mask: Region {

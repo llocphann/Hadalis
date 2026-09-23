@@ -3,7 +3,7 @@
 # Do not edit manually.
 # Regenerate: python3 scripts/lib/generate-ipc-registry.py
 # IPC.md metadata: docs/IPC.md
-# Targets: 57
+# Targets: 59
 
 declare -gA IPC_TARGET_DESC=(
   [ai]="Shared multi-provider AI service. It supports Gemini, OpenAI-compatible chat and Responses APIs, Mistral and Anthropic; live provider catalogs are normalized into capability-aware model records. Catalog visibility is separate from execution readiness, so public model lists remain browseable without pretending an API key exists. OpenCode Zen and Go resolve their current model lists and per-model API routes dynamically. Normal shell tools use typed actions and approval cards, while arbitrary commands are isolated in Advanced mode."
@@ -18,6 +18,7 @@ declare -gA IPC_TARGET_DESC=(
   [clipboard]="Clipboard history panel. Because Ctrl+V only remembers one thing, and that's not enough for power users."
   [cliphistService]="Clipboard history service. The backend that makes clipboard panel work. You probably don't need to call this directly."
   [closeConfirm]="Close window confirmation dialog. Shows a prompt before closing the focused window. Useful if you're the type who accidentally closes things and then regrets it."
+  [codeWorkflowRuntime]="Internal Code Workflow runtime inspection bridge. This target exists so a standalone Settings process can read plain runtime evidence from the main shell without sharing QObject references across processes."
   [controlPanel]="Quick settings panel. Toggles, sliders, and system controls without opening full settings."
   [coverflowSelector]="Wallpaper coverflow (3D card) picker."
   [customWidgets]="Custom widget management. Create, list, reload, and remove user-installed widgets from \`~/.config/inir/widgets/\`."
@@ -42,6 +43,7 @@ declare -gA IPC_TARGET_DESC=(
   [panelFamily]="Switch between panel styles. ii supports two visual styles: Material ii (default) and Waffle (Windows 11-like)."
   [recordingOsd]="Screen recording floating pill OSD. Shows elapsed time and stop button during active recording."
   [region]="Region selection tools. Screenshots, OCR, recording. Draw a box, get stuff done."
+  [runtimeDiagnostics]="Internal on-demand Diagnostics lease bridge. The main shell owns diagnostics sampling; standalone Material or Waffle Settings only renew a short-lived lease while the Diagnostics page is current. A missed heartbeat expires server-side, so closing or crashing Settings cannot leave diagnostics sampling running."
   [search]="Waffle start menu / search."
   [session]="Power menu. Logout, suspend, reboot, shutdown. The \"I'm done for today\" buttons."
   [settings]="Open or toggle the settings window. GUI config so you don't have to edit JSON by hand."
@@ -78,6 +80,7 @@ declare -gA IPC_TARGET_FAMILY=(
   [clipboard]="shared"
   [cliphistService]="shared"
   [closeConfirm]="shared"
+  [codeWorkflowRuntime]="shared"
   [controlPanel]="shared"
   [coverflowSelector]="shared"
   [customWidgets]="waffle"
@@ -102,6 +105,7 @@ declare -gA IPC_TARGET_FAMILY=(
   [panelFamily]="shared"
   [recordingOsd]="waffle"
   [region]="shared"
+  [runtimeDiagnostics]="shared"
   [search]="waffle"
   [session]="shared"
   [settings]="shared"
@@ -138,6 +142,7 @@ declare -gA IPC_TARGET_FUNCTIONS=(
   [clipboard]="open close toggle"
   [cliphistService]="update"
   [closeConfirm]="trigger triggerWindow close"
+  [codeWorkflowRuntime]="snapshot"
   [controlPanel]="toggle close open"
   [coverflowSelector]="toggle open close"
   [customWidgets]="reload list create remove"
@@ -162,6 +167,7 @@ declare -gA IPC_TARGET_FUNCTIONS=(
   [panelFamily]="cycle set"
   [recordingOsd]="toggle show hide"
   [region]="screenshot search googleLens ocr record recordWithSound menu dismiss current"
+  [runtimeDiagnostics]="acquire heartbeat release status snapshot"
   [search]="toggle close open"
   [session]="toggle close open"
   [settings]="open toggle"
@@ -242,6 +248,7 @@ declare -gA IPC_FUNCTION_DESC=(
   ["closeConfirm:trigger"]="Show close confirmation for focused window"
   ["closeConfirm:triggerWindow"]="Close or confirm the exact window captured by \`inir close-window\`"
   ["closeConfirm:close"]="Dismiss the dialog without closing"
+  ["codeWorkflowRuntime:snapshot"]="Return the current Code Workflow runtime descriptors, lifecycle records, outputs, and recent events as JSON"
   ["controlPanel:toggle"]="Open/close control panel"
   ["controlPanel:close"]="Close control panel"
   ["controlPanel:open"]="Open control panel"
@@ -326,6 +333,11 @@ declare -gA IPC_FUNCTION_DESC=(
   ["region:menu"]="Open the unified snip menu, optionally restoring its last toolbar choice"
   ["region:dismiss"]="Close the selector overlay"
   ["region:current"]="Return the selector state (open/action/mode) as JSON"
+  ["runtimeDiagnostics:acquire"]="Acquire or renew a bounded Diagnostics sampling lease for the caller"
+  ["runtimeDiagnostics:heartbeat"]="Renew an existing Diagnostics lease"
+  ["runtimeDiagnostics:release"]="Release the caller's Diagnostics lease immediately"
+  ["runtimeDiagnostics:status"]="Return active/lease-count/TTL sampling-session state as JSON"
+  ["runtimeDiagnostics:snapshot"]="Return the current shell/system Diagnostics sample plus sampler/session state as JSON"
   ["search:toggle"]="Open/close start menu"
   ["search:close"]="Close start menu"
   ["search:open"]="Open start menu"
@@ -454,6 +466,9 @@ declare -gA IPC_FUNCTION_ARGS=(
   ["osdInput:touchpad"]="<state>"
   ["packageSearch:search"]="<query>"
   ["panelFamily:set"]="<family>"
+  ["runtimeDiagnostics:acquire"]="<clientId>"
+  ["runtimeDiagnostics:heartbeat"]="<clientId>"
+  ["runtimeDiagnostics:release"]="<clientId>"
   ["settingsNav:page"]="<index>"
   ["shellLayout:openOn"]="<outputName>"
   ["shellLayout:select"]="<surfaceId>"
@@ -500,8 +515,8 @@ bind "Ctrl+Alt+A" { spawn "inir" "wallpaperSelector" "openLauncher" "animated"; 
   [ytmusic]='bind "Mod+M+Space" { spawn "inir" "ytmusic" "playPause"; }'
 )
 
-IPC_ALL_TARGETS=(ai altSwitcher appCatalog audio autostart background bar brightness cheatsheet clipboard cliphistService closeConfirm controlPanel coverflowSelector customWidgets dashboard dev gamemode globalActions keyboard lock mediaControls memory minimize mpris notifications osd osdInput osdVolume osk overlay overview packageSearch panelFamily recordingOsd region search session settings settingsNav shellLayout shellUpdate sidebarLeft sidebarRight taskview tiling voiceSearch wactionCenter waffleAltSwitcher wallpaperLauncher wallpaperSelector wbar widgetpower wnotificationCenter wwidgets ytmusic zoom)
-IPC_SHARED_TARGETS=(ai altSwitcher appCatalog audio background bar brightness cheatsheet clipboard cliphistService closeConfirm controlPanel coverflowSelector dashboard dev gamemode globalActions keyboard lock mediaControls memory minimize mpris notifications osdInput osdVolume osk overlay overview packageSearch panelFamily region session settings settingsNav shellLayout shellUpdate sidebarLeft sidebarRight taskview tiling voiceSearch wallpaperLauncher wallpaperSelector ytmusic zoom)
+IPC_ALL_TARGETS=(ai altSwitcher appCatalog audio autostart background bar brightness cheatsheet clipboard cliphistService closeConfirm codeWorkflowRuntime controlPanel coverflowSelector customWidgets dashboard dev gamemode globalActions keyboard lock mediaControls memory minimize mpris notifications osd osdInput osdVolume osk overlay overview packageSearch panelFamily recordingOsd region runtimeDiagnostics search session settings settingsNav shellLayout shellUpdate sidebarLeft sidebarRight taskview tiling voiceSearch wactionCenter waffleAltSwitcher wallpaperLauncher wallpaperSelector wbar widgetpower wnotificationCenter wwidgets ytmusic zoom)
+IPC_SHARED_TARGETS=(ai altSwitcher appCatalog audio background bar brightness cheatsheet clipboard cliphistService closeConfirm codeWorkflowRuntime controlPanel coverflowSelector dashboard dev gamemode globalActions keyboard lock mediaControls memory minimize mpris notifications osdInput osdVolume osk overlay overview packageSearch panelFamily region runtimeDiagnostics session settings settingsNav shellLayout shellUpdate sidebarLeft sidebarRight taskview tiling voiceSearch wallpaperLauncher wallpaperSelector ytmusic zoom)
 IPC_II_TARGETS=()
 IPC_WAFFLE_TARGETS=(autostart customWidgets osd recordingOsd search wactionCenter waffleAltSwitcher wbar widgetpower wnotificationCenter wwidgets)
 
@@ -510,6 +525,7 @@ declare -gA IPC_KEBAB_ALIASES=(
   [app-catalog]=appCatalog
   [cliphist-service]=cliphistService
   [close-confirm]=closeConfirm
+  [code-workflow-runtime]=codeWorkflowRuntime
   [control-panel]=controlPanel
   [coverflow-selector]=coverflowSelector
   [custom-widgets]=customWidgets
@@ -520,6 +536,7 @@ declare -gA IPC_KEBAB_ALIASES=(
   [package-search]=packageSearch
   [panel-family]=panelFamily
   [recording-osd]=recordingOsd
+  [runtime-diagnostics]=runtimeDiagnostics
   [settings-nav]=settingsNav
   [shell-layout]=shellLayout
   [shell-update]=shellUpdate

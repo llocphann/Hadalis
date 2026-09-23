@@ -99,6 +99,13 @@ def main() -> None:
         'label: Translation.tr("Thermal")',
         'value: `${Math.round(ResourceUsage.cpuUsage * 100)}%`',
         'value: `${Math.round(ResourceUsage.gpuUsage * 100)}%`',
+        'property string minimumValueSample: ""',
+        'Layout.minimumWidth: minimumValueText.implicitWidth',
+        'minimumValueSample: "99%"',
+        'width: Math.max(implicitWidth, speedRow.implicitWidth)',
+        'width: Math.max(implicitWidth, levelRow.implicitWidth)',
+        'text: "speed"',
+        'text: "tune"',
         "width: thermalColumn.width",
         "width: cpuColumn.width",
     ):

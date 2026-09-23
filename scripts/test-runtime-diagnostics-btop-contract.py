@@ -161,6 +161,14 @@ def main() -> None:
         )
 
     for token in (
+        "readonly property var recordIndex: root.buildRecordIndex()",
+        "function buildRecordIndex(): var",
+        "root.recordIndex.all[id] ?? []",
+        "root.recordIndex.resident[id] ?? []",
+    ):
+        require(target_table, token, "BtopTargetTable.qml runtime record index")
+
+    for token in (
         "readonly property var processDepths: root.buildProcessDepths()",
         "function buildProcessDepths(): var",
         "readonly property int processDepth:",

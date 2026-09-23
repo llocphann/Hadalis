@@ -130,6 +130,14 @@ Item {
         root.parsedSemanticEntries.find(entry =>
             String(entry.anchor ?? "") === root.inspectedSemanticAnchor)
             ?? null
+    readonly property var selectedIndexedBoundary:
+        CodeWorkflowSession.selectedSemanticSourcePath.length > 0
+            ? (CodeWorkflowIndex.boundaries.find(boundary =>
+                String(boundary.sourcePath ?? "")
+                    === CodeWorkflowSession.selectedSemanticSourcePath
+                && String(boundary.anchor ?? "")
+                    === root.inspectedSemanticAnchor) ?? null)
+            : null
     readonly property string inspectedSemanticRangeText: {
         const range = root.inspectedSemanticEntry?.range ?? []
         if (range.length !== 2)
@@ -2508,6 +2516,12 @@ Item {
                                 : String(root.inspectedSemanticEntry.name
                                     ?? root.inspectedSemanticEntry.kind
                                     ?? "Element"))
+                            : root.selectedIndexedBoundary !== null
+                                ? String(
+                                    root.selectedIndexedBoundary.runtimeCapability
+                                        ?? root.selectedIndexedBoundary.name
+                                        ?? root.selectedIndexedBoundary.runtimeBoundary
+                                        ?? "Runtime boundary")
                             : root.selectedConnectTarget !== null
                                 ? String(root.selectedConnectTarget.label
                                     ?? root.selectedConnectTarget.id
@@ -2527,6 +2541,8 @@ Item {
                     }
                     Pill {
                         label: String(root.inspectedSemanticEntry?.kind
+                            ?? (root.selectedIndexedBoundary !== null
+                                ? "runtime-boundary" : null)
                             ?? (root.selectedConnectTarget !== null
                                 ? "connect" : null)
                             ?? root.selectedIrEdge?.kind
@@ -2536,11 +2552,15 @@ Item {
                     }
                     StyledText {
                         Layout.fillWidth: true
-                        visible: root.inspectedSemanticEntry !== null
+                        visible: root.inspectedSemanticAnchor.length > 0
                         text: root.inspectedSemanticEntry
                             ? "Parsed QML element · "
                                 + String(root.inspectedSemanticEntry.anchor ?? "")
-                            : ""
+                            : root.selectedIndexedBoundary !== null
+                                ? "Indexed parser boundary · "
+                                    + root.inspectedSemanticAnchor
+                                : "Resolving parser element · "
+                                    + root.inspectedSemanticAnchor
                         color: Appearance.colors.colSubtext
                         font.family: Appearance.font.family.monospace
                         font.pixelSize: Appearance.font.pixelSize.smallest
@@ -2552,6 +2572,9 @@ Item {
                         text: root.inspectedSemanticEntry
                             ? "Read-only parser element · "
                                 + root.inspectedSemanticRangeText
+                            : root.selectedIndexedBoundary !== null
+                                ? "Indexed runtime-boundary evidence · READ ONLY · "
+                                    + String(root.selectedIndexedBoundary.sourcePath ?? "")
                             : root.selectedConnectTarget !== null
                                 ? "Reviewed connect candidate · TYPE/CYCLE proof pending"
                                 : root.selectedIrNode?.description ?? ""
@@ -2563,45 +2586,45 @@ Item {
                         elide: Text.ElideRight
                     }
                     StyledText {
-                        visible: root.inspectedSemanticEntry === null
+                        visible: root.inspectedSemanticAnchor.length === 0
                         text: "Runtime"
                         color: Appearance.colors.colSubtext
                     }
                     StyledText {
                         Layout.fillWidth: true
-                        visible: root.inspectedSemanticEntry === null
+                        visible: root.inspectedSemanticAnchor.length === 0
                         text: root.stateLabel(root.record)
                         color: root.selectedLive
                             ? Appearance.colors.colPrimary
                             : Appearance.colors.colSubtext
                     }
                     StyledText {
-                        visible: root.inspectedSemanticEntry === null
+                        visible: root.inspectedSemanticAnchor.length === 0
                         text: "Output"
                         color: Appearance.colors.colSubtext
                     }
                     StyledText {
                         Layout.fillWidth: true
-                        visible: root.inspectedSemanticEntry === null
+                        visible: root.inspectedSemanticAnchor.length === 0
                         text: root.record?.output || "—"
                         color: Appearance.colors.colOnLayer1
                         elide: Text.ElideRight
                     }
                     StyledText {
-                        visible: root.inspectedSemanticEntry === null
+                        visible: root.inspectedSemanticAnchor.length === 0
                         text: "Geometry"
                         color: Appearance.colors.colSubtext
                     }
                     StyledText {
                         Layout.fillWidth: true
-                        visible: root.inspectedSemanticEntry === null
+                        visible: root.inspectedSemanticAnchor.length === 0
                         text: root.geometryText(root.record?.rect)
                         color: Appearance.colors.colOnLayer1
                         elide: Text.ElideRight
                     }
                     StyledText {
                         Layout.fillWidth: true
-                        visible: root.inspectedSemanticEntry === null
+                        visible: root.inspectedSemanticAnchor.length === 0
                             && root.runtimeActivityEvents.length > 0
                         text: "Lifecycle activity · "
                             + root.runtimeActivityTargetId

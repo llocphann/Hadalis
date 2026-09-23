@@ -121,6 +121,7 @@ for token in (
 
 for token in (
     'property string draftTabId: ""',
+    "id: textArea\n                        enabled: Notepad.ready",
     "function beginEditing(): void",
     "function saveDraft(): bool",
     "Notepad.setTabTextById(root.draftTabId, root.draft)",

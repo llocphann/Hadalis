@@ -603,6 +603,13 @@ Item {
                     // popup has entered editor mode. Observe the pointer press
                     // itself so the popup can become a keyboard owner first,
                     // while TextArea keeps its normal selection/caret handling.
+                    MouseArea {
+                        anchors.fill: parent
+                        acceptedButtons: Qt.NoButton
+                        hoverEnabled: true
+                        cursorShape: Qt.IBeamCursor
+                    }
+
                     TapHandler {
                         acceptedButtons: Qt.LeftButton
                         gesturePolicy: TapHandler.ReleaseWithinBounds

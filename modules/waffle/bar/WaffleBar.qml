@@ -60,14 +60,8 @@ Scope {
                 implicitHeight: content.implicitHeight
                 implicitWidth: content.implicitWidth
 
-                BackgroundEffect.blurRegion: Region {
-                    item: content.nativeBlurActive ? content : null
-                }
-
                 WaffleBarContent {
                     id: content
-
-                    nativeBlurAllowed: true
 
                     anchors {
                         left: parent.left

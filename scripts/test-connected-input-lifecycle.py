@@ -48,14 +48,18 @@ def main() -> None:
           "Hover popouts must retain hover across both the body and interactive content plane")
 
     for token in (
-        "focusable: root.keyboardFocus && root.requestedVisible",
+        "property bool keyboardFocusOnDemand: false",
         "property bool exclusiveKeyboardFocus: false",
-        "WlrLayershell.keyboardFocus: root.keyboardFocus && root.requestedVisible",
+        "focusable: root.requestedVisible",
+        "&& (root.keyboardFocus || root.keyboardFocusOnDemand)",
+        "WlrLayershell.keyboardFocus: !root.requestedVisible",
         "? WlrKeyboardFocus.Exclusive",
-        ": WlrKeyboardFocus.OnDemand",
+        ": (root.keyboardFocus || root.keyboardFocusOnDemand)",
+        "? WlrKeyboardFocus.OnDemand",
         ": WlrKeyboardFocus.None",
         "CompositorFocusGrab {",
-        "active: root.keyboardFocus && root.requestedVisible",
+        "active: CompositorService.isHyprland",
+        "&& root.keyboardFocus && root.requestedVisible",
         "windows: [popupWindow]",
         "onCleared: root.requestClose()",
     ):
@@ -63,7 +67,6 @@ def main() -> None:
               f"Focused connected popup must preserve the layer-shell/focus-grab lifecycle: {token}")
 
     for forbidden in (
-        "onActiveChanged:",
         "property bool _niriFocusSeen",
         "popupWindow._niriFocusSeen",
         "CompositorService.isNiri",
@@ -72,8 +75,10 @@ def main() -> None:
               f"StyledPopup must not revive the retired PanelWindow active-focus workaround: {forbidden}")
 
     check("visible: root._anchorReady && root.requestedVisible && root.closeOnOutsideClick" in popup
-          and "screen: root._anchorScreen" in popup,
-          "Outside-click catcher must follow semantic visibility and explicit source-screen ownership")
+          and "screen: root._anchorScreen" in popup
+          and "property bool outsideClickBackdropBelowPopup: false" in popup
+          and "WlrLayershell.layer: root.outsideClickBackdropBelowPopup" in popup,
+          "Outside-click catcher must follow semantic visibility, source-screen ownership, and popup-safe stacking")
 
     check("hoverActivates: true" in media
           and "closeOnOutsideClick: root.barMediaPopupVisible" in media

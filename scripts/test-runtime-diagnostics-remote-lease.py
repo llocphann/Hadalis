@@ -132,6 +132,14 @@ function makeSession() {
     s.setPulseError('');
     s.finishPulse(7);
     assert.equal(s.root.remoteError, 'Diagnostics lease command exited with 7');
+    s.root._pulseRemote('heartbeat');
+    assert.equal(
+        s.root.remoteError,
+        'Diagnostics lease command exited with 7',
+        'a retry must not hide the last failure before recovery'
+    );
+    s.finishPulse();
+    assert.equal(s.root.remoteError, '');
 }
 {
     const s = makeSession();

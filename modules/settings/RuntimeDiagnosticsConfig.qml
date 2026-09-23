@@ -26,6 +26,23 @@ ContentPage {
         root.systemEvidence?.cpu?.coresPercent ?? []
     readonly property var cpuCoreNames:
         root.systemEvidence?.cpu?.coreNames ?? []
+    readonly property string samplerError:
+        String(root.evidence?.sampler?.error ?? "")
+    readonly property bool sessionHasError:
+        RuntimeDiagnosticsSession.remoteError.length > 0
+        || root.samplerError.length > 0
+    readonly property bool samplerRunning:
+        root.evidence?.sampler?.running === true
+
+    function sessionStateLabel(): string {
+        if (!RuntimeDiagnosticsSession.pageCurrent)
+            return Translation.tr("Sampling paused")
+        if (root.sessionHasError)
+            return Translation.tr("Sampling error")
+        if (!root.samplerRunning || root.systemEvidence === null)
+            return Translation.tr("Starting sampler")
+        return Translation.tr("Sampling live")
+    }
 
     function percentOf(used, total): var {
         if (used === null || used === undefined
@@ -223,9 +240,11 @@ ContentPage {
                         width: 9
                         height: 9
                         radius: 5
-                        color: RuntimeDiagnosticsSession.pageCurrent
-                            ? Appearance.colors.colPrimary
-                            : Appearance.colors.colSubtext
+                        color: root.sessionHasError
+                            ? Appearance.colors.colError
+                            : RuntimeDiagnosticsSession.pageCurrent
+                                ? Appearance.colors.colPrimary
+                                : Appearance.colors.colSubtext
                     }
 
                     ColumnLayout {
@@ -233,9 +252,7 @@ ContentPage {
                         spacing: 1
 
                         StyledText {
-                            text: RuntimeDiagnosticsSession.pageCurrent
-                                ? Translation.tr("Sampling live")
-                                : Translation.tr("Sampling paused")
+                            text: root.sessionStateLabel()
                             color: Appearance.colors.colOnLayer1
                             font.weight: Font.DemiBold
                         }
@@ -286,9 +303,9 @@ ContentPage {
 
             StyledText {
                 Layout.fillWidth: true
-                visible: String(root.evidence?.sampler?.error ?? "").length > 0
+                visible: root.samplerError.length > 0
                 text: Translation.tr("Sampler error") + " · "
-                    + String(root.evidence?.sampler?.error ?? "")
+                    + root.samplerError
                 color: Appearance.colors.colError
                 font.pixelSize: Appearance.font.pixelSize.small
                 wrapMode: Text.WordWrap

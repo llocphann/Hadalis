@@ -1264,7 +1264,7 @@ a production write path:
 - Preparation re-runs the complete W-A parser proof and requires exact equality
   for base SHA, candidate SHA, parent semantic anchor, existing-action semantic
   anchor and inserted-handler semantic anchor. Preview drift fails closed.
-- Mode-0600 `snapshot.qml`, `candidate.qml` and `manifest.json` artifacts
+- Mode-0600 snapshot.qml, candidate.qml and `manifest.json` artifacts
   are written outside the runtime source tree under artifact proof
   `prepared-reviewed-signal-action-artifacts-v1`. The manifest binds all
   reviewed semantic identity plus postcondition

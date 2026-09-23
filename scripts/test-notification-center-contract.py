@@ -249,6 +249,26 @@ for token in (
     'GlobalStates.toggleNotificationCenter("")',
 ):
     require(interface, token, "Notification Center Settings control missing")
+
+notification_settings_start = interface.index('settingsTaskSection: "notifications"')
+notification_settings_end = interface.index(
+    "SettingsCardSection {", notification_settings_start + 1
+)
+notification_settings = interface[notification_settings_start:notification_settings_end]
+require(
+    notification_settings,
+    'Config.setNestedValue("notificationCenter.closeGraceMs", value)',
+    "Notification Center close grace must live in the Notifications settings card",
+)
+
+quick_notes_start = interface.index('title: Translation.tr("Bottom-left Quick Notes")')
+quick_notes_end = interface.index("SettingsCardSection {", quick_notes_start)
+quick_notes_settings = interface[quick_notes_start:quick_notes_end]
+forbid(
+    quick_notes_settings,
+    "notificationCenter.closeGraceMs",
+    "Quick Notes settings must not mutate Notification Center close grace",
+)
 require(monitors, 'path: "notificationCenter.screenList"',
         "Monitor Visibility must expose a dedicated Notification Center screen list")
 require(registry, 'label: Translation.tr("Notification center")',

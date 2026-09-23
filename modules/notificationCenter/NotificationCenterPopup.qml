@@ -144,6 +144,7 @@ Bar.StyledPopup {
             active: root.active
             sourceComponent: NotificationCenterContent {
                 onSearchFocusRequested: root.enterKeyboardMode()
+                onExternalNavigationRequested: root.dismissAndDisarm()
             }
         }
     }

@@ -14,6 +14,7 @@ identity = read("services/CodeWorkflowIdentity.qml")
 runtime = read("services/CodeWorkflowRuntime.qml")
 qmldir = read("services/qmldir")
 shell = read("shell.qml")
+background = read("modules/background/Background.qml")
 
 require(qmldir,
         "singleton CodeWorkflowIdentity 1.0 CodeWorkflowIdentity.qml",
@@ -79,6 +80,38 @@ for token in (
 ):
     require(runtime, token, "future panel canonicalization regressed")
 
+for token in (
+    "function targetIdForCustomWidget(widgetId: string): string",
+    'return "desktop-widget/custom/" + id',
+):
+    require(runtime, token,
+            "custom widgets need one Workflow-owned canonical namespace")
+
+for token in (
+    "property CodeWorkflowRuntimeTarget workflowRuntimeTarget:",
+    "runtimeObject: customWidgetLoader.item",
+    "CodeWorkflowRuntime.targetIdForCustomWidget(",
+    "customWidgetLoader.modelData?.id",
+    'family: "custom-widget"',
+    'parentId: "background"',
+    "customWidgetLoader.modelData?.qmlPath",
+):
+    require(background, token,
+            "dynamic custom widget loader must register Workflow runtime identity")
+
+# Registration must remain generic: installing a new manifest ID should not
+# require editing a known-widget list in Workflow/Diagnostics.
+for forbidden in (
+    'targetId: "desktop-widget/custom/',
+    "KnownCustomWidgetTargets",
+    "diagnosticsCustomWidgets",
+):
+    if forbidden in background or forbidden in runtime:
+        raise SystemExit(
+            "FAIL: custom-widget discovery must stay manifest-driven: "
+            + forbidden
+        )
+
 for forbidden in (
     "KnownDiagnosticsComponents",
     "diagnosticsCatalog",
@@ -89,4 +122,4 @@ for forbidden in (
             f"FAIL: Diagnostics must not own a parallel target catalog: {forbidden}"
         )
 
-print("ok - canonical Workflow identity and collision contract")
+print("ok - canonical Workflow identity, collision, and custom-widget contract")

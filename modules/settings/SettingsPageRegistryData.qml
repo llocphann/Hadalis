@@ -59,7 +59,7 @@ Singleton {
             key: "themes",
             name: Translation.tr("Themes"),
             icon: "palette",
-            desc: Translation.tr("Colors, fonts, styles"),
+            desc: Translation.tr("Material colors, typography and motion"),
             essential: true,
             component: "modules/settings/ThemesConfig.qml"
         },

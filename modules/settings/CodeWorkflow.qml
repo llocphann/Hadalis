@@ -1740,6 +1740,13 @@ Item {
         onTriggered: root.activateWorkflowWhenCurrent()
     }
 
+    Timer {
+        id: workflowAnalysisRequestTimer
+        interval: 0
+        repeat: false
+        onTriggered: root.requestAnalysis(false)
+    }
+
     onWorkflowActiveChanged: {
         root.syncRemoteRuntimeDemand()
         root.scheduleWorkflowActivation()
@@ -1785,12 +1792,12 @@ Item {
         if (!root.workflowOperational)
             return
         Qt.callLater(root.focusSourceAnchor)
-        Qt.callLater(() => root.requestAnalysis(false))
+        workflowAnalysisRequestTimer.restart()
     }
     onStoredSemanticAnchorChanged: {
         if (!root.workflowOperational)
             return
-        Qt.callLater(() => root.requestAnalysis(false))
+        workflowAnalysisRequestTimer.restart()
         Qt.callLater(root.evaluatePreApplyGate)
     }
 
@@ -1894,7 +1901,7 @@ Item {
             Qt.callLater(root.evaluatePreApplyGate)
             // Reclaim presentation analysis only after a transaction lifecycle
             // releases the shared analyzer.
-            Qt.callLater(() => root.requestAnalysis(false))
+            workflowAnalysisRequestTimer.restart()
         }
         function onHistoryIndexChanged(): void {
             transactionScroll.contentY = 0
@@ -1912,6 +1919,7 @@ Item {
         root.workflowDestroying = true
         root.workflowHydrated = false
         workflowActivationTimer.stop()
+        workflowAnalysisRequestTimer.stop()
         CodeWorkflowRuntime.setRemoteConsumerActive(
             root.runtimeRemoteConsumerId, false)
     }

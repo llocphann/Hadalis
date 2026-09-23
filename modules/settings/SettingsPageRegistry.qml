@@ -16,7 +16,6 @@ Singleton {
 
     readonly property var retiredFeaturePageIndexes: [18, 19, 21, 27]
     readonly property int retiredTlpPageIndex: 28
-    readonly property int quickPageIndex: 0
     readonly property int systemPageIndex: 1
     readonly property int barPageIndex: 2
     readonly property int themesPageIndex: 4
@@ -67,19 +66,6 @@ Singleton {
             const panelsPage = SettingsPageRegistryData.pages[root.panelsPageIndex]
             return Object.assign({}, panelsPage, {
                 devNavigationHidden: true
-            })
-        }
-        if (index === root.quickPageIndex) {
-            return Object.assign({}, page, {
-                component: "modules/settings/QuickConfigHugOnly.qml"
-            })
-        }
-        if (index === root.barPageIndex) {
-            return Object.assign({}, page, {
-                // BarConfig.qml remains the compatibility implementation so old
-                // configs can still be parsed; the public page removes retired
-                // Float/Rectangle/Card controls and exposes Hug only.
-                component: "modules/settings/BarConfigHugOnly.qml"
             })
         }
         if (index === root.themesPageIndex) {
@@ -225,8 +211,6 @@ Singleton {
     function searchIndex(): var {
         return SettingsPageRegistryData.searchIndex()
             .filter(entry => !root.isRetiredFeaturePage(entry.pageIndex))
-            .filter(entry => entry.pageIndex !== root.barPageIndex
-                || entry.label !== Translation.tr("Corner style"))
             .map(entry => {
                 if (entry.pageIndex !== root.retiredTlpPageIndex)
                     return entry

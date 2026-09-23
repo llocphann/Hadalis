@@ -629,9 +629,10 @@ authorization:
   `acyclic-closed-local-closure`, reason
   `reviewed-source-expression-is-direct-boolean-literal`, an empty dependency
   path, and explicit terminal kind/text evidence.
-- Whitespace-padded literals, numbers, `null`, binary expressions and every
-  other source shape outside the existing explicit member subset remain
-  UNKNOWN. This gate does not infer safety from generic JavaScript truthiness.
+- At the J-A boundary, whitespace-padded literals, numbers, `null`, binary
+  expressions and every other source shape outside the existing explicit member
+  subset remained UNKNOWN. J-B below extends only one exact decimal subset;
+  this gate does not infer safety from generic JavaScript truthiness.
 - The parent semantic anchor must still resolve to one unique non-opaque object
   before the direct literal proof is emitted, so proof identity remains tied to
   the reviewed Connect parent rather than to free-standing text.
@@ -641,6 +642,32 @@ authorization:
   authorize writes, stage artifacts, or enable Apply.
 - Focused acceptance covers both boolean literals plus negative controls for
   padded, compound, `null` and numeric source expressions.
+
+## Milestone 2K-J-B — exact decimal Connect source closure
+
+Expanded only the research-time local cycle closure with a second terminal shape:
+
+- `prove_local_dependency_closure()` recognizes an exact unsigned decimal
+  literal in a deliberately narrow canonical subset: zero or a non-zero
+  integer, optional fractional digits, and optional decimal exponent.
+  Examples covered by the proof are `0`, `42`, `1.5`, `6.02e23`
+  and `9E-3`.
+- A matched decimal produces `acyclic-closed-local-closure`, reason
+  `reviewed-source-expression-is-direct-decimal-literal`, an empty dependency
+  path, `terminalValueKind=number`, and the exact reviewed expression as
+  terminal text. No dependency edge is invented for a terminal scalar.
+- The subset intentionally rejects leading/trailing whitespace, signs, leading
+  zeroes, hexadecimal forms, leading-dot/trailing-dot decimals and compound
+  expressions. Unsupported numeric syntax remains UNKNOWN rather than being
+  normalized or interpreted.
+- The unique non-opaque reviewed parent object is still required before this
+  terminal proof can be emitted.
+- Production authority is unchanged. `connect_qualify.py` still accepts only
+  the existing 2K-J cross-file proof
+  `acyclic-source-backed-cross-file-closure`; J-B therefore cannot authorize
+  a Connect write, stage artifacts, enable Apply, or add a second Connect target.
+- Focused regression coverage locks both accepted canonical decimals and the
+  fail-closed negative forms above.
 
 ## Milestone 2K-K — composed Connect research qualification
 

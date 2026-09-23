@@ -200,6 +200,8 @@ for token in (
     "pendingGeneration !== root._requestGeneration",
     "_requestGeneration++",
     "model: root.pages.length",
+    "enabled: index === root._currentIndex",
+    "&& root._pendingIndex < 0",
     "property CodeWorkflowRuntimeDeclaration workflowDeclaration:",
     'targetId: "runtime/" + root.workflowHostId + "/page/"',
     "registrationEnabled: root.workflowDiscoveryEnabled",

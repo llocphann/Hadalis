@@ -51,16 +51,6 @@ ContentPage {
                 title: Translation.tr("General")
 
                 SettingsSwitch {
-                    buttonIcon: "unfold_less"
-                    text: Translation.tr("Collapse notifications when empty")
-                    checked: Config.options.sidebar?.collapseEmptyNotifications ?? false
-                    onCheckedChanged: Config.setNestedValue("sidebar.collapseEmptyNotifications", checked)
-                    StyledToolTip {
-                        text: Translation.tr("Shrink the right sidebar when there are no notifications")
-                    }
-                }
-
-                SettingsSwitch {
                     buttonIcon: "fit_screen"
                     text: Translation.tr("Fit left sidebar to widgets")
                     checked: Config.options.sidebar?.collapseWidgetsTab ?? false

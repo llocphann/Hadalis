@@ -593,6 +593,7 @@ def sample(pid: int, previous: dict[str, Any] | None) -> tuple[dict[str, Any], d
                 "confidence": "kernel",
                 "percent": system_cpu_percent,
                 "coresPercent": core_cpu_percent,
+                "coreNames": core_names,
                 "loadAverage": load_average,
             },
             "memory": read_system_memory(),

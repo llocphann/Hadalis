@@ -20,6 +20,11 @@ for token in (
     'else if (CodeWorkflowIndex.status !== "indexing")',
     "CodeWorkflowIndex.refresh(false)",
     "if (!root.sessionActive)",
+    'property string reconciliationCatalogFingerprint: ""',
+    "function _runtimeCatalogFingerprint(): string",
+    "if (!force",
+    "catalogFingerprint === root.reconciliationCatalogFingerprint",
+    "root._reconcileSourceBoundaries(false)",
 ):
     if token not in runtime_service:
         raise SystemExit(

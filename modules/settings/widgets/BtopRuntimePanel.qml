@@ -22,7 +22,11 @@ Item {
         anchors.fill: parent
         radius: Appearance.rounding.normal
         color: Appearance.colors.colLayer1
-        border.color: Appearance.colors.colOutline
+        border.color: Qt.rgba(
+            Appearance.colors.colPrimary.r,
+            Appearance.colors.colPrimary.g,
+            Appearance.colors.colPrimary.b,
+            0.42)
 
         ColumnLayout {
             id: runtimeColumn
@@ -35,7 +39,8 @@ Item {
 
                 StyledText {
                     text: root.title
-                    color: Appearance.colors.colOnLayer1
+                    color: Appearance.colors.colPrimary
+                    font.family: Appearance.font.family.monospace
                     font.weight: Font.DemiBold
                 }
 
@@ -72,6 +77,7 @@ Item {
                     StyledText {
                         text: root.cpu
                         color: Appearance.colors.colOnLayer1
+                        font.family: Appearance.font.family.monospace
                         font.weight: Font.DemiBold
                     }
                 }
@@ -87,6 +93,7 @@ Item {
                     StyledText {
                         text: root.memory
                         color: Appearance.colors.colOnLayer1
+                        font.family: Appearance.font.family.monospace
                         font.weight: Font.DemiBold
                     }
                 }
@@ -102,6 +109,7 @@ Item {
                     StyledText {
                         text: root.gpu
                         color: Appearance.colors.colOnLayer1
+                        font.family: Appearance.font.family.monospace
                         font.weight: Font.DemiBold
                     }
                 }
@@ -117,6 +125,7 @@ Item {
                     StyledText {
                         text: root.gpuMemory
                         color: Appearance.colors.colOnLayer1
+                        font.family: Appearance.font.family.monospace
                         font.weight: Font.DemiBold
                     }
                 }
@@ -130,6 +139,7 @@ Item {
                     Layout.fillWidth: true
                     text: "R " + root.readRate
                     color: Appearance.colors.colSubtext
+                    font.family: Appearance.font.family.monospace
                     font.pixelSize: Appearance.font.pixelSize.small
                 }
 
@@ -137,6 +147,7 @@ Item {
                     Layout.fillWidth: true
                     text: "W " + root.writeRate
                     color: Appearance.colors.colSubtext
+                    font.family: Appearance.font.family.monospace
                     font.pixelSize: Appearance.font.pixelSize.small
                 }
             }

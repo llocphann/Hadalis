@@ -777,7 +777,7 @@ def main() -> int:
             line for line in log.splitlines()
             if re.search(r"Expected token|Cannot assign to non-existent property|"
                          r"Type CodeWorkflow(?:SourceEditor|IrCanvas)? unavailable|"
-                         r"CodeWorkflow(?:SourceEditor|IrCanvas)?\\.qml.*"
+                         r"CodeWorkflow(?:SourceEditor|IrCanvas)?\.qml.*"
                          r"(?:TypeError|ReferenceError)",
                          line, re.IGNORECASE)
         ]

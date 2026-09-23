@@ -79,24 +79,14 @@ Item {
                     anchors.top: parent.top
                     anchors.horizontalCenter: parent.horizontalCenter
                     implicitWidth: 48; implicitHeight: 48
-                    buttonRadius: Appearance.zzzEverywhere ? Appearance.zzz.controlRadius
-                        : Appearance.inirEverywhere ? Appearance.inir.roundingSmall : Appearance.rounding.full
-                    colBackground: Appearance.zzzEverywhere ? "transparent"
-                        : Appearance.inirEverywhere
-                        ? "transparent"
-                        : (isRunning ? Appearance.colors.colPrimaryContainer : "transparent")
-                    colBackgroundHover: Appearance.zzzEverywhere ? Appearance.zzz.chrome
-                        : Appearance.angelEverywhere ? Appearance.angel.colGlassCardHover
-                        : Appearance.inirEverywhere
-                        ? Appearance.inir.colLayer1Hover
-                        : Appearance.auroraEverywhere ? Appearance.aurora.colSubSurface
-                        : (isRunning ? Appearance.colors.colPrimaryContainerHover : Appearance.colors.colLayer1Hover)
-                    colRipple: Appearance.zzzEverywhere ? Appearance.zzz.chromeAlt
-                        : Appearance.angelEverywhere ? Appearance.angel.colGlassCardActive
-                        : Appearance.inirEverywhere
-                        ? Appearance.inir.colLayer1Active
-                        : Appearance.auroraEverywhere ? Appearance.aurora.colSubSurfaceActive
-                        : (isRunning ? Appearance.colors.colPrimaryContainerActive : Appearance.colors.colLayer1Active)
+                    buttonRadius: Appearance.rounding.full
+                    colBackground: isRunning ? Appearance.colors.colPrimaryContainer : "transparent"
+                    colBackgroundHover: isRunning
+                        ? Appearance.colors.colPrimaryContainerHover
+                        : Appearance.colors.colLayer1Hover
+                    colRipple: isRunning
+                        ? Appearance.colors.colPrimaryContainerActive
+                        : Appearance.colors.colLayer1Active
                     
                     onClicked: {
                         if (!modelData.cmd) return
@@ -113,11 +103,9 @@ Item {
                             anchors.centerIn: parent
                             text: modelData.icon ?? "apps"
                             iconSize: 24
-                            color: Appearance.zzzEverywhere
-                                ? (launchBtn.isRunning ? Appearance.zzz.accent : Appearance.zzz.inkMuted)
-                                : Appearance.inirEverywhere
-                                ? (launchBtn.isRunning ? Appearance.inir.colPrimary : Appearance.inir.colText)
-                                : (launchBtn.isRunning ? Appearance.colors.colOnPrimaryContainer : Appearance.colors.colOnLayer0)
+                            color: launchBtn.isRunning
+                                ? Appearance.colors.colOnPrimaryContainer
+                                : Appearance.colors.colOnLayer0
 
                             Behavior on color {
                                 enabled: Appearance.animationsEnabled
@@ -134,10 +122,10 @@ Item {
                     anchors.top: launchBtn.bottom
                     anchors.topMargin: 2
                     anchors.horizontalCenter: parent.horizontalCenter
-                    width: (Appearance.zzzEverywhere || Appearance.inirEverywhere) ? 12 : 6
-                    height: (Appearance.zzzEverywhere || Appearance.inirEverywhere) ? 2 : 6
-                    radius: (Appearance.zzzEverywhere || Appearance.inirEverywhere) ? 1 : 3
-                    color: Appearance.zzzEverywhere ? Appearance.zzz.accent : Appearance.inirEverywhere ? Appearance.inir.colPrimary : Appearance.colors.colPrimary
+                    width: 6
+                    height: 6
+                    radius: 3
+                    color: Appearance.colors.colPrimary
                     Behavior on color { enabled: Appearance.animationsEnabled; ColorAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve } }
                     scale: launchBtn.isRunning ? 1 : 0
                     opacity: launchBtn.isRunning ? 1 : 0

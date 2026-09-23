@@ -66,7 +66,9 @@ Item {
 
             const denominator = Math.max(1, Number(root.maxValue))
             const pointX = index => values.length === 1
-                ? w : index * w / Math.max(1, values.length - 1)
+                ? w / 2
+                : 1 + index * Math.max(0, w - 2)
+                    / Math.max(1, values.length - 1)
             const pointY = value => h - Math.max(
                 0, Math.min(1, value / denominator)) * (h - 2) - 1
 

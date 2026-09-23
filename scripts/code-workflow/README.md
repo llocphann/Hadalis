@@ -5,6 +5,7 @@ This directory now contains two deliberately separate layers.
 Production read-only parser boundary:
 
 - `analyze.py` — path-confined JSON protocol used on demand by Code Workflow;
+- `index.py` — whole-tree read-only runtime-boundary index with byte-hash cache reconciliation; parser evidence remains non-live and non-editable;
 - `native.py` — Tree-sitter public C API adapter;
 - `semantics.py` — conservative read-only semantic extraction.
 

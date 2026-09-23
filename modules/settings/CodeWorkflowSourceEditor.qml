@@ -8,6 +8,10 @@ Item {
 
     property string draft: ""
     property string definitionName: "plaintext"
+    // A cached or collapsed source pane should not keep a document highlighter
+    // subscribed to text changes. The page explicitly enables this only while
+    // Workflow owns the Settings surface and the source pane is visible.
+    property bool syntaxHighlightingEnabled: true
     property string mode: "normal"
     property bool editingAllowed: true
     property string yankBuffer: ""
@@ -1166,7 +1170,7 @@ Item {
 
         Loader {
             id: syntaxLoader
-            active: true
+            active: root.syntaxHighlightingEnabled
             source: "CodeWorkflowSyntaxHighlighter.qml"
             asynchronous: true
             visible: false

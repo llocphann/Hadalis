@@ -210,14 +210,6 @@ WSettingsPage {
         icon: "panel-left-expand"
 
         WSettingsSwitch {
-            label: Translation.tr("Collapse notifications when empty")
-            icon: "panel-left-contract"
-            description: Translation.tr("Shrink the right sidebar when there are no notifications")
-            checked: Config.options?.sidebar?.collapseEmptyNotifications ?? false
-            onCheckedChanged: Config.setNestedValue("sidebar.collapseEmptyNotifications", checked)
-        }
-
-        WSettingsSwitch {
             label: Translation.tr("Fit left sidebar to widgets")
             icon: "panel-left-expand"
             description: Translation.tr("Shrink the left sidebar to its content on the Widgets tab instead of full height")

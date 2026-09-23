@@ -5,7 +5,6 @@ import qs.modules.common.perimeter
 import qs.modules.common.models
 import qs.modules.common.widgets
 import qs.modules.common.functions
-import qs.modules.pill
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
@@ -352,7 +351,7 @@ Item {
         joinRight: root.attachedEdge === "right"
     }
 
-    IslandPanel {
+    RicelinSurface {
         anchors.fill: sidebarRightBackground
         visible: sidebarRightBackground.islandStyle
         radius: sidebarRightBackground.radius

@@ -179,8 +179,9 @@ StyledOverlayWidget {
                             colRipple: "transparent"
 
                             onClicked: {
-                                GlobalStates.openSidebarRight("");
-                                GlobalStates.overlayOpen = false;
+                                GlobalStates.overlayOpen = false
+                                Qt.callLater(() =>
+                                    GlobalStates.openNotificationCenter(""))
                             }
 
                             contentItem: Item {

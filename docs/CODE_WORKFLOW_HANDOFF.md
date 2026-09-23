@@ -111,9 +111,14 @@ module work, commit directly to `dev`, and never force-push or modify `stable`.
   not require a Diagnostics catalog edit. The shared Tree-sitter semantics also
   marks Loader/LazyLoader/Repeater, Timer, Process, FileView, dynamic
   `createObject`/`Qt.createComponent`/`Qt.createQmlObject`/`setSource` and
-  XMLHttpRequest creation as read-only runtime-boundary evidence. Whole-tree
-  cached indexing/reconciliation is still the next discovery step; these parser
-  entries must not yet be described as live runtime instrumentation.
+  XMLHttpRequest creation as read-only runtime-boundary evidence. A new
+  `CodeWorkflowIndex` now scans the whole QML runtime tree through one native
+  parser process, caches per-file semantic projections by exact source SHA, and
+  reconciles changed/removed files without turning parser evidence into runtime
+  identity. Code Workflow starts the index lazily when the page is active and
+  refreshes it after a successful guarded Source Editor save. Indexed boundaries
+  remain explicitly `editable: false` / `liveRuntimeEvidence: false`; target-list
+  navigation and any reviewed promotion from this workspace index are later gates.
 
 ## Production UI refinement continuation — 2026-09-21
 

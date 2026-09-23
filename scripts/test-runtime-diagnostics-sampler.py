@@ -72,6 +72,14 @@ assert system_memory["MemUsed"] is None, system_memory
 assert system_memory["SwapTotal"] is None, system_memory
 assert system_memory["SwapUsed"] is None, system_memory
 
+# Process labels are sourced from comm only and normalized to one display line.
+original_read_text = module._read_text
+try:
+    module._read_text = lambda _path: "  helper\nworker\t "
+    assert module.read_process_command(123) == "helper worker"
+finally:
+    module._read_text = original_read_text
+
 # PID identity uses /proc/<pid>/stat starttime so a recycled PID with the same
 # comm cannot create a false CPU spike.
 original_read_text = module._read_text

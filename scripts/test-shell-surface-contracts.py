@@ -1197,8 +1197,8 @@ def main() -> None:
           and "DockSeparator" not in dock_qmldir,
           "Unused DockSeparator component must stay removed")
     check("property string dockPosition:" not in dock_button
-          and "dockPosition: root.position" not in dock,
-          "Dock buttons must not retain the unused position API")
+          and dock.count("dockPosition: root.position") == 2,
+          "Dock buttons must not retain the unused position API while DockApps keeps preview placement")
     check("property alias hoverTimer:" not in dock_app_button,
           "Dock app buttons must not export an unused hover timer alias")
     for dead_preview_api in ("previewWidthConstraint", "previewHeightConstraint"):

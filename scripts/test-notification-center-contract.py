@@ -336,6 +336,9 @@ require(dev_nav, '{ id: "notification-center", family: "ii"',
         "DevNavigation must open the standalone Material center")
 forbid(dev_nav, 'id: "sidebar-right/notifications"',
        "DevNavigation still points notification history at Right Sidebar")
+require(launcher,
+        'modules/common/widgets/Notification*.qml)\n                    select_prefix "notification-center"; select_prefix "dashboard" ;;',
+        "shared notification-card changes must audit current history surfaces")
 require(launcher, 'modules/notificationCenter/*) select_prefix "notification-center" ;;',
         "standalone Notification Center changes must select its acceptance view")
 require(launcher,

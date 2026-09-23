@@ -99,6 +99,7 @@ Scope { // Scope
         + (GlobalStates.waffleClipboardOpen           ? (1 << 18) : 0)
         + (GlobalStates.waffleTaskViewOpen            ? (1 << 19) : 0)
         + (GlobalStates.waffleAltSwitcherOpen         ? (1 << 20) : 0)
+        + (GlobalStates.notificationCenterOpen         ? (1 << 21) : 0)
 
     component OskControlButton: GroupButton {
         baseWidth: 40

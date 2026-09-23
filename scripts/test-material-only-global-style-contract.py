@@ -47,6 +47,7 @@ STYLED_OVERLAY_WIDGET = ROOT / "modules" / "ii" / "overlay" / "StyledOverlayWidg
 FILTER_CHIP = ROOT / "modules" / "common" / "widgets" / "FilterChip.qml"
 GROUP_BUTTON = ROOT / "modules" / "common" / "widgets" / "GroupButton.qml"
 NAVIGATION_RAIL_BUTTON = ROOT / "modules" / "common" / "widgets" / "NavigationRailButton.qml"
+INPUT_CHIP = ROOT / "modules" / "common" / "widgets" / "InputChip.qml"
 NOTIFICATION_ITEM = ROOT / "modules" / "common" / "widgets" / "NotificationItem.qml"
 NOTIFICATION_GROUP = ROOT / "modules" / "common" / "widgets" / "NotificationGroup.qml"
 NOTIFICATION_ACTION_BUTTON = ROOT / "modules" / "common" / "widgets" / "NotificationActionButton.qml"
@@ -191,6 +192,7 @@ def main() -> None:
     filter_chip = FILTER_CHIP.read_text(encoding="utf-8")
     group_button = GROUP_BUTTON.read_text(encoding="utf-8")
     navigation_rail_button = NAVIGATION_RAIL_BUTTON.read_text(encoding="utf-8")
+    input_chip = INPUT_CHIP.read_text(encoding="utf-8")
     notification_item = NOTIFICATION_ITEM.read_text(encoding="utf-8")
     notification_group = NOTIFICATION_GROUP.read_text(encoding="utf-8")
     notification_action_button = NOTIFICATION_ACTION_BUTTON.read_text(encoding="utf-8")
@@ -354,6 +356,7 @@ def main() -> None:
         "FilterChip.qml": filter_chip,
         "GroupButton.qml": group_button,
         "NavigationRailButton.qml": navigation_rail_button,
+        "InputChip.qml": input_chip,
         "NotificationItem.qml": notification_item,
         "NotificationGroup.qml": notification_group,
         "NotificationActionButton.qml": notification_action_button,
@@ -644,6 +647,19 @@ def main() -> None:
     ):
         require(navigation_rail_button, token, "NavigationRailButton.qml")
     forbid(navigation_rail_button, "RegaliaControlFace {", "NavigationRailButton.qml")
+
+    for token in (
+        "implicitWidth: chipContent.implicitWidth + 20",
+        "implicitHeight: 30",
+        "radius: height / 2",
+        "border.width: 1",
+        "Appearance.colors.colSecondaryContainerHover",
+        "Appearance.colors.colOnSecondaryContainer",
+        "spacing: (root.chipIcon.length > 0 || root.removable) ? 4 : 0",
+        "anchors.rightMargin: root.removable ? 24 : 0",
+    ):
+        require(input_chip, token, "InputChip.qml")
+    forbid(input_chip, "RegaliaControlFace {", "InputChip.qml")
 
     for token in (
         "radius: Appearance.rounding.small",

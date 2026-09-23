@@ -35,7 +35,6 @@ Item {
         RuntimeDiagnosticsSession.setOwnerCurrent(
             root.diagnosticsLeaseOwner,
             root.loadEnabled
-                && root.searchText.trim().length === 0
                 && root.diagnosticsPageIndex >= 0
                 && root.currentPage === root.diagnosticsPageIndex)
     }
@@ -83,7 +82,6 @@ Item {
         root.syncDiagnosticsLease()
     }
     onLoadEnabledChanged: root.syncDiagnosticsLease()
-    onSearchTextChanged: root.syncDiagnosticsLease()
     onDiagnosticsPageIndexChanged: root.syncDiagnosticsLease()
 
     readonly property var navigationItems: {

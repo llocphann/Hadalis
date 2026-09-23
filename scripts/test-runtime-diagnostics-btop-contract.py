@@ -60,6 +60,8 @@ def main() -> None:
         'root.historyValues("shellGpuPeakPercent")',
         'root.historyValues("shellReadBytesPerSec")',
         'root.historyValues("shellWriteBytesPerSec")',
+        "root.formatLoadAverage(",
+        "root.formatUptime(",
     ):
         require(page, token, "RuntimeDiagnosticsConfig.qml")
 
@@ -84,6 +86,10 @@ def main() -> None:
         "def read_system_cpu_ticks() -> dict[str, tuple[int, int]]:",
         "def _cpu_percent_from_ticks(",
         '"coresPercent": core_cpu_percent',
+        '"loadAverage": load_average',
+        '"uptimeSeconds": uptime_seconds',
+        "def read_load_average()",
+        "def read_uptime_seconds()",
         '"children": child_rows',
         "def sample_children(",
         'task_dir = Path("/proc") / str(pid) / "task"',

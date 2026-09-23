@@ -23,6 +23,7 @@ Singleton {
         Object.keys(root.activeOwners).length > 0
     property bool releaseAfterPulse: false
     property string leaseTransport: ""
+    property string leaseError: ""
     property string remoteError: ""
     property string remoteEvidenceFloorKey: ""
     readonly property string remoteEvidenceKey: root._remoteEvidenceKey()
@@ -99,8 +100,13 @@ Singleton {
         if (root.localShell) {
             // Preserve a deferred remote release while switching ownership
             // from a remote shell to this process.
-            RuntimeDiagnostics.acquire(root.clientId)
+            if (!RuntimeDiagnostics.acquire(root.clientId)) {
+                root.leaseTransport = ""
+                root.leaseError = "Diagnostics lease was rejected"
+                return
+            }
             root.leaseTransport = "local"
+            root.leaseError = ""
             return
         }
         root.releaseAfterPulse = false
@@ -112,8 +118,17 @@ Singleton {
         if (!root.pageCurrent)
             return
         if (root.localShell) {
-            if (!RuntimeDiagnostics.heartbeat(root.clientId))
-                RuntimeDiagnostics.acquire(root.clientId)
+            if (RuntimeDiagnostics.heartbeat(root.clientId)) {
+                root.leaseError = ""
+                return
+            }
+            if (RuntimeDiagnostics.acquire(root.clientId)) {
+                root.leaseTransport = "local"
+                root.leaseError = ""
+            } else {
+                root.leaseTransport = ""
+                root.leaseError = "Diagnostics lease was rejected"
+            }
             return
         }
         root._pulseRemote("heartbeat")
@@ -142,13 +157,15 @@ Singleton {
                 const reply = payload.length > 0 ? JSON.parse(payload) : null
                 if (reply?.ok === true) {
                     root.remoteError = ""
+                    root.leaseError = ""
                 } else if (remotePulse.action === "heartbeat"
                         && root.pageCurrent) {
                     // TTL expiry is recoverable while the page still owns the
                     // session; heartbeat itself never resurrects a dead lease.
                     Qt.callLater(() => root._pulseRemote("acquire"))
                 } else if (remotePulse.action === "acquire") {
-                    root.remoteError = "Diagnostics lease was rejected"
+                    root.remoteError = ""
+                    root.leaseError = "Diagnostics lease was rejected"
                 }
             } catch (error) {
                 root.remoteError =

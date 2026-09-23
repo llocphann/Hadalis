@@ -171,7 +171,9 @@ Item { // Notification item area
             ColorAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve }
         }
 
-        implicitHeight: expanded ? (contentColumn.implicitHeight + root.padding * 2) : summaryRow.implicitHeight
+        implicitHeight: (expanded || root.modernLayout)
+            ? (contentColumn.implicitHeight + root.padding * 2)
+            : summaryRow.implicitHeight
         Behavior on implicitHeight {
             // Sidebar: subtle fast transition; Popup: instant (window resize handled by parent)
             enabled: !root.popup && Appearance.animationsEnabled
@@ -187,7 +189,7 @@ Item { // Notification item area
             anchors.left: parent.left
             anchors.right: parent.right
             anchors.top: parent.top
-            anchors.margins: expanded ? root.padding : 0
+            anchors.margins: (root.modernLayout || expanded) ? root.padding : 0
             spacing: 3
 
             Behavior on anchors.margins {

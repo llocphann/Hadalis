@@ -1208,7 +1208,7 @@ Singleton {
             section: Translation.tr("Bottom-left Quick Notes"),
             label: Translation.tr("Quick Notes corner"),
             description: Translation.tr("Hover the bottom-left screen corner to reveal the shared Notepad"),
-            keywords: ["quick notes", "notes", "notepad", "bottom left", "corner", "hover", "screen edge", "popup", "memo", "write"]
+            keywords: ["quick notes", "notes", "notepad", "bottom left", "corner", "hover", "screen edge", "popup", "memo", "write", "monitor", "primary", "all monitors"]
         },
         {
             pageIndex: 6, pageName: root.pages[6].name,

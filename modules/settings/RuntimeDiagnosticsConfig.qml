@@ -226,6 +226,7 @@ ContentPage {
                         + root.formatKiB(
                             root.systemEvidence?.memory?.valuesKiB?.MemTotal)
                     samples: root.historyValues("systemRamPercent")
+                    accentColor: Appearance.colors.colSecondary
                 }
 
                 BtopMetricPanel {
@@ -239,6 +240,7 @@ ContentPage {
                         + root.formatKiB(
                             root.systemEvidence?.memory?.valuesKiB?.SwapTotal)
                     samples: root.historyValues("systemSwapPercent")
+                    accentColor: Appearance.colors.colTertiary
                 }
 
                 BtopMetricPanel {
@@ -252,6 +254,7 @@ ContentPage {
                             + " " + Translation.tr("resident")
                         : Translation.tr("DRM fdinfo unavailable")
                     samples: root.historyValues("shellGpuPeakPercent")
+                    accentColor: Appearance.colors.colTertiary
                 }
 
                 BtopNetworkPanel {

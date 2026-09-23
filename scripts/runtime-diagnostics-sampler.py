@@ -94,7 +94,9 @@ def read_system_cpu_ticks() -> dict[str, tuple[int, int]]:
             values = [int(value) for value in fields[1:]]
         except ValueError:
             continue
-        total = sum(values)
+        # guest/guest_nice are already included in user/nice on Linux.
+        # Excluding them avoids double-counting CPU time under virtualization.
+        total = sum(values[:8])
         idle = values[3] + (values[4] if len(values) > 4 else 0)
         result[fields[0]] = (total, idle)
     return result

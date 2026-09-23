@@ -180,6 +180,7 @@ Singleton {
         (GameMode?.active ?? false) && (GameMode?.suppressNotifications ?? false)
     readonly property bool notificationSurfaceOpen:
         (GlobalStates?.sidebarRightOpen ?? false)
+        || (GlobalStates?.notificationCenterOpen ?? false)
         || (GlobalStates?.waffleNotificationCenterOpen ?? false)
     readonly property bool notificationPolicyActive:
         manualDndActive || quietHoursActive || gameModeSuppressionActive

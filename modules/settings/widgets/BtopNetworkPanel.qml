@@ -63,8 +63,13 @@ Item {
 
                 StyledText {
                     text: root.rxPrefix + root.rx
-                        + "   " + root.txPrefix + root.tx
                     color: root.rxColor
+                    font.weight: Font.DemiBold
+                }
+
+                StyledText {
+                    text: root.txPrefix + root.tx
+                    color: root.txColor
                     font.weight: Font.DemiBold
                 }
             }

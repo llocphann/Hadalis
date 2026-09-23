@@ -102,6 +102,15 @@ Bar.StyledPopup {
                     font.weight: Font.DemiBold
                 }
 
+                StyledText {
+                    visible: Notepad.ready && Notepad.tabs.length > 0
+                    Layout.maximumWidth: 150
+                    text: "· " + String(Notepad.tabs[Notepad.currentTab]?.title ?? "")
+                    elide: Text.ElideRight
+                    color: Appearance.colors.colSubtext
+                    font.pixelSize: Appearance.font.pixelSize.smallest
+                }
+
                 Item { Layout.fillWidth: true }
 
                 StyledText {

@@ -22,6 +22,7 @@ Singleton {
     property var tabs: [{ id: "bootstrap", title: "Note 1", text: "" }]
     property bool ready: false
     property int _tabIdCounter: 0
+    property bool _normalizedTabsNeedSave: false
     // Convenience: current tab text (backward compat)
     readonly property string text: (tabs[currentTab]?.text) ?? ""
 
@@ -43,13 +44,16 @@ Singleton {
         if (!Array.isArray(value)) return []
         const normalized = []
         const seenIds = []
+        root._normalizedTabsNeedSave = false
         for (let i = 0; i < value.length; i++) {
             const tab = value[i]
             if (!tab || typeof tab !== "object" || Array.isArray(tab))
                 continue
             let id = String(tab.id ?? "").trim()
-            if (!id || seenIds.includes(id))
+            if (!id || seenIds.includes(id)) {
                 id = root._allocateTabId()
+                root._normalizedTabsNeedSave = true
+            }
             seenIds.push(id)
             normalized.push({
                 id: id,
@@ -184,6 +188,8 @@ Singleton {
                     root.tabs = loadedTabs
                     root.currentTab = Math.max(0, Math.min(index, loadedTabs.length - 1))
                     root.ready = true
+                    if (root._normalizedTabsNeedSave)
+                        Qt.callLater(() => root._save())
                     return
                 }
             } catch (e) {}

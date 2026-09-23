@@ -16,7 +16,7 @@ Item {
     property string gpu: "—"
     property string gpuMemory: "—"
 
-    implicitHeight: 154
+    implicitHeight: runtimeColumn.implicitHeight + 24
 
     Rectangle {
         anchors.fill: parent
@@ -25,6 +25,7 @@ Item {
         border.color: Appearance.colors.colOutline
 
         ColumnLayout {
+            id: runtimeColumn
             anchors.fill: parent
             anchors.margins: 12
             spacing: 8

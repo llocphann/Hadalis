@@ -13,6 +13,11 @@ StyledListView { // Scrollable window
     property bool popup: false
     property string dataMode: popup ? "transient" : "history"
     property bool popupPresentation: popup
+    // History surfaces may prefer full notification content. Overflow belongs
+    // to the ListView, so cards are not collapsed merely because they share a
+    // group; the user can still collapse a group explicitly.
+    property bool preferExpanded: false
+    property bool modernCards: false
     // History-only filter; popups are never filtered.
     property string filterQuery: ""
     signal externalLinkOpened()
@@ -71,6 +76,8 @@ StyledListView { // Scrollable window
         required property int index
         required property var modelData
         popup: root.popupPresentation
+        expandedByDefault: root.preferExpanded
+        modernLayout: root.modernCards
         anchors.left: parent?.left
         anchors.right: parent?.right
         notificationGroup: root.dataMode === "transient"

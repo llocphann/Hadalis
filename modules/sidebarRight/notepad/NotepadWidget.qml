@@ -88,6 +88,24 @@ Item {
             Notepad.setTextValue(textArea.text)
     }
 
+    // Tab mutations can change Notepad.currentTab synchronously. Persist the
+    // current editor first so an 800ms autosave still pending in the old tab
+    // can never be written into, or discarded by, the newly-selected tab.
+    function switchToTab(index): void {
+        root.flushPendingSave()
+        Notepad.switchTab(index)
+    }
+
+    function addTabSafely(): void {
+        root.flushPendingSave()
+        Notepad.addTab()
+    }
+
+    function removeTabSafely(index): void {
+        root.flushPendingSave()
+        Notepad.removeTab(index)
+    }
+
     // When this widget gets focus (from BottomWidgetGroup.focusActiveItem),
     // move focus to the internal text area on the next event loop tick.
     onFocusChanged: (focus) => {
@@ -258,7 +276,7 @@ Item {
                                         anchors.fill: parent
                                         anchors.margins: -4
                                         enabled: Notepad.ready
-                                        onClicked: Notepad.removeTab(tabPill.index)
+                                        onClicked: root.removeTabSafely(tabPill.index)
                                     }
                                 }
                             }
@@ -270,7 +288,7 @@ Item {
                                 hoverEnabled: true
                                 cursorShape: enabled ? Qt.PointingHandCursor : Qt.ArrowCursor
                                 z: -1
-                                onClicked: Notepad.switchTab(tabPill.index)
+                                onClicked: root.switchToTab(tabPill.index)
                             }
                         }
                     }
@@ -282,7 +300,7 @@ Item {
                 icon: "add"
                 tooltipText: Translation.tr("New tab")
                 enabled: Notepad.ready
-                onClicked: Notepad.addTab()
+                onClicked: root.addTabSafely()
             }
 
             // Dashboard compact mode keeps the tab strip and editing tools on

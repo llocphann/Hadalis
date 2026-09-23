@@ -355,6 +355,9 @@ if "detail: {\n                    const state =" in page:
 
 for token in (
     "readonly property bool workflowActive: root.enabled && root.visible",
+    "property bool workflowHydrated: false",
+    "readonly property bool workflowOperational:",
+    "root.workflowActive && root.workflowHydrated",
     "property bool workflowDestroying: false",
     "property var runtimeSnapshotCache: ({ outputs: [], records: [] })",
     "readonly property bool transactionOwnsAnalyzer:",
@@ -372,7 +375,7 @@ for token in (
     "watchChanges: root.workflowActive && !root.workflowDestroying",
     "enabled: root.workflowActive && !root.workflowDestroying",
     "workflowActivationTimer.stop()",
-    "workflowActive: root.workflowActive && !root.workflowDestroying",
+    "workflowActive: root.workflowOperational",
 ):
     require(page, token,
             "Workflow reopen lifecycle guard missing " + token)
@@ -417,6 +420,14 @@ require(request_analysis, "root.transactionOwnsAnalyzer",
         "Workflow page must not steal Analyzer ownership from transaction lifecycle")
 if 'Component.onCompleted: {\n        root.syncRemoteRuntimeDemand()\n        root.syncInitialOutput()' in page:
     fail("Workflow mount must defer source/index work until the page is active")
+activation_start = page.index("function activateWorkflowWhenCurrent(): void")
+activation_block = page[activation_start:activation_start + 520]
+require(activation_block, "root.workflowHydrated = true",
+        "Workflow must hydrate only after the activation debounce settles")
+schedule_start = page.index("function scheduleWorkflowActivation(): void")
+schedule_block = page[schedule_start:schedule_start + 420]
+require(schedule_block, "root.workflowHydrated = false",
+        "hidden Workflow page must immediately suspend hydrated work")
 for function_name in (
     "captureSemanticAnchor",
     "reconcileSemanticInspectSelection",

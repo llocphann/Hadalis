@@ -12,6 +12,9 @@ def require(text, token, message):
     if token not in text:
         raise SystemExit("FAIL: " + message)
 
+def fail(message):
+    raise SystemExit("FAIL: " + message)
+
 def require_balanced_qml_braces(text, message):
     stack = []
     index = 0
@@ -634,8 +637,9 @@ for token in (
             "runtime declaration lifecycle transition tracking missing " + token)
 require(runtime_declaration, "CodeWorkflowRuntime.touchDeclaration(root.registrationToken)",
         "loader lifecycle changes must flow through the deduplicating runtime registry")
-if "loader.item" in runtime_declaration:
-    fail("runtime declaration lifecycle diagnostics must not dereference loader.item")
+for token in ("root.loader.item", "root.loader?.item"):
+    if token in runtime_declaration:
+        fail("runtime declaration lifecycle diagnostics must not dereference loader.item")
 for token in (
     "property var entryStates: ({})",
     "function touchInstance(",

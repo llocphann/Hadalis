@@ -361,7 +361,7 @@ Singleton {
             section: Translation.tr("Runtime Diagnostics"),
             label: Translation.tr("Runtime diagnostics"),
             description: Translation.tr("On-demand CPU, memory, swap, GPU and network diagnostics for Hadalis runtime owners"),
-            keywords: ["diagnostics", "btop", "runtime", "cpu", "ram", "memory", "swap", "gpu", "network", "debug", "workflow", "resource", "process", "telemetry"]
+            keywords: ["diagnostics", "btop", "runtime", "cpu", "ram", "memory", "swap", "gpu", "network", "interface", "disk", "io", "shell", "debug", "workflow", "resource", "process", "telemetry"]
         },
         {
             pageIndex: 28, pageName: root.pages[28].name,

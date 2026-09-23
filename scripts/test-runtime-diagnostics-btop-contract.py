@@ -12,6 +12,8 @@ RUNTIME_PANEL = ROOT / "modules" / "settings" / "widgets" / "BtopRuntimePanel.qm
 CORE_GRID = ROOT / "modules" / "settings" / "widgets" / "BtopCoreGrid.qml"
 PROCESS_TABLE = ROOT / "modules" / "settings" / "widgets" / "BtopProcessTable.qml"
 INTERFACE_TABLE = ROOT / "modules" / "settings" / "widgets" / "BtopInterfaceTable.qml"
+TARGET_TABLE = ROOT / "modules" / "settings" / "widgets" / "BtopTargetTable.qml"
+TARGET_INSPECTOR = ROOT / "modules" / "settings" / "widgets" / "BtopTargetInspector.qml"
 SESSION = ROOT / "services" / "RuntimeDiagnosticsSession.qml"
 RUNTIME = ROOT / "services" / "RuntimeDiagnostics.qml"
 TARGET_RUNTIME = ROOT / "services" / "CodeWorkflowRuntimeTarget.qml"
@@ -42,6 +44,8 @@ def main() -> None:
     core_grid = CORE_GRID.read_text(encoding="utf-8")
     process_table = PROCESS_TABLE.read_text(encoding="utf-8")
     interface_table = INTERFACE_TABLE.read_text(encoding="utf-8")
+    target_table = TARGET_TABLE.read_text(encoding="utf-8")
+    target_inspector = TARGET_INSPECTOR.read_text(encoding="utf-8")
 
     for widget in (
         "BtopMetricPanel.qml",
@@ -140,6 +144,18 @@ def main() -> None:
             text,
             "Appearance.rounding.small",
             f"{source} compact btop geometry",
+        )
+
+    for source, text in (
+        ("BtopProcessTable.qml", process_table),
+        ("BtopInterfaceTable.qml", interface_table),
+        ("BtopTargetTable.qml", target_table),
+        ("BtopTargetInspector.qml", target_inspector),
+    ):
+        require(
+            text,
+            "textFormat: Text.PlainText",
+            f"{source} literal diagnostics text",
         )
 
     for token in (

@@ -49,8 +49,11 @@ def main() -> None:
 
     for token in (
         "focusable: root.keyboardFocus && root.requestedVisible",
+        "property bool exclusiveKeyboardFocus: false",
         "WlrLayershell.keyboardFocus: root.keyboardFocus && root.requestedVisible",
-        "? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None",
+        "? WlrKeyboardFocus.Exclusive",
+        ": WlrKeyboardFocus.OnDemand",
+        ": WlrKeyboardFocus.None",
         "CompositorFocusGrab {",
         "active: root.keyboardFocus && root.requestedVisible",
         "windows: [popupWindow]",

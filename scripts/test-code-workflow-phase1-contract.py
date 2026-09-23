@@ -1126,6 +1126,8 @@ for token in (
             "Source Editor relative-line/find-replace contract missing " + token)
 require(page, "root.snapshot?.descriptors ?? []",
         "Code Workflow selection fallback must use the hydrated runtime snapshot")
+if ".replaceAll(" in page:
+    fail("Code Workflow must avoid unsupported QML/JS String.replaceAll")
 require(page, 'category: "section"',
         "Targets must group runtime, graph and parsed QML sources")
 require(page, "appendSection(",

@@ -88,10 +88,8 @@ ColumnLayout {
         Accessible.checkable: root.collapsible
         Accessible.checked: root.expanded
         Accessible.onPressAction: root.toggleExpanded()
-        color: (headerMouseArea.containsMouse || headerBackground.activeFocus) && root.collapsible 
-            ? (Appearance.angelEverywhere ? Appearance.angel.colGlassCardHover
-              : Appearance.inirEverywhere ? Appearance.inir.colLayer1Hover
-              : Appearance.colors.colLayer1Hover)
+        color: (headerMouseArea.containsMouse || headerBackground.activeFocus) && root.collapsible
+            ? Appearance.colors.colLayer1Hover
             : "transparent"
 
         Keys.onPressed: event => {
@@ -124,9 +122,7 @@ ColumnLayout {
                 text: root.title
                 font.pixelSize: Appearance.font.pixelSize.larger
                 font.weight: Font.Medium
-                color: Appearance.angelEverywhere ? Appearance.angel.colText
-                     : Appearance.inirEverywhere ? Appearance.inir.colText
-                     : Appearance.colors.colOnSecondaryContainer
+                color: Appearance.colors.colOnSecondaryContainer
                 Layout.fillWidth: true
             }
 

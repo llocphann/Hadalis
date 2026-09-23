@@ -43,13 +43,14 @@ Scope {
                 id: barRoot
                 screen: barLoader.modelData
                 readonly property string outputName: String(barLoader.modelData?.name ?? "")
+                readonly property bool fullscreenCovered: barRoot.outputName.length > 0
+                    && GameMode.hasFullscreenOnOutput(barRoot.outputName)
 
-                // FULLSCREEN-BAR-LIFECYCLE-LOCK (maintainer approved 2026-09-19):
-                // Do NOT unmap or suspend this PanelWindow on fullscreen.
-                // Niri/compositor stacking already covers Top-layer Bar surfaces.
-                // Toggling PanelWindow visible/updatesEnabled during fullscreen
-                // can leave its QML contents blank after the fullscreen client
-                // exits until Quickshell is reloaded.
+                // Keep this window mapped across fullscreen. Niri can map the
+                // full-output Screen Edge frame after the bar, obscuring the
+                // entire bar while leaving its input region interactive. Put
+                // the bar above that Top-layer frame and gate its paint/input
+                // during fullscreen without destroying the layer surface.
                 readonly property real panelSurfaceHeight: Appearance.sizes.barHeight
                 readonly property bool rightDeadPixelWorkaround: (Config.options?.interactions?.deadPixelWorkaround?.enable ?? false)
                     && barRoot.anchors.right
@@ -82,9 +83,11 @@ Scope {
                     || CodeWorkflowPicker.holdsOutput(barRoot.outputName)
                 exclusionMode: ExclusionMode.Ignore
                 exclusiveZone:
-                    (GlobalStates.coverflowSelectorOpen || (Config?.options.bar.autoHide.enable && (!mustShow || !Config?.options.bar.autoHide.pushWindows))) ? 0 :
+                    (barRoot.fullscreenCovered || GlobalStates.coverflowSelectorOpen || (Config?.options.bar.autoHide.enable && (!mustShow || !Config?.options.bar.autoHide.pushWindows))) ? 0 :
                     barRoot.panelSurfaceHeight
                 WlrLayershell.namespace: "quickshell:bar"
+                WlrLayershell.layer: CompositorService.isNiri
+                    ? WlrLayer.Overlay : WlrLayer.Top
                 implicitHeight: barRoot.panelSurfaceHeight
                 // Explicit zero-size item prevents ambiguous null input region during
                 // surface map/unmap transitions. Region { item: null } can be interpreted
@@ -92,7 +95,7 @@ Scope {
                 // input-blocking area at the top of the screen.
                 Item { id: emptyMask; width: 0; height: 0 }
                 mask: Region {
-                    item: hoverMaskRegion
+                    item: barRoot.fullscreenCovered ? emptyMask : hoverMaskRegion
                 }
                 color: "transparent"
 
@@ -100,7 +103,8 @@ Scope {
                 // actual Classic bar background rather than across the whole layer surface.
                 BackgroundEffect.blurRegion: Region {
                     Region {
-                        item: barContent.nativeBlurActive ? barContent.backgroundItem : emptyMask
+                        item: !barRoot.fullscreenCovered && barContent.nativeBlurActive
+                            ? barContent.backgroundItem : emptyMask
                         radius: barContent.backgroundItem.radius
                     }
                 }
@@ -119,6 +123,7 @@ Scope {
 
                 MouseArea  {
                     id: hoverRegion
+                    enabled: !barRoot.fullscreenCovered
                     hoverEnabled: true
                     property alias barContent: barContent
                     anchors {
@@ -138,6 +143,7 @@ Scope {
 
                     BarContent {
                         id: barContent
+                        opacity: barRoot.fullscreenCovered ? 0 : 1
                         nativeBlurAllowed: false
 
                         implicitHeight: barRoot.panelSurfaceHeight

@@ -31,6 +31,9 @@ IPC = ROOT / "scripts" / "lib" / "ipc-registry.sh"
 LAUNCHER = ROOT / "scripts" / "inir"
 DEV_NAV = ROOT / "services" / "DevNavigation.qml"
 CONFIG_DOC = ROOT / "docs" / "CONFIG_SYSTEM.md"
+SIDEBAR_PREVIEW = ROOT / "modules" / "common" / "widgets" / "SidebarHeightPreview.qml"
+SIDEBAR_HOST = ROOT / "modules" / "sidebar" / "SidebarHost.qml"
+SHELL_LAYOUT = ROOT / "services" / "ShellLayoutController.qml"
 
 
 def fail(message: str) -> None:
@@ -72,6 +75,9 @@ ipc = IPC.read_text(encoding="utf-8")
 launcher = LAUNCHER.read_text(encoding="utf-8")
 dev_nav = DEV_NAV.read_text(encoding="utf-8")
 config_doc = CONFIG_DOC.read_text(encoding="utf-8")
+sidebar_preview = SIDEBAR_PREVIEW.read_text(encoding="utf-8")
+sidebar_host = SIDEBAR_HOST.read_text(encoding="utf-8")
+shell_layout = SHELL_LAYOUT.read_text(encoding="utf-8")
 
 # The physical Screen Edge renderer stays the sole owner of screen rounding.
 forbid(screen_edges, "notificationCenter",
@@ -224,6 +230,20 @@ forbid(layout_editor, 'notifications: { icon: "notifications"',
        "layout editor still exposes retired notification section")
 forbid(layout_editor, "sectionWeights.notifications",
        "layout editor still exposes retired notification/widget balance")
+for source, name in (
+    (sidebar_preview, "sidebar height preview"),
+    (shell_layout, "shell layout diagnostics"),
+):
+    forbid(
+        source,
+        "collapseEmptyNotifications",
+        name + " still derives geometry from retired notification history",
+    )
+forbid(
+    sidebar_host,
+    "notifsCollapsed",
+    "sidebar host still probes retired notification-collapse state",
+)
 require(
     config_doc,
     "Notification history itself lives in the standalone bottom-right Notification Center.",

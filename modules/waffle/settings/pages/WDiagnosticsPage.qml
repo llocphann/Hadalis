@@ -272,6 +272,13 @@ WSettingsPage {
         }
 
         WSettingsRow {
+            visible: String(root.discoveryEvidence?.error ?? "").length > 0
+            label: Translation.tr("Runtime boundary index error")
+            description: String(root.discoveryEvidence?.error ?? "")
+            icon: "info"
+        }
+
+        WSettingsRow {
             visible: root.discoveryEvidence?.status === "ready"
             label: Translation.tr("Canonical source matches")
             description:

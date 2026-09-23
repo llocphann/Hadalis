@@ -119,7 +119,8 @@ module work, commit directly to `dev`, and never force-push or modify `stable`.
   shell IO from `/proc/<pid>/io`, shell DRM engine/memory evidence from fdinfo,
   non-loopback aggregate plus per-interface network rates from `/proc/net/dev`,
   and a PID-reuse-checked shell descendant process tree using `comm`, schedstat
-  and status. Material Diagnostics now presents the shared evidence as a compact,
+  and status on the 2 s slow-probe cadence. Material Diagnostics now presents
+  the shared evidence as a compact,
   responsive btop-style dashboard with 60-sample CPU/RAM/Swap/GPU/network/IO
   graphs, core meters, interface/process tables, Hadalis runtime metrics and the
   Workflow-owned target/instance inspector. Remote Settings suppresses cached

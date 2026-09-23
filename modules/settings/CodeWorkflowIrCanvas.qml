@@ -228,9 +228,14 @@ Item {
     // even though the world transform itself is already GPU-cheap. Sample a
     // conservative culling viewport instead; the extra margin covers the short
     // sampling delay while keeping offscreen geometry suppressed at rest.
-    property real cullPanX: CodeWorkflowSession.panX
-    property real cullPanY: CodeWorkflowSession.panY
-    property real cullZoom: CodeWorkflowSession.zoom
+    // Publish culling state atomically. Updating panX, panY and zoom as three
+    // independent QML properties made every node/wire visibility binding run
+    // up to three times per sampled viewport tick.
+    property var cullViewport: ({
+        panX: CodeWorkflowSession.panX,
+        panY: CodeWorkflowSession.panY,
+        zoom: CodeWorkflowSession.zoom
+    })
     property real edgeLabelHoverX: 0
     property real edgeLabelHoverY: 0
     property var activeNodeDragHandler: null
@@ -1776,11 +1781,13 @@ Item {
     }
 
     function refreshViewportCull(): void {
-        root.cullPanX = CodeWorkflowSession.panX
-        root.cullPanY = CodeWorkflowSession.panY
-        root.cullZoom = Math.max(
-            CodeWorkflowSession.minimumZoom,
-            CodeWorkflowSession.zoom)
+        root.cullViewport = {
+            panX: CodeWorkflowSession.panX,
+            panY: CodeWorkflowSession.panY,
+            zoom: Math.max(
+                CodeWorkflowSession.minimumZoom,
+                CodeWorkflowSession.zoom)
+        }
     }
 
     Timer {
@@ -1894,15 +1901,19 @@ Item {
     ): bool {
         if (!root.workflowActive)
             return false
+        const viewport = root.cullViewport
         const zoom = Math.max(
-            CodeWorkflowSession.minimumZoom, root.cullZoom)
+            CodeWorkflowSession.minimumZoom,
+            Number(viewport?.zoom ?? CodeWorkflowSession.zoom))
         // Culling follows the live viewport at a bounded cadence. Keep enough
         // overscan for one fast gesture burst so delegates do not pop at the
         // edge while still avoiding text/rectangle scene-graph work for the
         // majority of a zoomed-in graph.
         const padding = Math.max(128, Number(margin))
-        const left = root.cullPanX + Number(worldX) * zoom
-        const top = root.cullPanY + Number(worldY) * zoom
+        const left = Number(viewport?.panX ?? CodeWorkflowSession.panX)
+            + Number(worldX) * zoom
+        const top = Number(viewport?.panY ?? CodeWorkflowSession.panY)
+            + Number(worldY) * zoom
         const right = left + Math.max(0, Number(worldWidth)) * zoom
         const bottom = top + Math.max(0, Number(worldHeight)) * zoom
         return right >= -padding

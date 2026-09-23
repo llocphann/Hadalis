@@ -112,20 +112,24 @@ module work, commit directly to `dev`, and never force-push or modify `stable`.
   remote snapshot polling is owner-demanded and runs only while a Workflow page
   is visible or a Diagnostics page is current. Cached/hidden Settings pages
   release that demand without clearing persisted Workflow session metadata.
-- The first exact on-demand sampler now runs only in the main shell process while
-  that lease is active. Kernel evidence covers system CPU from `/proc/stat`,
-  system RAM/Swap from `/proc/meminfo`, shell CPU from `schedstat`, shell
-  RSS/PSS/Swap from `smaps_rollup` with status fallback, shell IO from
-  `/proc/<pid>/io`, shell DRM engine/memory evidence from fdinfo, and system
-  interface/network rates from `/proc/net/dev`. Material and Waffle Diagnostics
-  both consume the same transported evidence and show its provenance. The
-  active lease also keeps a bounded 60-sample in-memory history, cleared when
-  sampling stops; Material Diagnostics uses it for btop-style CPU/RAM panels
-  while both renderers retain exact detail rows, shell disk-I/O rates and
-  standalone runtime-bridge errors. This is shell/system evidence only:
-  per-component CPU/RAM/Swap/GPU/Network remains
-  unavailable until a reviewed attribution method exists, so Diagnostics must
-  still not be described as full btop-equivalent component attribution.
+- The exact on-demand sampler runs only in the main shell process while a
+  Diagnostics lease is active. Kernel evidence covers aggregate/per-core CPU from
+  `/proc/stat`, load/uptime, system RAM/Swap from `/proc/meminfo`, shell CPU
+  from `schedstat`, shell RSS/PSS/Swap from `smaps_rollup` with status fallback,
+  shell IO from `/proc/<pid>/io`, shell DRM engine/memory evidence from fdinfo,
+  non-loopback aggregate plus per-interface network rates from `/proc/net/dev`,
+  and a PID-reuse-checked shell descendant process tree using `comm`, schedstat
+  and status. Material Diagnostics now presents the shared evidence as a compact,
+  responsive btop-style dashboard with 60-sample CPU/RAM/Swap/GPU/network/IO
+  graphs, core meters, interface/process tables, Hadalis runtime metrics and the
+  Workflow-owned target/instance inspector. Remote Settings suppresses cached
+  Diagnostics evidence until the Diagnostics generation advances after reopen;
+  lease rejection, IPC/sampler failures and stalled startup/live sampling remain
+  visible without keeping the sampler alive off-page. Waffle consumes the same
+  backend/lifecycle and exact detail evidence. This is shell/system evidence only:
+  per-component CPU/RAM/Swap/GPU/Network remains unavailable until a reviewed
+  attribution method exists, so Diagnostics must still not be described as full
+  btop-equivalent component attribution.
 - Future-target discovery has started at the existing ownership boundaries.
   Dynamic desktop custom widgets now register loaded instances through
   `CodeWorkflowRuntimeTarget` using the manifest ID under the Workflow-owned

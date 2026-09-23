@@ -608,6 +608,30 @@ if "RegExp" in ir_service or ".match(" in ir_service:
 if "Shape.CurveRenderer" in canvas:
     fail("production Workflow canvas must not use the Phase-0 HOLD Curve renderer")
 
+edge_shape_start = canvas.index("                id: edgeShape")
+edge_shape_end = canvas.index("\n        Repeater {", edge_shape_start)
+edge_shape_block = canvas[edge_shape_start:edge_shape_end]
+for token in (
+    "required property var modelData",
+    "readonly property var route:",
+    "root.routeForEdge(modelData)",
+    "edgeShape.endpointsPresent",
+):
+    if token not in edge_shape_block:
+        fail("edge Shape route delegate drifted: " + token)
+
+edge_label_start = canvas.index("                id: edgeLabel")
+edge_label_end = canvas.index("\n        Loader {", edge_label_start)
+edge_label_block = canvas[edge_label_start:edge_label_end]
+for token in (
+    "required property var modelData",
+    "readonly property var route:",
+    "root.routeForEdge(modelData)",
+    "edgeLabel.endpointsPresent",
+):
+    if token not in edge_label_block:
+        fail("edge label route delegate drifted: " + token)
+
 route_for_edge = canvas.split("function routeForEdge(edge): var", 1)[1].split(
     "function routeDiagnostics(): var", 1)[0]
 if "root.edgeRoute(edge)" in route_for_edge:
@@ -754,7 +778,6 @@ for token in (
     "const route = root.edgeRoute(edge, occupiedRoutes)",
     "occupiedRoutes.push(route)",
     "const route = root.routeForEdge(edge)",
-    "root.routeForEdge(edgeShape.modelData)",
     "root.routeForEdge(modelData)",
     "readonly property bool endpointsPresent:",
     "!!root.nodeIndexCache[String(modelData.from ?? \"\")]",

@@ -83,6 +83,7 @@ function makeSession() {
     };
     return {
         root, commands, runtimeEvents, remotePulse, remoteRelease, flush,
+        setPulseError(text) { remotePulseError.text = text; },
         enter() { root.pageCurrent = true; root._acquireLease(); },
         leave() { root.pageCurrent = false; root._releaseRemote(); },
         finishPulse(exitCode = 0, payload = '{"ok":true}', runCallbacks = true) {
@@ -121,6 +122,22 @@ function makeSession() {
     s.leave();
     s.finishPulse(1);
     assert.deepEqual(s.commands, ['acquire', 'heartbeat', 'release']);
+}
+
+// Remote command failures must remain diagnosable even when stderr is empty,
+// and an explicit acquire rejection must not look like a healthy lease.
+{
+    const s = makeSession();
+    s.enter();
+    s.setPulseError('');
+    s.finishPulse(7);
+    assert.equal(s.root.remoteError, 'Diagnostics lease command exited with 7');
+}
+{
+    const s = makeSession();
+    s.enter();
+    s.finishPulse(0, '{"ok":false}');
+    assert.equal(s.root.remoteError, 'Diagnostics lease was rejected');
 }
 
 // Reentering before acquire completes retains that lease without a late release.

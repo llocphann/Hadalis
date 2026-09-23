@@ -338,8 +338,8 @@ for token in (
     'return "waffle/osd"',
 ):
     require(runtime, token, "dynamic runtime inventory missing " + token)
-require(page, "for (const target of CodeWorkflowRuntime.activeCatalog)",
-        "Targets must enumerate discovered runtime surfaces")
+require(page, "for (const target of (root.snapshot?.descriptors ?? []))",
+        "Targets must enumerate the stable hydrated runtime snapshot")
 for token in (
     "readonly property string runtimeRemoteConsumerId:",
     "function syncRemoteRuntimeDemand(): void",
@@ -365,6 +365,7 @@ for token in (
     "root.workflowActive && root.workflowHydrated",
     "property bool workflowDestroying: false",
     "property var runtimeSnapshotCache: ({ outputs: [], records: [] })",
+    "property string runtimeSnapshotFingerprint: \"\"",
     "readonly property bool transactionOwnsAnalyzer:",
     "CodeWorkflowTransaction.applyLifecycleBusy",
     "CodeWorkflowTransaction.connectLifecycleBusy",
@@ -372,7 +373,10 @@ for token in (
     "CodeWorkflowTransaction.disconnectLifecycleBusy",
     "CodeWorkflowTransaction.signalActionLifecycleBusy",
     "function refreshRuntimeSnapshot(): void",
-    "root.runtimeSnapshotCache = CodeWorkflowRuntime.snapshot()",
+    "const next = CodeWorkflowRuntime.snapshot()",
+    "fingerprint = JSON.stringify(next)",
+    "fingerprint === root.runtimeSnapshotFingerprint",
+    "root.runtimeSnapshotCache = next",
     "function activateWorkflowWhenCurrent(): void",
     "function scheduleWorkflowActivation(): void",
     "id: workflowActivationTimer",
@@ -380,6 +384,10 @@ for token in (
     "id: workflowAnalysisRequestTimer",
     "onTriggered: root.requestAnalysis(false)",
     "workflowAnalysisRequestTimer.stop()",
+    "id: runtimeSnapshotRefreshTimer",
+    "interval: 90",
+    "runtimeSnapshotRefreshTimer.restart()",
+    "runtimeSnapshotRefreshTimer.stop()",
     "watchChanges: root.workflowOperational",
     "enabled: root.workflowOperational",
     "workflowActivationTimer.stop()",
@@ -389,7 +397,13 @@ for token in (
             "Workflow reopen lifecycle guard missing " + token)
 for token in (
     "property bool workflowActive: true",
-    "root.workflowActive\n            ? CodeWorkflowIr.unifiedGraphFor(root.showInternals)\n            : null",
+    "property var graph: null",
+    "property string runtimeCatalogSignature: \"\"",
+    "function catalogSignature(): string",
+    "function refreshGraph(force: bool): void",
+    "root.graph = CodeWorkflowIr.unifiedGraphFor(root.showInternals)",
+    "id: graphRefreshTimer",
+    "graphRefreshTimer.restart()",
     "if (!root.workflowActive)",
     "function activateCanvas(): void",
     "function deactivateCanvas(): void",
@@ -415,6 +429,8 @@ if 'Qt.callLater(() => CodeWorkflowIndex.refresh(false))' in page:
     fail("Workflow mount must not queue an unconditional duplicate workspace index")
 if 'Qt.callLater(() => root.requestAnalysis(false))' in page:
     fail("Workflow must cancel deferred presentation analysis with page lifetime")
+if "for (const target of CodeWorkflowRuntime.activeCatalog)" in page:
+    fail("Targets must not bind directly to polling runtime catalog arrays")
 if "readonly property int runtimeRevision: CodeWorkflowRuntime.revision" in page:
     fail("hidden Workflow pages must not rebuild runtime snapshots from a live revision binding")
 descriptor_start = page.index("readonly property var descriptor:")

@@ -18,6 +18,7 @@ Singleton {
     // changes. Lease state is therefore owner-based rather than one mutable bool.
     property var activeOwners: ({})
     property int heartbeatTick: 0
+    property int pageOpenedHeartbeatTick: 0
     readonly property bool pageCurrent:
         Object.keys(root.activeOwners).length > 0
     property bool releaseAfterPulse: false
@@ -187,10 +188,13 @@ Singleton {
     }
 
     onPageCurrentChanged: {
-        if (root.pageCurrent && !root.localShell)
-            root.remoteEvidenceFloorKey = root.remoteEvidenceKey
-        else if (!root.pageCurrent)
+        if (root.pageCurrent) {
+            root.pageOpenedHeartbeatTick = root.heartbeatTick
+            if (!root.localShell)
+                root.remoteEvidenceFloorKey = root.remoteEvidenceKey
+        } else {
             root.remoteEvidenceFloorKey = ""
+        }
         root._syncRemoteRuntimeDemand()
         if (root.pageCurrent)
             root._acquireLease()

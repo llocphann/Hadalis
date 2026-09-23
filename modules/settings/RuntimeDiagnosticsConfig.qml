@@ -34,6 +34,22 @@ ContentPage {
         || root.samplerError.length > 0
     readonly property bool samplerRunning:
         root.evidence?.sampler?.running === true
+    readonly property bool sessionStalled: root.sampleIsStale()
+
+    function sampleIsStale(): bool {
+        const tick = RuntimeDiagnosticsSession.heartbeatTick
+        if (tick < 0 || !RuntimeDiagnosticsSession.pageCurrent
+                || root.sessionHasError || !root.samplerRunning
+                || root.systemEvidence === null)
+            return false
+        const sampleAtMs = Number(root.evidence?.sampleAtMs)
+        if (!Number.isFinite(sampleAtMs) || sampleAtMs <= 0)
+            return false
+        const intervalMs = Number(root.evidence?.status?.sampleIntervalMs)
+        const staleAfterMs = Number.isFinite(intervalMs) && intervalMs > 0
+            ? Math.max(5000, intervalMs * 4) : 5000
+        return Date.now() - sampleAtMs > staleAfterMs
+    }
 
     function sessionStateLabel(): string {
         if (!RuntimeDiagnosticsSession.pageCurrent)
@@ -42,6 +58,8 @@ ContentPage {
             return Translation.tr("Sampling error")
         if (!root.samplerRunning || root.systemEvidence === null)
             return Translation.tr("Starting sampler")
+        if (root.sessionStalled)
+            return Translation.tr("Sampling stalled")
         return Translation.tr("Sampling live")
     }
 
@@ -226,7 +244,7 @@ ContentPage {
                 implicitHeight: sessionLayout.implicitHeight + 24
                 radius: Appearance.rounding.small
                 color: Appearance.colors.colLayer1
-                border.color: root.sessionHasError
+                border.color: root.sessionHasError || root.sessionStalled
                     ? Appearance.colors.colError
                     : RuntimeDiagnosticsSession.pageCurrent
                         ? Qt.rgba(
@@ -249,7 +267,7 @@ ContentPage {
                         width: 9
                         height: 9
                         radius: 5
-                        color: root.sessionHasError
+                        color: root.sessionHasError || root.sessionStalled
                             ? Appearance.colors.colError
                             : RuntimeDiagnosticsSession.pageCurrent
                                 ? Appearance.colors.colPrimary

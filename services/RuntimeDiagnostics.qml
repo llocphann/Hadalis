@@ -326,7 +326,9 @@ Singleton {
         }
 
         onExited: (exitCode, exitStatus) => {
-            if (root.samplingEnabled && exitCode !== 0)
+            if (root.samplingEnabled
+                    && exitCode !== 0
+                    && root.samplerError.length === 0)
                 root._setSamplerError(
                     "Runtime Diagnostics sampler exited with " + exitCode)
         }

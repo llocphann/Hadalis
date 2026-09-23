@@ -6,6 +6,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 CORNERS = ROOT / "modules" / "screenCorners" / "ScreenCorners.qml"
 POPUP = ROOT / "modules" / "screenCorners" / "QuickNotesPopup.qml"
+STYLED_POPUP = ROOT / "modules" / "bar" / "StyledPopup.qml"
 SCREEN_EDGES = ROOT / "modules" / "screenCorners" / "ScreenEdges.qml"
 NOTEPAD = ROOT / "modules" / "sidebarRight" / "notepad" / "NotepadWidget.qml"
 QUICK_NOTES_VIEW = ROOT / "modules" / "sidebarRight" / "notepad" / "QuickNotesView.qml"
@@ -35,6 +36,7 @@ def forbid(source: str, token: str, message: str) -> None:
 
 corners = CORNERS.read_text(encoding="utf-8")
 popup = POPUP.read_text(encoding="utf-8")
+styled_popup = STYLED_POPUP.read_text(encoding="utf-8")
 screen_edges = SCREEN_EDGES.read_text(encoding="utf-8")
 notepad = NOTEPAD.read_text(encoding="utf-8")
 quick_notes_view = QUICK_NOTES_VIEW.read_text(encoding="utf-8")
@@ -57,12 +59,14 @@ for token in (
 ):
     require(qmldir, token, "screenCorners module must export the Quick Notes popup")
 
-if popup.count("NotepadWidget {") != 1:
-    fail("Quick Notes must own exactly one lazily-instantiated Notepad editor")
-loader_pos = popup.find("id: notesEditorLoader")
-component_pos = popup.find("sourceComponent: NotepadWidget {")
+if popup.count("QuickNotesView {") != 1:
+    fail("Quick Notes corner must own exactly one shared QuickNotesView")
+if "NotepadWidget {" in popup or "quickCapturePresentation" in popup:
+    fail("Quick Notes corner must not bypass the shared Dashboard presentation")
+loader_pos = popup.find("id: notesViewLoader")
+component_pos = popup.find("sourceComponent: QuickNotesView {")
 if loader_pos < 0 or component_pos < 0 or loader_pos > component_pos:
-    fail("Quick Notes editor must be instantiated through its Loader")
+    fail("Quick Notes view must be instantiated lazily through its Loader")
 
 for token in (
     "import QtQuick.Controls",
@@ -77,34 +81,51 @@ for token in (
     "id: entryBridgeTimer",
     "Math.round(root.cornerAttachmentThickness * 6)",
     "keyboardFocus: root.editorFocused",
+    "exclusiveKeyboardFocus: true",
     "closeOnOutsideClick: root.editorFocused",
     "if (!root.active || !Notepad.ready || !editor)",
-    "if (root.editorFocused && notesEditorLoader.item)",
+    "if (root.editorFocused && notesViewLoader.item)",
     "readonly property real requestedPopupWidth:",
     "readonly property real requestedPopupHeight:",
     "root.requestedPopupWidth - root._contentPadding * 2",
     "root.requestedPopupHeight - root._contentPadding * 2",
     "width: parent ? parent.width : implicitWidth",
     "height: parent ? parent.height : implicitHeight",
-    "id: notesEditorLoader",
+    "id: notesViewLoader",
     "active: root.active",
-    "sourceComponent: NotepadWidget {",
-    "compactPresentation: true",
-    "quickCapturePresentation: true",
+    "sourceComponent: QuickNotesView {",
     "surfaceLocalTabSelection: true",
-    "Notepad.tabs[Notepad.currentTab]?.title",
-    "contentRoot.width < 340 ? 80 : 150",
-    "visible: contentRoot.width >= 340",
+    "showHeader: true",
+    "showZettelkastenActions: true",
+    "onEditorActivated: root.enterEditorMode()",
     "editor.focus = true",
-    "notesEditorLoader.item.releaseEditorFocus()",
-    "notesEditorLoader.item.focusEditor()",
-    "notesEditorLoader.item?.displayedTabTitle",
-    "notesEditorLoader.item.flushPendingSave()",
+    "notesViewLoader.item.releaseEditorFocus()",
+    "notesViewLoader.item.focusEditor()",
+    "notesViewLoader.item.flushPendingSave()",
     "Component.onDestruction:",
     "sequences: [StandardKey.Cancel]",
     "context: Qt.WindowShortcut",
 ):
     require(popup, token, "Quick Notes popup interaction/focus contract missing")
+
+for retired in (
+    "TapHandler {",
+    'text: Translation.tr("Click to type")',
+    'text: Translation.tr("Esc to release")',
+    "sourceComponent: NotepadWidget {",
+    "quickCapturePresentation: true",
+):
+    forbid(popup, retired,
+           "Quick Notes corner must not restore its private capture presentation")
+
+for token in (
+    "property bool exclusiveKeyboardFocus: false",
+    "? WlrKeyboardFocus.Exclusive",
+    ": WlrKeyboardFocus.OnDemand",
+    "active: root.keyboardFocus && root.requestedVisible",
+):
+    require(styled_popup, token,
+            "StyledPopup must support click-activated exclusive keyboard ownership")
 
 shortcut_pos = popup.find("sequences: [StandardKey.Cancel]")
 content_pos = popup.find("id: contentRoot")
@@ -117,6 +138,7 @@ for token in (
     "!root.quickCapturePresentation",
     "target: root.zettelkastenIntegrationEnabled ? Zettelkasten : null",
     "visible: !root.quickCapturePresentation",
+    "signal editorActivated()",
     "function focusEditor(): void",
     "textArea.forceActiveFocus()",
     "function releaseEditorFocus(): void",
@@ -144,6 +166,8 @@ for token in (
     "onClicked: root.switchToTab(tabPill.index)",
     "onClicked: root.addTabSafely()",
     "onClicked: root.removeTabSafely(tabPill.index)",
+    "onActiveFocusChanged:",
+    "root.editorActivated()",
     "Component.onDestruction: root.flushPendingSave()",
 ):
     require(notepad, token, "shared Notepad must expose safe Quick Notes hooks")
@@ -171,6 +195,7 @@ for retired in (
            "Sidebar Quick Note must not restore its legacy private editor")
 
 for token in (
+    "signal editorActivated()",
     "NotepadWidget {",
     "compactPresentation: true",
     "surfaceLocalTabSelection: root.surfaceLocalTabSelection",
@@ -183,6 +208,7 @@ for token in (
     "function flushPendingSave(): void",
     "function releaseEditorFocus(): void",
     "notepad.releaseEditorFocus()",
+    "onEditorActivated: root.editorActivated()",
     "showZettelkastenActions",
 ):
     require(quick_notes_view, token,

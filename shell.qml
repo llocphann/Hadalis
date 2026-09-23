@@ -457,7 +457,9 @@ ShellRoot {
         target: "codeWorkflowRuntime"
 
         function snapshot(): string {
-            return JSON.stringify(CodeWorkflowRuntime.localSnapshot())
+            const payload = CodeWorkflowRuntime.localSnapshot()
+            payload.diagnostics = RuntimeDiagnostics.snapshot()
+            return JSON.stringify(payload)
         }
     }
 
@@ -486,6 +488,9 @@ ShellRoot {
         }
         function status(): string {
             return JSON.stringify(RuntimeDiagnostics.status())
+        }
+        function snapshot(): string {
+            return JSON.stringify(RuntimeDiagnostics.snapshot())
         }
     }
 

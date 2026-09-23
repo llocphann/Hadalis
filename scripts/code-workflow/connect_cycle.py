@@ -7,7 +7,8 @@ source writes and proves only a
 small parser-resolved local dependency subset:
 
 - the reviewed source expression is either the exact boolean literal `true` /
-  `false`, or one explicit parent-id member reference;
+  `false`, one exact unsigned decimal literal in the deliberately narrow
+  canonical subset, or one explicit parent-id member reference;
 - every traversed same-object property/binding is uniquely resolved by semantic
   scope and remains non-opaque;
 - each dependency value is either another explicit parent-id member reference or
@@ -47,6 +48,9 @@ PROOF_UNKNOWN = "unknown-incomplete-local-closure"
 _LITERAL_VALUE_KINDS = {"true", "false", "number", "string"}
 _LITERAL_FALLBACKS = {"true", "false"}
 _DIRECT_BOOLEAN_EXPRESSIONS = {"true", "false"}
+_DIRECT_DECIMAL_EXPRESSION = re.compile(
+    r"^(?:0|[1-9][0-9]*)(?:\.[0-9]+)?(?:[eE][+-]?[0-9]+)?$"
+)
 _SIMPLE_MEMBER = re.compile(
     r"^([A-Za-z_][A-Za-z0-9_]*)\.([A-Za-z_][A-Za-z0-9_]*)$"
 )
@@ -701,6 +705,15 @@ def prove_local_dependency_closure(
             "cycleSafetyProof": PROVEN_ACYCLIC,
             "dependencyPath": [],
             "terminalValueKind": direct_expression,
+            "terminalValueText": direct_expression,
+        }
+    if _DIRECT_DECIMAL_EXPRESSION.fullmatch(direct_expression):
+        return {
+            "status": "proven-acyclic",
+            "reason": "reviewed-source-expression-is-direct-decimal-literal",
+            "cycleSafetyProof": PROVEN_ACYCLIC,
+            "dependencyPath": [],
+            "terminalValueKind": "number",
             "terminalValueText": direct_expression,
         }
 

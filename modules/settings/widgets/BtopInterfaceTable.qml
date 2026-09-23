@@ -190,7 +190,6 @@ Item {
                         Layout.fillWidth: true
                         Layout.preferredWidth: 1.2
                         text: String(modelData.name)
-                        textFormat: Text.PlainText
                         color: Appearance.colors.colOnLayer1
                         font.family: Appearance.font.family.monospace
                         font.pixelSize: Appearance.font.pixelSize.small

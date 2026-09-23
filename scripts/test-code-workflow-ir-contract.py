@@ -644,6 +644,7 @@ for token in (
     "CodeWorkflowSession.panY - startPanY",
     "Shape.CurveRenderer",
     "antialiasing: true",
+    "asynchronous: true",
     "z: selectedEdge ? 0.4 : reasoningEdge ? 0.35",
     ": hoveredEdge ? 0.3 : 0",
     "function edgeStrokeWidth(selected: bool, highlighted: bool): real",

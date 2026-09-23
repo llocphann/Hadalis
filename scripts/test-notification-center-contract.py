@@ -14,6 +14,7 @@ QMLDIR = ROOT / "modules" / "notificationCenter" / "qmldir"
 GLOBAL = ROOT / "GlobalStates.qml"
 NOTIFICATIONS = ROOT / "services" / "Notifications.qml"
 LIST = ROOT / "modules" / "common" / "widgets" / "NotificationListView.qml"
+GROUP = ROOT / "modules" / "common" / "widgets" / "NotificationGroup.qml"
 ITEM = ROOT / "modules" / "common" / "widgets" / "NotificationItem.qml"
 RIGHT = ROOT / "modules" / "sidebarRight" / "SidebarRightContent.qml"
 COMPACT = ROOT / "modules" / "sidebarRight" / "CompactSidebarRightContent.qml"
@@ -53,6 +54,7 @@ qmldir = QMLDIR.read_text(encoding="utf-8")
 global_states = GLOBAL.read_text(encoding="utf-8")
 notifications = NOTIFICATIONS.read_text(encoding="utf-8")
 list_view = LIST.read_text(encoding="utf-8")
+group = GROUP.read_text(encoding="utf-8")
 item = ITEM.read_text(encoding="utf-8")
 right = RIGHT.read_text(encoding="utf-8")
 compact = COMPACT.read_text(encoding="utf-8")
@@ -98,6 +100,30 @@ for token in (
     "onNotificationActionInvoked:",
 ):
     require(content, token, "shared history content contract missing")
+
+# The standalone history surface uses the roomier Material card presentation:
+# full history by default, with scrolling handling overflow instead of silently
+# truncating groups.
+for token in (
+    "property bool preferExpanded: false",
+    "property bool modernCards: false",
+    "expandedByDefault: root.preferExpanded",
+    "modernLayout: root.modernCards",
+):
+    require(list_view, token, "Notification history presentation controls missing")
+for token in (
+    "preferExpanded: true",
+    "modernCards: true",
+):
+    require(content, token, "standalone Notification Center modern history mode missing")
+for token in (
+    "property bool expandedByDefault: false",
+    "property bool modernLayout: false",
+    "property bool expanded: expandedByDefault",
+):
+    require(group, token, "modern notification group contract missing")
+require(item, "property bool modernLayout: false",
+        "notification items must accept the modern history-card presentation")
 
 # A single ScreenCorners owner arbitrates bottom-right input. Orbit wins, then
 # the Notification Center, then the legacy sidebar trigger.

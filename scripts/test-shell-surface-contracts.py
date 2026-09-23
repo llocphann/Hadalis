@@ -1119,16 +1119,19 @@ def main() -> None:
           and "bar?.pill" not in shell_layout
           and "bar.pill" not in shell_layout,
           "Shell layout reservation must use canonical Hug geometry only")
-    for retired_bar_constant in (
+    # The active Hug renderer still shares internal geometry/color paths with
+    # historical styles. Keep bridge inputs frozen to canonical Hug values until
+    # those renderer paths are split; never reconnect them to persisted config.
+    for canonical_bar_bridge in (
         "readonly property int cornerStyle: 0",
-        "floatingStyle",
-        "cardStyleEverywhere",
-        "zzzDetachedRounded",
-        "barMargin",
-        "nativeBlurGeometryExact",
+        "readonly property bool floatingStyle: false",
+        "readonly property bool cardStyleEverywhere: false",
+        "readonly property bool zzzDetachedRounded: false",
+        "readonly property real barMargin: 0",
+        "readonly property bool nativeBlurGeometryExact",
     ):
-        check(retired_bar_constant not in bar_content,
-              f"Horizontal Bar must not retain constant retired branch: {retired_bar_constant}")
+        check(canonical_bar_bridge in bar_content,
+              f"Horizontal Hug bridge lost its canonical frozen input: {canonical_bar_bridge}")
     for retired_runtime_token in ("effectiveCornerStyle", "floatStyleShadow", "barFillInner"):
         check(retired_runtime_token not in bar_runtime,
               f"Classic Bar runtime must not retain retired corner-style branch: {retired_runtime_token}")

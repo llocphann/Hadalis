@@ -3357,6 +3357,8 @@ EOF
     elif git -C "$launcher_root" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
         while IFS= read -r -d '' changed_path; do
             case "$changed_path" in
+                modules/common/widgets/Notification*.qml)
+                    select_prefix "notification-center"; select_prefix "dashboard" ;;
                 GlobalStates.qml|ShellIiPanels.qml|ShellWafflePanels.qml|shell.qml|settings.qml|waffleSettings.qml|defaults/config.json|modules/common/Config.qml|modules/common/Appearance.qml|modules/common/Looks.qml|modules/common/widgets/*)
                     : ;; # Broad files do not turn a focused audit into an exhaustive one.
                 modules/sidebarLeft/aiChat/*|modules/sidebarLeft/AiChat.qml|modules/sidebarLeft/ApiInputBoxIndicator.qml|services/Ai.qml|services/ai/*)

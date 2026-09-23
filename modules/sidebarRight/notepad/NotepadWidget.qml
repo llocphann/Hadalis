@@ -44,11 +44,11 @@ Item {
     readonly property int wordCount: textArea.text.trim().length > 0
         ? textArea.text.trim().split(/\s+/).length : 0
     readonly property int tabCount: Notepad.tabs.length
-    // Compact Dashboard/Quick Notes surfaces do not expose Zettelkasten
+    // The corner Quick Notes capture surface does not expose Zettelkasten
     // actions. Keep that optional singleton (and its Todo backend dependency)
-    // cold until the full Sidebar Notepad actually needs the integration.
+    // cold while the hover popup is only being used as a shared editor.
     readonly property bool zettelkastenIntegrationEnabled:
-        !root.compactPresentation
+        !root.quickCapturePresentation
     readonly property bool canSaveZettel: root.zettelkastenIntegrationEnabled
         && Notepad.ready
         && Zettelkasten.ready

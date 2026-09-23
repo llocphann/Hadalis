@@ -6,6 +6,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 PAGE = ROOT / "modules" / "settings" / "RuntimeDiagnosticsConfig.qml"
 SPARKLINE = ROOT / "modules" / "settings" / "widgets" / "BtopSparkline.qml"
+PROCESS_TABLE = ROOT / "modules" / "settings" / "widgets" / "BtopProcessTable.qml"
+INTERFACE_TABLE = ROOT / "modules" / "settings" / "widgets" / "BtopInterfaceTable.qml"
 SESSION = ROOT / "services" / "RuntimeDiagnosticsSession.qml"
 RUNTIME = ROOT / "services" / "RuntimeDiagnostics.qml"
 TARGET_RUNTIME = ROOT / "services" / "CodeWorkflowRuntimeTarget.qml"
@@ -30,6 +32,8 @@ def main() -> None:
     target_runtime = TARGET_RUNTIME.read_text(encoding="utf-8")
     sampler = SAMPLER.read_text(encoding="utf-8")
     sparkline = SPARKLINE.read_text(encoding="utf-8")
+    process_table = PROCESS_TABLE.read_text(encoding="utf-8")
+    interface_table = INTERFACE_TABLE.read_text(encoding="utf-8")
 
     for widget in (
         "BtopMetricPanel.qml",
@@ -69,6 +73,9 @@ def main() -> None:
         'root.historyValues("shellWriteBytesPerSec")',
         "root.formatLoadAverage(",
         "root.formatUptime(",
+        "function shellGpuBusy(): var {",
+        "function shellGpuMemoryKiB(): var {",
+        "return found ? total : null",
     ):
         require(page, token, "RuntimeDiagnosticsConfig.qml")
 
@@ -97,10 +104,24 @@ def main() -> None:
     ):
         require(sparkline, token, "BtopSparkline.qml")
 
+    require(
+        process_table,
+        "if (value === null || value === undefined)",
+        "BtopProcessTable.qml",
+    )
+    for token in (
+        "if (value === null || value === undefined)",
+        "? null : Number(data.rxBytesPerSec)",
+        "? null : Number(data.txBytesPerSec)",
+    ):
+        require(interface_table, token, "BtopInterfaceTable.qml")
+
     for token in (
         "systemSwapPercent:",
         "shellReadBytesPerSec:",
         "shellWriteBytesPerSec:",
+        "if (used === null || used === undefined",
+        "const raw = engines[key]",
         "slice(-60)",
         'running: root.samplingEnabled',
     ):

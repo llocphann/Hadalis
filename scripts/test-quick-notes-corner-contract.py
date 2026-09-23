@@ -8,6 +8,7 @@ CORNERS = ROOT / "modules" / "screenCorners" / "ScreenCorners.qml"
 POPUP = ROOT / "modules" / "screenCorners" / "QuickNotesPopup.qml"
 SCREEN_EDGES = ROOT / "modules" / "screenCorners" / "ScreenEdges.qml"
 NOTEPAD = ROOT / "modules" / "sidebarRight" / "notepad" / "NotepadWidget.qml"
+SIDEBAR_QUICK_NOTE = ROOT / "modules" / "sidebarLeft" / "widgets" / "QuickNote.qml"
 NOTEPAD_SERVICE = ROOT / "services" / "Notepad.qml"
 CONFIG = ROOT / "modules" / "common" / "Config.qml"
 DEFAULTS = ROOT / "defaults" / "config.json"
@@ -29,6 +30,7 @@ corners = CORNERS.read_text(encoding="utf-8")
 popup = POPUP.read_text(encoding="utf-8")
 screen_edges = SCREEN_EDGES.read_text(encoding="utf-8")
 notepad = NOTEPAD.read_text(encoding="utf-8")
+sidebar_quick_note = SIDEBAR_QUICK_NOTE.read_text(encoding="utf-8")
 notepad_service = NOTEPAD_SERVICE.read_text(encoding="utf-8")
 config = CONFIG.read_text(encoding="utf-8")
 defaults = json.loads(DEFAULTS.read_text(encoding="utf-8"))
@@ -116,6 +118,16 @@ for token in (
     "Component.onDestruction: root.flushPendingSave()",
 ):
     require(notepad, token, "shared Notepad must expose safe Quick Notes hooks")
+
+for token in (
+    'property string draftTabId: ""',
+    "function beginEditing(): void",
+    "function saveDraft(): bool",
+    "Notepad.setTabTextById(root.draftTabId, root.draft)",
+    "function cancelEditing(): void",
+):
+    require(sidebar_quick_note, token,
+            "Sidebar Quick Note must save to the tab identity it opened")
 
 for token in (
     "function _allocateTabId()",

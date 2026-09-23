@@ -582,7 +582,6 @@ Item {
             appToplevel: modelData
             appListRoot: root
             vertical: root.vertical
-            dockPosition: root.dockPosition
 
             anchors.verticalCenter: !root.vertical ? parent?.verticalCenter : undefined
             anchors.horizontalCenter: root.vertical ? parent?.horizontalCenter : undefined

@@ -31,14 +31,16 @@ Singleton {
         const id = String(ownerId ?? "").trim()
         if (id.length === 0)
             return
+        const wasDemanded =
+            Object.keys(root.remoteConsumers).length > 0
         const next = Object.assign({}, root.remoteConsumers)
         if (active)
             next[id] = true
         else
             delete next[id]
-        const wasDemanded = root.remoteDemanded
+        const nowDemanded = Object.keys(next).length > 0
         root.remoteConsumers = next
-        if (!wasDemanded && root.remoteDemanded
+        if (!wasDemanded && nowDemanded
                 && !root.hasLocalDeclarations)
             Qt.callLater(root.refreshRemoteSnapshot)
     }

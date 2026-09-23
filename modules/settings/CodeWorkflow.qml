@@ -1476,7 +1476,7 @@ Item {
     }
 
     function requestAnalysis(force: bool): void {
-        if (!root.workflowActive || root.workflowDestroying
+        if (!root.workflowOperational
                 || root.transactionOwnsAnalyzer
                 || root.sourcePath.length === 0)
             return

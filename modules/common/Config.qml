@@ -2048,6 +2048,16 @@ Singleton {
                 }
             }
 
+            // Bottom-left hover Quick Notes. The popup reuses Notepad state,
+            // so these values only control presentation/interaction geometry.
+            property JsonObject quickNotes: JsonObject {
+                property bool enable: true
+                property int hoverDelayMs: 220
+                property int cornerSize: 14
+                property int popupWidth: 420
+                property int popupHeight: 300
+            }
+
             property JsonObject overview: JsonObject {
                 property bool enable: true
                 property real scale: 0.17

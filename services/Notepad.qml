@@ -197,9 +197,13 @@ Singleton {
                         Qt.callLater(() => root._save())
                     return
                 }
-            } catch (e) {}
-            // Invalid/empty JSON — try legacy migration before allowing writes.
-            legacyFileView.path = Qt.resolvedUrl(root.legacyFilePath)
+                // The tabs file exists, so legacy migration is no longer safe:
+                // an old notepad.txt may be stale and would overwrite evidence
+                // needed to recover the current multi-tab store. Fail closed.
+                console.warn("[Notepad] Tabs file contains no valid tabs; preserving it")
+            } catch (e) {
+                console.warn("[Notepad] Invalid tabs file; preserving it:", e)
+            }
         }
 
         onLoadFailed: (error) => {

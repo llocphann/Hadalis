@@ -12,6 +12,7 @@ QMLDIR = ROOT / "modules" / "settings" / "qmldir"
 WAFFLE_THEMES = ROOT / "modules" / "waffle" / "settings" / "pages" / "WThemesPage.qml"
 WELCOME = ROOT / "welcome.qml"
 GLOBAL_ACTIONS = ROOT / "services" / "GlobalActions.qml"
+MONITOR_VISIBILITY = ROOT / "modules" / "settings" / "MonitorVisibilityConfig.qml"
 
 
 def require(text: str, token: str, source: str) -> None:
@@ -37,6 +38,7 @@ def main() -> None:
     waffle_themes = WAFFLE_THEMES.read_text(encoding="utf-8")
     welcome = WELCOME.read_text(encoding="utf-8")
     global_actions = GLOBAL_ACTIONS.read_text(encoding="utf-8")
+    monitor_visibility = MONITOR_VISIBILITY.read_text(encoding="utf-8")
 
     for token in (
         "readonly property int themesPageIndex: 4",
@@ -124,6 +126,22 @@ def main() -> None:
         "ThemeService.setGlobalStyle(",
     ):
         forbid(global_actions, token, "GlobalActions.qml")
+
+    for token in (
+        "Appearance.inirEverywhere",
+        "Appearance.auroraEverywhere",
+        "Appearance.angelEverywhere",
+        "Appearance.regaliaEverywhere",
+        "Appearance.zzzEverywhere",
+        "Appearance.cookieEverywhere",
+    ):
+        forbid(monitor_visibility, token, "MonitorVisibilityConfig.qml")
+    for token in (
+        "color: Appearance.colors.colLayer1",
+        "border.width: 1",
+        "border.color: SettingsMaterialPreset.groupBorderColor",
+    ):
+        require(monitor_visibility, token, "MonitorVisibilityConfig.qml")
 
     print("Material-only public Themes settings contract: PASS")
 

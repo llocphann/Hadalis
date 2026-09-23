@@ -83,6 +83,12 @@ for token in (
     '"Indexed parser boundary · "',
     '"Indexed runtime-boundary evidence · READ ONLY · "',
     "visible: root.inspectedSemanticAnchor.length === 0",
+    "readonly property var sourceRuntimeBoundaries:",
+    "CodeWorkflowRuntime.relativeSourcePath(root.sourcePath)",
+    "readonly property string sourceRuntimeBoundarySummary:",
+    "currentSourceBoundaryCount: root.sourceRuntimeBoundaries.length",
+    '" parser boundaries · "',
+    '" · source evidence only"',
 ):
     require(page, token, "workspace boundary navigation missing " + token)
 

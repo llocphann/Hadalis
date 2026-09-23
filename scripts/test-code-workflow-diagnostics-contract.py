@@ -24,6 +24,7 @@ shell = read("shell.qml")
 qmldir = read("services/qmldir")
 sampler = read("scripts/runtime-diagnostics-sampler.py")
 workflow_runtime = read("services/CodeWorkflowRuntime.qml")
+workflow_index = read("services/CodeWorkflowIndex.qml")
 
 # Material keeps historical page indices and appends Diagnostics at 31.
 require(registry, 'key: "diagnostics"', "Material Diagnostics page missing")
@@ -75,12 +76,25 @@ for token in (
     '"--pid", String(Quickshell.processId)',
     "id: leasePruneTimer",
     "running: root.sessionActive",
+    "function _reconcileSourceBoundaries(): void",
+    "CodeWorkflowRuntime.relativeSourcePath(",
+    "function sourceDiscoverySummary(): var",
+    "CodeWorkflowIndex.refresh(false)",
+    "liveRuntimeEvidence: false",
+    "discovery: root.sourceDiscoverySummary()",
 ):
     require(server, token, "Diagnostics lease/sampler contract incomplete")
 if server.count("Timer {") != 1:
     raise SystemExit("FAIL: Diagnostics owns only the TTL cleanup timer")
 if server.count("Process {") != 1:
     raise SystemExit("FAIL: Diagnostics must own exactly one on-demand sampler process")
+
+if "CodeWorkflowIndex.cancel()" in server:
+    raise SystemExit(
+        "FAIL: Diagnostics must not cancel the Workflow-owned one-shot index"
+    )
+require(workflow_index, "function cancel(): void",
+        "Workflow index should remain explicitly cancellable by its own owner")
 
 for forbidden in (
     "diagnosticsLeases",
@@ -207,6 +221,10 @@ for page in (material_page, waffle_page):
         "root.shellEvidence?.memory?.valuesKiB?.Swap",
         "root.shellEvidence?.gpu?.available === true",
         "root.networkEvidence?.aggregateNonLoopback",
+        "root.evidence?.discovery ?? null",
+        "Runtime boundaries",
+        "Canonical source matches",
+        "Source boundaries are parser evidence, not proof that a component executed.",
         "Per-component CPU, RAM, Swap, GPU and Network",
     ):
         require(page, token, "Diagnostics UI must render exact shell evidence: " + token)

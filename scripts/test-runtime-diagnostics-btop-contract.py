@@ -200,6 +200,11 @@ def main() -> None:
         require(sampler, token, "runtime-diagnostics-sampler.py")
 
     forbid(sampler, "cmdline", "runtime-diagnostics-sampler.py")
+    if sampler.count(
+            "read_process_start_ticks(args.pid) != target_start_ticks") < 2:
+        raise SystemExit(
+            "FAIL: sampler must verify shell PID identity before and after sampling"
+        )
 
     code = compile(sampler, str(SAMPLER), "exec")
     namespace = {"__name__": "runtime_diagnostics_contract"}

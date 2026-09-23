@@ -79,6 +79,13 @@ module work, commit directly to `dev`, and never force-push or modify `stable`.
   expires quickly, is cleared when the canvas hides, and never animates graph
   edges: residency/loading lifecycle must not be presented as property-binding,
   signal, or execution activity.
+- Workflow target navigation now remembers canonical runtime targets as
+  workspace metadata. One target can be pinned and up to eight recent targets are
+  retained across shell restarts, surfaced as separate **Pinned** / **Recent**
+  sections before the remaining runtime inventory. Capture scenarios snapshot and
+  restore this metadata so automated evidence runs do not rewrite the user's
+  navigation history. IDs remain the runtime registry's existing target IDs; the
+  feature does not invent aliases or rename components.
 
 ## Production UI refinement continuation — 2026-09-21
 

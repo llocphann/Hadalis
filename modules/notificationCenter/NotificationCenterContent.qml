@@ -16,6 +16,7 @@ Item {
 
     signal openCenterRequested()
     signal searchFocusRequested()
+    signal externalNavigationRequested()
 
     function focusSearch(): void {
         searchField.forceActiveFocus()
@@ -133,6 +134,7 @@ Item {
                 clip: true
                 popup: false
                 filterQuery: searchField.text
+                onExternalLinkOpened: root.externalNavigationRequested()
             }
 
             MaterialPlaceholderMessage {

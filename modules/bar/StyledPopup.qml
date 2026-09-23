@@ -19,6 +19,11 @@ LazyLoader {
     // This changes only placement; the real hoverTarget still owns screen,
     // edge, hover-transfer and cross-axis attachment.
     property bool centerOnOutput: false
+    // Edge-hosted hot-corner anchors live in tiny layer-shell windows whose
+    // local coordinates start at zero even when the window is physically on the
+    // output's trailing edge. Let those callers pin tangent placement to the
+    // output start/end without weakening hoverTarget screen ownership.
+    property string tangentEdgeOverride: ""
     property string attachmentEdgeOverride: ""
     property real attachmentThicknessOverride: -1
     property bool hoverActivates: true
@@ -268,6 +273,9 @@ LazyLoader {
                 ? Math.max(0, outputWidth - thickness) : 0
             const tangentY = root.centerOnOutput
                 ? Math.max(0, (outputHeight - localHeight) / 2)
+                : root.tangentEdgeOverride === "start" ? 0
+                : root.tangentEdgeOverride === "end"
+                    ? Math.max(0, outputHeight - localHeight)
                 : mapped.y
             return Qt.rect(barX, tangentY, thickness, localHeight)
         }
@@ -276,6 +284,9 @@ LazyLoader {
             ? Math.max(0, outputHeight - thickness) : 0
         const tangentX = root.centerOnOutput
             ? Math.max(0, (outputWidth - localWidth) / 2)
+            : root.tangentEdgeOverride === "start" ? 0
+            : root.tangentEdgeOverride === "end"
+                ? Math.max(0, outputWidth - localWidth)
             : mapped.x
         return Qt.rect(tangentX, barY, localWidth, thickness)
     }

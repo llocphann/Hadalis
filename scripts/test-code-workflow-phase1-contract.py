@@ -342,7 +342,7 @@ for token in (
     "readonly property string runtimeRemoteConsumerId:",
     "function syncRemoteRuntimeDemand(): void",
     "CodeWorkflowRuntime.setRemoteConsumerActive(",
-    "root.enabled && root.visible",
+    "root.workflowActive && root.workflowHydrated",
     "function syncInitialOutput(): void",
     "target: CodeWorkflowRuntime",
     "root.syncInitialOutput()",
@@ -354,7 +354,10 @@ if "detail: {\n                    const state =" in page:
     fail("runtime target detail must not use an executable block as an object value")
 
 for token in (
-    "readonly property bool workflowActive: root.enabled && root.visible",
+    "readonly property bool workflowHostActive:",
+    "root.parent.enabled && root.parent.visible",
+    "readonly property bool workflowActive:",
+    "root.enabled && root.visible && root.workflowHostActive",
     "property bool workflowHydrated: false",
     "readonly property bool workflowOperational:",
     "root.workflowActive && root.workflowHydrated",

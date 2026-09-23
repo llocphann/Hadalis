@@ -140,7 +140,10 @@ Bar.StyledPopup {
 
     property QtObject _entryBridgeTimer: Timer {
         id: entryBridgeTimer
-        interval: 260
+        // Use the public transfer-grace setting for both directions. A separate
+        // hard-coded entry delay made Settings only partially authoritative.
+        interval: Math.max(0,
+            Config.options?.notificationCenter?.closeGraceMs ?? 280)
         repeat: false
         onTriggered: root.entryBridgeHeld = false
     }

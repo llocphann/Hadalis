@@ -16,6 +16,7 @@ singleton CavaTheme 1.0 CavaTheme.qml
 singleton CompositorService 1.0 CompositorService.qml
 singleton ConflictKiller 1.0 ConflictKiller.qml
 singleton CodeWorkflowIdentity 1.0 CodeWorkflowIdentity.qml
+singleton CodeWorkflowIndex 1.0 CodeWorkflowIndex.qml
 singleton CodeWorkflowRuntime 1.0 CodeWorkflowRuntime.qml
 singleton RuntimeDiagnostics 1.0 RuntimeDiagnostics.qml
 singleton RuntimeDiagnosticsSession 1.0 RuntimeDiagnosticsSession.qml

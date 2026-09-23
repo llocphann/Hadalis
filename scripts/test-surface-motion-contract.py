@@ -78,7 +78,11 @@ for required in (
     'readonly property string mode: "slide"',
     "readonly property int duration: 300",
     "readonly property int easingType: Easing.InOutCubic",
-    "readonly property real dashboardOffset: 24",
+    "readonly property int dashboardEnterDuration: 360",
+    "readonly property int dashboardExitDuration: 260",
+    "readonly property int dashboardEnterEasingType: Easing.OutCubic",
+    "readonly property int dashboardExitEasingType: Easing.InCubic",
+    "readonly property real dashboardOffset: 32",
 ):
     assert required in surface_motion, f"SurfaceMotion invariant missing: {required}"
 
@@ -119,14 +123,18 @@ assert "animationType" not in defaults.get("sidebar", {})
 dashboard_loader = qml_block(dashboard, "Loader {\n            id: contentLoader")
 assert "SurfaceMotion.dashboardOffset" in dashboard_loader
 assert dashboard_loader.count('property: "panelTranslateY"') == 2
-assert "duration: SurfaceMotion.duration" in dashboard_loader
-assert "easing.type: SurfaceMotion.easingType" in dashboard_loader
+assert "duration: SurfaceMotion.dashboardEnterDuration" in dashboard_loader
+assert "easing.type: SurfaceMotion.dashboardEnterEasingType" in dashboard_loader
+assert "duration: SurfaceMotion.dashboardExitDuration" in dashboard_loader
+assert "easing.type: SurfaceMotion.dashboardExitEasingType" in dashboard_loader
 assert 'property: "opacity"' not in dashboard_loader
 assert 'property: "scale"' not in dashboard_loader
 assert "opacity: 1" in dashboard_loader
 assert "scale: 1" in dashboard_loader
 assert "active: true" in dashboard_loader
 assert "visible: root._contentPresented" in dashboard_loader
+assert "layer.enabled: root._slideLayerActive || contentLoader.desaturationActive" in dashboard_loader
+assert "layer.smooth: true" in dashboard_loader
 assert "visible: true" in dashboard
 assert "updatesEnabled: root._renderUpdatesNeeded" in dashboard
 assert "mask: dashboardInputRegion" in dashboard

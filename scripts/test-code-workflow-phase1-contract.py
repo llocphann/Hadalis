@@ -616,6 +616,19 @@ if "runtimePulseEdge" in canvas:
     fail("lifecycle activity must not masquerade as binding/edge execution")
 require(runtime, "atMs: Date.now()",
         "runtime lifecycle evidence must carry a capture timestamp")
+for token in (
+    "property var declarationStates: ({})",
+    "const previousState = String(root.declarationStates[tokenId] ?? \"\")",
+    "if (nextState.length > 0 && nextState !== previousState)",
+    "root._event(nextState, targetId, tokenId, targetId)",
+    "delete nextStates[token]",
+):
+    require(runtime, token,
+            "runtime declaration lifecycle transition tracking missing " + token)
+require(runtime_declaration, "CodeWorkflowRuntime.touchDeclaration(root.registrationToken)",
+        "loader lifecycle changes must flow through the deduplicating runtime registry")
+if "loader.item" in runtime_declaration:
+    fail("runtime declaration lifecycle diagnostics must not dereference loader.item")
 if "modelData.token" in page:
     fail("runtime lifecycle Inspector must not expose internal runtime tokens")
 

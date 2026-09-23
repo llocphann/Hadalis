@@ -138,6 +138,8 @@ Item {
     }
     readonly property var inspectTargets: {
         const items = []
+        const pinnedRuntimeItems = []
+        const recentRuntimeItems = []
         const runtimeItems = []
         const graphItems = []
         const edgeItems = []
@@ -195,7 +197,7 @@ Item {
                     || target?.configured === false)
                 detail = "unloaded · disabled"
 
-            append(runtimeItems, {
+            const runtimeItem = {
                 category: "runtime",
                 id: target.targetId,
                 label: target.label,
@@ -204,7 +206,16 @@ Item {
                 internal: target?.internal === true,
                 depth: Math.min(5, Math.max(
                     0, Number(target.depth ?? 0)))
-            })
+            }
+            if (String(target.targetId ?? "")
+                    === CodeWorkflowSession.pinnedTargetId) {
+                append(pinnedRuntimeItems, runtimeItem)
+            } else if (CodeWorkflowSession.recentTargetIds.includes(
+                    String(target.targetId ?? ""))) {
+                append(recentRuntimeItems, runtimeItem)
+            } else {
+                append(runtimeItems, runtimeItem)
+            }
         }
 
         for (const node of (root.graph?.nodes ?? [])) {
@@ -296,6 +307,10 @@ Item {
         }
 
         appendSection(
+            "pinned", "Pinned", "push_pin", "target", pinnedRuntimeItems)
+        appendSection(
+            "recent", "Recent", "history", "targets", recentRuntimeItems)
+        appendSection(
             "runtime", "Runtime", "memory", "targets", runtimeItems)
         appendSection(
             "graph", "Workflow graph", "account_tree", "nodes", graphItems)
@@ -356,6 +371,8 @@ Item {
             runtimeActivityEventCount: root.runtimeActivityEvents.length,
             runtimePulseTargetId: canvas.runtimePulseTargetId,
             runtimePulseKind: canvas.runtimePulseKind,
+            pinnedTargetId: CodeWorkflowSession.pinnedTargetId,
+            recentTargetIds: CodeWorkflowSession.recentTargetIds,
             panX: CodeWorkflowSession.panX,
             panY: CodeWorkflowSession.panY,
             zoom: CodeWorkflowSession.zoom
@@ -386,6 +403,8 @@ Item {
             inspectorPaneCollapsed: CodeWorkflowSession.inspectorPaneCollapsed,
             sourcePreviewHeight: CodeWorkflowSession.sourcePreviewHeight,
             minimapEnabled: CodeWorkflowSession.minimapEnabled,
+            pinnedTargetId: CodeWorkflowSession.pinnedTargetId,
+            recentTargetIds: CodeWorkflowSession.recentTargetIds.slice(),
             graphNodeLayoutOffsets: JSON.parse(JSON.stringify(
                 CodeWorkflowSession.graphNodeLayoutOffsets ?? ({})))
         }
@@ -435,6 +454,11 @@ Item {
             Number(baseline.sourcePreviewHeight ?? 190)
         CodeWorkflowSession.minimapEnabled =
             baseline.minimapEnabled !== false
+        CodeWorkflowSession.pinnedTargetId =
+            String(baseline.pinnedTargetId ?? "")
+        CodeWorkflowSession.recentTargetIds =
+            CodeWorkflowSession._sanitizeRecentTargetIds(
+                baseline.recentTargetIds ?? [])
         CodeWorkflowSession.graphNodeLayoutOffsets = JSON.parse(
             JSON.stringify(baseline.graphNodeLayoutOffsets ?? ({})))
         CodeWorkflowSession.graphLayoutRevision += 1
@@ -1946,6 +1970,27 @@ Item {
                     mainText: ""
                     onClicked: CodeWorkflowSession.openSubflow("bar")
                     StyledToolTip { text: "Back to Bar workflow" }
+                }
+                RippleButtonWithIcon {
+                    materialIcon: CodeWorkflowSession.pinnedTargetId
+                            === CodeWorkflowSession.selectedTargetId
+                        ? "keep_off" : "push_pin"
+                    buttonText: CodeWorkflowSession.pinnedTargetId
+                            === CodeWorkflowSession.selectedTargetId
+                        ? "Unpin target" : "Pin target"
+                    mainText: ""
+                    enabled: CodeWorkflowRuntime.descriptor(
+                        CodeWorkflowSession.selectedTargetId) !== null
+                    toggled: CodeWorkflowSession.pinnedTargetId
+                        === CodeWorkflowSession.selectedTargetId
+                    onClicked: CodeWorkflowSession.togglePinnedTarget(
+                        CodeWorkflowSession.selectedTargetId)
+                    StyledToolTip {
+                        text: CodeWorkflowSession.pinnedTargetId
+                                === CodeWorkflowSession.selectedTargetId
+                            ? "Unpin current runtime target"
+                            : "Pin current runtime target"
+                    }
                 }
                 RippleButtonWithIcon {
                     materialIcon: "ads_click"

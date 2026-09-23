@@ -14,6 +14,7 @@ Item { // Notification item area
     property bool expanded: false
     property bool popup: false
     signal externalLinkOpened()
+    signal notificationActionInvoked()
     property bool onlyNotification: false
     property real fontSize: Appearance.font.pixelSize.small
     property real padding: onlyNotification ? 0 : 8
@@ -333,7 +334,10 @@ Item { // Notification item area
                                     buttonText: String(modelData?.text ?? "")
                                     urgency: root.notificationObject?.urgency ?? NotificationUrgency.Normal
                                     onClicked: {
-                                        Notifications.attemptInvokeAction(notificationObject.notificationId, modelData.identifier);
+                                        Notifications.attemptInvokeAction(
+                                            notificationObject.notificationId,
+                                            modelData.identifier)
+                                        root.notificationActionInvoked()
                                     }
                                 }
                             }

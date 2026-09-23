@@ -281,7 +281,7 @@ for token in (
     "property var value: null",
     "readonly property bool valueAvailable:",
     'Math.round(root.numericValue) + "%" : "—"',
-    "Layout.preferredHeight: 22",
+    "Layout.preferredHeight: 28",
     "id: historyRow",
     "clip: true",
     "/ root.samples.length",

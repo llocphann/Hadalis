@@ -231,7 +231,7 @@ MouseArea { // Notification group area
                         visible: root.modernLayout
                         anchors.left: parent.left
                         anchors.verticalCenter: parent.verticalCenter
-                        scale: 0.72
+                        implicitSize: 30
                         image: root.multipleNotifications ? ""
                             : notificationGroup?.notifications[0]?.image ?? ""
                         appIcon: root.notificationGroup?.appIcon

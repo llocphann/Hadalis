@@ -2280,7 +2280,7 @@ Item {
                     }
                     StyledText {
                         Layout.fillWidth: true
-                        text: "Runtime · graph · connections · connect · parsed QML"
+                        text: "Runtime · graph · connections · connect · parsed QML · workspace boundaries"
                         color: Appearance.colors.colSubtext
                         font.pixelSize: Appearance.font.pixelSize.smallest
                         wrapMode: Text.WordWrap
@@ -2308,6 +2308,25 @@ Item {
                             ? "Hide internals" : "Show internals"
                         onClicked: root.inspectShowInternals =
                             !root.inspectShowInternals
+                    }
+
+                    RippleButtonWithIcon {
+                        Layout.fillWidth: true
+                        materialIcon: CodeWorkflowIndex.status === "indexing"
+                            ? "progress_activity" : "refresh"
+                        mainText: CodeWorkflowIndex.status === "indexing"
+                            ? "Indexing workspace"
+                            : "Refresh workspace index"
+                        enabled: CodeWorkflowIndex.status !== "indexing"
+                        onClicked: CodeWorkflowIndex.refresh(false)
+                    }
+                    StyledText {
+                        Layout.fillWidth: true
+                        visible: CodeWorkflowIndex.error.length > 0
+                        text: "Workspace index · " + CodeWorkflowIndex.error
+                        color: Appearance.colors.colSubtext
+                        font.pixelSize: Appearance.font.pixelSize.smallest
+                        wrapMode: Text.WordWrap
                     }
 
                     StyledText {

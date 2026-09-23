@@ -11,6 +11,7 @@ Item {
     id: root
 
     property bool showOpenCenterButton: false
+    property bool popupPresentation: false
     readonly property bool dragActive: listview.dragIndex >= 0
     readonly property bool searchVisible: Notifications.list.length > 3
 
@@ -132,7 +133,8 @@ Item {
                 id: listview
                 anchors.fill: parent
                 clip: true
-                popup: false
+                dataMode: "history"
+                popupPresentation: root.popupPresentation
                 filterQuery: searchField.text
                 onExternalLinkOpened: root.externalNavigationRequested()
             }

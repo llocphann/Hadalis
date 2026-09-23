@@ -94,7 +94,55 @@ Item {
 
     property var runtimeSnapshotCache: ({ outputs: [], records: [] })
     property string runtimeSnapshotFingerprint: ""
+    // Targets asks for the best runtime record for every descriptor. The old
+    // lookup scanned the records array up to four times per target, so a single
+    // sidebar rebuild became quadratic as runtime declarations grew. Index the
+    // immutable presentation snapshot once and keep selection/output fallbacks
+    // as O(1) map lookups.
+    property var runtimeRecordIndex: ({
+        exact: ({}),
+        output: ({}),
+        resident: ({}),
+        first: ({})
+    })
     readonly property var snapshot: root.runtimeSnapshotCache
+
+    function runtimeRecordKey(targetId: string, qualifier: string): string {
+        return String(targetId ?? "") + "\u001f" + String(qualifier ?? "")
+    }
+
+    function buildRuntimeRecordIndex(snapshot): var {
+        const exact = ({})
+        const output = ({})
+        const resident = ({})
+        const first = ({})
+        for (const record of (snapshot?.records ?? [])) {
+            const targetId = String(record?.targetId ?? "")
+            if (targetId.length === 0)
+                continue
+            const instanceKey = root.runtimeRecordKey(
+                targetId, String(record?.instanceId ?? ""))
+            if (exact[instanceKey] === undefined)
+                exact[instanceKey] = record
+            const outputName = String(record?.output ?? "")
+            if (outputName.length > 0) {
+                const outputKey = root.runtimeRecordKey(targetId, outputName)
+                if (output[outputKey] === undefined)
+                    output[outputKey] = record
+            }
+            if (resident[targetId] === undefined
+                    && String(record?.state ?? "") === "resident")
+                resident[targetId] = record
+            if (first[targetId] === undefined)
+                first[targetId] = record
+        }
+        return {
+            exact: exact,
+            output: output,
+            resident: resident,
+            first: first
+        }
+    }
 
     function refreshRuntimeSnapshot(): void {
         if (!root.workflowOperational)
@@ -112,6 +160,7 @@ Item {
                 && fingerprint === root.runtimeSnapshotFingerprint)
             return
         root.runtimeSnapshotFingerprint = fingerprint
+        root.runtimeRecordIndex = root.buildRuntimeRecordIndex(next)
         root.runtimeSnapshotCache = next
     }
     function runtimeEventTargetId(event): string {
@@ -1431,25 +1480,23 @@ Item {
     }
 
     function recordFor(targetId: string): var {
-        const records = root.snapshot.records ?? []
-        const exact = records.find(item =>
-            item.targetId === targetId
-            && item.instanceId === CodeWorkflowSession.selectedInstanceId)
-        if (exact)
+        const id = String(targetId ?? "")
+        if (id.length === 0)
+            return null
+        const index = root.runtimeRecordIndex
+        const exact = index.exact?.[root.runtimeRecordKey(
+            id, CodeWorkflowSession.selectedInstanceId)]
+        if (exact !== undefined)
             return exact
 
         if (CodeWorkflowSession.outputName.length > 0) {
-            const sameOutput = records.find(item =>
-                item.targetId === targetId
-                && item.output === CodeWorkflowSession.outputName)
-            if (sameOutput)
+            const sameOutput = index.output?.[root.runtimeRecordKey(
+                id, CodeWorkflowSession.outputName)]
+            if (sameOutput !== undefined)
                 return sameOutput
         }
 
-        return records.find(item =>
-            item.targetId === targetId && item.state === "resident")
-            ?? records.find(item => item.targetId === targetId)
-            ?? null
+        return index.resident?.[id] ?? index.first?.[id] ?? null
     }
 
     function selectTarget(targetId: string): void {

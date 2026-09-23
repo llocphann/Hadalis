@@ -33,6 +33,9 @@ SELECTION_DIALOG = ROOT / "modules" / "common" / "widgets" / "SelectionDialog.qm
 TOAST_NOTIFICATION = ROOT / "modules" / "common" / "widgets" / "ToastNotification.qml"
 NOTIFICATION_ITEM = ROOT / "modules" / "common" / "widgets" / "NotificationItem.qml"
 NOTIFICATION_GROUP = ROOT / "modules" / "common" / "widgets" / "NotificationGroup.qml"
+NOTIFICATION_ACTION_BUTTON = ROOT / "modules" / "common" / "widgets" / "NotificationActionButton.qml"
+NOTIFICATION_GROUP_EXPAND_BUTTON = ROOT / "modules" / "common" / "widgets" / "NotificationGroupExpandButton.qml"
+NOTIFICATION_APP_ICON = ROOT / "modules" / "common" / "widgets" / "NotificationAppIcon.qml"
 TIMER_INDICATOR = ROOT / "modules" / "bar" / "TimerIndicator.qml"
 SHELL_UPDATE_INDICATOR = ROOT / "modules" / "bar" / "ShellUpdateIndicator.qml"
 UTIL_BUTTONS = ROOT / "modules" / "bar" / "UtilButtons.qml"
@@ -140,6 +143,9 @@ def main() -> None:
     toast_notification = TOAST_NOTIFICATION.read_text(encoding="utf-8")
     notification_item = NOTIFICATION_ITEM.read_text(encoding="utf-8")
     notification_group = NOTIFICATION_GROUP.read_text(encoding="utf-8")
+    notification_action_button = NOTIFICATION_ACTION_BUTTON.read_text(encoding="utf-8")
+    notification_group_expand_button = NOTIFICATION_GROUP_EXPAND_BUTTON.read_text(encoding="utf-8")
+    notification_app_icon = NOTIFICATION_APP_ICON.read_text(encoding="utf-8")
     timer_indicator = TIMER_INDICATOR.read_text(encoding="utf-8")
     shell_update_indicator = SHELL_UPDATE_INDICATOR.read_text(encoding="utf-8")
     util_buttons = UTIL_BUTTONS.read_text(encoding="utf-8")
@@ -266,6 +272,9 @@ def main() -> None:
         "ToastNotification.qml": toast_notification,
         "NotificationItem.qml": notification_item,
         "NotificationGroup.qml": notification_group,
+        "NotificationActionButton.qml": notification_action_button,
+        "NotificationGroupExpandButton.qml": notification_group_expand_button,
+        "NotificationAppIcon.qml": notification_app_icon,
     }
     for source, source_text in shared_material_primitives.items():
         for token in (
@@ -391,6 +400,30 @@ def main() -> None:
         "GE.OpacityMask",
     ):
         forbid(notification_group, token, "NotificationGroup.qml")
+
+    for token in (
+        "implicitHeight: 34",
+        "buttonRadius: Appearance.rounding.small",
+        "? Appearance.colors.colSecondaryContainer",
+        ": Appearance.colors.colLayer4",
+        "? Appearance.colors.colOnSecondaryContainer",
+        ": Appearance.colors.colOnLayer3",
+    ):
+        require(notification_action_button, token, "NotificationActionButton.qml")
+    for token in (
+        "buttonRadius: Appearance.rounding.full",
+        "ColorUtils.mix(",
+        "Appearance.colors.colLayer2Hover",
+        "Appearance.colors.colLayer2Active",
+        "color: Appearance.colors.colOnLayer2",
+    ):
+        require(notification_group_expand_button, token, "NotificationGroupExpandButton.qml")
+    for token in (
+        'color: isUrgent ? Appearance.colors.colPrimaryContainer : "transparent"',
+        "Appearance.colors.colOnPrimaryContainer : Appearance.colors.colOnSecondaryContainer",
+        "radius: Appearance.rounding.full",
+    ):
+        require(notification_app_icon, token, "NotificationAppIcon.qml")
 
     motion_start = appearance.index("property QtObject motion: QtObject {")
     motion_end = appearance.index("m3colors: QtObject {", motion_start)

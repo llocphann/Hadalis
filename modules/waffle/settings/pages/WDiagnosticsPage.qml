@@ -30,6 +30,22 @@ WSettingsPage {
         || root.samplerError.length > 0
     readonly property bool samplerRunning:
         root.evidence?.sampler?.running === true
+    readonly property bool sessionStalled: root.sampleIsStale()
+
+    function sampleIsStale(): bool {
+        const tick = RuntimeDiagnosticsSession.heartbeatTick
+        if (tick < 0 || !RuntimeDiagnosticsSession.pageCurrent
+                || root.sessionHasError || !root.samplerRunning
+                || root.systemEvidence === null)
+            return false
+        const sampleAtMs = Number(root.evidence?.sampleAtMs)
+        if (!Number.isFinite(sampleAtMs) || sampleAtMs <= 0)
+            return false
+        const intervalMs = Number(root.evidence?.status?.sampleIntervalMs)
+        const staleAfterMs = Number.isFinite(intervalMs) && intervalMs > 0
+            ? Math.max(5000, intervalMs * 4) : 5000
+        return Date.now() - sampleAtMs > staleAfterMs
+    }
 
     function sessionStateLabel(): string {
         if (!RuntimeDiagnosticsSession.pageCurrent)
@@ -38,6 +54,8 @@ WSettingsPage {
             return Translation.tr("Diagnostics sampling error")
         if (!root.samplerRunning || root.systemEvidence === null)
             return Translation.tr("Diagnostics sampler starting")
+        if (root.sessionStalled)
+            return Translation.tr("Diagnostics sampling stalled")
         return Translation.tr("Diagnostics session active")
     }
 

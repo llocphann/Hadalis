@@ -22,6 +22,7 @@ PERSISTENT = ROOT / "modules" / "common" / "Persistent.qml"
 OVERLAY = ROOT / "modules" / "ii" / "overlay" / "notifications" / "Notifications.qml"
 CONFIG = ROOT / "modules" / "common" / "Config.qml"
 DEFAULTS = ROOT / "defaults" / "config.json"
+TRANSLATIONS = ROOT / "translations" / "en_US.json"
 INTERFACE = ROOT / "modules" / "settings" / "InterfaceConfig.qml"
 MONITORS = ROOT / "modules" / "settings" / "MonitorVisibilityConfig.qml"
 REGISTRY = ROOT / "modules" / "settings" / "SettingsPageRegistryData.qml"
@@ -60,6 +61,7 @@ persistent = PERSISTENT.read_text(encoding="utf-8")
 overlay = OVERLAY.read_text(encoding="utf-8")
 config = CONFIG.read_text(encoding="utf-8")
 defaults = json.loads(DEFAULTS.read_text(encoding="utf-8"))
+translations = json.loads(TRANSLATIONS.read_text(encoding="utf-8"))
 interface = INTERFACE.read_text(encoding="utf-8")
 monitors = MONITORS.read_text(encoding="utf-8")
 registry = REGISTRY.read_text(encoding="utf-8")
@@ -275,6 +277,19 @@ require(monitors, 'path: "notificationCenter.screenList"',
         "Monitor Visibility must expose a dedicated Notification Center screen list")
 require(registry, 'label: Translation.tr("Notification center")',
         "Settings search registry must index Notification Center")
+
+for key in (
+    "Notification center",
+    "Bottom-right notification history surface",
+    "Open on bottom-right hover",
+    "Close grace (ms)",
+    "Mark read when opened",
+    "Allow over fullscreen apps",
+    "Preview notification center",
+    "No matching notifications",
+):
+    if translations.get(key) != key:
+        fail("Notification Center English catalog entry missing: " + key)
 
 # External links/actions retract only the owning center/overlay. Shared cards no
 # longer hard-code Right Sidebar state.

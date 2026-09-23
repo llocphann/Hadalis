@@ -508,6 +508,17 @@ ContentPage {
                 }
             }
 
+            BtopCoveragePanel {
+                Layout.fillWidth: true
+                status: String(root.discoveryEvidence?.status ?? "idle")
+                boundaryCounts:
+                    root.discoveryEvidence?.boundaryCounts ?? ({})
+                filesScanned: Number(
+                    root.discoveryEvidence?.filesScanned ?? 0)
+                cacheHits: Number(
+                    root.discoveryEvidence?.cacheHits ?? 0)
+            }
+
             StyledText {
                 Layout.fillWidth: true
                 text: root.discoveryEvidence?.status === "ready"

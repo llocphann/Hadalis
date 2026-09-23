@@ -7,12 +7,30 @@ Item {
     id: root
 
     property string title: "Network"
+    property string rxLabel: "RX"
+    property string txLabel: "TX"
+    property string rxPrefix: "↓ "
+    property string txPrefix: "↑ "
     property string rx: "—"
     property string tx: "—"
     property var rxSamples: []
     property var txSamples: []
 
-    implicitHeight: 120
+    function peak(samples): real {
+        let result = 1
+        for (const sample of samples ?? []) {
+            const value = Number(sample)
+            if (Number.isFinite(value))
+                result = Math.max(result, value)
+        }
+        return result
+    }
+
+    readonly property real graphMax: Math.max(
+        root.peak(root.rxSamples),
+        root.peak(root.txSamples))
+
+    implicitHeight: 132
 
     Rectangle {
         anchors.fill: parent
@@ -27,45 +45,65 @@ Item {
 
             RowLayout {
                 Layout.fillWidth: true
+
                 StyledText {
                     text: root.title
                     color: Appearance.colors.colOnLayer1
-                    font.weight: Font.DemiDemiBold
+                    font.weight: Font.DemiBold
                 }
+
                 Item { Layout.fillWidth: true }
+
                 StyledText {
-                    text: "↓ " + root.rx + "   ↑ " + root.tx
+                    text: root.rxPrefix + root.rx
+                        + "   " + root.txPrefix + root.tx
                     color: Appearance.colors.colPrimary
+                    font.weight: Font.DemiBold
                 }
             }
 
             RowLayout {
                 Layout.fillWidth: true
-                spacing: 8
+                Layout.fillHeight: true
+                spacing: 10
 
                 ColumnLayout {
                     Layout.fillWidth: true
+                    Layout.fillHeight: true
+                    spacing: 3
+
                     StyledText {
-                        text: "RX"
+                        text: root.rxLabel
                         color: Appearance.colors.colSubtext
                         font.pixelSize: Appearance.font.pixelSize.small
                     }
+
                     BtopSparkline {
                         Layout.fillWidth: true
+                        Layout.fillHeight: true
                         samples: root.rxSamples
+                        maxValue: root.graphMax
+                        lineColor: Appearance.colors.colPrimary
                     }
                 }
 
                 ColumnLayout {
                     Layout.fillWidth: true
+                    Layout.fillHeight: true
+                    spacing: 3
+
                     StyledText {
-                        text: "TX"
+                        text: root.txLabel
                         color: Appearance.colors.colSubtext
                         font.pixelSize: Appearance.font.pixelSize.small
                     }
+
                     BtopSparkline {
                         Layout.fillWidth: true
+                        Layout.fillHeight: true
                         samples: root.txSamples
+                        maxValue: root.graphMax
+                        lineColor: Appearance.colors.colPrimary
                     }
                 }
             }

@@ -52,6 +52,8 @@ Item {
         root.horizontal ? root.joinLeft : root.joinTop
     readonly property bool tangentEndJoined:
         root.horizontal ? root.joinRight : root.joinBottom
+    readonly property bool cornerJoined:
+        root.tangentStartJoined || root.tangentEndJoined
 
     visible: root.geometry?.valid === true
         && Number(root.geometry?.revealProgress ?? root.geometry?.progress ?? 0) > 0
@@ -116,19 +118,28 @@ Item {
     readonly property rect visibleBodyRect:
         root.clipExternalOwners(root.body, 0)
 
-    // Tangent joins use the same weld rule as direct edge adapters: only the
-    // SDF record extends underneath a physical Screen Edge. Content, input and
-    // shadow remain on the real inner boundary; opted-in field paint may cover
-    // only a tiny antialias seam at the primary owner.
-    // This fixes corner-clamped Bar popups where moving the whole body under the
-    // owner clipped away one of the two visible contact fillets.
+    // A corner popup keeps its one free inner corner round. Extend only its SDF
+    // record under the primary owner far enough to move the two attached
+    // corner arcs behind that owner. The tangent record still welds just under
+    // its Screen Edge. Content, input and shadow stay clipped to real edges.
     readonly property rect sdfBodyRect: {
         const b = root.body
         const weld = Math.max(0, Number(PerimeterTokens.irisWeldDepth ?? 0))
+        const primaryReach = root.cornerJoined
+            ? Math.max(0, Number(root.geometry?.outerRadius ?? 0)) : 0
         let left = b.x
         let top = b.y
         let right = b.x + b.width
         let bottom = b.y + b.height
+
+        if (root.geometry?.edge === "top")
+            top -= primaryReach
+        else if (root.geometry?.edge === "bottom")
+            bottom += primaryReach
+        else if (root.geometry?.edge === "left")
+            left -= primaryReach
+        else if (root.geometry?.edge === "right")
+            right += primaryReach
 
         if (root.horizontal) {
             if (root.tangentStartJoined)
@@ -237,7 +248,9 @@ Item {
         width: root.sdfBodyRect.width,
         height: root.sdfBodyRect.height,
         radius: Number(root.geometry?.outerRadius ?? 0),
-        fuse: root.fuse,
+        // A smooth primary join makes a second rounded shoulder beside the
+        // Screen Edge. Corner bodies meet both owners with a hard union.
+        fuse: root.cornerJoined ? 0 : root.fuse,
         id: "popup",
         joins: root.popupPrimaryJoins
     })
@@ -253,8 +266,9 @@ Item {
             y: root.sdfBodyRect.y,
             width: root.sdfBodyRect.width,
             height: root.sdfBodyRect.height,
-            radius: Number(root.geometry?.outerRadius ?? 0),
-            fuse: root.fuse,
+            // Spanning both tangent edges leaves no free body corner.
+            radius: 0,
+            fuse: 0,
             id: "popup-end-join",
             joins: ["frame-end"]
         })

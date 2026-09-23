@@ -122,10 +122,12 @@ Item {
     }
 
     readonly property var descriptor:
-        CodeWorkflowRuntime.descriptor(CodeWorkflowSession.selectedTargetId)
-            ?? CodeWorkflowRuntime.activeCatalog.find(
+        (root.snapshot?.descriptors ?? []).find(item =>
+            String(item?.targetId ?? "")
+                === CodeWorkflowSession.selectedTargetId)
+            ?? (root.snapshot?.descriptors ?? []).find(
                 item => item?.internal !== true)
-            ?? CodeWorkflowRuntime.activeCatalog[0]
+            ?? (root.snapshot?.descriptors ?? [])[0]
             ?? null
     readonly property var record: root.recordFor(CodeWorkflowSession.selectedTargetId)
     readonly property var graph:
@@ -149,7 +151,8 @@ Item {
             String(entry.anchor ?? "") === root.inspectedSemanticAnchor)
             ?? null
     readonly property var selectedIndexedBoundary:
-        CodeWorkflowSession.selectedSemanticSourcePath.length > 0
+        (root.workflowActive || root.captureHarnessEnabled)
+            && CodeWorkflowSession.selectedSemanticSourcePath.length > 0
             ? (CodeWorkflowIndex.boundaries.find(boundary =>
                 String(boundary.sourcePath ?? "")
                     === CodeWorkflowSession.selectedSemanticSourcePath

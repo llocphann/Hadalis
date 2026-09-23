@@ -4,6 +4,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 EDITOR = ROOT / "modules" / "settings" / "CodeWorkflowSourceEditor.qml"
 PAGE = ROOT / "modules" / "settings" / "CodeWorkflow.qml"
+LIVE_RUNNER = ROOT / "scripts" / "code-workflow" / "run-editor-live.py"
 SETTINGS_QMLDIR = ROOT / "modules" / "settings" / "qmldir"
 SERVICES_QMLDIR = ROOT / "services" / "qmldir"
 
@@ -16,6 +17,7 @@ def require(text: str, token: str, message: str) -> None:
 
 editor = EDITOR.read_text(encoding="utf-8")
 page = PAGE.read_text(encoding="utf-8")
+live_runner = LIVE_RUNNER.read_text(encoding="utf-8")
 settings_qmldir = SETTINGS_QMLDIR.read_text(encoding="utf-8")
 services_qmldir = SERVICES_QMLDIR.read_text(encoding="utf-8")
 
@@ -77,7 +79,8 @@ for token in (
 
 for token in (
     "function focusSourceEditorWhenActive(): void",
-    "root.enabled && root.visible && sourcePane.visible",
+    "root.workflowActive && !root.workflowDestroying",
+    "sourcePane.visible && sourceEditor.visible",
     "sourceEditor.focusEditor()",
     "sourceEditor.keyboardFocusWithin",
     "root.forceActiveFocus()",
@@ -197,6 +200,20 @@ require(editor, "event.key === Qt.Key_H",
         "Source Editor must intercept Replace before Settings shortcuts")
 if "id: targetsToolbarToggle" in page or "id: inspectorToolbarToggle" in page:
     fail("global toolbar must not duplicate Targets/Inspector pane toggles")
+
+for token in (
+    "property int modalTestMountCount: 0",
+    "property int modalTestDestroyCount: 0",
+    "report.workflowMountCount = CodeWorkflowSession.modalTestMountCount",
+    "report.workflowDestroyCount = CodeWorkflowSession.modalTestDestroyCount",
+    'probe.ipc("settingsOpen", 2)',
+    'probe.ipc("settingsOpen", 30)',
+    'f"Workflow reopen cycle {cycle}: Settings fully unload"',
+    'f"Workflow reopen cycle {cycle}: Workflow ready again"',
+    '"Workflow survives repeated immediate Settings close/reopen navigation"',
+):
+    require(live_runner, token,
+            "live Settings reopen regression coverage missing")
 
 require(
     settings_qmldir,

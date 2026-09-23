@@ -107,10 +107,6 @@ WBarAttachedPanelContent {
 
         WPane {
             Layout.fillWidth: true
-            screenX: root.panelScreenX + root.visualMargin * 2
-            screenY: root.panelScreenY + root.visualMargin * 2
-            screenWidth: root._screenW
-            screenHeight: root._screenH
             contentItem: WidgetsPaneContent {}
         }
     }

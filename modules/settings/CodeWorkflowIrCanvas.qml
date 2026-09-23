@@ -189,6 +189,11 @@ Item {
     readonly property real worldHeight: root.cachedWorldHeight
     property string hoveredEdgeId: ""
     property string hoveredEdgeLabelId: ""
+    // Wire stroke/arrow metrics are screen-space compensation values. Updating
+    // them on every touchpad/wheel sample invalidates every ShapePath even
+    // though the world transform already gives immediate visual zoom. Sample
+    // the compensation at a bounded cadence and settle to the final zoom.
+    property real wireMetricZoom: 1
     property real edgeLabelHoverX: 0
     property real edgeLabelHoverY: 0
     property var activeNodeDragHandler: null
@@ -1605,18 +1610,31 @@ Item {
 
     function edgeStrokeWidth(selected: bool, highlighted: bool): real {
         const screenWidth = selected ? 2.8 : highlighted ? 2.5 : 1.1
-        const zoom = Math.max(
-            CodeWorkflowSession.minimumZoom,
-            CodeWorkflowSession.zoom)
-        return screenWidth / zoom
+        return screenWidth / Math.max(
+            CodeWorkflowSession.minimumZoom, root.wireMetricZoom)
     }
 
     function edgeHaloWidth(focused: bool, hovered: bool): real {
         const screenWidth = focused ? 7.0 : hovered ? 4.0 : 2.4
-        const zoom = Math.max(
-            CodeWorkflowSession.minimumZoom,
-            CodeWorkflowSession.zoom)
-        return screenWidth / zoom
+        return screenWidth / Math.max(
+            CodeWorkflowSession.minimumZoom, root.wireMetricZoom)
+    }
+
+    function scheduleWireMetricRefresh(): void {
+        if (!root.workflowActive || wireMetricTimer.running)
+            return
+        wireMetricTimer.start()
+    }
+
+    Timer {
+        id: wireMetricTimer
+        interval: 48
+        repeat: false
+        onTriggered: {
+            root.wireMetricZoom = Math.max(
+                CodeWorkflowSession.minimumZoom,
+                CodeWorkflowSession.zoom)
+        }
     }
 
     function nodeAtWorld(px: real, py: real): bool {
@@ -1879,6 +1897,10 @@ Item {
             root.fitInitialGraph()
         }
 
+        function onZoomChanged(): void {
+            root.scheduleWireMetricRefresh()
+        }
+
         function onSubflowTargetIdChanged(): void {
             root.marqueeActive = false
             root.marqueeBaseNodeIds = []
@@ -1958,6 +1980,9 @@ Item {
         // just after the page transition instead of blocking the activation
         // signal handler.
         root.runtimeCatalogSignature = ""
+        root.wireMetricZoom = Math.max(
+            CodeWorkflowSession.minimumZoom,
+            CodeWorkflowSession.zoom)
         graphRefreshTimer.restart()
         Qt.callLater(root.consumeRuntimeLifecycleEvent)
         root.fitInitialGraph()
@@ -1967,6 +1992,7 @@ Item {
         graphRefreshTimer.stop()
         edgeRouteRebuildTimer.stop()
         edgeHoverTimer.stop()
+        wireMetricTimer.stop()
         initialFitTimer.stop()
         runtimePulseTimer.stop()
         viewportCommitTimer.stop()
@@ -2383,11 +2409,11 @@ Item {
                     readonly property real worldArrowLength:
                         screenArrowLength / Math.max(
                             CodeWorkflowSession.minimumZoom,
-                            CodeWorkflowSession.zoom)
+                            root.wireMetricZoom)
                     readonly property real worldArrowHalfWidth:
                         screenArrowHalfWidth / Math.max(
                             CodeWorkflowSession.minimumZoom,
-                            CodeWorkflowSession.zoom)
+                            root.wireMetricZoom)
                     readonly property real backX:
                         tipX - unitX * worldArrowLength
                     readonly property real backY:

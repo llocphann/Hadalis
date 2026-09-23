@@ -9,9 +9,10 @@ import qs.services
 
 // Bottom-left hover surface for Quick Notes.
 //
-// Hover only reveals the shared Dashboard/Sidebar presentation. The layer-shell
-// surface becomes an exclusive keyboard owner only after the actual editor
-// gains QML focus, so brushing the corner never steals focus from another app.
+// Hover only reveals the shared Dashboard/Sidebar presentation. While visible,
+// the layer-shell surface is armed with OnDemand keyboard interactivity so the
+// compositor can honor the first click into TextArea without stealing focus on
+// hover. Only after the editor really owns active focus do we hold the popup open.
 Bar.StyledPopup {
     id: root
 
@@ -31,25 +32,25 @@ Bar.StyledPopup {
     attachmentThicknessOverride: root.cornerAttachmentThickness
     hoverActivates: true
     alternativeVisibleCondition: root.editorFocused || root.entryBridgeHeld
+    // Pre-arm click-to-focus before the first editor click. OnDemand does not
+    // steal focus merely because the hover popup is visible.
+    keyboardFocusOnDemand: true
     keyboardFocus: root.editorFocused
     exclusiveKeyboardFocus: true
+    // Keep the fullscreen catcher below this Overlay surface so it cannot cover
+    // the TextArea or replace its I-beam cursor after editor focus is acquired.
+    outsideClickBackdropBelowPopup: true
     closeOnOutsideClick: root.editorFocused
     popupBackgroundMargin: 0
 
     function enterEditorMode(): void {
-        const editor = notesViewLoader.item
-        if (!root.active || !Notepad.ready || !editor)
+        if (!root.active || !Notepad.ready || !notesViewLoader.item)
             return
-
-        // The editor's active-focus transition is the explicit user intent.
-        // Switching the shared popup to Exclusive focus here makes Niri grant
-        // keyboard ownership immediately instead of waiting for a second click.
+        // editorActivated is emitted only after TextArea actually gains
+        // activeFocus through the pre-armed OnDemand layer-shell surface.
+        // From this point Exclusive focus simply preserves ownership while the
+        // user types; it is no longer responsible for making the first click work.
         root.editorFocused = true
-        editor.focus = true
-        Qt.callLater(() => {
-            if (root.editorFocused && notesViewLoader.item)
-                notesViewLoader.item.focusEditor()
-        })
     }
 
     function leaveEditorMode(): void {
@@ -133,8 +134,9 @@ Bar.StyledPopup {
                 showHeader: true
                 showZettelkastenActions: true
 
-                // Only a real editor focus transition captures the keyboard.
-                // Header/tab/tool interactions remain ordinary pointer actions.
+                // Only a real TextArea active-focus transition promotes the
+                // hover preview into held editor mode. Header/tab/tool pointer
+                // interactions remain non-keyboard-owning.
                 onEditorActivated: root.enterEditorMode()
             }
         }

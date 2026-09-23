@@ -27,6 +27,7 @@ sampler = read("scripts/runtime-diagnostics-sampler.py")
 for token in (
     "readonly property int leaseTtlMs: 6000",
     "readonly property int maxLeases: 16",
+    "readonly property int sampleIntervalMs: 1000",
     "property var leases: ({})",
     "readonly property int leaseCount:",
     "readonly property bool sessionActive:",
@@ -44,6 +45,8 @@ for token in (
     "running: root.samplingEnabled",
     'Quickshell.shellPath("scripts/runtime-diagnostics-sampler.py")',
     '"--pid", String(Quickshell.processId)',
+    '"--interval-ms", String(root.sampleIntervalMs)',
+    "sampleIntervalMs: root.sampleIntervalMs",
     "stdout: SplitParser {",
 ):
     require(diagnostics, token, "RuntimeDiagnostics lease authority is incomplete")

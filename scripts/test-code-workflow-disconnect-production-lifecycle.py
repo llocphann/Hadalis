@@ -93,12 +93,12 @@ expected_harness_targets = {
 if literal_assignment(harness, "DISCONNECT_TARGETS") != expected_harness_targets:
     fail("2K-T-C live acceptance must cover exactly the two production Disconnect targets")
 
-for source_name, source in (
-    ("transaction", transaction),
-    ("probe", probe),
+for source_name, source, function_indent in (
+    ("transaction", transaction, "    "),
+    ("probe", probe, "        "),
 ):
     start = source.find("function reviewedDisconnectTarget(edgeId: string): var")
-    end = source.find("\n    function ", start + 1)
+    end = source.find("\n" + function_indent + "function ", start + 1)
     if start < 0 or end < 0:
         fail("2K-T-C " + source_name + " reviewed Disconnect resolver is missing")
     resolver = source[start:end]

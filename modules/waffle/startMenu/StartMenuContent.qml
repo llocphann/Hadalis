@@ -78,10 +78,6 @@ WBarAttachedPanelContent {
     }
 
     contentItem: WPane {
-        screenX: root.panelScreenX + root.visualMargin
-        screenY: root.panelScreenY + root.visualMargin
-        screenWidth: root._screenW
-        screenHeight: root._screenH
         contentItem: WPanelPageColumn {
             spacing: 0
 

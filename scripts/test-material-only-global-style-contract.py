@@ -19,6 +19,11 @@ ACTIVE_WINDOW = ROOT / "modules" / "bar" / "ActiveWindow.qml"
 RESOURCE = ROOT / "modules" / "bar" / "Resource.qml"
 CLIPPED_PROGRESS_BAR = ROOT / "modules" / "common" / "widgets" / "ClippedProgressBar.qml"
 STYLED_PROGRESS_BAR = ROOT / "modules" / "common" / "widgets" / "StyledProgressBar.qml"
+MATERIAL_SYMBOL = ROOT / "modules" / "common" / "widgets" / "MaterialSymbol.qml"
+TOOLBAR_TEXT_FIELD = ROOT / "modules" / "common" / "widgets" / "ToolbarTextField.qml"
+TOOLBAR_TAB_BUTTON = ROOT / "modules" / "common" / "widgets" / "ToolbarTabButton.qml"
+MATERIAL_TEXT_AREA = ROOT / "modules" / "common" / "widgets" / "MaterialTextArea.qml"
+STYLED_DROP_SHADOW = ROOT / "modules" / "common" / "widgets" / "StyledDropShadow.qml"
 TIMER_INDICATOR = ROOT / "modules" / "bar" / "TimerIndicator.qml"
 SHELL_UPDATE_INDICATOR = ROOT / "modules" / "bar" / "ShellUpdateIndicator.qml"
 UTIL_BUTTONS = ROOT / "modules" / "bar" / "UtilButtons.qml"
@@ -112,6 +117,11 @@ def main() -> None:
     resource = RESOURCE.read_text(encoding="utf-8")
     clipped_progress_bar = CLIPPED_PROGRESS_BAR.read_text(encoding="utf-8")
     styled_progress_bar = STYLED_PROGRESS_BAR.read_text(encoding="utf-8")
+    material_symbol = MATERIAL_SYMBOL.read_text(encoding="utf-8")
+    toolbar_text_field = TOOLBAR_TEXT_FIELD.read_text(encoding="utf-8")
+    toolbar_tab_button = TOOLBAR_TAB_BUTTON.read_text(encoding="utf-8")
+    material_text_area = MATERIAL_TEXT_AREA.read_text(encoding="utf-8")
+    styled_drop_shadow = STYLED_DROP_SHADOW.read_text(encoding="utf-8")
     timer_indicator = TIMER_INDICATOR.read_text(encoding="utf-8")
     shell_update_indicator = SHELL_UPDATE_INDICATOR.read_text(encoding="utf-8")
     util_buttons = UTIL_BUTTONS.read_text(encoding="utf-8")
@@ -222,6 +232,59 @@ def main() -> None:
         "color: Appearance.colors.colLayer1Base",
     ):
         require(welcome, token, "welcome.qml Material chrome")
+
+    shared_material_primitives = {
+        "MaterialSymbol.qml": material_symbol,
+        "ToolbarTextField.qml": toolbar_text_field,
+        "ToolbarTabButton.qml": toolbar_tab_button,
+        "MaterialTextArea.qml": material_text_area,
+        "StyledDropShadow.qml": styled_drop_shadow,
+    }
+    for source, source_text in shared_material_primitives.items():
+        for token in (
+            "Appearance.inirEverywhere",
+            "Appearance.auroraEverywhere",
+            "Appearance.angelEverywhere",
+            "Appearance.regaliaEverywhere",
+            "Appearance.zzzEverywhere",
+            "Appearance.cookieEverywhere",
+        ):
+            forbid(source_text, token, source)
+
+    for token in (
+        "readonly property real effectiveFill: animateFill",
+        "enabled: root.animateFill && Appearance.animationsEnabled",
+    ):
+        require(material_symbol, token, "MaterialSymbol.qml")
+    for token in (
+        "leftPadding: 10",
+        "placeholderTextColor: Appearance.colors.colSubtext",
+        "color: Appearance.colors.colOnLayer1",
+        "radius: Appearance.rounding.full",
+    ):
+        require(toolbar_text_field, token, "ToolbarTextField.qml")
+    forbid(toolbar_text_field, "RegaliaControlFace {", "ToolbarTextField.qml")
+    for token in (
+        "implicitHeight: 40",
+        "buttonRadius: height / 2",
+        "cookieMorphing: false",
+        "text: root.text",
+        "font.family: Appearance.font.family.main",
+    ):
+        require(toolbar_tab_button, token, "ToolbarTabButton.qml")
+    for token in (
+        "Material.accent: Appearance.colors.colPrimary",
+        "Material.background: Appearance.colors.colLayer1",
+        "Material.foreground: Appearance.colors.colOnSurface",
+        "selectedTextColor: Appearance.colors.colOnSecondaryContainer",
+    ):
+        require(material_text_area, token, "MaterialTextArea.qml")
+    forbid(material_text_area, "RegaliaControlFace {", "MaterialTextArea.qml")
+    require(
+        styled_drop_shadow,
+        "visible: Appearance.effectsEnabled",
+        "StyledDropShadow.qml",
+    )
 
     motion_start = appearance.index("property QtObject motion: QtObject {")
     motion_end = appearance.index("m3colors: QtObject {", motion_start)

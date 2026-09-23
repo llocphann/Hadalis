@@ -270,6 +270,14 @@ Singleton {
             desc: Translation.tr("Inspect, trace, and edit live QML workflows"),
             essential: false,
             component: "modules/settings/CodeWorkflow.qml"
+        },
+        {
+            key: "diagnostics",
+            name: Translation.tr("Diagnostics"),
+            icon: "monitoring",
+            desc: Translation.tr("On-demand runtime resource diagnostics"),
+            essential: false,
+            component: "modules/settings/RuntimeDiagnosticsConfig.qml"
         }
     ]
 
@@ -282,7 +290,7 @@ Singleton {
         { label: Translation.tr("Desktop & Layout"), pages: [15, 26, 2, 22, 23, 5, 16, 14, 29, 10, 11] },
         { label: Translation.tr("System"), pages: [1, 12, 17] },
         { label: Translation.tr("Features & Services"), pages: [24, 7, 6] },
-        { label: Translation.tr("Advanced & Help"), pages: [20, 30, 9, 13] }
+        { label: Translation.tr("Advanced & Help"), pages: [20, 30, 31, 9, 13] }
     ]
 
     readonly property var _arrangement: {
@@ -347,6 +355,13 @@ Singleton {
             label: Translation.tr("Workflow editor"),
             description: Translation.tr("Inspect, trace, and edit live QML components and source"),
             keywords: ["workflow", "qml", "graph", "dataflow", "binding", "event", "lifecycle", "source", "inspect", "debug", "editor", "modal", "hotfix", "bar", "media", "clock", "resources"]
+        },
+        {
+            pageIndex: 31, pageName: root.pages[31].name,
+            section: Translation.tr("Runtime Diagnostics"),
+            label: Translation.tr("Runtime diagnostics"),
+            description: Translation.tr("On-demand CPU, memory, swap, GPU and network diagnostics for Hadalis runtime owners"),
+            keywords: ["diagnostics", "btop", "runtime", "cpu", "ram", "memory", "swap", "gpu", "network", "debug", "workflow", "resource", "process", "telemetry"]
         },
         {
             pageIndex: 28, pageName: root.pages[28].name,

@@ -90,6 +90,9 @@ for token in (
     "root.pageOpenedHeartbeatTick = root.heartbeatTick",
     "root.heartbeatTick++",
     'property string leaseTransport: ""',
+    'property string leaseError: ""',
+    'root.leaseError = "Diagnostics lease was rejected"',
+    'root.leaseError = ""',
     'property string remoteEvidenceFloorKey: ""',
     "readonly property string remoteEvidenceKey: root._remoteEvidenceKey()",
     "readonly property bool remoteEvidenceFresh:",
@@ -196,6 +199,11 @@ for source, text in (
         text,
         "root.sessionStalled",
         f"{source} must expose stalled diagnostics sampling",
+    )
+    require(
+        text,
+        "RuntimeDiagnosticsSession.leaseError",
+        f"{source} must surface diagnostics lease rejection",
     )
     require(
         text,

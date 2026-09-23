@@ -449,9 +449,10 @@ called compositor-qualified.
 
 Direct node drag now uses a two-tier routing path during direct manipulation.
 The committed `edgeRouteCache` stays stable while a node is held; only edges
-touching the active node are recomputed into `dragEdgeRouteCache`, coalesced at
-a 16 ms frame cadence. Node position itself still follows pointer samples
-immediately. The final visual offset is written to `CodeWorkflowSession` only
+touching the active node are recomputed into `dragEdgeRouteCache`. Node position
+and auto-pan still follow the 16 ms interaction cadence, while obstacle-aware
+route scoring is capped at 32 ms (~30 Hz) because it is presentation-only.
+The final visual offset is written to `CodeWorkflowSession` only
 when drag ends, then the full smart-lane graph is rebuilt once. This avoids the
 old per-pointer full-router + layout-map mutation path that caused visible lag.
 Idle graph/node cursors remain `ArrowCursor`; closed-hand feedback appears only
@@ -481,8 +482,20 @@ hover/tap now also consumes flattened committed-route and node-AABB caches built
 only when routing is rebuilt; idle pointer movement no longer resolves every
 edge through `routeForEdge()` or recomputes node coordinates before proximity
 testing. Regression contracts lock the sampled culling path, motion-time label
-suspension and flattened pointer-hit caches. The next renderer-level experiment,
-if profiling still shows scene-graph/state-
+suspension and flattened pointer-hit caches. A later hot-path pass removes the
+last synchronous route-scoring fallback from presentation delegates: graph
+replacement clears stale route/hit caches, then the authoritative smart-lane
+cache is rebuilt on a separate 24 ms event-loop turn. Edge/label delegates stay
+empty until that committed cache exists instead of independently calling
+`edgeRoute()` and then paying for the same routing work again. Hover
+route-distance scans are capped at 32 ms while click selection remains immediate.
+
+The Source Editor line-number gutter is also virtualized. It keeps one line-start
+index per document revision, resolves the modal cursor line by binary search, and
+builds relative line-number text only for the visible gutter window plus small
+overscan. Large QML sources therefore no longer split the entire document on
+every cursor move or allocate thousands of gutter lines when the cursor changes.
+The next renderer-level experiment, if profiling still shows scene-graph/state-
 change cost, is to benchmark batching compatible idle wires into fewer Shape
 items; do not promote that rewrite without compositor capture and memory/frame
 evidence.

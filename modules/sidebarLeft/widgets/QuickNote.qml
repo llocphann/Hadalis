@@ -97,9 +97,15 @@ Item {
                         : Appearance.auroraEverywhere ? Appearance.aurora.colSubSurfaceHover : Appearance.colors.colLayer2Hover
                     colRipple: Appearance.inirEverywhere ? Appearance.inir.colLayer2Active
                         : Appearance.auroraEverywhere ? Appearance.aurora.colSubSurfaceActive : Appearance.colors.colLayer2Active
-                    opacity: Notepad.text.trim() !== "" ? 1 : 0
+                    opacity: (root.editing
+                        ? root.draft.trim() : Notepad.text.trim()) !== "" ? 1 : 0
                     visible: opacity > 0
-                    onClicked: Notepad.setTextValue("")
+                    onClicked: {
+                        if (root.editing)
+                            root.draft = ""
+                        else
+                            Notepad.setTextValue("")
+                    }
 
                     Behavior on opacity {
                         enabled: Appearance.animationsEnabled

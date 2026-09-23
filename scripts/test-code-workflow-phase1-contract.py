@@ -835,9 +835,9 @@ source_path_handler = page[source_path_handler_start:source_path_handler_end]
 for token in (
     "root.stashSourceEditorBuffer()",
     'root.sourceEditorStatus = ""',
+    "if (!root.workflowActive || root.workflowDestroying)",
     'CodeWorkflowSession.selectSemantic("")',
-    "Qt.callLater(root.reloadSource)",
-    "Qt.callLater(() => root.requestAnalysis(false))",
+    "root.scheduleWorkflowActivation()",
     "Qt.callLater(root.evaluatePreApplyGate)",
     'sourceEditor.setMode("normal")',
     "sourceEditor.clearSelection()",

@@ -76,6 +76,17 @@ ContentPage {
         return bytes.toFixed(0) + " B/s"
     }
 
+    function provenance(source): string {
+        if (!source)
+            return ""
+        const scope = String(source?.scope ?? "")
+        const method = String(source?.method ?? "")
+        const confidence = String(source?.confidence ?? "")
+        return [scope, method, confidence]
+            .filter(value => value.length > 0)
+            .join(" · ")
+    }
+
     function historyValues(key: string): var {
         const history = Array.isArray(root.evidence?.history)
             ? root.evidence.history : []
@@ -216,6 +227,7 @@ ContentPage {
                     detail: Translation.tr("Hadalis") + " · "
                         + root.formatPercent(root.shellEvidence?.cpu?.percent)
                     samples: root.historyValues("systemCpuPercent")
+                    provenance: root.provenance(root.systemEvidence?.cpu)
                 }
 
                 BtopMetricPanel {
@@ -230,6 +242,7 @@ ContentPage {
                             root.systemEvidence?.memory?.valuesKiB?.MemTotal)
                     samples: root.historyValues("systemRamPercent")
                     accentColor: Appearance.colors.colSecondary
+                    provenance: root.provenance(root.systemEvidence?.memory)
                 }
 
                 BtopMetricPanel {
@@ -244,6 +257,7 @@ ContentPage {
                             root.systemEvidence?.memory?.valuesKiB?.SwapTotal)
                     samples: root.historyValues("systemSwapPercent")
                     accentColor: Appearance.colors.colTertiary
+                    provenance: root.provenance(root.systemEvidence?.memory)
                 }
 
                 BtopMetricPanel {
@@ -258,6 +272,7 @@ ContentPage {
                         : Translation.tr("DRM fdinfo unavailable")
                     samples: root.historyValues("shellGpuPeakPercent")
                     accentColor: Appearance.colors.colTertiary
+                    provenance: root.provenance(root.shellEvidence?.gpu)
                 }
 
                 BtopNetworkPanel {
@@ -271,6 +286,7 @@ ContentPage {
                             ?.txBytesPerSec)
                     rxSamples: root.historyValues("rxBytesPerSec")
                     txSamples: root.historyValues("txBytesPerSec")
+                    provenance: root.provenance(root.networkEvidence)
                 }
 
                 BtopNetworkPanel {
@@ -286,6 +302,7 @@ ContentPage {
                         root.shellEvidence?.io?.rates?.writeBytesPerSec)
                     rxSamples: root.historyValues("shellReadBytesPerSec")
                     txSamples: root.historyValues("shellWriteBytesPerSec")
+                    provenance: root.provenance(root.shellEvidence?.io)
                 }
             }
 

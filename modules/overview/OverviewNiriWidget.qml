@@ -654,6 +654,12 @@ Item {
                             anchors.margins: 2
                             asynchronous: true
                             cache: true
+                            // Keep the last decoded frame while a refreshed URL
+                            // is loading. Overview refreshes visible windows on
+                            // every open, and dropping the old texture during
+                            // that async decode causes the icon/preview flash.
+                            retainWhileLoading: true
+                            property bool _everReady: false
                             // Decode parameters precede source assignment. In
                             // Overview they match the resident CPU image cache;
                             // TaskView continues to decode to its smaller tile.
@@ -671,10 +677,18 @@ Item {
                                     return ""
                                 return WindowPreviewService.getPreviewUrl(windowItem.windowId)
                             }
+                            onStatusChanged: {
+                                if (status === Image.Ready)
+                                    _everReady = true
+                            }
+                            onSourceChanged: {
+                                if (String(source).length === 0)
+                                    _everReady = false
+                            }
                             smooth: true
                             mipmap: true
-                            visible: parent.showPreviews && status === Image.Ready
-                            opacity: status === Image.Ready ? 1 : 0
+                            visible: parent.showPreviews && _everReady
+                            opacity: visible ? 1 : 0
                             Behavior on opacity {
                                 enabled: Appearance.animationsEnabled
                                 NumberAnimation {

@@ -188,6 +188,8 @@ def main() -> None:
         require(target_table, token, "BtopTargetTable.qml runtime record index")
 
     for token in (
+        "readonly property var processRows:",
+        "Array.isArray(root.processes) ? root.processes : []",
         "readonly property var processDepths: root.buildProcessDepths()",
         "function buildProcessDepths(): var",
         "readonly property int processDepth:",

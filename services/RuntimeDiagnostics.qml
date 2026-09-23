@@ -272,8 +272,9 @@ Singleton {
         if (root.samplingEnabled) {
             // Diagnostics consumes the shared one-shot index but must not
             // restart or queue a second scan when Workflow already has one.
-            if (CodeWorkflowIndex.status !== "ready"
-                    && CodeWorkflowIndex.status !== "indexing")
+            if (CodeWorkflowIndex.status === "ready")
+                root._reconcileSourceBoundaries()
+            else if (CodeWorkflowIndex.status !== "indexing")
                 CodeWorkflowIndex.refresh(false)
             return
         }
@@ -290,10 +291,14 @@ Singleton {
     Connections {
         target: CodeWorkflowIndex
         function onStatusChanged(): void {
+            if (!root.sessionActive)
+                return
             root._reconcileSourceBoundaries()
             root.revision += 1
         }
         function onResultChanged(): void {
+            if (!root.sessionActive)
+                return
             root._reconcileSourceBoundaries()
             root.revision += 1
         }
@@ -302,7 +307,8 @@ Singleton {
     Connections {
         target: CodeWorkflowRuntime
         function onRevisionChanged(): void {
-            if (CodeWorkflowIndex.status === "ready")
+            if (root.sessionActive
+                    && CodeWorkflowIndex.status === "ready")
                 root._reconcileSourceBoundaries()
         }
     }

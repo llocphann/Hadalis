@@ -1263,23 +1263,30 @@ Item {
             return
         }
 
-        // QML Timer is synchronized with the animation timer. Six routes per
-        // slice keeps each JS burst bounded while completing today's reviewed
-        // graph in only a handful of frames.
-        const end = Math.min(edges.length, root.routeBuildCursor + 6)
-        for (let index = root.routeBuildCursor; index < end; ++index) {
+        // Keep each GUI-thread routing burst inside a small time budget.
+        // Candidate scoring cost grows with graph density, so a fixed edge
+        // count can still produce a long frame. Cap both elapsed time and work
+        // count, while always completing at least one edge per animation tick.
+        const startedAtMs = Date.now()
+        const start = root.routeBuildCursor
+        const maximumEnd = Math.min(edges.length, start + 8)
+        let index = start
+        while (index < maximumEnd) {
             const edge = edges[index]
             const edgeId = String(edge?.id ?? "")
-            if (edgeId.length === 0)
-                continue
-            const route = root.edgeRoute(
-                edge, root.routeBuildOccupiedRoutes)
-            root.routeBuildCache[edgeId] = route
-            if (route)
-                root.routeBuildOccupiedRoutes.push(route)
+            if (edgeId.length > 0) {
+                const route = root.edgeRoute(
+                    edge, root.routeBuildOccupiedRoutes)
+                root.routeBuildCache[edgeId] = route
+                if (route)
+                    root.routeBuildOccupiedRoutes.push(route)
+            }
+            index += 1
+            if (index > start && Date.now() - startedAtMs >= 3)
+                break
         }
-        root.routeBuildCursor = end
-        if (end < edges.length)
+        root.routeBuildCursor = index
+        if (index < edges.length)
             edgeRouteSliceTimer.restart()
         else
             root.finalizeEdgeRouteBuild()

@@ -89,6 +89,11 @@ Item {
             anchors.fill: parent
             anchors.margins: root.orbitalPadding
             now: root.now
+            liquidMode: true
+            // Keep the field alive while its page is still visibly sliding out;
+            // stop it only after the clipped page has fully left the viewport.
+            liquidAnimationActive: root.currentTab === 0
+                || timeWeatherPanel.y > -timeWeatherPanel.height + 1
         }
     }
 

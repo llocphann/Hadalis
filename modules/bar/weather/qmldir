@@ -4,3 +4,4 @@ WeatherCard 1.0 WeatherCard.qml
 WeatherPopup 1.0 WeatherPopup.qml
 WeatherPopupContent 1.0 WeatherPopupContent.qml
 OrbitalWeather 1.0 OrbitalWeather.qml
+LiquidOrbitalField 1.0 LiquidOrbitalField.qml

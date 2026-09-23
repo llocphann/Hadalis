@@ -27,7 +27,7 @@ Two mutually exclusive UI families are switchable at runtime (`Super+Shift+W`):
 |---|---|---|
 | Active when | `panelFamily !== "waffle"` | `panelFamily === "waffle"` |
 | Visual tokens | `Appearance.*` | `Looks.*` |
-| Global styles | material, cards, aurora, inir, angel, zzz, cookie | Single fluent style |
+| Global theme | Material only | Waffle is a separate Fluent panel family, not a Global Theme |
 | Bar | **Classic Bar only** — top/bottom/left/right; Hug/Float/Rectangle/Card geometry | Bottom Windows 11-style taskbar |
 | App launcher | Overview | StartMenu with search |
 | Right panel | SidebarRight | ActionCenter + NotificationCenter |
@@ -46,7 +46,7 @@ PanelLoader {
 
 A panel loads only when `Config.ready`, its identifier is present in `enabledPanels`, and its `extraCondition` is true.
 
-Style dispatch priority is **cookie > zzz > angel > inir > aurora > material**. Cards is a material variant rather than a separate dispatch family.
+`Appearance.globalStyle` is runtime-clamped to `material`. Persisted legacy style values are migration input only and must not reactivate alternate shell-wide renderers.
 
 ## Directory Structure
 

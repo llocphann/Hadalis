@@ -512,8 +512,10 @@ Scope {
                 activeContentItem?.minimumUsefulWidth ?? 320
             readonly property real maximumUsefulWidth:
                 activeContentItem?.maximumUsefulWidth ?? 900
-            readonly property bool contentFitActive:
-                activeContentItem?.notifsCollapsed ?? false
+            // Perimeter system sidebars are content-sized regardless of
+            // notification history; the retired notification-collapse flag no
+            // longer participates in runtime diagnostics or geometry.
+            readonly property bool contentFitActive: true
             readonly property bool bottomCollapsed:
                 activeContentItem?.bottomGroupCollapsed ?? false
             readonly property color connectedSurfaceColor:

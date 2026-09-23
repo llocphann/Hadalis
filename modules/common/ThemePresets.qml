@@ -3683,10 +3683,6 @@ Singleton {
         return scss;
     }
     
-    function applyGtkTheme(c) {
-        // DEPRECATED: Use applyExternalThemes instead
-        applyExternalThemes(c);
-    }
 
     function generateColorsJsonObject(c) {
         return {

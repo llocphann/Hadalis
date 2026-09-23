@@ -17,14 +17,13 @@ ColumnLayout {
     property string liftedKind: ""
     property string liftedId: ""
 
-    readonly property var rightDefaultOrder: ["system", "sliders", "toggles", "notifications", "widgets"]
+    readonly property var rightDefaultOrder: ["system", "sliders", "toggles", "widgets"]
     readonly property var leftDefaultOrder: ["widgets", "ai", "translator", "anime", "animeSchedule", "wallhaven", "news", "music", "tools", "software"]
 
     readonly property var rightDescriptors: ({
         system: { icon: "computer", label: Translation.tr("System") },
         sliders: { icon: "tune", label: Translation.tr("Sliders") },
         toggles: { icon: "toggle_on", label: Translation.tr("Quick toggles") },
-        notifications: { icon: "notifications", label: Translation.tr("Notifications") },
         widgets: { icon: "dashboard", label: Translation.tr("Widgets") }
     })
 
@@ -59,13 +58,6 @@ ColumnLayout {
             : root.leftDefaultOrder
         return root.sanitizeOrder(normalized, root.leftDefaultOrder)
     }
-
-    readonly property real notificationsWeight: Math.max(0.35,
-        Number(Config.options?.sidebar?.right?.sectionWeights?.notifications ?? 1))
-    readonly property real widgetsWeight: Math.max(0.35,
-        Number(Config.options?.sidebar?.right?.sectionWeights?.widgets ?? 1))
-    readonly property real notificationsShare: notificationsWeight / Math.max(0.7,
-        notificationsWeight + widgetsWeight)
 
     function sanitizeOrder(saved, defaults): var {
         const result = []
@@ -109,14 +101,6 @@ ColumnLayout {
         Config.setNestedValue(kind === "right"
             ? "sidebar.right.sectionOrder" : "sidebar.left.tabOrder", order)
         cancelLift()
-    }
-
-    function saveBalance(share: real): void {
-        const clamped = Math.max(0.2, Math.min(0.8, share))
-        Config.setNestedValues({
-            "sidebar.right.sectionWeights.notifications": clamped * 2,
-            "sidebar.right.sectionWeights.widgets": (1 - clamped) * 2
-        })
     }
 
     Connections {
@@ -247,42 +231,6 @@ ColumnLayout {
                     onPlaced: root.place("right", root.rightOrder.length)
                 }
             }
-        }
-    }
-
-    ColumnLayout {
-        Layout.fillWidth: true
-        spacing: 4
-
-        RowLayout {
-            Layout.fillWidth: true
-            StyledText {
-                Layout.fillWidth: true
-                text: Translation.tr("Section height balance")
-                font.pixelSize: Appearance.font.pixelSize.normal
-                font.weight: Font.Medium
-                color: Appearance.colors.colOnLayer1
-            }
-            StyledText {
-                text: Translation.tr("Notifications %1% · Widgets %2%")
-                    .arg(Math.round(root.notificationsShare * 100))
-                    .arg(Math.round((1 - root.notificationsShare) * 100))
-                font.pixelSize: Appearance.font.pixelSize.smaller
-                color: Appearance.colors.colSubtext
-            }
-        }
-
-        StyledSlider {
-            Layout.fillWidth: true
-            from: 0.2
-            to: 0.8
-            stepSize: 0.05
-            value: root.notificationsShare
-            scrollable: true
-            tooltipContent: Math.round(value * 100) + "% / " + Math.round((1 - value) * 100) + "%"
-            settingsSearchLabel: Translation.tr("Section height balance")
-            settingsSearchDescription: Translation.tr("Share flexible space between notifications and widgets.")
-            onMoved: root.saveBalance(value)
         }
     }
 

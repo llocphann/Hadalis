@@ -373,6 +373,18 @@ for token in (
     require(analyzer, token,
             "analyzer reopen request coalescing missing " + token)
 
+for token in (
+    "function _runPendingRefresh(): void",
+    "root._runPendingRefresh()",
+):
+    require(workflow_index, token,
+            "workspace index cancellation/reopen handoff missing " + token)
+refresh_start = workflow_index.index("function refresh(force: bool): void")
+refresh_end = workflow_index.index("function cancel(): void", refresh_start)
+refresh_block = workflow_index[refresh_start:refresh_end]
+if refresh_block.index("if (indexProcess.running)") > refresh_block.index("root._cancelled = false"):
+    fail("workspace index must not clear cancellation before the active process exits")
+
 require(page, 'Quickshell.env("QS_CODE_WORKFLOW_CAPTURE") === "1"',
         "capture harness must be opt-in through an explicit environment gate")
 require(page, "active: root.captureHarnessEnabled",

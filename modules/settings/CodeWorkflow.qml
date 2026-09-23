@@ -145,6 +145,7 @@ Item {
         const edgeItems = []
         const connectItems = []
         const semanticItems = []
+        const workspaceBoundaryItems = []
         const query = root.inspectFilter.trim().toLowerCase()
 
         const append = (bucket, item) => {
@@ -306,6 +307,32 @@ Item {
             })
         }
 
+        if (root.inspectShowInternals || query.length > 0) {
+            for (const boundary of CodeWorkflowIndex.boundaries) {
+                const sourcePath = String(boundary.sourcePath ?? "")
+                const anchor = String(boundary.anchor ?? "")
+                const capability = String(
+                    boundary.runtimeCapability
+                        ?? boundary.name
+                        ?? boundary.runtimeBoundary
+                        ?? "Runtime boundary")
+                if (sourcePath.length === 0 || anchor.length === 0)
+                    continue
+                append(workspaceBoundaryItems, {
+                    category: "workspace-boundary",
+                    id: sourcePath + "|" + anchor,
+                    semanticAnchor: anchor,
+                    sourcePath: sourcePath,
+                    label: capability,
+                    detail: "workspace · "
+                        + String(boundary.runtimeBoundary ?? "boundary")
+                        + " · read only · " + sourcePath,
+                    icon: "hub",
+                    depth: 0
+                })
+            }
+        }
+
         appendSection(
             "pinned", "Pinned", "push_pin", "target", pinnedRuntimeItems)
         appendSection(
@@ -321,6 +348,9 @@ Item {
             "candidates", connectItems)
         appendSection(
             "semantic", "Parsed QML", "code", "elements", semanticItems)
+        appendSection(
+            "workspace-boundaries", "Workspace boundaries", "hub",
+            "parser evidence", workspaceBoundaryItems)
         return items
     }
     function captureHarnessStatus(): var {
@@ -615,7 +645,9 @@ Item {
             edge.previewable === true
             && edge.to === CodeWorkflowSession.selectedNodeId) ?? null
     readonly property string sourcePath:
-        root.selectedSignalActionTarget?.sourcePath
+        CodeWorkflowSession.selectedSemanticSourcePath.length > 0
+            ? CodeWorkflowSession.selectedSemanticSourcePath
+            : root.selectedSignalActionTarget?.sourcePath
             ?? root.selectedConnectTarget?.sourcePath
             ?? root.selectedIrNode?.sourcePath
             ?? root.descriptor?.sourcePath
@@ -623,7 +655,8 @@ Item {
     onSourcePathChanged: {
         root.stashSourceEditorBuffer()
         root.sourceEditorStatus = ""
-        CodeWorkflowSession.selectSemantic("")
+        if (CodeWorkflowSession.selectedSemanticSourcePath.length === 0)
+            CodeWorkflowSession.selectSemantic("")
         Qt.callLater(root.reloadSource)
         Qt.callLater(() => root.requestAnalysis(false))
         Qt.callLater(root.evaluatePreApplyGate)
@@ -1173,7 +1206,13 @@ Item {
             return CodeWorkflowSession.selectedConnectTargetId === id
                 && root.inspectedSemanticAnchor.length === 0
         if (category === "semantic")
-            return root.inspectedSemanticAnchor === id
+            return CodeWorkflowSession.selectedSemanticSourcePath.length === 0
+                && root.inspectedSemanticAnchor === id
+        if (category === "workspace-boundary")
+            return CodeWorkflowSession.selectedSemanticSourcePath
+                    === String(item?.sourcePath ?? "")
+                && root.inspectedSemanticAnchor
+                    === String(item?.semanticAnchor ?? "")
         return false
     }
 
@@ -1204,6 +1243,14 @@ Item {
             if (category === "semantic") {
                 root.inspectShowInternals = true
                 CodeWorkflowSession.selectSemantic(id)
+                Qt.callLater(root.revealSelectedInspectTarget)
+                return
+            }
+            if (category === "workspace-boundary") {
+                root.inspectShowInternals = true
+                CodeWorkflowSession.selectIndexedSemantic(
+                    String(item?.sourcePath ?? ""),
+                    String(item?.semanticAnchor ?? ""))
                 Qt.callLater(root.revealSelectedInspectTarget)
                 return
             }

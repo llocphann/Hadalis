@@ -93,6 +93,10 @@ require 'root._completeCapture(exitCode, exitStatus)' \
     'completed PNGs must survive buffered stdout on process exit'
 require_capture "printf 'PREVIEW_READY %s" \
     'capture script must publish a completion record on atomic rename'
+require 'function refreshForOverview(windowIds): void {' \
+    'Overview must be able to refresh cached visible windows without a global cache reset'
+require 'forceRequestedWindowIds' \
+    'Overview refresh must use a targeted one-shot force queue'
 require 'function captureAllWindows(): void {' \
     'explicit force refresh must remain available'
 if grep -Fq 'previewValidityMs' "$service"; then
@@ -106,6 +110,8 @@ grep -Fq 'WindowPreviewService.overviewWarmDecodeHeight' "$overview_renderer" \
     || fail 'Overview must share the resident cache decode height'
 grep -Fq 'WindowPreviewService.warmForOverview(windowItems.map(record => record.id))' "$overview_renderer" \
     || fail 'Overview must retain bounded decoded previews across popup teardown'
+grep -Fq 'WindowPreviewService.refreshForOverview(ids)' "$overview_renderer" \
+    || fail 'Overview presentation must refresh visible long-lived window snapshots'
 
 node - "$preview_policy" <<'NODE'
 const fs = require('node:fs');

@@ -49,8 +49,12 @@ module work, commit directly to `dev`, and never force-push or modify `stable`.
   presentation-only reasoning selection used by Fit selection; **Ctrl+Shift-drag**
   unions the new marquee with the existing manual set. **Ctrl/Shift-click** (or
   Ctrl/Shift + Enter/Space on a focused node) add/toggle individual reviewed nodes
-  while keeping one explicit primary Inspector target. Manual membership derives
-  from canonical reviewed node IDs and never widens mutation authority.
+  while keeping one explicit primary Inspector target; toggling the final manual
+  node clears only reasoning emphasis, not that primary Inspector selection.
+  Manual membership derives from canonical reviewed node IDs and never widens
+  mutation authority. Marquee reasoning is snapshotted before drag: release keeps
+  the visual set, while pointer/compositor cancellation restores the exact prior
+  reasoning mode, node set and edge set.
 - Presentation layout now survives shell restarts: graph/node offsets are stored
   in typed workspace state as validated JSON, remain strictly editor-only, and
   are pruned against the current reviewed IR during restore. Corrupt or stale

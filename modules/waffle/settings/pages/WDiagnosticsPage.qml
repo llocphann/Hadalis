@@ -156,9 +156,20 @@ WSettingsPage {
             icon: "info"
         }
 
+        WSettingsRow {
+            label: Translation.tr("Shell disk I/O")
+            description: "R "
+                + root.formatRate(
+                    root.shellEvidence?.io?.rates?.readBytesPerSec)
+                + "   W "
+                + root.formatRate(
+                    root.shellEvidence?.io?.rates?.writeBytesPerSec)
+            icon: "info"
+        }
+
         WText {
             Layout.fillWidth: true
-            text: Translation.tr("Kernel provenance: system CPU /proc/stat · memory /proc/meminfo · shell CPU schedstat · shell memory smaps_rollup · shell GPU DRM fdinfo · network /proc/net/dev.")
+            text: Translation.tr("Kernel provenance: system CPU /proc/stat · memory /proc/meminfo · shell CPU schedstat · shell memory smaps_rollup · shell I/O /proc/<pid>/io · shell GPU DRM fdinfo · network /proc/net/dev.")
             color: Looks.colors.subfg
             font.pixelSize: Looks.font.pixelSize.small
             wrapMode: Text.WordWrap

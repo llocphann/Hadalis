@@ -11,13 +11,13 @@ import qs.modules.common.functions
 import "WindowPreviewPolicy.js" as PreviewPolicy
 
 /**
- * WindowPreviewService - Window preview caching for TaskView
- * 
+ * WindowPreviewService - cached Niri window previews for Overview/TaskView
+ *
  * Strategy:
- * - Capture previews ONLY when TaskView opens
- * - Cache in ~/.cache/inir/window-previews/
- * - Keep snapshots until window close/session reset; no arbitrary hover TTL
- * - Clean up on window close
+ * - Pre-capture newly observed windows so the first presentation is immediate
+ * - Reuse snapshots for hover/task surfaces without an arbitrary wall-clock TTL
+ * - Refresh only the bounded visible window set when Overview opens
+ * - Cache in ~/.cache/inir/window-previews/ and clean up on window close/session reset
  */
 Singleton {
     id: root

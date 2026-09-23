@@ -1025,8 +1025,8 @@ Singleton {
             pageIndex: 5, pageName: root.pages[5].name,
             section: Translation.tr("Notifications"),
             label: Translation.tr("Notification center behavior"),
-            description: Translation.tr("Configure read state, transient popup dismissal and fullscreen access"),
-            keywords: ["notification", "center", "read", "dismiss", "toast", "fullscreen", "behavior"]
+            description: Translation.tr("Configure read state and fullscreen access"),
+            keywords: ["notification", "center", "read", "toast", "fullscreen", "behavior"]
         },
         {
             pageIndex: 6, pageName: root.pages[6].name,

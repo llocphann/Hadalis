@@ -983,9 +983,10 @@ def main() -> None:
           and "visible: !gameModeMinimal" not in bar_content,
           "Horizontal Hug body must remain structural across fullscreen/GameMode")
     check("id: barBackground" in vertical_bar_content
-          and "visible: !root.isIslands" in vertical_bar_content
-          and "visible: !root.gameModeMinimal && !root.isIslands" not in vertical_bar_content,
-          "Vertical Hug body must remain structural across fullscreen/GameMode")
+          and "visible: true" in vertical_bar_content
+          and "isIslands" not in vertical_bar_content
+          and "appearanceStyle" not in vertical_bar_content,
+          "Vertical Hug body must remain structural without retired Islands routing")
     module_shown_start = bar_content.index("function _moduleShown")
     module_shown_end = bar_content.index("\n    }", module_shown_start)
     module_shown_block = bar_content[module_shown_start:module_shown_end]
@@ -1096,6 +1097,17 @@ def main() -> None:
           "Shared Bar sizing must not branch on retired cornerStyle")
     check("Config.options?.bar?.cornerStyle" not in shell_layout,
           "Shell layout reservation must not branch on retired cornerStyle")
+    check("appearanceStyle" not in shell_layout
+          and "bar?.pill" not in shell_layout
+          and "bar.pill" not in shell_layout,
+          "Shell layout reservation must use canonical Hug geometry only")
+    for retired_bar_constant in (
+        "readonly property int cornerStyle: 0",
+        "floatingStyle",
+        "cardStyleEverywhere",
+    ):
+        check(retired_bar_constant not in bar_content,
+              f"Horizontal Bar must not retain constant retired branch: {retired_bar_constant}")
     for retired_runtime_token in ("effectiveCornerStyle", "floatStyleShadow", "barFillInner"):
         check(retired_runtime_token not in bar_runtime,
               f"Classic Bar runtime must not retain retired corner-style branch: {retired_runtime_token}")

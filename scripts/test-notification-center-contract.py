@@ -112,6 +112,9 @@ for token in (
     "Config.options?.notificationCenter?.cornerSize ?? 14",
     "NotificationCenterPopup {",
     "&& !notificationCenterHostNeeded",
+    "function reconcileNotificationCenterFullscreenPolicy(): void",
+    "onNotificationCenterExplicitForOutputChanged:",
+    "onNotificationCenterAllowedInFullscreenChanged:",
 ):
     require(corners, token, "bottom-right corner ownership contract missing")
 

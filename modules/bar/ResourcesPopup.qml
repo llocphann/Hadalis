@@ -70,6 +70,7 @@ StyledPopup {
         required property string icon
         required property string label
         required property string value
+        property string minimumValueSample: ""
         spacing: 4
 
         MaterialSymbol {
@@ -82,7 +83,13 @@ StyledPopup {
             color: Appearance.colors.colOnSurfaceVariant
         }
         StyledText {
+            id: minimumValueText
+            visible: false
+            text: resourceItem.minimumValueSample
+        }
+        StyledText {
             Layout.fillWidth: true
+            Layout.minimumWidth: minimumValueText.implicitWidth
             horizontalAlignment: Text.AlignRight
             visible: resourceItem.value !== ""
             color: Appearance.colors.colOnSurfaceVariant
@@ -151,6 +158,7 @@ StyledPopup {
             Column {
                 id: thermalColumn
                 anchors.top: parent.top
+                width: Math.max(implicitWidth, speedRow.implicitWidth)
                 spacing: 8
 
                 ResourceHeaderItem {
@@ -175,6 +183,7 @@ StyledPopup {
             Column {
                 id: cpuColumn
                 anchors.top: parent.top
+                width: Math.max(implicitWidth, levelRow.implicitWidth)
                 spacing: 8
 
                 ResourceHeaderItem {
@@ -187,6 +196,7 @@ StyledPopup {
                         icon: "bolt"
                         label: Translation.tr("Load:")
                         value: `${Math.round(ResourceUsage.cpuUsage * 100)}%`
+                        minimumValueSample: "99%"
                     }
                     ResourceItem {
                         icon: "memory_alt"
@@ -264,6 +274,13 @@ StyledPopup {
                     anchors.verticalCenter: parent.verticalCenter
                     spacing: 4
 
+                    MaterialSymbol {
+                        text: "speed"
+                        iconSize: Appearance.font.pixelSize.large
+                        color: Appearance.colors.colOnSurfaceVariant
+                        Layout.alignment: Qt.AlignVCenter
+                    }
+
                     StyledText {
                         text: Translation.tr("RPM:")
                         font.pixelSize: Appearance.font.pixelSize.small
@@ -290,6 +307,13 @@ StyledPopup {
                     anchors.left: parent.left
                     anchors.verticalCenter: parent.verticalCenter
                     spacing: 4
+
+                    MaterialSymbol {
+                        text: "tune"
+                        iconSize: Appearance.font.pixelSize.large
+                        color: Appearance.colors.colOnSurfaceVariant
+                        Layout.alignment: Qt.AlignVCenter
+                    }
 
                     StyledText {
                         text: Translation.tr("Level:")

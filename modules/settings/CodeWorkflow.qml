@@ -1695,7 +1695,7 @@ Item {
 
     function focusSourceEditorWhenActive(): void {
         Qt.callLater(() => {
-            if (root.workflowActive && !root.workflowDestroying
+            if (root.workflowOperational
                     && sourcePane.visible && sourceEditor.visible
                     && !sourceEditor.findVisible)
                 sourceEditor.focusEditor()

@@ -491,6 +491,20 @@ The maintainer requires the physical Screen Edge corners to match Caelestia with
 - When the ii Bar uses auto-hide, it relinquishes physical-edge ownership to `ScreenEdges.qml`; there is no `autoHideScreenEdge` substitute inside Bar/VerticalBar.
 - `scripts/test-shell-surface-contracts.py` is the regression gate. It locks the single-frame Shape/ShapePath, four PathArc corners, all four Bar-aware inset formulas, the shared radius owner, and the absence of any Bar-local corner primitive. Do not restore `CornerWindow`, painted `EdgeWindow`, Bar-local `RoundCorner`/`PathArc` geometry, separate physical shadow geometry or shared shadow ownership.
 
+## Equalizer implementation status
+
+### Implemented
+
+`EqualizerService.qml` provides the Phase 1 backend/service contract and is disabled by default. It owns the optional 10-band DSP state, EasyEffects transport boundary, preset curves and consumer-driven lifecycle without creating a second equalizer backend.
+
+### Stabilizing
+
+The existing backend is being stabilized around transport probing, EasyEffects lifecycle changes, state synchronization and live visual/audio validation in the Media Popup. These are hardening tasks; they do not imply that the open release gates below have already passed.
+
+### Planned
+
+Further equalizer presentation experiments are planned/deferred rather than current release prerequisites. The v1.0 release-blocker list below remains the authority for required source and live validation.
+
 ## 3. v1.0 release blockers
 
 Checkboxes below are **release gates**, not an assertion that no partial implementation exists. Check an item only after source review and the relevant local/runtime validation.

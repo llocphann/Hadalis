@@ -19,7 +19,12 @@ Item {
         "workflow-page:" + String(Quickshell.processId) + ":"
             + Math.random().toString(36).slice(2)
     readonly property bool workflowActive: root.enabled && root.visible
+    property bool workflowHydrated: false
     property bool workflowDestroying: false
+    readonly property bool workflowOperational:
+        (root.workflowActive && root.workflowHydrated
+            && !root.workflowDestroying)
+        || root.captureHarnessEnabled
     property string sourceText: ""
     property string sourceDraft: ""
     property string sourceEditorPath: ""
@@ -84,7 +89,7 @@ Item {
     readonly property var snapshot: root.runtimeSnapshotCache
 
     function refreshRuntimeSnapshot(): void {
-        if (!root.workflowActive || root.workflowDestroying)
+        if (!root.workflowOperational)
             return
         root.runtimeSnapshotCache = CodeWorkflowRuntime.snapshot()
     }
@@ -110,7 +115,7 @@ Item {
             ?? CodeWorkflowSession.selectedTargetId
             ?? "")
     readonly property var runtimeActivityEvents: {
-        if (!root.workflowActive && !root.captureHarnessEnabled)
+        if (!root.workflowOperational)
             return []
         const targetId = root.runtimeActivityTargetId
         if (targetId.length === 0)
@@ -141,7 +146,7 @@ Item {
         Quickshell.env("QS_CODE_WORKFLOW_CAPTURE") === "1"
     property var captureHarnessBaseline: null
     readonly property var parsedSemanticEntries:
-        (root.workflowActive || root.captureHarnessEnabled)
+        root.workflowOperational
             && root.analyzerMatchesSource
             && CodeWorkflowAnalyzer.status === "ready"
             ? (CodeWorkflowAnalyzer.result?.entries ?? [])
@@ -151,7 +156,7 @@ Item {
             String(entry.anchor ?? "") === root.inspectedSemanticAnchor)
             ?? null
     readonly property var selectedIndexedBoundary:
-        (root.workflowActive || root.captureHarnessEnabled)
+        root.workflowOperational
             && CodeWorkflowSession.selectedSemanticSourcePath.length > 0
             ? (CodeWorkflowIndex.boundaries.find(boundary =>
                 String(boundary.sourcePath ?? "")
@@ -162,7 +167,7 @@ Item {
     readonly property string indexedSourcePath:
         CodeWorkflowRuntime.relativeSourcePath(root.sourcePath)
     readonly property var sourceRuntimeBoundaries:
-        (root.workflowActive || root.captureHarnessEnabled)
+        root.workflowOperational
             && CodeWorkflowIndex.status === "ready"
             && root.indexedSourcePath.length > 0
             ? CodeWorkflowIndex.boundaries.filter(boundary =>
@@ -209,7 +214,7 @@ Item {
         return "bytes " + Number(range[0]) + "–" + Number(range[1])
     }
     readonly property var inspectTargets: {
-        if (!root.workflowActive && !root.captureHarnessEnabled)
+        if (!root.workflowOperational)
             return []
         const items = []
         const pinnedRuntimeItems = []
@@ -1674,7 +1679,8 @@ Item {
     function syncRemoteRuntimeDemand(): void {
         CodeWorkflowRuntime.setRemoteConsumerActive(
             root.runtimeRemoteConsumerId,
-            root.enabled && root.visible)
+            root.workflowActive && root.workflowHydrated
+                && !root.workflowDestroying)
     }
 
     function syncInitialOutput(): void {
@@ -1699,6 +1705,8 @@ Item {
     function activateWorkflowWhenCurrent(): void {
         if (!root.workflowActive || root.workflowDestroying)
             return
+        root.workflowHydrated = true
+        root.syncRemoteRuntimeDemand()
         root.refreshRuntimeSnapshot()
         root.syncInitialOutput()
         root.reloadSource()
@@ -1710,7 +1718,9 @@ Item {
 
     function scheduleWorkflowActivation(): void {
         if (!root.workflowActive || root.workflowDestroying) {
+            root.workflowHydrated = false
             workflowActivationTimer.stop()
+            root.syncRemoteRuntimeDemand()
             return
         }
         workflowActivationTimer.restart()
@@ -1897,6 +1907,7 @@ Item {
 
     Component.onDestruction: {
         root.workflowDestroying = true
+        root.workflowHydrated = false
         workflowActivationTimer.stop()
         CodeWorkflowRuntime.setRemoteConsumerActive(
             root.runtimeRemoteConsumerId, false)
@@ -2649,7 +2660,7 @@ Item {
             CodeWorkflowIrCanvas {
                 id: canvas
                 showInternals: root.inspectShowInternals
-                workflowActive: root.workflowActive && !root.workflowDestroying
+                workflowActive: root.workflowOperational
                 SplitView.fillWidth: true
                 SplitView.minimumWidth: 360
             }

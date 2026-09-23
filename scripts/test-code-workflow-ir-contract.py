@@ -584,6 +584,9 @@ if "textRenderType: Text.QtRendering" not in world_block:
 if "id: edgeLabelTooltip" in world_block:
     fail("edge-label tooltip HUD must stay outside the transformed graph world")
 
+forbid(canvas, "existingIndex >= 0 && selected.length > 1",
+       "manual reasoning toggle must allow clearing the final emphasized node")
+
 for token in (
     "defaults/code-workflow-ir.json",
     'parsed?.mode !== "reviewed-source-projection"',
@@ -713,6 +716,8 @@ for token in (
     "function fitSelection(): void",
     "function setManualReasoningSelection(nodeIds): void",
     "function toggleManualNodeSelection(node): void",
+    "if (existingIndex >= 0) {",
+    "An empty manual set clears only reasoning emphasis.",
     "nodeTap.point.modifiers",
     "event.modifiers",
     "function marqueeSelectionIds(): var",

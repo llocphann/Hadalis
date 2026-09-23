@@ -242,7 +242,7 @@ Singleton {
     // FileView auto-loads on startup, races the tabs JSON load, and its onLoaded
     // unconditionally resets tabs to a single legacy note and saves — wiping every
     // extra tab on every restart. Only load it on demand when the tabs file is
-    // genuinely missing/invalid (path assigned above).
+    // genuinely missing; malformed existing multi-tab storage is preserved.
     FileView {
         id: legacyFileView
 

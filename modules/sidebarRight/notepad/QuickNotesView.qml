@@ -54,7 +54,7 @@ Item {
     }
 
     function releaseEditorFocus(): void {
-        notepad.focus = false
+        notepad.releaseEditorFocus()
     }
 
     function flushPendingSave(): void {
@@ -73,11 +73,11 @@ Item {
         RowLayout {
             visible: root.showHeader
             Layout.fillWidth: true
-            spacing: 6
+            spacing: root.veryNarrowHeader ? 4 : 6
 
             MaterialSymbol {
                 text: "note_stack"
-                iconSize: root.constrainedHeight
+                iconSize: root.constrainedHeight || root.veryNarrowHeader
                     ? Appearance.font.pixelSize.normal
                     : Appearance.font.pixelSize.larger
                 color: root.colAccent
@@ -97,7 +97,7 @@ Item {
 
             RippleButton {
                 visible: root.showZettelkastenActions
-                    && !root.veryNarrowHeader
+                    && !root.narrowHeader
                 implicitWidth: root.constrainedHeight ? 28 : 30
                 implicitHeight: implicitWidth
                 buttonRadius: height / 2
@@ -128,7 +128,8 @@ Item {
 
             RippleButton {
                 visible: root.showZettelkastenActions
-                implicitWidth: root.constrainedHeight ? 28 : 32
+                implicitWidth: root.constrainedHeight || root.veryNarrowHeader
+                    ? 28 : 32
                 implicitHeight: implicitWidth
                 buttonRadius: height / 2
                 enabled: notepad.canSaveZettel

@@ -294,12 +294,16 @@ ContentPage {
                         spacing: 1
 
                         StyledText {
+
+                            textFormat: Text.PlainText
                             text: root.sessionStateLabel()
                             color: Appearance.colors.colOnLayer1
                             font.weight: Font.DemiBold
                         }
 
                         StyledText {
+
+                            textFormat: Text.PlainText
                             Layout.fillWidth: true
                             text: root.sampleIntervalLabel() + " "
                                 + Translation.tr("kernel sampling · stops automatically when this page is not current")
@@ -313,6 +317,8 @@ ContentPage {
                         spacing: 0
 
                         StyledText {
+
+                            textFormat: Text.PlainText
                             Layout.alignment: Qt.AlignRight
                             text: Translation.tr("Uptime") + " "
                                 + root.formatUptime(
@@ -322,6 +328,8 @@ ContentPage {
                         }
 
                         StyledText {
+
+                            textFormat: Text.PlainText
                             Layout.alignment: Qt.AlignRight
                             text: Translation.tr("history") + " "
                                 + String((root.evidence?.history ?? []).length)
@@ -336,6 +344,8 @@ ContentPage {
             }
 
             StyledText {
+
+                textFormat: Text.PlainText
                 Layout.fillWidth: true
                 visible: RuntimeDiagnosticsSession.leaseError.length > 0
                 text: Translation.tr("Diagnostics lease error") + " · "
@@ -346,6 +356,8 @@ ContentPage {
             }
 
             StyledText {
+
+                textFormat: Text.PlainText
                 Layout.fillWidth: true
                 visible: RuntimeDiagnosticsSession.remoteError.length > 0
                 text: Translation.tr("Runtime bridge error") + " · "
@@ -356,6 +368,8 @@ ContentPage {
             }
 
             StyledText {
+
+                textFormat: Text.PlainText
                 Layout.fillWidth: true
                 visible: RuntimeDiagnosticsSession.evidenceError.length > 0
                 text: Translation.tr("Runtime evidence error") + " · "
@@ -366,6 +380,8 @@ ContentPage {
             }
 
             StyledText {
+
+                textFormat: Text.PlainText
                 Layout.fillWidth: true
                 visible: root.samplerError.length > 0
                 text: Translation.tr("Sampler error") + " · "
@@ -384,6 +400,7 @@ ContentPage {
 
         SettingsGroup {
             StyledText {
+                textFormat: Text.PlainText
                 Layout.fillWidth: true
                 text: Translation.tr("CPU · RAM · Swap · GPU · Network")
                 color: Appearance.colors.colSubtext
@@ -527,6 +544,8 @@ ContentPage {
                         Layout.fillWidth: true
 
                         StyledText {
+
+                            textFormat: Text.PlainText
                             text: Translation.tr("CPU cores")
                             color: Appearance.colors.colOnLayer1
                             font.weight: Font.DemiBold
@@ -535,6 +554,8 @@ ContentPage {
                         Item { Layout.fillWidth: true }
 
                         StyledText {
+
+                            textFormat: Text.PlainText
                             text: String(root.cpuCores.length)
                                 + " " + Translation.tr("logical")
                             color: Appearance.colors.colSubtext
@@ -586,6 +607,8 @@ ContentPage {
             }
 
             StyledText {
+
+                textFormat: Text.PlainText
                 Layout.fillWidth: true
                 text: Translation.tr("No synthetic per-QML resource estimates.")
                 color: Appearance.colors.colSubtext
@@ -631,6 +654,8 @@ ContentPage {
             }
 
             StyledText {
+
+                textFormat: Text.PlainText
                 Layout.fillWidth: true
                 text: Translation.tr("Workflow-owned identities · no synthetic target metrics.")
                 color: Appearance.colors.colSubtext
@@ -665,12 +690,16 @@ ContentPage {
                         spacing: 2
 
                         StyledText {
+
+                            textFormat: Text.PlainText
                             text: Translation.tr("Targets")
                             color: Appearance.colors.colSubtext
                             font.pixelSize: Appearance.font.pixelSize.small
                         }
 
                         StyledText {
+
+                            textFormat: Text.PlainText
                             text: String(root.targetCount)
                             color: Appearance.colors.colPrimary
                             font.weight: Font.DemiBold
@@ -692,12 +721,16 @@ ContentPage {
                         spacing: 2
 
                         StyledText {
+
+                            textFormat: Text.PlainText
                             text: Translation.tr("Source boundaries")
                             color: Appearance.colors.colSubtext
                             font.pixelSize: Appearance.font.pixelSize.small
                         }
 
                         StyledText {
+
+                            textFormat: Text.PlainText
                             text: root.discoveryEvidence?.status === "ready"
                                 ? String(root.discoveryEvidence?.boundaryCount ?? 0)
                                 : "—"
@@ -723,12 +756,16 @@ ContentPage {
                         spacing: 2
 
                         StyledText {
+
+                            textFormat: Text.PlainText
                             text: Translation.tr("Identity collisions")
                             color: Appearance.colors.colSubtext
                             font.pixelSize: Appearance.font.pixelSize.small
                         }
 
                         StyledText {
+
+                            textFormat: Text.PlainText
                             text: String(root.collisionCount)
                             color: root.collisionCount === 0
                                 ? Appearance.colors.colPrimary
@@ -752,6 +789,8 @@ ContentPage {
             }
 
             StyledText {
+
+                textFormat: Text.PlainText
                 Layout.fillWidth: true
                 visible: String(root.discoveryEvidence?.error ?? "").length > 0
                 text: Translation.tr("Runtime boundary index error") + " · "
@@ -762,6 +801,8 @@ ContentPage {
             }
 
             StyledText {
+
+                textFormat: Text.PlainText
                 Layout.fillWidth: true
                 text: root.discoveryEvidence?.status === "ready"
                     ? Translation.tr("Matched source boundaries") + " · "
@@ -782,6 +823,8 @@ ContentPage {
             }
 
             StyledText {
+
+                textFormat: Text.PlainText
                 Layout.fillWidth: true
                 visible: root.discoveryEvidence?.status === "ready"
                 text: Translation.tr("Source boundaries are parser evidence, not proof that a component executed.")

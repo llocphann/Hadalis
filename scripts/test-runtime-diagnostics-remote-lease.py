@@ -24,8 +24,9 @@ def function_source(name: str) -> str:
 
 
 names = (
-    "_pulseRemote", "_releaseRemote", "_acquireLease", "_releaseLease",
-    "_remotePulseExited", "_remoteReleaseExited",
+    "_remoteEvidenceKey", "_pulseRemote", "_releaseRemote",
+    "_acquireLease", "_releaseLease", "_remotePulseExited",
+    "_remoteReleaseExited",
 )
 payload = {name: function_source(name) for name in names}
 
@@ -53,6 +54,7 @@ function makeSession() {
     }
     const remotePulseOutput = {text: '{"ok":true}'};
     const remotePulseError = {text: 'IPC failed'};
+    const CodeWorkflowRuntime = {remoteSnapshot: null};
     const root = {
         pageCurrent: false,
         localShell: false,
@@ -64,6 +66,7 @@ function makeSession() {
     };
     const context = vm.createContext({
         root, remotePulse, remoteRelease, remotePulseOutput, remotePulseError,
+        CodeWorkflowRuntime,
         RuntimeDiagnostics: {
             acquire: () => { runtimeEvents.push('local-acquire'); return true; },
             release: () => { runtimeEvents.push('local-release'); return true; },
@@ -84,6 +87,7 @@ function makeSession() {
     return {
         root, commands, runtimeEvents, remotePulse, remoteRelease, flush,
         setPulseError(text) { remotePulseError.text = text; },
+        setRemoteSnapshot(value) { CodeWorkflowRuntime.remoteSnapshot = value; },
         enter() { root.pageCurrent = true; root._acquireLease(); },
         leave() { root.pageCurrent = false; root._releaseRemote(); },
         finishPulse(exitCode = 0, payload = '{"ok":true}', runCallbacks = true) {
@@ -100,6 +104,45 @@ function makeSession() {
             flush();
         },
     };
+}
+
+
+// Remote evidence freshness must depend on Diagnostics itself, not unrelated
+// runtime snapshot churn, while sampler failures still create a new generation.
+{
+    const s = makeSession();
+    assert.equal(s.root._remoteEvidenceKey(), '');
+    s.setRemoteSnapshot({
+        records: [{instanceId: 'one'}],
+        diagnostics: {
+            sampleAtMs: 100,
+            sampler: {running: true, error: ''},
+        },
+    });
+    const baseline = s.root._remoteEvidenceKey();
+    assert.equal(baseline, '100|1|');
+    s.setRemoteSnapshot({
+        records: [{instanceId: 'two'}],
+        diagnostics: {
+            sampleAtMs: 100,
+            sampler: {running: true, error: ''},
+        },
+    });
+    assert.equal(
+        s.root._remoteEvidenceKey(), baseline,
+        'unrelated runtime churn must not publish stale Diagnostics evidence'
+    );
+    s.setRemoteSnapshot({
+        records: [{instanceId: 'two'}],
+        diagnostics: {
+            sampleAtMs: 100,
+            sampler: {running: true, error: 'probe failed'},
+        },
+    });
+    assert.notEqual(
+        s.root._remoteEvidenceKey(), baseline,
+        'sampler errors must advance the Diagnostics evidence generation'
+    );
 }
 
 // Release must follow a queued acquire, even when the page changes immediately.

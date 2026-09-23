@@ -148,6 +148,8 @@ def main() -> None:
     for token in (
         "if (value === null || value === undefined)",
         "readonly property bool showTotalColumn: width >= 520",
+        "property int maxRows: 8",
+        "readonly property var visibleRows:",
         "? null : Number(data.rxBytesPerSec)",
         "? null : Number(data.txBytesPerSec)",
     ):

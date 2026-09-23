@@ -9,12 +9,8 @@ Rectangle {
     property alias text: noticeText.text
     default property alias contentData: buttonRow.data
 
-    radius: Appearance.angelEverywhere ? Appearance.angel.roundingNormal
-         : Appearance.inirEverywhere ? Appearance.inir.roundingNormal : Appearance.rounding.normal
-    color: Appearance.angelEverywhere ? Appearance.angel.colGlassCard
-        : Appearance.inirEverywhere ? Appearance.inir.colLayer2
-        : Appearance.auroraEverywhere ? Appearance.aurora.colSubSurface
-        : Appearance.colors.colSurfaceContainer
+    radius: Appearance.rounding.normal
+    color: Appearance.colors.colSurfaceContainer
     implicitWidth: mainRowLayout.implicitWidth + mainRowLayout.anchors.margins * 2
     implicitHeight: mainRowLayout.implicitHeight + mainRowLayout.anchors.margins * 2
 
@@ -30,8 +26,7 @@ Rectangle {
             Layout.alignment: Qt.AlignTop
             text: "info"
             iconSize: Appearance.font.pixelSize.huge
-            color: Appearance.angelEverywhere ? Appearance.angel.colPrimary
-                 : Appearance.inirEverywhere ? Appearance.inir.colAccent : Appearance.colors.colPrimary
+            color: Appearance.colors.colPrimary
         }
 
         ColumnLayout {
@@ -42,8 +37,7 @@ Rectangle {
                 id: noticeText
                 Layout.fillWidth: true
                 text: "Notice message"
-                color: Appearance.angelEverywhere ? Appearance.angel.colText
-                     : Appearance.inirEverywhere ? Appearance.inir.colText : Appearance.colors.colOnSurface
+                color: Appearance.colors.colOnSurface
                 wrapMode: Text.WordWrap
             }
 

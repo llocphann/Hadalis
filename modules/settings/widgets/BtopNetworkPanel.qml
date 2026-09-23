@@ -13,6 +13,7 @@ Item {
     property string txPrefix: "↑ "
     property string rx: "—"
     property string tx: "—"
+    property string provenance: ""
     property var rxSamples: []
     property var txSamples: []
     property color rxColor: Appearance.colors.colPrimary
@@ -32,7 +33,7 @@ Item {
         root.peak(root.rxSamples),
         root.peak(root.txSamples))
 
-    implicitHeight: 132
+    implicitHeight: provenance.length > 0 ? 150 : 132
 
     Rectangle {
         anchors.fill: parent
@@ -108,6 +109,16 @@ Item {
                         lineColor: root.txColor
                     }
                 }
+            }
+
+            StyledText {
+                Layout.fillWidth: true
+                visible: root.provenance.length > 0
+                text: root.provenance
+                color: Appearance.colors.colSubtext
+                opacity: 0.78
+                font.pixelSize: Appearance.font.pixelSize.smallest
+                elide: Text.ElideRight
             }
         }
     }

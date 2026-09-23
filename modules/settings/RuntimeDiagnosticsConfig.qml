@@ -290,10 +290,10 @@ ContentPage {
 
                         StyledText {
                             Layout.alignment: Qt.AlignRight
-                            text: String((root.evidence?.history ?? []).length)
+                            text: Translation.tr("history") + " "
+                                + String((root.evidence?.history ?? []).length)
                                 + "/" + String(
                                     root.evidence?.status?.historyLimit ?? 60)
-                                + " " + Translation.tr("history")
                             color: Appearance.colors.colPrimary
                             font.pixelSize: Appearance.font.pixelSize.smallest
                             font.weight: Font.DemiBold

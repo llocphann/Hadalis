@@ -15,6 +15,8 @@ Item {
     property string tx: "—"
     property var rxSamples: []
     property var txSamples: []
+    property color rxColor: Appearance.colors.colPrimary
+    property color txColor: Appearance.colors.colSecondary
 
     function peak(samples): real {
         let result = 1
@@ -57,7 +59,7 @@ Item {
                 StyledText {
                     text: root.rxPrefix + root.rx
                         + "   " + root.txPrefix + root.tx
-                    color: Appearance.colors.colPrimary
+                    color: root.rxColor
                     font.weight: Font.DemiBold
                 }
             }
@@ -83,7 +85,7 @@ Item {
                         Layout.fillHeight: true
                         samples: root.rxSamples
                         maxValue: root.graphMax
-                        lineColor: Appearance.colors.colPrimary
+                        lineColor: root.rxColor
                     }
                 }
 
@@ -103,7 +105,7 @@ Item {
                         Layout.fillHeight: true
                         samples: root.txSamples
                         maxValue: root.graphMax
-                        lineColor: Appearance.colors.colPrimary
+                        lineColor: root.txColor
                     }
                 }
             }

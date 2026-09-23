@@ -71,12 +71,13 @@ Item {
         return "plaintext"
     }
 
-    readonly property int runtimeRevision: CodeWorkflowRuntime.revision
-    readonly property var snapshot: {
-        const dependency = root.runtimeRevision
-        if (dependency < 0)
-            return ({ outputs: [], records: [] })
-        return CodeWorkflowRuntime.snapshot()
+    property var runtimeSnapshotCache: ({ outputs: [], records: [] })
+    readonly property var snapshot: root.runtimeSnapshotCache
+
+    function refreshRuntimeSnapshot(): void {
+        if (!root.workflowActive || root.workflowDestroying)
+            return
+        root.runtimeSnapshotCache = CodeWorkflowRuntime.snapshot()
     }
     function runtimeEventTargetId(event): string {
         const explicitTargetId = String(event?.targetId ?? "")
@@ -100,6 +101,8 @@ Item {
             ?? CodeWorkflowSession.selectedTargetId
             ?? "")
     readonly property var runtimeActivityEvents: {
+        if (!root.workflowActive && !root.captureHarnessEnabled)
+            return []
         const targetId = root.runtimeActivityTargetId
         if (targetId.length === 0)
             return []
@@ -127,7 +130,8 @@ Item {
         Quickshell.env("QS_CODE_WORKFLOW_CAPTURE") === "1"
     property var captureHarnessBaseline: null
     readonly property var parsedSemanticEntries:
-        root.analyzerMatchesSource
+        (root.workflowActive || root.captureHarnessEnabled)
+            && root.analyzerMatchesSource
             && CodeWorkflowAnalyzer.status === "ready"
             ? (CodeWorkflowAnalyzer.result?.entries ?? [])
             : []
@@ -146,7 +150,8 @@ Item {
     readonly property string indexedSourcePath:
         CodeWorkflowRuntime.relativeSourcePath(root.sourcePath)
     readonly property var sourceRuntimeBoundaries:
-        CodeWorkflowIndex.status === "ready"
+        (root.workflowActive || root.captureHarnessEnabled)
+            && CodeWorkflowIndex.status === "ready"
             && root.indexedSourcePath.length > 0
             ? CodeWorkflowIndex.boundaries.filter(boundary =>
                 String(boundary?.sourcePath ?? "")
@@ -192,6 +197,8 @@ Item {
         return "bytes " + Number(range[0]) + "–" + Number(range[1])
     }
     readonly property var inspectTargets: {
+        if (!root.workflowActive && !root.captureHarnessEnabled)
+            return []
         const items = []
         const pinnedRuntimeItems = []
         const recentRuntimeItems = []
@@ -1665,6 +1672,7 @@ Item {
     function activateWorkflowWhenCurrent(): void {
         if (!root.workflowActive || root.workflowDestroying)
             return
+        root.refreshRuntimeSnapshot()
         root.syncInitialOutput()
         root.reloadSource()
         root.requestAnalysis(false)
@@ -1832,6 +1840,7 @@ Item {
         target: CodeWorkflowRuntime
         enabled: root.workflowActive && !root.workflowDestroying
         function onRevisionChanged(): void {
+            root.refreshRuntimeSnapshot()
             root.syncInitialOutput()
         }
     }

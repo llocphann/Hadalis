@@ -138,6 +138,26 @@ Item {
                 && String(boundary.anchor ?? "")
                     === root.inspectedSemanticAnchor) ?? null)
             : null
+    readonly property string indexedSourcePath:
+        CodeWorkflowRuntime.relativeSourcePath(root.sourcePath)
+    readonly property var sourceRuntimeBoundaries:
+        CodeWorkflowIndex.status === "ready"
+            && root.indexedSourcePath.length > 0
+            ? CodeWorkflowIndex.boundaries.filter(boundary =>
+                String(boundary?.sourcePath ?? "")
+                    === root.indexedSourcePath)
+            : []
+    readonly property string sourceRuntimeBoundarySummary: {
+        const counts = ({})
+        for (const boundary of root.sourceRuntimeBoundaries) {
+            const kind = String(
+                boundary?.runtimeBoundary ?? "boundary")
+            counts[kind] = Number(counts[kind] ?? 0) + 1
+        }
+        return Object.keys(counts).sort().map(kind =>
+            kind + " " + String(counts[kind])).join(" · ")
+    }
+
     readonly property string inspectedSemanticRangeText: {
         const range = root.inspectedSemanticEntry?.range ?? []
         if (range.length !== 2)
@@ -383,6 +403,7 @@ Item {
             analyzerError: CodeWorkflowAnalyzer.error,
             workspaceIndexStatus: CodeWorkflowIndex.status,
             workspaceBoundaryCount: CodeWorkflowIndex.boundaryCount,
+            currentSourceBoundaryCount: root.sourceRuntimeBoundaries.length,
             sourcePath: root.sourcePath,
             runtimeState: String(root.record?.state ?? "missing"),
             selectedLive: root.selectedLive,
@@ -2873,6 +2894,22 @@ Item {
                         font.pixelSize: Appearance.font.pixelSize.smaller
                         elide: Text.ElideMiddle
                         maximumLineCount: 1
+                    }
+                    StyledText {
+                        visible: root.sourceRuntimeBoundaries.length > 0
+                        text: "Source boundaries"
+                        color: Appearance.colors.colSubtext
+                    }
+                    StyledText {
+                        Layout.fillWidth: true
+                        visible: root.sourceRuntimeBoundaries.length > 0
+                        text: String(root.sourceRuntimeBoundaries.length)
+                            + " parser boundaries · "
+                            + root.sourceRuntimeBoundarySummary
+                            + " · source evidence only"
+                        color: Appearance.colors.colSubtext
+                        font.pixelSize: Appearance.font.pixelSize.smallest
+                        wrapMode: Text.WordWrap
                     }
                     StyledText { text: "Source anchor"; color: Appearance.colors.colSubtext }
                     StyledText {

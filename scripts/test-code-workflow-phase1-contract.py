@@ -874,8 +874,12 @@ for token in (
             "runtime declaration lifecycle transition tracking missing " + token)
 require(runtime_declaration, "CodeWorkflowRuntime.touchDeclaration(root.registrationToken)",
         "loader lifecycle changes must flow through the deduplicating runtime registry")
+runtime_declaration_code = "\n".join(
+    line.split("//", 1)[0]
+    for line in runtime_declaration.splitlines()
+)
 for token in ("root.loader.item", "root.loader?.item"):
-    if token in runtime_declaration:
+    if token in runtime_declaration_code:
         fail("runtime declaration lifecycle diagnostics must not dereference loader.item")
 for token in (
     "property var entryStates: ({})",

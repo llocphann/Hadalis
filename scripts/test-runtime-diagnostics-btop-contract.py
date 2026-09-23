@@ -161,6 +161,13 @@ def main() -> None:
         )
 
     for token in (
+        "const selectedId = String(root.selectedTargetId ?? \"\")",
+        "visible.some(target =>",
+        "const selected = source.find(target =>",
+    ):
+        require(target_table, token, "BtopTargetTable.qml selected target visibility")
+
+    for token in (
         "readonly property var recordIndex: root.buildRecordIndex()",
         "function buildRecordIndex(): var",
         "root.recordIndex.all[id] ?? []",

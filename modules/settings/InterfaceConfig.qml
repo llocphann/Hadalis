@@ -592,6 +592,10 @@ ContentPage {
         title: Translation.tr("Notifications")
 
         SettingsGroup {
+            ContentSubsectionLabel {
+                text: Translation.tr("Transient notifications")
+            }
+
             ConfigSpinBox {
                 icon: "av_timer"
                 text: Translation.tr("Timeout (ms)")
@@ -712,6 +716,98 @@ ContentPage {
                         { displayName: Translation.tr("Bottom Right"), icon: "south_east", value: "bottomRight" },
                         { displayName: Translation.tr("Bottom Left"), icon: "south_west", value: "bottomLeft" }
                     ]
+                }
+            }
+
+            SettingsDivider {}
+
+            ContentSubsectionLabel {
+                text: Translation.tr("Notification center")
+            }
+
+            NoticeBox {
+                Layout.fillWidth: true
+                materialIcon: "south_east"
+                text: Translation.tr("Hover the physical bottom-right corner to reveal notification history. Orbit and native compositor hot corners keep priority when they own the same corner.")
+            }
+
+            ConfigSwitch {
+                buttonIcon: "notifications"
+                text: Translation.tr("Enable notification center")
+                checked: Config.options?.notificationCenter?.enable ?? true
+                onCheckedChanged:
+                    Config.setNestedValue("notificationCenter.enable", checked)
+            }
+
+            ConfigSwitch {
+                buttonIcon: "south_east"
+                text: Translation.tr("Open on bottom-right hover")
+                checked: Config.options?.notificationCenter?.hoverEnable ?? true
+                enabled: Config.options?.notificationCenter?.enable ?? true
+                opacity: enabled ? 1 : 0.5
+                onCheckedChanged:
+                    Config.setNestedValue("notificationCenter.hoverEnable", checked)
+            }
+
+            ConfigRow {
+                uniform: true
+
+                ConfigSpinBox {
+                    icon: "hourglass"
+                    text: Translation.tr("Hover delay (ms)")
+                    value: Config.options?.notificationCenter?.hoverDelayMs ?? 220
+                    from: 0
+                    to: 1200
+                    stepSize: 20
+                    enabled: (Config.options?.notificationCenter?.enable ?? true)
+                        && (Config.options?.notificationCenter?.hoverEnable ?? true)
+                    opacity: enabled ? 1 : 0.5
+                    onValueChanged:
+                        Config.setNestedValue("notificationCenter.hoverDelayMs", value)
+                }
+
+                ConfigSpinBox {
+                    icon: "select"
+                    text: Translation.tr("Corner hit size (px)")
+                    value: Config.options?.notificationCenter?.cornerSize ?? 14
+                    from: 4
+                    to: 48
+                    stepSize: 1
+                    enabled: (Config.options?.notificationCenter?.enable ?? true)
+                        && (Config.options?.notificationCenter?.hoverEnable ?? true)
+                    opacity: enabled ? 1 : 0.5
+                    onValueChanged:
+                        Config.setNestedValue("notificationCenter.cornerSize", value)
+                }
+            }
+
+            ConfigRow {
+                uniform: true
+
+                ConfigSpinBox {
+                    icon: "width"
+                    text: Translation.tr("Popup width (px)")
+                    value: Config.options?.notificationCenter?.popupWidth ?? 420
+                    from: 320
+                    to: 760
+                    stepSize: 20
+                    enabled: Config.options?.notificationCenter?.enable ?? true
+                    opacity: enabled ? 1 : 0.5
+                    onValueChanged:
+                        Config.setNestedValue("notificationCenter.popupWidth", value)
+                }
+
+                ConfigSpinBox {
+                    icon: "height"
+                    text: Translation.tr("Popup height (px)")
+                    value: Config.options?.notificationCenter?.popupHeight ?? 560
+                    from: 260
+                    to: 900
+                    stepSize: 20
+                    enabled: Config.options?.notificationCenter?.enable ?? true
+                    opacity: enabled ? 1 : 0.5
+                    onValueChanged:
+                        Config.setNestedValue("notificationCenter.popupHeight", value)
                 }
             }
         }

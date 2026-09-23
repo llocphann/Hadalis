@@ -38,6 +38,7 @@ for token in (
     '"indexerSha256": helper_hashes["index.py"]',
     '"nativeAdapterSha256": helper_hashes["native.py"]',
     '"semanticsSha256": helper_hashes["semantics.py"]',
+    '"kind": "parse-failed"',
     '"liveRuntimeEvidence": False',
     '"editable": False',
 ):
@@ -209,5 +210,17 @@ with tempfile.TemporaryDirectory(prefix="hadalis-workflow-index-") as tmp:
         or fourth.get("filesRemoved") != ["Boundary.qml"]
     ):
         raise SystemExit("FAIL: removed QML must be pruned from the cached index")
+
+    unreadable = fixture_root / "Unreadable.qml"
+    unreadable.write_bytes(b"\xff")
+    fifth = run_index(fixture_root, cache)
+    if fifth.get("status") != "ok" or fifth.get("boundaryCount") != 0:
+        raise SystemExit("FAIL: one unreadable source must not abort the workspace index")
+    if not any(
+        item.get("sourcePath") == "Unreadable.qml"
+        and item.get("kind") == "source-read-failed"
+        for item in fifth.get("diagnostics") or []
+    ):
+        raise SystemExit("FAIL: unreadable source must remain explicit diagnostic evidence")
 
 print("ok - Code Workflow cached runtime-boundary index contract")

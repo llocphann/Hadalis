@@ -35,6 +35,7 @@ def main() -> None:
         "BtopRuntimePanel.qml",
         "BtopTargetTable.qml",
         "BtopProcessTable.qml",
+        "BtopCoveragePanel.qml",
     ):
         path = WIDGETS / widget
         if not path.is_file():
@@ -49,6 +50,7 @@ def main() -> None:
         "BtopRuntimePanel {",
         "BtopTargetTable {",
         "BtopProcessTable {",
+        "BtopCoveragePanel {",
         'root.historyValues("systemCpuPercent")',
         'root.historyValues("systemSwapPercent")',
         'root.historyValues("shellGpuPeakPercent")',

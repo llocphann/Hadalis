@@ -493,6 +493,27 @@ empty until that committed cache exists instead of independently calling
 `edgeRoute()` and then paying for the same routing work again. Hover
 route-distance scans are capped at 32 ms while click selection remains immediate.
 
+A later 2026-09-23 pass further bounds the remaining presentation work. Smart-lane
+routing is no longer one synchronous whole-graph JS pass: a zero-interval,
+animation-synchronized Timer advances an unpublished route cache in small slices,
+with both an eight-edge ceiling and a ~3 ms elapsed-time budget per slice, then
+atomically publishes the finished cache. A new layout/graph request or node drag
+cancels the in-flight build, so stale work cannot race the current presentation.
+Offscreen groups and node subtrees now share the sampled viewport culler with
+128 px overscan; the actively dragged node is never culled. Graph labels explicitly
+use PlainText with kerning disabled, and description/source detail text is level-
+of-detail gated below 58% zoom unless the node is selected. Reviewed quadratic
+wire paths and linear arrow paths also publish ShapePath geometry hints while
+remaining on the qualified asynchronous GeometryRenderer path.
+
+Targets filtering now debounces parser/workspace-index scans for 90 ms, while the
+capture harness keeps synchronous semantics. The Targets ListView recycles its
+non-trivial delegates, buffers 240 px asynchronously, and no longer clips every
+individual row. Collapsing Inspector suspends presentation-only runtime-event and
+workspace-boundary scans. Source Editor syntax highlighting is unloaded whenever
+Workflow is inactive or Source Preview is hidden, and full-document newline
+indexing is coalesced to one rebuild per 16 ms input burst.
+
 The Source Editor line-number gutter is also virtualized. It keeps one line-start
 index per document revision, resolves the modal cursor line by binary search, and
 builds relative line-number text only for the visible gutter window plus small
@@ -500,7 +521,8 @@ overscan. Large QML sources therefore no longer split the entire document on
 every cursor move or allocate thousands of gutter lines when the cursor changes.
 The next renderer-level experiment, if profiling still shows scene-graph/state-
 change cost, is to benchmark batching compatible idle wires into fewer Shape
-items; do not promote that rewrite without compositor capture and memory/frame
+items (for example grouped PathSvg/PathMultiline geometry plus a small active-edge
+overlay); do not promote that rewrite without compositor capture and memory/frame
 evidence.
 
 Source Preview has now become a guarded Source Editor. It reuses the production

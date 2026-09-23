@@ -4568,6 +4568,8 @@ Item {
                         anchors.margins: 7
                         draft: root.sourceDraft
                         definitionName: root.sourceHighlightDefinition
+                        syntaxHighlightingEnabled:
+                            root.workflowOperational && sourcePane.visible
 
                         onDraftEdited: text => {
                             if (root.sourceDraft !== text) {

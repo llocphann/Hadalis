@@ -222,6 +222,38 @@ for source, host_id in (
             "Settings page host identity missing " + host_id)
     require(source, "workflowDiscoveryEnabled: true",
             "embedded Settings must register page runtime targets")
+
+for token in (
+    "property bool _panelLoaded: settingsOpen || _closeAnimRunning",
+    "active: root._panelLoaded",
+    "loadEnabled: Config.ready && root.settingsOpen",
+):
+    require(settings_overlay, token,
+            "Settings overlay must unload page work immediately while close animation retains the panel")
+
+reset_start = settings_host.index("function _reset()")
+reset_block = settings_host[reset_start:reset_start + 420]
+for token in (
+    "_requestGeneration++",
+    "switchAnimation.stop()",
+    "_retainedIndices = []",
+    "_lruIndices = []",
+    "_syncResidency()",
+):
+    require(reset_block, token,
+            "Settings page reset must invalidate deferred work and unload retained pages " + token)
+
+load_enabled_start = settings_host.index("onLoadEnabledChanged: {")
+load_enabled_block = settings_host[load_enabled_start:load_enabled_start + 240]
+for token in (
+    "if (loadEnabled)",
+    "root._scheduleRequestPage()",
+    "else",
+    "_reset()",
+):
+    require(load_enabled_block, token,
+            "Settings close/reopen must route Loader ownership through reset/schedule " + token)
+
 require(standalone_settings, "SettingsPageHost {",
         "standalone Settings must use the shared page host")
 require(standalone_settings, "workflowDiscoveryEnabled: false",

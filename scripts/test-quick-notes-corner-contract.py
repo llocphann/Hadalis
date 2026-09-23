@@ -180,6 +180,12 @@ for token in (
     "acceptedButtons: Qt.NoButton",
     "hoverEnabled: true",
     "cursorShape: Qt.IBeamCursor",
+    "id: editorFocusCatcher",
+    "visible: Notepad.ready && !textArea.activeFocus",
+    "acceptedButtons: Qt.LeftButton",
+    "textArea.forceActiveFocus()",
+    "textArea.cursorPosition = textArea.positionAt(",
+    "mouse.accepted = true",
     "Component.onDestruction: root.flushPendingSave()",
 ):
     require(notepad, token, "shared Notepad must expose safe Quick Notes hooks")

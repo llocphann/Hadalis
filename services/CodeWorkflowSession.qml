@@ -32,15 +32,62 @@ Singleton {
     property bool targetsPaneCollapsed: false
     property bool inspectorPaneCollapsed: false
     property real sourcePreviewHeight: 190
-    // Visual graph layout is session-only. It never mutates reviewed IR or
-    // source, but survives Settings page eviction while this shell lives.
+    // Visual graph layout is presentation-only. It never mutates reviewed IR
+    // or source. Persist it in workspace state so manual organization survives
+    // Settings eviction and shell restarts.
     property var graphNodeLayoutOffsets: ({})
     property int graphLayoutRevision: 0
+    readonly property real maximumNodeLayoutOffset: 100000
     property bool _restoring: false
     property bool _ready: false
 
     function _state(): var {
         return Persistent.states?.settings ?? null
+    }
+
+    function _decodeGraphNodeLayoutOffsets(raw): var {
+        const text = String(raw ?? "").trim()
+        if (text.length === 0)
+            return ({})
+
+        let decoded
+        try {
+            decoded = JSON.parse(text)
+        } catch (error) {
+            return ({})
+        }
+        if (!decoded || typeof decoded !== "object" || Array.isArray(decoded))
+            return ({})
+
+        const safe = ({})
+        for (const graphKey of Object.keys(decoded)) {
+            if (!CodeWorkflowIr.hasGraph(graphKey))
+                continue
+            const rawGraph = decoded[graphKey]
+            if (!rawGraph || typeof rawGraph !== "object"
+                    || Array.isArray(rawGraph))
+                continue
+
+            const safeGraph = ({})
+            for (const nodeKey of Object.keys(rawGraph)) {
+                if (!CodeWorkflowIr.nodeFor(graphKey, nodeKey))
+                    continue
+                const rawOffset = rawGraph[nodeKey]
+                const x = Number(rawOffset?.x)
+                const y = Number(rawOffset?.y)
+                if (!Number.isFinite(x) || !Number.isFinite(y))
+                    continue
+                safeGraph[nodeKey] = {
+                    x: Math.max(-root.maximumNodeLayoutOffset, Math.min(
+                        root.maximumNodeLayoutOffset, x)),
+                    y: Math.max(-root.maximumNodeLayoutOffset, Math.min(
+                        root.maximumNodeLayoutOffset, y))
+                }
+            }
+            if (Object.keys(safeGraph).length > 0)
+                safe[graphKey] = safeGraph
+        }
+        return safe
     }
 
     function restore(): void {
@@ -148,6 +195,9 @@ Singleton {
             state.codeWorkflowInspectorPaneCollapsed === true
         root.sourcePreviewHeight = Math.max(120, Math.min(
             720, Number(state.codeWorkflowSourcePreviewHeight ?? 190)))
+        root.graphNodeLayoutOffsets = root._decodeGraphNodeLayoutOffsets(
+            state.codeWorkflowGraphNodeLayoutOffsets ?? "{}")
+        root.graphLayoutRevision += 1
         root._restoring = false
         root._ready = true
     }
@@ -177,6 +227,8 @@ Singleton {
         state.codeWorkflowTargetsPaneCollapsed = root.targetsPaneCollapsed
         state.codeWorkflowInspectorPaneCollapsed = root.inspectorPaneCollapsed
         state.codeWorkflowSourcePreviewHeight = root.sourcePreviewHeight
+        state.codeWorkflowGraphNodeLayoutOffsets = JSON.stringify(
+            root.graphNodeLayoutOffsets ?? ({}))
     }
 
     function setTargetsPaneCollapsed(collapsed: bool): void {
@@ -203,17 +255,32 @@ Singleton {
     ): void {
         const graphKey = String(graphId ?? "")
         const nodeKey = String(nodeId ?? "")
-        if (graphKey.length === 0 || nodeKey.length === 0)
+        const nextX = Number(x)
+        const nextY = Number(y)
+        if (graphKey.length === 0 || nodeKey.length === 0
+                || !CodeWorkflowIr.nodeFor(graphKey, nodeKey)
+                || !Number.isFinite(nextX) || !Number.isFinite(nextY))
             return
+
+        const boundedX = Math.max(-root.maximumNodeLayoutOffset, Math.min(
+            root.maximumNodeLayoutOffset, nextX))
+        const boundedY = Math.max(-root.maximumNodeLayoutOffset, Math.min(
+            root.maximumNodeLayoutOffset, nextY))
         const nextAll = Object.assign({}, root.graphNodeLayoutOffsets)
         const nextGraph = Object.assign({}, nextAll[graphKey] ?? ({}))
-        nextGraph[nodeKey] = {
-            x: Number(x ?? 0),
-            y: Number(y ?? 0)
+        if (Math.abs(boundedX) < 0.001 && Math.abs(boundedY) < 0.001) {
+            delete nextGraph[nodeKey]
+            if (Object.keys(nextGraph).length === 0)
+                delete nextAll[graphKey]
+            else
+                nextAll[graphKey] = nextGraph
+        } else {
+            nextGraph[nodeKey] = { x: boundedX, y: boundedY }
+            nextAll[graphKey] = nextGraph
         }
-        nextAll[graphKey] = nextGraph
         root.graphNodeLayoutOffsets = nextAll
         root.graphLayoutRevision += 1
+        root.persist()
     }
 
     function hasGraphLayout(graphId: string): bool {
@@ -233,6 +300,7 @@ Singleton {
         delete nextAll[graphKey]
         root.graphNodeLayoutOffsets = nextAll
         root.graphLayoutRevision += 1
+        root.persist()
     }
 
     function clearSemanticAnchor(): void {

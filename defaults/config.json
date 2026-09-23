@@ -814,7 +814,6 @@
         "bottom": false,
         "cornerStyle": 0,
         "customRounding": -1,
-        "floatStyleShadow": true,
         "height": 40,
         "indicators": {
             "notifications": {

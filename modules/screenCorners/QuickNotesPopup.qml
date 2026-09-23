@@ -35,25 +35,36 @@ Bar.StyledPopup {
         if (!root.active)
             return
         root.editorFocused = true
-        notesEditor.focus = true
-        Qt.callLater(() => notesEditor.focusEditor())
+        if (notesEditorLoader.item)
+            notesEditorLoader.item.focus = true
+        Qt.callLater(() => {
+            if (notesEditorLoader.item)
+                notesEditorLoader.item.focusEditor()
+        })
     }
 
     function leaveEditorMode(): void {
-        notesEditor.flushPendingSave()
+        if (notesEditorLoader.item) {
+            notesEditorLoader.item.flushPendingSave()
+            notesEditorLoader.item.focus = false
+        }
         root.editorFocused = false
-        notesEditor.focus = false
     }
 
     onRequestClose: root.leaveEditorMode()
     onActiveChanged: {
         if (!active) {
-            notesEditor.flushPendingSave()
+            if (notesEditorLoader.item) {
+                notesEditorLoader.item.flushPendingSave()
+                notesEditorLoader.item.focus = false
+            }
             root.editorFocused = false
-            notesEditor.focus = false
         }
     }
-    Component.onDestruction: notesEditor.flushPendingSave()
+    Component.onDestruction: {
+        if (notesEditorLoader.item)
+            notesEditorLoader.item.flushPendingSave()
+    }
 
     property QtObject _escapeShortcut: Shortcut {
         sequence: "Escape"
@@ -109,11 +120,18 @@ Bar.StyledPopup {
                 color: Appearance.colors.colLayer1
                 clip: true
 
-                NotepadWidget {
-                    id: notesEditor
+                // The shared editor is the only relatively heavy part of this
+                // corner surface. Keep it unloaded while the popup is idle so
+                // every monitor does not retain a duplicate Notepad view,
+                // timers and service connections just to own a 14px hot corner.
+                Loader {
+                    id: notesEditorLoader
                     anchors.fill: parent
-                    margin: 4
-                    compactPresentation: true
+                    active: root.active
+                    sourceComponent: NotepadWidget {
+                        margin: 4
+                        compactPresentation: true
+                    }
                 }
 
                 // Observe a deliberate click anywhere inside the note surface,

@@ -175,8 +175,6 @@ Scope {
                     !(root.zzzEverywhere && !Appearance.zzz.round)
                     ? Appearance.blurTopology.roundedRectangle
                     : Appearance.blurTopology.unsupported
-                readonly property bool nativeBlurGeometryExact:
-                    Appearance.blurTopologyExact(dockRoot.nativeBlurTopology)
                 readonly property bool nativeBlurActive: Appearance.useCompositorBlur(
                         "dock", dockRoot.nativeBlurTopology)
                     && (Config.options?.dock?.showBackground ?? true)

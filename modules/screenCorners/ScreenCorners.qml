@@ -55,15 +55,31 @@ Scope {
             && !fullscreen
         readonly property bool quickNotesInteractionBlocked:
             GlobalStates.screenLocked
-            || GlobalStates.overviewOpen
-            || GlobalStates.overlayOpen
-            || GlobalStates.settingsOverlayOpen
-            || GlobalStates.regionSelectorOpen
-            || GlobalStates.sessionOpen
-            || GlobalStates.widgetEditMode
-            || GlobalStates.shellLayoutEditMode
+            || GlobalStates.bootGreetingOpen
+            || GlobalStates.crosshairOpen
             || GlobalStates.sidebarLeftOpen
             || GlobalStates.sidebarRightOpen
+            || GlobalStates.mediaControlsOpen
+            || GlobalStates.oskOpen
+            || GlobalStates.overlayOpen
+            || GlobalStates.overviewOpen
+            || GlobalStates.altSwitcherOpen
+            || GlobalStates.clipboardOpen
+            || GlobalStates.settingsOverlayOpen
+            || GlobalStates.settingsNativeDialogOpen
+            || GlobalStates.regionSelectorOpen
+            || GlobalStates.tilingOverlayPickerOpen
+            || GlobalStates.annotationEditorOpen
+            || GlobalStates.sessionOpen
+            || GlobalStates.wallpaperSelectorOpen
+            || GlobalStates.wallpaperLauncherOpen
+            || GlobalStates.widgetEditMode
+            || GlobalStates.shellLayoutEditMode
+            || GlobalStates.cheatsheetOpen
+            || GlobalStates.coverflowSelectorOpen
+            || GlobalStates.controlPanelOpen
+            || GlobalStates.dashboardOpen
+            || GlobalStates.searchOpen
         readonly property bool shouldShowQuickNotesCorner:
             (Config.options?.panelFamily ?? "ii") !== "waffle"
             && (Config.options?.quickNotes?.enable ?? true)

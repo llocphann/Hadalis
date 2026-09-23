@@ -64,6 +64,9 @@ sidebar_right_media="$repo_root/modules/sidebarRight/CompactMediaPlayer.qml"
 control_panel_wallpaper="$repo_root/modules/controlPanel/WallpaperSection.qml"
 dash_media="$repo_root/modules/dashboard/DashMedia.qml"
 dash_welcome="$repo_root/modules/dashboard/DashWelcome.qml"
+dashboard="$repo_root/modules/dashboard/Dashboard.qml"
+ii_panels="$repo_root/modules/ii/ShellIiPanelsImpl.qml"
+dashboard_settings="$repo_root/modules/settings/DashboardConfig.qml"
 
 require "$config" 'property int framerate: 30' 'Cava schema default must remain 30 fps'
 require "$defaults" '"framerate": 30' 'persisted Cava default must remain 30 fps'
@@ -148,5 +151,19 @@ require "$dash_media" 'active: root.presentationActive && root.hasPlayer' 'Dashb
 require "$dash_media" 'PlayerControl {' 'Dashboard media must reuse the canonical shared player surface'
 require "$dash_welcome" 'layer.enabled: root.visible && status === Image.Ready' 'Dashboard avatar mask must stay circular through the visible exit slide and sleep once hidden'
 require "$dash_welcome" 'mipmap: false' 'Dashboard avatar must not generate unused mipmaps'
+require "$ii_panels" 'keepLoaded: (Config.options?.dashboard?.keepLoaded ?? false) || used' 'Dashboard must remain resident after first use'
+require "$dashboard" 'visible: true' 'Dashboard native layer-shell surface must remain mapped after first use'
+require "$dashboard" 'updatesEnabled: root._renderUpdatesNeeded' 'Hidden Dashboard must suspend rendering without unmapping'
+require "$dashboard" 'mask: dashboardInputRegion' 'Closed mapped Dashboard must expose an empty input region'
+require "$dashboard" 'active: true' 'Dashboard widget tree must remain mounted while the retained surface exists'
+require "$dashboard" 'visible: root._contentPresented' 'Dashboard content paint must hide only after the exit slide'
+require "$dashboard" 'id: _presentationTimer' 'Dashboard reopen must paint a closed frame before entering the open slide state'
+require "$dashboard" 'interval: 16' 'Dashboard slide arming must wait for a rendered frame'
+require "$dashboard" 'panelTranslateY: SurfaceMotion.dashboardOffset' 'Dashboard closed state must remain a translated slide state'
+require "$dashboard" 'opacity: 1' 'Dashboard entrance must not use opacity fading'
+require "$dashboard" 'scale: 1' 'Dashboard entrance must not use scale animation'
+reject "$dashboard" 'onTriggered: panelRoot.visible = false' 'Dashboard close must not unmap the native surface after the slide'
+reject "$dashboard" 'Qt.callLater(() => { root._presentedOpen' 'Dashboard open must not race compositor mapping with a zero-delay state flip'
+require "$dashboard_settings" 'text: Translation.tr("Preload Dashboard")' 'Dashboard keepLoaded option must describe eager preload only'
 
 printf 'performance lifecycle guards: ok\n'

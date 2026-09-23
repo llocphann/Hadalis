@@ -598,9 +598,18 @@ Item {
                     activeFocusOnTab: true
                     background: null
 
-                    onActiveFocusChanged: {
-                        if (activeFocus)
-                            root.editorActivated()
+                    // The bottom-left popup cannot wait for activeFocus here:
+                    // the compositor only grants keyboard focus after the
+                    // popup has entered editor mode. Observe the pointer press
+                    // itself so the popup can become a keyboard owner first,
+                    // while TextArea keeps its normal selection/caret handling.
+                    TapHandler {
+                        acceptedButtons: Qt.LeftButton
+                        gesturePolicy: TapHandler.ReleaseWithinBounds
+                        onPressedChanged: {
+                            if (pressed && Notepad.ready)
+                                root.editorActivated()
+                        }
                     }
 
                     TextInputContextMenu {

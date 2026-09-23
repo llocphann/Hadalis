@@ -25,8 +25,14 @@ Item {
     // The Settings host may keep this canvas instantiated while another page
     // is current. Keep graph/session listeners dormant until Workflow owns input.
     property bool workflowActive: true
+    // A pending/cached Settings page must not build the unified runtime graph.
+    // Loader transitions can instantiate Workflow before it owns the page; an
+    // empty presentation here keeps runtime/session state intact while avoiding
+    // thousands of route/delegate bindings until the page is actually current.
     readonly property var graph:
-        CodeWorkflowIr.unifiedGraphFor(root.showInternals)
+        root.workflowActive
+            ? CodeWorkflowIr.unifiedGraphFor(root.showInternals)
+            : null
     readonly property var groups: root.graph?.groups ?? []
     property bool initialFitDone: false
     readonly property bool inventoryReady: CodeWorkflowIr.ready

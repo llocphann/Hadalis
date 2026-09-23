@@ -693,6 +693,16 @@ ContentPage {
 
             StyledText {
                 Layout.fillWidth: true
+                visible: String(root.discoveryEvidence?.error ?? "").length > 0
+                text: Translation.tr("Runtime boundary index error") + " · "
+                    + String(root.discoveryEvidence?.error ?? "")
+                color: Appearance.colors.colError
+                font.pixelSize: Appearance.font.pixelSize.small
+                wrapMode: Text.WordWrap
+            }
+
+            StyledText {
+                Layout.fillWidth: true
                 text: root.discoveryEvidence?.status === "ready"
                     ? Translation.tr("Matched source boundaries") + " · "
                         + String(root.discoveryEvidence?.reconciliation

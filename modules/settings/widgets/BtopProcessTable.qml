@@ -10,20 +10,38 @@ Item {
     property int maxRows: 12
     readonly property bool showSwapColumn: width >= 520
 
-    function depthFor(process): int {
-        const byPid = ({})
-        for (const item of root.processes ?? [])
-            byPid[String(item?.pid ?? "")] = item
+    readonly property var processDepths: root.buildProcessDepths()
 
-        let depth = 0
-        let parent = String(process?.parentPid ?? "")
-        const seen = ({})
-        while (parent.length > 0 && byPid[parent] && !seen[parent]) {
-            seen[parent] = true
-            depth++
-            parent = String(byPid[parent]?.parentPid ?? "")
+    function buildProcessDepths(): var {
+        const byPid = ({})
+        for (const item of root.processes ?? []) {
+            const pid = String(item?.pid ?? "")
+            if (pid.length > 0)
+                byPid[pid] = item
         }
-        return depth
+
+        const depths = ({})
+        for (const item of root.processes ?? []) {
+            const pid = String(item?.pid ?? "")
+            if (pid.length === 0)
+                continue
+            let depth = 0
+            let parent = String(item?.parentPid ?? "")
+            const seen = ({})
+            while (parent.length > 0 && byPid[parent] && !seen[parent]) {
+                seen[parent] = true
+                depth++
+                parent = String(byPid[parent]?.parentPid ?? "")
+            }
+            depths[pid] = depth
+        }
+        return depths
+    }
+
+    function depthFor(process): int {
+        const pid = String(process?.pid ?? "")
+        const depth = Number(root.processDepths[pid] ?? 0)
+        return Number.isFinite(depth) ? Math.max(0, depth) : 0
     }
 
     function formatPercent(value): string {
@@ -168,6 +186,8 @@ Item {
                     implicitHeight: 38
 
                     readonly property var process: modelData
+                    readonly property int processDepth:
+                        root.depthFor(process)
 
                     RowLayout {
                         anchors.fill: parent
@@ -187,9 +207,9 @@ Item {
 
                             textFormat: Text.PlainText
                             Layout.fillWidth: true
-                            text: "  ".repeat(root.depthFor(
-                                    parent.parent.process))
-                                + (root.depthFor(parent.parent.process) > 0
+                            text: "  ".repeat(
+                                    parent.parent.processDepth)
+                                + (parent.parent.processDepth > 0
                                     ? "↳ " : "")
                                 + String(parent.parent.process?.command ?? "—")
                             font.family: Appearance.font.family.monospace

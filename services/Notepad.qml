@@ -143,14 +143,25 @@ Singleton {
         return true
     }
 
-    // FileView fires onLoaded after our own setText() write. Keep at most one
-    // self-write in flight so a later callback cannot fall through into the
-    // disk parser while newer in-memory edits are waiting to be persisted.
+    // FileView reports writes through saved()/saveFailed(), not loaded().
+    // Keep at most one write in flight and coalesce later mutations into one
+    // follow-up save. This also prevents the first autosave from leaving the
+    // service permanently stuck in a false "_saving" state.
     property bool _saving: false
     property bool _saveQueued: false
     // Fresh-start mkdir is asynchronous. While it is running, keep edits in
     // memory and persist the latest state once the directory is ready.
     property bool _storageInitializing: false
+
+    function _finishSave(): void {
+        if (!root._saving)
+            return
+        root._saving = false
+        const saveAgain = root._saveQueued
+        root._saveQueued = false
+        if (saveAgain)
+            Qt.callLater(() => root._save())
+    }
 
     function _save() {
         if (!root.ready || _storageInitializing)
@@ -159,8 +170,19 @@ Singleton {
             _saveQueued = true
             return true
         }
+
+        const serialized = JSON.stringify({ currentTab: currentTab, tabs: tabs })
+        // FileView.setText() is a no-op when the requested bytes already match
+        // its current state, and therefore emits no saved() signal. Avoid
+        // entering the in-flight state for that no-op path.
+        if (tabsFileView.loaded && tabsFileView.text() === serialized) {
+            _saveQueued = false
+            return true
+        }
+
+        _saveQueued = false
         _saving = true
-        tabsFileView.setText(JSON.stringify({ currentTab: currentTab, tabs: tabs }))
+        tabsFileView.setText(serialized)
         return true
     }
 
@@ -176,14 +198,6 @@ Singleton {
         path: Qt.resolvedUrl(root.tabsFilePath)
 
         onLoaded: {
-            if (root._saving) {
-                root._saving = false
-                if (root._saveQueued) {
-                    root._saveQueued = false
-                    Qt.callLater(() => root._save())
-                }
-                return
-            }
             try {
                 const data = JSON.parse(tabsFileView.text())
                 const loadedTabs = root._normalizeTabs(data?.tabs)
@@ -204,6 +218,14 @@ Singleton {
             } catch (e) {
                 console.warn("[Notepad] Invalid tabs file; preserving it:", e)
             }
+        }
+
+        onSaved: root._finishSave()
+
+        onSaveFailed: (error) => {
+            root._saving = false
+            root._saveQueued = false
+            console.warn("[Notepad] Failed to save tabs file:", error)
         }
 
         onLoadFailed: (error) => {

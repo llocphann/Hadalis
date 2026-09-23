@@ -19,6 +19,9 @@ Item {
     readonly property bool keyboardFocusWithin:
         editor.activeFocus || findField.activeFocus || replaceField.activeFocus
     property string documentText: root.draft
+    // Keep a compact line-start index so modal cursor movement does not slice
+    // and split the whole source file on every h/j/k/l or pointer move.
+    property var lineStarts: [0]
     property bool findVisible: false
     property bool replaceVisible: false
     property string findText: ""
@@ -73,15 +76,30 @@ Item {
             root.setMode("normal")
     }
 
-    readonly property int lineCount:
-        Math.max(1, root.documentText.split("\n").length)
+    FontMetrics {
+        id: gutterFontMetrics
+        font.family: Appearance.font.family.monospace
+        font.pixelSize: Appearance.font.pixelSize.small
+    }
+
+    readonly property int lineCount: Math.max(1, root.lineStarts.length)
     readonly property int currentLineNumber:
         root.lineNumberAt(root.modalCursorPosition)
     readonly property int gutterWidth:
         20 + Math.max(2, String(root.lineCount).length) * 8
+    readonly property real gutterLineHeight:
+        Math.max(1, gutterFontMetrics.lineSpacing)
+    readonly property int gutterStartLine: Math.max(
+        1,
+        Math.floor(editorFlick.contentY / root.gutterLineHeight) - 2)
+    readonly property int gutterEndLine: Math.min(
+        root.lineCount,
+        root.gutterStartLine
+            + Math.ceil(editorFlick.height / root.gutterLineHeight) + 5)
     readonly property string lineNumberText: {
         const result = []
-        for (let line = 1; line <= root.lineCount; line++) {
+        for (let line = root.gutterStartLine;
+                line <= root.gutterEndLine; line++) {
             result.push(line === root.currentLineNumber
                 ? String(line)
                 : String(Math.abs(line - root.currentLineNumber)))
@@ -101,11 +119,31 @@ Item {
         return Math.max(0, Math.min(root.documentText.length, position))
     }
 
+    function rebuildLineIndex(): void {
+        const starts = [0]
+        let offset = root.documentText.indexOf("\n")
+        while (offset >= 0) {
+            starts.push(offset + 1)
+            offset = root.documentText.indexOf("\n", offset + 1)
+        }
+        root.lineStarts = starts
+    }
+
     function lineNumberAt(position: int): int {
         const pos = root.clampPosition(position)
-        if (pos <= 0)
+        const starts = root.lineStarts
+        if (starts.length <= 1 || pos <= 0)
             return 1
-        return root.documentText.slice(0, pos).split("\n").length
+        let low = 0
+        let high = starts.length
+        while (low + 1 < high) {
+            const middle = Math.floor((low + high) / 2)
+            if (starts[middle] <= pos)
+                low = middle
+            else
+                high = middle
+        }
+        return low + 1
     }
 
     function computeFindMatches() {
@@ -602,6 +640,7 @@ Item {
     }
 
     onDocumentTextChanged: {
+        root.rebuildLineIndex()
         // Do not reuse a stale selection after an edit or a source refresh.
         if (root.activeFindStart >= 0
                 && !root.findMatches.some(match =>
@@ -836,17 +875,17 @@ Item {
                 color: Appearance.colors.colLayer1
 
                 Text {
-                    anchors.top: parent.top
-                    anchors.left: parent.left
-                    anchors.right: parent.right
-                    anchors.leftMargin: 4
-                    anchors.rightMargin: 6
+                    x: 4
+                    y: (root.gutterStartLine - 1) * root.gutterLineHeight
+                    width: parent.width - 10
                     text: root.lineNumberText
                     color: Appearance.colors.colSubtext
                     horizontalAlignment: Text.AlignRight
                     renderType: Text.QtRendering
                     font.family: Appearance.font.family.monospace
                     font.pixelSize: Appearance.font.pixelSize.small
+                    lineHeightMode: Text.FixedHeight
+                    lineHeight: root.gutterLineHeight
                 }
             }
 
@@ -1114,6 +1153,8 @@ Item {
                     event.accepted = true
                 }
                 wrapMode: TextEdit.NoWrap
+                lineHeightMode: Text.FixedHeight
+                lineHeight: root.gutterLineHeight
                 renderType: Text.QtRendering
                 color: Appearance.colors.colOnLayer1
                 selectionColor: Appearance.colors.colPrimaryContainer
@@ -1141,6 +1182,8 @@ Item {
             }
         }
     }
+
+    Component.onCompleted: root.rebuildLineIndex()
 
     onDefinitionNameChanged: {
         if (syntaxLoader.item)

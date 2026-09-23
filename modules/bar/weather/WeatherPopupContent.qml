@@ -10,8 +10,8 @@ Item {
 
     property bool compact: false
     readonly property real compactBreakpoint: 900
-    readonly property real panelHeight: 270
-    readonly property real panelWidth: root.compact ? 360 : 430
+    readonly property real panelHeight: root.compact ? 270 : 300
+    readonly property real panelWidth: root.compact ? 360 : 450
     // Keep the orbital cards inside the clipped tab viewport. This padding is
     // part of the popup geometry contract; do not use negative top margins.
     readonly property real orbitalPadding: 14

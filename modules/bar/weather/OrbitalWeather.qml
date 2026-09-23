@@ -4,6 +4,7 @@ import QtQuick
 import QtQuick.Layouts
 import qs.services
 import qs.modules.common
+import qs.modules.common.functions
 import qs.modules.common.widgets
 
 Item {
@@ -11,20 +12,40 @@ Item {
 
     property date now: new Date()
     property bool showUnavailableMessage: true
-    // Popup opts into liquid mode explicitly. Dashboard keeps the existing
-    // lightweight orbital cards unless a future design intentionally changes it.
     property bool liquidMode: false
     property bool liquidAnimationActive: false
     readonly property var hours: (Weather.data?.hourly ?? []).slice(0, 8)
+    readonly property real footerHeight: root.liquidMode ? 30 : 0
+    readonly property real orbitStageHeight: Math.max(1, height - footerHeight)
 
-    readonly property real pointWidth: Math.max(42,
-        Math.min(54, width * 0.13))
-    readonly property real pointHeight: Math.max(52,
-        Math.min(66, height * 0.25))
-    readonly property real orbitRadiusX: Math.max(1,
-        (width - pointWidth - 18) / 2)
-    readonly property real orbitRadiusY: Math.max(1,
-        (height - pointHeight - 22) / 2)
+    // Measured from the supplied concept: the node-centre ellipse is only
+    // ~1.168x wider than tall. Do not stretch the orbit to the full popup width.
+    readonly property real conceptOrbitAspect: 1.168
+    // The measured concept ratios are more important than filling the popup:
+    // centres sit at ~24.5% of the reference width and inactive pods are only
+    // ~8.6% of that width. Keeping those ratios preserves the large calm hole
+    // in the middle instead of crowding the weather summary.
+    readonly property real pointSize: Math.max(38,
+        Math.min(48, width * 0.086))
+    readonly property real pointWidth: root.liquidMode
+        ? pointSize
+        : Math.max(42, Math.min(54, width * 0.13))
+    readonly property real pointHeight: root.liquidMode
+        ? pointSize
+        : Math.max(52, Math.min(66, height * 0.25))
+    readonly property real activePointSize: pointSize * 1.28
+    readonly property real desiredOrbitRadiusX: width * 0.245
+    readonly property real desiredOrbitRadiusY:
+        desiredOrbitRadiusX / conceptOrbitAspect
+    readonly property real liquidOrbitRadiusY: Math.max(1,
+        Math.min(desiredOrbitRadiusY,
+            (orbitStageHeight - activePointSize - 10) / 2))
+    readonly property real orbitRadiusY: root.liquidMode
+        ? liquidOrbitRadiusY
+        : Math.max(1, (height - pointHeight - 22) / 2)
+    readonly property real orbitRadiusX: root.liquidMode
+        ? liquidOrbitRadiusY * conceptOrbitAspect
+        : Math.max(1, (width - pointWidth - 18) / 2)
     readonly property var hourAngles: {
         const result = []
         for (let i = 0; i < root.hours.length; ++i)
@@ -36,7 +57,7 @@ Item {
     implicitHeight: 230
 
     function hourFromLabel(label): real {
-        const match = String(label ?? "").match(/^(\d{1,2})(?::(\d{2}))?/)
+        const match = String(label ?? "").match(/^(\d{1,2})(?::(\d{2}))?/) 
         if (!match)
             return 0
         const hour = parseInt(match[1], 10)
@@ -90,6 +111,11 @@ Item {
         const shiftedHour = (hour - 6 + 24) % 24
         const quadrant = Math.floor(shiftedHour / 6)
         const fraction = (shiftedHour - quadrant * 6) / 6
+        // The reference places the 3-hour buckets on exact 45° parametric
+        // positions. Keep Dashboard's older equal-arc placement, but use the
+        // reference geometry in popup liquid mode.
+        if (root.liquidMode)
+            return -Math.PI / 2 + shiftedHour * Math.PI / 12
         const start = -Math.PI / 2 + quadrant * Math.PI / 2
         const end = start + Math.PI / 2
         return root.arcAngle(start, end, fraction)
@@ -97,23 +123,25 @@ Item {
 
     LiquidOrbitalField {
         id: liquidField
-        anchors.fill: parent
+        anchors.top: parent.top
+        anchors.horizontalCenter: parent.horizontalCenter
+        width: parent.width
+        height: root.orbitStageHeight
         z: 0
         visible: root.liquidMode && root.hours.length > 0
         hourAngles: root.hourAngles
         orbitRadiusX: root.orbitRadiusX
         orbitRadiusY: root.orbitRadiusY
-        nodeWidth: root.pointWidth
-        nodeHeight: root.pointHeight
+        nodeWidth: root.pointSize
+        nodeHeight: root.pointSize
         activeIndex: 0
         animate: root.liquidAnimationActive
     }
 
-    // Dashboard keeps its proven static guide; the popup paints only the
-    // animated liquid field and never stacks the old orbit underneath it.
     Canvas {
         id: orbitGuide
-        anchors.centerIn: parent
+        anchors.horizontalCenter: parent.horizontalCenter
+        y: root.orbitStageHeight / 2 - height / 2
         width: Math.max(1, root.orbitRadiusX * 2 + 4)
         height: Math.max(1, root.orbitRadiusY * 2 + 4)
         opacity: 0.42
@@ -146,10 +174,11 @@ Item {
     }
 
     ColumnLayout {
-        anchors.centerIn: parent
+        anchors.horizontalCenter: parent.horizontalCenter
+        y: root.orbitStageHeight / 2 - height / 2
         spacing: root.liquidMode ? 2 : 1
         z: 3
-        width: Math.min(root.liquidMode ? 190 : 180, root.width * 0.50)
+        width: Math.min(root.liquidMode ? 200 : 180, root.width * 0.54)
 
         MaterialSymbol {
             visible: root.liquidMode
@@ -158,7 +187,7 @@ Item {
             text: Icons.getWeatherIcon(
                 Weather.data?.wCode,
                 Weather.isNightNow()) ?? "cloud"
-            iconSize: Math.max(24, Appearance.font.pixelSize.larger)
+            iconSize: Math.max(30, Appearance.font.pixelSize.larger)
             color: Appearance.colors.colPrimary
         }
 
@@ -192,7 +221,7 @@ Item {
                 text: Weather.data?.temp ?? "--°"
                 font.weight: root.liquidMode ? Font.Medium : Font.DemiBold
                 font.pixelSize: root.liquidMode
-                    ? Math.max(25, Appearance.font.pixelSize.larger)
+                    ? Math.max(30, Appearance.font.pixelSize.larger)
                     : Appearance.font.pixelSize.normal
                 color: Appearance.colors.colOnSurface
             }
@@ -223,14 +252,15 @@ Item {
             readonly property real angle: root.hourAngles[index]
                 ?? root.orbitAngleForHour(modelData?.label)
             readonly property bool highlighted: index === 0
+            readonly property real bubbleSize: highlighted && root.liquidMode
+                ? root.activePointSize : root.pointSize
 
-            width: root.pointWidth
-            height: root.pointHeight
-            x: root.width / 2
-                + Math.cos(angle) * root.orbitRadiusX - width / 2
-            y: root.height / 2
+            width: root.liquidMode ? bubbleSize : root.pointWidth
+            height: root.liquidMode ? bubbleSize : root.pointHeight
+            x: root.width / 2 + Math.cos(angle) * root.orbitRadiusX - width / 2
+            y: root.orbitStageHeight / 2
                 + Math.sin(angle) * root.orbitRadiusY - height / 2
-            z: 4
+            z: highlighted ? 6 : 4
 
             Rectangle {
                 anchors.fill: parent
@@ -247,14 +277,16 @@ Item {
 
             ColumnLayout {
                 anchors.centerIn: parent
-                spacing: root.liquidMode ? 2 : 1
+                spacing: root.liquidMode ? 1 : 1
 
                 StyledText {
                     Layout.alignment: Qt.AlignHCenter
                     text: hourPoint.modelData?.label ?? ""
                     font.weight: hourPoint.highlighted
                         ? Font.DemiBold : Font.Medium
-                    font.pixelSize: Appearance.font.pixelSize.smallest
+                    font.pixelSize: root.liquidMode
+                        ? Appearance.font.pixelSize.smallest + 1
+                        : Appearance.font.pixelSize.smallest
                     color: root.liquidMode
                         ? Appearance.colors.colOnSurface
                         : hourPoint.highlighted
@@ -268,8 +300,8 @@ Item {
                         hourPoint.modelData?.code,
                         hourPoint.modelData?.isNight ?? false) ?? "cloud"
                     iconSize: Math.max(15,
-                        Math.min(root.liquidMode ? 21 : 20,
-                            hourPoint.width * 0.40))
+                        Math.min(root.liquidMode ? 22 : 20,
+                            hourPoint.width * 0.38))
                     color: Appearance.colors.colPrimary
                 }
 
@@ -278,7 +310,9 @@ Item {
                     text: hourPoint.modelData?.temp ?? "--°"
                     font.weight: hourPoint.highlighted
                         ? Font.DemiBold : Font.Medium
-                    font.pixelSize: Appearance.font.pixelSize.smallest
+                    font.pixelSize: root.liquidMode
+                        ? Appearance.font.pixelSize.smallest + 1
+                        : Appearance.font.pixelSize.smallest
                     color: root.liquidMode
                         ? Appearance.colors.colOnSurface
                         : hourPoint.highlighted
@@ -289,9 +323,91 @@ Item {
         }
     }
 
+    Item {
+        id: conceptFooter
+        visible: root.liquidMode
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.bottom: parent.bottom
+        height: root.footerHeight
+        z: 8
+
+        RowLayout {
+            anchors.left: parent.left
+            anchors.verticalCenter: parent.verticalCenter
+            spacing: 6
+            visible: Weather.showVisibleCity
+
+            MaterialSymbol {
+                text: "place"
+                iconSize: 16
+                color: Appearance.colors.colOnSurfaceVariant
+            }
+
+            ColumnLayout {
+                spacing: -1
+                StyledText {
+                    text: Weather.visibleCity
+                    font.pixelSize: Appearance.font.pixelSize.smaller
+                    font.weight: Font.Medium
+                    color: Appearance.colors.colOnSurface
+                    elide: Text.ElideRight
+                    Layout.maximumWidth: 150
+                }
+                StyledText {
+                    text: Weather.data?.description ?? ""
+                    font.pixelSize: Appearance.font.pixelSize.smallest
+                    color: Appearance.colors.colOnSurfaceVariant
+                    elide: Text.ElideRight
+                    Layout.maximumWidth: 150
+                }
+            }
+        }
+
+        Rectangle {
+            id: aqiPill
+            visible: Weather.airQuality?.available ?? false
+            anchors.right: parent.right
+            anchors.verticalCenter: parent.verticalCenter
+            implicitWidth: aqiRow.implicitWidth + 20
+            implicitHeight: 28
+            width: implicitWidth
+            height: implicitHeight
+            radius: height / 2
+            color: ColorUtils.applyAlpha(
+                Appearance.colors.colSurfaceContainerHigh, 0.52)
+            border.width: 1
+            border.color: ColorUtils.applyAlpha(
+                Appearance.colors.colPrimary, 0.24)
+
+            RowLayout {
+                id: aqiRow
+                anchors.centerIn: parent
+                spacing: 5
+                MaterialSymbol {
+                    text: "eco"
+                    iconSize: 15
+                    fill: 1
+                    color: Appearance.colors.colPrimary
+                }
+                StyledText {
+                    text: `${Weather.airQuality?.scale ?? "AQI"} ${Weather.airQuality?.aqi ?? "--"}`
+                    font.pixelSize: Appearance.font.pixelSize.smallest
+                    color: Appearance.colors.colOnSurfaceVariant
+                }
+                StyledText {
+                    text: Weather.airQuality?.label ?? ""
+                    font.pixelSize: Appearance.font.pixelSize.smallest
+                    font.weight: Font.DemiBold
+                    color: Appearance.colors.colPrimary
+                }
+            }
+        }
+    }
+
     StyledText {
-        anchors.centerIn: parent
-        anchors.verticalCenterOffset: 58
+        anchors.horizontalCenter: parent.horizontalCenter
+        y: root.orbitStageHeight / 2 + 58 - height / 2
         z: 5
         visible: root.showUnavailableMessage && root.hours.length === 0
         text: Translation.tr("Hourly forecast unavailable")

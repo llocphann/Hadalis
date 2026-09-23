@@ -286,15 +286,18 @@ Singleton {
         result.forecast = forecast
         if (forecast.length > 0) { result.tempMax = forecast[0].hi; result.tempMin = forecast[0].lo }
 
-        // Hourly: flatten today+tomorrow, keep upcoming 3-hourly slots
+        // Hourly: flatten today+tomorrow and keep eight 3-hour buckets,
+        // starting with the bucket that contains "now". The orbital concept
+        // treats that elapsed bucket as the active liquid pod.
         let hourly = []
         const nowH = new Date().getHours()
+        const currentBucket = Math.floor(nowH / 3) * 3
         for (let di = 0; di < Math.min(2, days.length); di++) {
             const hrs = days[di]?.hourly ?? []
             for (let hi2 = 0; hi2 < hrs.length; hi2++) {
                 const h = hrs[hi2]
                 const hour = Math.floor(parseInt(h.time ?? "0") / 100)
-                if (di === 0 && hour < nowH - 1) continue
+                if (di === 0 && hour < currentBucket) continue
                 hourly.push({
                     label: (hour < 10 ? "0" + hour : "" + hour) + ":00",
                     temp: (uscs ? h.tempF : h.tempC) + "°",
@@ -389,12 +392,16 @@ Singleton {
         const hTimes = apiData?.hourly?.time ?? []
         const hTemps = apiData?.hourly?.temperature_2m ?? []
         const hCodes = apiData?.hourly?.weather_code ?? []
-        const nowMs = new Date().getTime()
+        const now = new Date()
+        const bucketStart = new Date(now)
+        bucketStart.setMinutes(0, 0, 0)
+        bucketStart.setHours(Math.floor(now.getHours() / 3) * 3)
         let hourly = []
         for (let i = 0; i < hTimes.length && hourly.length < 8; i++) {
             const t = new Date(hTimes[i])
-            if (isNaN(t.getTime()) || t.getTime() < nowMs - 3600000) continue
+            if (isNaN(t.getTime()) || t.getTime() < bucketStart.getTime()) continue
             const hour = t.getHours()
+            if (hour % 3 !== 0) continue
             hourly.push({
                 label: Qt.formatTime(t, "hh:mm"),
                 temp: Math.round(hTemps[i] ?? 0) + "°",

@@ -20,8 +20,8 @@ def main() -> None:
 
     popup_required = (
         "readonly property real compactBreakpoint: 900",
-        "readonly property real panelHeight: 270",
-        "readonly property real panelWidth: root.compact ? 360 : 430",
+        "readonly property real panelHeight: root.compact ? 270 : 300",
+        "readonly property real panelWidth: root.compact ? 360 : 450",
         "readonly property real orbitalPadding: 14",
         "anchors.margins: root.orbitalPadding",
         "readonly property int tabCount: 2",

@@ -396,6 +396,24 @@ ContentPage {
                 targets: CodeWorkflowRuntime.activeCatalog
                 records: root.runtimeRecords
                 maxRows: 18
+                selectedTargetId: CodeWorkflowSession.selectedTargetId
+                onTargetActivated: (targetId, instanceId) =>
+                    CodeWorkflowSession.selectTarget(
+                        targetId, instanceId)
+            }
+
+            BtopTargetInspector {
+                Layout.fillWidth: true
+                descriptor: CodeWorkflowRuntime.descriptor(
+                    CodeWorkflowSession.selectedTargetId)
+                records: root.runtimeRecords
+                events: root.runtimeSnapshot?.events ?? []
+                selectedInstanceId:
+                    CodeWorkflowSession.selectedInstanceId
+                onInstanceActivated: instanceId =>
+                    CodeWorkflowSession.selectTarget(
+                        CodeWorkflowSession.selectedTargetId,
+                        instanceId)
             }
 
             StyledText {

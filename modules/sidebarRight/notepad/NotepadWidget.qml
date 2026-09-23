@@ -68,12 +68,31 @@ Item {
         return root._captureZettel()
     }
 
+    // Public focus/save hooks for lightweight secondary surfaces such as the
+    // bottom-left Quick Notes popup. They keep the canonical editor in charge
+    // of autosave semantics without exposing its private TextArea.
+    function focusEditor(): void {
+        if (!Notepad.ready)
+            return
+        Qt.callLater(() => {
+            if (root.visible && root.enabled)
+                textArea.forceActiveFocus()
+        })
+    }
+
+    function flushPendingSave(): void {
+        saveTimer.stop()
+        if (!Notepad.ready || root._loadingTab)
+            return
+        if (textArea.text !== Notepad.text)
+            Notepad.setTextValue(textArea.text)
+    }
+
     // When this widget gets focus (from BottomWidgetGroup.focusActiveItem),
     // move focus to the internal text area on the next event loop tick.
     onFocusChanged: (focus) => {
-        if (focus && Notepad.ready) {
-            Qt.callLater(() => textArea.forceActiveFocus())
-        }
+        if (focus)
+            root.focusEditor()
     }
 
     // Guards programmatic text loads (tab switch / external reload) so they

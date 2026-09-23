@@ -24,11 +24,15 @@ WSettingsPage {
     readonly property var discoveryEvidence: root.evidence?.discovery ?? null
 
     function formatPercent(value): string {
+        if (value === null || value === undefined)
+            return "—"
         const number = Number(value)
         return Number.isFinite(number) ? number.toFixed(1) + "%" : "—"
     }
 
     function formatKiB(value): string {
+        if (value === null || value === undefined)
+            return "—"
         const kib = Number(value)
         if (!Number.isFinite(kib) || kib < 0)
             return "—"
@@ -40,6 +44,8 @@ WSettingsPage {
     }
 
     function formatRate(value): string {
+        if (value === null || value === undefined)
+            return "—"
         const bytes = Number(value)
         if (!Number.isFinite(bytes) || bytes < 0)
             return "—"
@@ -50,18 +56,21 @@ WSettingsPage {
         return bytes.toFixed(0) + " B/s"
     }
 
-    function shellGpuBusy(): real {
+    function shellGpuBusy(): var {
         const engines = root.shellEvidence?.gpu?.engineBusyPercent ?? ({})
-        let peak = -1
+        let peak = null
         for (const key of Object.keys(engines)) {
-            const value = Number(engines[key])
+            const raw = engines[key]
+            if (raw === null || raw === undefined)
+                continue
+            const value = Number(raw)
             if (Number.isFinite(value))
-                peak = Math.max(peak, value)
+                peak = peak === null ? value : Math.max(peak, value)
         }
         return peak
     }
 
-    function shellGpuMemoryKiB(): real {
+    function shellGpuMemoryKiB(): var {
         const memory = root.shellEvidence?.gpu?.memoryKiB ?? ({})
         let total = 0
         let found = false
@@ -74,7 +83,7 @@ WSettingsPage {
             total += value
             found = true
         }
-        return found ? total : -1
+        return found ? total : null
     }
 
     WSettingsCard {
@@ -138,7 +147,10 @@ WSettingsPage {
                 + root.formatKiB(
                     root.shellEvidence?.memory?.valuesKiB?.Pss
                         ?? root.shellEvidence?.memory?.valuesKiB?.Rss)
-                + " " + Translation.tr("shell PSS")
+                + " " + Translation.tr("shell") + " "
+                + (root.shellEvidence?.memory?.valuesKiB?.Pss !== null
+                    && root.shellEvidence?.memory?.valuesKiB?.Pss !== undefined
+                    ? "PSS" : "RSS")
             icon: "apps"
         }
 

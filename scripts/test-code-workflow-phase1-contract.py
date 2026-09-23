@@ -698,8 +698,12 @@ require(session, "property bool viewportInitialized: false",
 require(session, "root.viewportInitialized = true",
         "manual pan and zoom must cancel delayed automatic Fit")
 
-require(canvas, "if (!root.viewportContains(screenX, screenY))\n            return \"\"",
+edge_at_start = canvas.index("function edgeAt(screenX: real, screenY: real): string")
+edge_at_prefix = canvas[edge_at_start:edge_at_start + 260]
+require(edge_at_prefix, "if (!root.viewportContains(screenX, screenY)",
         "edge hit testing must reject pointer coordinates outside the canvas")
+require(edge_at_prefix, 'return ""',
+        "edge hit testing must fail closed outside the canvas or during drag")
 require(canvas, "function itemPointInsideViewport(",
         "transformed graph children must map pointer coordinates back to the canvas")
 for token in (
@@ -1450,8 +1454,10 @@ require(canvas, "activeFocusOnTab: parent.visible",
         "graph subflow drill-down must be keyboard-focusable")
 require(canvas, 'Accessible.name: "Open "',
         "graph subflow drill-down must expose an accessibility label")
-require(canvas, "preferredRendererType: Shape.CurveRenderer",
-        "IR canvas must use the qualified Curve renderer")
+require(canvas, "preferredRendererType: Shape.GeometryRenderer",
+        "IR canvas must retain the qualified Geometry renderer while Curve stays HOLD")
+if "preferredRendererType: Shape.CurveRenderer" in canvas:
+    fail("IR canvas must not promote CurveRenderer while retained soak evidence is HOLD")
 for token in (
     "function edgeWireInk(",
     "function edgeHaloWidth(",

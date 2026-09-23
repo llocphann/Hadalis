@@ -137,6 +137,8 @@ Waffle remains a separate panel family with its own taskbar settings and is not 
 
 The ii Dock remains a separate application surface from Waffle's taskbar. **Panel** is the only supported user-facing Dock style. `modules/settings/DockConfig.qml` no longer exposes Pill/macOS/Island/M3 style choices, and `SettingsPageRegistry.qml` normalizes legacy persisted `dock.style` values to `panel` during startup.
 
+The retired `qs.modules.pill` compatibility module is gone. Ricelin remains an active shared surface skin at `modules/common/widgets/RicelinSurface.qml`; Dock, Search, and Sidebar consumers use that canonical component or `Appearance` tokens directly instead of routing through Pill-era aliases.
+
 Waffle is a panel family, not a Dock style, and must not be folded into Dock style migration.
 
 ## Key Singletons

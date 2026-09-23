@@ -102,12 +102,43 @@ for direct_boolean in ("true", "false"):
     if result.get("terminalValueText") != direct_boolean:
         fail("direct boolean terminal text drifted")
 
+for direct_decimal in ("0", "1", "42", "1.5", "6.02e23", "9E-3"):
+    result = connect_cycle.prove_local_dependency_closure(
+        direct_source,
+        [parent_entry()],
+        "parent",
+        direct_decimal,
+        "visible",
+    )
+    if result.get("status") != "proven-acyclic":
+        fail("exact direct decimal source must prove acyclic: " + direct_decimal)
+    if result.get("cycleSafetyProof") != connect_cycle.PROVEN_ACYCLIC:
+        fail("direct decimal acyclic proof token drifted")
+    if result.get("reason") != (
+        "reviewed-source-expression-is-direct-decimal-literal"
+    ):
+        fail("direct decimal proof reason drifted")
+    if result.get("dependencyPath") != []:
+        fail("direct decimal proof must not invent dependencies")
+    if result.get("terminalValueKind") != "number":
+        fail("direct decimal terminal kind drifted")
+    if result.get("terminalValueText") != direct_decimal:
+        fail("direct decimal terminal text drifted")
+
 for unsupported_direct in (
     " true",
     "false ",
     "true || root.visible",
     "null",
-    "1",
+    " 1",
+    "1 ",
+    "-1",
+    "+1",
+    ".5",
+    "1.",
+    "01",
+    "0x10",
+    "1 + root.visible",
 ):
     result = connect_cycle.prove_local_dependency_closure(
         direct_source,
@@ -389,7 +420,9 @@ for token in (
     '"dependency-leaves-reviewed-parent-scope"',
     '"dependency-value-kind-outside-closed-subset"',
     '_DIRECT_BOOLEAN_EXPRESSIONS = {"true", "false"}',
+    "_DIRECT_DECIMAL_EXPRESSION = re.compile(",
     '"reviewed-source-expression-is-direct-boolean-literal"',
+    '"reviewed-source-expression-is-direct-decimal-literal"',
     "def parse_optional_member_chain_with_literal_fallback(",
     "def _resolve_imported_local_singleton(",
     "def _resolve_alias_nested_literal(",
@@ -440,7 +473,9 @@ for token in (
     "Milestone 2K-I — parser-closed Connect cycle proof",
     "Milestone 2K-J — source-backed cross-file Connect closure",
     "Milestone 2K-J-A — exact boolean Connect source closure",
+    "Milestone 2K-J-B — exact decimal Connect source closure",
     "reviewed-source-expression-is-direct-boolean-literal",
+    "reviewed-source-expression-is-direct-decimal-literal",
     "cycle-proven-local-closure",
     "acyclic-closed-local-closure",
     "acyclic-source-backed-cross-file-closure",

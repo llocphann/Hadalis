@@ -41,6 +41,8 @@ STOPWATCH = ROOT / "modules" / "sidebarRight" / "pomodoro" / "Stopwatch.qml"
 CENTER_WIDGET_GROUP = ROOT / "modules" / "sidebarRight" / "CenterWidgetGroup.qml"
 WEB_APP_VIEW = ROOT / "modules" / "sidebarLeft" / "plugins" / "WebAppView.qml"
 PLUGINS_TAB = ROOT / "modules" / "sidebarLeft" / "plugins" / "PluginsTab.qml"
+ANIME = ROOT / "modules" / "sidebarLeft" / "Anime.qml"
+BOORU_RESPONSE = ROOT / "modules" / "sidebarLeft" / "anime" / "BooruResponse.qml"
 NOTIFICATION_ITEM = ROOT / "modules" / "common" / "widgets" / "NotificationItem.qml"
 NOTIFICATION_GROUP = ROOT / "modules" / "common" / "widgets" / "NotificationGroup.qml"
 NOTIFICATION_ACTION_BUTTON = ROOT / "modules" / "common" / "widgets" / "NotificationActionButton.qml"
@@ -179,6 +181,8 @@ def main() -> None:
     center_widget_group = CENTER_WIDGET_GROUP.read_text(encoding="utf-8")
     web_app_view = WEB_APP_VIEW.read_text(encoding="utf-8")
     plugins_tab = PLUGINS_TAB.read_text(encoding="utf-8")
+    anime = ANIME.read_text(encoding="utf-8")
+    booru_response = BOORU_RESPONSE.read_text(encoding="utf-8")
     notification_item = NOTIFICATION_ITEM.read_text(encoding="utf-8")
     notification_group = NOTIFICATION_GROUP.read_text(encoding="utf-8")
     notification_action_button = NOTIFICATION_ACTION_BUTTON.read_text(encoding="utf-8")
@@ -336,6 +340,8 @@ def main() -> None:
         "CenterWidgetGroup.qml": center_widget_group,
         "WebAppView.qml": web_app_view,
         "PluginsTab.qml": plugins_tab,
+        "Anime.qml": anime,
+        "BooruResponse.qml": booru_response,
         "NotificationItem.qml": notification_item,
         "NotificationGroup.qml": notification_group,
         "NotificationActionButton.qml": notification_action_button,
@@ -555,6 +561,24 @@ def main() -> None:
     require(web_app_view, "color: Appearance.colors.colLayer0", "WebAppView.qml")
     require(plugins_tab, "border.width: 0", "PluginsTab.qml")
     require(plugins_tab, "color: Appearance.colors.colLayer0", "PluginsTab.qml")
+
+    for token in (
+        "colBackground: tagSuggestions.selectedIndex === index",
+        "color: Appearance.colors.colOnSecondaryContainer",
+        "radius: Appearance.rounding.normal - root.padding",
+        "color: Appearance.colors.colLayer2",
+        "buttonRadius: Appearance.rounding.small",
+        "? Appearance.colors.colOnPrimary",
+    ):
+        require(anime, token, "Anime.qml")
+    for token in (
+        'color: cleanLayout ? "transparent" : Appearance.colors.colLayer1',
+        "color: Appearance.colors.colSecondaryContainer",
+        "colBackground: Appearance.colors.colSurfaceContainerHighest",
+        "colBackgroundHover: Appearance.colors.colSurfaceContainerHighestHover",
+        "colRipple: Appearance.colors.colSurfaceContainerHighestActive",
+    ):
+        require(booru_response, token, "BooruResponse.qml")
 
     for token in (
         "radius: Appearance.rounding.small",

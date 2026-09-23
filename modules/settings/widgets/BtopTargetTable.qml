@@ -75,6 +75,8 @@ Item {
                 Layout.bottomMargin: 8
 
                 StyledText {
+
+                    textFormat: Text.PlainText
                     Layout.fillWidth: true
                     text: "Runtime targets"
                     color: Appearance.colors.colOnLayer1
@@ -82,6 +84,8 @@ Item {
                 }
 
                 StyledText {
+
+                    textFormat: Text.PlainText
                     text: String(root.targets.length)
                     color: Appearance.colors.colPrimary
                     font.weight: Font.DemiBold
@@ -94,6 +98,8 @@ Item {
                 spacing: 8
 
                 StyledText {
+
+                    textFormat: Text.PlainText
                     Layout.fillWidth: true
                     Layout.preferredWidth: 2.4
                     text: "TARGET"
@@ -102,6 +108,8 @@ Item {
                 }
 
                 StyledText {
+
+                    textFormat: Text.PlainText
                     Layout.fillWidth: true
                     Layout.preferredWidth: 1
                     text: "STATE"
@@ -110,6 +118,8 @@ Item {
                 }
 
                 StyledText {
+
+                    textFormat: Text.PlainText
                     Layout.preferredWidth: 64
                     horizontalAlignment: Text.AlignRight
                     text: "INST"
@@ -118,6 +128,8 @@ Item {
                 }
 
                 StyledText {
+
+                    textFormat: Text.PlainText
                     Layout.fillWidth: true
                     Layout.preferredWidth: 1.2
                     text: "OUTPUT"
@@ -171,6 +183,8 @@ Item {
                             spacing: 0
 
                             StyledText {
+
+                                textFormat: Text.PlainText
                                 Layout.fillWidth: true
                                 text: String(targetRow.target?.label
                                     ?? targetRow.targetId)
@@ -181,6 +195,8 @@ Item {
                             }
 
                             StyledText {
+
+                                textFormat: Text.PlainText
                                 Layout.fillWidth: true
                                 text: targetRow.targetId
                                 color: Appearance.colors.colSubtext
@@ -190,6 +206,8 @@ Item {
                         }
 
                         StyledText {
+
+                            textFormat: Text.PlainText
                             Layout.fillWidth: true
                             Layout.preferredWidth: 1
                             text: targetRow.state
@@ -202,6 +220,8 @@ Item {
                         }
 
                         StyledText {
+
+                            textFormat: Text.PlainText
                             Layout.preferredWidth: 64
                             horizontalAlignment: Text.AlignRight
                             text: String(targetRow.residents.length)
@@ -210,6 +230,8 @@ Item {
                         }
 
                         StyledText {
+
+                            textFormat: Text.PlainText
                             Layout.fillWidth: true
                             Layout.preferredWidth: 1.2
                             text: root.outputsFor(targetRow.targetId) || "—"
@@ -244,6 +266,8 @@ Item {
             }
 
             StyledText {
+
+                textFormat: Text.PlainText
                 Layout.fillWidth: true
                 visible: root.targets.length > root.visibleTargets.length
                 Layout.topMargin: 8

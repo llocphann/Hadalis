@@ -18,6 +18,10 @@ Singleton {
     property var staleDescriptors: ({})
     property int declarationSerial: 0
     property var remoteSnapshot: null
+    // Keep the raw IPC payload as a structural fingerprint. Standalone
+    // Settings polls periodically, but identical snapshots must not publish a
+    // new activeCatalog/revision and wake every Workflow binding.
+    property string remoteSnapshotFingerprint: ""
     property string remoteError: ""
     property double remoteUpdatedAtMs: 0
     property bool remoteRefreshing: false
@@ -640,9 +644,15 @@ Singleton {
                     if (!Array.isArray(next?.records)
                             || !Array.isArray(next?.descriptors))
                         throw new Error("invalid runtime snapshot payload")
-                    root.remoteSnapshot = next
+                    const unchanged =
+                        root.remoteSnapshot !== null
+                        && payload === root.remoteSnapshotFingerprint
                     root.remoteUpdatedAtMs = Date.now()
                     root.remoteError = ""
+                    if (unchanged)
+                        return
+                    root.remoteSnapshotFingerprint = payload
+                    root.remoteSnapshot = next
                     root.revision++
                 } catch (error) {
                     root.remoteError =
@@ -675,6 +685,7 @@ Singleton {
     onHasLocalDeclarationsChanged: {
         if (root.hasLocalDeclarations) {
             root.remoteSnapshot = null
+            root.remoteSnapshotFingerprint = ""
             root.remoteError = ""
         } else if (root.remoteDemanded) {
             Qt.callLater(root.refreshRemoteSnapshot)

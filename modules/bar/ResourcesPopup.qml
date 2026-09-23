@@ -158,7 +158,6 @@ StyledPopup {
             Column {
                 id: thermalColumn
                 anchors.top: parent.top
-                width: Math.max(implicitWidth, speedRow.implicitWidth)
                 spacing: 8
 
                 ResourceHeaderItem {
@@ -183,7 +182,6 @@ StyledPopup {
             Column {
                 id: cpuColumn
                 anchors.top: parent.top
-                width: Math.max(implicitWidth, levelRow.implicitWidth)
                 spacing: 8
 
                 ResourceHeaderItem {

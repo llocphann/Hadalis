@@ -15,6 +15,9 @@ Item {
 
     property int settingsPageIndex: 30
     property string settingsPageName: Translation.tr("Workflow")
+    readonly property string runtimeRemoteConsumerId:
+        "workflow-page:" + String(Quickshell.processId) + ":"
+            + Math.random().toString(36).slice(2)
     property string sourceText: ""
     property string sourceDraft: ""
     property string sourceEditorPath: ""
@@ -1606,6 +1609,20 @@ Item {
     // A cached Settings page can be instantiated before it is presented.
     // Focus the Source Editor only after its page and pane become active;
     // otherwise hjkl have no recipient until the user explicitly clicks it.
+    function syncRemoteRuntimeDemand(): void {
+        CodeWorkflowRuntime.setRemoteConsumerActive(
+            root.runtimeRemoteConsumerId,
+            root.enabled && root.visible)
+    }
+
+    function syncInitialOutput(): void {
+        if (CodeWorkflowSession.outputName.length > 0)
+            return
+        const outputs = root.snapshot.outputs ?? []
+        if (outputs.length > 0)
+            CodeWorkflowSession.setOutputName(outputs[0])
+    }
+
     function focusSourceEditorWhenActive(): void {
         Qt.callLater(() => {
             if (root.enabled && root.visible && sourcePane.visible
@@ -1615,10 +1632,12 @@ Item {
     }
 
     onEnabledChanged: {
+        root.syncRemoteRuntimeDemand()
         if (root.enabled)
             root.focusSourceEditorWhenActive()
     }
     onVisibleChanged: {
+        root.syncRemoteRuntimeDemand()
         if (root.visible) {
             root.focusSourceEditorWhenActive()
             if (CodeWorkflowIndex.status === "idle")
@@ -1749,6 +1768,13 @@ Item {
     }
 
     Connections {
+        target: CodeWorkflowRuntime
+        function onRevisionChanged(): void {
+            root.syncInitialOutput()
+        }
+    }
+
+    Connections {
         target: CodeWorkflowTransaction
         function onStatusChanged(): void {
             Qt.callLater(root.evaluatePreApplyGate)
@@ -1760,14 +1786,17 @@ Item {
     }
 
     Component.onCompleted: {
-        const outputs = root.snapshot.outputs ?? []
-        if (CodeWorkflowSession.outputName.length === 0 && outputs.length > 0)
-            CodeWorkflowSession.setOutputName(outputs[0])
+        root.syncRemoteRuntimeDemand()
+        root.syncInitialOutput()
         Qt.callLater(root.reloadSource)
         Qt.callLater(() => root.requestAnalysis(false))
         Qt.callLater(() => CodeWorkflowIndex.refresh(false))
         root.focusSourceEditorWhenActive()
     }
+
+    Component.onDestruction:
+        CodeWorkflowRuntime.setRemoteConsumerActive(
+            root.runtimeRemoteConsumerId, false)
 
     FileView {
         id: sourceReader

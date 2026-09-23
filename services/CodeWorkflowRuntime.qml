@@ -21,8 +21,27 @@ Singleton {
     property string remoteError: ""
     property double remoteUpdatedAtMs: 0
     property bool remoteRefreshing: false
+    property var remoteConsumers: ({})
+    readonly property bool remoteDemanded:
+        Object.keys(root.remoteConsumers).length > 0
     readonly property bool hasLocalDeclarations:
         Object.keys(root.declarations).length > 0
+
+    function setRemoteConsumerActive(ownerId: string, active: bool): void {
+        const id = String(ownerId ?? "").trim()
+        if (id.length === 0)
+            return
+        const next = Object.assign({}, root.remoteConsumers)
+        if (active)
+            next[id] = true
+        else
+            delete next[id]
+        const wasDemanded = root.remoteDemanded
+        root.remoteConsumers = next
+        if (!wasDemanded && root.remoteDemanded
+                && !root.hasLocalDeclarations)
+            Qt.callLater(root.refreshRemoteSnapshot)
+    }
 
     function refreshRemoteSnapshot(): void {
         if (root.hasLocalDeclarations || remoteSnapshotProcess.running)
@@ -647,7 +666,7 @@ Singleton {
     Timer {
         interval: 1200
         repeat: true
-        running: !root.hasLocalDeclarations
+        running: !root.hasLocalDeclarations && root.remoteDemanded
         onTriggered: root.refreshRemoteSnapshot()
     }
 
@@ -655,12 +674,10 @@ Singleton {
         if (root.hasLocalDeclarations) {
             root.remoteSnapshot = null
             root.remoteError = ""
-        } else {
+        } else if (root.remoteDemanded) {
             Qt.callLater(root.refreshRemoteSnapshot)
         }
     }
-
-    Component.onCompleted: Qt.callLater(root.refreshRemoteSnapshot)
 
     function hit(output: string, x: real, y: real): string {
         const candidates = root.snapshot().records.filter(record => {

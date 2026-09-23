@@ -16,6 +16,8 @@ qmldir = read("services/qmldir")
 shell = read("shell.qml")
 background = read("modules/background/Background.qml")
 
+require(identity, "import Quickshell",
+        "identity singleton must load in the staged shell runtime")
 require(qmldir,
         "singleton CodeWorkflowIdentity 1.0 CodeWorkflowIdentity.qml",
         "canonical identity service must be exported")

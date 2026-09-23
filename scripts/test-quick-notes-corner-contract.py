@@ -75,6 +75,7 @@ for token in (
     "readonly property bool shouldShowQuickNotesCorner:",
     "cornerPanelWindow.isBottomLeft",
     "&& !cornerPanelWindow.shouldShowOrbitHotCorner",
+    "&& !cornerPanelWindow.orbitConflictsWithNiriOverview",
     "&& !cornerPanelWindow.quickNotesInteractionBlocked",
     "&& !shouldShowQuickNotesCorner",
     "id: quickNotesCornerLoader",
@@ -96,6 +97,8 @@ if not quick_start < sidebar_start:
 quick_block = corners[quick_start:sidebar_start]
 require(quick_block, "!cornerPanelWindow.shouldShowOrbitHotCorner",
         "Orbit hot corner must retain priority over Quick Notes")
+require(quick_block, "!cornerPanelWindow.orbitConflictsWithNiriOverview",
+        "native Niri hot corners must retain priority over Quick Notes")
 
 schema_match = re.search(
     r"property JsonObject quickNotes: JsonObject \{([\s\S]*?)\n\s*\}",

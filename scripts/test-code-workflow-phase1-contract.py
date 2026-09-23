@@ -636,6 +636,22 @@ require(runtime_declaration, "CodeWorkflowRuntime.touchDeclaration(root.registra
         "loader lifecycle changes must flow through the deduplicating runtime registry")
 if "loader.item" in runtime_declaration:
     fail("runtime declaration lifecycle diagnostics must not dereference loader.item")
+for token in (
+    "property var entryStates: ({})",
+    "function touchInstance(",
+    "const previousState = String(root.entryStates[key] ?? \"\")",
+    "root._event(nextState, key, token, targetId)",
+    "delete nextStates[instanceId]",
+):
+    require(runtime, token,
+            "live runtime lifecycle transition tracking missing " + token)
+for token in (
+    "function notifyLifecycleChanged(): void",
+    "CodeWorkflowRuntime.touchInstance(",
+    "function onVisibleChanged(): void { root.notifyLifecycleChanged() }",
+):
+    require(target, token,
+            "live runtime target visibility lifecycle missing " + token)
 if "modelData.token" in page:
     fail("runtime lifecycle Inspector must not expose internal runtime tokens")
 

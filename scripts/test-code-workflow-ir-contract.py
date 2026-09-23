@@ -584,8 +584,8 @@ if "textRenderType: Text.QtRendering" not in world_block:
 if "id: edgeLabelTooltip" in world_block:
     fail("edge-label tooltip HUD must stay outside the transformed graph world")
 
-forbid(canvas, "existingIndex >= 0 && selected.length > 1",
-       "manual reasoning toggle must allow clearing the final emphasized node")
+if "existingIndex >= 0 && selected.length > 1" in canvas:
+    fail("manual reasoning toggle must allow clearing the final emphasized node")
 
 for token in (
     "defaults/code-workflow-ir.json",

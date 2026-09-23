@@ -74,7 +74,10 @@ Item {
 
     Timer {
         id: graphRefreshTimer
-        interval: 120
+        // Let the Settings page transition paint before materializing the
+        // graph's Shape/delegate tree. Runtime bursts inside the same frame are
+        // folded into this single structural-signature check.
+        interval: 32
         repeat: false
         onTriggered: root.refreshGraph(false)
     }
@@ -1866,8 +1869,12 @@ Item {
     function activateCanvas(): void {
         if (!root.workflowActive)
             return
-        root.refreshGraph(true)
-        Qt.callLater(root.rebuildEdgeRouteCache)
+        // Building ~40 reviewed nodes plus runtime nodes, Shapes and labels is
+        // the heaviest synchronous part of Workflow activation. Schedule it
+        // just after the page transition instead of blocking the activation
+        // signal handler.
+        root.runtimeCatalogSignature = ""
+        graphRefreshTimer.restart()
         Qt.callLater(root.consumeRuntimeLifecycleEvent)
         root.fitInitialGraph()
     }

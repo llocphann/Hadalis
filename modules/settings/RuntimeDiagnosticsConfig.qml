@@ -78,7 +78,7 @@ ContentPage {
             ? root.evidence.history : []
         const result = []
         for (const point of history) {
-            const value = Number(point?.[key])
+            const value = Number(point ? point[key] : undefined)
             if (Number.isFinite(value))
                 result.push(value)
         }

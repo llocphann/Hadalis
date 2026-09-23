@@ -22,11 +22,18 @@ Singleton {
     property bool releaseAfterPulse: false
     property string leaseTransport: ""
     property string remoteError: ""
+    property double remoteEvidenceFloorMs: 0
+    readonly property bool remoteEvidenceFresh:
+        root.pageCurrent
+        && !root.localShell
+        && CodeWorkflowRuntime.remoteUpdatedAtMs > root.remoteEvidenceFloorMs
     readonly property string evidenceError:
         root.localShell ? "" : CodeWorkflowRuntime.remoteError
     readonly property var evidence: root.localShell
         ? RuntimeDiagnostics.snapshot()
-        : (CodeWorkflowRuntime.remoteSnapshot?.diagnostics ?? null)
+        : (root.remoteEvidenceFresh
+            ? (CodeWorkflowRuntime.remoteSnapshot?.diagnostics ?? null)
+            : null)
 
     function _syncRemoteRuntimeDemand(): void {
         CodeWorkflowRuntime.setRemoteConsumerActive(
@@ -163,6 +170,8 @@ Singleton {
     }
 
     onPageCurrentChanged: {
+        if (root.pageCurrent && !root.localShell)
+            root.remoteEvidenceFloorMs = CodeWorkflowRuntime.remoteUpdatedAtMs
         root._syncRemoteRuntimeDemand()
         if (root.pageCurrent)
             root._acquireLease()
@@ -201,6 +210,8 @@ Singleton {
     }
 
     onLocalShellChanged: {
+        if (root.pageCurrent && !root.localShell)
+            root.remoteEvidenceFloorMs = CodeWorkflowRuntime.remoteUpdatedAtMs
         root._syncRemoteRuntimeDemand()
         if (!root.pageCurrent)
             return

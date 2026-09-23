@@ -646,8 +646,11 @@ Singleton {
         stdout: StdioCollector {
             onStreamFinished: {
                 const payload = String(text ?? "").trim()
-                if (payload.length === 0)
+                if (payload.length === 0) {
+                    root.remoteError =
+                        "Runtime snapshot IPC returned no data"
                     return
+                }
                 try {
                     const next = JSON.parse(payload)
                     if (!Array.isArray(next?.records)

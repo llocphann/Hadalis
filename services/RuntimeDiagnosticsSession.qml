@@ -11,8 +11,18 @@ Singleton {
     readonly property int heartbeatIntervalMs: 2000
     readonly property bool localShell:
         CodeWorkflowRuntime.hasLocalDeclarations
-    property bool pageCurrent: false
+
+    // Multiple Settings hosts can exist briefly while chrome/style ownership
+    // changes. Lease state is therefore owner-based rather than one mutable bool.
+    property var activeOwners: ({})
+    readonly property bool pageCurrent:
+        Object.keys(root.activeOwners).length > 0
     property string remoteError: ""
+
+    function _ownerId(raw): string {
+        const value = String(raw ?? "").trim()
+        return value.length > 0 ? value : "settings"
+    }
 
     function _remoteCommand(action: string): var {
         return [
@@ -37,6 +47,14 @@ Singleton {
         remoteRelease.running = true
     }
 
+    function _acquireLease(): void {
+        if (root.localShell) {
+            RuntimeDiagnostics.acquire(root.clientId)
+            return
+        }
+        root._pulseRemote("acquire")
+    }
+
     function _renewLease(): void {
         if (!root.pageCurrent)
             return
@@ -48,27 +66,34 @@ Singleton {
         root._pulseRemote("heartbeat")
     }
 
-    function setPageCurrent(current: bool): void {
-        const next = current === true
-        if (root.pageCurrent === next) {
-            if (next)
-                root._renewLease()
-            return
-        }
-
-        root.pageCurrent = next
-        if (next) {
-            if (root.localShell)
-                RuntimeDiagnostics.acquire(root.clientId)
-            else
-                root._pulseRemote("acquire")
-            return
-        }
-
+    function _releaseLease(): void {
         if (root.localShell)
             RuntimeDiagnostics.release(root.clientId)
         else
             root._releaseRemote()
+    }
+
+    function setOwnerCurrent(ownerId: string, current: bool): void {
+        const id = root._ownerId(ownerId)
+        const next = Object.assign({}, root.activeOwners)
+        if (current === true)
+            next[id] = true
+        else
+            delete next[id]
+        root.activeOwners = next
+    }
+
+    // Compatibility helper for simple callers; SettingsPageHost uses the
+    // owner-aware API so one host cannot release another host's active lease.
+    function setPageCurrent(current: bool): void {
+        root.setOwnerCurrent("settings", current)
+    }
+
+    onPageCurrentChanged: {
+        if (root.pageCurrent)
+            root._acquireLease()
+        else
+            root._releaseLease()
     }
 
     Timer {
@@ -111,11 +136,7 @@ Singleton {
     Component.onDestruction: {
         // Crash/disconnect safety is owned by the server TTL; this is only a
         // best-effort clean release for normal Settings process shutdown.
-        if (root.pageCurrent) {
-            if (root.localShell)
-                RuntimeDiagnostics.release(root.clientId)
-            else
-                root._releaseRemote()
-        }
+        if (root.pageCurrent)
+            root._releaseLease()
     }
 }

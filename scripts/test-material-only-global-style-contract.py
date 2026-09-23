@@ -43,6 +43,7 @@ WEB_APP_VIEW = ROOT / "modules" / "sidebarLeft" / "plugins" / "WebAppView.qml"
 PLUGINS_TAB = ROOT / "modules" / "sidebarLeft" / "plugins" / "PluginsTab.qml"
 ANIME = ROOT / "modules" / "sidebarLeft" / "Anime.qml"
 BOORU_RESPONSE = ROOT / "modules" / "sidebarLeft" / "anime" / "BooruResponse.qml"
+STYLED_OVERLAY_WIDGET = ROOT / "modules" / "ii" / "overlay" / "StyledOverlayWidget.qml"
 NOTIFICATION_ITEM = ROOT / "modules" / "common" / "widgets" / "NotificationItem.qml"
 NOTIFICATION_GROUP = ROOT / "modules" / "common" / "widgets" / "NotificationGroup.qml"
 NOTIFICATION_ACTION_BUTTON = ROOT / "modules" / "common" / "widgets" / "NotificationActionButton.qml"
@@ -183,6 +184,7 @@ def main() -> None:
     plugins_tab = PLUGINS_TAB.read_text(encoding="utf-8")
     anime = ANIME.read_text(encoding="utf-8")
     booru_response = BOORU_RESPONSE.read_text(encoding="utf-8")
+    styled_overlay_widget = STYLED_OVERLAY_WIDGET.read_text(encoding="utf-8")
     notification_item = NOTIFICATION_ITEM.read_text(encoding="utf-8")
     notification_group = NOTIFICATION_GROUP.read_text(encoding="utf-8")
     notification_action_button = NOTIFICATION_ACTION_BUTTON.read_text(encoding="utf-8")
@@ -342,6 +344,7 @@ def main() -> None:
         "PluginsTab.qml": plugins_tab,
         "Anime.qml": anime,
         "BooruResponse.qml": booru_response,
+        "StyledOverlayWidget.qml": styled_overlay_widget,
         "NotificationItem.qml": notification_item,
         "NotificationGroup.qml": notification_group,
         "NotificationActionButton.qml": notification_action_button,
@@ -579,6 +582,26 @@ def main() -> None:
         "colRipple: Appearance.colors.colSurfaceContainerHighestActive",
     ):
         require(booru_response, token, "BooruResponse.qml")
+
+    for token in (
+        "property real radius: Appearance.rounding.windowRounding",
+        "ColorUtils.applyAlpha(Appearance.colors.colLayer1, root.panelBaseOpacity)",
+        "border.width: 1",
+        'color: root.fancyBorders ? "transparent" : Appearance.colors.colLayer1',
+        "colBackgroundToggled: Appearance.colors.colSecondaryContainer",
+        "colRippleToggled: Appearance.colors.colSecondaryContainerActive",
+        "GE.OpacityMask {",
+    ):
+        require(styled_overlay_widget, token, "StyledOverlayWidget.qml")
+    for token in (
+        "RegaliaPlate {",
+        "AngelPartialBorder {",
+        "id: widgetBlurWallpaper",
+        "MultiEffect {",
+        "import QtQuick.Effects",
+        "import Quickshell",
+    ):
+        forbid(styled_overlay_widget, token, "StyledOverlayWidget.qml")
 
     for token in (
         "radius: Appearance.rounding.small",

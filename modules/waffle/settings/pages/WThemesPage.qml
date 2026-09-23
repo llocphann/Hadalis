@@ -557,62 +557,6 @@ WSettingsPage {
         }
     }
 
-    // Global Style card
-    WSettingsCard {
-        id: globalStyleCard
-        title: Translation.tr("Global Style")
-        icon: "eyedropper"
-
-        readonly property bool cardsEverywhere: (Config.options?.dock?.cardStyle ?? false) && (Config.options?.sidebar?.cardStyle ?? false) && (Config.options?.bar?.cornerStyle === 3)
-
-        readonly property string derivedStyle: cardsEverywhere ? "cards" : "material"
-        readonly property string currentStyle: (Config.options?.appearance?.globalStyle ?? "").length > 0 ? Config.options?.appearance?.globalStyle ?? "material" : derivedStyle
-
-        WSettingsDropdown {
-            label: Translation.tr("Style")
-            icon: "eyedropper"
-            description: Translation.tr("Choose the visual language used across the shell")
-            currentValue: globalStyleCard.currentStyle
-            options: [
-                {
-                    value: "material",
-                    displayName: Translation.tr("Material")
-                },
-                {
-                    value: "cards",
-                    displayName: Translation.tr("Cards")
-                },
-                {
-                    value: "aurora",
-                    displayName: Translation.tr("Aurora")
-                },
-                {
-                    value: "inir",
-                    displayName: Translation.tr("Inir")
-                },
-                {
-                    value: "angel",
-                    displayName: Translation.tr("Angel")
-                },
-                {
-                    value: "regalia",
-                    displayName: Translation.tr("Regalia")
-                },
-                {
-                    value: "zzz",
-                    displayName: Translation.tr("ZZZ")
-                },
-                {
-                    value: "cookie",
-                    displayName: Translation.tr("Cookie Shapes")
-                }
-            ]
-            onSelected: newValue => {
-                ThemeService.setGlobalStyle(newValue);
-            }
-        }
-    }
-
     // Appearance card
     WSettingsCard {
         title: Translation.tr("Appearance")

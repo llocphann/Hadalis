@@ -1008,6 +1008,27 @@ Singleton {
             keywords: ["notification", "margin", "edge", "spacing", "gap"]
         },
         {
+            pageIndex: 5, pageName: root.pages[5].name,
+            section: Translation.tr("Notifications"),
+            label: Translation.tr("Notification center"),
+            description: Translation.tr("Bottom-right hover history popup"),
+            keywords: ["notification", "center", "history", "bottom", "right", "hover", "corner", "popup"]
+        },
+        {
+            pageIndex: 5, pageName: root.pages[5].name,
+            section: Translation.tr("Notifications"),
+            label: Translation.tr("Notification center hover"),
+            description: Translation.tr("Configure hover delay, close grace and corner hit size"),
+            keywords: ["notification", "center", "hover", "delay", "grace", "corner", "size"]
+        },
+        {
+            pageIndex: 5, pageName: root.pages[5].name,
+            section: Translation.tr("Notifications"),
+            label: Translation.tr("Notification center behavior"),
+            description: Translation.tr("Configure read state, transient popup dismissal and fullscreen access"),
+            keywords: ["notification", "center", "read", "dismiss", "toast", "fullscreen", "behavior"]
+        },
+        {
             pageIndex: 6, pageName: root.pages[6].name,
             section: Translation.tr("Region selector (screen snipping/Google Lens)"),
             label: Translation.tr("Region selector"),
@@ -1025,8 +1046,8 @@ Singleton {
             pageIndex: 23, pageName: root.pages[23].name,
             section: Translation.tr("Sidebars"),
             label: Translation.tr("Arrange sidebar sections"),
-            description: Translation.tr("Reorder right sidebar sections and balance notifications against widgets"),
-            keywords: ["sidebar", "right", "arrange", "order", "sections", "notifications", "widgets", "resize", "height"]
+            description: Translation.tr("Reorder right sidebar system, slider, toggle and widget sections"),
+            keywords: ["sidebar", "right", "arrange", "order", "sections", "widgets", "drag"]
         },
         {
             pageIndex: 23, pageName: root.pages[23].name,
@@ -1034,13 +1055,6 @@ Singleton {
             label: Translation.tr("Arrange sidebar tabs"),
             description: Translation.tr("Reorder the tabs shown in the left sidebar"),
             keywords: ["sidebar", "left", "arrange", "order", "tabs", "drag", "widgets", "ai"]
-        },
-        {
-            pageIndex: 23, pageName: root.pages[23].name,
-            section: Translation.tr("Sidebars"),
-            label: Translation.tr("Collapse notifications when empty"),
-            description: Translation.tr("Shrink the right sidebar when there are no notifications"),
-            keywords: ["sidebar", "notifications", "collapse", "empty", "compact", "shrink"]
         },
         {
             pageIndex: 23, pageName: root.pages[23].name,
@@ -1642,7 +1656,7 @@ Singleton {
         { pageIndex: 15, pageName: root.pages[15].name, section: Translation.tr("Shell visibility"), label: Translation.tr("Primary monitor"), description: Translation.tr("Choose the default output for shell popups"), keywords: ["monitor", "display", "primary", "screen", "output"] },
         { pageIndex: 15, pageName: root.pages[15].name, section: Translation.tr("Overview placement"), label: Translation.tr("Active screen only"), description: Translation.tr("Open the overview on the monitor where it was invoked"), keywords: ["overview", "monitor", "screen", "focused", "active", "output"] },
         { pageIndex: 15, pageName: root.pages[15].name, section: Translation.tr("Material shell surfaces"), label: Translation.tr("Bar, dock, sidebars, and media controls"), description: Translation.tr("Choose which monitors show Material shell surfaces"), keywords: ["monitor", "visibility", "bar", "dock", "sidebar", "media", "workspace", "secondary"] },
-        { pageIndex: 15, pageName: root.pages[15].name, section: Translation.tr("Popups"), label: Translation.tr("Notification popups and OSD indicators"), description: Translation.tr("Choose which monitors show notifications and OSD feedback"), keywords: ["monitor", "visibility", "notifications", "osd", "popups", "secondary", "workspace"] },
+        { pageIndex: 15, pageName: root.pages[15].name, section: Translation.tr("Popups"), label: Translation.tr("Notification surfaces and OSD indicators"), description: Translation.tr("Choose which monitors show transient notifications, the notification center and OSD feedback"), keywords: ["monitor", "visibility", "notifications", "center", "history", "osd", "popups", "secondary", "workspace"] },
         { pageIndex: 15, pageName: root.pages[15].name, section: Translation.tr("Desktop widgets"), label: Translation.tr("Desktop widgets"), description: Translation.tr("Choose widget visibility and layout per monitor"), keywords: ["monitor", "visibility", "desktop", "widgets", "layout", "secondary", "workspace"] },
         { pageIndex: 16, pageName: root.pages[16].name, section: Translation.tr("General"), label: Translation.tr("Dashboard"), description: Translation.tr("Centered welcome hub panel with configurable widgets"), keywords: ["dashboard", "hub", "welcome", "panel", "home", "greeting"] },
         { pageIndex: 16, pageName: root.pages[16].name, section: Translation.tr("General"), label: Translation.tr("Panel width"), description: Translation.tr("Dashboard width as a percentage of the screen"), keywords: ["dashboard", "width", "size", "ratio", "screen"] },

@@ -17,6 +17,7 @@ on:
       - 'modules/waffle/critical/ShellWaffleCriticalPanels.qml'
       - 'modules/settings/CodeWorkflow*.qml'
       - 'modules/settings/RuntimeDiagnostics*.qml'
+      - 'modules/settings/widgets/BtopMetricPanel.qml'
       - 'waffleSettings.qml'
       - 'modules/waffle/settings/WSettingsContent.qml'
       - 'modules/waffle/settings/pages/WDiagnosticsPage.qml'
@@ -50,6 +51,7 @@ on:
       - 'modules/waffle/critical/ShellWaffleCriticalPanels.qml'
       - 'modules/settings/CodeWorkflow*.qml'
       - 'modules/settings/RuntimeDiagnostics*.qml'
+      - 'modules/settings/widgets/BtopMetricPanel.qml'
       - 'waffleSettings.qml'
       - 'modules/waffle/settings/WSettingsContent.qml'
       - 'modules/waffle/settings/pages/WDiagnosticsPage.qml'
@@ -105,6 +107,7 @@ jobs:
             qml_files=(
               modules/settings/CodeWorkflow*.qml
               modules/settings/RuntimeDiagnostics*.qml
+              modules/settings/widgets/BtopMetricPanel.qml
               services/CodeWorkflow*.qml
               services/RuntimeDiagnostics*.qml
               modules/waffle/settings/pages/WDiagnosticsPage.qml

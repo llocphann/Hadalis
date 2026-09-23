@@ -191,6 +191,21 @@ ContentPage {
                 }
             }
 
+            ContentSubsection {
+                title: Translation.tr("Monitors")
+
+                ConfigSelectionArray {
+                    enabled: Config.options?.quickNotes?.enable ?? true
+                    opacity: enabled ? 1 : 0.5
+                    currentValue: Config.options?.quickNotes?.monitorMode ?? "all"
+                    onSelected: newValue => Config.setNestedValue("quickNotes.monitorMode", newValue)
+                    options: [
+                        { displayName: Translation.tr("Primary only"), icon: "filter_1", value: "primary" },
+                        { displayName: Translation.tr("All monitors"), icon: "select_all", value: "all" }
+                    ]
+                }
+            }
+
             ConfigRow {
                 uniform: true
 

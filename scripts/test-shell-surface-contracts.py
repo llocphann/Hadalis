@@ -1111,6 +1111,13 @@ def main() -> None:
     for retired_runtime_token in ("effectiveCornerStyle", "floatStyleShadow", "barFillInner"):
         check(retired_runtime_token not in bar_runtime,
               f"Classic Bar runtime must not retain retired corner-style branch: {retired_runtime_token}")
+    for retired_surface_key in ("floatStyleShadow", "blurBackground"):
+        check(retired_surface_key not in config_qml
+              and retired_surface_key not in defaults_json,
+              f"Retired Bar surface config must not remain in schema/defaults: {retired_surface_key}")
+    bar_surface_cleanup = read("sdata/migrations/045-retired-bar-surface-state.sh")
+    check("del(.bar.floatStyleShadow, .bar.blurBackground)" in bar_surface_cleanup,
+          "Migration 045 must remove persisted retired Bar surface state")
 
     bar_settings = read("modules/settings/BarConfig.qml")
     quick_settings = read("modules/settings/QuickConfig.qml")

@@ -268,7 +268,6 @@ WSettingsPage {
             textFormat: Text.PlainText
             Layout.fillWidth: true
             text: Translation.tr("Kernel provenance: system CPU /proc/stat · memory /proc/meminfo · shell CPU schedstat · shell memory smaps_rollup · shell I/O /proc/<pid>/io · shell GPU DRM fdinfo · network /proc/net/dev.")
-            textFormat: Text.PlainText
             color: Looks.colors.subfg
             font.pixelSize: Looks.font.pixelSize.small
             wrapMode: Text.WordWrap

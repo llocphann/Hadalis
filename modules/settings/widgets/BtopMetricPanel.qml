@@ -41,21 +41,24 @@ Item {
                 Layout.fillWidth: true
 
                 ColumnLayout {
+                    Layout.fillWidth: true
                     spacing: 1
                     StyledText {
+                        Layout.fillWidth: true
                         text: root.title
                         font.weight: Font.DemiBold
                         color: root.accentColor
+                        elide: Text.ElideRight
                     }
                     StyledText {
+                        Layout.fillWidth: true
                         visible: root.subtitle.length > 0
                         text: root.subtitle
                         color: Appearance.colors.colSubtext
                         font.pixelSize: Appearance.font.pixelSize.small
+                        elide: Text.ElideRight
                     }
                 }
-
-                Item { Layout.fillWidth: true }
 
                 StyledText {
                     text: root.valueAvailable

@@ -7,7 +7,17 @@ Item {
     id: root
 
     property var cores: []
+    property var coreNames: []
     property int columns: 4
+
+    function coreLabel(index): string {
+        const raw = Array.isArray(root.coreNames)
+            && index >= 0 && index < root.coreNames.length
+            ? String(root.coreNames[index]) : ""
+        if (raw.startsWith("cpu"))
+            return "C" + raw.slice(3)
+        return raw.length > 0 ? raw : "C" + index
+    }
 
     implicitHeight: grid.implicitHeight
 
@@ -40,7 +50,7 @@ Item {
                         spacing: 4
 
                         StyledText {
-                            text: "C" + index
+                            text: root.coreLabel(index)
                             font.pixelSize: Appearance.font.pixelSize.smallest
                             color: Appearance.colors.colSubtext
                         }

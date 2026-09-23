@@ -354,9 +354,21 @@ for token in (
     "watchChanges: root.workflowActive && !root.workflowDestroying",
     "enabled: root.workflowActive && !root.workflowDestroying",
     "workflowActivationTimer.stop()",
+    "workflowActive: root.workflowActive && !root.workflowDestroying",
 ):
     require(page, token,
             "Workflow reopen lifecycle guard missing " + token)
+for token in (
+    "property bool workflowActive: true",
+    "if (!root.workflowActive)",
+    "function activateCanvas(): void",
+    "function deactivateCanvas(): void",
+    "onWorkflowActiveChanged:",
+    "enabled: root.workflowActive",
+    "running: root.workflowActive",
+):
+    require(canvas, token,
+            "hidden Workflow canvas suspension missing " + token)
 if 'Qt.callLater(() => CodeWorkflowIndex.refresh(false))' in page:
     fail("Workflow mount must not queue an unconditional duplicate workspace index")
 if 'Component.onCompleted: {\n        root.syncRemoteRuntimeDemand()\n        root.syncInitialOutput()' in page:

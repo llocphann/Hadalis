@@ -2,6 +2,8 @@
 
 Continue work on the GitHub repository `llocphann/Hadalis`, branch `dev`.
 
+**Hard workflow lock:** work and commit directly on `dev`. Do not create or switch to another branch and do not open a pull request unless the maintainer explicitly asks for it.
+
 The iRiS integration phase is complete. Treat the current iRiS/perimeter
 architecture as the production baseline; this new phase is for **optimization,
 bug fixing and refinement of existing features**, not another migration.
@@ -14,10 +16,17 @@ Before editing:
    - `docs/IRIS_INTEGRATION_COMPLETE.md`;
    - `docs/PERIMETER.md`;
    - `docs/SHELL_SURFACE_CONTRACTS.md`.
-3. Do not merge/reset/rebase/force-push shared history.
-4. Preserve unrelated concurrent work.
-5. If a previous fix is disproved by runtime evidence, revert/surgically remove
+3. Do not create/switch to a work branch or open a PR unless explicitly requested.
+4. Do not merge/reset/rebase/force-push shared history.
+5. Preserve unrelated concurrent work.
+6. If a previous fix is disproved by runtime evidence, revert/surgically remove
    that failed change before trying a different approach. Do not stack patches.
+
+Current maintainer findings:
+
+- Settings task-tab indicator is still unresolved: expanding/collapsing **Headings** can make the indicator jump downward. The latest attempt improved stability but was not accepted; do not stack another workaround on top of it.
+- System Monitor popup refinement is source-complete on `dev`: CPU Load now reserves a two-digit width floor and RPM/Level have Material icons. It still needs live acceptance for no 1↔2 digit popup resize and correct fan-row alignment.
+- Material-only cleanup is actively progressing across remaining leaf/widget/plugin/overlay surfaces; it is not complete until the active-tree residue audit and maintainer validation pass.
 
 Architecture constraints:
 

@@ -131,6 +131,7 @@ Bar.StyledPopup {
                     sourceComponent: NotepadWidget {
                         margin: 4
                         compactPresentation: true
+                        quickCapturePresentation: true
                     }
                 }
 

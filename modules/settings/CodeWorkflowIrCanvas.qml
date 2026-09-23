@@ -60,8 +60,6 @@ Item {
     function refreshGraph(force: bool): void {
         if (!root.workflowActive) {
             graphRefreshTimer.stop()
-            root.runtimeCatalogSignature = ""
-            root.graph = null
             return
         }
         const signature = root.catalogSignature()
@@ -74,10 +72,12 @@ Item {
 
     Timer {
         id: graphRefreshTimer
-        // Let the Settings page transition paint before materializing the
-        // graph's Shape/delegate tree. Runtime bursts inside the same frame are
-        // folded into this single structural-signature check.
-        interval: 32
+        // A cached Workflow page keeps its graph ready for an instant revisit.
+        // Initial construction or a hidden-time runtime change is reconciled
+        // after the Settings slide finishes so graph delegate creation cannot
+        // steal frames from the transition.
+        interval: Math.max(
+            32, Appearance.animation.elementMoveFast.duration + 24)
         repeat: false
         onTriggered: root.refreshGraph(false)
     }
@@ -1975,11 +1975,11 @@ Item {
     function activateCanvas(): void {
         if (!root.workflowActive)
             return
-        // Building ~40 reviewed nodes plus runtime nodes, Shapes and labels is
-        // the heaviest synchronous part of Workflow activation. Schedule it
-        // just after the page transition instead of blocking the activation
-        // signal handler.
-        root.runtimeCatalogSignature = ""
+        // Keep a previously materialized graph across Settings page-cache
+        // navigation. The parent Loader hides it while inactive and all
+        // runtime/session listeners below are suspended; rebuilding dozens of
+        // delegates on every revisit costs more than retaining this bounded
+        // presentation cache until the Loader itself is evicted/destroyed.
         root.wireMetricZoom = Math.max(
             CodeWorkflowSession.minimumZoom,
             CodeWorkflowSession.zoom)
@@ -2002,8 +2002,9 @@ Item {
         root.dragEdgeRouteCache = ({})
         root.runtimePulseTargetId = ""
         root.runtimePulseKind = ""
-        root.runtimeCatalogSignature = ""
-        root.graph = null
+        // Keep graph/signature/route caches warm while this Settings Loader is
+        // retained. They disappear naturally when SettingsPageHost evicts the
+        // page or the Settings surface is destroyed.
     }
 
     Component.onCompleted: root.activateCanvas()

@@ -3378,7 +3378,8 @@ EOF
                         *Tools*|plugins) select_prefix "sidebar-left/tools" ;;
                         *) : ;;
                     esac ;;
-                modules/sidebarRight/notifications/*) select_prefix "sidebar-right/notifications" ;;
+                modules/sidebarRight/notifications/*)
+                    select_prefix "notification-center"; select_prefix "dashboard" ;;
                 modules/sidebarRight/events/*) select_prefix "sidebar-right/events" ;;
                 modules/sidebarRight/todo/*) select_prefix "sidebar-right/todo" ;;
                 modules/sidebarRight/notepad/*) select_prefix "sidebar-right/notepad" ;;
@@ -3404,7 +3405,8 @@ EOF
                     area="${changed_path##*/}"; area="${area%Config.qml}"; select_settings_area "$area" ;;
                 modules/waffle/settings/pages/W*Page.qml)
                     area="${changed_path##*/}"; area="${area#W}"; area="${area%Page.qml}"; select_settings_area "$area" ;;
-                services/Notifications.qml) select_prefix "sidebar-right/notifications"; select_prefix "waffle/notification-center" ;;
+                services/Notifications.qml)
+                    select_prefix "notification-center"; select_prefix "waffle/notification-center"; select_prefix "dashboard" ;;
                 services/Weather.qml) select_prefix "sidebar-right/weather"; select_prefix "dashboard" ;;
                 services/Events.qml|services/Calendar*.qml) select_prefix "sidebar-right/calendar"; select_prefix "sidebar-right/events"; select_prefix "dashboard" ;;
                 services/Todo.qml) select_prefix "sidebar-right/todo"; select_prefix "dashboard" ;;

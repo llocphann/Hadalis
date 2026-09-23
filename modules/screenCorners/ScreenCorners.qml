@@ -22,7 +22,12 @@ Scope {
     function setQuickNotesEditorOutput(outputName, focused): void {
         const name = String(outputName ?? "")
         if (focused) {
-            if (name)
+            // Treat ownership like a compare-and-set. The visibility binding
+            // normally prevents two outputs from entering editor mode at once,
+            // but near-simultaneous clicks must not let the later signal steal
+            // keyboard ownership from an already-focused popup.
+            if (name && (!screenCorners.quickNotesEditorOutput
+                    || screenCorners.quickNotesEditorOutput === name))
                 screenCorners.quickNotesEditorOutput = name
             return
         }

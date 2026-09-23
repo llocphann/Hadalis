@@ -1100,21 +1100,21 @@ def main() -> None:
         check(retired_runtime_token not in bar_runtime,
               f"Classic Bar runtime must not retain retired corner-style branch: {retired_runtime_token}")
 
-    bar_settings = read("modules/settings/BarConfigHugOnly.qml")
-    quick_settings = read("modules/settings/QuickConfigHugOnly.qml")
-    check('Translation.tr("Corner style")' in bar_settings
-          and 'Translation.tr("Float shadow")' in bar_settings,
-          "Public Bar settings must suppress retired corner-style and float-shadow controls")
-    check('Translation.tr("Bar style")' in quick_settings,
-          "Quick settings must suppress the retired Bar style selector")
-    check("_hugUiReady" not in bar_settings
-          and "opacity: root._hugUiReady" not in bar_settings
-          and "onTriggered: root._applyHugOnlyUi(root)" in bar_settings,
-          "Public Bar settings must remain visible while the compatibility pruning pass runs")
-    check("_hugUiReady" not in quick_settings
-          and "opacity: root._hugUiReady" not in quick_settings
-          and "onTriggered: root._applyHugOnlyUi(root)" in quick_settings,
-          "Quick settings must remain visible while the Hug compatibility pruning pass runs")
+    bar_settings = read("modules/settings/BarConfig.qml")
+    quick_settings = read("modules/settings/QuickConfig.qml")
+    for retired_bar_control in (
+        'Translation.tr("Corner style")',
+        'Translation.tr("Float shadow")',
+        'Translation.tr("Show background")',
+        "Config.options?.bar?.blurBackground",
+        'Config.setNestedValue("bar.blurBackground',
+    ):
+        check(retired_bar_control not in bar_settings,
+              f"Canonical Bar settings must not instantiate retired UI: {retired_bar_control}")
+    check('Translation.tr("Bar style")' not in quick_settings
+          and 'settingsTaskSection: "screen"' not in quick_settings
+          and 'Config.setNestedValue("bar.vertical"' not in quick_settings,
+          "Canonical Quick settings must not recreate Bar/backdrop ownership")
     check('Config.options?.appearance?.screenEdge?.width ?? 10' in bar_settings
           and 'Config.setNestedValue("appearance.screenEdge.width", value)' in bar_settings,
           "Bar settings must expose persistent Screen Edge width with a 10px default")
@@ -1159,15 +1159,9 @@ def main() -> None:
     check('Config.setNestedValue("sidebar.style", "panel")' in settings_registry
           and 'Config.setNestedValue("sidebar.cardStyle", false)' in settings_registry,
           "Legacy Sidebar Island/Card values must normalize to Panel/non-card")
-    check('component: "modules/settings/BarConfigHugOnly.qml"' in settings_registry,
-          "Public Bar settings must route through the Hug-only facade")
-    bar_hug_config = read("modules/settings/BarConfigHugOnly.qml")
-    check('text === Translation.tr("Show background")' in bar_hug_config,
-          "Hug-only Bar settings must hide the retired transparent-background toggle")
-    check('component: "modules/settings/QuickConfigHugOnly.qml"' in settings_registry,
-          "Public Quick settings must route through the Hug-only facade")
-    check('entry.label !== Translation.tr("Corner style")' in settings_registry,
-          "Settings search must not expose the retired Bar corner-style selector")
+    check("BarConfigHugOnly" not in settings_registry
+          and "QuickConfigHugOnly" not in settings_registry,
+          "Settings registry must route canonical Quick/Bar pages without compatibility facades")
     settings_registry_data = read("modules/settings/SettingsPageRegistryData.qml")
     check('label: Translation.tr("Bar background")' not in settings_registry_data,
           "Settings search source must not retain the retired Bar background toggle")

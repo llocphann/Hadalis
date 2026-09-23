@@ -215,7 +215,7 @@ WSettingsPage {
                 + "   ↑ "
                 + root.formatRate(
                     root.networkEvidence?.aggregateNonLoopback?.txBytesPerSec)
-                + " " + Translation.tr("system")
+                + " " + Translation.tr("system non-loopback")
             icon: "info"
         }
 

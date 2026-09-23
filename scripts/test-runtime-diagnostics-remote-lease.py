@@ -205,6 +205,26 @@ function makeSession() {
     assert.equal(s.root.remoteError, '');
     assert.equal(s.root.leaseError, 'Diagnostics lease was rejected');
 }
+{
+    const s = makeSession();
+    s.enter();
+    s.finishPulse(0, '');
+    assert.equal(
+        s.root.remoteError,
+        'Diagnostics lease command returned no data'
+    );
+    assert.equal(s.root.leaseError, '');
+}
+{
+    const s = makeSession();
+    s.enter();
+    s.finishPulse(0, '{"status":"missing-ok"}');
+    assert.equal(
+        s.root.remoteError,
+        'Diagnostics lease response was invalid'
+    );
+    assert.equal(s.root.leaseError, '');
+}
 
 // Reentering before acquire completes retains that lease without a late release.
 {

@@ -20,7 +20,7 @@ ContentPage {
     readonly property var networkEvidence: root.evidence?.network ?? null
     readonly property var discoveryEvidence: root.evidence?.discovery ?? null
 
-    function systemRamPercent(): real {
+    function systemRamPercent(): var {
         const used = Number(
             root.systemEvidence?.memory?.valuesKiB?.MemUsed)
         const total = Number(
@@ -28,7 +28,7 @@ ContentPage {
         if (!Number.isFinite(used)
                 || !Number.isFinite(total)
                 || total <= 0)
-            return 0
+            return null
         return Math.max(0, Math.min(100, used / total * 100))
     }
 
@@ -164,7 +164,7 @@ ContentPage {
                 BtopMetricPanel {
                     Layout.fillWidth: true
                     title: Translation.tr("System CPU")
-                    value: Number(root.systemEvidence?.cpu?.percent ?? 0)
+                    value: root.systemEvidence?.cpu?.percent ?? null
                     detail: Translation.tr("Shell") + " · "
                         + root.formatPercent(root.shellEvidence?.cpu?.percent)
                     samples: (root.evidence?.history ?? [])

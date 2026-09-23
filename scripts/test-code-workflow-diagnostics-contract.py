@@ -116,6 +116,8 @@ for token in (
     "property var remoteRuntimeSnapshot: null",
     "property string remoteRuntimeSnapshotFingerprint:",
     "function _runtimeSnapshotProjection(snapshot): var",
+    "Object.assign({}, snapshot ?? ({}))",
+    "delete projection.diagnostics",
     "const runtimeChanged =",
     "root.remoteRuntimeSnapshot = runtimeProjection",
     "root.remoteSnapshot = next",

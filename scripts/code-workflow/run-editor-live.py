@@ -80,6 +80,8 @@ def instrument(config: Path, surface: str = "rail") -> None:
         '                        readonly property bool testWorkflowParentVisible: root.parent?.visible ?? false\n'
         '                        readonly property bool testWorkflowHydrated: root.workflowHydrated\n'
         '                        readonly property bool testWorkflowOperational: root.workflowOperational\n'
+        '                        property bool testHydratedWhileHostDisabled: false\n'
+        '                        onTestWorkflowHydratedChanged: { if (testWorkflowHydrated && !testWorkflowHostActive) testHydratedWhileHostDisabled = true }\n'
         '                        function testTargetFilterPointNow() { return targetFilter.mapToItem(null, targetFilter.width / 2, targetFilter.height / 2) }\n'
         '                        function testModeButtonPointNow() { return fixtureModeButton.mapToItem(null, fixtureModeButton.width / 2, fixtureModeButton.height / 2) }\n',
     )
@@ -141,6 +143,7 @@ def instrument(config: Path, surface: str = "rail") -> None:
                 workflowParentVisible: modal.testWorkflowParentVisible,
                 workflowHydrated: modal.testWorkflowHydrated,
                 workflowOperational: modal.testWorkflowOperational,
+                hydratedWhileHostDisabled: modal.testHydratedWhileHostDisabled,
                 mode: modal.mode,
                 caret: modal.modalCursorPosition,
                 line: modal.currentLineNumber,
@@ -294,6 +297,11 @@ def main() -> int:
         )
         probe.record("Actual Code Workflow page 30 Loader is visible",
                      ready["codeWorkflowPage"]["state"] == "visible")
+        probe.record(
+            "Workflow hydration waits for Settings Loader ownership",
+            not ready["modalEditor"]["hydratedWhileHostDisabled"],
+            ready["modalEditor"],
+        )
         probe.record("Real Source Editor QML instance has fixture draft",
                      ready["modalEditor"]["text"] == "alpha\n\nbeta gamma",
                      ready["modalEditor"])
@@ -346,6 +354,7 @@ def main() -> int:
             "Immediate close/reopen while Workflow startup work may be in flight",
             ready["workflowMountCount"] == race_mounts + 1
             and ready["workflowDestroyCount"] == race_destroys + 1
+            and not ready["modalEditor"]["hydratedWhileHostDisabled"]
             and ready["modalEditor"]["text"] == "alpha\n\nbeta gamma",
             {
                 "seconds": round(time.monotonic() - race_started, 3),
@@ -740,7 +749,8 @@ def main() -> int:
             probe.record(
                 f"Workflow reopen cycle {cycle} creates one replacement page",
                 reopened_cycle["workflowMountCount"] == mounts_before + 1
-                and reopened_cycle["workflowDestroyCount"] == destroys_before + 1,
+                and reopened_cycle["workflowDestroyCount"] == destroys_before + 1
+                and not reopened_cycle["modalEditor"]["hydratedWhileHostDisabled"],
                 {
                     "closed": closed_cycle,
                     "basePage": base_page["settingsPage"],

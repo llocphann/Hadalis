@@ -17,6 +17,7 @@ Singleton {
     property var activeOwners: ({})
     readonly property bool pageCurrent:
         Object.keys(root.activeOwners).length > 0
+    property bool releaseAfterPulse: false
     property string remoteError: ""
     readonly property var evidence: root.localShell
         ? RuntimeDiagnostics.snapshot()
@@ -36,7 +37,7 @@ Singleton {
     }
 
     function _pulseRemote(action: string): void {
-        if (remotePulse.running)
+        if (!root.pageCurrent || remotePulse.running || remoteRelease.running)
             return
         root.remoteError = ""
         remotePulse.action = action
@@ -45,6 +46,13 @@ Singleton {
     }
 
     function _releaseRemote(): void {
+        // A pulse may still be queued at the shell. Sending release before it
+        // completes could leave a newly acquired lease alive until the TTL.
+        if (remotePulse.running) {
+            root.releaseAfterPulse = true
+            return
+        }
+        root.releaseAfterPulse = false
         if (remoteRelease.running)
             return
         remoteRelease.command = root._remoteCommand("release")
@@ -52,6 +60,7 @@ Singleton {
     }
 
     function _acquireLease(): void {
+        root.releaseAfterPulse = false
         if (root.localShell) {
             RuntimeDiagnostics.acquire(root.clientId)
             return
@@ -75,6 +84,42 @@ Singleton {
             RuntimeDiagnostics.release(root.clientId)
         else
             root._releaseRemote()
+    }
+
+    function _remotePulseExited(exitCode: int): void {
+        if (exitCode !== 0) {
+            root.remoteError = String(remotePulseError.text ?? "").trim()
+        } else {
+            const payload = String(remotePulseOutput.text ?? "").trim()
+            try {
+                const reply = payload.length > 0 ? JSON.parse(payload) : null
+                if (reply?.ok === true) {
+                    root.remoteError = ""
+                } else if (remotePulse.action === "heartbeat"
+                        && root.pageCurrent) {
+                    // TTL expiry is recoverable while the page still owns the
+                    // session; heartbeat itself never resurrects a dead lease.
+                    Qt.callLater(() => root._pulseRemote("acquire"))
+                }
+            } catch (error) {
+                root.remoteError =
+                    "Diagnostics lease decode failed: " + String(error)
+            }
+        }
+        remotePulse.action = ""
+        Qt.callLater(() => {
+            if (root.releaseAfterPulse || !root.pageCurrent)
+                root._releaseRemote()
+        })
+    }
+
+    function _remoteReleaseExited(): void {
+        // A page can become current again while release is in flight. Reacquire
+        // only after that release has completed, so it cannot cancel the lease.
+        Qt.callLater(() => {
+            if (root.pageCurrent && !root.localShell)
+                root._pulseRemote("acquire")
+        })
     }
 
     function setOwnerCurrent(ownerId: string, current: bool): void {
@@ -117,31 +162,7 @@ Singleton {
         stdout: StdioCollector { id: remotePulseOutput }
         stderr: StdioCollector { id: remotePulseError }
 
-        onExited: (exitCode, exitStatus) => {
-            if (exitCode !== 0) {
-                root.remoteError =
-                    String(remotePulseError.text ?? "").trim()
-                remotePulse.action = ""
-                return
-            }
-
-            const payload = String(remotePulseOutput.text ?? "").trim()
-            try {
-                const reply = payload.length > 0 ? JSON.parse(payload) : null
-                if (reply?.ok === true) {
-                    root.remoteError = ""
-                } else if (remotePulse.action === "heartbeat"
-                        && root.pageCurrent) {
-                    // TTL expiry is recoverable while the page still owns the
-                    // session; heartbeat itself never resurrects a dead lease.
-                    Qt.callLater(() => root._pulseRemote("acquire"))
-                }
-            } catch (error) {
-                root.remoteError =
-                    "Diagnostics lease decode failed: " + String(error)
-            }
-            remotePulse.action = ""
-        }
+        onExited: (exitCode, exitStatus) => root._remotePulseExited(exitCode)
     }
 
     Process {
@@ -151,6 +172,7 @@ Singleton {
 
         stdout: StdioCollector {}
         stderr: StdioCollector {}
+        onExited: (exitCode, exitStatus) => root._remoteReleaseExited()
     }
 
     onLocalShellChanged: {

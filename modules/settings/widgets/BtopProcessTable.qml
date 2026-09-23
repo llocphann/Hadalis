@@ -9,19 +9,21 @@ Item {
     property var processes: []
     property int maxRows: 12
     readonly property bool showSwapColumn: width >= 520
+    readonly property var processRows:
+        Array.isArray(root.processes) ? root.processes : []
 
     readonly property var processDepths: root.buildProcessDepths()
 
     function buildProcessDepths(): var {
         const byPid = ({})
-        for (const item of root.processes ?? []) {
+        for (const item of root.processRows) {
             const pid = String(item?.pid ?? "")
             if (pid.length > 0)
                 byPid[pid] = item
         }
 
         const depths = ({})
-        for (const item of root.processes ?? []) {
+        for (const item of root.processRows) {
             const pid = String(item?.pid ?? "")
             if (pid.length === 0)
                 continue
@@ -65,9 +67,7 @@ Item {
     }
 
     readonly property var visibleProcesses:
-        Array.isArray(root.processes)
-            ? root.processes.slice(0, Math.max(0, root.maxRows))
-            : []
+        root.processRows.slice(0, Math.max(0, root.maxRows))
 
     implicitHeight: processColumn.implicitHeight + 24
 
@@ -105,7 +105,7 @@ Item {
                 StyledText {
 
                     textFormat: Text.PlainText
-                    text: String(root.processes.length)
+                    text: String(root.processRows.length)
                     color: Appearance.colors.colPrimary
                     font.weight: Font.DemiBold
                 }
@@ -273,7 +273,7 @@ Item {
 
                 textFormat: Text.PlainText
                 Layout.fillWidth: true
-                visible: root.processes.length === 0
+                visible: root.processRows.length === 0
                 Layout.topMargin: 10
                 text: "No shell child processes"
                 color: Appearance.colors.colSubtext
@@ -284,10 +284,10 @@ Item {
 
                 textFormat: Text.PlainText
                 Layout.fillWidth: true
-                visible: root.processes.length > root.visibleProcesses.length
+                visible: root.processRows.length > root.visibleProcesses.length
                 Layout.topMargin: 8
                 text: "+" + String(
-                    root.processes.length - root.visibleProcesses.length)
+                    root.processRows.length - root.visibleProcesses.length)
                     + " more processes"
                 color: Appearance.colors.colSubtext
                 font.pixelSize: Appearance.font.pixelSize.small

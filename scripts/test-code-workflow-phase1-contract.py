@@ -872,6 +872,14 @@ require(page, 'text: "Fit graph to viewport"',
         "compact graph controls must retain discoverable tooltips")
 require(source_editor, 'source: "CodeWorkflowSyntaxHighlighter.qml"',
         "Source Editor syntax highlighting must stay lazy-loaded inside the editor")
+require(source_editor, "property bool syntaxHighlightingEnabled: true",
+        "Source Editor must expose presentation-owned syntax highlighting")
+require(source_editor, "active: root.syntaxHighlightingEnabled",
+        "hidden/cached Source Editor must suspend its syntax highlighter")
+require(page, "syntaxHighlightingEnabled:",
+        "Workflow must explicitly own Source Editor highlighting lifetime")
+require(page, "root.workflowOperational && sourcePane.visible",
+        "Workflow must disable syntax highlighting while hidden or inactive")
 require(source_editor, '"Syntax highlighting unavailable · plain editor active"',
         "missing syntax-highlighting backend must fall back to the plain editor")
 if "import org.kde.syntaxhighlighting" in page or "import org.kde.syntaxhighlighting" in source_editor:
@@ -1098,6 +1106,17 @@ require(page, 'import qs.modules.common.functions',
         "Code Workflow page must import ColorUtils helpers used by pills and target contrast")
 require(page, 'placeholderText: "Filter targets"',
         "Targets must expose a search/filter control")
+for token in (
+    'property string inspectFilterQuery: ""',
+    "id: inspectFilterTimer",
+    "interval: 90",
+    "onTriggered: root.inspectFilterQuery = root.inspectFilter",
+    "onInspectFilterChanged:",
+    "? root.inspectFilter : root.inspectFilterQuery",
+    "inspectFilterTimer.stop()",
+):
+    require(page, token,
+            "Targets filtering must debounce expensive parser/index scans")
 target_filter_start = page.index("id: targetFilter")
 target_filter_end = page.index("onTextChanged: root.inspectFilter = text",
                                target_filter_start)

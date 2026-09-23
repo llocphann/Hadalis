@@ -404,6 +404,13 @@ if 'Qt.callLater(() => CodeWorkflowIndex.refresh(false))' in page:
     fail("Workflow mount must not queue an unconditional duplicate workspace index")
 if "readonly property int runtimeRevision: CodeWorkflowRuntime.revision" in page:
     fail("hidden Workflow pages must not rebuild runtime snapshots from a live revision binding")
+descriptor_start = page.index("readonly property var descriptor:")
+descriptor_end = page.index("readonly property var record:", descriptor_start)
+descriptor_block = page[descriptor_start:descriptor_end]
+require(descriptor_block, "root.snapshot?.descriptors",
+        "Workflow descriptor must resolve from the active snapshot cache")
+if "CodeWorkflowRuntime.activeCatalog" in descriptor_block:
+    fail("hidden Workflow descriptor must not bind directly to live runtime catalog")
 request_analysis_start = page.index("function requestAnalysis(force: bool): void")
 request_analysis = page[request_analysis_start:request_analysis_start + 360]
 require(request_analysis, "root.transactionOwnsAnalyzer",

@@ -133,8 +133,8 @@ assert "opacity: 1" in dashboard_loader
 assert "scale: 1" in dashboard_loader
 assert "active: true" in dashboard_loader
 assert "visible: root._contentPresented" in dashboard_loader
-assert "layer.enabled: root._slideLayerActive || contentLoader.desaturationActive" in dashboard_loader
-assert "layer.smooth: true" in dashboard_loader
+assert "root._slideLayerActive" not in dashboard
+assert "layer.enabled: root._slideLayerActive" not in dashboard_loader
 assert "visible: true" in dashboard
 assert "updatesEnabled: root._renderUpdatesNeeded" in dashboard
 assert "mask: dashboardInputRegion" in dashboard

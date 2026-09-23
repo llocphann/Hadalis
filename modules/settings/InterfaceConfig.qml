@@ -178,7 +178,7 @@ ContentPage {
             NoticeBox {
                 Layout.fillWidth: true
                 materialIcon: "south_west"
-                text: Translation.tr("Hover reveals the note without stealing keyboard focus. Click inside to type; the same tabs stay synchronized with Sidebar and Dashboard Notepad.")
+                text: Translation.tr("Hover to reveal; click to type.")
             }
 
             SettingsSwitch {

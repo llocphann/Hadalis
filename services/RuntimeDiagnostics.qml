@@ -12,6 +12,7 @@ Singleton {
     readonly property int leaseTtlMs: 6000
     readonly property int maxLeases: 16
     readonly property int sampleIntervalMs: 1000
+    readonly property int historyLimit: 60
     property var leases: ({})
     property int revision: 0
     readonly property int leaseCount: Object.keys(root.leases).length
@@ -160,7 +161,8 @@ Singleton {
             leaseCount: root.leaseCount,
             leaseTtlMs: root.leaseTtlMs,
             maxLeases: root.maxLeases,
-            sampleIntervalMs: root.sampleIntervalMs
+            sampleIntervalMs: root.sampleIntervalMs,
+            historyLimit: root.historyLimit
         }
     }
 
@@ -212,7 +214,7 @@ Singleton {
                 sample?.shell?.io?.rates?.readBytesPerSec ?? null,
             shellWriteBytesPerSec:
                 sample?.shell?.io?.rates?.writeBytesPerSec ?? null
-        }]).slice(-60)
+        }]).slice(-root.historyLimit)
     }
 
     function _consumeSample(rawLine): void {

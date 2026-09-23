@@ -160,6 +160,13 @@ def main() -> None:
             f"{source} plain diagnostics text",
         )
 
+    for token in (
+        "readonly property var processDepths: root.buildProcessDepths()",
+        "function buildProcessDepths(): var",
+        "readonly property int processDepth:",
+    ):
+        require(process_table, token, "BtopProcessTable.qml process depth cache")
+
     for source, text in (
         ("BtopProcessTable.qml", process_table),
         ("BtopInterfaceTable.qml", interface_table),

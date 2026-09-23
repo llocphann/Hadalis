@@ -137,6 +137,8 @@ Item {
                 popupPresentation: root.popupPresentation
                 filterQuery: searchField.text
                 onExternalLinkOpened: root.externalNavigationRequested()
+                onNotificationActionInvoked:
+                    root.externalNavigationRequested()
             }
 
             MaterialPlaceholderMessage {

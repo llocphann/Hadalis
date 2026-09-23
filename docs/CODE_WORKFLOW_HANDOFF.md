@@ -1,12 +1,12 @@
 # Code Workflow — production continuation and archived Phase 0 evidence
 
-Updated 2026-09-22. The current production work is described first. Sections
+Updated 2026-09-23. The current production work is described first. Sections
 dated 2026-09-20/21 below preserve historical milestones and their evidence;
 their earlier viewport limits and Phase 0-only scope are **not** current design
 instructions. Refetch `dev` and file SHAs before each write, preserve concurrent
 module work, commit directly to `dev`, and never force-push or modify `stable`.
 
-## Current production state — 2026-09-22
+## Current production state — 2026-09-23
 
 - Source Editor is a native QML modal editor with no external editor process.
   Click places and focuses the caret in read-only NORMAL mode; `i/a/I/A/o/O`
@@ -74,6 +74,11 @@ module work, commit directly to `dev`, and never force-push or modify `stable`.
   older/remote snapshots. The bounded event list shows lifecycle kind + instance
   + time while runtime tokens stay internal. This is diagnostic lifecycle evidence,
   not fabricated binding execution or generic signal tracing.
+- Matching canonical graph nodes now receive a brief lifecycle pulse from that
+  same bounded registry evidence while the Workflow canvas is visible. The pulse
+  expires quickly, is cleared when the canvas hides, and never animates graph
+  edges: residency/loading lifecycle must not be presented as property-binding,
+  signal, or execution activity.
 
 ## Production UI refinement continuation — 2026-09-21
 

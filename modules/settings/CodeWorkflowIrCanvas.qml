@@ -1723,6 +1723,24 @@ Item {
         handler.updateLayout()
     }
 
+    function routeVisible(route, margin: real): bool {
+        if (!route || !root.workflowActive)
+            return false
+        const bounds = root.routeBounds(route)
+        const zoom = Math.max(
+            CodeWorkflowSession.minimumZoom,
+            CodeWorkflowSession.zoom)
+        const padding = Math.max(0, Number(margin))
+        const left = CodeWorkflowSession.panX + bounds.minX * zoom
+        const top = CodeWorkflowSession.panY + bounds.minY * zoom
+        const right = CodeWorkflowSession.panX + bounds.maxX * zoom
+        const bottom = CodeWorkflowSession.panY + bounds.maxY * zoom
+        return right >= -padding
+            && bottom >= -padding
+            && left <= root.width + padding
+            && top <= root.height + padding
+    }
+
     function edgeAt(screenX: real, screenY: real): string {
         if (!root.viewportContains(screenX, screenY))
             return ""
@@ -2311,6 +2329,8 @@ Item {
 
                 readonly property var fromNode: root.nodeById(modelData.from)
                 readonly property var toNode: root.nodeById(modelData.to)
+                readonly property var route:
+                    root.routeForEdge(modelData)
                 readonly property bool selectedEdge:
                     CodeWorkflowSession.selectedEdgeId === modelData.id
                 readonly property bool hoveredEdge:
@@ -2328,6 +2348,11 @@ Item {
                                 === modelData.to))
 
                 anchors.fill: parent
+                // Qt's scene graph does not CPU-cull arbitrary offscreen
+                // primitives. Hide route Shapes outside the viewport so zoomed
+                // detail views do not keep submitting the whole graph.
+                visible: fromNode !== null && toNode !== null
+                    && root.routeVisible(edgeShape.route, 48)
                 // Phase-0's retained 600-second renderer soak qualified the
                 // generic geometry path while CurveRenderer remained HOLD for
                 // sustained RSS growth. Keep preprocessing asynchronous so
@@ -2346,8 +2371,7 @@ Item {
                 // enough luminance to dominate the graph.
                 ShapePath {
                     id: edgeHaloPath
-                    readonly property var route:
-                        root.routeForEdge(edgeShape.modelData)
+                    readonly property var route: edgeShape.route
 
                     strokeColor: root.edgeWireInk(
                         edgeShape.modelData.kind,
@@ -2476,6 +2500,7 @@ Item {
                 visible: fromNode !== null
                     && toNode !== null
                     && String(modelData.label ?? "").length > 0
+                    && root.routeVisible(route, 80)
                 x: midX - width / 2
                 y: midY - height / 2
                 implicitWidth: Math.min(

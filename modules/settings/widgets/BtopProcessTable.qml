@@ -174,6 +174,7 @@ Item {
                                 + (root.depthFor(parent.parent.process) > 0
                                     ? "↳ " : "")
                                 + String(parent.parent.process?.command ?? "—")
+                            textFormat: Text.PlainText
                             font.family: Appearance.font.family.monospace
                             color: Appearance.colors.colOnLayer1
                             font.pixelSize: Appearance.font.pixelSize.small

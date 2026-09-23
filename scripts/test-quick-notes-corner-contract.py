@@ -56,6 +56,7 @@ for token in (
     "NotepadWidget {",
     "compactPresentation: true",
     "notesEditor.focus = true",
+    "notesEditor.focus = false",
     "notesEditor.focusEditor()",
     "notesEditor.flushPendingSave()",
     "Component.onDestruction: notesEditor.flushPendingSave()",

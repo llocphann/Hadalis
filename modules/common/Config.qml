@@ -2022,6 +2022,19 @@ Singleton {
                 property bool useLegacyCounter: true
             }
 
+            // Material notification history surface hosted by the bottom-right
+            // ScreenCorners owner. Transient toast placement remains under
+            // notifications.* so the two surfaces can be configured independently.
+            property JsonObject notificationCenter: JsonObject {
+                property bool enable: true
+                property bool hoverEnable: true
+                property int hoverDelayMs: 220
+                property int cornerSize: 14
+                property int popupWidth: 420
+                property int popupHeight: 560
+                property list<string> screenList: []
+            }
+
             property JsonObject osd: JsonObject {
                 property int timeout: 1000
                 property bool mediaEnabled: true

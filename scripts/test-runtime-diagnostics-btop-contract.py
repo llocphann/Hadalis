@@ -93,6 +93,8 @@ def main() -> None:
         'root.historyValues("shellWriteBytesPerSec")',
         "result.push(null)",
         "root.formatLoadAverage(",
+        "?.valuesKiB?.MemAvailable",
+        "?.valuesKiB?.Cached",
         "const normalized = []",
         "if (raw === null || raw === undefined)",
         "root.formatUptime(",
@@ -248,6 +250,8 @@ def main() -> None:
 
     for token in (
         "def read_system_cpu_ticks() -> dict[str, tuple[int, int]]:",
+        '"Cached": values.get("Cached")',
+        '"Buffers": values.get("Buffers")',
         "def _cpu_percent_from_ticks(",
         '"coresPercent": core_cpu_percent',
         '"coreNames": core_names',

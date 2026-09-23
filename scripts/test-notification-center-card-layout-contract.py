@@ -13,6 +13,11 @@ def require(source: str, token: str, message: str) -> None:
         raise SystemExit(f"FAIL: {message}: {token}")
 
 
+def forbid(source: str, token: str, message: str) -> None:
+    if token in source:
+        raise SystemExit(f"FAIL: {message}: {token}")
+
+
 # The standalone history center should reveal content while canvas is available;
 # overflow is handled by its scroll viewport rather than pre-collapsing every
 # notification group into a tiny strip.
@@ -38,5 +43,21 @@ require(ITEM, "? Appearance.colors.colOnLayer3", "modern notification body contr
 # trailing actions in the standalone center.
 require(ITEM, "implicitWidth: root.modernLayout ? 34", "compact action geometry missing")
 require(ITEM, "visible: root.modernLayout", "modern action spacer/alignment missing")
+
+# Footer controls are icon-only. Their labels remain available to accessibility
+# and appear on hover through tooltips; high-contrast on-container colors avoid
+# the washed-out icon/text treatment of the old full-width buttons.
+for token in (
+    "id: notificationModeButton",
+    "id: clearAllButton",
+    "implicitWidth: 36",
+    "StyledToolTip { text: notificationModeButton.buttonText }",
+    "StyledToolTip { text: clearAllButton.buttonText }",
+    "Appearance.colors.colOnPrimaryContainer",
+    "Appearance.colors.colOnLayer2",
+):
+    require(CENTER, token, "compact footer action contract missing")
+forbid(CENTER, "RippleButtonWithIcon {",
+       "notification center footer must not restore persistent text buttons")
 
 print("PASS: notification center history cards use expanded, readable modern layout")

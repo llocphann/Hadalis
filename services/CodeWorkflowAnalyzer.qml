@@ -19,6 +19,7 @@ Singleton {
     property string _pendingNeedle: ""
     property string _pendingSemanticAnchor: ""
     property bool _pendingForce: false
+    property bool _activeForce: false
     property bool _cancelled: false
 
     readonly property int entryCount: root.result?.entries?.length ?? 0
@@ -30,11 +31,23 @@ Singleton {
         if (nextPath.length === 0)
             return
 
-        root._cancelled = false
         if (analyzerProcess.running) {
-            root._pendingPath = nextPath
-            root._pendingNeedle = nextNeedle
-            root._pendingSemanticAnchor = nextSemanticAnchor
+            const sameActiveRequest =
+                root.sourcePath === nextPath
+                && root.sourceNeedle === nextNeedle
+                && root.semanticAnchor === nextSemanticAnchor
+            if (sameActiveRequest && (!force || root._activeForce))
+                return
+
+            const samePendingRequest =
+                root._pendingPath === nextPath
+                && root._pendingNeedle === nextNeedle
+                && root._pendingSemanticAnchor === nextSemanticAnchor
+            if (!samePendingRequest) {
+                root._pendingPath = nextPath
+                root._pendingNeedle = nextNeedle
+                root._pendingSemanticAnchor = nextSemanticAnchor
+            }
             root._pendingForce = root._pendingForce || force
             return
         }
@@ -47,6 +60,8 @@ Singleton {
                     || root.status === "unavailable"))
             return
 
+        root._cancelled = false
+        root._activeForce = force
         root.sourcePath = nextPath
         root.sourceNeedle = nextNeedle
         root.semanticAnchor = nextSemanticAnchor
@@ -84,11 +99,31 @@ Singleton {
             root.status = "idle"
     }
 
+    function _runPendingRequest(): void {
+        if (root._pendingPath.length === 0)
+            return
+        const pending = root._pendingPath
+        const pendingNeedle = root._pendingNeedle
+        const pendingSemanticAnchor = root._pendingSemanticAnchor
+        const force = root._pendingForce
+        root._pendingPath = ""
+        root._pendingNeedle = ""
+        root._pendingSemanticAnchor = ""
+        root._pendingForce = false
+        Qt.callLater(() => root.request(
+            pending,
+            pendingNeedle,
+            pendingSemanticAnchor,
+            force))
+    }
+
     function _finish(exitCode: int): void {
+        root._activeForce = false
         if (root._cancelled) {
             root._cancelled = false
             root.status = "idle"
             root.error = ""
+            root._runPendingRequest()
             return
         }
 
@@ -130,21 +165,7 @@ Singleton {
             root.status = "error"
         }
 
-        if (root._pendingPath.length > 0) {
-            const pending = root._pendingPath
-            const pendingNeedle = root._pendingNeedle
-            const pendingSemanticAnchor = root._pendingSemanticAnchor
-            const force = root._pendingForce
-            root._pendingPath = ""
-            root._pendingNeedle = ""
-            root._pendingSemanticAnchor = ""
-            root._pendingForce = false
-            Qt.callLater(() => root.request(
-                pending,
-                pendingNeedle,
-                pendingSemanticAnchor,
-                force))
-        }
+        root._runPendingRequest()
     }
 
     Process {

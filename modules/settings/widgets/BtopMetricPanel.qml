@@ -19,15 +19,20 @@ Item {
     property var samples: []
     property color accentColor: Appearance.colors.colPrimary
 
-    implicitHeight: provenance.length > 0 ? 144 : 126
+    implicitHeight: metricColumn.implicitHeight + 24
 
     Rectangle {
         anchors.fill: parent
         radius: Appearance.rounding.normal
         color: Appearance.colors.colLayer1
-        border.color: Appearance.colors.colOutline
+        border.color: Qt.rgba(
+            root.accentColor.r,
+            root.accentColor.g,
+            root.accentColor.b,
+            0.42)
 
         ColumnLayout {
+            id: metricColumn
             anchors.fill: parent
             anchors.margins: 12
             spacing: 8
@@ -40,7 +45,7 @@ Item {
                     StyledText {
                         text: root.title
                         font.weight: Font.DemiBold
-                        color: Appearance.colors.colOnLayer1
+                        color: root.accentColor
                     }
                     StyledText {
                         visible: root.subtitle.length > 0
@@ -56,6 +61,7 @@ Item {
                     text: root.valueAvailable
                         ? Math.round(root.numericValue) + "%" : "—"
                     color: root.accentColor
+                    font.family: Appearance.font.family.monospace
                     font.weight: Font.DemiBold
                 }
             }
@@ -81,6 +87,7 @@ Item {
                 Layout.fillWidth: true
                 text: root.detail
                 color: Appearance.colors.colSubtext
+                font.family: Appearance.font.family.monospace
                 font.pixelSize: Appearance.font.pixelSize.small
                 elide: Text.ElideRight
             }
@@ -99,6 +106,7 @@ Item {
                 text: root.provenance
                 color: Appearance.colors.colSubtext
                 opacity: 0.78
+                font.family: Appearance.font.family.monospace
                 font.pixelSize: Appearance.font.pixelSize.smallest
                 elide: Text.ElideRight
             }

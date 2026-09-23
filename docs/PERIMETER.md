@@ -64,8 +64,10 @@ a separate rectangular body shadow does not. Screen Edge retains its own
 physical frame shadow, and Dashboard cards draw their elevation outside the
 card content clip.
 
-`ScreenCorners.qml` is interaction-only: Sidebar hot corners, Orbit and
-brightness/volume gestures. It must not paint fake rounded corners.
+`ScreenCorners.qml` is interaction-only: Sidebar hot corners, Orbit,
+bottom-left Quick Notes and brightness/volume gestures. Quick Notes attaches a
+lazy `StyledPopup` to the physical corner but does not add Screen Edge paint.
+`ScreenCorners.qml` must not paint fake rounded corners.
 
 ## Sidebar contract
 

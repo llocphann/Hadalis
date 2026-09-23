@@ -534,6 +534,9 @@ for token in (
     "canvas.fitSelection()",
 ):
     require(page, token, "graph reasoning toolbar missing " + token)
+if "existingIndex >= 0 && selected.length > 1" in canvas:
+    fail("manual reasoning toggle must allow clearing the final emphasized node")
+
 for token in (
     'property string reasoningMode: ""',
     "property var reasoningNodeIds: []",

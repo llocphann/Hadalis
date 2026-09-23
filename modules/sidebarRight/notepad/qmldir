@@ -1,2 +1,3 @@
 module qs.modules.sidebarRight.notepad
 NotepadWidget 1.0 NotepadWidget.qml
+QuickNotesView 1.0 QuickNotesView.qml

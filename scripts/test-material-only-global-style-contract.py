@@ -28,6 +28,8 @@ CIRCULAR_PROGRESS = ROOT / "modules" / "common" / "widgets" / "CircularProgress.
 SECONDARY_TAB_BAR = ROOT / "modules" / "common" / "widgets" / "SecondaryTabBar.qml"
 SCROLL_TO_BOTTOM_BUTTON = ROOT / "modules" / "sidebarLeft" / "ScrollToBottomButton.qml"
 PAGE_PLACEHOLDER = ROOT / "modules" / "common" / "widgets" / "PagePlaceholder.qml"
+SELECTION_DIALOG = ROOT / "modules" / "common" / "widgets" / "SelectionDialog.qml"
+TOAST_NOTIFICATION = ROOT / "modules" / "common" / "widgets" / "ToastNotification.qml"
 TIMER_INDICATOR = ROOT / "modules" / "bar" / "TimerIndicator.qml"
 SHELL_UPDATE_INDICATOR = ROOT / "modules" / "bar" / "ShellUpdateIndicator.qml"
 UTIL_BUTTONS = ROOT / "modules" / "bar" / "UtilButtons.qml"
@@ -130,6 +132,8 @@ def main() -> None:
     secondary_tab_bar = SECONDARY_TAB_BAR.read_text(encoding="utf-8")
     scroll_to_bottom_button = SCROLL_TO_BOTTOM_BUTTON.read_text(encoding="utf-8")
     page_placeholder = PAGE_PLACEHOLDER.read_text(encoding="utf-8")
+    selection_dialog = SELECTION_DIALOG.read_text(encoding="utf-8")
+    toast_notification = TOAST_NOTIFICATION.read_text(encoding="utf-8")
     timer_indicator = TIMER_INDICATOR.read_text(encoding="utf-8")
     shell_update_indicator = SHELL_UPDATE_INDICATOR.read_text(encoding="utf-8")
     util_buttons = UTIL_BUTTONS.read_text(encoding="utf-8")
@@ -251,6 +255,8 @@ def main() -> None:
         "SecondaryTabBar.qml": secondary_tab_bar,
         "ScrollToBottomButton.qml": scroll_to_bottom_button,
         "PagePlaceholder.qml": page_placeholder,
+        "SelectionDialog.qml": selection_dialog,
+        "ToastNotification.qml": toast_notification,
     }
     for source, source_text in shared_material_primitives.items():
         for token in (
@@ -323,6 +329,24 @@ def main() -> None:
     ):
         require(page_placeholder, token, "PagePlaceholder.qml")
     forbid(page_placeholder, "Appearance.inir.", "PagePlaceholder.qml")
+
+    for token in (
+        "color: Appearance.colors.colSurfaceContainerHigh",
+        "radius: Appearance.rounding.normal",
+        "color: Appearance.colors.colOnSurface",
+        "color: Appearance.colors.colOutline",
+    ):
+        require(selection_dialog, token, "SelectionDialog.qml")
+    for token in (
+        "radius: Appearance.rounding.normal",
+        "border.color: root.isError ? Appearance.colors.colError : Appearance.colors.colOutlineVariant",
+        "implicitWidth: 20",
+        "color: root.isError",
+        "buttonRadius: Appearance.rounding.small",
+        "colRipple: Qt.rgba(0, 0, 0, 0.15)",
+    ):
+        require(toast_notification, token, "ToastNotification.qml")
+    forbid(toast_notification, "CookieFace {", "ToastNotification.qml")
 
     motion_start = appearance.index("property QtObject motion: QtObject {")
     motion_end = appearance.index("m3colors: QtObject {", motion_start)

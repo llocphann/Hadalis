@@ -1,6 +1,7 @@
 import qs
 import qs.modules.common
 import qs.modules.common.widgets
+import qs.modules.notificationCenter
 import qs.services
 import QtQuick
 import QtQuick.Controls
@@ -64,9 +65,12 @@ Scope {
         readonly property bool isLeft: isTopLeft || isBottomLeft
         readonly property bool isRight: isTopRight || isBottomRight
 
-        Component.onDestruction:
+        Component.onDestruction: {
             screenCorners.setQuickNotesEditorOutput(
                 cornerPanelWindow.outputName, false)
+            GlobalStates.setNotificationCenterHoverOutput(
+                cornerPanelWindow.outputName, false)
+        }
 
         // Interaction-only corner windows. Physical rounding is owned exclusively
         // by ScreenEdges.qml's canonical full-screen frame.
@@ -87,7 +91,7 @@ Scope {
             && cornerName === orbitCorner
             && !orbitConflictsWithNiriOverview
             && !fullscreen
-        readonly property bool quickNotesInteractionBlocked:
+        readonly property bool cornerPopupInteractionBlocked:
             GlobalStates.screenLocked
             || GlobalStates.bootGreetingOpen
             || GlobalStates.crosshairOpen
@@ -114,6 +118,12 @@ Scope {
             || GlobalStates.controlPanelOpen
             || GlobalStates.dashboardOpen
             || GlobalStates.searchOpen
+        readonly property bool quickNotesInteractionBlocked:
+            cornerPanelWindow.cornerPopupInteractionBlocked
+            || GlobalStates.notificationCenterOpen
+        readonly property bool notificationCenterInteractionBlocked:
+            cornerPanelWindow.cornerPopupInteractionBlocked
+            || screenCorners.quickNotesEditorOutput.length > 0
         readonly property string quickNotesMonitorMode:
             Config.options?.quickNotes?.monitorMode ?? "all"
         readonly property bool quickNotesMonitorAllowed:
@@ -170,21 +180,111 @@ Scope {
             && !cornerPanelWindow.orbitConflictsWithNiriOverview
             && !cornerPanelWindow.quickNotesInteractionBlocked
             && !fullscreen
+
+        function notificationCenterTargetsOutput(): bool {
+            if (outputName.length === 0)
+                return false
+            const configured = Config.options?.notificationCenter?.screenList ?? []
+            if (!configured || configured.length === 0)
+                return true
+            const connectedMatches = Quickshell.screens.filter(screen => {
+                const name = String(screen?.name ?? "")
+                return name.length > 0 && configured.includes(name)
+            })
+            return connectedMatches.length === 0 || configured.includes(outputName)
+        }
+
+        function notificationCenterBarTargetsOutput(): bool {
+            if (outputName.length === 0)
+                return false
+            const configured = Config.options?.bar?.screenList ?? []
+            if (!configured || configured.length === 0)
+                return true
+            const connectedMatches = Quickshell.screens.filter(screen => {
+                const name = String(screen?.name ?? "")
+                return name.length > 0 && configured.includes(name)
+            })
+            return connectedMatches.length === 0 || configured.includes(outputName)
+        }
+
+        readonly property bool notificationCenterExplicitForOutput:
+            GlobalStates.notificationCenterExplicitOpen
+            && GlobalStates.notificationCenterPresentationOutput === outputName
+        readonly property bool notificationCenterBarVertical:
+            Config.options?.bar?.vertical ?? false
+        readonly property bool notificationCenterBarTrailing:
+            Config.options?.bar?.bottom ?? false
+        readonly property string notificationCenterBarPanelId:
+            notificationCenterBarVertical ? "iiVerticalBar" : "iiBar"
+        readonly property bool notificationCenterBarOwnsConfiguredEdge:
+            GlobalStates.barOpen
+            && !GlobalStates.widgetEditMode
+            && (Config.options?.enabledPanels ?? []).includes(
+                notificationCenterBarPanelId)
+            && !(Config.options?.bar?.autoHide?.enable ?? false)
+            && cornerPanelWindow.notificationCenterBarTargetsOutput()
+        readonly property bool notificationCenterBarOwnsRight:
+            notificationCenterBarOwnsConfiguredEdge
+            && notificationCenterBarVertical
+            && notificationCenterBarTrailing
+        readonly property bool notificationCenterBarOwnsBottom:
+            notificationCenterBarOwnsConfiguredEdge
+            && !notificationCenterBarVertical
+            && notificationCenterBarTrailing
+        readonly property string notificationCenterAttachmentEdge:
+            notificationCenterBarOwnsRight ? "right" : "bottom"
+        readonly property real notificationCenterAttachmentThickness:
+            notificationCenterBarOwnsRight ? Appearance.sizes.verticalBarWidth
+            : notificationCenterBarOwnsBottom ? Appearance.sizes.barHeight
+            : Math.max(1, Math.min(32,
+                Math.round(Config.options?.appearance?.screenEdge?.width ?? 10)))
+        readonly property bool shouldShowNotificationCenterCorner:
+            (Config.options?.panelFamily ?? "ii") !== "waffle"
+            && (Config.options?.notificationCenter?.enable ?? true)
+            && (Config.options?.notificationCenter?.hoverEnable ?? true)
+            && cornerPanelWindow.notificationCenterTargetsOutput()
+            && cornerPanelWindow.isBottomRight
+            && !cornerPanelWindow.shouldShowOrbitHotCorner
+            && !cornerPanelWindow.orbitConflictsWithNiriOverview
+            && !cornerPanelWindow.notificationCenterInteractionBlocked
+            && (!GlobalStates.notificationCenterExplicitOpen
+                || cornerPanelWindow.notificationCenterExplicitForOutput)
+            && !fullscreen
+        readonly property bool notificationCenterHostNeeded:
+            (Config.options?.panelFamily ?? "ii") !== "waffle"
+            && (Config.options?.notificationCenter?.enable ?? true)
+            && cornerPanelWindow.notificationCenterTargetsOutput()
+            && cornerPanelWindow.isBottomRight
+            && !fullscreen
+            && (cornerPanelWindow.shouldShowNotificationCenterCorner
+                || cornerPanelWindow.notificationCenterExplicitForOutput
+                || GlobalStates.notificationCenterHoverOutput === outputName)
+
+        onFullscreenChanged: {
+            if (fullscreen && cornerPanelWindow.notificationCenterExplicitForOutput)
+                GlobalStates.closeNotificationCenter()
+        }
         // Explicit corner features own their physical corner before the legacy
         // sidebar trigger. This lets bottom-left become Quick Notes without
         // deleting the old corner-open compatibility settings.
         readonly property bool shouldShowSidebarCornerOpen: shouldShowCornerOpen
             && !shouldShowOrbitHotCorner
             && !shouldShowQuickNotesCorner
+            && !shouldShowNotificationCenterCorner
 
         visible: !fullscreen && (shouldShowSidebarCornerOpen
-            || shouldShowOrbitHotCorner || shouldShowQuickNotesCorner)
+            || shouldShowOrbitHotCorner || shouldShowQuickNotesCorner
+            || notificationCenterHostNeeded)
 
         exclusionMode: ExclusionMode.Ignore
         mask: Region {
             item: orbitHotCornerLoader.active ? orbitHotCornerLoader
                 : quickNotesCornerLoader.active ? quickNotesCornerLoader
-                : (sidebarCornerOpenInteractionLoader.active ? sidebarCornerOpenInteractionLoader : null)
+                : (cornerPanelWindow.shouldShowNotificationCenterCorner
+                    && notificationCenterCornerLoader.active)
+                    ? notificationCenterCornerLoader
+                : (sidebarCornerOpenInteractionLoader.active
+                    ? sidebarCornerOpenInteractionLoader : null)
         }
         WlrLayershell.namespace: "quickshell:screenCorners"
         WlrLayershell.layer: WlrLayer.Overlay
@@ -219,15 +319,21 @@ Scope {
                 orbitHotCornerSize, orbitHotCornerActivationDistance)
             readonly property int quickNotesCornerSize: Math.max(4, Math.min(48,
                 Config.options?.quickNotes?.cornerSize ?? 14))
+            readonly property int notificationCenterCornerSize: Math.max(4, Math.min(48,
+                Config.options?.notificationCenter?.cornerSize ?? 14))
 
             implicitWidth: Math.max(0,
                 cornerPanelWindow.shouldShowSidebarCornerOpen ? cornerOpenWidth : 0,
                 cornerPanelWindow.shouldShowOrbitHotCorner ? orbitHotCornerHitSize : 0,
-                cornerPanelWindow.shouldShowQuickNotesCorner ? quickNotesCornerSize : 0)
+                cornerPanelWindow.shouldShowQuickNotesCorner ? quickNotesCornerSize : 0,
+                cornerPanelWindow.notificationCenterHostNeeded
+                    ? notificationCenterCornerSize : 0)
             implicitHeight: Math.max(0,
                 cornerPanelWindow.shouldShowSidebarCornerOpen ? cornerOpenHeight : 0,
                 cornerPanelWindow.shouldShowOrbitHotCorner ? orbitHotCornerHitSize : 0,
-                cornerPanelWindow.shouldShowQuickNotesCorner ? quickNotesCornerSize : 0)
+                cornerPanelWindow.shouldShowQuickNotesCorner ? quickNotesCornerSize : 0,
+                cornerPanelWindow.notificationCenterHostNeeded
+                    ? notificationCenterCornerSize : 0)
 
             Loader {
                 id: orbitHotCornerLoader
@@ -354,6 +460,77 @@ Scope {
                         onEditorFocusedChanged:
                             screenCorners.setQuickNotesEditorOutput(
                                 cornerPanelWindow.outputName, editorFocused)
+                    }
+                }
+            }
+
+            // Bottom-right Notification Center mirrors the Quick Notes dwell
+            // contract, but keeps history state separate from transient toasts.
+            Loader {
+                id: notificationCenterCornerLoader
+                active: cornerPanelWindow.notificationCenterHostNeeded
+                anchors {
+                    bottom: parent.bottom
+                    right: parent.right
+                }
+
+                sourceComponent: Item {
+                    id: notificationCenterAnchor
+                    implicitWidth: cornerWidget.notificationCenterCornerSize
+                    implicitHeight: cornerWidget.notificationCenterCornerSize
+                    property bool dwellReady: false
+                    property bool containsMouse:
+                        dwellReady
+                        && cornerPanelWindow.shouldShowNotificationCenterCorner
+                        && notificationCenterHitArea.containsMouse
+
+                    MouseArea {
+                        id: notificationCenterHitArea
+                        anchors.fill: parent
+                        enabled: cornerPanelWindow.shouldShowNotificationCenterCorner
+                        hoverEnabled: true
+                        acceptedButtons: Qt.NoButton
+
+                        onEntered: {
+                            if (!enabled)
+                                return
+                            if (notificationCenterPopup.active) {
+                                notificationCenterDwellTimer.stop()
+                                notificationCenterAnchor.dwellReady = true
+                            } else {
+                                notificationCenterDwellTimer.restart()
+                            }
+                        }
+
+                        onExited: {
+                            notificationCenterDwellTimer.stop()
+                            notificationCenterAnchor.dwellReady = false
+                            notificationCenterPopup.rearmHoverIfIdle()
+                        }
+                    }
+
+                    Timer {
+                        id: notificationCenterDwellTimer
+                        interval: Math.max(1,
+                            Config.options?.notificationCenter?.hoverDelayMs ?? 220)
+                        repeat: false
+                        onTriggered: {
+                            if (notificationCenterHitArea.enabled
+                                    && notificationCenterHitArea.containsMouse)
+                                notificationCenterAnchor.dwellReady = true
+                        }
+                    }
+
+                    NotificationCenterPopup {
+                        id: notificationCenterPopup
+                        anchorItem: notificationCenterAnchor
+                        outputName: cornerPanelWindow.outputName
+                        hoverAllowed:
+                            cornerPanelWindow.shouldShowNotificationCenterCorner
+                        cornerAttachmentEdge:
+                            cornerPanelWindow.notificationCenterAttachmentEdge
+                        cornerAttachmentThickness:
+                            cornerPanelWindow.notificationCenterAttachmentThickness
                     }
                 }
             }

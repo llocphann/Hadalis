@@ -64,6 +64,7 @@ for token in (
     "active: root.active",
     "sourceComponent: NotepadWidget {",
     "compactPresentation: true",
+    "quickCapturePresentation: true",
     "notesEditorLoader.item.focus = true",
     "notesEditorLoader.item.focus = false",
     "notesEditorLoader.item.focusEditor()",
@@ -74,6 +75,8 @@ for token in (
     require(popup, token, "Quick Notes popup interaction/focus contract missing")
 
 for token in (
+    "property bool quickCapturePresentation: false",
+    "visible: !root.quickCapturePresentation",
     "function focusEditor(): void",
     "textArea.forceActiveFocus()",
     "function flushPendingSave(): void",

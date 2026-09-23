@@ -169,6 +169,8 @@ WSettingsPage {
         }
 
         WText {
+
+            textFormat: Text.PlainText
             Layout.fillWidth: true
             text: Translation.tr("Leaving Diagnostics stops diagnostics-owned sampling immediately; a short server TTL also cleans up crashed standalone Settings clients.")
             color: Looks.colors.subfg
@@ -262,6 +264,8 @@ WSettingsPage {
         }
 
         WText {
+
+            textFormat: Text.PlainText
             Layout.fillWidth: true
             text: Translation.tr("Kernel provenance: system CPU /proc/stat · memory /proc/meminfo · shell CPU schedstat · shell memory smaps_rollup · shell I/O /proc/<pid>/io · shell GPU DRM fdinfo · network /proc/net/dev.")
             textFormat: Text.PlainText
@@ -271,6 +275,8 @@ WSettingsPage {
         }
 
         WText {
+
+            textFormat: Text.PlainText
             Layout.fillWidth: true
             text: Translation.tr("Per-component CPU, RAM, Swap, GPU and Network stay unavailable until reviewed attribution exists.")
             color: Looks.colors.subfg
@@ -323,6 +329,8 @@ WSettingsPage {
         }
 
         WText {
+
+            textFormat: Text.PlainText
             Layout.fillWidth: true
             visible: root.discoveryEvidence?.status === "ready"
             text: Translation.tr("Source boundaries are parser evidence, not proof that a component executed.")

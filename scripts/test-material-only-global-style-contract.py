@@ -45,6 +45,8 @@ ANIME = ROOT / "modules" / "sidebarLeft" / "Anime.qml"
 BOORU_RESPONSE = ROOT / "modules" / "sidebarLeft" / "anime" / "BooruResponse.qml"
 STYLED_OVERLAY_WIDGET = ROOT / "modules" / "ii" / "overlay" / "StyledOverlayWidget.qml"
 FILTER_CHIP = ROOT / "modules" / "common" / "widgets" / "FilterChip.qml"
+GROUP_BUTTON = ROOT / "modules" / "common" / "widgets" / "GroupButton.qml"
+NAVIGATION_RAIL_BUTTON = ROOT / "modules" / "common" / "widgets" / "NavigationRailButton.qml"
 NOTIFICATION_ITEM = ROOT / "modules" / "common" / "widgets" / "NotificationItem.qml"
 NOTIFICATION_GROUP = ROOT / "modules" / "common" / "widgets" / "NotificationGroup.qml"
 NOTIFICATION_ACTION_BUTTON = ROOT / "modules" / "common" / "widgets" / "NotificationActionButton.qml"
@@ -187,6 +189,8 @@ def main() -> None:
     booru_response = BOORU_RESPONSE.read_text(encoding="utf-8")
     styled_overlay_widget = STYLED_OVERLAY_WIDGET.read_text(encoding="utf-8")
     filter_chip = FILTER_CHIP.read_text(encoding="utf-8")
+    group_button = GROUP_BUTTON.read_text(encoding="utf-8")
+    navigation_rail_button = NAVIGATION_RAIL_BUTTON.read_text(encoding="utf-8")
     notification_item = NOTIFICATION_ITEM.read_text(encoding="utf-8")
     notification_group = NOTIFICATION_GROUP.read_text(encoding="utf-8")
     notification_action_button = NOTIFICATION_ACTION_BUTTON.read_text(encoding="utf-8")
@@ -348,6 +352,8 @@ def main() -> None:
         "BooruResponse.qml": booru_response,
         "StyledOverlayWidget.qml": styled_overlay_widget,
         "FilterChip.qml": filter_chip,
+        "GroupButton.qml": group_button,
+        "NavigationRailButton.qml": navigation_rail_button,
         "NotificationItem.qml": notification_item,
         "NotificationGroup.qml": notification_group,
         "NotificationActionButton.qml": notification_action_button,
@@ -616,6 +622,28 @@ def main() -> None:
         "spacing: icon.visible ? 6 : 0",
     ):
         require(filter_chip, token, "FilterChip.qml")
+
+    for token in (
+        "property bool bounce: true",
+        "property real baseHeight: contentItem.implicitHeight + verticalPadding * 2",
+        "property color colBackgroundHover: Appearance.colors.colLayer1Hover",
+        "property color colBackgroundToggled: Appearance.colors.colPrimary",
+        "color: root.color",
+        "color: Appearance.colors.colOnLayer0",
+    ):
+        require(group_button, token, "GroupButton.qml")
+    for token in ("RegaliaControlFace {", "CookieFace {", "buttonBackground.cookieFace"):
+        forbid(group_button, token, "GroupButton.qml")
+    for token in (
+        "color: Appearance.colors.colPrimary",
+        "radius: Appearance.rounding.full",
+        "color: Appearance.colors.colOnPrimary",
+        "color: toggled ? Appearance.colors.colPrimary : Appearance.colors.colOnLayer1",
+        "scale: root.down ? 0.82 : 1",
+        "color: Appearance.colors.colOnLayer1",
+    ):
+        require(navigation_rail_button, token, "NavigationRailButton.qml")
+    forbid(navigation_rail_button, "RegaliaControlFace {", "NavigationRailButton.qml")
 
     for token in (
         "radius: Appearance.rounding.small",

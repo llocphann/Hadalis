@@ -64,7 +64,7 @@ for token in (
     "property bool entryBridgeHeld: false",
     "alternativeVisibleCondition: root.editorFocused || root.entryBridgeHeld",
     "id: entryBridgeTimer",
-    "interval: 260",
+    "Math.round(root.cornerAttachmentThickness * 6)",
     "keyboardFocus: root.editorFocused",
     "closeOnOutsideClick: root.editorFocused",
     "readonly property real requestedPopupWidth:",

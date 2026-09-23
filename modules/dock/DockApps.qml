@@ -19,10 +19,6 @@ Item {
         if (Quickshell.env("QS_DEBUG") === "1") console.log("[DockDrag]", ...args);
     }
 
-    property real maxWindowPreviewHeight: 200
-    property real maxWindowPreviewWidth: 300
-    property real windowControlsHeight: 30
-    property real buttonPadding: 5
     property bool vertical: false
     property string dockPosition: "bottom"
     property var parentWindow: null
@@ -34,8 +30,6 @@ Item {
     property bool buttonHovered: false
     property bool contextMenuOpen: false
     property bool requestDockShow: dockPreviewPopup.visible || contextMenuOpen || dragActive
-
-    readonly property Item previewAnchorItem: dockPreviewPopup.visible ? dockPreviewPopup.anchorItem : null
 
     signal closeAllContextMenus()
 

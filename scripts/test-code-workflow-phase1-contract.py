@@ -583,6 +583,20 @@ for token in (
     "readonly property bool reasoningEdge:",
 ):
     require(canvas, token, "graph reasoning canvas missing " + token)
+for token in (
+    "function runtimeEventTargetId(event): string",
+    "function runtimeEventTimeText(event): string",
+    "readonly property string runtimeActivityTargetId:",
+    "readonly property var runtimeActivityEvents:",
+    'text: "Lifecycle activity · "',
+    "runtimeActivityEventCount: root.runtimeActivityEvents.length",
+):
+    require(page, token, "runtime lifecycle activity UI missing " + token)
+require(runtime, "atMs: Date.now()",
+        "runtime lifecycle evidence must carry a capture timestamp")
+if "modelData.token" in page:
+    fail("runtime lifecycle Inspector must not expose internal runtime tokens")
+
 require(page, 'buttonText: "Reset graph layout"',
         "moved graph layout must expose an explicit reset affordance")
 require(page, "CodeWorkflowSession.hasGraphLayout(",

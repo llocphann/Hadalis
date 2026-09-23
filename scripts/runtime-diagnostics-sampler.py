@@ -81,19 +81,36 @@ def read_memory(pid: int) -> dict[str, Any]:
     }
 
 
-def read_system_cpu_ticks() -> tuple[int, int] | None:
+def read_system_cpu_ticks() -> dict[str, tuple[int, int]]:
     text = _read_text(Path("/proc/stat"))
-    line = next((line for line in text.splitlines() if line.startswith("cpu ")), "")
-    fields = line.split()
-    if len(fields) < 5:
+    result: dict[str, tuple[int, int]] = {}
+    for line in text.splitlines():
+        fields = line.split()
+        if not fields or not re.fullmatch(r"cpu(?:\\d+)?", fields[0]):
+            continue
+        if len(fields) < 5:
+            continue
+        try:
+            values = [int(value) for value in fields[1:]]
+        except ValueError:
+            continue
+        total = sum(values)
+        idle = values[3] + (values[4] if len(values) > 4 else 0)
+        result[fields[0]] = (total, idle)
+    return result
+
+
+def cpu_percent(
+    current: tuple[int, int] | None,
+    previous: tuple[int, int] | list[int] | None,
+) -> float | None:
+    if current is None or previous is None or len(previous) != 2:
         return None
-    try:
-        values = [int(value) for value in fields[1:]]
-    except ValueError:
+    total_delta = current[0] - int(previous[0])
+    idle_delta = current[1] - int(previous[1])
+    if total_delta <= 0 or idle_delta < 0:
         return None
-    total = sum(values)
-    idle = values[3] + (values[4] if len(values) > 4 else 0)
-    return total, idle
+    return max(0.0, min(100.0, (1.0 - idle_delta / total_delta) * 100.0))
 
 
 def read_system_memory() -> dict[str, Any]:
@@ -287,17 +304,21 @@ def sample(pid: int, previous: dict[str, Any] | None) -> tuple[dict[str, Any], d
     ):
         cpu_percent = (runtime_ns - previous_runtime) / elapsed_ns * 100.0
 
-    system_cpu_percent = None
-    previous_system_cpu = previous.get("systemCpu")
-    if (
-        system_cpu_now is not None
-        and isinstance(previous_system_cpu, (list, tuple))
-        and len(previous_system_cpu) == 2
-    ):
-        total_delta = system_cpu_now[0] - int(previous_system_cpu[0])
-        idle_delta = system_cpu_now[1] - int(previous_system_cpu[1])
-        if total_delta > 0 and idle_delta >= 0:
-            system_cpu_percent = (1.0 - idle_delta / total_delta) * 100.0
+    previous_system_cpu = previous.get("systemCpu", {})
+    if not isinstance(previous_system_cpu, dict):
+        previous_system_cpu = {}
+    system_cpu_percent = cpu_percent(
+        system_cpu_now.get("cpu"), previous_system_cpu.get("cpu")
+    )
+    core_cpu_percent: list[float | None] = []
+    core_names = sorted(
+        (name for name in system_cpu_now if name != "cpu"),
+        key=lambda name: int(name[3:]) if name[3:].isdigit() else name,
+    )
+    for name in core_names:
+        core_cpu_percent.append(
+            cpu_percent(system_cpu_now.get(name), previous_system_cpu.get(name))
+        )
 
     prev_io = previous.get("io", {})
     io_rates = {
@@ -354,6 +375,7 @@ def sample(pid: int, previous: dict[str, Any] | None) -> tuple[dict[str, Any], d
                 "method": "proc-stat",
                 "confidence": "kernel",
                 "percent": system_cpu_percent,
+                "coresPercent": core_cpu_percent,
             },
             "memory": read_system_memory(),
         },
@@ -400,7 +422,9 @@ def sample(pid: int, previous: dict[str, Any] | None) -> tuple[dict[str, Any], d
     state = {
         "monotonicNs": now_ns,
         "runtimeNs": runtime_ns,
-        "systemCpu": list(system_cpu_now) if system_cpu_now is not None else None,
+        "systemCpu": {
+            name: list(ticks) for name, ticks in system_cpu_now.items()
+        },
         "io": io_now,
         "network": net_now,
         "drm": drm_now,

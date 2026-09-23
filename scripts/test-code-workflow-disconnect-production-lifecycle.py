@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import ast
 import json
 from pathlib import Path
 import subprocess
@@ -38,6 +39,76 @@ exclusions = json.loads(
 
 def fail(message: str) -> None:
     raise SystemExit("FAIL: " + message)
+
+
+def literal_assignment(source: str, name: str):
+    tree = ast.parse(source)
+    for node in tree.body:
+        if isinstance(node, ast.Assign):
+            if any(
+                isinstance(target, ast.Name) and target.id == name
+                for target in node.targets
+            ):
+                return ast.literal_eval(node.value)
+        elif (
+            isinstance(node, ast.AnnAssign)
+            and isinstance(node.target, ast.Name)
+            and node.target.id == name
+        ):
+            return ast.literal_eval(node.value)
+    fail("missing literal assignment " + name)
+
+
+expected_reviewed_targets = {
+    "clock.data.time": {
+        "graphTargetId": "bar/clock",
+        "sourcePath": "modules/bar/ClockWidget.qml",
+        "propertyName": "text",
+        "expectedCurrent": "DateTime.timeDisplay",
+        "resultingState": "unbound/default",
+    },
+    "clock.data.date": {
+        "graphTargetId": "bar/clock",
+        "sourcePath": "modules/bar/ClockWidget.qml",
+        "propertyName": "text",
+        "expectedCurrent": "DateTime.date",
+        "resultingState": "unbound/default",
+    },
+}
+if literal_assignment(prepare, "REVIEWED_TARGETS") != expected_reviewed_targets:
+    fail("2K-T-C production Disconnect allowlist must remain exactly two reviewed Clock edges")
+
+expected_harness_targets = {
+    "clock.data.time": {
+        "expectedCurrent": "DateTime.timeDisplay",
+        "otherEdgeId": "clock.data.date",
+        "otherExpectedCurrent": "DateTime.date",
+    },
+    "clock.data.date": {
+        "expectedCurrent": "DateTime.date",
+        "otherEdgeId": "clock.data.time",
+        "otherExpectedCurrent": "DateTime.timeDisplay",
+    },
+}
+if literal_assignment(harness, "DISCONNECT_TARGETS") != expected_harness_targets:
+    fail("2K-T-C live acceptance must cover exactly the two production Disconnect targets")
+
+for source_name, source in (
+    ("transaction", transaction),
+    ("probe", probe),
+):
+    start = source.find("function reviewedDisconnectTarget(edgeId: string): var")
+    end = source.find("\n    function ", start + 1)
+    if start < 0 or end < 0:
+        fail("2K-T-C " + source_name + " reviewed Disconnect resolver is missing")
+    resolver = source[start:end]
+    if resolver.count('if (id === "') != 2:
+        fail("2K-T-C " + source_name + " resolver widened beyond two exact targets")
+    for target_id in ("clock.data.time", "clock.data.date"):
+        if ('id === "' + target_id + '"') not in resolver:
+            fail("2K-T-C " + source_name + " resolver missing " + target_id)
+    if "return null" not in resolver:
+        fail("2K-T-C " + source_name + " resolver must fail closed")
 
 
 for token in (

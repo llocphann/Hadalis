@@ -113,6 +113,10 @@ for forbidden in (
 # own process. Local overlay/focus hosts can call the same shell singleton.
 for token in (
     '"settings:" + String(Quickshell.processId)',
+    "readonly property string remoteRuntimeConsumerId:",
+    "function _syncRemoteRuntimeDemand(): void",
+    "CodeWorkflowRuntime.setRemoteConsumerActive(",
+    "root.pageCurrent && !root.localShell",
     "property var activeOwners: ({})",
     "readonly property bool pageCurrent:",
     "function setOwnerCurrent(ownerId: string, current: bool): void",

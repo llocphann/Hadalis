@@ -6,8 +6,11 @@
 //
 // Sections:
 //   0 = Controls  (sliders + quick toggles)
-//   1 = Notifications
-//   2+ = Widgets  (calendar / events / todo / notepad / calc / sysmon / timer)
+//   1+ = Widgets  (calendar / events / todo / notepad / calc / sysmon / timer)
+//
+// Notification history is intentionally owned by the standalone bottom-right
+// Notification Center; the compact sidebar keeps only notification policy
+// controls such as Do Not Disturb.
 //
 // Global Theme chrome is Material-only; the explicit Ricelin island skin remains supported.
 

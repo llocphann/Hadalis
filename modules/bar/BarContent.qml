@@ -302,7 +302,6 @@ Item {
             "bar", root.nativeBlurTopology)
         && root.nativeBlurAllowed
         && !Appearance.gameModeMinimal
-    readonly property bool zzzDetachedRounded: false
 
     readonly property string leftAction: Config.options?.bar?.leftScrollAction ?? "brightness"
     readonly property string rightAction: Config.options?.bar?.rightScrollAction ?? "volume"
@@ -633,7 +632,6 @@ Item {
             fill: parent
             margins: 0
         }
-        readonly property real barMargin: 0
         readonly property bool isBottom: Config.options?.bar?.bottom ?? false
         readonly property QtObject blendedColors: root.blendedColors
 
@@ -793,10 +791,10 @@ Item {
 
         Image {
             id: blurredWallpaper
-            x: -barBackground.barMargin
+            x: 0
             y: barBackground.isBottom
-                ? -(root.screen?.height ?? 1080) + barBackground.height + barBackground.barMargin
-                : -barBackground.barMargin
+                ? -(root.screen?.height ?? 1080) + barBackground.height
+                : 0
             width: root.screen?.width ?? 1920
             height: root.screen?.height ?? 1080
             visible: barBackground.auroraEverywhere

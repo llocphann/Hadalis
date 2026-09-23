@@ -114,6 +114,9 @@ for token in (
     "function _makeTab(title, text)",
     "function indexForTabId(tabId)",
     "function setTabTextById(tabId, newText)",
+    "property bool _normalizedTabsNeedSave: false",
+    "if (root._normalizedTabsNeedSave)",
+    "Qt.callLater(() => root._save())",
     "if (index < previousCurrent)",
     "currentTab = previousCurrent - 1",
 ):

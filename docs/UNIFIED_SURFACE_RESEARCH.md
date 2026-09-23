@@ -85,11 +85,11 @@ The existing connected-surface helpers may remain as baseline code until a repla
 
 Relevant Caelestia source areas examined:
 
-- `modules/drawers/ContentWindow.qml`
-- `modules/drawers/Panels.qml`
+- *modules/drawers/ContentWindow.qml*
+- *modules/drawers/Panels.qml*
 - `modules/bar/Bar.qml`
-- `modules/bar/popouts/Wrapper.qml`
-- `modules/bar/popouts/ClipWrapper.qml`
+- *modules/bar/popouts/Wrapper.qml*
+- *modules/bar/popouts/ClipWrapper.qml*
 - `plugin/src/Caelestia/Blobs/blobgroup.*`
 - `plugin/src/Caelestia/Blobs/blobshape.*`
 - `plugin/src/Caelestia/Blobs/blobrect.*`
@@ -1557,12 +1557,12 @@ Primary upstream baseline:
 - repository: `snowarch/iNiR`
 - release: `v2.31.0`
 - commit: `9574fa424c0d1008e927454e933a7fbe292f9fb2`
-- field source: `modules/iris/field/IrisField.qml`
+- field source: *modules/iris/field/IrisField.qml*
 - shader: `modules/iris/field/IrisField.frag`
 - compiled shader: `modules/iris/field/IrisField.frag.qsb`
-- shape attachment reference: `modules/iris/stage/IrisStage.qml`
-- card reference: `modules/iris/control/IrisControlCenter.qml`
-- morph/body reference: `modules/iris/components/IrisMorphSurface.qml`
+- shape attachment reference: *modules/iris/stage/IrisStage.qml*
+- card reference: *modules/iris/control/IrisControlCenter.qml*
+- morph/body reference: *modules/iris/components/IrisMorphSurface.qml*
 
 Caelestia research remains useful historical context for the general "one field,
 one silhouette" idea, but it is no longer the implementation template.
@@ -1752,7 +1752,7 @@ weld            3
 ```
 
 Those upstream-relative values are grounded in
-`modules/iris/style/IrisStyle.qml`:
+*modules/iris/style/IrisStyle.qml*:
 
 - `radiusPanel = corner(30)`;
 - `fuseDeep = 30 * density * meltDepth` at default factors;
@@ -1912,7 +1912,7 @@ A follow-up source audit of exact upstream
 architectural precondition that the morphology PoC does not model by itself.
 
 Upstream iRiS does **not** ask a popup field in one window to visually weld to
-an owner painted by another window. In `IrisBar.qml`, one full-output
+an owner painted by another window. In *IrisBar.qml*, one full-output
 `barWindow` builds a single `fieldShapes` registry by concatenating the
 Island, Control Center, Stage/cards, edit surfaces and Dock bodies, then gives
 that registry to one `IrisField`. Control Center/cards publish their rounded
@@ -2003,7 +2003,7 @@ evaluates every rounded-box body and explicit join against that output-space
 `p`. Therefore the shader math does **not** require the pass viewport to equal
 the union of all owner bounds.
 
-Upstream `IrisField.qml` currently derives `pass.x/y/width/height` from the
+Upstream *IrisField.qml* currently derives `pass.x/y/width/height` from the
 union of all shapes as its normal render-bounds policy. That is an upstream
 wrapper choice/optimization, not a coordinate-system requirement of the QSB.
 

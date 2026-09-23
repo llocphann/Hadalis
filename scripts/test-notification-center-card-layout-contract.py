@@ -27,7 +27,7 @@ require(GROUP, "property bool expanded: expandedByDefault", "group must honor ex
 # no longer inherit a permanent empty left gutter.
 require(GROUP, "visible: !root.modernLayout", "legacy leading icon must leave modern layout")
 require(GROUP, "id: modernHeaderIcon", "modern header icon missing")
-require(GROUP, "modernLayout: root.modernCards", "modern card mode must reach group delegates")
+require(LIST, "modernLayout: root.modernCards", "modern card mode must reach group delegates")
 require(GROUP, "modernLayout: root.modernLayout", "modern card mode must reach notification items")
 
 # Body text should use the foreground token in modern history cards rather than

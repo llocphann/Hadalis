@@ -38,7 +38,11 @@ Item {
                 Layout.preferredHeight: 46
                 radius: Appearance.rounding.small
                 color: Appearance.colors.colLayer1
-                border.color: Appearance.colors.colOutline
+                border.color: Qt.rgba(
+                    Appearance.colors.colPrimary.r,
+                    Appearance.colors.colPrimary.g,
+                    Appearance.colors.colPrimary.b,
+                    0.30)
 
                 ColumnLayout {
                     anchors.fill: parent
@@ -51,6 +55,7 @@ Item {
 
                         StyledText {
                             text: root.coreLabel(index)
+                            font.family: Appearance.font.family.monospace
                             font.pixelSize: Appearance.font.pixelSize.smallest
                             color: Appearance.colors.colSubtext
                         }
@@ -62,8 +67,9 @@ Item {
                                 && modelData !== undefined
                                 && Number.isFinite(Number(modelData))
                                 ? Math.round(Number(modelData)) + "%" : "—"
+                            font.family: Appearance.font.family.monospace
                             font.pixelSize: Appearance.font.pixelSize.small
-                            color: Appearance.colors.colOnLayer1
+                            color: Appearance.colors.colPrimary
                         }
                     }
 

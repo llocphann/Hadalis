@@ -13,19 +13,16 @@ Scope {
     property bool _presentedOpen: false
     property bool _contentPresented: GlobalStates.dashboardOpen
     property bool _renderUpdatesNeeded: GlobalStates.dashboardOpen
-    property bool _slideLayerActive: false
 
     function beginPresentation(): void {
         _hideContentTimer.stop()
         _renderSuspendTimer.stop()
         root._renderUpdatesNeeded = true
         root._contentPresented = true
-        root._slideLayerActive = Appearance.animationsEnabled
         root._presentedOpen = false
 
         if (!Appearance.animationsEnabled) {
             root._presentedOpen = true
-            root._slideLayerActive = false
             return
         }
 
@@ -37,13 +34,11 @@ Scope {
 
     function beginDismissal(): void {
         _presentationTimer.stop()
-        root._slideLayerActive = Appearance.animationsEnabled
         root._presentedOpen = false
 
         if (!Appearance.animationsEnabled) {
             root._contentPresented = false
             root._renderUpdatesNeeded = false
-            root._slideLayerActive = false
             return
         }
 
@@ -102,10 +97,8 @@ Scope {
             interval: SurfaceMotion.dashboardExitDuration + 16
             repeat: false
             onTriggered: {
-                if (!GlobalStates.dashboardOpen) {
+                if (!GlobalStates.dashboardOpen)
                     root._contentPresented = false
-                    root._slideLayerActive = false
-                }
             }
         }
 
@@ -193,22 +186,13 @@ Scope {
             active: true
             visible: root._contentPresented
 
-            readonly property bool desaturationActive:
-                Appearance.shouldDesaturate("overlays") && contentLoader.visible
-
-            Component {
-                id: dashboardDesaturationEffect
-                ShellDesaturationEffect {}
-            }
-
-            // Cache the whole Dashboard into one texture while the top-level
-            // slide runs. Heavy widget shadows/effects then translate as one
-            // compositor-friendly layer instead of re-rasterizing per frame.
-            // The layer is released again at rest to avoid a permanent FBO.
-            layer.enabled: root._slideLayerActive || contentLoader.desaturationActive
-            layer.smooth: true
-            layer.effect: contentLoader.desaturationActive
-                ? dashboardDesaturationEffect : null
+            // Keep the top-level Dashboard out of an extra FBO during motion.
+            // Media artwork already owns nested mask/effect layers; wrapping the
+            // whole Dashboard in another transient layer can snapshot partially
+            // resolved artwork and produce a cyan/blank flash during the slide.
+            layer.enabled: Appearance.shouldDesaturate("overlays")
+                && contentLoader.visible
+            layer.effect: ShellDesaturationEffect {}
 
             property real panelTranslateY: SurfaceMotion.dashboardOffset
             states: [
@@ -238,10 +222,6 @@ Scope {
                         property: "panelTranslateY"
                         duration: SurfaceMotion.dashboardEnterDuration
                         easing.type: SurfaceMotion.dashboardEnterEasingType
-                    }
-                    onRunningChanged: {
-                        if (!running && root._presentedOpen)
-                            root._slideLayerActive = false
                     }
                 },
                 Transition {
@@ -288,6 +268,10 @@ Scope {
 
                 DashboardContent {
                     id: standaloneContent
+                    // Keep media/equalizer presentation alive through the full
+                    // exit slide; _contentPresented drops only after the card is
+                    // no longer visible.
+                    presentationActive: root._contentPresented
                     x: 0
                     y: standaloneEditToolbar.visible
                         ? Math.max(0, standaloneEditToolbar.height - 1)

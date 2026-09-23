@@ -106,6 +106,8 @@ for token in (
     "CodeWorkflowRuntime.remoteError",
     "readonly property bool pageCurrent:",
     "function setOwnerCurrent(ownerId: string, current: bool): void",
+    "const alreadyCurrent = root.activeOwners[id] === true",
+    "if (alreadyCurrent === (current === true))",
     "RuntimeDiagnostics.acquire(root.clientId)",
     "RuntimeDiagnostics.heartbeat(root.clientId)",
     "RuntimeDiagnostics.release(root.clientId)",

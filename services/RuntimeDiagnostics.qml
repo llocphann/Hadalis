@@ -270,7 +270,11 @@ Singleton {
 
     onSamplingEnabledChanged: {
         if (root.samplingEnabled) {
-            CodeWorkflowIndex.refresh(false)
+            // Diagnostics consumes the shared one-shot index but must not
+            // restart or queue a second scan when Workflow already has one.
+            if (CodeWorkflowIndex.status !== "ready"
+                    && CodeWorkflowIndex.status !== "indexing")
+                CodeWorkflowIndex.refresh(false)
             return
         }
         // CodeWorkflowIndex is Workflow-owned one-shot discovery, not a

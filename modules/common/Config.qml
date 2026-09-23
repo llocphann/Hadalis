@@ -2029,9 +2029,13 @@ Singleton {
                 property bool enable: true
                 property bool hoverEnable: true
                 property int hoverDelayMs: 220
+                property int closeGraceMs: 280
                 property int cornerSize: 14
                 property int popupWidth: 420
                 property int popupHeight: 560
+                property bool markReadOnOpen: true
+                property bool dismissToastsOnOpen: true
+                property bool allowInFullscreen: false
                 property list<string> screenList: []
             }
 

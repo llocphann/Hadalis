@@ -102,6 +102,12 @@ for token in (
     "readonly property bool directMutationSelectionEligible:",
     "CodeWorkflowSession.selectedSemanticSourcePath.length === 0",
     "|| CodeWorkflowSession.selectedSemanticSourcePath.length > 0)",
+    "semanticSourcePath: CodeWorkflowSession.selectedSemanticSourcePath",
+    "selectedSemanticSourcePath:",
+    "inspectFilter: root.inspectFilter",
+    "inspectShowInternals: root.inspectShowInternals",
+    "String(baseline.selectedSemanticSourcePath ?? \"\")",
+    "root.inspectFilter = String(baseline.inspectFilter ?? \"\")",
 ):
     require(page, token, "workspace boundary navigation missing " + token)
 

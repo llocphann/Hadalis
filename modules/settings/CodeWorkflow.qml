@@ -2930,7 +2930,7 @@ Item {
                                 StyledText {
                                     Layout.fillWidth: true
                                     text: String(modelData.kind ?? "runtime")
-                                        .replaceAll("-", " ").toUpperCase()
+                                        .split("-").join(" ").toUpperCase()
                                         + " · "
                                         + String(modelData.instanceId ?? "")
                                     color: Appearance.colors.colOnLayer1

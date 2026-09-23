@@ -286,6 +286,60 @@ def main() -> int:
         probe.record("Editor defaults to read-only NORMAL",
                      ready["modalEditor"]["mode"] == "normal")
 
+        # Close immediately after first Workflow materialization, while the
+        # 75ms page activation can still be starting Analyzer/Index work. This
+        # is the shortest-path reproduction of the reopen freeze.
+        race_mounts = ready["workflowMountCount"]
+        race_destroys = ready["workflowDestroyCount"]
+        race_started = time.monotonic()
+        probe.ipc("settingsClose")
+        race_closed = runtime.wait_for(
+            lambda: value if (
+                not (value := probe.snapshot())["settingsLoaded"]
+                and not value["modalEditor"]["loaded"]
+                and value["workflowDestroyCount"] >= race_destroys + 1
+            ) else None,
+            "Immediate Workflow close fully unloads first page",
+            timeout=30,
+        )
+        probe.ipc("settingsOpen", 2)
+        runtime.wait_for(
+            lambda: value if (
+                (value := probe.snapshot())["settingsOpen"]
+                and value["settingsLoaded"]
+                and value["settingsPage"] == 2
+                and not value["modalEditor"]["loaded"]
+            ) else None,
+            "Immediate Workflow reopen reaches base Settings page",
+            timeout=30,
+        )
+        probe.ipc("settingsOpen", 30)
+        ready = runtime.wait_for(
+            lambda: value if (
+                (value := probe.snapshot())["settingsOpen"]
+                and value["settingsPage"] == 30
+                and value["modalEditor"]["loaded"]
+                and value["codeWorkflowPage"] is not None
+                and value["codeWorkflowPage"]["state"] == "visible"
+                and value["workflowMountCount"] == race_mounts + 1
+            ) else None,
+            "Immediate Workflow reopen rematerializes page",
+            timeout=45,
+        )
+        probe.record(
+            "Immediate close/reopen while Workflow startup work may be in flight",
+            ready["workflowMountCount"] == race_mounts + 1
+            and ready["workflowDestroyCount"] == race_destroys + 1
+            and ready["modalEditor"]["text"] == "alpha\n\nbeta gamma",
+            {
+                "seconds": round(time.monotonic() - race_started, 3),
+                "closedDestroyCount": race_closed["workflowDestroyCount"],
+                "reopenedMountCount": ready["workflowMountCount"],
+                "analyzer": ready["workflowAnalyzerStatus"],
+                "index": ready["workflowIndexStatus"],
+            },
+        )
+
         def state():
             return probe.snapshot()["modalEditor"]
 

@@ -10,6 +10,8 @@ Item {
     property bool includeLoopback: false
 
     function formatRate(value): string {
+        if (value === null || value === undefined)
+            return "—"
         const bytes = Number(value)
         if (!Number.isFinite(bytes) || bytes < 0)
             return "—"
@@ -23,6 +25,8 @@ Item {
     }
 
     function formatBytes(value): string {
+        if (value === null || value === undefined)
+            return "—"
         const bytes = Number(value)
         if (!Number.isFinite(bytes) || bytes < 0)
             return "—"
@@ -42,16 +46,24 @@ Item {
             if (!root.includeLoopback && name === "lo")
                 continue
             const data = source[name] ?? ({})
-            const rxRate = Number(data.rxBytesPerSec)
-            const txRate = Number(data.txBytesPerSec)
+            const rxRate = data.rxBytesPerSec === null
+                    || data.rxBytesPerSec === undefined
+                ? null : Number(data.rxBytesPerSec)
+            const txRate = data.txBytesPerSec === null
+                    || data.txBytesPerSec === undefined
+                ? null : Number(data.txBytesPerSec)
             result.push({
                 name: name,
                 rxBytes: Number(data.rxBytes ?? 0),
                 txBytes: Number(data.txBytes ?? 0),
-                rxBytesPerSec: Number.isFinite(rxRate) ? rxRate : null,
-                txBytesPerSec: Number.isFinite(txRate) ? txRate : null,
-                activity: (Number.isFinite(rxRate) ? rxRate : 0)
-                    + (Number.isFinite(txRate) ? txRate : 0)
+                rxBytesPerSec: rxRate !== null
+                    && Number.isFinite(rxRate) ? rxRate : null,
+                txBytesPerSec: txRate !== null
+                    && Number.isFinite(txRate) ? txRate : null,
+                activity: (rxRate !== null && Number.isFinite(rxRate)
+                        ? rxRate : 0)
+                    + (txRate !== null && Number.isFinite(txRate)
+                        ? txRate : 0)
             })
         }
         result.sort((left, right) =>

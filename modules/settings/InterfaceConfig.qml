@@ -830,22 +830,15 @@ ContentPage {
 
             ConfigSwitch {
                 buttonIcon: "done_all"
-                text: Translation.tr("Mark history read when opened")
+                text: Translation.tr("Mark read when opened")
                 checked: Config.options?.notificationCenter?.markReadOnOpen ?? true
                 enabled: Config.options?.notificationCenter?.enable ?? true
                 opacity: enabled ? 1 : 0.5
                 onCheckedChanged:
                     Config.setNestedValue("notificationCenter.markReadOnOpen", checked)
-            }
-
-            ConfigSwitch {
-                buttonIcon: "notifications_off"
-                text: Translation.tr("Dismiss transient popups when opened")
-                checked: Config.options?.notificationCenter?.dismissToastsOnOpen ?? true
-                enabled: Config.options?.notificationCenter?.enable ?? true
-                opacity: enabled ? 1 : 0.5
-                onCheckedChanged:
-                    Config.setNestedValue("notificationCenter.dismissToastsOnOpen", checked)
+                StyledToolTip {
+                    text: Translation.tr("Marks notification history read and retracts its transient toast copies. The current notification backend uses one popup/read flag for both states.")
+                }
             }
 
             ConfigSwitch {

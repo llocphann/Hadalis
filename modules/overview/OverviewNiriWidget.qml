@@ -487,6 +487,22 @@ Item {
                     WindowPreviewService.warmForOverview(windowItems.map(record => record.id))
             }
 
+            function refreshVisibleWindowPreviews(): void {
+                if (!root.presentationActive)
+                    return
+                const ids = windowItems.map(record => record.id)
+                if (!root.taskViewMode
+                        && root.overviewOptions.showPreviews !== false) {
+                    // The resident cache gives Overview an immediate first
+                    // frame; refresh the visible IDs in the background so
+                    // long-lived terminals do not show their creation-time
+                    // snapshot forever.
+                    WindowPreviewService.refreshForOverview(ids)
+                } else {
+                    WindowPreviewService.captureForTaskView(ids)
+                }
+            }
+
             Connections {
                 target: NiriService
                 enabled: root.presentationActive
@@ -502,6 +518,7 @@ Item {
                 }
                 function onFirstVisibleWorkspaceSlotChanged() {
                     windowSpace.rebuildWindowItems()
+                    windowSpace.refreshVisibleWindowPreviews()
                 }
             }
             
@@ -510,7 +527,7 @@ Item {
                 function onPresentationActiveChanged() {
                     if (root.presentationActive) {
                         windowSpace.rebuildWindowItems()
-                        WindowPreviewService.captureForTaskView()
+                        windowSpace.refreshVisibleWindowPreviews()
                     } else {
                         root.resetDragState()
                         windowSpace.windowItems = []
@@ -521,7 +538,7 @@ Item {
             Component.onCompleted: {
                 rebuildWindowItems()
                 if (root.presentationActive)
-                    WindowPreviewService.captureForTaskView()
+                    refreshVisibleWindowPreviews()
             }
 
             Repeater {

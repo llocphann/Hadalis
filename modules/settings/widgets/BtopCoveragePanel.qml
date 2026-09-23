@@ -42,7 +42,11 @@ Item {
         anchors.fill: parent
         radius: Appearance.rounding.small
         color: Appearance.colors.colLayer1
-        border.color: Appearance.colors.colOutline
+        border.color: Qt.rgba(
+            Appearance.colors.colSecondary.r,
+            Appearance.colors.colSecondary.g,
+            Appearance.colors.colSecondary.b,
+            0.34)
 
         ColumnLayout {
             id: coverageColumn
@@ -58,7 +62,7 @@ Item {
                 StyledText {
                     Layout.fillWidth: true
                     text: "Runtime boundary coverage"
-                    color: Appearance.colors.colOnLayer1
+                    color: Appearance.colors.colSecondary
                     font.weight: Font.DemiBold
                 }
 
@@ -111,6 +115,7 @@ Item {
                         horizontalAlignment: Text.AlignRight
                         text: String(parent.rowCount)
                         color: Appearance.colors.colOnLayer1
+                        font.family: Appearance.font.family.monospace
                         font.pixelSize: Appearance.font.pixelSize.small
                     }
                 }
@@ -121,6 +126,7 @@ Item {
                 text: String(root.filesScanned) + " QML · "
                     + String(root.cacheHits) + " cached"
                 color: Appearance.colors.colSubtext
+                font.family: Appearance.font.family.monospace
                 font.pixelSize: Appearance.font.pixelSize.smallest
             }
         }

@@ -112,6 +112,15 @@ grep -Fq 'WindowPreviewService.warmForOverview(windowItems.map(record => record.
     || fail 'Overview must retain bounded decoded previews across popup teardown'
 grep -Fq 'WindowPreviewService.refreshForOverview(ids)' "$overview_renderer" \
     || fail 'Overview presentation must refresh visible long-lived window snapshots'
+grep -Fq 'retainWhileLoading: true' "$overview_renderer" \
+    || fail 'Overview must retain the previous decoded frame while a refreshed preview loads'
+grep -Fq 'property bool _everReady: false' "$overview_renderer" \
+    || fail 'Overview preview visibility must remember whether a decoded frame already exists'
+grep -Fq 'visible: parent.showPreviews && _everReady' "$overview_renderer" \
+    || fail 'Overview refresh must not hide a ready preview merely because the new URL is loading'
+if grep -Fq 'visible: parent.showPreviews && status === Image.Ready' "$overview_renderer"; then
+    fail 'Overview preview must not blink off during async refresh'
+fi
 
 node - "$preview_policy" <<'NODE'
 const fs = require('node:fs');

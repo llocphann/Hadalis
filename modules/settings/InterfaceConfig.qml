@@ -234,23 +234,6 @@ ContentPage {
                 }
             }
 
-            ConfigSpinBox {
-                icon: "timer"
-                text: Translation.tr("Close grace (ms)")
-                value: Config.options?.notificationCenter?.closeGraceMs ?? 280
-                from: 0
-                to: 1200
-                stepSize: 20
-                enabled: (Config.options?.notificationCenter?.enable ?? true)
-                    && (Config.options?.notificationCenter?.hoverEnable ?? true)
-                opacity: enabled ? 1 : 0.5
-                onValueChanged:
-                    Config.setNestedValue("notificationCenter.closeGraceMs", value)
-                StyledToolTip {
-                    text: Translation.tr("Keeps the center open briefly while the pointer moves between the corner and popup.")
-                }
-            }
-
             ConfigRow {
                 uniform: true
 
@@ -795,6 +778,23 @@ ContentPage {
                     opacity: enabled ? 1 : 0.5
                     onValueChanged:
                         Config.setNestedValue("notificationCenter.cornerSize", value)
+                }
+            }
+
+            ConfigSpinBox {
+                icon: "timer"
+                text: Translation.tr("Close grace (ms)")
+                value: Config.options?.notificationCenter?.closeGraceMs ?? 280
+                from: 0
+                to: 1200
+                stepSize: 20
+                enabled: (Config.options?.notificationCenter?.enable ?? true)
+                    && (Config.options?.notificationCenter?.hoverEnable ?? true)
+                opacity: enabled ? 1 : 0.5
+                onValueChanged:
+                    Config.setNestedValue("notificationCenter.closeGraceMs", value)
+                StyledToolTip {
+                    text: Translation.tr("Keeps the center open briefly while the pointer moves between the corner and popup.")
                 }
             }
 

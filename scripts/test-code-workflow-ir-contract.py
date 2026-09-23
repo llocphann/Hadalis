@@ -801,6 +801,15 @@ if "root.activeNodeDragOffsetX = nextX - baseX" not in drag_update_block \
         or "root.dragRoutesDirty = true" not in drag_update_block:
     fail("node drag update must move local preview state and schedule coalesced routing")
 
+set_layout_start = session.index("function setNodeLayoutOffset(")
+set_layout_end = session.index("function hasGraphLayout(", set_layout_start)
+if "root.persist()" not in session[set_layout_start:set_layout_end]:
+    fail("committed graph layout must persist after node drag")
+reset_layout_start = session.index("function resetGraphLayout(")
+reset_layout_end = session.index("function clearSemanticAnchor(", reset_layout_start)
+if "root.persist()" not in session[reset_layout_start:reset_layout_end]:
+    fail("reset graph layout must persist metadata removal")
+
 for token in (
     'property string subflowTargetId: "bar"',
     'property string selectedNodeId: "bar.component"',
@@ -810,6 +819,10 @@ for token in (
     "target: CodeWorkflowIr",
     "property var graphNodeLayoutOffsets: ({})",
     "property int graphLayoutRevision: 0",
+    "readonly property real maximumNodeLayoutOffset: 100000",
+    "function _decodeGraphNodeLayoutOffsets(raw): var",
+    "root.graphNodeLayoutOffsets = root._decodeGraphNodeLayoutOffsets(",
+    'state.codeWorkflowGraphNodeLayoutOffsets = JSON.stringify(',
     "function nodeLayoutOffset(graphId: string, nodeId: string): var",
     "function setNodeLayoutOffset(",
     "function hasGraphLayout(graphId: string): bool",
@@ -821,7 +834,11 @@ for token in (
     if token not in session:
         fail("session missing " + token)
 
-for token in ("codeWorkflowSubflowTargetId", "codeWorkflowNodeId"):
+for token in (
+    "codeWorkflowSubflowTargetId",
+    "codeWorkflowNodeId",
+    'property string codeWorkflowGraphNodeLayoutOffsets: "{}"',
+):
     if token not in persistent:
         fail("persistent state missing " + token)
 

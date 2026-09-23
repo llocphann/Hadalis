@@ -270,6 +270,9 @@ Singleton {
                 property bool codeWorkflowTargetsPaneCollapsed: false
                 property bool codeWorkflowInspectorPaneCollapsed: false
                 property real codeWorkflowSourcePreviewHeight: 190
+                // Presentation-only graph positions. Stored as JSON because
+                // JsonObject needs a typed property while graph/node ids are dynamic.
+                property string codeWorkflowGraphNodeLayoutOffsets: "{}"
             }
 
             // Desktop-widget editor workspace state. This is transient UI

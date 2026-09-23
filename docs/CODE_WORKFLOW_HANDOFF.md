@@ -38,6 +38,10 @@ module work, commit directly to `dev`, and never force-push or modify `stable`.
   be reported for the **same final HEAD**. Documentation failures referencing
   removed Iris paths and unrelated shell regressions are not evidence that
   Code Workflow itself passed or failed. Do not conflate them.
+- Presentation layout now survives shell restarts: graph/node offsets are stored
+  in typed workspace state as validated JSON, remain strictly editor-only, and
+  are pruned against the current reviewed IR during restore. Corrupt or stale
+  node coordinates cannot create source changes or resurrect removed graph nodes.
 
 ## Production UI refinement continuation — 2026-09-21
 
@@ -314,10 +318,13 @@ under the pointer while the viewport moves. Wheel, pinch, empty-space pan and
 auto-pan use transient viewport updates during active gestures and commit only
 after the gesture/debounce window, avoiding per-frame persistence churn.
 The visual offsets survive Settings page eviction through
-`CodeWorkflowSession` but intentionally do not mutate source/IR and are not yet
-persisted across a full shell restart. The toolbar now exposes `Reset layout`,
-enabled only when the current graph has visual offsets; it restores reviewed
-positions and re-fits the graph.
+`CodeWorkflowSession` and are now persisted as presentation-only JSON in
+`Persistent.states.settings.codeWorkflowGraphNodeLayoutOffsets`, so manual
+organization also survives a full shell restart. Restore validates graph and node
+IDs against the current reviewed IR, drops malformed/non-finite entries and clamps
+corrupt extreme coordinates before exposing them to the canvas. Moving a node back
+to its reviewed position removes the zero offset, and `Reset layout` persists the
+metadata removal before re-fitting the graph. None of this mutates source/IR.
 
 The capture harness now snapshots/restores visual layout state and includes a
 `node-layout` scenario that moves `clock.hover`, fits the graph and records the

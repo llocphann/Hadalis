@@ -625,7 +625,7 @@ require(page, "nodeLayoutOffset: CodeWorkflowSession.nodeLayoutOffset(",
 require(page, "graphLayoutRevision: CodeWorkflowSession.graphLayoutRevision",
         "capture status must expose visual layout revision")
 require(page, "graphNodeLayoutOffsets: JSON.parse(JSON.stringify(",
-        "capture baseline must snapshot session-only graph layout")
+        "capture baseline must snapshot graph layout metadata")
 require(page, "CodeWorkflowSession.graphLayoutRevision += 1",
         "capture restore must invalidate graph layout bindings")
 for token in (
@@ -652,9 +652,10 @@ for token in (
     'property bool codeWorkflowTargetsPaneCollapsed: false',
     'property bool codeWorkflowInspectorPaneCollapsed: false',
     'property real codeWorkflowSourcePreviewHeight: 190',
+    'property string codeWorkflowGraphNodeLayoutOffsets: "{}"',
 ):
     require(persistent, token,
-            "Persistent.settings missing resizable pane schema " + token)
+            "Persistent.settings missing workflow workspace schema " + token)
 
 for token in (
     'property real targetsPaneWidth: 224',
@@ -672,6 +673,29 @@ for token in (
     'onSourcePreviewHeightChanged: root.persist()',
 ):
     require(session, token, "resizable pane state missing " + token)
+
+for token in (
+    "function _decodeGraphNodeLayoutOffsets(raw): var",
+    "if (!CodeWorkflowIr.hasGraph(graphKey))",
+    "if (!CodeWorkflowIr.nodeFor(graphKey, nodeKey))",
+    "Number.isFinite(x)",
+    "Number.isFinite(y)",
+    "root.graphNodeLayoutOffsets = root._decodeGraphNodeLayoutOffsets(",
+    'state.codeWorkflowGraphNodeLayoutOffsets = JSON.stringify(',
+    "readonly property real maximumNodeLayoutOffset: 100000",
+):
+    require(session, token, "persistent graph layout contract missing " + token)
+
+set_layout_start = session.index("function setNodeLayoutOffset(")
+set_layout_end = session.index("function hasGraphLayout(", set_layout_start)
+set_layout_block = session[set_layout_start:set_layout_end]
+require(set_layout_block, "root.persist()",
+        "committed node movement must persist editor-only layout metadata")
+reset_layout_start = session.index("function resetGraphLayout(")
+reset_layout_end = session.index("function clearSemanticAnchor(", reset_layout_start)
+reset_layout_block = session[reset_layout_start:reset_layout_end]
+require(reset_layout_block, "root.persist()",
+        "Reset layout must persist removal of editor-only layout metadata")
 
 for token in (
     "function setTargetsPaneCollapsed(collapsed: bool): void",

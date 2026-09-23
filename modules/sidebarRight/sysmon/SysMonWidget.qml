@@ -42,19 +42,12 @@ Item {
     }
 
     // Style tokens
-    readonly property color colText: Appearance.angelEverywhere ? Appearance.angel.colText
-        : Appearance.inirEverywhere ? Appearance.inir.colText : Appearance.colors.colOnLayer1
-    readonly property color colTextSecondary: Appearance.angelEverywhere ? Appearance.angel.colTextSecondary
-        : Appearance.inirEverywhere ? Appearance.inir.colTextSecondary : Appearance.colors.colSubtext
-    readonly property color colBg: Appearance.angelEverywhere ? Appearance.angel.colGlassCard
-        : Appearance.inirEverywhere ? Appearance.inir.colLayer0
-        : Appearance.auroraEverywhere ? Appearance.aurora.colSubSurface
-        : Appearance.colors.colLayer0
-    readonly property color colBorder: Appearance.angelEverywhere ? Appearance.angel.colBorder
-        : Appearance.inirEverywhere ? Appearance.inir.colBorder : Appearance.colors.colLayer0Border
-    readonly property int borderWidth: (Appearance.angelEverywhere || Appearance.inirEverywhere) ? 1 : (Appearance.auroraEverywhere ? 0 : 1)
-    readonly property real radius: Appearance.angelEverywhere ? Appearance.angel.roundingNormal
-        : Appearance.inirEverywhere ? Appearance.inir.roundingNormal : Appearance.rounding.normal
+    readonly property color colText: Appearance.colors.colOnLayer1
+    readonly property color colTextSecondary: Appearance.colors.colSubtext
+    readonly property color colBg: Appearance.colors.colLayer0
+    readonly property color colBorder: Appearance.colors.colLayer0Border
+    readonly property int borderWidth: 1
+    readonly property real radius: Appearance.rounding.normal
 
     ColumnLayout {
         anchors.fill: parent
@@ -74,12 +67,9 @@ Item {
             
             RippleButton {
                 implicitWidth: 28; implicitHeight: 28
-                buttonRadius: Appearance.angelEverywhere ? Appearance.angel.roundingSmall : 14
+                buttonRadius: 14
                 colBackground: "transparent"
-                colBackgroundHover: Appearance.angelEverywhere ? Appearance.angel.colGlassCardHover
-                    : Appearance.inirEverywhere ? Appearance.inir.colLayer1Hover
-                    : Appearance.auroraEverywhere ? Appearance.aurora.colSubSurface
-                    : Appearance.colors.colLayer1Hover
+                colBackgroundHover: Appearance.colors.colLayer1Hover
                 onClicked: ResourceUsage.ensureRunning()
                 contentItem: MaterialSymbol { anchors.centerIn: parent; text: "refresh"; iconSize: 16; color: root.colTextSecondary }
                 StyledToolTip { text: Translation.tr("Refresh") }
@@ -247,11 +237,8 @@ Item {
 
             Rectangle {
                 anchors.fill: parent
-                radius: Appearance.angelEverywhere ? Appearance.angel.roundingSmall : 4
-                color: Appearance.angelEverywhere ? Appearance.angel.colGlassCard
-                    : Appearance.inirEverywhere ? Appearance.inir.colLayer1
-                    : Appearance.auroraEverywhere ? ColorUtils.transparentize(Appearance.colors.colLayer1, 0.5)
-                    : Appearance.colors.colLayer1
+                radius: 4
+                color: Appearance.colors.colLayer1
             }
 
             Graph {
@@ -275,10 +262,7 @@ Item {
             Layout.fillWidth: true
             value: progressValue
             highlightColor: progressColor
-            trackColor: Appearance.angelEverywhere ? Appearance.angel.colGlassCard
-                : Appearance.inirEverywhere ? Appearance.inir.colLayer2
-                : Appearance.auroraEverywhere ? Appearance.aurora.colSubSurface
-                : Appearance.colors.colSecondaryContainer
+            trackColor: Appearance.colors.colSecondaryContainer
         }
 
         // Subtext

@@ -156,8 +156,11 @@ def main() -> None:
         '"startTicks": start_ticks',
         'task_dir = Path("/proc") / str(pid) / "task"',
         'text = _read_text(task / "children").strip()',
-        "aggregate_has_rx_rate = False",
-        "aggregate_has_tx_rate = False",
+        "aggregate_interface_count = 0",
+        "aggregate_has_rx_rate = True",
+        "aggregate_has_tx_rate = True",
+        "if rx_rate is None:",
+        "if tx_rate is None:",
         'return comm or f"pid-{pid}"',
         're.fullmatch(r"cpu(?:\d+)?"',
     ):

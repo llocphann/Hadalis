@@ -47,12 +47,6 @@ Singleton {
     })
 
     property string error: ""
-    // Compatibility aliases retained for callers that used the earlier facade.
-    property list<string> presets:
-        ["Flat", "Bass", "Treble", "Vocal", "Pop", "Rock", "Jazz", "Classic"]
-    readonly property string activePreset: root._presetName
-    readonly property var bands: root.dspBands
-
     property int _consumerCount: 0
     property bool _transportChecked: false
     property bool _transportAvailable: false
@@ -64,7 +58,6 @@ Singleton {
     property int _lifecycleGeneration: 0
 
     readonly property bool busy: applyProc.running
-    readonly property bool bandControlAvailable: root.dspControlAvailable
     readonly property bool dspControlAvailable:
         root.available && !root.busy
     readonly property string dspPresetName: root._presetName
@@ -278,19 +271,6 @@ Singleton {
             return false
         }
         return root._applyState(curve, preset)
-    }
-
-    // Compatibility functions map onto the supported ten-band facade.
-    function applyPreset(name) {
-        return root.applyDspPreset(name)
-    }
-
-    function setBandGain(index, gain) {
-        return root.setDspBandGain(index, gain)
-    }
-
-    function reset() {
-        return root.applyDspPreset("Flat")
     }
 
     onEnabledChanged: {

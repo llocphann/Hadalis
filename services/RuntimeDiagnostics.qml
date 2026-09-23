@@ -9,23 +9,27 @@ Singleton {
     // running/active state to root.samplingEnabled; this service never acquires
     // a lease merely because a Settings page object exists in an LRU cache.
     readonly property int leaseTtlMs: 6000
+    readonly property int maxLeases: 16
     property var leases: ({})
     property int revision: 0
-    readonly property bool sessionActive:
-        Object.keys(root.leases).length > 0
+    readonly property int leaseCount: Object.keys(root.leases).length
+    readonly property bool sessionActive: root.leaseCount > 0
     readonly property bool samplingEnabled: root.sessionActive
 
     function _clientId(raw): string {
-        return String(raw ?? "").trim()
+        const id = String(raw ?? "").trim()
+        return id.length > 0 && id.length <= 128 ? id : ""
     }
 
     function acquire(clientId: string): bool {
         const id = root._clientId(clientId)
         if (id.length === 0)
             return false
+        const current = root.leases[id] ?? null
+        if (!current && root.leaseCount >= root.maxLeases)
+            return false
         const next = Object.assign({}, root.leases)
         next[id] = {
-            clientId: id,
             expiresAtMs: Date.now() + root.leaseTtlMs
         }
         root.leases = next
@@ -37,7 +41,13 @@ Singleton {
         const id = root._clientId(clientId)
         if (id.length === 0 || root.leases[id] === undefined)
             return false
-        return root.acquire(id)
+        const next = Object.assign({}, root.leases)
+        next[id] = {
+            expiresAtMs: Date.now() + root.leaseTtlMs
+        }
+        root.leases = next
+        root.revision += 1
+        return true
     }
 
     function release(clientId: string): bool {
@@ -72,8 +82,9 @@ Singleton {
         return {
             active: root.sessionActive,
             samplingEnabled: root.samplingEnabled,
-            leaseCount: Object.keys(root.leases).length,
-            leaseTtlMs: root.leaseTtlMs
+            leaseCount: root.leaseCount,
+            leaseTtlMs: root.leaseTtlMs,
+            maxLeases: root.maxLeases
         }
     }
 

@@ -1615,17 +1615,12 @@ Singleton {
                 property real opacity: 1.0
                 property int cornerStyle: 0
                 property int customRounding: -1
-                property bool floatStyleShadow: true
                 property bool borderless: true
                 property string topLeftIcon: "distro"
                 property bool showBackground: true
                 property bool showScrollHints: true
                 property string leftScrollAction: "brightness"
                 property string rightScrollAction: "volume"
-                property JsonObject blurBackground: JsonObject {
-                    property bool enabled: false
-                    property real overlayOpacity: 0.3
-                }
                 property JsonObject visualizer: JsonObject {
                     property bool enable: false
                     property string multiMonitorMode: "primary"

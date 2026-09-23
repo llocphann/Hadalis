@@ -77,7 +77,7 @@ Item {
 
                 StyledText {
                     Layout.fillWidth: true
-                    text: "Owned processes"
+                    text: "Shell descendants"
                     color: Appearance.colors.colOnLayer1
                     font.weight: Font.DemiBold
                 }
@@ -104,7 +104,7 @@ Item {
 
                 StyledText {
                     Layout.fillWidth: true
-                    text: "COMMAND"
+                    text: "COMM"
                     color: Appearance.colors.colSubtext
                     font.family: Appearance.font.family.monospace
                     font.pixelSize: Appearance.font.pixelSize.smallest
@@ -243,6 +243,17 @@ Item {
                     + " more processes"
                 color: Appearance.colors.colSubtext
                 font.pixelSize: Appearance.font.pixelSize.small
+            }
+
+            StyledText {
+                Layout.fillWidth: true
+                Layout.topMargin: 8
+                text: "/proc/<pid>/comm · task schedstat · /proc/<pid>/status"
+                color: Appearance.colors.colSubtext
+                opacity: 0.78
+                font.family: Appearance.font.family.monospace
+                font.pixelSize: Appearance.font.pixelSize.smallest
+                elide: Text.ElideRight
             }
         }
     }

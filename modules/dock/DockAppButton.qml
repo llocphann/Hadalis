@@ -2,7 +2,6 @@ import qs.services
 import qs.modules.common
 import qs.modules.common.widgets
 import qs.modules.common.functions
-import qs.modules.pill
 import Qt5Compat.GraphicalEffects
 import QtQuick
 import QtQuick.Layouts
@@ -206,14 +205,14 @@ DockButton {
     // Suppress ripple/hover bg in macOS mode so no colored rect appears under icon
     // Island mode hovers like a Ricelin row: a faint cream frame fill with a
     // vermilion-tinted press, instead of the global style's hover chain.
-    colBackgroundHover: macosStyle ? "transparent" : root.islandStyle ? PillTheme.frameBg
+    colBackgroundHover: macosStyle ? "transparent" : root.islandStyle ? Qt.alpha(Appearance.colors.colOnLayer0, 0.055)
         : (root.regaliaStyle ? Appearance.regalia.hoverPlate
         : root.zzzStyle ? "transparent"
         : root.angelStyle ? Appearance.angel.colGlassCard
         : root.inirStyle ? Appearance.inir.colLayer1Hover
         : root.auroraStyle ? Appearance.aurora.colSubSurface
         : Appearance.colors.colLayer0Hover)
-    colRipple: macosStyle ? "transparent" : root.islandStyle ? Qt.alpha(PillTheme.vermLit, 0.18)
+    colRipple: macosStyle ? "transparent" : root.islandStyle ? Qt.alpha(Appearance.colors.colPrimary, 0.18)
         : (root.regaliaStyle ? Appearance.regalia.pressPlate
         : root.zzzStyle ? ColorUtils.applyAlpha(Appearance.zzz.accent, 0.22)
         : root.angelStyle ? Appearance.angel.colGlassCardActive
@@ -804,11 +803,11 @@ DockButton {
                             // thread for the focused window, whispered cream siblings.
                             // Island opt-in outranks the zzz accent chain.
                             color: isFocusedWindow
-                                   ? (root.islandStyle ? PillTheme.vermLit
+                                   ? (root.islandStyle ? Appearance.colors.colPrimary
                                    : root.zzzStyle ? Appearance.zzz.accent
                                    : root.angelStyle ? Appearance.angel.colPrimary
                                    : root.inirStyle ? Appearance.inir.colPrimary : Appearance.colors.colPrimary)
-                                   : root.islandStyle ? Qt.alpha(PillTheme.cream, 0.25)
+                                   : root.islandStyle ? Qt.alpha(Appearance.colors.colOnLayer0, 0.25)
                                    : ColorUtils.transparentize(root.zzzStyle ? Appearance.zzz.ink
                                    : root.angelStyle ? Appearance.angel.colTextSecondary
                                    : root.inirStyle ? Appearance.inir.colText : Appearance.colors.colOnLayer0, 0.65)
@@ -836,7 +835,7 @@ DockButton {
                         height: (root.zzzStyle || root.islandStyle) ? 3 : (root.angelStyle ? 2 : 5)
                         radius: root.zzzStyle ? Math.min(width, height) / 2
                             : root.angelStyle ? 0 : Math.min(width, height) / 2
-                        color: root.islandStyle ? Qt.alpha(PillTheme.cream, 0.25)
+                        color: root.islandStyle ? Qt.alpha(Appearance.colors.colOnLayer0, 0.25)
                             : ColorUtils.transparentize(root.zzzStyle ? Appearance.zzz.ink
                             : root.angelStyle ? Appearance.angel.colTextSecondary
                             : root.inirStyle ? Appearance.inir.colText : Appearance.colors.colOnLayer0,

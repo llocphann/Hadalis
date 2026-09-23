@@ -140,6 +140,30 @@ def read_system_memory() -> dict[str, Any]:
 
 
 def read_sched_runtime_ns(pid: int) -> int | None:
+    # /proc/<pid>/schedstat covers only the thread represented by <pid>.
+    # Sum task schedstat counters so multithreaded Quickshell/helpers report
+    # process CPU rather than main-thread CPU.
+    task_dir = Path("/proc") / str(pid) / "task"
+    total = 0
+    found = False
+    try:
+        tasks = list(task_dir.iterdir())
+    except OSError:
+        tasks = []
+
+    for task in tasks:
+        text = _read_text(task / "schedstat").strip()
+        if not text:
+            continue
+        try:
+            total += int(text.split()[0])
+            found = True
+        except (ValueError, IndexError):
+            continue
+
+    if found:
+        return total
+
     text = _read_text(Path("/proc") / str(pid) / "schedstat").strip()
     if not text:
         return None

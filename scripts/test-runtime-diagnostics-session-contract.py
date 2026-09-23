@@ -81,6 +81,8 @@ for token in (
     "readonly property bool localShell:",
     "property var activeOwners: ({})",
     'property string leaseTransport: ""',
+    "readonly property string evidenceError:",
+    "CodeWorkflowRuntime.remoteError",
     "readonly property bool pageCurrent:",
     "function setOwnerCurrent(ownerId: string, current: bool): void",
     "RuntimeDiagnostics.acquire(root.clientId)",
@@ -141,6 +143,11 @@ for source, text in (
         text,
         "root.sessionHasError",
         f"{source} must surface diagnostics sampling failures",
+    )
+    require(
+        text,
+        "RuntimeDiagnosticsSession.evidenceError",
+        f"{source} must surface remote runtime evidence failures",
     )
     require(
         text,

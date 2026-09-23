@@ -17,6 +17,7 @@ ContentPage {
     readonly property var systemEvidence: root.evidence?.system ?? null
     readonly property var shellEvidence: root.evidence?.shell ?? null
     readonly property var networkEvidence: root.evidence?.network ?? null
+    readonly property var discoveryEvidence: root.evidence?.discovery ?? null
 
     function formatPercent(value): string {
         const number = Number(value)
@@ -273,6 +274,41 @@ ContentPage {
                 color: root.collisionCount === 0
                     ? Appearance.colors.colSubtext
                     : Appearance.colors.colError
+                wrapMode: Text.WordWrap
+            }
+
+            StyledText {
+                Layout.fillWidth: true
+                text: root.discoveryEvidence?.status === "ready"
+                    ? Translation.tr("Runtime boundaries") + " · "
+                        + String(root.discoveryEvidence?.boundaryCount ?? 0)
+                        + " · " + String(root.discoveryEvidence?.filesScanned ?? 0)
+                        + " " + Translation.tr("QML files")
+                    : Translation.tr("Runtime boundary index") + " · "
+                        + String(root.discoveryEvidence?.status ?? "idle")
+                color: Appearance.colors.colSubtext
+                font.pixelSize: Appearance.font.pixelSize.small
+                wrapMode: Text.WordWrap
+            }
+
+            StyledText {
+                Layout.fillWidth: true
+                visible: root.discoveryEvidence?.status === "ready"
+                text: Translation.tr("Canonical source matches") + " · "
+                    + String(root.discoveryEvidence?.reconciliation?.matchedBoundaryCount ?? 0)
+                    + " · " + Translation.tr("source-only boundaries") + " · "
+                    + String(root.discoveryEvidence?.reconciliation?.unmatchedBoundaryCount ?? 0)
+                color: Appearance.colors.colSubtext
+                font.pixelSize: Appearance.font.pixelSize.small
+                wrapMode: Text.WordWrap
+            }
+
+            StyledText {
+                Layout.fillWidth: true
+                visible: root.discoveryEvidence?.status === "ready"
+                text: Translation.tr("Source boundaries are parser evidence, not proof that a component executed.")
+                color: Appearance.colors.colSubtext
+                font.pixelSize: Appearance.font.pixelSize.smallest
                 wrapMode: Text.WordWrap
             }
 

@@ -1851,10 +1851,16 @@ Item {
             Math.min(
                 (width - padding * 2) / Math.max(1, Number(bounds.width ?? 1)),
                 (height - padding * 2) / Math.max(1, Number(bounds.height ?? 1))))
+        readonly property real fittedWidth:
+            Number(bounds.width ?? 1) * scaleFactor
+        readonly property real fittedHeight:
+            Number(bounds.height ?? 1) * scaleFactor
         readonly property real originX:
-            padding - Number(bounds.x ?? 0) * scaleFactor
+            padding + (width - padding * 2 - fittedWidth) / 2
+                - Number(bounds.x ?? 0) * scaleFactor
         readonly property real originY:
-            padding - Number(bounds.y ?? 0) * scaleFactor
+            padding + (height - padding * 2 - fittedHeight) / 2
+                - Number(bounds.y ?? 0) * scaleFactor
 
         function mapX(worldX: real): real {
             return minimap.originX + worldX * minimap.scaleFactor

@@ -288,8 +288,10 @@ def read_descendants(pid: int) -> list[tuple[int, int]]:
     result: list[tuple[int, int]] = []
     queue = [pid]
     seen = {pid}
-    while queue:
-        parent = queue.pop(0)
+    cursor = 0
+    while cursor < len(queue):
+        parent = queue[cursor]
+        cursor += 1
         for child in read_process_children(parent):
             if child in seen:
                 continue
@@ -332,6 +334,11 @@ def sample_children(
             cpu = (runtime_ns - old["runtimeNs"]) / elapsed_ns * 100.0
 
         memory = read_process_status(child_pid)
+        if (
+            start_ticks is None
+            or read_process_start_ticks(child_pid) != start_ticks
+        ):
+            continue
         rows.append(
             {
                 "pid": child_pid,

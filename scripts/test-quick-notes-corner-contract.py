@@ -84,9 +84,15 @@ for token in (
     "notesEditorLoader.item.focusEditor()",
     "notesEditorLoader.item.flushPendingSave()",
     "Component.onDestruction:",
-    'sequence: "Escape"',
+    "sequences: [StandardKey.Cancel]",
+    "context: Qt.WindowShortcut",
 ):
     require(popup, token, "Quick Notes popup interaction/focus contract missing")
+
+shortcut_pos = popup.find("sequences: [StandardKey.Cancel]")
+content_pos = popup.find("id: contentRoot")
+if shortcut_pos < 0 or content_pos < 0 or shortcut_pos < content_pos:
+    fail("Quick Notes Escape shortcut must live inside popup content")
 
 for token in (
     "property bool quickCapturePresentation: false",

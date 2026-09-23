@@ -52,6 +52,8 @@ STYLED_TEXT_AREA = ROOT / "modules" / "common" / "widgets" / "StyledTextArea.qml
 TOOLBAR_BUTTON = ROOT / "modules" / "common" / "widgets" / "ToolbarButton.qml"
 NOTICE_BOX = ROOT / "modules" / "common" / "widgets" / "NoticeBox.qml"
 RIPPLE_BUTTON_WITH_ICON = ROOT / "modules" / "common" / "widgets" / "RippleButtonWithIcon.qml"
+STYLED_TOOLTIP_CONTENT = ROOT / "modules" / "common" / "widgets" / "StyledToolTipContent.qml"
+TOOLBAR = ROOT / "modules" / "common" / "widgets" / "Toolbar.qml"
 TIMER_INDICATOR = ROOT / "modules" / "bar" / "TimerIndicator.qml"
 SHELL_UPDATE_INDICATOR = ROOT / "modules" / "bar" / "ShellUpdateIndicator.qml"
 UTIL_BUTTONS = ROOT / "modules" / "bar" / "UtilButtons.qml"
@@ -178,6 +180,8 @@ def main() -> None:
     toolbar_button = TOOLBAR_BUTTON.read_text(encoding="utf-8")
     notice_box = NOTICE_BOX.read_text(encoding="utf-8")
     ripple_button_with_icon = RIPPLE_BUTTON_WITH_ICON.read_text(encoding="utf-8")
+    styled_tooltip_content = STYLED_TOOLTIP_CONTENT.read_text(encoding="utf-8")
+    toolbar = TOOLBAR.read_text(encoding="utf-8")
     timer_indicator = TIMER_INDICATOR.read_text(encoding="utf-8")
     shell_update_indicator = SHELL_UPDATE_INDICATOR.read_text(encoding="utf-8")
     util_buttons = UTIL_BUTTONS.read_text(encoding="utf-8")
@@ -323,6 +327,8 @@ def main() -> None:
         "ToolbarButton.qml": toolbar_button,
         "NoticeBox.qml": notice_box,
         "RippleButtonWithIcon.qml": ripple_button_with_icon,
+        "StyledToolTipContent.qml": styled_tooltip_content,
+        "Toolbar.qml": toolbar,
     }
     for source, source_text in shared_material_primitives.items():
         for token in (
@@ -587,6 +593,29 @@ def main() -> None:
         "ColorUtils.ensureReadable(Appearance.colors.colOnLayer2",
     ):
         require(ripple_button_with_icon, token, "RippleButtonWithIcon.qml")
+
+    for token in (
+        "color: Appearance.colors.colLayer3",
+        "radius: Appearance.rounding.verysmall",
+        "border.width: 1",
+        "border.color: Appearance.colors.colLayer3Hover",
+        "color: Appearance.colors.colOnLayer3",
+    ):
+        require(styled_tooltip_content, token, "StyledToolTipContent.qml")
+    for token in ("RegaliaPlate {", "AngelPartialBorder {"):
+        forbid(styled_tooltip_content, token, "StyledToolTipContent.qml")
+    for token in (
+        "active: root.enableShadow && !root.transparent",
+        "visible: !root.transparent",
+        "fallbackColor: Appearance.colors.colSurfaceContainer",
+        "border.width: 0",
+        'border.color: "transparent"',
+        "radius: height / 2",
+        "GlassBackground {",
+    ):
+        require(toolbar, token, "Toolbar.qml")
+    for token in ("ZzzPlate {", "ZzzSurfaceAccent {", "RegaliaPlate {"):
+        forbid(toolbar, token, "Toolbar.qml")
 
     motion_start = appearance.index("property QtObject motion: QtObject {")
     motion_end = appearance.index("m3colors: QtObject {", motion_start)

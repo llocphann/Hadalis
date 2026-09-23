@@ -1215,22 +1215,6 @@ Item {
         return bestRoute
     }
 
-    function buildEdgeRouteCache(): var {
-        const cache = ({})
-        const occupiedRoutes = []
-        const graph = root.graph
-        for (const edge of (graph?.edges ?? [])) {
-            const edgeId = String(edge?.id ?? "")
-            if (edgeId.length === 0)
-                continue
-            const route = root.edgeRoute(edge, occupiedRoutes)
-            cache[edgeId] = route
-            if (route)
-                occupiedRoutes.push(route)
-        }
-        return cache
-    }
-
     function cancelEdgeRouteBuild(): void {
         edgeRouteSliceTimer.stop()
         root.routeBuildEdges = []

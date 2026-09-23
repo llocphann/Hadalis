@@ -37,6 +37,15 @@ Singleton {
     readonly property int diagnosticsActiveLeaseCount:
         Object.keys(root.diagnosticsLeases).length
 
+    // Consumer state belongs to the process hosting the Settings page. It is
+    // dormant until that page explicitly becomes current. Overlay Settings can
+    // acquire locally; standalone Material/Waffle Settings use the shell IPC.
+    readonly property string diagnosticsClientId:
+        root.epoch + ":diagnostics-settings"
+    property bool diagnosticsConsumerActive: false
+    property bool diagnosticsLeaseHeld: false
+    property string diagnosticsConsumerError: ""
+
     function _diagnosticsClientId(rawClientId): string {
         const clientId = String(rawClientId ?? "").trim()
         if (clientId.length === 0 || clientId.length > 128)
@@ -118,6 +127,72 @@ Singleton {
             sessionActive: root.diagnosticsSessionActive,
             activeLeaseCount: root.diagnosticsActiveLeaseCount
         }
+    }
+
+    function _applyDiagnosticsLeaseReply(reply, action: string): bool {
+        const ok = reply?.ok === true
+        if (action === "release") {
+            root.diagnosticsLeaseHeld = false
+            return ok
+        }
+        root.diagnosticsLeaseHeld = ok
+        if (!ok && root.diagnosticsConsumerActive && action === "heartbeat")
+            Qt.callLater(() => root._requestDiagnosticsLease("acquire"))
+        return ok
+    }
+
+    function _requestDiagnosticsLease(action: string): void {
+        const nextAction = String(action ?? "")
+        if (!["acquire", "heartbeat", "release"].includes(nextAction))
+            return
+
+        if (root.hasLocalDeclarations) {
+            const reply = nextAction === "acquire"
+                ? root.acquireDiagnosticsLease(root.diagnosticsClientId)
+                : nextAction === "heartbeat"
+                    ? root.heartbeatDiagnosticsLease(root.diagnosticsClientId)
+                    : root.releaseDiagnosticsLease(root.diagnosticsClientId)
+            root.diagnosticsConsumerError = ""
+            root._applyDiagnosticsLeaseReply(reply, nextAction)
+            return
+        }
+
+        if (diagnosticsLeaseProcess.running)
+            return
+        diagnosticsLeaseProcess.action = nextAction
+        diagnosticsLeaseProcess.command = [
+            Quickshell.shellPath("scripts/inir"),
+            "ipc", "codeWorkflowRuntime",
+            nextAction === "acquire" ? "diagnosticsAcquire"
+                : nextAction === "heartbeat" ? "diagnosticsHeartbeat"
+                : "diagnosticsRelease",
+            root.diagnosticsClientId
+        ]
+        diagnosticsLeaseProcess.running = true
+    }
+
+    function setDiagnosticsConsumerActive(active: bool): void {
+        const nextActive = active === true
+        if (root.diagnosticsConsumerActive === nextActive)
+            return
+        root.diagnosticsConsumerActive = nextActive
+        root.diagnosticsConsumerError = ""
+        if (nextActive) {
+            root._requestDiagnosticsLease("acquire")
+            return
+        }
+        root._requestDiagnosticsLease("release")
+        root.diagnosticsLeaseHeld = false
+    }
+
+    function _heartbeatDiagnosticsConsumer(): void {
+        if (!root.diagnosticsConsumerActive)
+            return
+        if (!root.diagnosticsLeaseHeld) {
+            root._requestDiagnosticsLease("acquire")
+            return
+        }
+        root._requestDiagnosticsLease("heartbeat")
     }
 
     function refreshRemoteSnapshot(): void {
@@ -640,6 +715,54 @@ Singleton {
         repeat: true
         running: root.diagnosticsSessionActive
         onTriggered: root._pruneDiagnosticsLeases()
+    }
+
+    Process {
+        id: diagnosticsLeaseProcess
+        property string action: ""
+        running: false
+
+        stdout: StdioCollector {
+            onStreamFinished: {
+                const payload = String(text ?? "").trim()
+                if (payload.length === 0)
+                    return
+                try {
+                    const reply = JSON.parse(payload)
+                    root.diagnosticsConsumerError = ""
+                    root._applyDiagnosticsLeaseReply(
+                        reply, diagnosticsLeaseProcess.action)
+                } catch (error) {
+                    root.diagnosticsConsumerError =
+                        "Diagnostics lease decode failed: " + String(error)
+                }
+            }
+        }
+
+        stderr: StdioCollector {
+            id: diagnosticsLeaseErrorCollector
+        }
+
+        onExited: (exitCode, exitStatus) => {
+            if (exitCode !== 0) {
+                const detail = String(
+                    diagnosticsLeaseErrorCollector.text ?? "").trim()
+                root.diagnosticsConsumerError = detail.length > 0
+                    ? detail
+                    : "Diagnostics lease IPC exited with " + exitCode
+                if (diagnosticsLeaseProcess.action !== "release")
+                    root.diagnosticsLeaseHeld = false
+            }
+            diagnosticsLeaseProcess.action = ""
+        }
+    }
+
+    Timer {
+        id: diagnosticsHeartbeatTimer
+        interval: 2000
+        repeat: true
+        running: root.diagnosticsConsumerActive
+        onTriggered: root._heartbeatDiagnosticsConsumer()
     }
 
     Process {

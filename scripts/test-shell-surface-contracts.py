@@ -145,6 +145,22 @@ def main() -> None:
           and "opacity: 1" in styled_popup,
           "Connected popup must use pure slide-under clipping instead of staged fade/scale")
 
+    # Bottom-left Quick Notes is interaction/popup ownership only. It must
+    # consume the shared StyledPopup/iRiS presentation path and never become a
+    # second physical Screen Edge painter.
+    quick_notes_popup = read("modules/screenCorners/QuickNotesPopup.qml")
+    screen_corners = read("modules/screenCorners/ScreenCorners.qml")
+    screen_edges = read("modules/screenCorners/ScreenEdges.qml")
+    check("Bar.StyledPopup {" in quick_notes_popup
+          and "attachmentEdgeOverride: root.cornerAttachmentEdge" in quick_notes_popup
+          and "attachmentThicknessOverride: root.cornerAttachmentThickness" in quick_notes_popup,
+          "Quick Notes must remain a shared connected popup attached to the real corner owner")
+    check('property string quickNotesEditorOutput: ""' in screen_corners
+          and "screenCorners.quickNotesEditorOutput === outputName" in screen_corners,
+          "Quick Notes keyboard focus ownership must remain exclusive across outputs")
+    check("QuickNotes" not in screen_edges and "quickNotes" not in screen_edges,
+          "Quick Notes must never paint or modify the locked physical Screen Edge")
+
     content_host = read("modules/common/perimeter/ConnectedSurfaceContentHost.qml")
     for token in ("geometry.animatedBodyRect", "effectivePadding", "clip: true"):
         check(token in content_host,

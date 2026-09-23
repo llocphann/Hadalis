@@ -43,18 +43,21 @@ def instrument(config: Path, surface: str = "rail") -> None:
     replace_once(
         session, '    property string selectedTargetId: "bar"\n',
         '    property var modalTestEditor: null // isolated test-only reference\n'
+        '    property int modalTestMountCount: 0\n'
+        '    property int modalTestDestroyCount: 0\n'
         '    property string selectedTargetId: "bar"\n',
     )
     page = config / "modules/settings/CodeWorkflow.qml"
     replace_once(
         page, "    Component.onCompleted: {\n",
         "    Component.onCompleted: {\n"
+        "        CodeWorkflowSession.modalTestMountCount++\n"
         "        CodeWorkflowSession.modalTestEditor = sourceEditor\n",
     )
     replace_once(
         page, "    id: root\n",
         "    id: root\n"
-        "    Component.onDestruction: CodeWorkflowSession.modalTestEditor = null\n"
+        "    Component.onDestruction: { CodeWorkflowSession.modalTestDestroyCount++; CodeWorkflowSession.modalTestEditor = null }\n"
         "    TapHandler { target: null; onTapped: sourceEditor.testPageTapCount++ }\n",
     )
     # Prevent tests from touching the actual source buffer, even inside the
@@ -109,6 +112,10 @@ def instrument(config: Path, surface: str = "rail") -> None:
             report.editorConfigReady = Config.ready
             report.editorPersistenceReady = Persistent.ready
             report.editorNavigationInitialized = settings._navigationInitialized
+            report.workflowMountCount = CodeWorkflowSession.modalTestMountCount
+            report.workflowDestroyCount = CodeWorkflowSession.modalTestDestroyCount
+            report.workflowAnalyzerStatus = CodeWorkflowAnalyzer.status
+            report.workflowIndexStatus = CodeWorkflowIndex.status
             report.codeWorkflowPage = CodeWorkflowRuntime.descriptor(
                 "runtime/settings-overlay/page/code-workflow")
             const modal = CodeWorkflowSession.modalTestEditor
@@ -590,6 +597,82 @@ def main() -> int:
         key("Escape")
         runtime.wait_for(lambda: state() if state()["mode"] == "normal" else None,
                          "Escape after O")
+
+        # Reproduce the user-visible reopen regression against the actual
+        # Settings host: close while Workflow is current, reopen immediately on
+        # another page, then navigate back to Workflow. Every cycle must fully
+        # destroy exactly one old Workflow instance and create exactly one new
+        # instance without leaving the analyzer/indexer in a duplicate-work loop.
+        reopen_cycles = []
+        for cycle in range(1, 4):
+            before_cycle = probe.snapshot()
+            mounts_before = before_cycle["workflowMountCount"]
+            destroys_before = before_cycle["workflowDestroyCount"]
+            started = time.monotonic()
+
+            probe.ipc("settingsClose")
+            closed_cycle = runtime.wait_for(
+                lambda: value if (
+                    not (value := probe.snapshot())["settingsLoaded"]
+                    and not value["modalEditor"]["loaded"]
+                    and value["workflowDestroyCount"] >= destroys_before + 1
+                ) else None,
+                f"Workflow reopen cycle {cycle}: Settings fully unload",
+                timeout=30,
+            )
+
+            # Reopen immediately, but not directly on Workflow, matching the
+            # reported Settings -> Workflow navigation sequence.
+            probe.ipc("settingsOpen", 2)
+            base_page = runtime.wait_for(
+                lambda: value if (
+                    (value := probe.snapshot())["settingsOpen"]
+                    and value["settingsLoaded"]
+                    and value["settingsPage"] == 2
+                    and not value["modalEditor"]["loaded"]
+                ) else None,
+                f"Workflow reopen cycle {cycle}: base Settings page ready",
+                timeout=30,
+            )
+
+            probe.ipc("settingsOpen", 30)
+            reopened_cycle = runtime.wait_for(
+                lambda: value if (
+                    (value := probe.snapshot())["settingsOpen"]
+                    and value["settingsPage"] == 30
+                    and value["modalEditor"]["loaded"]
+                    and value["codeWorkflowPage"] is not None
+                    and value["codeWorkflowPage"]["state"] == "visible"
+                    and value["workflowMountCount"] == mounts_before + 1
+                ) else None,
+                f"Workflow reopen cycle {cycle}: Workflow ready again",
+                timeout=45,
+            )
+            elapsed = time.monotonic() - started
+            reopen_cycles.append({
+                "cycle": cycle,
+                "seconds": round(elapsed, 3),
+                "mounts": reopened_cycle["workflowMountCount"],
+                "destroys": reopened_cycle["workflowDestroyCount"],
+                "analyzer": reopened_cycle["workflowAnalyzerStatus"],
+                "index": reopened_cycle["workflowIndexStatus"],
+            })
+            probe.record(
+                f"Workflow reopen cycle {cycle} creates one replacement page",
+                reopened_cycle["workflowMountCount"] == mounts_before + 1
+                and reopened_cycle["workflowDestroyCount"] == destroys_before + 1,
+                {
+                    "closed": closed_cycle,
+                    "basePage": base_page["settingsPage"],
+                    "reopened": reopen_cycles[-1],
+                },
+            )
+
+        probe.record(
+            "Workflow survives repeated immediate Settings close/reopen navigation",
+            len(reopen_cycles) == 3,
+            reopen_cycles,
+        )
 
         probe.ipc("settingsClose")
         closed = runtime.wait_for(

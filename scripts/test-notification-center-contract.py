@@ -336,6 +336,8 @@ require(dev_nav, '{ id: "notification-center", family: "ii"',
         "DevNavigation must open the standalone Material center")
 forbid(dev_nav, 'id: "sidebar-right/notifications"',
        "DevNavigation still points notification history at Right Sidebar")
+require(launcher, 'modules/notificationCenter/*) select_prefix "notification-center" ;;',
+        "standalone Notification Center changes must select its acceptance view")
 require(launcher,
         'modules/sidebarRight/notifications/*)\n                    select_prefix "notification-center"; select_prefix "dashboard" ;;',
         "changed notification modules must audit the standalone center")

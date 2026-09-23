@@ -238,13 +238,8 @@ for page in (material_page, waffle_page):
         "root.networkEvidence?.aggregateNonLoopback",
         "root.shellEvidence?.io?.rates?.readBytesPerSec",
         "root.shellEvidence?.io?.rates?.writeBytesPerSec",
-        "Shell disk I/O",
-        "/proc/<pid>/io",
         "root.evidence?.discovery ?? null",
-        "Runtime boundaries",
-        "Canonical source matches",
         "Source boundaries are parser evidence, not proof that a component executed.",
-        "Per-component CPU, RAM, Swap, GPU and Network",
     ):
         require(page, token, "Diagnostics UI must render exact shell evidence: " + token)
     # Provenance paths are presentation text; Settings must not open its own
@@ -257,20 +252,38 @@ for page in (material_page, waffle_page):
                 + forbidden
             )
 
-require(material_page, "function shellGpuMemoryKiB(): real",
+require(material_page, "function shellGpuMemoryKiB(): var",
         "Material Diagnostics should expose exact resident DRM memory when available")
+for token in (
+    'Translation.tr("Hadalis disk I/O")',
+    'root.provenance(root.shellEvidence?.io)',
+    'Translation.tr("Runtime targets")',
+    'Translation.tr("Matched source boundaries")',
+    'Translation.tr("No synthetic per-QML resource estimates.")',
+):
+    require(material_page, token,
+            "Material btop Diagnostics presentation missing " + token)
 require(material_page, "Main shell PID",
         "Material Diagnostics must identify the sampled shell process")
 require(waffle_page, "Main shell PID",
         "Waffle Diagnostics must identify the sampled shell process")
+for token in (
+    "Shell disk I/O",
+    "/proc/<pid>/io",
+    "Runtime boundaries",
+    "Canonical source matches",
+    "Per-component CPU, RAM, Swap, GPU and Network",
+):
+    require(waffle_page, token,
+            "Waffle Diagnostics presentation missing " + token)
 
 for token in (
     'import "widgets"',
     "function systemRamPercent(): var",
     "BtopMetricPanel {",
-    "root.evidence?.history ?? []",
-    "point?.systemCpuPercent",
-    "point?.systemRamPercent",
+    "function historyValues(key: string): var",
+    'root.historyValues("systemCpuPercent")',
+    'root.historyValues("systemRamPercent")',
 ):
     require(material_page, token,
             "Material btop-style history presentation missing " + token)
@@ -281,10 +294,9 @@ for token in (
     "property var value: null",
     "readonly property bool valueAvailable:",
     'Math.round(root.numericValue) + "%" : "—"',
-    "Layout.preferredHeight: 28",
-    "id: historyRow",
-    "clip: true",
-    "/ root.samples.length",
+    "BtopSparkline {",
+    "samples: root.samples",
+    "maxValue: 100",
 ):
     require(metric_panel, token, "btop metric panel contract missing " + token)
 

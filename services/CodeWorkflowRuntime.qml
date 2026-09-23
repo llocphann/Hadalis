@@ -24,6 +24,102 @@ Singleton {
     readonly property bool hasLocalDeclarations:
         Object.keys(root.declarations).length > 0
 
+    // Runtime Diagnostics is strictly demand-driven. These leases are owned by
+    // the main shell process and contain only opaque client identity + expiry;
+    // expensive samplers must key off diagnosticsSessionActive and remain off
+    // when no current Diagnostics page owns a live lease.
+    property var diagnosticsLeases: ({})
+    readonly property int diagnosticsLeaseTtlMs: 6000
+    readonly property int diagnosticsLeasePruneIntervalMs: 1000
+    readonly property int diagnosticsMaxLeases: 16
+    readonly property bool diagnosticsSessionActive:
+        Object.keys(root.diagnosticsLeases).length > 0
+    readonly property int diagnosticsActiveLeaseCount:
+        Object.keys(root.diagnosticsLeases).length
+
+    function _diagnosticsClientId(rawClientId): string {
+        const clientId = String(rawClientId ?? "").trim()
+        if (clientId.length === 0 || clientId.length > 128)
+            return ""
+        return clientId
+    }
+
+    function _diagnosticsLeaseReply(ok: bool, clientId: string): var {
+        return {
+            ok: ok,
+            clientId: clientId,
+            sessionActive: root.diagnosticsSessionActive,
+            activeLeaseCount: root.diagnosticsActiveLeaseCount
+        }
+    }
+
+    function acquireDiagnosticsLease(rawClientId): var {
+        const clientId = root._diagnosticsClientId(rawClientId)
+        if (clientId.length === 0)
+            return root._diagnosticsLeaseReply(false, "")
+        const current = root.diagnosticsLeases[clientId] ?? null
+        if (!current
+                && root.diagnosticsActiveLeaseCount >= root.diagnosticsMaxLeases)
+            return root._diagnosticsLeaseReply(false, clientId)
+
+        const next = Object.assign({}, root.diagnosticsLeases)
+        next[clientId] = {
+            expiresAtMs: Date.now() + root.diagnosticsLeaseTtlMs
+        }
+        root.diagnosticsLeases = next
+        root.revision++
+        return root._diagnosticsLeaseReply(true, clientId)
+    }
+
+    function heartbeatDiagnosticsLease(rawClientId): var {
+        const clientId = root._diagnosticsClientId(rawClientId)
+        if (clientId.length === 0 || !root.diagnosticsLeases[clientId])
+            return root._diagnosticsLeaseReply(false, clientId)
+
+        const next = Object.assign({}, root.diagnosticsLeases)
+        next[clientId] = {
+            expiresAtMs: Date.now() + root.diagnosticsLeaseTtlMs
+        }
+        root.diagnosticsLeases = next
+        root.revision++
+        return root._diagnosticsLeaseReply(true, clientId)
+    }
+
+    function releaseDiagnosticsLease(rawClientId): var {
+        const clientId = root._diagnosticsClientId(rawClientId)
+        if (clientId.length === 0 || !root.diagnosticsLeases[clientId])
+            return root._diagnosticsLeaseReply(false, clientId)
+
+        const next = Object.assign({}, root.diagnosticsLeases)
+        delete next[clientId]
+        root.diagnosticsLeases = next
+        root.revision++
+        return root._diagnosticsLeaseReply(true, clientId)
+    }
+
+    function _pruneDiagnosticsLeases(): void {
+        const now = Date.now()
+        const next = Object.assign({}, root.diagnosticsLeases)
+        let changed = false
+        for (const clientId of Object.keys(next)) {
+            if (Number(next[clientId]?.expiresAtMs ?? 0) > now)
+                continue
+            delete next[clientId]
+            changed = true
+        }
+        if (!changed)
+            return
+        root.diagnosticsLeases = next
+        root.revision++
+    }
+
+    function diagnosticsSessionSnapshot(): var {
+        return {
+            sessionActive: root.diagnosticsSessionActive,
+            activeLeaseCount: root.diagnosticsActiveLeaseCount
+        }
+    }
+
     function refreshRemoteSnapshot(): void {
         if (root.hasLocalDeclarations || remoteSnapshotProcess.running)
             return
@@ -519,7 +615,8 @@ Singleton {
             descriptors: root.discoveredCatalog,
             records: records,
             events: root.events,
-            identityCollisions: root.localIdentityCollisions
+            identityCollisions: root.localIdentityCollisions,
+            diagnostics: root.diagnosticsSessionSnapshot()
         }
     }
 
@@ -535,6 +632,14 @@ Singleton {
         repeat: true
         running: Object.keys(root.staleDescriptors).length > 0
         onTriggered: root._pruneStale()
+    }
+
+    Timer {
+        id: diagnosticsLeasePruneTimer
+        interval: root.diagnosticsLeasePruneIntervalMs
+        repeat: true
+        running: root.diagnosticsSessionActive
+        onTriggered: root._pruneDiagnosticsLeases()
     }
 
     Process {

@@ -534,6 +534,15 @@ for token in (
     'property string reasoningMode: ""',
     "property var reasoningNodeIds: []",
     "property var reasoningEdgeIds: []",
+    "function setManualReasoningSelection(nodeIds): void",
+    "function marqueeSelectionIds(): var",
+    "function updateMarqueeSelection(): void",
+    "property bool marqueeActive: false",
+    "property var marqueeBaseNodeIds: []",
+    "mouse.modifiers & Qt.ShiftModifier",
+    "mouse.modifiers & Qt.ControlModifier",
+    'root.reasoningMode === "manual"',
+    "id: marqueeSelectionRect",
     "function reasoningSelectionFor(mode: string): var",
     "function focusReasoning(mode: string): void",
     "function reasoningBounds(): var",
@@ -548,7 +557,11 @@ require(page, "CodeWorkflowSession.hasGraphLayout(",
         "reset affordance must disable when graph has no visual offsets")
 require(page, "CodeWorkflowSession.resetGraphLayout(",
         "reset affordance must restore reviewed node positions")
-require(canvas, "cursorShape: pressed ? Qt.ClosedHandCursor : Qt.ArrowCursor",
+require(canvas, "cursorShape: root.marqueeActive",
+        "empty canvas must expose marquee cursor state before pan feedback")
+require(canvas, "? Qt.CrossCursor",
+        "marquee selection must advertise a crosshair cursor")
+require(canvas, ": pressed ? Qt.ClosedHandCursor : Qt.ArrowCursor",
         "empty canvas must keep the normal pointer until pan drag starts")
 require(canvas, "? Qt.ClosedHandCursor : Qt.ArrowCursor",
         "graph nodes must keep the normal pointer until node drag starts")

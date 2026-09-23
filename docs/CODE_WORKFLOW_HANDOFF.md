@@ -465,10 +465,19 @@ graph-layout revision, so node/route geometry no longer allocates default offset
 objects on repeated coordinate reads. Edge and label delegates test endpoint
 existence directly against `nodeIndexCache` rather than cloning resolved node
 objects. Geometry Shape preprocessing remains asynchronous; CurveRenderer remains
-HOLD because the retained Phase-0 soak showed sustained RSS growth. The next
-renderer-level experiment, if profiling still shows scene-graph/state-change cost,
-is to benchmark batching compatible idle wires into fewer Shape items; do not
-promote that rewrite without compositor capture and memory/frame evidence.
+HOLD because the retained Phase-0 soak showed sustained RSS growth. A follow-up
+2026-09-23 interaction pass also removes live viewport values from every
+wire/label culling binding: pan/zoom now updates a conservative sampled culling
+viewport at 48 ms cadence with 96 px overscan, while the world transform remains
+immediate. This avoids running JS AABB visibility checks for every edge and label
+on every touchpad sample. Edge labels are additionally suspended only while
+pan/pinch/node-drag/wheel motion is active and restored 96 ms after wheel motion
+settles, reducing text/delegate work without hiding nodes or wires. Regression
+contracts lock both the sampled culling path and motion-time label suspension.
+The next renderer-level experiment, if profiling still shows scene-graph/state-
+change cost, is to benchmark batching compatible idle wires into fewer Shape
+items; do not promote that rewrite without compositor capture and memory/frame
+evidence.
 
 Source Preview has now become a guarded Source Editor. It reuses the production
 `org.kde.syntaxhighlighting` backend, keeps per-source draft buffers across

@@ -3,6 +3,7 @@ import QtQuick.Layouts
 import qs.services
 import qs.modules.common
 import qs.modules.common.widgets
+import "widgets"
 
 ContentPage {
     id: root
@@ -18,6 +19,18 @@ ContentPage {
     readonly property var shellEvidence: root.evidence?.shell ?? null
     readonly property var networkEvidence: root.evidence?.network ?? null
     readonly property var discoveryEvidence: root.evidence?.discovery ?? null
+
+    function systemRamPercent(): real {
+        const used = Number(
+            root.systemEvidence?.memory?.valuesKiB?.MemUsed)
+        const total = Number(
+            root.systemEvidence?.memory?.valuesKiB?.MemTotal)
+        if (!Number.isFinite(used)
+                || !Number.isFinite(total)
+                || total <= 0)
+            return 0
+        return Math.max(0, Math.min(100, used / total * 100))
+    }
 
     function formatPercent(value): string {
         const number = Number(value)
@@ -139,6 +152,39 @@ ContentPage {
                 color: Appearance.colors.colOnLayer1
                 font.pixelSize: Appearance.font.pixelSize.normal
                 font.weight: Font.DemiBold
+            }
+
+            GridLayout {
+                Layout.fillWidth: true
+                columns: width >= 720 ? 2 : 1
+                columnSpacing: 10
+                rowSpacing: 10
+                visible: root.systemEvidence !== null
+
+                BtopMetricPanel {
+                    Layout.fillWidth: true
+                    title: Translation.tr("System CPU")
+                    value: Number(root.systemEvidence?.cpu?.percent ?? 0)
+                    detail: Translation.tr("Shell") + " · "
+                        + root.formatPercent(root.shellEvidence?.cpu?.percent)
+                    samples: (root.evidence?.history ?? [])
+                        .map(point => Number(point?.systemCpuPercent))
+                        .filter(value => Number.isFinite(value))
+                }
+
+                BtopMetricPanel {
+                    Layout.fillWidth: true
+                    title: Translation.tr("System RAM")
+                    value: root.systemRamPercent()
+                    detail: root.formatKiB(
+                            root.systemEvidence?.memory?.valuesKiB?.MemUsed)
+                        + " / "
+                        + root.formatKiB(
+                            root.systemEvidence?.memory?.valuesKiB?.MemTotal)
+                    samples: (root.evidence?.history ?? [])
+                        .map(point => Number(point?.systemRamPercent))
+                        .filter(value => Number.isFinite(value))
+                }
             }
 
             RowLayout {

@@ -27,7 +27,8 @@ WSettingsPage {
     readonly property string samplerError:
         String(root.evidence?.sampler?.error ?? "")
     readonly property bool sessionHasError:
-        RuntimeDiagnosticsSession.remoteError.length > 0
+        RuntimeDiagnosticsSession.leaseError.length > 0
+        || RuntimeDiagnosticsSession.remoteError.length > 0
         || RuntimeDiagnosticsSession.evidenceError.length > 0
         || root.samplerError.length > 0
     readonly property bool samplerRunning:
@@ -136,6 +137,13 @@ WSettingsPage {
         WSettingsRow {
             label: root.sessionStateLabel()
             description: Translation.tr("Sampling is leased only while this page is current.")
+            icon: "info"
+        }
+
+        WSettingsRow {
+            visible: RuntimeDiagnosticsSession.leaseError.length > 0
+            label: Translation.tr("Diagnostics lease error")
+            description: RuntimeDiagnosticsSession.leaseError
             icon: "info"
         }
 

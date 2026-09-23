@@ -192,6 +192,13 @@ for token in (
 for token in (
     'property bool workflowDiscoveryEnabled: false',
     'property string workflowHostId: "settings"',
+    "property int _requestGeneration: 0",
+    "function _scheduleRequestPage()",
+    "const generation = ++_requestGeneration",
+    "generation !== root._requestGeneration",
+    "const pendingGeneration = _requestGeneration",
+    "pendingGeneration !== root._requestGeneration",
+    "_requestGeneration++",
     "model: root.pages.length",
     "property CodeWorkflowRuntimeDeclaration workflowDeclaration:",
     'targetId: "runtime/" + root.workflowHostId + "/page/"',
@@ -202,7 +209,9 @@ for token in (
     "internal: true",
 ):
     require(settings_host, token,
-            "Settings page runtime discovery missing " + token)
+            "Settings page runtime discovery/lifecycle missing " + token)
+if "Qt.callLater(root._requestPage)" in settings_host:
+    fail("Settings page host must generation-guard deferred navigation work")
 for source, host_id in (
     (settings_focus, "settings-focus"),
     (settings_overlay, "settings-overlay"),

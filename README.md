@@ -104,6 +104,354 @@ A ready-to-use fresh-chat prompt for that phase is stored at
 - The painted Screen Edge `FrameWindow` must also remain mapped and updating across fullscreen. It shares the same Top-layer stacking domain as the Bar; destroying/recreating only the frame can remap the Bar-thick physical perimeter above `BarContent` after fullscreen exits. Niri already renders focused fullscreen clients above Top-layer surfaces.
 - The four transparent Screen Edge `ReservationWindow` surfaces may still unmap during fullscreen to release their exclusive work-area reservation. This reservation lifecycle must remain separate from the persistent painted frame lifecycle.
 
+
+### 1.3 Runtime Diagnostics / Quickshell btop handoff (research complete 2026-09-23)
+
+This is the canonical implementation handoff for the planned Hadalis **Runtime Diagnostics** feature: a btop-like debugger for the Hadalis/Quickshell runtime itself, not a general desktop process manager. It must diagnose Hadalis QML components, services, loaders, timers/pollers, owned subprocesses, custom widgets and other runtime resource owners. External applications such as Firefox/Discord are out of scope except where their existence affects an already-supported shell service.
+
+#### Product locks
+
+- **Diagnostics must not run in the background.** The expensive diagnostics sampler is active only while the Diagnostics Settings page is the current page. Hiding/caching the page is not enough: Material `SettingsPageHost` retains an LRU of recent pages, so lifecycle must be driven by explicit current-page session ownership rather than `Component.onCompleted/onDestruction`. Waffle currently keeps only the current Settings page, but it must use the same session contract.
+- Any singleton/backend introduced for Diagnostics must be **passive by default**: no CPU polling, `smaps_rollup`, GPU helper, network sampler, fast timer or source scan until an active Diagnostics session exists. Leaving the page must stop those samplers immediately. Remote/standalone Settings sessions need a short TTL/heartbeat so a crashed Settings process cannot leave diagnostics running forever.
+- Diagnostics must expose **CPU, RAM, Swap, GPU and Network**. It should help answer which Hadalis component/service is responsible where attribution is technically valid, but it must never manufacture fake per-QML CPU/RAM/swap/GPU numbers.
+- **Workflow identity is authoritative.** Diagnostics does not own a second component catalog, display-name table or naming heuristic. A target known by Workflows as `targetId: "bar"`, label `"Bar"`, must appear as exactly that same target in Diagnostics. Metrics store IDs only; presentation resolves label/icon/source/family/parent through `CodeWorkflowRuntime` / `CodeWorkflowIr`.
+- Work directly on `dev`; do not create a feature branch or PR unless explicitly requested.
+
+#### One canonical identity model
+
+Use stable references rather than display strings:
+
+```text
+runtime target      -> { targetId }
+runtime instance    -> { targetId, instanceId }
+workflow graph node -> { graphId, nodeId }
+source-only node    -> { sourcePath, semanticAnchor }
+```
+
+For entities already modeled by Workflows, Diagnostics telemetry must not contain duplicate `name`/`label` fields. UI resolves those fields from the Workflow authority. A diagnostic record that references an unknown target must be treated as orphan telemetry, not rendered as a newly invented component.
+
+Important existing identity layers must remain distinct:
+
+- runtime target examples: `bar`, `bar/media`, `bar/clock`, `bar/resources`, `dashboard`, `sidebar/left`, `waffle/bar`;
+- graph-node examples: `bar.loader`, `media.timer`, etc.;
+- loader/config `panelId` values such as `iiBar` or `iiSidebarLeft` are implementation IDs, not the public runtime identity.
+
+`CodeWorkflowRuntime.targetIdForPanel()` is a useful future-facing canonicalizer (`iiFuturePanel -> future-panel`, `wFoo -> waffle/foo`), but add collision validation. Two incompatible declarations must never silently collapse onto one target ID. Legitimate renderer/host variants that intentionally represent the same target must satisfy the same canonical identity contract.
+
+#### Shared Workflow / Diagnostics runtime evidence
+
+Do not build an independent Diagnostics component registry. The intended ownership is:
+
+```text
+                      canonical identity
+                           |
+                CodeWorkflowRuntime / IR
+                           |
+              +------------+------------+
+              |                         |
+          Workflows                Diagnostics
+   structure/relations/source    telemetry/debug/resource
+```
+
+`CodeWorkflowRuntime` already owns descriptors, lifecycle state, instances, events, source paths, internal flags and remote snapshot transport. Reuse/extend that evidence path rather than duplicating it.
+
+Standalone Material Settings and Waffle Settings are separate Quickshell processes. Diagnostics sampling must therefore execute in the **main shell process** and be exposed to Settings through IPC. Do not measure the Settings process and report it as Hadalis shell usage. The existing `codeWorkflowRuntime` remote-snapshot architecture is the model to reuse/generalize.
+
+A future snapshot can carry diagnostics evidence without duplicating identity metadata, conceptually:
+
+```js
+{
+  epoch,
+  outputs,
+  descriptors,
+  records,
+  events,
+  diagnostics: {
+    shell: {...},
+    targets: {
+      "bar": {...}
+    },
+    probes: {...}
+  }
+}
+```
+
+#### Discovery must support components that do not exist yet
+
+Do not maintain a fixed `KnownDiagnosticsComponents` list.
+
+Source discovery should reuse the existing Tree-sitter / Code Workflow analysis stack and index the live Hadalis source tree. Cache by source path + content hash/parser version and rescan changed files only when Diagnostics/Workflow needs the index; do not run a continuous whole-tree watcher.
+
+The analyzer must recognize runtime/capability boundaries, including at least:
+
+- `Loader`, `LazyLoader`, `Repeater`, `Instantiator`, `Variants`;
+- `Component.createObject()`;
+- `Qt.createComponent()`;
+- `Qt.createQmlObject()`;
+- dynamic Loader `setSource()`;
+- `Timer`, `Process`, `FileView`/watchers, sockets and network-capable constructs.
+
+Current repo examples that prove these paths matter include dynamic monitor objects in `Brightness.qml`, provider strategies in `Ai.qml`, notification/timer objects in `Notifications.qml`, AP objects in `Network.qml`, asynchronous `PolkitServiceImpl` creation, and dynamically generated MicroTeX `Process` objects in `LatexRenderer.qml`.
+
+New creation boundaries that the analyzer sees but runtime instrumentation does not cover should be reported as **untracked runtime boundaries**, not ignored. This is the future-proofing mechanism.
+
+#### Custom widgets are first-class future targets
+
+Source discovery is not limited to the Git checkout. `CustomWidgets.qml` discovers user widgets under:
+
+```text
+~/.config/inir/widgets/<id>/
+```
+
+and `Background.qml` loads them dynamically using `Loader.setSource()`. The Widget SDK gives custom widgets broad QML access, including `Process` and network calls.
+
+Use the custom-widget manifest ID as the basis for a canonical Workflow-owned namespace. Register loaded custom-widget instances at the dynamic loader boundary. Diagnostics then references that canonical target, so widgets installed after this feature ships appear without editing Diagnostics code.
+
+#### Loader/lifecycle instrumentation
+
+Instrument existing lifecycle ownership points instead of attaching a second observer to every component. `CodeWorkflowRuntimeDeclaration` already sits beside the loaders that decide whether major shell surfaces exist and deliberately avoids forcing `LazyLoader.item` while asynchronous loading is in progress.
+
+Extend that path with timestamps/counters such as:
+
+- loading start / resident / visible / hidden / unloaded transitions;
+- load count and unload count;
+- last/aggregate load duration;
+- resident/visible durations;
+- visibility transition count;
+- instance attach/detach lifetime.
+
+Only access a loader's item after it is safely ready/active. Never read `LazyLoader.item` during async loading in a way that forces synchronous completion.
+
+Explicit `CodeWorkflowRuntimeTarget` remains useful for meaningful nested targets such as `bar/media`; root loader-owned components should not be forced to add redundant registrations merely for Diagnostics.
+
+#### Diagnostics session lifecycle
+
+Introduce an explicit session/lease protocol:
+
+```text
+Diagnostics page becomes current
+  -> begin/acquire session
+  -> shell samplers ON
+
+Diagnostics page stops being current
+  -> end/release session
+  -> all expensive samplers OFF
+```
+
+Material page caching means `visible == false` or object destruction is not a sufficient lifecycle signal. Standalone Settings must acquire/release over IPC. Use TTL/heartbeat cleanup for abnormal client disappearance.
+
+Normal mode should remain cheap and mostly event-driven. High-frequency property sampling/tracing is enabled only for a selected target in Target Debug Mode.
+
+#### Resource metric truth model
+
+Every metric should internally carry provenance such as:
+
+```text
+scope       system | shell-process | child-process | target
+method      proc-stat | schedstat | smaps-rollup | drm-fdinfo | tracked-request | load-delta | ...
+confidence  kernel | exact-child | attributed | experimental
+```
+
+Never render kernel-exact data and experimental attribution as if they were equivalent.
+
+##### CPU
+
+- System CPU: reuse/align with existing `ResourceUsage` `/proc/stat` data.
+- Main Quickshell CPU: calculate from the shell PID using process CPU time (prefer `/proc/<pid>/schedstat` or equivalent delta-based process accounting).
+- Owned subprocess CPU: exact per PID, including descendant process tree where appropriate.
+- QML component CPU: **not directly measurable as a kernel percentage** because QML targets share a process/engine. Do not display fake `Bar 3.2%` style values. Instead show meaningful target activity: timer wakeups, polls, event/signal counts, callback durations, process work, and optionally a clearly labeled controlled CPU-impact delta. Deep binding/function attribution belongs to Qt QML Profiler integration, not invented telemetry.
+
+##### RAM and Swap
+
+- System RAM/swap: reuse `/proc/meminfo`.
+- Main Quickshell memory: while Diagnostics is open, prefer `/proc/<pid>/smaps_rollup` for RSS/PSS/Anon/File/Shmem/private/shared and Swap/SwapPss; existing `scripts/inir` already demonstrates `VmRSS`/`VmSwap` process reads.
+- Owned subprocess memory/swap: exact per PID.
+- QML component RAM/swap: Linux cannot assign shared QML engine/JS heap/scenegraph/cache memory to one component. Do not claim exact per-component RAM/swap.
+- Provide an explicit **Controlled Footprint Measurement** for safely loadable/unloadable targets: sample before load, after settle, after unload, optionally with a user-requested GC stabilization step. Report results as `Load Δ PSS`, `Retained Δ PSS`, `Load Δ Swap`, etc., never as `Component RAM = ...`.
+- `MemoryPressureService` already exposes JSGCHeap mapping counts and manual GC; reuse it as supporting evidence. Do not run forced GC in the normal sampler.
+
+##### GPU
+
+- System GPU: reuse current `ResourceUsage` AMD/NVIDIA/Intel paths where appropriate.
+- Quickshell GPU: capability-detect Linux DRM per-client `/proc/<pid>/fdinfo/*` counters (`drm-engine-*`, resident/total/active memory) where the driver exposes them; fall back gracefully to supported vendor tooling.
+- Owned GPU child processes can be attributed when driver/process APIs expose them.
+- Pure QML component GPU percentage/VRAM is not exact. Use activity evidence or controlled load/VRAM deltas and label their provenance.
+
+##### Network
+
+`SysMonWidget.qml` currently reads `/proc/net/dev`, which is **system/interface traffic**, not Quickshell traffic. Keep this as SYSTEM network only.
+
+Per-component/service network requires attribution at Hadalis-owned request boundaries:
+
+- track request owner using canonical `TargetRef`;
+- record start/end, bytes up/down, status and duration;
+- migrate direct `XMLHttpRequest` users toward a shared tracked request wrapper;
+- for `curl`/helper requests, use request/process telemetry such as curl upload/download byte accounting where practical;
+- source discovery must detect network-capable but uninstrumented paths and report attribution coverage rather than claiming complete coverage.
+
+Known direct XHR users currently include `Booru`, `AnimeService`, `NewsService` and `DashGithub`. Other network activity is performed through `Process`/curl/helper paths, remote media/images and future WebEngine/WebSocket paths. Do not claim 100% network ownership until those routes are instrumented.
+
+The disabled/future `WebAppView.qml` is especially important: when WebEngine support returns it may keep audio/WebSocket activity alive in background and QtWebEngine uses child processes. It must be discovered as a resource owner without adding a hardcoded Diagnostics entry.
+
+#### Process ownership
+
+Hadalis uses `Quickshell.Io Process` extensively. `Process.processId` makes owned child-process CPU/RAM/swap/IO attribution valuable and much more exact than QML-level estimates.
+
+Create a shared tracked-process ownership contract over time:
+
+```text
+canonical TargetRef
+  -> Process PID
+     -> descendants
+        -> CPU/RSS/PSS/Swap/IO/threads/faults
+```
+
+Do not require a whole-repo migration in the first commit. The source analyzer can mark bare `Process` usage as process-capable/unattributed, while standard tracked process wrappers provide full telemetry for migrated/new code.
+
+`Quickshell.execDetached()` is intentionally untracked after launch; only commands worth diagnosing should migrate to an owner-aware launcher/wrapper. Trivial actions such as notifications need not be migrated first.
+
+#### Target Debug Mode
+
+Selecting a runtime target should allow an explicit high-detail debug session without turning the entire shell into a continuous profiler. Planned capabilities:
+
+- live lifecycle/instance/output/source inspector;
+- source-declared primitive property watch;
+- before/after snapshot and diff;
+- lifecycle/event timeline;
+- timer/poller/wakeup and signal/activity trace;
+- service/lease dependency view;
+- owned subprocess tree and exact child resources;
+- tracked network request view;
+- load/unload history;
+- source navigation and `Open in Workflow`;
+- target highlight/picker where geometry authority exists;
+- controlled memory/swap/GPU footprint measurement;
+- bounded trace capture;
+- runtime invariant checks for churn/orphan activity/hidden wakeups/lease mismatches.
+
+Use the same `CodeWorkflowSession.selectedTargetId` where practical so Diagnostics -> Workflow navigation preserves the exact canonical target.
+
+Source-declared properties can be discovered by the existing analyzer, allowing new components to expose watchable properties without Diagnostics knowing their names in advance. Serialize only safe primitive values; do not recursively serialize arbitrary QObject/model/JS graphs.
+
+#### Picker / deep-inspection boundary
+
+Do not promise arbitrary live QObject picking in the pure-QML MVP. Existing Workflow hit-testing/geometry is reliable for registered runtime targets and can be generalized for those targets. Source-only objects remain inspectable structurally.
+
+A future native Qt meta-object inspector could enumerate arbitrary QObject children/properties and become another runtime evidence provider. Do not introduce a native plugin merely to complete MVP, and do not change TargetRef/Workflow identity if native inspection is added later.
+
+#### Services, timers, watchers and resource leases
+
+The service audit found extensive `Timer`, `Process`, `FileView` and dynamic activity across both `services/qmldir` and `services/deferred/qmldir`. Important examples include Audio, Brightness, GameMode, MprisController, LocalMusic, Network, ResourceUsage, ShellUpdates, Wallpapers, Weather, YtMusic, CavaService, Cliphist, EasyEffects, InnerTube, LauncherSearch and PackageSearch.
+
+Therefore wakeups, process spawns and file/socket activity are first-class diagnostics capabilities. A useful component/service row can report:
+
+```text
+wakeups/min
+polls/min
+process spawns
+active child count
+consumer/lease count
+last activity
+```
+
+Where services currently expose only a numeric consumer count, gradually move toward canonical owner IDs so Diagnostics can show who is keeping a service alive. Example: `ResourceUsage` should eventually explain which targets hold its lease rather than only reporting `2 consumers`.
+
+#### Resource Owners view
+
+In addition to a target list, provide reverse attribution views such as:
+
+```text
+NETWORK OWNERS
+Weather              ...
+Dashboard / GitHub   ...
+
+PROCESSES
+CavaService
+  -> cava PID ...
+
+RESOURCE LEASES
+ResourceUsage
+  -> Bar · Resources
+  -> Sidebar Right
+```
+
+This is the semantic equivalent of btop's “what is consuming resources?” workflow.
+
+#### Runtime anomaly checks
+
+Diagnostics may flag evidence-backed conditions such as:
+
+- rapid load/unload churn;
+- hidden/resident targets with unexpected fast wakeups;
+- orphan target instances;
+- service consumer/owner mismatch;
+- owned child process surviving target destruction;
+- network activity after owner unload;
+- canonical identity collisions;
+- stale/ambiguous semantic anchors;
+- untracked dynamic creation/network/process boundaries.
+
+Only guaranteed invariant violations should be called errors. Heuristics should be labeled `Investigate`, not asserted as bugs.
+
+#### Settings integration
+
+Material currently uses persisted positional page indices and ends with Workflow at index 30. Append Diagnostics at **index 31**; do not insert it in the middle.
+
+Waffle Settings maintains a separate positional page array and currently ends at index 18. If Diagnostics is exposed there, append it at **index 19**. Do not force Material/Waffle numeric indices to match; use the semantic page key `diagnostics` for cross-renderer navigation.
+
+Settings-visible explanatory copy must remain terse. Put metric provenance/details in tooltips/inspectors rather than paragraph-length page text.
+
+#### Performance policy
+
+The feature must not become the source of the problem it measures.
+
+Normal Diagnostics session:
+- shell/system CPU/network sampling around 1s is a reasonable starting point;
+- expensive memory/GPU probes can run at a slower cadence;
+- target lifecycle/activity should be event-driven where possible;
+- no whole-QObject-tree polling;
+- no source-tree reparse every sample;
+- bounded histories/ring buffers only.
+
+Target Debug Mode may temporarily increase sampling for one selected target. Stop all high-frequency work when the target/session closes.
+
+Exact intervals are implementation tuning and must be benchmarked on the maintainer's actual environment before being treated as fixed.
+
+#### Workflow polling follow-up
+
+Standalone `CodeWorkflowRuntime` currently has a periodic remote snapshot refresh path. As Diagnostics introduces explicit consumer sessions, consider moving Workflow remote refresh to the same consumer/lease model so Workflows does not poll when neither Workflow nor Diagnostics needs runtime evidence. Do this only when it can preserve current Workflow behavior; it is a follow-up, not a reason to fork the runtime transport.
+
+#### Implementation order
+
+1. Add canonical `TargetRef` / identity collision contracts and regression tests; explicitly prevent Diagnostics-owned labels for Workflow entities.
+2. Add on-demand Diagnostics session IPC with client TTL/heartbeat and prove sampler work is zero when the page is not current.
+3. Add exact shell/system samplers: CPU, RSS/PSS, Swap, IO, system network and capability-detected GPU.
+4. Expand source discovery for dynamic creation APIs, capabilities and custom widgets; report untracked boundaries.
+5. Extend existing Workflow runtime declarations/targets with lifecycle timing/counters instead of adding parallel loader observers.
+6. Add tracked process ownership and descendant resource accounting.
+7. Add tracked network ownership for XHR/curl/helper paths plus explicit attribution-coverage reporting.
+8. Build the Diagnostics Settings UI: system/shell overview, target table, provenance, Resource Owners and process tree.
+9. Add Target Debug Mode: property watches, snapshots/diffs, timelines/traces, leases, footprint measurement and anomaly checks.
+10. Consider native QObject/network inspection and Qt QML Profiler integration only after the pure-QML/runtime-evidence MVP is stable.
+
+#### Validation contracts required before calling the feature complete
+
+Add regression coverage that proves at least:
+
+- `bar -> Bar`, `bar/media -> Bar · Media`, `dashboard -> Dashboard`, `sidebar/left -> Sidebar Left`, `waffle/bar -> Waffle Bar` resolve through Workflow identity and cannot be renamed by Diagnostics;
+- a synthetic future panel is discovered without adding it to a Diagnostics catalog;
+- a new/untracked `LazyLoader` or dynamic creation boundary is reported;
+- a custom widget installed after build can be discovered and registered;
+- a new singleton/service entry is discoverable without Diagnostics hardcoding its name;
+- standalone Settings measures the main shell, not the Settings process;
+- leaving Diagnostics stops all Diagnostics-owned fast timers/processes/samplers even while the page remains cached;
+- identity collisions and orphan telemetry fail/report rather than inventing a second target;
+- multi-output instances remain distinct under one canonical target;
+- reload/family-switch stale generations cannot be mistaken for the new generation;
+- metric UI preserves provenance so kernel-exact values are never presented as component-exact estimates.
+
+Research is complete for the architecture. Remaining unknowns such as real `smaps_rollup` cost, DRM driver coverage and sampler overhead are implementation-time runtime benchmarks, not unresolved architecture questions.
+
 ## 2. v1.0 product direction
 
 Hadalis remains a Quickshell desktop shell built on the existing iNiR architecture. The v1.0 priority is **UI/UX quality without throwing away working iNiR behavior**.
@@ -388,7 +736,8 @@ This section contains **unfinished work only**. When an item is source-complete 
 8. **Calendar/Weather:** finish responsive layout and gesture/transition smoke tests without introducing a second date/weather backend or screenshot-specific geometry.
 9. **ThinkFan/TLP:** validate installed helper/polkit reconciliation, profile-follow synchronization, active-session authorization and uninstall ownership on supported hardware.
 10. **Material-only cleanup:** continue the active-tree residue audit outside intentional migration shims. Recent source work has already removed retired Global Style selectors/actions, dead Welcome/overlay style render trees, and a broad set of shared controls plus Sidebar/plugin/anime leaf branches; focused regression guards now cover those paths. Keep removing remaining live non-Material theme branches/assets/docs only when their callers are proven dead, and do not delete the inert compatibility aliases until the caller audit reaches zero.
-11. **Release validation:** run the canonical local validator plus Niri live smoke tests on the exact candidate SHA; keep Hyprland as a compatibility smoke pass.
+11. **Runtime Diagnostics / Quickshell btop:** architecture research is complete in §1.3. Implement it without creating a second identity/catalog beside Workflows. Diagnostics must be on-demand only while its tab is current; provide CPU/RAM/Swap/GPU/Network with exact-vs-attributed provenance; future QML components/services/custom widgets/dynamic creation boundaries must be discoverable without hardcoded names; start with canonical identity/session contracts and tests before UI.
+12. **Release validation:** run the canonical local validator plus Niri live smoke tests on the exact candidate SHA; keep Hyprland as a compatibility smoke pass.
 
 **Failure-handling requirement:** do not fix a failed fix with another patch on top. Once a commit is demonstrated to be ineffective, revert that failed change first (or revert only its exact change set if unrelated concurrent work shares the commit range), then investigate and implement a different root-cause approach.
 

@@ -10,6 +10,7 @@ Item {
     property string pid: "—"
     property string cpu: "—"
     property string memory: "—"
+    property string memoryLabel: "PSS"
     property string readRate: "—"
     property string writeRate: "—"
     property string gpu: "—"
@@ -78,7 +79,7 @@ Item {
                     Layout.fillWidth: true
                     spacing: 1
                     StyledText {
-                        text: "PSS"
+                        text: root.memoryLabel
                         color: Appearance.colors.colSubtext
                         font.pixelSize: Appearance.font.pixelSize.smallest
                     }
@@ -108,7 +109,7 @@ Item {
                     Layout.fillWidth: true
                     spacing: 1
                     StyledText {
-                        text: "VRAM"
+                        text: "GPU RES"
                         color: Appearance.colors.colSubtext
                         font.pixelSize: Appearance.font.pixelSize.smallest
                     }

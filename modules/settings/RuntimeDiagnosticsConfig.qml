@@ -30,6 +30,7 @@ ContentPage {
         String(root.evidence?.sampler?.error ?? "")
     readonly property bool sessionHasError:
         RuntimeDiagnosticsSession.remoteError.length > 0
+        || RuntimeDiagnosticsSession.evidenceError.length > 0
         || root.samplerError.length > 0
     readonly property bool samplerRunning:
         root.evidence?.sampler?.running === true
@@ -296,6 +297,16 @@ ContentPage {
                 visible: RuntimeDiagnosticsSession.remoteError.length > 0
                 text: Translation.tr("Runtime bridge error") + " · "
                     + RuntimeDiagnosticsSession.remoteError
+                color: Appearance.colors.colError
+                font.pixelSize: Appearance.font.pixelSize.small
+                wrapMode: Text.WordWrap
+            }
+
+            StyledText {
+                Layout.fillWidth: true
+                visible: RuntimeDiagnosticsSession.evidenceError.length > 0
+                text: Translation.tr("Runtime evidence error") + " · "
+                    + RuntimeDiagnosticsSession.evidenceError
                 color: Appearance.colors.colError
                 font.pixelSize: Appearance.font.pixelSize.small
                 wrapMode: Text.WordWrap

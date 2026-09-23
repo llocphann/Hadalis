@@ -93,12 +93,26 @@ Item {
     }
 
     property var runtimeSnapshotCache: ({ outputs: [], records: [] })
+    property string runtimeSnapshotFingerprint: ""
     readonly property var snapshot: root.runtimeSnapshotCache
 
     function refreshRuntimeSnapshot(): void {
         if (!root.workflowOperational)
             return
-        root.runtimeSnapshotCache = CodeWorkflowRuntime.snapshot()
+        const next = CodeWorkflowRuntime.snapshot()
+        let fingerprint = ""
+        try {
+            fingerprint = JSON.stringify(next)
+        } catch (error) {
+            // Snapshot payloads are expected to be plain data. If a future
+            // runtime source is not serializable, prefer a fresh presentation
+            // over suppressing a legitimate update.
+        }
+        if (fingerprint.length > 0
+                && fingerprint === root.runtimeSnapshotFingerprint)
+            return
+        root.runtimeSnapshotFingerprint = fingerprint
+        root.runtimeSnapshotCache = next
     }
     function runtimeEventTargetId(event): string {
         const explicitTargetId = String(event?.targetId ?? "")
@@ -221,7 +235,9 @@ Item {
         return "bytes " + Number(range[0]) + "–" + Number(range[1])
     }
     readonly property var inspectTargets: {
-        if (!root.workflowOperational)
+        if (!root.workflowOperational
+                || (CodeWorkflowSession.targetsPaneCollapsed
+                    && !root.captureHarnessEnabled))
             return []
         const items = []
         const pinnedRuntimeItems = []
@@ -259,7 +275,7 @@ Item {
                 items.push(item)
         }
 
-        for (const target of CodeWorkflowRuntime.activeCatalog) {
+        for (const target of (root.snapshot?.descriptors ?? [])) {
             const revealInternal = root.inspectShowInternals || query.length > 0
             if (target?.internal === true && !revealInternal)
                 continue
@@ -1747,6 +1763,13 @@ Item {
         onTriggered: root.requestAnalysis(false)
     }
 
+    Timer {
+        id: runtimeSnapshotRefreshTimer
+        interval: 90
+        repeat: false
+        onTriggered: root.refreshRuntimeSnapshot()
+    }
+
     onWorkflowActiveChanged: {
         root.syncRemoteRuntimeDemand()
         root.scheduleWorkflowActivation()
@@ -1889,8 +1912,10 @@ Item {
         target: CodeWorkflowRuntime
         enabled: root.workflowOperational
         function onRevisionChanged(): void {
-            root.refreshRuntimeSnapshot()
-            root.syncInitialOutput()
+            // Runtime declarations can emit several revisions in one frame.
+            // Coalesce them, then fingerprint the plain-data snapshot so an
+            // unchanged remote poll does not rebuild Targets/Inspector bindings.
+            runtimeSnapshotRefreshTimer.restart()
         }
     }
 
@@ -1920,6 +1945,7 @@ Item {
         root.workflowHydrated = false
         workflowActivationTimer.stop()
         workflowAnalysisRequestTimer.stop()
+        runtimeSnapshotRefreshTimer.stop()
         CodeWorkflowRuntime.setRemoteConsumerActive(
             root.runtimeRemoteConsumerId, false)
     }

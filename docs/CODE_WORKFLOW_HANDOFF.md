@@ -116,9 +116,13 @@ module work, commit directly to `dev`, and never force-push or modify `stable`.
   parser process, caches per-file semantic projections by exact source SHA, and
   reconciles changed/removed files without turning parser evidence into runtime
   identity. Code Workflow starts the index lazily when the page is active and
-  refreshes it after a successful guarded Source Editor save. Indexed boundaries
-  remain explicitly `editable: false` / `liveRuntimeEvidence: false`; target-list
-  navigation and any reviewed promotion from this workspace index are later gates.
+  refreshes it after a successful guarded Source Editor save. Search or **Show
+  internals** exposes these entries under **Workspace boundaries**; selecting one
+  switches Source Preview to that indexed file and re-resolves its semantic anchor
+  without changing the graph/runtime mutation target. Indexed boundaries remain
+  explicitly `editable: false` / `liveRuntimeEvidence: false`; any reviewed
+  promotion from workspace evidence into live instrumentation or mutation authority
+  is a later gate.
 
 ## Production UI refinement continuation — 2026-09-21
 

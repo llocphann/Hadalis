@@ -598,25 +598,22 @@ Item {
                     activeFocusOnTab: true
                     background: null
 
-                    // The bottom-left popup cannot wait for activeFocus here:
-                    // the compositor only grants keyboard focus after the
-                    // popup has entered editor mode. Observe the pointer press
-                    // itself so the popup can become a keyboard owner first,
-                    // while TextArea keeps its normal selection/caret handling.
+                    // Quick Notes popup pre-arms layer-shell OnDemand focus
+                    // before the first click. Once Qt confirms that TextArea
+                    // really owns active focus, notify the popup so it can hold
+                    // the surface open and promote keyboard ownership safely.
+                    onActiveFocusChanged: {
+                        if (activeFocus)
+                            root.editorActivated()
+                    }
+
+                    // Match the shared Material text-field pointer affordance
+                    // without consuming presses needed by TextArea selection.
                     MouseArea {
                         anchors.fill: parent
                         acceptedButtons: Qt.NoButton
                         hoverEnabled: true
                         cursorShape: Qt.IBeamCursor
-                    }
-
-                    TapHandler {
-                        acceptedButtons: Qt.LeftButton
-                        gesturePolicy: TapHandler.ReleaseWithinBounds
-                        onTapped: {
-                            if (Notepad.ready)
-                                root.editorActivated()
-                        }
                     }
 
                     TextInputContextMenu {

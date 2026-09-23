@@ -210,7 +210,9 @@ Singleton {
     }
 
     onLocalShellChanged: {
-        if (root.pageCurrent && !root.localShell)
+        if (root.localShell)
+            root.remoteError = ""
+        else if (root.pageCurrent)
             root.remoteEvidenceFloorMs = CodeWorkflowRuntime.remoteUpdatedAtMs
         root._syncRemoteRuntimeDemand()
         if (!root.pageCurrent)

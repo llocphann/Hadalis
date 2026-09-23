@@ -19,6 +19,9 @@ ContentPage {
     readonly property var shellEvidence: root.evidence?.shell ?? null
     readonly property var networkEvidence: root.evidence?.network ?? null
     readonly property var discoveryEvidence: root.evidence?.discovery ?? null
+    readonly property var runtimeSnapshot: CodeWorkflowRuntime.snapshot()
+    readonly property var runtimeRecords:
+        root.runtimeSnapshot?.records ?? []
     readonly property var cpuCores:
         root.systemEvidence?.cpu?.coresPercent ?? []
 
@@ -363,6 +366,29 @@ ContentPage {
                 text: Translation.tr("Per-QML resource attribution is intentionally not estimated. Runtime cards report only measurements with reviewed kernel provenance.")
                 color: Appearance.colors.colSubtext
                 font.pixelSize: Appearance.font.pixelSize.small
+                wrapMode: Text.WordWrap
+            }
+        }
+    }
+
+    SettingsCardSection {
+        expanded: true
+        icon: "view_list"
+        title: Translation.tr("Runtime targets")
+
+        SettingsGroup {
+            BtopTargetTable {
+                Layout.fillWidth: true
+                targets: CodeWorkflowRuntime.activeCatalog
+                records: root.runtimeRecords
+                maxRows: 18
+            }
+
+            StyledText {
+                Layout.fillWidth: true
+                text: Translation.tr("Names and identities come from Workflows; Diagnostics does not invent per-component resource percentages.")
+                color: Appearance.colors.colSubtext
+                font.pixelSize: Appearance.font.pixelSize.smallest
                 wrapMode: Text.WordWrap
             }
         }

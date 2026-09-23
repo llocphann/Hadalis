@@ -564,8 +564,9 @@ def sample(pid: int, previous: dict[str, Any] | None) -> tuple[dict[str, Any], d
     aggregate_tx = 0
     aggregate_rx_rate = 0.0
     aggregate_tx_rate = 0.0
-    aggregate_has_rx_rate = False
-    aggregate_has_tx_rate = False
+    aggregate_interface_count = 0
+    aggregate_has_rx_rate = True
+    aggregate_has_tx_rate = True
     for name, counters in sorted(net_now.items()):
         old = prev_net.get(name, {})
         rx_rate = _rate(counters["rxBytes"], old.get("rxBytes"), elapsed_s)
@@ -576,14 +577,17 @@ def sample(pid: int, previous: dict[str, Any] | None) -> tuple[dict[str, Any], d
             "txBytesPerSec": tx_rate,
         }
         if name != "lo":
+            aggregate_interface_count += 1
             aggregate_rx += counters["rxBytes"]
             aggregate_tx += counters["txBytes"]
-            if rx_rate is not None:
+            if rx_rate is None:
+                aggregate_has_rx_rate = False
+            else:
                 aggregate_rx_rate += rx_rate
-                aggregate_has_rx_rate = True
-            if tx_rate is not None:
+            if tx_rate is None:
+                aggregate_has_tx_rate = False
+            else:
                 aggregate_tx_rate += tx_rate
-                aggregate_has_tx_rate = True
 
     if refresh_slow:
         prev_drm = slow_previous.get("drm", {})
@@ -668,10 +672,16 @@ def sample(pid: int, previous: dict[str, Any] | None) -> tuple[dict[str, Any], d
                 "rxBytes": aggregate_rx,
                 "txBytes": aggregate_tx,
                 "rxBytesPerSec": (
-                    aggregate_rx_rate if aggregate_has_rx_rate else None
+                    aggregate_rx_rate
+                    if aggregate_interface_count > 0
+                    and aggregate_has_rx_rate
+                    else None
                 ),
                 "txBytesPerSec": (
-                    aggregate_tx_rate if aggregate_has_tx_rate else None
+                    aggregate_tx_rate
+                    if aggregate_interface_count > 0
+                    and aggregate_has_tx_rate
+                    else None
                 ),
             },
         },

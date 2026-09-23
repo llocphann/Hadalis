@@ -7,10 +7,11 @@ import qs.modules.common
 QtObject {
     id: root
 
-    readonly property int layoutSchemaVersion: 8
+    readonly property int layoutSchemaVersion: 9
     readonly property int retiredTlpPageIndex: 28
     readonly property int overviewPageIndex: 29
     readonly property int codeWorkflowPageIndex: 30
+    readonly property int diagnosticsPageIndex: 31
 
     function snapshot(): var {
         return ({
@@ -183,6 +184,55 @@ QtObject {
                         insertIndex = Math.min(insertIndex, peerIndex)
                 }
                 pages.splice(insertIndex, 0, root.codeWorkflowPageIndex)
+            }
+        }
+
+        // v9 appends Runtime Diagnostics at index 31 without shifting any
+        // existing route. Saved layouts should keep it beside Workflow rather
+        // than discovering it later under a generated More group.
+        if (sourceVersion < 9
+                && !migratedHidden.includes(root.diagnosticsPageIndex)) {
+            for (const group of migratedGroups) {
+                if (!group || !Array.isArray(group.pages))
+                    continue
+                group.pages = group.pages.filter(
+                    index => index !== root.diagnosticsPageIndex)
+            }
+
+            const defaults = SettingsPageRegistry.defaultCategories.find(
+                category => category.pages.includes(root.diagnosticsPageIndex))
+            const peers = defaults?.pages?.filter(
+                index => index !== root.diagnosticsPageIndex) ?? [20, 30, 9, 13]
+
+            let targetIndex = -1
+            let bestScore = -1
+            for (let i = 0; i < migratedGroups.length; i++) {
+                const pages = migratedGroups[i]?.pages ?? []
+                let score = 0
+                for (const peer of peers)
+                    if (pages.includes(peer))
+                        score++
+                if (score > bestScore) {
+                    bestScore = score
+                    targetIndex = i
+                }
+            }
+
+            if (targetIndex >= 0) {
+                const pages = migratedGroups[targetIndex].pages
+                const workflowIndex = pages.indexOf(root.codeWorkflowPageIndex)
+                if (workflowIndex >= 0) {
+                    pages.splice(workflowIndex + 1, 0,
+                        root.diagnosticsPageIndex)
+                } else {
+                    let insertIndex = pages.length
+                    for (const peer of [9, 13]) {
+                        const peerIndex = pages.indexOf(peer)
+                        if (peerIndex >= 0)
+                            insertIndex = Math.min(insertIndex, peerIndex)
+                    }
+                    pages.splice(insertIndex, 0, root.diagnosticsPageIndex)
+                }
             }
         }
 

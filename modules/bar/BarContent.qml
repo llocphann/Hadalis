@@ -296,8 +296,6 @@ Item {
     readonly property bool auroraEverywhere: root.surfaceDialect === "aurora" || root.angelEverywhere
 
     readonly property string nativeBlurTopology: Appearance.blurTopology.unsupported
-    readonly property bool nativeBlurGeometryExact:
-        Appearance.blurTopologyExact(root.nativeBlurTopology)
     readonly property bool nativeBlurActive: Appearance.useCompositorBlur(
             "bar", root.nativeBlurTopology)
         && root.nativeBlurAllowed

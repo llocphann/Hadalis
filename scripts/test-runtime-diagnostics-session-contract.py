@@ -28,6 +28,7 @@ for token in (
     "readonly property int leaseTtlMs: 6000",
     "readonly property int maxLeases: 16",
     "readonly property int sampleIntervalMs: 1000",
+    "readonly property int historyLimit: 60",
     "property var leases: ({})",
     "readonly property int leaseCount:",
     "readonly property bool sessionActive:",
@@ -47,6 +48,7 @@ for token in (
     '"--pid", String(Quickshell.processId)',
     '"--interval-ms", String(root.sampleIntervalMs)',
     "sampleIntervalMs: root.sampleIntervalMs",
+    "historyLimit: root.historyLimit",
     "stdout: SplitParser {",
 ):
     require(diagnostics, token, "RuntimeDiagnostics lease authority is incomplete")

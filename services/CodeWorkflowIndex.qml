@@ -11,6 +11,7 @@ Singleton {
     property string error: ""
     property bool _pendingRefresh: false
     property bool _pendingForce: false
+    property bool _cancelled: false
 
     readonly property var boundaries:
         root.status === "ready"
@@ -29,6 +30,7 @@ Singleton {
         + "/inir/code-workflow-runtime-boundaries-v1.json"
 
     function refresh(force: bool): void {
+        root._cancelled = false
         if (indexProcess.running) {
             root._pendingRefresh = true
             root._pendingForce = root._pendingForce || force
@@ -48,7 +50,26 @@ Singleton {
         indexProcess.running = true
     }
 
+    function cancel(): void {
+        root._pendingRefresh = false
+        root._pendingForce = false
+        if (!indexProcess.running) {
+            if (root.status === "indexing")
+                root.status = "idle"
+            return
+        }
+        root._cancelled = true
+        indexProcess.running = false
+    }
+
     function _finish(exitCode: int): void {
+        if (root._cancelled) {
+            root._cancelled = false
+            root.status = "idle"
+            root.error = ""
+            return
+        }
+
         const raw = String(indexStdout.text ?? "").trim()
         let payload = null
         try {

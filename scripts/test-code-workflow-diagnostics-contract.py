@@ -231,6 +231,7 @@ for page in (material_page, waffle_page):
         "RuntimeDiagnosticsSession.evidence",
         "RuntimeDiagnosticsSession.leaseError",
         "Diagnostics lease error",
+        "textFormat: Text.PlainText",
         "RuntimeDiagnosticsSession.remoteError",
         "Runtime bridge error",
         "root.evidence?.system ?? null",

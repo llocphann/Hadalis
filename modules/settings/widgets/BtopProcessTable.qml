@@ -76,6 +76,8 @@ Item {
                 Layout.bottomMargin: 8
 
                 StyledText {
+
+                    textFormat: Text.PlainText
                     Layout.fillWidth: true
                     text: "Shell descendants"
                     color: Appearance.colors.colOnLayer1
@@ -83,6 +85,8 @@ Item {
                 }
 
                 StyledText {
+
+                    textFormat: Text.PlainText
                     text: String(root.processes.length)
                     color: Appearance.colors.colPrimary
                     font.weight: Font.DemiBold
@@ -95,6 +99,8 @@ Item {
                 spacing: 8
 
                 StyledText {
+
+                    textFormat: Text.PlainText
                     Layout.preferredWidth: 64
                     text: "PID"
                     color: Appearance.colors.colSubtext
@@ -103,6 +109,8 @@ Item {
                 }
 
                 StyledText {
+
+                    textFormat: Text.PlainText
                     Layout.fillWidth: true
                     text: "COMM"
                     color: Appearance.colors.colSubtext
@@ -111,6 +119,8 @@ Item {
                 }
 
                 StyledText {
+
+                    textFormat: Text.PlainText
                     Layout.preferredWidth: 72
                     horizontalAlignment: Text.AlignRight
                     text: "CPU"
@@ -120,6 +130,8 @@ Item {
                 }
 
                 StyledText {
+
+                    textFormat: Text.PlainText
                     Layout.preferredWidth: 86
                     horizontalAlignment: Text.AlignRight
                     text: "RSS"
@@ -129,6 +141,8 @@ Item {
                 }
 
                 StyledText {
+
+                    textFormat: Text.PlainText
                     visible: root.showSwapColumn
                     Layout.preferredWidth: 86
                     horizontalAlignment: Text.AlignRight
@@ -160,6 +174,8 @@ Item {
                         spacing: 8
 
                         StyledText {
+
+                            textFormat: Text.PlainText
                             Layout.preferredWidth: 64
                             text: String(parent.parent.process?.pid ?? "—")
                             font.family: Appearance.font.family.monospace
@@ -168,6 +184,8 @@ Item {
                         }
 
                         StyledText {
+
+                            textFormat: Text.PlainText
                             Layout.fillWidth: true
                             text: "  ".repeat(root.depthFor(
                                     parent.parent.process))
@@ -182,6 +200,8 @@ Item {
                         }
 
                         StyledText {
+
+                            textFormat: Text.PlainText
                             Layout.preferredWidth: 72
                             horizontalAlignment: Text.AlignRight
                             text: root.formatPercent(
@@ -192,6 +212,8 @@ Item {
                         }
 
                         StyledText {
+
+                            textFormat: Text.PlainText
                             Layout.preferredWidth: 86
                             horizontalAlignment: Text.AlignRight
                             text: root.formatKiB(
@@ -203,6 +225,8 @@ Item {
                         }
 
                         StyledText {
+
+                            textFormat: Text.PlainText
                             visible: root.showSwapColumn
                             Layout.preferredWidth: 86
                             horizontalAlignment: Text.AlignRight
@@ -227,6 +251,8 @@ Item {
             }
 
             StyledText {
+
+                textFormat: Text.PlainText
                 Layout.fillWidth: true
                 visible: root.processes.length === 0
                 Layout.topMargin: 10
@@ -236,6 +262,8 @@ Item {
             }
 
             StyledText {
+
+                textFormat: Text.PlainText
                 Layout.fillWidth: true
                 visible: root.processes.length > root.visibleProcesses.length
                 Layout.topMargin: 8
@@ -247,6 +275,8 @@ Item {
             }
 
             StyledText {
+
+                textFormat: Text.PlainText
                 Layout.fillWidth: true
                 Layout.topMargin: 8
                 text: "/proc/<pid>/comm · task schedstat · /proc/<pid>/status"

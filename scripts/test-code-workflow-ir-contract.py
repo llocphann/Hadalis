@@ -824,6 +824,7 @@ for token in (
     "padding + (height - padding * 2 - fittedHeight) / 2",
     "id: minimapViewport",
     "CodeWorkflowSession.minimapEnabled",
+    "model: minimap.visible ? root.nodes : []",
     "function reasoningSelectionFor(mode: string): var",
     "const traversedEdges = ({})",
     'const selectedEdgeId = String(selectedEdge?.id ?? "")',

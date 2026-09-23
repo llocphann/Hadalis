@@ -2484,6 +2484,7 @@ Item {
 
                     RippleButtonWithIcon {
                         Layout.fillWidth: true
+                        Layout.minimumWidth: 0
                         materialIcon: root.inspectShowInternals
                             ? "visibility_off" : "account_tree"
                         mainText: root.inspectShowInternals
@@ -2493,7 +2494,9 @@ Item {
                     }
 
                     RippleButtonWithIcon {
+                        id: refreshWorkspaceIndexButton
                         Layout.fillWidth: true
+                        Layout.minimumWidth: 0
                         materialIcon: CodeWorkflowIndex.status === "indexing"
                             ? "progress_activity" : "refresh"
                         mainText: CodeWorkflowIndex.status === "indexing"

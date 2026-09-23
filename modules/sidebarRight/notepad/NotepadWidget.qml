@@ -19,8 +19,15 @@ Item {
     // Keep the same editor/autosave backend while hiding Dashboard/Sidebar
     // navigation chrome that would slow down a one-thought interaction.
     property bool quickCapturePresentation: false
+    // Quick Notes can coexist on Dashboard, Sidebar Left and the bottom-left
+    // corner. In that mode each surface keeps the stable ID of the note it is
+    // actually displaying instead of letting another surface's currentTab
+    // change steal the editor out from under an in-progress draft.
+    property bool surfaceLocalTabSelection: false
     readonly property bool narrowCompact:
         root.compactPresentation && root.width > 0 && root.width < 260
+    readonly property bool veryNarrowCompact:
+        root.compactPresentation && root.width > 0 && root.width < 220
 
     // Style tokens (5-style support)
     readonly property color colText: Appearance.angelEverywhere ? Appearance.angel.colText
@@ -118,18 +125,43 @@ Item {
     // current editor first so an 800ms autosave still pending in the old tab
     // can never be written into, or discarded by, the newly-selected tab.
     function switchToTab(index): void {
+        if (!Notepad.ready || index < 0 || index >= Notepad.tabs.length)
+            return
+        const targetId = String(Notepad.tabs[index]?.id ?? "")
         root.flushPendingSave()
-        Notepad.switchTab(index)
+        if (!Notepad.switchTab(index))
+            return
+        if (root.surfaceLocalTabSelection)
+            root._loadTabById(targetId)
     }
 
     function addTabSafely(): void {
         root.flushPendingSave()
-        Notepad.addTab()
+        if (!Notepad.addTab())
+            return
+        if (root.surfaceLocalTabSelection)
+            root._loadActiveTab()
     }
 
     function removeTabSafely(index): void {
+        if (!Notepad.ready || index < 0 || index >= Notepad.tabs.length)
+            return
+        const removedId = String(Notepad.tabs[index]?.id ?? "")
+        const removingDisplayedTab = removedId === root._loadedTabId
+        let fallbackId = ""
+        if (removingDisplayedTab && Notepad.tabs.length > 1) {
+            const fallbackIndex = index + 1 < Notepad.tabs.length ? index + 1 : index - 1
+            fallbackId = String(Notepad.tabs[fallbackIndex]?.id ?? "")
+        }
+
         root.flushPendingSave()
-        Notepad.removeTab(index)
+        if (!Notepad.removeTab(index))
+            return
+
+        if (root.surfaceLocalTabSelection && removingDisplayedTab) {
+            if (!root._loadTabById(fallbackId))
+                root._loadActiveTab()
+        }
     }
 
     // When this widget gets focus (from BottomWidgetGroup.focusActiveItem),
@@ -148,14 +180,24 @@ Item {
     property bool _loadingTab: false
     property string _loadedTabId: ""
 
-    function _loadActiveTab() {
+    function _loadTabById(tabId): bool {
         if (!Notepad.ready)
-            return
+            return false
+        const id = String(tabId ?? "")
+        const index = Notepad.indexForTabId(id)
+        if (!id || index < 0)
+            return false
+
         saveTimer.stop()
         root._loadingTab = true
-        root._loadedTabId = root._activeTabId()
-        textArea.text = Notepad.text
+        root._loadedTabId = id
+        textArea.text = String(Notepad.tabs[index]?.text ?? "")
         root._loadingTab = false
+        return true
+    }
+
+    function _loadActiveTab(): bool {
+        return root._loadTabById(root._activeTabId())
     }
 
     // The TextArea.text binding to Notepad.text breaks the moment the user
@@ -164,12 +206,41 @@ Item {
     Connections {
         target: Notepad
         function onCurrentTabChanged() {
+            if (root.surfaceLocalTabSelection) {
+                if (!root._loadedTabId)
+                    root._loadActiveTab()
+                return
+            }
             root.flushPendingSave()
             root._loadActiveTab()
         }
         function onTabsChanged() {
             if (!Notepad.ready)
                 return
+
+            if (root.surfaceLocalTabSelection) {
+                if (!root._loadedTabId) {
+                    root._loadActiveTab()
+                    return
+                }
+                if (Notepad.indexForTabId(root._loadedTabId) < 0) {
+                    // Another surface may delete this note before Notepad has
+                    // finished repairing currentTab. Reconcile after the
+                    // service mutation completes instead of loading a transient
+                    // array index.
+                    Qt.callLater(() => {
+                        if (Notepad.ready
+                                && Notepad.indexForTabId(root._loadedTabId) < 0)
+                            root._loadActiveTab()
+                    })
+                    return
+                }
+                if (!saveTimer.running
+                        && textArea.text !== root._loadedTabText())
+                    root._loadTabById(root._loadedTabId)
+                return
+            }
+
             if (root._loadedTabId !== root._activeTabId()) {
                 root.flushPendingSave()
                 root._loadActiveTab()
@@ -266,7 +337,9 @@ Item {
                             id: tabPill
                             required property var modelData
                             required property int index
-                            readonly property bool active: index === Notepad.currentTab
+                            readonly property bool active: root.surfaceLocalTabSelection
+                                ? String(modelData?.id ?? "") === root._loadedTabId
+                                : index === Notepad.currentTab
                             width: tabLabel.implicitWidth + (tabCount > 1 ? closeBtn.width + 16 : 16)
                             height: 26
                             radius: 13
@@ -383,7 +456,7 @@ Item {
             }
 
             NotepadToolButton {
-                visible: root.compactPresentation
+                visible: root.compactPresentation && !root.veryNarrowCompact
                 icon: "content_paste"
                 tooltipText: Translation.tr("Paste from clipboard")
                 enabled: Notepad.ready

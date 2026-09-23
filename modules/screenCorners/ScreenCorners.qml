@@ -12,6 +12,23 @@ import Quickshell.Hyprland
 Scope {
     id: screenCorners
     readonly property Toplevel activeWindow: ToplevelManager.activeToplevel
+
+    // Keyboard capture is exclusive across outputs. Hover previews can be
+    // transient on more than one monitor, but once one Quick Notes editor is
+    // clicked, keep every other bottom-left trigger dormant until it releases.
+    property string quickNotesEditorOutput: ""
+
+    function setQuickNotesEditorOutput(outputName, focused): void {
+        const name = String(outputName ?? "")
+        if (focused) {
+            if (name)
+                screenCorners.quickNotesEditorOutput = name
+            return
+        }
+        if (screenCorners.quickNotesEditorOutput === name)
+            screenCorners.quickNotesEditorOutput = ""
+    }
+
     property var actionForCorner: ({
         "topLeft": outputName => GlobalStates.toggleSidebarLeft(outputName),
         "bottomLeft": outputName => GlobalStates.toggleSidebarLeft(outputName),
@@ -129,6 +146,8 @@ Scope {
             (Config.options?.panelFamily ?? "ii") !== "waffle"
             && (Config.options?.quickNotes?.enable ?? true)
             && cornerPanelWindow.quickNotesMonitorAllowed
+            && (screenCorners.quickNotesEditorOutput.length === 0
+                || screenCorners.quickNotesEditorOutput === outputName)
             && cornerPanelWindow.isBottomLeft
             && !cornerPanelWindow.shouldShowOrbitHotCorner
             && !cornerPanelWindow.orbitConflictsWithNiriOverview
@@ -261,6 +280,11 @@ Scope {
             Loader {
                 id: quickNotesCornerLoader
                 active: cornerPanelWindow.shouldShowQuickNotesCorner
+                onActiveChanged: {
+                    if (!active)
+                        screenCorners.setQuickNotesEditorOutput(
+                            cornerPanelWindow.outputName, false)
+                }
                 anchors {
                     bottom: parent.bottom
                     left: parent.left
@@ -310,6 +334,9 @@ Scope {
                         anchorItem: quickNotesAnchor
                         cornerAttachmentEdge: cornerPanelWindow.quickNotesAttachmentEdge
                         cornerAttachmentThickness: cornerPanelWindow.quickNotesAttachmentThickness
+                        onEditorFocusedChanged:
+                            screenCorners.setQuickNotesEditorOutput(
+                                cornerPanelWindow.outputName, editorFocused)
                     }
                 }
             }

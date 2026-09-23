@@ -2450,7 +2450,7 @@ Singleton {
                 property JsonObject right: JsonObject {
                     property list<string> enabledWidgets: ["calendar", "events", "todo", "calculator", "sysmon", "weather"]
                     property list<string> controlsSectionOrder: ["sliders", "toggles", "devices", "media", "quickActions"]
-                    property list<string> sectionOrder: ["system", "sliders", "toggles", "notifications", "widgets"]
+                    property list<string> sectionOrder: ["system", "sliders", "toggles", "widgets"]
                     property string headerStyle: "profile"
                     property string headerBanner: "wallpaper"
                     property string headerBannerPath: ""

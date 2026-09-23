@@ -37,17 +37,20 @@ Item {
         root.peak(root.rxSamples),
         root.peak(root.txSamples))
 
-    implicitHeight: (rxTotal.length > 0 || txTotal.length > 0)
-        ? (provenance.length > 0 ? 168 : 150)
-        : (provenance.length > 0 ? 150 : 132)
+    implicitHeight: networkColumn.implicitHeight + 24
 
     Rectangle {
         anchors.fill: parent
         radius: Appearance.rounding.normal
         color: Appearance.colors.colLayer1
-        border.color: Appearance.colors.colOutline
+        border.color: Qt.rgba(
+            root.rxColor.r,
+            root.rxColor.g,
+            root.rxColor.b,
+            0.42)
 
         ColumnLayout {
+            id: networkColumn
             anchors.fill: parent
             anchors.margins: 12
             spacing: 8
@@ -57,7 +60,8 @@ Item {
 
                 StyledText {
                     text: root.title
-                    color: Appearance.colors.colOnLayer1
+                    color: root.rxColor
+                    font.family: Appearance.font.family.monospace
                     font.weight: Font.DemiBold
                 }
 
@@ -72,6 +76,7 @@ Item {
                 StyledText {
                     text: root.txPrefix + root.tx
                     color: root.txColor
+                    font.family: Appearance.font.family.monospace
                     font.weight: Font.DemiBold
                 }
             }
@@ -155,6 +160,7 @@ Item {
                 text: root.provenance
                 color: Appearance.colors.colSubtext
                 opacity: 0.78
+                font.family: Appearance.font.family.monospace
                 font.pixelSize: Appearance.font.pixelSize.smallest
                 elide: Text.ElideRight
             }

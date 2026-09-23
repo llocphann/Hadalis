@@ -585,6 +585,9 @@ for token in (
     require(canvas, token, "graph reasoning canvas missing " + token)
 for token in (
     "function runtimeEventTargetId(event): string",
+    'const explicitTargetId = String(event?.targetId ?? "")',
+    "if (explicitTargetId.length > 0)",
+    "return explicitTargetId",
     "function runtimeEventTimeText(event): string",
     "readonly property string runtimeActivityTargetId:",
     "readonly property var runtimeActivityEvents:",

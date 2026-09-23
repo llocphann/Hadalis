@@ -60,6 +60,8 @@ for token in (
     "alternativeVisibleCondition: root.editorFocused",
     "keyboardFocus: root.editorFocused",
     "closeOnOutsideClick: root.editorFocused",
+    "width: parent ? parent.width : implicitWidth",
+    "height: parent ? parent.height : implicitHeight",
     "id: notesEditorLoader",
     "active: root.active",
     "sourceComponent: NotepadWidget {",

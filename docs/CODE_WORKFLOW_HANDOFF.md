@@ -54,7 +54,8 @@ module work, commit directly to `dev`, and never force-push or modify `stable`.
   Manual membership derives from canonical reviewed node IDs and never widens
   mutation authority. Marquee reasoning is snapshotted before drag: release keeps
   the visual set, while pointer/compositor cancellation restores the exact prior
-  reasoning mode, node set and edge set.
+  reasoning mode, node set and edge set. **Clear graph focus** clears only this
+  presentation reasoning state, leaving the primary Inspector/mutation target intact.
 - Presentation layout now survives shell restarts: graph/node offsets are stored
   in typed workspace state as validated JSON, remain strictly editor-only, and
   are pruned against the current reviewed IR during restore. Corrupt or stale

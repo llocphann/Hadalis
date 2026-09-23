@@ -477,7 +477,7 @@ for function_name in (
 ):
     function_start = canvas.index("function " + function_name + "(): void")
     function_prefix = canvas[function_start:function_start + 180]
-    require(function_prefix, "if (!root.workflowActive)",
+    require(function_prefix, "if (!root.workflowActive",
             "deferred canvas callback must stop while hidden: " + function_name)
 
 if 'Qt.callLater(() => CodeWorkflowIndex.refresh(false))' in page:

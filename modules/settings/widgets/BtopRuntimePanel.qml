@@ -11,6 +11,7 @@ Item {
     property string cpu: "—"
     property string memory: "—"
     property string memoryLabel: "PSS"
+    property string swap: "—"
     property string readRate: "—"
     property string writeRate: "—"
     property string gpu: "—"
@@ -135,6 +136,14 @@ Item {
             RowLayout {
                 Layout.fillWidth: true
                 spacing: 16
+
+                StyledText {
+                    Layout.fillWidth: true
+                    text: "SWAP " + root.swap
+                    color: Appearance.colors.colSubtext
+                    font.family: Appearance.font.family.monospace
+                    font.pixelSize: Appearance.font.pixelSize.small
+                }
 
                 StyledText {
                     Layout.fillWidth: true

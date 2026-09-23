@@ -98,6 +98,7 @@ def main() -> None:
         "root.formatUptime(",
         "root.sampleIntervalLabel()",
         'Translation.tr("history")',
+        "textFormat: Text.PlainText",
         "function shellGpuBusy(): var {",
         "function shellGpuMemoryKiB(): var {",
         "return found ? total : null",
@@ -152,6 +153,11 @@ def main() -> None:
             text,
             "Appearance.rounding.small",
             f"{source} compact btop geometry",
+        )
+        require(
+            text,
+            "textFormat: Text.PlainText",
+            f"{source} plain diagnostics text",
         )
 
     for source, text in (

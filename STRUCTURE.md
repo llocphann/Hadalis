@@ -102,10 +102,11 @@ Retired Bar keys such as `appearanceStyle`, `bar.m3`, `bar.pill`, and Bar-specif
 ### Classic Bar
 - `modules/bar/` — Classic Bar runtime.
 - `modules/bar/StyledPopup.qml` — existing popup abstraction with connected perimeter geometry/frame/mask integration.
-- `modules/settings/BarConfig.qml` — Classic Bar settings.
+- `modules/settings/BarConfig.qml` — canonical Classic Bar + Screen Edge settings page; no compatibility facade sits in front of it.
 - `bar.bottom` + `bar.vertical` — placement.
-- `bar.cornerStyle` — Hug/Float/Rectangle/Card geometry.
-- `bar.blurBackground` — native compositor blur controls.
+- `bar.cornerStyle` — compatibility-only persisted field normalized to Hug (`0`); it is not a renderer selector.
+- `bar.opacity` + `bar.borderless` — active Bar surface controls.
+- `appearance.screenEdge.width` + `appearance.screenEdge.radius` + `appearance.screenEdge.physicalShadow` — physical perimeter controls surfaced by Bar settings.
 - `bar.autoHide.showWhenPressingSuper` — Super-key reveal behavior.
 
 ### Dock

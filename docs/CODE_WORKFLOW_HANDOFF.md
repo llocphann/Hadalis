@@ -122,7 +122,12 @@ module work, commit directly to `dev`, and never force-push or modify `stable`.
   without changing the graph/runtime mutation target. Indexed boundaries remain
   explicitly `editable: false` / `liveRuntimeEvidence: false`; any reviewed
   promotion from workspace evidence into live instrumentation or mutation authority
-  is a later gate.
+  is a later gate. Runtime Diagnostics now reuses this same Workflow-owned index:
+  while its lease is active it refreshes the cached index, reconciles boundary
+  source paths against the canonical runtime catalog, and reports matched versus
+  source-only counts in both Settings renderers. Workflow Inspector also summarizes
+  the boundary kinds for the currently inspected source. None of these source
+  matches are promoted to execution evidence or per-component resource attribution.
 
 ## Production UI refinement continuation — 2026-09-21
 

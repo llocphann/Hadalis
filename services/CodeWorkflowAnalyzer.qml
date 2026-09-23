@@ -19,6 +19,7 @@ Singleton {
     property string _pendingNeedle: ""
     property string _pendingSemanticAnchor: ""
     property bool _pendingForce: false
+    property bool _cancelled: false
 
     readonly property int entryCount: root.result?.entries?.length ?? 0
 
@@ -29,6 +30,7 @@ Singleton {
         if (nextPath.length === 0)
             return
 
+        root._cancelled = false
         if (analyzerProcess.running) {
             root._pendingPath = nextPath
             root._pendingNeedle = nextNeedle
@@ -70,7 +72,26 @@ Singleton {
         analyzerProcess.running = true
     }
 
+    function cancel(): void {
+        root._pendingPath = ""
+        root._pendingNeedle = ""
+        root._pendingSemanticAnchor = ""
+        root._pendingForce = false
+        root._cancelled = true
+        if (analyzerProcess.running)
+            analyzerProcess.running = false
+        else if (root.status === "analyzing")
+            root.status = "idle"
+    }
+
     function _finish(exitCode: int): void {
+        if (root._cancelled) {
+            root._cancelled = false
+            root.status = "idle"
+            root.error = ""
+            return
+        }
+
         const raw = String(analyzerStdout.text ?? "").trim()
         let payload = null
         try {

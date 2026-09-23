@@ -124,6 +124,8 @@ for token in (
     "function beginEditing(): void",
     "function saveDraft(): bool",
     "Notepad.setTabTextById(root.draftTabId, root.draft)",
+    "root.draft.trim() : Notepad.text.trim()",
+    'if (root.editing)\n                            root.draft = ""',
     "function cancelEditing(): void",
 ):
     require(sidebar_quick_note, token,

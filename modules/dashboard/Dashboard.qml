@@ -132,7 +132,7 @@ Scope {
         color: "transparent"
         // Keep the native layer-shell surface mapped after first use. Mapping
         // and unmapping a fullscreen Overlay lets the compositor substitute its
-        // own map effect, which visually masked the 24px Dashboard slide.
+        // own map effect, which visually masked the Dashboard slide.
         visible: true
         updatesEnabled: root._renderUpdatesNeeded
 
@@ -239,6 +239,10 @@ Scope {
                         duration: SurfaceMotion.dashboardEnterDuration
                         easing.type: SurfaceMotion.dashboardEnterEasingType
                     }
+                    onRunningChanged: {
+                        if (!running && root._presentedOpen)
+                            root._slideLayerActive = false
+                    }
                 },
                 Transition {
                     to: "closed"
@@ -248,10 +252,6 @@ Scope {
                         property: "panelTranslateY"
                         duration: SurfaceMotion.dashboardExitDuration
                         easing.type: SurfaceMotion.dashboardExitEasingType
-                    }
-                    onRunningChanged: {
-                        if (!running && root._presentedOpen)
-                            root._slideLayerActive = false
                     }
                 }
             ]

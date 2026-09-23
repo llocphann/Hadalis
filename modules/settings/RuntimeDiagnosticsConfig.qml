@@ -157,11 +157,12 @@ ContentPage {
         const result = []
         for (const point of history) {
             const raw = point ? point[key] : undefined
-            if (raw === null || raw === undefined)
+            if (raw === null || raw === undefined) {
+                result.push(null)
                 continue
+            }
             const value = Number(raw)
-            if (Number.isFinite(value))
-                result.push(value)
+            result.push(Number.isFinite(value) ? value : null)
         }
         return result
     }

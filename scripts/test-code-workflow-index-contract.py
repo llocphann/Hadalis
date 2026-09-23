@@ -199,4 +199,15 @@ with tempfile.TemporaryDirectory(prefix="hadalis-workflow-index-") as tmp:
     if kinds != ["process", "timer"]:
         raise SystemExit("FAIL: reconciled runtime boundaries are incomplete")
 
+    source.unlink()
+    fourth = run_index(fixture_root, cache)
+    if (
+        fourth.get("filesScanned") != 0
+        or fourth.get("filesParsed") != 0
+        or fourth.get("cacheHits") != 0
+        or fourth.get("boundaryCount") != 0
+        or fourth.get("filesRemoved") != ["Boundary.qml"]
+    ):
+        raise SystemExit("FAIL: removed QML must be pruned from the cached index")
+
 print("ok - Code Workflow cached runtime-boundary index contract")

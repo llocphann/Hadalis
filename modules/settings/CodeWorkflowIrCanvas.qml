@@ -2455,7 +2455,11 @@ Item {
         }
 
         Repeater {
-            model: root.nodes
+            // An invisible minimap used to retain one extra Rectangle/binding
+            // subtree for every graph node. Keep the cheap viewport shell, but
+            // materialize node markers only while the minimap is actually
+            // needed by the current viewport.
+            model: minimap.visible ? root.nodes : []
 
             delegate: Rectangle {
                 required property var modelData

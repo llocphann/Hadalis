@@ -26,6 +26,9 @@ ContentPage {
         root.systemEvidence?.cpu?.coresPercent ?? []
 
     function percentOf(used, total): var {
+        if (used === null || used === undefined
+                || total === null || total === undefined)
+            return null
         const usedValue = Number(used)
         const totalValue = Number(total)
         if (!Number.isFinite(usedValue)
@@ -48,11 +51,15 @@ ContentPage {
     }
 
     function formatPercent(value): string {
+        if (value === null || value === undefined)
+            return "—"
         const number = Number(value)
         return Number.isFinite(number) ? number.toFixed(1) + "%" : "—"
     }
 
     function formatKiB(value): string {
+        if (value === null || value === undefined)
+            return "—"
         const kib = Number(value)
         if (!Number.isFinite(kib) || kib < 0)
             return "—"
@@ -73,6 +80,8 @@ ContentPage {
     }
 
     function formatUptime(value): string {
+        if (value === null || value === undefined)
+            return "—"
         const seconds = Number(value)
         if (!Number.isFinite(seconds) || seconds < 0)
             return "—"
@@ -88,6 +97,8 @@ ContentPage {
     }
 
     function formatBytes(value): string {
+        if (value === null || value === undefined)
+            return "—"
         const bytes = Number(value)
         if (!Number.isFinite(bytes) || bytes < 0)
             return "—"
@@ -101,6 +112,8 @@ ContentPage {
     }
 
     function formatRate(value): string {
+        if (value === null || value === undefined)
+            return "—"
         const bytes = Number(value)
         if (!Number.isFinite(bytes) || bytes < 0)
             return "—"
@@ -129,25 +142,31 @@ ContentPage {
             ? root.evidence.history : []
         const result = []
         for (const point of history) {
-            const value = Number(point ? point[key] : undefined)
+            const raw = point ? point[key] : undefined
+            if (raw === null || raw === undefined)
+                continue
+            const value = Number(raw)
             if (Number.isFinite(value))
                 result.push(value)
         }
         return result
     }
 
-    function shellGpuBusy(): real {
+    function shellGpuBusy(): var {
         const engines = root.shellEvidence?.gpu?.engineBusyPercent ?? ({})
-        let peak = -1
+        let peak = null
         for (const key of Object.keys(engines)) {
-            const value = Number(engines[key])
+            const raw = engines[key]
+            if (raw === null || raw === undefined)
+                continue
+            const value = Number(raw)
             if (Number.isFinite(value))
-                peak = Math.max(peak, value)
+                peak = peak === null ? value : Math.max(peak, value)
         }
         return peak
     }
 
-    function shellGpuMemoryKiB(): real {
+    function shellGpuMemoryKiB(): var {
         const memory = root.shellEvidence?.gpu?.memoryKiB ?? ({})
         let total = 0
         let found = false
@@ -160,7 +179,7 @@ ContentPage {
             total += value
             found = true
         }
-        return found ? total : -1
+        return found ? total : null
     }
 
     SettingsCardSection {

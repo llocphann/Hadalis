@@ -67,6 +67,8 @@ WSettingsPage {
         const bytes = Number(value)
         if (!Number.isFinite(bytes) || bytes < 0)
             return "—"
+        if (bytes >= 1024 * 1024 * 1024)
+            return (bytes / (1024 * 1024 * 1024)).toFixed(2) + " GiB/s"
         if (bytes >= 1024 * 1024)
             return (bytes / (1024 * 1024)).toFixed(1) + " MiB/s"
         if (bytes >= 1024)

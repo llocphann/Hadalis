@@ -22,6 +22,26 @@ Item {
     readonly property var residentRecords:
         root.targetRecords.filter(record =>
             String(record?.state ?? "") === "resident")
+    readonly property var selectedRecord: {
+        if (root.selectedInstanceId.length > 0) {
+            const selected = root.targetRecords.find(record =>
+                String(record?.instanceId ?? "")
+                    === root.selectedInstanceId)
+            if (selected)
+                return selected
+        }
+        return root.residentRecords.length > 0
+            ? root.residentRecords[0] : null
+    }
+    readonly property var primitiveRows: {
+        const values = root.selectedRecord?.values ?? null
+        if (!values || typeof values !== "object")
+            return []
+        return Object.keys(values).sort().map(key => ({
+            key: key,
+            value: values[key]
+        }))
+    }
     readonly property var targetEvents: {
         const matches = (Array.isArray(root.events) ? root.events : [])
             .filter(event =>
@@ -249,6 +269,137 @@ Item {
                 text: "No runtime instances"
                 color: Appearance.colors.colSubtext
                 font.pixelSize: Appearance.font.pixelSize.small
+            }
+
+            GridLayout {
+                Layout.fillWidth: true
+                visible: root.selectedRecord !== null
+                columns: width >= 620 ? 2 : 1
+                columnSpacing: 12
+                rowSpacing: 8
+
+                Rectangle {
+                    Layout.fillWidth: true
+                    implicitHeight: geometryColumn.implicitHeight + 16
+                    radius: Appearance.rounding.small
+                    color: Appearance.colors.colLayer2
+
+                    ColumnLayout {
+                        id: geometryColumn
+                        anchors.fill: parent
+                        anchors.margins: 8
+                        spacing: 2
+
+                        StyledText {
+                            text: "GEOMETRY"
+                            color: Appearance.colors.colSubtext
+                            font.pixelSize: Appearance.font.pixelSize.smallest
+                        }
+
+                        StyledText {
+                            Layout.fillWidth: true
+                            text: root.selectedRecord?.rect
+                                ? Math.round(
+                                    Number(root.selectedRecord.rect.x ?? 0))
+                                    + "," + Math.round(
+                                        Number(root.selectedRecord.rect.y ?? 0))
+                                    + "  "
+                                    + Math.round(Number(
+                                        root.selectedRecord.rect.width ?? 0))
+                                    + "×" + Math.round(Number(
+                                        root.selectedRecord.rect.height ?? 0))
+                                : "—"
+                            color: Appearance.colors.colOnLayer1
+                            font.family: Appearance.font.family.monospace
+                            font.pixelSize: Appearance.font.pixelSize.small
+                            elide: Text.ElideRight
+                        }
+                    }
+                }
+
+                Rectangle {
+                    Layout.fillWidth: true
+                    implicitHeight: runtimeColumn.implicitHeight + 16
+                    radius: Appearance.rounding.small
+                    color: Appearance.colors.colLayer2
+
+                    ColumnLayout {
+                        id: runtimeColumn
+                        anchors.fill: parent
+                        anchors.margins: 8
+                        spacing: 2
+
+                        StyledText {
+                            text: "RUNTIME"
+                            color: Appearance.colors.colSubtext
+                            font.pixelSize: Appearance.font.pixelSize.smallest
+                        }
+
+                        StyledText {
+                            Layout.fillWidth: true
+                            text: root.lifecycleFor(root.selectedRecord)
+                                + " · "
+                                + (String(
+                                    root.selectedRecord?.output ?? "")
+                                    || "no output")
+                            color: Appearance.colors.colOnLayer1
+                            font.family: Appearance.font.family.monospace
+                            font.pixelSize: Appearance.font.pixelSize.small
+                            elide: Text.ElideRight
+                        }
+                    }
+                }
+            }
+
+            StyledText {
+                Layout.fillWidth: true
+                visible: root.primitiveRows.length > 0
+                text: "Live primitive values"
+                color: Appearance.colors.colOnLayer1
+                font.weight: Font.DemiBold
+                font.pixelSize: Appearance.font.pixelSize.small
+            }
+
+            Flow {
+                Layout.fillWidth: true
+                visible: root.primitiveRows.length > 0
+                spacing: 6
+
+                Repeater {
+                    model: root.primitiveRows
+
+                    Rectangle {
+                        implicitWidth: valueRow.implicitWidth + 14
+                        implicitHeight: valueRow.implicitHeight + 8
+                        radius: Appearance.rounding.small
+                        color: Appearance.colors.colLayer2
+
+                        Row {
+                            id: valueRow
+                            anchors.centerIn: parent
+                            spacing: 5
+
+                            StyledText {
+                                text: String(modelData.key)
+                                color: Appearance.colors.colSubtext
+                                font.family:
+                                    Appearance.font.family.monospace
+                                font.pixelSize:
+                                    Appearance.font.pixelSize.smallest
+                            }
+
+                            StyledText {
+                                text: String(modelData.value)
+                                color: Appearance.colors.colPrimary
+                                font.family:
+                                    Appearance.font.family.monospace
+                                font.pixelSize:
+                                    Appearance.font.pixelSize.smallest
+                                font.weight: Font.DemiBold
+                            }
+                        }
+                    }
+                }
             }
 
             Rectangle {

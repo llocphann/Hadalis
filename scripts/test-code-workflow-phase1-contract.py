@@ -377,6 +377,9 @@ for token in (
     "function scheduleWorkflowActivation(): void",
     "id: workflowActivationTimer",
     "interval: 75",
+    "id: workflowAnalysisRequestTimer",
+    "onTriggered: root.requestAnalysis(false)",
+    "workflowAnalysisRequestTimer.stop()",
     "watchChanges: root.workflowOperational",
     "enabled: root.workflowOperational",
     "workflowActivationTimer.stop()",
@@ -410,6 +413,8 @@ for function_name in (
 
 if 'Qt.callLater(() => CodeWorkflowIndex.refresh(false))' in page:
     fail("Workflow mount must not queue an unconditional duplicate workspace index")
+if 'Qt.callLater(() => root.requestAnalysis(false))' in page:
+    fail("Workflow must cancel deferred presentation analysis with page lifetime")
 if "readonly property int runtimeRevision: CodeWorkflowRuntime.revision" in page:
     fail("hidden Workflow pages must not rebuild runtime snapshots from a live revision binding")
 descriptor_start = page.index("readonly property var descriptor:")

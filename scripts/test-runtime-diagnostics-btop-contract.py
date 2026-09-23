@@ -67,7 +67,7 @@ def main() -> None:
 
     for token in (
         "def read_system_cpu_ticks() -> dict[str, tuple[int, int]]:",
-        "def cpu_percent(",
+        "def _cpu_percent_from_ticks(",
         '"coresPercent": core_cpu_percent',
         're.fullmatch(r"cpu(?:\\d+)?"',
     ):

@@ -146,6 +146,10 @@ for token in (
     "function openNotificationCenter(outputName): bool",
     "function closeNotificationCenter(): void",
     "function setNotificationCenterHoverOutput(outputName, open): void",
+    "function onScreensChanged(): void",
+    "const hoverOutput = root.notificationCenterHoverOutput",
+    "if (!stillConnected)",
+    'root.notificationCenterHoverOutput = ""',
     "Config.options?.notificationCenter?.markReadOnOpen ?? true",
 ):
     require(global_states, token, "GlobalStates Notification Center routing missing")

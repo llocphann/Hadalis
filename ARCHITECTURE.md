@@ -122,9 +122,9 @@ Unknown/stale JSON keys are not schema-backed runtime features and must not recr
 
 Supported baseline behavior includes:
 - top, bottom, left, and right placement through `bar.bottom` + `bar.vertical`;
-- Hug, Float, Rectangle, and Card geometry through `bar.cornerStyle`;
-- height, rounding, background opacity, borderless and float-shadow controls;
-- native compositor blur through `bar.blurBackground`, gated by `performance.compositorBlur`;
+- one structural Hug surface; persisted `bar.cornerStyle` and `bar.showBackground` values are normalized at startup and never become selectable renderers;
+- height, active rounding, background opacity, and borderless controls;
+- Screen Edge width/radius/physical-shadow controls colocated with Bar appearance because that frame owns the Bar's physical perimeter;
 - Classic audio spectrum settings;
 - auto-hide, edge reveal, push-windows, and Super-key reveal (`bar.autoHide.showWhenPressingSuper`);
 - clock, module order, workspaces, tray, resources, media, notifications, and utility modules.

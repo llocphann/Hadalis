@@ -253,6 +253,9 @@ Singleton {
 
     readonly property string epoch: Date.now().toString() + "-" + Math.random().toString(36).slice(2)
     property var entries: ({})
+    // Last observed presentation lifecycle per live instance. Kept separate
+    // from the QObject registration map so event dedupe stays primitive-only.
+    property var entryStates: ({})
     property var events: []
     property int serial: 0
     property int revision: 0
@@ -285,9 +288,15 @@ Singleton {
         const next = Object.assign({}, root.entries)
         next[key] = registration
         root.entries = next
+        const descriptor = registration?.descriptorSnapshot?.() ?? null
+        const nextStates = Object.assign({}, root.entryStates)
+        nextStates[key] = String(
+            descriptor?.lifecycle ?? descriptor?.state ?? "resident")
+        root.entryStates = nextStates
         const token = root.epoch + ":" + (++root.serial)
         root._event(
-            "resident", key, token, String(registration?.targetId ?? ""))
+            "resident", key, token,
+            String(descriptor?.targetId ?? registration?.targetId ?? ""))
         return token
     }
 
@@ -299,10 +308,36 @@ Singleton {
         const next = Object.assign({}, root.entries)
         delete next[instanceId]
         root.entries = next
+        const nextStates = Object.assign({}, root.entryStates)
+        delete nextStates[instanceId]
+        root.entryStates = nextStates
         root._rememberStale(descriptor, token, instanceId, outputName)
         root._event(
             "stale/unloading", instanceId, token,
             String(descriptor?.targetId ?? registration?.targetId ?? ""))
+    }
+
+    function touchInstance(
+        instanceId: string, registration, token: string
+    ): void {
+        const key = String(instanceId ?? "")
+        if (key.length === 0 || root.entries[key] !== registration)
+            return
+
+        const descriptor = registration?.descriptorSnapshot?.() ?? null
+        const nextState = String(
+            descriptor?.lifecycle ?? descriptor?.state ?? "resident")
+        const previousState = String(root.entryStates[key] ?? "")
+        if (nextState.length > 0 && nextState !== previousState) {
+            const nextStates = Object.assign({}, root.entryStates)
+            nextStates[key] = nextState
+            root.entryStates = nextStates
+            const targetId = String(
+                descriptor?.targetId ?? registration?.targetId ?? "")
+            root._event(nextState, key, token, targetId)
+            return
+        }
+        root.revision++
     }
 
     function localSnapshot(): var {

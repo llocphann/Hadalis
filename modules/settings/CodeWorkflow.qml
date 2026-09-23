@@ -73,6 +73,33 @@ Item {
             return ({ outputs: [], records: [] })
         return CodeWorkflowRuntime.snapshot()
     }
+    function runtimeEventTargetId(event): string {
+        const identity = String(event?.instanceId ?? "")
+        const split = identity.lastIndexOf("@")
+        return split > 0 ? identity.slice(0, split) : identity
+    }
+
+    function runtimeEventTimeText(event): string {
+        const atMs = Number(event?.atMs ?? 0)
+        return Number.isFinite(atMs) && atMs > 0
+            ? Qt.formatTime(new Date(atMs), "HH:mm:ss")
+            : "recent"
+    }
+
+    readonly property string runtimeActivityTargetId:
+        String(root.selectedIrNode?.runtimeTargetId
+            ?? CodeWorkflowSession.selectedTargetId
+            ?? "")
+    readonly property var runtimeActivityEvents: {
+        const targetId = root.runtimeActivityTargetId
+        if (targetId.length === 0)
+            return []
+        const events = root.snapshot?.events ?? []
+        return events.filter(event =>
+            root.runtimeEventTargetId(event) === targetId)
+            .slice(-6).reverse()
+    }
+
     readonly property var descriptor:
         CodeWorkflowRuntime.descriptor(CodeWorkflowSession.selectedTargetId)
             ?? CodeWorkflowRuntime.activeCatalog.find(
@@ -321,6 +348,8 @@ Item {
             reasoningEdgeIds: canvas.reasoningEdgeIds,
             minimapEnabled: CodeWorkflowSession.minimapEnabled,
             minimapVisible: canvas.minimapVisible,
+            runtimeActivityTargetId: root.runtimeActivityTargetId,
+            runtimeActivityEventCount: root.runtimeActivityEvents.length,
             panX: CodeWorkflowSession.panX,
             panY: CodeWorkflowSession.panY,
             zoom: CodeWorkflowSession.zoom
@@ -2462,6 +2491,70 @@ Item {
                         text: root.geometryText(root.record?.rect)
                         color: Appearance.colors.colOnLayer1
                         elide: Text.ElideRight
+                    }
+                    StyledText {
+                        Layout.fillWidth: true
+                        visible: root.inspectedSemanticEntry === null
+                            && root.runtimeActivityEvents.length > 0
+                        text: "Lifecycle activity · "
+                            + root.runtimeActivityTargetId
+                        color: Appearance.colors.colSubtext
+                        font.pixelSize: Appearance.font.pixelSize.smallest
+                        elide: Text.ElideMiddle
+                    }
+                    Repeater {
+                        model: root.inspectedSemanticEntry === null
+                            ? root.runtimeActivityEvents : []
+
+                        delegate: Rectangle {
+                            required property var modelData
+                            Layout.fillWidth: true
+                            implicitHeight: runtimeEventRow.implicitHeight + 8
+                            radius: Appearance.rounding.small
+                            color: Appearance.colors.colLayer2
+
+                            RowLayout {
+                                id: runtimeEventRow
+                                anchors.left: parent.left
+                                anchors.right: parent.right
+                                anchors.verticalCenter: parent.verticalCenter
+                                anchors.leftMargin: 7
+                                anchors.rightMargin: 7
+                                spacing: 6
+
+                                MaterialSymbol {
+                                    text: String(modelData.kind ?? "")
+                                            === "resident"
+                                        ? "radio_button_checked"
+                                        : String(modelData.kind ?? "")
+                                                .includes("stale")
+                                            ? "remove_circle"
+                                            : "history"
+                                    iconSize: Appearance.font.pixelSize.small
+                                    color: String(modelData.kind ?? "")
+                                            === "resident"
+                                        ? Appearance.colors.colPrimary
+                                        : Appearance.colors.colSubtext
+                                }
+                                StyledText {
+                                    Layout.fillWidth: true
+                                    text: String(modelData.kind ?? "runtime")
+                                        .replaceAll("-", " ").toUpperCase()
+                                        + " · "
+                                        + String(modelData.instanceId ?? "")
+                                    color: Appearance.colors.colOnLayer1
+                                    font.pixelSize:
+                                        Appearance.font.pixelSize.smallest
+                                    elide: Text.ElideMiddle
+                                }
+                                StyledText {
+                                    text: root.runtimeEventTimeText(modelData)
+                                    color: Appearance.colors.colSubtext
+                                    font.pixelSize:
+                                        Appearance.font.pixelSize.smallest
+                                }
+                            }
+                        }
                     }
                     StyledText {
                         visible: root.selectedIrEdge !== null

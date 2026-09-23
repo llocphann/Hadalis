@@ -11,6 +11,7 @@ StyledListView { // Scrollable window
     property bool popup: false
     // History-only filter; popups are never filtered.
     property string filterQuery: ""
+    signal externalLinkOpened()
 
     spacing: 3
 
@@ -70,5 +71,6 @@ StyledListView { // Scrollable window
         notificationGroup: popup ?
             Notifications.popupGroupsByAppName[modelData] :
             Notifications.groupsByAppName[modelData]
+        onExternalLinkOpened: root.externalLinkOpened()
     }
 }

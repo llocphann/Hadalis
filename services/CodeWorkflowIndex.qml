@@ -31,13 +31,13 @@ Singleton {
         + "/inir/code-workflow-runtime-boundaries-v1.json"
 
     function refresh(force: bool): void {
-        root._cancelled = false
         if (indexProcess.running) {
             root._pendingRefresh = true
             root._pendingForce = root._pendingForce || force
             return
         }
 
+        root._cancelled = false
         root.status = "indexing"
         root.error = ""
         const command = [
@@ -65,11 +65,21 @@ Singleton {
             root.status = "idle"
     }
 
+    function _runPendingRefresh(): void {
+        if (!root._pendingRefresh)
+            return
+        const force = root._pendingForce
+        root._pendingRefresh = false
+        root._pendingForce = false
+        Qt.callLater(() => root.refresh(force))
+    }
+
     function _finish(exitCode: int): void {
         if (root._cancelled) {
             root._cancelled = false
             root.status = "idle"
             root.error = ""
+            root._runPendingRefresh()
             return
         }
 
@@ -100,12 +110,7 @@ Singleton {
             root.status = "error"
         }
 
-        if (root._pendingRefresh) {
-            const force = root._pendingForce
-            root._pendingRefresh = false
-            root._pendingForce = false
-            Qt.callLater(() => root.refresh(force))
-        }
+        root._runPendingRefresh()
     }
 
     Process {

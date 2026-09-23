@@ -39,13 +39,13 @@ Item {
                 Layout.fillWidth: true
 
                 StyledText {
+                    Layout.fillWidth: true
                     text: root.title
                     color: Appearance.colors.colPrimary
                     font.family: Appearance.font.family.monospace
                     font.weight: Font.DemiBold
+                    elide: Text.ElideRight
                 }
-
-                Item { Layout.fillWidth: true }
 
                 StyledText {
                     text: "PID " + root.pid

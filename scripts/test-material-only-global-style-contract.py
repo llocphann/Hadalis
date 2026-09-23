@@ -35,6 +35,8 @@ WINDOW_DIALOG = ROOT / "modules" / "common" / "widgets" / "WindowDialog.qml"
 CHEATSHEET_KEYBIND_ROW = ROOT / "modules" / "cheatsheet" / "CheatsheetKeybindRow.qml"
 STATUS_RINGS = ROOT / "modules" / "sidebarLeft" / "widgets" / "StatusRings.qml"
 QUICK_LAUNCH = ROOT / "modules" / "sidebarLeft" / "widgets" / "QuickLaunch.qml"
+EVENT_CARD = ROOT / "modules" / "sidebarRight" / "events" / "EventCard.qml"
+SYSMON_WIDGET = ROOT / "modules" / "sidebarRight" / "sysmon" / "SysMonWidget.qml"
 NOTIFICATION_ITEM = ROOT / "modules" / "common" / "widgets" / "NotificationItem.qml"
 NOTIFICATION_GROUP = ROOT / "modules" / "common" / "widgets" / "NotificationGroup.qml"
 NOTIFICATION_ACTION_BUTTON = ROOT / "modules" / "common" / "widgets" / "NotificationActionButton.qml"
@@ -167,6 +169,8 @@ def main() -> None:
     cheatsheet_keybind_row = CHEATSHEET_KEYBIND_ROW.read_text(encoding="utf-8")
     status_rings = STATUS_RINGS.read_text(encoding="utf-8")
     quick_launch = QUICK_LAUNCH.read_text(encoding="utf-8")
+    event_card = EVENT_CARD.read_text(encoding="utf-8")
+    sysmon_widget = SYSMON_WIDGET.read_text(encoding="utf-8")
     notification_item = NOTIFICATION_ITEM.read_text(encoding="utf-8")
     notification_group = NOTIFICATION_GROUP.read_text(encoding="utf-8")
     notification_action_button = NOTIFICATION_ACTION_BUTTON.read_text(encoding="utf-8")
@@ -318,6 +322,8 @@ def main() -> None:
         "CheatsheetKeybindRow.qml": cheatsheet_keybind_row,
         "StatusRings.qml": status_rings,
         "QuickLaunch.qml": quick_launch,
+        "EventCard.qml": event_card,
+        "SysMonWidget.qml": sysmon_widget,
         "NotificationItem.qml": notification_item,
         "NotificationGroup.qml": notification_group,
         "NotificationActionButton.qml": notification_action_button,
@@ -478,6 +484,26 @@ def main() -> None:
         "radius: 3",
     ):
         require(quick_launch, token, "QuickLaunch.qml")
+
+    for token in (
+        "readonly property color colPrimary: Appearance.colors.colPrimary",
+        "readonly property color colText: Appearance.colors.colOnLayer1",
+        "readonly property color colBadge: ColorUtils.transparentize(Appearance.colors.colPrimary, 0.90)",
+        "visible: true",
+        "radius: Appearance.rounding.small",
+        "colBackgroundHover: Appearance.colors.colLayer1Hover",
+    ):
+        require(event_card, token, "EventCard.qml")
+    forbid(event_card, "AngelPartialBorder {", "EventCard.qml")
+    for token in (
+        "readonly property color colText: Appearance.colors.colOnLayer1",
+        "readonly property color colBg: Appearance.colors.colLayer0",
+        "readonly property int borderWidth: 1",
+        "readonly property real radius: Appearance.rounding.normal",
+        "colBackgroundHover: Appearance.colors.colLayer1Hover",
+        "trackColor: Appearance.colors.colSecondaryContainer",
+    ):
+        require(sysmon_widget, token, "SysMonWidget.qml")
 
     for token in (
         "radius: Appearance.rounding.small",

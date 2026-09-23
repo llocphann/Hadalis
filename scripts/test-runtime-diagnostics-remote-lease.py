@@ -55,12 +55,15 @@ function makeSession() {
     const remotePulseOutput = {text: '{"ok":true}'};
     const remotePulseError = {text: 'IPC failed'};
     const CodeWorkflowRuntime = {remoteSnapshot: null};
+    let localAcquireOk = true;
+    let localLease = false;
     const root = {
         pageCurrent: false,
         localShell: false,
         clientId: 'settings:100',
         releaseAfterPulse: false,
         leaseTransport: '',
+        leaseError: '',
         remoteError: '',
         _remoteCommand: action => [action, 'settings:100'],
     };
@@ -68,8 +71,18 @@ function makeSession() {
         root, remotePulse, remoteRelease, remotePulseOutput, remotePulseError,
         CodeWorkflowRuntime,
         RuntimeDiagnostics: {
-            acquire: () => { runtimeEvents.push('local-acquire'); return true; },
-            release: () => { runtimeEvents.push('local-release'); return true; },
+            acquire: () => {
+                runtimeEvents.push('local-acquire');
+                localLease = localAcquireOk;
+                return localAcquireOk;
+            },
+            heartbeat: () => localLease,
+            release: () => {
+                runtimeEvents.push('local-release');
+                const hadLease = localLease;
+                localLease = false;
+                return hadLease;
+            },
         },
         Qt: {callLater: callback => callbacks.push(callback)},
     });
@@ -88,6 +101,7 @@ function makeSession() {
         root, commands, runtimeEvents, remotePulse, remoteRelease, flush,
         setPulseError(text) { remotePulseError.text = text; },
         setRemoteSnapshot(value) { CodeWorkflowRuntime.remoteSnapshot = value; },
+        setLocalAcquireOk(value) { localAcquireOk = value; },
         enter() { root.pageCurrent = true; root._acquireLease(); },
         leave() { root.pageCurrent = false; root._releaseRemote(); },
         finishPulse(exitCode = 0, payload = '{"ok":true}', runCallbacks = true) {
@@ -188,7 +202,8 @@ function makeSession() {
     const s = makeSession();
     s.enter();
     s.finishPulse(0, '{"ok":false}');
-    assert.equal(s.root.remoteError, 'Diagnostics lease was rejected');
+    assert.equal(s.root.remoteError, '');
+    assert.equal(s.root.leaseError, 'Diagnostics lease was rejected');
 }
 
 // Reentering before acquire completes retains that lease without a late release.
@@ -230,6 +245,21 @@ function makeSession() {
     assert.deepEqual(s.commands, ['acquire', 'release']);
     s.finishRelease();
     assert.deepEqual(s.commands, ['acquire', 'release']);
+}
+
+// Local lease saturation must be visible and recover on a later heartbeat.
+{
+    const s = makeSession();
+    s.root.pageCurrent = true;
+    s.root.localShell = true;
+    s.setLocalAcquireOk(false);
+    s.root._acquireLease();
+    assert.equal(s.root.leaseTransport, '');
+    assert.equal(s.root.leaseError, 'Diagnostics lease was rejected');
+    s.setLocalAcquireOk(true);
+    s.root._renewLease();
+    assert.equal(s.root.leaseTransport, 'local');
+    assert.equal(s.root.leaseError, '');
 }
 
 // Switching from local to remote releases the local authority before acquiring

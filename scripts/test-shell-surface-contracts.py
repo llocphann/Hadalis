@@ -973,8 +973,8 @@ def main() -> None:
         ):
             check(retired_geometry not in runtime,
                   f"Bar runtime must not retain physical Screen Edge geometry/shadow: {retired_geometry}")
-        check("readonly property bool showBarBackground: true" in runtime,
-              "Supported Hug Bar chrome must remain structurally present")
+        check("showBarBackground" not in runtime,
+              "Supported Hug Bar chrome must not depend on a dead visibility alias")
         check("Appearance.animation.elementMove.duration" in runtime
               and "Appearance.animation.elementMove.bezierCurve" in runtime,
               "Bar auto-hide slide must use the default-spatial motion token")

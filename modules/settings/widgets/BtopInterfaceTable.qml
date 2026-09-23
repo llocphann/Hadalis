@@ -8,6 +8,7 @@ Item {
 
     property var interfaces: ({})
     property bool includeLoopback: false
+    readonly property bool showTotalColumn: width >= 520
 
     function formatRate(value): string {
         if (value === null || value === undefined)
@@ -136,6 +137,7 @@ Item {
                 }
 
                 StyledText {
+                    visible: root.showTotalColumn
                     Layout.fillWidth: true
                     horizontalAlignment: Text.AlignRight
                     text: "TOTAL"
@@ -192,6 +194,7 @@ Item {
                     }
 
                     StyledText {
+                        visible: root.showTotalColumn
                         Layout.fillWidth: true
                         horizontalAlignment: Text.AlignRight
                         text: root.formatBytes(

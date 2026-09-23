@@ -3,6 +3,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Layouts
 import qs.modules.common
+import qs.services
 
 // In-page Settings search for Window, Rail and Focus. A query replaces the
 // page canvas rather than opening a popup that obscures the controls beneath.

@@ -2,6 +2,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import qs.modules.common
 import qs.modules.common.widgets
+import qs.services
 
 // Text-only activity state; a stable label, with emphasis supplied by motion.
 StyledText {

@@ -2,6 +2,7 @@ pragma ComponentBehavior: Bound
 
 import QtQuick
 import QtQuick.Controls
+import qs
 import qs.modules.bar as Bar
 import qs.modules.common
 import qs.modules.notificationCenter

@@ -57,7 +57,7 @@ Item {
         // non-destructive; draft cleanup remains an explicit user action.
         root.flushPendingSave()
 
-        const index = root._loadedTabIndex
+        const index = Notepad.indexForTabId(root._loadedTabId)
         const tabTitle = String(Notepad.tabs[index]?.title ?? "").trim()
         const title = /^Note \d+$/.test(tabTitle) ? "" : tabTitle
         const draftText = String(textArea.text)
@@ -84,22 +84,23 @@ Item {
         })
     }
 
+    function _activeTabId(): string {
+        return String(Notepad.tabs[Notepad.currentTab]?.id ?? "")
+    }
+
     function _loadedTabText(): string {
-        const index = root._loadedTabIndex
-        if (index < 0 || index >= Notepad.tabs.length)
+        const index = Notepad.indexForTabId(root._loadedTabId)
+        if (index < 0)
             return ""
         return String(Notepad.tabs[index]?.text ?? "")
     }
 
     function _persistEditorText(): bool {
-        if (!Notepad.ready || root._loadingTab)
-            return false
-        const index = root._loadedTabIndex
-        if (index < 0 || index >= Notepad.tabs.length)
+        if (!Notepad.ready || root._loadingTab || !root._loadedTabId)
             return false
         if (textArea.text === root._loadedTabText())
             return true
-        return Notepad.setTabText(index, textArea.text)
+        return Notepad.setTabTextById(root._loadedTabId, textArea.text)
     }
 
     function flushPendingSave(): void {
@@ -139,14 +140,14 @@ Item {
     // instances can exist at once (Sidebar, Dashboard and Quick Notes), and a
     // delayed autosave must always write back to the tab it actually displays.
     property bool _loadingTab: false
-    property int _loadedTabIndex: -1
+    property string _loadedTabId: ""
 
     function _loadActiveTab() {
         if (!Notepad.ready)
             return
         saveTimer.stop()
         root._loadingTab = true
-        root._loadedTabIndex = Notepad.currentTab
+        root._loadedTabId = root._activeTabId()
         textArea.text = Notepad.text
         root._loadingTab = false
     }
@@ -163,7 +164,7 @@ Item {
         function onTabsChanged() {
             if (!Notepad.ready)
                 return
-            if (root._loadedTabIndex !== Notepad.currentTab) {
+            if (root._loadedTabId !== root._activeTabId()) {
                 root.flushPendingSave()
                 root._loadActiveTab()
                 return
@@ -174,7 +175,7 @@ Item {
         function onReadyChanged() {
             if (!Notepad.ready)
                 return
-            if (root._loadedTabIndex !== Notepad.currentTab
+            if (root._loadedTabId !== root._activeTabId()
                     || textArea.text !== Notepad.text)
                 root._loadActiveTab()
             if (root.focus)

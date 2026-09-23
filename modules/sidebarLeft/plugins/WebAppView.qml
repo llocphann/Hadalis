@@ -39,22 +39,11 @@ Item {
     signal closeRequested()
 
     // Style tokens
-    readonly property color colText: Appearance.angelEverywhere ? Appearance.angel.colText
-        : Appearance.inirEverywhere ? Appearance.inir.colText
-        : Appearance.colors.colOnLayer1
-    readonly property color colTextSecondary: Appearance.inirEverywhere ? Appearance.inir.colTextSecondary
-        : Appearance.colors.colSubtext
-    readonly property color colBg: Appearance.angelEverywhere ? Appearance.angel.colGlassCard
-        : Appearance.inirEverywhere ? Appearance.inir.colLayer1
-        : Appearance.auroraEverywhere ? "transparent"
-        : Appearance.colors.colLayer1
-    readonly property color colBgHover: Appearance.angelEverywhere ? Appearance.angel.colGlassCardHover
-        : Appearance.inirEverywhere ? Appearance.inir.colLayer1Hover
-        : Appearance.auroraEverywhere ? Appearance.aurora.colSubSurface
-        : Appearance.colors.colLayer1Hover
-    readonly property color colBorder: Appearance.angelEverywhere ? Appearance.angel.colCardBorder
-        : Appearance.inirEverywhere ? Appearance.inir.colBorder
-        : Appearance.colors.colLayer0Border
+    readonly property color colText: Appearance.colors.colOnLayer1
+    readonly property color colTextSecondary: Appearance.colors.colSubtext
+    readonly property color colBg: Appearance.colors.colLayer1
+    readonly property color colBgHover: Appearance.colors.colLayer1Hover
+    readonly property color colBorder: Appearance.colors.colLayer0Border
     readonly property real rounding: Appearance.rounding.verysmall
 
     ColumnLayout {
@@ -66,7 +55,7 @@ Item {
             Layout.fillWidth: true
             Layout.preferredHeight: 36
             color: root.colBg
-            border.width: Appearance.inirEverywhere || Appearance.angelEverywhere ? 1 : 0
+            border.width: 0
             border.color: root.colBorder
             radius: root.rounding
 
@@ -295,9 +284,7 @@ Item {
     Rectangle {
         anchors.fill: parent
         anchors.topMargin: 36
-        color: Appearance.angelEverywhere ? Appearance.angel.colGlassCard
-             : Appearance.inirEverywhere ? Appearance.inir.colLayer0
-             : Appearance.colors.colLayer0
+        color: Appearance.colors.colLayer0
         visible: root.loadProgress < 0.1 && root.isLoading
         opacity: visible ? 1 : 0
         Behavior on opacity {

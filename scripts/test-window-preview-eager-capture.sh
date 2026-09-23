@@ -35,6 +35,7 @@ const root = {
     initialized: false, sessionReady: false, capturing: false,
     forceRefreshRequestedWhileInitializing: false,
     observedWindowIds: [], captureAllRequested: false, requestedWindowIds: [],
+    forceRequestedWindowIds: [],
     captureRequestedWhileInitializing: false,
     previewCache: {}, overviewWarmRequestedIds: [], overviewWarmImages: {},
     overviewWarmOrder: [], overviewWarmLimit: 2,
@@ -63,7 +64,8 @@ const ctx = {
 };
 for (const name of ['previewDir', 'sessionKey', 'initialized', 'sessionReady',
     'capturing', 'observedWindowIds','captureAllRequested','requestedWindowIds',
-    'captureRequestedWhileInitializing','forceRefreshRequestedWhileInitializing',
+    'forceRequestedWindowIds','captureRequestedWhileInitializing',
+    'forceRefreshRequestedWhileInitializing',
     'previewCache', 'overviewWarmRequestedIds', 'overviewWarmLimit']) {
     Object.defineProperty(ctx, name, {
         get() { return root[name]; },
@@ -73,8 +75,9 @@ for (const name of ['previewDir', 'sessionKey', 'initialized', 'sessionReady',
 ctx._log = root._log;
 vm.createContext(ctx);
 const names = ['_startPrewarming','_observeWindowSet','_queueWindowIds',
-    '_hasPendingCaptureRequest','_clearCaptureRequest','_pendingRequestNeedsCapture',
-    'captureForTaskView','captureAllWindows','_doCapture','_publishCapturedPreview',
+    '_queueForcedWindowIds','_hasPendingCaptureRequest','_clearCaptureRequest',
+    '_pendingRequestNeedsCapture','captureForTaskView','refreshForOverview',
+    'captureAllWindows','_doCapture','_publishCapturedPreview',
     '_handleCaptureOutput','_completeCapture','_primeCachedPreviews',
     'getPreviewUrl','_resumeRequestedCapture'];
 vm.runInContext(names.map(method).join('\n') + '\n' +

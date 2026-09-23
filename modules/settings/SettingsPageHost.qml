@@ -164,8 +164,14 @@ Item {
         if (!loadEnabled || requestedIndex < 0 || requestedIndex >= pages.length)
             return
 
-        if (_transitionRunning)
+        if (_transitionRunning) {
             switchAnimation.complete()
+            // complete() may finish the old swap and schedule a newer request.
+            // Do not let this now-stale invocation continue into that request.
+            if (generation !== undefined
+                    && generation !== root._requestGeneration)
+                return
+        }
 
         if (_currentIndex < 0) {
             _currentIndex = requestedIndex

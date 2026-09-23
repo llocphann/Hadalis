@@ -18,10 +18,12 @@ Singleton {
     property var staleDescriptors: ({})
     property int declarationSerial: 0
     property var remoteSnapshot: null
-    // Keep the raw IPC payload as a structural fingerprint. Standalone
-    // Settings polls periodically, but identical snapshots must not publish a
-    // new activeCatalog/revision and wake every Workflow binding.
+    // Keep the full transport snapshot for Diagnostics, but publish a separate
+    // runtime-only projection so 1 Hz resource samples do not rebuild Workflow
+    // catalogs/records when runtime structure itself is unchanged.
+    property var remoteRuntimeSnapshot: null
     property string remoteSnapshotFingerprint: ""
+    property string remoteRuntimeSnapshotFingerprint: ""
     property string remoteError: ""
     property double remoteUpdatedAtMs: 0
     property bool remoteRefreshing: false
@@ -309,8 +311,8 @@ Singleton {
         if (dependency < 0)
             return []
         if (!root.hasLocalDeclarations
-                && Array.isArray(root.remoteSnapshot?.identityCollisions))
-            return root.remoteSnapshot.identityCollisions
+                && Array.isArray(root.remoteRuntimeSnapshot?.identityCollisions))
+            return root.remoteRuntimeSnapshot.identityCollisions
         return root.localIdentityCollisions
     }
 
@@ -434,8 +436,8 @@ Singleton {
         if (dependency < 0)
             return []
         if (!root.hasLocalDeclarations
-                && Array.isArray(root.remoteSnapshot?.descriptors))
-            return root.remoteSnapshot.descriptors
+                && Array.isArray(root.remoteRuntimeSnapshot?.descriptors))
+            return root.remoteRuntimeSnapshot.descriptors
         return root.localCatalog
     }
     // Compatibility alias; there is no synthetic catalog behind this name.
@@ -612,9 +614,26 @@ Singleton {
         }
     }
 
+    function _runtimeSnapshotProjection(snapshot): var {
+        return {
+            epoch: snapshot?.epoch ?? "",
+            outputs: Array.isArray(snapshot?.outputs)
+                ? snapshot.outputs : [],
+            descriptors: Array.isArray(snapshot?.descriptors)
+                ? snapshot.descriptors : [],
+            records: Array.isArray(snapshot?.records)
+                ? snapshot.records : [],
+            events: Array.isArray(snapshot?.events)
+                ? snapshot.events : [],
+            identityCollisions: Array.isArray(snapshot?.identityCollisions)
+                ? snapshot.identityCollisions : []
+        }
+    }
+
     function snapshot(): var {
-        if (!root.hasLocalDeclarations && root.remoteSnapshot !== null)
-            return root.remoteSnapshot
+        if (!root.hasLocalDeclarations
+                && root.remoteRuntimeSnapshot !== null)
+            return root.remoteRuntimeSnapshot
         return root.localSnapshot()
     }
 
@@ -651,9 +670,24 @@ Singleton {
                     root.remoteError = ""
                     if (unchanged)
                         return
+
+                    const runtimeProjection =
+                        root._runtimeSnapshotProjection(next)
+                    const runtimeFingerprint =
+                        JSON.stringify(runtimeProjection)
+                    const runtimeChanged =
+                        root.remoteRuntimeSnapshot === null
+                        || runtimeFingerprint
+                            !== root.remoteRuntimeSnapshotFingerprint
+
                     root.remoteSnapshotFingerprint = payload
+                    if (runtimeChanged) {
+                        root.remoteRuntimeSnapshotFingerprint =
+                            runtimeFingerprint
+                        root.remoteRuntimeSnapshot = runtimeProjection
+                        root.revision++
+                    }
                     root.remoteSnapshot = next
-                    root.revision++
                 } catch (error) {
                     root.remoteError =
                         "Runtime snapshot decode failed: " + String(error)
@@ -685,7 +719,9 @@ Singleton {
     onHasLocalDeclarationsChanged: {
         if (root.hasLocalDeclarations) {
             root.remoteSnapshot = null
+            root.remoteRuntimeSnapshot = null
             root.remoteSnapshotFingerprint = ""
+            root.remoteRuntimeSnapshotFingerprint = ""
             root.remoteError = ""
         } else if (root.remoteDemanded) {
             Qt.callLater(root.refreshRemoteSnapshot)

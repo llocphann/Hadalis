@@ -1056,6 +1056,35 @@ Implemented production write boundary for the first reviewed Disconnect edge:
   Apply, the first reviewed prepared+authorized Connect command, and the single
   reviewed `clock.data.time` Disconnect deletion.
 
+## Milestone 2K-T-C — second exact reviewed Disconnect target
+
+Expanded the production Disconnect allowlist by one independently reviewed
+binding while preserving the deletion-only transaction model:
+
+- `clock.data.date` on `bar/clock` is the second and only additional write target.
+  Its exact identity is source `modules/bar/ClockWidget.qml`, property `text`,
+  current expression `DateTime.date`, with the existing
+  `semantic-anchor-missing` deletion postcondition.
+- `disconnect_prepare.py`, `disconnect_commit.py` and
+  `CodeWorkflowTransaction` now share an explicit two-target identity boundary
+  for `clock.data.time` and `clock.data.date`. Manifest validation resolves the
+  reviewed edge ID back to that allowlist; arbitrary previewable bindings cannot
+  supply their own graph/source/property/expression identity.
+- Generic Disconnect preview remains unchanged. Settings exposes prepare,
+  explicit authorization and Apply only when the active command matches one of
+  those two exact reviewed descriptors. All other Disconnect previews remain
+  non-writing.
+- Isolated artifact acceptance prepares, commits, verifies, rolls back, rejects
+  manifest drift and rejects stale-source replacement for both reviewed edges.
+- The live production lifecycle runs authorized success and forced
+  postcondition-failure rollback for each edge. Each failure substitutes the
+  other surviving Clock binding anchor, so both exact targets must prove
+  automatic snapshot rollback rather than relying on one target as a permanent
+  negative-only fixture.
+- This gate does not generalize Disconnect to arbitrary `ui_binding` entries,
+  does not add TYPE/CYCLE proof, and does not widen Connect, Signal/Action,
+  Connections creation/removal or multi-file write authority.
+
 ## Milestone 2K-U-A — isolated reviewed direct-binding replacement
 
 Implemented the first non-production direct-binding replacement transaction
@@ -1403,7 +1432,7 @@ layout offsets or source-editor buffers merely to make page navigation cheaper.
 ## Not implemented yet
 
 - additional reviewed Connect targets beyond the first Clock fixture;
-- additional reviewed Disconnect targets beyond `clock.data.time`;
+- additional reviewed Disconnect targets beyond the exact `clock.data.time` / `clock.data.date` Clock fixtures;
 - dependency coverage beyond the 2K-J local-singleton/JsonObject closure subset;
 - additional reviewed signal/action targets beyond `media.signal.doubleClickToggle`;
 - Connections creation/removal;

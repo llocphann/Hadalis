@@ -368,14 +368,44 @@ Singleton {
         root.activeDisconnectAuthorization !== null
         && root.disconnectArtifactsReady
         && root.activeCommand?.stale !== true
+
+    function reviewedDisconnectTarget(edgeId: string): var {
+        const id = String(edgeId ?? "")
+        if (id === "clock.data.time") {
+            return ({
+                graphTargetId: "bar/clock",
+                sourcePath: "modules/bar/ClockWidget.qml",
+                propertyName: "text",
+                expectedCurrent: "DateTime.timeDisplay"
+            })
+        }
+        if (id === "clock.data.date") {
+            return ({
+                graphTargetId: "bar/clock",
+                sourcePath: "modules/bar/ClockWidget.qml",
+                propertyName: "text",
+                expectedCurrent: "DateTime.date"
+            })
+        }
+        return null
+    }
+
+    function reviewedDisconnectCommandMatches(command): bool {
+        const target = root.reviewedDisconnectTarget(
+            command?.reviewedEdgeId)
+        return target !== null
+            && !!command
+            && String(command.kind ?? "") === "disconnect-binding"
+            && String(command.targetId ?? "")
+                === String(target.graphTargetId ?? "")
+            && String(command.sourcePath ?? "")
+                === String(target.sourcePath ?? "")
+            && String(command.expectedCurrent ?? "")
+                === String(target.expectedCurrent ?? "")
+    }
+
     readonly property bool disconnectPrepareEnabled:
-        !!root.activeCommand
-        && String(root.activeCommand?.kind ?? "") === "disconnect-binding"
-        && String(root.activeCommand?.targetId ?? "") === "bar/clock"
-        && String(root.activeCommand?.reviewedEdgeId ?? "")
-            === "clock.data.time"
-        && String(root.activeCommand?.sourcePath ?? "")
-            === "modules/bar/ClockWidget.qml"
+        root.reviewedDisconnectCommandMatches(root.activeCommand)
         && root.activeCommand?.sourceWritable === true
         && root.status === "preview"
         && root.activeCommand?.stale !== true
@@ -3016,16 +3046,11 @@ Singleton {
     }
 
     function _disconnectPreparationMatchesCommand(command): bool {
-        if (!command
-                || command.stale === true
-                || String(command.kind ?? "") !== "disconnect-binding"
-                || String(command.targetId ?? "") !== "bar/clock"
-                || String(command.reviewedEdgeId ?? "")
-                    !== "clock.data.time"
-                || String(command.sourcePath ?? "")
-                    !== "modules/bar/ClockWidget.qml"
-                || String(command.expectedCurrent ?? "")
-                    !== "DateTime.timeDisplay")
+        const target = root.reviewedDisconnectTarget(
+            command?.reviewedEdgeId)
+        if (target === null
+                || !root.reviewedDisconnectCommandMatches(command)
+                || command.stale === true)
             return false
 
         const prepared = command.disconnectPreparation
@@ -3048,7 +3073,8 @@ Singleton {
                 === String(command.candidateSha256 ?? "")
             && String(prepared.semanticAnchor ?? "")
                 === String(command.semanticAnchor ?? "")
-            && String(prepared.propertyName ?? "") === "text"
+            && String(prepared.propertyName ?? "")
+                === String(target.propertyName ?? "")
             && String(prepared.expectedCurrent ?? "")
                 === String(command.expectedCurrent ?? "")
             && String(prepared.resultingState ?? "")
@@ -3464,7 +3490,10 @@ Singleton {
     }
 
     function _disconnectPayloadMatchesPending(payload): bool {
-        return String(payload?.graphTargetId ?? "")
+        const target = root.reviewedDisconnectTarget(
+            reloadState.pendingDisconnectEdgeId)
+        return target !== null
+            && String(payload?.graphTargetId ?? "")
                 === reloadState.pendingDisconnectGraphTargetId
             && String(payload?.reviewedEdgeId ?? "")
                 === reloadState.pendingDisconnectEdgeId
@@ -3476,9 +3505,10 @@ Singleton {
                 === reloadState.pendingDisconnectCandidateSha256
             && String(payload?.semanticAnchor ?? "")
                 === reloadState.pendingDisconnectSemanticAnchor
-            && String(payload?.propertyName ?? "") === "text"
+            && String(payload?.propertyName ?? "")
+                === String(target.propertyName ?? "")
             && String(payload?.expectedCurrent ?? "")
-                === "DateTime.timeDisplay"
+                === String(target.expectedCurrent ?? "")
             && String(payload?.postcondition ?? "")
                 === "semantic-anchor-missing"
             && String(payload?.manifestPath ?? "")

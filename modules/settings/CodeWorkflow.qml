@@ -3356,8 +3356,8 @@ Item {
                         text: root.selectedConnectTarget !== null
                             ? "Phase 2 Connect · preview + guarded artifact preparation"
                             : root.selectedIrEdge !== null
-                                ? String(root.selectedIrEdge?.id ?? "")
-                                        === "clock.data.time"
+                                ? ["clock.data.time", "clock.data.date"].includes(
+                                        String(root.selectedIrEdge?.id ?? ""))
                                     ? "Phase 2 Disconnect · reviewed transactional Apply"
                                     : "Phase 2 edge retarget · preview only"
                                 : root.bindingPreviewEligible
@@ -3445,7 +3445,7 @@ Item {
                     }
                     StyledText {
                         Layout.fillWidth: true
-                        text: "Literal-property Apply remains independently qualified. Direct-binding Apply is restricted to reviewed clock.text.time-to-date and requires exact replacement artifacts + explicit authorization. Connect Apply requires its exact prepared + authorized handoff. Disconnect Apply is restricted to reviewed clock.data.time and requires exact deletion artifacts + explicit authorization."
+                        text: "Literal-property Apply remains independently qualified. Direct-binding Apply is restricted to reviewed clock.text.time-to-date and requires exact replacement artifacts + explicit authorization. Connect Apply requires its exact prepared + authorized handoff. Disconnect Apply is restricted to reviewed clock.data.time / clock.data.date and requires exact deletion artifacts + explicit authorization."
                         color: Appearance.colors.colTertiary
                         font.pixelSize: Appearance.font.pixelSize.smallest
                         wrapMode: Text.WordWrap

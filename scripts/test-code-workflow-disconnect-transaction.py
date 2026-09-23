@@ -48,6 +48,10 @@ def native_proof() -> None:
         print("note - native Disconnect artifact proof skipped: grammar unavailable")
         return
 
+    reviewed = {
+        "clock.data.time": "DateTime.timeDisplay",
+        "clock.data.date": "DateTime.date",
+    }
     source_path = ROOT / "modules/bar/ClockWidget.qml"
     source = source_path.read_bytes()
     base_sha = digest(source)
@@ -61,170 +65,176 @@ def native_proof() -> None:
     finally:
         parser.close()
 
-    matches = []
-    for entry in semantic["entries"]:
-        if entry.get("kind") != "binding" or entry.get("name") != "text":
-            continue
-        value_range = entry.get("value_range")
-        if not isinstance(value_range, list) or len(value_range) != 2:
-            continue
-        rendered = source[
-            value_range[0]:value_range[1]
-        ].decode("utf-8")
-        if rendered == "DateTime.timeDisplay":
-            matches.append(entry)
-    if len(matches) != 1:
-        fail("real Clock time binding must resolve exactly once")
-    entry = matches[0]
-    if not entry.get("anchor_unique", False):
-        fail("real Clock time semantic anchor must be unique")
+    entries = {}
+    for edge_id, expected in reviewed.items():
+        matches = []
+        for entry in semantic["entries"]:
+            if entry.get("kind") != "binding" or entry.get("name") != "text":
+                continue
+            value_range = entry.get("value_range")
+            if not isinstance(value_range, list) or len(value_range) != 2:
+                continue
+            rendered = source[
+                value_range[0]:value_range[1]
+            ].decode("utf-8")
+            if rendered == expected:
+                matches.append(entry)
+        if len(matches) != 1:
+            fail(f"real reviewed Disconnect binding must resolve exactly once: {edge_id}")
+        if not matches[0].get("anchor_unique", False):
+            fail(f"real reviewed Disconnect semantic anchor must be unique: {edge_id}")
+        entries[edge_id] = matches[0]
 
-    preview, candidate = prepare_disconnect_binding_patch(
-        source,
-        base_sha,
-        entry,
-        "DateTime.timeDisplay",
-    )
-    if preview.get("status") != "candidate" or candidate is None:
-        fail("real Clock time binding must produce Disconnect candidate")
-    candidate_sha = digest(candidate)
-
-    with tempfile.TemporaryDirectory(
-        prefix="hadalis-disconnect-transaction-"
-    ) as temporary:
-        temp = Path(temporary)
-        runtime = temp / "runtime"
-        clock = runtime / "modules/bar/ClockWidget.qml"
-        clock.parent.mkdir(parents=True)
-        shutil.copy2(source_path, clock)
-        state_dir = temp / "state"
-
-        prepared = disconnect_prepare.prepare_reviewed_disconnect_artifacts(
-            root=runtime,
-            edge_id="clock.data.time",
-            base_sha256=base_sha,
-            expected_candidate_sha256=candidate_sha,
-            semantic_anchor=str(entry["anchor"]),
-            state_dir=state_dir,
-            grammar_path=grammar,
-            tree_sitter_library=library,
+    for edge_id, expected in reviewed.items():
+        entry = entries[edge_id]
+        preview, candidate = prepare_disconnect_binding_patch(
+            source,
+            base_sha,
+            entry,
+            expected,
         )
-        if prepared.get("status") != "prepared-disconnect-artifacts":
-            fail("real reviewed Disconnect preparation failed: "
-                 + repr(prepared))
-        if clock.read_bytes() != source:
-            fail("Disconnect preparation must not modify tracked source")
-        if prepared.get("artifactProof") != (
-            "prepared-reviewed-disconnect-artifacts-v1"
-        ):
-            fail("Disconnect artifact proof token drifted")
-        if prepared.get("reviewedEdgeId") != "clock.data.time":
-            fail("Disconnect preparation escaped first reviewed edge")
-        if prepared.get("propertyName") != "text":
-            fail("Disconnect property identity drifted")
-        if prepared.get("expectedCurrent") != "DateTime.timeDisplay":
-            fail("Disconnect expression identity drifted")
-        if prepared.get("postcondition") != "semantic-anchor-missing":
-            fail("Disconnect deletion postcondition drifted")
-        if prepared.get("candidatePostcondition", {}).get("status") != "missing":
-            fail("prepared Disconnect candidate must prove old anchor absent")
-        for forbidden in (
-            "qualificationProof",
-            "typeCompatibilityProof",
-            "cycleSafetyProof",
-            "typeCompatibility",
-            "cycleStatus",
-        ):
-            if forbidden in prepared:
-                fail("Disconnect artifacts must not inherit Connect proof: "
-                     + forbidden)
+        if preview.get("status") != "candidate" or candidate is None:
+            fail(f"real reviewed Disconnect binding must produce candidate: {edge_id}")
+        candidate_sha = digest(candidate)
 
-        manifest_path = Path(prepared["manifestPath"])
-        snapshot_path = Path(prepared["snapshotPath"])
-        candidate_path = Path(prepared["candidatePath"])
-        for artifact in (manifest_path, snapshot_path, candidate_path):
-            if mode(artifact) != 0o600:
-                fail("Disconnect artifact must be mode 0600: "
-                     + artifact.name)
-        if sha256(manifest_path.read_bytes()).hexdigest() != (
-            prepared["manifestSha256"]
-        ):
-            fail("Disconnect manifest SHA handoff drifted")
-        if snapshot_path.read_bytes() != source:
-            fail("Disconnect snapshot bytes drifted")
-        if candidate_path.read_bytes() != candidate:
-            fail("Disconnect candidate bytes drifted")
+        with tempfile.TemporaryDirectory(
+            prefix="hadalis-disconnect-transaction-"
+        ) as temporary:
+            temp = Path(temporary)
+            runtime = temp / "runtime"
+            clock = runtime / "modules/bar/ClockWidget.qml"
+            clock.parent.mkdir(parents=True)
+            shutil.copy2(source_path, clock)
+            state_dir = temp / "state"
 
-        committed = disconnect_commit.commit_disconnect(
-            runtime,
-            manifest_path,
-            prepared["manifestSha256"],
-        )
-        if committed.get("status") != "written":
-            fail("Disconnect atomic commit failed: " + repr(committed))
-        if clock.read_bytes() != candidate:
-            fail("Disconnect commit did not write exact candidate")
+            prepared = disconnect_prepare.prepare_reviewed_disconnect_artifacts(
+                root=runtime,
+                edge_id=edge_id,
+                base_sha256=base_sha,
+                expected_candidate_sha256=candidate_sha,
+                semantic_anchor=str(entry["anchor"]),
+                state_dir=state_dir,
+                grammar_path=grammar,
+                tree_sitter_library=library,
+            )
+            if prepared.get("status") != "prepared-disconnect-artifacts":
+                fail("real reviewed Disconnect preparation failed: "
+                     + repr(prepared))
+            if clock.read_bytes() != source:
+                fail("Disconnect preparation must not modify tracked source")
+            if prepared.get("artifactProof") != (
+                "prepared-reviewed-disconnect-artifacts-v1"
+            ):
+                fail("Disconnect artifact proof token drifted")
+            if prepared.get("reviewedEdgeId") != edge_id:
+                fail("Disconnect preparation escaped exact reviewed edge")
+            if prepared.get("propertyName") != "text":
+                fail("Disconnect property identity drifted")
+            if prepared.get("expectedCurrent") != expected:
+                fail("Disconnect expression identity drifted")
+            if prepared.get("postcondition") != "semantic-anchor-missing":
+                fail("Disconnect deletion postcondition drifted")
+            if prepared.get("candidatePostcondition", {}).get("status") != "missing":
+                fail("prepared Disconnect candidate must prove old anchor absent")
+            for forbidden in (
+                "qualificationProof",
+                "typeCompatibilityProof",
+                "cycleSafetyProof",
+                "typeCompatibility",
+                "cycleStatus",
+            ):
+                if forbidden in prepared:
+                    fail("Disconnect artifacts must not inherit Connect proof: "
+                         + forbidden)
 
-        verified = disconnect_commit.verify_disconnect(
-            runtime,
-            manifest_path,
-            prepared["manifestSha256"],
-        )
-        if (
-            verified.get("status") != "verified"
-            or verified.get("sourceState") != "candidate-present"
-        ):
-            fail("Disconnect candidate verify failed: " + repr(verified))
+            manifest_path = Path(prepared["manifestPath"])
+            snapshot_path = Path(prepared["snapshotPath"])
+            candidate_path = Path(prepared["candidatePath"])
+            for artifact in (manifest_path, snapshot_path, candidate_path):
+                if mode(artifact) != 0o600:
+                    fail("Disconnect artifact must be mode 0600: "
+                         + artifact.name)
+            if sha256(manifest_path.read_bytes()).hexdigest() != (
+                prepared["manifestSha256"]
+            ):
+                fail("Disconnect manifest SHA handoff drifted")
+            if snapshot_path.read_bytes() != source:
+                fail("Disconnect snapshot bytes drifted")
+            if candidate_path.read_bytes() != candidate:
+                fail("Disconnect candidate bytes drifted")
 
-        rolled_back = disconnect_commit.rollback_disconnect(
-            runtime,
-            manifest_path,
-            prepared["manifestSha256"],
-        )
-        if rolled_back.get("status") != "rolled-back":
-            fail("Disconnect rollback failed: " + repr(rolled_back))
-        if clock.read_bytes() != source:
-            fail("Disconnect rollback did not restore exact snapshot")
-
-        manifest_before = manifest_path.read_bytes()
-        manifest_path.write_bytes(manifest_before + b"\n")
-        try:
-            disconnect_commit.commit_disconnect(
+            committed = disconnect_commit.commit_disconnect(
                 runtime,
                 manifest_path,
                 prepared["manifestSha256"],
             )
-        except ValueError as exc:
-            if "manifest hash mismatch" not in str(exc):
-                raise
-        else:
-            fail("Disconnect manifest drift must fail before source write")
-        if clock.read_bytes() != source:
-            fail("manifest drift failure modified source")
-        manifest_path.write_bytes(manifest_before)
+            if committed.get("status") != "written":
+                fail("Disconnect atomic commit failed: " + repr(committed))
+            if clock.read_bytes() != candidate:
+                fail("Disconnect commit did not write exact candidate")
 
-        clock.write_bytes(source + b"\n// external edit\n")
-        conflict = disconnect_commit.commit_disconnect(
-            runtime,
-            manifest_path,
-            prepared["manifestSha256"],
-        )
-        if (
-            conflict.get("status") != "conflict"
-            or conflict.get("sourceWritten") is not False
-        ):
-            fail("Disconnect stale source must conflict before replacement")
-        if not clock.read_bytes().endswith(b"// external edit\n"):
-            fail("Disconnect conflict overwrote external source edit")
+            verified = disconnect_commit.verify_disconnect(
+                runtime,
+                manifest_path,
+                prepared["manifestSha256"],
+            )
+            if (
+                verified.get("status") != "verified"
+                or verified.get("sourceState") != "candidate-present"
+            ):
+                fail("Disconnect candidate verify failed: " + repr(verified))
+
+            rolled_back = disconnect_commit.rollback_disconnect(
+                runtime,
+                manifest_path,
+                prepared["manifestSha256"],
+            )
+            if rolled_back.get("status") != "rolled-back":
+                fail("Disconnect rollback failed: " + repr(rolled_back))
+            if clock.read_bytes() != source:
+                fail("Disconnect rollback did not restore exact snapshot")
+
+            manifest_before = manifest_path.read_bytes()
+            manifest_path.write_bytes(manifest_before + b"\n")
+            try:
+                disconnect_commit.commit_disconnect(
+                    runtime,
+                    manifest_path,
+                    prepared["manifestSha256"],
+                )
+            except ValueError as exc:
+                if "manifest hash mismatch" not in str(exc):
+                    raise
+            else:
+                fail("Disconnect manifest drift must fail before source write")
+            if clock.read_bytes() != source:
+                fail("manifest drift failure modified source")
+            manifest_path.write_bytes(manifest_before)
+
+            clock.write_bytes(source + b"\n// external edit\n")
+            conflict = disconnect_commit.commit_disconnect(
+                runtime,
+                manifest_path,
+                prepared["manifestSha256"],
+            )
+            if (
+                conflict.get("status") != "conflict"
+                or conflict.get("sourceWritten") is not False
+            ):
+                fail("Disconnect stale source must conflict before replacement")
+            if not clock.read_bytes().endswith(b"// external edit\n"):
+                fail("Disconnect conflict overwrote external source edit")
 
 
 for token in (
     'ARTIFACT_PROOF = "prepared-reviewed-disconnect-artifacts-v1"',
     'POSTCONDITION = "semantic-anchor-missing"',
     '"clock.data.time": {',
+    '"clock.data.date": {',
     '"sourcePath": "modules/bar/ClockWidget.qml"',
     '"propertyName": "text"',
     '"expectedCurrent": "DateTime.timeDisplay"',
+    '"expectedCurrent": "DateTime.date"',
     "prepare_reviewed_disconnect_artifacts(",
     "prepare_disconnect_binding_patch(",
     '"disconnected-semantic-anchor-still-resolves"',
@@ -278,6 +288,10 @@ if "Milestone 2K-T-A — isolated reviewed Disconnect transaction proof" not in 
     fail("Phase 2 status must document 2K-T-A")
 if "clock.data.time" not in PHASE2:
     fail("Phase 2 status must identify the first reviewed Disconnect edge")
+if "Milestone 2K-T-C — second exact reviewed Disconnect target" not in PHASE2:
+    fail("Phase 2 status must document 2K-T-C")
+if "clock.data.date" not in PHASE2:
+    fail("Phase 2 status must identify the second exact reviewed Disconnect edge")
 if "Disconnect Apply remains unavailable" not in PHASE2:
     fail("2K-T-A must keep user-facing Disconnect Apply unavailable")
 

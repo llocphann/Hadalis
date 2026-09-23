@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
-"""Prepare exact artifacts for the first reviewed Disconnect target.
+"""Prepare exact artifacts for explicitly reviewed Disconnect targets.
 
-2K-T-A is intentionally narrower than the existing generic Disconnect preview:
-only bar/clock edge clock.data.time may prepare artifacts. The helper reparses
+The production write boundary is intentionally narrower than the generic
+Disconnect preview: only exact entries in REVIEWED_TARGETS may prepare artifacts.
+The helper reparses
 the current source, verifies the exact binding/property/expression identity,
 reconstructs the deletion candidate, proves the old semantic anchor is absent
 from the candidate, and writes mode-0600 state artifacts outside the runtime
@@ -39,6 +40,13 @@ REVIEWED_TARGETS = {
         "sourcePath": "modules/bar/ClockWidget.qml",
         "propertyName": "text",
         "expectedCurrent": "DateTime.timeDisplay",
+        "resultingState": "unbound/default",
+    },
+    "clock.data.date": {
+        "graphTargetId": "bar/clock",
+        "sourcePath": "modules/bar/ClockWidget.qml",
+        "propertyName": "text",
+        "expectedCurrent": "DateTime.date",
         "resultingState": "unbound/default",
     },
 }
@@ -145,7 +153,7 @@ def prepare_reviewed_disconnect_artifacts(
     root = root.expanduser().resolve()
     target = REVIEWED_TARGETS.get(edge_id)
     if target is None:
-        raise ValueError("Disconnect target is not in reviewed 2K-T subset")
+        raise ValueError("Disconnect target is not in reviewed production subset")
 
     source_path = resolve_source(root, target["sourcePath"])
     if not os.access(source_path, os.W_OK):

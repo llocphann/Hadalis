@@ -50,10 +50,14 @@ for token in (
     "readonly property bool disconnectPrepareEnabled:",
     "readonly property bool disconnectAuthorizeEnabled:",
     "readonly property bool disconnectApplyEnabled:",
-    'String(root.activeCommand?.reviewedEdgeId ?? "")',
-    '=== "clock.data.time"',
-    '=== "bar/clock"',
-    '=== "modules/bar/ClockWidget.qml"',
+    "function reviewedDisconnectTarget(edgeId: string): var",
+    'id === "clock.data.time"',
+    'id === "clock.data.date"',
+    'graphTargetId: "bar/clock"',
+    'sourcePath: "modules/bar/ClockWidget.qml"',
+    'expectedCurrent: "DateTime.timeDisplay"',
+    'expectedCurrent: "DateTime.date"',
+    "function reviewedDisconnectCommandMatches(command): bool",
     "function prepareDisconnectArtifacts(): bool",
     "function finishDisconnectPreparation(exitCode: int): void",
     "function authorizeDisconnectWrite(): bool",
@@ -134,9 +138,13 @@ for token in (
     "disconnectApplyEnabled:",
     "activeDisconnectAuthorization:",
     "activeDisconnectPreparation:",
+    "function reviewedDisconnectTarget(edgeId: string): var",
+    "function workflowDisconnectAnalyzeEdge(edgeId: string): bool",
     "function workflowDisconnectAnalyze(): void",
     "function workflowDisconnectAnalyzeDate(): void",
+    "function workflowDisconnectPreviewEdge(edgeId: string): bool",
     "function workflowDisconnectPreview(): bool",
+    "activeCommandReviewedEdgeId:",
     "function workflowDisconnectPrepare(): bool",
     "function workflowDisconnectAuthorize(): bool",
     "function workflowDisconnectRevoke(): bool",
@@ -150,8 +158,10 @@ for token in (
     'ARTIFACT_PROOF = "prepared-reviewed-disconnect-artifacts-v1"',
     'POSTCONDITION = "semantic-anchor-missing"',
     '"clock.data.time": {',
+    '"clock.data.date": {',
     '"propertyName": "text"',
     '"expectedCurrent": "DateTime.timeDisplay"',
+    '"expectedCurrent": "DateTime.date"',
 ):
     if token not in prepare:
         fail("2K-T-B Disconnect preparation contract missing " + token)
@@ -187,8 +197,14 @@ for token in (
     '"disconnect-rolled-back"',
     '"semanticRebind"]',
     '"missing"',
+    "DISCONNECT_TARGETS = {",
+    '"clock.data.time"',
+    '"clock.data.date"',
+    '"DateTime.timeDisplay"',
     '"DateTime.date"',
-    '"ProbeShell could not align Disconnect postcondition fixture"',
+    '"workflowDisconnectAnalyzeEdge"',
+    '"workflowDisconnectPreviewEdge"',
+    '"ProbeShell could not align Disconnect postcondition fixture for {edge_id}"',
 ):
     if token not in harness:
         fail("2K-T-B live Disconnect harness missing " + token)
@@ -229,12 +245,14 @@ if "scripts/code-workflow/run-disconnect-production-lifecycle.py" in runtime_set
 
 for token in (
     "Milestone 2K-T-B — reviewed Disconnect production lifecycle",
+    "Milestone 2K-T-C — second exact reviewed Disconnect target",
     "explicit-disconnect-write-authorization-v1",
     "semantic-anchor-missing",
     "Apply Disconnect",
     "no Connect qualification",
     "clock.data.time",
-    "Other Disconnect previews remain non-writing",
+    "clock.data.date",
+    "All other Disconnect previews remain non-writing",
 ):
     if token not in phase2:
         fail("2K-T-B documentation missing " + token)
@@ -249,4 +267,4 @@ for token in (
     if token not in workflow:
         fail("2K-T-B acceptance workflow missing " + token)
 
-print("ok - Code Workflow 2K-T-B reviewed Disconnect production lifecycle")
+print("ok - Code Workflow 2K-T-C exact two-target Disconnect production lifecycle")

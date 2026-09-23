@@ -17,7 +17,7 @@ from pathlib import Path
 
 from analyze import PROTOCOL, resolve_source
 from commit import atomic_replace_if_hash
-from disconnect_prepare import ARTIFACT_PROOF, POSTCONDITION
+from disconnect_prepare import ARTIFACT_PROOF, POSTCONDITION, REVIEWED_TARGETS
 from transaction import digest
 
 
@@ -44,17 +44,18 @@ def load_disconnect_manifest(
         raise ValueError("prepared manifest is not Disconnect")
     if payload.get("artifactProof") != ARTIFACT_PROOF:
         raise ValueError("Disconnect artifact proof token drifted")
-    if payload.get("reviewedEdgeId") != "clock.data.time":
-        raise ValueError("Disconnect target is outside reviewed 2K-T subset")
-    if payload.get("graphTargetId") != "bar/clock":
+    reviewed = REVIEWED_TARGETS.get(str(payload.get("reviewedEdgeId") or ""))
+    if reviewed is None:
+        raise ValueError("Disconnect target is outside reviewed production subset")
+    if payload.get("graphTargetId") != reviewed["graphTargetId"]:
         raise ValueError("Disconnect graph target drifted")
-    if payload.get("sourcePath") != "modules/bar/ClockWidget.qml":
+    if payload.get("sourcePath") != reviewed["sourcePath"]:
         raise ValueError("Disconnect source path drifted")
-    if payload.get("propertyName") != "text":
+    if payload.get("propertyName") != reviewed["propertyName"]:
         raise ValueError("Disconnect property identity drifted")
-    if payload.get("expectedCurrent") != "DateTime.timeDisplay":
+    if payload.get("expectedCurrent") != reviewed["expectedCurrent"]:
         raise ValueError("Disconnect source expression drifted")
-    if payload.get("resultingState") != "unbound/default":
+    if payload.get("resultingState") != reviewed["resultingState"]:
         raise ValueError("Disconnect resulting state drifted")
     if payload.get("postcondition") != POSTCONDITION:
         raise ValueError("Disconnect postcondition drifted")

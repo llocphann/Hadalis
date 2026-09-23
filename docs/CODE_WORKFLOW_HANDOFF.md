@@ -160,6 +160,15 @@ module work, commit directly to `dev`, and never force-push or modify `stable`.
   the boundary kinds for the currently inspected source. None of these source
   matches are promoted to execution evidence or per-component resource attribution.
 
+- Reviewed Disconnect production write authority now covers exactly two Clock
+  bindings: `clock.data.time` (`DateTime.timeDisplay`) and
+  `clock.data.date` (`DateTime.date`). Preparation, manifest validation,
+  transaction authorization and live acceptance share that explicit two-entry
+  boundary; every other Disconnect-capable preview remains non-writing. The
+  acceptance harness exercises authorized success plus forced postcondition
+  rollback for each reviewed edge, without introducing TYPE/CYCLE proof or
+  generalizing deletion to arbitrary bindings.
+
 ## Production UI refinement continuation — 2026-09-21
 
 A focused Code Workflow UI pass was applied on current `dev` without changing

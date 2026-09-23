@@ -25,6 +25,19 @@ prepare_module = live.prepare_module
 wait_snapshot = live.wait_snapshot
 recover_after_rollback = live.recover_after_rollback
 
+DISCONNECT_TARGETS = {
+    "clock.data.time": {
+        "expectedCurrent": "DateTime.timeDisplay",
+        "otherEdgeId": "clock.data.date",
+        "otherExpectedCurrent": "DateTime.date",
+    },
+    "clock.data.date": {
+        "expectedCurrent": "DateTime.date",
+        "otherEdgeId": "clock.data.time",
+        "otherExpectedCurrent": "DateTime.timeDisplay",
+    },
+}
+
 
 def file_sha(path: Path) -> str:
     return sha256(path.read_bytes()).hexdigest()
@@ -103,9 +116,12 @@ def reset_disconnect(probe: Probe) -> dict:
 def prepare_disconnect(
     probe: Probe,
     clock_path: Path,
+    edge_id: str,
 ) -> tuple[dict, bytes]:
+    target = DISCONNECT_TARGETS[edge_id]
     source_before = clock_path.read_bytes()
-    probe.ipc("workflowDisconnectAnalyze")
+    if probe.ipc("workflowDisconnectAnalyzeEdge", edge_id) != "true":
+        raise AssertionError("reviewed Disconnect analysis did not start")
     analyzed = wait_snapshot(
         probe,
         lambda s: (
@@ -119,14 +135,15 @@ def prepare_disconnect(
             and (s["workflowAnalyzer"].get("reviewedAnchor") or {})
                 .get("semanticName") == "text"
             and (s["workflowAnalyzer"].get("reviewedAnchor") or {})
-                .get("semanticValueText") == "DateTime.timeDisplay"
+                .get("semanticValueText") == target["expectedCurrent"]
         ),
-        "reviewed Clock time binding analysis",
+        f"reviewed Clock Disconnect analysis {edge_id}",
         timeout=60,
     )
 
-    if probe.ipc("workflowDisconnectPreview") != "true":
-        raise AssertionError("production Disconnect preview did not start")
+    if probe.ipc("workflowDisconnectPreviewEdge", edge_id) != "true":
+        raise AssertionError(
+            f"production Disconnect preview did not start for {edge_id}")
     preview = wait_snapshot(
         probe,
         lambda s: (
@@ -135,17 +152,19 @@ def prepare_disconnect(
                 == "disconnect-binding"
             and s["workflowTransaction"]["activeCommandSourcePath"]
                 == "modules/bar/ClockWidget.qml"
+            and s["workflowTransaction"]["activeCommandReviewedEdgeId"]
+                == edge_id
             and bool(
                 s["workflowTransaction"]["activeCommandCandidateSha256"]
             )
         ),
-        "production Disconnect preview",
+        f"production Disconnect preview {edge_id}",
         timeout=60,
     )
 
     if probe.ipc("workflowDisconnectPrepare") != "true":
         raise AssertionError(
-            "production Disconnect artifact preparation did not start")
+            f"production Disconnect artifact preparation did not start for {edge_id}")
     prepared = wait_snapshot(
         probe,
         lambda s: (
@@ -153,25 +172,29 @@ def prepare_disconnect(
             and s["workflowTransaction"]["disconnectArtifactsReady"]
                 is True
             and not s["workflowTransaction"]["disconnectPreparationBusy"]
+            and (
+                s["workflowTransaction"].get(
+                    "activeDisconnectPreparation") or {}
+            ).get("reviewedEdgeId") == edge_id
             and bool(
                 (s["workflowTransaction"].get(
                     "activeDisconnectPreparation") or {})
                 .get("manifestPath")
             )
         ),
-        "production Disconnect artifacts",
+        f"production Disconnect artifacts {edge_id}",
         timeout=90,
     )
     if clock_path.read_bytes() != source_before:
         raise AssertionError(
-            "Disconnect preparation modified tracked Clock source")
+            f"Disconnect preparation modified Clock source for {edge_id}")
 
     return {
+        "edgeId": edge_id,
         "analyzed": analyzed["workflowAnalyzer"],
         "preview": preview["workflowTransaction"],
         "prepared": prepared["workflowTransaction"],
     }, source_before
-
 
 def authorize_disconnect(probe: Probe) -> dict:
     if probe.ipc("workflowDisconnectAuthorize") != "true":
@@ -231,9 +254,11 @@ def run_success(
     work_dir: Path,
     clock_path: Path,
     report: dict,
+    edge_id: str,
 ) -> None:
+    target = DISCONNECT_TARGETS[edge_id]
     prepared_state, source_before = prepare_disconnect(
-        probe, clock_path)
+        probe, clock_path, edge_id)
     prepared_tx = prepared_state["prepared"]
     preparation = (
         prepared_tx.get("activeDisconnectPreparation") or {})
@@ -246,16 +271,16 @@ def run_success(
     before_auth = probe.snapshot()
     if probe.ipc("workflowDisconnectApply") != "false":
         raise AssertionError(
-            "Disconnect Apply started before authorization")
+            f"Disconnect Apply started before authorization for {edge_id}")
     authorized = authorize_disconnect(probe)
     before = probe.snapshot()
 
     if probe.ipc("workflowDisconnectApply") != "true":
         raise AssertionError(
-            "authorized Disconnect Apply did not start")
+            f"authorized Disconnect Apply did not start for {edge_id}")
     if probe.ipc("workflowDisconnectApply") != "false":
         raise AssertionError(
-            "Disconnect Apply accepted duplicate start")
+            f"Disconnect Apply accepted duplicate start for {edge_id}")
 
     completed = wait_snapshot(
         probe,
@@ -277,12 +302,12 @@ def run_success(
                 .get("status") == "missing"
             and len(s["workflowAnalyzer"]["diagnostics"]) == 0
         ),
-        "user-facing Disconnect Apply success",
+        f"user-facing Disconnect Apply success {edge_id}",
         timeout=120,
     )
 
     probe.record(
-        "2K-T-B authorized Disconnect applies once and proves old anchor absent",
+        f"2K-T-C {edge_id} authorized Disconnect applies once and proves old anchor absent",
         before_auth["workflowTransaction"]["disconnectApplyEnabled"]
             is False
         and before["workflowTransaction"]["disconnectApplyEnabled"] is True
@@ -291,8 +316,9 @@ def run_success(
         and completed["reloadFailures"] == 0
         and clock_path.read_bytes() == candidate
         and file_sha(clock_path) == candidate_sha
-        and b"DateTime.timeDisplay" not in candidate,
+        and target["expectedCurrent"].encode("utf-8") not in candidate,
         {
+            "edgeId": edge_id,
             "manifestPath": str(manifest_path),
             "candidateSha256": candidate_sha,
             "authorization":
@@ -313,7 +339,7 @@ def run_success(
         source_before,
         clock_path,
     )
-    report["success"] = {
+    report.setdefault("successes", {})[edge_id] = {
         "prepared": prepared_state,
         "authorized": authorized["workflowTransaction"],
         "completed": completed["workflowTransaction"],
@@ -321,43 +347,47 @@ def run_success(
     }
     reset_disconnect(probe)
 
-
 def run_postcondition_failure(
     probe: Probe,
     clock_path: Path,
     report: dict,
+    edge_id: str,
 ) -> None:
+    target = DISCONNECT_TARGETS[edge_id]
     prepared_state, source_before = prepare_disconnect(
-        probe, clock_path)
+        probe, clock_path, edge_id)
     preparation = (
         prepared_state["prepared"].get(
             "activeDisconnectPreparation") or {})
     manifest_path = Path(str(preparation["manifestPath"]))
 
-    probe.ipc("workflowDisconnectAnalyzeDate")
-    date_analysis = wait_snapshot(
+    other_edge = target["otherEdgeId"]
+    if probe.ipc("workflowDisconnectAnalyzeEdge", other_edge) != "true":
+        raise AssertionError(
+            f"surviving Disconnect analysis did not start for {other_edge}")
+    other_analysis = wait_snapshot(
         probe,
         lambda s: (
             s["workflowAnalyzer"]["status"] == "ready"
             and (s["workflowAnalyzer"].get("reviewedAnchor") or {})
                 .get("status") == "resolved"
             and (s["workflowAnalyzer"].get("reviewedAnchor") or {})
-                .get("semanticValueText") == "DateTime.date"
+                .get("semanticValueText") == target["otherExpectedCurrent"]
         ),
-        "surviving Clock date binding analysis",
+        f"surviving Clock binding analysis {other_edge}",
         timeout=60,
     )
-    date_anchor = str(
-        date_analysis["workflowAnalyzer"]["reviewedAnchor"]
+    other_anchor = str(
+        other_analysis["workflowAnalyzer"]["reviewedAnchor"]
             ["semanticAnchor"])
-    if not date_anchor:
+    if not other_anchor:
         raise AssertionError(
-            "surviving date binding has no semantic anchor")
+            f"surviving binding has no semantic anchor for {other_edge}")
 
     manifest = json.loads(
         manifest_path.read_text(encoding="utf-8"))
     original_anchor = str(manifest["semanticAnchor"])
-    manifest["semanticAnchor"] = date_anchor
+    manifest["semanticAnchor"] = other_anchor
     manifest_path.write_text(
         json.dumps(manifest, indent=2, sort_keys=True) + "\n",
         encoding="utf-8",
@@ -365,19 +395,19 @@ def run_postcondition_failure(
     manifest_sha = file_sha(manifest_path)
     if probe.ipc(
         "workflowDisconnectOverridePreparedAnchor",
-        date_anchor,
+        other_anchor,
         manifest_sha,
     ) != "true":
         raise AssertionError(
-            "ProbeShell could not align Disconnect postcondition fixture")
+            f"ProbeShell could not align Disconnect postcondition fixture for {edge_id}")
 
     authorized = authorize_disconnect(probe)
     if probe.ipc("workflowDisconnectApply") != "true":
         raise AssertionError(
-            "forced postcondition Disconnect Apply did not start")
+            f"forced postcondition Disconnect Apply did not start for {edge_id}")
     if probe.ipc("workflowDisconnectApply") != "false":
         raise AssertionError(
-            "forced postcondition Disconnect Apply accepted duplicate start")
+            f"forced postcondition Disconnect Apply accepted duplicate start for {edge_id}")
 
     recovered = wait_snapshot(
         probe,
@@ -396,7 +426,7 @@ def run_postcondition_failure(
                 "disconnectLifecycleResult") or {}).get("status")
                 == "disconnect-rolled-back"
         ),
-        "Disconnect absence-postcondition automatic rollback",
+        f"Disconnect absence-postcondition automatic rollback {edge_id}",
         timeout=150,
     )
     result = (
@@ -405,7 +435,7 @@ def run_postcondition_failure(
     )
 
     probe.record(
-        "2K-T-B failed old-anchor absence postcondition rolls back exact source",
+        f"2K-T-C {edge_id} failed old-anchor absence postcondition rolls back exact source",
         clock_path.read_bytes() == source_before
         and bool(
             recovered["workflowTransaction"]
@@ -415,8 +445,9 @@ def run_postcondition_failure(
         and (result.get("verify") or {}).get("sourceState")
             == "base-present",
         {
+            "edgeId": edge_id,
             "originalDeletedAnchor": original_anchor,
-            "forcedSurvivingAnchor": date_anchor,
+            "forcedSurvivingAnchor": other_anchor,
             "manifestSha256": manifest_sha,
             "authorization":
                 authorized["workflowTransaction"]
@@ -424,13 +455,12 @@ def run_postcondition_failure(
             "lifecycle": recovered["workflowTransaction"],
         },
     )
-    report["postconditionFailure"] = {
+    report.setdefault("postconditionFailures", {})[edge_id] = {
         "prepared": prepared_state,
         "authorized": authorized["workflowTransaction"],
         "recovered": recovered["workflowTransaction"],
     }
     reset_disconnect(probe)
-
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
@@ -455,7 +485,7 @@ def main() -> int:
 
     report = {
         "schema": 1,
-        "gate": "Phase 2K-T-B",
+        "gate": "Phase 2K-T-C",
         "manifest": manifest,
         "grammar": str(grammar),
         "grammarSha256": file_sha(grammar),
@@ -465,9 +495,9 @@ def main() -> int:
             "headless Sway, isolated XDG/private bus, production "
             "Disconnect preview/preparation/authorization/Apply lifecycle",
         "limitations": [
-            "Only reviewed edge clock.data.time is write-authorized.",
-            "Direct-binding replacement and other Disconnect edges remain "
-            "preview-only.",
+            "Only reviewed edges clock.data.time and clock.data.date are "
+            "write-authorized.",
+            "All other Disconnect edges remain preview-only.",
             "The source tree under test is a temporary exported runtime.",
         ],
     }
@@ -477,8 +507,11 @@ def main() -> int:
     probe.env["QT_QUICK_BACKEND"] = "software"
     try:
         probe.launch()
-        run_success(probe, work_dir, clock_path, report)
-        run_postcondition_failure(probe, clock_path, report)
+        for edge_id in DISCONNECT_TARGETS:
+            run_success(probe, work_dir, clock_path, report, edge_id)
+        for edge_id in DISCONNECT_TARGETS:
+            run_postcondition_failure(
+                probe, clock_path, report, edge_id)
     except Exception as exc:
         report["failure"] = repr(exc)
         try:

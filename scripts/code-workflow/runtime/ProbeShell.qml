@@ -196,6 +196,9 @@ ShellRoot {
                 activeCommandCandidateSha256: String(
                     CodeWorkflowTransaction.activeCommand
                         ?.candidateSha256 ?? ""),
+                activeCommandReviewedEdgeId: String(
+                    CodeWorkflowTransaction.activeCommand
+                        ?.reviewedEdgeId ?? ""),
                 connectPreparationBusy:
                     CodeWorkflowTransaction.connectPreparationBusy,
                 connectPreparationCapability:
@@ -516,35 +519,60 @@ ShellRoot {
             return true
         }
 
-        function workflowDisconnectAnalyze(): void {
+        function reviewedDisconnectTarget(edgeId: string): var {
+            const id = String(edgeId ?? "")
+            if (id === "clock.data.time") {
+                return ({
+                    sourcePath: "modules/bar/ClockWidget.qml",
+                    sourceNeedle: "text: DateTime.timeDisplay",
+                    expectedCurrent: "DateTime.timeDisplay"
+                })
+            }
+            if (id === "clock.data.date") {
+                return ({
+                    sourcePath: "modules/bar/ClockWidget.qml",
+                    sourceNeedle: "text: DateTime.date",
+                    expectedCurrent: "DateTime.date"
+                })
+            }
+            return null
+        }
+        function workflowDisconnectAnalyzeEdge(edgeId: string): bool {
+            const target = reviewedDisconnectTarget(edgeId)
+            if (target === null)
+                return false
             CodeWorkflowAnalyzer.request(
-                "modules/bar/ClockWidget.qml",
-                "text: DateTime.timeDisplay",
+                target.sourcePath,
+                target.sourceNeedle,
                 "",
                 true)
+            return true
+        }
+        function workflowDisconnectAnalyze(): void {
+            workflowDisconnectAnalyzeEdge("clock.data.time")
         }
         function workflowDisconnectAnalyzeDate(): void {
-            CodeWorkflowAnalyzer.request(
-                "modules/bar/ClockWidget.qml",
-                "text: DateTime.date",
-                "",
-                true)
+            workflowDisconnectAnalyzeEdge("clock.data.date")
         }
-        function workflowDisconnectPreview(): bool {
+        function workflowDisconnectPreviewEdge(edgeId: string): bool {
+            const target = reviewedDisconnectTarget(edgeId)
             const anchor = String(
                 CodeWorkflowAnalyzer.reviewedAnchor
                     ?.semanticAnchor ?? "")
             const sha = String(
                 CodeWorkflowAnalyzer.result?.sourceSha256 ?? "")
-            if (anchor.length === 0 || sha.length === 0)
+            if (target === null || anchor.length === 0 || sha.length === 0)
                 return false
             return CodeWorkflowTransaction.previewDisconnectBinding(
-                "modules/bar/ClockWidget.qml",
+                target.sourcePath,
                 sha,
                 anchor,
-                "DateTime.timeDisplay",
+                target.expectedCurrent,
                 "bar/clock",
-                "clock.data.time")
+                String(edgeId ?? ""))
+        }
+        function workflowDisconnectPreview(): bool {
+            return workflowDisconnectPreviewEdge("clock.data.time")
         }
         function workflowDisconnectPrepare(): bool {
             return CodeWorkflowTransaction.prepareDisconnectArtifacts()

@@ -453,6 +453,23 @@ old per-pointer full-router + layout-map mutation path that caused visible lag.
 Idle graph/node cursors remain `ArrowCursor`; closed-hand feedback appears only
 while a pan/node drag is active.
 
+The 2026-09-23 Workflow performance pass also removes several remaining hot-path
+allocation/scan costs without changing reviewed IR or mutation authority. Runtime
+snapshot presentation is fingerprinted and coalesced, the unified graph remains
+warm across Settings page-cache navigation, graph materialization is deferred past
+the page transition, and unchanged runtime polls no longer rebuild the delegate
+tree. Route objects now retain their immutable AABB after smart-lane resolution;
+viewport culling reuses that AABB and edge hover/tap hit-testing rejects routes by
+bounds before segment-distance work. Resolved node layout offsets are cached per
+graph-layout revision, so node/route geometry no longer allocates default offset
+objects on repeated coordinate reads. Edge and label delegates test endpoint
+existence directly against `nodeIndexCache` rather than cloning resolved node
+objects. Geometry Shape preprocessing remains asynchronous; CurveRenderer remains
+HOLD because the retained Phase-0 soak showed sustained RSS growth. The next
+renderer-level experiment, if profiling still shows scene-graph/state-change cost,
+is to benchmark batching compatible idle wires into fewer Shape items; do not
+promote that rewrite without compositor capture and memory/frame evidence.
+
 Source Preview has now become a guarded Source Editor. It reuses the production
 `org.kde.syntaxhighlighting` backend, keeps per-source draft buffers across
 inspect-selection switches, exposes dirty/save/conflict state, and writes only

@@ -61,7 +61,6 @@ Item { // Bar content region
             },
         ]
     }
-    readonly property bool cardStyleEverywhere: false
     readonly property color separatorColor: Appearance.colors.colOutlineVariant
     readonly property bool gameModeMinimal: Appearance.gameModeMinimal
 
@@ -454,8 +453,6 @@ Item { // Bar content region
     // Background
     Rectangle {
         id: barBackground
-        readonly property bool floatingStyle: false
-
         anchors {
             fill: parent
             margins: 0
@@ -481,7 +478,7 @@ Item { // Bar content region
             enabled: Appearance.animationsEnabled
             NumberAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve }
         }
-        border.width: floatingStyle ? 1 : 0
+        border.width: 0
         Behavior on border.width {
             enabled: Appearance.animationsEnabled
             NumberAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve }

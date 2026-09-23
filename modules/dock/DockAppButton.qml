@@ -14,7 +14,6 @@ DockButton {
     id: root
     property var appToplevel
     property var appListRoot
-    property int listIndex: -1       // set by the DockApps delegate (required property int index)
     property int lastFocused: -1
     property real iconSize: Config.options?.dock?.iconSize ?? 35
     property real countDotWidth: 10
@@ -700,11 +699,6 @@ DockButton {
                     horizontalCenter: parent.horizontalCenter
                 }
 
-                // Config options
-                property bool smartIndicator: Config.options?.dock?.smartIndicator !== false
-                property bool showAllDots: Config.options?.dock?.showAllWindowDots !== false
-                property int maxDots: Config.options?.dock?.maxIndicatorDots ?? 5
-
                 sourceComponent: Row {
                     spacing: 3
 
@@ -772,7 +766,7 @@ DockButton {
                         }
                     }
 
-                    // Fallback: single indicator when showAllDots is off and app is inactive
+                    // Fallback: single indicator when all-window dots are disabled and the app is inactive
                     Rectangle {
                         opacity: (!root.appIsActive && root.hasWindows && Config.options?.dock?.showAllWindowDots === false) ? 1 : 0
                         visible: opacity > 0

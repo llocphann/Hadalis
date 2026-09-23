@@ -1885,6 +1885,11 @@ Singleton {
         if (reloadState.pendingBindingPhase
                 !== "postcondition-checking")
             return
+        if (CodeWorkflowAnalyzer.sourcePath
+                !== reloadState.pendingBindingSourcePath
+                || CodeWorkflowAnalyzer.semanticAnchor
+                    !== reloadState.pendingBindingSemanticAnchor)
+            return
         if (CodeWorkflowAnalyzer.status === "analyzing"
                 || CodeWorkflowAnalyzer.status === "idle")
             return

@@ -111,10 +111,17 @@ ContentPage {
     function formatLoadAverage(values): string {
         if (!Array.isArray(values) || values.length === 0)
             return Translation.tr("Load") + " —"
-        return Translation.tr("Load") + " "
-            + values.slice(0, 3)
-                .map(value => Number(value).toFixed(2))
-                .join("  ")
+        const normalized = []
+        for (const raw of values.slice(0, 3)) {
+            if (raw === null || raw === undefined)
+                continue
+            const value = Number(raw)
+            if (Number.isFinite(value) && value >= 0)
+                normalized.push(value.toFixed(2))
+        }
+        return normalized.length > 0
+            ? Translation.tr("Load") + " " + normalized.join("  ")
+            : Translation.tr("Load") + " —"
     }
 
     function sampleIntervalLabel(): string {

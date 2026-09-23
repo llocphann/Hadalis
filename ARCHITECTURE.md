@@ -30,7 +30,7 @@ Two mutually exclusive UI families are switchable at runtime (`Super+Shift+W`):
 | Global theme | Material only | Waffle is a separate Fluent panel family, not a Global Theme |
 | Bar | **Classic Bar only** — top/bottom/left/right; Hug/Float/Rectangle/Card geometry | Bottom Windows 11-style taskbar |
 | App launcher | Overview | StartMenu with search |
-| Right panel | SidebarRight | ActionCenter + NotificationCenter |
+| Right panel | SidebarRight + bottom-right Notification Center | ActionCenter + NotificationCenter |
 | Panels | ii (`iiBar`, `iiDock`, `iiSidebarLeft`, ...) | w (`wBar`, `wStartMenu`, `wActionCenter`, ... + shared ii panels) |
 
 The retired Bar renderer families (Islands, Scenic, Frame, M3 and Pill) are not runtime alternatives. Shared `island`, `pill` and `m3*` names may still appear where they describe unrelated live skins, widget shapes, Material color tokens, or other non-Bar behavior.

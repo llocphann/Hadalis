@@ -37,19 +37,11 @@ Item {
     }
     
     // Style tokens
-    readonly property color colPrimary: Appearance.angelEverywhere ? Appearance.angel.colPrimary
-        : Appearance.inirEverywhere ? Appearance.inir.colPrimary : Appearance.colors.colPrimary
-    readonly property color colText: Appearance.angelEverywhere ? Appearance.angel.colText
-        : Appearance.inirEverywhere ? Appearance.inir.colText : Appearance.colors.colOnLayer1
-    readonly property color colSubtext: Appearance.angelEverywhere ? Appearance.angel.colTextSecondary
-        : Appearance.inirEverywhere ? Appearance.inir.colTextSecondary : Appearance.colors.colSubtext
-    readonly property color colError: Appearance.angelEverywhere ? Appearance.angel.colError
-        : Appearance.inirEverywhere ? (Appearance.inir?.colError ?? Appearance.colors.colError)
-        : Appearance.colors.colError
-    readonly property color colBadge: Appearance.angelEverywhere ? Appearance.angel.colBorderSubtle
-        : Appearance.inirEverywhere ? ColorUtils.transparentize(Appearance.inir.colBorder, 0.5)
-        : Appearance.auroraEverywhere ? (Appearance.aurora?.colSubSurface ?? ColorUtils.transparentize(Appearance.colors.colPrimary, 0.90))
-        : ColorUtils.transparentize(Appearance.colors.colPrimary, 0.90)
+    readonly property color colPrimary: Appearance.colors.colPrimary
+    readonly property color colText: Appearance.colors.colOnLayer1
+    readonly property color colSubtext: Appearance.colors.colSubtext
+    readonly property color colError: Appearance.colors.colError
+    readonly property color colBadge: ColorUtils.transparentize(Appearance.colors.colPrimary, 0.90)
 
     // Source color for external events, priority color for local
     readonly property color indicatorColor: {
@@ -70,32 +62,19 @@ Item {
     
     StyledRectangularShadow {
         target: cardBg
-        visible: !Appearance.inirEverywhere && !Appearance.auroraEverywhere
+        visible: true
     }
     
     Rectangle {
         id: cardBg
         anchors.fill: parent
-        radius: Appearance.angelEverywhere ? Appearance.angel.roundingSmall
-            : Appearance.inirEverywhere ? Appearance.inir.roundingSmall
-            : Appearance.rounding.small
-        color: {
-            if (editMA.containsMouse && !root.isExternal) {
-                if (Appearance.angelEverywhere) return Appearance.angel.colGlassCardHover
-                if (Appearance.inirEverywhere) return Appearance.inir.colLayer2Hover
-                if (Appearance.auroraEverywhere) return Appearance.aurora?.colSubSurface ?? Appearance.colors.colLayer2Hover
-                return Appearance.colors.colLayer2Hover
-            }
-            if (Appearance.angelEverywhere) return Appearance.angel.colGlassCard
-            if (Appearance.inirEverywhere) return Appearance.inir.colLayer2
-            if (Appearance.auroraEverywhere) return Appearance.aurora?.colSubSurface ?? Appearance.colors.colLayer2
-            return Appearance.m3colors?.m3surfaceContainerHigh ?? Appearance.colors.colLayer2
-        }
+        radius: Appearance.rounding.small
+        color: editMA.containsMouse && !root.isExternal
+            ? Appearance.colors.colLayer2Hover
+            : (Appearance.m3colors?.m3surfaceContainerHigh ?? Appearance.colors.colLayer2)
         border.width: root.activeFocus && !root.isExternal ? 2 : 1
-        border.color: root.activeFocus && !root.isExternal ? root.colPrimary
-            : Appearance.angelEverywhere ? Appearance.angel.colBorder
-            : Appearance.inirEverywhere ? Appearance.inir.colBorder
-            : Appearance.auroraEverywhere ? ColorUtils.transparentize(Appearance.colors.colOutlineVariant, 0.78)
+        border.color: root.activeFocus && !root.isExternal
+            ? root.colPrimary
             : ColorUtils.transparentize(Appearance.colors.colOutlineVariant, 0.72)
         Behavior on color {
             enabled: Appearance.animationsEnabled
@@ -242,9 +221,7 @@ Item {
                 buttonRadius: 16
                 visible: !root.isExternal
                 colBackground: "transparent"
-                colBackgroundHover: Appearance.angelEverywhere ? Appearance.angel.colGlassCardHover
-                    : Appearance.inirEverywhere ? Appearance.inir.colLayer2Hover
-                    : Appearance.colors.colLayer1Hover
+                colBackgroundHover: Appearance.colors.colLayer1Hover
                 onClicked: root.removeClicked()
                 
                 contentItem: MaterialSymbol {
@@ -260,12 +237,7 @@ Item {
             }
         }
         
-        AngelPartialBorder {
-            targetRadius: cardBg.radius
-            visible: Appearance.angelEverywhere
-        }
-        
-        // Click to edit (local only)
+         // Click to edit (local only)
         MouseArea {
             id: editMA
             anchors.fill: parent

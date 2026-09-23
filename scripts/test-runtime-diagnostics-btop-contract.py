@@ -161,6 +161,12 @@ def main() -> None:
         )
 
     require(
+        runtime_panel,
+        "columns: width >= 520 ? 3 : 1",
+        "BtopRuntimePanel.qml narrow responsive rate layout",
+    )
+
+    require(
         target_table,
         "readonly property bool showOutputColumn: width >= 520",
         "BtopTargetTable.qml narrow responsive layout",

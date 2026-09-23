@@ -74,6 +74,10 @@ Item {
         return CodeWorkflowRuntime.snapshot()
     }
     function runtimeEventTargetId(event): string {
+        const explicitTargetId = String(event?.targetId ?? "")
+        if (explicitTargetId.length > 0)
+            return explicitTargetId
+        // Legacy/remote snapshots may predate explicit event target identity.
         const identity = String(event?.instanceId ?? "")
         const split = identity.lastIndexOf("@")
         return split > 0 ? identity.slice(0, split) : identity

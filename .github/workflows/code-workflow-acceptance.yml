@@ -208,6 +208,9 @@ jobs:
       - name: Validate canonical Workflow identity
         run: nix develop .#workflow-acceptance --command bash -lc 'python3 scripts/test-code-workflow-identity-contract.py'
 
+      - name: Validate cached runtime-boundary discovery
+        run: nix develop .#workflow-acceptance --command bash -lc 'python3 scripts/test-code-workflow-index-contract.py'
+
       - name: Validate Runtime Diagnostics session and sampler
         run: |
           nix develop .#workflow-acceptance --command bash -lc '

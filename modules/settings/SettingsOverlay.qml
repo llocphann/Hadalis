@@ -1325,12 +1325,13 @@ Scope {
                                         }
                                     }
 
-                                    // Active indicator: pill travelling behind the active item,
-                                    // inside navCol so its y matches the items' coordinate space.
+                                    // Active indicator: keep it on the Flickable content layer, not
+                                    // as a ColumnLayout child. Otherwise ColumnLayout owns its y
+                                    // and can push the pill below the last row after a heading toggle.
                                     Rectangle {
                                         id: sharedNavIndicator
                                         z: -1
-                                        parent: navCol
+                                        parent: navFlickable.contentItem
                                         x: 0
                                         width: navCol.width
                                         radius: Appearance.rounding.small
@@ -1366,7 +1367,7 @@ Scope {
                                         function _setTargetGeometry(targetItem) {
                                             if (!targetItem || !targetItem.visible || targetItem.height <= 0)
                                                 return false
-                                            targetY = targetItem.mapToItem(navCol, 0, 0).y
+                                            targetY = targetItem.mapToItem(sharedNavIndicator.parent, 0, 0).y
                                             targetH = targetItem.height
                                             hasTarget = true
                                             return true

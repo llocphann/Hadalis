@@ -72,6 +72,19 @@ for token in (
 ):
     require(editor, token, "line-number gutter contract missing")
 
+text_edit_start = editor.index("            TextEdit {\n                id: editor")
+text_edit_end = editor.index("\n        Loader {\n            id: syntaxLoader", text_edit_start)
+text_edit_block = editor[text_edit_start:text_edit_end]
+for forbidden in (
+    "lineHeight:",
+    "lineHeightMode:",
+):
+    if forbidden in text_edit_block:
+        fail(
+            "TextEdit must not use unsupported line-height bindings: "
+            + forbidden
+        )
+
 for token in (
     "function lineStart(position: int): int",
     "function lineEnd(position: int): int",

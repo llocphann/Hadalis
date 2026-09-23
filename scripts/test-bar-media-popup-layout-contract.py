@@ -6,6 +6,8 @@ ROOT = Path(__file__).resolve().parents[1]
 bar = (ROOT / "modules/mediaControls/BarMediaPopup.qml").read_text(encoding="utf-8")
 player = (ROOT / "modules/mediaControls/PlayerControl.qml").read_text(encoding="utf-8")
 eq = (ROOT / "modules/mediaControls/EqualizerPanel.qml").read_text(encoding="utf-8")
+horizontal_owner = (ROOT / "modules/bar/Media.qml").read_text(encoding="utf-8")
+vertical_owner = (ROOT / "modules/verticalBar/VerticalMedia.qml").read_text(encoding="utf-8")
 
 failures = []
 
@@ -21,6 +23,18 @@ for token in (
 
 if bar.count("compactLayout: root.compactLayout") < 2:
     failures.append("BarMediaPopup must pass compactLayout to both PlayerControl and EqualizerPanel")
+
+# The tab rail is budgeted by BarMediaPopup itself. A single source must not
+# inherit the legacy StyledPopup trailing inset from either Bar orientation.
+require(bar, "rightMargin: root.tabCount > 1 ? 16 : 0", "BarMediaPopup tab rail budget")
+require(bar, "visible: root.tabCount > 1", "BarMediaPopup tab rail visibility")
+for owner, label in (
+    (horizontal_owner, "Horizontal Bar media popup owner"),
+    (vertical_owner, "Vertical Bar media popup owner"),
+):
+    require(owner, "popupBackgroundMargin: 0", label)
+    if "popupBackgroundMargin: Appearance.sizes.elevationMargin" in owner:
+        failures.append(f"{label}: legacy trailing background inset must stay disabled")
 
 for token in (
     "property bool compactLayout: false",

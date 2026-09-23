@@ -506,6 +506,18 @@ of-detail gated below 58% zoom unless the node is selected. Reviewed quadratic
 wire paths and linear arrow paths also publish ShapePath geometry hints while
 remaining on the qualified asynchronous GeometryRenderer path.
 
+The final 2026-09-23 hot-path pass removes three smaller sources of repeated work.
+Runtime records are indexed once per accepted runtime snapshot by target/instance,
+target/output, resident target and first target, so rebuilding Targets no longer
+performs up to four linear record scans for every descriptor. Sampled viewport
+culling now publishes pan/zoom as one immutable object, preventing three separate
+binding-invalidation waves across every node, wire and edge label on each cull
+tick. Idle edges also stop tessellating the decorative halo stroke entirely;
+the halo is retained only for selected/reasoning/hovered relations. These changes
+are presentation-only and do not alter graph identity, routing, hit testing,
+selection or transaction authority. Regression contracts lock the indexed lookup,
+atomic culling state and focused-only halo behavior.
+
 Targets filtering now debounces parser/workspace-index scans for 90 ms, while the
 capture harness keeps synchronous semantics. The Targets ListView recycles its
 non-trivial delegates, buffers 240 px asynchronously, and no longer clips every

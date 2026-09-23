@@ -101,6 +101,8 @@ Item {
                 Layout.bottomMargin: 8
 
                 StyledText {
+
+                    textFormat: Text.PlainText
                     Layout.fillWidth: true
                     text: "Interfaces"
                     color: Appearance.colors.colPrimary
@@ -108,6 +110,8 @@ Item {
                 }
 
                 StyledText {
+
+                    textFormat: Text.PlainText
                     text: String(root.rows.length)
                     color: Appearance.colors.colPrimary
                     font.weight: Font.DemiBold
@@ -120,6 +124,8 @@ Item {
                 spacing: 8
 
                 StyledText {
+
+                    textFormat: Text.PlainText
                     Layout.fillWidth: true
                     Layout.preferredWidth: 1.2
                     text: "IFACE"
@@ -129,6 +135,8 @@ Item {
                 }
 
                 StyledText {
+
+                    textFormat: Text.PlainText
                     Layout.fillWidth: true
                     horizontalAlignment: Text.AlignRight
                     text: "RX"
@@ -138,6 +146,8 @@ Item {
                 }
 
                 StyledText {
+
+                    textFormat: Text.PlainText
                     Layout.fillWidth: true
                     horizontalAlignment: Text.AlignRight
                     text: "TX"
@@ -147,6 +157,8 @@ Item {
                 }
 
                 StyledText {
+
+                    textFormat: Text.PlainText
                     visible: root.showTotalColumn
                     Layout.fillWidth: true
                     horizontalAlignment: Text.AlignRight
@@ -173,6 +185,8 @@ Item {
                     spacing: 8
 
                     StyledText {
+
+                        textFormat: Text.PlainText
                         Layout.fillWidth: true
                         Layout.preferredWidth: 1.2
                         text: String(modelData.name)
@@ -184,6 +198,8 @@ Item {
                     }
 
                     StyledText {
+
+                        textFormat: Text.PlainText
                         Layout.fillWidth: true
                         horizontalAlignment: Text.AlignRight
                         text: "↓ " + root.formatRate(
@@ -195,6 +211,8 @@ Item {
                     }
 
                     StyledText {
+
+                        textFormat: Text.PlainText
                         Layout.fillWidth: true
                         horizontalAlignment: Text.AlignRight
                         text: "↑ " + root.formatRate(
@@ -206,6 +224,8 @@ Item {
                     }
 
                     StyledText {
+
+                        textFormat: Text.PlainText
                         visible: root.showTotalColumn
                         Layout.fillWidth: true
                         horizontalAlignment: Text.AlignRight
@@ -220,6 +240,8 @@ Item {
             }
 
             StyledText {
+
+                textFormat: Text.PlainText
                 Layout.fillWidth: true
                 visible: root.rows.length === 0
                 Layout.topMargin: 8
@@ -229,6 +251,8 @@ Item {
             }
 
             StyledText {
+
+                textFormat: Text.PlainText
                 Layout.fillWidth: true
                 visible: root.rows.length > root.visibleRows.length
                 Layout.topMargin: 8

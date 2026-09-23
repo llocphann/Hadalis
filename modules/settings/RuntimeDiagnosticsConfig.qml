@@ -226,7 +226,15 @@ ContentPage {
                 implicitHeight: sessionLayout.implicitHeight + 24
                 radius: Appearance.rounding.normal
                 color: Appearance.colors.colLayer1
-                border.color: Appearance.colors.colOutline
+                border.color: root.sessionHasError
+                    ? Appearance.colors.colError
+                    : RuntimeDiagnosticsSession.pageCurrent
+                        ? Qt.rgba(
+                            Appearance.colors.colPrimary.r,
+                            Appearance.colors.colPrimary.g,
+                            Appearance.colors.colPrimary.b,
+                            0.46)
+                        : Appearance.colors.colOutline
 
                 RowLayout {
                     id: sessionLayout
@@ -446,7 +454,11 @@ ContentPage {
                 implicitHeight: coreColumn.implicitHeight + 24
                 radius: Appearance.rounding.normal
                 color: Appearance.colors.colLayer1
-                border.color: Appearance.colors.colOutline
+                border.color: Qt.rgba(
+                    Appearance.colors.colPrimary.r,
+                    Appearance.colors.colPrimary.g,
+                    Appearance.colors.colPrimary.b,
+                    0.34)
 
                 ColumnLayout {
                     id: coreColumn

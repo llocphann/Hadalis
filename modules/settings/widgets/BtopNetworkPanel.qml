@@ -71,6 +71,7 @@ Item {
                 }
 
                 GridLayout {
+                    id: rateHeader
                     Layout.fillWidth: true
                     columns: width >= 360 ? 2 : 1
                     columnSpacing: 12
@@ -91,7 +92,7 @@ Item {
 
                         textFormat: Text.PlainText
                         Layout.fillWidth: true
-                        horizontalAlignment: width >= 360
+                        horizontalAlignment: rateHeader.width >= 360
                             ? Text.AlignRight : Text.AlignLeft
                         text: root.txPrefix + root.tx
                         color: root.txColor
@@ -153,6 +154,7 @@ Item {
             }
 
             GridLayout {
+                id: totalsGrid
                 Layout.fillWidth: true
                 visible: root.rxTotal.length > 0
                     || root.txTotal.length > 0
@@ -176,7 +178,7 @@ Item {
 
                     textFormat: Text.PlainText
                     Layout.fillWidth: true
-                    horizontalAlignment: width >= 360
+                    horizontalAlignment: totalsGrid.width >= 360
                         ? Text.AlignRight : Text.AlignLeft
                     text: "Σ " + root.txLabel + " "
                         + (root.txTotal || "—")

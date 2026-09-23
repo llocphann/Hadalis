@@ -92,20 +92,22 @@ Item {
         return "plaintext"
     }
 
-    property var runtimeSnapshotCache: ({ outputs: [], records: [] })
     property string runtimeSnapshotFingerprint: ""
-    // Targets asks for the best runtime record for every descriptor. The old
-    // lookup scanned the records array up to four times per target, so a single
-    // sidebar rebuild became quadratic as runtime declarations grew. Index the
-    // immutable presentation snapshot once and keep selection/output fallbacks
-    // as O(1) map lookups.
-    property var runtimeRecordIndex: ({
-        exact: ({}),
-        output: ({}),
-        resident: ({}),
-        first: ({})
+    // Publish snapshot data and its lookup index as one immutable presentation
+    // value. This keeps Targets/Inspector from observing two separate property
+    // changes (index then snapshot) and rebuilding twice for one runtime update.
+    property var runtimePresentationCache: ({
+        snapshot: ({ outputs: [], records: [] }),
+        records: ({
+            exact: ({}),
+            output: ({}),
+            resident: ({}),
+            first: ({})
+        })
     })
-    readonly property var snapshot: root.runtimeSnapshotCache
+    readonly property var snapshot: root.runtimePresentationCache.snapshot
+    readonly property var runtimeRecordIndex:
+        root.runtimePresentationCache.records
 
     function runtimeRecordKey(targetId: string, qualifier: string): string {
         return String(targetId ?? "") + "\u001f" + String(qualifier ?? "")
@@ -160,8 +162,10 @@ Item {
                 && fingerprint === root.runtimeSnapshotFingerprint)
             return
         root.runtimeSnapshotFingerprint = fingerprint
-        root.runtimeRecordIndex = root.buildRuntimeRecordIndex(next)
-        root.runtimeSnapshotCache = next
+        root.runtimePresentationCache = {
+            snapshot: next,
+            records: root.buildRuntimeRecordIndex(next)
+        }
     }
     function runtimeEventTargetId(event): string {
         const explicitTargetId = String(event?.targetId ?? "")

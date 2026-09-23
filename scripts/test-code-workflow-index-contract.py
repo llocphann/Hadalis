@@ -35,6 +35,9 @@ for token in (
     "def discover_qml(root: Path) -> list[Path]:",
     "def load_cache(path: Path, parser_signature: dict) -> dict:",
     "def write_cache(path: Path, payload: dict) -> None:",
+    '"indexerSha256": helper_hashes["index.py"]',
+    '"nativeAdapterSha256": helper_hashes["native.py"]',
+    '"semanticsSha256": helper_hashes["semantics.py"]',
     '"liveRuntimeEvidence": False',
     '"editable": False',
 ):

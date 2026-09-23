@@ -749,7 +749,7 @@ Item {
         root.scheduleWorkflowActivation()
         Qt.callLater(root.evaluatePreApplyGate)
         Qt.callLater(() => {
-            if (!root.workflowActive || root.workflowDestroying)
+            if (!root.workflowOperational)
                 return
             sourceEditor.setMode("normal")
             sourceEditor.clearSelection()
@@ -1352,7 +1352,7 @@ Item {
     }
 
     function reconcileIndexedSemanticInspectSelection(): void {
-        if (!root.workflowActive || root.workflowDestroying)
+        if (!root.workflowOperational)
             return
         const sourcePath = CodeWorkflowSession.selectedSemanticSourcePath
         const anchor = root.inspectedSemanticAnchor
@@ -1370,7 +1370,7 @@ Item {
     }
 
     function prepareSelectedSemanticInspectTarget(): void {
-        if (!root.workflowActive || root.workflowDestroying)
+        if (!root.workflowOperational)
             return
         if (root.inspectedSemanticAnchor.length === 0)
             return
@@ -1385,7 +1385,7 @@ Item {
     }
 
     function revealSelectedInspectTarget(): void {
-        if (!root.workflowActive || root.workflowDestroying)
+        if (!root.workflowOperational)
             return
         const index = root.inspectTargets.findIndex(
             item => root.inspectTargetSelected(item))
@@ -1468,7 +1468,7 @@ Item {
     }
 
     function reloadSource(): void {
-        if (!root.workflowActive || root.workflowDestroying)
+        if (!root.workflowOperational)
             return
         root.sourceText = ""
         if (sourceReader.path)
@@ -1488,7 +1488,7 @@ Item {
     }
 
     function captureSemanticAnchor(): void {
-        if (!root.workflowActive || root.workflowDestroying)
+        if (!root.workflowOperational)
             return
         if (CodeWorkflowSession.selectedConnectTargetId.length > 0
                 || root.selectedSignalActionTarget !== null)
@@ -1509,7 +1509,7 @@ Item {
     }
 
     function reconcileSemanticInspectSelection(): void {
-        if (!root.workflowActive || root.workflowDestroying)
+        if (!root.workflowOperational)
             return
         const selectedAnchor = CodeWorkflowSession.selectedSemanticAnchor
         if (selectedAnchor.length === 0
@@ -1595,7 +1595,7 @@ Item {
     }
 
     function evaluatePreApplyGate(): void {
-        if (!root.workflowActive || root.workflowDestroying)
+        if (!root.workflowOperational)
             return
         const analyzerReady = root.analyzerMatchesAnchor
             && CodeWorkflowAnalyzer.status === "ready"
@@ -1684,7 +1684,7 @@ Item {
     }
 
     function syncInitialOutput(): void {
-        if (!root.workflowActive || root.workflowDestroying)
+        if (!root.workflowOperational)
             return
         if (CodeWorkflowSession.outputName.length > 0)
             return
@@ -1743,7 +1743,7 @@ Item {
     }
 
     function focusSourceAnchor(): void {
-        if (!root.workflowActive || root.workflowDestroying)
+        if (!root.workflowOperational)
             return
         sourceEditor.clearSelection()
         if (root.sourceText.length === 0)
@@ -1774,18 +1774,18 @@ Item {
     }
 
     onInspectedSemanticAnchorChanged: {
-        if (root.workflowActive && !root.workflowDestroying)
+        if (root.workflowOperational)
             Qt.callLater(root.focusSourceAnchor)
     }
 
     onSourceNeedleChanged: {
-        if (!root.workflowActive || root.workflowDestroying)
+        if (!root.workflowOperational)
             return
         Qt.callLater(root.focusSourceAnchor)
         Qt.callLater(() => root.requestAnalysis(false))
     }
     onStoredSemanticAnchorChanged: {
-        if (!root.workflowActive || root.workflowDestroying)
+        if (!root.workflowOperational)
             return
         Qt.callLater(() => root.requestAnalysis(false))
         Qt.callLater(root.evaluatePreApplyGate)
@@ -1812,7 +1812,7 @@ Item {
 
     Connections {
         target: CodeWorkflowSession
-        enabled: root.workflowActive && !root.workflowDestroying
+        enabled: root.workflowOperational
 
         function onSelectedTargetIdChanged(): void {
             if (!root.inspectSelectionFromTargets)
@@ -1849,7 +1849,7 @@ Item {
 
     Connections {
         target: CodeWorkflowIndex
-        enabled: root.workflowActive && !root.workflowDestroying
+        enabled: root.workflowOperational
         function onStatusChanged(): void {
             root.reconcileIndexedSemanticInspectSelection()
         }
@@ -1857,7 +1857,7 @@ Item {
 
     Connections {
         target: CodeWorkflowAnalyzer
-        enabled: root.workflowActive && !root.workflowDestroying
+        enabled: root.workflowOperational
         function onStatusChanged(): void {
             if (CodeWorkflowAnalyzer.status === "ready") {
                 Qt.callLater(root.reconcileSemanticInspectSelection)
@@ -1877,7 +1877,7 @@ Item {
 
     Connections {
         target: CodeWorkflowRuntime
-        enabled: root.workflowActive && !root.workflowDestroying
+        enabled: root.workflowOperational
         function onRevisionChanged(): void {
             root.refreshRuntimeSnapshot()
             root.syncInitialOutput()
@@ -1886,7 +1886,7 @@ Item {
 
     Connections {
         target: CodeWorkflowTransaction
-        enabled: root.workflowActive && !root.workflowDestroying
+        enabled: root.workflowOperational
         function onStatusChanged(): void {
             Qt.callLater(root.evaluatePreApplyGate)
             // Reclaim presentation analysis only after a transaction lifecycle
@@ -1916,24 +1916,24 @@ Item {
     FileView {
         id: sourceReader
         path: root.sourcePath.length > 0 ? Quickshell.shellPath(root.sourcePath) : ""
-        watchChanges: root.workflowActive && !root.workflowDestroying
+        watchChanges: root.workflowOperational
         printErrors: false
         onLoaded: {
-            if (!root.workflowActive || root.workflowDestroying)
+            if (!root.workflowOperational)
                 return
             root.sourceText = String(sourceReader.text() ?? "")
             root.syncSourceEditorFromDisk(false)
             Qt.callLater(root.focusSourceAnchor)
         }
         onFileChanged: {
-            if (!root.workflowActive || root.workflowDestroying)
+            if (!root.workflowOperational)
                 return
             CodeWorkflowTransaction.markSourceChanged(root.sourcePath)
             sourceReader.reload()
             root.requestAnalysis(true)
         }
         onLoadFailed: {
-            if (!root.workflowActive || root.workflowDestroying)
+            if (!root.workflowOperational)
                 return
             root.sourceText = ""
             if (root.sourceEditorPath === root.sourcePath

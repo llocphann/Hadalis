@@ -22,6 +22,7 @@ shell = read("shell.qml")
 page_host = read("modules/settings/SettingsPageHost.qml")
 material_page = read("modules/settings/RuntimeDiagnosticsConfig.qml")
 waffle_page = read("modules/waffle/settings/pages/WDiagnosticsPage.qml")
+sampler = read("scripts/runtime-diagnostics-sampler.py")
 
 for token in (
     "readonly property int leaseTtlMs: 6000",
@@ -37,6 +38,13 @@ for token in (
     "function status(): var",
     "id: leasePruneTimer",
     "running: root.sessionActive",
+    "function _consumeSample(rawLine): void",
+    "function snapshot(): var",
+    "id: diagnosticsSampler",
+    "running: root.samplingEnabled",
+    'Quickshell.shellPath("scripts/runtime-diagnostics-sampler.py")',
+    '"--pid", String(Quickshell.processId)',
+    "stdout: SplitParser {",
 ):
     require(diagnostics, token, "RuntimeDiagnostics lease authority is incomplete")
 
@@ -77,6 +85,9 @@ for token in (
     '"ipc", "runtimeDiagnostics"',
     "id: heartbeatTimer",
     "running: root.pageCurrent",
+    "readonly property var evidence: root.localShell",
+    "RuntimeDiagnostics.snapshot()",
+    "CodeWorkflowRuntime.remoteSnapshot?.diagnostics",
 ):
     require(session, token, "Diagnostics current-page session client is incomplete")
 
@@ -86,6 +97,8 @@ for token in (
     "RuntimeDiagnostics.heartbeat(clientId)",
     "RuntimeDiagnostics.release(clientId)",
     "RuntimeDiagnostics.status()",
+    "RuntimeDiagnostics.snapshot()",
+    "payload.diagnostics = RuntimeDiagnostics.snapshot()",
 ):
     require(shell, token, "main-shell Runtime Diagnostics IPC contract is incomplete")
 
@@ -168,5 +181,42 @@ for source, text in (
         raise SystemExit(
             f"FAIL: {source} must not acquire Diagnostics in Component.onCompleted"
         )
+
+for token in (
+    'parser.add_argument("--pid", type=int, required=True)',
+    'read_sched_runtime_ns(pid)',
+    'read_system_cpu_ticks()',
+    'read_system_memory()',
+    'read_drm(pid)',
+    '"scope": "shell-process"',
+    '"method": "schedstat"',
+    '"method": "smaps-rollup"',
+    '"method": "proc-net-dev"',
+    '"method": "drm-fdinfo"',
+    '"confidence": "kernel"',
+):
+    require(sampler, token, "kernel sampler provenance contract is incomplete")
+
+for forbidden in (
+    '"targetId"',
+    '"componentCpu"',
+    '"componentRam"',
+):
+    if forbidden in sampler:
+        raise SystemExit(
+            "FAIL: kernel sampler must not invent per-component attribution: "
+            + repr(forbidden)
+        )
+
+for source, text in (
+    ("RuntimeDiagnosticsConfig.qml", material_page),
+    ("WDiagnosticsPage.qml", waffle_page),
+):
+    for forbidden in ("Process {", "smaps_rollup", "/proc/net/dev", "drm-fdinfo"):
+        if forbidden in text:
+            raise SystemExit(
+                f"FAIL: {source} must consume main-shell evidence, not sample locally: "
+                + repr(forbidden)
+            )
 
 print("ok - single-authority demand-driven Runtime Diagnostics session contract")

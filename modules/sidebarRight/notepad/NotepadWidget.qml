@@ -15,6 +15,10 @@ Item {
     // title/stats/toolbar presentation. The editor and draft semantics stay
     // identical across both surfaces.
     property bool compactPresentation: false
+    // Hot-corner Quick Notes is a capture surface rather than a tab manager.
+    // Keep the same editor/autosave backend while hiding Dashboard/Sidebar
+    // navigation chrome that would slow down a one-thought interaction.
+    property bool quickCapturePresentation: false
     readonly property bool narrowCompact:
         root.compactPresentation && root.width > 0 && root.width < 260
 
@@ -200,7 +204,8 @@ Item {
         RowLayout {
             Layout.fillWidth: true
             spacing: 4
-            visible: root.tabCount > 1 || root.tabCount === 1 // Always show for discoverability
+            visible: !root.quickCapturePresentation
+                && (root.tabCount > 1 || root.tabCount === 1) // Always show outside quick capture
 
             Flickable {
                 Layout.fillWidth: true

@@ -9,6 +9,7 @@ Item {
     property string draft: ""
     property string definitionName: "plaintext"
     property string mode: "normal"
+    property bool editingAllowed: true
     property string yankBuffer: ""
     property int visualAnchor: -1
     property int visualCursor: -1
@@ -65,6 +66,11 @@ Item {
             }
             event.accepted = true
         }
+    }
+
+    onEditingAllowedChanged: {
+        if (!root.editingAllowed && root.mode === "insert")
+            root.setMode("normal")
     }
 
     readonly property int lineCount:
@@ -443,8 +449,12 @@ Item {
 
     function setMode(nextMode: string): void {
         root.preferredColumn = -1
-        const requested = ["normal", "insert", "visual"].includes(nextMode)
+        let requested = ["normal", "insert", "visual"].includes(nextMode)
             ? nextMode : "normal"
+        if (requested === "insert" && !root.editingAllowed) {
+            root.statusMessage("Indexed workspace evidence is read-only")
+            requested = "normal"
+        }
         if (requested === "visual") {
             const cursor = root.clampPosition(editor.cursorPosition)
             root.mode = "visual"
@@ -473,6 +483,10 @@ Item {
     function replaceRangeWithCursor(
         start: int, end: int, replacement: string, cursorAfter: int
     ): void {
+        if (!root.editingAllowed) {
+            root.statusMessage("Indexed workspace evidence is read-only")
+            return
+        }
         const safeStart = root.clampPosition(Math.min(start, end))
         const safeEnd = root.clampPosition(Math.max(start, end))
         const nextText = root.documentText.slice(0, safeStart)
@@ -981,7 +995,11 @@ Item {
                     const shift = (event.modifiers & Qt.ShiftModifier) !== 0
 
                     if (event.key === Qt.Key_S && ctrl) {
-                        root.saveRequested()
+                        if (root.editingAllowed)
+                            root.saveRequested()
+                        else
+                            root.statusMessage(
+                                "Indexed workspace evidence is read-only")
                         event.accepted = true
                         return
                     }

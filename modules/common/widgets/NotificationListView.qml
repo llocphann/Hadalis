@@ -23,7 +23,7 @@ StyledListView { // Scrollable window
     signal externalLinkOpened()
     signal notificationActionInvoked()
 
-    spacing: 3
+    spacing: modernCards ? 8 : 3
 
     // Sidebar: full transitions with pop-in; Popup: lightweight entrance only
     popin: !popupPresentation

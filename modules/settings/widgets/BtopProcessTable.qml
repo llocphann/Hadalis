@@ -55,7 +55,7 @@ Item {
 
     Rectangle {
         anchors.fill: parent
-        radius: Appearance.rounding.normal
+        radius: Appearance.rounding.small
         color: Appearance.colors.colLayer1
         border.color: Qt.rgba(
             Appearance.colors.colPrimary.r,

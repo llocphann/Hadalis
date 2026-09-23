@@ -58,6 +58,18 @@ assert module._rate(300, 100, 2.0) == 100.0
 assert module._rate(100, 300, 2.0) is None
 assert module._rate(100, 100, 0.0) is None
 
+# PID identity uses /proc/<pid>/stat starttime so a recycled PID with the same
+# comm cannot create a false CPU spike.
+original_read_text = module._read_text
+try:
+    stat_tail = ["S"] + ["0"] * 18 + ["4242"] + ["0"] * 4
+    module._read_text = lambda _path: (
+        "123 (worker (nested)) " + " ".join(stat_tail)
+    )
+    assert module.read_process_start_ticks(123) == 4242
+finally:
+    module._read_text = original_read_text
+
 # /proc/stat guest counters are already included in user/nice and must not be
 # counted twice when deriving total CPU time.
 original_read_text = module._read_text

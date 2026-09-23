@@ -13,6 +13,8 @@ import qs.modules.common.widgets
 Item {
     id: root
 
+    signal editorActivated()
+
     property int margin: 0
     property real preferredHeight: 210
     property bool surfaceLocalTabSelection: true
@@ -161,6 +163,7 @@ Item {
             compactPresentation: true
             surfaceLocalTabSelection: root.surfaceLocalTabSelection
             margin: 0
+            onEditorActivated: root.editorActivated()
         }
     }
 }

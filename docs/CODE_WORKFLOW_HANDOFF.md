@@ -509,7 +509,10 @@ remaining on the qualified asynchronous GeometryRenderer path.
 The final 2026-09-23 hot-path pass removes three smaller sources of repeated work.
 Runtime records are indexed once per accepted runtime snapshot by target/instance,
 target/output, resident target and first target, so rebuilding Targets no longer
-performs up to four linear record scans for every descriptor. Sampled viewport
+performs up to four linear record scans for every descriptor. Snapshot data and
+that index are published as one immutable presentation cache so one runtime
+update produces one binding-invalidation wave instead of an index wave followed
+by a snapshot wave. Sampled viewport
 culling now publishes pan/zoom as one immutable object, preventing three separate
 binding-invalidation waves across every node, wire and edge label on each cull
 tick. Idle edges also stop tessellating the decorative halo stroke entirely;

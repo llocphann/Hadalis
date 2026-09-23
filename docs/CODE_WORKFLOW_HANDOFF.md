@@ -65,6 +65,12 @@ module work, commit directly to `dev`, and never force-push or modify `stable`.
   node IDs plus the current viewport, and supports click/drag recentering without
   changing zoom or source semantics. The user preference is workspace-persistent;
   narrow/small graphs hide the overlay automatically rather than shrinking canvas.
+- Inspector now exposes the runtime registry's actual recent lifecycle activity
+  for the canonical target currently under inspection. Registry events carry an
+  in-process timestamp and the UI filters the existing bounded event buffer by
+  target/instance identity, showing only lifecycle kind + instance + time; runtime
+  tokens stay internal. This is diagnostic lifecycle evidence, not fabricated
+  binding execution or generic signal tracing.
 
 ## Production UI refinement continuation — 2026-09-21
 

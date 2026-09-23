@@ -24,7 +24,7 @@ def function_source(name: str) -> str:
 
 
 names = (
-    "_pulseRemote", "_releaseRemote", "_acquireLease",
+    "_pulseRemote", "_releaseRemote", "_acquireLease", "_releaseLease",
     "_remotePulseExited", "_remoteReleaseExited",
 )
 payload = {name: function_source(name) for name in names}
@@ -37,6 +37,7 @@ const sources = JSON.parse(fs.readFileSync(0, 'utf8'));
 
 function makeSession() {
     const commands = [];
+    const runtimeEvents = [];
     const callbacks = [];
     const remotePulse = {action: '', command: []};
     const remoteRelease = {command: []};
@@ -57,12 +58,16 @@ function makeSession() {
         localShell: false,
         clientId: 'settings:100',
         releaseAfterPulse: false,
+        leaseTransport: '',
         remoteError: '',
         _remoteCommand: action => [action, 'settings:100'],
     };
     const context = vm.createContext({
         root, remotePulse, remoteRelease, remotePulseOutput, remotePulseError,
-        RuntimeDiagnostics: {acquire: () => true},
+        RuntimeDiagnostics: {
+            acquire: () => { runtimeEvents.push('local-acquire'); return true; },
+            release: () => { runtimeEvents.push('local-release'); return true; },
+        },
         Qt: {callLater: callback => callbacks.push(callback)},
     });
     for (const [name, source] of Object.entries(sources)) {
@@ -77,7 +82,7 @@ function makeSession() {
         }
     };
     return {
-        root, commands, remotePulse, remoteRelease, flush,
+        root, commands, runtimeEvents, remotePulse, remoteRelease, flush,
         enter() { root.pageCurrent = true; root._acquireLease(); },
         leave() { root.pageCurrent = false; root._releaseRemote(); },
         finishPulse(exitCode = 0, payload = '{"ok":true}', runCallbacks = true) {
@@ -138,6 +143,41 @@ function makeSession() {
     assert.deepEqual(s.commands, ['acquire', 'release']);
     s.finishRelease();
     assert.deepEqual(s.commands, ['acquire', 'release', 'acquire']);
+}
+
+// Switching from remote to local preserves the deferred remote release even
+// when the remote acquire pulse is still in flight.
+{
+    const s = makeSession();
+    s.enter();
+    assert.equal(s.root.leaseTransport, 'remote');
+    s.root.localShell = true;
+    s.root._releaseLease();
+    assert.equal(s.root.releaseAfterPulse, true);
+    s.root._acquireLease();
+    assert.equal(s.root.leaseTransport, 'local');
+    assert.equal(s.root.releaseAfterPulse, true);
+    assert.deepEqual(s.runtimeEvents, ['local-acquire']);
+    s.finishPulse();
+    assert.deepEqual(s.commands, ['acquire', 'release']);
+    s.finishRelease();
+    assert.deepEqual(s.commands, ['acquire', 'release']);
+}
+
+// Switching from local to remote releases the local authority before acquiring
+// through IPC.
+{
+    const s = makeSession();
+    s.root.pageCurrent = true;
+    s.root.localShell = true;
+    s.root._acquireLease();
+    assert.equal(s.root.leaseTransport, 'local');
+    s.root.localShell = false;
+    s.root._releaseLease();
+    s.root._acquireLease();
+    assert.deepEqual(s.runtimeEvents, ['local-acquire', 'local-release']);
+    assert.equal(s.root.leaseTransport, 'remote');
+    assert.deepEqual(s.commands, ['acquire']);
 }
 
 // Expired heartbeat reacquires only while the page remains current.

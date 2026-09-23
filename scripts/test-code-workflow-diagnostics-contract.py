@@ -22,6 +22,8 @@ server = read("services/RuntimeDiagnostics.qml")
 client = read("services/RuntimeDiagnosticsSession.qml")
 shell = read("shell.qml")
 qmldir = read("services/qmldir")
+sampler = read("scripts/runtime-diagnostics-sampler.py")
+workflow_runtime = read("services/CodeWorkflowRuntime.qml")
 
 # Material keeps historical page indices and appends Diagnostics at 31.
 require(registry, 'key: "diagnostics"', "Material Diagnostics page missing")
@@ -52,11 +54,12 @@ require(waffle_content, 'keys: ["diagnostics", "shortcuts", "about"]',
 require(waffle_content, 'pageIndex: 19, pageName: "Diagnostics"',
         "Waffle search must index Diagnostics")
 
-# Server is passive: no resource sampler is allowed to start merely because
-# singleton construction happened. The only timer is lease cleanup and it runs
-# only while at least one consumer owns a live lease.
+# Server remains passive by default. The sampler exists now, but its Process is
+# bound strictly to the leased samplingEnabled state and measures Quickshell's
+# main PID rather than whichever Settings process is displaying the page.
 for token in (
     "readonly property int leaseTtlMs: 6000",
+    "readonly property int maxLeases: 16",
     "property var leases: ({})",
     "readonly property bool sessionActive:",
     "readonly property bool samplingEnabled: root.sessionActive",
@@ -64,14 +67,33 @@ for token in (
     "function heartbeat(clientId: string): bool",
     "function release(clientId: string): bool",
     "function pruneExpired(): void",
+    "function _consumeSample(rawLine): void",
+    "function snapshot(): var",
+    "id: diagnosticsSampler",
+    "running: root.samplingEnabled",
+    'Quickshell.shellPath("scripts/runtime-diagnostics-sampler.py")',
+    '"--pid", String(Quickshell.processId)',
     "id: leasePruneTimer",
     "running: root.sessionActive",
 ):
-    require(server, token, "Diagnostics lease server contract incomplete")
+    require(server, token, "Diagnostics lease/sampler contract incomplete")
 if server.count("Timer {") != 1:
-    raise SystemExit("FAIL: Diagnostics foundation must have only the TTL cleanup timer")
-if "Process {" in server:
-    raise SystemExit("FAIL: passive Diagnostics server must not spawn sampler processes yet")
+    raise SystemExit("FAIL: Diagnostics owns only the TTL cleanup timer")
+if server.count("Process {") != 1:
+    raise SystemExit("FAIL: Diagnostics must own exactly one on-demand sampler process")
+
+for forbidden in (
+    "diagnosticsLeases",
+    "acquireDiagnosticsLease",
+    "heartbeatDiagnosticsLease",
+    "releaseDiagnosticsLease",
+    "diagnosticsLeaseProcess",
+):
+    if forbidden in workflow_runtime:
+        raise SystemExit(
+            "FAIL: CodeWorkflowRuntime must not own a second Diagnostics lease path: "
+            + forbidden
+        )
 
 # Standalone settings must lease the shell-side server over IPC, not measure its
 # own process. Local overlay/focus hosts can call the same shell singleton.
@@ -143,14 +165,37 @@ for token in (
 ):
     require(qmldir, token, "Diagnostics singleton export missing")
 
-# Resource claims are intentionally not implemented in this foundation. Keep the
-# UI honest until exact samplers with provenance land.
-for page in (material_page, waffle_page):
-    if re.search(r"\b\d+(?:\.\d+)?\s*%\b", page):
-        raise SystemExit("FAIL: Diagnostics foundation must not fabricate resource percentages")
-require(material_page, "CPU · RAM · Swap · GPU · Network",
-        "Material page must preserve required resource scope")
-require(waffle_page, "CPU · RAM · Swap · GPU · Network",
-        "Waffle page must preserve required resource scope")
+# Exact shell/system sampling now has explicit provenance. It still must not claim
+# per-QML CPU/RAM/GPU/network attribution.
+for token in (
+    '"scope": "system"',
+    '"scope": "shell-process"',
+    '"confidence": "kernel"',
+    '"method": "proc-stat"',
+    '"method": "proc-meminfo"',
+    '"method": "schedstat"',
+    '"method": "smaps-rollup"',
+    '"method": "proc-io"',
+    '"method": "proc-net-dev"',
+    '"method": "drm-fdinfo"',
+):
+    require(sampler, token, "Diagnostics sampler provenance incomplete")
 
-print("ok - Runtime Diagnostics identity/session foundation contract")
+for forbidden in ('"targetId"', '"componentCpu"', '"componentRam"', '"componentGpu"'):
+    if forbidden in sampler:
+        raise SystemExit(
+            "FAIL: kernel sampler must not fabricate per-component attribution: "
+            + forbidden
+        )
+
+for page in (material_page, waffle_page):
+    require(page, "CPU · RAM · Swap · GPU · Network",
+            "Diagnostics page must preserve required resource scope")
+    for forbidden in ("Process {", "smaps_rollup", "/proc/net/dev", "drm-fdinfo"):
+        if forbidden in page:
+            raise SystemExit(
+                "FAIL: Settings pages must consume shell evidence, not sample locally: "
+                + forbidden
+            )
+
+print("ok - Runtime Diagnostics identity/session/sampler contract")

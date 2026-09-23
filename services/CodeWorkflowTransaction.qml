@@ -3710,6 +3710,11 @@ Singleton {
         if (reloadState.pendingDisconnectPhase
                 !== "postcondition-checking")
             return
+        if (CodeWorkflowAnalyzer.sourcePath
+                !== reloadState.pendingDisconnectSourcePath
+                || CodeWorkflowAnalyzer.semanticAnchor
+                    !== reloadState.pendingDisconnectSemanticAnchor)
+            return
         if (CodeWorkflowAnalyzer.status === "analyzing"
                 || CodeWorkflowAnalyzer.status === "idle")
             return

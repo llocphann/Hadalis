@@ -36,6 +36,12 @@ NOTIFICATION_GROUP = ROOT / "modules" / "common" / "widgets" / "NotificationGrou
 NOTIFICATION_ACTION_BUTTON = ROOT / "modules" / "common" / "widgets" / "NotificationActionButton.qml"
 NOTIFICATION_GROUP_EXPAND_BUTTON = ROOT / "modules" / "common" / "widgets" / "NotificationGroupExpandButton.qml"
 NOTIFICATION_APP_ICON = ROOT / "modules" / "common" / "widgets" / "NotificationAppIcon.qml"
+CONTENT_SUBSECTION_LABEL = ROOT / "modules" / "common" / "widgets" / "ContentSubsectionLabel.qml"
+KEYBOARD_FOCUS_RING = ROOT / "modules" / "common" / "widgets" / "KeyboardFocusRing.qml"
+KEYBOARD_KEY = ROOT / "modules" / "common" / "widgets" / "KeyboardKey.qml"
+MATERIAL_SHAPE_SYMBOL = ROOT / "modules" / "common" / "widgets" / "MaterialShapeWrappedMaterialSymbol.qml"
+FLOATING_ACTION_BUTTON = ROOT / "modules" / "common" / "widgets" / "FloatingActionButton.qml"
+DATE_PICKER = ROOT / "modules" / "common" / "widgets" / "DatePicker.qml"
 TIMER_INDICATOR = ROOT / "modules" / "bar" / "TimerIndicator.qml"
 SHELL_UPDATE_INDICATOR = ROOT / "modules" / "bar" / "ShellUpdateIndicator.qml"
 UTIL_BUTTONS = ROOT / "modules" / "bar" / "UtilButtons.qml"
@@ -146,6 +152,12 @@ def main() -> None:
     notification_action_button = NOTIFICATION_ACTION_BUTTON.read_text(encoding="utf-8")
     notification_group_expand_button = NOTIFICATION_GROUP_EXPAND_BUTTON.read_text(encoding="utf-8")
     notification_app_icon = NOTIFICATION_APP_ICON.read_text(encoding="utf-8")
+    content_subsection_label = CONTENT_SUBSECTION_LABEL.read_text(encoding="utf-8")
+    keyboard_focus_ring = KEYBOARD_FOCUS_RING.read_text(encoding="utf-8")
+    keyboard_key = KEYBOARD_KEY.read_text(encoding="utf-8")
+    material_shape_symbol = MATERIAL_SHAPE_SYMBOL.read_text(encoding="utf-8")
+    floating_action_button = FLOATING_ACTION_BUTTON.read_text(encoding="utf-8")
+    date_picker = DATE_PICKER.read_text(encoding="utf-8")
     timer_indicator = TIMER_INDICATOR.read_text(encoding="utf-8")
     shell_update_indicator = SHELL_UPDATE_INDICATOR.read_text(encoding="utf-8")
     util_buttons = UTIL_BUTTONS.read_text(encoding="utf-8")
@@ -275,6 +287,12 @@ def main() -> None:
         "NotificationActionButton.qml": notification_action_button,
         "NotificationGroupExpandButton.qml": notification_group_expand_button,
         "NotificationAppIcon.qml": notification_app_icon,
+        "ContentSubsectionLabel.qml": content_subsection_label,
+        "KeyboardFocusRing.qml": keyboard_focus_ring,
+        "KeyboardKey.qml": keyboard_key,
+        "MaterialShapeWrappedMaterialSymbol.qml": material_shape_symbol,
+        "FloatingActionButton.qml": floating_action_button,
+        "DatePicker.qml": date_picker,
     }
     for source, source_text in shared_material_primitives.items():
         for token in (
@@ -424,6 +442,49 @@ def main() -> None:
         "radius: Appearance.rounding.full",
     ):
         require(notification_app_icon, token, "NotificationAppIcon.qml")
+
+    for token in (
+        "color: Appearance.colors.colSubtext",
+        "font.weight: Font.Normal",
+        "font.letterSpacing: 0",
+    ):
+        require(content_subsection_label, token, "ContentSubsectionLabel.qml")
+    for token in (
+        "radius: Appearance.rounding.small",
+        "border.color: Appearance.colors.colPrimary",
+    ):
+        require(keyboard_focus_ring, token, "KeyboardFocusRing.qml")
+    for token in (
+        "property real borderRadius: Appearance.rounding.verysmall",
+        "color: Appearance.colors.colSurfaceContainerHigh",
+        "color: Appearance.colors.colSurfaceContainer",
+        "color: Appearance.colors.colOnSurface",
+    ):
+        require(keyboard_key, token, "KeyboardKey.qml")
+    for token in (
+        "color: Appearance.colors.colSecondaryContainer",
+        "colSymbol: Appearance.colors.colOnSecondaryContainer",
+        "shape: MaterialShape.Shape.Clover4Leaf",
+    ):
+        require(material_shape_symbol, token, "MaterialShapeWrappedMaterialSymbol.qml")
+    for token in (
+        "buttonRadius: baseSize / 14 * 4",
+        "colBackground: Appearance.colors.colPrimaryContainer",
+        "colBackgroundHover: Appearance.colors.colPrimaryContainerHover",
+        "colRipple: Appearance.colors.colPrimaryContainerActive",
+        "property color colOnBackground: Appearance.colors.colOnPrimaryContainer",
+    ):
+        require(floating_action_button, token, "FloatingActionButton.qml")
+    for token in (
+        "readonly property color colText: Appearance.colors.colOnLayer1",
+        "readonly property color colTextSecondary: Appearance.colors.colSubtext",
+        "readonly property color colPrimary: Appearance.colors.colPrimary",
+        "readonly property color colOnPrimary: Appearance.colors.colOnPrimary",
+        "readonly property color colCard: Appearance.colors.colLayer1",
+        "readonly property color colLayer2: Appearance.colors.colLayer2",
+        "readonly property real radius: Appearance.rounding.small",
+    ):
+        require(date_picker, token, "DatePicker.qml")
 
     motion_start = appearance.index("property QtObject motion: QtObject {")
     motion_end = appearance.index("m3colors: QtObject {", motion_start)

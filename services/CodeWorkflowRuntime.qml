@@ -615,19 +615,9 @@ Singleton {
     }
 
     function _runtimeSnapshotProjection(snapshot): var {
-        return {
-            epoch: snapshot?.epoch ?? "",
-            outputs: Array.isArray(snapshot?.outputs)
-                ? snapshot.outputs : [],
-            descriptors: Array.isArray(snapshot?.descriptors)
-                ? snapshot.descriptors : [],
-            records: Array.isArray(snapshot?.records)
-                ? snapshot.records : [],
-            events: Array.isArray(snapshot?.events)
-                ? snapshot.events : [],
-            identityCollisions: Array.isArray(snapshot?.identityCollisions)
-                ? snapshot.identityCollisions : []
-        }
+        const projection = Object.assign({}, snapshot ?? ({}))
+        delete projection.diagnostics
+        return projection
     }
 
     function snapshot(): var {

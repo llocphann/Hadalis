@@ -354,6 +354,8 @@ Item {
             minimapVisible: canvas.minimapVisible,
             runtimeActivityTargetId: root.runtimeActivityTargetId,
             runtimeActivityEventCount: root.runtimeActivityEvents.length,
+            runtimePulseTargetId: canvas.runtimePulseTargetId,
+            runtimePulseKind: canvas.runtimePulseKind,
             panX: CodeWorkflowSession.panX,
             panY: CodeWorkflowSession.panY,
             zoom: CodeWorkflowSession.zoom

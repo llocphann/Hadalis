@@ -17,7 +17,7 @@ Item {
     property string detail: ""
     property var samples: []
 
-    implicitHeight: 110
+    implicitHeight: 126
 
     Rectangle {
         anchors.fill: parent
@@ -32,16 +32,29 @@ Item {
 
             RowLayout {
                 Layout.fillWidth: true
-                StyledText {
-                    text: root.title
-                    font.weight: Font.DemiBold
-                    color: Appearance.colors.colOnLayer1
+
+                ColumnLayout {
+                    spacing: 1
+                    StyledText {
+                        text: root.title
+                        font.weight: Font.DemiBold
+                        color: Appearance.colors.colOnLayer1
+                    }
+                    StyledText {
+                        visible: root.subtitle.length > 0
+                        text: root.subtitle
+                        color: Appearance.colors.colSubtext
+                        font.pixelSize: Appearance.font.pixelSize.small
+                    }
                 }
+
                 Item { Layout.fillWidth: true }
+
                 StyledText {
                     text: root.valueAvailable
                         ? Math.round(root.numericValue) + "%" : "—"
                     color: Appearance.colors.colPrimary
+                    font.weight: Font.DemiBold
                 }
             }
 
@@ -67,12 +80,13 @@ Item {
                 text: root.detail
                 color: Appearance.colors.colSubtext
                 font.pixelSize: Appearance.font.pixelSize.small
+                elide: Text.ElideRight
             }
 
             Row {
                 id: historyRow
                 Layout.fillWidth: true
-                Layout.preferredHeight: 22
+                Layout.preferredHeight: 28
                 spacing: root.samples.length > 0
                     && width / root.samples.length < 3 ? 0 : 1
                 clip: true
@@ -87,9 +101,10 @@ Item {
                                         * Math.max(0, root.samples.length - 1))
                                 / root.samples.length)
                             : 0
-                        height: Math.max(1, 22 * Math.max(
+                        height: Math.max(1, 28 * Math.max(
                             0, Math.min(1, Number(modelData) / 100)))
                         anchors.bottom: parent.bottom
+                        radius: 1
                         color: Appearance.colors.colPrimary
                         opacity: 0.75
                     }

@@ -73,7 +73,16 @@ def main() -> None:
     ):
         require(sampler, token, "runtime-diagnostics-sampler.py")
 
-    compile(sampler, str(SAMPLER), "exec")
+    code = compile(sampler, str(SAMPLER), "exec")
+    namespace = {"__name__": "runtime_diagnostics_contract"}
+    exec(code, namespace)
+    helper = namespace["_cpu_percent_from_ticks"]
+    measured = helper((200, 100), (100, 50))
+    if measured is None or abs(measured - 50.0) > 0.001:
+        raise AssertionError(
+            f"unexpected per-core CPU delta calculation: {measured!r}"
+        )
+
     print("Runtime Diagnostics btop contract: PASS")
 
 

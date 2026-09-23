@@ -90,6 +90,13 @@ WSettingsPage {
         }
 
         WSettingsRow {
+            visible: RuntimeDiagnosticsSession.remoteError.length > 0
+            label: Translation.tr("Runtime bridge error")
+            description: RuntimeDiagnosticsSession.remoteError
+            icon: "info"
+        }
+
+        WSettingsRow {
             visible: String(root.evidence?.sampler?.error ?? "").length > 0
             label: Translation.tr("Sampler error")
             description: String(root.evidence?.sampler?.error ?? "")

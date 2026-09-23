@@ -95,7 +95,10 @@ Item {
     readonly property rect rawPaintBounds: {
         const b = root.body
         const tangentReach = root.fuse + root.aaReach
-        const freeReach = root.aaReach
+        // The tangent Screen Edge fillet curves past the body's free end.
+        // Give it the same raster reach as the primary-owner fillet.
+        const freeReach = root.cornerJoined
+            ? root.fuse + root.aaReach : root.aaReach
 
         if (root.geometry?.edge === "top")
             return Qt.rect(b.x - tangentReach, b.y,
@@ -118,28 +121,16 @@ Item {
     readonly property rect visibleBodyRect:
         root.clipExternalOwners(root.body, 0)
 
-    // A corner popup keeps its one free inner corner round. Extend only its SDF
-    // record under the primary owner far enough to move the two attached
-    // corner arcs behind that owner. The tangent record still welds just under
-    // its Screen Edge. Content, input and shadow stay clipped to real edges.
+    // Keep the body at the primary seam so its owner contact can form a round
+    // fillet. Only the short tangent weld sits underneath the Screen Edge;
+    // content, input and shadow stay clipped to the real ownership boundaries.
     readonly property rect sdfBodyRect: {
         const b = root.body
         const weld = Math.max(0, Number(PerimeterTokens.irisWeldDepth ?? 0))
-        const primaryReach = root.cornerJoined
-            ? Math.max(0, Number(root.geometry?.outerRadius ?? 0)) : 0
         let left = b.x
         let top = b.y
         let right = b.x + b.width
         let bottom = b.y + b.height
-
-        if (root.geometry?.edge === "top")
-            top -= primaryReach
-        else if (root.geometry?.edge === "bottom")
-            bottom += primaryReach
-        else if (root.geometry?.edge === "left")
-            left -= primaryReach
-        else if (root.geometry?.edge === "right")
-            right += primaryReach
 
         if (root.horizontal) {
             if (root.tangentStartJoined)
@@ -248,16 +239,14 @@ Item {
         width: root.sdfBodyRect.width,
         height: root.sdfBodyRect.height,
         radius: Number(root.geometry?.outerRadius ?? 0),
-        // A smooth primary join makes a second rounded shoulder beside the
-        // Screen Edge. Corner bodies meet both owners with a hard union.
-        fuse: root.cornerJoined ? 0 : root.fuse,
+        fuse: root.fuse,
         id: "popup",
         joins: root.popupPrimaryJoins
     })
 
-    // The shader ABI permits two owner relations per shape. A popup can
-    // legitimately span both tangent edges as well as its primary owner, so a
-    // duplicate zero-material SDF record carries only the third relation.
+    // The shader ABI permits two owner relations per shape. When the body spans
+    // both tangent edges, duplicate its rounded record so the second contact
+    // also has the primary owner and receives the same curved fillet.
     readonly property bool needsEndJoinAux:
         root.tangentStartJoined && root.tangentEndJoined
     readonly property var popupEndJoinShape: root.needsEndJoinAux
@@ -266,11 +255,10 @@ Item {
             y: root.sdfBodyRect.y,
             width: root.sdfBodyRect.width,
             height: root.sdfBodyRect.height,
-            // Spanning both tangent edges leaves no free body corner.
-            radius: 0,
-            fuse: 0,
+            radius: Number(root.geometry?.outerRadius ?? 0),
+            fuse: root.fuse,
             id: "popup-end-join",
-            joins: ["frame-end"]
+            joins: ["owner", "frame-end"]
         })
         : ({
             x: 0, y: 0, width: 0, height: 0,

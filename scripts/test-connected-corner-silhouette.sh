@@ -18,11 +18,20 @@ function binding(name, next) {
 
 const cornerJoined = new Function('root',
     `return (${binding('bool cornerJoined', '\n\n    visible:')});`);
+const paintSource = binding('rect rawPaintBounds',
+    '\n\n    readonly property rect paintBounds:');
+assert.ok(paintSource.startsWith('{') && paintSource.endsWith('}'));
+const rawPaintBounds = new Function('root', 'Qt',
+    paintSource.slice(1, -1));
 const sdfSource = binding('rect sdfBodyRect',
     '\n\n    readonly property rect ownerShapeRect:');
 assert.ok(sdfSource.startsWith('{') && sdfSource.endsWith('}'));
 const sdfBodyRect = new Function('root', 'Qt', 'PerimeterTokens',
     sdfSource.slice(1, -1));
+const joinsSource = binding('var popupPrimaryJoins',
+    '\n\n    readonly property var popupShape:');
+assert.ok(joinsSource.startsWith('{') && joinsSource.endsWith('}'));
+const popupPrimaryJoins = new Function('root', joinsSource.slice(1, -1));
 const popupShape = new Function('root',
     `return (${binding('var popupShape', '\n\n    // The shader ABI')});`);
 const endJoinShape = new Function('root',
@@ -31,14 +40,14 @@ const endJoinShape = new Function('root',
 const Qt = { rect: (x, y, width, height) => ({x, y, width, height}) };
 const PerimeterTokens = { irisWeldDepth: 3 };
 const cases = [
-    ['top', 'start', {x: 7, y: -21, width: 103, height: 108}],
-    ['top', 'end', {x: 390, y: -21, width: 103, height: 108}],
-    ['bottom', 'start', {x: 7, y: 313, width: 103, height: 108}],
-    ['bottom', 'end', {x: 390, y: 313, width: 103, height: 108}],
-    ['left', 'start', {x: -21, y: 7, width: 128, height: 83}],
-    ['left', 'end', {x: -21, y: 310, width: 128, height: 83}],
-    ['right', 'start', {x: 393, y: 7, width: 128, height: 83}],
-    ['right', 'end', {x: 393, y: 310, width: 128, height: 83}],
+    ['top', 'start', {x: 7, y: 7, width: 103, height: 80}],
+    ['top', 'end', {x: 390, y: 7, width: 103, height: 80}],
+    ['bottom', 'start', {x: 7, y: 313, width: 103, height: 80}],
+    ['bottom', 'end', {x: 390, y: 313, width: 103, height: 80}],
+    ['left', 'start', {x: 7, y: 7, width: 100, height: 83}],
+    ['left', 'end', {x: 7, y: 310, width: 100, height: 83}],
+    ['right', 'start', {x: 393, y: 7, width: 100, height: 83}],
+    ['right', 'end', {x: 393, y: 310, width: 100, height: 83}],
 ];
 
 for (const [edge, side, expected] of cases) {
@@ -53,29 +62,47 @@ for (const [edge, side, expected] of cases) {
         body, horizontal, geometry: { edge, outerRadius: 28 },
         tangentStartJoined: side === 'start',
         tangentEndJoined: side === 'end',
-        fuse: 30, popupPrimaryJoins: ['owner', 'frame'],
+        fuse: 30, aaReach: 2,
     };
     root.cornerJoined = cornerJoined(root);
     assert.equal(root.cornerJoined, true, `${edge}/${side} joins a Screen Edge`);
+    root.popupPrimaryJoins = popupPrimaryJoins(root);
+    assert.deepEqual(root.popupPrimaryJoins,
+        ['owner', side === 'start' ? 'frame-start' : 'frame-end']);
+    const paint = rawPaintBounds(root, Qt);
+    const freeReach = root.fuse + root.aaReach;
+    if (edge === 'top')
+        assert.equal(paint.y + paint.height,
+            body.y + body.height + freeReach);
+    else if (edge === 'bottom')
+        assert.equal(paint.y, body.y - freeReach);
+    else if (edge === 'left')
+        assert.equal(paint.x + paint.width,
+            body.x + body.width + freeReach);
+    else
+        assert.equal(paint.x, body.x - freeReach);
     root.sdfBodyRect = sdfBodyRect(root, Qt, PerimeterTokens);
     assert.deepEqual(root.sdfBodyRect, expected,
-        `${edge}/${side} must bury attached arcs under the owners`);
+        `${edge}/${side} welds only beneath its tangent Screen Edge`);
     const shape = popupShape(root);
-    assert.equal(shape.fuse, 0,
-        `${edge}/${side} must not grow a curved shoulder at Screen Edge`);
+    assert.equal(shape.fuse, 30,
+        `${edge}/${side} keeps both curved owner contacts`);
     assert.equal(shape.radius, 28,
-        `${edge}/${side} retains the one free rounded corner`);
+        `${edge}/${side} keeps its body radius`);
 }
 
 const center = {
     body: Qt.rect(200, 7, 100, 80), horizontal: true,
     geometry: {edge: 'top', outerRadius: 28},
     tangentStartJoined: false, tangentEndJoined: false,
-    fuse: 30, popupPrimaryJoins: ['owner'],
+    fuse: 30, aaReach: 2,
 };
 center.cornerJoined = cornerJoined(center);
+center.popupPrimaryJoins = popupPrimaryJoins(center);
 center.sdfBodyRect = sdfBodyRect(center, Qt, PerimeterTokens);
 assert.equal(center.cornerJoined, false);
+assert.equal(rawPaintBounds(center, Qt).height, center.body.height + 2,
+    'mid-edge popups keep their previous raster bounds');
 assert.deepEqual(center.sdfBodyRect, center.body,
     'popup away from output corners retains its original body geometry');
 assert.equal(popupShape(center).fuse, 30,
@@ -86,10 +113,11 @@ center.tangentEndJoined = true;
 center.cornerJoined = cornerJoined(center);
 center.sdfBodyRect = sdfBodyRect(center, Qt, PerimeterTokens);
 center.needsEndJoinAux = true;
-assert.equal(endJoinShape(center).radius, 0,
-    'a popup spanning both Screen Edges has no free corner');
-assert.equal(endJoinShape(center).fuse, 0,
-    'the auxiliary edge relation must not add a rounded shoulder');
+assert.equal(endJoinShape(center).radius, 28,
+    'both tangent contacts retain the body radius');
+assert.equal(endJoinShape(center).fuse, 30,
+    'the second tangent contact receives the same round fillet');
+assert.deepEqual(endJoinShape(center).joins, ['owner', 'frame-end']);
 assert.ok(frame.includes('root.clipExternalOwners(root.body, 0)'),
     'input stays on the original body while only the SDF reaches under owners');
 console.log('connected corner silhouette: PASS (8 corners, center, both edges)');

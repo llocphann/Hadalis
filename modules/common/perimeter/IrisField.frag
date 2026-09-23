@@ -290,9 +290,10 @@ void main() {
                 ? frameDistance
                 : bodies[int(also + 0.5) - 1];
 
-            // A two-owner tangent body is already connected by the hard
-            // body/frame union. Do not grow the old metaball shoulder.
-            if (other < FAR && !(join > 0.5 && also > 0.5))
+            // A corner body needs a fillet against both perpendicular owners.
+            // Its tangent-facing corner was squared above so this union forms
+            // the same curved contact as the primary owner.
+            if (other < FAR)
                 united = min(
                     united,
                     smoothUnion(other, bodies[i], k));

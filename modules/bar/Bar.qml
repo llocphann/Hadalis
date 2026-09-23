@@ -14,10 +14,8 @@ import qs.modules.common.widgets
 
 Scope {
     id: bar
-    // Hug is the only supported Classic Bar surface. Keep its structural
-    // background resident so the Bar body and canonical perimeter relationship
-    // cannot disappear because of an old transparent-bar config value.
-    readonly property bool showBarBackground: true
+    // Hug is the only supported Classic Bar surface. Its body is structural
+    // in BarContent rather than mediated by a compatibility visibility flag.
     // Legacy Bar surface values are normalized once by SettingsPageRegistry at
     // shell startup. The live Bar consumes only canonical Hug state.
 

@@ -12,10 +12,8 @@ Singleton {
     property bool _pendingRefresh: false
     property bool _pendingForce: false
     property bool _cancelled: false
+    property int generation: 0
 
-    // Keep the last qualified snapshot visible while a cache-aware refresh
-    // is in flight; status still says "indexing", so consumers can distinguish
-    // stale presentation evidence from the newly reconciled result.
     readonly property var boundaries:
         root.status === "ready" || root.status === "indexing"
             ? (root.result?.boundaries ?? [])
@@ -53,16 +51,18 @@ Singleton {
         indexProcess.running = true
     }
 
+    // Settings pages can be cached or destroyed while the native index process
+    // is still alive. Stop the transient worker and discard queued refreshes so
+    // a later Workflow mount never inherits an old completion callback.
     function cancel(): void {
         root._pendingRefresh = false
         root._pendingForce = false
-        if (!indexProcess.running) {
-            if (root.status === "indexing")
-                root.status = "idle"
-            return
-        }
         root._cancelled = true
-        indexProcess.running = false
+        root.generation++
+        if (indexProcess.running)
+            indexProcess.running = false
+        else if (root.status === "indexing")
+            root.status = "idle"
     }
 
     function _finish(exitCode: int): void {

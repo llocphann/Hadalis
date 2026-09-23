@@ -141,6 +141,11 @@ Item {
         root.marqueeBaseNodeIds = []
         root.clearMarqueeReasoningSnapshot()
         root.clearReasoningSelection()
+        // Never let delegates fall back to synchronous per-edge routing while a
+        // replacement graph is waiting for its committed smart-route pass.
+        root.edgeRouteCache = ({})
+        root.edgeHitRoutesCache = []
+        root.nodeHitBoundsCache = []
         root.rebuildStructureCache()
         if (root.workflowActive)
             root.scheduleEdgeRouteCacheRebuild()
@@ -1251,7 +1256,10 @@ Item {
 
     Timer {
         id: edgeRouteRebuildTimer
-        interval: 0
+        // Graph/delegate creation and obstacle-aware routing are both CPU-heavy.
+        // Put them on separate event-loop turns so opening Workflow does not
+        // pay both costs in one transition frame.
+        interval: 24
         repeat: false
         onTriggered: root.rebuildEdgeRouteCache()
     }
@@ -1304,7 +1312,7 @@ Item {
     function routeForEdge(edge): var {
         const edgeId = String(edge?.id ?? "")
         if (edgeId.length === 0)
-            return root.edgeRoute(edge)
+            return null
 
         const dragNodeId = root.activeNodeDragId
         if (dragNodeId.length > 0
@@ -1314,8 +1322,11 @@ Item {
                 return preview
         }
 
-        const cached = root.edgeRouteCache[edgeId]
-        return cached ?? root.edgeRoute(edge)
+        // Rendering, labels and pointer presentation consume only committed
+        // routes. Falling back to edgeRoute() here made every delegate perform
+        // the expensive candidate scorer once during construction, immediately
+        // before rebuildEdgeRouteCache() repeated the same work for the graph.
+        return root.edgeRouteCache[edgeId] ?? null
     }
 
     function routeDiagnostics(): var {
@@ -1926,8 +1937,20 @@ Item {
         repeat: true
         running: root.workflowActive
             && root.activeNodeDragHandler !== null
+        onTriggered: root.autoPanDraggedNode()
+    }
+
+    Timer {
+        id: dragRouteTimer
+        // Node position remains pointer-rate; obstacle-aware route scoring is
+        // presentation-only and is capped near 30 Hz while dragging. This keeps
+        // pointer motion responsive on dense graphs without changing the final
+        // committed route.
+        interval: 32
+        repeat: true
+        running: root.workflowActive
+            && root.activeNodeDragHandler !== null
         onTriggered: {
-            root.autoPanDraggedNode()
             if (root.dragRoutesDirty)
                 root.rebuildDragEdgeRouteCache()
         }
@@ -1964,7 +1987,8 @@ Item {
 
     Timer {
         id: edgeHoverTimer
-        interval: 16
+        // Hover affordance does not need pointer-rate route-distance scans.
+        interval: 32
         repeat: false
         onTriggered: {
             if (!root.workflowActive || !edgeHover.hovered

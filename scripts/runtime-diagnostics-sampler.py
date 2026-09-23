@@ -229,15 +229,18 @@ def read_process_command(pid: int) -> str:
     return comm or f"pid-{pid}"
 
 
-def read_descendants(pid: int) -> list[tuple[int, int]]:
-    result: list[tuple[int, int]] = []
-    queue = [pid]
-    seen = {pid}
-    while queue:
-        parent = queue.pop(0)
-        text = _read_text(
-            Path("/proc") / str(parent) / "task" / str(parent) / "children"
-        ).strip()
+def read_process_children(pid: int) -> list[int]:
+    # A child can be forked by any thread in a process. Reading only
+    # task/<tgid>/children misses helpers spawned by worker threads.
+    task_dir = Path("/proc") / str(pid) / "task"
+    try:
+        tasks = list(task_dir.iterdir())
+    except OSError:
+        tasks = []
+
+    children: set[int] = set()
+    for task in tasks:
+        text = _read_text(task / "children").strip()
         if not text:
             continue
         for raw in text.split():
@@ -245,7 +248,19 @@ def read_descendants(pid: int) -> list[tuple[int, int]]:
                 child = int(raw)
             except ValueError:
                 continue
-            if child <= 0 or child in seen:
+            if child > 0:
+                children.add(child)
+    return sorted(children)
+
+
+def read_descendants(pid: int) -> list[tuple[int, int]]:
+    result: list[tuple[int, int]] = []
+    queue = [pid]
+    seen = {pid}
+    while queue:
+        parent = queue.pop(0)
+        for child in read_process_children(parent):
+            if child in seen:
                 continue
             seen.add(child)
             result.append((child, parent))
@@ -514,7 +529,8 @@ def sample(pid: int, previous: dict[str, Any] | None) -> tuple[dict[str, Any], d
     aggregate_tx = 0
     aggregate_rx_rate = 0.0
     aggregate_tx_rate = 0.0
-    aggregate_has_rate = False
+    aggregate_has_rx_rate = False
+    aggregate_has_tx_rate = False
     for name, counters in sorted(net_now.items()):
         old = prev_net.get(name, {})
         rx_rate = _rate(counters["rxBytes"], old.get("rxBytes"), elapsed_s)
@@ -529,10 +545,10 @@ def sample(pid: int, previous: dict[str, Any] | None) -> tuple[dict[str, Any], d
             aggregate_tx += counters["txBytes"]
             if rx_rate is not None:
                 aggregate_rx_rate += rx_rate
-                aggregate_has_rate = True
+                aggregate_has_rx_rate = True
             if tx_rate is not None:
                 aggregate_tx_rate += tx_rate
-                aggregate_has_rate = True
+                aggregate_has_tx_rate = True
 
     if refresh_slow:
         prev_drm = slow_previous.get("drm", {})
@@ -615,8 +631,12 @@ def sample(pid: int, previous: dict[str, Any] | None) -> tuple[dict[str, Any], d
             "aggregateNonLoopback": {
                 "rxBytes": aggregate_rx,
                 "txBytes": aggregate_tx,
-                "rxBytesPerSec": aggregate_rx_rate if aggregate_has_rate else None,
-                "txBytesPerSec": aggregate_tx_rate if aggregate_has_rate else None,
+                "rxBytesPerSec": (
+                    aggregate_rx_rate if aggregate_has_rx_rate else None
+                ),
+                "txBytesPerSec": (
+                    aggregate_tx_rate if aggregate_has_tx_rate else None
+                ),
             },
         },
     }

@@ -87,6 +87,8 @@ def main() -> None:
         'root.historyValues("shellWriteBytesPerSec")',
         "result.push(null)",
         "root.formatLoadAverage(",
+        "const normalized = []",
+        "if (raw === null || raw === undefined)",
         "root.formatUptime(",
         "root.sampleIntervalLabel()",
         'Translation.tr("history")',

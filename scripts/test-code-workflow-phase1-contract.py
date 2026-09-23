@@ -683,6 +683,10 @@ require(page, "CodeWorkflowIrCanvas {", "page must host the semantic IR canvas")
 require(page, "property string inspectedSemanticAnchor:", "inspect mode must track parsed QML element selection")
 require(page, "CodeWorkflowAnalyzer.result?.entries", "inspect mode must expose parser semantic entries")
 require(page, "model: root.inspectTargets", "Targets must include runtime, graph and parsed QML elements")
+require(page, "CodeWorkflowSession.inspectorPaneCollapsed",
+        "collapsed Inspector must gate presentation-only runtime/index scans")
+require(page, "|| root.captureHarnessEnabled",
+        "capture harness must bypass presentation-only pane gates")
 require(page, "Appearance.colors.colOnPrimaryContainer", "selected inspect targets need contrast-safe foreground")
 require(page, "id: pill",
         "inline Pill must own a local id for tooltip/hover bindings")

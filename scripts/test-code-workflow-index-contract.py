@@ -114,6 +114,9 @@ for token in (
     '" previous boundaries"',
     '" diagnostics"',
     "text: root.workspaceIndexStatusText",
+    'text: "Runtime boundary"',
+    '"Indexed source SHA · "',
+    "root.selectedIndexedBoundary?.runtimeCapability",
 ):
     require(page, token, "workspace boundary navigation missing " + token)
 

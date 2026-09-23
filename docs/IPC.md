@@ -82,6 +82,7 @@ so closing or crashing Settings cannot leave diagnostics sampling running.
 | `heartbeat(clientId)` | Renew an existing Diagnostics lease |
 | `release(clientId)` | Release the caller's Diagnostics lease immediately |
 | `status` | Return active/lease-count/TTL sampling-session state as JSON |
+| `snapshot` | Return the current shell/system Diagnostics sample plus sampler/session state as JSON |
 
 ---
 

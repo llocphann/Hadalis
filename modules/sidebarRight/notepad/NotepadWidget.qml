@@ -55,9 +55,9 @@ Item {
         // Persist the visible editor first, then capture a snapshot without
         // consuming or clearing the Notepad draft. Capture is intentionally
         // non-destructive; draft cleanup remains an explicit user action.
-        Notepad.setTextValue(textArea.text)
+        root.flushPendingSave()
 
-        const index = Notepad.currentTab
+        const index = root._loadedTabIndex
         const tabTitle = String(Notepad.tabs[index]?.title ?? "").trim()
         const title = /^Note \d+$/.test(tabTitle) ? "" : tabTitle
         const draftText = String(textArea.text)
@@ -84,12 +84,27 @@ Item {
         })
     }
 
+    function _loadedTabText(): string {
+        const index = root._loadedTabIndex
+        if (index < 0 || index >= Notepad.tabs.length)
+            return ""
+        return String(Notepad.tabs[index]?.text ?? "")
+    }
+
+    function _persistEditorText(): bool {
+        if (!Notepad.ready || root._loadingTab)
+            return false
+        const index = root._loadedTabIndex
+        if (index < 0 || index >= Notepad.tabs.length)
+            return false
+        if (textArea.text === root._loadedTabText())
+            return true
+        return Notepad.setTabText(index, textArea.text)
+    }
+
     function flushPendingSave(): void {
         saveTimer.stop()
-        if (!Notepad.ready || root._loadingTab)
-            return
-        if (textArea.text !== Notepad.text)
-            Notepad.setTextValue(textArea.text)
+        root._persistEditorText()
     }
 
     // Tab mutations can change Notepad.currentTab synchronously. Persist the
@@ -119,28 +134,48 @@ Item {
     Component.onDestruction: root.flushPendingSave()
 
     // Guards programmatic text loads (tab switch / external reload) so they
-    // don't trigger the save timer and clobber the freshly-loaded tab.
+    // don't trigger the save timer and clobber the freshly-loaded tab. Track the
+    // tab identity separately from Notepad.currentTab: several NotepadWidget
+    // instances can exist at once (Sidebar, Dashboard and Quick Notes), and a
+    // delayed autosave must always write back to the tab it actually displays.
     property bool _loadingTab: false
+    property int _loadedTabIndex: -1
 
     function _loadActiveTab() {
+        if (!Notepad.ready)
+            return
+        saveTimer.stop()
         root._loadingTab = true
+        root._loadedTabIndex = Notepad.currentTab
         textArea.text = Notepad.text
         root._loadingTab = false
     }
 
     // The TextArea.text binding to Notepad.text breaks the moment the user
-    // types, so tab switches (currentTab change) and external reloads must be
-    // reflected manually — otherwise the old tab's text leaks into the new tab.
+    // types, so tab switches and external reloads must be reflected manually.
+    // Flush the old displayed tab before adopting a newly-selected one.
     Connections {
         target: Notepad
-        function onCurrentTabChanged() { root._loadActiveTab() }
+        function onCurrentTabChanged() {
+            root.flushPendingSave()
+            root._loadActiveTab()
+        }
         function onTabsChanged() {
-            if (textArea.text !== Notepad.text) root._loadActiveTab()
+            if (!Notepad.ready)
+                return
+            if (root._loadedTabIndex !== Notepad.currentTab) {
+                root.flushPendingSave()
+                root._loadActiveTab()
+                return
+            }
+            if (!saveTimer.running && textArea.text !== root._loadedTabText())
+                root._loadActiveTab()
         }
         function onReadyChanged() {
             if (!Notepad.ready)
                 return
-            if (textArea.text !== Notepad.text)
+            if (root._loadedTabIndex !== Notepad.currentTab
+                    || textArea.text !== Notepad.text)
                 root._loadActiveTab()
             if (root.focus)
                 root.focusEditor()
@@ -364,7 +399,7 @@ Item {
                 destructive: true
                 onClicked: {
                     textArea.text = ""
-                    Notepad.setTextValue("")
+                    root._persistEditorText()
                 }
             }
         }
@@ -418,7 +453,7 @@ Item {
                 destructive: true
                 onClicked: {
                     textArea.text = ""
-                    Notepad.setTextValue("")
+                    root._persistEditorText()
                 }
             }
         }
@@ -460,7 +495,7 @@ Item {
                         : Appearance.colors.colOnSecondaryContainer
                     placeholderText: Translation.tr("Write your notes here...")
                     placeholderTextColor: Appearance.inirEverywhere ? Appearance.inir.colTextSecondary : Appearance.colors.colOutline
-                    Component.onCompleted: text = Notepad.text
+                    Component.onCompleted: root._loadActiveTab()
                     selectByMouse: true
                     persistentSelection: true
                     activeFocusOnTab: true
@@ -472,7 +507,7 @@ Item {
 
                     Keys.onPressed: (event) => {
                         if (Notepad.ready && (event.modifiers & Qt.ControlModifier) && event.key === Qt.Key_S) {
-                            Notepad.setTextValue(textArea.text)
+                            root.flushPendingSave()
                             event.accepted = true
                         }
                     }
@@ -497,10 +532,7 @@ Item {
         id: saveTimer
         interval: 800
         repeat: false
-        onTriggered: {
-            if (Notepad.ready)
-                Notepad.setTextValue(textArea.text)
-        }
+        onTriggered: root._persistEditorText()
     }
 
     // Clipboard paste process

@@ -182,6 +182,9 @@ for token in (
     '"quick notes"',
     '"bottom left"',
     '"hover"',
+    '"monitor"',
+    '"primary"',
+    '"all monitors"',
 ):
     require(registry, token, "Quick Notes Settings search metadata missing")
 

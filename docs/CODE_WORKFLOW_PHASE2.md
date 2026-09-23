@@ -1373,7 +1373,6 @@ reviewed Media fixture:
 - additional reviewed Connect targets beyond the first Clock fixture;
 - additional reviewed Disconnect targets beyond `clock.data.time`;
 - dependency coverage beyond the 2K-J local-singleton/JsonObject closure subset;
-- user-facing Signal/Action selection, authorization and Settings Apply;
 - additional reviewed signal/action targets beyond `media.signal.doubleClickToggle`;
 - Connections creation/removal;
 - multi-file transactions;

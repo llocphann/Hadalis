@@ -9,6 +9,8 @@ Item {
     property var targets: []
     property var records: []
     property int maxRows: 18
+    property string selectedTargetId: ""
+    signal targetActivated(string targetId, string instanceId)
 
     readonly property var visibleTargets:
         Array.isArray(root.targets)
@@ -135,6 +137,7 @@ Item {
                 model: root.visibleTargets
 
                 Item {
+                    id: targetRow
                     Layout.fillWidth: true
                     implicitHeight: 44
 
@@ -145,9 +148,21 @@ Item {
                         root.residentRecords(targetId)
                     readonly property string state:
                         root.stateFor(target)
+                    readonly property bool selected:
+                        targetId === root.selectedTargetId
+
+                    Rectangle {
+                        anchors.fill: parent
+                        radius: Appearance.rounding.small
+                        color: targetRow.selected
+                            ? Appearance.colors.colLayer2
+                            : "transparent"
+                    }
 
                     RowLayout {
                         anchors.fill: parent
+                        anchors.leftMargin: 6
+                        anchors.rightMargin: 6
                         spacing: 8
 
                         ColumnLayout {
@@ -157,8 +172,8 @@ Item {
 
                             StyledText {
                                 Layout.fillWidth: true
-                                text: String(parent.parent.parent.target?.label
-                                    ?? parent.parent.parent.targetId)
+                                text: String(targetRow.target?.label
+                                    ?? targetRow.targetId)
                                 color: Appearance.colors.colOnLayer1
                                 font.pixelSize: Appearance.font.pixelSize.small
                                 font.weight: Font.DemiBold
@@ -167,7 +182,7 @@ Item {
 
                             StyledText {
                                 Layout.fillWidth: true
-                                text: parent.parent.parent.targetId
+                                text: targetRow.targetId
                                 color: Appearance.colors.colSubtext
                                 font.pixelSize: Appearance.font.pixelSize.smallest
                                 elide: Text.ElideRight
@@ -177,9 +192,9 @@ Item {
                         StyledText {
                             Layout.fillWidth: true
                             Layout.preferredWidth: 1
-                            text: parent.parent.state
-                            color: parent.parent.state === "visible"
-                                || parent.parent.state === "resident"
+                            text: targetRow.state
+                            color: targetRow.state === "visible"
+                                || targetRow.state === "resident"
                                 ? Appearance.colors.colPrimary
                                 : Appearance.colors.colSubtext
                             font.pixelSize: Appearance.font.pixelSize.small
@@ -189,7 +204,7 @@ Item {
                         StyledText {
                             Layout.preferredWidth: 64
                             horizontalAlignment: Text.AlignRight
-                            text: String(parent.parent.residents.length)
+                            text: String(targetRow.residents.length)
                             color: Appearance.colors.colOnLayer1
                             font.pixelSize: Appearance.font.pixelSize.small
                         }
@@ -197,11 +212,23 @@ Item {
                         StyledText {
                             Layout.fillWidth: true
                             Layout.preferredWidth: 1.2
-                            text: root.outputsFor(parent.parent.targetId)
-                                || "—"
+                            text: root.outputsFor(targetRow.targetId) || "—"
                             color: Appearance.colors.colSubtext
                             font.pixelSize: Appearance.font.pixelSize.small
                             elide: Text.ElideRight
+                        }
+                    }
+
+                    MouseArea {
+                        anchors.fill: parent
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: {
+                            const instanceId = targetRow.residents.length > 0
+                                ? String(
+                                    targetRow.residents[0]?.instanceId ?? "")
+                                : ""
+                            root.targetActivated(
+                                targetRow.targetId, instanceId)
                         }
                     }
 

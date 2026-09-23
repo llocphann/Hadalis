@@ -180,6 +180,8 @@ def main() -> None:
         "def sample_children(",
         "def read_process_children(",
         "def read_process_start_ticks(",
+        "target_start_ticks = read_process_start_ticks(args.pid)",
+        "if read_process_start_ticks(args.pid) != target_start_ticks:",
         '"startTicks": start_ticks',
         'task_dir = Path("/proc") / str(pid) / "task"',
         'text = _read_text(task / "children").strip()',

@@ -952,11 +952,8 @@ ContentPage {
         Layout.fillWidth: true
         implicitHeight: surfaceLayout.implicitHeight + Appearance.sizes.spacingLarge * 2
         radius: Appearance.rounding.small
-        color: Appearance.angelEverywhere ? Appearance.angel.colGlassCard
-            : Appearance.inirEverywhere ? Appearance.inir.colLayer1
-            : Appearance.auroraEverywhere ? Appearance.aurora.colSubSurface
-            : Appearance.colors.colLayer1
-        border.width: Appearance.angelEverywhere ? Appearance.angel.cardBorderWidth : 1
+        color: Appearance.colors.colLayer1
+        border.width: 1
         border.color: SettingsMaterialPreset.groupBorderColor
 
         ColumnLayout {
@@ -1080,10 +1077,7 @@ ContentPage {
         Layout.fillWidth: true
         implicitHeight: outputColumn.implicitHeight + Appearance.sizes.spacingLarge * 2
         radius: Appearance.rounding.small
-        color: Appearance.angelEverywhere ? Appearance.angel.colGlassCard
-            : Appearance.inirEverywhere ? Appearance.inir.colLayer1
-            : Appearance.auroraEverywhere ? Appearance.aurora.colSubSurface
-            : Appearance.colors.colLayer1
+        color: Appearance.colors.colLayer1
         border.width: 1
         border.color: outputBlock.primary
             ? Appearance.colors.colPrimary : SettingsMaterialPreset.groupBorderColor
@@ -1204,10 +1198,7 @@ ContentPage {
                 Layout.fillWidth: true
                 implicitHeight: 292
                 radius: Appearance.rounding.normal
-                color: Appearance.angelEverywhere ? Appearance.angel.colGlassCard
-                    : Appearance.inirEverywhere ? Appearance.inir.colLayer1
-                    : Appearance.auroraEverywhere ? Appearance.aurora.colSubSurface
-                    : Appearance.colors.colLayer1
+                color: Appearance.colors.colLayer1
                 border.width: 1
                 border.color: SettingsMaterialPreset.groupBorderColor
                 clip: true

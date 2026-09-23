@@ -1199,13 +1199,20 @@ def main() -> None:
     ):
         check(retired_dock_token not in dock_app_button,
               f"Canonical Dock app button must not branch on retired style: {retired_dock_token}")
+    for dead_dock_button_api in (
+        "property int listIndex:",
+        "property bool smartIndicator:",
+        "property bool showAllDots:",
+        "property int maxDots:",
+    ):
+        check(dead_dock_button_api not in dock_app_button,
+              f"Dock app button must not retain unused delegate API: {dead_dock_button_api}")
 
     check(not (ROOT / "modules/pill").exists(),
           "Retired Pill compatibility module must stay absent")
-    dock_button = read("modules/dock/DockAppButton.qml")
-    check("qs.modules.pill" not in dock_button
-          and "PillTheme" not in dock_button
-          and "Appearance.colors.colPrimary" in dock_button,
+    check("qs.modules.pill" not in dock_app_button
+          and "PillTheme" not in dock_app_button
+          and "Appearance.colors.colPrimary" in dock_app_button,
           "Dock Ricelin interactions must consume active Appearance tokens directly")
     for ricelin_consumer in (
         "modules/overview/SearchWidget.qml",

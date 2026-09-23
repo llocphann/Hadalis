@@ -91,6 +91,7 @@ for token in (
     "CodeWorkflowRuntime.remoteUpdatedAtMs > root.remoteEvidenceFloorMs",
     "root.remoteEvidenceFresh",
     "root.remoteEvidenceFloorMs = CodeWorkflowRuntime.remoteUpdatedAtMs",
+    'if (root.localShell)\n            root.remoteError = ""',
     "readonly property string evidenceError:",
     "CodeWorkflowRuntime.remoteError",
     "readonly property bool pageCurrent:",

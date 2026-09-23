@@ -39,12 +39,15 @@ ContentPage {
     function sampleIsStale(): bool {
         const tick = RuntimeDiagnosticsSession.heartbeatTick
         if (tick < 0 || !RuntimeDiagnosticsSession.pageCurrent
-                || root.sessionHasError || !root.samplerRunning
-                || root.systemEvidence === null)
+                || root.sessionHasError)
             return false
+        const heartbeatAge = tick
+            - RuntimeDiagnosticsSession.pageOpenedHeartbeatTick
+        if (!root.samplerRunning || root.systemEvidence === null)
+            return heartbeatAge >= 3
         const sampleAtMs = Number(root.evidence?.sampleAtMs)
         if (!Number.isFinite(sampleAtMs) || sampleAtMs <= 0)
-            return false
+            return heartbeatAge >= 3
         const intervalMs = Number(root.evidence?.status?.sampleIntervalMs)
         const staleAfterMs = Number.isFinite(intervalMs) && intervalMs > 0
             ? Math.max(5000, intervalMs * 4) : 5000
@@ -56,10 +59,10 @@ ContentPage {
             return Translation.tr("Sampling paused")
         if (root.sessionHasError)
             return Translation.tr("Sampling error")
-        if (!root.samplerRunning || root.systemEvidence === null)
-            return Translation.tr("Starting sampler")
         if (root.sessionStalled)
             return Translation.tr("Sampling stalled")
+        if (!root.samplerRunning || root.systemEvidence === null)
+            return Translation.tr("Starting sampler")
         return Translation.tr("Sampling live")
     }
 

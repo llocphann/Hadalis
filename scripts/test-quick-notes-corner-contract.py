@@ -95,7 +95,10 @@ for token in (
 
 for token in (
     "readonly property bool shouldShowQuickNotesCorner:",
+    "cornerPanelWindow.quickNotesMonitorAllowed",
     "cornerPanelWindow.isBottomLeft",
+    'Config.options?.quickNotes?.monitorMode ?? "all"',
+    'outputName === (GlobalStates.primaryScreen?.name ?? "")',
     "&& !cornerPanelWindow.shouldShowOrbitHotCorner",
     "&& !cornerPanelWindow.orbitConflictsWithNiriOverview",
     "&& !cornerPanelWindow.quickNotesInteractionBlocked",
@@ -135,6 +138,7 @@ if not schema_match:
 schema = schema_match.group(1)
 for token in (
     "property bool enable: true",
+    'property string monitorMode: "all"',
     "property int hoverDelayMs: 220",
     "property int cornerSize: 14",
     "property int popupWidth: 420",
@@ -144,6 +148,7 @@ for token in (
 
 expected_defaults = {
     "enable": True,
+    "monitorMode": "all",
     "hoverDelayMs": 220,
     "cornerSize": 14,
     "popupWidth": 420,
@@ -160,6 +165,10 @@ for token in (
     'title: Translation.tr("Bottom-left Quick Notes")',
     'Config.options?.quickNotes?.enable ?? true',
     'Config.setNestedValue("quickNotes.enable", checked)',
+    'Config.options?.quickNotes?.monitorMode ?? "all"',
+    'Config.setNestedValue("quickNotes.monitorMode", newValue)',
+    'Translation.tr("Primary only")',
+    'Translation.tr("All monitors")',
     'Config.setNestedValue("quickNotes.hoverDelayMs", value)',
     'Config.setNestedValue("quickNotes.cornerSize", value)',
     'Config.setNestedValue("quickNotes.popupWidth", value)',

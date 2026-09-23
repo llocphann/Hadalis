@@ -67,6 +67,11 @@ module work, commit directly to `dev`, and never force-push or modify `stable`.
   at a stale static `remoteSnapshot.descriptors` contract after runtime
   inventory had intentionally moved to `remoteRuntimeSnapshot`; the contract
   was updated rather than reverting the runtime projection optimization.
+- Full same-snapshot confirmation at `979e3041` also completed the entire
+  Code Workflow acceptance job (steps 1–49) with no failed step after the
+  handoff/evidence update itself. This re-confirmed the five editor/compositor
+  fixtures, J-A/Connect qualification boundaries, T-C Disconnect, W-D
+  Signal/Action and the final V-B live contention acceptance together.
 - Fresh acceptance at `e174a0ef` then completed the full Code Workflow job,
   including all five live editor/compositor fixtures and every Phase 2 static
   and live mutation gate. Across the five page-30 fixtures, the immediate

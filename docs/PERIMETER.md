@@ -66,8 +66,9 @@ card content clip.
 
 `ScreenCorners.qml` is interaction-only: Sidebar hot corners, Orbit,
 bottom-left Quick Notes and brightness/volume gestures. Quick Notes attaches a
-lazy `StyledPopup` to the physical corner but does not add Screen Edge paint.
-`ScreenCorners.qml` must not paint fake rounded corners.
+lazy `StyledPopup` to the physical corner, follows the same Bar-vs-Screen Edge
+owner thickness (including auto-hide handoff), and does not add Screen Edge
+paint. `ScreenCorners.qml` must not paint fake rounded corners.
 
 ## Sidebar contract
 

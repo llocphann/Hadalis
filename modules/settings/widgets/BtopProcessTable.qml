@@ -9,6 +9,22 @@ Item {
     property var processes: []
     property int maxRows: 12
 
+    function depthFor(process): int {
+        const byPid = ({})
+        for (const item of root.processes ?? [])
+            byPid[String(item?.pid ?? "")] = item
+
+        let depth = 0
+        let parent = String(process?.parentPid ?? "")
+        const seen = ({})
+        while (parent.length > 0 && byPid[parent] && !seen[parent]) {
+            seen[parent] = true
+            depth++
+            parent = String(byPid[parent]?.parentPid ?? "")
+        }
+        return depth
+    }
+
     function formatPercent(value): string {
         const number = Number(value)
         return Number.isFinite(number) ? number.toFixed(1) + "%" : "—"
@@ -137,7 +153,11 @@ Item {
 
                         StyledText {
                             Layout.fillWidth: true
-                            text: String(parent.parent.process?.command ?? "—")
+                            text: "  ".repeat(root.depthFor(
+                                    parent.parent.process))
+                                + (root.depthFor(parent.parent.process) > 0
+                                    ? "↳ " : "")
+                                + String(parent.parent.process?.command ?? "—")
                             color: Appearance.colors.colOnLayer1
                             font.pixelSize: Appearance.font.pixelSize.small
                             elide: Text.ElideMiddle

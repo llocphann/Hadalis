@@ -76,7 +76,8 @@ grep -Fq '"wallhaven", "news", "music", "tools", "software"' "$schema" \
 grep -Fq '"music"' "$defaults" \
     || fail 'default sidebar order must contain the canonical music id'
 for retired_state in normalizeVolume shuffleMode repeatMode volume; do
-    if sed -n '/property JsonObject music: JsonObject {/,/^                }/p' "$schema" | grep -Fq "property" | grep -Fq "$retired_state"; then
+    if sed -n '/property JsonObject music: JsonObject {/,/^                }/p' "$schema" \
+        | grep -Eq "property [^ ]+ ${retired_state}:"; then
         fail "local Music schema still exposes retired mpv state: $retired_state"
     fi
     if jq -e --arg key "$retired_state" '.sidebar.music | has($key)' "$defaults" >/dev/null; then

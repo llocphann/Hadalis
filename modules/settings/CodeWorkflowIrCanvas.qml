@@ -29,11 +29,55 @@ Item {
     // Loader transitions can instantiate Workflow before it owns the page; an
     // empty presentation here keeps runtime/session state intact while avoiding
     // thousands of route/delegate bindings until the page is actually current.
-    readonly property var graph:
-        root.workflowActive
-            ? CodeWorkflowIr.unifiedGraphFor(root.showInternals)
-            : null
+    //
+    // Keep the graph imperative rather than binding it directly to
+    // CodeWorkflowRuntime.activeCatalog. Standalone Settings polls runtime IPC
+    // periodically and receives a fresh descriptor array even when its
+    // structural contents are unchanged. Rebuilding this graph on every poll
+    // destroys/recreates all node, edge, label and route delegates.
+    property var graph: null
+    property string runtimeCatalogSignature: ""
     readonly property var groups: root.graph?.groups ?? []
+
+    function catalogSignature(): string {
+        const rows = []
+        for (const descriptor of CodeWorkflowRuntime.activeCatalog) {
+            rows.push([
+                String(descriptor?.targetId ?? ""),
+                String(descriptor?.label ?? ""),
+                String(descriptor?.family ?? ""),
+                String(descriptor?.kind ?? ""),
+                descriptor?.internal === true ? "1" : "0",
+                String(descriptor?.lifecycle ?? ""),
+                String(descriptor?.state ?? ""),
+                String(descriptor?.sourcePath ?? "")
+            ].join("\u001f"))
+        }
+        rows.sort()
+        return rows.join("\u001e")
+    }
+
+    function refreshGraph(force: bool): void {
+        if (!root.workflowActive) {
+            graphRefreshTimer.stop()
+            root.runtimeCatalogSignature = ""
+            root.graph = null
+            return
+        }
+        const signature = root.catalogSignature()
+        if (!force && root.graph !== null
+                && signature === root.runtimeCatalogSignature)
+            return
+        root.runtimeCatalogSignature = signature
+        root.graph = CodeWorkflowIr.unifiedGraphFor(root.showInternals)
+    }
+
+    Timer {
+        id: graphRefreshTimer
+        interval: 120
+        repeat: false
+        onTriggered: root.refreshGraph(false)
+    }
     property bool initialFitDone: false
     readonly property bool inventoryReady: CodeWorkflowIr.ready
         && (CodeWorkflowRuntime.hasLocalDeclarations
@@ -1822,12 +1866,14 @@ Item {
     function activateCanvas(): void {
         if (!root.workflowActive)
             return
+        root.refreshGraph(true)
         Qt.callLater(root.rebuildEdgeRouteCache)
         Qt.callLater(root.consumeRuntimeLifecycleEvent)
         root.fitInitialGraph()
     }
 
     function deactivateCanvas(): void {
+        graphRefreshTimer.stop()
         initialFitTimer.stop()
         runtimePulseTimer.stop()
         viewportCommitTimer.stop()
@@ -1837,9 +1883,16 @@ Item {
         root.dragEdgeRouteCache = ({})
         root.runtimePulseTargetId = ""
         root.runtimePulseKind = ""
+        root.runtimeCatalogSignature = ""
+        root.graph = null
     }
 
     Component.onCompleted: root.activateCanvas()
+
+    onShowInternalsChanged: {
+        if (root.workflowActive)
+            root.refreshGraph(true)
+    }
 
     onWorkflowActiveChanged: {
         if (root.workflowActive)
@@ -1863,6 +1916,15 @@ Item {
         enabled: root.workflowActive
         function onRevisionChanged(): void {
             root.consumeRuntimeLifecycleEvent()
+            graphRefreshTimer.restart()
+        }
+    }
+
+    Connections {
+        target: CodeWorkflowIr
+        enabled: root.workflowActive
+        function onDocumentChanged(): void {
+            root.refreshGraph(true)
         }
     }
 

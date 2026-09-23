@@ -24,6 +24,10 @@ TOOLBAR_TEXT_FIELD = ROOT / "modules" / "common" / "widgets" / "ToolbarTextField
 TOOLBAR_TAB_BUTTON = ROOT / "modules" / "common" / "widgets" / "ToolbarTabButton.qml"
 MATERIAL_TEXT_AREA = ROOT / "modules" / "common" / "widgets" / "MaterialTextArea.qml"
 STYLED_DROP_SHADOW = ROOT / "modules" / "common" / "widgets" / "StyledDropShadow.qml"
+CIRCULAR_PROGRESS = ROOT / "modules" / "common" / "widgets" / "CircularProgress.qml"
+SECONDARY_TAB_BAR = ROOT / "modules" / "common" / "widgets" / "SecondaryTabBar.qml"
+SCROLL_TO_BOTTOM_BUTTON = ROOT / "modules" / "sidebarLeft" / "ScrollToBottomButton.qml"
+PAGE_PLACEHOLDER = ROOT / "modules" / "common" / "widgets" / "PagePlaceholder.qml"
 TIMER_INDICATOR = ROOT / "modules" / "bar" / "TimerIndicator.qml"
 SHELL_UPDATE_INDICATOR = ROOT / "modules" / "bar" / "ShellUpdateIndicator.qml"
 UTIL_BUTTONS = ROOT / "modules" / "bar" / "UtilButtons.qml"
@@ -122,6 +126,10 @@ def main() -> None:
     toolbar_tab_button = TOOLBAR_TAB_BUTTON.read_text(encoding="utf-8")
     material_text_area = MATERIAL_TEXT_AREA.read_text(encoding="utf-8")
     styled_drop_shadow = STYLED_DROP_SHADOW.read_text(encoding="utf-8")
+    circular_progress = CIRCULAR_PROGRESS.read_text(encoding="utf-8")
+    secondary_tab_bar = SECONDARY_TAB_BAR.read_text(encoding="utf-8")
+    scroll_to_bottom_button = SCROLL_TO_BOTTOM_BUTTON.read_text(encoding="utf-8")
+    page_placeholder = PAGE_PLACEHOLDER.read_text(encoding="utf-8")
     timer_indicator = TIMER_INDICATOR.read_text(encoding="utf-8")
     shell_update_indicator = SHELL_UPDATE_INDICATOR.read_text(encoding="utf-8")
     util_buttons = UTIL_BUTTONS.read_text(encoding="utf-8")
@@ -239,6 +247,10 @@ def main() -> None:
         "ToolbarTabButton.qml": toolbar_tab_button,
         "MaterialTextArea.qml": material_text_area,
         "StyledDropShadow.qml": styled_drop_shadow,
+        "CircularProgress.qml": circular_progress,
+        "SecondaryTabBar.qml": secondary_tab_bar,
+        "ScrollToBottomButton.qml": scroll_to_bottom_button,
+        "PagePlaceholder.qml": page_placeholder,
     }
     for source, source_text in shared_material_primitives.items():
         for token in (
@@ -285,6 +297,32 @@ def main() -> None:
         "visible: Appearance.effectsEnabled",
         "StyledDropShadow.qml",
     )
+
+    for token in (
+        "property color colPrimary: Appearance.colors.colOnSecondaryContainer",
+        "property color colSecondary: Appearance.colors.colSecondaryContainer",
+    ):
+        require(circular_progress, token, "CircularProgress.qml")
+    for token in (
+        "color: Appearance.colors.colPrimary",
+        "color: Appearance.colors.colOutlineVariant",
+    ):
+        require(secondary_tab_bar, token, "SecondaryTabBar.qml")
+    for token in (
+        ": Appearance.colors.colSecondary",
+        ": Appearance.colors.colSecondaryHover",
+        ": Appearance.colors.colSecondaryActive",
+        "color: Appearance.colors.colOnSecondary",
+    ):
+        require(scroll_to_bottom_button, token, "ScrollToBottomButton.qml")
+    for token in (
+        "spacing: 5",
+        "MaterialShapeWrappedMaterialSymbol {",
+        "visible: !placeholderMascot.visible",
+        "color: Appearance.colors.colOutline",
+    ):
+        require(page_placeholder, token, "PagePlaceholder.qml")
+    forbid(page_placeholder, "Appearance.inir.", "PagePlaceholder.qml")
 
     motion_start = appearance.index("property QtObject motion: QtObject {")
     motion_end = appearance.index("m3colors: QtObject {", motion_start)

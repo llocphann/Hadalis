@@ -67,6 +67,8 @@ Item {
     onWidthChanged: root.fitInitialGraph()
     onHeightChanged: root.fitInitialGraph()
     onGraphChanged: {
+        root.marqueeActive = false
+        root.marqueeBaseNodeIds = []
         root.clearReasoningSelection()
         Qt.callLater(root.rebuildEdgeRouteCache)
         root.fitInitialGraph()
@@ -100,6 +102,14 @@ Item {
     property var reasoningEdgeIds: []
     readonly property bool hasReasoningSelection:
         root.reasoningNodeIds.length > 0
+    // Shift-drag on empty canvas starts a marquee selection. Holding Ctrl
+    // while starting the marquee adds to the existing manual selection.
+    property bool marqueeActive: false
+    property real marqueeStartX: 0
+    property real marqueeStartY: 0
+    property real marqueeCurrentX: 0
+    property real marqueeCurrentY: 0
+    property var marqueeBaseNodeIds: []
 
     function nodeLayoutOffset(node): var {
         const nodeId = String(node?.id ?? "")
@@ -154,6 +164,66 @@ Item {
         root.reasoningMode = ""
         root.reasoningNodeIds = []
         root.reasoningEdgeIds = []
+    }
+
+    function setManualReasoningSelection(nodeIds): void {
+        const seen = ({})
+        const sanitized = []
+        for (const rawId of nodeIds ?? []) {
+            const nodeId = String(rawId ?? "")
+            if (nodeId.length === 0 || seen[nodeId] || !root.nodeById(nodeId))
+                continue
+            seen[nodeId] = true
+            sanitized.push(nodeId)
+        }
+        if (sanitized.length === 0) {
+            root.clearReasoningSelection()
+            return
+        }
+
+        const edgeIds = []
+        for (const edge of root.edges) {
+            const fromId = String(edge?.from ?? "")
+            const toId = String(edge?.to ?? "")
+            if (seen[fromId] && seen[toId])
+                edgeIds.push(String(edge?.id ?? ""))
+        }
+        root.reasoningMode = "manual"
+        root.reasoningNodeIds = sanitized
+        root.reasoningEdgeIds = edgeIds
+    }
+
+    function marqueeSelectionIds(): var {
+        const left = Math.min(root.marqueeStartX, root.marqueeCurrentX)
+        const right = Math.max(root.marqueeStartX, root.marqueeCurrentX)
+        const top = Math.min(root.marqueeStartY, root.marqueeCurrentY)
+        const bottom = Math.max(root.marqueeStartY, root.marqueeCurrentY)
+        const zoom = Math.max(0.0001, CodeWorkflowSession.zoom)
+        const worldLeft = (left - CodeWorkflowSession.panX) / zoom
+        const worldRight = (right - CodeWorkflowSession.panX) / zoom
+        const worldTop = (top - CodeWorkflowSession.panY) / zoom
+        const worldBottom = (bottom - CodeWorkflowSession.panY) / zoom
+
+        const selected = []
+        for (const node of root.nodes) {
+            const nodeLeft = root.nodeX(node)
+            const nodeTop = root.nodeY(node)
+            const nodeRight = nodeLeft + root.nodeWidth
+            const nodeBottom = nodeTop + root.nodeHeight
+            if (nodeRight >= worldLeft && nodeLeft <= worldRight
+                    && nodeBottom >= worldTop && nodeTop <= worldBottom)
+                selected.push(String(node?.id ?? ""))
+        }
+        return selected
+    }
+
+    function updateMarqueeSelection(): void {
+        const combined = root.marqueeBaseNodeIds.slice()
+        for (const nodeId of root.marqueeSelectionIds()) {
+            if (!combined.includes(nodeId))
+                combined.push(nodeId)
+        }
+        root.setManualReasoningSelection(combined)
     }
 
     function reasoningSelectionFor(mode: string): var {
@@ -1506,6 +1576,8 @@ Item {
         }
 
         function onSubflowTargetIdChanged(): void {
+            root.marqueeActive = false
+            root.marqueeBaseNodeIds = []
             root.clearReasoningSelection()
             root.hoveredEdgeLabelId = ""
             root.activeNodeDragId = ""
@@ -1590,13 +1662,16 @@ Item {
         anchors.fill: parent
         // Keep the empty-space gesture surface above the transformed world.
         // Presses on nodes/edges are explicitly rejected below, so their own
-        // handlers still receive input while true canvas space always pans.
+        // handlers still receive input while true canvas space pans. Shift
+        // reserves the same empty-space gesture for marquee graph reasoning.
         z: 2
         enabled: root.activeNodeDragHandler === null
         acceptedButtons: Qt.LeftButton | Qt.MiddleButton
         preventStealing: true
         hoverEnabled: false
-        cursorShape: pressed ? Qt.ClosedHandCursor : Qt.ArrowCursor
+        cursorShape: root.marqueeActive
+            ? Qt.CrossCursor
+            : pressed ? Qt.ClosedHandCursor : Qt.ArrowCursor
         property real pressX: 0
         property real pressY: 0
         property real basePanX: 0
@@ -1608,21 +1683,76 @@ Item {
                 mouse.accepted = false
                 return
             }
+
             pressX = mouse.x
             pressY = mouse.y
             basePanX = CodeWorkflowSession.panX
             basePanY = CodeWorkflowSession.panY
+
+            const shiftHeld = (mouse.modifiers & Qt.ShiftModifier) !== 0
+            const controlHeld = (mouse.modifiers & Qt.ControlModifier) !== 0
+            if (mouse.button === Qt.LeftButton && shiftHeld) {
+                root.marqueeActive = true
+                root.marqueeStartX = mouse.x
+                root.marqueeStartY = mouse.y
+                root.marqueeCurrentX = mouse.x
+                root.marqueeCurrentY = mouse.y
+                root.marqueeBaseNodeIds = controlHeld
+                        && root.reasoningMode === "manual"
+                    ? root.reasoningNodeIds.slice()
+                    : []
+                root.updateMarqueeSelection()
+            }
         }
         onPositionChanged: mouse => {
             if (!pressed)
                 return
+            if (root.marqueeActive) {
+                root.marqueeCurrentX = mouse.x
+                root.marqueeCurrentY = mouse.y
+                root.updateMarqueeSelection()
+                return
+            }
             CodeWorkflowSession.setViewportTransient(
                 basePanX + mouse.x - pressX,
                 basePanY + mouse.y - pressY,
                 CodeWorkflowSession.zoom)
         }
-        onReleased: CodeWorkflowSession.commitViewport()
-        onCanceled: CodeWorkflowSession.commitViewport()
+        onReleased: mouse => {
+            if (root.marqueeActive) {
+                root.marqueeCurrentX = mouse.x
+                root.marqueeCurrentY = mouse.y
+                root.updateMarqueeSelection()
+                root.marqueeActive = false
+                root.marqueeBaseNodeIds = []
+                return
+            }
+            CodeWorkflowSession.commitViewport()
+        }
+        onCanceled: {
+            if (root.marqueeActive) {
+                root.marqueeActive = false
+                root.marqueeBaseNodeIds = []
+                return
+            }
+            CodeWorkflowSession.commitViewport()
+        }
+    }
+
+    Rectangle {
+        id: marqueeSelectionRect
+        z: 20
+        visible: root.marqueeActive
+        x: Math.min(root.marqueeStartX, root.marqueeCurrentX)
+        y: Math.min(root.marqueeStartY, root.marqueeCurrentY)
+        width: Math.abs(root.marqueeCurrentX - root.marqueeStartX)
+        height: Math.abs(root.marqueeCurrentY - root.marqueeStartY)
+        radius: Appearance.rounding.small
+        color: ColorUtils.applyAlpha(
+            Appearance.colors.colPrimaryContainer, 0.24)
+        border.width: 1
+        border.color: Appearance.colors.colPrimary
+        pointerHandlers: []
     }
 
     Item {

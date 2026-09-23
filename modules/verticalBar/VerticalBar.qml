@@ -42,7 +42,6 @@ Scope {
             component: PanelWindow { // Bar window
                 id: barRoot
                 screen: barLoader.modelData
-                readonly property string outputName: String(barLoader.modelData?.name ?? "")
 
                 // FULLSCREEN-BAR-LIFECYCLE-LOCK (maintainer approved 2026-09-19):
                 // Keep the PanelWindow mapped and updating across fullscreen.
@@ -50,7 +49,6 @@ Scope {
                 // unmapping/remapping the native layer surface can strand the
                 // QML Bar contents blank after fullscreen exits.
 
-                property var brightnessMonitor: Brightness.getMonitorForScreen(barLoader.modelData)
                 
                 Timer {
                     id: showBarTimer

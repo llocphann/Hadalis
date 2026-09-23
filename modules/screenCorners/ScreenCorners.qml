@@ -80,9 +80,15 @@ Scope {
             || GlobalStates.controlPanelOpen
             || GlobalStates.dashboardOpen
             || GlobalStates.searchOpen
+        readonly property string quickNotesMonitorMode:
+            Config.options?.quickNotes?.monitorMode ?? "all"
+        readonly property bool quickNotesMonitorAllowed:
+            quickNotesMonitorMode !== "primary"
+            || outputName === (GlobalStates.primaryScreen?.name ?? "")
         readonly property bool shouldShowQuickNotesCorner:
             (Config.options?.panelFamily ?? "ii") !== "waffle"
             && (Config.options?.quickNotes?.enable ?? true)
+            && cornerPanelWindow.quickNotesMonitorAllowed
             && cornerPanelWindow.isBottomLeft
             && !cornerPanelWindow.shouldShowOrbitHotCorner
             && !cornerPanelWindow.orbitConflictsWithNiriOverview

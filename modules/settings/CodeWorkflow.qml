@@ -396,6 +396,7 @@ Item {
             edgeId: CodeWorkflowSession.selectedEdgeId,
             connectTargetId: CodeWorkflowSession.selectedConnectTargetId,
             semanticAnchor: CodeWorkflowSession.selectedSemanticAnchor,
+            semanticSourcePath: CodeWorkflowSession.selectedSemanticSourcePath,
             filter: root.inspectFilter,
             showInternals: root.inspectShowInternals,
             sourcePreviewVisible: CodeWorkflowSession.sourcePreviewVisible,
@@ -452,6 +453,10 @@ Item {
             selectedEdgeId: CodeWorkflowSession.selectedEdgeId,
             selectedConnectTargetId: CodeWorkflowSession.selectedConnectTargetId,
             selectedSemanticAnchor: CodeWorkflowSession.selectedSemanticAnchor,
+            selectedSemanticSourcePath:
+                CodeWorkflowSession.selectedSemanticSourcePath,
+            inspectFilter: root.inspectFilter,
+            inspectShowInternals: root.inspectShowInternals,
             semanticAnchor: CodeWorkflowSession.semanticAnchor,
             semanticAnchorNodeId: CodeWorkflowSession.semanticAnchorNodeId,
             panX: CodeWorkflowSession.panX,
@@ -491,6 +496,8 @@ Item {
             String(baseline.selectedEdgeId ?? "")
         CodeWorkflowSession.selectedConnectTargetId =
             String(baseline.selectedConnectTargetId ?? "")
+        CodeWorkflowSession.selectedSemanticSourcePath =
+            String(baseline.selectedSemanticSourcePath ?? "")
         CodeWorkflowSession.selectedSemanticAnchor =
             String(baseline.selectedSemanticAnchor ?? "")
         CodeWorkflowSession.semanticAnchor =
@@ -524,8 +531,8 @@ Item {
             JSON.stringify(baseline.graphNodeLayoutOffsets ?? ({})))
         CodeWorkflowSession.graphLayoutRevision += 1
         CodeWorkflowSession.persist()
-        root.inspectFilter = ""
-        root.inspectShowInternals = false
+        root.inspectFilter = String(baseline.inspectFilter ?? "")
+        root.inspectShowInternals = baseline.inspectShowInternals === true
         root.captureHarnessBaseline = null
         return JSON.stringify({ ok: true, status: root.captureHarnessStatus() })
     }

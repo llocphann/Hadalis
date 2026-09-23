@@ -57,11 +57,6 @@ Item {
     readonly property bool anyDialogOpen: showAudioOutputDialog || showAudioInputDialog
         || showBluetoothDialog || showEventsDialog || showHotspotDialog
         || showNightLightDialog || showWifiDialog
-    // Collapse the notification zone (and the panel around it) when there is
-    // nothing to show. Dialogs re-expand so they keep their full canvas.
-    readonly property bool notifsCollapsed: (Config.options?.sidebar?.collapseEmptyNotifications ?? false)
-        && (Notifications.list?.length ?? 0) === 0
-        && !anyDialogOpen
     readonly property real preferredContentHeight: SidebarGeometry.rightFitHeight(
         Math.max(0, root.screenHeight - Appearance.sizes.hyprlandGapsOut * 2),
         sidebarRightBackground.naturalCompactHeight,
@@ -158,7 +153,7 @@ Item {
     // Sanitized: unknown ids dropped, missing ids appended in default order,
     // so a stale or hand-edited config can never blank the sidebar.
     readonly property string headerStyle: Config.options?.sidebar?.right?.headerStyle ?? "profile"
-    readonly property var _sectionDefaultOrder: ["system", "sliders", "toggles", "notifications", "widgets"]
+    readonly property var _sectionDefaultOrder: ["system", "sliders", "toggles", "widgets"]
     readonly property var sectionOrder: {
         const def = root._sectionDefaultOrder
         const saved = Config.options?.sidebar?.right?.sectionOrder ?? def
@@ -184,12 +179,6 @@ Item {
     property real sectionDragStartY: 0
     property real sectionDragCurrentY: 0
     property var _sectionHeights: []
-    property string sectionResizeId: ""
-    property real sectionResizeStartY: 0
-    property real sectionResizeStartPrimary: 1
-    property real sectionResizeStartOther: 1
-    property var _sectionWeightPreview: ({})
-    readonly property var _flexSectionIds: ["notifications", "widgets"]
 
     function _cacheSectionHeights(): void {
         const heights = []
@@ -268,57 +257,6 @@ Item {
         _sectionHeights = []
     }
 
-    function sectionWeight(sectionId: string): real {
-        const previewValue = root._sectionWeightPreview?.[sectionId]
-        if (previewValue !== undefined) return previewValue
-        const configured = Number(Config.options?.sidebar?.right?.sectionWeights?.[sectionId] ?? 1)
-        return Number.isFinite(configured) ? Math.max(0.35, configured) : 1
-    }
-
-    function startSectionResize(sectionId: string, mouseY: real): void {
-        if (!root._flexSectionIds.includes(sectionId)) return
-        const otherId = sectionId === "notifications" ? "widgets" : "notifications"
-        root.cancelSectionDrag()
-        sectionResizeId = sectionId
-        sectionResizeStartY = mouseY
-        sectionResizeStartPrimary = root.sectionWeight(sectionId)
-        sectionResizeStartOther = root.sectionWeight(otherId)
-        _sectionWeightPreview = ({
-            notifications: root.sectionWeight("notifications"),
-            widgets: root.sectionWeight("widgets")
-        })
-    }
-
-    function updateSectionResize(mouseY: real): void {
-        if (sectionResizeId.length === 0) return
-        const otherId = sectionResizeId === "notifications" ? "widgets" : "notifications"
-        const total = Math.max(0.7, sectionResizeStartPrimary + sectionResizeStartOther)
-        const delta = (mouseY - sectionResizeStartY) / 140
-        const primary = Math.max(0.35, Math.min(total - 0.35, sectionResizeStartPrimary + delta))
-        const other = total - primary
-        const next = ({})
-        next[sectionResizeId] = primary
-        next[otherId] = other
-        _sectionWeightPreview = next
-    }
-
-    function endSectionResize(): void {
-        if (sectionResizeId.length === 0) return
-        Config.setNestedValues({
-            "sidebar.right.sectionWeights.notifications": root.sectionWeight("notifications"),
-            "sidebar.right.sectionWeights.widgets": root.sectionWeight("widgets")
-        })
-        sectionResizeId = ""
-        sectionResizeStartY = 0
-        _sectionWeightPreview = ({})
-    }
-
-    function cancelSectionResize(): void {
-        sectionResizeId = ""
-        sectionResizeStartY = 0
-        _sectionWeightPreview = ({})
-    }
-
     function focusActiveItem() {
         if (bottomWidgetGroupItem && bottomWidgetGroupItem.focusActiveItem) {
             bottomWidgetGroupItem.focusActiveItem()
@@ -331,7 +269,6 @@ Item {
             if (!GlobalStates.sidebarRightOpen) {
                 root.sectionEditMode = false;
                 root.cancelSectionDrag();
-                root.cancelSectionResize();
                 root.showWifiDialog = false;
                 root.showBluetoothDialog = false;
                 root.showEventsDialog = false;
@@ -436,10 +373,7 @@ Item {
         anchors.right: parent.right
         readonly property real naturalCompactHeight: contentColumn.implicitHeight
             + root.sidebarPadding * 2
-        height: root.notifsCollapsed
-            ? SidebarGeometry.rightFitHeight(parent.height,
-                naturalCompactHeight, root.bottomGroupCollapsed)
-            : parent.height
+        height: parent.height
         Behavior on height {
             enabled: Appearance.animationsEnabled && root.panelVisible
                 && !root.geometryPreviewActive
@@ -514,14 +448,11 @@ Item {
                     id: sectionLoader
                     required property string modelData
                     required property int index
-                    readonly property bool isCenter: modelData === "notifications"
-                    readonly property bool isElastic: modelData === "notifications" || modelData === "widgets"
+                    readonly property bool isElastic: modelData === "widgets"
                     readonly property bool contentCollapsed: modelData === "widgets"
                         && (item?.collapsed ?? false)
-                    readonly property bool usesElasticPool: isElastic
-                        && !root.notifsCollapsed && !contentCollapsed
+                    readonly property bool usesElasticPool: isElastic && !contentCollapsed
                     readonly property bool isBeingDragged: root.sectionDragIndex === index
-                    readonly property bool isBeingResized: root.sectionResizeId === modelData
                     readonly property bool isDropTarget: root.sectionHoverIndex === index
                         && root.sectionDragIndex !== index && root.sectionDragIndex >= 0
 
@@ -529,11 +460,9 @@ Item {
                     Layout.fillWidth: true
                     Layout.fillHeight: usesElasticPool
                     Layout.minimumHeight: !isElastic ? -1
-                        : contentCollapsed ? implicitHeight
-                        : modelData === "widgets" ? 250
-                        : root.notifsCollapsed ? implicitHeight : 96
+                        : contentCollapsed ? implicitHeight : 250
                     Layout.preferredHeight: usesElasticPool
-                        ? root.sectionWeight(modelData) * 180 : implicitHeight
+                        ? Math.max(250, implicitHeight) : implicitHeight
                     // The profile card is a full-bleed card that nests into the
                     // panel's corner, so its gap must match the 10px side inset
                     // exactly. The classic pill row keeps its extra breathing
@@ -550,7 +479,7 @@ Item {
                     opacity: root._entranceCascade >= index
                         ? (root.sectionEditMode && !isBeingDragged ? 0.8 : 1) : 0
                     Behavior on opacity { enabled: Appearance.animationsEnabled; NumberAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Easing.OutCubic } }
-                    scale: isBeingDragged ? 1.015 : isBeingResized ? 1.008 : 1
+                    scale: isBeingDragged ? 1.015 : 1
                     Behavior on scale { enabled: Appearance.animationsEnabled; NumberAnimation { duration: 220; easing.type: Easing.OutCubic } }
                     z: isBeingDragged ? 5 : 0
 
@@ -644,71 +573,6 @@ Item {
                         }
                     }
 
-                    // Elastic-zone resize handle. Dragging the bottom edge of
-                    // either notifications or widgets reallocates the shared
-                    // vertical pool and persists both weights atomically.
-                    Rectangle {
-                        visible: root.sectionEditMode && sectionLoader.usesElasticPool
-                        anchors.horizontalCenter: parent.horizontalCenter
-                        anchors.bottom: parent.bottom
-                        anchors.bottomMargin: -height / 2
-                        width: 68
-                        height: 18
-                        z: 22
-                        radius: height / 2
-                        color: resizeHandleArea.containsMouse || sectionLoader.isBeingResized
-                            ? Appearance.colors.colPrimaryContainer
-                            : Appearance.colors.colLayer2
-                        border.width: 1
-                        border.color: sectionLoader.isBeingResized
-                            ? Appearance.colors.colPrimary
-                            : Appearance.colors.colOutlineVariant
-
-                        Row {
-                            anchors.centerIn: parent
-                            spacing: 4
-                            MaterialSymbol {
-                                anchors.verticalCenter: parent.verticalCenter
-                                text: "height"
-                                iconSize: 12
-                                color: Appearance.colors.colOnLayer2
-                            }
-                            StyledText {
-                                anchors.verticalCenter: parent.verticalCenter
-                                text: Math.round(root.sectionWeight(sectionLoader.modelData) * 50) + "%"
-                                font.pixelSize: Appearance.font.pixelSize.smallest
-                                color: Appearance.colors.colOnLayer2
-                            }
-                        }
-
-                        MouseArea {
-                            id: resizeHandleArea
-                            anchors.fill: parent
-                            anchors.margins: -5
-                            hoverEnabled: true
-                            cursorShape: sectionLoader.isBeingResized ? Qt.ClosedHandCursor : Qt.SizeVerCursor
-                            acceptedButtons: Qt.LeftButton
-                            property bool resizeStarted: false
-                            onPressed: (mouse) => {
-                                resizeStarted = true
-                                root.startSectionResize(sectionLoader.modelData,
-                                    mapToItem(contentColumn, mouse.x, mouse.y).y)
-                            }
-                            onPositionChanged: (mouse) => {
-                                if (resizeStarted)
-                                    root.updateSectionResize(mapToItem(contentColumn, mouse.x, mouse.y).y)
-                            }
-                            onReleased: {
-                                if (resizeStarted) root.endSectionResize()
-                                resizeStarted = false
-                            }
-                            onCanceled: {
-                                root.cancelSectionResize()
-                                resizeStarted = false
-                            }
-                        }
-                    }
-
                     sourceComponent: {
                         switch (modelData) {
                             case "system":
@@ -718,7 +582,6 @@ Item {
                             case "toggles":
                                 return (Config.options?.sidebar?.quickToggles?.style ?? "classic") === "android"
                                     ? androidTogglesComponent : classicTogglesComponent
-                            case "notifications": return centerSectionComponent
                             case "widgets": return widgetsSectionComponent
                             default: return null
                         }
@@ -766,7 +629,6 @@ Item {
                     root.sectionEditMode = !root.sectionEditMode
                     if (!root.sectionEditMode) {
                         root.cancelSectionDrag()
-                        root.cancelSectionResize()
                     }
                 }
                 onReloadRequested: root.requestReload()
@@ -776,7 +638,6 @@ Item {
         Component { id: slidersSectionComponent; QuickSliders {} }
         Component { id: classicTogglesComponent; ClassicQuickPanel {} }
         Component { id: androidTogglesComponent; AndroidQuickPanel { editMode: root.editMode } }
-        Component { id: centerSectionComponent; CenterWidgetGroup { collapsed: root.notifsCollapsed } }
         Component { id: widgetsSectionComponent; BottomWidgetGroup {} }
 
     }
@@ -996,7 +857,6 @@ Item {
                     root.sectionEditMode = !root.sectionEditMode
                     if (!root.sectionEditMode) {
                         root.cancelSectionDrag()
-                        root.cancelSectionResize()
                     }
                 }
                 StyledToolTip {

@@ -65,6 +65,7 @@ for token in (
     "sourceComponent: NotepadWidget {",
     "compactPresentation: true",
     "quickCapturePresentation: true",
+    "Notepad.tabs[Notepad.currentTab]?.title",
     "notesEditorLoader.item.focus = true",
     "notesEditorLoader.item.focus = false",
     "notesEditorLoader.item.focusEditor()",

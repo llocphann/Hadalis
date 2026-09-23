@@ -20,6 +20,7 @@ Bar.StyledPopup {
 
     required property Item anchorItem
     property bool editorFocused: false
+    property bool entryBridgeHeld: false
     property string cornerAttachmentEdge: "bottom"
     property real cornerAttachmentThickness: Math.max(1, Math.min(32,
         Math.round(Config.options?.appearance?.screenEdge?.width ?? 10)))
@@ -28,7 +29,7 @@ Bar.StyledPopup {
     attachmentEdgeOverride: root.cornerAttachmentEdge
     attachmentThicknessOverride: root.cornerAttachmentThickness
     hoverActivates: true
-    alternativeVisibleCondition: root.editorFocused
+    alternativeVisibleCondition: root.editorFocused || root.entryBridgeHeld
     keyboardFocus: root.editorFocused
     closeOnOutsideClick: root.editorFocused
     popupBackgroundMargin: 0
@@ -46,6 +47,8 @@ Bar.StyledPopup {
     }
 
     function leaveEditorMode(): void {
+        entryBridgeTimer.stop()
+        root.entryBridgeHeld = false
         if (notesEditorLoader.item) {
             notesEditorLoader.item.flushPendingSave()
             notesEditorLoader.item.focus = false
@@ -55,13 +58,20 @@ Bar.StyledPopup {
 
     onRequestClose: root.leaveEditorMode()
     onActiveChanged: {
-        if (!active) {
-            if (notesEditorLoader.item) {
-                notesEditorLoader.item.flushPendingSave()
-                notesEditorLoader.item.focus = false
+        if (active) {
+            if (!root.editorFocused) {
+                root.entryBridgeHeld = true
+                entryBridgeTimer.restart()
             }
-            root.editorFocused = false
+            return
         }
+        entryBridgeTimer.stop()
+        root.entryBridgeHeld = false
+        if (notesEditorLoader.item) {
+            notesEditorLoader.item.flushPendingSave()
+            notesEditorLoader.item.focus = false
+        }
+        root.editorFocused = false
     }
     Component.onDestruction: {
         if (notesEditorLoader.item)
@@ -73,6 +83,16 @@ Bar.StyledPopup {
         context: Qt.WindowShortcut
         enabled: root.active && root.editorFocused
         onActivated: root.leaveEditorMode()
+    }
+
+    // Give the pointer enough time to cross a bottom/left Bar owner before the
+    // shared popup hover hand-off takes over. This is only an entry bridge; once
+    // the body is reached, StyledPopup's normal full-body hover contract owns it.
+    property QtObject _entryBridgeTimer: Timer {
+        id: entryBridgeTimer
+        interval: 260
+        repeat: false
+        onTriggered: root.entryBridgeHeld = false
     }
 
     Item {

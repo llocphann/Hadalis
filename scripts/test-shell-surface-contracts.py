@@ -1112,6 +1112,7 @@ def main() -> None:
         "cardStyleEverywhere",
         "zzzDetachedRounded",
         "barMargin",
+        "nativeBlurGeometryExact",
     ):
         check(retired_bar_constant not in bar_content,
               f"Horizontal Bar must not retain constant retired branch: {retired_bar_constant}")

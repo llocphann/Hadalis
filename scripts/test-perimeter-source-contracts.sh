@@ -77,5 +77,7 @@ grep -Fq 'GlobalStates.openOrbit(' "$screen_corners" || fail 'ScreenCorners lost
 
 grep -Fq 'ConnectedSurfaceFrame {' "$waffle" || fail 'Waffle lost shared non-iRiS frame'
 grep -Fq 'connectorVisible: false' "$waffle" || fail 'Waffle connector painter must stay disabled'
+! grep -Fq 'function updateAnchor()' "$waffle" || fail 'Waffle restored manual anchor compatibility API'
+! grep -Fq '_anchorRevision' "$waffle" || fail 'Waffle restored manual anchor revision shim'
 
 printf 'PASS: runtime QML is free of retired round-wedge geometry; current iRiS/direct-seam routes are authoritative\n'

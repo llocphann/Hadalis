@@ -198,7 +198,7 @@ def main() -> None:
     ):
         require(sampler, token, "runtime-diagnostics-sampler.py")
 
-    forbid(sampler, '/ "cmdline"', "runtime-diagnostics-sampler.py")
+    forbid(sampler, "cmdline", "runtime-diagnostics-sampler.py")
 
     code = compile(sampler, str(SAMPLER), "exec")
     namespace = {"__name__": "runtime_diagnostics_contract"}

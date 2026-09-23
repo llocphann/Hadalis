@@ -1483,7 +1483,7 @@ layout offsets or source-editor buffers merely to make page navigation cheaper.
 
 - additional reviewed Connect targets beyond the first Clock fixture;
 - additional reviewed Disconnect targets beyond the exact `clock.data.time` / `clock.data.date` Clock fixtures;
-- dependency coverage beyond the 2K-J cross-file and 2K-J-A exact-boolean closure subsets;
+- dependency coverage beyond the 2K-J cross-file, 2K-J-A exact-boolean and 2K-J-B exact-decimal closure subsets;
 - additional reviewed signal/action targets beyond `media.signal.doubleClickToggle`;
 - Connections creation/removal;
 - multi-file transactions;
@@ -1499,7 +1499,11 @@ The next Signal/Action gate is **2K-W-E**, but it must not begin until a second
 concrete target is reviewed independently with runtime evidence and its own exact
 semantic identity. The current reviewed IR still promotes only
 `media.signal.doubleClickToggle`; an ordinary event/action edge is not enough
-to grant preview or mutation authority.
+to grant preview or mutation authority. A fresh IR audit after J-B confirms that
+`media.event.input` remains the only edge carrying a `signalActionTargetId`.
+`clock.event.hover` terminates at popup lifecycle rather than an existing action,
+and the Resources action edge is lifecycle/service ownership, so neither is a
+W-E candidate without a separate product/runtime review.
 
 Do not generalize from `onDoubleClicked` to arbitrary handlers or script
 bodies, do not reuse data-binding TYPE/CYCLE proof tokens, and keep Connections

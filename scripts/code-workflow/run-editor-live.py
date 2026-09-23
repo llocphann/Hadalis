@@ -776,7 +776,9 @@ def main() -> int:
         parse_or_type = [
             line for line in log.splitlines()
             if re.search(r"Expected token|Cannot assign to non-existent property|"
-                         r"Type CodeWorkflow(?:SourceEditor|IrCanvas)? unavailable",
+                         r"Type CodeWorkflow(?:SourceEditor|IrCanvas)? unavailable|"
+                         r"CodeWorkflow(?:SourceEditor|IrCanvas)?\\.qml.*"
+                         r"(?:TypeError|ReferenceError)",
                          line, re.IGNORECASE)
         ]
         probe.record("Real page 30 loaded without QML parse/property errors",

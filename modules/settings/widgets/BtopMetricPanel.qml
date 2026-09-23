@@ -70,14 +70,25 @@ Item {
             }
 
             Row {
+                id: historyRow
                 Layout.fillWidth: true
                 Layout.preferredHeight: 22
-                spacing: 2
+                spacing: root.samples.length > 0
+                    && width / root.samples.length < 3 ? 0 : 1
+                clip: true
+
                 Repeater {
                     model: root.samples
                     Rectangle {
-                        width: 4
-                        height: 22 * Math.max(0.1, modelData / 100)
+                        width: root.samples.length > 0
+                            ? Math.max(0.5,
+                                (historyRow.width
+                                    - historyRow.spacing
+                                        * Math.max(0, root.samples.length - 1))
+                                / root.samples.length)
+                            : 0
+                        height: Math.max(1, 22 * Math.max(
+                            0, Math.min(1, Number(modelData) / 100)))
                         anchors.bottom: parent.bottom
                         color: Appearance.colors.colPrimary
                         opacity: 0.75

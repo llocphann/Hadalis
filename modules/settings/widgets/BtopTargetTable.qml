@@ -10,6 +10,7 @@ Item {
     property var records: []
     property int maxRows: 18
     property string selectedTargetId: ""
+    readonly property bool showOutputColumn: width >= 520
     signal targetActivated(string targetId, string instanceId)
 
     readonly property var visibleTargets: {
@@ -166,6 +167,7 @@ Item {
                 StyledText {
 
                     textFormat: Text.PlainText
+                    visible: root.showOutputColumn
                     Layout.fillWidth: true
                     Layout.preferredWidth: 1.2
                     text: "OUTPUT"
@@ -268,6 +270,7 @@ Item {
                         StyledText {
 
                             textFormat: Text.PlainText
+                            visible: root.showOutputColumn
                             Layout.fillWidth: true
                             Layout.preferredWidth: 1.2
                             text: root.outputsFor(targetRow.targetId) || "—"

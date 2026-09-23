@@ -56,6 +56,15 @@ Item {
     readonly property string sourceEditorMode:
         String(sourceEditor?.mode ?? "normal")
     readonly property bool compactHeader: root.width < 1080
+    // The transaction singleton owns CodeWorkflowAnalyzer during watcher-driven
+    // postconditions. A reopened Settings page must not enqueue presentation
+    // analysis over a commit/rebind/rollback lifecycle.
+    readonly property bool transactionOwnsAnalyzer:
+        CodeWorkflowTransaction.applyLifecycleBusy
+        || CodeWorkflowTransaction.connectLifecycleBusy
+        || CodeWorkflowTransaction.bindingLifecycleBusy
+        || CodeWorkflowTransaction.disconnectLifecycleBusy
+        || CodeWorkflowTransaction.signalActionLifecycleBusy
     readonly property string sourceHighlightDefinition: {
         const path = String(root.sourcePath ?? "").toLowerCase()
         if (path.endsWith(".qml"))
@@ -1460,6 +1469,7 @@ Item {
 
     function requestAnalysis(force: bool): void {
         if (!root.workflowActive || root.workflowDestroying
+                || root.transactionOwnsAnalyzer
                 || root.sourcePath.length === 0)
             return
         CodeWorkflowAnalyzer.request(
@@ -1866,6 +1876,9 @@ Item {
         enabled: root.workflowActive && !root.workflowDestroying
         function onStatusChanged(): void {
             Qt.callLater(root.evaluatePreApplyGate)
+            // Reclaim presentation analysis only after a transaction lifecycle
+            // releases the shared analyzer.
+            Qt.callLater(() => root.requestAnalysis(false))
         }
         function onHistoryIndexChanged(): void {
             transactionScroll.contentY = 0

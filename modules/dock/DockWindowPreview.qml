@@ -15,8 +15,6 @@ Button {
     id: root
 
     required property var toplevel
-    property real previewWidthConstraint: 200
-    property real previewHeightConstraint: 110
     padding: 6
     Layout.fillHeight: true
 

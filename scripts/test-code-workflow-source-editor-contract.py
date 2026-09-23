@@ -4,6 +4,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 EDITOR = ROOT / "modules" / "settings" / "CodeWorkflowSourceEditor.qml"
 PAGE = ROOT / "modules" / "settings" / "CodeWorkflow.qml"
+ICON_BUTTON = ROOT / "modules" / "common" / "widgets" / "RippleButtonWithIcon.qml"
 LIVE_RUNNER = ROOT / "scripts" / "code-workflow" / "run-editor-live.py"
 SETTINGS_QMLDIR = ROOT / "modules" / "settings" / "qmldir"
 SERVICES_QMLDIR = ROOT / "services" / "qmldir"
@@ -17,6 +18,7 @@ def require(text: str, token: str, message: str) -> None:
 
 editor = EDITOR.read_text(encoding="utf-8")
 page = PAGE.read_text(encoding="utf-8")
+icon_button = ICON_BUTTON.read_text(encoding="utf-8")
 live_runner = LIVE_RUNNER.read_text(encoding="utf-8")
 settings_qmldir = SETTINGS_QMLDIR.read_text(encoding="utf-8")
 services_qmldir = SERVICES_QMLDIR.read_text(encoding="utf-8")
@@ -200,6 +202,26 @@ require(editor, "event.key === Qt.Key_H",
         "Source Editor must intercept Replace before Settings shortcuts")
 if "id: targetsToolbarToggle" in page or "id: inspectorToolbarToggle" in page:
     fail("global toolbar must not duplicate Targets/Inspector pane toggles")
+
+# Narrow Targets panes must never let long action labels paint through the
+# right border. Keep both the shared icon-button content and the local layout
+# shrinkable so "Refresh workspace index" elides instead of overflowing.
+for token in (
+    "elide: Text.ElideRight",
+    "maximumLineCount: 1",
+    "Layout.minimumWidth: 0",
+):
+    require(icon_button, token,
+            "shared icon button must constrain long labels inside its bounds")
+refresh_at = page.index("id: refreshWorkspaceIndexButton")
+refresh_end = page.index("StyledText {", refresh_at)
+refresh_block = page[refresh_at:refresh_end]
+require(refresh_block, "Layout.fillWidth: true",
+        "workspace-index refresh action must fill the Targets pane")
+require(refresh_block, "Layout.minimumWidth: 0",
+        "workspace-index refresh action must be allowed to shrink with the Targets pane")
+require(refresh_block, '"Refresh workspace index"',
+        "workspace-index refresh action label changed unexpectedly")
 
 for token in (
     "property int modalTestMountCount: 0",

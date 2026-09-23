@@ -31,6 +31,8 @@ SCROLL_TO_BOTTOM_BUTTON = ROOT / "modules" / "sidebarLeft" / "ScrollToBottomButt
 PAGE_PLACEHOLDER = ROOT / "modules" / "common" / "widgets" / "PagePlaceholder.qml"
 SELECTION_DIALOG = ROOT / "modules" / "common" / "widgets" / "SelectionDialog.qml"
 TOAST_NOTIFICATION = ROOT / "modules" / "common" / "widgets" / "ToastNotification.qml"
+NOTIFICATION_ITEM = ROOT / "modules" / "common" / "widgets" / "NotificationItem.qml"
+NOTIFICATION_GROUP = ROOT / "modules" / "common" / "widgets" / "NotificationGroup.qml"
 TIMER_INDICATOR = ROOT / "modules" / "bar" / "TimerIndicator.qml"
 SHELL_UPDATE_INDICATOR = ROOT / "modules" / "bar" / "ShellUpdateIndicator.qml"
 UTIL_BUTTONS = ROOT / "modules" / "bar" / "UtilButtons.qml"
@@ -136,6 +138,8 @@ def main() -> None:
     page_placeholder = PAGE_PLACEHOLDER.read_text(encoding="utf-8")
     selection_dialog = SELECTION_DIALOG.read_text(encoding="utf-8")
     toast_notification = TOAST_NOTIFICATION.read_text(encoding="utf-8")
+    notification_item = NOTIFICATION_ITEM.read_text(encoding="utf-8")
+    notification_group = NOTIFICATION_GROUP.read_text(encoding="utf-8")
     timer_indicator = TIMER_INDICATOR.read_text(encoding="utf-8")
     shell_update_indicator = SHELL_UPDATE_INDICATOR.read_text(encoding="utf-8")
     util_buttons = UTIL_BUTTONS.read_text(encoding="utf-8")
@@ -260,6 +264,8 @@ def main() -> None:
         "PagePlaceholder.qml": page_placeholder,
         "SelectionDialog.qml": selection_dialog,
         "ToastNotification.qml": toast_notification,
+        "NotificationItem.qml": notification_item,
+        "NotificationGroup.qml": notification_group,
     }
     for source, source_text in shared_material_primitives.items():
         for token in (
@@ -358,6 +364,33 @@ def main() -> None:
     ):
         require(toast_notification, token, "ToastNotification.qml")
     forbid(toast_notification, "CookieFace {", "ToastNotification.qml")
+
+    for token in (
+        "radius: Appearance.rounding.small",
+        "Appearance.colors.colLayer3",
+        "border.width: 0",
+        "color: Appearance.colors.colOnLayer3",
+        "color: Appearance.colors.colSubtext",
+    ):
+        require(notification_item, token, "NotificationItem.qml")
+    forbid(notification_item, "RegaliaPlate {", "NotificationItem.qml")
+    for token in (
+        "ColorUtils.applyAlpha(Appearance.colors.colLayer2, 1 - Appearance.backgroundTransparency)",
+        "radius: Appearance.rounding.normal",
+        "border.width: 0",
+        "color: topRow.showAppName ? Appearance.colors.colSubtext : Appearance.colors.colOnLayer2",
+        "color: Appearance.colors.colSubtext",
+    ):
+        require(notification_group, token, "NotificationGroup.qml")
+    for token in (
+        "ZzzPlate {",
+        "RegaliaPlate {",
+        "AngelPartialBorder {",
+        "notifBlurredWallpaper",
+        "MultiEffect {",
+        "GE.OpacityMask",
+    ):
+        forbid(notification_group, token, "NotificationGroup.qml")
 
     motion_start = appearance.index("property QtObject motion: QtObject {")
     motion_end = appearance.index("m3colors: QtObject {", motion_start)

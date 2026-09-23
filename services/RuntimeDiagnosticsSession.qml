@@ -39,6 +39,7 @@ Singleton {
         if (remotePulse.running)
             return
         root.remoteError = ""
+        remotePulse.action = action
         remotePulse.command = root._remoteCommand(action)
         remotePulse.running = true
     }
@@ -109,16 +110,37 @@ Singleton {
 
     Process {
         id: remotePulse
+        property string action: ""
         running: false
         command: []
 
-        stdout: StdioCollector {}
+        stdout: StdioCollector { id: remotePulseOutput }
         stderr: StdioCollector { id: remotePulseError }
 
         onExited: (exitCode, exitStatus) => {
-            if (exitCode !== 0)
+            if (exitCode !== 0) {
                 root.remoteError =
                     String(remotePulseError.text ?? "").trim()
+                remotePulse.action = ""
+                return
+            }
+
+            const payload = String(remotePulseOutput.text ?? "").trim()
+            try {
+                const reply = payload.length > 0 ? JSON.parse(payload) : null
+                if (reply?.ok === true) {
+                    root.remoteError = ""
+                } else if (remotePulse.action === "heartbeat"
+                        && root.pageCurrent) {
+                    // TTL expiry is recoverable while the page still owns the
+                    // session; heartbeat itself never resurrects a dead lease.
+                    Qt.callLater(() => root._pulseRemote("acquire"))
+                }
+            } catch (error) {
+                root.remoteError =
+                    "Diagnostics lease decode failed: " + String(error)
+            }
+            remotePulse.action = ""
         }
     }
 

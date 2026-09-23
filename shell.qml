@@ -460,6 +460,34 @@ ShellRoot {
         }
     }
 
+    // Runtime Diagnostics samplers live in the main shell process. Separate
+    // Settings processes only own short-lived leases over IPC; if they crash,
+    // the server TTL expires and sampling returns to zero automatically.
+    IpcHandler {
+        target: "runtimeDiagnostics"
+        function acquire(clientId: string): string {
+            return JSON.stringify({
+                ok: RuntimeDiagnostics.acquire(clientId),
+                status: RuntimeDiagnostics.status()
+            })
+        }
+        function heartbeat(clientId: string): string {
+            return JSON.stringify({
+                ok: RuntimeDiagnostics.heartbeat(clientId),
+                status: RuntimeDiagnostics.status()
+            })
+        }
+        function release(clientId: string): string {
+            return JSON.stringify({
+                ok: RuntimeDiagnostics.release(clientId),
+                status: RuntimeDiagnostics.status()
+            })
+        }
+        function status(): string {
+            return JSON.stringify(RuntimeDiagnostics.status())
+        }
+    }
+
     // IPC for settings - overlay mode or separate window based on config
     // Note: waffle family ALWAYS uses its own window (waffleSettings.qml), never the Material overlay
     IpcHandler {

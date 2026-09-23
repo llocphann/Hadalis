@@ -541,12 +541,15 @@ Singleton {
     }
 
     onNotificationCenterOpenChanged: {
-        if (!notificationCenterOpen)
+        if (!notificationCenterOpen
+                || !(Config.options?.notificationCenter?.markReadOnOpen ?? true))
             return
-        if (Config.options?.notificationCenter?.dismissToastsOnOpen ?? true)
-            Notifications.timeoutAll()
-        if (Config.options?.notificationCenter?.markReadOnOpen ?? true)
-            Notifications.markAllRead()
+        // The current backend models unread state as the transient popup flag.
+        // Preserve the legacy "viewing history consumes the toast" behavior as
+        // one truthful setting rather than exposing two controls that cannot be
+        // independent without a separate persisted read-state model.
+        Notifications.timeoutAll()
+        Notifications.markAllRead()
     }
 
     onScreenLockedChanged: {

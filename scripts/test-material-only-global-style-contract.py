@@ -42,6 +42,11 @@ KEYBOARD_KEY = ROOT / "modules" / "common" / "widgets" / "KeyboardKey.qml"
 MATERIAL_SHAPE_SYMBOL = ROOT / "modules" / "common" / "widgets" / "MaterialShapeWrappedMaterialSymbol.qml"
 FLOATING_ACTION_BUTTON = ROOT / "modules" / "common" / "widgets" / "FloatingActionButton.qml"
 DATE_PICKER = ROOT / "modules" / "common" / "widgets" / "DatePicker.qml"
+DIALOG_BUTTON = ROOT / "modules" / "common" / "widgets" / "DialogButton.qml"
+DIALOG_LIST_ITEM = ROOT / "modules" / "common" / "widgets" / "DialogListItem.qml"
+ICON_TOOLBAR_BUTTON = ROOT / "modules" / "common" / "widgets" / "IconToolbarButton.qml"
+COLLAPSIBLE_SECTION = ROOT / "modules" / "common" / "widgets" / "CollapsibleSection.qml"
+CONTENT_SECTION = ROOT / "modules" / "common" / "widgets" / "ContentSection.qml"
 TIMER_INDICATOR = ROOT / "modules" / "bar" / "TimerIndicator.qml"
 SHELL_UPDATE_INDICATOR = ROOT / "modules" / "bar" / "ShellUpdateIndicator.qml"
 UTIL_BUTTONS = ROOT / "modules" / "bar" / "UtilButtons.qml"
@@ -158,6 +163,11 @@ def main() -> None:
     material_shape_symbol = MATERIAL_SHAPE_SYMBOL.read_text(encoding="utf-8")
     floating_action_button = FLOATING_ACTION_BUTTON.read_text(encoding="utf-8")
     date_picker = DATE_PICKER.read_text(encoding="utf-8")
+    dialog_button = DIALOG_BUTTON.read_text(encoding="utf-8")
+    dialog_list_item = DIALOG_LIST_ITEM.read_text(encoding="utf-8")
+    icon_toolbar_button = ICON_TOOLBAR_BUTTON.read_text(encoding="utf-8")
+    collapsible_section = COLLAPSIBLE_SECTION.read_text(encoding="utf-8")
+    content_section = CONTENT_SECTION.read_text(encoding="utf-8")
     timer_indicator = TIMER_INDICATOR.read_text(encoding="utf-8")
     shell_update_indicator = SHELL_UPDATE_INDICATOR.read_text(encoding="utf-8")
     util_buttons = UTIL_BUTTONS.read_text(encoding="utf-8")
@@ -293,6 +303,11 @@ def main() -> None:
         "MaterialShapeWrappedMaterialSymbol.qml": material_shape_symbol,
         "FloatingActionButton.qml": floating_action_button,
         "DatePicker.qml": date_picker,
+        "DialogButton.qml": dialog_button,
+        "DialogListItem.qml": dialog_list_item,
+        "IconToolbarButton.qml": icon_toolbar_button,
+        "CollapsibleSection.qml": collapsible_section,
+        "ContentSection.qml": content_section,
     }
     for source, source_text in shared_material_primitives.items():
         for token in (
@@ -485,6 +500,43 @@ def main() -> None:
         "readonly property real radius: Appearance.rounding.small",
     ):
         require(date_picker, token, "DatePicker.qml")
+
+    for token in (
+        "buttonRadius: Appearance?.rounding.full ?? 9999",
+        "property color colEnabled: Appearance.colors.colPrimary",
+        "property color colDisabled: Appearance.colors.colOutline",
+        "colBackground: ColorUtils.transparentize(Appearance.colors.colLayer3)",
+        "text: root.buttonText",
+        "font.family: Appearance.font.family.main",
+    ):
+        require(dialog_button, token, "DialogButton.qml")
+    for token in (
+        "? Appearance.colors.colPrimaryContainer : Appearance.colors.colLayer2",
+        "? Appearance.colors.colPrimaryContainerHover : Appearance.colors.colLayer2Hover",
+        "? Appearance.colors.colPrimaryContainerActive : Appearance.colors.colLayer2Active",
+        "buttonRadius: Appearance.rounding.normal",
+    ):
+        require(dialog_list_item, token, "DialogListItem.qml")
+    for token in (
+        "colBackgroundToggled: Appearance.colors.colSecondaryContainer",
+        "colBackgroundToggledHover: Appearance.colors.colSecondaryContainerHover",
+        "colRippleToggled: Appearance.colors.colSecondaryContainerActive",
+        "? Appearance.colors.colOnSecondaryContainer",
+        ": Appearance.colors.colOnSurfaceVariant",
+        "iconSize: 22",
+    ):
+        require(icon_toolbar_button, token, "IconToolbarButton.qml")
+    for token in (
+        "? Appearance.colors.colLayer1Hover",
+        "color: Appearance.colors.colOnSecondaryContainer",
+    ):
+        require(collapsible_section, token, "CollapsibleSection.qml")
+    for token in (
+        "OptionalMaterialSymbol {",
+        "color: SettingsMaterialPreset.titleExpandedColor",
+    ):
+        require(content_section, token, "ContentSection.qml")
+    forbid(content_section, "ZzzSectionHeader {", "ContentSection.qml")
 
     motion_start = appearance.index("property QtObject motion: QtObject {")
     motion_end = appearance.index("m3colors: QtObject {", motion_start)

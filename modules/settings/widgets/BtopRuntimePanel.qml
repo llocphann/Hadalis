@@ -39,6 +39,8 @@ Item {
                 Layout.fillWidth: true
 
                 StyledText {
+
+                    textFormat: Text.PlainText
                     Layout.fillWidth: true
                     text: root.title
                     color: Appearance.colors.colPrimary
@@ -48,6 +50,8 @@ Item {
                 }
 
                 StyledText {
+
+                    textFormat: Text.PlainText
                     text: "PID " + root.pid
                     color: Appearance.colors.colPrimary
                     font.family: Appearance.font.family.monospace
@@ -72,11 +76,13 @@ Item {
                     Layout.fillWidth: true
                     spacing: 1
                     StyledText {
+                        textFormat: Text.PlainText
                         text: "CPU"
                         color: Appearance.colors.colSubtext
                         font.pixelSize: Appearance.font.pixelSize.smallest
                     }
                     StyledText {
+                        textFormat: Text.PlainText
                         text: root.cpu
                         color: Appearance.colors.colOnLayer1
                         font.family: Appearance.font.family.monospace
@@ -88,11 +94,13 @@ Item {
                     Layout.fillWidth: true
                     spacing: 1
                     StyledText {
+                        textFormat: Text.PlainText
                         text: root.memoryLabel
                         color: Appearance.colors.colSubtext
                         font.pixelSize: Appearance.font.pixelSize.smallest
                     }
                     StyledText {
+                        textFormat: Text.PlainText
                         text: root.memory
                         color: Appearance.colors.colOnLayer1
                         font.family: Appearance.font.family.monospace
@@ -104,11 +112,13 @@ Item {
                     Layout.fillWidth: true
                     spacing: 1
                     StyledText {
+                        textFormat: Text.PlainText
                         text: "GPU"
                         color: Appearance.colors.colSubtext
                         font.pixelSize: Appearance.font.pixelSize.smallest
                     }
                     StyledText {
+                        textFormat: Text.PlainText
                         text: root.gpu
                         color: Appearance.colors.colOnLayer1
                         font.family: Appearance.font.family.monospace
@@ -120,11 +130,13 @@ Item {
                     Layout.fillWidth: true
                     spacing: 1
                     StyledText {
+                        textFormat: Text.PlainText
                         text: "GPU RES"
                         color: Appearance.colors.colSubtext
                         font.pixelSize: Appearance.font.pixelSize.smallest
                     }
                     StyledText {
+                        textFormat: Text.PlainText
                         text: root.gpuMemory
                         color: Appearance.colors.colOnLayer1
                         font.family: Appearance.font.family.monospace
@@ -138,6 +150,8 @@ Item {
                 spacing: 16
 
                 StyledText {
+
+                    textFormat: Text.PlainText
                     Layout.fillWidth: true
                     text: "SWAP " + root.swap
                     color: Appearance.colors.colSubtext
@@ -146,6 +160,8 @@ Item {
                 }
 
                 StyledText {
+
+                    textFormat: Text.PlainText
                     Layout.fillWidth: true
                     text: "R " + root.readRate
                     color: Appearance.colors.colSubtext
@@ -154,6 +170,8 @@ Item {
                 }
 
                 StyledText {
+
+                    textFormat: Text.PlainText
                     Layout.fillWidth: true
                     text: "W " + root.writeRate
                     color: Appearance.colors.colSubtext

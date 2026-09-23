@@ -10,13 +10,10 @@ RippleButton {
     property string materialIcon
     property bool materialIconFill: true
     property string mainText: "Button text"
-    property color contentColor: Appearance.regaliaEverywhere
-        ? (buttonWithIconRoot.toggled ? Appearance.regalia.primaryPlateInk : Appearance.regalia.onColor)
-        : Appearance.zzzEverywhere ? Appearance.zzz.onColor
-        : buttonWithIconRoot.colBackground.a > 0.01
-            ? ColorUtils.ensureReadable(Appearance.colors.colOnLayer2,
-                buttonWithIconRoot.colBackground, 4.5)
-            : Appearance.colors.colOnSecondaryContainer
+    property color contentColor: buttonWithIconRoot.colBackground.a > 0.01
+        ? ColorUtils.ensureReadable(Appearance.colors.colOnLayer2,
+            buttonWithIconRoot.colBackground, 4.5)
+        : Appearance.colors.colOnSecondaryContainer
     property Component mainContentComponent: Component {
         StyledText {
             visible: text !== ""
@@ -29,13 +26,13 @@ RippleButton {
             }
         }
     }
-    implicitHeight: Appearance.regaliaEverywhere ? Appearance.regalia.controlHeight : 35
-    horizontalPadding: Appearance.regaliaEverywhere ? Appearance.regalia.controlPaddingHorizontal : 10
-    buttonRadius: Appearance.regaliaEverywhere ? Appearance.regalia.controlRadius : Appearance.rounding.small
-    colBackground: Appearance.regaliaEverywhere ? Appearance.regalia.controlPlate : Appearance.colors.colLayer2
+    implicitHeight: 35
+    horizontalPadding: 10
+    buttonRadius: Appearance.rounding.small
+    colBackground: Appearance.colors.colLayer2
 
     contentItem: RowLayout {
-        spacing: Appearance.regaliaEverywhere ? Appearance.regalia.controlGap : 5
+        spacing: 5
         MaterialSymbol {
             text: buttonWithIconRoot.nerdIcon || buttonWithIconRoot.materialIcon
             iconSize: Appearance.font.pixelSize.larger

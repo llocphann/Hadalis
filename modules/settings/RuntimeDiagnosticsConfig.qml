@@ -448,6 +448,10 @@ ContentPage {
                 memory: root.formatKiB(
                     root.shellEvidence?.memory?.valuesKiB?.Pss
                         ?? root.shellEvidence?.memory?.valuesKiB?.Rss)
+                memoryLabel:
+                    root.shellEvidence?.memory?.valuesKiB?.Pss !== null
+                    && root.shellEvidence?.memory?.valuesKiB?.Pss !== undefined
+                        ? "PSS" : "RSS"
                 readRate: root.formatRate(
                     root.shellEvidence?.io?.rates?.readBytesPerSec)
                 writeRate: root.formatRate(

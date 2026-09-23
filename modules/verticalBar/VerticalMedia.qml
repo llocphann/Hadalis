@@ -85,7 +85,11 @@ MouseArea {
             root.barMediaPopupVisible && root.popupMode === "bar"
         closeOnOutsideClick: root.barMediaPopupVisible
         keyboardFocus: root.barMediaPopupVisible
-        popupBackgroundMargin: Appearance.sizes.elevationMargin
+        // BarMediaPopup owns the tab rail inside playerViewport and reserves
+        // horizontal space only when more than one media source is visible.
+        // Do not add StyledPopup's legacy trailing background inset here: on a
+        // single source it becomes an unnecessary right-side gap.
+        popupBackgroundMargin: 0
         onRequestClose: root.barMediaPopupVisible = false
 
         function restoreInitialFocus(): void {

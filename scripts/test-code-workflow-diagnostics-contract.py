@@ -77,6 +77,7 @@ for token in (
     "id: leasePruneTimer",
     "running: root.sessionActive",
     "function _reconcileSourceBoundaries(): void",
+    'if (CodeWorkflowIndex.status === "indexing")',
     "CodeWorkflowRuntime.relativeSourcePath(",
     "function sourceDiscoverySummary(): var",
     "CodeWorkflowIndex.refresh(false)",

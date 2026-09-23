@@ -86,16 +86,24 @@ module work, commit directly to `dev`, and never force-push or modify `stable`.
   restore this metadata so automated evidence runs do not rewrite the user's
   navigation history. IDs remain the runtime registry's existing target IDs; the
   feature does not invent aliases or rename components.
-- Runtime Diagnostics implementation has started from the Workflow-owned
-  identity/session boundary rather than from samplers. `CodeWorkflowIdentity`
-  defines ID-only canonical target/instance/graph/source references, and
-  `CodeWorkflowRuntime` reports conflicting label/family/kind/parent ownership
-  instead of letting Diagnostics create a second catalog. Material Diagnostics is
-  appended at Settings index 31 and Waffle at index 19. Both renderers acquire the
-  same shell-owned lease only while Diagnostics is the current page; standalone
-  Settings renews it over IPC and a 6-second server TTL removes abandoned clients.
-  No CPU/RAM/Swap/GPU/Network sampler has landed yet, so the foundation must not be
-  reported as resource attribution or btop completion.
+- Runtime Diagnostics is now built on the Workflow-owned identity/session
+  boundary. `CodeWorkflowIdentity` defines ID-only canonical
+  target/instance/graph/source references, and `CodeWorkflowRuntime` reports
+  conflicting label/family/kind/parent ownership instead of letting Diagnostics
+  create a second catalog. Material Diagnostics is appended at Settings index 31
+  and Waffle at index 19. Both renderers acquire the same shell-owned lease only
+  while Diagnostics is the current page; standalone Settings renews it over IPC
+  and a 6-second server TTL removes abandoned clients.
+- The first exact on-demand sampler now runs only in the main shell process while
+  that lease is active. Kernel evidence covers system CPU from `/proc/stat`,
+  system RAM/Swap from `/proc/meminfo`, shell CPU from `schedstat`, shell
+  RSS/PSS/Swap from `smaps_rollup` with status fallback, shell IO from
+  `/proc/<pid>/io`, shell DRM engine/memory evidence from fdinfo, and system
+  interface/network rates from `/proc/net/dev`. Material and Waffle Diagnostics
+  both consume the same transported evidence and show its provenance. This is
+  shell/system evidence only: per-component CPU/RAM/Swap/GPU/Network remains
+  unavailable until a reviewed attribution method exists, so Diagnostics must
+  still not be described as full btop-equivalent component attribution.
 
 ## Production UI refinement continuation — 2026-09-21
 

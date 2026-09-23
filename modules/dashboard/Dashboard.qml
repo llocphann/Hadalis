@@ -11,40 +11,6 @@ import Quickshell.Hyprland
 Scope {
     id: root
     property bool _presentedOpen: false
-    property bool _presentationRequested: false
-    property int _presentationReadyFrames: 0
-    property bool _presentationCold: true
-
-    function requestPresentation(): void {
-        root._presentedOpen = false
-        root._presentationRequested = true
-        root._presentationReadyFrames = 0
-        root._presentationCold = contentLoader.status !== Loader.Ready
-        _presentationTimer.restart()
-    }
-
-    function tryPresent(): void {
-        if (!root._presentationRequested || !GlobalStates.dashboardOpen
-                || !panelRoot.visible)
-            return
-        if (contentLoader.status !== Loader.Ready
-                || contentLoader.width <= 0 || contentLoader.height <= 0)
-            return
-
-        root._presentationReadyFrames++
-        // A freshly-created Dashboard gets two closed frames so Loader geometry
-        // and the remapped layer-shell surface both settle. Warm opens need one
-        // closed frame before the immutable slide transition starts.
-        const requiredFrames = root._presentationCold ? 2 : 1
-        if (root._presentationReadyFrames < requiredFrames)
-            return
-
-        root._presentationRequested = false
-        root._presentationCold = false
-        _presentationTimer.stop()
-        root._presentedOpen = true
-    }
-
     readonly property real screenWidth: panelRoot.screen?.width ?? 1920
     readonly property real screenHeight: panelRoot.screen?.height ?? 1080
     readonly property real safePadding: Math.max(
@@ -69,7 +35,7 @@ Scope {
         Component.onCompleted: {
             visible = GlobalStates.dashboardOpen
             if (GlobalStates.dashboardOpen)
-                root.requestPresentation()
+                Qt.callLater(() => { root._presentedOpen = GlobalStates.dashboardOpen })
         }
 
         Connections {
@@ -78,21 +44,12 @@ Scope {
                 if (GlobalStates.dashboardOpen) {
                     _closeTimer.stop()
                     panelRoot.visible = true
-                    root.requestPresentation()
+                    Qt.callLater(() => { root._presentedOpen = GlobalStates.dashboardOpen })
                 } else {
-                    root._presentationRequested = false
-                    _presentationTimer.stop()
                     root._presentedOpen = false
                     _closeTimer.restart()
                 }
             }
-        }
-
-        Timer {
-            id: _presentationTimer
-            interval: 16
-            repeat: true
-            onTriggered: root.tryPresent()
         }
 
         Timer {
@@ -123,8 +80,7 @@ Scope {
         CompositorFocusGrab {
             id: grab
             windows: [ panelRoot ]
-            active: CompositorService.isHyprland
-                && GlobalStates.dashboardOpen && panelRoot.visible
+            active: CompositorService.isHyprland && panelRoot.visible
             onCleared: () => {
                 if (!active) panelRoot.hide()
             }
@@ -133,7 +89,6 @@ Scope {
         // Backdrop click to close
         MouseArea {
             anchors.fill: parent
-            enabled: GlobalStates.dashboardOpen
             onClicked: mouse => {
                 const localPos = mapToItem(contentLoader, mouse.x, mouse.y)
                 if (localPos.x < 0 || localPos.x > contentLoader.width
@@ -145,12 +100,7 @@ Scope {
 
         Loader {
             id: contentLoader
-            // The outer iiDashboard loader is lazy before first use and retained
-            // afterwards, so keep this widget tree mounted for warm reopens.
-            active: true
-            onStatusChanged: root.tryPresent()
-            onWidthChanged: root.tryPresent()
-            onHeightChanged: root.tryPresent()
+            active: panelRoot.visible || (Config.options?.dashboard?.keepLoaded ?? false)
 
             // Shell desaturation effect
             layer.enabled: Appearance.shouldDesaturate("overlays") && contentLoader.visible

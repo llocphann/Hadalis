@@ -145,9 +145,11 @@ Item {
                 }
             }
 
-            RowLayout {
+            GridLayout {
                 Layout.fillWidth: true
-                spacing: 16
+                columns: width >= 520 ? 3 : 1
+                columnSpacing: 16
+                rowSpacing: 4
 
                 StyledText {
 
@@ -157,6 +159,7 @@ Item {
                     color: Appearance.colors.colSubtext
                     font.family: Appearance.font.family.monospace
                     font.pixelSize: Appearance.font.pixelSize.small
+                    elide: Text.ElideRight
                 }
 
                 StyledText {
@@ -167,6 +170,7 @@ Item {
                     color: Appearance.colors.colSubtext
                     font.family: Appearance.font.family.monospace
                     font.pixelSize: Appearance.font.pixelSize.small
+                    elide: Text.ElideRight
                 }
 
                 StyledText {
@@ -177,6 +181,7 @@ Item {
                     color: Appearance.colors.colSubtext
                     font.family: Appearance.font.family.monospace
                     font.pixelSize: Appearance.font.pixelSize.small
+                    elide: Text.ElideRight
                 }
             }
         }

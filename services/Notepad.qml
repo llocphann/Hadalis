@@ -49,9 +49,14 @@ Singleton {
             const tab = value[i]
             if (!tab || typeof tab !== "object" || Array.isArray(tab))
                 continue
-            let id = String(tab.id ?? "").trim()
+            const rawId = String(tab.id ?? "")
+            let id = rawId.trim()
+            if (id !== rawId)
+                root._normalizedTabsNeedSave = true
             if (!id || seenIds.includes(id)) {
-                id = root._allocateTabId()
+                do {
+                    id = root._allocateTabId()
+                } while (seenIds.includes(id))
                 root._normalizedTabsNeedSave = true
             }
             seenIds.push(id)

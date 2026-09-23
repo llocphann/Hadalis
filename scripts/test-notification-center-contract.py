@@ -171,6 +171,18 @@ if not sidebar_handler:
 forbid(sidebar_handler.group(1), "Notifications.",
        "opening Right Sidebar must not mutate notification state")
 
+read_handler_start = global_states.index("onNotificationCenterOpenChanged:")
+read_handler_end = global_states.index("onScreenLockedChanged:", read_handler_start)
+read_handler = global_states[read_handler_start:read_handler_end]
+for token in (
+    "Qt.callLater(() => {",
+    "if (!root.notificationCenterOpen",
+    "Notifications.timeoutAll()",
+    "Notifications.markAllRead()",
+):
+    require(read_handler, token,
+            "Notification Center read-state settlement contract missing")
+
 surface_match = re.search(
     r"readonly property bool notificationSurfaceOpen:([\s\S]*?)\n\s*readonly property bool notificationPolicyActive",
     notifications,

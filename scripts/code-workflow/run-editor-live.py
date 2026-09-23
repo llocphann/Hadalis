@@ -57,8 +57,16 @@ def instrument(config: Path, surface: str = "rail") -> None:
     replace_once(
         page, "    id: root\n",
         "    id: root\n"
-        "    Component.onDestruction: { CodeWorkflowSession.modalTestDestroyCount++; CodeWorkflowSession.modalTestEditor = null }\n"
         "    TapHandler { target: null; onTapped: sourceEditor.testPageTapCount++ }\n",
+    )
+    replace_once(
+        page,
+        "    Component.onDestruction: {\n"
+        "        root.workflowDestroying = true\n",
+        "    Component.onDestruction: {\n"
+        "        CodeWorkflowSession.modalTestDestroyCount++\n"
+        "        CodeWorkflowSession.modalTestEditor = null\n"
+        "        root.workflowDestroying = true\n",
     )
     # Prevent tests from touching the actual source buffer, even inside the
     # temporary archive. This fixture still instantiates the real editor.

@@ -69,8 +69,28 @@ finally:
 assert system_memory["MemTotal"] == 16384, system_memory
 assert system_memory["MemAvailable"] is None, system_memory
 assert system_memory["MemUsed"] is None, system_memory
+assert system_memory["Cached"] is None, system_memory
+assert system_memory["Buffers"] is None, system_memory
 assert system_memory["SwapTotal"] is None, system_memory
 assert system_memory["SwapUsed"] is None, system_memory
+
+original_read_text = module._read_text
+try:
+    module._read_text = lambda _path: (
+        "MemTotal:       16384 kB\n"
+        "MemAvailable:    8192 kB\n"
+        "Cached:          4096 kB\n"
+        "Buffers:          512 kB\n"
+        "SwapTotal:       2048 kB\n"
+        "SwapFree:        1024 kB\n"
+    )
+    detailed_memory = module.read_system_memory()["valuesKiB"]
+finally:
+    module._read_text = original_read_text
+assert detailed_memory["MemUsed"] == 8192, detailed_memory
+assert detailed_memory["Cached"] == 4096, detailed_memory
+assert detailed_memory["Buffers"] == 512, detailed_memory
+assert detailed_memory["SwapUsed"] == 1024, detailed_memory
 
 # Process labels are sourced from comm only and normalized to one display line.
 original_read_text = module._read_text

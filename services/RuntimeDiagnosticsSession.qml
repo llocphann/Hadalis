@@ -17,6 +17,7 @@ Singleton {
     // Multiple Settings hosts can exist briefly while chrome/style ownership
     // changes. Lease state is therefore owner-based rather than one mutable bool.
     property var activeOwners: ({})
+    property int heartbeatTick: 0
     readonly property bool pageCurrent:
         Object.keys(root.activeOwners).length > 0
     property bool releaseAfterPulse: false
@@ -187,7 +188,10 @@ Singleton {
         interval: root.heartbeatIntervalMs
         repeat: true
         running: root.pageCurrent
-        onTriggered: root._renewLease()
+        onTriggered: {
+            root.heartbeatTick++
+            root._renewLease()
+        }
     }
 
     Process {

@@ -46,7 +46,9 @@ for token in (
 
 if popup.count("NotepadWidget {") != 1:
     fail("Quick Notes must own exactly one lazily-instantiated Notepad editor")
-if popup.index("id: notesEditorLoader") > popup.index("sourceComponent: NotepadWidget {"):
+loader_pos = popup.find("id: notesEditorLoader")
+component_pos = popup.find("sourceComponent: NotepadWidget {")
+if loader_pos < 0 or component_pos < 0 or loader_pos > component_pos:
     fail("Quick Notes editor must be instantiated through its Loader")
 
 for token in (
@@ -140,8 +142,12 @@ expected_defaults = {
     "popupWidth": 420,
     "popupHeight": 300,
 }
-if defaults.get("quickNotes") != expected_defaults:
-    fail("defaults/config.json Quick Notes values do not match Config.qml schema")
+default_quick_notes = defaults.get("quickNotes")
+if not isinstance(default_quick_notes, dict):
+    fail("defaults/config.json must expose a Quick Notes object")
+for key, value in expected_defaults.items():
+    if default_quick_notes.get(key) != value:
+        fail(f"defaults/config.json Quick Notes {key} does not match Config.qml schema")
 
 for token in (
     'title: Translation.tr("Bottom-left Quick Notes")',

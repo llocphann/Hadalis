@@ -400,7 +400,7 @@ Item {
                 destructive: true
                 onClicked: {
                     textArea.text = ""
-                    root._persistEditorText()
+                    root.flushPendingSave()
                 }
             }
         }
@@ -454,7 +454,7 @@ Item {
                 destructive: true
                 onClicked: {
                     textArea.text = ""
-                    root._persistEditorText()
+                    root.flushPendingSave()
                 }
             }
         }

@@ -74,6 +74,10 @@ def instrument(config: Path, surface: str = "rail") -> None:
         page, "                        draft: root.sourceDraft\n",
         '                        draft: "alpha\\n\\nbeta gamma"\n'
         '                        readonly property bool testTargetFilterFocus: targetFilter.activeFocus\n'
+        '                        readonly property bool testWorkflowActive: root.workflowActive\n'
+        '                        readonly property bool testWorkflowHostActive: root.workflowHostActive\n'
+        '                        readonly property bool testWorkflowParentEnabled: root.parent?.enabled ?? false\n'
+        '                        readonly property bool testWorkflowParentVisible: root.parent?.visible ?? false\n'
         '                        readonly property bool testWorkflowHydrated: root.workflowHydrated\n'
         '                        readonly property bool testWorkflowOperational: root.workflowOperational\n'
         '                        function testTargetFilterPointNow() { return targetFilter.mapToItem(null, targetFilter.width / 2, targetFilter.height / 2) }\n'
@@ -131,6 +135,10 @@ def instrument(config: Path, surface: str = "rail") -> None:
             const modal = CodeWorkflowSession.modalTestEditor
             report.modalEditor = modal ? {
                 loaded: true,
+                workflowActive: modal.testWorkflowActive,
+                workflowHostActive: modal.testWorkflowHostActive,
+                workflowParentEnabled: modal.testWorkflowParentEnabled,
+                workflowParentVisible: modal.testWorkflowParentVisible,
                 workflowHydrated: modal.testWorkflowHydrated,
                 workflowOperational: modal.testWorkflowOperational,
                 mode: modal.mode,

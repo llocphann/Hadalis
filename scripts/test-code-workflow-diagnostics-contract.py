@@ -87,6 +87,8 @@ for token in (
     'if (CodeWorkflowIndex.status === "indexing")',
     "CodeWorkflowRuntime.relativeSourcePath(",
     "function sourceDiscoverySummary(): var",
+    'CodeWorkflowIndex.status !== "ready"',
+    'CodeWorkflowIndex.status !== "indexing"',
     "CodeWorkflowIndex.refresh(false)",
     "liveRuntimeEvidence: false",
     "discovery: root.sourceDiscoverySummary()",

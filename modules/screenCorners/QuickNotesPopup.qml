@@ -24,6 +24,10 @@ Bar.StyledPopup {
     property string cornerAttachmentEdge: "bottom"
     property real cornerAttachmentThickness: Math.max(1, Math.min(32,
         Math.round(Config.options?.appearance?.screenEdge?.width ?? 10)))
+    readonly property real requestedPopupWidth: Math.max(280, Math.min(720,
+        Config.options?.quickNotes?.popupWidth ?? 420))
+    readonly property real requestedPopupHeight: Math.max(180, Math.min(640,
+        Config.options?.quickNotes?.popupHeight ?? 300))
 
     hoverTarget: root.anchorItem
     attachmentEdgeOverride: root.cornerAttachmentEdge
@@ -98,10 +102,13 @@ Bar.StyledPopup {
     Item {
         id: contentRoot
 
-        implicitWidth: Math.max(280, Math.min(720,
-            Config.options?.quickNotes?.popupWidth ?? 420))
-        implicitHeight: Math.max(180, Math.min(640,
-            Config.options?.quickNotes?.popupHeight ?? 300))
+        // Settings describe the visible popup body, not just its inner
+        // content. Subtract StyledPopup's canonical padding so the configured
+        // width/height remain literal before output clamping.
+        implicitWidth: Math.max(1,
+            root.requestedPopupWidth - root._contentPadding * 2)
+        implicitHeight: Math.max(1,
+            root.requestedPopupHeight - root._contentPadding * 2)
         // ConnectedSurfaceGeometry can clamp the requested body on small or
         // transformed outputs. Follow the actual content host size so the
         // editor reflows instead of being clipped at its configured width.

@@ -122,11 +122,7 @@ Item { // Notification item area
         id: background
         width: parent.width
         anchors.left: parent.left
-        radius: Appearance.regaliaEverywhere ? Appearance.regalia.roundSmall
-            : Appearance.zzzEverywhere ? Appearance.zzz.controlRadius
-            : Appearance.angelEverywhere ? Appearance.angel.roundingSmall
-            : Appearance.inirEverywhere ? Appearance.inir.roundingSmall
-            : Appearance.rounding.small
+        radius: Appearance.rounding.small
         anchors.leftMargin: root.xOffset
 
         Behavior on radius {
@@ -143,31 +139,13 @@ Item { // Notification item area
             }
         }
 
-        color: (expanded && !onlyNotification) ?
-            Appearance.regaliaEverywhere ? "transparent" :
-            Appearance.zzzEverywhere ? (root.notificationCritical ? Appearance.zzz.secondary : Appearance.zzz.chrome) :
-            root.notificationCritical ?
-                ColorUtils.mix(Appearance.colors.colSecondaryContainer, Appearance.colors.colLayer2, 0.35) :
-                (Appearance.angelEverywhere ? Appearance.angel.colGlassCard
-                    : Appearance.inirEverywhere ? Appearance.inir.colLayer2
-                    : Appearance.auroraEverywhere ? Appearance.aurora.colSubSurface
-                    : Appearance.colors.colLayer3) :
-            "transparent"
-        border.width: (expanded && !onlyNotification && Appearance.zzzEverywhere) ? Appearance.zzz.borderThick
-            : (expanded && !onlyNotification && (Appearance.angelEverywhere || Appearance.auroraEverywhere || Appearance.inirEverywhere)) ? 1 : 0
-        border.color: Appearance.zzzEverywhere ? Appearance.zzz.hairlineStrong
-            : Appearance.angelEverywhere ? Appearance.angel.colBorder
-            : Appearance.inirEverywhere ? Appearance.inir.colBorder
-            : Appearance.auroraEverywhere ? ColorUtils.transparentize(Appearance.colors.colOutline, 0.8)
-            : Appearance.colors.colLayer0Border
-
-        RegaliaPlate {
-            anchors.fill: parent
-            visible: Appearance.regaliaEverywhere && root.expanded && !root.onlyNotification
-            radius: background.radius
-            fillColor: root.notificationCritical ? Appearance.regalia.signalPlate : Appearance.regalia.bg2
-            elevated: true
-        }
+        color: (expanded && !onlyNotification)
+            ? (root.notificationCritical
+                ? ColorUtils.mix(Appearance.colors.colSecondaryContainer, Appearance.colors.colLayer2, 0.35)
+                : Appearance.colors.colLayer3)
+            : "transparent"
+        border.width: 0
+        border.color: Appearance.colors.colLayer0Border
 
         Behavior on color {
             enabled: Appearance.animationsEnabled
@@ -217,7 +195,7 @@ Item { // Notification item area
                     Layout.fillWidth: summaryTextMetrics.width >= contentColumn.width * root.summaryElideRatio
                     visible: !root.onlyNotification
                     font.pixelSize: root.fontSize
-                    color: Appearance.zzzEverywhere ? Appearance.zzz.ink : Appearance.colors.colOnLayer3
+                    color: Appearance.colors.colOnLayer3
                     Behavior on color {
                         enabled: Appearance.animationsEnabled
                         ColorAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve }
@@ -234,7 +212,7 @@ Item { // Notification item area
                         animation: NumberAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve }
                     }
                     font.pixelSize: root.fontSize
-                    color: Appearance.zzzEverywhere ? Appearance.zzz.inkMuted : Appearance.colors.colSubtext
+                    color: Appearance.colors.colSubtext
                     Behavior on color {
                         enabled: Appearance.animationsEnabled
                         ColorAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve }
@@ -261,7 +239,7 @@ Item { // Notification item area
                     }
                     Layout.fillWidth: true
                     font.pixelSize: root.fontSize
-                    color: Appearance.zzzEverywhere ? Appearance.zzz.inkMuted : Appearance.colors.colSubtext
+                    color: Appearance.colors.colSubtext
                     Behavior on color {
                         enabled: Appearance.animationsEnabled
                         ColorAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve }
@@ -291,8 +269,7 @@ Item { // Notification item area
                         maskSource: Rectangle {
                             width: actionsFlickable.width
                             height: actionsFlickable.height
-                            radius: Appearance.angelEverywhere ? Appearance.angel.roundingSmall
-                                : Appearance.inirEverywhere ? Appearance.inir.roundingSmall : Appearance.rounding.small
+                            radius: Appearance.rounding.small
                         }
                     }
 

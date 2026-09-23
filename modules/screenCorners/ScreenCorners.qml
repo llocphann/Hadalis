@@ -85,6 +85,46 @@ Scope {
         readonly property bool quickNotesMonitorAllowed:
             quickNotesMonitorMode !== "primary"
             || outputName === (GlobalStates.primaryScreen?.name ?? "")
+
+        function quickNotesBarTargetsOutput(): bool {
+            if (outputName.length === 0)
+                return false
+            const configured = Config.options?.bar?.screenList ?? []
+            if (!configured || configured.length === 0)
+                return true
+            const connectedMatches = Quickshell.screens.filter(screen => {
+                const name = String(screen?.name ?? "")
+                return name.length > 0 && configured.includes(name)
+            })
+            return connectedMatches.length === 0 || configured.includes(outputName)
+        }
+
+        readonly property bool quickNotesBarVertical:
+            Config.options?.bar?.vertical ?? false
+        readonly property bool quickNotesBarTrailing:
+            Config.options?.bar?.bottom ?? false
+        readonly property string quickNotesBarPanelId:
+            quickNotesBarVertical ? "iiVerticalBar" : "iiBar"
+        readonly property bool quickNotesBarOwnsConfiguredEdge:
+            GlobalStates.barOpen
+            && !GlobalStates.widgetEditMode
+            && (Config.options?.enabledPanels ?? []).includes(quickNotesBarPanelId)
+            && !(Config.options?.bar?.autoHide?.enable ?? false)
+            && cornerPanelWindow.quickNotesBarTargetsOutput()
+        readonly property bool quickNotesBarOwnsLeft:
+            quickNotesBarOwnsConfiguredEdge
+            && quickNotesBarVertical && !quickNotesBarTrailing
+        readonly property bool quickNotesBarOwnsBottom:
+            quickNotesBarOwnsConfiguredEdge
+            && !quickNotesBarVertical && quickNotesBarTrailing
+        readonly property string quickNotesAttachmentEdge:
+            quickNotesBarOwnsLeft ? "left" : "bottom"
+        readonly property real quickNotesAttachmentThickness:
+            quickNotesBarOwnsLeft ? Appearance.sizes.verticalBarWidth
+            : quickNotesBarOwnsBottom ? Appearance.sizes.barHeight
+            : Math.max(1, Math.min(32,
+                Math.round(Config.options?.appearance?.screenEdge?.width ?? 10)))
+
         readonly property bool shouldShowQuickNotesCorner:
             (Config.options?.panelFamily ?? "ii") !== "waffle"
             && (Config.options?.quickNotes?.enable ?? true)
@@ -268,6 +308,8 @@ Scope {
                     QuickNotesPopup {
                         id: quickNotesPopup
                         anchorItem: quickNotesAnchor
+                        cornerAttachmentEdge: cornerPanelWindow.quickNotesAttachmentEdge
+                        cornerAttachmentThickness: cornerPanelWindow.quickNotesAttachmentThickness
                     }
                 }
             }

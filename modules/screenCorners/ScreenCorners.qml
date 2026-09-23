@@ -274,7 +274,7 @@ Scope {
         readonly property bool shouldShowSidebarCornerOpen: shouldShowCornerOpen
             && !shouldShowOrbitHotCorner
             && !shouldShowQuickNotesCorner
-            && !shouldShowNotificationCenterCorner
+            && !notificationCenterHostNeeded
 
         visible: (!fullscreen && (shouldShowSidebarCornerOpen
             || shouldShowOrbitHotCorner || shouldShowQuickNotesCorner))

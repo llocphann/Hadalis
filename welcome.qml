@@ -77,7 +77,7 @@ Scope {
         "sidebar.collapseEmptyNotifications": false,
         "sidebar.collapseWidgetsTab": false,
         "sidebar.right.headerBanner": "wallpaper",
-        "sidebar.right.sectionOrder": ["system", "sliders", "toggles", "notifications", "widgets"],
+        "sidebar.right.sectionOrder": ["system", "sliders", "toggles", "widgets"],
         "sidebar.quickToggles.style": "android",
         "sidebar.quickToggles.android.columns": 4,
         // Material II's embedded bar taskbar duplicates the Material II dock.

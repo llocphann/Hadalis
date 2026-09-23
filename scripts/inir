@@ -3378,6 +3378,7 @@ EOF
                         *Tools*|plugins) select_prefix "sidebar-left/tools" ;;
                         *) : ;;
                     esac ;;
+                modules/notificationCenter/*) select_prefix "notification-center" ;;
                 modules/sidebarRight/notifications/*)
                     select_prefix "notification-center"; select_prefix "dashboard" ;;
                 modules/sidebarRight/events/*) select_prefix "sidebar-right/events" ;;

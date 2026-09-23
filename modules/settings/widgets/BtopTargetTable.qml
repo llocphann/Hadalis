@@ -17,15 +17,35 @@ Item {
             ? root.targets.slice(0, Math.max(0, root.maxRows))
             : []
 
-    function recordsFor(targetId) {
-        const id = String(targetId ?? "")
-        return (Array.isArray(root.records) ? root.records : [])
-            .filter(record => String(record?.targetId ?? "") === id)
+    readonly property var recordIndex: root.buildRecordIndex()
+
+    function buildRecordIndex(): var {
+        const all = ({})
+        const resident = ({})
+        for (const record of Array.isArray(root.records) ? root.records : []) {
+            const targetId = String(record?.targetId ?? "")
+            if (targetId.length === 0)
+                continue
+            if (!Array.isArray(all[targetId]))
+                all[targetId] = []
+            all[targetId].push(record)
+            if (String(record?.state ?? "") !== "resident")
+                continue
+            if (!Array.isArray(resident[targetId]))
+                resident[targetId] = []
+            resident[targetId].push(record)
+        }
+        return { all: all, resident: resident }
     }
 
-    function residentRecords(targetId) {
-        return root.recordsFor(targetId)
-            .filter(record => String(record?.state ?? "") === "resident")
+    function recordsFor(targetId): var {
+        const id = String(targetId ?? "")
+        return root.recordIndex.all[id] ?? []
+    }
+
+    function residentRecords(targetId): var {
+        const id = String(targetId ?? "")
+        return root.recordIndex.resident[id] ?? []
     }
 
     function stateFor(target) {

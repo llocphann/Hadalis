@@ -208,6 +208,9 @@ def main() -> None:
         "def sample_children(",
         "def read_process_children(",
         "def read_process_start_ticks(",
+        "cursor = 0",
+        "while cursor < len(queue):",
+        "read_process_start_ticks(child_pid) != start_ticks",
         "target_start_ticks = read_process_start_ticks(args.pid)",
         "if read_process_start_ticks(args.pid) != target_start_ticks:",
         '"startTicks": start_ticks',
@@ -224,6 +227,7 @@ def main() -> None:
         require(sampler, token, "runtime-diagnostics-sampler.py")
 
     forbid(sampler, "cmdline", "runtime-diagnostics-sampler.py")
+    forbid(sampler, "queue.pop(0)", "runtime-diagnostics-sampler.py")
     if sampler.count(
             "read_process_start_ticks(args.pid) != target_start_ticks") < 2:
         raise SystemExit(

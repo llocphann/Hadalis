@@ -1124,8 +1124,8 @@ for token in (
 ):
     require(source_editor, token,
             "Source Editor relative-line/find-replace contract missing " + token)
-require(page, "CodeWorkflowRuntime.activeCatalog[0]",
-        "Code Workflow selection fallback must use the active shell inventory")
+require(page, "root.snapshot?.descriptors ?? []",
+        "Code Workflow selection fallback must use the hydrated runtime snapshot")
 require(page, 'category: "section"',
         "Targets must group runtime, graph and parsed QML sources")
 require(page, "appendSection(",

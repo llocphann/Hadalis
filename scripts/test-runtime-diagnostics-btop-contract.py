@@ -69,7 +69,7 @@ def main() -> None:
         "def read_system_cpu_ticks() -> dict[str, tuple[int, int]]:",
         "def _cpu_percent_from_ticks(",
         '"coresPercent": core_cpu_percent',
-        're.fullmatch(r"cpu(?:\\d+)?"',
+        're.fullmatch(r"cpu(?:\d+)?"',
     ):
         require(sampler, token, "runtime-diagnostics-sampler.py")
 

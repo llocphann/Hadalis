@@ -86,6 +86,16 @@ module work, commit directly to `dev`, and never force-push or modify `stable`.
   restore this metadata so automated evidence runs do not rewrite the user's
   navigation history. IDs remain the runtime registry's existing target IDs; the
   feature does not invent aliases or rename components.
+- Runtime Diagnostics implementation has started from the Workflow-owned
+  identity/session boundary rather than from samplers. `CodeWorkflowIdentity`
+  defines ID-only canonical target/instance/graph/source references, and
+  `CodeWorkflowRuntime` reports conflicting label/family/kind/parent ownership
+  instead of letting Diagnostics create a second catalog. Material Diagnostics is
+  appended at Settings index 31 and Waffle at index 19. Both renderers acquire the
+  same shell-owned lease only while Diagnostics is the current page; standalone
+  Settings renews it over IPC and a 6-second server TTL removes abandoned clients.
+  No CPU/RAM/Swap/GPU/Network sampler has landed yet, so the foundation must not be
+  reported as resource attribution or btop completion.
 
 ## Production UI refinement continuation — 2026-09-21
 

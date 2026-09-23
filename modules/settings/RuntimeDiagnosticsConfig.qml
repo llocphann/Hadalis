@@ -19,17 +19,29 @@ ContentPage {
     readonly property var shellEvidence: root.evidence?.shell ?? null
     readonly property var networkEvidence: root.evidence?.network ?? null
     readonly property var discoveryEvidence: root.evidence?.discovery ?? null
+    readonly property var cpuCores:
+        root.systemEvidence?.cpu?.coresPercent ?? []
+
+    function percentOf(used, total): var {
+        const usedValue = Number(used)
+        const totalValue = Number(total)
+        if (!Number.isFinite(usedValue)
+                || !Number.isFinite(totalValue)
+                || totalValue <= 0)
+            return null
+        return Math.max(0, Math.min(100, usedValue / totalValue * 100))
+    }
 
     function systemRamPercent(): var {
-        const used = Number(
-            root.systemEvidence?.memory?.valuesKiB?.MemUsed)
-        const total = Number(
+        return root.percentOf(
+            root.systemEvidence?.memory?.valuesKiB?.MemUsed,
             root.systemEvidence?.memory?.valuesKiB?.MemTotal)
-        if (!Number.isFinite(used)
-                || !Number.isFinite(total)
-                || total <= 0)
-            return null
-        return Math.max(0, Math.min(100, used / total * 100))
+    }
+
+    function systemSwapPercent(): var {
+        return root.percentOf(
+            root.systemEvidence?.memory?.valuesKiB?.SwapUsed,
+            root.systemEvidence?.memory?.valuesKiB?.SwapTotal)
     }
 
     function formatPercent(value): string {
@@ -61,6 +73,18 @@ ContentPage {
         return bytes.toFixed(0) + " B/s"
     }
 
+    function historyValues(key: string): var {
+        const history = Array.isArray(root.evidence?.history)
+            ? root.evidence.history : []
+        const result = []
+        for (const point of history) {
+            const value = Number(point?.[key])
+            if (Number.isFinite(value))
+                result.push(value)
+        }
+        return result
+    }
+
     function shellGpuBusy(): real {
         const engines = root.shellEvidence?.gpu?.engineBusyPercent ?? ({})
         let peak = -1
@@ -88,34 +112,63 @@ ContentPage {
         return found ? total : -1
     }
 
-    function metricLine(label: string, value: string): string {
-        return label + "  " + value
-    }
-
     SettingsCardSection {
         expanded: true
         icon: "monitoring"
-        title: Translation.tr("Runtime diagnostics")
+        title: Translation.tr("Live diagnostics")
 
         SettingsGroup {
-            StyledText {
+            Rectangle {
                 Layout.fillWidth: true
-                text: RuntimeDiagnosticsSession.pageCurrent
-                    ? Translation.tr("Diagnostics session active")
-                    : Translation.tr("Diagnostics session inactive")
-                color: RuntimeDiagnosticsSession.pageCurrent
-                    ? Appearance.colors.colPrimary
-                    : Appearance.colors.colSubtext
-                font.pixelSize: Appearance.font.pixelSize.normal
-                font.weight: Font.DemiBold
-            }
+                implicitHeight: sessionLayout.implicitHeight + 24
+                radius: Appearance.rounding.normal
+                color: Appearance.colors.colLayer1
+                border.color: Appearance.colors.colOutline
 
-            StyledText {
-                Layout.fillWidth: true
-                text: Translation.tr("Sampling is leased only while this page is current. Leaving the page stops diagnostics work even if Settings keeps this page cached.")
-                color: Appearance.colors.colSubtext
-                font.pixelSize: Appearance.font.pixelSize.small
-                wrapMode: Text.WordWrap
+                RowLayout {
+                    id: sessionLayout
+                    anchors.left: parent.left
+                    anchors.right: parent.right
+                    anchors.verticalCenter: parent.verticalCenter
+                    anchors.leftMargin: 12
+                    anchors.rightMargin: 12
+                    spacing: 12
+
+                    Rectangle {
+                        width: 9
+                        height: 9
+                        radius: 5
+                        color: RuntimeDiagnosticsSession.pageCurrent
+                            ? Appearance.colors.colPrimary
+                            : Appearance.colors.colSubtext
+                    }
+
+                    ColumnLayout {
+                        Layout.fillWidth: true
+                        spacing: 1
+
+                        StyledText {
+                            text: RuntimeDiagnosticsSession.pageCurrent
+                                ? Translation.tr("Sampling live")
+                                : Translation.tr("Sampling paused")
+                            color: Appearance.colors.colOnLayer1
+                            font.weight: Font.DemiBold
+                        }
+
+                        StyledText {
+                            text: Translation.tr("1 s kernel sampling · stops automatically when this page is not current")
+                            color: Appearance.colors.colSubtext
+                            font.pixelSize: Appearance.font.pixelSize.small
+                        }
+                    }
+
+                    StyledText {
+                        text: String((root.evidence?.history ?? []).length)
+                            + " " + Translation.tr("samples")
+                        color: Appearance.colors.colPrimary
+                        font.weight: Font.DemiBold
+                    }
+                }
             }
 
             StyledText {
@@ -143,174 +196,160 @@ ContentPage {
     SettingsCardSection {
         expanded: true
         icon: "memory"
-        title: Translation.tr("Resource probes")
+        title: Translation.tr("System")
 
         SettingsGroup {
-            StyledText {
-                Layout.fillWidth: true
-                text: Translation.tr("CPU · RAM · Swap · GPU · Network")
-                color: Appearance.colors.colOnLayer1
-                font.pixelSize: Appearance.font.pixelSize.normal
-                font.weight: Font.DemiBold
-            }
-
             GridLayout {
                 Layout.fillWidth: true
-                columns: width >= 720 ? 2 : 1
+                columns: width >= 760 ? 2 : 1
                 columnSpacing: 10
                 rowSpacing: 10
-                visible: root.systemEvidence !== null
 
                 BtopMetricPanel {
                     Layout.fillWidth: true
-                    title: Translation.tr("System CPU")
+                    title: Translation.tr("CPU")
+                    subtitle: Translation.tr("System load")
                     value: root.systemEvidence?.cpu?.percent ?? null
-                    detail: Translation.tr("Shell") + " · "
+                    detail: Translation.tr("Hadalis") + " · "
                         + root.formatPercent(root.shellEvidence?.cpu?.percent)
-                    samples: (root.evidence?.history ?? [])
-                        .map(point => Number(point?.systemCpuPercent))
-                        .filter(value => Number.isFinite(value))
+                    samples: root.historyValues("systemCpuPercent")
                 }
 
                 BtopMetricPanel {
                     Layout.fillWidth: true
-                    title: Translation.tr("System RAM")
+                    title: Translation.tr("Memory")
+                    subtitle: Translation.tr("Physical RAM")
                     value: root.systemRamPercent()
                     detail: root.formatKiB(
                             root.systemEvidence?.memory?.valuesKiB?.MemUsed)
                         + " / "
                         + root.formatKiB(
                             root.systemEvidence?.memory?.valuesKiB?.MemTotal)
-                    samples: (root.evidence?.history ?? [])
-                        .map(point => Number(point?.systemRamPercent))
-                        .filter(value => Number.isFinite(value))
+                    samples: root.historyValues("systemRamPercent")
                 }
-            }
 
-            RowLayout {
-                Layout.fillWidth: true
-                StyledText {
+                BtopMetricPanel {
                     Layout.fillWidth: true
-                    text: Translation.tr("CPU")
-                    color: Appearance.colors.colOnLayer1
-                }
-                StyledText {
-                    text: root.formatPercent(root.systemEvidence?.cpu?.percent)
-                        + " " + Translation.tr("system")
-                        + " · "
-                        + root.formatPercent(root.shellEvidence?.cpu?.percent)
-                        + " " + Translation.tr("shell")
-                    color: Appearance.colors.colSubtext
-                }
-            }
-
-            RowLayout {
-                Layout.fillWidth: true
-                StyledText {
-                    Layout.fillWidth: true
-                    text: Translation.tr("RAM")
-                    color: Appearance.colors.colOnLayer1
-                }
-                StyledText {
-                    text: root.formatKiB(
-                            root.systemEvidence?.memory?.valuesKiB?.MemUsed)
-                        + " / "
-                        + root.formatKiB(
-                            root.systemEvidence?.memory?.valuesKiB?.MemTotal)
-                        + " " + Translation.tr("system")
-                        + " · "
-                        + root.formatKiB(
-                            root.shellEvidence?.memory?.valuesKiB?.Pss
-                                ?? root.shellEvidence?.memory?.valuesKiB?.Rss)
-                        + " " + Translation.tr("shell PSS")
-                    color: Appearance.colors.colSubtext
-                }
-            }
-
-            RowLayout {
-                Layout.fillWidth: true
-                StyledText {
-                    Layout.fillWidth: true
-                    text: Translation.tr("Swap")
-                    color: Appearance.colors.colOnLayer1
-                }
-                StyledText {
-                    text: root.formatKiB(
+                    title: Translation.tr("Swap")
+                    subtitle: Translation.tr("System swap")
+                    value: root.systemSwapPercent()
+                    detail: root.formatKiB(
                             root.systemEvidence?.memory?.valuesKiB?.SwapUsed)
                         + " / "
                         + root.formatKiB(
                             root.systemEvidence?.memory?.valuesKiB?.SwapTotal)
-                        + " " + Translation.tr("system")
-                        + " · "
-                        + root.formatKiB(
-                            root.shellEvidence?.memory?.valuesKiB?.SwapPss
-                                ?? root.shellEvidence?.memory?.valuesKiB?.Swap)
-                        + " " + Translation.tr("shell")
-                    color: Appearance.colors.colSubtext
+                    samples: root.historyValues("systemSwapPercent")
                 }
-            }
 
-            RowLayout {
-                Layout.fillWidth: true
-                StyledText {
+                BtopMetricPanel {
                     Layout.fillWidth: true
-                    text: Translation.tr("GPU")
-                    color: Appearance.colors.colOnLayer1
-                }
-                StyledText {
-                    text: root.shellEvidence?.gpu?.available === true
-                        ? root.formatPercent(root.shellGpuBusy())
-                            + " " + Translation.tr("shell engine peak")
-                            + " · "
-                            + root.formatKiB(root.shellGpuMemoryKiB())
+                    title: Translation.tr("GPU")
+                    subtitle: Translation.tr("Hadalis DRM client peak")
+                    value: root.shellEvidence?.gpu?.available === true
+                        ? root.shellGpuBusy() : null
+                    detail: root.shellEvidence?.gpu?.available === true
+                        ? root.formatKiB(root.shellGpuMemoryKiB())
                             + " " + Translation.tr("resident")
                         : Translation.tr("DRM fdinfo unavailable")
-                    color: Appearance.colors.colSubtext
+                    samples: root.historyValues("shellGpuPeakPercent")
+                }
+
+                BtopNetworkPanel {
+                    Layout.fillWidth: true
+                    title: Translation.tr("Network")
+                    rx: root.formatRate(
+                        root.networkEvidence?.aggregateNonLoopback
+                            ?.rxBytesPerSec)
+                    tx: root.formatRate(
+                        root.networkEvidence?.aggregateNonLoopback
+                            ?.txBytesPerSec)
+                    rxSamples: root.historyValues("rxBytesPerSec")
+                    txSamples: root.historyValues("txBytesPerSec")
+                }
+
+                BtopNetworkPanel {
+                    Layout.fillWidth: true
+                    title: Translation.tr("Hadalis disk I/O")
+                    rxLabel: Translation.tr("READ")
+                    txLabel: Translation.tr("WRITE")
+                    rxPrefix: "R "
+                    txPrefix: "W "
+                    rx: root.formatRate(
+                        root.shellEvidence?.io?.rates?.readBytesPerSec)
+                    tx: root.formatRate(
+                        root.shellEvidence?.io?.rates?.writeBytesPerSec)
+                    rxSamples: root.historyValues("shellReadBytesPerSec")
+                    txSamples: root.historyValues("shellWriteBytesPerSec")
                 }
             }
 
-            RowLayout {
+            Rectangle {
                 Layout.fillWidth: true
-                StyledText {
-                    Layout.fillWidth: true
-                    text: Translation.tr("Network")
-                    color: Appearance.colors.colOnLayer1
-                }
-                StyledText {
-                    text: "↓ "
-                        + root.formatRate(
-                            root.networkEvidence?.aggregateNonLoopback
-                                ?.rxBytesPerSec)
-                        + "   ↑ "
-                        + root.formatRate(
-                            root.networkEvidence?.aggregateNonLoopback
-                                ?.txBytesPerSec)
-                        + " " + Translation.tr("system")
-                    color: Appearance.colors.colSubtext
+                visible: root.cpuCores.length > 0
+                implicitHeight: coreColumn.implicitHeight + 24
+                radius: Appearance.rounding.normal
+                color: Appearance.colors.colLayer1
+                border.color: Appearance.colors.colOutline
+
+                ColumnLayout {
+                    id: coreColumn
+                    anchors.left: parent.left
+                    anchors.right: parent.right
+                    anchors.top: parent.top
+                    anchors.margins: 12
+                    spacing: 8
+
+                    RowLayout {
+                        Layout.fillWidth: true
+
+                        StyledText {
+                            text: Translation.tr("CPU cores")
+                            color: Appearance.colors.colOnLayer1
+                            font.weight: Font.DemiBold
+                        }
+
+                        Item { Layout.fillWidth: true }
+
+                        StyledText {
+                            text: String(root.cpuCores.length)
+                                + " " + Translation.tr("logical")
+                            color: Appearance.colors.colSubtext
+                            font.pixelSize: Appearance.font.pixelSize.small
+                        }
+                    }
+
+                    BtopCoreGrid {
+                        Layout.fillWidth: true
+                        cores: root.cpuCores
+                        columns: width >= 760 ? 8
+                            : width >= 520 ? 6
+                            : width >= 360 ? 4 : 2
+                    }
                 }
             }
 
-            RowLayout {
+            BtopRuntimePanel {
                 Layout.fillWidth: true
-                StyledText {
-                    Layout.fillWidth: true
-                    text: Translation.tr("Shell disk I/O")
-                    color: Appearance.colors.colOnLayer1
-                }
-                StyledText {
-                    text: "R "
-                        + root.formatRate(
-                            root.shellEvidence?.io?.rates?.readBytesPerSec)
-                        + "   W "
-                        + root.formatRate(
-                            root.shellEvidence?.io?.rates?.writeBytesPerSec)
-                    color: Appearance.colors.colSubtext
-                }
+                title: Translation.tr("Hadalis runtime")
+                pid: root.shellEvidence?.pid
+                    ? String(root.shellEvidence.pid) : "—"
+                cpu: root.formatPercent(root.shellEvidence?.cpu?.percent)
+                memory: root.formatKiB(
+                    root.shellEvidence?.memory?.valuesKiB?.Pss
+                        ?? root.shellEvidence?.memory?.valuesKiB?.Rss)
+                readRate: root.formatRate(
+                    root.shellEvidence?.io?.rates?.readBytesPerSec)
+                writeRate: root.formatRate(
+                    root.shellEvidence?.io?.rates?.writeBytesPerSec)
+                gpu: root.shellEvidence?.gpu?.available === true
+                    ? root.formatPercent(root.shellGpuBusy()) : "—"
+                gpuMemory: root.shellEvidence?.gpu?.available === true
+                    ? root.formatKiB(root.shellGpuMemoryKiB()) : "—"
             }
 
             StyledText {
                 Layout.fillWidth: true
-                text: Translation.tr("Provenance: system CPU /proc/stat · memory /proc/meminfo · shell CPU schedstat · shell memory smaps_rollup (status fallback) · shell I/O /proc/<pid>/io · shell GPU DRM fdinfo · network /proc/net/dev.")
+                text: Translation.tr("Kernel sources: /proc/stat · /proc/meminfo · schedstat · smaps_rollup · /proc/<pid>/io · DRM fdinfo · /proc/net/dev")
                 color: Appearance.colors.colSubtext
                 font.pixelSize: Appearance.font.pixelSize.smallest
                 wrapMode: Text.WordWrap
@@ -318,7 +357,7 @@ ContentPage {
 
             StyledText {
                 Layout.fillWidth: true
-                text: Translation.tr("Per-component CPU, RAM, Swap, GPU and Network are not reported until a reviewed attribution method exists.")
+                text: Translation.tr("Per-QML resource attribution is intentionally not estimated. Runtime cards report only measurements with reviewed kernel provenance.")
                 color: Appearance.colors.colSubtext
                 font.pixelSize: Appearance.font.pixelSize.small
                 wrapMode: Text.WordWrap
@@ -332,46 +371,115 @@ ContentPage {
         title: Translation.tr("Workflow identity")
 
         SettingsGroup {
-            StyledText {
+            GridLayout {
                 Layout.fillWidth: true
-                text: Translation.tr("Canonical targets") + " · "
-                    + String(root.targetCount)
-                color: Appearance.colors.colOnLayer1
-            }
+                columns: width >= 680 ? 3 : 1
+                columnSpacing: 10
+                rowSpacing: 10
 
-            StyledText {
-                Layout.fillWidth: true
-                text: root.collisionCount === 0
-                    ? Translation.tr("No canonical identity collisions detected")
-                    : Translation.tr("Identity collisions") + " · "
-                        + String(root.collisionCount)
-                color: root.collisionCount === 0
-                    ? Appearance.colors.colSubtext
-                    : Appearance.colors.colError
-                wrapMode: Text.WordWrap
+                Rectangle {
+                    Layout.fillWidth: true
+                    implicitHeight: 74
+                    radius: Appearance.rounding.normal
+                    color: Appearance.colors.colLayer1
+                    border.color: Appearance.colors.colOutline
+
+                    ColumnLayout {
+                        anchors.fill: parent
+                        anchors.margins: 12
+                        spacing: 2
+
+                        StyledText {
+                            text: Translation.tr("Targets")
+                            color: Appearance.colors.colSubtext
+                            font.pixelSize: Appearance.font.pixelSize.small
+                        }
+
+                        StyledText {
+                            text: String(root.targetCount)
+                            color: Appearance.colors.colPrimary
+                            font.weight: Font.DemiBold
+                            font.pixelSize: Appearance.font.pixelSize.large
+                        }
+                    }
+                }
+
+                Rectangle {
+                    Layout.fillWidth: true
+                    implicitHeight: 74
+                    radius: Appearance.rounding.normal
+                    color: Appearance.colors.colLayer1
+                    border.color: Appearance.colors.colOutline
+
+                    ColumnLayout {
+                        anchors.fill: parent
+                        anchors.margins: 12
+                        spacing: 2
+
+                        StyledText {
+                            text: Translation.tr("Source boundaries")
+                            color: Appearance.colors.colSubtext
+                            font.pixelSize: Appearance.font.pixelSize.small
+                        }
+
+                        StyledText {
+                            text: root.discoveryEvidence?.status === "ready"
+                                ? String(root.discoveryEvidence?.boundaryCount ?? 0)
+                                : "—"
+                            color: Appearance.colors.colPrimary
+                            font.weight: Font.DemiBold
+                            font.pixelSize: Appearance.font.pixelSize.large
+                        }
+                    }
+                }
+
+                Rectangle {
+                    Layout.fillWidth: true
+                    implicitHeight: 74
+                    radius: Appearance.rounding.normal
+                    color: Appearance.colors.colLayer1
+                    border.color: root.collisionCount === 0
+                        ? Appearance.colors.colOutline
+                        : Appearance.colors.colError
+
+                    ColumnLayout {
+                        anchors.fill: parent
+                        anchors.margins: 12
+                        spacing: 2
+
+                        StyledText {
+                            text: Translation.tr("Identity collisions")
+                            color: Appearance.colors.colSubtext
+                            font.pixelSize: Appearance.font.pixelSize.small
+                        }
+
+                        StyledText {
+                            text: String(root.collisionCount)
+                            color: root.collisionCount === 0
+                                ? Appearance.colors.colPrimary
+                                : Appearance.colors.colError
+                            font.weight: Font.DemiBold
+                            font.pixelSize: Appearance.font.pixelSize.large
+                        }
+                    }
+                }
             }
 
             StyledText {
                 Layout.fillWidth: true
                 text: root.discoveryEvidence?.status === "ready"
-                    ? Translation.tr("Runtime boundaries") + " · "
-                        + String(root.discoveryEvidence?.boundaryCount ?? 0)
-                        + " · " + String(root.discoveryEvidence?.filesScanned ?? 0)
+                    ? Translation.tr("Matched source boundaries") + " · "
+                        + String(root.discoveryEvidence?.reconciliation
+                            ?.matchedBoundaryCount ?? 0)
+                        + "   ·   "
+                        + Translation.tr("Source-only") + " · "
+                        + String(root.discoveryEvidence?.reconciliation
+                            ?.unmatchedBoundaryCount ?? 0)
+                        + "   ·   "
+                        + String(root.discoveryEvidence?.filesScanned ?? 0)
                         + " " + Translation.tr("QML files")
                     : Translation.tr("Runtime boundary index") + " · "
                         + String(root.discoveryEvidence?.status ?? "idle")
-                color: Appearance.colors.colSubtext
-                font.pixelSize: Appearance.font.pixelSize.small
-                wrapMode: Text.WordWrap
-            }
-
-            StyledText {
-                Layout.fillWidth: true
-                visible: root.discoveryEvidence?.status === "ready"
-                text: Translation.tr("Canonical source matches") + " · "
-                    + String(root.discoveryEvidence?.reconciliation?.matchedBoundaryCount ?? 0)
-                    + " · " + Translation.tr("source-only boundaries") + " · "
-                    + String(root.discoveryEvidence?.reconciliation?.unmatchedBoundaryCount ?? 0)
                 color: Appearance.colors.colSubtext
                 font.pixelSize: Appearance.font.pixelSize.small
                 wrapMode: Text.WordWrap
@@ -384,16 +492,6 @@ ContentPage {
                 color: Appearance.colors.colSubtext
                 font.pixelSize: Appearance.font.pixelSize.smallest
                 wrapMode: Text.WordWrap
-            }
-
-            StyledText {
-                Layout.fillWidth: true
-                text: root.shellEvidence?.pid
-                    ? Translation.tr("Main shell PID") + " · "
-                        + String(root.shellEvidence.pid)
-                    : Translation.tr("Waiting for main-shell sample")
-                color: Appearance.colors.colSubtext
-                font.pixelSize: Appearance.font.pixelSize.small
             }
         }
     }

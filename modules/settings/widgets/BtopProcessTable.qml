@@ -192,7 +192,6 @@ Item {
                                 + (root.depthFor(parent.parent.process) > 0
                                     ? "↳ " : "")
                                 + String(parent.parent.process?.command ?? "—")
-                            textFormat: Text.PlainText
                             font.family: Appearance.font.family.monospace
                             color: Appearance.colors.colOnLayer1
                             font.pixelSize: Appearance.font.pixelSize.small
@@ -280,7 +279,6 @@ Item {
                 Layout.fillWidth: true
                 Layout.topMargin: 8
                 text: "/proc/<pid>/comm · task schedstat · /proc/<pid>/status"
-                textFormat: Text.PlainText
                 color: Appearance.colors.colSubtext
                 opacity: 0.78
                 font.family: Appearance.font.family.monospace

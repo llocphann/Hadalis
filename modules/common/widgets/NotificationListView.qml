@@ -62,7 +62,7 @@ StyledListView { // Scrollable window
     }
 
     model: ScriptModel {
-        values: root.popup
+        values: root.dataMode === "transient"
             ? Notifications.popupAppNameList
             : Notifications.appNamesMatching(root.filterQuery)
     }

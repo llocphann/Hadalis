@@ -42,6 +42,7 @@ for token in (
     "running: root.sessionActive",
     "function _setSamplerError(value): void",
     "root.revision += 1",
+    "&& root.samplerError.length === 0",
     "function _consumeSample(rawLine): void",
     "function snapshot(): var",
     "id: diagnosticsSampler",

@@ -92,6 +92,9 @@ def main() -> None:
         "readonly property bool pageCurrent:",
         "RuntimeDiagnostics.acquire(root.clientId)",
         "RuntimeDiagnostics.release(root.clientId)",
+        'property string leaseTransport: ""',
+        'const transport = root.leaseTransport',
+        'const desiredTransport = root.localShell ? "local" : "remote"',
         "running: root.pageCurrent",
     ):
         require(session, token, "RuntimeDiagnosticsSession.qml")

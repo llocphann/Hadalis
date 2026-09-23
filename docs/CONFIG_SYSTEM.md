@@ -183,9 +183,10 @@ Semantic ii sidebar roles use:
 - the matching `sidebar.shellLayout.system.*` keys
 
 `feature` is the AI, media, tools and Widgets role historically opened by the
-`sidebarLeft` IPC target. `system` is the quick controls, notifications and
-utility role historically opened by `sidebarRight`. Their IPC meaning does not
-change when the roles swap physical edges.
+`sidebarLeft` IPC target. `system` is the quick controls, notification-policy
+and utility role historically opened by `sidebarRight`; notification history
+itself belongs to the standalone bottom-right Notification Center. Their IPC
+meaning does not change when the roles swap physical edges.
 
 Desktop widgets keep their original free/zone editor and independent
 `widgetEditMode`. Persistent layer-shell surfaces use the separate Shell Layout
@@ -244,8 +245,9 @@ tabs can contract while unbounded tabs return to full height.
 
 These keys are append-only additions. Existing configs without them retain the
 historical feature-left and system-right layout, so no migration script is
-needed. `collapseWidgetsTab` and `collapseEmptyNotifications` remain legacy
-content-aware compatibility options.
+needed. `collapseWidgetsTab` remains the legacy feature-sidebar fit option.
+`collapseEmptyNotifications` is retained only for old-config compatibility;
+notification history no longer lives in the system sidebar.
 
 ### Right sidebar header
 

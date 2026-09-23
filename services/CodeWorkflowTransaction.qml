@@ -5082,6 +5082,11 @@ Singleton {
     function _finishSemanticRebindIfReady(): void {
         if (reloadState.pendingApplyPhase !== "rebinding")
             return
+        if (CodeWorkflowAnalyzer.sourcePath
+                !== reloadState.pendingApplySourcePath
+                || CodeWorkflowAnalyzer.semanticAnchor
+                    !== reloadState.pendingApplySemanticAnchor)
+            return
         if (CodeWorkflowAnalyzer.status === "analyzing"
                 || CodeWorkflowAnalyzer.status === "idle")
             return

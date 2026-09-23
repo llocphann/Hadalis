@@ -50,6 +50,7 @@ Bar.StyledPopup {
             root.editorFocused = false
         }
     }
+    Component.onDestruction: notesEditor.flushPendingSave()
 
     property QtObject _escapeShortcut: Shortcut {
         sequence: "Escape"

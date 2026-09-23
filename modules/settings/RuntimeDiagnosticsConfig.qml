@@ -370,20 +370,17 @@ ContentPage {
                     ? root.formatKiB(root.shellGpuMemoryKiB()) : "—"
             }
 
-            StyledText {
+            BtopProcessTable {
                 Layout.fillWidth: true
-                text: Translation.tr("Kernel sources: /proc/stat · /proc/meminfo · schedstat · smaps_rollup · /proc/<pid>/io · DRM fdinfo · /proc/net/dev")
-                color: Appearance.colors.colSubtext
-                font.pixelSize: Appearance.font.pixelSize.smallest
-                wrapMode: Text.WordWrap
+                processes: root.shellEvidence?.children ?? []
+                maxRows: 12
             }
 
             StyledText {
                 Layout.fillWidth: true
-                text: Translation.tr("Per-QML resource attribution is intentionally not estimated. Runtime cards report only measurements with reviewed kernel provenance.")
+                text: Translation.tr("No synthetic per-QML resource estimates.")
                 color: Appearance.colors.colSubtext
-                font.pixelSize: Appearance.font.pixelSize.small
-                wrapMode: Text.WordWrap
+                font.pixelSize: Appearance.font.pixelSize.smallest
             }
         }
     }
@@ -403,7 +400,7 @@ ContentPage {
 
             StyledText {
                 Layout.fillWidth: true
-                text: Translation.tr("Names and identities come from Workflows; Diagnostics does not invent per-component resource percentages.")
+                text: Translation.tr("Workflow-owned identities · no synthetic target metrics.")
                 color: Appearance.colors.colSubtext
                 font.pixelSize: Appearance.font.pixelSize.smallest
                 wrapMode: Text.WordWrap

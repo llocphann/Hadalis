@@ -50,6 +50,7 @@ for token in (
     'Quickshell.shellPath("scripts/code-workflow/index.py")',
     '"--cache", root.cachePath',
     "root._pendingRefresh = true",
+    'root.status === "ready" || root.status === "indexing"',
     "function cancel(): void",
     "root._cancelled = true",
     "indexProcess.running = false",

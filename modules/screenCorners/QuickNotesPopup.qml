@@ -82,13 +82,6 @@ Bar.StyledPopup {
             notesEditorLoader.item.flushPendingSave()
     }
 
-    property QtObject _escapeShortcut: Shortcut {
-        sequence: "Escape"
-        context: Qt.WindowShortcut
-        enabled: root.active && root.editorFocused
-        onActivated: root.leaveEditorMode()
-    }
-
     // Give the pointer enough time to cross a bottom/left Bar owner before the
     // shared popup hover hand-off takes over. This is only an entry bridge; once
     // the body is reached, StyledPopup's normal full-body hover contract owns it.
@@ -101,6 +94,16 @@ Bar.StyledPopup {
 
     Item {
         id: contentRoot
+
+        // Keep the release shortcut inside the reparented popup content so
+        // Qt.WindowShortcut resolves against the actual layer-shell window
+        // rather than the non-visual StyledPopup loader.
+        Shortcut {
+            sequences: [StandardKey.Cancel]
+            context: Qt.WindowShortcut
+            enabled: root.active && root.editorFocused
+            onActivated: root.leaveEditorMode()
+        }
 
         // Settings describe the visible popup body, not just its inner
         // content. Subtract StyledPopup's canonical padding so the configured

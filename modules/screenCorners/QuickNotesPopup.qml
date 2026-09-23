@@ -80,6 +80,11 @@ Bar.StyledPopup {
             Config.options?.quickNotes?.popupWidth ?? 420))
         implicitHeight: Math.max(180, Math.min(640,
             Config.options?.quickNotes?.popupHeight ?? 300))
+        // ConnectedSurfaceGeometry can clamp the requested body on small or
+        // transformed outputs. Follow the actual content host size so the
+        // editor reflows instead of being clipped at its configured width.
+        width: parent ? parent.width : implicitWidth
+        height: parent ? parent.height : implicitHeight
 
         ColumnLayout {
             anchors.fill: parent

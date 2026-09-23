@@ -59,13 +59,13 @@ Item {
                 Layout.fillWidth: true
 
                 StyledText {
+                    Layout.fillWidth: true
                     text: root.title
                     color: root.rxColor
                     font.family: Appearance.font.family.monospace
                     font.weight: Font.DemiBold
+                    elide: Text.ElideRight
                 }
-
-                Item { Layout.fillWidth: true }
 
                 StyledText {
                     text: root.rxPrefix + root.rx

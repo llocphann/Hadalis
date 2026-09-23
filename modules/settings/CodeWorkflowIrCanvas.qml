@@ -72,6 +72,8 @@ Item {
         interval: 450
         repeat: false
         onTriggered: {
+            if (!root.workflowActive)
+                return
             if (root.initialFitDone
                     || CodeWorkflowSession.viewportInitialized) {
                 root.initialFitDone = true
@@ -166,6 +168,8 @@ Item {
     }
 
     function consumeRuntimeLifecycleEvent(): void {
+        if (!root.workflowActive)
+            return
         const snapshot = CodeWorkflowRuntime.snapshot()
         const events = snapshot?.events ?? []
         if (events.length === 0)
@@ -1080,6 +1084,8 @@ Item {
     }
 
     function rebuildEdgeRouteCache(): void {
+        if (!root.workflowActive)
+            return
         if (root.activeNodeDragId.length > 0)
             return
         root.edgeRouteCache = root.buildEdgeRouteCache()
@@ -1297,6 +1303,8 @@ Item {
     }
 
     function fitSelection(): void {
+        if (!root.workflowActive)
+            return
         if (root.hasReasoningSelection) {
             root.fitBounds(root.reasoningBounds(), 36, 1.6)
             return
@@ -1370,6 +1378,8 @@ Item {
     }
 
     function fitGraph(): void {
+        if (!root.workflowActive)
+            return
         if (root.width <= 0 || root.height <= 0)
             return
         const bounds = root.graphBounds()
@@ -1478,6 +1488,8 @@ Item {
     }
 
     function revealPrimarySelection(): void {
+        if (!root.workflowActive)
+            return
         if (CodeWorkflowSession.selectedEdgeId.length > 0) {
             root.revealEdge(CodeWorkflowSession.selectedEdgeId)
             return
@@ -1656,7 +1668,10 @@ Item {
         id: viewportCommitTimer
         interval: 160
         repeat: false
-        onTriggered: CodeWorkflowSession.commitViewport()
+        onTriggered: {
+            if (root.workflowActive)
+                CodeWorkflowSession.commitViewport()
+        }
     }
 
     Timer {

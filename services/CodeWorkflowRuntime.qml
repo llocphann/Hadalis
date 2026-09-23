@@ -59,6 +59,16 @@ Singleton {
         return root._kebabCase(id)
     }
 
+    function targetIdForCustomWidget(widgetId: string): string {
+        const id = String(widgetId ?? "").trim()
+        if (id.length === 0)
+            return ""
+        // Manifest IDs are the stable user-widget identity. Keep the raw
+        // manifest ID inside a Workflow-owned namespace rather than deriving a
+        // target from the widget's mutable display name.
+        return "desktop-widget/custom/" + id
+    }
+
     function labelForPanel(panelId: string): string {
         const id = String(panelId ?? "")
         const waffle = id.startsWith("w") && !id.startsWith("ii")

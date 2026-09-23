@@ -15,7 +15,7 @@ New notifications appear as popup toasts. Each popup stays visible for 7 seconds
 Popup behavior depends on context:
 
 - **Normal**: popup appears, auto-dismisses after timeout
-- **Sidebar open**: popups are suppressed (you're already looking at notifications)
+- **Notification center open**: popups are suppressed while history is already visible
 - **GameMode active**: popups suppressed if `suppressNotifications` is enabled
 - **Critical urgency**: popup stays until manually dismissed
 
@@ -58,7 +58,9 @@ Notifications persist across shell restarts. History is stored at:
 ~/.local/state/quickshell/user/notifications.json
 ```
 
-View history in the right sidebar (ii) or notification center (waffle). Notifications are grouped by app name for easier scanning.
+View history in the standalone Notification Center (ii) or the Waffle notification center. Notifications are grouped by app name for easier scanning.
+
+On Material ii, dwell at the physical bottom-right corner to reveal the center. The same surface can be opened explicitly through Settings preview, development navigation, or IPC. Hover ownership is handled by `ScreenCorners.qml`, so Orbit/native hot-corner conflicts and the legacy sidebar corner trigger do not stack competing input windows.
 
 Once more than three notifications are stored, a search field appears above the list. It matches on app name, summary and body, and hides groups with no match.
 
@@ -80,7 +82,9 @@ If a notification includes action buttons (like "Reply" or "Open"), they appear 
 
 ### Material ii
 
-Popups appear at the top-right. The right sidebar has a full notification center with grouped history, dismiss-all, and DND toggle.
+Transient popup toasts and notification history are separate surfaces. Popups use the configured `notifications.position`; history lives in the bottom-right Notification Center and is no longer rendered in either normal or compact Right Sidebar.
+
+The center has grouped history, search, mark-read, dismiss-all and DND controls. Settings › Interface › Notifications configures enablement, hover dwell/close grace, corner hit size, popup dimensions, read/toast side effects and fullscreen access. Settings › Monitor Visibility has a dedicated Notification Center output list, independent from transient popup outputs.
 
 ### Waffle
 
@@ -89,8 +93,12 @@ Popups appear at the bottom-right (Windows 11 style). The notification center (`
 ## IPC
 
 ```bash
-inir notifications clearAll          # Clear all notifications
-inir notifications toggleSilent      # Toggle DND
+inir notification-center toggle     # Toggle the active family's center
+inir notification-center open       # Open notification history
+inir notification-center close      # Close notification history
+inir notification-center status     # Report family/open/output state
+inir notifications clearAll         # Clear all notifications
+inir notifications toggleSilent     # Toggle DND
 ```
 
 ## Troubleshooting

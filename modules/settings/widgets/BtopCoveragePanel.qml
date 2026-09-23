@@ -24,7 +24,8 @@ Item {
     ]
 
     function countFor(key): int {
-        const value = Number(root.boundaryCounts?.[key] ?? 0)
+        const value = Number(root.boundaryCounts
+            ? (root.boundaryCounts[key] ?? 0) : 0)
         return Number.isFinite(value) ? Math.max(0, value) : 0
     }
 

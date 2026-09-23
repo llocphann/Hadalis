@@ -24,6 +24,16 @@ Singleton {
 
     readonly property int entryCount: root.result?.entries?.length ?? 0
 
+    function hasPendingRequestFor(
+        path: string,
+        needle: string,
+        semanticAnchor: string
+    ): bool {
+        return root._pendingPath === String(path ?? "")
+            && root._pendingNeedle === String(needle ?? "")
+            && root._pendingSemanticAnchor === String(semanticAnchor ?? "")
+    }
+
     function request(path: string, needle: string, semanticAnchor: string, force: bool): void {
         const nextPath = String(path ?? "")
         const nextNeedle = String(needle ?? "")

@@ -377,6 +377,11 @@ Item {
         }
 
         const visited = ({})
+        const traversedEdges = ({})
+        const selectedEdgeId = String(selectedEdge?.id ?? "")
+        if (selectedEdgeId.length > 0)
+            traversedEdges[selectedEdgeId] = true
+
         const queue = []
         for (const seed of seeds) {
             if (seed.length === 0 || !root.nodeById(seed) || visited[seed])
@@ -401,23 +406,27 @@ Item {
                     else if (toId === current)
                         neighbor = fromId
                 }
-                if (neighbor.length === 0 || visited[neighbor]
-                        || !root.nodeById(neighbor))
+                if (neighbor.length === 0 || !root.nodeById(neighbor))
+                    continue
+
+                // Reasoning wires must reflect the traversal itself. In
+                // directional modes, do not highlight an opposite-direction
+                // edge merely because both of its endpoints are reachable.
+                const edgeId = String(edge?.id ?? "")
+                if (edgeId.length > 0)
+                    traversedEdges[edgeId] = true
+
+                if (visited[neighbor])
                     continue
                 visited[neighbor] = true
                 queue.push(neighbor)
             }
         }
 
-        const nodeIds = Object.keys(visited)
-        const edgeIds = []
-        for (const edge of root.edges) {
-            const fromId = String(edge?.from ?? "")
-            const toId = String(edge?.to ?? "")
-            if (visited[fromId] && visited[toId])
-                edgeIds.push(String(edge?.id ?? ""))
-        }
-        return ({ nodes: nodeIds, edges: edgeIds })
+        return ({
+            nodes: Object.keys(visited),
+            edges: Object.keys(traversedEdges)
+        })
     }
 
     function focusReasoning(mode: string): void {

@@ -106,7 +106,6 @@ DockButton {
     signal hoverPreviewDismissed()
 
     // Timer for hover delay before showing preview
-    property alias hoverTimer: hoverDelayTimer
     Timer {
         id: hoverDelayTimer
         interval: Config.options?.dock?.hoverPreviewDelay ?? 400

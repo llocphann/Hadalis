@@ -120,7 +120,9 @@ for token in (
     "remotePulse.action = action",
     'remotePulse.action === "heartbeat"',
     'Qt.callLater(() => root._pulseRemote("acquire"))',
-    "readonly property var evidence: root.localShell",
+    "readonly property var evidence: !root.pageCurrent",
+    "? null",
+    ": root.localShell",
     "RuntimeDiagnostics.snapshot()",
     "CodeWorkflowRuntime.remoteSnapshot?.diagnostics",
 ):

@@ -39,6 +39,7 @@ def main() -> None:
         "BtopProcessTable.qml",
         "BtopCoveragePanel.qml",
         "BtopTargetInspector.qml",
+        "BtopInterfaceTable.qml",
     ):
         path = WIDGETS / widget
         if not path.is_file():
@@ -55,6 +56,7 @@ def main() -> None:
         "BtopProcessTable {",
         "BtopCoveragePanel {",
         "BtopTargetInspector {",
+        "BtopInterfaceTable {",
         "selectedTargetId: CodeWorkflowSession.selectedTargetId",
         "CodeWorkflowSession.selectTarget(",
         'SettingsPageRegistry.navigateToKey(',

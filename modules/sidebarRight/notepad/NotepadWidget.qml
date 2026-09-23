@@ -44,7 +44,13 @@ Item {
     readonly property int wordCount: textArea.text.trim().length > 0
         ? textArea.text.trim().split(/\s+/).length : 0
     readonly property int tabCount: Notepad.tabs.length
-    readonly property bool canSaveZettel: Notepad.ready
+    // Compact Dashboard/Quick Notes surfaces do not expose Zettelkasten
+    // actions. Keep that optional singleton (and its Todo backend dependency)
+    // cold until the full Sidebar Notepad actually needs the integration.
+    readonly property bool zettelkastenIntegrationEnabled:
+        !root.compactPresentation
+    readonly property bool canSaveZettel: root.zettelkastenIntegrationEnabled
+        && Notepad.ready
         && Zettelkasten.ready
         && !Zettelkasten.busy
         && textArea.text.trim().length > 0
@@ -438,9 +444,11 @@ Item {
 
             NotepadToolButton {
                 icon: "note_add"
-                tooltipText: Zettelkasten.ready
-                    ? Translation.tr("Save as Zettelkasten quick note")
-                    : Translation.tr("Configure an Obsidian vault to enable Zettelkasten")
+                tooltipText: !root.zettelkastenIntegrationEnabled
+                    ? ""
+                    : Zettelkasten.ready
+                        ? Translation.tr("Save as Zettelkasten quick note")
+                        : Translation.tr("Configure an Obsidian vault to enable Zettelkasten")
                 enabled: root.canSaveZettel
                 onClicked: root.saveAsZettel()
             }
@@ -554,7 +562,7 @@ Item {
 
     // Copied toast notification
     Connections {
-        target: Zettelkasten
+        target: root.zettelkastenIntegrationEnabled ? Zettelkasten : null
 
         function onCaptured(payload): void {
             copiedToast.show(Translation.tr("Saved to Zettelkasten"))

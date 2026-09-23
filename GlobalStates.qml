@@ -558,15 +558,23 @@ Singleton {
     }
 
     onNotificationCenterOpenChanged: {
-        if (!notificationCenterOpen
-                || !(Config.options?.notificationCenter?.markReadOnOpen ?? true))
+        if (!notificationCenterOpen)
             return
-        // The current backend models unread state as the transient popup flag.
-        // Preserve the legacy "viewing history consumes the toast" behavior as
-        // one truthful setting rather than exposing two controls that cannot be
-        // independent without a separate persisted read-state model.
-        Notifications.timeoutAll()
-        Notifications.markAllRead()
+        // Let output policy settle first. An explicit request can be rejected
+        // immediately by the target ScreenCorners host (for example while a
+        // fullscreen app owns that output); such an invisible request must not
+        // consume unread state.
+        Qt.callLater(() => {
+            if (!root.notificationCenterOpen
+                    || !(Config.options?.notificationCenter?.markReadOnOpen ?? true))
+                return
+            // The current backend models unread state as the transient popup flag.
+            // Preserve the legacy "viewing history consumes the toast" behavior as
+            // one truthful setting rather than exposing two controls that cannot be
+            // independent without a separate persisted read-state model.
+            Notifications.timeoutAll()
+            Notifications.markAllRead()
+        })
     }
 
     onScreenLockedChanged: {

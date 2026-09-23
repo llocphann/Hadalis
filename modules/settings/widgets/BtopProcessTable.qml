@@ -57,7 +57,11 @@ Item {
         anchors.fill: parent
         radius: Appearance.rounding.normal
         color: Appearance.colors.colLayer1
-        border.color: Appearance.colors.colOutline
+        border.color: Qt.rgba(
+            Appearance.colors.colPrimary.r,
+            Appearance.colors.colPrimary.g,
+            Appearance.colors.colPrimary.b,
+            0.34)
 
         ColumnLayout {
             id: processColumn
@@ -94,6 +98,7 @@ Item {
                     Layout.preferredWidth: 64
                     text: "PID"
                     color: Appearance.colors.colSubtext
+                    font.family: Appearance.font.family.monospace
                     font.pixelSize: Appearance.font.pixelSize.smallest
                 }
 
@@ -101,6 +106,7 @@ Item {
                     Layout.fillWidth: true
                     text: "COMMAND"
                     color: Appearance.colors.colSubtext
+                    font.family: Appearance.font.family.monospace
                     font.pixelSize: Appearance.font.pixelSize.smallest
                 }
 
@@ -109,6 +115,7 @@ Item {
                     horizontalAlignment: Text.AlignRight
                     text: "CPU"
                     color: Appearance.colors.colSubtext
+                    font.family: Appearance.font.family.monospace
                     font.pixelSize: Appearance.font.pixelSize.smallest
                 }
 
@@ -117,6 +124,7 @@ Item {
                     horizontalAlignment: Text.AlignRight
                     text: "RSS"
                     color: Appearance.colors.colSubtext
+                    font.family: Appearance.font.family.monospace
                     font.pixelSize: Appearance.font.pixelSize.smallest
                 }
 
@@ -126,6 +134,7 @@ Item {
                     horizontalAlignment: Text.AlignRight
                     text: "SWAP"
                     color: Appearance.colors.colSubtext
+                    font.family: Appearance.font.family.monospace
                     font.pixelSize: Appearance.font.pixelSize.smallest
                 }
             }
@@ -153,6 +162,7 @@ Item {
                         StyledText {
                             Layout.preferredWidth: 64
                             text: String(parent.parent.process?.pid ?? "—")
+                            font.family: Appearance.font.family.monospace
                             color: Appearance.colors.colOnLayer1
                             font.pixelSize: Appearance.font.pixelSize.small
                         }
@@ -164,6 +174,7 @@ Item {
                                 + (root.depthFor(parent.parent.process) > 0
                                     ? "↳ " : "")
                                 + String(parent.parent.process?.command ?? "—")
+                            font.family: Appearance.font.family.monospace
                             color: Appearance.colors.colOnLayer1
                             font.pixelSize: Appearance.font.pixelSize.small
                             elide: Text.ElideMiddle
@@ -174,6 +185,7 @@ Item {
                             horizontalAlignment: Text.AlignRight
                             text: root.formatPercent(
                                 parent.parent.process?.cpu?.percent)
+                            font.family: Appearance.font.family.monospace
                             color: Appearance.colors.colPrimary
                             font.pixelSize: Appearance.font.pixelSize.small
                         }
@@ -184,6 +196,7 @@ Item {
                             text: root.formatKiB(
                                 parent.parent.process?.memory
                                     ?.valuesKiB?.Rss)
+                            font.family: Appearance.font.family.monospace
                             color: Appearance.colors.colSubtext
                             font.pixelSize: Appearance.font.pixelSize.small
                         }
@@ -195,6 +208,7 @@ Item {
                             text: root.formatKiB(
                                 parent.parent.process?.memory
                                     ?.valuesKiB?.Swap)
+                            font.family: Appearance.font.family.monospace
                             color: Appearance.colors.colSubtext
                             font.pixelSize: Appearance.font.pixelSize.small
                         }

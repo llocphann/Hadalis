@@ -215,6 +215,7 @@ jobs:
             python3 scripts/test-code-workflow-diagnostics-contract.py
             python3 scripts/test-runtime-diagnostics-session-contract.py
             python3 scripts/test-runtime-diagnostics-sampler.py
+            python3 scripts/test-runtime-diagnostics-source-boundaries.py
           '
 
       - name: Validate semantic IR and unified edge provenance

@@ -441,8 +441,29 @@ def sample(pid: int, previous: dict[str, Any] | None) -> tuple[dict[str, Any], d
     uptime_seconds = read_uptime_seconds()
     io_now = read_io(pid)
     net_now = read_network()
-    drm_now = read_drm(pid)
     previous = previous or {}
+
+    slow_previous = previous.get("slow", {})
+    if not isinstance(slow_previous, dict):
+        slow_previous = {}
+    slow_at_ns = slow_previous.get("atNs")
+    slow_elapsed_ns = (
+        now_ns - slow_at_ns if isinstance(slow_at_ns, int) else 0
+    )
+    refresh_slow = (
+        not isinstance(slow_at_ns, int)
+        or slow_elapsed_ns >= 2_000_000_000
+    )
+    if refresh_slow:
+        memory_now = read_memory(pid)
+        drm_now = read_drm(pid)
+    else:
+        memory_now = slow_previous.get("memory")
+        drm_now = slow_previous.get("drm")
+        if not isinstance(memory_now, dict):
+            memory_now = read_memory(pid)
+        if not isinstance(drm_now, dict):
+            drm_now = read_drm(pid)
     prev_ns = previous.get("monotonicNs")
     elapsed_ns = now_ns - prev_ns if isinstance(prev_ns, int) else 0
     elapsed_s = elapsed_ns / 1_000_000_000 if elapsed_ns > 0 else 0.0
@@ -513,16 +534,37 @@ def sample(pid: int, previous: dict[str, Any] | None) -> tuple[dict[str, Any], d
                 aggregate_tx_rate += tx_rate
                 aggregate_has_rate = True
 
-    prev_drm = previous.get("drm", {})
-    prev_engines = prev_drm.get("enginesNs", {})
-    engine_busy: dict[str, float | None] = {}
-    for name, counter in drm_now["enginesNs"].items():
-        old = prev_engines.get(name)
-        engine_busy[name] = (
-            None
-            if not isinstance(old, int) or elapsed_ns <= 0 or counter < old
-            else (counter - old) / elapsed_ns * 100.0
+    if refresh_slow:
+        prev_drm = slow_previous.get("drm", {})
+        if not isinstance(prev_drm, dict):
+            prev_drm = {}
+        prev_engines = prev_drm.get("enginesNs", {})
+        if not isinstance(prev_engines, dict):
+            prev_engines = {}
+        engine_busy: dict[str, float | None] = {}
+        for name, counter in drm_now["enginesNs"].items():
+            old = prev_engines.get(name)
+            engine_busy[name] = (
+                None
+                if (
+                    not isinstance(old, int)
+                    or slow_elapsed_ns <= 0
+                    or counter < old
+                )
+                else (counter - old) / slow_elapsed_ns * 100.0
+            )
+        slow_state = {
+            "atNs": now_ns,
+            "memory": memory_now,
+            "drm": drm_now,
+            "engineBusy": engine_busy,
+        }
+    else:
+        cached_busy = slow_previous.get("engineBusy", {})
+        engine_busy = (
+            cached_busy if isinstance(cached_busy, dict) else {}
         )
+        slow_state = slow_previous
 
     payload = {
         "atMs": now_ms,
@@ -546,7 +588,7 @@ def sample(pid: int, previous: dict[str, Any] | None) -> tuple[dict[str, Any], d
                 "confidence": "kernel",
                 "percent": cpu_percent,
             },
-            "memory": read_memory(pid),
+            "memory": memory_now,
             "io": {
                 "scope": "shell-process",
                 "method": "proc-io",
@@ -587,7 +629,7 @@ def sample(pid: int, previous: dict[str, Any] | None) -> tuple[dict[str, Any], d
         },
         "io": io_now,
         "network": net_now,
-        "drm": drm_now,
+        "slow": slow_state,
         "children": child_state,
     }
     return payload, state

@@ -38,6 +38,9 @@ QUICK_LAUNCH = ROOT / "modules" / "sidebarLeft" / "widgets" / "QuickLaunch.qml"
 EVENT_CARD = ROOT / "modules" / "sidebarRight" / "events" / "EventCard.qml"
 SYSMON_WIDGET = ROOT / "modules" / "sidebarRight" / "sysmon" / "SysMonWidget.qml"
 STOPWATCH = ROOT / "modules" / "sidebarRight" / "pomodoro" / "Stopwatch.qml"
+CENTER_WIDGET_GROUP = ROOT / "modules" / "sidebarRight" / "CenterWidgetGroup.qml"
+WEB_APP_VIEW = ROOT / "modules" / "sidebarLeft" / "plugins" / "WebAppView.qml"
+PLUGINS_TAB = ROOT / "modules" / "sidebarLeft" / "plugins" / "PluginsTab.qml"
 NOTIFICATION_ITEM = ROOT / "modules" / "common" / "widgets" / "NotificationItem.qml"
 NOTIFICATION_GROUP = ROOT / "modules" / "common" / "widgets" / "NotificationGroup.qml"
 NOTIFICATION_ACTION_BUTTON = ROOT / "modules" / "common" / "widgets" / "NotificationActionButton.qml"
@@ -173,6 +176,9 @@ def main() -> None:
     event_card = EVENT_CARD.read_text(encoding="utf-8")
     sysmon_widget = SYSMON_WIDGET.read_text(encoding="utf-8")
     stopwatch = STOPWATCH.read_text(encoding="utf-8")
+    center_widget_group = CENTER_WIDGET_GROUP.read_text(encoding="utf-8")
+    web_app_view = WEB_APP_VIEW.read_text(encoding="utf-8")
+    plugins_tab = PLUGINS_TAB.read_text(encoding="utf-8")
     notification_item = NOTIFICATION_ITEM.read_text(encoding="utf-8")
     notification_group = NOTIFICATION_GROUP.read_text(encoding="utf-8")
     notification_action_button = NOTIFICATION_ACTION_BUTTON.read_text(encoding="utf-8")
@@ -327,6 +333,9 @@ def main() -> None:
         "EventCard.qml": event_card,
         "SysMonWidget.qml": sysmon_widget,
         "Stopwatch.qml": stopwatch,
+        "CenterWidgetGroup.qml": center_widget_group,
+        "WebAppView.qml": web_app_view,
+        "PluginsTab.qml": plugins_tab,
         "NotificationItem.qml": notification_item,
         "NotificationGroup.qml": notification_group,
         "NotificationActionButton.qml": notification_action_button,
@@ -521,6 +530,31 @@ def main() -> None:
     ):
         require(stopwatch, token, "Stopwatch.qml")
     forbid(stopwatch, "Qt5Compat.GraphicalEffects", "Stopwatch.qml")
+
+    for token in (
+        "radius: Appearance.rounding.normal",
+        "color: Appearance.colors.colLayer1",
+        "border.width: 0",
+        'border.color: "transparent"',
+    ):
+        require(center_widget_group, token, "CenterWidgetGroup.qml")
+    forbid(center_widget_group, "AngelPartialBorder {", "CenterWidgetGroup.qml")
+    for source, source_text in (
+        ("WebAppView.qml", web_app_view),
+        ("PluginsTab.qml", plugins_tab),
+    ):
+        for token in (
+            "readonly property color colText: Appearance.colors.colOnLayer1",
+            "readonly property color colTextSecondary: Appearance.colors.colSubtext",
+            "readonly property color colBg: Appearance.colors.colLayer1",
+            "readonly property color colBgHover: Appearance.colors.colLayer1Hover",
+            "readonly property color colBorder: Appearance.colors.colLayer0Border",
+        ):
+            require(source_text, token, source)
+    require(web_app_view, "border.width: 0", "WebAppView.qml")
+    require(web_app_view, "color: Appearance.colors.colLayer0", "WebAppView.qml")
+    require(plugins_tab, "border.width: 0", "PluginsTab.qml")
+    require(plugins_tab, "color: Appearance.colors.colLayer0", "PluginsTab.qml")
 
     for token in (
         "radius: Appearance.rounding.small",

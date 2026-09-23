@@ -48,10 +48,12 @@ for token in (
     "function nodeAtWorld(px: real, py: real): bool",
     "function viewportContains(screenX: real, screenY: real): bool",
     "function edgeAt(screenX: real, screenY: real): string",
-    "if (!root.viewportContains(screenX, screenY))",
+    "if (!root.viewportContains(screenX, screenY)",
+    "|| root.activeNodeDragId.length > 0",
     "if (root.nodeAtWorld(worldX, worldY))",
     "const tolerance = 8 / zoom",
-    "for (const edge of root.edges)",
+    "for (const route of root.edgeHitRoutesCache)",
+    "const distance = root.routeDistance(route, worldX, worldY)",
     "CodeWorkflowSession.selectUnifiedEdge(edge)",
     "CodeWorkflowSession.selectedEdgeId === modelData.id",
 ):
@@ -61,6 +63,10 @@ for token in (
 edge_hit_test = canvas.split(
     "function edgeAt(screenX: real, screenY: real): string", 1)[1].split(
     "function accentForKind(", 1)[0]
+if "root.edges" in edge_hit_test:
+    fail("edge hit-test hot path must consume cached routed edges, not rescan graph edges")
+if "root.edgeHitRoutesCache" not in edge_hit_test:
+    fail("edge hit-test must consume the committed routed-edge cache")
 if "edge.previewable" in edge_hit_test:
     fail("read-only edges must remain selectable, not mutation-filtered")
 if "function previewableEdgeAt(" in canvas:

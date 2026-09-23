@@ -263,7 +263,7 @@ for token in (
 ):
     require(material_page, token,
             "Material btop Diagnostics presentation missing " + token)
-require(material_page, "Main shell PID",
+require(material_page, "pid: root.shellEvidence?.pid",
         "Material Diagnostics must identify the sampled shell process")
 require(waffle_page, "Main shell PID",
         "Waffle Diagnostics must identify the sampled shell process")

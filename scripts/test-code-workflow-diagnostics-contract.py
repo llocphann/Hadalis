@@ -212,6 +212,8 @@ for page in (material_page, waffle_page):
             "Diagnostics page must preserve required resource scope")
     for token in (
         "RuntimeDiagnosticsSession.evidence",
+        "RuntimeDiagnosticsSession.remoteError",
+        "Runtime bridge error",
         "root.evidence?.system ?? null",
         "root.evidence?.shell ?? null",
         "root.evidence?.network ?? null",

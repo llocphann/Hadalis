@@ -69,6 +69,7 @@ Item {
     onGraphChanged: {
         root.marqueeActive = false
         root.marqueeBaseNodeIds = []
+        root.clearMarqueeReasoningSnapshot()
         root.clearReasoningSelection()
         Qt.callLater(root.rebuildEdgeRouteCache)
         root.fitInitialGraph()
@@ -110,6 +111,11 @@ Item {
     property real marqueeCurrentX: 0
     property real marqueeCurrentY: 0
     property var marqueeBaseNodeIds: []
+    // Marquee updates reasoning live for visual feedback. Preserve the exact
+    // pre-gesture presentation state so cancellation cannot leave a partial set.
+    property string marqueeRestoreReasoningMode: ""
+    property var marqueeRestoreNodeIds: []
+    property var marqueeRestoreEdgeIds: []
 
     function nodeLayoutOffset(node): var {
         const nodeId = String(node?.id ?? "")
@@ -164,6 +170,25 @@ Item {
         root.reasoningMode = ""
         root.reasoningNodeIds = []
         root.reasoningEdgeIds = []
+    }
+
+    function snapshotMarqueeReasoning(): void {
+        root.marqueeRestoreReasoningMode = root.reasoningMode
+        root.marqueeRestoreNodeIds = root.reasoningNodeIds.slice()
+        root.marqueeRestoreEdgeIds = root.reasoningEdgeIds.slice()
+    }
+
+    function clearMarqueeReasoningSnapshot(): void {
+        root.marqueeRestoreReasoningMode = ""
+        root.marqueeRestoreNodeIds = []
+        root.marqueeRestoreEdgeIds = []
+    }
+
+    function restoreMarqueeReasoningSnapshot(): void {
+        root.reasoningMode = root.marqueeRestoreReasoningMode
+        root.reasoningNodeIds = root.marqueeRestoreNodeIds.slice()
+        root.reasoningEdgeIds = root.marqueeRestoreEdgeIds.slice()
+        root.clearMarqueeReasoningSnapshot()
     }
 
     function setManualReasoningSelection(nodeIds): void {
@@ -1610,6 +1635,7 @@ Item {
         function onSubflowTargetIdChanged(): void {
             root.marqueeActive = false
             root.marqueeBaseNodeIds = []
+            root.clearMarqueeReasoningSnapshot()
             root.clearReasoningSelection()
             root.hoveredEdgeLabelId = ""
             root.activeNodeDragId = ""
@@ -1724,6 +1750,7 @@ Item {
             const shiftHeld = (mouse.modifiers & Qt.ShiftModifier) !== 0
             const controlHeld = (mouse.modifiers & Qt.ControlModifier) !== 0
             if (mouse.button === Qt.LeftButton && shiftHeld) {
+                root.snapshotMarqueeReasoning()
                 root.marqueeActive = true
                 root.marqueeStartX = mouse.x
                 root.marqueeStartY = mouse.y
@@ -1757,6 +1784,7 @@ Item {
                 root.updateMarqueeSelection()
                 root.marqueeActive = false
                 root.marqueeBaseNodeIds = []
+                root.clearMarqueeReasoningSnapshot()
                 return
             }
             CodeWorkflowSession.commitViewport()
@@ -1765,6 +1793,7 @@ Item {
             if (root.marqueeActive) {
                 root.marqueeActive = false
                 root.marqueeBaseNodeIds = []
+                root.restoreMarqueeReasoningSnapshot()
                 return
             }
             CodeWorkflowSession.commitViewport()

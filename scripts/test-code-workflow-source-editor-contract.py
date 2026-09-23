@@ -52,12 +52,19 @@ for token in (
     require(editor, token, "modal editing contract missing")
 
 for token in (
+    "property var lineStarts: [0]",
+    "function rebuildLineIndex(): void",
     "readonly property int lineCount:",
     "readonly property int currentLineNumber:",
+    "readonly property int gutterStartLine:",
+    "readonly property int gutterEndLine:",
     "readonly property string lineNumberText:",
+    "for (let line = root.gutterStartLine;",
     "Math.abs(line - root.currentLineNumber)",
     "text: root.lineNumberText",
+    "lineHeightMode: Text.FixedHeight",
     "font.family: Appearance.font.family.monospace",
+    "Component.onCompleted: root.rebuildLineIndex()",
 ):
     require(editor, token, "line-number gutter contract missing")
 
@@ -168,6 +175,12 @@ if "root.lineStart(Math.max(0, previousEnd - 1))" in editor:
     fail("k still skips blank lines")
 require(editor, "root.lineNumberAt(root.modalCursorPosition)",
         "Visual line numbers must follow the modal selection cursor")
+require(editor, "while (low + 1 < high)",
+        "cursor line lookup must use the cached line-start index")
+if 'root.documentText.slice(0, pos).split("\\n").length' in editor:
+    fail("cursor movement must not rescan the whole document for line numbers")
+if 'Math.max(1, root.documentText.split("\\n").length)' in editor:
+    fail("line count must reuse the cached line-start index")
 
 # o/O must insert above/below with distinct caret destinations. Qt.callLater
 # must never move the caret after a newer native keystroke or source refresh.

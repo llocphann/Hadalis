@@ -227,8 +227,26 @@ def read_process_status(pid: int) -> dict[str, int]:
 def read_process_command(pid: int) -> str:
     # Keep diagnostics safe for display/IPC: command lines can contain secrets.
     # /proc/<pid>/comm is enough to identify the executable without copying argv.
-    comm = _read_text(Path("/proc") / str(pid) / "comm").strip()
+    comm = " ".join(
+        _read_text(Path("/proc") / str(pid) / "comm").strip().split()
+    )
     return comm or f"pid-{pid}"
+
+
+def read_process_start_ticks(pid: int) -> int | None:
+    # Field 22 is starttime. Split after the final ')' because comm itself may
+    # contain spaces or parentheses.
+    text = _read_text(Path("/proc") / str(pid) / "stat").strip()
+    closing = text.rfind(")")
+    if closing < 0:
+        return None
+    fields = text[closing + 1:].split()
+    if len(fields) <= 19:
+        return None
+    try:
+        return int(fields[19])
+    except ValueError:
+        return None
 
 
 def read_process_children(pid: int) -> list[int]:
@@ -286,6 +304,7 @@ def sample_children(
         if not proc_dir.exists():
             continue
         command = read_process_command(child_pid)
+        start_ticks = read_process_start_ticks(child_pid)
         runtime_ns = read_sched_runtime_ns(child_pid)
         old = previous_children.get(str(child_pid), {})
         cpu = None
@@ -294,6 +313,8 @@ def sample_children(
             and elapsed_ns > 0
             and isinstance(old, dict)
             and old.get("command") == command
+            and old.get("startTicks") == start_ticks
+            and start_ticks is not None
             and isinstance(old.get("runtimeNs"), int)
             and runtime_ns >= old["runtimeNs"]
         ):
@@ -322,6 +343,7 @@ def sample_children(
         next_state[str(child_pid)] = {
             "runtimeNs": runtime_ns,
             "command": command,
+            "startTicks": start_ticks,
         }
 
     rows.sort(

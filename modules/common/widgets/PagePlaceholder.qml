@@ -30,7 +30,7 @@ Item {
 
     ColumnLayout {
         anchors.centerIn: parent
-        spacing: Appearance.inirEverywhere ? 8 : 5
+        spacing: 5
 
         MascotImage {
             id: placeholderMascot
@@ -42,32 +42,8 @@ Item {
             surface: "emptyStates"
         }
 
-        // Inir: simple rectangle with centered icon
-        Item {
-            visible: Appearance.inirEverywhere && !placeholderMascot.visible
-            Layout.alignment: Qt.AlignHCenter
-            width: 72
-            height: 72
-            
-            Rectangle {
-                anchors.fill: parent
-                radius: Appearance.inir.roundingNormal
-                color: Appearance.inir.colLayer2
-                border.width: 1
-                border.color: Appearance.inir.colBorder
-            }
-            
-            MaterialSymbol {
-                anchors.centerIn: parent
-                text: root.icon
-                iconSize: 32
-                color: Appearance.inir.colTextSecondary
-            }
-        }
-
-        // Material/Aurora: decorative shape wrapper
         MaterialShapeWrappedMaterialSymbol {
-            visible: !Appearance.inirEverywhere && !placeholderMascot.visible
+            visible: !placeholderMascot.visible
             Layout.alignment: Qt.AlignHCenter
             text: root.icon
             shape: root.shape
@@ -85,7 +61,7 @@ Item {
                 pixelSize: Appearance.font.pixelSize.larger
                 variableAxes: Appearance.font.variableAxes.title
             }
-            color: Appearance.inirEverywhere ? Appearance.inir.colTextSecondary : Appearance.colors.colOutline
+            color: Appearance.colors.colOutline
             horizontalAlignment: Text.AlignHCenter
         }
         StyledText {
@@ -93,7 +69,7 @@ Item {
             Layout.fillWidth: true
             text: root.description
             font.pixelSize: Appearance.font.pixelSize.small
-            color: Appearance.inirEverywhere ? Appearance.inir.colTextSecondary : Appearance.colors.colOutline
+            color: Appearance.colors.colOutline
             horizontalAlignment: root.descriptionHorizontalAlignment
             wrapMode: Text.Wrap
         }

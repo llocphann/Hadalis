@@ -141,9 +141,11 @@ Bar.StyledPopup {
                 }
 
                 StyledText {
-                    visible: Notepad.ready && Notepad.tabs.length > 0
-                    Layout.maximumWidth: 150
-                    text: "· " + String(Notepad.tabs[Notepad.currentTab]?.title ?? "")
+                    readonly property string activeTitle:
+                        String(Notepad.tabs[Notepad.currentTab]?.title ?? "").trim()
+                    visible: Notepad.ready && activeTitle.length > 0
+                    Layout.maximumWidth: contentRoot.width < 340 ? 80 : 150
+                    text: "· " + activeTitle
                     elide: Text.ElideRight
                     color: Appearance.colors.colSubtext
                     font.pixelSize: Appearance.font.pixelSize.smallest
@@ -152,6 +154,7 @@ Bar.StyledPopup {
                 Item { Layout.fillWidth: true }
 
                 StyledText {
+                    visible: contentRoot.width >= 340
                     text: root.editorFocused
                         ? Translation.tr("Esc to release")
                         : Translation.tr("Click to type")

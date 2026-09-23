@@ -249,6 +249,12 @@ Singleton {
         root.sampleHistory = root.sampleHistory.concat([{
             atMs: Number(sample?.atMs ?? Date.now()),
             systemCpuPercent: sample?.system?.cpu?.percent ?? null,
+            // Keep logical CPU IDs with each sample. Array positions may move
+            // after hotplug, so the UI must never join histories by index.
+            coreNames: Array.isArray(sample?.system?.cpu?.coreNames)
+                ? sample.system.cpu.coreNames.slice() : [],
+            coresPercent: Array.isArray(sample?.system?.cpu?.coresPercent)
+                ? sample.system.cpu.coresPercent.slice() : [],
             shellCpuPercent: sample?.shell?.cpu?.percent ?? null,
             systemRamPercent: root._historyPercent(
                 memory.MemUsed, memory.MemTotal),

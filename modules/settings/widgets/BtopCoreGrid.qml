@@ -8,6 +8,7 @@ Item {
 
     property var cores: []
     property var coreNames: []
+    property var history: []
     property int columns: 4
 
     function coreLabel(index): string {
@@ -17,6 +18,29 @@ Item {
         if (raw.startsWith("cpu"))
             return "C" + raw.slice(3)
         return raw.length > 0 ? raw : "C" + index
+    }
+
+    function samplesForCore(index): var {
+        const name = Array.isArray(root.coreNames)
+            ? String(root.coreNames[index] ?? "") : ""
+        if (name.length === 0)
+            return []
+        const points = Array.isArray(root.history) ? root.history : []
+        return points.map(point => {
+            const names = Array.isArray(point?.coreNames)
+                ? point.coreNames : []
+            const values = Array.isArray(point?.coresPercent)
+                ? point.coresPercent : []
+            const position = names.indexOf(name)
+            if (position < 0 || position >= values.length)
+                return null
+            const raw = values[position]
+            if (raw === null || raw === undefined)
+                return null
+            const value = Number(raw)
+            return Number.isFinite(value)
+                ? Math.max(0, Math.min(100, value)) : null
+        })
     }
 
     implicitHeight: grid.implicitHeight
@@ -35,7 +59,7 @@ Item {
 
             Rectangle {
                 Layout.fillWidth: true
-                Layout.preferredHeight: 46
+                Layout.preferredHeight: 74
                 radius: Appearance.rounding.small
                 color: Appearance.colors.colLayer1
                 border.color: Qt.rgba(
@@ -75,6 +99,15 @@ Item {
                             font.pixelSize: Appearance.font.pixelSize.small
                             color: Appearance.colors.colPrimary
                         }
+                    }
+
+                    BtopSparkline {
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: 22
+                        samples: root.samplesForCore(index)
+                        maxValue: 100
+                        lineColor: Appearance.colors.colPrimary
+                        fillGraph: false
                     }
 
                     Rectangle {

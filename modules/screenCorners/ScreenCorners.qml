@@ -268,12 +268,20 @@ Scope {
                 || cornerPanelWindow.notificationCenterExplicitForOutput
                 || GlobalStates.notificationCenterHoverOutput === outputName)
 
-        onFullscreenChanged: {
+        function reconcileNotificationCenterFullscreenPolicy(): void {
             if (fullscreen
                     && !cornerPanelWindow.notificationCenterAllowedInFullscreen
                     && cornerPanelWindow.notificationCenterExplicitForOutput)
                 GlobalStates.closeNotificationCenter()
         }
+
+        onFullscreenChanged:
+            cornerPanelWindow.reconcileNotificationCenterFullscreenPolicy()
+        onNotificationCenterExplicitForOutputChanged:
+            cornerPanelWindow.reconcileNotificationCenterFullscreenPolicy()
+        onNotificationCenterAllowedInFullscreenChanged:
+            cornerPanelWindow.reconcileNotificationCenterFullscreenPolicy()
+
         // Explicit corner features own their physical corner before the legacy
         // sidebar trigger. This lets bottom-left become Quick Notes without
         // deleting the old corner-open compatibility settings.

@@ -176,6 +176,7 @@ for token in (
     "GlobalStates.dashboardOpen",
     "GlobalStates.searchOpen",
     "GlobalStates.settingsNativeDialogOpen",
+    "GlobalStates.tilingOverlayOsdOpen",
     "&& !shouldShowQuickNotesCorner",
     "id: quickNotesCornerLoader",
     "onActiveChanged:",

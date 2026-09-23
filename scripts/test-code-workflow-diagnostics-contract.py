@@ -144,6 +144,10 @@ runtime_transport_publish = remote_stream.index("root.remoteSnapshot = next")
 if "root.revision++" not in remote_stream[
         runtime_changed_start:runtime_transport_publish]:
     raise SystemExit(
+        "FAIL: runtime snapshot changes must advance Workflow revision"
+    )
+if "root.revision++" in remote_stream[runtime_transport_publish:]:
+    raise SystemExit(
         "FAIL: diagnostics-only remote snapshots must not advance Workflow revision"
     )
 

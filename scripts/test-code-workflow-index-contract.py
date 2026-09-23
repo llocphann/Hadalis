@@ -99,6 +99,9 @@ for token in (
     "function reconcileIndexedSemanticInspectSelection(): void",
     "const stillIndexed = CodeWorkflowIndex.boundaries.some(",
     "root.reconcileIndexedSemanticInspectSelection()",
+    "readonly property bool directMutationSelectionEligible:",
+    "CodeWorkflowSession.selectedSemanticSourcePath.length === 0",
+    "|| CodeWorkflowSession.selectedSemanticSourcePath.length > 0)",
 ):
     require(page, token, "workspace boundary navigation missing " + token)
 

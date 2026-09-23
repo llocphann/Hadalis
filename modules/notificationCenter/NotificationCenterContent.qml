@@ -167,24 +167,69 @@ Item {
 
         RowLayout {
             Layout.fillWidth: true
-            spacing: 6
+            spacing: 8
 
-            RippleButtonWithIcon {
+            // Keep footer actions visually quiet: labels live in hover tooltips
+            // and accessibility names while the persistent affordance is a
+            // high-contrast Material icon.
+            Item {
                 Layout.fillWidth: true
-                materialIcon: Notifications.silent
-                    ? "notifications_off" : "notifications_active"
-                mainText: Notifications.silent
-                    ? Translation.tr("Resume") : Translation.tr("Do Not Disturb")
-                toggled: Notifications.silent
-                onClicked: Notifications.toggleSilent()
+                implicitWidth: 1
             }
 
-            RippleButtonWithIcon {
-                Layout.fillWidth: true
-                materialIcon: "delete_sweep"
-                mainText: Translation.tr("Clear all")
+            RippleButton {
+                id: notificationModeButton
+                implicitWidth: 36
+                implicitHeight: 36
+                buttonText: Notifications.silent
+                    ? Translation.tr("Resume") : Translation.tr("Do Not Disturb")
+                buttonRadius: Appearance.rounding.full
+                colBackground: Notifications.silent
+                    ? Appearance.colors.colPrimaryContainer
+                    : Appearance.colors.colLayer2
+                colBackgroundHover: Notifications.silent
+                    ? Appearance.colors.colPrimaryContainerHover
+                    : Appearance.colors.colLayer2Hover
+                colRipple: Notifications.silent
+                    ? Appearance.colors.colPrimaryContainerActive
+                    : Appearance.colors.colLayer2Active
+                onClicked: Notifications.toggleSilent()
+
+                contentItem: MaterialSymbol {
+                    anchors.centerIn: parent
+                    text: Notifications.silent
+                        ? "notifications_active" : "notifications_off"
+                    iconSize: 20
+                    fill: 1
+                    color: Notifications.silent
+                        ? Appearance.colors.colOnPrimaryContainer
+                        : Appearance.colors.colOnLayer2
+                }
+
+                StyledToolTip { text: notificationModeButton.buttonText }
+            }
+
+            RippleButton {
+                id: clearAllButton
+                implicitWidth: 36
+                implicitHeight: 36
+                buttonText: Translation.tr("Clear all")
+                buttonRadius: Appearance.rounding.full
+                colBackground: Appearance.colors.colLayer2
+                colBackgroundHover: Appearance.colors.colLayer2Hover
+                colRipple: Appearance.colors.colLayer2Active
                 enabled: Notifications.list.length > 0
                 onClicked: Notifications.discardAllNotifications()
+
+                contentItem: MaterialSymbol {
+                    anchors.centerIn: parent
+                    text: "delete_sweep"
+                    iconSize: 20
+                    fill: 1
+                    color: Appearance.colors.colOnLayer2
+                }
+
+                StyledToolTip { text: clearAllButton.buttonText }
             }
         }
     }

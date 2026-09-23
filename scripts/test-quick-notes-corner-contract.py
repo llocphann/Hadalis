@@ -138,8 +138,8 @@ for token in (
             "Sidebar Quick Note must save to the tab identity it opened")
 
 tabs_loaded_start = notepad_service.index("        onLoaded: {")
-tabs_load_failed_start = notepad_service.index("        onLoadFailed:", tabs_loaded_start)
-tabs_loaded_block = notepad_service[tabs_loaded_start:tabs_load_failed_start]
+tabs_saved_start = notepad_service.index("        onSaved:", tabs_loaded_start)
+tabs_loaded_block = notepad_service[tabs_loaded_start:tabs_saved_start]
 if "legacyFileView.path" in tabs_loaded_block:
     fail("Existing invalid multi-tab storage must never fall back to stale legacy data")
 if "root._saving" in tabs_loaded_block:

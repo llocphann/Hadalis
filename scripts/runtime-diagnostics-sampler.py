@@ -144,21 +144,32 @@ def read_system_memory() -> dict[str, Any]:
         match = re.search(rf"^{key}:\s+(\d+)\s+kB\s*$", text, re.MULTILINE)
         if match:
             values[key] = int(match.group(1))
+
+    mem_total = values.get("MemTotal")
+    mem_available = values.get("MemAvailable")
+    swap_total = values.get("SwapTotal")
+    swap_free = values.get("SwapFree")
+    mem_used = (
+        max(0, mem_total - mem_available)
+        if mem_total is not None and mem_available is not None
+        else None
+    )
+    swap_used = (
+        max(0, swap_total - swap_free)
+        if swap_total is not None and swap_free is not None
+        else None
+    )
     return {
         "scope": "system",
         "method": "proc-meminfo",
         "confidence": "kernel",
         "valuesKiB": {
-            "MemTotal": values.get("MemTotal", 0),
-            "MemAvailable": values.get("MemAvailable", 0),
-            "MemUsed": max(
-                0, values.get("MemTotal", 0) - values.get("MemAvailable", 0)
-            ),
-            "SwapTotal": values.get("SwapTotal", 0),
-            "SwapFree": values.get("SwapFree", 0),
-            "SwapUsed": max(
-                0, values.get("SwapTotal", 0) - values.get("SwapFree", 0)
-            ),
+            "MemTotal": mem_total,
+            "MemAvailable": mem_available,
+            "MemUsed": mem_used,
+            "SwapTotal": swap_total,
+            "SwapFree": swap_free,
+            "SwapUsed": swap_used,
         },
     }
 

@@ -84,7 +84,7 @@ fi
 # retired root-level QML file, plus an excluded private/test artifact that the
 # payload policy intentionally does not own. Reinstalling must prune managed
 # stale QML without deleting the excluded artifact.
-stale_module="$runtime_dir/modules/pill/Stale.qml"
+stale_module="$runtime_dir/modules/dock/Stale.qml"
 stale_root_qml="$runtime_dir/RetiredRoot.qml"
 preserved_excluded="$runtime_dir/scripts/test-local-private.sh"
 mkdir -p "$(dirname "$stale_module")" "$(dirname "$preserved_excluded")"

@@ -160,6 +160,12 @@ def main() -> None:
             f"{source} plain diagnostics text",
         )
 
+    require(
+        target_table,
+        "readonly property bool showOutputColumn: width >= 520",
+        "BtopTargetTable.qml narrow responsive layout",
+    )
+
     for token in (
         "const selectedId = String(root.selectedTargetId ?? \"\")",
         "visible.some(target =>",

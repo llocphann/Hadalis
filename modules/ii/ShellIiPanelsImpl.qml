@@ -157,10 +157,7 @@ Item {
     OnDemandPanelLoader {
         identifier: "iiDashboard"
         open: GlobalStates.dashboardOpen
-        // Dashboard is lazy on the first open, then stays warm for the rest of
-        // the shell session. This avoids rebuilding the widget tree and losing
-        // the slide entrance after the on-demand grace period expires.
-        keepLoaded: (Config.options?.dashboard?.keepLoaded ?? false) || used
+        keepLoaded: Config.options?.dashboard?.keepLoaded ?? false
         source: "../dashboard/Dashboard.qml"
     }
     DeferredPanelLoader { identifier: "iiLock"; workflowSourcePath: "modules/lock/Lock.qml"; component: Lock {} }

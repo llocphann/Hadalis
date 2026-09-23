@@ -514,10 +514,11 @@ Singleton {
     }
 
     function selectIndexedSemantic(sourcePath: string, anchor: string): bool {
-        const nextPath = String(sourcePath ?? "").trim()
-        const nextAnchor = String(anchor ?? "").trim()
-        if (nextPath.length === 0 || nextAnchor.length === 0)
+        const sourceRef = CodeWorkflowIdentity.sourceRef(sourcePath, anchor)
+        if (!sourceRef)
             return false
+        const nextPath = String(sourceRef.sourcePath)
+        const nextAnchor = String(sourceRef.semanticAnchor)
         if (nextPath.startsWith("/") || nextPath.includes(".."))
             return false
         root.selectedSemanticSourcePath = nextPath

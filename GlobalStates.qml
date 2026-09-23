@@ -533,10 +533,6 @@ Singleton {
         if (sidebarRightOpen && sidebarRightTargetOutput.length === 0)
             sidebarRightTargetOutput = root.resolveOutputName("",
                 Config.options?.sidebar?.screenList ?? [])
-        if (sidebarRightOpen) {
-            Notifications.timeoutAll()
-            Notifications.markAllRead()
-        }
     }
 
     onNotificationCenterAvailableChanged: {

@@ -79,7 +79,7 @@ for token in (
 
 for token in (
     "function focusSourceEditorWhenActive(): void",
-    "root.workflowActive && !root.workflowDestroying",
+    "root.workflowOperational",
     "sourcePane.visible && sourceEditor.visible",
     "sourceEditor.focusEditor()",
     "sourceEditor.keyboardFocusWithin",

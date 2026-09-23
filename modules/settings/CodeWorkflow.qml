@@ -1971,6 +1971,19 @@ Item {
                     StyledToolTip { text: "Fit current selection" }
                 }
                 RippleButtonWithIcon {
+                    materialIcon: "deselect"
+                    buttonText: "Clear graph focus"
+                    mainText: ""
+                    enabled: canvas.hasReasoningSelection
+                    onClicked: canvas.clearReasoningSelection()
+                    StyledToolTip {
+                        text: canvas.hasReasoningSelection
+                            ? "Clear reasoning focus · "
+                                + canvas.reasoningNodeIds.length + " nodes"
+                            : "No reasoning focus to clear"
+                    }
+                }
+                RippleButtonWithIcon {
                     materialIcon: "filter_center_focus"
                     buttonText: "Fit graph"
                     mainText: ""

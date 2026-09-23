@@ -87,6 +87,10 @@ Singleton {
     }
 
     function _reconcileSourceBoundaries(): void {
+        // Preserve the last qualified reconciliation while the shared index
+        // refreshes; replacing it with zeroes would make Diagnostics flicker.
+        if (CodeWorkflowIndex.status === "indexing")
+            return
         if (CodeWorkflowIndex.status !== "ready") {
             root.sourceBoundaryReconciliation = ({
                 matchedBoundaryCount: 0,

@@ -835,6 +835,10 @@ for token in (
 
 if "atMs: Date.now()" not in runtime:
     fail("runtime lifecycle events must include capture timestamps")
+if "targetId: targetId" not in runtime:
+    fail("runtime lifecycle events must carry explicit target identity")
+if 'const explicitTargetId = String(event?.targetId ?? "")' not in page:
+    fail("runtime activity UI must prefer explicit event target identity")
 if "modelData.token" in page:
     fail("runtime lifecycle Inspector must not expose internal runtime tokens")
 

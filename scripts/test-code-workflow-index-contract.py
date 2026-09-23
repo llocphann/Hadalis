@@ -68,6 +68,7 @@ for token in (
     "workspaceBoundaryCount: CodeWorkflowIndex.boundaryCount",
     'if (CodeWorkflowIndex.status === "idle")',
     "CodeWorkflowIndex.refresh(false)",
+    "if (root.enabled && root.visible)",
 ):
     require(page, token, "Workflow index reconciliation missing " + token)
 

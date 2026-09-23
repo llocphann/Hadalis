@@ -32,6 +32,7 @@ Singleton {
     property bool targetsPaneCollapsed: false
     property bool inspectorPaneCollapsed: false
     property real sourcePreviewHeight: 190
+    property bool minimapEnabled: true
     // Visual graph layout is presentation-only. It never mutates reviewed IR
     // or source. Persist it in workspace state so manual organization survives
     // Settings eviction and shell restarts.
@@ -195,6 +196,7 @@ Singleton {
             state.codeWorkflowInspectorPaneCollapsed === true
         root.sourcePreviewHeight = Math.max(120, Math.min(
             720, Number(state.codeWorkflowSourcePreviewHeight ?? 190)))
+        root.minimapEnabled = state.codeWorkflowMinimap !== false
         root.graphNodeLayoutOffsets = root._decodeGraphNodeLayoutOffsets(
             state.codeWorkflowGraphNodeLayoutOffsets ?? "{}")
         root.graphLayoutRevision += 1
@@ -227,6 +229,7 @@ Singleton {
         state.codeWorkflowTargetsPaneCollapsed = root.targetsPaneCollapsed
         state.codeWorkflowInspectorPaneCollapsed = root.inspectorPaneCollapsed
         state.codeWorkflowSourcePreviewHeight = root.sourcePreviewHeight
+        state.codeWorkflowMinimap = root.minimapEnabled
         state.codeWorkflowGraphNodeLayoutOffsets = JSON.stringify(
             root.graphNodeLayoutOffsets ?? ({}))
     }
@@ -546,6 +549,7 @@ Singleton {
     onTargetsPaneCollapsedChanged: root.persist()
     onInspectorPaneCollapsedChanged: root.persist()
     onSourcePreviewHeightChanged: root.persist()
+    onMinimapEnabledChanged: root.persist()
     Component.onCompleted: root.restore()
 
     Connections {

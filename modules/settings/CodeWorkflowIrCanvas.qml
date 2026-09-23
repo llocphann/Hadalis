@@ -2362,8 +2362,9 @@ Item {
                 id: edgeShape
                 required property var modelData
 
-                readonly property var fromNode: root.nodeById(modelData.from)
-                readonly property var toNode: root.nodeById(modelData.to)
+                readonly property bool endpointsPresent:
+                    !!root.nodeIndexCache[String(modelData.from ?? "")]
+                    && !!root.nodeIndexCache[String(modelData.to ?? "")]
                 readonly property var route:
                     root.routeForEdge(modelData)
                 readonly property bool selectedEdge:
@@ -2386,7 +2387,7 @@ Item {
                 // Qt's scene graph does not CPU-cull arbitrary offscreen
                 // primitives. Hide route Shapes outside the viewport so zoomed
                 // detail views do not keep submitting the whole graph.
-                visible: fromNode !== null && toNode !== null
+                visible: edgeShape.endpointsPresent
                     && root.routeVisible(edgeShape.route, 48)
                 // Phase-0's retained 600-second renderer soak qualified the
                 // generic geometry path while CurveRenderer remained HOLD for
@@ -2512,8 +2513,9 @@ Item {
                 id: edgeLabel
                 required property var modelData
 
-                readonly property var fromNode: root.nodeById(modelData.from)
-                readonly property var toNode: root.nodeById(modelData.to)
+                readonly property bool endpointsPresent:
+                    !!root.nodeIndexCache[String(modelData.from ?? "")]
+                    && !!root.nodeIndexCache[String(modelData.to ?? "")]
                 readonly property var route:
                     root.routeForEdge(modelData)
                 readonly property real midX:
@@ -2532,8 +2534,7 @@ Item {
                             edgeLabelHover.point.position.y))
                     || root.hoveredEdgeId === String(modelData.id ?? "")
 
-                visible: fromNode !== null
-                    && toNode !== null
+                visible: edgeLabel.endpointsPresent
                     && String(modelData.label ?? "").length > 0
                     && root.routeVisible(route, 80)
                 x: midX - width / 2

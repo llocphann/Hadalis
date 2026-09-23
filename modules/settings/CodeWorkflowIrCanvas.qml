@@ -153,6 +153,24 @@ Item {
     // node array for every edge candidate.
     property var nodeIndexCache: ({})
     property var outgoingEdgesCache: ({})
+    property var nodeLayoutOffsetCache: ({})
+
+    function rebuildNodeLayoutOffsetCache(): void {
+        const cache = ({})
+        for (const node of root.nodes) {
+            const nodeId = String(node?.id ?? "")
+            if (nodeId.length === 0)
+                continue
+            const offset = CodeWorkflowSession.nodeLayoutOffset(
+                String(node?.graphId ?? CodeWorkflowSession.subflowTargetId),
+                nodeId)
+            const x = Number(offset?.x ?? 0)
+            const y = Number(offset?.y ?? 0)
+            if (Math.abs(x) >= 0.001 || Math.abs(y) >= 0.001)
+                cache[nodeId] = { x: x, y: y }
+        }
+        root.nodeLayoutOffsetCache = cache
+    }
 
     function rebuildStructureCache(): void {
         const nodeIndex = ({})
@@ -173,6 +191,7 @@ Item {
         }
         root.nodeIndexCache = nodeIndex
         root.outgoingEdgesCache = outgoing
+        root.rebuildNodeLayoutOffsetCache()
     }
 
     readonly property real nodeWidth: 190
@@ -296,26 +315,23 @@ Item {
     }
 
     function nodeLayoutOffset(node): var {
-        const nodeId = String(node?.id ?? "")
-        if (nodeId.length > 0 && nodeId === root.activeNodeDragId) {
-            return {
-                x: root.activeNodeDragOffsetX,
-                y: root.activeNodeDragOffsetY
-            }
-        }
-        return CodeWorkflowSession.nodeLayoutOffset(
-            String(node?.graphId ?? CodeWorkflowSession.subflowTargetId),
-            nodeId)
+        return root.nodeLayoutOffsetCache[String(node?.id ?? "")] ?? null
     }
 
     function nodeX(node): real {
-        const offset = root.nodeLayoutOffset(node)
-        return Number(node?.x ?? 0) + Number(offset?.x ?? 0)
+        const nodeId = String(node?.id ?? "")
+        const offsetX = nodeId.length > 0 && nodeId === root.activeNodeDragId
+            ? root.activeNodeDragOffsetX
+            : Number(root.nodeLayoutOffsetCache[nodeId]?.x ?? 0)
+        return Number(node?.x ?? 0) + offsetX
     }
 
     function nodeY(node): real {
-        const offset = root.nodeLayoutOffset(node)
-        return Number(node?.y ?? 0) + Number(offset?.y ?? 0)
+        const nodeId = String(node?.id ?? "")
+        const offsetY = nodeId.length > 0 && nodeId === root.activeNodeDragId
+            ? root.activeNodeDragOffsetY
+            : Number(root.nodeLayoutOffsetCache[nodeId]?.y ?? 0)
+        return Number(node?.y ?? 0) + offsetY
     }
 
     function graphExtent(axis: string, minimum: real): real {
@@ -1952,6 +1968,7 @@ Item {
         }
 
         function onGraphLayoutRevisionChanged(): void {
+            root.rebuildNodeLayoutOffsetCache()
             root.scheduleEdgeRouteCacheRebuild()
         }
 

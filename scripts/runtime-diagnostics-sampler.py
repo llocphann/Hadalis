@@ -140,7 +140,10 @@ def _cpu_percent_from_ticks(
 def read_system_memory() -> dict[str, Any]:
     text = _read_text(Path("/proc/meminfo"))
     values: dict[str, int] = {}
-    for key in ("MemTotal", "MemAvailable", "SwapTotal", "SwapFree"):
+    for key in (
+        "MemTotal", "MemAvailable", "Cached", "Buffers",
+        "SwapTotal", "SwapFree",
+    ):
         match = re.search(rf"^{key}:\s+(\d+)\s+kB\s*$", text, re.MULTILINE)
         if match:
             values[key] = int(match.group(1))
@@ -167,6 +170,8 @@ def read_system_memory() -> dict[str, Any]:
             "MemTotal": mem_total,
             "MemAvailable": mem_available,
             "MemUsed": mem_used,
+            "Cached": values.get("Cached"),
+            "Buffers": values.get("Buffers"),
             "SwapTotal": swap_total,
             "SwapFree": swap_free,
             "SwapUsed": swap_used,

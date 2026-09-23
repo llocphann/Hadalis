@@ -47,6 +47,16 @@ Item {
         initialFitTimer.restart()
     }
     Timer {
+        id: runtimePulseTimer
+        interval: 1100
+        repeat: false
+        onTriggered: {
+            root.runtimePulseTargetId = ""
+            root.runtimePulseKind = ""
+        }
+    }
+
+    Timer {
         id: initialFitTimer
         interval: 450
         repeat: false
@@ -123,11 +133,64 @@ Item {
     property real marqueeCurrentX: 0
     property real marqueeCurrentY: 0
     property var marqueeBaseNodeIds: []
+    // Runtime activity here is lifecycle-only evidence from the existing
+    // registry event buffer. It must never imply binding execution.
+    property string runtimePulseTargetId: ""
+    property string runtimePulseKind: ""
+    property string runtimePulseSignature: ""
     // Marquee updates reasoning live for visual feedback. Preserve the exact
     // pre-gesture presentation state so cancellation cannot leave a partial set.
     property string marqueeRestoreReasoningMode: ""
     property var marqueeRestoreNodeIds: []
     property var marqueeRestoreEdgeIds: []
+
+    function runtimeEventTargetId(event): string {
+        const explicitTargetId = String(event?.targetId ?? "")
+        if (explicitTargetId.length > 0)
+            return explicitTargetId
+        const identity = String(event?.instanceId ?? "")
+        const split = identity.lastIndexOf("@")
+        return split > 0 ? identity.slice(0, split) : identity
+    }
+
+    function consumeRuntimeLifecycleEvent(): void {
+        const snapshot = CodeWorkflowRuntime.snapshot()
+        const events = snapshot?.events ?? []
+        if (events.length === 0)
+            return
+        const event = events[events.length - 1]
+        const targetId = root.runtimeEventTargetId(event)
+        const signature = String(event?.kind ?? "")
+            + "|" + targetId
+            + "|" + String(event?.instanceId ?? "")
+            + "|" + String(event?.token ?? "")
+            + "|" + String(event?.atMs ?? "")
+        if (signature === root.runtimePulseSignature)
+            return
+        root.runtimePulseSignature = signature
+
+        const atMs = Number(event?.atMs ?? 0)
+        if (!root.visible || targetId.length === 0
+                || (Number.isFinite(atMs) && atMs > 0
+                    && Date.now() - atMs > 2500)) {
+            root.runtimePulseTargetId = ""
+            root.runtimePulseKind = ""
+            return
+        }
+
+        root.runtimePulseTargetId = targetId
+        root.runtimePulseKind = String(event?.kind ?? "runtime")
+        runtimePulseTimer.restart()
+    }
+
+    function nodeMatchesRuntimeTarget(node, targetId: string): bool {
+        const expected = String(targetId ?? "")
+        if (expected.length === 0)
+            return false
+        return String(node?.runtimeTargetId ?? "") === expected
+            || String(node?.targetId ?? "") === expected
+            || String(node?.id ?? "") === expected
+    }
 
     function nodeLayoutOffset(node): var {
         const nodeId = String(node?.id ?? "")
@@ -1720,7 +1783,25 @@ Item {
 
     Component.onCompleted: {
         Qt.callLater(root.rebuildEdgeRouteCache)
+        Qt.callLater(root.consumeRuntimeLifecycleEvent)
         root.fitInitialGraph()
+    }
+
+    onVisibleChanged: {
+        if (visible)
+            Qt.callLater(root.consumeRuntimeLifecycleEvent)
+        else {
+            runtimePulseTimer.stop()
+            root.runtimePulseTargetId = ""
+            root.runtimePulseKind = ""
+        }
+    }
+
+    Connections {
+        target: CodeWorkflowRuntime
+        function onRevisionChanged(): void {
+            root.consumeRuntimeLifecycleEvent()
+        }
     }
 
     Rectangle {
@@ -2219,6 +2300,9 @@ Item {
                     && CodeWorkflowSession.selectedNodeId === modelData.id
                 readonly property bool reasoningSelected:
                     root.reasoningNodeIds.includes(String(modelData.id ?? ""))
+                readonly property bool runtimePulseActive:
+                    root.nodeMatchesRuntimeTarget(
+                        modelData, root.runtimePulseTargetId)
                 readonly property color accent:
                     root.accentForKind(modelData.kind)
                 readonly property color foreground: selected
@@ -2405,6 +2489,42 @@ Item {
                     else
                         CodeWorkflowSession.selectUnifiedNode(node.modelData)
                     event.accepted = true
+                }
+
+                Rectangle {
+                    id: runtimeLifecyclePulse
+                    z: 4
+                    visible: node.runtimePulseActive
+                    anchors.right: parent.right
+                    anchors.bottom: parent.bottom
+                    anchors.rightMargin: 7
+                    anchors.bottomMargin: 7
+                    width: 9
+                    height: 9
+                    radius: width / 2
+                    color: root.runtimePulseKind === "resident"
+                        ? Appearance.colors.colPrimary
+                        : Appearance.colors.colTertiary
+                    border.width: 1
+                    border.color: Appearance.colors.colLayer0
+
+                    SequentialAnimation on scale {
+                        running: runtimeLifecyclePulse.visible
+                            && Appearance.animationsEnabled
+                        loops: Animation.Infinite
+                        NumberAnimation {
+                            from: 0.75
+                            to: 1.35
+                            duration: 260
+                            easing.type: Easing.OutCubic
+                        }
+                        NumberAnimation {
+                            from: 1.35
+                            to: 0.75
+                            duration: 360
+                            easing.type: Easing.InOutCubic
+                        }
+                    }
                 }
 
                 ColumnLayout {

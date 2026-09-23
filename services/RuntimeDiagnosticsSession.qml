@@ -9,6 +9,8 @@ Singleton {
     readonly property string clientId:
         "settings:" + String(Quickshell.processId)
     readonly property int heartbeatIntervalMs: 2000
+    readonly property string remoteRuntimeConsumerId:
+        root.clientId + ":diagnostics-runtime"
     readonly property bool localShell:
         CodeWorkflowRuntime.hasLocalDeclarations
 
@@ -22,6 +24,12 @@ Singleton {
     readonly property var evidence: root.localShell
         ? RuntimeDiagnostics.snapshot()
         : (CodeWorkflowRuntime.remoteSnapshot?.diagnostics ?? null)
+
+    function _syncRemoteRuntimeDemand(): void {
+        CodeWorkflowRuntime.setRemoteConsumerActive(
+            root.remoteRuntimeConsumerId,
+            root.pageCurrent && !root.localShell)
+    }
 
     function _ownerId(raw): string {
         const value = String(raw ?? "").trim()
@@ -139,6 +147,7 @@ Singleton {
     }
 
     onPageCurrentChanged: {
+        root._syncRemoteRuntimeDemand()
         if (root.pageCurrent)
             root._acquireLease()
         else
@@ -176,11 +185,14 @@ Singleton {
     }
 
     onLocalShellChanged: {
+        root._syncRemoteRuntimeDemand()
         if (root.pageCurrent)
             root._renewLease()
     }
 
     Component.onDestruction: {
+        CodeWorkflowRuntime.setRemoteConsumerActive(
+            root.remoteRuntimeConsumerId, false)
         // Crash/disconnect safety is owned by the server TTL; this is only a
         // best-effort clean release for normal Settings process shutdown.
         if (root.pageCurrent)

@@ -21,8 +21,7 @@ Item { // Bar content region
     property alias backgroundItem: barBackground
     property bool nativeBlurAllowed: true
     readonly property string nativeBlurTopology: Appearance.blurTopology.unsupported
-    readonly property bool nativeBlurActive: !root.isIslands
-        && Appearance.useCompositorBlur("bar", root.nativeBlurTopology)
+    readonly property bool nativeBlurActive: Appearance.useCompositorBlur("bar", root.nativeBlurTopology)
         && root.nativeBlurAllowed
         && !root.gameModeMinimal
 
@@ -65,9 +64,6 @@ Item { // Bar content region
     readonly property bool cardStyleEverywhere: false
     readonly property color separatorColor: Appearance.colors.colOutlineVariant
     readonly property bool gameModeMinimal: Appearance.gameModeMinimal
-
-    readonly property string barAppearance: Config.options?.bar?.appearanceStyle ?? "classic"
-    readonly property bool isIslands: root.barAppearance === "islands"
 
     // Bar Settings owns one canonical module-visibility object for every edge.
     // Keep vertical presentation compact, but never fork visibility state by
@@ -467,7 +463,7 @@ Item { // Bar content region
         // Hug background is structural connected chrome. Fullscreen/GameMode
         // may disable effects, but the native Bar surface stays mapped. Niri
         // covers the Top-layer surface during fullscreen and reveals it on exit.
-        visible: !root.isIslands
+        visible: true
         color: Appearance.colors.colLayer0
         radius: 0
         // No Behavior on the base radius — the per-corner radii below own the

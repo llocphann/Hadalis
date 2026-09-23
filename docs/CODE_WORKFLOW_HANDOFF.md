@@ -93,7 +93,11 @@ module work, commit directly to `dev`, and never force-push or modify `stable`.
   create a second catalog. Material Diagnostics is appended at Settings index 31
   and Waffle at index 19. Both renderers acquire the same shell-owned lease only
   while Diagnostics is the current page; standalone Settings renews it over IPC
-  and a 6-second server TTL removes abandoned clients.
+  and a 6-second server TTL removes abandoned clients. Standalone Settings
+  no longer polls the main-shell `codeWorkflowRuntime` bridge continuously:
+  remote snapshot polling is owner-demanded and runs only while a Workflow page
+  is visible or a Diagnostics page is current. Cached/hidden Settings pages
+  release that demand without clearing persisted Workflow session metadata.
 - The first exact on-demand sampler now runs only in the main shell process while
   that lease is active. Kernel evidence covers system CPU from `/proc/stat`,
   system RAM/Swap from `/proc/meminfo`, shell CPU from `schedstat`, shell

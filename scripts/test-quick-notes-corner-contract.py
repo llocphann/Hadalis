@@ -44,6 +44,11 @@ for token in (
 ):
     require(qmldir, token, "screenCorners module must export the Quick Notes popup")
 
+if popup.count("NotepadWidget {") != 1:
+    fail("Quick Notes must own exactly one lazily-instantiated Notepad editor")
+if popup.index("id: notesEditorLoader") > popup.index("sourceComponent: NotepadWidget {"):
+    fail("Quick Notes editor must be instantiated through its Loader")
+
 for token in (
     "import QtQuick.Controls",
     "Bar.StyledPopup {",
@@ -53,13 +58,15 @@ for token in (
     "alternativeVisibleCondition: root.editorFocused",
     "keyboardFocus: root.editorFocused",
     "closeOnOutsideClick: root.editorFocused",
-    "NotepadWidget {",
+    "id: notesEditorLoader",
+    "active: root.active",
+    "sourceComponent: NotepadWidget {",
     "compactPresentation: true",
-    "notesEditor.focus = true",
-    "notesEditor.focus = false",
-    "notesEditor.focusEditor()",
-    "notesEditor.flushPendingSave()",
-    "Component.onDestruction: notesEditor.flushPendingSave()",
+    "notesEditorLoader.item.focus = true",
+    "notesEditorLoader.item.focus = false",
+    "notesEditorLoader.item.focusEditor()",
+    "notesEditorLoader.item.flushPendingSave()",
+    "Component.onDestruction:",
     'sequence: "Escape"',
 ):
     require(popup, token, "Quick Notes popup interaction/focus contract missing")

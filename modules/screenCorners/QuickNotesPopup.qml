@@ -87,7 +87,8 @@ Bar.StyledPopup {
     // the body is reached, StyledPopup's normal full-body hover contract owns it.
     property QtObject _entryBridgeTimer: Timer {
         id: entryBridgeTimer
-        interval: 260
+        interval: Math.max(260, Math.min(700,
+            Math.round(root.cornerAttachmentThickness * 6)))
         repeat: false
         onTriggered: root.entryBridgeHeld = false
     }

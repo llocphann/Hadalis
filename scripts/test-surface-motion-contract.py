@@ -125,7 +125,12 @@ assert 'property: "opacity"' not in dashboard_loader
 assert 'property: "scale"' not in dashboard_loader
 assert "opacity: 1" in dashboard_loader
 assert "scale: 1" in dashboard_loader
-assert "active: panelRoot.visible" in dashboard_loader
+assert "active: true" in dashboard_loader
+assert "visible: root._contentPresented" in dashboard_loader
+assert "visible: true" in dashboard
+assert "updatesEnabled: root._renderUpdatesNeeded" in dashboard
+assert "mask: dashboardInputRegion" in dashboard
+assert "onTriggered: panelRoot.visible = false" not in dashboard
 
 overview_motion = qml_block(overview_dashboard, "Behavior on revealProgress")
 assert "SurfaceMotion.duration" in overview_motion

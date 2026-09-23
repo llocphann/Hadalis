@@ -1212,6 +1212,13 @@
         "scrimAnimationDurationMs": 60,
         "scrimDim": 100
     },
+    "quickNotes": {
+        "enable": true,
+        "hoverDelayMs": 220,
+        "cornerSize": 14,
+        "popupWidth": 420,
+        "popupHeight": 300
+    },
     "overview": {
         "activeScreenOnly": true,
         "allAppsGrid": false,

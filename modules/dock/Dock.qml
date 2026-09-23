@@ -611,7 +611,6 @@ Scope {
                                 }
                                 DockButton {
                                     vertical: false
-                                    dockPosition: root.position
                                     onClicked: GlobalStates.toggleOverview(
                                         dockRoot.screen?.name ?? "")
                                     contentItem: MaterialSymbol {
@@ -649,7 +648,6 @@ Scope {
                                 }
                                 DockButton {
                                     vertical: true
-                                    dockPosition: root.position
                                     onClicked: GlobalStates.toggleOverview(
                                         dockRoot.screen?.name ?? "")
                                     contentItem: MaterialSymbol {

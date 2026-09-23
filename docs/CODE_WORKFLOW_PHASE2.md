@@ -1412,12 +1412,16 @@ layout offsets or source-editor buffers merely to make page navigation cheaper.
 
 ## Next gate
 
-2K-W-D completes the reviewed `media.signal.doubleClickToggle` path from graph
-selection through explicit Settings authorization and production Apply. No
-additional Signal/Action target is promoted by default.
+2K-W-D is complete for the reviewed `media.signal.doubleClickToggle` path from
+graph selection through explicit Settings authorization and production Apply.
+No additional Signal/Action target is promoted by default.
 
-A later W-E gate should start only from a separately reviewed concrete target
-with runtime evidence and its own exact semantic identity. Do not generalize
-from `onDoubleClicked` to arbitrary handlers or script bodies, do not reuse
-data-binding TYPE/CYCLE proof tokens, and keep Connections creation/removal and
-multi-file writes out of scope.
+The next Signal/Action gate is **2K-W-E**, but it must not begin until a second
+concrete target is reviewed independently with runtime evidence and its own exact
+semantic identity. The current reviewed IR still promotes only
+`media.signal.doubleClickToggle`; an ordinary event/action edge is not enough
+to grant preview or mutation authority.
+
+Do not generalize from `onDoubleClicked` to arbitrary handlers or script
+bodies, do not reuse data-binding TYPE/CYCLE proof tokens, and keep Connections
+creation/removal and multi-file writes out of scope.

@@ -35,6 +35,7 @@ Bar.StyledPopup {
         if (!root.active)
             return
         root.editorFocused = true
+        notesEditor.focus = true
         Qt.callLater(() => notesEditor.focusEditor())
     }
 

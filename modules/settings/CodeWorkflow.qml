@@ -161,6 +161,28 @@ Item {
             kind + " " + String(counts[kind])).join(" · ")
     }
 
+    readonly property string workspaceIndexStatusText: {
+        const status = String(CodeWorkflowIndex.status ?? "idle")
+        const diagnostics = CodeWorkflowIndex.result?.diagnostics ?? []
+        if (status === "ready")
+            return "Workspace index · "
+                + String(CodeWorkflowIndex.boundaryCount) + " boundaries · "
+                + String(CodeWorkflowIndex.filesScanned) + " QML files · "
+                + String(CodeWorkflowIndex.cacheHits) + " cached"
+                + (diagnostics.length > 0
+                    ? " · " + String(diagnostics.length) + " diagnostics"
+                    : "")
+        if (status === "indexing")
+            return "Workspace index · refreshing"
+                + (CodeWorkflowIndex.boundaryCount > 0
+                    ? " · " + String(CodeWorkflowIndex.boundaryCount)
+                        + " previous boundaries"
+                    : "")
+        if (CodeWorkflowIndex.error.length > 0)
+            return "Workspace index · " + CodeWorkflowIndex.error
+        return "Workspace index · " + status
+    }
+
     readonly property string inspectedSemanticRangeText: {
         const range = root.inspectedSemanticEntry?.range ?? []
         if (range.length !== 2)
@@ -2383,8 +2405,8 @@ Item {
                     }
                     StyledText {
                         Layout.fillWidth: true
-                        visible: CodeWorkflowIndex.error.length > 0
-                        text: "Workspace index · " + CodeWorkflowIndex.error
+                        visible: CodeWorkflowIndex.status !== "idle"
+                        text: root.workspaceIndexStatusText
                         color: Appearance.colors.colSubtext
                         font.pixelSize: Appearance.font.pixelSize.smallest
                         wrapMode: Text.WordWrap

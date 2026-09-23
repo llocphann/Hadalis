@@ -15,112 +15,155 @@ def require(text: str, token: str, message: str) -> None:
         raise SystemExit(f"FAIL: {message}: missing {token!r}")
 
 
-runtime = read("services/CodeWorkflowRuntime.qml")
+diagnostics = read("services/RuntimeDiagnostics.qml")
+session = read("services/RuntimeDiagnosticsSession.qml")
+workflow_runtime = read("services/CodeWorkflowRuntime.qml")
 shell = read("shell.qml")
+page_host = read("modules/settings/SettingsPageHost.qml")
+material_page = read("modules/settings/RuntimeDiagnosticsConfig.qml")
+waffle_page = read("modules/waffle/settings/pages/WDiagnosticsPage.qml")
 
 for token in (
-    "property var diagnosticsLeases: ({})",
-    "readonly property int diagnosticsLeaseTtlMs: 6000",
-    "readonly property int diagnosticsMaxLeases: 16",
-    "readonly property bool diagnosticsSessionActive:",
-    "readonly property int diagnosticsActiveLeaseCount:",
-    "function acquireDiagnosticsLease(rawClientId): var",
-    "function heartbeatDiagnosticsLease(rawClientId): var",
-    "function releaseDiagnosticsLease(rawClientId): var",
-    "function _pruneDiagnosticsLeases(): void",
-    "function diagnosticsSessionSnapshot(): var",
-    "function setDiagnosticsConsumerActive(active: bool): void",
-    "function _heartbeatDiagnosticsConsumer(): void",
-    "id: diagnosticsLeasePruneTimer",
-    "running: root.diagnosticsSessionActive",
-    "id: diagnosticsHeartbeatTimer",
-    "running: root.diagnosticsConsumerActive",
-    "id: diagnosticsLeaseProcess",
-    'nextAction === "acquire" ? "diagnosticsAcquire"',
-    'nextAction === "heartbeat" ? "diagnosticsHeartbeat"',
-    ': "diagnosticsRelease"',
-    "diagnostics: root.diagnosticsSessionSnapshot()",
+    "readonly property int leaseTtlMs: 6000",
+    "readonly property int maxLeases: 16",
+    "property var leases: ({})",
+    "readonly property int leaseCount:",
+    "readonly property bool sessionActive:",
+    "readonly property bool samplingEnabled: root.sessionActive",
+    "function acquire(clientId: string): bool",
+    "function heartbeat(clientId: string): bool",
+    "function release(clientId: string): bool",
+    "function pruneExpired(): void",
+    "function status(): var",
+    "id: leasePruneTimer",
+    "running: root.sessionActive",
 ):
-    require(runtime, token, "Runtime Diagnostics lease lifecycle is incomplete")
+    require(diagnostics, token, "RuntimeDiagnostics lease authority is incomplete")
 
-# Heartbeats are renewal only. A missing lease must fail so stale clients cannot
-# resurrect sampler ownership without an explicit acquire.
-heartbeat_start = runtime.index("function heartbeatDiagnosticsLease(")
-heartbeat_end = runtime.index("function releaseDiagnosticsLease(", heartbeat_start)
-heartbeat = runtime[heartbeat_start:heartbeat_end]
+require(
+    diagnostics,
+    'return id.length > 0 && id.length <= 128 ? id : ""',
+    "Diagnostics client IDs must be bounded",
+)
+require(
+    diagnostics,
+    "root.leaseCount >= root.maxLeases",
+    "Diagnostics lease table must be bounded",
+)
+
+heartbeat_start = diagnostics.index("function heartbeat(")
+heartbeat_end = diagnostics.index("function release(", heartbeat_start)
+heartbeat = diagnostics[heartbeat_start:heartbeat_end]
 require(
     heartbeat,
-    "clientId.length === 0 || !root.diagnosticsLeases[clientId]",
+    "id.length === 0 || root.leases[id] === undefined",
     "heartbeat must fail closed for missing leases",
 )
-if "next[clientId] =" not in heartbeat:
-    raise SystemExit("FAIL: heartbeat must renew an existing lease expiry")
-
-# The server-side lease table is bounded and TTL-pruned.
-acquire_start = runtime.index("function acquireDiagnosticsLease(")
-acquire_end = runtime.index("function heartbeatDiagnosticsLease(", acquire_start)
-acquire = runtime[acquire_start:acquire_end]
-require(
-    acquire,
-    "root.diagnosticsActiveLeaseCount >= root.diagnosticsMaxLeases",
-    "diagnostics lease table must be bounded",
-)
-require(
-    acquire,
-    "Date.now() + root.diagnosticsLeaseTtlMs",
-    "diagnostics acquire must set a TTL",
-)
-
-# Session snapshots expose state only. Canonical labels/names remain owned by
-# Workflow descriptors and no opaque client ID is leaked into telemetry.
-snapshot_start = runtime.index("function diagnosticsSessionSnapshot()")
-snapshot_end = runtime.index("function _applyDiagnosticsLeaseReply(", snapshot_start)
-snapshot = runtime[snapshot_start:snapshot_end]
-for forbidden in ("clientId", "label:", "name:", "icon:", "title:"):
-    if forbidden in snapshot:
-        raise SystemExit(
-            "FAIL: Diagnostics session snapshot leaked identity/presentation data: "
-            + repr(forbidden)
-        )
+if "root.acquire(" in heartbeat:
+    raise SystemExit(
+        "FAIL: heartbeat must renew an existing lease, not reuse acquire semantics"
+    )
 
 for token in (
-    'target: "codeWorkflowRuntime"',
-    "function diagnosticsAcquire(clientId: string): string",
-    "CodeWorkflowRuntime.acquireDiagnosticsLease(clientId)",
-    "function diagnosticsHeartbeat(clientId: string): string",
-    "CodeWorkflowRuntime.heartbeatDiagnosticsLease(clientId)",
-    "function diagnosticsRelease(clientId: string): string",
-    "CodeWorkflowRuntime.releaseDiagnosticsLease(clientId)",
-    "function diagnosticsStatus(): string",
-    "CodeWorkflowRuntime.diagnosticsSessionSnapshot()",
+    'readonly property string clientId:',
+    '"settings:" + String(Quickshell.processId)',
+    "readonly property bool localShell:",
+    "property var activeOwners: ({})",
+    "readonly property bool pageCurrent:",
+    "function setOwnerCurrent(ownerId: string, current: bool): void",
+    "RuntimeDiagnostics.acquire(root.clientId)",
+    "RuntimeDiagnostics.heartbeat(root.clientId)",
+    "RuntimeDiagnostics.release(root.clientId)",
+    '"ipc", "runtimeDiagnostics"',
+    "id: heartbeatTimer",
+    "running: root.pageCurrent",
 ):
-    require(shell, token, "main-shell Diagnostics IPC contract is incomplete")
+    require(session, token, "Diagnostics current-page session client is incomplete")
 
-# Step 2 is intentionally sampler-free. Resource probes belong to a later
-# passive sampler layer and must never be smuggled into the identity/runtime
-# registry itself.
-for forbidden in (
-    "smaps_rollup",
-    "drm-engine-",
-    "drm-fdinfo",
-    '"/proc/',
-    "KnownDiagnosticsComponents",
-    "diagnosticsCatalog",
+for token in (
+    'target: "runtimeDiagnostics"',
+    "RuntimeDiagnostics.acquire(clientId)",
+    "RuntimeDiagnostics.heartbeat(clientId)",
+    "RuntimeDiagnostics.release(clientId)",
+    "RuntimeDiagnostics.status()",
 ):
-    if forbidden in runtime:
+    require(shell, token, "main-shell Runtime Diagnostics IPC contract is incomplete")
+
+for token in (
+    'SettingsPageRegistry.pageIndexForKey("diagnostics")',
+    'root.workflowHostId + ":diagnostics"',
+    "RuntimeDiagnosticsSession.setOwnerCurrent(",
+    "root.requestedIndex === root.diagnosticsPageIndex",
+):
+    require(page_host, token, "Settings current-page Diagnostics ownership regressed")
+
+for source, text in (
+    ("RuntimeDiagnosticsConfig.qml", material_page),
+    ("WDiagnosticsPage.qml", waffle_page),
+):
+    require(
+        text,
+        "RuntimeDiagnosticsSession.pageCurrent",
+        f"{source} must report the shared current-page session",
+    )
+
+# CodeWorkflowRuntime remains canonical identity/runtime evidence only. It must
+# not grow a second Diagnostics lease table, heartbeat client or sampler.
+for forbidden in (
+    "diagnosticsLeases",
+    "diagnosticsSessionActive",
+    "diagnosticsConsumerActive",
+    "acquireDiagnosticsLease",
+    "heartbeatDiagnosticsLease",
+    "releaseDiagnosticsLease",
+    "diagnosticsLeaseProcess",
+    "diagnosticsHeartbeatTimer",
+    "diagnosticsLeasePruneTimer",
+):
+    if forbidden in workflow_runtime:
         raise SystemExit(
-            "FAIL: CodeWorkflowRuntime must remain sampler/catalog free: "
+            "FAIL: CodeWorkflowRuntime contains duplicate Diagnostics session "
+            f"authority: {forbidden!r}"
+        )
+
+code_workflow_ipc_start = shell.index('target: "codeWorkflowRuntime"')
+runtime_diag_ipc_start = shell.index('target: "runtimeDiagnostics"', code_workflow_ipc_start)
+code_workflow_ipc = shell[code_workflow_ipc_start:runtime_diag_ipc_start]
+for forbidden in (
+    "diagnosticsAcquire",
+    "diagnosticsHeartbeat",
+    "diagnosticsRelease",
+    "diagnosticsStatus",
+):
+    if forbidden in code_workflow_ipc:
+        raise SystemExit(
+            "FAIL: codeWorkflowRuntime IPC must not duplicate Runtime Diagnostics "
+            f"lease methods: {forbidden!r}"
+        )
+
+# Session status carries lifecycle facts only; canonical labels and component
+# metadata remain Workflow-owned.
+status_start = diagnostics.index("function status()")
+status_end = diagnostics.index("// This is lease cleanup", status_start)
+status = diagnostics[status_start:status_end]
+for forbidden in ("clientId", "label:", "name:", "icon:", "title:"):
+    if forbidden in status:
+        raise SystemExit(
+            "FAIL: Diagnostics status leaked client/presentation metadata: "
             + repr(forbidden)
         )
 
-for forbidden in (
-    "Component.onCompleted: root.setDiagnosticsConsumerActive(true)",
-    "running: true // diagnostics",
+# No page/component may auto-acquire merely because it was constructed. The page
+# host owns the explicit current-page transition.
+for source, text in (
+    ("RuntimeDiagnostics.qml", diagnostics),
+    ("RuntimeDiagnosticsSession.qml", session),
+    ("RuntimeDiagnosticsConfig.qml", material_page),
+    ("WDiagnosticsPage.qml", waffle_page),
 ):
-    if forbidden in runtime:
+    if "Component.onCompleted: RuntimeDiagnostics.acquire" in text:
         raise SystemExit(
-            "FAIL: Diagnostics must not auto-start in the background: "
-            + repr(forbidden)
+            f"FAIL: {source} must not acquire Diagnostics in Component.onCompleted"
         )
 
-print("ok - demand-driven Runtime Diagnostics session contract")
+print("ok - single-authority demand-driven Runtime Diagnostics session contract")

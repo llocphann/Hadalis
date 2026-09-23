@@ -455,8 +455,29 @@ ShellRoot {
     // boundary; QObject references remain process-local.
     IpcHandler {
         target: "codeWorkflowRuntime"
+
         function snapshot(): string {
             return JSON.stringify(CodeWorkflowRuntime.localSnapshot())
+        }
+
+        function diagnosticsAcquire(clientId: string): string {
+            return JSON.stringify(
+                CodeWorkflowRuntime.acquireDiagnosticsLease(clientId))
+        }
+
+        function diagnosticsHeartbeat(clientId: string): string {
+            return JSON.stringify(
+                CodeWorkflowRuntime.heartbeatDiagnosticsLease(clientId))
+        }
+
+        function diagnosticsRelease(clientId: string): string {
+            return JSON.stringify(
+                CodeWorkflowRuntime.releaseDiagnosticsLease(clientId))
+        }
+
+        function diagnosticsStatus(): string {
+            return JSON.stringify(
+                CodeWorkflowRuntime.diagnosticsSessionSnapshot())
         }
     }
 

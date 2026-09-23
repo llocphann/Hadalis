@@ -25,6 +25,7 @@ qmldir = read("services/qmldir")
 sampler = read("scripts/runtime-diagnostics-sampler.py")
 workflow_runtime = read("services/CodeWorkflowRuntime.qml")
 workflow_index = read("services/CodeWorkflowIndex.qml")
+metric_panel = read("modules/settings/widgets/BtopMetricPanel.qml")
 
 # Material keeps historical page indices and appends Diagnostics at 31.
 require(registry, 'key: "diagnostics"', "Material Diagnostics page missing")
@@ -70,6 +71,12 @@ for token in (
     "function pruneExpired(): void",
     "function _consumeSample(rawLine): void",
     "function snapshot(): var",
+    "property var sampleHistory: []",
+    "function _appendHistory(sample): void",
+    "root.sampleHistory = root.sampleHistory.concat([",
+    "]).slice(-60)",
+    "history: root.sampleHistory",
+    "root.sampleHistory = []",
     "id: diagnosticsSampler",
     "running: root.samplingEnabled",
     'Quickshell.shellPath("scripts/runtime-diagnostics-sampler.py")',
@@ -256,5 +263,26 @@ require(material_page, "Main shell PID",
         "Material Diagnostics must identify the sampled shell process")
 require(waffle_page, "Main shell PID",
         "Waffle Diagnostics must identify the sampled shell process")
+
+for token in (
+    'import "widgets"',
+    "function systemRamPercent(): var",
+    "BtopMetricPanel {",
+    "root.evidence?.history ?? []",
+    "point?.systemCpuPercent",
+    "point?.systemRamPercent",
+):
+    require(material_page, token,
+            "Material btop-style history presentation missing " + token)
+if material_page.count("BtopMetricPanel {") < 2:
+    raise SystemExit("FAIL: Material Diagnostics needs CPU and RAM history panels")
+
+for token in (
+    "property var value: null",
+    "readonly property bool valueAvailable:",
+    'Math.round(root.numericValue) + "%" : "—"',
+    "Layout.preferredHeight: 22",
+):
+    require(metric_panel, token, "btop metric panel contract missing " + token)
 
 print("ok - Runtime Diagnostics identity/session/sampler/UI contract")

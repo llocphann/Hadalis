@@ -54,6 +54,8 @@ Item {
                         spacing: 4
 
                         StyledText {
+
+                            textFormat: Text.PlainText
                             text: root.coreLabel(index)
                             font.family: Appearance.font.family.monospace
                             font.pixelSize: Appearance.font.pixelSize.smallest
@@ -63,6 +65,8 @@ Item {
                         Item { Layout.fillWidth: true }
 
                         StyledText {
+
+                            textFormat: Text.PlainText
                             text: modelData !== null
                                 && modelData !== undefined
                                 && Number.isFinite(Number(modelData))

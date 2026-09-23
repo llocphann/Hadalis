@@ -204,11 +204,14 @@ jobs:
       - name: Validate canonical Workflow identity
         run: nix develop .#workflow-acceptance --command bash -lc 'python3 scripts/test-code-workflow-identity-contract.py'
 
-      - name: Validate Runtime Diagnostics session foundation
-        run: nix develop .#workflow-acceptance --command bash -lc 'python3 scripts/test-code-workflow-diagnostics-contract.py'
-
-      - name: Validate passive Runtime Diagnostics sessions
-        run: nix develop .#workflow-acceptance --command bash -lc 'python3 scripts/test-runtime-diagnostics-session-contract.py'
+      - name: Validate Runtime Diagnostics session and sampler
+        run: |
+          nix develop .#workflow-acceptance --command bash -lc '
+            set -euo pipefail
+            python3 scripts/test-code-workflow-diagnostics-contract.py
+            python3 scripts/test-runtime-diagnostics-session-contract.py
+            python3 scripts/test-runtime-diagnostics-sampler.py
+          '
 
       - name: Validate semantic IR and unified edge provenance
         run: |

@@ -186,6 +186,7 @@ Bar.StyledPopup {
                         margin: 4
                         compactPresentation: true
                         quickCapturePresentation: true
+                        surfaceLocalTabSelection: true
                     }
                 }
 

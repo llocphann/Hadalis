@@ -89,17 +89,44 @@ Singleton {
         root.revision += 1
     }
 
+    function _setSourceBoundaryReconciliation(
+            matchedBoundaryCount: int,
+            unmatchedBoundaryCount: int,
+            matchedTargetIds): void {
+        const nextIds = Array.isArray(matchedTargetIds)
+            ? matchedTargetIds : []
+        const current = root.sourceBoundaryReconciliation ?? ({})
+        const currentIds = Array.isArray(current?.matchedTargetIds)
+            ? current.matchedTargetIds : []
+        let unchanged =
+            Number(current?.matchedBoundaryCount ?? 0) === matchedBoundaryCount
+            && Number(current?.unmatchedBoundaryCount ?? 0)
+                === unmatchedBoundaryCount
+            && currentIds.length === nextIds.length
+        if (unchanged) {
+            for (let index = 0; index < nextIds.length; index++) {
+                if (currentIds[index] !== nextIds[index]) {
+                    unchanged = false
+                    break
+                }
+            }
+        }
+        if (unchanged)
+            return
+        root.sourceBoundaryReconciliation = ({
+            matchedBoundaryCount: matchedBoundaryCount,
+            unmatchedBoundaryCount: unmatchedBoundaryCount,
+            matchedTargetIds: nextIds
+        })
+    }
+
     function _reconcileSourceBoundaries(): void {
         // Preserve the last qualified reconciliation while the shared index
         // refreshes; replacing it with zeroes would make Diagnostics flicker.
         if (CodeWorkflowIndex.status === "indexing")
             return
         if (CodeWorkflowIndex.status !== "ready") {
-            root.sourceBoundaryReconciliation = ({
-                matchedBoundaryCount: 0,
-                unmatchedBoundaryCount: 0,
-                matchedTargetIds: []
-            })
+            root._setSourceBoundaryReconciliation(0, 0, [])
             return
         }
 
@@ -132,11 +159,10 @@ Singleton {
                 matchedTargets[targetId] = true
         }
 
-        root.sourceBoundaryReconciliation = ({
-            matchedBoundaryCount: matchedBoundaryCount,
-            unmatchedBoundaryCount: unmatchedBoundaryCount,
-            matchedTargetIds: Object.keys(matchedTargets).sort()
-        })
+        root._setSourceBoundaryReconciliation(
+            matchedBoundaryCount,
+            unmatchedBoundaryCount,
+            Object.keys(matchedTargets).sort())
     }
 
     function sourceDiscoverySummary(): var {

@@ -439,67 +439,25 @@ Scope {
             Keys.onReturnPressed: root.currentStep < root.totalSteps - 1 ? root.currentStep++ : root.finish(false)
             Keys.onEnterPressed: root.currentStep < root.totalSteps - 1 ? root.currentStep++ : root.finish(false)
 
-            // Shadow (hide in aurora)
             StyledRectangularShadow {
                 target: cardBg
-                visible: Appearance.angelEverywhere || !Appearance.auroraEverywhere
             }
 
-            // Card background - style-aware
+            // First-run chrome follows the canonical Material surface directly.
             Rectangle {
                 id: cardBg
                 anchors.fill: parent
 
-                radius: Appearance.inirEverywhere ? Appearance.inir.roundingLarge
-                      : Appearance.rounding.large
+                radius: Appearance.rounding.large
 
-                // Base color — colLayer1Base is the raw m3surfaceContainerLow without
-                // contentTransparency mixing, so the wizard stays solid even when the user
-                // has transparency enabled in Material/Cards styles.
-                color: Appearance.inirEverywhere ? Appearance.inir.colLayer1
-                     : Appearance.auroraEverywhere ? "transparent"
-                     : Appearance.colors.colLayer1Base
-
-                border.width: Appearance.inirEverywhere ? 1 : (Appearance.auroraEverywhere ? 0 : 1)
-                border.color: Appearance.inirEverywhere ? Appearance.inir.colBorder
-                            : Appearance.colors.colLayer0Border
+                // colLayer1Base is the raw Material surface without content
+                // transparency mixing, so the wizard remains legible on first run.
+                color: Appearance.colors.colLayer1Base
+                border.width: 1
+                border.color: Appearance.colors.colLayer0Border
 
                 Behavior on color { ColorAnimation { duration: Appearance.animation.elementMoveFast.duration } }
                 Behavior on border.color { ColorAnimation { duration: Appearance.animation.elementMoveFast.duration } }
-
-                // Aurora: Wallpaper blur inside card
-                Item {
-                    id: auroraBlurSource
-                    visible: Appearance.auroraEverywhere
-                    anchors.fill: parent
-
-                    Image {
-                        x: -wizardCard.x
-                        y: -wizardCard.y
-                        width: wizardPanel.width
-                        height: wizardPanel.height
-                        source: Config.options?.background?.wallpaperPath ?? ""
-                        fillMode: Image.PreserveAspectCrop
-                    }
-                }
-
-                MultiEffect {
-                    visible: Appearance.auroraEverywhere
-                    source: auroraBlurSource
-                    anchors.fill: parent
-                    blurEnabled: Appearance.effectsEnabled
-                    blurMax: 40
-                    blur: Appearance.effectsEnabled ? 1.0 : 0
-                    saturation: Appearance.effectsEnabled ? 0.1 : 0
-                }
-
-                // Aurora: Tinted overlay
-                Rectangle {
-                    anchors.fill: parent
-                    visible: Appearance.auroraEverywhere
-                    radius: parent.radius
-                    color: ColorUtils.transparentize(Appearance.colors.colLayer1Base, 0.25)
-                }
 
                 // Block clicks from propagating to background MouseArea
                 MouseArea {
@@ -669,8 +627,7 @@ Scope {
                     Layout.leftMargin: 20
                     Layout.rightMargin: 20
                     height: 1
-                    color: Appearance.inirEverywhere ? Appearance.inir.colBorderSubtle
-                         : Appearance.colors.colOutlineVariant
+                    color: Appearance.colors.colOutlineVariant
                 }
 
                 // Content area with transitions
@@ -938,12 +895,10 @@ Scope {
             Layout.maximumWidth: 540
             implicitWidth: 520
             implicitHeight: previewCol.implicitHeight + 24
-            radius: Appearance.inirEverywhere ? Appearance.inir.roundingNormal : Appearance.rounding.normal
-            color: Appearance.inirEverywhere ? Appearance.inir.colLayer2
-                 : Appearance.auroraEverywhere ? ColorUtils.transparentize(Appearance.colors.colLayer2, 0.5)
-                 : Appearance.colors.colLayer2
-            border.width: Appearance.inirEverywhere ? 1 : 0
-            border.color: Appearance.inir.colBorderSubtle
+            radius: Appearance.rounding.normal
+            color: Appearance.colors.colLayer2
+            border.width: 0
+            border.color: Appearance.colors.colLayer0Border
 
             ColumnLayout {
                 id: previewCol
@@ -1034,17 +989,14 @@ Scope {
                     readonly property bool selected: (Config.options?.settingsUi?.easyMode ?? false) === true
                     Layout.fillWidth: true
                     Layout.preferredHeight: settingsDepthRow.cardHeight
-                    radius: Appearance.inirEverywhere ? Appearance.inir.roundingNormal : Appearance.rounding.normal
+                    radius: Appearance.rounding.normal
                     color: selected
                         ? Appearance.colors.colPrimaryContainer
-                        : (Appearance.inirEverywhere ? Appearance.inir.colLayer2
-                          : Appearance.auroraEverywhere ? ColorUtils.transparentize(Appearance.colors.colLayer2, 0.5)
-                          : Appearance.colors.colLayer2)
+                        : Appearance.colors.colLayer2
                     border.width: selected ? 2 : 1
                     border.color: selected
                         ? Appearance.colors.colPrimary
-                        : (Appearance.inirEverywhere ? Appearance.inir.colBorderSubtle
-                          : Appearance.colors.colLayer0Border)
+                        : Appearance.colors.colLayer0Border
 
                     Behavior on color {
                         enabled: Appearance.animationsEnabled
@@ -1122,17 +1074,14 @@ Scope {
                     readonly property bool selected: (Config.options?.settingsUi?.easyMode ?? false) === false
                     Layout.fillWidth: true
                     Layout.preferredHeight: settingsDepthRow.cardHeight
-                    radius: Appearance.inirEverywhere ? Appearance.inir.roundingNormal : Appearance.rounding.normal
+                    radius: Appearance.rounding.normal
                     color: selected
                         ? Appearance.colors.colPrimaryContainer
-                        : (Appearance.inirEverywhere ? Appearance.inir.colLayer2
-                          : Appearance.auroraEverywhere ? ColorUtils.transparentize(Appearance.colors.colLayer2, 0.5)
-                          : Appearance.colors.colLayer2)
+                        : Appearance.colors.colLayer2
                     border.width: selected ? 2 : 1
                     border.color: selected
                         ? Appearance.colors.colPrimary
-                        : (Appearance.inirEverywhere ? Appearance.inir.colBorderSubtle
-                          : Appearance.colors.colLayer0Border)
+                        : Appearance.colors.colLayer0Border
 
                     Behavior on color {
                         enabled: Appearance.animationsEnabled
@@ -1599,7 +1548,7 @@ Scope {
                 Rectangle {
                     Layout.fillWidth: true
                     implicitHeight: profileSummaryColumn.implicitHeight + 20
-                    radius: Appearance.inirEverywhere ? Appearance.inir.roundingNormal : Appearance.rounding.small
+                    radius: Appearance.rounding.small
                     color: root.profileCustomized
                         ? Appearance.colors.colLayer2
                         : Appearance.colors.colPrimaryContainer
@@ -1783,12 +1732,10 @@ Scope {
                     Layout.preferredWidth: 340
                     Layout.alignment: Qt.AlignTop
                     implicitHeight: shortcutsCardCol.implicitHeight + 24
-                    radius: Appearance.inirEverywhere ? Appearance.inir.roundingNormal : Appearance.rounding.normal
-                    color: Appearance.inirEverywhere ? Appearance.inir.colLayer2
-                         : Appearance.auroraEverywhere ? ColorUtils.transparentize(Appearance.colors.colLayer2, 0.5)
-                         : Appearance.colors.colLayer2
-                    border.width: Appearance.inirEverywhere ? 1 : 0
-                    border.color: Appearance.inir.colBorderSubtle
+                    radius: Appearance.rounding.normal
+                    color: Appearance.colors.colLayer2
+                    border.width: 0
+                    border.color: Appearance.colors.colLayer0Border
 
                     ColumnLayout {
                         id: shortcutsCardCol
@@ -1852,12 +1799,10 @@ Scope {
                     Layout.preferredWidth: 340
                     Layout.alignment: Qt.AlignTop
                     implicitHeight: tryItCardCol.implicitHeight + 24
-                    radius: Appearance.inirEverywhere ? Appearance.inir.roundingNormal : Appearance.rounding.normal
-                    color: Appearance.inirEverywhere ? Appearance.inir.colLayer2
-                         : Appearance.auroraEverywhere ? ColorUtils.transparentize(Appearance.colors.colLayer2, 0.5)
-                         : Appearance.colors.colLayer2
-                    border.width: Appearance.inirEverywhere ? 1 : 0
-                    border.color: Appearance.inir.colBorderSubtle
+                    radius: Appearance.rounding.normal
+                    color: Appearance.colors.colLayer2
+                    border.width: 0
+                    border.color: Appearance.colors.colLayer0Border
 
                     ColumnLayout {
                         id: tryItCardCol
@@ -1973,7 +1918,7 @@ Scope {
                 Layout.preferredWidth: 694
                 Layout.maximumWidth: 700
                 Layout.preferredHeight: helpCalloutRow.implicitHeight + 18
-                buttonRadius: Appearance.inirEverywhere ? Appearance.inir.roundingNormal : Appearance.rounding.normal
+                buttonRadius: Appearance.rounding.normal
                 colBackground: ColorUtils.transparentize(Appearance.colors.colPrimaryContainer, 0.6)
                 colBackgroundHover: ColorUtils.transparentize(Appearance.colors.colPrimaryContainer, 0.4)
 

@@ -47,7 +47,13 @@ DashCard {
             Loader {
                 id: sharedPlayerLoader
                 anchors.fill: parent
-                active: root.presentationActive && root.hasPlayer
+                // Keep the shared PlayerControl resident for the lifetime of
+                // this Dashboard media card once a player exists. Recreating it
+                // at every presentation resets ColorQuantizer/artwork masks
+                // during the parent slide, which produced the cyan/blank flash.
+                // Expensive CAVA/EasyEffects activity remains presentation-gated
+                // below, so hidden residency does not keep those backends hot.
+                active: root.hasPlayer
                 sourceComponent: PlayerControl {
                     player: root.player
                     visualizerPoints: dashMediaCava.points

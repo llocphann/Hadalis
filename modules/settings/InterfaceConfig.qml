@@ -85,6 +85,81 @@ ContentPage {
             }
 
             ContentSubsection {
+                visible: root.isIiActive
+                title: Translation.tr("Bottom-left Quick Notes")
+                tooltip: Translation.tr("Reveal the shared Notepad from the physical bottom-left screen corner")
+
+                NoticeBox {
+                    Layout.fillWidth: true
+                    materialIcon: "edit_note"
+                    text: Translation.tr("Hover reveals the note without stealing keyboard focus. Click inside to type; the same tabs stay synchronized with Sidebar and Dashboard Notepad.")
+                }
+
+                SettingsSwitch {
+                    buttonIcon: "south_west"
+                    text: Translation.tr("Enable bottom-left Quick Notes")
+                    checked: Config.options?.quickNotes?.enable ?? true
+                    onCheckedChanged: Config.setNestedValue("quickNotes.enable", checked)
+                }
+
+                ConfigRow {
+                    uniform: true
+
+                    ConfigSpinBox {
+                        icon: "hourglass"
+                        text: Translation.tr("Hover delay (ms)")
+                        value: Config.options?.quickNotes?.hoverDelayMs ?? 220
+                        from: 0
+                        to: 1200
+                        stepSize: 20
+                        enabled: Config.options?.quickNotes?.enable ?? true
+                        opacity: enabled ? 1 : 0.5
+                        onValueChanged: Config.setNestedValue("quickNotes.hoverDelayMs", value)
+                    }
+
+                    ConfigSpinBox {
+                        icon: "select"
+                        text: Translation.tr("Corner hit size (px)")
+                        value: Config.options?.quickNotes?.cornerSize ?? 14
+                        from: 4
+                        to: 48
+                        stepSize: 1
+                        enabled: Config.options?.quickNotes?.enable ?? true
+                        opacity: enabled ? 1 : 0.5
+                        onValueChanged: Config.setNestedValue("quickNotes.cornerSize", value)
+                    }
+                }
+
+                ConfigRow {
+                    uniform: true
+
+                    ConfigSpinBox {
+                        icon: "width"
+                        text: Translation.tr("Popup width (px)")
+                        value: Config.options?.quickNotes?.popupWidth ?? 420
+                        from: 280
+                        to: 720
+                        stepSize: 20
+                        enabled: Config.options?.quickNotes?.enable ?? true
+                        opacity: enabled ? 1 : 0.5
+                        onValueChanged: Config.setNestedValue("quickNotes.popupWidth", value)
+                    }
+
+                    ConfigSpinBox {
+                        icon: "height"
+                        text: Translation.tr("Popup height (px)")
+                        value: Config.options?.quickNotes?.popupHeight ?? 300
+                        from: 180
+                        to: 640
+                        stepSize: 20
+                        enabled: Config.options?.quickNotes?.enable ?? true
+                        opacity: enabled ? 1 : 0.5
+                        onValueChanged: Config.setNestedValue("quickNotes.popupHeight", value)
+                    }
+                }
+            }
+
+            ContentSubsection {
                 title: Translation.tr("Background & dim")
 
                 SettingsSwitch {

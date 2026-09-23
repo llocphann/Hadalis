@@ -8,6 +8,7 @@ CORNERS = ROOT / "modules" / "screenCorners" / "ScreenCorners.qml"
 POPUP = ROOT / "modules" / "screenCorners" / "QuickNotesPopup.qml"
 SCREEN_EDGES = ROOT / "modules" / "screenCorners" / "ScreenEdges.qml"
 NOTEPAD = ROOT / "modules" / "sidebarRight" / "notepad" / "NotepadWidget.qml"
+NOTEPAD_SERVICE = ROOT / "services" / "Notepad.qml"
 CONFIG = ROOT / "modules" / "common" / "Config.qml"
 DEFAULTS = ROOT / "defaults" / "config.json"
 SETTINGS = ROOT / "modules" / "settings" / "InterfaceConfig.qml"
@@ -28,6 +29,7 @@ corners = CORNERS.read_text(encoding="utf-8")
 popup = POPUP.read_text(encoding="utf-8")
 screen_edges = SCREEN_EDGES.read_text(encoding="utf-8")
 notepad = NOTEPAD.read_text(encoding="utf-8")
+notepad_service = NOTEPAD_SERVICE.read_text(encoding="utf-8")
 config = CONFIG.read_text(encoding="utf-8")
 defaults = json.loads(DEFAULTS.read_text(encoding="utf-8"))
 settings = SETTINGS.read_text(encoding="utf-8")
@@ -93,8 +95,10 @@ for token in (
     "textArea.forceActiveFocus()",
     "function flushPendingSave(): void",
     "saveTimer.stop()",
+    'property string _loadedTabId: ""',
+    "function _activeTabId(): string",
+    "Notepad.setTabTextById(root._loadedTabId, textArea.text)",
     "if (root.focus)",
-    "Notepad.setTextValue(textArea.text)",
     "function switchToTab(index): void",
     "function addTabSafely(): void",
     "function removeTabSafely(index): void",
@@ -104,6 +108,17 @@ for token in (
     "Component.onDestruction: root.flushPendingSave()",
 ):
     require(notepad, token, "shared Notepad must expose safe Quick Notes hooks")
+
+for token in (
+    "function _allocateTabId()",
+    "function _makeTab(title, text)",
+    "function indexForTabId(tabId)",
+    "function setTabTextById(tabId, newText)",
+    "if (index < previousCurrent)",
+    "currentTab = previousCurrent - 1",
+):
+    require(notepad_service, token,
+            "shared Notepad must preserve stable tab identity across surfaces")
 
 for token in (
     "readonly property bool shouldShowQuickNotesCorner:",

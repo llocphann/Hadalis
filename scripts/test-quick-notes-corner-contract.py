@@ -103,7 +103,7 @@ if shortcut_pos < 0 or content_pos < 0 or shortcut_pos < content_pos:
 for token in (
     "property bool quickCapturePresentation: false",
     "readonly property bool zettelkastenIntegrationEnabled:",
-    "!root.compactPresentation",
+    "!root.quickCapturePresentation",
     "target: root.zettelkastenIntegrationEnabled ? Zettelkasten : null",
     "visible: !root.quickCapturePresentation",
     "function focusEditor(): void",

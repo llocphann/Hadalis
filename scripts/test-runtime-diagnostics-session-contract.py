@@ -129,6 +129,21 @@ for source, text in (
         "RuntimeDiagnosticsSession.pageCurrent",
         f"{source} must report the shared current-page session",
     )
+    require(
+        text,
+        "if (value === null || value === undefined)",
+        f"{source} must preserve unavailable metrics instead of coercing null to zero",
+    )
+    require(
+        text,
+        "function shellGpuBusy(): var",
+        f"{source} must allow unavailable GPU utilization",
+    )
+    require(
+        text,
+        "return found ? total : null",
+        f"{source} must allow unavailable GPU resident memory",
+    )
 
 # CodeWorkflowRuntime remains canonical identity/runtime evidence only. It must
 # not grow a second Diagnostics lease table, heartbeat client or sampler.

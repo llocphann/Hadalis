@@ -340,6 +340,15 @@ ContentPage {
         title: Translation.tr("System")
 
         SettingsGroup {
+            StyledText {
+                Layout.fillWidth: true
+                text: Translation.tr("CPU · RAM · Swap · GPU · Network")
+                color: Appearance.colors.colSubtext
+                font.family: Appearance.font.family.monospace
+                font.pixelSize: Appearance.font.pixelSize.small
+                elide: Text.ElideRight
+            }
+
             GridLayout {
                 Layout.fillWidth: true
                 columns: width >= 760 ? 2 : 1

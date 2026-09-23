@@ -566,6 +566,7 @@ canvas = read("modules/settings/CodeWorkflowIrCanvas.qml")
 page = read("modules/settings/CodeWorkflow.qml")
 source_editor = read("modules/settings/CodeWorkflowSourceEditor.qml")
 session = read("services/CodeWorkflowSession.qml")
+runtime = read("services/CodeWorkflowRuntime.qml")
 persistent = read("modules/common/Persistent.qml")
 
 if "import qs.modules.common.functions" not in canvas:
@@ -776,6 +777,11 @@ if canvas.count("function edgeRoute(edge, occupiedRoutes = []): var") != 1:
 
 for token in (
     "CodeWorkflowIrCanvas {",
+    "function runtimeEventTargetId(event): string",
+    "readonly property string runtimeActivityTargetId:",
+    "readonly property var runtimeActivityEvents:",
+    'text: "Lifecycle activity · "',
+    "runtimeActivityEventCount: root.runtimeActivityEvents.length",
     "root.selectedIrNode?.sourcePath",
     "root.selectedIrNode?.sourceNeedle",
     "focusSourceAnchor",
@@ -826,6 +832,11 @@ for token in (
 ):
     if token not in session:
         fail("session missing read-only edge inspection contract " + token)
+
+if "atMs: Date.now()" not in runtime:
+    fail("runtime lifecycle events must include capture timestamps")
+if "modelData.token" in page:
+    fail("runtime lifecycle Inspector must not expose internal runtime tokens")
 
 if "function selectableEdgeAt(" in canvas or "function previewableEdgeAt(" in canvas:
     fail("canvas must not restrict inspect hit-testing to mutation-eligible edges")

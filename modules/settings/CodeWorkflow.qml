@@ -1812,7 +1812,8 @@ Item {
         root.syncInitialOutput()
         Qt.callLater(root.reloadSource)
         Qt.callLater(() => root.requestAnalysis(false))
-        Qt.callLater(() => CodeWorkflowIndex.refresh(false))
+        if (root.enabled && root.visible)
+            Qt.callLater(() => CodeWorkflowIndex.refresh(false))
         root.focusSourceEditorWhenActive()
     }
 

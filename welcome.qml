@@ -260,7 +260,7 @@ Scope {
         {
             icon: "palette", title: Translation.tr("Appearance"),
             headline: Translation.tr("Make it yours"),
-            subtitle: Translation.tr("Your wallpaper generates the palette. The visual style sets the shape of every surface.")
+            subtitle: Translation.tr("Your wallpaper generates the Material palette. Tune colors and appearance, then keep arranging the shell.")
         },
         {
             icon: "dashboard", title: Translation.tr("Layout"),
@@ -1234,59 +1234,6 @@ Scope {
                     spacing: 16
                     LightDarkPreferenceButton { dark: false }
                     LightDarkPreferenceButton { dark: true }
-                }
-            }
-        }
-
-        // Global style selector
-        SettingsGroup {
-            Layout.fillWidth: true
-            Layout.alignment: Qt.AlignHCenter
-
-            ColumnLayout {
-                Layout.fillWidth: true
-                spacing: 10
-
-                RowLayout {
-                    Layout.fillWidth: true
-                    MaterialSymbol { text: "style"; iconSize: 20; color: Appearance.colors.colPrimary }
-                    StyledText { text: Translation.tr("Visual Style"); font.pixelSize: Appearance.font.pixelSize.normal }
-                    Item { Layout.fillWidth: true }
-                    StyledText {
-                        text: {
-                            const style = Config.options?.appearance?.globalStyle ?? "material"
-                            return style === "material" ? Translation.tr("Clean & Solid")
-                                 : style === "cards" ? Translation.tr("Rounded Cards")
-                                 : style === "aurora" ? Translation.tr("Glass & Blur")
-                                 : style === "angel" ? Translation.tr("Neo-Brutalism Glass")
-                                 : Translation.tr("Terminal Style")
-                        }
-                        color: Appearance.colors.colSubtext
-                        font.pixelSize: Appearance.font.pixelSize.smaller
-                    }
-                }
-
-                ConfigSelectionArray {
-                    Layout.fillWidth: true
-                    currentValue: Config.options?.appearance?.globalStyle ?? "material"
-                    onSelected: newValue => {
-                        Config.setNestedValue("appearance.globalStyle", newValue)
-                    }
-                    options: [
-                        { displayName: "Material", icon: "dashboard", value: "material" },
-                        { displayName: "Cards", icon: "crop_square", value: "cards" },
-                        { displayName: "Aurora", icon: "blur_on", value: "aurora" },
-                        { displayName: "Inir", icon: "terminal", value: "inir" }
-                    ]
-                }
-
-                StyledText {
-                    Layout.fillWidth: true
-                    text: Translation.tr("More experimental styles remain available in Settings.")
-                    color: Appearance.colors.colSubtext
-                    font.pixelSize: Appearance.font.pixelSize.smallest
-                    horizontalAlignment: Text.AlignHCenter
-                    wrapMode: Text.WordWrap
                 }
             }
         }

@@ -2,6 +2,7 @@ import qs.modules.common
 import qs.modules.common.widgets
 import qs.modules.common.functions
 import qs.modules.common.perimeter
+import qs.services
 import QtQuick
 import Quickshell
 import Quickshell.Wayland
@@ -29,7 +30,17 @@ LazyLoader {
     property bool hoverActivates: true
     property bool alternativeVisibleCondition: false
     property bool closeOnOutsideClick: false
+    // Keep the outside-click catcher below the popup when a surface needs to
+    // remain pointer-interactive after the catcher maps (for example a text
+    // editor that enters focus mode after its first click).
+    property bool outsideClickBackdropBelowPopup: false
     property bool keyboardFocus: false
+    // Allow a visible popup to participate in compositor click-to-focus without
+    // proactively stealing focus. This mirrors the working sticky-note and
+    // background editor contract: WlrKeyboardFocus.OnDemand is armed before the
+    // first click, while explicit keyboardFocus remains false until the surface
+    // actually owns the editor.
+    property bool keyboardFocusOnDemand: false
     // Some click-activated editors become keyboard owners only after the
     // pointer event that requested editing has already reached the popup.
     // OnDemand cannot retroactively focus that first click on Niri, so those
@@ -307,7 +318,8 @@ LazyLoader {
         color: Qt.rgba(0, 0, 0, 1/255)
         exclusiveZone: 0
         exclusionMode: ExclusionMode.Ignore
-        WlrLayershell.layer: WlrLayer.Overlay
+        WlrLayershell.layer: root.outsideClickBackdropBelowPopup
+            ? WlrLayer.Top : WlrLayer.Overlay
         WlrLayershell.namespace: "quickshell:popup-catcher"
         anchors { top: true; bottom: true; left: true; right: true }
         MouseArea {
@@ -325,7 +337,8 @@ LazyLoader {
         exclusionMode: ExclusionMode.Ignore
         exclusiveZone: 0
         visible: root.active
-        focusable: root.keyboardFocus && root.requestedVisible
+        focusable: root.requestedVisible
+            && (root.keyboardFocus || root.keyboardFocusOnDemand)
 
         anchors {
             top: true
@@ -336,11 +349,13 @@ LazyLoader {
 
         WlrLayershell.namespace: "quickshell:popup"
         WlrLayershell.layer: WlrLayer.Overlay
-        WlrLayershell.keyboardFocus: root.keyboardFocus && root.requestedVisible
-            ? (root.exclusiveKeyboardFocus
+        WlrLayershell.keyboardFocus: !root.requestedVisible
+            ? WlrKeyboardFocus.None
+            : root.keyboardFocus && root.exclusiveKeyboardFocus
                 ? WlrKeyboardFocus.Exclusive
-                : WlrKeyboardFocus.OnDemand)
-            : WlrKeyboardFocus.None
+                : (root.keyboardFocus || root.keyboardFocusOnDemand)
+                    ? WlrKeyboardFocus.OnDemand
+                    : WlrKeyboardFocus.None
 
         Component.onCompleted: root.presentationWindow = popupWindow
         Component.onDestruction: {
@@ -353,7 +368,12 @@ LazyLoader {
         // the shared popup so focused surfaces (notably Media) do not fall back
         // to a detached-window implementation just to own keyboard focus.
         CompositorFocusGrab {
-            active: root.keyboardFocus && root.requestedVisible
+            // Layer-shell keyboard interactivity is authoritative on Niri.
+            // CompositorFocusGrab is the Hyprland compatibility path only; if
+            // activated on Niri it can immediately clear and undo a legitimate
+            // TextArea focus transition.
+            active: CompositorService.isHyprland
+                && root.keyboardFocus && root.requestedVisible
             windows: [popupWindow]
             onCleared: root.requestClose()
         }

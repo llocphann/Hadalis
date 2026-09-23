@@ -104,8 +104,12 @@ module work, commit directly to `dev`, and never force-push or modify `stable`.
   RSS/PSS/Swap from `smaps_rollup` with status fallback, shell IO from
   `/proc/<pid>/io`, shell DRM engine/memory evidence from fdinfo, and system
   interface/network rates from `/proc/net/dev`. Material and Waffle Diagnostics
-  both consume the same transported evidence and show its provenance. This is
-  shell/system evidence only: per-component CPU/RAM/Swap/GPU/Network remains
+  both consume the same transported evidence and show its provenance. The
+  active lease also keeps a bounded 60-sample in-memory history, cleared when
+  sampling stops; Material Diagnostics uses it for btop-style CPU/RAM panels
+  while both renderers retain exact detail rows, shell disk-I/O rates and
+  standalone runtime-bridge errors. This is shell/system evidence only:
+  per-component CPU/RAM/Swap/GPU/Network remains
   unavailable until a reviewed attribution method exists, so Diagnostics must
   still not be described as full btop-equivalent component attribution.
 - Future-target discovery has started at the existing ownership boundaries.

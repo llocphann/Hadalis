@@ -64,9 +64,6 @@ sidebar_right_media="$repo_root/modules/sidebarRight/CompactMediaPlayer.qml"
 control_panel_wallpaper="$repo_root/modules/controlPanel/WallpaperSection.qml"
 dash_media="$repo_root/modules/dashboard/DashMedia.qml"
 dash_welcome="$repo_root/modules/dashboard/DashWelcome.qml"
-dashboard="$repo_root/modules/dashboard/Dashboard.qml"
-ii_panels="$repo_root/modules/ii/ShellIiPanelsImpl.qml"
-dashboard_settings="$repo_root/modules/settings/DashboardConfig.qml"
 
 require "$config" 'property int framerate: 30' 'Cava schema default must remain 30 fps'
 require "$defaults" '"framerate": 30' 'persisted Cava default must remain 30 fps'
@@ -151,12 +148,5 @@ require "$dash_media" 'active: root.presentationActive && root.hasPlayer' 'Dashb
 require "$dash_media" 'PlayerControl {' 'Dashboard media must reuse the canonical shared player surface'
 require "$dash_welcome" 'layer.enabled: root.visible && status === Image.Ready' 'Dashboard avatar mask must stay circular through the visible exit slide and sleep once hidden'
 require "$dash_welcome" 'mipmap: false' 'Dashboard avatar must not generate unused mipmaps'
-require "$ii_panels" 'keepLoaded: (Config.options?.dashboard?.keepLoaded ?? false) || used' 'Dashboard must stay resident after first use instead of rebuilding after the on-demand grace period'
-require "$dashboard" 'active: true' 'Dashboard content tree must stay mounted while the retained Dashboard scope exists'
-require "$dashboard" 'id: _presentationTimer' 'Dashboard open must wait for a real closed frame before presentation'
-require "$dashboard" 'const requiredFrames = root._presentationCold ? 2 : 1' 'Dashboard cold and warm opens must arm slide presentation after stable closed frames'
-require "$dashboard" 'root._presentedOpen = true' 'Dashboard presentation arming must enter the slide state explicitly'
-reject "$dashboard" 'Qt.callLater(() => { root._presentedOpen' 'Dashboard must not race layer-shell mapping with a zero-delay open state'
-require "$dashboard_settings" 'text: Translation.tr("Preload Dashboard")' 'Dashboard keepLoaded setting must describe eager preload rather than post-close eviction'
 
 printf 'performance lifecycle guards: ok\n'

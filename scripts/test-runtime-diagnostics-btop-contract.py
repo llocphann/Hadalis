@@ -74,6 +74,7 @@ def main() -> None:
         'root.historyValues("shellWriteBytesPerSec")',
         "root.formatLoadAverage(",
         "root.formatUptime(",
+        "root.sampleIntervalLabel()",
         "function shellGpuBusy(): var {",
         "function shellGpuMemoryKiB(): var {",
         "return found ? total : null",

@@ -11,6 +11,41 @@ import Quickshell.Hyprland
 Scope {
     id: root
     property bool _presentedOpen: false
+    property bool _contentPresented: GlobalStates.dashboardOpen
+    property bool _renderUpdatesNeeded: GlobalStates.dashboardOpen
+
+    function beginPresentation(): void {
+        _hideContentTimer.stop()
+        _renderSuspendTimer.stop()
+        root._renderUpdatesNeeded = true
+        root._contentPresented = true
+        root._presentedOpen = false
+
+        if (!Appearance.animationsEnabled) {
+            root._presentedOpen = true
+            return
+        }
+
+        // The Dashboard window itself stays mapped after first use. Paint one
+        // real closed frame at dashboardOffset before entering the open state,
+        // so the only visible entrance is the immutable slide transition.
+        _presentationTimer.restart()
+    }
+
+    function beginDismissal(): void {
+        _presentationTimer.stop()
+        root._presentedOpen = false
+
+        if (!Appearance.animationsEnabled) {
+            root._contentPresented = false
+            root._renderUpdatesNeeded = false
+            return
+        }
+
+        _hideContentTimer.restart()
+        _renderSuspendTimer.restart()
+    }
+
     readonly property real screenWidth: panelRoot.screen?.width ?? 1920
     readonly property real screenHeight: panelRoot.screen?.height ?? 1080
     readonly property real safePadding: Math.max(
@@ -33,29 +68,48 @@ Scope {
         id: panelRoot
 
         Component.onCompleted: {
-            visible = GlobalStates.dashboardOpen
             if (GlobalStates.dashboardOpen)
-                Qt.callLater(() => { root._presentedOpen = GlobalStates.dashboardOpen })
+                root.beginPresentation()
         }
 
         Connections {
             target: GlobalStates
             function onDashboardOpenChanged() {
-                if (GlobalStates.dashboardOpen) {
-                    _closeTimer.stop()
-                    panelRoot.visible = true
-                    Qt.callLater(() => { root._presentedOpen = GlobalStates.dashboardOpen })
-                } else {
-                    root._presentedOpen = false
-                    _closeTimer.restart()
-                }
+                if (GlobalStates.dashboardOpen)
+                    root.beginPresentation()
+                else
+                    root.beginDismissal()
             }
         }
 
         Timer {
-            id: _closeTimer
+            id: _presentationTimer
+            interval: 16
+            repeat: false
+            onTriggered: {
+                if (GlobalStates.dashboardOpen)
+                    root._presentedOpen = true
+            }
+        }
+
+        Timer {
+            id: _hideContentTimer
             interval: SurfaceMotion.duration + 16
-            onTriggered: panelRoot.visible = false
+            repeat: false
+            onTriggered: {
+                if (!GlobalStates.dashboardOpen)
+                    root._contentPresented = false
+            }
+        }
+
+        Timer {
+            id: _renderSuspendTimer
+            interval: SurfaceMotion.duration + 16
+            repeat: false
+            onTriggered: {
+                if (!GlobalStates.dashboardOpen)
+                    root._renderUpdatesNeeded = false
+            }
         }
 
         function hide() {
@@ -69,6 +123,11 @@ Scope {
         WlrLayershell.layer: WlrLayer.Overlay
         WlrLayershell.keyboardFocus: GlobalStates.dashboardOpen ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
         color: "transparent"
+        // Keep the native layer-shell surface mapped after first use. Mapping
+        // and unmapping a fullscreen Overlay lets the compositor substitute its
+        // own map effect, which visually masked the 24px Dashboard slide.
+        visible: true
+        updatesEnabled: root._renderUpdatesNeeded
 
         anchors {
             top: true
@@ -80,15 +139,36 @@ Scope {
         CompositorFocusGrab {
             id: grab
             windows: [ panelRoot ]
-            active: CompositorService.isHyprland && panelRoot.visible
+            active: CompositorService.isHyprland
+                && GlobalStates.dashboardOpen && panelRoot.visible
             onCleared: () => {
                 if (!active) panelRoot.hide()
             }
         }
 
+        Item {
+            id: dashboardInputArea
+            anchors.fill: parent
+        }
+
+        Item {
+            id: emptyDashboardInputArea
+            width: 0
+            height: 0
+        }
+
+        Region {
+            id: dashboardInputRegion
+            item: GlobalStates.dashboardOpen
+                ? dashboardInputArea : emptyDashboardInputArea
+        }
+
+        mask: dashboardInputRegion
+
         // Backdrop click to close
         MouseArea {
             anchors.fill: parent
+            enabled: GlobalStates.dashboardOpen
             onClicked: mouse => {
                 const localPos = mapToItem(contentLoader, mouse.x, mouse.y)
                 if (localPos.x < 0 || localPos.x > contentLoader.width
@@ -100,7 +180,11 @@ Scope {
 
         Loader {
             id: contentLoader
-            active: panelRoot.visible || (Config.options?.dashboard?.keepLoaded ?? false)
+            // The outer iiDashboard loader is retained after first use. Keep
+            // the widget tree mounted and hide only its paint after the exit
+            // slide so long-idle reopens reuse the same live component state.
+            active: true
+            visible: root._contentPresented
 
             // Shell desaturation effect
             layer.enabled: Appearance.shouldDesaturate("overlays") && contentLoader.visible

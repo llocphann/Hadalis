@@ -22,6 +22,9 @@ Item {
     }
 
     property bool showInternals: false
+    // The Settings host may keep this canvas instantiated while another page
+    // is current. Keep graph/session listeners dormant until Workflow owns input.
+    property bool workflowActive: true
     readonly property var graph:
         CodeWorkflowIr.unifiedGraphFor(root.showInternals)
     readonly property var groups: root.graph?.groups ?? []
@@ -30,6 +33,8 @@ Item {
         && (CodeWorkflowRuntime.hasLocalDeclarations
             || CodeWorkflowRuntime.remoteSnapshot !== null)
     function fitInitialGraph(): void {
+        if (!root.workflowActive)
+            return
         // Local Loader declarations register incrementally. Debounce their
         // arrivals instead of fitting the first partial inventory. An IPC
         // error is not a complete inventory; wait for a real snapshot.
@@ -81,7 +86,8 @@ Item {
         root.marqueeBaseNodeIds = []
         root.clearMarqueeReasoningSnapshot()
         root.clearReasoningSelection()
-        Qt.callLater(root.rebuildEdgeRouteCache)
+        if (root.workflowActive)
+            Qt.callLater(root.rebuildEdgeRouteCache)
         root.fitInitialGraph()
     }
     readonly property var nodes: root.graph?.nodes ?? []
@@ -1651,7 +1657,8 @@ Item {
         id: dragFrameTimer
         interval: 16
         repeat: true
-        running: root.activeNodeDragHandler !== null
+        running: root.workflowActive
+            && root.activeNodeDragHandler !== null
         onTriggered: {
             root.autoPanDraggedNode()
             if (root.dragRoutesDirty)
@@ -1713,6 +1720,7 @@ Item {
 
     Connections {
         target: CodeWorkflowSession
+        enabled: root.workflowActive
 
         function onViewportInitializedChanged(): void {
             root.fitInitialGraph()
@@ -1790,16 +1798,39 @@ Item {
         onActiveTranslationChanged: updateViewport()
     }
 
-    Component.onCompleted: {
+    function activateCanvas(): void {
+        if (!root.workflowActive)
+            return
         Qt.callLater(root.rebuildEdgeRouteCache)
         Qt.callLater(root.consumeRuntimeLifecycleEvent)
         root.fitInitialGraph()
     }
 
+    function deactivateCanvas(): void {
+        initialFitTimer.stop()
+        runtimePulseTimer.stop()
+        viewportCommitTimer.stop()
+        root.activeNodeDragId = ""
+        root.activeNodeDragHandler = null
+        root.dragRoutesDirty = false
+        root.dragEdgeRouteCache = ({})
+        root.runtimePulseTargetId = ""
+        root.runtimePulseKind = ""
+    }
+
+    Component.onCompleted: root.activateCanvas()
+
+    onWorkflowActiveChanged: {
+        if (root.workflowActive)
+            root.activateCanvas()
+        else
+            root.deactivateCanvas()
+    }
+
     onVisibleChanged: {
-        if (visible)
+        if (visible && root.workflowActive)
             Qt.callLater(root.consumeRuntimeLifecycleEvent)
-        else {
+        else if (!visible) {
             runtimePulseTimer.stop()
             root.runtimePulseTargetId = ""
             root.runtimePulseKind = ""
@@ -1808,6 +1839,7 @@ Item {
 
     Connections {
         target: CodeWorkflowRuntime
+        enabled: root.workflowActive
         function onRevisionChanged(): void {
             root.consumeRuntimeLifecycleEvent()
         }

@@ -343,6 +343,8 @@ Item {
             sourcePreviewVisible: CodeWorkflowSession.sourcePreviewVisible,
             analyzerStatus: CodeWorkflowAnalyzer.status,
             analyzerError: CodeWorkflowAnalyzer.error,
+            workspaceIndexStatus: CodeWorkflowIndex.status,
+            workspaceBoundaryCount: CodeWorkflowIndex.boundaryCount,
             sourcePath: root.sourcePath,
             runtimeState: String(root.record?.state ?? "missing"),
             selectedLive: root.selectedLive,
@@ -1516,8 +1518,11 @@ Item {
             root.focusSourceEditorWhenActive()
     }
     onVisibleChanged: {
-        if (root.visible)
+        if (root.visible) {
             root.focusSourceEditorWhenActive()
+            if (CodeWorkflowIndex.status === "idle")
+                CodeWorkflowIndex.refresh(false)
+        }
     }
 
     function focusSourceAnchor(): void {
@@ -1652,6 +1657,7 @@ Item {
             CodeWorkflowSession.setOutputName(outputs[0])
         Qt.callLater(root.reloadSource)
         Qt.callLater(() => root.requestAnalysis(false))
+        Qt.callLater(() => CodeWorkflowIndex.refresh(false))
         root.focusSourceEditorWhenActive()
     }
 
@@ -1755,6 +1761,7 @@ Item {
                     root.stashSourceEditorBuffer()
                     sourceReader.reload()
                     root.requestAnalysis(true)
+                    CodeWorkflowIndex.refresh(false)
                 } else {
                     root.sourceEditorStatus = "Saved " + savedPath
                 }

@@ -193,6 +193,38 @@ Item {
         root.reasoningEdgeIds = edgeIds
     }
 
+    function toggleManualNodeSelection(node): void {
+        const nodeId = String(node?.id ?? "")
+        if (nodeId.length === 0 || !root.nodeById(nodeId))
+            return
+
+        let selected = root.reasoningMode === "manual"
+            ? root.reasoningNodeIds.slice() : []
+        const primaryId = String(CodeWorkflowSession.selectedNodeId ?? "")
+        if (selected.length === 0 && primaryId.length > 0
+                && root.nodeById(primaryId))
+            selected.push(primaryId)
+
+        const existingIndex = selected.indexOf(nodeId)
+        if (existingIndex >= 0 && selected.length > 1) {
+            selected.splice(existingIndex, 1)
+            if (primaryId === nodeId) {
+                const fallbackId = selected[selected.length - 1]
+                const fallbackNode = root.nodes.find(candidate =>
+                    String(candidate?.id ?? "") === fallbackId) ?? null
+                if (fallbackNode)
+                    CodeWorkflowSession.selectUnifiedNode(fallbackNode)
+            }
+            root.setManualReasoningSelection(selected)
+            return
+        }
+
+        if (existingIndex < 0)
+            selected.push(nodeId)
+        CodeWorkflowSession.selectUnifiedNode(node)
+        root.setManualReasoningSelection(selected)
+    }
+
     function marqueeSelectionIds(): var {
         const left = Math.min(root.marqueeStartX, root.marqueeCurrentX)
         const right = Math.max(root.marqueeStartX, root.marqueeCurrentX)
@@ -2186,13 +2218,19 @@ Item {
                 }
 
                 TapHandler {
+                    id: nodeTap
                     onTapped: (eventPoint, button) => {
                         if (!root.itemPointInsideViewport(
                                 node,
                                 eventPoint.position.x,
                                 eventPoint.position.y))
                             return
-                        CodeWorkflowSession.selectUnifiedNode(node.modelData)
+                        const additive = (nodeTap.point.modifiers
+                                & (Qt.ControlModifier | Qt.ShiftModifier)) !== 0
+                        if (additive)
+                            root.toggleManualNodeSelection(node.modelData)
+                        else
+                            CodeWorkflowSession.selectUnifiedNode(node.modelData)
                         node.forceActiveFocus()
                     }
                 }
@@ -2205,7 +2243,12 @@ Item {
                         return
                     }
 
-                    CodeWorkflowSession.selectUnifiedNode(node.modelData)
+                    const additive = (event.modifiers
+                            & (Qt.ControlModifier | Qt.ShiftModifier)) !== 0
+                    if (additive)
+                        root.toggleManualNodeSelection(node.modelData)
+                    else
+                        CodeWorkflowSession.selectUnifiedNode(node.modelData)
                     event.accepted = true
                 }
 

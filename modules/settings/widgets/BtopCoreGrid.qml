@@ -13,8 +13,10 @@ Item {
 
     GridLayout {
         id: grid
-        anchors.fill: parent
-        columns: root.columns
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.top: parent.top
+        columns: Math.max(1, root.columns)
         columnSpacing: 8
         rowSpacing: 6
 
@@ -23,40 +25,51 @@ Item {
 
             Rectangle {
                 Layout.fillWidth: true
-                Layout.preferredHeight: 34
+                Layout.preferredHeight: 46
                 radius: Appearance.rounding.small
                 color: Appearance.colors.colLayer1
                 border.color: Appearance.colors.colOutline
 
                 ColumnLayout {
                     anchors.fill: parent
-                    anchors.margins: 5
-                    spacing: 1
+                    anchors.margins: 6
+                    spacing: 2
 
-                    StyledText {
-                        text: "C" + index
-                        font.pixelSize: Appearance.font.pixelSize.smallest
-                        color: Appearance.colors.colSubtext
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: 4
+
+                        StyledText {
+                            text: "C" + index
+                            font.pixelSize: Appearance.font.pixelSize.smallest
+                            color: Appearance.colors.colSubtext
+                        }
+
+                        Item { Layout.fillWidth: true }
+
+                        StyledText {
+                            text: Number.isFinite(Number(modelData))
+                                ? Math.round(Number(modelData)) + "%" : "—"
+                            font.pixelSize: Appearance.font.pixelSize.small
+                            color: Appearance.colors.colOnLayer1
+                        }
                     }
 
                     Rectangle {
                         Layout.fillWidth: true
-                        height: 5
+                        height: 6
                         radius: 3
                         color: Appearance.colors.colLayer2
 
                         Rectangle {
-                            width: parent.width * Math.max(0, Math.min(1, Number(modelData) / 100))
+                            width: Number.isFinite(Number(modelData))
+                                ? parent.width * Math.max(
+                                    0, Math.min(1, Number(modelData) / 100))
+                                : 0
                             height: parent.height
                             radius: parent.radius
                             color: Appearance.colors.colPrimary
                         }
-                    }
-
-                    StyledText {
-                        text: Math.round(Number(modelData)) + "%"
-                        font.pixelSize: Appearance.font.pixelSize.small
-                        color: Appearance.colors.colOnLayer1
                     }
                 }
             }

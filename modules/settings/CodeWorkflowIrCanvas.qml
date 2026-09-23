@@ -243,6 +243,11 @@ Item {
     // Full smart routing is committed only when layout state changes. During a
     // pointer drag we keep this cache stable and recompute only attached edges.
     property var edgeRouteCache: ({})
+    // Pointer hover/tap happens far more often than structural rerouting.
+    // Flatten the committed routes and node AABBs once so hit testing does not
+    // resolve every edge/node through model helpers on each pointer sample.
+    property var edgeHitRoutesCache: []
+    property var nodeHitBoundsCache: []
     property var dragEdgeRouteCache: ({})
     // Graph reasoning selection is presentation-only. It never changes the
     // primary Inspector selection or mutation authority.
@@ -1214,7 +1219,27 @@ Item {
             return
         if (root.activeNodeDragId.length > 0)
             return
-        root.edgeRouteCache = root.buildEdgeRouteCache()
+        const cache = root.buildEdgeRouteCache()
+        const hitRoutes = []
+        for (const edge of root.edges) {
+            const route = cache[String(edge?.id ?? "")] ?? null
+            if (route)
+                hitRoutes.push(route)
+        }
+        const nodeBounds = []
+        for (const node of root.nodes) {
+            const x = root.nodeX(node)
+            const y = root.nodeY(node)
+            nodeBounds.push({
+                minX: x,
+                minY: y,
+                maxX: x + root.nodeWidth,
+                maxY: y + root.nodeHeight
+            })
+        }
+        root.edgeRouteCache = cache
+        root.edgeHitRoutesCache = hitRoutes
+        root.nodeHitBoundsCache = nodeBounds
         root.refreshGeometryCache()
     }
 
@@ -1702,12 +1727,12 @@ Item {
     }
 
     function nodeAtWorld(px: real, py: real): bool {
-        return root.nodes.some(node => {
-            const x = root.nodeX(node)
-            const y = root.nodeY(node)
-            return px >= x && px <= x + root.nodeWidth
-                && py >= y && py <= y + root.nodeHeight
-        })
+        for (const bounds of root.nodeHitBoundsCache) {
+            if (px >= bounds.minX && px <= bounds.maxX
+                    && py >= bounds.minY && py <= bounds.maxY)
+                return true
+        }
+        return false
     }
 
     function nodeAtScreen(screenX: real, screenY: real): bool {
@@ -1808,7 +1833,8 @@ Item {
     }
 
     function edgeAt(screenX: real, screenY: real): string {
-        if (!root.viewportContains(screenX, screenY))
+        if (!root.viewportContains(screenX, screenY)
+                || root.activeNodeDragId.length > 0)
             return ""
         const zoom = Math.max(0.0001, CodeWorkflowSession.zoom)
         const worldX = (screenX - CodeWorkflowSession.panX) / zoom
@@ -1819,12 +1845,10 @@ Item {
         const tolerance = 8 / zoom
         let bestId = ""
         let bestDistance = tolerance
-        for (const edge of root.edges) {
-            const route = root.routeForEdge(edge)
-            if (!route)
-                continue
-            const bounds = root.routeBounds(route)
-            if (worldX < bounds.minX - tolerance
+        for (const route of root.edgeHitRoutesCache) {
+            const bounds = route?.bounds ?? root.routeBounds(route)
+            if (!bounds
+                    || worldX < bounds.minX - tolerance
                     || worldX > bounds.maxX + tolerance
                     || worldY < bounds.minY - tolerance
                     || worldY > bounds.maxY + tolerance)
@@ -1832,7 +1856,7 @@ Item {
             const distance = root.routeDistance(route, worldX, worldY)
             if (distance <= bestDistance) {
                 bestDistance = distance
-                bestId = String(edge.id ?? "")
+                bestId = String(route?.edgeId ?? "")
             }
         }
         return bestId

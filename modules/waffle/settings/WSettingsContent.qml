@@ -133,6 +133,7 @@ Item {
     
     // Complete search index with all individual options + targetLabel for spotlight
     property var searchIndex: [
+        { pageIndex: 19, pageName: "Diagnostics", section: "Runtime Diagnostics", label: "Runtime diagnostics", targetLabel: "Runtime diagnostics", keywords: ["diagnostics", "btop", "runtime", "cpu", "ram", "memory", "swap", "gpu", "network", "debug", "workflow", "resource", "telemetry"] },
         { pageIndex: 18, pageName: "Battery", section: "Power management", label: "Battery and TLP settings", targetLabel: "Configuration categories", keywords: ["tlp", "power", "battery", "cpu", "processor", "disk", "pcie", "usb", "radio", "energy", "profile"] },
         { pageIndex: 18, pageName: "Battery", section: "Battery Care", label: "Charge limit", targetLabel: "Hardware-aware charge care", keywords: ["tlp", "battery", "charge", "limit", "threshold", "thinkpad", "conservation"] },
         { pageIndex: 17, pageName: "Shell Layout", section: "Live shell layout", label: "Edit live", targetLabel: "Edit live", keywords: ["layout", "move", "position", "taskbar", "output", "edit", "live"] },

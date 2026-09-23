@@ -31,6 +31,7 @@ SCROLL_TO_BOTTOM_BUTTON = ROOT / "modules" / "sidebarLeft" / "ScrollToBottomButt
 PAGE_PLACEHOLDER = ROOT / "modules" / "common" / "widgets" / "PagePlaceholder.qml"
 SELECTION_DIALOG = ROOT / "modules" / "common" / "widgets" / "SelectionDialog.qml"
 TOAST_NOTIFICATION = ROOT / "modules" / "common" / "widgets" / "ToastNotification.qml"
+WINDOW_DIALOG = ROOT / "modules" / "common" / "widgets" / "WindowDialog.qml"
 NOTIFICATION_ITEM = ROOT / "modules" / "common" / "widgets" / "NotificationItem.qml"
 NOTIFICATION_GROUP = ROOT / "modules" / "common" / "widgets" / "NotificationGroup.qml"
 NOTIFICATION_ACTION_BUTTON = ROOT / "modules" / "common" / "widgets" / "NotificationActionButton.qml"
@@ -159,6 +160,7 @@ def main() -> None:
     page_placeholder = PAGE_PLACEHOLDER.read_text(encoding="utf-8")
     selection_dialog = SELECTION_DIALOG.read_text(encoding="utf-8")
     toast_notification = TOAST_NOTIFICATION.read_text(encoding="utf-8")
+    window_dialog = WINDOW_DIALOG.read_text(encoding="utf-8")
     notification_item = NOTIFICATION_ITEM.read_text(encoding="utf-8")
     notification_group = NOTIFICATION_GROUP.read_text(encoding="utf-8")
     notification_action_button = NOTIFICATION_ACTION_BUTTON.read_text(encoding="utf-8")
@@ -306,6 +308,7 @@ def main() -> None:
         "PagePlaceholder.qml": page_placeholder,
         "SelectionDialog.qml": selection_dialog,
         "ToastNotification.qml": toast_notification,
+        "WindowDialog.qml": window_dialog,
         "NotificationItem.qml": notification_item,
         "NotificationGroup.qml": notification_group,
         "NotificationActionButton.qml": notification_action_button,
@@ -427,6 +430,16 @@ def main() -> None:
     ):
         require(toast_notification, token, "ToastNotification.qml")
     forbid(toast_notification, "CookieFace {", "ToastNotification.qml")
+
+    for token in (
+        "radius: Appearance.rounding.large",
+        "fallbackColor: Appearance.colors.colSurfaceContainerHigh",
+        'border.color: "transparent"',
+        "readonly property real contentPad: Math.max(radius, Appearance.sizes.spacingLarge)",
+    ):
+        require(window_dialog, token, "WindowDialog.qml")
+    for token in ("RegaliaPlate {", "ZzzPanelBackdrop {"):
+        forbid(window_dialog, token, "WindowDialog.qml")
 
     for token in (
         "radius: Appearance.rounding.small",

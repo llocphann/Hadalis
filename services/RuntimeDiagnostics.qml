@@ -27,6 +27,7 @@ Singleton {
         unmatchedBoundaryCount: 0,
         matchedTargetIds: []
     })
+    property string reconciliationCatalogFingerprint: ""
 
     function _clientId(raw): string {
         const id = String(raw ?? "").trim()
@@ -120,15 +121,37 @@ Singleton {
         })
     }
 
-    function _reconcileSourceBoundaries(): void {
+    function _runtimeCatalogFingerprint(): string {
+        const pairs = []
+        for (const descriptor of CodeWorkflowRuntime.activeCatalog) {
+            const targetId = String(descriptor?.targetId ?? "")
+            const sourcePath = CodeWorkflowRuntime.relativeSourcePath(
+                descriptor?.sourcePath ?? "")
+            if (targetId.length > 0 && sourcePath.length > 0)
+                pairs.push([targetId, sourcePath])
+        }
+        pairs.sort((left, right) =>
+            left[0].localeCompare(right[0])
+                || left[1].localeCompare(right[1]))
+        return JSON.stringify(pairs)
+    }
+
+    function _reconcileSourceBoundaries(force: bool): void {
         // Preserve the last qualified reconciliation while the shared index
         // refreshes; replacing it with zeroes would make Diagnostics flicker.
         if (CodeWorkflowIndex.status === "indexing")
             return
         if (CodeWorkflowIndex.status !== "ready") {
+            root.reconciliationCatalogFingerprint = ""
             root._setSourceBoundaryReconciliation(0, 0, [])
             return
         }
+
+        const catalogFingerprint = root._runtimeCatalogFingerprint()
+        if (!force
+                && catalogFingerprint === root.reconciliationCatalogFingerprint)
+            return
+        root.reconciliationCatalogFingerprint = catalogFingerprint
 
         const targetsBySource = ({})
         for (const descriptor of CodeWorkflowRuntime.activeCatalog) {
@@ -299,7 +322,7 @@ Singleton {
             // Diagnostics consumes the shared one-shot index but must not
             // restart or queue a second scan when Workflow already has one.
             if (CodeWorkflowIndex.status === "ready")
-                root._reconcileSourceBoundaries()
+                root._reconcileSourceBoundaries(true)
             else if (CodeWorkflowIndex.status !== "indexing")
                 CodeWorkflowIndex.refresh(false)
             return
@@ -319,13 +342,13 @@ Singleton {
         function onStatusChanged(): void {
             if (!root.sessionActive)
                 return
-            root._reconcileSourceBoundaries()
+            root._reconcileSourceBoundaries(true)
             root.revision += 1
         }
         function onResultChanged(): void {
             if (!root.sessionActive)
                 return
-            root._reconcileSourceBoundaries()
+            root._reconcileSourceBoundaries(true)
             root.revision += 1
         }
     }
@@ -335,7 +358,7 @@ Singleton {
         function onRevisionChanged(): void {
             if (root.sessionActive
                     && CodeWorkflowIndex.status === "ready")
-                root._reconcileSourceBoundaries()
+                root._reconcileSourceBoundaries(false)
         }
     }
 

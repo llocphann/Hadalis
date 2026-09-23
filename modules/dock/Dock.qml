@@ -605,7 +605,6 @@ Scope {
                                 DockApps {
                                     id: dockApps
                                     enabled: !root.isVertical
-                                    buttonPadding: dockRow.padding
                                     vertical: false
                                     dockPosition: root.position
                                     parentWindow: dockRoot
@@ -644,7 +643,6 @@ Scope {
                                 DockApps {
                                     id: dockAppsVertical
                                     enabled: root.isVertical
-                                    buttonPadding: dockColumn.padding
                                     vertical: true
                                     dockPosition: root.position
                                     parentWindow: dockRoot

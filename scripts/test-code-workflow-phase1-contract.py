@@ -594,8 +594,26 @@ for token in (
     "readonly property var runtimeActivityEvents:",
     'text: "Lifecycle activity · "',
     "runtimeActivityEventCount: root.runtimeActivityEvents.length",
+    "runtimePulseTargetId: canvas.runtimePulseTargetId",
+    "runtimePulseKind: canvas.runtimePulseKind",
 ):
     require(page, token, "runtime lifecycle activity UI missing " + token)
+for token in (
+    'property string runtimePulseTargetId: ""',
+    'property string runtimePulseKind: ""',
+    'property string runtimePulseSignature: ""',
+    "function consumeRuntimeLifecycleEvent(): void",
+    "function nodeMatchesRuntimeTarget(node, targetId: string): bool",
+    "id: runtimePulseTimer",
+    "target: CodeWorkflowRuntime",
+    "readonly property bool runtimePulseActive:",
+    "id: runtimeLifecyclePulse",
+    "runtimeLifecyclePulse.visible",
+    "Appearance.animationsEnabled",
+):
+    require(canvas, token, "runtime lifecycle node pulse missing " + token)
+if "runtimePulseEdge" in canvas:
+    fail("lifecycle activity must not masquerade as binding/edge execution")
 require(runtime, "atMs: Date.now()",
         "runtime lifecycle evidence must carry a capture timestamp")
 if "modelData.token" in page:

@@ -14,7 +14,7 @@ ColumnLayout {
 
     readonly property bool leftFit: Config.options?.sidebar?.collapseWidgetsTab ?? false
     // The system sidebar is content-sized independently from notification history.
-    // Keep the retired collapseEmptyNotifications key out of presentation state.
+    // Keep the retired notification-fit compatibility key out of presentation state.
     readonly property bool rightFit: true
     readonly property real leftRatio: leftFit ? SidebarGeometry.leftFitPreferredRatio : 1
     readonly property real rightRatio: rightFit ? SidebarGeometry.rightFitExpandedPreferredRatio : 1

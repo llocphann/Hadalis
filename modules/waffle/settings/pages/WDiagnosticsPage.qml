@@ -22,6 +22,23 @@ WSettingsPage {
     readonly property var shellEvidence: root.evidence?.shell ?? null
     readonly property var networkEvidence: root.evidence?.network ?? null
     readonly property var discoveryEvidence: root.evidence?.discovery ?? null
+    readonly property string samplerError:
+        String(root.evidence?.sampler?.error ?? "")
+    readonly property bool sessionHasError:
+        RuntimeDiagnosticsSession.remoteError.length > 0
+        || root.samplerError.length > 0
+    readonly property bool samplerRunning:
+        root.evidence?.sampler?.running === true
+
+    function sessionStateLabel(): string {
+        if (!RuntimeDiagnosticsSession.pageCurrent)
+            return Translation.tr("Diagnostics session inactive")
+        if (root.sessionHasError)
+            return Translation.tr("Diagnostics sampling error")
+        if (!root.samplerRunning || root.systemEvidence === null)
+            return Translation.tr("Diagnostics sampler starting")
+        return Translation.tr("Diagnostics session active")
+    }
 
     function formatPercent(value): string {
         if (value === null || value === undefined)
@@ -91,9 +108,7 @@ WSettingsPage {
         icon: "info"
 
         WSettingsRow {
-            label: RuntimeDiagnosticsSession.pageCurrent
-                ? Translation.tr("Diagnostics session active")
-                : Translation.tr("Diagnostics session inactive")
+            label: root.sessionStateLabel()
             description: Translation.tr("Sampling is leased only while this page is current.")
             icon: "info"
         }
@@ -106,9 +121,9 @@ WSettingsPage {
         }
 
         WSettingsRow {
-            visible: String(root.evidence?.sampler?.error ?? "").length > 0
+            visible: root.samplerError.length > 0
             label: Translation.tr("Sampler error")
-            description: String(root.evidence?.sampler?.error ?? "")
+            description: root.samplerError
             icon: "info"
         }
 

@@ -4,8 +4,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 registry = (ROOT / "modules/settings/SettingsPageRegistry.qml").read_text(encoding="utf-8")
 data = (ROOT / "modules/settings/SettingsPageRegistryData.qml").read_text(encoding="utf-8")
-bar = (ROOT / "modules/settings/BarConfigHugOnly.qml").read_text(encoding="utf-8")
-quick = (ROOT / "modules/settings/QuickConfigHugOnly.qml").read_text(encoding="utf-8")
+bar = (ROOT / "modules/settings/BarConfig.qml").read_text(encoding="utf-8")
+quick = (ROOT / "modules/settings/QuickConfig.qml").read_text(encoding="utf-8")
 system = (ROOT / "modules/settings/GeneralConfigCore.qml").read_text(encoding="utf-8")
 
 def require(text: str, needle: str, message: str) -> None:
@@ -16,16 +16,20 @@ def forbid(text: str, needle: str, message: str) -> None:
     if needle in text:
         raise SystemExit(f"FAIL: P0 settings contract: {message}: {needle}")
 
-# Public Settings routes must use the supported Hug-only facades, while legacy
-# implementation files remain loadable only behind those compatibility facades.
-require(registry, 'component: "modules/settings/QuickConfigHugOnly.qml"',
-        "Quick Settings no longer routes through the Hug-only facade")
-require(registry, 'component: "modules/settings/BarConfigHugOnly.qml"',
-        "Bar Settings no longer routes through the Hug-only facade")
+# Quick and Bar are canonical public pages. Retired UI choices are normalized
+# at the persistence boundary instead of being instantiated and hidden later.
+require(data, 'component: "modules/settings/QuickConfig.qml"',
+        "Quick Settings lost its canonical page route")
+require(data, 'component: "modules/settings/BarConfig.qml"',
+        "Bar Settings lost its canonical page route")
+forbid(registry, "QuickConfigHugOnly",
+       "Quick Settings restored the retired compatibility facade")
+forbid(registry, "BarConfigHugOnly",
+       "Bar Settings restored the retired compatibility facade")
 require(registry, 'Config.setNestedValue("bar.cornerStyle", 0)',
         "legacy Bar cornerStyle is no longer normalized to Hug")
 
-# The public Bar facade owns the Screen Edge controls required by the v1.0 gate.
+# Canonical Bar Settings owns the Screen Edge controls required by the v1.0 gate.
 for needle in [
     'title: Translation.tr("Screen Edge")',
     'text: Translation.tr("Screen edge width (px)")',
@@ -38,7 +42,7 @@ for needle in [
     require(bar, needle, "public Bar Settings lost a Screen Edge control")
 
 # Search must be useful before lazy page materialization and must not advertise
-# retired Float/Rectangle corner-style controls that the public facade hides.
+# retired Float/Rectangle corner-style controls that no longer exist in BarConfig.
 for needle in [
     'section: Translation.tr("Screen Edge")',
     'label: Translation.tr("Screen edge width (px)")',
@@ -52,18 +56,26 @@ forbid(data, 'description: Translation.tr("Bar corner style: hug, float or recta
        "static search still describes retired Float/Rectangle Bar surfaces")
 
 # Quick has one job: shortcuts. Bar position and backdrop are owned by
-# their dedicated pages; the public facade no longer hides stale controls.
-require(quick, 'QuickConfig {',
-        "Quick Settings lost its lightweight public facade")
+# their dedicated pages; no post-load compatibility wrapper is allowed.
+require(quick, 'settingsPageName: Translation.tr("Quick")',
+        "Quick Settings lost its canonical page identity")
 forbid(quick, 'Translation.tr("Bar style")',
        "Quick Settings still carries a retired style workaround")
-forbid(quick, 'Timer {',
-       "Quick Settings should not traverse controls after load")
-quick_impl = (ROOT / "modules/settings/QuickConfig.qml").read_text(encoding="utf-8")
-forbid(quick_impl, 'settingsTaskSection: "screen"',
+forbid(quick, 'settingsTaskSection: "screen"',
        "Quick reintroduced duplicate Bar/backdrop settings")
-forbid(quick_impl, 'Config.setNestedValue("bar.vertical"',
+forbid(quick, 'Config.setNestedValue("bar.vertical"',
        "Quick still writes the canonical Bar position")
+
+# Bar must expose only active Hug controls directly; compatibility fields are
+# normalized by SettingsPageRegistry and never materialized as hidden UI.
+for retired in [
+    'Translation.tr("Corner style")',
+    'Translation.tr("Float shadow")',
+    'Translation.tr("Show background")',
+    'Config.options?.bar?.blurBackground',
+    'Config.setNestedValue("bar.blurBackground',
+]:
+    forbid(bar, retired, "Bar Settings still instantiates a retired control")
 
 # Fan Control must remain reachable from the real System page and static search.
 require(system, '{ displayName: Translation.tr("Fan Control"), icon: "mode_fan", value: "fan" }',

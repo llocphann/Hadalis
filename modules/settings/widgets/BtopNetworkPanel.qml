@@ -24,6 +24,8 @@ Item {
     function peak(samples): real {
         let result = 1
         for (const sample of samples ?? []) {
+            if (sample === null || sample === undefined)
+                continue
             const value = Number(sample)
             if (Number.isFinite(value))
                 result = Math.max(result, value)

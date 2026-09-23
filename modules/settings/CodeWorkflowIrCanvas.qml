@@ -213,6 +213,15 @@ Item {
     // though the world transform already gives immediate visual zoom. Sample
     // the compensation at a bounded cadence and settle to the final zoom.
     property real wireMetricZoom: 1
+    // Route visibility used to bind every wire and label directly to the live
+    // session pan/zoom values. A touchpad gesture can emit hundreds of viewport
+    // updates per second, forcing every route delegate through JS AABB culling
+    // even though the world transform itself is already GPU-cheap. Sample a
+    // conservative culling viewport instead; the extra margin covers the short
+    // sampling delay while keeping offscreen geometry suppressed at rest.
+    property real cullPanX: CodeWorkflowSession.panX
+    property real cullPanY: CodeWorkflowSession.panY
+    property real cullZoom: CodeWorkflowSession.zoom
     property real edgeLabelHoverX: 0
     property real edgeLabelHoverY: 0
     property var activeNodeDragHandler: null
@@ -1651,6 +1660,20 @@ Item {
         wireMetricTimer.start()
     }
 
+    function scheduleViewportCullRefresh(): void {
+        if (!root.workflowActive || viewportCullTimer.running)
+            return
+        viewportCullTimer.start()
+    }
+
+    function refreshViewportCull(): void {
+        root.cullPanX = CodeWorkflowSession.panX
+        root.cullPanY = CodeWorkflowSession.panY
+        root.cullZoom = Math.max(
+            CodeWorkflowSession.minimumZoom,
+            CodeWorkflowSession.zoom)
+    }
+
     Timer {
         id: wireMetricTimer
         interval: 48
@@ -1660,6 +1683,13 @@ Item {
                 CodeWorkflowSession.minimumZoom,
                 CodeWorkflowSession.zoom)
         }
+    }
+
+    Timer {
+        id: viewportCullTimer
+        interval: 48
+        repeat: false
+        onTriggered: root.refreshViewportCull()
     }
 
     function nodeAtWorld(px: real, py: real): bool {
@@ -1753,13 +1783,15 @@ Item {
             return false
         const bounds = root.routeBounds(route)
         const zoom = Math.max(
-            CodeWorkflowSession.minimumZoom,
-            CodeWorkflowSession.zoom)
-        const padding = Math.max(0, Number(margin))
-        const left = CodeWorkflowSession.panX + bounds.minX * zoom
-        const top = CodeWorkflowSession.panY + bounds.minY * zoom
-        const right = CodeWorkflowSession.panX + bounds.maxX * zoom
-        const bottom = CodeWorkflowSession.panY + bounds.maxY * zoom
+            CodeWorkflowSession.minimumZoom, root.cullZoom)
+        // Keep a little more overscan than the caller requests because culling
+        // follows the viewport at a bounded cadence rather than every input
+        // sample. This prevents pop-in during fast pan/zoom gestures.
+        const padding = Math.max(96, Number(margin))
+        const left = root.cullPanX + bounds.minX * zoom
+        const top = root.cullPanY + bounds.minY * zoom
+        const right = root.cullPanX + bounds.maxX * zoom
+        const bottom = root.cullPanY + bounds.maxY * zoom
         return right >= -padding
             && bottom >= -padding
             && left <= root.width + padding
@@ -1949,8 +1981,17 @@ Item {
             root.fitInitialGraph()
         }
 
+        function onPanXChanged(): void {
+            root.scheduleViewportCullRefresh()
+        }
+
+        function onPanYChanged(): void {
+            root.scheduleViewportCullRefresh()
+        }
+
         function onZoomChanged(): void {
             root.scheduleWireMetricRefresh()
+            root.scheduleViewportCullRefresh()
         }
 
         function onSubflowTargetIdChanged(): void {
@@ -2036,6 +2077,7 @@ Item {
         root.wireMetricZoom = Math.max(
             CodeWorkflowSession.minimumZoom,
             CodeWorkflowSession.zoom)
+        root.refreshViewportCull()
         graphRefreshTimer.restart()
         Qt.callLater(root.consumeRuntimeLifecycleEvent)
         root.fitInitialGraph()
@@ -2046,6 +2088,7 @@ Item {
         edgeRouteRebuildTimer.stop()
         edgeHoverTimer.stop()
         wireMetricTimer.stop()
+        viewportCullTimer.stop()
         initialFitTimer.stop()
         runtimePulseTimer.stop()
         viewportCommitTimer.stop()

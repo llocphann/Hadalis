@@ -15,17 +15,10 @@ import qs.modules.waffle.bar.tray
 Rectangle {
     id: root
 
-    property bool nativeBlurAllowed: true
     readonly property var panelScreen: root.QsWindow?.window?.screen ?? null
     readonly property real panelScale: Looks.barScale(panelScreen)
-    readonly property bool glassActive: Looks.glassActive
-    readonly property string nativeBlurTopology: Appearance.blurTopology.rectangle
-    readonly property bool nativeBlurActive: nativeBlurAllowed && glassActive
-        && Appearance.useCompositorBlur("waffle", root.nativeBlurTopology)
     readonly property bool barAtBottom: Config.options?.waffles?.bar?.bottom ?? false
-    readonly property real _screenW: panelScreen?.width ?? Quickshell.screens[0]?.width ?? 1920
-    readonly property real _screenH: panelScreen?.height ?? Quickshell.screens[0]?.height ?? 1080
-    color: root.glassActive ? "transparent" : Looks.colors.bg0
+    color: Looks.colors.bg0
     clip: true
     implicitHeight: Looks.scaledBar(48, panelScreen)
 
@@ -73,18 +66,6 @@ Rectangle {
         ]
     }
 
-    // Glass background for aurora/angel styles
-    GlassBackground {
-        anchors.fill: parent
-        visible: root.glassActive && !root.nativeBlurActive && !Looks.gameModeMinimal
-        radius: 0
-        screenX: 0
-        screenY: root.barAtBottom ? (root._screenH - root.height) : 0
-        screenWidth: root._screenW
-        screenHeight: root._screenH
-        auroraTransparency: Appearance.aurora.overlayTransparentize
-    }
-
     Rectangle {
         id: border
         anchors {
@@ -93,9 +74,7 @@ Rectangle {
             top: root.barAtBottom ? parent.top : undefined
             bottom: root.barAtBottom ? undefined : parent.bottom
         }
-        color: root.glassActive
-            ? (Appearance.angelEverywhere ? Appearance.angel.colPanelBorder : Appearance.aurora.colTooltipBorder)
-            : Looks.colors.bg0Border
+        color: Looks.colors.bg0Border
         implicitHeight: 1
     }
 

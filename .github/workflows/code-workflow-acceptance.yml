@@ -80,21 +80,23 @@ jobs:
         run: nix develop .#workflow-acceptance --command bash -lc 'command -v quickshell; command -v sway; test -f "$HADALIS_WORKFLOW_GRAMMAR"; test -f "$HADALIS_TREE_SITTER_LIBRARY"'
 
       # Unlike source-string contracts, Qt parses the actual QML/JavaScript
-      # grammar here. Keep a separate failure step for parse regressions.
-      - name: Parse changed Code Workflow and shared tooltip QML
+      # grammar here. Parse the complete Code Workflow surface so a newly added
+      # singleton or editor component cannot bypass this boot-integrity gate.
+      - name: Parse Code Workflow and shared interaction QML
         run: |
           nix develop .#workflow-acceptance --command bash -lc '
             set -euo pipefail
             command -v qmlformat
-            for qml in \
-              modules/settings/CodeWorkflow.qml \
-              modules/settings/CodeWorkflowIrCanvas.qml \
-              modules/settings/CodeWorkflowSourceEditor.qml \
-              modules/settings/SettingsPageHost.qml \
-              modules/common/widgets/PopupToolTip.qml \
-              modules/waffle/altSwitcher/WaffleAltSwitcherTile.qml \
-              services/CodeWorkflowIr.qml \
-              services/CodeWorkflowSession.qml; do
+            shopt -s nullglob
+            qml_files=(
+              modules/settings/CodeWorkflow*.qml
+              services/CodeWorkflow*.qml
+              modules/settings/SettingsPageHost.qml
+              modules/common/widgets/PopupToolTip.qml
+              modules/waffle/altSwitcher/WaffleAltSwitcherTile.qml
+            )
+            test "${#qml_files[@]}" -gt 0
+            for qml in "${qml_files[@]}"; do
               echo "Parsing $qml"
               qmlformat --ignore-settings "$qml" >/dev/null
             done

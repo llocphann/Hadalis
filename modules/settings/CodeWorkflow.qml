@@ -22,9 +22,9 @@ Item {
     property bool workflowHydrated: false
     property bool workflowDestroying: false
     readonly property bool workflowOperational:
-        (root.workflowActive && root.workflowHydrated
-            && !root.workflowDestroying)
-        || root.captureHarnessEnabled
+        !root.workflowDestroying
+        && ((root.workflowActive && root.workflowHydrated)
+            || root.captureHarnessEnabled)
     property string sourceText: ""
     property string sourceDraft: ""
     property string sourceEditorPath: ""

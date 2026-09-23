@@ -134,6 +134,21 @@ for source, text in (
     )
     require(
         text,
+        "function sessionStateLabel(): string",
+        f"{source} must distinguish sampler state from page visibility",
+    )
+    require(
+        text,
+        "root.sessionHasError",
+        f"{source} must surface diagnostics sampling failures",
+    )
+    require(
+        text,
+        "root.samplerRunning",
+        f"{source} must report actual sampler startup state",
+    )
+    require(
+        text,
         "if (value === null || value === undefined)",
         f"{source} must preserve unavailable metrics instead of coercing null to zero",
     )

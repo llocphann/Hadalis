@@ -112,6 +112,7 @@ Item {
         if (focus)
             root.focusEditor()
     }
+    Component.onDestruction: root.flushPendingSave()
 
     // Guards programmatic text loads (tab switch / external reload) so they
     // don't trigger the save timer and clobber the freshly-loaded tab.

@@ -87,6 +87,19 @@ ContentPage {
         return minutes + "m"
     }
 
+    function formatBytes(value): string {
+        const bytes = Number(value)
+        if (!Number.isFinite(bytes) || bytes < 0)
+            return "—"
+        if (bytes >= 1024 * 1024 * 1024)
+            return (bytes / (1024 * 1024 * 1024)).toFixed(2) + " GiB"
+        if (bytes >= 1024 * 1024)
+            return (bytes / (1024 * 1024)).toFixed(1) + " MiB"
+        if (bytes >= 1024)
+            return (bytes / 1024).toFixed(1) + " KiB"
+        return bytes.toFixed(0) + " B"
+    }
+
     function formatRate(value): string {
         const bytes = Number(value)
         if (!Number.isFinite(bytes) || bytes < 0)
@@ -329,6 +342,10 @@ ContentPage {
                             ?.txBytesPerSec)
                     rxSamples: root.historyValues("rxBytesPerSec")
                     txSamples: root.historyValues("txBytesPerSec")
+                    rxTotal: root.formatBytes(
+                        root.networkEvidence?.aggregateNonLoopback?.rxBytes)
+                    txTotal: root.formatBytes(
+                        root.networkEvidence?.aggregateNonLoopback?.txBytes)
                     provenance: root.provenance(root.networkEvidence)
                 }
 
@@ -345,6 +362,10 @@ ContentPage {
                         root.shellEvidence?.io?.rates?.writeBytesPerSec)
                     rxSamples: root.historyValues("shellReadBytesPerSec")
                     txSamples: root.historyValues("shellWriteBytesPerSec")
+                    rxTotal: root.formatBytes(
+                        root.shellEvidence?.io?.counters?.read_bytes)
+                    txTotal: root.formatBytes(
+                        root.shellEvidence?.io?.counters?.write_bytes)
                     provenance: root.provenance(root.shellEvidence?.io)
                 }
             }

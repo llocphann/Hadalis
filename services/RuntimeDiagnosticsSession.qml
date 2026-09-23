@@ -26,14 +26,17 @@ Singleton {
     property string leaseError: ""
     property string remoteError: ""
     property string remoteEvidenceFloorKey: ""
-    readonly property string remoteEvidenceKey: root._remoteEvidenceKey()
+    readonly property string remoteEvidenceKey:
+        root.pageCurrent && !root.localShell
+            ? root._remoteEvidenceKey() : ""
     readonly property bool remoteEvidenceFresh:
         root.pageCurrent
         && !root.localShell
         && CodeWorkflowRuntime.remoteSnapshot?.diagnostics !== undefined
         && root.remoteEvidenceKey !== root.remoteEvidenceFloorKey
     readonly property string evidenceError:
-        root.localShell ? "" : CodeWorkflowRuntime.remoteError
+        !root.pageCurrent || root.localShell
+            ? "" : CodeWorkflowRuntime.remoteError
     readonly property var evidence: !root.pageCurrent
         ? null
         : root.localShell

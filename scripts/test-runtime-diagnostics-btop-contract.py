@@ -16,6 +16,11 @@ def require(text: str, token: str, source: str) -> None:
         raise AssertionError(f"{source} is missing diagnostics token: {token!r}")
 
 
+def forbid(text: str, token: str, source: str) -> None:
+    if token in text:
+        raise AssertionError(f"{source} contains forbidden diagnostics token: {token!r}")
+
+
 def main() -> None:
     page = PAGE.read_text(encoding="utf-8")
     session = SESSION.read_text(encoding="utf-8")
@@ -75,9 +80,13 @@ def main() -> None:
         '"coresPercent": core_cpu_percent',
         '"children": child_rows',
         "def sample_children(",
+        'task_dir = Path("/proc") / str(pid) / "task"',
+        'return comm or f"pid-{pid}"',
         're.fullmatch(r"cpu(?:\d+)?"',
     ):
         require(sampler, token, "runtime-diagnostics-sampler.py")
+
+    forbid(sampler, '/ "cmdline"', "runtime-diagnostics-sampler.py")
 
     code = compile(sampler, str(SAMPLER), "exec")
     namespace = {"__name__": "runtime_diagnostics_contract"}

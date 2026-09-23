@@ -10,16 +10,20 @@ ContentPage {
     settingsPageIndex: 31
     settingsPageName: Translation.tr("Diagnostics")
 
-    readonly property int targetCount:
-        CodeWorkflowRuntime.activeCatalog.length
-    readonly property int collisionCount:
-        CodeWorkflowRuntime.identityCollisions.length
+    readonly property bool diagnosticsActive:
+        RuntimeDiagnosticsSession.pageCurrent
+    readonly property var runtimeCatalog: root.diagnosticsActive
+        ? CodeWorkflowRuntime.activeCatalog : []
+    readonly property int targetCount: root.runtimeCatalog.length
+    readonly property int collisionCount: root.diagnosticsActive
+        ? CodeWorkflowRuntime.identityCollisions.length : 0
     readonly property var evidence: RuntimeDiagnosticsSession.evidence
     readonly property var systemEvidence: root.evidence?.system ?? null
     readonly property var shellEvidence: root.evidence?.shell ?? null
     readonly property var networkEvidence: root.evidence?.network ?? null
     readonly property var discoveryEvidence: root.evidence?.discovery ?? null
-    readonly property var runtimeSnapshot: CodeWorkflowRuntime.snapshot()
+    readonly property var runtimeSnapshot: root.diagnosticsActive
+        ? CodeWorkflowRuntime.snapshot() : ({ records: [], events: [] })
     readonly property var runtimeRecords:
         root.runtimeSnapshot?.records ?? []
     readonly property var cpuCores:
@@ -587,7 +591,7 @@ ContentPage {
         SettingsGroup {
             BtopTargetTable {
                 Layout.fillWidth: true
-                targets: CodeWorkflowRuntime.activeCatalog
+                targets: root.runtimeCatalog
                 records: root.runtimeRecords
                 maxRows: 18
                 selectedTargetId: CodeWorkflowSession.selectedTargetId
@@ -598,8 +602,10 @@ ContentPage {
 
             BtopTargetInspector {
                 Layout.fillWidth: true
-                descriptor: CodeWorkflowRuntime.descriptor(
-                    CodeWorkflowSession.selectedTargetId)
+                descriptor: root.diagnosticsActive
+                    ? CodeWorkflowRuntime.descriptor(
+                        CodeWorkflowSession.selectedTargetId)
+                    : null
                 records: root.runtimeRecords
                 events: root.runtimeSnapshot?.events ?? []
                 selectedInstanceId:

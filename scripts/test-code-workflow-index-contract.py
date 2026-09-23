@@ -109,6 +109,10 @@ for token in (
     "inspectShowInternals: root.inspectShowInternals",
     "String(baseline.selectedSemanticSourcePath ?? \"\")",
     "root.inspectFilter = String(baseline.inspectFilter ?? \"\")",
+    "readonly property string workspaceIndexStatusText:",
+    '" previous boundaries"',
+    '" diagnostics"',
+    "text: root.workspaceIndexStatusText",
 ):
     require(page, token, "workspace boundary navigation missing " + token)
 

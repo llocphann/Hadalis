@@ -16,6 +16,7 @@ Item {
         && Number.isFinite(root.numericValue)
     property string detail: ""
     property var samples: []
+    property color accentColor: Appearance.colors.colPrimary
 
     implicitHeight: 126
 
@@ -53,7 +54,7 @@ Item {
                 StyledText {
                     text: root.valueAvailable
                         ? Math.round(root.numericValue) + "%" : "—"
-                    color: Appearance.colors.colPrimary
+                    color: root.accentColor
                     font.weight: Font.DemiBold
                 }
             }
@@ -71,7 +72,7 @@ Item {
                         : 0
                     height: parent.height
                     radius: parent.radius
-                    color: Appearance.colors.colPrimary
+                    color: root.accentColor
                 }
             }
 
@@ -88,7 +89,7 @@ Item {
                 Layout.preferredHeight: 28
                 samples: root.samples
                 maxValue: 100
-                lineColor: Appearance.colors.colPrimary
+                lineColor: root.accentColor
             }
         }
     }

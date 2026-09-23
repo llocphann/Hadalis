@@ -238,6 +238,8 @@ for token in (
     "onTestWorkflowHydratedChanged:",
     "hydratedWhileHostDisabled: modal.testHydratedWhileHostDisabled",
     '"Workflow hydration waits for Settings Loader ownership"',
+    r"CodeWorkflow(?:SourceEditor|IrCanvas)?\\.qml.*",
+    r"(?:TypeError|ReferenceError)",
     'and state["modalEditor"]["workflowHydrated"]',
     'and state["modalEditor"]["workflowOperational"]',
     'and value["modalEditor"]["workflowHydrated"]',

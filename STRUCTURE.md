@@ -97,7 +97,7 @@ The live tree intentionally has no Orbit, Mascot, Workspace Strip, `barM3`, Pill
 - `Config.options.path.to.key` — runtime reads.
 - `Config.setNestedValue("path.to.key", value)` — runtime writes.
 
-Retired Bar keys such as `appearanceStyle`, `bar.m3`, `bar.pill`, and Bar-specific Islands state are not part of the live schema. Shared `m3*` Material color tokens, generic pill-shaped UI, and shared island skins remain valid where consumed by unrelated features.
+Retired Bar keys such as `appearanceStyle`, `bar.m3`, `bar.pill`, and Bar-specific Islands state are not part of the live schema. Shared `m3*` Material color tokens, generic pill-shaped UI, and shared island skins remain valid where consumed by unrelated features. The active Ricelin island implementation is `modules/common/widgets/RicelinSurface.qml`; there is no `modules/pill` compatibility module.
 
 ### Classic Bar
 - `modules/bar/` — Classic Bar runtime.

@@ -63,6 +63,30 @@ ContentPage {
         return kib.toFixed(0) + " KiB"
     }
 
+    function formatLoadAverage(values): string {
+        if (!Array.isArray(values) || values.length === 0)
+            return Translation.tr("Load") + " —"
+        return Translation.tr("Load") + " "
+            + values.slice(0, 3)
+                .map(value => Number(value).toFixed(2))
+                .join("  ")
+    }
+
+    function formatUptime(value): string {
+        const seconds = Number(value)
+        if (!Number.isFinite(seconds) || seconds < 0)
+            return "—"
+        const totalMinutes = Math.floor(seconds / 60)
+        const days = Math.floor(totalMinutes / 1440)
+        const hours = Math.floor((totalMinutes % 1440) / 60)
+        const minutes = totalMinutes % 60
+        if (days > 0)
+            return days + "d " + hours + "h"
+        if (hours > 0)
+            return hours + "h " + minutes + "m"
+        return minutes + "m"
+    }
+
     function formatRate(value): string {
         const bytes = Number(value)
         if (!Number.isFinite(bytes) || bytes < 0)
@@ -176,11 +200,26 @@ ContentPage {
                         }
                     }
 
-                    StyledText {
-                        text: String((root.evidence?.history ?? []).length)
-                            + " " + Translation.tr("samples")
-                        color: Appearance.colors.colPrimary
-                        font.weight: Font.DemiBold
+                    ColumnLayout {
+                        spacing: 0
+
+                        StyledText {
+                            Layout.alignment: Qt.AlignRight
+                            text: Translation.tr("Uptime") + " "
+                                + root.formatUptime(
+                                    root.systemEvidence?.uptimeSeconds)
+                            color: Appearance.colors.colOnLayer1
+                            font.pixelSize: Appearance.font.pixelSize.small
+                        }
+
+                        StyledText {
+                            Layout.alignment: Qt.AlignRight
+                            text: String((root.evidence?.history ?? []).length)
+                                + " " + Translation.tr("samples")
+                            color: Appearance.colors.colPrimary
+                            font.pixelSize: Appearance.font.pixelSize.smallest
+                            font.weight: Font.DemiBold
+                        }
                     }
                 }
             }
@@ -222,10 +261,14 @@ ContentPage {
                 BtopMetricPanel {
                     Layout.fillWidth: true
                     title: Translation.tr("CPU")
-                    subtitle: Translation.tr("System load")
+                    subtitle: root.formatLoadAverage(
+                        root.systemEvidence?.cpu?.loadAverage)
                     value: root.systemEvidence?.cpu?.percent ?? null
                     detail: Translation.tr("Hadalis") + " · "
                         + root.formatPercent(root.shellEvidence?.cpu?.percent)
+                        + "   ·   " + Translation.tr("uptime") + " "
+                        + root.formatUptime(
+                            root.systemEvidence?.uptimeSeconds)
                     samples: root.historyValues("systemCpuPercent")
                     provenance: root.provenance(root.systemEvidence?.cpu)
                 }

@@ -119,8 +119,10 @@ module work, commit directly to `dev`, and never force-push or modify `stable`.
   refreshes it after a successful guarded Source Editor save. Search or **Show
   internals** exposes these entries under **Workspace boundaries**; selecting one
   switches Source Preview to that indexed file and re-resolves its semantic anchor
-  without changing the graph/runtime mutation target. Indexed boundaries remain
-  explicitly `editable: false` / `liveRuntimeEvidence: false`; any reviewed
+  without changing the graph/runtime mutation target. The Targets pane has an
+  explicit cache-aware workspace refresh; a refreshed index clears an indexed
+  selection only when its exact source/anchor evidence disappeared. Indexed
+  boundaries remain explicitly `editable: false` / `liveRuntimeEvidence: false`; any reviewed
   promotion from workspace evidence into live instrumentation or mutation authority
   is a later gate. Runtime Diagnostics now reuses this same Workflow-owned index:
   while its lease is active it refreshes the cached index, reconciles boundary

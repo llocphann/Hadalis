@@ -529,6 +529,9 @@ for token in (
     "canvas.clearReasoningSelection()",
     '"Disable graph minimap"',
     '"Enable graph minimap"',
+    '"Pin target"',
+    '"Unpin target"',
+    'CodeWorkflowSession.togglePinnedTarget(',
     "CodeWorkflowSession.minimapEnabled",
     '"Minimap enabled · hidden until the graph exceeds the viewport"',
     "minimapVisible: canvas.minimapVisible",
@@ -596,6 +599,10 @@ for token in (
     "runtimeActivityEventCount: root.runtimeActivityEvents.length",
     "runtimePulseTargetId: canvas.runtimePulseTargetId",
     "runtimePulseKind: canvas.runtimePulseKind",
+    "pinnedTargetId: CodeWorkflowSession.pinnedTargetId",
+    "recentTargetIds: CodeWorkflowSession.recentTargetIds",
+    'pinnedTargetId: CodeWorkflowSession.pinnedTargetId',
+    'recentTargetIds: CodeWorkflowSession.recentTargetIds.slice()',
 ):
     require(page, token, "runtime lifecycle activity UI missing " + token)
 for token in (
@@ -631,6 +638,16 @@ if "loader.item" in runtime_declaration:
     fail("runtime declaration lifecycle diagnostics must not dereference loader.item")
 if "modelData.token" in page:
     fail("runtime lifecycle Inspector must not expose internal runtime tokens")
+
+for token in (
+    'const pinnedRuntimeItems = []',
+    'const recentRuntimeItems = []',
+    '=== CodeWorkflowSession.pinnedTargetId',
+    'CodeWorkflowSession.recentTargetIds.includes(',
+    '"pinned", "Pinned", "push_pin"',
+    '"recent", "Recent", "history"',
+):
+    require(page, token, "pinned/recent Targets grouping missing " + token)
 
 require(page, 'buttonText: "Reset graph layout"',
         "moved graph layout must expose an explicit reset affordance")
@@ -770,6 +787,8 @@ for token in (
     'property bool codeWorkflowInspectorPaneCollapsed: false',
     'property real codeWorkflowSourcePreviewHeight: 190',
     'property bool codeWorkflowMinimap: true',
+    'property string codeWorkflowPinnedTargetId: ""',
+    'property list<string> codeWorkflowRecentTargetIds: []',
     'property string codeWorkflowGraphNodeLayoutOffsets: "{}"',
 ):
     require(persistent, token,
@@ -782,6 +801,14 @@ for token in (
     'property bool inspectorPaneCollapsed: false',
     'property real sourcePreviewHeight: 190',
     'property bool minimapEnabled: true',
+    'property string pinnedTargetId: ""',
+    'property var recentTargetIds: []',
+    'readonly property int maximumRecentTargets: 8',
+    'function _sanitizeRecentTargetIds(raw): var',
+    'function rememberTarget(targetId: string): void',
+    'function togglePinnedTarget(targetId: string): bool',
+    'state.codeWorkflowPinnedTargetId = root.pinnedTargetId',
+    'state.codeWorkflowRecentTargetIds = root.recentTargetIds',
     'state.codeWorkflowMinimap = root.minimapEnabled',
     'onMinimapEnabledChanged: root.persist()',
     'state.codeWorkflowTargetsPaneWidth = root.targetsPaneWidth',

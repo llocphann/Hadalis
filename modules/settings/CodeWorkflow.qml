@@ -319,6 +319,8 @@ Item {
             reasoningMode: canvas.reasoningMode,
             reasoningNodeIds: canvas.reasoningNodeIds,
             reasoningEdgeIds: canvas.reasoningEdgeIds,
+            minimapEnabled: CodeWorkflowSession.minimapEnabled,
+            minimapVisible: canvas.minimapVisible,
             panX: CodeWorkflowSession.panX,
             panY: CodeWorkflowSession.panY,
             zoom: CodeWorkflowSession.zoom
@@ -348,6 +350,7 @@ Item {
             targetsPaneCollapsed: CodeWorkflowSession.targetsPaneCollapsed,
             inspectorPaneCollapsed: CodeWorkflowSession.inspectorPaneCollapsed,
             sourcePreviewHeight: CodeWorkflowSession.sourcePreviewHeight,
+            minimapEnabled: CodeWorkflowSession.minimapEnabled,
             graphNodeLayoutOffsets: JSON.parse(JSON.stringify(
                 CodeWorkflowSession.graphNodeLayoutOffsets ?? ({})))
         }
@@ -395,6 +398,8 @@ Item {
             baseline.inspectorPaneCollapsed === true
         CodeWorkflowSession.sourcePreviewHeight =
             Number(baseline.sourcePreviewHeight ?? 190)
+        CodeWorkflowSession.minimapEnabled =
+            baseline.minimapEnabled !== false
         CodeWorkflowSession.graphNodeLayoutOffsets = JSON.parse(
             JSON.stringify(baseline.graphNodeLayoutOffsets ?? ({})))
         CodeWorkflowSession.graphLayoutRevision += 1
@@ -1971,6 +1976,20 @@ Item {
                     mainText: ""
                     onClicked: canvas.fitGraph()
                     StyledToolTip { text: "Fit graph to viewport" }
+                }
+                RippleButtonWithIcon {
+                    materialIcon: "map"
+                    buttonText: CodeWorkflowSession.minimapEnabled
+                        ? "Hide graph minimap" : "Show graph minimap"
+                    mainText: ""
+                    toggled: CodeWorkflowSession.minimapEnabled
+                    onClicked: CodeWorkflowSession.minimapEnabled =
+                        !CodeWorkflowSession.minimapEnabled
+                    StyledToolTip {
+                        text: CodeWorkflowSession.minimapEnabled
+                            ? "Hide graph minimap"
+                            : "Show minimap when the graph exceeds the viewport"
+                    }
                 }
                 RippleButtonWithIcon {
                     materialIcon: "restart_alt"

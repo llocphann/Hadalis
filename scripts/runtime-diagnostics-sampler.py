@@ -177,10 +177,10 @@ def read_process_status(pid: int) -> dict[str, int]:
 
 
 def read_process_command(pid: int) -> str:
-    proc = Path("/proc") / str(pid)
-    comm = _read_text(proc / "comm").strip()
-    cmdline = _read_text(proc / "cmdline").replace("\x00", " ").strip()
-    return cmdline or comm or f"pid-{pid}"
+    # Keep diagnostics safe for display/IPC: command lines can contain secrets.
+    # /proc/<pid>/comm is enough to identify the executable without copying argv.
+    comm = _read_text(Path("/proc") / str(pid) / "comm").strip()
+    return comm or f"pid-{pid}"
 
 
 def read_descendants(pid: int) -> list[tuple[int, int]]:

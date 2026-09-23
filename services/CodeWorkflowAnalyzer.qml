@@ -46,8 +46,16 @@ Singleton {
                 root.sourcePath === nextPath
                 && root.sourceNeedle === nextNeedle
                 && root.semanticAnchor === nextSemanticAnchor
-            if (sameActiveRequest && (!force || root._activeForce))
+            if (sameActiveRequest && (!force || root._activeForce)) {
+                // The newest request has returned to the work already in
+                // flight. Drop an older queued target so it cannot overwrite
+                // the result immediately after this active analysis finishes.
+                root._pendingPath = ""
+                root._pendingNeedle = ""
+                root._pendingSemanticAnchor = ""
+                root._pendingForce = false
                 return
+            }
 
             const samePendingRequest =
                 root._pendingPath === nextPath

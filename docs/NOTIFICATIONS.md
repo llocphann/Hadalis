@@ -84,7 +84,7 @@ If a notification includes action buttons (like "Reply" or "Open"), they appear 
 
 Transient popup toasts and notification history are separate surfaces. Popups use the configured `notifications.position`; history lives in the bottom-right Notification Center and is no longer rendered in either normal or compact Right Sidebar.
 
-The center has grouped history, search, mark-read, dismiss-all and DND controls. Settings › Interface › Notifications configures enablement, hover dwell/close grace, corner hit size, popup dimensions, read/toast side effects and fullscreen access. Settings › Monitor Visibility has a dedicated Notification Center output list, independent from transient popup outputs.
+The center has grouped history, search, mark-read, dismiss-all and DND controls. Settings › Interface › Notifications configures enablement, hover dwell/close grace, corner hit size, popup dimensions, mark-read-on-open behavior and fullscreen access. Because the current backend represents unread state with the transient popup flag, mark-read-on-open also retracts those transient copies. Settings › Monitor Visibility has a dedicated Notification Center output list, independent from transient popup outputs.
 
 ### Waffle
 

@@ -85,6 +85,7 @@ Item {
                     spacing: 1
 
                     StyledText {
+                        textFormat: Text.PlainText
                         Layout.fillWidth: true
                         text: root.descriptor
                             ? String(root.descriptor?.label
@@ -96,6 +97,7 @@ Item {
                     }
 
                     StyledText {
+                        textFormat: Text.PlainText
                         Layout.fillWidth: true
                         text: root.descriptor ? root.targetId : "—"
                         color: Appearance.colors.colSubtext
@@ -105,6 +107,7 @@ Item {
                 }
 
                 StyledText {
+                        textFormat: Text.PlainText
                     visible: root.descriptor !== null
                     text: String(root.residentRecords.length)
                         + " resident"
@@ -126,12 +129,14 @@ Item {
                     spacing: 1
 
                     StyledText {
+                        textFormat: Text.PlainText
                         text: "KIND"
                         color: Appearance.colors.colSubtext
                         font.pixelSize: Appearance.font.pixelSize.smallest
                     }
 
                     StyledText {
+                        textFormat: Text.PlainText
                         Layout.fillWidth: true
                         text: String(root.descriptor?.kind ?? "—")
                         color: Appearance.colors.colOnLayer1
@@ -145,12 +150,14 @@ Item {
                     spacing: 1
 
                     StyledText {
+                        textFormat: Text.PlainText
                         text: "FAMILY"
                         color: Appearance.colors.colSubtext
                         font.pixelSize: Appearance.font.pixelSize.smallest
                     }
 
                     StyledText {
+                        textFormat: Text.PlainText
                         Layout.fillWidth: true
                         text: String(root.descriptor?.family ?? "—")
                         color: Appearance.colors.colOnLayer1
@@ -164,12 +171,14 @@ Item {
                     spacing: 1
 
                     StyledText {
+                        textFormat: Text.PlainText
                         text: "SOURCE"
                         color: Appearance.colors.colSubtext
                         font.pixelSize: Appearance.font.pixelSize.smallest
                     }
 
                     StyledText {
+                        textFormat: Text.PlainText
                         Layout.fillWidth: true
                         text: String(root.descriptor?.sourcePath ?? "—")
                         color: Appearance.colors.colOnLayer1
@@ -188,6 +197,7 @@ Item {
             }
 
             StyledText {
+                        textFormat: Text.PlainText
                 Layout.fillWidth: true
                 visible: root.descriptor !== null
                 text: "Instances"
@@ -220,6 +230,7 @@ Item {
                         spacing: 8
 
                         StyledText {
+                        textFormat: Text.PlainText
                             Layout.fillWidth: true
                             Layout.preferredWidth: 1.8
                             text: instanceRow.instanceId.length > 0
@@ -230,6 +241,7 @@ Item {
                         }
 
                         StyledText {
+                        textFormat: Text.PlainText
                             Layout.fillWidth: true
                             Layout.preferredWidth: 1
                             text: root.lifecycleFor(modelData)
@@ -242,6 +254,7 @@ Item {
                         }
 
                         StyledText {
+                        textFormat: Text.PlainText
                             Layout.fillWidth: true
                             Layout.preferredWidth: 1
                             text: String(modelData?.output ?? "") || "—"
@@ -263,6 +276,7 @@ Item {
             }
 
             StyledText {
+                        textFormat: Text.PlainText
                 Layout.fillWidth: true
                 visible: root.descriptor !== null
                     && root.targetRecords.length === 0
@@ -291,12 +305,14 @@ Item {
                         spacing: 2
 
                         StyledText {
+                        textFormat: Text.PlainText
                             text: "GEOMETRY"
                             color: Appearance.colors.colSubtext
                             font.pixelSize: Appearance.font.pixelSize.smallest
                         }
 
                         StyledText {
+                        textFormat: Text.PlainText
                             Layout.fillWidth: true
                             text: root.selectedRecord?.rect
                                 ? Math.round(
@@ -330,12 +346,14 @@ Item {
                         spacing: 2
 
                         StyledText {
+                        textFormat: Text.PlainText
                             text: "RUNTIME"
                             color: Appearance.colors.colSubtext
                             font.pixelSize: Appearance.font.pixelSize.smallest
                         }
 
                         StyledText {
+                        textFormat: Text.PlainText
                             Layout.fillWidth: true
                             text: root.lifecycleFor(root.selectedRecord)
                                 + " · "
@@ -352,6 +370,7 @@ Item {
             }
 
             StyledText {
+                        textFormat: Text.PlainText
                 Layout.fillWidth: true
                 visible: root.primitiveRows.length > 0
                 text: "Live primitive values"
@@ -380,6 +399,7 @@ Item {
                             spacing: 5
 
                             StyledText {
+                        textFormat: Text.PlainText
                                 text: String(modelData.key)
                                 color: Appearance.colors.colSubtext
                                 font.family:
@@ -389,6 +409,7 @@ Item {
                             }
 
                             StyledText {
+                        textFormat: Text.PlainText
                                 text: String(modelData.value)
                                 color: Appearance.colors.colPrimary
                                 font.family:
@@ -411,6 +432,7 @@ Item {
             }
 
             StyledText {
+                        textFormat: Text.PlainText
                 Layout.fillWidth: true
                 visible: root.descriptor !== null
                 text: "Recent lifecycle"
@@ -427,6 +449,7 @@ Item {
                     spacing: 8
 
                     StyledText {
+                        textFormat: Text.PlainText
                         Layout.preferredWidth: 64
                         text: root.eventTime(modelData?.atMs)
                         color: Appearance.colors.colSubtext
@@ -434,6 +457,7 @@ Item {
                     }
 
                     StyledText {
+                        textFormat: Text.PlainText
                         Layout.fillWidth: true
                         text: String(modelData?.kind ?? "event")
                         color: Appearance.colors.colOnLayer1
@@ -442,6 +466,7 @@ Item {
                     }
 
                     StyledText {
+                        textFormat: Text.PlainText
                         Layout.fillWidth: true
                         text: String(modelData?.instanceId ?? "")
                         color: Appearance.colors.colSubtext
@@ -452,6 +477,7 @@ Item {
             }
 
             StyledText {
+                        textFormat: Text.PlainText
                 Layout.fillWidth: true
                 visible: root.descriptor !== null
                     && root.targetEvents.length === 0

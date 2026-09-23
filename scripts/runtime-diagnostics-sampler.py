@@ -714,10 +714,27 @@ def main() -> int:
     signal.signal(signal.SIGTERM, _stop)
     signal.signal(signal.SIGINT, _stop)
 
+    target_start_ticks = read_process_start_ticks(args.pid)
+    if target_start_ticks is None:
+        print(
+            json.dumps(
+                {
+                    "error": "shell-process-gone",
+                    "pid": args.pid,
+                    "atMs": int(time.time() * 1000),
+                },
+                separators=(",", ":"),
+            ),
+            flush=True,
+        )
+        return 2
+
     previous: dict[str, Any] | None = None
     while not _STOP:
         started = time.monotonic()
         try:
+            if read_process_start_ticks(args.pid) != target_start_ticks:
+                raise ProcessLookupError(args.pid)
             payload, previous = sample(args.pid, previous)
         except ProcessLookupError:
             print(

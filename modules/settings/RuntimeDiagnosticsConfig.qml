@@ -406,7 +406,8 @@ ContentPage {
 
                 BtopNetworkPanel {
                     Layout.fillWidth: true
-                    title: Translation.tr("Network")
+                    title: Translation.tr("Network") + " · "
+                        + Translation.tr("non-loopback")
                     rx: root.formatRate(
                         root.networkEvidence?.aggregateNonLoopback
                             ?.rxBytesPerSec)

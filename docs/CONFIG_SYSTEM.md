@@ -22,7 +22,7 @@ Changes you make in the file are picked up automatically within 50ms. No restart
 
 ### Fresh-install profile
 
-A new configuration starts deliberately quiet. Settings opens in Focused mode, the left sidebar contains one curated Widgets tab, and the right sidebar starts with connectivity, sliders, notifications, and four daily tools: Calendar, To Do, Calculator, and System Monitor. Weather, desktop widgets, notification sounds, news feeds, wallpaper search, AI, and anime integrations stay off until you enable them.
+A new configuration starts deliberately quiet. Settings opens in Focused mode, the left sidebar contains one curated Widgets tab, and the right sidebar starts with connectivity, sliders, notification-policy controls, and four daily tools: Calendar, To Do, Calculator, and System Monitor. Notification history itself lives in the standalone bottom-right Notification Center. Weather, desktop widgets, notification sounds, news feeds, wallpaper search, AI, and anime integrations stay off until you enable them.
 
 The Welcome wizard exposes only choices that materially affect the first session. Advanced styles, additional sidebar tabs, and specialized modules remain available in the full Settings view.
 

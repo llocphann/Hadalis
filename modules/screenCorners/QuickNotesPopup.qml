@@ -2,19 +2,16 @@ pragma ComponentBehavior: Bound
 
 import QtQuick
 import QtQuick.Controls
-import QtQuick.Layouts
 import qs.modules.bar as Bar
 import qs.modules.common
-import qs.modules.common.widgets
 import qs.modules.sidebarRight.notepad
 import qs.services
 
-// Bottom-left hover surface for fast note capture.
+// Bottom-left hover surface for Quick Notes.
 //
-// The popup deliberately reuses the canonical Notepad singleton/widget instead
-// of introducing a second notes store. Hover only reveals the surface; keyboard
-// focus is requested after an explicit click so merely brushing the corner never
-// steals focus from the active application.
+// Hover only reveals the shared Dashboard/Sidebar presentation. The layer-shell
+// surface becomes an exclusive keyboard owner only after the actual editor
+// gains QML focus, so brushing the corner never steals focus from another app.
 Bar.StyledPopup {
     id: root
 
@@ -35,30 +32,32 @@ Bar.StyledPopup {
     hoverActivates: true
     alternativeVisibleCondition: root.editorFocused || root.entryBridgeHeld
     keyboardFocus: root.editorFocused
+    exclusiveKeyboardFocus: true
     closeOnOutsideClick: root.editorFocused
     popupBackgroundMargin: 0
 
     function enterEditorMode(): void {
-        const editor = notesEditorLoader.item
+        const editor = notesViewLoader.item
         if (!root.active || !Notepad.ready || !editor)
             return
-        // Hover preview must stay non-focusable until the shared Notepad is
-        // actually ready to accept input. Otherwise an early click during
-        // startup can grab the keyboard while presenting a disabled editor.
+
+        // The editor's active-focus transition is the explicit user intent.
+        // Switching the shared popup to Exclusive focus here makes Niri grant
+        // keyboard ownership immediately instead of waiting for a second click.
         root.editorFocused = true
         editor.focus = true
         Qt.callLater(() => {
-            if (root.editorFocused && notesEditorLoader.item)
-                notesEditorLoader.item.focusEditor()
+            if (root.editorFocused && notesViewLoader.item)
+                notesViewLoader.item.focusEditor()
         })
     }
 
     function leaveEditorMode(): void {
         entryBridgeTimer.stop()
         root.entryBridgeHeld = false
-        if (notesEditorLoader.item) {
-            notesEditorLoader.item.flushPendingSave()
-            notesEditorLoader.item.releaseEditorFocus()
+        if (notesViewLoader.item) {
+            notesViewLoader.item.flushPendingSave()
+            notesViewLoader.item.releaseEditorFocus()
         }
         root.editorFocused = false
     }
@@ -72,17 +71,19 @@ Bar.StyledPopup {
             }
             return
         }
+
         entryBridgeTimer.stop()
         root.entryBridgeHeld = false
-        if (notesEditorLoader.item) {
-            notesEditorLoader.item.flushPendingSave()
-            notesEditorLoader.item.releaseEditorFocus()
+        if (notesViewLoader.item) {
+            notesViewLoader.item.flushPendingSave()
+            notesViewLoader.item.releaseEditorFocus()
         }
         root.editorFocused = false
     }
+
     Component.onDestruction: {
-        if (notesEditorLoader.item)
-            notesEditorLoader.item.flushPendingSave()
+        if (notesViewLoader.item)
+            notesViewLoader.item.flushPendingSave()
     }
 
     // Give the pointer enough time to cross a bottom/left Bar owner before the
@@ -100,8 +101,7 @@ Bar.StyledPopup {
         id: contentRoot
 
         // Keep the release shortcut inside the reparented popup content so
-        // Qt.WindowShortcut resolves against the actual layer-shell window
-        // rather than the non-visual StyledPopup loader.
+        // Qt.WindowShortcut resolves against the actual layer-shell window.
         Shortcut {
             sequences: [StandardKey.Cancel]
             context: Qt.WindowShortcut
@@ -116,89 +116,26 @@ Bar.StyledPopup {
             root.requestedPopupWidth - root._contentPadding * 2)
         implicitHeight: Math.max(1,
             root.requestedPopupHeight - root._contentPadding * 2)
-        // ConnectedSurfaceGeometry can clamp the requested body on small or
-        // transformed outputs. Follow the actual content host size so the
-        // editor reflows instead of being clipped at its configured width.
         width: parent ? parent.width : implicitWidth
         height: parent ? parent.height : implicitHeight
 
-        ColumnLayout {
+        // Reuse the exact Dashboard/Sidebar Quick Notes presentation. The
+        // nested Loader keeps the heavier editor/timers cold while this
+        // monitor's hot-corner popup is not resident.
+        Loader {
+            id: notesViewLoader
             anchors.fill: parent
-            spacing: 6
+            active: root.active
 
-            RowLayout {
-                Layout.fillWidth: true
-                spacing: 6
+            sourceComponent: QuickNotesView {
+                margin: 0
+                surfaceLocalTabSelection: true
+                showHeader: true
+                showZettelkastenActions: true
 
-                MaterialSymbol {
-                    text: "edit_note"
-                    iconSize: Appearance.font.pixelSize.normal
-                    color: Appearance.colors.colPrimary
-                }
-
-                StyledText {
-                    text: Translation.tr("Quick Notes")
-                    color: Appearance.colors.colOnLayer1
-                    font.pixelSize: Appearance.font.pixelSize.small
-                    font.weight: Font.DemiBold
-                }
-
-                StyledText {
-                    readonly property string activeTitle:
-                        String(notesEditorLoader.item?.displayedTabTitle
-                            ?? Notepad.tabs[Notepad.currentTab]?.title
-                            ?? "").trim()
-                    visible: Notepad.ready && activeTitle.length > 0
-                        && contentRoot.width >= 220
-                    Layout.maximumWidth: contentRoot.width < 340 ? 80 : 150
-                    text: "· " + activeTitle
-                    elide: Text.ElideRight
-                    color: Appearance.colors.colSubtext
-                    font.pixelSize: Appearance.font.pixelSize.smallest
-                }
-
-                Item { Layout.fillWidth: true }
-
-                StyledText {
-                    visible: contentRoot.width >= 340
-                    text: root.editorFocused
-                        ? Translation.tr("Esc to release")
-                        : Translation.tr("Click to type")
-                    color: Appearance.colors.colSubtext
-                    font.pixelSize: Appearance.font.pixelSize.smallest
-                }
-            }
-
-            Rectangle {
-                Layout.fillWidth: true
-                Layout.fillHeight: true
-                radius: Appearance.rounding.small
-                color: Appearance.colors.colLayer1
-                clip: true
-
-                // The shared editor is the only relatively heavy part of this
-                // corner surface. Keep it unloaded while the popup is idle so
-                // every monitor does not retain a duplicate Notepad view,
-                // timers and service connections just to own a 14px hot corner.
-                Loader {
-                    id: notesEditorLoader
-                    anchors.fill: parent
-                    active: root.active
-                    sourceComponent: NotepadWidget {
-                        margin: 4
-                        compactPresentation: true
-                        quickCapturePresentation: true
-                        surfaceLocalTabSelection: true
-                    }
-                }
-
-                // Observe a deliberate click anywhere inside the note surface,
-                // including child controls, then make the layer surface
-                // keyboard-focusable on the next event turn.
-                TapHandler {
-                    acceptedButtons: Qt.LeftButton
-                    onTapped: root.enterEditorMode()
-                }
+                // Only a real editor focus transition captures the keyboard.
+                // Header/tab/tool interactions remain ordinary pointer actions.
+                onEditorActivated: root.enterEditorMode()
             }
         }
     }

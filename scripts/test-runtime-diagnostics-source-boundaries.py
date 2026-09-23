@@ -12,6 +12,20 @@ sys.path.insert(0, str(CORE))
 from native import Parser
 from semantics import extract
 
+runtime_service = (
+    ROOT / "services" / "RuntimeDiagnostics.qml"
+).read_text(encoding="utf-8")
+for token in (
+    'if (CodeWorkflowIndex.status === "ready")',
+    'else if (CodeWorkflowIndex.status !== "indexing")',
+    "CodeWorkflowIndex.refresh(false)",
+    "if (!root.sessionActive)",
+):
+    if token not in runtime_service:
+        raise SystemExit(
+            "FAIL: diagnostics shared-index lifecycle missing " + token
+        )
+
 grammar = os.environ.get("HADALIS_WORKFLOW_GRAMMAR", "")
 if not grammar:
     system_grammar = Path("/usr/lib/inir/code-workflow/qmljs.so")

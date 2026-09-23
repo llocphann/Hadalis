@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Regression contract for the popup-only concept-matched liquid Weather orbit."""
+"""Regression contract for the popup-only continuous liquid-mass Weather orbit."""
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -12,7 +12,7 @@ WEATHER_SERVICE = ROOT / "services/Weather.qml"
 
 def require(text: str, token: str, source: str) -> None:
     if token not in text:
-        raise AssertionError(f"{source} missing concept-liquid token: {token!r}")
+        raise AssertionError(f"{source} missing liquid-mass token: {token!r}")
 
 
 def main() -> None:
@@ -30,15 +30,10 @@ def main() -> None:
         "readonly property real desiredOrbitRadiusX: width * 0.245",
         "Math.min(48, width * 0.086)",
         "liquidOrbitRadiusY * conceptOrbitAspect",
-        "readonly property real footerHeight: root.liquidMode ? 30 : 0",
-        "Math.max(42, Math.min(54, width * 0.13))",
-        "Math.max(52, Math.min(66, height * 0.25))",
         "id: conceptFooter",
         "Weather.airQuality?.available",
-        "if (root.liquidMode)",
         "return -Math.PI / 2 + shiftedHour * Math.PI / 12",
         "LiquidOrbitalField {",
-        "visible: !root.liquidMode",
         "animate: root.liquidAnimationActive",
     ):
         require(orbital, token, "OrbitalWeather.qml")
@@ -49,28 +44,39 @@ def main() -> None:
         "Appearance.animationsEnabled",
         "renderStrategy: Canvas.Threaded",
         "renderTarget: Canvas.Image",
-        "readonly property int sampleCount: 120",
-        "function nodeRadius(nodeIndex: int, time: real): real",
-        "const conceptScale = active ? 1.28 : 1.0",
-        "Math.sqrt(Math.max(0, radius * radius - signedArc * signedArc))",
-        "function smoothMax(a: real, b: real, k: real): real",
-        "outerThickness = root.smoothMax(",
-        "innerThickness = root.smoothMax(",
-        "root.traceClosed(ctx, outer)",
-        "root.traceClosed(ctx, inner.slice().reverse())",
-        "Paint the hour pods as glass volumes inside the same continuous",
-        "Two translucent moving sheets overlap inside the same annulus.",
-        "Layered translucent sheets running around the whole ring.",
-        "Moving internal caustic-like lines following the deformed ribbon.",
+        "readonly property real activeNodeScale: 1.28",
+        "function drawBridgeMass(ctx, segment: int, slot: int, time: real,",
+        "const fraction = slot === 0 ? 0.32 : 0.68",
+        "const tangentOffset = Math.sin(time * 0.57 + seed) * 2.8",
+        "const normalOffset = Math.sin(time * 0.83 + seed * 1.7) * 3.4",
+        "const majorPulse = 1",
+        "const minorPulse = 1",
+        "root.drawBridgeMass(ctx, segment, 0, time, grow, style, 1)",
+        "root.drawBridgeMass(ctx, segment, 1, time, grow, style, 1)",
+        "root.drawMassUnion(ctx, time, 0, root.bodyColor)",
+        "Internal highlights are also moving masses, not strokes.",
     ):
         require(liquid, token, "LiquidOrbitalField.qml")
 
+    # This renderer must never regress to an orbital line/ribbon whose surface
+    # is merely decorated with animation. The connector geometry itself is the
+    # moving union of node/bridge masses.
+    for forbidden in (
+        "outerThickness",
+        "innerThickness",
+        "traceClosed",
+        "traceOpen",
+        "ctx.stroke()",
+        "ctx.lineTo(",
+        "ConnectedSurfaceIrisField",
+        "Timer {",
+    ):
+        if forbidden in liquid:
+            raise AssertionError(
+                f"Liquid mass renderer regressed to line/ribbon geometry: {forbidden!r}")
+
     if "&& Appearance.effectsEnabled" in liquid.split("FrameAnimation {", 1)[1].split("}", 1)[0]:
-        raise AssertionError("Liquid motion must not be disabled by the effects switch")
-    if "ConnectedSurfaceIrisField" in liquid:
-        raise AssertionError("Concept liquid must not regress to rigid SDF bodies")
-    if "Timer {" in liquid:
-        raise AssertionError("Liquid orbit must use scene-frame animation, not a fixed Timer")
+        raise AssertionError("Liquid mass motion must not be disabled by effectsEnabled")
 
     for token in (
         "liquidMode: true",
@@ -90,7 +96,7 @@ def main() -> None:
     ):
         require(weather_service, token, "Weather.qml")
 
-    print("Weather concept liquid orbital contract: PASS")
+    print("Weather continuous liquid-mass orbital contract: PASS")
 
 
 if __name__ == "__main__":

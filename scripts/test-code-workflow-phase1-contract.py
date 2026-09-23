@@ -347,6 +347,9 @@ if "detail: {\n                    const state =" in page:
 for token in (
     "readonly property bool workflowActive: root.enabled && root.visible",
     "property bool workflowDestroying: false",
+    "property var runtimeSnapshotCache: ({ outputs: [], records: [] })",
+    "function refreshRuntimeSnapshot(): void",
+    "root.runtimeSnapshotCache = CodeWorkflowRuntime.snapshot()",
     "function activateWorkflowWhenCurrent(): void",
     "function scheduleWorkflowActivation(): void",
     "id: workflowActivationTimer",
@@ -371,6 +374,8 @@ for token in (
             "hidden Workflow canvas suspension missing " + token)
 if 'Qt.callLater(() => CodeWorkflowIndex.refresh(false))' in page:
     fail("Workflow mount must not queue an unconditional duplicate workspace index")
+if "readonly property int runtimeRevision: CodeWorkflowRuntime.revision" in page:
+    fail("hidden Workflow pages must not rebuild runtime snapshots from a live revision binding")
 if 'Component.onCompleted: {\n        root.syncRemoteRuntimeDemand()\n        root.syncInitialOutput()' in page:
     fail("Workflow mount must defer source/index work until the page is active")
 

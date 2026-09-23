@@ -531,6 +531,17 @@ def main() -> None:
           "Sidebar presentation must use the immutable slide-only SurfaceMotion contract")
 
     dock = read("modules/dock/Dock.qml")
+    dock_apps = read("modules/dock/DockApps.qml")
+    for dead_dock_apps_api in (
+        "maxWindowPreviewHeight",
+        "maxWindowPreviewWidth",
+        "windowControlsHeight",
+        "buttonPadding",
+        "previewAnchorItem",
+    ):
+        check(dead_dock_apps_api not in dock_apps
+              and dead_dock_apps_api not in dock,
+              f"Dock must not retain unused app-list API: {dead_dock_apps_api}")
     for token in (
         "import qs.modules.common.perimeter",
         "duration: SurfaceMotion.duration",

@@ -179,6 +179,8 @@ for source, name in ((right, "normal Right Sidebar"), (compact, "compact Right S
     forbid(source, 'case "notifications"', name + " still routes notification section")
 forbid(compact, "notificationsSectionComponent",
        "compact Right Sidebar still owns notification history renderer")
+forbid(compact, "component EmptyNotificationsPlaceholder:",
+       "compact Right Sidebar still carries retired notification-history UI")
 require(persistent, 'property string sectionId: ""',
         "compact sidebar stable section persistence missing")
 for token in (

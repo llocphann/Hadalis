@@ -102,8 +102,8 @@ Item {
 
             StyledText {
                 Layout.fillWidth: true
-                visible: root.provenance.length > 0
-                text: root.provenance
+                text: root.provenance.length > 0
+                    ? root.provenance : "—"
                 color: Appearance.colors.colSubtext
                 opacity: 0.78
                 font.family: Appearance.font.family.monospace

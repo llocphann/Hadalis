@@ -71,6 +71,12 @@ for token in (
     "saveTimer.stop()",
     "if (root.focus)",
     "Notepad.setTextValue(textArea.text)",
+    "function switchToTab(index): void",
+    "function addTabSafely(): void",
+    "function removeTabSafely(index): void",
+    "onClicked: root.switchToTab(tabPill.index)",
+    "onClicked: root.addTabSafely()",
+    "onClicked: root.removeTabSafely(tabPill.index)",
 ):
     require(notepad, token, "shared Notepad must expose safe Quick Notes hooks")
 

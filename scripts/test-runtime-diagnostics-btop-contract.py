@@ -5,6 +5,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 PAGE = ROOT / "modules" / "settings" / "RuntimeDiagnosticsConfig.qml"
+SPARKLINE = ROOT / "modules" / "settings" / "widgets" / "BtopSparkline.qml"
 SESSION = ROOT / "services" / "RuntimeDiagnosticsSession.qml"
 RUNTIME = ROOT / "services" / "RuntimeDiagnostics.qml"
 SAMPLER = ROOT / "scripts" / "runtime-diagnostics-sampler.py"
@@ -26,6 +27,7 @@ def main() -> None:
     session = SESSION.read_text(encoding="utf-8")
     runtime = RUNTIME.read_text(encoding="utf-8")
     sampler = SAMPLER.read_text(encoding="utf-8")
+    sparkline = SPARKLINE.read_text(encoding="utf-8")
 
     for widget in (
         "BtopMetricPanel.qml",
@@ -55,6 +57,7 @@ def main() -> None:
         "BtopTargetInspector {",
         "selectedTargetId: CodeWorkflowSession.selectedTargetId",
         "CodeWorkflowSession.selectTarget(",
+        'SettingsPageRegistry.navigateToKey(',
         'root.historyValues("systemCpuPercent")',
         'root.historyValues("systemSwapPercent")',
         'root.historyValues("shellGpuPeakPercent")',
@@ -72,6 +75,14 @@ def main() -> None:
         "running: root.pageCurrent",
     ):
         require(session, token, "RuntimeDiagnosticsSession.qml")
+
+    for token in (
+        "Canvas {",
+        "ctx.lineTo(",
+        "ctx.strokeStyle = root.lineColor",
+        "ctx.fillStyle = Qt.rgba(",
+    ):
+        require(sparkline, token, "BtopSparkline.qml")
 
     for token in (
         "systemSwapPercent:",

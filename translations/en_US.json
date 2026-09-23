@@ -5395,7 +5395,7 @@
   "Corner hit size (px)": "Corner hit size (px)",
   "Enable bottom-left Quick Notes": "Enable bottom-left Quick Notes",
   "Esc to release": "Esc to release",
-  "Hover reveals the note without stealing keyboard focus. Click inside to type; the same tabs stay synchronized with Sidebar and Dashboard Notepad.": "Hover reveals the note without stealing keyboard focus. Click inside to type; the same tabs stay synchronized with Sidebar and Dashboard Notepad.",
+  "Hover to reveal; click to type.": "Hover to reveal; click to type.",
   "Hover the bottom-left screen corner to reveal the shared Notepad": "Hover the bottom-left screen corner to reveal the shared Notepad",
   "Popup height (px)": "Popup height (px)",
   "Popup width (px)": "Popup width (px)",

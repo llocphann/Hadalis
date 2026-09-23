@@ -2026,15 +2026,17 @@ Item {
                 RippleButtonWithIcon {
                     materialIcon: "map"
                     buttonText: CodeWorkflowSession.minimapEnabled
-                        ? "Hide graph minimap" : "Show graph minimap"
+                        ? "Disable graph minimap" : "Enable graph minimap"
                     mainText: ""
                     toggled: CodeWorkflowSession.minimapEnabled
                     onClicked: CodeWorkflowSession.minimapEnabled =
                         !CodeWorkflowSession.minimapEnabled
                     StyledToolTip {
-                        text: CodeWorkflowSession.minimapEnabled
-                            ? "Hide graph minimap"
-                            : "Show minimap when the graph exceeds the viewport"
+                        text: !CodeWorkflowSession.minimapEnabled
+                            ? "Enable minimap when the graph exceeds the viewport"
+                            : canvas.minimapVisible
+                                ? "Disable graph minimap"
+                                : "Minimap enabled · hidden until the graph exceeds the viewport"
                     }
                 }
                 RippleButtonWithIcon {

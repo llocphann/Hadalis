@@ -252,6 +252,14 @@ Item {
     // Full smart routing is committed only when layout state changes. During a
     // pointer drag we keep this cache stable and recompute only attached edges.
     property var edgeRouteCache: ({})
+    // Obstacle-aware routing is the largest remaining synchronous JS pass.
+    // Build it in bounded animation-frame slices, then atomically publish the
+    // completed cache so opening Workflow never spends one long frame routing
+    // the entire graph.
+    property var routeBuildEdges: []
+    property var routeBuildCache: ({})
+    property var routeBuildOccupiedRoutes: []
+    property int routeBuildCursor: 0
     // Pointer hover/tap happens far more often than structural rerouting.
     // Flatten the committed routes and node AABBs once so hit testing does not
     // resolve every edge/node through model helpers on each pointer sample.
@@ -1223,14 +1231,18 @@ Item {
         return cache
     }
 
-    function rebuildEdgeRouteCache(): void {
-        if (!root.workflowActive)
-            return
-        if (root.activeNodeDragId.length > 0)
-            return
-        const cache = root.buildEdgeRouteCache()
+    function cancelEdgeRouteBuild(): void {
+        edgeRouteSliceTimer.stop()
+        root.routeBuildEdges = []
+        root.routeBuildCache = ({})
+        root.routeBuildOccupiedRoutes = []
+        root.routeBuildCursor = 0
+    }
+
+    function finalizeEdgeRouteBuild(): void {
+        const cache = root.routeBuildCache
         const hitRoutes = []
-        for (const edge of root.edges) {
+        for (const edge of root.routeBuildEdges) {
             const route = cache[String(edge?.id ?? "")] ?? null
             if (route)
                 hitRoutes.push(route)
@@ -1249,12 +1261,62 @@ Item {
         root.edgeRouteCache = cache
         root.edgeHitRoutesCache = hitRoutes
         root.nodeHitBoundsCache = nodeBounds
+        root.routeBuildEdges = []
+        root.routeBuildCache = ({})
+        root.routeBuildOccupiedRoutes = []
+        root.routeBuildCursor = 0
         root.refreshGeometryCache()
+    }
+
+    function processEdgeRouteBuildSlice(): void {
+        if (!root.workflowActive || root.activeNodeDragId.length > 0) {
+            root.cancelEdgeRouteBuild()
+            return
+        }
+        const edges = root.routeBuildEdges
+        if (edges.length === 0) {
+            root.finalizeEdgeRouteBuild()
+            return
+        }
+
+        // QML Timer is synchronized with the animation timer. Six routes per
+        // slice keeps each JS burst bounded while completing today's reviewed
+        // graph in only a handful of frames.
+        const end = Math.min(edges.length, root.routeBuildCursor + 6)
+        for (let index = root.routeBuildCursor; index < end; ++index) {
+            const edge = edges[index]
+            const edgeId = String(edge?.id ?? "")
+            if (edgeId.length === 0)
+                continue
+            const route = root.edgeRoute(
+                edge, root.routeBuildOccupiedRoutes)
+            root.routeBuildCache[edgeId] = route
+            if (route)
+                root.routeBuildOccupiedRoutes.push(route)
+        }
+        root.routeBuildCursor = end
+        if (end < edges.length)
+            edgeRouteSliceTimer.restart()
+        else
+            root.finalizeEdgeRouteBuild()
+    }
+
+    function rebuildEdgeRouteCache(): void {
+        if (!root.workflowActive || root.activeNodeDragId.length > 0)
+            return
+        root.cancelEdgeRouteBuild()
+        root.routeBuildEdges = root.edges.slice()
+        if (root.routeBuildEdges.length === 0) {
+            root.finalizeEdgeRouteBuild()
+            return
+        }
+        edgeRouteSliceTimer.restart()
     }
 
     function scheduleEdgeRouteCacheRebuild(): void {
         if (!root.workflowActive || root.activeNodeDragId.length > 0)
             return
+        root.cancelEdgeRouteBuild()
         edgeRouteRebuildTimer.restart()
     }
 
@@ -1266,6 +1328,13 @@ Item {
         interval: 24
         repeat: false
         onTriggered: root.rebuildEdgeRouteCache()
+    }
+
+    Timer {
+        id: edgeRouteSliceTimer
+        interval: 0
+        repeat: false
+        onTriggered: root.processEdgeRouteBuildSlice()
     }
 
     function edgeTouchesNode(edge, nodeId: string): bool {
@@ -2170,6 +2239,7 @@ Item {
     function deactivateCanvas(): void {
         graphRefreshTimer.stop()
         edgeRouteRebuildTimer.stop()
+        root.cancelEdgeRouteBuild()
         edgeHoverTimer.stop()
         wireMetricTimer.stop()
         viewportCullTimer.stop()
@@ -2893,6 +2963,7 @@ Item {
                         root.activeNodeDragSceneY = startSceneY
                         root.activeNodeDragHandler = nodeDrag
                         root.dragRoutesDirty = true
+                        root.cancelEdgeRouteBuild()
                         root.rebuildDragEdgeRouteCache()
                         root.hoveredEdgeLabelId = ""
                         CodeWorkflowSession.selectUnifiedNode(node.modelData)

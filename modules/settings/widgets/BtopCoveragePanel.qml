@@ -60,6 +60,8 @@ Item {
                 Layout.fillWidth: true
 
                 StyledText {
+
+                    textFormat: Text.PlainText
                     Layout.fillWidth: true
                     text: "Runtime boundary coverage"
                     color: Appearance.colors.colSecondary
@@ -67,6 +69,8 @@ Item {
                 }
 
                 StyledText {
+
+                    textFormat: Text.PlainText
                     text: root.status
                     color: root.status === "ready"
                         ? Appearance.colors.colPrimary
@@ -86,6 +90,8 @@ Item {
                         root.countFor(modelData.key)
 
                     StyledText {
+
+                        textFormat: Text.PlainText
                         Layout.preferredWidth: 126
                         text: modelData.label
                         color: Appearance.colors.colSubtext
@@ -111,6 +117,8 @@ Item {
                     }
 
                     StyledText {
+
+                        textFormat: Text.PlainText
                         Layout.preferredWidth: 40
                         horizontalAlignment: Text.AlignRight
                         text: String(parent.rowCount)
@@ -122,6 +130,8 @@ Item {
             }
 
             StyledText {
+
+                textFormat: Text.PlainText
                 Layout.fillWidth: true
                 text: String(root.filesScanned) + " QML · "
                     + String(root.cacheHits) + " cached"

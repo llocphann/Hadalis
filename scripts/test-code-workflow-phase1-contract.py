@@ -382,12 +382,39 @@ for token in (
 ):
     require(canvas, token,
             "hidden Workflow canvas suspension missing " + token)
+for function_name in (
+    "consumeRuntimeLifecycleEvent",
+    "rebuildEdgeRouteCache",
+    "fitSelection",
+    "fitGraph",
+    "revealPrimarySelection",
+):
+    function_start = canvas.index("function " + function_name + "(): void")
+    function_prefix = canvas[function_start:function_start + 180]
+    require(function_prefix, "if (!root.workflowActive)",
+            "deferred canvas callback must stop while hidden: " + function_name)
+
 if 'Qt.callLater(() => CodeWorkflowIndex.refresh(false))' in page:
     fail("Workflow mount must not queue an unconditional duplicate workspace index")
 if "readonly property int runtimeRevision: CodeWorkflowRuntime.revision" in page:
     fail("hidden Workflow pages must not rebuild runtime snapshots from a live revision binding")
 if 'Component.onCompleted: {\n        root.syncRemoteRuntimeDemand()\n        root.syncInitialOutput()' in page:
     fail("Workflow mount must defer source/index work until the page is active")
+for function_name in (
+    "captureSemanticAnchor",
+    "reconcileSemanticInspectSelection",
+    "reconcileIndexedSemanticInspectSelection",
+    "prepareSelectedSemanticInspectTarget",
+    "revealSelectedInspectTarget",
+    "evaluatePreApplyGate",
+    "syncInitialOutput",
+    "focusSourceAnchor",
+):
+    function_start = page.index("function " + function_name + "(): void")
+    function_prefix = page[function_start:function_start + 220]
+    require(function_prefix,
+            "if (!root.workflowActive || root.workflowDestroying)",
+            "deferred Workflow callback must stop while hidden: " + function_name)
 
 for token in (
     "property bool _activeForce: false",

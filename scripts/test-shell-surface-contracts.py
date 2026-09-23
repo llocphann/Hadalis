@@ -1142,6 +1142,23 @@ def main() -> None:
           "Waffle must remain a separate panel family rather than a Dock style")
     check("Dock uses the Panel surface style." in dock_config,
           "Dock settings must describe Panel as the canonical surface style")
+    for retired_dock_component in (
+        "DockPillItem.qml",
+        "DockMacItem.qml",
+        "DockMacBackground.qml",
+    ):
+        check(not (ROOT / "modules/dock" / retired_dock_component).exists(),
+              f"Retired Dock style component must stay absent: {retired_dock_component}")
+    dock_app_button = read("modules/dock/DockAppButton.qml")
+    for retired_dock_token in (
+        "pillStyle",
+        "macosStyle",
+        "DockPillItem",
+        "DockMacItem",
+        "macHoveredIndex",
+    ):
+        check(retired_dock_token not in dock_app_button,
+              f"Canonical Dock app button must not branch on retired style: {retired_dock_token}")
 
     check(not (ROOT / "modules/pill").exists(),
           "Retired Pill compatibility module must stay absent")

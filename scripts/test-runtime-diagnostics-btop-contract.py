@@ -36,6 +36,7 @@ def main() -> None:
         "BtopTargetTable.qml",
         "BtopProcessTable.qml",
         "BtopCoveragePanel.qml",
+        "BtopTargetInspector.qml",
     ):
         path = WIDGETS / widget
         if not path.is_file():
@@ -51,6 +52,9 @@ def main() -> None:
         "BtopTargetTable {",
         "BtopProcessTable {",
         "BtopCoveragePanel {",
+        "BtopTargetInspector {",
+        "selectedTargetId: CodeWorkflowSession.selectedTargetId",
+        "CodeWorkflowSession.selectTarget(",
         'root.historyValues("systemCpuPercent")',
         'root.historyValues("systemSwapPercent")',
         'root.historyValues("shellGpuPeakPercent")',

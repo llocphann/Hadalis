@@ -80,11 +80,12 @@ for token in (
     "alternativeVisibleCondition: root.editorFocused || root.entryBridgeHeld",
     "id: entryBridgeTimer",
     "Math.round(root.cornerAttachmentThickness * 6)",
+    "keyboardFocusOnDemand: true",
     "keyboardFocus: root.editorFocused",
     "exclusiveKeyboardFocus: true",
+    "outsideClickBackdropBelowPopup: true",
     "closeOnOutsideClick: root.editorFocused",
-    "if (!root.active || !Notepad.ready || !editor)",
-    "if (root.editorFocused && notesViewLoader.item)",
+    "if (!root.active || !Notepad.ready || !notesViewLoader.item)",
     "readonly property real requestedPopupWidth:",
     "readonly property real requestedPopupHeight:",
     "root.requestedPopupWidth - root._contentPadding * 2",
@@ -98,9 +99,8 @@ for token in (
     "showHeader: true",
     "showZettelkastenActions: true",
     "onEditorActivated: root.enterEditorMode()",
-    "editor.focus = true",
+    "root.editorFocused = true",
     "notesViewLoader.item.releaseEditorFocus()",
-    "notesViewLoader.item.focusEditor()",
     "notesViewLoader.item.flushPendingSave()",
     "Component.onDestruction:",
     "sequences: [StandardKey.Cancel]",
@@ -119,10 +119,17 @@ for retired in (
            "Quick Notes corner must not restore its private capture presentation")
 
 for token in (
+    "property bool outsideClickBackdropBelowPopup: false",
+    "property bool keyboardFocusOnDemand: false",
     "property bool exclusiveKeyboardFocus: false",
+    "focusable: root.requestedVisible",
+    "&& (root.keyboardFocus || root.keyboardFocusOnDemand)",
     "? WlrKeyboardFocus.Exclusive",
-    ": WlrKeyboardFocus.OnDemand",
-    "active: root.keyboardFocus && root.requestedVisible",
+    "(root.keyboardFocus || root.keyboardFocusOnDemand)",
+    "? WlrKeyboardFocus.OnDemand",
+    "CompositorService.isHyprland",
+    "&& root.keyboardFocus && root.requestedVisible",
+    "? WlrLayer.Top : WlrLayer.Overlay",
 ):
     require(styled_popup, token,
             "StyledPopup must support click-activated exclusive keyboard ownership")
@@ -166,19 +173,19 @@ for token in (
     "onClicked: root.switchToTab(tabPill.index)",
     "onClicked: root.addTabSafely()",
     "onClicked: root.removeTabSafely(tabPill.index)",
+    "onActiveFocusChanged:",
+    "if (activeFocus)",
+    "root.editorActivated()",
     "MouseArea {",
     "acceptedButtons: Qt.NoButton",
     "hoverEnabled: true",
     "cursorShape: Qt.IBeamCursor",
-    "TapHandler {",
-    "acceptedButtons: Qt.LeftButton",
-    "gesturePolicy: TapHandler.ReleaseWithinBounds",
-    "onTapped:",
-    "if (Notepad.ready)",
-    "root.editorActivated()",
     "Component.onDestruction: root.flushPendingSave()",
 ):
     require(notepad, token, "shared Notepad must expose safe Quick Notes hooks")
+
+forbid(notepad, "TapHandler {",
+       "shared Notepad editor must not intercept TextArea presses to obtain focus")
 
 for token in (
     "QuickNotesView {",

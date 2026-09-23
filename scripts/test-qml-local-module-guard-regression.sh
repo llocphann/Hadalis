@@ -24,7 +24,7 @@ expect_guard_failure() {
 
 # Incident class 1: an always-loaded file imports a local qs.* module whose
 # directory disappeared from source/runtime. This must fail even without a QML
-# parser, matching the qmlscanner modules/pill failure mode.
+# parser, matching the qmlscanner failure mode for any removed local module.
 case_root="$stage/missing-module"
 mkdir -p "$case_root/modules/panel"
 cat > "$case_root/modules/panel/Panel.qml" <<'QML'

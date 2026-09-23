@@ -414,6 +414,9 @@ ContentPage {
                     CodeWorkflowSession.selectTarget(
                         CodeWorkflowSession.selectedTargetId,
                         instanceId)
+                onOpenWorkflowRequested:
+                    SettingsPageRegistry.navigateToKey(
+                        "code-workflow", "")
             }
 
             StyledText {

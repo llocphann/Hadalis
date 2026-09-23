@@ -357,6 +357,12 @@ for token in (
     "readonly property bool workflowActive: root.enabled && root.visible",
     "property bool workflowDestroying: false",
     "property var runtimeSnapshotCache: ({ outputs: [], records: [] })",
+    "readonly property bool transactionOwnsAnalyzer:",
+    "CodeWorkflowTransaction.applyLifecycleBusy",
+    "CodeWorkflowTransaction.connectLifecycleBusy",
+    "CodeWorkflowTransaction.bindingLifecycleBusy",
+    "CodeWorkflowTransaction.disconnectLifecycleBusy",
+    "CodeWorkflowTransaction.signalActionLifecycleBusy",
     "function refreshRuntimeSnapshot(): void",
     "root.runtimeSnapshotCache = CodeWorkflowRuntime.snapshot()",
     "function activateWorkflowWhenCurrent(): void",
@@ -398,6 +404,10 @@ if 'Qt.callLater(() => CodeWorkflowIndex.refresh(false))' in page:
     fail("Workflow mount must not queue an unconditional duplicate workspace index")
 if "readonly property int runtimeRevision: CodeWorkflowRuntime.revision" in page:
     fail("hidden Workflow pages must not rebuild runtime snapshots from a live revision binding")
+request_analysis_start = page.index("function requestAnalysis(force: bool): void")
+request_analysis = page[request_analysis_start:request_analysis_start + 360]
+require(request_analysis, "root.transactionOwnsAnalyzer",
+        "Workflow page must not steal Analyzer ownership from transaction lifecycle")
 if 'Component.onCompleted: {\n        root.syncRemoteRuntimeDemand()\n        root.syncInitialOutput()' in page:
     fail("Workflow mount must defer source/index work until the page is active")
 for function_name in (

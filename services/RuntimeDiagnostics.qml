@@ -11,6 +11,7 @@ Singleton {
     // a lease merely because a Settings page object exists in an LRU cache.
     readonly property int leaseTtlMs: 6000
     readonly property int maxLeases: 16
+    readonly property int sampleIntervalMs: 1000
     property var leases: ({})
     property int revision: 0
     readonly property int leaseCount: Object.keys(root.leases).length
@@ -158,7 +159,8 @@ Singleton {
             samplingEnabled: root.samplingEnabled,
             leaseCount: root.leaseCount,
             leaseTtlMs: root.leaseTtlMs,
-            maxLeases: root.maxLeases
+            maxLeases: root.maxLeases,
+            sampleIntervalMs: root.sampleIntervalMs
         }
     }
 
@@ -296,7 +298,7 @@ Singleton {
             "/usr/bin/env", "python3",
             Quickshell.shellPath("scripts/runtime-diagnostics-sampler.py"),
             "--pid", String(Quickshell.processId),
-            "--interval-ms", "1000"
+            "--interval-ms", String(root.sampleIntervalMs)
         ]
 
         stdout: SplitParser {

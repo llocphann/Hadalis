@@ -19,24 +19,55 @@ Singleton {
 
     // Current tab state
     property int currentTab: 0
-    property var tabs: [{ title: "Note 1", text: "" }]
+    property var tabs: [{ id: "bootstrap", title: "Note 1", text: "" }]
     property bool ready: false
+    property int _tabIdCounter: 0
     // Convenience: current tab text (backward compat)
     readonly property string text: (tabs[currentTab]?.text) ?? ""
+
+    function _allocateTabId() {
+        root._tabIdCounter += 1
+        return "tab-" + Date.now().toString(36)
+            + "-" + root._tabIdCounter.toString(36)
+    }
+
+    function _makeTab(title, text) {
+        return {
+            id: root._allocateTabId(),
+            title: String(title ?? ""),
+            text: String(text ?? "")
+        }
+    }
 
     function _normalizeTabs(value) {
         if (!Array.isArray(value)) return []
         const normalized = []
+        const seenIds = []
         for (let i = 0; i < value.length; i++) {
             const tab = value[i]
             if (!tab || typeof tab !== "object" || Array.isArray(tab))
                 continue
+            let id = String(tab.id ?? "").trim()
+            if (!id || seenIds.includes(id))
+                id = root._allocateTabId()
+            seenIds.push(id)
             normalized.push({
+                id: id,
                 title: String(tab.title ?? `Note ${normalized.length + 1}`),
                 text: String(tab.text ?? "")
             })
         }
         return normalized
+    }
+
+    function indexForTabId(tabId) {
+        const id = String(tabId ?? "")
+        if (!id) return -1
+        return tabs.findIndex(tab => String(tab?.id ?? "") === id)
+    }
+
+    function setTabTextById(tabId, newText) {
+        return root.setTabText(root.indexForTabId(tabId), newText)
     }
 
     function setTabText(index, newText) {
@@ -66,7 +97,7 @@ Singleton {
         const t = tabs.slice()
         const requested = String(title ?? "").trim()
         const name = requested.length > 0 ? requested : `Note ${t.length + 1}`
-        t.push({ title: name, text: "" })
+        t.push(root._makeTab(name, ""))
         tabs = t
         currentTab = t.length - 1
         _save()
@@ -180,7 +211,7 @@ Singleton {
 
         onLoaded: {
             const content = legacyFileView.text()
-            root.tabs = [{ title: "Note 1", text: String(content ?? "") }]
+            root.tabs = [root._makeTab("Note 1", String(content ?? ""))]
             root.currentTab = 0
             root.ready = true
             root._save()
@@ -189,7 +220,7 @@ Singleton {
         onLoadFailed: {
             // No legacy file either — fresh start. Serialize mkdir before the
             // first FileView write so the marker cannot race its parent directory.
-            root.tabs = [{ title: "Note 1", text: "" }]
+            root.tabs = [root._makeTab("Note 1", "")]
             root.currentTab = 0
             root._storageInitializing = true
             if (!createStorageDirProc.running)

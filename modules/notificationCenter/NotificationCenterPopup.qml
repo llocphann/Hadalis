@@ -30,7 +30,8 @@ Bar.StyledPopup {
     readonly property bool _anchorHovered: root.anchorItem
         && (root.anchorItem.containsMouse ?? false)
     readonly property bool hoverLeaseRequested:
-        !root.explicitForThisOutput
+        root.hoverAllowed
+        && !root.explicitForThisOutput
         && root.active
         && (root._anchorHovered
             || root.popupHovered

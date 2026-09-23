@@ -79,7 +79,11 @@ Item {
         anchors.fill: parent
         radius: Appearance.rounding.normal
         color: Appearance.colors.colLayer1
-        border.color: Appearance.colors.colOutline
+        border.color: Qt.rgba(
+            Appearance.colors.colPrimary.r,
+            Appearance.colors.colPrimary.g,
+            Appearance.colors.colPrimary.b,
+            0.34)
 
         ColumnLayout {
             id: interfaceColumn
@@ -96,7 +100,7 @@ Item {
                 StyledText {
                     Layout.fillWidth: true
                     text: "Interfaces"
-                    color: Appearance.colors.colOnLayer1
+                    color: Appearance.colors.colPrimary
                     font.weight: Font.DemiBold
                 }
 
@@ -117,6 +121,7 @@ Item {
                     Layout.preferredWidth: 1.2
                     text: "IFACE"
                     color: Appearance.colors.colSubtext
+                    font.family: Appearance.font.family.monospace
                     font.pixelSize: Appearance.font.pixelSize.smallest
                 }
 
@@ -125,6 +130,7 @@ Item {
                     horizontalAlignment: Text.AlignRight
                     text: "RX"
                     color: Appearance.colors.colSubtext
+                    font.family: Appearance.font.family.monospace
                     font.pixelSize: Appearance.font.pixelSize.smallest
                 }
 
@@ -133,6 +139,7 @@ Item {
                     horizontalAlignment: Text.AlignRight
                     text: "TX"
                     color: Appearance.colors.colSubtext
+                    font.family: Appearance.font.family.monospace
                     font.pixelSize: Appearance.font.pixelSize.smallest
                 }
 
@@ -142,6 +149,7 @@ Item {
                     horizontalAlignment: Text.AlignRight
                     text: "TOTAL"
                     color: Appearance.colors.colSubtext
+                    font.family: Appearance.font.family.monospace
                     font.pixelSize: Appearance.font.pixelSize.smallest
                 }
             }

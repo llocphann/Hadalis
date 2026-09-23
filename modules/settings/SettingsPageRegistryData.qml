@@ -265,7 +265,7 @@ Singleton {
         },
         {
             key: "code-workflow",
-            name: Translation.tr("Code Workflow"),
+            name: Translation.tr("Workflow"),
             icon: "account_tree",
             desc: Translation.tr("Inspect, trace, and edit live QML workflows"),
             essential: false,

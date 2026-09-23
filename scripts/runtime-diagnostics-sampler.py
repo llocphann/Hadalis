@@ -742,6 +742,8 @@ def main() -> int:
             if read_process_start_ticks(args.pid) != target_start_ticks:
                 raise ProcessLookupError(args.pid)
             payload, previous = sample(args.pid, previous)
+            if read_process_start_ticks(args.pid) != target_start_ticks:
+                raise ProcessLookupError(args.pid)
         except ProcessLookupError:
             print(
                 json.dumps(

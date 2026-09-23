@@ -133,6 +133,16 @@ Item {
         root.lineStarts = starts
     }
 
+    Timer {
+        id: lineIndexRefreshTimer
+        // TextEdit can emit several text updates in one input/IME burst.
+        // Rebuilding the complete newline index for each intermediate value is
+        // pure GUI-thread work, so coalesce it to at most once per frame.
+        interval: 16
+        repeat: false
+        onTriggered: root.rebuildLineIndex()
+    }
+
     function lineNumberAt(position: int): int {
         const pos = root.clampPosition(position)
         const starts = root.lineStarts
@@ -644,7 +654,7 @@ Item {
     }
 
     onDocumentTextChanged: {
-        root.rebuildLineIndex()
+        lineIndexRefreshTimer.restart()
         // Do not reuse a stale selection after an edit or a source refresh.
         if (root.activeFindStart >= 0
                 && !root.findMatches.some(match =>

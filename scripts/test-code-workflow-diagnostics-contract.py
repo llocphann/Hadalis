@@ -218,6 +218,8 @@ for page in (material_page, waffle_page):
     require(page, "CPU · RAM · Swap · GPU · Network",
             "Diagnostics page must preserve required resource scope")
     for token in (
+        "readonly property bool diagnosticsActive:",
+        "RuntimeDiagnosticsSession.pageCurrent",
         "RuntimeDiagnosticsSession.evidence",
         "RuntimeDiagnosticsSession.remoteError",
         "Runtime bridge error",

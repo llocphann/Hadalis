@@ -86,7 +86,7 @@ def read_system_cpu_ticks() -> dict[str, tuple[int, int]]:
     result: dict[str, tuple[int, int]] = {}
     for line in text.splitlines():
         fields = line.split()
-        if not fields or not re.fullmatch(r"cpu(?:\\d+)?", fields[0]):
+        if not fields or not re.fullmatch(r"cpu(?:\d+)?", fields[0]):
             continue
         if len(fields) < 5:
             continue

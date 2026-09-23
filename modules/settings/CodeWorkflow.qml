@@ -1288,6 +1288,22 @@ Item {
         }
     }
 
+    function reconcileIndexedSemanticInspectSelection(): void {
+        const sourcePath = CodeWorkflowSession.selectedSemanticSourcePath
+        const anchor = root.inspectedSemanticAnchor
+        if (sourcePath.length === 0 || anchor.length === 0
+                || CodeWorkflowIndex.status !== "ready")
+            return
+        const stillIndexed = CodeWorkflowIndex.boundaries.some(boundary =>
+            String(boundary?.sourcePath ?? "") === sourcePath
+            && String(boundary?.anchor ?? "") === anchor)
+        if (!stillIndexed) {
+            CodeWorkflowSession.selectSemantic("")
+            return
+        }
+        Qt.callLater(root.revealSelectedInspectTarget)
+    }
+
     function prepareSelectedSemanticInspectTarget(): void {
         if (root.inspectedSemanticAnchor.length === 0)
             return
@@ -1694,6 +1710,13 @@ Item {
         function onSelectedSemanticAnchorChanged(): void {
             root.prepareSelectedSemanticInspectTarget()
             Qt.callLater(root.revealSelectedInspectTarget)
+        }
+    }
+
+    Connections {
+        target: CodeWorkflowIndex
+        function onStatusChanged(): void {
+            root.reconcileIndexedSemanticInspectSelection()
         }
     }
 

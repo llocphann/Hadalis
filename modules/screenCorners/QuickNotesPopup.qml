@@ -144,6 +144,7 @@ Bar.StyledPopup {
                     readonly property string activeTitle:
                         String(Notepad.tabs[Notepad.currentTab]?.title ?? "").trim()
                     visible: Notepad.ready && activeTitle.length > 0
+                        && contentRoot.width >= 220
                     Layout.maximumWidth: contentRoot.width < 340 ? 80 : 150
                     text: "· " + activeTitle
                     elide: Text.ElideRight

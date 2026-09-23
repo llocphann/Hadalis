@@ -91,7 +91,6 @@ def main() -> None:
         require(wcontent, token, "Waffle navigation")
 
     quick = read("modules/settings/QuickConfig.qml")
-    quick_facade = read("modules/settings/QuickConfigHugOnly.qml")
     modules = read("modules/settings/ModulesConfig.qml")
     system = read("modules/settings/GeneralConfigCore.qml")
     sidebars = read("modules/settings/SidebarsConfig.qml")
@@ -100,7 +99,7 @@ def main() -> None:
                   'Config.setNestedValue("bar.bottom"',
                   'Config.setNestedValue("bar.vertical"'):
         forbid(quick, token, "Quick ownership")
-    forbid(quick_facade, "Timer {", "retired Quick compatibility")
+    forbid(registry, "QuickConfigHugOnly", "retired Quick compatibility")
     for path, source, token in (
         ("Modules", modules, 'Config.setNestedValue("appearance.typography.sizeScale"'),
         ("System", system, 'Config.setNestedValue("policies.ai"'),

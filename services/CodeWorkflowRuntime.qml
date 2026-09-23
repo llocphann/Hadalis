@@ -88,10 +88,9 @@ Singleton {
         const next = Object.assign({}, root.declarations)
         next[token] = registration
         root.declarations = next
-        root._event(
-            "declared",
-            String(registration.targetId ?? registration.panelId ?? ""),
-            token)
+        const targetId = String(
+            registration.targetId ?? registration.panelId ?? "")
+        root._event("declared", targetId, token, targetId)
         return token
     }
 
@@ -146,7 +145,7 @@ Singleton {
         delete next[token]
         root.declarations = next
         root._rememberStale(descriptor, token)
-        root._event("declaration-stale", targetId, token)
+        root._event("declaration-stale", targetId, token, targetId)
     }
 
     function touchDeclaration(token: string): void {
@@ -234,9 +233,12 @@ Singleton {
         return root.activeCatalog.find(item => item.targetId === targetId) ?? null
     }
 
-    function _event(kind: string, instanceId: string, token: string): void {
+    function _event(
+        kind: string, instanceId: string, token: string, targetId: string
+    ): void {
         root.events = root.events.concat([{
             kind: kind,
+            targetId: targetId,
             instanceId: instanceId,
             token: token,
             atMs: Date.now()
@@ -256,7 +258,8 @@ Singleton {
         next[key] = registration
         root.entries = next
         const token = root.epoch + ":" + (++root.serial)
-        root._event("resident", key, token)
+        root._event(
+            "resident", key, token, String(registration?.targetId ?? ""))
         return token
     }
 
@@ -269,7 +272,9 @@ Singleton {
         delete next[instanceId]
         root.entries = next
         root._rememberStale(descriptor, token, instanceId, outputName)
-        root._event("stale/unloading", instanceId, token)
+        root._event(
+            "stale/unloading", instanceId, token,
+            String(descriptor?.targetId ?? registration?.targetId ?? ""))
     }
 
     function localSnapshot(): var {

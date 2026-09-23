@@ -21,6 +21,7 @@ WSettingsPage {
     readonly property var systemEvidence: root.evidence?.system ?? null
     readonly property var shellEvidence: root.evidence?.shell ?? null
     readonly property var networkEvidence: root.evidence?.network ?? null
+    readonly property var discoveryEvidence: root.evidence?.discovery ?? null
 
     function formatPercent(value): string {
         const number = Number(value)
@@ -186,6 +187,35 @@ WSettingsPage {
             label: Translation.tr("Identity collisions")
             description: String(root.collisionCount)
             icon: "info"
+        }
+
+        WSettingsRow {
+            label: Translation.tr("Runtime boundaries")
+            description: root.discoveryEvidence?.status === "ready"
+                ? String(root.discoveryEvidence?.boundaryCount ?? 0)
+                    + " · " + String(root.discoveryEvidence?.filesScanned ?? 0)
+                    + " " + Translation.tr("QML files")
+                : String(root.discoveryEvidence?.status ?? "idle")
+            icon: "apps"
+        }
+
+        WSettingsRow {
+            visible: root.discoveryEvidence?.status === "ready"
+            label: Translation.tr("Canonical source matches")
+            description:
+                String(root.discoveryEvidence?.reconciliation?.matchedBoundaryCount ?? 0)
+                + " · " + Translation.tr("source-only")
+                + " " + String(root.discoveryEvidence?.reconciliation?.unmatchedBoundaryCount ?? 0)
+            icon: "apps"
+        }
+
+        WText {
+            Layout.fillWidth: true
+            visible: root.discoveryEvidence?.status === "ready"
+            text: Translation.tr("Source boundaries are parser evidence, not proof that a component executed.")
+            color: Looks.colors.subfg
+            font.pixelSize: Looks.font.pixelSize.small
+            wrapMode: Text.WordWrap
         }
 
         WSettingsRow {

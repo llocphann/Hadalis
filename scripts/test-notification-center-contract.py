@@ -144,7 +144,6 @@ for token in (
     "function openNotificationCenter(outputName): bool",
     "function closeNotificationCenter(): void",
     "function setNotificationCenterHoverOutput(outputName, open): void",
-    "Config.options?.notificationCenter?.dismissToastsOnOpen ?? true",
     "Config.options?.notificationCenter?.markReadOnOpen ?? true",
 ):
     require(global_states, token, "GlobalStates Notification Center routing missing")
@@ -217,7 +216,6 @@ for token in (
     "property int popupWidth: 420",
     "property int popupHeight: 560",
     "property bool markReadOnOpen: true",
-    "property bool dismissToastsOnOpen: true",
     "property bool allowInFullscreen: false",
     "property list<string> screenList: []",
 ):
@@ -232,7 +230,6 @@ expected = {
     "popupWidth": 420,
     "popupHeight": 560,
     "markReadOnOpen": True,
-    "dismissToastsOnOpen": True,
     "allowInFullscreen": False,
     "screenList": [],
 }
@@ -248,7 +245,6 @@ for token in (
     'Config.setNestedValue("notificationCenter.popupWidth", value)',
     'Config.setNestedValue("notificationCenter.popupHeight", value)',
     'Config.setNestedValue("notificationCenter.markReadOnOpen", checked)',
-    'Config.setNestedValue("notificationCenter.dismissToastsOnOpen", checked)',
     'Config.setNestedValue("notificationCenter.allowInFullscreen", checked)',
     'GlobalStates.toggleNotificationCenter("")',
 ):

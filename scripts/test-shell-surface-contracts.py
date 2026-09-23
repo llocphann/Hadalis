@@ -1107,6 +1107,8 @@ def main() -> None:
         "readonly property int cornerStyle: 0",
         "floatingStyle",
         "cardStyleEverywhere",
+        "zzzDetachedRounded",
+        "barMargin",
     ):
         check(retired_bar_constant not in bar_content,
               f"Horizontal Bar must not retain constant retired branch: {retired_bar_constant}")

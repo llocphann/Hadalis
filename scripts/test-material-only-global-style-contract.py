@@ -306,9 +306,14 @@ def main() -> None:
         "readonly property bool regaliaEverywhere: false",
         "readonly property bool zzzEverywhere: false",
         "readonly property bool cookieEverywhere: false",
-        "readonly property bool _auroraLightMode: false",
     ):
         require(appearance, token, "Appearance.qml compatibility boundary")
+    for token in (
+        "_auroraLightMode",
+        "popupSurfaceTransparentize",
+    ):
+        forbid(appearance, token, "Appearance.qml retired compatibility")
+
     for token in (
         'globalStyle === "inir"',
         'globalStyle === "angel"',

@@ -11,6 +11,19 @@ import json
 
 OBJECTS = {"ui_object_definition", "ui_object_definition_binding"}
 LIFECYCLE = {"Loader", "LazyLoader", "Variants", "Instantiator", "Repeater"}
+RUNTIME_OBJECT_BOUNDARIES = {
+    "Timer": "timer",
+    "Process": "process",
+    "FileView": "file-view",
+    "FileWatcher": "file-watcher",
+    "WebSocket": "network",
+    "TcpSocket": "network",
+    "UnixSocket": "network",
+}
+DYNAMIC_CREATION_CALLS = {
+    "Qt.createComponent": "dynamic-component",
+    "Qt.createQmlObject": "dynamic-qml-object",
+}
 
 
 def semantic_value_node(nodes, index):
@@ -84,6 +97,11 @@ def extract(path, source, nodes):
                 details["target_property"] = field_text(i, "name")
             elif short_type in LIFECYCLE:
                 kind = "lifecycle"
+                details["runtime_boundary"] = "lifecycle"
+                details["runtime_capability"] = short_type
+            elif short_type in RUNTIME_OBJECT_BOUNDARIES:
+                details["runtime_boundary"] = RUNTIME_OBJECT_BOUNDARIES[short_type]
+                details["runtime_capability"] = short_type
             elif short_type == "Connections":
                 kind = "connections"
             elif short_type == "Component":
@@ -125,9 +143,30 @@ def extract(path, source, nodes):
         elif n.kind == "ui_pragma":
             kind, name = "pragma", field_text(i, "name")
             details["value"] = field_text(i, "value")
-        elif n.kind == "call_expression" and field_text(i, "function") == "Qt.binding":
-            kind, name = "opaque", "Qt.binding"
-            details["reason"] = "imperative-rebinding; preserve script, not a declarative wire"
+        elif n.kind == "call_expression":
+            function_name = field_text(i, "function")
+            if function_name == "Qt.binding":
+                kind, name = "opaque", "Qt.binding"
+                details["reason"] = "imperative-rebinding; preserve script, not a declarative wire"
+            else:
+                boundary = DYNAMIC_CREATION_CALLS.get(function_name)
+                if boundary is None and function_name.endswith(".createObject"):
+                    boundary = "dynamic-object"
+                if boundary is None and (
+                    function_name == "setSource"
+                    or function_name.endswith(".setSource")
+                ):
+                    boundary = "dynamic-loader-source"
+                if boundary is not None:
+                    kind, name = "runtime-boundary", function_name
+                    details["runtime_boundary"] = boundary
+                    details["runtime_capability"] = function_name
+        elif n.kind == "new_expression":
+            raw_expression = text(i).lstrip()
+            if raw_expression.startswith("new XMLHttpRequest("):
+                kind, name = "runtime-boundary", "XMLHttpRequest"
+                details["runtime_boundary"] = "network"
+                details["runtime_capability"] = "XMLHttpRequest"
         elif n.kind.startswith("ui_") and n.kind in {"ui_annotation", "ui_annotated_object_member"}:
             kind, name, opaque[i] = "opaque", n.kind, True
             details["reason"] = "annotation semantics not modeled"

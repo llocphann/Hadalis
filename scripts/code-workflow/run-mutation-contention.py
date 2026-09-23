@@ -81,12 +81,15 @@ def history_entry(snapshot: dict, index: int) -> dict:
     raise AssertionError(f"history summary missing index {index}")
 
 
+CONTENTION_DISCONNECT_EDGE_ID = "clock.data.time"
+
+
 def prepare_four_pipelines(
     probe: Probe,
     clock_path: Path,
 ) -> dict:
     disconnect_state, source_before = disconnect.prepare_disconnect(
-        probe, clock_path
+        probe, clock_path, CONTENTION_DISCONNECT_EDGE_ID
     )
     disconnect_index = int(
         disconnect_state["prepared"]["historyIndex"]

@@ -59,6 +59,8 @@ Item {
                 Layout.fillWidth: true
 
                 StyledText {
+
+                    textFormat: Text.PlainText
                     Layout.fillWidth: true
                     text: root.title
                     color: root.rxColor
@@ -68,6 +70,8 @@ Item {
                 }
 
                 StyledText {
+
+                    textFormat: Text.PlainText
                     text: root.rxPrefix + root.rx
                     color: root.rxColor
                     font.family: Appearance.font.family.monospace
@@ -75,6 +79,8 @@ Item {
                 }
 
                 StyledText {
+
+                    textFormat: Text.PlainText
                     text: root.txPrefix + root.tx
                     color: root.txColor
                     font.family: Appearance.font.family.monospace
@@ -93,6 +99,8 @@ Item {
                     spacing: 3
 
                     StyledText {
+
+                        textFormat: Text.PlainText
                         text: root.rxLabel
                         color: Appearance.colors.colSubtext
                         font.pixelSize: Appearance.font.pixelSize.small
@@ -113,6 +121,8 @@ Item {
                     spacing: 3
 
                     StyledText {
+
+                        textFormat: Text.PlainText
                         text: root.txLabel
                         color: Appearance.colors.colSubtext
                         font.pixelSize: Appearance.font.pixelSize.small
@@ -134,6 +144,8 @@ Item {
                     || root.txTotal.length > 0
 
                 StyledText {
+
+                    textFormat: Text.PlainText
                     Layout.fillWidth: true
                     text: "Σ " + root.rxLabel + " "
                         + (root.rxTotal || "—")
@@ -144,6 +156,8 @@ Item {
                 }
 
                 StyledText {
+
+                    textFormat: Text.PlainText
                     Layout.fillWidth: true
                     horizontalAlignment: Text.AlignRight
                     text: "Σ " + root.txLabel + " "
@@ -156,6 +170,8 @@ Item {
             }
 
             StyledText {
+
+                textFormat: Text.PlainText
                 Layout.fillWidth: true
                 text: root.provenance.length > 0
                     ? root.provenance : "—"

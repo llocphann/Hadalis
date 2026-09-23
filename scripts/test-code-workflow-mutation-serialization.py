@@ -119,6 +119,56 @@ for token in (
     if token not in restore:
         fail("cross-generation owner invalidation missing " + token)
 
+for start, end, source_token, anchor_token, label in (
+    (
+        "function _finishBindingPostconditionIfReady(): void",
+        "function _markHistoryBindingLifecycleResult(",
+        "reloadState.pendingBindingSourcePath",
+        "reloadState.pendingBindingSemanticAnchor",
+        "Binding",
+    ),
+    (
+        "function _finishSignalActionPostconditionIfReady(): void",
+        "function _markHistorySignalActionLifecycleResult(",
+        "reloadState.pendingSignalActionSourcePath",
+        "reloadState.pendingSignalActionInsertedHandlerSemanticAnchor",
+        "Signal/Action",
+    ),
+    (
+        "function _finishDisconnectPostconditionIfReady(): void",
+        "function _markHistoryDisconnectLifecycleResult(",
+        "reloadState.pendingDisconnectSourcePath",
+        "reloadState.pendingDisconnectSemanticAnchor",
+        "Disconnect",
+    ),
+    (
+        "function _finishConnectSemanticRebindIfReady(): void",
+        "function _markHistoryConnectLifecycleResult(",
+        "reloadState.pendingConnectSourcePath",
+        "reloadState.pendingConnectInsertedSemanticAnchor",
+        "Connect",
+    ),
+    (
+        "function _finishSemanticRebindIfReady(): void",
+        "function _markHistoryLifecycleResult(",
+        "reloadState.pendingApplySourcePath",
+        "reloadState.pendingApplySemanticAnchor",
+        "Literal",
+    ),
+):
+    block = region(start, end)
+    status_guard = block.find('CodeWorkflowAnalyzer.status === "analyzing"')
+    source_guard = block.find("CodeWorkflowAnalyzer.sourcePath")
+    anchor_guard = block.find("CodeWorkflowAnalyzer.semanticAnchor")
+    if source_guard < 0 or source_token not in block:
+        fail(label + " postcondition missing analyzer source identity guard")
+    if anchor_guard < 0 or anchor_token not in block:
+        fail(label + " postcondition missing analyzer semantic identity guard")
+    if status_guard >= 0 and (
+        source_guard > status_guard or anchor_guard > status_guard
+    ):
+        fail(label + " must reject unrelated analyzer completion before status handling")
+
 for token in (
     "Milestone 2K-V-A — cross-pipeline mutation serialization hardening",
     "stageConnectLifecycleHandoff",

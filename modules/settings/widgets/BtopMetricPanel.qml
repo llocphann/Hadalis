@@ -8,7 +8,12 @@ Item {
 
     property string title: "CPU"
     property string subtitle: ""
-    property real value: 0
+    property var value: null
+    readonly property real numericValue: Number(root.value)
+    readonly property bool valueAvailable:
+        root.value !== null
+        && root.value !== undefined
+        && Number.isFinite(root.numericValue)
     property string detail: ""
     property var samples: []
 
@@ -34,7 +39,8 @@ Item {
                 }
                 Item { Layout.fillWidth: true }
                 StyledText {
-                    text: Math.round(root.value) + "%"
+                    text: root.valueAvailable
+                        ? Math.round(root.numericValue) + "%" : "—"
                     color: Appearance.colors.colPrimary
                 }
             }
@@ -46,7 +52,10 @@ Item {
                 color: Appearance.colors.colLayer2
 
                 Rectangle {
-                    width: parent.width * Math.max(0, Math.min(1, root.value / 100))
+                    width: root.valueAvailable
+                        ? parent.width * Math.max(
+                            0, Math.min(1, root.numericValue / 100))
+                        : 0
                     height: parent.height
                     radius: parent.radius
                     color: Appearance.colors.colPrimary
@@ -62,6 +71,7 @@ Item {
 
             Row {
                 Layout.fillWidth: true
+                Layout.preferredHeight: 22
                 spacing: 2
                 Repeater {
                     model: root.samples

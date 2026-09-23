@@ -55,6 +55,11 @@ module work, commit directly to `dev`, and never force-push or modify `stable`.
   in typed workspace state as validated JSON, remain strictly editor-only, and
   are pruned against the current reviewed IR during restore. Corrupt or stale
   node coordinates cannot create source changes or resurrect removed graph nodes.
+- The canvas now has a conditional, non-semantic minimap. It appears only when
+  the reviewed graph exceeds a sufficiently large viewport, mirrors canonical
+  node IDs plus the current viewport, and supports click/drag recentering without
+  changing zoom or source semantics. The user preference is workspace-persistent;
+  narrow/small graphs hide the overlay automatically rather than shrinking canvas.
 
 ## Production UI refinement continuation — 2026-09-21
 

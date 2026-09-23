@@ -2052,6 +2052,7 @@ Singleton {
             // so these values only control presentation/interaction geometry.
             property JsonObject quickNotes: JsonObject {
                 property bool enable: true
+                property string monitorMode: "all"
                 property int hoverDelayMs: 220
                 property int cornerSize: 14
                 property int popupWidth: 420

@@ -43,6 +43,23 @@ Singleton {
         root.notificationCenterAvailable
         && (root.notificationCenterExplicitOpen
             || root.notificationCenterHoverOutput.length > 0)
+
+    // Hover ownership is tied to a concrete output. If that monitor disappears
+    // while the pointer-owned popup is alive, do not leave a stale lease that
+    // keeps notificationCenterOpen true and suppresses transient toasts.
+    Connections {
+        target: Quickshell
+        function onScreensChanged(): void {
+            const hoverOutput = root.notificationCenterHoverOutput
+            if (!hoverOutput)
+                return
+            const stillConnected = Quickshell.screens.some(
+                screen => String(screen?.name ?? "") === hoverOutput)
+            if (!stillConnected)
+                root.notificationCenterHoverOutput = ""
+        }
+    }
+
     property bool mediaControlsOpen: false
     property bool osdBrightnessOpen: false
     property bool osdVolumeOpen: false

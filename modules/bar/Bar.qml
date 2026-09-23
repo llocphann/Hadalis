@@ -18,42 +18,8 @@ Scope {
     // background resident so the Bar body and canonical perimeter relationship
     // cannot disappear because of an old transparent-bar config value.
     readonly property bool showBarBackground: true
-    property bool _legacyCornerStyleMigrationDone: false
-    // Note: Vignette effect moved to Backdrop.qml (backdrop wallpaper layer)
-
-    // Global style changes can swap surface implementations that are evaluated
-    // when the bar window is created, so rebuild only for that live dependency.
-    readonly property string rebuildKey: Config.options?.appearance?.globalStyle ?? "material"
-    property bool rebuilding: false
-    onRebuildKeyChanged: {
-        bar.rebuilding = true;
-        barRebuildTimer.restart();
-    }
-
-    function normalizeLegacyCornerStyle(): void {
-        if (bar._legacyCornerStyleMigrationDone || !Config.ready)
-            return
-
-        bar._legacyCornerStyleMigrationDone = true
-        if ((Config.options?.bar?.cornerStyle ?? 0) !== 0)
-            Config.setNestedValue("bar.cornerStyle", 0)
-    }
-
-    Component.onCompleted: bar.normalizeLegacyCornerStyle()
-
-    Connections {
-        target: Config
-        function onReadyChanged(): void {
-            if (Config.ready)
-                bar.normalizeLegacyCornerStyle()
-        }
-    }
-
-    Timer {
-        id: barRebuildTimer
-        interval: 50
-        onTriggered: bar.rebuilding = false
-    }
+    // Legacy Bar surface values are normalized once by SettingsPageRegistry at
+    // shell startup. The live Bar consumes only canonical Hug state.
 
     Variants {
         // For each monitor
@@ -72,7 +38,7 @@ Scope {
         }
         LazyLoader {
             id: barLoader
-            active: !bar.rebuilding && GlobalStates.barOpen && !GlobalStates.screenLocked
+            active: GlobalStates.barOpen && !GlobalStates.screenLocked
                 && !GlobalStates.widgetEditMode
             required property ShellScreen modelData
             component: PanelWindow { // Bar window

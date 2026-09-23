@@ -260,6 +260,10 @@ for token in (
     "function localSnapshot(): var",
     "function snapshot(): var",
     "property var remoteSnapshot: null",
+    "property var remoteConsumers: ({})",
+    "readonly property bool remoteDemanded:",
+    "function setRemoteConsumerActive(ownerId: string, active: bool): void",
+    "running: !root.hasLocalDeclarations && root.remoteDemanded",
     "readonly property bool hasLocalDeclarations:",
     'Quickshell.shellPath("scripts/inir")',
     '"ipc", "codeWorkflowRuntime", "snapshot"',
@@ -323,6 +327,16 @@ for token in (
     require(runtime, token, "dynamic runtime inventory missing " + token)
 require(page, "for (const target of CodeWorkflowRuntime.activeCatalog)",
         "Targets must enumerate discovered runtime surfaces")
+for token in (
+    "readonly property string runtimeRemoteConsumerId:",
+    "function syncRemoteRuntimeDemand(): void",
+    "CodeWorkflowRuntime.setRemoteConsumerActive(",
+    "root.enabled && root.visible",
+    "function syncInitialOutput(): void",
+    "target: CodeWorkflowRuntime",
+    "root.syncInitialOutput()",
+):
+    require(page, token, "visible Workflow remote-demand contract missing " + token)
 require(page, 'let detail = "unloaded · source"',
         "runtime target lifecycle detail must be computed before the row object")
 if "detail: {\n                    const state =" in page:

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Regression contract for the popup-only liquid Weather orbit."""
+"""Regression contract for the popup-only animated liquid Weather orbit."""
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -7,12 +7,11 @@ ORBITAL = ROOT / "modules/bar/weather/OrbitalWeather.qml"
 LIQUID = ROOT / "modules/bar/weather/LiquidOrbitalField.qml"
 WEATHER_CONTENT = ROOT / "modules/bar/weather/WeatherPopupContent.qml"
 DASH_WEATHER = ROOT / "modules/dashboard/DashWeather.qml"
-IRIS_FIELD = ROOT / "modules/common/perimeter/ConnectedSurfaceIrisField.qml"
 
 
 def require(text: str, token: str, source: str) -> None:
     if token not in text:
-        raise AssertionError(f"{source} missing liquid-orbit token: {token!r}")
+        raise AssertionError(f"{source} missing animated-liquid token: {token!r}")
 
 
 def main() -> None:
@@ -20,43 +19,40 @@ def main() -> None:
     liquid = LIQUID.read_text(encoding="utf-8")
     weather = WEATHER_CONTENT.read_text(encoding="utf-8")
     dashboard = DASH_WEATHER.read_text(encoding="utf-8")
-    iris_field = IRIS_FIELD.read_text(encoding="utf-8")
 
     for token in (
         "property bool liquidMode: false",
         "property bool liquidAnimationActive: false",
         "LiquidOrbitalField {",
-        "visible: !root.liquidMode || root.liquidFallback",
+        "visible: !root.liquidMode",
         "animate: root.liquidAnimationActive",
     ):
         require(orbital, token, "OrbitalWeather.qml")
 
     for token in (
         "FrameAnimation {",
+        "onTriggered: liquidCanvas.requestPaint()",
         "Appearance.animationsEnabled",
-        "Appearance.effectsEnabled",
-        "readonly property int ribbonCount: 12",
-        "readonly property real fuseDepth: 36",
-        "readonly property var ribbonAngles:",
-        "component LiquidBody: QtObject",
-        "readonly property string shapeId:",
-        "readonly property var liquidShapes: [",
-        "ConnectedSurfaceIrisField {",
-        "shapes: root.liquidShapes",
-        "tint: root.fieldColor",
-        "rimColor: root.edgeColor",
-        "field.shaderStatus === ShaderEffect.Error",
+        "renderStrategy: Canvas.Threaded",
+        "renderTarget: Canvas.Image",
+        "readonly property int sampleCount: 96",
+        "function liquidSample(angle: real, time: real): var",
+        "Math.sin(angle * 3.0 - time * 1.15)",
+        "function nodeInfluence(angle: real, nodeIndex: int, frame): var",
+        "thickness += influence.profile",
+        "tangentDrift += influence.profile * shoulder",
+        "root.traceClosed(ctx, outer)",
+        "root.traceClosed(ctx, inner.slice().reverse())",
+        "Three travelling specular streaks visibly flow around the liquid.",
     ):
         require(liquid, token, "LiquidOrbitalField.qml")
 
+    if "&& Appearance.effectsEnabled" in liquid.split("FrameAnimation {", 1)[1].split("}", 1)[0]:
+        raise AssertionError("Liquid motion must not be disabled by the effects switch")
+    if "ConnectedSurfaceIrisField" in liquid:
+        raise AssertionError("Liquid animation must not regress to moving rigid SDF bodies")
     if "Timer {" in liquid:
-        raise AssertionError("Liquid orbit must use the scene-frame clock, not a fixed Timer")
-    if "ShaderEffectSource" in liquid or "MultiEffect" in liquid:
-        raise AssertionError("Liquid orbit must remain a single-pass iRiS field")
-    if liquid.count("LiquidBody { id:") != 20:
-        raise AssertionError("Liquid orbit must keep exactly 12 ribbon + 8 hour bodies")
-    if "readonly property var liquidShapes: {" in liquid:
-        raise AssertionError("Liquid shapes must stay persistent instead of reallocating every frame")
+        raise AssertionError("Liquid orbit must use scene-frame animation, not a fixed Timer")
 
     for token in (
         "liquidMode: true",
@@ -68,10 +64,7 @@ def main() -> None:
     if "liquidMode: true" in dashboard:
         raise AssertionError("Dashboard Weather must not opt into popup liquid mode")
 
-    require(iris_field, 'list[i]?.id ?? list[i]?.shapeId ?? ""',
-            "ConnectedSurfaceIrisField.qml")
-
-    print("Weather liquid orbital contract: PASS")
+    print("Weather animated liquid orbital contract: PASS")
 
 
 if __name__ == "__main__":

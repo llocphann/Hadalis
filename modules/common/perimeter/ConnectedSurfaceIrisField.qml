@@ -90,12 +90,8 @@ Item {
             const map = {}
             const list = root.shapes ?? []
             for (let i = 0; i < Math.min(list.length, root.capacity); ++i) {
-                // JS shape records historically expose `id`. Persistent QML
-                // shape objects cannot use that reserved name, so accept the
-                // explicit shapeId alias without changing existing callers.
-                const shapeId = list[i]?.id ?? list[i]?.shapeId ?? ""
-                if (shapeId)
-                    map[shapeId] = i
+                if (list[i]?.id)
+                    map[list[i].id] = i
             }
             return map
         }

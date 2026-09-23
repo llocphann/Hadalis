@@ -31,8 +31,6 @@ Item {
             result.push(root.orbitAngleForHour(root.hours[i]?.label))
         return result
     }
-    readonly property bool liquidFallback:
-        root.liquidMode && !liquidField.shaderCompiled
 
     implicitWidth: 360
     implicitHeight: 230
@@ -111,15 +109,15 @@ Item {
         animate: root.liquidAnimationActive
     }
 
-    // Proven lightweight fallback for a software scene graph or a shader
-    // compile failure. Normal popup rendering never paints this guide.
+    // Dashboard keeps its proven static guide; the popup paints only the
+    // animated liquid field and never stacks the old orbit underneath it.
     Canvas {
         id: orbitGuide
         anchors.centerIn: parent
         width: Math.max(1, root.orbitRadiusX * 2 + 4)
         height: Math.max(1, root.orbitRadiusY * 2 + 4)
         opacity: 0.42
-        visible: !root.liquidMode || root.liquidFallback
+        visible: !root.liquidMode
 
         onWidthChanged: requestPaint()
         onHeightChanged: requestPaint()
@@ -171,9 +169,7 @@ Item {
                 ? Qt.formatDate(root.now, "dddd, MMM d")
                 : Qt.formatDate(root.now, "ddd, MMM d")
             font.weight: root.liquidMode ? Font.Medium : Font.DemiBold
-            font.pixelSize: root.liquidMode
-                ? Appearance.font.pixelSize.small
-                : Appearance.font.pixelSize.small
+            font.pixelSize: Appearance.font.pixelSize.small
             color: Appearance.colors.colOnSurfaceVariant
             elide: Text.ElideRight
         }
@@ -238,7 +234,7 @@ Item {
 
             Rectangle {
                 anchors.fill: parent
-                visible: !root.liquidMode || root.liquidFallback
+                visible: !root.liquidMode
                 radius: Appearance.rounding.normal
                 color: hourPoint.highlighted
                     ? Appearance.colors.colPrimaryContainer

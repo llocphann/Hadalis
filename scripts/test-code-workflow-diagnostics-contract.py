@@ -191,11 +191,40 @@ for forbidden in ('"targetId"', '"componentCpu"', '"componentRam"', '"componentG
 for page in (material_page, waffle_page):
     require(page, "CPU · RAM · Swap · GPU · Network",
             "Diagnostics page must preserve required resource scope")
-    for forbidden in ("Process {", "smaps_rollup", "/proc/net/dev", "drm-fdinfo"):
+    for token in (
+        "RuntimeDiagnosticsSession.evidence",
+        "root.evidence?.system ?? null",
+        "root.evidence?.shell ?? null",
+        "root.evidence?.network ?? null",
+        "function formatPercent(value): string",
+        "function formatKiB(value): string",
+        "function formatRate(value): string",
+        "root.systemEvidence?.cpu?.percent",
+        "root.shellEvidence?.cpu?.percent",
+        "root.systemEvidence?.memory?.valuesKiB?.MemUsed",
+        "root.systemEvidence?.memory?.valuesKiB?.SwapUsed",
+        "root.shellEvidence?.memory?.valuesKiB?.Pss",
+        "root.shellEvidence?.memory?.valuesKiB?.Swap",
+        "root.shellEvidence?.gpu?.available === true",
+        "root.networkEvidence?.aggregateNonLoopback",
+        "Per-component CPU, RAM, Swap, GPU and Network",
+    ):
+        require(page, token, "Diagnostics UI must render exact shell evidence: " + token)
+    # Provenance paths are presentation text; Settings must not open its own
+    # sampler process or direct /proc FileView. The shell-owned sampler remains
+    # the sole measurement authority.
+    for forbidden in ("Process {", "FileView {", "Quickshell.Io"):
         if forbidden in page:
             raise SystemExit(
                 "FAIL: Settings pages must consume shell evidence, not sample locally: "
                 + forbidden
             )
 
-print("ok - Runtime Diagnostics identity/session/sampler contract")
+require(material_page, "function shellGpuMemoryKiB(): real",
+        "Material Diagnostics should expose exact resident DRM memory when available")
+require(material_page, "Main shell PID",
+        "Material Diagnostics must identify the sampled shell process")
+require(waffle_page, "Main shell PID",
+        "Waffle Diagnostics must identify the sampled shell process")
+
+print("ok - Runtime Diagnostics identity/session/sampler/UI contract")

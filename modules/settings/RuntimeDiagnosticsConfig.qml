@@ -234,9 +234,27 @@ ContentPage {
                 }
             }
 
+            RowLayout {
+                Layout.fillWidth: true
+                StyledText {
+                    Layout.fillWidth: true
+                    text: Translation.tr("Shell disk I/O")
+                    color: Appearance.colors.colOnLayer1
+                }
+                StyledText {
+                    text: "R "
+                        + root.formatRate(
+                            root.shellEvidence?.io?.rates?.readBytesPerSec)
+                        + "   W "
+                        + root.formatRate(
+                            root.shellEvidence?.io?.rates?.writeBytesPerSec)
+                    color: Appearance.colors.colSubtext
+                }
+            }
+
             StyledText {
                 Layout.fillWidth: true
-                text: Translation.tr("Provenance: system CPU /proc/stat · memory /proc/meminfo · shell CPU schedstat · shell memory smaps_rollup (status fallback) · shell GPU DRM fdinfo · network /proc/net/dev.")
+                text: Translation.tr("Provenance: system CPU /proc/stat · memory /proc/meminfo · shell CPU schedstat · shell memory smaps_rollup (status fallback) · shell I/O /proc/<pid>/io · shell GPU DRM fdinfo · network /proc/net/dev.")
                 color: Appearance.colors.colSubtext
                 font.pixelSize: Appearance.font.pixelSize.smallest
                 wrapMode: Text.WordWrap

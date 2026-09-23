@@ -606,8 +606,8 @@ Item {
                     TapHandler {
                         acceptedButtons: Qt.LeftButton
                         gesturePolicy: TapHandler.ReleaseWithinBounds
-                        onPressedChanged: {
-                            if (pressed && Notepad.ready)
+                        onTapped: {
+                            if (Notepad.ready)
                                 root.editorActivated()
                         }
                     }

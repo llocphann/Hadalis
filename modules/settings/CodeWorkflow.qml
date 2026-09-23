@@ -18,6 +18,8 @@ Item {
     readonly property string runtimeRemoteConsumerId:
         "workflow-page:" + String(Quickshell.processId) + ":"
             + Math.random().toString(36).slice(2)
+    readonly property bool workflowActive: root.enabled && root.visible
+    property bool workflowDestroying: false
     property string sourceText: ""
     property string sourceDraft: ""
     property string sourceEditorPath: ""
@@ -718,10 +720,13 @@ Item {
         root.sourceEditorStatus = ""
         if (CodeWorkflowSession.selectedSemanticSourcePath.length === 0)
             CodeWorkflowSession.selectSemantic("")
-        Qt.callLater(root.reloadSource)
-        Qt.callLater(() => root.requestAnalysis(false))
+        if (!root.workflowActive || root.workflowDestroying)
+            return
+        root.scheduleWorkflowActivation()
         Qt.callLater(root.evaluatePreApplyGate)
         Qt.callLater(() => {
+            if (!root.workflowActive || root.workflowDestroying)
+                return
             sourceEditor.setMode("normal")
             sourceEditor.clearSelection()
         })
@@ -1433,13 +1438,16 @@ Item {
     }
 
     function reloadSource(): void {
+        if (!root.workflowActive || root.workflowDestroying)
+            return
         root.sourceText = ""
         if (sourceReader.path)
             sourceReader.reload()
     }
 
     function requestAnalysis(force: bool): void {
-        if (root.sourcePath.length === 0)
+        if (!root.workflowActive || root.workflowDestroying
+                || root.sourcePath.length === 0)
             return
         CodeWorkflowAnalyzer.request(
             root.sourcePath,
@@ -1647,24 +1655,46 @@ Item {
 
     function focusSourceEditorWhenActive(): void {
         Qt.callLater(() => {
-            if (root.enabled && root.visible && sourcePane.visible
-                    && sourceEditor.visible && !sourceEditor.findVisible)
+            if (root.workflowActive && !root.workflowDestroying
+                    && sourcePane.visible && sourceEditor.visible
+                    && !sourceEditor.findVisible)
                 sourceEditor.focusEditor()
         })
     }
 
+    function activateWorkflowWhenCurrent(): void {
+        if (!root.workflowActive || root.workflowDestroying)
+            return
+        root.syncInitialOutput()
+        root.reloadSource()
+        root.requestAnalysis(false)
+        if (CodeWorkflowIndex.status === "idle")
+            CodeWorkflowIndex.refresh(false)
+        root.focusSourceEditorWhenActive()
+    }
+
+    function scheduleWorkflowActivation(): void {
+        if (!root.workflowActive || root.workflowDestroying) {
+            workflowActivationTimer.stop()
+            return
+        }
+        workflowActivationTimer.restart()
+    }
+
+    Timer {
+        id: workflowActivationTimer
+        interval: 75
+        repeat: false
+        onTriggered: root.activateWorkflowWhenCurrent()
+    }
+
     onEnabledChanged: {
         root.syncRemoteRuntimeDemand()
-        if (root.enabled)
-            root.focusSourceEditorWhenActive()
+        root.scheduleWorkflowActivation()
     }
     onVisibleChanged: {
         root.syncRemoteRuntimeDemand()
-        if (root.visible) {
-            root.focusSourceEditorWhenActive()
-            if (CodeWorkflowIndex.status === "idle")
-                CodeWorkflowIndex.refresh(false)
-        }
+        root.scheduleWorkflowActivation()
     }
 
     function focusSourceAnchor(): void {
@@ -1696,14 +1726,20 @@ Item {
             start, start + root.sourceNeedle.length)
     }
 
-    onInspectedSemanticAnchorChanged:
-        Qt.callLater(root.focusSourceAnchor)
+    onInspectedSemanticAnchorChanged: {
+        if (root.workflowActive && !root.workflowDestroying)
+            Qt.callLater(root.focusSourceAnchor)
+    }
 
     onSourceNeedleChanged: {
+        if (!root.workflowActive || root.workflowDestroying)
+            return
         Qt.callLater(root.focusSourceAnchor)
         Qt.callLater(() => root.requestAnalysis(false))
     }
     onStoredSemanticAnchorChanged: {
+        if (!root.workflowActive || root.workflowDestroying)
+            return
         Qt.callLater(() => root.requestAnalysis(false))
         Qt.callLater(root.evaluatePreApplyGate)
     }
@@ -1729,6 +1765,7 @@ Item {
 
     Connections {
         target: CodeWorkflowSession
+        enabled: root.workflowActive && !root.workflowDestroying
 
         function onSelectedTargetIdChanged(): void {
             if (!root.inspectSelectionFromTargets)
@@ -1765,6 +1802,7 @@ Item {
 
     Connections {
         target: CodeWorkflowIndex
+        enabled: root.workflowActive && !root.workflowDestroying
         function onStatusChanged(): void {
             root.reconcileIndexedSemanticInspectSelection()
         }
@@ -1772,6 +1810,7 @@ Item {
 
     Connections {
         target: CodeWorkflowAnalyzer
+        enabled: root.workflowActive && !root.workflowDestroying
         function onStatusChanged(): void {
             if (CodeWorkflowAnalyzer.status === "ready") {
                 Qt.callLater(root.reconcileSemanticInspectSelection)
@@ -1791,6 +1830,7 @@ Item {
 
     Connections {
         target: CodeWorkflowRuntime
+        enabled: root.workflowActive && !root.workflowDestroying
         function onRevisionChanged(): void {
             root.syncInitialOutput()
         }
@@ -1798,6 +1838,7 @@ Item {
 
     Connections {
         target: CodeWorkflowTransaction
+        enabled: root.workflowActive && !root.workflowDestroying
         function onStatusChanged(): void {
             Qt.callLater(root.evaluatePreApplyGate)
         }
@@ -1808,23 +1849,22 @@ Item {
     }
 
     Component.onCompleted: {
+        root.workflowDestroying = false
         root.syncRemoteRuntimeDemand()
-        root.syncInitialOutput()
-        Qt.callLater(root.reloadSource)
-        Qt.callLater(() => root.requestAnalysis(false))
-        if (root.enabled && root.visible)
-            Qt.callLater(() => CodeWorkflowIndex.refresh(false))
-        root.focusSourceEditorWhenActive()
+        root.scheduleWorkflowActivation()
     }
 
-    Component.onDestruction:
+    Component.onDestruction: {
+        root.workflowDestroying = true
+        workflowActivationTimer.stop()
         CodeWorkflowRuntime.setRemoteConsumerActive(
             root.runtimeRemoteConsumerId, false)
+    }
 
     FileView {
         id: sourceReader
         path: root.sourcePath.length > 0 ? Quickshell.shellPath(root.sourcePath) : ""
-        watchChanges: true
+        watchChanges: root.workflowActive && !root.workflowDestroying
         printErrors: false
         onLoaded: {
             root.sourceText = String(sourceReader.text() ?? "")

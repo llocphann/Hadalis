@@ -224,7 +224,7 @@ ContentPage {
             Rectangle {
                 Layout.fillWidth: true
                 implicitHeight: sessionLayout.implicitHeight + 24
-                radius: Appearance.rounding.normal
+                radius: Appearance.rounding.small
                 color: Appearance.colors.colLayer1
                 border.color: root.sessionHasError
                     ? Appearance.colors.colError
@@ -452,7 +452,7 @@ ContentPage {
                 Layout.fillWidth: true
                 visible: root.cpuCores.length > 0
                 implicitHeight: coreColumn.implicitHeight + 24
-                radius: Appearance.rounding.normal
+                radius: Appearance.rounding.small
                 color: Appearance.colors.colLayer1
                 border.color: Qt.rgba(
                     Appearance.colors.colPrimary.r,

@@ -24,6 +24,8 @@ ContentPage {
         root.runtimeSnapshot?.records ?? []
     readonly property var cpuCores:
         root.systemEvidence?.cpu?.coresPercent ?? []
+    readonly property var cpuCoreNames:
+        root.systemEvidence?.cpu?.coreNames ?? []
 
     function percentOf(used, total): var {
         if (used === null || used === undefined
@@ -432,6 +434,7 @@ ContentPage {
                     BtopCoreGrid {
                         Layout.fillWidth: true
                         cores: root.cpuCores
+                        coreNames: root.cpuCoreNames
                         columns: width >= 760 ? 8
                             : width >= 520 ? 6
                             : width >= 360 ? 4 : 2

@@ -79,6 +79,7 @@ OVERVIEW_DASHBOARD = ROOT / "modules" / "overview" / "OverviewDashboard.qml"
 DASHBOARD_CONTENT = ROOT / "modules" / "dashboard" / "DashboardContent.qml"
 OVERVIEW_NIRI_WIDGET = ROOT / "modules" / "overview" / "OverviewNiriWidget.qml"
 OVERVIEW_WIDGET = ROOT / "modules" / "overview" / "OverviewWidget.qml"
+WELCOME = ROOT / "welcome.qml"
 
 
 def require(text: str, token: str, source: str) -> None:
@@ -175,6 +176,7 @@ def main() -> None:
     dashboard_content = DASHBOARD_CONTENT.read_text(encoding="utf-8")
     overview_niri_widget = OVERVIEW_NIRI_WIDGET.read_text(encoding="utf-8")
     overview_widget = OVERVIEW_WIDGET.read_text(encoding="utf-8")
+    welcome = WELCOME.read_text(encoding="utf-8")
 
     # Runtime must never expose a persisted legacy shell-wide style, even during
     # singleton initialization before ThemeService has normalized config on disk.
@@ -207,6 +209,19 @@ def main() -> None:
         'globalStyle === "cookie"',
     ):
         forbid(appearance, token, "Appearance.qml")
+
+    for token in (
+        "Appearance.inirEverywhere",
+        "Appearance.auroraEverywhere",
+        "Appearance.angelEverywhere",
+        "id: auroraBlurSource",
+    ):
+        forbid(welcome, token, "welcome.qml")
+    for token in (
+        "radius: Appearance.rounding.large",
+        "color: Appearance.colors.colLayer1Base",
+    ):
+        require(welcome, token, "welcome.qml Material chrome")
 
     motion_start = appearance.index("property QtObject motion: QtObject {")
     motion_end = appearance.index("m3colors: QtObject {", motion_start)

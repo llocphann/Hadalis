@@ -51,6 +51,10 @@ Item {
     property var _lruIndices: []
     property int _statusRevision: 0
     property int _errorIndex: -1
+    // Invalidate deferred page work whenever navigation/reset moves on. A
+    // callback queued by a destroyed Settings generation must never operate on
+    // a newly reopened pending Loader.
+    property int _requestGeneration: 0
 
     clip: _transitionRunning
 
@@ -132,6 +136,7 @@ Item {
     }
 
     function _reset() {
+        _requestGeneration++
         switchAnimation.stop()
         _transitionRunning = false
         _currentIndex = -1
@@ -143,7 +148,19 @@ Item {
         _statusRevision++
     }
 
-    function _requestPage() {
+    function _scheduleRequestPage() {
+        const generation = ++_requestGeneration
+        Qt.callLater(function() {
+            if (generation !== root._requestGeneration)
+                return
+            root._requestPage(generation)
+        })
+    }
+
+    function _requestPage(generation) {
+        if (generation !== undefined
+                && generation !== root._requestGeneration)
+            return
         if (!loadEnabled || requestedIndex < 0 || requestedIndex >= pages.length)
             return
 
@@ -195,10 +212,15 @@ Item {
         // keeps completed revisits cheap without blocking navigation on creation.
         _retain(_pendingIndex)
 
+        const pendingIndex = _pendingIndex
+        const pendingGeneration = _requestGeneration
         Qt.callLater(function() {
-            const loader = root._loaderFor(root._pendingIndex)
+            if (pendingGeneration !== root._requestGeneration
+                    || pendingIndex !== root._pendingIndex)
+                return
+            const loader = root._loaderFor(pendingIndex)
             if (loader)
-                root._handleStatus(root._pendingIndex, loader.status)
+                root._handleStatus(pendingIndex, loader.status)
         })
     }
 
@@ -241,7 +263,7 @@ Item {
                 staleLoader.x = 0
             }
             _pendingIndex = -1
-            Qt.callLater(root._requestPage)
+            root._scheduleRequestPage()
             return
         }
 
@@ -289,19 +311,19 @@ Item {
         _trimCache()
 
         if (requestedIndex !== _currentIndex)
-            Qt.callLater(root._requestPage)
+            root._scheduleRequestPage()
     }
 
     onRequestedIndexChanged: {
         root._syncDiagnosticsLease()
-        Qt.callLater(root._requestPage)
+        root._scheduleRequestPage()
     }
     onCurrentIndexChanged: root._syncDiagnosticsLease()
     onVisibleChanged: root._syncDiagnosticsLease()
     onLoadEnabledChanged: {
         root._syncDiagnosticsLease()
         if (loadEnabled)
-            Qt.callLater(root._requestPage)
+            root._scheduleRequestPage()
         else
             _reset()
     }
@@ -309,7 +331,7 @@ Item {
     Component.onCompleted: {
         SettingsArrangement.migrateLegacyPageIndices()
         root._syncDiagnosticsLease()
-        Qt.callLater(root._requestPage)
+        root._scheduleRequestPage()
     }
     Component.onDestruction:
         RuntimeDiagnosticsSession.setOwnerCurrent(
@@ -431,7 +453,7 @@ Item {
                 Layout.alignment: Qt.AlignHCenter
                 materialIcon: "refresh"
                 mainText: Translation.tr("Retry")
-                onClicked: root._requestPage()
+                onClicked: root._scheduleRequestPage()
             }
         }
     }

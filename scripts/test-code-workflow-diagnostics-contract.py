@@ -74,7 +74,7 @@ for token in (
     "property var sampleHistory: []",
     "function _appendHistory(sample): void",
     "root.sampleHistory = root.sampleHistory.concat([",
-    "]).slice(-60)",
+    "]).slice(-root.historyLimit)",
     "history: root.sampleHistory",
     "root.sampleHistory = []",
     "id: diagnosticsSampler",

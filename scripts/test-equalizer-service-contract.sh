@@ -80,6 +80,19 @@ if unchecked > unavailable:
         "FAIL: Equalizer reports transport unavailable before a current-generation probe completes"
     )
 
+# The DSP names above are now the sole public service API. Earlier aliases had
+# no in-repo callers and only kept a second vocabulary alive.
+for token in (
+    "property list<string> presets",
+    "readonly property string activePreset:",
+    "readonly property var bands:",
+    "bandControlAvailable",
+    "function applyPreset(",
+    "function setBandGain(",
+    "function reset()",
+):
+    forbid(service, token, "EqualizerService")
+
 # Runtime compatibility fix: Hadalis must no longer depend on channel-scoped
 # EasyEffects local-server properties, which are version-dependent.
 for token in (

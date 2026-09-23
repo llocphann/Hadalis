@@ -69,6 +69,22 @@ without sharing QObject references across processes.
 
 ---
 
+### runtimeDiagnostics
+
+Internal on-demand Diagnostics lease bridge. The main shell owns diagnostics
+sampling; standalone Material or Waffle Settings only renew a short-lived lease
+while the Diagnostics page is current. A missed heartbeat expires server-side,
+so closing or crashing Settings cannot leave diagnostics sampling running.
+
+| Function | Description |
+|----------|-------------|
+| `acquire(clientId)` | Acquire or renew a bounded Diagnostics sampling lease for the caller |
+| `heartbeat(clientId)` | Renew an existing Diagnostics lease |
+| `release(clientId)` | Release the caller's Diagnostics lease immediately |
+| `status` | Return active/lease-count/TTL sampling-session state as JSON |
+
+---
+
 ### codeWorkflowCapture
 
 Internal deterministic capture harness for Code Workflow UI regression tests.

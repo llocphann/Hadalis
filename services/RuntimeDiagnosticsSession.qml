@@ -190,6 +190,9 @@ Singleton {
 
     function setOwnerCurrent(ownerId: string, current: bool): void {
         const id = root._ownerId(ownerId)
+        const alreadyCurrent = root.activeOwners[id] === true
+        if (alreadyCurrent === (current === true))
+            return
         const next = Object.assign({}, root.activeOwners)
         if (current === true)
             next[id] = true

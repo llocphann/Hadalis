@@ -2605,6 +2605,12 @@ Item {
                         Layout.fillHeight: true
                         spacing: 3
                         clip: true
+                        // Target rows contain icons, two text layouts and
+                        // accessibility handlers. Recycle them instead of
+                        // reconstructing that subtree while scrolling, and let
+                        // a small asynchronous buffer prepare upcoming rows.
+                        reuseItems: true
+                        cacheBuffer: 240
                         model: root.inspectTargets
 
                         delegate: Rectangle {
@@ -2636,7 +2642,9 @@ Item {
                                 ? 1
                                 : activeFocus && !section ? 1 : 0
                             border.color: Appearance.colors.colPrimary
-                            clip: true
+                            // The ListView owns clipping. Per-delegate clipping
+                            // breaks scene-graph batching and is unnecessary
+                            // because both text rows already elide to width.
                             activeFocusOnTab: !section
 
                             Accessible.role: section

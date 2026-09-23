@@ -196,6 +196,7 @@ next_gate_parts = PHASE2.split("## Next gate", 1)
 if len(next_gate_parts) != 2:
     fail("Phase 2 documentation must retain an explicit Next gate section")
 next_gate = next_gate_parts[1]
+next_gate_compact = " ".join(next_gate.split())
 for token in (
     "2K-W-D is complete",
     "2K-W-E",
@@ -203,9 +204,9 @@ for token in (
     "runtime evidence",
     "exact semantic identity",
 ):
-    if token not in next_gate:
+    if token not in next_gate_compact:
         fail("2K-W-E gate boundary documentation missing " + token)
-if "2K-W-D completes the reviewed" in next_gate:
+if "2K-W-D completes the reviewed" in next_gate_compact:
     fail("completed 2K-W-D must not remain advertised as the next gate")
 
 for token in (

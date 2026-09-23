@@ -243,6 +243,7 @@ for helper in (
 if "scripts/code-workflow/run-disconnect-production-lifecycle.py" in runtime_set:
     fail("2K-T-B live harness leaked into runtime payload")
 
+phase2_compact = " ".join(phase2.split())
 for token in (
     "Milestone 2K-T-B — reviewed Disconnect production lifecycle",
     "Milestone 2K-T-C — second exact reviewed Disconnect target",
@@ -254,8 +255,8 @@ for token in (
     "clock.data.date",
     "All other Disconnect previews remain non-writing",
 ):
-    if token not in phase2:
-        fail("2K-T-B documentation missing " + token)
+    if token not in phase2_compact:
+        fail("2K-T-C documentation missing " + token)
 
 for token in (
     "Validate reviewed Disconnect production lifecycle",

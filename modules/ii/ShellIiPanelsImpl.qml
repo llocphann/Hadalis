@@ -157,7 +157,9 @@ Item {
     OnDemandPanelLoader {
         identifier: "iiDashboard"
         open: GlobalStates.dashboardOpen
-        keepLoaded: Config.options?.dashboard?.keepLoaded ?? false
+        // Lazy until first use, then resident for the shell session. Dashboard
+        // owns its own hidden render/input gating while closed.
+        keepLoaded: (Config.options?.dashboard?.keepLoaded ?? false) || used
         source: "../dashboard/Dashboard.qml"
     }
     DeferredPanelLoader { identifier: "iiLock"; workflowSourcePath: "modules/lock/Lock.qml"; component: Lock {} }

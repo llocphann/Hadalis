@@ -472,9 +472,13 @@ viewport at 48 ms cadence with 96 px overscan, while the world transform remains
 immediate. This avoids running JS AABB visibility checks for every edge and label
 on every touchpad sample. Edge labels are additionally suspended only while
 pan/pinch/node-drag/wheel motion is active and restored 96 ms after wheel motion
-settles, reducing text/delegate work without hiding nodes or wires. Regression
-contracts lock both the sampled culling path and motion-time label suspension.
-The next renderer-level experiment, if profiling still shows scene-graph/state-
+settles, reducing text/delegate work without hiding nodes or wires. Pointer
+hover/tap now also consumes flattened committed-route and node-AABB caches built
+only when routing is rebuilt; idle pointer movement no longer resolves every
+edge through `routeForEdge()` or recomputes node coordinates before proximity
+testing. Regression contracts lock the sampled culling path, motion-time label
+suspension and flattened pointer-hit caches. The next renderer-level experiment,
+if profiling still shows scene-graph/state-
 change cost, is to benchmark batching compatible idle wires into fewer Shape
 items; do not promote that rewrite without compositor capture and memory/frame
 evidence.

@@ -100,7 +100,7 @@ def read_system_cpu_ticks() -> dict[str, tuple[int, int]]:
     return result
 
 
-def cpu_percent(
+def _cpu_percent_from_ticks(
     current: tuple[int, int] | None,
     previous: tuple[int, int] | list[int] | None,
 ) -> float | None:
@@ -307,7 +307,7 @@ def sample(pid: int, previous: dict[str, Any] | None) -> tuple[dict[str, Any], d
     previous_system_cpu = previous.get("systemCpu", {})
     if not isinstance(previous_system_cpu, dict):
         previous_system_cpu = {}
-    system_cpu_percent = cpu_percent(
+    system_cpu_percent = _cpu_percent_from_ticks(
         system_cpu_now.get("cpu"), previous_system_cpu.get("cpu")
     )
     core_cpu_percent: list[float | None] = []
@@ -317,7 +317,9 @@ def sample(pid: int, previous: dict[str, Any] | None) -> tuple[dict[str, Any], d
     )
     for name in core_names:
         core_cpu_percent.append(
-            cpu_percent(system_cpu_now.get(name), previous_system_cpu.get(name))
+            _cpu_percent_from_ticks(
+                system_cpu_now.get(name), previous_system_cpu.get(name)
+            )
         )
 
     prev_io = previous.get("io", {})

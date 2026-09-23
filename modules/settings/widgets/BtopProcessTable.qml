@@ -8,6 +8,7 @@ Item {
 
     property var processes: []
     property int maxRows: 12
+    readonly property bool showSwapColumn: width >= 520
 
     function depthFor(process): int {
         const byPid = ({})
@@ -120,6 +121,7 @@ Item {
                 }
 
                 StyledText {
+                    visible: root.showSwapColumn
                     Layout.preferredWidth: 86
                     horizontalAlignment: Text.AlignRight
                     text: "SWAP"
@@ -187,6 +189,7 @@ Item {
                         }
 
                         StyledText {
+                            visible: root.showSwapColumn
                             Layout.preferredWidth: 86
                             horizontalAlignment: Text.AlignRight
                             text: root.formatKiB(

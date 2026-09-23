@@ -1823,24 +1823,40 @@ Item {
         handler.updateLayout()
     }
 
-    function routeVisible(route, margin: real): bool {
-        if (!route || !root.workflowActive)
+    function worldRectVisible(
+        worldX: real, worldY: real,
+        worldWidth: real, worldHeight: real,
+        margin: real
+    ): bool {
+        if (!root.workflowActive)
             return false
-        const bounds = root.routeBounds(route)
         const zoom = Math.max(
             CodeWorkflowSession.minimumZoom, root.cullZoom)
-        // Keep a little more overscan than the caller requests because culling
-        // follows the viewport at a bounded cadence rather than every input
-        // sample. This prevents pop-in during fast pan/zoom gestures.
-        const padding = Math.max(96, Number(margin))
-        const left = root.cullPanX + bounds.minX * zoom
-        const top = root.cullPanY + bounds.minY * zoom
-        const right = root.cullPanX + bounds.maxX * zoom
-        const bottom = root.cullPanY + bounds.maxY * zoom
+        // Culling follows the live viewport at a bounded cadence. Keep enough
+        // overscan for one fast gesture burst so delegates do not pop at the
+        // edge while still avoiding text/rectangle scene-graph work for the
+        // majority of a zoomed-in graph.
+        const padding = Math.max(128, Number(margin))
+        const left = root.cullPanX + Number(worldX) * zoom
+        const top = root.cullPanY + Number(worldY) * zoom
+        const right = left + Math.max(0, Number(worldWidth)) * zoom
+        const bottom = top + Math.max(0, Number(worldHeight)) * zoom
         return right >= -padding
             && bottom >= -padding
             && left <= root.width + padding
             && top <= root.height + padding
+    }
+
+    function routeVisible(route, margin: real): bool {
+        if (!route)
+            return false
+        const bounds = root.routeBounds(route)
+        return root.worldRectVisible(
+            bounds.minX,
+            bounds.minY,
+            Math.max(0, bounds.maxX - bounds.minX),
+            Math.max(0, bounds.maxY - bounds.minY),
+            margin)
     }
 
     function edgeAt(screenX: real, screenY: real): string {
@@ -2446,6 +2462,8 @@ Item {
                 y: modelData.y
                 width: modelData.width
                 height: modelData.height
+                visible: root.worldRectVisible(
+                    x, y, width, height, 96)
                 radius: Appearance.rounding.normal
                 color: "transparent"
                 border.width: 1
@@ -2743,6 +2761,13 @@ Item {
                 y: root.nodeY(modelData)
                 width: root.nodeWidth
                 height: root.nodeHeight
+                // Nodes carry several text items, handlers and accessibility
+                // bindings. Qt does not automatically cull this Item subtree
+                // just because it is outside our clipped viewport, so suppress
+                // rendering/interaction for distant nodes at the same sampled
+                // cadence as wire culling. Never hide the actively dragged node.
+                visible: nodeDrag.active
+                    || root.worldRectVisible(x, y, width, height, 128)
                 radius: Appearance.rounding.normal
                 color: selected
                     ? Appearance.colors.colPrimaryContainer

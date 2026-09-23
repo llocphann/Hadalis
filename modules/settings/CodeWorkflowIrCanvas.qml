@@ -103,6 +103,18 @@ Item {
     property var reasoningEdgeIds: []
     readonly property bool hasReasoningSelection:
         root.reasoningNodeIds.length > 0
+    readonly property bool minimapVisible: minimap.visible
+    readonly property bool minimapNeeded: {
+        if (!CodeWorkflowSession.minimapEnabled
+                || root.width < 520 || root.height < 320
+                || root.nodes.length === 0)
+            return false
+        const bounds = root.graphBounds()
+        const zoom = Math.max(
+            CodeWorkflowSession.minimumZoom, CodeWorkflowSession.zoom)
+        return bounds.width * zoom > root.width - 96
+            || bounds.height * zoom > root.height - 96
+    }
     // Shift-drag on empty canvas starts a marquee selection. Holding Ctrl
     // while starting the marquee adds to the existing manual selection.
     property bool marqueeActive: false
@@ -1815,6 +1827,112 @@ Item {
             Appearance.colors.colPrimaryContainer, 0.24)
         border.width: 1
         border.color: Appearance.colors.colPrimary
+    }
+
+    Rectangle {
+        id: minimap
+        z: 30
+        visible: root.minimapNeeded
+        anchors.right: parent.right
+        anchors.bottom: parent.bottom
+        anchors.margins: 12
+        width: 172
+        height: 112
+        radius: Appearance.rounding.normal
+        color: ColorUtils.applyAlpha(Appearance.colors.colLayer1, 0.94)
+        border.width: 1
+        border.color: Appearance.colors.colOutlineVariant
+        clip: true
+
+        readonly property real padding: 8
+        readonly property var bounds: root.graphBounds()
+        readonly property real scaleFactor: Math.max(
+            0.0001,
+            Math.min(
+                (width - padding * 2) / Math.max(1, Number(bounds.width ?? 1)),
+                (height - padding * 2) / Math.max(1, Number(bounds.height ?? 1))))
+        readonly property real originX:
+            padding - Number(bounds.x ?? 0) * scaleFactor
+        readonly property real originY:
+            padding - Number(bounds.y ?? 0) * scaleFactor
+
+        function mapX(worldX: real): real {
+            return minimap.originX + worldX * minimap.scaleFactor
+        }
+
+        function mapY(worldY: real): real {
+            return minimap.originY + worldY * minimap.scaleFactor
+        }
+
+        Repeater {
+            model: root.nodes
+
+            delegate: Rectangle {
+                required property var modelData
+                readonly property string nodeId:
+                    String(modelData?.id ?? "")
+                x: minimap.mapX(root.nodeX(modelData))
+                y: minimap.mapY(root.nodeY(modelData))
+                width: Math.max(2, root.nodeWidth * minimap.scaleFactor)
+                height: Math.max(2, root.nodeHeight * minimap.scaleFactor)
+                radius: Math.min(3, height / 3)
+                color: root.reasoningNodeIds.includes(nodeId)
+                    ? Appearance.colors.colSecondary
+                    : CodeWorkflowSession.selectedNodeId === nodeId
+                        ? Appearance.colors.colPrimary
+                        : Appearance.colors.colOutlineVariant
+                opacity: root.reasoningNodeIds.includes(nodeId)
+                    || CodeWorkflowSession.selectedNodeId === nodeId
+                    ? 0.95 : 0.62
+            }
+        }
+
+        Rectangle {
+            id: minimapViewport
+            z: 2
+            readonly property real zoom: Math.max(
+                CodeWorkflowSession.minimumZoom, CodeWorkflowSession.zoom)
+            x: minimap.mapX(-CodeWorkflowSession.panX / zoom)
+            y: minimap.mapY(-CodeWorkflowSession.panY / zoom)
+            width: Math.max(2,
+                root.width / zoom * minimap.scaleFactor)
+            height: Math.max(2,
+                root.height / zoom * minimap.scaleFactor)
+            color: "transparent"
+            border.width: 1
+            border.color: Appearance.colors.colPrimary
+            radius: 2
+        }
+
+        MouseArea {
+            anchors.fill: parent
+            z: 3
+            acceptedButtons: Qt.LeftButton
+            preventStealing: true
+            cursorShape: pressed ? Qt.ClosedHandCursor : Qt.PointingHandCursor
+
+            function recenterAt(px: real, py: real): void {
+                const worldX = (px - minimap.originX)
+                    / minimap.scaleFactor
+                const worldY = (py - minimap.originY)
+                    / minimap.scaleFactor
+                const zoom = Math.max(
+                    CodeWorkflowSession.minimumZoom,
+                    CodeWorkflowSession.zoom)
+                CodeWorkflowSession.setViewportTransient(
+                    root.width / 2 - worldX * zoom,
+                    root.height / 2 - worldY * zoom,
+                    zoom)
+            }
+
+            onPressed: mouse => recenterAt(mouse.x, mouse.y)
+            onPositionChanged: mouse => {
+                if (pressed)
+                    recenterAt(mouse.x, mouse.y)
+            }
+            onReleased: CodeWorkflowSession.commitViewport()
+            onCanceled: CodeWorkflowSession.commitViewport()
+        }
     }
 
     Item {

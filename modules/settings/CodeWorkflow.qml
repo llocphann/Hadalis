@@ -161,6 +161,11 @@ Item {
     readonly property string inspectedSemanticAnchor:
         CodeWorkflowSession.selectedSemanticAnchor
     property string inspectFilter: ""
+    // Building the Targets model can include parser entries and the complete
+    // workspace-boundary index. Keep keystrokes cheap and apply the expensive
+    // search after a short idle window; capture automation bypasses the delay
+    // so deterministic scenarios remain synchronous.
+    property string inspectFilterQuery: ""
     property bool inspectShowInternals: false
     property bool inspectSelectionFromTargets: false
     readonly property bool captureHarnessEnabled:
@@ -248,7 +253,9 @@ Item {
         const connectItems = []
         const semanticItems = []
         const workspaceBoundaryItems = []
-        const query = root.inspectFilter.trim().toLowerCase()
+        const query = (root.captureHarnessEnabled
+            ? root.inspectFilter : root.inspectFilterQuery)
+            .trim().toLowerCase()
 
         const append = (bucket, item) => {
             const haystack = (
@@ -1759,6 +1766,23 @@ Item {
     }
 
     Timer {
+        id: inspectFilterTimer
+        interval: 90
+        repeat: false
+        onTriggered: root.inspectFilterQuery = root.inspectFilter
+    }
+
+    onInspectFilterChanged: {
+        if (root.captureHarnessEnabled
+                || root.inspectFilter.trim().length === 0) {
+            inspectFilterTimer.stop()
+            root.inspectFilterQuery = root.inspectFilter
+            return
+        }
+        inspectFilterTimer.restart()
+    }
+
+    Timer {
         id: workflowAnalysisRequestTimer
         interval: 0
         repeat: false
@@ -1946,6 +1970,7 @@ Item {
         root.workflowDestroying = true
         root.workflowHydrated = false
         workflowActivationTimer.stop()
+        inspectFilterTimer.stop()
         workflowAnalysisRequestTimer.stop()
         runtimeSnapshotRefreshTimer.stop()
         CodeWorkflowRuntime.setRemoteConsumerActive(

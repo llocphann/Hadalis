@@ -61,6 +61,22 @@ WSettingsPage {
         return peak
     }
 
+    function shellGpuMemoryKiB(): real {
+        const memory = root.shellEvidence?.gpu?.memoryKiB ?? ({})
+        let total = 0
+        let found = false
+        for (const key of Object.keys(memory)) {
+            if (!key.startsWith("resident-"))
+                continue
+            const value = Number(memory[key])
+            if (!Number.isFinite(value))
+                continue
+            total += value
+            found = true
+        }
+        return found ? total : -1
+    }
+
     WSettingsCard {
         title: Translation.tr("Runtime diagnostics")
         icon: "info"
@@ -140,6 +156,9 @@ WSettingsPage {
             description: root.shellEvidence?.gpu?.available === true
                 ? root.formatPercent(root.shellGpuBusy())
                     + " " + Translation.tr("shell engine peak")
+                    + " · "
+                    + root.formatKiB(root.shellGpuMemoryKiB())
+                    + " " + Translation.tr("resident")
                 : Translation.tr("DRM fdinfo unavailable")
             icon: "info"
         }

@@ -6,7 +6,6 @@ singleton SettingsChromeLayout 1.0 SettingsChromeLayout.qml
 QuickConfig 1.0 QuickConfig.qml
 BarConfig 1.0 BarConfig.qml
 ThemesConfig 1.0 ThemesConfig.qml
-ThemesConfigMaterial 1.0 ThemesConfigMaterial.qml
 QuickWallpaperItem 1.0 QuickWallpaperItem.qml
 ThemePresetCard 1.0 ThemePresetCard.qml
 ColorPickerRow 1.0 ColorPickerRow.qml

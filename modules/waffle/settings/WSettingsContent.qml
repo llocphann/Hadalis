@@ -26,6 +26,19 @@ Item {
     property string searchText: ""
     property var searchResults: []
     property bool navExpanded: width > Looks.dp(760)
+    readonly property int diagnosticsPageIndex:
+        root.pages.findIndex(page => page.key === "diagnostics")
+    readonly property string diagnosticsLeaseOwner:
+        "waffle-settings:diagnostics"
+
+    function syncDiagnosticsLease(): void {
+        RuntimeDiagnosticsSession.setOwnerCurrent(
+            root.diagnosticsLeaseOwner,
+            root.loadEnabled
+                && root.searchText.trim().length === 0
+                && root.diagnosticsPageIndex >= 0
+                && root.currentPage === root.diagnosticsPageIndex)
+    }
 
     // One information architecture for both renderer families. Page keys keep
     // Waffle's persisted numeric indices and search/deep links unchanged.
@@ -35,7 +48,7 @@ Item {
         { label: Translation.tr("Desktop & Layout"), keys: ["monitors", "shell-layout", "bar", "workspace-strip", "panels", "waffle-style", "modules"] },
         { label: Translation.tr("System"), keys: ["system", "power", "autostart"] },
         { label: Translation.tr("Features & Services"), keys: ["ai", "mascot"] },
-        { label: Translation.tr("Advanced & Help"), keys: ["shortcuts", "about"] }
+        { label: Translation.tr("Advanced & Help"), keys: ["diagnostics", "shortcuts", "about"] }
     ]
     property var expandedNavGroups: ({})
     function groupExpanded(index, pageIndices): bool {
@@ -65,7 +78,13 @@ Item {
         expandedNavGroups = next
     }
 
-    onCurrentPageChanged: root.revealCurrentNavGroup()
+    onCurrentPageChanged: {
+        root.revealCurrentNavGroup()
+        root.syncDiagnosticsLease()
+    }
+    onLoadEnabledChanged: root.syncDiagnosticsLease()
+    onSearchTextChanged: root.syncDiagnosticsLease()
+    onDiagnosticsPageIndexChanged: root.syncDiagnosticsLease()
 
     readonly property var navigationItems: {
         const items = []
@@ -104,7 +123,13 @@ Item {
         return items
     }
 
-    Component.onCompleted: Qt.callLater(() => root.navigationReady = true)
+    Component.onCompleted: {
+        Qt.callLater(() => root.navigationReady = true)
+        root.syncDiagnosticsLease()
+    }
+    Component.onDestruction:
+        RuntimeDiagnosticsSession.setOwnerCurrent(
+            root.diagnosticsLeaseOwner, false)
     
     // Complete search index with all individual options + targetLabel for spotlight
     property var searchIndex: [

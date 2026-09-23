@@ -152,6 +152,8 @@ for token in (
 for token in (
     'property string quickNotesEditorOutput: ""',
     "function setQuickNotesEditorOutput(outputName, focused): void",
+    "(!screenCorners.quickNotesEditorOutput",
+    "|| screenCorners.quickNotesEditorOutput === name)",
     "Component.onDestruction:",
     "cornerPanelWindow.outputName, false",
     "readonly property bool shouldShowQuickNotesCorner:",

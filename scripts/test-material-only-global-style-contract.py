@@ -47,6 +47,11 @@ DIALOG_LIST_ITEM = ROOT / "modules" / "common" / "widgets" / "DialogListItem.qml
 ICON_TOOLBAR_BUTTON = ROOT / "modules" / "common" / "widgets" / "IconToolbarButton.qml"
 COLLAPSIBLE_SECTION = ROOT / "modules" / "common" / "widgets" / "CollapsibleSection.qml"
 CONTENT_SECTION = ROOT / "modules" / "common" / "widgets" / "ContentSection.qml"
+MATERIAL_TEXT_FIELD = ROOT / "modules" / "common" / "widgets" / "MaterialTextField.qml"
+STYLED_TEXT_AREA = ROOT / "modules" / "common" / "widgets" / "StyledTextArea.qml"
+TOOLBAR_BUTTON = ROOT / "modules" / "common" / "widgets" / "ToolbarButton.qml"
+NOTICE_BOX = ROOT / "modules" / "common" / "widgets" / "NoticeBox.qml"
+RIPPLE_BUTTON_WITH_ICON = ROOT / "modules" / "common" / "widgets" / "RippleButtonWithIcon.qml"
 TIMER_INDICATOR = ROOT / "modules" / "bar" / "TimerIndicator.qml"
 SHELL_UPDATE_INDICATOR = ROOT / "modules" / "bar" / "ShellUpdateIndicator.qml"
 UTIL_BUTTONS = ROOT / "modules" / "bar" / "UtilButtons.qml"
@@ -168,6 +173,11 @@ def main() -> None:
     icon_toolbar_button = ICON_TOOLBAR_BUTTON.read_text(encoding="utf-8")
     collapsible_section = COLLAPSIBLE_SECTION.read_text(encoding="utf-8")
     content_section = CONTENT_SECTION.read_text(encoding="utf-8")
+    material_text_field = MATERIAL_TEXT_FIELD.read_text(encoding="utf-8")
+    styled_text_area = STYLED_TEXT_AREA.read_text(encoding="utf-8")
+    toolbar_button = TOOLBAR_BUTTON.read_text(encoding="utf-8")
+    notice_box = NOTICE_BOX.read_text(encoding="utf-8")
+    ripple_button_with_icon = RIPPLE_BUTTON_WITH_ICON.read_text(encoding="utf-8")
     timer_indicator = TIMER_INDICATOR.read_text(encoding="utf-8")
     shell_update_indicator = SHELL_UPDATE_INDICATOR.read_text(encoding="utf-8")
     util_buttons = UTIL_BUTTONS.read_text(encoding="utf-8")
@@ -308,6 +318,11 @@ def main() -> None:
         "IconToolbarButton.qml": icon_toolbar_button,
         "CollapsibleSection.qml": collapsible_section,
         "ContentSection.qml": content_section,
+        "MaterialTextField.qml": material_text_field,
+        "StyledTextArea.qml": styled_text_area,
+        "ToolbarButton.qml": toolbar_button,
+        "NoticeBox.qml": notice_box,
+        "RippleButtonWithIcon.qml": ripple_button_with_icon,
     }
     for source, source_text in shared_material_primitives.items():
         for token in (
@@ -537,6 +552,41 @@ def main() -> None:
     ):
         require(content_section, token, "ContentSection.qml")
     forbid(content_section, "ZzzSectionHeader {", "ContentSection.qml")
+
+    for token in (
+        "Material.accent: Appearance.colors.colPrimary",
+        "Material.background: Appearance.colors.colLayer1",
+        "Material.foreground: Appearance.colors.colOnSurface",
+        "Material.containerStyle: Material.Outlined",
+        "selectedTextColor: Appearance.colors.colOnSecondaryContainer",
+        "selectionColor: Appearance.colors.colSecondaryContainer",
+        "placeholderTextColor: Appearance.colors.colOnLayer1",
+    ):
+        require(material_text_field, token, "MaterialTextField.qml")
+    forbid(material_text_field, "RegaliaControlFace {", "MaterialTextField.qml")
+    for token in (
+        "selectedTextColor: Appearance.colors.colOnSecondaryContainer",
+        "selectionColor: Appearance.colors.colSecondaryContainer",
+        "placeholderTextColor: Appearance.colors.colOutline",
+    ):
+        require(styled_text_area, token, "StyledTextArea.qml")
+    require(toolbar_button, "buttonRadius: Appearance.rounding.full", "ToolbarButton.qml")
+    for token in (
+        "radius: Appearance.rounding.normal",
+        "color: Appearance.colors.colSurfaceContainer",
+        "color: Appearance.colors.colPrimary",
+        "color: Appearance.colors.colOnSurface",
+    ):
+        require(notice_box, token, "NoticeBox.qml")
+    for token in (
+        "implicitHeight: 35",
+        "horizontalPadding: 10",
+        "buttonRadius: Appearance.rounding.small",
+        "colBackground: Appearance.colors.colLayer2",
+        "spacing: 5",
+        "ColorUtils.ensureReadable(Appearance.colors.colOnLayer2",
+    ):
+        require(ripple_button_with_icon, token, "RippleButtonWithIcon.qml")
 
     motion_start = appearance.index("property QtObject motion: QtObject {")
     motion_end = appearance.index("m3colors: QtObject {", motion_start)

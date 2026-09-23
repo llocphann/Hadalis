@@ -31,22 +31,11 @@ Item {
     signal pluginRemoved(string id)
 
     // Style tokens
-    readonly property color colText: Appearance.angelEverywhere ? Appearance.angel.colText
-        : Appearance.inirEverywhere ? Appearance.inir.colText
-        : Appearance.colors.colOnLayer1
-    readonly property color colTextSecondary: Appearance.inirEverywhere ? Appearance.inir.colTextSecondary
-        : Appearance.colors.colSubtext
-    readonly property color colBg: Appearance.angelEverywhere ? Appearance.angel.colGlassCard
-        : Appearance.inirEverywhere ? Appearance.inir.colLayer1
-        : Appearance.auroraEverywhere ? "transparent"
-        : Appearance.colors.colLayer1
-    readonly property color colBgHover: Appearance.angelEverywhere ? Appearance.angel.colGlassCardHover
-        : Appearance.inirEverywhere ? Appearance.inir.colLayer1Hover
-        : Appearance.auroraEverywhere ? Appearance.aurora.colSubSurface
-        : Appearance.colors.colLayer1Hover
-    readonly property color colBorder: Appearance.angelEverywhere ? Appearance.angel.colCardBorder
-        : Appearance.inirEverywhere ? Appearance.inir.colBorder
-        : Appearance.colors.colLayer0Border
+    readonly property color colText: Appearance.colors.colOnLayer1
+    readonly property color colTextSecondary: Appearance.colors.colSubtext
+    readonly property color colBg: Appearance.colors.colLayer1
+    readonly property color colBgHover: Appearance.colors.colLayer1Hover
+    readonly property color colBorder: Appearance.colors.colLayer0Border
     readonly property real rounding: Appearance.rounding.small
 
     function scanPlugins(): void {
@@ -193,7 +182,7 @@ Item {
                 implicitHeight: addFormCol.implicitHeight + 20
                 radius: root.rounding
                 color: root.colBg
-                border.width: Appearance.inirEverywhere || Appearance.angelEverywhere ? 1 : 0
+                border.width: 0
                 border.color: root.colBorder
                 visible: root.showAddForm
                 clip: true
@@ -227,9 +216,7 @@ Item {
                             Layout.fillWidth: true
                             implicitHeight: 36
                             radius: root.rounding
-                            color: Appearance.angelEverywhere ? Qt.rgba(0,0,0,0.15)
-                                 : Appearance.inirEverywhere ? Appearance.inir.colLayer0
-                                 : Appearance.colors.colLayer0
+                            color: Appearance.colors.colLayer0
                             border.width: urlInput.activeFocus ? 2 : 1
                             border.color: urlInput.activeFocus ? Appearance.colors.colPrimary : root.colBorder
 

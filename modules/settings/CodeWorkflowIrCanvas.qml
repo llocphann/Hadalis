@@ -142,7 +142,7 @@ Item {
         root.clearMarqueeReasoningSnapshot()
         root.clearReasoningSelection()
         if (root.workflowActive)
-            Qt.callLater(root.rebuildEdgeRouteCache)
+            root.scheduleEdgeRouteCacheRebuild()
         root.fitInitialGraph()
     }
     readonly property var nodes: root.graph?.nodes ?? []
@@ -150,8 +150,16 @@ Item {
 
     readonly property real nodeWidth: 190
     readonly property real nodeHeight: 88
-    readonly property real worldWidth: root.graphExtent("x", 1050)
-    readonly property real worldHeight: root.graphExtent("y", 570)
+    // Extents/bounds depend on graph structure and committed node layout, not
+    // viewport pan/zoom. Keep them imperative so wheel/pinch and node-drag
+    // frames do not repeatedly walk every node, group and routed edge.
+    property real cachedWorldWidth: 1050
+    property real cachedWorldHeight: 570
+    property var graphBoundsCache: ({
+        x: 0, y: 0, width: 1050, height: 570
+    })
+    readonly property real worldWidth: root.cachedWorldWidth
+    readonly property real worldHeight: root.cachedWorldHeight
     property string hoveredEdgeId: ""
     property string hoveredEdgeLabelId: ""
     property real edgeLabelHoverX: 0
@@ -180,7 +188,7 @@ Item {
                 || root.width < 520 || root.height < 320
                 || root.nodes.length === 0)
             return false
-        const bounds = root.graphBounds()
+        const bounds = root.graphBoundsCache
         const zoom = Math.max(
             CodeWorkflowSession.minimumZoom, CodeWorkflowSession.zoom)
         return bounds.width * zoom > root.width - 96
@@ -1136,6 +1144,20 @@ Item {
         if (root.activeNodeDragId.length > 0)
             return
         root.edgeRouteCache = root.buildEdgeRouteCache()
+        root.refreshGeometryCache()
+    }
+
+    function scheduleEdgeRouteCacheRebuild(): void {
+        if (!root.workflowActive || root.activeNodeDragId.length > 0)
+            return
+        edgeRouteRebuildTimer.restart()
+    }
+
+    Timer {
+        id: edgeRouteRebuildTimer
+        interval: 0
+        repeat: false
+        onTriggered: root.rebuildEdgeRouteCache()
     }
 
     function edgeTouchesNode(edge, nodeId: string): bool {
@@ -1237,12 +1259,12 @@ Item {
         }
     }
 
-    function graphBounds(): var {
+    function computeGraphBounds(): var {
         if (root.nodes.length === 0)
             return {
                 x: 0, y: 0,
-                width: root.worldWidth,
-                height: root.worldHeight
+                width: root.cachedWorldWidth,
+                height: root.cachedWorldHeight
             }
 
         let minX = Number.POSITIVE_INFINITY
@@ -1287,6 +1309,16 @@ Item {
             width: Math.max(1, maxX - minX),
             height: Math.max(1, maxY - minY)
         }
+    }
+
+    function refreshGeometryCache(): void {
+        root.cachedWorldWidth = root.graphExtent("x", 1050)
+        root.cachedWorldHeight = root.graphExtent("y", 570)
+        root.graphBoundsCache = root.computeGraphBounds()
+    }
+
+    function graphBounds(): var {
+        return root.graphBoundsCache
     }
 
     function reasoningBounds(): var {
@@ -1759,15 +1791,42 @@ Item {
         }
     }
 
+    property real pendingEdgeHoverX: 0
+    property real pendingEdgeHoverY: 0
+
+    Timer {
+        id: edgeHoverTimer
+        interval: 16
+        repeat: false
+        onTriggered: {
+            if (!root.workflowActive || !edgeHover.hovered
+                    || canvasPanArea.pressed
+                    || root.activeNodeDragHandler !== null
+                    || pinch.active)
+                return
+            root.hoveredEdgeId = root.edgeAt(
+                root.pendingEdgeHoverX, root.pendingEdgeHoverY)
+        }
+    }
+
     HoverHandler {
         id: edgeHover
         target: null
+        enabled: root.workflowActive
+            && !canvasPanArea.pressed
+            && root.activeNodeDragHandler === null
+            && !pinch.active
 
-        onPointChanged: root.hoveredEdgeId = root.edgeAt(
-            point.position.x, point.position.y)
+        onPointChanged: {
+            root.pendingEdgeHoverX = point.position.x
+            root.pendingEdgeHoverY = point.position.y
+            edgeHoverTimer.restart()
+        }
         onHoveredChanged: {
-            if (!hovered)
+            if (!hovered) {
+                edgeHoverTimer.stop()
                 root.hoveredEdgeId = ""
+            }
         }
     }
 
@@ -1809,8 +1868,7 @@ Item {
         }
 
         function onGraphLayoutRevisionChanged(): void {
-            if (root.activeNodeDragId.length === 0)
-                Qt.callLater(root.rebuildEdgeRouteCache)
+            root.scheduleEdgeRouteCacheRebuild()
         }
 
         function onSelectedNodeIdChanged(): void {
@@ -1881,6 +1939,8 @@ Item {
 
     function deactivateCanvas(): void {
         graphRefreshTimer.stop()
+        edgeRouteRebuildTimer.stop()
+        edgeHoverTimer.stop()
         initialFitTimer.stop()
         runtimePulseTimer.stop()
         viewportCommitTimer.stop()
@@ -2215,11 +2275,12 @@ Item {
                                 === modelData.to))
 
                 anchors.fill: parent
-                preferredRendererType: Shape.CurveRenderer
+                // Phase-0's retained 600-second renderer soak qualified the
+                // generic geometry path while CurveRenderer remained HOLD for
+                // sustained RSS growth. Keep preprocessing asynchronous so
+                // triangulation does not block the Settings GUI thread.
+                preferredRendererType: Shape.GeometryRenderer
                 antialiasing: true
-                // CurveRenderer still performs CPU path preprocessing. Keep it
-                // off the GUI thread so graph activation and route updates do
-                // not stall the Settings transition.
                 asynchronous: true
                 // Shared endpoint trunks are intentional. Lift the active
                 // relation above sibling wires without painting over labels
@@ -2552,7 +2613,7 @@ Item {
                                 root.activeNodeDragId = ""
                                 root.dragRoutesDirty = false
                                 root.dragEdgeRouteCache = ({})
-                                root.rebuildEdgeRouteCache()
+                                root.scheduleEdgeRouteCacheRebuild()
                                 CodeWorkflowSession.commitViewport()
                             }
                             return

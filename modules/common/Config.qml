@@ -2300,11 +2300,6 @@ Singleton {
                     property string libraryFolder: ""
                     property string mpdHost: "127.0.0.1"
                     property int mpdPort: 6600
-                    // Deprecated mpv-era compatibility values; runtime MPD state wins.
-                    property bool normalizeVolume: false
-                    property bool shuffleMode: false
-                    property int repeatMode: 0
-                    property int volume: 100
                 }
                 property JsonObject ytmusic: JsonObject {
                     property bool enable: false

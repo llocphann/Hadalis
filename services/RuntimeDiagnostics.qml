@@ -201,7 +201,9 @@ Singleton {
             CodeWorkflowIndex.refresh(false)
             return
         }
-        CodeWorkflowIndex.cancel()
+        // CodeWorkflowIndex is Workflow-owned one-shot discovery, not a
+        // resource sampler. Do not cancel a scan that may also be serving a
+        // concurrently visible Workflow surface.
         root.latestSample = null
         root.sampleUpdatedAtMs = 0
         root.samplerError = ""

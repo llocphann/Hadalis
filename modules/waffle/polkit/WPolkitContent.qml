@@ -35,8 +35,8 @@ Rectangle {
                 id: dialog
                 anchors.centerIn: parent
                 implicitWidth: Looks.dp(460)
-                radius: Looks.cookieEverywhere ? Looks.radius.xLarge : Looks.radius.large
-                borderColor: Looks.glassActive ? Looks.colors.tooltipBorder : Looks.colors.bg2Border
+                radius: Looks.radius.large
+                borderColor: Looks.colors.bg2Border
 
                 scale: 0.96
                 opacity: 0
@@ -80,7 +80,7 @@ Rectangle {
                                     Layout.preferredWidth: Looks.dp(58)
                                     Layout.preferredHeight: Looks.dp(58)
                                     Layout.alignment: Qt.AlignTop
-                                    radius: Looks.cookieEverywhere ? height / 2 : Looks.radius.large
+                                    radius: Looks.radius.large
                                     color: Looks.colors.bg1
                                     border.width: 1
                                     border.color: Looks.colors.bg2Border
@@ -122,7 +122,7 @@ Rectangle {
                             Rectangle {
                                 Layout.fillWidth: true
                                 implicitHeight: messageText.implicitHeight + Looks.dp(20)
-                                radius: Looks.cookieEverywhere ? Looks.radius.xLarge : Looks.radius.medium
+                                radius: Looks.radius.medium
                                 color: Looks.colors.bg1
                                 border.width: 1
                                 border.color: Looks.colors.bg2Border
@@ -205,7 +205,6 @@ Rectangle {
                                 text: Translation.tr("Cancel")
                                 icon.name: "dismiss"
                                 forceShowIcon: true
-                                cookieMorphing: Looks.cookieEverywhere
                                 onClicked: PolkitService.cancel()
                             }
 
@@ -216,7 +215,6 @@ Rectangle {
                                 text: Translation.tr("OK")
                                 icon.name: "checkmark"
                                 forceShowIcon: true
-                                cookieMorphing: Looks.cookieEverywhere
                                 checked: true
                                 onClicked: PolkitService.submit(inputField.text)
                             }

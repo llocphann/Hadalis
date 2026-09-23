@@ -11,6 +11,7 @@ Item {
     property var events: []
     property string selectedInstanceId: ""
     signal instanceActivated(string instanceId)
+    signal openWorkflowRequested()
 
     readonly property string targetId:
         String(root.descriptor?.targetId ?? "")
@@ -306,6 +307,14 @@ Item {
                 text: "No recent lifecycle events"
                 color: Appearance.colors.colSubtext
                 font.pixelSize: Appearance.font.pixelSize.small
+            }
+
+            RippleButtonWithIcon {
+                visible: root.descriptor !== null
+                Layout.alignment: Qt.AlignRight
+                materialIcon: "account_tree"
+                mainText: "Open in Workflow"
+                onClicked: root.openWorkflowRequested()
             }
         }
     }

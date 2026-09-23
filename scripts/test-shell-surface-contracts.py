@@ -975,6 +975,9 @@ def main() -> None:
                   f"Bar runtime must not retain physical Screen Edge geometry/shadow: {retired_geometry}")
         check("showBarBackground" not in runtime,
               "Supported Hug Bar chrome must not depend on a dead visibility alias")
+        for dead_root_probe in ("brightnessMonitor", "useShortenedForm", "centerSideModuleWidth"):
+            check(dead_root_probe not in runtime,
+                  f"Bar root must not retain unused sizing/state probe: {dead_root_probe}")
         check("Appearance.animation.elementMove.duration" in runtime
               and "Appearance.animation.elementMove.bezierCurve" in runtime,
               "Bar auto-hide slide must use the default-spatial motion token")

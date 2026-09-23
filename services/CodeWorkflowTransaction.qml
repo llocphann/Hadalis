@@ -4517,6 +4517,11 @@ Singleton {
     function _finishConnectSemanticRebindIfReady(): void {
         if (reloadState.pendingConnectPhase !== "rebinding")
             return
+        if (CodeWorkflowAnalyzer.sourcePath
+                !== reloadState.pendingConnectSourcePath
+                || CodeWorkflowAnalyzer.semanticAnchor
+                    !== reloadState.pendingConnectInsertedSemanticAnchor)
+            return
         if (CodeWorkflowAnalyzer.status === "analyzing"
                 || CodeWorkflowAnalyzer.status === "idle")
             return

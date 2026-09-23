@@ -38,6 +38,12 @@ module work, commit directly to `dev`, and never force-push or modify `stable`.
   be reported for the **same final HEAD**. Documentation failures referencing
   removed Iris paths and unrelated shell regressions are not evidence that
   Code Workflow itself passed or failed. Do not conflate them.
+- Graph reasoning controls now operate on the reviewed unified graph without
+  widening mutation authority: **Trace upstream**, **Trace downstream** and
+  **Focus connected path** compute a presentation-only reachable set, emphasize
+  its nodes/wires and fit that set; **Fit selection** frames the current
+  node/edge (or active reasoning set). Primary Inspector selection remains the
+  only mutation target, and changing primary selection clears reasoning focus.
 - Presentation layout now survives shell restarts: graph/node offsets are stored
   in typed workspace state as validated JSON, remain strictly editor-only, and
   are pruned against the current reviewed IR during restore. Corrupt or stale

@@ -67,6 +67,7 @@ Item {
     onWidthChanged: root.fitInitialGraph()
     onHeightChanged: root.fitInitialGraph()
     onGraphChanged: {
+        root.clearReasoningSelection()
         Qt.callLater(root.rebuildEdgeRouteCache)
         root.fitInitialGraph()
     }
@@ -92,6 +93,13 @@ Item {
     // pointer drag we keep this cache stable and recompute only attached edges.
     property var edgeRouteCache: ({})
     property var dragEdgeRouteCache: ({})
+    // Graph reasoning selection is presentation-only. It never changes the
+    // primary Inspector selection or mutation authority.
+    property string reasoningMode: ""
+    property var reasoningNodeIds: []
+    property var reasoningEdgeIds: []
+    readonly property bool hasReasoningSelection:
+        root.reasoningNodeIds.length > 0
 
     function nodeLayoutOffset(node): var {
         const nodeId = String(node?.id ?? "")
@@ -140,6 +148,85 @@ Item {
         resolved.x = root.nodeX(node)
         resolved.y = root.nodeY(node)
         return resolved
+    }
+
+    function clearReasoningSelection(): void {
+        root.reasoningMode = ""
+        root.reasoningNodeIds = []
+        root.reasoningEdgeIds = []
+    }
+
+    function reasoningSelectionFor(mode: string): var {
+        const nextMode = String(mode ?? "")
+        if (!["upstream", "downstream", "connected"].includes(nextMode))
+            return ({ nodes: [], edges: [] })
+
+        const seeds = []
+        const selectedEdge = root.edges.find(edge =>
+            String(edge?.id ?? "") === CodeWorkflowSession.selectedEdgeId)
+            ?? null
+        if (selectedEdge) {
+            seeds.push(String(selectedEdge.from ?? ""))
+            seeds.push(String(selectedEdge.to ?? ""))
+        } else {
+            seeds.push(String(CodeWorkflowSession.selectedNodeId ?? ""))
+        }
+
+        const visited = ({})
+        const queue = []
+        for (const seed of seeds) {
+            if (seed.length === 0 || !root.nodeById(seed) || visited[seed])
+                continue
+            visited[seed] = true
+            queue.push(seed)
+        }
+
+        while (queue.length > 0) {
+            const current = queue.shift()
+            for (const edge of root.edges) {
+                const fromId = String(edge?.from ?? "")
+                const toId = String(edge?.to ?? "")
+                let neighbor = ""
+                if (nextMode === "upstream" && toId === current)
+                    neighbor = fromId
+                else if (nextMode === "downstream" && fromId === current)
+                    neighbor = toId
+                else if (nextMode === "connected") {
+                    if (fromId === current)
+                        neighbor = toId
+                    else if (toId === current)
+                        neighbor = fromId
+                }
+                if (neighbor.length === 0 || visited[neighbor]
+                        || !root.nodeById(neighbor))
+                    continue
+                visited[neighbor] = true
+                queue.push(neighbor)
+            }
+        }
+
+        const nodeIds = Object.keys(visited)
+        const edgeIds = []
+        for (const edge of root.edges) {
+            const fromId = String(edge?.from ?? "")
+            const toId = String(edge?.to ?? "")
+            if (visited[fromId] && visited[toId])
+                edgeIds.push(String(edge?.id ?? ""))
+        }
+        return ({ nodes: nodeIds, edges: edgeIds })
+    }
+
+    function focusReasoning(mode: string): void {
+        const nextMode = String(mode ?? "")
+        if (root.reasoningMode === nextMode) {
+            root.clearReasoningSelection()
+            return
+        }
+        const selection = root.reasoningSelectionFor(nextMode)
+        root.reasoningMode = nextMode
+        root.reasoningNodeIds = selection.nodes
+        root.reasoningEdgeIds = selection.edges
+        Qt.callLater(root.fitSelection)
     }
 
     function rawNodeBounds(): var {
@@ -924,6 +1011,101 @@ Item {
         }
     }
 
+    function reasoningBounds(): var {
+        if (!root.hasReasoningSelection)
+            return null
+
+        let minX = Number.POSITIVE_INFINITY
+        let minY = Number.POSITIVE_INFINITY
+        let maxX = Number.NEGATIVE_INFINITY
+        let maxY = Number.NEGATIVE_INFINITY
+        for (const nodeId of root.reasoningNodeIds) {
+            const node = root.nodeById(String(nodeId ?? ""))
+            if (!node)
+                continue
+            minX = Math.min(minX, Number(node.x ?? 0))
+            minY = Math.min(minY, Number(node.y ?? 0))
+            maxX = Math.max(maxX, Number(node.x ?? 0) + root.nodeWidth)
+            maxY = Math.max(maxY, Number(node.y ?? 0) + root.nodeHeight)
+        }
+        for (const edgeId of root.reasoningEdgeIds) {
+            const edge = root.edges.find(item =>
+                String(item?.id ?? "") === String(edgeId ?? ""))
+            const route = root.routeForEdge(edge)
+            if (!route)
+                continue
+            const bounds = root.routeBounds(route)
+            minX = Math.min(minX, bounds.minX)
+            minY = Math.min(minY, bounds.minY)
+            maxX = Math.max(maxX, bounds.maxX)
+            maxY = Math.max(maxY, bounds.maxY)
+        }
+        if (!Number.isFinite(minX) || !Number.isFinite(minY)
+                || !Number.isFinite(maxX) || !Number.isFinite(maxY))
+            return null
+        return {
+            x: minX,
+            y: minY,
+            width: Math.max(1, maxX - minX),
+            height: Math.max(1, maxY - minY)
+        }
+    }
+
+    function fitBounds(bounds, margin: real, maximumZoom: real): void {
+        if (!bounds || root.width <= 0 || root.height <= 0)
+            return
+        const safeMargin = Math.max(0, Number(margin))
+        const availableWidth = Math.max(1, root.width - safeMargin * 2)
+        const availableHeight = Math.max(1, root.height - safeMargin * 2)
+        const nextZoom = Math.max(
+            CodeWorkflowSession.minimumZoom,
+            Math.min(
+                Number(maximumZoom),
+                availableWidth / Math.max(1, Number(bounds.width ?? 1)),
+                availableHeight / Math.max(1, Number(bounds.height ?? 1))))
+        CodeWorkflowSession.setViewport(
+            (root.width - Number(bounds.width ?? 1) * nextZoom) / 2
+                - Number(bounds.x ?? 0) * nextZoom,
+            (root.height - Number(bounds.height ?? 1) * nextZoom) / 2
+                - Number(bounds.y ?? 0) * nextZoom,
+            nextZoom)
+    }
+
+    function fitSelection(): void {
+        if (root.hasReasoningSelection) {
+            root.fitBounds(root.reasoningBounds(), 36, 1.6)
+            return
+        }
+
+        if (CodeWorkflowSession.selectedEdgeId.length > 0) {
+            const edge = root.edges.find(item =>
+                String(item?.id ?? "") === CodeWorkflowSession.selectedEdgeId)
+            const route = root.routeForEdge(edge)
+            if (route) {
+                const routeBox = root.routeBounds(route)
+                root.fitBounds({
+                    x: routeBox.minX,
+                    y: routeBox.minY,
+                    width: Math.max(1, routeBox.maxX - routeBox.minX),
+                    height: Math.max(1, routeBox.maxY - routeBox.minY)
+                }, 42, 1.8)
+            }
+            return
+        }
+
+        if (CodeWorkflowSession.selectedSemanticAnchor.length > 0)
+            return
+        const node = root.nodeById(CodeWorkflowSession.selectedNodeId)
+        if (node) {
+            root.fitBounds({
+                x: Number(node.x ?? 0),
+                y: Number(node.y ?? 0),
+                width: root.nodeWidth,
+                height: root.nodeHeight
+            }, 54, 1.8)
+        }
+    }
+
     function pointSegmentDistance(
         px: real, py: real,
         ax: real, ay: real,
@@ -1324,6 +1506,7 @@ Item {
         }
 
         function onSubflowTargetIdChanged(): void {
+            root.clearReasoningSelection()
             root.hoveredEdgeLabelId = ""
             root.activeNodeDragId = ""
             root.activeNodeDragHandler = null
@@ -1339,11 +1522,17 @@ Item {
         }
 
         function onSelectedNodeIdChanged(): void {
+            root.clearReasoningSelection()
             Qt.callLater(root.revealPrimarySelection)
         }
 
         function onSelectedEdgeIdChanged(): void {
+            root.clearReasoningSelection()
             Qt.callLater(root.revealPrimarySelection)
+        }
+
+        function onSelectedSemanticAnchorChanged(): void {
+            root.clearReasoningSelection()
         }
     }
 
@@ -1485,8 +1674,11 @@ Item {
                     CodeWorkflowSession.selectedEdgeId === modelData.id
                 readonly property bool hoveredEdge:
                     root.hoveredEdgeId === modelData.id
+                readonly property bool reasoningEdge:
+                    root.reasoningEdgeIds.includes(String(modelData.id ?? ""))
                 readonly property bool highlighted:
                     selectedEdge
+                    || reasoningEdge
                     || (CodeWorkflowSession.selectedEdgeId.length === 0
                         && CodeWorkflowSession.selectedSemanticAnchor.length === 0
                         && (CodeWorkflowSession.selectedNodeId
@@ -1501,7 +1693,8 @@ Item {
                 // Shared endpoint trunks are intentional. Lift the active
                 // relation above sibling wires without painting over labels
                 // (z 0.5) or nodes (z 1).
-                z: selectedEdge ? 0.4 : hoveredEdge ? 0.3 : 0
+                z: selectedEdge ? 0.4 : reasoningEdge ? 0.35
+                    : hoveredEdge ? 0.3 : 0
 
                 // EQ/DSP-inspired cable: a broad, very faint sheath sits
                 // behind a narrow conductor. Only the focused relation carries
@@ -1708,6 +1901,8 @@ Item {
                     CodeWorkflowSession.selectedEdgeId.length === 0
                     && CodeWorkflowSession.selectedSemanticAnchor.length === 0
                     && CodeWorkflowSession.selectedNodeId === modelData.id
+                readonly property bool reasoningSelected:
+                    root.reasoningNodeIds.includes(String(modelData.id ?? ""))
                 readonly property color accent:
                     root.accentForKind(modelData.kind)
                 readonly property color foreground: selected
@@ -1734,10 +1929,12 @@ Item {
                 color: selected
                     ? Appearance.colors.colPrimaryContainer
                     : Appearance.colors.colLayer1
-                border.width: selected || activeFocus ? 2 : 1
+                border.width: selected || reasoningSelected || activeFocus ? 2 : 1
                 border.color: selected || activeFocus
                     ? accent
-                    : Appearance.colors.colOutlineVariant
+                    : reasoningSelected
+                        ? Appearance.colors.colSecondary
+                        : Appearance.colors.colOutlineVariant
                 z: nodeDrag.active ? 1.4 : 1
                 scale: nodeDrag.active ? 1.025 : 1
                 transformOrigin: Item.Center

@@ -316,6 +316,9 @@ Item {
             actualSourcePreviewHeight: sourcePane.visible
                 ? sourcePane.height : 0,
             routeDiagnostics: canvas.routeDiagnostics(),
+            reasoningMode: canvas.reasoningMode,
+            reasoningNodeIds: canvas.reasoningNodeIds,
+            reasoningEdgeIds: canvas.reasoningEdgeIds,
             panX: CodeWorkflowSession.panX,
             panY: CodeWorkflowSession.panY,
             zoom: CodeWorkflowSession.zoom
@@ -1918,6 +1921,49 @@ Item {
                                 ? "Picker is available from overlay Settings only"
                                 : "No live inspect target is available")
                     }
+                }
+                RippleButtonWithIcon {
+                    materialIcon: "arrow_upward"
+                    buttonText: "Trace upstream"
+                    mainText: ""
+                    enabled: CodeWorkflowSession.selectedSemanticAnchor.length === 0
+                        && (CodeWorkflowSession.selectedNodeId.length > 0
+                            || CodeWorkflowSession.selectedEdgeId.length > 0)
+                    toggled: canvas.reasoningMode === "upstream"
+                    onClicked: canvas.focusReasoning("upstream")
+                    StyledToolTip { text: "Trace upstream dependencies" }
+                }
+                RippleButtonWithIcon {
+                    materialIcon: "arrow_downward"
+                    buttonText: "Trace downstream"
+                    mainText: ""
+                    enabled: CodeWorkflowSession.selectedSemanticAnchor.length === 0
+                        && (CodeWorkflowSession.selectedNodeId.length > 0
+                            || CodeWorkflowSession.selectedEdgeId.length > 0)
+                    toggled: canvas.reasoningMode === "downstream"
+                    onClicked: canvas.focusReasoning("downstream")
+                    StyledToolTip { text: "Trace downstream effects" }
+                }
+                RippleButtonWithIcon {
+                    materialIcon: "hub"
+                    buttonText: "Focus connected path"
+                    mainText: ""
+                    enabled: CodeWorkflowSession.selectedSemanticAnchor.length === 0
+                        && (CodeWorkflowSession.selectedNodeId.length > 0
+                            || CodeWorkflowSession.selectedEdgeId.length > 0)
+                    toggled: canvas.reasoningMode === "connected"
+                    onClicked: canvas.focusReasoning("connected")
+                    StyledToolTip { text: "Focus connected path" }
+                }
+                RippleButtonWithIcon {
+                    materialIcon: "center_focus_strong"
+                    buttonText: "Fit selection"
+                    mainText: ""
+                    enabled: CodeWorkflowSession.selectedSemanticAnchor.length === 0
+                        && (CodeWorkflowSession.selectedNodeId.length > 0
+                            || CodeWorkflowSession.selectedEdgeId.length > 0)
+                    onClicked: canvas.fitSelection()
+                    StyledToolTip { text: "Fit current selection" }
                 }
                 RippleButtonWithIcon {
                     materialIcon: "filter_center_focus"

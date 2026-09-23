@@ -519,6 +519,29 @@ require(ripple_button,
         "compact icon buttons must derive accessibility names from buttonText")
 require(page, 'buttonText: "Fit graph"',
         "compact graph control must retain an accessibility label")
+for token in (
+    'buttonText: "Trace upstream"',
+    'buttonText: "Trace downstream"',
+    'buttonText: "Focus connected path"',
+    'buttonText: "Fit selection"',
+    'canvas.focusReasoning("upstream")',
+    'canvas.focusReasoning("downstream")',
+    'canvas.focusReasoning("connected")',
+    "canvas.fitSelection()",
+):
+    require(page, token, "graph reasoning toolbar missing " + token)
+for token in (
+    'property string reasoningMode: ""',
+    "property var reasoningNodeIds: []",
+    "property var reasoningEdgeIds: []",
+    "function reasoningSelectionFor(mode: string): var",
+    "function focusReasoning(mode: string): void",
+    "function reasoningBounds(): var",
+    "function fitSelection(): void",
+    "readonly property bool reasoningSelected:",
+    "readonly property bool reasoningEdge:",
+):
+    require(canvas, token, "graph reasoning canvas missing " + token)
 require(page, 'buttonText: "Reset graph layout"',
         "moved graph layout must expose an explicit reset affordance")
 require(page, "CodeWorkflowSession.hasGraphLayout(",

@@ -107,7 +107,10 @@ Singleton {
 
     function _remotePulseExited(exitCode: int): void {
         if (exitCode !== 0) {
-            root.remoteError = String(remotePulseError.text ?? "").trim()
+            const detail = String(remotePulseError.text ?? "").trim()
+            root.remoteError = detail.length > 0
+                ? detail
+                : "Diagnostics lease command exited with " + exitCode
         } else {
             const payload = String(remotePulseOutput.text ?? "").trim()
             try {
@@ -119,6 +122,8 @@ Singleton {
                     // TTL expiry is recoverable while the page still owns the
                     // session; heartbeat itself never resurrects a dead lease.
                     Qt.callLater(() => root._pulseRemote("acquire"))
+                } else if (remotePulse.action === "acquire") {
+                    root.remoteError = "Diagnostics lease was rejected"
                 }
             } catch (error) {
                 root.remoteError =

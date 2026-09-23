@@ -30,6 +30,23 @@ if len(edges) != 1 or edges[0].get("signalActionTargetId") != "media.signal.doub
 targets = [target for target in (media.get("signalActionTargets") or []) if target.get("id") == "media.signal.doubleClickToggle"]
 if len(targets) != 1:
     fail("2K-W-D reviewed signal/action target must resolve exactly once")
+
+promoted_signal_action_edges = []
+for graph_id, graph in (IR.get("graphs") or {}).items():
+    for edge in graph.get("edges") or []:
+        target_id = str(edge.get("signalActionTargetId") or "")
+        if target_id:
+            promoted_signal_action_edges.append(
+                (graph_id, str(edge.get("id") or ""), target_id)
+            )
+if promoted_signal_action_edges != [
+    ("bar/media", "media.event.input", "media.signal.doubleClickToggle")
+]:
+    fail(
+        "unreviewed Signal/Action target promotion detected; "
+        "2K-W-E requires a separately reviewed concrete target"
+    )
+
 target = targets[0]
 if (
     target.get("eventNodeId") != "media.input"
@@ -174,6 +191,22 @@ for token in (
 ):
     if token not in PHASE2:
         fail("2K-W-D documentation missing " + token)
+
+next_gate_parts = PHASE2.split("## Next gate", 1)
+if len(next_gate_parts) != 2:
+    fail("Phase 2 documentation must retain an explicit Next gate section")
+next_gate = next_gate_parts[1]
+for token in (
+    "2K-W-D is complete",
+    "2K-W-E",
+    "second concrete target",
+    "runtime evidence",
+    "exact semantic identity",
+):
+    if token not in next_gate:
+        fail("2K-W-E gate boundary documentation missing " + token)
+if "2K-W-D completes the reviewed" in next_gate:
+    fail("completed 2K-W-D must not remain advertised as the next gate")
 
 for token in (
     "Validate user-facing Signal/Action Apply boundary",

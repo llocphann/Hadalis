@@ -1493,7 +1493,9 @@ Item {
     function reloadSource(): void {
         if (!root.workflowOperational)
             return
-        root.sourceText = ""
+        // FileView.reload() is non-blocking. Keep the last good source bytes
+        // visible until onLoaded publishes the replacement instead of forcing
+        // every editor/semantic binding through an empty intermediate state.
         if (sourceReader.path)
             sourceReader.reload()
     }
@@ -1953,6 +1955,9 @@ Item {
     FileView {
         id: sourceReader
         path: root.sourcePath.length > 0 ? Quickshell.shellPath(root.sourcePath) : ""
+        // Cached hidden Workflow pages retain presentation state but must not
+        // proactively read/watch source files until they own the Settings page.
+        preload: root.workflowOperational
         watchChanges: root.workflowOperational
         printErrors: false
         onLoaded: {

@@ -8,6 +8,7 @@ Item {
 
     property var interfaces: ({})
     property bool includeLoopback: false
+    property int maxRows: 8
     readonly property bool showTotalColumn: width >= 520
 
     function formatRate(value): string {
@@ -72,6 +73,8 @@ Item {
                 || String(left.name).localeCompare(String(right.name)))
         return result
     }
+    readonly property var visibleRows:
+        root.rows.slice(0, Math.max(0, root.maxRows))
 
     implicitHeight: interfaceColumn.implicitHeight + 24
 
@@ -162,7 +165,7 @@ Item {
             }
 
             Repeater {
-                model: root.rows
+                model: root.visibleRows
 
                 RowLayout {
                     Layout.fillWidth: true
@@ -220,6 +223,17 @@ Item {
                 visible: root.rows.length === 0
                 Layout.topMargin: 8
                 text: "No non-loopback interfaces"
+                color: Appearance.colors.colSubtext
+                font.pixelSize: Appearance.font.pixelSize.small
+            }
+
+            StyledText {
+                Layout.fillWidth: true
+                visible: root.rows.length > root.visibleRows.length
+                Layout.topMargin: 8
+                text: "+" + String(
+                    root.rows.length - root.visibleRows.length)
+                    + " more interfaces"
                 color: Appearance.colors.colSubtext
                 font.pixelSize: Appearance.font.pixelSize.small
             }

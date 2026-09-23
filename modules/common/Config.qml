@@ -2034,7 +2034,6 @@ Singleton {
                 property int popupWidth: 420
                 property int popupHeight: 560
                 property bool markReadOnOpen: true
-                property bool dismissToastsOnOpen: true
                 property bool allowInFullscreen: false
                 property list<string> screenList: []
             }

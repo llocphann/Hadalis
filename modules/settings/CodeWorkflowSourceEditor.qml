@@ -1167,8 +1167,6 @@ Item {
                     event.accepted = true
                 }
                 wrapMode: TextEdit.NoWrap
-                lineHeightMode: Text.FixedHeight
-                lineHeight: root.gutterLineHeight
                 renderType: Text.QtRendering
                 color: Appearance.colors.colOnLayer1
                 selectionColor: Appearance.colors.colPrimaryContainer

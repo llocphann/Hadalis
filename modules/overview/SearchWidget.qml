@@ -4,7 +4,6 @@ import qs.services.deferred
 import qs.modules.common
 import qs.modules.common.widgets
 import qs.modules.common.functions
-import qs.modules.pill
 import Qt5Compat.GraphicalEffects
 import QtQuick
 import QtQuick.Controls
@@ -467,7 +466,7 @@ Item { // Wrapper
     }
 
 
-    IslandPanel {
+    RicelinSurface {
         anchors.fill: searchWidgetContent
         visible: !root.embeddedSurface && root.islandStyle
         radius: searchWidgetContent.radius

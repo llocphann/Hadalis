@@ -1294,6 +1294,13 @@ require(page, "target: CodeWorkflowSession",
         "Targets must react to shared session selection changes")
 require(page, "targetList.positionViewAtIndex(index, ListView.Contain)",
         "Targets must scroll the selected item into view")
+target_list_start = page.index("id: targetList")
+target_list_end = page.index("CodeWorkflowIrCanvas {", target_list_start)
+target_list_block = page[target_list_start:target_list_end]
+require(target_list_block, "reuseItems: true",
+        "Targets must recycle non-trivial ListView delegates")
+require(target_list_block, "cacheBuffer: 240",
+        "Targets must asynchronously buffer upcoming delegates")
 require(page, "const targetGraph = CodeWorkflowIr.graphFor(id)",
         "runtime target selection must resolve its graph root explicitly")
 require(page, "const runtimeOwnsRoot = id === rootNodeId",

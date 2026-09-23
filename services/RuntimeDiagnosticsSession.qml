@@ -20,6 +20,7 @@ Singleton {
     readonly property bool pageCurrent:
         Object.keys(root.activeOwners).length > 0
     property bool releaseAfterPulse: false
+    property string leaseTransport: ""
     property string remoteError: ""
     readonly property var evidence: root.localShell
         ? RuntimeDiagnostics.snapshot()
@@ -71,8 +72,10 @@ Singleton {
         root.releaseAfterPulse = false
         if (root.localShell) {
             RuntimeDiagnostics.acquire(root.clientId)
+            root.leaseTransport = "local"
             return
         }
+        root.leaseTransport = "remote"
         root._pulseRemote("acquire")
     }
 
@@ -88,9 +91,13 @@ Singleton {
     }
 
     function _releaseLease(): void {
-        if (root.localShell)
+        const transport = root.leaseTransport
+        root.leaseTransport = ""
+        if (transport === "local") {
             RuntimeDiagnostics.release(root.clientId)
-        else
+            return
+        }
+        if (transport === "remote")
             root._releaseRemote()
     }
 
@@ -186,8 +193,24 @@ Singleton {
 
     onLocalShellChanged: {
         root._syncRemoteRuntimeDemand()
-        if (root.pageCurrent)
+        if (!root.pageCurrent)
+            return
+
+        const desiredTransport = root.localShell ? "local" : "remote"
+        if (root.leaseTransport === desiredTransport) {
             root._renewLease()
+            return
+        }
+
+        // Release through the transport that actually acquired the lease.
+        // Choosing from the new localShell value can strand the old lease
+        // until TTL expiry when runtime ownership moves between processes.
+        root._releaseLease()
+        Qt.callLater(() => {
+            if (root.pageCurrent
+                    && root.leaseTransport.length === 0)
+                root._acquireLease()
+        })
     }
 
     Component.onDestruction: {

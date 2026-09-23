@@ -79,6 +79,8 @@ for token in (
     "compactPresentation: true",
     "quickCapturePresentation: true",
     "Notepad.tabs[Notepad.currentTab]?.title",
+    "contentRoot.width < 340 ? 80 : 150",
+    "visible: contentRoot.width >= 340",
     "notesEditorLoader.item.focus = true",
     "notesEditorLoader.item.focus = false",
     "notesEditorLoader.item.focusEditor()",

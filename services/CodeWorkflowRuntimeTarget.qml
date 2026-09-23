@@ -53,6 +53,13 @@ Scope {
         root.token = root.attachedId.length > 0 ? CodeWorkflowRuntime.attach(root) : ""
     }
 
+    function notifyLifecycleChanged(): void {
+        if (!root.completed || root.attachedId.length === 0)
+            return
+        CodeWorkflowRuntime.touchInstance(
+            root.attachedId, root, root.token)
+    }
+
     function descriptorSnapshot(): var {
         const presented = root.runtimeObject?.visible !== false
         return {
@@ -108,6 +115,12 @@ Scope {
         a: root.window?.contentItem ?? null
         b: root.runtimeObject
         onTransformChanged: root.geometryRevision++
+    }
+
+    Connections {
+        target: root.runtimeObject
+        ignoreUnknownSignals: true
+        function onVisibleChanged(): void { root.notifyLifecycleChanged() }
     }
 
     onInstanceIdChanged: root.sync()

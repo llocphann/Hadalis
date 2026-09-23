@@ -50,6 +50,7 @@ Bar.StyledPopup {
         if (!active) {
             notesEditor.flushPendingSave()
             root.editorFocused = false
+            notesEditor.focus = false
         }
     }
     Component.onDestruction: notesEditor.flushPendingSave()

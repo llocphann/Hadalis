@@ -10,6 +10,9 @@ import Quickshell.Io
 
 Item {
     id: root
+
+    signal editorActivated()
+
     property int margin: 10
     // Dashboard can opt into a denser chrome while Sidebar keeps the full
     // title/stats/toolbar presentation. The editor and draft semantics stay
@@ -594,6 +597,11 @@ Item {
                     persistentSelection: true
                     activeFocusOnTab: true
                     background: null
+
+                    onActiveFocusChanged: {
+                        if (activeFocus)
+                            root.editorActivated()
+                    }
 
                     TextInputContextMenu {
                         target: textArea

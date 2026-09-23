@@ -207,6 +207,7 @@ ColumnLayout {
                 title: Translation.tr("Network") + " · "
                     + Translation.tr("system non-loopback")
                 graphHeight: 72
+                dottedGraph: true
                 rx: root.formatRate(root.networkEvidence
                     ?.aggregateNonLoopback?.rxBytesPerSec)
                 tx: root.formatRate(root.networkEvidence
@@ -242,6 +243,7 @@ ColumnLayout {
                             ?.valuesKiB?.MemTotal)
                     samples: root.historyValues("systemRamPercent")
                     graphHeight: 20
+                    dottedGraph: true
                     accentColor: Appearance.colors.colSecondary
                     provenance: root.provenance(root.systemEvidence?.memory)
                 }
@@ -257,6 +259,7 @@ ColumnLayout {
                             ?.valuesKiB?.SwapTotal)
                     samples: root.historyValues("systemSwapPercent")
                     graphHeight: 20
+                    dottedGraph: true
                     accentColor: Appearance.colors.colTertiary
                     provenance: root.provenance(root.systemEvidence?.memory)
                 }
@@ -269,6 +272,7 @@ ColumnLayout {
                     rxPrefix: "R "
                     txPrefix: "W "
                     graphHeight: 22
+                    dottedGraph: true
                     rx: root.formatRate(root.shellEvidence?.io?.rates
                         ?.readBytesPerSec)
                     tx: root.formatRate(root.shellEvidence?.io?.rates
@@ -294,6 +298,7 @@ ColumnLayout {
                         : Translation.tr("DRM fdinfo unavailable")
                     samples: root.historyValues("shellGpuPeakPercent")
                     graphHeight: 20
+                    dottedGraph: true
                     accentColor: Appearance.colors.colTertiary
                     provenance: root.provenance(root.shellEvidence?.gpu)
                 }
@@ -348,6 +353,7 @@ ColumnLayout {
                 + root.formatUptime(root.systemEvidence?.uptimeSeconds)
             samples: root.historyValues("systemCpuPercent")
             graphHeight: 146
+            dottedGraph: true
             provenance: root.provenance(root.systemEvidence?.cpu)
         }
 

@@ -8,6 +8,8 @@ Item {
     property real maxValue: 100
     property color lineColor: Appearance.colors.colPrimary
     property bool fillGraph: true
+    property bool dotted: false
+    property int historyCapacity: 60
 
     implicitHeight: 38
 
@@ -34,6 +36,8 @@ Item {
     onMaxValueChanged: root.requestPaint()
     onLineColorChanged: root.requestPaint()
     onFillGraphChanged: root.requestPaint()
+    onDottedChanged: root.requestPaint()
+    onHistoryCapacityChanged: root.requestPaint()
     onWidthChanged: root.requestPaint()
     onHeightChanged: root.requestPaint()
 
@@ -50,18 +54,20 @@ Item {
             if (w <= 1 || h <= 1)
                 return
 
-            ctx.lineWidth = 1
-            ctx.strokeStyle = Qt.rgba(
-                Appearance.colors.colOutline.r,
-                Appearance.colors.colOutline.g,
-                Appearance.colors.colOutline.b,
-                0.24)
-            for (let i = 1; i < 4; i++) {
-                const y = Math.round(h * i / 4) + 0.5
-                ctx.beginPath()
-                ctx.moveTo(0, y)
-                ctx.lineTo(w, y)
-                ctx.stroke()
+            if (!root.dotted) {
+                ctx.lineWidth = 1
+                ctx.strokeStyle = Qt.rgba(
+                    Appearance.colors.colOutline.r,
+                    Appearance.colors.colOutline.g,
+                    Appearance.colors.colOutline.b,
+                    0.24)
+                for (let i = 1; i < 4; i++) {
+                    const y = Math.round(h * i / 4) + 0.5
+                    ctx.beginPath()
+                    ctx.moveTo(0, y)
+                    ctx.lineTo(w, y)
+                    ctx.stroke()
+                }
             }
 
             const values = root.safeSamples()
@@ -76,6 +82,29 @@ Item {
                     / Math.max(1, values.length - 1)
             const pointY = value => h - Math.max(
                 0, Math.min(1, value / denominator)) * (h - 2) - 1
+
+            if (root.dotted) {
+                const step = 4
+                const capacity = Math.max(
+                    1, values.length, root.historyCapacity)
+                ctx.fillStyle = Qt.rgba(
+                    root.lineColor.r, root.lineColor.g,
+                    root.lineColor.b, 0.84)
+                for (let x = 1; x < w - 1; x += step) {
+                    const slot = Math.min(capacity - 1,
+                        Math.floor(x * capacity / w))
+                    const index = slot - (capacity - values.length)
+                    if (index < 0)
+                        continue
+                    const value = values[index]
+                    if (value === null)
+                        continue
+                    const top = pointY(value)
+                    for (let y = h - 2; y >= top; y -= step)
+                        ctx.fillRect(x, y, 1.5, 1.5)
+                }
+                return
+            }
 
             if (root.fillGraph) {
                 let segmentStart = -1

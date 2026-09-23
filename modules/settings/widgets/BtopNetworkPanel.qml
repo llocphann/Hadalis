@@ -19,6 +19,7 @@ Item {
     property var rxSamples: []
     property var txSamples: []
     property real graphHeight: 38
+    property bool dottedGraph: false
     property color rxColor: Appearance.colors.colPrimary
     property color txColor: Appearance.colors.colSecondary
 
@@ -126,6 +127,7 @@ Item {
                         Layout.fillWidth: true
                         Layout.preferredHeight: root.graphHeight
                         samples: root.rxSamples
+                        dotted: root.dottedGraph
                         maxValue: root.graphMax
                         lineColor: root.rxColor
                     }
@@ -148,6 +150,7 @@ Item {
                         Layout.fillWidth: true
                         Layout.preferredHeight: root.graphHeight
                         samples: root.txSamples
+                        dotted: root.dottedGraph
                         maxValue: root.graphMax
                         lineColor: root.txColor
                     }

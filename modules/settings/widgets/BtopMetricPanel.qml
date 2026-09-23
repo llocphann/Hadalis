@@ -18,6 +18,7 @@ Item {
     property string provenance: ""
     property var samples: []
     property real graphHeight: 28
+    property bool dottedGraph: false
     property color accentColor: Appearance.colors.colPrimary
 
     implicitHeight: metricColumn.implicitHeight + 24
@@ -106,6 +107,7 @@ Item {
                 Layout.fillWidth: true
                 Layout.preferredHeight: root.graphHeight
                 samples: root.samples
+                dotted: root.dottedGraph
                 maxValue: 100
                 lineColor: root.accentColor
             }

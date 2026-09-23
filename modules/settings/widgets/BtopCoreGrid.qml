@@ -151,6 +151,7 @@ Item {
                         Layout.fillWidth: true
                         Layout.preferredHeight: 14
                         samples: root.samplesForCore(index)
+                        dotted: true
                         maxValue: 100
                         lineColor: Appearance.colors.colPrimary
                         fillGraph: false

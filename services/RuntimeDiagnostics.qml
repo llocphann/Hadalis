@@ -19,6 +19,11 @@ Singleton {
     property var latestSample: null
     property double sampleUpdatedAtMs: 0
     property string samplerError: ""
+    property var sourceBoundaryReconciliation: ({
+        matchedBoundaryCount: 0,
+        unmatchedBoundaryCount: 0,
+        matchedTargetIds: []
+    })
 
     function _clientId(raw): string {
         const id = String(raw ?? "").trim()
@@ -81,6 +86,66 @@ Singleton {
         root.revision += 1
     }
 
+    function _reconcileSourceBoundaries(): void {
+        if (CodeWorkflowIndex.status !== "ready") {
+            root.sourceBoundaryReconciliation = ({
+                matchedBoundaryCount: 0,
+                unmatchedBoundaryCount: 0,
+                matchedTargetIds: []
+            })
+            return
+        }
+
+        const targetsBySource = ({})
+        for (const descriptor of CodeWorkflowRuntime.activeCatalog) {
+            const targetId = String(descriptor?.targetId ?? "")
+            const sourcePath = CodeWorkflowRuntime.relativeSourcePath(
+                descriptor?.sourcePath ?? "")
+            if (targetId.length === 0 || sourcePath.length === 0)
+                continue
+            if (!Array.isArray(targetsBySource[sourcePath]))
+                targetsBySource[sourcePath] = []
+            if (!targetsBySource[sourcePath].includes(targetId))
+                targetsBySource[sourcePath].push(targetId)
+        }
+
+        let matchedBoundaryCount = 0
+        let unmatchedBoundaryCount = 0
+        const matchedTargets = ({})
+        for (const boundary of CodeWorkflowIndex.boundaries) {
+            const sourcePath = CodeWorkflowRuntime.relativeSourcePath(
+                boundary?.sourcePath ?? "")
+            const targetIds = targetsBySource[sourcePath] ?? []
+            if (targetIds.length === 0) {
+                unmatchedBoundaryCount++
+                continue
+            }
+            matchedBoundaryCount++
+            for (const targetId of targetIds)
+                matchedTargets[targetId] = true
+        }
+
+        root.sourceBoundaryReconciliation = ({
+            matchedBoundaryCount: matchedBoundaryCount,
+            unmatchedBoundaryCount: unmatchedBoundaryCount,
+            matchedTargetIds: Object.keys(matchedTargets).sort()
+        })
+    }
+
+    function sourceDiscoverySummary(): var {
+        return {
+            status: CodeWorkflowIndex.status,
+            error: CodeWorkflowIndex.error,
+            filesScanned: CodeWorkflowIndex.filesScanned,
+            filesParsed: CodeWorkflowIndex.filesParsed,
+            cacheHits: CodeWorkflowIndex.cacheHits,
+            boundaryCount: CodeWorkflowIndex.boundaryCount,
+            boundaryCounts: CodeWorkflowIndex.result?.boundaryCounts ?? ({}),
+            liveRuntimeEvidence: false,
+            reconciliation: root.sourceBoundaryReconciliation
+        }
+    }
+
     function status(): var {
         root.revision
         return {
@@ -126,17 +191,41 @@ Singleton {
             sampler: {
                 running: diagnosticsSampler.running,
                 error: root.samplerError
-            }
+            },
+            discovery: root.sourceDiscoverySummary()
         }
     }
 
     onSamplingEnabledChanged: {
-        if (root.samplingEnabled)
+        if (root.samplingEnabled) {
+            CodeWorkflowIndex.refresh(false)
             return
+        }
+        CodeWorkflowIndex.cancel()
         root.latestSample = null
         root.sampleUpdatedAtMs = 0
         root.samplerError = ""
         root.revision += 1
+    }
+
+    Connections {
+        target: CodeWorkflowIndex
+        function onStatusChanged(): void {
+            root._reconcileSourceBoundaries()
+            root.revision += 1
+        }
+        function onResultChanged(): void {
+            root._reconcileSourceBoundaries()
+            root.revision += 1
+        }
+    }
+
+    Connections {
+        target: CodeWorkflowRuntime
+        function onRevisionChanged(): void {
+            if (CodeWorkflowIndex.status === "ready")
+                root._reconcileSourceBoundaries()
+        }
     }
 
     Process {

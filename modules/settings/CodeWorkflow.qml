@@ -2709,6 +2709,38 @@ Item {
                         elide: Text.ElideRight
                     }
                     StyledText {
+                        visible: root.selectedIndexedBoundary !== null
+                        text: "Runtime boundary"
+                        color: Appearance.colors.colSubtext
+                    }
+                    StyledText {
+                        Layout.fillWidth: true
+                        visible: root.selectedIndexedBoundary !== null
+                        text: String(
+                                root.selectedIndexedBoundary?.runtimeBoundary
+                                    ?? "boundary").toUpperCase()
+                            + " · "
+                            + String(
+                                root.selectedIndexedBoundary?.runtimeCapability
+                                    ?? root.selectedIndexedBoundary?.name
+                                    ?? "unknown")
+                        color: Appearance.colors.colPrimary
+                        font.pixelSize: Appearance.font.pixelSize.smallest
+                        wrapMode: Text.WrapAnywhere
+                    }
+                    StyledText {
+                        Layout.fillWidth: true
+                        visible: root.selectedIndexedBoundary !== null
+                        text: "Indexed source SHA · "
+                            + String(
+                                root.selectedIndexedBoundary?.sourceSha256
+                                    ?? "").slice(0, 16)
+                        color: Appearance.colors.colSubtext
+                        font.family: Appearance.font.family.monospace
+                        font.pixelSize: Appearance.font.pixelSize.smallest
+                        elide: Text.ElideRight
+                    }
+                    StyledText {
                         visible: root.inspectedSemanticAnchor.length === 0
                         text: "Runtime"
                         color: Appearance.colors.colSubtext

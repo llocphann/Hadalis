@@ -16,6 +16,7 @@ INDEXER = ROOT / "scripts" / "code-workflow" / "index.py"
 SERVICE = ROOT / "services" / "CodeWorkflowIndex.qml"
 QMLDIR = ROOT / "services" / "qmldir"
 PAGE = ROOT / "modules" / "settings" / "CodeWorkflow.qml"
+SESSION = ROOT / "services" / "CodeWorkflowSession.qml"
 
 
 def require(text: str, token: str, message: str) -> None:
@@ -27,6 +28,7 @@ indexer = INDEXER.read_text(encoding="utf-8")
 service = SERVICE.read_text(encoding="utf-8")
 qmldir = QMLDIR.read_text(encoding="utf-8")
 page = PAGE.read_text(encoding="utf-8")
+session = SESSION.read_text(encoding="utf-8")
 
 for token in (
     "CACHE_SCHEMA = 1",
@@ -60,6 +62,22 @@ for token in (
     "CodeWorkflowIndex.refresh(false)",
 ):
     require(page, token, "Workflow index reconciliation missing " + token)
+
+for token in (
+    'property string selectedSemanticSourcePath: ""',
+    "function selectIndexedSemantic(sourcePath: string, anchor: string): bool",
+    "root.selectedSemanticSourcePath = nextPath",
+):
+    require(session, token, "indexed semantic session boundary missing " + token)
+
+for token in (
+    'category: "workspace-boundary"',
+    '"workspace-boundaries", "Workspace boundaries", "hub"',
+    "CodeWorkflowSession.selectedSemanticSourcePath.length > 0",
+    "CodeWorkflowSession.selectIndexedSemantic(",
+    '" · read only · " + sourcePath',
+):
+    require(page, token, "workspace boundary navigation missing " + token)
 
 grammar = os.environ.get("HADALIS_WORKFLOW_GRAMMAR", "")
 library = os.environ.get("HADALIS_TREE_SITTER_LIBRARY", "")

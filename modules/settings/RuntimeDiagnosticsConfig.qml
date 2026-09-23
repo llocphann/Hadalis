@@ -370,6 +370,11 @@ ContentPage {
                 }
             }
 
+            BtopInterfaceTable {
+                Layout.fillWidth: true
+                interfaces: root.networkEvidence?.interfaces ?? ({})
+            }
+
             Rectangle {
                 Layout.fillWidth: true
                 visible: root.cpuCores.length > 0

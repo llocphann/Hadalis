@@ -115,8 +115,12 @@ Item {
             if (textArea.text !== Notepad.text) root._loadActiveTab()
         }
         function onReadyChanged() {
-            if (Notepad.ready && textArea.text !== Notepad.text)
+            if (!Notepad.ready)
+                return
+            if (textArea.text !== Notepad.text)
                 root._loadActiveTab()
+            if (root.focus)
+                root.focusEditor()
         }
     }
 

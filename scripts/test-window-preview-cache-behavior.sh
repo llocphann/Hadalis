@@ -14,8 +14,9 @@ vm.runInContext(policy, p);
 // Run the actual service method bodies with Process/Image/clock mock objects;
 // a spelling grep cannot pass these initial/idle/refresh/teardown assertions.
 const methods = [
-    '_queueWindowIds', '_hasPendingCaptureRequest', '_clearCaptureRequest',
-    '_pendingRequestNeedsCapture', 'captureForTaskView', '_doCapture',
+    '_queueWindowIds', '_queueForcedWindowIds', '_hasPendingCaptureRequest',
+    '_clearCaptureRequest', '_pendingRequestNeedsCapture', 'captureForTaskView',
+    'refreshForOverview', '_doCapture',
     'captureAllWindows', 'getPreviewUrl', 'cleanupOrphans',
     '_dropOverviewWarmImage', '_clearOverviewWarmImages',
     '_touchOverviewWarmImage', '_syncOverviewWarmImages', 'warmForOverview',
@@ -39,6 +40,7 @@ let scheduled = 0, captures = 0, destroyed = 0, created = 0, completed = 0;
 const root = {
     initialized: true, sessionReady: true, capturing: false,
     captureAllRequested: false, requestedWindowIds: [],
+    forceRequestedWindowIds: [],
     captureRequestedWhileInitializing: false,
     forceRefreshRequestedWhileInitializing: false, previewCache: {},
     overviewWarmImages: {}, overviewWarmOrder: [],
@@ -78,8 +80,8 @@ vm.runInContext(methods.map(extract).join('\n') +
 // QML's unqualified property names resolve to the same backing properties;
 // synchronize them in the lightweight mock after a method replaces an array.
 function sync() {
-    for (const key of ['previewCache','requestedWindowIds','captureAllRequested',
-        'capturing','initialized','sessionReady','overviewWarmImages',
+    for (const key of ['previewCache','requestedWindowIds','forceRequestedWindowIds',
+        'captureAllRequested','capturing','initialized','sessionReady','overviewWarmImages',
         'overviewWarmOrder','overviewWarmRequestedIds']) scope[key] = root[key];
 }
 root.captureForTaskView([11]); sync();
@@ -94,6 +96,13 @@ const stable = root.getPreviewUrl(11);
 root.captureForTaskView([11]); sync();
 assert.equal(scheduled, 1, 'long-idle cached hit does not schedule capture');
 assert.equal(root.getPreviewUrl(11), stable, 'cache hit never changes URL');
+root.refreshForOverview([11]); sync();
+assert.equal(scheduled, 2, 'opening Overview refreshes a cached visible window');
+root._doCapture(); sync();
+assert.deepEqual(Array.from(scope.captureProcess.idsToCapture), [11],
+    'Overview refresh force-captures only the requested visible ID');
+assert.equal(root.capturing, true, 'Overview refresh starts a real capture batch');
+root.capturing = false; sync();
 root.captureAllWindows(); sync();
 assert.equal(scope.captureProcess.running, true, 'force refresh starts Process');
 assert.ok(scope.captureProcess.command.includes('11')

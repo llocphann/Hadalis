@@ -1204,6 +1204,17 @@ def main() -> None:
     for dead_preview_api in ("previewWidthConstraint", "previewHeightConstraint"):
         check(dead_preview_api not in dock_window_preview,
               f"Dock window preview must not retain unused constraint API: {dead_preview_api}")
+    for retired_preview_style in (
+        "Appearance.regaliaEverywhere",
+        "Appearance.inirEverywhere",
+        "Appearance.zzzEverywhere",
+        "Appearance.regalia.",
+        "Appearance.inir.",
+        "Appearance.zzz.",
+        "RegaliaControlFace",
+    ):
+        check(retired_preview_style not in dock_window_preview,
+              f"Dock window preview must use Material chrome directly: {retired_preview_style}")
     for retired_dock_token in (
         "pillStyle",
         "macosStyle",

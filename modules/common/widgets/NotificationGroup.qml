@@ -25,6 +25,7 @@ MouseArea { // Notification group area
     property bool expanded: false
     property bool popup: false
     signal externalLinkOpened()
+    signal notificationActionInvoked()
     property real padding: 10
     property bool _expandAnimating: false
     implicitHeight: background.implicitHeight
@@ -311,6 +312,8 @@ MouseArea { // Notification group area
                         anchors.left: parent?.left
                         anchors.right: parent?.right
                         onExternalLinkOpened: root.externalLinkOpened()
+                        onNotificationActionInvoked:
+                            root.notificationActionInvoked()
                     }
                 }
 

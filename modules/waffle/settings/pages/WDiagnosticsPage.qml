@@ -26,6 +26,7 @@ WSettingsPage {
         String(root.evidence?.sampler?.error ?? "")
     readonly property bool sessionHasError:
         RuntimeDiagnosticsSession.remoteError.length > 0
+        || RuntimeDiagnosticsSession.evidenceError.length > 0
         || root.samplerError.length > 0
     readonly property bool samplerRunning:
         root.evidence?.sampler?.running === true
@@ -117,6 +118,13 @@ WSettingsPage {
             visible: RuntimeDiagnosticsSession.remoteError.length > 0
             label: Translation.tr("Runtime bridge error")
             description: RuntimeDiagnosticsSession.remoteError
+            icon: "info"
+        }
+
+        WSettingsRow {
+            visible: RuntimeDiagnosticsSession.evidenceError.length > 0
+            label: Translation.tr("Runtime evidence error")
+            description: RuntimeDiagnosticsSession.evidenceError
             icon: "info"
         }
 

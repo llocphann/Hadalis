@@ -282,6 +282,9 @@ for token in (
     "readonly property bool valueAvailable:",
     'Math.round(root.numericValue) + "%" : "—"',
     "Layout.preferredHeight: 22",
+    "id: historyRow",
+    "clip: true",
+    "/ root.samples.length",
 ):
     require(metric_panel, token, "btop metric panel contract missing " + token)
 

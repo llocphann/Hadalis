@@ -240,10 +240,12 @@ ContentPage {
                         }
 
                         StyledText {
+                            Layout.fillWidth: true
                             text: root.sampleIntervalLabel() + " "
                                 + Translation.tr("kernel sampling · stops automatically when this page is not current")
                             color: Appearance.colors.colSubtext
                             font.pixelSize: Appearance.font.pixelSize.small
+                            wrapMode: Text.WordWrap
                         }
                     }
 

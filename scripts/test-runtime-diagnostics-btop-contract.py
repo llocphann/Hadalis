@@ -8,6 +8,7 @@ PAGE = ROOT / "modules" / "settings" / "RuntimeDiagnosticsConfig.qml"
 SPARKLINE = ROOT / "modules" / "settings" / "widgets" / "BtopSparkline.qml"
 SESSION = ROOT / "services" / "RuntimeDiagnosticsSession.qml"
 RUNTIME = ROOT / "services" / "RuntimeDiagnostics.qml"
+TARGET_RUNTIME = ROOT / "services" / "CodeWorkflowRuntimeTarget.qml"
 SAMPLER = ROOT / "scripts" / "runtime-diagnostics-sampler.py"
 WIDGETS = ROOT / "modules" / "settings" / "widgets"
 
@@ -26,6 +27,7 @@ def main() -> None:
     page = PAGE.read_text(encoding="utf-8")
     session = SESSION.read_text(encoding="utf-8")
     runtime = RUNTIME.read_text(encoding="utf-8")
+    target_runtime = TARGET_RUNTIME.read_text(encoding="utf-8")
     sampler = SAMPLER.read_text(encoding="utf-8")
     sparkline = SPARKLINE.read_text(encoding="utf-8")
 
@@ -69,6 +71,15 @@ def main() -> None:
         "root.formatUptime(",
     ):
         require(page, token, "RuntimeDiagnosticsConfig.qml")
+
+    for token in (
+        "function safeValues(): var {",
+        "width: root.runtimeObject.width",
+        "height: root.runtimeObject.height",
+        "visible: root.runtimeObject.visible",
+        "enabled: root.runtimeObject.enabled",
+    ):
+        require(target_runtime, token, "CodeWorkflowRuntimeTarget.qml")
 
     for token in (
         "readonly property bool pageCurrent:",

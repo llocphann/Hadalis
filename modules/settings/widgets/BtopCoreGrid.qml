@@ -48,7 +48,9 @@ Item {
                         Item { Layout.fillWidth: true }
 
                         StyledText {
-                            text: Number.isFinite(Number(modelData))
+                            text: modelData !== null
+                                && modelData !== undefined
+                                && Number.isFinite(Number(modelData))
                                 ? Math.round(Number(modelData)) + "%" : "—"
                             font.pixelSize: Appearance.font.pixelSize.small
                             color: Appearance.colors.colOnLayer1
@@ -62,7 +64,9 @@ Item {
                         color: Appearance.colors.colLayer2
 
                         Rectangle {
-                            width: Number.isFinite(Number(modelData))
+                            width: modelData !== null
+                                && modelData !== undefined
+                                && Number.isFinite(Number(modelData))
                                 ? parent.width * Math.max(
                                     0, Math.min(1, Number(modelData) / 100))
                                 : 0

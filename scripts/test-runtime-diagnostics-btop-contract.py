@@ -6,6 +6,10 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 PAGE = ROOT / "modules" / "settings" / "RuntimeDiagnosticsConfig.qml"
 SPARKLINE = ROOT / "modules" / "settings" / "widgets" / "BtopSparkline.qml"
+METRIC_PANEL = ROOT / "modules" / "settings" / "widgets" / "BtopMetricPanel.qml"
+NETWORK_PANEL = ROOT / "modules" / "settings" / "widgets" / "BtopNetworkPanel.qml"
+RUNTIME_PANEL = ROOT / "modules" / "settings" / "widgets" / "BtopRuntimePanel.qml"
+CORE_GRID = ROOT / "modules" / "settings" / "widgets" / "BtopCoreGrid.qml"
 PROCESS_TABLE = ROOT / "modules" / "settings" / "widgets" / "BtopProcessTable.qml"
 INTERFACE_TABLE = ROOT / "modules" / "settings" / "widgets" / "BtopInterfaceTable.qml"
 SESSION = ROOT / "services" / "RuntimeDiagnosticsSession.qml"
@@ -32,6 +36,10 @@ def main() -> None:
     target_runtime = TARGET_RUNTIME.read_text(encoding="utf-8")
     sampler = SAMPLER.read_text(encoding="utf-8")
     sparkline = SPARKLINE.read_text(encoding="utf-8")
+    metric_panel = METRIC_PANEL.read_text(encoding="utf-8")
+    network_panel = NETWORK_PANEL.read_text(encoding="utf-8")
+    runtime_panel = RUNTIME_PANEL.read_text(encoding="utf-8")
+    core_grid = CORE_GRID.read_text(encoding="utf-8")
     process_table = PROCESS_TABLE.read_text(encoding="utf-8")
     interface_table = INTERFACE_TABLE.read_text(encoding="utf-8")
 
@@ -112,6 +120,25 @@ def main() -> None:
         "while (lastIndex >= 0 && values[lastIndex] === null)",
     ):
         require(sparkline, token, "BtopSparkline.qml")
+
+    for source, text in (
+        ("BtopMetricPanel.qml", metric_panel),
+        ("BtopNetworkPanel.qml", network_panel),
+        ("BtopRuntimePanel.qml", runtime_panel),
+        ("BtopCoreGrid.qml", core_grid),
+        ("BtopProcessTable.qml", process_table),
+        ("BtopInterfaceTable.qml", interface_table),
+    ):
+        require(
+            text,
+            "Appearance.font.family.monospace",
+            f"{source} btop typography",
+        )
+        require(
+            text,
+            "Appearance.rounding.small",
+            f"{source} compact btop geometry",
+        )
 
     for token in (
         "if (value === null || value === undefined)",

@@ -658,19 +658,6 @@ ContentPage {
 
         SettingsGroup {
             SettingsSwitch {
-                visible: CompositorService.isHyprland
-                buttonIcon: "water_drop"
-                text: Translation.tr('Use Hyprlock (instead of Quickshell)')
-                checked: Config.options?.lock?.useHyprlock ?? false
-                onCheckedChanged: {
-                    Config.setNestedValue("lock.useHyprlock", checked);
-                }
-                StyledToolTip {
-                    text: Translation.tr("If you want to somehow use fingerprint unlock...")
-                }
-            }
-
-            SettingsSwitch {
                 buttonIcon: "account_circle"
                 text: Translation.tr('Launch on startup')
                 checked: Config.options?.lock?.launchOnStartup ?? false

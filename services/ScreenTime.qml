@@ -124,9 +124,7 @@ Singleton {
         id: pollTimer
         // Niri focus changes are event-driven below. Keep only a coarse
         // heartbeat for visible session time and periodic persistence.
-        interval: CompositorService.isNiri
-            ? 30000
-            : (Config.options?.sidebar?.screenTime?.pollIntervalSeconds ?? 5) * 1000
+        interval: 30000
         running: root.enabled && root.ready && root._initialized
         repeat: true
         triggeredOnStart: true
@@ -134,8 +132,8 @@ Singleton {
     }
 
     Connections {
-        target: CompositorService.isNiri ? NiriService : null
-        enabled: root.enabled && root.ready && root._initialized && CompositorService.isNiri
+        target: NiriService
+        enabled: root.enabled && root.ready && root._initialized
 
         function onActiveWindowChanged(): void {
             root._tick()
@@ -176,26 +174,13 @@ Singleton {
         let appId = ""
         let appName = ""
 
-        if (CompositorService.isNiri) {
-            // The initial WindowsChanged snapshot already marks the focused
-            // window, but NiriService.activeWindow is event-driven and can stay
-            // null until the next focus change. Use the reactive list as the
-            // startup fallback without spawning a compositor query per tick.
-            const win = NiriService.activeWindow
-                ?? (NiriService.windows ?? []).find(w => w.is_focused)
-            if (win) {
-                appId = win.app_id || ""
-                appName = appId ? _humanizeAppId(appId) : ""
-            }
-        } else if (CompositorService.isHyprland) {
-            const wins = HyprlandData.windowList || []
-            for (let i = 0; i < wins.length; i++) {
-                if (wins[i].focusHistoryID === 0) {
-                    appId = wins[i].class || ""
-                    appName = appId ? _humanizeAppId(appId) : ""
-                    break
-                }
-            }
+        // Niri's window list is authoritative; activeWindow can be null until
+        // the first focus event, so use the reactive list as startup fallback.
+        const win = NiriService.activeWindow
+            ?? (NiriService.windows ?? []).find(w => w.is_focused)
+        if (win) {
+            appId = win.app_id || ""
+            appName = appId ? _humanizeAppId(appId) : ""
         }
 
         const elapsed = root._lastTickTime > 0

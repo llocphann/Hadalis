@@ -1158,7 +1158,6 @@
         "status": {
             "enable": true
         },
-        "useHyprlock": false,
         "widgets": {
             "weather": true,
             "media": true,

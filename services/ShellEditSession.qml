@@ -4,7 +4,6 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import Quickshell
 import Quickshell.Io
-import Quickshell.Hyprland
 import qs
 import qs.services
 
@@ -130,11 +129,8 @@ Singleton {
                 && Quickshell.screens.some(screen => (screen?.name ?? "") === requestedName))
             return requestedName
 
-        if (CompositorService.isNiri && (NiriService.currentOutput ?? "").length > 0)
+        if ((NiriService.currentOutput ?? "").length > 0)
             return NiriService.currentOutput
-
-        if (CompositorService.isHyprland && (Hyprland.focusedMonitor?.name ?? "").length > 0)
-            return Hyprland.focusedMonitor.name
 
         return GlobalStates.primaryScreen?.name ?? Quickshell.screens[0]?.name ?? ""
     }

@@ -12,13 +12,6 @@ Singleton {
     property string filePath: Directories.persistentStatesPath
 
     property bool ready: false
-    property string previousHyprlandInstanceSignature: ""
-    property bool isNewHyprlandInstance: previousHyprlandInstanceSignature !== states.hyprlandInstanceSignature
-
-    onReadyChanged: {
-        root.previousHyprlandInstanceSignature = root.states.hyprlandInstanceSignature
-        root.states.hyprlandInstanceSignature = Quickshell.env("HYPRLAND_INSTANCE_SIGNATURE") || ""
-    }
 
     // writeAdapter() is async; suppress reloads triggered by our own write
     // so reload() doesn't drop the in-flight write operation.
@@ -83,8 +76,6 @@ Singleton {
 
         adapter: JsonAdapter {
             id: persistentStatesJsonAdapter
-
-            property string hyprlandInstanceSignature: ""
 
             property JsonObject ai: JsonObject {
                 property string model: "gemini-2.5-flash"

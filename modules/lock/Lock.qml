@@ -10,7 +10,6 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 import Quickshell.Wayland
-import Quickshell.Hyprland
 
 Scope {
     id: root
@@ -42,40 +41,14 @@ Scope {
         })
     }
 
-    property var windowData: []
-    
-    // Fallback lock screen when QS lock fails
+    // Fallback lock screen when Quickshell session-lock fails.
     function useFallbackLock(): void {
-        console.warn("[Lock] Activating fallback lock screen")
-        // Release QS lock first
+        console.warn("[Lock] Activating swaylock fallback")
         GlobalStates.screenLocked = false
-        // Try swaylock first (works on both Niri and Hyprland), then hyprlock
-        // Using shell to check existence and run
-        Quickshell.execDetached(["/usr/bin/bash", "-c", 
-            "command -v swaylock && exec swaylock -f -c 1a1a2e || " +
-            "command -v hyprlock && exec hyprlock || " +
-            "notify-send -u critical 'Lock Failed' 'Install swaylock or hyprlock as fallback'"
+        Quickshell.execDetached(["/usr/bin/bash", "-c",
+            "command -v swaylock >/dev/null 2>&1 && exec swaylock -f -c 1a1a2e || " +
+            "notify-send -u critical 'Lock Failed' 'Install swaylock as fallback'"
         ])
-    }
-    
-    function saveWindowPositionAndTile() {
-        if (!CompositorService.isHyprland) return;
-        Quickshell.execDetached(["/usr/bin/hyprctl", "keyword", "dwindle:pseudotile", "true"])
-        root.windowData = HyprlandData.windowList.filter(w => (w.floating && w.workspace.id === HyprlandData.activeWorkspace.id))
-        root.windowData.forEach(w => {
-			Hyprland.dispatch(`pseudo address:${w.address}`)
-            Hyprland.dispatch(`settiled address:${w.address}`)
-			Hyprland.dispatch(`movetoworkspacesilent ${w.workspace.id},address:${w.address}`)
-        })
-    }
-    function restoreWindowPositionAndTile() {
-        if (!CompositorService.isHyprland) return;
-        root.windowData.forEach(w => {
-            Hyprland.dispatch(`setfloating address:${w.address}`)
-            Hyprland.dispatch(`movewindowpixel exact ${w.at[0]} ${w.at[1]}, address:${w.address}`)
-			Hyprland.dispatch(`pseudo address:${w.address}`)
-        })
-		Quickshell.execDetached(["/usr/bin/hyprctl", "keyword", "dwindle:pseudotile", "false"])
     }
 
     // This stores all the information shared between the lock surfaces on each screen.
@@ -111,11 +84,6 @@ Scope {
             // fallback lock you can't interact with.
             GlobalStates.screenLocked = false;
             
-            // Refocus last focused window on unlock (hack)
-            if (CompositorService.isHyprland) {
-                Quickshell.execDetached(["/usr/bin/bash", "-lc", "/usr/bin/sleep 0.2; /usr/bin/hyprctl --batch 'dispatch togglespecialworkspace; dispatch togglespecialworkspace'"])
-            }
-
             // Reset
             lockContext.reset();
 
@@ -157,13 +125,6 @@ Scope {
     }
     
     Component {
-        id: waffleLockComponent
-        WaffleLockSurface {
-            context: lockContext
-        }
-    }
-    
-    Component {
         id: waffleLockSafeComponent
         WaffleLockSurfaceSafe {
             context: lockContext
@@ -200,7 +161,7 @@ Scope {
                 // Don't animate opacity - causes issues during hot-reload
                 opacity: active ? 1 : 0
                 sourceComponent: root._cachedUseWaffleLock
-                    ? (CompositorService.isNiri ? waffleLockSafeComponent : waffleLockComponent)
+                    ? waffleLockSafeComponent
                     : iiLockComponent
                 
                 // Detect load errors
@@ -249,30 +210,6 @@ Scope {
         }
     }
 
-    // Blur layer hack (Hyprland only)
-    // This pushes windows off-screen to create a blur effect behind the lock screen.
-    // On Niri, use layer-rule { blur; } in config.kdl for the "quickshell:lock" namespace instead.
-    Variants {
-        model: Quickshell.screens
-        delegate: Scope {
-            required property ShellScreen modelData
-            property bool shouldPush: GlobalStates.screenLocked && CompositorService.isHyprland
-            property string targetMonitorName: modelData ? modelData.name : ""
-            property int verticalMovementDistance: modelData ? modelData.height : 0
-            property int horizontalSqueeze: modelData ? modelData.width * 0.2 : 0
-            onShouldPushChanged: {
-                if (!modelData) return;
-                if (shouldPush) {
-                    root.saveWindowPositionAndTile();
-                    Quickshell.execDetached(["hyprctl", "keyword", "monitor", `${targetMonitorName}, addreserved, ${verticalMovementDistance}, ${-verticalMovementDistance}, ${horizontalSqueeze}, ${horizontalSqueeze}`])
-                } else {
-                    Quickshell.execDetached(["hyprctl", "keyword", "monitor", `${targetMonitorName}, addreserved, 0, 0, 0, 0`])
-                    root.restoreWindowPositionAndTile();
-                }
-            }
-        }
-    }
-
     // Heartbeat re-focus while locked. Niri sometimes drops keyboard focus on the
     // ext-session-lock surface after suspend/resume — the surface stays visible but
     // input goes nowhere until something forces a re-grab. We just nudge it back.
@@ -299,10 +236,6 @@ Scope {
         target: "lock"
 
         function activate(): void {
-            if (Config.options?.lock?.useHyprlock ?? false) {
-                Quickshell.execDetached(["/usr/bin/bash", "-lc", "/usr/bin/pidof hyprlock || /usr/bin/hyprlock"]);
-                return;
-            }
             if (GlobalStates.screenLocked || root._lockActivating)
                 return;
             lockActivateDelay.restart();
@@ -330,34 +263,6 @@ Scope {
         }
     }
 
-    Loader {
-        active: CompositorService.isHyprland
-        sourceComponent: Item {
-            GlobalShortcut {
-                name: "lock"
-                description: "Locks the screen"
-
-                onPressed: {
-                    if (Config.options?.lock?.useHyprlock ?? false) {
-                        Quickshell.execDetached(["/usr/bin/bash", "-lc", "/usr/bin/pidof hyprlock || /usr/bin/hyprlock"]);
-                        return;
-                    }
-                    if (!GlobalStates.screenLocked && !root._lockActivating)
-                        lockActivateDelay.restart();
-                }
-            }
-
-            GlobalShortcut {
-                name: "lockFocus"
-                description: "Re-focuses the lock screen."
-
-                onPressed: {
-                    lockContext.shouldReFocus();
-                }
-            }
-        }
-    }
-
     function initIfReady() {
         if (!Config.ready || !Persistent.ready || GlobalStates.startupLockDone)
             return;
@@ -370,11 +275,8 @@ Scope {
         GlobalStates.startupLockDone = true;
 
         if (Config.options?.lock?.launchOnStartup ?? false) {
-            if (Config.options?.lock?.useHyprlock ?? false) {
-                Quickshell.execDetached(["/usr/bin/bash", "-lc", "/usr/bin/pidof hyprlock || /usr/bin/hyprlock"]);
-            } else if (!GlobalStates.screenLocked && !root._lockActivating) {
-                lockActivateDelay.restart();
-            }
+            if (!GlobalStates.screenLocked && !root._lockActivating)
+                lockActivateDelay.restart()
         } else {
             KeyringStorage.fetchKeyringData();
         }

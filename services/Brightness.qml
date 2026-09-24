@@ -9,7 +9,6 @@ import qs.modules.common.functions
 import qs.services
 import Quickshell
 import Quickshell.Io
-import Quickshell.Hyprland
 import QtQuick
 import "brightnessPolicy.js" as BrightnessPolicy
 
@@ -93,7 +92,7 @@ Singleton {
     }
 
     function increaseBrightness(): void {
-        const focusedName = CompositorService.isNiri ? NiriService.currentOutput : Hyprland.focusedMonitor?.name;
+        const focusedName = NiriService.currentOutput;
         if (!focusedName) return;
         const monitor = monitors.find(m => focusedName === m.screen.name);
         if (monitor)
@@ -101,7 +100,7 @@ Singleton {
     }
 
     function decreaseBrightness(): void {
-        const focusedName = CompositorService.isNiri ? NiriService.currentOutput : Hyprland.focusedMonitor?.name;
+        const focusedName = NiriService.currentOutput;
         if (!focusedName) return;
         const monitor = monitors.find(m => focusedName === m.screen.name);
         if (monitor)
@@ -519,24 +518,10 @@ Singleton {
             required property var modelData
             property string screenName: modelData.name
             property string screenshotPath: `${root.screenshotDir}/screenshot-${screenName}.png`
+            // Niri event-driven anti-flashbang sampling
             Connections {
-                enabled: (Config.options?.light?.antiFlashbang?.enable ?? false) && Appearance.m3colors.darkmode && CompositorService.isHyprland
-                target: CompositorService.isHyprland ? Hyprland : null
-                function onRawEvent(event) {
-                    if (["activewindowv2", "windowtitlev2"].includes(event.name)) {
-                        screenshotTimer.interval = root.contentSwitchDelay;
-                        screenshotTimer.restart();
-                    } else if (["workspacev2"].includes(event.name)) {
-                        screenshotTimer.interval = root.workspaceAnimationDelay;
-                        screenshotTimer.restart();
-                    }
-                }
-            }
-
-            // Niri support for anti-flashbang
-            Connections {
-                enabled: (Config.options?.light?.antiFlashbang?.enable ?? false) && Appearance.m3colors.darkmode && CompositorService.isNiri
-                target: CompositorService.isNiri ? NiriService : null
+                enabled: (Config.options?.light?.antiFlashbang?.enable ?? false) && Appearance.m3colors.darkmode
+                target: NiriService
                 function onActiveWindowChanged() {
                     screenshotTimer.interval = root.contentSwitchDelay;
                     screenshotTimer.restart();
@@ -549,7 +534,7 @@ Singleton {
 
             Timer {
                 id: screenshotTimer
-                interval: 700 // This is what I have for a Hyprland ws anim
+                interval: 700
                 onTriggered: {
                     screenshotProc.running = false;
                     screenshotProc.running = true;
@@ -598,20 +583,4 @@ Singleton {
         }
     }
 
-    Loader {
-        active: CompositorService.isHyprland
-        sourceComponent: Item {
-            GlobalShortcut {
-                name: "brightnessIncrease"
-                description: "Increase brightness"
-                onPressed: root.increaseBrightness()
-            }
-
-            GlobalShortcut {
-                name: "brightnessDecrease"
-                description: "Decrease brightness"
-                onPressed: root.decreaseBrightness()
-            }
-        }
-    }
 }

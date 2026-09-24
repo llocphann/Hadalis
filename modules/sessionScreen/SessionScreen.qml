@@ -11,7 +11,6 @@ import Qt5Compat.GraphicalEffects
 import Quickshell
 import Quickshell.Io
 import Quickshell.Wayland
-import Quickshell.Hyprland
 
 Scope {
     id: root
@@ -19,19 +18,9 @@ Scope {
     Component.onCompleted: if (GlobalStates.sessionOpen)
         Qt.callLater(() => { root._presentedOpen = GlobalStates.sessionOpen })
     property var focusedScreen: {
-        if (CompositorService.isNiri && typeof NiriService !== "undefined" && NiriService.currentOutput) {
-            const name = NiriService.currentOutput;
-            const matchNiri = Quickshell.screens.find(s => s && s.name === name);
-            if (matchNiri)
-                return matchNiri;
-        }
-        if (Hyprland.focusedMonitor && Hyprland.focusedMonitor.name) {
-            const name = Hyprland.focusedMonitor.name;
-            const matchHypr = Quickshell.screens.find(s => s && s.name === name);
-            if (matchHypr)
-                return matchHypr;
-        }
-        return GlobalStates.primaryScreen;
+        const name = NiriService.currentOutput ?? ""
+        return Quickshell.screens.find(s => s && s.name === name)
+            ?? GlobalStates.primaryScreen
     }
     readonly property bool packageManagerRunning: SessionWarnings.packageManagerRunning
     readonly property bool downloadRunning: SessionWarnings.downloadRunning

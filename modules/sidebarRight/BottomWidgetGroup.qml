@@ -9,7 +9,6 @@ import qs.modules.sidebarRight.pomodoro
 import qs.modules.sidebarRight.notepad
 import qs.modules.sidebarRight.calculator
 import qs.modules.sidebarRight.sysmon
-import qs.modules.sidebarRight.screenTime
 import qs.modules.sidebarRight.events
 import qs.modules.sidebarRight.weather
 import QtQuick
@@ -63,7 +62,6 @@ Rectangle {
     property var allTabs: [
         {"type": "calculator", "name": Translation.tr("Calc"), "icon": "calculate", "widget": calculatorWidget},
         {"type": "sysmon", "name": Translation.tr("System"), "icon": "monitor_heart", "widget": sysMonWidget},
-        {"type": "screentime", "name": Translation.tr("Screen Time"), "icon": "av_timer", "widget": screenTimeWidget},
     ]
 
     property int configVersion: 0
@@ -110,11 +108,7 @@ Rectangle {
         return Config.options?.sidebar?.right?.enabledWidgets ?? ["calculator", "sysmon"]
     }
 
-    property var tabs: allTabs.filter(tab => {
-        if (tab.type === "screentime" && !(Config.options?.sidebar?.screenTime?.enable ?? false))
-            return false
-        return enabledWidgets.includes(tab.type)
-    })
+    property var tabs: allTabs.filter(tab => enabledWidgets.includes(tab.type))
 
     property string currentTabType: ""
     onSelectedTabChanged: {
@@ -521,15 +515,6 @@ Rectangle {
     Component {
         id: pomodoroWidget
         PomodoroWidget {
-            anchors.fill: parent
-            anchors.margins: 5
-        }
-    }
-
-    // Screen Time component
-    Component {
-        id: screenTimeWidget
-        ScreenTimeWidget {
             anchors.fill: parent
             anchors.margins: 5
         }

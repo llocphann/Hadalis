@@ -50,15 +50,25 @@ def main() -> None:
     check(
         "const spectrum = eqCava.points ?? []" in equalizer
         and "Number(eqCava.normalizationCeiling)" in equalizer
-        and "ctx.bezierCurveTo(" in equalizer
-        and "model: EqualizerService.dspBands" in equalizer,
-        "EqualizerPanel must merge live CAVA bars and DSP response nodes in one graph",
+        and "model: EqualizerService.dspBands" in equalizer
+        and "property real eqLightningHighlight: 0.0" in equalizer
+        and "property real eqPresetSweepProgress: -0.12" in equalizer
+        and "function sampledTrace(stroke)" in equalizer
+        and "const sweepTail = 0.22" in equalizer,
+        "EqualizerPanel must merge live CAVA bars with the electric DSP response connector",
     )
     check(
         equalizer.count("Slider {") == 1
-        and "lightningCanvas" not in equalizer
-        and "eqPresetSweepProgress" not in equalizer,
-        "EqualizerPanel must not restore the detached DSP slider/lightning layer",
+        and "id: lightningCanvas" not in equalizer
+        and "ctx.bezierCurveTo(" not in equalizer,
+        "EqualizerPanel must keep one integrated DSP node layer and no detached/smooth connector",
+    )
+    check(
+        'text: "Live"' in equalizer
+        and "RowLayout {" in equalizer
+        and "Layout.alignment: Qt.AlignVCenter" in equalizer
+        and "verticalAlignment: Text.AlignVCenter" in equalizer,
+        "EqualizerPanel Live badge dot and label must share one vertical centerline",
     )
     check(
         "_playerCache" not in popup

@@ -237,6 +237,7 @@ struct MpdManager {
     port: u16,
     music_root_override: String,
     resolved_music_root: Mutex<Option<String>>,
+    art_lookup: Mutex<ArtLookup>,
     client: Mutex<Option<MpdClient>>,
 }
 
@@ -247,13 +248,14 @@ impl MpdManager {
             port,
             music_root_override,
             resolved_music_root: Mutex::new(None),
+            art_lookup: Mutex::new(ArtLookup::default()),
             client: Mutex::new(None),
         }
     }
 
     fn with_client<T>(
         &self,
-        operation: impl FnOnce(&mut MpdClient, &str) -> Result<T>,
+        operation: impl FnOnce(&mut MpdClient, &str, &mut ArtLookup) -> Result<T>,
     ) -> Result<T> {
         let mut guard = self
             .client
@@ -279,7 +281,11 @@ impl MpdManager {
                 .into_owned()
         };
 
-        let result = operation(client, &root);
+        let mut art_lookup = self
+            .art_lookup
+            .lock()
+            .map_err(|_| anyhow!("mpd_art_mutex_poisoned"))?;
+        let result = operation(client, &root, &mut art_lookup);
         if result.is_err() {
             *guard = None;
         }
@@ -359,9 +365,7 @@ fn records(lines: &[String], marker: &str) -> Vec<Record> {
 
 fn first(record: &Record, keys: &[&str]) -> String {
     for key in keys {
-        if let Some(value) = record
-            .get(&key.to_ascii_lowercase())
-            .and_then(|values| values.first())
+        if let Some(value) = record.get(*key).and_then(|values| values.first())
         {
             let value = value.trim();
             if !value.is_empty() {
@@ -844,16 +848,20 @@ fn music_root(client: &mut MpdClient, override_root: &str) -> String {
         .unwrap_or_default()
 }
 
-fn status_payload_mode(client: &mut MpdClient, root: &str, include_queue: bool) -> Result<Value> {
+fn status_payload_mode_with_art(
+    client: &mut MpdClient,
+    root: &str,
+    include_queue: bool,
+    art_lookup: &mut ArtLookup,
+) -> Result<Value> {
     let status = pairs(&client.command("status", std::iter::empty::<&str>())?);
     let current_records = records(
         &client.command("currentsong", std::iter::empty::<&str>())?,
         "file",
     );
-    let mut art_lookup = ArtLookup::default();
     let current = current_records
         .first()
-        .map(|record| Value::Object(build_track(record, root, &mut art_lookup)))
+        .map(|record| Value::Object(build_track(record, root, art_lookup)))
         .unwrap_or(Value::Null);
 
     let mut payload = Map::new();
@@ -868,12 +876,17 @@ fn status_payload_mode(client: &mut MpdClient, root: &str, include_queue: bool) 
         );
         let mut queue = Vec::with_capacity(queue_records.len());
         for record in &queue_records {
-            queue.push(Value::Object(build_track(record, root, &mut art_lookup)));
+            queue.push(Value::Object(build_track(record, root, art_lookup)));
         }
         payload.insert("queue".into(), Value::Array(queue));
     }
 
     Ok(Value::Object(payload))
+}
+
+fn status_payload_mode(client: &mut MpdClient, root: &str, include_queue: bool) -> Result<Value> {
+    let mut art_lookup = ArtLookup::default();
+    status_payload_mode_with_art(client, root, include_queue, &mut art_lookup)
 }
 
 fn status_payload(client: &mut MpdClient, root: &str) -> Result<Value> {
@@ -938,7 +951,7 @@ fn snapshot(client: &mut MpdClient, root: &str) -> Result<Value> {
         tracks.push(build_track(record, root, &mut art_lookup));
     }
 
-    tracks.sort_by_key(|track| {
+    tracks.sort_by_cached_key(|track| {
         (
             track_value(track, "artist").to_ascii_lowercase(),
             track_value(track, "album").to_ascii_lowercase(),
@@ -1061,19 +1074,27 @@ fn playlist_names(client: &mut MpdClient) -> Result<Vec<String>> {
 fn handle_operation(
     client: &mut MpdClient,
     override_root: &str,
+    art_lookup: &mut ArtLookup,
     op: &str,
     params: &Value,
 ) -> Result<Value> {
     match op {
         "status" => {
-            let mut payload = status_payload(client, override_root)?;
+            let mut payload =
+                status_payload_mode_with_art(client, override_root, true, art_lookup)?;
             payload
                 .as_object_mut()
                 .expect("status payload is object")
                 .insert("musicRoot".into(), json!(override_root));
             Ok(payload)
         }
-        "snapshot" => snapshot(client, override_root),
+        "snapshot" => {
+            let result = snapshot(client, override_root);
+            if result.is_ok() {
+                *art_lookup = ArtLookup::default();
+            }
+            result
+        },
         "queue" => {
             let uris = param_strings(params, "uris")?;
             if uris.is_empty() {
@@ -1110,7 +1131,8 @@ fn handle_operation(
                     client.command("play", [(queue_len - 1).max(0).to_string()])?;
                 }
             }
-            let mut payload = status_payload(client, override_root)?;
+            let mut payload =
+                status_payload_mode_with_art(client, override_root, true, art_lookup)?;
             payload
                 .as_object_mut()
                 .expect("status payload is object")
@@ -1124,7 +1146,8 @@ fn handle_operation(
                 .map(|uri| command_line("add", [uri]))
                 .collect::<Vec<_>>();
             client.command_batch(&commands)?;
-            let mut payload = status_payload(client, override_root)?;
+            let mut payload =
+                status_payload_mode_with_art(client, override_root, true, art_lookup)?;
             payload
                 .as_object_mut()
                 .expect("status payload is object")
@@ -1269,8 +1292,8 @@ fn handle_client(
         }
 
         let id = request.id;
-        let result = manager.with_client(|client, root| {
-            handle_operation(client, root, &request.op, &request.params)
+        let result = manager.with_client(|client, root, art_lookup| {
+            handle_operation(client, root, art_lookup, &request.op, &request.params)
         });
         write_json_line(reader.get_mut(), &response(id, result))?;
     }
@@ -1333,8 +1356,13 @@ fn idle_loop(
                             None
                         } else {
                             manager
-                                .with_client(|client, root| {
-                                    status_payload_mode(client, root, include_queue)
+                                .with_client(|client, root, art_lookup| {
+                                    status_payload_mode_with_art(
+                                        client,
+                                        root,
+                                        include_queue,
+                                        art_lookup,
+                                    )
                                 })
                                 .ok()
                         };
@@ -2013,7 +2041,9 @@ mod tests {
             let manager = MpdManager::new("127.0.0.1".into(), port, String::new());
             for _ in 0..2 {
                 let payload = manager
-                    .with_client(|client, root| status_payload_mode(client, root, false))
+                    .with_client(|client, root, art_lookup| {
+                        status_payload_mode_with_art(client, root, false, art_lookup)
+                    })
                     .expect("persistent manager status");
                 assert_eq!(payload["status"]["state"], "play");
             }

@@ -212,6 +212,11 @@ Item {
 
             readonly property string fullText: root.fullTrackText
             readonly property bool overflowing: titleText.implicitWidth > width + 1
+            // Short labels sit centered in the reserved Media label area. Long
+            // labels still start at the leading edge so the marquee keeps the
+            // same readable entry point and scrolling distance.
+            readonly property real restingX: overflowing
+                ? 0 : Math.max(0, (width - titleText.implicitWidth) / 2)
             // Continuous wraparound: scroll one text width + gap, then loop. The
             // trailing copy enters from the right exactly as the first exits left,
             // so it reads as a single seamless ribbon with no fade-snap.
@@ -222,17 +227,16 @@ Item {
                 id: marqueeRow
                 height: parent.height
                 spacing: titleScroller.gap
-                x: 0
+                x: titleScroller.restingX
 
                 StyledText {
                     id: titleText
                     height: marqueeRow.height
                     verticalAlignment: Text.AlignVCenter
-                    // The label always starts beside the glyph; short titles must
-                    // not jump toward the center when the marquee stops.
-                    horizontalAlignment: Text.AlignLeft
+                    horizontalAlignment: titleScroller.overflowing
+                        ? Text.AlignLeft : Text.AlignHCenter
                     font.pixelSize: Math.max(11, Math.round(Appearance.font.pixelSize.small * Appearance.sizes.barModuleScale))
-                    width: titleScroller.overflowing ? implicitWidth : titleScroller.width
+                    width: implicitWidth
                     elide: Text.ElideNone
                     animateChange: true
                     animationDistanceX: root.effectiveTrackAnimationDirection * 10
@@ -277,7 +281,7 @@ Item {
                 if (!_marqueeReady) return
                 holdTimer.stop()
                 scrollAnim.stop()
-                marqueeRow.x = 0
+                marqueeRow.x = titleScroller.restingX
                 _marqueeHolding = true
                 _startHoldTimer()
             }
@@ -308,7 +312,7 @@ Item {
                 // Gate on running — binding setPaused() on a stopped animation warns.
                 paused: titleScroller._marqueeHovered && scrollAnim.running
                 onFinished: {
-                    marqueeRow.x = 0
+                    marqueeRow.x = titleScroller.restingX
                     titleScroller._marqueeHolding = true
                     titleScroller._startHoldTimer()
                 }
@@ -323,7 +327,7 @@ Item {
                 if (!visible) {
                     holdTimer.stop()
                     scrollAnim.stop()
-                    marqueeRow.x = 0
+                    marqueeRow.x = titleScroller.restingX
                     _marqueeHolding = true
                 } else if (overflowing && !_marqueeHovered) {
                     _startHoldTimer()

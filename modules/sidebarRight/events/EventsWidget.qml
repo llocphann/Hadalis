@@ -120,14 +120,12 @@ Item {
             inlineEditor.resetForm()
         }
         root.inlineEditorMode = true
-        inlineEditor.show = true
         inlineEditor.focusEditor()
     }
 
     function closeInlineEditor(): void {
         root.inlineEditorMode = false
         root.inlineEditorTarget = null
-        inlineEditor.show = false
     }
 
     function setInlineEditorDate(date): void {

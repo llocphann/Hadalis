@@ -16,7 +16,9 @@ WButton {
     property alias border: background.border
     property alias shinyColor: background.borderColor
 
-    colBackgroundBorder: ColorUtils.transparentize(color,\n        (root.checked || root.hovered) ? Looks.backgroundTransparency : 0)\n    color: {
+    colBackgroundBorder: ColorUtils.transparentize(color,
+        (root.checked || root.hovered) ? Looks.backgroundTransparency : 0)
+    color: {
         if (root.down) {
             return root.colBackgroundActive
         } else if ((root.hovered && !root.down) || root.checked) {

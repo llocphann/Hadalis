@@ -64,8 +64,14 @@ Item {
             - EqualizerService.dspMinimumBandGain
         if (range <= 0)
             return height / 2
-        return (EqualizerService.dspMaximumBandGain - clamped)
-            / range * height
+
+        // Match the real Slider handle-center travel, so dB guide lines,
+        // fallback curve points and draggable nodes share exactly one y scale.
+        const inset = root.compactLayout ? 11.5 : 13.5
+        const usableHeight = Math.max(1, height - inset * 2)
+        return inset
+            + (EqualizerService.dspMaximumBandGain - clamped)
+                / range * usableHeight
     }
 
     function requestGraphPaint(): void {
@@ -227,14 +233,9 @@ Item {
                             return
 
                         const bands = EqualizerService.dspBands ?? []
-                        const minGain = EqualizerService.dspMinimumBandGain
-                        const maxGain = EqualizerService.dspMaximumBandGain
-                        const gainRange = Math.max(1, maxGain - minGain)
 
                         function yForGain(gain) {
-                            const clamped = Math.max(
-                                minGain, Math.min(maxGain, Number(gain) || 0))
-                            return (maxGain - clamped) / gainRange * height
+                            return root.gainToY(gain, height)
                         }
 
                         // Real CAVA spectrum. Two restrained passes give each

@@ -136,7 +136,10 @@ fn sync_one(
     } else {
         (existing, None)
     };
-    atomic_write(path, &set_ini_key(&base, section, key, value))?;
+    let updated = set_ini_key(&base, section, key, value);
+    if updated != base {
+        atomic_write(path, &updated)?;
+    }
     Ok(json!({
         "path": path.to_string_lossy(),
         "updated": true,

@@ -3,7 +3,10 @@
 const KB_ACTION_MAP: &[(&str, &str)] = &[
     ("toggle-overview", "Niri Overview"),
     ("quit", "Quit Niri"),
-    ("toggle-keyboard-shortcuts-inhibit", "Toggle shortcuts inhibit"),
+    (
+        "toggle-keyboard-shortcuts-inhibit",
+        "Toggle shortcuts inhibit",
+    ),
     ("power-off-monitors", "Power off monitors"),
     ("show-hotkey-overlay", "Niri hotkey overlay"),
     ("close-window", "Close window"),
@@ -11,10 +14,16 @@ const KB_ACTION_MAP: &[(&str, &str)] = &[
     ("maximize-window-to-edges", "Maximize to edges"),
     ("fullscreen-window", "Fullscreen"),
     ("toggle-window-floating", "Toggle floating"),
-    ("switch-focus-between-floating-and-tiling", "Switch float/tile focus"),
+    (
+        "switch-focus-between-floating-and-tiling",
+        "Switch float/tile focus",
+    ),
     ("center-column", "Center column"),
     ("center-visible-columns", "Center visible columns"),
-    ("expand-column-to-available-width", "Expand to available width"),
+    (
+        "expand-column-to-available-width",
+        "Expand to available width",
+    ),
     ("consume-or-expel-window-left", "Consume/expel left"),
     ("consume-or-expel-window-right", "Consume/expel right"),
     ("expel-window-from-column", "Expel from column"),
@@ -95,34 +104,37 @@ const KB_TERMINALS: &[&str] = &[
     "gnome-terminal",
 ];
 
-const KB_FILE_MANAGERS: &[&str] = &[
-    "dolphin",
-    "nautilus",
-    "thunar",
-    "nemo",
-    "pcmanfm",
-    "ranger",
-];
+const KB_FILE_MANAGERS: &[&str] = &["dolphin", "nautilus", "thunar", "nemo", "pcmanfm", "ranger"];
 
-const KB_BROWSERS: &[&str] = &[
-    "firefox",
-    "zen-browser",
-    "chromium",
-    "brave",
-    "vivaldi",
-];
+const KB_BROWSERS: &[&str] = &["firefox", "zen-browser", "chromium", "brave", "vivaldi"];
 
 use regex::Regex;
 use std::sync::LazyLock;
 
-static IPC_CALL: LazyLock<Regex> = LazyLock::new(|| Regex::new(r#"spawn\s+"(?:[^"]*/)?inir"\s+"ipc"\s+"call"\s+"([\w-]+)"\s+"([\w-]+)""#).unwrap());
-static SPECIAL_COMMAND: LazyLock<Regex> = LazyLock::new(|| Regex::new(r#"spawn\s+"(?:[^"]*/)?inir"\s+"(settings|terminal|close-window|browser)"(?:\s|;|$)"#).unwrap());
-static GENERAL_COMMAND: LazyLock<Regex> = LazyLock::new(|| Regex::new(r#"spawn\s+"(?:[^"]*/)?inir"\s+"([\w-]+)"\s+"([\w-]+)""#).unwrap());
-static WORKSPACE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^(focus-workspace|move-column-to-workspace)\s+(\d+)").unwrap());
-static SIZE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r#"^set-(column-width|window-height)\s+"([+-]\d+%?)""#).unwrap());
-static IPC_FALLBACK: LazyLock<Regex> = LazyLock::new(|| Regex::new(r#"ipc.*call.*"(\w+)".*"(\w+)""#).unwrap());
+static IPC_CALL: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r#"spawn\s+"(?:[^"]*/)?inir"\s+"ipc"\s+"call"\s+"([\w-]+)"\s+"([\w-]+)""#).unwrap()
+});
+static SPECIAL_COMMAND: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(
+        r#"spawn\s+"(?:[^"]*/)?inir"\s+"(settings|terminal|close-window|browser)"(?:\s|;|$)"#,
+    )
+    .unwrap()
+});
+static GENERAL_COMMAND: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r#"spawn\s+"(?:[^"]*/)?inir"\s+"([\w-]+)"\s+"([\w-]+)""#).unwrap());
+static WORKSPACE: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"^(focus-workspace|move-column-to-workspace)\s+(\d+)").unwrap());
+static SIZE: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r#"^set-(column-width|window-height)\s+"([+-]\d+%?)""#).unwrap());
+static IPC_FALLBACK: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r#"ipc.*call.*"(\w+)".*"(\w+)""#).unwrap());
 static SPAWN_APP: LazyLock<Regex> = LazyLock::new(|| Regex::new(r#"spawn\s+"([^"]+)""#).unwrap());
-static SHELL_CATEGORY: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"ipc.*call.*(overlay|overview|clipboard|lock|wallpaper|settings|cheatsheet|panelfamily)").unwrap());
+static SHELL_CATEGORY: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(
+        r"ipc.*call.*(overlay|overview|clipboard|lock|wallpaper|settings|cheatsheet|panelfamily)",
+    )
+    .unwrap()
+});
 
 fn contains_any(text: &str, words: &[&str]) -> bool {
     words.iter().any(|word| text.contains(word))
@@ -141,7 +153,9 @@ fn inir_action(action: &str) -> Option<(String, String)> {
         };
         return Some((target.to_owned(), function.to_owned()));
     }
-    GENERAL_COMMAND.captures(action).map(|caps| (caps[1].to_owned(), caps[2].to_owned()))
+    GENERAL_COMMAND
+        .captures(action)
+        .map(|caps| (caps[1].to_owned(), caps[2].to_owned()))
 }
 
 pub(super) fn action_description(action: &str) -> String {
@@ -150,73 +164,259 @@ pub(super) fn action_description(action: &str) -> String {
         return (*label).to_owned();
     }
     if let Some(caps) = WORKSPACE.captures(action) {
-        let verb = if caps[1].contains("focus") { "Focus" } else { "Move to" };
+        let verb = if caps[1].contains("focus") {
+            "Focus"
+        } else {
+            "Move to"
+        };
         return format!("{verb} workspace {}", &caps[2]);
     }
     if let Some(caps) = SIZE.captures(action) {
-        let target = if caps[1].contains("column") { "column" } else { "window" };
-        let direction = if caps[2].starts_with('-') { "Shrink" } else { "Grow" };
-        return format!("{direction} {target} {}", caps[2].trim_start_matches(['+', '-']));
+        let target = if caps[1].contains("column") {
+            "column"
+        } else {
+            "window"
+        };
+        let direction = if caps[2].starts_with('-') {
+            "Shrink"
+        } else {
+            "Grow"
+        };
+        return format!(
+            "{direction} {target} {}",
+            caps[2].trim_start_matches(['+', '-'])
+        );
     }
     if action.starts_with("spawn") {
         if let Some((target, function)) = inir_action(action) {
-            return KB_IPC_MAP.iter().find(|((t, f), _)| *t == target && *f == function)
+            return KB_IPC_MAP
+                .iter()
+                .find(|((t, f), _)| *t == target && *f == function)
                 .map(|(_, label)| (*label).to_owned())
                 .unwrap_or_else(|| format!("{target} {function}"));
         }
         if let Some(caps) = IPC_FALLBACK.captures(action) {
             let (target, function) = (&caps[1], &caps[2]);
-            return KB_IPC_MAP.iter().find(|((t, f), _)| *t == target && *f == function)
+            return KB_IPC_MAP
+                .iter()
+                .find(|((t, f), _)| *t == target && *f == function)
                 .map(|(_, label)| (*label).to_owned())
                 .unwrap_or_else(|| format!("{target} {function}"));
         }
-        if action.contains("launch-terminal.sh") || contains_any(action, KB_TERMINALS) { return "Terminal".into(); }
-        if contains_any(action, KB_FILE_MANAGERS) { return "File manager".into(); }
-        if contains_any(action, KB_BROWSERS) { return "Browser".into(); }
+        if action.contains("launch-terminal.sh") || contains_any(action, KB_TERMINALS) {
+            return "Terminal".into();
+        }
+        if contains_any(action, KB_FILE_MANAGERS) {
+            return "File manager".into();
+        }
+        if contains_any(action, KB_BROWSERS) {
+            return "Browser".into();
+        }
         if action.contains("wpctl") {
             return if action.contains("set-volume") {
-                if action.contains('+') { "Volume up" } else { "Volume down" }
-            } else { "Mute toggle" }.into();
+                if action.contains('+') {
+                    "Volume up"
+                } else {
+                    "Volume down"
+                }
+            } else {
+                "Mute toggle"
+            }
+            .into();
         }
         if action.contains("brightnessctl") || action.contains("light") {
-            return if action.contains('+') || action.contains("inc") { "Brightness up" } else { "Brightness down" }.into();
+            return if action.contains('+') || action.contains("inc") {
+                "Brightness up"
+            } else {
+                "Brightness down"
+            }
+            .into();
         }
-        if action.contains("close-window") { return "Close window".into(); }
+        if action.contains("close-window") {
+            return "Close window".into();
+        }
         if let Some(caps) = SPAWN_APP.captures(action) {
             return caps[1].rsplit('/').next().unwrap_or(&caps[1]).to_owned();
         }
     }
-    if action.chars().count() > 30 { format!("{}...", action.chars().take(30).collect::<String>()) } else { action.to_owned() }
+    if action.chars().count() > 30 {
+        format!("{}...", action.chars().take(30).collect::<String>())
+    } else {
+        action.to_owned()
+    }
 }
 
 pub(super) fn action_category(description: &str, action: &str) -> &'static str {
     let desc = description.to_lowercase();
     let act = action.to_lowercase();
-    if contains_any(&desc, &["niri overview", "quit niri", "inhibit", "power off", "hotkey overlay"]) { return "System"; }
-    if contains_any(&desc, &["inir ", "clipboard", "lock screen", "wallpaper", "settings", "cheatsheet", "panel style"]) { return "iNiR Shell"; }
-    if let Some((target, _)) = inir_action(action) {
-        if ["overlay", "overview", "clipboard", "lock", "wallpaperSelector", "settings", "cheatsheet", "panelFamily", "session"].contains(&target.as_str()) { return "iNiR Shell"; }
-        if target == "altSwitcher" { return "Window Switcher"; }
-        if target == "audio" || target == "mpris" { return "Media"; }
-        if target == "brightness" { return "Brightness"; }
+    if contains_any(
+        &desc,
+        &[
+            "niri overview",
+            "quit niri",
+            "inhibit",
+            "power off",
+            "hotkey overlay",
+        ],
+    ) {
+        return "System";
     }
-    if SHELL_CATEGORY.is_match(&act) { return "iNiR Shell"; }
-    if desc.contains("window") && (desc.contains("next") || desc.contains("previous")) { return "Window Switcher"; }
-    if act.contains("altswitcher") { return "Window Switcher"; }
-    if contains_any(&desc, &["screenshot", "ocr", "image search"]) { return "Screenshots"; }
-    if contains_any(&desc, &["terminal", "file manager", "browser"]) { return "Applications"; }
-    if KB_TERMINALS.iter().chain(KB_FILE_MANAGERS).chain(KB_BROWSERS).any(|word| act.contains(word)) { return "Applications"; }
-    if contains_any(&desc, &["close", "maximize", "fullscreen", "floating", "consume", "expel", "float/tile"]) || act.contains("close-window") { return "Window Management"; }
-    if contains_any(&desc, &["cycle column", "cycle window", "reset window", "center column", "center visible", "expand to available", "tabbed"])
-        || contains_any(&act, &["switch-preset-column", "switch-preset-window", "reset-window-height", "center-column", "center-visible", "expand-column", "toggle-column-tabbed"]) { return "Layout"; }
-    if contains_any(&desc, &["shrink column", "grow column", "shrink window", "grow window"])
-        || contains_any(&act, &["set-column-width", "set-window-height"]) { return "Resize"; }
-    if desc.contains("monitor") || contains_any(&act, &["focus-monitor", "move-column-to-monitor", "move-window-to-monitor", "move-workspace-to-monitor"]) { return "Monitors"; }
-    if desc.contains("focus") && !desc.contains("workspace") { return "Focus"; }
-    if desc.contains("move") && !desc.contains("workspace") && !desc.contains("track") { return "Move Windows"; }
-    if desc.contains("workspace") { return "Workspaces"; }
-    if contains_any(&desc, &["volume", "mute", "play", "pause", "track", "audio", "microphone"]) || act.contains("mpris") || act.contains("audio") { return "Media"; }
-    if desc.contains("brightness") { return "Brightness"; }
+    if contains_any(
+        &desc,
+        &[
+            "inir ",
+            "clipboard",
+            "lock screen",
+            "wallpaper",
+            "settings",
+            "cheatsheet",
+            "panel style",
+        ],
+    ) {
+        return "iNiR Shell";
+    }
+    if let Some((target, _)) = inir_action(action) {
+        if [
+            "overlay",
+            "overview",
+            "clipboard",
+            "lock",
+            "wallpaperSelector",
+            "settings",
+            "cheatsheet",
+            "panelFamily",
+            "session",
+        ]
+        .contains(&target.as_str())
+        {
+            return "iNiR Shell";
+        }
+        if target == "altSwitcher" {
+            return "Window Switcher";
+        }
+        if target == "audio" || target == "mpris" {
+            return "Media";
+        }
+        if target == "brightness" {
+            return "Brightness";
+        }
+    }
+    if SHELL_CATEGORY.is_match(&act) {
+        return "iNiR Shell";
+    }
+    if desc.contains("window") && (desc.contains("next") || desc.contains("previous")) {
+        return "Window Switcher";
+    }
+    if act.contains("altswitcher") {
+        return "Window Switcher";
+    }
+    if contains_any(&desc, &["screenshot", "ocr", "image search"]) {
+        return "Screenshots";
+    }
+    if contains_any(&desc, &["terminal", "file manager", "browser"]) {
+        return "Applications";
+    }
+    if KB_TERMINALS
+        .iter()
+        .chain(KB_FILE_MANAGERS)
+        .chain(KB_BROWSERS)
+        .any(|word| act.contains(word))
+    {
+        return "Applications";
+    }
+    if contains_any(
+        &desc,
+        &[
+            "close",
+            "maximize",
+            "fullscreen",
+            "floating",
+            "consume",
+            "expel",
+            "float/tile",
+        ],
+    ) || act.contains("close-window")
+    {
+        return "Window Management";
+    }
+    if contains_any(
+        &desc,
+        &[
+            "cycle column",
+            "cycle window",
+            "reset window",
+            "center column",
+            "center visible",
+            "expand to available",
+            "tabbed",
+        ],
+    ) || contains_any(
+        &act,
+        &[
+            "switch-preset-column",
+            "switch-preset-window",
+            "reset-window-height",
+            "center-column",
+            "center-visible",
+            "expand-column",
+            "toggle-column-tabbed",
+        ],
+    ) {
+        return "Layout";
+    }
+    if contains_any(
+        &desc,
+        &[
+            "shrink column",
+            "grow column",
+            "shrink window",
+            "grow window",
+        ],
+    ) || contains_any(&act, &["set-column-width", "set-window-height"])
+    {
+        return "Resize";
+    }
+    if desc.contains("monitor")
+        || contains_any(
+            &act,
+            &[
+                "focus-monitor",
+                "move-column-to-monitor",
+                "move-window-to-monitor",
+                "move-workspace-to-monitor",
+            ],
+        )
+    {
+        return "Monitors";
+    }
+    if desc.contains("focus") && !desc.contains("workspace") {
+        return "Focus";
+    }
+    if desc.contains("move") && !desc.contains("workspace") && !desc.contains("track") {
+        return "Move Windows";
+    }
+    if desc.contains("workspace") {
+        return "Workspaces";
+    }
+    if contains_any(
+        &desc,
+        &[
+            "volume",
+            "mute",
+            "play",
+            "pause",
+            "track",
+            "audio",
+            "microphone",
+        ],
+    ) || act.contains("mpris")
+        || act.contains("audio")
+    {
+        return "Media";
+    }
+    if desc.contains("brightness") {
+        return "Brightness";
+    }
     "Other"
 }
 
@@ -230,8 +430,16 @@ mod tests {
             ("toggle-overview", "Niri Overview", "System"),
             ("focus-workspace 3", "Focus workspace 3", "Workspaces"),
             ("set-column-width \"-10%\"", "Shrink column 10%", "Resize"),
-            ("spawn \"inir\" \"ipc\" \"call\" \"clipboard\" \"toggle\"", "Clipboard", "iNiR Shell"),
-            ("spawn \"wpctl\" \"set-volume\" \"@DEFAULT_AUDIO_SINK@\" \"5%+\"", "Volume up", "Media"),
+            (
+                "spawn \"inir\" \"ipc\" \"call\" \"clipboard\" \"toggle\"",
+                "Clipboard",
+                "iNiR Shell",
+            ),
+            (
+                "spawn \"wpctl\" \"set-volume\" \"@DEFAULT_AUDIO_SINK@\" \"5%+\"",
+                "Volume up",
+                "Media",
+            ),
         ];
         for (action, description, category) in cases {
             assert_eq!(action_description(action), description);

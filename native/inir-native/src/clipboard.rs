@@ -5,8 +5,7 @@ use std::sync::LazyLock;
 use anyhow::{Context, Result};
 use regex::Regex;
 
-const HTML_PAYLOAD_PREFIX: &[u8] =
-    b"<meta http-equiv=\"content-type\" content=\"text/html";
+const HTML_PAYLOAD_PREFIX: &[u8] = b"<meta http-equiv=\"content-type\" content=\"text/html";
 const HTML_FRAGMENT_MARKER: &[u8] = b"<!--StartFragment-->";
 
 fn is_browser_markup(payload: &[u8]) -> bool {
@@ -27,12 +26,10 @@ static COMMENT_RE: LazyLock<Regex> =
 static BR_RE: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"(?i)<br\s*/?>").expect("clipboard br regex"));
 static BLOCK_END_RE: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r"(?i)</(?:p|div|li|tr|h[1-6]|blockquote|pre)>")
-        .expect("clipboard block-end regex")
+    Regex::new(r"(?i)</(?:p|div|li|tr|h[1-6]|blockquote|pre)>").expect("clipboard block-end regex")
 });
 static IMG_SRC_RE: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r#"(?i)<img[^>]*\bsrc=["']([^"']+)["'][^>]*>"#)
-        .expect("clipboard image regex")
+    Regex::new(r#"(?i)<img[^>]*\bsrc=["']([^"']+)["'][^>]*>"#).expect("clipboard image regex")
 });
 static TAG_RE: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"<[^>]+>").expect("clipboard tag regex"));
@@ -55,9 +52,7 @@ fn strip_browser_markup(markup: &str) -> String {
     let text = replace(&TAG_RE, &text, "");
     let text = html_escape::decode_html_entities(&text).into_owned();
     let text = replace(&TRAILING_SPACE_RE, &text, "\n");
-    replace(&EXTRA_NEWLINE_RE, &text, "\n\n")
-        .trim()
-        .to_owned()
+    replace(&EXTRA_NEWLINE_RE, &text, "\n\n").trim().to_owned()
 }
 
 fn sanitize_payload(payload: Vec<u8>) -> Vec<u8> {
@@ -119,8 +114,7 @@ mod tests {
 
     #[test]
     fn firefox_html_payload_is_sanitized() {
-        let input =
-            r#"<meta http-equiv="content-type" content="text/html; charset=utf-8"><div>Hello&nbsp;world</div><div>Next</div>"#;
+        let input = r#"<meta http-equiv="content-type" content="text/html; charset=utf-8"><div>Hello&nbsp;world</div><div>Next</div>"#;
         assert_eq!(strip_browser_markup(input), "Hello\u{00a0}world\nNext");
     }
 
@@ -133,8 +127,7 @@ mod tests {
 
     #[test]
     fn image_only_markup_keeps_source() {
-        let input =
-            r#"<!--StartFragment--><img alt="x" src="https://example.test/a.png"><!--EndFragment-->"#;
+        let input = r#"<!--StartFragment--><img alt="x" src="https://example.test/a.png"><!--EndFragment-->"#;
         assert_eq!(strip_browser_markup(input), "https://example.test/a.png");
     }
 }

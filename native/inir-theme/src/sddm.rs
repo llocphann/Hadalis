@@ -144,11 +144,7 @@ fn theme_colors(palette: &Palette) -> Vec<(String, String)> {
         ),
         (
             "surfaceContainerColor",
-            palette_value(
-                palette,
-                &["app_surface", "surface_container"],
-                "#181825",
-            ),
+            palette_value(palette, &["app_surface", "surface_container"], "#181825"),
         ),
         (
             "onSurfaceColor",
@@ -156,19 +152,11 @@ fn theme_colors(palette: &Palette) -> Vec<(String, String)> {
         ),
         (
             "onSurfaceVariantColor",
-            palette_value(
-                palette,
-                &["app_subtext", "on_surface_variant"],
-                "#9399b2",
-            ),
+            palette_value(palette, &["app_subtext", "on_surface_variant"], "#9399b2"),
         ),
         (
             "backgroundColor",
-            palette_value(
-                palette,
-                &["app_background", "background"],
-                "#1e1e2e",
-            ),
+            palette_value(palette, &["app_background", "background"], "#1e1e2e"),
         ),
         ("errorColor", palette_value(palette, &["error"], "#f38ba8")),
     ]
@@ -177,11 +165,7 @@ fn theme_colors(palette: &Palette) -> Vec<(String, String)> {
     .collect()
 }
 
-fn update_theme_conf(
-    theme_dir: &Path,
-    palette: &Palette,
-    shape_chars: &str,
-) -> Result<bool> {
+fn update_theme_conf(theme_dir: &Path, palette: &Palette, shape_chars: &str) -> Result<bool> {
     let path = theme_dir.join("theme.conf");
     if !path.is_file() {
         eprintln!("[sddm-pixel] theme.conf not found: {}", path.display());
@@ -195,9 +179,7 @@ fn update_theme_conf(
         .iter()
         .any(|line| line.trim().starts_with("background="));
     if !has_general || !has_background {
-        eprintln!(
-            "[sddm-pixel] theme.conf missing structural elements — restoring template"
-        );
+        eprintln!("[sddm-pixel] theme.conf missing structural elements — restoring template");
         lines = THEME_CONF_TEMPLATE.lines().map(str::to_owned).collect();
     }
 
@@ -353,7 +335,9 @@ mod tests {
 
     #[test]
     fn video_extensions_match_python_hook() {
-        for name in ["a.mp4", "a.mkv", "a.webm", "a.avi", "a.mov", "a.gif", "a.webp"] {
+        for name in [
+            "a.mp4", "a.mkv", "a.webm", "a.avi", "a.mov", "a.gif", "a.webp",
+        ] {
             assert!(is_video_like(Path::new(name)), "{name}");
         }
         assert!(!is_video_like(Path::new("a.png")));

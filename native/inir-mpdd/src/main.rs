@@ -9,10 +9,10 @@ use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::Duration;
 
-use anyhow::{anyhow, bail, Context, Result};
+use anyhow::{Context, Result, anyhow, bail};
 use clap::Parser;
 use serde::Deserialize;
-use serde_json::{json, Map, Value};
+use serde_json::{Map, Value, json};
 use sha2::{Digest, Sha256};
 
 const ART_NAMES: &[&str] = &["cover", "folder", "front", "album", "artwork"];
@@ -79,11 +79,7 @@ impl MpdClient {
         Self::connect_with_timeout(host, port, None)
     }
 
-    fn connect_with_timeout(
-        host: &str,
-        port: u16,
-        read_timeout: Option<Duration>,
-    ) -> Result<Self> {
+    fn connect_with_timeout(host: &str, port: u16, read_timeout: Option<Duration>) -> Result<Self> {
         let stream: Box<dyn ReadWrite + Send> = if host.starts_with('/') {
             let stream = UnixStream::connect(host)
                 .with_context(|| format!("connect MPD unix socket {host}"))?;
@@ -206,9 +202,7 @@ impl MpdClient {
                     "size" => total_size = value.parse::<usize>().ok(),
                     "type" => mime = value.trim().to_owned(),
                     "binary" => {
-                        chunk_size = value
-                            .parse::<usize>()
-                            .context("invalid_binary_size")?;
+                        chunk_size = value.parse::<usize>().context("invalid_binary_size")?;
                         if chunk_size > 0 {
                             let start = data.len();
                             data.resize(start + chunk_size, 0);
@@ -309,10 +303,7 @@ struct Request {
 type Record = BTreeMap<String, Vec<String>>;
 
 fn quote(value: &str) -> String {
-    format!(
-        "\"{}\"",
-        value.replace('\\', "\\\\").replace('"', "\\\"")
-    )
+    format!("\"{}\"", value.replace('\\', "\\\\").replace('"', "\\\""))
 }
 
 fn command_line<I, S>(name: &str, args: I) -> String
@@ -413,7 +404,6 @@ fn expand_home(value: &str) -> PathBuf {
     PathBuf::from(value)
 }
 
-
 fn lyrics_candidates(track: &Path) -> Vec<PathBuf> {
     let mut candidates = vec![
         track.with_extension("lrc"),
@@ -432,16 +422,12 @@ fn lyrics_candidates(track: &Path) -> Vec<PathBuf> {
 
 fn lrc_stamp_seconds(token: &str) -> Option<f64> {
     let (minutes, seconds_part) = token.split_once(':')?;
-    if minutes.is_empty()
-        || minutes.len() > 3
-        || !minutes.bytes().all(|byte| byte.is_ascii_digit())
+    if minutes.is_empty() || minutes.len() > 3 || !minutes.bytes().all(|byte| byte.is_ascii_digit())
     {
         return None;
     }
 
-    let fraction_at = seconds_part
-        .find('.')
-        .or_else(|| seconds_part.find(':'));
+    let fraction_at = seconds_part.find('.').or_else(|| seconds_part.find(':'));
     let (seconds, fraction) = match fraction_at {
         Some(index) => (&seconds_part[..index], Some(&seconds_part[index + 1..])),
         None => (seconds_part, None),
@@ -450,9 +436,7 @@ fn lrc_stamp_seconds(token: &str) -> Option<f64> {
         return None;
     }
     if fraction.is_some_and(|value| {
-        value.is_empty()
-            || value.len() > 3
-            || !value.bytes().all(|byte| byte.is_ascii_digit())
+        value.is_empty() || value.len() > 3 || !value.bytes().all(|byte| byte.is_ascii_digit())
     }) {
         return None;
     }
@@ -624,14 +608,9 @@ fn file_url(path: &Path) -> String {
     let mut output = String::from("file://");
     for byte in path.as_os_str().as_bytes() {
         match *byte {
-            b'A'..=b'Z'
-            | b'a'..=b'z'
-            | b'0'..=b'9'
-            | b'/'
-            | b'-'
-            | b'.'
-            | b'_'
-            | b'~' => output.push(*byte as char),
+            b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9' | b'/' | b'-' | b'.' | b'_' | b'~' => {
+                output.push(*byte as char)
+            }
             value => output.push_str(&format!("%{value:02X}")),
         }
     }
@@ -757,10 +736,7 @@ fn art_extension(data: &[u8], mime: &str) -> &'static str {
         || (data.len() >= 12 && &data[..4] == b"RIFF" && &data[8..12] == b"WEBP")
     {
         ".webp"
-    } else if mime.contains("gif")
-        || data.starts_with(b"GIF87a")
-        || data.starts_with(b"GIF89a")
-    {
+    } else if mime.contains("gif") || data.starts_with(b"GIF87a") || data.starts_with(b"GIF89a") {
         ".gif"
     } else {
         ".jpg"
@@ -826,31 +802,20 @@ fn build_track(
         json!(first(record, &["artist", "albumartist"])),
     );
     track.insert("album".into(), json!(first(record, &["album"])));
-    track.insert(
-        "albumArtist".into(),
-        json!(first(record, &["albumartist"])),
-    );
+    track.insert("albumArtist".into(), json!(first(record, &["albumartist"])));
     track.insert(
         "duration".into(),
-        json!(
-            (number(&first(record, &["duration", "time"])) * 1000.0).round() / 1000.0
-        ),
+        json!((number(&first(record, &["duration", "time"])) * 1000.0).round() / 1000.0),
     );
     track.insert(
         "track".into(),
         json!(int_prefix(&first(record, &["track"]))),
     );
-    track.insert(
-        "disc".into(),
-        json!(int_prefix(&first(record, &["disc"]))),
-    );
+    track.insert("disc".into(), json!(int_prefix(&first(record, &["disc"]))));
     track.insert("genre".into(), json!(first(record, &["genre"])));
     track.insert("date".into(), json!(first(record, &["date"])));
     track.insert("folder".into(), json!(folder));
-    track.insert(
-        "queueId".into(),
-        json!(int_prefix(&first(record, &["id"]))),
-    );
+    track.insert("queueId".into(), json!(int_prefix(&first(record, &["id"]))));
     track.insert(
         "queuePos".into(),
         json!(int_prefix(&first(record, &["pos"]))),
@@ -997,11 +962,7 @@ fn snapshot(client: &mut MpdClient, root: &str) -> Result<Value> {
         let playlist_records = records(&lines, "file");
         let mut items = Vec::with_capacity(playlist_records.len());
         for record in &playlist_records {
-            items.push(Value::Object(build_track(
-                record,
-                root,
-                &mut art_lookup,
-            )));
+            items.push(Value::Object(build_track(record, root, &mut art_lookup)));
         }
         playlists.push(json!({
             "id": format!("mpd:{name}"),
@@ -1134,8 +1095,7 @@ fn handle_operation(
                 if let Some(song_id) = response.get("id") {
                     client.command("playid", [song_id])?;
                 } else {
-                    let status =
-                        pairs(&client.command("status", std::iter::empty::<&str>())?);
+                    let status = pairs(&client.command("status", std::iter::empty::<&str>())?);
                     let queue_len = status
                         .get("playlistlength")
                         .and_then(|value| value.parse::<i64>().ok())
@@ -1196,8 +1156,8 @@ fn handle_operation(
         }
         "command" => {
             const ALLOWED: &[&str] = &[
-                "next", "previous", "stop", "play", "pause", "seekcur", "setvol",
-                "random", "repeat", "single", "update", "delete", "deleteid", "clear",
+                "next", "previous", "stop", "play", "pause", "seekcur", "setvol", "random",
+                "repeat", "single", "update", "delete", "deleteid", "clear",
             ];
             let name = param_string(params, "name")?;
             if !ALLOWED.contains(&name.as_str()) {
@@ -1544,8 +1504,8 @@ fn run_compat(args: &[String]) -> i32 {
                     bail!("command_requires_name_and_args");
                 }
                 const ALLOWED: &[&str] = &[
-                    "next", "previous", "stop", "play", "pause", "seekcur", "setvol",
-                    "random", "repeat", "single", "update", "delete", "deleteid", "clear",
+                    "next", "previous", "stop", "play", "pause", "seekcur", "setvol", "random",
+                    "repeat", "single", "update", "delete", "deleteid", "clear",
                 ];
                 let name = &rest[0];
                 if !ALLOWED.contains(&name.as_str()) {
@@ -1579,7 +1539,6 @@ fn run_compat(args: &[String]) -> i32 {
         Err(error) => compat_error(&error),
     }
 }
-
 
 fn legacy_request(args: &[String]) -> Result<Value> {
     if args.len() < 3 {
@@ -1708,8 +1667,7 @@ fn run_client_compat(args: &[String], socket: &Path) -> i32 {
         let payload = json!({"connected": false, "error": error});
         println!(
             "{}",
-            serde_json::to_string(&payload)
-                .unwrap_or_else(|_| "{\"connected\":false}".into())
+            serde_json::to_string(&payload).unwrap_or_else(|_| "{\"connected\":false}".into())
         );
         return 1;
     }
@@ -1781,8 +1739,7 @@ fn prepare_socket(path: &Path) -> Result<UnixListener> {
         fs::create_dir_all(parent)?;
     }
     if path.exists() {
-        fs::remove_file(path)
-            .with_context(|| format!("remove stale socket {}", path.display()))?;
+        fs::remove_file(path).with_context(|| format!("remove stale socket {}", path.display()))?;
     }
     UnixListener::bind(path).with_context(|| format!("bind {}", path.display()))
 }
@@ -1856,10 +1813,7 @@ mod tests {
         .expect("compat CLI should parse");
 
         assert!(args.compat);
-        assert_eq!(
-            args.compat_args,
-            vec!["status", "127.0.0.1", "6600", ""]
-        );
+        assert_eq!(args.compat_args, vec!["status", "127.0.0.1", "6600", ""]);
     }
 
     #[test]
@@ -1894,9 +1848,7 @@ mod tests {
 
     #[test]
     fn parses_synced_lyrics_with_offset_and_multiple_stamps() {
-        let (lines, synced) = parse_lrc(
-            "[offset:+250]\n[00:01.50][00:03]Hello\n[ar:Ignored]\n",
-        );
+        let (lines, synced) = parse_lrc("[offset:+250]\n[00:01.50][00:03]Hello\n[ar:Ignored]\n");
         assert!(synced);
         assert_eq!(lines.len(), 2);
         assert_eq!(lines[0]["time"], json!(1.75));

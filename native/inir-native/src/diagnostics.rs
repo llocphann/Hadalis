@@ -6,8 +6,8 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::thread;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
-use anyhow::{anyhow, Result};
-use serde_json::{json, Map, Value};
+use anyhow::{Result, anyhow};
+use serde_json::{Map, Value, json};
 
 static STOP: AtomicBool = AtomicBool::new(false);
 
@@ -175,9 +175,9 @@ fn read_system_cpu_ticks() -> BTreeMap<String, (u64, u64)> {
             continue;
         };
         if name != "cpu"
-            && !name
-                .strip_prefix("cpu")
-                .is_some_and(|suffix| !suffix.is_empty() && suffix.chars().all(|c| c.is_ascii_digit()))
+            && !name.strip_prefix("cpu").is_some_and(|suffix| {
+                !suffix.is_empty() && suffix.chars().all(|c| c.is_ascii_digit())
+            })
         {
             continue;
         }
@@ -208,10 +208,7 @@ fn cpu_percent_from_ticks(
     if total_delta == 0 {
         return None;
     }
-    Some(
-        ((1.0 - idle_delta as f64 / total_delta as f64) * 100.0)
-            .clamp(0.0, 100.0),
-    )
+    Some(((1.0 - idle_delta as f64 / total_delta as f64) * 100.0).clamp(0.0, 100.0))
 }
 
 fn read_load_average() -> Vec<f64> {
@@ -605,11 +602,8 @@ fn read_drm(pid: i32) -> DrmState {
                 .saturating_add(*value);
         }
         for (key, value) in client_memory {
-            *memory.entry(key.clone()).or_insert(0u64) = memory
-                .get(key)
-                .copied()
-                .unwrap_or(0)
-                .saturating_add(*value);
+            *memory.entry(key.clone()).or_insert(0u64) =
+                memory.get(key).copied().unwrap_or(0).saturating_add(*value);
         }
     }
 
@@ -670,52 +664,51 @@ fn sample(pid: i32, previous: Option<&SampleState>) -> Result<(Value, SampleStat
         .unwrap_or(0);
     let refresh_slow = previous.slow.at_ns.is_none() || slow_elapsed_ns >= 2_000_000_000;
 
-    let (memory_now, drm_now, child_rows, child_state, engine_busy, slow_state) =
-        if refresh_slow {
-            let memory = read_memory(pid);
-            let drm = read_drm(pid);
-            let (children, child_state) =
-                sample_children(pid, &previous.slow.children_state, slow_elapsed_ns);
-            let mut busy = BTreeMap::new();
-            let previous_drm = previous.slow.drm.as_ref();
-            for (name, counter) in &drm.engines_ns {
-                let value = previous_drm
-                    .and_then(|old| old.engines_ns.get(name))
-                    .and_then(|old| {
-                        if slow_elapsed_ns == 0 || counter < old {
-                            None
-                        } else {
-                            Some(
-                                ((*counter - *old) as f64 / slow_elapsed_ns as f64 * 100.0)
-                                    .clamp(0.0, 100.0),
-                            )
-                        }
-                    });
-                busy.insert(name.clone(), value);
-            }
-            let slow = SlowState {
-                at_ns: Some(now_ns),
-                memory: Some(memory.clone()),
-                drm: Some(drm.clone()),
-                engine_busy: busy.clone(),
-                children_rows: children.clone(),
-                children_state: child_state.clone(),
-            };
-            (memory, drm, children, child_state, busy, slow)
-        } else {
-            (
-                previous
-                    .slow
-                    .memory
-                    .clone()
-                    .unwrap_or_else(|| read_memory(pid)),
-                previous.slow.drm.clone().unwrap_or_else(|| read_drm(pid)),
-                previous.slow.children_rows.clone(),
-                previous.slow.children_state.clone(),
-                previous.slow.engine_busy.clone(),
-                previous.slow.clone(),
-            )
+    let (memory_now, drm_now, child_rows, child_state, engine_busy, slow_state) = if refresh_slow {
+        let memory = read_memory(pid);
+        let drm = read_drm(pid);
+        let (children, child_state) =
+            sample_children(pid, &previous.slow.children_state, slow_elapsed_ns);
+        let mut busy = BTreeMap::new();
+        let previous_drm = previous.slow.drm.as_ref();
+        for (name, counter) in &drm.engines_ns {
+            let value = previous_drm
+                .and_then(|old| old.engines_ns.get(name))
+                .and_then(|old| {
+                    if slow_elapsed_ns == 0 || counter < old {
+                        None
+                    } else {
+                        Some(
+                            ((*counter - *old) as f64 / slow_elapsed_ns as f64 * 100.0)
+                                .clamp(0.0, 100.0),
+                        )
+                    }
+                });
+            busy.insert(name.clone(), value);
+        }
+        let slow = SlowState {
+            at_ns: Some(now_ns),
+            memory: Some(memory.clone()),
+            drm: Some(drm.clone()),
+            engine_busy: busy.clone(),
+            children_rows: children.clone(),
+            children_state: child_state.clone(),
         };
+        (memory, drm, children, child_state, busy, slow)
+    } else {
+        (
+            previous
+                .slow
+                .memory
+                .clone()
+                .unwrap_or_else(|| read_memory(pid)),
+            previous.slow.drm.clone().unwrap_or_else(|| read_drm(pid)),
+            previous.slow.children_rows.clone(),
+            previous.slow.children_state.clone(),
+            previous.slow.engine_busy.clone(),
+            previous.slow.clone(),
+        )
+    };
 
     let elapsed_ns = previous
         .monotonic_ns
@@ -728,10 +721,8 @@ fn sample(pid: i32, previous: Option<&SampleState>) -> Result<(Value, SampleStat
         .filter(|_| elapsed_ns > 0)
         .map(|delta| delta as f64 / elapsed_ns as f64 * 100.0);
 
-    let system_cpu_percent = cpu_percent_from_ticks(
-        system_cpu_now.get("cpu"),
-        previous.system_cpu.get("cpu"),
-    );
+    let system_cpu_percent =
+        cpu_percent_from_ticks(system_cpu_now.get("cpu"), previous.system_cpu.get("cpu"));
     let mut core_names = system_cpu_now
         .keys()
         .filter(|name| name.as_str() != "cpu")
@@ -744,9 +735,7 @@ fn sample(pid: i32, previous: Option<&SampleState>) -> Result<(Value, SampleStat
     });
     let cores_percent = core_names
         .iter()
-        .map(|name| {
-            cpu_percent_from_ticks(system_cpu_now.get(name), previous.system_cpu.get(name))
-        })
+        .map(|name| cpu_percent_from_ticks(system_cpu_now.get(name), previous.system_cpu.get(name)))
         .collect::<Vec<_>>();
 
     let io_rates = json!({
@@ -946,9 +935,8 @@ mod tests {
 
     #[test]
     fn parses_smaps_rollup_fields() {
-        let values = parse_kib_fields(
-            "Rss: 123 kB\nPss: 100 kB\nVmSize: 999 kB\nPrivate_Dirty: 7 kB\n",
-        );
+        let values =
+            parse_kib_fields("Rss: 123 kB\nPss: 100 kB\nVmSize: 999 kB\nPrivate_Dirty: 7 kB\n");
         assert_eq!(values.get("Rss"), Some(&123));
         assert_eq!(values.get("Pss"), Some(&100));
         assert_eq!(values.get("Private_Dirty"), Some(&7));

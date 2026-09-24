@@ -6,20 +6,20 @@ mod template;
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use anyhow::{anyhow, Context, Result};
+use anyhow::{Context, Result, anyhow};
 use clap::{Parser, ValueEnum};
 use material_color_utils::utils::color_utils::Argb;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 
 use crate::palette::{
-    build_app_palette, colors_contract, material_palette, palette_contract, palette_to_value,
-    scss_output, terminal_palette, Palette, TerminalSettings,
+    Palette, TerminalSettings, build_app_palette, colors_contract, material_palette,
+    palette_contract, palette_to_value, scss_output, terminal_palette,
 };
 use crate::sddm::sync_if_installed;
 use crate::source::{
     auto_detect_scheme, color_seed, image_seed, invert_hue, load_resized_image, low_chroma,
 };
-use crate::template::{render_templates, RenderRequest};
+use crate::template::{RenderRequest, render_templates};
 
 #[derive(Debug, Clone, Copy, ValueEnum)]
 enum Mode {
@@ -148,11 +148,7 @@ fn terminal_source(path: Option<&Path>, dark: bool) -> Result<Option<Palette>> {
     Ok(Some(
         object
             .iter()
-            .filter_map(|(key, value)| {
-                value
-                    .as_str()
-                    .map(|value| (key.clone(), value.to_owned()))
-            })
+            .filter_map(|(key, value)| value.as_str().map(|value| (key.clone(), value.to_owned())))
             .collect(),
     ))
 }
@@ -199,13 +195,7 @@ fn main() -> Result<()> {
         write_text(cache, &source_seed.to_hex())?;
     }
 
-    let material = material_palette(
-        scheme_seed,
-        &scheme,
-        dark,
-        args.soften,
-        args.color_strength,
-    );
+    let material = material_palette(scheme_seed, &scheme, dark, args.soften, args.color_strength);
     let palette = palette_contract(&material);
     let app_palette = build_app_palette(&palette);
     let source_terminal = terminal_source(args.termscheme.as_deref(), dark)?;

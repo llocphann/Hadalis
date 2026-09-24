@@ -3,11 +3,11 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
-use anyhow::{anyhow, bail, Context, Result};
+use anyhow::{Context, Result, anyhow, bail};
 use clap::Subcommand;
 use kdl::KdlDocument;
 use regex::Regex;
-use serde_json::{json, Map, Value};
+use serde_json::{Map, Value, json};
 
 const DEFAULT_NIRI_FILES: &[&str] = &[
     "config.kdl",
@@ -285,7 +285,11 @@ fn matching_brace(content: &str, opening: usize) -> Option<usize> {
     None
 }
 
-fn find_block_bounds(content: &str, section: &str, top_level: bool) -> Option<(usize, usize, usize, usize)> {
+fn find_block_bounds(
+    content: &str,
+    section: &str,
+    top_level: bool,
+) -> Option<(usize, usize, usize, usize)> {
     let pattern = Regex::new(&format!(
         r#"(?m)^[ \t]*{}(?:[ \t]+[^{{\n]*)?[ \t]*\{{"#,
         regex::escape(section)
@@ -326,7 +330,9 @@ fn extract_block(content: &str, section: &str, top_level: bool) -> Option<String
 }
 
 fn indentation_at(content: &str, block_start: usize) -> String {
-    let line_start = content[..block_start].rfind('\n').map_or(0, |index| index + 1);
+    let line_start = content[..block_start]
+        .rfind('\n')
+        .map_or(0, |index| index + 1);
     content[line_start..block_start]
         .chars()
         .take_while(|value| *value == ' ' || *value == '\t')
@@ -405,7 +411,13 @@ fn remove_line_in_block(
     ))
 }
 
-fn toggle_flag(content: &str, section: &str, flag: &str, enabled: bool, top_level: bool) -> Result<String> {
+fn toggle_flag(
+    content: &str,
+    section: &str,
+    flag: &str,
+    enabled: bool,
+    top_level: bool,
+) -> Result<String> {
     if enabled {
         set_line_in_block(content, section, flag, "", top_level)
     } else {
@@ -413,7 +425,12 @@ fn toggle_flag(content: &str, section: &str, flag: &str, enabled: bool, top_leve
     }
 }
 
-fn ensure_subsection(content: &str, parent: &str, subsection: &str, parent_top_level: bool) -> Result<String> {
+fn ensure_subsection(
+    content: &str,
+    parent: &str,
+    subsection: &str,
+    parent_top_level: bool,
+) -> Result<String> {
     let (parent_start, inner_start, inner_end, _) =
         find_block_bounds(content, parent, parent_top_level)
             .ok_or_else(|| anyhow!("section_not_found:{parent}"))?;
@@ -725,7 +742,12 @@ fn apply_output(name: &str, changes: &[String]) -> Result<Outcome> {
                 continue;
             }
         }
-        let (output, code) = run_process("niri", &std::iter::once("msg".to_owned()).chain(args).collect::<Vec<_>>())?;
+        let (output, code) = run_process(
+            "niri",
+            &std::iter::once("msg".to_owned())
+                .chain(args)
+                .collect::<Vec<_>>(),
+        )?;
         if code != 0 {
             failed = true;
         }
@@ -736,7 +758,10 @@ fn apply_output(name: &str, changes: &[String]) -> Result<Outcome> {
             "output": output,
         }));
     }
-    Ok(Outcome::code(json!({"results": results}), i32::from(failed)))
+    Ok(Outcome::code(
+        json!({"results": results}),
+        i32::from(failed),
+    ))
 }
 
 fn set_line_in_inner(inner: &str, key: &str, rendered: &str, indent: &str) -> Result<String> {
@@ -810,24 +835,41 @@ fn persist_output(name: &str, changes: &[String]) -> Result<Outcome> {
     let mut content = fs::read_to_string(&path).unwrap_or_default();
     if let Some((_, inner_start, inner_end, _)) = find_output_bounds(&content, name) {
         let mut inner = content[inner_start..inner_end].to_owned();
-        let indent = format!("{}    ", indentation_at(&content, inner_start.saturating_sub(1)));
-        let vrr_line_re =
-            Regex::new(r"(?m)^[ \t]*variable-refresh-rate[^\n]*\n?")?;
+        let indent = format!(
+            "{}    ",
+            indentation_at(&content, inner_start.saturating_sub(1))
+        );
+        let vrr_line_re = Regex::new(r"(?m)^[ \t]*variable-refresh-rate[^\n]*\n?")?;
         for (key, value) in &parsed {
             match key.as_str() {
-                "mode" => inner = set_line_in_inner(&inner, "mode", &format!("\"{value}\""), &indent)?,
+                "mode" => {
+                    inner = set_line_in_inner(&inner, "mode", &format!("\"{value}\""), &indent)?
+                }
                 "scale" => inner = set_line_in_inner(&inner, "scale", value, &indent)?,
-                "transform" => inner = set_line_in_inner(&inner, "transform", &format!("\"{value}\""), &indent)?,
+                "transform" => {
+                    inner =
+                        set_line_in_inner(&inner, "transform", &format!("\"{value}\""), &indent)?
+                }
                 "position" => {
                     if let Some((x, y)) = value.split_once(',') {
-                        inner = set_line_in_inner(&inner, "position", &format!("x={x} y={y}"), &indent)?;
+                        inner = set_line_in_inner(
+                            &inner,
+                            "position",
+                            &format!("x={x} y={y}"),
+                            &indent,
+                        )?;
                     }
                 }
                 "vrr" if value == "off" => {
                     inner = vrr_line_re.replacen(&inner, 1, "").into_owned();
                 }
                 "vrr" if value == "on-demand" => {
-                    inner = set_line_in_inner(&inner, "variable-refresh-rate", "on-demand=true", &indent)?;
+                    inner = set_line_in_inner(
+                        &inner,
+                        "variable-refresh-rate",
+                        "on-demand=true",
+                        &indent,
+                    )?;
                 }
                 "vrr" => {
                     inner = set_line_in_inner(&inner, "variable-refresh-rate", "", &indent)?;
@@ -835,7 +877,12 @@ fn persist_output(name: &str, changes: &[String]) -> Result<Outcome> {
                 _ => {}
             }
         }
-        content = format!("{}{}{}", &content[..inner_start], inner, &content[inner_end..]);
+        content = format!(
+            "{}{}{}",
+            &content[..inner_start],
+            inner,
+            &content[inner_end..]
+        );
     } else {
         let mut lines = Vec::new();
         if let Some(value) = parsed.get("mode") {
@@ -877,13 +924,27 @@ fn persist_layout(layout_json: &str) -> Result<Outcome> {
     let path = resolve_section_file("config.d/15-outputs.kdl");
     let mut content = fs::read_to_string(&path).unwrap_or_default();
     for (name, position) in layout {
-        let x = position.get("x").and_then(Value::as_i64).ok_or_else(|| anyhow!("missing_x:{name}"))?;
-        let y = position.get("y").and_then(Value::as_i64).ok_or_else(|| anyhow!("missing_y:{name}"))?;
+        let x = position
+            .get("x")
+            .and_then(Value::as_i64)
+            .ok_or_else(|| anyhow!("missing_x:{name}"))?;
+        let y = position
+            .get("y")
+            .and_then(Value::as_i64)
+            .ok_or_else(|| anyhow!("missing_y:{name}"))?;
         if let Some((_, inner_start, inner_end, _)) = find_output_bounds(&content, &name) {
             let inner = &content[inner_start..inner_end];
-            let indent = format!("{}    ", indentation_at(&content, inner_start.saturating_sub(1)));
+            let indent = format!(
+                "{}    ",
+                indentation_at(&content, inner_start.saturating_sub(1))
+            );
             let next = set_line_in_inner(inner, "position", &format!("x={x} y={y}"), &indent)?;
-            content = format!("{}{}{}", &content[..inner_start], next, &content[inner_end..]);
+            content = format!(
+                "{}{}{}",
+                &content[..inner_start],
+                next,
+                &content[inner_end..]
+            );
         } else {
             let block = format!("output \"{name}\" {{\n    position x={x} y={y}\n}}");
             content = if content.trim().is_empty() {
@@ -897,21 +958,27 @@ fn persist_layout(layout_json: &str) -> Result<Outcome> {
 }
 
 fn quoted_value(block: &str, key: &str) -> Option<String> {
-    Regex::new(&format!(r#"(?m)^[ \t]*{}[ \t]+"([^"]*)""#, regex::escape(key)))
-        .ok()?
-        .captures(block)?
-        .get(1)
-        .map(|value| value.as_str().to_owned())
+    Regex::new(&format!(
+        r#"(?m)^[ \t]*{}[ \t]+"([^"]*)""#,
+        regex::escape(key)
+    ))
+    .ok()?
+    .captures(block)?
+    .get(1)
+    .map(|value| value.as_str().to_owned())
 }
 
 fn numeric_value(block: &str, key: &str) -> Option<f64> {
-    Regex::new(&format!(r"(?m)^[ \t]*{}[ \t]+([-0-9.]+)", regex::escape(key)))
-        .ok()?
-        .captures(block)?
-        .get(1)?
-        .as_str()
-        .parse()
-        .ok()
+    Regex::new(&format!(
+        r"(?m)^[ \t]*{}[ \t]+([-0-9.]+)",
+        regex::escape(key)
+    ))
+    .ok()?
+    .captures(block)?
+    .get(1)?
+    .as_str()
+    .parse()
+    .ok()
 }
 
 fn bool_line_value(block: &str, key: &str) -> Option<bool> {
@@ -973,13 +1040,25 @@ fn get_input() -> Result<Outcome> {
 
     if let Some(keyboard) = extract_block(&input, "keyboard", true) {
         if let Some(xkb) = extract_block(&keyboard, "xkb", true) {
-            if let Some(value) = quoted_value(&xkb, "layout") { result["keyboard"]["layout"] = json!(value); }
-            if let Some(value) = quoted_value(&xkb, "variant") { result["keyboard"]["variant"] = json!(value); }
-            if let Some(value) = quoted_value(&xkb, "options") { result["keyboard"]["options"] = json!(value); }
+            if let Some(value) = quoted_value(&xkb, "layout") {
+                result["keyboard"]["layout"] = json!(value);
+            }
+            if let Some(value) = quoted_value(&xkb, "variant") {
+                result["keyboard"]["variant"] = json!(value);
+            }
+            if let Some(value) = quoted_value(&xkb, "options") {
+                result["keyboard"]["options"] = json!(value);
+            }
         }
-        if let Some(value) = quoted_value(&keyboard, "track-layout") { result["keyboard"]["track_layout"] = json!(value); }
-        if let Some(value) = numeric_value(&keyboard, "repeat-delay") { result["keyboard"]["repeat_delay"] = json!(value as i64); }
-        if let Some(value) = numeric_value(&keyboard, "repeat-rate") { result["keyboard"]["repeat_rate"] = json!(value as i64); }
+        if let Some(value) = quoted_value(&keyboard, "track-layout") {
+            result["keyboard"]["track_layout"] = json!(value);
+        }
+        if let Some(value) = numeric_value(&keyboard, "repeat-delay") {
+            result["keyboard"]["repeat_delay"] = json!(value as i64);
+        }
+        if let Some(value) = numeric_value(&keyboard, "repeat-rate") {
+            result["keyboard"]["repeat_rate"] = json!(value as i64);
+        }
         result["keyboard"]["numlock"] = json!(has_flag(&keyboard, "numlock"));
     }
 
@@ -987,18 +1066,25 @@ fn get_input() -> Result<Outcome> {
         if let Some(block) = extract_block(&input, section, true) {
             let key = section;
             for (kdl_key, json_key) in [
-                ("natural-scroll", "natural_scroll"), ("left-handed", "left_handed"),
-                ("middle-emulation", "middle_emulation"), ("scroll-button-lock", "scroll_button_lock"),
-                ("drag-lock", "drag_lock"), ("disabled-on-external-mouse", "disabled_on_external_mouse"),
-                ("tap", "tap"), ("dwt", "dwt"), ("dwtp", "dwtp")
+                ("natural-scroll", "natural_scroll"),
+                ("left-handed", "left_handed"),
+                ("middle-emulation", "middle_emulation"),
+                ("scroll-button-lock", "scroll_button_lock"),
+                ("drag-lock", "drag_lock"),
+                ("disabled-on-external-mouse", "disabled_on_external_mouse"),
+                ("tap", "tap"),
+                ("dwt", "dwt"),
+                ("dwtp", "dwtp"),
             ] {
                 if result[key].get(json_key).is_some() {
                     result[key][json_key] = json!(has_flag(&block, kdl_key));
                 }
             }
             for (kdl_key, json_key) in [
-                ("accel-profile", "accel_profile"), ("tap-button-map", "tap_button_map"),
-                ("click-method", "click_method"), ("scroll-method", "scroll_method")
+                ("accel-profile", "accel_profile"),
+                ("tap-button-map", "tap_button_map"),
+                ("click-method", "click_method"),
+                ("scroll-method", "scroll_method"),
             ] {
                 if let Some(value) = quoted_value(&block, kdl_key)
                     && result[key].get(json_key).is_some()
@@ -1012,14 +1098,24 @@ fn get_input() -> Result<Outcome> {
         }
     }
 
-    if let Some(value) = quoted_value(&cursor, "xcursor-theme") { result["cursor"]["theme"] = json!(value); }
-    if let Some(value) = numeric_value(&cursor, "xcursor-size") { result["cursor"]["size"] = json!(value as i64); }
+    if let Some(value) = quoted_value(&cursor, "xcursor-theme") {
+        result["cursor"]["theme"] = json!(value);
+    }
+    if let Some(value) = numeric_value(&cursor, "xcursor-size") {
+        result["cursor"]["size"] = json!(value as i64);
+    }
     result["cursor"]["hide_when_typing"] = json!(has_flag(&cursor, "hide-when-typing"));
 
-    result["general"]["disable_power_key_handling"] = json!(has_flag(&input, "disable-power-key-handling"));
-    result["general"]["workspace_auto_back_and_forth"] = json!(has_flag(&input, "workspace-auto-back-and-forth"));
-    if let Some(value) = quoted_value(&input, "mod-key") { result["general"]["mod_key"] = json!(value); }
-    if let Some(value) = quoted_value(&input, "mod-key-nested") { result["general"]["mod_key_nested"] = json!(value); }
+    result["general"]["disable_power_key_handling"] =
+        json!(has_flag(&input, "disable-power-key-handling"));
+    result["general"]["workspace_auto_back_and_forth"] =
+        json!(has_flag(&input, "workspace-auto-back-and-forth"));
+    if let Some(value) = quoted_value(&input, "mod-key") {
+        result["general"]["mod_key"] = json!(value);
+    }
+    if let Some(value) = quoted_value(&input, "mod-key-nested") {
+        result["general"]["mod_key_nested"] = json!(value);
+    }
 
     let warp_re = Regex::new(r#"(?m)^[ \t]*warp-mouse-to-focus(?:[ \t]+mode="([^"]+)")?"#)?;
     if let Some(caps) = warp_re.captures(&input) {
@@ -1028,11 +1124,13 @@ fn get_input() -> Result<Outcome> {
             result["general"]["warp_mouse_to_focus_mode"] = json!(mode.as_str());
         }
     }
-    let focus_re = Regex::new(r#"(?m)^[ \t]*focus-follows-mouse(?:[ \t]+max-scroll-amount="?([^" \n]+)"?)?"#)?;
+    let focus_re =
+        Regex::new(r#"(?m)^[ \t]*focus-follows-mouse(?:[ \t]+max-scroll-amount="?([^" \n]+)"?)?"#)?;
     if let Some(caps) = focus_re.captures(&input) {
         result["general"]["focus_follows_mouse"] = json!(true);
         if let Some(value) = caps.get(1) {
-            result["general"]["focus_follows_mouse_max_scroll"] = json!(value.as_str().parse::<i64>().unwrap_or(0));
+            result["general"]["focus_follows_mouse_max_scroll"] =
+                json!(value.as_str().parse::<i64>().unwrap_or(0));
         }
     }
 
@@ -1071,15 +1169,21 @@ fn parse_hot_corners(block: Option<String>) -> Option<Vec<String>> {
         return Some(Vec::new());
     }
     let mapping = [
-        ("top-left", "topLeft"), ("top-right", "topRight"),
-        ("bottom-left", "bottomLeft"), ("bottom-right", "bottomRight"),
+        ("top-left", "topLeft"),
+        ("top-right", "topRight"),
+        ("bottom-left", "bottomLeft"),
+        ("bottom-right", "bottomRight"),
     ];
     let corners = mapping
         .iter()
         .filter(|(source, _)| tokens.contains(source))
         .map(|(_, target)| (*target).to_owned())
         .collect::<Vec<_>>();
-    if corners.is_empty() { Some(vec!["topLeft".into()]) } else { Some(corners) }
+    if corners.is_empty() {
+        Some(vec!["topLeft".into()])
+    } else {
+        Some(corners)
+    }
 }
 
 fn iter_output_blocks(content: &str) -> Vec<(String, String)> {
@@ -1088,10 +1192,17 @@ fn iter_output_blocks(content: &str) -> Vec<(String, String)> {
     for caps in regex.captures_iter(content) {
         let Some(full) = caps.get(0) else { continue };
         let Some(name) = caps.get(1) else { continue };
-        let Some(offset) = content[full.start()..full.end()].rfind('{') else { continue };
+        let Some(offset) = content[full.start()..full.end()].rfind('{') else {
+            continue;
+        };
         let opening = full.start() + offset;
-        let Some(closing) = matching_brace(content, opening) else { continue };
-        result.push((name.as_str().to_owned(), content[opening + 1..closing].to_owned()));
+        let Some(closing) = matching_brace(content, opening) else {
+            continue;
+        };
+        result.push((
+            name.as_str().to_owned(),
+            content[opening + 1..closing].to_owned(),
+        ));
     }
     result
 }
@@ -1115,20 +1226,20 @@ fn get_hot_corners() -> Result<Outcome> {
     if let Ok((raw, 0)) = run_niri(&["-j", "outputs"])
         && let Ok(Value::Object(outputs)) = serde_json::from_str::<Value>(&raw)
     {
-            for (connector, data) in outputs {
-                let identity = ["make", "model", "serial"]
-                    .iter()
-                    .filter_map(|key| data.get(*key).and_then(Value::as_str))
-                    .filter(|value| !value.trim().is_empty())
-                    .collect::<Vec<_>>()
-                    .join(" ");
-                let value = overrides
-                    .get(&connector)
-                    .or_else(|| overrides.get(&identity))
-                    .cloned()
-                    .unwrap_or_else(|| global.clone());
-                effective.insert(connector, json!(value));
-            }
+        for (connector, data) in outputs {
+            let identity = ["make", "model", "serial"]
+                .iter()
+                .filter_map(|key| data.get(*key).and_then(Value::as_str))
+                .filter(|value| !value.trim().is_empty())
+                .collect::<Vec<_>>()
+                .join(" ");
+            let value = overrides
+                .get(&connector)
+                .or_else(|| overrides.get(&identity))
+                .cloned()
+                .unwrap_or_else(|| global.clone());
+            effective.insert(connector, json!(value));
+        }
     }
 
     Ok(Outcome::ok(json!({
@@ -1152,17 +1263,30 @@ fn get_layout() -> Result<Outcome> {
         "overview_zoom": 0.75
     });
     let path = resolve_section_file("config.d/20-layout-and-overview.kdl");
-    let Ok(content) = fs::read_to_string(path) else { return Ok(Outcome::ok(result)); };
+    let Ok(content) = fs::read_to_string(path) else {
+        return Ok(Outcome::ok(result));
+    };
     if let Some(layout) = extract_block(&content, "layout", true) {
-        if let Some(value) = numeric_value(&layout, "gaps") { result["gaps"] = json!(value as i64); }
-        if let Some(value) = quoted_value(&layout, "center-focused-column") { result["center_focused"] = json!(value); }
-        if let Some(value) = quoted_value(&layout, "default-column-display") { result["default_column_display"] = json!(value); }
-        result["always_center_single_column"] = json!(has_flag(&layout, "always-center-single-column"));
-        result["empty_workspace_above_first"] = json!(has_flag(&layout, "empty-workspace-above-first"));
+        if let Some(value) = numeric_value(&layout, "gaps") {
+            result["gaps"] = json!(value as i64);
+        }
+        if let Some(value) = quoted_value(&layout, "center-focused-column") {
+            result["center_focused"] = json!(value);
+        }
+        if let Some(value) = quoted_value(&layout, "default-column-display") {
+            result["default_column_display"] = json!(value);
+        }
+        result["always_center_single_column"] =
+            json!(has_flag(&layout, "always-center-single-column"));
+        result["empty_workspace_above_first"] =
+            json!(has_flag(&layout, "empty-workspace-above-first"));
 
-        let offset_re =
-            Regex::new(r"(?m)^[ \t]*offset[ \t]+x=([-0-9.]+)[ \t]+y=([-0-9.]+)")?;
-        for (section, key) in [("border", "border"), ("focus-ring", "focus_ring"), ("shadow", "shadow")] {
+        let offset_re = Regex::new(r"(?m)^[ \t]*offset[ \t]+x=([-0-9.]+)[ \t]+y=([-0-9.]+)")?;
+        for (section, key) in [
+            ("border", "border"),
+            ("focus-ring", "focus_ring"),
+            ("shadow", "shadow"),
+        ] {
             if let Some(block) = extract_block(&layout, section, true) {
                 result[key]["enabled"] = json!(!has_flag(&block, "off"));
                 if let Some(value) = numeric_value(&block, "width")
@@ -1170,7 +1294,12 @@ fn get_layout() -> Result<Outcome> {
                 {
                     result[key]["width"] = json!(value as i64);
                 }
-                for (kdl, json_key) in [("active-color", "active_color"), ("inactive-color", "inactive_color"), ("urgent-color", "urgent_color"), ("color", "color")] {
+                for (kdl, json_key) in [
+                    ("active-color", "active_color"),
+                    ("inactive-color", "inactive_color"),
+                    ("urgent-color", "urgent_color"),
+                    ("color", "color"),
+                ] {
                     if let Some(value) = quoted_value(&block, kdl)
                         && result[key].get(json_key).is_some()
                     {
@@ -1178,18 +1307,26 @@ fn get_layout() -> Result<Outcome> {
                     }
                 }
                 if key == "shadow" {
-                    if let Some(value) = numeric_value(&block, "softness") { result[key]["softness"] = json!(value as i64); }
-                    if let Some(value) = numeric_value(&block, "spread") { result[key]["spread"] = json!(value as i64); }
+                    if let Some(value) = numeric_value(&block, "softness") {
+                        result[key]["softness"] = json!(value as i64);
+                    }
+                    if let Some(value) = numeric_value(&block, "spread") {
+                        result[key]["spread"] = json!(value as i64);
+                    }
                     if let Some(caps) = offset_re.captures(&block) {
-                        result[key]["offset_x"] = json!(caps[1].parse::<f64>().unwrap_or(0.0) as i64);
-                        result[key]["offset_y"] = json!(caps[2].parse::<f64>().unwrap_or(0.0) as i64);
+                        result[key]["offset_x"] =
+                            json!(caps[1].parse::<f64>().unwrap_or(0.0) as i64);
+                        result[key]["offset_y"] =
+                            json!(caps[2].parse::<f64>().unwrap_or(0.0) as i64);
                     }
                 }
             }
         }
         if let Some(struts) = extract_block(&layout, "struts", true) {
             for edge in ["left", "right", "top", "bottom"] {
-                if let Some(value) = numeric_value(&struts, edge) { result["struts"][edge] = json!(value as i64); }
+                if let Some(value) = numeric_value(&struts, edge) {
+                    result["struts"][edge] = json!(value as i64);
+                }
             }
         }
     }
@@ -1215,17 +1352,31 @@ fn animation_defaults(kind: &str) -> Value {
 
 fn get_animations() -> Result<Outcome> {
     let mut types = Map::new();
-    for kind in ANIMATION_TYPES { types.insert((*kind).into(), animation_defaults(kind)); }
+    for kind in ANIMATION_TYPES {
+        types.insert((*kind).into(), animation_defaults(kind));
+    }
     let mut result = json!({"enabled": true, "slowdown": 1.0, "types": types});
     let path = resolve_section_file("config.d/60-animations.kdl");
-    let Ok(content) = fs::read_to_string(path) else { return Ok(Outcome::ok(result)); };
-    let Some(block) = extract_block(&content, "animations", true) else { return Ok(Outcome::ok(result)); };
+    let Ok(content) = fs::read_to_string(path) else {
+        return Ok(Outcome::ok(result));
+    };
+    let Some(block) = extract_block(&content, "animations", true) else {
+        return Ok(Outcome::ok(result));
+    };
     result["enabled"] = json!(!has_flag(&block, "off"));
-    if let Some(value) = numeric_value(&block, "slowdown") { result["slowdown"] = json!(value); }
+    if let Some(value) = numeric_value(&block, "slowdown") {
+        result["slowdown"] = json!(value);
+    }
     for kind in ANIMATION_TYPES {
-        let Some(type_block) = extract_block(&block, kind, true) else { continue };
+        let Some(type_block) = extract_block(&block, kind, true) else {
+            continue;
+        };
         let mut settings = animation_defaults(kind);
-        if let Some(line) = type_block.lines().map(str::trim).find(|line| line.starts_with("spring ")) {
+        if let Some(line) = type_block
+            .lines()
+            .map(str::trim)
+            .find(|line| line.starts_with("spring "))
+        {
             for token in line.split_whitespace().skip(1) {
                 let Some((parameter, raw_value)) = token.split_once('=') else {
                     continue;
@@ -1240,7 +1391,9 @@ fn get_animations() -> Result<Outcome> {
                     settings[key] = json!(value);
                 }
             }
-        } else if numeric_value(&type_block, "duration-ms").is_some() || quoted_value(&type_block, "curve").is_some() {
+        } else if numeric_value(&type_block, "duration-ms").is_some()
+            || quoted_value(&type_block, "curve").is_some()
+        {
             settings = json!({
                 "mode": "easing",
                 "duration_ms": numeric_value(&type_block, "duration-ms").unwrap_or(150.0) as i64,
@@ -1248,26 +1401,39 @@ fn get_animations() -> Result<Outcome> {
                 "curve_args": ""
             });
         }
-        if has_flag(&type_block, "off") { settings["off"] = json!(true); }
+        if has_flag(&type_block, "off") {
+            settings["off"] = json!(true);
+        }
         result["types"][*kind] = settings;
     }
     Ok(Outcome::ok(result))
 }
 
 fn get_window_rules() -> Result<Outcome> {
-    let mut result = json!({"corner_radius": 16, "clip_to_geometry": true, "inactive_opacity": 0.9});
+    let mut result =
+        json!({"corner_radius": 16, "clip_to_geometry": true, "inactive_opacity": 0.9});
     let path = resolve_section_file("config.d/30-window-rules.kdl");
-    let Ok(content) = fs::read_to_string(path) else { return Ok(Outcome::ok(result)); };
+    let Ok(content) = fs::read_to_string(path) else {
+        return Ok(Outcome::ok(result));
+    };
     let regex = Regex::new(r"(?m)^[ \t]*window-rule[ \t]*\{")?;
     for matched in regex.find_iter(&content) {
         let opening = content[matched.start()..matched.end()].rfind('{').unwrap() + matched.start();
-        let Some(closing) = matching_brace(&content, opening) else { continue };
+        let Some(closing) = matching_brace(&content, opening) else {
+            continue;
+        };
         let block = &content[opening + 1..closing];
         if block.contains("is-active=false") || block.contains("is-active = false") {
-            if let Some(value) = numeric_value(block, "opacity") { result["inactive_opacity"] = json!(value); }
+            if let Some(value) = numeric_value(block, "opacity") {
+                result["inactive_opacity"] = json!(value);
+            }
         } else {
-            if let Some(value) = numeric_value(block, "geometry-corner-radius") { result["corner_radius"] = json!(value as i64); }
-            if let Some(value) = bool_line_value(block, "clip-to-geometry") { result["clip_to_geometry"] = json!(value); }
+            if let Some(value) = numeric_value(block, "geometry-corner-radius") {
+                result["corner_radius"] = json!(value as i64);
+            }
+            if let Some(value) = bool_line_value(block, "clip-to-geometry") {
+                result["clip_to_geometry"] = json!(value);
+            }
         }
     }
     Ok(Outcome::ok(result))
@@ -1278,8 +1444,14 @@ fn list_cursor_themes() -> Result<Outcome> {
     let data_home = std::env::var_os("XDG_DATA_HOME")
         .map(PathBuf::from)
         .unwrap_or_else(|| home_dir().join(".local/share"));
-    for directory in [data_home.join("icons"), PathBuf::from("/usr/share/icons"), home_dir().join(".icons")] {
-        let Ok(entries) = fs::read_dir(directory) else { continue };
+    for directory in [
+        data_home.join("icons"),
+        PathBuf::from("/usr/share/icons"),
+        home_dir().join(".icons"),
+    ] {
+        let Ok(entries) = fs::read_dir(directory) else {
+            continue;
+        };
         for entry in entries.flatten() {
             let path = entry.path();
             if path.join("cursors").is_dir()
@@ -1301,7 +1473,10 @@ fn validate() -> Result<Outcome> {
             "output": "config.kdl not found"
         })));
     }
-    let output = Command::new("niri").args(["validate", "-c"]).arg(&config).output();
+    let output = Command::new("niri")
+        .args(["validate", "-c"])
+        .arg(&config)
+        .output();
     match output {
         Ok(output) => {
             let mut text = String::from_utf8_lossy(&output.stdout).into_owned();
@@ -1328,14 +1503,20 @@ fn meaningful_lines(text: &str) -> Vec<String> {
 }
 
 fn defaults_dir(override_path: Option<&Path>) -> Result<PathBuf> {
-    if let Some(path) = override_path { return Ok(path.to_path_buf()); }
+    if let Some(path) = override_path {
+        return Ok(path.to_path_buf());
+    }
     if let Some(root) = std::env::var_os("INIR_SHELL_ROOT") {
         let path = PathBuf::from(root).join("defaults/niri");
-        if path.is_dir() { return Ok(path); }
+        if path.is_dir() {
+            return Ok(path);
+        }
     }
     let cwd = std::env::current_dir()?;
     let candidate = cwd.join("defaults/niri");
-    if candidate.is_dir() { return Ok(candidate); }
+    if candidate.is_dir() {
+        return Ok(candidate);
+    }
     bail!("defaults_dir_not_found")
 }
 
@@ -1351,7 +1532,9 @@ fn detect_customizations(default_override: Option<&Path>) -> Result<Outcome> {
     for relative in DEFAULT_NIRI_FILES {
         let user_path = config.join(relative);
         let default_path = defaults.join(relative);
-        if !user_path.exists() || !default_path.exists() { continue; }
+        if !user_path.exists() || !default_path.exists() {
+            continue;
+        }
         let user = fs::read_to_string(&user_path)?;
         let default = fs::read_to_string(&default_path)?;
         if *relative == "config.d/90-user-extra.kdl" {
@@ -1370,13 +1553,23 @@ fn detect_customizations(default_override: Option<&Path>) -> Result<Outcome> {
         }
         let user_lines = meaningful_lines(&user);
         let default_lines = meaningful_lines(&default);
-        if user_lines == default_lines { continue; }
+        if user_lines == default_lines {
+            continue;
+        }
         managed += 1;
         let mut preview = Vec::new();
-        for line in default_lines.iter().filter(|line| !user_lines.contains(line)).take(4) {
+        for line in default_lines
+            .iter()
+            .filter(|line| !user_lines.contains(line))
+            .take(4)
+        {
             preview.push(format!("-{line}"));
         }
-        for line in user_lines.iter().filter(|line| !default_lines.contains(line)).take(4) {
+        for line in user_lines
+            .iter()
+            .filter(|line| !default_lines.contains(line))
+            .take(4)
+        {
             preview.push(format!("+{line}"));
         }
         files.push(json!({
@@ -1391,16 +1584,32 @@ fn detect_customizations(default_override: Option<&Path>) -> Result<Outcome> {
     let default_set = DEFAULT_NIRI_FILES.iter().copied().collect::<HashSet<_>>();
     let config_d = config.join("config.d");
     if let Ok(entries) = fs::read_dir(config_d) {
-        let mut paths = entries.flatten().map(|entry| entry.path()).filter(|path| path.extension().is_some_and(|ext| ext == "kdl")).collect::<Vec<_>>();
+        let mut paths = entries
+            .flatten()
+            .map(|entry| entry.path())
+            .filter(|path| path.extension().is_some_and(|ext| ext == "kdl"))
+            .collect::<Vec<_>>();
         paths.sort();
         for path in paths {
-            let relative = path.strip_prefix(&config).unwrap_or(&path).to_string_lossy().into_owned();
-            if default_set.contains(relative.as_str()) { continue; }
+            let relative = path
+                .strip_prefix(&config)
+                .unwrap_or(&path)
+                .to_string_lossy()
+                .into_owned();
+            if default_set.contains(relative.as_str()) {
+                continue;
+            }
             let text = fs::read_to_string(&path)?;
             let lines = meaningful_lines(&text);
-            if lines.is_empty() { continue; }
+            if lines.is_empty() {
+                continue;
+            }
             let expected = relative == "config.d/15-outputs.kdl";
-            if expected { generated += 1; } else { extra += 1; }
+            if expected {
+                generated += 1;
+            } else {
+                extra += 1;
+            }
             files.push(json!({
                 "path": relative,
                 "kind": if expected { "expected-generated" } else { "extra-file" },
@@ -1432,7 +1641,9 @@ fn detect_customizations(default_override: Option<&Path>) -> Result<Outcome> {
 }
 
 fn sync_backdrop_shadow(mode: &str) -> Result<Outcome> {
-    if mode != "on" && mode != "off" { bail!("mode_must_be_on_or_off"); }
+    if mode != "on" && mode != "off" {
+        bail!("mode_must_be_on_or_off");
+    }
     let path = resolve_section_file("config.d/90-user-extra.kdl");
     let content = fs::read_to_string(&path).unwrap_or_default();
     let pattern = Regex::new(&format!(
@@ -1445,12 +1656,18 @@ fn sync_backdrop_shadow(mode: &str) -> Result<Outcome> {
         let block = format!(
             "{BACKDROP_SHADOW_OVERRIDE_START}\noverview {{\n    workspace-shadow {{\n        off\n    }}\n}}\n{BACKDROP_SHADOW_OVERRIDE_END}"
         );
-        if next.is_empty() { next = format!("{block}\n"); } else { next = format!("{next}\n\n{block}\n"); }
+        if next.is_empty() {
+            next = format!("{block}\n");
+        } else {
+            next = format!("{next}\n\n{block}\n");
+        }
     } else if !next.is_empty() {
         next.push('\n');
     }
     if next == content {
-        return Ok(Outcome::ok(json!({"success": true, "file": path.to_string_lossy(), "changed": false})));
+        return Ok(Outcome::ok(
+            json!({"success": true, "file": path.to_string_lossy(), "changed": false}),
+        ));
     }
     write_validated(&path, &next)
 }
@@ -1469,7 +1686,11 @@ fn sync_cursor_env(theme: Option<&str>, size: Option<&str>) -> Result<()> {
         }
     }
     let target = target.unwrap_or_else(|| env_dir.join("cursor.conf"));
-    let mut lines = fs::read_to_string(&target).unwrap_or_default().lines().map(str::to_owned).collect::<Vec<_>>();
+    let mut lines = fs::read_to_string(&target)
+        .unwrap_or_default()
+        .lines()
+        .map(str::to_owned)
+        .collect::<Vec<_>>();
     let mut found_theme = false;
     let mut found_size = false;
     for line in &mut lines {
@@ -1487,24 +1708,44 @@ fn sync_cursor_env(theme: Option<&str>, size: Option<&str>) -> Result<()> {
         }
     }
     if let Some(theme) = theme {
-        if !found_theme { lines.push(format!("XCURSOR_THEME={theme}")); }
-        let _ = Command::new("gsettings").args(["set", "org.gnome.desktop.interface", "cursor-theme", theme]).status();
+        if !found_theme {
+            lines.push(format!("XCURSOR_THEME={theme}"));
+        }
+        let _ = Command::new("gsettings")
+            .args(["set", "org.gnome.desktop.interface", "cursor-theme", theme])
+            .status();
         if theme != "default" && !theme.is_empty() {
             let default_dir = home_dir().join(".local/share/icons/default");
             fs::create_dir_all(&default_dir)?;
-            fs::write(default_dir.join("index.theme"), format!("[Icon Theme]\nName=Default\nComment=Default cursor theme\nInherits={theme}\n"))?;
+            fs::write(
+                default_dir.join("index.theme"),
+                format!(
+                    "[Icon Theme]\nName=Default\nComment=Default cursor theme\nInherits={theme}\n"
+                ),
+            )?;
         }
     }
     if let Some(size) = size {
-        if !found_size { lines.push(format!("XCURSOR_SIZE={size}")); }
-        let _ = Command::new("gsettings").args(["set", "org.gnome.desktop.interface", "cursor-size", size]).status();
+        if !found_size {
+            lines.push(format!("XCURSOR_SIZE={size}"));
+        }
+        let _ = Command::new("gsettings")
+            .args(["set", "org.gnome.desktop.interface", "cursor-size", size])
+            .status();
     }
     fs::write(&target, format!("{}\n", lines.join("\n")))?;
     let mut env = Vec::new();
-    if let Some(theme) = theme { env.push(format!("XCURSOR_THEME={theme}")); }
-    if let Some(size) = size { env.push(format!("XCURSOR_SIZE={size}")); }
+    if let Some(theme) = theme {
+        env.push(format!("XCURSOR_THEME={theme}"));
+    }
+    if let Some(size) = size {
+        env.push(format!("XCURSOR_SIZE={size}"));
+    }
     if !env.is_empty() {
-        let _ = Command::new("systemctl").args(["--user", "set-environment"]).args(env).status();
+        let _ = Command::new("systemctl")
+            .args(["--user", "set-environment"])
+            .args(env)
+            .status();
     }
     Ok(())
 }
@@ -1515,9 +1756,13 @@ fn sync_cursor() -> Result<Outcome> {
     let cursor = extract_block(&content, "cursor", true).unwrap_or_default();
     let theme = quoted_value(&cursor, "xcursor-theme");
     let size = numeric_value(&cursor, "xcursor-size").map(|value| (value as i64).to_string());
-    if theme.is_none() && size.is_none() { bail!("no_cursor_theme_or_size"); }
+    if theme.is_none() && size.is_none() {
+        bail!("no_cursor_theme_or_size");
+    }
     sync_cursor_env(theme.as_deref(), size.as_deref())?;
-    Ok(Outcome::ok(json!({"synced": true, "theme": theme, "size": size.and_then(|value| value.parse::<i64>().ok())})))
+    Ok(Outcome::ok(
+        json!({"synced": true, "theme": theme, "size": size.and_then(|value| value.parse::<i64>().ok())}),
+    ))
 }
 
 fn set_input(key: &str, value: &str) -> Result<Outcome> {
@@ -1531,15 +1776,29 @@ fn set_input(key: &str, value: &str) -> Result<Outcome> {
             "disable-power-key-handling" | "workspace-auto-back-and-forth" => {
                 toggle_flag(&content, "input", key, value == "on", true)?
             }
-            "warp-mouse-to-focus" if value == "off" => remove_line_in_block(&content, "input", key, true)?,
+            "warp-mouse-to-focus" if value == "off" => {
+                remove_line_in_block(&content, "input", key, true)?
+            }
             "warp-mouse-to-focus" => set_line_in_block(
-                &content, "input", key,
-                if value == "center-xy" { "mode=\"center-xy\"" } else if value == "center-xy-always" { "mode=\"center-xy-always\"" } else { "" },
-                true
+                &content,
+                "input",
+                key,
+                if value == "center-xy" {
+                    "mode=\"center-xy\""
+                } else if value == "center-xy-always" {
+                    "mode=\"center-xy-always\""
+                } else {
+                    ""
+                },
+                true,
             )?,
-            "focus-follows-mouse" if value == "off" => remove_line_in_block(&content, "input", key, true)?,
+            "focus-follows-mouse" if value == "off" => {
+                remove_line_in_block(&content, "input", key, true)?
+            }
             "focus-follows-mouse" => set_line_in_block(&content, "input", key, value, true)?,
-            "mod-key" | "mod-key-nested" => set_line_in_block(&content, "input", key, &format!("\"{value}\""), true)?,
+            "mod-key" | "mod-key-nested" => {
+                set_line_in_block(&content, "input", key, &format!("\"{value}\""), true)?
+            }
             _ => bail!("unknown_input_key:{key}"),
         };
     } else {
@@ -1547,30 +1806,89 @@ fn set_input(key: &str, value: &str) -> Result<Outcome> {
         match section {
             "keyboard" if ["layout", "variant", "options"].contains(&property) => {
                 content = ensure_subsection(&content, "input", "keyboard", true)?;
-                let (_, input_start, input_end, _) = find_block_bounds(&content, "input", true).unwrap();
+                let (_, input_start, input_end, _) =
+                    find_block_bounds(&content, "input", true).unwrap();
                 let input_inner = &content[input_start..input_end];
                 let keyboard_with_xkb = ensure_subsection(input_inner, "keyboard", "xkb", true)?;
-                let (_, kb_start, kb_end, _) = find_block_bounds(&keyboard_with_xkb, "keyboard", true).unwrap();
+                let (_, kb_start, kb_end, _) =
+                    find_block_bounds(&keyboard_with_xkb, "keyboard", true).unwrap();
                 let kb_inner = &keyboard_with_xkb[kb_start..kb_end];
-                let next_kb = set_line_in_block(kb_inner, "xkb", property, &format!("\"{value}\""), true)?;
-                let next_input = format!("{}{}{}", &keyboard_with_xkb[..kb_start], next_kb, &keyboard_with_xkb[kb_end..]);
-                content = format!("{}{}{}", &content[..input_start], next_input, &content[input_end..]);
+                let next_kb =
+                    set_line_in_block(kb_inner, "xkb", property, &format!("\"{value}\""), true)?;
+                let next_input = format!(
+                    "{}{}{}",
+                    &keyboard_with_xkb[..kb_start],
+                    next_kb,
+                    &keyboard_with_xkb[kb_end..]
+                );
+                content = format!(
+                    "{}{}{}",
+                    &content[..input_start],
+                    next_input,
+                    &content[input_end..]
+                );
             }
             "keyboard" if property == "repeat-delay" || property == "repeat-rate" => {
                 content = set_nested_line(&content, "input", "keyboard", property, value, true)?;
             }
             "keyboard" if property == "track-layout" => {
-                content = set_nested_line(&content, "input", "keyboard", property, &format!("\"{value}\""), true)?;
+                content = set_nested_line(
+                    &content,
+                    "input",
+                    "keyboard",
+                    property,
+                    &format!("\"{value}\""),
+                    true,
+                )?;
             }
             "keyboard" if property == "numlock" => {
-                content = toggle_nested_flag(&content, "input", "keyboard", "numlock", value == "on", true)?;
+                content = toggle_nested_flag(
+                    &content,
+                    "input",
+                    "keyboard",
+                    "numlock",
+                    value == "on",
+                    true,
+                )?;
             }
             "touchpad" | "mouse" | "trackpoint" => {
-                let flag = ["tap", "natural-scroll", "dwt", "dwtp", "drag-lock", "disabled-on-external-mouse", "left-handed", "middle-emulation", "scroll-button-lock"].contains(&property);
+                let flag = [
+                    "tap",
+                    "natural-scroll",
+                    "dwt",
+                    "dwtp",
+                    "drag-lock",
+                    "disabled-on-external-mouse",
+                    "left-handed",
+                    "middle-emulation",
+                    "scroll-button-lock",
+                ]
+                .contains(&property);
                 if flag {
-                    content = toggle_nested_flag(&content, "input", section, property, value == "on", true)?;
-                } else if ["accel-profile", "tap-button-map", "click-method", "scroll-method"].contains(&property) {
-                    content = set_nested_line(&content, "input", section, property, &format!("\"{value}\""), true)?;
+                    content = toggle_nested_flag(
+                        &content,
+                        "input",
+                        section,
+                        property,
+                        value == "on",
+                        true,
+                    )?;
+                } else if [
+                    "accel-profile",
+                    "tap-button-map",
+                    "click-method",
+                    "scroll-method",
+                ]
+                .contains(&property)
+                {
+                    content = set_nested_line(
+                        &content,
+                        "input",
+                        section,
+                        property,
+                        &format!("\"{value}\""),
+                        true,
+                    )?;
                 } else if property == "accel-speed" {
                     content = set_nested_line(&content, "input", section, property, value, true)?;
                 } else {
@@ -1581,13 +1899,21 @@ fn set_input(key: &str, value: &str) -> Result<Outcome> {
                 content = match property {
                     "xcursor-theme" => {
                         cursor_sync_theme = Some(value.to_owned());
-                        set_line_in_block(&content, "cursor", property, &format!("\"{value}\""), true)?
+                        set_line_in_block(
+                            &content,
+                            "cursor",
+                            property,
+                            &format!("\"{value}\""),
+                            true,
+                        )?
                     }
                     "xcursor-size" => {
                         cursor_sync_size = Some(value.to_owned());
                         set_line_in_block(&content, "cursor", property, value, true)?
                     }
-                    "hide-when-typing" => toggle_flag(&content, "cursor", property, value == "on", true)?,
+                    "hide-when-typing" => {
+                        toggle_flag(&content, "cursor", property, value == "on", true)?
+                    }
                     _ => bail!("unknown_cursor_prop:{property}"),
                 };
             }
@@ -1606,22 +1932,44 @@ fn set_layout(key: &str, value: &str) -> Result<Outcome> {
     let mut content = fs::read_to_string(&path).context("layout config file not found")?;
     content = match key {
         "gaps" => set_line_in_block(&content, "layout", "gaps", value, true)?,
-        "center-focused-column" => set_line_in_block(&content, "layout", key, &format!("\"{value}\""), true)?,
-        "always-center-single-column" | "empty-workspace-above-first" => toggle_flag(&content, "layout", key, value == "on", true)?,
-        "default-column-display" => set_line_in_block(&content, "layout", key, &format!("\"{value}\""), true)?,
-        "overview.zoom" | "overview-zoom" => set_line_in_block(&content, "overview", "zoom", value, true)?,
+        "center-focused-column" => {
+            set_line_in_block(&content, "layout", key, &format!("\"{value}\""), true)?
+        }
+        "always-center-single-column" | "empty-workspace-above-first" => {
+            toggle_flag(&content, "layout", key, value == "on", true)?
+        }
+        "default-column-display" => {
+            set_line_in_block(&content, "layout", key, &format!("\"{value}\""), true)?
+        }
+        "overview.zoom" | "overview-zoom" => {
+            set_line_in_block(&content, "overview", "zoom", value, true)?
+        }
         _ if key.contains('.') => {
             let (section, property) = key.split_once('.').unwrap();
             if property == "enabled" {
                 toggle_nested_flag(&content, "layout", section, "off", value != "on", true)?
-            } else if ["active-color", "inactive-color", "urgent-color", "color"].contains(&property) {
-                set_nested_line(&content, "layout", section, property, &format!("\"{value}\""), true)?
+            } else if ["active-color", "inactive-color", "urgent-color", "color"]
+                .contains(&property)
+            {
+                set_nested_line(
+                    &content,
+                    "layout",
+                    section,
+                    property,
+                    &format!("\"{value}\""),
+                    true,
+                )?
             } else if ["width", "softness", "spread"].contains(&property) {
                 set_nested_line(&content, "layout", section, property, value, true)?
             } else if section == "shadow" && property == "offset" {
-                let rendered = if let Some((x, y)) = value.split_once(',') { format!("x={x} y={y}") } else { value.to_owned() };
+                let rendered = if let Some((x, y)) = value.split_once(',') {
+                    format!("x={x} y={y}")
+                } else {
+                    value.to_owned()
+                };
                 set_nested_line(&content, "layout", section, property, &rendered, true)?
-            } else if section == "struts" && ["left", "right", "top", "bottom"].contains(&property) {
+            } else if section == "struts" && ["left", "right", "top", "bottom"].contains(&property)
+            {
                 set_nested_line(&content, "layout", section, property, value, true)?
             } else {
                 bail!("unknown_layout_sub_prop:{key}");
@@ -1640,13 +1988,18 @@ fn set_animations(key: &str, value: &str) -> Result<Outcome> {
     } else if key == "slowdown" {
         content = set_line_in_block(&content, "animations", "slowdown", value, true)?;
     } else {
-        let (kind, property) = key.split_once('.').ok_or_else(|| anyhow!("unknown_animations_key:{key}"))?;
-        if !ANIMATION_TYPES.contains(&kind) { bail!("unknown_animation_type:{kind}"); }
+        let (kind, property) = key
+            .split_once('.')
+            .ok_or_else(|| anyhow!("unknown_animations_key:{key}"))?;
+        if !ANIMATION_TYPES.contains(&kind) {
+            bail!("unknown_animation_type:{kind}");
+        }
         if property == "enabled" {
             content = toggle_nested_flag(&content, "animations", kind, "off", value != "on", true)?;
         } else if ["damping-ratio", "stiffness", "epsilon"].contains(&property) {
             content = ensure_subsection(&content, "animations", kind, true)?;
-            let (_, anim_start, anim_end, _) = find_block_bounds(&content, "animations", true).unwrap();
+            let (_, anim_start, anim_end, _) =
+                find_block_bounds(&content, "animations", true).unwrap();
             let anim_inner = &content[anim_start..anim_end];
             let (_, type_start, type_end, _) = find_block_bounds(anim_inner, kind, true).unwrap();
             let type_inner = &anim_inner[type_start..type_end];
@@ -1656,18 +2009,37 @@ fn set_animations(key: &str, value: &str) -> Result<Outcome> {
                 let params = caps.get(2).map(|value| value.as_str()).unwrap_or("");
                 let param_re = Regex::new(&format!(r"{}=[0-9.]+", regex::escape(property)))?;
                 let next_params = if param_re.is_match(params) {
-                    param_re.replace(params, format!("{property}={value}")).into_owned()
+                    param_re
+                        .replace(params, format!("{property}={value}"))
+                        .into_owned()
                 } else if params.trim().is_empty() {
                     format!("{property}={value}")
                 } else {
                     format!("{} {property}={value}", params.trim())
                 };
-                spring_re.replace(type_inner, format!("{indent}spring {next_params}")).into_owned()
+                spring_re
+                    .replace(type_inner, format!("{indent}spring {next_params}"))
+                    .into_owned()
             } else {
-                set_line_in_inner(type_inner, "spring", &format!("{property}={value}"), "        ")?
+                set_line_in_inner(
+                    type_inner,
+                    "spring",
+                    &format!("{property}={value}"),
+                    "        ",
+                )?
             };
-            let next_anim = format!("{}{}{}", &anim_inner[..type_start], next_type, &anim_inner[type_end..]);
-            content = format!("{}{}{}", &content[..anim_start], next_anim, &content[anim_end..]);
+            let next_anim = format!(
+                "{}{}{}",
+                &anim_inner[..type_start],
+                next_type,
+                &anim_inner[type_end..]
+            );
+            content = format!(
+                "{}{}{}",
+                &content[..anim_start],
+                next_anim,
+                &content[anim_end..]
+            );
         } else {
             bail!("unknown_spring_param:{property}");
         }
@@ -1682,18 +2054,32 @@ fn set_window_rules(key: &str, value: &str) -> Result<Outcome> {
         "corner-radius" => {
             let re = Regex::new(r"geometry-corner-radius[ \t]+[0-9]+")?;
             if re.is_match(&content) {
-                content = re.replacen(&content, 1, format!("geometry-corner-radius {value}")).into_owned();
-            } else if let Some((_, start, end, _)) = find_block_bounds(&content, "window-rule", true) {
-                let next = set_line_in_inner(&content[start..end], "geometry-corner-radius", value, "    ")?;
+                content = re
+                    .replacen(&content, 1, format!("geometry-corner-radius {value}"))
+                    .into_owned();
+            } else if let Some((_, start, end, _)) =
+                find_block_bounds(&content, "window-rule", true)
+            {
+                let next = set_line_in_inner(
+                    &content[start..end],
+                    "geometry-corner-radius",
+                    value,
+                    "    ",
+                )?;
                 content = format!("{}{}{}", &content[..start], next, &content[end..]);
             }
         }
         "clip-to-geometry" => {
             let re = Regex::new(r"clip-to-geometry[ \t]+(?:true|false)")?;
             if re.is_match(&content) {
-                content = re.replacen(&content, 1, format!("clip-to-geometry {value}")).into_owned();
-            } else if let Some((_, start, end, _)) = find_block_bounds(&content, "window-rule", true) {
-                let next = set_line_in_inner(&content[start..end], "clip-to-geometry", value, "    ")?;
+                content = re
+                    .replacen(&content, 1, format!("clip-to-geometry {value}"))
+                    .into_owned();
+            } else if let Some((_, start, end, _)) =
+                find_block_bounds(&content, "window-rule", true)
+            {
+                let next =
+                    set_line_in_inner(&content[start..end], "clip-to-geometry", value, "    ")?;
                 content = format!("{}{}{}", &content[..start], next, &content[end..]);
             }
         }
@@ -1701,8 +2087,11 @@ fn set_window_rules(key: &str, value: &str) -> Result<Outcome> {
             let rule_re = Regex::new(r"(?m)^[ \t]*window-rule[ \t]*\{")?;
             let mut replaced = false;
             for matched in rule_re.find_iter(&content).collect::<Vec<_>>() {
-                let opening = content[matched.start()..matched.end()].rfind('{').unwrap() + matched.start();
-                let Some(closing) = matching_brace(&content, opening) else { continue };
+                let opening =
+                    content[matched.start()..matched.end()].rfind('{').unwrap() + matched.start();
+                let Some(closing) = matching_brace(&content, opening) else {
+                    continue;
+                };
                 let block = &content[opening + 1..closing];
                 if block.contains("is-active=false") || block.contains("is-active = false") {
                     let next = set_line_in_inner(block, "opacity", value, "    ")?;
@@ -1712,7 +2101,10 @@ fn set_window_rules(key: &str, value: &str) -> Result<Outcome> {
                 }
             }
             if !replaced {
-                content = format!("{}\n\nwindow-rule {{\n    match is-active=false\n    opacity {value}\n}}\n", content.trim_end());
+                content = format!(
+                    "{}\n\nwindow-rule {{\n    match is-active=false\n    opacity {value}\n}}\n",
+                    content.trim_end()
+                );
             }
         }
         _ => bail!("unknown_window_rules_key:{key}"),
@@ -1727,7 +2119,9 @@ fn set_value(section: &str, key: &str, value: &str) -> Result<Outcome> {
         "animations" => set_animations(key, value),
         "window-rules" => set_window_rules(key, value),
         "output" => {
-            let (name, property) = key.split_once('.').ok_or_else(|| anyhow!("output_key_must_be_name_prop"))?;
+            let (name, property) = key
+                .split_once('.')
+                .ok_or_else(|| anyhow!("output_key_must_be_name_prop"))?;
             persist_output(name, &[format!("{property}={value}")])
         }
         _ => bail!("unknown_section:{section}"),
@@ -1744,7 +2138,11 @@ fn get_binds() -> Result<Outcome> {
     let (_, inner_start, inner_end, _) = find_block_bounds(&content, "binds", true)
         .ok_or_else(|| anyhow!("binds_block_not_found"))?;
     let block = &content[inner_start..inner_end];
-    let base_line = content[..inner_start].bytes().filter(|byte| *byte == b'\n').count() + 1;
+    let base_line = content[..inner_start]
+        .bytes()
+        .filter(|byte| *byte == b'\n')
+        .count()
+        + 1;
     let lines = block.lines().collect::<Vec<_>>();
     let bind_re = Regex::new(r"^([A-Za-z0-9_][A-Za-z0-9+_]*)\s*(.*?)\{(.*)$")?;
     let title_re = Regex::new(r#"\s*hotkey-overlay-title="[^"]+""#)?;
@@ -1756,9 +2154,19 @@ fn get_binds() -> Result<Outcome> {
         let stripped = raw.trim();
         let (commented, candidate) = if let Some(rest) = stripped.strip_prefix("//") {
             let candidate = rest.trim_start();
-            if bind_re.is_match(candidate) { (true, candidate) } else { i += 1; continue; }
-        } else { (false, stripped) };
-        let Some(caps) = bind_re.captures(candidate) else { i += 1; continue };
+            if bind_re.is_match(candidate) {
+                (true, candidate)
+            } else {
+                i += 1;
+                continue;
+            }
+        } else {
+            (false, stripped)
+        };
+        let Some(caps) = bind_re.captures(candidate) else {
+            i += 1;
+            continue;
+        };
         let key_combo = caps[1].to_owned();
         let options_raw = caps[2].trim().to_owned();
         let options = title_re.replace_all(&options_raw, "").trim().to_owned();
@@ -1782,7 +2190,11 @@ fn get_binds() -> Result<Outcome> {
                 i += 1;
             }
             let raw = action_lines.join(" ");
-            let action = action_lines.iter().map(|line| line.trim_end_matches(';')).collect::<Vec<_>>().join(" ");
+            let action = action_lines
+                .iter()
+                .map(|line| line.trim_end_matches(';'))
+                .collect::<Vec<_>>()
+                .join(" ");
             (raw, action)
         };
         let description = action_description(&action);
@@ -1801,9 +2213,21 @@ fn get_binds() -> Result<Outcome> {
     }
 
     let category_order = [
-        "System", "iNiR Shell", "Window Switcher", "Screenshots", "Applications",
-        "Window Management", "Layout", "Resize", "Focus", "Move Windows", "Monitors",
-        "Workspaces", "Media", "Brightness", "Other"
+        "System",
+        "iNiR Shell",
+        "Window Switcher",
+        "Screenshots",
+        "Applications",
+        "Window Management",
+        "Layout",
+        "Resize",
+        "Focus",
+        "Move Windows",
+        "Monitors",
+        "Workspaces",
+        "Media",
+        "Brightness",
+        "Other",
     ];
     let mut map: BTreeMap<String, Vec<usize>> = BTreeMap::new();
     for (index, bind) in binds.iter().enumerate() {
@@ -1833,16 +2257,30 @@ fn find_bind_span(lines: &[String], key_combo: &str, commented: bool) -> Option<
         let candidate = if commented {
             stripped.strip_prefix("//")?.trim_start()
         } else {
-            if stripped.starts_with("//") { continue; }
+            if stripped.starts_with("//") {
+                continue;
+            }
             stripped
         };
-        let first = candidate.split_whitespace().next().unwrap_or_default().split('{').next().unwrap_or_default();
-        if first != key_combo { continue; }
-        let mut depth = candidate.matches('{').count() as i32 - candidate.matches('}').count() as i32;
-        if depth <= 0 { return Some((index, index + 1)); }
+        let first = candidate
+            .split_whitespace()
+            .next()
+            .unwrap_or_default()
+            .split('{')
+            .next()
+            .unwrap_or_default();
+        if first != key_combo {
+            continue;
+        }
+        let mut depth =
+            candidate.matches('{').count() as i32 - candidate.matches('}').count() as i32;
+        if depth <= 0 {
+            return Some((index, index + 1));
+        }
         let mut end = index + 1;
         while end < lines.len() && depth > 0 {
-            depth += lines[end].matches('{').count() as i32 - lines[end].matches('}').count() as i32;
+            depth +=
+                lines[end].matches('{').count() as i32 - lines[end].matches('}').count() as i32;
             end += 1;
         }
         return Some((index, end));
@@ -1857,20 +2295,32 @@ fn set_bind(key_combo: &str, action: &str, options: &str) -> Result<Outcome> {
         .ok_or_else(|| anyhow!("binds_block_not_found"))?;
     let block = &content[inner_start..inner_end];
     let mut lines = block.lines().map(str::to_owned).collect::<Vec<_>>();
-    let span = find_bind_span(&lines, key_combo, false).or_else(|| find_bind_span(&lines, key_combo, true));
+    let span = find_bind_span(&lines, key_combo, false)
+        .or_else(|| find_bind_span(&lines, key_combo, true));
     let rendered = if options.trim().is_empty() {
         format!("{key_combo} {{ {action}; }}")
     } else {
         format!("{key_combo} {} {{ {action}; }}", options.trim())
     };
     if let Some((start, end)) = span {
-        let indent = lines[start].chars().take_while(|value| value.is_whitespace()).collect::<String>();
+        let indent = lines[start]
+            .chars()
+            .take_while(|value| value.is_whitespace())
+            .collect::<String>();
         lines.splice(start..end, [format!("{indent}{rendered}")]);
     } else {
-        let insert = lines.iter().rposition(|line| !line.trim().is_empty()).map_or(0, |index| index + 1);
+        let insert = lines
+            .iter()
+            .rposition(|line| !line.trim().is_empty())
+            .map_or(0, |index| index + 1);
         lines.insert(insert, format!("    {rendered}"));
     }
-    let next = format!("{}{}{}", &content[..inner_start], lines.join("\n"), &content[inner_end..]);
+    let next = format!(
+        "{}{}{}",
+        &content[..inner_start],
+        lines.join("\n"),
+        &content[inner_end..]
+    );
     write_validated(&path, &next)
 }
 
@@ -1884,12 +2334,22 @@ fn remove_bind(key_combo: &str) -> Result<Outcome> {
     let (start, end) = find_bind_span(&lines, key_combo, false)
         .ok_or_else(|| anyhow!("active_bind_not_found:{key_combo}"))?;
     for line in &mut lines[start..end] {
-        if line.trim().is_empty() { continue; }
-        let indent = line.chars().take_while(|value| value.is_whitespace()).collect::<String>();
+        if line.trim().is_empty() {
+            continue;
+        }
+        let indent = line
+            .chars()
+            .take_while(|value| value.is_whitespace())
+            .collect::<String>();
         let body = line[indent.len()..].to_owned();
         *line = format!("{indent}// {body}");
     }
-    let next = format!("{}{}{}", &content[..inner_start], lines.join("\n"), &content[inner_end..]);
+    let next = format!(
+        "{}{}{}",
+        &content[..inner_start],
+        lines.join("\n"),
+        &content[inner_end..]
+    );
     write_validated(&path, &next)
 }
 
@@ -1901,7 +2361,10 @@ mod tests {
     fn brace_scanner_ignores_comments_and_strings() {
         let text = "layout {\n    // } ignored\n    border { active-color \"#{x}\" }\n}\n";
         let bounds = find_block_bounds(text, "layout", true).unwrap();
-        assert_eq!(&text[bounds.1..bounds.2], "\n    // } ignored\n    border { active-color \"#{x}\" }\n");
+        assert_eq!(
+            &text[bounds.1..bounds.2],
+            "\n    // } ignored\n    border { active-color \"#{x}\" }\n"
+        );
     }
 
     #[test]
@@ -1917,7 +2380,11 @@ mod tests {
         let text = "input {\n keyboard { xkb { layout \"us\" } }\n}\n";
         let input = extract_block(text, "input", true).unwrap();
         let keyboard = extract_block(&input, "keyboard", true).unwrap();
-        assert!(extract_block(&keyboard, "xkb", true).unwrap().contains("layout"));
+        assert!(
+            extract_block(&keyboard, "xkb", true)
+                .unwrap()
+                .contains("layout")
+        );
     }
 
     #[test]

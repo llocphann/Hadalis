@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 use material_color_utils::dynamic::color_spec::SpecVersion;
 use material_color_utils::dynamic::dynamic_scheme::DynamicScheme;
 use material_color_utils::dynamic::material_dynamic_colors::MaterialDynamicColors;
@@ -11,7 +11,7 @@ use material_color_utils::scheme::{
     SchemeNeutral, SchemeRainbow, SchemeTonalSpot, SchemeVibrant,
 };
 use material_color_utils::utils::color_utils::Argb;
-use serde_json::{json, Map, Value};
+use serde_json::{Map, Value, json};
 
 pub type Palette = BTreeMap<String, String>;
 
@@ -184,12 +184,8 @@ pub fn material_palette(
         let Some(color) = getter() else {
             continue;
         };
-        let adjusted = adjust_material_color(
-            color.get_argb(&scheme),
-            scheme_name,
-            soften,
-            color_strength,
-        );
+        let adjusted =
+            adjust_material_color(color.get_argb(&scheme), scheme_name, soften, color_strength);
         palette.insert(snake_to_camel(&color.name), adjusted.to_hex());
     }
 
@@ -300,7 +296,11 @@ fn find_tone_for_contrast(
             break;
         }
         tone += direction * 0.25;
-        tone = if dark { tone.min(limit_tone) } else { tone.max(limit_tone) };
+        tone = if dark {
+            tone.min(limit_tone)
+        } else {
+            tone.max(limit_tone)
+        };
     }
     (best, best_tone, false, best_ratio)
 }
@@ -418,11 +418,23 @@ pub fn build_app_palette(base: &Palette) -> Palette {
         ("app_surface_hover", mix_hex(&layer1, &on_layer1, 0.92)),
         ("app_surface_active", mix_hex(&layer1, &on_layer1, 0.85)),
         ("app_surface_elevated", layer2.clone()),
-        ("app_surface_elevated_hover", mix_hex(&layer2, &on_layer2, 0.90)),
-        ("app_surface_elevated_active", mix_hex(&layer2, &on_layer2, 0.80)),
+        (
+            "app_surface_elevated_hover",
+            mix_hex(&layer2, &on_layer2, 0.90),
+        ),
+        (
+            "app_surface_elevated_active",
+            mix_hex(&layer2, &on_layer2, 0.80),
+        ),
         ("app_surface_popup", layer3.clone()),
-        ("app_surface_popup_hover", mix_hex(&layer3, &on_layer3, 0.90)),
-        ("app_surface_popup_active", mix_hex(&layer3, &on_layer3, 0.80)),
+        (
+            "app_surface_popup_hover",
+            mix_hex(&layer3, &on_layer3, 0.90),
+        ),
+        (
+            "app_surface_popup_active",
+            mix_hex(&layer3, &on_layer3, 0.80),
+        ),
         ("app_on_surface", on_layer1.clone()),
         ("app_on_surface_elevated", on_layer2),
         ("app_on_surface_popup", on_layer3.clone()),
@@ -434,7 +446,10 @@ pub fn build_app_palette(base: &Palette) -> Palette {
         ("app_accent_container", primary_container),
         ("app_selection", selection.clone()),
         ("app_selection_hover", mix_hex(&layer3, &primary, 0.74)),
-        ("app_on_selection", readable_hex(&on_layer3, &selection, 4.5)),
+        (
+            "app_on_selection",
+            readable_hex(&on_layer3, &selection, 4.5),
+        ),
         ("app_window_bg", layer0.clone()),
         ("app_view_bg", layer0.clone()),
         ("app_headerbar_bg", layer0.clone()),
@@ -455,7 +470,11 @@ fn hue_difference(first: f64, second: f64) -> f64 {
 }
 
 fn rotation_direction(from: f64, to: f64) -> f64 {
-    if (to - from).rem_euclid(360.0) <= 180.0 { 1.0 } else { -1.0 }
+    if (to - from).rem_euclid(360.0) <= 180.0 {
+        1.0
+    } else {
+        -1.0
+    }
 }
 
 fn harmonize(design: Argb, source: Argb, threshold: f64, harmony: f64) -> Argb {
@@ -463,9 +482,8 @@ fn harmonize(design: Argb, source: Argb, threshold: f64, harmony: f64) -> Argb {
     let source_hct = Hct::from_argb(source);
     let rotation = (hue_difference(design_hct.hue(), source_hct.hue()) * harmony).min(threshold);
     Hct::new(
-        (design_hct.hue()
-            + rotation * rotation_direction(design_hct.hue(), source_hct.hue()))
-        .rem_euclid(360.0),
+        (design_hct.hue() + rotation * rotation_direction(design_hct.hue(), source_hct.hue()))
+            .rem_euclid(360.0),
         design_hct.chroma(),
         design_hct.tone(),
     )
@@ -474,7 +492,12 @@ fn harmonize(design: Argb, source: Argb, threshold: f64, harmony: f64) -> Argb {
 
 fn boost_chroma_tone(argb: Argb, chroma: f64, tone: f64) -> Argb {
     let hct = Hct::from_argb(argb);
-    Hct::new(hct.hue(), hct.chroma() * chroma, (hct.tone() * tone).min(95.0)).to_argb()
+    Hct::new(
+        hct.hue(),
+        hct.chroma() * chroma,
+        (hct.tone() * tone).min(95.0),
+    )
+    .to_argb()
 }
 
 fn ensure_min_chroma(argb: Argb, minimum: f64) -> Argb {
@@ -511,8 +534,7 @@ fn interpolate_surface(material: &Palette, brightness: f64) -> String {
             let second = parse_hex(get(material, name, "#2A2A2A"))
                 .unwrap_or_else(|_| Argb::from_rgb(42, 42, 42));
             let channel = |a: u8, b: u8| {
-                (f64::from(a) + (f64::from(b) - f64::from(a)) * t)
-                    .clamp(0.0, 255.0) as u8
+                (f64::from(a) + (f64::from(b) - f64::from(a)) * t).clamp(0.0, 255.0) as u8
             };
             return Argb::from_rgb(
                 channel(first.red(), second.red()),
@@ -553,7 +575,10 @@ pub fn terminal_palette(
         return mapping
             .iter()
             .map(|(target, key, fallback)| {
-                ((*target).to_owned(), get(material, key, fallback).to_owned())
+                (
+                    (*target).to_owned(),
+                    get(material, key, fallback).to_owned(),
+                )
             })
             .collect();
     };
@@ -572,11 +597,17 @@ pub fn terminal_palette(
             continue;
         }
         if name == "term0" {
-            result.insert(name.clone(), interpolate_surface(material, settings.bg_brightness));
+            result.insert(
+                name.clone(),
+                interpolate_surface(material, settings.bg_brightness),
+            );
             continue;
         }
         if name == "term15" {
-            result.insert(name.clone(), get(material, "onSurface", "#E0E0E0").to_owned());
+            result.insert(
+                name.clone(),
+                get(material, "onSurface", "#E0E0E0").to_owned(),
+            );
             continue;
         }
         if name == "term8" {
@@ -617,7 +648,7 @@ pub fn terminal_palette(
                 1.0 + ((settings.brightness - 0.5) * 0.8 * if dark { 1.0 } else { -1.0 });
             tone_multiplier = (tone_multiplier
                 + settings.fg_boost * 0.25 * if dark { 1.0 } else { -1.0 })
-                .clamp(0.60, 1.45);
+            .clamp(0.60, 1.45);
             color = boost_chroma_tone(color, settings.saturation * 2.0, tone_multiplier);
             color = ensure_min_chroma(color, 40.0);
         }
@@ -638,14 +669,20 @@ pub fn terminal_palette(
             if let Some(value) = result.get(name).cloned()
                 && let Ok(color) = parse_hex(&value)
             {
-                result.insert(name.into(), ensure_contrast(color, background, 4.5, dark).to_hex());
+                result.insert(
+                    name.into(),
+                    ensure_contrast(color, background, 4.5, dark).to_hex(),
+                );
             }
         }
         for name in ["term9", "term10", "term11", "term12", "term13", "term14"] {
             if let Some(value) = result.get(name).cloned()
                 && let Ok(color) = parse_hex(&value)
             {
-                result.insert(name.into(), ensure_contrast(color, background, 3.5, dark).to_hex());
+                result.insert(
+                    name.into(),
+                    ensure_contrast(color, background, 3.5, dark).to_hex(),
+                );
             }
         }
     }
@@ -658,7 +695,12 @@ pub fn colors_contract(palette: &Palette, terminal: &Palette) -> Palette {
     result
 }
 
-pub fn scss_output(material: &Palette, terminal: &Palette, dark: bool, transparent: bool) -> String {
+pub fn scss_output(
+    material: &Palette,
+    terminal: &Palette,
+    dark: bool,
+    transparent: bool,
+) -> String {
     let mut output = format!(
         "$darkmode: {};\n$transparent: {};\n",
         if dark { "True" } else { "False" },
@@ -749,7 +791,11 @@ mod tests {
             ("onSurface", "#E3E5F0"),
             ("surfaceVariant", "#23262D"),
         ] {
-            assert_eq!(material.get(key).map(String::as_str), Some(expected), "{key}");
+            assert_eq!(
+                material.get(key).map(String::as_str),
+                Some(expected),
+                "{key}"
+            );
         }
     }
 

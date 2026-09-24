@@ -5,7 +5,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 use anyhow::{Context, Result};
 use clap::Subcommand;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 
 #[derive(Debug, Subcommand)]
 pub enum DesktopCommand {
@@ -19,7 +19,9 @@ pub fn run(command: DesktopCommand) -> Result<Value> {
 }
 
 fn home_dir() -> PathBuf {
-    std::env::var_os("HOME").map(PathBuf::from).unwrap_or_else(|| PathBuf::from("/"))
+    std::env::var_os("HOME")
+        .map(PathBuf::from)
+        .unwrap_or_else(|| PathBuf::from("/"))
 }
 
 fn config_home() -> PathBuf {
@@ -33,7 +35,9 @@ fn atomic_write(path: &Path, content: &str) -> Result<()> {
     fs::create_dir_all(parent)?;
     let temporary = parent.join(format!(
         ".{}.inir-native-{}.tmp",
-        path.file_name().and_then(|name| name.to_str()).unwrap_or("config"),
+        path.file_name()
+            .and_then(|name| name.to_str())
+            .unwrap_or("config"),
         std::process::id()
     ));
     {
@@ -154,10 +158,34 @@ fn sync_icon_theme(theme: &str) -> Result<Value> {
     let config = config_home();
     let results = vec![
         sync_one(&config.join("kdeglobals"), "Icons", "Theme", theme, false)?,
-        sync_one(&config.join("qt5ct/qt5ct.conf"), "Appearance", "icon_theme", theme, false)?,
-        sync_one(&config.join("qt6ct/qt6ct.conf"), "Appearance", "icon_theme", theme, false)?,
-        sync_one(&config.join("gtk-3.0/settings.ini"), "Settings", "gtk-icon-theme-name", theme, true)?,
-        sync_one(&config.join("gtk-4.0/settings.ini"), "Settings", "gtk-icon-theme-name", theme, true)?,
+        sync_one(
+            &config.join("qt5ct/qt5ct.conf"),
+            "Appearance",
+            "icon_theme",
+            theme,
+            false,
+        )?,
+        sync_one(
+            &config.join("qt6ct/qt6ct.conf"),
+            "Appearance",
+            "icon_theme",
+            theme,
+            false,
+        )?,
+        sync_one(
+            &config.join("gtk-3.0/settings.ini"),
+            "Settings",
+            "gtk-icon-theme-name",
+            theme,
+            true,
+        )?,
+        sync_one(
+            &config.join("gtk-4.0/settings.ini"),
+            "Settings",
+            "gtk-icon-theme-name",
+            theme,
+            true,
+        )?,
     ];
     Ok(json!({"ok": true, "theme": theme, "files": results}))
 }
@@ -170,7 +198,9 @@ mod tests {
     fn updates_existing_key_without_destroying_other_sections() {
         let output = set_ini_key(
             "[Icons]\nTheme=old\nFoo=bar\n\n[Other]\nX=1\n",
-            "Icons", "Theme", "new"
+            "Icons",
+            "Theme",
+            "new",
         );
         assert!(output.contains("[Icons]\nTheme=new\nFoo=bar"));
         assert!(output.contains("[Other]\nX=1"));
@@ -178,15 +208,19 @@ mod tests {
 
     #[test]
     fn creates_missing_section() {
-        assert!(set_ini_key("[Other]\nX=1\n", "Icons", "Theme", "WhiteSur-dark")
-            .contains("[Icons]\nTheme=WhiteSur-dark"));
+        assert!(
+            set_ini_key("[Other]\nX=1\n", "Icons", "Theme", "WhiteSur-dark")
+                .contains("[Icons]\nTheme=WhiteSur-dark")
+        );
     }
 
     #[test]
     fn preserves_comments_and_inserts_missing_key() {
         let output = set_ini_key(
             "[Appearance]\n# keep me\nstyle=Fusion\n",
-            "Appearance", "icon_theme", "Papirus"
+            "Appearance",
+            "icon_theme",
+            "Papirus",
         );
         assert!(output.contains("# keep me"));
         assert!(output.contains("icon_theme=Papirus"));

@@ -118,8 +118,7 @@ fn is_lock_candidate(device: &Device) -> bool {
 
     let has_relevant_key =
         keys.contains(KeyCode::KEY_CAPSLOCK) || keys.contains(KeyCode::KEY_NUMLOCK);
-    let has_relevant_led =
-        leds.contains(LedCode::LED_CAPSL) || leds.contains(LedCode::LED_NUML);
+    let has_relevant_led = leds.contains(LedCode::LED_CAPSL) || leds.contains(LedCode::LED_NUML);
     has_relevant_key && has_relevant_led
 }
 
@@ -192,13 +191,19 @@ fn aggregate_lock(
 
     let previous_caps = previous.map(|state| state.0);
     let previous_num = previous.map(|state| state.1);
-    let caps = aggregate(lock_devices.clone().map(|device| device.caps), previous_caps)?;
+    let caps = aggregate(
+        lock_devices.clone().map(|device| device.caps),
+        previous_caps,
+    )?;
     let num = aggregate(lock_devices.map(|device| device.num), previous_num)?;
     Some((caps, num, count))
 }
 
 fn key_device_count(devices: &HashMap<PathBuf, DeviceRuntime>) -> usize {
-    devices.values().filter(|device| device.key_candidate).count()
+    devices
+        .values()
+        .filter(|device| device.key_candidate)
+        .count()
 }
 
 fn key_pressed(devices: &HashMap<PathBuf, DeviceRuntime>, code: u16) -> bool {
@@ -309,12 +314,7 @@ fn spawn_device_thread(
     });
 }
 
-fn add_device(
-    path: &Path,
-    state: &mut MonitorState,
-    tx: &Sender<InternalEvent>,
-    mode: StreamMode,
-) {
+fn add_device(path: &Path, state: &mut MonitorState, tx: &Sender<InternalEvent>, mode: StreamMode) {
     let Ok(device) = Device::open(path) else {
         return;
     };
@@ -360,11 +360,7 @@ fn add_device(
     );
 }
 
-fn refresh_devices(
-    state: &mut MonitorState,
-    tx: &Sender<InternalEvent>,
-    mode: StreamMode,
-) {
+fn refresh_devices(state: &mut MonitorState, tx: &Sender<InternalEvent>, mode: StreamMode) {
     let paths = event_paths();
     let discovered = paths.iter().cloned().collect::<HashSet<_>>();
 
@@ -610,13 +606,19 @@ mod tests {
     #[test]
     fn aggregate_matches_python_majority_rule() {
         assert_eq!(aggregate([true, true, false].into_iter(), None), Some(true));
-        assert_eq!(aggregate([false, false, true].into_iter(), None), Some(false));
+        assert_eq!(
+            aggregate([false, false, true].into_iter(), None),
+            Some(false)
+        );
     }
 
     #[test]
     fn aggregate_keeps_previous_on_tie() {
         assert_eq!(aggregate([true, false].into_iter(), Some(true)), Some(true));
-        assert_eq!(aggregate([true, false].into_iter(), Some(false)), Some(false));
+        assert_eq!(
+            aggregate([true, false].into_iter(), Some(false)),
+            Some(false)
+        );
         assert_eq!(aggregate([true, false].into_iter(), None), Some(false));
     }
 

@@ -2,7 +2,7 @@ use std::fs::File;
 use std::io::BufReader;
 use std::path::Path;
 
-use anyhow::{anyhow, Context, Result};
+use anyhow::{Context, Result, anyhow};
 use image::codecs::gif::GifDecoder;
 use image::imageops::FilterType;
 use image::{AnimationDecoder, DynamicImage, GenericImageView};
@@ -110,11 +110,7 @@ pub fn auto_detect_scheme(image: &DynamicImage) -> &'static str {
         let max = red.max(green).max(blue);
         let min = red.min(green).min(blue);
         let delta = max - min;
-        saturation.push(if max > 0.0 {
-            delta / max * 255.0
-        } else {
-            0.0
-        });
+        saturation.push(if max > 0.0 { delta / max * 255.0 } else { 0.0 });
         let value = if delta <= f64::EPSILON {
             0.0
         } else if (max - red).abs() <= f64::EPSILON {

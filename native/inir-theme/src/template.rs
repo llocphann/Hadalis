@@ -9,7 +9,7 @@ use material_color_utils::utils::color_utils::Argb;
 use regex::{Captures, Regex};
 use serde_json::Value;
 
-use crate::palette::{build_app_palette, material_palette, palette_contract, Palette};
+use crate::palette::{Palette, build_app_palette, material_palette, palette_contract};
 
 #[derive(Debug, Clone)]
 struct TemplateEntry {
@@ -27,7 +27,9 @@ struct TokenValue {
 
 fn expand_user(path: &str) -> PathBuf {
     if path == "~" {
-        return env::var_os("HOME").map(PathBuf::from).unwrap_or_else(|| PathBuf::from(path));
+        return env::var_os("HOME")
+            .map(PathBuf::from)
+            .unwrap_or_else(|| PathBuf::from(path));
     }
     if let Some(rest) = path.strip_prefix("~/")
         && let Some(home) = env::var_os("HOME")
@@ -121,7 +123,9 @@ fn manifest_entries(
                 if !template_path.is_file()
                     && let Some((_, relative)) = input.split_once("/templates/")
                 {
-                    let candidate = template_dir.join("templates").join(relative.trim_start_matches('/'));
+                    let candidate = template_dir
+                        .join("templates")
+                        .join(relative.trim_start_matches('/'));
                     if candidate.is_file() {
                         template_path = candidate;
                     }
@@ -222,7 +226,10 @@ fn token_namespace(
     for name in names {
         let value = TokenValue {
             dark: dark.get(&name).cloned().unwrap_or_else(|| "#000000".into()),
-            light: light.get(&name).cloned().unwrap_or_else(|| "#000000".into()),
+            light: light
+                .get(&name)
+                .cloned()
+                .unwrap_or_else(|| "#000000".into()),
             default: default
                 .get(&name)
                 .cloned()
@@ -269,9 +276,7 @@ fn resolve_expression(
     let property = parts[3];
 
     let Some(token_value) = colors.get(token) else {
-        eprintln!(
-            "[render-templates] WARNING: unresolved token '{token}' in {whole}"
-        );
+        eprintln!("[render-templates] WARNING: unresolved token '{token}' in {whole}");
         return whole.to_owned();
     };
     let hex = match mode {
@@ -299,9 +304,8 @@ fn resolve_expression(
     }
 }
 
-static TEMPLATE_TOKEN_RE: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r"\{\{\s*(.*?)\s*\}\}").expect("template token regex")
-});
+static TEMPLATE_TOKEN_RE: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"\{\{\s*(.*?)\s*\}\}").expect("template token regex"));
 
 fn render_content(
     content: &str,
@@ -377,8 +381,9 @@ pub fn render_templates(request: RenderRequest<'_>) -> Result<usize> {
             .ok()
             .is_some_and(|existing| existing == rendered.as_bytes());
         if !unchanged {
-            fs::write(&entry.output_path, rendered)
-                .with_context(|| format!("write rendered template {}", entry.output_path.display()))?;
+            fs::write(&entry.output_path, rendered).with_context(|| {
+                format!("write rendered template {}", entry.output_path.display())
+            })?;
         }
         rendered_count += 1;
     }

@@ -920,12 +920,15 @@ fn fetch_mpd_art(client: &mut MpdClient, uri: &str) -> Option<(Vec<u8>, String)>
     None
 }
 
-fn populate_library_art(client: &mut MpdClient, tracks: &mut [Map<String, Value>]) {
+fn populate_library_art(
+    client: &mut MpdClient,
+    tracks: &mut [Map<String, Value>],
+    art_lookup: &mut ArtLookup,
+) {
     let mut groups: BTreeMap<String, Vec<usize>> = BTreeMap::new();
-    let mut art_lookup = ArtLookup::default();
 
     for (index, track) in tracks.iter_mut().enumerate() {
-        if !track_value(track, "art").is_empty() {
+        if !track_str(track, "art").is_empty() {
             continue;
         }
         let cached = art_lookup.cached_art(track);
@@ -940,8 +943,8 @@ fn populate_library_art(client: &mut MpdClient, tracks: &mut [Map<String, Value>
         let Some(&first_index) = indexes.first() else {
             continue;
         };
-        let uri = track_value(&tracks[first_index], "uri");
-        let Some((data, mime)) = fetch_mpd_art(client, &uri) else {
+        let Some((data, mime)) = fetch_mpd_art(client, track_str(&tracks[first_index], "uri"))
+        else {
             continue;
         };
         let Ok(art) = write_cached_art(&art_lookup.cache, &tracks[first_index], &data, &mime)
@@ -951,6 +954,9 @@ fn populate_library_art(client: &mut MpdClient, tracks: &mut [Map<String, Value>
         if art.is_empty() {
             continue;
         }
+        art_lookup
+            .cached
+            .insert(art_cache_key(&tracks[first_index]), art.clone());
         for index in indexes {
             tracks[*index].insert("art".into(), json!(art));
         }
@@ -978,7 +984,7 @@ fn snapshot(client: &mut MpdClient, root: &str) -> Result<Value> {
             track_value(track, "uri").to_ascii_lowercase(),
         )
     });
-    populate_library_art(client, &mut tracks);
+    populate_library_art(client, &mut tracks, &mut art_lookup);
 
     let playlist_lines = client.command("listplaylists", std::iter::empty::<&str>())?;
     let mut playlist_names = playlist_lines

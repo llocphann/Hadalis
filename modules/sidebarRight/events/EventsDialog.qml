@@ -19,7 +19,7 @@ WindowDialog {
         : Appearance.auroraEverywhere ? Appearance.aurora.colDialogSurface
         : Appearance.colors.colSurfaceContainerHigh
 
-    component EventSectionHeader: EventSectionHeader {
+    component EventSectionHeader: WindowDialogSectionHeader {
         color: Appearance.colors.colOnSurfaceVariant
         font.pixelSize: root.embeddedPresentation
             ? Appearance.font.pixelSize.small

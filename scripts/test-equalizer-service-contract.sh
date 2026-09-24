@@ -157,9 +157,10 @@ for token in (
     require(helper, token, "equalizer-control.sh")
 
 # UI owns only facade calls. It must not contain backend/socket/preset-file logic.
-# The panel now merges the real shared CAVA spectrum and the editable DSP curve
-# into one graph. The ten vertical Slider instances are the graph nodes
-# themselves; there must not be a second, detached slider row below the graph.
+# CAVA bars and the DSP controls share one graph. The only Slider declaration
+# is the ten-band node delegate inside that graph; the connector itself restores
+# the old three-layer electric-current animation without bringing back the
+# detached lower slider row.
 for token in (
     "EqualizerService.registerConsumer()",
     "EqualizerService.unregisterConsumer()",
@@ -173,15 +174,31 @@ for token in (
     "model: EqualizerService.dspBands",
     "function curvePoint()",
     "handleItem.mapToItem(",
-    "ctx.bezierCurveTo(",
     "EqualizerService.setDspBandGain(",
     "function applyPreset(name): void",
     "EqualizerService.applyDspPreset(name)",
+    "property real eqLightningHighlight: 0.0",
+    "property real eqPresetSweepProgress: -0.12",
+    "function triggerEqLightning(): void",
+    "function triggerPresetSweep(): void",
+    "function beginBandLightning(index, gain): void",
+    "function previewBandLightning(index, gain): void",
+    "function endBandLightning(index, gain): void",
+    "id: presetSweepAnim",
+    "id: eqLightningAnim",
+    'property: "eqPresetSweepProgress"',
+    "const sweepTail = 0.22",
+    "const sweepLead = 0.035",
+    "ctx.lineWidth = 5.5",
+    "ctx.lineWidth = 2.4",
+    "ctx.lineWidth = 1.0",
     "id: bandRepeater",
     "cursorShape: bandSlider.enabled",
     "Qt.SizeVerCursor",
     "uniformCellWidths: true",
     "implicitHeight: root.compactLayout ? 22 : 24",
+    "RowLayout {",
+    "Layout.alignment: Qt.AlignVCenter",
 ):
     require(panel, token, "EqualizerPanel")
 for token in (
@@ -190,9 +207,7 @@ for token in (
     "equalizer-control.sh",
     "load_preset:output:",
     "id: lightningCanvas",
-    "eqLightningHighlight",
-    "eqPresetSweepProgress",
-    "triggerPresetSweep",
+    "ctx.bezierCurveTo(",
 ):
     forbid(panel, token, "EqualizerPanel")
 

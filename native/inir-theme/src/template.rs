@@ -2,6 +2,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::env;
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::sync::LazyLock;
 
 use anyhow::{Context, Result};
 use material_color_utils::utils::color_utils::Argb;
@@ -298,13 +299,16 @@ fn resolve_expression(
     }
 }
 
+static TEMPLATE_TOKEN_RE: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r"\{\{\s*(.*?)\s*\}\}").expect("template token regex")
+});
+
 fn render_content(
     content: &str,
     colors: &BTreeMap<String, TokenValue>,
     image: Option<&Path>,
 ) -> Result<String> {
-    let pattern = Regex::new(r"\{\{\s*(.*?)\s*\}\}")?;
-    Ok(pattern
+    Ok(TEMPLATE_TOKEN_RE
         .replace_all(content, |captures: &Captures<'_>| {
             resolve_expression(
                 captures.get(0).map_or("", |value| value.as_str()),
@@ -369,8 +373,13 @@ pub fn render_templates(request: RenderRequest<'_>) -> Result<usize> {
             );
             fs::remove_file(&entry.output_path)?;
         }
-        fs::write(&entry.output_path, rendered)
-            .with_context(|| format!("write rendered template {}", entry.output_path.display()))?;
+        let unchanged = fs::read(&entry.output_path)
+            .ok()
+            .is_some_and(|existing| existing == rendered.as_bytes());
+        if !unchanged {
+            fs::write(&entry.output_path, rendered)
+                .with_context(|| format!("write rendered template {}", entry.output_path.display()))?;
+        }
         rendered_count += 1;
     }
 

@@ -11,14 +11,13 @@ import qs.services
 Singleton {
     id: root
 
-    // Screen Time now feeds both its Sidebar page and Dashboard's Uptime tab.
-    // Keep one service/data store; Dashboard enablement is enough to keep the
-    // focused-window tracker alive so the Uptime tab has a full-session history
-    // even before the user opens that tab.
+    // The Material notification-center Activity tab owns focused-app usage.
+    // Keep Waffle's existing opt-in switch, but on ii track for the session only
+    // when ScreenCorners (the Activity popup host) is enabled.
     readonly property bool enabled:
         (Config.options?.sidebar?.screenTime?.enable ?? false)
         || ((Config.options?.panelFamily ?? "ii") !== "waffle"
-            && (Config.options?.dashboard?.enable ?? true))
+            && (Config.options?.enabledPanels ?? []).includes("iiScreenCorners"))
     property bool ready: false
 
     property var _todayData: null

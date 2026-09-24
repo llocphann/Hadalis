@@ -1043,7 +1043,9 @@ fn snapshot(client: &mut MpdClient, root: &str) -> Result<Value> {
                 .push(Value::Object(track.clone()));
         }
     }
-    let folder_values = folders
+    let mut folder_entries = folders.into_iter().collect::<Vec<_>>();
+    folder_entries.sort_by_cached_key(|(folder, _)| folder.to_lowercase());
+    let folder_values = folder_entries
         .into_iter()
         .filter(|(_, tracks)| tracks.len() >= 2)
         .map(|(folder, tracks)| {

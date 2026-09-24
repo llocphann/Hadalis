@@ -369,6 +369,8 @@ DEBIAN_CORE_PKGS=(
   cmake
   ninja-build
   pkg-config
+  rustc
+  cargo
 
   # Icon themes - fallbacks (always available from repos)
   hicolor-icon-theme

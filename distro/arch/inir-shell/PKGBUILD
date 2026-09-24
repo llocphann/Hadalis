@@ -1,8 +1,8 @@
 pkgname=inir-shell
 pkgver=2.29.3
-pkgrel=12
+pkgrel=13
 pkgdesc='Hadalis shell payload, launcher, and user service'
-arch=(any)
+arch=('x86_64')
 url='https://github.com/llocphann/Hadalis'
 license=('GPL-3.0-only')
 install=inir-shell.install
@@ -13,6 +13,7 @@ _source_ref="${INIR_SOURCE_REF:-34f3edd4eb2cbb3162f431eda4b942aa111ed328}"
 _default_source_archive="https://github.com/llocphann/Hadalis/archive/${_source_ref}.tar.gz"
 _source_archive="${INIR_SOURCE_ARCHIVE:-${_default_source_archive}}"
 _source_dir="${INIR_SOURCE_DIR:-Hadalis-${_source_ref}}"
+makedepends=(cargo)
 depends=(
   bash
   brightnessctl
@@ -119,6 +120,17 @@ source=(
 )
 sha256sums=('SKIP')
 
+prepare() {
+  cd "$srcdir/${_source_dir}"
+  cargo fetch --locked --manifest-path native/Cargo.toml --target "$(rustc -vV | sed -n 's/^host: //p')"
+}
+
+build() {
+  cd "$srcdir/${_source_dir}"
+  export CARGO_TARGET_DIR="$srcdir/inir-native-target"
+  cargo build --frozen --release --workspace --manifest-path native/Cargo.toml
+}
+
 package() {
   local srcroot="${srcdir}/${_source_dir}"
   local shellroot="${pkgdir}/usr/share/quickshell/inir"
@@ -127,6 +139,8 @@ package() {
   timestamp="$(date -Iseconds)"
 
   python3 "$srcroot/sdata/lib/runtime-payload.py" copy --root "$srcroot" --target "$shellroot" || return
+  mkdir -p "$shellroot/native/bin"
+  for binary in inir-inputd inir-mpdd inir-native inir-theme; do install -Dm0755 "$srcdir/inir-native-target/release/$binary" "$shellroot/native/bin/$binary"; done
   # The pinned 2.29.3 snapshot predates qmldir in the canonical root manifest.
   install -Dm644 "$srcroot/qmldir" "$shellroot/qmldir"
   chmod +x "$shellroot/setup" "$shellroot/scripts/inir"

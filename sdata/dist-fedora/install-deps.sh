@@ -161,6 +161,8 @@ FEDORA_CORE_PKGS=(
   cmake
   pkg-config
   python3-devel
+  rust
+  cargo
   dbus-devel
   cairo-devel
   cairo-gobject-devel

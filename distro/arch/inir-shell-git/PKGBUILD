@@ -1,8 +1,8 @@
 pkgname=inir-shell-git
 pkgver=2.29.3.r0.g0000000
-pkgrel=8
+pkgrel=9
 pkgdesc='Hadalis shell payload, launcher, and user service (git)'
-arch=(any)
+arch=('x86_64')
 url='https://github.com/llocphann/Hadalis'
 license=('GPL-3.0-only')
 depends=(
@@ -106,7 +106,7 @@ optdepends=(
   'python-ytmusicapi: YouTube Music browsing (InnerTube engine)'
   'millennium-bin: Steam theming via Millennium (requires steam)'
 )
-makedepends=(git)
+makedepends=(git cargo)
 install=inir-shell-git.install
 provides=('inir-shell')
 conflicts=('inir-shell' 'noctalia-qs' 'noctalia-shell' 'cachyos-niri-noctalia')
@@ -122,6 +122,17 @@ pkgver() {
   printf '%s.r%s.g%s' "$base" "$(git rev-list --count HEAD)" "$(git rev-parse --short HEAD)"
 }
 
+prepare() {
+  cd "$srcdir/inir"
+  cargo fetch --locked --manifest-path native/Cargo.toml --target "$(rustc -vV | sed -n 's/^host: //p')"
+}
+
+build() {
+  cd "$srcdir/inir"
+  export CARGO_TARGET_DIR="$srcdir/inir-native-target"
+  cargo build --frozen --release --workspace --manifest-path native/Cargo.toml
+}
+
 package() {
   local srcroot="${srcdir}/inir"
   local shellroot="${pkgdir}/usr/share/quickshell/inir"
@@ -132,6 +143,8 @@ package() {
   commit="$(git -C "$srcroot" rev-parse --short HEAD)"
 
   python3 "$srcroot/sdata/lib/runtime-payload.py" copy --root "$srcroot" --target "$shellroot" || return
+  mkdir -p "$shellroot/native/bin"
+  for binary in inir-inputd inir-mpdd inir-native inir-theme; do install -Dm0755 "$srcdir/inir-native-target/release/$binary" "$shellroot/native/bin/$binary"; done
   chmod +x "$shellroot/setup" "$shellroot/scripts/inir"
   find "$shellroot/scripts" -type f \( -name '*.sh' -o -name '*.fish' -o -name '*.py' \) -exec chmod +x {} +
   python3 -c 'from pathlib import Path; import sys; p=Path(sys.argv[1]); t=p.read_text(); m="sync_launcher_from_repo() {\n"; assert t.count(m) == 1, "expected one sync_launcher_from_repo definition"; g=m+"    if [[ \"$(get_installed_update_strategy 2>/dev/null || true)\" == \"package-manager\" ]]; then\n        return 0\n    fi\n"; p.write_text(t.replace(m, g, 1))' "$shellroot/setup"

@@ -1,12 +1,13 @@
 pkgbase = inir-shell-git
 	pkgdesc = Hadalis shell payload, launcher, and user service (git)
 	pkgver = 2.29.3.r0.g0000000
-	pkgrel = 8
+	pkgrel = 9
 	url = https://github.com/llocphann/Hadalis
 	install = inir-shell-git.install
-	arch = any
+	arch = x86_64
 	license = GPL-3.0-only
 	makedepends = git
+	makedepends = cargo
 	depends = bash
 	depends = brightnessctl
 	depends = cliphist

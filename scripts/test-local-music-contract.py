@@ -43,6 +43,8 @@ for token in (
     'root.nativeDispatchPath, "mpd", "status",',
     'root.nativeDispatchPath, "mpd-daemon",',
     'command: [root.nativeDispatchPath, "mpd-subscribe"]',
+    'if (event.payload && typeof event.payload === "object")',
+    'function _scheduleStatusFallback(): void',
     '_lyricsProc.command = [root.nativeDispatchPath, "lyrics", path]',
     'readonly property var mprisPlayer: MprisController.mpdPlayer',
     'MprisController.ensureMpdMprisBridge(mpdHost, mpdPort)',

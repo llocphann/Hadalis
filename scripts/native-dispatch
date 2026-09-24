@@ -2,7 +2,13 @@
 set -uo pipefail
 
 ROOT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
-MODE="${INIR_NATIVE_BACKEND:-python}"
+STATE_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/inir"
+MODE_FILE="$STATE_DIR/native-backend"
+MODE="${INIR_NATIVE_BACKEND:-}"
+if [[ -z "$MODE" && -r "$MODE_FILE" ]]; then
+    IFS= read -r MODE < "$MODE_FILE" || true
+fi
+MODE="${MODE:-python}"
 BIN_DIR="${INIR_NATIVE_BIN_DIR:-$ROOT_DIR/native/target/release}"
 STRICT="${INIR_NATIVE_STRICT:-0}"
 

@@ -36,6 +36,8 @@ grep -Fq '/inir-native[[:space:]]+diagnostics' "$root/scripts/inir"     || fail 
 # The trial cutover harness must remain reversible.
 grep -Fq 'measure_service_mode rust' "$harness"     || fail 'cutover harness must activate and measure Rust explicitly'
 grep -Fq 'INIR_NATIVE_BACKEND=python' "$harness"     || fail 'cutover harness must provide Python rollback'
+grep -Fq 'BACKEND_STATE_FILE="$STATE_DIR/native-backend"' "$harness"     || fail 'cutover harness must persist selector state for Niri-spawned helpers'
+grep -Fq 'MODE_FILE="$STATE_DIR/native-backend"' "$dispatch"     || fail 'native-dispatch must read persistent selector state when env is absent'
 grep -Fq -- '--restore' "$harness"     || fail 'cutover harness must expose --restore'
 
 # Never remove the Python fallback while this is still a trial cutover.

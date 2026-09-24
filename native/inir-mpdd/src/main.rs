@@ -1830,8 +1830,8 @@ mod tests {
     use std::time::Duration;
 
     use super::{
-        MpdClient, MpdManager, legacy_request, lrc_stamp_seconds, pairs, parse_lrc, quote,
-        records, status_payload_mode,
+        MpdClient, MpdManager, legacy_request, lrc_stamp_seconds, pairs, parse_lrc, quote, records,
+        status_payload_mode,
     };
     use serde_json::json;
 
@@ -1991,8 +1991,7 @@ mod tests {
         {
             let mut client =
                 MpdClient::connect("127.0.0.1", port).expect("connect playlist fake MPD");
-            let payload =
-                status_payload_mode(&mut client, "", true).expect("read playlist status");
+            let payload = status_payload_mode(&mut client, "", true).expect("read playlist status");
             let queue = payload["queue"].as_array().expect("queue array");
             assert_eq!(queue.len(), 2);
             assert_eq!(queue[0]["queueId"], 10);

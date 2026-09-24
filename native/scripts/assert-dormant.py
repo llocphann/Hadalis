@@ -118,16 +118,16 @@ def main() -> int:
                     )
 
     if violations:
-        print("Native trial-cutover guard failed:")
+        print("Native production-boundary guard failed:")
         for violation in violations:
             print(f"  - {violation}")
         print(
-            "Runtime/package paths must use scripts/native-dispatch rather than "
+            "Runtime call sites must use scripts/native-dispatch rather than "
             "binding directly to Rust binaries."
         )
         return 1
 
-    print("Native trial-cutover guard: PASS (runtime paths do not bind directly to Rust binaries)")
+    print("Native production-boundary guard: PASS (runtime call sites do not bind directly to Rust binaries)")
     return 0
 
 

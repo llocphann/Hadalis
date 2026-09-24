@@ -66,7 +66,7 @@ jobs:
         with:
           components: rustfmt, clippy
 
-      - name: Assert reversible native cutover boundary
+      - name: Assert production native selector boundary
         run: |
           python3 native/scripts/assert-dormant.py
           bash -n scripts/native-dispatch

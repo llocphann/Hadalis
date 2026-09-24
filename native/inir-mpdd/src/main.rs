@@ -1899,8 +1899,9 @@ mod tests {
     use std::time::Duration;
 
     use super::{
-        MpdClient, MpdManager, art_cache_key, art_filename_rank, legacy_request, lrc_stamp_seconds,
-        pairs, parse_lrc, quote, records, status_payload_mode, status_payload_mode_with_art,
+        ART_EXTENSIONS, MpdClient, MpdManager, art_cache_key, art_filename_rank, legacy_request,
+        lrc_stamp_seconds, pairs, parse_lrc, quote, records, status_payload_mode,
+        status_payload_mode_with_art,
     };
     use serde_json::json;
 

@@ -222,14 +222,18 @@ fn emit(message: InputMessage) -> bool {
     out.write_all(b"\n").and_then(|_| out.flush()).is_ok()
 }
 
-fn emit_lock_if_changed(state: &mut MonitorState, force: bool) -> bool {
+fn emit_lock_if_changed(
+    state: &mut MonitorState,
+    force: bool,
+    emit_message: &mut impl FnMut(InputMessage) -> bool,
+) -> bool {
     let Some((caps, num, count)) = aggregate_lock(&state.devices, state.last_lock) else {
         return true;
     };
 
     let next = (caps, num);
     if (force || state.last_lock != Some(next))
-        && !emit(InputMessage::State {
+        && !emit_message(InputMessage::State {
             caps,
             num,
             devices: count,
@@ -241,10 +245,14 @@ fn emit_lock_if_changed(state: &mut MonitorState, force: bool) -> bool {
     true
 }
 
-fn emit_ready_if_changed(state: &mut MonitorState, force: bool) -> bool {
+fn emit_ready_if_changed(
+    state: &mut MonitorState,
+    force: bool,
+    emit_message: &mut impl FnMut(InputMessage) -> bool,
+) -> bool {
     let count = key_device_count(&state.devices);
     if (force || state.last_key_device_count != Some(count))
-        && !emit(InputMessage::Ready { devices: count })
+        && !emit_message(InputMessage::Ready { devices: count })
     {
         return false;
     }
@@ -473,14 +481,15 @@ fn process_event(
     state: &mut MonitorState,
     tx: &Sender<InternalEvent>,
     mode: StreamMode,
+    emit_message: &mut impl FnMut(InputMessage) -> bool,
 ) -> bool {
     match event {
         InternalEvent::Hotplug => {
             refresh_devices(state, tx, mode);
-            if mode.wants_locks() && !emit_lock_if_changed(state, false) {
+            if mode.wants_locks() && !emit_lock_if_changed(state, false, emit_message) {
                 return false;
             }
-            if mode.wants_keys() && !emit_ready_if_changed(state, false) {
+            if mode.wants_keys() && !emit_ready_if_changed(state, false, emit_message) {
                 return false;
             }
         }
@@ -497,7 +506,7 @@ fn process_event(
                 {
                     for code in removed.pressed {
                         if !key_pressed(&state.devices, code)
-                            && !emit(InputMessage::Key {
+                            && !emit_message(InputMessage::Key {
                                 code,
                                 pressed: false,
                             })
@@ -506,10 +515,10 @@ fn process_event(
                         }
                     }
                 }
-                if mode.wants_locks() && !emit_lock_if_changed(state, false) {
+                if mode.wants_locks() && !emit_lock_if_changed(state, false, emit_message) {
                     return false;
                 }
-                if mode.wants_keys() && !emit_ready_if_changed(state, false) {
+                if mode.wants_keys() && !emit_ready_if_changed(state, false, emit_message) {
                     return false;
                 }
             }
@@ -526,7 +535,7 @@ fn process_event(
             {
                 device.caps = caps;
                 device.num = num;
-                if mode.wants_locks() && !emit_lock_if_changed(state, false) {
+                if mode.wants_locks() && !emit_lock_if_changed(state, false, emit_message) {
                     return false;
                 }
             }
@@ -555,7 +564,7 @@ fn process_event(
             let is_pressed = key_pressed(&state.devices, code);
             if mode.wants_keys()
                 && was_pressed != is_pressed
-                && !emit(InputMessage::Key {
+                && !emit_message(InputMessage::Key {
                     code,
                     pressed: is_pressed,
                 })
@@ -570,19 +579,20 @@ fn process_event(
 fn run_stream(mode: StreamMode) -> i32 {
     let (tx, rx): (Sender<InternalEvent>, Receiver<InternalEvent>) = mpsc::channel();
     let mut state = MonitorState::default();
+    let mut emit_message = emit;
 
     refresh_devices(&mut state, &tx, mode);
-    if mode.wants_locks() && !emit_lock_if_changed(&mut state, true) {
+    if mode.wants_locks() && !emit_lock_if_changed(&mut state, true, &mut emit_message) {
         return 0;
     }
-    if mode.wants_keys() && !emit_ready_if_changed(&mut state, true) {
+    if mode.wants_keys() && !emit_ready_if_changed(&mut state, true, &mut emit_message) {
         return 0;
     }
 
     spawn_hotplug_watcher(tx.clone());
 
     while let Ok(event) = rx.recv() {
-        if !process_event(event, &mut state, &tx, mode) {
+        if !process_event(event, &mut state, &tx, mode, &mut emit_message) {
             break;
         }
     }
@@ -601,7 +611,15 @@ fn main() {
 
 #[cfg(test)]
 mod tests {
-    use super::{StreamMode, aggregate};
+    use std::collections::HashSet;
+    use std::path::PathBuf;
+    use std::sync::mpsc;
+
+    use inir_protocol::InputMessage;
+
+    use super::{
+        DeviceRuntime, InternalEvent, MonitorState, StreamMode, aggregate, process_event,
+    };
 
     #[test]
     fn aggregate_matches_python_majority_rule() {
@@ -625,6 +643,96 @@ mod tests {
     #[test]
     fn aggregate_empty_has_no_state() {
         assert_eq!(aggregate(std::iter::empty(), None), None);
+    }
+
+    #[test]
+    fn synthetic_key_stream_preserves_aggregate_press_and_hot_unplug_release() {
+        let first = PathBuf::from("/fixture/event1");
+        let second = PathBuf::from("/fixture/event2");
+        let mut state = MonitorState::default();
+        for (path, token) in [(&first, 1), (&second, 2)] {
+            state.devices.insert(
+                path.clone(),
+                DeviceRuntime {
+                    token,
+                    lock_candidate: false,
+                    key_candidate: true,
+                    caps: false,
+                    num: false,
+                    pressed: HashSet::new(),
+                },
+            );
+        }
+        state.last_key_device_count = Some(2);
+
+        let (tx, _rx) = mpsc::channel();
+        let mut messages = Vec::new();
+        let mut capture = |message| {
+            messages.push(message);
+            true
+        };
+
+        assert!(process_event(
+            InternalEvent::KeyChanged {
+                path: first.clone(),
+                token: 1,
+                code: 30,
+                pressed: true,
+            },
+            &mut state,
+            &tx,
+            StreamMode::Keys,
+            &mut capture,
+        ));
+        assert!(process_event(
+            InternalEvent::KeyChanged {
+                path: second.clone(),
+                token: 2,
+                code: 30,
+                pressed: true,
+            },
+            &mut state,
+            &tx,
+            StreamMode::Keys,
+            &mut capture,
+        ));
+        assert!(process_event(
+            InternalEvent::KeyChanged {
+                path: first.clone(),
+                token: 1,
+                code: 30,
+                pressed: false,
+            },
+            &mut state,
+            &tx,
+            StreamMode::Keys,
+            &mut capture,
+        ));
+        assert!(process_event(
+            InternalEvent::DeviceGone {
+                path: second,
+                token: 2,
+            },
+            &mut state,
+            &tx,
+            StreamMode::Keys,
+            &mut capture,
+        ));
+
+        assert_eq!(
+            messages,
+            vec![
+                InputMessage::Key {
+                    code: 30,
+                    pressed: true,
+                },
+                InputMessage::Key {
+                    code: 30,
+                    pressed: false,
+                },
+                InputMessage::Ready { devices: 1 },
+            ]
+        );
     }
 
     #[test]

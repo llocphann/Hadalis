@@ -92,3 +92,9 @@ jobs:
         run: |
           cargo build --locked --manifest-path native/Cargo.toml -p inir-mpdd
           python3 native/scripts/check-mpd-mutation-parity.py native/target/debug/inir-mpdd
+
+      - name: Clipboard and diagnostics isolated parity
+        run: |
+          cargo build --locked --manifest-path native/Cargo.toml -p inir-native
+          python3 native/scripts/check-clipboard-parity.py native/target/debug/inir-native
+          python3 native/scripts/check-diagnostics-parity.py native/target/debug/inir-native

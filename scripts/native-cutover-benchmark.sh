@@ -388,6 +388,8 @@ run_gate "Niri parser regression" 8 python3 scripts/test-niri-config-structural-
 run_gate "Niri customization fixture parity" 8 python3 native/scripts/check-niri-customizations.py "$BIN_DIR/inir-native"
 run_gate "Niri isolated write parity" 8 python3 native/scripts/check-niri-write-parity.py "$BIN_DIR/inir-native"
 run_gate "MPD isolated mutation parity" 8 python3 native/scripts/check-mpd-mutation-parity.py "$BIN_DIR/inir-mpdd"
+run_gate "Clipboard corpus parity" 8 python3 native/scripts/check-clipboard-parity.py "$BIN_DIR/inir-native"
+run_gate "Diagnostics isolated value/lifecycle parity" 20 python3 native/scripts/check-diagnostics-parity.py "$BIN_DIR/inir-native"
 "$DISPATCH" backend-info
 for binary in inir-inputd inir-mpdd inir-native inir-theme; do
     if [[ -x "$BIN_DIR/$binary" ]]; then

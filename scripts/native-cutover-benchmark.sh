@@ -95,7 +95,21 @@ for _ in range(runs):
         sys.exit(1)
     samples.append((wall_ms, usage.ru_utime * 1000, usage.ru_stime * 1000,
                     usage.ru_maxrss))
-print(f"{label:<32} avg_wall={statistics.mean(row[0] for row in samples):.3f}ms "
+walls = sorted(row[0] for row in samples)
+def percentile(values, fraction):
+    if len(values) == 1:
+        return values[0]
+    position = (len(values) - 1) * fraction
+    lower = int(position)
+    upper = min(lower + 1, len(values) - 1)
+    weight = position - lower
+    return values[lower] * (1.0 - weight) + values[upper] * weight
+
+print(f"{label:<32} avg_wall={statistics.mean(walls):.3f}ms "
+      f"p50={statistics.median(walls):.3f}ms "
+      f"p95={percentile(walls, 0.95):.3f}ms "
+      f"min={walls[0]:.3f}ms max={walls[-1]:.3f}ms "
+      f"stdev={(statistics.stdev(walls) if len(walls) > 1 else 0.0):.3f}ms "
       f"avg_user={statistics.mean(row[1] for row in samples):.3f}ms "
       f"avg_sys={statistics.mean(row[2] for row in samples):.3f}ms "
       f"max_rss={max(row[3] for row in samples)}KiB runs={runs}")
@@ -383,6 +397,7 @@ else
 fi
 INIR_BENCH_STDIN="$TMP_ROOT/clip.in" bench "clipboard python" python3 scripts/clipboard-store.py --filter
 INIR_BENCH_STDIN="$TMP_ROOT/clip.in" bench "clipboard rust" "$BIN_DIR/inir-native" clipboard-filter --filter
+INIR_BENCH_STDIN="$TMP_ROOT/clip.in" INIR_NATIVE_BACKEND=rust INIR_NATIVE_BIN_DIR="$BIN_DIR"     bench "clipboard rust dispatch" "$ROOT_DIR/scripts/native-dispatch" clipboard-store --filter
 
 section "NIRI READ-ONLY PARITY + BENCHMARK"
 for op in outputs get-hot-corners get-input get-layout get-animations get-window-rules get-binds list-cursor-themes validate; do
@@ -402,6 +417,7 @@ for op in outputs get-hot-corners get-input get-layout get-animations get-window
     if (( py_rc == 0 && rs_rc == 0 )); then
         bench "niri $op python" python3 scripts/niri-config.py "$op"
         bench "niri $op rust" "$BIN_DIR/inir-native" niri "$op"
+        INIR_NATIVE_BACKEND=rust INIR_NATIVE_BIN_DIR="$BIN_DIR"             bench "niri $op rust dispatch" "$ROOT_DIR/scripts/native-dispatch" niri "$op"
     fi
 done
 
@@ -550,6 +566,7 @@ PY
 fi
 bench "theme python color-only" "${PY_THEME[@]}" "${THEME_ARGS[@]}" --json-output "$TMP_ROOT/bench-py.json"
 bench "theme rust color-only" "$BIN_DIR/inir-theme" "${THEME_ARGS[@]}" --json-output "$TMP_ROOT/bench-rs.json"
+INIR_NATIVE_BACKEND=rust INIR_NATIVE_BIN_DIR="$BIN_DIR"     bench "theme rust dispatch" "$ROOT_DIR/scripts/native-dispatch" theme     "${THEME_ARGS[@]}" --json-output "$TMP_ROOT/bench-rs-dispatch.json"
 mkdir -p "$TMP_ROOT/theme-bench-py" "$TMP_ROOT/theme-bench-rs"
 for backend in py rs; do
     if [[ "$backend" == py ]]; then
@@ -586,6 +603,7 @@ kv "input state parity" "$input_parity"
 [[ "$input_parity" == PASS ]] || block_activation "input state parity failed"
 bench "input probe python" python3 scripts/daemon/keyboard_lock_state_daemon.py --once
 bench "input probe rust" "$BIN_DIR/inir-inputd" --mode locks --once
+INIR_NATIVE_BACKEND=rust INIR_NATIVE_BIN_DIR="$BIN_DIR"     bench "input probe rust dispatch" "$ROOT_DIR/scripts/native-dispatch" input-lock --once
 proc_metrics "input python resident" python3 -u scripts/daemon/keyboard_lock_state_daemon.py || block_activation "Python input daemon exited early"
 proc_metrics "input rust resident" "$BIN_DIR/inir-inputd" --mode locks || block_activation "Rust input daemon exited early"
 proc_metrics "osk keys python resident" python3 -u scripts/daemon/osk_physical_key_daemon.py || block_activation "Python OSK key listener exited early"

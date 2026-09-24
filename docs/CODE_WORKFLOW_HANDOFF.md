@@ -155,20 +155,27 @@ module work, commit directly to `dev`, and never force-push or modify `stable`.
   shell IO from `/proc/<pid>/io`, shell DRM engine/memory evidence from fdinfo,
   non-loopback aggregate plus per-interface network rates from `/proc/net/dev`,
   and a PID-reuse-checked shell descendant process tree using `comm`, schedstat
-  and status on the 2 s slow-probe cadence. Material Diagnostics now presents
-  the shared evidence as a compact,
-  responsive btop-style dashboard with 60-sample CPU/RAM/Swap/GPU/network/IO
-  graphs, core meters, interface/process tables, Hadalis runtime metrics and the
-  Workflow-owned target/instance inspector. Remote Settings suppresses cached
-  Diagnostics evidence until the Diagnostics generation advances after reopen,
-  while a diagnostics-free runtime projection prevents 1 Hz resource samples
-  from republishing unchanged Workflow catalogs/records. Lease rejection,
-  IPC/sampler failures and stalled startup/live sampling remain
-  visible without keeping the sampler alive off-page. Waffle consumes the same
-  backend/lifecycle and exact detail evidence. This is shell/system evidence only:
-  per-component CPU/RAM/Swap/GPU/Network remains unavailable until a reviewed
-  attribution method exists, so Diagnostics must still not be described as full
-  btop-equivalent component attribution.
+  and status on the 2 s slow-probe cadence. `scripts/native-dispatch diagnostics`
+  uses the Rust `inir-native` backend by default; the Python sampler remains the
+  explicit rollback/failure fallback rather than a second production sampler.
+- Compact Runtime Diagnostics now follows the observability hierarchy used by
+  both Settings renderers. **Resource suspects** is the primary surface:
+  **Component hotspots** ranks only Workflow-owned lifecycle evidence from
+  timestamped `CodeWorkflowRuntime` events plus resident/visible instances,
+  reporting recent changes/min and explicitly stating that this is not CPU/RAM
+  attribution. **Top helper processes** uses the kernel-backed descendant list
+  and displays real per-process CPU plus RSS. Aggregate CPU, Memory, GPU and
+  Network are secondary context cards; the compact Hadalis strip carries the
+  shell PID, CPU, PSS-or-RSS, disk IO rates and helper count. Per-component
+  CPU/RAM/Swap/GPU/Network remains unavailable until a reviewed attribution
+  method exists.
+- Source-boundary discovery is optional parser capability, not sampler health.
+  An index status of `unavailable` (for example `grammar-missing`) therefore
+  leaves the boundary count unknown in Diagnostics instead of promoting the raw
+  capability reason into the red lease/sampler error channel. A genuine index
+  `error` still surfaces as a source-discovery error. Cached/hidden Settings
+  pages continue to release Diagnostics demand, and remote Settings still
+  suppresses stale evidence until a fresh Diagnostics generation arrives.
 - Future-target discovery has started at the existing ownership boundaries.
   Dynamic desktop custom widgets now register loaded instances through
   `CodeWorkflowRuntimeTarget` using the manifest ID under the Workflow-owned

@@ -325,7 +325,7 @@ Singleton {
         running: root.enabled && Config.ready
         onTriggered: {
             print("[ShellUpdates] Loading repo path from version.json...")
-            loadRepoPathProc.running = true
+            root._loadVersionMetadata()
         }
     }
 
@@ -438,67 +438,72 @@ Singleton {
         command: ["rm", "-f", Directories.updateStatusPath]
     }
 
-    // Load repo path from version.json (stored in shellConfig dir, NOT in quickshell config dir)
-    Process {
-        id: loadRepoPathProc
-        property bool _handledFallback: false
-        running: false
-        onRunningChanged: if (running) _handledFallback = false
-        command: ["cat", Directories.shellConfig + "/version.json"]
-        stdout: StdioCollector {
-            onStreamFinished: {
-                try {
-                    const json = JSON.parse(text ?? "{}")
-                    // Extract version from version.json (always available even if VERSION file missing)
-                    if (json.version && json.version !== "0.0.0") {
-                        root.localVersion = json.version
-                    }
-                    const storedInstallMode = json.installMode ?? json.install_mode ?? ""
-                    const storedUpdateStrategy = json.updateStrategy ?? json.update_strategy ?? ""
-                    const storedSource = json.installSource ?? json.install_source ?? json.source ?? ""
-                    if (storedInstallMode.length > 0) {
-                        root.installMode = storedInstallMode
-                    }
-                    if (storedUpdateStrategy.length > 0) {
-                        root.updateStrategy = storedUpdateStrategy
-                    }
-                    if (storedSource.length > 0) {
-                        root.installSource = storedSource
-                    }
-                    const storedRepoPath = json.repoPath ?? json.repo_path ?? ""
-                    if (storedRepoPath.length > 0 && root.installMode === "unknown") {
-                        root.installMode = "repo-copy"
-                    }
-                    if (storedRepoPath.length > 0 && root.updateStrategy === "unknown") {
-                        root.updateStrategy = "repo-setup"
-                    }
-                    if (root.managedExternally) {
-                        root.repoPathLoaded = true
-                        root.initialAvailabilityChecked = true
-                        root.initialUpdateCheckDone = true
-                        root.available = false
-                        print("[ShellUpdates] Update strategy is managed externally: " + root.updateStrategy)
-                        return
-                    }
-                    if (storedRepoPath.length > 0) {
-                        root.pendingRepoPath = storedRepoPath
-                        preferConfigRepoProc.running = true
-                        return
-                    }
-                } catch (e) {
-                    print("[ShellUpdates] Failed to parse version.json: " + e)
-                }
-                // No repo_path in version.json, try to find it
-                print("[ShellUpdates] No repo_path in version.json, searching for repository...")
-                loadRepoPathProc._handledFallback = true
-                searchRepoProc.running = true
+    // Load repo path from version.json (stored in shellConfig dir, NOT in quickshell config dir).
+    // This is local file I/O, so keep it inside Quickshell instead of spawning
+    // one cat process on every enabled shell startup.
+    function _loadVersionMetadata(): void {
+        const target = Directories.shellConfig + "/version.json"
+        if (versionMetadataFile.path === target)
+            versionMetadataFile.reload()
+        else
+            versionMetadataFile.path = target
+    }
+
+    function _consumeVersionMetadata(text: string): void {
+        try {
+            const json = JSON.parse(text ?? "{}")
+            // Extract version from version.json (always available even if VERSION file missing)
+            if (json.version && json.version !== "0.0.0") {
+                root.localVersion = json.version
             }
+            const storedInstallMode = json.installMode ?? json.install_mode ?? ""
+            const storedUpdateStrategy = json.updateStrategy ?? json.update_strategy ?? ""
+            const storedSource = json.installSource ?? json.install_source ?? json.source ?? ""
+            if (storedInstallMode.length > 0) {
+                root.installMode = storedInstallMode
+            }
+            if (storedUpdateStrategy.length > 0) {
+                root.updateStrategy = storedUpdateStrategy
+            }
+            if (storedSource.length > 0) {
+                root.installSource = storedSource
+            }
+            const storedRepoPath = json.repoPath ?? json.repo_path ?? ""
+            if (storedRepoPath.length > 0 && root.installMode === "unknown") {
+                root.installMode = "repo-copy"
+            }
+            if (storedRepoPath.length > 0 && root.updateStrategy === "unknown") {
+                root.updateStrategy = "repo-setup"
+            }
+            if (root.managedExternally) {
+                root.repoPathLoaded = true
+                root.initialAvailabilityChecked = true
+                root.initialUpdateCheckDone = true
+                root.available = false
+                print("[ShellUpdates] Update strategy is managed externally: " + root.updateStrategy)
+                return
+            }
+            if (storedRepoPath.length > 0) {
+                root.pendingRepoPath = storedRepoPath
+                preferConfigRepoProc.running = true
+                return
+            }
+        } catch (e) {
+            print("[ShellUpdates] Failed to parse version.json: " + e)
         }
-        onExited: (exitCode, exitStatus) => {
-            if (exitCode !== 0 && !_handledFallback) {
-                print("[ShellUpdates] version.json not found, searching for repository...")
-                searchRepoProc.running = true
-            }
+        // No repo_path in version.json, try to find it.
+        print("[ShellUpdates] No repo_path in version.json, searching for repository...")
+        searchRepoProc.running = true
+    }
+
+    FileView {
+        id: versionMetadataFile
+        path: ""
+        printErrors: false
+        onLoaded: root._consumeVersionMetadata(versionMetadataFile.text())
+        onLoadFailed: {
+            print("[ShellUpdates] version.json not found, searching for repository...")
+            searchRepoProc.running = true
         }
     }
 

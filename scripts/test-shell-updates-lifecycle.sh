@@ -31,6 +31,14 @@ remote_master_block="$(sed -n '/id: remoteCommitFallback2Proc/,/\/\/ Step 6:/p' 
 count_block="$(sed -n '/id: countCommitsProc/,/\/\/ Step 7:/p' "$service")"
 message_block="$(sed -n '/id: latestMessageProc/,/Detail fetching/p' "$service")"
 
+version_reader_block="$(sed -n '/id: versionMetadataFile/,/^    }/p' "$service")"
+[[ -n "$version_reader_block" ]] || fail 'version metadata FileView is missing'
+assert_contains 'onLoaded: root._consumeVersionMetadata(versionMetadataFile.text())' "$version_reader_block" 'version metadata must be consumed in-process'
+assert_contains 'onLoadFailed:' "$version_reader_block" 'missing version metadata must retain repository-search fallback'
+if grep -Fq 'command: ["cat", Directories.shellConfig + "/version.json"]' "$service"; then
+    fail 'version metadata must not spawn cat during startup'
+fi
+
 assert_guarded_process fetchProc "$fetch_block"
 assert_guarded_process currentBranchProc "$branch_block"
 assert_guarded_process localCommitProc "$local_block"

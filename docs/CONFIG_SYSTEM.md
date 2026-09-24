@@ -264,19 +264,17 @@ For the profile style, `sidebar.right.headerBanner` accepts `wallpaper`, `custom
 
 Known ids include:
 
-`calendar`, `events`, `todo`, `notepad`, `calculator`, `sysmon`, `weather`, `timer`, `screentime`
-
-`screentime` is only shown when `sidebar.screenTime.enable` is true. The list can contain it while the service is off; the UI filters it out so disabled tracking does not leave a dead card.
+`calendar`, `events`, `todo`, `notepad`, `calculator`, `sysmon`, `weather`, `timer`
 
 ### Screen Time
 
-`sidebar.screenTime`:
+`sidebar.screenTime` remains the historical configuration namespace:
 
-- `enable`: starts/stops tracking
+- `enable`: explicit opt-in used by Waffle Screen Time
 - `pollIntervalSeconds`: focused-window sampling interval
 - `retentionDays`: how long local daily JSON is kept
 
-Screen Time is local-only. It records app ids/names and seconds, not window titles.
+Material ii no longer exposes Screen Time as a right-Sidebar widget. Its bottom-right notification-center **Activity** tab owns the compact usage summary and automatically keeps tracking active while `iiScreenCorners` is enabled. Screen Time is local-only and records app ids/names and seconds, not window titles.
 
 ### World Clock
 

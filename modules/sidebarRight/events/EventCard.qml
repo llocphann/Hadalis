@@ -52,13 +52,18 @@ Item {
             default: return root.colPrimary
         }
     }
-    readonly property date eventDate: new Date(event.dateTime || event.startDate || "")
+    readonly property date eventDate: new Date(event.startDate || event.dateTime || "")
+    readonly property date eventEndDate: event?.endDate
+        ? new Date(event.endDate) : new Date("")
     readonly property bool isToday: {
         const now = new Date()
         return now.toDateString() === root.eventDate.toDateString()
     }
     readonly property bool isAllDay: root.event?.allDay ?? false
-    readonly property bool isPast: root.eventDate < new Date()
+    readonly property bool isPast: root.isAllDay
+        && !isNaN(root.eventEndDate.getTime())
+            ? root.eventEndDate <= new Date()
+            : root.eventDate < new Date()
     
     StyledRectangularShadow {
         target: cardBg
@@ -168,14 +173,18 @@ Item {
                             StyledText {
                                 text: {
                                     if (root.isAllDay) return Translation.tr("All day")
-                                    if (root.isToday) return Translation.tr("Today") + " " + Qt.formatTime(root.eventDate, "HH:mm")
+                                    const start = Qt.formatTime(root.eventDate, "HH:mm")
+                                    const range = !isNaN(root.eventEndDate.getTime())
+                                        ? start + "–" + Qt.formatTime(root.eventEndDate, "HH:mm")
+                                        : start
+                                    if (root.isToday) return Translation.tr("Today") + " " + range
                                     const now = new Date()
                                     const tomorrow = new Date(now)
                                     tomorrow.setDate(tomorrow.getDate() + 1)
                                     if (root.eventDate.toDateString() === tomorrow.toDateString()) {
-                                        return Translation.tr("Tomorrow") + " " + Qt.formatTime(root.eventDate, "HH:mm")
+                                        return Translation.tr("Tomorrow") + " " + range
                                     }
-                                    return Qt.formatDate(root.eventDate, "dd/MM") + " " + Qt.formatTime(root.eventDate, "HH:mm")
+                                    return Qt.formatDate(root.eventDate, "dd/MM") + " " + range
                                 }
                                 font.pixelSize: Appearance.font.pixelSize.smallest
                                 font.weight: Font.Medium

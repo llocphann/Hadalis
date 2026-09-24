@@ -99,7 +99,7 @@ WSettingsPage {
                         WText {
                             id: compLabel
                             anchors.centerIn: parent
-                            text: CompositorService.isNiri ? "Niri" : (CompositorService.isHyprland ? "Hyprland" : "Unknown")
+                            text: CompositorService.isNiri ? "Niri" : "Niri (disconnected)"
                             font.pixelSize: Looks.font.pixelSize.small
                             color: Looks.colors.subfg
                         }

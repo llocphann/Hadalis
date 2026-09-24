@@ -8,7 +8,6 @@ import QtQuick.Controls
 import Quickshell
 import Quickshell.Io
 import Quickshell.Wayland
-import Quickshell.Hyprland
 
 Scope {
     id: root
@@ -54,10 +53,8 @@ Scope {
                 }
                 return GlobalStates.focusedScreen ?? GlobalStates.primaryScreen
             }
-            readonly property HyprlandMonitor monitor: CompositorService.isHyprland ? Hyprland.monitorFor(panelWindow.screen) : null
-            property bool monitorIsFocused: CompositorService.isHyprland 
-                ? (Hyprland.focusedMonitor?.id == monitor?.id)
-                : (CompositorService.isNiri ? (panelWindow.screen?.name === NiriService.currentOutput) : true)
+            property bool monitorIsFocused:
+                panelWindow.screen?.name === NiriService.currentOutput
 
             exclusionMode: ExclusionMode.Ignore
             WlrLayershell.namespace: "quickshell:wallpaperSelector"
@@ -72,16 +69,16 @@ Scope {
                 bottom: true
             }
 
-            CompositorFocusGrab { // Click outside to close (Hyprland)
+            CompositorFocusGrab { // Compatibility focus bridge
                 id: grab
                 windows: [ panelWindow ]
-                active: CompositorService.isHyprland && wallpaperSelectorLoader.active
+                active: false
                 onCleared: () => {
                     if (!active) GlobalStates.wallpaperSelectorOpen = false;
                 }
             }
 
-            // Click outside to close (all compositors)
+            // Click outside to close
             MouseArea {
                 anchors.fill: parent
                 onClicked: mouse => {

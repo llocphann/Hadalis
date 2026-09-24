@@ -10,7 +10,6 @@ import QtQuick.Controls
 import QtQuick.Layouts
 import Quickshell
 import Quickshell.Bluetooth
-import Quickshell.Hyprland
 import Qt5Compat.GraphicalEffects as GE
 
 import qs.modules.sidebarRight.quickToggles
@@ -88,11 +87,7 @@ Item {
         root.reloadButtonEnabled = false;
         reloadButtonCooldown.restart();
 
-        if (CompositorService.isHyprland) {
-            Hyprland.dispatch("reload");
-        } else if (CompositorService.isNiri) {
-            Quickshell.execDetached(["/usr/bin/niri", "msg", "action", "load-config-file"]);
-        }
+        Quickshell.execDetached(["/usr/bin/niri", "msg", "action", "load-config-file"]);
         Quickshell.execDetached(["/usr/bin/bash", Quickshell.shellPath("scripts/restart-shell.sh")]);
     }
 

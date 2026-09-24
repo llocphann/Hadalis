@@ -49,11 +49,9 @@ MouseArea {
             const configTarget = Config.options?.wallpaperSelector?.targetMonitor ?? ""
             if (configTarget && WallpaperListener.screenNames.includes(configTarget)) {
                 _lockedTarget = configTarget
-            } else if (CompositorService.isNiri) {
-                // Last resort: capture focused monitor (may be stale if overlay already took focus)
+            } else {
+                // Last resort: capture Niri's focused output.
                 _capturedMonitor = NiriService.currentOutput ?? ""
-            } else if (CompositorService.isHyprland) {
-                _capturedMonitor = Hyprland.focusedMonitor?.name ?? ""
             }
         }
         Qt.callLater(() => {

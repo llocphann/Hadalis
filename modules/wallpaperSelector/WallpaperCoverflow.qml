@@ -11,7 +11,6 @@ import Qt5Compat.GraphicalEffects as GE
 import Quickshell
 import Quickshell.Io
 import Quickshell.Wayland
-import Quickshell.Hyprland
 
 /**
  * Fullscreen coverflow wallpaper selector — alternative to the grid WallpaperSelector.
@@ -80,12 +79,7 @@ Scope {
         }
 
         _lockedTarget = ""
-        if (CompositorService.isNiri)
-            _capturedMonitor = NiriService.currentOutput ?? ""
-        else if (CompositorService.isHyprland)
-            _capturedMonitor = Hyprland.focusedMonitor?.name ?? ""
-        else
-            _capturedMonitor = ""
+        _capturedMonitor = NiriService.currentOutput ?? ""
     }
 
     // ─── Selection logic (mirrors WallpaperSelectorContent.selectWallpaperPath) ───
@@ -410,11 +404,11 @@ Scope {
                 }
             }
 
-            // Click outside to close (Hyprland)
+            // Outside-click closing is handled by the panel input surface
             CompositorFocusGrab {
                 id: grab
                 windows: [ panelWindow ]
-                active: CompositorService.isHyprland && coverflowLoader.active && !root._closing
+                active: false
                 onCleared: () => {
                     if (!active) {
                         GlobalStates.coverflowSelectorOpen = false

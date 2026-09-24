@@ -31,6 +31,7 @@ grep -Fq 'native-dispatch clipboard-store'     "$root/defaults/niri/config.d/50-
 grep -Fq 'native-dispatch clipboard-store'     "$root/sdata/migrations/049-native-clipboard-selector.sh"     || fail 'existing clipboard watchers must migrate through native-dispatch'
 grep -Fq '"$SCRIPT_DIR/../native-dispatch" theme'     "$root/scripts/colors/switchwall.sh"     || fail 'theme pipeline must route through native-dispatch'
 grep -Fq 'nativeIconSyncProc' "$root/services/IconThemeService.qml"     || fail 'IconThemeService must expose native sync test path'
+grep -Fq 'nativeBackendStatePath' "$root/services/IconThemeService.qml"     || fail 'IconThemeService must honor persistent trial selector state after reboot'
 grep -Fq '/inir-inputd([[:space:]]|$)' "$root/scripts/inir"     || fail 'shell restart cleanup must recognize Rust input daemon'
 grep -Fq '/inir-native[[:space:]]+diagnostics' "$root/scripts/inir"     || fail 'shell restart cleanup must recognize Rust diagnostics sampler'
 

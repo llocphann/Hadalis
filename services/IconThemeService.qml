@@ -21,9 +21,27 @@ Singleton {
     property bool _initialized: false
     property bool _restartQueued: false
     readonly property string nativeDispatchPath: Quickshell.shellPath("scripts/native-dispatch")
+    readonly property string nativeBackendStatePath: {
+        const stateHome = String(Quickshell.env("XDG_STATE_HOME") ?? "").trim()
+        const base = stateHome.length > 0 ? stateHome : (Quickshell.env("HOME") + "/.local/state")
+        return base + "/inir/native-backend"
+    }
+    property string _nativeBackendState: ""
     readonly property bool nativeBackendEnabled: {
-        const mode = String(Quickshell.env("INIR_NATIVE_BACKEND") ?? "python")
-        return mode === "rust" || mode === "auto"
+        const envMode = String(Quickshell.env("INIR_NATIVE_BACKEND") ?? "").trim()
+        if (envMode.length > 0)
+            return envMode === "rust" || envMode === "auto"
+        const stateMode = root._nativeBackendState.trim()
+        return stateMode === "rust" || stateMode === "auto"
+    }
+
+    FileView {
+        id: nativeBackendStateFile
+        path: root.nativeBackendStatePath
+        watchChanges: true
+        onLoaded: root._nativeBackendState = nativeBackendStateFile.text().trim()
+        onFileChanged: nativeBackendStateFile.reload()
+        onLoadFailed: root._nativeBackendState = ""
     }
 
     // Smart icon resolution: preserve app-provided identity whenever possible.

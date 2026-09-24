@@ -30,7 +30,8 @@ for token in (
 
 for token in (
     "PlayerControl {",
-    "visualizerPoints: root.visualizerPoints",
+    "visualizerPoints: []",
+    "showVisualizer: false",
     "EqualizerPanel {",
 ):
     require(popup, token, "Bar popup shared media")

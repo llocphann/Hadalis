@@ -44,9 +44,9 @@ WSettingsPage {
         if (RuntimeDiagnosticsSession.remoteError.length > 0)
             return Translation.tr("Runtime bridge error") + ": " + RuntimeDiagnosticsSession.remoteError
         if (RuntimeDiagnosticsSession.evidenceError.length > 0)
-            return RuntimeDiagnosticsSession.evidenceError
+            return Translation.tr("Diagnostics evidence error") + ": " + RuntimeDiagnosticsSession.evidenceError
         if (root.samplerError.length > 0)
-            return root.samplerError
+            return Translation.tr("Diagnostics sampler error") + ": " + root.samplerError
         return String(root.discoveryEvidence?.error ?? "")
     }
 

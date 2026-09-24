@@ -844,11 +844,7 @@ fn music_root(client: &mut MpdClient, override_root: &str) -> String {
         .unwrap_or_default()
 }
 
-fn status_payload_mode(
-    client: &mut MpdClient,
-    root: &str,
-    include_queue: bool,
-) -> Result<Value> {
+fn status_payload_mode(client: &mut MpdClient, root: &str, include_queue: bool) -> Result<Value> {
     let status = pairs(&client.command("status", std::iter::empty::<&str>())?);
     let current_records = records(
         &client.command("currentsong", std::iter::empty::<&str>())?,
@@ -1329,9 +1325,9 @@ fn idle_loop(
                         })
                         .collect::<Vec<_>>();
                     if !changed.is_empty() {
-                        let requires_rescan = changed
-                            .iter()
-                            .any(|subsystem| matches!(subsystem.as_str(), "database" | "stored_playlist"));
+                        let requires_rescan = changed.iter().any(|subsystem| {
+                            matches!(subsystem.as_str(), "database" | "stored_playlist")
+                        });
                         let include_queue = changed.iter().any(|subsystem| subsystem == "playlist");
                         let payload = if requires_rescan {
                             None

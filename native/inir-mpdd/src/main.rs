@@ -296,6 +296,10 @@ struct Request {
     op: String,
     #[serde(default)]
     params: Value,
+    #[serde(default)]
+    host: Option<String>,
+    #[serde(default)]
+    port: Option<u16>,
 }
 
 type Record = BTreeMap<String, Vec<String>>;
@@ -1101,6 +1105,24 @@ fn handle_client(
             return Ok(());
         }
 
+        if request
+            .host
+            .as_deref()
+            .is_some_and(|host| host != manager.host)
+            || request.port.is_some_and(|port| port != manager.port)
+        {
+            write_json_line(
+                reader.get_mut(),
+                &json!({
+                    "v": 1,
+                    "id": request.id,
+                    "ok": false,
+                    "error": "endpoint_mismatch"
+                }),
+            )?;
+            continue;
+        }
+
         let id = request.id;
         let result = manager.with_client(|client, root| {
             handle_operation(client, root, &request.op, &request.params)
@@ -1387,8 +1409,8 @@ fn legacy_request(args: &[String]) -> Result<Value> {
     }
 
     let mode = args[0].as_str();
-    let _host = &args[1];
-    let _port = args[2].parse::<u16>().context("invalid_port")?;
+    let host = &args[1];
+    let port = args[2].parse::<u16>().context("invalid_port")?;
     let rest = &args[3..];
 
     let (op, params) = match mode {
@@ -1445,7 +1467,14 @@ fn legacy_request(args: &[String]) -> Result<Value> {
         _ => bail!("unknown_mode:{mode}"),
     };
 
-    Ok(json!({"v": 1, "id": 1, "op": op, "params": params}))
+    Ok(json!({
+        "v": 1,
+        "id": 1,
+        "op": op,
+        "params": params,
+        "host": host,
+        "port": port
+    }))
 }
 
 fn run_client_compat(args: &[String], socket: &Path) -> i32 {
@@ -1494,6 +1523,10 @@ fn run_client_compat(args: &[String], socket: &Path) -> i32 {
             .get("error")
             .and_then(Value::as_str)
             .unwrap_or("mpd_daemon_operation_failed");
+        if error == "endpoint_mismatch" {
+            eprintln!("inir-mpdd: daemon endpoint does not match requested MPD endpoint");
+            return 75;
+        }
         let payload = json!({"connected": false, "error": error});
         println!(
             "{}",

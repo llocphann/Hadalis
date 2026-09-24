@@ -142,17 +142,21 @@ Item {
                     if (root.isAllDay) return Translation.tr("All day")
                     const d = new Date(root.event?.startDate ?? root.event?.dateTime ?? "")
                     if (isNaN(d.getTime())) return ""
+                    const end = root.event?.endDate ? new Date(root.event.endDate) : null
+                    const range = end && !isNaN(end.getTime())
+                        ? Qt.formatTime(d, "HH:mm") + "–" + Qt.formatTime(end, "HH:mm")
+                        : Qt.formatTime(d, "HH:mm")
                     if (root.showDate) {
                         const now = new Date()
                         const tomorrow = new Date(now)
                         tomorrow.setDate(tomorrow.getDate() + 1)
                         if (d.toDateString() === now.toDateString())
-                            return Translation.tr("Today") + " " + Qt.formatTime(d, "HH:mm")
+                            return Translation.tr("Today") + " " + range
                         if (d.toDateString() === tomorrow.toDateString())
-                            return Translation.tr("Tomorrow") + " " + Qt.formatTime(d, "HH:mm")
-                        return Qt.formatDate(d, "dd/MM") + " " + Qt.formatTime(d, "HH:mm")
+                            return Translation.tr("Tomorrow") + " " + range
+                        return Qt.formatDate(d, "dd/MM") + " " + range
                     }
-                    return Qt.formatTime(d, "HH:mm")
+                    return range
                 }
                 font.pixelSize: Appearance.font.pixelSize.smallest
                 font.family: Appearance.font.family.numbers

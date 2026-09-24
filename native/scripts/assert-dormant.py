@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""Fail if staged Rust binaries are wired into the current Hadalis runtime.
+"""Guard the reversible Rust trial-cutover boundary.
 
-This guard exists specifically because the native migration is being developed
-in parallel. Until the maintainer approves cutover, runtime/package files must
-continue to reference the existing Python/QML implementation.
+Runtime call sites may route through scripts/native-dispatch, but they must not
+invoke Rust binaries directly. Python fallbacks stay present until the
+maintainer explicitly approves a permanent cutover.
 """
 
 from __future__ import annotations
@@ -79,16 +79,16 @@ def main() -> int:
                 violations.append(f"{path.relative_to(ROOT)} references {marker}")
 
     if violations:
-        print("Native staging cutover guard failed:")
+        print("Native trial-cutover guard failed:")
         for violation in violations:
             print(f"  - {violation}")
         print(
-            "Rust must remain unwired until the maintainer explicitly approves "
-            "the final migration report."
+            "Runtime/package paths must use scripts/native-dispatch rather than "
+            "binding directly to Rust binaries."
         )
         return 1
 
-    print("Native staging guard: PASS (Rust binaries are not wired into runtime/package paths)")
+    print("Native trial-cutover guard: PASS (runtime paths do not bind directly to Rust binaries)")
     return 0
 
 

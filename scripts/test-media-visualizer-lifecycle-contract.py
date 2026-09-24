@@ -40,6 +40,26 @@ def main() -> None:
         "BarMediaPopup must request the Serpantinum-density CAVA sample field",
     )
     check(
+        "CavaProcess {" in equalizer
+        and "id: eqCava" in equalizer
+        and "active: root.active" in equalizer
+        and "sampleCount: 64" in equalizer,
+        "EqualizerPanel must subscribe to the shared CAVA service while presented",
+    )
+    check(
+        "const spectrum = eqCava.points ?? []" in equalizer
+        and "Number(eqCava.normalizationCeiling)" in equalizer
+        and "ctx.bezierCurveTo(" in equalizer
+        and "model: EqualizerService.dspBands" in equalizer,
+        "EqualizerPanel must merge live CAVA bars and DSP response nodes in one graph",
+    )
+    check(
+        equalizer.count("Slider {") == 1
+        and "lightningCanvas" not in equalizer
+        and "eqPresetSweepProgress" not in equalizer,
+        "EqualizerPanel must not restore the detached DSP slider/lightning layer",
+    )
+    check(
         "_playerCache" not in popup
         and "cacheInvalidateTimer" not in popup
         and "if (root.activePlayer && !result.includes(root.activePlayer))" in popup,

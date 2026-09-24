@@ -1,102 +1,69 @@
 #!/usr/bin/env python3
-"""Regression contract for the popup-only continuous liquid-mass Weather orbit."""
+"""Regression contract for the popup's animated liquid orbit."""
+
 from pathlib import Path
+import shutil
+import subprocess
+import tempfile
+
 
 ROOT = Path(__file__).resolve().parents[1]
-ORBITAL = ROOT / "modules/bar/weather/OrbitalWeather.qml"
-LIQUID = ROOT / "modules/bar/weather/LiquidOrbitalField.qml"
-WEATHER_CONTENT = ROOT / "modules/bar/weather/WeatherPopupContent.qml"
-DASH_WEATHER = ROOT / "modules/dashboard/DashWeather.qml"
-WEATHER_SERVICE = ROOT / "services/Weather.qml"
+WEATHER_DIR = ROOT / "modules/bar/weather"
 
 
-def require(text: str, token: str, source: str) -> None:
-    if token not in text:
-        raise AssertionError(f"{source} missing liquid-mass token: {token!r}")
+def require(source: str, *features: str) -> None:
+    for feature in features:
+        if feature not in source:
+            raise AssertionError(f"Weather liquid orbit lost {feature!r}")
 
 
 def main() -> None:
-    orbital = ORBITAL.read_text(encoding="utf-8")
-    liquid = LIQUID.read_text(encoding="utf-8")
-    weather = WEATHER_CONTENT.read_text(encoding="utf-8")
-    dashboard = DASH_WEATHER.read_text(encoding="utf-8")
-    weather_service = WEATHER_SERVICE.read_text(encoding="utf-8")
+    field = (WEATHER_DIR / "LiquidOrbitalField.qml").read_text()
+    shader_path = WEATHER_DIR / "LiquidOrbitalField.frag"
+    shader = shader_path.read_text()
+    compiled_path = WEATHER_DIR / "LiquidOrbitalField.frag.qsb"
+    orbital = (WEATHER_DIR / "OrbitalWeather.qml").read_text()
+    popup = (WEATHER_DIR / "WeatherPopupContent.qml").read_text()
+    dashboard = (ROOT / "modules/dashboard/DashWeather.qml").read_text()
 
-    for token in (
-        "property bool liquidMode: false",
-        "property bool liquidAnimationActive: false",
-        "readonly property real conceptOrbitAspect: 1.168",
-        "readonly property real activePointSize: pointSize * 1.28",
-        "readonly property real desiredOrbitRadiusX: width * 0.245",
-        "Math.min(48, width * 0.086)",
-        "liquidOrbitRadiusY * conceptOrbitAspect",
-        "id: conceptFooter",
-        "Weather.airQuality?.available",
-        "return -Math.PI / 2 + shiftedHour * Math.PI / 12",
-        "LiquidOrbitalField {",
-        "animate: root.liquidAnimationActive",
-    ):
-        require(orbital, token, "OrbitalWeather.qml")
+    # The GPU field is primary; the Canvas is a fallback for Qt backends
+    # which cannot compile the bundled shader pack.
+    require(field, "ShaderEffect {", 'fragmentShader: Qt.resolvedUrl("LiquidOrbitalField.frag.qsb")',
+            "visible: status === ShaderEffect.Compiled",
+            "visible: liquidShader.status !== ShaderEffect.Compiled",
+            "renderTarget: Canvas.Image", "FrameAnimation {",
+            "seconds: root.timeSeconds", "property int activeIndex: 0")
+    if "&& Appearance.effectsEnabled" in field.split("FrameAnimation {", 1)[1].split("}", 1)[0]:
+        raise AssertionError("Disabling visual effects must not freeze the orbit")
+    if not compiled_path.is_file() or compiled_path.stat().st_size < 1000:
+        raise AssertionError("Compiled Qt shader pack is missing")
 
-    for token in (
-        "FrameAnimation {",
-        "onTriggered: liquidCanvas.requestPaint()",
-        "Appearance.animationsEnabled",
-        "renderStrategy: Canvas.Threaded",
-        "renderTarget: Canvas.Image",
-        "readonly property real activeNodeScale: 1.28",
-        "function drawBridgeMass(ctx, segment: int, slot: int, time: real,",
-        "const fraction = slot === 0 ? 0.32 : 0.68",
-        "const tangentOffset = Math.sin(time * 0.57 + seed) * 2.8",
-        "const normalOffset = Math.sin(time * 0.83 + seed * 1.7) * 3.4",
-        "const majorPulse = 1",
-        "const minorPulse = 1",
-        "root.drawBridgeMass(ctx, segment, 0, time, grow, style, 1)",
-        "root.drawBridgeMass(ctx, segment, 1, time, grow, style, 1)",
-        "root.drawMassUnion(ctx, time, 0, root.bodyColor)",
-        "Internal highlights are also moving masses, not strokes.",
-    ):
-        require(liquid, token, "LiquidOrbitalField.qml")
+    # One shaded distance field has a moving contour and independent folds.
+    require(shader, "float softUnion(", "fieldDistance = softUnion(",
+            "float displacement =", "float neck =", "float foldPhase =",
+            "float brightFold =", "float darkFold =", "float fineCaustic =",
+            "float podAlpha =", "float halo =", "u.seconds", "u.selectedIndex")
+    if "ctx.stroke()" in field or "ctx.lineTo(" in field:
+        raise AssertionError("Fallback connector must be a mass union, not a stroke")
 
-    # This renderer must never regress to an orbital line/ribbon whose surface
-    # is merely decorated with animation. The connector geometry itself is the
-    # moving union of node/bridge masses.
-    for forbidden in (
-        "outerThickness",
-        "innerThickness",
-        "traceClosed",
-        "traceOpen",
-        "ctx.stroke()",
-        "ctx.lineTo(",
-        "ConnectedSurfaceIrisField",
-        "Timer {",
-    ):
-        if forbidden in liquid:
-            raise AssertionError(
-                f"Liquid mass renderer regressed to line/ribbon geometry: {forbidden!r}")
+    qsb = shutil.which("qsb") or "/usr/lib/qt6/bin/qsb"
+    if Path(qsb).is_file():
+        with tempfile.TemporaryDirectory() as temp_dir:
+            rebuilt = Path(temp_dir) / "LiquidOrbitalField.frag.qsb"
+            subprocess.run([qsb, "--qt6", "-o", str(rebuilt), str(shader_path)],
+                           check=True, capture_output=True, text=True)
+            if rebuilt.read_bytes() != compiled_path.read_bytes():
+                raise AssertionError("Bundled shader pack differs from its GLSL source")
 
-    if "&& Appearance.effectsEnabled" in liquid.split("FrameAnimation {", 1)[1].split("}", 1)[0]:
-        raise AssertionError("Liquid mass motion must not be disabled by effectsEnabled")
-
-    for token in (
-        "liquidMode: true",
-        "liquidAnimationActive: root.currentTab === 0",
-        "anchors.right: parent.right",
-    ):
-        require(weather, token, "WeatherPopupContent.qml")
-
+    require(orbital, "property bool liquidMode: false", "LiquidOrbitalField {",
+            "hourAngles: root.hourAngles", "activeIndex: root.activeIndex",
+            "animate: root.liquidAnimationActive")
+    require(popup, "liquidMode: true", "activeIndex: root.selectedHourIndex",
+            "liquidAnimationActive: root.currentTab === 0")
     if "liquidMode: true" in dashboard:
-        raise AssertionError("Dashboard Weather must not opt into popup liquid mode")
+        raise AssertionError("Dashboard must retain its simpler shared orbital view")
 
-    for token in (
-        "const currentBucket = Math.floor(nowH / 3) * 3",
-        "hour < currentBucket",
-        "bucketStart.setHours(Math.floor(now.getHours() / 3) * 3)",
-        "hour % 3 !== 0",
-    ):
-        require(weather_service, token, "Weather.qml")
-
-    print("Weather continuous liquid-mass orbital contract: PASS")
+    print("Weather animated liquid orbital contract: PASS")
 
 
 if __name__ == "__main__":

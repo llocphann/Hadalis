@@ -9,15 +9,24 @@ Item {
     id: root
 
     property bool compact: false
+    property real availableWidth: 1920
+    property real availableHeight: 1200
     readonly property real compactBreakpoint: 900
-    readonly property real panelHeight: root.compact ? 270 : 300
-    readonly property real panelWidth: root.compact ? 360 : 450
+    readonly property real panelWidth: root.compact
+        ? Math.min(420, Math.max(280, root.availableWidth - 56))
+        : Math.min(1440, Math.max(580, root.availableWidth - 64))
+    readonly property real panelHeight: root.compact
+        ? Math.min(420, Math.max(250, root.availableHeight - Appearance.sizes.barHeight - 64))
+        : Math.min(960, Math.max(440, Math.min(
+            root.panelWidth / 1.5,
+            root.availableHeight - Appearance.sizes.barHeight - 64)))
     // Keep the orbital cards inside the clipped tab viewport. This padding is
     // part of the popup geometry contract; do not use negative top margins.
     readonly property real orbitalPadding: 14
     readonly property int tabCount: 2
     readonly property int slideDuration: Appearance.animation.elementMove.duration
     property int currentTab: 0
+    property int selectedHourIndex: 0
     property date now: new Date()
     readonly property real sunProgress: {
         const sunrise = root.timeToMinutes(Weather.data?.sunrise)
@@ -33,6 +42,12 @@ Item {
 
     function selectTab(index): void {
         root.currentTab = Math.max(0, Math.min(root.tabCount - 1, index))
+    }
+
+    function cycleHour(direction): void {
+        const count = Math.min(8, Weather.data?.hourly?.length ?? 0)
+        if (count > 0)
+            root.selectedHourIndex = (root.selectedHourIndex + direction + count) % count
     }
 
     function timeToMinutes(value): int {
@@ -58,6 +73,15 @@ Item {
         repeat: true
         running: true
         onTriggered: root.now = new Date()
+    }
+
+    Connections {
+        target: Weather
+        function onDataChanged() {
+            const count = Math.min(8, Weather.data?.hourly?.length ?? 0)
+            if (root.selectedHourIndex >= count)
+                root.selectedHourIndex = 0
+        }
     }
 
     Item {
@@ -90,6 +114,7 @@ Item {
             anchors.margins: root.orbitalPadding
             now: root.now
             liquidMode: true
+            activeIndex: root.selectedHourIndex
             // Keep the field alive while its page is still visibly sliding out;
             // stop it only after the clipped page has fully left the viewport.
             liquidAnimationActive: root.currentTab === 0
@@ -122,7 +147,7 @@ Item {
                 fill: parent
                 leftMargin: 14
                 rightMargin: 24
-                topMargin: 12
+                topMargin: root.compact ? 12 : 84
                 bottomMargin: 12
             }
             spacing: 8
@@ -165,6 +190,7 @@ Item {
                 Item { Layout.fillWidth: true }
 
                 ColumnLayout {
+                    visible: !root.compact
                     Layout.alignment: Qt.AlignRight | Qt.AlignVCenter
                     spacing: 1
 
@@ -201,6 +227,56 @@ Item {
                         font.pixelSize: Appearance.font.pixelSize.smallest
                     }
                 }
+            }
+
+            RowLayout {
+                Layout.fillWidth: true
+                Layout.preferredHeight: root.compact ? 0 : 165
+                visible: !root.compact
+                spacing: 10
+
+                Item { Layout.fillWidth: true }
+
+                Repeater {
+                    model: (Weather.data?.forecast ?? []).slice(0, 7)
+                    delegate: Rectangle {
+                        required property var modelData
+                        Layout.preferredWidth: Math.min(190,
+                            (detailColumn.width - 100) /
+                            Math.max(1, Math.min(7,
+                                Weather.data?.forecast?.length ?? 0)))
+                        Layout.preferredHeight: 165
+                        radius: Appearance.rounding.large
+                        color: Appearance.colors.colSurfaceContainerHigh
+                        border.width: 1
+                        border.color: Appearance.colors.colOutlineVariant
+
+                        ColumnLayout {
+                            anchors.centerIn: parent
+                            spacing: 8
+                            StyledText {
+                                Layout.alignment: Qt.AlignHCenter
+                                text: modelData?.dayName ?? ""
+                                color: Appearance.colors.colOnSurfaceVariant
+                                font.pixelSize: Appearance.font.pixelSize.normal
+                            }
+                            MaterialSymbol {
+                                Layout.alignment: Qt.AlignHCenter
+                                text: Icons.getWeatherIcon(modelData?.code, false) ?? "cloud"
+                                color: Appearance.colors.colPrimary
+                                iconSize: 36
+                            }
+                            StyledText {
+                                Layout.alignment: Qt.AlignHCenter
+                                text: `${modelData?.hi ?? "--"} / ${modelData?.lo ?? "--"}`
+                                color: Appearance.colors.colOnSurface
+                                font.pixelSize: Appearance.font.pixelSize.normal
+                            }
+                        }
+                    }
+                }
+
+                Item { Layout.fillWidth: true }
             }
 
             GridLayout {
@@ -354,8 +430,96 @@ Item {
                     font.pixelSize: Appearance.font.pixelSize.smaller
                 }
             }
+
+            Item { Layout.fillHeight: true }
         }
     }
+    }
+
+    Rectangle {
+        id: modeSwitch
+        anchors.top: parent.top
+        anchors.topMargin: root.compact ? 8 : 20
+        anchors.right: parent.right
+        anchors.rightMargin: root.compact ? 14 : 30
+        width: root.compact ? 138 : 214
+        height: root.compact ? 34 : 56
+        radius: height / 2
+        color: "transparent"
+        border.width: 2
+        border.color: Appearance.colors.colOutlineVariant
+        z: 20
+
+        RowLayout {
+            anchors.fill: parent
+            anchors.margins: 4
+            spacing: 0
+
+            Repeater {
+                model: [Translation.tr("Hourly"), Translation.tr("Daily")]
+                delegate: Rectangle {
+                    required property int index
+                    required property string modelData
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
+                    radius: height / 2
+                    color: index === root.currentTab
+                        ? Appearance.colors.colPrimaryContainer : "transparent"
+
+                    StyledText {
+                        anchors.centerIn: parent
+                        text: modelData
+                        color: index === root.currentTab
+                            ? Appearance.colors.colOnPrimaryContainer
+                            : Appearance.colors.colOnSurfaceVariant
+                        font.pixelSize: root.compact
+                            ? Appearance.font.pixelSize.smallest
+                            : Appearance.font.pixelSize.large
+                    }
+                    MouseArea {
+                        anchors.fill: parent
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: root.selectTab(index)
+                    }
+                }
+            }
+        }
+    }
+
+    component OrbitArrow: Rectangle {
+        required property bool forward
+        visible: root.currentTab === 0
+        anchors.verticalCenter: parent.verticalCenter
+        width: root.compact ? 34 : 64
+        height: width
+        radius: width / 2
+        color: Qt.alpha(Appearance.colors.colSurfaceContainerHigh, 0.54)
+        border.width: 2
+        border.color: Appearance.colors.colOutlineVariant
+        z: 20
+
+        MaterialSymbol {
+            anchors.centerIn: parent
+            text: forward ? "chevron_right" : "chevron_left"
+            iconSize: root.compact ? 23 : 36
+            color: Appearance.colors.colOnSurfaceVariant
+        }
+        MouseArea {
+            anchors.fill: parent
+            cursorShape: Qt.PointingHandCursor
+            onClicked: root.cycleHour(forward ? 1 : -1)
+        }
+    }
+
+    OrbitArrow {
+        forward: false
+        anchors.left: parent.left
+        anchors.leftMargin: root.compact ? 3 : 26
+    }
+    OrbitArrow {
+        forward: true
+        anchors.right: parent.right
+        anchors.rightMargin: root.compact ? 3 : 26
     }
 
     component PrimaryMetric: Rectangle {

@@ -14,8 +14,10 @@ Item {
     property bool showUnavailableMessage: true
     property bool liquidMode: false
     property bool liquidAnimationActive: false
+    property int activeIndex: 0
     readonly property var hours: (Weather.data?.hourly ?? []).slice(0, 8)
-    readonly property real footerHeight: root.liquidMode ? 30 : 0
+    readonly property real footerHeight: root.liquidMode
+        ? Math.max(30, Math.min(72, height * 0.08)) : 0
     readonly property real orbitStageHeight: Math.max(1, height - footerHeight)
 
     // Measured from the supplied concept: the node-centre ellipse is only
@@ -26,7 +28,7 @@ Item {
     // ~8.6% of that width. Keeping those ratios preserves the large calm hole
     // in the middle instead of crowding the weather summary.
     readonly property real pointSize: Math.max(38,
-        Math.min(48, width * 0.086))
+        Math.min(132, width * 0.086, root.orbitStageHeight * 0.15))
     readonly property real pointWidth: root.liquidMode
         ? pointSize
         : Math.max(42, Math.min(54, width * 0.13))
@@ -134,7 +136,7 @@ Item {
         orbitRadiusY: root.orbitRadiusY
         nodeWidth: root.pointSize
         nodeHeight: root.pointSize
-        activeIndex: 0
+        activeIndex: root.activeIndex
         animate: root.liquidAnimationActive
     }
 
@@ -176,9 +178,9 @@ Item {
     ColumnLayout {
         anchors.horizontalCenter: parent.horizontalCenter
         y: root.orbitStageHeight / 2 - height / 2
-        spacing: root.liquidMode ? 2 : 1
+        spacing: root.liquidMode ? Math.max(2, width * 0.006) : 1
         z: 3
-        width: Math.min(root.liquidMode ? 200 : 180, root.width * 0.54)
+        width: Math.min(root.liquidMode ? 560 : 180, root.width * 0.54)
 
         MaterialSymbol {
             visible: root.liquidMode
@@ -187,7 +189,8 @@ Item {
             text: Icons.getWeatherIcon(
                 Weather.data?.wCode,
                 Weather.isNightNow()) ?? "cloud"
-            iconSize: Math.max(30, Appearance.font.pixelSize.larger)
+            iconSize: Math.max(30, Math.min(96,
+                root.width * 0.07, root.orbitStageHeight * 0.11))
             color: Appearance.colors.colPrimary
         }
 
@@ -198,7 +201,11 @@ Item {
                 ? Qt.formatDate(root.now, "dddd, MMM d")
                 : Qt.formatDate(root.now, "ddd, MMM d")
             font.weight: root.liquidMode ? Font.Medium : Font.DemiBold
-            font.pixelSize: Appearance.font.pixelSize.small
+            font.pixelSize: root.liquidMode
+                ? Math.max(Appearance.font.pixelSize.small,
+                    Math.min(31, root.width * 0.022,
+                        root.orbitStageHeight * 0.038))
+                : Appearance.font.pixelSize.small
             color: Appearance.colors.colOnSurfaceVariant
             elide: Text.ElideRight
         }
@@ -221,7 +228,8 @@ Item {
                 text: Weather.data?.temp ?? "--°"
                 font.weight: root.liquidMode ? Font.Medium : Font.DemiBold
                 font.pixelSize: root.liquidMode
-                    ? Math.max(30, Appearance.font.pixelSize.larger)
+                    ? Math.max(30, Math.min(68, root.width * 0.048,
+                        root.orbitStageHeight * 0.075))
                     : Appearance.font.pixelSize.normal
                 color: Appearance.colors.colOnSurface
             }
@@ -233,7 +241,9 @@ Item {
             text: Weather.data?.description
                 ?? Weather.describeWeather(Weather.data?.wCode ?? "113")
             font.pixelSize: root.liquidMode
-                ? Appearance.font.pixelSize.smaller
+                ? Math.max(Appearance.font.pixelSize.smaller,
+                    Math.min(29, root.width * 0.021,
+                        root.orbitStageHeight * 0.035))
                 : Appearance.font.pixelSize.smallest
             color: Appearance.colors.colOnSurfaceVariant
             elide: Text.ElideRight
@@ -251,7 +261,7 @@ Item {
 
             readonly property real angle: root.hourAngles[index]
                 ?? root.orbitAngleForHour(modelData?.label)
-            readonly property bool highlighted: index === 0
+            readonly property bool highlighted: index === root.activeIndex
             readonly property real bubbleSize: highlighted && root.liquidMode
                 ? root.activePointSize : root.pointSize
 
@@ -277,7 +287,7 @@ Item {
 
             ColumnLayout {
                 anchors.centerIn: parent
-                spacing: root.liquidMode ? 1 : 1
+                spacing: root.liquidMode ? Math.max(1, root.pointSize * 0.035) : 1
 
                 StyledText {
                     Layout.alignment: Qt.AlignHCenter
@@ -285,7 +295,8 @@ Item {
                     font.weight: hourPoint.highlighted
                         ? Font.DemiBold : Font.Medium
                     font.pixelSize: root.liquidMode
-                        ? Appearance.font.pixelSize.smallest + 1
+                        ? Math.max(Appearance.font.pixelSize.smallest + 1,
+                            Math.min(23, root.pointSize * 0.18))
                         : Appearance.font.pixelSize.smallest
                     color: root.liquidMode
                         ? Appearance.colors.colOnSurface
@@ -300,7 +311,7 @@ Item {
                         hourPoint.modelData?.code,
                         hourPoint.modelData?.isNight ?? false) ?? "cloud"
                     iconSize: Math.max(15,
-                        Math.min(root.liquidMode ? 22 : 20,
+                        Math.min(root.liquidMode ? 46 : 20,
                             hourPoint.width * 0.38))
                     color: Appearance.colors.colPrimary
                 }
@@ -311,7 +322,8 @@ Item {
                     font.weight: hourPoint.highlighted
                         ? Font.DemiBold : Font.Medium
                     font.pixelSize: root.liquidMode
-                        ? Appearance.font.pixelSize.smallest + 1
+                        ? Math.max(Appearance.font.pixelSize.smallest + 1,
+                            Math.min(24, root.pointSize * 0.19))
                         : Appearance.font.pixelSize.smallest
                     color: root.liquidMode
                         ? Appearance.colors.colOnSurface
@@ -337,18 +349,21 @@ Item {
             anchors.verticalCenter: parent.verticalCenter
             spacing: 6
             visible: Weather.showVisibleCity
+                || String(Weather.data?.description ?? "").length > 0
 
             MaterialSymbol {
-                text: "place"
-                iconSize: 16
+                text: Weather.showVisibleCity ? "place" : "cloud"
+                iconSize: Math.max(16, Math.min(26, root.width * 0.018))
                 color: Appearance.colors.colOnSurfaceVariant
             }
 
             ColumnLayout {
                 spacing: -1
                 StyledText {
+                    visible: Weather.showVisibleCity
                     text: Weather.visibleCity
-                    font.pixelSize: Appearance.font.pixelSize.smaller
+                    font.pixelSize: Math.max(Appearance.font.pixelSize.smaller,
+                        Math.min(23, root.width * 0.016))
                     font.weight: Font.Medium
                     color: Appearance.colors.colOnSurface
                     elide: Text.ElideRight
@@ -356,7 +371,8 @@ Item {
                 }
                 StyledText {
                     text: Weather.data?.description ?? ""
-                    font.pixelSize: Appearance.font.pixelSize.smallest
+                    font.pixelSize: Math.max(Appearance.font.pixelSize.smallest,
+                        Math.min(19, root.width * 0.014))
                     color: Appearance.colors.colOnSurfaceVariant
                     elide: Text.ElideRight
                     Layout.maximumWidth: 150
@@ -366,11 +382,11 @@ Item {
 
         Rectangle {
             id: aqiPill
-            visible: Weather.airQuality?.available ?? false
+            visible: true
             anchors.right: parent.right
             anchors.verticalCenter: parent.verticalCenter
             implicitWidth: aqiRow.implicitWidth + 20
-            implicitHeight: 28
+            implicitHeight: Math.max(28, Math.min(54, root.width * 0.038))
             width: implicitWidth
             height: implicitHeight
             radius: height / 2
@@ -386,18 +402,23 @@ Item {
                 spacing: 5
                 MaterialSymbol {
                     text: "eco"
-                    iconSize: 15
+                    iconSize: Math.max(15, Math.min(26, root.width * 0.018))
                     fill: 1
                     color: Appearance.colors.colPrimary
                 }
                 StyledText {
-                    text: `${Weather.airQuality?.scale ?? "AQI"} ${Weather.airQuality?.aqi ?? "--"}`
-                    font.pixelSize: Appearance.font.pixelSize.smallest
+                    text: Weather.airQuality?.available
+                        ? `${Weather.airQuality?.scale ?? "AQI"} ${Weather.airQuality?.aqi ?? "--"}`
+                        : "AQI --"
+                    font.pixelSize: Math.max(Appearance.font.pixelSize.smallest,
+                        Math.min(20, root.width * 0.014))
                     color: Appearance.colors.colOnSurfaceVariant
                 }
                 StyledText {
+                    visible: Weather.airQuality?.available ?? false
                     text: Weather.airQuality?.label ?? ""
-                    font.pixelSize: Appearance.font.pixelSize.smallest
+                    font.pixelSize: Math.max(Appearance.font.pixelSize.smallest,
+                        Math.min(20, root.width * 0.014))
                     font.weight: Font.DemiBold
                     color: Appearance.colors.colPrimary
                 }

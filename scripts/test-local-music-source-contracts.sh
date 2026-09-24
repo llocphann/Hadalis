@@ -20,8 +20,8 @@ grep -Fq 'onActivated: LocalMusic.enqueueTrack(modelData, true)' "$view" \
     || fail 'Songs double click must append and play through LocalMusic.enqueueTrack'
 grep -Fq 'function enqueueTrack(track, playNow = true): void' "$service" \
     || fail 'LocalMusic must expose append-to-MPD-queue behavior'
-grep -Fq '"python3", _mpdScript, "enqueue"' "$service" \
-    || fail 'LocalMusic enqueue must use the MPD helper instead of replacing the queue'
+grep -Fq 'root.nativeDispatchPath, "mpd", "enqueue"' "$service" \
+    || fail 'LocalMusic enqueue must route through the selectable MPD backend without replacing the queue'
 grep -Fq 'client.command("addid", uri)' "$helper" \
     || fail 'MPD enqueue must append without clearing the queue'
 grep -Fq 'client.command("playid", song_id)' "$helper" \

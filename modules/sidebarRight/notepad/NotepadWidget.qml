@@ -452,22 +452,15 @@ Item {
                 Layout.fillWidth: true
             }
 
-            // Keep only note-lifecycle actions inline. Secondary editor
-            // commands live in the hover rail beside the note body so the tab
-            // strip stays visually quiet and returns vertical space to writing.
+            // Full Sidebar presentation keeps Add beside the tabs. Compact
+            // Quick Notes surfaces move both Add and Remove to the right-side
+            // vertical rail so this row contributes only the centered tabs.
             NotepadToolButton {
+                visible: !root.compactPresentation
                 icon: "add"
                 tooltipText: Translation.tr("New tab")
                 enabled: Notepad.ready
                 onClicked: root.addTabSafely()
-            }
-
-            NotepadToolButton {
-                visible: root.compactPresentation && root.tabCount > 1
-                icon: "close"
-                tooltipText: Translation.tr("Remove current note")
-                enabled: Notepad.ready && root.displayedTabIndex >= 0
-                onClicked: root.removeTabSafely(root.displayedTabIndex)
             }
         }
 
@@ -730,33 +723,50 @@ Item {
                     }
                 }
 
-                // Secondary commands stay hidden until the user engages with
-                // the note. The rail is outside the editor so controls never
-                // cover text or shrink the writing viewport on hover.
+                // Compact Quick Notes keeps only the two note-lifecycle
+                // actions persistently visible. Everything else fades in on
+                // hover/focus, all in the same external vertical rail.
                 Item {
                     id: compactActionRail
                     visible: root.compactPresentation
                     Layout.preferredWidth: root.veryNarrowCompact ? 24 : 28
                     Layout.fillHeight: true
-                    opacity: editorStageHover.hovered || textArea.activeFocus ? 1 : 0
 
-                    Behavior on opacity {
-                        enabled: Appearance.animationsEnabled
-                        NumberAnimation {
-                            duration: Appearance.animation.elementMoveFast.duration
+                    Column {
+                        id: primaryNoteActions
+                        anchors.top: parent.top
+                        anchors.horizontalCenter: parent.horizontalCenter
+                        spacing: 1
+
+                        NotepadToolButton {
+                            icon: "add"
+                            tooltipText: Translation.tr("New tab")
+                            enabled: Notepad.ready
+                            onClicked: root.addTabSafely()
+                        }
+
+                        NotepadToolButton {
+                            visible: root.tabCount > 1
+                            icon: "close"
+                            tooltipText: Translation.tr("Remove current note")
+                            enabled: Notepad.ready && root.displayedTabIndex >= 0
+                            onClicked: root.removeTabSafely(root.displayedTabIndex)
                         }
                     }
 
                     Column {
+                        id: secondaryNoteActions
                         anchors.horizontalCenter: parent.horizontalCenter
-                        anchors.verticalCenter: parent.verticalCenter
+                        anchors.bottom: parent.bottom
                         spacing: 1
+                        opacity: editorStageHover.hovered || textArea.activeFocus ? 1 : 0
+                        visible: opacity > 0
 
-                        NotepadToolButton {
-                            icon: "note_add"
-                            tooltipText: Translation.tr("Capture Zettelkasten note")
-                            enabled: root.canSaveZettel
-                            onClicked: root.captureQuickNote()
+                        Behavior on opacity {
+                            enabled: Appearance.animationsEnabled
+                            NumberAnimation {
+                                duration: Appearance.animation.elementMoveFast.duration
+                            }
                         }
 
                         NotepadToolButton {

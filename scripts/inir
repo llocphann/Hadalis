@@ -1210,7 +1210,11 @@ _inir_doctor_perf() {
         elif [[ "$proc_comm" == "nmcli" ]]; then
             proc_note="NetworkManager monitor"
         elif [[ "$proc_cmd" == *"keyboard_lock_state_daemon.py"* ]]; then
-            proc_note="keyboard lock daemon"
+            proc_note="keyboard lock daemon (Python)"
+        elif [[ "$proc_comm" == "inir-inputd" || "$proc_cmd" == *"/inir-inputd"* ]]; then
+            proc_note="keyboard input daemon (Rust trial)"
+        elif [[ "$proc_comm" == "inir-native" && "$proc_cmd" == *" diagnostics "* ]]; then
+            proc_note="runtime diagnostics sampler (Rust trial)"
         elif [[ "$proc_comm" == "bash" ]]; then
             proc_note="shell helper"
         else
@@ -2243,8 +2247,9 @@ cleanup_orphans() {
     fi
 
     # Phase 5: Kill orphaned iNiR helper processes still in inir.service cgroup.
-    # KillMode=process only kills the main QS pid; swayidle, the keyboard daemon,
-    # and nmcli monitor can be reparented to the user manager while remaining in
+    # KillMode=process only kills the main QS pid; swayidle, Python/Rust input
+    # daemons, Diagnostics samplers and nmcli monitor can be reparented to the
+    # user manager while remaining in
     # the service cgroup, accumulating across restarts.
     local _pid _cgroup
     while IFS= read -r _pid; do
@@ -2258,7 +2263,7 @@ cleanup_orphans() {
         _cgroup="$(cat /proc/$_pid/cgroup 2>/dev/null || true)"
         [[ "$_cgroup" == *"inir.service"* ]] || continue
         kill "$_pid" 2>/dev/null || true
-    done < <(pgrep -f 'keyboard_lock_state_daemon\.py|nmcli monitor|/usr/bin/swayidle -w' 2>/dev/null || true)
+    done < <(pgrep -f 'keyboard_lock_state_daemon\.py|/inir-inputd([[:space:]]|$)|/inir-native[[:space:]]+diagnostics|nmcli monitor|/usr/bin/swayidle -w' 2>/dev/null || true)
 
     # Phase 6: Thumbnail generation uses a multiprocessing pool. Older runs
     # could outlive qs because KillMode=process intentionally preserves apps

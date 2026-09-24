@@ -23,6 +23,12 @@ Item {
         root.today.getMonth() + root.monthShift,
         1
     )
+    readonly property bool eventEditorActive: eventsPane.inlineEditorMode
+
+    function closeEventEditor(): void {
+        if (eventsPane.inlineEditorMode)
+            eventsPane.closeInlineEditor()
+    }
 
     readonly property var calendarCells: {
         const year = root.viewingDate.getFullYear()

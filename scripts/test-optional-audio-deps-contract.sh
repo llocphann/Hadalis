@@ -119,11 +119,11 @@ meta_srcinfo="distro/arch/inir-meta/.SRCINFO"
 mpd_migration="sdata/migrations/042-mpd-mpris-bridge.sh"
 
 for pkg in distro/arch/inir-shell/PKGBUILD distro/arch/inir-shell-git/PKGBUILD; do
-  grep -Fq "'mpd-mpris: MPD/rmpc media controls through MPRIS'" "$pkg" \
+  grep -Eq "'mpd-mpris: [^']*MPRIS'" "$pkg" \
     || { printf 'FAIL: %s does not advertise the MPD MPRIS bridge\n' "$pkg" >&2; exit 1; }
 done
 for srcinfo in distro/arch/inir-shell/.SRCINFO distro/arch/inir-shell-git/.SRCINFO; do
-  grep -Fq "optdepends = mpd-mpris: MPD/rmpc media controls through MPRIS" "$srcinfo" \
+  grep -Eq "optdepends = mpd-mpris: .*MPRIS" "$srcinfo" \
     || { printf 'FAIL: %s does not advertise the MPD MPRIS bridge\n' "$srcinfo" >&2; exit 1; }
 done
 

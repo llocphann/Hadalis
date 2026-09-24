@@ -39,7 +39,6 @@ if [[ -n "${ONLY_MISSING_DEPS:-}" ]]; then
     [fuzzel]="fuzzel"
     [awww]="awww"
     [awww-daemon]="awww"
-    [hyprpicker]="hyprpicker"
     [playerctl]="playerctl"
     [notify-send]="libnotify"
     [flock]="util-linux"

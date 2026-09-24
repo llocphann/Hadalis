@@ -34,6 +34,7 @@ DashCard {
         root.veryShallowLayout ? 32 : (root.shallowLayout ? 36 : 42)
     readonly property int appRowHeight:
         root.veryShallowLayout ? 27 : (root.shallowLayout ? 30 : 34)
+    readonly property int appIconSize: root.veryShallowLayout ? 18 : 20
     readonly property int appColumns: root.narrowLayout ? 1 : 2
     readonly property int appHeaderHeight: root.veryShallowLayout ? 0 : 18
     readonly property int contentSpacing:
@@ -333,11 +334,9 @@ DashCard {
                                     spacing: root.veryShallowLayout ? 4 : 6
 
                                     SmartAppIcon {
-                                        Layout.preferredWidth:
-                                            root.veryShallowLayout ? 18 : 20
-                                        Layout.preferredHeight:
-                                            Layout.preferredWidth
-                                        iconSize: Layout.preferredWidth
+                                        Layout.preferredWidth: root.appIconSize
+                                        Layout.preferredHeight: root.appIconSize
+                                        iconSize: root.appIconSize
                                         icon: AppSearch.guessIcon(
                                             String(appUsageCell.modelData?.name ?? "")
                                                 .toLowerCase()

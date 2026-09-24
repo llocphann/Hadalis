@@ -180,6 +180,17 @@ activate_rust() {
     measure_service_mode python
     measure_service_mode rust
 
+    section "PERSISTENT SELECTOR CHECK"
+    echo "The following call intentionally removes selector env vars; it must still report rust"
+    echo "from the state files so Niri-spawned clipboard helpers can participate."
+    env -u INIR_NATIVE_BACKEND -u INIR_NATIVE_BIN_DIR "$ACTIVE_RUNTIME/scripts/native-dispatch" backend-info 2>&1 || true
+    printf '\nCurrent text clipboard watcher(s):\n'
+    pgrep -af 'wl-paste.*--type text.*--watch' 2>/dev/null || echo "none detected"
+    if pgrep -af 'wl-paste.*--type text.*--watch.*clipboard-store\.py' >/dev/null 2>&1; then
+        echo "NOTE: current Niri session still has the pre-selector clipboard watcher."
+        echo "The migration updates its config for the next Niri session; direct clipboard A/B above is valid now."
+    fi
+
     section "RUST TEST MODE STATUS"
     systemctl --user --no-pager --full status inir.service 2>&1 | sed -n '1,35p' || true
     printf '\nRecent selector/fallback messages:\n'
@@ -254,7 +265,7 @@ bench "clipboard python" bash -c "printf '%s' '$CLIP_INPUT' | python3 '$ROOT_DIR
 bench "clipboard rust" bash -c "printf '%s' '$CLIP_INPUT' | '$BIN_DIR/inir-native' clipboard-filter --filter"
 
 section "NIRI READ-ONLY PARITY + BENCHMARK"
-for op in get-hot-corners get-input get-layout get-animations get-window-rules list-cursor-themes validate; do
+for op in outputs get-hot-corners get-input get-layout get-animations get-window-rules get-binds list-cursor-themes validate; do
     py="$TMP_ROOT/niri-$op.py"
     rs="$TMP_ROOT/niri-$op.rs"
     python3 scripts/niri-config.py "$op" >"$py" 2>"$TMP_ROOT/niri-$op.py.err"
@@ -313,9 +324,25 @@ kv "input rust" "$(tr '\n' ' ' < "$TMP_ROOT/input.rs" | head -c 240)"
 proc_metrics "input python resident" python3 -u scripts/daemon/keyboard_lock_state_daemon.py
 proc_metrics "input rust resident" "$BIN_DIR/inir-inputd" --mode locks
 
-section "DIAGNOSTICS RESIDENT COST"
+section "DIAGNOSTICS SCHEMA + RESIDENT COST"
 target_pid="$(systemctl --user show -p MainPID --value inir.service 2>/dev/null || true)"
-[[ "$target_pid" =~ ^[1-9][0-9]*$ ]] || target_pid="$$"
+[[ "$target_pid" =~ ^[1-9][0-9]*$ ]] || target_pid="$"
+timeout 2s python3 scripts/runtime-diagnostics-sampler.py --pid "$target_pid" --interval-ms 1000 >"$TMP_ROOT/diag.py" 2>"$TMP_ROOT/diag.py.err" || true
+timeout 2s "$BIN_DIR/inir-native" diagnostics --pid "$target_pid" --interval-ms 1000 >"$TMP_ROOT/diag.rs" 2>"$TMP_ROOT/diag.rs.err" || true
+head -n 1 "$TMP_ROOT/diag.py" >"$TMP_ROOT/diag.py.one" || true
+head -n 1 "$TMP_ROOT/diag.rs" >"$TMP_ROOT/diag.rs.one" || true
+if command_exists jq && jq -e . "$TMP_ROOT/diag.py.one" >/dev/null 2>&1 && jq -e . "$TMP_ROOT/diag.rs.one" >/dev/null 2>&1; then
+    jq -S '[paths | map(tostring) | join(".")] | unique' "$TMP_ROOT/diag.py.one" >"$TMP_ROOT/diag.py.paths"
+    jq -S '[paths | map(tostring) | join(".")] | unique' "$TMP_ROOT/diag.rs.one" >"$TMP_ROOT/diag.rs.paths"
+    if cmp -s "$TMP_ROOT/diag.py.paths" "$TMP_ROOT/diag.rs.paths"; then
+        kv "diagnostics schema parity" "PASS"
+    else
+        kv "diagnostics schema parity" "DIFF (dynamic/optional fields may differ; report retains path sets)"
+        diff -U0 "$TMP_ROOT/diag.py.paths" "$TMP_ROOT/diag.rs.paths" | head -n 80 || true
+    fi
+else
+    kv "diagnostics schema parity" "ERROR (missing/invalid first sample)"
+fi
 proc_metrics "diagnostics python" python3 scripts/runtime-diagnostics-sampler.py --pid "$target_pid" --interval-ms 1000
 proc_metrics "diagnostics rust" "$BIN_DIR/inir-native" diagnostics --pid "$target_pid" --interval-ms 1000
 
@@ -336,6 +363,7 @@ if (( py_mpd_rc == 0 && rs_mpd_rc == 0 )); then
     fi
     bench "mpd status python" python3 scripts/local_music_mpd.py status "$MPD_HOST_TEST" "$MPD_PORT_TEST" "$MUSIC_ROOT_TEST"
     bench "mpd status rust" "$BIN_DIR/inir-mpdd" --compat status "$MPD_HOST_TEST" "$MPD_PORT_TEST" "$MUSIC_ROOT_TEST"
+    proc_metrics "mpd rust persistent" "$BIN_DIR/inir-mpdd" --host "$MPD_HOST_TEST" --port "$MPD_PORT_TEST" --music-root "$MUSIC_ROOT_TEST" --socket "$TMP_ROOT/mpd.sock"
 else
     kv "mpd status parity" "SKIP/ERROR"
     kv "mpd python error" "$(tr '\n' ' ' < "$TMP_ROOT/mpd.py.err" | head -c 300)"

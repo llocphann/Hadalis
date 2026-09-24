@@ -1,5 +1,6 @@
 mod palette;
 mod source;
+mod template;
 
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -16,6 +17,7 @@ use crate::palette::{
 use crate::source::{
     auto_detect_scheme, color_seed, image_seed, invert_hue, load_resized_image, low_chroma,
 };
+use crate::template::{render_templates, RenderRequest};
 
 #[derive(Debug, Clone, Copy, ValueEnum)]
 enum Mode {
@@ -245,10 +247,24 @@ fn main() -> Result<()> {
         write_json(path, &meta)?;
     }
 
-    if args.render_templates.is_some() {
-        eprintln!(
-            "inir-theme: template rendering is staged in the next native parity module; direct color artifacts were generated"
-        );
+    if let Some(template_dir) = args.render_templates.as_deref() {
+        let managed_outputs = [
+            args.json_output.clone(),
+            args.palette_output.clone(),
+            args.app_palette_output.clone(),
+            args.terminal_output.clone(),
+            args.meta_output.clone(),
+            args.scss_output.clone(),
+        ];
+        render_templates(RenderRequest {
+            template_dir,
+            managed_outputs: &managed_outputs,
+            seed,
+            scheme: &scheme,
+            dark_mode: dark,
+            soften: args.soften,
+            image: source_path.as_deref(),
+        })?;
     }
 
     if args.debug {

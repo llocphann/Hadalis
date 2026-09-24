@@ -308,7 +308,7 @@ WindowDialog {
                 - compactOptionDeck.height) / 2)
 
         contentHeight: root.embeddedPresentation
-            ? height
+            ? Math.max(height, formColumn.implicitHeight)
             : formColumn.implicitHeight + 16
         Layout.leftMargin: root.embeddedPresentation ? 6 : 0
         Layout.rightMargin: root.embeddedPresentation ? 6 : 0

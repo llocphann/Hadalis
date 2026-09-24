@@ -1,7 +1,7 @@
 // Adaptive Overview preview policy.
 //
-// This file is intentionally pure JavaScript so the scheduler decisions can be
-// regression-tested without a running compositor.
+// Pure JavaScript keeps scheduler decisions regression-testable without a
+// running compositor or native capture backend.
 
 function normalizeMode(value) {
     const mode = String(value ?? "adaptive").toLowerCase()
@@ -24,6 +24,12 @@ function clampActivity(value) {
     return Math.max(0, Math.min(1, parsed))
 }
 
+function boundedThreshold(value, fallback) {
+    const parsed = Number(value)
+    const safe = Number.isFinite(parsed) ? parsed : Number(fallback)
+    return Math.max(0, Math.min(1, Number.isFinite(safe) ? safe : 0))
+}
+
 function wantsLive(options) {
     const o = options ?? {}
     if (!o.active || !o.backendAvailable)
@@ -35,16 +41,32 @@ function wantsLive(options) {
     if (mode === "live")
         return true
 
+    // Hover means the user is explicitly inspecting this window.
     if ((o.liveOnHover ?? true) && !!o.hovered)
         return true
-    if ((o.liveMediaWindows ?? true) && !!o.mediaPlaying)
-        return true
-    if ((o.liveFocusedWindow ?? false) && !!o.focused)
-        return true
 
-    const threshold = Math.max(0, Math.min(1,
-        Number.isFinite(Number(o.activityPromotionThreshold))
-            ? Number(o.activityPromotionThreshold) : 0.55))
+    const requireActivityForHints = !!o.requireActivityForHints
+    if (!requireActivityForHints) {
+        if ((o.liveMediaWindows ?? true) && !!o.mediaPlaying)
+            return true
+        if ((o.liveFocusedWindow ?? false) && !!o.focused)
+            return true
+    }
+
+    let threshold = boundedThreshold(o.activityPromotionThreshold, 0.55)
+    if (requireActivityForHints && (o.liveMediaWindows ?? true) && !!o.mediaPlaying) {
+        threshold = Math.min(
+            threshold,
+            boundedThreshold(o.mediaActivityPromotionThreshold, threshold)
+        )
+    }
+    if (requireActivityForHints && (o.liveFocusedWindow ?? false) && !!o.focused) {
+        threshold = Math.min(
+            threshold,
+            boundedThreshold(o.focusedActivityPromotionThreshold, threshold)
+        )
+    }
+
     return clampActivity(o.activityScore) >= threshold
 }
 

@@ -107,6 +107,18 @@ void NiriPreviewItem::setWindowId(qulonglong value) {
         m_hasContent = false;
         emit hasContentChanged();
     }
+    if (m_sourceReady) {
+        m_sourceReady = false;
+        emit sourceReadyChanged();
+    }
+    if (!qFuzzyIsNull(m_activity)) {
+        m_activity = 0.0;
+        emit activityChanged();
+    }
+    if (!m_sourceSize.isEmpty()) {
+        m_sourceSize = {};
+        emit sourceSizeChanged();
+    }
     syncConsumer();
 }
 

@@ -15,6 +15,11 @@ adaptive_preview_policy="$repo_root/services/AdaptivePreviewPolicy.js"
 adaptive_preview_service="$repo_root/services/AdaptivePreviewService.qml"
 overview_renderer="$repo_root/modules/overview/OverviewNiriWidget.qml"
 hypr_overview_window="$repo_root/modules/overview/OverviewWindow.qml"
+niri_native_renderer="$repo_root/modules/overview/NiriAdaptiveWindowPreview.qml"
+niri_native_backend="$repo_root/distro/arch/inir-niri-preview/plugin/capture_backend.cpp"
+niri_native_pkg="$repo_root/distro/arch/inir-niri-preview/PKGBUILD"
+niri_native_migration="$repo_root/sdata/migrations/046-niri-native-window-preview.sh"
+launcher="$repo_root/scripts/inir"
 services_qmldir="$repo_root/services/qmldir"
 config_qml="$repo_root/modules/common/Config.qml"
 
@@ -171,8 +176,32 @@ grep -Fq 'live: root.previewLive' "$hypr_overview_window" \
 grep -Fq 'windowPreview.captureFrame()' "$hypr_overview_window" \
     || fail 'static Hyprland windows must use a single compositor frame'
 if grep -Fq 'ScreencopyView {' "$overview_renderer"; then
-    fail 'Niri Overview must not fake toplevel live capture with unsupported ScreencopyView sources'
+    fail 'Niri Overview must not fake toplevel live capture with Quickshell ScreencopyView'
 fi
+grep -Fq 'Qt.resolvedUrl("NiriAdaptiveWindowPreview.qml")' "$overview_renderer" \
+    || fail 'Niri Overview must lazy-load the native renderer behind capability gating'
+grep -Fq 'import Hadalis.NiriPreview 1.0' "$niri_native_renderer" \
+    || fail 'Niri native renderer must use the standalone Hadalis QML plugin'
+grep -Fq 'NiriPreviewItem {' "$niri_native_renderer" \
+    || fail 'Niri native renderer must consume compositor-native frames'
+grep -Fq 'AdaptivePreviewService.isProbeActive' "$niri_native_renderer" \
+    || fail 'Niri motion discovery must use the bounded rotating probe scheduler'
+grep -Fq 'onFrameCaptured: root._recordActivity(activity)' "$niri_native_renderer" \
+    || fail 'Niri motion scoring must use compositor damage activity'
+grep -Fq 'ext_foreign_toplevel_image_capture_source_manager_v1_create_source' "$niri_native_backend" \
+    || fail 'Niri backend must capture the exact ext foreign-toplevel handle'
+grep -Fq 'ext_image_copy_capture_session_v1_create_frame' "$niri_native_backend" \
+    || fail 'Niri backend must use ext-image-copy-capture frames'
+if grep -Fq 'screenshot-window' "$niri_native_renderer" \
+        || grep -Fq 'niri msg action screenshot-window' "$niri_native_backend"; then
+    fail 'Niri native live preview must never poll screenshot-window'
+fi
+grep -Fq 'pkgname=inir-niri-preview' "$niri_native_pkg" \
+    || fail 'native Niri preview plugin must have an Arch package boundary'
+grep -Fq 'MIGRATION_ID="046-niri-native-window-preview"' "$niri_native_migration" \
+    || fail 'repo-managed Niri installs must gain the native plugin through migration'
+grep -Fq 'export INIR_NIRI_PREVIEW_PLUGIN=1' "$launcher" \
+    || fail 'launcher must capability-gate the native Niri QML module'
 
 node - "$adaptive_preview_policy" <<'NODE'
 const fs = require('node:fs');
@@ -196,6 +225,26 @@ assert.equal(scope.wantsLive({
 assert.equal(scope.wantsLive({
     mode: 'adaptive', active: true, backendAvailable: true, mediaPlaying: true
 }), true, 'playing media is a dynamic-content hint');
+assert.equal(scope.wantsLive({
+    mode: 'adaptive', active: true, backendAvailable: true,
+    mediaPlaying: true, activityScore: 0,
+    requireActivityForHints: true,
+    activityPromotionThreshold: 0.06,
+    mediaActivityPromotionThreshold: 0.02
+}), false, 'Niri media hint cannot force a static window live');
+assert.equal(scope.wantsLive({
+    mode: 'adaptive', active: true, backendAvailable: true,
+    mediaPlaying: true, activityScore: 0.03,
+    requireActivityForHints: true,
+    activityPromotionThreshold: 0.06,
+    mediaActivityPromotionThreshold: 0.02
+}), true, 'Niri media hint lowers the activity threshold after real damage');
+assert.equal(scope.wantsLive({
+    mode: 'adaptive', active: true, backendAvailable: true,
+    activityScore: 0.08,
+    requireActivityForHints: true,
+    activityPromotionThreshold: 0.06
+}), true, 'Niri generic motion can promote without media metadata');
 assert.equal(scope.wantsLive({
     mode: 'adaptive', active: true, backendAvailable: true, focused: true
 }), false, 'focus alone remains a snapshot by default');

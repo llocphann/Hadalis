@@ -110,6 +110,15 @@ Quickshell, Qt 6, and QML/KDE runtime dependencies declared by `sdata/dist-arch/
 
 `plasma-integration` is installed separately by the source installer as a Qt platform-theme integration; `qt6-avif-image-plugin` is attempted through the AUR helper for AVIF image support.
 
+### Native Niri preview plugin (`inir-niri-preview`)
+
+Hadalis keeps Niri live-window capture outside Quickshell. The local Arch recipe under `distro/arch/inir-niri-preview` builds a small Qt 6 QML plugin that connects to Wayland directly and uses `ext-foreign-toplevel-list-v1`, `ext-foreign-toplevel-image-capture-source-manager-v1`, and `ext-image-copy-capture-v1`.
+
+Repo-managed Arch/Niri installs receive the plugin through required migration `046-niri-native-window-preview`. The resulting package owns `/usr/lib/qt6/qml/Hadalis/NiriPreview` and `/usr/share/inir/niri-preview-plugin`. The launcher publishes `INIR_NIRI_PREVIEW_PLUGIN=1` only when both payloads exist, so the shell can lazy-load the extension without making native capture a hard startup dependency.
+
+The initial backend deliberately uses Wayland SHM instead of adding a PipeWire/GStreamer or EGL/DMABUF dependency stack. Captured frames are reduced to the preview tile size before Qt Quick texture upload; session count and live FPS are independently bounded by the Overview scheduler.
+
+
 ---
 
 ## Audio (`inir-audio`)

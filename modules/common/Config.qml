@@ -2108,6 +2108,20 @@ Singleton {
                 property int livePromotionDelayMs: 180
                 property int liveCooldownMs: 2500
                 property real activityPromotionThreshold: 0.55
+
+                // Niri native preview budget. Probe sessions use compositor
+                // damage events and are kept separate from the bounded live
+                // stream pool so static windows never become video polling.
+                property int niriMaxLiveWindows: 3
+                property int niriPreviewMaxFps: 18
+                property int niriProbeSlots: 2
+                property int niriProbeWindowMs: 800
+                property int niriMotionSamples: 2
+                property real niriMotionSampleThreshold: 0.006
+                property real niriActivityPromotionThreshold: 0.06
+                property real niriMediaActivityPromotionThreshold: 0.02
+                property real niriFocusedActivityPromotionThreshold: 0.035
+                property int niriStaticCooldownMs: 2800
                 property bool activeScreenOnly: true
                 property bool allAppsGrid: false
                 property string allAppsGridMode: "minimal"

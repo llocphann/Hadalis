@@ -158,8 +158,10 @@ public:
                         const QSize& targetSize) {
         auto it = m_sessions.find(token);
         if (!active || identifier.isEmpty()) {
-            if (it != m_sessions.end())
+            if (it != m_sessions.end()) {
+                publishSourceReady(token, false);
                 destroySession(token);
+            }
             return;
         }
 
@@ -179,6 +181,7 @@ public:
 
         SessionState* state = it.value();
         if (state->identifier != identifier) {
+            publishSourceReady(token, false);
             destroySession(token);
             updateConsumer(token, identifier, active, live, maxFps, targetSize);
             return;

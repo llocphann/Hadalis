@@ -7,7 +7,6 @@ use std::thread;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use anyhow::{anyhow, Result};
-use regex::Regex;
 use serde_json::{json, Map, Value};
 
 static STOP: AtomicBool = AtomicBool::new(false);
@@ -108,19 +107,24 @@ fn read_text(path: impl AsRef<Path>) -> String {
     fs::read_to_string(path).unwrap_or_default()
 }
 
+fn parse_kib_line(line: &str) -> Option<(&str, u64)> {
+    let (key, payload) = line.split_once(':')?;
+    let mut fields = payload.split_whitespace();
+    let value = fields.next()?.parse::<u64>().ok()?;
+    let unit = fields.next()?;
+    if !unit.eq_ignore_ascii_case("kb") {
+        return None;
+    }
+    Some((key.trim(), value))
+}
+
 fn parse_kib_fields(text: &str) -> BTreeMap<String, u64> {
-    let pattern = Regex::new(r"^([A-Za-z_]+):\s+(\d+)\s+kB\s*$").unwrap();
-    let wanted = KIB_FIELDS.iter().copied().collect::<BTreeSet<_>>();
     let mut values = BTreeMap::new();
     for line in text.lines() {
-        let Some(caps) = pattern.captures(line) else {
+        let Some((key, value)) = parse_kib_line(line) else {
             continue;
         };
-        let key = &caps[1];
-        if !wanted.contains(key) {
-            continue;
-        }
-        if let Ok(value) = caps[2].parse::<u64>() {
+        if KIB_FIELDS.contains(&key) {
             values.insert(key.to_owned(), value);
         }
     }
@@ -141,16 +145,18 @@ fn read_memory(pid: i32) -> Value {
 
     let status = read_text(proc.join("status"));
     let mut fallback = BTreeMap::new();
-    for (source, target) in [("VmRSS", "Rss"), ("VmSwap", "Swap")] {
-        let pattern = Regex::new(&format!(
-            r"(?m)^{}:\s+(\d+)\s+kB\s*$",
-            regex::escape(source)
-        ))
-        .unwrap();
-        if let Some(caps) = pattern.captures(&status)
-            && let Ok(value) = caps[1].parse::<u64>()
-        {
-            fallback.insert(target.to_owned(), value);
+    for line in status.lines() {
+        let Some((key, value)) = parse_kib_line(line) else {
+            continue;
+        };
+        match key {
+            "VmRSS" => {
+                fallback.insert("Rss".to_owned(), value);
+            }
+            "VmSwap" => {
+                fallback.insert("Swap".to_owned(), value);
+            }
+            _ => {}
         }
     }
     json!({
@@ -227,22 +233,14 @@ fn read_uptime_seconds() -> Option<f64> {
 fn read_system_memory() -> Value {
     let text = read_text("/proc/meminfo");
     let mut values = BTreeMap::new();
-    for key in [
-        "MemTotal",
-        "MemAvailable",
-        "Cached",
-        "Buffers",
-        "SwapTotal",
-        "SwapFree",
-    ] {
-        let pattern = Regex::new(&format!(
-            r"(?m)^{}:\s+(\d+)\s+kB\s*$",
-            regex::escape(key)
-        ))
-        .unwrap();
-        if let Some(caps) = pattern.captures(&text)
-            && let Ok(value) = caps[1].parse::<u64>()
-        {
+    for line in text.lines() {
+        let Some((key, value)) = parse_kib_line(line) else {
+            continue;
+        };
+        if matches!(
+            key,
+            "MemTotal" | "MemAvailable" | "Cached" | "Buffers" | "SwapTotal" | "SwapFree"
+        ) {
             values.insert(key.to_owned(), value);
         }
     }
@@ -336,16 +334,18 @@ fn read_io(pid: i32) -> BTreeMap<String, u64> {
 fn read_process_status(pid: i32) -> BTreeMap<String, u64> {
     let text = read_text(format!("/proc/{pid}/status"));
     let mut result = BTreeMap::new();
-    for (source, target) in [("VmRSS", "Rss"), ("VmSwap", "Swap")] {
-        let pattern = Regex::new(&format!(
-            r"(?m)^{}:\s+(\d+)\s+kB\s*$",
-            regex::escape(source)
-        ))
-        .unwrap();
-        if let Some(caps) = pattern.captures(&text)
-            && let Ok(value) = caps[1].parse::<u64>()
-        {
-            result.insert(target.to_owned(), value);
+    for line in text.lines() {
+        let Some((key, value)) = parse_kib_line(line) else {
+            continue;
+        };
+        match key {
+            "VmRSS" => {
+                result.insert("Rss".to_owned(), value);
+            }
+            "VmSwap" => {
+                result.insert("Swap".to_owned(), value);
+            }
+            _ => {}
         }
     }
     result
@@ -514,40 +514,60 @@ type DrmFdInfo = (String, CounterMap, CounterMap);
 type DrmClients = BTreeMap<String, (CounterMap, CounterMap)>;
 
 fn parse_drm_fdinfo(text: &str) -> Option<DrmFdInfo> {
-    let client_re = Regex::new(r"(?m)^drm-client-id:\s*(\S+)\s*$").ok()?;
-    let client = client_re
-        .captures(text)?
-        .get(1)?
-        .as_str()
-        .to_owned();
-    let engine_re = Regex::new(r"^drm-engine-([^:]+):\s*(\d+)\s*ns\s*$").ok()?;
-    let memory_re = Regex::new(
-        r"^drm-(memory|total|shared|resident|active|purgeable)-([^:]+):\s*(\d+)\s*([A-Za-z]+)?\s*$",
-    )
-    .ok()?;
+    let mut client = None;
     let mut engines = BTreeMap::new();
     let mut memory = BTreeMap::new();
+
     for line in text.lines() {
-        if let Some(caps) = engine_re.captures(line)
-            && let Ok(value) = caps[2].parse::<u64>()
-        {
-            engines.insert(caps[1].to_owned(), value);
+        if let Some(value) = line.strip_prefix("drm-client-id:") {
+            let value = value.trim();
+            if !value.is_empty() {
+                client = Some(value.to_owned());
+            }
             continue;
         }
-        if let Some(caps) = memory_re.captures(line)
-            && let Ok(value) = caps[3].parse::<u64>()
+
+        if let Some(payload) = line.strip_prefix("drm-engine-")
+            && let Some((name, value)) = payload.split_once(':')
         {
-            let key = format!("{}-{}", &caps[1], &caps[2]);
-            memory.insert(
-                key,
-                to_kib(
-                    value,
-                    caps.get(4).map(|value| value.as_str()).unwrap_or("KiB"),
-                ),
-            );
+            let mut fields = value.split_whitespace();
+            if let (Some(raw), Some(unit)) = (fields.next(), fields.next())
+                && unit == "ns"
+                && let Ok(value) = raw.parse::<u64>()
+            {
+                engines.insert(name.to_owned(), value);
+            }
+            continue;
         }
+
+        let Some(payload) = line.strip_prefix("drm-") else {
+            continue;
+        };
+        let Some((name, value)) = payload.split_once(':') else {
+            continue;
+        };
+        let Some((kind, region)) = name.split_once('-') else {
+            continue;
+        };
+        if !matches!(
+            kind,
+            "memory" | "total" | "shared" | "resident" | "active" | "purgeable"
+        ) {
+            continue;
+        }
+
+        let mut fields = value.split_whitespace();
+        let Some(raw) = fields.next() else {
+            continue;
+        };
+        let Ok(value) = raw.parse::<u64>() else {
+            continue;
+        };
+        let unit = fields.next().unwrap_or("KiB");
+        memory.insert(format!("{kind}-{region}"), to_kib(value, unit));
     }
-    Some((client, engines, memory))
+
+    Some((client?, engines, memory))
 }
 
 fn read_drm(pid: i32) -> DrmState {

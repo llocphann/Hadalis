@@ -123,7 +123,7 @@ Item {
             
             StyledText {
                 Layout.fillWidth: true
-                text: Translation.tr("Events & Reminders")
+                text: Translation.tr("Events")
                 font.pixelSize: Appearance.font.pixelSize.small
                 font.weight: Font.Medium
                 color: root.colText

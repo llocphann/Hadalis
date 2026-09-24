@@ -1,35 +1,47 @@
 #include "capture_backend.hpp"
 
-#include <QElapsedTimer>
+#include <QByteArray>
+#include <QDBusConnection>
+#include <QDBusConnectionInterface>
+#include <QDBusError>
+#include <QDBusInterface>
+#include <QDBusMessage>
+#include <QDBusObjectPath>
+#include <QDBusReply>
 #include <QHash>
 #include <QMetaObject>
-#include <QRegion>
-#include <QSocketNotifier>
 #include <QTimer>
-#include <QTransform>
+#include <QVariantMap>
 #include <QtGlobal>
 
 #include <algorithm>
-#include <cerrno>
+#include <chrono>
+#include <cmath>
+#include <cstdint>
 #include <cstring>
-#include <fcntl.h>
-#include <utility>
-#include <sys/mman.h>
-#include <unistd.h>
-#include <wayland-client.h>
 
 extern "C" {
-#include "ext-foreign-toplevel-list-v1-client-protocol.h"
-#include "ext-image-capture-source-v1-client-protocol.h"
-#include "ext-image-copy-capture-v1-client-protocol.h"
+#include <pipewire/pipewire.h>
+#include <spa/param/video/format-utils.h>
+#include <spa/param/video/raw.h>
+#include <spa/pod/builder.h>
 }
 
 namespace {
+
+constexpr auto kScreenCastService = "org.gnome.Mutter.ScreenCast";
+constexpr auto kScreenCastRootPath = "/org/gnome/Mutter/ScreenCast";
+constexpr auto kScreenCastRootInterface = "org.gnome.Mutter.ScreenCast";
+constexpr auto kScreenCastSessionInterface = "org.gnome.Mutter.ScreenCast.Session";
+constexpr auto kScreenCastStreamInterface = "org.gnome.Mutter.ScreenCast.Stream";
 
 constexpr int kDefaultPreviewWidth = 640;
 constexpr int kDefaultPreviewHeight = 360;
 constexpr int kMinPreviewDimension = 32;
 constexpr int kMaxPreviewDimension = 1024;
+constexpr int kMotionSampleColumns = 48;
+constexpr int kMotionSampleRows = 27;
+constexpr int kMotionDeltaThreshold = 10;
 
 QSize boundedTargetSize(const QSize& requested) {
     if (!requested.isValid() || requested.isEmpty())
@@ -54,110 +66,157 @@ QImage cropScaleFrame(const QImage& source, const QSize& requested) {
     const int y = std::max(0, (scaled.height() - target.height()) / 2);
     if (scaled.width() == target.width() && scaled.height() == target.height())
         return scaled.copy();
-    return scaled.copy(x, y,
-                       std::min(target.width(), scaled.width() - x),
-                       std::min(target.height(), scaled.height() - y));
+
+    return scaled.copy(
+        x,
+        y,
+        std::min(target.width(), scaled.width() - x),
+        std::min(target.height(), scaled.height() - y));
 }
 
-QImage applyTransform(const QImage& image, uint32_t transform) {
-    switch (transform) {
-    case WL_OUTPUT_TRANSFORM_90:
-    case WL_OUTPUT_TRANSFORM_FLIPPED_90:
-        return image.transformed(QTransform().rotate(90), Qt::FastTransformation);
-    case WL_OUTPUT_TRANSFORM_180:
-    case WL_OUTPUT_TRANSFORM_FLIPPED_180:
-        return image.transformed(QTransform().rotate(180), Qt::FastTransformation);
-    case WL_OUTPUT_TRANSFORM_270:
-    case WL_OUTPUT_TRANSFORM_FLIPPED_270:
-        return image.transformed(QTransform().rotate(270), Qt::FastTransformation);
-    default:
-        return image;
+qint64 monotonicMilliseconds() {
+    return std::chrono::duration_cast<std::chrono::milliseconds>(
+               std::chrono::steady_clock::now().time_since_epoch())
+        .count();
+}
+
+QByteArray sampleLuma(const uchar* base,
+                      int width,
+                      int height,
+                      int stride) {
+    QByteArray sample;
+    sample.resize(kMotionSampleColumns * kMotionSampleRows);
+    if (!base || width <= 0 || height <= 0 || stride == 0) {
+        sample.fill(0);
+        return sample;
     }
+
+    const int rowStride = std::abs(stride);
+    for (int sy = 0; sy < kMotionSampleRows; ++sy) {
+        const int y = std::clamp(
+            ((sy * 2 + 1) * height) / (kMotionSampleRows * 2),
+            0,
+            height - 1);
+        const uchar* row = stride > 0
+            ? base + y * rowStride
+            : base + (height - 1 - y) * rowStride;
+
+        for (int sx = 0; sx < kMotionSampleColumns; ++sx) {
+            const int x = std::clamp(
+                ((sx * 2 + 1) * width) / (kMotionSampleColumns * 2),
+                0,
+                width - 1);
+            const uchar* pixel = row + x * 4;
+            const int b = pixel[0];
+            const int g = pixel[1];
+            const int r = pixel[2];
+            const int luma = (19 * b + 183 * g + 54 * r) >> 8;
+            sample[sy * kMotionSampleColumns + sx] = static_cast<char>(luma);
+        }
+    }
+    return sample;
+}
+
+qreal motionScore(const QByteArray& previous, const QByteArray& current) {
+    if (previous.size() != current.size() || current.isEmpty())
+        return 0.0;
+
+    int changed = 0;
+    qint64 deltaSum = 0;
+    for (qsizetype i = 0; i < current.size(); ++i) {
+        const int a = static_cast<unsigned char>(previous.at(i));
+        const int b = static_cast<unsigned char>(current.at(i));
+        const int delta = std::abs(a - b);
+        deltaSum += delta;
+        if (delta >= kMotionDeltaThreshold)
+            ++changed;
+    }
+
+    const qreal changedRatio =
+        static_cast<qreal>(changed) / static_cast<qreal>(current.size());
+    const qreal averageDelta =
+        static_cast<qreal>(deltaSum)
+        / (static_cast<qreal>(current.size()) * 255.0);
+
+    return std::clamp<qreal>(
+        changedRatio * 0.78 + averageDelta * 0.22,
+        0.0,
+        1.0);
 }
 
 } // namespace
 
+class CaptureWorker;
+
+class StreamWatcher final : public QObject {
+    Q_OBJECT
+
+public:
+    StreamWatcher(CaptureWorker* owner, quint64 token, QObject* parent = nullptr)
+        : QObject(parent)
+        , m_owner(owner)
+        , m_token(token) {}
+
+public slots:
+    void onPipeWireStreamAdded(uint nodeId);
+
+private:
+    CaptureWorker* m_owner = nullptr;
+    quint64 m_token = 0;
+};
+
 class CaptureWorker final : public QObject {
 public:
     explicit CaptureWorker(CaptureBroker* broker)
-        : m_broker(broker) {
-        m_clock.start();
-
-        m_pump.setInterval(15);
-        m_pump.setTimerType(Qt::PreciseTimer);
-        connect(&m_pump, &QTimer::timeout, this, [this] { pumpLiveSessions(); });
-    }
+        : m_broker(broker)
+        , m_bus(QDBusConnection::sessionBus()) {}
 
     ~CaptureWorker() override {
         shutdown();
     }
 
     void initialize() {
-        if (m_display)
-            return;
-
-        m_display = wl_display_connect(nullptr);
-        if (!m_display) {
+        if (!m_bus.isConnected()) {
             publishBackendAvailability(false);
             return;
         }
 
-        m_registry = wl_display_get_registry(m_display);
-        static const wl_registry_listener registryListener = {
-            &CaptureWorker::registryGlobal,
-            &CaptureWorker::registryGlobalRemove,
-        };
-        wl_registry_add_listener(m_registry, &registryListener, this);
-
-        if (wl_display_roundtrip(m_display) < 0) {
-            shutdown();
+        auto* busInterface = m_bus.interface();
+        if (!busInterface) {
             publishBackendAvailability(false);
             return;
         }
 
-        if (!m_shm || !m_toplevelList || !m_sourceManager || !m_captureManager) {
-            shutdown();
+        const QDBusReply<bool> service =
+            busInterface->isServiceRegistered(QString::fromLatin1(kScreenCastService));
+        if (!service.isValid() || !service.value()) {
             publishBackendAvailability(false);
             return;
         }
 
-        static const ext_foreign_toplevel_list_v1_listener listListener = {
-            &CaptureWorker::toplevelCreated,
-            &CaptureWorker::toplevelListFinished,
-        };
-        ext_foreign_toplevel_list_v1_add_listener(m_toplevelList, &listListener, this);
-
-        if (wl_display_roundtrip(m_display) < 0) {
-            shutdown();
-            publishBackendAvailability(false);
-            return;
-        }
-
-        m_notifier = new QSocketNotifier(
-            wl_display_get_fd(m_display),
-            QSocketNotifier::Read,
-            this);
-        connect(m_notifier, &QSocketNotifier::activated, this, [this] {
-            if (!m_display)
-                return;
-            if (wl_display_dispatch(m_display) < 0) {
-                publishBackendAvailability(false);
-                shutdown();
+        pw_init(nullptr, nullptr);
+        m_pwLoop = pw_thread_loop_new("HadalisNiriPreview", nullptr);
+        if (!m_pwLoop || pw_thread_loop_start(m_pwLoop) < 0) {
+            if (m_pwLoop) {
+                pw_thread_loop_destroy(m_pwLoop);
+                m_pwLoop = nullptr;
             }
-        });
+            publishBackendAvailability(false);
+            return;
+        }
 
-        m_pump.start();
         publishBackendAvailability(true);
     }
 
     void updateConsumer(quint64 token,
-                        const QString& identifier,
+                        quint64 windowId,
                         bool active,
                         bool live,
                         int maxFps,
                         const QSize& targetSize) {
         auto it = m_sessions.find(token);
-        if (!active || identifier.isEmpty()) {
+
+        if (!active || windowId == 0) {
             if (it != m_sessions.end()) {
                 publishSourceReady(token, false);
                 destroySession(token);
@@ -165,42 +224,68 @@ public:
             return;
         }
 
+        maxFps = std::clamp(maxFps, 1, 30);
+        const QSize boundedSize = boundedTargetSize(targetSize);
+
         if (it == m_sessions.end()) {
             auto* state = new SessionState;
             state->owner = this;
             state->token = token;
-            state->identifier = identifier;
+            state->windowId = windowId;
             state->active = true;
             state->live = live;
-            state->maxFps = std::clamp(maxFps, 1, 30);
-            state->targetSize = boundedTargetSize(targetSize);
+            state->maxFps = maxFps;
+            state->targetSize = boundedSize;
+            state->wantOneShot = true;
             m_sessions.insert(token, state);
-            ensureCaptureSession(state);
+            createScreenCast(state);
             return;
         }
 
         SessionState* state = it.value();
-        if (state->identifier != identifier) {
+        if (state->windowId != windowId) {
             publishSourceReady(token, false);
             destroySession(token);
-            updateConsumer(token, identifier, active, live, maxFps, targetSize);
+            updateConsumer(token, windowId, active, live, maxFps, boundedSize);
             return;
         }
 
+        const bool fpsChanged = state->maxFps != maxFps;
+        const bool liveChanged = state->live != live;
+
+        if (m_pwLoop)
+            pw_thread_loop_lock(m_pwLoop);
+
         state->active = active;
         state->live = live;
-        state->maxFps = std::clamp(maxFps, 1, 30);
-        state->targetSize = boundedTargetSize(targetSize);
-        ensureCaptureSession(state);
-        if (state->live)
-            requestFrame(state);
+        state->maxFps = maxFps;
+        state->targetSize = boundedSize;
+        if (liveChanged && !live)
+            state->wantOneShot = true;
+
+        if (m_pwLoop)
+            pw_thread_loop_unlock(m_pwLoop);
+
+        // Niri honors the negotiated max framerate. Reconnect only the
+        // PipeWire consumer when probe/live cadence changes; the D-Bus window
+        // cast session and its node stay alive.
+        if (fpsChanged && state->nodeId != PW_ID_ANY) {
+            destroyPipeWireStream(state);
+            startPipeWireStream(state);
+        }
     }
 
     void captureOnce(quint64 token) {
         auto it = m_sessions.find(token);
         if (it == m_sessions.end())
             return;
-        requestFrame(it.value());
+
+        SessionState* state = it.value();
+        if (m_pwLoop)
+            pw_thread_loop_lock(m_pwLoop);
+        state->wantOneShot = true;
+        if (m_pwLoop)
+            pw_thread_loop_unlock(m_pwLoop);
     }
 
     void unregisterConsumer(quint64 token) {
@@ -212,512 +297,260 @@ public:
         publishBackendAvailability(false);
     }
 
-private:
-    struct ToplevelState {
-        CaptureWorker* owner = nullptr;
-        ext_foreign_toplevel_handle_v1* handle = nullptr;
-        QString identifier;
-    };
+    void handlePipeWireNode(quint64 token, uint32_t nodeId) {
+        auto it = m_sessions.find(token);
+        if (it == m_sessions.end())
+            return;
 
+        SessionState* state = it.value();
+        if (state->nodeId == nodeId && state->pwStream)
+            return;
+
+        state->nodeId = nodeId;
+        destroyPipeWireStream(state);
+        startPipeWireStream(state);
+    }
+
+private:
     struct SessionState {
         CaptureWorker* owner = nullptr;
         quint64 token = 0;
-        QString identifier;
+        quint64 windowId = 0;
         bool active = false;
         bool live = false;
         int maxFps = 18;
         QSize targetSize;
+        bool wantOneShot = true;
 
-        ext_image_capture_source_v1* source = nullptr;
-        ext_image_copy_capture_session_v1* session = nullptr;
-        ext_image_copy_capture_frame_v1* frame = nullptr;
+        QString sessionPath;
+        QString streamPath;
+        QDBusInterface* sessionInterface = nullptr;
+        StreamWatcher* watcher = nullptr;
 
-        uint32_t width = 0;
-        uint32_t height = 0;
-        uint32_t bufferWidth = 0;
-        uint32_t bufferHeight = 0;
-        uint32_t shmFormat = 0;
-        bool supportsArgb = false;
-        bool supportsXrgb = false;
-        bool constraintsReady = false;
-        bool constraintsPending = false;
-        bool framePending = false;
-        bool firstFrame = true;
-        bool bufferNeedsFullDamage = true;
-        uint32_t transform = WL_OUTPUT_TRANSFORM_NORMAL;
-
-        int memfd = -1;
-        void* map = MAP_FAILED;
-        size_t mapSize = 0;
-        int stride = 0;
-        wl_buffer* buffer = nullptr;
-
-        QRegion damage;
-        qint64 lastCaptureMs = 0;
+        uint32_t nodeId = PW_ID_ANY;
+        pw_stream* pwStream = nullptr;
+        spa_video_info_raw format{};
+        bool formatReady = false;
+        qint64 lastEmitMs = 0;
+        QByteArray previousSample;
     };
 
-    static void registryGlobal(void* data,
-                               wl_registry* registry,
-                               uint32_t name,
-                               const char* interface,
-                               uint32_t version) {
-        auto* self = static_cast<CaptureWorker*>(data);
-        if (std::strcmp(interface, wl_shm_interface.name) == 0) {
-            self->m_shm = static_cast<wl_shm*>(
-                wl_registry_bind(registry, name, &wl_shm_interface, std::min(version, 1u)));
-        } else if (std::strcmp(interface, ext_foreign_toplevel_list_v1_interface.name) == 0) {
-            self->m_toplevelList = static_cast<ext_foreign_toplevel_list_v1*>(
-                wl_registry_bind(registry, name,
-                                 &ext_foreign_toplevel_list_v1_interface,
-                                 std::min(version, 1u)));
-        } else if (std::strcmp(
-                       interface,
-                       ext_foreign_toplevel_image_capture_source_manager_v1_interface.name) == 0) {
-            self->m_sourceManager =
-                static_cast<ext_foreign_toplevel_image_capture_source_manager_v1*>(
-                    wl_registry_bind(
-                        registry,
-                        name,
-                        &ext_foreign_toplevel_image_capture_source_manager_v1_interface,
-                        std::min(version, 1u)));
-        } else if (std::strcmp(interface, ext_image_copy_capture_manager_v1_interface.name) == 0) {
-            self->m_captureManager = static_cast<ext_image_copy_capture_manager_v1*>(
-                wl_registry_bind(registry, name,
-                                 &ext_image_copy_capture_manager_v1_interface,
-                                 std::min(version, 1u)));
-        }
+    static const pw_stream_events& streamEvents() {
+        static const pw_stream_events events = [] {
+            pw_stream_events value{};
+            value.version = PW_VERSION_STREAM_EVENTS;
+            value.state_changed = &CaptureWorker::pipeWireStateChanged;
+            value.param_changed = &CaptureWorker::pipeWireParamChanged;
+            value.process = &CaptureWorker::pipeWireProcess;
+            return value;
+        }();
+        return events;
     }
 
-    static void registryGlobalRemove(void*, wl_registry*, uint32_t) {}
-
-    static void toplevelCreated(void* data,
-                                ext_foreign_toplevel_list_v1*,
-                                ext_foreign_toplevel_handle_v1* handle) {
-        auto* self = static_cast<CaptureWorker*>(data);
-        auto* top = new ToplevelState;
-        top->owner = self;
-        top->handle = handle;
-
-        static const ext_foreign_toplevel_handle_v1_listener handleListener = {
-            &CaptureWorker::toplevelClosed,
-            &CaptureWorker::toplevelDone,
-            &CaptureWorker::toplevelTitle,
-            &CaptureWorker::toplevelAppId,
-            &CaptureWorker::toplevelIdentifier,
-        };
-        ext_foreign_toplevel_handle_v1_add_listener(handle, &handleListener, top);
-        self->m_toplevelByHandle.insert(handle, top);
-    }
-
-    static void toplevelListFinished(void* data, ext_foreign_toplevel_list_v1*) {
-        auto* self = static_cast<CaptureWorker*>(data);
-        self->publishBackendAvailability(false);
-    }
-
-    static void toplevelClosed(void* data, ext_foreign_toplevel_handle_v1* handle) {
-        auto* top = static_cast<ToplevelState*>(data);
-        CaptureWorker* self = top->owner;
-
-        const QString identifier = top->identifier;
-        QList<quint64> affected;
-        for (auto it = self->m_sessions.cbegin(); it != self->m_sessions.cend(); ++it) {
-            if (it.value()->identifier == identifier)
-                affected.push_back(it.key());
-        }
-        for (quint64 token : affected) {
-            self->publishSourceReady(token, false);
-            self->destroySession(token);
-        }
-
-        if (!identifier.isEmpty())
-            self->m_toplevels.remove(identifier);
-        self->m_toplevelByHandle.remove(handle);
-        ext_foreign_toplevel_handle_v1_destroy(handle);
-        delete top;
-    }
-
-    static void toplevelDone(void*, ext_foreign_toplevel_handle_v1*) {}
-    static void toplevelTitle(void*, ext_foreign_toplevel_handle_v1*, const char*) {}
-    static void toplevelAppId(void*, ext_foreign_toplevel_handle_v1*, const char*) {}
-
-    static void toplevelIdentifier(void* data,
-                                   ext_foreign_toplevel_handle_v1*,
-                                   const char* identifier) {
-        auto* top = static_cast<ToplevelState*>(data);
-        CaptureWorker* self = top->owner;
-
-        if (!top->identifier.isEmpty())
-            self->m_toplevels.remove(top->identifier);
-        top->identifier = QString::fromUtf8(identifier);
-        self->m_toplevels.insert(top->identifier, top);
-
-        for (SessionState* state : std::as_const(self->m_sessions)) {
-            if (state->identifier == top->identifier)
-                self->ensureCaptureSession(state);
-        }
-    }
-
-    static void sessionBufferSize(void* data,
-                                  ext_image_copy_capture_session_v1*,
-                                  uint32_t width,
-                                  uint32_t height) {
-        auto* state = static_cast<SessionState*>(data);
-        if (state->width != width || state->height != height) {
-            state->width = width;
-            state->height = height;
-            state->bufferNeedsFullDamage = true;
-            state->constraintsReady = false;
-        }
-    }
-
-    static void sessionShmFormat(void* data,
-                                 ext_image_copy_capture_session_v1*,
-                                 uint32_t format) {
-        auto* state = static_cast<SessionState*>(data);
-        if (format == WL_SHM_FORMAT_ARGB8888)
-            state->supportsArgb = true;
-        else if (format == WL_SHM_FORMAT_XRGB8888)
-            state->supportsXrgb = true;
-    }
-
-    static void sessionDmabufDevice(void*,
-                                    ext_image_copy_capture_session_v1*,
-                                    wl_array*) {}
-    static void sessionDmabufFormat(void*,
-                                    ext_image_copy_capture_session_v1*,
-                                    uint32_t,
-                                    wl_array*) {}
-
-    static void sessionDone(void* data, ext_image_copy_capture_session_v1*) {
-        auto* state = static_cast<SessionState*>(data);
-        CaptureWorker* self = state->owner;
-
-        state->shmFormat = state->supportsArgb
-            ? WL_SHM_FORMAT_ARGB8888
-            : (state->supportsXrgb ? WL_SHM_FORMAT_XRGB8888 : 0);
-
-        if (!state->shmFormat || state->width == 0 || state->height == 0) {
-            self->publishError(state->token,
-                               QStringLiteral("Niri preview capture has no supported SHM format"));
-            self->publishSourceReady(state->token, false);
+    void createScreenCast(SessionState* state) {
+        if (!state || !m_bus.isConnected()) {
+            if (state)
+                publishError(state->token, QStringLiteral("Niri ScreenCast D-Bus is unavailable"));
             return;
         }
 
-        // Constraint updates may race an outstanding frame after a resize.
-        // Never destroy the attached wl_buffer until that frame resolves.
-        if (state->framePending || state->frame) {
-            state->constraintsReady = false;
-            state->constraintsPending = true;
+        QDBusInterface root(
+            QString::fromLatin1(kScreenCastService),
+            QString::fromLatin1(kScreenCastRootPath),
+            QString::fromLatin1(kScreenCastRootInterface),
+            m_bus);
+        if (!root.isValid()) {
+            publishError(
+                state->token,
+                QStringLiteral("Niri org.gnome.Mutter.ScreenCast is unavailable"));
             return;
         }
 
-        self->applyConstraints(state);
-    }
+        const QDBusReply<QDBusObjectPath> sessionReply =
+            root.call(QStringLiteral("CreateSession"), QVariantMap{});
+        if (!sessionReply.isValid()) {
+            publishError(
+                state->token,
+                QStringLiteral("CreateSession failed: %1")
+                    .arg(sessionReply.error().message()));
+            return;
+        }
 
-    static void sessionStopped(void* data, ext_image_copy_capture_session_v1*) {
-        auto* state = static_cast<SessionState*>(data);
-        CaptureWorker* self = state->owner;
+        state->sessionPath = sessionReply.value().path();
+        state->sessionInterface = new QDBusInterface(
+            QString::fromLatin1(kScreenCastService),
+            state->sessionPath,
+            QString::fromLatin1(kScreenCastSessionInterface),
+            m_bus,
+            this);
+
+        if (!state->sessionInterface->isValid()) {
+            publishError(
+                state->token,
+                QStringLiteral("Niri ScreenCast session interface is invalid"));
+            destroySession(state->token);
+            return;
+        }
+
+        QVariantMap properties;
+        properties.insert(
+            QStringLiteral("window-id"),
+            QVariant::fromValue<qulonglong>(state->windowId));
+
+        const QDBusReply<QDBusObjectPath> streamReply =
+            state->sessionInterface->call(QStringLiteral("RecordWindow"), properties);
+        if (!streamReply.isValid()) {
+            publishError(
+                state->token,
+                QStringLiteral("RecordWindow(%1) failed: %2")
+                    .arg(state->windowId)
+                    .arg(streamReply.error().message()));
+            destroySession(state->token);
+            return;
+        }
+
+        state->streamPath = streamReply.value().path();
+        state->watcher = new StreamWatcher(this, state->token, this);
+        const bool connected = m_bus.connect(
+            QString::fromLatin1(kScreenCastService),
+            state->streamPath,
+            QString::fromLatin1(kScreenCastStreamInterface),
+            QStringLiteral("PipeWireStreamAdded"),
+            state->watcher,
+            SLOT(onPipeWireStreamAdded(uint)));
+
+        if (!connected) {
+            publishError(
+                state->token,
+                QStringLiteral("Could not subscribe to PipeWireStreamAdded"));
+            destroySession(state->token);
+            return;
+        }
+
+        const QDBusMessage startReply =
+            state->sessionInterface->call(QStringLiteral("Start"));
+        if (startReply.type() == QDBusMessage::ErrorMessage) {
+            publishError(
+                state->token,
+                QStringLiteral("Niri ScreenCast Start failed: %1")
+                    .arg(startReply.errorMessage()));
+            destroySession(state->token);
+            return;
+        }
+
         const quint64 token = state->token;
-        self->publishSourceReady(token, false);
-        self->publishError(token, QStringLiteral("Niri ended the image-copy capture session"));
-        self->destroySession(token);
+        QTimer::singleShot(2500, this, [this, token] {
+            auto it = m_sessions.find(token);
+            if (it == m_sessions.end())
+                return;
+            SessionState* pending = it.value();
+            if (pending->nodeId != PW_ID_ANY)
+                return;
+            publishError(
+                token,
+                QStringLiteral("Niri did not publish a PipeWire node for this window"));
+            publishSourceReady(token, false);
+        });
     }
 
-    static void frameTransform(void* data,
-                               ext_image_copy_capture_frame_v1*,
-                               uint32_t transform) {
-        static_cast<SessionState*>(data)->transform = transform;
+    void startPipeWireStream(SessionState* state) {
+        if (!state || !m_pwLoop || state->nodeId == PW_ID_ANY)
+            return;
+
+        pw_thread_loop_lock(m_pwLoop);
+
+        QByteArray targetId = QByteArray::number(state->nodeId);
+        pw_properties* properties = pw_properties_new(
+            PW_KEY_MEDIA_TYPE, "Video",
+            PW_KEY_MEDIA_CATEGORY, "Capture",
+            PW_KEY_MEDIA_ROLE, "Screen",
+            PW_KEY_TARGET_OBJECT, targetId.constData(),
+            nullptr);
+
+        state->format = {};
+        state->formatReady = false;
+        state->wantOneShot = true;
+        state->lastEmitMs = 0;
+
+        state->pwStream = pw_stream_new_simple(
+            pw_thread_loop_get_loop(m_pwLoop),
+            "hadalis-niri-window-preview",
+            properties,
+            &streamEvents(),
+            state);
+
+        if (!state->pwStream) {
+            pw_thread_loop_unlock(m_pwLoop);
+            publishError(
+                state->token,
+                QStringLiteral("Could not create PipeWire preview stream"));
+            return;
+        }
+
+        uint8_t podBuffer[1024];
+        spa_pod_builder builder =
+            SPA_POD_BUILDER_INIT(podBuffer, sizeof(podBuffer));
+
+        const spa_rectangle defaultSize = SPA_RECTANGLE(1280, 720);
+        const spa_rectangle minSize = SPA_RECTANGLE(1, 1);
+        const spa_rectangle maxSize = SPA_RECTANGLE(16384, 16384);
+        const spa_fraction defaultRate =
+            SPA_FRACTION(static_cast<uint32_t>(state->maxFps), 1);
+        const spa_fraction minRate = SPA_FRACTION(0, 1);
+        const spa_fraction maxRate =
+            SPA_FRACTION(static_cast<uint32_t>(state->maxFps), 1);
+
+        const spa_pod* params[1];
+        params[0] = spa_pod_builder_add_object(
+            &builder,
+            SPA_TYPE_OBJECT_Format,
+            SPA_PARAM_EnumFormat,
+            SPA_FORMAT_mediaType,
+            SPA_POD_Id(SPA_MEDIA_TYPE_video),
+            SPA_FORMAT_mediaSubtype,
+            SPA_POD_Id(SPA_MEDIA_SUBTYPE_raw),
+            SPA_FORMAT_VIDEO_format,
+            SPA_POD_CHOICE_ENUM_Id(
+                3,
+                SPA_VIDEO_FORMAT_BGRx,
+                SPA_VIDEO_FORMAT_BGRx,
+                SPA_VIDEO_FORMAT_BGRA),
+            SPA_FORMAT_VIDEO_size,
+            SPA_POD_CHOICE_RANGE_Rectangle(&defaultSize, &minSize, &maxSize),
+            SPA_FORMAT_VIDEO_framerate,
+            SPA_POD_CHOICE_RANGE_Fraction(&defaultRate, &minRate, &maxRate));
+
+        const int result = pw_stream_connect(
+            state->pwStream,
+            PW_DIRECTION_INPUT,
+            PW_ID_ANY,
+            static_cast<pw_stream_flags>(
+                PW_STREAM_FLAG_AUTOCONNECT | PW_STREAM_FLAG_MAP_BUFFERS),
+            params,
+            1);
+
+        if (result < 0) {
+            pw_stream_destroy(state->pwStream);
+            state->pwStream = nullptr;
+            pw_thread_loop_unlock(m_pwLoop);
+            publishError(
+                state->token,
+                QStringLiteral("Could not connect PipeWire preview stream"));
+            return;
+        }
+
+        pw_thread_loop_unlock(m_pwLoop);
     }
 
-    static void frameDamage(void* data,
-                            ext_image_copy_capture_frame_v1*,
-                            int32_t x,
-                            int32_t y,
-                            int32_t width,
-                            int32_t height) {
-        auto* state = static_cast<SessionState*>(data);
-        if (width > 0 && height > 0)
-            state->damage += QRect(x, y, width, height);
-    }
-
-    static void framePresentationTime(void*,
-                                      ext_image_copy_capture_frame_v1*,
-                                      uint32_t,
-                                      uint32_t,
-                                      uint32_t) {}
-
-    static void frameReadyCallback(void* data, ext_image_copy_capture_frame_v1*) {
-        auto* state = static_cast<SessionState*>(data);
-        state->owner->handleFrameReady(state);
-    }
-
-    static void frameFailed(void* data,
-                            ext_image_copy_capture_frame_v1*,
-                            uint32_t reason) {
-        auto* state = static_cast<SessionState*>(data);
-        CaptureWorker* self = state->owner;
-
-        if (state->frame) {
-            ext_image_copy_capture_frame_v1_destroy(state->frame);
-            state->frame = nullptr;
-        }
-        state->framePending = false;
-        state->damage = QRegion();
-
-        if (reason == EXT_IMAGE_COPY_CAPTURE_FRAME_V1_FAILURE_REASON_BUFFER_CONSTRAINTS) {
-            state->constraintsReady = false;
-            state->constraintsPending = false;
-            state->bufferNeedsFullDamage = true;
-            if (!self->applyConstraints(state))
-                self->releaseBuffer(state);
-            return;
-        }
-
-        if (reason != EXT_IMAGE_COPY_CAPTURE_FRAME_V1_FAILURE_REASON_STOPPED)
-            self->publishError(state->token,
-                               QStringLiteral("Niri preview frame capture failed"));
-    }
-
-    void ensureCaptureSession(SessionState* state) {
-        if (!m_display || !m_sourceManager || !m_captureManager || !state->active)
-            return;
-        if (state->session)
+    void destroyPipeWireStream(SessionState* state) {
+        if (!state || !state->pwStream || !m_pwLoop)
             return;
 
-        ToplevelState* top = m_toplevels.value(state->identifier, nullptr);
-        if (!top || !top->handle)
-            return;
-
-        state->source =
-            ext_foreign_toplevel_image_capture_source_manager_v1_create_source(
-                m_sourceManager, top->handle);
-        if (!state->source)
-            return;
-
-        state->session = ext_image_copy_capture_manager_v1_create_session(
-            m_captureManager, state->source, 0);
-        if (!state->session) {
-            ext_image_capture_source_v1_destroy(state->source);
-            state->source = nullptr;
-            return;
-        }
-
-        static const ext_image_copy_capture_session_v1_listener sessionListener = {
-            &CaptureWorker::sessionBufferSize,
-            &CaptureWorker::sessionShmFormat,
-            &CaptureWorker::sessionDmabufDevice,
-            &CaptureWorker::sessionDmabufFormat,
-            &CaptureWorker::sessionDone,
-            &CaptureWorker::sessionStopped,
-        };
-        ext_image_copy_capture_session_v1_add_listener(
-            state->session, &sessionListener, state);
-        wl_display_flush(m_display);
-    }
-
-    bool applyConstraints(SessionState* state) {
-        if (!state || !state->shmFormat || state->width == 0 || state->height == 0)
-            return false;
-
-        if (!allocateBuffer(state)) {
-            publishError(state->token,
-                         QStringLiteral("Unable to allocate Niri preview capture buffer"));
-            publishSourceReady(state->token, false);
-            return false;
-        }
-
-        state->constraintsReady = true;
-        state->constraintsPending = false;
-        state->bufferNeedsFullDamage = true;
-        publishSourceReady(state->token, true);
-        requestFrame(state);
-        return true;
-    }
-
-    bool allocateBuffer(SessionState* state) {
-        releaseBuffer(state);
-
-        state->stride = static_cast<int>(state->width) * 4;
-        state->mapSize = static_cast<size_t>(state->stride) * state->height;
-        if (state->mapSize == 0)
-            return false;
-
-        state->memfd = memfd_create("inir-niri-preview", MFD_CLOEXEC);
-        if (state->memfd < 0)
-            return false;
-        if (ftruncate(state->memfd, static_cast<off_t>(state->mapSize)) != 0) {
-            releaseBuffer(state);
-            return false;
-        }
-
-        state->map = mmap(nullptr,
-                          state->mapSize,
-                          PROT_READ | PROT_WRITE,
-                          MAP_SHARED,
-                          state->memfd,
-                          0);
-        if (state->map == MAP_FAILED) {
-            releaseBuffer(state);
-            return false;
-        }
-
-        wl_shm_pool* pool = wl_shm_create_pool(
-            m_shm, state->memfd, static_cast<int>(state->mapSize));
-        if (!pool) {
-            releaseBuffer(state);
-            return false;
-        }
-
-        state->buffer = wl_shm_pool_create_buffer(
-            pool,
-            0,
-            static_cast<int>(state->width),
-            static_cast<int>(state->height),
-            state->stride,
-            state->shmFormat);
-        wl_shm_pool_destroy(pool);
-
-        if (!state->buffer) {
-            releaseBuffer(state);
-            return false;
-        }
-
-        state->bufferWidth = state->width;
-        state->bufferHeight = state->height;
-        state->bufferNeedsFullDamage = true;
-        return true;
-    }
-
-    void releaseBuffer(SessionState* state) {
-        if (state->buffer) {
-            wl_buffer_destroy(state->buffer);
-            state->buffer = nullptr;
-        }
-        if (state->map != MAP_FAILED) {
-            munmap(state->map, state->mapSize);
-            state->map = MAP_FAILED;
-        }
-        if (state->memfd >= 0) {
-            close(state->memfd);
-            state->memfd = -1;
-        }
-        state->mapSize = 0;
-        state->stride = 0;
-        state->bufferWidth = 0;
-        state->bufferHeight = 0;
-    }
-
-    void requestFrame(SessionState* state) {
-        if (!state || !state->active)
-            return;
-        ensureCaptureSession(state);
-        if (!state->session || !state->constraintsReady || !state->buffer)
-            return;
-        if (state->framePending || state->frame)
-            return;
-
-        const qint64 now = m_clock.elapsed();
-        const qint64 minInterval = std::max<qint64>(1, 1000 / state->maxFps);
-        if (state->live && now - state->lastCaptureMs < minInterval)
-            return;
-
-        state->damage = QRegion();
-        state->transform = WL_OUTPUT_TRANSFORM_NORMAL;
-        state->frame = ext_image_copy_capture_session_v1_create_frame(state->session);
-        if (!state->frame)
-            return;
-
-        static const ext_image_copy_capture_frame_v1_listener frameListener = {
-            &CaptureWorker::frameTransform,
-            &CaptureWorker::frameDamage,
-            &CaptureWorker::framePresentationTime,
-            &CaptureWorker::frameReadyCallback,
-            &CaptureWorker::frameFailed,
-        };
-        ext_image_copy_capture_frame_v1_add_listener(
-            state->frame, &frameListener, state);
-        ext_image_copy_capture_frame_v1_attach_buffer(
-            state->frame, state->buffer);
-
-        if (state->bufferNeedsFullDamage) {
-            ext_image_copy_capture_frame_v1_damage_buffer(
-                state->frame,
-                0,
-                0,
-                static_cast<int>(state->width),
-                static_cast<int>(state->height));
-        }
-
-        ext_image_copy_capture_frame_v1_capture(state->frame);
-        state->framePending = true;
-        state->lastCaptureMs = now;
-        wl_display_flush(m_display);
-    }
-
-    void handleFrameReady(SessionState* state) {
-        if (!state || !state->frame)
-            return;
-
-        ext_image_copy_capture_frame_v1_destroy(state->frame);
-        state->frame = nullptr;
-        state->framePending = false;
-        state->bufferNeedsFullDamage = false;
-
-        const QImage::Format format =
-            state->shmFormat == WL_SHM_FORMAT_ARGB8888
-                ? QImage::Format_ARGB32_Premultiplied
-                : QImage::Format_RGB32;
-
-        QImage mapped(static_cast<uchar*>(state->map),
-                      static_cast<int>(state->bufferWidth),
-                      static_cast<int>(state->bufferHeight),
-                      state->stride,
-                      format);
-
-        // Scale directly from the mapped compositor buffer while it is stable.
-        // This avoids a full-resolution CPU copy before reducing to tile size.
-        QImage transformed = applyTransform(mapped, state->transform);
-        QImage owned = cropScaleFrame(transformed, state->targetSize);
-
-        qint64 damagedPixels = 0;
-        for (const QRect& rect : state->damage)
-            damagedPixels += static_cast<qint64>(rect.width()) * rect.height();
-
-        const qint64 totalPixels =
-            static_cast<qint64>(state->bufferWidth) * state->bufferHeight;
-        qreal activity = totalPixels > 0
-            ? static_cast<qreal>(damagedPixels) / static_cast<qreal>(totalPixels)
-            : 0.0;
-        activity = std::clamp<qreal>(activity, 0.0, 1.0);
-
-        if (state->firstFrame) {
-            activity = 0.0;
-            state->firstFrame = false;
-        }
-
-        state->damage = QRegion();
-        publishFrame(state->token,
-                     owned,
-                     activity,
-                     QSize(static_cast<int>(state->bufferWidth),
-                           static_cast<int>(state->bufferHeight)));
-
-        if (state->constraintsPending) {
-            applyConstraints(state);
-            return;
-        }
-
-        if (state->live)
-            requestFrame(state);
-    }
-
-    void pumpLiveSessions() {
-        if (!m_display)
-            return;
-        for (SessionState* state : std::as_const(m_sessions)) {
-            if (state->live && state->active)
-                requestFrame(state);
-        }
+        pw_thread_loop_lock(m_pwLoop);
+        pw_stream_destroy(state->pwStream);
+        state->pwStream = nullptr;
+        state->formatReady = false;
+        pw_thread_loop_unlock(m_pwLoop);
     }
 
     void destroySession(quint64 token) {
@@ -728,75 +561,162 @@ private:
         SessionState* state = it.value();
         m_sessions.erase(it);
 
-        if (state->frame) {
-            ext_image_copy_capture_frame_v1_destroy(state->frame);
-            state->frame = nullptr;
-        }
-        if (state->session) {
-            ext_image_copy_capture_session_v1_destroy(state->session);
-            state->session = nullptr;
-        }
-        if (state->source) {
-            ext_image_capture_source_v1_destroy(state->source);
-            state->source = nullptr;
-        }
-        releaseBuffer(state);
-        delete state;
+        destroyPipeWireStream(state);
 
-        if (m_display)
-            wl_display_flush(m_display);
+        if (state->watcher) {
+            m_bus.disconnect(
+                QString::fromLatin1(kScreenCastService),
+                state->streamPath,
+                QString::fromLatin1(kScreenCastStreamInterface),
+                QStringLiteral("PipeWireStreamAdded"),
+                state->watcher,
+                SLOT(onPipeWireStreamAdded(uint)));
+            delete state->watcher;
+            state->watcher = nullptr;
+        }
+
+        if (state->sessionInterface) {
+            state->sessionInterface->call(QDBus::NoBlock, QStringLiteral("Stop"));
+            delete state->sessionInterface;
+            state->sessionInterface = nullptr;
+        }
+
+        delete state;
+    }
+
+    static void pipeWireStateChanged(void* data,
+                                     pw_stream_state,
+                                     pw_stream_state state,
+                                     const char* error) {
+        auto* session = static_cast<SessionState*>(data);
+        if (!session || !session->owner)
+            return;
+
+        if (state == PW_STREAM_STATE_PAUSED
+                || state == PW_STREAM_STATE_STREAMING) {
+            session->owner->publishSourceReady(session->token, true);
+        } else if (state == PW_STREAM_STATE_ERROR) {
+            session->owner->publishSourceReady(session->token, false);
+            session->owner->publishError(
+                session->token,
+                QStringLiteral("PipeWire preview error: %1")
+                    .arg(QString::fromUtf8(error ? error : "unknown error")));
+        }
+    }
+
+    static void pipeWireParamChanged(void* data,
+                                     uint32_t id,
+                                     const spa_pod* param) {
+        auto* state = static_cast<SessionState*>(data);
+        if (!state || !param || id != SPA_PARAM_Format)
+            return;
+
+        spa_video_info_raw raw{};
+        if (spa_format_video_raw_parse(param, &raw) < 0)
+            return;
+
+        if (raw.format != SPA_VIDEO_FORMAT_BGRx
+                && raw.format != SPA_VIDEO_FORMAT_BGRA)
+            return;
+
+        state->format = raw;
+        state->formatReady = true;
+        state->previousSample.clear();
+    }
+
+    static void pipeWireProcess(void* data) {
+        auto* state = static_cast<SessionState*>(data);
+        if (!state || !state->pwStream)
+            return;
+
+        pw_buffer* buffer = pw_stream_dequeue_buffer(state->pwStream);
+        if (!buffer)
+            return;
+
+        spa_buffer* spaBuffer = buffer->buffer;
+        if (!spaBuffer || spaBuffer->n_datas < 1 || !state->formatReady) {
+            pw_stream_queue_buffer(state->pwStream, buffer);
+            return;
+        }
+
+        spa_data& plane = spaBuffer->datas[0];
+        if (!plane.data || !plane.chunk) {
+            pw_stream_queue_buffer(state->pwStream, buffer);
+            return;
+        }
+
+        const int width = static_cast<int>(state->format.size.width);
+        const int height = static_cast<int>(state->format.size.height);
+        int stride = plane.chunk->stride;
+        if (stride == 0)
+            stride = width * 4;
+
+        if (width <= 0 || height <= 0 || std::abs(stride) < width * 4) {
+            pw_stream_queue_buffer(state->pwStream, buffer);
+            return;
+        }
+
+        const qint64 now = monotonicMilliseconds();
+        const qint64 minInterval =
+            std::max<qint64>(1, 1000 / std::max(1, state->maxFps));
+
+        const bool requested = state->live || state->wantOneShot;
+        if (!requested || now - state->lastEmitMs < minInterval) {
+            pw_stream_queue_buffer(state->pwStream, buffer);
+            return;
+        }
+
+        const auto* bytes =
+            static_cast<const uchar*>(plane.data) + plane.chunk->offset;
+
+        const QByteArray sample = sampleLuma(bytes, width, height, stride);
+        const qreal activity = motionScore(state->previousSample, sample);
+        state->previousSample = sample;
+
+        const QImage::Format imageFormat =
+            state->format.format == SPA_VIDEO_FORMAT_BGRA
+                ? QImage::Format_ARGB32
+                : QImage::Format_RGB32;
+
+        QImage view(
+            bytes,
+            width,
+            height,
+            stride,
+            imageFormat);
+        QImage frame = cropScaleFrame(view, state->targetSize);
+
+        state->lastEmitMs = now;
+        if (!state->live)
+            state->wantOneShot = false;
+
+        state->owner->publishFrame(
+            state->token,
+            frame,
+            activity,
+            QSize(width, height));
+
+        pw_stream_queue_buffer(state->pwStream, buffer);
     }
 
     void shutdown() {
-        m_pump.stop();
-
         const QList<quint64> tokens = m_sessions.keys();
         for (quint64 token : tokens)
             destroySession(token);
 
-        for (ToplevelState* top : std::as_const(m_toplevelByHandle)) {
-            if (top->handle)
-                ext_foreign_toplevel_handle_v1_destroy(top->handle);
-            delete top;
-        }
-        m_toplevelByHandle.clear();
-        m_toplevels.clear();
-
-        if (m_notifier) {
-            delete m_notifier;
-            m_notifier = nullptr;
-        }
-        if (m_toplevelList) {
-            ext_foreign_toplevel_list_v1_destroy(m_toplevelList);
-            m_toplevelList = nullptr;
-        }
-        if (m_sourceManager) {
-            ext_foreign_toplevel_image_capture_source_manager_v1_destroy(
-                m_sourceManager);
-            m_sourceManager = nullptr;
-        }
-        if (m_captureManager) {
-            ext_image_copy_capture_manager_v1_destroy(m_captureManager);
-            m_captureManager = nullptr;
-        }
-        if (m_shm) {
-            wl_shm_destroy(m_shm);
-            m_shm = nullptr;
-        }
-        if (m_registry) {
-            wl_registry_destroy(m_registry);
-            m_registry = nullptr;
-        }
-        if (m_display) {
-            wl_display_disconnect(m_display);
-            m_display = nullptr;
+        if (m_pwLoop) {
+            pw_thread_loop_stop(m_pwLoop);
+            pw_thread_loop_destroy(m_pwLoop);
+            m_pwLoop = nullptr;
         }
     }
 
     void publishBackendAvailability(bool available) {
         QMetaObject::invokeMethod(
             m_broker,
-            [broker = m_broker, available] { broker->setAvailable(available); },
+            [broker = m_broker, available] {
+                broker->setAvailable(available);
+            },
             Qt::QueuedConnection);
     }
 
@@ -831,21 +751,17 @@ private:
     }
 
     CaptureBroker* m_broker = nullptr;
-    wl_display* m_display = nullptr;
-    wl_registry* m_registry = nullptr;
-    wl_shm* m_shm = nullptr;
-    ext_foreign_toplevel_list_v1* m_toplevelList = nullptr;
-    ext_foreign_toplevel_image_capture_source_manager_v1* m_sourceManager = nullptr;
-    ext_image_copy_capture_manager_v1* m_captureManager = nullptr;
-    QSocketNotifier* m_notifier = nullptr;
-
-    QHash<QString, ToplevelState*> m_toplevels;
-    QHash<ext_foreign_toplevel_handle_v1*, ToplevelState*> m_toplevelByHandle;
+    QDBusConnection m_bus;
+    pw_thread_loop* m_pwLoop = nullptr;
     QHash<quint64, SessionState*> m_sessions;
 
-    QElapsedTimer m_clock;
-    QTimer m_pump;
+    friend class StreamWatcher;
 };
+
+void StreamWatcher::onPipeWireStreamAdded(uint nodeId) {
+    if (m_owner)
+        m_owner->handlePipeWireNode(m_token, nodeId);
+}
 
 CaptureBroker* CaptureBroker::instance() {
     static auto* broker = new CaptureBroker;
@@ -884,24 +800,25 @@ void CaptureBroker::setAvailable(bool available) {
 }
 
 void CaptureBroker::updateConsumer(quint64 token,
-                                   const QString& identifier,
+                                   quint64 windowId,
                                    bool active,
                                    bool live,
                                    int maxFps,
                                    const QSize& targetSize) {
     if (!m_worker)
         return;
+
     QMetaObject::invokeMethod(
         m_worker,
         [worker = m_worker,
          token,
-         identifier,
+         windowId,
          active,
          live,
          maxFps,
          targetSize] {
             worker->updateConsumer(
-                token, identifier, active, live, maxFps, targetSize);
+                token, windowId, active, live, maxFps, targetSize);
         },
         Qt::QueuedConnection);
 }
@@ -923,3 +840,5 @@ void CaptureBroker::unregisterConsumer(quint64 token) {
         [worker = m_worker, token] { worker->unregisterConsumer(token); },
         Qt::QueuedConnection);
 }
+
+#include "capture_backend.moc"

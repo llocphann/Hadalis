@@ -30,7 +30,7 @@ jobs:
         run: |
           pacman -Syu --noconfirm
           pacman -S --needed --noconfirm \
-            cmake ninja pkgconf qt6-base qt6-declarative wayland wayland-protocols
+            cmake ninja pkgconf pipewire qt6-base qt6-declarative
 
       - name: Build package
         run: |

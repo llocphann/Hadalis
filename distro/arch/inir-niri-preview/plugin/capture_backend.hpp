@@ -16,7 +16,7 @@ public:
     bool available() const { return m_available; }
 
     void updateConsumer(quint64 token,
-                        const QString& identifier,
+                        quint64 windowId,
                         bool active,
                         bool live,
                         int maxFps,

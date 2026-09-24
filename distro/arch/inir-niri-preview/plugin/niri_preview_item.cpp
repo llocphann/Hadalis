@@ -182,7 +182,7 @@ void NiriPreviewItem::syncConsumer() {
 
     CaptureBroker::instance()->updateConsumer(
         m_token,
-        QString::number(m_windowId),
+        m_windowId,
         m_active && m_available && m_windowId != 0,
         m_live,
         m_maxFps,

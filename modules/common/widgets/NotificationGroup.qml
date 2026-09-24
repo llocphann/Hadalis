@@ -24,11 +24,14 @@ MouseArea { // Notification group area
     property bool multipleNotifications: notificationCount > 1
     property bool expandedByDefault: false
     property bool modernLayout: false
+    property bool compactLayout: false
+    property bool compactActions: false
     property bool expanded: expandedByDefault
     property bool popup: false
     signal externalLinkOpened()
     signal notificationActionInvoked()
-    property real padding: modernLayout ? 12 : 10
+    property real padding: modernLayout
+        ? (compactLayout ? 9 : 12) : 10
     property bool _expandAnimating: false
     implicitHeight: background.implicitHeight
 
@@ -169,7 +172,9 @@ MouseArea { // Notification group area
 
         implicitHeight: root.expanded ?
             row.implicitHeight + padding * 2 :
-            Math.min(root.modernLayout ? 104 : 80, row.implicitHeight + padding * 2)
+            Math.min(root.modernLayout
+                ? (root.compactLayout ? 86 : 104) : 80,
+                row.implicitHeight + padding * 2)
 
         Behavior on implicitHeight {
             id: implicitHeightAnim
@@ -205,7 +210,9 @@ MouseArea { // Notification group area
             ColumnLayout { // Content
                 Layout.fillWidth: true
                 spacing: root.modernLayout
-                    ? (root.expanded ? 8 : 4)
+                    ? (root.compactLayout
+                        ? (root.expanded ? 6 : 3)
+                        : (root.expanded ? 8 : 4))
                     : (expanded ? (root.multipleNotifications
                         ? (notificationGroup?.notifications[root.notificationCount - 1].image != "" ? 35 : 5)
                         : 0) : 0)
@@ -231,7 +238,7 @@ MouseArea { // Notification group area
                         visible: root.modernLayout
                         anchors.left: parent.left
                         anchors.verticalCenter: parent.verticalCenter
-                        implicitSize: 30
+                        implicitSize: root.compactLayout ? 26 : 30
                         image: root.multipleNotifications ? ""
                             : notificationGroup?.notifications[0]?.image ?? ""
                         appIcon: root.notificationGroup?.appIcon
@@ -294,7 +301,9 @@ MouseArea { // Notification group area
                     id: notificationsColumn
                     implicitHeight: contentHeight
                     Layout.fillWidth: true
-                    spacing: root.modernLayout ? 6 : (expanded ? 5 : 3)
+                    spacing: root.modernLayout
+                        ? (root.compactLayout ? 4 : 6)
+                        : (expanded ? 5 : 3)
                     interactive: false
 
                     // Disable built-in transitions — we provide custom ones below
@@ -336,6 +345,7 @@ MouseArea { // Notification group area
                         expanded: root.expanded
                         popup: root.popup
                         modernLayout: root.modernLayout
+                        compactActions: root.compactActions
                         onlyNotification: (root.notificationCount === 1)
                         opacity: (!root.expanded && index == 1 && root.notificationCount > 2) ? 0.5 : 1
                         visible: root.expanded || (index < 2)

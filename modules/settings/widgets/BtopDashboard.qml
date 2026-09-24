@@ -13,6 +13,7 @@ ColumnLayout {
     property var evidence: null
     property var targets: []
     property var records: []
+    property var events: []
     property string selectedTargetId: ""
     property bool compactMode: false
     property bool showDetails: false
@@ -190,14 +191,15 @@ ColumnLayout {
         return found ? total : null
     }
 
-    // Compact Diagnostics is deliberately glanceable: six high-value metrics
-    // fill the available width and one runtime strip uses the remaining space.
-    // No expandable sampling/details section is exposed in this mode.
+    // Compact Diagnostics is deliberately attribution-oriented. System totals
+    // remain visible, but space is reserved for the two kinds of evidence that
+    // can actually identify suspects: real child-process CPU/RSS and Workflow
+    // lifecycle activity. QML activity is never presented as CPU/RAM.
     GridLayout {
         id: compactMetrics
         visible: root.compactMode
         Layout.fillWidth: true
-        columns: width >= 720 ? 3 : 2
+        columns: width >= 900 ? 4 : 2
         columnSpacing: 6
         rowSpacing: 6
 
@@ -212,7 +214,7 @@ ColumnLayout {
                 + " · " + Translation.tr("Hadalis") + " "
                 + root.formatPercent(root.shellEvidence?.cpu?.percent)
             samples: root.historyValues("systemCpuPercent")
-            graphHeight: 14
+            graphHeight: 12
             dottedGraph: true
         }
 
@@ -226,7 +228,7 @@ ColumnLayout {
                 + root.formatKiB(root.systemEvidence?.memory
                     ?.valuesKiB?.MemTotal)
             samples: root.historyValues("systemRamPercent")
-            graphHeight: 14
+            graphHeight: 12
             dottedGraph: true
             accentColor: Appearance.colors.colSecondary
         }
@@ -242,7 +244,7 @@ ColumnLayout {
                     + Translation.tr("resident")
                 : Translation.tr("DRM fdinfo unavailable")
             samples: root.historyValues("shellGpuPeakPercent")
-            graphHeight: 14
+            graphHeight: 12
             dottedGraph: true
             accentColor: Appearance.colors.colTertiary
         }
@@ -251,7 +253,7 @@ ColumnLayout {
             Layout.fillWidth: true
             Layout.fillHeight: true
             title: Translation.tr("Network")
-            graphHeight: 14
+            graphHeight: 12
             dottedGraph: true
             rx: root.formatRate(root.networkEvidence
                 ?.aggregateNonLoopback?.rxBytesPerSec)
@@ -260,38 +262,31 @@ ColumnLayout {
             rxSamples: root.historyValues("rxBytesPerSec")
             txSamples: root.historyValues("txBytesPerSec")
         }
+    }
 
-        BtopNetworkPanel {
+    GridLayout {
+        id: compactAttribution
+        visible: root.compactMode
+        Layout.fillWidth: true
+        columns: width >= 720 ? 2 : 1
+        columnSpacing: 6
+        rowSpacing: 6
+
+        BtopActivityTable {
             Layout.fillWidth: true
             Layout.fillHeight: true
-            title: Translation.tr("Disk I/O")
-            rxLabel: Translation.tr("READ")
-            txLabel: Translation.tr("WRITE")
-            rxPrefix: "R "
-            txPrefix: "W "
-            graphHeight: 14
-            dottedGraph: true
-            rx: root.formatRate(root.shellEvidence?.io?.rates
-                ?.readBytesPerSec)
-            tx: root.formatRate(root.shellEvidence?.io?.rates
-                ?.writeBytesPerSec)
-            rxSamples: root.historyValues("shellReadBytesPerSec")
-            txSamples: root.historyValues("shellWriteBytesPerSec")
+            targets: root.targets
+            records: root.records
+            events: root.events
+            maxRows: 4
         }
 
-        BtopMetricPanel {
+        BtopProcessTable {
             Layout.fillWidth: true
             Layout.fillHeight: true
-            title: Translation.tr("Swap")
-            value: root.systemSwapPercent()
-            detail: root.formatKiB(root.systemEvidence?.memory
-                    ?.valuesKiB?.SwapUsed) + " / "
-                + root.formatKiB(root.systemEvidence?.memory
-                    ?.valuesKiB?.SwapTotal)
-            samples: root.historyValues("systemSwapPercent")
-            graphHeight: 14
-            dottedGraph: true
-            accentColor: Appearance.colors.colTertiary
+            compactMode: true
+            processes: root.shellEvidence?.children ?? []
+            maxRows: 4
         }
     }
 
@@ -299,7 +294,7 @@ ColumnLayout {
         id: compactRuntimeStrip
         visible: root.compactMode
         Layout.fillWidth: true
-        implicitHeight: 42
+        implicitHeight: 38
         radius: Appearance.rounding.small
         color: Appearance.colors.colLayer1
         border.color: Appearance.colors.colOutline
@@ -350,13 +345,26 @@ ColumnLayout {
 
             StyledText {
                 textFormat: Text.PlainText
-                text: String(root.targets.length) + " "
-                    + Translation.tr("targets")
-                    + " · " + String(root.records.length) + " "
-                    + Translation.tr("records")
+                visible: compactRuntimeStrip.width >= 760
+                text: "I/O R "
+                    + root.formatRate(
+                        root.shellEvidence?.io?.rates?.readBytesPerSec)
+                    + " · W "
+                    + root.formatRate(
+                        root.shellEvidence?.io?.rates?.writeBytesPerSec)
                 color: Appearance.colors.colSubtext
+                font.family: Appearance.font.family.monospace
                 font.pixelSize: Appearance.font.pixelSize.small
                 elide: Text.ElideRight
+            }
+
+            StyledText {
+                textFormat: Text.PlainText
+                text: String(
+                        root.shellEvidence?.children?.length ?? 0)
+                    + " " + Translation.tr("helpers")
+                color: Appearance.colors.colSubtext
+                font.pixelSize: Appearance.font.pixelSize.small
             }
         }
     }

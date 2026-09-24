@@ -71,6 +71,9 @@ StyledPopup {
         required property string label
         required property string value
         property string minimumValueSample: ""
+        // Keep the value cell width stable for changing percentages while
+        // allowing compact rows to place the text directly after the label.
+        property int valueHorizontalAlignment: Text.AlignRight
         spacing: 4
 
         MaterialSymbol {
@@ -90,7 +93,7 @@ StyledPopup {
         StyledText {
             Layout.fillWidth: true
             Layout.minimumWidth: minimumValueText.implicitWidth
-            horizontalAlignment: Text.AlignRight
+            horizontalAlignment: resourceItem.valueHorizontalAlignment
             visible: resourceItem.value !== ""
             color: Appearance.colors.colOnSurfaceVariant
             text: resourceItem.value
@@ -194,7 +197,11 @@ StyledPopup {
                         icon: "bolt"
                         label: Translation.tr("Load:")
                         value: `${Math.round(ResourceUsage.cpuUsage * 100)}%`
+                        // Keep the existing reserved "99%" cell so popup
+                        // geometry never changes, but align the live value to
+                        // the cell's leading edge to remove the visual gap.
                         minimumValueSample: "99%"
+                        valueHorizontalAlignment: Text.AlignLeft
                     }
                     ResourceItem {
                         icon: "memory_alt"

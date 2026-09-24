@@ -113,8 +113,8 @@ per startup case; it is under the local state directory named above.
 
 - Install the current `dev` runtime through the supported update flow and
   verify all trial-critical installed files match the tested checkout. Do not
-  infer this from the checkout SHA alone. Make the harness report **every**
-  installed-file mismatch instead of stopping at the first one.
+  infer this from the checkout SHA alone. The harness reports each mismatch
+  separately and will not restart the service while any remain.
 - Rerun `bash scripts/benchmark-python-vs-rust.sh`. Require parity to pass,
   zero activation blockers, both Python and Rust `inir.service` samples, and
   a successful return to Python with service and selector state verified.

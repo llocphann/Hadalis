@@ -248,7 +248,6 @@ activate_rust() {
         modules/settings/NiriConfig.qml modules/settings/MonitorVisibilityConfig.qml; do
         if ! cmp -s "$ROOT_DIR/$relative" "$ACTIVE_RUNTIME/$relative"; then
             block_activation "installed runtime differs from tested $relative"
-            break
         fi
     done
     if ((${#ACTIVATION_BLOCKERS[@]})); then

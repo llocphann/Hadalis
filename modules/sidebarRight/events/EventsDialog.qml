@@ -499,12 +499,8 @@ WindowDialog {
 
                 RowLayout {
                     visible: root.compactOptionGroup === ""
-                    anchors {
-                        fill: parent
-                        leftMargin: 4
-                        rightMargin: 4
-                    }
-                    spacing: 0
+                    anchors.centerIn: parent
+                    spacing: 8
 
                     Repeater {
                         model: [
@@ -514,74 +510,49 @@ WindowDialog {
                             { key: "reminder" }
                         ]
 
-                        delegate: Item {
+                        delegate: CompactEventOptionButton {
                             required property var modelData
-                            Layout.fillWidth: true
-                            Layout.fillHeight: true
-
-                            CompactEventOptionButton {
-                                anchors.centerIn: parent
-                                width: 30
-                                height: 30
-                                symbol: root.compactGroupIcon(
-                                    parent.modelData.key)
-                                tooltipText: root.compactGroupTooltip(
-                                    parent.modelData.key)
-                                onClicked: root.compactOptionGroup
-                                    = parent.modelData.key
-                            }
+                            Layout.preferredWidth: 30
+                            Layout.preferredHeight: 30
+                            symbol: root.compactGroupIcon(modelData.key)
+                            tooltipText: root.compactGroupTooltip(modelData.key)
+                            onClicked: root.compactOptionGroup = modelData.key
                         }
                     }
                 }
 
                 RowLayout {
                     visible: root.compactOptionGroup !== ""
-                    anchors {
-                        fill: parent
-                        leftMargin: 4
-                        rightMargin: 4
-                    }
-                    spacing: 0
+                    anchors.centerIn: parent
+                    spacing: 6
 
-                    Item {
-                        Layout.fillWidth: true
-                        Layout.fillHeight: true
-
-                        CompactEventOptionButton {
-                            anchors.centerIn: parent
-                            width: 30
-                            height: 30
-                            symbol: "arrow_back"
-                            tooltipText: Translation.tr("Back")
-                            onClicked: root.compactOptionGroup = ""
-                        }
+                    CompactEventOptionButton {
+                        Layout.preferredWidth: 30
+                        Layout.preferredHeight: 30
+                        symbol: "arrow_back"
+                        tooltipText: Translation.tr("Back")
+                        onClicked: root.compactOptionGroup = ""
                     }
 
                     Repeater {
                         model: root.compactOptionsFor(
                             root.compactOptionGroup)
 
-                        delegate: Item {
+                        delegate: CompactEventOptionButton {
                             required property var modelData
-                            Layout.fillWidth: true
-                            Layout.fillHeight: true
-
-                            CompactEventOptionButton {
-                                anchors.centerIn: parent
-                                width: 30
-                                height: 30
-                                symbol: parent.modelData.icon
-                                selectedState: parent.modelData.value
-                                    == root.compactGroupValue(
-                                        root.compactOptionGroup)
-                                tooltipText:
-                                    root.compactGroupTitle(
-                                        root.compactOptionGroup)
-                                    + " · " + parent.modelData.displayName
-                                onClicked: root.setCompactOption(
-                                    root.compactOptionGroup,
-                                    parent.modelData.value)
-                            }
+                            Layout.preferredWidth: 30
+                            Layout.preferredHeight: 30
+                            symbol: modelData.icon
+                            selectedState: modelData.value
+                                == root.compactGroupValue(
+                                    root.compactOptionGroup)
+                            tooltipText:
+                                root.compactGroupTitle(
+                                    root.compactOptionGroup)
+                                + " · " + modelData.displayName
+                            onClicked: root.setCompactOption(
+                                root.compactOptionGroup,
+                                modelData.value)
                         }
                     }
                 }

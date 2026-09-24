@@ -37,13 +37,17 @@ ContentPage {
     readonly property bool sessionStalled: root.sampleIsStale()
     readonly property string primaryError: {
         if (RuntimeDiagnosticsSession.leaseError.length > 0)
-            return RuntimeDiagnosticsSession.leaseError
+            return Translation.tr("Diagnostics lease error") + ": "
+                + RuntimeDiagnosticsSession.leaseError
         if (RuntimeDiagnosticsSession.remoteError.length > 0)
-            return RuntimeDiagnosticsSession.remoteError
+            return Translation.tr("Runtime bridge error") + ": "
+                + RuntimeDiagnosticsSession.remoteError
         if (RuntimeDiagnosticsSession.evidenceError.length > 0)
-            return RuntimeDiagnosticsSession.evidenceError
+            return Translation.tr("Diagnostics evidence error") + ": "
+                + RuntimeDiagnosticsSession.evidenceError
         if (root.samplerError.length > 0)
-            return root.samplerError
+            return Translation.tr("Diagnostics sampler error") + ": "
+                + root.samplerError
         return String(root.discoveryEvidence?.error ?? "")
     }
 

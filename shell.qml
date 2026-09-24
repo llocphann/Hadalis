@@ -55,15 +55,16 @@ ShellRoot {
     property var _voiceSearchService
     property var _fontSyncService
     property var _cavaThemeService
-    // Screen Time must exist for the whole enabled session, not only after its
-    // Sidebar page or Dashboard Uptime tab is first opened. It is materialized
-    // after first frame whenever either owner enables tracking.
+    // Screen Time must exist for the whole enabled session so the Material
+    // notification-center Activity tab has history before it is first opened.
+    // Waffle keeps the existing explicit Screen Time opt-in.
     property var _screenTimeService
     function _ensureScreenTimeService(): void {
         if (GlobalStates.deferredPanelsReady
                 && ((Config.options?.sidebar?.screenTime?.enable ?? false)
                     || ((Config.options?.panelFamily ?? "ii") !== "waffle"
-                        && (Config.options?.dashboard?.enable ?? true))))
+                        && (Config.options?.enabledPanels ?? [])
+                            .includes("iiScreenCorners"))))
             root._screenTimeService = ScreenTime
     }
     // Tier 4: T+1500ms (background features - updates, sync, content services)

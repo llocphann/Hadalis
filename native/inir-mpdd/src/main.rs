@@ -2145,7 +2145,10 @@ mod tests {
     #[test]
     fn daemon_rpc_forwards_mutations_errors_and_reconnects_without_replay() {
         let listener = TcpListener::bind(("127.0.0.1", 0)).expect("bind daemon fake MPD");
-        let port = listener.local_addr().expect("daemon fake MPD address").port();
+        let port = listener
+            .local_addr()
+            .expect("daemon fake MPD address")
+            .port();
         let (tx, rx) = mpsc::channel();
 
         let mpd_handle = thread::spawn(move || {
@@ -2157,7 +2160,10 @@ mod tests {
                 .get_mut()
                 .write_all(b"OK MPD 0.23.15\n")
                 .expect("write first daemon greeting");
-            first.get_mut().flush().expect("flush first daemon greeting");
+            first
+                .get_mut()
+                .flush()
+                .expect("flush first daemon greeting");
 
             for (expected, reply) in [
                 ("pause \"1\"", "OK\n"),
@@ -2174,11 +2180,16 @@ mod tests {
                     .get_mut()
                     .write_all(reply.as_bytes())
                     .expect("write first daemon MPD reply");
-                first.get_mut().flush().expect("flush first daemon MPD reply");
+                first
+                    .get_mut()
+                    .flush()
+                    .expect("flush first daemon MPD reply");
             }
             drop(first);
 
-            let (second_stream, _) = listener.accept().expect("accept reconnected daemon MPD client");
+            let (second_stream, _) = listener
+                .accept()
+                .expect("accept reconnected daemon MPD client");
             let mut second = BufReader::new(second_stream);
             second
                 .get_mut()
@@ -2205,11 +2216,7 @@ mod tests {
             tx.send(commands).expect("return daemon MPD command log");
         });
 
-        let manager = Arc::new(MpdManager::new(
-            "127.0.0.1".into(),
-            port,
-            "/music".into(),
-        ));
+        let manager = Arc::new(MpdManager::new("127.0.0.1".into(), port, "/music".into()));
         let subscribers = Arc::new(Mutex::new(Vec::new()));
         let (server_stream, mut client_stream) =
             UnixStream::pair().expect("create daemon RPC socket pair");
@@ -2284,10 +2291,7 @@ mod tests {
             .recv_timeout(Duration::from_secs(2))
             .expect("daemon MPD command log");
         mpd_handle.join().expect("join daemon fake MPD");
-        assert_eq!(
-            commands,
-            vec!["pause \"1\"", "seekcur \"bad\"", "play"]
-        );
+        assert_eq!(commands, vec!["pause \"1\"", "seekcur \"bad\"", "play"]);
     }
 
     #[test]

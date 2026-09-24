@@ -81,6 +81,10 @@ Scope {
                 property bool mustShow: hoverRegion.containsMouse || superShow
                     || ShellEditSession.active
                     || CodeWorkflowPicker.holdsOutput(barRoot.outputName)
+                    || GlobalStates.barPopupHoverHeld(barRoot.outputName)
+                    || (GlobalStates.overviewOpen
+                        && (!GlobalStates.overviewTargetOutput
+                            || GlobalStates.overviewTargetOutput === barRoot.outputName))
                 exclusionMode: ExclusionMode.Ignore
                 exclusiveZone:
                     (barRoot.fullscreenCovered || GlobalStates.coverflowSelectorOpen || (Config?.options.bar.autoHide.enable && (!mustShow || !Config?.options.bar.autoHide.pushWindows))) ? 0 :

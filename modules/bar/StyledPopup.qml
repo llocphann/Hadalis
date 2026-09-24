@@ -1,3 +1,4 @@
+import qs
 import qs.modules.common
 import qs.modules.common.widgets
 import qs.modules.common.functions
@@ -28,6 +29,8 @@ LazyLoader {
     property string attachmentEdgeOverride: ""
     property real attachmentThicknessOverride: -1
     property bool hoverActivates: true
+    property bool barAutoHideHoldEnabled: true
+    property int _barPopupHoverLeaseId: 0
     property bool alternativeVisibleCondition: false
     property bool closeOnOutsideClick: false
     // Keep the outside-click catcher below the popup when a surface needs to
@@ -147,10 +150,22 @@ LazyLoader {
 
     active: root._anchorReady && (root.requestedVisible || root._lingerVisible)
 
+    function _syncBarAutoHideLease(): void {
+        if (root._barPopupHoverLeaseId <= 0)
+            return
+        GlobalStates.setBarPopupHoverLease(root._barPopupHoverLeaseId,
+            String(root._anchorScreen?.name ?? ""),
+            root.barAutoHideHoldEnabled && root.active && root._anchorReady)
+    }
+
+    on_AnchorScreenChanged: root._syncBarAutoHideLease()
+    onBarAutoHideHoldEnabledChanged: root._syncBarAutoHideLease()
+
     // Hover handlers belong to the lazily-created presentation window. Their
     // last true state must not survive eviction, anchor replacement or a
     // hidden bar: otherwise requestedVisible can resurrect a stale popup.
     onActiveChanged: {
+        root._syncBarAutoHideLease()
         if (active) {
             // A hidden anchor can become ready while requestedVisible was
             // already true; resume the reveal without waiting for a new hover.
@@ -166,6 +181,7 @@ LazyLoader {
     onHoverTargetChanged: {
         root._bodyHovered = false
         root._contentHovered = false
+        root._syncBarAutoHideLease()
     }
 
     function _beginRetract(): void {
@@ -218,7 +234,13 @@ LazyLoader {
     }
 
     onRequestedVisibleChanged: root._syncRequestedVisibility()
-    Component.onCompleted: root._syncRequestedVisibility()
+    Component.onCompleted: {
+        root._barPopupHoverLeaseId = GlobalStates.allocateBarPopupHoverLease()
+        root._syncBarAutoHideLease()
+        root._syncRequestedVisibility()
+    }
+    Component.onDestruction:
+        GlobalStates.setBarPopupHoverLease(root._barPopupHoverLeaseId, "", false)
 
     // Immutable ii surface-motion contract: slide only, monotonic, no
     // spring/back/overshoot and no theme/config curve override.

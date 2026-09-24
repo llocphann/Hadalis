@@ -19,6 +19,44 @@ Singleton {
     property bool bootGreetingDone: false
     property bool startupLockDone: false
     property bool barOpen: true
+    // Each connected Bar popup holds its output's auto-hide Bar until its
+    // retract animation finishes. A keyed lease keeps simultaneous popups on
+    // different outputs from releasing one another's hold.
+    property int _nextBarPopupLeaseId: 0
+    property var _barPopupHoverLeases: ({})
+
+    function allocateBarPopupHoverLease(): int {
+        root._nextBarPopupLeaseId++
+        return root._nextBarPopupLeaseId
+    }
+
+    function setBarPopupHoverLease(leaseId: int, outputName: string, held: bool): void {
+        if (leaseId <= 0)
+            return
+        const key = String(leaseId)
+        const name = held ? String(outputName ?? "") : ""
+        const previous = root._barPopupHoverLeases[key] ?? ""
+        if (previous === name)
+            return
+        const next = Object.assign({}, root._barPopupHoverLeases)
+        if (name.length > 0)
+            next[key] = name
+        else
+            delete next[key]
+        root._barPopupHoverLeases = next
+    }
+
+    function barPopupHoverHeld(outputName: string): bool {
+        const name = String(outputName ?? "")
+        if (!name)
+            return false
+        const leases = root._barPopupHoverLeases
+        for (const key in leases) {
+            if (leases[key] === name)
+                return true
+        }
+        return false
+    }
     property bool crosshairOpen: false
     property bool sidebarLeftOpen: false
     property string sidebarLeftTargetOutput: ""
@@ -51,12 +89,19 @@ Singleton {
         target: Quickshell
         function onScreensChanged(): void {
             const hoverOutput = root.notificationCenterHoverOutput
-            if (!hoverOutput)
-                return
-            const stillConnected = Quickshell.screens.some(
-                screen => String(screen?.name ?? "") === hoverOutput)
-            if (!stillConnected)
+            const connected = Quickshell.screens.map(
+                screen => String(screen?.name ?? ""))
+            if (hoverOutput && !connected.includes(hoverOutput))
                 root.notificationCenterHoverOutput = ""
+
+            const oldLeases = root._barPopupHoverLeases
+            const nextLeases = {}
+            for (const key in oldLeases) {
+                if (connected.includes(oldLeases[key]))
+                    nextLeases[key] = oldLeases[key]
+            }
+            if (Object.keys(nextLeases).length !== Object.keys(oldLeases).length)
+                root._barPopupHoverLeases = nextLeases
         }
     }
 

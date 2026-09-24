@@ -46,6 +46,7 @@ Bar.StyledPopup {
             || (contentLoader.item?.dragActive ?? false))
 
     hoverTarget: root.anchorItem
+    barAutoHideHoldEnabled: false
     // ScreenCorners owns this anchor in a tiny bottom-right layer surface.
     // Its local x/y are therefore near zero; pin the popup to the trailing
     // tangent edge of the full output instead of interpreting those locals as

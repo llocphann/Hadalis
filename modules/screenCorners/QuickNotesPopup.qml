@@ -35,6 +35,7 @@ Bar.StyledPopup {
         Math.min(640, Config.options?.quickNotes?.popupHeight ?? 300))
 
     hoverTarget: root.anchorItem
+    barAutoHideHoldEnabled: false
     attachmentEdgeOverride: root.cornerAttachmentEdge
     attachmentThicknessOverride: root.cornerAttachmentThickness
     hoverActivates: true

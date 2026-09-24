@@ -8,6 +8,7 @@ on:
       - 'scripts/native-cutover-benchmark.sh'
       - 'scripts/test-native-selector-contract.sh'
       - 'scripts/test-native-selector-behavior.sh'
+      - 'native/scripts/check-niri-customizations.py'
       - 'scripts/inir'
       - 'services/KeyboardIndicators.qml'
       - 'services/RuntimeDiagnostics.qml'
@@ -30,6 +31,7 @@ on:
       - 'native/**'
       - 'scripts/native-dispatch'
       - 'scripts/test-native-selector-behavior.sh'
+      - 'native/scripts/check-niri-customizations.py'
       - 'scripts/colors/switchwall.sh'
       - 'scripts/colors/applycolor.sh'
       - '.github/workflows/native-rust.yml'
@@ -73,3 +75,8 @@ jobs:
 
       - name: Unit tests
         run: cargo test --locked --manifest-path native/Cargo.toml --workspace --all-targets
+
+      - name: Niri customization parity fixtures
+        run: |
+          cargo build --locked --manifest-path native/Cargo.toml -p inir-native
+          python3 native/scripts/check-niri-customizations.py native/target/debug/inir-native

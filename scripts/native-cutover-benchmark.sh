@@ -385,6 +385,7 @@ run_gate "native boundary guard" 6 python3 native/scripts/assert-dormant.py
 run_gate "native selector contract" 7 bash scripts/test-native-selector-contract.sh
 run_gate "native selector behavior" 7 bash scripts/test-native-selector-behavior.sh
 run_gate "Niri parser regression" 8 python3 scripts/test-niri-config-structural-read.py
+run_gate "Niri customization fixture parity" 8 python3 native/scripts/check-niri-customizations.py "$BIN_DIR/inir-native"
 "$DISPATCH" backend-info
 for binary in inir-inputd inir-mpdd inir-native inir-theme; do
     if [[ -x "$BIN_DIR/$binary" ]]; then

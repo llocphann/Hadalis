@@ -207,8 +207,9 @@ per startup case; it is under the local state directory named above.
 ### 2. Close parity and regression coverage gaps
 
 - Niri: current parity covers the listed read-only commands, including
-  `detect-customizations`, on one local config. Add fixture-based Python/Rust
-  comparisons for `detect-customizations` and every write command
+  `detect-customizations`, on one local config. Isolated fixtures also cover
+  missing defaults, reordered and repeated lines, and extra files. Add
+  fixture-based Python/Rust comparisons for every write command
   (`apply-output`, `persist-output`, `persist-layout`,
   `set`, `set-bind`, `remove-bind`, `sync-cursor`, and
   `sync-backdrop-overview-shadow`). Mock or isolate compositor actions; never

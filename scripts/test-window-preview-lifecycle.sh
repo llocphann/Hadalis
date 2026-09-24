@@ -15,10 +15,6 @@ adaptive_preview_policy="$repo_root/services/AdaptivePreviewPolicy.js"
 adaptive_preview_service="$repo_root/services/AdaptivePreviewService.qml"
 overview_renderer="$repo_root/modules/overview/OverviewNiriWidget.qml"
 hypr_overview_window="$repo_root/modules/overview/OverviewWindow.qml"
-niri_live_renderer="$repo_root/modules/overview/NiriAdaptiveWindowPreview.qml"
-niri_live_pkg="$repo_root/distro/arch/inir-quickshell-niri/PKGBUILD"
-niri_live_overlay="$repo_root/distro/arch/inir-quickshell-niri/overlay/image_copy_capture.cpp"
-launcher="$repo_root/scripts/inir"
 services_qmldir="$repo_root/services/qmldir"
 config_qml="$repo_root/modules/common/Config.qml"
 
@@ -175,24 +171,8 @@ grep -Fq 'live: root.previewLive' "$hypr_overview_window" \
 grep -Fq 'windowPreview.captureFrame()' "$hypr_overview_window" \
     || fail 'static Hyprland windows must use a single compositor frame'
 if grep -Fq 'ScreencopyView {' "$overview_renderer"; then
-    fail 'Niri Overview must keep extension-only ScreencopyView code isolated behind the lazy renderer'
+    fail 'Niri Overview must not fake toplevel live capture with unsupported ScreencopyView sources'
 fi
-grep -Fq 'source: active ? "NiriAdaptiveWindowPreview.qml" : ""' "$overview_renderer" \
-    || fail 'Niri Overview must lazy-load the ICC renderer only when the patched runtime is active'
-grep -Fq 'ForeignToplevelCaptureSource {' "$niri_live_renderer" \
-    || fail 'Niri adaptive renderer must capture by ext foreign-toplevel identifier'
-grep -Fq 'onFrameCaptured: root._recordActivity(frameActivity)' "$niri_live_renderer" \
-    || fail 'Niri adaptive renderer must derive motion from compositor frame damage'
-grep -Fq 'id: probeTimer' "$niri_live_renderer" \
-    || fail 'static Niri previews must probe single ICC frames instead of polling PNG screenshots'
-grep -Fq 'Quickshell.env("INIR_NIRI_TOPLEVEL_ICC")' "$adaptive_preview_service" \
-    || fail 'Niri live capability must be gated by the Hadalis Quickshell runtime marker'
-grep -Fq 'export INIR_NIRI_TOPLEVEL_ICC=1' "$launcher" \
-    || fail 'launcher must publish the installed Niri ICC capability to QML'
-grep -Fq "provides=(\"quickshell=\$pkgver\")" "$niri_live_pkg" \
-    || fail 'patched Niri Quickshell package must satisfy the canonical quickshell dependency'
-grep -Fq 'ext_foreign_toplevel_list_v1_toplevel' "$niri_live_overlay" \
-    || fail 'patched Quickshell must enumerate ext foreign toplevel handles'
 
 node - "$adaptive_preview_policy" <<'NODE'
 const fs = require('node:fs');
@@ -214,22 +194,15 @@ assert.equal(scope.wantsLive({
     mode: 'adaptive', active: true, backendAvailable: true, hovered: true
 }), true, 'hover may promote immediately');
 assert.equal(scope.wantsLive({
-    mode: 'adaptive', active: true, backendAvailable: true, mediaPlaying: true,
-    activityScore: 0
-}), false, 'playing media does not force a truly static window live');
+    mode: 'adaptive', active: true, backendAvailable: true, mediaPlaying: true
+}), true, 'playing media is a dynamic-content hint');
 assert.equal(scope.wantsLive({
-    mode: 'adaptive', active: true, backendAvailable: true, mediaPlaying: true,
-    activityScore: 0.03, activityPromotionThreshold: 0.06,
-    mediaActivityPromotionThreshold: 0.02
-}), true, 'media lowers the motion threshold without bypassing motion');
-assert.equal(scope.wantsLive({
-    mode: 'adaptive', active: true, backendAvailable: true, focused: true,
-    activityScore: 0
+    mode: 'adaptive', active: true, backendAvailable: true, focused: true
 }), false, 'focus alone remains a snapshot by default');
 assert.equal(scope.wantsLive({
     mode: 'adaptive', active: true, backendAvailable: true,
-    activityScore: 0.08, activityPromotionThreshold: 0.06
-}), true, 'continuous compositor damage promotes a normal dynamic window');
+    activityScore: 0.8, activityPromotionThreshold: 0.55
+}), true, 'future motion analyzers can feed the same activity score');
 assert.deepEqual(Array.from(scope.selectLiveKeys([
     {key: 'static', requested: false, priority: 99999, order: 1},
     {key: 'media', requested: true, priority: 5000, order: 2},

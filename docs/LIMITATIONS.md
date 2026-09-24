@@ -126,11 +126,10 @@ ii is built for **Niri**. Some features were inherited from the original Hyprlan
 
 ### Window Previews
 
-- **Niri has a Hadalis ICC live-preview runtime on Arch**: `inir-quickshell-niri` is pinned to Quickshell 0.3.1 and adds the missing `ext-foreign-toplevel-list` → `ext-image-copy-capture` bridge. Niri's protocol identifier is the exact IPC window ID, so Overview does not guess by title or app ID.
-- **Snapshot first, live only on sustained motion**: the existing PNG cache remains an instant fallback. Once ICC is ready, static windows use compositor single-frame snapshots and low-rate in-memory damage probes; two consecutive non-trivial samples can promote a window to a bounded live stream. Hover is intentionally immediate. Media playback lowers the motion threshold but cannot force a static album-art window live.
-- **Live streams are budgeted**: the adaptive scheduler keeps at most six live windows by default and prioritizes hover, playing media, focus and measured activity. After motion stops, cooldown demotes the stream back to a frozen compositor frame.
-- **Non-Arch/stock Quickshell falls back safely**: the Niri-only QML type is lazy-loaded only when the patched runtime marker is present. Without it, Hadalis keeps the existing cached PNG preview path; it never polls `niri screenshot-window` as fake video.
-- **Workspace screenshots remain disabled**: full-workspace screenshots are not used as a live-preview substitute because they can include shell layers and cannot reliably represent occluded/off-workspace windows.
+- **Niri uses cached per-window snapshots**: Overview keeps bounded decoded PNG previews warm and refreshes visible long-lived windows when the presentation opens. It does not fall back to icon-only rendering unless a preview is unavailable or previews are disabled.
+- **Adaptive live previews are capability-gated**: On compositors where Quickshell can capture a toplevel directly, Overview keeps static windows on a single compositor frame and promotes interactive or playing-media windows to bounded live streams with promotion/cooldown hysteresis.
+- **Niri live toplevel capture is not exposed by stock Quickshell yet**: Niri supports modern image-copy-capture protocols, but Quickshell's current `ScreencopyView(Toplevel)` path is tied to the Hyprland toplevel-export protocol. Hadalis therefore keeps the reliable snapshot backend on Niri instead of polling `niri screenshot-window` as fake video. The adaptive scheduler is already shared so a future Niri toplevel backend can plug into it without replacing the cache.
+- **Workspace snapshots remain disabled**: full-workspace screenshot code is not used as a live-preview substitute because it is slow, can capture shell layers, and cannot reliably represent occluded/off-workspace windows.
 
 ### Window Matching
 

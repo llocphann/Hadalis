@@ -2107,16 +2107,7 @@ Singleton {
                 property bool liveMediaWindows: true
                 property int livePromotionDelayMs: 180
                 property int liveCooldownMs: 2500
-                // Niri adaptive probing samples compositor damage in-memory.
-                // Two consecutive non-trivial samples are required before a
-                // static preview may claim a live-stream slot.
-                property int previewProbeIntervalMs: 350
-                property int previewMotionSamples: 2
-                property real previewMotionSampleThreshold: 0.006
-                property real previewActivitySmoothing: 0.45
-                property real activityPromotionThreshold: 0.06
-                property real mediaActivityPromotionThreshold: 0.02
-                property real focusedActivityPromotionThreshold: 0.035
+                property real activityPromotionThreshold: 0.55
                 property bool activeScreenOnly: true
                 property bool allAppsGrid: false
                 property string allAppsGridMode: "minimal"

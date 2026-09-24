@@ -157,36 +157,43 @@ for token in (
     require(helper, token, "equalizer-control.sh")
 
 # UI owns only facade calls. It must not contain backend/socket/preset-file logic.
-# The persistent trace must use actual rendered handle centers, not a second
-# gain-to-y approximation that can drift away from the circles.
+# The panel now merges the real shared CAVA spectrum and the editable DSP curve
+# into one graph. The ten vertical Slider instances are the graph nodes
+# themselves; there must not be a second, detached slider row below the graph.
 for token in (
     "EqualizerService.registerConsumer()",
     "EqualizerService.unregisterConsumer()",
+    "CavaProcess {",
+    "id: eqCava",
+    "active: root.active",
+    "sampleCount: 64",
+    "const spectrum = eqCava.points ?? []",
+    "Number(eqCava.normalizationCeiling)",
+    "id: analyzerCanvas",
     "model: EqualizerService.dspBands",
-    "EqualizerService.setDspBandGain(",
-    "function applyPresetWithLightning(name): void",
-    "EqualizerService.applyDspPreset(name)",
-    "root.triggerPresetSweep()",
-    "property real eqLightningHighlight: 0.0",
-    "property real eqPresetSweepProgress: -0.12",
-    "function triggerPresetSweep(): void",
-    "id: presetSweepAnim",
-    'property: "eqPresetSweepProgress"',
-    "const sweepTail = 0.22",
-    "const sweepLead = 0.035",
-    "id: lightningCanvas",
-    "id: bandRepeater",
-    "function lightningPoint()",
+    "function curvePoint()",
     "handleItem.mapToItem(",
-    "bandRepeater.itemAt(i)",
-    "ctx.lineWidth = 5.5",
-    "ctx.lineWidth = 2.4",
-    "ctx.lineWidth = 1.0",
+    "ctx.bezierCurveTo(",
+    "EqualizerService.setDspBandGain(",
+    "function applyPreset(name): void",
+    "EqualizerService.applyDspPreset(name)",
+    "id: bandRepeater",
+    "cursorShape: bandSlider.enabled",
+    "Qt.SizeVerCursor",
     "uniformCellWidths: true",
-    "implicitHeight: 24",
+    "implicitHeight: root.compactLayout ? 22 : 24",
 ):
     require(panel, token, "EqualizerPanel")
-for token in ("EasyEffectsServer", "socat", "equalizer-control.sh", "load_preset:output:"):
+for token in (
+    "EasyEffectsServer",
+    "socat",
+    "equalizer-control.sh",
+    "load_preset:output:",
+    "id: lightningCanvas",
+    "eqLightningHighlight",
+    "eqPresetSweepProgress",
+    "triggerPresetSweep",
+):
     forbid(panel, token, "EqualizerPanel")
 
 # Compact media transport controls intentionally keep accessible buttonText but

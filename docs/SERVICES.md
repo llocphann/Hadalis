@@ -37,7 +37,7 @@
 | **GameMode** | Fullscreen detection with auto/manual activation. Suppresses animations, notifications, blur when gaming. IPC target: `gamemode`. |
 | **Idle** | Idle management via swayidle. Screen-off, lock, and suspend timeouts. Set `idle.onBattery.enable` to apply a separate, shorter set of timeouts while a laptop runs unplugged. |
 | **ResourceUsage** | CPU, RAM, GPU, temperature, disk polling. History arrays for graphs. Auto-stop timer (15s) when no consumers active. |
-| **ScreenTime** | Optional focused-app usage tracking. Local JSON storage, daily totals, hourly buckets, 3/14 day range aggregation. Disabled unless `sidebar.screenTime.enable` is true. |
+| **ScreenTime** | Focused-app/window usage tracking. Local JSON storage, daily totals, hourly buckets, and 3/14 day range aggregation. Active when Sidebar Screen Time is enabled or while the Material (ii) Dashboard owns its Notifications/Uptime module; Waffle does not start the tracker solely for Dashboard config. |
 | **SystemInfo** | Distro name, username, desktop environment detection. |
 | **ShellLayoutController** | Validates and persists bar, dock, taskbar and sidebar placement across panel families. IPC target: `shellLayout`. |
 | **Privacy** | Mic and screen sharing detection via PipeWire link analysis. |

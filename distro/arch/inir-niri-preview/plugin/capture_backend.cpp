@@ -501,7 +501,7 @@ private:
             SPA_FRACTION(static_cast<uint32_t>(state->maxFps), 1);
 
         const spa_pod* params[1];
-        params[0] = spa_pod_builder_add_object(
+        params[0] = static_cast<const spa_pod*>(spa_pod_builder_add_object(
             &builder,
             SPA_TYPE_OBJECT_Format,
             SPA_PARAM_EnumFormat,
@@ -518,7 +518,7 @@ private:
             SPA_FORMAT_VIDEO_size,
             SPA_POD_CHOICE_RANGE_Rectangle(&defaultSize, &minSize, &maxSize),
             SPA_FORMAT_VIDEO_framerate,
-            SPA_POD_CHOICE_RANGE_Fraction(&defaultRate, &minRate, &maxRate));
+            SPA_POD_CHOICE_RANGE_Fraction(&defaultRate, &minRate, &maxRate)));
 
         const int result = pw_stream_connect(
             state->pwStream,

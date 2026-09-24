@@ -167,11 +167,11 @@ fn read_memory(pid: i32) -> Value {
     })
 }
 
-fn read_system_cpu_ticks() -> BTreeMap<String, (u64, u64)> {
+fn parse_system_cpu_ticks(text: &str) -> BTreeMap<String, (u64, u64)> {
     let mut result = BTreeMap::new();
-    for line in read_text("/proc/stat").lines() {
-        let fields = line.split_whitespace().collect::<Vec<_>>();
-        let Some(name) = fields.first().copied() else {
+    for line in text.lines() {
+        let mut fields = line.split_whitespace();
+        let Some(name) = fields.next() else {
             continue;
         };
         if name != "cpu"
@@ -181,21 +181,35 @@ fn read_system_cpu_ticks() -> BTreeMap<String, (u64, u64)> {
         {
             continue;
         }
-        if fields.len() < 5 {
+
+        let mut values = [0u64; 8];
+        let mut count = 0usize;
+        let mut valid = true;
+        for raw in fields.take(values.len()) {
+            match raw.parse::<u64>() {
+                Ok(value) => {
+                    values[count] = value;
+                    count += 1;
+                }
+                Err(_) => {
+                    valid = false;
+                    break;
+                }
+            }
+        }
+        if !valid || count < 4 {
             continue;
         }
-        let values = fields[1..]
-            .iter()
-            .filter_map(|value| value.parse::<u64>().ok())
-            .collect::<Vec<_>>();
-        if values.len() < 4 {
-            continue;
-        }
-        let total = values.iter().take(8).sum();
-        let idle = values[3] + values.get(4).copied().unwrap_or(0);
+
+        let total = values[..count].iter().sum();
+        let idle = values[3] + if count > 4 { values[4] } else { 0 };
         result.insert(name.to_owned(), (total, idle));
     }
     result
+}
+
+fn read_system_cpu_ticks() -> BTreeMap<String, (u64, u64)> {
+    parse_system_cpu_ticks(&read_text("/proc/stat"))
 }
 
 fn cpu_percent_from_ticks(
@@ -269,19 +283,18 @@ fn read_system_memory() -> Value {
     })
 }
 
-fn task_ids(pid: i32) -> Vec<PathBuf> {
+fn task_paths(pid: i32) -> impl Iterator<Item = PathBuf> {
     fs::read_dir(format!("/proc/{pid}/task"))
         .into_iter()
         .flatten()
         .flatten()
         .map(|entry| entry.path())
-        .collect()
 }
 
 fn read_sched_runtime_ns(pid: i32) -> Option<u64> {
     let mut total = 0u64;
     let mut found = false;
-    for task in task_ids(pid) {
+    for task in task_paths(pid) {
         let text = read_text(task.join("schedstat"));
         if let Some(value) = text
             .split_whitespace()
@@ -302,23 +315,16 @@ fn read_sched_runtime_ns(pid: i32) -> Option<u64> {
 }
 
 fn read_io(pid: i32) -> BTreeMap<String, u64> {
-    let wanted = [
-        "read_bytes",
-        "write_bytes",
-        "rchar",
-        "wchar",
-        "syscr",
-        "syscw",
-    ]
-    .into_iter()
-    .collect::<BTreeSet<_>>();
     let mut result = BTreeMap::new();
     for line in read_text(format!("/proc/{pid}/io")).lines() {
         let Some((key, value)) = line.split_once(':') else {
             continue;
         };
         let key = key.trim();
-        if !wanted.contains(key) {
+        if !matches!(
+            key,
+            "read_bytes" | "write_bytes" | "rchar" | "wchar" | "syscr" | "syscw"
+        ) {
             continue;
         }
         if let Ok(value) = value.trim().parse::<u64>() {
@@ -349,10 +355,14 @@ fn read_process_status(pid: i32) -> BTreeMap<String, u64> {
 }
 
 fn read_process_command(pid: i32) -> String {
-    let command = read_text(format!("/proc/{pid}/comm"))
-        .split_whitespace()
-        .collect::<Vec<_>>()
-        .join(" ");
+    let text = read_text(format!("/proc/{pid}/comm"));
+    let mut command = String::with_capacity(text.len());
+    for part in text.split_whitespace() {
+        if !command.is_empty() {
+            command.push(' ');
+        }
+        command.push_str(part);
+    }
     if command.is_empty() {
         format!("pid-{pid}")
     } else {
@@ -363,13 +373,16 @@ fn read_process_command(pid: i32) -> String {
 fn read_process_start_ticks(pid: i32) -> Option<u64> {
     let text = read_text(format!("/proc/{pid}/stat"));
     let closing = text.rfind(')')?;
-    let fields = text[closing + 1..].split_whitespace().collect::<Vec<_>>();
-    fields.get(19)?.parse::<u64>().ok()
+    text[closing + 1..]
+        .split_whitespace()
+        .nth(19)?
+        .parse::<u64>()
+        .ok()
 }
 
 fn read_process_children(pid: i32) -> Vec<i32> {
     let mut children = BTreeSet::new();
-    for task in task_ids(pid) {
+    for task in task_paths(pid) {
         for raw in read_text(task.join("children")).split_whitespace() {
             if let Ok(value) = raw.parse::<i32>()
                 && value > 0
@@ -472,28 +485,44 @@ fn sample_children(
     (rows, next)
 }
 
-fn read_network() -> BTreeMap<String, NetworkCounter> {
+fn parse_network(text: &str) -> BTreeMap<String, NetworkCounter> {
     let mut result = BTreeMap::new();
-    for line in read_text("/proc/net/dev").lines().skip(2) {
+    for line in text.lines().skip(2) {
         let Some((name, payload)) = line.split_once(':') else {
             continue;
         };
-        let fields = payload.split_whitespace().collect::<Vec<_>>();
-        if fields.len() < 16 {
+        let mut fields = payload.split_whitespace();
+        let mut counters = [0u64; 16];
+        let mut valid = true;
+        for counter in &mut counters {
+            let Some(raw) = fields.next() else {
+                valid = false;
+                break;
+            };
+            match raw.parse::<u64>() {
+                Ok(value) => *counter = value,
+                Err(_) => {
+                    valid = false;
+                    break;
+                }
+            }
+        }
+        if !valid {
             continue;
         }
-        let (Ok(rx), Ok(tx)) = (fields[0].parse::<u64>(), fields[8].parse::<u64>()) else {
-            continue;
-        };
         result.insert(
             name.trim().to_owned(),
             NetworkCounter {
-                rx_bytes: rx,
-                tx_bytes: tx,
+                rx_bytes: counters[0],
+                tx_bytes: counters[8],
             },
         );
     }
     result
+}
+
+fn read_network() -> BTreeMap<String, NetworkCounter> {
+    parse_network(&read_text("/proc/net/dev"))
 }
 
 fn to_kib(value: u64, unit: &str) -> u64 {
@@ -931,7 +960,9 @@ pub fn run(pid: i32, interval_ms: u64) -> Result<i32> {
 
 #[cfg(test)]
 mod tests {
-    use super::{parse_drm_fdinfo, parse_kib_fields, to_kib};
+    use super::{
+        parse_drm_fdinfo, parse_kib_fields, parse_network, parse_system_cpu_ticks, to_kib,
+    };
 
     #[test]
     fn parses_smaps_rollup_fields() {
@@ -941,6 +972,27 @@ mod tests {
         assert_eq!(values.get("Pss"), Some(&100));
         assert_eq!(values.get("Private_Dirty"), Some(&7));
         assert!(!values.contains_key("VmSize"));
+    }
+
+    #[test]
+    fn parses_proc_stat_without_heap_field_buffers() {
+        let values = parse_system_cpu_ticks(
+            "cpu  100 2 30 400 5 6 7 8 9 10\ncpu0 50 1 15 200 2 3 4 5 6 7\nintr 1 2 3\n",
+        );
+        assert_eq!(values.get("cpu"), Some(&(558, 405)));
+        assert_eq!(values.get("cpu0"), Some(&(280, 202)));
+        assert!(!values.contains_key("intr"));
+    }
+
+    #[test]
+    fn parses_proc_net_dev_without_field_vectors() {
+        let values = parse_network(
+            "Inter-| Receive | Transmit\n face |bytes packets errs drop fifo frame compressed multicast|bytes packets errs drop fifo colls carrier compressed\n  lo: 100 1 0 0 0 0 0 0 200 1 0 0 0 0 0 0\neth0: 300 2 0 0 0 0 0 0 400 2 0 0 0 0 0 0\n",
+        );
+        assert_eq!(values.get("lo").map(|value| value.rx_bytes), Some(100));
+        assert_eq!(values.get("lo").map(|value| value.tx_bytes), Some(200));
+        assert_eq!(values.get("eth0").map(|value| value.rx_bytes), Some(300));
+        assert_eq!(values.get("eth0").map(|value| value.tx_bytes), Some(400));
     }
 
     #[test]

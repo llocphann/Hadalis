@@ -76,7 +76,7 @@ Secondary support. Uses the Quickshell Hyprland module (built-in) plus `hyprctl`
 
 ### What's Hyprland-only
 
-- `HyprlandData.qml`: window list, workspaces, monitors, layers
+- The legacy Hyprland data bridge has been retired; compositor state now comes from the Niri-owned service path.
 - The legacy Hyprland keybind parser and XKB tracking services are retired; active cheatsheet and keyboard-layout state now follow the Niri-owned paths instead of separate Hyprland service implementations.
 
 ### What doesn't work on Hyprland

@@ -17,6 +17,7 @@ EVENTS_DIALOG = ROOT / "modules/sidebarRight/events/EventsDialog.qml"
 EVENTS_SERVICE = ROOT / "services/Events.qml"
 WINDOW_DIALOG = ROOT / "modules/common/widgets/WindowDialog.qml"
 DATE_PICKER = ROOT / "modules/common/widgets/DatePicker.qml"
+CONFIG_TIME_INPUT = ROOT / "modules/common/widgets/ConfigTimeInput.qml"
 SHARED_MONTH = ROOT / "modules/common/widgets/ObsidianMonthCalendar.qml"
 SIDEBAR_CALENDAR = ROOT / "modules/sidebarRight/calendar/CalendarWidget.qml"
 CLOCK_TOOLTIP = ROOT / "modules/bar/ClockWidgetTooltip.qml"
@@ -44,6 +45,7 @@ def main() -> None:
     events_service = EVENTS_SERVICE.read_text(encoding="utf-8")
     window_dialog = WINDOW_DIALOG.read_text(encoding="utf-8")
     date_picker = DATE_PICKER.read_text(encoding="utf-8")
+    config_time_input = CONFIG_TIME_INPUT.read_text(encoding="utf-8")
     shared_month = SHARED_MONTH.read_text(encoding="utf-8")
     sidebar_calendar = SIDEBAR_CALENDAR.read_text(encoding="utf-8")
     vertical = VERTICAL.read_text(encoding="utf-8")
@@ -100,7 +102,9 @@ def main() -> None:
         "Appearance.colors.colSurfaceContainerHigh",
         "root.embeddedPresentation ? 36 : 56",
         "visible: !root.embeddedPresentation",
-        "root.embeddedPresentation ? 32 : 36",
+        'Translation.tr("Title") + " *"',
+        'Translation.tr("Note (opt)")',
+        "compact: root.embeddedPresentation",
         "property string eventEndTime:",
         "property bool allDay: false",
         'property string compactOptionGroup: ""',
@@ -139,8 +143,10 @@ def main() -> None:
     compact_deck = events_dialog[compact_deck_start:compact_deck_end]
     for token in (
         "visible: root.embeddedPresentation",
-        "height: 38",
-        "columns: 4",
+        "height: 32",
+        "anchors.centerIn: parent",
+        "Layout.preferredWidth: 30",
+        "Layout.preferredHeight: 30",
         'root.compactOptionGroup === ""',
         "root.compactGroupIcon(modelData.key)",
         "root.compactGroupTooltip(modelData.key)",
@@ -158,6 +164,16 @@ def main() -> None:
     require(events_dialog,
             "visible: !root.embeddedPresentation\n                    width: parent.width - 8",
             "EventsDialog standalone all-day row")
+
+
+    for token in (
+        'symbol: "close"',
+        'symbol: root.isEditing ? "check" : "add_task"',
+        'tooltipText: Translation.tr("Cancel")',
+        "selectedState: true",
+        "visible: !root.embeddedPresentation",
+    ):
+        require(events_dialog, token, "EventsDialog compact action row")
 
     legacy_options = events_dialog[compact_deck_end:]
     if legacy_options.count("ConfigSelectionArray {") < 4:
@@ -200,6 +216,16 @@ def main() -> None:
         "visible: !root.compact || containsCurrentMonth",
     ):
         require(date_picker, token, "DatePicker.qml")
+
+
+    for token in (
+        "property bool compact: false",
+        "spacing: root.compact ? 4 : 10",
+        "Layout.leftMargin: root.compact ? 4 : 8",
+        "iconSize: root.compact ? 16",
+        "Layout.preferredHeight: root.compact ? 30 : 35",
+    ):
+        require(config_time_input, token, "ConfigTimeInput.qml")
 
     for token in (
         "property int monthShift: 0",

@@ -201,7 +201,7 @@ Item {
             return
         noteRailFlick.contentY = Math.max(0, Math.min(
             noteRailFlick.contentHeight - noteRailFlick.height,
-            root.displayedTabIndex * 24 - noteRailFlick.height / 2))
+            root.displayedTabIndex * 19 - noteRailFlick.height / 2))
     }
 
     function _loadTabById(tabId): bool {

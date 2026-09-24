@@ -14,6 +14,7 @@ CALENDAR_POPUP = ROOT / "modules/bar/ClockCalendarPopup.qml"
 CALENDAR_CONTENT = ROOT / "modules/bar/ClockCalendarContent.qml"
 EVENTS_WIDGET = ROOT / "modules/sidebarRight/events/EventsWidget.qml"
 EVENTS_DIALOG = ROOT / "modules/sidebarRight/events/EventsDialog.qml"
+EVENTS_SERVICE = ROOT / "services/Events.qml"
 WINDOW_DIALOG = ROOT / "modules/common/widgets/WindowDialog.qml"
 DATE_PICKER = ROOT / "modules/common/widgets/DatePicker.qml"
 SHARED_MONTH = ROOT / "modules/common/widgets/ObsidianMonthCalendar.qml"
@@ -40,6 +41,7 @@ def main() -> None:
     calendar = CALENDAR_CONTENT.read_text(encoding="utf-8")
     events_widget = EVENTS_WIDGET.read_text(encoding="utf-8")
     events_dialog = EVENTS_DIALOG.read_text(encoding="utf-8")
+    events_service = EVENTS_SERVICE.read_text(encoding="utf-8")
     window_dialog = WINDOW_DIALOG.read_text(encoding="utf-8")
     date_picker = DATE_PICKER.read_text(encoding="utf-8")
     shared_month = SHARED_MONTH.read_text(encoding="utf-8")
@@ -61,6 +63,11 @@ def main() -> None:
         "Behavior on implicitHeight",
         "id: editorPane",
         "dialog.focusEditor()",
+        "property var eventsDialogDate: null",
+        "function setEventEditorDate(date): void",
+        "eventDateSelectionEnabled: root.showEventsDialog",
+        "selectedEventDate: root.eventsDialogDate",
+        "onEventDateSelected: date => root.setEventEditorDate(date)",
         "embeddedPresentation: true",
         "backgroundHeight: -1",
         "Math.max(264, Math.min(320,",
@@ -104,15 +111,54 @@ def main() -> None:
         "component EventSectionHeader: WindowDialogSectionHeader",
         "Appearance.colors.colSurfaceContainerHigh",
         "root.embeddedPresentation ? 40 : 56",
-        "compact: root.embeddedPresentation",
-        "root.embeddedPresentation ? 6 : 16",
         "visible: !root.embeddedPresentation",
         "root.embeddedPresentation ? 32 : 36",
+        "property string eventEndTime:",
+        "property bool allDay: false",
+        "renderType: Text.QtRendering",
+        "font.weight: Font.Medium",
+        "placeholderTextColor: Appearance.colors.colOnSurface",
+        "DatePicker {",
+        "compact: false",
+        'text: Translation.tr("All day")',
+        'text: Translation.tr("Start")',
+        'text: Translation.tr("End")',
+        'text: Translation.tr("Repeat")',
+        '{ displayName: Translation.tr("Event"), icon: "event", value: "none" }',
+        '{ displayName: Translation.tr("Daily"), icon: "today", value: "daily" }',
+        '{ displayName: Translation.tr("Weekly"), icon: "date_range", value: "weekly" }',
+        '{ displayName: Translation.tr("Monthly"), icon: "calendar_month", value: "monthly" }',
+        '{ displayName: Translation.tr("Yearly"), icon: "event_repeat", value: "yearly" }',
+        "startDate: startIso",
+        "endDate: endIso",
+        "allDay: root.allDay",
     ):
         require(events_dialog, token, "EventsDialog.qml")
     forbid(events_dialog,
            "component EventSectionHeader: EventSectionHeader",
            "EventsDialog.qml")
+
+    date_picker_pos = events_dialog.find("DatePicker {")
+    category_pos = events_dialog.find("// ─── Category Section")
+    if date_picker_pos < 0 or category_pos < 0 or date_picker_pos > category_pos:
+        raise AssertionError("EventsDialog scheduling controls must stay before category metadata")
+    date_picker_block = events_dialog[date_picker_pos:category_pos]
+    require(date_picker_block, "visible: !root.embeddedPresentation", "EventsDialog embedded date reuse")
+    require(date_picker_block, "Qt.formatDate(root.eventDate", "EventsDialog embedded selected-date summary")
+    require(date_picker_block, "StyledSwitch {", "EventsDialog all-day control")
+    forbid(date_picker_block, "compact: root.embeddedPresentation", "EventsDialog duplicate embedded calendar")
+
+    for token in (
+        "function addEvent(title, description, dateTime, category, priority, reminderMinutes, recurrence, endDate, allDay)",
+        "startDate: startIso",
+        "endDate: endDate ||",
+        "allDay: allDay === true",
+        "event.startDate || event.dateTime",
+        "event.allDay === true",
+        "durationMs",
+        "nextEnd",
+    ):
+        require(events_service, token, "services/Events.qml")
 
     for token in (
         "property bool compact: false",
@@ -130,6 +176,11 @@ def main() -> None:
         "property int monthShift: 0",
         "for (let i = 0; i < 42; ++i)",
         "ObsidianMonthCalendar {",
+        "property bool eventDateSelectionEnabled: false",
+        "property var selectedEventDate: null",
+        "selectedDate: root.selectedEventDate",
+        "interactiveDays: root.eventDateSelectionEnabled",
+        "onDayActivated: date => root.eventDateSelected(date)",
         "anchors.horizontalCenter: parent.horizontalCenter",
         "fabSize: 36",
         "fabMargins: 10",
@@ -161,6 +212,11 @@ def main() -> None:
         "id: calendarHeader",
         "Layout.preferredWidth: calendarBody.implicitWidth",
         "id: mondayMeasure",
+        "property var selectedDate: null",
+        "function sameDay(a, b): bool",
+        "readonly property bool selected: root.sameDay(",
+        "Appearance.colors.colPrimaryContainer",
+        "Appearance.colors.colOnPrimaryContainer",
         "property bool responsive: false",
         "property real responsiveMinCellSize: 30",
         "property real responsiveMaxCellSize: 42",

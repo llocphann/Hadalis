@@ -11,7 +11,13 @@ import qs.services
 Singleton {
     id: root
 
-    readonly property bool enabled: Config.options?.sidebar?.screenTime?.enable ?? false
+    // Screen Time now feeds both its Sidebar page and Dashboard's Uptime tab.
+    // Keep one service/data store; Dashboard enablement is enough to keep the
+    // focused-window tracker alive so the Uptime tab has a full-session history
+    // even before the user opens that tab.
+    readonly property bool enabled:
+        (Config.options?.sidebar?.screenTime?.enable ?? false)
+        || (Config.options?.dashboard?.enable ?? true)
     property bool ready: false
 
     property var _todayData: null

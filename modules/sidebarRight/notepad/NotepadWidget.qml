@@ -22,6 +22,7 @@ Item {
     // Keep the same editor/autosave backend while hiding Dashboard/Sidebar
     // navigation chrome that would slow down a one-thought interaction.
     property bool quickCapturePresentation: false
+    property bool verticalDotNavigation: false
     // Quick Notes can coexist on Dashboard, Sidebar Left and the bottom-left
     // corner. In that mode each surface keeps the stable ID of the note it is
     // actually displaying instead of letting another surface's currentTab
@@ -195,6 +196,14 @@ Item {
             ? String(Notepad.tabs[root.displayedTabIndex]?.title ?? "")
             : ""
 
+    onDisplayedTabIndexChanged: {
+        if (!root.verticalDotNavigation || noteRailFlick.height <= 0)
+            return
+        noteRailFlick.contentY = Math.max(0, Math.min(
+            noteRailFlick.contentHeight - noteRailFlick.height,
+            root.displayedTabIndex * 24 - noteRailFlick.height / 2))
+    }
+
     function _loadTabById(tabId): bool {
         if (!Notepad.ready)
             return false
@@ -336,6 +345,7 @@ Item {
                 && (root.tabCount > 1 || root.tabCount === 1) // Always show outside quick capture
 
             Flickable {
+                visible: !root.verticalDotNavigation
                 Layout.fillWidth: true
                 implicitHeight: 28
                 contentWidth: tabRow.implicitWidth
@@ -431,12 +441,33 @@ Item {
                 }
             }
 
+            Item {
+                visible: root.verticalDotNavigation
+                Layout.fillWidth: true
+            }
+
             // Add tab button
             NotepadToolButton {
                 icon: "add"
                 tooltipText: Translation.tr("New tab")
                 enabled: Notepad.ready
                 onClicked: root.addTabSafely()
+            }
+
+            NotepadToolButton {
+                visible: root.verticalDotNavigation && root.tabCount > 1
+                icon: "close"
+                tooltipText: Translation.tr("Remove current note")
+                enabled: Notepad.ready && root.displayedTabIndex >= 0
+                onClicked: root.removeTabSafely(root.displayedTabIndex)
+            }
+
+            NotepadToolButton {
+                visible: root.verticalDotNavigation
+                icon: "note_add"
+                tooltipText: Translation.tr("Capture Zettelkasten note")
+                enabled: root.canSaveZettel
+                onClicked: root.captureQuickNote()
             }
 
             // Dashboard compact mode keeps the tab strip and editing tools on
@@ -569,10 +600,88 @@ Item {
                 : Appearance.inirEverywhere ? Appearance.inir.colBorder : Appearance.colors.colLayer0Border
             clip: true
 
+            Item {
+                id: noteRail
+                visible: root.verticalDotNavigation
+                anchors.left: parent.left
+                anchors.top: parent.top
+                anchors.bottom: parent.bottom
+                anchors.margins: 5
+                width: 25
+
+                Flickable {
+                    id: noteRailFlick
+                    anchors.fill: parent
+                    contentWidth: width
+                    contentHeight: noteDotColumn.implicitHeight
+                    boundsBehavior: Flickable.StopAtBounds
+                    clip: true
+
+                    Column {
+                        id: noteDotColumn
+                        width: noteRailFlick.width
+                        spacing: 2
+
+                        Repeater {
+                            model: Notepad.tabs
+
+                            delegate: Item {
+                                id: noteDot
+                                required property var modelData
+                                required property int index
+                                readonly property bool selected:
+                                    String(modelData?.id ?? "") === root._loadedTabId
+                                width: noteDotColumn.width
+                                height: 22
+                                Accessible.name: String(modelData?.title
+                                    ?? `Note ${index + 1}`)
+
+                                Rectangle {
+                                    anchors.centerIn: parent
+                                    width: noteDot.selected ? 12 : 7
+                                    height: width
+                                    radius: width / 2
+                                    color: noteDot.selected
+                                        ? Appearance.colors.colPrimary
+                                        : Appearance.colors.colOutline
+                                }
+
+                                MouseArea {
+                                    anchors.fill: parent
+                                    enabled: Notepad.ready
+                                    cursorShape: Qt.PointingHandCursor
+                                    onClicked: root.switchToTab(noteDot.index)
+                                }
+
+                                StyledToolTip {
+                                    text: String(noteDot.modelData?.title
+                                        ?? `Note ${noteDot.index + 1}`)
+                                }
+                            }
+                        }
+                    }
+                }
+
+                WheelHandler {
+                    acceptedDevices:
+                        PointerDevice.Mouse | PointerDevice.TouchPad
+                    onWheel: event => {
+                        const next = root.displayedTabIndex
+                            + (event.angleDelta.y < 0 ? 1 : -1)
+                        if (next >= 0 && next < root.tabCount)
+                            root.switchToTab(next)
+                    }
+                }
+            }
+
             ScrollView {
                 id: scrollView
                 anchors.fill: parent
-                anchors.margins: root.compactPresentation ? 6 : 8
+                anchors.leftMargin: root.verticalDotNavigation
+                    ? 34 : (root.compactPresentation ? 6 : 8)
+                anchors.rightMargin: root.compactPresentation ? 6 : 8
+                anchors.topMargin: root.compactPresentation ? 6 : 8
+                anchors.bottomMargin: root.compactPresentation ? 6 : 8
                 ScrollBar.vertical.policy: ScrollBar.AsNeeded
                 ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
 

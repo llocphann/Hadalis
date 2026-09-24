@@ -146,12 +146,8 @@ Item {
     StyledFlickable {
         id: flickable
         anchors.fill: parent
-        // In compactMode: contentHeight matches column so no scrolling occurs;
-        // centering is done via anchors.verticalCenter on the column itself.
-        // contentHeight is always flickable.height when centering is active,
-        // so the flickable never scrolls and the y offset can center freely.
-        // When content is taller than the flickable (e.g. settings panel open),
-        // contentHeight grows to fit and normal scrolling kicks in.
+        // The settings face replaces the dial, keeping all duration controls
+        // within the compact popup's normal height.
         contentHeight: (root.centerMode && contentColumn.implicitHeight <= flickable.height)
             ? flickable.height
             : contentColumn.implicitHeight
@@ -171,6 +167,7 @@ Item {
 
             // The Pomodoro timer circle
             CircularProgress {
+                visible: !root.settingsOpen
                 Layout.alignment: Qt.AlignHCenter
                 lineWidth: 8
                 value: {
@@ -228,8 +225,12 @@ Item {
 
             // Start/Pause + Reset buttons
             RowLayout {
-                Layout.alignment: Qt.AlignHCenter
+                Layout.fillWidth: true
+                Layout.leftMargin: 6
+                Layout.rightMargin: 6
                 spacing: 10
+
+                Item { Layout.fillWidth: true }
 
                 RippleButton {
                     contentItem: StyledText {
@@ -295,41 +296,36 @@ Item {
                             : Appearance.colors.colOnErrorContainer
                     }
                 }
-            }
 
-            // ── Settings gear button ──
-            // Uses Layout.maximumHeight:0 + clip:true when hidden so it contributes
-            // zero to implicitHeight and doesn't shift the vertical center point.
-            Item {
-                Layout.alignment: Qt.AlignHCenter
-                Layout.topMargin: !TimerService.pomodoroRunning ? 8 : 0
-                Layout.preferredHeight: 36
-                Layout.preferredWidth: 36
-                Layout.maximumHeight: !TimerService.pomodoroRunning ? 36 : 0
-                clip: true
+                Item { Layout.fillWidth: true }
 
                 RippleButton {
-                    anchors.fill: parent
-                    buttonRadius: Appearance.rounding.full
-                    colBackground: "transparent"
-                    colBackgroundHover: root._colLayerHover
-                    colRipple: root._colLayerActive
+                    implicitWidth: 36
+                    implicitHeight: 36
+                    buttonRadius: height / 2
+                    enabled: !TimerService.pomodoroRunning
+                    colBackground: root.settingsOpen
+                        ? Appearance.colors.colPrimaryContainer
+                        : root._colLayer
+                    colBackgroundHover: Appearance.colors.colPrimaryContainerHover
                     onClicked: root.settingsOpen = !root.settingsOpen
+
                     contentItem: MaterialSymbol {
                         anchors.centerIn: parent
-                        text: root.settingsOpen ? "keyboard_arrow_up" : "settings"
+                        text: root.settingsOpen ? "close" : "tune"
                         iconSize: 20
-                        color: root._colTextSecondary
+                        color: root.settingsOpen
+                            ? Appearance.colors.colOnPrimaryContainer
+                            : root._colText
                     }
+
                     StyledToolTip {
                         text: Translation.tr("Customize timer")
                     }
                 }
             }
 
-            // ── Collapsible settings panel ──
-            // Layout.maximumHeight:0 when hidden → zero contribution to implicitHeight.
-            // When open, flickable.contentHeight grows via the binding above and scrolls.
+            // The compact settings face uses the dial's space in this viewport.
             Item {
                 Layout.fillWidth: true
                 Layout.leftMargin: 8
@@ -342,7 +338,7 @@ Item {
                 clip: true
 
                 Behavior on Layout.maximumHeight {
-                    enabled: Appearance.animationsEnabled
+                    enabled: Appearance.animationsEnabled && !root.compactMode
                     animation: NumberAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve }
                 }
 
@@ -362,16 +358,6 @@ Item {
                     id: settingsInner
                     anchors { fill: parent; margins: 8 }
                     spacing: 6
-
-                    StyledText {
-                        Layout.fillWidth: true
-                        text: Translation.tr("Focus → Break → Focus → Break → ... → Long break")
-                        font.pixelSize: Appearance.font.pixelSize.smaller
-                        color: root._colTextSecondary
-                        horizontalAlignment: Text.AlignHCenter
-                        wrapMode: Text.WordWrap
-                        Layout.bottomMargin: 2
-                    }
 
                     AdjustRow {
                         icon: "target"

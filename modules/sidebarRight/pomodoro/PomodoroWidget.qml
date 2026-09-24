@@ -16,6 +16,11 @@ Item {
         {"name": Translation.tr("Stopwatch"), "icon": "timer"}
     ]
 
+    onCurrentTabChanged: {
+        if (Persistent?.states?.timer)
+            Persistent.states.timer.tab = root.currentTab
+    }
+
     // Style tokens
     readonly property color colText: Appearance.angelEverywhere ? Appearance.angel.colText
         : Appearance.inirEverywhere ? Appearance.inir.colText : Appearance.colors.colOnLayer1
@@ -59,39 +64,28 @@ Item {
         // Tab bar row with pin button
         Item {
             Layout.fillWidth: true
-            implicitHeight: tabBar.height
+            implicitHeight: tabBar.implicitHeight
 
-            SecondaryTabBar {
+            PillTabBar {
                 id: tabBar
                 anchors.left: parent.left
                 anchors.right: pinButton.left
                 anchors.rightMargin: 6
-                currentIndex: currentTab
-                onCurrentIndexChanged: {
-                    currentTab = currentIndex
-                    if (Persistent?.states?.timer) {
-                        Persistent.states.timer.tab = currentIndex
-                    }
-                }
+                pillHeight: 34
+                currentIndex: root.currentTab
+                tabs: root.tabButtonList.map(item => ({
+                    icon: item.icon, label: item.name
+                }))
+                onTabSelected: index => root.currentTab = index
 
-                background: Item {
-                    WheelHandler {
-                        onWheel: (event) => {
-                            if (event.angleDelta.y < 0)
-                                tabBar.currentIndex = Math.min(tabBar.currentIndex + 1, root.tabButtonList.length - 1)
-                            else if (event.angleDelta.y > 0)
-                                tabBar.currentIndex = Math.max(tabBar.currentIndex - 1, 0)
-                        }
-                        acceptedDevices: PointerDevice.Mouse | PointerDevice.TouchPad
-                    }
-                }
-
-                Repeater {
-                    model: root.tabButtonList
-                    delegate: SecondaryTabButton {
-                        selected: (index == currentTab)
-                        buttonText: modelData.name
-                        buttonIcon: modelData.icon
+                WheelHandler {
+                    acceptedDevices:
+                        PointerDevice.Mouse | PointerDevice.TouchPad
+                    onWheel: event => {
+                        const step = event.angleDelta.y < 0 ? 1 : -1
+                        root.currentTab = Math.max(0, Math.min(
+                            root.tabButtonList.length - 1,
+                            root.currentTab + step))
                     }
                 }
             }
@@ -114,63 +108,12 @@ Item {
             }
         }
 
-        Item {
-            id: tabIndicator
-            Layout.fillWidth: true
-            height: 3
-            property bool enableIndicatorAnimation: false
-            Connections {
-                target: root
-                function onCurrentTabChanged() {
-                    tabIndicator.enableIndicatorAnimation = true
-                }
-            }
-
-            Rectangle {
-                id: indicator
-                property int tabCount: root.tabButtonList.length
-                property real fullTabSize: tabBar.width / tabCount
-                property real targetWidth: tabBar.contentItem?.children[0]?.children[tabBar.currentIndex]?.tabContentWidth ?? 50
-
-                implicitWidth: targetWidth
-                anchors.top: parent.top
-                anchors.bottom: parent.bottom
-                x: tabBar.currentIndex * fullTabSize + (fullTabSize - targetWidth) / 2
-                color: Appearance.colors.colPrimary
-                radius: height / 2
-
-                Behavior on x {
-                    enabled: tabIndicator.enableIndicatorAnimation && Appearance.animationsEnabled
-                    animation: NumberAnimation { duration: Appearance.animation.elementMove.duration; easing.type: Appearance.animation.elementMove.type; easing.bezierCurve: Appearance.animation.elementMove.bezierCurve }
-                }
-                Behavior on implicitWidth {
-                    enabled: tabIndicator.enableIndicatorAnimation && Appearance.animationsEnabled
-                    animation: NumberAnimation { duration: Appearance.animation.elementMove.duration; easing.type: Appearance.animation.elementMove.type; easing.bezierCurve: Appearance.animation.elementMove.bezierCurve }
-                }
-            }
-        }
-
-        Rectangle { // No full-width grey track — only the colored active indicator reads.
-            Layout.fillWidth: true
-            height: 1
-            color: "transparent"
-        }
-
-        SwipeView {
-            id: swipeView
-            Layout.topMargin: 6
+        StackLayout {
+            Layout.topMargin: 8
             Layout.fillWidth: true
             Layout.fillHeight: true
-            spacing: 6
             clip: true
-            currentIndex: currentTab
-            onCurrentIndexChanged: {
-                tabIndicator.enableIndicatorAnimation = true
-                currentTab = currentIndex
-                if (Persistent?.states?.timer) {
-                    Persistent.states.timer.tab = currentIndex
-                }
-            }
+            currentIndex: root.currentTab
 
             PomodoroTimer {
                 compactMode: root.compactMode

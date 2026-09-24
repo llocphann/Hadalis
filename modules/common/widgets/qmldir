@@ -89,6 +89,7 @@ OptionalMaterialSymbol 1.0 OptionalMaterialSymbol.qml
 ObsidianMonthCalendar 1.0 ObsidianMonthCalendar.qml
 PagePlaceholder 1.0 PagePlaceholder.qml
 PanelSurface 1.0 PanelSurface.qml
+PillTabBar 1.0 PillTabBar.qml
 PointingHandInteraction 1.0 PointingHandInteraction.qml
 PointingHandLinkHover 1.0 PointingHandLinkHover.qml
 PopupToolTip 1.0 PopupToolTip.qml

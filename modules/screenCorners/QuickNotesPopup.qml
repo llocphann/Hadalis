@@ -7,8 +7,8 @@ import qs.modules.bar as Bar
 import qs.modules.common
 import qs.modules.common.widgets
 import qs.modules.sidebarRight.notepad
-import qs.modules.sidebarRight.todo
 import qs.modules.sidebarRight.pomodoro
+import qs.modules.dashboard
 import qs.services
 
 // Bottom-left hover surface for notes, tasks and timers.
@@ -139,66 +139,27 @@ Bar.StyledPopup {
             anchors.fill: parent
             spacing: 8
 
-            RowLayout {
+            PillTabBar {
                 Layout.fillWidth: true
-                spacing: 8
-
-                Repeater {
-                    model: [
-                        { icon: "note_stack", label: Translation.tr("Notes & To-do") },
-                        { icon: "timer", label: Translation.tr("Timers") }
-                    ]
-
-                    delegate: Button {
-                        id: mainTabButton
-                        required property var modelData
-                        required property int index
-                        Layout.fillWidth: true
-                        implicitHeight: 38
-                        Accessible.name: modelData.label
-                        onClicked: root.selectedMainTab = index
-                        background: Rectangle {
-                            radius: Appearance.rounding.normal
-                            color: root.selectedMainTab === mainTabButton.index
-                                ? Appearance.colors.colPrimaryContainer
-                                : Appearance.colors.colLayer1
-                        }
-                        contentItem: RowLayout {
-                            spacing: 6
-                            MaterialSymbol {
-                                text: mainTabButton.modelData.icon
-                                iconSize: 18
-                                color: Appearance.colors.colOnLayer1
-                            }
-                            StyledText {
-                                Layout.fillWidth: true
-                                text: mainTabButton.modelData.label
-                                horizontalAlignment: Text.AlignHCenter
-                                elide: Text.ElideRight
-                                color: Appearance.colors.colOnLayer1
-                                font.weight: root.selectedMainTab === mainTabButton.index
-                                    ? Font.DemiBold : Font.Normal
-                            }
-                        }
-                    }
-                }
+                pillHeight: 38
+                currentIndex: root.selectedMainTab
+                tabs: [
+                    { icon: "note_stack", label: Translation.tr("Notes & To-do") },
+                    { icon: "timer", label: Translation.tr("Timers") }
+                ]
+                onTabSelected: index => root.selectedMainTab = index
             }
 
-            SecondaryTabBar {
+            PillTabBar {
                 Layout.fillWidth: true
                 visible: root.selectedMainTab === 0
+                pillHeight: 34
                 currentIndex: root.selectedNotesTab
-                onCurrentIndexChanged: root.selectedNotesTab = currentIndex
-                SecondaryTabButton {
-                    buttonText: Translation.tr("Quick Notes")
-                    buttonIcon: "edit_note"
-                    selected: root.selectedNotesTab === 0
-                }
-                SecondaryTabButton {
-                    buttonText: Translation.tr("To-do")
-                    buttonIcon: "checklist"
-                    selected: root.selectedNotesTab === 1
-                }
+                tabs: [
+                    { icon: "edit_note", label: Translation.tr("Quick Notes") },
+                    { icon: "checklist", label: Translation.tr("To-do") }
+                ]
+                onTabSelected: index => root.selectedNotesTab = index
             }
 
             Item {
@@ -213,8 +174,9 @@ Bar.StyledPopup {
                     sourceComponent: QuickNotesView {
                         margin: 0
                         surfaceLocalTabSelection: true
-                        showHeader: true
-                        showZettelkastenActions: true
+                        showHeader: false
+                        showZettelkastenActions: false
+                        verticalDotNavigation: true
                         onEditorActivated: root.enterEditorMode()
                     }
                 }
@@ -224,13 +186,16 @@ Bar.StyledPopup {
                     anchors.fill: parent
                     active: root.active && root.selectedMainTab === 0
                         && root.selectedNotesTab === 1
-                    sourceComponent: TodoWidget {}
+                    sourceComponent: DashTodo {
+                        color: "transparent"
+                    }
                 }
 
                 Loader {
                     id: timerViewLoader
                     anchors.fill: parent
-                    active: root.active && root.selectedMainTab === 1
+                    active: root.active
+                    visible: root.selectedMainTab === 1
                     sourceComponent: PomodoroWidget {
                         compactMode: true
                     }

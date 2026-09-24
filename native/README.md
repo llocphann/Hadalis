@@ -169,6 +169,15 @@ the tested checkout in `scripts/native-dispatch`,
 `scripts/colors/switchwall.sh`, `services/NiriService.qml`, and
 `services/LocalMusic.qml`. The active `inir.service` stayed on Python.
 
+At `9af858ccdded88d894f016b54108ddbc5f4e2eb0`, the opt-in, read-only
+MPD deep benchmark also passed stable full-snapshot parity on a local library
+of 2,893 tracks and 220 folders. A Rust folder-order mismatch found by the
+first deep run was repaired before the passing run. With one cold-cache sample,
+Python took 19.35 s and Rust took 0.73 s; peak process RSS was 67,288 KiB and
+76,916 KiB, respectively. This is a single library workload, not a steady-state
+or whole-shell performance claim. The passing detailed report is
+`native-cutover-20260924-230950.txt` in the local iNiR state directory.
+
 ## Historical qualification snapshot: 2026-09-24
 
 This is evidence from one Arch/Niri desktop at `dev`
@@ -230,9 +239,10 @@ per startup case; it is under the local state directory named above.
   `set`, `set-bind`, `remove-bind`, `sync-cursor`, and
   `sync-backdrop-overview-shadow`). Mock or isolate compositor actions; never
   benchmark writes against the live Niri config.
-- MPD: the benchmark compares `status` only. Test queue, playback, seek,
-  errors, reconnects, and persistent-daemon message behavior against a fake
-  or isolated MPD service before qualifying the port.
+- MPD: status, persistent-daemon status, and opt-in cold full-snapshot parity
+  now pass on one local service. Extend isolated coverage for queue mutations,
+  playback, seek, errors, reconnects, and persistent-daemon message behavior
+  before qualifying the port.
 - Theme and desktop: the benchmark uses a color seed and temporary INI homes.
   Add image-seed/Celebi, template, terminal, SDDM, and icon-theme fixture
   parity, then verify actual desktop consumers in a reversible live trial.

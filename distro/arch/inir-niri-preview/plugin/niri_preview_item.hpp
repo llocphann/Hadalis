@@ -6,7 +6,7 @@
 #include <QSize>
 #include <qqmlintegration.h>
 
-class NiriPreviewItem final : public QQuickItem {
+class NiriPreviewItem : public QQuickItem {
     Q_OBJECT
     QML_ELEMENT
 

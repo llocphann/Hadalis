@@ -312,8 +312,10 @@ Singleton {
         return root.list.filter(event => {
             const eventDate = new Date(event.startDate || event.dateTime)
             eventDate.setHours(0, 0, 0, 0)
-            // Only show non-notified events (upcoming or future)
-            return eventDate.getTime() === targetDate.getTime() && !event.notified
+            // All-day events remain visible for their date even after the
+            // midnight reminder/trigger has fired.
+            return eventDate.getTime() === targetDate.getTime()
+                && (!event.notified || event.allDay === true)
         })
     }
     
@@ -336,6 +338,12 @@ Singleton {
         
         return root.list.filter(event => {
             const eventDate = new Date(event.startDate || event.dateTime)
+            if (event.allDay === true) {
+                const end = event.endDate
+                    ? new Date(event.endDate)
+                    : new Date(eventDate.getTime() + 86400000)
+                return end > now && eventDate <= future
+            }
             return eventDate >= now && eventDate <= future && !event.notified
         }).sort((a, b) => new Date(a.startDate || a.dateTime)
             - new Date(b.startDate || b.dateTime))

@@ -41,7 +41,11 @@ Item {
         return cells
     }
 
-    implicitWidth: Math.max(246, monthView.implicitWidth) + 345
+    // Keep both halves symmetric so the separator is the true visual center.
+    // The month view remains the sizing floor; Events receives the same width.
+    readonly property real paneWidth:
+        Math.max(292, monthView.implicitWidth)
+    implicitWidth: root.paneWidth * 2 + 25
     implicitHeight: monthView.implicitHeight
 
     function sameDay(a, b): bool {
@@ -55,7 +59,8 @@ Item {
         spacing: 12
 
         EventsWidget {
-            Layout.preferredWidth: 320
+            Layout.fillWidth: true
+            Layout.preferredWidth: root.paneWidth
             Layout.fillHeight: true
             // Calendar popup-specific FAB treatment: smaller and tucked into
             // the popup's bottom-left corner. Other EventsWidget owners keep
@@ -79,7 +84,8 @@ Item {
         }
 
         Item {
-            Layout.preferredWidth: Math.max(246, monthView.implicitWidth)
+            Layout.fillWidth: true
+            Layout.preferredWidth: root.paneWidth
             Layout.fillHeight: true
 
             ObsidianMonthCalendar {

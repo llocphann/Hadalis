@@ -411,7 +411,7 @@ INIR_BENCH_STDIN="$TMP_ROOT/clip.in" bench "clipboard rust" "$BIN_DIR/inir-nativ
 INIR_BENCH_STDIN="$TMP_ROOT/clip.in" INIR_NATIVE_BACKEND=rust INIR_NATIVE_BIN_DIR="$BIN_DIR"     bench "clipboard rust dispatch" "$ROOT_DIR/scripts/native-dispatch" clipboard-store --filter
 
 section "NIRI READ-ONLY PARITY + BENCHMARK"
-for op in outputs get-hot-corners get-input get-layout get-animations get-window-rules get-binds list-cursor-themes validate; do
+for op in outputs get-hot-corners get-input get-layout get-animations get-window-rules get-binds list-cursor-themes validate detect-customizations; do
     py="$TMP_ROOT/niri-$op.py"
     rs="$TMP_ROOT/niri-$op.rs"
     python3 scripts/niri-config.py "$op" >"$py" 2>"$TMP_ROOT/niri-$op.py.err"

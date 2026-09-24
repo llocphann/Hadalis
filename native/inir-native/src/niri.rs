@@ -1,4 +1,4 @@
-use std::collections::{BTreeMap, BTreeSet, HashSet};
+use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -1502,6 +1502,91 @@ fn meaningful_lines(text: &str) -> Vec<String> {
         .collect()
 }
 
+// Match Python's difflib.SequenceMatcher edit ordering for the UI preview.
+// A set difference loses moved/repeated lines and can hide a real override.
+fn customization_diff_preview(default: &[String], user: &[String]) -> Vec<String> {
+    let mut b2j: HashMap<&str, Vec<usize>> = HashMap::new();
+    for (j, line) in user.iter().enumerate() {
+        b2j.entry(line).or_default().push(j);
+    }
+    if user.len() >= 200 {
+        let popular = user.len() / 100 + 1;
+        b2j.retain(|_, positions| positions.len() <= popular);
+    }
+
+    let mut queue = vec![(0, default.len(), 0, user.len())];
+    let mut matches = Vec::new();
+    while let Some((alo, ahi, blo, bhi)) = queue.pop() {
+        let (mut best_i, mut best_j, mut best_len) = (alo, blo, 0);
+        let mut j2len: HashMap<usize, usize> = HashMap::new();
+        for (i, line) in default.iter().enumerate().take(ahi).skip(alo) {
+            let mut next = HashMap::new();
+            if let Some(positions) = b2j.get(line.as_str()) {
+                for &j in positions {
+                    if j < blo {
+                        continue;
+                    }
+                    if j >= bhi {
+                        break;
+                    }
+                    let len = j
+                        .checked_sub(1)
+                        .and_then(|prior| j2len.get(&prior))
+                        .copied()
+                        .unwrap_or(0)
+                        + 1;
+                    next.insert(j, len);
+                    if len > best_len {
+                        (best_i, best_j, best_len) = (i + 1 - len, j + 1 - len, len);
+                    }
+                }
+            }
+            j2len = next;
+        }
+        while best_i > alo && best_j > blo && default[best_i - 1] == user[best_j - 1] {
+            best_i -= 1;
+            best_j -= 1;
+            best_len += 1;
+        }
+        while best_i + best_len < ahi
+            && best_j + best_len < bhi
+            && default[best_i + best_len] == user[best_j + best_len]
+        {
+            best_len += 1;
+        }
+        if best_len > 0 {
+            matches.push((best_i, best_j, best_len));
+            if alo < best_i && blo < best_j {
+                queue.push((alo, best_i, blo, best_j));
+            }
+            if best_i + best_len < ahi && best_j + best_len < bhi {
+                queue.push((best_i + best_len, ahi, best_j + best_len, bhi));
+            }
+        }
+    }
+    matches.sort_unstable();
+    matches.push((default.len(), user.len(), 0));
+    let (mut ai, mut bj) = (0, 0);
+    let mut preview = Vec::new();
+    for (i, j, len) in matches {
+        for line in &default[ai..i] {
+            preview.push(format!("-{line}"));
+            if preview.len() == 8 {
+                return preview;
+            }
+        }
+        for line in &user[bj..j] {
+            preview.push(format!("+{line}"));
+            if preview.len() == 8 {
+                return preview;
+            }
+        }
+        ai = i + len;
+        bj = j + len;
+    }
+    preview
+}
+
 fn defaults_dir(override_path: Option<&Path>) -> Result<PathBuf> {
     if let Some(path) = override_path {
         return Ok(path.to_path_buf());
@@ -1557,26 +1642,12 @@ fn detect_customizations(default_override: Option<&Path>) -> Result<Outcome> {
             continue;
         }
         managed += 1;
-        let mut preview = Vec::new();
-        for line in default_lines
-            .iter()
-            .filter(|line| !user_lines.contains(line))
-            .take(4)
-        {
-            preview.push(format!("-{line}"));
-        }
-        for line in user_lines
-            .iter()
-            .filter(|line| !default_lines.contains(line))
-            .take(4)
-        {
-            preview.push(format!("+{line}"));
-        }
+        let preview = customization_diff_preview(&default_lines, &user_lines);
         files.push(json!({
             "path": relative,
             "kind": "managed-override",
             "reason": "This managed Niri file differs from the shipped iNiR default.",
-            "preview": preview,
+            "preview": if preview.is_empty() { user_lines.iter().take(8).cloned().collect::<Vec<_>>() } else { preview },
             "line_count": user_lines.len()
         }));
     }

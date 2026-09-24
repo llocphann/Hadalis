@@ -1907,8 +1907,8 @@ mod tests {
     use std::io::{BufRead, BufReader, Write};
     use std::net::TcpListener;
     use std::os::unix::net::UnixStream;
-    use std::sync::{Arc, Mutex};
     use std::sync::mpsc::{self, Receiver};
+    use std::sync::{Arc, Mutex};
     use std::thread::{self, JoinHandle};
     use std::time::Duration;
 

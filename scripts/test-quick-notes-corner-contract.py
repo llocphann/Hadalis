@@ -107,6 +107,10 @@ for token in (
     "showHeader: false",
     "showZettelkastenActions: false",
     "verticalDotNavigation: true",
+    "pillHeight: 30",
+    "pillHeight: 28",
+    "Layout.alignment: Qt.AlignHCenter",
+    "Layout.preferredWidth: Math.min(",
     "onEditorActivated: root.enterEditorMode()",
     "root.editorFocused = true",
     "notesViewLoader.item.releaseEditorFocus()",
@@ -178,7 +182,16 @@ for token in (
     "root._loadTabById(targetId)",
     "Notepad.indexForTabId(root._loadedTabId) < 0",
     "String(modelData?.id ?? \"\") === root._loadedTabId",
-    "visible: root.compactPresentation && !root.veryNarrowCompact",
+    "id: tabFlick",
+    "implicitHeight: root.compactPresentation ? 24 : 28",
+    "x: Math.max(0, (tabFlick.width - implicitWidth) / 2)",
+    "height: root.compactPresentation ? 22 : 26",
+    "id: editorStage",
+    "id: noteRail",
+    "Layout.preferredWidth: 18",
+    "id: editorCard",
+    "id: compactActionRail",
+    "opacity: editorStageHover.hovered || textArea.activeFocus ? 1 : 0",
     "onClicked: root.switchToTab(tabPill.index)",
     "onClicked: root.addTabSafely()",
     "onClicked: root.removeTabSafely(tabPill.index)",
@@ -201,6 +214,31 @@ for token in (
 
 forbid(notepad, "TapHandler {",
        "shared Notepad editor must not intercept TextArea presses to obtain focus")
+
+rail_pos = notepad.find("id: noteRail")
+editor_pos = notepad.find("id: editorCard")
+action_rail_pos = notepad.find("id: compactActionRail")
+if min(rail_pos, editor_pos, action_rail_pos) < 0 or not (
+        rail_pos < editor_pos < action_rail_pos):
+    fail("Quick Notes note indicators and hover actions must stay outside the editor card")
+
+inline_start = notepad.find("// Keep only note-lifecycle actions inline.")
+inline_end = notepad.find("// Full toolbar remains unchanged for Sidebar;", inline_start)
+if inline_start < 0 or inline_end < 0:
+    fail("Quick Notes compact primary-action block is missing")
+inline_block = notepad[inline_start:inline_end]
+for secondary in ("content_copy", "content_paste", "select_all", "delete", "note_add"):
+    forbid(inline_block, secondary,
+           "Quick Notes compact tab row must keep secondary actions in the hover rail")
+
+for token in (
+    'icon: "content_copy"',
+    'icon: "content_paste"',
+    'icon: "select_all"',
+    'icon: "delete"',
+):
+    require(notepad[action_rail_pos:], token,
+            "Quick Notes hover rail is missing a secondary editor action")
 
 for token in (
     "QuickNotesView {",

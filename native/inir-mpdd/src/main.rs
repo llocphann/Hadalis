@@ -127,11 +127,7 @@ impl MpdClient {
         I: IntoIterator<Item = S>,
         S: AsRef<str>,
     {
-        let mut line = name.to_owned();
-        for arg in args {
-            line.push(' ');
-            line.push_str(&quote(arg.as_ref()));
-        }
+        let line = command_line(name, args);
         self.send_line(&line)?;
 
         let mut result = Vec::new();
@@ -144,6 +140,33 @@ impl MpdClient {
                 bail!("{text}");
             }
             result.push(text);
+        }
+    }
+
+    fn command_batch(&mut self, commands: &[String]) -> Result<()> {
+        if commands.is_empty() {
+            return Ok(());
+        }
+
+        let mut payload = String::from("command_list_begin\n");
+        for command in commands {
+            payload.push_str(command);
+            payload.push('\n');
+        }
+        payload.push_str("command_list_end\n");
+
+        let inner = self.stream.get_mut();
+        inner.write_all(payload.as_bytes())?;
+        inner.flush()?;
+
+        loop {
+            let text = self.read_line()?;
+            if text == "OK" {
+                return Ok(());
+            }
+            if text.starts_with("ACK ") {
+                bail!("{text}");
+            }
         }
     }
 
@@ -282,6 +305,19 @@ fn quote(value: &str) -> String {
         "\"{}\"",
         value.replace('\\', "\\\\").replace('"', "\\\"")
     )
+}
+
+fn command_line<I, S>(name: &str, args: I) -> String
+where
+    I: IntoIterator<Item = S>,
+    S: AsRef<str>,
+{
+    let mut line = name.to_owned();
+    for arg in args {
+        line.push(' ');
+        line.push_str(&quote(arg.as_ref()));
+    }
+    line
 }
 
 fn pairs(lines: &[String]) -> BTreeMap<String, String> {
@@ -894,12 +930,12 @@ fn handle_operation(
                 bail!("empty_queue");
             }
             let index = params.get("index").and_then(Value::as_i64).unwrap_or(0);
-            client.command("clear", std::iter::empty::<&str>())?;
-            for uri in &uris {
-                client.command("add", [uri])?;
-            }
             let clamped = index.clamp(0, uris.len().saturating_sub(1) as i64);
-            client.command("play", [clamped.to_string()])?;
+            let mut commands = Vec::with_capacity(uris.len() + 2);
+            commands.push(command_line("clear", std::iter::empty::<&str>()));
+            commands.extend(uris.iter().map(|uri| command_line("add", [uri])));
+            commands.push(command_line("play", [clamped.to_string()]));
+            client.command_batch(&commands)?;
             Ok(json!({"ok": true}))
         }
         "enqueue" => {
@@ -933,11 +969,12 @@ fn handle_operation(
             Ok(payload)
         }
         "enqueue-many" => {
-            for uri in param_strings(params, "uris")? {
-                if !uri.trim().is_empty() {
-                    client.command("add", [uri])?;
-                }
-            }
+            let commands = param_strings(params, "uris")?
+                .into_iter()
+                .filter(|uri| !uri.trim().is_empty())
+                .map(|uri| command_line("add", [uri]))
+                .collect::<Vec<_>>();
+            client.command_batch(&commands)?;
             let mut payload = status_payload(client, override_root)?;
             payload
                 .as_object_mut()
@@ -968,9 +1005,11 @@ fn handle_operation(
                 }
             }
 
-            for uri in uris {
-                client.command("playlistadd", [&name, &uri])?;
-            }
+            let commands = uris
+                .into_iter()
+                .map(|uri| command_line("playlistadd", [&name, &uri]))
+                .collect::<Vec<_>>();
+            client.command_batch(&commands)?;
             Ok(json!({"ok": true}))
         }
         "command" => {
@@ -1207,12 +1246,12 @@ fn run_compat(args: &[String]) -> i32 {
                 if uris.is_empty() {
                     bail!("empty_queue");
                 }
-                client.command("clear", std::iter::empty::<&str>())?;
-                for uri in &uris {
-                    client.command("add", [uri])?;
-                }
                 let clamped = index.clamp(0, uris.len().saturating_sub(1) as i64);
-                client.command("play", [clamped.to_string()])?;
+                let mut commands = Vec::with_capacity(uris.len() + 2);
+                commands.push(command_line("clear", std::iter::empty::<&str>()));
+                commands.extend(uris.iter().map(|uri| command_line("add", [uri])));
+                commands.push(command_line("play", [clamped.to_string()]));
+                client.command_batch(&commands)?;
                 Ok(json!({"ok": true}))
             }
             "enqueue" => {
@@ -1255,11 +1294,12 @@ fn run_compat(args: &[String]) -> i32 {
                     bail!("enqueue_many_requires_root_and_payload");
                 }
                 let override_root = &rest[0];
-                for uri in load_json_list_argument(&rest[1])? {
-                    if !uri.trim().is_empty() {
-                        client.command("add", [&uri])?;
-                    }
-                }
+                let commands = load_json_list_argument(&rest[1])?
+                    .into_iter()
+                    .filter(|uri| !uri.trim().is_empty())
+                    .map(|uri| command_line("add", [uri]))
+                    .collect::<Vec<_>>();
+                client.command_batch(&commands)?;
                 let root = music_root(&mut client, override_root);
                 let mut payload = status_payload(&mut client, &root)?;
                 payload
@@ -1292,9 +1332,11 @@ fn run_compat(args: &[String]) -> i32 {
                         bail!("playlist_exists");
                     }
                 }
-                for uri in uris {
-                    client.command("playlistadd", [name, &uri])?;
-                }
+                let commands = uris
+                    .into_iter()
+                    .map(|uri| command_line("playlistadd", [name, &uri]))
+                    .collect::<Vec<_>>();
+                client.command_batch(&commands)?;
                 Ok(json!({"ok": true}))
             }
             "command" => {

@@ -19,6 +19,8 @@ def main() -> None:
     popup = read("modules/mediaControls/BarMediaPopup.qml")
     equalizer = read("modules/mediaControls/EqualizerPanel.qml")
     player = read("modules/mediaControls/PlayerControl.qml")
+    dash = read("modules/dashboard/DashMedia.qml")
+    compact = read("modules/sidebarRight/CompactMediaPlayer.qml")
     cava = read("modules/common/widgets/CavaProcess.qml")
     cava_service = read("services/deferred/CavaService.qml")
     cava_config = read("scripts/cava/generate_config.sh")
@@ -38,6 +40,19 @@ def main() -> None:
         "visualizerPoints: []" in popup
         and "showVisualizer: false" in popup,
         "BarMediaPopup must suppress PlayerControl's decorative wave while EQ DSP owns CAVA",
+    )
+    check(
+        "CavaProcess {" not in dash
+        and "WaveVisualizer {" not in dash
+        and "visualizerPoints: []" in dash
+        and "showVisualizer: false" in dash,
+        "Dashboard Media must leave live CAVA visualization to EqualizerPanel only",
+    )
+    check(
+        "CavaProcess {" not in compact
+        and "WaveVisualizer {" not in compact
+        and "compactMediaCava" not in compact,
+        "Compact right Sidebar Media must not run or render duplicate CAVA",
     )
     check(
         "CavaProcess {" in equalizer

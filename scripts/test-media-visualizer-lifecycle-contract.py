@@ -17,6 +17,7 @@ def check(condition: bool, message: str) -> None:
 
 def main() -> None:
     popup = read("modules/mediaControls/BarMediaPopup.qml")
+    equalizer = read("modules/mediaControls/EqualizerPanel.qml")
     player = read("modules/mediaControls/PlayerControl.qml")
     cava = read("modules/common/widgets/CavaProcess.qml")
     cava_service = read("services/deferred/CavaService.qml")

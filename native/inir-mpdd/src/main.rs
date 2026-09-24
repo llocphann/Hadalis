@@ -1182,10 +1182,18 @@ fn run_compat(args: &[String]) -> i32 {
                     bail!("empty_uri");
                 }
                 let response = pairs(&client.command("addid", [uri])?);
-                if play_now
-                    && let Some(song_id) = response.get("id")
-                {
-                    client.command("playid", [song_id])?;
+                if play_now {
+                    if let Some(song_id) = response.get("id") {
+                        client.command("playid", [song_id])?;
+                    } else {
+                        let status =
+                            pairs(&client.command("status", std::iter::empty::<&str>())?);
+                        let queue_len = status
+                            .get("playlistlength")
+                            .and_then(|value| value.parse::<i64>().ok())
+                            .unwrap_or(1);
+                        client.command("play", [(queue_len - 1).max(0).to_string()])?;
+                    }
                 }
                 let root = music_root(&mut client, override_root);
                 let mut payload = status_payload(&mut client, &root)?;
@@ -1343,6 +1351,27 @@ fn main() -> Result<()> {
 #[cfg(test)]
 mod tests {
     use super::{pairs, quote, records};
+
+    #[test]
+    fn parses_legacy_compat_cli_shape() {
+        use clap::Parser as _;
+
+        let args = super::Args::try_parse_from([
+            "inir-mpdd",
+            "--compat",
+            "status",
+            "127.0.0.1",
+            "6600",
+            "",
+        ])
+        .expect("compat CLI should parse");
+
+        assert!(args.compat);
+        assert_eq!(
+            args.compat_args,
+            vec!["status", "127.0.0.1", "6600", ""]
+        );
+    }
 
     #[test]
     fn quotes_mpd_arguments() {

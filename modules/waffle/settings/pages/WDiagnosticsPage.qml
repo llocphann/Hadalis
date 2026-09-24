@@ -27,7 +27,6 @@ WSettingsPage {
         ? CodeWorkflowRuntime.identityCollisions.length : 0
     readonly property var evidence: RuntimeDiagnosticsSession.evidence
     readonly property var systemEvidence: root.evidence?.system ?? null
-    readonly property var shellEvidence: root.evidence?.shell ?? null
     readonly property var discoveryEvidence: root.evidence?.discovery ?? null
     readonly property string samplerError:
         String(root.evidence?.sampler?.error ?? "")
@@ -39,6 +38,17 @@ WSettingsPage {
     readonly property bool samplerRunning:
         root.evidence?.sampler?.running === true
     readonly property bool sessionStalled: root.sampleIsStale()
+    readonly property string primaryError: {
+        if (RuntimeDiagnosticsSession.leaseError.length > 0)
+            return RuntimeDiagnosticsSession.leaseError
+        if (RuntimeDiagnosticsSession.remoteError.length > 0)
+            return RuntimeDiagnosticsSession.remoteError
+        if (RuntimeDiagnosticsSession.evidenceError.length > 0)
+            return RuntimeDiagnosticsSession.evidenceError
+        if (root.samplerError.length > 0)
+            return root.samplerError
+        return String(root.discoveryEvidence?.error ?? "")
+    }
 
     function sampleIsStale(): bool {
         const tick = RuntimeDiagnosticsSession.heartbeatTick
@@ -60,126 +70,119 @@ WSettingsPage {
 
     function sessionStateLabel(): string {
         if (!RuntimeDiagnosticsSession.pageCurrent)
-            return Translation.tr("Diagnostics session inactive")
+            return Translation.tr("Diagnostics paused")
         if (root.sessionHasError)
-            return Translation.tr("Diagnostics sampling error")
+            return Translation.tr("Diagnostics error")
         if (root.sessionStalled)
-            return Translation.tr("Diagnostics sampling stalled")
+            return Translation.tr("Diagnostics stalled")
         if (!root.samplerRunning || root.systemEvidence === null)
-            return Translation.tr("Diagnostics sampler starting")
-        return Translation.tr("Diagnostics session active")
+            return Translation.tr("Diagnostics starting")
+        return Translation.tr("Diagnostics live")
     }
 
-    WSettingsCard {
-        title: Translation.tr("Runtime diagnostics")
-        icon: "info"
+    function formatUptime(value): string {
+        if (value === null || value === undefined)
+            return "—"
+        const seconds = Number(value)
+        if (!Number.isFinite(seconds) || seconds < 0)
+            return "—"
+        const totalMinutes = Math.floor(seconds / 60)
+        const days = Math.floor(totalMinutes / 1440)
+        const hours = Math.floor((totalMinutes % 1440) / 60)
+        const minutes = totalMinutes % 60
+        if (days > 0)
+            return days + "d " + hours + "h"
+        if (hours > 0)
+            return hours + "h " + minutes + "m"
+        return minutes + "m"
+    }
 
-        WSettingsRow {
-            label: root.sessionStateLabel()
-            description: Translation.tr("Sampling is leased only while this page is current.")
-            icon: "info"
+    Rectangle {
+        Layout.fillWidth: true
+        implicitHeight: 42
+        radius: 8
+        color: Looks.colors.bg2
+        border.width: 1
+        border.color: root.sessionHasError || root.sessionStalled
+            ? Looks.colors.red
+            : Looks.colors.accent
+
+        RowLayout {
+            id: statusRow
+            anchors.fill: parent
+            anchors.leftMargin: 10
+            anchors.rightMargin: 10
+            spacing: 10
+
+            Rectangle {
+                Layout.preferredWidth: 8
+                Layout.preferredHeight: 8
+                radius: 4
+                color: root.sessionHasError || root.sessionStalled
+                    ? Looks.colors.red
+                    : root.samplerRunning
+                        ? Looks.colors.accent
+                        : Looks.colors.subfg
+            }
+
+            WText {
+                text: root.sessionStateLabel()
+                font.weight: Looks.font.weight.stronger
+            }
+
+            WText {
+                text: Translation.tr("Uptime") + " "
+                    + root.formatUptime(
+                        root.systemEvidence?.uptimeSeconds)
+                color: Looks.colors.subfg
+                font.pixelSize: Looks.font.pixelSize.small
+            }
+
+            Item { Layout.fillWidth: true }
+
+            WText {
+                visible: statusRow.width >= 620
+                text: String(root.targetCount) + " "
+                    + Translation.tr("targets")
+                color: Looks.colors.subfg
+                font.pixelSize: Looks.font.pixelSize.small
+            }
+
+            WText {
+                visible: statusRow.width >= 760
+                text: String(root.discoveryEvidence?.boundaryCount ?? 0)
+                    + " " + Translation.tr("boundaries")
+                color: Looks.colors.subfg
+                font.pixelSize: Looks.font.pixelSize.small
+            }
+
+            WText {
+                visible: statusRow.width >= 900
+                text: String(root.collisionCount) + " "
+                    + Translation.tr("collisions")
+                color: root.collisionCount === 0
+                    ? Looks.colors.subfg : Looks.colors.red
+                font.pixelSize: Looks.font.pixelSize.small
+            }
         }
+    }
 
-        WSettingsRow {
-            visible: RuntimeDiagnosticsSession.leaseError.length > 0
-            label: Translation.tr("Diagnostics lease error")
-            description: RuntimeDiagnosticsSession.leaseError
-            icon: "info"
-        }
-
-        WSettingsRow {
-            visible: RuntimeDiagnosticsSession.remoteError.length > 0
-            label: Translation.tr("Runtime bridge error")
-            description: RuntimeDiagnosticsSession.remoteError
-            icon: "info"
-        }
-
-        WSettingsRow {
-            visible: RuntimeDiagnosticsSession.evidenceError.length > 0
-            label: Translation.tr("Runtime evidence error")
-            description: RuntimeDiagnosticsSession.evidenceError
-            icon: "info"
-        }
-
-        WSettingsRow {
-            visible: root.samplerError.length > 0
-            label: Translation.tr("Sampler error")
-            description: root.samplerError
-            icon: "info"
-        }
-
+    WText {
+        Layout.fillWidth: true
+        visible: root.primaryError.length > 0
+        text: root.primaryError
+        color: Looks.colors.red
+        font.pixelSize: Looks.font.pixelSize.small
+        elide: Text.ElideRight
+        maximumLineCount: 1
     }
 
     BtopDashboard {
         Layout.fillWidth: true
+        compactMode: true
         evidence: root.evidence
         targets: root.runtimeCatalog
         records: root.runtimeRecords
         selectedTargetId: CodeWorkflowSession.selectedTargetId
-        onTargetActivated: (targetId, instanceId) =>
-            CodeWorkflowSession.selectTarget(targetId, instanceId)
-    }
-
-    WSettingsCard {
-        title: Translation.tr("Workflow identity")
-        icon: "apps"
-
-        WSettingsRow {
-            label: Translation.tr("Canonical targets")
-            description: String(root.targetCount)
-            icon: "apps"
-        }
-
-        WSettingsRow {
-            label: Translation.tr("Identity collisions")
-            description: String(root.collisionCount)
-            icon: "info"
-        }
-
-        WSettingsRow {
-            label: Translation.tr("Runtime boundaries")
-            description: root.discoveryEvidence?.status === "ready"
-                ? String(root.discoveryEvidence?.boundaryCount ?? 0)
-                    + " · " + String(root.discoveryEvidence?.filesScanned ?? 0)
-                    + " " + Translation.tr("QML files")
-                : String(root.discoveryEvidence?.status ?? "idle")
-            icon: "apps"
-        }
-
-        WSettingsRow {
-            visible: String(root.discoveryEvidence?.error ?? "").length > 0
-            label: Translation.tr("Runtime boundary index error")
-            description: String(root.discoveryEvidence?.error ?? "")
-            icon: "info"
-        }
-
-        WSettingsRow {
-            visible: root.discoveryEvidence?.status === "ready"
-            label: Translation.tr("Canonical source matches")
-            description:
-                String(root.discoveryEvidence?.reconciliation?.matchedBoundaryCount ?? 0)
-                + " · " + Translation.tr("source-only")
-                + " " + String(root.discoveryEvidence?.reconciliation?.unmatchedBoundaryCount ?? 0)
-            icon: "apps"
-        }
-
-        WText {
-
-            textFormat: Text.PlainText
-            Layout.fillWidth: true
-            visible: root.discoveryEvidence?.status === "ready"
-            text: Translation.tr("Source boundaries are parser evidence, not proof that a component executed.")
-            color: Looks.colors.subfg
-            font.pixelSize: Looks.font.pixelSize.small
-            wrapMode: Text.WordWrap
-        }
-
-        WSettingsRow {
-            label: Translation.tr("Main shell PID")
-            description: root.shellEvidence?.pid
-                ? String(root.shellEvidence.pid)
-                : Translation.tr("Waiting for sample")
-            icon: "info"
-        }
     }
 }

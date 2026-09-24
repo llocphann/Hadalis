@@ -13,6 +13,8 @@ CLOCK = ROOT / "modules/bar/ClockWidget.qml"
 CALENDAR_POPUP = ROOT / "modules/bar/ClockCalendarPopup.qml"
 CALENDAR_CONTENT = ROOT / "modules/bar/ClockCalendarContent.qml"
 EVENTS_WIDGET = ROOT / "modules/sidebarRight/events/EventsWidget.qml"
+EVENTS_DIALOG = ROOT / "modules/sidebarRight/events/EventsDialog.qml"
+WINDOW_DIALOG = ROOT / "modules/common/widgets/WindowDialog.qml"
 SHARED_MONTH = ROOT / "modules/common/widgets/ObsidianMonthCalendar.qml"
 SIDEBAR_CALENDAR = ROOT / "modules/sidebarRight/calendar/CalendarWidget.qml"
 CLOCK_TOOLTIP = ROOT / "modules/bar/ClockWidgetTooltip.qml"
@@ -36,6 +38,8 @@ def main() -> None:
     calendar_popup = CALENDAR_POPUP.read_text(encoding="utf-8")
     calendar = CALENDAR_CONTENT.read_text(encoding="utf-8")
     events_widget = EVENTS_WIDGET.read_text(encoding="utf-8")
+    events_dialog = EVENTS_DIALOG.read_text(encoding="utf-8")
+    window_dialog = WINDOW_DIALOG.read_text(encoding="utf-8")
     shared_month = SHARED_MONTH.read_text(encoding="utf-8")
     sidebar_calendar = SIDEBAR_CALENDAR.read_text(encoding="utf-8")
     vertical = VERTICAL.read_text(encoding="utf-8")
@@ -48,6 +52,35 @@ def main() -> None:
     require(calendar_popup, "StyledPopup {", "ClockCalendarPopup.qml")
     require(calendar_popup, "ClockCalendarContent {", "ClockCalendarPopup.qml")
     forbid(calendar_popup, "PopupWindow", "ClockCalendarPopup.qml")
+
+    for token in (
+        "id: popupContent",
+        "readonly property real editorPaneHeight:",
+        "Behavior on implicitHeight",
+        "id: editorPane",
+        "dialog.focusEditor()",
+        "embeddedPresentation: true",
+        "backgroundHeight: -1",
+    ):
+        require(calendar_popup, token, "ClockCalendarPopup.qml")
+    forbid(calendar_popup,
+           "backgroundHeight: Math.max(300, Math.min(500,",
+           "ClockCalendarPopup.qml")
+
+    for token in (
+        "property bool embeddedPresentation: false",
+        "visible: !root.embeddedPresentation",
+        "x: root.embeddedPresentation",
+        "width: root.embeddedPresentation",
+        "height: root.embeddedPresentation",
+    ):
+        require(window_dialog, token, "WindowDialog.qml")
+
+    for token in (
+        "function focusEditor(): void",
+        "id: titleField",
+    ):
+        require(events_dialog, token, "EventsDialog.qml")
 
     for token in (
         "property int monthShift: 0",

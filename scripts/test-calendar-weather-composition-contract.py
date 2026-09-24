@@ -96,6 +96,12 @@ def main() -> None:
     for token in (
         "function focusEditor(): void",
         "id: titleField",
+        "id: editorFlickable",
+        "readonly property real embeddedGap: Math.max(4,",
+        "? Math.max(height, formColumn.implicitHeight)",
+        "? editorFlickable.embeddedGap : 4",
+        "id: basicInfoColumn",
+        "id: scheduleColumn",
         "contentSpacing: root.embeddedPresentation ? 4 : 16",
         "embeddedBackgroundColor:",
         "component EventSectionHeader: WindowDialogSectionHeader",
@@ -142,17 +148,23 @@ def main() -> None:
         raise AssertionError("EventsDialog compact embedded option deck missing")
     compact_deck = events_dialog[compact_deck_start:compact_deck_end]
     for token in (
+        "id: compactOptionDeck",
         "visible: root.embeddedPresentation",
         "height: 32",
-        "anchors.centerIn: parent",
-        "Layout.preferredWidth: 30",
-        "Layout.preferredHeight: 30",
+        "anchors {",
+        "fill: parent",
+        "spacing: 0",
+        "Layout.fillWidth: true",
+        "Layout.fillHeight: true",
+        "width: 30",
+        "height: 30",
         'root.compactOptionGroup === ""',
-        "root.compactGroupIcon(modelData.key)",
-        "root.compactGroupTooltip(modelData.key)",
+        "root.compactGroupIcon(",
+        "root.compactGroupTooltip(",
+        "parent.modelData.key",
         'symbol: "arrow_back"',
         "root.compactOptionsFor(",
-        "selectedState: modelData.value",
+        "parent.modelData.value",
         "root.setCompactOption(",
     ):
         require(compact_deck, token, "EventsDialog compact embedded option deck")

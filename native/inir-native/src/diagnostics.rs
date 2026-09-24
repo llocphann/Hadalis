@@ -241,29 +241,44 @@ fn read_uptime_seconds() -> Option<f64> {
         .map(|value| value.max(0.0))
 }
 
-fn read_system_memory() -> Value {
-    let text = read_text("/proc/meminfo");
-    let mut values = BTreeMap::new();
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+struct SystemMemory {
+    mem_total: Option<u64>,
+    mem_available: Option<u64>,
+    cached: Option<u64>,
+    buffers: Option<u64>,
+    swap_total: Option<u64>,
+    swap_free: Option<u64>,
+}
+
+fn parse_system_memory(text: &str) -> SystemMemory {
+    let mut memory = SystemMemory::default();
     for line in text.lines() {
         let Some((key, value)) = parse_kib_line(line) else {
             continue;
         };
-        if matches!(
-            key,
-            "MemTotal" | "MemAvailable" | "Cached" | "Buffers" | "SwapTotal" | "SwapFree"
-        ) {
-            values.insert(key.to_owned(), value);
+        match key {
+            "MemTotal" => memory.mem_total = Some(value),
+            "MemAvailable" => memory.mem_available = Some(value),
+            "Cached" => memory.cached = Some(value),
+            "Buffers" => memory.buffers = Some(value),
+            "SwapTotal" => memory.swap_total = Some(value),
+            "SwapFree" => memory.swap_free = Some(value),
+            _ => {}
         }
     }
-    let mem_total = values.get("MemTotal").copied();
-    let mem_available = values.get("MemAvailable").copied();
-    let swap_total = values.get("SwapTotal").copied();
-    let swap_free = values.get("SwapFree").copied();
-    let mem_used = mem_total
-        .zip(mem_available)
+    memory
+}
+
+fn read_system_memory() -> Value {
+    let memory = parse_system_memory(&read_text("/proc/meminfo"));
+    let mem_used = memory
+        .mem_total
+        .zip(memory.mem_available)
         .map(|(total, available)| total.saturating_sub(available));
-    let swap_used = swap_total
-        .zip(swap_free)
+    let swap_used = memory
+        .swap_total
+        .zip(memory.swap_free)
         .map(|(total, free)| total.saturating_sub(free));
 
     json!({
@@ -271,13 +286,13 @@ fn read_system_memory() -> Value {
         "method": "proc-meminfo",
         "confidence": "kernel",
         "valuesKiB": {
-            "MemTotal": mem_total,
-            "MemAvailable": mem_available,
+            "MemTotal": memory.mem_total,
+            "MemAvailable": memory.mem_available,
             "MemUsed": mem_used,
-            "Cached": values.get("Cached").copied(),
-            "Buffers": values.get("Buffers").copied(),
-            "SwapTotal": swap_total,
-            "SwapFree": swap_free,
+            "Cached": memory.cached,
+            "Buffers": memory.buffers,
+            "SwapTotal": memory.swap_total,
+            "SwapFree": memory.swap_free,
             "SwapUsed": swap_used,
         }
     })
@@ -961,7 +976,8 @@ pub fn run(pid: i32, interval_ms: u64) -> Result<i32> {
 #[cfg(test)]
 mod tests {
     use super::{
-        parse_drm_fdinfo, parse_kib_fields, parse_network, parse_system_cpu_ticks, to_kib,
+        parse_drm_fdinfo, parse_kib_fields, parse_network, parse_system_cpu_ticks,
+        parse_system_memory, to_kib,
     };
 
     #[test]
@@ -972,6 +988,19 @@ mod tests {
         assert_eq!(values.get("Pss"), Some(&100));
         assert_eq!(values.get("Private_Dirty"), Some(&7));
         assert!(!values.contains_key("VmSize"));
+    }
+
+    #[test]
+    fn parses_proc_meminfo_without_string_key_map() {
+        let memory = parse_system_memory(
+            "MemTotal: 16000 kB\nMemAvailable: 10000 kB\nCached: 2500 kB\nBuffers: 500 kB\nSwapTotal: 8000 kB\nSwapFree: 6000 kB\nHugePages_Total: 4\n",
+        );
+        assert_eq!(memory.mem_total, Some(16000));
+        assert_eq!(memory.mem_available, Some(10000));
+        assert_eq!(memory.cached, Some(2500));
+        assert_eq!(memory.buffers, Some(500));
+        assert_eq!(memory.swap_total, Some(8000));
+        assert_eq!(memory.swap_free, Some(6000));
     }
 
     #[test]

@@ -185,7 +185,7 @@ Singleton {
     }
 
     function createNextRecurrence(event, afterTime) {
-        const eventDate = new Date(event.dateTime)
+        const eventDate = new Date(event.startDate || event.dateTime)
         const eventTime = eventDate.getTime()
         const targetTime = Number.isFinite(Number(afterTime)) ? Number(afterTime) : Date.now()
         if (!Number.isFinite(eventTime))
@@ -230,7 +230,13 @@ Singleton {
                 return
         }
         
-        // Create the first recurring occurrence after the current check time.
+        // Preserve duration and all-day semantics for the next occurrence.
+        const sourceEnd = event.endDate ? new Date(event.endDate) : null
+        const durationMs = sourceEnd && Number.isFinite(sourceEnd.getTime())
+            ? Math.max(0, sourceEnd.getTime() - eventTime) : 0
+        const nextEnd = durationMs > 0
+            ? new Date(nextDate.getTime() + durationMs).toISOString() : ""
+
         root.addEvent(
             event.title,
             event.description,
@@ -238,17 +244,25 @@ Singleton {
             event.category,
             event.priority,
             event.reminderMinutes,
-            event.recurrence
+            event.recurrence,
+            nextEnd,
+            event.allDay === true
         )
     }
 
-    function addEvent(title, description, dateTime, category, priority, reminderMinutes, recurrence) {
+    function addEvent(title, description, dateTime, category, priority, reminderMinutes, recurrence, endDate, allDay) {
         if (!root.ready) return null
+        const startIso = dateTime || new Date().toISOString()
         const event = {
             id: root.nextId++,
             title: title || "",
             description: description || "",
-            dateTime: dateTime || new Date().toISOString(),
+            // dateTime remains the compatibility start timestamp. Rich local
+            // event metadata is additive so existing JSON/consumers still work.
+            dateTime: startIso,
+            startDate: startIso,
+            endDate: endDate || "",
+            allDay: allDay === true,
             category: category || "general", // general, birthday, meeting, deadline, reminder
             priority: priority || "normal", // low, normal, high
             reminderMinutes: reminderMinutes ?? 15, // 0, 5, 15, 30, 60, 1440
@@ -296,7 +310,7 @@ Singleton {
         targetDate.setHours(0, 0, 0, 0)
         
         return root.list.filter(event => {
-            const eventDate = new Date(event.dateTime)
+            const eventDate = new Date(event.startDate || event.dateTime)
             eventDate.setHours(0, 0, 0, 0)
             // Only show non-notified events (upcoming or future)
             return eventDate.getTime() === targetDate.getTime() && !event.notified
@@ -309,7 +323,7 @@ Singleton {
         targetDate.setHours(0, 0, 0, 0)
         
         return root.list.filter(event => {
-            const eventDate = new Date(event.dateTime)
+            const eventDate = new Date(event.startDate || event.dateTime)
             eventDate.setHours(0, 0, 0, 0)
             return eventDate.getTime() === targetDate.getTime()
         })
@@ -321,9 +335,10 @@ Singleton {
         future.setDate(future.getDate() + (days || 7))
         
         return root.list.filter(event => {
-            const eventDate = new Date(event.dateTime)
+            const eventDate = new Date(event.startDate || event.dateTime)
             return eventDate >= now && eventDate <= future && !event.notified
-        }).sort((a, b) => new Date(a.dateTime) - new Date(b.dateTime))
+        }).sort((a, b) => new Date(a.startDate || a.dateTime)
+            - new Date(b.startDate || b.dateTime))
     }
 
     function markAsNotified(id) {

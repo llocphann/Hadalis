@@ -97,7 +97,7 @@ def main() -> int:
                         f"/{marker}",
                         f"./{marker}",
                         f"$BIN_DIR/{marker}",
-                        f"${BIN_DIR}/{marker}",
+                        "${BIN_DIR}/" + marker,
                     )
                 )
                 direct_command = bool(

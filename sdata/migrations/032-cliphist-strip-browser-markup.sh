@@ -14,17 +14,17 @@
 # The list preview hides it, so the entry looks fine until you paste it.
 #
 # Switching to --type text/plain would drop those entries entirely, which is
-# worse. Instead the watcher now pipes through scripts/clipboard-store.py, which
+# worse. Instead the watcher now pipes through scripts/native-dispatch clipboard-store, which
 # strips the markup only when the payload carries the browser's meta prefix.
 
 MIGRATION_ID="032-cliphist-strip-browser-markup"
 MIGRATION_TITLE="Strip browser HTML markup from clipboard history"
-MIGRATION_DESCRIPTION="Routes the cliphist text watcher through clipboard-store.py. Copying an image or rich text from a browser stored raw HTML markup (<meta http-equiv=...>) that the list preview hid but every paste carried."
+MIGRATION_DESCRIPTION="Routes the cliphist text watcher through the reversible native-dispatch clipboard-store selector. Copying an image or rich text from a browser stored raw HTML markup (<meta http-equiv=...>) that the list preview hid but every paste carried."
 MIGRATION_TARGET_FILE="~/.config/niri/config.d/50-startup.kdl"
 MIGRATION_REQUIRED=true
 
 _cliphist_startup_file="${HOME}/.config/niri/config.d/50-startup.kdl"
-_store_filter="clipboard-store.py"
+_store_filter="native-dispatch clipboard-store"
 
 migration_check() {
     [[ -f "$_cliphist_startup_file" ]] || return 1
@@ -44,7 +44,7 @@ migration_check() {
 
 migration_preview() {
     echo -e "${STY_RED}- wl-paste --type text --watch cliphist store${STY_RST}"
-    echo -e "${STY_GREEN}+ wl-paste --type text --watch ~/.config/quickshell/inir/scripts/clipboard-store.py${STY_RST}"
+    echo -e "${STY_GREEN}+ wl-paste --type text --watch ~/.config/quickshell/inir/scripts/native-dispatch clipboard-store${STY_RST}"
     echo ""
     echo "Copying an image or rich text from a browser stored raw HTML markup."
     echo "The preview hid it, but every paste carried it."

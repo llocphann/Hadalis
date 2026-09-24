@@ -3,7 +3,7 @@
 #
 # Clipboard history needs two wl-paste watchers: one for images and one for
 # text. Migration 032 rewrites the text one to route through
-# clipboard-store.py, but it only fires when a text watcher line is present. A
+# native-dispatch clipboard-store, but it only fires when a text watcher line is present. A
 # 50-startup.kdl that lost the line entirely — hand-edited, merged from an older
 # template, or replaced wholesale — keeps storing images and silently stores no
 # text at all. The clipboard panel still opens; it just never sees anything you
@@ -16,7 +16,7 @@ MIGRATION_TARGET_FILE="~/.config/niri/config.d/50-startup.kdl"
 MIGRATION_REQUIRED=true
 
 _cliphist_startup_file="${HOME}/.config/niri/config.d/50-startup.kdl"
-_text_watcher='spawn-at-startup "bash" "-c" "wl-paste --type text --watch ~/.config/quickshell/inir/scripts/clipboard-store.py \&"'
+_text_watcher='spawn-at-startup "bash" "-c" "wl-paste --type text --watch ~/.config/quickshell/inir/scripts/native-dispatch clipboard-store \&"'
 
 migration_check() {
     [[ -f "$_cliphist_startup_file" ]] || return 1
@@ -31,7 +31,7 @@ migration_check() {
 }
 
 migration_preview() {
-    echo -e "${STY_GREEN}+ wl-paste --type text --watch ~/.config/quickshell/inir/scripts/clipboard-store.py${STY_RST}"
+    echo -e "${STY_GREEN}+ wl-paste --type text --watch ~/.config/quickshell/inir/scripts/native-dispatch clipboard-store${STY_RST}"
     echo "  wl-paste --type image --watch cliphist store"
     echo ""
     echo "Only the image watcher is spawned, so copied text never reaches the"

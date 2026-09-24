@@ -21,6 +21,7 @@ on:
       - 'modules/settings/MonitorVisibilityConfig.qml'
       - 'scripts/colors/switchwall.sh'
       - 'defaults/niri/config.d/50-startup.kdl'
+      - 'sdata/migrations/049-native-clipboard-selector.sh'
       - '.github/workflows/native-rust.yml'
   pull_request:
     paths:

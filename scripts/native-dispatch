@@ -59,7 +59,7 @@ rust_ready() {
 
 cmd="${1:-}"
 [[ -n "$cmd" ]] || {
-    echo "usage: native-dispatch <input-lock|input-keys|niri|diagnostics|clipboard-store|mpd|mpd-daemon|mpd-subscribe|theme|desktop-icons|backend-info> [args...]" >&2
+    echo "usage: native-dispatch <input-lock|input-keys|niri|diagnostics|clipboard-store|mpd|mpd-daemon|mpd-subscribe|lyrics|theme|desktop-icons|backend-info> [args...]" >&2
     exit 64
 }
 shift
@@ -69,7 +69,7 @@ if [[ "$MODE" == rust && "$STRICT" == 1 ]]; then
     case "$cmd" in
         input-lock|input-keys) required_binary=inir-inputd ;;
         niri|diagnostics|clipboard-store|desktop-icons) required_binary=inir-native ;;
-        mpd|mpd-daemon|mpd-subscribe) required_binary=inir-mpdd ;;
+        mpd|mpd-daemon|mpd-subscribe|lyrics) required_binary=inir-mpdd ;;
         theme) required_binary=inir-theme ;;
     esac
     if [[ -n "$required_binary" ]] && ! rust_ready "$required_binary"; then
@@ -174,6 +174,18 @@ case "$cmd" in
         fi
         echo "[native-dispatch] MPD event subscription requires the Rust backend" >&2
         exit 69
+        ;;
+
+    lyrics)
+        track="${1:-}"
+        [[ -n "$track" ]] || { echo "lyrics requires a track path" >&2; exit 64; }
+        if want_rust && rust_ready inir-mpdd; then
+            "$BIN_DIR/inir-mpdd" --lyrics "$track"
+            rc=$?
+            if (( rc == 0 || STRICT == 1 )); then exit "$rc"; fi
+            echo "[native-dispatch] Rust lyrics parser failed ($rc), falling back to Python" >&2
+        fi
+        exec /usr/bin/python3 "$ROOT_DIR/scripts/local_music_lyrics.py" "$track"
         ;;
 
     theme)

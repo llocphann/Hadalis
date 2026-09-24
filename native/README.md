@@ -242,7 +242,9 @@ per startup case; it is under the local state directory named above.
 - MPD: status, persistent-daemon status, and opt-in cold full-snapshot parity
   now pass on one local service. Extend isolated coverage for queue mutations,
   playback, seek, errors, reconnects, and persistent-daemon message behavior
-  before qualifying the port.
+  before qualifying the port. Add Unicode sorting fixtures: Python uses
+  `casefold()` for track, playlist, and folder names, while Rust currently
+  uses ASCII lowercase for tracks/playlists and Unicode lowercase for folders.
 - Theme and desktop: the benchmark uses a color seed and temporary INI homes.
   Add image-seed/Celebi, template, terminal, SDDM, and icon-theme fixture
   parity, then verify actual desktop consumers in a reversible live trial.

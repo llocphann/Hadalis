@@ -27,7 +27,7 @@ def main() -> None:
     require(source, "readonly property real panelWidth: root.compact ? 360 : 390",
             "readonly property real panelHeight: root.compact ? 270 : 300",
             "readonly property real orbitalInset: root.compact ? 6 : 8",
-            "readonly property real orbitalRightInset: 18",
+            "readonly property real orbitalRightInset: root.orbitalInset",
             "columns: 2",
             "implicitHeight: root.compact ? 36 : 42",
             "readonly property int tabCount: 2", "property int currentTab: 0")

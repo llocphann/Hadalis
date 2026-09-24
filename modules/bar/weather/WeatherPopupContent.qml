@@ -18,7 +18,7 @@ Item {
     // detail-page inset. Keep only a small safety gutter, with extra room on
     // the right for the persistent tab indicator rail.
     readonly property real orbitalInset: root.compact ? 6 : 8
-    readonly property real orbitalRightInset: 18
+    readonly property real orbitalRightInset: root.orbitalInset
     readonly property int tabCount: 2
     readonly property int slideDuration: Appearance.animation.elementMove.duration
     property int currentTab: 0

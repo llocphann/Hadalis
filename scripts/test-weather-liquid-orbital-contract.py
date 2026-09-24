@@ -58,7 +58,7 @@ def main() -> None:
     require(orbital, "property bool liquidMode: false", "LiquidOrbitalField {",
             "hourAngles: root.hourAngles", "activeIndex: root.activeIndex",
             "animate: root.liquidAnimationActive")
-    require(popup, "liquidMode: true", "activeIndex: root.selectedHourIndex",
+    require(popup, "liquidMode: true",
             "liquidAnimationActive: root.currentTab === 0")
     if "liquidMode: true" in dashboard:
         raise AssertionError("Dashboard must retain its simpler shared orbital view")

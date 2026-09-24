@@ -16,9 +16,7 @@ Item {
     property bool liquidAnimationActive: false
     property int activeIndex: 0
     readonly property var hours: (Weather.data?.hourly ?? []).slice(0, 8)
-    readonly property real footerHeight: root.liquidMode
-        ? Math.max(30, Math.min(72, height * 0.08)) : 0
-    readonly property real orbitStageHeight: Math.max(1, height - footerHeight)
+    readonly property real orbitStageHeight: Math.max(1, height)
 
     // Measured from the supplied concept: the node-centre ellipse is only
     // ~1.168x wider than tall. Do not stretch the orbit to the full popup width.
@@ -330,97 +328,6 @@ Item {
                         : hourPoint.highlighted
                             ? Appearance.colors.colOnPrimaryContainer
                             : Appearance.colors.colOnSurface
-                }
-            }
-        }
-    }
-
-    Item {
-        id: conceptFooter
-        visible: root.liquidMode
-        anchors.left: parent.left
-        anchors.right: parent.right
-        anchors.bottom: parent.bottom
-        height: root.footerHeight
-        z: 8
-
-        RowLayout {
-            anchors.left: parent.left
-            anchors.verticalCenter: parent.verticalCenter
-            spacing: 6
-            visible: Weather.showVisibleCity
-                || String(Weather.data?.description ?? "").length > 0
-
-            MaterialSymbol {
-                text: Weather.showVisibleCity ? "place" : "cloud"
-                iconSize: Math.max(16, Math.min(26, root.width * 0.018))
-                color: Appearance.colors.colOnSurfaceVariant
-            }
-
-            ColumnLayout {
-                spacing: -1
-                StyledText {
-                    visible: Weather.showVisibleCity
-                    text: Weather.visibleCity
-                    font.pixelSize: Math.max(Appearance.font.pixelSize.smaller,
-                        Math.min(23, root.width * 0.016))
-                    font.weight: Font.Medium
-                    color: Appearance.colors.colOnSurface
-                    elide: Text.ElideRight
-                    Layout.maximumWidth: 150
-                }
-                StyledText {
-                    text: Weather.data?.description ?? ""
-                    font.pixelSize: Math.max(Appearance.font.pixelSize.smallest,
-                        Math.min(19, root.width * 0.014))
-                    color: Appearance.colors.colOnSurfaceVariant
-                    elide: Text.ElideRight
-                    Layout.maximumWidth: 150
-                }
-            }
-        }
-
-        Rectangle {
-            id: aqiPill
-            visible: true
-            anchors.right: parent.right
-            anchors.verticalCenter: parent.verticalCenter
-            implicitWidth: aqiRow.implicitWidth + 20
-            implicitHeight: Math.max(28, Math.min(54, root.width * 0.038))
-            width: implicitWidth
-            height: implicitHeight
-            radius: height / 2
-            color: ColorUtils.applyAlpha(
-                Appearance.colors.colSurfaceContainerHigh, 0.52)
-            border.width: 1
-            border.color: ColorUtils.applyAlpha(
-                Appearance.colors.colPrimary, 0.24)
-
-            RowLayout {
-                id: aqiRow
-                anchors.centerIn: parent
-                spacing: 5
-                MaterialSymbol {
-                    text: "eco"
-                    iconSize: Math.max(15, Math.min(26, root.width * 0.018))
-                    fill: 1
-                    color: Appearance.colors.colPrimary
-                }
-                StyledText {
-                    text: Weather.airQuality?.available
-                        ? `${Weather.airQuality?.scale ?? "AQI"} ${Weather.airQuality?.aqi ?? "--"}`
-                        : "AQI --"
-                    font.pixelSize: Math.max(Appearance.font.pixelSize.smallest,
-                        Math.min(20, root.width * 0.014))
-                    color: Appearance.colors.colOnSurfaceVariant
-                }
-                StyledText {
-                    visible: Weather.airQuality?.available ?? false
-                    text: Weather.airQuality?.label ?? ""
-                    font.pixelSize: Math.max(Appearance.font.pixelSize.smallest,
-                        Math.min(20, root.width * 0.014))
-                    font.weight: Font.DemiBold
-                    color: Appearance.colors.colPrimary
                 }
             }
         }

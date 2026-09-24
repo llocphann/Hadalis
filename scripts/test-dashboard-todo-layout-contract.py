@@ -15,11 +15,10 @@ for token in (
     "readonly property real innerHeight:",
     "readonly property real cornerRadius: innerHeight / 2",
     "readonly property real arcKappa: 0.5522847498",
-    "readonly property int iconSlotSize:",
+    "readonly property real inset: 2",
     "readonly property int tabIconSize:",
     "readonly property int badgeSize:",
-    "readonly property real contentPadding:",
-    "readonly property real contentSpacing:",
+    "readonly property real labelSpacing: 4",
     "id: inactiveTabShape",
     "PathCubic {",
     "xScale: root.currentTab === 0 ? -1 : 1",
@@ -33,11 +32,14 @@ for token in (
     "id: rightTabHover",
     'Translation.tr("Unfinished")',
     'Translation.tr("Done")',
-    "horizontalAlignment: Text.AlignHCenter",
-    "verticalAlignment: Text.AlignVCenter",
+    "id: leftTabLabel",
+    "id: rightTabLabel",
+    "anchors.centerIn: parent",
+    "anchors.verticalCenter: parent.verticalCenter",
     "font.weight: Font.Medium",
-    "Layout.preferredWidth: tabShell.iconSlotSize",
-    "Layout.preferredWidth: tabShell.badgeSize",
+    "anchors.rightMargin: 6",
+    "width: tabShell.badgeSize",
+    "height: tabShell.badgeSize",
     "root.unfinishedTasks.length",
     "root.doneTasks.length",
     "readonly property int safeEdgeInset: 2",
@@ -62,16 +64,23 @@ assert todo.count("id: activeTabPill") == 1
 assert "PathArc.Counterclockwise" not in todo
 assert "PathArc.Clockwise" not in todo
 
-# Both logical halves use identical icon and badge slots, fixed text weight and
-# centered labels. Active state may change color, not metrics or typography.
-assert todo.count("Layout.preferredWidth: tabShell.iconSlotSize") == 2
-assert todo.count("Layout.preferredWidth: tabShell.badgeSize") == 2
+# Icon + text are centered as one visual unit. Count badges are independently
+# right-anchored so their width never displaces the label center.
+assert todo.count("id: leftTabLabel") == 1
+assert todo.count("id: rightTabLabel") == 1
+assert todo.count("anchors.centerIn: parent") >= 2
+assert todo.count("anchors.rightMargin: 6") >= 2
+assert todo.count("width: tabShell.badgeSize") == 2
 assert todo.count("font.weight: Font.Medium") >= 2
-assert todo.count("horizontalAlignment: Text.AlignHCenter") >= 2
+assert "iconSlotSize" not in todo
+assert "contentPadding" not in todo
+assert "contentSpacing" not in todo
+assert 'text: "more_horiz"' not in todo
 
 assert "seamOverlap" not in todo
 assert "tabSurfaceWidth" not in todo
 assert "implicitHeight: root.tabControlHeight" in todo
+assert "root.veryShallowLayout ? 28 : (root.narrowLayout ? 30 : 32)" in todo
 assert "Layout.minimumHeight: root.veryShallowLayout" in todo
 assert todo.count("Layout.preferredWidth: root.actionButtonSize") >= 4
 assert "id: setupRow" not in todo

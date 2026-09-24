@@ -34,7 +34,7 @@ StyledPopup {
         } else {
             dialog.resetForm()
         }
-        dialog.forceActiveFocus()
+        dialog.focusEditor()
     }
 
     onRequestClose: root.showEventsDialog = false
@@ -44,28 +44,105 @@ StyledPopup {
     }
 
     Item {
+        id: popupContent
+
+        readonly property real editorPaneHeight: Math.max(320, Math.min(430,
+            (root.presentationWindow?.height ?? 900) * 0.40))
+        readonly property real editorSectionGap:
+            root.showEventsDialog ? 10 : 0
+
         implicitWidth: calendarContent.implicitWidth
         implicitHeight: calendarContent.implicitHeight
+            + (root.showEventsDialog
+                ? popupContent.editorPaneHeight
+                    + popupContent.editorSectionGap
+                : 0)
         width: parent ? parent.width : implicitWidth
         height: parent ? parent.height : implicitHeight
 
+        Behavior on implicitHeight {
+            enabled: Appearance.animationsEnabled
+            NumberAnimation {
+                duration: Appearance.animation.elementResize.duration
+                easing.type: Appearance.animation.elementResize.type
+                easing.bezierCurve:
+                    Appearance.animation.elementResize.bezierCurve
+            }
+        }
+
         ClockCalendarContent {
             id: calendarContent
-            anchors.fill: parent
+            anchors {
+                top: parent.top
+                left: parent.left
+                right: parent.right
+            }
+            height: implicitHeight
             onEventEditorRequested: (event) => root.openEventEditor(event)
         }
 
-        Loader {
-            id: eventsDialogLoader
-            anchors.fill: parent
-            active: root.eventsDialogLoaded && root.active
-            onLoaded: Qt.callLater(root.prepareEventEditor)
-            sourceComponent: EventsDialog {
-                anchors.fill: parent
-                show: root.showEventsDialog
-                backgroundHeight: Math.max(300, Math.min(500,
-                    (parent?.height ?? 520) - 20))
-                onDismiss: root.showEventsDialog = false
+        Rectangle {
+            id: editorDivider
+            anchors {
+                left: parent.left
+                right: parent.right
+                top: calendarContent.bottom
+                topMargin: root.showEventsDialog ? 5 : 0
+            }
+            height: root.showEventsDialog ? 1 : 0
+            visible: height > 0
+            color: Appearance.colors.colLayer2
+            opacity: 0.7
+        }
+
+        Item {
+            id: editorPane
+            anchors {
+                left: parent.left
+                right: parent.right
+                bottom: parent.bottom
+            }
+            height: root.showEventsDialog
+                ? popupContent.editorPaneHeight : 0
+            clip: true
+            opacity: root.showEventsDialog ? 1 : 0
+
+            Behavior on height {
+                enabled: Appearance.animationsEnabled
+                NumberAnimation {
+                    duration: Appearance.animation.elementResize.duration
+                    easing.type: Appearance.animation.elementResize.type
+                    easing.bezierCurve:
+                        Appearance.animation.elementResize.bezierCurve
+                }
+            }
+            Behavior on opacity {
+                enabled: Appearance.animationsEnabled
+                NumberAnimation {
+                    duration: Appearance.animation.elementMoveFast.duration
+                    easing.type: Appearance.animation.elementMoveFast.type
+                    easing.bezierCurve:
+                        Appearance.animation.elementMoveFast.bezierCurve
+                }
+            }
+
+            Loader {
+                id: eventsDialogLoader
+                anchors {
+                    fill: parent
+                    topMargin: 9
+                    leftMargin: 4
+                    rightMargin: 4
+                }
+                active: root.eventsDialogLoaded && root.active
+                onLoaded: Qt.callLater(root.prepareEventEditor)
+                sourceComponent: EventsDialog {
+                    anchors.fill: parent
+                    show: root.showEventsDialog
+                    embeddedPresentation: true
+                    backgroundHeight: -1
+                    onDismiss: root.showEventsDialog = false
+                }
             }
         }
     }

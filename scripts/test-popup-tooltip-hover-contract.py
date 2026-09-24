@@ -53,6 +53,32 @@ require(
     "return false\n    }\n    readonly property bool parentPressedState:",
     "unknown parent hover must be false, not implicitly true",
 )
+require(
+    tooltip,
+    "active: root.visible && root.internalVisibleCondition",
+    "tooltip presentation Loader active state must not depend on window association",
+)
+require(
+    tooltip,
+    "sourceComponent: root._canUsePopupWindow",
+    "tooltip presentation path must switch by source component",
+)
+require(tooltip, "id: popupWindowPresentation",
+        "PopupWindow presentation path missing")
+require(tooltip, "id: fallbackItemPresentation",
+        "ApplicationWindow fallback presentation path missing")
+require(tooltip, "onLoaded:",
+        "deferred reveal must restart after presentation reparenting")
+for forbidden in (
+    "active: root._canUsePopupWindow &&",
+    "active: !root._canUsePopupWindow &&",
+    "id: fallbackLoader",
+):
+    if forbidden in tooltip:
+        raise SystemExit(
+            "FAIL: tooltip retained split Loader activity binding: " + forbidden
+        )
+
 for clause in (
     "useParentHover: false",
     "externalHoverState: compactMouse.containsMouse",

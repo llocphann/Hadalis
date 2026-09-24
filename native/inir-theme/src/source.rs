@@ -29,15 +29,12 @@ pub fn calculate_optimal_size(width: u32, height: u32, bitmap_size: u32) -> (u32
 fn load_gif_second_frame(path: &Path) -> Result<DynamicImage> {
     let file = BufReader::new(File::open(path)?);
     let decoder = GifDecoder::new(file)?;
-    let mut frames = decoder.into_frames().collect_frames()?;
-    if frames.is_empty() {
-        return Err(anyhow!("gif_has_no_frames"));
-    }
-    let frame = if frames.len() > 1 {
-        frames.remove(1)
-    } else {
-        frames.remove(0)
-    };
+    let mut frames = decoder.into_frames();
+    let first = frames
+        .next()
+        .transpose()?
+        .ok_or_else(|| anyhow!("gif_has_no_frames"))?;
+    let frame = frames.next().transpose()?.unwrap_or(first);
     Ok(DynamicImage::ImageRgba8(frame.into_buffer()))
 }
 
@@ -59,32 +56,45 @@ pub fn load_resized_image(path: &Path, bitmap_size: u32) -> Result<DynamicImage>
     Ok(image)
 }
 
-fn mean(values: &[f64]) -> f64 {
-    if values.is_empty() {
-        return 0.0;
-    }
-    values.iter().sum::<f64>() / values.len() as f64
+#[derive(Default)]
+struct Moments {
+    count: u64,
+    sum: f64,
+    sum_squares: f64,
 }
 
-fn stddev(values: &[f64], average: f64) -> f64 {
-    if values.is_empty() {
-        return 0.0;
+impl Moments {
+    fn push(&mut self, value: f64) {
+        self.count += 1;
+        self.sum += value;
+        self.sum_squares += value * value;
     }
-    (values
-        .iter()
-        .map(|value| (value - average).powi(2))
-        .sum::<f64>()
-        / values.len() as f64)
-        .sqrt()
+
+    fn mean(&self) -> f64 {
+        if self.count == 0 {
+            0.0
+        } else {
+            self.sum / self.count as f64
+        }
+    }
+
+    fn stddev(&self) -> f64 {
+        if self.count == 0 {
+            return 0.0;
+        }
+        let mean = self.mean();
+        (self.sum_squares / self.count as f64 - mean * mean)
+            .max(0.0)
+            .sqrt()
+    }
 }
 
 pub fn auto_detect_scheme(image: &DynamicImage) -> &'static str {
     let rgb = image.to_rgb8();
-    let count = rgb.width() as usize * rgb.height() as usize;
-    let mut rg = Vec::with_capacity(count);
-    let mut yb = Vec::with_capacity(count);
-    let mut saturation = Vec::with_capacity(count);
-    let mut hue = Vec::with_capacity(count);
+    let mut rg = Moments::default();
+    let mut yb = Moments::default();
+    let mut saturation = Moments::default();
+    let mut hue = Moments::default();
 
     for pixel in rgb.pixels() {
         let [r8, g8, b8] = pixel.0;
@@ -117,12 +127,12 @@ pub fn auto_detect_scheme(image: &DynamicImage) -> &'static str {
         hue.push(value);
     }
 
-    let mean_rg = mean(&rg);
-    let mean_yb = mean(&yb);
-    let colorfulness = (stddev(&rg, mean_rg).powi(2) + stddev(&yb, mean_yb).powi(2)).sqrt()
+    let mean_rg = rg.mean();
+    let mean_yb = yb.mean();
+    let colorfulness = (rg.stddev().powi(2) + yb.stddev().powi(2)).sqrt()
         + 0.3 * (mean_rg.powi(2) + mean_yb.powi(2)).sqrt();
-    let saturation = mean(&saturation);
-    let hue_spread = stddev(&hue, mean(&hue));
+    let saturation = saturation.mean();
+    let hue_spread = hue.stddev();
 
     if saturation < 20.0 {
         "scheme-monochrome"

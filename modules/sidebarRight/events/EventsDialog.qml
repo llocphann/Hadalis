@@ -12,7 +12,7 @@ import Quickshell
 WindowDialog {
     id: root
     backgroundHeight: 600
-    contentSpacing: root.embeddedPresentation ? 8 : 16
+    contentSpacing: root.embeddedPresentation ? 4 : 16
     embeddedBackgroundColor: Appearance.angelEverywhere
         ? Appearance.angel.colGlassPopup
         : Appearance.inirEverywhere ? Appearance.inir.colLayer1
@@ -106,12 +106,14 @@ WindowDialog {
     WindowDialogTitle {
         text: root.isEditing ? Translation.tr("Edit Event") : Translation.tr("New Event")
         font.pixelSize: root.embeddedPresentation
-            ? Appearance.font.pixelSize.large
+            ? Appearance.font.pixelSize.normal
             : Appearance.font.pixelSize.title
-        font.weight: Font.Medium
+        font.weight: root.embeddedPresentation ? Font.DemiBold : Font.Medium
     }
 
-    WindowDialogSeparator {}
+    WindowDialogSeparator {
+        visible: !root.embeddedPresentation
+    }
 
     // Scrollable content
     Flickable {
@@ -119,7 +121,9 @@ WindowDialog {
         Layout.fillHeight: true
 
         contentHeight: formColumn.implicitHeight
-            + (root.embeddedPresentation ? 8 : 16)
+            + (root.embeddedPresentation ? 4 : 16)
+        Layout.leftMargin: root.embeddedPresentation ? 6 : 0
+        Layout.rightMargin: root.embeddedPresentation ? 6 : 0
         clip: true
         boundsBehavior: Flickable.StopAtBounds
 
@@ -130,7 +134,7 @@ WindowDialog {
         Column {
             id: formColumn
             width: parent.width
-            spacing: root.embeddedPresentation ? 2 : 4
+            spacing: root.embeddedPresentation ? 0 : 4
 
             // ─── Basic Info Section ───────────────────────────────────
             EventSectionHeader {
@@ -138,18 +142,19 @@ WindowDialog {
             }
 
             WindowDialogSeparator {
+                visible: !root.embeddedPresentation
                 Layout.topMargin: -22
             }
 
             Column {
                 width: parent.width
-                spacing: root.embeddedPresentation ? 6 : 8
-                topPadding: root.embeddedPresentation ? 4 : 8
+                spacing: root.embeddedPresentation ? 4 : 8
+                topPadding: root.embeddedPresentation ? 2 : 8
 
                 MaterialTextField {
                     id: titleField
-                    width: parent.width - (root.embeddedPresentation ? 12 : 16)
-                    implicitHeight: root.embeddedPresentation ? 46 : 56
+                    width: parent.width - (root.embeddedPresentation ? 8 : 16)
+                    implicitHeight: root.embeddedPresentation ? 40 : 56
                     anchors.horizontalCenter: parent.horizontalCenter
                     placeholderText: Translation.tr("Event title") + " *"
                     text: root.eventTitle
@@ -157,8 +162,8 @@ WindowDialog {
                 }
 
                 MaterialTextField {
-                    width: parent.width - (root.embeddedPresentation ? 12 : 16)
-                    implicitHeight: root.embeddedPresentation ? 46 : 56
+                    width: parent.width - (root.embeddedPresentation ? 8 : 16)
+                    implicitHeight: root.embeddedPresentation ? 40 : 56
                     anchors.horizontalCenter: parent.horizontalCenter
                     placeholderText: Translation.tr("Description (optional)")
                     text: root.eventDescription
@@ -169,10 +174,11 @@ WindowDialog {
             // ─── Date & Time Section ──────────────────────────────────
             EventSectionHeader {
                 text: Translation.tr("Date & Time")
-                topPadding: root.embeddedPresentation ? 10 : 16
+                topPadding: root.embeddedPresentation ? 6 : 16
             }
 
             WindowDialogSeparator {
+                visible: !root.embeddedPresentation
                 Layout.topMargin: -22
             }
 
@@ -204,10 +210,11 @@ WindowDialog {
             // ─── Category Section ─────────────────────────────────────
             EventSectionHeader {
                 text: Translation.tr("Category")
-                topPadding: root.embeddedPresentation ? 10 : 16
+                topPadding: root.embeddedPresentation ? 6 : 16
             }
 
             WindowDialogSeparator {
+                visible: !root.embeddedPresentation
                 Layout.topMargin: -22
             }
 
@@ -233,10 +240,11 @@ WindowDialog {
             // ─── Priority Section ─────────────────────────────────────
             EventSectionHeader {
                 text: Translation.tr("Priority")
-                topPadding: root.embeddedPresentation ? 10 : 16
+                topPadding: root.embeddedPresentation ? 6 : 16
             }
 
             WindowDialogSeparator {
+                visible: !root.embeddedPresentation
                 Layout.topMargin: -22
             }
 
@@ -260,10 +268,11 @@ WindowDialog {
             // ─── Reminder Section ─────────────────────────────────────
             EventSectionHeader {
                 text: Translation.tr("Reminder")
-                topPadding: root.embeddedPresentation ? 10 : 16
+                topPadding: root.embeddedPresentation ? 6 : 16
             }
 
             WindowDialogSeparator {
+                visible: !root.embeddedPresentation
                 Layout.topMargin: -22
             }
 
@@ -289,10 +298,11 @@ WindowDialog {
             // ─── Repeat Section ───────────────────────────────────────
             EventSectionHeader {
                 text: Translation.tr("Repeat")
-                topPadding: root.embeddedPresentation ? 10 : 16
+                topPadding: root.embeddedPresentation ? 6 : 16
             }
 
             WindowDialogSeparator {
+                visible: !root.embeddedPresentation
                 Layout.topMargin: -22
             }
 
@@ -318,17 +328,25 @@ WindowDialog {
             // Bottom padding
             Item {
                 width: 1
-                height: root.embeddedPresentation ? 8 : 16
+                height: root.embeddedPresentation ? 4 : 16
             }
         }
     }
 
-    WindowDialogSeparator {}
+    WindowDialogSeparator {
+        visible: !root.embeddedPresentation
+    }
 
     WindowDialogButtonRow {
+        Layout.leftMargin: root.embeddedPresentation ? 4 : -8
+        Layout.rightMargin: root.embeddedPresentation ? 4 : -8
+        Layout.bottomMargin: root.embeddedPresentation ? 2 : 0
+
         DialogButton {
             visible: root.isEditing
             enabled: Events.ready
+            padding: root.embeddedPresentation ? 10 : 14
+            implicitHeight: root.embeddedPresentation ? 32 : 36
             buttonText: Translation.tr("Delete")
             onClicked: {
                 if (Events.removeEvent(root.editingEvent.id)) {
@@ -341,6 +359,8 @@ WindowDialog {
         Item { Layout.fillWidth: true }
 
         DialogButton {
+            padding: root.embeddedPresentation ? 10 : 14
+            implicitHeight: root.embeddedPresentation ? 32 : 36
             buttonText: Translation.tr("Cancel")
             onClicked: {
                 root.resetForm()
@@ -349,6 +369,8 @@ WindowDialog {
         }
 
         DialogButton {
+            padding: root.embeddedPresentation ? 10 : 14
+            implicitHeight: root.embeddedPresentation ? 32 : 36
             buttonText: root.isEditing ? Translation.tr("Save") : Translation.tr("Add Event")
             enabled: Events.ready && root.eventTitle.trim() !== ""
             onClicked: {

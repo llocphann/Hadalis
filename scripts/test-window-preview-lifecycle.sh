@@ -95,6 +95,10 @@ require_capture "printf 'PREVIEW_READY %s" \
     'capture script must publish a completion record on atomic rename'
 require 'function refreshForOverview(windowIds): void {' \
     'Overview must be able to refresh cached visible windows without a global cache reset'
+require 'overviewWarmImageComponent.createObject(' \
+    'resident preview cache must keep explicit Image ownership'
+require 'null, { source: url })' \
+    'resident preview decoder must not parent a QQuickImage to the singleton'
 require 'forceRequestedWindowIds' \
     'Overview refresh must use a targeted one-shot force queue'
 require 'function captureAllWindows(): void {' \

@@ -326,6 +326,8 @@ kv "input python" "$(tr '\n' ' ' < "$TMP_ROOT/input.py" | head -c 240)"
 kv "input rust" "$(tr '\n' ' ' < "$TMP_ROOT/input.rs" | head -c 240)"
 proc_metrics "input python resident" python3 -u scripts/daemon/keyboard_lock_state_daemon.py
 proc_metrics "input rust resident" "$BIN_DIR/inir-inputd" --mode locks
+proc_metrics "osk keys python resident" python3 -u scripts/daemon/osk_physical_key_daemon.py
+proc_metrics "osk keys rust resident" "$BIN_DIR/inir-inputd" --mode keys
 
 section "DIAGNOSTICS SCHEMA + RESIDENT COST"
 target_pid="$(systemctl --user show -p MainPID --value inir.service 2>/dev/null || true)"

@@ -8,7 +8,11 @@ Item {
 
     property var processes: []
     property int maxRows: 12
-    readonly property bool showSwapColumn: width >= 520
+    property bool compactMode: false
+    readonly property bool showPidColumn:
+        !root.compactMode && width >= 420
+    readonly property bool showSwapColumn:
+        !root.compactMode && width >= 520
     readonly property var processRows:
         Array.isArray(root.processes) ? root.processes : []
 
@@ -69,7 +73,8 @@ Item {
     readonly property var visibleProcesses:
         root.processRows.slice(0, Math.max(0, root.maxRows))
 
-    implicitHeight: processColumn.implicitHeight + 24
+    implicitHeight: processColumn.implicitHeight
+        + (root.compactMode ? 16 : 24)
 
     Rectangle {
         anchors.fill: parent
@@ -86,18 +91,20 @@ Item {
             anchors.left: parent.left
             anchors.right: parent.right
             anchors.top: parent.top
-            anchors.margins: 12
+            anchors.margins: root.compactMode ? 8 : 12
             spacing: 0
 
             RowLayout {
                 Layout.fillWidth: true
-                Layout.bottomMargin: 8
+                Layout.bottomMargin: root.compactMode ? 3 : 8
 
                 StyledText {
 
                     textFormat: Text.PlainText
                     Layout.fillWidth: true
-                    text: "Shell descendants"
+                    text: root.compactMode
+                        ? Translation.tr("Shell processes")
+                        : "Shell descendants"
                     color: Appearance.colors.colOnLayer1
                     font.weight: Font.DemiBold
                 }
@@ -119,6 +126,7 @@ Item {
                 StyledText {
 
                     textFormat: Text.PlainText
+                    visible: root.showPidColumn
                     Layout.preferredWidth: 64
                     text: "PID"
                     color: Appearance.colors.colSubtext
@@ -183,7 +191,7 @@ Item {
 
                 Item {
                     Layout.fillWidth: true
-                    implicitHeight: 38
+                    implicitHeight: root.compactMode ? 30 : 38
 
                     readonly property var process: modelData
                     readonly property int processDepth:
@@ -196,6 +204,7 @@ Item {
                         StyledText {
 
                             textFormat: Text.PlainText
+                            visible: root.showPidColumn
                             Layout.preferredWidth: 64
                             text: String(parent.parent.process?.pid ?? "—")
                             font.family: Appearance.font.family.monospace
@@ -207,11 +216,14 @@ Item {
 
                             textFormat: Text.PlainText
                             Layout.fillWidth: true
-                            text: "  ".repeat(
-                                    parent.parent.processDepth)
-                                + (parent.parent.processDepth > 0
-                                    ? "↳ " : "")
-                                + String(parent.parent.process?.command ?? "—")
+                            text: root.compactMode
+                                ? String(parent.parent.process?.command ?? "—")
+                                : "  ".repeat(
+                                        parent.parent.processDepth)
+                                    + (parent.parent.processDepth > 0
+                                        ? "↳ " : "")
+                                    + String(
+                                        parent.parent.process?.command ?? "—")
                             font.family: Appearance.font.family.monospace
                             color: Appearance.colors.colOnLayer1
                             font.pixelSize: Appearance.font.pixelSize.small
@@ -274,7 +286,7 @@ Item {
                 textFormat: Text.PlainText
                 Layout.fillWidth: true
                 visible: root.processRows.length === 0
-                Layout.topMargin: 10
+                Layout.topMargin: root.compactMode ? 6 : 10
                 text: "No shell child processes"
                 color: Appearance.colors.colSubtext
                 font.pixelSize: Appearance.font.pixelSize.small
@@ -285,7 +297,7 @@ Item {
                 textFormat: Text.PlainText
                 Layout.fillWidth: true
                 visible: root.processRows.length > root.visibleProcesses.length
-                Layout.topMargin: 8
+                Layout.topMargin: root.compactMode ? 3 : 8
                 text: "+" + String(
                     root.processRows.length - root.visibleProcesses.length)
                     + " more processes"
@@ -297,6 +309,7 @@ Item {
 
                 textFormat: Text.PlainText
                 Layout.fillWidth: true
+                visible: !root.compactMode
                 Layout.topMargin: 8
                 text: "/proc/<pid>/comm · task schedstat · /proc/<pid>/status"
                 color: Appearance.colors.colSubtext

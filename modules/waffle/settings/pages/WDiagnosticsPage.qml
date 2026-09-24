@@ -183,6 +183,7 @@ WSettingsPage {
         evidence: root.evidence
         targets: root.runtimeCatalog
         records: root.runtimeRecords
+        events: root.runtimeSnapshot?.events ?? []
         selectedTargetId: CodeWorkflowSession.selectedTargetId
     }
 }

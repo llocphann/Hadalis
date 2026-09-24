@@ -25,7 +25,8 @@ Bar.StyledPopup {
     property int selectedMainTab: 0
     property int selectedNotesTab: 0
     // Notes/To-do is a transient child tray of the large Notes & To-do tab.
-    // Keep it out of ColumnLayout geometry so showing it never pushes content.
+    // Its animated height participates in ColumnLayout so it takes space from
+    // the editor instead of covering note content.
     property bool notesTrayOpen: false
     readonly property bool todoDialogOpen: todoViewLoader.item?.showAddDialog ?? false
     property string cornerAttachmentEdge: "bottom"
@@ -67,7 +68,9 @@ Bar.StyledPopup {
 
     function leaveEditorMode(): void {
         entryBridgeTimer.stop()
+        notesTrayHideTimer.stop()
         root.entryBridgeHeld = false
+        root.notesTrayOpen = false
         if (notesViewLoader.item) {
             notesViewLoader.item.flushPendingSave()
             notesViewLoader.item.releaseEditorFocus()
@@ -82,6 +85,8 @@ Bar.StyledPopup {
     }
 
     function releaseNotesTray(): void {
+        // A small grace period prevents the tray from blinking while the
+        // pointer crosses child controls or the 4px visual gap.
         if (root.notesTrayOpen)
             notesTrayHideTimer.restart()
     }
@@ -135,7 +140,7 @@ Bar.StyledPopup {
 
     property QtObject _notesTrayHideTimer: Timer {
         id: notesTrayHideTimer
-        interval: 140
+        interval: 220
         repeat: false
         onTriggered: root.notesTrayOpen = false
     }
@@ -169,9 +174,29 @@ Bar.StyledPopup {
             Item {
                 id: tabDock
                 Layout.fillWidth: true
-                implicitHeight: 30
+                // Expanding the dock changes the layout allocation itself, so
+                // Quick Notes/To-do consumes editor height rather than drawing
+                // over the editor.
+                implicitHeight: mainTabs.height
+                    + notesTraySlot.height
+                    + (notesTraySlot.height > 0 ? 4 : 0)
                 z: 20
                 clip: false
+
+                // One continuous hover owner covers the large tab, the visual
+                // gap and the revealed tray. This avoids the old hand-off
+                // flicker between two independent HoverHandlers.
+                HoverHandler {
+                    id: tabDockHover
+                    acceptedDevices:
+                        PointerDevice.Mouse | PointerDevice.TouchPad
+                    onHoveredChanged: {
+                        if (hovered)
+                            root.holdNotesTray()
+                        else
+                            root.releaseNotesTray()
+                    }
+                }
 
                 PillTabBar {
                     id: mainTabs
@@ -186,44 +211,20 @@ Bar.StyledPopup {
                         { icon: "timer", label: Translation.tr("Timers") }
                     ]
                     onTabSelected: index => root.selectedMainTab = index
-
-                    HoverHandler {
-                        id: mainTabsHover
-                        enabled: root.selectedMainTab === 0
-                        onHoveredChanged: {
-                            if (hovered)
-                                root.holdNotesTray()
-                            else
-                                root.releaseNotesTray()
-                        }
-                    }
                 }
 
                 Item {
-                    id: notesTray
+                    id: notesTraySlot
+                    anchors.top: mainTabs.bottom
+                    anchors.topMargin: height > 0 ? 4 : 0
+                    anchors.horizontalCenter: parent.horizontalCenter
                     width: Math.min(248, Math.max(
                         160, contentRoot.width - 24))
-                    height: 28
-                    x: (tabDock.width - width) / 2
-                    y: root.notesTrayOpen
-                        ? mainTabs.height + 4
-                        : mainTabs.height - 6
-                    z: 21
-                    opacity: root.notesTrayOpen ? 1 : 0
-                    visible: opacity > 0
+                    height: root.selectedMainTab === 0
+                        && root.notesTrayOpen ? 28 : 0
+                    clip: true
 
-                    Behavior on y {
-                        enabled: Appearance.animationsEnabled
-                        NumberAnimation {
-                            duration:
-                                Appearance.animation.elementMoveFast.duration
-                            easing.type:
-                                Appearance.animation.elementMoveFast.type
-                            easing.bezierCurve:
-                                Appearance.animation.elementMoveFast.bezierCurve
-                        }
-                    }
-                    Behavior on opacity {
+                    Behavior on height {
                         enabled: Appearance.animationsEnabled
                         NumberAnimation {
                             duration:
@@ -236,23 +237,31 @@ Bar.StyledPopup {
                     }
 
                     PillTabBar {
-                        anchors.fill: parent
+                        id: notesTray
+                        anchors {
+                            left: parent.left
+                            right: parent.right
+                            bottom: parent.bottom
+                        }
                         pillHeight: 28
                         currentIndex: root.selectedNotesTab
+                        opacity: root.notesTrayOpen ? 1 : 0
                         tabs: [
                             { icon: "edit_note", label: Translation.tr("Quick Notes") },
                             { icon: "checklist", label: Translation.tr("To-do") }
                         ]
                         onTabSelected: index => root.selectedNotesTab = index
-                    }
 
-                    HoverHandler {
-                        id: notesTrayHover
-                        onHoveredChanged: {
-                            if (hovered)
-                                root.holdNotesTray()
-                            else
-                                root.releaseNotesTray()
+                        Behavior on opacity {
+                            enabled: Appearance.animationsEnabled
+                            NumberAnimation {
+                                duration:
+                                    Appearance.animation.elementMoveFast.duration
+                                easing.type:
+                                    Appearance.animation.elementMoveFast.type
+                                easing.bezierCurve:
+                                    Appearance.animation.elementMoveFast.bezierCurve
+                            }
                         }
                     }
                 }

@@ -18,15 +18,17 @@ Item {
     readonly property var hours: (Weather.data?.hourly ?? []).slice(0, 8)
     readonly property real orbitStageHeight: Math.max(1, height)
 
-    // Measured from the supplied concept: the node-centre ellipse is only
-    // ~1.168x wider than tall. Do not stretch the orbit to the full popup width.
+    // The reference ellipse is ~1.168x wider than tall, but the popup itself
+    // is wider than the reference composition. Let liquid mode relax the aspect
+    // only as much as needed to consume the available body without clipping.
     readonly property real conceptOrbitAspect: 1.168
-    // The measured concept ratios are more important than filling the popup:
-    // centres sit at ~24.5% of the reference width and inactive pods are only
-    // ~8.6% of that width. Keeping those ratios preserves the large calm hole
-    // in the middle instead of crowding the weather summary.
-    readonly property real pointSize: Math.max(38,
-        Math.min(132, width * 0.086, root.orbitStageHeight * 0.15))
+    readonly property real liquidOuterPaddingX: root.liquidMode ? 8 : 0
+    readonly property real liquidOuterPaddingY: root.liquidMode ? 6 : 0
+    readonly property real pointSize: root.liquidMode
+        ? Math.max(42, Math.min(64,
+            width * 0.13, root.orbitStageHeight * 0.19))
+        : Math.max(38, Math.min(132,
+            width * 0.086, root.orbitStageHeight * 0.15))
     readonly property real pointWidth: root.liquidMode
         ? pointSize
         : Math.max(42, Math.min(54, width * 0.13))
@@ -34,17 +36,23 @@ Item {
         ? pointSize
         : Math.max(52, Math.min(66, height * 0.25))
     readonly property real activePointSize: pointSize * 1.28
-    readonly property real desiredOrbitRadiusX: width * 0.245
-    readonly property real desiredOrbitRadiusY:
-        desiredOrbitRadiusX / conceptOrbitAspect
+    readonly property real availableLiquidWidth: Math.max(1,
+        width - activePointSize - liquidOuterPaddingX * 2)
+    readonly property real availableLiquidHeight: Math.max(1,
+        orbitStageHeight - activePointSize - liquidOuterPaddingY * 2)
+    readonly property real availableLiquidAspect:
+        availableLiquidWidth / availableLiquidHeight
+    readonly property real liquidOrbitAspect: Math.max(conceptOrbitAspect,
+        Math.min(1.32, availableLiquidAspect))
     readonly property real liquidOrbitRadiusY: Math.max(1,
-        Math.min(desiredOrbitRadiusY,
-            (orbitStageHeight - activePointSize - 10) / 2))
+        Math.min(
+            availableLiquidHeight / 2,
+            availableLiquidWidth / (2 * liquidOrbitAspect)))
     readonly property real orbitRadiusY: root.liquidMode
         ? liquidOrbitRadiusY
         : Math.max(1, (height - pointHeight - 22) / 2)
     readonly property real orbitRadiusX: root.liquidMode
-        ? liquidOrbitRadiusY * conceptOrbitAspect
+        ? liquidOrbitRadiusY * liquidOrbitAspect
         : Math.max(1, (width - pointWidth - 18) / 2)
     readonly property var hourAngles: {
         const result = []

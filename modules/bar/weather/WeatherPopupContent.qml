@@ -12,9 +12,11 @@ Item {
     readonly property real compactBreakpoint: 900
     readonly property real panelHeight: root.compact ? 270 : 300
     readonly property real panelWidth: root.compact ? 360 : 450
-    // Keep the orbital cards inside the clipped tab viewport. This padding is
-    // part of the popup geometry contract; do not use negative top margins.
-    readonly property real orbitalPadding: 14
+    // Let the liquid orbit consume the popup body instead of inheriting the
+    // detail-page inset. Keep only a small safety gutter, with extra room on
+    // the right for the persistent tab indicator rail.
+    readonly property real orbitalInset: root.compact ? 6 : 8
+    readonly property real orbitalRightInset: 18
     readonly property int tabCount: 2
     readonly property int slideDuration: Appearance.animation.elementMove.duration
     property int currentTab: 0
@@ -86,8 +88,13 @@ Item {
 
         OrbitalWeather {
             id: orbitalTimeline
-            anchors.fill: parent
-            anchors.margins: root.orbitalPadding
+            anchors {
+                fill: parent
+                leftMargin: root.orbitalInset
+                rightMargin: root.orbitalRightInset
+                topMargin: root.orbitalInset
+                bottomMargin: root.orbitalInset
+            }
             now: root.now
             liquidMode: true
             // Keep the field alive while its page is still visibly sliding out;

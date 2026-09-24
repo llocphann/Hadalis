@@ -110,11 +110,13 @@ def main() -> None:
         "embeddedBackgroundColor:",
         "component EventSectionHeader: WindowDialogSectionHeader",
         "Appearance.colors.colSurfaceContainerHigh",
-        "root.embeddedPresentation ? 40 : 56",
+        "root.embeddedPresentation ? 36 : 56",
         "visible: !root.embeddedPresentation",
         "root.embeddedPresentation ? 32 : 36",
         "property string eventEndTime:",
         "property bool allDay: false",
+        'property string compactOptionGroup: ""',
+        "component CompactEventOptionButton: Button",
         "renderType: Text.QtRendering",
         "font.weight: Font.Medium",
         "placeholderTextColor: Appearance.colors.colOnSurface",
@@ -137,6 +139,43 @@ def main() -> None:
     forbid(events_dialog,
            "component EventSectionHeader: EventSectionHeader",
            "EventsDialog.qml")
+
+    compact_deck_start = events_dialog.find(
+        "// Embedded Add Event uses one fixed-height icon deck")
+    compact_deck_end = events_dialog.find(
+        "// Repeat is part of scheduling", compact_deck_start)
+    if compact_deck_start < 0 or compact_deck_end < 0:
+        raise AssertionError("EventsDialog compact embedded option deck missing")
+    compact_deck = events_dialog[compact_deck_start:compact_deck_end]
+    for token in (
+        "visible: root.embeddedPresentation",
+        "height: 38",
+        "columns: 4",
+        'root.compactOptionGroup === ""',
+        "root.compactGroupIcon(modelData.key)",
+        "root.compactGroupTooltip(modelData.key)",
+        'symbol: "arrow_back"',
+        "root.compactOptionsFor(",
+        "selectedState: modelData.value",
+        "root.setCompactOption(",
+    ):
+        require(compact_deck, token, "EventsDialog compact embedded option deck")
+
+    require(events_dialog, "delay: 350", "EventsDialog compact option tooltip")
+    require(events_dialog,
+            'tooltipText: Translation.tr("All day") + " · "',
+            "EventsDialog compact all-day icon")
+    require(events_dialog,
+            "visible: !root.embeddedPresentation\n                    width: parent.width - 8",
+            "EventsDialog standalone all-day row")
+
+    legacy_options = events_dialog[compact_deck_end:]
+    if legacy_options.count("ConfigSelectionArray {") < 4:
+        raise AssertionError(
+            "EventsDialog standalone option arrays were removed by compact popup refactor")
+    if legacy_options.count("visible: !root.embeddedPresentation") < 8:
+        raise AssertionError(
+            "EventsDialog legacy option sections must stay standalone-only")
 
     date_picker_pos = events_dialog.find("DatePicker {")
     category_pos = events_dialog.find("// ─── Category Section")

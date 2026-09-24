@@ -34,13 +34,6 @@ Item {
         positionUpdatesActive: root.visible && GlobalStates.sidebarRightOpen
     }
 
-    CavaProcess {
-        id: compactMediaCava
-        active: root.visible && GlobalStates.sidebarRightOpen
-            && playerBase.effectiveIsPlaying
-        sampleCount: 64
-    }
-
     property QtObject blendedColors: AdaptedMaterialScheme {
         color: playerBase.artDominantColor
     }
@@ -397,19 +390,6 @@ Item {
             }
         }
 
-        WaveVisualizer {
-            anchors.left: parent.left
-            anchors.right: parent.right
-            anchors.bottom: parent.bottom
-            height: 28
-            z: 0
-            live: playerBase.effectiveIsPlaying
-            points: compactMediaCava.points
-            maxVisualizerValue: Math.max(1, compactMediaCava.normalizationCeiling)
-            smoothing: 2
-            color: ColorUtils.transparentize(root.accentColor, 0.62)
-        }
-
         ColumnLayout {
             id: playerLayout
             z: 1
@@ -538,15 +518,13 @@ Item {
                 Layout.topMargin: 4
                 spacing: root.cookieStyle ? 6 : 4
 
-                Revealer {
-                    reveal: MprisController.shuffleSupported
-                    TransportBtn {
-                        icon: "shuffle"
-                        toggled: MprisController.hasShuffle
-                        onClicked: MprisController.setShuffle(!MprisController.hasShuffle)
-                        tooltipText: Translation.tr("Shuffle")
-                        small: true
-                    }
+                TransportBtn {
+                    icon: "shuffle"
+                    enabled: MprisController.shuffleSupportedForPlayer(playerBase.player)
+                    toggled: MprisController.shuffleForPlayer(playerBase.player)
+                    onClicked: MprisController.toggleShuffleForPlayer(playerBase.player)
+                    tooltipText: Translation.tr("Shuffle")
+                    small: true
                 }
 
                 TransportBtn {
@@ -688,18 +666,15 @@ Item {
                     small: true
                 }
 
-                Revealer {
-                    reveal: MprisController.loopSupported
-                    TransportBtn {
-                        icon: MprisController.loopState === 2 ? "repeat_one" : "repeat"
-                        toggled: MprisController.loopState !== 0
-                        onClicked: {
-                            const next = (MprisController.loopState + 1) % 3
-                            MprisController.setLoopState(next)
-                        }
-                        tooltipText: Translation.tr("Loop")
-                        small: true
-                    }
+                TransportBtn {
+                    readonly property int loopState:
+                        Number(MprisController.loopStateForPlayer(playerBase.player)) || 0
+                    icon: loopState === 2 ? "repeat_one" : "repeat"
+                    enabled: MprisController.loopSupportedForPlayer(playerBase.player)
+                    toggled: loopState !== 0
+                    onClicked: MprisController.cycleLoopForPlayer(playerBase.player)
+                    tooltipText: Translation.tr("Repeat")
+                    small: true
                 }
             }
         }

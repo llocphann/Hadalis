@@ -52,11 +52,13 @@ For machine-level comparison, run:
 ./scripts/native-cutover-benchmark.sh
 ```
 
-The harness builds release binaries, runs Rust tests/clippy, compares Python and
-Rust output for read-only/safe paths, measures startup/resident memory and CPU,
-then measures the same `inir.service` once with Python selected and once with
-Rust selected. It leaves Rust trial mode active so the shell can be tested
-interactively.
+The harness builds release binaries, runs Rust and selector regressions,
+compares Python and Rust output on read-only paths and temporary config files,
+and measures startup time, CPU and peak/resident memory. It switches the live
+`inir.service` only when parity checks pass and the installed runtime matches
+the tested checkout. A parity failure leaves the running service unchanged and
+returns exit code 6 with a HOLD report. `--no-activate` runs the checks without
+the live switch; `--restore` switches the user service back to Python.
 
 The report is written under `$XDG_STATE_HOME/inir/` (or
 `~/.local/state/inir/`). Send that report back for analysis.

@@ -13,10 +13,15 @@ REPORT="${INIR_NATIVE_REPORT:-$STATE_DIR/native-cutover-$STAMP.txt}"
 TMP_ROOT="$(mktemp -d "${TMPDIR:-/tmp}/inir-native-test.XXXXXX")"
 BIN_DIR="$ROOT_DIR/native/target/release"
 DISPATCH="$ROOT_DIR/scripts/native-dispatch"
-ORIGINAL_BACKEND="${INIR_NATIVE_BACKEND:-}"
-ORIGINAL_BIN_DIR="${INIR_NATIVE_BIN_DIR:-}"
 ACTIVE_RUNTIME="${XDG_CONFIG_HOME:-$HOME/.config}/quickshell/inir"
 ACTIVE_RUNTIME="$(readlink -f "$ACTIVE_RUNTIME" 2>/dev/null || printf '%s' "$ACTIVE_RUNTIME")"
+ACTIVATION_BLOCKERS=()
+RUNTIME_MODE="unchanged"
+
+case "${1:-}" in
+    ""|--no-activate|--restore) ;;
+    *) echo "usage: $0 [--no-activate|--restore]" >&2; exit 64 ;;
+esac
 
 cleanup() {
     rm -rf "$TMP_ROOT"
@@ -33,6 +38,11 @@ kv() {
     printf '%-32s %s\n' "$1" "$2"
 }
 
+block_activation() {
+    ACTIVATION_BLOCKERS+=("$1")
+    kv "activation blocker" "$1"
+}
+
 command_exists() {
     command -v "$1" >/dev/null 2>&1
 }
@@ -42,51 +52,57 @@ run_gate() {
     local failure_code="$2"
     shift 2
     local log="$TMP_ROOT/gate-${label//[^A-Za-z0-9_.-]/_}.log"
+    local rc
     if "$@" >"$log" 2>&1; then
         kv "$label" "PASS"
         return 0
+    else
+        rc=$?
     fi
-    local rc=$?
     kv "$label" "FAIL exit=$rc"
     echo "--- $label log tail ---"
     tail -n 120 "$log" || true
     exit "$failure_code"
 }
 
-run_capture() {
-    local output rc
-    output="$("$@" 2>&1)"
-    rc=$?
-    printf '%s' "$output"
-    return "$rc"
-}
-
 bench() {
     local label="$1"
     shift
-    local runs="${BENCH_RUNS:-5}"
-    local total_wall=0 total_user=0 total_sys=0 max_rss=0 success=0
-    local i stats rc
-    if [[ ! -x /usr/bin/time ]]; then
-        kv "$label" "SKIP (/usr/bin/time missing)"
-        return 0
+    if ! python3 - "$label" "${BENCH_RUNS:-5}" "$@" <<'PY'
+import os
+import resource
+import statistics
+import subprocess
+import sys
+import time
+
+label, runs_text, *command = sys.argv[1:]
+runs = int(runs_text)
+if runs < 1:
+    raise ValueError("BENCH_RUNS must be positive")
+samples = []
+for _ in range(runs):
+    input_path = os.environ.get("INIR_BENCH_STDIN")
+    with open(input_path, "rb") if input_path else open(os.devnull, "rb") as input_file:
+        started = time.perf_counter_ns()
+        process = subprocess.Popen(command, stdin=input_file,
+                                   stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        _, status, usage = os.wait4(process.pid, 0)
+        process.returncode = os.waitstatus_to_exitcode(status)
+        wall_ms = (time.perf_counter_ns() - started) / 1_000_000
+    if process.returncode:
+        print(f"{label:<32} ERROR exit={process.returncode}")
+        sys.exit(1)
+    samples.append((wall_ms, usage.ru_utime * 1000, usage.ru_stime * 1000,
+                    usage.ru_maxrss))
+print(f"{label:<32} avg_wall={statistics.mean(row[0] for row in samples):.3f}ms "
+      f"avg_user={statistics.mean(row[1] for row in samples):.3f}ms "
+      f"avg_sys={statistics.mean(row[2] for row in samples):.3f}ms "
+      f"max_rss={max(row[3] for row in samples)}KiB runs={runs}")
+PY
+    then
+        block_activation "benchmark failed: $label"
     fi
-    for ((i=1; i<=runs; i++)); do
-        stats="$TMP_ROOT/time.$$.txt"
-        /usr/bin/time -f '%e %U %S %M' -o "$stats" -- "$@" >/dev/null 2>&1
-        rc=$?
-        if (( rc != 0 )); then
-            kv "$label" "ERROR exit=$rc cmd=$*"
-            return 0
-        fi
-        read -r wall user sys rss < "$stats"
-        total_wall="$(awk -v a="$total_wall" -v b="$wall" 'BEGIN{printf "%.6f",a+b}')"
-        total_user="$(awk -v a="$total_user" -v b="$user" 'BEGIN{printf "%.6f",a+b}')"
-        total_sys="$(awk -v a="$total_sys" -v b="$sys" 'BEGIN{printf "%.6f",a+b}')"
-        (( rss > max_rss )) && max_rss="$rss"
-        success=$((success+1))
-    done
-    awk -v label="$label" -v n="$success" -v w="$total_wall" -v u="$total_user" -v s="$total_sys" -v r="$max_rss"         'BEGIN{printf "%-32s avg_wall=%.3fms avg_user=%.3fms avg_sys=%.3fms max_rss=%dKiB runs=%d\n",label,(w/n)*1000,(u/n)*1000,(s/n)*1000,r,n}'
 }
 
 proc_metrics() {
@@ -100,13 +116,18 @@ proc_metrics() {
     if ! kill -0 "$pid" 2>/dev/null; then
         wait "$pid" || true
         kv "$label" "ERROR exited early: $(tr '\n' ' ' < "$TMP_ROOT/$label.err" | head -c 300)"
-        return 0
+        return 1
     fi
     local pss0 rss0 ticks0 pss1 rss1 ticks1 hz
     pss0="$(awk '/^Pss:/{print $2; exit}' "/proc/$pid/smaps_rollup" 2>/dev/null || echo 0)"
     rss0="$(awk '/^VmRSS:/{print $2; exit}' "/proc/$pid/status" 2>/dev/null || echo 0)"
     ticks0="$(awk '{print $14+$15}' "/proc/$pid/stat" 2>/dev/null || echo 0)"
     sleep "$seconds"
+    if ! kill -0 "$pid" 2>/dev/null; then
+        wait "$pid" || true
+        kv "$label" "ERROR exited during sampling"
+        return 1
+    fi
     pss1="$(awk '/^Pss:/{print $2; exit}' "/proc/$pid/smaps_rollup" 2>/dev/null || echo "$pss0")"
     rss1="$(awk '/^VmRSS:/{print $2; exit}' "/proc/$pid/status" 2>/dev/null || echo "$rss0")"
     ticks1="$(awk '{print $14+$15}' "/proc/$pid/stat" 2>/dev/null || echo "$ticks0")"
@@ -116,33 +137,77 @@ proc_metrics() {
     awk -v label="$label" -v p0="$pss0" -v p1="$pss1" -v r0="$rss0" -v r1="$rss1"         -v t0="$ticks0" -v t1="$ticks1" -v hz="$hz" -v sec="$seconds"         'BEGIN{cpu=((t1-t0)/hz)/sec*100; printf "%-32s pss=%d->%dKiB rss=%d->%dKiB cpu_window=%.3f%%\n",label,p0,p1,r0,r1,cpu}'
 }
 
-json_diff_count() {
-    local left="$1" right="$2"
-    if command_exists jq; then
-        jq -S . "$left" >"$TMP_ROOT/left.norm" 2>/dev/null || return 1
-        jq -S . "$right" >"$TMP_ROOT/right.norm" 2>/dev/null || return 1
-        diff -U0 "$TMP_ROOT/left.norm" "$TMP_ROOT/right.norm" 2>/dev/null | grep -Ec '^[+-][[:space:]]*"' || true
-    else
-        echo "jq-missing"
-    fi
+json_compare() {
+    python3 - "$@" <<'PY'
+import json
+import sys
+
+left_path, right_path, *keys = sys.argv[1:]
+try:
+    with open(left_path) as handle:
+        left = json.load(handle)
+    with open(right_path) as handle:
+        right = json.load(handle)
+    if keys == ["--mpd-status"]:
+        keys = ["connected", "status", "current", "queue", "musicRoot"]
+        for value in (left, right):
+            if isinstance(value.get("status"), dict):
+                for volatile in ("elapsed", "time", "bitrate"):
+                    value["status"].pop(volatile, None)
+    if keys == ["--theme-meta"]:
+        keys = []
+        left.pop("generated_by", None)
+        right.pop("generated_by", None)
+    if keys:
+        left = {key: left[key] for key in keys}
+        right = {key: right[key] for key in keys}
+except (OSError, ValueError, KeyError) as error:
+    print(f"ERROR invalid JSON or missing key: {error}")
+    sys.exit(1)
+
+differences = []
+def compare(a, b, path="root"):
+    if isinstance(a, dict) and isinstance(b, dict):
+        for key in sorted(a.keys() | b.keys()):
+            if key not in a or key not in b:
+                differences.append(f"{path}.{key}")
+            else:
+                compare(a[key], b[key], f"{path}.{key}")
+    elif isinstance(a, list) and isinstance(b, list):
+        if len(a) != len(b):
+            differences.append(f"{path}.length")
+        for index, (item_a, item_b) in enumerate(zip(a, b)):
+            compare(item_a, item_b, f"{path}[{index}]")
+    elif a != b:
+        differences.append(path)
+
+compare(left, right)
+if differences:
+    print(f"DIFF count={len(differences)} first={','.join(differences[:6])}")
+    sys.exit(1)
+print("PASS")
+PY
 }
 
 set_runtime_backend() {
     local mode="$1"
     printf '%s\n' "$mode" > "$BACKEND_STATE_FILE"
     printf '%s\n' "$BIN_DIR" > "$BIN_STATE_FILE"
-    systemctl --user set-environment         INIR_NATIVE_BACKEND="$mode"         INIR_NATIVE_BIN_DIR="$BIN_DIR"         INIR_NATIVE_STRICT=0
-    "$ROOT_DIR/scripts/inir" restart || systemctl --user restart inir.service || true
+    systemctl --user set-environment \
+        INIR_NATIVE_BACKEND="$mode" INIR_NATIVE_BIN_DIR="$BIN_DIR" INIR_NATIVE_STRICT=0 || return 1
+    "$ROOT_DIR/scripts/inir" restart || systemctl --user restart inir.service || return 1
+    systemctl --user is-active --quiet inir.service
 }
 
 measure_service_mode() {
     local mode="$1"
     local window="${LIVE_WINDOW_SECONDS:-5}"
-    set_runtime_backend "$mode"
+    set_runtime_backend "$mode" || return 1
     sleep 4
 
     local pid mem tasks cpu0 cpu1 delta shell_pss shell_rss
     pid="$(systemctl --user show -p MainPID --value inir.service 2>/dev/null || echo 0)"
+    [[ "$pid" =~ ^[1-9][0-9]*$ ]] || return 1
     mem="$(systemctl --user show -p MemoryCurrent --value inir.service 2>/dev/null || echo unknown)"
     tasks="$(systemctl --user show -p TasksCurrent --value inir.service 2>/dev/null || echo unknown)"
     cpu0="$(systemctl --user show -p CPUUsageNSec --value inir.service 2>/dev/null || echo 0)"
@@ -172,21 +237,64 @@ measure_service_mode() {
 
 activate_rust() {
     section "LIVE SHELL A/B"
-    if [[ ! -x "$ACTIVE_RUNTIME/scripts/native-dispatch" ]]; then
-        kv "live A/B" "SKIP (active runtime lacks scripts/native-dispatch)"
-        kv "active_runtime" "$ACTIVE_RUNTIME"
-        echo "Direct Python/Rust parity and microbenchmarks above are still valid."
-        echo "Refresh the active Hadalis runtime from this checkout, then rerun for live A/B."
-        return 0
+    local relative
+    for relative in \
+        scripts/native-dispatch scripts/inir scripts/colors/switchwall.sh \
+        services/KeyboardIndicators.qml services/RuntimeDiagnostics.qml \
+        services/NiriService.qml services/LocalMusic.qml services/IconThemeService.qml \
+        services/Wallpapers.qml services/deferred/Cliphist.qml \
+        services/deferred/NiriKeybinds.qml \
+        modules/onScreenKeyboard/PhysicalKeyboardFeedback.qml \
+        modules/settings/NiriConfig.qml modules/settings/MonitorVisibilityConfig.qml; do
+        if ! cmp -s "$ROOT_DIR/$relative" "$ACTIVE_RUNTIME/$relative"; then
+            block_activation "installed runtime differs from tested $relative"
+            break
+        fi
+    done
+    if ((${#ACTIVATION_BLOCKERS[@]})); then
+        kv "live A/B" "SKIP (${#ACTIVATION_BLOCKERS[@]} blocker(s))"
+        return 1
+    fi
+    if ! systemctl --user is-active --quiet inir.service; then
+        block_activation "inir.service is not active"
+        kv "live A/B" "SKIP (no active service)"
+        return 1
     fi
     echo "Measuring the same inir.service once with Python selected, then with Rust selected."
-    measure_service_mode python
-    measure_service_mode rust
+    if ! measure_service_mode python; then
+        block_activation "Python baseline service restart failed"
+        if ! restore_python; then
+            block_activation "automatic Python rollback failed"
+            RUNTIME_MODE="unknown after rollback failure"
+        fi
+        return 1
+    fi
+    RUNTIME_MODE="python baseline active"
+    if ! measure_service_mode rust; then
+        block_activation "Rust-selected service restart failed"
+        if ! restore_python; then
+            block_activation "automatic Python rollback failed"
+            RUNTIME_MODE="unknown after rollback failure"
+        fi
+        return 1
+    fi
+    local active_info
+    active_info="$(env -u INIR_NATIVE_BACKEND -u INIR_NATIVE_BIN_DIR \
+        "$ACTIVE_RUNTIME/scripts/native-dispatch" backend-info 2>&1)"
+    if [[ "$active_info" != *$'mode=rust\n'* || "$active_info" != *"bin_dir=$BIN_DIR"* ]]; then
+        block_activation "installed selector did not retain Rust mode and binary path"
+        if ! restore_python; then
+            block_activation "automatic Python rollback failed"
+            RUNTIME_MODE="unknown after rollback failure"
+        fi
+        return 1
+    fi
+    RUNTIME_MODE="rust test mode active"
 
     section "PERSISTENT SELECTOR CHECK"
     echo "The following call intentionally removes selector env vars; it must still report rust"
     echo "from the state files so Niri-spawned clipboard helpers can participate."
-    env -u INIR_NATIVE_BACKEND -u INIR_NATIVE_BIN_DIR "$ACTIVE_RUNTIME/scripts/native-dispatch" backend-info 2>&1 || true
+    printf '%s\n' "$active_info"
     printf '\nCurrent text clipboard watcher(s):\n'
     pgrep -af 'wl-paste.*--type text.*--watch' 2>/dev/null || echo "none detected"
     if pgrep -af 'wl-paste.*--type text.*--watch.*clipboard-store\.py' >/dev/null 2>&1; then
@@ -204,21 +312,23 @@ restore_python() {
     section "RESTORE PYTHON MODE"
     printf '%s\n' python > "$BACKEND_STATE_FILE"
     rm -f "$BIN_STATE_FILE"
-    systemctl --user set-environment INIR_NATIVE_BACKEND=python
+    systemctl --user set-environment INIR_NATIVE_BACKEND=python || return 1
     systemctl --user unset-environment INIR_NATIVE_BIN_DIR INIR_NATIVE_STRICT || true
-    "$ROOT_DIR/scripts/inir" restart || systemctl --user restart inir.service || true
+    "$ROOT_DIR/scripts/inir" restart || systemctl --user restart inir.service || return 1
+    systemctl --user is-active --quiet inir.service || return 1
+    RUNTIME_MODE="python restored"
     kv "backend" "python"
 }
 
 if [[ "${1:-}" == "--restore" ]]; then
-    restore_python
+    restore_python || { kv "backend" "RESTORE FAILED (inspect inir.service)"; exit 1; }
     printf '\nReport: %s\n' "$REPORT"
     exit 0
 fi
 
 section "SYSTEM"
 kv "date" "$(date --iso-8601=seconds)"
-kv "host" "$(hostname)"
+kv "host" "$(uname -n)"
 kv "kernel" "$(uname -srmo)"
 kv "repo" "$ROOT_DIR"
 kv "git_head" "$(git rev-parse HEAD 2>/dev/null || echo unknown)"
@@ -233,7 +343,7 @@ kv "quickshell" "$(qs --version 2>/dev/null || echo unavailable)"
 kv "rustc" "$(rustc --version 2>/dev/null || echo unavailable)"
 kv "cargo" "$(cargo --version 2>/dev/null || echo unavailable)"
 kv "python" "$(python3 --version 2>&1 || echo unavailable)"
-kv "mpd" "$(mpd --version 2>/dev/null | head -1 || echo unavailable)"
+kv "mpd" "$(mpd --version 2>/dev/null | sed -n '1p' || echo unavailable)"
 kv "backend_before" "${INIR_NATIVE_BACKEND:-python(default)}"
 kv "backend_state_file" "$BACKEND_STATE_FILE ($(cat "$BACKEND_STATE_FILE" 2>/dev/null || echo unset))"
 kv "native_bin_state_file" "$BIN_STATE_FILE ($(cat "$BIN_STATE_FILE" 2>/dev/null || echo unset))"
@@ -247,6 +357,9 @@ fi
 run_gate "cargo release build" 3     cargo build --manifest-path native/Cargo.toml --release --workspace
 run_gate "cargo unit tests" 4     cargo test --manifest-path native/Cargo.toml --workspace --all-targets
 run_gate "cargo clippy" 5     cargo clippy --manifest-path native/Cargo.toml --workspace --all-targets -- -D warnings
+run_gate "native boundary guard" 6 python3 native/scripts/assert-dormant.py
+run_gate "native selector contract" 7 bash scripts/test-native-selector-contract.sh
+run_gate "Niri parser regression" 8 python3 scripts/test-niri-config-structural-read.py
 "$DISPATCH" backend-info
 for binary in inir-inputd inir-mpdd inir-native inir-theme; do
     if [[ -x "$BIN_DIR/$binary" ]]; then
@@ -256,16 +369,20 @@ done
 
 section "CLIPBOARD PARITY + BENCHMARK"
 CLIP_INPUT='<meta http-equiv="content-type" content="text/html; charset=utf-8"><div>Hello&nbsp;Hadalis</div><div>Rust</div>'
+printf '%s' "$CLIP_INPUT" >"$TMP_ROOT/clip.in"
 printf '%s' "$CLIP_INPUT" | python3 scripts/clipboard-store.py --filter >"$TMP_ROOT/clip.py"
+py_clip_rc=$?
 printf '%s' "$CLIP_INPUT" | INIR_NATIVE_BACKEND=rust INIR_NATIVE_STRICT=1 "$DISPATCH" clipboard-store --filter >"$TMP_ROOT/clip.rs"
-if cmp -s "$TMP_ROOT/clip.py" "$TMP_ROOT/clip.rs"; then
+rs_clip_rc=$?
+if (( py_clip_rc == 0 && rs_clip_rc == 0 )) && cmp -s "$TMP_ROOT/clip.py" "$TMP_ROOT/clip.rs"; then
     kv "clipboard parity" "PASS"
 else
-    kv "clipboard parity" "FAIL"
+    kv "clipboard parity" "FAIL (python=$py_clip_rc rust=$rs_clip_rc)"
     diff -u "$TMP_ROOT/clip.py" "$TMP_ROOT/clip.rs" || true
+    block_activation "clipboard filter parity failed"
 fi
-bench "clipboard python" bash -c "printf '%s' '$CLIP_INPUT' | python3 '$ROOT_DIR/scripts/clipboard-store.py' --filter"
-bench "clipboard rust" bash -c "printf '%s' '$CLIP_INPUT' | '$BIN_DIR/inir-native' clipboard-filter --filter"
+INIR_BENCH_STDIN="$TMP_ROOT/clip.in" bench "clipboard python" python3 scripts/clipboard-store.py --filter
+INIR_BENCH_STDIN="$TMP_ROOT/clip.in" bench "clipboard rust" "$BIN_DIR/inir-native" clipboard-filter --filter
 
 section "NIRI READ-ONLY PARITY + BENCHMARK"
 for op in outputs get-hot-corners get-input get-layout get-animations get-window-rules get-binds list-cursor-themes validate; do
@@ -276,20 +393,88 @@ for op in outputs get-hot-corners get-input get-layout get-animations get-window
     "$BIN_DIR/inir-native" niri "$op" >"$rs" 2>"$TMP_ROOT/niri-$op.rs.err"
     rs_rc=$?
     if (( py_rc == 0 && rs_rc == 0 )); then
-        if command_exists jq && jq -e . "$py" >/dev/null 2>&1 && jq -e . "$rs" >/dev/null 2>&1; then
-            py_norm="$(jq -S -c . "$py")"
-            rs_norm="$(jq -S -c . "$rs")"
-            [[ "$py_norm" == "$rs_norm" ]] && parity=PASS || parity="DIFF"
-        else
-            cmp -s "$py" "$rs" && parity=PASS || parity=DIFF
-        fi
+        parity="$(json_compare "$py" "$rs")"
     else
         parity="ERROR(py=$py_rc rust=$rs_rc)"
     fi
     kv "niri $op" "$parity"
+    [[ "$parity" == PASS ]] || block_activation "Niri $op parity failed"
 done
 bench "niri hot-corners python" python3 scripts/niri-config.py get-hot-corners
 bench "niri hot-corners rust" "$BIN_DIR/inir-native" niri get-hot-corners
+
+section "DESKTOP CONFIG PARITY (ISOLATED TEMP HOME)"
+if python3 - "$ROOT_DIR/services/IconThemeService.qml" "$BIN_DIR/inir-native" "$TMP_ROOT/desktop" <<'PY'
+import configparser
+import os
+from pathlib import Path
+import subprocess
+import sys
+
+qml_path, rust_binary, temporary = sys.argv[1:]
+source = Path(qml_path).read_text()
+root = Path(temporary)
+files = {
+    "kdeglobals": ("Icons", "Theme"),
+    "qt5ct/qt5ct.conf": ("Appearance", "icon_theme"),
+    "qt6ct/qt6ct.conf": ("Appearance", "icon_theme"),
+    "gtk-3.0/settings.ini": ("Settings", "gtk-icon-theme-name"),
+    "gtk-4.0/settings.ini": ("Settings", "gtk-icon-theme-name"),
+}
+theme = "INIR-Native-Trial"
+for backend in ("python", "rust"):
+    for relative, (section, _) in files.items():
+        path = root / backend / ".config" / relative
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(f"[{section}]\nOther=keep\n\n[Unrelated]\nX=1\n")
+
+for process_id in ("kdeGlobalsUpdateProc", "qt5ctProc", "qt6ctProc", "gtkSettingsProc"):
+    try:
+        start = source.index("id: " + process_id)
+        opening = source.index("`", start)
+        closing = source.index("`", opening + 1)
+    except ValueError:
+        print(f"desktop Python source missing: {process_id}")
+        sys.exit(1)
+    script = source[opening + 1:closing]
+    script = script.replace("${" + process_id + ".themeName}", theme)
+    script = script.replace("\\\\", "\\")  # QML template literal escaping
+    result = subprocess.run(["python3", "-c", script],
+                            env={**os.environ, "HOME": str(root / "python")},
+                            capture_output=True, text=True)
+    if result.returncode:
+        print(f"desktop Python {process_id}: ERROR exit={result.returncode} "
+              f"{result.stderr[:200].strip()}")
+        sys.exit(1)
+
+result = subprocess.run([rust_binary, "desktop", "sync-icon-theme", theme],
+                        env={**os.environ,
+                             "XDG_CONFIG_HOME": str(root / "rust" / ".config")},
+                        capture_output=True, text=True)
+if result.returncode:
+    print(f"desktop Rust: ERROR exit={result.returncode} {result.stderr[:200].strip()}")
+    sys.exit(1)
+
+failed = False
+for relative, (section, key) in files.items():
+    configs = []
+    for backend in ("python", "rust"):
+        config = configparser.ConfigParser(interpolation=None)
+        config.optionxform = str
+        with (root / backend / ".config" / relative).open() as handle:
+            config.read_file(handle)
+        configs.append({part: dict(config[part]) for part in config.sections()})
+    equal = configs[0] == configs[1]
+    valid = configs[1].get(section, {}).get(key) == theme
+    print(f"desktop {relative:<24} {'PASS' if equal and valid else 'DIFF'}")
+    failed |= not (equal and valid)
+sys.exit(1 if failed else 0)
+PY
+then
+    kv "desktop config parity" "PASS"
+else
+    block_activation "desktop config parity failed"
+fi
 
 section "THEME PARITY + BENCHMARK"
 mkdir -p "$TMP_ROOT/theme-py" "$TMP_ROOT/theme-rs"
@@ -306,13 +491,47 @@ py_theme_rc=$?
 rs_theme_rc=$?
 kv "theme exit" "python=$py_theme_rc rust=$rs_theme_rc"
 for file in palette.json app.json terminal.json colors.json; do
-    if [[ -s "$TMP_ROOT/theme-py/$file" && -s "$TMP_ROOT/theme-rs/$file" ]]; then
-        count="$(json_diff_count "$TMP_ROOT/theme-py/$file" "$TMP_ROOT/theme-rs/$file")"
-        kv "theme $file differing keys" "$count"
+    if (( py_theme_rc == 0 && rs_theme_rc == 0 )); then
+        parity="$(json_compare "$TMP_ROOT/theme-py/$file" "$TMP_ROOT/theme-rs/$file")"
+        kv "theme $file" "$parity"
+        [[ "$parity" == PASS ]] || block_activation "theme $file parity failed"
     else
-        kv "theme $file" "missing output"
+        kv "theme $file" "ERROR (generator failed)"
+        block_activation "theme generator failed"
     fi
 done
+if (( py_theme_rc == 0 && rs_theme_rc == 0 )); then
+    parity="$(json_compare "$TMP_ROOT/theme-py/meta.json" "$TMP_ROOT/theme-rs/meta.json" --theme-meta)"
+    kv "theme meta.json (identity excluded)" "$parity"
+    [[ "$parity" == PASS ]] || block_activation "theme metadata parity failed"
+    scss_parity="$(python3 - "$TMP_ROOT/theme-py/colors.scss" "$TMP_ROOT/theme-rs/colors.scss" <<'PY'
+from pathlib import Path
+import sys
+
+def declarations(path):
+    result = {}
+    for line in Path(path).read_text().splitlines():
+        key, value = line.split(":", 1)
+        result[key.strip()] = value.strip()
+    return result
+
+try:
+    left, right = map(declarations, sys.argv[1:])
+except (OSError, ValueError) as error:
+    print(f"ERROR {error}")
+    sys.exit(1)
+if left == right:
+    print(f"PASS ({len(left)} declarations)")
+else:
+    changed = sorted(key for key in left.keys() | right.keys()
+                     if left.get(key) != right.get(key))
+    print(f"DIFF count={len(changed)} first={','.join(changed[:6])}")
+    sys.exit(1)
+PY
+)"
+    kv "theme SCSS values" "$scss_parity"
+    [[ "$scss_parity" == PASS* ]] || block_activation "theme SCSS parity failed"
+fi
 bench "theme python color-only" "${PY_THEME[@]}" "${THEME_ARGS[@]}" --json-output "$TMP_ROOT/bench-py.json"
 bench "theme rust color-only" "$BIN_DIR/inir-theme" "${THEME_ARGS[@]}" --json-output "$TMP_ROOT/bench-rs.json"
 
@@ -324,14 +543,23 @@ rs_input_rc=$?
 kv "input probe exit" "python=$py_input_rc rust=$rs_input_rc"
 kv "input python" "$(tr '\n' ' ' < "$TMP_ROOT/input.py" | head -c 240)"
 kv "input rust" "$(tr '\n' ' ' < "$TMP_ROOT/input.rs" | head -c 240)"
-proc_metrics "input python resident" python3 -u scripts/daemon/keyboard_lock_state_daemon.py
-proc_metrics "input rust resident" "$BIN_DIR/inir-inputd" --mode locks
-proc_metrics "osk keys python resident" python3 -u scripts/daemon/osk_physical_key_daemon.py
-proc_metrics "osk keys rust resident" "$BIN_DIR/inir-inputd" --mode keys
+if (( py_input_rc == 0 && rs_input_rc == 0 )); then
+    input_parity="$(json_compare "$TMP_ROOT/input.py" "$TMP_ROOT/input.rs" type caps num devices)"
+else
+    input_parity="ERROR (probe failed)"
+fi
+kv "input state parity" "$input_parity"
+[[ "$input_parity" == PASS ]] || block_activation "input state parity failed"
+bench "input probe python" python3 scripts/daemon/keyboard_lock_state_daemon.py --once
+bench "input probe rust" "$BIN_DIR/inir-inputd" --mode locks --once
+proc_metrics "input python resident" python3 -u scripts/daemon/keyboard_lock_state_daemon.py || block_activation "Python input daemon exited early"
+proc_metrics "input rust resident" "$BIN_DIR/inir-inputd" --mode locks || block_activation "Rust input daemon exited early"
+proc_metrics "osk keys python resident" python3 -u scripts/daemon/osk_physical_key_daemon.py || block_activation "Python OSK key listener exited early"
+proc_metrics "osk keys rust resident" "$BIN_DIR/inir-inputd" --mode keys || block_activation "Rust OSK key listener exited early"
 
 section "DIAGNOSTICS SCHEMA + RESIDENT COST"
 target_pid="$(systemctl --user show -p MainPID --value inir.service 2>/dev/null || true)"
-[[ "$target_pid" =~ ^[1-9][0-9]*$ ]] || target_pid="$"
+[[ "$target_pid" =~ ^[1-9][0-9]*$ ]] || target_pid="$$"
 timeout 2s python3 scripts/runtime-diagnostics-sampler.py --pid "$target_pid" --interval-ms 1000 >"$TMP_ROOT/diag.py" 2>"$TMP_ROOT/diag.py.err" || true
 timeout 2s "$BIN_DIR/inir-native" diagnostics --pid "$target_pid" --interval-ms 1000 >"$TMP_ROOT/diag.rs" 2>"$TMP_ROOT/diag.rs.err" || true
 head -n 1 "$TMP_ROOT/diag.py" >"$TMP_ROOT/diag.py.one" || true
@@ -344,12 +572,14 @@ if command_exists jq && jq -e . "$TMP_ROOT/diag.py.one" >/dev/null 2>&1 && jq -e
     else
         kv "diagnostics schema parity" "DIFF (dynamic/optional fields may differ; report retains path sets)"
         diff -U0 "$TMP_ROOT/diag.py.paths" "$TMP_ROOT/diag.rs.paths" | head -n 80 || true
+        block_activation "diagnostics schema parity failed"
     fi
 else
     kv "diagnostics schema parity" "ERROR (missing/invalid first sample)"
+    block_activation "diagnostics sample unavailable"
 fi
-proc_metrics "diagnostics python" python3 scripts/runtime-diagnostics-sampler.py --pid "$target_pid" --interval-ms 1000
-proc_metrics "diagnostics rust" "$BIN_DIR/inir-native" diagnostics --pid "$target_pid" --interval-ms 1000
+proc_metrics "diagnostics python" python3 scripts/runtime-diagnostics-sampler.py --pid "$target_pid" --interval-ms 1000 || block_activation "Python diagnostics sampler exited early"
+proc_metrics "diagnostics rust" "$BIN_DIR/inir-native" diagnostics --pid "$target_pid" --interval-ms 1000 || block_activation "Rust diagnostics sampler exited early"
 
 section "MPD READ-ONLY PARITY + BENCHMARK"
 MPD_HOST_TEST="${MPD_HOST:-127.0.0.1}"
@@ -361,18 +591,26 @@ py_mpd_rc=$?
 rs_mpd_rc=$?
 kv "mpd status exit" "python=$py_mpd_rc rust=$rs_mpd_rc"
 if (( py_mpd_rc == 0 && rs_mpd_rc == 0 )); then
-    if command_exists jq; then
-        py_state="$(jq -c '{connected,status,current,queue,musicRoot}' "$TMP_ROOT/mpd.py" 2>/dev/null || true)"
-        rs_state="$(jq -c '{connected,status,current,queue,musicRoot}' "$TMP_ROOT/mpd.rs" 2>/dev/null || true)"
-        [[ "$py_state" == "$rs_state" ]] && kv "mpd status parity" PASS || kv "mpd status parity" DIFF
+    if python3 - "$TMP_ROOT/mpd.py" <<'PY'
+import json
+import sys
+with open(sys.argv[1]) as handle:
+    sys.exit(0 if json.load(handle).get("connected") else 1)
+PY
+    then
+        mpd_parity="$(json_compare "$TMP_ROOT/mpd.py" "$TMP_ROOT/mpd.rs" --mpd-status)"
+        kv "mpd status parity" "$mpd_parity"
+        [[ "$mpd_parity" == PASS ]] || block_activation "MPD status parity failed"
+        bench "mpd status python" python3 scripts/local_music_mpd.py status "$MPD_HOST_TEST" "$MPD_PORT_TEST" "$MUSIC_ROOT_TEST"
+        bench "mpd status rust" "$BIN_DIR/inir-mpdd" --compat status "$MPD_HOST_TEST" "$MPD_PORT_TEST" "$MUSIC_ROOT_TEST"
+    else
+        kv "mpd status parity" "SKIP (MPD service unavailable)"
     fi
-    bench "mpd status python" python3 scripts/local_music_mpd.py status "$MPD_HOST_TEST" "$MPD_PORT_TEST" "$MUSIC_ROOT_TEST"
-    bench "mpd status rust" "$BIN_DIR/inir-mpdd" --compat status "$MPD_HOST_TEST" "$MPD_PORT_TEST" "$MUSIC_ROOT_TEST"
-    proc_metrics "mpd rust persistent" "$BIN_DIR/inir-mpdd" --host "$MPD_HOST_TEST" --port "$MPD_PORT_TEST" --music-root "$MUSIC_ROOT_TEST" --socket "$TMP_ROOT/mpd.sock"
 else
     kv "mpd status parity" "SKIP/ERROR"
     kv "mpd python error" "$(tr '\n' ' ' < "$TMP_ROOT/mpd.py.err" | head -c 300)"
     kv "mpd rust error" "$(tr '\n' ' ' < "$TMP_ROOT/mpd.rs.err" | head -c 300)"
+    block_activation "MPD status smoke failed"
 fi
 
 section "OPTIONAL PERF COUNTERS"
@@ -391,13 +629,24 @@ if [[ "${1:-}" != "--no-activate" ]]; then
     activate_rust
 fi
 
+section "SYSTEMD STATUS + RECENT LOGS"
+systemctl --user show inir.service \
+    -p ActiveState -p SubState -p MainPID -p MemoryCurrent -p CPUUsageNSec \
+    -p FragmentPath 2>&1 || true
+journalctl --user -u inir.service --since '-10 minutes' -n 60 --no-pager 2>&1 \
+    | awk '!seen[$0]++' | tail -n 25 || true
+
 section "SUMMARY"
 kv "report_file" "$REPORT"
 kv "native_bin_dir" "$BIN_DIR"
-if [[ "${1:-}" == "--no-activate" ]]; then
-    kv "runtime_mode" "unchanged"
+kv "runtime_mode" "$RUNTIME_MODE"
+kv "activation_blockers" "${#ACTIVATION_BLOCKERS[@]}"
+if ((${#ACTIVATION_BLOCKERS[@]})); then
+    kv "result" "HOLD (see activation blockers above)"
 else
-    kv "runtime_mode" "rust test mode left active"
+    kv "result" "PASS"
+fi
+if [[ "$RUNTIME_MODE" == "rust test mode active" ]]; then
     echo "Rollback command:"
     echo "  $ROOT_DIR/scripts/native-cutover-benchmark.sh --restore"
 fi
@@ -406,6 +655,9 @@ echo "=== SEND THIS REPORT BACK TO CHATGPT ==="
 cat <<EOF
 Report path: $REPORT
 Git HEAD: $(git rev-parse HEAD 2>/dev/null || echo unknown)
-Rust test mode: $([[ "${1:-}" == "--no-activate" ]] && echo no || echo active)
+Rust test mode: $([[ "$RUNTIME_MODE" == "rust test mode active" ]] && echo active || echo no)
 EOF
 echo "=== END ==="
+if ((${#ACTIVATION_BLOCKERS[@]})); then
+    exit 6
+fi

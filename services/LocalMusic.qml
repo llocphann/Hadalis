@@ -340,10 +340,19 @@ Singleton {
 
         const subsystems = Array.isArray(event.subsystems)
             ? event.subsystems.map(value => String(value)) : []
-        if (subsystems.includes("database") || subsystems.includes("stored_playlist"))
+        if (subsystems.includes("database") || subsystems.includes("stored_playlist")) {
             playlistRescanTimer.restart()
-        else
-            statusRefreshTimer.restart()
+            return
+        }
+
+        if (event.payload && typeof event.payload === "object") {
+            root._applyPayload(event.payload, false)
+            return
+        }
+
+        // Transport/state payload generation is fail-soft in the daemon.
+        // Keep the compatibility refresh only when an event arrived without it.
+        statusRefreshTimer.restart()
     }
 
     function _configurationChanged(): void {

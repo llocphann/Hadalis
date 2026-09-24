@@ -480,7 +480,7 @@ fn toggle_nested_flag(
 }
 
 fn parse_kdl(text: &str) -> Result<()> {
-    KdlDocument::parse_v1(text)
+    text.parse::<KdlDocument>()
         .map(|_| ())
         .map_err(|error| anyhow!("kdl_parse_failed:{error}"))
 }
@@ -1763,20 +1763,23 @@ fn get_binds() -> Result<Outcome> {
         let options = title_re.replace_all(&options_raw, "").trim().to_owned();
         let rest = caps[3].to_owned();
         let line_number = base_line + i;
-        let mut action_raw = String::new();
-        if let Some(close) = rest.find('}') {
-            action_raw = rest[..close].trim().to_owned();
+        let action_raw = if let Some(close) = rest.find('}') {
+            rest[..close].trim().to_owned()
         } else {
             i += 1;
             let mut action_lines = Vec::new();
             while i < lines.len() {
                 let line = lines[i].trim();
-                if line == "}" { break; }
-                if !line.is_empty() && !line.starts_with("//") { action_lines.push(line); }
+                if line == "}" {
+                    break;
+                }
+                if !line.is_empty() && !line.starts_with("//") {
+                    action_lines.push(line);
+                }
                 i += 1;
             }
-            action_raw = action_lines.join(" ");
-        }
+            action_lines.join(" ")
+        };
         let action = action_raw.split_whitespace().map(|part| part.trim_end_matches(';')).collect::<Vec<_>>().join(" ");
         let description = action_description(&action, &options_raw);
         let category = action_category(&description, &action);

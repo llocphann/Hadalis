@@ -22,9 +22,11 @@ Item {
     readonly property color eqAccentColor: Appearance.colors.colPrimary
     readonly property bool showTransportStatus: EqualizerService.busy
         || !EqualizerService.dspControlAvailable
+    readonly property int presetStripHeight:
+        root.compactLayout ? 20 : 22
     implicitHeight: root.compactLayout
-        ? (root.showTransportStatus ? 202 : 178)
-        : (root.showTransportStatus ? 226 : 202)
+        ? (root.showTransportStatus ? 184 : 154)
+        : (root.showTransportStatus ? 210 : 180)
     clip: root.compactLayout
 
     function syncRegistration(): void {
@@ -755,15 +757,15 @@ Item {
             }
         }
 
-        GridLayout {
+        // Presets read as a compact mode strip, not a second button grid.
+        // Inactive choices stay visually quiet; only the active curve becomes
+        // a filled capsule. Eight equal slots fit the media popup in one row.
+        RowLayout {
             Layout.fillWidth: true
-            Layout.leftMargin: root.compactLayout ? 4 : 6
-            Layout.rightMargin: root.compactLayout ? 4 : 6
+            Layout.leftMargin: root.compactLayout ? 3 : 5
+            Layout.rightMargin: root.compactLayout ? 3 : 5
             Layout.topMargin: 1
-            columns: 4
-            uniformCellWidths: true
-            columnSpacing: root.compactLayout ? 3 : 4
-            rowSpacing: root.compactLayout ? 3 : 4
+            spacing: root.compactLayout ? 2 : 3
 
             Repeater {
                 model: ["Flat", "Bass", "Treble", "Vocal",
@@ -773,31 +775,36 @@ Item {
                     id: presetButton
                     required property string modelData
                     Layout.fillWidth: true
-                    implicitHeight: root.compactLayout ? 22 : 24
-                    horizontalPadding: root.compactLayout ? 3 : 4
+                    Layout.minimumWidth: 0
+                    Layout.preferredHeight: root.presetStripHeight
+                    implicitHeight: root.presetStripHeight
+                    horizontalPadding: 1
                     buttonText: modelData
-                    buttonRadius: Appearance.rounding.small
+                    buttonRadius: height / 2
                     enabled: EqualizerService.dspControlAvailable
                         && !EqualizerService.busy
                     toggled: EqualizerService.dspPresetName === modelData
-                    colBackground: Appearance.colors.colLayer1
+                    colBackground: "transparent"
                     colBackgroundHover: Appearance.colors.colLayer1Hover
                     colBackgroundToggled:
                         Appearance.colors.colPrimaryContainer
                     colBackgroundToggledHover:
-                        Appearance.colors.colPrimaryContainer
+                        Appearance.colors.colPrimaryContainerHover
                     onClicked: root.applyPreset(modelData)
 
                     contentItem: StyledText {
+                        anchors.fill: parent
                         text: presetButton.modelData
                         horizontalAlignment: Text.AlignHCenter
                         verticalAlignment: Text.AlignVCenter
+                        elide: Text.ElideRight
+                        maximumLineCount: 1
                         font.pixelSize: Appearance.font.pixelSize.smallest
                         font.weight: presetButton.toggled
-                            ? Font.DemiBold : Font.Normal
+                            ? Font.DemiBold : Font.Medium
                         color: presetButton.toggled
                             ? Appearance.colors.colOnPrimaryContainer
-                            : Appearance.colors.colOnLayer1
+                            : Appearance.colors.colSubtext
                     }
                 }
             }

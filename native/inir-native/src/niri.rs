@@ -1923,9 +1923,9 @@ mod tests {
 
     #[test]
     fn brace_scanner_ignores_comments_and_strings() {
-        let text = "layout {\\n    // } ignored\\n    border { active-color \\\"#{x}\\\" }\\n}\\n";
+        let text = "layout {\n    // } ignored\n    border { active-color \"#{x}\" }\n}\n";
         let bounds = find_block_bounds(text, "layout", true).unwrap();
-        assert_eq!(&text[bounds.1..bounds.2], "\\n    // } ignored\\n    border { active-color \\\"#{x}\\\" }\\n");
+        assert_eq!(&text[bounds.1..bounds.2], "\n    // } ignored\n    border { active-color \"#{x}\" }\n");
     }
 
     #[test]
@@ -1938,7 +1938,7 @@ mod tests {
 
     #[test]
     fn nested_extract_works() {
-        let text = "input {\\n keyboard { xkb { layout \\\"us\\\" } }\\n}\\n";
+        let text = "input {\n keyboard { xkb { layout \"us\" } }\n}\n";
         let input = extract_block(text, "input", true).unwrap();
         let keyboard = extract_block(&input, "keyboard", true).unwrap();
         assert!(extract_block(&keyboard, "xkb", true).unwrap().contains("layout"));
@@ -1946,6 +1946,6 @@ mod tests {
 
     #[test]
     fn hot_corner_off_is_empty() {
-        assert_eq!(parse_hot_corners(Some("\\n off\\n".into())), Some(Vec::new()));
+        assert_eq!(parse_hot_corners(Some("\n off\n".into())), Some(Vec::new()));
     }
 }

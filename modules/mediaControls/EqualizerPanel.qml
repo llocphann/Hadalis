@@ -14,6 +14,10 @@ Item {
     property bool compactLayout: false
     property bool _registered: false
     property int _editingBand: -1
+    // Keep the integrated CAVA + DSP graph, but restore the original
+    // electric-current connector language on top of it.
+    property real eqLightningHighlight: 0.0
+    property real eqPresetSweepProgress: -0.12
 
     readonly property color eqAccentColor: Appearance.colors.colPrimary
     readonly property bool showTransportStatus: EqualizerService.busy
@@ -82,9 +86,84 @@ Item {
         analyzerCanvas.requestPaint()
     }
 
+    function triggerEqLightning(): void {
+        eqLightningAnim.restart()
+    }
+
+    function triggerPresetSweep(): void {
+        presetSweepAnim.restart()
+    }
+
+    function beginBandLightning(index, gain): void {
+        eqLightningAnim.stop()
+        root._editingBand = index
+        root.eqLightningHighlight = 1.0
+        analyzerCanvas.requestPaint()
+    }
+
+    function previewBandLightning(index, gain): void {
+        root.eqLightningHighlight = 1.0
+        analyzerCanvas.requestPaint()
+    }
+
+    function endBandLightning(index, gain): void {
+        root._editingBand = -1
+        root.triggerEqLightning()
+        analyzerCanvas.requestPaint()
+    }
+
     function applyPreset(name): void {
-        if (EqualizerService.applyDspPreset(name))
+        if (EqualizerService.applyDspPreset(name)) {
+            root.triggerPresetSweep()
             analyzerCanvas.requestPaint()
+        }
+    }
+
+    onEqLightningHighlightChanged: analyzerCanvas.requestPaint()
+    onEqPresetSweepProgressChanged: analyzerCanvas.requestPaint()
+
+    SequentialAnimation {
+        id: presetSweepAnim
+        running: false
+
+        ScriptAction {
+            script: root.eqPresetSweepProgress = -0.12
+        }
+
+        NumberAnimation {
+            target: root
+            property: "eqPresetSweepProgress"
+            from: -0.12
+            to: 1.16
+            duration: Appearance.animationsEnabled ? 860 : 1
+            easing.type: Easing.InOutCubic
+        }
+
+        ScriptAction {
+            script: root.eqPresetSweepProgress = -0.12
+        }
+    }
+
+    SequentialAnimation {
+        id: eqLightningAnim
+        running: false
+
+        ScriptAction {
+            script: root.eqLightningHighlight = 1.0
+        }
+
+        PauseAnimation {
+            duration: 120
+        }
+
+        NumberAnimation {
+            target: root
+            property: "eqLightningHighlight"
+            from: 1.0
+            to: 0.0
+            duration: Appearance.animationsEnabled ? 720 : 1
+            easing.type: Easing.OutCubic
+        }
     }
 
     onActiveChanged: {
@@ -221,6 +300,13 @@ Item {
                     anchors.fill: parent
                     z: 0
 
+                    Timer {
+                        interval: 33
+                        running: root.active && analyzerCanvas.visible
+                        repeat: true
+                        onTriggered: analyzerCanvas.requestPaint()
+                    }
+
                     onWidthChanged: requestPaint()
                     onHeightChanged: requestPaint()
                     onVisibleChanged: if (visible) requestPaint()
@@ -303,44 +389,136 @@ Item {
                             }
                         }
 
-                        function traceCurve() {
-                            if (points.length === 0)
-                                return
-                            ctx.beginPath()
-                            ctx.moveTo(points[0].x, points[0].y)
-                            for (let i = 0; i < points.length - 1; ++i) {
-                                const p0 = points[Math.max(0, i - 1)]
-                                const p1 = points[i]
-                                const p2 = points[i + 1]
-                                const p3 = points[
-                                    Math.min(points.length - 1, i + 2)]
-                                ctx.bezierCurveTo(
-                                    p1.x + (p2.x - p0.x) / 6,
-                                    p1.y + (p2.y - p0.y) / 6,
-                                    p2.x - (p3.x - p1.x) / 6,
-                                    p2.y - (p3.y - p1.y) / 6,
-                                    p2.x, p2.y)
-                            }
-                            ctx.stroke()
-                        }
+                        const highlight = Math.max(
+                            0, Math.min(1, root.eqLightningHighlight))
+                        const sweep = root.eqPresetSweepProgress
+                        const now = Date.now() / 1000
 
                         ctx.lineCap = "round"
                         ctx.lineJoin = "round"
 
-                        ctx.strokeStyle = root.eqAccentColor
-                        ctx.lineWidth = root.compactLayout ? 5 : 6
-                        ctx.globalAlpha = 0.18
-                        traceCurve()
+                        function sampledTrace(stroke) {
+                            const samples = [{
+                                x: points[0].x,
+                                y: points[0].y
+                            }]
+                            for (let i = 0; i < points.length - 1; ++i) {
+                                const p1 = points[i]
+                                const p2 = points[i + 1]
+                                const steps = stroke === 2 ? 6 : 8
+                                for (let j = 1; j <= steps; ++j) {
+                                    const t = j / steps
+                                    const envelope = Math.sin(t * Math.PI)
+                                    const x = p1.x + (p2.x - p1.x) * t
+                                    const y = p1.y + (p2.y - p1.y) * t
+                                    const amplitudeX = stroke === 0 ? 2.2
+                                        : (stroke === 1 ? 1.2 : 0.55)
+                                    const amplitudeY = stroke === 0 ? 2.8
+                                        : (stroke === 1 ? 1.55 : 0.7)
+                                    const noiseX = Math.sin(
+                                        now * (6.5 + stroke) + i + j)
+                                        * Math.cos(now * 5.2 - i + j)
+                                        * amplitudeX * envelope
+                                    const noiseY = Math.cos(
+                                        now * (6.1 - stroke * 0.4) + i - j)
+                                        * Math.sin(now * 4.8 + i - j)
+                                        * amplitudeY * envelope
+                                    samples.push({
+                                        x: x + noiseX,
+                                        y: y + noiseY
+                                    })
+                                }
+                            }
+                            return samples
+                        }
 
-                        ctx.strokeStyle = Qt.lighter(root.eqAccentColor, 1.18)
-                        ctx.lineWidth = root.compactLayout ? 2.1 : 2.4
-                        ctx.globalAlpha = 0.82
-                        traceCurve()
+                        function strokeTrace(samples) {
+                            ctx.beginPath()
+                            ctx.moveTo(samples[0].x, samples[0].y)
+                            for (let i = 1; i < samples.length; ++i)
+                                ctx.lineTo(samples[i].x, samples[i].y)
+                            ctx.stroke()
+                        }
 
-                        ctx.strokeStyle = "#ffffff"
-                        ctx.lineWidth = 0.8
-                        ctx.globalAlpha = 0.72
-                        traceCurve()
+                        // Three compact strokes recreate the original Hadalis
+                        // electric-wire connector while staying inside this
+                        // single CAVA + DSP graph.
+                        const traces = []
+                        for (let stroke = 0; stroke < 3; ++stroke) {
+                            const samples = sampledTrace(stroke)
+                            traces.push(samples)
+
+                            if (stroke === 0) {
+                                ctx.lineWidth = 5.5
+                                ctx.strokeStyle = root.eqAccentColor
+                                ctx.globalAlpha = 0.16 + highlight * 0.14
+                            } else if (stroke === 1) {
+                                ctx.lineWidth = 2.4
+                                ctx.strokeStyle = Qt.lighter(
+                                    root.eqAccentColor,
+                                    1.12 + highlight * 0.28)
+                                ctx.globalAlpha = 0.40 + highlight * 0.34
+                            } else {
+                                ctx.lineWidth = 1.0
+                                ctx.strokeStyle = "#ffffff"
+                                ctx.globalAlpha = 0.55 + highlight * 0.45
+                            }
+                            strokeTrace(samples)
+                        }
+
+                        // Preset changes send the old left-to-right charge
+                        // sweep through the exact same wire geometry.
+                        if (sweep >= -0.12 && sweep <= 1.16) {
+                            const sweepTail = 0.22
+                            const sweepLead = 0.035
+
+                            for (let stroke = 0;
+                                    stroke < traces.length; ++stroke) {
+                                const samples = traces[stroke]
+                                ctx.lineWidth = stroke === 0 ? 5.5
+                                    : (stroke === 1 ? 2.4 : 1.0)
+                                ctx.strokeStyle = stroke === 2
+                                    ? "#ffffff"
+                                    : Qt.lighter(root.eqAccentColor,
+                                        stroke === 0 ? 1.28 : 1.55)
+
+                                for (let i = 1;
+                                        i < samples.length; ++i) {
+                                    const p1 = samples[i - 1]
+                                    const p2 = samples[i]
+                                    const segmentPosition =
+                                        ((p1.x + p2.x) * 0.5)
+                                            / Math.max(1, width)
+                                    const distance =
+                                        sweep - segmentPosition
+                                    let pulse = 0
+
+                                    if (distance >= -sweepLead
+                                            && distance <= sweepTail) {
+                                        if (distance < 0) {
+                                            pulse = 1
+                                                - (-distance / sweepLead)
+                                        } else {
+                                            pulse = Math.pow(
+                                                1 - distance / sweepTail,
+                                                1.6)
+                                        }
+                                    }
+
+                                    if (pulse <= 0)
+                                        continue
+
+                                    ctx.beginPath()
+                                    ctx.moveTo(p1.x, p1.y)
+                                    ctx.lineTo(p2.x, p2.y)
+                                    ctx.globalAlpha = pulse
+                                        * (stroke === 0 ? 0.38
+                                            : (stroke === 1
+                                                ? 0.78 : 0.95))
+                                    ctx.stroke()
+                                }
+                            }
+                        }
 
                         ctx.globalAlpha = 1.0
                     }
@@ -419,19 +597,21 @@ Item {
 
                                 onPressedChanged: {
                                     if (pressed) {
-                                        root._editingBand = bandDelegate.index
+                                        root.beginBandLightning(
+                                            bandDelegate.index, value)
                                     } else if (enabled) {
                                         const rounded = Math.round(value)
                                         EqualizerService.setDspBandGain(
                                             bandDelegate.index, rounded)
-                                        root._editingBand = -1
-                                        analyzerCanvas.requestPaint()
+                                        root.endBandLightning(
+                                            bandDelegate.index, rounded)
                                     }
                                 }
 
                                 onMoved: {
                                     value = Math.round(value)
-                                    analyzerCanvas.requestPaint()
+                                    root.previewBandLightning(
+                                        bandDelegate.index, value)
                                 }
 
                                 Connections {
@@ -549,22 +729,25 @@ Item {
                 border.color: Appearance.colors.colLayer2
                 z: 5
 
-                Row {
+                RowLayout {
                     anchors.centerIn: parent
                     spacing: 4
 
                     Rectangle {
-                        width: 6
-                        height: 6
+                        Layout.preferredWidth: 6
+                        Layout.preferredHeight: 6
+                        Layout.alignment: Qt.AlignVCenter
                         radius: 3
                         color: Appearance.colors.colPrimary
                         opacity: eqCava.audioSignalActive ? 1.0 : 0.35
                     }
 
                     StyledText {
+                        Layout.alignment: Qt.AlignVCenter
                         text: "Live"
                         font.pixelSize: Appearance.font.pixelSize.smallest
                         font.weight: Font.Medium
+                        verticalAlignment: Text.AlignVCenter
                         color: Appearance.colors.colPrimary
                         opacity: eqCava.audioSignalActive ? 1.0 : 0.58
                     }

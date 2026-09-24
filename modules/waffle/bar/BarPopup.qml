@@ -188,9 +188,7 @@ Loader {
 
         CompositorFocusGrab {
             id: focusGrab
-            active: (root.closeOnFocusLost || popupWindow.focusGrabRequested)
-                && root.active
-                && CompositorService.isHyprland
+            active: false
             windows: [popupWindow]
             onCleared: root.focusCleared()
         }

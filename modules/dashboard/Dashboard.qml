@@ -6,7 +6,6 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 import Quickshell.Wayland
-import Quickshell.Hyprland
 
 Scope {
     id: root
@@ -139,8 +138,7 @@ Scope {
         CompositorFocusGrab {
             id: grab
             windows: [ panelRoot ]
-            active: CompositorService.isHyprland
-                && GlobalStates.dashboardOpen && panelRoot.visible
+            active: false
             onCleared: () => {
                 if (!active) panelRoot.hide()
             }

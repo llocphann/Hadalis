@@ -6,7 +6,6 @@ import Qt5Compat.GraphicalEffects as GE
 import Quickshell
 import Quickshell.Io
 import Quickshell.Wayland
-import Quickshell.Hyprland
 import qs.services
 import qs.modules.settings
 import qs.modules.common
@@ -555,7 +554,7 @@ Scope {
                 onActivated: if (typeof overlaySearchField !== "undefined" && overlaySearchField) overlaySearchField.forceActiveFocus()
             }
 
-            // Focus grab for Hyprland
+            // Compatibility focus bridge
             CompositorFocusGrab {
                 id: grab
                 windows: [settingsPanel]

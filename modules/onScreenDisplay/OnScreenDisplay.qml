@@ -10,7 +10,6 @@ import QtQuick.Layouts
 import Quickshell
 import Quickshell.Io
 import Quickshell.Wayland
-import Quickshell.Hyprland
 
 Scope {
     id: root
@@ -651,25 +650,4 @@ Scope {
         }
     }
 
-    Loader {
-        active: CompositorService.isHyprland
-        sourceComponent: Item {
-            GlobalShortcut {
-                name: "osdVolumeTrigger"
-                description: "Triggers volume OSD on press"
-
-                onPressed: {
-                    root.triggerOsd();
-                }
-            }
-            GlobalShortcut {
-                name: "osdVolumeHide"
-                description: "Hides volume OSD on press"
-
-                onPressed: {
-                    GlobalStates.osdVolumeOpen = false;
-                }
-            }
-        }
-    }
 }

@@ -11,7 +11,6 @@ import qs.modules.sidebarRight
 import QtQuick
 import Quickshell
 import Quickshell.Wayland
-import Quickshell.Hyprland
 
 Scope {
     id: root
@@ -763,9 +762,7 @@ Scope {
 
         CompositorFocusGrab {
             windows: [sidebarRoot]
-            active: !ShellEditSession.active && CompositorService.isHyprland
-                && root.roleOpen && sidebarRoot.visible
-                && !root.roleHoldOpen && !root.otherRoleOpen
+            active: false
             onCleared: () => {
                 if (!active && !root.roleHoldOpen)
                     sidebarRoot.hide()

@@ -575,17 +575,9 @@ switch() {
     [[ "$cfg_soften_colors" == "true" ]] && generate_colors_material_args+=(--soften)
     [[ "$cfg_color_invert" == "true" ]] && generate_colors_material_args+=(--invert-hue)
 
-    # Generate colors and render templates in one unified Python pass
-    if [[ -n "${INIR_VENV:-}" ]]; then
-        _ii_venv="$(eval echo "$INIR_VENV")"
-    elif [[ -n "${ILLOGICAL_IMPULSE_VIRTUAL_ENV:-}" ]]; then
-        _ii_venv="$(eval echo "$ILLOGICAL_IMPULSE_VIRTUAL_ENV")"
-    else
-        _ii_venv="$HOME/.local/state/quickshell/.venv"
-    fi
-    source "$_ii_venv/bin/activate" 2>/dev/null || true
-    _ii_python="$_ii_venv/bin/python3"
-    [[ ! -x "$_ii_python" ]] && _ii_python="python3"
+    # Generate colors and render templates through the reversible native
+    # selector. The selector resolves the Python interpreter only if fallback
+    # is actually needed, so Rust mode does not activate a Python venv.
 
     _scss_tmp="$STATE_DIR/user/generated/material_colors.scss.tmp"
     _json_tmp="$STATE_DIR/user/generated/colors.json.tmp"
@@ -679,8 +671,6 @@ switch() {
     # Running it here on top caused 2x app theming per regen and races between
     # the parallel module workers.  CLI standalone use (shell not running) can
     # invoke applycolor.sh manually if app theming is desired.
-    deactivate 2>/dev/null || true
-
     # Pass screen width, height, and wallpaper path to post_process (only when app theming is on)
     if [ "$enable_apps_shell" != "false" ]; then
         read max_width_desired max_height_desired <<< "$(get_max_monitor_resolution)"

@@ -21,8 +21,8 @@ pub fn calculate_optimal_size(width: u32, height: u32, bitmap_size: u32) -> (u32
         1.0
     };
     (
-        (f64::from(width) * scale).round().max(1.0) as u32,
-        (f64::from(height) * scale).round().max(1.0) as u32,
+        (f64::from(width) * scale).round_ties_even().max(1.0) as u32,
+        (f64::from(height) * scale).round_ties_even().max(1.0) as u32,
     )
 }
 

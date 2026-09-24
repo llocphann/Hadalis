@@ -177,21 +177,29 @@ fn main() -> Result<()> {
     let dark = matches!(args.mode, Mode::Dark);
     let transparent = matches!(args.transparency, Transparency::Transparent);
 
-    let (mut seed, mut scheme, source_path, source_kind) = resolve_seed(&args)?;
-    if args.smart && low_chroma(seed) {
+    let (source_seed, mut scheme, source_path, source_kind) = resolve_seed(&args)?;
+    if args.smart && low_chroma(source_seed) {
         scheme = "neutral".into();
     }
-    if args.invert_hue {
-        seed = invert_hue(seed);
-    }
+    let scheme_seed = if args.invert_hue {
+        invert_hue(source_seed)
+    } else {
+        source_seed
+    };
 
     if source_kind == "image"
         && let Some(cache) = &args.cache
     {
-        write_text(cache, &seed.to_hex())?;
+        write_text(cache, &source_seed.to_hex())?;
     }
 
-    let material = material_palette(seed, &scheme, dark, args.soften, args.color_strength);
+    let material = material_palette(
+        scheme_seed,
+        &scheme,
+        dark,
+        args.soften,
+        args.color_strength,
+    );
     let palette = palette_contract(&material);
     let app_palette = build_app_palette(&palette);
     let source_terminal = terminal_source(args.termscheme.as_deref(), dark)?;
@@ -232,7 +240,7 @@ fn main() -> Result<()> {
         let meta = json!({
             "source": source_kind,
             "source_path": source_path.as_ref().map(|path| path.to_string_lossy().into_owned()),
-            "seed_color": seed.to_hex(),
+            "seed_color": source_seed.to_hex(),
             "mode": if dark { "dark" } else { "light" },
             "scheme": scheme,
             "transparent": transparent,
@@ -263,7 +271,8 @@ fn main() -> Result<()> {
         let rendered = render_templates(RenderRequest {
             template_dir,
             managed_outputs: &managed_outputs,
-            seed,
+            scheme_seed,
+            source_seed,
             scheme: &scheme,
             dark_mode: dark,
             soften: args.soften,
@@ -279,7 +288,7 @@ fn main() -> Result<()> {
     if args.debug {
         eprintln!(
             "inir-theme: seed={} mode={} scheme={} material_roles={} terminal_roles={}",
-            seed.to_hex(),
+            source_seed.to_hex(),
             if dark { "dark" } else { "light" },
             scheme,
             material.len(),

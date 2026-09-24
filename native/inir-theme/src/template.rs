@@ -147,9 +147,15 @@ fn manifest_entries(
     Ok(Vec::new())
 }
 
-fn template_palette(seed: Argb, scheme: &str, dark: bool, soften: bool) -> Palette {
-    let mut material = material_palette(seed, scheme, dark, soften, 1.0);
-    material.insert("source_color".into(), seed.to_hex());
+fn template_palette(
+    scheme_seed: Argb,
+    source_seed: Argb,
+    scheme: &str,
+    dark: bool,
+    soften: bool,
+) -> Palette {
+    let mut material = material_palette(scheme_seed, scheme, dark, soften, 1.0);
+    material.insert("source_color".into(), source_seed.to_hex());
 
     let mut contract = palette_contract(&material);
     contract.retain(|key, _| {
@@ -198,13 +204,14 @@ fn camel_to_snake(value: &str) -> String {
 }
 
 fn token_namespace(
-    seed: Argb,
+    scheme_seed: Argb,
+    source_seed: Argb,
     scheme: &str,
     dark_mode: bool,
     soften: bool,
 ) -> BTreeMap<String, TokenValue> {
-    let dark = template_palette(seed, scheme, true, soften);
-    let light = template_palette(seed, scheme, false, soften);
+    let dark = template_palette(scheme_seed, source_seed, scheme, true, soften);
+    let light = template_palette(scheme_seed, source_seed, scheme, false, soften);
     let default = if dark_mode { &dark } else { &light };
     let mut names = BTreeSet::new();
     names.extend(dark.keys().cloned());
@@ -312,7 +319,8 @@ fn render_content(
 pub struct RenderRequest<'a> {
     pub template_dir: &'a Path,
     pub managed_outputs: &'a [Option<PathBuf>],
-    pub seed: Argb,
+    pub scheme_seed: Argb,
+    pub source_seed: Argb,
     pub scheme: &'a str,
     pub dark_mode: bool,
     pub soften: bool,
@@ -327,7 +335,8 @@ pub fn render_templates(request: RenderRequest<'_>) -> Result<usize> {
     }
 
     let colors = token_namespace(
-        request.seed,
+        request.scheme_seed,
+        request.source_seed,
         request.scheme,
         request.dark_mode,
         request.soften,

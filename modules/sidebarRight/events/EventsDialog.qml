@@ -298,11 +298,18 @@ WindowDialog {
 
     // Scrollable content
     Flickable {
+        id: editorFlickable
         Layout.fillWidth: true
         Layout.fillHeight: true
 
-        contentHeight: formColumn.implicitHeight
-            + (root.embeddedPresentation ? 4 : 16)
+        readonly property real embeddedGap: Math.max(4,
+            (height - basicInfoColumn.implicitHeight
+                - scheduleColumn.implicitHeight
+                - compactOptionDeck.height) / 2)
+
+        contentHeight: root.embeddedPresentation
+            ? height
+            : formColumn.implicitHeight + 16
         Layout.leftMargin: root.embeddedPresentation ? 6 : 0
         Layout.rightMargin: root.embeddedPresentation ? 6 : 0
         clip: true
@@ -315,7 +322,8 @@ WindowDialog {
         Column {
             id: formColumn
             width: parent.width
-            spacing: root.embeddedPresentation ? 0 : 4
+            spacing: root.embeddedPresentation
+                ? editorFlickable.embeddedGap : 4
 
             // ─── Basic Info Section ───────────────────────────────────
             EventSectionHeader {
@@ -329,6 +337,7 @@ WindowDialog {
             }
 
             Column {
+                id: basicInfoColumn
                 width: parent.width
                 spacing: root.embeddedPresentation ? 4 : 8
                 topPadding: root.embeddedPresentation ? 2 : 8
@@ -375,6 +384,7 @@ WindowDialog {
             }
 
             Column {
+                id: scheduleColumn
                 width: parent.width
                 spacing: root.embeddedPresentation ? 3 : 6
                 topPadding: root.embeddedPresentation ? 3 : 0
@@ -482,14 +492,19 @@ WindowDialog {
             // four labelled option sections. Fixed-size buttons keep spacing
             // predictable and avoid crowding the time controls above.
             Item {
+                id: compactOptionDeck
                 visible: root.embeddedPresentation
                 width: parent.width
                 height: 32
 
                 RowLayout {
                     visible: root.compactOptionGroup === ""
-                    anchors.centerIn: parent
-                    spacing: 6
+                    anchors {
+                        fill: parent
+                        leftMargin: 4
+                        rightMargin: 4
+                    }
+                    spacing: 0
 
                     Repeater {
                         model: [
@@ -499,49 +514,74 @@ WindowDialog {
                             { key: "reminder" }
                         ]
 
-                        delegate: CompactEventOptionButton {
+                        delegate: Item {
                             required property var modelData
-                            Layout.preferredWidth: 30
-                            Layout.preferredHeight: 30
-                            symbol: root.compactGroupIcon(modelData.key)
-                            tooltipText: root.compactGroupTooltip(modelData.key)
-                            onClicked: root.compactOptionGroup = modelData.key
+                            Layout.fillWidth: true
+                            Layout.fillHeight: true
+
+                            CompactEventOptionButton {
+                                anchors.centerIn: parent
+                                width: 30
+                                height: 30
+                                symbol: root.compactGroupIcon(
+                                    parent.modelData.key)
+                                tooltipText: root.compactGroupTooltip(
+                                    parent.modelData.key)
+                                onClicked: root.compactOptionGroup
+                                    = parent.modelData.key
+                            }
                         }
                     }
                 }
 
                 RowLayout {
                     visible: root.compactOptionGroup !== ""
-                    anchors.centerIn: parent
-                    spacing: 4
+                    anchors {
+                        fill: parent
+                        leftMargin: 4
+                        rightMargin: 4
+                    }
+                    spacing: 0
 
-                    CompactEventOptionButton {
-                        Layout.preferredWidth: 30
-                        Layout.preferredHeight: 30
-                        symbol: "arrow_back"
-                        tooltipText: Translation.tr("Back")
-                        onClicked: root.compactOptionGroup = ""
+                    Item {
+                        Layout.fillWidth: true
+                        Layout.fillHeight: true
+
+                        CompactEventOptionButton {
+                            anchors.centerIn: parent
+                            width: 30
+                            height: 30
+                            symbol: "arrow_back"
+                            tooltipText: Translation.tr("Back")
+                            onClicked: root.compactOptionGroup = ""
+                        }
                     }
 
                     Repeater {
                         model: root.compactOptionsFor(
                             root.compactOptionGroup)
 
-                        delegate: CompactEventOptionButton {
+                        delegate: Item {
                             required property var modelData
-                            Layout.preferredWidth: 30
-                            Layout.preferredHeight: 30
-                            symbol: modelData.icon
-                            selectedState: modelData.value
-                                == root.compactGroupValue(
-                                    root.compactOptionGroup)
-                            tooltipText:
-                                root.compactGroupTitle(
-                                    root.compactOptionGroup)
-                                + " · " + modelData.displayName
-                            onClicked: root.setCompactOption(
-                                root.compactOptionGroup,
-                                modelData.value)
+                            Layout.fillWidth: true
+                            Layout.fillHeight: true
+
+                            CompactEventOptionButton {
+                                anchors.centerIn: parent
+                                width: 30
+                                height: 30
+                                symbol: parent.modelData.icon
+                                selectedState: parent.modelData.value
+                                    == root.compactGroupValue(
+                                        root.compactOptionGroup)
+                                tooltipText:
+                                    root.compactGroupTitle(
+                                        root.compactOptionGroup)
+                                    + " · " + parent.modelData.displayName
+                                onClicked: root.setCompactOption(
+                                    root.compactOptionGroup,
+                                    parent.modelData.value)
+                            }
                         }
                     }
                 }
@@ -678,8 +718,9 @@ WindowDialog {
 
             // Bottom padding
             Item {
+                visible: !root.embeddedPresentation
                 width: 1
-                height: root.embeddedPresentation ? 4 : 16
+                height: 16
             }
         }
     }

@@ -59,6 +59,24 @@ def choose_theme_python() -> Path:
     )
 
 
+def python_site_path(python: Path) -> str:
+    code = (
+        "import os, site; "
+        "paths=[]; "
+        "paths.extend(getattr(site, 'getsitepackages', lambda: [])()); "
+        "user=site.getusersitepackages(); "
+        "paths.extend(user if isinstance(user, (list, tuple)) else [user]); "
+        "print(os.pathsep.join(p for p in paths if p))"
+    )
+    result = subprocess.run(
+        [str(python), "-c", code],
+        text=True,
+        capture_output=True,
+        check=True,
+    )
+    return result.stdout.strip()
+
+
 def make_image(path: Path, python: Path) -> None:
     code = r"""
 from PIL import Image
@@ -154,6 +172,14 @@ def run_backend(
         else [str(rust_binary), *args]
     )
     env = os.environ.copy()
+    preserved_site = python_site_path(python)
+    existing_pythonpath = env.get("PYTHONPATH", "")
+    if preserved_site:
+        env["PYTHONPATH"] = (
+            preserved_site
+            if not existing_pythonpath
+            else preserved_site + os.pathsep + existing_pythonpath
+        )
     env.update(
         {
             "HOME": str(home),

@@ -223,14 +223,14 @@ fn emit_lock_if_changed(state: &mut MonitorState, force: bool) -> bool {
     };
 
     let next = (caps, num);
-    if force || state.last_lock != Some(next) {
-        if !emit(InputMessage::State {
+    if (force || state.last_lock != Some(next))
+        && !emit(InputMessage::State {
             caps,
             num,
             devices: count,
-        }) {
-            return false;
-        }
+        })
+    {
+        return false;
     }
     state.last_lock = Some(next);
     true
@@ -238,10 +238,10 @@ fn emit_lock_if_changed(state: &mut MonitorState, force: bool) -> bool {
 
 fn emit_ready_if_changed(state: &mut MonitorState, force: bool) -> bool {
     let count = key_device_count(&state.devices);
-    if force || state.last_key_device_count != Some(count) {
-        if !emit(InputMessage::Ready { devices: count }) {
-            return false;
-        }
+    if (force || state.last_key_device_count != Some(count))
+        && !emit(InputMessage::Ready { devices: count })
+    {
+        return false;
     }
     state.last_key_device_count = Some(count);
     true
@@ -282,26 +282,26 @@ fn spawn_device_thread(
                             resync_locks = true;
                         }
                     }
-                    EventSummary::Led(_, code, _) => {
+                    EventSummary::Led(_, code, _)
                         if lock_candidate
-                            && (code == LedCode::LED_CAPSL || code == LedCode::LED_NUML)
-                        {
-                            resync_locks = true;
-                        }
+                            && (code == LedCode::LED_CAPSL || code == LedCode::LED_NUML) =>
+                    {
+                        resync_locks = true;
                     }
                     _ => {}
                 }
             }
 
-            if lock_candidate && resync_locks {
-                if let Ok(leds) = device.get_led_state() {
-                    let _ = tx.send(InternalEvent::LockSnapshot {
-                        path: path.clone(),
-                        token,
-                        caps: leds.contains(LedCode::LED_CAPSL),
-                        num: leds.contains(LedCode::LED_NUML),
-                    });
-                }
+            if lock_candidate
+                && resync_locks
+                && let Ok(leds) = device.get_led_state()
+            {
+                let _ = tx.send(InternalEvent::LockSnapshot {
+                    path: path.clone(),
+                    token,
+                    caps: leds.contains(LedCode::LED_CAPSL),
+                    num: leds.contains(LedCode::LED_NUML),
+                });
             }
         }
 
@@ -467,17 +467,18 @@ fn process_event(
                 .is_some_and(|device| device.token == token)
             {
                 let removed = state.devices.remove(&path);
-                if let Some(removed) = removed {
-                    if mode.wants_keys() && removed.key_candidate {
-                        for code in removed.pressed {
-                            if !key_pressed(&state.devices, code)
-                                && !emit(InputMessage::Key {
-                                    code,
-                                    pressed: false,
-                                })
-                            {
-                                return false;
-                            }
+                if let Some(removed) = removed
+                    && mode.wants_keys()
+                    && removed.key_candidate
+                {
+                    for code in removed.pressed {
+                        if !key_pressed(&state.devices, code)
+                            && !emit(InputMessage::Key {
+                                code,
+                                pressed: false,
+                            })
+                        {
+                            return false;
                         }
                     }
                 }
@@ -495,13 +496,14 @@ fn process_event(
             caps,
             num,
         } => {
-            if let Some(device) = state.devices.get_mut(&path) {
-                if device.token == token && device.lock_candidate {
-                    device.caps = caps;
-                    device.num = num;
-                    if mode.wants_locks() && !emit_lock_if_changed(state, false) {
-                        return false;
-                    }
+            if let Some(device) = state.devices.get_mut(&path)
+                && device.token == token
+                && device.lock_candidate
+            {
+                device.caps = caps;
+                device.num = num;
+                if mode.wants_locks() && !emit_lock_if_changed(state, false) {
+                    return false;
                 }
             }
         }

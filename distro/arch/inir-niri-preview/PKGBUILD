@@ -1,6 +1,6 @@
 pkgname=inir-niri-preview
 pkgver=0.1.0
-pkgrel=1
+pkgrel=2
 pkgdesc='Hadalis native Niri window preview QML plugin'
 arch=(x86_64 aarch64)
 url='https://github.com/llocphann/Hadalis'
@@ -20,13 +20,8 @@ makedepends=(
 source=()
 sha256sums=()
 
-prepare() {
-  rm -rf "$srcdir/native"
-  cp -a "$startdir/src" "$srcdir/native"
-}
-
 build() {
-  cmake -GNinja -B "$srcdir/build" -S "$srcdir/native" \
+  cmake -GNinja -B "$srcdir/build" -S "$startdir/plugin" \
     -DCMAKE_BUILD_TYPE=RelWithDebInfo \
     -DCMAKE_INSTALL_PREFIX=/usr
   cmake --build "$srcdir/build"

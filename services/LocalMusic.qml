@@ -130,7 +130,6 @@ Singleton {
     readonly property bool canGoNext:
         hasCurrentTrack && (currentIndex < activeQueue.length - 1 || repeatMode === 2)
 
-    readonly property string _mpdScript: Directories.scriptsPath + "/local_music_mpd.py"
     readonly property string nativeDispatchPath: Directories.scriptsPath + "/native-dispatch"
 
     function _trackForIdentity(uri: string, path: string): var {

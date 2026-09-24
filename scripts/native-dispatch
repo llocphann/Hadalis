@@ -33,10 +33,15 @@ python_bin() {
     fi
     if [[ -x "$candidate" ]]; then
         printf '%s\n' "$candidate"
+    elif command -v python3 >/dev/null 2>&1; then
+        # Nix wrappers provide the packaged Python environment through PATH.
+        # Prefer it over a host /usr/bin/python3 so Python fallback keeps its
+        # declared dependencies without switchwall activating a venv first.
+        command -v python3
     elif [[ -x /usr/bin/python3 ]]; then
         printf '%s\n' /usr/bin/python3
     else
-        command -v python3
+        return 127
     fi
 }
 

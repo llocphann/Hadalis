@@ -100,7 +100,10 @@ Bar.StyledPopup {
             root.keyboardInteraction = false
     }
 
-    Connections {
+    // StyledPopup's default property accepts only QQuickItem. Keep the
+    // non-visual ScreenTime observer on an explicit QObject property so type
+    // construction never tries to route Connections into popup content.
+    property QtObject _screenTimeConnections: Connections {
         target: ScreenTime
 
         function onDataChanged(): void {

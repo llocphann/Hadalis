@@ -60,6 +60,14 @@ the tested checkout. A parity failure leaves the running service unchanged and
 returns exit code 6 with a HOLD report. `--no-activate` runs the checks without
 the live switch; `--restore` switches the user service back to Python.
 
+For a first pass that leaves the service alone, run
+`./scripts/native-cutover-benchmark.sh --no-activate`. Before the live trial,
+install the current `dev` runtime with the supported `inir update` flow and
+rerun the harness without `--no-activate`. The harness refuses the switch if
+any trial-critical installed file differs from the tested checkout. Keep the
+report from each run; if the trial needs to end, run the same script with
+`--restore`.
+
 The report is written under `$XDG_STATE_HOME/inir/` (or
 `~/.local/state/inir/`). Send that report back for analysis.
 

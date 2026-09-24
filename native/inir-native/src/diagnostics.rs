@@ -708,7 +708,7 @@ fn sample(pid: i32, previous: Option<&SampleState>) -> Result<(Value, SampleStat
         .unwrap_or(0);
     let refresh_slow = previous.slow.at_ns.is_none() || slow_elapsed_ns >= 2_000_000_000;
 
-    let (memory_now, drm_now, child_rows, child_state, engine_busy, slow_state) = if refresh_slow {
+    let mut slow_state = if refresh_slow {
         let memory = read_memory(pid);
         let drm = read_drm(pid);
         let (children, child_state) =
@@ -730,29 +730,29 @@ fn sample(pid: i32, previous: Option<&SampleState>) -> Result<(Value, SampleStat
                 });
             busy.insert(name.clone(), value);
         }
-        let slow = SlowState {
+        SlowState {
             at_ns: Some(now_ns),
-            memory: Some(memory.clone()),
-            drm: Some(drm.clone()),
-            engine_busy: busy.clone(),
-            children_rows: children.clone(),
-            children_state: child_state.clone(),
-        };
-        (memory, drm, children, child_state, busy, slow)
+            memory: Some(memory),
+            drm: Some(drm),
+            engine_busy: busy,
+            children_rows: children,
+            children_state: child_state,
+        }
     } else {
-        (
-            previous
-                .slow
-                .memory
-                .clone()
-                .unwrap_or_else(|| read_memory(pid)),
-            previous.slow.drm.clone().unwrap_or_else(|| read_drm(pid)),
-            previous.slow.children_rows.clone(),
-            previous.slow.children_state.clone(),
-            previous.slow.engine_busy.clone(),
-            previous.slow.clone(),
-        )
+        previous.slow.clone()
     };
+
+    if slow_state.memory.is_none() {
+        slow_state.memory = Some(read_memory(pid));
+    }
+    if slow_state.drm.is_none() {
+        slow_state.drm = Some(read_drm(pid));
+    }
+    let memory_now = slow_state
+        .memory
+        .as_ref()
+        .expect("slow memory initialized");
+    let drm_now = slow_state.drm.as_ref().expect("slow drm initialized");
 
     let elapsed_ns = previous
         .monotonic_ns
@@ -873,15 +873,15 @@ fn sample(pid: i32, previous: Option<&SampleState>) -> Result<(Value, SampleStat
                 "counters": io_now,
                 "rates": io_rates,
             },
-            "children": child_rows,
+            "children": &slow_state.children_rows,
             "gpu": {
                 "scope": "shell-process",
                 "method": "drm-fdinfo",
                 "confidence": "kernel",
                 "available": drm_now.available,
                 "clientCount": drm_now.client_count,
-                "engineBusyPercent": option_map_f64(&engine_busy),
-                "memoryKiB": drm_memory_value(&drm_now),
+                "engineBusyPercent": option_map_f64(&slow_state.engine_busy),
+                "memoryKiB": drm_memory_value(drm_now),
             }
         },
         "network": {
@@ -904,10 +904,7 @@ fn sample(pid: i32, previous: Option<&SampleState>) -> Result<(Value, SampleStat
         system_cpu: system_cpu_now,
         io: io_now,
         network: net_now,
-        slow: SlowState {
-            children_state: child_state,
-            ..slow_state
-        },
+        slow: slow_state,
     };
     Ok((payload, state))
 }

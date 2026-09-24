@@ -49,7 +49,15 @@ struct Args {
     #[arg(long)]
     compat: bool,
 
-    /// Arguments consumed by --compat: MODE HOST PORT [MODE_ARGS...].
+    /// Forward the legacy CLI contract to a running inir-mpdd Unix socket.
+    #[arg(long)]
+    client_compat: bool,
+
+    /// Subscribe to MPD idle events through a running inir-mpdd Unix socket.
+    #[arg(long)]
+    subscribe: bool,
+
+    /// Arguments consumed by --compat/--client-compat: MODE HOST PORT [MODE_ARGS...].
     #[arg(trailing_var_arg = true)]
     compat_args: Vec<String>,
 }
@@ -1318,6 +1326,183 @@ fn run_compat(args: &[String]) -> i32 {
     }
 }
 
+
+fn legacy_request(args: &[String]) -> Result<Value> {
+    if args.len() < 3 {
+        bail!("usage: --client-compat MODE HOST PORT [MODE_ARGS...]");
+    }
+
+    let mode = args[0].as_str();
+    let _host = &args[1];
+    let _port = args[2].parse::<u16>().context("invalid_port")?;
+    let rest = &args[3..];
+
+    let (op, params) = match mode {
+        "snapshot" | "status" => (mode, json!({})),
+        "queue" => {
+            if rest.len() < 2 {
+                bail!("queue_requires_index_and_payload");
+            }
+            let index = rest[0].parse::<i64>().context("invalid_queue_index")?;
+            let uris = load_json_list_argument(&rest[1])?;
+            ("queue", json!({"index": index, "uris": uris}))
+        }
+        "enqueue" => {
+            if rest.len() < 3 {
+                bail!("enqueue_requires_root_play_now_uri");
+            }
+            let uri = rest[2].clone();
+            if uri.is_empty() {
+                bail!("empty_uri");
+            }
+            ("enqueue", json!({"playNow": rest[1] == "1", "uri": uri}))
+        }
+        "enqueue-many" => {
+            if rest.len() < 2 {
+                bail!("enqueue_many_requires_root_and_payload");
+            }
+            (
+                "enqueue-many",
+                json!({"uris": load_json_list_argument(&rest[1])?}),
+            )
+        }
+        "playlist-create" | "playlist-add" => {
+            if rest.len() < 2 {
+                bail!("playlist_requires_name_and_payload");
+            }
+            (
+                mode,
+                json!({
+                    "name": rest[0],
+                    "uris": load_json_list_argument(&rest[1])?
+                }),
+            )
+        }
+        "command" => {
+            if rest.len() < 2 {
+                bail!("command_requires_name_and_args");
+            }
+            let args: Value = serde_json::from_str(&rest[1])?;
+            if !args.is_array() {
+                bail!("command_args_must_be_array");
+            }
+            ("command", json!({"name": rest[0], "args": args}))
+        }
+        _ => bail!("unknown_mode:{mode}"),
+    };
+
+    Ok(json!({"v": 1, "id": 1, "op": op, "params": params}))
+}
+
+fn run_client_compat(args: &[String], socket: &Path) -> i32 {
+    let request = match legacy_request(args) {
+        Ok(request) => request,
+        Err(error) => return compat_error(&error),
+    };
+
+    let mut stream = match UnixStream::connect(socket) {
+        Ok(stream) => stream,
+        Err(error) => {
+            eprintln!(
+                "inir-mpdd: daemon socket unavailable at {}: {error}",
+                socket.display()
+            );
+            return 75;
+        }
+    };
+
+    if let Err(error) = write_json_line(&mut stream, &request) {
+        eprintln!("inir-mpdd: daemon request write failed: {error:#}");
+        return 75;
+    }
+
+    let mut reader = BufReader::new(stream);
+    let mut line = String::new();
+    if let Err(error) = reader.read_line(&mut line) {
+        eprintln!("inir-mpdd: daemon response read failed: {error}");
+        return 75;
+    }
+    if line.is_empty() {
+        eprintln!("inir-mpdd: daemon closed before replying");
+        return 75;
+    }
+
+    let response: Value = match serde_json::from_str(line.trim()) {
+        Ok(response) => response,
+        Err(error) => {
+            eprintln!("inir-mpdd: invalid daemon response: {error}");
+            return 75;
+        }
+    };
+
+    if response.get("ok").and_then(Value::as_bool) != Some(true) {
+        let error = response
+            .get("error")
+            .and_then(Value::as_str)
+            .unwrap_or("mpd_daemon_operation_failed");
+        let payload = json!({"connected": false, "error": error});
+        println!(
+            "{}",
+            serde_json::to_string(&payload)
+                .unwrap_or_else(|_| "{\"connected\":false}".into())
+        );
+        return 1;
+    }
+
+    let payload = response.get("result").cloned().unwrap_or(Value::Null);
+    match serde_json::to_string(&payload) {
+        Ok(text) => {
+            println!("{text}");
+            0
+        }
+        Err(error) => {
+            eprintln!("inir-mpdd: daemon result serialization failed: {error}");
+            75
+        }
+    }
+}
+
+fn run_subscribe(socket: &Path) -> Result<()> {
+    let mut stream = UnixStream::connect(socket)
+        .with_context(|| format!("connect daemon socket {}", socket.display()))?;
+    write_json_line(
+        &mut stream,
+        &json!({"v": 1, "id": 1, "op": "subscribe", "params": {}}),
+    )?;
+
+    let mut reader = BufReader::new(stream);
+    let mut line = String::new();
+    reader.read_line(&mut line)?;
+    if line.is_empty() {
+        bail!("daemon_closed_before_subscribe_ack");
+    }
+
+    let ack: Value = serde_json::from_str(line.trim())?;
+    if ack.get("ok").and_then(Value::as_bool) != Some(true) {
+        bail!(
+            "{}",
+            ack.get("error")
+                .and_then(Value::as_str)
+                .unwrap_or("subscribe_failed")
+        );
+    }
+
+    let stdout = io::stdout();
+    let mut out = stdout.lock();
+    serde_json::to_writer(&mut out, &json!({"v": 1, "type": "subscribed"}))?;
+    out.write_all(b"\n")?;
+    out.flush()?;
+
+    loop {
+        line.clear();
+        if reader.read_line(&mut line)? == 0 {
+            return Ok(());
+        }
+        out.write_all(line.as_bytes())?;
+        out.flush()?;
+    }
+}
+
 fn default_socket_path() -> PathBuf {
     std::env::var_os("XDG_RUNTIME_DIR")
         .map(PathBuf::from)
@@ -1343,7 +1528,14 @@ fn main() -> Result<()> {
         std::process::exit(run_compat(&args.compat_args));
     }
 
-    let socket = args.socket.unwrap_or_else(default_socket_path);
+    let socket = args.socket.clone().unwrap_or_else(default_socket_path);
+    if args.client_compat {
+        std::process::exit(run_client_compat(&args.compat_args, &socket));
+    }
+    if args.subscribe {
+        return run_subscribe(&socket);
+    }
+
     let root = args.music_root.unwrap_or_default();
     let manager = Arc::new(MpdManager::new(args.host.clone(), args.port, root));
     let subscribers = Arc::new(Mutex::new(Vec::new()));
@@ -1377,7 +1569,7 @@ fn main() -> Result<()> {
 
 #[cfg(test)]
 mod tests {
-    use super::{pairs, quote, records};
+    use super::{legacy_request, pairs, quote, records};
 
     #[test]
     fn parses_legacy_compat_cli_shape() {
@@ -1398,6 +1590,36 @@ mod tests {
             args.compat_args,
             vec!["status", "127.0.0.1", "6600", ""]
         );
+    }
+
+    #[test]
+    fn maps_legacy_status_to_daemon_request() {
+        let request = legacy_request(&[
+            "status".into(),
+            "127.0.0.1".into(),
+            "6600".into(),
+            "/music".into(),
+        ])
+        .expect("legacy status should map to an RPC request");
+
+        assert_eq!(request["op"], "status");
+        assert_eq!(request["params"], json!({}));
+    }
+
+    #[test]
+    fn maps_legacy_queue_payload_to_daemon_request() {
+        let request = legacy_request(&[
+            "queue".into(),
+            "127.0.0.1".into(),
+            "6600".into(),
+            "2".into(),
+            "[\"a.flac\",\"b.flac\"]".into(),
+        ])
+        .expect("legacy queue should map to an RPC request");
+
+        assert_eq!(request["op"], "queue");
+        assert_eq!(request["params"]["index"], 2);
+        assert_eq!(request["params"]["uris"], json!(["a.flac", "b.flac"]));
     }
 
     #[test]

@@ -1453,7 +1453,6 @@
             "enabledWidgets": [
                 "calendar",
                 "events",
-                "todo",
                 "calculator",
                 "sysmon",
                 "weather"

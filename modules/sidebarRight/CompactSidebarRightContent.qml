@@ -716,16 +716,13 @@ Item {
 
     readonly property var widgetSections: {
         root.configVersion // Force dependency
-        const enabled = Config.options?.sidebar?.right?.enabledWidgets ?? ["calendar", "todo", "notepad", "calculator", "sysmon", "weather", "timer"]
+        const enabled = Config.options?.sidebar?.right?.enabledWidgets ?? ["calendar", "events", "calculator", "sysmon", "weather"]
         const all = [
             {id: "calendar",   icon: "calendar_month", label: Translation.tr("Calendar"),   component: calendarComponent},
             {id: "events",     icon: "event_upcoming", label: Translation.tr("Events"),     component: eventsComponent},
-            {id: "todo",       icon: "done_outline",  label: Translation.tr("To Do"),      component: todoComponent},
-            {id: "notepad",    icon: "edit_note",     label: Translation.tr("Notepad"),    component: notepadComponent},
             {id: "calculator", icon: "calculate",     label: Translation.tr("Calc"),       component: calculatorComponent},
             {id: "sysmon",     icon: "monitor_heart", label: Translation.tr("System"),     component: sysmonComponent},
             {id: "weather",    icon: "light_mode", label: Translation.tr("Weather"), component: weatherDetailComponent},
-            {id: "timer",      icon: "schedule",      label: Translation.tr("Timer"),      component: timerComponent},
             {id: "screentime", icon: "av_timer",      label: Translation.tr("Screen Time"), component: screenTimeComponent},
         ]
         return all.filter(w => {

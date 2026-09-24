@@ -2437,7 +2437,7 @@ Singleton {
                     property list<string> tabOrder: ["ai", "translator", "anime", "animeSchedule", "news", "music", "tools"]
                 }
                 property JsonObject right: JsonObject {
-                    property list<string> enabledWidgets: ["calendar", "events", "todo", "calculator", "sysmon", "weather"]
+                    property list<string> enabledWidgets: ["calendar", "events", "calculator", "sysmon", "weather"]
                     property list<string> controlsSectionOrder: ["sliders", "toggles", "devices", "media", "quickActions"]
                     property list<string> sectionOrder: ["system", "sliders", "toggles", "widgets"]
                     property string headerStyle: "profile"

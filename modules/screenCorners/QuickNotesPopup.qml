@@ -2,45 +2,53 @@ pragma ComponentBehavior: Bound
 
 import QtQuick
 import QtQuick.Controls
+import QtQuick.Layouts
 import qs.modules.bar as Bar
 import qs.modules.common
+import qs.modules.common.widgets
 import qs.modules.sidebarRight.notepad
+import qs.modules.sidebarRight.todo
+import qs.modules.sidebarRight.pomodoro
 import qs.services
 
-// Bottom-left hover surface for Quick Notes.
+// Bottom-left hover surface for notes, tasks and timers.
 //
-// Hover only reveals the shared Dashboard/Sidebar presentation. While visible,
-// the layer-shell surface is armed with OnDemand keyboard interactivity so the
-// compositor can honor the first click into TextArea without stealing focus on
-// hover. Only after the editor really owns active focus do we hold the popup open.
+// Hover reveals two groups: notes/tasks and the three timer modes. The popup
+// pre-arms OnDemand keyboard focus for the note and task editors, while timer
+// controls remain pointer interactive without taking keyboard focus on hover.
 Bar.StyledPopup {
     id: root
 
     required property Item anchorItem
     property bool editorFocused: false
     property bool entryBridgeHeld: false
+    property int selectedMainTab: 0
+    property int selectedNotesTab: 0
+    readonly property bool todoDialogOpen: todoViewLoader.item?.showAddDialog ?? false
     property string cornerAttachmentEdge: "bottom"
     property real cornerAttachmentThickness: Math.max(1, Math.min(32,
         Math.round(Config.options?.appearance?.screenEdge?.width ?? 10)))
     readonly property real requestedPopupWidth: Math.max(280, Math.min(720,
         Config.options?.quickNotes?.popupWidth ?? 420))
-    readonly property real requestedPopupHeight: Math.max(180, Math.min(640,
-        Config.options?.quickNotes?.popupHeight ?? 300))
+    readonly property real requestedPopupHeight: Math.max(
+        root.selectedMainTab === 0 && root.selectedNotesTab === 0 ? 300 : 380,
+        Math.min(640, Config.options?.quickNotes?.popupHeight ?? 300))
 
     hoverTarget: root.anchorItem
     attachmentEdgeOverride: root.cornerAttachmentEdge
     attachmentThicknessOverride: root.cornerAttachmentThickness
     hoverActivates: true
-    alternativeVisibleCondition: root.editorFocused || root.entryBridgeHeld
+    alternativeVisibleCondition: root.editorFocused || root.todoDialogOpen
+        || root.entryBridgeHeld
     // Pre-arm click-to-focus before the first editor click. OnDemand does not
     // steal focus merely because the hover popup is visible.
     keyboardFocusOnDemand: true
-    keyboardFocus: root.editorFocused
+    keyboardFocus: root.editorFocused || root.todoDialogOpen
     exclusiveKeyboardFocus: true
     // Keep the fullscreen catcher below this Overlay surface so it cannot cover
     // the TextArea or replace its I-beam cursor after editor focus is acquired.
     outsideClickBackdropBelowPopup: true
-    closeOnOutsideClick: root.editorFocused
+    closeOnOutsideClick: root.editorFocused || root.todoDialogOpen
     popupBackgroundMargin: 0
 
     function enterEditorMode(): void {
@@ -63,7 +71,13 @@ Bar.StyledPopup {
         root.editorFocused = false
     }
 
-    onRequestClose: root.leaveEditorMode()
+    onRequestClose: {
+        root.leaveEditorMode()
+        if (todoViewLoader.item)
+            todoViewLoader.item.showAddDialog = false
+    }
+    onSelectedMainTabChanged: root.leaveEditorMode()
+    onSelectedNotesTabChanged: root.leaveEditorMode()
     onActiveChanged: {
         if (active) {
             if (!root.editorFocused) {
@@ -120,24 +134,106 @@ Bar.StyledPopup {
         width: parent ? parent.width : implicitWidth
         height: parent ? parent.height : implicitHeight
 
-        // Reuse the exact Dashboard/Sidebar Quick Notes presentation. The
-        // nested Loader keeps the heavier editor/timers cold while this
-        // monitor's hot-corner popup is not resident.
-        Loader {
-            id: notesViewLoader
+        ColumnLayout {
             anchors.fill: parent
-            active: root.active
+            spacing: 8
 
-            sourceComponent: QuickNotesView {
-                margin: 0
-                surfaceLocalTabSelection: true
-                showHeader: true
-                showZettelkastenActions: true
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 8
 
-                // Only a real TextArea active-focus transition promotes the
-                // hover preview into held editor mode. Header/tab/tool pointer
-                // interactions remain non-keyboard-owning.
-                onEditorActivated: root.enterEditorMode()
+                Repeater {
+                    model: [
+                        { icon: "note_stack", label: Translation.tr("Notes & To-do") },
+                        { icon: "timer", label: Translation.tr("Timers") }
+                    ]
+
+                    delegate: Button {
+                        id: mainTabButton
+                        required property var modelData
+                        required property int index
+                        Layout.fillWidth: true
+                        implicitHeight: 38
+                        Accessible.name: modelData.label
+                        onClicked: root.selectedMainTab = index
+                        background: Rectangle {
+                            radius: Appearance.rounding.normal
+                            color: root.selectedMainTab === mainTabButton.index
+                                ? Appearance.colors.colPrimaryContainer
+                                : Appearance.colors.colLayer1
+                        }
+                        contentItem: RowLayout {
+                            spacing: 6
+                            MaterialSymbol {
+                                text: mainTabButton.modelData.icon
+                                iconSize: 18
+                                color: Appearance.colors.colOnLayer1
+                            }
+                            StyledText {
+                                Layout.fillWidth: true
+                                text: mainTabButton.modelData.label
+                                horizontalAlignment: Text.AlignHCenter
+                                elide: Text.ElideRight
+                                color: Appearance.colors.colOnLayer1
+                                font.weight: root.selectedMainTab === mainTabButton.index
+                                    ? Font.DemiBold : Font.Normal
+                            }
+                        }
+                    }
+                }
+            }
+
+            SecondaryTabBar {
+                Layout.fillWidth: true
+                visible: root.selectedMainTab === 0
+                currentIndex: root.selectedNotesTab
+                onCurrentIndexChanged: root.selectedNotesTab = currentIndex
+                SecondaryTabButton {
+                    buttonText: Translation.tr("Quick Notes")
+                    buttonIcon: "edit_note"
+                    selected: root.selectedNotesTab === 0
+                }
+                SecondaryTabButton {
+                    buttonText: Translation.tr("To-do")
+                    buttonIcon: "checklist"
+                    selected: root.selectedNotesTab === 1
+                }
+            }
+
+            Item {
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+
+                Loader {
+                    id: notesViewLoader
+                    anchors.fill: parent
+                    active: root.active && root.selectedMainTab === 0
+                        && root.selectedNotesTab === 0
+                    sourceComponent: QuickNotesView {
+                        margin: 0
+                        surfaceLocalTabSelection: true
+                        showHeader: true
+                        showZettelkastenActions: true
+                        onEditorActivated: root.enterEditorMode()
+                    }
+                }
+
+                Loader {
+                    id: todoViewLoader
+                    anchors.fill: parent
+                    active: root.active && root.selectedMainTab === 0
+                        && root.selectedNotesTab === 1
+                    sourceComponent: TodoWidget {}
+                }
+
+                Loader {
+                    id: timerViewLoader
+                    anchors.fill: parent
+                    active: root.active && root.selectedMainTab === 1
+                    sourceComponent: PomodoroWidget {
+                        compactMode: true
+                    }
+                }
             }
         }
     }

@@ -161,17 +161,15 @@ Scope {
             && (Config.options?.enabledPanels ?? []).includes(quickNotesBarPanelId)
             && !(Config.options?.bar?.autoHide?.enable ?? false)
             && cornerPanelWindow.quickNotesBarTargetsOutput()
-        readonly property bool quickNotesBarOwnsLeft:
-            quickNotesBarOwnsConfiguredEdge
-            && quickNotesBarVertical && !quickNotesBarTrailing
         readonly property bool quickNotesBarOwnsBottom:
             quickNotesBarOwnsConfiguredEdge
             && !quickNotesBarVertical && quickNotesBarTrailing
-        readonly property string quickNotesAttachmentEdge:
-            quickNotesBarOwnsLeft ? "left" : "bottom"
+        // The bottom-left corner remains bottom-attached even when a vertical
+        // Bar owns the left edge. Switching attachment to left moves the body
+        // towards the top because the tiny corner anchor has local y = 0.
+        readonly property string quickNotesAttachmentEdge: "bottom"
         readonly property real quickNotesAttachmentThickness:
-            quickNotesBarOwnsLeft ? Appearance.sizes.verticalBarWidth
-            : quickNotesBarOwnsBottom ? Appearance.sizes.barHeight
+            quickNotesBarOwnsBottom ? Appearance.sizes.barHeight
             : Math.max(1, Math.min(32,
                 Math.round(Config.options?.appearance?.screenEdge?.width ?? 10)))
 

@@ -288,7 +288,7 @@ ContentPage {
                 title: Translation.tr("Right Sidebar")
                 tooltip: Translation.tr("Toggle which widgets appear in the right sidebar")
 
-                readonly property var defaults: ["calendar", "todo", "notepad", "calculator", "sysmon", "weather", "timer"]
+                readonly property var defaults: ["calendar", "events", "calculator", "sysmon", "weather"]
 
                 function isEnabled(widgetId) {
                     return (Config.options?.sidebar?.right?.enabledWidgets ?? defaults).includes(widgetId)
@@ -332,24 +332,6 @@ ContentPage {
                 }
 
                 SettingsSwitch {
-                    buttonIcon: "done_outline"
-                    text: Translation.tr("To Do")
-                    Component.onCompleted: checked = rightSidebarWidgets.isEnabled("todo")
-                    onClicked: {
-                        rightSidebarWidgets.setWidget("todo", checked)
-                    }
-                }
-
-                SettingsSwitch {
-                    buttonIcon: "edit_note"
-                    text: Translation.tr("Notepad")
-                    Component.onCompleted: checked = rightSidebarWidgets.isEnabled("notepad")
-                    onClicked: {
-                        rightSidebarWidgets.setWidget("notepad", checked)
-                    }
-                }
-
-                SettingsSwitch {
                     buttonIcon: "calculate"
                     text: Translation.tr("Calculator")
                     Component.onCompleted: checked = rightSidebarWidgets.isEnabled("calculator")
@@ -373,15 +355,6 @@ ContentPage {
                     Component.onCompleted: checked = rightSidebarWidgets.isEnabled("weather")
                     onClicked: {
                         rightSidebarWidgets.setWidget("weather", checked)
-                    }
-                }
-
-                SettingsSwitch {
-                    buttonIcon: "schedule"
-                    text: Translation.tr("Timer")
-                    Component.onCompleted: checked = rightSidebarWidgets.isEnabled("timer")
-                    onClicked: {
-                        rightSidebarWidgets.setWidget("timer", checked)
                     }
                 }
 

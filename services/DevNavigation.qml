@@ -32,7 +32,6 @@ Singleton {
         { id: "sidebar-right/sysmon", family: "shared", surface: "sidebar-right", view: "sysmon", safe: true, settleMs: 350 },
         { id: "sidebar-right/weather", family: "shared", surface: "sidebar-right", view: "weather", safe: true, settleMs: 450 },
         { id: "sidebar-right/timer", family: "shared", surface: "sidebar-right", view: "timer", safe: true, settleMs: 350 },
-        { id: "sidebar-right/screentime", family: "shared", surface: "sidebar-right", view: "screentime", safe: true, settleMs: 350 },
         { id: "control-panel", family: "ii", surface: "control-panel", view: "", safe: true, settleMs: 350 },
         { id: "dashboard", family: "ii", surface: "dashboard", view: "", safe: true, settleMs: 450 },
         { id: "notification-center", family: "ii", surface: "notification-center", view: "", safe: true, settleMs: 350 },

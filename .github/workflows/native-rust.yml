@@ -97,6 +97,11 @@ jobs:
           python3 native/scripts/check-clipboard-parity.py native/target/debug/inir-native
           python3 native/scripts/check-diagnostics-parity.py native/target/debug/inir-native
 
+      - name: Desktop icon configuration parity
+        run: |
+          cargo build --locked --manifest-path native/Cargo.toml -p inir-native
+          python3 native/scripts/check-desktop-icon-parity.py native/target/debug/inir-native
+
       - name: Install Python theme parity dependencies
         run: python3 -m pip install --disable-pip-version-check --no-input numpy pillow materialyoucolor
 

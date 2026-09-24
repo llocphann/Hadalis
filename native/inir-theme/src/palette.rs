@@ -15,9 +15,9 @@ use serde_json::{Map, Value, json};
 
 pub type Palette = BTreeMap<String, String>;
 
-// Python fallback does not opt into materialyoucolor's 2025 spec, so parity requires 2021.
-// Keep this explicit: changing it is a user-visible theme migration, not an implementation detail.
-pub const MATERIAL_SPEC: SpecVersion = SpecVersion::Spec2021;
+// Hosted Python/Rust parity currently matches materialyoucolor's 2025 dynamic-color
+// outputs. Keep this explicit: changing the spec is a user-visible theme migration.
+pub const MATERIAL_SPEC: SpecVersion = SpecVersion::Spec2025;
 
 const PALETTE_KEYS: &[(&str, &str)] = &[
     ("primary", "primary"),
@@ -772,7 +772,7 @@ mod tests {
 
     #[test]
     fn material_spec_matches_python_fallback() {
-        assert_eq!(MATERIAL_SPEC, SpecVersion::Spec2021);
+        assert_eq!(MATERIAL_SPEC, SpecVersion::Spec2025);
     }
 
     #[test]

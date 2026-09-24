@@ -102,7 +102,7 @@ pkgbase = inir-shell
 	conflicts = noctalia-qs
 	conflicts = noctalia-shell
 	conflicts = cachyos-niri-noctalia
-	source = hadalis-2.29.3-34f3edd4eb2cbb3162f431eda4b942aa111ed328.tar.gz::https://github.com/llocphann/Hadalis/archive/34f3edd4eb2cbb3162f431eda4b942aa111ed328.tar.gz
+	source = hadalis-2.29.3-e6573beb3b78b9de4002945583265d2796eb8e8e.tar.gz::https://github.com/llocphann/Hadalis/archive/e6573beb3b78b9de4002945583265d2796eb8e8e.tar.gz
 	sha256sums = SKIP
 
 pkgname = inir-shell

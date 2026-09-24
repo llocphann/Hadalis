@@ -9,7 +9,7 @@ install=inir-shell.install
 # Hadalis does not publish version tags/releases yet. Keep the non-VCS package
 # reproducible by pinning the reviewed source snapshot; release automation can
 # switch this to a tag once the project publishes one.
-_source_ref="${INIR_SOURCE_REF:-34f3edd4eb2cbb3162f431eda4b942aa111ed328}"
+_source_ref="${INIR_SOURCE_REF:-e6573beb3b78b9de4002945583265d2796eb8e8e}"
 _default_source_archive="https://github.com/llocphann/Hadalis/archive/${_source_ref}.tar.gz"
 _source_archive="${INIR_SOURCE_ARCHIVE:-${_default_source_archive}}"
 _source_dir="${INIR_SOURCE_DIR:-Hadalis-${_source_ref}}"

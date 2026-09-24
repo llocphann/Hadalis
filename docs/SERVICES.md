@@ -46,7 +46,8 @@
 
 | Service | What it does |
 |---------|-------------|
-| **CodeWorkflowRuntime** | Narrow semantic runtime registry for live Code Workflow targets and safe allowlisted values. |
+| **CodeWorkflowRuntime** | Narrow semantic runtime registry for live Code Workflow targets and safe allowlisted values. Its bounded lifecycle event buffer can reveal component churn/instance activity, but is not CPU/RAM attribution. |
+| **RuntimeDiagnostics** | On-demand kernel-backed shell/system sampler for Diagnostics. Reports whole-shell CPU/RAM/I/O/GPU plus real descendant-process CPU/RSS; compact Diagnostics combines that process evidence with CodeWorkflow lifecycle activity without inventing per-QML resource percentages. |
 | **CodeWorkflowAnalyzer** | On-demand read-only QML parser process boundary. Reports parser availability, diagnostics, transient CST evidence and fail-closed stable semantic-anchor rebind state without regex fallback or source writes. |
 | **CodeWorkflowIr** | Loads the versioned read-only semantic projection manifest used by the workflow graph; source-range parsing remains a separate boundary. |
 | **CodeWorkflowPicker** | In-process per-output component picker lifecycle for overlay Settings; no standalone cross-process bridge. |

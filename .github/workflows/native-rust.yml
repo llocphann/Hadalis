@@ -5,7 +5,7 @@ on:
     paths:
       - 'native/**'
       - 'scripts/native-dispatch'
-      - 'scripts/test-native-cutover.sh'
+      - 'scripts/native-cutover-benchmark.sh'
       - 'scripts/test-native-selector-contract.sh'
       - 'scripts/inir'
       - 'services/KeyboardIndicators.qml'

@@ -358,7 +358,7 @@ if [[ "${1:-}" == "--no-activate" ]]; then
 else
     kv "runtime_mode" "rust test mode left active"
     echo "Rollback command:"
-    echo "  $ROOT_DIR/scripts/test-native-cutover.sh --restore"
+    echo "  $ROOT_DIR/scripts/native-cutover-benchmark.sh --restore"
 fi
 echo
 echo "=== SEND THIS REPORT BACK TO CHATGPT ==="

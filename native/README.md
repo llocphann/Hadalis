@@ -16,7 +16,7 @@ Rust is now wired only through `scripts/native-dispatch`.
 - Packaging still does not require the Rust binaries.
 
 The trial is intentionally reversible. Run
-`scripts/test-native-cutover.sh --restore` to return the user service to the
+`scripts/native-cutover-benchmark.sh --restore` to return the user service to the
 Python backend.
 
 ## Native crates
@@ -41,7 +41,7 @@ native unit-test workspace.
 For machine-level comparison, run:
 
 ```bash
-./scripts/test-native-cutover.sh
+./scripts/native-cutover-benchmark.sh
 ```
 
 The harness builds release binaries, runs Rust tests/clippy, compares Python and

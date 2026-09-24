@@ -5,7 +5,7 @@ root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 fail() { printf 'FAIL: %s\n' "$1" >&2; exit 1; }
 
 dispatch="$root/scripts/native-dispatch"
-harness="$root/scripts/test-native-cutover.sh"
+harness="$root/scripts/native-cutover-benchmark.sh"
 
 [[ -x "$dispatch" ]] || fail 'native-dispatch must be executable'
 [[ -x "$harness" ]] || fail 'native cutover harness must be executable'
@@ -32,7 +32,7 @@ grep -Fq 'nativeIconSyncProc' "$root/services/IconThemeService.qml"     || fail 
 grep -Fq '/inir-inputd([[:space:]]|$)' "$root/scripts/inir"     || fail 'shell restart cleanup must recognize Rust input daemon'
 grep -Fq '/inir-native[[:space:]]+diagnostics' "$root/scripts/inir"     || fail 'shell restart cleanup must recognize Rust diagnostics sampler'
 
-# The test cutover must remain reversible.
+# The trial cutover harness must remain reversible.
 grep -Fq 'measure_service_mode rust' "$harness"     || fail 'cutover harness must activate and measure Rust explicitly'
 grep -Fq 'INIR_NATIVE_BACKEND=python' "$harness"     || fail 'cutover harness must provide Python rollback'
 grep -Fq -- '--restore' "$harness"     || fail 'cutover harness must expose --restore'

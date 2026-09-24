@@ -33,7 +33,7 @@ DashCard {
     readonly property bool veryShallowLayout:
         root.height > 0 && root.height < 210
     readonly property int tabControlHeight:
-        root.veryShallowLayout ? 34 : (root.narrowLayout ? 36 : 38)
+        root.veryShallowLayout ? 28 : (root.narrowLayout ? 30 : 32)
     readonly property int safeEdgeInset: 2
     readonly property int actionButtonSize:
         root.veryShallowLayout ? 30 : 32
@@ -166,31 +166,6 @@ DashCard {
                 }
             }
 
-            RippleButton {
-                Layout.preferredWidth: root.actionButtonSize
-                Layout.minimumWidth: root.actionButtonSize
-                Layout.maximumWidth: root.actionButtonSize
-                Layout.preferredHeight: root.actionButtonSize
-                Layout.minimumHeight: root.actionButtonSize
-                Layout.alignment: Qt.AlignVCenter
-                implicitWidth: root.actionButtonSize
-                implicitHeight: root.actionButtonSize
-                buttonRadius: root.actionButtonSize / 2
-                colBackground: Appearance.colors.colLayer2
-                colBackgroundHover: Appearance.colors.colLayer2Hover
-                onClicked: root.openTodoSettings()
-
-                contentItem: MaterialSymbol {
-                    anchors.centerIn: parent
-                    text: "more_horiz"
-                    iconSize: 18
-                    color: root.colSubtext
-                }
-
-                StyledToolTip {
-                    text: Translation.tr("To-do & Quick Notes")
-                }
-            }
         }
 
         Item {
@@ -202,15 +177,13 @@ DashCard {
             clip: false
 
             readonly property real halfWidth: width / 2
-            readonly property real inset: 3
+            readonly property real inset: 2
             readonly property real innerHeight: height - inset * 2
             readonly property real cornerRadius: innerHeight / 2
             readonly property real arcKappa: 0.5522847498
-            readonly property int iconSlotSize: root.narrowLayout ? 17 : 18
-            readonly property int tabIconSize: root.narrowLayout ? 15 : 16
-            readonly property int badgeSize: root.narrowLayout ? 19 : 21
-            readonly property real contentPadding: root.narrowLayout ? 7 : 9
-            readonly property real contentSpacing: root.narrowLayout ? 3 : 5
+            readonly property int tabIconSize: root.narrowLayout ? 14 : 15
+            readonly property int badgeSize: root.narrowLayout ? 17 : 18
+            readonly property real labelSpacing: 4
 
             // One canonical inactive silhouette is mirrored between left/right.
             // The outer end and the inward contact end are built from the same
@@ -383,33 +356,23 @@ DashCard {
                 height: tabShell.height
                 z: 4
 
-                RowLayout {
-                    anchors.fill: parent
-                    anchors.leftMargin: tabShell.contentPadding
-                    anchors.rightMargin: tabShell.contentPadding
-                    spacing: tabShell.contentSpacing
+                Row {
+                    id: leftTabLabel
+                    anchors.centerIn: parent
+                    spacing: tabShell.labelSpacing
 
-                    Item {
-                        Layout.preferredWidth: tabShell.iconSlotSize
-                        Layout.preferredHeight: tabShell.iconSlotSize
-                        Layout.alignment: Qt.AlignVCenter
-
-                        MaterialSymbol {
-                            anchors.centerIn: parent
-                            text: "checklist"
-                            iconSize: tabShell.tabIconSize
-                            color: root.currentTab === 0
-                                ? Appearance.colors.colOnPrimaryContainer
-                                : root.colSubtext
-                        }
+                    MaterialSymbol {
+                        anchors.verticalCenter: parent.verticalCenter
+                        text: "checklist"
+                        iconSize: tabShell.tabIconSize
+                        color: root.currentTab === 0
+                            ? Appearance.colors.colOnPrimaryContainer
+                            : root.colSubtext
                     }
 
                     StyledText {
-                        Layout.fillWidth: true
-                        Layout.alignment: Qt.AlignVCenter
+                        anchors.verticalCenter: parent.verticalCenter
                         text: Translation.tr("Unfinished")
-                        horizontalAlignment: Text.AlignHCenter
-                        verticalAlignment: Text.AlignVCenter
                         font.pixelSize: Appearance.font.pixelSize.small
                         font.weight: Font.Medium
                         color: root.currentTab === 0
@@ -418,26 +381,28 @@ DashCard {
                         elide: Text.ElideRight
                         maximumLineCount: 1
                     }
+                }
 
-                    Rectangle {
-                        Layout.preferredWidth: tabShell.badgeSize
-                        Layout.preferredHeight: tabShell.badgeSize
-                        Layout.alignment: Qt.AlignVCenter
-                        radius: height / 2
+                Rectangle {
+                    anchors.right: parent.right
+                    anchors.rightMargin: 6
+                    anchors.verticalCenter: parent.verticalCenter
+                    width: tabShell.badgeSize
+                    height: tabShell.badgeSize
+                    radius: height / 2
+                    color: root.currentTab === 0
+                        ? Appearance.colors.colPrimary
+                        : Appearance.colors.colLayer2
+
+                    StyledText {
+                        id: leftCountText
+                        anchors.centerIn: parent
+                        text: root.unfinishedTasks.length
+                        font.pixelSize: Appearance.font.pixelSize.smallest
+                        font.weight: Font.DemiBold
                         color: root.currentTab === 0
-                            ? Appearance.colors.colPrimary
-                            : Appearance.colors.colLayer2
-
-                        StyledText {
-                            id: leftCountText
-                            anchors.centerIn: parent
-                            text: root.unfinishedTasks.length
-                            font.pixelSize: Appearance.font.pixelSize.smallest
-                            font.weight: Font.DemiBold
-                            color: root.currentTab === 0
-                                ? Appearance.colors.colOnPrimary
-                                : root.colSubtext
-                        }
+                            ? Appearance.colors.colOnPrimary
+                            : root.colSubtext
                     }
                 }
             }
@@ -448,33 +413,23 @@ DashCard {
                 height: tabShell.height
                 z: 4
 
-                RowLayout {
-                    anchors.fill: parent
-                    anchors.leftMargin: tabShell.contentPadding
-                    anchors.rightMargin: tabShell.contentPadding
-                    spacing: tabShell.contentSpacing
+                Row {
+                    id: rightTabLabel
+                    anchors.centerIn: parent
+                    spacing: tabShell.labelSpacing
 
-                    Item {
-                        Layout.preferredWidth: tabShell.iconSlotSize
-                        Layout.preferredHeight: tabShell.iconSlotSize
-                        Layout.alignment: Qt.AlignVCenter
-
-                        MaterialSymbol {
-                            anchors.centerIn: parent
-                            text: "check_circle"
-                            iconSize: tabShell.tabIconSize
-                            color: root.currentTab === 1
-                                ? Appearance.colors.colOnPrimaryContainer
-                                : root.colSubtext
-                        }
+                    MaterialSymbol {
+                        anchors.verticalCenter: parent.verticalCenter
+                        text: "check_circle"
+                        iconSize: tabShell.tabIconSize
+                        color: root.currentTab === 1
+                            ? Appearance.colors.colOnPrimaryContainer
+                            : root.colSubtext
                     }
 
                     StyledText {
-                        Layout.fillWidth: true
-                        Layout.alignment: Qt.AlignVCenter
+                        anchors.verticalCenter: parent.verticalCenter
                         text: Translation.tr("Done")
-                        horizontalAlignment: Text.AlignHCenter
-                        verticalAlignment: Text.AlignVCenter
                         font.pixelSize: Appearance.font.pixelSize.small
                         font.weight: Font.Medium
                         color: root.currentTab === 1
@@ -483,26 +438,28 @@ DashCard {
                         elide: Text.ElideRight
                         maximumLineCount: 1
                     }
+                }
 
-                    Rectangle {
-                        Layout.preferredWidth: tabShell.badgeSize
-                        Layout.preferredHeight: tabShell.badgeSize
-                        Layout.alignment: Qt.AlignVCenter
-                        radius: height / 2
+                Rectangle {
+                    anchors.right: parent.right
+                    anchors.rightMargin: 6
+                    anchors.verticalCenter: parent.verticalCenter
+                    width: tabShell.badgeSize
+                    height: tabShell.badgeSize
+                    radius: height / 2
+                    color: root.currentTab === 1
+                        ? Appearance.colors.colPrimary
+                        : Appearance.colors.colLayer2
+
+                    StyledText {
+                        id: rightCountText
+                        anchors.centerIn: parent
+                        text: root.doneTasks.length
+                        font.pixelSize: Appearance.font.pixelSize.smallest
+                        font.weight: Font.DemiBold
                         color: root.currentTab === 1
-                            ? Appearance.colors.colPrimary
-                            : Appearance.colors.colLayer2
-
-                        StyledText {
-                            id: rightCountText
-                            anchors.centerIn: parent
-                            text: root.doneTasks.length
-                            font.pixelSize: Appearance.font.pixelSize.smallest
-                            font.weight: Font.DemiBold
-                            color: root.currentTab === 1
-                                ? Appearance.colors.colOnPrimary
-                                : root.colSubtext
-                        }
+                            ? Appearance.colors.colOnPrimary
+                            : root.colSubtext
                     }
                 }
             }

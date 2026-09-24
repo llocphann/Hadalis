@@ -11,10 +11,10 @@
 > **Current `dev` snapshot (2026-09-25):**
 > - The qualified **Rust native workspace is the production backend**. `inir-native`, `inir-inputd`, `inir-mpdd` and `inir-theme` are built/shipped by supported install paths; Python implementations remain an explicit rollback/fail-soft path rather than the default selector.
 > - **Runtime Diagnostics is implemented as a production MVP**, not a research-only plan. Material and Waffle Settings share the same compact dashboard, main-shell evidence transport and demand-driven lease/session lifecycle.
-> - **Material is the only public shell-wide Global Theme**. Legacy persisted theme/style values are migration input only and must normalize to supported Material behavior rather than reactivate retired renderers.
-> - The **iRiS connected-surface migration is the production baseline** for ii connected presentation. Full `iiPerimeter` composition ownership remains a separate guarded cutover boundary.
-> - **Waffle remains a supported independent panel family** and must not be removed or treated as legacy during ii cleanup.
-> - Source/contract completion is not the same as release acceptance: runtime-sensitive gates still require the canonical local validator and live Niri/Quickshell checks on the exact candidate SHA.
+> - **Release-blocker sections A–G are maintainer-accepted as complete** and are no longer active checklist items.
+> - **H. Legacy/compatibility cleanup is the only remaining lettered v1.0 blocker.**
+> - **Material is the only public shell-wide Global Theme**; Waffle remains a supported independent panel family, not a legacy theme/runtime.
+> - The canonical local validator and final live Niri/Quickshell smoke pass still apply to the exact release candidate as the global release gate.
 
 ## 1. Source-of-truth and workflow
 
@@ -235,103 +235,15 @@ The maintainer requires the physical Screen Edge corners to match Caelestia with
 
 ## Equalizer implementation status
 
-### Implemented
+The v1.0 Media Popup equalizer work is complete and accepted. `EqualizerService.qml` remains the single optional 10-band DSP backend/service contract with EasyEffects transport, preset curves and consumer-driven lifecycle. CAVA/EasyEffects capability handling must continue to degrade gracefully when optional dependencies are absent.
 
-`EqualizerService.qml` provides the Phase 1 backend/service contract and is disabled by default. It owns the optional 10-band DSP state, EasyEffects transport boundary, preset curves and consumer-driven lifecycle without creating a second equalizer backend.
-
-### Stabilizing
-
-The existing backend is being stabilized around transport probing, EasyEffects lifecycle changes, state synchronization and live visual/audio validation in the Media Popup. These are hardening tasks; they do not imply that the open release gates below have already passed.
-
-### Planned
-
-Further equalizer presentation experiments are planned/deferred rather than current release prerequisites. The v1.0 release-blocker list below remains the authority for required source and live validation.
+Further equalizer presentation experiments are post-v1.0/non-blocking unless the maintainer explicitly promotes them back into active scope.
 
 ## 3. v1.0 release blockers
 
-Checkboxes below are **release gates**, not an assertion that no partial implementation exists. A line explicitly labeled **source-complete** may be checked once its source/contract work is complete; runtime-sensitive acceptance remains open until the relevant local/live validation passes.
+Sections **A–G are maintainer-accepted as complete and have been removed from the active blocker list**. Do not re-open them from stale checklists or historical notes unless a new regression is observed.
 
-> **Current release status (2026-09-25):** current `dev` has the production Rust cutover, demand-driven Runtime Diagnostics MVP, Material-only public Global Theme boundary, iRiS connected-surface baseline, ThinkFan integration, compact System Monitor refinements, current Calendar/Weather composition and the existing media/equalizer implementation. Rust/native and Diagnostics now have dedicated parity/contract coverage. Remaining release work is primarily live desktop acceptance, hardware/compositor validation, the known Settings/navigation defect, final active-tree residue cleanup, and exact-candidate validation. Historical implementation sequences belong in Git history / `CHANGELOG.md`, not in this active checklist.
-
-### A. Screen Edge and connected surfaces — P0
-
-> **Latest perimeter correction:** the legacy round-wedge/corner renderer family is retired. Curved connected contact is iRiS-owned; otherwise the joined body edge stays square. Horizontal/vertical Bar PanelWindows and the canonical Screen Edge frame remain independently owned and mapped across fullscreen.
-
-- [ ] **Screen Edge exists both while idle and while a window is maximized.** It must not disappear simply because no maximized window is present.
-- [ ] **Bar survives fullscreen enter/exit without reload.** Horizontal and vertical ii Bar native surfaces and the painted Screen Edge `FrameWindow` stay mapped/updating; fullscreen coverage is owned by compositor stacking, not `visible`/`updatesEnabled` gates. Transparent reservation-only windows may release their exclusive zones independently. Leaving fullscreen must restore all Bar contents immediately without `inir restart` or shell reload.
-- [ ] **Screen Edge width is configurable in Settings.** The setting must use one canonical configuration field, have a safe default/range and update the active edge without requiring an alternate renderer.
-- [ ] **Screen Edge corner radius is configurable in Settings and defines the physical ii Bar/Screen Edge.** Default is 25px. Direct-attached surfaces do not derive a second legacy wedge radius from it; iRiS contact remains independently tokenized.
-- [ ] **All connected surfaces use one direct-attachment contract.** No popup may invent a private gap or auxiliary round-wedge patch. Shared geometry/iRiS owns seam overlap, joined-edge ownership and shadow/input clipping.
-- [ ] **No visible gap between bar/Screen Edge and popup body.** Shared geometry must own seam overlap so fractional scaling, animation and antialiasing do not expose a slit.
-- [ ] **Left and right Sidebars connect to the vertical Screen Edge**, not to the top bar or bottom screen edge.
-- [ ] Connected surfaces behave correctly for top/bottom/left/right bar placement, transformed outputs and fractional scale.
-- [ ] Reverse retract / hover bridge keeps the source and popup visually and interactively continuous during close/reopen transitions.
-
-### B. Popup interaction correctness — P0
-
-> **Latest maintainer correction (2026-09-18):** direction-only translation is insufficient. During reveal/retract the popup body must remain full-size, translate toward/away from the owning edge, and be clipped at the resting attachment boundary so the hidden portion is visually underneath the Bar/Screen Edge. The connected body must not scale/shrink.
-
-- [ ] Existing bar popups continue to use `modules/bar/StyledPopup.qml` and the shared connected-surface primitives.
-- [ ] Popup placement anchors from the real visual source control / `hoverTarget`, not a loader or lifecycle wrapper.
-- [ ] Keyboard focus, initial focus, Escape close and compositor focus-grab behavior remain correct.
-- [ ] Outside-click close works without stealing input from transparent regions.
-- [ ] Full-output click-catchers are owned by the same output as their popup on multi-monitor setups.
-- [ ] Tray menu delayed-close logic cannot release the focus/grab of a newer active tray menu.
-- [ ] No guessed `PanelWindow.active` / `onActiveChanged` style APIs are introduced without verifying the current Quickshell API.
-
-### C. Thinkfan + System Monitor — P0
-
-- [ ] **Thinkfan UI is integrated into the existing System Monitor popup** instead of living as a separate standalone popup.
-- [ ] **Thinkfan settings are exposed in Settings** in the appropriate system-monitor/thermal area.
-- [ ] Reuse the existing Thinkfan helper/service path; do not create a duplicate fan-control backend.
-- [ ] Unsupported/missing Thinkfan environments fail gracefully and do not break System Monitor or Settings loading.
-- [ ] Fan status/control state stays synchronized between Settings and the System Monitor popup.
-
-### D. Settings correctness — P0
-
-- [ ] **Settings > Bar renders real content** and no longer presents an empty page.
-- [ ] Bar settings expose only supported v1.0 behavior; retired Dock/Bar renderer switches must not reappear through routing.
-- [ ] Settings page loading remains lazy/deferred enough to avoid large synchronous rebuilds.
-- [ ] Screen Edge width and Thinkfan controls are reachable through the normal Settings navigation.
-- [ ] No user-facing setting remains that points to a removed runtime with no effect.
-- [ ] Global Theme UI exposes **Material only**; no removed theme can still be selected, previewed or routed through Settings.
-
-### E. Media Popup equalizer — P0
-
-> **Latest maintainer correction (2026-09-19):** the DSP curve keeps a compact electric current visible at rest. Preset changes and direct band edits brighten the same current without increasing stroke width or jitter amplitude; the old oversized transient sweep/per-band growth is retired. This remains presentation-only and does not create a second DSP backend. Live visual/audio validation remains pending.
-
-- [ ] The bar-attached Media Popup suppresses `PlayerControl`'s decorative `WaveVisualizer`; its **10-band DSP Equalizer** is the only live CAVA/analyzer surface in that popup. Other `PlayerControl` owners may still use the optional wave visualizer.
-- [ ] The same Media Popup includes a **10-band DSP Equalizer** below the player card, using the existing optional `EqualizerService` / EasyEffects backend rather than a second ad-hoc equalizer process. User-facing bands are 31/63/125/250/500/1k/2k/4k/8k/16k Hz with the Serpantinum Flat/Bass/Treble/Vocal/Pop/Rock/Jazz/Classic curves.
-- [ ] Confirm the required CAVA runtime/package is present in the supported install/package paths, or document/install it where currently missing. EasyEffects + socat remain optional capabilities and must degrade gracefully when absent.
-- [ ] Equalizer/analyzer lifecycle is efficient: the bar popup owns no redundant decorative CAVA subscriber; the DSP analyzer starts only while the popup is presented and survives pause/resume, player switching and popup close/reopen.
-- [ ] MPRIS controls, seek, volume and keyboard behavior do not regress while the visualizer/DSP controls are active.
-
-### F. Clock Calendar / Weather composition — P0
-
-> **Latest maintainer direction (2026-09-19):** Calendar is owned by Clock as a dedicated Obsidian-inspired connected popup. Weather is a separate two-tab connected popup: tab 1 is the 8-hour orbital forecast and tab 2 is detailed weather. Two circular indicators sit vertically centered on the popup's right edge; mouse-wheel/touchpad vertical scrolling moves between tabs. Tab content transitions vertically in the same direction as the navigation gesture using the shared element-move timing/easing, while the popup geometry itself remains fixed.
-
-- [ ] **Clock hover:** horizontal Clock and the vertical Clock+Date cluster open the dedicated Calendar popup.
-- [ ] **Weather tabs:** orbital forecast and detailed weather share one stable popup footprint and switch by wheel or the right-edge dot indicators.
-- [ ] **Vertical slide transition:** the two pages move as a clipped vertical stack using the shared element-move motion token; scrolling down advances upward to Details, scrolling up returns downward to Orbit, and the popup body itself never resizes or translates.
-- [ ] Preserve Hadalis DateTime/Weather service ownership, units, refresh behavior, location/error states and Material theme behavior.
-- [ ] Calendar and Weather layouts remain usable across supported screen sizes/scales and do not depend on screenshot-specific dimensions.
-
-### G. Material-only Global Theme cleanup — P0
-
-Material is the **single canonical Global Theme** for Hadalis 1.0.
-
-**Source-complete on current `dev`:**
-
-- [x] Public Settings/Welcome/GlobalActions Global Theme selection is Material-only.
-- [x] `Appearance.globalStyle` is runtime-clamped to `material`; legacy persisted values cannot reactivate alternate shell-wide renderers.
-- [x] Retired Bar renderer families and Dock style families are absent from the live runtime graph; Dock compatibility converges to `panel`.
-- [x] Legacy UI locale/style compatibility is normalization-only rather than an alternate runtime path.
-- [x] Material-only regression guards cover Settings, global-style routing and public documentation contracts.
-
-**Release acceptance still open:**
-
-- [ ] Run a final active-tree residue audit and remove any remaining live non-Material Global Theme branch/asset/doc reference that is not required by a current supported caller or migration shim.
-- [ ] Validate Material rendering across Bar, Screen Edge, connected popups, Sidebars, Overview, Settings and Waffle on the exact release candidate.
+The only remaining lettered v1.0 blocker is:
 
 ### H. Legacy/compatibility cleanup — P1
 
@@ -341,23 +253,15 @@ Material is the **single canonical Global Theme** for Hadalis 1.0.
 - [ ] Old persisted values must degrade safely to the supported v1.0 behavior instead of resurrecting removed renderers or themes.
 - [ ] Keep Waffle separate and supported.
 
+Exact-candidate local validation remains part of the global v1.0 definition of done even though A–G are no longer active blocker sections.
+
 ## 3.1 Latest maintainer runtime findings
 
-Only unresolved runtime findings belong here. Remove an item after the maintainer accepts the fix on the target desktop instead of retaining completed history.
+Only unresolved work belongs here. A–G acceptance is complete and must not be duplicated as pending runtime findings.
 
 - **Runtime Diagnostics UI:** the backend/session/evidence path and compact shared dashboard are source-complete. Current work is presentation refinement toward a modern observability/resource-suspects console. Preserve demand-driven sampling, main-shell measurement, explicit error provenance and the “QML lifecycle, not CPU/RAM” truth boundary.
-- **Rust production backend:** source cutover is complete. Rust is the default selector and supported install/package paths ship `inir-inputd`, `inir-mpdd`, `inir-native` and `inir-theme`; Python remains explicit rollback/fail-soft compatibility. Do not treat benchmark selector state as the production contract.
-- **Settings navigation indicator:** still unresolved. Expanding/collapsing **Headings** can make the active task-tab indicator jump downward. The previous attempt is not accepted; re-audit/replace the failed geometry or lifecycle approach rather than stacking another workaround.
-- **System Monitor popup refinement:** source-side two-digit CPU Load width reservation and RPM/Level Material icons are present; live-validate that one/two-digit CPU changes no longer resize the popup and fan metrics remain aligned/readable.
-- **Shell boot integrity:** source guards exist for recent Code Workflow construction issues, but the installed/runtime shell must remain free of `Type ... unavailable`, duplicate-identifier and singleton-construction failures on the exact candidate.
-- **Connected-surface acceptance:** Popup, Left/Right Sidebar, Dashboard, Settings, Dock and OSK still require live Niri validation for contact geometry, seam/gap behavior, edge ownership, hover transfer/retract, fractional scale and multi-output.
-- **Screen Edge / Bar lifecycle:** validate idle/maximized visibility, width/radius/shadow settings, auto-hide ownership and fullscreen enter/exit without stranded or blank Bar content.
-- **Music/media:** validate Local Music Stop -> long idle -> Play, bulk folder/track selection, queue operations and unified Shuffle/Repeat/CAVA behavior. CAVA/EasyEffects DSP lifecycle still needs live audio/player-switch/reopen validation.
-- **Dashboard/Overview:** live-validate the mapped warm lifecycle and tuned motion without the rejected whole-Dashboard scene-graph cache; artwork/controls must not flash cyan, rebuild or disappear during open/close.
-- **Calendar/Weather:** validate responsive Calendar interaction and the fixed-footprint two-tab Weather wheel/slide behavior across supported scaling.
-- **ThinkFan/TLP:** validate installed helper/polkit reconciliation, profile-follow synchronization, active-session authorization and uninstall ownership on maintainer hardware.
-- **Material-only cleanup:** the public/runtime boundary is source-complete; only intentional migration compatibility may remain. Finish the final active-tree residue audit and live visual acceptance before closing the gate.
-- **Release gate:** run `bash scripts/validate-maintainer-local.sh` plus Niri/Quickshell live smoke tests on the exact candidate SHA before closing runtime-sensitive P0 gates.
+- **Legacy/compatibility cleanup:** this is the remaining v1.0 blocker. Remove only proven-dead retired runtime/style paths while preserving narrowly required migration normalization and the independently supported Waffle family.
+- **Release gate:** run `bash scripts/validate-maintainer-local.sh` plus the final Niri/Quickshell smoke pass on the exact candidate SHA before calling v1.0 release-ready.
 
 ## 4. Connected-surface architecture contract
 
@@ -489,18 +393,11 @@ If the maintainer gives a newer explicit instruction, that instruction supersede
 
 ## 11. Current unfinished handoff (2026-09-25)
 
-This section contains **unfinished work only**. Source-complete migrations/features belong in the status sections above; completed history belongs in Git / `CHANGELOG.md`.
+This section contains **unfinished work only**. Maintainer-accepted A–G work is complete and intentionally absent.
 
-1. **Runtime Diagnostics presentation:** keep the implemented lease/session/native-evidence architecture and redesign the Settings surface toward the agreed modern observability/resource-suspects console. Do not add background sampling, a second component catalog or fake per-QML CPU/RAM. Preserve Material/Waffle shared primitives and compact one-viewport behavior unless the maintainer explicitly changes that UX constraint.
-2. **Settings task-tab indicator:** Headings expand/collapse can still move the active indicator downward. Re-audit the failed geometry/lifecycle approach before making another fix.
-3. **System Monitor popup:** live-validate CPU width stability and ThinkFan RPM/Level alignment.
-4. **Connected surfaces:** complete live acceptance for iRiS/direct-seam contact across ii Popups, Left/Right Sidebar, Dashboard, Settings, Dock and OSK on top/bottom/left/right ownership, fractional scale and multi-output. Preserve locked physical Screen Edge/Bar geometry.
-5. **Screen Edge / Bar lifecycle:** verify idle/maximized visibility, configurable width/radius/shadow, auto-hide ownership, fullscreen enter/exit, lock/unlock and output transitions without blank/stranded surfaces.
-6. **Music/media:** live-test Local Music idle resume, bulk selection/queue operations and unified Shuffle/Repeat/CAVA. Validate EasyEffects DSP/CAVA lifecycle through pause/resume, player switch and reopen.
-7. **Dashboard/Overview + Calendar/Weather:** finish live motion/layout/gesture smoke tests across supported scaling without reintroducing the rejected whole-surface cache or a second date/weather backend.
-8. **ThinkFan/TLP:** validate helper/polkit reconciliation, profile-follow synchronization, active-session authorization and uninstall ownership on supported hardware.
-9. **Material-only final audit:** public/runtime Material-only routing is in place; remove only proven-dead residue outside intentional migration compatibility, then perform live visual acceptance.
-10. **Release validation:** run the canonical maintainer validator plus Niri live smoke tests on the exact candidate SHA. Rust production and Diagnostics source contracts do not waive this gate.
+1. **Runtime Diagnostics presentation:** keep the implemented lease/session/native-evidence architecture and refine the Settings surface toward the agreed modern observability/resource-suspects console. Do not add background sampling, a second component catalog or fake per-QML CPU/RAM.
+2. **Legacy/compatibility cleanup (H):** continue the active-tree caller audit and remove only proven-dead retired renderer/style routes. Preserve narrow migration normalization and keep Waffle fully supported.
+3. **Release validation:** run the canonical maintainer validator plus the final Niri/Quickshell smoke pass on the exact candidate SHA.
 
 **Failure-handling requirement:** do not fix a failed fix with another patch on top. Once a change is demonstrated ineffective, revert that failed change first (or surgically revert its exact change set when unrelated concurrent work shares the commit), then re-investigate and implement a materially different root-cause fix.
 
@@ -525,11 +422,10 @@ Baseline hiện tại:
 
 Ưu tiên unfinished hiện tại:
 1. refine Diagnostics thành modern observability/resource-suspects console mà không phá truth/lifecycle contracts;
-2. sửa Settings task-tab indicator;
-3. live-validate connected surfaces + Screen Edge/Bar lifecycle;
-4. live-validate media/equalizer, Dashboard/Overview, Calendar/Weather và ThinkFan/TLP;
-5. final Material-only residue audit;
-6. chạy `bash scripts/validate-maintainer-local.sh` và live Niri/Quickshell smoke test trên exact candidate SHA.
+2. hoàn tất H. Legacy/compatibility cleanup bằng caller audit, chỉ xóa code retired đã chứng minh không còn caller; giữ migration normalization cần thiết và Waffle;
+3. chạy `bash scripts/validate-maintainer-local.sh` và final Niri/Quickshell smoke test trên exact candidate SHA.
+
+A–G đã được maintainer xác nhận hoàn tất và đã xóa khỏi active release-blocker list; không resurrect chúng từ checklist/docs cũ trừ khi xuất hiện regression mới.
 
 Không coi GitHub Actions hay source-only test là bằng chứng release cuối cùng.
 ```

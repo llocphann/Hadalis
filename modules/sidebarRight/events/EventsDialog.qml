@@ -34,7 +34,10 @@ WindowDialog {
     property string eventTitle: ""
     property string eventDescription: ""
     property date eventDate: new Date()
+    // eventTime remains the start-time compatibility property.
     property string eventTime: "12:00"
+    property string eventEndTime: "13:00"
+    property bool allDay: false
     property string eventCategory: "general"
     property string eventPriority: "normal"
     property int reminderMinutes: 15
@@ -50,6 +53,8 @@ WindowDialog {
         root.eventDescription = ""
         root.eventDate = new Date()
         root.eventTime = "12:00"
+        root.eventEndTime = "13:00"
+        root.allDay = false
         root.eventCategory = "general"
         root.eventPriority = "normal"
         root.reminderMinutes = 15
@@ -60,9 +65,20 @@ WindowDialog {
         root.editingEvent = event
         root.eventTitle = event.title || ""
         root.eventDescription = event.description || ""
-        const dt = new Date(event.dateTime)
-        root.eventDate = dt
-        root.eventTime = dt.getHours().toString().padStart(2, '0') + ":" + dt.getMinutes().toString().padStart(2, '0')
+        const startSource = event.startDate || event.dateTime
+        const startDt = new Date(startSource)
+        const safeStart = isNaN(startDt.getTime()) ? new Date() : startDt
+        const endDt = event.endDate
+            ? new Date(event.endDate)
+            : new Date(safeStart.getTime() + 60 * 60 * 1000)
+        const safeEnd = isNaN(endDt.getTime())
+            ? new Date(safeStart.getTime() + 60 * 60 * 1000) : endDt
+        root.eventDate = safeStart
+        root.eventTime = safeStart.getHours().toString().padStart(2, '0')
+            + ":" + safeStart.getMinutes().toString().padStart(2, '0')
+        root.eventEndTime = safeEnd.getHours().toString().padStart(2, '0')
+            + ":" + safeEnd.getMinutes().toString().padStart(2, '0')
+        root.allDay = event.allDay === true
         root.eventCategory = event.category || "general"
         root.eventPriority = event.priority || "normal"
         root.reminderMinutes = event.reminderMinutes ?? 15
@@ -72,34 +88,57 @@ WindowDialog {
     function saveEvent(): bool {
         if (!Events.ready || root.eventTitle.trim() === "") return false
 
-        const timeParts = root.eventTime.split(":")
-        const hour = parseInt(timeParts[0]) || 0
-        const minute = parseInt(timeParts[1]) || 0
+        const startParts = root.eventTime.split(":")
+        const endParts = root.eventEndTime.split(":")
+        const startDateTime = new Date(root.eventDate)
+        const endDateTime = new Date(root.eventDate)
 
-        const dateTime = new Date(root.eventDate)
-        dateTime.setHours(hour, minute, 0, 0)
+        if (root.allDay) {
+            startDateTime.setHours(0, 0, 0, 0)
+            endDateTime.setHours(0, 0, 0, 0)
+            endDateTime.setDate(endDateTime.getDate() + 1)
+        } else {
+            startDateTime.setHours(
+                parseInt(startParts[0]) || 0,
+                parseInt(startParts[1]) || 0, 0, 0)
+            endDateTime.setHours(
+                parseInt(endParts[0]) || 0,
+                parseInt(endParts[1]) || 0, 0, 0)
+            // Treat an end time at/before the start as crossing midnight.
+            if (endDateTime.getTime() <= startDateTime.getTime())
+                endDateTime.setDate(endDateTime.getDate() + 1)
+        }
+
+        const startIso = startDateTime.toISOString()
+        const endIso = endDateTime.toISOString()
 
         if (root.isEditing) {
             return Events.updateEvent(root.editingEvent.id, {
                 title: root.eventTitle.trim(),
                 description: root.eventDescription.trim(),
-                dateTime: dateTime.toISOString(),
+                dateTime: startIso,
+                startDate: startIso,
+                endDate: endIso,
+                allDay: root.allDay,
                 category: root.eventCategory,
                 priority: root.eventPriority,
                 reminderMinutes: root.reminderMinutes,
                 recurrence: root.recurrence,
-                notified: false
+                notified: false,
+                reminderNotified: false
             })
         }
 
         return Events.addEvent(
             root.eventTitle.trim(),
             root.eventDescription.trim(),
-            dateTime.toISOString(),
+            startIso,
             root.eventCategory,
             root.eventPriority,
             root.reminderMinutes,
-            root.recurrence
+            root.recurrence,
+            endIso,
+            root.allDay
         ) !== null
     }
 
@@ -160,6 +199,11 @@ WindowDialog {
                     implicitHeight: root.embeddedPresentation ? 40 : 56
                     anchors.horizontalCenter: parent.horizontalCenter
                     placeholderText: Translation.tr("Event title") + " *"
+                    placeholderTextColor: Appearance.colors.colOnSurface
+                    color: Appearance.colors.colOnSurface
+                    renderType: Text.QtRendering
+                    font.weight: Font.Medium
+                    font.hintingPreference: Font.PreferFullHinting
                     text: root.eventTitle
                     onTextChanged: root.eventTitle = text
                 }
@@ -188,28 +232,121 @@ WindowDialog {
 
             Column {
                 width: parent.width
-                spacing: 0
-                topPadding: root.embeddedPresentation ? 4 : 0
+                spacing: root.embeddedPresentation ? 3 : 6
+                topPadding: root.embeddedPresentation ? 3 : 0
 
-                // Date picker
+                // Embedded Calendar already owns the date grid above this sheet.
+                // Modal owners keep the self-contained picker.
                 DatePicker {
+                    visible: !root.embeddedPresentation
                     width: parent.width
-                    compact: root.embeddedPresentation
+                    compact: false
                     selectedDate: root.eventDate
                     onDateSelected: (date) => { root.eventDate = date }
                 }
 
-                // Time input using ConfigTimeInput pattern
-                ConfigTimeInput {
-                    anchors {
-                        left: parent.left
-                        right: parent.right
+                RowLayout {
+                    visible: root.embeddedPresentation
+                    width: parent.width - 8
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    spacing: 6
+
+                    MaterialSymbol {
+                        text: "calendar_month"
+                        iconSize: 16
+                        color: Appearance.colors.colPrimary
                     }
-                    icon: "schedule"
-                    text: Translation.tr("Time")
-                    value: root.eventTime
-                    onTimeChanged: (newTime) => { root.eventTime = newTime }
+
+                    StyledText {
+                        Layout.fillWidth: true
+                        text: Qt.formatDate(root.eventDate, "ddd, dd MMM yyyy")
+                        color: Appearance.colors.colOnSurface
+                        font.pixelSize: Appearance.font.pixelSize.small
+                        font.weight: Font.Medium
+                    }
                 }
+
+                RowLayout {
+                    width: parent.width - 8
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    spacing: 8
+
+                    MaterialSymbol {
+                        text: "event_available"
+                        iconSize: 16
+                        color: Appearance.colors.colOnSurfaceVariant
+                    }
+
+                    StyledText {
+                        Layout.fillWidth: true
+                        text: Translation.tr("All day")
+                        color: Appearance.colors.colOnSurface
+                        font.pixelSize: Appearance.font.pixelSize.small
+                    }
+
+                    StyledSwitch {
+                        scale: 0.58
+                        checked: root.allDay
+                        onToggled: root.allDay = checked
+                    }
+                }
+
+                RowLayout {
+                    visible: !root.allDay
+                    width: parent.width
+                    spacing: root.embeddedPresentation ? 4 : 8
+
+                    ConfigTimeInput {
+                        Layout.fillWidth: true
+                        icon: "schedule"
+                        text: Translation.tr("Start")
+                        value: root.eventTime
+                        onTimeChanged: (newTime) => { root.eventTime = newTime }
+                    }
+
+                    ConfigTimeInput {
+                        Layout.fillWidth: true
+                        icon: "schedule"
+                        text: Translation.tr("End")
+                        value: root.eventEndTime
+                        onTimeChanged: (newTime) => {
+                            root.eventEndTime = newTime
+                        }
+                    }
+                }
+            }
+
+            // Repeat is part of scheduling, so keep it next to date/time rather
+            // than burying it below category/priority/reminder settings.
+            EventSectionHeader {
+                text: Translation.tr("Repeat")
+                topPadding: root.embeddedPresentation ? 5 : 16
+            }
+
+            WindowDialogSeparator {
+                visible: !root.embeddedPresentation
+                Layout.topMargin: -22
+            }
+
+            ConfigSelectionArray {
+                anchors {
+                    left: parent.left
+                    right: parent.right
+                    leftMargin: 8
+                    rightMargin: 8
+                }
+                enableSettingsSearch: false
+                options: [
+                    // "Event" maps to the existing one-time/non-recurring
+                    // storage value instead of inventing an incompatible mode.
+                    { displayName: Translation.tr("Event"), icon: "event", value: "none" },
+                    { displayName: Translation.tr("Daily"), icon: "today", value: "daily" },
+                    { displayName: Translation.tr("Weekly"), icon: "date_range", value: "weekly" },
+                    { displayName: Translation.tr("Monthly"), icon: "calendar_month", value: "monthly" },
+                    { displayName: Translation.tr("Yearly"), icon: "event_repeat", value: "yearly" }
+                ]
+                currentValue: root.recurrence
+                onSelected: (newValue) => { root.recurrence = newValue }
             }
 
             // ─── Category Section ─────────────────────────────────────
@@ -298,36 +435,6 @@ WindowDialog {
                 ]
                 currentValue: root.reminderMinutes
                 onSelected: (newValue) => { root.reminderMinutes = newValue }
-            }
-
-            // ─── Repeat Section ───────────────────────────────────────
-            EventSectionHeader {
-                text: Translation.tr("Repeat")
-                topPadding: root.embeddedPresentation ? 6 : 16
-            }
-
-            WindowDialogSeparator {
-                visible: !root.embeddedPresentation
-                Layout.topMargin: -22
-            }
-
-            ConfigSelectionArray {
-                anchors {
-                    left: parent.left
-                    right: parent.right
-                    leftMargin: 8
-                    rightMargin: 8
-                }
-                enableSettingsSearch: false
-                options: [
-                    { displayName: Translation.tr("Never"), icon: "block", value: "none" },
-                    { displayName: Translation.tr("Daily"), icon: "today", value: "daily" },
-                    { displayName: Translation.tr("Weekly"), icon: "date_range", value: "weekly" },
-                    { displayName: Translation.tr("Monthly"), icon: "calendar_month", value: "monthly" },
-                    { displayName: Translation.tr("Yearly"), icon: "event_repeat", value: "yearly" }
-                ]
-                currentValue: root.recurrence
-                onSelected: (newValue) => { root.recurrence = newValue }
             }
 
             // Bottom padding

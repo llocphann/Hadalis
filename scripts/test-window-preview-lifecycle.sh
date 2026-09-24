@@ -166,8 +166,6 @@ require_bar_preview 'function showWorkspace(workspaceId: var, button: Item): voi
     'shared Bar preview must expose workspace hover mode'
 require_bar_preview 'NiriService.sortToplevels(' \
     'Niri workspace preview must reuse authoritative enriched toplevel mapping'
-require_bar_preview 'Hyprland.toplevels?.values ?? []' \
-    'Hyprland workspace preview must derive windows from compositor workspace ownership'
 require_bar_preview 'values: root.previewToplevels' \
     'app and workspace previews must share one window-preview tile model'
 require_workspaces 'workspacePreviewPopup.showWorkspace(workspaceId, button)' \
@@ -182,8 +180,9 @@ require_workspace_overview 'StyledPopup {' \
     'workspace Overview must reuse the shared Bar-connected popup surface'
 require_workspace_overview 'OverviewNiriWidget {' \
     'workspace Overview must reuse the Niri Overview renderer'
-require_workspace_overview 'OverviewWidget {' \
-    'workspace Overview must retain Hyprland Overview support'
+if grep -Fq 'OverviewWidget {' "$workspace_overview"; then
+    fail 'workspace Overview must not reference the retired Hyprland renderer'
+fi
 require_workspace_overview 'WindowPreviewService.captureForTaskView()' \
     'workspace Overview must preserve the shared preview capture lifecycle'
 require_workspaces 'BarTaskbarPreview {' \

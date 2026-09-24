@@ -19,7 +19,6 @@ def main() -> None:
     styled_popup = read("modules/bar/StyledPopup.qml")
     popup = read("modules/bar/BarWorkspaceOverview.qml")
     niri = read("modules/overview/OverviewNiriWidget.qml")
-    hypr = read("modules/overview/OverviewWidget.qml")
     overview_window = read("modules/overview/OverviewWindow.qml")
     runtime = read("modules/overview/Overview.qml")
     panels = read("modules/settings/InterfaceConfig.qml")
@@ -54,6 +53,10 @@ def main() -> None:
            "workspace Overview must not destroy content at semantic close")
     forbid(popup, "presentationActive: root.previewOpen",
            "workspace Overview must not clear previews before retract completes")
+    forbid(popup, "OverviewWidget {",
+           "workspace Overview must not reference the retired Hyprland renderer")
+    forbid(popup, "hyprOverview",
+           "workspace Overview must not retain a retired Hyprland component branch")
     require(styled_popup, "opacity: 1",
             "shared connected popup content must remain fully opaque during slide")
     require(niri, "property bool embeddedSurface: false",
@@ -64,12 +67,6 @@ def main() -> None:
             "Niri focused workspace indicator must not tween during popup reveal")
     require(niri, "property bool presentationActive: GlobalStates.overviewOpen",
             "Niri preview lifecycle must be decoupled from full-screen Overview state")
-    require(hypr, "property bool embeddedSurface: false",
-            "Hyprland Overview must support embedded popup rendering")
-    require(hypr, "property bool focusIndicatorAnimationReady: true",
-            "Hyprland Overview must expose a presentation-phase focus-animation gate")
-    require(hypr, "&& root.focusIndicatorAnimationReady",
-            "Hyprland focused workspace indicator must not tween during popup reveal")
     require(niri, "return Math.floor(cur / slots) * slots;",
             "Niri workspace hover must keep a fixed page instead of centering later slots")
     forbid(niri, "const half = Math.floor(slots / 2);",
@@ -88,10 +85,6 @@ def main() -> None:
            "Niri window tiles must not animate sibling y geometry during reflow")
     forbid(niri, "localGeometryAnimationReady",
            "Niri must not retain the retired local geometry animation guard")
-    require(hypr, "readonly property bool localGeometryAnimationReady:",
-            "Hyprland Overview must gate local geometry while the parent popup is moving")
-    require(hypr, "motionAnimationsEnabled: root.localGeometryAnimationReady",
-            "Hyprland window previews must inherit the connected-reveal motion gate")
     require(overview_window, "property bool motionAnimationsEnabled: true",
             "OverviewWindow must expose a parent-controlled geometry animation gate")
     require(overview_window,
@@ -103,12 +96,6 @@ def main() -> None:
            "Niri Overview must not stage an unconfirmed destination workspace")
     require(niri, "windowItem.restoreOverviewPosition()",
             "Niri cross-workspace drop must snap the reused delegate back into workspace geometry")
-    require(hypr, "function restoreOverviewPosition(): void",
-            "Hyprland Overview drag release must restore initX/initY bindings")
-    require(hypr, "property int pendingOverviewWorkspace: -1",
-            "Hyprland cross-workspace drag must stage the destination workspace")
-    require(hypr, "window.restoreOverviewPosition()",
-            "Hyprland cross-workspace drop must snap the reused delegate back into workspace geometry")
     require(runtime, "active: root.shouldShow && root.taskViewMode",
             "normal launcher must not instantiate the old full-screen workspace Overview")
     forbid(panels, 'settingsTaskSection: "overview"',

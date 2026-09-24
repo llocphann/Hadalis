@@ -67,7 +67,7 @@ StyledPopup {
             // close begins and the user sees content disappear/fade while only
             // the empty surface slides. root.active includes the reverse slide.
             active: root.active
-            sourceComponent: CompositorService.isNiri ? niriOverview : hyprOverview
+            sourceComponent: niriOverview
         }
 
         Component {
@@ -86,20 +86,5 @@ StyledPopup {
             }
         }
 
-        Component {
-            id: hyprOverview
-            OverviewWidget {
-                panelWindow: root.presentationWindow
-                    ?? root.anchorItem?.QsWindow?.window
-                // Keep previews/content alive until the slide-under
-                // retract reaches the Bar and StyledPopup finally unmaps.
-                presentationActive: root.active
-                embeddedSurface: true
-                focusIndicatorAnimationReady:
-                    root.requestedVisible && root.revealProgress >= 0.999
-                preferredWorkspaceId: root.workspaceId
-                onPresentationCloseRequested: root.close()
-            }
-        }
     }
 }

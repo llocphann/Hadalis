@@ -16,7 +16,11 @@ Item {
     property int _editingBand: -1
 
     readonly property color eqAccentColor: Appearance.colors.colPrimary
-    implicitHeight: root.compactLayout ? 202 : 226
+    readonly property bool showTransportStatus: EqualizerService.busy
+        || !EqualizerService.dspControlAvailable
+    implicitHeight: root.compactLayout
+        ? (root.showTransportStatus ? 202 : 178)
+        : (root.showTransportStatus ? 226 : 202)
     clip: root.compactLayout
 
     function syncRegistration(): void {
@@ -141,18 +145,13 @@ Item {
         }
 
         RowLayout {
+            visible: root.showTransportStatus
             Layout.fillWidth: true
             Layout.leftMargin: root.compactLayout ? 6 : 8
             Layout.rightMargin: root.compactLayout ? 6 : 8
             spacing: root.compactLayout ? 6 : 8
 
-            StyledText {
-                text: "Equalizer"
-                font.pixelSize: root.compactLayout
-                    ? Appearance.font.pixelSize.small
-                    : Appearance.font.pixelSize.normal
-                font.weight: Font.DemiBold
-                color: Appearance.colors.colPrimary
+            Item {
                 Layout.fillWidth: true
             }
 
@@ -202,7 +201,7 @@ Item {
             clip: true
 
             readonly property real leftGutter:
-                root.compactLayout ? 32 : 36
+                root.compactLayout ? 40 : 44
             readonly property real rightGutter: 5
             readonly property real topGutter: 6
             readonly property real bottomGutter:
@@ -494,25 +493,18 @@ Item {
 
                 delegate: StyledText {
                     required property real modelData
-                    x: 15
+                    x: 2
+                    width: graphFrame.leftGutter - 8
                     y: plotArea.y
                         + root.gainToY(modelData, plotArea.height)
                         - height / 2
-                    text: modelData > 0 ? "+" + modelData : String(modelData)
+                    text: modelData === 0 ? "0 dB"
+                        : modelData > 0 ? "+" + modelData : String(modelData)
+                    horizontalAlignment: Text.AlignRight
                     font.pixelSize: Appearance.font.pixelSize.smallest
                     color: Appearance.colors.colSubtext
                     opacity: 0.78
                 }
-            }
-
-            StyledText {
-                x: 2
-                y: plotArea.y + root.gainToY(0, plotArea.height)
-                    - height / 2
-                text: "dB"
-                font.pixelSize: Appearance.font.pixelSize.smallest
-                color: Appearance.colors.colSubtext
-                opacity: 0.78
             }
 
             Row {

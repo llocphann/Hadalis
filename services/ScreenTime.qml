@@ -17,7 +17,8 @@ Singleton {
     // even before the user opens that tab.
     readonly property bool enabled:
         (Config.options?.sidebar?.screenTime?.enable ?? false)
-        || (Config.options?.dashboard?.enable ?? true)
+        || ((Config.options?.panelFamily ?? "ii") !== "waffle"
+            && (Config.options?.dashboard?.enable ?? true))
     property bool ready: false
 
     property var _todayData: null

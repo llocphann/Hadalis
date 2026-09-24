@@ -5,6 +5,10 @@ repo_root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
 service="$repo_root/services/ScreenTime.qml"
 shell_root="$repo_root/shell.qml"
 notification_center="$repo_root/modules/notificationCenter/NotificationCenterPopup.qml"
+notification_content="$repo_root/modules/notificationCenter/NotificationCenterContent.qml"
+notification_list="$repo_root/modules/common/widgets/NotificationListView.qml"
+notification_group="$repo_root/modules/common/widgets/NotificationGroup.qml"
+notification_item="$repo_root/modules/common/widgets/NotificationItem.qml"
 pill_tabs="$repo_root/modules/common/widgets/PillTabBar.qml"
 compact_sidebar="$repo_root/modules/sidebarRight/CompactSidebarRightContent.qml"
 bottom_group="$repo_root/modules/sidebarRight/BottomWidgetGroup.qml"
@@ -71,10 +75,12 @@ for token in \
     'label: Translation.tr("Activity")' \
     'readonly property var todayApps:' \
     'ScreenTime.getAppList(1)' \
-    'text: DateTime.uptime || "--"' \
+    'readonly property var visibleApps: root.todayApps.slice(0, 4)' \
+    'value: DateTime.uptime || "--"' \
     'ScreenTime.formatDuration(' \
-    'GridLayout {' \
-    'columns: 2' \
+    'text: Translation.tr("App usage")' \
+    'readonly property real usageFraction:' \
+    'Layout.preferredHeight: 34' \
     'model: root.visibleApps' \
     'visible: root.selectedTab === 1'; do
     require_in "$notification_center" "$token" \
@@ -89,9 +95,47 @@ for token in \
     'property var tabs: []' \
     'property int currentIndex: 0' \
     'color: Appearance.colors.colPrimaryContainer' \
+    'id: centeredTabLabel' \
+    'anchors.centerIn: parent' \
+    'anchors.right: parent.right' \
     'signal tabSelected(int index)'; do
     require_in "$pill_tabs" "$token" \
         "shared pill-tab contract missing: $token"
+done
+
+for token in \
+    '!root.popupPresentation && Notifications.list.length > 3' \
+    'compactCards: root.popupPresentation' \
+    'compactActions: root.popupPresentation' \
+    'implicitWidth: root.popupPresentation ? 30 : 36' \
+    'text: "delete_sweep"'; do
+    require_in "$notification_content" "$token" \
+        "compact popup Notifications contract missing: $token"
+done
+
+for token in \
+    'property bool compactCards: false' \
+    'property bool compactActions: false' \
+    'spacing: modernCards ? (compactCards ? 6 : 8) : 3'; do
+    require_in "$notification_list" "$token" \
+        "compact NotificationListView contract missing: $token"
+done
+
+for token in \
+    'property bool compactLayout: false' \
+    'property bool compactActions: false' \
+    '? (compactLayout ? 9 : 12) : 10'; do
+    require_in "$notification_group" "$token" \
+        "compact NotificationGroup contract missing: $token"
+done
+
+for token in \
+    'property bool compactActions: false' \
+    '? (root.compactActions ? 28 : 34)' \
+    'iconSize: root.compactActions' \
+    'id: copyIcon'; do
+    require_in "$notification_item" "$token" \
+        "compact notification action contract missing: $token"
 done
 
 for sidebar in "$compact_sidebar" "$bottom_group"; do

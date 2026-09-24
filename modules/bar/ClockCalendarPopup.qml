@@ -126,11 +126,20 @@ StyledPopup {
                 }
             }
 
+            Rectangle {
+                anchors.fill: parent
+                radius: Appearance.rounding.normal
+                color: Appearance.colors.colLayer1
+                border.width: 1
+                border.color: Appearance.colors.colLayer2
+            }
+
             Loader {
                 id: eventsDialogLoader
                 anchors {
                     fill: parent
-                    topMargin: 9
+                    margins: 10
+                    topMargin: 12
                 }
                 active: root.eventsDialogLoaded && root.active
                 onLoaded: Qt.callLater(root.prepareEventEditor)

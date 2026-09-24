@@ -220,5 +220,5 @@ for token in (
 ):
     require(backend, token, "EasyEffects")
 
-print("PASS: Media DSP uses version-compatible preset loading, Serpantinum lightning, and compact transport UI")
+print("PASS: Media DSP uses version-compatible preset loading, integrated CAVA response graph, and compact transport UI")
 PY

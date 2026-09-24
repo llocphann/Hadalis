@@ -17,6 +17,7 @@ use sha2::{Digest, Sha256};
 
 const ART_NAMES: &[&str] = &["cover", "folder", "front", "album", "artwork"];
 const ART_EXTENSIONS: &[&str] = &[".jpg", ".jpeg", ".png", ".webp", ".avif"];
+const CACHE_ART_EXTENSIONS: &[&str] = &[".jpg", ".jpeg", ".png", ".webp", ".gif", ".avif"];
 const IDLE_SUBSYSTEMS: &[&str] = &[
     "player",
     "playlist",
@@ -396,35 +397,71 @@ fn file_url(path: &Path) -> String {
     output
 }
 
-fn folder_art(path_text: &str) -> String {
-    if path_text.is_empty() || path_text.contains("://") {
-        return String::new();
-    }
-    let directory = Path::new(path_text)
-        .parent()
-        .unwrap_or_else(|| Path::new("."));
-    let Ok(entries) = fs::read_dir(directory) else {
-        return String::new();
-    };
+#[derive(Default)]
+struct ArtLookup {
+    folders: HashMap<PathBuf, String>,
+    cached: HashMap<String, String>,
+}
 
-    let mut by_name = HashMap::new();
-    for entry in entries.flatten() {
-        let path = entry.path();
-        if path.is_file()
-            && let Some(name) = path.file_name().and_then(|name| name.to_str())
-        {
-            by_name.insert(name.to_ascii_lowercase(), path);
+impl ArtLookup {
+    fn folder_art(&mut self, path_text: &str) -> String {
+        if path_text.is_empty() || path_text.contains("://") {
+            return String::new();
         }
+
+        let directory = Path::new(path_text)
+            .parent()
+            .unwrap_or_else(|| Path::new("."))
+            .to_path_buf();
+        if let Some(art) = self.folders.get(&directory) {
+            return art.clone();
+        }
+
+        let art = fs::read_dir(&directory)
+            .ok()
+            .and_then(|entries| {
+                let mut by_name = HashMap::new();
+                for entry in entries.flatten() {
+                    let path = entry.path();
+                    if path.is_file()
+                        && let Some(name) = path.file_name().and_then(|name| name.to_str())
+                    {
+                        by_name.insert(name.to_ascii_lowercase(), path);
+                    }
+                }
+
+                for base in ART_NAMES {
+                    for extension in ART_EXTENSIONS {
+                        if let Some(path) = by_name.get(&format!("{base}{extension}")) {
+                            return Some(file_url(path));
+                        }
+                    }
+                }
+                None
+            })
+            .unwrap_or_default();
+
+        self.folders.insert(directory, art.clone());
+        art
     }
 
-    for base in ART_NAMES {
-        for extension in ART_EXTENSIONS {
-            if let Some(path) = by_name.get(&format!("{base}{extension}")) {
-                return file_url(path);
-            }
+    fn cached_art(&mut self, track: &Map<String, Value>) -> String {
+        let key = art_cache_key(track);
+        if let Some(art) = self.cached.get(&key) {
+            return art.clone();
         }
+
+        let cache = cache_dir();
+        let art = CACHE_ART_EXTENSIONS
+            .iter()
+            .map(|extension| cache.join(format!("{key}{extension}")))
+            .find(|path| fs::metadata(path).is_ok_and(|meta| meta.len() > 0))
+            .map(|path| file_url(&path))
+            .unwrap_or_default();
+
+        self.cached.insert(key, art.clone());
+        art
     }
-    String::new()
 }
 
 fn track_value(track: &Map<String, Value>, key: &str) -> String {
@@ -471,31 +508,6 @@ fn art_cache_key(track: &Map<String, Value>) -> String {
     format!("{:x}", digest.finalize())
 }
 
-fn cached_art(track: &Map<String, Value>) -> String {
-    let key = art_cache_key(track);
-    let Ok(entries) = fs::read_dir(cache_dir()) else {
-        return String::new();
-    };
-    let mut matches = entries
-        .flatten()
-        .map(|entry| entry.path())
-        .filter(|path| {
-            path.is_file()
-                && path
-                    .file_name()
-                    .and_then(|name| name.to_str())
-                    .is_some_and(|name| name.starts_with(&format!("{key}.")))
-        })
-        .collect::<Vec<_>>();
-    matches.sort();
-
-    matches
-        .into_iter()
-        .find(|path| fs::metadata(path).is_ok_and(|meta| meta.len() > 0))
-        .map(|path| file_url(&path))
-        .unwrap_or_default()
-}
-
 fn art_extension(data: &[u8], mime: &str) -> &'static str {
     let mime = mime.to_ascii_lowercase();
     if mime.contains("png") || data.starts_with(b"\x89PNG\r\n\x1a\n") {
@@ -537,7 +549,11 @@ fn write_cached_art(track: &Map<String, Value>, data: &[u8], mime: &str) -> Resu
     Ok(file_url(&target))
 }
 
-fn build_track(record: &Record, music_root: &str) -> Map<String, Value> {
+fn build_track(
+    record: &Record,
+    music_root: &str,
+    art_lookup: &mut ArtLookup,
+) -> Map<String, Value> {
     let uri = first(record, &["file"]);
     let path = local_path(&uri, music_root);
     let title = {
@@ -599,9 +615,9 @@ fn build_track(record: &Record, music_root: &str) -> Map<String, Value> {
         json!(int_prefix(&first(record, &["pos"]))),
     );
 
-    let art = folder_art(&track_value(&track, "path"));
+    let art = art_lookup.folder_art(&track_value(&track, "path"));
     let art = if art.is_empty() {
-        cached_art(&track)
+        art_lookup.cached_art(&track)
     } else {
         art
     };
@@ -632,15 +648,16 @@ fn status_payload(client: &mut MpdClient, root: &str) -> Result<Value> {
         &client.command("playlistinfo", std::iter::empty::<&str>())?,
         "file",
     );
+    let mut art_lookup = ArtLookup::default();
 
     let current = current_records
         .first()
-        .map(|record| Value::Object(build_track(record, root)))
+        .map(|record| Value::Object(build_track(record, root, &mut art_lookup)))
         .unwrap_or(Value::Null);
-    let queue = queue_records
-        .iter()
-        .map(|record| Value::Object(build_track(record, root)))
-        .collect::<Vec<_>>();
+    let mut queue = Vec::with_capacity(queue_records.len());
+    for record in &queue_records {
+        queue.push(Value::Object(build_track(record, root, &mut art_lookup)));
+    }
 
     Ok(json!({
         "connected": true,
@@ -663,12 +680,13 @@ fn fetch_mpd_art(client: &mut MpdClient, uri: &str) -> Option<(Vec<u8>, String)>
 
 fn populate_library_art(client: &mut MpdClient, tracks: &mut [Map<String, Value>]) {
     let mut groups: BTreeMap<String, Vec<usize>> = BTreeMap::new();
+    let mut art_lookup = ArtLookup::default();
 
     for (index, track) in tracks.iter_mut().enumerate() {
         if !track_value(track, "art").is_empty() {
             continue;
         }
-        let cached = cached_art(track);
+        let cached = art_lookup.cached_art(track);
         if !cached.is_empty() {
             track.insert("art".into(), json!(cached));
             continue;
@@ -702,10 +720,11 @@ fn snapshot(client: &mut MpdClient, override_root: &str) -> Result<Value> {
         &client.command("listallinfo", std::iter::empty::<&str>())?,
         "file",
     );
-    let mut tracks = library_records
-        .iter()
-        .map(|record| build_track(record, &root))
-        .collect::<Vec<_>>();
+    let mut art_lookup = ArtLookup::default();
+    let mut tracks = Vec::with_capacity(library_records.len());
+    for record in &library_records {
+        tracks.push(build_track(record, &root, &mut art_lookup));
+    }
 
     tracks.sort_by_key(|track| {
         (
@@ -735,10 +754,15 @@ fn snapshot(client: &mut MpdClient, override_root: &str) -> Result<Value> {
         let Ok(lines) = client.command("listplaylistinfo", [&name]) else {
             continue;
         };
-        let items = records(&lines, "file")
-            .iter()
-            .map(|record| Value::Object(build_track(record, &root)))
-            .collect::<Vec<_>>();
+        let playlist_records = records(&lines, "file");
+        let mut items = Vec::with_capacity(playlist_records.len());
+        for record in &playlist_records {
+            items.push(Value::Object(build_track(
+                record,
+                &root,
+                &mut art_lookup,
+            )));
+        }
         playlists.push(json!({
             "id": format!("mpd:{name}"),
             "name": name,

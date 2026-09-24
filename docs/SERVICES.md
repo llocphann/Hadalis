@@ -9,10 +9,8 @@
 | Service | What it does |
 |---------|-------------|
 | **NiriService** | Niri IPC via Unix socket. Tracks workspaces, windows, outputs, keyboard layouts. Event-driven with reactive properties. IPC target: `keyboard` (layout switching). |
-| **CompositorService** | Detects compositor (Niri/Hyprland/GNOME), provides sorted toplevel windows and compositor-agnostic APIs. |
-| **HyprlandData** | Hyprland window, workspace, monitor, and layer data via `hyprctl`. |
-| **HyprlandKeybinds** | Parses Hyprland config for keybind cheatsheet. |
-| **HyprlandXkb** | Keyboard layout tracking for Hyprland. |
+| **CompositorService** | Niri runtime façade for sorted toplevels, workspace filtering and monitor power helpers. |
+| **NiriService** | Niri IPC/event-stream authority for workspaces, windows, outputs, keyboard layouts and compositor actions. |
 
 ## Audio and Media
 
@@ -89,7 +87,7 @@
 | **Autostart** | Autostart manager. Reads/writes the managed section of `~/.config/niri/config.d/50-startup.kdl`. Niri's own `spawn-at-startup` directives are the source of truth, not a Config JSON list. IPC target: `autostart`. |
 | **TrayService** | System tray with workarounds for problematic apps (Vesktop, Steam, etc.). |
 | **PolkitService** | PolicyKit authentication agent for privileged operations. |
-| **Hyprsunset** | Night light via wlsunset (Niri) or hyprsunset (Hyprland). Scheduled or manual. |
+| **NightLight** | Scheduled/manual Niri night light backed by `wlsunset`, with owned-process lifecycle and detached-process state detection. |
 | **EasyEffects** | EasyEffects audio effects toggle. Supports native and flatpak. |
 | **RecorderStatus** | Screen recording status detection (wf-recorder). |
 | **SessionWarnings** | Detects running package managers before logout. |

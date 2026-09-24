@@ -7,7 +7,7 @@ What happens between "user logs in" and "shell is on screen", step by step.
 ```
 User logs in
   |
-Display manager starts Niri (or Hyprland)
+Display manager starts Niri
   |
 Compositor reaches graphical-session.target
   |
@@ -56,9 +56,7 @@ The systemd service is the key piece. It does not use `systemctl enable` in the 
 
 **Niri**: `~/.config/systemd/user/niri.service.wants/inir.service`
 
-**Hyprland**: `~/.config/systemd/user/wayland-wm@Hyprland.service.wants/inir.service`
-
-This means iNiR starts when your compositor starts and stops when it stops. It will never accidentally start under KDE or GNOME.
+This means iNiR starts when Niri starts and stops with the Niri graphical session. It will never accidentally start under KDE or GNOME.
 
 Managing the link:
 
@@ -152,7 +150,7 @@ Non-critical services load 500ms after the first frame to reduce boot contention
 - Weather (API polling)
 - VoiceSearch (Gemini transcription)
 - FontSyncService (GTK/KDE font sync)
-- Hyprsunset (night light)
+- NightLight (wlsunset-backed night light)
 
 This keeps the initial frame fast. The bar and background appear immediately, everything else fills in shortly after.
 

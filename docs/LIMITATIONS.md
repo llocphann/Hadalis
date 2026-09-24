@@ -6,36 +6,21 @@ Things that don't work, work weirdly, or will bite you when you least expect it.
 
 ## Compositor Support
 
-ii is built for **Niri**. Some features were inherited from the original Hyprland version and don't work on Niri.
+Hadalis supports **Niri only**.
 
-### Niri-Only (Works)
+| Area | Status |
+|---|---|
+| Bar, sidebars, overview, dock | ✅ Niri supported |
+| Alt+Tab / task previews | ✅ Niri supported |
+| Clipboard and region tools | ✅ Niri supported |
+| Lock screen | ✅ Quickshell session lock with `swaylock` fallback |
+| Wallpaper and theming | ✅ Niri supported |
+| Notifications and Settings | ✅ Niri supported |
+| Night light | ✅ `wlsunset` backend |
 
-| Feature | Status |
-|---------|--------|
-| Bar, sidebars, overview | ✅ Full support |
-| Alt+Tab window switcher | ✅ Full support |
-| Clipboard history | ✅ Full support |
-| Region tools (screenshot, OCR, recording) | ✅ Full support |
-| Lock screen | ✅ Full support |
-| Wallpaper + theming | ✅ Full support |
-| Notifications | ✅ Full support |
-| Settings GUI | ✅ Full support |
+There is no alternate compositor backend. If `NIRI_SOCKET` is unavailable, compositor-driven features may be disconnected until the shell is restarted inside a valid Niri session.
 
-### Hyprland-Only (Won't Work on Niri)
-
-| Feature | Why |
-|---------|-----|
-| Screen zoom | Uses `hyprctl keyword cursor:zoom_factor`. |
-| GlobalShortcut bindings | Hyprland's global shortcut system. On Niri, use `config.kdl` keybinds instead. |
-| CompositorFocusGrab | Click-outside-to-close for sidebars uses Hyprland's focus grab. On Niri, click the backdrop or press Escape. |
-| Lock screen blur hack | The "push windows off-screen for blur" trick is Hyprland-specific. |
-
-### Works on Both
-
-| Feature | Hyprland | Niri |
-|---------|----------|------|
-| Night light | `hyprsunset` | `wlsunset` (auto-detected) |
-| Anti-flashbang brightness | ✅ | ✅ |
+Historical migration files may still mention retired compositor service names so existing installations can be cleaned safely; those references are not runtime support.
 
 ---
 
@@ -151,9 +136,9 @@ ii is built for **Niri**. Some features were inherited from the original Hyprlan
 - **Keyring unlock**: Optional feature to unlock gnome-keyring on login. Requires keyring to be set up with the same password as your user account.
 - **Fingerprint**: Fingerprint unlock is attempted automatically if `fprintd` is available.
 
-### Hyprlock Fallback
+### Fallback Locker
 
-- `lock.useHyprlock = true` in config makes the lock keybind launch Hyprlock instead of ii's lock screen. Only works on Hyprland.
+If Quickshell session locking cannot be activated, Hadalis can fall back to `swaylock` when it is installed.
 
 ---
 

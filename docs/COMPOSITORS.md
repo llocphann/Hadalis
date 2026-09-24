@@ -1,108 +1,51 @@
 # Compositor Integration
 
-iNiR is built for Niri. Secondary Hyprland support is maintained from the project's origins as a fork of end-4's Hyprland dots.
+Hadalis is a **Niri-only** Quickshell desktop shell. Historical fork provenance may mention Hyprland, but there is no supported Hyprland runtime, fallback backend, package dependency, or compositor-specific feature branch in the current product.
 
-## Detection
+## Runtime contract
 
-`CompositorService` figures out which compositor is running by checking environment variables at startup:
+`NiriService` owns compositor IPC. It opens the socket exposed through `$NIRI_SOCKET`, subscribes to Niri's JSON event stream, and updates reactive QML state for:
 
-1. `$HYPRLAND_INSTANCE_SIGNATURE` set? Hyprland.
-2. `$NIRI_SOCKET` set? Niri.
-3. `$XDG_CURRENT_DESKTOP` contains "GNOME"? GNOME (unsupported, but detected).
-4. None of the above? Unknown.
+- workspaces and their output assignment;
+- windows, focus, layout and workspace membership;
+- outputs, scale and geometry;
+- keyboard layout state;
+- Overview state and config reload events.
 
-Code that behaves differently per compositor uses guards:
+Commands such as focusing workspaces/windows, moving windows, closing windows, monitor power and config reload are sent through the Niri IPC/action path.
 
-```qml
-if (CompositorService.isNiri) {
-    // niri-only path
-}
+`CompositorService` is now a small shared façade over Niri. It keeps common shell consumers decoupled from sorting/filtering implementation details, but it is **not** a compositor selector.
 
-visible: CompositorService.isHyprland  // hide on other compositors
-```
+## Startup requirement
 
-## Niri
+The shell must receive a valid `NIRI_SOCKET` before Quickshell instantiates compositor-dependent services. `scripts/inir` recovers the socket from the runtime directory when the systemd user environment has not imported it yet.
 
-Primary compositor. Full IPC integration.
+If `NIRI_SOCKET` is unavailable, Hadalis may start in a degraded/disconnected state for diagnostics, but that is not an alternate compositor mode.
 
-### How it connects
+## Niri configuration
 
-`NiriService` opens a Unix socket at `$NIRI_SOCKET` and subscribes to the event stream. Every workspace change, window open/close, output hotplug, and keyboard layout switch arrives as a JSON event and updates reactive QML properties.
-
-For commands (focus workspace, move window, etc.), a separate socket connection sends requests and reads responses.
-
-### What it exposes
-
-| Property | What it tracks |
-|----------|---------------|
-| `workspaces` | All workspaces with IDs, names, active state, output assignment |
-| `windows` | All windows with title, app ID, position, size, workspace |
-| `outputs` | All monitors with name, scale, resolution, position |
-| `activeWindow` | Currently focused window |
-| `focusedWorkspaceId` | Current workspace on the focused monitor |
-| `keyboardLayoutNames` | Available keyboard layouts |
-| `displayScales` | Per-monitor scale factors |
-
-### Niri config management
-
-iNiR manages Niri's config through modular KDL files in `~/.config/niri/config.d/`:
+Hadalis manages Niri configuration through modular KDL files under `~/.config/niri/config.d/`:
 
 | File | What it controls |
-|------|-----------------|
-| `10-input-and-cursor.kdl` | Mouse, touchpad, keyboard, cursor theme |
-| `20-layout-and-overview.kdl` | Workspace layout, gaps, struts |
-| `30-window-rules.kdl` | Window rules (floating, size, opacity) |
-| `40-environment.kdl` | Environment variables for apps |
-| `50-startup.kdl` | Autostart entries (clipboard, polkit, etc.) |
-| `60-animations.kdl` | Window animation settings |
-| `70-binds.kdl` | All keybinds |
-| `80-layer-rules.kdl` | Layer shell rules (for the shell itself) |
-| `90-user-extra.kdl` | User overrides. Never touched by updates. |
+|---|---|
+| `10-input-and-cursor.kdl` | Mouse, touchpad, keyboard and cursor |
+| `20-layout-and-overview.kdl` | Workspace layout, gaps and struts |
+| `30-window-rules.kdl` | Window rules |
+| `40-environment.kdl` | Session environment |
+| `50-startup.kdl` | Managed startup entries |
+| `60-animations.kdl` | Niri animations |
+| `70-binds.kdl` | Hadalis/Niri keybinds |
+| `80-layer-rules.kdl` | Layer-shell rules |
+| `90-user-extra.kdl` | User-owned overrides |
 
-`scripts/niri-config.py` does surgical edits to these files, preserving comments and unknown settings. It never rewrites entire files.
+`scripts/niri-config.py` performs surgical edits and preserves comments and unknown settings.
 
-## Hyprland
+## Contributor rules
 
-Secondary support. Uses the Quickshell Hyprland module (built-in) plus `hyprctl` for queries that the module doesn't cover.
+- Do not add compositor detection branches or alternate compositor backends.
+- Use `NiriService` for Niri-specific state/actions.
+- Use `CompositorService` only where its shared sorting/filtering/monitor helpers are the appropriate API.
+- Niri-only features may still gate on `CompositorService.isNiri` when they need to distinguish a connected IPC session from a disconnected startup state.
+- Test compositor-facing work on Niri. There is no secondary compositor smoke-test requirement.
 
-### Differences from Niri
-
-| Aspect | Niri | Hyprland |
-|--------|------|----------|
-| IPC | Unix socket, JSON events | Quickshell module + hyprctl |
-| Window sorting | Native via IPC | Complex 300+ line sort (monitor > workspace > column > Y) |
-| Workspace model | Scrolling (infinite horizontal) | Fixed grid |
-| Config | KDL, modular files | hyprland.conf |
-
-### What's Hyprland-only
-
-- The legacy Hyprland data bridge has been retired; compositor state now comes from the Niri-owned service path.
-- The legacy Hyprland keybind parser and XKB tracking services are retired; active cheatsheet and keyboard-layout state now follow the Niri-owned paths instead of separate Hyprland service implementations.
-
-### What doesn't work on Hyprland
-
-Some features require Niri-specific IPC that has no Hyprland equivalent:
-
-- Workspace scrolling gestures
-- Column-based window management
-- Some Overview features
-
-The shell adapts gracefully. Missing features hide themselves rather than crashing.
-
-## Shared abstractions
-
-`CompositorService` provides compositor-agnostic APIs that modules use instead of talking to Niri/Hyprland directly:
-
-- `sortedToplevels`: sorted window list (delegates to the active compositor's sorting logic)
-- `filterCurrentWorkspace(toplevels, screen)`: workspace-aware window filtering
-- `powerOffMonitors()` / `powerOnMonitors()`: DPMS control
-
-This means most UI components don't need compositor guards at all. They just read `CompositorService.sortedToplevels` and it works regardless of which compositor is running.
-
-## For contributors
-
-**Always use compositor guards** when writing compositor-specific code. Never assume Niri is running.
-
-**Prefer shared abstractions** over direct NiriService/HyprlandData access when possible. If you need something that only Niri provides, gate it with `CompositorService.isNiri` and provide a fallback (even if the fallback is just hiding the feature).
-
-**Test both** if you're touching compositor-facing code. At minimum, check that the feature doesn't crash on the other compositor.
+Historical migrations can still contain retired compositor names because migrations are append-only. Migration `051-niri-only-compositor` removes obsolete service wiring from upgraded installations.

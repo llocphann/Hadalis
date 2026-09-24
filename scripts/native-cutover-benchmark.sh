@@ -173,6 +173,11 @@ try:
             if isinstance(value.get("status"), dict):
                 for volatile in ("elapsed", "time", "bitrate"):
                     value["status"].pop(volatile, None)
+    if keys == ["--mpd-snapshot"]:
+        # Full snapshots include live playback state. Deep parity focuses on the
+        # stable library model and shares an isolated cache so file:// cover URLs
+        # remain directly comparable without touching the user's real cache.
+        keys = ["connected", "musicRoot", "tracks", "playlists", "folders"]
     if keys == ["--theme-meta"]:
         keys = []
         left.pop("generated_by", None)
@@ -663,6 +668,59 @@ PY
         [[ "$mpd_parity" == PASS ]] || block_activation "MPD status parity failed"
         bench "mpd status python" python3 scripts/local_music_mpd.py status "$MPD_HOST_TEST" "$MPD_PORT_TEST" "$MUSIC_ROOT_TEST"
         bench "mpd status rust" "$BIN_DIR/inir-mpdd" --compat status "$MPD_HOST_TEST" "$MPD_PORT_TEST" "$MUSIC_ROOT_TEST"
+
+        if [[ "${INIR_BENCH_MPD_SNAPSHOT:-0}" == 1 ]]; then
+            section "MPD FULL SNAPSHOT DEEP BENCHMARK"
+            snapshot_parity_cache="$TMP_ROOT/mpd-snapshot-parity-cache"
+            snapshot_python_cache="$TMP_ROOT/mpd-snapshot-python-cache"
+            snapshot_rust_cache="$TMP_ROOT/mpd-snapshot-rust-cache"
+            mkdir -p "$snapshot_parity_cache" "$snapshot_python_cache" "$snapshot_rust_cache"
+
+            env XDG_CACHE_HOME="$snapshot_parity_cache" \
+                python3 scripts/local_music_mpd.py snapshot \
+                "$MPD_HOST_TEST" "$MPD_PORT_TEST" "$MUSIC_ROOT_TEST" \
+                >"$TMP_ROOT/mpd.snapshot.py" 2>"$TMP_ROOT/mpd.snapshot.py.err"
+            py_snapshot_rc=$?
+            env XDG_CACHE_HOME="$snapshot_parity_cache" \
+                "$BIN_DIR/inir-mpdd" --compat snapshot \
+                "$MPD_HOST_TEST" "$MPD_PORT_TEST" "$MUSIC_ROOT_TEST" \
+                >"$TMP_ROOT/mpd.snapshot.rs" 2>"$TMP_ROOT/mpd.snapshot.rs.err"
+            rs_snapshot_rc=$?
+            kv "mpd snapshot exit" "python=$py_snapshot_rc rust=$rs_snapshot_rc"
+
+            if (( py_snapshot_rc == 0 && rs_snapshot_rc == 0 )); then
+                snapshot_parity="$(json_compare \
+                    "$TMP_ROOT/mpd.snapshot.py" "$TMP_ROOT/mpd.snapshot.rs" \
+                    --mpd-snapshot)"
+                kv "mpd snapshot stable parity" "$snapshot_parity"
+                [[ "$snapshot_parity" == PASS ]] \
+                    || block_activation "MPD full snapshot parity failed"
+
+                snapshot_runs="${MPD_SNAPSHOT_RUNS:-1}"
+                if [[ ! "$snapshot_runs" =~ ^[1-9][0-9]*$ ]]; then
+                    snapshot_runs=1
+                fi
+                rm -rf -- "$snapshot_python_cache" "$snapshot_rust_cache"
+                mkdir -p "$snapshot_python_cache" "$snapshot_rust_cache"
+                BENCH_RUNS="$snapshot_runs" bench "mpd snapshot python" \
+                    env XDG_CACHE_HOME="$snapshot_python_cache" \
+                    python3 scripts/local_music_mpd.py snapshot \
+                    "$MPD_HOST_TEST" "$MPD_PORT_TEST" "$MUSIC_ROOT_TEST"
+                BENCH_RUNS="$snapshot_runs" bench "mpd snapshot rust" \
+                    env XDG_CACHE_HOME="$snapshot_rust_cache" \
+                    "$BIN_DIR/inir-mpdd" --compat snapshot \
+                    "$MPD_HOST_TEST" "$MPD_PORT_TEST" "$MUSIC_ROOT_TEST"
+            else
+                kv "mpd snapshot stable parity" "ERROR (snapshot failed)"
+                kv "mpd snapshot python error" \
+                    "$(tr '\n' ' ' < "$TMP_ROOT/mpd.snapshot.py.err" | head -c 300)"
+                kv "mpd snapshot rust error" \
+                    "$(tr '\n' ' ' < "$TMP_ROOT/mpd.snapshot.rs.err" | head -c 300)"
+                block_activation "MPD full snapshot smoke failed"
+            fi
+        else
+            kv "mpd full snapshot benchmark" "SKIP (use benchmark wrapper --deep)"
+        fi
 
         mpd_socket="$TMP_ROOT/mpd-daemon.sock"
         mpd_daemon_command=(

@@ -95,7 +95,12 @@ Singleton {
         if (!previous || previous.url !== url) {
             if (previous)
                 previous.image.destroy()
-            const image = overviewWarmImageComponent.createObject(root, { source: url })
+            // The singleton is not a QQuickItem. Parenting an Image to it makes
+            // Qt warn that the graphical object was not placed in a scene.
+            // Keep the predecoder deliberately parentless; the JS cache owns
+            // the reference and every lifecycle path explicitly destroy()s it.
+            const image = overviewWarmImageComponent.createObject(
+                null, { source: url })
             if (!image) {
                 delete overviewWarmImages[windowId]
                 return

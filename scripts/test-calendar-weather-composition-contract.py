@@ -63,17 +63,25 @@ def main() -> None:
         "dialog.focusEditor()",
         "embeddedPresentation: true",
         "backgroundHeight: -1",
-        "Math.max(286, Math.min(360,",
-        "* 0.34",
-        "margins: 8",
-        "topMargin: 8",
-        "Appearance.colors.colSurfaceContainerHigh",
-        "border.color: Appearance.colors.colOutlineVariant",
+        "Math.max(264, Math.min(320,",
+        "* 0.30",
+        "root.showEventsDialog ? 3 : 0",
+        "topMargin: root.showEventsDialog ? 2 : 0",
+        "color: Appearance.colors.colOutlineVariant",
+        "opacity: 0.32",
+        "anchors.fill: parent",
+        'embeddedBackgroundColor: "transparent"',
     ):
         require(calendar_popup, token, "ClockCalendarPopup.qml")
     forbid(calendar_popup,
            "backgroundHeight: Math.max(300, Math.min(500,",
            "ClockCalendarPopup.qml")
+    forbid(calendar_popup,
+           "margins: 8",
+           "ClockCalendarPopup embedded editor must not restore nested card inset")
+    forbid(calendar_popup,
+           "border.width: 1",
+           "ClockCalendarPopup embedded editor must not restore nested card border")
 
     for token in (
         "property bool embeddedPresentation: false",
@@ -91,13 +99,15 @@ def main() -> None:
     for token in (
         "function focusEditor(): void",
         "id: titleField",
-        "contentSpacing: root.embeddedPresentation ? 8 : 16",
+        "contentSpacing: root.embeddedPresentation ? 4 : 16",
         "embeddedBackgroundColor:",
         "component EventSectionHeader: WindowDialogSectionHeader",
         "Appearance.colors.colSurfaceContainerHigh",
-        "root.embeddedPresentation ? 46 : 56",
+        "root.embeddedPresentation ? 40 : 56",
         "compact: root.embeddedPresentation",
-        "root.embeddedPresentation ? 10 : 16",
+        "root.embeddedPresentation ? 6 : 16",
+        "visible: !root.embeddedPresentation",
+        "root.embeddedPresentation ? 32 : 36",
     ):
         require(events_dialog, token, "EventsDialog.qml")
     forbid(events_dialog,
@@ -106,11 +116,13 @@ def main() -> None:
 
     for token in (
         "property bool compact: false",
-        "root.compact ? 8 : 16",
-        "spacing: root.compact ? 4 : 8",
-        "implicitHeight: root.compact ? 24 : 28",
-        "Layout.preferredWidth: root.compact ? 28 : 32",
-        "implicitWidth: root.compact ? 28 : 32",
+        "root.compact ? 4 : 16",
+        "spacing: root.compact ? 3 : 8",
+        "implicitHeight: root.compact ? 22 : 28",
+        "Layout.preferredWidth: root.compact ? 24 : 32",
+        "implicitWidth: root.compact ? 24 : 32",
+        "weekCells.some(cell => cell?.isCurrentMonth === true)",
+        "visible: !root.compact || containsCurrentMonth",
     ):
         require(date_picker, token, "DatePicker.qml")
 

@@ -28,6 +28,22 @@ Bar.StyledPopup {
     // Its animated height participates in ColumnLayout so it takes space from
     // the editor instead of covering note content.
     property bool notesTrayOpen: false
+    // One animated progress drives both reserved layout height and opacity.
+    // This avoids the 4px end-of-close snap from separate height/gap states and
+    // also makes hover reversals continue smoothly from the current frame.
+    property real notesTrayReveal:
+        root.selectedMainTab === 0 && root.notesTrayOpen ? 1.0 : 0.0
+
+    Behavior on notesTrayReveal {
+        enabled: Appearance.animationsEnabled
+        NumberAnimation {
+            duration: Appearance.animation.elementResize.duration
+            easing.type: Appearance.animation.elementResize.type
+            easing.bezierCurve:
+                Appearance.animation.elementResize.bezierCurve
+        }
+    }
+
     readonly property bool todoDialogOpen: todoViewLoader.item?.showAddDialog ?? false
     property string cornerAttachmentEdge: "bottom"
     property real cornerAttachmentThickness: Math.max(1, Math.min(32,
@@ -178,8 +194,7 @@ Bar.StyledPopup {
                 // Quick Notes/To-do consumes editor height rather than drawing
                 // over the editor.
                 implicitHeight: mainTabs.height
-                    + notesTraySlot.height
-                    + (notesTraySlot.height > 0 ? 4 : 0)
+                    + 32 * root.notesTrayReveal
                 z: 20
                 clip: false
 
@@ -216,25 +231,14 @@ Bar.StyledPopup {
                 Item {
                     id: notesTraySlot
                     anchors.top: mainTabs.bottom
-                    anchors.topMargin: height > 0 ? 4 : 0
                     anchors.horizontalCenter: parent.horizontalCenter
                     width: Math.min(248, Math.max(
                         160, contentRoot.width - 24))
-                    height: root.selectedMainTab === 0
-                        && root.notesTrayOpen ? 28 : 0
+                    // 32px = 4px visual separation + 28px pill. The entire
+                    // extent collapses continuously so the editor receives
+                    // space back without a final discrete jump.
+                    height: 32 * root.notesTrayReveal
                     clip: true
-
-                    Behavior on height {
-                        enabled: Appearance.animationsEnabled
-                        NumberAnimation {
-                            duration:
-                                Appearance.animation.elementMoveFast.duration
-                            easing.type:
-                                Appearance.animation.elementMoveFast.type
-                            easing.bezierCurve:
-                                Appearance.animation.elementMoveFast.bezierCurve
-                        }
-                    }
 
                     PillTabBar {
                         id: notesTray
@@ -245,24 +249,13 @@ Bar.StyledPopup {
                         }
                         pillHeight: 28
                         currentIndex: root.selectedNotesTab
-                        opacity: root.notesTrayOpen ? 1 : 0
+                        opacity: root.notesTrayReveal
                         tabs: [
                             { icon: "edit_note", label: Translation.tr("Quick Notes") },
                             { icon: "checklist", label: Translation.tr("To-do") }
                         ]
                         onTabSelected: index => root.selectedNotesTab = index
 
-                        Behavior on opacity {
-                            enabled: Appearance.animationsEnabled
-                            NumberAnimation {
-                                duration:
-                                    Appearance.animation.elementMoveFast.duration
-                                easing.type:
-                                    Appearance.animation.elementMoveFast.type
-                                easing.bezierCurve:
-                                    Appearance.animation.elementMoveFast.bezierCurve
-                            }
-                        }
                     }
                 }
             }

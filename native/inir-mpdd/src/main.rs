@@ -1182,10 +1182,10 @@ fn run_compat(args: &[String]) -> i32 {
                     bail!("empty_uri");
                 }
                 let response = pairs(&client.command("addid", [uri])?);
-                if play_now {
-                    if let Some(song_id) = response.get("id") {
-                        client.command("playid", [song_id])?;
-                    }
+                if play_now
+                    && let Some(song_id) = response.get("id")
+                {
+                    client.command("playid", [song_id])?;
                 }
                 let root = music_root(&mut client, override_root);
                 let mut payload = status_payload(&mut client, &root)?;

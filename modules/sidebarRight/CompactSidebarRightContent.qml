@@ -46,7 +46,6 @@ import qs.modules.sidebarRight.notepad
 import qs.modules.sidebarRight.calculator
 import qs.modules.sidebarRight.sysmon
 import qs.modules.sidebarRight.events
-import qs.modules.sidebarRight.screenTime
 import qs.modules.sidebarRight.weather
 
 Item {
@@ -553,28 +552,6 @@ Item {
         }
     }
     Component {
-        id: screenTimeComponent
-        Item {
-            anchors.fill: parent
-
-            StyledRectangularShadow {
-                target: screenTimeSurface
-                visible: false
-                blur: 0.35 * Appearance.sizes.elevationMargin
-            }
-
-            CompactContentSurface {
-                id: screenTimeSurface
-                anchors.fill: parent
-
-                ScreenTimeWidget {
-                    anchors.fill: parent
-                    anchors.margins: root.compactGridSpacing
-                }
-            }
-        }
-    }
-    Component {
         id: weatherDetailComponent
         Item {
             anchors.fill: parent
@@ -720,13 +697,8 @@ Item {
         const all = [
             {id: "calculator", icon: "calculate",     label: Translation.tr("Calc"),       component: calculatorComponent},
             {id: "sysmon",     icon: "monitor_heart", label: Translation.tr("System"),     component: sysmonComponent},
-            {id: "screentime", icon: "av_timer",      label: Translation.tr("Screen Time"), component: screenTimeComponent},
         ]
-        return all.filter(w => {
-            if (w.id === "screentime" && !(Config.options?.sidebar?.screenTime?.enable ?? false))
-                return false
-            return enabled.includes(w.id)
-        })
+        return all.filter(w => enabled.includes(w.id))
     }
 
     readonly property var sections: baseSections.concat(widgetSections)

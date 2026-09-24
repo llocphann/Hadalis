@@ -53,6 +53,20 @@ After updating the local `dev` checkout and installed runtime, run one command:
 bash scripts/benchmark-python-vs-rust.sh
 ```
 
+For a deeper MPD library run that also compares a full Python/Rust snapshot,
+use:
+
+```bash
+bash scripts/benchmark-python-vs-rust.sh --deep
+```
+
+`--deep` is opt-in because a large MPD library can take materially longer to
+scan. It runs snapshot parity in a shared temporary cache, then times Python and
+Rust with separate empty temporary caches so neither implementation warms the
+other and the user's real cover cache is untouched. The deep snapshot defaults
+to one timing run; set `MPD_SNAPSHOT_RUNS` explicitly when more samples are
+worth the extra library work. `--deep` can be combined with `--read-only`.
+
 This command verifies the `dev` HEAD, builds release binaries, runs Rust and
 selector regressions, compares Python/Rust output on read-only paths and
 temporary config files, measures startup time, CPU and peak/resident memory,
@@ -64,7 +78,10 @@ and validator failures are recorded in it.
 The timed cases include every ported read-only Niri command, clipboard
 filtering, desktop icon configuration in temporary homes, color-only and full
 theme generation, input probes and resident daemons, diagnostics sampling,
-and MPD status when the service is available.
+and MPD status through direct Rust, the persistent daemon, and the dispatcher
+when the service is available. Deep mode additionally measures the full MPD
+library snapshot where artwork discovery, cache hashing, playlists and folder
+models dominate the workload.
 
 When the installed runtime matches this checkout and parity checks pass, the
 command also measures the live `inir.service` once in Python and Rust mode,
@@ -81,7 +98,8 @@ maintainer-approved step.
 
 ## Current source-side qualification: 2026-09-24
 
-At `dev` `c19cb9d4661ba0914aebd97b0fb898703946baa1`, the code-side native
+Source qualification has been rerun through `dev`
+`d454daad8b43543645903d790bb4d8c2fed8b134`; the code-side native
 qualification has advanced beyond the historical desktop snapshot below:
 
 - The native workspace has a tracked Cargo 1.95 lockfile (198 package entries),
@@ -97,14 +115,27 @@ qualification has advanced beyond the historical desktop snapshot below:
   player/mixer/options changes avoid rebuilding the full queue, playlist changes
   include queue state, and database/stored-playlist changes request a rescan.
   Compatibility polling remains only as a fail-soft path.
-- MPD cover lookup caches folder/cache results within a snapshot, and UI actions
-  avoid scheduling duplicate status refreshes while the native subscription is
-  active.
+- MPD artwork lookup now reuses one cache across persistent status events and
+  across every phase of a full snapshot. Library artwork fetched from MPD is
+  published back into that same lookup before playlists/current/queue are
+  built, avoiding repeated filesystem misses and keeping artwork consistent
+  within the snapshot. Cache-key generation no longer builds temporary string
+  vectors, the exact historical SHA-256 filename contract is fixture-tested,
+  and one folder scan keeps only the highest-priority cover candidate instead
+  of materializing a filename map for every file.
+- Deterministic fake-MPD tests now cover persistent connection/root reuse,
+  lightweight player-state updates that must not request `playlistinfo`, and
+  queue-bearing playlist updates. The benchmark also has an opt-in,
+  cache-isolated full-snapshot lane guarded by
+  `test-native-benchmark-deep-contract.sh`.
 - Runtime Diagnostics keeps its lease-driven lifecycle but its Rust sampler now
   avoids temporary field vectors/sets in the hot `/proc/stat`, `/proc/net/dev`,
-  task, process-stat, and process-I/O parsing paths. The native formatter,
-  clippy, and unit-test gates all pass with these changes.
-- The canonical repository validator is currently **RED: 183 passed, 27 failed,
+  task, process-stat, and process-I/O parsing paths. Fixed `/proc/meminfo`
+  fields parse directly into a small struct, and the slower memory/DRM/child
+  sample keeps one `SlowState` instead of cloning the same maps/state into
+  parallel temporaries. The native formatter, clippy, and unit-test gates pass
+  with these changes.
+- The canonical repository validator is currently **RED: 184 passed, 27 failed,
   2 skipped**. The native-related stale contracts for Local Music, Diagnostics,
   Niri launcher lookup, optional MPD/MPRIS packaging, and the performance
   lifecycle are now passing. The remaining failures are repository-wide UI,
@@ -200,11 +231,16 @@ per startup case; it is under the local state directory named above.
 - Repeat the historical Diagnostics CPU and MPD latency measurements on the
   current implementation. Diagnostics parsing and MPD runtime architecture have
   both changed since the old sample, so the previous 4.0%/2.3% Diagnostics and
-  2.64 s MPD observations are signals only, not current measurements.
+  2.64 s MPD observations are signals only, not current measurements. When MPD
+  is available, use `bash scripts/benchmark-python-vs-rust.sh --deep` at least
+  once so the new library/artwork path is measured rather than inferred from
+  status-only timings.
 - The harness now reports average, p50, p95, min/max and standard deviation for
   repeated command workloads. Collect a fresh report that also captures the
   selector/dispatcher path and matched live shell/cgroup behavior; use
-  `perf`/scheduler counters when the host permits them.
+  `perf`/scheduler counters when the host permits them. Deep MPD snapshot
+  timings intentionally default to one cold-cache run per backend unless
+  `MPD_SNAPSHOT_RUNS` is raised.
 - Lockfile, canonical formatting, locked CI, release-profile tuning and Nix
   package execution are established. Remaining distribution work is the real
   Arch install/update/uninstall path, installed-binary identity, rollback, and
@@ -215,7 +251,7 @@ per startup case; it is under the local state directory named above.
 ### 4. Restore the canonical validator
 
 The historical list below records the 32 failures from the old benchmark SHA.
-The current source state is **183 passed, 27 failed, 2 skipped**; several stale
+The current source state is **184 passed, 27 failed, 2 skipped**; several stale
 native-migration contracts from this list now pass. Re-run the validator on
 each new HEAD and inspect its detailed log. Prefer behavioral repair and update
 a contract only when its intended behavior has changed. Repository-wide

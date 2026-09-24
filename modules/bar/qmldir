@@ -1,6 +1,7 @@
 module qs.modules.bar
 ActiveWindow 1.0 ActiveWindow.qml
 BarContent 1.0 BarContent.qml
+BarStatusIndicators 1.0 BarStatusIndicators.qml
 BarContextMenu 1.0 BarContextMenu.qml
 BarGroup 1.0 BarGroup.qml
 Bar 1.0 Bar.qml
@@ -16,6 +17,7 @@ CircleUtilButton 1.0 CircleUtilButton.qml
 ClockCalendarContent 1.0 ClockCalendarContent.qml
 ClockCalendarPopup 1.0 ClockCalendarPopup.qml
 ClockWidget 1.0 ClockWidget.qml
+DistroIcon 1.0 DistroIcon.qml
 HyprlandXkbIndicator 1.0 HyprlandXkbIndicator.qml
 LeftSidebarButton 1.0 LeftSidebarButton.qml
 Media 1.0 Media.qml

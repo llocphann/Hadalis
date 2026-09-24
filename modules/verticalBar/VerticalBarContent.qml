@@ -73,6 +73,7 @@ Item { // Bar content region
     }
 
     readonly property bool leftSidebarButtonEnabled: root.moduleEnabled("leftSidebarButton", true)
+    readonly property bool distroIconEnabled: root.moduleEnabled("distroIcon", true)
     readonly property bool activeWindowEnabled: root.moduleEnabled("activeWindow", true)
         && !root.taskbarEnabled
     readonly property bool taskbarEnabled: root.moduleEnabled("taskbar", false)
@@ -102,7 +103,7 @@ Item { // Bar content region
         const a = Config.options?.bar?.verticalLayout?.[name]
         return (a && a.length >= 0) ? a : fallback
     }
-    readonly property var _topIds: root._verticalZone("top", ["leftSidebarButton", "activeWindow", "spacer"])
+    readonly property var _topIds: root._verticalZone("top", ["leftSidebarButton", "distroIcon", "activeWindow", "spacer"])
     readonly property var _centerTopIds: root._verticalZone("centerTop", ["resources", "media"])
     readonly property var _centerIds: root._verticalZone("center", ["workspaces"]).filter(id => id === "workspaces")
     readonly property var _centerBottomIds: root._verticalZone("centerBottom", ["clock", "utilButtons", "battery"])
@@ -119,6 +120,7 @@ Item { // Bar content region
     function _moduleShown(id, zone) {
         if (id === "spacer") return root._fillHeight(id, zone) || root._spacerMinimumHeight > 0
         if (id === "leftSidebarButton") return root.leftSidebarButtonEnabled
+        if (id === "distroIcon") return root.distroIconEnabled
         if (id === "activeWindow") return root.activeWindowEnabled
         if (id === "taskbar") return root.taskbarEnabled
         if (id === "resources") return root.resourcesEnabled
@@ -313,6 +315,7 @@ Item { // Bar content region
 
     readonly property var _allComponents: ({
         "leftSidebarButton": leftSidebarButtonComponent,
+        "distroIcon": distroIconComponent,
         "activeWindow": activeWindowComponent,
         "taskbar": taskbarComponent,
         "resources": resourcesComponent,
@@ -336,6 +339,10 @@ Item { // Bar content region
             colBackground: buttonHovered ? Appearance.colors.colLayer1Hover
                 : ColorUtils.transparentize(Appearance.colors.colLayer1Hover, 1)
         }
+    }
+    Component {
+        id: distroIconComponent
+        Bar.DistroIcon {}
     }
     Component {
         id: activeWindowComponent
@@ -395,8 +402,9 @@ Item { // Bar content region
         id: rightSidebarButtonComponent
         RippleButton {
             id: rightSidebarButton
-            implicitWidth: Math.max(34 * Appearance.sizes.barModuleScale, indicatorsColumnLayout.implicitWidth + 12 * Appearance.sizes.barModuleScale)
-            implicitHeight: Math.max(34 * Appearance.sizes.barModuleScale, indicatorsColumnLayout.implicitHeight + 8 * Appearance.sizes.barModuleScale)
+            Accessible.name: Translation.tr("Toggle right sidebar")
+            implicitWidth: 34 * Appearance.sizes.barModuleScale
+            implicitHeight: 34 * Appearance.sizes.barModuleScale
             buttonRadius: Appearance.rounding.full
             colBackground: buttonHovered ? Appearance.colors.colLayer1Hover
                 : ColorUtils.transparentize(Appearance.colors.colLayer1Hover, 1)
@@ -407,42 +415,15 @@ Item { // Bar content region
             colRippleToggled: Appearance.colors.colSecondaryContainerActive
             toggled: GlobalStates.sidebarRightOpen
                 && GlobalStates.sidebarRightPresentationOutput === (root.screen?.name ?? "")
-            property color colText: toggled ? Appearance.colors.colOnSecondaryContainer : Appearance.colors.colOnLayer0
             onPressed: GlobalStates.toggleSidebarRight(root.screen?.name ?? "")
-            ColumnLayout {
-                id: indicatorsColumnLayout
+
+            MaterialSymbol {
                 anchors.centerIn: parent
-                property real realSpacing: 6 * Appearance.sizes.barModuleScale
-                spacing: 0
-                Revealer {
-                    vertical: true; reveal: Audio.sink?.audio?.muted ?? false; Layout.fillWidth: true
-                    Layout.bottomMargin: reveal ? indicatorsColumnLayout.realSpacing : 0
-                    MaterialSymbol { text: "volume_off"; iconSize: Math.round(Appearance.font.pixelSize.larger * Appearance.sizes.barModuleScale); color: rightSidebarButton.colText }
-                }
-                Revealer {
-                    vertical: true; reveal: Audio.micMuted; Layout.fillWidth: true
-                    Layout.bottomMargin: reveal ? indicatorsColumnLayout.realSpacing : 0
-                    MaterialSymbol { text: "mic_off"; iconSize: Math.round(Appearance.font.pixelSize.larger * Appearance.sizes.barModuleScale); color: rightSidebarButton.colText }
-                }
-                Loader {
-                    active: CompositorService.isHyprland
-                    Layout.alignment: Qt.AlignHCenter
-                    Layout.bottomMargin: indicatorsColumnLayout.realSpacing
-                    sourceComponent: Bar.HyprlandXkbIndicator { vertical: true; color: rightSidebarButton.colText }
-                }
-                Revealer {
-                    vertical: true; reveal: Notifications.silent || Notifications.unread > 0; Layout.fillWidth: true
-                    Layout.bottomMargin: reveal ? indicatorsColumnLayout.realSpacing : 0
-                    Bar.NotificationUnreadCount {}
-                }
-                MaterialSymbol {
-                    Layout.bottomMargin: indicatorsColumnLayout.realSpacing
-                    text: Network.materialSymbol; iconSize: Math.round(Appearance.font.pixelSize.larger * Appearance.sizes.barModuleScale); color: rightSidebarButton.colText
-                }
-                MaterialSymbol {
-                    visible: BluetoothStatus.available
-                    text: BluetoothStatus.activeIcon; iconSize: Math.round(Appearance.font.pixelSize.larger * Appearance.sizes.barModuleScale); color: rightSidebarButton.colText
-                }
+                text: "right_panel_open"
+                iconSize: Math.round(20 * Appearance.sizes.barModuleScale)
+                color: rightSidebarButton.toggled
+                    ? Appearance.colors.colOnSecondaryContainer
+                    : Appearance.colors.colOnLayer0
             }
         }
     }

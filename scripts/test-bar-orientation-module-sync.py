@@ -24,6 +24,11 @@ def main() -> None:
     vertical = read("modules/verticalBar/VerticalBarContent.qml")
     settings = read("modules/settings/BarConfig.qml")
     editor = read("modules/common/widgets/BarModuleOrderEditor.qml")
+    horizontal = read("modules/bar/BarContent.qml")
+    left_button = read("modules/bar/LeftSidebarButton.qml")
+    distro_icon = read("modules/bar/DistroIcon.qml")
+    tray = read("modules/bar/SysTray.qml")
+    status = read("modules/bar/BarStatusIndicators.qml")
     config = read("modules/common/Config.qml")
     defaults = read("defaults/config.json")
     util = read("modules/bar/UtilButtons.qml")
@@ -44,12 +49,28 @@ def main() -> None:
             'readonly property bool isVertical: Config.options?.bar?.vertical ?? false',
             "Bar Settings must react to the same orientation field used by the runtime.")
     for key in (
-        "leftSidebarButton", "activeWindow", "taskbar", "sysTray", "resources",
+        "leftSidebarButton", "distroIcon", "activeWindow", "taskbar", "sysTray", "resources",
         "media", "workspaces", "clock", "utilButtons", "battery", "weather",
         "rightSidebarButton",
     ):
         require(settings, f'bar.modules.{key}',
                 f"Bar Settings lost canonical module key: {key}")
+
+    require(horizontal, '"distroIcon": distroIconComponent',
+            "Top/Bottom Bar must load the separate distro module.")
+    require(vertical, '"distroIcon": distroIconComponent',
+            "Left/Right Bar must load the separate distro module.")
+    require(distro_icon, "SystemInfo.distroIcon",
+            "Distro module must own the configurable distro icon.")
+    forbid(left_button, "SystemInfo.distroIcon",
+           "Left sidebar control must not contain the distro icon.")
+    require(tray, "BarStatusIndicators {",
+            "System Tray must own the status indicators.")
+    require(status, "Network.materialSymbol",
+            "System Tray status group must include network state.")
+    forbid(horizontal.split("id: rightSidebarButtonComponent", 1)[1],
+           "Network.materialSymbol",
+           "Right sidebar control must not own network status.")
 
     require(settings, "verticalPreset: root.isVertical",
             "Bar Settings must edit the preset matching the active orientation.")
@@ -62,7 +83,7 @@ def main() -> None:
 
     for token in (
         "property JsonObject verticalLayout: JsonObject {",
-        'property list<string> top: ["leftSidebarButton", "activeWindow", "spacer"]',
+        'property list<string> top: ["leftSidebarButton", "distroIcon", "activeWindow", "spacer"]',
         'property list<string> centerTop: ["resources", "media"]',
         'property list<string> center: ["workspaces"]',
         'property list<string> centerBottom: ["clock", "utilButtons", "battery"]',
@@ -83,7 +104,8 @@ def main() -> None:
         'Translation.tr("Center bottom")',
         'Translation.tr("Bottom edge")',
     ):
-        require(editor, token, f"Bar layout editor is not orientation-aware: {token}")
+        require(" ".join(editor.split()), token,
+                f"Bar layout editor is not orientation-aware: {token}")
     forbid(editor, 'Config.setNestedValue("bar.layout." + toZone',
            "Editor mutations must target the selected orientation preset.")
 

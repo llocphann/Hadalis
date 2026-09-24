@@ -1656,6 +1656,7 @@ Singleton {
                 }
                 property JsonObject modules: JsonObject {
                     property bool leftSidebarButton: true
+                    property bool distroIcon: true
                     property bool activeWindow: true
                     property bool resources: false
                     property bool media: true
@@ -1680,11 +1681,11 @@ Singleton {
                     property list<string> order: ["resources", "media", "workspaces", "clock", "utilButtons", "battery"]
                 }
                 property JsonObject edgeModulesLayout: JsonObject {
-                    property list<string> leftOrder: ["leftSidebarButton", "activeWindow"]
+                    property list<string> leftOrder: ["leftSidebarButton", "distroIcon", "activeWindow"]
                     property list<string> rightOrder: ["rightSidebarButton", "sysTray", "weather"]
                 }
                 property JsonObject layout: JsonObject {
-                    property list<string> left: ["leftSidebarButton", "activeWindow"]
+                    property list<string> left: ["leftSidebarButton", "distroIcon", "activeWindow"]
                     property list<string> centerLeft: ["resources", "media"]
                     property list<string> center: ["workspaces"]
                     property list<string> centerRight: ["clock", "utilButtons", "battery"]
@@ -1694,7 +1695,7 @@ Singleton {
                     property bool migrated: false
                 }
                 property JsonObject verticalLayout: JsonObject {
-                    property list<string> top: ["leftSidebarButton", "activeWindow", "spacer"]
+                    property list<string> top: ["leftSidebarButton", "distroIcon", "activeWindow", "spacer"]
                     property list<string> centerTop: ["resources", "media"]
                     property list<string> center: ["workspaces"]
                     property list<string> centerBottom: ["clock", "utilButtons", "battery"]

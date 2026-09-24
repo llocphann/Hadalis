@@ -827,6 +827,7 @@
             "activeWindow": true,
             "battery": true,
             "clock": true,
+            "distroIcon": true,
             "leftSidebarButton": true,
             "media": true,
             "resources": true,
@@ -841,6 +842,7 @@
         "layout": {
             "left": [
                 "leftSidebarButton",
+                "distroIcon",
                 "activeWindow"
             ],
             "centerLeft": [
@@ -947,6 +949,7 @@
         "verticalLayout": {
             "top": [
                 "leftSidebarButton",
+                "distroIcon",
                 "activeWindow",
                 "spacer"
             ],

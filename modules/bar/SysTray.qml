@@ -221,5 +221,10 @@ Item {
             text: "•"
             visible: root.showSeparator && SystemTray.items.values.length > 0
         }
+
+        BarStatusIndicators {
+            vertical: root.vertical
+            Layout.alignment: Qt.AlignVCenter | Qt.AlignHCenter
+        }
     }
 }

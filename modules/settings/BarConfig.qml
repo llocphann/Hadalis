@@ -526,6 +526,16 @@ ContentPage {
                         onCheckedChanged: Config.setNestedValue("bar.modules.leftSidebarButton", checked)
                     }
                     SettingsSwitch {
+                        buttonIcon: "computer"
+                        text: Translation.tr("Distro icon")
+                        checked: Config.options?.bar?.modules?.distroIcon ?? true
+                        onCheckedChanged: Config.setNestedValue("bar.modules.distroIcon", checked)
+                    }
+                }
+
+                ConfigRow {
+                    uniform: true
+                    SettingsSwitch {
                         buttonIcon: "window"
                         text: Translation.tr("Active window")
                         checked: Config.options?.bar?.modules?.activeWindow ?? true

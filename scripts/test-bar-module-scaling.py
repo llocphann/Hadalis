@@ -50,7 +50,7 @@ def main() -> None:
         "modules/bar/weather/WeatherBar.qml": ("34 * " + SCALE,),
         "modules/bar/BarTaskbar.qml": ("contentInset: 8 * " + SCALE, "barSize: vertical"),
         "modules/bar/BarTaskbarButton.qml": ("buttonSize: barSize - 4 * " + SCALE,),
-        "modules/verticalBar/VerticalBarContent.qml": ("Math.max(34 * " + SCALE, "moduleGap:"),
+        "modules/verticalBar/VerticalBarContent.qml": ("implicitWidth: 34 * " + SCALE, "moduleGap:"),
         "modules/verticalBar/VerticalClockWidget.qml": ("Math.round(Appearance.font.pixelSize.large * " + SCALE + ")",),
         "modules/verticalBar/VerticalDateWidget.qml": ("implicitWidth: 24 * " + SCALE,),
         "modules/verticalBar/VerticalMedia.qml": ("implicitSize: Math.round(20 * " + SCALE + ")",),

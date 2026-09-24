@@ -449,7 +449,7 @@ Item {
         return (root._layoutMigrated && a && a.length >= 0) ? a : fallback
     }
     readonly property var _leftIds: root._zone("left",
-        ["leftSidebarButton", "activeWindow"])
+        ["leftSidebarButton", "distroIcon", "activeWindow"])
     readonly property var _centerLeftIds: root._zone("centerLeft",
         ["resources", "media"])
     readonly property var _centerIds: root._zone("center", ["workspaces"])
@@ -480,6 +480,7 @@ Item {
 
     readonly property var _allComponents: ({
         "leftSidebarButton": leftSidebarButtonComponent,
+        "distroIcon": distroIconComponent,
         "activeWindow": activeWindowComponent,
         "resources": resourcesModuleComponent,
         "media": mediaModuleComponent,
@@ -580,6 +581,14 @@ Item {
                     ? Appearance.aurora.colSubSurfaceHover
                     : Appearance.colors.colLayer1Hover)
                 : "transparent"
+        }
+    }
+
+    Component {
+        id: distroIconComponent
+        DistroIcon {
+            visible: root._moduleVisible("distroIcon")
+            Layout.alignment: Qt.AlignVCenter
         }
     }
 
@@ -1286,17 +1295,16 @@ Item {
             id: rightSidebarButton
             cookieMorphing: true
             visible: root._moduleVisible("rightSidebarButton")
+            Accessible.name: Translation.tr("Toggle right sidebar")
 
             Layout.alignment: Qt.AlignRight | Qt.AlignVCenter
             Layout.fillWidth: false
-
-            implicitWidth: indicatorsRowLayout.implicitWidth + 20 * Appearance.sizes.barModuleScale
-            implicitHeight: indicatorsRowLayout.implicitHeight + 10 * Appearance.sizes.barModuleScale
+            implicitWidth: 30 * Appearance.sizes.barModuleScale
+            implicitHeight: 30 * Appearance.sizes.barModuleScale
 
             buttonRadius: Appearance.rounding.full
             colBackground: buttonHovered
-                ? Appearance.colors.colLayer1Hover
-                : "transparent"
+                ? Appearance.colors.colLayer1Hover : "transparent"
             colBackgroundHover: Appearance.colors.colLayer1Hover
             colRipple: Appearance.colors.colLayer1Active
             colBackgroundToggled: Appearance.colors.colSecondaryContainer
@@ -1307,131 +1315,13 @@ Item {
             property color colText: toggled
                 ? Appearance.colors.colOnSecondaryContainer
                 : Appearance.colors.colOnLayer0
+            onPressed: ShellLayoutController.toggleSidebarAtSlot("right")
 
-            Behavior on colText {
-                enabled: Appearance.animationsEnabled
-                ColorAnimation {
-                    duration: Appearance.animation.elementMoveFast.duration
-                    easing.type: Appearance.animation.elementMoveFast.type
-                    easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve
-                }
-            }
-
-            onPressed: {
-                ShellLayoutController.toggleSidebarAtSlot("right");
-            }
-
-            RowLayout {
-                id: indicatorsRowLayout
+            MaterialSymbol {
                 anchors.centerIn: parent
-                property real realSpacing: 15 * Appearance.sizes.barModuleScale
-                spacing: 0
-
-                Revealer {
-                    reveal: Audio.sink?.audio?.muted ?? false
-                    Layout.fillHeight: true
-                    Layout.rightMargin: reveal ? indicatorsRowLayout.realSpacing : 0
-                    Behavior on Layout.rightMargin {
-                        animation: NumberAnimation {
-                            duration: Appearance.animation.elementMoveFast.duration
-                            easing.type: Appearance.animation.elementMoveFast.type
-                            easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve
-                        }
-                    }
-                    MaterialSymbol {
-                        text: "volume_off"
-                        iconSize: Math.round(Appearance.font.pixelSize.larger * Appearance.sizes.barModuleScale)
-                        color: rightSidebarButton.colText
-                    }
-                }
-                Revealer {
-                    reveal: Audio.micMuted
-                    Layout.fillHeight: true
-                    Layout.rightMargin: reveal ? indicatorsRowLayout.realSpacing : 0
-                    Behavior on Layout.rightMargin {
-                        animation: NumberAnimation {
-                            duration: Appearance.animation.elementMoveFast.duration
-                            easing.type: Appearance.animation.elementMoveFast.type
-                            easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve
-                        }
-                    }
-                    MaterialSymbol {
-                        text: "mic_off"
-                        iconSize: Math.round(Appearance.font.pixelSize.larger * Appearance.sizes.barModuleScale)
-                        color: rightSidebarButton.colText
-                    }
-                }
-                HyprlandXkbIndicator {
-                    Layout.alignment: Qt.AlignVCenter
-                    Layout.rightMargin: KeyboardIndicators.hasPanelIndicators
-                        ? indicatorsRowLayout.realSpacing : 0
-                    color: rightSidebarButton.colText
-                }
-                Revealer {
-                    reveal: Notifications.silent || Notifications.unread > 0
-                    Layout.fillHeight: true
-                    Layout.rightMargin: reveal ? indicatorsRowLayout.realSpacing : 0
-                    implicitHeight: reveal ? notificationUnreadCount.implicitHeight : 0
-                    implicitWidth: reveal ? notificationUnreadCount.implicitWidth : 0
-                    Behavior on Layout.rightMargin {
-                        enabled: Appearance.animationsEnabled
-                        NumberAnimation {
-                            duration: Appearance.animation.elementMoveFast.duration
-                            easing.type: Appearance.animation.elementMoveFast.type
-                            easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve
-                        }
-                    }
-                    NotificationUnreadCount {
-                        id: notificationUnreadCount
-                    }
-                }
-                MaterialSymbol {
-                    text: Network.materialSymbol
-                    iconSize: Math.round(Appearance.font.pixelSize.larger * Appearance.sizes.barModuleScale)
-                    color: rightSidebarButton.colText
-                    Layout.rightMargin: BluetoothStatus.available
-                        ? indicatorsRowLayout.realSpacing : 0
-
-                    HoverHandler {
-                        id: wifiHover
-                        onHoveredChanged: {
-                            if (hovered) Network.refreshActiveNetworkDetails();
-                        }
-                    }
-
-                    StyledToolTip {
-                        extraVisibleCondition: wifiHover.hovered
-                        text: {
-                            if (!Network.wifiEnabled)
-                                return Translation.tr("Wi-Fi is disabled");
-                            if (Network.ethernet)
-                                return Translation.tr("Ethernet connected");
-                            if (!Network.networkName)
-                                return Translation.tr("Not connected");
-                            const connected = Translation.tr("Connected to %1")
-                                .arg(Network.networkName);
-                            const details = Network.accessPointDetails(Network.active, true);
-                            return details.length > 0
-                                ? `${connected} | ${details}` : connected;
-                        }
-                    }
-                }
-                Revealer {
-                    reveal: BluetoothStatus.available
-                    Layout.rightMargin: indicatorsRowLayout.realSpacing
-                    MaterialSymbol {
-                        text: BluetoothStatus.activeIcon
-                        iconSize: Math.round(Appearance.font.pixelSize.larger * Appearance.sizes.barModuleScale)
-                        color: rightSidebarButton.colText
-
-                        HoverHandler { id: btHover }
-
-                        StyledToolTip {
-                            extraVisibleCondition: btHover.hovered
-                            text: BluetoothStatus.connectionTooltip()
-                        }
-                    }
-                }
+                text: "right_panel_open"
+                iconSize: Math.round(20 * Appearance.sizes.barModuleScale)
+                color: rightSidebarButton.colText
             }
         }
     }

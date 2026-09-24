@@ -15,8 +15,8 @@ RippleButton {
     Accessible.name: Translation.tr("Toggle left sidebar")
 
     property real buttonPadding: 5 * Appearance.sizes.barModuleScale
-    implicitWidth: distroIcon.width + buttonPadding * 2
-    implicitHeight: distroIcon.height + buttonPadding * 2
+    implicitWidth: sidebarIcon.width + buttonPadding * 2
+    implicitHeight: sidebarIcon.height + buttonPadding * 2
     buttonRadius: Appearance.rounding.full
     colBackgroundHover: Appearance.colors.colLayer1Hover
     colRipple: Appearance.colors.colLayer1Active
@@ -63,14 +63,14 @@ RippleButton {
         }
     }
 
-    CustomIcon {
-        id: distroIcon
+    MaterialSymbol {
+        id: sidebarIcon
         anchors.centerIn: parent
-        width: 19.5 * Appearance.sizes.barModuleScale
-        height: 19.5 * Appearance.sizes.barModuleScale
-        source: (Config.options?.bar?.topLeftIcon ?? 'distro') == 'distro' ? SystemInfo.distroIcon : `${Config.options?.bar?.topLeftIcon ?? 'distro'}-symbolic`
-        colorize: true
-        color: Appearance.colors.colOnLayer0
+        text: "left_panel_open"
+        iconSize: Math.round(20 * Appearance.sizes.barModuleScale)
+        color: root.toggled
+            ? Appearance.colors.colOnSecondaryContainer
+            : Appearance.colors.colOnLayer0
 
         Rectangle {
             opacity: root.showPing ? 1 : 0

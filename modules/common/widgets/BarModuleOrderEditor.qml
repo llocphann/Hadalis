@@ -37,14 +37,14 @@ ColumnLayout {
 
     // ─── Defaults / metadata ────────────────────────────────────────────
     readonly property var _horizontalDefaultLayout: ({
-        left: ["leftSidebarButton", "activeWindow"],
+        left: ["leftSidebarButton", "distroIcon", "activeWindow"],
         centerLeft: ["resources", "media"],
         center: ["workspaces"],
         centerRight: ["clock", "utilButtons", "battery"],
         right: ["rightSidebarButton", "tray", "timer", "shellUpdate", "spacer", "weather"],
     })
     readonly property var _verticalDefaultLayout: ({
-        top: ["leftSidebarButton", "activeWindow", "spacer"],
+        top: ["leftSidebarButton", "distroIcon", "activeWindow", "spacer"],
         centerTop: ["resources", "media"],
         center: ["workspaces"],
         centerBottom: ["clock", "utilButtons", "battery"],
@@ -53,15 +53,15 @@ ColumnLayout {
     readonly property var _defaultLayout: root.verticalPreset
         ? root._verticalDefaultLayout : root._horizontalDefaultLayout
     readonly property var _knownIds: root.verticalPreset
-        ? ["leftSidebarButton", "activeWindow", "taskbar", "resources", "media", "workspaces",
+        ? ["leftSidebarButton", "distroIcon", "activeWindow", "taskbar", "resources", "media", "workspaces",
            "clock", "utilButtons", "battery", "rightSidebarButton", "tray", "timer", "shellUpdate", "spacer", "weather"]
-        : ["leftSidebarButton", "activeWindow", "resources", "media", "workspaces",
+        : ["leftSidebarButton", "distroIcon", "activeWindow", "resources", "media", "workspaces",
            "clock", "utilButtons", "battery", "rightSidebarButton", "tray", "timer", "shellUpdate", "spacer", "weather"]
     readonly property var _zones: root.verticalPreset
         ? ["top", "centerTop", "center", "centerBottom", "bottom"]
         : ["left", "centerLeft", "center", "centerRight", "right"]
     readonly property var _visKeys: ({
-        leftSidebarButton: "leftSidebarButton", activeWindow: "activeWindow",
+        leftSidebarButton: "leftSidebarButton", distroIcon: "distroIcon", activeWindow: "activeWindow",
         taskbar: "taskbar",
         resources: "resources", media: "media", workspaces: "workspaces", clock: "clock",
         utilButtons: "utilButtons", battery: "battery", rightSidebarButton: "rightSidebarButton",
@@ -69,7 +69,7 @@ ColumnLayout {
     })
 
     function _metaIcon(id) {
-        return ({ leftSidebarButton: "side_navigation", activeWindow: "window",
+        return ({ leftSidebarButton: "side_navigation", distroIcon: "computer", activeWindow: "window",
             taskbar: "dock_to_bottom",
             resources: "memory", media: "music_note", workspaces: "workspaces", clock: "schedule",
             utilButtons: "build", battery: "battery_full", rightSidebarButton: "call_to_action",
@@ -77,7 +77,7 @@ ColumnLayout {
             weather: "cloud" })[id] || "widgets"
     }
     function _metaLabel(id) {
-        return ({ leftSidebarButton: Translation.tr("Left sidebar"), activeWindow: Translation.tr("Active window"),
+        return ({ leftSidebarButton: Translation.tr("Left sidebar"), distroIcon: Translation.tr("Distro icon"), activeWindow: Translation.tr("Active window"),
             taskbar: Translation.tr("Taskbar"),
             resources: Translation.tr("Resources"), media: Translation.tr("Media"),
             workspaces: Translation.tr("Workspaces"), clock: Translation.tr("Clock"), utilButtons: Translation.tr("Utility buttons"),

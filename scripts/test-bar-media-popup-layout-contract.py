@@ -38,22 +38,26 @@ for owner, label in (
 
 for token in (
     "property bool compactLayout: false",
-    "readonly property real contentMargin: root.compactLayout ? 9 : 12",
+    "readonly property bool narrowLayout: root.compactLayout && root.width < 340",
+    "? 7 : (root.compactLayout ? 9 : 12)",
     "readonly property real artworkExtent: root.compactLayout",
-    "Layout.minimumWidth: 0",
+    "Layout.minimumWidth: implicitWidth",
     "implicitHeight: root.compactLayout ? 12 : 16",
-    "implicitWidth: root.compactLayout ? 34 : 40",
+    "implicitWidth: root.narrowLayout ? 30 : (root.compactLayout ? 34 : 40)",
 ):
     require(player, token, "PlayerControl compact budget")
 
 for token in (
     "property bool compactLayout: false",
-    "implicitHeight: root.compactLayout ? 190 : 214",
+    "readonly property int presetStripHeight:",
+    "root.compactLayout ? 20 : 22",
+    "? (root.showTransportStatus ? 184 : 154)",
+    ": (root.showTransportStatus ? 210 : 180)",
     "clip: root.compactLayout",
-    "Layout.preferredHeight: root.compactLayout ? 100 : 118",
-    "implicitWidth: root.compactLayout ? 22 : 26",
-    "implicitWidth: root.compactLayout ? 11 : 13",
-    "implicitHeight: root.compactLayout ? 22 : 24",
+    "Layout.preferredHeight: root.compactLayout ? 112 : 132",
+    "root.compactLayout ? 40 : 44",
+    "root.compactLayout ? 11 : 13",
+    "implicitHeight: 20",
 ):
     require(eq, token, "EqualizerPanel compact budget")
 

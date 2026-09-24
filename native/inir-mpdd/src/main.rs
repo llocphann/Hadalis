@@ -1823,8 +1823,102 @@ fn main() -> Result<()> {
 
 #[cfg(test)]
 mod tests {
-    use super::{legacy_request, lrc_stamp_seconds, pairs, parse_lrc, quote, records};
+    use std::io::{BufRead, BufReader, Write};
+    use std::net::TcpListener;
+    use std::sync::mpsc::{self, Receiver};
+    use std::thread::{self, JoinHandle};
+    use std::time::Duration;
+
+    use super::{
+        MpdClient, MpdManager, legacy_request, lrc_stamp_seconds, pairs, parse_lrc, quote,
+        records, status_payload_mode,
+    };
     use serde_json::json;
+
+    fn spawn_fake_mpd() -> (u16, Receiver<Vec<String>>, JoinHandle<()>) {
+        let listener = TcpListener::bind(("127.0.0.1", 0)).expect("bind fake MPD");
+        let port = listener.local_addr().expect("fake MPD address").port();
+        let (tx, rx) = mpsc::channel();
+
+        let handle = thread::spawn(move || {
+            let (stream, _) = listener.accept().expect("accept fake MPD client");
+            let mut reader = BufReader::new(stream);
+            reader
+                .get_mut()
+                .write_all(b"OK MPD 0.23.15\n")
+                .expect("write MPD greeting");
+            reader.get_mut().flush().expect("flush MPD greeting");
+
+            let mut commands = Vec::new();
+            loop {
+                let mut line = String::new();
+                let read = reader.read_line(&mut line).expect("read MPD command");
+                if read == 0 {
+                    break;
+                }
+
+                let command = line.trim_end_matches(['\r', '\n']).to_owned();
+                let name = command.split_whitespace().next().unwrap_or_default();
+                commands.push(command);
+
+                let response = match name {
+                    "config" => "music_directory: /music\nOK\n",
+                    "status" => concat!(
+                        "volume: 50\n",
+                        "repeat: 0\n",
+                        "random: 0\n",
+                        "single: 0\n",
+                        "state: play\n",
+                        "song: 0\n",
+                        "elapsed: 1.5\n",
+                        "duration: 180.0\n",
+                        "OK\n"
+                    ),
+                    "currentsong" => concat!(
+                        "file: https://example.invalid/a.flac\n",
+                        "Artist: Alpha\n",
+                        "Title: One\n",
+                        "duration: 180\n",
+                        "OK\n"
+                    ),
+                    "playlistinfo" => concat!(
+                        "file: https://example.invalid/a.flac\n",
+                        "Artist: Alpha\n",
+                        "Title: One\n",
+                        "duration: 180\n",
+                        "Pos: 0\n",
+                        "Id: 10\n",
+                        "file: https://example.invalid/b.flac\n",
+                        "Artist: Beta\n",
+                        "Title: Two\n",
+                        "duration: 200\n",
+                        "Pos: 1\n",
+                        "Id: 11\n",
+                        "OK\n"
+                    ),
+                    other => panic!("unexpected fake MPD command: {other}"),
+                };
+
+                reader
+                    .get_mut()
+                    .write_all(response.as_bytes())
+                    .expect("write fake MPD response");
+                reader.get_mut().flush().expect("flush fake MPD response");
+            }
+
+            tx.send(commands).expect("return fake MPD commands");
+        });
+
+        (port, rx, handle)
+    }
+
+    fn finish_fake_mpd(rx: Receiver<Vec<String>>, handle: JoinHandle<()>) -> Vec<String> {
+        let commands = rx
+            .recv_timeout(Duration::from_secs(2))
+            .expect("fake MPD command log");
+        handle.join().expect("join fake MPD");
+        commands
+    }
 
     #[test]
     fn parses_legacy_compat_cli_shape() {
@@ -1872,6 +1966,61 @@ mod tests {
         assert_eq!(request["op"], "queue");
         assert_eq!(request["params"]["index"], 2);
         assert_eq!(request["params"]["uris"], json!(["a.flac", "b.flac"]));
+    }
+
+    #[test]
+    fn lightweight_status_skips_queue_snapshot() {
+        let (port, rx, handle) = spawn_fake_mpd();
+        {
+            let mut client =
+                MpdClient::connect("127.0.0.1", port).expect("connect lightweight fake MPD");
+            let payload =
+                status_payload_mode(&mut client, "", false).expect("read lightweight status");
+            assert!(payload.get("queue").is_none());
+            assert_eq!(payload["status"]["state"], "play");
+            assert_eq!(payload["current"]["title"], "One");
+        }
+
+        let commands = finish_fake_mpd(rx, handle);
+        assert_eq!(commands, vec!["status", "currentsong"]);
+    }
+
+    #[test]
+    fn playlist_status_includes_queue_snapshot() {
+        let (port, rx, handle) = spawn_fake_mpd();
+        {
+            let mut client =
+                MpdClient::connect("127.0.0.1", port).expect("connect playlist fake MPD");
+            let payload =
+                status_payload_mode(&mut client, "", true).expect("read playlist status");
+            let queue = payload["queue"].as_array().expect("queue array");
+            assert_eq!(queue.len(), 2);
+            assert_eq!(queue[0]["queueId"], 10);
+            assert_eq!(queue[1]["title"], "Two");
+        }
+
+        let commands = finish_fake_mpd(rx, handle);
+        assert_eq!(commands, vec!["status", "currentsong", "playlistinfo"]);
+    }
+
+    #[test]
+    fn manager_reuses_connection_and_cached_music_root() {
+        let (port, rx, handle) = spawn_fake_mpd();
+        {
+            let manager = MpdManager::new("127.0.0.1".into(), port, String::new());
+            for _ in 0..2 {
+                let payload = manager
+                    .with_client(|client, root| status_payload_mode(client, root, false))
+                    .expect("persistent manager status");
+                assert_eq!(payload["status"]["state"], "play");
+            }
+        }
+
+        let commands = finish_fake_mpd(rx, handle);
+        assert_eq!(
+            commands,
+            vec!["config", "status", "currentsong", "status", "currentsong"]
+        );
     }
 
     #[test]

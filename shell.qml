@@ -62,7 +62,8 @@ ShellRoot {
     function _ensureScreenTimeService(): void {
         if (GlobalStates.deferredPanelsReady
                 && ((Config.options?.sidebar?.screenTime?.enable ?? false)
-                    || (Config.options?.dashboard?.enable ?? true)))
+                    || ((Config.options?.panelFamily ?? "ii") !== "waffle"
+                        && (Config.options?.dashboard?.enable ?? true))))
             root._screenTimeService = ScreenTime
     }
     // Tier 4: T+1500ms (background features - updates, sync, content services)

@@ -35,6 +35,22 @@ command_exists() {
     command -v "$1" >/dev/null 2>&1
 }
 
+run_gate() {
+    local label="$1"
+    local failure_code="$2"
+    shift 2
+    local log="$TMP_ROOT/gate-${label//[^A-Za-z0-9_.-]/_}.log"
+    if "$@" >"$log" 2>&1; then
+        kv "$label" "PASS"
+        return 0
+    fi
+    local rc=$?
+    kv "$label" "FAIL exit=$rc"
+    echo "--- $label log tail ---"
+    tail -n 120 "$log" || true
+    exit "$failure_code"
+}
+
 run_capture() {
     local output rc
     output="$("$@" 2>&1)"
@@ -206,19 +222,15 @@ if ! command_exists cargo; then
     echo "Install Rust/cargo, then rerun this script."
     exit 2
 fi
-if ! cargo build --manifest-path native/Cargo.toml --release --workspace; then
-    echo "FATAL: Rust release build failed."
-    exit 3
-fi
-if ! cargo test --manifest-path native/Cargo.toml --workspace --all-targets; then
-    echo "FATAL: Rust unit tests failed."
-    exit 4
-fi
-if ! cargo clippy --manifest-path native/Cargo.toml --workspace --all-targets -- -D warnings; then
-    echo "FATAL: Rust clippy failed."
-    exit 5
-fi
+run_gate "cargo release build" 3     cargo build --manifest-path native/Cargo.toml --release --workspace
+run_gate "cargo unit tests" 4     cargo test --manifest-path native/Cargo.toml --workspace --all-targets
+run_gate "cargo clippy" 5     cargo clippy --manifest-path native/Cargo.toml --workspace --all-targets -- -D warnings
 "$DISPATCH" backend-info
+for binary in inir-inputd inir-mpdd inir-native inir-theme; do
+    if [[ -x "$BIN_DIR/$binary" ]]; then
+        kv "binary $binary" "$(du -h "$BIN_DIR/$binary" | awk '{print $1}') ($(stat -c %s "$BIN_DIR/$binary") bytes)"
+    fi
+done
 
 section "CLIPBOARD PARITY + BENCHMARK"
 CLIP_INPUT='<meta http-equiv="content-type" content="text/html; charset=utf-8"><div>Hello&nbsp;Hadalis</div><div>Rust</div>'

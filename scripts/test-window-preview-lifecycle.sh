@@ -217,10 +217,25 @@ for retired in \
     "$repo_root/modules/overview/NiriAdaptiveWindowPreview.qml" \
     "$repo_root/distro/arch/inir-niri-preview" \
     "$repo_root/.github/workflows/niri-preview-native.yml" \
-    "$repo_root/scripts/test-niri-native-preview-contract.sh" \
-    "$repo_root/sdata/migrations/046-niri-native-window-preview.sh"; do
+    "$repo_root/scripts/test-niri-native-preview-contract.sh"; do
     [[ ! -e "$retired" ]] || fail "retired Niri live preview artifact remains: $retired"
 done
+tombstone="$repo_root/sdata/migrations/046-niri-native-window-preview.sh"
+cleanup_migration="$repo_root/sdata/migrations/048-retired-niri-live-preview.sh"
+[[ -f "$tombstone" ]] || fail 'migration 046 tombstone must remain append-only history'
+grep -Fq 'migration_check() {' "$tombstone" \
+    || fail 'migration 046 tombstone must define a no-op check'
+grep -Fq 'return 1' "$tombstone" \
+    || fail 'migration 046 tombstone must never request installation'
+if grep -Eq 'makepkg|pacman -U|backend=mutter-screencast|ext-image-copy-capture|PipeWireStreamAdded' "$tombstone"; then
+    fail 'migration 046 tombstone must not retain live-preview install logic'
+fi
+[[ -f "$cleanup_migration" ]] || fail 'retired native preview cleanup migration is missing'
+grep -Fq 'pacman -R --noconfirm inir-niri-preview' "$cleanup_migration" \
+    || fail 'cleanup migration must remove the retired native package'
+grep -Fq '/usr/lib/qt6/qml/Hadalis/NiriPreview' "$cleanup_migration" \
+    || fail 'cleanup migration must remove stray native plugin files'
+
 if grep -Fq 'AdaptivePreviewService' "$overview_renderer"; then
     fail 'Niri Overview must remain snapshot-only'
 fi

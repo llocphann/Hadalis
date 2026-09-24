@@ -22,6 +22,7 @@ grep -Fq 'root.nativeDispatchPath, "diagnostics"'     "$root/services/RuntimeDia
 grep -Fq 'root.nativeDispatchPath, "mpd",'     "$root/services/LocalMusic.qml"     || fail 'LocalMusic MPD operations must route through native-dispatch'
 grep -Fq 'root.nativeDispatchPath, "niri",'     "$root/modules/settings/NiriConfig.qml"     || fail 'Niri settings must route through native-dispatch'
 grep -Fq 'root.nativeDispatchPath, "niri", "get-binds"'     "$root/services/deferred/NiriKeybinds.qml"     || fail 'Niri enriched keybind loader must route through native-dispatch'
+grep -Fq '_applyLegacyFromEnriched'     "$root/services/deferred/NiriKeybinds.qml"     || fail 'Niri cheatsheet must derive from the selector-backed get-binds result before legacy fallback'
 grep -Fq '"niri",' "$root/services/NiriService.qml"     || fail 'NiriService hot-corner query must route through native-dispatch'
 grep -Fq '"niri",' "$root/services/Wallpapers.qml"     || fail 'Wallpaper Niri shadow sync must route through native-dispatch'
 grep -Fq 'root.nativeDispatchPath, "niri", "persist-layout"'     "$root/modules/settings/MonitorVisibilityConfig.qml"     || fail 'monitor layout persistence must route through native-dispatch'

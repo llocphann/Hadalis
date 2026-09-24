@@ -215,6 +215,7 @@ struct MpdManager {
     host: String,
     port: u16,
     music_root_override: String,
+    resolved_music_root: Mutex<Option<String>>,
     client: Mutex<Option<MpdClient>>,
 }
 
@@ -224,6 +225,7 @@ impl MpdManager {
             host,
             port,
             music_root_override,
+            resolved_music_root: Mutex::new(None),
             client: Mutex::new(None),
         }
     }
@@ -240,10 +242,23 @@ impl MpdManager {
             *guard = Some(MpdClient::connect(&self.host, self.port)?);
         }
 
-        let result = operation(
-            guard.as_mut().expect("client initialized"),
-            &self.music_root_override,
-        );
+        let client = guard.as_mut().expect("client initialized");
+        let root = if self.music_root_override.trim().is_empty() {
+            let mut resolved = self
+                .resolved_music_root
+                .lock()
+                .map_err(|_| anyhow!("mpd_root_mutex_poisoned"))?;
+            if resolved.is_none() {
+                *resolved = Some(music_root(client, ""));
+            }
+            resolved.clone().unwrap_or_default()
+        } else {
+            expand_home(&self.music_root_override)
+                .to_string_lossy()
+                .into_owned()
+        };
+
+        let result = operation(client, &root);
         if result.is_err() {
             *guard = None;
         }
@@ -722,8 +737,7 @@ fn populate_library_art(client: &mut MpdClient, tracks: &mut [Map<String, Value>
     }
 }
 
-fn snapshot(client: &mut MpdClient, override_root: &str) -> Result<Value> {
-    let root = music_root(client, override_root);
+fn snapshot(client: &mut MpdClient, root: &str) -> Result<Value> {
     let library_records = records(
         &client.command("listallinfo", std::iter::empty::<&str>())?,
         "file",
@@ -866,12 +880,11 @@ fn handle_operation(
 ) -> Result<Value> {
     match op {
         "status" => {
-            let root = music_root(client, override_root);
-            let mut payload = status_payload(client, &root)?;
+            let mut payload = status_payload(client, override_root)?;
             payload
                 .as_object_mut()
                 .expect("status payload is object")
-                .insert("musicRoot".into(), json!(root));
+                .insert("musicRoot".into(), json!(override_root));
             Ok(payload)
         }
         "snapshot" => snapshot(client, override_root),
@@ -912,12 +925,11 @@ fn handle_operation(
                     client.command("play", [(queue_len - 1).max(0).to_string()])?;
                 }
             }
-            let root = music_root(client, override_root);
-            let mut payload = status_payload(client, &root)?;
+            let mut payload = status_payload(client, override_root)?;
             payload
                 .as_object_mut()
                 .expect("status payload is object")
-                .insert("musicRoot".into(), json!(root));
+                .insert("musicRoot".into(), json!(override_root));
             Ok(payload)
         }
         "enqueue-many" => {
@@ -926,12 +938,11 @@ fn handle_operation(
                     client.command("add", [uri])?;
                 }
             }
-            let root = music_root(client, override_root);
-            let mut payload = status_payload(client, &root)?;
+            let mut payload = status_payload(client, override_root)?;
             payload
                 .as_object_mut()
                 .expect("status payload is object")
-                .insert("musicRoot".into(), json!(root));
+                .insert("musicRoot".into(), json!(override_root));
             Ok(payload)
         }
         "playlist-create" | "playlist-add" => {
@@ -1173,8 +1184,9 @@ fn run_compat(args: &[String]) -> i32 {
 
         match mode {
             "snapshot" => {
-                let root = rest.first().map(String::as_str).unwrap_or("");
-                snapshot(&mut client, root)
+                let override_root = rest.first().map(String::as_str).unwrap_or("");
+                let root = music_root(&mut client, override_root);
+                snapshot(&mut client, &root)
             }
             "status" => {
                 let root = rest.first().map(String::as_str).unwrap_or("");

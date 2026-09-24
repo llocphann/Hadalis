@@ -91,10 +91,13 @@ def main() -> int:
                 # example `inir-mpdd=ready`). That is not a direct runtime
                 # binding. Reject executable/path contexts instead of any
                 # harmless mention of a binary name.
-                direct_path = bool(
-                    re.search(
-                        rf"(?:/|\\\\|\\$[A-Za-z_][A-Za-z0-9_]*/){re.escape(marker)}(?:\\b|$)",
-                        line,
+                direct_path = any(
+                    token in line
+                    for token in (
+                        f"/{marker}",
+                        f"./{marker}",
+                        f"$BIN_DIR/{marker}",
+                        f"${BIN_DIR}/{marker}",
                     )
                 )
                 direct_command = bool(

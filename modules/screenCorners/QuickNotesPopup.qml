@@ -50,8 +50,9 @@ Bar.StyledPopup {
         Math.round(Config.options?.appearance?.screenEdge?.width ?? 10)))
     readonly property real requestedPopupWidth: Math.max(280, Math.min(720,
         Config.options?.quickNotes?.popupWidth ?? 420))
-    readonly property real requestedPopupHeight: Math.max(
-        root.selectedMainTab === 0 && root.selectedNotesTab === 0 ? 300 : 380,
+    // All Notes/To-do/Timers faces share one configured popup envelope.
+    // Switching modes must never resize the corner surface underneath the user.
+    readonly property real requestedPopupHeight: Math.max(300,
         Math.min(640, Config.options?.quickNotes?.popupHeight ?? 300))
 
     hoverTarget: root.anchorItem

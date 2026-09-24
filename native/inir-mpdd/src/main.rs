@@ -722,6 +722,10 @@ fn track_str<'a>(track: &'a Map<String, Value>, key: &str) -> &'a str {
         .trim()
 }
 
+fn casefold_key(value: &str) -> String {
+    oxixml_unicode::case::fold_str(value)
+}
+
 fn track_value(track: &Map<String, Value>, key: &str) -> String {
     track_str(track, key).to_owned()
 }
@@ -994,12 +998,12 @@ fn snapshot(client: &mut MpdClient, root: &str) -> Result<Value> {
 
     tracks.sort_by_cached_key(|track| {
         (
-            track_str(track, "artist").to_ascii_lowercase(),
-            track_str(track, "album").to_ascii_lowercase(),
+            casefold_key(track_str(track, "artist")),
+            casefold_key(track_str(track, "album")),
             track.get("disc").and_then(Value::as_i64).unwrap_or(0),
             track.get("track").and_then(Value::as_i64).unwrap_or(0),
-            track_str(track, "title").to_ascii_lowercase(),
-            track_str(track, "uri").to_ascii_lowercase(),
+            casefold_key(track_str(track, "title")),
+            casefold_key(track_str(track, "uri")),
         )
     });
     populate_library_art(client, &mut tracks, &mut art_lookup);
@@ -1013,7 +1017,7 @@ fn snapshot(client: &mut MpdClient, root: &str) -> Result<Value> {
                 .then(|| value.to_owned())
         })
         .collect::<Vec<_>>();
-    playlist_names.sort_by_cached_key(|name| name.to_ascii_lowercase());
+    playlist_names.sort_by_cached_key(|name| casefold_key(name));
 
     let mut playlists = Vec::new();
     for name in playlist_names {
@@ -1044,7 +1048,7 @@ fn snapshot(client: &mut MpdClient, root: &str) -> Result<Value> {
         }
     }
     let mut folder_entries = folders.into_iter().collect::<Vec<_>>();
-    folder_entries.sort_by_cached_key(|(folder, _)| folder.to_lowercase());
+    folder_entries.sort_by_cached_key(|(folder, _)| casefold_key(folder));
     let folder_values = folder_entries
         .into_iter()
         .filter(|(_, tracks)| tracks.len() >= 2)
@@ -1207,10 +1211,10 @@ fn handle_operation(
             }
 
             if op == "playlist-create" {
-                let folded = name.to_lowercase();
+                let folded = casefold_key(&name);
                 if playlist_names(client)?
                     .iter()
-                    .any(|existing| existing.to_lowercase() == folded)
+                    .any(|existing| casefold_key(existing) == folded)
                 {
                     bail!("playlist_exists");
                 }
@@ -1601,10 +1605,10 @@ fn run_compat(args: &[String]) -> i32 {
                     bail!("empty_playlist_selection");
                 }
                 if mode == "playlist-create" {
-                    let folded = name.to_lowercase();
+                    let folded = casefold_key(&name);
                     if playlist_names(&mut client)?
                         .iter()
-                        .any(|existing| existing.to_lowercase() == folded)
+                        .any(|existing| casefold_key(existing) == folded)
                     {
                         bail!("playlist_exists");
                     }
@@ -1923,8 +1927,8 @@ mod tests {
 
     use super::{
         ART_EXTENSIONS, MpdClient, MpdManager, art_cache_key, art_filename_rank, broadcast,
-        legacy_request, lrc_stamp_seconds, pairs, parse_lrc, quote, records, status_payload_mode,
-        status_payload_mode_with_art, unique_trimmed_uris,
+        casefold_key, legacy_request, lrc_stamp_seconds, pairs, parse_lrc, quote, records,
+        status_payload_mode, status_payload_mode_with_art, unique_trimmed_uris,
     };
     use serde_json::json;
 
@@ -2097,6 +2101,33 @@ mod tests {
 
         let commands = finish_fake_mpd(rx, handle);
         assert_eq!(commands, vec!["status", "currentsong", "playlistinfo"]);
+    }
+
+    #[test]
+    fn casefold_matches_python_edge_cases_used_for_library_ordering() {
+        let cases = [
+            ("Straße", "strasse"),
+            ("ẞ", "ss"),
+            ("Σ", "σ"),
+            ("ς", "σ"),
+            ("K", "k"),
+            ("ſ", "s"),
+            ("İ", "i\u{307}"),
+            ("ǰ", "j\u{30c}"),
+            ("ﬃ", "ffi"),
+            ("Maße", "masse"),
+        ];
+        for (input, expected) in cases {
+            assert_eq!(
+                casefold_key(input),
+                expected,
+                "casefold mismatch for {input:?}"
+            );
+        }
+
+        let mut names = vec!["Zeta", "Straße", "strasse", "ς", "Σ"];
+        names.sort_by_cached_key(|name| casefold_key(name));
+        assert_eq!(names, vec!["Straße", "strasse", "ς", "Σ", "Zeta"]);
     }
 
     #[test]

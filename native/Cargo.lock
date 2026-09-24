@@ -685,6 +685,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "clap",
+ "oxixml-unicode",
  "serde",
  "serde_json",
  "sha2",
@@ -1109,6 +1110,12 @@ dependencies = [
  "proc-macro2",
  "syn 3.0.6",
 ]
+
+[[package]]
+name = "oxixml-unicode"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "49b491c24139591940f4e6bfb2b2d761dae24ac63497d38ba619177cc8588c24"
 
 [[package]]
 name = "proc-macro2"

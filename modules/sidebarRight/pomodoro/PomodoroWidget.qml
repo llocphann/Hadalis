@@ -68,10 +68,10 @@ Item {
 
             PillTabBar {
                 id: tabBar
-                anchors.left: parent.left
-                anchors.right: pinButton.left
-                anchors.rightMargin: 6
-                pillHeight: 34
+                anchors.horizontalCenter: parent.horizontalCenter
+                width: Math.max(150, Math.min(
+                    260, parent.width - (pinButton.width + 8) * 2))
+                pillHeight: 30
                 currentIndex: root.currentTab
                 tabs: root.tabButtonList.map(item => ({
                     icon: item.icon, label: item.name
@@ -109,7 +109,7 @@ Item {
         }
 
         StackLayout {
-            Layout.topMargin: 8
+            Layout.topMargin: 6
             Layout.fillWidth: true
             Layout.fillHeight: true
             clip: true

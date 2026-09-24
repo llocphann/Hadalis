@@ -26,7 +26,7 @@ Item {
     property int screenWidth: 1920
     property int screenHeight: 1080
     property var panelScreen: null
-    property real panelScreenY: Appearance.sizes.hyprlandGapsOut
+    property real panelScreenY: Appearance.sizes.surfaceGap
     property bool externalConnectedSurface: false
     readonly property color connectedSurfaceColor:
         sidebarLeftBackground.cardStyle ? Appearance.colors.colLayer1 : Appearance.colors.colLayer0
@@ -55,7 +55,7 @@ Item {
             || root.outerSizeMode === "fit")
         && !pluginViewActive && !activeTabEditing && activeTabContentHeight > 0
     readonly property real availableContentHeight: Math.max(0,
-        root.screenHeight - Appearance.sizes.hyprlandGapsOut * 2)
+        root.screenHeight - Appearance.sizes.surfaceGap * 2)
     readonly property real preferredContentHeight: root.fitToContent
         ? SidebarGeometry.leftFitHeight(root.availableContentHeight,
             sidebarLeftBackground.naturalFitHeight)
@@ -247,7 +247,7 @@ Item {
         radius: sidebarLeftBackground.radius
         glassEnabled: true
         screen: root.panelScreen ?? root.QsWindow?.window?.screen ?? null
-        glassScreenX: Appearance.sizes.hyprlandGapsOut
+        glassScreenX: Appearance.sizes.surfaceGap
         glassScreenY: root.panelScreenY
         glassScreenWidth: root.screenWidth
         glassScreenHeight: root.screenHeight
@@ -291,7 +291,7 @@ Item {
         border.color: "transparent"
         radius: cardStyle
             ? Appearance.rounding.normal
-            : (Appearance.rounding.screenRounding - Appearance.sizes.hyprlandGapsOut + 1)
+            : (Appearance.rounding.screenRounding - Appearance.sizes.surfaceGap + 1)
         topLeftRadius: root.attachedEdge === "left" ? 0 : radius
         bottomLeftRadius: root.attachedEdge === "left" ? 0 : radius
         topRightRadius: root.attachedEdge === "right" ? 0 : radius

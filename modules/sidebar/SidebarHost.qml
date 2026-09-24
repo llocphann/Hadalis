@@ -89,7 +89,7 @@ Scope {
     // Reserve tangent room for the iRiS field and free-side shadow. This is
     // field/shadow extent only; no standalone wedge geometry is painted.
     readonly property real edgeDecorationMargin: Math.max(
-        Appearance.sizes.hyprlandGapsOut,
+        Appearance.sizes.surfaceGap,
         PerimeterTokens.irisFuseDepth,
         root.screenEdgeShadowEnabled ? root.screenEdgeShadowSize + 2 : 0)
     // During the close tail the iRiS field remains resident. Move its body far
@@ -97,7 +97,7 @@ Scope {
     // a one-pixel sliver at the physical left/right edge.
     readonly property real hiddenTranslateDistance:
         Math.ceil(root.effectiveSidebarWidth) + Math.max(
-            Appearance.sizes.hyprlandGapsOut,
+            Appearance.sizes.surfaceGap,
             PerimeterTokens.irisFuseDepth,
             root.screenEdgeShadowEnabled ? root.screenEdgeShadowSize + 2 : 0)
     readonly property real screenEdgeShadowOpacity: Math.max(0, Math.min(1.0,
@@ -203,7 +203,7 @@ Scope {
             : configuredRequest
         const screenLimit = Math.max(0,
             (sidebarRoot.screen?.width ?? 1920)
-                - Appearance.sizes.hyprlandGapsOut * 2)
+                - Appearance.sizes.surfaceGap * 2)
         const minimumWidth = Math.min(root.reportedMinimumWidth, screenLimit)
         return Math.max(minimumWidth,
             Math.min(root.reportedMaximumWidth, screenLimit, requested))

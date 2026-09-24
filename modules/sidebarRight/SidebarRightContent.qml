@@ -35,7 +35,7 @@ Item {
     property int screenWidth: 1920
     property int screenHeight: 1080
     property var panelScreen: null
-    property real panelScreenY: Appearance.sizes.hyprlandGapsOut
+    property real panelScreenY: Appearance.sizes.surfaceGap
     property bool externalConnectedSurface: false
     readonly property color connectedSurfaceColor:
         sidebarRightBackground.cardStyle ? Appearance.colors.colLayer1 : Appearance.colors.colLayer0
@@ -56,7 +56,7 @@ Item {
         || showBluetoothDialog || showEventsDialog || showHotspotDialog
         || showNightLightDialog || showWifiDialog
     readonly property real preferredContentHeight: SidebarGeometry.rightFitHeight(
-        Math.max(0, root.screenHeight - Appearance.sizes.hyprlandGapsOut * 2),
+        Math.max(0, root.screenHeight - Appearance.sizes.surfaceGap * 2),
         sidebarRightBackground.naturalCompactHeight,
         root.bottomGroupCollapsed)
     readonly property real minimumUsefulHeight: Math.max(320,
@@ -353,7 +353,7 @@ Item {
         glassEnabled: true
         screen: root.panelScreen ?? root.QsWindow?.window?.screen ?? null
         glassScreenX: root.screenWidth - sidebarRightBackground.width
-            - Appearance.sizes.hyprlandGapsOut
+            - Appearance.sizes.surfaceGap
         glassScreenY: root.panelScreenY
         glassScreenWidth: root.screenWidth
         glassScreenHeight: root.screenHeight
@@ -374,8 +374,8 @@ Item {
             NumberAnimation { duration: Appearance.animation.elementResize.duration; easing.type: Appearance.animation.elementResize.type; easing.bezierCurve: Appearance.animation.elementResize.bezierCurve }
         }
         // Clamp >= 0: preload parent.height is 0 here, raw subtraction went negative and froze layout.
-        implicitHeight: Math.max(0, parent.height - Appearance.sizes.hyprlandGapsOut * 2)
-        implicitWidth: sidebarWidth - Appearance.sizes.hyprlandGapsOut * 2
+        implicitHeight: Math.max(0, parent.height - Appearance.sizes.surfaceGap * 2)
+        implicitWidth: sidebarWidth - Appearance.sizes.surfaceGap * 2
         property bool cardStyle: Config.options?.sidebar?.cardStyle ?? false
         // Ricelin island mode remains an explicit supported sidebar skin;
         // otherwise the sidebar uses the canonical Material surface.
@@ -394,7 +394,7 @@ Item {
         border.color: "transparent"
         radius: cardStyle
             ? Appearance.rounding.normal
-            : (Appearance.rounding.screenRounding - Appearance.sizes.hyprlandGapsOut + 1)
+            : (Appearance.rounding.screenRounding - Appearance.sizes.surfaceGap + 1)
         topLeftRadius: root.attachedEdge === "left" ? 0 : radius
         bottomLeftRadius: root.attachedEdge === "left" ? 0 : radius
         topRightRadius: root.attachedEdge === "right" ? 0 : radius

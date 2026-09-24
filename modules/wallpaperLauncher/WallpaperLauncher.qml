@@ -89,11 +89,11 @@ PanelWindow {
             horizontalCenter: parent.horizontalCenter
             bottom: parent.bottom
             bottomMargin: Math.max(Appearance.sizes.spacingLarge,
-                Appearance.sizes.hyprlandGapsOut * 2)
+                Appearance.sizes.surfaceGap * 2)
         }
         width: Math.min(implicitWidth,
             parent.width - Math.max(Appearance.sizes.spacingLarge * 2,
-                Appearance.sizes.hyprlandGapsOut * 4))
+                Appearance.sizes.surfaceGap * 4))
         height: implicitHeight
         transformOrigin: Item.Bottom
         scale: root.presented ? 1 : (root.closing ? 0.985 : 0.96)

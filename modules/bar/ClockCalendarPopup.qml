@@ -46,10 +46,10 @@ StyledPopup {
     Item {
         id: popupContent
 
-        readonly property real editorPaneHeight: Math.max(286, Math.min(360,
-            (root.presentationWindow?.height ?? 900) * 0.34))
+        readonly property real editorPaneHeight: Math.max(264, Math.min(320,
+            (root.presentationWindow?.height ?? 900) * 0.30))
         readonly property real editorSectionGap:
-            root.showEventsDialog ? 8 : 0
+            root.showEventsDialog ? 3 : 0
 
         implicitWidth: calendarContent.implicitWidth
         implicitHeight: calendarContent.implicitHeight
@@ -87,12 +87,12 @@ StyledPopup {
                 left: parent.left
                 right: parent.right
                 top: calendarContent.bottom
-                topMargin: root.showEventsDialog ? 4 : 0
+                topMargin: root.showEventsDialog ? 2 : 0
             }
             height: root.showEventsDialog ? 1 : 0
             visible: height > 0
-            color: Appearance.colors.colLayer2
-            opacity: 0.7
+            color: Appearance.colors.colOutlineVariant
+            opacity: 0.32
         }
 
         Item {
@@ -126,31 +126,16 @@ StyledPopup {
                 }
             }
 
-            Rectangle {
-                anchors.fill: parent
-                radius: Appearance.rounding.normal
-                color: Appearance.angelEverywhere
-                    ? Appearance.angel.colGlassPopup
-                    : Appearance.inirEverywhere ? Appearance.inir.colLayer1
-                    : Appearance.auroraEverywhere ? Appearance.aurora.colDialogSurface
-                    : Appearance.colors.colSurfaceContainerHigh
-                border.width: 1
-                border.color: Appearance.colors.colOutlineVariant
-            }
-
             Loader {
                 id: eventsDialogLoader
-                anchors {
-                    fill: parent
-                    margins: 8
-                    topMargin: 8
-                }
+                anchors.fill: parent
                 active: root.eventsDialogLoaded && root.active
                 onLoaded: Qt.callLater(root.prepareEventEditor)
                 sourceComponent: EventsDialog {
                     anchors.fill: parent
                     show: root.showEventsDialog
                     embeddedPresentation: true
+                    embeddedBackgroundColor: "transparent"
                     backgroundHeight: -1
                     onDismiss: root.showEventsDialog = false
                 }

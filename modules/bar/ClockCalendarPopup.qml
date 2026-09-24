@@ -7,6 +7,7 @@ StyledPopup {
     property bool showEventsDialog: false
     property bool eventsDialogLoaded: false
     property var eventsDialogEditEvent: null
+    property var eventsDialogDate: null
     alternativeVisibleCondition: root.showEventsDialog
     keyboardFocusOnDemand: true
     keyboardFocus: root.showEventsDialog
@@ -16,9 +17,28 @@ StyledPopup {
 
     function openEventEditor(event): void {
         root.eventsDialogEditEvent = event
+        if (event instanceof Date) {
+            root.eventsDialogDate = new Date(event)
+        } else if (event) {
+            const source = event.startDate || event.dateTime
+            const parsed = new Date(source)
+            root.eventsDialogDate = isNaN(parsed.getTime())
+                ? new Date() : parsed
+        } else {
+            root.eventsDialogDate = new Date()
+        }
         root.eventsDialogLoaded = true
         root.showEventsDialog = true
         Qt.callLater(root.prepareEventEditor)
+    }
+
+    function setEventEditorDate(date): void {
+        const parsed = new Date(date)
+        if (isNaN(parsed.getTime()))
+            return
+        root.eventsDialogDate = parsed
+        if (eventsDialogLoader.item)
+            eventsDialogLoader.item.eventDate = parsed
     }
 
     function prepareEventEditor(): void {
@@ -28,11 +48,13 @@ StyledPopup {
         const event = root.eventsDialogEditEvent
         if (event instanceof Date) {
             dialog.resetForm()
-            dialog.eventDate = event
+            dialog.eventDate = root.eventsDialogDate
         } else if (event) {
             dialog.loadEvent(event)
+            root.eventsDialogDate = dialog.eventDate
         } else {
             dialog.resetForm()
+            dialog.eventDate = root.eventsDialogDate
         }
         dialog.focusEditor()
     }
@@ -78,7 +100,10 @@ StyledPopup {
                 right: parent.right
             }
             height: implicitHeight
+            eventDateSelectionEnabled: root.showEventsDialog
+            selectedEventDate: root.eventsDialogDate
             onEventEditorRequested: (event) => root.openEventEditor(event)
+            onEventDateSelected: date => root.setEventEditorDate(date)
         }
 
         Rectangle {

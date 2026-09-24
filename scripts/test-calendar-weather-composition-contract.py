@@ -12,6 +12,7 @@ WEATHER_POPUP = ROOT / "modules/bar/weather/WeatherPopup.qml"
 CLOCK = ROOT / "modules/bar/ClockWidget.qml"
 CALENDAR_POPUP = ROOT / "modules/bar/ClockCalendarPopup.qml"
 CALENDAR_CONTENT = ROOT / "modules/bar/ClockCalendarContent.qml"
+EVENTS_WIDGET = ROOT / "modules/sidebarRight/events/EventsWidget.qml"
 SHARED_MONTH = ROOT / "modules/common/widgets/ObsidianMonthCalendar.qml"
 SIDEBAR_CALENDAR = ROOT / "modules/sidebarRight/calendar/CalendarWidget.qml"
 CLOCK_TOOLTIP = ROOT / "modules/bar/ClockWidgetTooltip.qml"
@@ -34,6 +35,7 @@ def main() -> None:
     clock = CLOCK.read_text(encoding="utf-8")
     calendar_popup = CALENDAR_POPUP.read_text(encoding="utf-8")
     calendar = CALENDAR_CONTENT.read_text(encoding="utf-8")
+    events_widget = EVENTS_WIDGET.read_text(encoding="utf-8")
     shared_month = SHARED_MONTH.read_text(encoding="utf-8")
     sidebar_calendar = SIDEBAR_CALENDAR.read_text(encoding="utf-8")
     vertical = VERTICAL.read_text(encoding="utf-8")
@@ -52,8 +54,24 @@ def main() -> None:
         "for (let i = 0; i < 42; ++i)",
         "ObsidianMonthCalendar {",
         "anchors.horizontalCenter: parent.horizontalCenter",
+        "fabSize: 36",
+        "fabMargins: 10",
+        "fabLeftAligned: true",
+        "Layout.preferredHeight: Math.max(120, root.height - 64)",
+        "Layout.alignment: Qt.AlignVCenter",
+        "color: Appearance.colors.colPrimary",
+        "opacity: 0.28",
     ):
         require(calendar, token, "ClockCalendarContent.qml")
+
+    for token in (
+        "property int fabSize: 48",
+        "property int fabMargins: 14",
+        "property bool fabLeftAligned: false",
+        "anchors.left: root.fabLeftAligned ? parent.left : undefined",
+        "anchors.right: root.fabLeftAligned ? undefined : parent.right",
+    ):
+        require(events_widget, token, "EventsWidget.qml")
 
     for token in (
         "import qs.services",

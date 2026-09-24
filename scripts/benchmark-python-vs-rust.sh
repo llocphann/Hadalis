@@ -9,6 +9,7 @@ BACKEND_STATE_FILE="$STATE_DIR/native-backend"
 HARNESS="$ROOT_DIR/scripts/native-cutover-benchmark.sh"
 READ_ONLY=0
 DEEP=0
+FINAL=0
 RESTORE_ONLY=0
 RESTORE_ARMED=0
 RESTORE_RC=0
@@ -17,11 +18,14 @@ for argument in "$@"; do
     case "$argument" in
         --read-only|--no-activate) READ_ONLY=1 ;;
         --deep) DEEP=1 ;;
+        --final) FINAL=1; DEEP=1 ;;
         --restore) RESTORE_ONLY=1 ;;
         --help|-h)
-            echo "Usage: bash scripts/benchmark-python-vs-rust.sh [--read-only] [--deep] [--restore]"
+            echo "Usage: bash scripts/benchmark-python-vs-rust.sh [--read-only] [--deep] [--final] [--restore]"
             echo "Builds and benchmarks both backends, validates the repo, and writes one report."
             echo "--deep adds an isolated cold MPD full-snapshot parity/benchmark."
+            echo "--final implies --deep and runs a repeated, alternating live Python/Rust A/B."
+            echo "        Defaults: LIVE_AB_RUNS=3, LIVE_SETTLE_SECONDS=8, LIVE_WINDOW_SECONDS=10."
             echo "--restore immediately returns the selector and user service to Python."
             echo "A live A/B runs only after the harness safety checks and is restored to Python."
             exit 0 ;;
@@ -30,11 +34,25 @@ for argument in "$@"; do
 done
 
 if ((RESTORE_ONLY)); then
-    if ((READ_ONLY || DEEP)); then
-        echo "--restore cannot be combined with --read-only or --deep" >&2
+    if ((READ_ONLY || DEEP || FINAL)); then
+        echo "--restore cannot be combined with --read-only, --deep, or --final" >&2
         exit 64
     fi
     exec bash "$HARNESS" --restore
+fi
+
+if ((FINAL && READ_ONLY)); then
+    echo "--final requires a live A/B and cannot be combined with --read-only" >&2
+    exit 64
+fi
+
+if ((FINAL)); then
+    export INIR_FINAL_QUALIFICATION=1
+    export LIVE_AB_RUNS="${LIVE_AB_RUNS:-3}"
+    export LIVE_SETTLE_SECONDS="${LIVE_SETTLE_SECONDS:-8}"
+    export LIVE_WINDOW_SECONDS="${LIVE_WINDOW_SECONDS:-10}"
+else
+    unset INIR_FINAL_QUALIFICATION
 fi
 
 mkdir -p "$STATE_DIR" || exit 1
@@ -139,6 +157,12 @@ printf '%s\n' "$VALIDATOR_SUMMARY"
     printf 'Fetch exit: %s\n' "$FETCH_RC"
     printf 'Mode: %s\n' "$RUN_MODE"
     printf 'Deep MPD snapshot: %s\n' "$([[ "$DEEP" -eq 1 ]] && printf enabled || printf disabled)"
+    printf 'Final qualification: %s\n' "$([[ "$FINAL" -eq 1 ]] && printf enabled || printf disabled)"
+    if ((FINAL)); then
+        printf 'Live A/B rounds: %s\n' "$LIVE_AB_RUNS"
+        printf 'Live settle seconds: %s\n' "$LIVE_SETTLE_SECONDS"
+        printf 'Live sample seconds: %s\n' "$LIVE_WINDOW_SECONDS"
+    fi
     printf 'Native benchmark exit: %s\n' "$NATIVE_RC"
     printf 'Restore exit: %s\n' "$RESTORE_RC"
     printf 'Validator exit: %s\n' "$VALIDATOR_RC"

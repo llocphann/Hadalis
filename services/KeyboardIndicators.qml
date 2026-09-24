@@ -43,9 +43,9 @@ Singleton {
     readonly property bool showLayoutPanel: root.showPanel && (Config.options?.keyboardIndicators?.panel?.layout ?? true)
     readonly property bool showCapsPanel: root.showPanel && (Config.options?.keyboardIndicators?.panel?.caps ?? true)
     readonly property bool showNumPanel: root.showPanel && (Config.options?.keyboardIndicators?.panel?.num ?? false)
-    readonly property bool hasMultipleLayouts: (HyprlandXkb.layoutCodes?.length ?? 0) > 1
-    readonly property string currentLayoutName: HyprlandXkb.currentLayoutName ?? ""
-    readonly property string currentLayoutCode: HyprlandXkb.currentLayoutCode ?? ""
+    readonly property bool hasMultipleLayouts: (KeyboardLayout.layoutCodes?.length ?? 0) > 1
+    readonly property string currentLayoutName: KeyboardLayout.currentLayoutName ?? ""
+    readonly property string currentLayoutCode: KeyboardLayout.currentLayoutCode ?? ""
     readonly property string capsMaterialIcon: "keyboard_capslock"
     readonly property string touchpadMaterialIcon: "touchpad_mouse"
     readonly property string numMaterialIcon: "dialpad"
@@ -495,7 +495,7 @@ Singleton {
     }
 
     Connections {
-        target: HyprlandXkb
+        target: KeyboardLayout
 
         function onCurrentLayoutNameChanged() {
             if (!root.currentLayoutName.length)

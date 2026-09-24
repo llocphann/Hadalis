@@ -13,10 +13,10 @@ ContentPage {
     settingsPageName: Translation.tr("Shortcuts")
 
     // ── Data sources ────────────────────────────────────────────────────────
-    readonly property var keybinds: CompositorService.isNiri ? NiriKeybinds.keybinds : HyprlandKeybinds.keybinds
+    readonly property var keybinds: NiriKeybinds.keybinds
     readonly property var categories: keybinds?.children ?? []
-    readonly property bool hasEnrichedData: CompositorService.isNiri && NiriKeybinds.enrichedCategories.length > 0
-    readonly property bool canEdit: CompositorService.isNiri
+    readonly property bool hasEnrichedData: NiriKeybinds.enrichedCategories.length > 0
+    readonly property bool canEdit: true
 
     property var keySubstitutions: ({
         "Mod": "󰖳", "Super": "󰖳", "Slash": "/", "Return": "↵", "Escape": "Esc",
@@ -130,7 +130,6 @@ ContentPage {
         title: NiriKeybinds.loaded
             ? Translation.tr("Keybinds loaded from config")
             : Translation.tr("Using default keybinds")
-        visible: CompositorService.isNiri
 
         SettingsGroup {
             StyledText {

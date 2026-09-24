@@ -1696,7 +1696,7 @@ MouseArea {
             
             // Keyboard layout
             Loader {
-                active: typeof HyprlandXkb !== "undefined" && HyprlandXkb.currentLayoutCode.length > 0
+                active: KeyboardIndicators.currentLayoutCode.length > 0
                 asynchronous: true
                 visible: active
                 anchors.verticalCenter: parent.verticalCenter
@@ -1723,7 +1723,7 @@ MouseArea {
                     
                     Text {
                         anchors.verticalCenter: parent.verticalCenter
-                        text: HyprlandXkb.currentLayoutCode.toUpperCase()
+                        text: KeyboardIndicators.currentLayoutCode.toUpperCase()
                         font.pixelSize: Appearance.font.pixelSize.small
                         font.family: Appearance.font.family.main
                         color: Appearance.colors.colOnSurfaceVariant

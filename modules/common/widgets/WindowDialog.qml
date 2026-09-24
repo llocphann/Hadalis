@@ -9,6 +9,10 @@ Rectangle {
     id: root
 
     property bool show: false
+    // Embedded mode keeps the dialog's form/state/buttons but removes the
+    // centered modal scrim/chrome so owners can place it inside an existing
+    // connected surface (for example Calendar's expanding bottom editor).
+    property bool embeddedPresentation: false
     default property alias contentData: contentColumn.data
     // Negative means content-sized. Fixed-height consumers keep assigning an
     // explicit value; compact dialogs follow their measured content instead of
@@ -32,11 +36,16 @@ Rectangle {
         }
     }
 
-    color: root.show ? Appearance.colors.colScrim : ColorUtils.transparentize(Appearance.colors.colScrim)
+    color: root.embeddedPresentation
+        ? "transparent"
+        : (root.show ? Appearance.colors.colScrim
+            : ColorUtils.transparentize(Appearance.colors.colScrim))
     Behavior on color {
         animation: ColorAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve }
     }
-    visible: root.show || dialogBackground.implicitHeight > 0 || contentColumn.opacity > 0
+    visible: root.embeddedPresentation
+        ? root.show
+        : (root.show || dialogBackground.implicitHeight > 0 || contentColumn.opacity > 0)
 
     onShowChanged: dialogBackgroundHeightAnimation.easing.bezierCurve = show
         ? Appearance.animationCurves.emphasizedDecel
@@ -46,7 +55,7 @@ Rectangle {
 
     MouseArea { // Clicking outside the dialog should dismiss
         anchors.fill: parent
-        enabled: root.show
+        enabled: root.show && !root.embeddedPresentation
         acceptedButtons: Qt.AllButtons
         hoverEnabled: true
         onPressed: root.dismiss()
@@ -54,6 +63,7 @@ Rectangle {
 
     GlassBackground {
         id: dialogBackground
+        visible: !root.embeddedPresentation
         // Keep the animated chrome on whole-pixel geometry. Dialog content uses
         // NativeRendering, which Qt documents as unsuitable under transforms;
         // centering on a half pixel makes the softened result persist after open.
@@ -105,10 +115,18 @@ Rectangle {
     // are no longer children of the translated/resized background item.
     ColumnLayout {
         id: contentColumn
-        x: dialogBackground.x + dialogBackground.contentPad
-        y: dialogBackground.targetY + dialogBackground.contentPad
-        width: Math.max(0, dialogBackground.implicitWidth - dialogBackground.contentPad * 2)
-        height: Math.max(0, dialogBackground.resolvedHeight - dialogBackground.contentPad * 2)
+        x: root.embeddedPresentation
+            ? 0 : dialogBackground.x + dialogBackground.contentPad
+        y: root.embeddedPresentation
+            ? 0 : dialogBackground.targetY + dialogBackground.contentPad
+        width: root.embeddedPresentation
+            ? root.width
+            : Math.max(0, dialogBackground.implicitWidth
+                - dialogBackground.contentPad * 2)
+        height: root.embeddedPresentation
+            ? root.height
+            : Math.max(0, dialogBackground.resolvedHeight
+                - dialogBackground.contentPad * 2)
         spacing: 16
         opacity: root.show ? 1 : 0
         visible: opacity > 0

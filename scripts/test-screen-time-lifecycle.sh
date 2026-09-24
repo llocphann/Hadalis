@@ -4,8 +4,10 @@ set -euo pipefail
 repo_root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
 service="$repo_root/services/ScreenTime.qml"
 shell_root="$repo_root/shell.qml"
-dash_notifications="$repo_root/modules/dashboard/DashNotifications.qml"
-dash_pill_tabs="$repo_root/modules/dashboard/DashPillTabBar.qml"
+notification_center="$repo_root/modules/notificationCenter/NotificationCenterPopup.qml"
+pill_tabs="$repo_root/modules/common/widgets/PillTabBar.qml"
+compact_sidebar="$repo_root/modules/sidebarRight/CompactSidebarRightContent.qml"
+bottom_group="$repo_root/modules/sidebarRight/BottomWidgetGroup.qml"
 
 fail() {
     printf 'screen-time lifecycle guard failed: %s\n' "$1" >&2
@@ -53,46 +55,52 @@ require 'Qt.callLater(root._startNextRangeRead)' \
     'range reader failure/exit must continue queued history reads'
 
 require '(Config.options?.sidebar?.screenTime?.enable ?? false)' \
-    'Screen Time must retain the Sidebar opt-in owner'
+    'Screen Time must retain the Waffle/explicit opt-in owner'
 require '(Config.options?.panelFamily ?? "ii") !== "waffle"' \
-    'Dashboard Screen Time ownership must stay limited to the ii panel family'
-require '&& (Config.options?.dashboard?.enable ?? true)' \
-    'Dashboard enablement must keep Screen Time tracking alive for Uptime history'
+    'Material Activity tracking must stay limited to the ii panel family'
+require '.includes("iiScreenCorners")' \
+    'Material Activity tracking must follow its ScreenCorners popup host'
 
 require_in "$shell_root" '(Config.options?.panelFamily ?? "ii") !== "waffle"' \
-    'shell must limit Dashboard ScreenTime ownership to the ii family'
-require_in "$shell_root" '&& (Config.options?.dashboard?.enable ?? true)' \
-    'shell must materialize ScreenTime when Dashboard owns the Uptime tab'
+    'shell must limit automatic Activity tracking to the ii family'
+require_in "$shell_root" '.includes("iiScreenCorners")' \
+    'shell must materialize ScreenTime for the Activity popup host'
 
 for token in \
-    'DashPillTabBar {' \
-    'leftLabel: Translation.tr("Notifications")' \
-    'rightLabel: Translation.tr("Uptime")' \
+    'PillTabBar {' \
+    'label: Translation.tr("Activity")' \
     'readonly property var todayApps:' \
     'ScreenTime.getAppList(1)' \
-    'text: DateTime.uptime' \
+    'text: DateTime.uptime || "--"' \
     'ScreenTime.formatDuration(' \
     'GridLayout {' \
-    'columns: root.appColumns' \
+    'columns: 2' \
     'model: root.visibleApps' \
-    'visible: root.currentTab === 1'; do
-    require_in "$dash_notifications" "$token" \
-        "Dashboard Notifications/Uptime contract missing: $token"
+    'visible: root.selectedTab === 1'; do
+    require_in "$notification_center" "$token" \
+        "Notification Center Activity contract missing: $token"
 done
 
-if grep -Fq 'Flickable {' "$dash_notifications"; then
-    fail 'Dashboard Uptime must remain a fixed non-scrollable composition'
+if grep -Fq 'Flickable {' "$notification_center"; then
+    fail 'Activity tab must remain a fixed non-scrollable composition'
 fi
 
 for token in \
-    'Shape {' \
-    'id: inactiveTabShape' \
-    'id: activeTabPill' \
-    'Shape.CurveRenderer' \
-    'Appearance.colors.colPrimaryContainer' \
-    'signal tabRequested(int index)'; do
-    require_in "$dash_pill_tabs" "$token" \
-        "Dashboard pill tabs must match Todo tab language: $token"
+    'property var tabs: []' \
+    'property int currentIndex: 0' \
+    'color: Appearance.colors.colPrimaryContainer' \
+    'signal tabSelected(int index)'; do
+    require_in "$pill_tabs" "$token" \
+        "shared pill-tab contract missing: $token"
+done
+
+for sidebar in "$compact_sidebar" "$bottom_group"; do
+    if grep -Fq 'ScreenTimeWidget {' "$sidebar"; then
+        fail "${sidebar#"$repo_root/"} still hosts standalone Screen Time"
+    fi
+    if grep -Fq 'id: "screentime"' "$sidebar"; then
+        fail "${sidebar#"$repo_root/"} still exposes a Screen Time tab"
+    fi
 done
 
 printf 'screen-time lifecycle guards: ok\n'

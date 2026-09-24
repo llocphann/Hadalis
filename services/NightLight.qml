@@ -327,7 +327,7 @@ Singleton {
                 wlsunsetProc.startObserved = false
                 return
             }
-            if (!wlsunsetProc.startObserved)
+            if (wlsunsetProc.startObserved)
                 return
             root.active = false
             root._ownedProcessStopped()

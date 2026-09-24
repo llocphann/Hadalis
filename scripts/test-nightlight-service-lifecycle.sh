@@ -50,6 +50,11 @@ require 'function load(): void {' \
     'deferred shell initialization must explicitly initialize night-light state'
 require 'root.reEvaluate()' \
     'night-light load path must evaluate the configured schedule'
+require 'if (wlsunsetProc.startObserved)' \
+    'owned wlsunset spawn failure must settle through onRunningChanged'
+if grep -Fq -- 'if (!wlsunsetProc.startObserved)' "$service"; then
+    fail 'owned wlsunset lifecycle guard is inverted and skips spawn-failure cleanup'
+fi
 
 if grep -Eqi -- 'hyprland|hyprsunset|hyprctl' "$service"; then
     fail 'Niri-only night-light service must not contain Hyprland backend residue'

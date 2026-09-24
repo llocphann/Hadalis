@@ -151,23 +151,29 @@ def main() -> None:
         "id: compactOptionDeck",
         "visible: root.embeddedPresentation",
         "height: 32",
-        "anchors {",
-        "fill: parent",
-        "spacing: 0",
-        "Layout.fillWidth: true",
-        "Layout.fillHeight: true",
-        "width: 30",
-        "height: 30",
+        "anchors.centerIn: parent",
+        "spacing: 8",
+        "spacing: 6",
+        "Layout.preferredWidth: 30",
+        "Layout.preferredHeight: 30",
         'root.compactOptionGroup === ""',
-        "root.compactGroupIcon(",
-        "root.compactGroupTooltip(",
-        "parent.modelData.key",
+        "root.compactGroupIcon(modelData.key)",
+        "root.compactGroupTooltip(modelData.key)",
         'symbol: "arrow_back"',
         "root.compactOptionsFor(",
-        "parent.modelData.value",
+        "modelData.value",
         "root.setCompactOption(",
     ):
         require(compact_deck, token, "EventsDialog compact embedded option deck")
+    for retired in (
+        "Layout.fillWidth: true",
+        "Layout.fillHeight: true",
+        "spacing: 0",
+        "parent.modelData.key",
+        "parent.modelData.value",
+    ):
+        forbid(compact_deck, retired,
+               "EventsDialog compact option controls must stay tightly grouped")
 
     require(events_dialog, "delay: 350", "EventsDialog compact option tooltip")
     require(events_dialog,

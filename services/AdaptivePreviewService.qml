@@ -10,8 +10,9 @@ import "AdaptivePreviewPolicy.js" as AdaptivePreviewPolicy
 //
 // Snapshot caches stay independent from this service. A live claim is accepted
 // only when the corresponding renderer has a real capture backend. Niri uses a
-// Hadalis-owned QML plugin backed by ext-image-copy-capture; stock installations
-// without that plugin remain on WindowPreviewService PNG snapshots.
+// Hadalis-owned QML plugin backed by Niri's Mutter-compatible RecordWindow
+// D-Bus API plus PipeWire; stock installations without that plugin remain on
+// WindowPreviewService PNG snapshots.
 Singleton {
     id: root
 
@@ -35,6 +36,9 @@ Singleton {
 
     readonly property int niriPreviewMaxFps:
         Math.max(1, Math.min(30, Config.options?.overview?.niriPreviewMaxFps ?? 18))
+    readonly property int niriProbeMaxFps:
+        Math.max(1, Math.min(root.niriPreviewMaxFps,
+            Config.options?.overview?.niriProbeMaxFps ?? 6))
     readonly property int niriProbeSlots:
         Math.max(1, Math.min(4, Config.options?.overview?.niriProbeSlots ?? 2))
     readonly property int niriProbeWindowMs:

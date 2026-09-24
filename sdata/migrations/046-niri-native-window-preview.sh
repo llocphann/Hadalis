@@ -4,7 +4,7 @@
 
 MIGRATION_ID="046-niri-native-window-preview"
 MIGRATION_TITLE="Enable native Niri window previews"
-MIGRATION_DESCRIPTION="Builds the Hadalis ext-image-copy-capture QML plugin used for adaptive live Overview previews on Niri."
+MIGRATION_DESCRIPTION="Builds the Hadalis Niri RecordWindow/PipeWire QML plugin used for adaptive live Overview previews."
 MIGRATION_TARGET_FILE="/usr/share/inir/niri-preview-plugin"
 MIGRATION_REQUIRED=true
 
@@ -20,7 +20,7 @@ _niri_preview_supported_host() {
 
 _niri_preview_expected() {
   [[ -f /usr/share/inir/niri-preview-plugin ]] \
-    && grep -Fq 'version=0.1.0-4' /usr/share/inir/niri-preview-plugin \
+    && grep -Fq 'version=0.2.0-1' /usr/share/inir/niri-preview-plugin \
     && [[ -f /usr/lib/qt6/qml/Hadalis/NiriPreview/qmldir ]] \
     && [[ -f /usr/lib/qt6/qml/Hadalis/NiriPreview/libhadalisniripreviewplugin.so ]]
 }
@@ -35,8 +35,8 @@ migration_check() {
 }
 
 migration_preview() {
-  echo -e "${STY_GREEN}+ build/install inir-niri-preview 0.1.0-4${STY_RST}"
-  echo "  Native protocols: ext-foreign-toplevel-list + ext-image-copy-capture"
+  echo -e "${STY_GREEN}+ build/install inir-niri-preview 0.2.0-1${STY_RST}"
+  echo "  Native path: org.gnome.Mutter.ScreenCast.RecordWindow + PipeWire"
   echo "  Quickshell package/runtime: unchanged"
   echo "  Existing PNG previews remain the fallback"
 }

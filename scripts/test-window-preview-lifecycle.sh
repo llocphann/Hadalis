@@ -187,14 +187,28 @@ grep -Fq 'NiriPreviewItem {' "$niri_native_renderer" \
 grep -Fq 'AdaptivePreviewService.isProbeActive' "$niri_native_renderer" \
     || fail 'Niri motion discovery must use the bounded rotating probe scheduler'
 grep -Fq 'onFrameCaptured: root._recordActivity(activity)' "$niri_native_renderer" \
-    || fail 'Niri motion scoring must use compositor damage activity'
-grep -Fq 'ext_foreign_toplevel_image_capture_source_manager_v1_create_source' "$niri_native_backend" \
-    || fail 'Niri backend must capture the exact ext foreign-toplevel handle'
-grep -Fq 'ext_image_copy_capture_session_v1_create_frame' "$niri_native_backend" \
-    || fail 'Niri backend must use ext-image-copy-capture frames'
+    || fail 'Niri motion scoring must use native frame activity'
+grep -Fq 'QStringLiteral("RecordWindow")' "$niri_native_backend" \
+    || fail 'Niri backend must request the exact Niri window ID through RecordWindow'
+grep -Fq 'QStringLiteral("PipeWireStreamAdded")' "$niri_native_backend" \
+    || fail 'Niri backend must wait for Niri to publish the per-window PipeWire node'
+grep -Fq 'pw_stream_connect(' "$niri_native_backend" \
+    || fail 'Niri backend must consume the per-window PipeWire node'
+grep -Fq 'SPA_VIDEO_FORMAT_BGRx' "$niri_native_backend" \
+    || fail 'Niri PipeWire consumer must negotiate the compositor BGRx format'
+grep -Fq 'SPA_VIDEO_FORMAT_BGRA' "$niri_native_backend" \
+    || fail 'Niri PipeWire consumer must negotiate the compositor BGRA format'
+grep -Fq 'property int niriProbeMaxFps: 6' "$config_qml" \
+    || fail 'Niri adaptive probes must have a low-FPS persisted default'
+grep -Fq 'AdaptivePreviewService.niriProbeMaxFps' "$niri_native_renderer" \
+    || fail 'Niri probe renderer must negotiate a lower cadence than live mode'
 if grep -Fq 'screenshot-window' "$niri_native_renderer" \
         || grep -Fq 'niri msg action screenshot-window' "$niri_native_backend"; then
     fail 'Niri native live preview must never poll screenshot-window'
+fi
+if grep -Fq 'ext_foreign_toplevel_image_capture_source_manager_v1' "$niri_native_backend" \
+        || grep -Fq 'ext_image_copy_capture_session_v1' "$niri_native_backend"; then
+    fail 'Niri native preview must not depend on unsupported foreign-toplevel ICC globals'
 fi
 grep -Fq 'pkgname=inir-niri-preview' "$niri_native_pkg" \
     || fail 'native Niri preview plugin must have an Arch package boundary'
@@ -202,6 +216,14 @@ grep -Fq 'MIGRATION_ID="046-niri-native-window-preview"' "$niri_native_migration
     || fail 'repo-managed Niri installs must gain the native plugin through migration'
 grep -Fq 'export INIR_NIRI_PREVIEW_PLUGIN=1' "$launcher" \
     || fail 'launcher must capability-gate the native Niri QML module'
+grep -Fq "backend=mutter-screencast" "$launcher" \
+    || fail 'launcher must reject the retired ICC native backend marker'
+grep -Fq "transport=pipewire-shm" "$launcher" \
+    || fail 'launcher must require the PipeWire native transport marker'
+grep -Fq "backend=mutter-screencast" "$niri_native_pkg" \
+    || fail 'native package marker must advertise the Niri RecordWindow backend'
+grep -Fq "transport=pipewire-shm" "$niri_native_pkg" \
+    || fail 'native package marker must advertise PipeWire SHM transport'
 
 node - "$adaptive_preview_policy" <<'NODE'
 const fs = require('node:fs');

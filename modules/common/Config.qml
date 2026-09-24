@@ -2110,11 +2110,12 @@ Singleton {
                 property int liveCooldownMs: 2500
                 property real activityPromotionThreshold: 0.55
 
-                // Niri native preview budget. Probe sessions use compositor
-                // damage events and are kept separate from the bounded live
-                // stream pool so static windows never become video polling.
+                // Niri native preview budget. Probe sessions use low-FPS
+                // per-window PipeWire casts; promoted windows renegotiate to
+                // the live cadence without changing the Niri cast target.
                 property int niriMaxLiveWindows: 3
                 property int niriPreviewMaxFps: 18
+                property int niriProbeMaxFps: 6
                 property int niriProbeSlots: 2
                 property int niriProbeWindowMs: 800
                 property int niriMotionSamples: 2

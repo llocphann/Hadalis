@@ -9,7 +9,9 @@ qs_bin="/usr/bin/qs"
 _niri_preview_qml_dir="/usr/lib/qt6/qml/Hadalis/NiriPreview"
 if [[ -f /usr/share/inir/niri-preview-plugin
       && -f "${_niri_preview_qml_dir}/qmldir"
-      && -f "${_niri_preview_qml_dir}/libhadalisniripreviewplugin.so" ]]; then
+      && -f "${_niri_preview_qml_dir}/libhadalisniripreviewplugin.so"
+      && $(grep -Fc 'backend=mutter-screencast' /usr/share/inir/niri-preview-plugin 2>/dev/null || true) -eq 1
+      && $(grep -Fc 'transport=pipewire-shm' /usr/share/inir/niri-preview-plugin 2>/dev/null || true) -eq 1 ]]; then
     export INIR_NIRI_PREVIEW_PLUGIN=1
 else
     unset INIR_NIRI_PREVIEW_PLUGIN 2>/dev/null || true

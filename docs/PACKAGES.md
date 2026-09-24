@@ -112,11 +112,11 @@ Quickshell, Qt 6, and QML/KDE runtime dependencies declared by `sdata/dist-arch/
 
 ### Native Niri preview plugin (`inir-niri-preview`)
 
-Hadalis keeps Niri live-window capture outside Quickshell. The local Arch recipe under `distro/arch/inir-niri-preview` builds a small Qt 6 QML plugin that connects to Wayland directly and uses `ext-foreign-toplevel-list-v1`, `ext-foreign-toplevel-image-capture-source-manager-v1`, and `ext-image-copy-capture-v1`.
+Hadalis keeps Niri live-window capture outside Quickshell. The local Arch recipe under `distro/arch/inir-niri-preview` builds a small Qt 6 QML plugin that talks to Niri's `org.gnome.Mutter.ScreenCast` D-Bus compatibility API. Each requested Niri window ID gets its own `RecordWindow` cast and PipeWire node, so multiple Overview tiles can stream independently without a portal chooser or Quickshell fork.
 
-Repo-managed Arch/Niri installs receive the plugin through required migration `046-niri-native-window-preview`. The resulting package owns `/usr/lib/qt6/qml/Hadalis/NiriPreview` and `/usr/share/inir/niri-preview-plugin`. The launcher publishes `INIR_NIRI_PREVIEW_PLUGIN=1` only when both payloads exist, so the shell can lazy-load the extension without making native capture a hard startup dependency.
+Repo-managed Arch/Niri installs receive the plugin through required migration `046-niri-native-window-preview`. The resulting package owns `/usr/lib/qt6/qml/Hadalis/NiriPreview` and `/usr/share/inir/niri-preview-plugin`. The launcher publishes `INIR_NIRI_PREVIEW_PLUGIN=1` only when both payloads exist and the marker declares `backend=mutter-screencast` plus `transport=pipewire-shm`; an old or failed native install therefore falls back to cached PNG previews.
 
-The initial backend deliberately uses Wayland SHM instead of adding a PipeWire/GStreamer or EGL/DMABUF dependency stack. Captured frames are reduced to the preview tile size before Qt Quick texture upload; session count and live FPS are independently bounded by the Overview scheduler.
+The plugin intentionally negotiates raw BGRx/BGRA PipeWire frames through mapped shared-memory buffers rather than adding GStreamer or a Quickshell patch. Probe streams request a low maximum framerate, promoted streams renegotiate to the live cadence, and frames are reduced to tile size before Qt Quick texture upload.
 
 
 ---

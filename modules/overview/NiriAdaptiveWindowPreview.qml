@@ -191,8 +191,8 @@ Item {
         root._publishLiveClaim()
 
         // In probe mode the first frame establishes a baseline. Keep exactly
-        // one next ICC frame pending; Niri may wait indefinitely until content
-        // changes, which makes static windows effectively free between probes.
+        // one next throttled PipeWire sample pending. The probe stream itself is
+        // negotiated at niriProbeMaxFps, so this never becomes full-rate video.
         if (root.probeActive && !root.previewLive)
             Qt.callLater(function() { nativePreview.captureOnce() })
     }
@@ -244,7 +244,9 @@ Item {
         windowId: Math.max(0, root.windowId)
         active: root.captureActive
         live: root.previewLive
-        maxFps: AdaptivePreviewService.niriPreviewMaxFps
+        maxFps: root.previewLive
+            ? AdaptivePreviewService.niriPreviewMaxFps
+            : AdaptivePreviewService.niriProbeMaxFps
         onFrameCaptured: root._recordActivity(activity)
     }
 

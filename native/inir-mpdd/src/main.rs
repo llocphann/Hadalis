@@ -1298,6 +1298,7 @@ fn handle_client(
 
         if request.op == "subscribe" {
             let subscriber = reader.get_ref().try_clone()?;
+            subscriber.set_write_timeout(Some(Duration::from_millis(250)))?;
             subscribers
                 .lock()
                 .map_err(|_| anyhow!("subscriber_mutex_poisoned"))?
@@ -1342,10 +1343,21 @@ fn handle_client(
 }
 
 fn broadcast(subscribers: &Arc<Mutex<Vec<UnixStream>>>, value: &Value) {
-    let Ok(mut subscribers) = subscribers.lock() else {
-        return;
+    let mut current = {
+        let Ok(mut subscribers) = subscribers.lock() else {
+            return;
+        };
+        std::mem::take(&mut *subscribers)
     };
-    subscribers.retain_mut(|stream| write_json_line(stream, value).is_ok());
+
+    current.retain_mut(|stream| write_json_line(stream, value).is_ok());
+    if current.is_empty() {
+        return;
+    }
+
+    if let Ok(mut subscribers) = subscribers.lock() {
+        subscribers.extend(current);
+    }
 }
 
 fn idle_loop(
@@ -1894,13 +1906,15 @@ fn main() -> Result<()> {
 mod tests {
     use std::io::{BufRead, BufReader, Write};
     use std::net::TcpListener;
+    use std::os::unix::net::UnixStream;
+    use std::sync::{Arc, Mutex};
     use std::sync::mpsc::{self, Receiver};
     use std::thread::{self, JoinHandle};
     use std::time::Duration;
 
     use super::{
-        ART_EXTENSIONS, MpdClient, MpdManager, art_cache_key, art_filename_rank, legacy_request,
-        lrc_stamp_seconds, pairs, parse_lrc, quote, records, status_payload_mode,
+        ART_EXTENSIONS, MpdClient, MpdManager, art_cache_key, art_filename_rank, broadcast,
+        legacy_request, lrc_stamp_seconds, pairs, parse_lrc, quote, records, status_payload_mode,
         status_payload_mode_with_art,
     };
     use serde_json::json;
@@ -2096,6 +2110,26 @@ mod tests {
             commands,
             vec!["config", "status", "currentsong", "status", "currentsong"]
         );
+    }
+
+    #[test]
+    fn broadcast_prunes_closed_subscribers_and_keeps_live_ones() {
+        let (closed_server, closed_client) = UnixStream::pair().expect("closed subscriber pair");
+        drop(closed_client);
+        let (live_server, mut live_client) = UnixStream::pair().expect("live subscriber pair");
+        live_client
+            .set_read_timeout(Some(Duration::from_secs(1)))
+            .expect("live subscriber timeout");
+
+        let subscribers = Arc::new(Mutex::new(vec![closed_server, live_server]));
+        broadcast(&subscribers, &json!({"type": "changed"}));
+
+        assert_eq!(subscribers.lock().expect("subscriber lock").len(), 1);
+        let mut line = String::new();
+        BufReader::new(&mut live_client)
+            .read_line(&mut line)
+            .expect("read live broadcast");
+        assert_eq!(line.trim(), r#"{"type":"changed"}"#);
     }
 
     #[test]

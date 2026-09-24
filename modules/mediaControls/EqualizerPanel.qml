@@ -13,109 +13,11 @@ Item {
     property bool active: false
     property bool compactLayout: false
     property bool _registered: false
-    // The DSP curve always carries a compact electric trace. Interaction only
-    // raises luminance/contrast; stroke widths and jitter amplitude never grow.
-    property real eqLightningHighlight: 0.0
-    property real eqPresetSweepProgress: -0.12
     property int _editingBand: -1
-    property var _lightningGains: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+
     readonly property color eqAccentColor: Appearance.colors.colPrimary
-    implicitHeight: root.compactLayout ? 190 : 214
+    implicitHeight: root.compactLayout ? 202 : 226
     clip: root.compactLayout
-
-    function syncLightningGains(): void {
-        const source = EqualizerService.dspBands ?? []
-        const gains = []
-        for (let i = 0; i < 10; ++i)
-            gains.push(Number(source[i]?.gain) || 0)
-        root._lightningGains = gains
-        lightningCanvas.requestPaint()
-    }
-
-    function setLightningGain(index, gain): void {
-        const gains = (root._lightningGains ?? []).slice()
-        while (gains.length < 10)
-            gains.push(0)
-        gains[index] = Math.round(Number(gain) || 0)
-        root._lightningGains = gains
-        lightningCanvas.requestPaint()
-    }
-
-    function triggerEqLightning(): void {
-        eqLightningAnim.restart()
-    }
-
-    function triggerPresetSweep(): void {
-        presetSweepAnim.restart()
-    }
-
-    function beginBandLightning(index, gain): void {
-        eqLightningAnim.stop()
-        root._editingBand = index
-        root.eqLightningHighlight = 1.0
-        root.setLightningGain(index, gain)
-    }
-
-    function previewBandLightning(index, gain): void {
-        root.eqLightningHighlight = 1.0
-        root.setLightningGain(index, gain)
-    }
-
-    function endBandLightning(index, gain): void {
-        root.setLightningGain(index, gain)
-        root._editingBand = -1
-        root.triggerEqLightning()
-    }
-
-    function applyPresetWithLightning(name): void {
-        const curve = EqualizerService.dspPresetCurves[name]
-        if (!curve)
-            return
-        if (EqualizerService.applyDspPreset(name)) {
-            root._lightningGains = curve.slice()
-            lightningCanvas.requestPaint()
-            root.triggerPresetSweep()
-        }
-    }
-
-    SequentialAnimation {
-        id: presetSweepAnim
-        running: false
-
-        ScriptAction {
-            script: root.eqPresetSweepProgress = -0.12
-        }
-
-        NumberAnimation {
-            target: root
-            property: "eqPresetSweepProgress"
-            from: -0.12
-            to: 1.16
-            duration: Appearance.animationsEnabled ? 860 : 1
-            easing.type: Easing.InOutCubic
-        }
-
-        ScriptAction {
-            script: root.eqPresetSweepProgress = -0.12
-        }
-    }
-
-    SequentialAnimation {
-        id: eqLightningAnim
-        running: false
-        ScriptAction {
-            script: root.eqLightningHighlight = 1.0
-        }
-        PauseAnimation { duration: 120 }
-        NumberAnimation {
-            target: root
-            property: "eqLightningHighlight"
-            from: 1.0
-            to: 0.0
-            duration: Appearance.animationsEnabled ? 720 : 1
-            easing.type: Easing.OutCubic
-        }
-    }
 
     function syncRegistration(): void {
         if (root.active && !root._registered) {
@@ -148,34 +50,77 @@ Item {
         case "dsp-apply-failed":
             return "Apply failed"
         default:
-            return EqualizerService.error.length > 0 ? EqualizerService.error : "Loading…"
+            return EqualizerService.error.length > 0
+                ? EqualizerService.error : "Loading…"
         }
+    }
+
+    function gainToY(gain, height): real {
+        const clamped = Math.max(
+            EqualizerService.dspMinimumBandGain,
+            Math.min(EqualizerService.dspMaximumBandGain,
+                     Number(gain) || 0))
+        const range = EqualizerService.dspMaximumBandGain
+            - EqualizerService.dspMinimumBandGain
+        if (range <= 0)
+            return height / 2
+        return (EqualizerService.dspMaximumBandGain - clamped)
+            / range * height
+    }
+
+    function requestGraphPaint(): void {
+        analyzerCanvas.requestPaint()
+    }
+
+    function applyPreset(name): void {
+        if (EqualizerService.applyDspPreset(name))
+            analyzerCanvas.requestPaint()
     }
 
     onActiveChanged: {
         root.syncRegistration()
-        if (active) {
-            root.syncLightningGains()
-            lightningCanvas.requestPaint()
-        }
+        if (active)
+            analyzerCanvas.requestPaint()
     }
 
     Connections {
         target: EqualizerService
 
         function onDspBandsChanged(): void {
-            if (root._editingBand < 0)
-                root.syncLightningGains()
+            analyzerCanvas.requestPaint()
         }
     }
 
     Component.onCompleted: {
         root.syncRegistration()
-        root.syncLightningGains()
+        analyzerCanvas.requestPaint()
     }
+
     Component.onDestruction: {
         if (root._registered)
             EqualizerService.unregisterConsumer()
+    }
+
+    // The DSP surface is also a CAVA consumer. CavaProcess is only a lightweight
+    // subscription wrapper; CavaService still owns the single shared process.
+    // This lets every EqualizerPanel render the same real audio spectrum without
+    // creating a second analyzer subprocess.
+    CavaProcess {
+        id: eqCava
+        active: root.active
+        sampleCount: 64
+    }
+
+    Connections {
+        target: eqCava
+
+        function onPointsChanged(): void {
+            analyzerCanvas.requestPaint()
+        }
+
+        function onNormalizationCeilingChanged(): void {
+            analyzerCanvas.requestPaint()
+        }
     }
 
     ColumnLayout {
@@ -216,279 +161,290 @@ Item {
                 onClicked: EqualizerService.startBackend()
             }
 
-            StyledText {
-                text: root.statusText()
-                font.pixelSize: Appearance.font.pixelSize.smallest
-                elide: Text.ElideRight
-                horizontalAlignment: Text.AlignRight
-                color: EqualizerService.dspControlAvailable
-                    ? Appearance.colors.colSubtext
-                    : Appearance.colors.colError
+            Rectangle {
+                implicitWidth: Math.max(48, statusLabel.implicitWidth + 14)
+                implicitHeight: 24
+                radius: Appearance.rounding.small
+                color: Appearance.colors.colLayer1
+                border.width: 1
+                border.color: Appearance.colors.colLayer2
+
+                StyledText {
+                    id: statusLabel
+                    anchors.centerIn: parent
+                    text: root.statusText()
+                    font.pixelSize: Appearance.font.pixelSize.smallest
+                    font.weight: Font.Medium
+                    elide: Text.ElideRight
+                    color: EqualizerService.dspControlAvailable
+                        ? Appearance.colors.colSubtext
+                        : Appearance.colors.colError
+                }
             }
         }
 
-        Item {
+        Rectangle {
+            id: graphFrame
             Layout.fillWidth: true
-            Layout.preferredHeight: root.compactLayout ? 100 : 118
+            Layout.preferredHeight: root.compactLayout ? 112 : 132
             Layout.leftMargin: root.compactLayout ? 3 : 4
             Layout.rightMargin: root.compactLayout ? 3 : 4
+            radius: Appearance.rounding.small
+            color: Appearance.colors.colLayer1
+            border.width: 1
+            border.color: Appearance.colors.colLayer2
+            clip: true
 
-            Canvas {
-                id: lightningCanvas
-                anchors.fill: parent
-                z: 0
-                opacity: 1.0
-                visible: true
+            readonly property real leftGutter:
+                root.compactLayout ? 32 : 36
+            readonly property real rightGutter: 5
+            readonly property real topGutter: 6
+            readonly property real bottomGutter:
+                root.compactLayout ? 17 : 19
 
-                Timer {
-                    interval: 33
-                    running: root.active && lightningCanvas.visible
-                    repeat: true
-                    onTriggered: lightningCanvas.requestPaint()
-                }
+            Item {
+                id: plotArea
+                x: graphFrame.leftGutter
+                y: graphFrame.topGutter
+                width: Math.max(1, graphFrame.width
+                    - graphFrame.leftGutter - graphFrame.rightGutter)
+                height: Math.max(1, graphFrame.height
+                    - graphFrame.topGutter - graphFrame.bottomGutter)
 
-                onWidthChanged: requestPaint()
-                onHeightChanged: requestPaint()
-                onVisibleChanged: if (visible) requestPaint()
-                onPaint: {
-                    const ctx = getContext("2d")
-                    ctx.clearRect(0, 0, width, height)
-                    if (width <= 0 || height <= 0)
-                        return
+                Canvas {
+                    id: analyzerCanvas
+                    anchors.fill: parent
+                    z: 0
 
-                    const gains = root._lightningGains ?? []
-                    const points = []
-                    for (let i = 0; i < 10; ++i) {
-                        const delegate = bandRepeater.itemAt(i)
-                        if (delegate) {
-                            const mapped = delegate.lightningPoint()
-                            points.push({ x: mapped.x, y: mapped.y })
-                            continue
+                    onWidthChanged: requestPaint()
+                    onHeightChanged: requestPaint()
+                    onVisibleChanged: if (visible) requestPaint()
+
+                    onPaint: {
+                        const ctx = getContext("2d")
+                        ctx.clearRect(0, 0, width, height)
+                        if (width <= 0 || height <= 0)
+                            return
+
+                        const bands = EqualizerService.dspBands ?? []
+                        const minGain = EqualizerService.dspMinimumBandGain
+                        const maxGain = EqualizerService.dspMaximumBandGain
+                        const gainRange = Math.max(1, maxGain - minGain)
+
+                        function yForGain(gain) {
+                            const clamped = Math.max(
+                                minGain, Math.min(maxGain, Number(gain) || 0))
+                            return (maxGain - clamped) / gainRange * height
                         }
 
-                        // Construction-time fallback only. Once delegates exist,
-                        // the trace is mapped from the real handle centers below.
-                        const gain = Number(gains[i] ?? 0)
-                        const normalized = 1.0
-                            - ((Math.max(-12, Math.min(12, gain)) + 12) / 24)
-                        points.push({
-                            x: (i + 0.5) * (width / 10),
-                            y: 8 + normalized * Math.max(1, height - 24)
-                        })
-                    }
+                        // Real CAVA spectrum. Two restrained passes give each
+                        // bar enough presence behind the response curve without
+                        // turning the DSP control into a second visualizer card.
+                        const spectrum = eqCava.points ?? []
+                        const ceiling = Math.max(
+                            1, Number(eqCava.normalizationCeiling) || 1)
+                        if (spectrum.length > 0) {
+                            const slot = width / spectrum.length
+                            const haloWidth = Math.max(1, slot * 0.82)
+                            const coreWidth = Math.max(1, slot * 0.52)
 
-                    const highlight = Math.max(0,
-                        Math.min(1, root.eqLightningHighlight))
-                    const sweep = root.eqPresetSweepProgress
-                    const now = Date.now() / 1000
-                    ctx.lineJoin = "round"
-                    ctx.lineCap = "round"
+                            ctx.fillStyle = root.eqAccentColor
+                            for (let i = 0; i < spectrum.length; ++i) {
+                                const amplitude = Math.max(0, Math.min(1,
+                                    (Number(spectrum[i]) || 0) / ceiling))
+                                const barHeight = Math.max(
+                                    1, amplitude * height * 0.94)
+                                const center = (i + 0.5) * slot
 
-                    function sampledTrace(stroke) {
-                        const samples = [{ x: points[0].x, y: points[0].y }]
-                        for (let i = 0; i < points.length - 1; ++i) {
-                            const p1 = points[i]
-                            const p2 = points[i + 1]
-                            const steps = stroke === 2 ? 6 : 8
-                            for (let j = 1; j <= steps; ++j) {
-                                const t = j / steps
-                                const envelope = Math.sin(t * Math.PI)
-                                const x = p1.x + (p2.x - p1.x) * t
-                                const y = p1.y + (p2.y - p1.y) * t
-                                const amplitudeX = stroke === 0 ? 2.2
-                                    : (stroke === 1 ? 1.2 : 0.55)
-                                const amplitudeY = stroke === 0 ? 2.8
-                                    : (stroke === 1 ? 1.55 : 0.7)
-                                const noiseX = Math.sin(now * (6.5 + stroke) + i + j)
-                                    * Math.cos(now * 5.2 - i + j)
-                                    * amplitudeX * envelope
-                                const noiseY = Math.cos(now * (6.1 - stroke * 0.4) + i - j)
-                                    * Math.sin(now * 4.8 + i - j)
-                                    * amplitudeY * envelope
-                                samples.push({ x: x + noiseX, y: y + noiseY })
+                                ctx.globalAlpha = 0.07 + amplitude * 0.10
+                                ctx.fillRect(center - haloWidth / 2,
+                                    height - barHeight, haloWidth, barHeight)
+
+                                ctx.globalAlpha = 0.18 + amplitude * 0.28
+                                ctx.fillRect(center - coreWidth / 2,
+                                    height - barHeight, coreWidth, barHeight)
                             }
                         }
-                        return samples
-                    }
 
-                    function strokeTrace(samples) {
-                        ctx.beginPath()
-                        ctx.moveTo(samples[0].x, samples[0].y)
-                        for (let i = 1; i < samples.length; ++i)
-                            ctx.lineTo(samples[i].x, samples[i].y)
-                        ctx.stroke()
-                    }
-
-                    // Three compact strokes form the always-on current. Direct
-                    // band edits raise global luminance only; geometry is fixed.
-                    const traces = []
-                    for (let stroke = 0; stroke < 3; ++stroke) {
-                        const samples = sampledTrace(stroke)
-                        traces.push(samples)
-
-                        if (stroke === 0) {
-                            ctx.lineWidth = 5.5
-                            ctx.strokeStyle = root.eqAccentColor
-                            ctx.globalAlpha = 0.16 + highlight * 0.14
-                        } else if (stroke === 1) {
-                            ctx.lineWidth = 2.4
-                            ctx.strokeStyle = Qt.lighter(root.eqAccentColor,
-                                1.12 + highlight * 0.28)
-                            ctx.globalAlpha = 0.40 + highlight * 0.34
-                        } else {
-                            ctx.lineWidth = 1.0
-                            ctx.strokeStyle = "#ffffff"
-                            ctx.globalAlpha = 0.55 + highlight * 0.45
+                        // Shared dB/frequency grid.
+                        ctx.strokeStyle = Appearance.colors.colLayer2
+                        ctx.lineWidth = 1
+                        ctx.globalAlpha = 0.48
+                        const gridGains = [12, 6, 0, -6, -12]
+                        for (let i = 0; i < gridGains.length; ++i) {
+                            const y = yForGain(gridGains[i])
+                            ctx.beginPath()
+                            ctx.moveTo(0, y)
+                            ctx.lineTo(width, y)
+                            ctx.stroke()
                         }
-                        strokeTrace(samples)
+                        for (let i = 0; i < 10; ++i) {
+                            const x = (i + 0.5) * width / 10
+                            ctx.beginPath()
+                            ctx.moveTo(x, 0)
+                            ctx.lineTo(x, height)
+                            ctx.stroke()
+                        }
+
+                        // Read the actual rendered EQ handles so the response
+                        // curve and the draggable nodes can never drift apart.
+                        const points = []
+                        for (let i = 0; i < 10; ++i) {
+                            const delegate = bandRepeater.itemAt(i)
+                            if (delegate) {
+                                const mapped = delegate.curvePoint()
+                                points.push({ x: mapped.x, y: mapped.y })
+                            } else {
+                                const gain = Number(bands[i]?.gain) || 0
+                                points.push({
+                                    x: (i + 0.5) * width / 10,
+                                    y: yForGain(gain)
+                                })
+                            }
+                        }
+
+                        function traceCurve() {
+                            if (points.length === 0)
+                                return
+                            ctx.beginPath()
+                            ctx.moveTo(points[0].x, points[0].y)
+                            for (let i = 0; i < points.length - 1; ++i) {
+                                const p0 = points[Math.max(0, i - 1)]
+                                const p1 = points[i]
+                                const p2 = points[i + 1]
+                                const p3 = points[
+                                    Math.min(points.length - 1, i + 2)]
+                                ctx.bezierCurveTo(
+                                    p1.x + (p2.x - p0.x) / 6,
+                                    p1.y + (p2.y - p0.y) / 6,
+                                    p2.x - (p3.x - p1.x) / 6,
+                                    p2.y - (p3.y - p1.y) / 6,
+                                    p2.x, p2.y)
+                            }
+                            ctx.stroke()
+                        }
+
+                        ctx.lineCap = "round"
+                        ctx.lineJoin = "round"
+
+                        ctx.strokeStyle = root.eqAccentColor
+                        ctx.lineWidth = root.compactLayout ? 5 : 6
+                        ctx.globalAlpha = 0.18
+                        traceCurve()
+
+                        ctx.strokeStyle = Qt.lighter(root.eqAccentColor, 1.18)
+                        ctx.lineWidth = root.compactLayout ? 2.1 : 2.4
+                        ctx.globalAlpha = 0.82
+                        traceCurve()
+
+                        ctx.strokeStyle = "#ffffff"
+                        ctx.lineWidth = 0.8
+                        ctx.globalAlpha = 0.72
+                        traceCurve()
+
+                        ctx.globalAlpha = 1.0
                     }
+                }
 
-                    // Presets get a distinct charge sweep. The moving head has
-                    // a short luminous tail and redraws the exact same sampled
-                    // geometry at the exact same widths, so it never grows the
-                    // current — it only brightens successive sections left→right.
-                    if (sweep >= -0.12 && sweep <= 1.16) {
-                        const sweepTail = 0.22
-                        const sweepLead = 0.035
+                Row {
+                    id: bandControlRow
+                    anchors.fill: parent
+                    spacing: 0
+                    z: 2
 
-                        for (let stroke = 0; stroke < traces.length; ++stroke) {
-                            const samples = traces[stroke]
-                            ctx.lineWidth = stroke === 0 ? 5.5
-                                : (stroke === 1 ? 2.4 : 1.0)
-                            ctx.strokeStyle = stroke === 2
-                                ? "#ffffff"
-                                : Qt.lighter(root.eqAccentColor,
-                                    stroke === 0 ? 1.28 : 1.55)
+                    Repeater {
+                        id: bandRepeater
+                        model: EqualizerService.dspBands
 
-                            for (let i = 1; i < samples.length; ++i) {
-                                const p1 = samples[i - 1]
-                                const p2 = samples[i]
-                                const segmentPosition = ((p1.x + p2.x) * 0.5)
-                                    / Math.max(1, width)
-                                const distance = sweep - segmentPosition
-                                let pulse = 0
+                        delegate: Item {
+                            id: bandDelegate
+                            required property var modelData
+                            required property int index
+                            width: parent.width / 10
+                            height: parent.height
+                            readonly property real backendGain:
+                                Number(modelData?.gain) || 0
 
-                                if (distance >= -sweepLead
-                                        && distance <= sweepTail) {
-                                    if (distance < 0)
-                                        pulse = 1 - (-distance / sweepLead)
-                                    else
-                                        pulse = Math.pow(
-                                            1 - distance / sweepTail, 1.6)
+                            function curvePoint() {
+                                const handleItem = bandSlider.handle
+                                if (!handleItem) {
+                                    return Qt.point(
+                                        bandDelegate.width / 2
+                                            + bandDelegate.x,
+                                        bandDelegate.height / 2)
                                 }
-
-                                if (pulse <= 0)
-                                    continue
-
-                                ctx.beginPath()
-                                ctx.moveTo(p1.x, p1.y)
-                                ctx.lineTo(p2.x, p2.y)
-                                ctx.globalAlpha = pulse
-                                    * (stroke === 0 ? 0.38
-                                        : (stroke === 1 ? 0.78 : 0.95))
-                                ctx.stroke()
+                                return handleItem.mapToItem(
+                                    analyzerCanvas,
+                                    handleItem.width / 2,
+                                    handleItem.height / 2)
                             }
-                        }
-                    }
 
-                    ctx.globalAlpha = 1.0
-                }
-            }
-
-            Row {
-                anchors.fill: parent
-                spacing: 0
-                z: 1
-
-                Repeater {
-                    id: bandRepeater
-                    model: EqualizerService.dspBands
-
-                    delegate: Item {
-                        id: bandDelegate
-                        required property var modelData
-                        required property int index
-                        width: parent.width / 10
-                        height: parent.height
-                        readonly property real backendGain: Number(modelData?.gain) || 0
-
-                        function lightningPoint() {
-                            const handleItem = bandSlider.handle
-                            if (!handleItem) {
-                                return Qt.point(
-                                    (bandDelegate.index + 0.5)
-                                        * (lightningCanvas.width / 10),
-                                    lightningCanvas.height / 2)
+                            Rectangle {
+                                id: responseStem
+                                z: 1
+                                width: 1
+                                radius: 0.5
+                                anchors.horizontalCenter: parent.horizontalCenter
+                                y: bandSlider.handle
+                                    ? bandSlider.handle.y
+                                        + bandSlider.handle.height / 2
+                                    : parent.height / 2
+                                height: Math.max(0, parent.height - y)
+                                color: Appearance.colors.colPrimary
+                                opacity: bandSlider.enabled ? 0.24 : 0.10
                             }
-                            return handleItem.mapToItem(
-                                lightningCanvas,
-                                handleItem.width / 2,
-                                handleItem.height / 2)
-                        }
-
-                        ColumnLayout {
-                            anchors.fill: parent
-                            spacing: 2
 
                             Slider {
                                 id: bandSlider
-                                Layout.fillHeight: true
-                                Layout.alignment: Qt.AlignHCenter
+                                z: 2
+                                anchors {
+                                    top: parent.top
+                                    bottom: parent.bottom
+                                    horizontalCenter: parent.horizontalCenter
+                                }
+                                width: root.compactLayout ? 20 : 24
                                 orientation: Qt.Vertical
                                 from: EqualizerService.dspMinimumBandGain
                                 to: EqualizerService.dspMaximumBandGain
                                 stepSize: 1
                                 snapMode: Slider.SnapAlways
                                 hoverEnabled: true
-                                enabled: EqualizerService.dspControlAvailable && !EqualizerService.busy
-                                implicitWidth: root.compactLayout ? 22 : 26
+                                enabled: EqualizerService.dspControlAvailable
+                                    && !EqualizerService.busy
+                                topPadding: root.compactLayout ? 6 : 7
+                                bottomPadding: topPadding
+                                leftPadding: 0
+                                rightPadding: 0
                                 value: bandDelegate.backendGain
 
                                 onPressedChanged: {
                                     if (pressed) {
-                                        root.beginBandLightning(
-                                            bandDelegate.index, value)
+                                        root._editingBand = bandDelegate.index
                                     } else if (enabled) {
                                         const rounded = Math.round(value)
                                         EqualizerService.setDspBandGain(
                                             bandDelegate.index, rounded)
-                                        root.endBandLightning(
-                                            bandDelegate.index, rounded)
+                                        root._editingBand = -1
+                                        analyzerCanvas.requestPaint()
                                     }
                                 }
+
                                 onMoved: {
                                     value = Math.round(value)
-                                    root.previewBandLightning(
-                                        bandDelegate.index, value)
+                                    analyzerCanvas.requestPaint()
                                 }
+
                                 Connections {
                                     target: EqualizerService
                                     function onDspBandsChanged(): void {
                                         if (!bandSlider.pressed)
-                                            bandSlider.value = bandDelegate.backendGain
+                                            bandSlider.value =
+                                                bandDelegate.backendGain
+                                        analyzerCanvas.requestPaint()
                                     }
                                 }
 
-                                background: Rectangle {
-                                    x: bandSlider.leftPadding
-                                        + (bandSlider.availableWidth - width) / 2
-                                    y: bandSlider.topPadding
-                                    width: root.compactLayout ? 5 : 7
-                                    height: bandSlider.availableHeight
-                                    radius: width / 2
-                                    color: Appearance.colors.colLayer2
-
-                                    Rectangle {
-                                        anchors.left: parent.left
-                                        anchors.right: parent.right
-                                        anchors.bottom: parent.bottom
-                                        height: Math.max(parent.width,
-                                            (1 - bandSlider.visualPosition) * parent.height)
-                                        radius: parent.radius
-                                        color: Appearance.colors.colPrimary
-                                        opacity: bandSlider.enabled ? 0.9 : 0.35
-                                    }
-                                }
+                                background: Item {}
 
                                 handle: Rectangle {
                                     x: bandSlider.leftPadding
@@ -496,19 +452,18 @@ Item {
                                     y: bandSlider.topPadding
                                         + bandSlider.visualPosition
                                             * (bandSlider.availableHeight - height)
-                                    implicitWidth: root.compactLayout ? 11 : 13
+                                    implicitWidth:
+                                        root.compactLayout ? 11 : 13
                                     implicitHeight: implicitWidth
                                     radius: width / 2
                                     color: bandSlider.pressed
                                         ? Appearance.colors.colPrimary
-                                        : Appearance.colors.colOnPrimary
+                                        : Appearance.colors.colLayer0
                                     border.width: 1
                                     border.color: Appearance.colors.colPrimary
-                                    scale: bandSlider.pressed ? 1.15
-                                        : (bandSlider.hovered ? 1.06 : 1.0)
+                                    scale: bandSlider.pressed ? 1.16
+                                        : (bandSlider.hovered ? 1.08 : 1.0)
 
-                                    // Signal that the EQ dot is draggable while
-                                    // leaving the Slider in charge of the drag.
                                     HoverHandler {
                                         cursorShape: bandSlider.enabled
                                             ? (bandSlider.pressed
@@ -520,21 +475,105 @@ Item {
                                     Behavior on scale {
                                         enabled: Appearance.animationsEnabled
                                         NumberAnimation {
-                                            duration: Appearance.animation.elementMoveFast.duration
+                                            duration:
+                                                Appearance.animation
+                                                    .elementMoveFast.duration
                                             easing.type: Easing.OutCubic
                                         }
                                     }
                                 }
                             }
-
-                            StyledText {
-                                Layout.alignment: Qt.AlignHCenter
-                                text: modelData?.label ?? ""
-                                font.pixelSize: Appearance.font.pixelSize.smallest
-                                font.weight: Font.DemiBold
-                                color: Appearance.colors.colSubtext
-                            }
                         }
+                    }
+                }
+            }
+
+            Repeater {
+                model: [12, 6, 0, -6, -12]
+
+                delegate: StyledText {
+                    required property real modelData
+                    x: 15
+                    y: plotArea.y
+                        + root.gainToY(modelData, plotArea.height)
+                        - height / 2
+                    text: modelData > 0 ? "+" + modelData : String(modelData)
+                    font.pixelSize: Appearance.font.pixelSize.smallest
+                    color: Appearance.colors.colSubtext
+                    opacity: 0.78
+                }
+            }
+
+            StyledText {
+                x: 2
+                y: plotArea.y + root.gainToY(0, plotArea.height)
+                    - height / 2
+                text: "dB"
+                font.pixelSize: Appearance.font.pixelSize.smallest
+                color: Appearance.colors.colSubtext
+                opacity: 0.78
+            }
+
+            Row {
+                x: plotArea.x
+                y: plotArea.y + plotArea.height
+                width: plotArea.width
+                height: graphFrame.bottomGutter
+                spacing: 0
+
+                Repeater {
+                    model: EqualizerService.dspBands
+
+                    delegate: Item {
+                        required property var modelData
+                        width: parent.width / 10
+                        height: parent.height
+
+                        StyledText {
+                            anchors.centerIn: parent
+                            text: modelData?.label ?? ""
+                            font.pixelSize:
+                                Appearance.font.pixelSize.smallest
+                            font.weight: Font.Medium
+                            color: Appearance.colors.colSubtext
+                        }
+                    }
+                }
+            }
+
+            Rectangle {
+                anchors {
+                    top: parent.top
+                    right: parent.right
+                    topMargin: 6
+                    rightMargin: 6
+                }
+                implicitWidth: root.compactLayout ? 42 : 46
+                implicitHeight: 20
+                radius: height / 2
+                color: Appearance.colors.colLayer0
+                border.width: 1
+                border.color: Appearance.colors.colLayer2
+                z: 5
+
+                Row {
+                    anchors.centerIn: parent
+                    spacing: 4
+
+                    Rectangle {
+                        width: 6
+                        height: 6
+                        radius: 3
+                        color: Appearance.colors.colPrimary
+                        opacity: eqCava.audioSignalActive ? 1.0 : 0.35
+                    }
+
+                    StyledText {
+                        text: "Live"
+                        font.pixelSize: Appearance.font.pixelSize.smallest
+                        font.weight: Font.Medium
+                        color: Appearance.colors.colPrimary
+                        opacity: eqCava.audioSignalActive ? 1.0 : 0.58
                     }
                 }
             }
@@ -567,16 +606,19 @@ Item {
                     toggled: EqualizerService.dspPresetName === modelData
                     colBackground: Appearance.colors.colLayer1
                     colBackgroundHover: Appearance.colors.colLayer1Hover
-                    colBackgroundToggled: Appearance.colors.colPrimaryContainer
-                    colBackgroundToggledHover: Appearance.colors.colPrimaryContainer
-                    onClicked: root.applyPresetWithLightning(modelData)
+                    colBackgroundToggled:
+                        Appearance.colors.colPrimaryContainer
+                    colBackgroundToggledHover:
+                        Appearance.colors.colPrimaryContainer
+                    onClicked: root.applyPreset(modelData)
 
                     contentItem: StyledText {
                         text: presetButton.modelData
                         horizontalAlignment: Text.AlignHCenter
                         verticalAlignment: Text.AlignVCenter
                         font.pixelSize: Appearance.font.pixelSize.smallest
-                        font.weight: presetButton.toggled ? Font.DemiBold : Font.Normal
+                        font.weight: presetButton.toggled
+                            ? Font.DemiBold : Font.Normal
                         color: presetButton.toggled
                             ? Appearance.colors.colOnPrimaryContainer
                             : Appearance.colors.colOnLayer1

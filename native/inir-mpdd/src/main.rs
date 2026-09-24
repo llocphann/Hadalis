@@ -57,6 +57,10 @@ struct Args {
     #[arg(long)]
     subscribe: bool,
 
+    /// Read a local .lrc/.txt sidecar using the LocalMusic lyrics contract.
+    #[arg(long)]
+    lyrics: Option<String>,
+
     /// Arguments consumed by --compat/--client-compat: MODE HOST PORT [MODE_ARGS...].
     #[arg(trailing_var_arg = true)]
     compat_args: Vec<String>,
@@ -407,6 +411,180 @@ fn expand_home(value: &str) -> PathBuf {
         return home_dir().join(rest);
     }
     PathBuf::from(value)
+}
+
+
+fn lyrics_candidates(track: &Path) -> Vec<PathBuf> {
+    let mut candidates = vec![
+        track.with_extension("lrc"),
+        PathBuf::from(format!("{}.lrc", track.to_string_lossy())),
+        track.with_extension("txt"),
+        PathBuf::from(format!("{}.txt", track.to_string_lossy())),
+    ];
+    let mut unique = Vec::with_capacity(candidates.len());
+    for path in candidates.drain(..) {
+        if !unique.contains(&path) {
+            unique.push(path);
+        }
+    }
+    unique
+}
+
+fn lrc_stamp_seconds(token: &str) -> Option<f64> {
+    let (minutes, seconds_part) = token.split_once(':')?;
+    if minutes.is_empty()
+        || minutes.len() > 3
+        || !minutes.bytes().all(|byte| byte.is_ascii_digit())
+    {
+        return None;
+    }
+
+    let fraction_at = seconds_part
+        .find('.')
+        .or_else(|| seconds_part.find(':'));
+    let (seconds, fraction) = match fraction_at {
+        Some(index) => (&seconds_part[..index], Some(&seconds_part[index + 1..])),
+        None => (seconds_part, None),
+    };
+    if seconds.len() != 2 || !seconds.bytes().all(|byte| byte.is_ascii_digit()) {
+        return None;
+    }
+    if fraction.is_some_and(|value| {
+        value.is_empty()
+            || value.len() > 3
+            || !value.bytes().all(|byte| byte.is_ascii_digit())
+    }) {
+        return None;
+    }
+
+    let minutes = minutes.parse::<u64>().ok()?;
+    let seconds = seconds.parse::<u64>().ok()?;
+    let mut value = (minutes * 60 + seconds) as f64;
+    if let Some(fraction) = fraction {
+        let numerator = fraction.parse::<u64>().ok()? as f64;
+        value += numerator / 10_f64.powi(fraction.len() as i32);
+    }
+    Some(value)
+}
+
+fn lrc_line(line: &str) -> (Vec<f64>, String) {
+    let mut stamps = Vec::new();
+    let mut lyric = String::with_capacity(line.len());
+    let mut copied_until = 0usize;
+    let mut search_from = 0usize;
+
+    while let Some(relative_start) = line[search_from..].find('[') {
+        let start = search_from + relative_start;
+        let Some(relative_end) = line[start + 1..].find(']') else {
+            break;
+        };
+        let end = start + 1 + relative_end;
+        if let Some(seconds) = lrc_stamp_seconds(&line[start + 1..end]) {
+            lyric.push_str(&line[copied_until..start]);
+            copied_until = end + 1;
+            stamps.push(seconds);
+        }
+        search_from = end + 1;
+    }
+    lyric.push_str(&line[copied_until..]);
+    (stamps, lyric.trim().to_owned())
+}
+
+fn parse_lrc(text: &str) -> (Vec<Value>, bool) {
+    let mut offset_ms = 0i64;
+    let mut timed: Vec<(f64, String)> = Vec::new();
+    let mut plain = Vec::new();
+
+    for raw in text.lines() {
+        let line = raw.trim_matches(|ch| matches!(ch, '\u{feff}' | '\r' | '\n'));
+        if line.trim().is_empty() {
+            continue;
+        }
+
+        let trimmed = line.trim();
+        let lowered = trimmed.to_ascii_lowercase();
+        if lowered.starts_with("[offset:") && lowered.ends_with(']') {
+            if let Ok(value) = trimmed[8..trimmed.len() - 1].parse::<i64>() {
+                offset_ms = value;
+            }
+            continue;
+        }
+        if ["[ar:", "[al:", "[ti:", "[by:", "[re:", "[ve:", "[length:"]
+            .iter()
+            .any(|prefix| lowered.starts_with(prefix))
+        {
+            continue;
+        }
+
+        let (stamps, lyric) = lrc_line(line);
+        if stamps.is_empty() {
+            if !lyric.is_empty() {
+                plain.push(json!({"time": -1.0, "text": lyric}));
+            }
+            continue;
+        }
+
+        let lyric = if lyric.is_empty() {
+            "♪".to_owned()
+        } else {
+            lyric
+        };
+        for stamp in stamps {
+            timed.push((stamp, lyric.clone()));
+        }
+    }
+
+    if timed.is_empty() {
+        return (plain, false);
+    }
+
+    let offset = offset_ms as f64 / 1000.0;
+    timed.sort_by(|left, right| left.0.total_cmp(&right.0));
+    (
+        timed
+            .into_iter()
+            .map(|(time, text)| json!({"time": (time + offset).max(0.0), "text": text}))
+            .collect(),
+        true,
+    )
+}
+
+fn local_lyrics(track_text: &str) -> Value {
+    if track_text.contains("://") {
+        return json!({"status": "not_found", "path": "", "synced": false, "lines": []});
+    }
+
+    let track = expand_home(track_text);
+    for path in lyrics_candidates(&track) {
+        if !path.is_file() {
+            continue;
+        }
+        let bytes = match fs::read(&path) {
+            Ok(bytes) => bytes,
+            Err(error) => {
+                return json!({
+                    "status": "error",
+                    "path": path.to_string_lossy(),
+                    "synced": false,
+                    "lines": [],
+                    "error": error.to_string()
+                });
+            }
+        };
+        let text = String::from_utf8_lossy(&bytes);
+        let (lines, synced) = parse_lrc(&text);
+        if !lines.is_empty() {
+            let resolved = fs::canonicalize(&path).unwrap_or(path);
+            return json!({
+                "status": "ok",
+                "path": resolved.to_string_lossy(),
+                "synced": synced,
+                "lines": lines
+            });
+        }
+    }
+
+    json!({"status": "not_found", "path": "", "synced": false, "lines": []})
 }
 
 fn cache_dir() -> PathBuf {
@@ -1611,6 +1789,10 @@ fn prepare_socket(path: &Path) -> Result<UnixListener> {
 
 fn main() -> Result<()> {
     let args = Args::parse();
+    if let Some(track) = args.lyrics.as_deref() {
+        println!("{}", serde_json::to_string(&local_lyrics(track))?);
+        return Ok(());
+    }
     if args.compat {
         std::process::exit(run_compat(&args.compat_args));
     }
@@ -1656,7 +1838,7 @@ fn main() -> Result<()> {
 
 #[cfg(test)]
 mod tests {
-    use super::{legacy_request, pairs, quote, records};
+    use super::{legacy_request, lrc_stamp_seconds, pairs, parse_lrc, quote, records};
     use serde_json::json;
 
     #[test]
@@ -1708,6 +1890,33 @@ mod tests {
         assert_eq!(request["op"], "queue");
         assert_eq!(request["params"]["index"], 2);
         assert_eq!(request["params"]["uris"], json!(["a.flac", "b.flac"]));
+    }
+
+    #[test]
+    fn parses_synced_lyrics_with_offset_and_multiple_stamps() {
+        let (lines, synced) = parse_lrc(
+            "[offset:+250]\n[00:01.50][00:03]Hello\n[ar:Ignored]\n",
+        );
+        assert!(synced);
+        assert_eq!(lines.len(), 2);
+        assert_eq!(lines[0]["time"], json!(1.75));
+        assert_eq!(lines[0]["text"], "Hello");
+        assert_eq!(lines[1]["time"], json!(3.25));
+    }
+
+    #[test]
+    fn parses_plain_lyrics_when_no_timestamps_exist() {
+        let (lines, synced) = parse_lrc("Line one\nLine two\n");
+        assert!(!synced);
+        assert_eq!(lines.len(), 2);
+        assert_eq!(lines[0]["time"], json!(-1.0));
+    }
+
+    #[test]
+    fn timestamp_parser_matches_lrc_fraction_precision() {
+        assert_eq!(lrc_stamp_seconds("1:02.5"), Some(62.5));
+        assert_eq!(lrc_stamp_seconds("001:02:050"), Some(62.05));
+        assert_eq!(lrc_stamp_seconds("1:2"), None);
     }
 
     #[test]

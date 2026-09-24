@@ -63,6 +63,7 @@ Item {
         spacing: 12
 
         EventsWidget {
+            id: eventsPane
             Layout.fillWidth: true
             Layout.preferredWidth: root.paneWidth
             Layout.fillHeight: true
@@ -72,7 +73,6 @@ Item {
             fabSize: 36
             fabMargins: 10
             fabLeftAligned: true
-            onOpenEventsDialog: (event) => root.eventEditorRequested(event)
         }
 
         Rectangle {
@@ -100,12 +100,20 @@ Item {
                 today: root.today
                 locale: root.locale
                 calendarCells: root.calendarCells
-                selectedDate: root.selectedEventDate
-                interactiveDays: root.eventDateSelectionEnabled
+                selectedDate: eventsPane.inlineEditorMode
+                    ? eventsPane.inlineEditorDate
+                    : root.selectedEventDate
+                interactiveDays: eventsPane.inlineEditorMode
+                    || root.eventDateSelectionEnabled
                 onPreviousMonthRequested: root.monthShift--
                 onNextMonthRequested: root.monthShift++
                 onTodayRequested: root.monthShift = 0
-                onDayActivated: date => root.eventDateSelected(date)
+                onDayActivated: date => {
+                    if (eventsPane.inlineEditorMode)
+                        eventsPane.setInlineEditorDate(date)
+                    else
+                        root.eventDateSelected(date)
+                }
             }
         }
     }

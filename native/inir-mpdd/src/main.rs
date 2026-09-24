@@ -976,12 +976,12 @@ fn snapshot(client: &mut MpdClient, root: &str) -> Result<Value> {
 
     tracks.sort_by_cached_key(|track| {
         (
-            track_value(track, "artist").to_ascii_lowercase(),
-            track_value(track, "album").to_ascii_lowercase(),
+            track_str(track, "artist").to_ascii_lowercase(),
+            track_str(track, "album").to_ascii_lowercase(),
             track.get("disc").and_then(Value::as_i64).unwrap_or(0),
             track.get("track").and_then(Value::as_i64).unwrap_or(0),
-            track_value(track, "title").to_ascii_lowercase(),
-            track_value(track, "uri").to_ascii_lowercase(),
+            track_str(track, "title").to_ascii_lowercase(),
+            track_str(track, "uri").to_ascii_lowercase(),
         )
     });
     populate_library_art(client, &mut tracks, &mut art_lookup);
@@ -995,7 +995,7 @@ fn snapshot(client: &mut MpdClient, root: &str) -> Result<Value> {
                 .then(|| value.to_owned())
         })
         .collect::<Vec<_>>();
-    playlist_names.sort_by_key(|name| name.to_ascii_lowercase());
+    playlist_names.sort_by_cached_key(|name| name.to_ascii_lowercase());
 
     let mut playlists = Vec::new();
     for name in playlist_names {
@@ -1044,7 +1044,7 @@ fn snapshot(client: &mut MpdClient, root: &str) -> Result<Value> {
         })
         .collect::<Vec<_>>();
 
-    let mut payload = status_payload(client, root)?;
+    let mut payload = status_payload_mode_with_art(client, root, true, &mut art_lookup)?;
     let object = payload
         .as_object_mut()
         .ok_or_else(|| anyhow!("invalid_status_payload"))?;

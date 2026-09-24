@@ -365,8 +365,7 @@ fn records(lines: &[String], marker: &str) -> Vec<Record> {
 
 fn first(record: &Record, keys: &[&str]) -> String {
     for key in keys {
-        if let Some(value) = record.get(*key).and_then(|values| values.first())
-        {
+        if let Some(value) = record.get(*key).and_then(|values| values.first()) {
             let value = value.trim();
             if !value.is_empty() {
                 return value.to_owned();
@@ -1094,7 +1093,7 @@ fn handle_operation(
                 *art_lookup = ArtLookup::default();
             }
             result
-        },
+        }
         "queue" => {
             let uris = param_strings(params, "uris")?;
             if uris.is_empty() {

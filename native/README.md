@@ -12,6 +12,14 @@ Rust is now wired only through `scripts/native-dispatch`.
 - `INIR_NATIVE_BACKEND=auto` prefers available Rust binaries and falls back to
   Python.
 - Existing Python helpers remain in the repository during the trial.
+- The benchmark harness also writes `$XDG_STATE_HOME/inir/native-backend` and
+  `native-bin-dir`. This lets helpers launched by Niri (not just
+  `inir.service`) observe the same trial selection. Explicit environment
+  variables still take precedence.
+- Migration 049 routes already-installed clipboard text watchers through the
+  selector; a watcher that was spawned before the migration remains Python
+  until the next Niri session, while the direct clipboard A/B test is still
+  valid immediately.
 - No Rust systemd service is installed or enabled yet.
 - Packaging still does not require the Rust binaries.
 

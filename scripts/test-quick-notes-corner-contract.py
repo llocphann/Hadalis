@@ -191,6 +191,10 @@ for token in (
     "Layout.preferredWidth: 18",
     "id: editorCard",
     "id: compactActionRail",
+    "id: primaryNoteActions",
+    "id: secondaryNoteActions",
+    "anchors.top: parent.top",
+    "anchors.bottom: parent.bottom",
     "opacity: editorStageHover.hovered || textArea.activeFocus ? 1 : 0",
     "onClicked: root.switchToTab(tabPill.index)",
     "onClicked: root.addTabSafely()",
@@ -222,14 +226,30 @@ if min(rail_pos, editor_pos, action_rail_pos) < 0 or not (
         rail_pos < editor_pos < action_rail_pos):
     fail("Quick Notes note indicators and hover actions must stay outside the editor card")
 
-inline_start = notepad.find("// Keep only note-lifecycle actions inline.")
+inline_start = notepad.find("// Full Sidebar presentation keeps Add beside the tabs.")
 inline_end = notepad.find("// Full toolbar remains unchanged for Sidebar;", inline_start)
 if inline_start < 0 or inline_end < 0:
-    fail("Quick Notes compact primary-action block is missing")
+    fail("Quick Notes tab-row lifecycle block is missing")
 inline_block = notepad[inline_start:inline_end]
-for secondary in ("content_copy", "content_paste", "select_all", "delete", "note_add"):
-    forbid(inline_block, secondary,
-           "Quick Notes compact tab row must keep secondary actions in the hover rail")
+require(inline_block, "visible: !root.compactPresentation",
+        "Sidebar-only Add action must not consume compact Quick Notes height")
+for compact_action in ('icon: "close"', "root.displayedTabIndex"):
+    forbid(inline_block, compact_action,
+           "Compact Add/Remove actions must live in the right-side vertical rail")
+
+primary_start = notepad.find("id: primaryNoteActions", action_rail_pos)
+secondary_start = notepad.find("id: secondaryNoteActions", action_rail_pos)
+if primary_start < 0 or secondary_start < 0 or primary_start > secondary_start:
+    fail("Quick Notes primary and secondary right-side action groups are missing")
+primary_block = notepad[primary_start:secondary_start]
+for token in (
+    'icon: "add"',
+    'icon: "close"',
+    "root.addTabSafely()",
+    "root.removeTabSafely(root.displayedTabIndex)",
+):
+    require(primary_block, token,
+            "Quick Notes primary Add/Remove actions must stay vertical on the right")
 
 for token in (
     'icon: "content_copy"',
@@ -237,7 +257,7 @@ for token in (
     'icon: "select_all"',
     'icon: "delete"',
 ):
-    require(notepad[action_rail_pos:], token,
+    require(notepad[secondary_start:], token,
             "Quick Notes hover rail is missing a secondary editor action")
 
 for token in (

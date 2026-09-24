@@ -113,29 +113,35 @@ const KB_BROWSERS: &[&str] = &[
 ];
 
 use regex::Regex;
+use std::sync::LazyLock;
+
+static IPC_CALL: LazyLock<Regex> = LazyLock::new(|| Regex::new(r#"spawn\s+"(?:[^"]*/)?inir"\s+"ipc"\s+"call"\s+"([\w-]+)"\s+"([\w-]+)""#).unwrap());
+static SPECIAL_COMMAND: LazyLock<Regex> = LazyLock::new(|| Regex::new(r#"spawn\s+"(?:[^"]*/)?inir"\s+"(settings|terminal|close-window|browser)"(?:\s|;|$)"#).unwrap());
+static GENERAL_COMMAND: LazyLock<Regex> = LazyLock::new(|| Regex::new(r#"spawn\s+"(?:[^"]*/)?inir"\s+"([\w-]+)"\s+"([\w-]+)""#).unwrap());
+static WORKSPACE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^(focus-workspace|move-column-to-workspace)\s+(\d+)").unwrap());
+static SIZE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r#"^set-(column-width|window-height)\s+"([+-]\d+%?)""#).unwrap());
+static IPC_FALLBACK: LazyLock<Regex> = LazyLock::new(|| Regex::new(r#"ipc.*call.*"(\w+)".*"(\w+)""#).unwrap());
+static SPAWN_APP: LazyLock<Regex> = LazyLock::new(|| Regex::new(r#"spawn\s+"([^"]+)""#).unwrap());
+static SHELL_CATEGORY: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"ipc.*call.*(overlay|overview|clipboard|lock|wallpaper|settings|cheatsheet|panelfamily)").unwrap());
 
 fn contains_any(text: &str, words: &[&str]) -> bool {
     words.iter().any(|word| text.contains(word))
 }
 
 fn inir_action(action: &str) -> Option<(String, String)> {
-    let call = Regex::new(r#"spawn\s+"(?:[^"]*/)?inir"\s+"ipc"\s+"call"\s+"([\w-]+)"\s+"([\w-]+)""#).unwrap();
-    if let Some(caps) = call.captures(action) {
+    if let Some(caps) = IPC_CALL.captures(action) {
         return Some((caps[1].to_owned(), caps[2].to_owned()));
     }
-    for (command, target, function) in [
-        ("settings", "settings", "open"),
-        ("terminal", "launcher", "terminal"),
-        ("close-window", "launcher", "close-window"),
-        ("browser", "browser", "open"),
-    ] {
-        let pattern = format!(r#"spawn\s+"(?:[^"]*/)?inir"\s+"{command}"(?:\s|;|$)"#);
-        if Regex::new(&pattern).unwrap().is_match(action) {
-            return Some((target.to_owned(), function.to_owned()));
-        }
+    if let Some(caps) = SPECIAL_COMMAND.captures(action) {
+        let (target, function) = match &caps[1] {
+            "settings" => ("settings", "open"),
+            "terminal" => ("launcher", "terminal"),
+            "close-window" => ("launcher", "close-window"),
+            _ => ("browser", "open"),
+        };
+        return Some((target.to_owned(), function.to_owned()));
     }
-    let general = Regex::new(r#"spawn\s+"(?:[^"]*/)?inir"\s+"([\w-]+)"\s+"([\w-]+)""#).unwrap();
-    general.captures(action).map(|caps| (caps[1].to_owned(), caps[2].to_owned()))
+    GENERAL_COMMAND.captures(action).map(|caps| (caps[1].to_owned(), caps[2].to_owned()))
 }
 
 pub(super) fn action_description(action: &str) -> String {
@@ -143,13 +149,11 @@ pub(super) fn action_description(action: &str) -> String {
     if let Some((_, label)) = KB_ACTION_MAP.iter().find(|(key, _)| *key == action) {
         return (*label).to_owned();
     }
-    let workspace = Regex::new(r"^(focus-workspace|move-column-to-workspace)\s+(\d+)").unwrap();
-    if let Some(caps) = workspace.captures(action) {
+    if let Some(caps) = WORKSPACE.captures(action) {
         let verb = if caps[1].contains("focus") { "Focus" } else { "Move to" };
         return format!("{verb} workspace {}", &caps[2]);
     }
-    let size = Regex::new(r#"^set-(column-width|window-height)\s+"([+-]\d+%?)""#).unwrap();
-    if let Some(caps) = size.captures(action) {
+    if let Some(caps) = SIZE.captures(action) {
         let target = if caps[1].contains("column") { "column" } else { "window" };
         let direction = if caps[2].starts_with('-') { "Shrink" } else { "Grow" };
         return format!("{direction} {target} {}", caps[2].trim_start_matches(['+', '-']));
@@ -160,8 +164,7 @@ pub(super) fn action_description(action: &str) -> String {
                 .map(|(_, label)| (*label).to_owned())
                 .unwrap_or_else(|| format!("{target} {function}"));
         }
-        let fallback = Regex::new(r#"ipc.*call.*"(\w+)".*"(\w+)""#).unwrap();
-        if let Some(caps) = fallback.captures(action) {
+        if let Some(caps) = IPC_FALLBACK.captures(action) {
             let (target, function) = (&caps[1], &caps[2]);
             return KB_IPC_MAP.iter().find(|((t, f), _)| *t == target && *f == function)
                 .map(|(_, label)| (*label).to_owned())
@@ -179,8 +182,7 @@ pub(super) fn action_description(action: &str) -> String {
             return if action.contains('+') || action.contains("inc") { "Brightness up" } else { "Brightness down" }.into();
         }
         if action.contains("close-window") { return "Close window".into(); }
-        let app = Regex::new(r#"spawn\s+"([^"]+)""#).unwrap();
-        if let Some(caps) = app.captures(action) {
+        if let Some(caps) = SPAWN_APP.captures(action) {
             return caps[1].rsplit('/').next().unwrap_or(&caps[1]).to_owned();
         }
     }
@@ -198,7 +200,7 @@ pub(super) fn action_category(description: &str, action: &str) -> &'static str {
         if target == "audio" || target == "mpris" { return "Media"; }
         if target == "brightness" { return "Brightness"; }
     }
-    if Regex::new(r"ipc.*call.*(overlay|overview|clipboard|lock|wallpaper|settings|cheatsheet|panelfamily)").unwrap().is_match(&act) { return "iNiR Shell"; }
+    if SHELL_CATEGORY.is_match(&act) { return "iNiR Shell"; }
     if desc.contains("window") && (desc.contains("next") || desc.contains("previous")) { return "Window Switcher"; }
     if act.contains("altswitcher") { return "Window Switcher"; }
     if contains_any(&desc, &["screenshot", "ocr", "image search"]) { return "Screenshots"; }

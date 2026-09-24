@@ -18,6 +18,7 @@ ClockCalendarContent 1.0 ClockCalendarContent.qml
 ClockCalendarPopup 1.0 ClockCalendarPopup.qml
 ClockWidget 1.0 ClockWidget.qml
 DistroIcon 1.0 DistroIcon.qml
+KeyboardStatusIndicator 1.0 KeyboardStatusIndicator.qml
 LeftSidebarButton 1.0 LeftSidebarButton.qml
 Media 1.0 Media.qml
 NotificationUnreadCount 1.0 NotificationUnreadCount.qml

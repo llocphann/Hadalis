@@ -1,6 +1,6 @@
 use std::collections::{BTreeMap, HashMap};
 use std::fs;
-use std::io::{BufRead, BufReader, Read, Write};
+use std::io::{self, BufRead, BufReader, Read, Write};
 use std::net::TcpStream;
 use std::os::unix::ffi::OsStrExt;
 use std::os::unix::net::{UnixListener, UnixStream};
@@ -1570,6 +1570,7 @@ fn main() -> Result<()> {
 #[cfg(test)]
 mod tests {
     use super::{legacy_request, pairs, quote, records};
+    use serde_json::json;
 
     #[test]
     fn parses_legacy_compat_cli_shape() {

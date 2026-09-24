@@ -20,7 +20,9 @@ _niri_preview_supported_host() {
 
 _niri_preview_expected() {
   [[ -f /usr/share/inir/niri-preview-plugin ]] \
-    && grep -Fq 'version=0.2.0-1' /usr/share/inir/niri-preview-plugin \
+    && grep -Fq 'version=0.2.0-2' /usr/share/inir/niri-preview-plugin \
+    && grep -Fq 'backend=mutter-screencast' /usr/share/inir/niri-preview-plugin \
+    && grep -Fq 'transport=pipewire-shm' /usr/share/inir/niri-preview-plugin \
     && [[ -f /usr/lib/qt6/qml/Hadalis/NiriPreview/qmldir ]] \
     && [[ -f /usr/lib/qt6/qml/Hadalis/NiriPreview/libhadalisniripreviewplugin.so ]]
 }
@@ -35,7 +37,7 @@ migration_check() {
 }
 
 migration_preview() {
-  echo -e "${STY_GREEN}+ build/install inir-niri-preview 0.2.0-1${STY_RST}"
+  echo -e "${STY_GREEN}+ build/install inir-niri-preview 0.2.0-2${STY_RST}"
   echo "  Native path: org.gnome.Mutter.ScreenCast.RecordWindow + PipeWire"
   echo "  Quickshell package/runtime: unchanged"
   echo "  Existing PNG previews remain the fallback"
@@ -69,13 +71,34 @@ migration_apply() {
   trap 'rm -rf "$work"' RETURN
   cp -a "${package_src}/." "$work/" || return 1
 
+  echo "Ensuring native Niri preview build dependencies..."
+  pkg_sudo pacman -S --needed --noconfirm \
+    cmake ninja pkgconf pipewire qt6-base qt6-declarative || {
+      echo -e "${STY_YELLOW}Could not install native preview build dependencies.${STY_RST}" >&2
+      return 1
+    }
+
   echo "Building Hadalis native Niri preview plugin..."
   (
     cd "$work"
-    makepkg --syncdeps --install --needed --noconfirm --cleanbuild
+    makepkg --nodeps --noconfirm --cleanbuild
   ) || {
-    echo -e "${STY_YELLOW}Could not build/install inir-niri-preview automatically.${STY_RST}" >&2
-    echo "Retry with: cd '${package_src}' && makepkg -si --cleanbuild" >&2
+    echo -e "${STY_YELLOW}Could not build inir-niri-preview automatically.${STY_RST}" >&2
+    echo "Retry with: cd '${package_src}' && makepkg --nodeps --cleanbuild" >&2
+    return 1
+  }
+
+  local built_pkg
+  built_pkg="$(find "$work" -maxdepth 1 -type f \
+    -name 'inir-niri-preview-[0-9]*.pkg.tar.*' -print -quit)"
+  [[ -n "$built_pkg" ]] || {
+    echo "Native Niri preview package was not produced." >&2
+    return 1
+  }
+
+  echo "Installing Hadalis native Niri preview plugin..."
+  pkg_sudo pacman -U --noconfirm "$built_pkg" || {
+    echo -e "${STY_YELLOW}Could not install the built inir-niri-preview package.${STY_RST}" >&2
     return 1
   }
 

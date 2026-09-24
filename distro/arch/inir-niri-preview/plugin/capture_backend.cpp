@@ -651,7 +651,21 @@ private:
         if (stride == 0)
             stride = width * 4;
 
-        if (width <= 0 || height <= 0 || std::abs(stride) < width * 4) {
+        // Niri's SHM casts use forward BGRx/BGRA rows. Reject malformed
+        // metadata before constructing a QImage view over the mapped PipeWire
+        // buffer; the preview path must never read beyond SPA's advertised map.
+        if (width <= 0 || height <= 0 || stride < width * 4) {
+            pw_stream_queue_buffer(state->pwStream, buffer);
+            return;
+        }
+
+        const uint64_t offset = plane.chunk->offset;
+        const uint64_t rowBytes = static_cast<uint64_t>(width) * 4u;
+        const uint64_t requiredBytes =
+            static_cast<uint64_t>(stride) * static_cast<uint64_t>(height - 1)
+            + rowBytes;
+        if (offset > plane.maxsize
+                || requiredBytes > static_cast<uint64_t>(plane.maxsize) - offset) {
             pw_stream_queue_buffer(state->pwStream, buffer);
             return;
         }

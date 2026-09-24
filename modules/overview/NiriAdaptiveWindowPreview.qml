@@ -248,6 +248,10 @@ Item {
             ? AdaptivePreviewService.niriPreviewMaxFps
             : AdaptivePreviewService.niriProbeMaxFps
         onFrameCaptured: root._recordActivity(activity)
+        onErrorStringChanged: {
+            if (errorString.length > 0)
+                console.warn("[NiriAdaptivePreview] window", root.windowId, errorString)
+        }
     }
 
     Timer {

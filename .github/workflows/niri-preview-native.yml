@@ -4,6 +4,12 @@ on:
   push:
     paths:
       - 'distro/arch/inir-niri-preview/**'
+      - 'modules/overview/NiriAdaptiveWindowPreview.qml'
+      - 'services/AdaptivePreviewService.qml'
+      - 'modules/common/Config.qml'
+      - 'scripts/inir'
+      - 'scripts/test-niri-native-preview-contract.sh'
+      - 'sdata/migrations/046-niri-native-window-preview.sh'
       - '.github/workflows/niri-preview-native.yml'
   pull_request:
     paths:
@@ -45,3 +51,6 @@ jobs:
           bsdtar -tf "$pkg" | grep -q 'usr/lib/qt6/qml/Hadalis/NiriPreview/qmldir'
           bsdtar -tf "$pkg" | grep -q 'usr/lib/qt6/qml/Hadalis/NiriPreview/libhadalisniripreviewplugin.so'
           bsdtar -tf "$pkg" | grep -q 'usr/share/inir/niri-preview-plugin'
+
+      - name: Native preview contracts
+        run: scripts/test-niri-native-preview-contract.sh

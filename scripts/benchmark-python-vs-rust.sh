@@ -108,6 +108,7 @@ echo "Running the canonical repository validator..."
 bash scripts/validate-maintainer-local.sh --current-repo >"$TMP_ROOT/validator.log" 2>&1
 VALIDATOR_RC=$?
 VALIDATOR_SUMMARY="$(tail -n 7 "$TMP_ROOT/validator.log")"
+VALIDATOR_FULL_LOG="$(sed -n 's/^FINAL LOG: //p' "$TMP_ROOT/validator.log" | tail -n 1)"
 printf '%s\n' "$VALIDATOR_SUMMARY"
 
 {
@@ -124,13 +125,21 @@ printf '%s\n' "$VALIDATOR_SUMMARY"
     printf 'Validator exit: %s\n' "$VALIDATOR_RC"
     printf 'Backend after run: %s\n' "$(backend_state)"
     printf '\n===== NATIVE PARITY, BENCHMARK, AND RUNTIME LOG =====\n'
-    cat "$TMP_ROOT/native-output.txt"
+    awk '/^=== SEND THIS REPORT BACK TO CHATGPT ===$/ { skip=1; next }
+         /^=== END ===$/ && skip { skip=0; next }
+         !skip && !/^report_file[[:space:]]/ { print }' "$TMP_ROOT/native-output.txt"
     if [[ -f "$TMP_ROOT/restore-output.txt" ]]; then
         printf '\n===== LIVE BACKEND RESTORE =====\n'
         cat "$TMP_ROOT/restore-output.txt"
     fi
-    printf '\n===== CANONICAL VALIDATOR FULL LOG =====\n'
+    printf '\n===== CANONICAL VALIDATOR SUMMARY =====\n'
     cat "$TMP_ROOT/validator.log"
+    if [[ -n "$VALIDATOR_FULL_LOG" && -r "$VALIDATOR_FULL_LOG" ]]; then
+        printf '\n===== CANONICAL VALIDATOR DETAILED LOG =====\n'
+        cat "$VALIDATOR_FULL_LOG"
+    else
+        printf '\nValidator detailed log unavailable.\n'
+    fi
     printf '\n===== SEND THIS FILE =====\n%s\n' "$REPORT"
 } > "$REPORT"
 

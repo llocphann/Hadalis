@@ -28,7 +28,6 @@ pkgbase = inir-meta
 	depends = gowall-bin
 	depends = gum
 	depends = hicolor-icon-theme
-	depends = hyprpicker
 	depends = imagemagick
 	depends = inir-shell
 	depends = kconfig

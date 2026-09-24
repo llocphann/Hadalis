@@ -36,7 +36,6 @@ depends=(
   gowall-bin
   gum
   hicolor-icon-theme
-  hyprpicker
   imagemagick
   inir-shell
   kconfig

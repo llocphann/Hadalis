@@ -104,7 +104,7 @@ WSettingsPage {
         color: Looks.colors.bg2
         border.width: 1
         border.color: root.sessionHasError || root.sessionStalled
-            ? Looks.colors.red
+            ? Looks.colors.danger
             : Looks.colors.accent
 
         RowLayout {
@@ -119,7 +119,7 @@ WSettingsPage {
                 Layout.preferredHeight: 8
                 radius: 4
                 color: root.sessionHasError || root.sessionStalled
-                    ? Looks.colors.red
+                    ? Looks.colors.danger
                     : root.samplerRunning
                         ? Looks.colors.accent
                         : Looks.colors.subfg
@@ -161,7 +161,7 @@ WSettingsPage {
                 text: String(root.collisionCount) + " "
                     + Translation.tr("collisions")
                 color: root.collisionCount === 0
-                    ? Looks.colors.subfg : Looks.colors.red
+                    ? Looks.colors.subfg : Looks.colors.danger
                 font.pixelSize: Looks.font.pixelSize.small
             }
         }
@@ -171,7 +171,7 @@ WSettingsPage {
         Layout.fillWidth: true
         visible: root.primaryError.length > 0
         text: root.primaryError
-        color: Looks.colors.red
+        color: Looks.colors.danger
         font.pixelSize: Looks.font.pixelSize.small
         elide: Text.ElideRight
         maximumLineCount: 1

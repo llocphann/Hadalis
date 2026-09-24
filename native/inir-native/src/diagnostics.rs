@@ -73,8 +73,14 @@ extern "C" fn stop_handler(_: libc::c_int) {
 
 fn install_signal_handlers() {
     unsafe {
-        libc::signal(libc::SIGTERM, stop_handler as libc::sighandler_t);
-        libc::signal(libc::SIGINT, stop_handler as libc::sighandler_t);
+        libc::signal(
+            libc::SIGTERM,
+            stop_handler as *const () as libc::sighandler_t,
+        );
+        libc::signal(
+            libc::SIGINT,
+            stop_handler as *const () as libc::sighandler_t,
+        );
     }
 }
 
@@ -121,15 +127,6 @@ fn parse_kib_fields(text: &str) -> BTreeMap<String, u64> {
     values
 }
 
-fn map_u64(values: &BTreeMap<String, u64>) -> Value {
-    Value::Object(
-        values
-            .iter()
-            .map(|(key, value)| (key.clone(), json!(value)))
-            .collect(),
-    )
-}
-
 fn read_memory(pid: i32) -> Value {
     let proc = PathBuf::from("/proc").join(pid.to_string());
     let rollup = parse_kib_fields(&read_text(proc.join("smaps_rollup")));
@@ -150,10 +147,10 @@ fn read_memory(pid: i32) -> Value {
             regex::escape(source)
         ))
         .unwrap();
-        if let Some(caps) = pattern.captures(&status) {
-            if let Ok(value) = caps[1].parse::<u64>() {
-                fallback.insert(target.to_owned(), value);
-            }
+        if let Some(caps) = pattern.captures(&status)
+            && let Ok(value) = caps[1].parse::<u64>()
+        {
+            fallback.insert(target.to_owned(), value);
         }
     }
     json!({
@@ -243,10 +240,10 @@ fn read_system_memory() -> Value {
             regex::escape(key)
         ))
         .unwrap();
-        if let Some(caps) = pattern.captures(&text) {
-            if let Ok(value) = caps[1].parse::<u64>() {
-                values.insert(key.to_owned(), value);
-            }
+        if let Some(caps) = pattern.captures(&text)
+            && let Ok(value) = caps[1].parse::<u64>()
+        {
+            values.insert(key.to_owned(), value);
         }
     }
     let mem_total = values.get("MemTotal").copied();
@@ -345,10 +342,10 @@ fn read_process_status(pid: i32) -> BTreeMap<String, u64> {
             regex::escape(source)
         ))
         .unwrap();
-        if let Some(caps) = pattern.captures(&text) {
-            if let Ok(value) = caps[1].parse::<u64>() {
-                result.insert(target.to_owned(), value);
-            }
+        if let Some(caps) = pattern.captures(&text)
+            && let Ok(value) = caps[1].parse::<u64>()
+        {
+            result.insert(target.to_owned(), value);
         }
     }
     result
@@ -377,10 +374,10 @@ fn read_process_children(pid: i32) -> Vec<i32> {
     let mut children = BTreeSet::new();
     for task in task_ids(pid) {
         for raw in read_text(task.join("children")).split_whitespace() {
-            if let Ok(value) = raw.parse::<i32>() {
-                if value > 0 {
-                    children.insert(value);
-                }
+            if let Ok(value) = raw.parse::<i32>()
+                && value > 0
+            {
+                children.insert(value);
             }
         }
     }
@@ -512,7 +509,11 @@ fn to_kib(value: u64, unit: &str) -> u64 {
     }
 }
 
-fn parse_drm_fdinfo(text: &str) -> Option<(String, BTreeMap<String, u64>, BTreeMap<String, u64>)> {
+type CounterMap = BTreeMap<String, u64>;
+type DrmFdInfo = (String, CounterMap, CounterMap);
+type DrmClients = BTreeMap<String, (CounterMap, CounterMap)>;
+
+fn parse_drm_fdinfo(text: &str) -> Option<DrmFdInfo> {
     let client_re = Regex::new(r"(?m)^drm-client-id:\s*(\S+)\s*$").ok()?;
     let client = client_re
         .captures(text)?
@@ -527,33 +528,30 @@ fn parse_drm_fdinfo(text: &str) -> Option<(String, BTreeMap<String, u64>, BTreeM
     let mut engines = BTreeMap::new();
     let mut memory = BTreeMap::new();
     for line in text.lines() {
-        if let Some(caps) = engine_re.captures(line) {
-            if let Ok(value) = caps[2].parse::<u64>() {
-                engines.insert(caps[1].to_owned(), value);
-            }
+        if let Some(caps) = engine_re.captures(line)
+            && let Ok(value) = caps[2].parse::<u64>()
+        {
+            engines.insert(caps[1].to_owned(), value);
             continue;
         }
-        if let Some(caps) = memory_re.captures(line) {
-            if let Ok(value) = caps[3].parse::<u64>() {
-                let key = format!("{}-{}", &caps[1], &caps[2]);
-                memory.insert(
-                    key,
-                    to_kib(
-                        value,
-                        caps.get(4).map(|value| value.as_str()).unwrap_or("KiB"),
-                    ),
-                );
-            }
+        if let Some(caps) = memory_re.captures(line)
+            && let Ok(value) = caps[3].parse::<u64>()
+        {
+            let key = format!("{}-{}", &caps[1], &caps[2]);
+            memory.insert(
+                key,
+                to_kib(
+                    value,
+                    caps.get(4).map(|value| value.as_str()).unwrap_or("KiB"),
+                ),
+            );
         }
     }
     Some((client, engines, memory))
 }
 
 fn read_drm(pid: i32) -> DrmState {
-    let mut clients: BTreeMap<
-        String,
-        (BTreeMap<String, u64>, BTreeMap<String, u64>),
-    > = BTreeMap::new();
+    let mut clients: DrmClients = BTreeMap::new();
     let fdinfo = format!("/proc/{pid}/fdinfo");
     for path in fs::read_dir(fdinfo).into_iter().flatten().flatten() {
         let Some((client, engines, memory)) = parse_drm_fdinfo(&read_text(path.path())) else {

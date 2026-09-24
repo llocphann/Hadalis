@@ -71,6 +71,7 @@ screen_time="$repo_root/services/ScreenTime.qml"
 ytmusic="$repo_root/services/YtMusic.qml"
 directory_icon="$repo_root/modules/common/widgets/DirectoryIcon.qml"
 sysmon_widget="$repo_root/modules/sidebarRight/sysmon/SysMonWidget.qml"
+voice_search="$repo_root/services/VoiceSearch.qml"
 
 require "$config" 'property int framerate: 30' 'Cava schema default must remain 30 fps'
 require "$defaults" '"framerate": 30' 'persisted Cava default must remain 30 fps'
@@ -191,5 +192,9 @@ reject "$directory_icon" 'command: ["file", "--mime"' 'DirectoryIcon must not sp
 reject "$sysmon_widget" 'command: ["/usr/bin/cat", "/proc/net/dev"]' 'SysMon must reuse shared ResourceUsage network telemetry'
 require "$sysmon_widget" 'ResourceUsage.networkRxBytesPerSec' 'SysMon network receive rate must come from ResourceUsage'
 require "$sysmon_widget" 'ResourceUsage.networkTxBytesPerSec' 'SysMon network transmit rate must come from ResourceUsage'
+require "$voice_search" 'root._startLocalProbe()' 'VoiceSearch backend refresh must use the centralized probe lifecycle'
+require "$voice_search" 'command -v whisper-cli' 'VoiceSearch normal local-backend probe must avoid Python interpreter startup'
+require "$voice_search" 'if (localProbe.usePythonFallback)' 'VoiceSearch must retain Python probe compatibility for edge-case paths'
+require "$voice_search" 'root.localAvailable = executable.length > 0 && model.length > 0' 'VoiceSearch lightweight probe must preserve availability semantics'
 
 printf 'performance lifecycle guards: ok\n'

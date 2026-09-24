@@ -98,12 +98,38 @@ Singleton {
         return ""
     }
 
+    function _probeNeedsPythonFallback(): bool {
+        const explicit = String(root.localModelPath ?? "")
+        // Python's Path.expanduser() also supports ~other-user paths. Keep that
+        // compatibility edge case on the existing fallback instead of adding
+        // passwd-database subprocesses to the normal startup probe.
+        if (explicit.startsWith("~") && explicit !== "~" && !explicit.startsWith("~/"))
+            return true
+
+        // The lightweight probe uses a two-line transport. Newlines are legal
+        // in Unix paths, so preserve exact legacy semantics through Python when
+        // any input that can become an output path contains one.
+        const transportInputs = [
+            explicit,
+            Quickshell.env("HOME"),
+            Quickshell.env("XDG_DATA_HOME"),
+            Quickshell.env("XDG_CACHE_HOME"),
+            Quickshell.env("PATH"),
+        ]
+        return transportInputs.some(value => /[\r\n]/.test(String(value ?? "")))
+    }
+
+    function _startLocalProbe(): void {
+        localProbe.usePythonFallback = root._probeNeedsPythonFallback()
+        localProbe.running = true
+    }
+
     function refreshBackends(): void {
         if (localProbe.running)
             root._probeQueued = true
         else {
             root._probeQueued = false
-            localProbe.running = true
+            root._startLocalProbe()
         }
         if (!KeyringStorage.loaded) KeyringStorage.fetchKeyringData()
     }
@@ -205,7 +231,7 @@ Singleton {
         root._probeQueued = false
         Qt.callLater(() => {
             if (!localProbe.running)
-                localProbe.running = true
+                root._startLocalProbe()
         })
     }
 
@@ -225,25 +251,86 @@ Singleton {
     Process {
         id: localProbe
         property bool startObserved: false
+        property bool usePythonFallback: false
         running: false
-        command: [
-            "/usr/bin/python3",
-            `${Directories.scriptsPath}/voiceSearch/transcribe-audio.py`,
-            "--provider", "probe",
-            "--local-model", root.localModelPath,
-        ]
+        command: {
+            if (localProbe.usePythonFallback) {
+                return [
+                    "/usr/bin/python3",
+                    `${Directories.scriptsPath}/voiceSearch/transcribe-audio.py`,
+                    "--provider", "probe",
+                    "--local-model", root.localModelPath,
+                ]
+            }
+
+            // This probe runs on every VoiceSearch initialization. The old path
+            // started a Python interpreter and imported the full transcription
+            // adapter just to perform PATH lookup plus four file tests. Keep the
+            // exact candidate order while using one tiny shell process instead.
+            return [
+                "/bin/sh", "-c",
+                `
+                    explicit="$1"
+                    case "$explicit" in
+                        "~") explicit="$HOME" ;;
+                        "~/"*) explicit="$HOME/\${explicit#~/}" ;;
+                    esac
+
+                    executable="$(command -v whisper-cli 2>/dev/null || command -v whisper-cpp 2>/dev/null || true)"
+                    model=""
+
+                    if [ -n "$explicit" ] && [ -f "$explicit" ]; then
+                        model="$explicit"
+                    else
+                        for candidate in \
+                            "\${XDG_DATA_HOME:-$HOME/.local/share}/inir/whisper/ggml-base.bin" \
+                            "\${XDG_DATA_HOME:-$HOME/.local/share}/whisper/ggml-base.bin" \
+                            "\${XDG_CACHE_HOME:-$HOME/.cache}/whisper.cpp/ggml-base.bin" \
+                            "\${XDG_CACHE_HOME:-$HOME/.cache}/whisper/ggml-base.bin"
+                        do
+                            if [ -f "$candidate" ]; then
+                                model="$candidate"
+                                break
+                            fi
+                        done
+                    fi
+
+                    printf '%s\\n%s\\n' "$executable" "$model"
+                `,
+                "_", root.localModelPath,
+            ]
+        }
         stdout: StdioCollector {
             onStreamFinished: {
-                try {
-                    const data = JSON.parse(text.trim())
-                    root.localAvailable = !!data.available
-                    root.detectedLocalExecutable = data.executable ?? ""
-                    root.detectedLocalModel = data.model ?? ""
-                } catch (error) {
+                if (localProbe.usePythonFallback) {
+                    try {
+                        const data = JSON.parse(text.trim())
+                        root.localAvailable = !!data.available
+                        root.detectedLocalExecutable = data.executable ?? ""
+                        root.detectedLocalModel = data.model ?? ""
+                    } catch (error) {
+                        root.localAvailable = false
+                        root.detectedLocalExecutable = ""
+                        root.detectedLocalModel = ""
+                    }
+                    return
+                }
+
+                const payload = text ?? ""
+                const firstBreak = payload.indexOf("\n")
+                const secondBreak = firstBreak >= 0 ? payload.indexOf("\n", firstBreak + 1) : -1
+                if (firstBreak < 0 || secondBreak < 0) {
                     root.localAvailable = false
                     root.detectedLocalExecutable = ""
                     root.detectedLocalModel = ""
+                    return
                 }
+
+                const executable = payload.slice(0, firstBreak)
+                const model = payload.slice(firstBreak + 1, secondBreak)
+                root.detectedLocalExecutable = executable
+                root.detectedLocalModel = model
+                root.localAvailable = executable.length > 0 && model.length > 0
             }
         }
         onRunningChanged: {

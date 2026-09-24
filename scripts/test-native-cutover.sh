@@ -107,20 +107,54 @@ json_diff_count() {
     fi
 }
 
-activate_rust() {
-    section "ACTIVATE RUST TEST MODE"
-    systemctl --user set-environment INIR_NATIVE_BACKEND=rust INIR_NATIVE_BIN_DIR="$BIN_DIR" INIR_NATIVE_STRICT=0
-    if "$ROOT_DIR/scripts/inir" restart; then
-        kv "inir restart" "OK"
+set_runtime_backend() {
+    local mode="$1"
+    systemctl --user set-environment         INIR_NATIVE_BACKEND="$mode"         INIR_NATIVE_BIN_DIR="$BIN_DIR"         INIR_NATIVE_STRICT=0
+    "$ROOT_DIR/scripts/inir" restart || systemctl --user restart inir.service || true
+}
+
+measure_service_mode() {
+    local mode="$1"
+    local window="${LIVE_WINDOW_SECONDS:-5}"
+    set_runtime_backend "$mode"
+    sleep 4
+
+    local pid mem tasks cpu0 cpu1 delta
+    pid="$(systemctl --user show -p MainPID --value inir.service 2>/dev/null || echo 0)"
+    mem="$(systemctl --user show -p MemoryCurrent --value inir.service 2>/dev/null || echo unknown)"
+    tasks="$(systemctl --user show -p TasksCurrent --value inir.service 2>/dev/null || echo unknown)"
+    cpu0="$(systemctl --user show -p CPUUsageNSec --value inir.service 2>/dev/null || echo 0)"
+    sleep "$window"
+    cpu1="$(systemctl --user show -p CPUUsageNSec --value inir.service 2>/dev/null || echo 0)"
+    if [[ "$cpu0" =~ ^[0-9]+$ && "$cpu1" =~ ^[0-9]+$ ]]; then
+        delta=$((cpu1-cpu0))
     else
-        kv "inir restart" "FAILED"
+        delta=0
     fi
-    sleep 3
+
+    awk -v mode="$mode" -v pid="$pid" -v mem="$mem" -v tasks="$tasks"         -v delta="$delta" -v window="$window"         'BEGIN{
+            mib=(mem ~ /^[0-9]+$/) ? mem/1048576 : -1;
+            cpu=(window>0) ? delta/(window*1000000000)*100 : 0;
+            if (mib >= 0)
+                printf "live %-7s pid=%s cgroup_mem=%.2fMiB tasks=%s cpu_window=%.3f%%\n",mode,pid,mib,tasks,cpu;
+            else
+                printf "live %-7s pid=%s cgroup_mem=%s tasks=%s cpu_window=%.3f%%\n",mode,pid,mem,tasks,cpu;
+        }'
+
+    printf 'processes(%s):\n' "$mode"
+    ps -eo pid,ppid,rss,etimes,comm,args         | grep -E 'quickshell|inir-inputd|inir-mpdd|inir-native|inir-theme|keyboard_lock_state_daemon|osk_physical_key_daemon|runtime-diagnostics-sampler'         | grep -v grep || true
+}
+
+activate_rust() {
+    section "LIVE SHELL A/B"
+    echo "Measuring the same inir.service once with Python selected, then with Rust selected."
+    measure_service_mode python
+    measure_service_mode rust
+
+    section "RUST TEST MODE STATUS"
     systemctl --user --no-pager --full status inir.service 2>&1 | sed -n '1,35p' || true
-    printf '\nProcesses after activation:\n'
-    ps -eo pid,ppid,rss,etimes,comm,args | grep -E 'inir-inputd|inir-mpdd|inir-native|inir-theme|keyboard_lock_state_daemon|osk_physical_key_daemon|runtime-diagnostics-sampler' | grep -v grep || true
-    printf '\nRecent service log:\n'
-    journalctl --user -u inir.service --since '-2 minutes' --no-pager -n 80 2>&1 || true
+    printf '\nRecent selector/fallback messages:\n'
+    journalctl --user -u inir.service --since '-3 minutes' --no-pager 2>&1         | grep -E 'native-dispatch|inir-inputd|inir-native|inir-mpdd|inir-theme|falling back|Failed|failed|error'         | tail -n 120 || true
 }
 
 restore_python() {
@@ -157,9 +191,18 @@ if ! command_exists cargo; then
     echo "Install Rust/cargo, then rerun this script."
     exit 2
 fi
-cargo build --manifest-path native/Cargo.toml --release --workspace
-cargo test --manifest-path native/Cargo.toml --workspace --all-targets
-cargo clippy --manifest-path native/Cargo.toml --workspace --all-targets -- -D warnings
+if ! cargo build --manifest-path native/Cargo.toml --release --workspace; then
+    echo "FATAL: Rust release build failed."
+    exit 3
+fi
+if ! cargo test --manifest-path native/Cargo.toml --workspace --all-targets; then
+    echo "FATAL: Rust unit tests failed."
+    exit 4
+fi
+if ! cargo clippy --manifest-path native/Cargo.toml --workspace --all-targets -- -D warnings; then
+    echo "FATAL: Rust clippy failed."
+    exit 5
+fi
 "$DISPATCH" backend-info
 
 section "CLIPBOARD PARITY + BENCHMARK"

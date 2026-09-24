@@ -14,6 +14,7 @@ Singleton {
     // or persisted anywhere.
     property var pressedKeycodes: []
     property string listenerPath: Quickshell.shellPath("scripts/daemon/osk_physical_key_daemon.py")
+    readonly property string nativeDispatchPath: Quickshell.shellPath("scripts/native-dispatch")
     property bool _destroying: false
     property int _restartInterval: 1000
 
@@ -102,7 +103,7 @@ Singleton {
     Process {
         id: keyMonitorProc
         running: false
-        command: ["/usr/bin/python3", "-u", root.listenerPath]
+        command: [root.nativeDispatchPath, "input-keys"]
 
         stdout: SplitParser {
             onRead: line => root._handleOutput(line)

@@ -9,6 +9,7 @@ Singleton {
     // Diagnostics is passive by default. Expensive samplers must bind their
     // running/active state to root.samplingEnabled; this service never acquires
     // a lease merely because a Settings page object exists in an LRU cache.
+    readonly property string nativeDispatchPath: Quickshell.shellPath("scripts/native-dispatch")
     readonly property int leaseTtlMs: 6000
     readonly property int maxLeases: 16
     readonly property int sampleIntervalMs: 1000
@@ -372,8 +373,7 @@ Singleton {
         id: diagnosticsSampler
         running: root.samplingEnabled
         command: [
-            "/usr/bin/env", "python3",
-            Quickshell.shellPath("scripts/runtime-diagnostics-sampler.py"),
+            root.nativeDispatchPath, "diagnostics",
             "--pid", String(Quickshell.processId),
             "--interval-ms", String(root.sampleIntervalMs)
         ]

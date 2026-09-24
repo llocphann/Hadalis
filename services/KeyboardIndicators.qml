@@ -21,6 +21,7 @@ Singleton {
     property bool _numLockReliable: false
     property var _lastRawNumLockState: null
     property string lockStateDaemonPath: Quickshell.shellPath("scripts/daemon/keyboard_lock_state_daemon.py")
+    readonly property string nativeDispatchPath: Quickshell.shellPath("scripts/native-dispatch")
 
     property bool capsLock: false
     property bool numLock: false
@@ -324,7 +325,7 @@ Singleton {
         id: evdevProbeProc
         property bool startObserved: false
         running: false
-        command: ["/usr/bin/python3", root.lockStateDaemonPath, "--once"]
+        command: [root.nativeDispatchPath, "input-lock", "--once"]
 
         stdout: SplitParser {
             onRead: line => root._handleEvdevOutput(line)
@@ -373,7 +374,7 @@ Singleton {
         id: evdevMonitorProc
         property bool startObserved: false
         running: false
-        command: ["/usr/bin/python3", "-u", root.lockStateDaemonPath]
+        command: [root.nativeDispatchPath, "input-lock"]
 
         stdout: SplitParser {
             onRead: line => root._handleEvdevOutput(line)

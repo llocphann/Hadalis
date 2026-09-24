@@ -18,13 +18,14 @@ flake="flake.nix"
 nix_workflow=".github/workflows/nix.yml"
 nix_doc="docs/NIXOS.md"
 switchwall="scripts/colors/switchwall.sh"
+native_dispatch="scripts/native-dispatch"
 color_generator="scripts/colors/generate_colors_material.py"
 zed_module="scripts/colors/modules/31-zed.sh"
 easyeffects_service="services/deferred/EasyEffects.qml"
 default_config="defaults/config.json"
 awww_service="services/AwwwBackend.qml"
 
-for file in "$common" "$nixos" "$home" "$package" "$workflow_parser" "$flake" "$nix_workflow" "$nix_doc" "$switchwall" "$color_generator" "$zed_module" "$easyeffects_service" "$default_config" "$awww_service"; do
+for file in "$common" "$nixos" "$home" "$package" "$workflow_parser" "$flake" "$nix_workflow" "$nix_doc" "$switchwall" "$native_dispatch" "$color_generator" "$zed_module" "$easyeffects_service" "$default_config" "$awww_service"; do
   [[ -f "$file" ]] || fail "missing Nix/runtime contract file: $file"
 done
 
@@ -120,10 +121,14 @@ grep -Fq 'colorPython = with pkgs;' "$package" \
   || fail 'Nix runtime no longer names the packaged color Python environment'
 grep -Eq '^[[:space:]]+colorPython$' "$package" \
   || fail 'Nix runtime no longer exposes colorPython on the wrapped runtime PATH'
-[[ "$(grep -Fc '${colorPython}/bin/python3' "$package")" -ge 2 ]] \
-  || fail 'Nix package no longer pins switchwall to the packaged color Python interpreter'
-grep -Fq '_ii_python="{color_python}"' "$package" \
-  || fail 'Nix package no longer rewrites switchwall to the pinned color Python interpreter'
+grep -Fq 'elif command -v python3 >/dev/null 2>&1; then' "$native_dispatch" \
+  || fail 'native selector no longer honors the Nix-wrapped Python PATH'
+if grep -Fq '_ii_python=' "$switchwall" || grep -Fq 'source "$_ii_venv/bin/activate"' "$switchwall"; then
+  fail 'switchwall must not eagerly select or activate Python before native-dispatch'
+fi
+if grep -Fq '_ii_python="{color_python}"' "$package"; then
+  fail 'Nix package must not patch the retired switchwall Python selector block'
+fi
 
 grep -Fq 'Quickshell.execDetached(["/usr/bin/env", "easyeffects", "--service-mode"])' "$easyeffects_service" \
   || fail 'EasyEffects service no longer exercises the PATH-resolved native runtime contract'

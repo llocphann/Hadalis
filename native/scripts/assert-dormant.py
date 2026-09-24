@@ -9,6 +9,7 @@ maintainer explicitly approves a permanent cutover.
 from __future__ import annotations
 
 from pathlib import Path
+import re
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -81,9 +82,33 @@ def main() -> int:
         except UnicodeDecodeError:
             continue
 
-        for marker in NATIVE_BINARY_MARKERS:
-            if marker in text:
-                violations.append(f"{path.relative_to(ROOT)} references {marker}")
+        for line_number, line in enumerate(text.splitlines(), start=1):
+            for marker in NATIVE_BINARY_MARKERS:
+                if marker not in line:
+                    continue
+
+                # The selector can expose binary readiness as metadata (for
+                # example `inir-mpdd=ready`). That is not a direct runtime
+                # binding. Reject executable/path contexts instead of any
+                # harmless mention of a binary name.
+                direct_path = bool(
+                    re.search(
+                        rf"(?:/|\\\\|\\$[A-Za-z_][A-Za-z0-9_]*/){re.escape(marker)}(?:\\b|$)",
+                        line,
+                    )
+                )
+                direct_command = bool(
+                    re.search(
+                        rf"(?:ExecStart\\s*=|command\\s*:|execDetached\\s*\\(\\s*\\[|"
+                        rf"\\bexec\\s+|\\bcommand\\s+|\\binstall\\s+|\\bcp\\s+|\\bln\\s+)"
+                        rf"[^#\\n]*\\b{re.escape(marker)}\\b",
+                        line,
+                    )
+                )
+                if direct_path or direct_command:
+                    violations.append(
+                        f"{path.relative_to(ROOT)}:{line_number} binds directly to {marker}"
+                    )
 
     if violations:
         print("Native trial-cutover guard failed:")

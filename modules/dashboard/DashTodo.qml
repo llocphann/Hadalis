@@ -170,9 +170,9 @@ DashCard {
 
         Item {
             id: tabShell
-            Layout.fillWidth: true
-            Layout.leftMargin: root.safeEdgeInset
-            Layout.rightMargin: root.safeEdgeInset
+            Layout.alignment: Qt.AlignHCenter
+            Layout.preferredWidth: Math.max(1, Math.min(
+                320, root.width - 24))
             implicitHeight: root.tabControlHeight
             clip: false
 

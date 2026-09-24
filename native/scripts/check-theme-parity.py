@@ -147,6 +147,7 @@ def run_backend(
     image: Path,
     template_dir: Path,
     root: Path,
+    mode: str,
 ) -> dict[str, Any]:
     home = root / "home"
     out = root / "out"
@@ -155,7 +156,7 @@ def run_backend(
 
     args = [
         "--path", str(image),
-        "--mode", "dark",
+        "--mode", mode,
         "--scheme", "scheme-tonal-spot",
         "--termscheme", str(TERMSCHEME),
         "--json-output", str(out / "colors.json"),
@@ -247,23 +248,28 @@ def main() -> int:
         make_image(image, python)
         make_templates(template_dir)
 
-        py = run_backend("python", python, rust_binary, image, template_dir, temp / "py")
-        rs = run_backend("rust", python, rust_binary, image, template_dir, temp / "rs")
+        for mode in ("dark", "light"):
+            py = run_backend(
+                "python", python, rust_binary, image, template_dir, temp / f"py-{mode}", mode
+            )
+            rs = run_backend(
+                "rust", python, rust_binary, image, template_dir, temp / f"rs-{mode}", mode
+            )
 
-        for key in ("colors", "palette", "app", "terminal", "meta", "scss", "template"):
-            if py[key] != rs[key]:
-                if isinstance(py[key], (dict, list)):
-                    left = json.dumps(py[key], ensure_ascii=False, sort_keys=True, indent=2)
-                    right = json.dumps(rs[key], ensure_ascii=False, sort_keys=True, indent=2)
-                else:
-                    left, right = str(py[key]), str(rs[key])
-                raise AssertionError(
-                    f"theme {key} parity mismatch\n--- python ---\n{left[:5000]}"
-                    f"\n--- rust ---\n{right[:5000]}"
-                )
-            print(f"PASS theme image/template: {key}")
+            for key in ("colors", "palette", "app", "terminal", "meta", "scss", "template"):
+                if py[key] != rs[key]:
+                    if isinstance(py[key], (dict, list)):
+                        left = json.dumps(py[key], ensure_ascii=False, sort_keys=True, indent=2)
+                        right = json.dumps(rs[key], ensure_ascii=False, sort_keys=True, indent=2)
+                    else:
+                        left, right = str(py[key]), str(rs[key])
+                    raise AssertionError(
+                        f"theme {mode} {key} parity mismatch\n--- python ---\n{left[:5000]}"
+                        f"\n--- rust ---\n{right[:5000]}"
+                    )
+                print(f"PASS theme image/template [{mode}]: {key}")
 
-    print("PASS: image seed, palette, terminal, templates and selector consumers match")
+    print("PASS: dark/light image seed, palette, terminal, templates and selector consumers match")
     return 0
 
 

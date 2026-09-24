@@ -15,7 +15,7 @@ use serde_json::{Map, Value, json};
 
 pub type Palette = BTreeMap<String, String>;
 
-pub const MATERIAL_SPEC: SpecVersion = SpecVersion::Spec2025;
+// Python fallback does not opt into materialyoucolor's 2025 spec, so parity requires 2021.\n// Keep this explicit: changing it is a user-visible theme migration, not an implementation detail.\npub const MATERIAL_SPEC: SpecVersion = SpecVersion::Spec2021;
 
 const PALETTE_KEYS: &[(&str, &str)] = &[
     ("primary", "primary"),

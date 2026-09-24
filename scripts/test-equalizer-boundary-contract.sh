@@ -42,6 +42,20 @@ grep -Fq 'model: ["Flat", "Bass", "Treble", "Vocal",' "$equalizer_panel"     || 
 grep -Fq 'model: EqualizerService.dspBands' "$equalizer_panel"     || fail 'DSP panel is not driven by the service 10-band facade'
 
 for token in \
+    'readonly property int presetStripHeight:' \
+    'Presets read as a compact mode strip' \
+    'Layout.preferredHeight: root.presetStripHeight' \
+    'colBackground: "transparent"' \
+    'buttonRadius: height / 2'; do
+    grep -Fq "$token" "$equalizer_panel" \
+        || fail "compact DSP preset strip contract missing $token"
+done
+
+if grep -Fq 'columns: 4' "$equalizer_panel"; then
+    fail 'DSP presets regressed to the old two-row button grid'
+fi
+
+for token in \
     'CavaProcess {' \
     'id: eqCava' \
     'active: root.active' \

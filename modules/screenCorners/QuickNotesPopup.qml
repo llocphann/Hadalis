@@ -142,7 +142,7 @@ Bar.StyledPopup {
             PillTabBar {
                 Layout.alignment: Qt.AlignHCenter
                 Layout.preferredWidth: Math.min(
-                    contentRoot.width - 8, 276)
+                    276, Math.max(180, contentRoot.width - 8))
                 pillHeight: 30
                 currentIndex: root.selectedMainTab
                 tabs: [
@@ -155,7 +155,7 @@ Bar.StyledPopup {
             PillTabBar {
                 Layout.alignment: Qt.AlignHCenter
                 Layout.preferredWidth: Math.min(
-                    contentRoot.width - 24, 248)
+                    248, Math.max(160, contentRoot.width - 24))
                 visible: root.selectedMainTab === 0
                 pillHeight: 28
                 currentIndex: root.selectedNotesTab

@@ -17,6 +17,9 @@ Item {
     id: root
     required property MprisPlayer player
     required property list<real> visualizerPoints
+    // Bar media already hosts the live analyzer inside EqualizerPanel. Owners
+    // without that DSP surface keep the historical decorative wave by default.
+    property bool showVisualizer: true
     // Optional backend adapter. LocalMusic uses this to keep the same media
     // surface usable even while mpd-mpris is temporarily absent.
     property var playbackAdapter: null
@@ -322,7 +325,8 @@ Item {
             anchors.right: parent.right
             anchors.bottom: parent.bottom
             height: 35
-            live: root.effectiveIsPlaying
+            visible: root.showVisualizer
+            live: root.showVisualizer && root.effectiveIsPlaying
             points: root.visualizerPoints
             maxVisualizerValue: Math.max(1, root.visualizerMaxValue)
             smoothing: 2

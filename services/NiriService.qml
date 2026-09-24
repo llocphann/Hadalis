@@ -721,10 +721,10 @@ Singleton {
         currentOutput = nextCurrentOutput
         updateCurrentOutputWorkspaces()
 
-        // Force immediate update for outputs as it affects geometry calculations significantly
+        // OutputsChanged already carries the authoritative output map. Re-querying
+        // `niri msg -j outputs` here duplicates compositor IPC and a process spawn.
         windows = sortWindowsByLayout(windows)
         windowOrderChanged()
-        fetchOutputs()
     }
 
     function handleOverviewChanged(data) {

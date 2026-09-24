@@ -12,8 +12,13 @@ defaults="$root/defaults/config.json"
 schema="$root/modules/common/Config.qml"
 registry="$root/modules/settings/SettingsPageRegistryData.qml"
 migration="$root/sdata/migrations/044-local-music-mpd-state-cleanup.sh"
+dispatch="$root/scripts/native-dispatch"
 
-grep -Fq 'local_music_mpd.py' "$service" || fail 'LocalMusic must use MPD helper'
+grep -Fq 'readonly property string nativeDispatchPath: Directories.scriptsPath + "/native-dispatch"' "$service"     || fail 'LocalMusic must route MPD/local lyrics through native-dispatch'
+grep -Fq 'root.nativeDispatchPath, "mpd", "snapshot",' "$service"     || fail 'LocalMusic snapshot must route through native-dispatch'
+grep -Fq 'root.nativeDispatchPath, "mpd-daemon",' "$service"     || fail 'Rust MPD persistent daemon must remain selector-routed'
+grep -Fq 'command: [root.nativeDispatchPath, "mpd-subscribe"]' "$service"     || fail 'Rust MPD idle subscription must remain selector-routed'
+grep -Fq 'scripts/local_music_mpd.py' "$dispatch"     || fail 'native-dispatch must retain the Python MPD fallback'
 grep -Fq 'readonly property var mprisPlayer: MprisController.mpdPlayer' "$service" || fail 'LocalMusic must use MPD MPRIS player'
 grep -Fq 'MprisController.ensureMpdMprisBridge(mpdHost, mpdPort)' "$service" || fail 'LocalMusic must request MPRIS for its configured MPD endpoint'
 grep -Fq 'property MprisPlayer mpdPlayer: null' "$mpris" || fail 'MprisController must expose MPD player'
@@ -47,7 +52,8 @@ grep -Fq 'client.command("playlistadd", playlist_name, uri)' "$root/scripts/loca
 grep -Fq 'Layout.fillHeight: false' "$view" || fail 'Music search must not consume the song viewport'
 grep -Fq 'ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }' "$view" || fail 'Music lists must expose scrolling'
 grep -Fq 'Translation.tr("Lyrics")' "$view" || fail 'Music must expose the local Lyrics tab'
-grep -Fq 'local_music_lyrics.py' "$service" || fail 'LocalMusic must load local sidecar lyrics'
+grep -Fq '_lyricsProc.command = [root.nativeDispatchPath, "lyrics", path]' "$service"     || fail 'LocalMusic local lyrics must route through native-dispatch'
+grep -Fq 'scripts/local_music_lyrics.py' "$dispatch"     || fail 'native-dispatch must retain the Python local-lyrics fallback'
 grep -Fq 'function removeQueueTrack(index: int): void' "$service" || fail 'Music Queue must expose per-track MPD removal'
 grep -Fq 'function clearQueue(): void' "$service" || fail 'Music Queue must expose MPD clear'
 grep -Fq '"deleteid",' "$root/scripts/local_music_mpd.py" || fail 'MPD helper must allow stable queue-id deletion'

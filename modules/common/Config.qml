@@ -491,6 +491,11 @@ Singleton {
                     property int width: 10
                     property int radius: 25
 
+                    // Smooth-union radius used only by ii Bar StyledPopup contact
+                    // with its owning Bar/Screen Edge. This is deliberately
+                    // independent from the physical Screen Edge corner radius.
+                    property int popupConnectionRadius: 30
+
                     // Connected-surface body shadow contract. Kept separate from
                     // the physical Screen Edge frame so popup/sidebar tuning can
                     // never change the perimeter shadow itself.

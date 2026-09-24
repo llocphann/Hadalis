@@ -1110,6 +1110,9 @@ def main() -> None:
     check('"screenEdge": {' in defaults_json
           and '"radius": 25' in defaults_json,
           "Persisted Screen Edge radius default must remain 25px")
+    check("property int popupConnectionRadius: 30" in config_qml
+          and '"popupConnectionRadius": 30' in defaults_json,
+          "Popup connected-contact radius must persist with the accepted 30px default")
     check("property JsonObject physicalShadow: JsonObject {" in config_qml
           and "property bool enabled: true" in config_qml
           and "property int size: 15" in config_qml
@@ -1179,6 +1182,11 @@ def main() -> None:
           and 'from: 0' in bar_settings
           and 'to: 96' in bar_settings,
           "Bar settings must expose the shared Screen Edge/Bar radius with a 25px default")
+    check('Config.options?.appearance?.screenEdge?.popupConnectionRadius ?? 30' in bar_settings
+          and 'Config.setNestedValue("appearance.screenEdge.popupConnectionRadius", value)' in bar_settings
+          and 'Translation.tr("Popup connection radius (px)")' in bar_settings
+          and 'to: 64' in bar_settings,
+          "Bar settings must expose the independent Popup connected-contact radius")
     check('appearance.screenEdge.shadow' not in bar_settings
           and 'Config.options?.appearance?.screenEdge?.physicalShadow?.enabled ?? true' in bar_settings
           and 'Config.setNestedValue("appearance.screenEdge.physicalShadow.enabled", checked)' in bar_settings
@@ -1342,6 +1350,13 @@ def main() -> None:
           and "Qt.alpha(Appearance.m3colors.m3shadow, root._edgeShadowOpacity)" in styled_popup
           and "screenEdge?.shadow?.enabled" not in styled_popup,
           "All ii Bar StyledPopup surfaces must share the visible Screen Edge shadow controls and ink")
+    check("readonly property real popupFuseDepth:" in perimeter_tokens
+          and "screenEdge?.popupConnectionRadius ?? 30" in perimeter_tokens
+          and "Math.max(0, Math.min(64" in perimeter_tokens
+          and "fuseDepth: PerimeterTokens.popupFuseDepth" in styled_popup,
+          "ii Bar StyledPopup must use the independent configurable connected-contact radius")
+    check("fuseDepth: PerimeterTokens.irisFuseDepth" not in styled_popup,
+          "StyledPopup must not bypass the user-adjustable popup connection radius")
 
     for shared_edge_shadow_source, label in (
         (sidebar_host, "SidebarHost"),

@@ -459,7 +459,7 @@ LazyLoader {
                 fillColor: root._surfaceColor
                 borderColor: root._borderColor
                 borderWidth: root._borderWidth
-                fuseDepth: PerimeterTokens.irisFuseDepth
+                fuseDepth: PerimeterTokens.popupFuseDepth
                 externalFrameThickness: root._screenEdgeThickness
                 // Own hover on the complete popup body, including its visual
                 // padding, but not on the reveal viewport's empty screen area.

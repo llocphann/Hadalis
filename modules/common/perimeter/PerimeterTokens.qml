@@ -16,10 +16,16 @@ QtObject {
             Number(Config.options?.appearance?.screenEdge?.radius ?? 25)))
     }
 
-    // iRiS StyledPopup contact geometry is an exact SDF smooth union validated
-    // by the real G1/G2 matrices. It is the only active curved contact renderer;
-    // legacy Canvas/RoundCorner wedge tokens are intentionally retired.
+    // Base iRiS smooth-union radius for non-popup connected surfaces.
+    // StyledPopup has a separately user-adjustable radius below so changing a
+    // Bar popup does not reshape Sidebar/Dashboard/Dock contact geometry.
     readonly property real irisFuseDepth: 30
+
+    readonly property real popupFuseDepth: {
+        const revision = Config.revision
+        return Math.max(0, Math.min(64,
+            Number(Config.options?.appearance?.screenEdge?.popupConnectionRadius ?? 30)))
+    }
     // G2 upstream-relative morphology overlaps every joined owner by 3 logical
     // px for SDF continuity, while Overlay paint/input still starts at the
     // actual owner boundary.

@@ -66,6 +66,7 @@
         "screenEdge": {
             "width": 10,
             "radius": 25,
+            "popupConnectionRadius": 30,
             "shadow": {
                 "enabled": true,
                 "size": 15,

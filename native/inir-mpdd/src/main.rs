@@ -844,33 +844,44 @@ fn music_root(client: &mut MpdClient, override_root: &str) -> String {
         .unwrap_or_default()
 }
 
-fn status_payload(client: &mut MpdClient, root: &str) -> Result<Value> {
+fn status_payload_mode(
+    client: &mut MpdClient,
+    root: &str,
+    include_queue: bool,
+) -> Result<Value> {
     let status = pairs(&client.command("status", std::iter::empty::<&str>())?);
     let current_records = records(
         &client.command("currentsong", std::iter::empty::<&str>())?,
         "file",
     );
-    let queue_records = records(
-        &client.command("playlistinfo", std::iter::empty::<&str>())?,
-        "file",
-    );
     let mut art_lookup = ArtLookup::default();
-
     let current = current_records
         .first()
         .map(|record| Value::Object(build_track(record, root, &mut art_lookup)))
         .unwrap_or(Value::Null);
-    let mut queue = Vec::with_capacity(queue_records.len());
-    for record in &queue_records {
-        queue.push(Value::Object(build_track(record, root, &mut art_lookup)));
+
+    let mut payload = Map::new();
+    payload.insert("connected".into(), json!(true));
+    payload.insert("status".into(), json!(status));
+    payload.insert("current".into(), current);
+
+    if include_queue {
+        let queue_records = records(
+            &client.command("playlistinfo", std::iter::empty::<&str>())?,
+            "file",
+        );
+        let mut queue = Vec::with_capacity(queue_records.len());
+        for record in &queue_records {
+            queue.push(Value::Object(build_track(record, root, &mut art_lookup)));
+        }
+        payload.insert("queue".into(), Value::Array(queue));
     }
 
-    Ok(json!({
-        "connected": true,
-        "status": status,
-        "current": current,
-        "queue": queue,
-    }))
+    Ok(Value::Object(payload))
+}
+
+fn status_payload(client: &mut MpdClient, root: &str) -> Result<Value> {
+    status_payload_mode(client, root, true)
 }
 
 fn fetch_mpd_art(client: &mut MpdClient, uri: &str) -> Option<(Vec<u8>, String)> {
@@ -1277,7 +1288,12 @@ fn broadcast(subscribers: &Arc<Mutex<Vec<UnixStream>>>, value: &Value) {
     subscribers.retain_mut(|stream| write_json_line(stream, value).is_ok());
 }
 
-fn idle_loop(host: String, port: u16, subscribers: Arc<Mutex<Vec<UnixStream>>>) {
+fn idle_loop(
+    host: String,
+    port: u16,
+    manager: Arc<MpdManager>,
+    subscribers: Arc<Mutex<Vec<UnixStream>>>,
+) {
     loop {
         let mut client = match MpdClient::connect_idle(&host, port) {
             Ok(client) => client,
@@ -1313,12 +1329,27 @@ fn idle_loop(host: String, port: u16, subscribers: Arc<Mutex<Vec<UnixStream>>>) 
                         })
                         .collect::<Vec<_>>();
                     if !changed.is_empty() {
+                        let requires_rescan = changed
+                            .iter()
+                            .any(|subsystem| matches!(subsystem.as_str(), "database" | "stored_playlist"));
+                        let include_queue = changed.iter().any(|subsystem| subsystem == "playlist");
+                        let payload = if requires_rescan {
+                            None
+                        } else {
+                            manager
+                                .with_client(|client, root| {
+                                    status_payload_mode(client, root, include_queue)
+                                })
+                                .ok()
+                        };
+
                         broadcast(
                             &subscribers,
                             &json!({
                                 "v": 1,
                                 "type": "changed",
-                                "subsystems": changed
+                                "subsystems": changed,
+                                "payload": payload
                             }),
                         );
                     }
@@ -1768,9 +1799,10 @@ fn main() -> Result<()> {
 
     {
         let host = args.host.clone();
+        let manager = manager.clone();
         let subscribers = subscribers.clone();
         let port = args.port;
-        thread::spawn(move || idle_loop(host, port, subscribers));
+        thread::spawn(move || idle_loop(host, port, manager, subscribers));
     }
 
     let listener = prepare_socket(&socket)?;

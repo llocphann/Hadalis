@@ -29,6 +29,8 @@ workflow_index = read("services/CodeWorkflowIndex.qml")
 metric_panel = read("modules/settings/widgets/BtopMetricPanel.qml")
 dashboard = read("modules/settings/widgets/BtopDashboard.qml")
 target_table = read("modules/settings/widgets/BtopTargetTable.qml")
+activity_table = read("modules/settings/widgets/BtopActivityTable.qml")
+process_table = read("modules/settings/widgets/BtopProcessTable.qml")
 
 # Material keeps historical page indices and appends Diagnostics at 31.
 require(registry, 'key: "diagnostics"', "Material Diagnostics page missing")
@@ -251,6 +253,16 @@ for token in (
     "singleton RuntimeDiagnosticsSession 1.0 RuntimeDiagnosticsSession.qml",
 ):
     require(qmldir, token, "Diagnostics singleton export missing")
+
+for table_name, table in (
+    ("BtopActivityTable.qml", activity_table),
+    ("BtopProcessTable.qml", process_table),
+):
+    require(
+        table,
+        "import qs.services",
+        table_name + " must import Translation from qs.services explicitly",
+    )
 
 # Exact shell/system sampling now has explicit provenance. It still must not claim
 # per-QML CPU/RAM/GPU/network attribution.

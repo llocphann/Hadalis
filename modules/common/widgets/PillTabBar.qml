@@ -52,14 +52,17 @@ Item {
                 width: root.tabs.length > 0 ? root.width / root.tabs.length : 0
                 height: root.height
 
-                RowLayout {
-                    anchors.fill: parent
-                    anchors.leftMargin: 7
-                    anchors.rightMargin: 7
-                    spacing: 4
+                // Center icon + label as one visual unit. Optional badges are
+                // anchored independently so their width can never push the tab
+                // title off-center.
+                Row {
+                    id: centeredTabLabel
+                    anchors.centerIn: parent
+                    spacing: 5
 
                     MaterialSymbol {
                         visible: String(tab.modelData.icon ?? "").length > 0
+                        anchors.verticalCenter: parent.verticalCenter
                         text: tab.modelData.icon ?? ""
                         iconSize: 17
                         color: tab.selected
@@ -68,34 +71,37 @@ Item {
                     }
 
                     StyledText {
-                        Layout.fillWidth: true
+                        anchors.verticalCenter: parent.verticalCenter
                         text: tab.modelData.label ?? ""
-                        horizontalAlignment: Text.AlignHCenter
                         elide: Text.ElideRight
+                        maximumLineCount: 1
                         font.pixelSize: Appearance.font.pixelSize.small
                         font.weight: tab.selected ? Font.DemiBold : Font.Normal
                         color: tab.selected
                             ? Appearance.colors.colOnPrimaryContainer
                             : Appearance.colors.colSubtext
                     }
+                }
 
-                    Rectangle {
-                        visible: tab.modelData.count !== undefined
-                        implicitWidth: 20
-                        implicitHeight: 20
-                        radius: height / 2
+                Rectangle {
+                    visible: tab.modelData.count !== undefined
+                    anchors.right: parent.right
+                    anchors.rightMargin: 8
+                    anchors.verticalCenter: parent.verticalCenter
+                    implicitWidth: 20
+                    implicitHeight: 20
+                    radius: height / 2
+                    color: tab.selected
+                        ? Appearance.colors.colPrimary
+                        : Appearance.colors.colLayer2
+
+                    StyledText {
+                        anchors.centerIn: parent
+                        text: String(tab.modelData.count ?? 0)
+                        font.pixelSize: Appearance.font.pixelSize.smallest
                         color: tab.selected
-                            ? Appearance.colors.colPrimary
-                            : Appearance.colors.colLayer2
-
-                        StyledText {
-                            anchors.centerIn: parent
-                            text: String(tab.modelData.count ?? 0)
-                            font.pixelSize: Appearance.font.pixelSize.smallest
-                            color: tab.selected
-                                ? Appearance.colors.colOnPrimary
-                                : Appearance.colors.colSubtext
-                        }
+                            ? Appearance.colors.colOnPrimary
+                            : Appearance.colors.colSubtext
                     }
                 }
 

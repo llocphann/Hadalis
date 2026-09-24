@@ -2,9 +2,9 @@ import qs.services
 import qs.modules.common
 import QtQuick
 
-// Serpantinum-inspired equalizer renderer adapted to Hadalis' existing
-// CAVA -> PlayerControl -> WaveVisualizer data contract. This stays as the
-// single media visualizer; it deliberately avoids a second CAVA/EQ subsystem.
+// Serpantinum-inspired renderer for PlayerControl's optional decorative
+// CAVA wave. Owners with an integrated analyzer (notably BarMediaPopup's EQ DSP)
+// can suppress this layer without creating a second CAVA/EQ subsystem.
 Item {
     id: root
 

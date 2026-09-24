@@ -35,11 +35,12 @@ WindowDialog {
         property string tooltipText: ""
         property bool selectedState: false
 
-        implicitWidth: 36
-        implicitHeight: 36
+        implicitWidth: root.embeddedPresentation ? 30 : 36
+        implicitHeight: root.embeddedPresentation ? 30 : 36
         padding: 0
         hoverEnabled: true
         focusPolicy: Qt.StrongFocus
+        opacity: compactButton.enabled ? 1 : 0.35
         Accessible.name: tooltipText
 
         background: Rectangle {
@@ -66,7 +67,7 @@ WindowDialog {
             MaterialSymbol {
                 anchors.centerIn: parent
                 text: compactButton.symbol
-                iconSize: 18
+                iconSize: root.embeddedPresentation ? 15 : 18
                 color: compactButton.selectedState
                     ? Appearance.colors.colOnPrimaryContainer
                     : Appearance.colors.colOnSurfaceVariant
@@ -337,7 +338,9 @@ WindowDialog {
                     width: parent.width - (root.embeddedPresentation ? 8 : 16)
                     implicitHeight: root.embeddedPresentation ? 36 : 56
                     anchors.horizontalCenter: parent.horizontalCenter
-                    placeholderText: Translation.tr("Event title") + " *"
+                    placeholderText: root.embeddedPresentation
+                        ? Translation.tr("Title") + " *"
+                        : Translation.tr("Event title") + " *"
                     placeholderTextColor: Appearance.colors.colOnSurface
                     color: Appearance.colors.colOnSurface
                     renderType: Text.QtRendering
@@ -351,7 +354,9 @@ WindowDialog {
                     width: parent.width - (root.embeddedPresentation ? 8 : 16)
                     implicitHeight: root.embeddedPresentation ? 36 : 56
                     anchors.horizontalCenter: parent.horizontalCenter
-                    placeholderText: Translation.tr("Description (optional)")
+                    placeholderText: root.embeddedPresentation
+                        ? Translation.tr("Note (opt)")
+                        : Translation.tr("Description (optional)")
                     text: root.eventDescription
                     onTextChanged: root.eventDescription = text
                 }
@@ -388,7 +393,7 @@ WindowDialog {
                     visible: root.embeddedPresentation
                     width: parent.width - 8
                     anchors.horizontalCenter: parent.horizontalCenter
-                    spacing: 6
+                    spacing: 4
 
                     MaterialSymbol {
                         text: "calendar_month"
@@ -406,8 +411,8 @@ WindowDialog {
                     }
 
                     CompactEventOptionButton {
-                        Layout.preferredWidth: 34
-                        Layout.preferredHeight: 34
+                        Layout.preferredWidth: 30
+                        Layout.preferredHeight: 30
                         symbol: root.allDay
                             ? "event_available" : "event_busy"
                         selectedState: root.allDay
@@ -447,11 +452,13 @@ WindowDialog {
 
                 RowLayout {
                     visible: !root.allDay
-                    width: parent.width
-                    spacing: root.embeddedPresentation ? 4 : 8
+                    width: parent.width - (root.embeddedPresentation ? 8 : 0)
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    spacing: root.embeddedPresentation ? 6 : 8
 
                     ConfigTimeInput {
                         Layout.fillWidth: true
+                        compact: root.embeddedPresentation
                         icon: "schedule"
                         text: Translation.tr("Start")
                         value: root.eventTime
@@ -460,6 +467,7 @@ WindowDialog {
 
                     ConfigTimeInput {
                         Layout.fillWidth: true
+                        compact: root.embeddedPresentation
                         icon: "schedule"
                         text: Translation.tr("End")
                         value: root.eventEndTime
@@ -470,24 +478,18 @@ WindowDialog {
                 }
             }
 
-            // Embedded Add Event uses one fixed-height icon deck instead of
-            // four labelled option sections. Opening a group replaces this row
-            // in place, so choosing metadata never increases popup height.
+            // Embedded Add Event uses one compact icon deck instead of
+            // four labelled option sections. Fixed-size buttons keep spacing
+            // predictable and avoid crowding the time controls above.
             Item {
                 visible: root.embeddedPresentation
                 width: parent.width
-                height: 38
+                height: 32
 
-                GridLayout {
+                RowLayout {
                     visible: root.compactOptionGroup === ""
-                    anchors {
-                        fill: parent
-                        leftMargin: 4
-                        rightMargin: 4
-                    }
-                    columns: 4
-                    columnSpacing: 4
-                    rowSpacing: 0
+                    anchors.centerIn: parent
+                    spacing: 6
 
                     Repeater {
                         model: [
@@ -499,8 +501,8 @@ WindowDialog {
 
                         delegate: CompactEventOptionButton {
                             required property var modelData
-                            Layout.fillWidth: true
-                            Layout.fillHeight: true
+                            Layout.preferredWidth: 30
+                            Layout.preferredHeight: 30
                             symbol: root.compactGroupIcon(modelData.key)
                             tooltipText: root.compactGroupTooltip(modelData.key)
                             onClicked: root.compactOptionGroup = modelData.key
@@ -510,50 +512,36 @@ WindowDialog {
 
                 RowLayout {
                     visible: root.compactOptionGroup !== ""
-                    anchors {
-                        fill: parent
-                        leftMargin: 4
-                        rightMargin: 4
-                    }
+                    anchors.centerIn: parent
                     spacing: 4
 
                     CompactEventOptionButton {
-                        Layout.preferredWidth: 34
-                        Layout.fillHeight: true
+                        Layout.preferredWidth: 30
+                        Layout.preferredHeight: 30
                         symbol: "arrow_back"
                         tooltipText: Translation.tr("Back")
                         onClicked: root.compactOptionGroup = ""
                     }
 
-                    GridLayout {
-                        Layout.fillWidth: true
-                        Layout.fillHeight: true
-                        columns: Math.max(1,
-                            root.compactOptionsFor(
-                                root.compactOptionGroup).length)
-                        columnSpacing: 4
-                        rowSpacing: 0
+                    Repeater {
+                        model: root.compactOptionsFor(
+                            root.compactOptionGroup)
 
-                        Repeater {
-                            model: root.compactOptionsFor(
-                                root.compactOptionGroup)
-
-                            delegate: CompactEventOptionButton {
-                                required property var modelData
-                                Layout.fillWidth: true
-                                Layout.fillHeight: true
-                                symbol: modelData.icon
-                                selectedState: modelData.value
-                                    == root.compactGroupValue(
-                                        root.compactOptionGroup)
-                                tooltipText:
-                                    root.compactGroupTitle(
-                                        root.compactOptionGroup)
-                                    + " · " + modelData.displayName
-                                onClicked: root.setCompactOption(
-                                    root.compactOptionGroup,
-                                    modelData.value)
-                            }
+                        delegate: CompactEventOptionButton {
+                            required property var modelData
+                            Layout.preferredWidth: 30
+                            Layout.preferredHeight: 30
+                            symbol: modelData.icon
+                            selectedState: modelData.value
+                                == root.compactGroupValue(
+                                    root.compactOptionGroup)
+                            tooltipText:
+                                root.compactGroupTitle(
+                                    root.compactOptionGroup)
+                                + " · " + modelData.displayName
+                            onClicked: root.setCompactOption(
+                                root.compactOptionGroup,
+                                modelData.value)
                         }
                     }
                 }
@@ -701,16 +689,32 @@ WindowDialog {
     }
 
     WindowDialogButtonRow {
-        Layout.leftMargin: root.embeddedPresentation ? 4 : -8
-        Layout.rightMargin: root.embeddedPresentation ? 4 : -8
+        spacing: root.embeddedPresentation ? 6 : 4
+        Layout.leftMargin: root.embeddedPresentation ? 6 : -8
+        Layout.rightMargin: root.embeddedPresentation ? 6 : -8
         Layout.bottomMargin: root.embeddedPresentation ? 2 : 0
 
         DialogButton {
-            visible: root.isEditing
+            visible: root.isEditing && !root.embeddedPresentation
             enabled: Events.ready
-            padding: root.embeddedPresentation ? 10 : 14
-            implicitHeight: root.embeddedPresentation ? 32 : 36
+            padding: 14
+            implicitHeight: 36
             buttonText: Translation.tr("Delete")
+            onClicked: {
+                if (Events.removeEvent(root.editingEvent.id)) {
+                    root.resetForm()
+                    root.dismiss()
+                }
+            }
+        }
+
+        CompactEventOptionButton {
+            visible: root.embeddedPresentation && root.isEditing
+            Layout.preferredWidth: 30
+            Layout.preferredHeight: 30
+            enabled: Events.ready
+            symbol: "delete"
+            tooltipText: Translation.tr("Delete")
             onClicked: {
                 if (Events.removeEvent(root.editingEvent.id)) {
                     root.resetForm()
@@ -722,8 +726,9 @@ WindowDialog {
         Item { Layout.fillWidth: true }
 
         DialogButton {
-            padding: root.embeddedPresentation ? 10 : 14
-            implicitHeight: root.embeddedPresentation ? 32 : 36
+            visible: !root.embeddedPresentation
+            padding: 14
+            implicitHeight: 36
             buttonText: Translation.tr("Cancel")
             onClicked: {
                 root.resetForm()
@@ -731,10 +736,43 @@ WindowDialog {
             }
         }
 
+        CompactEventOptionButton {
+            visible: root.embeddedPresentation
+            Layout.preferredWidth: 30
+            Layout.preferredHeight: 30
+            symbol: "close"
+            tooltipText: Translation.tr("Cancel")
+            onClicked: {
+                root.resetForm()
+                root.dismiss()
+            }
+        }
+
         DialogButton {
-            padding: root.embeddedPresentation ? 10 : 14
-            implicitHeight: root.embeddedPresentation ? 32 : 36
-            buttonText: root.isEditing ? Translation.tr("Save") : Translation.tr("Add Event")
+            visible: !root.embeddedPresentation
+            padding: 14
+            implicitHeight: 36
+            buttonText: root.isEditing
+                ? Translation.tr("Save")
+                : Translation.tr("Add Event")
+            enabled: Events.ready && root.eventTitle.trim() !== ""
+            onClicked: {
+                if (root.saveEvent()) {
+                    root.resetForm()
+                    root.dismiss()
+                }
+            }
+        }
+
+        CompactEventOptionButton {
+            visible: root.embeddedPresentation
+            Layout.preferredWidth: 30
+            Layout.preferredHeight: 30
+            symbol: root.isEditing ? "check" : "add_task"
+            selectedState: true
+            tooltipText: root.isEditing
+                ? Translation.tr("Save")
+                : Translation.tr("Add Event")
             enabled: Events.ready && root.eventTitle.trim() !== ""
             onClicked: {
                 if (root.saveEvent()) {

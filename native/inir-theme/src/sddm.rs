@@ -220,8 +220,11 @@ fn update_theme_conf(
     for (key, value) in remaining {
         new_lines.push(format!("{key}={value}"));
     }
-    fs::write(&path, new_lines.join("\n"))
-        .with_context(|| format!("write SDDM theme config {}", path.display()))?;
+    let updated = new_lines.join("\n");
+    if updated != content {
+        fs::write(&path, updated)
+            .with_context(|| format!("write SDDM theme config {}", path.display()))?;
+    }
     Ok(true)
 }
 

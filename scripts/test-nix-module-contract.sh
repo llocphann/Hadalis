@@ -66,6 +66,13 @@ fi
 grep -Fq 'install -Dm644 LICENSE "$out/share/licenses/inir/LICENSE"' "$package" \
   || fail 'Nix package no longer installs the project license'
 
+grep -Fq 'nativeBackend = pkgs.rustPlatform.buildRustPackage {' "$package" \
+  || fail 'Nix package no longer builds the qualified Rust backend'
+grep -Fq 'cargoLock.lockFile = ../native/Cargo.lock;' "$package" \
+  || fail 'Nix native backend no longer uses the committed Cargo.lock'
+grep -Fq 'mkdir -p "$runtime/native/bin"' "$package" \
+  || fail 'Nix package no longer installs native binaries into the runtime'
+
 grep -Fq '{ pkgs, withWorkflowParser ? false }:' "$package" \
   || fail 'Nix shell package no longer keeps Workflow parser capability opt-in'
 grep -Fq 'HADALIS_WORKFLOW_GRAMMAR' "$package" \

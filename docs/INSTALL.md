@@ -1,5 +1,8 @@
 # Installation
 
+> **Native runtime:** Rust is the production backend. Source installs compile the locked Rust 1.95+ workspace and install `inir-inputd`, `inir-mpdd`, `inir-native`, and `inir-theme`. Python remains available only as an explicit fallback through `scripts/native-backend status|rust|python`.
+
+
 > **Primary path: Arch Linux.** `./setup install` also has distro-specific dependency routing for mutable Fedora systems and Debian/Ubuntu. Fedora Atomic/immutable systems and other distributions fall back to generic/manual guidance, so expect more manual intervention outside the primary Arch path.
 >
 > **NixOS:** there is an experimental flake path. See [NixOS](NIXOS.md).

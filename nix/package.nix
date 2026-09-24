@@ -3,6 +3,26 @@
 let
   lib = pkgs.lib;
   packageVersion = lib.removeSuffix "\n" (builtins.readFile ../VERSION);
+  nativeBackend = pkgs.rustPlatform.buildRustPackage {
+    pname = "inir-native-backend";
+    version = packageVersion;
+    src = lib.cleanSource ../native;
+    cargoLock.lockFile = ../native/Cargo.lock;
+    cargoBuildFlags = [ "--workspace" ];
+    doCheck = false;
+    installPhase = ''
+      runHook preInstall
+      mkdir -p "$out/bin"
+      native_bin="$(find target -type f -path '*/release/inir-native' -perm -0100 -print -quit)"
+      test -n "$native_bin"
+      release="$(dirname "$native_bin")"
+      for binary in inir-inputd inir-mpdd inir-native inir-theme; do
+        test -x "$release/$binary"
+        install -m0755 "$release/$binary" "$out/bin/$binary"
+      done
+      runHook postInstall
+    '';
+  };
   workflowParser =
     if withWorkflowParser
     then import ./workflow-parser.nix { inherit pkgs; }
@@ -173,6 +193,11 @@ pkgs.stdenvNoCC.mkDerivation {
       "$out/share/icons/hicolor/scalable/apps"
 
     python3 sdata/lib/runtime-payload.py copy --root . --target "$runtime"
+
+    mkdir -p "$runtime/native/bin"
+    for binary in inir-inputd inir-mpdd inir-native inir-theme; do
+      install -m0755 "${nativeBackend}/bin/$binary" "$runtime/native/bin/$binary"
+    done
 
     chmod +x "$runtime/setup" "$runtime/scripts/inir"
     find "$runtime/scripts" -type f \( -name '*.sh' -o -name '*.fish' -o -name '*.py' \) -exec chmod +x {} +

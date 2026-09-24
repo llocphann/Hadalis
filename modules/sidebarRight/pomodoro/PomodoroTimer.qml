@@ -35,7 +35,7 @@ Item {
     readonly property color _colAccent: Appearance.angelEverywhere ? Appearance.angel.colPrimary
         : Appearance.inirEverywhere ? Appearance.inir.colPrimary
         : Appearance.colors.colPrimary
-    readonly property color _colTrack: ColorUtils.transparentize(root._colTextSecondary, 0.72)
+    readonly property color _colTrack: ColorUtils.transparentize(root._colTextSecondary, 0.82)
 
     property bool settingsOpen: false
 
@@ -191,10 +191,13 @@ Item {
                                 / TimerService.pomodoroLapDuration))
                         : 0
                 property real displayProgress: rawProgress
+                readonly property real orbitStrokeWidth: 5
+                readonly property real arcCenterX: Math.round(width / 2)
+                readonly property real arcCenterY: Math.round(height / 2) - 4
                 readonly property real arcRadiusX:
-                    Math.max(48, Math.min(width / 2 - 12, 86))
+                    Math.round(Math.max(48, Math.min(width / 2 - 14, 84)))
                 readonly property real arcRadiusY:
-                    Math.max(36, arcRadiusX * 0.72)
+                    Math.round(Math.max(34, arcRadiusX * 0.66))
                 readonly property real startAngle: 155
                 readonly property real sweepAngle: 230
 
@@ -213,12 +216,12 @@ Item {
                     ShapePath {
                         fillColor: "transparent"
                         strokeColor: root._colTrack
-                        strokeWidth: 7
+                        strokeWidth: focusDial.orbitStrokeWidth
                         capStyle: ShapePath.RoundCap
 
                         PathAngleArc {
-                            centerX: focusDial.width / 2
-                            centerY: focusDial.height / 2
+                            centerX: focusDial.arcCenterX
+                            centerY: focusDial.arcCenterY
                             radiusX: focusDial.arcRadiusX
                             radiusY: focusDial.arcRadiusY
                             startAngle: focusDial.startAngle
@@ -229,12 +232,12 @@ Item {
                     ShapePath {
                         fillColor: "transparent"
                         strokeColor: root._colAccent
-                        strokeWidth: 7
+                        strokeWidth: focusDial.orbitStrokeWidth
                         capStyle: ShapePath.RoundCap
 
                         PathAngleArc {
-                            centerX: focusDial.width / 2
-                            centerY: focusDial.height / 2
+                            centerX: focusDial.arcCenterX
+                            centerY: focusDial.arcCenterY
                             radiusX: focusDial.arcRadiusX
                             radiusY: focusDial.arcRadiusY
                             startAngle: focusDial.startAngle
@@ -249,29 +252,23 @@ Item {
                         (focusDial.startAngle
                             + focusDial.sweepAngle * focusDial.displayProgress)
                             * Math.PI / 180
-                    width: 11
-                    height: 11
+                    width: 8
+                    height: 8
                     radius: width / 2
                     color: root._colAccent
+                    border.width: 1
+                    border.color: root._colLayer
                     visible: focusDial.displayProgress > 0.002
-                    x: focusDial.width / 2
+                    x: focusDial.arcCenterX
                         + focusDial.arcRadiusX * Math.cos(angle) - width / 2
-                    y: focusDial.height / 2
+                    y: focusDial.arcCenterY
                         + focusDial.arcRadiusY * Math.sin(angle) - height / 2
-
-                    Rectangle {
-                        anchors.centerIn: parent
-                        width: parent.width + 8
-                        height: width
-                        radius: width / 2
-                        color: ColorUtils.transparentize(root._colAccent, 0.78)
-                        z: -1
-                    }
                 }
 
                 ColumnLayout {
                     anchors.centerIn: parent
-                    spacing: 2
+                    anchors.verticalCenterOffset: root.compactMode ? 9 : 8
+                    spacing: 3
 
                     StyledText {
                         Layout.alignment: Qt.AlignHCenter
@@ -285,7 +282,7 @@ Item {
                             return `${minutes}:${seconds}`
                         }
                         font.pixelSize: Math.round(
-                            (root.compactMode ? 36 : 39)
+                            (root.compactMode ? 31 : 34)
                                 * Appearance.fontSizeScale)
                         font.weight: Font.Medium
                         font.family: Appearance.font.family.numbers
@@ -306,7 +303,7 @@ Item {
 
                     Row {
                         Layout.alignment: Qt.AlignHCenter
-                        Layout.topMargin: 8
+                        Layout.topMargin: 7
                         spacing: 5
 
                         Repeater {

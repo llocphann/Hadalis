@@ -137,11 +137,13 @@ Bar.StyledPopup {
 
         ColumnLayout {
             anchors.fill: parent
-            spacing: 8
+            spacing: 6
 
             PillTabBar {
-                Layout.fillWidth: true
-                pillHeight: 38
+                Layout.alignment: Qt.AlignHCenter
+                Layout.preferredWidth: Math.min(
+                    contentRoot.width - 8, 276)
+                pillHeight: 30
                 currentIndex: root.selectedMainTab
                 tabs: [
                     { icon: "note_stack", label: Translation.tr("Notes & To-do") },
@@ -151,9 +153,11 @@ Bar.StyledPopup {
             }
 
             PillTabBar {
-                Layout.fillWidth: true
+                Layout.alignment: Qt.AlignHCenter
+                Layout.preferredWidth: Math.min(
+                    contentRoot.width - 24, 248)
                 visible: root.selectedMainTab === 0
-                pillHeight: 34
+                pillHeight: 28
                 currentIndex: root.selectedNotesTab
                 tabs: [
                     { icon: "edit_note", label: Translation.tr("Quick Notes") },

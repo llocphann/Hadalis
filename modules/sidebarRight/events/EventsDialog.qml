@@ -27,6 +27,61 @@ WindowDialog {
         font.weight: Font.Medium
     }
 
+    // Popup-only icon control. Standalone/full EventsDialog keeps its existing
+    // labelled controls; this is rendered only by embeddedPresentation.
+    component CompactEventOptionButton: Button {
+        id: compactButton
+        property string symbol: ""
+        property string tooltipText: ""
+        property bool selectedState: false
+
+        implicitWidth: 36
+        implicitHeight: 36
+        padding: 0
+        hoverEnabled: true
+        focusPolicy: Qt.StrongFocus
+        Accessible.name: tooltipText
+
+        background: Rectangle {
+            radius: Appearance.rounding.small
+            color: compactButton.selectedState
+                ? Appearance.colors.colPrimaryContainer
+                : compactButton.hovered || compactButton.activeFocus
+                    ? Appearance.colors.colLayer2Hover
+                    : Appearance.colors.colLayer2
+            border.width: compactButton.activeFocus ? 1 : 0
+            border.color: Appearance.colors.colPrimary
+
+            Behavior on color {
+                ColorAnimation {
+                    duration: Appearance.animation.elementMoveFast.duration
+                    easing.type: Appearance.animation.elementMoveFast.type
+                    easing.bezierCurve:
+                        Appearance.animation.elementMoveFast.bezierCurve
+                }
+            }
+        }
+
+        contentItem: Item {
+            MaterialSymbol {
+                anchors.centerIn: parent
+                text: compactButton.symbol
+                iconSize: 18
+                color: compactButton.selectedState
+                    ? Appearance.colors.colOnPrimaryContainer
+                    : Appearance.colors.colOnSurfaceVariant
+            }
+        }
+
+        StyledToolTip {
+            visible: compactButton.hovered
+                && compactButton.tooltipText.length > 0
+            text: compactButton.tooltipText
+            delay: 350
+            position: "top"
+        }
+    }
+
     property var editingEvent: null
     property bool isEditing: editingEvent !== null
 
@@ -42,6 +97,84 @@ WindowDialog {
     property string eventPriority: "normal"
     property int reminderMinutes: 15
     property string recurrence: "none"
+    property string compactOptionGroup: ""
+
+    function compactOptionsFor(group) {
+        if (group === "repeat") {
+            return [
+                { displayName: Translation.tr("Event"), icon: "event", value: "none" },
+                { displayName: Translation.tr("Daily"), icon: "today", value: "daily" },
+                { displayName: Translation.tr("Weekly"), icon: "date_range", value: "weekly" },
+                { displayName: Translation.tr("Monthly"), icon: "calendar_month", value: "monthly" },
+                { displayName: Translation.tr("Yearly"), icon: "event_repeat", value: "yearly" }
+            ]
+        }
+        if (group === "category") {
+            return [
+                { displayName: Translation.tr("General"), icon: "event", value: "general" },
+                { displayName: Translation.tr("Birthday"), icon: "cake", value: "birthday" },
+                { displayName: Translation.tr("Meeting"), icon: "groups", value: "meeting" },
+                { displayName: Translation.tr("Deadline"), icon: "flag", value: "deadline" },
+                { displayName: Translation.tr("Reminder"), icon: "notifications", value: "reminder" }
+            ]
+        }
+        if (group === "priority") {
+            return [
+                { displayName: Translation.tr("Low"), icon: "arrow_downward", value: "low" },
+                { displayName: Translation.tr("Normal"), icon: "remove", value: "normal" },
+                { displayName: Translation.tr("High"), icon: "priority_high", value: "high" }
+            ]
+        }
+        return [
+            { displayName: Translation.tr("None"), icon: "notifications_off", value: 0 },
+            { displayName: Translation.tr("5 min"), icon: "alarm", value: 5 },
+            { displayName: Translation.tr("15 min"), icon: "alarm", value: 15 },
+            { displayName: Translation.tr("1 hour"), icon: "alarm", value: 60 },
+            { displayName: Translation.tr("1 day"), icon: "alarm", value: 1440 }
+        ]
+    }
+
+    function compactGroupTitle(group): string {
+        if (group === "repeat") return Translation.tr("Repeat")
+        if (group === "category") return Translation.tr("Category")
+        if (group === "priority") return Translation.tr("Priority")
+        return Translation.tr("Reminder")
+    }
+
+    function compactGroupValue(group) {
+        if (group === "repeat") return root.recurrence
+        if (group === "category") return root.eventCategory
+        if (group === "priority") return root.eventPriority
+        return root.reminderMinutes
+    }
+
+    function compactSelectedOption(group) {
+        const current = root.compactGroupValue(group)
+        const options = root.compactOptionsFor(group)
+        for (let i = 0; i < options.length; ++i) {
+            if (options[i].value == current)
+                return options[i]
+        }
+        return options[0]
+    }
+
+    function compactGroupIcon(group): string {
+        return root.compactSelectedOption(group)?.icon ?? "tune"
+    }
+
+    function compactGroupTooltip(group): string {
+        const selected = root.compactSelectedOption(group)
+        return root.compactGroupTitle(group) + " · "
+            + (selected?.displayName ?? "")
+    }
+
+    function setCompactOption(group, value): void {
+        if (group === "repeat") root.recurrence = value
+        else if (group === "category") root.eventCategory = value
+        else if (group === "priority") root.eventPriority = value
+        else root.reminderMinutes = value
+        root.compactOptionGroup = ""
+    }
 
     function focusEditor(): void {
         Qt.callLater(() => titleField.forceActiveFocus())
@@ -59,6 +192,7 @@ WindowDialog {
         root.eventPriority = "normal"
         root.reminderMinutes = 15
         root.recurrence = "none"
+        root.compactOptionGroup = ""
     }
 
     function loadEvent(event: var): void {
@@ -83,6 +217,7 @@ WindowDialog {
         root.eventPriority = event.priority || "normal"
         root.reminderMinutes = event.reminderMinutes ?? 15
         root.recurrence = event.recurrence || "none"
+        root.compactOptionGroup = ""
     }
 
     function saveEvent(): bool {
@@ -196,7 +331,7 @@ WindowDialog {
                 MaterialTextField {
                     id: titleField
                     width: parent.width - (root.embeddedPresentation ? 8 : 16)
-                    implicitHeight: root.embeddedPresentation ? 40 : 56
+                    implicitHeight: root.embeddedPresentation ? 36 : 56
                     anchors.horizontalCenter: parent.horizontalCenter
                     placeholderText: Translation.tr("Event title") + " *"
                     placeholderTextColor: Appearance.colors.colOnSurface
@@ -210,7 +345,7 @@ WindowDialog {
 
                 MaterialTextField {
                     width: parent.width - (root.embeddedPresentation ? 8 : 16)
-                    implicitHeight: root.embeddedPresentation ? 40 : 56
+                    implicitHeight: root.embeddedPresentation ? 36 : 56
                     anchors.horizontalCenter: parent.horizontalCenter
                     placeholderText: Translation.tr("Description (optional)")
                     text: root.eventDescription
@@ -263,10 +398,25 @@ WindowDialog {
                         color: Appearance.colors.colOnSurface
                         font.pixelSize: Appearance.font.pixelSize.small
                         font.weight: Font.Medium
+                        elide: Text.ElideRight
+                    }
+
+                    CompactEventOptionButton {
+                        Layout.preferredWidth: 34
+                        Layout.preferredHeight: 34
+                        symbol: root.allDay
+                            ? "event_available" : "event_busy"
+                        selectedState: root.allDay
+                        tooltipText: Translation.tr("All day") + " · "
+                            + (root.allDay
+                                ? Translation.tr("On")
+                                : Translation.tr("Off"))
+                        onClicked: root.allDay = !root.allDay
                     }
                 }
 
                 RowLayout {
+                    visible: !root.embeddedPresentation
                     width: parent.width - 8
                     anchors.horizontalCenter: parent.horizontalCenter
                     spacing: 8
@@ -316,9 +466,99 @@ WindowDialog {
                 }
             }
 
+            // Embedded Add Event uses one fixed-height icon deck instead of
+            // four labelled option sections. Opening a group replaces this row
+            // in place, so choosing metadata never increases popup height.
+            Item {
+                visible: root.embeddedPresentation
+                width: parent.width
+                height: 38
+
+                GridLayout {
+                    visible: root.compactOptionGroup === ""
+                    anchors {
+                        fill: parent
+                        leftMargin: 4
+                        rightMargin: 4
+                    }
+                    columns: 4
+                    columnSpacing: 4
+                    rowSpacing: 0
+
+                    Repeater {
+                        model: [
+                            { key: "repeat" },
+                            { key: "category" },
+                            { key: "priority" },
+                            { key: "reminder" }
+                        ]
+
+                        delegate: CompactEventOptionButton {
+                            required property var modelData
+                            Layout.fillWidth: true
+                            Layout.fillHeight: true
+                            symbol: root.compactGroupIcon(modelData.key)
+                            tooltipText: root.compactGroupTooltip(modelData.key)
+                            onClicked: root.compactOptionGroup = modelData.key
+                        }
+                    }
+                }
+
+                RowLayout {
+                    visible: root.compactOptionGroup !== ""
+                    anchors {
+                        fill: parent
+                        leftMargin: 4
+                        rightMargin: 4
+                    }
+                    spacing: 4
+
+                    CompactEventOptionButton {
+                        Layout.preferredWidth: 34
+                        Layout.fillHeight: true
+                        symbol: "arrow_back"
+                        tooltipText: Translation.tr("Back")
+                        onClicked: root.compactOptionGroup = ""
+                    }
+
+                    GridLayout {
+                        Layout.fillWidth: true
+                        Layout.fillHeight: true
+                        columns: Math.max(1,
+                            root.compactOptionsFor(
+                                root.compactOptionGroup).length)
+                        columnSpacing: 4
+                        rowSpacing: 0
+
+                        Repeater {
+                            model: root.compactOptionsFor(
+                                root.compactOptionGroup)
+
+                            delegate: CompactEventOptionButton {
+                                required property var modelData
+                                Layout.fillWidth: true
+                                Layout.fillHeight: true
+                                symbol: modelData.icon
+                                selectedState: modelData.value
+                                    == root.compactGroupValue(
+                                        root.compactOptionGroup)
+                                tooltipText:
+                                    root.compactGroupTitle(
+                                        root.compactOptionGroup)
+                                    + " · " + modelData.displayName
+                                onClicked: root.setCompactOption(
+                                    root.compactOptionGroup,
+                                    modelData.value)
+                            }
+                        }
+                    }
+                }
+            }
+
             // Repeat is part of scheduling, so keep it next to date/time rather
             // than burying it below category/priority/reminder settings.
             EventSectionHeader {
+                visible: !root.embeddedPresentation
                 text: Translation.tr("Repeat")
                 topPadding: root.embeddedPresentation ? 5 : 16
             }
@@ -329,6 +569,7 @@ WindowDialog {
             }
 
             ConfigSelectionArray {
+                visible: !root.embeddedPresentation
                 anchors {
                     left: parent.left
                     right: parent.right
@@ -351,6 +592,7 @@ WindowDialog {
 
             // ─── Category Section ─────────────────────────────────────
             EventSectionHeader {
+                visible: !root.embeddedPresentation
                 text: Translation.tr("Category")
                 topPadding: root.embeddedPresentation ? 6 : 16
             }
@@ -361,6 +603,7 @@ WindowDialog {
             }
 
             ConfigSelectionArray {
+                visible: !root.embeddedPresentation
                 anchors {
                     left: parent.left
                     right: parent.right
@@ -381,6 +624,7 @@ WindowDialog {
 
             // ─── Priority Section ─────────────────────────────────────
             EventSectionHeader {
+                visible: !root.embeddedPresentation
                 text: Translation.tr("Priority")
                 topPadding: root.embeddedPresentation ? 6 : 16
             }
@@ -391,6 +635,7 @@ WindowDialog {
             }
 
             ConfigSelectionArray {
+                visible: !root.embeddedPresentation
                 anchors {
                     left: parent.left
                     right: parent.right
@@ -409,6 +654,7 @@ WindowDialog {
 
             // ─── Reminder Section ─────────────────────────────────────
             EventSectionHeader {
+                visible: !root.embeddedPresentation
                 text: Translation.tr("Reminder")
                 topPadding: root.embeddedPresentation ? 6 : 16
             }
@@ -419,6 +665,7 @@ WindowDialog {
             }
 
             ConfigSelectionArray {
+                visible: !root.embeddedPresentation
                 anchors {
                     left: parent.left
                     right: parent.right

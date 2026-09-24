@@ -199,6 +199,7 @@ try:
 
         left_by_id = queue_by_id(left_queue)
         right_by_id = queue_by_id(right_queue)
+        queue_churn = False
         if left_by_id is not None and right_by_id is not None:
             left_ids = set(left_by_id)
             right_ids = set(right_by_id)
@@ -238,7 +239,12 @@ try:
                 left_current.get("queueId") == right_current.get("queueId")
                 and left_current.get("uri") == right_current.get("uri")
             )
-            if not same_current:
+            if same_current and queue_churn:
+                left["current"] = dict(left_current)
+                right["current"] = dict(right_current)
+                left["current"].pop("queuePos", None)
+                right["current"].pop("queuePos", None)
+            elif not same_current:
                 # Exact current-track serialization is covered by the isolated
                 # MPD fixture. A live track transition must not become a false
                 # activation blocker.

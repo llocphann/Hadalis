@@ -6,7 +6,15 @@
 > **Target:** `1.0`  
 > **Primary development branch:** `dev`  
 > **Stable baseline:** `stable`  
-> **Scope refresh:** 2026-09-23
+> **Scope refresh:** 2026-09-25
+>
+> **Current `dev` snapshot (2026-09-25):**
+> - The qualified **Rust native workspace is the production backend**. `inir-native`, `inir-inputd`, `inir-mpdd` and `inir-theme` are built/shipped by supported install paths; Python implementations remain an explicit rollback/fail-soft path rather than the default selector.
+> - **Runtime Diagnostics is implemented as a production MVP**, not a research-only plan. Material and Waffle Settings share the same compact dashboard, main-shell evidence transport and demand-driven lease/session lifecycle.
+> - **Material is the only public shell-wide Global Theme**. Legacy persisted theme/style values are migration input only and must normalize to supported Material behavior rather than reactivate retired renderers.
+> - The **iRiS connected-surface migration is the production baseline** for ii connected presentation. Full `iiPerimeter` composition ownership remains a separate guarded cutover boundary.
+> - **Waffle remains a supported independent panel family** and must not be removed or treated as legacy during ii cleanup.
+> - Source/contract completion is not the same as release acceptance: runtime-sensitive gates still require the canonical local validator and live Niri/Quickshell checks on the exact candidate SHA.
 
 ## 1. Source-of-truth and workflow
 
@@ -21,7 +29,7 @@ Requirement precedence:
 Working rules:
 
 - Work directly on **`dev`**. Do not create or switch to another branch unless the maintainer explicitly requests it.
-- Refetch the latest **`dev` and `stable`** before every significant group of changes and immediately before a write that may conflict with concurrent work.
+- Refetch the latest **`dev`** before every significant audit and immediately before every write/ref update. Use `stable` only when a behavioral comparison is actually needed; never merge into or mutate `stable` as part of normal development.
 - Re-read the current target file and its caller/consumer before changing architecture.
 - Do **not** create a pull request unless explicitly requested.
 - Do **not** depend on GitHub Actions for the current development cycle; the maintainer performs the authoritative local test pass.
@@ -36,7 +44,7 @@ Working rules:
 
 This section is the **maintainer handoff for new chat sessions**. Read it before touching Screen Edge, Bar, popup, Sidebar, Dashboard, Settings overlay or any shared perimeter primitive. If another section appears to conflict with this handoff, the maintainer's newest explicit instruction wins.
 
-**Maintainer workflow lock (2026-09-23):** Hadalis development is `dev`-only. Do not create feature/fix branches and do not open pull requests unless the maintainer explicitly asks for them. Refetch and re-read the latest `dev` target before every write, then commit focused changes directly to `dev`.
+**Maintainer workflow lock (2026-09-25):** Hadalis development is `dev`-only. Do not create feature/fix branches and do not open pull requests unless the maintainer explicitly asks for them. Refetch and re-read the latest `dev` target before every write, then commit focused changes directly to `dev`. `stable` is comparison-only unless the maintainer explicitly changes that rule.
 
 **Failed-fix rule — no patch stacking:** when a proposed fix is shown by runtime evidence, regression testing or maintainer acceptance to be ineffective, revert that fix before attempting a replacement. Do not layer a second workaround over the failed approach. Restore the last known-good behavior, identify why the previous approach failed, then implement a materially different root-cause fix. Preserve concurrent unrelated work by reverting only the failed change set when necessary.
 
@@ -105,352 +113,86 @@ A ready-to-use fresh-chat prompt for that phase is stored at
 - The four transparent Screen Edge `ReservationWindow` surfaces may still unmap during fullscreen to release their exclusive work-area reservation. This reservation lifecycle must remain separate from the persistent painted frame lifecycle.
 
 
-### 1.3 Runtime Diagnostics / Quickshell btop handoff (research complete 2026-09-23)
+### 1.3 Runtime Diagnostics / Quickshell btop — production MVP status (2026-09-25)
 
-This is the canonical implementation handoff for the planned Hadalis **Runtime Diagnostics** feature: a btop-like debugger for the Hadalis/Quickshell runtime itself, not a general desktop process manager. It must diagnose Hadalis QML components, services, loaders, timers/pollers, owned subprocesses, custom widgets and other runtime resource owners. External applications such as Firefox/Discord are out of scope except where their existence affects an already-supported shell service.
+Runtime Diagnostics is now an implemented Hadalis runtime debugger rather than a planned research feature. Its purpose remains narrow: explain **Hadalis shell resource behavior and runtime activity**, not replace a general desktop process manager.
 
-#### Product locks
+#### Production ownership and lifecycle
 
-- **Diagnostics must not run in the background.** The expensive diagnostics sampler is active only while the Diagnostics Settings page is the current page. Hiding/caching the page is not enough: Material `SettingsPageHost` retains an LRU of recent pages, so lifecycle must be driven by explicit current-page session ownership rather than `Component.onCompleted/onDestruction`. Waffle currently keeps only the current Settings page, but it must use the same session contract.
-- Any singleton/backend introduced for Diagnostics must be **passive by default**: no CPU polling, `smaps_rollup`, GPU helper, network sampler, fast timer or source scan until an active Diagnostics session exists. Leaving the page must stop those samplers immediately. Remote/standalone Settings sessions need a short TTL/heartbeat so a crashed Settings process cannot leave diagnostics running forever.
-- Diagnostics must expose **CPU, RAM, Swap, GPU and Network**. It should help answer which Hadalis component/service is responsible where attribution is technically valid, but it must never manufacture fake per-QML CPU/RAM/swap/GPU numbers.
-- **Workflow identity is authoritative.** Diagnostics does not own a second component catalog, display-name table or naming heuristic. A target known by Workflows as `targetId: "bar"`, label `"Bar"`, must appear as exactly that same target in Diagnostics. Metrics store IDs only; presentation resolves label/icon/source/family/parent through `CodeWorkflowRuntime` / `CodeWorkflowIr`.
-- Work directly on `dev`; do not create a feature branch or PR unless explicitly requested.
+- `services/RuntimeDiagnostics.qml` is the main-shell sampling authority. It is passive by default and samples only while at least one valid Diagnostics lease exists.
+- `services/RuntimeDiagnosticsSession.qml` owns Settings-page demand. Material and Waffle use the same owner-aware current-page contract; a cached/hidden page does not keep sampling alive.
+- Remote Settings processes acquire/heartbeat/release the main-shell lease through the dedicated `runtimeDiagnostics` IPC target. Lease TTL is **6 seconds**, heartbeat is **2 seconds**, the lease table is bounded, and a crashed Settings process naturally expires.
+- Sampling is **1 Hz** with a bounded **60-sample** history. Slower memory/DRM/descendant work is internally decimated so expensive process traversal is not repeated on every fast sample.
+- `scripts/native-dispatch diagnostics` selects the production Rust implementation in `inir-native` by default. `scripts/runtime-diagnostics-sampler.py` remains the compatible Python fallback.
+- Leaving the Diagnostics page clears live sample/history state and stops the sampler. Diagnostics must not become an always-on background monitor.
 
-#### One canonical identity model
+#### Evidence that is implemented
 
-Use stable references rather than display strings:
+The current sampler exposes provenance-bearing evidence for:
 
-```text
-runtime target      -> { targetId }
-runtime instance    -> { targetId, instanceId }
-workflow graph node -> { graphId, nodeId }
-source-only node    -> { sourcePath, semanticAnchor }
-```
+- system CPU and per-logical-core CPU from `/proc/stat`;
+- load average and uptime;
+- system RAM and Swap from `/proc/meminfo`;
+- Hadalis shell CPU from task `schedstat`;
+- shell RSS/PSS/Swap from `smaps_rollup` with `/proc/<pid>/status` fallback;
+- shell disk I/O counters/rates from `/proc/<pid>/io`;
+- aggregate and per-interface network counters/rates from `/proc/net/dev`;
+- shell DRM/GPU client engine activity and resident memory when `drm-fdinfo` is available;
+- real Hadalis child/descendant processes with PID, parent PID, command, CPU and RSS/Swap evidence;
+- Workflow runtime records/events plus source-boundary reconciliation from the shared Code Workflow index.
 
-For entities already modeled by Workflows, Diagnostics telemetry must not contain duplicate `name`/`label` fields. UI resolves those fields from the Workflow authority. A diagnostic record that references an unknown target must be treated as orphan telemetry, not rendered as a newly invented component.
+The kernel sampler intentionally **does not emit `targetId`, component CPU or component RAM**. Quickshell QML objects share the shell process, so Linux does not provide truthful per-QML CPU/RAM ownership.
 
-Important existing identity layers must remain distinct:
+#### Canonical identity and QML activity
 
-- runtime target examples: `bar`, `bar/media`, `bar/clock`, `bar/resources`, `dashboard`, `sidebar/left`, `waffle/bar`;
-- graph-node examples: `bar.loader`, `media.timer`, etc.;
-- loader/config `panelId` values such as `iiBar` or `iiSidebarLeft` are implementation IDs, not the public runtime identity.
+`CodeWorkflowRuntime` remains the canonical identity/runtime-evidence authority. Diagnostics consumes its target catalog, records and lifecycle events rather than maintaining a second component registry.
 
-`CodeWorkflowRuntime.targetIdForPanel()` is a useful future-facing canonicalizer (`iiFuturePanel -> future-panel`, `wFoo -> waffle/foo`), but add collision validation. Two incompatible declarations must never silently collapse onto one target ID. Legitimate renderer/host variants that intentionally represent the same target must satisfy the same canonical identity contract.
+The compact **QML activity** table is therefore lifecycle evidence only:
 
-#### Shared Workflow / Diagnostics runtime evidence
+- resident instances;
+- visible instances;
+- recent lifecycle event counts.
 
-Do not build an independent Diagnostics component registry. The intended ownership is:
+It is explicitly labeled **“lifecycle · not CPU/RAM”**. Do not convert those counters into fake resource percentages or attach shell-process metrics to individual QML components without a reviewed attribution mechanism.
 
-```text
-                      canonical identity
-                           |
-                CodeWorkflowRuntime / IR
-                           |
-              +------------+------------+
-              |                         |
-          Workflows                Diagnostics
-   structure/relations/source    telemetry/debug/resource
-```
+Unknown source/runtime boundaries remain discovery/coverage problems, not permission to invent a new Diagnostics identity.
 
-`CodeWorkflowRuntime` already owns descriptors, lifecycle state, instances, events, source paths, internal flags and remote snapshot transport. Reuse/extend that evidence path rather than duplicating it.
+#### Current Settings presentation
 
-Standalone Material Settings and Waffle Settings are separate Quickshell processes. Diagnostics sampling must therefore execute in the **main shell process** and be exposed to Settings through IPC. Do not measure the Settings process and report it as Hadalis shell usage. The existing `codeWorkflowRuntime` remote-snapshot architecture is the model to reuse/generalize.
+Both Settings families use the shared widgets under `modules/settings/widgets/` and the same `BtopDashboard.qml`:
 
-A future snapshot can carry diagnostics evidence without duplicating identity metadata, conceptually:
+- Material: `modules/settings/RuntimeDiagnosticsConfig.qml`;
+- Waffle: `modules/waffle/settings/pages/WDiagnosticsPage.qml`.
 
-```js
-{
-  epoch,
-  outputs,
-  descriptors,
-  records,
-  events,
-  diagnostics: {
-    shell: {...},
-    targets: {
-      "bar": {...}
-    },
-    probes: {...}
-  }
-}
-```
+The production compact view keeps one-viewport observability density: CPU, Memory, GPU and Network summaries; QML lifecycle activity; real shell helper processes; and a compact Hadalis runtime strip. Error provenance is surfaced explicitly for lease, bridge, evidence and sampler failures.
 
-#### Discovery must support components that do not exist yet
+Presentation may continue to evolve toward the maintainer's modern observability/resource-suspects concept, but the evidence boundaries above are hard contracts. UI refinement must not reintroduce fake per-component resources, background sampling or a second identity catalog.
 
-Do not maintain a fixed `KnownDiagnosticsComponents` list.
+#### Regression coverage already in-tree
 
-Source discovery should reuse the existing Tree-sitter / Code Workflow analysis stack and index the live Hadalis source tree. Cache by source path + content hash/parser version and rescan changed files only when Diagnostics/Workflow needs the index; do not run a continuous whole-tree watcher.
+Focused contracts include:
 
-The analyzer must recognize runtime/capability boundaries, including at least:
+- `scripts/test-runtime-diagnostics-session-contract.py`;
+- `scripts/test-runtime-diagnostics-btop-contract.py`;
+- `scripts/test-runtime-diagnostics-core-history.py`;
+- `scripts/test-runtime-diagnostics-page-state.py`;
+- `scripts/test-runtime-diagnostics-remote-lease.py`;
+- `scripts/test-runtime-diagnostics-source-boundaries.py`;
+- `scripts/test-runtime-diagnostics-sampler.py`;
+- `native/scripts/check-diagnostics-parity.py`.
 
-- `Loader`, `LazyLoader`, `Repeater`, `Instantiator`, `Variants`;
-- `Component.createObject()`;
-- `Qt.createComponent()`;
-- `Qt.createQmlObject()`;
-- dynamic Loader `setSource()`;
-- `Timer`, `Process`, `FileView`/watchers, sockets and network-capable constructs.
+These contracts are source-level evidence, not a substitute for the exact-SHA maintainer validator or live desktop acceptance.
 
-Current repo examples that prove these paths matter include dynamic monitor objects in `Brightness.qml`, provider strategies in `Ai.qml`, notification/timer objects in `Notifications.qml`, AP objects in `Network.qml`, asynchronous `PolkitServiceImpl` creation, and dynamically generated MicroTeX `Process` objects in `LatexRenderer.qml`.
+#### Remaining Diagnostics work
 
-New creation boundaries that the analyzer sees but runtime instrumentation does not cover should be reported as **untracked runtime boundaries**, not ignored. This is the future-proofing mechanism.
+The old research plan included deeper Target Debug Mode, broader ownership inference and profiler-style inspection. Those ideas are **not automatically current release blockers** now that the production MVP exists. Promote them only when the maintainer explicitly makes them active scope.
 
-#### Custom widgets are first-class future targets
+Current open work is narrower:
 
-Source discovery is not limited to the Git checkout. `CustomWidgets.qml` discovers user widgets under:
-
-```text
-~/.config/inir/widgets/<id>/
-```
-
-and `Background.qml` loads them dynamically using `Loader.setSource()`. The Widget SDK gives custom widgets broad QML access, including `Process` and network calls.
-
-Use the custom-widget manifest ID as the basis for a canonical Workflow-owned namespace. Register loaded custom-widget instances at the dynamic loader boundary. Diagnostics then references that canonical target, so widgets installed after this feature ships appear without editing Diagnostics code.
-
-#### Loader/lifecycle instrumentation
-
-Instrument existing lifecycle ownership points instead of attaching a second observer to every component. `CodeWorkflowRuntimeDeclaration` already sits beside the loaders that decide whether major shell surfaces exist and deliberately avoids forcing `LazyLoader.item` while asynchronous loading is in progress.
-
-Extend that path with timestamps/counters such as:
-
-- loading start / resident / visible / hidden / unloaded transitions;
-- load count and unload count;
-- last/aggregate load duration;
-- resident/visible durations;
-- visibility transition count;
-- instance attach/detach lifetime.
-
-Only access a loader's item after it is safely ready/active. Never read `LazyLoader.item` during async loading in a way that forces synchronous completion.
-
-Explicit `CodeWorkflowRuntimeTarget` remains useful for meaningful nested targets such as `bar/media`; root loader-owned components should not be forced to add redundant registrations merely for Diagnostics.
-
-#### Diagnostics session lifecycle
-
-Introduce an explicit session/lease protocol:
-
-```text
-Diagnostics page becomes current
-  -> begin/acquire session
-  -> shell samplers ON
-
-Diagnostics page stops being current
-  -> end/release session
-  -> all expensive samplers OFF
-```
-
-Material page caching means `visible == false` or object destruction is not a sufficient lifecycle signal. Standalone Settings must acquire/release over IPC. Use TTL/heartbeat cleanup for abnormal client disappearance.
-
-Normal mode should remain cheap and mostly event-driven. High-frequency property sampling/tracing is enabled only for a selected target in Target Debug Mode.
-
-#### Resource metric truth model
-
-Every metric should internally carry provenance such as:
-
-```text
-scope       system | shell-process | child-process | target
-method      proc-stat | schedstat | smaps-rollup | drm-fdinfo | tracked-request | load-delta | ...
-confidence  kernel | exact-child | attributed | experimental
-```
-
-Never render kernel-exact data and experimental attribution as if they were equivalent.
-
-##### CPU
-
-- System CPU: reuse/align with existing `ResourceUsage` `/proc/stat` data.
-- Main Quickshell CPU: calculate from the shell PID using process CPU time (prefer `/proc/<pid>/schedstat` or equivalent delta-based process accounting).
-- Owned subprocess CPU: exact per PID, including descendant process tree where appropriate.
-- QML component CPU: **not directly measurable as a kernel percentage** because QML targets share a process/engine. Do not display fake `Bar 3.2%` style values. Instead show meaningful target activity: timer wakeups, polls, event/signal counts, callback durations, process work, and optionally a clearly labeled controlled CPU-impact delta. Deep binding/function attribution belongs to Qt QML Profiler integration, not invented telemetry.
-
-##### RAM and Swap
-
-- System RAM/swap: reuse `/proc/meminfo`.
-- Main Quickshell memory: while Diagnostics is open, prefer `/proc/<pid>/smaps_rollup` for RSS/PSS/Anon/File/Shmem/private/shared and Swap/SwapPss; existing `scripts/inir` already demonstrates `VmRSS`/`VmSwap` process reads.
-- Owned subprocess memory/swap: exact per PID.
-- QML component RAM/swap: Linux cannot assign shared QML engine/JS heap/scenegraph/cache memory to one component. Do not claim exact per-component RAM/swap.
-- Provide an explicit **Controlled Footprint Measurement** for safely loadable/unloadable targets: sample before load, after settle, after unload, optionally with a user-requested GC stabilization step. Report results as `Load Δ PSS`, `Retained Δ PSS`, `Load Δ Swap`, etc., never as `Component RAM = ...`.
-- `MemoryPressureService` already exposes JSGCHeap mapping counts and manual GC; reuse it as supporting evidence. Do not run forced GC in the normal sampler.
-
-##### GPU
-
-- System GPU: reuse current `ResourceUsage` AMD/NVIDIA/Intel paths where appropriate.
-- Quickshell GPU: capability-detect Linux DRM per-client `/proc/<pid>/fdinfo/*` counters (`drm-engine-*`, resident/total/active memory) where the driver exposes them; fall back gracefully to supported vendor tooling.
-- Owned GPU child processes can be attributed when driver/process APIs expose them.
-- Pure QML component GPU percentage/VRAM is not exact. Use activity evidence or controlled load/VRAM deltas and label their provenance.
-
-##### Network
-
-`SysMonWidget.qml` currently reads `/proc/net/dev`, which is **system/interface traffic**, not Quickshell traffic. Keep this as SYSTEM network only.
-
-Per-component/service network requires attribution at Hadalis-owned request boundaries:
-
-- track request owner using canonical `TargetRef`;
-- record start/end, bytes up/down, status and duration;
-- migrate direct `XMLHttpRequest` users toward a shared tracked request wrapper;
-- for `curl`/helper requests, use request/process telemetry such as curl upload/download byte accounting where practical;
-- source discovery must detect network-capable but uninstrumented paths and report attribution coverage rather than claiming complete coverage.
-
-Known direct XHR users currently include `Booru`, `AnimeService`, `NewsService` and `DashGithub`. Other network activity is performed through `Process`/curl/helper paths, remote media/images and future WebEngine/WebSocket paths. Do not claim 100% network ownership until those routes are instrumented.
-
-The disabled/future `WebAppView.qml` is especially important: when WebEngine support returns it may keep audio/WebSocket activity alive in background and QtWebEngine uses child processes. It must be discovered as a resource owner without adding a hardcoded Diagnostics entry.
-
-#### Process ownership
-
-Hadalis uses `Quickshell.Io Process` extensively. `Process.processId` makes owned child-process CPU/RAM/swap/IO attribution valuable and much more exact than QML-level estimates.
-
-Create a shared tracked-process ownership contract over time:
-
-```text
-canonical TargetRef
-  -> Process PID
-     -> descendants
-        -> CPU/RSS/PSS/Swap/IO/threads/faults
-```
-
-Do not require a whole-repo migration in the first commit. The source analyzer can mark bare `Process` usage as process-capable/unattributed, while standard tracked process wrappers provide full telemetry for migrated/new code.
-
-`Quickshell.execDetached()` is intentionally untracked after launch; only commands worth diagnosing should migrate to an owner-aware launcher/wrapper. Trivial actions such as notifications need not be migrated first.
-
-#### Target Debug Mode
-
-Selecting a runtime target should allow an explicit high-detail debug session without turning the entire shell into a continuous profiler. Planned capabilities:
-
-- live lifecycle/instance/output/source inspector;
-- source-declared primitive property watch;
-- before/after snapshot and diff;
-- lifecycle/event timeline;
-- timer/poller/wakeup and signal/activity trace;
-- service/lease dependency view;
-- owned subprocess tree and exact child resources;
-- tracked network request view;
-- load/unload history;
-- source navigation and `Open in Workflow`;
-- target highlight/picker where geometry authority exists;
-- controlled memory/swap/GPU footprint measurement;
-- bounded trace capture;
-- runtime invariant checks for churn/orphan activity/hidden wakeups/lease mismatches.
-
-Use the same `CodeWorkflowSession.selectedTargetId` where practical so Diagnostics -> Workflow navigation preserves the exact canonical target.
-
-Source-declared properties can be discovered by the existing analyzer, allowing new components to expose watchable properties without Diagnostics knowing their names in advance. Serialize only safe primitive values; do not recursively serialize arbitrary QObject/model/JS graphs.
-
-#### Picker / deep-inspection boundary
-
-Do not promise arbitrary live QObject picking in the pure-QML MVP. Existing Workflow hit-testing/geometry is reliable for registered runtime targets and can be generalized for those targets. Source-only objects remain inspectable structurally.
-
-A future native Qt meta-object inspector could enumerate arbitrary QObject children/properties and become another runtime evidence provider. Do not introduce a native plugin merely to complete MVP, and do not change TargetRef/Workflow identity if native inspection is added later.
-
-#### Services, timers, watchers and resource leases
-
-The service audit found extensive `Timer`, `Process`, `FileView` and dynamic activity across both `services/qmldir` and `services/deferred/qmldir`. Important examples include Audio, Brightness, GameMode, MprisController, LocalMusic, Network, ResourceUsage, ShellUpdates, Wallpapers, Weather, YtMusic, CavaService, Cliphist, EasyEffects, InnerTube, LauncherSearch and PackageSearch.
-
-Therefore wakeups, process spawns and file/socket activity are first-class diagnostics capabilities. A useful component/service row can report:
-
-```text
-wakeups/min
-polls/min
-process spawns
-active child count
-consumer/lease count
-last activity
-```
-
-Where services currently expose only a numeric consumer count, gradually move toward canonical owner IDs so Diagnostics can show who is keeping a service alive. Example: `ResourceUsage` should eventually explain which targets hold its lease rather than only reporting `2 consumers`.
-
-#### Resource Owners view
-
-In addition to a target list, provide reverse attribution views such as:
-
-```text
-NETWORK OWNERS
-Weather              ...
-Dashboard / GitHub   ...
-
-PROCESSES
-CavaService
-  -> cava PID ...
-
-RESOURCE LEASES
-ResourceUsage
-  -> Bar · Resources
-  -> Sidebar Right
-```
-
-This is the semantic equivalent of btop's “what is consuming resources?” workflow.
-
-#### Runtime anomaly checks
-
-Diagnostics may flag evidence-backed conditions such as:
-
-- rapid load/unload churn;
-- hidden/resident targets with unexpected fast wakeups;
-- orphan target instances;
-- service consumer/owner mismatch;
-- owned child process surviving target destruction;
-- network activity after owner unload;
-- canonical identity collisions;
-- stale/ambiguous semantic anchors;
-- untracked dynamic creation/network/process boundaries.
-
-Only guaranteed invariant violations should be called errors. Heuristics should be labeled `Investigate`, not asserted as bugs.
-
-#### Settings integration
-
-Material currently uses persisted positional page indices and ends with Workflow at index 30. Append Diagnostics at **index 31**; do not insert it in the middle.
-
-Waffle Settings maintains a separate positional page array and currently ends at index 18. If Diagnostics is exposed there, append it at **index 19**. Do not force Material/Waffle numeric indices to match; use the semantic page key `diagnostics` for cross-renderer navigation.
-
-Settings-visible explanatory copy must remain terse. Put metric provenance/details in tooltips/inspectors rather than paragraph-length page text.
-
-#### Performance policy
-
-The feature must not become the source of the problem it measures.
-
-Normal Diagnostics session:
-- shell/system CPU/network sampling around 1s is a reasonable starting point;
-- expensive memory/GPU probes can run at a slower cadence;
-- target lifecycle/activity should be event-driven where possible;
-- no whole-QObject-tree polling;
-- no source-tree reparse every sample;
-- bounded histories/ring buffers only.
-
-Target Debug Mode may temporarily increase sampling for one selected target. Stop all high-frequency work when the target/session closes.
-
-Exact intervals are implementation tuning and must be benchmarked on the maintainer's actual environment before being treated as fixed.
-
-#### Workflow polling follow-up
-
-Standalone `CodeWorkflowRuntime` currently has a periodic remote snapshot refresh path. As Diagnostics introduces explicit consumer sessions, consider moving Workflow remote refresh to the same consumer/lease model so Workflows does not poll when neither Workflow nor Diagnostics needs runtime evidence. Do this only when it can preserve current Workflow behavior; it is a follow-up, not a reason to fork the runtime transport.
-
-#### Implementation order
-
-1. Add canonical `TargetRef` / identity collision contracts and regression tests; explicitly prevent Diagnostics-owned labels for Workflow entities.
-2. Add on-demand Diagnostics session IPC with client TTL/heartbeat and prove sampler work is zero when the page is not current.
-3. Add exact shell/system samplers: CPU, RSS/PSS, Swap, IO, system network and capability-detected GPU.
-4. Expand source discovery for dynamic creation APIs, capabilities and custom widgets; report untracked boundaries.
-5. Extend existing Workflow runtime declarations/targets with lifecycle timing/counters instead of adding parallel loader observers.
-6. Add tracked process ownership and descendant resource accounting.
-7. Add tracked network ownership for XHR/curl/helper paths plus explicit attribution-coverage reporting.
-8. Build the Diagnostics Settings UI: system/shell overview, target table, provenance, Resource Owners and process tree.
-9. Add Target Debug Mode: property watches, snapshots/diffs, timelines/traces, leases, footprint measurement and anomaly checks.
-10. Consider native QObject/network inspection and Qt QML Profiler integration only after the pure-QML/runtime-evidence MVP is stable.
-
-#### Validation contracts required before calling the feature complete
-
-Add regression coverage that proves at least:
-
-- `bar -> Bar`, `bar/media -> Bar · Media`, `dashboard -> Dashboard`, `sidebar/left -> Sidebar Left`, `waffle/bar -> Waffle Bar` resolve through Workflow identity and cannot be renamed by Diagnostics;
-- a synthetic future panel is discovered without adding it to a Diagnostics catalog;
-- a new/untracked `LazyLoader` or dynamic creation boundary is reported;
-- a custom widget installed after build can be discovered and registered;
-- a new singleton/service entry is discoverable without Diagnostics hardcoding its name;
-- standalone Settings measures the main shell, not the Settings process;
-- leaving Diagnostics stops all Diagnostics-owned fast timers/processes/samplers even while the page remains cached;
-- identity collisions and orphan telemetry fail/report rather than inventing a second target;
-- multi-output instances remain distinct under one canonical target;
-- reload/family-switch stale generations cannot be mistaken for the new generation;
-- metric UI preserves provenance so kernel-exact values are never presented as component-exact estimates.
-
-Research is complete for the architecture. Remaining unknowns such as real `smaps_rollup` cost, DRM driver coverage and sampler overhead are implementation-time runtime benchmarks, not unresolved architecture questions.
+1. refine the Settings presentation into a modern observability/resource-suspects console without breaking the truthful evidence model;
+2. keep Material and Waffle presentation behavior aligned where they share Diagnostics primitives;
+3. validate real sampler overhead, DRM-driver availability and stale/error behavior on the maintainer runtime;
+4. preserve demand-driven lifecycle while future Workflow/runtime instrumentation evolves.
 
 ## 2. v1.0 product direction
 
@@ -507,9 +249,9 @@ Further equalizer presentation experiments are planned/deferred rather than curr
 
 ## 3. v1.0 release blockers
 
-Checkboxes below are **release gates**, not an assertion that no partial implementation exists. Check an item only after source review and the relevant local/runtime validation.
+Checkboxes below are **release gates**, not an assertion that no partial implementation exists. A line explicitly labeled **source-complete** may be checked once its source/contract work is complete; runtime-sensitive acceptance remains open until the relevant local/live validation passes.
 
-> **Current release status (2026-09-23):** completed source-side work is removed from this README once it is no longer active work; historical implementation detail belongs in Git history / `CHANGELOG.md`. The release gates below remain open until their required source audit and authoritative local/runtime validation are complete. Current `dev` already contains the source-side Dashboard/Search crossfade, SongRec geometry cleanup, redesigned Dashboard System Monitor, horizontal Available Modules row, Local Music stop/resume fallback, unified media controls/CAVA work, connected-surface/iRiS implementation, Material-only public theme boundary, ThinkFan integration, broad legacy perimeter-runtime removal and the compact System Monitor popup refinement that reserves a two-digit CPU Load width and adds RPM/Level icons. Material-only cleanup is still actively collapsing remaining live surfaces and is not complete until the active-tree residue audit plus local/runtime validation pass. Those implementations are not repeated as completed tasks below; only unresolved validation or cleanup work remains listed.
+> **Current release status (2026-09-25):** current `dev` has the production Rust cutover, demand-driven Runtime Diagnostics MVP, Material-only public Global Theme boundary, iRiS connected-surface baseline, ThinkFan integration, compact System Monitor refinements, current Calendar/Weather composition and the existing media/equalizer implementation. Rust/native and Diagnostics now have dedicated parity/contract coverage. Remaining release work is primarily live desktop acceptance, hardware/compositor validation, the known Settings/navigation defect, final active-tree residue cleanup, and exact-candidate validation. Historical implementation sequences belong in Git history / `CHANGELOG.md`, not in this active checklist.
 
 ### A. Screen Edge and connected surfaces — P0
 
@@ -578,13 +320,18 @@ Checkboxes below are **release gates**, not an assertion that no partial impleme
 
 Material is the **single canonical Global Theme** for Hadalis 1.0.
 
-- [ ] Remove every non-Material Global Theme option from Settings, menus, previews and any user-facing theme selector.
-- [ ] Remove non-Material Global Theme runtime branches, loaders, delegates, theme registries and alternate token/palette routing that are no longer required by Material.
-- [ ] Remove dead non-Material theme assets and imports when no active Material path or supported panel family consumes them.
-- [ ] Remove or update stale tests, docs and configuration examples that imply multiple Global Themes remain supported.
-- [ ] Normalize old persisted non-Material theme values to Material safely; do not resurrect an old renderer/theme only to honor a legacy value.
-- [ ] Keep only the minimal migration compatibility needed to read an old value and resolve it to Material, then delete compatibility code that no current caller needs.
-- [ ] Material must remain visually correct across Bar, Screen Edge, popups, Sidebars, Overview, Settings and Waffle after the cleanup.
+**Source-complete on current `dev`:**
+
+- [x] Public Settings/Welcome/GlobalActions Global Theme selection is Material-only.
+- [x] `Appearance.globalStyle` is runtime-clamped to `material`; legacy persisted values cannot reactivate alternate shell-wide renderers.
+- [x] Retired Bar renderer families and Dock style families are absent from the live runtime graph; Dock compatibility converges to `panel`.
+- [x] Legacy UI locale/style compatibility is normalization-only rather than an alternate runtime path.
+- [x] Material-only regression guards cover Settings, global-style routing and public documentation contracts.
+
+**Release acceptance still open:**
+
+- [ ] Run a final active-tree residue audit and remove any remaining live non-Material Global Theme branch/asset/doc reference that is not required by a current supported caller or migration shim.
+- [ ] Validate Material rendering across Bar, Screen Edge, connected popups, Sidebars, Overview, Settings and Waffle on the exact release candidate.
 
 ### H. Legacy/compatibility cleanup — P1
 
@@ -596,19 +343,21 @@ Material is the **single canonical Global Theme** for Hadalis 1.0.
 
 ## 3.1 Latest maintainer runtime findings
 
-Only unresolved runtime findings belong here. Remove an item after the maintainer accepts the fix on the target desktop instead of retaining a completed-history checklist.
+Only unresolved runtime findings belong here. Remove an item after the maintainer accepts the fix on the target desktop instead of retaining completed history.
 
-- **Settings navigation indicator:** still unresolved. Expanding/collapsing **Headings** can make the active task-tab indicator jump downward. The latest source attempt improved stability but did not eliminate the defect, so it is not accepted. Do not stack another workaround on top; re-audit and remove/replace the failed geometry/lifecycle approach before the next implementation.
-- **System Monitor popup refinement:** the source-side two-digit CPU Load width floor and RPM/Level Material icons are on `dev`; live-validate that CPU changes across one/two digits no longer resize the popup and that the fan metrics remain aligned/readable.
-- **Shell boot integrity:** the duplicate `bindingPhase` declaration in `CodeWorkflowTransaction.qml` has a source fix, but the installed/runtime shell must still be updated and confirmed to start without `Type ... unavailable`, duplicate-identifier or Code Workflow singleton construction failures.
-- **Connected-surface acceptance:** Popup, Left/Right Sidebar, Dashboard, Settings and OSK still require live Niri validation for outward contact geometry, no seam/gap, correct edge ownership, hover transfer/retract and fractional-scale/multi-output behavior. If a visual fix fails acceptance, revert it before trying a different geometry strategy.
+- **Runtime Diagnostics UI:** the backend/session/evidence path and compact shared dashboard are source-complete. Current work is presentation refinement toward a modern observability/resource-suspects console. Preserve demand-driven sampling, main-shell measurement, explicit error provenance and the “QML lifecycle, not CPU/RAM” truth boundary.
+- **Rust production backend:** source cutover is complete. Rust is the default selector and supported install/package paths ship `inir-inputd`, `inir-mpdd`, `inir-native` and `inir-theme`; Python remains explicit rollback/fail-soft compatibility. Do not treat benchmark selector state as the production contract.
+- **Settings navigation indicator:** still unresolved. Expanding/collapsing **Headings** can make the active task-tab indicator jump downward. The previous attempt is not accepted; re-audit/replace the failed geometry or lifecycle approach rather than stacking another workaround.
+- **System Monitor popup refinement:** source-side two-digit CPU Load width reservation and RPM/Level Material icons are present; live-validate that one/two-digit CPU changes no longer resize the popup and fan metrics remain aligned/readable.
+- **Shell boot integrity:** source guards exist for recent Code Workflow construction issues, but the installed/runtime shell must remain free of `Type ... unavailable`, duplicate-identifier and singleton-construction failures on the exact candidate.
+- **Connected-surface acceptance:** Popup, Left/Right Sidebar, Dashboard, Settings, Dock and OSK still require live Niri validation for contact geometry, seam/gap behavior, edge ownership, hover transfer/retract, fractional scale and multi-output.
 - **Screen Edge / Bar lifecycle:** validate idle/maximized visibility, width/radius/shadow settings, auto-hide ownership and fullscreen enter/exit without stranded or blank Bar content.
-- **Music/media:** validate Local Music Stop -> long idle -> Play, bulk folder/track selection, Play Selection/Add to Queue, and unified Shuffle/Repeat/CAVA behavior across popup/sidebar/dashboard. CAVA and EasyEffects DSP lifecycle still need live audio/player-switch/reopen validation.
-- **Dashboard/Overview:** the mapped warm lifecycle and tuned 32px/360ms `OutCubic` entrance + 260ms `InCubic` exit remain, but the transient whole-Dashboard scene-graph cache was runtime-rejected because it nested around PlayerControl artwork/mask layers and could snapshot a cyan/partial media frame. That cache is removed. Dashboard Media now keeps the shared PlayerControl visual tree resident while only CAVA/Equalizer activity sleeps when hidden, and standalone `presentationActive` remains true through the complete exit slide. Live-validate that media artwork/controls never flash cyan, rebuild or disappear during open/close, while the slide remains smooth.
-- **Calendar/Weather:** validate responsive Calendar sizing/event interaction and the fixed-footprint two-tab Weather wheel/slide behavior across supported scaling.
-- **ThinkFan/TLP:** validate the installed helper/polkit bridge, profile-level synchronization, promptless active-session authorization and uninstall ownership on the maintainer's hardware.
-- **Material-only cleanup:** source cleanup is actively progressing across remaining leaf/widget/plugin/overlay surfaces. The latest pass removed retired Global Style entry points from Waffle Settings, Welcome and GlobalActions; collapsed WindowDialog, StyledOverlayWidget, shared chip/button/navigation/dialog primitives, anime/plugin surfaces and multiple Sidebar leaf widgets to their Material fallbacks; and expanded regression guards around those paths. Run a fresh active-tree residue audit and remove any remaining live non-Material Global Theme branches/assets/docs outside intentional migration compatibility before calling this gate complete.
-- **Release gate:** run `bash scripts/validate-maintainer-local.sh` and the Niri/Quickshell live smoke pass on the exact candidate SHA before closing any runtime-sensitive P0 gate.
+- **Music/media:** validate Local Music Stop -> long idle -> Play, bulk folder/track selection, queue operations and unified Shuffle/Repeat/CAVA behavior. CAVA/EasyEffects DSP lifecycle still needs live audio/player-switch/reopen validation.
+- **Dashboard/Overview:** live-validate the mapped warm lifecycle and tuned motion without the rejected whole-Dashboard scene-graph cache; artwork/controls must not flash cyan, rebuild or disappear during open/close.
+- **Calendar/Weather:** validate responsive Calendar interaction and the fixed-footprint two-tab Weather wheel/slide behavior across supported scaling.
+- **ThinkFan/TLP:** validate installed helper/polkit reconciliation, profile-follow synchronization, active-session authorization and uninstall ownership on maintainer hardware.
+- **Material-only cleanup:** the public/runtime boundary is source-complete; only intentional migration compatibility may remain. Finish the final active-tree residue audit and live visual acceptance before closing the gate.
+- **Release gate:** run `bash scripts/validate-maintainer-local.sh` plus Niri/Quickshell live smoke tests on the exact candidate SHA before closing runtime-sensitive P0 gates.
 
 ## 4. Connected-surface architecture contract
 
@@ -681,10 +430,7 @@ The maintainer's local pass is authoritative. At minimum, validate the exact can
 bash scripts/validate-maintainer-local.sh
 ```
 
-The reversible Python/Rust backend trial has its own measured status, open
-coverage, and acceptance steps in [native/README.md](native/README.md). Its
-helper benchmarks do not replace this repository-wide gate or live desktop
-validation.
+The qualified Rust workspace is now the **production native backend**. The canonical selector defaults to Rust, supported source/package/Nix install paths ship the native binaries, and migration `050-rust-native-default` promotes existing installs. Python implementations remain an explicit rollback/fail-soft path. Native production/parity checks and benchmark history are documented in [native/README.md](native/README.md), but they do not replace this repository-wide gate or live desktop validation.
 
 Then perform live desktop checks:
 
@@ -741,24 +487,22 @@ To avoid future contradictions:
 
 If the maintainer gives a newer explicit instruction, that instruction supersedes this document and this README should be refreshed to match it.
 
-## 11. Current unfinished handoff (2026-09-23)
+## 11. Current unfinished handoff (2026-09-25)
 
-This section contains **unfinished work only**. When an item is source-complete *and* its required local/runtime acceptance has passed, delete it from this section rather than leaving a checked task or a historical implementation narrative.
+This section contains **unfinished work only**. Source-complete migrations/features belong in the status sections above; completed history belongs in Git / `CHANGELOG.md`.
 
-1. **Boot integrity:** update/reload the maintainer runtime and confirm the Code Workflow Binding lifecycle fix eliminates the startup crash chain through `CodeWorkflowTransaction -> CodeWorkflowSession -> CodeWorkflowRuntime -> CodeWorkflowPicker`. Any new boot blocker takes precedence over visual polish.
-2. **Settings task-tab indicator:** the Headings expand/collapse path still makes the indicator jump downward. The previous fix is not accepted; before another attempt, re-audit and remove/replace the failed indicator geometry/lifecycle approach instead of stacking a compensating patch.
-3. **System Monitor popup:** source refinement is present on `dev` (two-digit CPU Load width floor plus RPM/Level icons). Live-validate that one/two-digit CPU changes no longer resize the popup and that the fan row remains aligned.
-4. **Connected surfaces:** complete live acceptance for iRiS/direct-seam contact geometry across normal ii Popups, Left/Right Sidebar, Dashboard, Settings, Dock and OSK on top/bottom/left/right ownership, fractional scale and multi-output. Preserve the locked physical Screen Edge/Bar geometry.
-5. **Screen Edge / Bar lifecycle:** verify idle/maximized visibility, configurable width/radius/shadow, auto-hide ownership, fullscreen enter/exit, lock/unlock and output transitions without blank or stranded surfaces.
-6. **Music/media:** live-test Local Music Stop/resume after long idle, bulk selection actions, queue operations and the unified Shuffle/Repeat/CAVA surfaces. Validate the 10-band EasyEffects DSP and CAVA lifecycle through pause/resume, player switching and reopen.
-7. **Dashboard/Overview:** live-validate the mapped warm Dashboard lifecycle and tuned motion with no whole-surface motion FBO: no widget-tree rebuild after first use; native surface mapped with empty input/render sleep while closed; entrance 32px/360ms `OutCubic`, exit 260ms `InCubic`, no opacity/scale fade. Dashboard Media must keep its PlayerControl visual state resident, preserve artwork/palette/masks across reopen, stay fully drawn through exit, and only suspend CAVA/Equalizer after the visible slide completes.
-8. **Calendar/Weather:** finish responsive layout and gesture/transition smoke tests without introducing a second date/weather backend or screenshot-specific geometry.
-9. **ThinkFan/TLP:** validate installed helper/polkit reconciliation, profile-follow synchronization, active-session authorization and uninstall ownership on supported hardware.
-10. **Material-only cleanup:** continue the active-tree residue audit outside intentional migration shims. Recent source work has already removed retired Global Style selectors/actions, dead Welcome/overlay style render trees, and a broad set of shared controls plus Sidebar/plugin/anime leaf branches; focused regression guards now cover those paths. Keep removing remaining live non-Material theme branches/assets/docs only when their callers are proven dead, and do not delete the inert compatibility aliases until the caller audit reaches zero.
-11. **Runtime Diagnostics / Quickshell btop:** architecture research is complete in §1.3. Implement it without creating a second identity/catalog beside Workflows. Diagnostics must be on-demand only while its tab is current; provide CPU/RAM/Swap/GPU/Network with exact-vs-attributed provenance; future QML components/services/custom widgets/dynamic creation boundaries must be discoverable without hardcoded names; start with canonical identity/session contracts and tests before UI.
-12. **Release validation:** run the canonical local validator plus Niri live smoke tests on the exact candidate SHA; keep Hyprland as a compatibility smoke pass.
+1. **Runtime Diagnostics presentation:** keep the implemented lease/session/native-evidence architecture and redesign the Settings surface toward the agreed modern observability/resource-suspects console. Do not add background sampling, a second component catalog or fake per-QML CPU/RAM. Preserve Material/Waffle shared primitives and compact one-viewport behavior unless the maintainer explicitly changes that UX constraint.
+2. **Settings task-tab indicator:** Headings expand/collapse can still move the active indicator downward. Re-audit the failed geometry/lifecycle approach before making another fix.
+3. **System Monitor popup:** live-validate CPU width stability and ThinkFan RPM/Level alignment.
+4. **Connected surfaces:** complete live acceptance for iRiS/direct-seam contact across ii Popups, Left/Right Sidebar, Dashboard, Settings, Dock and OSK on top/bottom/left/right ownership, fractional scale and multi-output. Preserve locked physical Screen Edge/Bar geometry.
+5. **Screen Edge / Bar lifecycle:** verify idle/maximized visibility, configurable width/radius/shadow, auto-hide ownership, fullscreen enter/exit, lock/unlock and output transitions without blank/stranded surfaces.
+6. **Music/media:** live-test Local Music idle resume, bulk selection/queue operations and unified Shuffle/Repeat/CAVA. Validate EasyEffects DSP/CAVA lifecycle through pause/resume, player switch and reopen.
+7. **Dashboard/Overview + Calendar/Weather:** finish live motion/layout/gesture smoke tests across supported scaling without reintroducing the rejected whole-surface cache or a second date/weather backend.
+8. **ThinkFan/TLP:** validate helper/polkit reconciliation, profile-follow synchronization, active-session authorization and uninstall ownership on supported hardware.
+9. **Material-only final audit:** public/runtime Material-only routing is in place; remove only proven-dead residue outside intentional migration compatibility, then perform live visual acceptance.
+10. **Release validation:** run the canonical maintainer validator plus Niri live smoke tests on the exact candidate SHA. Rust production and Diagnostics source contracts do not waive this gate.
 
-**Failure-handling requirement:** do not fix a failed fix with another patch on top. Once a commit is demonstrated to be ineffective, revert that failed change first (or revert only its exact change set if unrelated concurrent work shares the commit range), then investigate and implement a different root-cause approach.
+**Failure-handling requirement:** do not fix a failed fix with another patch on top. Once a change is demonstrated ineffective, revert that failed change first (or surgically revert its exact change set when unrelated concurrent work shares the commit), then re-investigate and implement a materially different root-cause fix.
 
 ## 12. New-conversation continuation prompt
 
@@ -767,33 +511,25 @@ Copy/paste the following into a new conversation when continuing Hadalis work:
 ```text
 Bạn đang tiếp tục phát triển repo GitHub `llocphann/Hadalis` cho Hadalis 1.0.
 
-Đọc `README.md` trên branch `dev` trước vì đó là development contract + handoff hiện tại. Làm và commit trực tiếp trên `dev`; KHÔNG tạo branch khác và KHÔNG tạo PR trừ khi tôi yêu cầu rõ ràng. Trước mỗi nhóm thay đổi quan trọng và ngay trước mỗi write có khả năng conflict, phải refetch cả `dev` và `stable`, kiểm tra commit concurrent, rồi đọc lại target file/caller trên đúng HEAD mới nhất. Không force push và không rewrite shared history.
+Làm trực tiếp trên branch `dev`; không tạo branch/PR mới và không merge/chỉnh `stable` trừ khi tôi yêu cầu rõ ràng. Trước mỗi audit quan trọng và ngay trước mọi write/ref update, refetch HEAD mới nhất của `dev`, rồi đọc lại target file/caller để tránh overwrite thay đổi concurrent. Fix forward, không force-push/rewrite shared history.
 
-TUYỆT ĐỐI không patch chồng patch. Nếu local/runtime test hoặc tôi xác nhận một commit fix không giải quyết được lỗi, phải revert commit/change-set fix không hiệu quả đó trước, khôi phục baseline tốt gần nhất, phân tích lại root cause rồi chọn hướng triển khai khác. Nếu commit chứa cả thay đổi concurrent không liên quan thì revert chính xác phần change-set thất bại bằng một commit riêng; không được giữ workaround sai rồi bồi thêm workaround thứ hai.
+Không patch chồng patch. Nếu runtime evidence/regression test xác nhận một fix không hiệu quả, revert fix/change-set đó trước rồi điều tra lại root cause.
 
-Không được coi GitHub Actions là bằng chứng release cuối cùng. Authoritative gate là `bash scripts/validate-maintainer-local.sh` và live-test Niri/Quickshell trên exact candidate SHA. Không nói release/runtime đã pass nếu chưa có kết quả local tương ứng.
+Baseline hiện tại:
+- Rust native workspace là production backend mặc định: `inir-native`, `inir-inputd`, `inir-mpdd`, `inir-theme`; Python chỉ là rollback/fail-soft path.
+- Runtime Diagnostics đã có production MVP: demand-driven lease/session, main-shell sampling, Rust diagnostics mặc định + Python fallback, CPU/RAM/Swap/GPU/Network + real child processes, Workflow identity/lifecycle evidence, shared compact Material/Waffle dashboard.
+- Diagnostics tuyệt đối không được giả per-QML CPU/RAM; QML activity chỉ là resident/visible/lifecycle events.
+- Material là Global Theme public duy nhất; legacy values chỉ được normalize, không revive renderer cũ.
+- iRiS connected surfaces là production baseline; physical Screen Edge/normal ii Bar geometry đang locked.
+- Waffle là panel family riêng được support đầy đủ, không phải legacy.
 
-Các invariant phải giữ:
-- physical Screen Edge geometry trong `ScreenEdges.qml` và normal ii Bar/VerticalBar perimeter đang locked; không tạo wedge/corner/contact patch renderer mới;
-- normal ii connected popups dùng `modules/bar/StyledPopup.qml` + `modules/common/perimeter/ConnectedSurface*` + `PerimeterTokens.qml`; không dựng popup framework thứ hai;
-- broad legacy perimeter runtime/cutover đã retire; không dựng lại;
-- Material là Global Theme public duy nhất; migration shim chỉ được normalize legacy state về Material;
-- Waffle vẫn là panel family riêng được support;
-- ThinkFan phải reuse `ThinkFanService` + helper/polkit hiện có, không tự tạo backend/config fan thứ hai;
-- Local Music dùng MPD/mpd-mpris/MPRIS làm backend hiện hành; không thêm player backend cạnh tranh.
+Ưu tiên unfinished hiện tại:
+1. refine Diagnostics thành modern observability/resource-suspects console mà không phá truth/lifecycle contracts;
+2. sửa Settings task-tab indicator;
+3. live-validate connected surfaces + Screen Edge/Bar lifecycle;
+4. live-validate media/equalizer, Dashboard/Overview, Calendar/Weather và ThinkFan/TLP;
+5. final Material-only residue audit;
+6. chạy `bash scripts/validate-maintainer-local.sh` và live Niri/Quickshell smoke test trên exact candidate SHA.
 
-Việc còn mở:
-1. Xác nhận shell boot sạch sau fix Code Workflow Binding lifecycle; không còn `Type ... unavailable` hoặc duplicate identifier.
-2. Fix dứt điểm Settings task-tab indicator: expand/collapse Headings vẫn làm indicator nhảy xuống dưới; fix trước chưa được accept, không patch chồng lên nó.
-3. Live-validate System Monitor popup refinement: CPU Load đổi giữa 1/2 chữ số không còn làm popup co giãn; RPM/Level icon và alignment đúng.
-4. Live-validate connected surfaces Popup/Sidebar/Dashboard/Settings/OSK: đúng edge, không gap, outward contact geometry, hover/retract, fractional scale và multi-output.
-5. Validate Screen Edge/Bar lifecycle: idle/maximized, width/radius/shadow, auto-hide, fullscreen enter/exit, lock/unlock.
-6. Live-test Local Music Stop -> chờ lâu -> Play, bulk selection/Play Selection/Add to Queue, queue ops, Shuffle/Repeat/CAVA trên mọi media surface; validate CAVA + EasyEffects DSP lifecycle.
-7. Live-validate Dashboard mapped warm reopen + smooth motion: không rebuild widget tree; surface vẫn mapped nhưng input rỗng/render sleep khi đóng; mở 32px/360ms `OutCubic`, đóng 260ms `InCubic`, không opacity/scale fade và không whole-surface motion FBO. Dashboard Media phải giữ PlayerControl/artwork/palette/mask resident, không chớp cyan/blank hay biến mất trong slide; CAVA/Equalizer chỉ ngủ sau khi exit slide kết thúc.
-8. Validate Calendar/Weather responsive layout và wheel/slide behavior.
-9. Validate ThinkFan/TLP helper/polkit/profile sync/uninstall ownership trên hardware thật.
-10. Tiếp tục audit active-tree Material-only residue ngoài migration compatibility.
-11. Chạy canonical local validator + Niri live smoke trên exact candidate SHA; Hyprland chỉ cần compatibility smoke.
-
-Sau mỗi nhóm thay đổi: refetch trước write, giữ commit atomic, cập nhật README chỉ với việc còn mở, xác nhận HEAD sau commit và báo root cause/goal, file đổi, SHA, source contract và phần local/runtime validation còn lại.
+Không coi GitHub Actions hay source-only test là bằng chứng release cuối cùng.
 ```

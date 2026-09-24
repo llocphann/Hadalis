@@ -5432,5 +5432,20 @@
   "No active QML targets": "No active QML targets",
   "more components": "more components",
   "Shell processes": "Shell processes",
-  "helpers": "helpers"
+  "helpers": "helpers",
+  "On-demand runtime resource diagnostics": "On-demand runtime resource diagnostics",
+  "Resource suspects": "Resource suspects",
+  "Top components and processes by meaningful runtime signals": "Top components and processes by meaningful runtime signals",
+  "Kernel + lifecycle evidence": "Kernel + lifecycle evidence",
+  "Component hotspots": "Component hotspots",
+  "Lifecycle activity — not CPU/RAM attribution": "Lifecycle activity — not CPU/RAM attribution",
+  "changes/min": "changes/min",
+  "live": "live",
+  "visible": "visible",
+  "Top helper processes": "Top helper processes",
+  "Kernel process CPU · RSS": "Kernel process CPU · RSS",
+  "Shell descendants": "Shell descendants",
+  "No shell child processes": "No shell child processes",
+  "more processes": "more processes",
+  "Source discovery error": "Source discovery error"
 }

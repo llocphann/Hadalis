@@ -12,7 +12,7 @@ WSettingsPage {
     settingsPageIndex: 19
     pageTitle: Translation.tr("Diagnostics")
     pageIcon: "info"
-    pageDescription: Translation.tr("CPU · RAM · Swap · GPU · Network")
+    pageDescription: Translation.tr("On-demand runtime resource diagnostics")
 
     readonly property bool diagnosticsActive:
         RuntimeDiagnosticsSession.pageCurrent
@@ -28,6 +28,8 @@ WSettingsPage {
     readonly property var evidence: RuntimeDiagnosticsSession.evidence
     readonly property var systemEvidence: root.evidence?.system ?? null
     readonly property var discoveryEvidence: root.evidence?.discovery ?? null
+    readonly property string discoveryStatus:
+        String(root.discoveryEvidence?.status ?? "")
     readonly property string samplerError:
         String(root.evidence?.sampler?.error ?? "")
     readonly property bool sessionHasError:
@@ -47,7 +49,13 @@ WSettingsPage {
             return Translation.tr("Diagnostics evidence error") + ": " + RuntimeDiagnosticsSession.evidenceError
         if (root.samplerError.length > 0)
             return Translation.tr("Diagnostics sampler error") + ": " + root.samplerError
-        return String(root.discoveryEvidence?.error ?? "")
+        if (root.discoveryStatus === "error") {
+            const detail = String(root.discoveryEvidence?.error ?? "")
+            return detail.length > 0
+                ? Translation.tr("Source discovery error") + ": " + detail
+                : Translation.tr("Source discovery error")
+        }
+        return ""
     }
 
     function sampleIsStale(): bool {
@@ -78,6 +86,13 @@ WSettingsPage {
         if (!root.samplerRunning || root.systemEvidence === null)
             return Translation.tr("Diagnostics starting")
         return Translation.tr("Diagnostics live")
+    }
+
+    function boundaryStatusLabel(): string {
+        if (root.discoveryStatus !== "ready")
+            return "— " + Translation.tr("boundaries")
+        return String(root.discoveryEvidence?.boundaryCount ?? 0)
+            + " " + Translation.tr("boundaries")
     }
 
     function formatUptime(value): string {
@@ -150,8 +165,7 @@ WSettingsPage {
 
             WText {
                 visible: statusRow.width >= 760
-                text: String(root.discoveryEvidence?.boundaryCount ?? 0)
-                    + " " + Translation.tr("boundaries")
+                text: root.boundaryStatusLabel()
                 color: Looks.colors.subfg
                 font.pixelSize: Looks.font.pixelSize.small
             }

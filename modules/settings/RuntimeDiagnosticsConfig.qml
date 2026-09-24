@@ -21,6 +21,8 @@ ContentPage {
     readonly property var evidence: RuntimeDiagnosticsSession.evidence
     readonly property var systemEvidence: root.evidence?.system ?? null
     readonly property var discoveryEvidence: root.evidence?.discovery ?? null
+    readonly property string discoveryStatus:
+        String(root.discoveryEvidence?.status ?? "")
     readonly property var runtimeSnapshot: root.diagnosticsActive
         ? CodeWorkflowRuntime.snapshot() : ({ records: [], events: [] })
     readonly property var runtimeRecords:
@@ -48,7 +50,13 @@ ContentPage {
         if (root.samplerError.length > 0)
             return Translation.tr("Diagnostics sampler error") + ": "
                 + root.samplerError
-        return String(root.discoveryEvidence?.error ?? "")
+        if (root.discoveryStatus === "error") {
+            const detail = String(root.discoveryEvidence?.error ?? "")
+            return detail.length > 0
+                ? Translation.tr("Source discovery error") + ": " + detail
+                : Translation.tr("Source discovery error")
+        }
+        return ""
     }
 
     function sampleIsStale(): bool {
@@ -81,6 +89,13 @@ ContentPage {
         return Translation.tr("Diagnostics live")
     }
 
+    function boundaryStatusLabel(): string {
+        if (root.discoveryStatus !== "ready")
+            return "— " + Translation.tr("boundaries")
+        return String(root.discoveryEvidence?.boundaryCount ?? 0)
+            + " " + Translation.tr("boundaries")
+    }
+
     function formatUptime(value): string {
         if (value === null || value === undefined)
             return "—"
@@ -96,6 +111,14 @@ ContentPage {
         if (hours > 0)
             return hours + "h " + minutes + "m"
         return minutes + "m"
+    }
+
+    StyledText {
+        textFormat: Text.PlainText
+        Layout.fillWidth: true
+        text: Translation.tr("On-demand runtime resource diagnostics")
+        color: Appearance.colors.colSubtext
+        font.pixelSize: Appearance.font.pixelSize.small
     }
 
     // One compact status strip replaces the old expanded live-sampling card.
@@ -162,8 +185,7 @@ ContentPage {
             StyledText {
                 textFormat: Text.PlainText
                 visible: statusRow.width >= 760
-                text: String(root.discoveryEvidence?.boundaryCount ?? 0)
-                    + " " + Translation.tr("boundaries")
+                text: root.boundaryStatusLabel()
                 color: Appearance.colors.colSubtext
                 font.pixelSize: Appearance.font.pixelSize.small
             }

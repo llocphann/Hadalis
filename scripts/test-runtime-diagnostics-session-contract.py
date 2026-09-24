@@ -225,9 +225,19 @@ for source, text in (
     )
     require(
         text,
-        'String(root.discoveryEvidence?.error ?? "")',
-        f"{source} must surface runtime boundary index failures",
+        'root.discoveryStatus === "error"',
+        f"{source} must classify runtime boundary index failures",
     )
+    require(
+        text,
+        'Translation.tr("Source discovery error")',
+        f"{source} must label actual source discovery failures",
+    )
+    if 'return String(root.discoveryEvidence?.error ?? "")' in text:
+        raise SystemExit(
+            f"FAIL: {source} must not promote optional parser unavailability "
+            "to the primary Diagnostics error channel"
+        )
     require(text, "BtopDashboard {",
             f"{source} must show the shared resource dashboard")
 

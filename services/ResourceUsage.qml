@@ -49,6 +49,11 @@ Singleton {
     property real cpuUsage: 0
     property var previousCpuStats
     property real gpuUsage: 0
+    property real networkRxBytesPerSec: 0
+    property real networkTxBytesPerSec: 0
+    property real _lastNetworkRxBytes: 0
+    property real _lastNetworkTxBytes: 0
+    property real _lastNetworkSampleMs: 0
 
     // Temperature properties (in Celsius)
     property int cpuTemp: 0
@@ -301,6 +306,9 @@ Singleton {
     function stop(): void {
         root._runningRequested = false;
         root._primed = false;
+        root._lastNetworkSampleMs = 0;
+        root.networkRxBytesPerSec = 0;
+        root.networkTxBytesPerSec = 0;
         pollTimer.stop();
         diskPollTimer.stop();
         autoStopTimer.stop();
@@ -335,6 +343,7 @@ Singleton {
         // Reload files
         fileMeminfo.reload();
         fileStat.reload();
+        fileNetDev.reload();
         fileCpuTemp.reload();
         if (!skipGpu) {
             if (root._gpuUsageSource !== "nvidia-smi")
@@ -349,6 +358,40 @@ Singleton {
         memoryFree = Number(textMeminfo.match(/MemAvailable: *(\d+)/)?.[1] ?? 0);
         swapTotal = Number(textMeminfo.match(/SwapTotal: *(\d+)/)?.[1] ?? 0);
         swapFree = Number(textMeminfo.match(/SwapFree: *(\d+)/)?.[1] ?? 0);
+
+        // Parse aggregate non-loopback network traffic from the same shared
+        // polling service instead of spawning a separate /proc/net/dev reader
+        // in each consumer.
+        const textNetDev = fileNetDev.text();
+        let totalRx = 0;
+        let totalTx = 0;
+        for (const line of textNetDev.split("\n")) {
+            const separator = line.indexOf(":");
+            if (separator < 0)
+                continue;
+            const name = line.substring(0, separator).trim();
+            if (!name || name === "lo")
+                continue;
+            const fields = line.substring(separator + 1).trim().split(/\s+/);
+            if (fields.length < 16)
+                continue;
+            totalRx += Number(fields[0]) || 0;
+            totalTx += Number(fields[8]) || 0;
+        }
+
+        const networkNowMs = Date.now();
+        if (root._lastNetworkSampleMs > 0) {
+            const elapsedSeconds = (networkNowMs - root._lastNetworkSampleMs) / 1000;
+            if (elapsedSeconds > 0) {
+                root.networkRxBytesPerSec = Math.max(
+                    0, (totalRx - root._lastNetworkRxBytes) / elapsedSeconds);
+                root.networkTxBytesPerSec = Math.max(
+                    0, (totalTx - root._lastNetworkTxBytes) / elapsedSeconds);
+            }
+        }
+        root._lastNetworkRxBytes = totalRx;
+        root._lastNetworkTxBytes = totalTx;
+        root._lastNetworkSampleMs = networkNowMs;
 
         // Parse CPU usage
         const textStat = fileStat.text();
@@ -438,6 +481,10 @@ Singleton {
     FileView {
         id: fileStat
         path: "/proc/stat"
+    }
+    FileView {
+        id: fileNetDev
+        path: "/proc/net/dev"
     }
     // Temperature sensors - k10temp for AMD CPU, amdgpu for AMD GPU
     // These paths are auto-detected at startup

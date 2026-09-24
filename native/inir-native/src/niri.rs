@@ -1734,39 +1734,9 @@ fn set_value(section: &str, key: &str, value: &str) -> Result<Outcome> {
     }
 }
 
-fn action_description(action: &str, options: &str) -> String {
-    let title_re = Regex::new(r#"hotkey-overlay-title="([^"]+)""#).unwrap();
-    if let Some(caps) = title_re.captures(options) {
-        return caps[1].to_owned();
-    }
-    let action = action.trim().trim_end_matches(';').trim();
-    if action.contains("close-window") { return "Close window".into(); }
-    if action.contains("toggle-overview") { return "Toggle overview".into(); }
-    if action.contains("screenshot") { return "Screenshot".into(); }
-    if action.contains("workspace") { return action.replace('-', " "); }
-    if action.contains("focus-") { return action.replace('-', " "); }
-    if action.contains("move-") { return action.replace('-', " "); }
-    if action.contains("audio") || action.contains("mpris") { return "Media control".into(); }
-    if action.contains("brightness") { return "Brightness".into(); }
-    action.to_owned()
-}
-
-fn action_category(description: &str, action: &str) -> &'static str {
-    let text = format!("{} {}", description.to_ascii_lowercase(), action.to_ascii_lowercase());
-    if text.contains("screenshot") { "Screenshots" }
-    else if text.contains("terminal") || text.contains("browser") || text.contains("file manager") { "Applications" }
-    else if text.contains("volume") || text.contains("mute") || text.contains("mpris") || text.contains("play") { "Media" }
-    else if text.contains("brightness") { "Brightness" }
-    else if text.contains("workspace") { "Workspaces" }
-    else if text.contains("monitor") { "Monitors" }
-    else if text.contains("resize") || text.contains("column-width") || text.contains("window-height") { "Resize" }
-    else if text.contains("layout") || text.contains("column") { "Layout" }
-    else if text.contains("move") { "Move Windows" }
-    else if text.contains("focus") { "Focus" }
-    else if text.contains("close-window") || text.contains("fullscreen") || text.contains("floating") { "Window Management" }
-    else if text.contains("overview") || text.contains("clipboard") || text.contains("settings") || text.contains("cheatsheet") { "iNiR Shell" }
-    else { "Other" }
-}
+#[path = "keybind_labels.rs"]
+mod keybind_labels;
+use keybind_labels::{action_category, action_description};
 
 fn get_binds() -> Result<Outcome> {
     let path = resolve_section_file("config.d/70-binds.kdl");
@@ -1794,8 +1764,10 @@ fn get_binds() -> Result<Outcome> {
         let options = title_re.replace_all(&options_raw, "").trim().to_owned();
         let rest = caps[3].to_owned();
         let line_number = base_line + i;
-        let action_raw = if let Some(close) = rest.find('}') {
-            rest[..close].trim().to_owned()
+        let (action_raw, action) = if let Some(close) = rest.find('}') {
+            let raw = rest[..close].trim().to_owned();
+            let action = raw.trim_end_matches(';').to_owned();
+            (raw, action)
         } else {
             i += 1;
             let mut action_lines = Vec::new();
@@ -1809,10 +1781,11 @@ fn get_binds() -> Result<Outcome> {
                 }
                 i += 1;
             }
-            action_lines.join(" ")
+            let raw = action_lines.join(" ");
+            let action = action_lines.iter().map(|line| line.trim_end_matches(';')).collect::<Vec<_>>().join(" ");
+            (raw, action)
         };
-        let action = action_raw.split_whitespace().map(|part| part.trim_end_matches(';')).collect::<Vec<_>>().join(" ");
-        let description = action_description(&action, &options_raw);
+        let description = action_description(&action);
         let category = action_category(&description, &action);
         binds.push(json!({
             "key_combo": key_combo,

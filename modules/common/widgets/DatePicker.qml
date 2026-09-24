@@ -117,18 +117,18 @@ Item {
     readonly property color colLayer2: Appearance.colors.colLayer2
     readonly property real radius: Appearance.rounding.small
 
-    implicitWidth: calendarColumn.implicitWidth + (root.compact ? 8 : 16)
-    implicitHeight: calendarColumn.implicitHeight + (root.compact ? 8 : 16)
+    implicitWidth: calendarColumn.implicitWidth + (root.compact ? 4 : 16)
+    implicitHeight: calendarColumn.implicitHeight + (root.compact ? 4 : 16)
 
     ColumnLayout {
         id: calendarColumn
         anchors.fill: parent
-        spacing: root.compact ? 4 : 8
+        spacing: root.compact ? 3 : 8
 
         // Header with month/year and navigation
         RowLayout {
             Layout.fillWidth: true
-            spacing: 8
+            spacing: root.compact ? 5 : 8
 
             // Month/Year
             ColumnLayout {
@@ -151,8 +151,8 @@ Item {
                 Rectangle {
                     id: todayAction
                     visible: root.monthShift !== 0
-                    implicitWidth: todayBtn.implicitWidth + (root.compact ? 6 : 8)
-                    implicitHeight: root.compact ? 24 : 28
+                    implicitWidth: todayBtn.implicitWidth + (root.compact ? 5 : 8)
+                    implicitHeight: root.compact ? 22 : 28
                     radius: root.radius
                     color: (todayBtnMA.containsMouse || todayAction.activeFocus) ? root.colLayer2 : "transparent"
                     border.width: todayAction.activeFocus ? 1 : 0
@@ -197,8 +197,8 @@ Item {
                     delegate: Rectangle {
                         id: navButton
                         required property var modelData
-                        implicitWidth: root.compact ? 24 : 28
-                        implicitHeight: root.compact ? 24 : 28
+                        implicitWidth: root.compact ? 22 : 28
+                        implicitHeight: root.compact ? 22 : 28
                         radius: root.radius
                         color: (navMA.containsMouse || navButton.activeFocus) ? root.colLayer2 : "transparent"
                         border.width: navButton.activeFocus ? 1 : 0
@@ -249,7 +249,7 @@ Item {
 
                 delegate: StyledText {
                     required property string modelData
-                    Layout.preferredWidth: root.compact ? 28 : 32
+                    Layout.preferredWidth: root.compact ? 24 : 32
                     horizontalAlignment: Text.AlignHCenter
                     text: modelData
                     font.pixelSize: Appearance.font.pixelSize.smallest
@@ -270,6 +270,11 @@ Item {
                 delegate: RowLayout {
                     required property int index
                     property int weekRow: index
+                    readonly property var weekCells:
+                        root.calendarLayout?.[weekRow] ?? []
+                    readonly property bool containsCurrentMonth:
+                        weekCells.some(cell => cell?.isCurrentMonth === true)
+                    visible: !root.compact || containsCurrentMonth
                     spacing: 2
 
                     Repeater {
@@ -280,8 +285,8 @@ Item {
                             required property int index
                             property var cellData: root.calendarLayout?.[parent.weekRow]?.[index] ?? {}
 
-                            implicitWidth: root.compact ? 28 : 32
-                            implicitHeight: root.compact ? 28 : 32
+                            implicitWidth: root.compact ? 24 : 32
+                            implicitHeight: root.compact ? 24 : 32
                             radius: implicitWidth / 2
                             activeFocusOnTab: true
                             Accessible.role: Accessible.Button

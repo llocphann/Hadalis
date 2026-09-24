@@ -10,7 +10,7 @@ harness="$root/scripts/native-cutover-benchmark.sh"
 [[ -x "$dispatch" ]] || fail 'native-dispatch must be executable'
 [[ -x "$harness" ]] || fail 'native cutover harness must be executable'
 
-for token in     'input-lock)'     'input-keys)'     'niri)'     'diagnostics)'     'clipboard-store)'     'mpd)'     'theme)'     'desktop-icons)'
+for token in     'input-lock)'     'input-keys)'     'niri)'     'diagnostics)'     'clipboard-store)'     'mpd)'     'mpd-daemon)'     'mpd-subscribe)'     'theme)'     'desktop-icons)'
 do
     grep -Fq "$token" "$dispatch"         || fail "native-dispatch missing route: $token"
 done
@@ -20,6 +20,8 @@ grep -Fq 'command: [root.nativeDispatchPath, "input-lock"]'     "$root/services/
 grep -Fq 'command: [root.nativeDispatchPath, "input-keys"]'     "$root/modules/onScreenKeyboard/PhysicalKeyboardFeedback.qml"     || fail 'OSK physical keyboard feedback must route through native-dispatch'
 grep -Fq 'root.nativeDispatchPath, "diagnostics"'     "$root/services/RuntimeDiagnostics.qml"     || fail 'RuntimeDiagnostics must route through native-dispatch'
 grep -Fq 'root.nativeDispatchPath, "mpd",'     "$root/services/LocalMusic.qml"     || fail 'LocalMusic MPD operations must route through native-dispatch'
+grep -Fq 'root.nativeDispatchPath, "mpd-daemon",'     "$root/services/LocalMusic.qml"     || fail 'LocalMusic persistent MPD daemon must route through native-dispatch'
+grep -Fq 'root.nativeDispatchPath, "mpd-subscribe"'     "$root/services/LocalMusic.qml"     || fail 'LocalMusic MPD idle subscription must route through native-dispatch'
 grep -Fq 'root.nativeDispatchPath, "niri",'     "$root/modules/settings/NiriConfig.qml"     || fail 'Niri settings must route through native-dispatch'
 grep -Fq 'root.nativeDispatchPath, "niri", "get-binds"'     "$root/services/deferred/NiriKeybinds.qml"     || fail 'Niri enriched keybind loader must route through native-dispatch'
 grep -Fq '_applyLegacyFromEnriched'     "$root/services/deferred/NiriKeybinds.qml"     || fail 'Niri cheatsheet must derive from the selector-backed get-binds result before legacy fallback'

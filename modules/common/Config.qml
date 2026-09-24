@@ -2097,6 +2097,17 @@ Singleton {
                 property bool keepOverviewOpenOnWindowClick: true
                 property bool closeAfterWindowMove: true
                 property bool showPreviews: false
+                // Preview transport: snapshot | adaptive | live. Adaptive is
+                // conservative by default and only promotes real compositor
+                // streams when that compositor/backend supports toplevel copy.
+                property string previewMode: "adaptive"
+                property int maxLiveWindows: 6
+                property bool liveOnHover: true
+                property bool liveFocusedWindow: false
+                property bool liveMediaWindows: true
+                property int livePromotionDelayMs: 180
+                property int liveCooldownMs: 2500
+                property real activityPromotionThreshold: 0.55
                 property bool activeScreenOnly: true
                 property bool allAppsGrid: false
                 property string allAppsGridMode: "minimal"

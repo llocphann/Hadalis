@@ -46,6 +46,154 @@ Item { // Window
     property bool hovered: false
     property bool pressed: false
 
+    // Adaptive preview state. Static windows retain one compositor frame;
+    // genuinely dynamic/interactive windows may claim one of the bounded live
+    // screencopy slots. The activityScore input is intentionally public so a
+    // future compositor-native motion detector can feed the same policy.
+    property bool presentationActive: GlobalStates.overviewOpen
+    property real activityScore: 0.0
+    property bool liveClaim: false
+    property string _registeredPreviewKey: ""
+
+    readonly property string previewKey: String(windowData?.address ?? "")
+    readonly property bool focusedHint: root.toplevel?.activated ?? false
+    readonly property bool previewBackendAvailable:
+        !!root.toplevel && !GameMode.active && !RecorderStatus.isRecording
+    readonly property bool mediaPlayingHint: {
+        // MPRIS player identity is stable, while playback state changes do not
+        // replace the displayPlayers array. Touch the revision so this binding
+        // follows play/pause transitions as well as membership changes.
+        MprisController._playbackStateVersion
+        return AdaptivePreviewService.mediaPlayingForWindow(
+            root.windowData, MprisController.displayPlayers)
+    }
+    readonly property bool rawLiveWanted: AdaptivePreviewService.wantsLive(
+        root.presentationActive,
+        root.previewBackendAvailable,
+        root.hovered,
+        root.focusedHint,
+        root.mediaPlayingHint,
+        root.activityScore)
+    readonly property bool previewLive:
+        root.presentationActive
+        && root.previewBackendAvailable
+        && root.liveClaim
+        && AdaptivePreviewService.isLive(root.previewKey)
+
+    function _publishLiveClaim(): void {
+        const key = root.previewKey
+        if (root._registeredPreviewKey.length > 0
+                && root._registeredPreviewKey !== key)
+            AdaptivePreviewService.removeLiveClaim(root._registeredPreviewKey)
+
+        root._registeredPreviewKey = key
+        if (key.length === 0)
+            return
+
+        AdaptivePreviewService.setLiveClaim(
+            key,
+            root.liveClaim && root.presentationActive && root.previewBackendAvailable,
+            root.hovered,
+            root.focusedHint,
+            root.mediaPlayingHint,
+            root.activityScore)
+    }
+
+    function _setLiveClaim(value): void {
+        root.liveClaim = !!value
+        root._publishLiveClaim()
+    }
+
+    function _reevaluateLiveIntent(): void {
+        if (!root.presentationActive || !root.previewBackendAvailable
+                || AdaptivePreviewService.mode === "snapshot") {
+            livePromotionTimer.stop()
+            liveCooldownTimer.stop()
+            root._setLiveClaim(false)
+            return
+        }
+
+        if (root.rawLiveWanted) {
+            liveCooldownTimer.stop()
+            const immediate = AdaptivePreviewService.mode === "live"
+                || (root.hovered && AdaptivePreviewService.liveOnHover)
+                || AdaptivePreviewService.promotionDelayMs <= 0
+            if (immediate) {
+                livePromotionTimer.stop()
+                root._setLiveClaim(true)
+            } else if (!root.liveClaim) {
+                livePromotionTimer.restart()
+            } else {
+                root._publishLiveClaim()
+            }
+            return
+        }
+
+        livePromotionTimer.stop()
+        if (!root.liveClaim || AdaptivePreviewService.cooldownMs <= 0) {
+            liveCooldownTimer.stop()
+            root._setLiveClaim(false)
+        } else {
+            liveCooldownTimer.restart()
+        }
+    }
+
+    onRawLiveWantedChanged: root._reevaluateLiveIntent()
+    onHoveredChanged: {
+        root._reevaluateLiveIntent()
+        root._publishLiveClaim()
+    }
+    onFocusedHintChanged: {
+        root._reevaluateLiveIntent()
+        root._publishLiveClaim()
+    }
+    onMediaPlayingHintChanged: {
+        root._reevaluateLiveIntent()
+        root._publishLiveClaim()
+    }
+    onActivityScoreChanged: {
+        root._reevaluateLiveIntent()
+        root._publishLiveClaim()
+    }
+    onPresentationActiveChanged: root._reevaluateLiveIntent()
+    onPreviewBackendAvailableChanged: root._reevaluateLiveIntent()
+    onPreviewKeyChanged: root._publishLiveClaim()
+
+    Timer {
+        id: livePromotionTimer
+        interval: AdaptivePreviewService.promotionDelayMs
+        repeat: false
+        onTriggered: {
+            if (root.rawLiveWanted)
+                root._setLiveClaim(true)
+        }
+    }
+
+    Timer {
+        id: liveCooldownTimer
+        interval: AdaptivePreviewService.cooldownMs
+        repeat: false
+        onTriggered: {
+            if (!root.rawLiveWanted)
+                root._setLiveClaim(false)
+        }
+    }
+
+    Connections {
+        target: AdaptivePreviewService
+        function onModeChanged(): void { root._reevaluateLiveIntent() }
+        function onLiveOnHoverChanged(): void { root._reevaluateLiveIntent() }
+        function onLiveFocusedWindowChanged(): void { root._reevaluateLiveIntent() }
+        function onLiveMediaWindowsChanged(): void { root._reevaluateLiveIntent() }
+        function onActivityPromotionThresholdChanged(): void { root._reevaluateLiveIntent() }
+    }
+
+    Component.onCompleted: root._reevaluateLiveIntent()
+    Component.onDestruction: {
+        if (root._registeredPreviewKey.length > 0)
+            AdaptivePreviewService.removeLiveClaim(root._registeredPreviewKey)
+    }
+
     property bool centerIcons: Config.options?.overview?.centerIcons ?? false
     property real iconGapRatio: 0.06
     property real iconToWindowRatio: centerIcons ? 0.35 : 0.15
@@ -69,7 +217,7 @@ Item { // Window
 
     // Overview is retained after first use; release each per-window mask FBO
     // while the surface is closed instead of pinning textures for every window.
-    layer.enabled: GlobalStates.overviewOpen
+    layer.enabled: root.presentationActive
     layer.effect: OpacityMask {
         maskSource: Rectangle {
             width: root.width
@@ -101,11 +249,22 @@ Item { // Window
     ScreencopyView {
         id: windowPreview
         anchors.fill: parent
-        // Fullscreen GameMode must not retain a live screencopy source.
-        captureSource: (GlobalStates.overviewOpen && !GameMode.active)
+        // A still ScreencopyView frame is the zero-copy snapshot backend on
+        // Hyprland. Only scheduler-selected windows keep a compositor stream.
+        captureSource: (root.presentationActive && !GameMode.active)
             ? root.toplevel : null
-        // Pause during recording to avoid lag
-        live: !RecorderStatus.isRecording && !GameMode.active
+        live: root.previewLive
+
+        onCaptureSourceChanged: {
+            if (captureSource && !live)
+                Qt.callLater(() => windowPreview.captureFrame())
+        }
+        onLiveChanged: {
+            // Freeze the last live frame on demotion and ensure a window that
+            // never became live still has a fresh single-frame snapshot.
+            if (!live && captureSource)
+                Qt.callLater(() => windowPreview.captureFrame())
+        }
 
         // Color overlay for interactions
         Rectangle {

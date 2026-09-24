@@ -269,6 +269,7 @@ Item {
                 scale: root.scale
                 widgetMonitor: HyprlandData.monitors.find(m => m.id == root.monitor.id)
                 windowData: windowByAddress[address]
+                presentationActive: root.presentationActive
                 motionAnimationsEnabled: root.localGeometryAnimationReady
 
                 property bool atInitPosition: (initX == x && initY == y)

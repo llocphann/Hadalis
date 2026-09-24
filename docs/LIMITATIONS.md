@@ -126,8 +126,10 @@ ii is built for **Niri**. Some features were inherited from the original Hyprlan
 
 ### Window Previews
 
-- **No live previews**: Unlike some shells, ii doesn't capture live window thumbnails. You see app icons, not actual window content.
-- **Workspace snapshots disabled**: The code for workspace screenshots exists but is disabled (too slow/unreliable).
+- **Niri uses cached per-window snapshots**: Overview keeps bounded decoded PNG previews warm and refreshes visible long-lived windows when the presentation opens. It does not fall back to icon-only rendering unless a preview is unavailable or previews are disabled.
+- **Adaptive live previews are capability-gated**: On compositors where Quickshell can capture a toplevel directly, Overview keeps static windows on a single compositor frame and promotes interactive or playing-media windows to bounded live streams with promotion/cooldown hysteresis.
+- **Niri live toplevel capture is not exposed by stock Quickshell yet**: Niri supports modern image-copy-capture protocols, but Quickshell's current `ScreencopyView(Toplevel)` path is tied to the Hyprland toplevel-export protocol. Hadalis therefore keeps the reliable snapshot backend on Niri instead of polling `niri screenshot-window` as fake video. The adaptive scheduler is already shared so a future Niri toplevel backend can plug into it without replacing the cache.
+- **Workspace snapshots remain disabled**: full-workspace screenshot code is not used as a live-preview substitute because it is slow, can capture shell layers, and cannot reliably represent occluded/off-workspace windows.
 
 ### Window Matching
 

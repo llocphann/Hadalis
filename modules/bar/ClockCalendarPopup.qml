@@ -46,10 +46,10 @@ StyledPopup {
     Item {
         id: popupContent
 
-        readonly property real editorPaneHeight: Math.max(320, Math.min(430,
-            (root.presentationWindow?.height ?? 900) * 0.40))
+        readonly property real editorPaneHeight: Math.max(286, Math.min(360,
+            (root.presentationWindow?.height ?? 900) * 0.34))
         readonly property real editorSectionGap:
-            root.showEventsDialog ? 10 : 0
+            root.showEventsDialog ? 8 : 0
 
         implicitWidth: calendarContent.implicitWidth
         implicitHeight: calendarContent.implicitHeight
@@ -87,7 +87,7 @@ StyledPopup {
                 left: parent.left
                 right: parent.right
                 top: calendarContent.bottom
-                topMargin: root.showEventsDialog ? 5 : 0
+                topMargin: root.showEventsDialog ? 4 : 0
             }
             height: root.showEventsDialog ? 1 : 0
             visible: height > 0
@@ -129,17 +129,21 @@ StyledPopup {
             Rectangle {
                 anchors.fill: parent
                 radius: Appearance.rounding.normal
-                color: Appearance.colors.colLayer1
+                color: Appearance.angelEverywhere
+                    ? Appearance.angel.colGlassPopup
+                    : Appearance.inirEverywhere ? Appearance.inir.colLayer1
+                    : Appearance.auroraEverywhere ? Appearance.aurora.colDialogSurface
+                    : Appearance.colors.colSurfaceContainerHigh
                 border.width: 1
-                border.color: Appearance.colors.colLayer2
+                border.color: Appearance.colors.colOutlineVariant
             }
 
             Loader {
                 id: eventsDialogLoader
                 anchors {
                     fill: parent
-                    margins: 10
-                    topMargin: 12
+                    margins: 8
+                    topMargin: 8
                 }
                 active: root.eventsDialogLoaded && root.active
                 onLoaded: Qt.callLater(root.prepareEventEditor)

@@ -27,8 +27,10 @@ if "CircularProgress {" in pomodoro:
 for token in (
     "import QtQuick.Shapes",
     "id: focusDial",
-    "readonly property real startAngle: 135",
-    "readonly property real sweepAngle: 270",
+    "readonly property real arcRadiusX:",
+    "readonly property real arcRadiusY:",
+    "readonly property real startAngle: 155",
+    "readonly property real sweepAngle: 230",
     "PathAngleArc {",
     "strokeColor: root._colAccent",
     "TimerService.cyclesBeforeLongBreak",

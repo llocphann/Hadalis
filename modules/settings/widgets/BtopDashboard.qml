@@ -14,6 +14,7 @@ ColumnLayout {
     property var targets: []
     property var records: []
     property string selectedTargetId: ""
+    property bool compactMode: false
     property bool showDetails: false
     signal targetActivated(string targetId, string instanceId)
 
@@ -189,8 +190,180 @@ ColumnLayout {
         return found ? total : null
     }
 
+    // Compact Diagnostics is deliberately glanceable: six high-value metrics
+    // fill the available width and one runtime strip uses the remaining space.
+    // No expandable sampling/details section is exposed in this mode.
+    GridLayout {
+        id: compactMetrics
+        visible: root.compactMode
+        Layout.fillWidth: true
+        columns: width >= 720 ? 3 : 2
+        columnSpacing: 6
+        rowSpacing: 6
+
+        BtopMetricPanel {
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            title: Translation.tr("CPU")
+            subtitle: ""
+            value: root.systemEvidence?.cpu?.percent ?? null
+            detail: root.formatLoadAverage(
+                    root.systemEvidence?.cpu?.loadAverage)
+                + " · " + Translation.tr("Hadalis") + " "
+                + root.formatPercent(root.shellEvidence?.cpu?.percent)
+            samples: root.historyValues("systemCpuPercent")
+            graphHeight: 14
+            dottedGraph: true
+        }
+
+        BtopMetricPanel {
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            title: Translation.tr("Memory")
+            value: root.systemRamPercent()
+            detail: root.formatKiB(root.systemEvidence?.memory
+                    ?.valuesKiB?.MemUsed) + " / "
+                + root.formatKiB(root.systemEvidence?.memory
+                    ?.valuesKiB?.MemTotal)
+            samples: root.historyValues("systemRamPercent")
+            graphHeight: 14
+            dottedGraph: true
+            accentColor: Appearance.colors.colSecondary
+        }
+
+        BtopMetricPanel {
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            title: Translation.tr("GPU")
+            value: root.shellEvidence?.gpu?.available === true
+                ? root.shellGpuBusy() : null
+            detail: root.shellEvidence?.gpu?.available === true
+                ? root.formatKiB(root.shellGpuMemoryKiB()) + " "
+                    + Translation.tr("resident")
+                : Translation.tr("DRM fdinfo unavailable")
+            samples: root.historyValues("shellGpuPeakPercent")
+            graphHeight: 14
+            dottedGraph: true
+            accentColor: Appearance.colors.colTertiary
+        }
+
+        BtopNetworkPanel {
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            title: Translation.tr("Network")
+            graphHeight: 14
+            dottedGraph: true
+            rx: root.formatRate(root.networkEvidence
+                ?.aggregateNonLoopback?.rxBytesPerSec)
+            tx: root.formatRate(root.networkEvidence
+                ?.aggregateNonLoopback?.txBytesPerSec)
+            rxSamples: root.historyValues("rxBytesPerSec")
+            txSamples: root.historyValues("txBytesPerSec")
+        }
+
+        BtopNetworkPanel {
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            title: Translation.tr("Disk I/O")
+            rxLabel: Translation.tr("READ")
+            txLabel: Translation.tr("WRITE")
+            rxPrefix: "R "
+            txPrefix: "W "
+            graphHeight: 14
+            dottedGraph: true
+            rx: root.formatRate(root.shellEvidence?.io?.rates
+                ?.readBytesPerSec)
+            tx: root.formatRate(root.shellEvidence?.io?.rates
+                ?.writeBytesPerSec)
+            rxSamples: root.historyValues("shellReadBytesPerSec")
+            txSamples: root.historyValues("shellWriteBytesPerSec")
+        }
+
+        BtopMetricPanel {
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            title: Translation.tr("Swap")
+            value: root.systemSwapPercent()
+            detail: root.formatKiB(root.systemEvidence?.memory
+                    ?.valuesKiB?.SwapUsed) + " / "
+                + root.formatKiB(root.systemEvidence?.memory
+                    ?.valuesKiB?.SwapTotal)
+            samples: root.historyValues("systemSwapPercent")
+            graphHeight: 14
+            dottedGraph: true
+            accentColor: Appearance.colors.colTertiary
+        }
+    }
+
+    Rectangle {
+        id: compactRuntimeStrip
+        visible: root.compactMode
+        Layout.fillWidth: true
+        implicitHeight: 42
+        radius: Appearance.rounding.small
+        color: Appearance.colors.colLayer1
+        border.color: Appearance.colors.colOutline
+
+        RowLayout {
+            anchors.fill: parent
+            anchors.leftMargin: 10
+            anchors.rightMargin: 10
+            spacing: 12
+
+            StyledText {
+                textFormat: Text.PlainText
+                text: Translation.tr("Hadalis")
+                color: Appearance.colors.colPrimary
+                font.weight: Font.DemiBold
+            }
+
+            StyledText {
+                textFormat: Text.PlainText
+                text: "PID "
+                    + (root.shellEvidence?.pid
+                        ? String(root.shellEvidence.pid) : "—")
+                color: Appearance.colors.colSubtext
+                font.family: Appearance.font.family.monospace
+                font.pixelSize: Appearance.font.pixelSize.small
+            }
+
+            StyledText {
+                textFormat: Text.PlainText
+                text: "CPU "
+                    + root.formatPercent(root.shellEvidence?.cpu?.percent)
+                color: Appearance.colors.colOnLayer1
+                font.family: Appearance.font.family.monospace
+                font.pixelSize: Appearance.font.pixelSize.small
+            }
+
+            StyledText {
+                textFormat: Text.PlainText
+                text: "RAM "
+                    + root.formatKiB(root.shellEvidence?.memory?.valuesKiB?.Pss
+                        ?? root.shellEvidence?.memory?.valuesKiB?.Rss)
+                color: Appearance.colors.colOnLayer1
+                font.family: Appearance.font.family.monospace
+                font.pixelSize: Appearance.font.pixelSize.small
+            }
+
+            Item { Layout.fillWidth: true }
+
+            StyledText {
+                textFormat: Text.PlainText
+                text: String(root.targets.length) + " "
+                    + Translation.tr("targets")
+                    + " · " + String(root.records.length) + " "
+                    + Translation.tr("records")
+                color: Appearance.colors.colSubtext
+                font.pixelSize: Appearance.font.pixelSize.small
+                elide: Text.ElideRight
+            }
+        }
+    }
+
     GridLayout {
         id: overviewGrid
+        visible: !root.compactMode
         Layout.fillWidth: true
         columns: width >= 980 ? 2 : 1
         columnSpacing: 8
@@ -342,6 +515,7 @@ ColumnLayout {
 
     GridLayout {
         id: cpuRow
+        visible: !root.compactMode
         Layout.fillWidth: true
         columns: width >= 980 && root.cpuCores.length > 0 ? 2 : 1
         columnSpacing: 8
@@ -418,6 +592,7 @@ ColumnLayout {
     }
 
     RippleButton {
+        visible: !root.compactMode
         Layout.alignment: Qt.AlignHCenter
         implicitWidth: 132
         implicitHeight: 30
@@ -432,14 +607,14 @@ ColumnLayout {
 
     BtopInterfaceTable {
         Layout.fillWidth: true
-        visible: root.showDetails
+        visible: !root.compactMode && root.showDetails
         interfaces: root.networkEvidence?.interfaces ?? ({})
         maxRows: 3
     }
 
     BtopRuntimePanel {
         Layout.fillWidth: true
-        visible: root.showDetails
+        visible: !root.compactMode && root.showDetails
         title: Translation.tr("Hadalis runtime")
         pid: root.shellEvidence?.pid
             ? String(root.shellEvidence.pid) : "—"
@@ -464,7 +639,7 @@ ColumnLayout {
     StyledText {
         textFormat: Text.PlainText
         Layout.fillWidth: true
-        visible: root.showDetails
+        visible: !root.compactMode && root.showDetails
         text: Translation.tr("No synthetic per-QML resource estimates.")
         color: Appearance.colors.colSubtext
         font.pixelSize: Appearance.font.pixelSize.smallest

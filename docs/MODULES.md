@@ -29,7 +29,7 @@ Users can disable any panel from Settings without touching config files.
 |--------|----------|-------------|
 | `sidebar/` | shared host | Physical left/right layer-shell hosts. They resolve semantic feature/system roles, own focus, masks, animations and live layout resize handles. |
 | `sidebarLeft/` | `iiSidebarLeft` | Feature-role content: AI chat (Gemini/OpenAI/Ollama), local Music library/player, Wallhaven browser, anime tracker, translator, draggable widgets and World Clock. The Music tab browses MPD songs, saved playlists and queue, while transport follows the same mpd-mpris/MPRIS session used by the rest of the shell. The role can occupy either physical edge. |
-| `sidebarRight/` | `iiSidebarRight` | System-role content: quick toggles, calendar with external sync, volume mixer, Bluetooth/WiFi management, pomodoro timer, todo, calculator, notepad, system monitor and Screen Time. Notification history is intentionally separate. The role can occupy either physical edge. |
+| `sidebarRight/` | `iiSidebarRight` | System-role content: quick toggles, calendar with external sync, volume mixer, Bluetooth/WiFi management, pomodoro timer, todo, calculator, notepad and system monitor. Notification history and usage activity are intentionally separate. The role can occupy either physical edge. |
 
 ### Overlays
 
@@ -127,15 +127,14 @@ Migration `028-bar-modular-layout` exists but is disabled. The bar has a built-i
 
 ### Screen Time
 
-`services/ScreenTime.qml` tracks focused app/window usage when Sidebar Screen Time is enabled or when the Material (ii) Dashboard is enabled so its Uptime tab can retain full-session usage history.
+`services/ScreenTime.qml` tracks focused app/window usage for the compact Material notification-center Activity tab. Under Material ii it stays active while `iiScreenCorners` owns that popup; Waffle keeps the explicit Screen Time opt-in.
 
 Visible surfaces:
 
-- `modules/sidebarRight/screenTime/ScreenTimeWidget.qml`
+- `modules/notificationCenter/NotificationCenterPopup.qml` — fixed, non-scrollable Activity summary beside Notifications
 - `modules/waffle/actionCenter/screenTime/ScreenTimePage.qml`
-- `modules/dashboard/DashNotifications.qml` — compact non-scrollable Uptime tab beside Notifications
 
-It stores local daily JSON under the iNiR state directory. It has daily totals, app totals, hourly buckets, and per-app hourly drill-down. It is off by default and hidden from sidebar layouts while disabled.
+The right Sidebar no longer mounts Screen Time as its own tab. The service still stores local daily JSON under the iNiR state directory with daily totals, app totals, hourly buckets, and per-app hourly drill-down.
 
 ### World Clock
 

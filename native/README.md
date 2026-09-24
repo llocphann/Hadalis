@@ -152,6 +152,23 @@ This source-side qualification does **not** replace a matched live desktop
 measurement. The old benchmark numbers below are retained only as historical
 evidence from the earlier implementation.
 
+### Latest read-only local recheck: 2026-09-24
+
+At `dev` `159565b07efc443271c185e48fd065031e384d6e`, the one-command
+benchmark ran with `BENCH_RUNS=1`, `SAMPLE_SECONDS=1`, and `--read-only`.
+The native release build, unit tests, rustfmt, clippy, selector guards, and
+isolated Niri customization fixtures passed. Python/Rust parity passed for
+the exercised clipboard, read-only Niri, desktop config, theme, input,
+diagnostics, and MPD status/daemon paths. A single timing sample per case is
+not enough for a stable speedup estimate or a whole-shell claim. The full
+repository validator remained **RED: 184 passed, 27 failed, 2 skipped**;
+the failures are listed in the generated report.
+
+No live Rust trial was attempted. The installed runtime still differs from
+the tested checkout in `scripts/native-dispatch`,
+`scripts/colors/switchwall.sh`, `services/NiriService.qml`, and
+`services/LocalMusic.qml`. The active `inir.service` stayed on Python.
+
 ## Historical qualification snapshot: 2026-09-24
 
 This is evidence from one Arch/Niri desktop at `dev`
@@ -194,11 +211,10 @@ per startup case; it is under the local state directory named above.
   Compare shell startup, cgroup memory, shell RSS/PSS, CPU, processes, and
   journal errors under the same session/workload. No live A/B was captured
   in the snapshot above.
-- Exercise fallback and rollback behavior dynamically: missing or failing Rust
-  binary, strict vs fail-soft selection, environment vs state-file precedence,
-  restart failure, and interrupted trial. The present selector contract test
-  mostly checks source tokens; replace or supplement those checks with
-  behavior tests. Keep the Python fallback while qualifying Rust.
+- Selector behavior tests cover missing or failing Rust binaries, strict vs
+  fail-soft selection, and environment vs state-file precedence. Still test
+  restart failure and interrupted-trial rollback in a matched live runtime.
+  Keep the Python fallback while qualifying Rust.
 - In a real Niri session, verify the migrated clipboard watcher after session
   restart, keyboard lock and OSK key events, Diagnostics QML lease lifecycle,
   theme/icon updates, Niri settings/keybind views, and MPD UI controls. Include

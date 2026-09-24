@@ -63,6 +63,9 @@ def main() -> None:
         "implicitHeight: calendarContent.implicitHeight",
         "ClockCalendarContent {",
         "anchors.fill: parent",
+        "alternativeVisibleCondition: calendarContent.eventEditorActive",
+        "keyboardFocus: calendarContent.eventEditorActive",
+        "onRequestClose: calendarContent.closeEventEditor()",
     ):
         require(calendar_popup, token, "ClockCalendarPopup.qml")
     for retired in (
@@ -205,6 +208,8 @@ def main() -> None:
         "property bool eventDateSelectionEnabled: false",
         "property var selectedEventDate: null",
         "id: eventsPane",
+        "readonly property bool eventEditorActive: eventsPane.inlineEditorMode",
+        "function closeEventEditor(): void",
         "selectedDate: eventsPane.inlineEditorMode",
         "? eventsPane.inlineEditorDate",
         "interactiveDays: eventsPane.inlineEditorMode",

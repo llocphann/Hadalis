@@ -617,9 +617,7 @@ mod tests {
 
     use inir_protocol::InputMessage;
 
-    use super::{
-        DeviceRuntime, InternalEvent, MonitorState, StreamMode, aggregate, process_event,
-    };
+    use super::{DeviceRuntime, InternalEvent, MonitorState, StreamMode, aggregate, process_event};
 
     #[test]
     fn aggregate_matches_python_majority_rule() {

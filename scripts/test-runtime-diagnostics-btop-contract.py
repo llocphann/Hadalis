@@ -97,7 +97,7 @@ def main() -> None:
         "columns: width >= 720 ? 2 : 1",
         "id: resourceSuspects",
         'Translation.tr("Resource suspects")',
-        'Translation.tr("Top components and processes by meaningful runtime signals")',
+        '"Top components and processes by meaningful runtime signals"',
         "id: compactSystemContext",
         "columns: width >= 260 ? 2 : 1",
         "BtopActivityTable {",

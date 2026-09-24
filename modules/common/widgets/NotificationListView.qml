@@ -18,12 +18,14 @@ StyledListView { // Scrollable window
     // group; the user can still collapse a group explicitly.
     property bool preferExpanded: false
     property bool modernCards: false
+    property bool compactCards: false
+    property bool compactActions: false
     // History-only filter; popups are never filtered.
     property string filterQuery: ""
     signal externalLinkOpened()
     signal notificationActionInvoked()
 
-    spacing: modernCards ? 8 : 3
+    spacing: modernCards ? (compactCards ? 6 : 8) : 3
 
     // Sidebar: full transitions with pop-in; Popup: lightweight entrance only
     popin: !popupPresentation
@@ -78,6 +80,8 @@ StyledListView { // Scrollable window
         popup: root.popupPresentation
         expandedByDefault: root.preferExpanded
         modernLayout: root.modernCards
+        compactLayout: root.compactCards
+        compactActions: root.compactActions
         anchors.left: parent?.left
         anchors.right: parent?.right
         notificationGroup: root.dataMode === "transient"

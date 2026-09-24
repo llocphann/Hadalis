@@ -110,6 +110,15 @@ Quickshell, Qt 6, and QML/KDE runtime dependencies declared by `sdata/dist-arch/
 
 `plasma-integration` is installed separately by the source installer as a Qt platform-theme integration; `qt6-avif-image-plugin` is attempted through the AUR helper for AVIF image support.
 
+### Niri live-preview Quickshell (`inir-quickshell-niri`)
+
+On Arch/Niri, migration 046 builds `distro/arch/inir-quickshell-niri` and installs it through pacman. The package is pinned to upstream Quickshell 0.3.1, `provides=(quickshell)`, and conflicts with the stock/AUR Quickshell variants so ownership stays explicit.
+
+The downstream overlay is intentionally narrow: it adds an exact `ForeignToplevelCaptureSource` backed by `ext-foreign-toplevel-list-v1` plus `ext-image-copy-capture-v1`, and exposes compositor frame-damage activity to `ScreencopyView`. Niri publishes its IPC window ID as the foreign-toplevel identifier, so Hadalis can capture the requested Niri window without title/app matching. Static windows use single-frame capture and low-rate damage probes; only scheduler-selected windows run continuously.
+
+The package also installs `/usr/share/inir/quickshell-niri-live`. The `inir` launcher converts that package-owned marker into `INIR_NIRI_TOPLEVEL_ICC=1`; Overview lazy-loads the extension-only QML renderer only under that capability. Removing the package therefore returns Hadalis to the stock PNG snapshot path instead of making the shell fail to parse.
+
+
 ---
 
 ## Audio (`inir-audio`)

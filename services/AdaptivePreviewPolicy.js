@@ -24,6 +24,12 @@ function clampActivity(value) {
     return Math.max(0, Math.min(1, parsed))
 }
 
+function boundedThreshold(value, fallback) {
+    const parsed = Number(value)
+    const safe = Number.isFinite(parsed) ? parsed : Number(fallback)
+    return Math.max(0, Math.min(1, Number.isFinite(safe) ? safe : 0))
+}
+
 function wantsLive(options) {
     const o = options ?? {}
     if (!o.active || !o.backendAvailable)
@@ -35,16 +41,24 @@ function wantsLive(options) {
     if (mode === "live")
         return true
 
+    // Hover is an explicit user-inspection signal and may promote immediately.
     if ((o.liveOnHover ?? true) && !!o.hovered)
         return true
-    if ((o.liveMediaWindows ?? true) && !!o.mediaPlaying)
-        return true
-    if ((o.liveFocusedWindow ?? false) && !!o.focused)
-        return true
 
-    const threshold = Math.max(0, Math.min(1,
-        Number.isFinite(Number(o.activityPromotionThreshold))
-            ? Number(o.activityPromotionThreshold) : 0.55))
+    // Everything else is motion-qualified. Playing media/focus lower the
+    // threshold; neither can turn a truly static window into a live stream.
+    let threshold = boundedThreshold(o.activityPromotionThreshold, 0.06)
+    if ((o.liveMediaWindows ?? true) && !!o.mediaPlaying)
+        threshold = Math.min(
+            threshold,
+            boundedThreshold(o.mediaActivityPromotionThreshold, 0.02)
+        )
+    if ((o.liveFocusedWindow ?? false) && !!o.focused)
+        threshold = Math.min(
+            threshold,
+            boundedThreshold(o.focusedActivityPromotionThreshold, 0.035)
+        )
+
     return clampActivity(o.activityScore) >= threshold
 }
 

@@ -9,9 +9,10 @@ import "AdaptivePreviewPolicy.js" as AdaptivePreviewPolicy
 // Shared budget/capability boundary for Overview window previews.
 //
 // A "live claim" never starts capture by itself. Renderers publish claims only
-// when they have a real compositor-native toplevel capture backend. This keeps
-// Niri on the existing snapshot cache until Quickshell exposes Niri toplevel
-// image-copy-capture instead of emulating live video with screenshot polling.
+// when they have a real compositor-native toplevel capture backend. On Niri the
+// Hadalis Quickshell overlay exposes ext-foreign-toplevel identifiers as ICC
+// sources; stock Quickshell remains snapshot-only and never emulates video by
+// polling screenshot-window.
 Singleton {
     id: root
 
@@ -26,16 +27,36 @@ Singleton {
         Math.max(0, Math.min(2000, Config.options?.overview?.livePromotionDelayMs ?? 180))
     readonly property int cooldownMs:
         Math.max(0, Math.min(10000, Config.options?.overview?.liveCooldownMs ?? 2500))
+    readonly property int probeIntervalMs:
+        Math.max(120, Math.min(3000, Config.options?.overview?.previewProbeIntervalMs ?? 350))
+    readonly property int motionSamplesRequired:
+        Math.max(1, Math.min(8, Config.options?.overview?.previewMotionSamples ?? 2))
+    readonly property real motionSampleThreshold: {
+        const value = Number(Config.options?.overview?.previewMotionSampleThreshold ?? 0.006)
+        return Number.isFinite(value) ? Math.max(0, Math.min(1, value)) : 0.006
+    }
+    readonly property real activitySmoothing: {
+        const value = Number(Config.options?.overview?.previewActivitySmoothing ?? 0.45)
+        return Number.isFinite(value) ? Math.max(0.05, Math.min(1, value)) : 0.45
+    }
     readonly property real activityPromotionThreshold: {
-        const value = Number(Config.options?.overview?.activityPromotionThreshold ?? 0.55)
-        return Number.isFinite(value) ? Math.max(0, Math.min(1, value)) : 0.55
+        const value = Number(Config.options?.overview?.activityPromotionThreshold ?? 0.06)
+        return Number.isFinite(value) ? Math.max(0, Math.min(1, value)) : 0.06
+    }
+    readonly property real mediaActivityPromotionThreshold: {
+        const value = Number(Config.options?.overview?.mediaActivityPromotionThreshold ?? 0.02)
+        return Number.isFinite(value) ? Math.max(0, Math.min(1, value)) : 0.02
+    }
+    readonly property real focusedActivityPromotionThreshold: {
+        const value = Number(Config.options?.overview?.focusedActivityPromotionThreshold ?? 0.035)
+        return Number.isFinite(value) ? Math.max(0, Math.min(1, value)) : 0.035
     }
 
-    // Stock Quickshell currently accepts a Toplevel ScreencopyView source via
-    // hyprland-toplevel-export-v1. Niri supports image-copy-capture itself, but
-    // Quickshell does not yet expose Niri toplevels as ScreencopyView sources.
     readonly property bool hyprlandLiveBackendAvailable: true
-    readonly property bool niriLiveBackendAvailable: false
+    // The launcher sets this only when pacman owns the Hadalis Quickshell ICC
+    // overlay. Stock Quickshell never sees the Niri-only QML source file.
+    readonly property bool niriLiveBackendAvailable:
+        (Quickshell.env("INIR_NIRI_TOPLEVEL_ICC") ?? "") === "1"
 
     property var _claims: ({})
     property int _nextOrder: 1
@@ -54,7 +75,9 @@ Singleton {
             liveOnHover: root.liveOnHover,
             liveFocusedWindow: root.liveFocusedWindow,
             liveMediaWindows: root.liveMediaWindows,
-            activityPromotionThreshold: root.activityPromotionThreshold
+            activityPromotionThreshold: root.activityPromotionThreshold,
+            mediaActivityPromotionThreshold: root.mediaActivityPromotionThreshold,
+            focusedActivityPromotionThreshold: root.focusedActivityPromotionThreshold
         })
     }
 

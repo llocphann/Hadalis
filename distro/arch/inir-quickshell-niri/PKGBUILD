@@ -1,0 +1,90 @@
+pkgname=inir-quickshell-niri
+pkgver=0.3.1
+pkgrel=1
+pkgdesc='Quickshell stable with Hadalis Niri foreign-toplevel ICC capture support'
+arch=(x86_64 aarch64)
+url='https://github.com/quickshell-mirror/quickshell'
+license=('GPL-3.0-only' 'LGPL-3.0-only')
+depends=(
+  glib2
+  jemalloc
+  libdrm
+  libpipewire
+  libxcb
+  mesa
+  pam
+  polkit
+  qt6-base
+  qt6-declarative
+  qt6-svg
+  qt6-wayland
+  wayland
+)
+makedepends=(
+  cli11
+  cmake
+  ninja
+  pkgconf
+  qt6-shadertools
+  spirv-tools
+  vulkan-headers
+  wayland-protocols
+)
+provides=("quickshell=$pkgver")
+conflicts=('quickshell' 'quickshell-git' 'quickshell-bin')
+source=(
+  "quickshell-$pkgver.tar.gz::https://github.com/quickshell-mirror/quickshell/archive/refs/tags/v$pkgver.tar.gz"
+  "overlay/screencopy-CMakeLists.txt"
+  "overlay/manager.hpp"
+  "overlay/manager.cpp"
+  "overlay/view.hpp"
+  "overlay/view.cpp"
+  "overlay/image_copy_capture.hpp"
+  "overlay/image_copy_capture_p.hpp"
+  "overlay/image_copy_capture.cpp"
+  "overlay/foreign_toplevel_source.hpp"
+  "overlay/foreign_toplevel_source.cpp"
+)
+sha256sums=(
+  '218f6327293928bcb1f9b25728b336c4ab125f67fe1babd7d47313f890a16c99'
+  'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP'
+  'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP'
+)
+
+prepare() {
+  local src="$srcdir/quickshell-$pkgver"
+
+  install -Dm644 "$srcdir/screencopy-CMakeLists.txt"     "$src/src/wayland/screencopy/CMakeLists.txt"
+  install -Dm644 "$srcdir/manager.hpp"     "$src/src/wayland/screencopy/manager.hpp"
+  install -Dm644 "$srcdir/manager.cpp"     "$src/src/wayland/screencopy/manager.cpp"
+  install -Dm644 "$srcdir/view.hpp"     "$src/src/wayland/screencopy/view.hpp"
+  install -Dm644 "$srcdir/view.cpp"     "$src/src/wayland/screencopy/view.cpp"
+  install -Dm644 "$srcdir/image_copy_capture.hpp"     "$src/src/wayland/screencopy/image_copy_capture/image_copy_capture.hpp"
+  install -Dm644 "$srcdir/image_copy_capture_p.hpp"     "$src/src/wayland/screencopy/image_copy_capture/image_copy_capture_p.hpp"
+  install -Dm644 "$srcdir/image_copy_capture.cpp"     "$src/src/wayland/screencopy/image_copy_capture/image_copy_capture.cpp"
+  install -Dm644 "$srcdir/foreign_toplevel_source.hpp"     "$src/src/wayland/screencopy/foreign_toplevel_source.hpp"
+  install -Dm644 "$srcdir/foreign_toplevel_source.cpp"     "$src/src/wayland/screencopy/foreign_toplevel_source.cpp"
+}
+
+build() {
+  local src="$srcdir/quickshell-$pkgver"
+  cmake -GNinja -B "$src/build" -S "$src" \
+    -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+    -DCMAKE_INSTALL_PREFIX=/usr \
+    -DCRASH_HANDLER=OFF \
+    -DDISTRIBUTOR='Hadalis Niri ICC' \
+    -DINSTALL_QML_PREFIX=lib/qt6/qml
+  cmake --build "$src/build"
+}
+
+package() {
+  local src="$srcdir/quickshell-$pkgver"
+  DESTDIR="$pkgdir" cmake --install "$src/build"
+  install -Dm644 "$src/LICENSE" "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+
+  install -d "$pkgdir/usr/share/inir"
+  cat > "$pkgdir/usr/share/inir/quickshell-niri-live" <<EOF
+quickshell=$pkgver
+hadalis_patch=foreign-toplevel-icc-v1
+EOF
+}

@@ -2,6 +2,14 @@
 set -euo pipefail
 
 qs_bin="/usr/bin/qs"
+# The custom package owns this marker together with the patched qs binary. It
+# lets QML load Niri-only capture types lazily without breaking stock Quickshell.
+if [[ -f /usr/share/inir/quickshell-niri-live ]]; then
+    export INIR_NIRI_TOPLEVEL_ICC=1
+else
+    unset INIR_NIRI_TOPLEVEL_ICC 2>/dev/null || true
+fi
+
 user_config_dir="${XDG_CONFIG_HOME:-$HOME/.config}/quickshell/inir"
 system_config_dir="${INIR_SYSTEM_RUNTIME_DIR:-/usr/local/share/quickshell/inir}"
 fallback_system_config_dir="${INIR_FALLBACK_SYSTEM_RUNTIME_DIR:-/usr/share/quickshell/inir}"

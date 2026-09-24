@@ -141,11 +141,13 @@ measure_service_mode() {
     set_runtime_backend "$mode"
     sleep 4
 
-    local pid mem tasks cpu0 cpu1 delta
+    local pid mem tasks cpu0 cpu1 delta shell_pss shell_rss
     pid="$(systemctl --user show -p MainPID --value inir.service 2>/dev/null || echo 0)"
     mem="$(systemctl --user show -p MemoryCurrent --value inir.service 2>/dev/null || echo unknown)"
     tasks="$(systemctl --user show -p TasksCurrent --value inir.service 2>/dev/null || echo unknown)"
     cpu0="$(systemctl --user show -p CPUUsageNSec --value inir.service 2>/dev/null || echo 0)"
+    shell_pss="$(awk '/^Pss:/{print $2; exit}' "/proc/$pid/smaps_rollup" 2>/dev/null || echo 0)"
+    shell_rss="$(awk '/^VmRSS:/{print $2; exit}' "/proc/$pid/status" 2>/dev/null || echo 0)"
     sleep "$window"
     cpu1="$(systemctl --user show -p CPUUsageNSec --value inir.service 2>/dev/null || echo 0)"
     if [[ "$cpu0" =~ ^[0-9]+$ && "$cpu1" =~ ^[0-9]+$ ]]; then
@@ -154,13 +156,14 @@ measure_service_mode() {
         delta=0
     fi
 
-    awk -v mode="$mode" -v pid="$pid" -v mem="$mem" -v tasks="$tasks"         -v delta="$delta" -v window="$window"         'BEGIN{
+    awk -v mode="$mode" -v pid="$pid" -v mem="$mem" -v tasks="$tasks"         -v delta="$delta" -v window="$window" -v cpu0="$cpu0" -v pss="$shell_pss" -v rss="$shell_rss"         'BEGIN{
             mib=(mem ~ /^[0-9]+$/) ? mem/1048576 : -1;
             cpu=(window>0) ? delta/(window*1000000000)*100 : 0;
+            startup=(cpu0 ~ /^[0-9]+$/) ? cpu0/1000000 : -1;
             if (mib >= 0)
-                printf "live %-7s pid=%s cgroup_mem=%.2fMiB tasks=%s cpu_window=%.3f%%\n",mode,pid,mib,tasks,cpu;
+                printf "live %-7s pid=%s cgroup_mem=%.2fMiB shell_pss=%dKiB shell_rss=%dKiB tasks=%s startup_cpu=%.1fms cpu_window=%.3f%%\n",mode,pid,mib,pss,rss,tasks,startup,cpu;
             else
-                printf "live %-7s pid=%s cgroup_mem=%s tasks=%s cpu_window=%.3f%%\n",mode,pid,mem,tasks,cpu;
+                printf "live %-7s pid=%s cgroup_mem=%s shell_pss=%dKiB shell_rss=%dKiB tasks=%s startup_cpu=%.1fms cpu_window=%.3f%%\n",mode,pid,mem,pss,rss,tasks,startup,cpu;
         }'
 
     printf 'processes(%s):\n' "$mode"

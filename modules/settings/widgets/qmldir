@@ -1,5 +1,6 @@
 module qs.modules.settings.widgets
 
+BtopActivityTable 1.0 BtopActivityTable.qml
 BtopDashboard 1.0 BtopDashboard.qml
 BtopCoreGrid 1.0 BtopCoreGrid.qml
 BtopCoveragePanel 1.0 BtopCoveragePanel.qml

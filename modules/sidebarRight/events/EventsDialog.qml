@@ -26,6 +26,10 @@ WindowDialog {
     property int reminderMinutes: 15
     property string recurrence: "none"
 
+    function focusEditor(): void {
+        Qt.callLater(() => titleField.forceActiveFocus())
+    }
+
     function resetForm(): void {
         root.editingEvent = null
         root.eventTitle = ""
@@ -124,6 +128,7 @@ WindowDialog {
                 topPadding: 8
 
                 MaterialTextField {
+                    id: titleField
                     width: parent.width - 16
                     anchors.horizontalCenter: parent.horizontalCenter
                     placeholderText: Translation.tr("Event title") + " *"

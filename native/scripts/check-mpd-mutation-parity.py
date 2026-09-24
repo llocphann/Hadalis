@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
-"""Stateful isolated parity checks for mutating MPD commands.
+"""Stateful isolated parity checks for MPD status and mutating commands.
 
 The script starts a tiny MPD-protocol server on loopback for each case and runs
 both the Python fallback and Rust compatibility CLI against independent copies.
-No real MPD database, queue, playback state, or stored playlist is touched.
+The status fixture covers current/queue metadata serialization exactly. No real
+MPD database, queue, playback state, or stored playlist is touched.
 """
 
 from __future__ import annotations

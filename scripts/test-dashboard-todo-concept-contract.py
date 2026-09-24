@@ -32,6 +32,7 @@ for token in (
     assert token in dash, f"Dashboard Todo lost concept contract: {token}"
 
 assert "TodoWidget {" not in dash, "Dashboard Todo must not be coupled to Sidebar presentation"
+assert 'text: "more_horiz"' not in dash, "Dashboard Todo must not restore the overflow settings button"
 assert "enabled: Todo.ready && !Todo.busy" in dash
 assert "font.strikeout: taskRow.modelData.done === true" in dash
 

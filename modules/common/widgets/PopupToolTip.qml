@@ -43,6 +43,16 @@ Item {
         tooltipLoader.item?.anchor?.updateAnchor()
     }
 
+    // Do not bind Loader.active directly to Item.visible. Effective Item
+    // visibility can itself change while the presentation is materialized or
+    // reparented, which lets QML form an active <-> visibility dependency
+    // cycle. Lifecycle signals drive the lazy Loader imperatively instead.
+    function syncPresentation(): void {
+        const shouldBeActive = root.visible && root.internalVisibleCondition
+        if (tooltipLoader.active !== shouldBeActive)
+            tooltipLoader.active = shouldBeActive
+    }
+
     // PopupAnchor item geometry is sampled only when a PopupWindow is shown.
     // Keep a tiny revision heartbeat while a tooltip is live so both the
     // PopupWindow anchor and the ApplicationWindow fallback follow moving
@@ -116,6 +126,7 @@ Item {
             _showDelayTimer.stop()
             root.setContentShown(false)
         }
+        root.syncPresentation()
     }
     onVisibleChanged: {
         if (!root.visible) {
@@ -123,9 +134,13 @@ Item {
             _showDelayTimer.stop()
             root.setContentShown(false)
         }
+        root.syncPresentation()
     }
     property bool _anchorInitialized: false
-    Component.onCompleted: root._anchorInitialized = true
+    Component.onCompleted: {
+        root._anchorInitialized = true
+        Qt.callLater(root.syncPresentation)
+    }
     onParentChanged: {
         if (!root._anchorInitialized)
             return
@@ -133,6 +148,7 @@ Item {
         root.anchorRevision += 1
         _showDelayTimer.stop()
         root.setContentShown(false)
+        Qt.callLater(root.syncPresentation)
     }
 
     property var anchorEdges: Edges.Top
@@ -180,7 +196,7 @@ Item {
     Loader {
         id: tooltipLoader
         anchors.fill: parent
-        active: root.visible && root.internalVisibleCondition
+        active: false
         sourceComponent: root._canUsePopupWindow
             ? popupWindowPresentation : fallbackItemPresentation
 

@@ -55,8 +55,23 @@ require(
 )
 require(
     tooltip,
-    "active: root.visible && root.internalVisibleCondition",
-    "tooltip presentation Loader active state must not depend on window association",
+    "function syncPresentation(): void",
+    "tooltip lifecycle must drive presentation activation explicitly",
+)
+require(
+    tooltip,
+    "tooltipLoader.active = shouldBeActive",
+    "tooltip lifecycle must assign Loader.active imperatively",
+)
+require(
+    tooltip,
+    "active: false",
+    "tooltip presentation Loader must start without a reactive active binding",
+)
+require(
+    tooltip,
+    "Qt.callLater(root.syncPresentation)",
+    "tooltip initialization/reparenting must resync presentation lazily",
 )
 require(
     tooltip,
@@ -70,6 +85,7 @@ require(tooltip, "id: fallbackItemPresentation",
 require(tooltip, "onLoaded:",
         "deferred reveal must restart after presentation reparenting")
 for forbidden in (
+    "active: root.visible && root.internalVisibleCondition",
     "active: root._canUsePopupWindow &&",
     "active: !root._canUsePopupWindow &&",
     "id: fallbackLoader",

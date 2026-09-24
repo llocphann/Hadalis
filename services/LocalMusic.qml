@@ -601,13 +601,18 @@ Singleton {
             Qt.callLater(root._drainQueueRequests)
     }
 
+    function _scheduleStatusFallback(): void {
+        if (!root._mpdSubscriptionActive)
+            statusRefreshTimer.restart()
+    }
+
     function _sendMpd(command: string, args): void {
         Quickshell.execDetached([
             root.nativeDispatchPath, "mpd", "command",
             mpdHost, String(mpdPort), command,
             JSON.stringify(Array.isArray(args) ? args : [])
         ])
-        statusRefreshTimer.restart()
+        root._scheduleStatusFallback()
     }
 
     function togglePlaying(): void {
@@ -628,7 +633,7 @@ Singleton {
         const player = mprisPlayer
         if (player && (player.canTogglePlaying ?? false)) {
             player.togglePlaying()
-            statusRefreshTimer.restart()
+            root._scheduleStatusFallback()
             return
         }
         _sendMpd("pause", [playing ? 1 : 0])
@@ -638,7 +643,7 @@ Singleton {
         const player = mprisPlayer
         if (player && MprisController.canGoNextForPlayer(player)) {
             MprisController.nextForPlayer(player, false)
-            statusRefreshTimer.restart()
+            root._scheduleStatusFallback()
             return
         }
         _sendMpd("next", [])
@@ -652,7 +657,7 @@ Singleton {
         const player = mprisPlayer
         if (player && MprisController.canGoPreviousForPlayer(player)) {
             MprisController.previousForPlayer(player, false)
-            statusRefreshTimer.restart()
+            root._scheduleStatusFallback()
             return
         }
         _sendMpd("previous", [])
@@ -686,7 +691,7 @@ Singleton {
         if (player && (player.canSeek ?? false)
                 && (player.positionSupported ?? true)) {
             player.position = target
-            statusRefreshTimer.restart()
+            root._scheduleStatusFallback()
             return
         }
         _sendMpd("seekcur", [target])
@@ -698,7 +703,7 @@ Singleton {
         const player = mprisPlayer
         if (player && (player.volumeSupported ?? false) && (player.canControl ?? false)) {
             player.volume = clamped
-            statusRefreshTimer.restart()
+            root._scheduleStatusFallback()
             return
         }
         _sendMpd("setvol", [Math.round(clamped * 100)])
@@ -710,7 +715,7 @@ Singleton {
         const player = mprisPlayer
         if (player && (player.shuffleSupported ?? false) && (player.canControl ?? false)) {
             player.shuffle = target
-            statusRefreshTimer.restart()
+            root._scheduleStatusFallback()
             return
         }
         _sendMpd("random", [target ? 1 : 0])
@@ -991,7 +996,7 @@ Singleton {
             if (code !== 0)
                 root.error = "mpd_queue_failed"
             else
-                statusRefreshTimer.restart()
+                root._scheduleStatusFallback()
 
             if (root._queueRequests.length > 0)
                 Qt.callLater(root._drainQueueRequests)

@@ -217,3 +217,23 @@ pub(super) fn action_category(description: &str, action: &str) -> &'static str {
     if desc.contains("brightness") { return "Brightness"; }
     "Other"
 }
+
+#[cfg(test)]
+mod tests {
+    use super::{action_category, action_description};
+
+    #[test]
+    fn labels_niri_and_shell_actions() {
+        let cases = [
+            ("toggle-overview", "Niri Overview", "System"),
+            ("focus-workspace 3", "Focus workspace 3", "Workspaces"),
+            ("set-column-width \"-10%\"", "Shrink column 10%", "Resize"),
+            ("spawn \"inir\" \"ipc\" \"call\" \"clipboard\" \"toggle\"", "Clipboard", "iNiR Shell"),
+            ("spawn \"wpctl\" \"set-volume\" \"@DEFAULT_AUDIO_SINK@\" \"5%+\"", "Volume up", "Media"),
+        ];
+        for (action, description, category) in cases {
+            assert_eq!(action_description(action), description);
+            assert_eq!(action_category(description, action), category);
+        }
+    }
+}

@@ -229,8 +229,7 @@ restore_snapshot() {
     local session_active=false
     if declare -F inir_supported_session_active >/dev/null 2>&1; then
         inir_supported_session_active && session_active=true
-    elif [[ -n "${NIRI_SOCKET:-}" ]] || pgrep -x niri >/dev/null 2>&1 \
-            || [[ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" ]] || pgrep -x Hyprland >/dev/null 2>&1; then
+    elif [[ -n "${NIRI_SOCKET:-}" ]] || pgrep -x niri >/dev/null 2>&1; then
         session_active=true
     fi
 
@@ -255,7 +254,7 @@ restore_snapshot() {
         tui_success "Snapshot restored and shell restarted"
     else
         tui_warn "No supported compositor session - shell restart skipped"
-        tui_info "Run: inir restart (from your Niri/Hyprland session)"
+        tui_info "Run: inir restart (from your Niri session)"
         tui_success "Snapshot restored"
     fi
 

@@ -267,8 +267,6 @@ ensure_user_inir_service_enabled() {
     local target=""
     if systemctl --user cat niri.service &>/dev/null; then
         target="niri.service"
-    elif systemctl --user cat 'wayland-wm@Hyprland.service' &>/dev/null; then
-        target="wayland-wm@Hyprland.service"
     fi
 
     if [[ -z "$target" ]]; then
@@ -288,9 +286,7 @@ ensure_user_inir_service_enabled() {
 inir_supported_session_active() {
     # Never use WAYLAND_DISPLAY as a compositor detector: KDE/GNOME set it too.
     [[ -n "${NIRI_SOCKET:-}" ]] && return 0
-    pgrep -x niri >/dev/null 2>&1 && return 0
-    [[ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" ]] && return 0
-    pgrep -x Hyprland >/dev/null 2>&1
+    pgrep -x niri >/dev/null 2>&1
 }
 
 restart_updated_shell() {
@@ -795,9 +791,6 @@ show_status_environment() {
     if [[ -n "${NIRI_SOCKET:-}" ]] && command -v niri >/dev/null 2>&1; then
         compositor="niri"
         comp_ver="$(niri --version 2>/dev/null | grep -oP '\d+\.\d+(\.\d+)?' | head -1)"
-    elif [[ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" ]] && command -v Hyprland >/dev/null 2>&1; then
-        compositor="hyprland"
-        comp_ver="$(Hyprland --version 2>/dev/null | grep -oP 'v\d+\.\d+(\.\d+)?' | head -1 | tr -d 'v')"
     elif command -v niri >/dev/null 2>&1 && niri msg --json version >/dev/null 2>&1; then
         compositor="niri (offline)"
     fi
@@ -1078,8 +1071,6 @@ show_info() {
     local compositor="Not detected"
     if [[ -n "$NIRI_SOCKET" ]]; then
         compositor="Niri"
-    elif [[ -n "$HYPRLAND_INSTANCE_SIGNATURE" ]]; then
-        compositor="Hyprland"
     elif [[ -n "$SWAYSOCK" ]]; then
         compositor="Sway"
     elif [[ -n "$XDG_CURRENT_DESKTOP" ]]; then
@@ -2812,7 +2803,7 @@ run_update() {
         _step_phase_done "Shell restarted and verified"
     else
         _step_phase_header 7 "Restarting shell"
-        _step_phase_skip "No active Niri/Hyprland session; restart deferred"
+        _step_phase_skip "No active Niri session; restart deferred"
         tui_info "The shell will use the new files on the next supported compositor session"
     fi
 

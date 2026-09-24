@@ -205,8 +205,6 @@ case "${SKIP_QUICKSHELL}" in
       local _comp_target=""
       if systemctl --user cat niri.service &>/dev/null; then
         _comp_target="niri.service"
-      elif systemctl --user cat 'wayland-wm@Hyprland.service' &>/dev/null; then
-        _comp_target="wayland-wm@Hyprland.service"
       fi
 
       if [[ -n "$_comp_target" ]]; then
@@ -216,7 +214,7 @@ case "${SKIP_QUICKSHELL}" in
         systemctl --user daemon-reload >/dev/null 2>&1 || true
         log_success "User inir.service enabled (wired to ${_comp_target})"
       else
-        log_warning "No supported compositor detected (niri or Hyprland)"
+        log_warning "Niri compositor service not detected"
         log_warning "inir.service not enabled — run 'inir service enable' from your compositor session"
       fi
     fi

@@ -2,7 +2,7 @@ use std::collections::{BTreeMap, HashMap};
 use std::fs;
 use std::io::{BufRead, BufReader, Read, Write};
 use std::net::TcpStream;
-use std::os::unix::net::{UnixListener, UnixStream};
+use std::os::unix::ffi::OsStrExt;\nuse std::os::unix::net::{UnixListener, UnixStream};
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 use std::thread;
@@ -363,9 +363,29 @@ fn local_path(uri: &str, music_root: &str) -> String {
 }
 
 fn file_url(path: &Path) -> String {
-    Url::from_file_path(path)
-        .map(|url| url.to_string())
-        .unwrap_or_else(|_| path.to_string_lossy().into_owned())
+    let path = if path.is_absolute() {
+        path.to_path_buf()
+    } else {
+        std::env::current_dir()
+            .unwrap_or_else(|_| PathBuf::from("/"))
+            .join(path)
+    };
+
+    let mut output = String::from("file://");
+    for byte in path.as_os_str().as_bytes() {
+        match *byte {
+            b'A'..=b'Z'
+            | b'a'..=b'z'
+            | b'0'..=b'9'
+            | b'/'
+            | b'-'
+            | b'.'
+            | b'_'
+            | b'~' => output.push(*byte as char),
+            value => output.push_str(&format!("%{value:02X}")),
+        }
+    }
+    output
 }
 
 fn folder_art(path_text: &str) -> String {

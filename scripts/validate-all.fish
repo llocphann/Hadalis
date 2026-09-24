@@ -343,12 +343,12 @@ end
 
 if test $run_live -eq 1
     set -l has_wayland 0
-    if set -q NIRI_SOCKET; or set -q HYPRLAND_INSTANCE_SIGNATURE; or set -q WAYLAND_DISPLAY
+    if set -q NIRI_SOCKET; or set -q WAYLAND_DISPLAY
         set has_wayland 1
     end
 
     if test $has_wayland -eq 0
-        skip_stage OPTIONAL 'live shell acceptance' 'no Niri/Hyprland/Wayland session variables detected'
+        skip_stage OPTIONAL 'live shell acceptance' 'no Niri/Wayland session variables detected'
     else if not test -x /usr/bin/qs
         skip_stage OPTIONAL 'live shell acceptance' '/usr/bin/qs is unavailable; scripts/inir currently expects that Quickshell path'
     else

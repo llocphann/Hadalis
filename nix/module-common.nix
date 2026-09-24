@@ -29,7 +29,7 @@ in
         };
 
         compositor = lib.mkOption {
-          type = lib.types.nullOr (lib.types.enum [ "niri" "hyprland" ]);
+          type = lib.types.nullOr (lib.types.enum [ "niri" ]);
           default = "niri";
           description = "Compositor user unit that should want inir.service. Set null to create the unit without auto-start wiring.";
         };
@@ -38,9 +38,7 @@ in
   };
 
   compositorUnit = compositor:
-    if compositor == "niri" then "niri.service"
-    else if compositor == "hyprland" then "wayland-wm@Hyprland.service"
-    else null;
+    if compositor == "niri" then "niri.service" else null;
 
   serviceEnvironment = cfg: {
     INIR_SYSTEM_RUNTIME_DIR = "${cfg.package}/share/quickshell/inir";

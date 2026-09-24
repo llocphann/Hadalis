@@ -49,8 +49,6 @@ if [ "$multiMonitorEnabled" == "true" ]; then
     focusedMonitor=""
     if command -v niri &> /dev/null && niri msg outputs &> /dev/null; then
         focusedMonitor=$(niri msg -j outputs 2>/dev/null | jq -r '.[] | select(.focused == true) | .name' 2>/dev/null)
-    elif command -v hyprctl &> /dev/null; then
-        focusedMonitor=$(hyprctl monitors -j 2>/dev/null | jq -r '.[] | select(.focused) | .name' 2>/dev/null)
     fi
 
     if [ -n "$focusedMonitor" ]; then

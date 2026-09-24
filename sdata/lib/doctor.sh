@@ -41,10 +41,6 @@ doctor_detect_compositor_service() {
         return 0
     fi
 
-    if systemctl --user cat 'wayland-wm@Hyprland.service' &>/dev/null; then
-        printf 'wayland-wm@Hyprland.service'
-        return 0
-    fi
 
     return 1
 }
@@ -80,7 +76,6 @@ check_dependencies() {
         "fuzzel:fuzzel"
         "awww:awww"
         "awww-daemon:awww"
-        "hyprpicker:hyprpicker"
         "playerctl:playerctl"
         "notify-send:libnotify"
         "flock:util-linux"

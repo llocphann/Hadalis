@@ -99,10 +99,6 @@ get_max_monitor_resolution() {
             width=$(echo "$res" | cut -d'x' -f1)
             height=$(echo "$res" | cut -d'x' -f2)
         fi
-    # Fallback to Hyprland
-    elif command -v hyprctl >/dev/null 2>&1; then
-        width="$(hyprctl monitors -j 2>/dev/null | jq '([.[].width] | max)' | xargs)"
-        height="$(hyprctl monitors -j 2>/dev/null | jq '([.[].height] | max)' | xargs)"
     fi
     echo "$width $height"
 }
@@ -241,10 +237,6 @@ get_focused_monitor_name() {
         niri msg -j focused-output 2>/dev/null | jq -r '.name // ""'
         return
     fi
-    if command -v hyprctl >/dev/null 2>&1; then
-        hyprctl monitors -j 2>/dev/null | jq -r '.[] | select(.focused == true) | .name' | head -1
-        return
-    fi
     echo ""
  }
 
@@ -336,42 +328,15 @@ switch() {
         "$SCRIPT_DIR/../ai/gemini-categorize-wallpaper.sh" "$imgpath" > "$STATE_DIR/user/generated/wallpaper/category.txt" &
     fi
 
-    # Hyprland-specific cursor/monitor math: only run if hyprctl is available.
-    # On Niri or other compositors we fall back to centered defaults to avoid
-    # spamming errors while still producing valid colors.
-    if command -v hyprctl >/dev/null 2>&1; then
-        focused_monitor_info=$(hyprctl monitors -j 2>/dev/null | jq -r '[.[] | select(.focused == true)] | first | if . == null then "" else "\(.scale) \(.x) \(.y) \(.height)" end' 2>/dev/null)
-        if [[ -n "$focused_monitor_info" ]]; then
-            read scale screenx screeny screensizey <<< "$focused_monitor_info"
-            cursor_json=$(hyprctl cursorpos -j 2>/dev/null)
-            cursorposx=$(printf '%s' "$cursor_json" | jq -r '.x // empty' 2>/dev/null)
-            cursorposy=$(printf '%s' "$cursor_json" | jq -r '.y // empty' 2>/dev/null)
-            if [[ -n "$cursorposx" && -n "$cursorposy" ]]; then
-                cursorposx=$(bc <<< "scale=0; ($cursorposx - $screenx) * $scale / 1")
-                cursorposy=$(bc <<< "scale=0; ($cursorposy - $screeny) * $scale / 1")
-            else
-                cursorposx=960
-                cursorposy=540
-            fi
-            cursorposy_inverted=$((screensizey - cursorposy))
-        else
-            scale=1
-            screenx=0
-            screeny=0
-            screensizey=1080
-            cursorposx=960
-            cursorposy=540
-            cursorposy_inverted=$((screensizey - cursorposy))
-        fi
-    else
-        scale=1
-        screenx=0
-        screeny=0
-        screensizey=1080
-        cursorposx=960
-        cursorposy=540
-        cursorposy_inverted=$((screensizey - cursorposy))
-    fi
+    # Niri uses the centered sampling point that was already the active
+    # behavior whenever no legacy pointer-coordinate backend was available.
+    scale=1
+    screenx=0
+    screeny=0
+    screensizey=1080
+    cursorposx=960
+    cursorposy=540
+    cursorposy_inverted=540
 
     if [[ "$color_flag" == "1" ]]; then
         # Static/custom themes keep their palette, but an explicit wallpaper
@@ -773,7 +738,7 @@ main() {
                     [[ "$skip_accent_write" != "1" ]] && set_accent_color ""
                     shift 2
                 else
-                    set_accent_color $(hyprpicker --no-fancy)
+                    set_accent_color "$("$SCRIPT_DIR/../colorpicker.sh" --no-copy)"
                     shift
                 fi
                 ;;

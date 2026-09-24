@@ -183,7 +183,9 @@ fn main() -> Result<()> {
         seed = invert_hue(seed);
     }
 
-    if let Some(cache) = &args.cache {
+    if source_kind == "image"
+        && let Some(cache) = &args.cache
+    {
         write_text(cache, &seed.to_hex())?;
     }
 

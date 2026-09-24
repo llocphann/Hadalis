@@ -999,7 +999,7 @@ fn snapshot(client: &mut MpdClient, root: &str) -> Result<Value> {
         for record in &playlist_records {
             items.push(Value::Object(build_track(
                 record,
-                &root,
+                root,
                 &mut art_lookup,
             )));
         }

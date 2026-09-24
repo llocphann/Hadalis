@@ -4,6 +4,22 @@ on:
   push:
     paths:
       - 'native/**'
+      - 'scripts/native-dispatch'
+      - 'scripts/test-native-cutover.sh'
+      - 'scripts/test-native-selector-contract.sh'
+      - 'services/KeyboardIndicators.qml'
+      - 'services/RuntimeDiagnostics.qml'
+      - 'services/NiriService.qml'
+      - 'services/LocalMusic.qml'
+      - 'services/IconThemeService.qml'
+      - 'services/Wallpapers.qml'
+      - 'services/deferred/Cliphist.qml'
+      - 'services/deferred/NiriKeybinds.qml'
+      - 'modules/onScreenKeyboard/PhysicalKeyboardFeedback.qml'
+      - 'modules/settings/NiriConfig.qml'
+      - 'modules/settings/MonitorVisibilityConfig.qml'
+      - 'scripts/colors/switchwall.sh'
+      - 'defaults/niri/config.d/50-startup.kdl'
       - '.github/workflows/native-rust.yml'
   pull_request:
     paths:
@@ -30,8 +46,10 @@ jobs:
         with:
           components: rustfmt, clippy
 
-      - name: Assert native code is still dormant
-        run: python3 native/scripts/assert-dormant.py
+      - name: Assert reversible native cutover boundary
+        run: |
+          python3 native/scripts/assert-dormant.py
+          bash scripts/test-native-selector-contract.sh
 
       # During the dormant staging phase, format the runner copy before compile
       # checks so incremental port commits are not blocked by rustfmt-only diffs.

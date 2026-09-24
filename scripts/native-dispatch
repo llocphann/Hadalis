@@ -20,6 +20,7 @@ if [[ -z "$BIN_DIR" && -r "$BIN_DIR_FILE" ]]; then
 fi
 BIN_DIR="${BIN_DIR:-$ROOT_DIR/native/target/release}"
 STRICT="${INIR_NATIVE_STRICT:-0}"
+MPD_SOCKET="${INIR_MPD_SOCKET:-${XDG_RUNTIME_DIR:-/tmp}/inir/mpd.sock}"
 
 python_bin() {
     local candidate=""
@@ -53,7 +54,7 @@ rust_ready() {
 
 cmd="${1:-}"
 [[ -n "$cmd" ]] || {
-    echo "usage: native-dispatch <input-lock|input-keys|niri|diagnostics|clipboard-store|mpd|theme|desktop-icons|backend-info> [args...]" >&2
+    echo "usage: native-dispatch <input-lock|input-keys|niri|diagnostics|clipboard-store|mpd|mpd-daemon|mpd-subscribe|theme|desktop-icons|backend-info> [args...]" >&2
     exit 64
 }
 shift
@@ -63,7 +64,7 @@ if [[ "$MODE" == rust && "$STRICT" == 1 ]]; then
     case "$cmd" in
         input-lock|input-keys) required_binary=inir-inputd ;;
         niri|diagnostics|clipboard-store|desktop-icons) required_binary=inir-native ;;
-        mpd) required_binary=inir-mpdd ;;
+        mpd|mpd-daemon|mpd-subscribe) required_binary=inir-mpdd ;;
         theme) required_binary=inir-theme ;;
     esac
     if [[ -n "$required_binary" ]] && ! rust_ready "$required_binary"; then
@@ -137,12 +138,37 @@ case "$cmd" in
 
     mpd)
         if want_rust && rust_ready inir-mpdd; then
+            if [[ -S "$MPD_SOCKET" ]]; then
+                "$BIN_DIR/inir-mpdd" --client-compat --socket "$MPD_SOCKET" "$@"
+                rc=$?
+                if (( rc != 75 || STRICT == 1 )); then
+                    exit "$rc"
+                fi
+                echo "[native-dispatch] Rust MPD daemon transport unavailable, using direct compatibility mode" >&2
+            fi
+
             "$BIN_DIR/inir-mpdd" --compat "$@"
             rc=$?
             if (( rc == 0 || STRICT == 1 )); then exit "$rc"; fi
             echo "[native-dispatch] Rust MPD compatibility mode failed ($rc), falling back to Python" >&2
         fi
         exec /usr/bin/python3 "$ROOT_DIR/scripts/local_music_mpd.py" "$@"
+        ;;
+
+    mpd-daemon)
+        if want_rust && rust_ready inir-mpdd; then
+            exec "$BIN_DIR/inir-mpdd" --socket "$MPD_SOCKET" "$@"
+        fi
+        echo "[native-dispatch] persistent MPD daemon requires the Rust backend" >&2
+        exit 69
+        ;;
+
+    mpd-subscribe)
+        if want_rust && rust_ready inir-mpdd; then
+            exec "$BIN_DIR/inir-mpdd" --subscribe --socket "$MPD_SOCKET"
+        fi
+        echo "[native-dispatch] MPD event subscription requires the Rust backend" >&2
+        exit 69
         ;;
 
     theme)

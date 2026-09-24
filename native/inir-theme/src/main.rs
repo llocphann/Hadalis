@@ -119,6 +119,12 @@ struct Args {
 }
 
 fn write_text(path: &Path, content: &str) -> Result<()> {
+    if fs::read(path)
+        .ok()
+        .is_some_and(|existing| existing == content.as_bytes())
+    {
+        return Ok(());
+    }
     if let Some(parent) = path.parent() {
         fs::create_dir_all(parent)?;
     }

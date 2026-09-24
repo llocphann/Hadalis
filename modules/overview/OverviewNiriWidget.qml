@@ -31,8 +31,6 @@ Item {
     }
 
     readonly property var overviewOptions: Config.options?.overview ?? {}
-    readonly property bool niriLivePreviewAvailable:
-        AdaptivePreviewService.niriLiveBackendAvailable
     readonly property int overviewRows: taskViewMode ? 1 : (overviewOptions.rows ?? 3)
     readonly property int overviewColumns: taskViewMode ? 3 : (overviewOptions.columns ?? 1)
     readonly property real overviewScale: taskViewMode ? 0.27 : (overviewOptions.scale ?? 0.17)
@@ -650,11 +648,6 @@ Item {
                         // window id and reactive cache; never retain another
                         // window's URL in delegate-local mutable state.
                         readonly property bool showPreviews: root.taskViewMode || Config.options?.overview?.showPreviews !== false
-                        readonly property bool nativePreviewReady:
-                            niriAdaptivePreviewLoader.item?.hasContent ?? false
-                        readonly property bool renderedPreviewReady:
-                            windowPreview.visible || nativePreviewReady
-
                         Image {
                             id: windowPreview
                             anchors.fill: parent
@@ -706,54 +699,12 @@ Item {
                             }
                         }
 
-                        // Native Niri ICC capture is intentionally isolated in
-                        // a lazy-loaded file because stock systems do not have
-                        // the Hadalis.NiriPreview QML module. The PNG preview
-                        // above remains visible until the native frame is ready.
-                        Loader {
-                            id: niriAdaptivePreviewLoader
-                            anchors.fill: parent
-                            anchors.margins: 2
-                            z: 2
-                            active: !root.taskViewMode
-                                && parent.showPreviews
-                                && root.niriLivePreviewAvailable
-                                && root.presentationActive
-                            source: active
-                                ? Qt.resolvedUrl("NiriAdaptiveWindowPreview.qml")
-                                : ""
-
-                            onLoaded: {
-                                const preview = item
-                                if (!preview)
-                                    return
-                                preview.windowId = Qt.binding(function() {
-                                    return windowItem.windowId
-                                })
-                                preview.windowData = Qt.binding(function() {
-                                    return windowItem.windowData
-                                })
-                                preview.presentationActive = Qt.binding(function() {
-                                    return root.presentationActive
-                                })
-                                preview.showPreviews = Qt.binding(function() {
-                                    return niriAdaptivePreviewLoader.parent.showPreviews
-                                })
-                                preview.hovered = Qt.binding(function() {
-                                    return windowItem.hovered
-                                })
-                                preview.focused = Qt.binding(function() {
-                                    return windowItem.isFocused
-                                })
-                            }
-                        }
-
                         // Icono de la app (fallback cuando no hay preview)
                         Image {
                             id: windowIcon
                             anchors.centerIn: parent
                             width: {
-                                var size = Math.min(parent.width, parent.height) * (parent.renderedPreviewReady ? 0.25 : 0.35);
+                                var size = Math.min(parent.width, parent.height) * (windowPreview.visible ? 0.25 : 0.35);
                                 const min = root.overviewOptions.iconMinSize ?? 0;
                                 const max = root.overviewOptions.iconMaxSize ?? 0;
                                 if (min > 0) size = Math.max(size, min);
@@ -765,7 +716,7 @@ Item {
                                 ? AppSearch.getIconSource(windowItem.windowData.app_id || windowItem.windowData.appId || "")
                                 : ""
                             fillMode: Image.PreserveAspectFit
-                            opacity: parent.renderedPreviewReady ? (root.taskViewMode ? 0 : 0.45) : 1.0
+                            opacity: windowPreview.visible ? (root.taskViewMode ? 0 : 0.6) : 1.0
                             Behavior on opacity {
                                 enabled: Appearance.animationsEnabled
                                 NumberAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Easing.OutCubic }

@@ -105,7 +105,6 @@
 | **LauncherSearch** | Overview search with prefix routing (apps, actions, calculator, packages). |
 | **TaskbarApps** | Dock/taskbar app list (merged pinned + open windows). |
 | **MinimizedWindows** | Niri window minimization via hidden workspace. IPC target: `minimize`. |
-| **AdaptivePreviewService** | Capability-aware Overview preview scheduler. Keeps Hyprland and Niri live budgets separate, rotates bounded low-FPS Niri PipeWire probes, prioritizes hover/media/focus signals, and hands off between cached snapshots and compositor-native window casts without screenshot polling. |
 | **WindowPreviewService** | Niri window snapshot cache for Overview/task previews, including warm decoded frames and targeted refresh. |
 | **GlobalActions** | Modular action registry for keyboard-driven workflows. User-extensible. IPC target: `globalActions`. |
 

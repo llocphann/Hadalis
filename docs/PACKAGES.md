@@ -110,15 +110,6 @@ Quickshell, Qt 6, and QML/KDE runtime dependencies declared by `sdata/dist-arch/
 
 `plasma-integration` is installed separately by the source installer as a Qt platform-theme integration; `qt6-avif-image-plugin` is attempted through the AUR helper for AVIF image support.
 
-### Native Niri preview plugin (`inir-niri-preview`)
-
-Hadalis keeps Niri live-window capture outside Quickshell. The local Arch recipe under `distro/arch/inir-niri-preview` builds a small Qt 6 QML plugin that talks to Niri's `org.gnome.Mutter.ScreenCast` D-Bus compatibility API. Each requested Niri window ID gets its own `RecordWindow` cast and PipeWire node, so multiple Overview tiles can stream independently without a portal chooser or Quickshell fork.
-
-Repo-managed Arch/Niri installs receive the plugin through required migration `046-niri-native-window-preview`. The resulting package owns `/usr/lib/qt6/qml/Hadalis/NiriPreview` and `/usr/share/inir/niri-preview-plugin`. The launcher publishes `INIR_NIRI_PREVIEW_PLUGIN=1` only when both payloads exist and the marker declares `backend=mutter-screencast` plus `transport=pipewire-shm`; an old or failed native install therefore falls back to cached PNG previews.
-
-The plugin intentionally negotiates raw BGRx/BGRA PipeWire frames through mapped shared-memory buffers rather than adding GStreamer or a Quickshell patch. Probe streams request a low maximum framerate, promoted streams renegotiate to the live cadence, and frames are reduced to tile size before Qt Quick texture upload.
-
-
 ---
 
 ## Audio (`inir-audio`)

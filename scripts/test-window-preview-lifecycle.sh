@@ -11,17 +11,7 @@ waffle_preview="$repo_root/modules/waffle/bar/tasks/TaskPreview.qml"
 waffle_tasks="$repo_root/modules/waffle/bar/tasks/Tasks.qml"
 waffle_bar_popup="$repo_root/modules/waffle/bar/BarPopup.qml"
 preview_policy="$repo_root/services/WindowPreviewPolicy.js"
-adaptive_preview_policy="$repo_root/services/AdaptivePreviewPolicy.js"
-adaptive_preview_service="$repo_root/services/AdaptivePreviewService.qml"
 overview_renderer="$repo_root/modules/overview/OverviewNiriWidget.qml"
-hypr_overview_window="$repo_root/modules/overview/OverviewWindow.qml"
-niri_native_renderer="$repo_root/modules/overview/NiriAdaptiveWindowPreview.qml"
-niri_native_backend="$repo_root/distro/arch/inir-niri-preview/plugin/capture_backend.cpp"
-niri_native_pkg="$repo_root/distro/arch/inir-niri-preview/PKGBUILD"
-niri_native_migration="$repo_root/sdata/migrations/046-niri-native-window-preview.sh"
-launcher="$repo_root/scripts/inir"
-services_qmldir="$repo_root/services/qmldir"
-config_qml="$repo_root/modules/common/Config.qml"
 
 fail() {
     printf 'window preview lifecycle guard failed: %s\n' "$1" >&2
@@ -161,128 +151,6 @@ assert.deepEqual(Array.from(scope.boundedWindowIds([1, 1, 2, -5, 3, 4], 3)),
 console.log('window preview session-cache behavior: PASS');
 NODE
 
-# Adaptive live-preview scheduling is deliberately separate from the Niri PNG
-# cache. Niri must not turn screenshot-window into a video transport.
-[[ -f "$adaptive_preview_policy" ]] || fail 'missing adaptive preview policy'
-[[ -f "$adaptive_preview_service" ]] || fail 'missing adaptive preview scheduler'
-grep -Fq 'singleton AdaptivePreviewService 1.0 AdaptivePreviewService.qml' "$services_qmldir" \
-    || fail 'adaptive preview scheduler must be registered'
-grep -Fq 'property string previewMode: "adaptive"' "$config_qml" \
-    || fail 'adaptive preview mode must have a persisted schema default'
-grep -Fq 'property int maxLiveWindows: 6' "$config_qml" \
-    || fail 'live preview streams must have a bounded default budget'
-grep -Fq 'live: root.previewLive' "$hypr_overview_window" \
-    || fail 'Hyprland toplevel capture must be controlled by the adaptive scheduler'
-grep -Fq 'windowPreview.captureFrame()' "$hypr_overview_window" \
-    || fail 'static Hyprland windows must use a single compositor frame'
-if grep -Fq 'ScreencopyView {' "$overview_renderer"; then
-    fail 'Niri Overview must not fake toplevel live capture with Quickshell ScreencopyView'
-fi
-grep -Fq 'Qt.resolvedUrl("NiriAdaptiveWindowPreview.qml")' "$overview_renderer" \
-    || fail 'Niri Overview must lazy-load the native renderer behind capability gating'
-grep -Fq 'import Hadalis.NiriPreview 1.0' "$niri_native_renderer" \
-    || fail 'Niri native renderer must use the standalone Hadalis QML plugin'
-grep -Fq 'NiriPreviewItem {' "$niri_native_renderer" \
-    || fail 'Niri native renderer must consume compositor-native frames'
-grep -Fq 'AdaptivePreviewService.isProbeActive' "$niri_native_renderer" \
-    || fail 'Niri motion discovery must use the bounded rotating probe scheduler'
-grep -Fq 'onFrameCaptured: root._recordActivity(activity)' "$niri_native_renderer" \
-    || fail 'Niri motion scoring must use native frame activity'
-grep -Fq 'QStringLiteral("RecordWindow")' "$niri_native_backend" \
-    || fail 'Niri backend must request the exact Niri window ID through RecordWindow'
-grep -Fq 'QStringLiteral("PipeWireStreamAdded")' "$niri_native_backend" \
-    || fail 'Niri backend must wait for Niri to publish the per-window PipeWire node'
-grep -Fq 'pw_stream_connect(' "$niri_native_backend" \
-    || fail 'Niri backend must consume the per-window PipeWire node'
-grep -Fq 'SPA_VIDEO_FORMAT_BGRx' "$niri_native_backend" \
-    || fail 'Niri PipeWire consumer must negotiate the compositor BGRx format'
-grep -Fq 'SPA_VIDEO_FORMAT_BGRA' "$niri_native_backend" \
-    || fail 'Niri PipeWire consumer must negotiate the compositor BGRA format'
-grep -Fq 'property int niriProbeMaxFps: 6' "$config_qml" \
-    || fail 'Niri adaptive probes must have a low-FPS persisted default'
-grep -Fq 'AdaptivePreviewService.niriProbeMaxFps' "$niri_native_renderer" \
-    || fail 'Niri probe renderer must negotiate a lower cadence than live mode'
-if grep -Fq 'screenshot-window' "$niri_native_renderer" \
-        || grep -Fq 'niri msg action screenshot-window' "$niri_native_backend"; then
-    fail 'Niri native live preview must never poll screenshot-window'
-fi
-if grep -Fq 'ext_foreign_toplevel_image_capture_source_manager_v1' "$niri_native_backend" \
-        || grep -Fq 'ext_image_copy_capture_session_v1' "$niri_native_backend"; then
-    fail 'Niri native preview must not depend on unsupported foreign-toplevel ICC globals'
-fi
-grep -Fq 'pkgname=inir-niri-preview' "$niri_native_pkg" \
-    || fail 'native Niri preview plugin must have an Arch package boundary'
-grep -Fq 'MIGRATION_ID="046-niri-native-window-preview"' "$niri_native_migration" \
-    || fail 'repo-managed Niri installs must gain the native plugin through migration'
-grep -Fq 'export INIR_NIRI_PREVIEW_PLUGIN=1' "$launcher" \
-    || fail 'launcher must capability-gate the native Niri QML module'
-grep -Fq "backend=mutter-screencast" "$launcher" \
-    || fail 'launcher must reject the retired ICC native backend marker'
-grep -Fq "transport=pipewire-shm" "$launcher" \
-    || fail 'launcher must require the PipeWire native transport marker'
-grep -Fq "backend=mutter-screencast" "$niri_native_pkg" \
-    || fail 'native package marker must advertise the Niri RecordWindow backend'
-grep -Fq "transport=pipewire-shm" "$niri_native_pkg" \
-    || fail 'native package marker must advertise PipeWire SHM transport'
-
-node - "$adaptive_preview_policy" <<'NODE'
-const fs = require('node:fs');
-const vm = require('node:vm');
-const assert = require('node:assert/strict');
-const scope = {};
-vm.createContext(scope);
-vm.runInContext(fs.readFileSync(process.argv[2], 'utf8'), scope);
-
-assert.equal(scope.normalizeMode('bogus'), 'adaptive');
-assert.equal(scope.boundedLiveLimit(99, 6), 16);
-assert.equal(scope.wantsLive({
-    mode: 'snapshot', active: true, backendAvailable: true, hovered: true
-}), false, 'snapshot mode never opens a live stream');
-assert.equal(scope.wantsLive({
-    mode: 'live', active: true, backendAvailable: false
-}), false, 'live mode still requires a real backend');
-assert.equal(scope.wantsLive({
-    mode: 'adaptive', active: true, backendAvailable: true, hovered: true
-}), true, 'hover may promote immediately');
-assert.equal(scope.wantsLive({
-    mode: 'adaptive', active: true, backendAvailable: true, mediaPlaying: true
-}), true, 'playing media is a dynamic-content hint');
-assert.equal(scope.wantsLive({
-    mode: 'adaptive', active: true, backendAvailable: true,
-    mediaPlaying: true, activityScore: 0,
-    requireActivityForHints: true,
-    activityPromotionThreshold: 0.06,
-    mediaActivityPromotionThreshold: 0.02
-}), false, 'Niri media hint cannot force a static window live');
-assert.equal(scope.wantsLive({
-    mode: 'adaptive', active: true, backendAvailable: true,
-    mediaPlaying: true, activityScore: 0.03,
-    requireActivityForHints: true,
-    activityPromotionThreshold: 0.06,
-    mediaActivityPromotionThreshold: 0.02
-}), true, 'Niri media hint lowers the activity threshold after real damage');
-assert.equal(scope.wantsLive({
-    mode: 'adaptive', active: true, backendAvailable: true,
-    activityScore: 0.08,
-    requireActivityForHints: true,
-    activityPromotionThreshold: 0.06
-}), true, 'Niri generic motion can promote without media metadata');
-assert.equal(scope.wantsLive({
-    mode: 'adaptive', active: true, backendAvailable: true, focused: true
-}), false, 'focus alone remains a snapshot by default');
-assert.equal(scope.wantsLive({
-    mode: 'adaptive', active: true, backendAvailable: true,
-    activityScore: 0.8, activityPromotionThreshold: 0.55
-}), true, 'future motion analyzers can feed the same activity score');
-assert.deepEqual(Array.from(scope.selectLiveKeys([
-    {key: 'static', requested: false, priority: 99999, order: 1},
-    {key: 'media', requested: true, priority: 5000, order: 2},
-    {key: 'hover', requested: true, priority: 10000, order: 3},
-    {key: 'other', requested: true, priority: 100, order: 4}
-], 2)), ['hover', 'media'], 'budget keeps the highest-value live streams');
-console.log('adaptive preview policy behavior: PASS');
-NODE
-
 require_capture 'capture_timeout_seconds="${INIR_WINDOW_PREVIEW_CAPTURE_TIMEOUT_SECONDS:-90}"' \
     'window preview capture must have a finite default lifetime'
 require_capture 'INIR_CAPTURE_WINDOWS_TIMEOUT_ACTIVE' \
@@ -339,6 +207,28 @@ grep -Fq 'readonly property bool popupContainsMouse:' "$waffle_bar_popup" \
 start_guard_count="$(grep -Fc -- 'property bool startObserved: false' "$service")"
 if (( start_guard_count < 5 )); then
     fail "expected startup guards for init and capture processes, found $start_guard_count"
+fi
+
+# Niri live/adaptive preview experiments are retired. Snapshot capture is the
+# only supported Niri Overview preview path.
+for retired in \
+    "$repo_root/services/AdaptivePreviewPolicy.js" \
+    "$repo_root/services/AdaptivePreviewService.qml" \
+    "$repo_root/modules/overview/NiriAdaptiveWindowPreview.qml" \
+    "$repo_root/distro/arch/inir-niri-preview" \
+    "$repo_root/.github/workflows/niri-preview-native.yml" \
+    "$repo_root/scripts/test-niri-native-preview-contract.sh" \
+    "$repo_root/sdata/migrations/046-niri-native-window-preview.sh"; do
+    [[ ! -e "$retired" ]] || fail "retired Niri live preview artifact remains: $retired"
+done
+if grep -Fq 'AdaptivePreviewService' "$overview_renderer"; then
+    fail 'Niri Overview must remain snapshot-only'
+fi
+if grep -Fq 'NiriAdaptiveWindowPreview' "$overview_renderer"; then
+    fail 'Niri Overview must not lazy-load a native live renderer'
+fi
+if grep -Fq 'ScreencopyView {' "$overview_renderer"; then
+    fail 'Niri Overview must not use a live screencopy surface'
 fi
 
 printf 'window preview lifecycle guards: ok\n'

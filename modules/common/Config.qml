@@ -2098,32 +2098,6 @@ Singleton {
                 property bool keepOverviewOpenOnWindowClick: true
                 property bool closeAfterWindowMove: true
                 property bool showPreviews: false
-                // Preview transport: snapshot | adaptive | live. Adaptive is
-                // conservative by default and only promotes real compositor
-                // streams when that compositor/backend supports toplevel copy.
-                property string previewMode: "adaptive"
-                property int maxLiveWindows: 6
-                property bool liveOnHover: true
-                property bool liveFocusedWindow: false
-                property bool liveMediaWindows: true
-                property int livePromotionDelayMs: 180
-                property int liveCooldownMs: 2500
-                property real activityPromotionThreshold: 0.55
-
-                // Niri native preview budget. Probe sessions use low-FPS
-                // per-window PipeWire casts; promoted windows renegotiate to
-                // the live cadence without changing the Niri cast target.
-                property int niriMaxLiveWindows: 3
-                property int niriPreviewMaxFps: 18
-                property int niriProbeMaxFps: 6
-                property int niriProbeSlots: 2
-                property int niriProbeWindowMs: 800
-                property int niriMotionSamples: 2
-                property real niriMotionSampleThreshold: 0.006
-                property real niriActivityPromotionThreshold: 0.06
-                property real niriMediaActivityPromotionThreshold: 0.02
-                property real niriFocusedActivityPromotionThreshold: 0.035
-                property int niriStaticCooldownMs: 2800
                 property bool activeScreenOnly: true
                 property bool allAppsGrid: false
                 property string allAppsGridMode: "minimal"

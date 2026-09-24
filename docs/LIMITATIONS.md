@@ -126,13 +126,9 @@ ii is built for **Niri**. Some features were inherited from the original Hyprlan
 
 ### Window Previews
 
-- **Snapshot remains the first frame/fallback on Niri**: Overview keeps bounded decoded PNG previews warm, so opening Overview never waits for the native backend before showing window content.
-- **Repo-managed Arch/Niri installs can use native adaptive previews**: Hadalis ships a separate `inir-niri-preview` QML plugin that calls Niri's Mutter-compatible `RecordWindow(window-id)` D-Bus API and consumes the returned per-window PipeWire node. It does not patch or replace Quickshell and does not open a portal chooser.
-- **Static windows stay cheap**: only a small rotating set of windows owns native probes. Probe streams negotiate a 6 FPS maximum and compare a small luma sample between frames; two meaningful motion samples are required before normal windows promote to live. Hover remains immediate.
-- **Live streams are bounded**: Niri defaults to at most three live previews at 18 FPS, plus two rotating 6 FPS probe streams. Promotion reconnects only the PipeWire consumer at the higher negotiated cadence while keeping the same Niri window cast session. Media metadata only lowers the motion threshold; static album art does not become a permanent live stream.
-- **Package-managed/non-Arch installs currently fall back to PNG snapshots unless `inir-niri-preview` is installed separately**. The extension QML is lazy-loaded only when the package-owned capability marker and plugin files exist.
-- **No screenshot polling**: `niri screenshot-window` remains the snapshot-cache transport only. The native adaptive path never loops it as video.
-- **Workspace screenshots remain disabled**: full-workspace screenshot code is not used as a live-preview substitute because it can capture shell layers and cannot reliably represent occluded/off-workspace windows.
+- **Niri Overview uses cached per-window snapshots only**: decoded PNG previews are kept warm and visible windows receive targeted refreshes when Overview opens. If a snapshot is unavailable or previews are disabled, the app icon remains the fallback.
+- **No Niri live/adaptive preview backend is installed or loaded**: `niri screenshot-window` is used only for bounded one-shot snapshot capture; it is never polled as a video transport.
+- **Workspace screenshots remain disabled**: full-workspace screenshots are not used as a preview substitute because they can capture shell layers and cannot reliably represent occluded/off-workspace windows.
 
 ### Window Matching
 

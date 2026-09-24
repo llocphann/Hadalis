@@ -4,7 +4,7 @@ set -euo pipefail
 root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
 trial="$(mktemp -d "${TMPDIR:-/tmp}/inir-selector-test.XXXXXX")"
 trap 'rm -rf -- "$trial"' EXIT
-mkdir -p "$trial/runtime/scripts" "$trial/state/inir" "$trial/home" "$trial/rust-a" "$trial/rust-b"
+mkdir -p "$trial/runtime/scripts" "$trial/runtime/native/bin" "$trial/state/inir" "$trial/home" "$trial/rust-a" "$trial/rust-b"
 cp "$root/scripts/native-dispatch" "$trial/runtime/scripts/native-dispatch"
 cat > "$trial/runtime/scripts/niri-config.py" <<'PY'
 import sys
@@ -38,6 +38,13 @@ assert_status() {
     }
 }
 
+cat > "$trial/runtime/native/bin/inir-native" <<'SH'
+#!/usr/bin/env bash
+printf 'rust-default:%s\n' "$*"
+SH
+chmod +x "$trial/runtime/native/bin/inir-native"
+assert_equal "$("${base_env[@]}" "$dispatch" niri get-hot-corners)" 'rust-default:niri get-hot-corners'
+rm -f "$trial/runtime/native/bin/inir-native"
 assert_equal "$("${base_env[@]}" "$dispatch" niri get-hot-corners)" 'python:get-hot-corners'
 printf 'rust\n' > "$trial/state/inir/native-backend"
 printf '%s\n' "$trial/rust-a" > "$trial/state/inir/native-bin-dir"

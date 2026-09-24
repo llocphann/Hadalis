@@ -143,6 +143,11 @@ case "${SKIP_QUICKSHELL}" in
       done < "$runtime_dirs_manifest"
     fi
 
+    native_dest="${II_TARGET}/native/bin"
+    if [[ "$(realpath -m "${REPO_ROOT}")" == "$(realpath -m "${II_TARGET}")" ]]; then native_dest="${REPO_ROOT}/native/target/release"; fi
+    tui_info "Building qualified Rust runtime..."
+    "${REPO_ROOT}/native/scripts/install-runtime.sh" --dest "$native_dest"
+
     # Finalize manifest
     mv "${II_TARGET}/.inir-manifest.new" "${II_TARGET}/.inir-manifest"
 

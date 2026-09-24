@@ -49,9 +49,11 @@ grep -Fq 'INIR_NATIVE_BACKEND=python' "$harness"     || fail 'cutover harness mu
 grep -Fq 'BACKEND_STATE_FILE="$STATE_DIR/native-backend"' "$harness"     || fail 'cutover harness must persist selector state for Niri-spawned helpers'
 grep -Fq 'MODE_FILE="$STATE_DIR/native-backend"' "$dispatch"     || fail 'native-dispatch must read persistent selector state when env is absent'
 grep -Fq 'BIN_DIR_FILE="$STATE_DIR/native-bin-dir"' "$dispatch"     || fail 'native-dispatch must read persistent native binary path for Niri-spawned helpers'
+grep -Fq 'MODE="${MODE:-rust}"' "$dispatch"     || fail 'native-dispatch production default must be Rust'
+grep -Fq 'DEFAULT_BIN_DIR="$ROOT_DIR/native/bin"' "$dispatch"     || fail 'native-dispatch must prefer packaged native binaries'
 grep -Fq -- '--restore' "$harness"     || fail 'cutover harness must expose --restore'
 
-# Never remove the Python fallback while this is still a trial cutover.
+# Python remains the explicit emergency fallback after production cutover.
 for fallback in     scripts/daemon/keyboard_lock_state_daemon.py     scripts/daemon/osk_physical_key_daemon.py     scripts/runtime-diagnostics-sampler.py     scripts/local_music_mpd.py     scripts/niri-config.py     scripts/clipboard-store.py     scripts/colors/generate_colors_material.py
 do
     [[ -f "$root/$fallback" ]] || fail "Python fallback missing: $fallback"

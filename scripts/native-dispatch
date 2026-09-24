@@ -8,7 +8,8 @@ MODE="${INIR_NATIVE_BACKEND:-}"
 if [[ -z "$MODE" && -r "$MODE_FILE" ]]; then
     IFS= read -r MODE < "$MODE_FILE" || true
 fi
-MODE="${MODE:-python}"
+# Rust is the production default; persisted state or an explicit environment override can force Python.
+MODE="${MODE:-rust}"
 case "$MODE" in
     python|rust|auto) ;;
     *) echo "[native-dispatch] invalid INIR_NATIVE_BACKEND=$MODE" >&2; exit 64 ;;
@@ -18,7 +19,11 @@ BIN_DIR="${INIR_NATIVE_BIN_DIR:-}"
 if [[ -z "$BIN_DIR" && -r "$BIN_DIR_FILE" ]]; then
     IFS= read -r BIN_DIR < "$BIN_DIR_FILE" || true
 fi
-BIN_DIR="${BIN_DIR:-$ROOT_DIR/native/target/release}"
+DEFAULT_BIN_DIR="$ROOT_DIR/native/bin"
+if [[ ! -x "$DEFAULT_BIN_DIR/inir-native" && -x "$ROOT_DIR/native/target/release/inir-native" ]]; then
+    DEFAULT_BIN_DIR="$ROOT_DIR/native/target/release"
+fi
+BIN_DIR="${BIN_DIR:-$DEFAULT_BIN_DIR}"
 STRICT="${INIR_NATIVE_STRICT:-0}"
 MPD_SOCKET="${INIR_MPD_SOCKET:-${XDG_RUNTIME_DIR:-/tmp}/inir/mpd.sock}"
 

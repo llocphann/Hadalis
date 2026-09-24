@@ -8,6 +8,9 @@ on:
       - 'scripts/native-cutover-benchmark.sh'
       - 'scripts/test-native-selector-contract.sh'
       - 'scripts/test-native-selector-behavior.sh'
+      - 'scripts/test-native-production-contract.sh'
+      - 'scripts/native-backend'
+      - 'sdata/migrations/050-rust-native-default.sh'
       - 'scripts/benchmark-python-vs-rust.sh'
       - 'scripts/test-native-benchmark-deep-contract.sh'
       - 'native/scripts/check-niri-customizations.py'
@@ -34,6 +37,9 @@ on:
       - 'native/**'
       - 'scripts/native-dispatch'
       - 'scripts/test-native-selector-behavior.sh'
+      - 'scripts/test-native-production-contract.sh'
+      - 'scripts/native-backend'
+      - 'sdata/migrations/050-rust-native-default.sh'
       - 'native/scripts/check-niri-customizations.py'
       - 'scripts/colors/generate_colors_material.py'
       - 'scripts/colors/switchwall.sh'
@@ -71,6 +77,10 @@ jobs:
           bash -n sdata/migrations/049-native-clipboard-selector.sh
           bash scripts/test-native-selector-contract.sh
           bash scripts/test-native-selector-behavior.sh
+          bash scripts/test-native-production-contract.sh
+          bash -n scripts/native-backend
+          bash -n native/scripts/install-runtime.sh
+          bash -n sdata/migrations/050-rust-native-default.sh
           bash scripts/test-native-benchmark-deep-contract.sh
 
       - name: Rustfmt

@@ -178,7 +178,7 @@ fn main() -> Result<()> {
     let transparent = matches!(args.transparency, Transparency::Transparent);
 
     let (source_seed, mut scheme, source_path, source_kind) = resolve_seed(&args)?;
-    if args.smart && low_chroma(source_seed) {
+    if source_kind == "image" && args.smart && low_chroma(source_seed) {
         scheme = "neutral".into();
     }
     let scheme_seed = if args.invert_hue {
@@ -253,8 +253,7 @@ fn main() -> Result<()> {
             "harmonize_threshold": args.harmonize_threshold,
             "color_strength": args.color_strength,
             "blend_bg_fg": args.blend_bg_fg,
-            "generated_by": "inir-theme",
-            "material_spec": "2025"
+            "generated_by": "inir-theme"
         });
         write_json(path, &meta)?;
     }

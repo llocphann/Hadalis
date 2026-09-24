@@ -661,8 +661,8 @@ pub fn colors_contract(palette: &Palette, terminal: &Palette) -> Palette {
 pub fn scss_output(material: &Palette, terminal: &Palette, dark: bool, transparent: bool) -> String {
     let mut output = format!(
         "$darkmode: {};\n$transparent: {};\n",
-        if dark { "true" } else { "false" },
-        if transparent { "true" } else { "false" }
+        if dark { "True" } else { "False" },
+        if transparent { "True" } else { "False" }
     );
     for (key, value) in material {
         output.push_str(&format!("${key}: {value};\n"));
@@ -751,6 +751,12 @@ mod tests {
         ] {
             assert_eq!(material.get(key).map(String::as_str), Some(expected), "{key}");
         }
+    }
+
+    #[test]
+    fn scss_boolean_spelling_matches_python_output() {
+        let output = scss_output(&Palette::new(), &Palette::new(), true, false);
+        assert_eq!(output, "$darkmode: True;\n$transparent: False;\n");
     }
 
     #[test]

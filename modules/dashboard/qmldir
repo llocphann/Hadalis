@@ -8,6 +8,7 @@ DashLayoutEditor 1.0 DashLayoutEditor.qml
 DashMedia 1.0 DashMedia.qml
 DashNotes 1.0 DashNotes.qml
 DashNotifications 1.0 DashNotifications.qml
+DashPillTabBar 1.0 DashPillTabBar.qml
 DashSystem 1.0 DashSystem.qml
 DashTodo 1.0 DashTodo.qml
 DashWeather 1.0 DashWeather.qml

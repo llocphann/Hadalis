@@ -565,8 +565,10 @@ timeout 2s "$BIN_DIR/inir-native" diagnostics --pid "$target_pid" --interval-ms 
 head -n 1 "$TMP_ROOT/diag.py" >"$TMP_ROOT/diag.py.one" || true
 head -n 1 "$TMP_ROOT/diag.rs" >"$TMP_ROOT/diag.rs.one" || true
 if command_exists jq && jq -e . "$TMP_ROOT/diag.py.one" >/dev/null 2>&1 && jq -e . "$TMP_ROOT/diag.rs.one" >/dev/null 2>&1; then
-    jq -S '[paths | map(tostring) | join(".")] | unique' "$TMP_ROOT/diag.py.one" >"$TMP_ROOT/diag.py.paths"
-    jq -S '[paths | map(tostring) | join(".")] | unique' "$TMP_ROOT/diag.rs.one" >"$TMP_ROOT/diag.rs.paths"
+    # Child processes may enter or leave between the two samples. Compare the
+    # schema of child entries without treating their transient indices as fields.
+    jq -S '[paths | map(if type == "number" then "[]" else tostring end) | join(".")] | unique' "$TMP_ROOT/diag.py.one" >"$TMP_ROOT/diag.py.paths"
+    jq -S '[paths | map(if type == "number" then "[]" else tostring end) | join(".")] | unique' "$TMP_ROOT/diag.rs.one" >"$TMP_ROOT/diag.rs.paths"
     if cmp -s "$TMP_ROOT/diag.py.paths" "$TMP_ROOT/diag.rs.paths"; then
         kv "diagnostics schema parity" "PASS"
     else

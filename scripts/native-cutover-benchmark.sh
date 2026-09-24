@@ -359,6 +359,7 @@ run_gate "cargo unit tests" 4     cargo test --manifest-path native/Cargo.toml -
 run_gate "cargo clippy" 5     cargo clippy --manifest-path native/Cargo.toml --workspace --all-targets -- -D warnings
 run_gate "native boundary guard" 6 python3 native/scripts/assert-dormant.py
 run_gate "native selector contract" 7 bash scripts/test-native-selector-contract.sh
+run_gate "native selector behavior" 7 bash scripts/test-native-selector-behavior.sh
 run_gate "Niri parser regression" 8 python3 scripts/test-niri-config-structural-read.py
 "$DISPATCH" backend-info
 for binary in inir-inputd inir-mpdd inir-native inir-theme; do

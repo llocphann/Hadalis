@@ -9,6 +9,10 @@ if [[ -z "$MODE" && -r "$MODE_FILE" ]]; then
     IFS= read -r MODE < "$MODE_FILE" || true
 fi
 MODE="${MODE:-python}"
+case "$MODE" in
+    python|rust|auto) ;;
+    *) echo "[native-dispatch] invalid INIR_NATIVE_BACKEND=$MODE" >&2; exit 64 ;;
+esac
 BIN_DIR_FILE="$STATE_DIR/native-bin-dir"
 BIN_DIR="${INIR_NATIVE_BIN_DIR:-}"
 if [[ -z "$BIN_DIR" && -r "$BIN_DIR_FILE" ]]; then
@@ -37,13 +41,8 @@ python_bin() {
 
 want_rust() {
     case "$MODE" in
-        rust) return 0 ;;
-        auto) return 0 ;;
-        python|"") return 1 ;;
-        *)
-            echo "[native-dispatch] invalid INIR_NATIVE_BACKEND=$MODE" >&2
-            return 1
-            ;;
+        rust|auto) return 0 ;;
+        *) return 1 ;;
     esac
 }
 
@@ -52,32 +51,26 @@ rust_ready() {
     [[ -x "$BIN_DIR/$binary" ]]
 }
 
-run_with_fallback() {
-    local binary="$1"
-    shift
-    local fallback_tag="$1"
-    shift
-
-    if want_rust && rust_ready "$binary"; then
-        "$BIN_DIR/$binary" "$@"
-        local rc=$?
-        if (( rc == 0 || STRICT == 1 )); then
-            return "$rc"
-        fi
-        echo "[native-dispatch] Rust $fallback_tag failed ($rc), falling back to Python" >&2
-    elif [[ "$MODE" == "rust" && "$STRICT" == "1" ]]; then
-        echo "[native-dispatch] missing Rust binary: $BIN_DIR/$binary" >&2
-        return 127
-    fi
-    return 125
-}
-
 cmd="${1:-}"
 [[ -n "$cmd" ]] || {
     echo "usage: native-dispatch <input-lock|input-keys|niri|diagnostics|clipboard-store|mpd|theme|desktop-icons|backend-info> [args...]" >&2
     exit 64
 }
 shift
+
+if [[ "$MODE" == rust && "$STRICT" == 1 ]]; then
+    required_binary=""
+    case "$cmd" in
+        input-lock|input-keys) required_binary=inir-inputd ;;
+        niri|diagnostics|clipboard-store|desktop-icons) required_binary=inir-native ;;
+        mpd) required_binary=inir-mpdd ;;
+        theme) required_binary=inir-theme ;;
+    esac
+    if [[ -n "$required_binary" ]] && ! rust_ready "$required_binary"; then
+        echo "[native-dispatch] missing Rust binary: $BIN_DIR/$required_binary" >&2
+        exit 127
+    fi
+fi
 
 case "$cmd" in
     backend-info)

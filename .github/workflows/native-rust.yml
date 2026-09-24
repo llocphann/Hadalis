@@ -7,6 +7,7 @@ on:
       - 'scripts/native-dispatch'
       - 'scripts/native-cutover-benchmark.sh'
       - 'scripts/test-native-selector-contract.sh'
+      - 'scripts/test-native-selector-behavior.sh'
       - 'scripts/inir'
       - 'services/KeyboardIndicators.qml'
       - 'services/RuntimeDiagnostics.qml'
@@ -26,6 +27,8 @@ on:
   pull_request:
     paths:
       - 'native/**'
+      - 'scripts/native-dispatch'
+      - 'scripts/test-native-selector-behavior.sh'
       - '.github/workflows/native-rust.yml'
   workflow_dispatch:
 
@@ -55,6 +58,7 @@ jobs:
           bash -n scripts/native-cutover-benchmark.sh
           bash -n sdata/migrations/049-native-clipboard-selector.sh
           bash scripts/test-native-selector-contract.sh
+          bash scripts/test-native-selector-behavior.sh
 
       # During the dormant staging phase, format the runner copy before compile
       # checks so incremental port commits are not blocked by rustfmt-only diffs.

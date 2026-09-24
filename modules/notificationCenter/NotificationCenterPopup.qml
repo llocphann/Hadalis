@@ -21,6 +21,7 @@ Bar.StyledPopup {
     property bool keyboardInteraction: false
     property bool hoverSessionArmed: true
     property int selectedTab: 0
+    property int _screenTimeRevision: 0
     property string cornerAttachmentEdge: "bottom"
     property real cornerAttachmentThickness: Math.max(1, Math.min(32,
         Math.round(Config.options?.appearance?.screenEdge?.width ?? 10)))
@@ -33,7 +34,25 @@ Bar.StyledPopup {
     readonly property real requestedPopupHeight: root.selectedTab === 0
         ? Math.max(260, Math.min(900,
             Config.options?.notificationCenter?.popupHeight ?? 560))
-        : 280
+        : 310
+    readonly property var todayUsage: {
+        const revision = root._screenTimeRevision
+        return ScreenTime.getToday()
+    }
+    readonly property var todayApps: {
+        const revision = root._screenTimeRevision
+        return ScreenTime.getAppList(1)
+    }
+    readonly property var visibleApps: root.todayApps.slice(0, 6)
+    readonly property int hiddenAppCount:
+        Math.max(0, root.todayApps.length - root.visibleApps.length)
+    readonly property real maxAppSeconds: {
+        let maximum = 1
+        const apps = root.todayApps
+        for (let i = 0; i < apps.length; ++i)
+            maximum = Math.max(maximum, Number(apps[i]?.seconds ?? 0))
+        return maximum
+    }
     readonly property bool _anchorHovered: root.anchorItem
         && (root.anchorItem.containsMouse ?? false)
     readonly property bool hoverLeaseRequested:
@@ -81,6 +100,30 @@ Bar.StyledPopup {
             root.keyboardInteraction = false
             GlobalStates.closeNotificationCenter()
         }
+    }
+
+    Connections {
+        target: ScreenTime
+
+        function onDataChanged(): void {
+            root._screenTimeRevision++
+        }
+
+        function onReadyChanged(): void {
+            root._screenTimeRevision++
+        }
+
+        function onEnabledChanged(): void {
+            root._screenTimeRevision++
+        }
+    }
+
+    function isCurrentApp(app): bool {
+        const current = String(ScreenTime.currentAppId ?? "").toLowerCase()
+        const original = String(app?.originalId ?? "").toLowerCase()
+        const id = String(app?.id ?? "").toLowerCase()
+        return current.length > 0
+            && (current === original || current === id)
     }
 
     function dismissAndDisarm(): void {
@@ -196,48 +239,22 @@ Bar.StyledPopup {
             anchors.fill: parent
             spacing: 10
 
-            RowLayout {
+            PillTabBar {
                 Layout.fillWidth: true
-                spacing: 8
-
-                Repeater {
-                    model: [
-                        { icon: "notifications", label: Translation.tr("Notifications") },
-                        { icon: "avg_pace", label: Translation.tr("Uptime") }
-                    ]
-                    delegate: Button {
-                        id: tabButton
-                        required property var modelData
-                        required property int index
-                        Layout.fillWidth: true
-                        implicitHeight: 38
-                        Accessible.name: modelData.label
-                        onClicked: root.selectedTab = index
-                        background: Rectangle {
-                            radius: Appearance.rounding.normal
-                            color: root.selectedTab === tabButton.index
-                                ? Appearance.colors.colPrimaryContainer
-                                : Appearance.colors.colLayer1
-                        }
-                        contentItem: RowLayout {
-                            spacing: 6
-                            MaterialSymbol {
-                                text: tabButton.modelData.icon
-                                iconSize: 18
-                                color: Appearance.colors.colOnLayer1
-                            }
-                            StyledText {
-                                Layout.fillWidth: true
-                                text: tabButton.modelData.label
-                                horizontalAlignment: Text.AlignHCenter
-                                elide: Text.ElideRight
-                                color: Appearance.colors.colOnLayer1
-                                font.weight: root.selectedTab === tabButton.index
-                                    ? Font.DemiBold : Font.Normal
-                            }
-                        }
+                currentIndex: root.selectedTab
+                pillHeight: 36
+                tabs: [
+                    {
+                        icon: "notifications",
+                        label: Translation.tr("Notifications"),
+                        count: Notifications.list.length
+                    },
+                    {
+                        icon: "monitoring",
+                        label: Translation.tr("Activity")
                     }
-                }
+                ]
+                onTabSelected: index => root.selectedTab = index
             }
 
             Item {
@@ -256,30 +273,252 @@ Bar.StyledPopup {
                 }
 
                 ColumnLayout {
-                    anchors.centerIn: parent
-                    width: parent.width
+                    anchors.fill: parent
                     visible: root.selectedTab === 1
-                    spacing: 12
+                    spacing: 8
 
-                    MaterialSymbol {
-                        Layout.alignment: Qt.AlignHCenter
-                        text: "avg_pace"
-                        iconSize: 40
-                        color: Appearance.colors.colPrimary
+                    RowLayout {
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: 48
+                        spacing: 8
+
+                        Rectangle {
+                            Layout.fillWidth: true
+                            Layout.fillHeight: true
+                            radius: height / 2
+                            color: Appearance.colors.colLayer2
+
+                            RowLayout {
+                                anchors.fill: parent
+                                anchors.leftMargin: 10
+                                anchors.rightMargin: 10
+                                spacing: 7
+
+                                MaterialSymbol {
+                                    text: "avg_pace"
+                                    iconSize: 17
+                                    color: Appearance.colors.colPrimary
+                                }
+
+                                ColumnLayout {
+                                    Layout.fillWidth: true
+                                    spacing: -1
+
+                                    StyledText {
+                                        Layout.fillWidth: true
+                                        text: Translation.tr("System uptime")
+                                        font.pixelSize:
+                                            Appearance.font.pixelSize.smallest
+                                        color: Appearance.colors.colSubtext
+                                        elide: Text.ElideRight
+                                    }
+
+                                    StyledText {
+                                        Layout.fillWidth: true
+                                        text: DateTime.uptime || "--"
+                                        font.pixelSize:
+                                            Appearance.font.pixelSize.small
+                                        font.weight: Font.DemiBold
+                                        font.family:
+                                            Appearance.font.family.numbers
+                                        color: Appearance.colors.colOnLayer2
+                                        elide: Text.ElideRight
+                                    }
+                                }
+                            }
+                        }
+
+                        Rectangle {
+                            Layout.fillWidth: true
+                            Layout.fillHeight: true
+                            radius: height / 2
+                            color: Appearance.colors.colLayer2
+
+                            RowLayout {
+                                anchors.fill: parent
+                                anchors.leftMargin: 10
+                                anchors.rightMargin: 10
+                                spacing: 7
+
+                                MaterialSymbol {
+                                    text: "schedule"
+                                    iconSize: 17
+                                    color: Appearance.colors.colPrimary
+                                }
+
+                                ColumnLayout {
+                                    Layout.fillWidth: true
+                                    spacing: -1
+
+                                    StyledText {
+                                        Layout.fillWidth: true
+                                        text: Translation.tr("Today")
+                                        font.pixelSize:
+                                            Appearance.font.pixelSize.smallest
+                                        color: Appearance.colors.colSubtext
+                                        elide: Text.ElideRight
+                                    }
+
+                                    StyledText {
+                                        Layout.fillWidth: true
+                                        text: ScreenTime.formatDuration(
+                                            Number(root.todayUsage?.totalSeconds ?? 0))
+                                        font.pixelSize:
+                                            Appearance.font.pixelSize.small
+                                        font.weight: Font.DemiBold
+                                        font.family:
+                                            Appearance.font.family.numbers
+                                        color: Appearance.colors.colOnLayer2
+                                        elide: Text.ElideRight
+                                    }
+                                }
+                            }
+                        }
                     }
-                    StyledText {
-                        Layout.alignment: Qt.AlignHCenter
-                        text: Translation.tr("System uptime")
-                        font.pixelSize: Appearance.font.pixelSize.small
-                        color: Appearance.colors.colSubtext
+
+                    RowLayout {
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: 18
+                        spacing: 6
+
+                        StyledText {
+                            Layout.fillWidth: true
+                            text: Translation.tr("App usage")
+                            font.pixelSize: Appearance.font.pixelSize.smallest
+                            font.weight: Font.Medium
+                            color: Appearance.colors.colSubtext
+                            elide: Text.ElideRight
+                        }
+
+                        StyledText {
+                            visible: root.hiddenAppCount > 0
+                            text: "+" + root.hiddenAppCount
+                            font.pixelSize: Appearance.font.pixelSize.smallest
+                            color: Appearance.colors.colSubtext
+                        }
                     }
-                    StyledText {
-                        Layout.alignment: Qt.AlignHCenter
-                        text: DateTime.uptime || "--"
-                        font.pixelSize: Appearance.font.pixelSize.huge
-                        font.weight: Font.DemiBold
-                        font.family: Appearance.font.family.numbers
-                        color: Appearance.colors.colOnLayer1
+
+                    GridLayout {
+                        visible: root.visibleApps.length > 0
+                        Layout.fillWidth: true
+                        Layout.fillHeight: true
+                        columns: 2
+                        uniformCellWidths: true
+                        columnSpacing: 6
+                        rowSpacing: 6
+
+                        Repeater {
+                            model: root.visibleApps
+
+                            delegate: Rectangle {
+                                id: usageCell
+                                required property var modelData
+
+                                Layout.fillWidth: true
+                                Layout.preferredHeight: 34
+                                radius: height / 2
+                                clip: true
+
+                                readonly property bool active:
+                                    root.isCurrentApp(modelData)
+                                color: active
+                                    ? Appearance.colors.colPrimaryContainer
+                                    : Appearance.colors.colLayer2
+
+                                Rectangle {
+                                    anchors.left: parent.left
+                                    anchors.bottom: parent.bottom
+                                    height: 2
+                                    width: parent.width * Math.max(0, Math.min(1,
+                                        Number(usageCell.modelData?.seconds ?? 0)
+                                            / root.maxAppSeconds))
+                                    color: usageCell.active
+                                        ? Appearance.colors.colPrimary
+                                        : Appearance.colors.colPrimary
+                                    opacity: usageCell.active ? 0.72 : 0.26
+                                }
+
+                                RowLayout {
+                                    anchors.fill: parent
+                                    anchors.leftMargin: 8
+                                    anchors.rightMargin: 8
+                                    spacing: 6
+
+                                    SmartAppIcon {
+                                        Layout.preferredWidth: 19
+                                        Layout.preferredHeight: 19
+                                        iconSize: 19
+                                        icon: AppSearch.guessIcon(
+                                            String(usageCell.modelData?.name ?? "")
+                                                .toLowerCase()
+                                            || String(
+                                                usageCell.modelData?.originalId
+                                                    ?? usageCell.modelData?.id
+                                                    ?? ""))
+                                    }
+
+                                    StyledText {
+                                        Layout.fillWidth: true
+                                        Layout.minimumWidth: 0
+                                        text: usageCell.modelData?.name
+                                            || usageCell.modelData?.id || ""
+                                        font.pixelSize:
+                                            Appearance.font.pixelSize.smallest
+                                        font.weight: usageCell.active
+                                            ? Font.DemiBold : Font.Medium
+                                        color: usageCell.active
+                                            ? Appearance.colors
+                                                .colOnPrimaryContainer
+                                            : Appearance.colors.colOnLayer2
+                                        elide: Text.ElideRight
+                                        maximumLineCount: 1
+                                    }
+
+                                    StyledText {
+                                        text: ScreenTime.formatDuration(
+                                            Number(usageCell.modelData?.seconds ?? 0))
+                                        font.pixelSize:
+                                            Appearance.font.pixelSize.smallest
+                                        font.weight: Font.DemiBold
+                                        font.family:
+                                            Appearance.font.family.numbers
+                                        color: usageCell.active
+                                            ? Appearance.colors
+                                                .colOnPrimaryContainer
+                                            : Appearance.colors.colSubtext
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    Item {
+                        visible: root.visibleApps.length === 0
+                        Layout.fillWidth: true
+                        Layout.fillHeight: true
+
+                        RowLayout {
+                            anchors.centerIn: parent
+                            width: Math.min(parent.width - 16, 250)
+                            spacing: 8
+
+                            MaterialSymbol {
+                                text: "monitoring"
+                                iconSize: 20
+                                color: Appearance.colors.colSubtext
+                            }
+
+                            StyledText {
+                                Layout.fillWidth: true
+                                text: ScreenTime.enabled
+                                    ? Translation.tr("No activity recorded yet")
+                                    : Translation.tr("Activity tracking is starting…")
+                                font.pixelSize:
+                                    Appearance.font.pixelSize.smallest
+                                color: Appearance.colors.colSubtext
+                                wrapMode: Text.WordWrap
+                            }
+                        }
                     }
                 }
             }

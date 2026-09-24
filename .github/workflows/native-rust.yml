@@ -21,6 +21,7 @@ on:
       - 'modules/settings/NiriConfig.qml'
       - 'modules/settings/MonitorVisibilityConfig.qml'
       - 'scripts/colors/switchwall.sh'
+      - 'scripts/colors/applycolor.sh'
       - 'defaults/niri/config.d/50-startup.kdl'
       - 'sdata/migrations/049-native-clipboard-selector.sh'
       - '.github/workflows/native-rust.yml'
@@ -29,6 +30,8 @@ on:
       - 'native/**'
       - 'scripts/native-dispatch'
       - 'scripts/test-native-selector-behavior.sh'
+      - 'scripts/colors/switchwall.sh'
+      - 'scripts/colors/applycolor.sh'
       - '.github/workflows/native-rust.yml'
   workflow_dispatch:
 
@@ -56,6 +59,8 @@ jobs:
           python3 native/scripts/assert-dormant.py
           bash -n scripts/native-dispatch
           bash -n scripts/native-cutover-benchmark.sh
+          bash -n scripts/colors/switchwall.sh
+          bash -n scripts/colors/applycolor.sh
           bash -n sdata/migrations/049-native-clipboard-selector.sh
           bash scripts/test-native-selector-contract.sh
           bash scripts/test-native-selector-behavior.sh

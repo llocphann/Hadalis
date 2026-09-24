@@ -120,7 +120,7 @@ Item {
 
             RowLayout {
                 Layout.fillWidth: true
-                Layout.preferredHeight: 24
+                Layout.preferredHeight: root.compactMode ? 20 : 24
                 spacing: 8
 
                 StyledText {

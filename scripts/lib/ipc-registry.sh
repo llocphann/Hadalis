@@ -66,7 +66,6 @@ declare -gA IPC_TARGET_DESC=(
   [wnotificationCenter]="Waffle notification center."
   [wwidgets]="Waffle widgets panel."
   [ytmusic]="Direct YtMusic player control. Use these if you want to control YtMusic specifically, regardless of what other players are active."
-  [zoom]="Screen zoom. Accessibility feature, or for reading tiny UI without pretending your monitor is the problem."
 )
 
 declare -gA IPC_TARGET_FAMILY=(
@@ -130,7 +129,6 @@ declare -gA IPC_TARGET_FAMILY=(
   [wnotificationCenter]="waffle"
   [wwidgets]="waffle"
   [ytmusic]="shared"
-  [zoom]="shared"
 )
 
 declare -gA IPC_TARGET_FUNCTIONS=(
@@ -194,7 +192,6 @@ declare -gA IPC_TARGET_FUNCTIONS=(
   [wnotificationCenter]="toggle close open"
   [wwidgets]="toggle close open"
   [ytmusic]="playPause next previous stop"
-  [zoom]="zoomIn zoomOut"
 )
 
 declare -gA IPC_FUNCTION_DESC=(
@@ -446,8 +443,6 @@ declare -gA IPC_FUNCTION_DESC=(
   ["ytmusic:next"]="Play next track in YtMusic"
   ["ytmusic:previous"]="Play previous track in YtMusic"
   ["ytmusic:stop"]="Stop YtMusic playback"
-  ["zoom:zoomIn"]="Increase compositor zoom"
-  ["zoom:zoomOut"]="Decrease compositor zoom"
 )
 
 declare -gA IPC_FUNCTION_ARGS=(
@@ -530,8 +525,8 @@ bind "Ctrl+Alt+A" { spawn "inir" "wallpaperSelector" "openLauncher" "animated"; 
   [ytmusic]='bind "Mod+M+Space" { spawn "inir" "ytmusic" "playPause"; }'
 )
 
-IPC_ALL_TARGETS=(ai altSwitcher appCatalog audio autostart background bar brightness cheatsheet clipboard cliphistService closeConfirm codeWorkflowCapture codeWorkflowRuntime controlPanel coverflowSelector customWidgets dashboard dev gamemode globalActions keyboard lock mediaControls memory minimize mpris notificationCenter notifications osd osdInput osdVolume osk overlay overview packageSearch panelFamily recordingOsd region runtimeDiagnostics search session settings settingsNav shellLayout shellUpdate sidebarLeft sidebarRight taskview tiling voiceSearch wactionCenter waffleAltSwitcher wallpaperLauncher wallpaperSelector wbar widgetpower wnotificationCenter wwidgets ytmusic zoom)
-IPC_SHARED_TARGETS=(ai altSwitcher appCatalog audio background bar brightness cheatsheet clipboard cliphistService closeConfirm codeWorkflowCapture codeWorkflowRuntime controlPanel coverflowSelector dashboard dev gamemode globalActions keyboard lock mediaControls memory minimize mpris notificationCenter notifications osdInput osdVolume osk overlay overview packageSearch panelFamily region runtimeDiagnostics session settings settingsNav shellLayout shellUpdate sidebarLeft sidebarRight taskview tiling voiceSearch wallpaperLauncher wallpaperSelector ytmusic zoom)
+IPC_ALL_TARGETS=(ai altSwitcher appCatalog audio autostart background bar brightness cheatsheet clipboard cliphistService closeConfirm codeWorkflowCapture codeWorkflowRuntime controlPanel coverflowSelector customWidgets dashboard dev gamemode globalActions keyboard lock mediaControls memory minimize mpris notificationCenter notifications osd osdInput osdVolume osk overlay overview packageSearch panelFamily recordingOsd region runtimeDiagnostics search session settings settingsNav shellLayout shellUpdate sidebarLeft sidebarRight taskview tiling voiceSearch wactionCenter waffleAltSwitcher wallpaperLauncher wallpaperSelector wbar widgetpower wnotificationCenter wwidgets ytmusic)
+IPC_SHARED_TARGETS=(ai altSwitcher appCatalog audio background bar brightness cheatsheet clipboard cliphistService closeConfirm codeWorkflowCapture codeWorkflowRuntime controlPanel coverflowSelector dashboard dev gamemode globalActions keyboard lock mediaControls memory minimize mpris notificationCenter notifications osdInput osdVolume osk overlay overview packageSearch panelFamily region runtimeDiagnostics session settings settingsNav shellLayout shellUpdate sidebarLeft sidebarRight taskview tiling voiceSearch wallpaperLauncher wallpaperSelector ytmusic)
 IPC_II_TARGETS=()
 IPC_WAFFLE_TARGETS=(autostart customWidgets osd recordingOsd search wactionCenter waffleAltSwitcher wbar widgetpower wnotificationCenter wwidgets)
 

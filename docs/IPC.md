@@ -803,17 +803,6 @@ bind "Mod+Alt+K" { spawn "inir" "keyboard" "switchLayout"; }
 
 ---
 
-### zoom
-
-Screen zoom. Accessibility feature, or for reading tiny UI without pretending your monitor is the problem.
-
-| Function | Description |
-|----------|-------------|
-| `zoomIn` | Increase compositor zoom |
-| `zoomOut` | Decrease compositor zoom |
-
----
-
 ## Waffle-Specific Targets
 
 These targets only work when using the Waffle (Windows 11) panel style.

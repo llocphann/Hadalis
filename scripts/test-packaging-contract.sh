@@ -120,27 +120,31 @@ srcinfo_source="$(srcinfo_value "$stable_srcinfo" source)"
 # Both direct Arch shell packages therefore need the generator's Python imports
 # as package dependencies, with committed .SRCINFO kept in lockstep.
 arch_python_required=(python-materialyoucolor python-numpy python-pillow)
+for pair in \
+  "$stable_pkg:$stable_srcinfo" \
+  "$git_pkg:$git_srcinfo"; do
+  recipe="${pair%%:*}"
+  srcinfo="${pair#*:}"
+  for package in "${arch_python_required[@]}"; do
+    grep -Eq "^[[:space:]]+${package}$" "$recipe" \
+      || fail "$recipe is missing color generator Python dependency: $package"
+    grep -Fqx $'\tdepends = '"$package" "$srcinfo" \
+      || fail "$srcinfo is missing color generator Python dependency: $package"
+  done
+done
+
+# Rust is now part of the shipped runtime. Direct shell packages therefore
+# need Cargo at build time, must be architecture-specific, and must install all
+# four qualified helpers under the selector-owned runtime directory.
 arch_native_bins=(inir-inputd inir-mpdd inir-native inir-theme)
 for pair in \
   "$stable_pkg:$stable_srcinfo" \
   "$git_pkg:$git_srcinfo"; do
-  recipe="${pair%%:*}"; srcinfo="${pair#*:}"
-  grep -Fq "cargo" "$recipe" || fail "$recipe does not build the Rust runtime with Cargo"
-  grep -Fq for pair in \
-  "$stable_pkg:$stable_srcinfo" \
-  "$git_pkg:$git_srcinfo"; do
   recipe="${pair%%:*}"
   srcinfo="${pair#*:}"
-  for package in "${arch_python_required[@]}"; do
-    grep -Eq "^[[:space:]]+${package}$" "$recipe" \
-      || fail "$recipe is missing color generator Python dependency: $package"
-    grep -Fqx $'\tdepends = '"$package" "$srcinfo" \
-      || fail "$srcinfo is missing color generator Python dependency: $package"
-  done
-done
-
-# The primary local aggregate should exercise the same fast release-boundary
-# contracts even when hosted CI cannot start a runner. Target membership is the
+  grep -Eq '^makedepends=\([^)]*cargo' "$recipe" \
+    || fail "$recipe is missing Cargo build dependency"
+  grep -Fqx # contracts even when hosted CI cannot start a runner. Target membership is the
 # invariant; dependency ordering may change as independent gates are added.
 test_local_rule="$(grep -m1 '^test-local:' "$makefile")"
 for target in test-optional-audio-deps test-news-contract test-equalizer-contracts test-docs; do
@@ -294,22 +298,9 @@ grep -Fq -- "-type l -path '*.wants/inir.service' -delete" "$uninstall_doc" \
 
 printf '%s\n' '1..1'
 printf '%s\n' 'ok 1 - packaging metadata and distribution contracts are coherent'
-\tmakedepends = cargo' "$srcinfo" || fail "$srcinfo is missing Cargo build dependency"
-  grep -Eq '^arch=\(any\)for pair in \
-  "$stable_pkg:$stable_srcinfo" \
-  "$git_pkg:$git_srcinfo"; do
-  recipe="${pair%%:*}"
-  srcinfo="${pair#*:}"
-  for package in "${arch_python_required[@]}"; do
-    grep -Eq "^[[:space:]]+${package}$" "$recipe" \
-      || fail "$recipe is missing color generator Python dependency: $package"
-    grep -Fqx $'\tdepends = '"$package" "$srcinfo" \
-      || fail "$srcinfo is missing color generator Python dependency: $package"
-  done
-done
-
-# The primary local aggregate should exercise the same fast release-boundary
-# contracts even when hosted CI cannot start a runner. Target membership is the
+\tmakedepends = cargo' "$srcinfo" \
+    || fail "$srcinfo is missing Cargo build dependency"
+  if grep -Eq '^arch=\(any\)# contracts even when hosted CI cannot start a runner. Target membership is the
 # invariant; dependency ordering may change as independent gates are added.
 test_local_rule="$(grep -m1 '^test-local:' "$makefile")"
 for target in test-optional-audio-deps test-news-contract test-equalizer-contracts test-docs; do
@@ -463,20 +454,14 @@ grep -Fq -- "-type l -path '*.wants/inir.service' -delete" "$uninstall_doc" \
 
 printf '%s\n' '1..1'
 printf '%s\n' 'ok 1 - packaging metadata and distribution contracts are coherent'
- "$recipe" && fail "$recipe still declares architecture-independent output"
-  for binary in "${arch_native_bins[@]}"; do grep -Fq "$binary" "$recipe" || fail "$recipe does not package native binary: $binary"; done
-done
-
-for pair in \
-  "$stable_pkg:$stable_srcinfo" \
-  "$git_pkg:$git_srcinfo"; do
-  recipe="${pair%%:*}"
-  srcinfo="${pair#*:}"
-  for package in "${arch_python_required[@]}"; do
-    grep -Eq "^[[:space:]]+${package}$" "$recipe" \
-      || fail "$recipe is missing color generator Python dependency: $package"
-    grep -Fqx $'\tdepends = '"$package" "$srcinfo" \
-      || fail "$srcinfo is missing color generator Python dependency: $package"
+ "$recipe"; then
+    fail "$recipe still declares architecture-independent output while shipping Rust binaries"
+  fi
+  grep -Fq 'native/bin' "$recipe" \
+    || fail "$recipe does not install native helpers under runtime native/bin"
+  for binary in "${arch_native_bins[@]}"; do
+    grep -Fq "$binary" "$recipe" \
+      || fail "$recipe does not package native binary: $binary"
   done
 done
 

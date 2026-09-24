@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""Guard the reversible Rust trial-cutover boundary.
+"""Guard the production Rust selector boundary.
 
-Runtime call sites may route through scripts/native-dispatch, but they must not
-invoke Rust binaries directly. Python fallbacks stay present until the
-maintainer explicitly approves a permanent cutover.
+Runtime call sites must route through scripts/native-dispatch rather than invoke
+Rust helpers directly. Build and packaging recipes are allowed to name/copy the
+compiled binaries because they are responsible for shipping native/bin.
 """
 
 from __future__ import annotations
@@ -24,8 +24,6 @@ RUNTIME_ROOTS = (
     ROOT / "modules",
     ROOT / "defaults",
     ROOT / "assets" / "systemd",
-    ROOT / "distro",
-    ROOT / "nix",
 )
 
 RUNTIME_FILES = (

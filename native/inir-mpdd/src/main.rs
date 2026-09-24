@@ -2,7 +2,8 @@ use std::collections::{BTreeMap, HashMap};
 use std::fs;
 use std::io::{BufRead, BufReader, Read, Write};
 use std::net::TcpStream;
-use std::os::unix::ffi::OsStrExt;\nuse std::os::unix::net::{UnixListener, UnixStream};
+use std::os::unix::ffi::OsStrExt;
+use std::os::unix::net::{UnixListener, UnixStream};
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 use std::thread;
@@ -13,7 +14,6 @@ use clap::Parser;
 use serde::Deserialize;
 use serde_json::{json, Map, Value};
 use sha2::{Digest, Sha256};
-use url::Url;
 
 const ART_NAMES: &[&str] = &["cover", "folder", "front", "album", "artwork"];
 const ART_EXTENSIONS: &[&str] = &[".jpg", ".jpeg", ".png", ".webp", ".avif"];

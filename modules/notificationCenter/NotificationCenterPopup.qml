@@ -96,10 +96,8 @@ Bar.StyledPopup {
     }
 
     onSelectedTabChanged: {
-        if (root.selectedTab === 1 && root.keyboardInteraction) {
+        if (root.selectedTab === 1 && root.keyboardInteraction)
             root.keyboardInteraction = false
-            GlobalStates.closeNotificationCenter()
-        }
     }
 
     Connections {

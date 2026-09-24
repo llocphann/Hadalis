@@ -132,7 +132,6 @@ OVERVIEW_ALL_APPS_GRID = ROOT / "modules" / "overview" / "OverviewAllAppsGrid.qm
 OVERVIEW_DASHBOARD = ROOT / "modules" / "overview" / "OverviewDashboard.qml"
 DASHBOARD_CONTENT = ROOT / "modules" / "dashboard" / "DashboardContent.qml"
 OVERVIEW_NIRI_WIDGET = ROOT / "modules" / "overview" / "OverviewNiriWidget.qml"
-OVERVIEW_WIDGET = ROOT / "modules" / "overview" / "OverviewWidget.qml"
 WELCOME = ROOT / "welcome.qml"
 
 
@@ -283,7 +282,6 @@ def main() -> None:
     overview_dashboard = OVERVIEW_DASHBOARD.read_text(encoding="utf-8")
     dashboard_content = DASHBOARD_CONTENT.read_text(encoding="utf-8")
     overview_niri_widget = OVERVIEW_NIRI_WIDGET.read_text(encoding="utf-8")
-    overview_widget = OVERVIEW_WIDGET.read_text(encoding="utf-8")
     welcome = WELCOME.read_text(encoding="utf-8")
 
     # Runtime must never expose a persisted legacy shell-wide style, even during
@@ -2589,25 +2587,6 @@ def main() -> None:
     ):
         require(overview_niri_widget, token, "overview/OverviewNiriWidget.qml")
 
-    # Hyprland OverviewWidget keeps its compositor behavior while its visual
-    # Global Theme branches collapse to the terminal Material fallbacks.
-    for token in legacy_style_tokens:
-        forbid(overview_widget, token, "overview/OverviewWidget.qml")
-    for token in (
-        "property color activeBorderColor: Appearance.colors.colSecondary",
-        "property real largeWorkspaceRadius: Appearance.rounding.large",
-        "property real smallWorkspaceRadius: Appearance.rounding.verysmall",
-        "color: Appearance.colors.colBackgroundSurfaceContainer",
-        "border.width: 1",
-        "ColorUtils.transparentize(Appearance.colors.colOutlineVariant, 0.68)",
-        "Appearance.colors.colSurfaceContainerHigh, 0.8",
-        "defaultWorkspaceColor, Appearance.colors.colLayer1Hover, 0.1",
-        "property color hoveredBorderColor: Appearance.colors.colLayer2Hover",
-        "ColorUtils.transparentize(Appearance.colors.colOutlineVariant, 0.74)",
-        "Appearance.colors.colOnLayer1, 0.7",
-        "property real minRadius: Appearance.rounding.small",
-    ):
-        require(overview_widget, token, "overview/OverviewWidget.qml")
 
     forbid(
         control_panel_date_time,

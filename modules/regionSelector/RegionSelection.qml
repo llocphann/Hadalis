@@ -34,7 +34,6 @@ PanelWindow {
     property var selectionMode: RegionSelection.SelectionMode.RectCorners
     signal dismiss()
     
-    readonly property bool useNiri: CompositorService.isNiri
     readonly property real screenEdgeThickness: Math.max(1, Math.min(32,
         Math.round(Config.options?.appearance?.screenEdge?.width ?? 10)))
     // Screenshot selection stays full-output for hit testing/crop coordinates,
@@ -116,27 +115,15 @@ PanelWindow {
     property color imageFillColor: ColorUtils.transparentize(imageBorderColor, 0.85)
     property color onBorderColor: Appearance.inirEverywhere ? Appearance.inir.colText
         : Appearance.auroraEverywhere ? Appearance.colors.colOnLayer0 : Appearance.colors.colScrim
-    readonly property var windows: useNiri
-        ? (NiriService.windows || [])
-        : [...HyprlandData.windowList].sort((a, b) => {
-            // Sort floating=true windows before others
-            if (a.floating === b.floating) return 0;
-            return a.floating ? -1 : 1;
-        })
-    readonly property var layers: useNiri ? ({}) : HyprlandData.layers
+    readonly property var windows: NiriService.windows || []
     readonly property real falsePositivePreventionRatio: 0.5
-
-    readonly property var hyprlandMonitor: CompositorService.isHyprland ? null : null // Disabled for Niri
-    readonly property real monitorScale: root.useNiri
-        ? ((NiriService.displayScales && NiriService.displayScales[screen.name] !== undefined)
-            ? NiriService.displayScales[screen.name]
-            : 1)
-        : (hyprlandMonitor ? hyprlandMonitor.scale : 1)
-    readonly property real monitorOffsetX: root.useNiri ? 0 : (hyprlandMonitor ? hyprlandMonitor.x : 0)
-    readonly property real monitorOffsetY: root.useNiri ? 0 : (hyprlandMonitor ? hyprlandMonitor.y : 0)
-    property int activeWorkspaceId: root.useNiri 
-        ? (NiriService.focusedWorkspaceIndex ?? 0)
-        : (hyprlandMonitor && hyprlandMonitor.activeWorkspace ? hyprlandMonitor.activeWorkspace.id : 0)
+    readonly property real monitorScale:
+        (NiriService.displayScales
+            && NiriService.displayScales[screen.name] !== undefined)
+            ? NiriService.displayScales[screen.name] : 1
+    readonly property real monitorOffsetX: 0
+    readonly property real monitorOffsetY: 0
+    property int activeWorkspaceId: NiriService.focusedWorkspaceIndex ?? 0
     property string screenshotPath: `${root.screenshotDir}/image-${screen.name}`
     property bool screenshotReady: false
     property real dragStartX: 0
@@ -151,65 +138,27 @@ PanelWindow {
     property var mouseButton: null
     property var imageRegions: []
     readonly property list<var> windowRegions: {
-        if (root.useNiri) {
-            const wins = NiriService.windows || []
-            const regions = []
-            for (let i = 0; i < wins.length; ++i) {
-                const w = wins[i]
-                const layout = w.layout
-                if (!layout || !layout.tile_pos_in_workspace_view || !layout.tile_size)
-                    continue
-
-                const pos = layout.tile_pos_in_workspace_view
-                const size = layout.tile_size
-
-                regions.push({
-                    at: [pos[0], pos[1]],
-                    size: [size[0], size[1]],
-                    class: w.app_id || w.appId || "",
-                    title: w.title || "",
-                })
-            }
-            return regions
+        const wins = NiriService.windows || []
+        const regions = []
+        for (let i = 0; i < wins.length; ++i) {
+            const w = wins[i]
+            const layout = w.layout
+            if (!layout || !layout.tile_pos_in_workspace_view || !layout.tile_size)
+                continue
+            const pos = layout.tile_pos_in_workspace_view
+            const size = layout.tile_size
+            regions.push({
+                at: [pos[0], pos[1]],
+                size: [size[0], size[1]],
+                class: w.app_id || w.appId || "",
+                title: w.title || "",
+            })
         }
-
-        return RegionFunctions.filterWindowRegionsByLayers(
-            root.windows.filter(w => w.workspace.id === root.activeWorkspaceId),
-            root.layerRegions
-        ).map(window => {
-            return {
-                at: [window.at[0] - root.monitorOffsetX, window.at[1] - root.monitorOffsetY],
-                size: [window.size[0], window.size[1]],
-                class: window.class,
-                title: window.title,
-            }
-        })
+        return regions
     }
-    readonly property list<var> layerRegions: {
-        if (root.useNiri)
-            return [];
-
-        const layersOfThisMonitor = root.layers[root.hyprlandMonitor.name]
-        const topLayers = layersOfThisMonitor?.levels["2"]
-        if (!topLayers) return [];
-        const nonBarTopLayers = topLayers
-            .filter(layer => !(layer.namespace.includes(":bar") || layer.namespace.includes(":verticalBar") || layer.namespace.includes(":dock")))
-            .map(layer => {
-            return {
-                at: [layer.x, layer.y],
-                size: [layer.w, layer.h],
-                namespace: layer.namespace,
-            }
-        })
-        const offsetAdjustedLayers = nonBarTopLayers.map(layer => {
-            return {
-                at: [layer.at[0] - root.monitorOffsetX, layer.at[1] - root.monitorOffsetY],
-                size: layer.size,
-                namespace: layer.namespace,
-            }
-        });
-        return offsetAdjustedLayers;
-    }
+    // Niri does not expose layer-surface geometry through the window event
+    // stream; this was already empty on the Niri path before the cleanup.
+    readonly property list<var> layerRegions: []
 
     property bool isCircleSelection: (root.selectionMode === RegionSelection.SelectionMode.Circle)
     property bool enableWindowRegions: (Config.options?.regionSelector?.targetRegions?.windows ?? true) && !isCircleSelection

@@ -57,13 +57,25 @@ Item {
         EventsWidget {
             Layout.preferredWidth: 320
             Layout.fillHeight: true
+            // Calendar popup-specific FAB treatment: smaller and tucked into
+            // the popup's bottom-left corner. Other EventsWidget owners keep
+            // the shared bottom-right default.
+            fabSize: 36
+            fabMargins: 10
+            fabLeftAligned: true
             onOpenEventsDialog: (event) => root.eventEditorRequested(event)
         }
 
         Rectangle {
-            Layout.fillHeight: true
+            // A shorter centered hairline keeps the two panes visually related
+            // without cutting the popup in half. Use the active theme accent
+            // instead of a high-contrast white/outline line.
             Layout.preferredWidth: 1
-            color: Appearance.colors.colOutlineVariant
+            Layout.preferredHeight: Math.max(120, root.height - 64)
+            Layout.maximumHeight: Math.max(120, root.height - 40)
+            Layout.alignment: Qt.AlignVCenter
+            color: Appearance.colors.colPrimary
+            opacity: 0.28
         }
 
         Item {

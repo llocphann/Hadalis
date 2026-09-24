@@ -49,28 +49,38 @@ for token in \
     'id: analyzerCanvas' \
     'const spectrum = eqCava.points ?? []' \
     'Number(eqCava.normalizationCeiling)' \
-    'ctx.bezierCurveTo(' \
+    'property real eqLightningHighlight: 0.0' \
+    'property real eqPresetSweepProgress: -0.12' \
+    'function triggerEqLightning(): void' \
+    'function triggerPresetSweep(): void' \
+    'function beginBandLightning(index, gain): void' \
+    'function previewBandLightning(index, gain): void' \
+    'function endBandLightning(index, gain): void' \
+    'id: presetSweepAnim' \
+    'id: eqLightningAnim' \
+    'const sweepTail = 0.22' \
+    'const sweepLead = 0.035' \
+    'ctx.lineWidth = 5.5' \
+    'ctx.lineWidth = 2.4' \
+    'ctx.lineWidth = 1.0' \
     'id: bandRepeater' \
     'function curvePoint()' \
     'handleItem.mapToItem(' \
     'EqualizerService.setDspBandGain(' \
     'cursorShape: bandSlider.enabled' \
     'Qt.SizeVerCursor' \
-    'root.applyPreset(modelData)'; do
+    'root.applyPreset(modelData)' \
+    'RowLayout {' \
+    'Layout.alignment: Qt.AlignVCenter'; do
     grep -Fq "$token" "$equalizer_panel" \
-        || fail "integrated CAVA/DSP graph contract missing $token"
+        || fail "integrated electric CAVA/DSP graph contract missing $token"
 done
 
 for retired in \
     'id: lightningCanvas' \
-    'eqLightningHighlight' \
-    'eqPresetSweepProgress' \
-    'triggerPresetSweep' \
-    'presetSweepAnim' \
-    'sweepTail' \
-    'sweepLead'; do
+    'ctx.bezierCurveTo('; do
     if grep -Fq "$retired" "$equalizer_panel"; then
-        fail "retired lightning DSP token returned: $retired"
+        fail "retired detached/smooth DSP connector token returned: $retired"
     fi
 done
 

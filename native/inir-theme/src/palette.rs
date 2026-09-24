@@ -149,19 +149,6 @@ fn snake_to_camel(value: &str) -> String {
     result
 }
 
-pub fn camel_to_snake(value: &str) -> String {
-    let mut result = String::with_capacity(value.len() + 4);
-    for ch in value.chars() {
-        if ch.is_ascii_uppercase() {
-            result.push('_');
-            result.push(ch.to_ascii_lowercase());
-        } else {
-            result.push(ch);
-        }
-    }
-    result
-}
-
 fn adjust_material_color(argb: Argb, scheme_name: &str, soften: bool, color_strength: f64) -> Argb {
     let mut hct = Hct::from_argb(argb);
     if soften

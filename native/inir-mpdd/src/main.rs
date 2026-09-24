@@ -963,7 +963,7 @@ fn snapshot(client: &mut MpdClient, root: &str) -> Result<Value> {
     let mut art_lookup = ArtLookup::default();
     let mut tracks = Vec::with_capacity(library_records.len());
     for record in &library_records {
-        tracks.push(build_track(record, &root, &mut art_lookup));
+        tracks.push(build_track(record, root, &mut art_lookup));
     }
 
     tracks.sort_by_key(|track| {
@@ -1040,7 +1040,7 @@ fn snapshot(client: &mut MpdClient, root: &str) -> Result<Value> {
         })
         .collect::<Vec<_>>();
 
-    let mut payload = status_payload(client, &root)?;
+    let mut payload = status_payload(client, root)?;
     let object = payload
         .as_object_mut()
         .ok_or_else(|| anyhow!("invalid_status_payload"))?;

@@ -23,6 +23,7 @@ client = read("services/RuntimeDiagnosticsSession.qml")
 shell = read("shell.qml")
 qmldir = read("services/qmldir")
 sampler = read("scripts/runtime-diagnostics-sampler.py")
+dispatch = read("scripts/native-dispatch")
 workflow_runtime = read("services/CodeWorkflowRuntime.qml")
 workflow_index = read("services/CodeWorkflowIndex.qml")
 metric_panel = read("modules/settings/widgets/BtopMetricPanel.qml")
@@ -81,7 +82,8 @@ for token in (
     "root.sampleHistory = []",
     "id: diagnosticsSampler",
     "running: root.samplingEnabled",
-    'Quickshell.shellPath("scripts/runtime-diagnostics-sampler.py")',
+    'readonly property string nativeDispatchPath: Quickshell.shellPath("scripts/native-dispatch")',
+    'root.nativeDispatchPath, "diagnostics",',
     '"--pid", String(Quickshell.processId)',
     "id: leasePruneTimer",
     "running: root.sessionActive",
@@ -102,6 +104,13 @@ for token in (
     "discovery: root.sourceDiscoverySummary()",
 ):
     require(server, token, "Diagnostics lease/sampler contract incomplete")
+
+require(
+    dispatch,
+    'exec /usr/bin/env python3 "$ROOT_DIR/scripts/runtime-diagnostics-sampler.py" "$@"',
+    "native selector must retain the reversible Python Diagnostics fallback",
+)
+
 if server.count("Timer {") != 1:
     raise SystemExit("FAIL: Diagnostics owns only the TTL cleanup timer")
 if server.count("Process {") != 1:

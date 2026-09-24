@@ -6,6 +6,7 @@ import QtQuick.Layouts
 import qs
 import qs.modules.bar as Bar
 import qs.modules.common
+import qs.modules.common.functions
 import qs.modules.common.widgets
 import qs.modules.notificationCenter
 import qs.services

@@ -1108,7 +1108,7 @@ fn handle_client(
         if request
             .host
             .as_deref()
-            .is_some_and(|host| host != manager.host)
+            .is_some_and(|host| host != manager.host.as_str())
             || request.port.is_some_and(|port| port != manager.port)
         {
             write_json_line(

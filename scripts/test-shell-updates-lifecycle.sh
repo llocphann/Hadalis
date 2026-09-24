@@ -39,6 +39,14 @@ if grep -Fq 'command: ["cat", Directories.shellConfig + "/version.json"]' "$serv
     fail 'version metadata must not spawn cat during startup'
 fi
 
+manifest_reader_block="$(sed -n '/id: manifestMetadataFile/,/^    }/p' "$service")"
+[[ -n "$manifest_reader_block" ]] || fail 'manifest metadata FileView is missing'
+assert_contains 'onLoaded: root._consumeManifestInfo(manifestMetadataFile.text())' "$manifest_reader_block" 'manifest metadata must be consumed in-process'
+assert_contains 'onLoadFailed: recentLocalLogProc.running = true' "$manifest_reader_block" 'missing manifest must continue the update startup chain'
+if grep -Fq 'id: manifestInfoProc' "$service"; then
+    fail 'manifest metadata must not restore the bash/head/grep/sed process pipeline'
+fi
+
 assert_guarded_process fetchProc "$fetch_block"
 assert_guarded_process currentBranchProc "$branch_block"
 assert_guarded_process localCommitProc "$local_block"

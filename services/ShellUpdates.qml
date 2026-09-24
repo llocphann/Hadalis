@@ -707,38 +707,44 @@ Singleton {
             root.initialAvailabilityChecked = true
             print("[ShellUpdates] Git available: " + root.available)
             if (root.available) {
-                // Load system info (manifest + local log) before checking for updates
-                manifestInfoProc.running = true
+                // Load system info (manifest + local log) before checking for updates.
+                root._loadManifestInfo()
             }
         }
     }
 
-    // Step 1b: Parse manifest for installed commit and date
-    Process {
-        id: manifestInfoProc
-        running: false
-        command: [
-            "/usr/bin/bash", "-c",
-            "manifest='" + root.manifestPath + "'; " +
-            "[[ -f \"$manifest\" ]] || exit 1; " +
-            "head -3 \"$manifest\" | grep -E '^# (generated|commit):' | sed 's/^# //'"
-        ]
-        stdout: StdioCollector {
-            onStreamFinished: {
-                const lines = (text ?? "").trim().split("\n")
-                for (const line of lines) {
-                    if (line.startsWith("generated: ")) {
-                        root.installedDate = line.substring(11).trim()
-                    } else if (line.startsWith("commit: ")) {
-                        root.installedCommit = line.substring(8).trim()
-                    }
-                }
-                print("[ShellUpdates] Manifest: commit=" + root.installedCommit + " date=" + root.installedDate)
+    // Step 1b: Parse manifest for installed commit and date.
+    // The previous shell pipeline spawned bash + head + grep + sed for a tiny
+    // local file. FileView keeps the same first-three-lines contract in-process.
+    function _loadManifestInfo(): void {
+        if (manifestMetadataFile.path === root.manifestPath)
+            manifestMetadataFile.reload()
+        else
+            manifestMetadataFile.path = root.manifestPath
+    }
+
+    function _consumeManifestInfo(text: string): void {
+        const lines = (text ?? "").split("\n").slice(0, 3)
+        for (const rawLine of lines) {
+            if (!rawLine.startsWith("# "))
+                continue
+            const line = rawLine.substring(2)
+            if (line.startsWith("generated: ")) {
+                root.installedDate = line.substring(11).trim()
+            } else if (line.startsWith("commit: ")) {
+                root.installedCommit = line.substring(8).trim()
             }
         }
-        onExited: (exitCode, exitStatus) => {
-            recentLocalLogProc.running = true
-        }
+        print("[ShellUpdates] Manifest: commit=" + root.installedCommit + " date=" + root.installedDate)
+        recentLocalLogProc.running = true
+    }
+
+    FileView {
+        id: manifestMetadataFile
+        path: ""
+        printErrors: false
+        onLoaded: root._consumeManifestInfo(manifestMetadataFile.text())
+        onLoadFailed: recentLocalLogProc.running = true
     }
 
     // Step 1c: Get recent local commit history (last 15 commits)

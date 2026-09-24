@@ -11,9 +11,14 @@ import QtQuick.Layouts
 Item {
     id: root
     
-    // Signal to open external EventsDialog
+    // Kept for API compatibility with older owners. Events creation/editing
+    // now stays inside this widget instead of asking the owner for a dialog.
     signal openEventsDialog(var editEvent)
-    
+
+    property bool inlineEditorMode: false
+    property var inlineEditorTarget: null
+    readonly property var inlineEditorDate:
+        inlineEditor.eventDate
     property int fabSize: 48
     property int fabMargins: 14
     // Shared EventsWidget keeps its historical bottom-right FAB by default.
@@ -103,10 +108,38 @@ Item {
         const _t2 = root._externalTrigger
         return root.mergedEvents.length
     }
+
+    function openInlineEditor(editEvent): void {
+        root.inlineEditorTarget = editEvent
+        if (editEvent instanceof Date) {
+            inlineEditor.resetForm()
+            inlineEditor.eventDate = new Date(editEvent)
+        } else if (editEvent) {
+            inlineEditor.loadEvent(editEvent)
+        } else {
+            inlineEditor.resetForm()
+        }
+        root.inlineEditorMode = true
+        inlineEditor.show = true
+        inlineEditor.focusEditor()
+    }
+
+    function closeInlineEditor(): void {
+        root.inlineEditorMode = false
+        root.inlineEditorTarget = null
+        inlineEditor.show = false
+    }
+
+    function setInlineEditorDate(date): void {
+        const parsed = new Date(date)
+        if (!isNaN(parsed.getTime()))
+            inlineEditor.eventDate = parsed
+    }
     
     ColumnLayout {
         anchors.fill: parent
         spacing: 0
+        visible: !root.inlineEditorMode
         
         // Header with upcoming count
         RowLayout {
@@ -179,7 +212,7 @@ Item {
                             if (!isExternal) Events.removeEvent(modelData.id)
                         }
                         onEditClicked: (evt) => {
-                            if (!isExternal) root.openEventsDialog(evt)
+                            if (!isExternal) root.openInlineEditor(evt)
                         }
                     }
                 }
@@ -241,15 +274,30 @@ Item {
         }
     }
     
+    // The editor occupies exactly the same item as the Events list. Switching
+    // modes never changes the parent/tab geometry.
+    EventsDialog {
+        id: inlineEditor
+        anchors.fill: parent
+        show: root.inlineEditorMode
+        embeddedPresentation: true
+        embeddedBackgroundColor: "transparent"
+        backgroundHeight: -1
+        visible: root.inlineEditorMode
+        onDismiss: root.closeInlineEditor()
+    }
+
     // FAB to add event
     StyledRectangularShadow {
         target: fabButton
+        visible: !root.inlineEditorMode
         radius: fabButton.buttonRadius
         blur: 0.6 * Appearance.sizes.elevationMargin
     }
     
     FloatingActionButton {
         id: fabButton
+        visible: !root.inlineEditorMode
         anchors.left: root.fabLeftAligned ? parent.left : undefined
         anchors.right: root.fabLeftAligned ? undefined : parent.right
         anchors.bottom: parent.bottom
@@ -259,7 +307,7 @@ Item {
         iconText: "add"
         buttonText: Translation.tr("Add event")
         baseSize: root.fabSize
-        onClicked: root.openEventsDialog(null)
+        onClicked: root.openInlineEditor(null)
     }
     
     // Listen for triggered events and show notifications

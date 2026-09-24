@@ -15,7 +15,14 @@ Item {
     property var events: []
     property int maxRows: 5
     readonly property int activityWindowMs: 60000
-    property double activityClockMs: Date.now()
+    readonly property double activityClockMs: {
+        // Reuse the Diagnostics session heartbeat so lifecycle rates age only
+        // while the page is current; reopening also refreshes the clock
+        // immediately without adding a second polling timer.
+        RuntimeDiagnosticsSession.pageCurrent
+        RuntimeDiagnosticsSession.heartbeatTick
+        return Date.now()
+    }
     readonly property var activityRows: root.buildActivityRows()
     readonly property var visibleRows:
         root.activityRows.slice(0, Math.max(0, root.maxRows))
@@ -84,13 +91,6 @@ Item {
     }
 
     implicitHeight: activityColumn.implicitHeight + 16
-
-    Timer {
-        interval: 5000
-        repeat: true
-        running: root.visible
-        onTriggered: root.activityClockMs = Date.now()
-    }
 
     Rectangle {
         anchors.fill: parent

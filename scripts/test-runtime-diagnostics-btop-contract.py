@@ -271,7 +271,8 @@ def main() -> None:
         "right.eventsPerMinute - left.eventsPerMinute",
         'Translation.tr("changes/min")',
         "property int maxRows: 5",
-        "interval: 5000",
+        "RuntimeDiagnosticsSession.pageCurrent",
+        "RuntimeDiagnosticsSession.heartbeatTick",
     ):
         require(activity_table, token,
                 "BtopActivityTable.qml truthful lifecycle activity")

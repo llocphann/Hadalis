@@ -808,6 +808,8 @@ fn persist_output(name: &str, changes: &[String]) -> Result<Outcome> {
     if let Some((_, inner_start, inner_end, _)) = find_output_bounds(&content, name) {
         let mut inner = content[inner_start..inner_end].to_owned();
         let indent = format!("{}    ", indentation_at(&content, inner_start.saturating_sub(1)));
+        let vrr_line_re =
+            Regex::new(r"(?m)^[ \t]*variable-refresh-rate[^\n]*\n?")?;
         for (key, value) in &parsed {
             match key.as_str() {
                 "mode" => inner = set_line_in_inner(&inner, "mode", &format!("\"{value}\""), &indent)?,
@@ -819,8 +821,7 @@ fn persist_output(name: &str, changes: &[String]) -> Result<Outcome> {
                     }
                 }
                 "vrr" if value == "off" => {
-                    let re = Regex::new(r"(?m)^[ \t]*variable-refresh-rate[^\n]*\n?")?;
-                    inner = re.replacen(&inner, 1, "").into_owned();
+                    inner = vrr_line_re.replacen(&inner, 1, "").into_owned();
                 }
                 "vrr" if value == "on-demand" => {
                     inner = set_line_in_inner(&inner, "variable-refresh-rate", "on-demand=true", &indent)?;
@@ -843,10 +844,10 @@ fn persist_output(name: &str, changes: &[String]) -> Result<Outcome> {
         if let Some(value) = parsed.get("transform") {
             lines.push(format!("    transform \"{value}\""));
         }
-        if let Some(value) = parsed.get("position") {
-            if let Some((x, y)) = value.split_once(',') {
-                lines.push(format!("    position x={x} y={y}"));
-            }
+        if let Some(value) = parsed.get("position")
+            && let Some((x, y)) = value.split_once(',')
+        {
+            lines.push(format!("    position x={x} y={y}"));
         }
         if let Some(value) = parsed.get("vrr") {
             if value == "on-demand" {
@@ -996,8 +997,10 @@ fn get_input() -> Result<Outcome> {
                 ("accel-profile", "accel_profile"), ("tap-button-map", "tap_button_map"),
                 ("click-method", "click_method"), ("scroll-method", "scroll_method")
             ] {
-                if let Some(value) = quoted_value(&block, kdl_key) {
-                    if result[key].get(json_key).is_some() { result[key][json_key] = json!(value); }
+                if let Some(value) = quoted_value(&block, kdl_key)
+                    && result[key].get(json_key).is_some()
+                {
+                    result[key][json_key] = json!(value);
                 }
             }
             if let Some(value) = numeric_value(&block, "accel-speed") {
@@ -1106,8 +1109,9 @@ fn get_hot_corners() -> Result<Outcome> {
     }
 
     let mut effective = Map::new();
-    if let Ok((raw, 0)) = run_niri(&["-j", "outputs"]) {
-        if let Ok(Value::Object(outputs)) = serde_json::from_str::<Value>(&raw) {
+    if let Ok((raw, 0)) = run_niri(&["-j", "outputs"])
+        && let Ok(Value::Object(outputs)) = serde_json::from_str::<Value>(&raw)
+    {
             for (connector, data) in outputs {
                 let identity = ["make", "model", "serial"]
                     .iter()
@@ -1122,7 +1126,6 @@ fn get_hot_corners() -> Result<Outcome> {
                     .unwrap_or_else(|| global.clone());
                 effective.insert(connector, json!(value));
             }
-        }
     }
 
     Ok(Outcome::ok(json!({
@@ -1154,17 +1157,26 @@ fn get_layout() -> Result<Outcome> {
         result["always_center_single_column"] = json!(has_flag(&layout, "always-center-single-column"));
         result["empty_workspace_above_first"] = json!(has_flag(&layout, "empty-workspace-above-first"));
 
+        let offset_re =
+            Regex::new(r"(?m)^[ \t]*offset[ \t]+x=([-0-9.]+)[ \t]+y=([-0-9.]+)")?;
         for (section, key) in [("border", "border"), ("focus-ring", "focus_ring"), ("shadow", "shadow")] {
             if let Some(block) = extract_block(&layout, section, true) {
                 result[key]["enabled"] = json!(!has_flag(&block, "off"));
-                if let Some(value) = numeric_value(&block, "width") { if result[key].get("width").is_some() { result[key]["width"] = json!(value as i64); } }
+                if let Some(value) = numeric_value(&block, "width")
+                    && result[key].get("width").is_some()
+                {
+                    result[key]["width"] = json!(value as i64);
+                }
                 for (kdl, json_key) in [("active-color", "active_color"), ("inactive-color", "inactive_color"), ("urgent-color", "urgent_color"), ("color", "color")] {
-                    if let Some(value) = quoted_value(&block, kdl) { if result[key].get(json_key).is_some() { result[key][json_key] = json!(value); } }
+                    if let Some(value) = quoted_value(&block, kdl)
+                        && result[key].get(json_key).is_some()
+                    {
+                        result[key][json_key] = json!(value);
+                    }
                 }
                 if key == "shadow" {
                     if let Some(value) = numeric_value(&block, "softness") { result[key]["softness"] = json!(value as i64); }
                     if let Some(value) = numeric_value(&block, "spread") { result[key]["spread"] = json!(value as i64); }
-                    let offset_re = Regex::new(r"(?m)^[ \t]*offset[ \t]+x=([-0-9.]+)[ \t]+y=([-0-9.]+)")?;
                     if let Some(caps) = offset_re.captures(&block) {
                         result[key]["offset_x"] = json!(caps[1].parse::<f64>().unwrap_or(0.0) as i64);
                         result[key]["offset_y"] = json!(caps[2].parse::<f64>().unwrap_or(0.0) as i64);
@@ -1178,8 +1190,10 @@ fn get_layout() -> Result<Outcome> {
             }
         }
     }
-    if let Some(overview) = extract_block(&content, "overview", true) {
-        if let Some(value) = numeric_value(&overview, "zoom") { result["overview_zoom"] = json!(value); }
+    if let Some(overview) = extract_block(&content, "overview", true)
+        && let Some(value) = numeric_value(&overview, "zoom")
+    {
+        result["overview_zoom"] = json!(value);
     }
     Ok(Outcome::ok(result))
 }
@@ -1209,10 +1223,18 @@ fn get_animations() -> Result<Outcome> {
         let Some(type_block) = extract_block(&block, kind, true) else { continue };
         let mut settings = animation_defaults(kind);
         if let Some(line) = type_block.lines().map(str::trim).find(|line| line.starts_with("spring ")) {
-            for (parameter, key) in [("damping-ratio", "damping_ratio"), ("stiffness", "stiffness"), ("epsilon", "epsilon")] {
-                let re = Regex::new(&format!(r"{}=([0-9.]+)", regex::escape(parameter)))?;
-                if let Some(caps) = re.captures(line) {
-                    settings[key] = json!(caps[1].parse::<f64>().unwrap_or(0.0));
+            for token in line.split_whitespace().skip(1) {
+                let Some((parameter, raw_value)) = token.split_once('=') else {
+                    continue;
+                };
+                let key = match parameter {
+                    "damping-ratio" => "damping_ratio",
+                    "stiffness" => "stiffness",
+                    "epsilon" => "epsilon",
+                    _ => continue,
+                };
+                if let Ok(value) = raw_value.parse::<f64>() {
+                    settings[key] = json!(value);
                 }
             }
         } else if numeric_value(&type_block, "duration-ms").is_some() || quoted_value(&type_block, "curve").is_some() {
@@ -1257,8 +1279,10 @@ fn list_cursor_themes() -> Result<Outcome> {
         let Ok(entries) = fs::read_dir(directory) else { continue };
         for entry in entries.flatten() {
             let path = entry.path();
-            if path.join("cursors").is_dir() {
-                if let Some(name) = path.file_name().and_then(|name| name.to_str()) { themes.insert(name.to_owned()); }
+            if path.join("cursors").is_dir()
+                && let Some(name) = path.file_name().and_then(|name| name.to_str())
+            {
+                themes.insert(name.to_owned());
             }
         }
     }
@@ -1434,11 +1458,11 @@ fn sync_cursor_env(theme: Option<&str>, size: Option<&str>) -> Result<()> {
     let mut target = None;
     for candidate in ["inir.conf", "cursor.conf"] {
         let path = env_dir.join(candidate);
-        if let Ok(content) = fs::read_to_string(&path) {
-            if content.contains("XCURSOR_THEME=") || content.contains("XCURSOR_SIZE=") {
-                target = Some(path);
-                break;
-            }
+        if let Ok(content) = fs::read_to_string(&path)
+            && (content.contains("XCURSOR_THEME=") || content.contains("XCURSOR_SIZE="))
+        {
+            target = Some(path);
+            break;
         }
     }
     let target = target.unwrap_or_else(|| env_dir.join("cursor.conf"));
@@ -1446,12 +1470,16 @@ fn sync_cursor_env(theme: Option<&str>, size: Option<&str>) -> Result<()> {
     let mut found_theme = false;
     let mut found_size = false;
     for line in &mut lines {
-        if line.trim_start().starts_with("XCURSOR_THEME=") && theme.is_some() {
-            *line = format!("XCURSOR_THEME={}", theme.unwrap());
+        if let Some(theme) = theme
+            && line.trim_start().starts_with("XCURSOR_THEME=")
+        {
+            *line = format!("XCURSOR_THEME={theme}");
             found_theme = true;
         }
-        if line.trim_start().starts_with("XCURSOR_SIZE=") && size.is_some() {
-            *line = format!("XCURSOR_SIZE={}", size.unwrap());
+        if let Some(size) = size
+            && line.trim_start().starts_with("XCURSOR_SIZE=")
+        {
+            *line = format!("XCURSOR_SIZE={size}");
             found_size = true;
         }
     }

@@ -12,6 +12,9 @@ for token in (
     "readonly property bool shallowLayout:",
     "readonly property bool veryShallowLayout:",
     "id: tabShell",
+    "Layout.alignment: Qt.AlignHCenter",
+    "Layout.preferredWidth: Math.max(1, Math.min(",
+    "320, root.width - 24",
     "readonly property real innerHeight:",
     "readonly property real cornerRadius: innerHeight / 2",
     "readonly property real arcKappa: 0.5522847498",
@@ -82,7 +85,7 @@ assert "tabSurfaceWidth" not in todo
 assert "implicitHeight: root.tabControlHeight" in todo
 assert "root.veryShallowLayout ? 28 : (root.narrowLayout ? 30 : 32)" in todo
 assert "Layout.minimumHeight: root.veryShallowLayout" in todo
-assert todo.count("Layout.preferredWidth: root.actionButtonSize") >= 4
+assert todo.count("Layout.preferredWidth: root.actionButtonSize") == 3
 assert "id: setupRow" not in todo
 assert "id: editRow" not in todo
 assert "id: addRow" not in todo

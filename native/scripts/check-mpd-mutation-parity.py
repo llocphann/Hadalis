@@ -9,11 +9,13 @@ No real MPD database, queue, playback state, or stored playlist is touched.
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 import shlex
 import socket
 import subprocess
 import sys
+import tempfile
 import threading
 from typing import Any
 
@@ -22,9 +24,17 @@ PYTHON = REPO / "scripts" / "local_music_mpd.py"
 
 
 class FakeMpd:
-    def __init__(self, reject_bad_seek: bool = False):
+    def __init__(self, reject_bad_seek: bool = False, status_fixture: bool = False):
         self.reject_bad_seek = reject_bad_seek
-        self.queue: list[str] = []
+        self.status_fixture = status_fixture
+        self.queue: list[str] = (
+            [
+                "Fixture Artist/Fixture Album/01 - Alpha.flac",
+                "Fixture Artist/Fixture Album/02 - Beta.flac",
+            ]
+            if status_fixture
+            else []
+        )
         self.playlists: dict[str, list[str]] = {}
         self.state = "stop"
         self.song = 0
@@ -56,12 +66,58 @@ class FakeMpd:
             "elapsed": self.elapsed,
         }
 
+    def _track_lines(self, uri: str, position: int) -> list[str]:
+        title = "Alpha" if position == 0 else "Beta"
+        return [
+            f"file: {uri}",
+            "Last-Modified: 2026-01-02T03:04:05Z",
+            "Artist: Fixture Artist",
+            "AlbumArtist: Fixture Album Artist",
+            "Album: Fixture Album",
+            f"Title: {title}",
+            f"Track: {position + 1}/2",
+            "Disc: 1/1",
+            "Genre: Fixture Genre",
+            "Date: 2026",
+            "duration: 123.456",
+            f"Pos: {position}",
+            f"Id: {101 + position}",
+        ]
+
     def _reply_for(self, command: str) -> tuple[bool, list[str]]:
         self.commands.append(command)
         parts = shlex.split(command)
         if not parts:
             return True, []
         name, args = parts[0], parts[1:]
+        if self.status_fixture and name == "config":
+            return True, ["music_directory: /music"]
+        if self.status_fixture and name == "status":
+            return True, [
+                "volume: 72",
+                "repeat: 0",
+                "random: 0",
+                "single: 0",
+                "consume: 0",
+                "playlist: 42",
+                f"playlistlength: {len(self.queue)}",
+                "state: play",
+                f"song: {self.song}",
+                f"songid: {101 + self.song}",
+                "elapsed: 12.345",
+                "duration: 123.456",
+                "bitrate: 921",
+                "audio: 44100:24:2",
+            ]
+        if self.status_fixture and name == "currentsong":
+            if not self.queue:
+                return True, []
+            return True, self._track_lines(self.queue[self.song], self.song)
+        if self.status_fixture and name == "playlistinfo":
+            lines: list[str] = []
+            for position, uri in enumerate(self.queue):
+                lines.extend(self._track_lines(uri, position))
+            return True, lines
         if name == "clear":
             self.queue.clear()
             self.song = 0
@@ -123,8 +179,18 @@ class FakeMpd:
             self.error = error
 
 
-def run_backend(kind: str, rust_binary: Path, mode: str, tail: list[str], reject_bad_seek=False):
-    server = FakeMpd(reject_bad_seek=reject_bad_seek)
+def run_backend(
+    kind: str,
+    rust_binary: Path,
+    mode: str,
+    tail: list[str],
+    reject_bad_seek=False,
+    status_fixture=False,
+):
+    server = FakeMpd(
+        reject_bad_seek=reject_bad_seek,
+        status_fixture=status_fixture,
+    )
     server.start()
     common = [mode, "127.0.0.1", str(server.port), *tail]
     argv = (
@@ -132,7 +198,13 @@ def run_backend(kind: str, rust_binary: Path, mode: str, tail: list[str], reject
         if kind == "python"
         else [str(rust_binary), "--compat", *common]
     )
-    result = subprocess.run(argv, text=True, capture_output=True)
+    with tempfile.TemporaryDirectory(prefix="hadalis-mpd-parity-cache.") as cache:
+        result = subprocess.run(
+            argv,
+            text=True,
+            capture_output=True,
+            env={**os.environ, "XDG_CACHE_HOME": cache},
+        )
     state = server.finish()
     try:
         payload = json.loads(result.stdout)
@@ -143,9 +215,20 @@ def run_backend(kind: str, rust_binary: Path, mode: str, tail: list[str], reject
     return result.returncode, payload, state, server.commands
 
 
-def check_case(rust_binary: Path, label: str, mode: str, tail: list[str], reject_bad_seek=False):
-    py = run_backend("python", rust_binary, mode, tail, reject_bad_seek)
-    rs = run_backend("rust", rust_binary, mode, tail, reject_bad_seek)
+def check_case(
+    rust_binary: Path,
+    label: str,
+    mode: str,
+    tail: list[str],
+    reject_bad_seek=False,
+    status_fixture=False,
+):
+    py = run_backend(
+        "python", rust_binary, mode, tail, reject_bad_seek, status_fixture
+    )
+    rs = run_backend(
+        "rust", rust_binary, mode, tail, reject_bad_seek, status_fixture
+    )
     if py[:3] != rs[:3]:
         raise AssertionError(
             f"{label} parity mismatch\n"
@@ -165,6 +248,13 @@ def main() -> int:
         print(f"Rust binary not found: {rust_binary}", file=sys.stderr)
         return 2
 
+    check_case(
+        rust_binary,
+        "status/current/queue serialization",
+        "status",
+        [""],
+        status_fixture=True,
+    )
     check_case(
         rust_binary,
         "queue replace + play index",
@@ -188,7 +278,7 @@ def main() -> int:
         reject_bad_seek=True,
     )
 
-    print("PASS: MPD mutating parity uses isolated loopback services only")
+    print("PASS: MPD status/mutation parity uses isolated loopback services only")
     return 0
 
 

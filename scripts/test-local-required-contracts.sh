@@ -20,25 +20,31 @@ require_exact() {
 }
 
 printf '== translation runtime boundary ==\n'
-generator=scripts/ai/gemini-translate.sh
 translation_service=services/Translation.qml
-require_contains 'SOURCE_FILE="${TRANSLATIONS_DIR}/en_US.json"' "$generator" \
-    'runtime locale generation no longer anchors to en_US.json'
-require_contains 'if [[ ! "$TARGET_LOCALE" =~ ^[A-Za-z]{2,3}([_-][A-Za-z0-9]{2,8})*$ ]]; then' "$generator" \
-    'runtime locale generation no longer validates locale identifiers'
-require_contains '--slurpfile source "$SOURCE_FILE"' "$generator" \
-    'runtime locale generation no longer merges against the source catalog'
+[[ ! -e scripts/ai/gemini-translate.sh ]] \
+    || fail 'retired multilingual Gemini runtime generator was restored'
+require_contains 'readonly property var availableLanguages: ["en_US"]' "$translation_service" \
+    'Translation service must expose only canonical en_US'
+require_contains 'readonly property string languageCode: "en_US"' "$translation_service" \
+    'Translation service languageCode must remain canonical en_US'
+require_contains 'path: `${Quickshell.shellPath("translations")}/en_US.json`' "$translation_service" \
+    'Translation service must load the canonical en_US catalog directly'
+require_contains 'property bool isLoading: translationFileView.loadPending' "$translation_service" \
+    'Translation service must preserve catalog load state'
+require_contains 'root.translations?.[key] ?? key' "$translation_service" \
+    'Translation service must fall back to source strings for missing English entries'
 require_contains '"translations/tools"' sdata/runtime-exclusions.json \
     'source-only translation tooling leaked into runtime payload policy'
-if grep -Fq 'translations/tools/manage-translations.sh' "$generator"; then
-    fail 'runtime locale generator depends on source-only translation tooling'
-fi
-require_contains 'scanLanguagesProcess.running || scanGeneratedLanguagesProcess.running' "$translation_service" \
-    'Translation service no longer represents both locale scan processes'
-require_contains 'fallbackLanguages: []' "$translation_service" \
-    'Translation service fallback locale contract drifted'
-require_contains 'scanGeneratedLanguagesProcess.running = true' "$translation_service" \
-    'Translation service no longer starts generated-locale discovery'
+for retired in \
+    TranslationScanner \
+    scanGeneratedLanguagesProcess \
+    availableGeneratedLanguages \
+    allAvailableLanguages \
+    isScanning; do
+    if grep -Fq "$retired" "$translation_service"; then
+        fail "English-only Translation service restored multilingual runtime machinery: $retired"
+    fi
+done
 
 printf '== package and release source identity ==\n'
 for pkg in \

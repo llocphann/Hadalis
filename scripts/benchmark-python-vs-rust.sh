@@ -8,23 +8,23 @@ STATE_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/inir"
 BACKEND_STATE_FILE="$STATE_DIR/native-backend"
 HARNESS="$ROOT_DIR/scripts/native-cutover-benchmark.sh"
 READ_ONLY=0
+DEEP=0
 RESTORE_ARMED=0
 RESTORE_RC=0
 
-case "${1:-}" in
-    "") ;;
-    --read-only|--no-activate) READ_ONLY=1 ;;
-    --help|-h)
-        echo "Usage: bash scripts/benchmark-python-vs-rust.sh [--read-only]"
-        echo "Builds and benchmarks both backends, validates the repo, and writes one report."
-        echo "A live A/B runs only after the harness safety checks and is restored to Python."
-        exit 0 ;;
-    *) echo "Unknown option: $1" >&2; exit 64 ;;
-esac
-if (($# > 1)); then
-    echo "Usage: bash scripts/benchmark-python-vs-rust.sh [--read-only]" >&2
-    exit 64
-fi
+for argument in "$@"; do
+    case "$argument" in
+        --read-only|--no-activate) READ_ONLY=1 ;;
+        --deep) DEEP=1 ;;
+        --help|-h)
+            echo "Usage: bash scripts/benchmark-python-vs-rust.sh [--read-only] [--deep]"
+            echo "Builds and benchmarks both backends, validates the repo, and writes one report."
+            echo "--deep adds an isolated cold MPD full-snapshot parity/benchmark."
+            echo "A live A/B runs only after the harness safety checks and is restored to Python."
+            exit 0 ;;
+        *) echo "Unknown option: $argument" >&2; exit 64 ;;
+    esac
+done
 mkdir -p "$STATE_DIR" || exit 1
 REPORT="$(mktemp "$STATE_DIR/native-full-benchmark-$(date +%Y%m%d-%H%M%S)-XXXXXX.txt")" || exit 1
 TMP_ROOT="$(mktemp -d "${TMPDIR:-/tmp}/inir-full-benchmark.XXXXXX")" || exit 1
@@ -88,6 +88,12 @@ else
 fi
 
 echo "Benchmark mode: $RUN_MODE"
+if ((DEEP)); then
+    export INIR_BENCH_MPD_SNAPSHOT=1
+    echo "Deep benchmark: enabled (isolated MPD full snapshot)"
+else
+    unset INIR_BENCH_MPD_SNAPSHOT
+fi
 echo "Building native release and measuring Python/Rust paths..."
 if [[ "$RUN_MODE" == live-if-safe ]]; then
     RESTORE_ARMED=1
@@ -120,6 +126,7 @@ printf '%s\n' "$VALIDATOR_SUMMARY"
     printf 'Branch: %s\n' "$BRANCH"
     printf 'Fetch exit: %s\n' "$FETCH_RC"
     printf 'Mode: %s\n' "$RUN_MODE"
+    printf 'Deep MPD snapshot: %s\n' "$([[ "$DEEP" -eq 1 ]] && printf enabled || printf disabled)"
     printf 'Native benchmark exit: %s\n' "$NATIVE_RC"
     printf 'Restore exit: %s\n' "$RESTORE_RC"
     printf 'Validator exit: %s\n' "$VALIDATOR_RC"

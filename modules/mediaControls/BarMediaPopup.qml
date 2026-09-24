@@ -60,28 +60,10 @@ Item {
     }
     // Item.visible alone is insufficient for popout lifecycle: an item's local
     // visible flag can remain true while its presentation window is closed.
-    // Gate CAVA by the actual Quickshell window so the shared subscription is
-    // released as soon as this surface is no longer presented.
+    // The popup no longer owns a decorative CAVA consumer; this state now gates
+    // only the EqualizerPanel, whose integrated analyzer is the single live
+    // spectrum shown on this surface.
     readonly property bool presentationActive: root.QsWindow.window?.visible ?? false
-    readonly property bool visualizerActive: root.presentationActive
-        && root.visible
-        && root._visiblePlayers.length > 0
-        && MprisController.isPlaying
-
-    // Keep the bar-attached media popup feature-parity with the dock/global
-    // media surface. PlayerControl already owns the WaveVisualizer; the bar
-    // popup only needs to provide the same live CAVA point stream instead of
-    // the historical empty array.
-    CavaProcess {
-        id: cavaProcess
-        active: root.visualizerActive
-        // Match the Serpantinum visualizer density while keeping Hadalis'
-        // shared CAVA service and per-consumer sample negotiation.
-        sampleCount: 64
-    }
-
-    property list<real> visualizerPoints: cavaProcess.points
-    readonly property real visualizerMaxValue: Math.max(1, cavaProcess.normalizationCeiling)
 
     function _samePlayerOrder(a, b): bool {
         if ((a?.length ?? 0) !== (b?.length ?? 0)) return false
@@ -208,8 +190,8 @@ Item {
                             rightMargin: root.tabCount > 1 ? 16 : 0
                         }
                         player: modelData
-                        visualizerPoints: root.visualizerPoints
-                        visualizerMaxValue: root.visualizerMaxValue
+                        visualizerPoints: []
+                        showVisualizer: false
                         compactLayout: root.compactLayout
                         radius: root.popupRounding
                         screenX: root.screenX + playerDelegate.x + playerControl.x

@@ -43,8 +43,9 @@ Python backend.
 ## Validation and benchmarking
 
 The `Native Rust staging` workflow verifies that runtime/package files do not
-bind directly to native binaries, then runs clippy with warnings denied and the
-native unit-test workspace.
+bind directly to native binaries, enforces the committed Rust tree with
+`cargo fmt --check`, and runs clippy plus the workspace tests with the tracked
+`native/Cargo.lock` via `--locked`.
 
 After updating the local `dev` checkout and installed runtime, run one command:
 
@@ -78,7 +79,49 @@ For a persistent Rust trial after examining the report, the lower-level
 A permanent removal of Python call sites and dependencies is still a separate
 maintainer-approved step.
 
-## Qualification snapshot: 2026-09-24
+## Current source-side qualification: 2026-09-24
+
+At `dev` `c19cb9d4661ba0914aebd97b0fb898703946baa1`, the code-side native
+qualification has advanced beyond the historical desktop snapshot below:
+
+- The native workspace has a tracked Cargo 1.95 lockfile (198 package entries),
+  canonical committed rustfmt output, and a release profile using thin LTO,
+  one codegen unit, and stripped symbols. Native staging is read-only again and
+  requires `cargo fmt --check`, `cargo clippy --locked ... -D warnings`, and
+  `cargo test --locked`.
+- Native staging is green after the latest runtime work. `inir-inputd --once`
+  uses a synchronous zero-thread snapshot path and streaming input discovery is
+  mode-aware, so lock-only operation does not maintain physical-key state.
+- Local Music now uses the persistent Rust MPD daemon when the Rust/auto backend
+  is available. MPD `idle` events carry authoritative state back to QML;
+  player/mixer/options changes avoid rebuilding the full queue, playlist changes
+  include queue state, and database/stored-playlist changes request a rescan.
+  Compatibility polling remains only as a fail-soft path.
+- MPD cover lookup caches folder/cache results within a snapshot, and UI actions
+  avoid scheduling duplicate status refreshes while the native subscription is
+  active.
+- Runtime Diagnostics keeps its lease-driven lifecycle but its Rust sampler now
+  avoids temporary field vectors/sets in the hot `/proc/stat`, `/proc/net/dev`,
+  task, process-stat, and process-I/O parsing paths. The native formatter,
+  clippy, and unit-test gates all pass with these changes.
+- The canonical repository validator is currently **RED: 183 passed, 27 failed,
+  2 skipped**. The native-related stale contracts for Local Music, Diagnostics,
+  Niri launcher lookup, optional MPD/MPRIS packaging, and the performance
+  lifecycle are now passing. The remaining failures are repository-wide UI,
+  perimeter, packaging/helper, and preview regressions rather than evidence of
+  27 Rust defects.
+- The Nix package workflow passes on this source state. A real Arch package
+  install/update/uninstall qualification and a matched installed-runtime Niri
+  live A/B are still separate gates.
+- Python implementations remain intentionally present behind
+  `scripts/native-dispatch`. No permanent cutover or fallback removal has been
+  approved.
+
+This source-side qualification does **not** replace a matched live desktop
+measurement. The old benchmark numbers below are retained only as historical
+evidence from the earlier implementation.
+
+## Historical qualification snapshot: 2026-09-24
 
 This is evidence from one Arch/Niri desktop at `dev`
 `148f01e17f1f7db4ca62fc979bea893c8c22ed22`, not a whole-shell or release
@@ -101,11 +144,10 @@ per startup case; it is under the local state directory named above.
   on that exact SHA. Its 32 names are recorded below. The QML parser pass was
   skipped because the available `qmlformat` was 1.0, below the required 6.8;
   dedicated Nix validation remained deferred.
-- `cargo fmt --manifest-path native/Cargo.toml --all -- --check` failed on the
-  current native tree. The staging workflow formats its runner copy before
-  clippy/tests, so those passes are not a formatting pass on the committed tree.
-  `native/Cargo.lock` is currently untracked. Neither a GitHub CI result nor
-  an Arch package build was established by this local run.
+- At that historical SHA, `cargo fmt --check` failed, Cargo.lock was not
+  tracked, and the local run had not established hosted native CI or an Arch
+  package build. Those source-side formatting/lockfile/CI gaps have since been
+  closed as described above; the Arch package/live-desktop gates remain open.
 
 ## Remaining work before making Rust the default
 
@@ -155,30 +197,29 @@ per startup case; it is under the local state directory named above.
 
 ### 3. Qualify performance and distribution
 
-- Investigate the sampled Diagnostics CPU signal: Rust used 4.0% versus
-  Python 2.3% in one short window, despite lower RSS. Repeat on matched idle
-  and loaded windows before treating this as a confirmed regression or win.
-  MPD Rust status still averaged 2.64 s; profile the remaining latency.
-- Record individual samples or at least median, range, and variance for
-  repeated fixed workloads. The present report gives means and peak RSS for
-  short-lived commands, plus short resident windows; it has no statistical
-  confidence or whole-shell result yet. `perf` counters were unavailable on
-  the measured host.
-- Before release packaging, decide whether to track `native/Cargo.lock` and
-  use locked builds, commit canonical Rust formatting and change the workflow
-  back to `cargo fmt --check`, and verify Arch install/update/uninstall plus
-  binary identity and rollback. Rust binaries are currently not required by
-  packaging. Run the deferred Nix check on a suitable host, then establish
-  runner CI and live desktop acceptance separately. Do not remove Python until
-  these gates and the maintainer's live acceptance pass.
+- Repeat the historical Diagnostics CPU and MPD latency measurements on the
+  current implementation. Diagnostics parsing and MPD runtime architecture have
+  both changed since the old sample, so the previous 4.0%/2.3% Diagnostics and
+  2.64 s MPD observations are signals only, not current measurements.
+- The harness now reports average, p50, p95, min/max and standard deviation for
+  repeated command workloads. Collect a fresh report that also captures the
+  selector/dispatcher path and matched live shell/cgroup behavior; use
+  `perf`/scheduler counters when the host permits them.
+- Lockfile, canonical formatting, locked CI, release-profile tuning and Nix
+  package execution are established. Remaining distribution work is the real
+  Arch install/update/uninstall path, installed-binary identity, rollback, and
+  live desktop acceptance. Rust binaries are still not required by packaging.
+  Do not remove Python until those gates and the maintainer's live acceptance
+  pass.
 
 ### 4. Restore the canonical validator
 
-The following 32 checks failed on the snapshot SHA. Re-run the validator on
-each new HEAD and inspect its detailed log; some failures may be stale
-source-token assertions while others may reflect real behavior. Prefer
-behavioral repair and update a contract only when its intended behavior has
-changed. These are repository-wide failures, not 32 proven Rust defects.
+The historical list below records the 32 failures from the old benchmark SHA.
+The current source state is **183 passed, 27 failed, 2 skipped**; several stale
+native-migration contracts from this list now pass. Re-run the validator on
+each new HEAD and inspect its detailed log. Prefer behavioral repair and update
+a contract only when its intended behavior has changed. Repository-wide
+validator failures are not automatically Rust defects.
 
 Python regressions (19):
 
@@ -223,8 +264,10 @@ scripts/test-window-preview-cache-behavior.sh
 scripts/test-window-preview-lifecycle.sh
 ```
 
-The Diagnostics session, Niri keybind launcher, MPD-related packaging, and
-performance lifecycle checks deserve early review alongside the native trial;
-the remaining UI/perimeter failures still block a repository-wide green
-validator. A default Rust cutover requires the relevant behavioral tests,
-reversible live A/B, and release packaging checks above to pass.
+The Diagnostics session, Niri keybind launcher, MPD-related packaging, Local
+Music, and performance-lifecycle contracts from this historical list now pass.
+The remaining repository-wide failures still block a fully green validator, but
+they should be repaired according to their own intended behavior rather than
+attributed wholesale to the native migration. A default Rust cutover still
+requires the relevant behavioral tests, reversible live A/B, and release
+packaging checks above to pass.

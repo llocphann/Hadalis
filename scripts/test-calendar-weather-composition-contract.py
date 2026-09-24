@@ -15,6 +15,7 @@ CALENDAR_CONTENT = ROOT / "modules/bar/ClockCalendarContent.qml"
 EVENTS_WIDGET = ROOT / "modules/sidebarRight/events/EventsWidget.qml"
 EVENTS_DIALOG = ROOT / "modules/sidebarRight/events/EventsDialog.qml"
 WINDOW_DIALOG = ROOT / "modules/common/widgets/WindowDialog.qml"
+DATE_PICKER = ROOT / "modules/common/widgets/DatePicker.qml"
 SHARED_MONTH = ROOT / "modules/common/widgets/ObsidianMonthCalendar.qml"
 SIDEBAR_CALENDAR = ROOT / "modules/sidebarRight/calendar/CalendarWidget.qml"
 CLOCK_TOOLTIP = ROOT / "modules/bar/ClockWidgetTooltip.qml"
@@ -40,6 +41,7 @@ def main() -> None:
     events_widget = EVENTS_WIDGET.read_text(encoding="utf-8")
     events_dialog = EVENTS_DIALOG.read_text(encoding="utf-8")
     window_dialog = WINDOW_DIALOG.read_text(encoding="utf-8")
+    date_picker = DATE_PICKER.read_text(encoding="utf-8")
     shared_month = SHARED_MONTH.read_text(encoding="utf-8")
     sidebar_calendar = SIDEBAR_CALENDAR.read_text(encoding="utf-8")
     vertical = VERTICAL.read_text(encoding="utf-8")
@@ -61,6 +63,12 @@ def main() -> None:
         "dialog.focusEditor()",
         "embeddedPresentation: true",
         "backgroundHeight: -1",
+        "Math.max(286, Math.min(360,",
+        "* 0.34",
+        "margins: 8",
+        "topMargin: 8",
+        "Appearance.colors.colSurfaceContainerHigh",
+        "border.color: Appearance.colors.colOutlineVariant",
     ):
         require(calendar_popup, token, "ClockCalendarPopup.qml")
     forbid(calendar_popup,
@@ -69,6 +77,10 @@ def main() -> None:
 
     for token in (
         "property bool embeddedPresentation: false",
+        "property real contentSpacing: 16",
+        'property color embeddedBackgroundColor: "transparent"',
+        "? root.embeddedBackgroundColor",
+        "spacing: root.contentSpacing",
         "visible: !root.embeddedPresentation",
         "x: root.embeddedPresentation",
         "width: root.embeddedPresentation",
@@ -79,8 +91,28 @@ def main() -> None:
     for token in (
         "function focusEditor(): void",
         "id: titleField",
+        "contentSpacing: root.embeddedPresentation ? 8 : 16",
+        "embeddedBackgroundColor:",
+        "component EventSectionHeader: WindowDialogSectionHeader",
+        "Appearance.colors.colSurfaceContainerHigh",
+        "root.embeddedPresentation ? 46 : 56",
+        "compact: root.embeddedPresentation",
+        "root.embeddedPresentation ? 10 : 16",
     ):
         require(events_dialog, token, "EventsDialog.qml")
+    forbid(events_dialog,
+           "component EventSectionHeader: EventSectionHeader",
+           "EventsDialog.qml")
+
+    for token in (
+        "property bool compact: false",
+        "root.compact ? 8 : 16",
+        "spacing: root.compact ? 4 : 8",
+        "implicitHeight: root.compact ? 24 : 28",
+        "Layout.preferredWidth: root.compact ? 28 : 32",
+        "implicitWidth: root.compact ? 28 : 32",
+    ):
+        require(date_picker, token, "DatePicker.qml")
 
     for token in (
         "property int monthShift: 0",

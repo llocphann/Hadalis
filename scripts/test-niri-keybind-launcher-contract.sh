@@ -38,8 +38,8 @@ if pos != sorted(pos):
 PY
 
 wrapper='spawn "/bin/sh" "-c" "PATH=\"${XDG_BIN_HOME:-$HOME/.local/bin}:$PATH\"; exec inir \"$@\"" "inir-keybind"'
-if grep -Fq 'spawn "inir"' "$overrides"; then
-    fail 'launcher override file contains a PATH-dependent bare spawn "inir"'
+if grep -Ev '^[[:space:]]*//' "$overrides" | grep -Fq 'spawn "inir"'; then
+    fail 'launcher override file contains an active PATH-dependent bare spawn "inir"'
 fi
 grep -Fq "$wrapper" "$overrides" \
     || fail 'launcher override file does not use the XDG_BIN_HOME-aware wrapper'

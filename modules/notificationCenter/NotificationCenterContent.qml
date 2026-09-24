@@ -13,7 +13,10 @@ Item {
     property bool showOpenCenterButton: false
     property bool popupPresentation: false
     readonly property bool dragActive: listview.dragIndex >= 0
-    readonly property bool searchVisible: Notifications.list.length > 3
+    // The corner popup is intentionally glanceable: searching belongs to the
+    // larger notification-center surfaces, not this compact two-tab panel.
+    readonly property bool searchVisible:
+        !root.popupPresentation && Notifications.list.length > 3
 
     signal openCenterRequested()
     signal searchFocusRequested()
@@ -141,6 +144,8 @@ Item {
                 // groups are collapsed only by an explicit user action.
                 preferExpanded: true
                 modernCards: true
+                compactCards: root.popupPresentation
+                compactActions: root.popupPresentation
                 filterQuery: searchField.text
                 onExternalLinkOpened: root.externalNavigationRequested()
                 onNotificationActionInvoked:
@@ -179,8 +184,8 @@ Item {
 
             RippleButton {
                 id: notificationModeButton
-                implicitWidth: 36
-                implicitHeight: 36
+                implicitWidth: root.popupPresentation ? 30 : 36
+                implicitHeight: root.popupPresentation ? 30 : 36
                 buttonText: Notifications.silent
                     ? Translation.tr("Resume") : Translation.tr("Do Not Disturb")
                 buttonRadius: Appearance.rounding.full
@@ -199,7 +204,7 @@ Item {
                     anchors.centerIn: parent
                     text: Notifications.silent
                         ? "notifications_active" : "notifications_off"
-                    iconSize: 20
+                    iconSize: root.popupPresentation ? 17 : 20
                     fill: 1
                     color: Notifications.silent
                         ? Appearance.colors.colOnPrimaryContainer
@@ -211,8 +216,8 @@ Item {
 
             RippleButton {
                 id: clearAllButton
-                implicitWidth: 36
-                implicitHeight: 36
+                implicitWidth: root.popupPresentation ? 30 : 36
+                implicitHeight: root.popupPresentation ? 30 : 36
                 buttonText: Translation.tr("Clear all")
                 buttonRadius: Appearance.rounding.full
                 colBackground: Appearance.colors.colLayer2
@@ -224,7 +229,7 @@ Item {
                 contentItem: MaterialSymbol {
                     anchors.centerIn: parent
                     text: "delete_sweep"
-                    iconSize: 20
+                    iconSize: root.popupPresentation ? 17 : 20
                     fill: 1
                     color: Appearance.colors.colOnLayer2
                 }

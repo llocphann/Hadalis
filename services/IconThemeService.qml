@@ -20,6 +20,11 @@ Singleton {
 
     property bool _initialized: false
     property bool _restartQueued: false
+    readonly property string nativeDispatchPath: Quickshell.shellPath("scripts/native-dispatch")
+    readonly property bool nativeBackendEnabled: {
+        const mode = String(Quickshell.env("INIR_NATIVE_BACKEND") ?? "python")
+        return mode === "rust" || mode === "auto"
+    }
 
     // Smart icon resolution: preserve app-provided identity whenever possible.
     // Only repair the duplicated Electron resources path that is known-broken.
@@ -156,11 +161,22 @@ Singleton {
         restartDelay.restart()
     }
 
-    function _startKdeGlobalsSync(themeName: string, skipRestart: bool): void {
+    function _startLegacyKdeGlobalsSync(themeName: string, skipRestart: bool): void {
         kdeGlobalsUpdateProc.themeName = themeName
         kdeGlobalsUpdateProc.skipRestart = skipRestart
         kdeGlobalsUpdateProc.running = false
         kdeGlobalsUpdateProc.running = true
+    }
+
+    function _startKdeGlobalsSync(themeName: string, skipRestart: bool): void {
+        if (root.nativeBackendEnabled) {
+            nativeIconSyncProc.themeName = themeName
+            nativeIconSyncProc.skipRestart = skipRestart
+            nativeIconSyncProc.running = false
+            nativeIconSyncProc.running = true
+            return
+        }
+        root._startLegacyKdeGlobalsSync(themeName, skipRestart)
     }
 
     function _continueAfterKdeGlobals(themeName: string, skipRestart: bool): void {
@@ -213,6 +229,29 @@ Singleton {
         onExited: (exitCode, exitStatus) => {
             _log("[IconThemeService] gsettings set exited:", exitCode, "theme:", gsettingsSetProc.themeName)
             root._startKdeGlobalsSync(gsettingsSetProc.themeName, gsettingsSetProc.skipRestart)
+        }
+    }
+
+    // Rust test path: update KDE, qt5ct, qt6ct and GTK config files in one
+    // process. If it fails, fall back to the existing Python chain.
+    Process {
+        id: nativeIconSyncProc
+        property string themeName: ""
+        property bool skipRestart: false
+        command: [root.nativeDispatchPath, "desktop-icons", nativeIconSyncProc.themeName]
+
+        onExited: (exitCode, exitStatus) => {
+            if (exitCode === 0) {
+                root._log("[IconThemeService] native icon sync succeeded:", nativeIconSyncProc.themeName)
+                if (!nativeIconSyncProc.skipRestart)
+                    root.queueRestart()
+                return
+            }
+
+            console.warn("[IconThemeService] native icon sync failed; falling back to legacy path:", exitCode, exitStatus)
+            root._startLegacyKdeGlobalsSync(
+                nativeIconSyncProc.themeName,
+                nativeIconSyncProc.skipRestart)
         }
     }
 

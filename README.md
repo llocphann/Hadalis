@@ -681,6 +681,11 @@ The maintainer's local pass is authoritative. At minimum, validate the exact can
 bash scripts/validate-maintainer-local.sh
 ```
 
+The reversible Python/Rust backend trial has its own measured status, open
+coverage, and acceptance steps in [native/README.md](native/README.md). Its
+helper benchmarks do not replace this repository-wide gate or live desktop
+validation.
+
 Then perform live desktop checks:
 
 - [ ] Screen Edge visible when idle and maximized; width setting updates correctly.

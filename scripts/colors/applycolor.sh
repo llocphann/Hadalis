@@ -23,15 +23,106 @@ main() {
 
   local modules=()
   local enabled_targets=0
-  local manifest_path target_id module_path
-  for manifest_path in "${manifests[@]}"; do
-    target_manifest_enabled "$manifest_path" || continue
-    enabled_targets=$((enabled_targets + 1))
-    target_id="$(basename "$manifest_path" .json)"
-    module_path="$(resolve_target_module_path "$target_id" || true)"
-    [[ -n "$module_path" ]] || continue
-    modules+=("$module_path")
+  local manifest_path target_id module_path module_name enabled
+
+  if (( ${#manifests[@]} > 0 )) && command -v jq >/dev/null 2>&1; then
+    # Parse every target manifest in one jq process. When config exists, load
+    # it once as well instead of spawning jq separately for every configKey.
+    local jq_program='
+      . as $manifest
+      | ($manifest.configKey // "") as $key
+      | (if $key == "" then true
+         elif ($config | length) == 0 then true
+         else ($config[0] | getpath($key | split("."))) as $value
+           | if $value == null then true else $value end
+         end) as $enabled
+      | [($enabled | tostring), ($manifest.module // "")] | @tsv
+    '
+    local jq_rows
+    if [[ -f "$CONFIG_FILE" ]]; then
+      jq_rows="$(jq -r --slurpfile config "$CONFIG_FILE" "$jq_program" "${manifests[@]}" 2>/dev/null || true)"
+    else
+      jq_rows="$(jq -r --argjson config '[]' "$jq_program" "${manifests[@]}" 2>/dev/null || true)"
+    fi
+
+    while IFS=
+  if [[ ${#modules[@]} -eq 0 && ${#manifests[@]} -eq 0 ]]; then
+    while IFS= read -r module_path; do
+      [[ -n "$module_path" ]] || continue
+      modules+=("$module_path")
+    done < <(list_theming_modules)
+  fi
+
+  if [[ ${#modules[@]} -eq 0 && ${#manifests[@]} -gt 0 && "$enabled_targets" -eq 0 ]]; then
+    printf 'No enabled theming targets found in %s\n' "$SCRIPT_DIR/targets" >&2
+    exit 0
+  fi
+
+  if [[ ${#modules[@]} -eq 0 ]]; then
+    printf 'No theming modules found for enabled targets in %s\n' "$SCRIPT_DIR/modules" >&2
+    exit 1
+  fi
+
+  local cpu_count max_jobs running failed
+  cpu_count="$(nproc 2>/dev/null || printf '4')"
+  max_jobs="${INIR_THEME_MAX_JOBS:-$((cpu_count / 2))}"
+  [[ "$max_jobs" =~ ^[0-9]+$ ]] || max_jobs=2
+  (( max_jobs < 2 )) && max_jobs=2
+  (( max_jobs > 4 )) && max_jobs=4
+
+  run_one_module() {
+    local module_path="$1"
+    if command -v ionice >/dev/null 2>&1; then
+      ionice -c 3 nice -n 10 bash "$module_path"
+    else
+      nice -n 10 bash "$module_path"
+    fi
+  }
+
+  running=0
+  failed=0
+  for module_path in "${modules[@]}"; do
+    run_one_module "$module_path" &
+    running=$((running + 1))
+    if (( running >= max_jobs )); then
+      if ! wait -n; then
+        failed=1
+      fi
+      running=$((running - 1))
+    fi
   done
+
+  while (( running > 0 )); do
+    if ! wait -n; then
+      failed=1
+    fi
+    running=$((running - 1))
+  done
+
+  exit "$failed"
+}
+
+main "$@"
+\t' read -r enabled module_name; do
+      [[ -n "$enabled" ]] || continue
+      [[ "$enabled" != "false" ]] || continue
+      enabled_targets=$((enabled_targets + 1))
+      [[ -n "$module_name" ]] || continue
+      module_path="$MODULES_DIR/$module_name"
+      [[ -f "$module_path" ]] || continue
+      modules+=("$module_path")
+    done <<< "$jq_rows"
+  else
+    # Compatibility fallback for minimal installations without jq.
+    for manifest_path in "${manifests[@]}"; do
+      target_manifest_enabled "$manifest_path" || continue
+      enabled_targets=$((enabled_targets + 1))
+      target_id="$(basename "$manifest_path" .json)"
+      module_path="$(resolve_target_module_path "$target_id" || true)"
+      [[ -n "$module_path" ]] || continue
+      modules+=("$module_path")
+    done
+  fi
 
   if [[ ${#modules[@]} -eq 0 && ${#manifests[@]} -eq 0 ]]; then
     while IFS= read -r module_path; do

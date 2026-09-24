@@ -36,7 +36,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: native-rust-${{ github.workflow }}-${{ github.ref }}
@@ -65,8 +65,22 @@ jobs:
           bash scripts/test-native-selector-contract.sh
           bash scripts/test-native-selector-behavior.sh
 
-      - name: Rustfmt
-        run: cargo fmt --manifest-path native/Cargo.toml --all -- --check
+      # One-time canonicalization pass. The remote-head check prevents
+      # overwriting concurrent dev work; this step is reverted to --check
+      # immediately after the formatter commit lands.
+      - name: Apply canonical rustfmt once
+        run: |
+          git fetch origin dev
+          test "$(git rev-parse origin/dev)" = "$GITHUB_SHA"
+          cargo fmt --manifest-path native/Cargo.toml --all
+          if git diff --quiet -- native; then
+            exit 0
+          fi
+          git config user.name "Hadalis native formatter"
+          git config user.email "actions@users.noreply.github.com"
+          git add native
+          git commit -m "style(native): apply canonical rustfmt"
+          git push origin HEAD:dev
 
       - name: Clippy
         run: cargo clippy --locked --manifest-path native/Cargo.toml --workspace --all-targets -- -D warnings

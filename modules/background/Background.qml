@@ -332,8 +332,12 @@ Scope {
             || !(Config.options?.background?.hideWhenFullscreen ?? false)
 
         readonly property string screenName: screen?.name ?? ""
+        readonly property real monitorScale:
+            (NiriService.displayScales
+                && NiriService.displayScales[bgRoot.screenName] !== undefined)
+                ? NiriService.displayScales[bgRoot.screenName] : 1
         readonly property var outputWorkspaces: (NiriService.allWorkspaces ?? [])
-            .filter(workspace => workspace.output === root.screenName)
+            .filter(workspace => workspace.output === bgRoot.screenName)
             .sort((a, b) => a.idx - b.idx)
         property int firstWorkspaceId: outputWorkspaces[0]?.idx ?? 1
         property int lastWorkspaceId:
@@ -1280,8 +1284,8 @@ Scope {
                         // Decode at screen resolution × monitor DPI scale. Do NOT multiply by
                         // parallax effectiveWallpaperScale — that causes CPU upscaling which
                         // produces pixelation. GPU scaling handles the parallax zoom cleanly.
-                        width: Math.max(1, Math.round(bgRoot.screen.width * (bgRoot.monitor?.scale ?? 1)))
-                        height: Math.max(1, Math.round(bgRoot.screen.height * (bgRoot.monitor?.scale ?? 1)))
+                        width: Math.max(1, Math.round(bgRoot.screen.width * bgRoot.monitorScale))
+                        height: Math.max(1, Math.round(bgRoot.screen.height * bgRoot.monitorScale))
                     }
 
                     onTransitionStarted: {

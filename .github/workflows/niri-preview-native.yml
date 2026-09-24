@@ -1,0 +1,47 @@
+name: Niri native preview
+
+on:
+  push:
+    paths:
+      - 'distro/arch/inir-niri-preview/**'
+      - '.github/workflows/niri-preview-native.yml'
+  pull_request:
+    paths:
+      - 'distro/arch/inir-niri-preview/**'
+      - '.github/workflows/niri-preview-native.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: niri-preview-native-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container: archlinux:base-devel
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Install build dependencies
+        run: |
+          pacman -Syu --noconfirm
+          pacman -S --needed --noconfirm \
+            cmake ninja pkgconf qt6-base qt6-declarative wayland wayland-protocols
+
+      - name: Build package
+        run: |
+          chown -R nobody:nobody "$GITHUB_WORKSPACE"
+          runuser -u nobody -- bash -lc \
+            'cd "$GITHUB_WORKSPACE/distro/arch/inir-niri-preview" && makepkg --nodeps --noconfirm --cleanbuild'
+
+      - name: Verify QML plugin payload
+        run: |
+          pkg="$(find distro/arch/inir-niri-preview -maxdepth 1 -name 'inir-niri-preview-*.pkg.tar.*' -print -quit)"
+          test -n "$pkg"
+          bsdtar -tf "$pkg" | grep -q 'usr/lib/qt6/qml/Hadalis/NiriPreview/qmldir'
+          bsdtar -tf "$pkg" | grep -q 'usr/lib/qt6/qml/Hadalis/NiriPreview/libhadalisniripreviewplugin.so'
+          bsdtar -tf "$pkg" | grep -q 'usr/share/inir/niri-preview-plugin'

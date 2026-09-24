@@ -1,0 +1,44 @@
+pkgname=inir-niri-preview
+pkgver=0.1.0
+pkgrel=1
+pkgdesc='Hadalis native Niri window preview QML plugin'
+arch=(x86_64 aarch64)
+url='https://github.com/llocphann/Hadalis'
+license=('GPL-3.0-only')
+depends=(
+  glibc
+  qt6-base
+  qt6-declarative
+  wayland
+)
+makedepends=(
+  cmake
+  ninja
+  pkgconf
+  wayland-protocols
+)
+source=()
+sha256sums=()
+
+prepare() {
+  rm -rf "$srcdir/native"
+  cp -a "$startdir/src" "$srcdir/native"
+}
+
+build() {
+  cmake -GNinja -B "$srcdir/build" -S "$srcdir/native" \
+    -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+    -DCMAKE_INSTALL_PREFIX=/usr
+  cmake --build "$srcdir/build"
+}
+
+package() {
+  DESTDIR="$pkgdir" cmake --install "$srcdir/build"
+
+  install -d "$pkgdir/usr/share/inir"
+  cat > "$pkgdir/usr/share/inir/niri-preview-plugin" <<EOF
+version=$pkgver-$pkgrel
+backend=ext-image-copy-capture-v1
+transport=shm
+EOF
+}

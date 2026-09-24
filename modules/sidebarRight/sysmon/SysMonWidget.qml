@@ -280,53 +280,10 @@ Item {
         Layout.fillWidth: true
         spacing: 6
 
-        property string rxSpeed: "0 B/s"
-        property string txSpeed: "0 B/s"
-        property real lastRx: 0
-        property real lastTx: 0
-        property real lastTime: 0
-
-        Timer {
-            running: GlobalStates.sidebarRightOpen
-            interval: 2000
-            repeat: true
-            triggeredOnStart: true
-            onTriggered: netProc.running = true
-        }
-
-        Process {
-            id: netProc
-            command: ["/usr/bin/cat", "/proc/net/dev"]
-            running: false
-            stdout: SplitParser {
-                splitMarker: ""
-                onRead: data => {
-                    const lines = data.split("\n")
-                    let totalRx = 0, totalTx = 0
-                    for (const line of lines) {
-                        if (line.includes(":") && !line.includes("lo:")) {
-                            const parts = line.split(/\s+/).filter(p => p)
-                            if (parts.length >= 10) {
-                                totalRx += parseInt(parts[1]) || 0
-                                totalTx += parseInt(parts[9]) || 0
-                            }
-                        }
-                    }
-
-                    const now = Date.now()
-                    if (netStats.lastTime > 0) {
-                        const dt = (now - netStats.lastTime) / 1000
-                        if (dt > 0) {
-                            netStats.rxSpeed = netStats.formatSpeed((totalRx - netStats.lastRx) / dt)
-                            netStats.txSpeed = netStats.formatSpeed((totalTx - netStats.lastTx) / dt)
-                        }
-                    }
-                    netStats.lastRx = totalRx
-                    netStats.lastTx = totalTx
-                    netStats.lastTime = now
-                }
-            }
-        }
+        readonly property string rxSpeed:
+            formatSpeed(ResourceUsage.networkRxBytesPerSec)
+        readonly property string txSpeed:
+            formatSpeed(ResourceUsage.networkTxBytesPerSec)
 
         function formatSpeed(bytesPerSec) {
             if (bytesPerSec < 1024) return bytesPerSec.toFixed(0) + " B/s"

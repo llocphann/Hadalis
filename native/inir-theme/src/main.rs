@@ -1,4 +1,5 @@
 mod palette;
+mod sddm;
 mod source;
 mod template;
 
@@ -14,6 +15,7 @@ use crate::palette::{
     build_app_palette, colors_contract, material_palette, palette_contract, palette_to_value,
     scss_output, terminal_palette, Palette, TerminalSettings,
 };
+use crate::sddm::sync_if_installed;
 use crate::source::{
     auto_detect_scheme, color_seed, image_seed, invert_hue, load_resized_image, low_chroma,
 };
@@ -258,7 +260,7 @@ fn main() -> Result<()> {
             args.meta_output.clone(),
             args.scss_output.clone(),
         ];
-        render_templates(RenderRequest {
+        let rendered = render_templates(RenderRequest {
             template_dir,
             managed_outputs: &managed_outputs,
             seed,
@@ -267,6 +269,11 @@ fn main() -> Result<()> {
             soften: args.soften,
             image: source_path.as_deref(),
         })?;
+        if rendered > 0
+            && let Err(error) = sync_if_installed(&app_palette)
+        {
+            eprintln!("[sddm-pixel] Native sync failed: {error:#}");
+        }
     }
 
     if args.debug {

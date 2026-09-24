@@ -558,10 +558,10 @@ Checkboxes below are **release gates**, not an assertion that no partial impleme
 
 > **Latest maintainer correction (2026-09-19):** the DSP curve keeps a compact electric current visible at rest. Preset changes and direct band edits brighten the same current without increasing stroke width or jitter amplitude; the old oversized transient sweep/per-band growth is retired. This remains presentation-only and does not create a second DSP backend. Live visual/audio validation remains pending.
 
-- [ ] The bar-attached Media Popup renders the existing **CAVA -> `PlayerControl` -> `WaveVisualizer`** path instead of an empty visualizer input.
+- [ ] The bar-attached Media Popup suppresses `PlayerControl`'s decorative `WaveVisualizer`; its **10-band DSP Equalizer** is the only live CAVA/analyzer surface in that popup. Other `PlayerControl` owners may still use the optional wave visualizer.
 - [ ] The same Media Popup includes a **10-band DSP Equalizer** below the player card, using the existing optional `EqualizerService` / EasyEffects backend rather than a second ad-hoc equalizer process. User-facing bands are 31/63/125/250/500/1k/2k/4k/8k/16k Hz with the Serpantinum Flat/Bass/Treble/Vocal/Pop/Rock/Jazz/Classic curves.
 - [ ] Confirm the required CAVA runtime/package is present in the supported install/package paths, or document/install it where currently missing. EasyEffects + socat remain optional capabilities and must degrade gracefully when absent.
-- [ ] Visualizer/equalizer lifecycle is efficient: start only when needed, stop when unused, and survive pause/resume, player switching and popup close/reopen.
+- [ ] Equalizer/analyzer lifecycle is efficient: the bar popup owns no redundant decorative CAVA subscriber; the DSP analyzer starts only while the popup is presented and survives pause/resume, player switching and popup close/reopen.
 - [ ] MPRIS controls, seek, volume and keyboard behavior do not regress while the visualizer/DSP controls are active.
 
 ### F. Clock Calendar / Weather composition — P0

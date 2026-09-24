@@ -135,7 +135,7 @@ def main() -> None:
            "EventsDialog.qml")
 
     compact_deck_start = events_dialog.find(
-        "// Embedded Add Event uses one fixed-height icon deck")
+        "// Embedded Add Event uses one compact icon deck")
     compact_deck_end = events_dialog.find(
         "// Repeat is part of scheduling", compact_deck_start)
     if compact_deck_start < 0 or compact_deck_end < 0:
@@ -191,7 +191,11 @@ def main() -> None:
     require(date_picker_block, "visible: !root.embeddedPresentation", "EventsDialog embedded date reuse")
     require(date_picker_block, "Qt.formatDate(root.eventDate", "EventsDialog embedded selected-date summary")
     require(date_picker_block, "StyledSwitch {", "EventsDialog all-day control")
-    forbid(date_picker_block, "compact: root.embeddedPresentation", "EventsDialog duplicate embedded calendar")
+    date_picker_component = date_picker_block[
+        :date_picker_block.find("RowLayout {")]
+    forbid(date_picker_component,
+           "compact: root.embeddedPresentation",
+           "EventsDialog duplicate embedded calendar")
 
     for token in (
         "function addEvent(title, description, dateTime, category, priority, reminderMinutes, recurrence, endDate, allDay)",

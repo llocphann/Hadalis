@@ -331,6 +331,53 @@ activate_rust() {
     journalctl --user -u inir.service --since '-3 minutes' --no-pager 2>&1         | grep -E 'native-dispatch|inir-inputd|inir-native|inir-mpdd|inir-theme|falling back|Failed|failed|error'         | tail -n 120 || true
 }
 
+verify_python_restore() {
+    local selector="$DISPATCH"
+    local state info manager_env
+
+    if [[ -x "$ACTIVE_RUNTIME/scripts/native-dispatch" ]]; then
+        selector="$ACTIVE_RUNTIME/scripts/native-dispatch"
+    fi
+
+    state="$(head -n 1 "$BACKEND_STATE_FILE" 2>/dev/null || true)"
+    if [[ "$state" != python ]]; then
+        kv "restore state" "FAIL (native-backend=$state)"
+        return 1
+    fi
+
+    info="$(env -u INIR_NATIVE_BACKEND -u INIR_NATIVE_BIN_DIR -u INIR_NATIVE_STRICT \
+        "$selector" backend-info 2>&1)" || {
+        kv "restore selector" "FAIL (backend-info unavailable)"
+        return 1
+    }
+    if ! grep -Fxq 'mode=python' <<<"$info"; then
+        kv "restore selector" "FAIL (selector did not report mode=python)"
+        printf '%s\n' "$info"
+        return 1
+    fi
+
+    manager_env="$(systemctl --user show-environment 2>/dev/null)" || {
+        kv "restore manager env" "FAIL (show-environment unavailable)"
+        return 1
+    }
+    if ! grep -Fxq 'INIR_NATIVE_BACKEND=python' <<<"$manager_env"; then
+        kv "restore manager env" "FAIL (backend is not python)"
+        return 1
+    fi
+    if grep -Eq '^INIR_NATIVE_(BIN_DIR|STRICT)=' <<<"$manager_env"; then
+        kv "restore manager env" "FAIL (Rust selector variables remain)"
+        return 1
+    fi
+    if ! systemctl --user is-active --quiet inir.service; then
+        kv "restore service" "FAIL (inir.service inactive)"
+        return 1
+    fi
+
+    kv "restore selector" "mode=python"
+    kv "restore service" "active"
+    return 0
+}
+
 restore_python() {
     section "RESTORE PYTHON MODE"
     printf '%s\n' python > "$BACKEND_STATE_FILE"
@@ -338,7 +385,7 @@ restore_python() {
     systemctl --user set-environment INIR_NATIVE_BACKEND=python || return 1
     systemctl --user unset-environment INIR_NATIVE_BIN_DIR INIR_NATIVE_STRICT || true
     "$ROOT_DIR/scripts/inir" restart || systemctl --user restart inir.service || return 1
-    systemctl --user is-active --quiet inir.service || return 1
+    verify_python_restore || return 1
     RUNTIME_MODE="python restored"
     kv "backend" "python"
 }
@@ -814,7 +861,7 @@ else
 fi
 if [[ "$RUNTIME_MODE" == "rust test mode active" ]]; then
     echo "Rollback command:"
-    echo "  $ROOT_DIR/scripts/native-cutover-benchmark.sh --restore"
+    echo "  bash $ROOT_DIR/scripts/benchmark-python-vs-rust.sh --restore"
 fi
 echo
 echo "=== SEND THIS REPORT BACK TO CHATGPT ==="

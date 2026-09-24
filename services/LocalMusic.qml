@@ -132,7 +132,6 @@ Singleton {
 
     readonly property string _mpdScript: Directories.scriptsPath + "/local_music_mpd.py"
     readonly property string nativeDispatchPath: Directories.scriptsPath + "/native-dispatch"
-    readonly property string _lyricsScript: Directories.scriptsPath + "/local_music_lyrics.py"
 
     function _trackForIdentity(uri: string, path: string): var {
         const wantedUri = String(uri ?? "")
@@ -267,7 +266,7 @@ Singleton {
         _pendingLyricsPath = ""
         _lyricsProc.requestedPath = path
         _lyricsProc.output = ""
-        _lyricsProc.command = ["python3", _lyricsScript, path]
+        _lyricsProc.command = [root.nativeDispatchPath, "lyrics", path]
         _lyricsProc.running = true
     }
 

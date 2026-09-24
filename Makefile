@@ -78,12 +78,12 @@ test-install-lifecycle:
 test-prefix-install:
 	@stage="$$(mktemp -d)"; \
 		trap 'rm -rf -- "$$stage"' EXIT; \
-		$(MAKE) -s install-bin install-shell install-native install-desktop install-docs DESTDIR="$stage" PREFIX=/opt/inir; \
+		$(MAKE) -s install-bin install-shell install-native install-desktop install-docs DESTDIR="$$stage" PREFIX=/opt/inir; \
 		runtime="$$stage/opt/inir/share/quickshell/inir"; \
 		docs="$$stage/opt/inir/share/doc/inir-shell"; \
 		test -f "$$runtime/shell.qml"; \
-		test -f "$runtime/qmldir"; \
-		for binary in inir-inputd inir-mpdd inir-native inir-theme; do test -x "$runtime/native/bin/$binary"; done; \
+		test -f "$$runtime/qmldir"; \
+		for binary in inir-inputd inir-mpdd inir-native inir-theme; do test -x "$$runtime/native/bin/$$binary"; done; \
 		test -f "$$docs/README.md"; \
 		test -f "$$docs/AUDIO_MEDIA.md"; \
 		test -f "$$docs/INSTALL.md"; \

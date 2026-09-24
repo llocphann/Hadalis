@@ -469,6 +469,7 @@ Item {
                 enabled: Notepad.ready && root.displayedTabIndex >= 0
                 onClicked: root.removeTabSafely(root.displayedTabIndex)
             }
+        }
 
         // Full toolbar remains unchanged for Sidebar; Dashboard folds these
         // actions into the tab row above.

@@ -222,10 +222,7 @@ fn token_namespace_from_palettes(
     for name in &names {
         let value = TokenValue {
             dark: dark.get(name).cloned().unwrap_or_else(|| "#000000".into()),
-            light: light
-                .get(name)
-                .cloned()
-                .unwrap_or_else(|| "#000000".into()),
+            light: light.get(name).cloned().unwrap_or_else(|| "#000000".into()),
             default: default
                 .get(name)
                 .cloned()

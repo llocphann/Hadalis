@@ -1,41 +1,57 @@
-# Hadalis native backend staging area
+# Hadalis native backend trial cutover
 
-This directory contains the Rust migration before cutover.
+This directory contains the Rust migration and its reversible runtime trial.
 
-## Hard rule
+## Runtime policy
 
-Nothing under this directory is wired into the current Hadalis runtime yet.
+Rust is now wired only through `scripts/native-dispatch`.
 
-- QML still invokes the existing Python helpers.
-- Existing Python scripts remain the source of truth.
-- No Rust systemd unit is installed or enabled.
-- Packaging does not depend on these binaries yet.
-- Do not replace a Python call site until the maintainer explicitly approves the
-  final migration report.
+- `INIR_NATIVE_BACKEND=python` keeps the existing Python implementation active.
+- `INIR_NATIVE_BACKEND=rust` selects the Rust implementation and keeps Python
+  as a fail-soft fallback unless `INIR_NATIVE_STRICT=1` is set.
+- `INIR_NATIVE_BACKEND=auto` prefers available Rust binaries and falls back to
+  Python.
+- Existing Python helpers remain in the repository during the trial.
+- No Rust systemd service is installed or enabled yet.
+- Packaging still does not require the Rust binaries.
 
-The workspace is intentionally developed in parallel so Rust behavior can be
-validated against the current implementation before any runtime switch.
+The trial is intentionally reversible. Run
+`scripts/test-native-cutover.sh --restore` to return the user service to the
+Python backend.
 
-Current staged crates:
+## Native crates
 
-- `inir-protocol`: versioned native message contracts shared by the daemon-style
+- `inir-protocol`: versioned native message contracts shared by daemon-style
   crates.
 - `inir-inputd`: evdev input aggregation and native input-state reporting.
-- `inir-mpdd`: MPD state/event bridge with the same record and argument
-  contracts as the current helper path.
-- `inir-native`: one-shot clipboard filtering, desktop configuration writers,
-  runtime diagnostics sampling, and Niri configuration/query helpers.
+- `inir-mpdd`: persistent MPD backend plus a compatibility mode matching the
+  current `local_music_mpd.py` command contract.
+- `inir-native`: clipboard filtering, desktop configuration writers, runtime
+  diagnostics sampling, and Niri configuration/query helpers.
 - `inir-theme`: Material 2025 color generation, Celebi/Score image seed
   extraction, Hadalis app/terminal palette contracts, compatibility template
   rendering, and the ii-pixel SDDM sync hook.
 
-## Validation gate
+## Validation and benchmarking
 
-The `Native Rust staging` workflow keeps this tree dormant and runs clippy with
-warnings denied plus the full native unit-test workspace. Theme parity tests pin
-the Material 2025 surface contract and the Python generator's CLI/output
-semantics that Hadalis relies on.
+The `Native Rust staging` workflow verifies that runtime/package files do not
+bind directly to native binaries, then runs clippy with warnings denied and the
+native unit-test workspace.
 
-Cutover is intentionally not part of this staging work. Python remains the
-runtime source of truth until the maintainer reviews the final migration report
-and explicitly approves replacing the existing call sites.
+For machine-level comparison, run:
+
+```bash
+./scripts/test-native-cutover.sh
+```
+
+The harness builds release binaries, runs Rust tests/clippy, compares Python and
+Rust output for read-only/safe paths, measures startup/resident memory and CPU,
+then measures the same `inir.service` once with Python selected and once with
+Rust selected. It leaves Rust trial mode active so the shell can be tested
+interactively.
+
+The report is written under `$XDG_STATE_HOME/inir/` (or
+`~/.local/state/inir/`). Send that report back for analysis.
+
+A permanent removal of Python call sites and dependencies is still a separate
+maintainer-approved step.

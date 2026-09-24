@@ -2114,7 +2114,10 @@ mod tests {
     #[test]
     fn manager_reconnects_after_failed_request_without_replaying_mutation() {
         let listener = TcpListener::bind(("127.0.0.1", 0)).expect("bind reconnect fake MPD");
-        let port = listener.local_addr().expect("reconnect fake MPD address").port();
+        let port = listener
+            .local_addr()
+            .expect("reconnect fake MPD address")
+            .port();
         let (tx, rx) = mpsc::channel();
 
         let handle = thread::spawn(move || {
@@ -2129,9 +2132,7 @@ mod tests {
                 reader.get_mut().flush().expect("flush reconnect greeting");
 
                 let mut line = String::new();
-                reader
-                    .read_line(&mut line)
-                    .expect("read reconnect command");
+                reader.read_line(&mut line).expect("read reconnect command");
                 commands.push(line.trim_end_matches(['\r', '\n']).to_owned());
 
                 if attempt == 0 {
@@ -2148,11 +2149,13 @@ mod tests {
 
         let manager = MpdManager::new("127.0.0.1".into(), port, "/music".into());
         let first = manager.with_client(|client, _, _| client.command("pause", ["1"]));
-        assert!(first.is_err(), "first request should observe the dropped socket");
+        assert!(
+            first.is_err(),
+            "first request should observe the dropped socket"
+        );
 
-        let second = manager.with_client(|client, _, _| {
-            client.command("play", std::iter::empty::<&str>())
-        });
+        let second =
+            manager.with_client(|client, _, _| client.command("play", std::iter::empty::<&str>()));
         assert!(second.is_ok(), "next request should reconnect cleanly");
 
         let commands = rx

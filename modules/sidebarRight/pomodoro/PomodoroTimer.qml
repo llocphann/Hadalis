@@ -4,6 +4,7 @@ import qs.modules.common.widgets
 import Qt5Compat.GraphicalEffects
 import QtQuick
 import QtQuick.Controls
+import QtQuick.Shapes
 import QtQuick.Layouts
 import Quickshell
 
@@ -31,6 +32,10 @@ Item {
     readonly property color _colTextSecondary: Appearance.angelEverywhere ? Appearance.angel.colTextSecondary
         : Appearance.inirEverywhere ? Appearance.inir.colTextSecondary
         : Appearance.colors.colSubtext
+    readonly property color _colAccent: Appearance.angelEverywhere ? Appearance.angel.colPrimary
+        : Appearance.inirEverywhere ? Appearance.inir.colPrimary
+        : Appearance.colors.colPrimary
+    readonly property color _colTrack: ColorUtils.transparentize(root._colTextSecondary, 0.72)
 
     property bool settingsOpen: false
 
@@ -165,60 +170,173 @@ Item {
                 ? Math.max(0, (flickable.height - implicitHeight) / 2)
                 : 0
 
-            // The Pomodoro timer circle
-            CircularProgress {
+            // Open orbital focus arc: intentionally not a generic 360° timer
+            // ring. The bottom gap carries the session rhythm and keeps the time
+            // readout visually lighter in compact Dashboard layouts.
+            Item {
+                id: focusDial
                 visible: !root.settingsOpen
                 Layout.alignment: Qt.AlignHCenter
-                lineWidth: 8
-                value: {
-                    return TimerService.pomodoroSecondsLeft / TimerService.pomodoroLapDuration;
-                }
-                // Responsive size: adapt to available height, capped at 200
-                implicitSize: root.compactMode
-                    ? Math.min(200, Math.max(120, flickable.height * 0.32))
-                    : 200
-                enableAnimation: true
+                Layout.preferredWidth: root.compactMode
+                    ? Math.min(184, Math.max(146,
+                        Math.min(flickable.width * 0.52, flickable.height * 0.54)))
+                    : 190
+                Layout.preferredHeight: Layout.preferredWidth
+                Layout.bottomMargin: 2
 
-                ColumnLayout {
-                    anchors.centerIn: parent
-                    spacing: 0
+                readonly property real rawProgress:
+                    TimerService.pomodoroLapDuration > 0
+                        ? Math.max(0, Math.min(1,
+                            TimerService.pomodoroSecondsLeft
+                                / TimerService.pomodoroLapDuration))
+                        : 0
+                property real displayProgress: rawProgress
+                readonly property real arcRadius:
+                    Math.max(36, Math.min(width, height) / 2 - 13)
+                readonly property real startAngle: 135
+                readonly property real sweepAngle: 270
 
-                    StyledText {
-                        Layout.alignment: Qt.AlignHCenter
-                        text: {
-                            let minutes = Math.floor(TimerService.pomodoroSecondsLeft / 60).toString().padStart(2, '0');
-                            let seconds = Math.floor(TimerService.pomodoroSecondsLeft % 60).toString().padStart(2, '0');
-                            return `${minutes}:${seconds}`;
-                        }
-                        font.pixelSize: Math.round(40 * Appearance.fontSizeScale)
-                        color: Appearance.angelEverywhere ? Appearance.angel.colText
-                            : Appearance.inirEverywhere ? Appearance.inir.colText
-                            : Appearance.colors.colOnSurface
+                Behavior on displayProgress {
+                    enabled: Appearance.animationsEnabled
+                    NumberAnimation {
+                        duration: 220
+                        easing.type: Easing.OutCubic
                     }
-                    StyledText {
-                        Layout.alignment: Qt.AlignHCenter
-                        text: TimerService.pomodoroLongBreak ? Translation.tr("Long break") : TimerService.pomodoroBreak ? Translation.tr("Break") : Translation.tr("Focus")
-                        font.pixelSize: Appearance.font.pixelSize.normal
-                        color: root._colTextSecondary
+                }
+
+                Shape {
+                    anchors.fill: parent
+                    antialiasing: true
+
+                    ShapePath {
+                        fillColor: "transparent"
+                        strokeColor: root._colTrack
+                        strokeWidth: 7
+                        capStyle: ShapePath.RoundCap
+
+                        PathAngleArc {
+                            centerX: focusDial.width / 2
+                            centerY: focusDial.height / 2
+                            radiusX: focusDial.arcRadius
+                            radiusY: focusDial.arcRadius
+                            startAngle: focusDial.startAngle
+                            sweepAngle: focusDial.sweepAngle
+                        }
+                    }
+
+                    ShapePath {
+                        fillColor: "transparent"
+                        strokeColor: root._colAccent
+                        strokeWidth: 7
+                        capStyle: ShapePath.RoundCap
+
+                        PathAngleArc {
+                            centerX: focusDial.width / 2
+                            centerY: focusDial.height / 2
+                            radiusX: focusDial.arcRadius
+                            radiusY: focusDial.arcRadius
+                            startAngle: focusDial.startAngle
+                            sweepAngle: focusDial.sweepAngle
+                                * focusDial.displayProgress
+                        }
                     }
                 }
 
                 Rectangle {
-                    radius: Appearance.rounding.full
-                    color: root._colLayer
+                    readonly property real angle:
+                        (focusDial.startAngle
+                            + focusDial.sweepAngle * focusDial.displayProgress)
+                            * Math.PI / 180
+                    width: 11
+                    height: 11
+                    radius: width / 2
+                    color: root._colAccent
+                    visible: focusDial.displayProgress > 0.002
+                    x: focusDial.width / 2
+                        + focusDial.arcRadius * Math.cos(angle) - width / 2
+                    y: focusDial.height / 2
+                        + focusDial.arcRadius * Math.sin(angle) - height / 2
 
-                    anchors {
-                        right: parent.right
-                        bottom: parent.bottom
+                    Rectangle {
+                        anchors.centerIn: parent
+                        width: parent.width + 8
+                        height: width
+                        radius: width / 2
+                        color: ColorUtils.transparentize(root._colAccent, 0.78)
+                        z: -1
                     }
-                    implicitWidth: 36
-                    implicitHeight: implicitWidth
+                }
+
+                ColumnLayout {
+                    anchors.centerIn: parent
+                    spacing: 2
 
                     StyledText {
-                        id: cycleText
-                        anchors.centerIn: parent
+                        Layout.alignment: Qt.AlignHCenter
+                        text: {
+                            const minutes = Math.floor(
+                                TimerService.pomodoroSecondsLeft / 60)
+                                .toString().padStart(2, '0')
+                            const seconds = Math.floor(
+                                TimerService.pomodoroSecondsLeft % 60)
+                                .toString().padStart(2, '0')
+                            return `${minutes}:${seconds}`
+                        }
+                        font.pixelSize: Math.round(
+                            (root.compactMode ? 36 : 39)
+                                * Appearance.fontSizeScale)
+                        font.weight: Font.Medium
+                        font.family: Appearance.font.family.numbers
                         color: root._colText
-                        text: TimerService.pomodoroCycle + 1
+                    }
+
+                    StyledText {
+                        Layout.alignment: Qt.AlignHCenter
+                        text: TimerService.pomodoroLongBreak
+                            ? Translation.tr("Long break")
+                            : TimerService.pomodoroBreak
+                                ? Translation.tr("Break")
+                                : Translation.tr("Focus")
+                        font.pixelSize: Appearance.font.pixelSize.small
+                        font.weight: Font.Medium
+                        color: root._colTextSecondary
+                    }
+
+                    Row {
+                        Layout.alignment: Qt.AlignHCenter
+                        Layout.topMargin: 8
+                        spacing: 5
+
+                        Repeater {
+                            model: Math.max(1,
+                                TimerService.cyclesBeforeLongBreak)
+
+                            Rectangle {
+                                required property int index
+                                readonly property bool current:
+                                    index === TimerService.pomodoroCycle
+                                readonly property bool complete:
+                                    index < TimerService.pomodoroCycle
+                                width: current ? 15 : 5
+                                height: 5
+                                radius: height / 2
+                                color: current || complete
+                                    ? root._colAccent : root._colTrack
+
+                                Behavior on width {
+                                    enabled: Appearance.animationsEnabled
+                                    NumberAnimation {
+                                        duration: Appearance.animation.elementMoveFast.duration
+                                    }
+                                }
+                                Behavior on color {
+                                    enabled: Appearance.animationsEnabled
+                                    ColorAnimation {
+                                        duration: Appearance.animation.elementMoveFast.duration
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
             }

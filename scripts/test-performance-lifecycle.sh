@@ -67,6 +67,10 @@ dash_welcome="$repo_root/modules/dashboard/DashWelcome.qml"
 dashboard="$repo_root/modules/dashboard/Dashboard.qml"
 ii_panels="$repo_root/modules/ii/ShellIiPanelsImpl.qml"
 dashboard_settings="$repo_root/modules/settings/DashboardConfig.qml"
+screen_time="$repo_root/services/ScreenTime.qml"
+ytmusic="$repo_root/services/YtMusic.qml"
+directory_icon="$repo_root/modules/common/widgets/DirectoryIcon.qml"
+sysmon_widget="$repo_root/modules/sidebarRight/sysmon/SysMonWidget.qml"
 
 require "$config" 'property int framerate: 30' 'Cava schema default must remain 30 fps'
 require "$defaults" '"framerate": 30' 'persisted Cava default must remain 30 fps'
@@ -113,6 +117,7 @@ require "$easyeffects" 'running: Config.ready && root.available && (root.uiDeman
 
 require "$tlp" 'interval: 120000' 'battery/TLP status polling must not run every 30 seconds'
 require "$thinkfan" 'interval: 30000' 'ThinkFan background polling must remain reduced'
+require "$thinkfan" 'running: root.profileFanControlEnabled || root.active || root.busy' 'ThinkFan polling must sleep while fan control is irrelevant'
 require "$tlp_caps" 'interval: 300000' 'TLP runtime capability probes must remain low cadence'
 require "$tlp_settings" 'interval: 300000' 'TLP settings background refresh must remain low cadence'
 require "$power_profiles" 'interval: 300000' 'tlp-pd ownership probes must remain low cadence'
@@ -175,5 +180,16 @@ require "$dashboard" 'scale: 1' 'Dashboard entrance must not use scale animation
 reject "$dashboard" 'onTriggered: panelRoot.visible = false' 'Dashboard close must not unmap the native surface after the slide'
 reject "$dashboard" 'Qt.callLater(() => { root._presentedOpen' 'Dashboard open must not race compositor mapping with a zero-delay state flip'
 require "$dashboard_settings" 'text: Translation.tr("Preload Dashboard")' 'Dashboard keepLoaded option must describe eager preload only'
+
+require "$screen_time" 'target: CompositorService.isNiri ? NiriService : null' 'Screen Time must use Niri focus events'
+require "$screen_time" 'interval: CompositorService.isNiri' 'Screen Time must keep only a coarse Niri heartbeat'
+require "$ytmusic" 'id: _ipcStateProc' 'YT Music fallback must batch mpv IPC state queries'
+reject "$ytmusic" 'id: _ipcQueryProc' 'YT Music must not restore separate time-position subprocess polling'
+reject "$ytmusic" 'id: _ipcPauseQueryProc' 'YT Music must not restore separate pause subprocess polling'
+reject "$ytmusic" 'id: _ipcEofQueryProc' 'YT Music must not restore separate EOF subprocess polling'
+reject "$directory_icon" 'command: ["file", "--mime"' 'DirectoryIcon must not spawn one MIME process per item'
+reject "$sysmon_widget" 'command: ["/usr/bin/cat", "/proc/net/dev"]' 'SysMon must reuse shared ResourceUsage network telemetry'
+require "$sysmon_widget" 'ResourceUsage.networkRxBytesPerSec' 'SysMon network receive rate must come from ResourceUsage'
+require "$sysmon_widget" 'ResourceUsage.networkTxBytesPerSec' 'SysMon network transmit rate must come from ResourceUsage'
 
 printf 'performance lifecycle guards: ok\n'

@@ -280,7 +280,11 @@ WindowDialog {
     WindowDialogTitle {
         Layout.leftMargin: root.embeddedPresentation ? 6 : 0
         Layout.rightMargin: root.embeddedPresentation ? 6 : 0
-        text: root.isEditing ? Translation.tr("Edit Event") : Translation.tr("New Event")
+        text: root.isEditing
+            ? Translation.tr("Edit Event")
+            : (root.embeddedPresentation
+                ? Translation.tr("Add Event")
+                : Translation.tr("New Event"))
         font.pixelSize: root.embeddedPresentation
             ? Appearance.font.pixelSize.normal
             : Appearance.font.pixelSize.title

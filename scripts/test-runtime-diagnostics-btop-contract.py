@@ -288,7 +288,9 @@ def main() -> None:
 
     for token in (
         "if (value === null || value === undefined)",
-        "readonly property bool showSwapColumn: width >= 520",
+        "readonly property bool showSwapColumn:",
+        "!root.compactMode && width >= 520",
+        "Layout.preferredHeight: root.compactMode ? 20 : 24",
     ):
         require(process_table, token, "BtopProcessTable.qml")
     for token in (

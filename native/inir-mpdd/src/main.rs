@@ -1858,7 +1858,7 @@ mod tests {
 
     use super::{
         MpdClient, MpdManager, legacy_request, lrc_stamp_seconds, pairs, parse_lrc, quote, records,
-        status_payload_mode,
+        status_payload_mode, status_payload_mode_with_art,
     };
     use serde_json::json;
 

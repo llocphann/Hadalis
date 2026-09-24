@@ -72,6 +72,9 @@ Singleton {
     property bool _queuePayloadWriting: false
     property bool _bulkEnqueuePayloadWriting: false
     property bool _playlistPayloadWriting: false
+    property bool _nativeMpdEligible: false
+    property bool _nativeBackendChecked: false
+    property bool _mpdSubscriptionActive: false
 
     // Bulk music actions can easily exceed Linux's per-argument exec limit
     // when thousands of MPD URIs are serialized into one JSON argv entry.
@@ -266,6 +269,91 @@ Singleton {
         _lyricsProc.output = ""
         _lyricsProc.command = ["python3", _lyricsScript, path]
         _lyricsProc.running = true
+    }
+
+    function _probeNativeMpd(): void {
+        if (!enabled || _nativeBackendInfoProc.running)
+            return
+        _nativeBackendInfoProc.output = ""
+        _nativeBackendInfoProc.running = true
+    }
+
+    function _startNativeMpdBridge(): void {
+        if (!enabled || !_nativeMpdEligible)
+            return
+
+        if (!_mpdDaemonProc.running) {
+            const command = [
+                root.nativeDispatchPath, "mpd-daemon",
+                "--host", mpdHost,
+                "--port", String(mpdPort)
+            ]
+            if (configuredLibraryFolder.length > 0)
+                command.push("--music-root", configuredLibraryFolder)
+            _mpdDaemonProc.command = command
+            _mpdDaemonProc.running = true
+        }
+
+        mpdSubscribeRetryTimer.restart()
+    }
+
+    function _stopNativeMpdBridge(): void {
+        _mpdSubscriptionActive = false
+        mpdSubscribeRetryTimer.stop()
+        mpdDaemonRetryTimer.stop()
+        if (_mpdSubscriptionProc.running)
+            _mpdSubscriptionProc.running = false
+        if (_mpdDaemonProc.running)
+            _mpdDaemonProc.running = false
+    }
+
+    function _restartNativeMpdBridge(): void {
+        if (!_nativeMpdEligible || !enabled)
+            return
+        _stopNativeMpdBridge()
+        Qt.callLater(root._startNativeMpdBridge)
+    }
+
+    function _handleMpdEvent(line): void {
+        let event
+        try {
+            event = JSON.parse(String(line ?? ""))
+        } catch (e) {
+            return
+        }
+
+        const type = String(event?.type ?? "")
+        if (type === "subscribed") {
+            _mpdSubscriptionActive = true
+            statusRefreshTimer.restart()
+            return
+        }
+
+        if (type === "connection") {
+            if (event.connected === false)
+                mpdConnected = false
+            else
+                statusRefreshTimer.restart()
+            return
+        }
+
+        if (type !== "changed")
+            return
+
+        const subsystems = Array.isArray(event.subsystems)
+            ? event.subsystems.map(value => String(value)) : []
+        if (subsystems.includes("database") || subsystems.includes("stored_playlist"))
+            playlistRescanTimer.restart()
+        else
+            statusRefreshTimer.restart()
+    }
+
+    function _configurationChanged(): void {
+        if (!enabled)
+            return
+        if (_nativeMpdEligible)
+            _restartNativeMpdBridge()
+        Qt.callLater(root.rescan)
     }
 
     function setLibraryFolder(path: string): void {
@@ -640,6 +728,7 @@ Singleton {
     Component.onCompleted: {
         if (enabled) {
             MprisController.ensureMpdMprisBridge(mpdHost, mpdPort)
+            _probeNativeMpd()
             Qt.callLater(root.rescan)
         }
     }
@@ -647,20 +736,106 @@ Singleton {
     onEnabledChanged: {
         if (enabled) {
             MprisController.ensureMpdMprisBridge(mpdHost, mpdPort)
+            _probeNativeMpd()
             Qt.callLater(root.rescan)
+        } else {
+            _stopNativeMpdBridge()
         }
     }
 
-    onConfiguredLibraryFolderChanged: if (enabled) Qt.callLater(root.rescan)
-    onConfiguredHostChanged: if (enabled) Qt.callLater(root.rescan)
-    onConfiguredPortChanged: if (enabled) Qt.callLater(root.rescan)
+    onConfiguredLibraryFolderChanged: root._configurationChanged()
+    onConfiguredHostChanged: root._configurationChanged()
+    onConfiguredPortChanged: root._configurationChanged()
     onCurrentPathChanged: Qt.callLater(root.refreshLocalLyrics)
+
+    Process {
+        id: _nativeBackendInfoProc
+        property string output: ""
+        command: [root.nativeDispatchPath, "backend-info"]
+
+        stdout: StdioCollector {
+            onStreamFinished: _nativeBackendInfoProc.output = text ?? ""
+        }
+
+        onExited: (code, _status) => {
+            root._nativeBackendChecked = true
+            let mode = ""
+            let mpdReady = false
+            if (code === 0) {
+                const lines = String(_nativeBackendInfoProc.output ?? "").split("\n")
+                for (const rawLine of lines) {
+                    const line = rawLine.trim()
+                    const separator = line.indexOf("=")
+                    if (separator <= 0)
+                        continue
+                    const key = line.substring(0, separator)
+                    const value = line.substring(separator + 1)
+                    if (key === "mode")
+                        mode = value
+                    else if (key === "inir-mpdd")
+                        mpdReady = value === "ready"
+                }
+            }
+
+            root._nativeMpdEligible = mpdReady && (mode === "rust" || mode === "auto")
+            if (root._nativeMpdEligible && root.enabled)
+                root._startNativeMpdBridge()
+            else
+                root._stopNativeMpdBridge()
+        }
+    }
+
+    Process {
+        id: _mpdDaemonProc
+        onExited: (_code, _status) => {
+            root._mpdSubscriptionActive = false
+            if (_mpdSubscriptionProc.running)
+                _mpdSubscriptionProc.running = false
+            if (root.enabled && root._nativeMpdEligible)
+                mpdDaemonRetryTimer.restart()
+        }
+    }
+
+    Process {
+        id: _mpdSubscriptionProc
+        command: [root.nativeDispatchPath, "mpd-subscribe"]
+
+        stdout: SplitParser {
+            onRead: line => root._handleMpdEvent(line)
+        }
+
+        onExited: (_code, _status) => {
+            root._mpdSubscriptionActive = false
+            if (root.enabled && root._nativeMpdEligible)
+                mpdSubscribeRetryTimer.restart()
+        }
+    }
+
+    Timer {
+        id: mpdDaemonRetryTimer
+        interval: 1500
+        repeat: false
+        onTriggered: {
+            if (root.enabled && root._nativeMpdEligible && !_mpdDaemonProc.running)
+                root._startNativeMpdBridge()
+        }
+    }
+
+    Timer {
+        id: mpdSubscribeRetryTimer
+        interval: 500
+        repeat: false
+        onTriggered: {
+            if (root.enabled && root._nativeMpdEligible && !_mpdSubscriptionProc.running)
+                _mpdSubscriptionProc.running = true
+        }
+    }
 
     Timer {
         id: pollTimer
         interval: 900
         repeat: true
-        running: root.enabled
+        running: root.enabled && !root._mpdSubscriptionActive
         onTriggered: root.refreshStatus()
     }
 

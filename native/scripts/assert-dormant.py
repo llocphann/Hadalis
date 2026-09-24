@@ -9,7 +9,6 @@ maintainer explicitly approves a permanent cutover.
 from __future__ import annotations
 
 from pathlib import Path
-import re
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -100,12 +99,17 @@ def main() -> int:
                         "${BIN_DIR}/" + marker,
                     )
                 )
-                direct_command = bool(
-                    re.search(
-                        rf"(?:ExecStart\\s*=|command\\s*:|execDetached\\s*\\(\\s*\\[|"
-                        rf"\\bexec\\s+|\\bcommand\\s+|\\binstall\\s+|\\bcp\\s+|\\bln\\s+)"
-                        rf"[^#\\n]*\\b{re.escape(marker)}\\b",
-                        line,
+                direct_command = any(
+                    token in line
+                    for token in (
+                        "ExecStart=",
+                        "command:",
+                        "execDetached(",
+                        "exec ",
+                        "command ",
+                        "install ",
+                        "cp ",
+                        "ln ",
                     )
                 )
                 if direct_path or direct_command:

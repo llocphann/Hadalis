@@ -9,7 +9,12 @@ if [[ -z "$MODE" && -r "$MODE_FILE" ]]; then
     IFS= read -r MODE < "$MODE_FILE" || true
 fi
 MODE="${MODE:-python}"
-BIN_DIR="${INIR_NATIVE_BIN_DIR:-$ROOT_DIR/native/target/release}"
+BIN_DIR_FILE="$STATE_DIR/native-bin-dir"
+BIN_DIR="${INIR_NATIVE_BIN_DIR:-}"
+if [[ -z "$BIN_DIR" && -r "$BIN_DIR_FILE" ]]; then
+    IFS= read -r BIN_DIR < "$BIN_DIR_FILE" || true
+fi
+BIN_DIR="${BIN_DIR:-$ROOT_DIR/native/target/release}"
 STRICT="${INIR_NATIVE_STRICT:-0}"
 
 python_bin() {

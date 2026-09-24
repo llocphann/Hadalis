@@ -7,6 +7,7 @@ cd "$ROOT_DIR"
 STATE_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/inir"
 mkdir -p "$STATE_DIR"
 BACKEND_STATE_FILE="$STATE_DIR/native-backend"
+BIN_STATE_FILE="$STATE_DIR/native-bin-dir"
 STAMP="$(date +%Y%m%d-%H%M%S)"
 REPORT="${INIR_NATIVE_REPORT:-$STATE_DIR/native-cutover-$STAMP.txt}"
 TMP_ROOT="$(mktemp -d "${TMPDIR:-/tmp}/inir-native-test.XXXXXX")"
@@ -129,6 +130,7 @@ json_diff_count() {
 set_runtime_backend() {
     local mode="$1"
     printf '%s\n' "$mode" > "$BACKEND_STATE_FILE"
+    printf '%s\n' "$BIN_DIR" > "$BIN_STATE_FILE"
     systemctl --user set-environment         INIR_NATIVE_BACKEND="$mode"         INIR_NATIVE_BIN_DIR="$BIN_DIR"         INIR_NATIVE_STRICT=0
     "$ROOT_DIR/scripts/inir" restart || systemctl --user restart inir.service || true
 }
@@ -187,6 +189,7 @@ activate_rust() {
 restore_python() {
     section "RESTORE PYTHON MODE"
     printf '%s\n' python > "$BACKEND_STATE_FILE"
+    rm -f "$BIN_STATE_FILE"
     systemctl --user set-environment INIR_NATIVE_BACKEND=python
     systemctl --user unset-environment INIR_NATIVE_BIN_DIR INIR_NATIVE_STRICT || true
     "$ROOT_DIR/scripts/inir" restart || systemctl --user restart inir.service || true
@@ -219,6 +222,7 @@ kv "python" "$(python3 --version 2>&1 || echo unavailable)"
 kv "mpd" "$(mpd --version 2>/dev/null | head -1 || echo unavailable)"
 kv "backend_before" "${INIR_NATIVE_BACKEND:-python(default)}"
 kv "backend_state_file" "$BACKEND_STATE_FILE ($(cat "$BACKEND_STATE_FILE" 2>/dev/null || echo unset))"
+kv "native_bin_state_file" "$BIN_STATE_FILE ($(cat "$BIN_STATE_FILE" 2>/dev/null || echo unset))"
 
 section "BUILD AND TEST RUST"
 if ! command_exists cargo; then

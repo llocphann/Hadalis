@@ -31,7 +31,7 @@ grep -Fq '"$SCRIPT_DIR/../native-dispatch" theme'     "$root/scripts/colors/swit
 grep -Fq 'nativeIconSyncProc' "$root/services/IconThemeService.qml"     || fail 'IconThemeService must expose native sync test path'
 
 # The test cutover must remain reversible.
-grep -Fq 'INIR_NATIVE_BACKEND=rust' "$harness"     || fail 'cutover harness must activate Rust explicitly'
+grep -Fq 'measure_service_mode rust' "$harness"     || fail 'cutover harness must activate and measure Rust explicitly'
 grep -Fq 'INIR_NATIVE_BACKEND=python' "$harness"     || fail 'cutover harness must provide Python rollback'
 grep -Fq -- '--restore' "$harness"     || fail 'cutover harness must expose --restore'
 

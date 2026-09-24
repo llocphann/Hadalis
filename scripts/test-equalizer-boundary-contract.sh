@@ -42,50 +42,41 @@ grep -Fq 'model: ["Flat", "Bass", "Treble", "Vocal",' "$equalizer_panel"     || 
 grep -Fq 'model: EqualizerService.dspBands' "$equalizer_panel"     || fail 'DSP panel is not driven by the service 10-band facade'
 
 for token in \
-    'property real eqLightningHighlight: 0.0' \
-    'visible: true' \
-    'interval: 33' \
-    'running: root.active && lightningCanvas.visible' \
-    'ctx.lineWidth = 5.5' \
-    'ctx.lineWidth = 2.4' \
-    'ctx.lineWidth = 1.0' \
-    'function beginBandLightning(' \
-    'function previewBandLightning(' \
-    'function endBandLightning(' \
-    'root.previewBandLightning(' \
-    'root.applyPresetWithLightning(modelData)' \
-    'property real eqPresetSweepProgress: -0.12' \
-    'function triggerPresetSweep()' \
-    'id: presetSweepAnim' \
-    'property: "eqPresetSweepProgress"' \
-    'from: -0.12' \
-    'to: 1.16' \
-    'duration: Appearance.animationsEnabled ? 860 : 1' \
-    'const sweepTail = 0.22' \
-    'const sweepLead = 0.035' \
+    'CavaProcess {' \
+    'id: eqCava' \
+    'active: root.active' \
+    'sampleCount: 64' \
+    'id: analyzerCanvas' \
+    'const spectrum = eqCava.points ?? []' \
+    'Number(eqCava.normalizationCeiling)' \
+    'ctx.bezierCurveTo(' \
     'id: bandRepeater' \
-    'function lightningPoint()' \
+    'function curvePoint()' \
     'handleItem.mapToItem(' \
-    'bandRepeater.itemAt(i)' \
+    'EqualizerService.setDspBandGain(' \
     'cursorShape: bandSlider.enabled' \
     'Qt.SizeVerCursor' \
-    'Qt.ClosedHandCursor'; do
+    'root.applyPreset(modelData)'; do
     grep -Fq "$token" "$equalizer_panel" \
-        || fail "persistent DSP electricity contract missing $token"
+        || fail "integrated CAVA/DSP graph contract missing $token"
 done
 
 for retired in \
-    'eqLightningProgress' \
-    'eqLightningFade' \
-    'lightningPulse' \
-    'ctx.lineWidth = 14' \
-    'ctx.lineWidth = 7' \
-    'ctx.lineWidth = 3.5' \
-    'root.triggerEqLightning()\n        }\n    }\n\n    SequentialAnimation {\n        id: presetSweepAnim'; do
+    'id: lightningCanvas' \
+    'eqLightningHighlight' \
+    'eqPresetSweepProgress' \
+    'triggerPresetSweep' \
+    'presetSweepAnim' \
+    'sweepTail' \
+    'sweepLead'; do
     if grep -Fq "$retired" "$equalizer_panel"; then
-        fail "oversized/transient DSP lightning token returned: $retired"
+        fail "retired lightning DSP token returned: $retired"
     fi
 done
+
+slider_declarations="$(grep -Fc 'Slider {' "$equalizer_panel")"
+[[ "$slider_declarations" -eq 1 ]] \
+    || fail "DSP panel must expose one integrated graph Slider declaration, found $slider_declarations"
 
 # Presentation consumes only the facade. Backend/process/socket protocol remains
 # service-owned, so Media Controls cannot grow a second Equalizer implementation.

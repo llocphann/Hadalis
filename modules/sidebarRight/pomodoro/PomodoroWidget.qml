@@ -69,9 +69,12 @@ Item {
             PillTabBar {
                 id: tabBar
                 anchors.horizontalCenter: parent.horizontalCenter
-                width: Math.max(150, Math.min(
-                    260, parent.width - (pinButton.width + 8) * 2))
-                pillHeight: 30
+                // Compact corner mode gets enough width for Pomodoro/Timer/
+                // Stopwatch without changing the popup's outer dimensions.
+                width: Math.max(root.compactMode ? 210 : 150, Math.min(
+                    root.compactMode ? 296 : 260,
+                    parent.width - (pinButton.width + 6) * 2))
+                pillHeight: root.compactMode ? 28 : 30
                 currentIndex: root.currentTab
                 tabs: root.tabButtonList.map(item => ({
                     icon: item.icon, label: item.name

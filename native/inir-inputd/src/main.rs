@@ -309,13 +309,18 @@ fn spawn_device_thread(
     });
 }
 
-fn add_device(path: &Path, state: &mut MonitorState, tx: &Sender<InternalEvent>) {
+fn add_device(
+    path: &Path,
+    state: &mut MonitorState,
+    tx: &Sender<InternalEvent>,
+    mode: StreamMode,
+) {
     let Ok(device) = Device::open(path) else {
         return;
     };
 
-    let lock_candidate = is_lock_candidate(&device);
-    let key_candidate = is_key_candidate(&device);
+    let lock_candidate = mode.wants_locks() && is_lock_candidate(&device);
+    let key_candidate = mode.wants_keys() && is_key_candidate(&device);
     if !lock_candidate && !key_candidate {
         return;
     }
@@ -355,7 +360,11 @@ fn add_device(path: &Path, state: &mut MonitorState, tx: &Sender<InternalEvent>)
     );
 }
 
-fn refresh_devices(state: &mut MonitorState, tx: &Sender<InternalEvent>) {
+fn refresh_devices(
+    state: &mut MonitorState,
+    tx: &Sender<InternalEvent>,
+    mode: StreamMode,
+) {
     let paths = event_paths();
     let discovered = paths.iter().cloned().collect::<HashSet<_>>();
 
@@ -363,7 +372,7 @@ fn refresh_devices(state: &mut MonitorState, tx: &Sender<InternalEvent>) {
 
     for path in paths {
         if !state.devices.contains_key(&path) {
-            add_device(&path, state, tx);
+            add_device(&path, state, tx, mode);
         }
     }
 }
@@ -424,12 +433,31 @@ impl Drop for FdGuard {
     }
 }
 
-fn run_once() -> i32 {
-    let (tx, _rx) = mpsc::channel();
-    let mut state = MonitorState::default();
-    refresh_devices(&mut state, &tx);
+fn snapshot_lock_state() -> Option<(bool, bool, usize)> {
+    let mut lock_states = Vec::new();
 
-    let Some((caps, num, count)) = aggregate_lock(&state.devices, None) else {
+    for path in event_paths() {
+        let Ok(device) = Device::open(&path) else {
+            continue;
+        };
+        if !is_lock_candidate(&device) {
+            continue;
+        }
+        lock_states.push(initial_lock_state(&device));
+    }
+
+    let count = lock_states.len();
+    if count == 0 {
+        return None;
+    }
+
+    let caps = aggregate(lock_states.iter().map(|state| state.0), None)?;
+    let num = aggregate(lock_states.iter().map(|state| state.1), None)?;
+    Some((caps, num, count))
+}
+
+fn run_once() -> i32 {
+    let Some((caps, num, count)) = snapshot_lock_state() else {
         return 1;
     };
 
@@ -452,7 +480,7 @@ fn process_event(
 ) -> bool {
     match event {
         InternalEvent::Hotplug => {
-            refresh_devices(state, tx);
+            refresh_devices(state, tx, mode);
             if mode.wants_locks() && !emit_lock_if_changed(state, false) {
                 return false;
             }
@@ -547,7 +575,7 @@ fn run_stream(mode: StreamMode) -> i32 {
     let (tx, rx): (Sender<InternalEvent>, Receiver<InternalEvent>) = mpsc::channel();
     let mut state = MonitorState::default();
 
-    refresh_devices(&mut state, &tx);
+    refresh_devices(&mut state, &tx, mode);
     if mode.wants_locks() && !emit_lock_if_changed(&mut state, true) {
         return 0;
     }
@@ -577,7 +605,7 @@ fn main() {
 
 #[cfg(test)]
 mod tests {
-    use super::aggregate;
+    use super::{StreamMode, aggregate};
 
     #[test]
     fn aggregate_matches_python_majority_rule() {
@@ -595,5 +623,17 @@ mod tests {
     #[test]
     fn aggregate_empty_has_no_state() {
         assert_eq!(aggregate(std::iter::empty(), None), None);
+    }
+
+    #[test]
+    fn stream_modes_only_enable_requested_work() {
+        assert!(StreamMode::Locks.wants_locks());
+        assert!(!StreamMode::Locks.wants_keys());
+
+        assert!(!StreamMode::Keys.wants_locks());
+        assert!(StreamMode::Keys.wants_keys());
+
+        assert!(StreamMode::All.wants_locks());
+        assert!(StreamMode::All.wants_keys());
     }
 }

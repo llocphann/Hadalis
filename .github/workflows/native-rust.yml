@@ -87,3 +87,8 @@ jobs:
           cargo build --locked --manifest-path native/Cargo.toml -p inir-native
           python3 native/scripts/check-niri-customizations.py native/target/debug/inir-native
           python3 native/scripts/check-niri-write-parity.py native/target/debug/inir-native
+
+      - name: MPD isolated mutation parity
+        run: |
+          cargo build --locked --manifest-path native/Cargo.toml -p inir-mpdd
+          python3 native/scripts/check-mpd-mutation-parity.py native/target/debug/inir-mpdd

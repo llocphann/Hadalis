@@ -1,4 +1,4 @@
-use std::collections::{BTreeMap, HashMap};
+use std::collections::{BTreeMap, HashMap, HashSet};
 use std::fs;
 use std::io::{self, BufRead, BufReader, Read, Write};
 use std::net::TcpStream;
@@ -1183,9 +1183,8 @@ fn handle_operation(
             Ok(payload)
         }
         "enqueue-many" => {
-            let commands = param_strings(params, "uris")?
+            let commands = trimmed_nonempty_uris(param_strings(params, "uris")?)
                 .into_iter()
-                .filter(|uri| !uri.trim().is_empty())
                 .map(|uri| command_line("add", [uri]))
                 .collect::<Vec<_>>();
             client.command_batch(&commands)?;
@@ -1198,14 +1197,11 @@ fn handle_operation(
             Ok(payload)
         }
         "playlist-create" | "playlist-add" => {
-            let name = param_string(params, "name")?;
-            if name.trim().is_empty() || name.contains('\n') || name.contains('\r') {
+            let name = param_string(params, "name")?.trim().to_owned();
+            if name.is_empty() || name.contains('\n') || name.contains('\r') {
                 bail!("invalid_playlist_name");
             }
-            let mut uris = param_strings(params, "uris")?;
-            uris.retain(|uri| !uri.trim().is_empty());
-            uris.sort();
-            uris.dedup();
+            let uris = unique_trimmed_uris(param_strings(params, "uris")?);
             if uris.is_empty() {
                 bail!("empty_playlist_selection");
             }
@@ -1451,6 +1447,21 @@ fn idle_loop(
     }
 }
 
+fn trimmed_nonempty_uris(uris: Vec<String>) -> Vec<String> {
+    uris.into_iter()
+        .map(|uri| uri.trim().to_owned())
+        .filter(|uri| !uri.is_empty())
+        .collect()
+}
+
+fn unique_trimmed_uris(uris: Vec<String>) -> Vec<String> {
+    let mut seen = HashSet::new();
+    trimmed_nonempty_uris(uris)
+        .into_iter()
+        .filter(|uri| seen.insert(uri.clone()))
+        .collect()
+}
+
 fn load_json_list_argument(raw: &str) -> Result<Vec<String>> {
     let text = if let Some(path) = raw.strip_prefix('@') {
         fs::read_to_string(path).with_context(|| format!("read payload {path}"))?
@@ -1564,9 +1575,8 @@ fn run_compat(args: &[String]) -> i32 {
                     bail!("enqueue_many_requires_root_and_payload");
                 }
                 let override_root = &rest[0];
-                let commands = load_json_list_argument(&rest[1])?
+                let commands = trimmed_nonempty_uris(load_json_list_argument(&rest[1])?)
                     .into_iter()
-                    .filter(|uri| !uri.trim().is_empty())
                     .map(|uri| command_line("add", [uri]))
                     .collect::<Vec<_>>();
                 client.command_batch(&commands)?;
@@ -1582,14 +1592,11 @@ fn run_compat(args: &[String]) -> i32 {
                 if rest.len() < 2 {
                     bail!("playlist_requires_name_and_payload");
                 }
-                let name = &rest[0];
-                if name.trim().is_empty() || name.contains('\n') || name.contains('\r') {
+                let name = rest[0].trim().to_owned();
+                if name.is_empty() || name.contains('\n') || name.contains('\r') {
                     bail!("invalid_playlist_name");
                 }
-                let mut uris = load_json_list_argument(&rest[1])?;
-                uris.retain(|uri| !uri.trim().is_empty());
-                uris.sort();
-                uris.dedup();
+                let uris = unique_trimmed_uris(load_json_list_argument(&rest[1])?);
                 if uris.is_empty() {
                     bail!("empty_playlist_selection");
                 }
@@ -1604,7 +1611,7 @@ fn run_compat(args: &[String]) -> i32 {
                 }
                 let commands = uris
                     .into_iter()
-                    .map(|uri| command_line("playlistadd", [name, &uri]))
+                    .map(|uri| command_line("playlistadd", [&name, &uri]))
                     .collect::<Vec<_>>();
                 client.command_batch(&commands)?;
                 Ok(json!({"ok": true}))
@@ -1917,7 +1924,7 @@ mod tests {
     use super::{
         ART_EXTENSIONS, MpdClient, MpdManager, art_cache_key, art_filename_rank, broadcast,
         legacy_request, lrc_stamp_seconds, pairs, parse_lrc, quote, records, status_payload_mode,
-        status_payload_mode_with_art,
+        status_payload_mode_with_art, unique_trimmed_uris,
     };
     use serde_json::json;
 
@@ -2090,6 +2097,69 @@ mod tests {
 
         let commands = finish_fake_mpd(rx, handle);
         assert_eq!(commands, vec!["status", "currentsong", "playlistinfo"]);
+    }
+
+    #[test]
+    fn playlist_uri_normalization_preserves_first_seen_order() {
+        let uris = unique_trimmed_uris(vec![
+            " z.flac ".into(),
+            "a.flac".into(),
+            "z.flac".into(),
+            "".into(),
+            " b.flac ".into(),
+        ]);
+        assert_eq!(uris, vec!["z.flac", "a.flac", "b.flac"]);
+    }
+
+    #[test]
+    fn manager_reconnects_after_failed_request_without_replaying_mutation() {
+        let listener = TcpListener::bind(("127.0.0.1", 0)).expect("bind reconnect fake MPD");
+        let port = listener.local_addr().expect("reconnect fake MPD address").port();
+        let (tx, rx) = mpsc::channel();
+
+        let handle = thread::spawn(move || {
+            let mut commands = Vec::new();
+            for attempt in 0..2 {
+                let (stream, _) = listener.accept().expect("accept reconnect fake MPD");
+                let mut reader = BufReader::new(stream);
+                reader
+                    .get_mut()
+                    .write_all(b"OK MPD 0.23.15\n")
+                    .expect("write reconnect greeting");
+                reader.get_mut().flush().expect("flush reconnect greeting");
+
+                let mut line = String::new();
+                reader
+                    .read_line(&mut line)
+                    .expect("read reconnect command");
+                commands.push(line.trim_end_matches(['\r', '\n']).to_owned());
+
+                if attempt == 0 {
+                    continue;
+                }
+                reader
+                    .get_mut()
+                    .write_all(b"OK\n")
+                    .expect("write reconnect success");
+                reader.get_mut().flush().expect("flush reconnect success");
+            }
+            tx.send(commands).expect("return reconnect command log");
+        });
+
+        let manager = MpdManager::new("127.0.0.1".into(), port, "/music".into());
+        let first = manager.with_client(|client, _, _| client.command("pause", ["1"]));
+        assert!(first.is_err(), "first request should observe the dropped socket");
+
+        let second = manager.with_client(|client, _, _| {
+            client.command("play", std::iter::empty::<&str>())
+        });
+        assert!(second.is_ok(), "next request should reconnect cleanly");
+
+        let commands = rx
+            .recv_timeout(Duration::from_secs(2))
+            .expect("reconnect fake MPD command log");
+        handle.join().expect("join reconnect fake MPD");
+        assert_eq!(commands, vec!["pause \"1\"", "play"]);
     }
 
     #[test]

@@ -387,6 +387,7 @@ run_gate "native selector behavior" 7 bash scripts/test-native-selector-behavior
 run_gate "Niri parser regression" 8 python3 scripts/test-niri-config-structural-read.py
 run_gate "Niri customization fixture parity" 8 python3 native/scripts/check-niri-customizations.py "$BIN_DIR/inir-native"
 run_gate "Niri isolated write parity" 8 python3 native/scripts/check-niri-write-parity.py "$BIN_DIR/inir-native"
+run_gate "MPD isolated mutation parity" 8 python3 native/scripts/check-mpd-mutation-parity.py "$BIN_DIR/inir-mpdd"
 "$DISPATCH" backend-info
 for binary in inir-inputd inir-mpdd inir-native inir-theme; do
     if [[ -x "$BIN_DIR/$binary" ]]; then

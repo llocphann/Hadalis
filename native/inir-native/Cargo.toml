@@ -11,3 +11,4 @@ anyhow.workspace = true
 clap.workspace = true
 html-escape.workspace = true
 regex.workspace = true
+kdl.workspace = true\nserde.workspace = true\nserde_json.workspace = true\n

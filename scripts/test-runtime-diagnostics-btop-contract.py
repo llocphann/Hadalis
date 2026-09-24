@@ -77,26 +77,21 @@ def main() -> None:
     for token in (
         'settingsPageIndex: 31',
         'settingsPageName: Translation.tr("Diagnostics")',
+        "bottomContentPadding: 8",
         "readonly property bool diagnosticsActive:",
         "RuntimeDiagnosticsSession.pageCurrent",
         "readonly property var runtimeCatalog: root.diagnosticsActive",
         "readonly property var runtimeSnapshot: root.diagnosticsActive",
         "? CodeWorkflowRuntime.snapshot() : ({ records: [], events: [] })",
+        "compactMode: true",
         "targets: root.runtimeCatalog",
-        "BtopMetricPanel {",
-        "BtopNetworkPanel {",
-        "BtopCoreGrid {",
-        "coreNames: root.cpuCoreNames",
-        "BtopRuntimePanel {",
-        "swap: root.formatKiB(",
-        "BtopTargetTable {",
-        "BtopProcessTable {",
-        "BtopCoveragePanel {",
-        "BtopTargetInspector {",
-        "BtopInterfaceTable {",
-        "selectedTargetId: CodeWorkflowSession.selectedTargetId",
-        "CodeWorkflowSession.selectTarget(",
-        'SettingsPageRegistry.navigateToKey(',
+        "readonly property string primaryError:",
+        'Translation.tr("Diagnostics live")',
+        "id: compactMetrics",
+        "visible: root.compactMode",
+        "columns: width >= 720 ? 3 : 2",
+        "id: compactRuntimeStrip",
+        "graphHeight: 14",
         'root.historyValues("systemCpuPercent")',
         'root.historyValues("systemSwapPercent")',
         'root.historyValues("shellGpuPeakPercent")',
@@ -104,27 +99,34 @@ def main() -> None:
         'root.historyValues("shellWriteBytesPerSec")',
         "result.push(null)",
         "root.formatLoadAverage(",
-        "?.valuesKiB?.MemAvailable",
-        "?.valuesKiB?.Cached",
-        "const normalized = []",
-        "if (raw === null || raw === undefined)",
-        "root.formatUptime(",
-        "root.sampleIntervalLabel()",
-        'property bool showSourceDetails: false',
-        'visible: root.showSourceDetails',
-        'property bool showDetails: false',
-        "textFormat: Text.PlainText",
         "function shellGpuBusy(): var {",
         "function shellGpuMemoryKiB(): var {",
         "return found ? total : null",
+        "textFormat: Text.PlainText",
     ):
-        require(page + board, token, "Material Diagnostics and shared dashboard")
+        require(page + board, token, "compact Material Diagnostics and dashboard")
+
+    for retired in (
+        'title: Translation.tr("Live diagnostics")',
+        'property bool showSourceDetails: false',
+        'visible: root.showSourceDetails',
+        'root.sampleIntervalLabel()',
+        "BtopCoveragePanel {",
+        "BtopTargetInspector {",
+        'SettingsPageRegistry.navigateToKey(',
+    ):
+        forbid(page, retired, "compact Material Diagnostics page")
 
     for source, text in (("Material", page), ("Waffle", waffle_page)):
         require(text, "BtopDashboard {", f"{source} shared diagnostics dashboard")
+        require(text, "compactMode: true", f"{source} compact diagnostics viewport")
         require(text, "evidence: root.evidence", f"{source} shared diagnostics evidence")
         require(text, "targets: root.runtimeCatalog", f"{source} Workflow target catalog")
         require(text, "records: root.runtimeRecords", f"{source} Workflow runtime records")
+        forbid(text, 'buttonText: root.showSourceDetails',
+               f"{source} must not expose source-details expansion")
+        forbid(text, 'buttonText: root.showDetails',
+               f"{source} must not expose live-sampling details expansion")
     require(waffle_page, "import qs.modules.settings.widgets",
             "Waffle must load the registered shared widgets module")
     require(board, "processes: root.shellEvidence?.children ?? []",

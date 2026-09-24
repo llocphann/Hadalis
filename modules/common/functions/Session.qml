@@ -18,13 +18,7 @@ Singleton {
         id: _hibernateMonitorsOffTimer
         interval: 450
         repeat: false
-        onTriggered: {
-            if (CompositorService.isNiri) {
-                Quickshell.execDetached(["/usr/bin/niri", "msg", "action", "power-off-monitors"])
-            } else if (CompositorService.isHyprland) {
-                Quickshell.execDetached(["/usr/bin/hyprctl", "dispatch", "dpms", "off"])
-            }
-        }
+        onTriggered: NiriService.powerOffMonitors()
     }
 
     Timer {
@@ -69,13 +63,12 @@ Singleton {
     }
 
     function closeAllWindows() {
-        // Sólo tiene sentido en sesiones Hyprland; en Niri no hay HyprlandData
-        if (!CompositorService.isHyprland)
-            return;
-
-        HyprlandData.windowList.map(w => w.pid).forEach(pid => {
-            Quickshell.execDetached(["/usr/bin/kill", pid]);
-        });
+        const windows = NiriService.windows ?? []
+        windows.forEach(window => {
+            const id = window?.id
+            if (id !== undefined && id !== null)
+                NiriService.closeWindow(id)
+        })
     }
 
     function lock() {
@@ -92,13 +85,7 @@ Singleton {
     }
 
     function logout() {
-        if (CompositorService.isNiri) {
-            NiriService.quit();
-            return;
-        }
-
-        closeAllWindows();
-        Quickshell.execDetached(["/usr/bin/pkill", "-i", "Hyprland"]);
+        NiriService.quit()
     }
 
     function launchTaskManager() {

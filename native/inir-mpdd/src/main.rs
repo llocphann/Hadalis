@@ -402,10 +402,10 @@ fn folder_art(path_text: &str) -> String {
     let mut by_name = HashMap::new();
     for entry in entries.flatten() {
         let path = entry.path();
-        if path.is_file() {
-            if let Some(name) = path.file_name().and_then(|name| name.to_str()) {
-                by_name.insert(name.to_ascii_lowercase(), path);
-            }
+        if path.is_file()
+            && let Some(name) = path.file_name().and_then(|name| name.to_str())
+        {
+            by_name.insert(name.to_ascii_lowercase(), path);
         }
     }
 
@@ -644,10 +644,10 @@ fn status_payload(client: &mut MpdClient, root: &str) -> Result<Value> {
 
 fn fetch_mpd_art(client: &mut MpdClient, uri: &str) -> Option<(Vec<u8>, String)> {
     for command in ["albumart", "readpicture"] {
-        if let Ok(Some(payload)) = client.binary(command, uri) {
-            if !payload.0.is_empty() {
-                return Some(payload);
-            }
+        if let Ok(Some(payload)) = client.binary(command, uri)
+            && !payload.0.is_empty()
+        {
+            return Some(payload);
         }
     }
     None

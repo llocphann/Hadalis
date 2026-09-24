@@ -208,6 +208,48 @@ fn camel_to_snake(value: &str) -> String {
     result
 }
 
+fn token_namespace_from_palettes(
+    dark: &Palette,
+    light: &Palette,
+    dark_mode: bool,
+) -> BTreeMap<String, TokenValue> {
+    let default = if dark_mode { dark } else { light };
+    let mut names = BTreeSet::new();
+    names.extend(dark.keys().cloned());
+    names.extend(light.keys().cloned());
+
+    let mut result = BTreeMap::new();
+    for name in &names {
+        let value = TokenValue {
+            dark: dark.get(name).cloned().unwrap_or_else(|| "#000000".into()),
+            light: light
+                .get(name)
+                .cloned()
+                .unwrap_or_else(|| "#000000".into()),
+            default: default
+                .get(name)
+                .cloned()
+                .unwrap_or_else(|| "#000000".into()),
+        };
+        result.insert(name.clone(), value);
+    }
+
+    // Compatibility templates use snake_case Material role names. Build those
+    // aliases after exact app-contract keys so raw camelCase Material roles
+    // deterministically win collisions such as onSurface -> on_surface.
+    for name in &names {
+        let snake = camel_to_snake(name);
+        if snake.as_str() != name.as_str() {
+            let value = result
+                .get(name)
+                .cloned()
+                .expect("exact template token must exist before aliasing");
+            result.insert(snake, value);
+        }
+    }
+    result
+}
+
 fn token_namespace(
     scheme_seed: Argb,
     source_seed: Argb,
@@ -217,31 +259,7 @@ fn token_namespace(
 ) -> BTreeMap<String, TokenValue> {
     let dark = template_palette(scheme_seed, source_seed, scheme, true, soften);
     let light = template_palette(scheme_seed, source_seed, scheme, false, soften);
-    let default = if dark_mode { &dark } else { &light };
-    let mut names = BTreeSet::new();
-    names.extend(dark.keys().cloned());
-    names.extend(light.keys().cloned());
-
-    let mut result = BTreeMap::new();
-    for name in names {
-        let value = TokenValue {
-            dark: dark.get(&name).cloned().unwrap_or_else(|| "#000000".into()),
-            light: light
-                .get(&name)
-                .cloned()
-                .unwrap_or_else(|| "#000000".into()),
-            default: default
-                .get(&name)
-                .cloned()
-                .unwrap_or_else(|| "#000000".into()),
-        };
-        result.insert(name.clone(), value.clone());
-        let snake = camel_to_snake(&name);
-        if snake != name {
-            result.insert(snake, value);
-        }
-    }
-    result
+    token_namespace_from_palettes(&dark, &light, dark_mode)
 }
 
 fn rgb_triplet(value: &str) -> Option<String> {
@@ -402,6 +420,41 @@ mod tests {
     fn camel_case_aliases_match_compatibility_templates() {
         assert_eq!(camel_to_snake("onPrimaryContainer"), "on_primary_container");
         assert_eq!(camel_to_snake("primary"), "primary");
+    }
+
+    #[test]
+    fn material_snake_aliases_win_app_contract_name_collisions() {
+        let dark: Palette = [
+            ("onSurface".into(), "#101112".into()),
+            ("on_surface".into(), "#303132".into()),
+            ("app_on_surface".into(), "#505152".into()),
+        ]
+        .into_iter()
+        .collect();
+        let light: Palette = [
+            ("onSurface".into(), "#202122".into()),
+            ("on_surface".into(), "#404142".into()),
+            ("app_on_surface".into(), "#606162".into()),
+        ]
+        .into_iter()
+        .collect();
+
+        let colors = token_namespace_from_palettes(&dark, &light, true);
+        let alias = colors.get("on_surface").expect("snake Material alias");
+        assert_eq!(alias.dark, "#101112");
+        assert_eq!(alias.light, "#202122");
+        assert_eq!(alias.default, "#101112");
+        assert_eq!(
+            colors.get("onSurface").expect("camel Material role").light,
+            "#202122"
+        );
+        assert_eq!(
+            colors
+                .get("app_on_surface")
+                .expect("app-prefixed contract remains distinct")
+                .light,
+            "#606162"
+        );
     }
 
     #[test]

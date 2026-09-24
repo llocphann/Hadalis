@@ -148,6 +148,7 @@ def run_backend(
     template_dir: Path,
     root: Path,
     mode: str,
+    hash_seed: str | None = None,
 ) -> dict[str, Any]:
     home = root / "home"
     out = root / "out"
@@ -181,6 +182,8 @@ def run_backend(
             if not existing_pythonpath
             else preserved_site + os.pathsep + existing_pythonpath
         )
+    if hash_seed is not None:
+        env["PYTHONHASHSEED"] = hash_seed
     env.update(
         {
             "HOME": str(home),
@@ -250,8 +253,30 @@ def main() -> int:
 
         for mode in ("dark", "light"):
             py = run_backend(
-                "python", python, rust_binary, image, template_dir, temp / f"py-{mode}", mode
+                "python",
+                python,
+                rust_binary,
+                image,
+                template_dir,
+                temp / f"py-{mode}-seed0",
+                mode,
+                "0",
             )
+            py_other_seed = run_backend(
+                "python",
+                python,
+                rust_binary,
+                image,
+                template_dir,
+                temp / f"py-{mode}-seed123",
+                mode,
+                "123",
+            )
+            if py != py_other_seed:
+                raise AssertionError(
+                    f"Python theme outputs depend on PYTHONHASHSEED in {mode} mode"
+                )
+
             rs = run_backend(
                 "rust", python, rust_binary, image, template_dir, temp / f"rs-{mode}", mode
             )

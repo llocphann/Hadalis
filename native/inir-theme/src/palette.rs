@@ -771,34 +771,8 @@ mod tests {
     }
 
     #[test]
-    fn material_2025_tonal_spot_surface_reference_fixture() {
-        let material = material_palette(
-            Argb::from_rgb(0x41, 0x81, 0xEE),
-            "scheme-tonal-spot",
-            true,
-            false,
-            1.0,
-        );
-        for (key, expected) in [
-            ("background", "#0D0E12"),
-            ("onBackground", "#E3E5F0"),
-            ("surface", "#0D0E12"),
-            ("surfaceDim", "#0D0E12"),
-            ("surfaceBright", "#292C34"),
-            ("surfaceContainerLowest", "#000000"),
-            ("surfaceContainerLow", "#111318"),
-            ("surfaceContainer", "#17191F"),
-            ("surfaceContainerHigh", "#1D1F26"),
-            ("surfaceContainerHighest", "#23262D"),
-            ("onSurface", "#E3E5F0"),
-            ("surfaceVariant", "#23262D"),
-        ] {
-            assert_eq!(
-                material.get(key).map(String::as_str),
-                Some(expected),
-                "{key}"
-            );
-        }
+    fn material_spec_matches_python_fallback() {
+        assert_eq!(MATERIAL_SPEC, SpecVersion::Spec2021);
     }
 
     #[test]
@@ -808,7 +782,7 @@ mod tests {
     }
 
     #[test]
-    fn material_uses_2025_contract() {
+    fn material_keeps_required_dynamic_roles() {
         let material = material_palette(
             Argb::from_rgb(0x41, 0x81, 0xEE),
             "scheme-tonal-spot",

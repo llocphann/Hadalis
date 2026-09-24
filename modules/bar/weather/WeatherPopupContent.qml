@@ -11,7 +11,9 @@ Item {
     property bool compact: false
     readonly property real compactBreakpoint: 900
     readonly property real panelHeight: root.compact ? 270 : 300
-    readonly property real panelWidth: root.compact ? 360 : 450
+    // Keep one stable connected-surface width for both tabs. Detailed Weather
+    // reflows at narrow widths instead of forcing the whole popup to stay wide.
+    readonly property real panelWidth: root.compact ? 360 : 390
     // Let the liquid orbit consume the popup body instead of inheriting the
     // detail-page inset. Keep only a small safety gutter, with extra room on
     // the right for the persistent tab indicator rail.
@@ -127,18 +129,18 @@ Item {
             id: detailColumn
             anchors {
                 fill: parent
-                leftMargin: 14
-                rightMargin: 24
-                topMargin: 12
-                bottomMargin: 12
+                leftMargin: root.compact ? 10 : 12
+                rightMargin: root.compact ? 22 : 24
+                topMargin: root.compact ? 10 : 12
+                bottomMargin: root.compact ? 10 : 12
             }
-            spacing: 8
+            spacing: root.compact ? 6 : 7
 
             RowLayout {
                 id: detailSummary
                 Layout.fillWidth: true
-                Layout.preferredHeight: 48
-                spacing: 10
+                Layout.preferredHeight: root.compact ? 44 : 46
+                spacing: root.compact ? 8 : 10
 
                 MaterialSymbol {
                     text: Icons.getWeatherIcon(
@@ -184,7 +186,7 @@ Item {
                             weight: Font.DemiBold
                         }
                         elide: Text.ElideRight
-                        Layout.maximumWidth: 150
+                        Layout.maximumWidth: root.compact ? 118 : 130
                     }
 
                     StyledText {
@@ -196,7 +198,7 @@ Item {
                         color: Appearance.colors.colOnSurfaceVariant
                         font.pixelSize: Appearance.font.pixelSize.smallest
                         elide: Text.ElideRight
-                        Layout.maximumWidth: 150
+                        Layout.maximumWidth: root.compact ? 118 : 130
                     }
 
                     StyledText {
@@ -213,9 +215,9 @@ Item {
             GridLayout {
                 id: primaryMetrics
                 Layout.fillWidth: true
-                columns: 4
+                columns: 2
                 columnSpacing: 6
-                rowSpacing: 0
+                rowSpacing: root.compact ? 4 : 6
                 uniformCellWidths: true
 
                 PrimaryMetric {
@@ -244,7 +246,7 @@ Item {
             Rectangle {
                 id: secondaryStrip
                 Layout.fillWidth: true
-                implicitHeight: 36
+                implicitHeight: root.compact ? 32 : 34
                 radius: Appearance.rounding.small
                 color: Appearance.colors.colSurfaceContainerHigh
 
@@ -279,7 +281,7 @@ Item {
             Rectangle {
                 id: sunTimeline
                 Layout.fillWidth: true
-                implicitHeight: 62
+                implicitHeight: root.compact ? 52 : 56
                 radius: Appearance.rounding.small
                 color: Appearance.colors.colSurfaceContainerHigh
 
@@ -288,7 +290,7 @@ Item {
                     anchors.left: parent.left
                     anchors.leftMargin: 10
                     anchors.top: parent.top
-                    anchors.topMargin: 9
+                    anchors.topMargin: root.compact ? 7 : 8
                     text: "wb_twilight"
                     iconSize: 16
                     color: Appearance.colors.colPrimary
@@ -299,7 +301,7 @@ Item {
                     anchors.right: parent.right
                     anchors.rightMargin: 10
                     anchors.top: parent.top
-                    anchors.topMargin: 9
+                    anchors.topMargin: root.compact ? 7 : 8
                     text: "bedtime"
                     iconSize: 16
                     color: Appearance.colors.colPrimary
@@ -333,7 +335,7 @@ Item {
                     anchors.left: parent.left
                     anchors.leftMargin: 10
                     anchors.bottom: parent.bottom
-                    anchors.bottomMargin: 8
+                    anchors.bottomMargin: root.compact ? 6 : 7
                     text: Weather.data?.sunrise ?? "--:--"
                     color: Appearance.colors.colOnSurface
                     font.pixelSize: Appearance.font.pixelSize.smaller
@@ -342,7 +344,7 @@ Item {
                 StyledText {
                     anchors.horizontalCenter: parent.horizontalCenter
                     anchors.bottom: parent.bottom
-                    anchors.bottomMargin: 8
+                    anchors.bottomMargin: root.compact ? 6 : 7
                     text: Translation.tr("Sun")
                     color: Appearance.colors.colOnSurfaceVariant
                     font {
@@ -355,7 +357,7 @@ Item {
                     anchors.right: parent.right
                     anchors.rightMargin: 10
                     anchors.bottom: parent.bottom
-                    anchors.bottomMargin: 8
+                    anchors.bottomMargin: root.compact ? 6 : 7
                     text: Weather.data?.sunset ?? "--:--"
                     color: Appearance.colors.colOnSurface
                     font.pixelSize: Appearance.font.pixelSize.smaller
@@ -372,47 +374,52 @@ Item {
         required property string value
 
         Layout.fillWidth: true
-        implicitHeight: 58
+        implicitHeight: root.compact ? 36 : 42
         radius: Appearance.rounding.small
         color: Appearance.colors.colSurfaceContainerHigh
 
-        ColumnLayout {
-            anchors.centerIn: parent
-            spacing: 1
+        RowLayout {
+            anchors {
+                fill: parent
+                leftMargin: 9
+                rightMargin: 9
+            }
+            spacing: 7
 
-            RowLayout {
-                Layout.alignment: Qt.AlignHCenter
-                spacing: 4
+            MaterialSymbol {
+                text: primaryMetric.symbol
+                iconSize: 15
+                color: Appearance.colors.colOnSurfaceVariant
+                Layout.alignment: Qt.AlignVCenter
+            }
 
-                MaterialSymbol {
-                    text: primaryMetric.symbol
-                    iconSize: 15
-                    color: Appearance.colors.colOnSurfaceVariant
-                }
+            ColumnLayout {
+                Layout.fillWidth: true
+                Layout.alignment: Qt.AlignVCenter
+                spacing: -1
 
                 StyledText {
+                    Layout.fillWidth: true
                     text: primaryMetric.title.toUpperCase()
                     color: Appearance.colors.colOnSurfaceVariant
                     font {
                         pixelSize: Appearance.font.pixelSize.smallest
                         weight: Font.DemiBold
-                        letterSpacing: 0.5
+                        letterSpacing: 0.4
                     }
                     elide: Text.ElideRight
-                    Layout.maximumWidth: 70
                 }
-            }
 
-            StyledText {
-                Layout.alignment: Qt.AlignHCenter
-                text: primaryMetric.value
-                color: Appearance.colors.colOnSurface
-                font {
-                    pixelSize: Appearance.font.pixelSize.small
-                    weight: Font.DemiBold
+                StyledText {
+                    Layout.fillWidth: true
+                    text: primaryMetric.value
+                    color: Appearance.colors.colOnSurface
+                    font {
+                        pixelSize: Appearance.font.pixelSize.small
+                        weight: Font.DemiBold
+                    }
+                    elide: Text.ElideRight
                 }
-                elide: Text.ElideRight
-                Layout.maximumWidth: 82
             }
         }
     }

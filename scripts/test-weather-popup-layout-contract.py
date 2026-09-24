@@ -20,13 +20,16 @@ def main() -> None:
     orbital = (WEATHER_DIR / "OrbitalWeather.qml").read_text()
     dashboard = (ROOT / "modules/dashboard/DashWeather.qml").read_text()
 
-    # Keep the old popup footprint while retaining the connected presentation.
+    # Keep one narrow, stable popup footprint for both tabs. Detailed Weather
+    # must reflow instead of widening the connected surface.
     require(wrapper, "StyledPopup {", "WeatherPopupContent {",
             "compact: (root.presentationWindow?.width ?? 1920)")
-    require(source, "readonly property real panelWidth: root.compact ? 360 : 450",
+    require(source, "readonly property real panelWidth: root.compact ? 360 : 390",
             "readonly property real panelHeight: root.compact ? 270 : 300",
             "readonly property real orbitalInset: root.compact ? 6 : 8",
             "readonly property real orbitalRightInset: 18",
+            "columns: 2",
+            "implicitHeight: root.compact ? 36 : 42",
             "readonly property int tabCount: 2", "property int currentTab: 0")
 
     # Two pages still slide inside one clipped surface, with the dot rail

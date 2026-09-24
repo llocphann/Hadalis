@@ -43,6 +43,14 @@ struct Args {
 
     #[arg(long)]
     socket: Option<PathBuf>,
+
+    /// Run one operation using the legacy local_music_mpd.py CLI contract.
+    #[arg(long)]
+    compat: bool,
+
+    /// Arguments consumed by --compat: MODE HOST PORT [MODE_ARGS...].
+    #[arg(trailing_var_arg = true)]
+    compat_args: Vec<String>,
 }
 
 struct MpdClient {
@@ -1091,6 +1099,190 @@ fn idle_loop(host: String, port: u16, subscribers: Arc<Mutex<Vec<UnixStream>>>) 
     }
 }
 
+fn load_json_list_argument(raw: &str) -> Result<Vec<String>> {
+    let text = if let Some(path) = raw.strip_prefix('@') {
+        fs::read_to_string(path).with_context(|| format!("read payload {path}"))?
+    } else {
+        raw.to_owned()
+    };
+    let value: Value = serde_json::from_str(&text)?;
+    value
+        .as_array()
+        .ok_or_else(|| anyhow!("expected_json_array"))?
+        .iter()
+        .map(|value| {
+            value
+                .as_str()
+                .map(str::to_owned)
+                .ok_or_else(|| anyhow!("expected_string_array"))
+        })
+        .collect()
+}
+
+fn compat_error(error: &anyhow::Error) -> i32 {
+    let payload = json!({"connected": false, "error": error.to_string()});
+    println!(
+        "{}",
+        serde_json::to_string(&payload).unwrap_or_else(|_| "{\"connected\":false}".into())
+    );
+    1
+}
+
+fn run_compat(args: &[String]) -> i32 {
+    let result = (|| -> Result<Value> {
+        if args.len() < 3 {
+            bail!("usage: --compat MODE HOST PORT [MODE_ARGS...]");
+        }
+        let mode = args[0].as_str();
+        let host = &args[1];
+        let port = args[2].parse::<u16>().context("invalid_port")?;
+        let rest = &args[3..];
+        let mut client = MpdClient::connect(host, port)?;
+
+        match mode {
+            "snapshot" => {
+                let root = rest.first().map(String::as_str).unwrap_or("");
+                snapshot(&mut client, root)
+            }
+            "status" => {
+                let root = rest.first().map(String::as_str).unwrap_or("");
+                let music_root = music_root(&mut client, root);
+                let mut payload = status_payload(&mut client, &music_root)?;
+                payload
+                    .as_object_mut()
+                    .expect("status payload is object")
+                    .insert("musicRoot".into(), json!(music_root));
+                Ok(payload)
+            }
+            "queue" => {
+                if rest.len() < 2 {
+                    bail!("queue_requires_index_and_payload");
+                }
+                let index = rest[0].parse::<i64>().context("invalid_queue_index")?;
+                let uris = load_json_list_argument(&rest[1])?;
+                if uris.is_empty() {
+                    bail!("empty_queue");
+                }
+                client.command("clear", std::iter::empty::<&str>())?;
+                for uri in &uris {
+                    client.command("add", [uri])?;
+                }
+                let clamped = index.clamp(0, uris.len().saturating_sub(1) as i64);
+                client.command("play", [clamped.to_string()])?;
+                Ok(json!({"ok": true}))
+            }
+            "enqueue" => {
+                if rest.len() < 3 {
+                    bail!("enqueue_requires_root_play_now_uri");
+                }
+                let override_root = &rest[0];
+                let play_now = rest[1] == "1";
+                let uri = &rest[2];
+                if uri.is_empty() {
+                    bail!("empty_uri");
+                }
+                let response = pairs(&client.command("addid", [uri])?);
+                if play_now {
+                    if let Some(song_id) = response.get("id") {
+                        client.command("playid", [song_id])?;
+                    }
+                }
+                let root = music_root(&mut client, override_root);
+                let mut payload = status_payload(&mut client, &root)?;
+                payload
+                    .as_object_mut()
+                    .expect("status payload is object")
+                    .insert("musicRoot".into(), json!(root));
+                Ok(payload)
+            }
+            "enqueue-many" => {
+                if rest.len() < 2 {
+                    bail!("enqueue_many_requires_root_and_payload");
+                }
+                let override_root = &rest[0];
+                for uri in load_json_list_argument(&rest[1])? {
+                    if !uri.trim().is_empty() {
+                        client.command("add", [&uri])?;
+                    }
+                }
+                let root = music_root(&mut client, override_root);
+                let mut payload = status_payload(&mut client, &root)?;
+                payload
+                    .as_object_mut()
+                    .expect("status payload is object")
+                    .insert("musicRoot".into(), json!(root));
+                Ok(payload)
+            }
+            "playlist-create" | "playlist-add" => {
+                if rest.len() < 2 {
+                    bail!("playlist_requires_name_and_payload");
+                }
+                let name = &rest[0];
+                if name.trim().is_empty() || name.contains('\n') || name.contains('\r') {
+                    bail!("invalid_playlist_name");
+                }
+                let mut uris = load_json_list_argument(&rest[1])?;
+                uris.retain(|uri| !uri.trim().is_empty());
+                uris.sort();
+                uris.dedup();
+                if uris.is_empty() {
+                    bail!("empty_playlist_selection");
+                }
+                if mode == "playlist-create" {
+                    let folded = name.to_lowercase();
+                    if playlist_names(&mut client)?
+                        .iter()
+                        .any(|existing| existing.to_lowercase() == folded)
+                    {
+                        bail!("playlist_exists");
+                    }
+                }
+                for uri in uris {
+                    client.command("playlistadd", [name, &uri])?;
+                }
+                Ok(json!({"ok": true}))
+            }
+            "command" => {
+                if rest.len() < 2 {
+                    bail!("command_requires_name_and_args");
+                }
+                const ALLOWED: &[&str] = &[
+                    "next", "previous", "stop", "play", "pause", "seekcur", "setvol",
+                    "random", "repeat", "single", "update", "delete", "deleteid", "clear",
+                ];
+                let name = &rest[0];
+                if !ALLOWED.contains(&name.as_str()) {
+                    bail!("command_not_allowed");
+                }
+                let raw_args: Value = serde_json::from_str(&rest[1])?;
+                let command_args = raw_args
+                    .as_array()
+                    .ok_or_else(|| anyhow!("command_args_must_be_array"))?
+                    .iter()
+                    .map(|value| match value {
+                        Value::String(value) => value.clone(),
+                        other => other.to_string(),
+                    })
+                    .collect::<Vec<_>>();
+                let lines = client.command(name, &command_args)?;
+                Ok(json!({"ok": true, "lines": lines}))
+            }
+            _ => bail!("unknown_mode:{mode}"),
+        }
+    })();
+
+    match result {
+        Ok(payload) => {
+            match serde_json::to_string(&payload) {
+                Ok(text) => println!("{text}"),
+                Err(error) => return compat_error(&error.into()),
+            }
+            0
+        }
+        Err(error) => compat_error(&error),
+    }
+}
+
 fn default_socket_path() -> PathBuf {
     std::env::var_os("XDG_RUNTIME_DIR")
         .map(PathBuf::from)
@@ -1112,6 +1304,10 @@ fn prepare_socket(path: &Path) -> Result<UnixListener> {
 
 fn main() -> Result<()> {
     let args = Args::parse();
+    if args.compat {
+        std::process::exit(run_compat(&args.compat_args));
+    }
+
     let socket = args.socket.unwrap_or_else(default_socket_path);
     let root = args.music_root.unwrap_or_default();
     let manager = Arc::new(MpdManager::new(args.host.clone(), args.port, root));

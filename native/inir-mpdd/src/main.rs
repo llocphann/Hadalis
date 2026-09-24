@@ -1930,7 +1930,7 @@ mod tests {
         casefold_key, legacy_request, lrc_stamp_seconds, pairs, parse_lrc, quote, records,
         status_payload_mode, status_payload_mode_with_art, unique_trimmed_uris,
     };
-    use serde_json::json;
+    use serde_json::{Value, json};
 
     fn spawn_fake_mpd() -> (u16, Receiver<Vec<String>>, JoinHandle<()>) {
         let listener = TcpListener::bind(("127.0.0.1", 0)).expect("bind fake MPD");
@@ -2140,6 +2140,154 @@ mod tests {
             " b.flac ".into(),
         ]);
         assert_eq!(uris, vec!["z.flac", "a.flac", "b.flac"]);
+    }
+
+    #[test]
+    fn daemon_rpc_forwards_mutations_errors_and_reconnects_without_replay() {
+        let listener = TcpListener::bind(("127.0.0.1", 0)).expect("bind daemon fake MPD");
+        let port = listener.local_addr().expect("daemon fake MPD address").port();
+        let (tx, rx) = mpsc::channel();
+
+        let mpd_handle = thread::spawn(move || {
+            let mut commands = Vec::new();
+
+            let (first_stream, _) = listener.accept().expect("accept first daemon MPD client");
+            let mut first = BufReader::new(first_stream);
+            first
+                .get_mut()
+                .write_all(b"OK MPD 0.23.15\n")
+                .expect("write first daemon greeting");
+            first.get_mut().flush().expect("flush first daemon greeting");
+
+            for (expected, reply) in [
+                ("pause \"1\"", "OK\n"),
+                ("seekcur \"bad\"", "ACK [2@0] {seekcur} bad time\n"),
+            ] {
+                let mut line = String::new();
+                first
+                    .read_line(&mut line)
+                    .expect("read first daemon MPD command");
+                let command = line.trim_end_matches(['\r', '\n']).to_owned();
+                assert_eq!(command, expected);
+                commands.push(command);
+                first
+                    .get_mut()
+                    .write_all(reply.as_bytes())
+                    .expect("write first daemon MPD reply");
+                first.get_mut().flush().expect("flush first daemon MPD reply");
+            }
+            drop(first);
+
+            let (second_stream, _) = listener.accept().expect("accept reconnected daemon MPD client");
+            let mut second = BufReader::new(second_stream);
+            second
+                .get_mut()
+                .write_all(b"OK MPD 0.23.15\n")
+                .expect("write second daemon greeting");
+            second
+                .get_mut()
+                .flush()
+                .expect("flush second daemon greeting");
+            let mut line = String::new();
+            second
+                .read_line(&mut line)
+                .expect("read reconnected daemon MPD command");
+            commands.push(line.trim_end_matches(['\r', '\n']).to_owned());
+            second
+                .get_mut()
+                .write_all(b"OK\n")
+                .expect("write reconnected daemon MPD reply");
+            second
+                .get_mut()
+                .flush()
+                .expect("flush reconnected daemon MPD reply");
+
+            tx.send(commands).expect("return daemon MPD command log");
+        });
+
+        let manager = Arc::new(MpdManager::new(
+            "127.0.0.1".into(),
+            port,
+            "/music".into(),
+        ));
+        let subscribers = Arc::new(Mutex::new(Vec::new()));
+        let (server_stream, mut client_stream) =
+            UnixStream::pair().expect("create daemon RPC socket pair");
+        client_stream
+            .set_read_timeout(Some(Duration::from_secs(2)))
+            .expect("set daemon RPC timeout");
+
+        let handler = thread::spawn(move || {
+            super::handle_client(server_stream, manager, subscribers)
+                .expect("handle daemon RPC fixture")
+        });
+
+        let rpc = |stream: &mut UnixStream, request: Value| -> Value {
+            super::write_json_line(stream, &request).expect("write daemon RPC request");
+            let mut reader = BufReader::new(stream);
+            let mut line = String::new();
+            reader
+                .read_line(&mut line)
+                .expect("read daemon RPC response");
+            serde_json::from_str(line.trim()).expect("parse daemon RPC response")
+        };
+
+        let pause = rpc(
+            &mut client_stream,
+            json!({
+                "v": 1,
+                "id": 1,
+                "op": "command",
+                "params": {"name": "pause", "args": ["1"]},
+                "host": "127.0.0.1",
+                "port": port
+            }),
+        );
+        assert_eq!(pause["ok"], true);
+        assert_eq!(pause["result"]["ok"], true);
+
+        let failed_seek = rpc(
+            &mut client_stream,
+            json!({
+                "v": 1,
+                "id": 2,
+                "op": "command",
+                "params": {"name": "seekcur", "args": ["bad"]},
+                "host": "127.0.0.1",
+                "port": port
+            }),
+        );
+        assert_eq!(failed_seek["ok"], false);
+        assert!(
+            failed_seek["error"]
+                .as_str()
+                .is_some_and(|error| error.contains("ACK [2@0] {seekcur} bad time"))
+        );
+
+        let play = rpc(
+            &mut client_stream,
+            json!({
+                "v": 1,
+                "id": 3,
+                "op": "command",
+                "params": {"name": "play", "args": []},
+                "host": "127.0.0.1",
+                "port": port
+            }),
+        );
+        assert_eq!(play["ok"], true);
+        assert_eq!(play["result"]["ok"], true);
+
+        drop(client_stream);
+        handler.join().expect("join daemon RPC handler");
+        let commands = rx
+            .recv_timeout(Duration::from_secs(2))
+            .expect("daemon MPD command log");
+        mpd_handle.join().expect("join daemon fake MPD");
+        assert_eq!(
+            commands,
+            vec!["pause \"1\"", "seekcur \"bad\"", "play"]
+        );
     }
 
     #[test]

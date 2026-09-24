@@ -17,6 +17,7 @@ ACTIVE_RUNTIME="${XDG_CONFIG_HOME:-$HOME/.config}/quickshell/inir"
 ACTIVE_RUNTIME="$(readlink -f "$ACTIVE_RUNTIME" 2>/dev/null || printf '%s' "$ACTIVE_RUNTIME")"
 ACTIVATION_BLOCKERS=()
 RUNTIME_MODE="unchanged"
+MPD_DAEMON_PID=""
 
 case "${1:-}" in
     ""|--no-activate|--restore) ;;
@@ -24,6 +25,10 @@ case "${1:-}" in
 esac
 
 cleanup() {
+    if [[ -n "$MPD_DAEMON_PID" ]]; then
+        kill "$MPD_DAEMON_PID" 2>/dev/null || true
+        wait "$MPD_DAEMON_PID" 2>/dev/null || true
+    fi
     rm -rf "$TMP_ROOT"
 }
 trap cleanup EXIT
@@ -657,6 +662,48 @@ PY
         [[ "$mpd_parity" == PASS ]] || block_activation "MPD status parity failed"
         bench "mpd status python" python3 scripts/local_music_mpd.py status "$MPD_HOST_TEST" "$MPD_PORT_TEST" "$MUSIC_ROOT_TEST"
         bench "mpd status rust" "$BIN_DIR/inir-mpdd" --compat status "$MPD_HOST_TEST" "$MPD_PORT_TEST" "$MUSIC_ROOT_TEST"
+
+        mpd_socket="$TMP_ROOT/mpd-daemon.sock"
+        mpd_daemon_command=(
+            "$BIN_DIR/inir-mpdd"
+            --host "$MPD_HOST_TEST"
+            --port "$MPD_PORT_TEST"
+            --socket "$mpd_socket"
+        )
+        if [[ -n "$MUSIC_ROOT_TEST" ]]; then
+            mpd_daemon_command+=(--music-root "$MUSIC_ROOT_TEST")
+        fi
+        "${mpd_daemon_command[@]}" >"$TMP_ROOT/mpd-daemon.out" 2>"$TMP_ROOT/mpd-daemon.err" &
+        MPD_DAEMON_PID=$!
+
+        for _ in {1..50}; do
+            [[ -S "$mpd_socket" ]] && break
+            kill -0 "$MPD_DAEMON_PID" 2>/dev/null || break
+            sleep 0.05
+        done
+
+        if [[ -S "$mpd_socket" ]]; then
+            "$BIN_DIR/inir-mpdd" --client-compat --socket "$mpd_socket"                 status "$MPD_HOST_TEST" "$MPD_PORT_TEST" "$MUSIC_ROOT_TEST"                 >"$TMP_ROOT/mpd.daemon.rs" 2>"$TMP_ROOT/mpd.daemon.rs.err"
+            daemon_mpd_rc=$?
+            if (( daemon_mpd_rc == 0 )); then
+                daemon_mpd_parity="$(json_compare "$TMP_ROOT/mpd.rs" "$TMP_ROOT/mpd.daemon.rs" --mpd-status)"
+                kv "mpd daemon parity" "$daemon_mpd_parity"
+                [[ "$daemon_mpd_parity" == PASS ]] || block_activation "MPD daemon parity failed"
+                bench "mpd status rust daemon" "$BIN_DIR/inir-mpdd"                     --client-compat --socket "$mpd_socket"                     status "$MPD_HOST_TEST" "$MPD_PORT_TEST" "$MUSIC_ROOT_TEST"
+                INIR_NATIVE_BACKEND=rust INIR_NATIVE_BIN_DIR="$BIN_DIR" INIR_MPD_SOCKET="$mpd_socket"                     bench "mpd status rust dispatch" "$ROOT_DIR/scripts/native-dispatch"                     mpd status "$MPD_HOST_TEST" "$MPD_PORT_TEST" "$MUSIC_ROOT_TEST"
+            else
+                kv "mpd daemon parity" "ERROR exit=$daemon_mpd_rc"
+                block_activation "MPD daemon client smoke failed"
+            fi
+        else
+            kv "mpd daemon benchmark" "ERROR (socket did not become ready)"
+            block_activation "MPD persistent daemon failed to start"
+            tail -n 40 "$TMP_ROOT/mpd-daemon.err" || true
+        fi
+
+        kill "$MPD_DAEMON_PID" 2>/dev/null || true
+        wait "$MPD_DAEMON_PID" 2>/dev/null || true
+        MPD_DAEMON_PID=""
     else
         kv "mpd status parity" "SKIP (MPD service unavailable)"
     fi

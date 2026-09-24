@@ -46,30 +46,29 @@ The `Native Rust staging` workflow verifies that runtime/package files do not
 bind directly to native binaries, then runs clippy with warnings denied and the
 native unit-test workspace.
 
-For machine-level comparison, run:
+After updating the local `dev` checkout and installed runtime, run one command:
 
 ```bash
-./scripts/native-cutover-benchmark.sh
+bash scripts/benchmark-python-vs-rust.sh
 ```
 
-The harness builds release binaries, runs Rust and selector regressions,
-compares Python and Rust output on read-only paths and temporary config files,
-and measures startup time, CPU and peak/resident memory. It switches the live
-`inir.service` only when parity checks pass and the installed runtime matches
-the tested checkout. A parity failure leaves the running service unchanged and
-returns exit code 6 with a HOLD report. `--no-activate` runs the checks without
-the live switch; `--restore` switches the user service back to Python.
+This command verifies the `dev` HEAD, builds release binaries, runs Rust and
+selector regressions, compares Python/Rust output on read-only paths and
+temporary config files, measures startup time, CPU and peak/resident memory,
+and includes the canonical repository validator. It writes one text report
+under `$XDG_STATE_HOME/inir/` (or `~/.local/state/inir/`). Send that file for
+analysis, even if the command exits nonzero: parity failures, missing services,
+and validator failures are recorded in it.
 
-For a first pass that leaves the service alone, run
-`./scripts/native-cutover-benchmark.sh --no-activate`. Before the live trial,
-install the current `dev` runtime with the supported `inir update` flow and
-rerun the harness without `--no-activate`. The harness refuses the switch if
-any trial-critical installed file differs from the tested checkout. Keep the
-report from each run; if the trial needs to end, run the same script with
-`--restore`.
+When the installed runtime matches this checkout and parity checks pass, the
+command also measures the live `inir.service` once in Python and Rust mode,
+then returns it to Python. It skips the live switch when the checkout or
+runtime cannot be verified. Use `--read-only` to run all helper benchmarks
+without restarting the service.
 
-The report is written under `$XDG_STATE_HOME/inir/` (or
-`~/.local/state/inir/`). Send that report back for analysis.
+For a persistent Rust trial after examining the report, the lower-level
+`scripts/native-cutover-benchmark.sh` still supports live activation and
+`--restore` rollback.
 
 A permanent removal of Python call sites and dependencies is still a separate
 maintainer-approved step.

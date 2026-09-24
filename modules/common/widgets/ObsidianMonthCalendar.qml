@@ -12,6 +12,7 @@ Item {
     required property date today
     property var locale: Qt.locale()
     property var calendarCells: []
+    property var selectedDate: null
     property bool interactiveDays: false
     property bool showEventDots: false
     // Popup consumers keep the compact 30px cells. Sidebar/Dashboard opt into
@@ -71,6 +72,15 @@ Item {
             labels.push(root.locale.toString(d, "ddd").toUpperCase())
         }
         return labels
+    }
+
+    function sameDay(a, b): bool {
+        if (!(a instanceof Date) || !(b instanceof Date)
+                || isNaN(a.getTime()) || isNaN(b.getTime()))
+            return false
+        return a.getFullYear() === b.getFullYear()
+            && a.getMonth() === b.getMonth()
+            && a.getDate() === b.getDate()
     }
 
     function isoWeekNumber(value): int {
@@ -287,12 +297,16 @@ Item {
                             Number(dayCell.modelData?.eventCount ?? 0)
                         readonly property var eventColors:
                             dayCell.modelData?.eventColors ?? []
+                        readonly property bool selected: root.sameDay(
+                            dayCell.modelData?.date, root.selectedDate)
 
                         Layout.preferredWidth: root.cellSize
                         Layout.preferredHeight: root.cellSize
                         radius: Appearance.rounding.small
-                        color: dayHover.containsMouse
-                            ? root.colHover : "transparent"
+                        color: dayCell.selected
+                            ? Appearance.colors.colPrimaryContainer
+                            : dayHover.containsMouse
+                                ? root.colHover : "transparent"
                         opacity: dayCell.modelData?.currentMonth === false ? 0.25 : 1
 
                         StyledText {
@@ -301,14 +315,17 @@ Item {
                                 root.showEventDots && dayCell.eventCount > 0
                                     ? -2 : 0
                             text: String(dayCell.modelData?.day ?? "")
-                            color: dayCell.modelData?.today
-                                ? root.colAccent : root.colText
+                            color: dayCell.selected
+                                ? Appearance.colors.colOnPrimaryContainer
+                                : dayCell.modelData?.today
+                                    ? root.colAccent : root.colText
                             font.pixelSize:
                                 root.responsive && root.cellSize >= 38
                                     ? Appearance.font.pixelSize.normal
                                     : Appearance.font.pixelSize.small
-                            font.weight: dayCell.modelData?.today
-                                ? Font.DemiBold : Font.Normal
+                            font.weight: dayCell.selected
+                                || dayCell.modelData?.today
+                                    ? Font.DemiBold : Font.Normal
                         }
 
                         Row {

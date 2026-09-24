@@ -1,4 +1,5 @@
 mod clipboard;
+mod desktop;
 mod diagnostics;
 mod niri;
 
@@ -22,6 +23,12 @@ enum Command {
         filter: bool,
     },
 
+    /// Desktop configuration writers replacing Python configparser subprocesses.
+    Desktop {
+        #[command(subcommand)]
+        command: desktop::DesktopCommand,
+    },
+
     /// Native parity implementation of scripts/runtime-diagnostics-sampler.py.
     Diagnostics {
         #[arg(long)]
@@ -41,6 +48,11 @@ fn run() -> Result<i32> {
     let args = Args::parse();
     match args.command {
         Command::ClipboardFilter { filter } => clipboard::run(filter),
+        Command::Desktop { command } => {
+            let value = desktop::run(command)?;
+            println!("{}", serde_json::to_string(&value)?);
+            Ok(0)
+        }
         Command::Diagnostics { pid, interval_ms } => diagnostics::run(pid, interval_ms),
         Command::Niri { command } => {
             let outcome = niri::run(command)?;

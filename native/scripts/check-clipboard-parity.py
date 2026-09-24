@@ -50,6 +50,24 @@ CASES: list[tuple[str, bytes]] = [
     ),
 ]
 
+# Exercise payload sizes large enough to reveal accidental quadratic behavior or
+# truncation while staying cheap enough for every hosted/local qualification.
+CASES.extend(
+    [
+        (
+            "large-plain-unicode",
+            ("Hadalis clipboard 🙂 世界 — line\n" * 16384).encode(),
+        ),
+        (
+            "large-browser-html",
+            (
+                '<meta http-equiv="content-type" content="text/html; charset=utf-8">'
+                + "<div>Hadalis&nbsp;🙂 &amp; 世界<br>Rust</div>" * 4096
+            ).encode(),
+        ),
+    ]
+)
+
 
 def run(argv: list[str], payload: bytes) -> subprocess.CompletedProcess[bytes]:
     return subprocess.run(argv, input=payload, capture_output=True)

@@ -29,6 +29,8 @@ grep -Fq "native-dispatch' clipboard-store --filter"     "$root/services/deferre
 grep -Fq 'native-dispatch clipboard-store'     "$root/defaults/niri/config.d/50-startup.kdl"     || fail 'default Niri clipboard watcher must route through native-dispatch'
 grep -Fq '"$SCRIPT_DIR/../native-dispatch" theme'     "$root/scripts/colors/switchwall.sh"     || fail 'theme pipeline must route through native-dispatch'
 grep -Fq 'nativeIconSyncProc' "$root/services/IconThemeService.qml"     || fail 'IconThemeService must expose native sync test path'
+grep -Fq '/inir-inputd([[:space:]]|$)' "$root/scripts/inir"     || fail 'shell restart cleanup must recognize Rust input daemon'
+grep -Fq '/inir-native[[:space:]]+diagnostics' "$root/scripts/inir"     || fail 'shell restart cleanup must recognize Rust diagnostics sampler'
 
 # The test cutover must remain reversible.
 grep -Fq 'measure_service_mode rust' "$harness"     || fail 'cutover harness must activate and measure Rust explicitly'

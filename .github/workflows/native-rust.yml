@@ -6,8 +6,6 @@ on:
       - 'native/**'
       - 'scripts/native-dispatch'
       - 'scripts/native-cutover-benchmark.sh'
-      - 'scripts/benchmark-python-vs-rust.sh'
-      - 'scripts/test-native-benchmark-deep-contract.sh'
       - 'scripts/test-native-selector-contract.sh'
       - 'scripts/test-native-selector-behavior.sh'
       - 'scripts/benchmark-python-vs-rust.sh'
@@ -98,3 +96,11 @@ jobs:
           cargo build --locked --manifest-path native/Cargo.toml -p inir-native
           python3 native/scripts/check-clipboard-parity.py native/target/debug/inir-native
           python3 native/scripts/check-diagnostics-parity.py native/target/debug/inir-native
+
+      - name: Install Python theme parity dependencies
+        run: python3 -m pip install --disable-pip-version-check --no-input numpy pillow materialyoucolor
+
+      - name: Theme image, template and consumer parity
+        run: |
+          cargo build --locked --manifest-path native/Cargo.toml -p inir-theme
+          python3 native/scripts/check-theme-parity.py native/target/debug/inir-theme

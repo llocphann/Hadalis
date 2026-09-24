@@ -274,6 +274,7 @@ fn main() -> Result<()> {
             image: source_path.as_deref(),
         })?;
         if rendered > 0
+            && std::env::var_os("INIR_THEME_SKIP_SDDM_SYNC").is_none()
             && let Err(error) = sync_if_installed(&app_palette)
         {
             eprintln!("[sddm-pixel] Native sync failed: {error:#}");

@@ -459,7 +459,11 @@ Singleton {
     Timer {
         interval: 30000
         repeat: true
-        running: true
+        // The shell keeps this singleton alive for profile following, but the
+        // default configuration does not need a helper status process every
+        // 30 seconds. Keep background verification only while the feature is
+        // actively relevant; UI surfaces call refresh() when opened.
+        running: root.profileFanControlEnabled || root.active || root.busy
         onTriggered: root.refresh()
     }
 }

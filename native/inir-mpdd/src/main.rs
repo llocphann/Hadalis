@@ -2127,7 +2127,7 @@ mod tests {
 
         let mut names = vec!["Zeta", "Straße", "strasse", "ς", "Σ"];
         names.sort_by_cached_key(|name| casefold_key(name));
-        assert_eq!(names, vec!["Straße", "strasse", "ς", "Σ", "Zeta"]);
+        assert_eq!(names, vec!["Straße", "strasse", "Zeta", "ς", "Σ"]);
     }
 
     #[test]

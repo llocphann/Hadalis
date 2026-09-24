@@ -34,6 +34,7 @@ ContentPage {
     readonly property bool samplerRunning:
         root.evidence?.sampler?.running === true
     readonly property bool sessionStalled: root.sampleIsStale()
+    property bool showSourceDetails: false
 
     function sampleIsStale(): bool {
         const tick = RuntimeDiagnosticsSession.heartbeatTick
@@ -102,7 +103,7 @@ ContentPage {
         SettingsGroup {
             Rectangle {
                 Layout.fillWidth: true
-                implicitHeight: sessionLayout.implicitHeight + 24
+                implicitHeight: sessionLayout.implicitHeight + 20
                 radius: Appearance.rounding.small
                 color: Appearance.colors.colLayer1
                 border.color: root.sessionHasError || root.sessionStalled
@@ -135,56 +136,31 @@ ContentPage {
                                 : Appearance.colors.colSubtext
                     }
 
-                    ColumnLayout {
+                    StyledText {
+                        textFormat: Text.PlainText
                         Layout.fillWidth: true
-                        spacing: 1
-
-                        StyledText {
-
-                            textFormat: Text.PlainText
-                            text: root.sessionStateLabel()
-                            color: Appearance.colors.colOnLayer1
-                            font.weight: Font.DemiBold
-                        }
-
-                        StyledText {
-
-                            textFormat: Text.PlainText
-                            Layout.fillWidth: true
-                            text: root.sampleIntervalLabel() + " "
-                                + Translation.tr("kernel sampling · stops automatically when this page is not current")
-                            color: Appearance.colors.colSubtext
-                            font.pixelSize: Appearance.font.pixelSize.small
-                            wrapMode: Text.WordWrap
-                        }
+                        text: root.sessionStateLabel()
+                        color: Appearance.colors.colOnLayer1
+                        font.weight: Font.DemiBold
+                        elide: Text.ElideRight
                     }
 
-                    ColumnLayout {
-                        spacing: 0
+                    StyledText {
+                        textFormat: Text.PlainText
+                        visible: root.samplerRunning
+                            && sessionLayout.width >= 420
+                        text: root.sampleIntervalLabel()
+                        color: Appearance.colors.colSubtext
+                        font.pixelSize: Appearance.font.pixelSize.small
+                    }
 
-                        StyledText {
-
-                            textFormat: Text.PlainText
-                            Layout.alignment: Qt.AlignRight
-                            text: Translation.tr("Uptime") + " "
-                                + root.formatUptime(
-                                    root.systemEvidence?.uptimeSeconds)
-                            color: Appearance.colors.colOnLayer1
-                            font.pixelSize: Appearance.font.pixelSize.small
-                        }
-
-                        StyledText {
-
-                            textFormat: Text.PlainText
-                            Layout.alignment: Qt.AlignRight
-                            text: Translation.tr("history") + " "
-                                + String((root.evidence?.history ?? []).length)
-                                + "/" + String(
-                                    root.evidence?.status?.historyLimit ?? 60)
-                            color: Appearance.colors.colPrimary
-                            font.pixelSize: Appearance.font.pixelSize.smallest
-                            font.weight: Font.DemiBold
-                        }
+                    StyledText {
+                        textFormat: Text.PlainText
+                        text: Translation.tr("Uptime") + " "
+                            + root.formatUptime(
+                                root.systemEvidence?.uptimeSeconds)
+                        color: Appearance.colors.colOnLayer1
+                        font.pixelSize: Appearance.font.pixelSize.small
                     }
                 }
             }
@@ -278,6 +254,7 @@ ContentPage {
 
                 textFormat: Text.PlainText
                 Layout.fillWidth: true
+                visible: root.showSourceDetails
                 text: Translation.tr("Workflow-owned identities · no synthetic target metrics.")
                 color: Appearance.colors.colSubtext
                 font.pixelSize: Appearance.font.pixelSize.smallest
@@ -292,114 +269,138 @@ ContentPage {
         title: Translation.tr("Workflow identity")
 
         SettingsGroup {
-            GridLayout {
+            Rectangle {
                 Layout.fillWidth: true
-                columns: width >= 680 ? 3 : 1
-                columnSpacing: 10
-                rowSpacing: 10
+                implicitHeight: identityGrid.implicitHeight + 16
+                radius: Appearance.rounding.normal
+                color: Appearance.colors.colLayer1
+                border.color: root.collisionCount === 0
+                    ? Appearance.colors.colOutline
+                    : Appearance.colors.colError
 
-                Rectangle {
-                    Layout.fillWidth: true
-                    implicitHeight: 74
-                    radius: Appearance.rounding.normal
-                    color: Appearance.colors.colLayer1
-                    border.color: Appearance.colors.colOutline
+                GridLayout {
+                    id: identityGrid
+                    anchors.fill: parent
+                    anchors.margins: 8
+                    columns: width >= 680 ? 3 : 1
+                    columnSpacing: 8
+                    rowSpacing: 4
 
-                    ColumnLayout {
-                        anchors.fill: parent
-                        anchors.margins: 12
-                        spacing: 2
+                    Rectangle {
+                        Layout.fillWidth: true
+                        implicitHeight: 52
+                        radius: Appearance.rounding.normal
+                        color: "transparent"
+                        border.width: 0
 
-                        StyledText {
+                        ColumnLayout {
+                            anchors.fill: parent
+                            anchors.margins: 6
+                            spacing: 2
 
-                            textFormat: Text.PlainText
-                            text: Translation.tr("Targets")
-                            color: Appearance.colors.colSubtext
-                            font.pixelSize: Appearance.font.pixelSize.small
-                        }
+                            StyledText {
 
-                        StyledText {
+                                textFormat: Text.PlainText
+                                text: Translation.tr("Targets")
+                                color: Appearance.colors.colSubtext
+                                font.pixelSize: Appearance.font.pixelSize.small
+                            }
 
-                            textFormat: Text.PlainText
-                            text: String(root.targetCount)
-                            color: Appearance.colors.colPrimary
-                            font.weight: Font.DemiBold
-                            font.pixelSize: Appearance.font.pixelSize.large
-                        }
-                    }
-                }
+                            StyledText {
 
-                Rectangle {
-                    Layout.fillWidth: true
-                    implicitHeight: 74
-                    radius: Appearance.rounding.normal
-                    color: Appearance.colors.colLayer1
-                    border.color: Appearance.colors.colOutline
-
-                    ColumnLayout {
-                        anchors.fill: parent
-                        anchors.margins: 12
-                        spacing: 2
-
-                        StyledText {
-
-                            textFormat: Text.PlainText
-                            text: Translation.tr("Source boundaries")
-                            color: Appearance.colors.colSubtext
-                            font.pixelSize: Appearance.font.pixelSize.small
-                        }
-
-                        StyledText {
-
-                            textFormat: Text.PlainText
-                            text: root.discoveryEvidence?.status === "ready"
-                                ? String(root.discoveryEvidence?.boundaryCount ?? 0)
-                                : "—"
-                            color: Appearance.colors.colPrimary
-                            font.weight: Font.DemiBold
-                            font.pixelSize: Appearance.font.pixelSize.large
+                                textFormat: Text.PlainText
+                                text: String(root.targetCount)
+                                color: Appearance.colors.colPrimary
+                                font.weight: Font.DemiBold
+                                font.pixelSize: Appearance.font.pixelSize.large
+                            }
                         }
                     }
-                }
 
-                Rectangle {
-                    Layout.fillWidth: true
-                    implicitHeight: 74
-                    radius: Appearance.rounding.normal
-                    color: Appearance.colors.colLayer1
-                    border.color: root.collisionCount === 0
-                        ? Appearance.colors.colOutline
-                        : Appearance.colors.colError
+                    Rectangle {
+                        Layout.fillWidth: true
+                        implicitHeight: 52
+                        radius: Appearance.rounding.normal
+                        color: "transparent"
+                        border.width: 0
 
-                    ColumnLayout {
-                        anchors.fill: parent
-                        anchors.margins: 12
-                        spacing: 2
+                        ColumnLayout {
+                            anchors.fill: parent
+                            anchors.margins: 6
+                            spacing: 2
 
-                        StyledText {
+                            StyledText {
 
-                            textFormat: Text.PlainText
-                            text: Translation.tr("Identity collisions")
-                            color: Appearance.colors.colSubtext
-                            font.pixelSize: Appearance.font.pixelSize.small
+                                textFormat: Text.PlainText
+                                text: Translation.tr("Source boundaries")
+                                color: Appearance.colors.colSubtext
+                                font.pixelSize: Appearance.font.pixelSize.small
+                            }
+
+                            StyledText {
+
+                                textFormat: Text.PlainText
+                                text: root.discoveryEvidence?.status === "ready"
+                                    ? String(root.discoveryEvidence?.boundaryCount ?? 0)
+                                    : "—"
+                                color: Appearance.colors.colPrimary
+                                font.weight: Font.DemiBold
+                                font.pixelSize: Appearance.font.pixelSize.large
+                            }
                         }
+                    }
 
-                        StyledText {
+                    Rectangle {
+                        Layout.fillWidth: true
+                        implicitHeight: 52
+                        radius: Appearance.rounding.normal
+                        color: "transparent"
+                        border.width: 0
 
-                            textFormat: Text.PlainText
-                            text: String(root.collisionCount)
-                            color: root.collisionCount === 0
-                                ? Appearance.colors.colPrimary
-                                : Appearance.colors.colError
-                            font.weight: Font.DemiBold
-                            font.pixelSize: Appearance.font.pixelSize.large
+                        ColumnLayout {
+                            anchors.fill: parent
+                            anchors.margins: 6
+                            spacing: 2
+
+                            StyledText {
+
+                                textFormat: Text.PlainText
+                                text: Translation.tr("Identity collisions")
+                                color: Appearance.colors.colSubtext
+                                font.pixelSize: Appearance.font.pixelSize.small
+                            }
+
+                            StyledText {
+
+                                textFormat: Text.PlainText
+                                text: String(root.collisionCount)
+                                color: root.collisionCount === 0
+                                    ? Appearance.colors.colPrimary
+                                    : Appearance.colors.colError
+                                font.weight: Font.DemiBold
+                                font.pixelSize: Appearance.font.pixelSize.large
+                            }
                         }
                     }
                 }
             }
 
+            RippleButton {
+                Layout.alignment: Qt.AlignHCenter
+                implicitWidth: 154
+                implicitHeight: 30
+                buttonRadius: height / 2
+                buttonText: root.showSourceDetails
+                    ? Translation.tr("Hide source details")
+                    : Translation.tr("Source details")
+                colBackground: Appearance.colors.colLayer1
+                colBackgroundHover: Appearance.colors.colLayer1Hover
+                onClicked: root.showSourceDetails = !root.showSourceDetails
+            }
+
             BtopCoveragePanel {
                 Layout.fillWidth: true
+                visible: root.showSourceDetails
                 status: String(root.discoveryEvidence?.status ?? "idle")
                 boundaryCounts:
                     root.discoveryEvidence?.boundaryCounts ?? ({})
@@ -425,6 +426,7 @@ ContentPage {
 
                 textFormat: Text.PlainText
                 Layout.fillWidth: true
+                visible: root.showSourceDetails
                 text: root.discoveryEvidence?.status === "ready"
                     ? Translation.tr("Matched source boundaries") + " · "
                         + String(root.discoveryEvidence?.reconciliation
@@ -447,7 +449,8 @@ ContentPage {
 
                 textFormat: Text.PlainText
                 Layout.fillWidth: true
-                visible: root.discoveryEvidence?.status === "ready"
+                visible: root.showSourceDetails
+                    && root.discoveryEvidence?.status === "ready"
                 text: Translation.tr("Source boundaries are parser evidence, not proof that a component executed.")
                 color: Appearance.colors.colSubtext
                 font.pixelSize: Appearance.font.pixelSize.smallest

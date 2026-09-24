@@ -322,7 +322,7 @@ for token in ('Translation.tr("CPU")', 'Translation.tr("Memory")',
 require(dashboard, "function shellGpuMemoryKiB(): var",
         "Material Diagnostics should expose exact resident DRM memory when available")
 for token in (
-    'Translation.tr("Hadalis disk I/O")',
+    'Translation.tr("Disk I/O")',
     'root.provenance(root.shellEvidence?.io)',
     'Translation.tr("No synthetic per-QML resource estimates.")',
 ):

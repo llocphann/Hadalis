@@ -16,6 +16,7 @@ Item {
     property string rxTotal: ""
     property string txTotal: ""
     property string provenance: ""
+    property bool showDetails: false
     property var rxSamples: []
     property var txSamples: []
     property real graphHeight: 38
@@ -125,6 +126,7 @@ Item {
 
                     BtopSparkline {
                         Layout.fillWidth: true
+                        Layout.fillHeight: true
                         Layout.preferredHeight: root.graphHeight
                         samples: root.rxSamples
                         dotted: root.dottedGraph
@@ -148,6 +150,7 @@ Item {
 
                     BtopSparkline {
                         Layout.fillWidth: true
+                        Layout.fillHeight: true
                         Layout.preferredHeight: root.graphHeight
                         samples: root.txSamples
                         dotted: root.dottedGraph
@@ -160,8 +163,9 @@ Item {
             GridLayout {
                 id: totalsGrid
                 Layout.fillWidth: true
-                visible: root.rxTotal.length > 0
-                    || root.txTotal.length > 0
+                visible: root.showDetails
+                    && (root.rxTotal.length > 0
+                        || root.txTotal.length > 0)
                 columns: width >= 360 ? 2 : 1
                 columnSpacing: 12
                 rowSpacing: 2
@@ -197,6 +201,8 @@ Item {
 
                 textFormat: Text.PlainText
                 Layout.fillWidth: true
+                visible: root.showDetails
+                    && root.provenance.length > 0
                 text: root.provenance.length > 0
                     ? root.provenance : "—"
                 color: Appearance.colors.colSubtext

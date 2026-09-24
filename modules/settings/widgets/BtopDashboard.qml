@@ -14,6 +14,7 @@ ColumnLayout {
     property var targets: []
     property var records: []
     property string selectedTargetId: ""
+    property bool showDetails: false
     signal targetActivated(string targetId, string instanceId)
 
     readonly property var systemEvidence: root.evidence?.system ?? null
@@ -204,10 +205,10 @@ ColumnLayout {
 
             BtopNetworkPanel {
                 Layout.fillWidth: true
-                title: Translation.tr("Network") + " · "
-                    + Translation.tr("system non-loopback")
-                graphHeight: 72
+                title: Translation.tr("Network")
+                graphHeight: 64
                 dottedGraph: true
+                showDetails: root.showDetails
                 rx: root.formatRate(root.networkEvidence
                     ?.aggregateNonLoopback?.rxBytesPerSec)
                 tx: root.formatRate(root.networkEvidence
@@ -229,7 +230,9 @@ ColumnLayout {
 
                 BtopMetricPanel {
                     Layout.fillWidth: true
+                    Layout.fillHeight: true
                     title: Translation.tr("Memory")
+                    showDetails: root.showDetails
                     subtitle: Translation.tr("Available") + " "
                         + root.formatKiB(root.systemEvidence?.memory
                             ?.valuesKiB?.MemAvailable) + " · "
@@ -250,7 +253,9 @@ ColumnLayout {
 
                 BtopMetricPanel {
                     Layout.fillWidth: true
+                    Layout.fillHeight: true
                     title: Translation.tr("Swap")
+                    showDetails: root.showDetails
                     subtitle: Translation.tr("System swap")
                     value: root.systemSwapPercent()
                     detail: root.formatKiB(root.systemEvidence?.memory
@@ -266,12 +271,14 @@ ColumnLayout {
 
                 BtopNetworkPanel {
                     Layout.fillWidth: true
-                    title: Translation.tr("Hadalis disk I/O")
+                    Layout.fillHeight: true
+                    title: Translation.tr("Disk I/O")
+                    showDetails: root.showDetails
                     rxLabel: Translation.tr("READ")
                     txLabel: Translation.tr("WRITE")
                     rxPrefix: "R "
                     txPrefix: "W "
-                    graphHeight: 22
+                    graphHeight: 16
                     dottedGraph: true
                     rx: root.formatRate(root.shellEvidence?.io?.rates
                         ?.readBytesPerSec)
@@ -288,7 +295,9 @@ ColumnLayout {
 
                 BtopMetricPanel {
                     Layout.fillWidth: true
-                    title: Translation.tr("GPU") + " · Hadalis"
+                    Layout.fillHeight: true
+                    title: Translation.tr("GPU")
+                    showDetails: root.showDetails
                     subtitle: Translation.tr("DRM client peak")
                     value: root.shellEvidence?.gpu?.available === true
                         ? root.shellGpuBusy() : null
@@ -340,25 +349,26 @@ ColumnLayout {
 
         BtopMetricPanel {
             Layout.fillWidth: true
+            Layout.fillHeight: true
             Layout.minimumWidth: 0
             Layout.preferredWidth: 1.6
             Layout.alignment: Qt.AlignTop
-            title: Translation.tr("CPU") + " · " + Translation.tr("system")
+            title: Translation.tr("CPU")
+            showDetails: root.showDetails
             subtitle: root.formatLoadAverage(
                 root.systemEvidence?.cpu?.loadAverage)
             value: root.systemEvidence?.cpu?.percent ?? null
-            detail: Translation.tr("Hadalis") + " · "
+            detail: Translation.tr("Hadalis") + " "
                 + root.formatPercent(root.shellEvidence?.cpu?.percent)
-                + "   ·   " + Translation.tr("uptime") + " "
-                + root.formatUptime(root.systemEvidence?.uptimeSeconds)
             samples: root.historyValues("systemCpuPercent")
-            graphHeight: 146
+            graphHeight: 116
             dottedGraph: true
             provenance: root.provenance(root.systemEvidence?.cpu)
         }
 
         Rectangle {
             Layout.fillWidth: true
+            Layout.fillHeight: true
             Layout.minimumWidth: 0
             Layout.preferredWidth: 1
             Layout.alignment: Qt.AlignTop
@@ -407,14 +417,29 @@ ColumnLayout {
         }
     }
 
+    RippleButton {
+        Layout.alignment: Qt.AlignHCenter
+        implicitWidth: 132
+        implicitHeight: 30
+        buttonRadius: height / 2
+        buttonText: root.showDetails
+            ? Translation.tr("Hide details")
+            : Translation.tr("Show details")
+        colBackground: Appearance.colors.colLayer1
+        colBackgroundHover: Appearance.colors.colLayer1Hover
+        onClicked: root.showDetails = !root.showDetails
+    }
+
     BtopInterfaceTable {
         Layout.fillWidth: true
+        visible: root.showDetails
         interfaces: root.networkEvidence?.interfaces ?? ({})
         maxRows: 3
     }
 
     BtopRuntimePanel {
         Layout.fillWidth: true
+        visible: root.showDetails
         title: Translation.tr("Hadalis runtime")
         pid: root.shellEvidence?.pid
             ? String(root.shellEvidence.pid) : "—"
@@ -439,6 +464,7 @@ ColumnLayout {
     StyledText {
         textFormat: Text.PlainText
         Layout.fillWidth: true
+        visible: root.showDetails
         text: Translation.tr("No synthetic per-QML resource estimates.")
         color: Appearance.colors.colSubtext
         font.pixelSize: Appearance.font.pixelSize.smallest

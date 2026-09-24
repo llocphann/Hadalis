@@ -16,6 +16,7 @@ Item {
         && Number.isFinite(root.numericValue)
     property string detail: ""
     property string provenance: ""
+    property bool showDetails: false
     property var samples: []
     property real graphHeight: 28
     property bool dottedGraph: false
@@ -56,7 +57,8 @@ Item {
                     StyledText {
                         textFormat: Text.PlainText
                         Layout.fillWidth: true
-                        visible: root.subtitle.length > 0
+                        visible: root.showDetails
+                            && root.subtitle.length > 0
                         text: root.subtitle
                         color: Appearance.colors.colSubtext
                         font.pixelSize: Appearance.font.pixelSize.small
@@ -77,7 +79,7 @@ Item {
 
             Rectangle {
                 Layout.fillWidth: true
-                height: 8
+                Layout.preferredHeight: 8
                 radius: 4
                 color: Appearance.colors.colLayer2
 
@@ -105,6 +107,7 @@ Item {
 
             BtopSparkline {
                 Layout.fillWidth: true
+                Layout.fillHeight: true
                 Layout.preferredHeight: root.graphHeight
                 samples: root.samples
                 dotted: root.dottedGraph
@@ -116,6 +119,8 @@ Item {
 
                 textFormat: Text.PlainText
                 Layout.fillWidth: true
+                visible: root.showDetails
+                    && root.provenance.length > 0
                 text: root.provenance.length > 0
                     ? root.provenance : "—"
                 color: Appearance.colors.colSubtext

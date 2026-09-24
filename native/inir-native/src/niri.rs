@@ -591,7 +591,8 @@ fn outputs() -> Result<Outcome> {
             .cloned()
             .unwrap_or_default();
 
-        let mut resolution_map: BTreeMap<String, Value> = BTreeMap::new();
+        let mut resolution_map: BTreeMap<String, usize> = BTreeMap::new();
+        let mut resolutions = Vec::new();
         for (index, mode) in modes.iter().enumerate() {
             let width = mode.get("width").and_then(Value::as_i64).unwrap_or(0);
             let height = mode.get("height").and_then(Value::as_i64).unwrap_or(0);
@@ -605,14 +606,16 @@ fn outputs() -> Result<Outcome> {
                 .and_then(Value::as_bool)
                 .unwrap_or(false);
             let key = format!("{width}x{height}");
-            let entry = resolution_map.entry(key).or_insert_with(|| {
-                json!({
+            let position = *resolution_map.entry(key).or_insert_with(|| {
+                resolutions.push(json!({
                     "width": width,
                     "height": height,
                     "rates": [],
                     "preferred": preferred,
-                })
+                }));
+                resolutions.len() - 1
             });
+            let entry = &mut resolutions[position];
             if let Some(object) = entry.as_object_mut() {
                 if preferred {
                     object.insert("preferred".into(), Value::Bool(true));
@@ -680,7 +683,7 @@ fn outputs() -> Result<Outcome> {
                 .get(name)
                 .cloned()
                 .unwrap_or_else(|| if vrr_enabled { "on".into() } else { "off".into() }),
-            "resolutions": resolution_map.into_values().collect::<Vec<_>>(),
+            "resolutions": resolutions,
         }));
     }
     Ok(Outcome::ok(Value::Array(result)))
@@ -1771,7 +1774,7 @@ fn get_binds() -> Result<Outcome> {
     let (_, inner_start, inner_end, _) = find_block_bounds(&content, "binds", true)
         .ok_or_else(|| anyhow!("binds_block_not_found"))?;
     let block = &content[inner_start..inner_end];
-    let base_line = content[..inner_start].lines().count() + 1;
+    let base_line = content[..inner_start].bytes().filter(|byte| *byte == b'\n').count() + 1;
     let lines = block.lines().collect::<Vec<_>>();
     let bind_re = Regex::new(r"^([A-Za-z0-9_][A-Za-z0-9+_]*)\s*(.*?)\{(.*)$")?;
     let title_re = Regex::new(r#"\s*hotkey-overlay-title="[^"]+""#)?;

@@ -47,7 +47,7 @@ assert_equal "$("${base_env[@]}" INIR_NATIVE_BIN_DIR="$trial/rust-b" "$dispatch"
 assert_equal "$("${base_env[@]}" "$dispatch" backend-info | sed -n '1,2p')" \
     "$(printf 'mode=rust\nbin_dir=%s' "$trial/rust-a")"
 
-for command in input-lock input-keys niri diagnostics clipboard-store mpd mpd-daemon mpd-subscribe theme desktop-icons; do
+for command in input-lock input-keys niri diagnostics clipboard-store mpd mpd-daemon mpd-subscribe lyrics theme desktop-icons; do
     assert_status 127 "${base_env[@]}" INIR_NATIVE_BACKEND=rust INIR_NATIVE_STRICT=1 \
         INIR_NATIVE_BIN_DIR="$trial/missing" "$dispatch" "$command" fake
     [[ ! -s "$trial/stdout" ]] || { echo "strict $command fell back to Python" >&2; exit 1; }

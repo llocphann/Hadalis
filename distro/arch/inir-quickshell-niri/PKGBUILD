@@ -1,6 +1,6 @@
 pkgname=inir-quickshell-niri
 pkgver=0.3.1
-pkgrel=1
+pkgrel=2
 pkgdesc='Quickshell stable with Hadalis Niri foreign-toplevel ICC capture support'
 arch=(x86_64 aarch64)
 url='https://github.com/quickshell-mirror/quickshell'
@@ -34,36 +34,30 @@ provides=("quickshell=$pkgver")
 conflicts=('quickshell' 'quickshell-git' 'quickshell-bin')
 source=(
   "quickshell-$pkgver.tar.gz::https://github.com/quickshell-mirror/quickshell/archive/refs/tags/v$pkgver.tar.gz"
-  "overlay/screencopy-CMakeLists.txt"
-  "overlay/manager.hpp"
-  "overlay/manager.cpp"
-  "overlay/view.hpp"
-  "overlay/view.cpp"
-  "overlay/image_copy_capture.hpp"
-  "overlay/image_copy_capture_p.hpp"
-  "overlay/image_copy_capture.cpp"
-  "overlay/foreign_toplevel_source.hpp"
-  "overlay/foreign_toplevel_source.cpp"
 )
 sha256sums=(
   '218f6327293928bcb1f9b25728b336c4ab125f67fe1babd7d47313f890a16c99'
-  'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP'
-  'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP'
 )
 
 prepare() {
   local src="$srcdir/quickshell-$pkgver"
+  local overlay="$startdir/overlay"
 
-  install -Dm644 "$srcdir/screencopy-CMakeLists.txt"     "$src/src/wayland/screencopy/CMakeLists.txt"
-  install -Dm644 "$srcdir/manager.hpp"     "$src/src/wayland/screencopy/manager.hpp"
-  install -Dm644 "$srcdir/manager.cpp"     "$src/src/wayland/screencopy/manager.cpp"
-  install -Dm644 "$srcdir/view.hpp"     "$src/src/wayland/screencopy/view.hpp"
-  install -Dm644 "$srcdir/view.cpp"     "$src/src/wayland/screencopy/view.cpp"
-  install -Dm644 "$srcdir/image_copy_capture.hpp"     "$src/src/wayland/screencopy/image_copy_capture/image_copy_capture.hpp"
-  install -Dm644 "$srcdir/image_copy_capture_p.hpp"     "$src/src/wayland/screencopy/image_copy_capture/image_copy_capture_p.hpp"
-  install -Dm644 "$srcdir/image_copy_capture.cpp"     "$src/src/wayland/screencopy/image_copy_capture/image_copy_capture.cpp"
-  install -Dm644 "$srcdir/foreign_toplevel_source.hpp"     "$src/src/wayland/screencopy/foreign_toplevel_source.hpp"
-  install -Dm644 "$srcdir/foreign_toplevel_source.cpp"     "$src/src/wayland/screencopy/foreign_toplevel_source.cpp"
+  [[ -f "$overlay/screencopy-CMakeLists.txt" ]] || {
+    error "Hadalis Quickshell overlay sources are missing"
+    return 1
+  }
+
+  install -Dm644 "$overlay/screencopy-CMakeLists.txt"     "$src/src/wayland/screencopy/CMakeLists.txt"
+  install -Dm644 "$overlay/manager.hpp"     "$src/src/wayland/screencopy/manager.hpp"
+  install -Dm644 "$overlay/manager.cpp"     "$src/src/wayland/screencopy/manager.cpp"
+  install -Dm644 "$overlay/view.hpp"     "$src/src/wayland/screencopy/view.hpp"
+  install -Dm644 "$overlay/view.cpp"     "$src/src/wayland/screencopy/view.cpp"
+  install -Dm644 "$overlay/image_copy_capture.hpp"     "$src/src/wayland/screencopy/image_copy_capture/image_copy_capture.hpp"
+  install -Dm644 "$overlay/image_copy_capture_p.hpp"     "$src/src/wayland/screencopy/image_copy_capture/image_copy_capture_p.hpp"
+  install -Dm644 "$overlay/image_copy_capture.cpp"     "$src/src/wayland/screencopy/image_copy_capture/image_copy_capture.cpp"
+  install -Dm644 "$overlay/foreign_toplevel_source.hpp"     "$src/src/wayland/screencopy/foreign_toplevel_source.hpp"
+  install -Dm644 "$overlay/foreign_toplevel_source.cpp"     "$src/src/wayland/screencopy/foreign_toplevel_source.cpp"
 }
 
 build() {
@@ -85,6 +79,6 @@ package() {
   install -d "$pkgdir/usr/share/inir"
   cat > "$pkgdir/usr/share/inir/quickshell-niri-live" <<EOF
 quickshell=$pkgver
-hadalis_patch=foreign-toplevel-icc-v1
+hadalis_patch=foreign-toplevel-icc-v2
 EOF
 }

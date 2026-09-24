@@ -23,12 +23,14 @@ migration_check() {
   _niri_live_relevant || return 1
 
   [[ -f /usr/share/inir/quickshell-niri-live ]] || return 0
+  grep -Fq 'hadalis_patch=foreign-toplevel-icc-v2' \
+    /usr/share/inir/quickshell-niri-live || return 0
   pacman -Q inir-quickshell-niri >/dev/null 2>&1 || return 0
   return 1
 }
 
 migration_preview() {
-  echo -e "${STY_GREEN}+ build/install inir-quickshell-niri 0.3.1${STY_RST}"
+  echo -e "${STY_GREEN}+ build/install inir-quickshell-niri 0.3.1-2${STY_RST}"
   echo "  Replaces stock quickshell through pacman Provides/Conflicts."
   echo "  Adds ext-foreign-toplevel → ext-image-copy-capture for exact Niri window IDs."
   echo "  Existing Hadalis snapshot previews remain the fallback if capture is unavailable."

@@ -23,9 +23,15 @@ Rust is now wired only through `scripts/native-dispatch`.
 - No Rust systemd service is installed or enabled yet.
 - Packaging still does not require the Rust binaries.
 
-The trial is intentionally reversible. Run
-`scripts/native-cutover-benchmark.sh --restore` to return the user service to the
-Python backend.
+The trial is intentionally reversible. The same user entrypoint handles rollback:
+
+```bash
+bash scripts/benchmark-python-vs-rust.sh --restore
+```
+
+The rollback path verifies the selector state file, the installed selector's
+reported mode, the systemd user-manager environment, and `inir.service` before
+reporting success.
 
 ## Native crates
 
@@ -89,68 +95,80 @@ then returns it to Python. It skips the live switch when the checkout or
 runtime cannot be verified. Use `--read-only` to run all helper benchmarks
 without restarting the service.
 
-For a persistent Rust trial after examining the report, the lower-level
-`scripts/native-cutover-benchmark.sh` still supports live activation and
-`--restore` rollback.
+The lower-level cutover harness is an implementation detail of this wrapper;
+normal qualification, deep testing, read-only runs, and rollback all use
+`scripts/benchmark-python-vs-rust.sh`. A permanent removal of Python call sites
+and dependencies is still a separate maintainer-approved step.
 
-A permanent removal of Python call sites and dependencies is still a separate
-maintainer-approved step.
+## Current source-side qualification: 2026-09-25
 
-## Current source-side qualification: 2026-09-24
+Behavioral source qualification is green through `dev`
+`ec80ac0b8188151172a015c1d83fe6a5fc7f7366`. Hosted `Native Rust staging`
+passed rustfmt, Clippy with warnings denied, workspace unit tests, and every
+isolated parity fixture described below.
 
-Source qualification has been rerun through `dev`
-`d454daad8b43543645903d790bb4d8c2fed8b134`; the code-side native
-qualification has advanced beyond the historical desktop snapshot below:
-
-- The native workspace has a tracked Cargo 1.95 lockfile (198 package entries),
-  canonical committed rustfmt output, and a release profile using thin LTO,
-  one codegen unit, and stripped symbols. Native staging is read-only again and
-  requires `cargo fmt --check`, `cargo clippy --locked ... -D warnings`, and
+- The native workspace keeps a tracked Cargo 1.95 lockfile and a release profile
+  with thin LTO, one codegen unit, and stripped symbols. Staging uses
+  `cargo fmt --check`, `cargo clippy --locked ... -D warnings`, and
   `cargo test --locked`.
-- Native staging is green after the latest runtime work. `inir-inputd --once`
-  uses a synchronous zero-thread snapshot path and streaming input discovery is
-  mode-aware, so lock-only operation does not maintain physical-key state.
-- Local Music now uses the persistent Rust MPD daemon when the Rust/auto backend
-  is available. MPD `idle` events carry authoritative state back to QML;
-  player/mixer/options changes avoid rebuilding the full queue, playlist changes
-  include queue state, and database/stored-playlist changes request a rescan.
-  Compatibility polling remains only as a fail-soft path.
-- MPD artwork lookup now reuses one cache across persistent status events and
-  across every phase of a full snapshot. Library artwork fetched from MPD is
-  published back into that same lookup before playlists/current/queue are
-  built, avoiding repeated filesystem misses and keeping artwork consistent
-  within the snapshot. Cache-key generation no longer builds temporary string
-  vectors, the exact historical SHA-256 filename contract is fixture-tested,
-  and one folder scan keeps only the highest-priority cover candidate instead
-  of materializing a filename map for every file.
-- Deterministic fake-MPD tests now cover persistent connection/root reuse,
-  lightweight player-state updates that must not request `playlistinfo`, and
-  queue-bearing playlist updates. The benchmark also has an opt-in,
-  cache-isolated full-snapshot lane guarded by
-  `test-native-benchmark-deep-contract.sh`.
-- Runtime Diagnostics keeps its lease-driven lifecycle but its Rust sampler now
-  avoids temporary field vectors/sets in the hot `/proc/stat`, `/proc/net/dev`,
-  task, process-stat, and process-I/O parsing paths. Fixed `/proc/meminfo`
-  fields parse directly into a small struct, and the slower memory/DRM/child
-  sample keeps one `SlowState` instead of cloning the same maps/state into
-  parallel temporaries. The native formatter, clippy, and unit-test gates pass
-  with these changes.
-- The canonical repository validator is currently **RED: 184 passed, 27 failed,
-  2 skipped**. The native-related stale contracts for Local Music, Diagnostics,
-  Niri launcher lookup, optional MPD/MPRIS packaging, and the performance
-  lifecycle are now passing. The remaining failures are repository-wide UI,
-  perimeter, packaging/helper, and preview regressions rather than evidence of
-  27 Rust defects.
-- The Nix package workflow passes on this source state. A real Arch package
-  install/update/uninstall qualification and a matched installed-runtime Niri
-  live A/B are still separate gates.
+- The canonical user command is `bash scripts/benchmark-python-vs-rust.sh`.
+  It builds release binaries, runs the source/regression/parity gates, records
+  repeated wall-time/CPU/RSS measurements plus resident PSS/RSS/CPU windows,
+  includes systemd status/journal output and the canonical validator, and writes
+  one text report under `$XDG_STATE_HOME/inir/`. `--read-only`, `--deep`,
+  and `--restore` stay on this same entrypoint.
+- Niri parity now covers the read-only commands plus isolated write fixtures for
+  `apply-output`, `persist-output`, `persist-layout`, `set`,
+  `set-bind`, `remove-bind`, `sync-cursor`, and
+  `sync-backdrop-overview-shadow`. The write fixture uses temporary config
+  roots and mocked `niri`/`gsettings`/`systemctl`; it never edits the live
+  compositor config.
+- MPD parity now covers status/full snapshots, queue replacement, playlist
+  mutation with stable first-seen ordering, play/pause/seek, ACK errors,
+  reconnects without replaying failed mutations, persistent manager reuse, and
+  a Unix daemon-RPC mutation/error/reconnect lifecycle against an isolated
+  loopback MPD service. Full Unicode casefold is fixture-tested for track,
+  playlist, folder, and duplicate ordering semantics.
+- Clipboard filtering is exercised only through stdin and now includes plain
+  text, literal HTML, NUL bytes, Firefox/Chromium fragments, image-only markup,
+  entities, Unicode, invalid UTF-8, empty-after-sanitize, and large plain/HTML
+  payloads. Input streaming has deterministic synthetic press/release,
+  multi-device aggregation, and hot-unplug release coverage.
+- Diagnostics parity uses isolated target/child processes and checks stable
+  values and units including PID, children, RSS/PSS, uptime and CPU tolerance,
+  then verifies both implementations emit `shell-process-gone` and exit with
+  the expected lifecycle code after the target disappears.
+- Theme parity uses a synthetic PNG image and compares Python/Rust dark and light
+  colors, palette/app palette, terminal JSON, metadata, SCSS, and rendered
+  templates. Python is also run under multiple `PYTHONHASHSEED` values so
+  template aliases cannot depend on hash iteration order. Material snake-case
+  aliases have deterministic precedence, and desktop icon configuration parity
+  runs in temporary homes. The theme fixture explicitly suppresses the SDDM
+  post-hook, so an installed SDDM theme is not modified during qualification.
+- Runtime consumers for Niri settings/writes, input, Local Music/lyrics,
+  clipboard startup/history, theme switching, and icon synchronization enter
+  through `scripts/native-dispatch`. Bootstrap installer paths may still use
+  Python before Rust binaries are available; Python remains the supported
+  fallback during the trial.
+- Rollback verification now requires `native-backend=python`, an installed
+  selector reporting `mode=python`, an active `inir.service`, and a clean
+  user-manager environment with no stale native bin/strict variables.
+- The canonical repository validator on this source state is **RED: 183 passed,
+  28 failed, 2 skipped**. Its 28 failures are repository-wide UI, Connected
+  Perimeter, preview, helper and QML/startup contracts; the Native Rust staging
+  job is green and those validator failures are tracked separately below.
+- The latest relevant hosted Nix package workflow passed after the theme
+  generator changes. A real Arch package install/update/uninstall qualification
+  and a matched installed-runtime Niri live A/B are still separate gates.
 - Python implementations remain intentionally present behind
   `scripts/native-dispatch`. No permanent cutover or fallback removal has been
   approved.
 
-This source-side qualification does **not** replace a matched live desktop
-measurement. The old benchmark numbers below are retained only as historical
-evidence from the earlier implementation.
+Hosted source qualification does **not** prove that the user's installed
+Quickshell/Niri runtime matches this checkout. The hosted runner cannot inspect
+that desktop or perform the live service A/B. The latest local evidence remains
+the read-only/deep reports below; until a fresh local run proves runtime identity,
+the live Rust cutover remains **HOLD**.
 
 ### Latest read-only local recheck: 2026-09-24
 
@@ -229,32 +247,29 @@ per startup case; it is under the local state directory named above.
   theme/icon updates, Niri settings/keybind views, and MPD UI controls. Include
   hotplug, suspend/resume, lock/unlock, and multi-output behavior when relevant.
 
-### 2. Close parity and regression coverage gaps
+### 2. Keep source parity gates green; finish live-only acceptance
 
-- Niri: current parity covers the listed read-only commands, including
-  `detect-customizations`, on one local config. Isolated fixtures also cover
-  missing defaults, reordered and repeated lines, and extra files. Add
-  fixture-based Python/Rust comparisons for every write command
-  (`apply-output`, `persist-output`, `persist-layout`,
-  `set`, `set-bind`, `remove-bind`, `sync-cursor`, and
-  `sync-backdrop-overview-shadow`). Mock or isolate compositor actions; never
-  benchmark writes against the live Niri config.
-- MPD: status, persistent-daemon status, and opt-in cold full-snapshot parity
-  now pass on one local service. Extend isolated coverage for queue mutations,
-  playback, seek, errors, reconnects, and persistent-daemon message behavior
-  before qualifying the port. Add Unicode sorting fixtures: Python uses
-  `casefold()` for track, playlist, and folder names, while Rust currently
-  uses ASCII lowercase for tracks/playlists and Unicode lowercase for folders.
-- Theme and desktop: the benchmark uses a color seed and temporary INI homes.
-  Add image-seed/Celebi, template, terminal, SDDM, and icon-theme fixture
-  parity, then verify actual desktop consumers in a reversible live trial.
-- Clipboard and input: extend the single benchmark HTML fixture to a corpus
-  with malformed, Unicode, plain-text, and large payloads. Compare real
-  watcher behavior and input event streams; the current input probe only
-  compares one lock-state snapshot while daemon checks sample resident cost.
-- Diagnostics: current gate compares JSON field paths, not live values or
-  timing semantics. Check stable fields, units, counters, error cases, and
-  lease start/stop behavior with tolerances for changing processes.
+The source-side gaps that previously blocked the listed ports are now covered
+by hosted fixtures. Remaining work is intentionally environment-dependent:
+
+- Niri: keep the temporary read/write fixtures green, then exercise the same
+  settings/keybind/output operations in the matched live Niri session, including
+  multi-output and rollback behavior.
+- MPD: keep isolated compatibility and daemon-RPC mutation/reconnect tests green.
+  On the real library, rerun status and `--deep` snapshot parity and exercise
+  queue/playback/seek controls through Local Music while the persistent daemon is
+  active.
+- Theme/desktop: keep synthetic image/template/terminal/icon parity green. In the
+  matched desktop, verify actual GTK/KDE/terminal/browser/editor consumers and
+  the installed ii-pixel SDDM update path; hosted fixtures deliberately do not
+  touch `/usr/share/sddm`.
+- Clipboard/input: keep the stdin corpus and synthetic event-state tests green.
+  A real Niri session must still verify the migrated `wl-paste` watcher after
+  session restart plus physical keyboard hotplug, lock-state and OSK events.
+- Diagnostics: keep isolated value/lifecycle parity green, then verify the QML
+  lease start/stop path and visible Diagnostics values against the live shell.
+- Keep Python fallback behavior exercised until the matched live A/B, package
+  qualification, and maintainer acceptance all pass.
 
 ### 3. Qualify performance and distribution
 
@@ -280,19 +295,18 @@ per startup case; it is under the local state directory named above.
 
 ### 4. Restore the canonical validator
 
-The historical list below records the 32 failures from the old benchmark SHA.
-The current source state is **184 passed, 27 failed, 2 skipped**; several stale
-native-migration contracts from this list now pass. Re-run the validator on
-each new HEAD and inspect its detailed log. Prefer behavioral repair and update
-a contract only when its intended behavior has changed. Repository-wide
-validator failures are not automatically Rust defects.
+At `ec80ac0b8188151172a015c1d83fe6a5fc7f7366`, the canonical validator is
+**183 passed, 28 failed, 2 skipped**. Native Rust staging is green on the same
+source state, so these failures must not be counted as 28 Rust migration defects.
+Repair them according to their own UI/runtime contracts and rerun the validator
+after concurrent UI work lands.
 
-Python regressions (19):
+Current Python/QML contract failures (18):
 
 ```text
 scripts/test-bar-media-popup-layout-contract.py
+scripts/test-bar-media-width-contract.py
 scripts/test-calendar-weather-composition-contract.py
-scripts/test-code-workflow-diagnostics-contract.py
 scripts/test-connected-route-lifecycle.py
 scripts/test-dashboard-freeform-contract.py
 scripts/test-dashboard-search-system-refinement-contract.py
@@ -303,7 +317,6 @@ scripts/test-notification-center-contract.py
 scripts/test-osd-connected-surface-contract.py
 scripts/test-overview-hover-contract.py
 scripts/test-p0-settings-navigation-contract.py
-scripts/test-runtime-diagnostics-session-contract.py
 scripts/test-shell-surface-contracts.py
 scripts/test-styled-popup-content-contract.py
 scripts/test-surface-motion-contract.py
@@ -311,17 +324,14 @@ scripts/test-thinkfan-system-monitor-contract.py
 scripts/test-zettelkasten-service-contract.py
 ```
 
-QML/startup project guards (1).
+QML/startup project guards contribute one additional failed check.
 
-Shell regressions (12):
+Current shell contract failures (9):
 
 ```text
 scripts/test-critical-panel-isolation.sh
 scripts/test-equalizer-service-contract.sh
 scripts/test-local-required-contracts.sh
-scripts/test-niri-keybind-launcher-contract.sh
-scripts/test-optional-audio-deps-contract.sh
-scripts/test-performance-lifecycle.sh
 scripts/test-perimeter-contracts.sh
 scripts/test-perimeter-route-contracts.sh
 scripts/test-perimeter-source-contracts.sh
@@ -330,10 +340,8 @@ scripts/test-window-preview-cache-behavior.sh
 scripts/test-window-preview-lifecycle.sh
 ```
 
-The Diagnostics session, Niri keybind launcher, MPD-related packaging, Local
-Music, and performance-lifecycle contracts from this historical list now pass.
-The remaining repository-wide failures still block a fully green validator, but
-they should be repaired according to their own intended behavior rather than
-attributed wholesale to the native migration. A default Rust cutover still
-requires the relevant behavioral tests, reversible live A/B, and release
-packaging checks above to pass.
+The validator also skips the QML parser when a suitable `qmlformat` is
+unavailable and defers its Nix check; hosted Nix qualification is tracked
+separately. A default Rust cutover still requires the matched-runtime live A/B,
+fresh multi-sample local report, release/package qualification and maintainer
+acceptance even if this repository-wide validator becomes green.

@@ -393,14 +393,6 @@ Scope {
             }
         }
 
-        StyledRectangularShadow {
-            target: panelBackground
-            radius: panelBackground.radius
-            opacity: panelBackground.opacity
-            visible: !Appearance.zzzEverywhere
-                && (Appearance.angelEverywhere || (!Appearance.inirEverywhere && !Appearance.auroraEverywhere))
-        }
-
         // Click outside the panel to close
         MouseArea {
             anchors.fill: parent
@@ -419,7 +411,10 @@ Scope {
 
         GlassBackground {
             id: panelBackground
-            anchors.centerIn: parent
+            anchors {
+                horizontalCenter: parent.horizontalCenter
+                bottom: parent.bottom
+            }
             width: panelWidth
             height: Math.min(contentColumn.implicitHeight, panelMaxHeight)
             fallbackColor: Appearance.zzzEverywhere ? Appearance.zzz.paper
@@ -429,30 +424,25 @@ Scope {
                 ? Appearance.angel.panelTransparentize
                 : Math.max(0.12, Appearance.aurora.subSurfaceTransparentize - 0.14)
             screenX: (window.screen?.width ?? 1920) / 2 - width / 2
-            screenY: (window.screen?.height ?? 1080) / 2 - height / 2
+            screenY: (window.screen?.height ?? 1080) - height
             screenWidth: window.screen?.width ?? 1920
             screenHeight: window.screen?.height ?? 1080
-            border.width: Appearance.regaliaEverywhere ? 0
-                : Appearance.zzzEverywhere ? 1
-                : Appearance.angelEverywhere ? Appearance.angel.panelBorderWidth
-                : Appearance.auroraEverywhere ? 1 : 1
-            Behavior on border.width {
-                enabled: Appearance.animationsEnabled
-                NumberAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve }
-            }
-            border.color: Appearance.zzzEverywhere ? Appearance.zzz.hairlineStrong
-                : Appearance.angelEverywhere ? Appearance.angel.colPanelBorder
-                : Appearance.inirEverywhere ? Appearance.inir.colBorder 
-                : Appearance.auroraEverywhere ? Appearance.aurora.colTooltipBorder 
-                : Appearance.colors.colOutlineVariant
-            Behavior on border.color {
-                enabled: Appearance.animationsEnabled
-                ColorAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve }
-            }
-            radius: Appearance.regaliaEverywhere ? Appearance.regalia.panelRadius
+
+            // Clipboard is a bottom-attached Screen Edge surface now: no outer
+            // border/shadow and square contact corners so the panel visually
+            // continues into the physical bottom edge instead of floating.
+            border.width: 0
+            border.color: "transparent"
+            radius: 0
+            topLeftRadius: Appearance.regaliaEverywhere
+                ? Appearance.regalia.panelRadius
                 : Appearance.zzzEverywhere ? Appearance.zzz.panelRadius
                 : Appearance.angelEverywhere ? Appearance.angel.roundingLarge
-                : Appearance.inirEverywhere ? Appearance.inir.roundingLarge : Appearance.rounding.screenRounding
+                : Appearance.inirEverywhere ? Appearance.inir.roundingLarge
+                : Appearance.rounding.screenRounding
+            topRightRadius: topLeftRadius
+            bottomLeftRadius: 0
+            bottomRightRadius: 0
             Behavior on radius { enabled: Appearance.animationsEnabled; NumberAnimation { duration: Appearance.animation.elementResize.duration; easing.type: Appearance.animation.elementResize.type; easing.bezierCurve: Appearance.animation.elementResize.bezierCurve } }
             Behavior on color { enabled: Appearance.animationsEnabled; ColorAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve } }
             
@@ -460,25 +450,17 @@ Scope {
                 anchors.fill: parent
                 visible: Appearance.regaliaEverywhere
                 fillColor: Appearance.regalia.bg1
-                radius: panelBackground.radius
+                radius: 0
                 inset: Appearance.regalia.surfaceInset
-                elevated: true
+                elevated: false
                 glassEnabled: true
             }
 
-            // Entry animation
+            // Keep entry motion edge-bound: fade without scaling away from the
+            // Screen Edge contact line.
             opacity: root._presentedOpen ? 1 : 0
-            scale: root._presentedOpen ? 1 : 0.95
-            
+
             Behavior on opacity {
-                enabled: Appearance.animationsEnabled
-                NumberAnimation {
-                    duration: Appearance.animation.elementMoveEnter.duration
-                    easing.type: Appearance.animation.elementMoveEnter.type
-                    easing.bezierCurve: Appearance.animation.elementMoveEnter.bezierCurve
-                }
-            }
-            Behavior on scale {
                 enabled: Appearance.animationsEnabled
                 NumberAnimation {
                     duration: Appearance.animation.elementMoveEnter.duration

@@ -77,8 +77,7 @@ Secondary support. Uses the Quickshell Hyprland module (built-in) plus `hyprctl`
 ### What's Hyprland-only
 
 - `HyprlandData.qml`: window list, workspaces, monitors, layers
-- `HyprlandKeybinds.qml`: keybind parsing for cheatsheet
-- `HyprlandXkb.qml`: keyboard layout tracking
+- The legacy Hyprland keybind parser and XKB tracking services are retired; active cheatsheet and keyboard-layout state now follow the Niri-owned paths instead of separate Hyprland service implementations.
 
 ### What doesn't work on Hyprland
 

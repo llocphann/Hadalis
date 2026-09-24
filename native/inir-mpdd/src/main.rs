@@ -620,10 +620,20 @@ fn file_url(path: &Path) -> String {
     output
 }
 
-#[derive(Default)]
 struct ArtLookup {
+    cache: PathBuf,
     folders: HashMap<PathBuf, String>,
     cached: HashMap<String, String>,
+}
+
+impl Default for ArtLookup {
+    fn default() -> Self {
+        Self {
+            cache: cache_dir(),
+            folders: HashMap::new(),
+            cached: HashMap::new(),
+        }
+    }
 }
 
 impl ArtLookup {
@@ -674,10 +684,9 @@ impl ArtLookup {
             return art.clone();
         }
 
-        let cache = cache_dir();
         let art = CACHE_ART_EXTENSIONS
             .iter()
-            .map(|extension| cache.join(format!("{key}{extension}")))
+            .map(|extension| self.cache.join(format!("{key}{extension}")))
             .find(|path| fs::metadata(path).is_ok_and(|meta| meta.len() > 0))
             .map(|path| file_url(&path))
             .unwrap_or_default();
@@ -687,47 +696,51 @@ impl ArtLookup {
     }
 }
 
-fn track_value(track: &Map<String, Value>, key: &str) -> String {
+fn track_str<'a>(track: &'a Map<String, Value>, key: &str) -> &'a str {
     track
         .get(key)
         .and_then(Value::as_str)
         .unwrap_or_default()
         .trim()
-        .to_owned()
+}
+
+fn track_value(track: &Map<String, Value>, key: &str) -> String {
+    track_str(track, key).to_owned()
 }
 
 fn art_cache_key(track: &Map<String, Value>) -> String {
     let album_artist = {
-        let value = track_value(track, "albumArtist");
+        let value = track_str(track, "albumArtist");
         if value.is_empty() {
-            track_value(track, "artist")
+            track_str(track, "artist")
         } else {
             value
         }
     };
-    let album = track_value(track, "album");
-    let folder = track_value(track, "folder");
-    let uri = track_value(track, "uri");
-
-    let identity = if album.is_empty() {
-        vec![
-            "folder".to_owned(),
-            if folder.is_empty() {
-                Path::new(&uri)
-                    .parent()
-                    .unwrap_or_else(|| Path::new(""))
-                    .to_string_lossy()
-                    .into_owned()
-            } else {
-                folder
-            },
-        ]
-    } else {
-        vec!["album".to_owned(), album_artist, album, folder]
-    };
+    let album = track_str(track, "album");
+    let folder = track_str(track, "folder");
+    let uri = track_str(track, "uri");
 
     let mut digest = Sha256::new();
-    digest.update(identity.join("\u{001f}").as_bytes());
+    if album.is_empty() {
+        let identity_folder = if folder.is_empty() {
+            Path::new(uri)
+                .parent()
+                .and_then(Path::to_str)
+                .unwrap_or_default()
+        } else {
+            folder
+        };
+        digest.update(b"folder\x1f");
+        digest.update(identity_folder.as_bytes());
+    } else {
+        digest.update(b"album\x1f");
+        digest.update(album_artist.as_bytes());
+        digest.update(b"\x1f");
+        digest.update(album.as_bytes());
+        digest.update(b"\x1f");
+        digest.update(folder.as_bytes());
+    }
     format!("{:x}", digest.finalize())
 }
 
@@ -746,12 +759,16 @@ fn art_extension(data: &[u8], mime: &str) -> &'static str {
     }
 }
 
-fn write_cached_art(track: &Map<String, Value>, data: &[u8], mime: &str) -> Result<String> {
+fn write_cached_art(
+    cache: &Path,
+    track: &Map<String, Value>,
+    data: &[u8],
+    mime: &str,
+) -> Result<String> {
     if data.is_empty() {
         return Ok(String::new());
     }
-    let cache = cache_dir();
-    fs::create_dir_all(&cache)?;
+    fs::create_dir_all(cache)?;
     let target = cache.join(format!(
         "{}{}",
         art_cache_key(track),
@@ -927,7 +944,8 @@ fn populate_library_art(client: &mut MpdClient, tracks: &mut [Map<String, Value>
         let Some((data, mime)) = fetch_mpd_art(client, &uri) else {
             continue;
         };
-        let Ok(art) = write_cached_art(&tracks[first_index], &data, &mime) else {
+        let Ok(art) = write_cached_art(&art_lookup.cache, &tracks[first_index], &data, &mime)
+        else {
             continue;
         };
         if art.is_empty() {
@@ -1857,8 +1875,8 @@ mod tests {
     use std::time::Duration;
 
     use super::{
-        MpdClient, MpdManager, legacy_request, lrc_stamp_seconds, pairs, parse_lrc, quote, records,
-        status_payload_mode, status_payload_mode_with_art,
+        MpdClient, MpdManager, art_cache_key, legacy_request, lrc_stamp_seconds, pairs, parse_lrc,
+        quote, records, status_payload_mode, status_payload_mode_with_art,
     };
     use serde_json::json;
 
@@ -2052,6 +2070,33 @@ mod tests {
         assert_eq!(
             commands,
             vec!["config", "status", "currentsong", "status", "currentsong"]
+        );
+    }
+
+    #[test]
+    fn artwork_cache_keys_preserve_existing_hash_contract() {
+        let album_track = json!({
+            "albumArtist": "Alpha",
+            "artist": "Fallback",
+            "album": "Record",
+            "folder": "Jazz/Record",
+            "uri": "Jazz/Record/one.flac"
+        });
+        assert_eq!(
+            art_cache_key(album_track.as_object().expect("album track object")),
+            "2026b06cfd606695ce6971ed00fd52e507dafe003130275530888a1ee569e7d8"
+        );
+
+        let folder_track = json!({
+            "albumArtist": "",
+            "artist": "Alpha",
+            "album": "",
+            "folder": "Jazz/Record",
+            "uri": "Jazz/Record/one.flac"
+        });
+        assert_eq!(
+            art_cache_key(folder_track.as_object().expect("folder track object")),
+            "d3467bfa85b116e89030170c8b45c975b15ed3587eedf4aaf3eb5223c4e6da8a"
         );
     }
 

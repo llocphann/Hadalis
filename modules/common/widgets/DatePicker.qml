@@ -12,6 +12,7 @@ Item {
 
     // API
     property date selectedDate: new Date()
+    property bool compact: false
     signal dateSelected(date date)
 
     // Internal
@@ -116,13 +117,13 @@ Item {
     readonly property color colLayer2: Appearance.colors.colLayer2
     readonly property real radius: Appearance.rounding.small
 
-    implicitWidth: calendarColumn.implicitWidth + 16
-    implicitHeight: calendarColumn.implicitHeight + 16
+    implicitWidth: calendarColumn.implicitWidth + (root.compact ? 8 : 16)
+    implicitHeight: calendarColumn.implicitHeight + (root.compact ? 8 : 16)
 
     ColumnLayout {
         id: calendarColumn
         anchors.fill: parent
-        spacing: 8
+        spacing: root.compact ? 4 : 8
 
         // Header with month/year and navigation
         RowLayout {
@@ -150,8 +151,8 @@ Item {
                 Rectangle {
                     id: todayAction
                     visible: root.monthShift !== 0
-                    implicitWidth: todayBtn.implicitWidth + 8
-                    implicitHeight: 28
+                    implicitWidth: todayBtn.implicitWidth + (root.compact ? 6 : 8)
+                    implicitHeight: root.compact ? 24 : 28
                     radius: root.radius
                     color: (todayBtnMA.containsMouse || todayAction.activeFocus) ? root.colLayer2 : "transparent"
                     border.width: todayAction.activeFocus ? 1 : 0
@@ -196,8 +197,8 @@ Item {
                     delegate: Rectangle {
                         id: navButton
                         required property var modelData
-                        implicitWidth: 28
-                        implicitHeight: 28
+                        implicitWidth: root.compact ? 24 : 28
+                        implicitHeight: root.compact ? 24 : 28
                         radius: root.radius
                         color: (navMA.containsMouse || navButton.activeFocus) ? root.colLayer2 : "transparent"
                         border.width: navButton.activeFocus ? 1 : 0
@@ -248,7 +249,7 @@ Item {
 
                 delegate: StyledText {
                     required property string modelData
-                    Layout.preferredWidth: 32
+                    Layout.preferredWidth: root.compact ? 28 : 32
                     horizontalAlignment: Text.AlignHCenter
                     text: modelData
                     font.pixelSize: Appearance.font.pixelSize.smallest
@@ -279,9 +280,9 @@ Item {
                             required property int index
                             property var cellData: root.calendarLayout?.[parent.weekRow]?.[index] ?? {}
 
-                            implicitWidth: 32
-                            implicitHeight: 32
-                            radius: 16
+                            implicitWidth: root.compact ? 28 : 32
+                            implicitHeight: root.compact ? 28 : 32
+                            radius: implicitWidth / 2
                             activeFocusOnTab: true
                             Accessible.role: Accessible.Button
                             Accessible.name: root.locale.toString(

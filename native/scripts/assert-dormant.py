@@ -33,8 +33,15 @@ RUNTIME_FILES = (
     ROOT / "settings.qml",
     ROOT / "setup",
     ROOT / "Makefile",
-    ROOT / "scripts" / "inir",
 )
+
+# The launcher lifecycle code must name native processes so it can identify and
+# clean orphaned trial helpers after a KillMode=process shell restart. It is
+# separately covered by test-native-selector-contract.sh; it is not a runtime
+# call site for those binaries.
+LIFECYCLE_REFERENCE_FILES = {
+    ROOT / "scripts" / "inir",
+}
 
 TEXT_SUFFIXES = {
     ".qml",

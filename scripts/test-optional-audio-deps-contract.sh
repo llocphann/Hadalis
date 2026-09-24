@@ -154,7 +154,9 @@ for marker in \
   'id: _mpdMprisProbeProc' \
   'command -v mpd-mpris >/dev/null 2>&1 || exit 2; pgrep -x mpd >/dev/null 2>&1 || exit 1' \
   '["/usr/bin/systemctl", "--user", "start", "mpd-mpris.service"]' \
-  'name === "org.mpris.MediaPlayer2.mpd"' \
+  'readonly property string _mpdPreferredMprisName:' \
+  ': "org.mpris.MediaPlayer2.mpd"' \
+  'if (name === preferred)' \
   'name.startsWith("org.mpris.MediaPlayer2.mpd.")'; do
   grep -Fq "$marker" "$media_controller" \
     || { printf 'FAIL: MprisController MPD bridge contract missing: %s\n' "$marker" >&2; exit 1; }
@@ -162,11 +164,11 @@ done
 
 grep -Fq '### MPD and rmpc' "$audio_doc" \
   || { printf 'FAIL: audio/media docs omit MPD/rmpc bridge behavior\n' >&2; exit 1; }
-grep -Fq 'direct-ALSA output' "$audio_doc" \
-  || { printf 'FAIL: audio/media docs omit direct-ALSA MPD bridge discovery\n' >&2; exit 1; }
+grep -Fq 'covers MPD configurations that output directly through ALSA' "$media_controller" \
+  || { printf 'FAIL: MprisController no longer documents direct-ALSA MPD bridge discovery\n' >&2; exit 1; }
 grep -Fq '`rmpc` is an MPD client; neither it nor MPD exposes MPRIS by itself' "$audio_doc" \
   || { printf 'FAIL: audio/media docs no longer explain the MPD/MPRIS boundary\n' >&2; exit 1; }
-grep -Fq '| `mpd-mpris` | MPRIS bridge for MPD/rmpc media sessions |' "$packages_doc" \
+grep -Eq '\| `mpd-mpris` \| MPRIS bridge for MPD/rmpc/[^|]+ sessions \|' "$packages_doc" \
   || { printf 'FAIL: package docs omit mpd-mpris from the Arch audio bundle\n' >&2; exit 1; }
 
 printf '%s\n' 'PASS: MPD/rmpc media integration routes through the mpd-mpris bridge'

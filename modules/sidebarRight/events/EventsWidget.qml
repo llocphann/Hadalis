@@ -16,6 +16,10 @@ Item {
     
     property int fabSize: 48
     property int fabMargins: 14
+    // Shared EventsWidget keeps its historical bottom-right FAB by default.
+    // Compact owners such as the Bar Calendar popup can opt into bottom-left
+    // placement without changing Sidebar/other Events surfaces.
+    property bool fabLeftAligned: false
 
     // Style tokens
     readonly property color colPrimary: Appearance.angelEverywhere ? Appearance.angel.colPrimary
@@ -246,9 +250,11 @@ Item {
     
     FloatingActionButton {
         id: fabButton
-        anchors.right: parent.right
+        anchors.left: root.fabLeftAligned ? parent.left : undefined
+        anchors.right: root.fabLeftAligned ? undefined : parent.right
         anchors.bottom: parent.bottom
-        anchors.rightMargin: root.fabMargins
+        anchors.leftMargin: root.fabLeftAligned ? root.fabMargins : 0
+        anchors.rightMargin: root.fabLeftAligned ? 0 : root.fabMargins
         anchors.bottomMargin: root.fabMargins
         iconText: "add"
         buttonText: Translation.tr("Add event")

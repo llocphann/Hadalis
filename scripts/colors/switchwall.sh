@@ -603,7 +603,7 @@ switch() {
     force_dark_terminal="$cfg_force_dark_terminal"
 
     # 1) Generate authoritative shell/UI colors.json + render app templates.
-    if "$_ii_python" "$SCRIPT_DIR/generate_colors_material.py" "${generate_colors_material_args[@]}" \
+    if "$SCRIPT_DIR/../native-dispatch" theme "${generate_colors_material_args[@]}" \
         --json-output "$_json_tmp" \
         --palette-output "$_palette_tmp" \
         --app-palette-output "$_app_palette_tmp" \
@@ -650,7 +650,7 @@ switch() {
         done
         _terminal_force_tmp="$STATE_DIR/user/generated/terminal.json.force.tmp"
 
-        scss_cmd=("$_ii_python" "$SCRIPT_DIR/generate_colors_material.py" "${scss_generate_args[@]}")
+        scss_cmd=("$SCRIPT_DIR/../native-dispatch" theme "${scss_generate_args[@]}")
         scss_cmd+=(--terminal-output "$_terminal_force_tmp")
 
         if "${scss_cmd[@]}" > "$_scss_tmp" 2>/dev/null && [[ -s "$_scss_tmp" && -s "$_terminal_force_tmp" ]]; then

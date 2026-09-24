@@ -128,6 +128,7 @@ Singleton {
         hasCurrentTrack && (currentIndex < activeQueue.length - 1 || repeatMode === 2)
 
     readonly property string _mpdScript: Directories.scriptsPath + "/local_music_mpd.py"
+    readonly property string nativeDispatchPath: Directories.scriptsPath + "/native-dispatch"
     readonly property string _lyricsScript: Directories.scriptsPath + "/local_music_lyrics.py"
 
     function _trackForIdentity(uri: string, path: string): var {
@@ -279,7 +280,7 @@ Singleton {
         error = ""
         MprisController.ensureMpdMprisBridge(mpdHost, mpdPort)
         _scanProc.command = [
-            "python3", _mpdScript, "snapshot",
+            root.nativeDispatchPath, "mpd", "snapshot",
             mpdHost, String(mpdPort), configuredLibraryFolder
         ]
         _scanProc.running = true
@@ -288,7 +289,7 @@ Singleton {
     function refreshStatus(): void {
         if (!enabled || _statusProc.running || _scanProc.running) return
         _statusProc.command = [
-            "python3", _mpdScript, "status",
+            root.nativeDispatchPath, "mpd", "status",
             mpdHost, String(mpdPort), configuredLibraryFolder
         ]
         _statusProc.running = true
@@ -339,7 +340,7 @@ Singleton {
         _enqueueRequests = _enqueueRequests.slice(1)
         _enqueueProc.output = ""
         _enqueueProc.command = [
-            "python3", _mpdScript, "enqueue",
+            root.nativeDispatchPath, "mpd", "enqueue",
             mpdHost, String(mpdPort), configuredLibraryFolder,
             request.playNow ? "1" : "0", String(request.uri)
         ]
@@ -382,7 +383,7 @@ Singleton {
         _bulkEnqueueRequests = _bulkEnqueueRequests.slice(1)
         _bulkEnqueueProc.output = ""
         _bulkEnqueueProc.command = [
-            "python3", _mpdScript, "enqueue-many",
+            root.nativeDispatchPath, "mpd", "enqueue-many",
             mpdHost, String(mpdPort), configuredLibraryFolder,
             "@" + _bulkEnqueuePayloadPath
         ]
@@ -435,7 +436,7 @@ Singleton {
         _playlistRequests = _playlistRequests.slice(1)
         _playlistProc.output = ""
         _playlistProc.command = [
-            "python3", _mpdScript, request.mode,
+            root.nativeDispatchPath, "mpd", request.mode,
             mpdHost, String(mpdPort), request.name,
             "@" + _playlistPayloadPath
         ]
@@ -489,7 +490,7 @@ Singleton {
         _queueRequests = _queueRequests.slice(1)
         _queueProc.output = ""
         _queueProc.command = [
-            "python3", _mpdScript, "queue",
+            root.nativeDispatchPath, "mpd", "queue",
             mpdHost, String(mpdPort), String(request.index),
             "@" + _queuePayloadPath
         ]
@@ -507,7 +508,7 @@ Singleton {
 
     function _sendMpd(command: string, args): void {
         Quickshell.execDetached([
-            "python3", _mpdScript, "command",
+            root.nativeDispatchPath, "mpd", "command",
             mpdHost, String(mpdPort), command,
             JSON.stringify(Array.isArray(args) ? args : [])
         ])

@@ -201,7 +201,7 @@ bench "niri hot-corners rust" "$BIN_DIR/inir-native" niri get-hot-corners
 
 section "THEME PARITY + BENCHMARK"
 mkdir -p "$TMP_ROOT/theme-py" "$TMP_ROOT/theme-rs"
-THEME_ARGS=(--color '#4181EE' --mode dark --scheme scheme-tonal-spot --termscheme "$ROOT_DIR/scripts/colors/terminal_colors.json")
+THEME_ARGS=(--color '#4181EE' --mode dark --scheme scheme-tonal-spot --termscheme "$ROOT_DIR/scripts/colors/terminal/scheme-base.json")
 PY_THEME=(python3 scripts/colors/generate_colors_material.py)
 if [[ -x "$HOME/.local/state/quickshell/.venv/bin/python3" ]]; then
     PY_THEME=("$HOME/.local/state/quickshell/.venv/bin/python3" scripts/colors/generate_colors_material.py)

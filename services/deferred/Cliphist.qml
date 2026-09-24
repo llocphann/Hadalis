@@ -65,7 +65,7 @@ Singleton {
     // hold it, and they outlive the fix — so clean on the way out as well. The
     // filter forwards anything that is not a browser text/html payload byte for
     // byte, which keeps images intact.
-    readonly property string _markupFilter: `'${Directories.scriptsPath}/clipboard-store.py' --filter`
+    readonly property string _markupFilter: `'${Directories.scriptsPath}/native-dispatch' clipboard-store --filter`
 
     function decodeCommand(entry): string {
         if (root.cliphistBinary.includes("cliphist")) {

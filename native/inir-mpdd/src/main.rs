@@ -1858,10 +1858,14 @@ mod tests {
                 }
 
                 let command = line.trim_end_matches(['\r', '\n']).to_owned();
-                let name = command.split_whitespace().next().unwrap_or_default();
+                let name = command
+                    .split_whitespace()
+                    .next()
+                    .unwrap_or_default()
+                    .to_owned();
                 commands.push(command);
 
-                let response = match name {
+                let response = match name.as_str() {
                     "config" => "music_directory: /music\nOK\n",
                     "status" => concat!(
                         "volume: 50\n",

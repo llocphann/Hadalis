@@ -1,0 +1,169 @@
+#!/usr/bin/env bash
+set -uo pipefail
+
+ROOT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
+MODE="${INIR_NATIVE_BACKEND:-python}"
+BIN_DIR="${INIR_NATIVE_BIN_DIR:-$ROOT_DIR/native/target/release}"
+STRICT="${INIR_NATIVE_STRICT:-0}"
+
+python_bin() {
+    local candidate=""
+    if [[ -n "${INIR_VENV:-}" ]]; then
+        candidate="${INIR_VENV/#\~/$HOME}/bin/python3"
+    elif [[ -n "${ILLOGICAL_IMPULSE_VIRTUAL_ENV:-}" ]]; then
+        candidate="${ILLOGICAL_IMPULSE_VIRTUAL_ENV/#\~/$HOME}/bin/python3"
+    else
+        candidate="$HOME/.local/state/quickshell/.venv/bin/python3"
+    fi
+    if [[ -x "$candidate" ]]; then
+        printf '%s\n' "$candidate"
+    elif [[ -x /usr/bin/python3 ]]; then
+        printf '%s\n' /usr/bin/python3
+    else
+        command -v python3
+    fi
+}
+
+want_rust() {
+    case "$MODE" in
+        rust) return 0 ;;
+        auto) return 0 ;;
+        python|"") return 1 ;;
+        *)
+            echo "[native-dispatch] invalid INIR_NATIVE_BACKEND=$MODE" >&2
+            return 1
+            ;;
+    esac
+}
+
+rust_ready() {
+    local binary="$1"
+    [[ -x "$BIN_DIR/$binary" ]]
+}
+
+run_with_fallback() {
+    local binary="$1"
+    shift
+    local fallback_tag="$1"
+    shift
+
+    if want_rust && rust_ready "$binary"; then
+        "$BIN_DIR/$binary" "$@"
+        local rc=$?
+        if (( rc == 0 || STRICT == 1 )); then
+            return "$rc"
+        fi
+        echo "[native-dispatch] Rust $fallback_tag failed ($rc), falling back to Python" >&2
+    elif [[ "$MODE" == "rust" && "$STRICT" == "1" ]]; then
+        echo "[native-dispatch] missing Rust binary: $BIN_DIR/$binary" >&2
+        return 127
+    fi
+    return 125
+}
+
+cmd="${1:-}"
+[[ -n "$cmd" ]] || {
+    echo "usage: native-dispatch <input-lock|input-keys|niri|diagnostics|clipboard-store|mpd|theme|desktop-icons|backend-info> [args...]" >&2
+    exit 64
+}
+shift
+
+case "$cmd" in
+    backend-info)
+        printf 'mode=%s\n' "$MODE"
+        printf 'bin_dir=%s\n' "$BIN_DIR"
+        for binary in inir-inputd inir-native inir-mpdd inir-theme; do
+            if rust_ready "$binary"; then
+                printf '%s=ready\n' "$binary"
+            else
+                printf '%s=missing\n' "$binary"
+            fi
+        done
+        ;;
+
+    input-lock)
+        if want_rust && rust_ready inir-inputd; then
+            "$BIN_DIR/inir-inputd" --mode locks "$@"
+            rc=$?
+            if (( rc == 0 || STRICT == 1 )); then exit "$rc"; fi
+            echo "[native-dispatch] Rust input-lock failed ($rc), falling back to Python" >&2
+        fi
+        exec /usr/bin/python3 -u "$ROOT_DIR/scripts/daemon/keyboard_lock_state_daemon.py" "$@"
+        ;;
+
+    input-keys)
+        if want_rust && rust_ready inir-inputd; then
+            "$BIN_DIR/inir-inputd" --mode keys "$@"
+            rc=$?
+            if (( rc == 0 || STRICT == 1 )); then exit "$rc"; fi
+            echo "[native-dispatch] Rust input-keys failed ($rc), falling back to Python" >&2
+        fi
+        exec /usr/bin/python3 -u "$ROOT_DIR/scripts/daemon/osk_physical_key_daemon.py" "$@"
+        ;;
+
+    niri)
+        if want_rust && rust_ready inir-native; then
+            "$BIN_DIR/inir-native" niri "$@"
+            rc=$?
+            if (( rc == 0 || STRICT == 1 )); then exit "$rc"; fi
+            echo "[native-dispatch] Rust niri helper failed ($rc), falling back to Python" >&2
+        fi
+        exec /usr/bin/python3 "$ROOT_DIR/scripts/niri-config.py" "$@"
+        ;;
+
+    diagnostics)
+        if want_rust && rust_ready inir-native; then
+            "$BIN_DIR/inir-native" diagnostics "$@"
+            rc=$?
+            if (( rc == 0 || STRICT == 1 )); then exit "$rc"; fi
+            echo "[native-dispatch] Rust diagnostics failed ($rc), falling back to Python" >&2
+        fi
+        exec /usr/bin/env python3 "$ROOT_DIR/scripts/runtime-diagnostics-sampler.py" "$@"
+        ;;
+
+    clipboard-store)
+        if want_rust && rust_ready inir-native; then
+            "$BIN_DIR/inir-native" clipboard-filter "$@"
+            rc=$?
+            if (( rc == 0 || STRICT == 1 )); then exit "$rc"; fi
+            echo "[native-dispatch] Rust clipboard filter failed ($rc), falling back to Python" >&2
+        fi
+        exec /usr/bin/python3 "$ROOT_DIR/scripts/clipboard-store.py" "$@"
+        ;;
+
+    mpd)
+        if want_rust && rust_ready inir-mpdd; then
+            "$BIN_DIR/inir-mpdd" --compat "$@"
+            rc=$?
+            if (( rc == 0 || STRICT == 1 )); then exit "$rc"; fi
+            echo "[native-dispatch] Rust MPD compatibility mode failed ($rc), falling back to Python" >&2
+        fi
+        exec /usr/bin/python3 "$ROOT_DIR/scripts/local_music_mpd.py" "$@"
+        ;;
+
+    theme)
+        if want_rust && rust_ready inir-theme; then
+            "$BIN_DIR/inir-theme" "$@"
+            rc=$?
+            if (( rc == 0 || STRICT == 1 )); then exit "$rc"; fi
+            echo "[native-dispatch] Rust theme generator failed ($rc), falling back to Python" >&2
+        fi
+        py="$(python_bin)"
+        exec "$py" "$ROOT_DIR/scripts/colors/generate_colors_material.py" "$@"
+        ;;
+
+    desktop-icons)
+        theme="${1:-}"
+        [[ -n "$theme" ]] || { echo "desktop-icons requires a theme" >&2; exit 64; }
+        if want_rust && rust_ready inir-native; then
+            exec "$BIN_DIR/inir-native" desktop sync-icon-theme "$theme"
+        fi
+        echo "[native-dispatch] desktop-icons native path requested while backend is not Rust" >&2
+        exit 64
+        ;;
+
+    *)
+        echo "[native-dispatch] unknown command: $cmd" >&2
+        exit 64
+        ;;
+esac

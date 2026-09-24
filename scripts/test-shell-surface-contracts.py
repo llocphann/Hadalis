@@ -1046,6 +1046,18 @@ def main() -> None:
     check("hoverActivates: true" in media
           and "keyboardFocus: root.barMediaPopupVisible" in media,
           "Media hover popup must not steal keyboard focus unless explicitly pinned")
+    for token in (
+        "readonly property real restingX: overflowing",
+        "Math.max(0, (width - titleText.implicitWidth) / 2)",
+        "x: titleScroller.restingX",
+        "horizontalAlignment: titleScroller.overflowing",
+        "? Text.AlignLeft : Text.AlignHCenter",
+        "marqueeRow.x = titleScroller.restingX",
+    ):
+        check(token in media,
+              f"Bar Media short-title centering contract missing: {token}")
+    check("width: titleScroller.overflowing ? implicitWidth : titleScroller.width" not in media,
+          "Short Bar Media titles must not stretch back to the old left-aligned label width")
 
     taskbar_preview = read("modules/bar/BarTaskbarPreview.qml")
     check("StyledPopup {" in taskbar_preview,

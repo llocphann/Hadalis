@@ -3,7 +3,7 @@
 # Do not edit manually.
 # Regenerate: python3 scripts/lib/generate-ipc-registry.py
 # IPC.md metadata: docs/IPC.md
-# Targets: 61
+# Targets: 60
 
 declare -gA IPC_TARGET_DESC=(
   [ai]="Shared multi-provider AI service. It supports Gemini, OpenAI-compatible chat and Responses APIs, Mistral and Anthropic; live provider catalogs are normalized into capability-aware model records. Catalog visibility is separate from execution readiness, so public model lists remain browseable without pretending an API key exists. OpenCode Zen and Go resolve their current model lists and per-model API routes dynamically. Normal shell tools use typed actions and approval cards, while arbitrary commands are isolated in Advanced mode."

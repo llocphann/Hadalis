@@ -79,7 +79,7 @@ Item {
                 GridLayout {
                     id: rateHeader
                     Layout.fillWidth: true
-                    columns: width >= 360 ? 2 : 1
+                    columns: root.compactMode ? 2 : (width >= 360 ? 2 : 1)
                     columnSpacing: 12
                     rowSpacing: 2
 
@@ -98,7 +98,8 @@ Item {
 
                         textFormat: Text.PlainText
                         Layout.fillWidth: true
-                        horizontalAlignment: rateHeader.width >= 360
+                        horizontalAlignment: root.compactMode
+                            || rateHeader.width >= 360
                             ? Text.AlignRight : Text.AlignLeft
                         text: root.txPrefix + root.tx
                         color: root.txColor

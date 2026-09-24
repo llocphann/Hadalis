@@ -197,7 +197,7 @@ ColumnLayout {
         id: compactObservability
         visible: root.compactMode
         Layout.fillWidth: true
-        columns: width >= 920 ? 2 : 1
+        columns: width >= 720 ? 2 : 1
         columnSpacing: 8
         rowSpacing: 8
 
@@ -207,7 +207,7 @@ ColumnLayout {
             Layout.fillHeight: true
             Layout.minimumWidth: 0
             Layout.preferredWidth: compactObservability.columns === 2
-                ? compactObservability.width * 0.64 : -1
+                ? compactObservability.width * 0.66 : -1
             radius: Appearance.rounding.small
             color: Appearance.colors.colLayer1
             border.width: 1
@@ -254,7 +254,7 @@ ColumnLayout {
                 }
                 GridLayout {
                     Layout.fillWidth: true
-                    columns: width >= 610 ? 2 : 1
+                    columns: width >= 500 ? 2 : 1
                     columnSpacing: 6
                     rowSpacing: 6
                     BtopActivityTable {
@@ -282,8 +282,8 @@ ColumnLayout {
             Layout.fillHeight: true
             Layout.minimumWidth: 0
             Layout.preferredWidth: compactObservability.columns === 2
-                ? compactObservability.width * 0.36 : -1
-            columns: width >= 360 ? 2 : 1
+                ? compactObservability.width * 0.34 : -1
+            columns: width >= 260 ? 2 : 1
             columnSpacing: 6
             rowSpacing: 6
             BtopMetricPanel {

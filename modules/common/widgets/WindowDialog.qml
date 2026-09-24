@@ -13,6 +13,9 @@ Rectangle {
     // centered modal scrim/chrome so owners can place it inside an existing
     // connected surface (for example Calendar's expanding bottom editor).
     property bool embeddedPresentation: false
+    // Embedded owners can lower dialog density without changing modal dialogs.
+    property real contentSpacing: 16
+    property color embeddedBackgroundColor: "transparent"
     default property alias contentData: contentColumn.data
     // Negative means content-sized. Fixed-height consumers keep assigning an
     // explicit value; compact dialogs follow their measured content instead of
@@ -37,7 +40,7 @@ Rectangle {
     }
 
     color: root.embeddedPresentation
-        ? "transparent"
+        ? root.embeddedBackgroundColor
         : (root.show ? Appearance.colors.colScrim
             : ColorUtils.transparentize(Appearance.colors.colScrim))
     Behavior on color {
@@ -127,7 +130,7 @@ Rectangle {
             ? root.height
             : Math.max(0, dialogBackground.resolvedHeight
                 - dialogBackground.contentPad * 2)
-        spacing: 16
+        spacing: root.contentSpacing
         opacity: root.show ? 1 : 0
         visible: opacity > 0
         Behavior on opacity {

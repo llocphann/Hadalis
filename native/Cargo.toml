@@ -17,7 +17,7 @@ version = "0.1.0"
 [workspace.dependencies]
 anyhow = "1.0"
 clap = { version = "4.5", features = ["derive"] }
-evdev = { version = "0.13.2", features = ["serde"] }
+evdev = "0.13.2"
 html-escape = "0.2"
 kdl = { version = "6.7.1", features = ["v1-fallback"] }
 libc = "0.2"
@@ -25,3 +25,11 @@ regex = "1.11"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = { version = "1.0", features = ["preserve_order"] }
 sha2 = "0.10"
+
+# Native binaries are latency-sensitive desktop helpers. Thin LTO retains most
+# cross-crate optimization without the extreme link cost of fat LTO; one
+# codegen unit improves optimizer visibility for these relatively small apps.
+[profile.release]
+lto = "thin"
+codegen-units = 1
+strip = "symbols"

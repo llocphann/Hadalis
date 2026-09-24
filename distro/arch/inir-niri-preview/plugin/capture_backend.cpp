@@ -53,7 +53,7 @@ QImage cropScaleFrame(const QImage& source, const QSize& requested) {
     const int x = std::max(0, (scaled.width() - target.width()) / 2);
     const int y = std::max(0, (scaled.height() - target.height()) / 2);
     if (scaled.width() == target.width() && scaled.height() == target.height())
-        return scaled;
+        return scaled.copy();
     return scaled.copy(x, y,
                        std::min(target.width(), scaled.width() - x),
                        std::min(target.height(), scaled.height() - y));
@@ -234,10 +234,13 @@ private:
 
         uint32_t width = 0;
         uint32_t height = 0;
+        uint32_t bufferWidth = 0;
+        uint32_t bufferHeight = 0;
         uint32_t shmFormat = 0;
         bool supportsArgb = false;
         bool supportsXrgb = false;
         bool constraintsReady = false;
+        bool constraintsPending = false;
         bool framePending = false;
         bool firstFrame = true;
         bool bufferNeedsFullDamage = true;
@@ -400,16 +403,15 @@ private:
             return;
         }
 
-        if (!self->allocateBuffer(state)) {
-            self->publishError(state->token,
-                               QStringLiteral("Unable to allocate Niri preview capture buffer"));
-            self->publishSourceReady(state->token, false);
+        // Constraint updates may race an outstanding frame after a resize.
+        // Never destroy the attached wl_buffer until that frame resolves.
+        if (state->framePending || state->frame) {
+            state->constraintsReady = false;
+            state->constraintsPending = true;
             return;
         }
 
-        state->constraintsReady = true;
-        self->publishSourceReady(state->token, true);
-        self->requestFrame(state);
+        self->applyConstraints(state);
     }
 
     static void sessionStopped(void* data, ext_image_copy_capture_session_v1*) {
@@ -464,8 +466,10 @@ private:
 
         if (reason == EXT_IMAGE_COPY_CAPTURE_FRAME_V1_FAILURE_REASON_BUFFER_CONSTRAINTS) {
             state->constraintsReady = false;
+            state->constraintsPending = false;
             state->bufferNeedsFullDamage = true;
-            self->releaseBuffer(state);
+            if (!self->applyConstraints(state))
+                self->releaseBuffer(state);
             return;
         }
 
@@ -509,6 +513,25 @@ private:
         ext_image_copy_capture_session_v1_add_listener(
             state->session, &sessionListener, state);
         wl_display_flush(m_display);
+    }
+
+    bool applyConstraints(SessionState* state) {
+        if (!state || !state->shmFormat || state->width == 0 || state->height == 0)
+            return false;
+
+        if (!allocateBuffer(state)) {
+            publishError(state->token,
+                         QStringLiteral("Unable to allocate Niri preview capture buffer"));
+            publishSourceReady(state->token, false);
+            return false;
+        }
+
+        state->constraintsReady = true;
+        state->constraintsPending = false;
+        state->bufferNeedsFullDamage = true;
+        publishSourceReady(state->token, true);
+        requestFrame(state);
+        return true;
     }
 
     bool allocateBuffer(SessionState* state) {
@@ -559,6 +582,8 @@ private:
             return false;
         }
 
+        state->bufferWidth = state->width;
+        state->bufferHeight = state->height;
         state->bufferNeedsFullDamage = true;
         return true;
     }
@@ -578,6 +603,8 @@ private:
         }
         state->mapSize = 0;
         state->stride = 0;
+        state->bufferWidth = 0;
+        state->bufferHeight = 0;
     }
 
     void requestFrame(SessionState* state) {
@@ -642,21 +669,22 @@ private:
                 : QImage::Format_RGB32;
 
         QImage mapped(static_cast<uchar*>(state->map),
-                      static_cast<int>(state->width),
-                      static_cast<int>(state->height),
+                      static_cast<int>(state->bufferWidth),
+                      static_cast<int>(state->bufferHeight),
                       state->stride,
                       format);
 
-        QImage owned = mapped.copy();
-        owned = applyTransform(owned, state->transform);
-        owned = cropScaleFrame(owned, state->targetSize);
+        // Scale directly from the mapped compositor buffer while it is stable.
+        // This avoids a full-resolution CPU copy before reducing to tile size.
+        QImage transformed = applyTransform(mapped, state->transform);
+        QImage owned = cropScaleFrame(transformed, state->targetSize);
 
         qint64 damagedPixels = 0;
         for (const QRect& rect : state->damage)
             damagedPixels += static_cast<qint64>(rect.width()) * rect.height();
 
         const qint64 totalPixels =
-            static_cast<qint64>(state->width) * state->height;
+            static_cast<qint64>(state->bufferWidth) * state->bufferHeight;
         qreal activity = totalPixels > 0
             ? static_cast<qreal>(damagedPixels) / static_cast<qreal>(totalPixels)
             : 0.0;
@@ -671,8 +699,13 @@ private:
         publishFrame(state->token,
                      owned,
                      activity,
-                     QSize(static_cast<int>(state->width),
-                           static_cast<int>(state->height)));
+                     QSize(static_cast<int>(state->bufferWidth),
+                           static_cast<int>(state->bufferHeight)));
+
+        if (state->constraintsPending) {
+            applyConstraints(state);
+            return;
+        }
 
         if (state->live)
             requestFrame(state);

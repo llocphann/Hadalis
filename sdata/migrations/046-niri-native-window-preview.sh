@@ -20,7 +20,7 @@ _niri_preview_supported_host() {
 
 _niri_preview_expected() {
   [[ -f /usr/share/inir/niri-preview-plugin ]] \
-    && grep -Fq 'version=0.1.0-3' /usr/share/inir/niri-preview-plugin \
+    && grep -Fq 'version=0.1.0-4' /usr/share/inir/niri-preview-plugin \
     && [[ -f /usr/lib/qt6/qml/Hadalis/NiriPreview/qmldir ]] \
     && [[ -f /usr/lib/qt6/qml/Hadalis/NiriPreview/libhadalisniripreviewplugin.so ]]
 }
@@ -35,7 +35,7 @@ migration_check() {
 }
 
 migration_preview() {
-  echo -e "${STY_GREEN}+ build/install inir-niri-preview 0.1.0-3${STY_RST}"
+  echo -e "${STY_GREEN}+ build/install inir-niri-preview 0.1.0-4${STY_RST}"
   echo "  Native protocols: ext-foreign-toplevel-list + ext-image-copy-capture"
   echo "  Quickshell package/runtime: unchanged"
   echo "  Existing PNG previews remain the fallback"

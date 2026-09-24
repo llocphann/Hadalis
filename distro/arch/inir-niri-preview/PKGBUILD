@@ -1,6 +1,6 @@
 pkgname=inir-niri-preview
 pkgver=0.1.0
-pkgrel=3
+pkgrel=4
 pkgdesc='Hadalis native Niri window preview QML plugin'
 arch=(x86_64 aarch64)
 url='https://github.com/llocphann/Hadalis'

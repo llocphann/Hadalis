@@ -40,7 +40,7 @@ jobs:
 
       - name: Verify QML plugin payload
         run: |
-          pkg="$(find distro/arch/inir-niri-preview -maxdepth 1 -name 'inir-niri-preview-*.pkg.tar.*' -print -quit)"
+          pkg="$(find distro/arch/inir-niri-preview -maxdepth 1 -name 'inir-niri-preview-[0-9]*.pkg.tar.*' -print -quit)"
           test -n "$pkg"
           bsdtar -tf "$pkg" | grep -q 'usr/lib/qt6/qml/Hadalis/NiriPreview/qmldir'
           bsdtar -tf "$pkg" | grep -q 'usr/lib/qt6/qml/Hadalis/NiriPreview/libhadalisniripreviewplugin.so'

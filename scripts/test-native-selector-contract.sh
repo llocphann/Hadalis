@@ -38,8 +38,13 @@ grep -Fq 'nativeBackendStatePath' "$root/services/IconThemeService.qml"     || f
 grep -Fq '/inir-inputd([[:space:]]|$)' "$root/scripts/inir"     || fail 'shell restart cleanup must recognize Rust input daemon'
 grep -Fq '/inir-native[[:space:]]+diagnostics' "$root/scripts/inir"     || fail 'shell restart cleanup must recognize Rust diagnostics sampler'
 
-# The trial cutover harness must remain reversible.
-grep -Fq 'measure_service_mode rust' "$harness"     || fail 'cutover harness must activate and measure Rust explicitly'
+# The trial cutover harness must remain reversible. The live qualification loop
+# alternates order to reduce warm-cache bias, so assert the semantic Rust path
+# instead of requiring the old one-shot literal `measure_service_mode rust`.
+grep -Fq 'order=(python rust)' "$harness"     || fail 'cutover harness must include Rust in odd live A/B rounds'
+grep -Fq 'order=(rust python)' "$harness"     || fail 'cutover harness must include Rust in even live A/B rounds'
+grep -Fq 'measure_service_mode "$mode" "$round"' "$harness"     || fail 'cutover harness must measure each selected backend in every live A/B round'
+grep -Fq 'set_runtime_backend rust' "$harness"     || fail 'cutover harness must explicitly restore Rust test mode after alternating A/B'
 grep -Fq 'INIR_NATIVE_BACKEND=python' "$harness"     || fail 'cutover harness must provide Python rollback'
 grep -Fq 'BACKEND_STATE_FILE="$STATE_DIR/native-backend"' "$harness"     || fail 'cutover harness must persist selector state for Niri-spawned helpers'
 grep -Fq 'MODE_FILE="$STATE_DIR/native-backend"' "$dispatch"     || fail 'native-dispatch must read persistent selector state when env is absent'

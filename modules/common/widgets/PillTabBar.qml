@@ -49,8 +49,13 @@ Item {
                 required property var modelData
                 required property int index
                 readonly property bool selected: root.currentIndex === index
+                readonly property bool hasIcon:
+                    String(tab.modelData.icon ?? "").length > 0
+                readonly property bool hasBadge:
+                    tab.modelData.count !== undefined
                 width: root.tabs.length > 0 ? root.width / root.tabs.length : 0
                 height: root.height
+                clip: true
 
                 // Center icon + label as one visual unit. Optional badges are
                 // anchored independently so their width can never push the tab
@@ -61,7 +66,7 @@ Item {
                     spacing: 5
 
                     MaterialSymbol {
-                        visible: String(tab.modelData.icon ?? "").length > 0
+                        visible: tab.hasIcon
                         anchors.verticalCenter: parent.verticalCenter
                         text: tab.modelData.icon ?? ""
                         iconSize: 17
@@ -72,7 +77,15 @@ Item {
 
                     StyledText {
                         anchors.verticalCenter: parent.verticalCenter
+                        // Bound the label to its own slot. This keeps long timer
+                        // labels from crossing into the adjacent active pill
+                        // while preserving the centered icon+text unit.
+                        width: Math.min(implicitWidth, Math.max(0,
+                            tab.width
+                                - (tab.hasIcon ? 22 : 0)
+                                - (tab.hasBadge ? 34 : 12)))
                         text: tab.modelData.label ?? ""
+                        horizontalAlignment: Text.AlignHCenter
                         elide: Text.ElideRight
                         maximumLineCount: 1
                         font.pixelSize: Appearance.font.pixelSize.small
@@ -84,7 +97,7 @@ Item {
                 }
 
                 Rectangle {
-                    visible: tab.modelData.count !== undefined
+                    visible: tab.hasBadge
                     anchors.right: parent.right
                     anchors.rightMargin: 8
                     anchors.verticalCenter: parent.verticalCenter

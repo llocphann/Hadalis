@@ -56,8 +56,11 @@ const scope = {
     Cliphist: {suppressRefresh: false},
     ShellExec: {supportsFish: () => false},
     Quickshell: {shellPath: path => path, execDetached() {}},
-    overviewWarmImageComponent: {createObject(_parent, properties) {
-        created++; return {source: properties.source, destroy() {destroyed++;}};
+    overviewWarmImageComponent: {createObject(parent, properties) {
+        assert.equal(parent, null,
+            'warm decoder Image must not be parented to non-visual singleton');
+        created++;
+        return {source: properties.source, destroy() {destroyed++;}};
     }},
     sessionFileView: {setText(value) {root.marker = value;}},
     console

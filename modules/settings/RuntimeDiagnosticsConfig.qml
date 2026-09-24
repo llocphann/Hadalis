@@ -113,14 +113,6 @@ ContentPage {
         return minutes + "m"
     }
 
-    StyledText {
-        textFormat: Text.PlainText
-        Layout.fillWidth: true
-        text: Translation.tr("On-demand runtime resource diagnostics")
-        color: Appearance.colors.colSubtext
-        font.pixelSize: Appearance.font.pixelSize.small
-    }
-
     // One compact status strip replaces the old expanded live-sampling card.
     // It keeps useful health/identity context visible without consuming a full
     // vertical section above the actual diagnostics.

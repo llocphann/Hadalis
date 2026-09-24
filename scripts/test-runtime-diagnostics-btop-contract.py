@@ -301,7 +301,7 @@ def main() -> None:
         "if (value === null || value === undefined)",
         "readonly property bool showSwapColumn:",
         "!root.compactMode && width >= 520",
-        "Layout.preferredHeight: root.compactMode ? 20 : 24",
+        "Layout.preferredHeight: 24",
     ):
         require(process_table, token, "BtopProcessTable.qml")
     for token in (

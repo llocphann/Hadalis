@@ -13,6 +13,8 @@ BIN_DIR="$ROOT_DIR/native/target/release"
 DISPATCH="$ROOT_DIR/scripts/native-dispatch"
 ORIGINAL_BACKEND="${INIR_NATIVE_BACKEND:-}"
 ORIGINAL_BIN_DIR="${INIR_NATIVE_BIN_DIR:-}"
+ACTIVE_RUNTIME="${XDG_CONFIG_HOME:-$HOME/.config}/quickshell/inir"
+ACTIVE_RUNTIME="$(readlink -f "$ACTIVE_RUNTIME" 2>/dev/null || printf '%s' "$ACTIVE_RUNTIME")"
 
 cleanup() {
     rm -rf "$TMP_ROOT"
@@ -147,6 +149,13 @@ measure_service_mode() {
 
 activate_rust() {
     section "LIVE SHELL A/B"
+    if [[ ! -x "$ACTIVE_RUNTIME/scripts/native-dispatch" ]]; then
+        kv "live A/B" "SKIP (active runtime lacks scripts/native-dispatch)"
+        kv "active_runtime" "$ACTIVE_RUNTIME"
+        echo "Direct Python/Rust parity and microbenchmarks above are still valid."
+        echo "Refresh the active Hadalis runtime from this checkout, then rerun for live A/B."
+        return 0
+    fi
     echo "Measuring the same inir.service once with Python selected, then with Rust selected."
     measure_service_mode python
     measure_service_mode rust
@@ -177,6 +186,12 @@ kv "host" "$(hostname)"
 kv "kernel" "$(uname -srmo)"
 kv "repo" "$ROOT_DIR"
 kv "git_head" "$(git rev-parse HEAD 2>/dev/null || echo unknown)"
+kv "active_runtime" "$ACTIVE_RUNTIME"
+if [[ -x "$ACTIVE_RUNTIME/scripts/native-dispatch" ]]; then
+    kv "active_runtime_selector" "ready"
+else
+    kv "active_runtime_selector" "missing"
+fi
 kv "niri" "$(niri --version 2>/dev/null || echo unavailable)"
 kv "quickshell" "$(qs --version 2>/dev/null || echo unavailable)"
 kv "rustc" "$(rustc --version 2>/dev/null || echo unavailable)"

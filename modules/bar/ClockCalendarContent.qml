@@ -42,7 +42,7 @@ Item {
     }
 
     implicitWidth: Math.max(246, monthView.implicitWidth) + 345
-    implicitHeight: Math.max(440, monthView.implicitHeight)
+    implicitHeight: monthView.implicitHeight
 
     function sameDay(a, b): bool {
         return a.getFullYear() === b.getFullYear()
@@ -53,6 +53,18 @@ Item {
     RowLayout {
         anchors.fill: parent
         spacing: 12
+
+        EventsWidget {
+            Layout.preferredWidth: 320
+            Layout.fillHeight: true
+            onOpenEventsDialog: (event) => root.eventEditorRequested(event)
+        }
+
+        Rectangle {
+            Layout.fillHeight: true
+            Layout.preferredWidth: 1
+            color: Appearance.colors.colOutlineVariant
+        }
 
         Item {
             Layout.preferredWidth: Math.max(246, monthView.implicitWidth)
@@ -70,18 +82,6 @@ Item {
                 onNextMonthRequested: root.monthShift++
                 onTodayRequested: root.monthShift = 0
             }
-        }
-
-        Rectangle {
-            Layout.fillHeight: true
-            Layout.preferredWidth: 1
-            color: Appearance.colors.colOutlineVariant
-        }
-
-        EventsWidget {
-            Layout.preferredWidth: 320
-            Layout.fillHeight: true
-            onOpenEventsDialog: (event) => root.eventEditorRequested(event)
         }
     }
 }

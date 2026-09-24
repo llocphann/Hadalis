@@ -9,6 +9,7 @@ ContentPage {
     id: root
     settingsPageIndex: 31
     settingsPageName: Translation.tr("Diagnostics")
+    bottomContentPadding: 8
 
     readonly property bool diagnosticsActive:
         RuntimeDiagnosticsSession.pageCurrent
@@ -34,7 +35,17 @@ ContentPage {
     readonly property bool samplerRunning:
         root.evidence?.sampler?.running === true
     readonly property bool sessionStalled: root.sampleIsStale()
-    property bool showSourceDetails: false
+    readonly property string primaryError: {
+        if (RuntimeDiagnosticsSession.leaseError.length > 0)
+            return RuntimeDiagnosticsSession.leaseError
+        if (RuntimeDiagnosticsSession.remoteError.length > 0)
+            return RuntimeDiagnosticsSession.remoteError
+        if (RuntimeDiagnosticsSession.evidenceError.length > 0)
+            return RuntimeDiagnosticsSession.evidenceError
+        if (root.samplerError.length > 0)
+            return root.samplerError
+        return String(root.discoveryEvidence?.error ?? "")
+    }
 
     function sampleIsStale(): bool {
         const tick = RuntimeDiagnosticsSession.heartbeatTick
@@ -56,26 +67,14 @@ ContentPage {
 
     function sessionStateLabel(): string {
         if (!RuntimeDiagnosticsSession.pageCurrent)
-            return Translation.tr("Sampling paused")
+            return Translation.tr("Diagnostics paused")
         if (root.sessionHasError)
-            return Translation.tr("Sampling error")
+            return Translation.tr("Diagnostics error")
         if (root.sessionStalled)
-            return Translation.tr("Sampling stalled")
+            return Translation.tr("Diagnostics stalled")
         if (!root.samplerRunning || root.systemEvidence === null)
-            return Translation.tr("Starting sampler")
-        return Translation.tr("Sampling live")
-    }
-
-    function sampleIntervalLabel(): string {
-        const ms = Number(root.evidence?.status?.sampleIntervalMs)
-        if (!Number.isFinite(ms) || ms <= 0)
-            return "—"
-        if (ms >= 1000) {
-            const seconds = ms / 1000
-            return (Math.round(seconds) === seconds
-                ? seconds.toFixed(0) : seconds.toFixed(1)) + " s"
-        }
-        return Math.round(ms) + " ms"
+            return Translation.tr("Diagnostics starting")
+        return Translation.tr("Diagnostics live")
     }
 
     function formatUptime(value): string {
@@ -95,367 +94,106 @@ ContentPage {
         return minutes + "m"
     }
 
-    SettingsCardSection {
-        expanded: true
-        icon: "monitoring"
-        title: Translation.tr("Live diagnostics")
+    // One compact status strip replaces the old expanded live-sampling card.
+    // It keeps useful health/identity context visible without consuming a full
+    // vertical section above the actual diagnostics.
+    Rectangle {
+        Layout.fillWidth: true
+        implicitHeight: 42
+        radius: Appearance.rounding.small
+        color: Appearance.colors.colLayer1
+        border.color: root.sessionHasError || root.sessionStalled
+            ? Appearance.colors.colError
+            : Qt.rgba(
+                Appearance.colors.colPrimary.r,
+                Appearance.colors.colPrimary.g,
+                Appearance.colors.colPrimary.b,
+                0.34)
 
-        SettingsGroup {
+        RowLayout {
+            id: statusRow
+            anchors.fill: parent
+            anchors.leftMargin: 10
+            anchors.rightMargin: 10
+            spacing: 10
+
             Rectangle {
-                Layout.fillWidth: true
-                implicitHeight: sessionLayout.implicitHeight + 20
-                radius: Appearance.rounding.small
-                color: Appearance.colors.colLayer1
-                border.color: root.sessionHasError || root.sessionStalled
+                Layout.preferredWidth: 8
+                Layout.preferredHeight: 8
+                radius: 4
+                color: root.sessionHasError || root.sessionStalled
                     ? Appearance.colors.colError
-                    : RuntimeDiagnosticsSession.pageCurrent
-                        ? Qt.rgba(
-                            Appearance.colors.colPrimary.r,
-                            Appearance.colors.colPrimary.g,
-                            Appearance.colors.colPrimary.b,
-                            0.46)
-                        : Appearance.colors.colOutline
-
-                RowLayout {
-                    id: sessionLayout
-                    anchors.left: parent.left
-                    anchors.right: parent.right
-                    anchors.verticalCenter: parent.verticalCenter
-                    anchors.leftMargin: 12
-                    anchors.rightMargin: 12
-                    spacing: 12
-
-                    Rectangle {
-                        width: 9
-                        height: 9
-                        radius: 5
-                        color: root.sessionHasError || root.sessionStalled
-                            ? Appearance.colors.colError
-                            : RuntimeDiagnosticsSession.pageCurrent
-                                ? Appearance.colors.colPrimary
-                                : Appearance.colors.colSubtext
-                    }
-
-                    StyledText {
-                        textFormat: Text.PlainText
-                        Layout.fillWidth: true
-                        text: root.sessionStateLabel()
-                        color: Appearance.colors.colOnLayer1
-                        font.weight: Font.DemiBold
-                        elide: Text.ElideRight
-                    }
-
-                    StyledText {
-                        textFormat: Text.PlainText
-                        visible: root.samplerRunning
-                            && sessionLayout.width >= 420
-                        text: root.sampleIntervalLabel()
-                        color: Appearance.colors.colSubtext
-                        font.pixelSize: Appearance.font.pixelSize.small
-                    }
-
-                    StyledText {
-                        textFormat: Text.PlainText
-                        text: Translation.tr("Uptime") + " "
-                            + root.formatUptime(
-                                root.systemEvidence?.uptimeSeconds)
-                        color: Appearance.colors.colOnLayer1
-                        font.pixelSize: Appearance.font.pixelSize.small
-                    }
-                }
+                    : root.samplerRunning
+                        ? Appearance.colors.colPrimary
+                        : Appearance.colors.colSubtext
             }
 
             StyledText {
-
                 textFormat: Text.PlainText
-                Layout.fillWidth: true
-                visible: RuntimeDiagnosticsSession.leaseError.length > 0
-                text: Translation.tr("Diagnostics lease error") + " · "
-                    + RuntimeDiagnosticsSession.leaseError
-                color: Appearance.colors.colError
-                font.pixelSize: Appearance.font.pixelSize.small
-                wrapMode: Text.WordWrap
+                text: root.sessionStateLabel()
+                color: Appearance.colors.colOnLayer1
+                font.weight: Font.DemiBold
             }
 
             StyledText {
-
                 textFormat: Text.PlainText
-                Layout.fillWidth: true
-                visible: RuntimeDiagnosticsSession.remoteError.length > 0
-                text: Translation.tr("Runtime bridge error") + " · "
-                    + RuntimeDiagnosticsSession.remoteError
-                color: Appearance.colors.colError
+                text: Translation.tr("Uptime") + " "
+                    + root.formatUptime(
+                        root.systemEvidence?.uptimeSeconds)
+                color: Appearance.colors.colSubtext
                 font.pixelSize: Appearance.font.pixelSize.small
-                wrapMode: Text.WordWrap
+            }
+
+            Item { Layout.fillWidth: true }
+
+            StyledText {
+                textFormat: Text.PlainText
+                visible: statusRow.width >= 620
+                text: String(root.targetCount) + " "
+                    + Translation.tr("targets")
+                color: Appearance.colors.colSubtext
+                font.pixelSize: Appearance.font.pixelSize.small
             }
 
             StyledText {
-
                 textFormat: Text.PlainText
-                Layout.fillWidth: true
-                visible: RuntimeDiagnosticsSession.evidenceError.length > 0
-                text: Translation.tr("Runtime evidence error") + " · "
-                    + RuntimeDiagnosticsSession.evidenceError
-                color: Appearance.colors.colError
+                visible: statusRow.width >= 760
+                text: String(root.discoveryEvidence?.boundaryCount ?? 0)
+                    + " " + Translation.tr("boundaries")
+                color: Appearance.colors.colSubtext
                 font.pixelSize: Appearance.font.pixelSize.small
-                wrapMode: Text.WordWrap
             }
 
             StyledText {
-
                 textFormat: Text.PlainText
-                Layout.fillWidth: true
-                visible: root.samplerError.length > 0
-                text: Translation.tr("Sampler error") + " · "
-                    + root.samplerError
-                color: Appearance.colors.colError
+                visible: statusRow.width >= 900
+                text: String(root.collisionCount) + " "
+                    + Translation.tr("collisions")
+                color: root.collisionCount === 0
+                    ? Appearance.colors.colSubtext
+                    : Appearance.colors.colError
                 font.pixelSize: Appearance.font.pixelSize.small
-                wrapMode: Text.WordWrap
             }
         }
+    }
+
+    StyledText {
+        textFormat: Text.PlainText
+        Layout.fillWidth: true
+        visible: root.primaryError.length > 0
+        text: root.primaryError
+        color: Appearance.colors.colError
+        font.pixelSize: Appearance.font.pixelSize.smallest
+        elide: Text.ElideRight
+        maximumLineCount: 1
     }
 
     BtopDashboard {
         Layout.fillWidth: true
+        compactMode: true
         evidence: root.evidence
         targets: root.runtimeCatalog
         records: root.runtimeRecords
         selectedTargetId: CodeWorkflowSession.selectedTargetId
-        onTargetActivated: (targetId, instanceId) =>
-            CodeWorkflowSession.selectTarget(targetId, instanceId)
-    }
-
-    SettingsCardSection {
-        expanded: true
-        icon: "view_list"
-        title: Translation.tr("Selected target")
-
-        SettingsGroup {
-            BtopTargetInspector {
-                Layout.fillWidth: true
-                descriptor: root.diagnosticsActive
-                    ? CodeWorkflowRuntime.descriptor(
-                        CodeWorkflowSession.selectedTargetId)
-                    : null
-                records: root.runtimeRecords
-                events: root.runtimeSnapshot?.events ?? []
-                selectedInstanceId:
-                    CodeWorkflowSession.selectedInstanceId
-                onInstanceActivated: instanceId =>
-                    CodeWorkflowSession.selectTarget(
-                        CodeWorkflowSession.selectedTargetId,
-                        instanceId)
-                onOpenWorkflowRequested:
-                    SettingsPageRegistry.navigateToKey(
-                        "code-workflow", "")
-            }
-
-            StyledText {
-
-                textFormat: Text.PlainText
-                Layout.fillWidth: true
-                visible: root.showSourceDetails
-                text: Translation.tr("Workflow-owned identities · no synthetic target metrics.")
-                color: Appearance.colors.colSubtext
-                font.pixelSize: Appearance.font.pixelSize.smallest
-                wrapMode: Text.WordWrap
-            }
-        }
-    }
-
-    SettingsCardSection {
-        expanded: true
-        icon: "account_tree"
-        title: Translation.tr("Workflow identity")
-
-        SettingsGroup {
-            Rectangle {
-                Layout.fillWidth: true
-                implicitHeight: identityGrid.implicitHeight + 16
-                radius: Appearance.rounding.normal
-                color: Appearance.colors.colLayer1
-                border.color: root.collisionCount === 0
-                    ? Appearance.colors.colOutline
-                    : Appearance.colors.colError
-
-                GridLayout {
-                    id: identityGrid
-                    anchors.fill: parent
-                    anchors.margins: 8
-                    columns: width >= 680 ? 3 : 1
-                    columnSpacing: 8
-                    rowSpacing: 4
-
-                    Rectangle {
-                        Layout.fillWidth: true
-                        implicitHeight: 52
-                        radius: Appearance.rounding.normal
-                        color: "transparent"
-                        border.width: 0
-
-                        ColumnLayout {
-                            anchors.fill: parent
-                            anchors.margins: 6
-                            spacing: 2
-
-                            StyledText {
-
-                                textFormat: Text.PlainText
-                                text: Translation.tr("Targets")
-                                color: Appearance.colors.colSubtext
-                                font.pixelSize: Appearance.font.pixelSize.small
-                            }
-
-                            StyledText {
-
-                                textFormat: Text.PlainText
-                                text: String(root.targetCount)
-                                color: Appearance.colors.colPrimary
-                                font.weight: Font.DemiBold
-                                font.pixelSize: Appearance.font.pixelSize.large
-                            }
-                        }
-                    }
-
-                    Rectangle {
-                        Layout.fillWidth: true
-                        implicitHeight: 52
-                        radius: Appearance.rounding.normal
-                        color: "transparent"
-                        border.width: 0
-
-                        ColumnLayout {
-                            anchors.fill: parent
-                            anchors.margins: 6
-                            spacing: 2
-
-                            StyledText {
-
-                                textFormat: Text.PlainText
-                                text: Translation.tr("Source boundaries")
-                                color: Appearance.colors.colSubtext
-                                font.pixelSize: Appearance.font.pixelSize.small
-                            }
-
-                            StyledText {
-
-                                textFormat: Text.PlainText
-                                text: root.discoveryEvidence?.status === "ready"
-                                    ? String(root.discoveryEvidence?.boundaryCount ?? 0)
-                                    : "—"
-                                color: Appearance.colors.colPrimary
-                                font.weight: Font.DemiBold
-                                font.pixelSize: Appearance.font.pixelSize.large
-                            }
-                        }
-                    }
-
-                    Rectangle {
-                        Layout.fillWidth: true
-                        implicitHeight: 52
-                        radius: Appearance.rounding.normal
-                        color: "transparent"
-                        border.width: 0
-
-                        ColumnLayout {
-                            anchors.fill: parent
-                            anchors.margins: 6
-                            spacing: 2
-
-                            StyledText {
-
-                                textFormat: Text.PlainText
-                                text: Translation.tr("Identity collisions")
-                                color: Appearance.colors.colSubtext
-                                font.pixelSize: Appearance.font.pixelSize.small
-                            }
-
-                            StyledText {
-
-                                textFormat: Text.PlainText
-                                text: String(root.collisionCount)
-                                color: root.collisionCount === 0
-                                    ? Appearance.colors.colPrimary
-                                    : Appearance.colors.colError
-                                font.weight: Font.DemiBold
-                                font.pixelSize: Appearance.font.pixelSize.large
-                            }
-                        }
-                    }
-                }
-            }
-
-            RippleButton {
-                Layout.alignment: Qt.AlignHCenter
-                implicitWidth: 154
-                implicitHeight: 30
-                buttonRadius: height / 2
-                buttonText: root.showSourceDetails
-                    ? Translation.tr("Hide source details")
-                    : Translation.tr("Source details")
-                colBackground: Appearance.colors.colLayer1
-                colBackgroundHover: Appearance.colors.colLayer1Hover
-                onClicked: root.showSourceDetails = !root.showSourceDetails
-            }
-
-            BtopCoveragePanel {
-                Layout.fillWidth: true
-                visible: root.showSourceDetails
-                status: String(root.discoveryEvidence?.status ?? "idle")
-                boundaryCounts:
-                    root.discoveryEvidence?.boundaryCounts ?? ({})
-                filesScanned: Number(
-                    root.discoveryEvidence?.filesScanned ?? 0)
-                cacheHits: Number(
-                    root.discoveryEvidence?.cacheHits ?? 0)
-            }
-
-            StyledText {
-
-                textFormat: Text.PlainText
-                Layout.fillWidth: true
-                visible: String(root.discoveryEvidence?.error ?? "").length > 0
-                text: Translation.tr("Runtime boundary index error") + " · "
-                    + String(root.discoveryEvidence?.error ?? "")
-                color: Appearance.colors.colError
-                font.pixelSize: Appearance.font.pixelSize.small
-                wrapMode: Text.WordWrap
-            }
-
-            StyledText {
-
-                textFormat: Text.PlainText
-                Layout.fillWidth: true
-                visible: root.showSourceDetails
-                text: root.discoveryEvidence?.status === "ready"
-                    ? Translation.tr("Matched source boundaries") + " · "
-                        + String(root.discoveryEvidence?.reconciliation
-                            ?.matchedBoundaryCount ?? 0)
-                        + "   ·   "
-                        + Translation.tr("Source-only") + " · "
-                        + String(root.discoveryEvidence?.reconciliation
-                            ?.unmatchedBoundaryCount ?? 0)
-                        + "   ·   "
-                        + String(root.discoveryEvidence?.filesScanned ?? 0)
-                        + " " + Translation.tr("QML files")
-                    : Translation.tr("Runtime boundary index") + " · "
-                        + String(root.discoveryEvidence?.status ?? "idle")
-                color: Appearance.colors.colSubtext
-                font.pixelSize: Appearance.font.pixelSize.small
-                wrapMode: Text.WordWrap
-            }
-
-            StyledText {
-
-                textFormat: Text.PlainText
-                Layout.fillWidth: true
-                visible: root.showSourceDetails
-                    && root.discoveryEvidence?.status === "ready"
-                text: Translation.tr("Source boundaries are parser evidence, not proof that a component executed.")
-                color: Appearance.colors.colSubtext
-                font.pixelSize: Appearance.font.pixelSize.smallest
-                wrapMode: Text.WordWrap
-            }
-        }
     }
 }

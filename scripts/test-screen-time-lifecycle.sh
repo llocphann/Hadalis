@@ -54,10 +54,14 @@ require 'Qt.callLater(root._startNextRangeRead)' \
 
 require '(Config.options?.sidebar?.screenTime?.enable ?? false)' \
     'Screen Time must retain the Sidebar opt-in owner'
-require '|| (Config.options?.dashboard?.enable ?? true)' \
+require '(Config.options?.panelFamily ?? "ii") !== "waffle"' \
+    'Dashboard Screen Time ownership must stay limited to the ii panel family'
+require '&& (Config.options?.dashboard?.enable ?? true)' \
     'Dashboard enablement must keep Screen Time tracking alive for Uptime history'
 
-require_in "$shell_root" '|| (Config.options?.dashboard?.enable ?? true)' \
+require_in "$shell_root" '(Config.options?.panelFamily ?? "ii") !== "waffle"' \
+    'shell must limit Dashboard ScreenTime ownership to the ii family'
+require_in "$shell_root" '&& (Config.options?.dashboard?.enable ?? true)' \
     'shell must materialize ScreenTime when Dashboard owns the Uptime tab'
 
 for token in \

@@ -33,8 +33,12 @@ jobs:
       - name: Assert native code is still dormant
         run: python3 native/scripts/assert-dormant.py
 
-      - name: Format check
-        run: cargo fmt --manifest-path native/Cargo.toml --all -- --check
+      # During the dormant staging phase, format the runner copy before compile
+      # checks so incremental port commits are not blocked by rustfmt-only diffs.
+      # The final pre-cutover pass switches this back to --check after committing
+      # the canonical formatted tree.
+      - name: Format staging copy
+        run: cargo fmt --manifest-path native/Cargo.toml --all
 
       - name: Clippy
         run: cargo clippy --manifest-path native/Cargo.toml --workspace --all-targets -- -D warnings

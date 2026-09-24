@@ -39,6 +39,7 @@ Singleton {
     // ── Script paths ──────────────────────────────────────────────────────
     readonly property string parserScript: FileUtils.trimFileProtocol(Qt.resolvedUrl("../../scripts/parse_niri_keybinds.py"))
     readonly property string niriConfigScript: FileUtils.trimFileProtocol(Qt.resolvedUrl("../../scripts/niri-config.py"))
+    readonly property string nativeDispatchPath: FileUtils.trimFileProtocol(Qt.resolvedUrl("../../scripts/native-dispatch"))
 
     // Internal: pending key combos tracked for signal emission
     property string _pendingSetCombo: ""
@@ -57,7 +58,7 @@ Singleton {
             return
         }
         root._pendingSetCombo = keyCombo
-        const args = ["/usr/bin/python3", root.niriConfigScript, "set-bind", keyCombo, action]
+        const args = [root.nativeDispatchPath, "niri", "set-bind", keyCombo, action]
         if (options && options.length > 0)
             args.push("--options", options)
         setBindProcess.command = args
@@ -70,7 +71,7 @@ Singleton {
             return
         }
         root._pendingRemoveCombo = keyCombo
-        removeBindProcess.command = ["/usr/bin/python3", root.niriConfigScript, "remove-bind", keyCombo]
+        removeBindProcess.command = [root.nativeDispatchPath, "niri", "remove-bind", keyCombo]
         removeBindProcess.running = true
     }
 
@@ -119,7 +120,7 @@ Singleton {
     // ── Enriched binds loader (niri-config.py get-binds) ─────────────────
     Process {
         id: enrichedBindsLoader
-        command: ["/usr/bin/python3", root.niriConfigScript, "get-binds"]
+        command: [root.nativeDispatchPath, "niri", "get-binds"]
         running: false
 
         stdout: StdioCollector {

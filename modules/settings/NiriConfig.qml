@@ -178,6 +178,7 @@ ContentPage {
     readonly property bool displayControlsLocked: confirmationPending || applyOutputProcess.running || persistOutputProcess.running
 
     readonly property string scriptPath: Quickshell.shellPath("scripts/niri-config.py")
+    readonly property string nativeDispatchPath: Quickshell.shellPath("scripts/native-dispatch")
     readonly property var keyboardLayoutOptions: [
         { displayName: "US English", value: "us" },
         { displayName: "Spanish", value: "es" },
@@ -469,7 +470,7 @@ ContentPage {
         applyOutputValue = String(value)
         applyRollbackKey = rollbackKey ?? ""
         applyRollbackValue = rollbackValue ?? ""
-        applyOutputProcess.command = ["python3", scriptPath, "apply-output", outputName, `${key}=${String(value)}`]
+        applyOutputProcess.command = [root.nativeDispatchPath, "niri", "apply-output", outputName, `${key}=${String(value)}`]
         applyOutputProcess.running = true
     }
 
@@ -480,7 +481,7 @@ ContentPage {
         persistOutputValue = String(value)
         persistRollbackKey = rollbackKey ?? ""
         persistRollbackValue = rollbackValue ?? ""
-        persistOutputProcess.command = ["python3", scriptPath, "persist-output", outputName, `${key}=${String(value)}`]
+        persistOutputProcess.command = [root.nativeDispatchPath, "niri", "persist-output", outputName, `${key}=${String(value)}`]
         persistOutputProcess.running = true
     }
 
@@ -581,7 +582,7 @@ ContentPage {
         setRequestQueue = nextQueue
         pendingSetSection = request.section
         pendingActionLabel = `${request.section}.${request.key}`
-        setProcess.command = ["python3", scriptPath, "set", request.section, request.key, request.value]
+        setProcess.command = [root.nativeDispatchPath, "niri", "set", request.section, request.key, request.value]
         setProcess.running = true
     }
 
@@ -717,7 +718,7 @@ ContentPage {
     // =====================
     Process {
         id: outputsProcess
-        command: ["python3", root.scriptPath, "outputs"]
+        command: [root.nativeDispatchPath, "niri", "outputs"]
         stdout: StdioCollector {
             id: outputsCollector
             onStreamFinished: {
@@ -738,7 +739,7 @@ ContentPage {
 
     Process {
         id: inputProcess
-        command: ["python3", root.scriptPath, "get-input"]
+        command: [root.nativeDispatchPath, "niri", "get-input"]
         stdout: StdioCollector {
             id: inputCollector
             onStreamFinished: {
@@ -758,7 +759,7 @@ ContentPage {
 
     Process {
         id: layoutProcess
-        command: ["python3", root.scriptPath, "get-layout"]
+        command: [root.nativeDispatchPath, "niri", "get-layout"]
         stdout: StdioCollector {
             id: layoutCollector
             onStreamFinished: {
@@ -778,7 +779,7 @@ ContentPage {
 
     Process {
         id: animationsProcess
-        command: ["python3", root.scriptPath, "get-animations"]
+        command: [root.nativeDispatchPath, "niri", "get-animations"]
         stdout: StdioCollector {
             id: animationsCollector
             onStreamFinished: {
@@ -798,7 +799,7 @@ ContentPage {
 
     Process {
         id: windowRulesProcess
-        command: ["python3", root.scriptPath, "get-window-rules"]
+        command: [root.nativeDispatchPath, "niri", "get-window-rules"]
         stdout: StdioCollector {
             id: windowRulesCollector
             onStreamFinished: {
@@ -818,7 +819,7 @@ ContentPage {
 
     Process {
         id: cursorThemesProcess
-        command: ["python3", root.scriptPath, "list-cursor-themes"]
+        command: [root.nativeDispatchPath, "niri", "list-cursor-themes"]
         stdout: StdioCollector {
             id: cursorThemesCollector
             onStreamFinished: {
@@ -836,7 +837,7 @@ ContentPage {
 
     Process {
         id: validationProcess
-        command: ["python3", root.scriptPath, "validate"]
+        command: [root.nativeDispatchPath, "niri", "validate"]
         stdout: StdioCollector {
             id: validationCollector
             onStreamFinished: {
@@ -856,7 +857,7 @@ ContentPage {
 
     Process {
         id: customizationsProcess
-        command: ["python3", root.scriptPath, "detect-customizations"]
+        command: [root.nativeDispatchPath, "niri", "detect-customizations"]
         stdout: StdioCollector {
             id: customizationsCollector
             onStreamFinished: {

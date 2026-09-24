@@ -14,6 +14,7 @@ ContentPage {
     property string activeSection: "outputs"
 
     readonly property string niriConfigScript: Quickshell.shellPath("scripts/niri-config.py")
+    readonly property string nativeDispatchPath: Quickshell.shellPath("scripts/native-dispatch")
     property bool monitorLayoutBusy: false
     property string monitorLayoutError: ""
     property string monitorLayoutInfo: ""
@@ -371,7 +372,7 @@ ContentPage {
                 y: name === outputName ? y : Math.round(rect.y)
             }
         }
-        monitorLayoutPersist.command = ["python3", niriConfigScript, "persist-layout", JSON.stringify(layout)]
+        monitorLayoutPersist.command = [root.nativeDispatchPath, "niri", "persist-layout", JSON.stringify(layout)]
         monitorLayoutPersist.running = true
     }
 

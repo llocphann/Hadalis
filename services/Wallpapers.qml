@@ -122,8 +122,8 @@ Singleton {
                 return
             }
             backdropShadowSyncProcess.command = [
-                "/usr/bin/python3",
-                Quickshell.shellPath("scripts/niri-config.py"),
+                Quickshell.shellPath("scripts/native-dispatch"),
+                "niri",
                 "sync-backdrop-overview-shadow",
                 root.backdropOnlyShadowOverrideWanted ? "on" : "off"
             ]

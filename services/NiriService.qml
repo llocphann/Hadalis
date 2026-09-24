@@ -14,6 +14,7 @@ Singleton {
     id: root
 
     readonly property string socketPath: Quickshell.env("NIRI_SOCKET")
+    readonly property string nativeDispatchPath: Quickshell.shellPath("scripts/native-dispatch")
 
     property var workspaces: ({})
     property var allWorkspaces: []
@@ -130,8 +131,8 @@ Singleton {
     Process {
         id: overviewHotCornersProcess
         command: [
-            "/usr/bin/python3",
-            Quickshell.shellPath("scripts/niri-config.py"),
+            root.nativeDispatchPath,
+            "niri",
             "get-hot-corners"
         ]
 

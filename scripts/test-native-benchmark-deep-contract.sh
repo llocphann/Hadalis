@@ -25,6 +25,10 @@ grep -Fq -- 'bash $ROOT_DIR/scripts/benchmark-python-vs-rust.sh --restore' "$har
 grep -Fq -- 'INIR_BENCH_MPD_SNAPSHOT=1' "$wrapper"     || fail "wrapper no longer enables isolated MPD snapshot mode"
 grep -Fq -- 'Deep MPD snapshot:' "$wrapper"     || fail "full report no longer records whether deep mode ran"
 
+grep -Fq -- '--niri-validate' "$harness"     || fail "live Niri validate parity must ignore successful human-readable output"
+grep -Fq -- 'live queue churn tolerated' "$harness"     || fail "live MPD parity must tolerate queue advancement by stable queue IDs"
+grep -Fq -- '[[ "$mpd_parity" == PASS* ]]' "$harness"     || fail "annotated live MPD parity PASS must remain activation-safe"
+
 grep -Fq -- 'MPD FULL SNAPSHOT DEEP BENCHMARK' "$harness"     || fail "harness no longer contains the full snapshot benchmark"
 grep -Fq -- 'keys = ["connected", "musicRoot", "tracks", "playlists", "folders"]' "$harness"     || fail "snapshot parity must stay limited to stable library fields"
 grep -Fq -- 'snapshot_parity_cache="$TMP_ROOT/mpd-snapshot-parity-cache"' "$harness"     || fail "snapshot parity must remain isolated from the user cache"

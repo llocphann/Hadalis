@@ -13,6 +13,7 @@ NETWORK_PANEL = ROOT / "modules" / "settings" / "widgets" / "BtopNetworkPanel.qm
 RUNTIME_PANEL = ROOT / "modules" / "settings" / "widgets" / "BtopRuntimePanel.qml"
 CORE_GRID = ROOT / "modules" / "settings" / "widgets" / "BtopCoreGrid.qml"
 PROCESS_TABLE = ROOT / "modules" / "settings" / "widgets" / "BtopProcessTable.qml"
+ACTIVITY_TABLE = ROOT / "modules" / "settings" / "widgets" / "BtopActivityTable.qml"
 INTERFACE_TABLE = ROOT / "modules" / "settings" / "widgets" / "BtopInterfaceTable.qml"
 TARGET_TABLE = ROOT / "modules" / "settings" / "widgets" / "BtopTargetTable.qml"
 TARGET_INSPECTOR = ROOT / "modules" / "settings" / "widgets" / "BtopTargetInspector.qml"
@@ -48,6 +49,7 @@ def main() -> None:
     runtime_panel = RUNTIME_PANEL.read_text(encoding="utf-8")
     core_grid = CORE_GRID.read_text(encoding="utf-8")
     process_table = PROCESS_TABLE.read_text(encoding="utf-8")
+    activity_table = ACTIVITY_TABLE.read_text(encoding="utf-8")
     interface_table = INTERFACE_TABLE.read_text(encoding="utf-8")
     target_table = TARGET_TABLE.read_text(encoding="utf-8")
     target_inspector = TARGET_INSPECTOR.read_text(encoding="utf-8")
@@ -56,6 +58,7 @@ def main() -> None:
             "shared Diagnostics widgets module")
 
     for widget in (
+        "BtopActivityTable.qml",
         "BtopMetricPanel.qml",
         "BtopSparkline.qml",
         "BtopCoreGrid.qml",
@@ -89,9 +92,14 @@ def main() -> None:
         'Translation.tr("Diagnostics live")',
         "id: compactMetrics",
         "visible: root.compactMode",
-        "columns: width >= 720 ? 3 : 2",
+        "columns: width >= 900 ? 4 : 2",
+        "id: compactAttribution",
+        "BtopActivityTable {",
+        "BtopProcessTable {",
+        "compactMode: true",
+        "events: root.events",
         "id: compactRuntimeStrip",
-        "graphHeight: 14",
+        "graphHeight: 12",
         'root.historyValues("systemCpuPercent")',
         'root.historyValues("systemSwapPercent")',
         'root.historyValues("shellGpuPeakPercent")',
@@ -123,6 +131,8 @@ def main() -> None:
         require(text, "evidence: root.evidence", f"{source} shared diagnostics evidence")
         require(text, "targets: root.runtimeCatalog", f"{source} Workflow target catalog")
         require(text, "records: root.runtimeRecords", f"{source} Workflow runtime records")
+        require(text, "events: root.runtimeSnapshot?.events ?? []",
+                f"{source} Workflow lifecycle event evidence")
         forbid(text, 'buttonText: root.showSourceDetails',
                f"{source} must not expose source-details expansion")
         forbid(text, 'buttonText: root.showDetails',
@@ -234,8 +244,35 @@ def main() -> None:
         "readonly property var processDepths: root.buildProcessDepths()",
         "function buildProcessDepths(): var",
         "readonly property int processDepth:",
+        "property bool compactMode: false",
+        "root.compactMode ? 30 : 38",
+        'Translation.tr("Shell processes")',
+        "visible: !root.compactMode",
     ):
-        require(process_table, token, "BtopProcessTable.qml process depth cache")
+        require(process_table, token,
+                "BtopProcessTable.qml compact real-process evidence")
+
+    for token in (
+        'text: Translation.tr("QML activity")',
+        'Translation.tr("lifecycle · not CPU/RAM")',
+        "function buildActivityRows(): var",
+        "row.resident += 1",
+        "row.visible += 1",
+        "row.events += 1",
+        "right.events - left.events",
+        "property int maxRows: 4",
+    ):
+        require(activity_table, token,
+                "BtopActivityTable.qml truthful lifecycle activity")
+
+    for forbidden in (
+        "formatPercent(",
+        "valuesKiB",
+        "cpuPercent",
+        "memoryPercent",
+    ):
+        forbid(activity_table, forbidden,
+               "QML activity must never masquerade as per-component resources")
 
     for source, text in (
         ("BtopProcessTable.qml", process_table),

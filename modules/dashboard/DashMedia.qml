@@ -8,10 +8,10 @@ import qs.modules.common.widgets
 import qs.modules.mediaControls
 
 /**
- * Dashboard Media uses the same PlayerControl + CAVA + Equalizer contract as
- * the Bar/Sidebar media surfaces. Keep this file as an owner/composition layer;
- * transport, artwork, seek UI and visualizer belong to PlayerControl so those
- * surfaces cannot drift into separate media designs again.
+ * Dashboard Media reuses the canonical PlayerControl transport/artwork/seek
+ * surface and the shared EqualizerPanel. The media card intentionally does not
+ * run a CAVA visualizer: DSP visualization already belongs to EqualizerPanel,
+ * so the player surface stays quiet and avoids duplicate audio analysis.
  */
 DashCard {
     id: root
@@ -26,12 +26,6 @@ DashCard {
     readonly property MprisPlayer player: MprisController.activePlayer
     readonly property bool hasPlayer: root.player !== null
     readonly property bool isPlaying: root.player?.isPlaying ?? false
-
-    CavaProcess {
-        id: dashMediaCava
-        active: root.presentationActive && root.hasPlayer && root.isPlaying
-        sampleCount: 64
-    }
 
     ColumnLayout {
         Layout.fillWidth: true
@@ -56,9 +50,8 @@ DashCard {
                 active: root.hasPlayer
                 sourceComponent: PlayerControl {
                     player: root.player
-                    visualizerPoints: dashMediaCava.points
-                    visualizerMaxValue:
-                        Math.max(1, dashMediaCava.normalizationCeiling)
+                    visualizerPoints: []
+                    showVisualizer: false
                     compactLayout: true
                     radius: Appearance.rounding.normal
                 }

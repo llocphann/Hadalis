@@ -372,9 +372,10 @@ if ! command_exists cargo; then
     echo "Install Rust/cargo, then rerun this script."
     exit 2
 fi
-run_gate "cargo release build" 3     cargo build --manifest-path native/Cargo.toml --release --workspace
-run_gate "cargo unit tests" 4     cargo test --manifest-path native/Cargo.toml --workspace --all-targets
-run_gate "cargo clippy" 5     cargo clippy --manifest-path native/Cargo.toml --workspace --all-targets -- -D warnings
+run_gate "cargo rustfmt" 3     cargo fmt --manifest-path native/Cargo.toml --all -- --check
+run_gate "cargo release build" 4     cargo build --locked --manifest-path native/Cargo.toml --release --workspace
+run_gate "cargo unit tests" 5     cargo test --locked --manifest-path native/Cargo.toml --workspace --all-targets
+run_gate "cargo clippy" 6     cargo clippy --locked --manifest-path native/Cargo.toml --workspace --all-targets -- -D warnings
 run_gate "native boundary guard" 6 python3 native/scripts/assert-dormant.py
 run_gate "native selector contract" 7 bash scripts/test-native-selector-contract.sh
 run_gate "native selector behavior" 7 bash scripts/test-native-selector-behavior.sh

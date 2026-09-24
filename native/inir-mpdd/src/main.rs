@@ -2102,11 +2102,11 @@ mod tests {
     fn artwork_filename_priority_matches_legacy_lookup_order() {
         assert_eq!(art_filename_rank("cover.jpg"), Some(0));
         assert_eq!(art_filename_rank("COVER.PNG"), Some(2));
+        assert_eq!(art_filename_rank("folder.jpg"), Some(ART_EXTENSIONS.len()));
         assert_eq!(
-            art_filename_rank("folder.jpg"),
-            Some(ART_EXTENSIONS.len())
+            art_filename_rank("front.avif"),
+            Some(2 * ART_EXTENSIONS.len() + 4)
         );
-        assert_eq!(art_filename_rank("front.avif"), Some(2 * ART_EXTENSIONS.len() + 4));
         assert_eq!(art_filename_rank("cover.txt"), None);
         assert_eq!(art_filename_rank("my-cover.jpg"), None);
     }

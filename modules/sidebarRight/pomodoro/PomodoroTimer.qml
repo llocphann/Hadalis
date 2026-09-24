@@ -192,12 +192,14 @@ Item {
                         : 0
                 property real displayProgress: rawProgress
                 readonly property real orbitStrokeWidth: 5
-                readonly property real arcCenterX: Math.round(width / 2)
-                readonly property real arcCenterY: Math.round(height / 2) - 4
+                // Preserve sub-pixel geometry for the curve renderer instead
+                // of quantizing the ellipse to whole pixels at compact sizes.
+                readonly property real arcCenterX: width / 2
+                readonly property real arcCenterY: height / 2 - 4
                 readonly property real arcRadiusX:
-                    Math.round(Math.max(48, Math.min(width / 2 - 14, 84)))
+                    Math.max(48, Math.min(width / 2 - 14, 84))
                 readonly property real arcRadiusY:
-                    Math.round(Math.max(34, arcRadiusX * 0.66))
+                    Math.max(34, arcRadiusX * 0.66)
                 readonly property real startAngle: 155
                 readonly property real sweepAngle: 230
 
@@ -212,6 +214,7 @@ Item {
                 Shape {
                     anchors.fill: parent
                     antialiasing: true
+                    preferredRendererType: Shape.CurveRenderer
 
                     ShapePath {
                         fillColor: "transparent"

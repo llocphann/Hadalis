@@ -24,6 +24,7 @@ material_page = read("modules/settings/RuntimeDiagnosticsConfig.qml")
 waffle_page = read("modules/waffle/settings/pages/WDiagnosticsPage.qml")
 dashboard = read("modules/settings/widgets/BtopDashboard.qml")
 sampler = read("scripts/runtime-diagnostics-sampler.py")
+dispatch = read("scripts/native-dispatch")
 
 for token in (
     "readonly property int leaseTtlMs: 6000",
@@ -49,7 +50,8 @@ for token in (
     "function snapshot(): var",
     "id: diagnosticsSampler",
     "running: root.samplingEnabled",
-    'Quickshell.shellPath("scripts/runtime-diagnostics-sampler.py")',
+    'readonly property string nativeDispatchPath: Quickshell.shellPath("scripts/native-dispatch")',
+    'root.nativeDispatchPath, "diagnostics",',
     '"--pid", String(Quickshell.processId)',
     '"--interval-ms", String(root.sampleIntervalMs)',
     "sampleIntervalMs: root.sampleIntervalMs",
@@ -57,6 +59,13 @@ for token in (
     "stdout: SplitParser {",
 ):
     require(diagnostics, token, "RuntimeDiagnostics lease authority is incomplete")
+
+
+require(
+    dispatch,
+    'exec /usr/bin/env python3 "$ROOT_DIR/scripts/runtime-diagnostics-sampler.py" "$@"',
+    "native selector must retain the reversible Python Diagnostics fallback",
+)
 
 require(
     diagnostics,

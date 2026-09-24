@@ -330,15 +330,6 @@ ContentPage {
                     }
                 }
 
-                SettingsSwitch {
-                    buttonIcon: "av_timer"
-                    text: Translation.tr("Screen Time")
-                    Component.onCompleted: checked = rightSidebarWidgets.isEnabled("screentime")
-                    onClicked: {
-                        rightSidebarWidgets.setWidget("screentime", checked)
-                        Config.setNestedValue("sidebar.screenTime.enable", checked)
-                    }
-                }
             }
 
             ContentSubsection {

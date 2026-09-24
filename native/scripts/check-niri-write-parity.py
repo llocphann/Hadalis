@@ -102,6 +102,7 @@ overview {
 }
 
 COMMANDS = [
+    ["validate"],
     [
         "apply-output",
         "eDP-1",
@@ -234,7 +235,11 @@ def main() -> int:
 set -eu
 printf '%s\\n' "$*" >> "$MOCK_NIRI_LOG"
 case "${1:-}" in
-    validate) exit 0 ;;
+    validate)
+        printf '%s\\n' 'fixture config valid'
+        printf '%s\\n' 'fixture validator note' >&2
+        exit 0
+        ;;
     msg) printf '%s\\n' 'mock-ok'; exit 0 ;;
     *) printf '%s\\n' 'unexpected niri invocation' >&2; exit 2 ;;
 esac
@@ -278,7 +283,7 @@ exit 0
             normalized_log(temp / "rust-side.log", rs_home),
         )
 
-    print("PASS: isolated Niri write commands match Python without touching live config")
+    print("PASS: isolated Niri validate/write commands match Python without touching live config")
     return 0
 
 

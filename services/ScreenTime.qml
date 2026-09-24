@@ -122,11 +122,24 @@ Singleton {
 
     Timer {
         id: pollTimer
-        interval: (Config.options?.sidebar?.screenTime?.pollIntervalSeconds ?? 5) * 1000
+        // Niri focus changes are event-driven below. Keep only a coarse
+        // heartbeat for visible session time and periodic persistence.
+        interval: CompositorService.isNiri
+            ? 30000
+            : (Config.options?.sidebar?.screenTime?.pollIntervalSeconds ?? 5) * 1000
         running: root.enabled && root.ready && root._initialized
         repeat: true
         triggeredOnStart: true
         onTriggered: root._tick()
+    }
+
+    Connections {
+        target: CompositorService.isNiri ? NiriService : null
+        enabled: root.enabled && root.ready && root._initialized && CompositorService.isNiri
+
+        function onActiveWindowChanged(): void {
+            root._tick()
+        }
     }
 
     Timer {
@@ -197,13 +210,16 @@ Singleton {
             return
         }
 
-        if (appId !== root._sessionAppId) {
-            root._sessionAppId = appId
-            root._currentSessionSeconds = 0
-            root._sessionRevision++
-        }
+        const previousAppId = root._sessionAppId
+        const previousAppName = root._currentAppName
+        const appChanged = appId !== previousAppId
 
         if (elapsed <= 0 || elapsed > 60) {
+            if (appChanged) {
+                root._sessionAppId = appId
+                root._currentSessionSeconds = 0
+                root._sessionRevision++
+            }
             root._currentAppId = appId
             root._currentAppName = appName
             return
@@ -212,23 +228,31 @@ Singleton {
         if (!root._todayData)
             root._todayData = _emptyDay(root._currentDate)
 
-        if (appId.length > 0) {
-            root._currentSessionSeconds += elapsed
+        // A focus-change signal arrives after Niri has changed activeWindow.
+        // Attribute the elapsed interval to the previously observed app, then
+        // start the new app's session at this event boundary.
+        const accountedAppId = previousAppId.length > 0 ? previousAppId : appId
+        const accountedAppName = previousAppId.length > 0 ? previousAppName : appName
+        if (accountedAppId.length > 0) {
+            if (!appChanged)
+                root._currentSessionSeconds += elapsed
             root._todayData.totalSeconds += elapsed
 
-            const key = appId.toLowerCase().replace(/[^a-z0-9-]/g, "")
+            const key = accountedAppId.toLowerCase().replace(/[^a-z0-9-]/g, "")
             if (!root._todayData.apps[key])
-                root._todayData.apps[key] = { name: appName, seconds: 0, originalId: appId, hourly: new Array(24).fill(0) }
+                root._todayData.apps[key] = {
+                    name: accountedAppName,
+                    seconds: 0,
+                    originalId: accountedAppId,
+                    hourly: new Array(24).fill(0)
+                }
             const appEntry = root._todayData.apps[key]
             if (!appEntry.originalId)
-                appEntry.originalId = appId
+                appEntry.originalId = accountedAppId
             if (!appEntry.hourly || appEntry.hourly.length !== 24)
                 appEntry.hourly = new Array(24).fill(0)
             appEntry.seconds += elapsed
 
-            // Attribute time to the hour(s) the interval actually spanned, so a
-            // tick that crosses an hour boundary splits correctly instead of
-            // dumping everything into the tick's hour.
             const perHour = _distributeElapsed(intervalStart, now)
             for (const h in perHour) {
                 const secs = perHour[h]
@@ -237,6 +261,12 @@ Singleton {
             }
 
             root._dirty = true
+        }
+
+        if (appChanged) {
+            root._sessionAppId = appId
+            root._currentSessionSeconds = 0
+            root._sessionRevision++
         }
 
         root._currentAppId = appId

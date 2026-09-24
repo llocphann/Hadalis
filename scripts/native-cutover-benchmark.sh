@@ -220,7 +220,10 @@ try:
                     item = dict(item)
                     item.pop("queuePos", None)
                     return item
-                ordered = sorted(shared_ids, key=lambda value: int(value) if value.isdigit() else value)
+                ordered = sorted(
+                    shared_ids,
+                    key=lambda value: (0, int(value)) if value.isdigit() else (1, value),
+                )
                 left["queue"] = [stable_track(left_by_id[key]) for key in ordered]
                 right["queue"] = [stable_track(right_by_id[key]) for key in ordered]
                 success_note = (

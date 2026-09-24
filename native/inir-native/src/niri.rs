@@ -1015,14 +1015,14 @@ fn get_input() -> Result<Outcome> {
     if let Some(value) = quoted_value(&input, "mod-key") { result["general"]["mod_key"] = json!(value); }
     if let Some(value) = quoted_value(&input, "mod-key-nested") { result["general"]["mod_key_nested"] = json!(value); }
 
-    let warp_re = Regex::new(r"(?m)^[ \t]*warp-mouse-to-focus(?:[ \t]+mode=\"([^\"]+)\")?")?;
+    let warp_re = Regex::new(r#"(?m)^[ \t]*warp-mouse-to-focus(?:[ \t]+mode="([^"]+)")?"#)?;
     if let Some(caps) = warp_re.captures(&input) {
         result["general"]["warp_mouse_to_focus"] = json!(true);
         if let Some(mode) = caps.get(1) {
             result["general"]["warp_mouse_to_focus_mode"] = json!(mode.as_str());
         }
     }
-    let focus_re = Regex::new(r"(?m)^[ \t]*focus-follows-mouse(?:[ \t]+max-scroll-amount=\"?([^\" \n]+)\"?)?")?;
+    let focus_re = Regex::new(r#"(?m)^[ \t]*focus-follows-mouse(?:[ \t]+max-scroll-amount="?([^" \n]+)"?)?"#)?;
     if let Some(caps) = focus_re.captures(&input) {
         result["general"]["focus_follows_mouse"] = json!(true);
         if let Some(value) = caps.get(1) {

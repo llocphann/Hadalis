@@ -5,6 +5,7 @@ members = [
     "inir-inputd",
     "inir-mpdd",
     "inir-native",
+    "inir-theme",
 ]
 
 [workspace.package]

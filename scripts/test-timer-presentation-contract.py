@@ -27,16 +27,28 @@ if "CircularProgress {" in pomodoro:
 for token in (
     "import QtQuick.Shapes",
     "id: focusDial",
+    "readonly property real orbitStrokeWidth: 5",
+    "readonly property real arcCenterX: Math.round(width / 2)",
+    "readonly property real arcCenterY: Math.round(height / 2) - 4",
     "readonly property real arcRadiusX:",
     "readonly property real arcRadiusY:",
     "readonly property real startAngle: 155",
     "readonly property real sweepAngle: 230",
     "PathAngleArc {",
     "strokeColor: root._colAccent",
+    "strokeWidth: focusDial.orbitStrokeWidth",
+    "anchors.verticalCenterOffset: root.compactMode ? 9 : 8",
+    "(root.compactMode ? 31 : 34)",
+    "width: 8",
+    "border.width: 1",
+    "border.color: root._colLayer",
     "TimerService.cyclesBeforeLongBreak",
     "index === TimerService.pomodoroCycle",
 ):
     require(pomodoro, token, "Pomodoro orbital focus presentation missing")
+
+if "width: parent.width + 8" in pomodoro:
+    fail("Pomodoro endpoint must not regress to a soft halo marker")
 
 # Countdown intentionally uses a linear segmented runway so Timer and Pomodoro
 # remain recognizably related without sharing the same timer-ring silhouette.

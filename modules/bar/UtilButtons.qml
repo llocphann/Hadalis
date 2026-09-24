@@ -198,7 +198,7 @@ Item {
             sourceComponent: CircleUtilButton {
                 Layout.alignment: Qt.AlignVCenter
                 Accessible.name: Translation.tr("Pick color")
-                onClicked: ShellExec.execDetachedArgs(["/usr/bin/hyprpicker", "-a"], "Pick color")
+                onClicked: Quickshell.execDetached([Quickshell.shellPath("scripts/inir"), "colorpicker"])
                 MaterialSymbol {
                     horizontalAlignment: Qt.AlignHCenter
                     fill: 1

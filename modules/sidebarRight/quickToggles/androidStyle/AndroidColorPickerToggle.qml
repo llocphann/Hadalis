@@ -24,7 +24,7 @@ AndroidQuickToggleButton {
         interval: 300
         repeat: false 
         onTriggered: {
-            ShellExec.execDetachedArgs(["/usr/bin/hyprpicker", "-a"], "Pick color")
+            Quickshell.execDetached([Quickshell.shellPath("scripts/inir"), "colorpicker"])
         }
     }
 

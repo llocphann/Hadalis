@@ -21,8 +21,8 @@ def forbid(source: str, token: str, label: str) -> None:
 # separate artwork/progress/transport implementations.
 for token in (
     "PlayerControl {",
-    "visualizerPoints: dashMediaCava.points",
-    "visualizerMaxValue:",
+    "visualizerPoints: []",
+    "showVisualizer: false",
     "compactLayout: true",
     "EqualizerPanel {",
 ):
@@ -35,7 +35,9 @@ for token in (
 ):
     require(popup, token, "Bar popup shared media")
 
-# PlayerControl is the owner of all five transport actions, progress and CAVA.
+# PlayerControl remains the owner of all five transport actions and progress.
+# Its optional visualizer stays available for other owners, but Dashboard opts
+# out because EqualizerPanel already owns the live analyzer.
 for token in (
     'buttonText: Translation.tr("Shuffle")',
     'buttonText: Translation.tr("Previous")',
@@ -47,13 +49,15 @@ for token in (
 ):
     require(player, token, "Canonical PlayerControl")
 
-# Reintroducing local Dashboard transport/artwork/visualizer code would make the
-# surfaces drift again.
+# Reintroducing local Dashboard transport/artwork/visualizer code or a second
+# CAVA subscription would make the surfaces drift again.
 for token in (
     "component MediaButton:",
     "GE.OpacityMask",
     "id: artImage",
     "WaveVisualizer {",
+    "CavaProcess {",
+    "dashMediaCava",
     "MprisController.toggleShuffleForPlayer",
     "MprisController.cycleLoopForPlayer",
 ):
@@ -72,8 +76,8 @@ require(dash, "active: root.hasPlayer",
         "Dashboard shared-player visual residency")
 forbid(dash, "active: root.presentationActive && root.hasPlayer",
        "Dashboard shared-player visual residency")
-require(dash, "active: root.presentationActive && root.hasPlayer && root.isPlaying",
-        "Dashboard CAVA lifecycle")
+require(dash, "showVisualizer: false",
+        "Dashboard decorative visualizer suppression")
 require(dash, "active: root.presentationActive && root.visible",
         "Dashboard equalizer lifecycle")
 

@@ -191,10 +191,12 @@ Item {
                                 / TimerService.pomodoroLapDuration))
                         : 0
                 property real displayProgress: rawProgress
-                readonly property real arcRadius:
-                    Math.max(36, Math.min(width, height) / 2 - 13)
-                readonly property real startAngle: 135
-                readonly property real sweepAngle: 270
+                readonly property real arcRadiusX:
+                    Math.max(48, Math.min(width / 2 - 12, 86))
+                readonly property real arcRadiusY:
+                    Math.max(36, arcRadiusX * 0.72)
+                readonly property real startAngle: 155
+                readonly property real sweepAngle: 230
 
                 Behavior on displayProgress {
                     enabled: Appearance.animationsEnabled
@@ -217,8 +219,8 @@ Item {
                         PathAngleArc {
                             centerX: focusDial.width / 2
                             centerY: focusDial.height / 2
-                            radiusX: focusDial.arcRadius
-                            radiusY: focusDial.arcRadius
+                            radiusX: focusDial.arcRadiusX
+                            radiusY: focusDial.arcRadiusY
                             startAngle: focusDial.startAngle
                             sweepAngle: focusDial.sweepAngle
                         }
@@ -233,8 +235,8 @@ Item {
                         PathAngleArc {
                             centerX: focusDial.width / 2
                             centerY: focusDial.height / 2
-                            radiusX: focusDial.arcRadius
-                            radiusY: focusDial.arcRadius
+                            radiusX: focusDial.arcRadiusX
+                            radiusY: focusDial.arcRadiusY
                             startAngle: focusDial.startAngle
                             sweepAngle: focusDial.sweepAngle
                                 * focusDial.displayProgress
@@ -253,9 +255,9 @@ Item {
                     color: root._colAccent
                     visible: focusDial.displayProgress > 0.002
                     x: focusDial.width / 2
-                        + focusDial.arcRadius * Math.cos(angle) - width / 2
+                        + focusDial.arcRadiusX * Math.cos(angle) - width / 2
                     y: focusDial.height / 2
-                        + focusDial.arcRadius * Math.sin(angle) - height / 2
+                        + focusDial.arcRadiusY * Math.sin(angle) - height / 2
 
                     Rectangle {
                         anchors.centerIn: parent

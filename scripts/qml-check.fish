@@ -187,9 +187,9 @@ if test $scan_all -eq 1; and test "$scan_root" = "$project_root"
         set fatal_errors (math $fatal_errors + 1)
     end
 
-    set -l perimeter_runtime_health_contract "$project_root/scripts/test-perimeter-runtime-health-contract.sh"
-    if not bash "$perimeter_runtime_health_contract"
-        echo "ERROR: Connected Perimeter runtime health contract failed" >&2
+    set -l perimeter_retirement_contract "$project_root/scripts/test-perimeter-retirement-contract.sh"
+    if not bash "$perimeter_retirement_contract"
+        echo "ERROR: Connected Perimeter retirement contract failed" >&2
         set fatal_errors (math $fatal_errors + 1)
     end
 

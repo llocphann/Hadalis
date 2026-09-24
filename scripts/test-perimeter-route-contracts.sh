@@ -28,8 +28,8 @@ done
 
 grep -Fq 'StyledPopup {' "$media" \
     || fail 'Media expanded presentation must use StyledPopup'
-grep -Fq 'keyboardFocus: true' "$media" \
-    || fail 'Media expanded presentation must preserve focused connected-popup routing'
+grep -Fq 'keyboardFocus: root.barMediaPopupVisible' "$media" \
+    || fail 'Media expanded presentation must request keyboard focus only for an explicitly opened popup'
 grep -Fq 'StyledPopup {' "$weather_popup" \
     || fail 'Weather hover presentation must use StyledPopup'
 grep -Fq 'GlobalStates.sidebarRightRequestedWidget = "weather"' "$weather_bar" \

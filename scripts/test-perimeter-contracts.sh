@@ -148,7 +148,7 @@ for token in \
     'id: dockIrisSurface' \
     'edge: root.position' \
     'ownerThickness: dockRoot.screenEdgeThickness' \
-    'dockMouseArea.x + dockBackground.x + dockVisualBackground.x' \
+    'dockMouseArea.x + dockBackground.x + dockConnectedBody.x' \
     'screenEdge?.physicalShadow?.enabled ?? true' \
     'screenEdge?.physicalShadow?.size ?? 15' \
     'screenEdge?.physicalShadow?.opacity ?? 0.70' \
@@ -182,9 +182,7 @@ for token in \
     'function barOwnsEdge(outputName, edge)' \
     'GlobalStates.widgetEditMode' \
     'Config.options?.bar?.screenList' \
-    '&& !root.barOwnsEdge(outputName, edge)' \
-    'readonly property bool adjacentBarOwned:' \
-    '&& !adjacentBarOwned'; do
+    '&& !root.barOwnsEdge(outputName, edge)'; do
     grep -Fq "$token" "$screen_edge" \
         || fail "Screen Edge must suppress the Bar-owned edge/corners and share the Material Bar surface token: $token"
 done

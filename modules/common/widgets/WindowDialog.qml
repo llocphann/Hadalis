@@ -54,7 +54,7 @@ Rectangle {
         ? Appearance.animationCurves.emphasizedDecel
         : Appearance.animationCurves.emphasizedAccel
 
-    radius: Appearance.rounding.screenRounding - Appearance.sizes.hyprlandGapsOut + 1
+    radius: Appearance.rounding.screenRounding - Appearance.sizes.surfaceGap + 1
 
     MouseArea { // Clicking outside the dialog should dismiss
         anchors.fill: parent

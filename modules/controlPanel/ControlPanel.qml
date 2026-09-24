@@ -15,14 +15,14 @@ Scope {
     readonly property var dockConfig: Config.options?.dock ?? ({})
     readonly property bool dockEnabled: dockConfig?.enable ?? false
     readonly property real safePadding: Math.max(
-        Appearance.sizes.hyprlandGapsOut * 2,
+        Appearance.sizes.surfaceGap * 2,
         Math.round(Math.min(screenWidth, screenHeight) * 0.02)
     )
     readonly property real topReservedSpace: safePadding
-        + (!(Config.options?.bar?.bottom ?? false) ? Appearance.sizes.baseBarHeight + Appearance.sizes.hyprlandGapsOut * 2 : 0)
+        + (!(Config.options?.bar?.bottom ?? false) ? Appearance.sizes.baseBarHeight + Appearance.sizes.surfaceGap * 2 : 0)
         + ((dockEnabled && dockConfig?.position === "top") ? ((dockConfig?.height ?? 60) + safePadding) : 0)
     readonly property real bottomReservedSpace: safePadding
-        + ((Config.options?.bar?.bottom ?? false) ? Appearance.sizes.baseBarHeight + Appearance.sizes.hyprlandGapsOut * 2 : 0)
+        + ((Config.options?.bar?.bottom ?? false) ? Appearance.sizes.baseBarHeight + Appearance.sizes.surfaceGap * 2 : 0)
         + ((dockEnabled && dockConfig?.position === "bottom") ? ((dockConfig?.height ?? 60) + safePadding) : 0)
     readonly property real leftReservedSpace: safePadding
         + ((dockEnabled && dockConfig?.position === "left") ? ((dockConfig?.width ?? dockConfig?.height ?? 60) + safePadding) : 0)

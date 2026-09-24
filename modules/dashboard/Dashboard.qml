@@ -48,10 +48,10 @@ Scope {
     readonly property real screenWidth: panelRoot.screen?.width ?? 1920
     readonly property real screenHeight: panelRoot.screen?.height ?? 1080
     readonly property real safePadding: Math.max(
-        Appearance.sizes.hyprlandGapsOut * 2,
+        Appearance.sizes.surfaceGap * 2,
         Math.round(Math.min(screenWidth, screenHeight) * 0.02)
     )
-    readonly property real barReservedSpace: Appearance.sizes.baseBarHeight + Appearance.sizes.hyprlandGapsOut * 2
+    readonly property real barReservedSpace: Appearance.sizes.baseBarHeight + Appearance.sizes.surfaceGap * 2
     readonly property real topReservedSpace: safePadding
         + (!(Config.options?.bar?.bottom ?? false) ? barReservedSpace : 0)
     readonly property real bottomReservedSpace: safePadding

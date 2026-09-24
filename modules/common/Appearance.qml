@@ -1634,7 +1634,7 @@ Singleton {
         property real elevationMargin: Math.round(10 * root.fontSizeScale)
         property real fabShadowRadius: 5
         property real fabHoveredShadowRadius: 7
-        property real hyprlandGapsOut: 5
+        property real surfaceGap: 5
         property real mediaControlsWidth: Math.round(380 * root.fontSizeScale)
         property real mediaControlsHeight: Math.round(150 * root.fontSizeScale)
         property real notificationPopupWidth: Math.round(410 * root.fontSizeScale)

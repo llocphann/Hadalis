@@ -126,7 +126,7 @@ AbstractBackgroundWidget {
         property color colOnLayer0: root.mediaSurfaceInk
         property color colSubtext: root.mediaSurfaceInkMuted
     }
-    property real popupRounding: Appearance.rounding.screenRounding - Appearance.sizes.hyprlandGapsOut + 1
+    property real popupRounding: Appearance.rounding.screenRounding - Appearance.sizes.surfaceGap + 1
     resizableAxes: ({ uniform: "widgetScale" })
     resizeMinWidth: 160
     resizeMinHeight: 80

@@ -471,7 +471,7 @@ Scope {
 
         Rectangle {
             id: panel
-            width: root.skewStyle ? Math.min(root.skewPanelWidth, parent.width - Appearance.sizes.hyprlandGapsOut * 2)
+            width: root.skewStyle ? Math.min(root.skewPanelWidth, parent.width - Appearance.sizes.surfaceGap * 2)
                 : (root.listStyle ? 420 : (root.compactStyle ? compactRow.implicitWidth + 40 : root.panelWidth))
             height: root.compactStyle ? 100 : undefined
             color: "transparent"
@@ -509,11 +509,11 @@ Scope {
             anchors.verticalCenter: parent.verticalCenter
 
             implicitHeight: root.skewStyle
-                ? Math.min(cardContainer.height + Appearance.sizes.hyprlandGapsOut * 2, parent.height - Appearance.sizes.hyprlandGapsOut * 2)
+                ? Math.min(cardContainer.height + Appearance.sizes.surfaceGap * 2, parent.height - Appearance.sizes.surfaceGap * 2)
                 : (root.listStyle 
-                ? Math.min(listContent.implicitHeight, parent.height - Appearance.sizes.hyprlandGapsOut * 2)
-                : (root.compactStyle ? 100 : Math.min(contentColumn.implicitHeight + Appearance.sizes.hyprlandGapsOut * 2,
-                                      parent.height - Appearance.sizes.hyprlandGapsOut * 2)))
+                ? Math.min(listContent.implicitHeight, parent.height - Appearance.sizes.surfaceGap * 2)
+                : (root.compactStyle ? 100 : Math.min(contentColumn.implicitHeight + Appearance.sizes.surfaceGap * 2,
+                                      parent.height - Appearance.sizes.surfaceGap * 2)))
 
             Rectangle {
                 id: panelBackground
@@ -524,7 +524,7 @@ Scope {
                     : Appearance.zzzEverywhere ? Appearance.zzz.panelRadius
                     : Appearance.angelEverywhere ? Appearance.angel.roundingLarge
                     : Appearance.inirEverywhere ? Appearance.inir.roundingLarge
-                    : (Appearance.rounding.screenRounding - Appearance.sizes.hyprlandGapsOut + 1)
+                    : (Appearance.rounding.screenRounding - Appearance.sizes.surfaceGap + 1)
                 Behavior on radius { enabled: Appearance.animationsEnabled; NumberAnimation { duration: Appearance.animation.elementResize.duration; easing.type: Appearance.animation.elementResize.type; easing.bezierCurve: Appearance.animation.elementResize.bezierCurve } }
                 color: {
                     if (Appearance.zzzEverywhere || Appearance.regaliaEverywhere)
@@ -1463,7 +1463,7 @@ Scope {
                 visible: !root.compactStyle && !root.listStyle && !root.skewStyle
                 z: 1
                 anchors.fill: parent
-                anchors.margins: Appearance.sizes.hyprlandGapsOut
+                anchors.margins: Appearance.sizes.surfaceGap
                 spacing: Appearance.sizes.spacingSmall
 
                 ListView {
@@ -1500,7 +1500,7 @@ Scope {
                         Rectangle {
                             id: highlightBase
                             anchors.fill: parent
-                            radius: Appearance.rounding.screenRounding - Appearance.sizes.hyprlandGapsOut
+                            radius: Appearance.rounding.screenRounding - Appearance.sizes.surfaceGap
                             visible: selected
                             color: Appearance.colors.colLayer1
                         }

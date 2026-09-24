@@ -748,10 +748,7 @@ fn sample(pid: i32, previous: Option<&SampleState>) -> Result<(Value, SampleStat
     if slow_state.drm.is_none() {
         slow_state.drm = Some(read_drm(pid));
     }
-    let memory_now = slow_state
-        .memory
-        .as_ref()
-        .expect("slow memory initialized");
+    let memory_now = slow_state.memory.as_ref().expect("slow memory initialized");
     let drm_now = slow_state.drm.as_ref().expect("slow drm initialized");
 
     let elapsed_ns = previous

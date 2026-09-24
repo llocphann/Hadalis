@@ -24,6 +24,9 @@ Bar.StyledPopup {
     property bool entryBridgeHeld: false
     property int selectedMainTab: 0
     property int selectedNotesTab: 0
+    // Notes/To-do is a transient child tray of the large Notes & To-do tab.
+    // Keep it out of ColumnLayout geometry so showing it never pushes content.
+    property bool notesTrayOpen: false
     readonly property bool todoDialogOpen: todoViewLoader.item?.showAddDialog ?? false
     property string cornerAttachmentEdge: "bottom"
     property real cornerAttachmentThickness: Math.max(1, Math.min(32,
@@ -72,12 +75,29 @@ Bar.StyledPopup {
         root.editorFocused = false
     }
 
+    function holdNotesTray(): void {
+        notesTrayHideTimer.stop()
+        if (root.selectedMainTab === 0)
+            root.notesTrayOpen = true
+    }
+
+    function releaseNotesTray(): void {
+        if (root.notesTrayOpen)
+            notesTrayHideTimer.restart()
+    }
+
     onRequestClose: {
         root.leaveEditorMode()
         if (todoViewLoader.item)
             todoViewLoader.item.showAddDialog = false
     }
-    onSelectedMainTabChanged: root.leaveEditorMode()
+    onSelectedMainTabChanged: {
+        root.leaveEditorMode()
+        if (root.selectedMainTab !== 0) {
+            notesTrayHideTimer.stop()
+            root.notesTrayOpen = false
+        }
+    }
     onSelectedNotesTabChanged: root.leaveEditorMode()
     onActiveChanged: {
         if (active) {
@@ -113,6 +133,13 @@ Bar.StyledPopup {
         onTriggered: root.entryBridgeHeld = false
     }
 
+    property QtObject _notesTrayHideTimer: Timer {
+        id: notesTrayHideTimer
+        interval: 140
+        repeat: false
+        onTriggered: root.notesTrayOpen = false
+    }
+
     Item {
         id: contentRoot
 
@@ -139,31 +166,96 @@ Bar.StyledPopup {
             anchors.fill: parent
             spacing: 6
 
-            PillTabBar {
-                Layout.alignment: Qt.AlignHCenter
-                Layout.preferredWidth: Math.min(
-                    276, Math.max(180, contentRoot.width - 8))
-                pillHeight: 30
-                currentIndex: root.selectedMainTab
-                tabs: [
-                    { icon: "note_stack", label: Translation.tr("Notes & To-do") },
-                    { icon: "timer", label: Translation.tr("Timers") }
-                ]
-                onTabSelected: index => root.selectedMainTab = index
-            }
+            Item {
+                id: tabDock
+                Layout.fillWidth: true
+                implicitHeight: 30
+                z: 20
+                clip: false
 
-            PillTabBar {
-                Layout.alignment: Qt.AlignHCenter
-                Layout.preferredWidth: Math.min(
-                    248, Math.max(160, contentRoot.width - 24))
-                visible: root.selectedMainTab === 0
-                pillHeight: 28
-                currentIndex: root.selectedNotesTab
-                tabs: [
-                    { icon: "edit_note", label: Translation.tr("Quick Notes") },
-                    { icon: "checklist", label: Translation.tr("To-do") }
-                ]
-                onTabSelected: index => root.selectedNotesTab = index
+                PillTabBar {
+                    id: mainTabs
+                    anchors.top: parent.top
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    width: Math.min(276, Math.max(
+                        180, contentRoot.width - 8))
+                    pillHeight: 30
+                    currentIndex: root.selectedMainTab
+                    tabs: [
+                        { icon: "note_stack", label: Translation.tr("Notes & To-do") },
+                        { icon: "timer", label: Translation.tr("Timers") }
+                    ]
+                    onTabSelected: index => root.selectedMainTab = index
+
+                    HoverHandler {
+                        id: mainTabsHover
+                        enabled: root.selectedMainTab === 0
+                        onHoveredChanged: {
+                            if (hovered)
+                                root.holdNotesTray()
+                            else
+                                root.releaseNotesTray()
+                        }
+                    }
+                }
+
+                Item {
+                    id: notesTray
+                    width: Math.min(248, Math.max(
+                        160, contentRoot.width - 24))
+                    height: 28
+                    x: (tabDock.width - width) / 2
+                    y: root.notesTrayOpen
+                        ? mainTabs.height + 4
+                        : mainTabs.height - 6
+                    z: 21
+                    opacity: root.notesTrayOpen ? 1 : 0
+                    visible: opacity > 0
+
+                    Behavior on y {
+                        enabled: Appearance.animationsEnabled
+                        NumberAnimation {
+                            duration:
+                                Appearance.animation.elementMoveFast.duration
+                            easing.type:
+                                Appearance.animation.elementMoveFast.type
+                            easing.bezierCurve:
+                                Appearance.animation.elementMoveFast.bezierCurve
+                        }
+                    }
+                    Behavior on opacity {
+                        enabled: Appearance.animationsEnabled
+                        NumberAnimation {
+                            duration:
+                                Appearance.animation.elementMoveFast.duration
+                            easing.type:
+                                Appearance.animation.elementMoveFast.type
+                            easing.bezierCurve:
+                                Appearance.animation.elementMoveFast.bezierCurve
+                        }
+                    }
+
+                    PillTabBar {
+                        anchors.fill: parent
+                        pillHeight: 28
+                        currentIndex: root.selectedNotesTab
+                        tabs: [
+                            { icon: "edit_note", label: Translation.tr("Quick Notes") },
+                            { icon: "checklist", label: Translation.tr("To-do") }
+                        ]
+                        onTabSelected: index => root.selectedNotesTab = index
+                    }
+
+                    HoverHandler {
+                        id: notesTrayHover
+                        onHoveredChanged: {
+                            if (hovered)
+                                root.holdNotesTray()
+                            else
+                                root.releaseNotesTray()
+                        }
+                    }
+                }
             }
 
             Item {

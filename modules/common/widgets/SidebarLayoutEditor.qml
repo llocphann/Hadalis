@@ -18,7 +18,7 @@ ColumnLayout {
     property string liftedId: ""
 
     readonly property var rightDefaultOrder: ["system", "sliders", "toggles", "widgets"]
-    readonly property var leftDefaultOrder: ["widgets", "ai", "translator", "anime", "animeSchedule", "wallhaven", "news", "music", "tools", "software"]
+    readonly property var leftDefaultOrder: ["ai", "translator", "anime", "animeSchedule", "news", "music", "tools"]
 
     readonly property var rightDescriptors: ({
         system: { icon: "computer", label: Translation.tr("System") },
@@ -28,16 +28,13 @@ ColumnLayout {
     })
 
     readonly property var leftDescriptors: ({
-        widgets: { icon: "widgets", label: Translation.tr("Widgets") },
         ai: { icon: "neurology", label: Translation.tr("Intelligence") },
         translator: { icon: "translate", label: Translation.tr("Translator") },
         anime: { icon: "bookmark_heart", label: Translation.tr("Anime") },
         animeSchedule: { icon: "calendar_month", label: Translation.tr("Schedule") },
-        wallhaven: { icon: "collections", label: Translation.tr("Wallhaven") },
         news: { icon: "newspaper", label: Translation.tr("News") },
         music: { icon: "library_music", label: Translation.tr("Music") },
-        tools: { icon: "build", label: Translation.tr("Tools") },
-        software: { icon: "store", label: Translation.tr("Software") }
+        tools: { icon: "build", label: Translation.tr("Tools") }
     })
 
     readonly property var rightOrder: {

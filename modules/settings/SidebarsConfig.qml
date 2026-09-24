@@ -52,11 +52,11 @@ ContentPage {
 
                 SettingsSwitch {
                     buttonIcon: "fit_screen"
-                    text: Translation.tr("Fit left sidebar to widgets")
+                    text: Translation.tr("Fit left sidebar to content")
                     checked: Config.options.sidebar?.collapseWidgetsTab ?? false
                     onCheckedChanged: Config.setNestedValue("sidebar.collapseWidgetsTab", checked)
                     StyledToolTip {
-                        text: Translation.tr("Shrink the left sidebar to its content on the Widgets tab instead of full height")
+                        text: Translation.tr("Shrink the left sidebar to a tab's preferred content height when available")
                     }
                 }
 
@@ -79,7 +79,7 @@ ContentPage {
                 checked: Config.options.sidebar?.openFolderOnDownload ?? false
                 onCheckedChanged: Config.setNestedValue("sidebar.openFolderOnDownload", checked)
                 StyledToolTip {
-                    text: Translation.tr("Open file manager when downloading wallpapers from Wallhaven or Booru")
+                    text: Translation.tr("Open the file manager after downloading a wallpaper")
                 }
             }
             }
@@ -108,16 +108,6 @@ ContentPage {
             ContentSubsection {
                 title: Translation.tr("Left Sidebar")
                 tooltip: Translation.tr("Choose which tabs appear in the left sidebar")
-
-                SettingsSwitch {
-                    buttonIcon: "widgets"
-                    text: Translation.tr("Widgets")
-                    checked: Config.options.sidebar?.widgets?.enable ?? true
-                    onCheckedChanged: Config.setNestedValue("sidebar.widgets.enable", checked)
-                    StyledToolTip {
-                        text: Translation.tr("Dashboard with clock, weather, media controls and quick actions")
-                    }
-                }
 
                 RippleButtonWithIcon {
                     Layout.fillWidth: true
@@ -154,16 +144,6 @@ ContentPage {
                 }
 
                 SettingsSwitch {
-                    buttonIcon: "image"
-                    text: Translation.tr("Wallhaven")
-                    checked: Config.options.sidebar?.wallhaven?.enable ?? true
-                    onCheckedChanged: Config.setNestedValue("sidebar.wallhaven.enable", checked)
-                    StyledToolTip {
-                        text: Translation.tr("Browse and download wallpapers from Wallhaven")
-                    }
-                }
-
-                SettingsSwitch {
                     buttonIcon: "newspaper"
                     text: Translation.tr("News")
                     checked: Config.options.sidebar?.news?.enable ?? true
@@ -190,16 +170,6 @@ ContentPage {
                     onCheckedChanged: Config.setNestedValue("sidebar.tools.enable", checked)
                     StyledToolTip {
                         text: Translation.tr("Niri debug options and quick actions")
-                    }
-                }
-
-                SettingsSwitch {
-                    buttonIcon: "store"
-                    text: Translation.tr("Software")
-                    checked: Config.options.sidebar?.software?.enable ?? false
-                    onCheckedChanged: Config.setNestedValue("sidebar.software.enable", checked)
-                    StyledToolTip {
-                        text: Translation.tr("Browse and install curated companion apps")
                     }
                 }
 
@@ -732,57 +702,6 @@ ContentPage {
                 }
             }
 
-
-            ContentSubsection {
-                title: Translation.tr("Wallhaven")
-                visible: Config.options.sidebar?.wallhaven?.enable ?? true
-
-                ConfigSpinBox {
-                    icon: "format_list_numbered"
-                    text: Translation.tr("Results per page")
-                    value: Config.options.sidebar?.wallhaven?.limit ?? 24
-                    from: 12
-                    to: 72
-                    stepSize: 4
-                    onValueChanged: Config.setNestedValue("sidebar.wallhaven.limit", value)
-                    StyledToolTip {
-                        text: Translation.tr("Number of wallpapers to fetch per request")
-                    }
-                }
-
-                ConfigRow {
-                    Layout.fillWidth: true
-                    spacing: 6
-
-                    MaterialSymbol {
-                        text: "key"
-                        iconSize: Appearance.font.pixelSize.larger
-                        color: Appearance.colors.colSubtext
-                    }
-                    StyledText {
-                        text: Translation.tr("API key")
-                        font.pixelSize: Appearance.font.pixelSize.small
-                        color: Appearance.colors.colOnSurface
-                    }
-                    MaterialTextField {
-                        id: wallhavenApiInput
-                        Layout.fillWidth: true
-                        placeholderText: Translation.tr("Optional - for NSFW content")
-                        font.pixelSize: Appearance.font.pixelSize.small
-                        color: Appearance.colors.colOnSurface
-                        placeholderTextColor: Appearance.colors.colSubtext
-                        echoMode: TextInput.Password
-                        text: Config.options.sidebar?.wallhaven?.apiKey ?? ""
-                        background: Rectangle {
-                            color: Appearance.colors.colLayer1
-                            radius: Appearance.rounding.small
-                            border.width: wallhavenApiInput.activeFocus ? 2 : 1
-                            border.color: wallhavenApiInput.activeFocus ? Appearance.colors.colPrimary : Appearance.colors.colLayer0Border
-                        }
-                        onTextChanged: Config.setNestedValue("sidebar.wallhaven.apiKey", text)
-                    }
-                }
-            }
 
         }
     }

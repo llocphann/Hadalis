@@ -41,17 +41,13 @@ Item {
     property bool animeEnabled: (Config.options?.policies?.weeb ?? 0) !== 0
     property bool animeCloset: (Config.options?.policies?.weeb ?? 0) === 2
     property bool animeScheduleEnabled: Config.options?.sidebar?.animeSchedule?.enable ?? false
-    property bool wallhavenEnabled: Config.options?.sidebar?.wallhaven?.enable !== false
     property bool newsEnabled: Config.options?.sidebar?.news?.enable ?? true
-    property bool widgetsEnabled: Config.options?.sidebar?.widgets?.enable ?? true
     property bool toolsEnabled: Config.options?.sidebar?.tools?.enable ?? false
-    property bool softwareEnabled: Config.options?.sidebar?.software?.enable ?? false
     property bool musicEnabled: Config.options?.sidebar?.music?.enable ?? false
     // DISABLED: webapps — requires quickshell-webengine
     property bool pluginsEnabled: false // Config.options?.sidebar?.plugins?.enable ?? false
 
-    // Tabs exposing contentPreferredHeight (Widgets) can let the panel hug
-    // their content instead of reserving the full output height.
+    // Tabs exposing contentPreferredHeight can let the panel hug their content.
     readonly property real activeTabContentHeight: swipeView.currentItem?.item?.contentPreferredHeight ?? -1
     readonly property bool activeTabEditing: swipeView.currentItem?.item?.editMode ?? false
     readonly property bool fitToContent:
@@ -96,8 +92,7 @@ Item {
     function _doRestoreLastPlugin(): void {}
 
     readonly property var _tabDefaultOrder: [
-        "widgets", "ai", "translator", "anime", "animeSchedule",
-        "wallhaven", "news", "music", "tools", "software"
+        "ai", "translator", "anime", "animeSchedule", "news", "music", "tools"
     ]
     readonly property var resolvedTabOrder: {
         const result = []
@@ -119,16 +114,13 @@ Item {
     // Enabled tabs rendered in the user's stable-id order.
     property var tabButtonList: {
         const result = []
-        if (root.widgetsEnabled) result.push({ id: "widgets", icon: "widgets", name: Translation.tr("Widgets") })
         if (root.aiChatEnabled) result.push({ id: "ai", icon: "neurology", name: Translation.tr("Intelligence") })
         if (root.translatorEnabled) result.push({ id: "translator", icon: "translate", name: Translation.tr("Translator") })
         if (root.animeEnabled && !root.animeCloset) result.push({ id: "anime", icon: "bookmark_heart", name: Translation.tr("Anime") })
         if (root.animeScheduleEnabled) result.push({ id: "animeSchedule", icon: "calendar_month", name: Translation.tr("Schedule") })
-        if (root.wallhavenEnabled) result.push({ id: "wallhaven", icon: "collections", name: Translation.tr("Wallpapers") })
         if (root.newsEnabled) result.push({ id: "news", icon: "newspaper", name: Translation.tr("News") })
         if (root.musicEnabled) result.push({ id: "music", icon: "library_music", name: Translation.tr("Music") })
         if (root.toolsEnabled) result.push({ id: "tools", icon: "build", name: Translation.tr("Tools") })
-        if (root.softwareEnabled) result.push({ id: "software", icon: "store", name: Translation.tr("Software") })
         // DISABLED: webapps — requires quickshell-webengine rebuild
         // if (root.pluginsEnabled) result.push({ id: "plugins", icon: "extension", name: Translation.tr("Web Apps") })
         result.sort((a, b) => root.resolvedTabOrder.indexOf(a.id) - root.resolvedTabOrder.indexOf(b.id))
@@ -200,11 +192,11 @@ Item {
         if (!DevNavigation.currentDestination.startsWith("sidebar-left/")) return
         const view = DevNavigation.currentDestination.substring("sidebar-left/".length)
         const iconByView = {
-            "widgets": "widgets", "ai": "neurology", "translator": "translate",
+            "ai": "neurology", "translator": "translate",
             "anime": "bookmark_heart", "anime-schedule": "calendar_month",
-            "wallhaven": "collections", "news": "newspaper", "music": "library_music",
+            "news": "newspaper", "music": "library_music",
             "ytmusic": "library_music", // legacy dev-navigation alias
-            "tools": "build", "software": "store"
+            "tools": "build"
         }
         const icon = iconByView[view] ?? ""
         const index = root.tabButtonList.findIndex(tab => tab.icon === icon)
@@ -430,16 +422,13 @@ Item {
                             active: SwipeView.isCurrentItem || SwipeView.isNextItem || SwipeView.isPreviousItem
                             sourceComponent: {
                                 switch (modelData.icon) {
-                                    case "widgets": return widgetsComp
                                     case "neurology": return aiChatComp
                                     case "translate": return translatorComp
                                     case "bookmark_heart": return animeComp
                                     case "calendar_month": return animeScheduleComp
-                                    case "collections": return wallhavenComp
                                     case "newspaper": return newsComp
                                     case "library_music": return musicComp
                                     case "build": return toolsComp
-                                    case "store": return softwareComp
                                     // DISABLED: webapps
                                     // case "extension": return pluginsComp
                                     default: return null
@@ -461,23 +450,13 @@ Item {
             }
         }
 
-        Component { id: widgetsComp; WidgetsView {} }
         Component { id: aiChatComp; AiChat {} }
         Component { id: translatorComp; Translator {} }
         Component { id: animeComp; Anime {} }
         Component { id: animeScheduleComp; AnimeScheduleView {} }
-        Component {
-            id: wallhavenComp
-            WallhavenView {
-                screenWidth: root.screenWidth
-                screenHeight: root.screenHeight
-                panelScreen: root.panelScreen
-            }
-        }
         Component { id: newsComp; NewsView {} }
         Component { id: musicComp; LocalMusicView {} }
         Component { id: toolsComp; ToolsView {} }
-        Component { id: softwareComp; SoftwareView {} }
         // DISABLED: webapps — requires quickshell-webengine rebuild
         // Component {
         //     id: pluginsComp

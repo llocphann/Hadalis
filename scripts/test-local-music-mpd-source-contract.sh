@@ -71,7 +71,7 @@ fi
     || fail 'retired private mpv IPC helper must stay removed'
 [[ ! -e "$root/scripts/local_music_scan.py" ]] \
     || fail 'retired filesystem scanner must stay removed; MPD owns the library database'
-grep -Fq '"wallhaven", "news", "music", "tools", "software"' "$schema" \
+grep -Fq '"news", "music", "tools"' "$schema" \
     || fail 'canonical sidebar schema order must use music instead of ytmusic'
 grep -Fq '"music"' "$defaults" \
     || fail 'default sidebar order must contain the canonical music id'
@@ -86,7 +86,7 @@ for retired_state in normalizeVolume shuffleMode repeatMode volume; do
     grep -Fq ".sidebar.music.$retired_state" "$migration" \
         || fail "migration 044 does not remove retired local Music state: $retired_state"
 done
-grep -Fq 'leftDefaultOrder: ["widgets", "ai", "translator", "anime", "animeSchedule", "wallhaven", "news", "music", "tools", "software"]' "$editor" \
+grep -Fq 'leftDefaultOrder: ["ai", "translator", "anime", "animeSchedule", "news", "music", "tools"]' "$editor" \
     || fail 'Sidebar layout editor must arrange the canonical Music tab'
 grep -Fq 'id === "ytmusic" ? "music" : id' "$editor" \
     || fail 'Sidebar layout editor must normalize legacy ytmusic order ids'

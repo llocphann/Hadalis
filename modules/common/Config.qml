@@ -2434,7 +2434,7 @@ Singleton {
                     property bool showBrightness: true
                 }
                 property JsonObject left: JsonObject {
-                    property list<string> tabOrder: ["widgets", "ai", "translator", "anime", "animeSchedule", "wallhaven", "news", "music", "tools", "software"]
+                    property list<string> tabOrder: ["ai", "translator", "anime", "animeSchedule", "news", "music", "tools"]
                 }
                 property JsonObject right: JsonObject {
                     property list<string> enabledWidgets: ["calendar", "events", "todo", "calculator", "sysmon", "weather"]

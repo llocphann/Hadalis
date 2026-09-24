@@ -1440,11 +1440,8 @@
         },
         "left": {
             "tabOrder": [
-                "widgets",
-                "wallhaven",
                 "news",
                 "tools",
-                "software",
                 "ai",
                 "translator",
                 "anime",

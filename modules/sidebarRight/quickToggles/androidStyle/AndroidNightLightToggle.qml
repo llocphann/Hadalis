@@ -15,11 +15,11 @@ AndroidQuickToggleButton {
         return auto ? Translation.tr("Auto, %1").arg(state) : state
     }
 
-    toggled: Hyprsunset.active
+    toggled: NightLight.active
     buttonIcon: auto ? "night_sight_auto" : "bedtime"
     
     mainAction: () => {
-        Hyprsunset.toggle()
+        NightLight.toggle()
     }
 
     altAction: () => {
@@ -27,7 +27,7 @@ AndroidQuickToggleButton {
     }
 
     Component.onCompleted: {
-        Hyprsunset.fetchState()
+        NightLight.fetchState()
     }
     
     StyledToolTip {

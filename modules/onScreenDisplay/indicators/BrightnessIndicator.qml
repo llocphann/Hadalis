@@ -10,7 +10,7 @@ OsdValueIndicator {
     // Brightness monitor may be undefined; guard access
     property var brightnessMonitor: screen ? Brightness.getMonitorForScreen(screen) : null
 
-    icon: Hyprsunset.active ? "routine" : "light_mode"
+    icon: NightLight.active ? "routine" : "light_mode"
     name: Translation.tr("Brightness")
     // Brightness service exposes value in range [0, 1], same as volume
     value: root.brightnessMonitor ? root.brightnessMonitor.brightness : 0

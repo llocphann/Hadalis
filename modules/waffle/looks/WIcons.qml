@@ -104,7 +104,7 @@ Singleton {
         return root.bluetoothDeviceIcon(BluetoothStatus?.firstActiveDevice);
     }
 
-    property string nightLightIcon: (Hyprsunset?.active ?? false) ? "weather-moon" : "weather-moon-off"
+    property string nightLightIcon: (NightLight?.active ?? false) ? "weather-moon" : "weather-moon-off"
 
     property string notificationsIcon: (Notifications?.silent ?? false) ? "alert-snooze" : "alert"
 

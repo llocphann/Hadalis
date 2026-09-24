@@ -150,7 +150,7 @@ ShellRoot {
             root._voiceSearchService = VoiceSearch;
             root._fontSyncService = FontSyncService;
             root._cavaThemeService = CavaTheme;
-            Hyprsunset.load();
+            NightLight.load();
             GlobalStates.deferredPanelsReady = true;
             root._ensureScreenTimeService();
             // Boot greeting: show once per session (singleton preserves bootGreetingDone across hot-reload)

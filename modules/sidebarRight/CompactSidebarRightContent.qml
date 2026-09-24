@@ -1410,11 +1410,11 @@ Item {
                                                         accessibleName: Translation.tr("Night Light")
                                                         buttonIcon: (Config.options?.light?.night?.automatic ?? false)
                                                             ? "night_sight_auto" : "bedtime"
-                                                        toggled: Hyprsunset.active ?? false
-                                                        onClicked: Hyprsunset.toggle()
+                                                        toggled: NightLight.active ?? false
+                                                        onClicked: NightLight.toggle()
                                                         altAction: () => { root.showNightLightDialog = true }
 
-                                                        Component.onCompleted: Hyprsunset.fetchState()
+                                                        Component.onCompleted: NightLight.fetchState()
 
                                                         StyledToolTip {
                                                             text: Translation.tr("Night Light | Right-click for settings")

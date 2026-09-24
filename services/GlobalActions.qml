@@ -147,8 +147,8 @@ Singleton {
             description: Translation.tr("Toggle blue light filter"),
             icon: "nightlight",
             category: "system",
-            keywords: ["night", "light", "blue", "filter", "hyprsunset", "redshift"],
-            execute: () => { Hyprsunset.toggle() }
+            keywords: ["night", "light", "blue", "filter", "redshift"],
+            execute: () => { NightLight.toggle() }
         },
         {
             id: "toggle-gamemode",

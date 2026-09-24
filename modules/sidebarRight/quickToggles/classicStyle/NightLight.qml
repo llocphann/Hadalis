@@ -7,10 +7,10 @@ import Quickshell.Io
 QuickToggleButton {
     id: nightLightButton
     accessibleName: Translation.tr("Night Light")
-    toggled: Hyprsunset.active
+    toggled: NightLight.active
     buttonIcon: (Config.options?.light?.night?.automatic ?? false) ? "night_sight_auto" : "bedtime"
     onClicked: {
-        Hyprsunset.toggle()
+        NightLight.toggle()
     }
 
     altAction: () => {
@@ -18,7 +18,7 @@ QuickToggleButton {
     }
 
     Component.onCompleted: {
-        Hyprsunset.fetchState()
+        NightLight.fetchState()
     }
     
     StyledToolTip {

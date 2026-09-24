@@ -6,8 +6,12 @@ on:
       - 'native/**'
       - 'scripts/native-dispatch'
       - 'scripts/native-cutover-benchmark.sh'
+      - 'scripts/benchmark-python-vs-rust.sh'
+      - 'scripts/test-native-benchmark-deep-contract.sh'
       - 'scripts/test-native-selector-contract.sh'
       - 'scripts/test-native-selector-behavior.sh'
+      - 'scripts/benchmark-python-vs-rust.sh'
+      - 'scripts/test-native-benchmark-deep-contract.sh'
       - 'native/scripts/check-niri-customizations.py'
       - 'scripts/inir'
       - 'services/KeyboardIndicators.qml'
@@ -61,11 +65,13 @@ jobs:
           python3 native/scripts/assert-dormant.py
           bash -n scripts/native-dispatch
           bash -n scripts/native-cutover-benchmark.sh
+          bash -n scripts/benchmark-python-vs-rust.sh
           bash -n scripts/colors/switchwall.sh
           bash -n scripts/colors/applycolor.sh
           bash -n sdata/migrations/049-native-clipboard-selector.sh
           bash scripts/test-native-selector-contract.sh
           bash scripts/test-native-selector-behavior.sh
+          bash scripts/test-native-benchmark-deep-contract.sh
 
       - name: Rustfmt
         run: cargo fmt --manifest-path native/Cargo.toml --all -- --check

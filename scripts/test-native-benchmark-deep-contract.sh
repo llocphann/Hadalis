@@ -14,6 +14,8 @@ bash -n "$wrapper" || fail "benchmark wrapper has invalid shell syntax"
 bash -n "$harness" || fail "native cutover harness has invalid shell syntax"
 
 grep -Fq -- '--deep) DEEP=1' "$wrapper"     || fail "wrapper no longer exposes --deep"
+grep -Fq -- '--restore) RESTORE_ONLY=1' "$wrapper"     || fail "wrapper no longer exposes --restore"
+grep -Fq -- 'exec bash "$HARNESS" --restore' "$wrapper"     || fail "wrapper no longer delegates restore through the canonical harness"
 grep -Fq -- 'INIR_BENCH_MPD_SNAPSHOT=1' "$wrapper"     || fail "wrapper no longer enables isolated MPD snapshot mode"
 grep -Fq -- 'Deep MPD snapshot:' "$wrapper"     || fail "full report no longer records whether deep mode ran"
 
@@ -28,4 +30,4 @@ grep -Fq -- 'XDG_CACHE_HOME="$snapshot_rust_cache"' "$harness"     || fail "Rust
 grep -Fq -- 'MPD_SNAPSHOT_RUNS:-1' "$harness"     || fail "deep snapshot default must remain one run"
 grep -Fq -- 'SKIP (use benchmark wrapper --deep)' "$harness"     || fail "full snapshot benchmark must remain opt-in by default"
 
-printf '%s\n' 'PASS: native deep benchmark stays opt-in and cache-isolated'
+printf '%s\n' 'PASS: native benchmark entrypoint keeps deep isolation and restore support'

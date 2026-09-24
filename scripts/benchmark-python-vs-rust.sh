@@ -9,6 +9,7 @@ BACKEND_STATE_FILE="$STATE_DIR/native-backend"
 HARNESS="$ROOT_DIR/scripts/native-cutover-benchmark.sh"
 READ_ONLY=0
 DEEP=0
+RESTORE_ONLY=0
 RESTORE_ARMED=0
 RESTORE_RC=0
 
@@ -16,15 +17,26 @@ for argument in "$@"; do
     case "$argument" in
         --read-only|--no-activate) READ_ONLY=1 ;;
         --deep) DEEP=1 ;;
+        --restore) RESTORE_ONLY=1 ;;
         --help|-h)
-            echo "Usage: bash scripts/benchmark-python-vs-rust.sh [--read-only] [--deep]"
+            echo "Usage: bash scripts/benchmark-python-vs-rust.sh [--read-only] [--deep] [--restore]"
             echo "Builds and benchmarks both backends, validates the repo, and writes one report."
             echo "--deep adds an isolated cold MPD full-snapshot parity/benchmark."
+            echo "--restore immediately returns the selector and user service to Python."
             echo "A live A/B runs only after the harness safety checks and is restored to Python."
             exit 0 ;;
         *) echo "Unknown option: $argument" >&2; exit 64 ;;
     esac
 done
+
+if ((RESTORE_ONLY)); then
+    if ((READ_ONLY || DEEP)); then
+        echo "--restore cannot be combined with --read-only or --deep" >&2
+        exit 64
+    fi
+    exec bash "$HARNESS" --restore
+fi
+
 mkdir -p "$STATE_DIR" || exit 1
 REPORT="$(mktemp "$STATE_DIR/native-full-benchmark-$(date +%Y%m%d-%H%M%S)-XXXXXX.txt")" || exit 1
 TMP_ROOT="$(mktemp -d "${TMPDIR:-/tmp}/inir-full-benchmark.XXXXXX")" || exit 1

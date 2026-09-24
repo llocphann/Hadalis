@@ -1,5 +1,6 @@
 pragma ComponentBehavior: Bound
 
+import qs.modules.common
 import qs.modules.common.widgets
 import qs.modules.sidebarRight.events
 import qs.services

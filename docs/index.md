@@ -2,7 +2,7 @@
 
 A complete desktop shell for Niri, built with Quickshell and QML.
 
-It provides the bar, dock, sidebars, notifications, settings, wallpapers, overview, lock screen, IPC and theming in one shell. Niri is the supported compositor. Hyprland support is secondary.
+It provides the bar, dock, sidebars, notifications, settings, wallpapers, overview, lock screen, IPC and theming in one shell. Niri is the only supported compositor.
 
 ## Start here
 

@@ -4,7 +4,7 @@
 
 **Version**: 2.29.3 · **Stack**: QML (Quickshell), Bash, Python, Go
 
-Originally forked from [end-4/dots-hyprland](https://github.com/end-4/dots-hyprland) (illogical-impulse). Secondary Hyprland support is maintained.
+Originally forked from [end-4/dots-hyprland](https://github.com/end-4/dots-hyprland) (illogical-impulse). That link is project provenance only; the current runtime is Niri-only.
 
 ---
 
@@ -17,7 +17,7 @@ Startup flow:
 2. Singleton services force-instantiated via dummy property bindings.
 3. `Config.ready` triggers panel loading.
 4. Theme and icon services are applied via `Qt.callLater`.
-5. Hyprsunset, first-run wizard, and conflict killer are loaded.
+5. NightLight, first-run wizard, and conflict killer are loaded.
 
 ## Panel Families
 
@@ -153,7 +153,7 @@ Waffle is a panel family, not a Dock style, and must not be folded into Dock sty
 | `Looks` | Waffle visual tokens |
 | `NiriService` | Niri IPC, workspaces, windows |
 | `Audio` | PipeWire volume/mute/mixer |
-| `CompositorService` | Niri/Hyprland detection |
+| `CompositorService` | Niri runtime state, toplevel sorting, workspace filtering, monitor power |
 | `Weather` | Weather polling and location |
 | `Network` | NetworkManager integration |
 | `Wallpapers` | Wallpaper management and theming |
@@ -264,4 +264,4 @@ These log messages are safe to ignore:
 - `failed to register listener: ...PolicyKit1...` — another polkit agent running;
 - `QSGPlainTexture: Mipmap settings changed` — Qt cosmetic;
 - `Cannot open: file:///...coverart/...` — missing album-art cache;
-- `$HYPRLAND_INSTANCE_SIGNATURE is unset` — expected when running on Niri.
+- `$NIRI_SOCKET` must resolve to the active Niri IPC socket before Quickshell starts.

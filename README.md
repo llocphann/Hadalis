@@ -206,7 +206,7 @@ Required direction:
 - keep keyboard focus, Escape close, outside-click close, hover transfer, multi-output ownership and compositor behavior intact;
 - prefer shared fixes in existing abstractions over per-popup forks;
 - **do not build a second popup framework**;
-- Niri remains the primary compositor target; preserve existing Hyprland compatibility;
+- Niri is the sole supported compositor target; do not add alternate compositor runtime paths;
 - Waffle remains a supported separate panel family and must not be removed as part of ii/perimeter cleanup;
 - **Material is the only supported Global Theme for v1.0.** All other Global Theme families, selectors, runtime branches and stale compatibility paths must be removed unless a narrow migration shim is required only to normalize old persisted values to Material.
 
@@ -310,7 +310,7 @@ Rules:
 - Sidebar role routing, resize/edit behavior and open/close state;
 - multi-output routing and source-screen ownership;
 - fullscreen, lock, suspend/resume and compositor transitions;
-- Niri primary behavior and existing Hyprland compatibility;
+- Niri-only compositor behavior and IPC contracts;
 - Material theme tokens, palette and component rendering;
 - Waffle family routing.
 
@@ -349,7 +349,7 @@ Then perform live desktop checks:
 - [ ] Material renders correctly across Bar, Screen Edge, popups, Sidebars, Overview, Settings and Waffle.
 - [ ] Tray/context menus work on a non-primary output.
 - [ ] Multi-monitor, fractional scaling, transformed outputs and vertical bars are usable.
-- [ ] Niri full pass; Hyprland compatibility smoke test.
+- [ ] Niri full compositor/runtime pass.
 - [ ] Fullscreen, lock/unlock and suspend/resume do not leave broken shell surfaces.
 
 ## 8. v1.0 definition of done

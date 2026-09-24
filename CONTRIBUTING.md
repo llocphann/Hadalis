@@ -107,7 +107,7 @@ Do not assume a compositor-specific API is universally available. Guard composit
 
 ```qml
 if (CompositorService.isNiri) { /* Niri-only */ }
-if (CompositorService.isHyprland) { /* Hyprland-only */ }
+if (CompositorService.isNiri) { /* requires a live Niri IPC socket */ }
 ```
 
 ## IPC functions

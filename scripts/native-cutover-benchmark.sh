@@ -18,6 +18,7 @@ ACTIVE_RUNTIME="$(readlink -f "$ACTIVE_RUNTIME" 2>/dev/null || printf '%s' "$ACT
 ACTIVATION_BLOCKERS=()
 RUNTIME_MODE="unchanged"
 MPD_DAEMON_PID=""
+LIVE_AB_SAMPLE_FILE="$TMP_ROOT/live-ab-samples.tsv"
 
 case "${1:-}" in
     ""|--no-activate|--restore) ;;
@@ -312,38 +313,131 @@ set_runtime_backend() {
 
 measure_service_mode() {
     local mode="$1"
+    local round="${2:-1}"
     local window="${LIVE_WINDOW_SECONDS:-5}"
+    local settle="${LIVE_SETTLE_SECONDS:-4}"
+    local started_at
+    started_at="$(date --iso-8601=seconds)"
     set_runtime_backend "$mode" || return 1
-    sleep 4
+    sleep "$settle"
 
-    local pid mem tasks cpu0 cpu1 delta shell_pss shell_rss
+    local pid pid_after mem0 mem1 tasks0 tasks1 cpu0 cpu1 delta
+    local shell_pss0 shell_pss1 shell_rss0 shell_rss1
     pid="$(systemctl --user show -p MainPID --value inir.service 2>/dev/null || echo 0)"
     [[ "$pid" =~ ^[1-9][0-9]*$ ]] || return 1
-    mem="$(systemctl --user show -p MemoryCurrent --value inir.service 2>/dev/null || echo unknown)"
-    tasks="$(systemctl --user show -p TasksCurrent --value inir.service 2>/dev/null || echo unknown)"
+    mem0="$(systemctl --user show -p MemoryCurrent --value inir.service 2>/dev/null || echo unknown)"
+    tasks0="$(systemctl --user show -p TasksCurrent --value inir.service 2>/dev/null || echo unknown)"
     cpu0="$(systemctl --user show -p CPUUsageNSec --value inir.service 2>/dev/null || echo 0)"
-    shell_pss="$(awk '/^Pss:/{print $2; exit}' "/proc/$pid/smaps_rollup" 2>/dev/null || echo 0)"
-    shell_rss="$(awk '/^VmRSS:/{print $2; exit}' "/proc/$pid/status" 2>/dev/null || echo 0)"
+    shell_pss0="$(awk '/^Pss:/{print $2; exit}' "/proc/$pid/smaps_rollup" 2>/dev/null || echo 0)"
+    shell_rss0="$(awk '/^VmRSS:/{print $2; exit}' "/proc/$pid/status" 2>/dev/null || echo 0)"
+
     sleep "$window"
+
+    pid_after="$(systemctl --user show -p MainPID --value inir.service 2>/dev/null || echo 0)"
+    [[ "$pid_after" == "$pid" ]] || {
+        kv "live $mode round $round" "ERROR service PID changed during sample ($pid -> $pid_after)"
+        return 1
+    }
+    systemctl --user is-active --quiet inir.service || return 1
+    mem1="$(systemctl --user show -p MemoryCurrent --value inir.service 2>/dev/null || echo unknown)"
+    tasks1="$(systemctl --user show -p TasksCurrent --value inir.service 2>/dev/null || echo unknown)"
     cpu1="$(systemctl --user show -p CPUUsageNSec --value inir.service 2>/dev/null || echo 0)"
+    shell_pss1="$(awk '/^Pss:/{print $2; exit}' "/proc/$pid/smaps_rollup" 2>/dev/null || echo "$shell_pss0")"
+    shell_rss1="$(awk '/^VmRSS:/{print $2; exit}' "/proc/$pid/status" 2>/dev/null || echo "$shell_rss0")"
     if [[ "$cpu0" =~ ^[0-9]+$ && "$cpu1" =~ ^[0-9]+$ ]]; then
         delta=$((cpu1-cpu0))
     else
         delta=0
     fi
 
-    awk -v mode="$mode" -v pid="$pid" -v mem="$mem" -v tasks="$tasks"         -v delta="$delta" -v window="$window" -v cpu0="$cpu0" -v pss="$shell_pss" -v rss="$shell_rss"         'BEGIN{
-            mib=(mem ~ /^[0-9]+$/) ? mem/1048576 : -1;
+    awk -v mode="$mode" -v round="$round" -v pid="$pid" \
+        -v mem0="$mem0" -v mem1="$mem1" -v tasks0="$tasks0" -v tasks1="$tasks1" \
+        -v delta="$delta" -v window="$window" -v settle="$settle" -v cpu0="$cpu0" \
+        -v pss0="$shell_pss0" -v pss1="$shell_pss1" -v rss0="$shell_rss0" -v rss1="$shell_rss1" \
+        -v sample="$LIVE_AB_SAMPLE_FILE" 'BEGIN{
+            mib0=(mem0 ~ /^[0-9]+$/) ? mem0/1048576 : -1;
+            mib1=(mem1 ~ /^[0-9]+$/) ? mem1/1048576 : -1;
+            mibavg=(mib0 >= 0 && mib1 >= 0) ? (mib0+mib1)/2 : -1;
+            pssavg=(pss0+pss1)/2;
+            rssavg=(rss0+rss1)/2;
+            tasksavg=(tasks0 ~ /^[0-9]+$/ && tasks1 ~ /^[0-9]+$/) ? (tasks0+tasks1)/2 : -1;
             cpu=(window>0) ? delta/(window*1000000000)*100 : 0;
-            startup=(cpu0 ~ /^[0-9]+$/) ? cpu0/1000000 : -1;
-            if (mib >= 0)
-                printf "live %-7s pid=%s cgroup_mem=%.2fMiB shell_pss=%dKiB shell_rss=%dKiB tasks=%s startup_cpu=%.1fms cpu_window=%.3f%%\n",mode,pid,mib,pss,rss,tasks,startup,cpu;
+            since=(cpu0 ~ /^[0-9]+$/) ? cpu0/1000000 : -1;
+            if (mib0 >= 0 && mib1 >= 0)
+                printf "live %-7s round=%d pid=%s cgroup_mem=%.2f->%.2fMiB shell_pss=%d->%dKiB shell_rss=%d->%dKiB tasks=%s->%s cpu_since_restart=%.1fms cpu_window=%.3f%% settle=%ss window=%ss\n",mode,round,pid,mib0,mib1,pss0,pss1,rss0,rss1,tasks0,tasks1,since,cpu,settle,window;
             else
-                printf "live %-7s pid=%s cgroup_mem=%s shell_pss=%dKiB shell_rss=%dKiB tasks=%s startup_cpu=%.1fms cpu_window=%.3f%%\n",mode,pid,mem,pss,rss,tasks,startup,cpu;
+                printf "live %-7s round=%d pid=%s cgroup_mem=%s->%s shell_pss=%d->%dKiB shell_rss=%d->%dKiB tasks=%s->%s cpu_since_restart=%.1fms cpu_window=%.3f%% settle=%ss window=%ss\n",mode,round,pid,mem0,mem1,pss0,pss1,rss0,rss1,tasks0,tasks1,since,cpu,settle,window;
+            printf "%s\t%d\t%.6f\t%.3f\t%.3f\t%.3f\t%.3f\t%.6f\n",mode,round,mibavg,pssavg,rssavg,tasksavg,since,cpu >> sample;
         }'
 
-    printf 'processes(%s):\n' "$mode"
-    ps -eo pid,ppid,rss,etimes,comm,args         | grep -E 'quickshell|inir-inputd|inir-mpdd|inir-native|inir-theme|keyboard_lock_state_daemon|osk_physical_key_daemon|runtime-diagnostics-sampler'         | grep -v grep || true
+    printf 'processes(%s round=%s):\n' "$mode" "$round"
+    ps -eo pid,ppid,rss,etimes,comm,args \
+        | grep -E 'quickshell|inir-inputd|inir-mpdd|inir-native|inir-theme|keyboard_lock_state_daemon|osk_physical_key_daemon|runtime-diagnostics-sampler' \
+        | grep -v grep || true
+
+    printf 'journal(%s round=%s since=%s):\n' "$mode" "$round" "$started_at"
+    journalctl --user -u inir.service --since "$started_at" --no-pager 2>&1 \
+        | grep -Ei 'warn|error|failed|fallback|binding loop' \
+        | tail -n 40 || true
+}
+
+summarize_live_ab() {
+    python3 - "$LIVE_AB_SAMPLE_FILE" <<'PY'
+import statistics
+import sys
+
+path = sys.argv[1]
+rows = {"python": [], "rust": []}
+with open(path, encoding="utf-8") as handle:
+    for line in handle:
+        parts = line.rstrip("\n").split("\t")
+        if len(parts) != 8 or parts[0] not in rows:
+            continue
+        mode, round_text, mem, pss, rss, tasks, cpu_since, cpu_window = parts
+        rows[mode].append({
+            "round": int(round_text),
+            "mem": float(mem),
+            "pss": float(pss),
+            "rss": float(rss),
+            "tasks": float(tasks),
+            "cpu_since": float(cpu_since),
+            "cpu_window": float(cpu_window),
+        })
+
+if not rows["python"] or not rows["rust"]:
+    raise SystemExit("live A/B summary requires both Python and Rust samples")
+
+def median(mode, key):
+    values = [row[key] for row in rows[mode] if row[key] >= 0]
+    return statistics.median(values) if values else float("nan")
+
+for mode in ("python", "rust"):
+    print(
+        f"live summary {mode:<7} samples={len(rows[mode])} "
+        f"cgroup_mem_median={median(mode, 'mem'):.2f}MiB "
+        f"shell_pss_median={median(mode, 'pss'):.0f}KiB "
+        f"shell_rss_median={median(mode, 'rss'):.0f}KiB "
+        f"tasks_median={median(mode, 'tasks'):.1f} "
+        f"cpu_window_median={median(mode, 'cpu_window'):.3f}% "
+        f"cpu_since_restart_median={median(mode, 'cpu_since'):.1f}ms"
+    )
+
+def delta(key):
+    base = median("python", key)
+    candidate = median("rust", key)
+    if base <= 0:
+        return float("nan")
+    return (candidate / base - 1.0) * 100.0
+
+print(
+    "live rust-vs-python median delta "
+    f"cgroup_mem={delta('mem'):+.2f}% "
+    f"shell_pss={delta('pss'):+.2f}% "
+    f"shell_rss={delta('rss'):+.2f}% "
+    f"cpu_window={delta('cpu_window'):+.2f}% "
+    f"cpu_since_restart={delta('cpu_since'):+.2f}%"
+)
+PY
 }
 
 activate_rust() {
@@ -370,23 +464,52 @@ activate_rust() {
         kv "live A/B" "SKIP (no active service)"
         return 1
     fi
-    echo "Measuring the same inir.service once with Python selected, then with Rust selected."
-    if ! measure_service_mode python; then
-        block_activation "Python baseline service restart failed"
+    local rounds="${LIVE_AB_RUNS:-1}"
+    if ! [[ "$rounds" =~ ^[1-9][0-9]*$ ]]; then
+        block_activation "LIVE_AB_RUNS must be a positive integer"
+        return 1
+    fi
+    : > "$LIVE_AB_SAMPLE_FILE"
+    echo "Measuring the same inir.service for $rounds Python/Rust round(s)."
+    echo "Round order alternates to reduce warm-cache/order bias; each sample restarts the service."
+    local round mode
+    local -a order
+    for ((round=1; round<=rounds; round++)); do
+        if ((round % 2 == 1)); then
+            order=(python rust)
+        else
+            order=(rust python)
+        fi
+        for mode in "${order[@]}"; do
+            if ! measure_service_mode "$mode" "$round"; then
+                block_activation "$mode live sample failed in round $round"
+                if ! restore_python; then
+                    block_activation "automatic Python rollback failed"
+                    RUNTIME_MODE="unknown after rollback failure"
+                fi
+                return 1
+            fi
+        done
+    done
+    if ! summarize_live_ab; then
+        block_activation "live A/B summary failed"
         if ! restore_python; then
             block_activation "automatic Python rollback failed"
             RUNTIME_MODE="unknown after rollback failure"
         fi
         return 1
     fi
-    RUNTIME_MODE="python baseline active"
-    if ! measure_service_mode rust; then
-        block_activation "Rust-selected service restart failed"
-        if ! restore_python; then
-            block_activation "automatic Python rollback failed"
-            RUNTIME_MODE="unknown after rollback failure"
+    if [[ "$(head -n 1 "$BACKEND_STATE_FILE" 2>/dev/null || true)" != rust ]]; then
+        echo "Returning to Rust test mode after the alternating A/B sequence..."
+        if ! set_runtime_backend rust; then
+            block_activation "failed to restore Rust test mode after live A/B"
+            if ! restore_python; then
+                block_activation "automatic Python rollback failed"
+                RUNTIME_MODE="unknown after rollback failure"
+            fi
+            return 1
         fi
-        return 1
+        sleep "${LIVE_SETTLE_SECONDS:-4}"
     fi
     local active_info
     active_info="$(env -u INIR_NATIVE_BACKEND -u INIR_NATIVE_BIN_DIR \

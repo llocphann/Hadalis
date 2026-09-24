@@ -5422,5 +5422,15 @@
   "Open on bottom-right hover": "Open on bottom-right hover",
   "Open the center on its resolved output without moving the pointer to the corner.": "Open the center on its resolved output without moving the pointer to the corner.",
   "Preview notification center": "Preview notification center",
-  "Transient notifications": "Transient notifications"
+  "Transient notifications": "Transient notifications",
+  "QML activity": "QML activity",
+  "lifecycle · not CPU/RAM": "lifecycle · not CPU/RAM",
+  "COMPONENT": "COMPONENT",
+  "LIVE": "LIVE",
+  "VIS": "VIS",
+  "EVT": "EVT",
+  "No active QML targets": "No active QML targets",
+  "more components": "more components",
+  "Shell processes": "Shell processes",
+  "helpers": "helpers"
 }

@@ -11,8 +11,11 @@ Item {
     id: root
 
     signal eventEditorRequested(var event)
+    signal eventDateSelected(var date)
 
     property int monthShift: 0
+    property bool eventDateSelectionEnabled: false
+    property var selectedEventDate: null
     readonly property date today: DateTime.clock.date
     readonly property var locale: Qt.locale()
     readonly property date viewingDate: new Date(
@@ -97,9 +100,12 @@ Item {
                 today: root.today
                 locale: root.locale
                 calendarCells: root.calendarCells
+                selectedDate: root.selectedEventDate
+                interactiveDays: root.eventDateSelectionEnabled
                 onPreviousMonthRequested: root.monthShift--
                 onNextMonthRequested: root.monthShift++
                 onTodayRequested: root.monthShift = 0
+                onDayActivated: date => root.eventDateSelected(date)
             }
         }
     }

@@ -27,6 +27,7 @@ arch_meta_package="$repo_root/distro/arch/inir-meta/PKGBUILD"
 arch_meta_srcinfo="$repo_root/distro/arch/inir-meta/.SRCINFO"
 arch_dependency_installer="$repo_root/sdata/dist-arch/install-deps.sh"
 arch_dependency_meta="$repo_root/sdata/dist-arch/inir-deps/PKGBUILD"
+keyboard_indicator_test="$repo_root/scripts/test-keyboard-indicator-lifecycle.sh"
 
 for required in \
     "$setup_file" "$robust" "$snapshots" "$payload_tool" "$updates_service" "$release_script" \
@@ -37,6 +38,12 @@ for required in \
     "$arch_dependency_installer" "$arch_dependency_meta"; do
     [[ -f "$required" ]] || fail "missing lifecycle file: ${required#$repo_root/}"
 done
+
+# Critical command entrypoints must stay executable in the committed payload.
+# Losing this bit makes `inir update` unable to hand control to the freshly
+# pulled repository before it can repair itself.
+[[ -x "$setup_file" ]] || fail 'setup lost its executable bit'
+[[ -x "$keyboard_indicator_test" ]]     || fail 'keyboard indicator lifecycle test lost its executable bit'
 
 # The generic Wayland variable must never be used as the update/rollback
 # compositor gate; KDE and GNOME export it too.

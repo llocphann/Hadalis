@@ -66,6 +66,23 @@ use:
 bash scripts/benchmark-python-vs-rust.sh --deep
 ```
 
+For the final matched-runtime qualification before considering a default-backend
+change, use:
+
+```bash
+bash scripts/benchmark-python-vs-rust.sh --final
+```
+
+`--final` implies `--deep` and keeps all existing parity/rollback gates. It also
+runs three live Python/Rust service A/B rounds by default, alternating the order
+between rounds to reduce warm-cache/order bias. Each service restart settles for
+8 seconds and is then sampled for 10 seconds. The report records start/end
+cgroup memory, shell PSS/RSS, task count, CPU during the sample window, relevant
+journal warnings, per-round process lists, and median Rust-vs-Python deltas.
+Override `LIVE_AB_RUNS`, `LIVE_SETTLE_SECONDS`, or `LIVE_WINDOW_SECONDS` only
+when deliberately collecting a longer soak. The wrapper still restores Python
+after the run, including failure paths.
+
 `--deep` is opt-in because a large MPD library can take materially longer to
 scan. It runs snapshot parity in a shared temporary cache, then times Python and
 Rust with separate empty temporary caches so neither implementation warms the
@@ -232,12 +249,13 @@ per startup case; it is under the local state directory named above.
   verify all trial-critical installed files match the tested checkout. Do not
   infer this from the checkout SHA alone. The harness reports each mismatch
   separately and will not restart the service while any remain.
-- Rerun `bash scripts/benchmark-python-vs-rust.sh`. Require parity to pass,
-  zero activation blockers, both Python and Rust `inir.service` samples, and
-  a successful return to Python with service and selector state verified.
-  Compare shell startup, cgroup memory, shell RSS/PSS, CPU, processes, and
-  journal errors under the same session/workload. No live A/B was captured
-  in the snapshot above.
+- Rerun `bash scripts/benchmark-python-vs-rust.sh --final`. Require parity to
+  pass, zero activation blockers, all repeated Python/Rust `inir.service`
+  samples, and a successful return to Python with service and selector state
+  verified. Compare the reported median cgroup memory, shell RSS/PSS, CPU,
+  process lists, and journal warnings under the same session/workload. Treat
+  whole-shell memory deltas as live evidence rather than a Rust-only metric,
+  because the Quickshell process dominates that footprint.
 - Selector behavior tests cover missing or failing Rust binaries, strict vs
   fail-soft selection, and environment vs state-file precedence. Still test
   restart failure and interrupted-trial rollback in a matched live runtime.

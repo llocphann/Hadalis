@@ -399,14 +399,17 @@ for op in outputs get-hot-corners get-input get-layout get-animations get-window
     fi
     kv "niri $op" "$parity"
     [[ "$parity" == PASS ]] || block_activation "Niri $op parity failed"
+    if (( py_rc == 0 && rs_rc == 0 )); then
+        bench "niri $op python" python3 scripts/niri-config.py "$op"
+        bench "niri $op rust" "$BIN_DIR/inir-native" niri "$op"
+    fi
 done
-bench "niri hot-corners python" python3 scripts/niri-config.py get-hot-corners
-bench "niri hot-corners rust" "$BIN_DIR/inir-native" niri get-hot-corners
 
 section "DESKTOP CONFIG PARITY (ISOLATED TEMP HOME)"
 if python3 - "$ROOT_DIR/services/IconThemeService.qml" "$BIN_DIR/inir-native" "$TMP_ROOT/desktop" <<'PY'
 import configparser
 import os
+import shlex
 from pathlib import Path
 import subprocess
 import sys
@@ -422,6 +425,7 @@ files = {
     "gtk-4.0/settings.ini": ("Settings", "gtk-icon-theme-name"),
 }
 theme = "INIR-Native-Trial"
+runner_commands = []
 for backend in ("python", "rust"):
     for relative, (section, _) in files.items():
         path = root / backend / ".config" / relative
@@ -439,6 +443,9 @@ for process_id in ("kdeGlobalsUpdateProc", "qt5ctProc", "qt6ctProc", "gtkSetting
     script = source[opening + 1:closing]
     script = script.replace("${" + process_id + ".themeName}", theme)
     script = script.replace("\\\\", "\\")  # QML template literal escaping
+    script_path = root / f"{process_id}.py"
+    script_path.write_text(script)
+    runner_commands.append(f"python3 {shlex.quote(str(script_path))} & pids+=(\"$!\")")
     result = subprocess.run(["python3", "-c", script],
                             env={**os.environ, "HOME": str(root / "python")},
                             capture_output=True, text=True)
@@ -446,6 +453,12 @@ for process_id in ("kdeGlobalsUpdateProc", "qt5ctProc", "qt6ctProc", "gtkSetting
         print(f"desktop Python {process_id}: ERROR exit={result.returncode} "
               f"{result.stderr[:200].strip()}")
         sys.exit(1)
+
+(root / "run-python.sh").write_text(
+    "#!/usr/bin/env bash\nset -uo pipefail\npids=()\n"
+    + "\n".join(runner_commands)
+    + "\nrc=0\nfor pid in \"${pids[@]}\"; do wait \"$pid\" || rc=1; done\nexit \"$rc\"\n"
+)
 
 result = subprocess.run([rust_binary, "desktop", "sync-icon-theme", theme],
                         env={**os.environ,
@@ -472,6 +485,9 @@ sys.exit(1 if failed else 0)
 PY
 then
     kv "desktop config parity" "PASS"
+    HOME="$TMP_ROOT/desktop/python" bench "desktop python combined" bash "$TMP_ROOT/desktop/run-python.sh"
+    XDG_CONFIG_HOME="$TMP_ROOT/desktop/rust/.config" bench "desktop rust combined" \
+        "$BIN_DIR/inir-native" desktop sync-icon-theme INIR-Native-Trial
 else
     block_activation "desktop config parity failed"
 fi
@@ -534,6 +550,24 @@ PY
 fi
 bench "theme python color-only" "${PY_THEME[@]}" "${THEME_ARGS[@]}" --json-output "$TMP_ROOT/bench-py.json"
 bench "theme rust color-only" "$BIN_DIR/inir-theme" "${THEME_ARGS[@]}" --json-output "$TMP_ROOT/bench-rs.json"
+mkdir -p "$TMP_ROOT/theme-bench-py" "$TMP_ROOT/theme-bench-rs"
+for backend in py rs; do
+    if [[ "$backend" == py ]]; then
+        label="theme python full"
+        command=("${PY_THEME[@]}")
+    else
+        label="theme rust full"
+        command=("$BIN_DIR/inir-theme")
+    fi
+    output_dir="$TMP_ROOT/theme-bench-$backend"
+    bench "$label" "${command[@]}" "${THEME_ARGS[@]}" \
+        --json-output "$output_dir/colors.json" \
+        --palette-output "$output_dir/palette.json" \
+        --app-palette-output "$output_dir/app.json" \
+        --terminal-output "$output_dir/terminal.json" \
+        --meta-output "$output_dir/meta.json" \
+        --scss-output "$output_dir/colors.scss"
+done
 
 section "INPUT PROBE + RESIDENT COST"
 python3 scripts/daemon/keyboard_lock_state_daemon.py --once >"$TMP_ROOT/input.py" 2>"$TMP_ROOT/input.py.err"

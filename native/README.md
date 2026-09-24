@@ -59,6 +59,10 @@ and includes the canonical repository validator. It writes one text report
 under `$XDG_STATE_HOME/inir/` (or `~/.local/state/inir/`). Send that file for
 analysis, even if the command exits nonzero: parity failures, missing services,
 and validator failures are recorded in it.
+The timed cases include every ported read-only Niri command, clipboard
+filtering, desktop icon configuration in temporary homes, color-only and full
+theme generation, input probes and resident daemons, diagnostics sampling,
+and MPD status when the service is available.
 
 When the installed runtime matches this checkout and parity checks pass, the
 command also measures the live `inir.service` once in Python and Rust mode,

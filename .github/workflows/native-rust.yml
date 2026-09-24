@@ -51,6 +51,9 @@ jobs:
       - name: Assert reversible native cutover boundary
         run: |
           python3 native/scripts/assert-dormant.py
+          bash -n scripts/native-dispatch
+          bash -n scripts/native-cutover-benchmark.sh
+          bash -n sdata/migrations/049-native-clipboard-selector.sh
           bash scripts/test-native-selector-contract.sh
 
       # During the dormant staging phase, format the runner copy before compile

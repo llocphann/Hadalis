@@ -47,6 +47,15 @@ if grep -Fq 'id: manifestInfoProc' "$service"; then
     fail 'manifest metadata must not restore the bash/head/grep/sed process pipeline'
 fi
 
+local_version_block="$(sed -n '/id: localVersionFile/,/^    }/p' "$service")"
+[[ -n "$local_version_block" ]] || fail 'local VERSION FileView is missing'
+assert_contains 'property bool tryingConfigFallback: false' "$local_version_block" 'local VERSION reader must retain repo-to-config fallback state'
+assert_contains 'root._setLocalVersionPath(root.configDir + "/VERSION")' "$local_version_block" 'local VERSION reader must fall back to the active config copy'
+assert_contains 'root._finishLocalVersion("")' "$local_version_block" 'missing local VERSION files must still complete the update check'
+if grep -Fq 'id: localVersionStartupProc' "$service"; then
+    fail 'local VERSION startup must not restore the bash/cat process chain'
+fi
+
 assert_guarded_process fetchProc "$fetch_block"
 assert_guarded_process currentBranchProc "$branch_block"
 assert_guarded_process localCommitProc "$local_block"

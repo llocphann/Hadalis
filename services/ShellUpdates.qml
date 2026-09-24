@@ -762,32 +762,50 @@ Singleton {
             }
         }
         onExited: (exitCode, exitStatus) => {
-            // Also read local VERSION on startup
-            localVersionStartupProc.running = true
+            // Also read local VERSION on startup.
+            root._loadLocalVersion()
         }
     }
 
-    // Step 1d: Read local VERSION on startup
-    // Try repo path first (VERSION is there), fallback to config dir (dev setup)
-    Process {
-        id: localVersionStartupProc
-        running: false
-        command: [
-            "/usr/bin/bash", "-c",
-            "cat '" + root.repoPath + "/VERSION' 2>/dev/null || cat '" + root.configDir + "/VERSION' 2>/dev/null || echo ''"
-        ]
-        stdout: StdioCollector {
-            onStreamFinished: {
-                const ver = (text ?? "").trim()
-                // Only override if we got a better version than what version.json gave us
-                if (ver.length > 0 && ver !== root.localVersion) {
-                    root.localVersion = ver
-                }
-                print("[ShellUpdates] Local version: " + root.localVersion)
-            }
+    // Step 1d: Read local VERSION on startup.
+    // Preserve the repo -> config fallback order without spawning bash + cat.
+    function _setLocalVersionPath(path: string): void {
+        if (localVersionFile.path === path)
+            localVersionFile.reload()
+        else
+            localVersionFile.path = path
+    }
+
+    function _loadLocalVersion(): void {
+        localVersionFile.tryingConfigFallback = false
+        root._setLocalVersionPath(root.repoPath + "/VERSION")
+    }
+
+    function _finishLocalVersion(text: string): void {
+        const ver = (text ?? "").trim()
+        // Only override if we got a better version than what version.json gave us.
+        if (ver.length > 0 && ver !== root.localVersion) {
+            root.localVersion = ver
         }
-        onExited: (exitCode, exitStatus) => {
-            root.check()
+        print("[ShellUpdates] Local version: " + root.localVersion)
+        localVersionFile.path = ""
+        root.check()
+    }
+
+    FileView {
+        id: localVersionFile
+        property bool tryingConfigFallback: false
+        path: ""
+        printErrors: false
+
+        onLoaded: root._finishLocalVersion(localVersionFile.text())
+        onLoadFailed: {
+            if (!localVersionFile.tryingConfigFallback) {
+                localVersionFile.tryingConfigFallback = true
+                root._setLocalVersionPath(root.configDir + "/VERSION")
+                return
+            }
+            root._finishLocalVersion("")
         }
     }
 

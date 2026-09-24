@@ -21,12 +21,6 @@ Item {
     property int activeIndex: 0
     property bool animate: false
 
-    // Internal horizontal overscan only. This does not change the component,
-    // popup, orbit, node or text geometry; it merely gives shader/Canvas glow
-    // enough pixels to fade beyond the logical OrbitalWeather bounds before
-    // the outer tab viewport performs its intentional slide clip.
-    readonly property real renderBleedX: 18
-
     readonly property real regularNodeRadius:
         Math.max(14, Math.min(root.nodeWidth, root.nodeHeight) * 0.5)
     readonly property real activeNodeScale: 1.28
@@ -111,29 +105,19 @@ Item {
     // for renderers that cannot compile the bundled Qt shader pack.
     ShaderEffect {
         id: liquidShader
-        x: -root.renderBleedX
-        y: 0
-        width: root.width + root.renderBleedX * 2
-        height: root.height
+        anchors.fill: parent
         visible: status === ShaderEffect.Compiled
         blending: true
         fragmentShader: Qt.resolvedUrl("LiquidOrbitalField.frag.qsb")
 
         readonly property vector2d fieldSize:
-            Qt.vector2d(Math.max(1, liquidShader.width),
-                Math.max(1, liquidShader.height))
+            Qt.vector2d(Math.max(1, root.width), Math.max(1, root.height))
         readonly property vector2d orbitRadii:
             Qt.vector2d(root.orbitRadiusX, root.orbitRadiusY)
         readonly property vector4d nodesX0: Qt.vector4d(
-            root.nodeX(0) + root.renderBleedX,
-            root.nodeX(1) + root.renderBleedX,
-            root.nodeX(2) + root.renderBleedX,
-            root.nodeX(3) + root.renderBleedX)
+            root.nodeX(0), root.nodeX(1), root.nodeX(2), root.nodeX(3))
         readonly property vector4d nodesX1: Qt.vector4d(
-            root.nodeX(4) + root.renderBleedX,
-            root.nodeX(5) + root.renderBleedX,
-            root.nodeX(6) + root.renderBleedX,
-            root.nodeX(7) + root.renderBleedX)
+            root.nodeX(4), root.nodeX(5), root.nodeX(6), root.nodeX(7))
         readonly property vector4d nodesY0: Qt.vector4d(
             root.nodeY(0), root.nodeY(1), root.nodeY(2), root.nodeY(3))
         readonly property vector4d nodesY1: Qt.vector4d(
@@ -430,10 +414,7 @@ Item {
 
     Canvas {
         id: liquidCanvas
-        x: -root.renderBleedX
-        y: 0
-        width: root.width + root.renderBleedX * 2
-        height: root.height
+        anchors.fill: parent
         visible: liquidShader.status !== ShaderEffect.Compiled
         antialiasing: true
         renderStrategy: Canvas.Threaded
@@ -451,11 +432,6 @@ Item {
                 return
 
             const time = root.timeSeconds
-            ctx.save()
-            // Canvas fallback uses root-space geometry. Translate it into the
-            // horizontally overscanned backing image without moving the visual
-            // orbit in popup coordinates.
-            ctx.translate(root.renderBleedX, 0)
 
             // 1. Morphological rim: a slightly enlarged mass union underneath
             // the body. No stroke/path is used to outline the connector.
@@ -504,8 +480,6 @@ Item {
             ctx.save()
             ctx.globalCompositeOperation = "destination-over"
             root.drawActiveGlow(ctx, time)
-            ctx.restore()
-
             ctx.restore()
         }
     }

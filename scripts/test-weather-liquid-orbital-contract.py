@@ -31,9 +31,6 @@ def main() -> None:
     require(field, "ShaderEffect {", 'fragmentShader: Qt.resolvedUrl("LiquidOrbitalField.frag.qsb")',
             "visible: status === ShaderEffect.Compiled",
             "visible: liquidShader.status !== ShaderEffect.Compiled",
-            "readonly property real renderBleedX: 18",
-            "width: root.width + root.renderBleedX * 2",
-            "ctx.translate(root.renderBleedX, 0)",
             "renderTarget: Canvas.Image", "FrameAnimation {",
             "seconds: root.timeSeconds", "property int activeIndex: 0")
     if "&& Appearance.effectsEnabled" in field.split("FrameAnimation {", 1)[1].split("}", 1)[0]:

@@ -131,8 +131,6 @@ StyledPopup {
                 anchors {
                     fill: parent
                     topMargin: 9
-                    leftMargin: 4
-                    rightMargin: 4
                 }
                 active: root.eventsDialogLoaded && root.active
                 onLoaded: Qt.callLater(root.prepareEventEditor)

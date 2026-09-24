@@ -1,11 +1,15 @@
 pragma ComponentBehavior: Bound
 
 import qs.modules.common.widgets
+import qs.modules.sidebarRight.events
 import qs.services
 import QtQuick
+import QtQuick.Layouts
 
 Item {
     id: root
+
+    signal eventEditorRequested(var event)
 
     property int monthShift: 0
     readonly property date today: DateTime.clock.date
@@ -37,8 +41,8 @@ Item {
         return cells
     }
 
-    implicitWidth: Math.max(246, monthView.implicitWidth)
-    implicitHeight: monthView.implicitHeight
+    implicitWidth: Math.max(246, monthView.implicitWidth) + 345
+    implicitHeight: Math.max(440, monthView.implicitHeight)
 
     function sameDay(a, b): bool {
         return a.getFullYear() === b.getFullYear()
@@ -46,15 +50,38 @@ Item {
             && a.getDate() === b.getDate()
     }
 
-    ObsidianMonthCalendar {
-        id: monthView
-        anchors.horizontalCenter: parent.horizontalCenter
-        viewingDate: root.viewingDate
-        today: root.today
-        locale: root.locale
-        calendarCells: root.calendarCells
-        onPreviousMonthRequested: root.monthShift--
-        onNextMonthRequested: root.monthShift++
-        onTodayRequested: root.monthShift = 0
+    RowLayout {
+        anchors.fill: parent
+        spacing: 12
+
+        Item {
+            Layout.preferredWidth: Math.max(246, monthView.implicitWidth)
+            Layout.fillHeight: true
+
+            ObsidianMonthCalendar {
+                id: monthView
+                anchors.horizontalCenter: parent.horizontalCenter
+                anchors.verticalCenter: parent.verticalCenter
+                viewingDate: root.viewingDate
+                today: root.today
+                locale: root.locale
+                calendarCells: root.calendarCells
+                onPreviousMonthRequested: root.monthShift--
+                onNextMonthRequested: root.monthShift++
+                onTodayRequested: root.monthShift = 0
+            }
+        }
+
+        Rectangle {
+            Layout.fillHeight: true
+            Layout.preferredWidth: 1
+            color: Appearance.colors.colOutlineVariant
+        }
+
+        EventsWidget {
+            Layout.preferredWidth: 320
+            Layout.fillHeight: true
+            onOpenEventsDialog: (event) => root.eventEditorRequested(event)
+        }
     }
 }

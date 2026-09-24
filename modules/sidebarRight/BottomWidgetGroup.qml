@@ -61,11 +61,8 @@ Rectangle {
     property bool collapsed: Persistent.states?.sidebar?.bottomGroup?.collapsed ?? false
     
     property var allTabs: [
-        {"type": "calendar", "name": Translation.tr("Calendar"), "icon": "calendar_month", "widget": calendarWidget},
-        {"type": "events", "name": Translation.tr("Events"), "icon": "event_upcoming", "widget": eventsWidgetComponent},
         {"type": "calculator", "name": Translation.tr("Calc"), "icon": "calculate", "widget": calculatorWidget},
         {"type": "sysmon", "name": Translation.tr("System"), "icon": "monitor_heart", "widget": sysMonWidget},
-        {"type": "weather", "name": Translation.tr("Weather"), "icon": "light_mode", "widget": weatherWidget},
         {"type": "screentime", "name": Translation.tr("Screen Time"), "icon": "av_timer", "widget": screenTimeWidget},
     ]
 
@@ -110,7 +107,7 @@ Rectangle {
 
     readonly property var enabledWidgets: {
         root.configVersion // Force dependency
-        return Config.options?.sidebar?.right?.enabledWidgets ?? ["calendar", "events", "calculator", "sysmon", "weather"]
+        return Config.options?.sidebar?.right?.enabledWidgets ?? ["calculator", "sysmon"]
     }
 
     property var tabs: allTabs.filter(tab => {
@@ -225,10 +222,9 @@ Rectangle {
         }
 
         StyledText {
-            property int remainingTasks: Todo.list.filter(task => !task.done).length;
             Layout.margins: 10
             Layout.leftMargin: 0
-            text: Translation.tr("%1   •   %2 tasks").arg(DateTime.collapsedCalendarFormat).arg(remainingTasks)
+            text: root.tabs[root.selectedTab]?.name ?? Translation.tr("Widgets")
             font.pixelSize: Appearance.font.pixelSize.large
             font.family: Appearance.zzzEverywhere ? Appearance.font.family.numbers : Appearance.font.family.main
             color: Appearance.zzzEverywhere ? Appearance.zzz.ink : Appearance.inirEverywhere ? Appearance.inir.colText : Appearance.colors.colOnLayer1

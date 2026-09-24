@@ -758,71 +758,7 @@ Item {
     }
 
     component SystemButtonRow: Item {
-        implicitHeight: Math.max(uptimeContainer.implicitHeight, systemButtonsRow.implicitHeight)
-
-        Rectangle {
-            id: uptimeContainer
-            anchors {
-                top: parent.top
-                bottom: parent.bottom
-                left: parent.left
-            }
-            color: Appearance.colors.colLayer1
-            Behavior on color {
-                enabled: Appearance.animationsEnabled
-                ColorAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve }
-            }
-            radius: height / 2
-            Behavior on radius {
-                enabled: Appearance.animationsEnabled
-                NumberAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve }
-            }
-            border.width: 0
-            Behavior on border.width {
-                enabled: Appearance.animationsEnabled
-                NumberAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve }
-            }
-            border.color: "transparent"
-            Behavior on border.color {
-                enabled: Appearance.animationsEnabled
-                ColorAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve }
-            }
-            implicitWidth: uptimeRow.implicitWidth + 24
-            implicitHeight: uptimeRow.implicitHeight + 8
-            
-            Row {
-                id: uptimeRow
-                anchors.centerIn: parent
-                spacing: 8
-                CustomIcon {
-                    id: distroIcon
-                    anchors.verticalCenter: parent.verticalCenter
-                    width: 25
-                    height: 25
-                    source: SystemInfo.distroIcon
-                    colorize: true
-                    color: Appearance.colors.colOnLayer0
-                    Behavior on color {
-                        enabled: Appearance.animationsEnabled
-                        ColorAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve }
-                    }
-                }
-                StyledText {
-                    anchors.verticalCenter: parent.verticalCenter
-                    font.pixelSize: Appearance.font.pixelSize.normal
-                    font.family: Appearance.font.family.main
-                    font.weight: Font.Normal
-                    font.italic: false
-                    color: Appearance.colors.colOnLayer0
-                    Behavior on color {
-                        enabled: Appearance.animationsEnabled
-                        ColorAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve }
-                    }
-                    text: Translation.tr("Up %1").arg(DateTime.uptime)
-                    textFormat: Text.MarkdownText
-                }
-            }
-        }
+        implicitHeight: systemButtonsRow.implicitHeight
 
         ButtonGroup {
             id: systemButtonsRow

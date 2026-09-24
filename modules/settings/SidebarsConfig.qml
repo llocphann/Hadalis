@@ -288,7 +288,7 @@ ContentPage {
                 title: Translation.tr("Right Sidebar")
                 tooltip: Translation.tr("Toggle which widgets appear in the right sidebar")
 
-                readonly property var defaults: ["calendar", "events", "calculator", "sysmon", "weather"]
+                readonly property var defaults: ["calculator", "sysmon"]
 
                 function isEnabled(widgetId) {
                     return (Config.options?.sidebar?.right?.enabledWidgets ?? defaults).includes(widgetId)
@@ -313,25 +313,6 @@ ContentPage {
                 }
 
                 SettingsSwitch {
-                    buttonIcon: "calendar_month"
-                    text: Translation.tr("Calendar")
-                    Component.onCompleted: checked = rightSidebarWidgets.isEnabled("calendar")
-                    onClicked: {
-                        // checked ya fue invertido por ConfigSwitch.onClicked
-                        rightSidebarWidgets.setWidget("calendar", checked)
-                    }
-                }
-
-                SettingsSwitch {
-                    buttonIcon: "event_upcoming"
-                    text: Translation.tr("Events")
-                    Component.onCompleted: checked = rightSidebarWidgets.isEnabled("events")
-                    onClicked: {
-                        rightSidebarWidgets.setWidget("events", checked)
-                    }
-                }
-
-                SettingsSwitch {
                     buttonIcon: "calculate"
                     text: Translation.tr("Calculator")
                     Component.onCompleted: checked = rightSidebarWidgets.isEnabled("calculator")
@@ -346,15 +327,6 @@ ContentPage {
                     Component.onCompleted: checked = rightSidebarWidgets.isEnabled("sysmon")
                     onClicked: {
                         rightSidebarWidgets.setWidget("sysmon", checked)
-                    }
-                }
-
-                SettingsSwitch {
-                    buttonIcon: "partly_cloudy_day"
-                    text: Translation.tr("Weather")
-                    Component.onCompleted: checked = rightSidebarWidgets.isEnabled("weather")
-                    onClicked: {
-                        rightSidebarWidgets.setWidget("weather", checked)
                     }
                 }
 

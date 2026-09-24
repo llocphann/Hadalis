@@ -1451,11 +1451,8 @@
         },
         "right": {
             "enabledWidgets": [
-                "calendar",
-                "events",
                 "calculator",
-                "sysmon",
-                "weather"
+                "sysmon"
             ],
             "sectionOrder": [
                 "system",

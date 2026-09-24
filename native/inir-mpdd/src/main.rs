@@ -636,6 +636,22 @@ impl Default for ArtLookup {
     }
 }
 
+fn art_filename_rank(name: &str) -> Option<usize> {
+    let lower = name.to_ascii_lowercase();
+    for (base_index, base) in ART_NAMES.iter().enumerate() {
+        let Some(extension) = lower.strip_prefix(base) else {
+            continue;
+        };
+        if let Some(extension_index) = ART_EXTENSIONS
+            .iter()
+            .position(|candidate| extension == *candidate)
+        {
+            return Some(base_index * ART_EXTENSIONS.len() + extension_index);
+        }
+    }
+    None
+}
+
 impl ArtLookup {
     fn folder_art(&mut self, path_text: &str) -> String {
         if path_text.is_empty() || path_text.contains("://") {
@@ -653,24 +669,26 @@ impl ArtLookup {
         let art = fs::read_dir(&directory)
             .ok()
             .and_then(|entries| {
-                let mut by_name = HashMap::new();
+                let mut best: Option<(usize, PathBuf)> = None;
                 for entry in entries.flatten() {
                     let path = entry.path();
-                    if path.is_file()
-                        && let Some(name) = path.file_name().and_then(|name| name.to_str())
+                    if !path.is_file() {
+                        continue;
+                    }
+                    let Some(name) = path.file_name().and_then(|name| name.to_str()) else {
+                        continue;
+                    };
+                    let Some(rank) = art_filename_rank(name) else {
+                        continue;
+                    };
+                    if best
+                        .as_ref()
+                        .is_none_or(|(best_rank, _)| rank <= *best_rank)
                     {
-                        by_name.insert(name.to_ascii_lowercase(), path);
+                        best = Some((rank, path));
                     }
                 }
-
-                for base in ART_NAMES {
-                    for extension in ART_EXTENSIONS {
-                        if let Some(path) = by_name.get(&format!("{base}{extension}")) {
-                            return Some(file_url(path));
-                        }
-                    }
-                }
-                None
+                best.map(|(_, path)| file_url(&path))
             })
             .unwrap_or_default();
 
@@ -1881,8 +1899,8 @@ mod tests {
     use std::time::Duration;
 
     use super::{
-        MpdClient, MpdManager, art_cache_key, legacy_request, lrc_stamp_seconds, pairs, parse_lrc,
-        quote, records, status_payload_mode, status_payload_mode_with_art,
+        MpdClient, MpdManager, art_cache_key, art_filename_rank, legacy_request, lrc_stamp_seconds,
+        pairs, parse_lrc, quote, records, status_payload_mode, status_payload_mode_with_art,
     };
     use serde_json::json;
 
@@ -2077,6 +2095,19 @@ mod tests {
             commands,
             vec!["config", "status", "currentsong", "status", "currentsong"]
         );
+    }
+
+    #[test]
+    fn artwork_filename_priority_matches_legacy_lookup_order() {
+        assert_eq!(art_filename_rank("cover.jpg"), Some(0));
+        assert_eq!(art_filename_rank("COVER.PNG"), Some(2));
+        assert_eq!(
+            art_filename_rank("folder.jpg"),
+            Some(ART_EXTENSIONS.len())
+        );
+        assert_eq!(art_filename_rank("front.avif"), Some(2 * ART_EXTENSIONS.len() + 4));
+        assert_eq!(art_filename_rank("cover.txt"), None);
+        assert_eq!(art_filename_rank("my-cover.jpg"), None);
     }
 
     #[test]

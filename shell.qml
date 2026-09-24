@@ -56,12 +56,13 @@ ShellRoot {
     property var _fontSyncService
     property var _cavaThemeService
     // Screen Time must exist for the whole enabled session, not only after its
-    // sidebar page is first opened. It is explicitly materialized after the
-    // first frame and when the user enables tracking later.
+    // Sidebar page or Dashboard Uptime tab is first opened. It is materialized
+    // after first frame whenever either owner enables tracking.
     property var _screenTimeService
     function _ensureScreenTimeService(): void {
         if (GlobalStates.deferredPanelsReady
-                && (Config.options?.sidebar?.screenTime?.enable ?? false))
+                && ((Config.options?.sidebar?.screenTime?.enable ?? false)
+                    || (Config.options?.dashboard?.enable ?? true)))
             root._screenTimeService = ScreenTime
     }
     // Tier 4: T+1500ms (background features - updates, sync, content services)

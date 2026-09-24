@@ -15,11 +15,14 @@ Item { // Notification item area
     property bool expanded: false
     property bool popup: false
     property bool modernLayout: false
+    property bool compactActions: false
     signal externalLinkOpened()
     signal notificationActionInvoked()
     property bool onlyNotification: false
     property real fontSize: Appearance.font.pixelSize.small
-    property real padding: modernLayout ? 10 : (onlyNotification ? 0 : 8)
+    property real padding: modernLayout
+        ? (compactActions ? 8 : 10)
+        : (onlyNotification ? 0 : 8)
     property real summaryElideRatio: 0.85
 
     // Animation tokens — use fast timing for dismiss in all modes
@@ -330,18 +333,23 @@ Item { // Notification item area
                                 Layout.fillWidth: !root.modernLayout
                                 buttonText: Translation.tr("Close")
                                 urgency: root.notificationObject?.urgency ?? NotificationUrgency.Normal
-                                implicitWidth: root.modernLayout ? 34
+                                implicitWidth: root.modernLayout
+                                    ? (root.compactActions ? 28 : 34)
                                     : (!root.hasNotificationActions
                                         ? (Math.max(0, actionsFlickable.width - actionRowLayout.spacing) / 2)
                                         : ((contentItem?.implicitWidth ?? 0)
                                             + (leftPadding ?? 0) + (rightPadding ?? 0)))
+
+                                implicitHeight: root.modernLayout
+                                    && root.compactActions ? 28 : 34
 
                                 onClicked: {
                                     root.destroyWithAnimation()
                                 }
 
                                 contentItem: MaterialSymbol {
-                                    iconSize: Appearance.font.pixelSize.larger
+                                    iconSize: root.compactActions
+                                        ? 15 : Appearance.font.pixelSize.larger
                                     horizontalAlignment: Text.AlignHCenter
                                     color: root.notificationCritical
                                         ? Appearance.colors.colOnSecondaryContainer
@@ -358,6 +366,8 @@ Item { // Notification item area
                                 NotificationActionButton {
                                     required property var modelData
                                     Layout.fillWidth: !root.modernLayout
+                                    implicitHeight: root.modernLayout
+                                        && root.compactActions ? 28 : 34
                                     buttonText: String(modelData?.text ?? "")
                                     urgency: root.notificationObject?.urgency ?? NotificationUrgency.Normal
                                     onClicked: {
@@ -373,11 +383,14 @@ Item { // Notification item area
                                 Layout.fillWidth: !root.modernLayout
                                 buttonText: Translation.tr("Copy notification")
                                 urgency: root.notificationObject?.urgency ?? NotificationUrgency.Normal
-                                implicitWidth: root.modernLayout ? 34
+                                implicitWidth: root.modernLayout
+                                    ? (root.compactActions ? 28 : 34)
                                     : (!root.hasNotificationActions
                                         ? (Math.max(0, actionsFlickable.width - actionRowLayout.spacing) / 2)
                                         : ((contentItem?.implicitWidth ?? 0)
                                             + (leftPadding ?? 0) + (rightPadding ?? 0)))
+                                implicitHeight: root.modernLayout
+                                    && root.compactActions ? 28 : 34
 
                                 onClicked: {
                                     Quickshell.execDetached(["wl-copy", notificationObject?.body ?? ""])
@@ -396,7 +409,8 @@ Item { // Notification item area
 
                                 contentItem: MaterialSymbol {
                                     id: copyIcon
-                                    iconSize: Appearance.font.pixelSize.larger
+                                    iconSize: root.compactActions
+                                        ? 15 : Appearance.font.pixelSize.larger
                                     horizontalAlignment: Text.AlignHCenter
                                     color: root.notificationCritical
                                         ? Appearance.colors.colOnSecondaryContainer

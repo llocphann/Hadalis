@@ -127,12 +127,13 @@ Migration `028-bar-modular-layout` exists but is disabled. The bar has a built-i
 
 ### Screen Time
 
-`services/ScreenTime.qml` tracks focused app usage when `sidebar.screenTime.enable` is true.
+`services/ScreenTime.qml` tracks focused app/window usage when Sidebar Screen Time is enabled or when the Material (ii) Dashboard is enabled so its Uptime tab can retain full-session usage history.
 
 Visible surfaces:
 
 - `modules/sidebarRight/screenTime/ScreenTimeWidget.qml`
 - `modules/waffle/actionCenter/screenTime/ScreenTimePage.qml`
+- `modules/dashboard/DashNotifications.qml` — compact non-scrollable Uptime tab beside Notifications
 
 It stores local daily JSON under the iNiR state directory. It has daily totals, app totals, hourly buckets, and per-app hourly drill-down. It is off by default and hidden from sidebar layouts while disabled.
 

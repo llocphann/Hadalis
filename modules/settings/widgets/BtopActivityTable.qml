@@ -51,8 +51,7 @@ Item {
             if (!row || String(record?.state ?? "") !== "resident")
                 continue
             row.resident += 1
-            if (String(record?.lifecycle ?? "") === "visible"
-                    || record?.presented === true)
+            if (String(record?.lifecycle ?? "") === "visible")
                 row.visible += 1
         }
 

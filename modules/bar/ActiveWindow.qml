@@ -3,22 +3,10 @@ import qs.modules.common
 import qs.modules.common.widgets
 import QtQuick
 import Quickshell
-import Quickshell.Wayland
-import Quickshell.Hyprland
 
 Item {
     id: root
-    readonly property HyprlandMonitor monitor: CompositorService.isHyprland ? Hyprland.monitorFor(root.QsWindow.window?.screen) : null
-    readonly property Toplevel activeWindow: ToplevelManager.activeToplevel
-
-    property string activeWindowAddress: CompositorService.isHyprland ? `0x${activeWindow?.HyprlandToplevel?.address}` : ""
-    property bool focusingThisMonitor: CompositorService.isHyprland ? (HyprlandData.activeWorkspace?.monitor == monitor?.name) : true
-    property var biggestWindow: CompositorService.isHyprland ? HyprlandData.biggestWindowForWorkspace(HyprlandData.monitors[root.monitor?.id]?.activeWorkspace?.id) : null
-
-    // Ventana activa según Niri (focus global)
-    property var niriFocusedWindow: {
-        if (!CompositorService.isNiri || !NiriService || !NiriService.windows)
-            return null
+    readonly property var focusedWindow: {
         const wins = NiriService.windows
         for (var i = 0; i < wins.length; ++i) {
             const w = wins[i]
@@ -38,39 +26,20 @@ Item {
     }
 
     property string displayAppName: {
-        if (CompositorService.isNiri) {
-            const w = niriFocusedWindow
-            if (w) {
-                const base = w.app_id || w.appId || Translation.tr("Desktop")
-                return shortenText(base, 40)
-            }
-            return Translation.tr("Desktop")
+        const w = root.focusedWindow
+        if (w) {
+            const base = w.app_id || w.appId || Translation.tr("Desktop")
+            return root.shortenText(base, 40)
         }
-
-        if (root.focusingThisMonitor && root.activeWindow?.activated && root.biggestWindow) {
-            return shortenText(root.activeWindow?.appId || "", 40)
-        }
-
-        const fallback = (root.biggestWindow?.class) ?? Translation.tr("Desktop")
-        return shortenText(fallback, 40)
+        return Translation.tr("Desktop")
     }
 
     property string displayTitle: {
-        if (CompositorService.isNiri) {
-            const w = niriFocusedWindow
-            if (w && w.title) {
-                return shortenText(w.title, 80)
-            }
-            const wsNum = NiriService.getCurrentWorkspaceNumber()
-            return shortenText(`${Translation.tr("Workspace")} ${wsNum}`, 80)
-        }
-
-        if (root.focusingThisMonitor && root.activeWindow?.activated && root.biggestWindow) {
-            return shortenText(root.activeWindow?.title || "", 80)
-        }
-
-        const fbTitle = (root.biggestWindow?.title) ?? `${Translation.tr("Workspace")} ${monitor?.activeWorkspace?.id ?? 1}`
-        return shortenText(fbTitle, 80)
+        const w = root.focusedWindow
+        if (w?.title)
+            return root.shortenText(w.title, 80)
+        const wsNum = NiriService.getCurrentWorkspaceNumber()
+        return root.shortenText(`${Translation.tr("Workspace")} ${wsNum}`, 80)
     }
 
     // Terminal spinners and browser progress titles can change many times per

@@ -5,7 +5,6 @@ import QtQuick.Layouts
 import Quickshell
 import Quickshell.Io
 import Quickshell.Wayland
-import Quickshell.Hyprland
 import Quickshell.Services.UPower
 import QtQuick.Effects
 import Qt5Compat.GraphicalEffects as GE
@@ -195,35 +194,4 @@ Scope {
     // agnostic). See the note in Bar.qml — both bars coexist under the ii
     // family, so a handler here would collide with the horizontal bar's.
 
-    Loader {
-        active: CompositorService.isHyprland
-        sourceComponent: Item {
-            GlobalShortcut {
-                name: "barToggle"
-                description: "Toggles bar on press"
-
-                onPressed: {
-                    GlobalStates.barOpen = !GlobalStates.barOpen;
-                }
-            }
-
-            GlobalShortcut {
-                name: "barOpen"
-                description: "Opens bar on press"
-
-                onPressed: {
-                    GlobalStates.barOpen = true;
-                }
-            }
-
-            GlobalShortcut {
-                name: "barClose"
-                description: "Closes bar on press"
-
-                onPressed: {
-                    GlobalStates.barOpen = false;
-                }
-            }
-        }
-    }
 }

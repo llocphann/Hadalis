@@ -6,7 +6,6 @@ import Qt5Compat.GraphicalEffects as GE
 import Quickshell
 import Quickshell.Io
 import Quickshell.Wayland
-import Quickshell.Hyprland
 import qs
 import qs.services
 import qs.modules.common
@@ -90,8 +89,7 @@ Scope {
                     (barRoot.fullscreenCovered || GlobalStates.coverflowSelectorOpen || (Config?.options.bar.autoHide.enable && (!mustShow || !Config?.options.bar.autoHide.pushWindows))) ? 0 :
                     barRoot.panelSurfaceHeight
                 WlrLayershell.namespace: "quickshell:bar"
-                WlrLayershell.layer: CompositorService.isNiri
-                    ? WlrLayer.Overlay : WlrLayer.Top
+                WlrLayershell.layer: WlrLayer.Overlay
                 implicitHeight: barRoot.panelSurfaceHeight
                 // Explicit zero-size item prevents ambiguous null input region during
                 // surface map/unmap transitions. Region { item: null } can be interpreted
@@ -225,35 +223,4 @@ Scope {
     // so a handler here would collide with VerticalBar's and Quickshell would
     // drop one with a "registered but will not be used" warning.
 
-    Loader {
-        active: CompositorService.isHyprland
-        sourceComponent: Item {
-            GlobalShortcut {
-                name: "barToggle"
-                description: "Toggles bar on press"
-
-                onPressed: {
-                    GlobalStates.barOpen = !GlobalStates.barOpen;
-                }
-            }
-
-            GlobalShortcut {
-                name: "barOpen"
-                description: "Opens bar on press"
-
-                onPressed: {
-                    GlobalStates.barOpen = true;
-                }
-            }
-
-            GlobalShortcut {
-                name: "barClose"
-                description: "Closes bar on press"
-
-                onPressed: {
-                    GlobalStates.barOpen = false;
-                }
-            }
-        }
-    }
 }

@@ -3,7 +3,6 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Layouts
 import Quickshell
-import Quickshell.Hyprland
 import Quickshell.Wayland
 import qs.services
 import qs.modules.common
@@ -82,34 +81,13 @@ StyledPopup {
     }
 
     function _workspaceToplevels(): var {
-        if (CompositorService.isNiri) {
-            // Niri's event stream is authoritative. Re-enrich the current
-            // foreign-toplevel handles on demand so workspace hover also works
-            // when the Bar taskbar itself is disabled and no sorting consumer
-            // has populated CompositorService.sortedToplevels.
-            const enriched = NiriService.sortToplevels(
-                ToplevelManager.toplevels?.values ?? [])
-            return enriched.filter(toplevel =>
-                root._workspaceKeyMatches(toplevel?.niriWorkspaceId))
-        }
-
-        if (CompositorService.isHyprland) {
-            const hyprlandToplevels = Hyprland.toplevels?.values ?? []
-            const result = []
-            for (const toplevel of hyprlandToplevels) {
-                const ipcWorkspace = toplevel?.lastIpcObject?.workspace?.id
-                const liveWorkspace = toplevel?.workspace?.id
-                const candidate = ipcWorkspace ?? liveWorkspace
-                if (!root._workspaceKeyMatches(candidate))
-                    continue
-                const wayland = toplevel?.wayland ?? null
-                if (wayland)
-                    result.push(wayland)
-            }
-            return result
-        }
-
-        return []
+        // Niri's event stream is authoritative. Re-enrich the current
+        // foreign-toplevel handles on demand so workspace hover also works
+        // when the Bar taskbar itself is disabled.
+        const enriched = NiriService.sortToplevels(
+            ToplevelManager.toplevels?.values ?? [])
+        return enriched.filter(toplevel =>
+            root._workspaceKeyMatches(toplevel?.niriWorkspaceId))
     }
 
     function _refreshWorkspaceToplevels(): void {
@@ -182,7 +160,6 @@ StyledPopup {
 
         Connections {
             target: NiriService
-            enabled: CompositorService.isNiri
             function onWindowsChanged(): void {
                 root._refreshWorkspaceToplevels()
             }
@@ -191,13 +168,6 @@ StyledPopup {
             }
         }
 
-        Connections {
-            target: Hyprland.toplevels
-            enabled: CompositorService.isHyprland
-            function onValuesChanged(): void {
-                root._refreshWorkspaceToplevels()
-            }
-        }
 
         clip: true
         implicitWidth: root.isVertical

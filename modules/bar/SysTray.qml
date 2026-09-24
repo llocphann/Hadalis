@@ -4,7 +4,6 @@ import qs.modules.common.functions
 import QtQuick
 import QtQuick.Layouts
 import Quickshell
-import Quickshell.Hyprland
 import Quickshell.Services.SystemTray
 import qs.services
 

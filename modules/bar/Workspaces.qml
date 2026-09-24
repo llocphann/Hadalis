@@ -8,7 +8,6 @@ import QtQuick
 import QtQuick.Controls
 import Quickshell
 import Quickshell.Wayland
-import Quickshell.Hyprland
 import Quickshell.Widgets
 import Qt5Compat.GraphicalEffects
 
@@ -25,7 +24,6 @@ Item {
         root.workspaceHoverPopupEnabled
         && (Config.options?.overview?.workspaceHover?.enable ?? true)
     property bool borderless: Config.options?.bar?.borderless ?? false
-    readonly property HyprlandMonitor monitor: CompositorService.isHyprland ? Hyprland.monitorFor(root.QsWindow.window?.screen) : null
     readonly property Toplevel activeWindow: ToplevelManager.activeToplevel
 
     property bool showAppIcons: true
@@ -72,7 +70,7 @@ Item {
     }
 
     function _workspaceLabel(workspace, workspaceValue): string {
-        if (CompositorService.isNiri && workspace) {
+        if (workspace) {
             const name = root._stringOr(workspace.name, "")
             if (name.length > 0)
                 return name
@@ -128,18 +126,15 @@ Item {
     }
 
     // Per-monitor: each bar shows workspaces for its own output (Niri)
-    readonly property bool perMonitor: root.configuredPerMonitor && CompositorService.isNiri === true
+    readonly property bool perMonitor: root.configuredPerMonitor
     readonly property string screenName: root.QsWindow.window?.screen?.name ?? ""
     readonly property var outputWorkspaces: {
-        if (!CompositorService.isNiri) return []
         if (perMonitor && screenName.length > 0) {
             return (NiriService.allWorkspaces ?? []).filter(w => w.output === screenName)
         }
         return NiriService.currentOutputWorkspaces ?? []
     }
     function workspaceForSlot(slotNumber) {
-        if (!CompositorService.isNiri)
-            return null
         if (!root.perMonitor)
             return (NiriService.allWorkspaces ?? []).find(w => w.idx === slotNumber) ?? null
         const slotIndex = slotNumber - 1
@@ -164,11 +159,7 @@ Item {
     }
 
     function workspacePreviewId(slotNumber) {
-        if (CompositorService.isNiri)
-            return root.workspaceForSlot(slotNumber)?.id ?? null
-        if (CompositorService.isHyprland)
-            return slotNumber
-        return null
+        return root.workspaceForSlot(slotNumber)?.id ?? null
     }
 
     function showWorkspacePreview(slotNumber, button) {
@@ -192,21 +183,18 @@ Item {
     }
 
     // Scroll behavior: "workspace" = switch workspaces, "column" = cycle windows left/right in same workspace
-    readonly property bool columnMode: root.scrollBehavior === "column" && CompositorService.isNiri
+    readonly property bool columnMode: root.scrollBehavior === "column"
 
     readonly property int currentWorkspaceNumber: {
-        if (CompositorService.isNiri) {
-            if (root.perMonitor) {
-                const activeSlot = root.outputWorkspaces.findIndex(w => w.is_active)
-                return activeSlot >= 0 ? activeSlot + 1 : 1
-            }
-            return NiriService.getCurrentWorkspaceNumber()
+        if (root.perMonitor) {
+            const activeSlot = root.outputWorkspaces.findIndex(w => w.is_active)
+            return activeSlot >= 0 ? activeSlot + 1 : 1
         }
-        return monitor?.activeWorkspace?.id || 1
+        return NiriService.getCurrentWorkspaceNumber()
     }
     
     // Dynamic workspace count: use actual workspaces from Niri, or fixed count
-    readonly property bool dynamicCount: root.configuredDynamicCount && CompositorService.isNiri === true
+    readonly property bool dynamicCount: root.configuredDynamicCount
     readonly property int actualWorkspaceCount: {
         if (!dynamicCount)
             return root.configuredWorkspaceCount
@@ -292,29 +280,19 @@ Item {
     }
 
     function doUpdateWorkspaceOccupied() {
-        if (CompositorService.isNiri) {
-            const wsList = root.outputWorkspaces || []
-            const windows = NiriService.windows || []
-            const base = workspaceGroup * root.workspacesShown
-
-            // Build set of workspace IDs that currently contain windows (O(n))
-            const occupiedWorkspaceIds = new Set()
-            for (let i = 0; i < windows.length; i++) {
-                const wsId = windows[i]?.workspace_id
-                if (wsId !== undefined && wsId !== null) occupiedWorkspaceIds.add(wsId)
-            }
-
-            workspaceOccupied = Array.from({ length: root.workspacesShown }, (_, i) => {
-                const targetNumber = base + i + 1
-                const ws = root.workspaceForSlot(targetNumber)
-                if (!ws) return false
-                return occupiedWorkspaceIds.has(ws.id)
-            })
-        } else {
-            workspaceOccupied = Array.from({ length: root.workspacesShown }, (_, i) => {
-                return Hyprland.workspaces.values.some(ws => ws.id === workspaceGroup * root.workspacesShown + i + 1);
-            })
+        const windows = NiriService.windows || []
+        const base = workspaceGroup * root.workspacesShown
+        const occupiedWorkspaceIds = new Set()
+        for (let i = 0; i < windows.length; i++) {
+            const wsId = windows[i]?.workspace_id
+            if (wsId !== undefined && wsId !== null)
+                occupiedWorkspaceIds.add(wsId)
         }
+        workspaceOccupied = Array.from({ length: root.workspacesShown }, (_, i) => {
+            const targetNumber = base + i + 1
+            const workspace = root.workspaceForSlot(targetNumber)
+            return workspace ? occupiedWorkspaceIds.has(workspace.id) : false
+        })
     }
 
     // Occupied workspace updates
@@ -324,22 +302,7 @@ Item {
         root.renderedWorkspaceCount = Math.max(root.workspacesShown, 1)
     }
     Connections {
-        target: Hyprland.workspaces
-        function onValuesChanged() {
-            if (CompositorService.isHyprland)
-                updateWorkspaceOccupied();
-        }
-    }
-    Connections {
-        target: Hyprland
-        function onFocusedWorkspaceChanged() {
-            if (CompositorService.isHyprland)
-                updateWorkspaceOccupied();
-        }
-    }
-    Connections {
         target: NiriService
-        enabled: CompositorService.isNiri
         function onAllWorkspacesChanged() {
             updateWorkspaceOccupied();
         }
@@ -366,12 +329,6 @@ Item {
         property int wheelStepCounter: 0
         readonly property int wheelStepsRequired: root.scrollSteps
         
-        onPressed: (event) => {
-            if (event.button === Qt.BackButton && CompositorService.isHyprland) {
-                Hyprland.dispatch(`togglespecialworkspace`);
-            }
-        }
-        
         onWheel: (event) => {
             wheelStepCounter += 1
             if (wheelStepCounter < wheelStepsRequired) return
@@ -384,7 +341,6 @@ Item {
             if (root.invertScroll) delta = -delta
             const direction = delta > 0 ? 1 : -1
 
-            if (CompositorService.isNiri) {
                 if (root.columnMode) {
                     // Column mode with wrap-around
                     const windowCount = root.currentWorkspaceWindows.length
@@ -432,9 +388,6 @@ Item {
                             root.switchToSlot(target)
                     }
                 }
-            } else if (CompositorService.isHyprland) {
-                Hyprland.dispatch(direction > 0 ? `workspace r+1` : `workspace r-1`)
-            }
         }
     }
 
@@ -545,11 +498,7 @@ Item {
                     workspaceHoverDelay.stop()
                     workspacePreviewPopup.close()
                     workspaceOverviewPopup.close()
-                    if (CompositorService.isNiri) {
-                        root.switchToSlot(workspaceValue)
-                    } else if (CompositorService.isHyprland) {
-                        Hyprland.dispatch(`workspace ${workspaceValue}`)
-                    }
+                    root.switchToSlot(workspaceValue)
                 }
 
                 onHoveredChanged: {
@@ -591,25 +540,17 @@ Item {
                     id: workspaceButtonBackground
                     implicitWidth: workspaceButtonWidth
                     implicitHeight: workspaceButtonWidth
-                    readonly property var niriWorkspace: CompositorService.isNiri 
-                        ? root.workspaceForSlot(button.workspaceValue)
-                        : null
+                    readonly property var niriWorkspace:
+                        root.workspaceForSlot(button.workspaceValue)
                     property var biggestWindow: {
-                        if (CompositorService.isNiri) {
-                            if (!niriWorkspace) return null
-                            const wins = NiriService.windows?.filter(w => w.workspace_id === niriWorkspace.id) ?? []
-                            if (wins.length === 0) return null
-                            return wins.find(w => w.is_focused) || wins[0]
-                        } else {
-                            return HyprlandData.biggestWindowForWorkspace(button.workspaceValue)
-                        }
+                        if (!niriWorkspace) return null
+                        const wins = NiriService.windows?.filter(
+                            w => w.workspace_id === niriWorkspace.id) ?? []
+                        if (wins.length === 0) return null
+                        return wins.find(w => w.is_focused) || wins[0]
                     }
-                    property var mainAppIconSource: {
-                        const appClass = CompositorService.isNiri 
-                            ? (biggestWindow?.app_id || biggestWindow?.appId) 
-                            : biggestWindow?.class
-                        return AppSearch.getIconSource(appClass)
-                    }
+                    property var mainAppIconSource:
+                        AppSearch.getIconSource(biggestWindow?.app_id || biggestWindow?.appId || "")
 
                     StyledText { // Workspace number text
                         opacity: root.showNumbers

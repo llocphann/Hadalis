@@ -26,6 +26,7 @@ config = read("modules/common/Config.qml")
 defaults = json.loads(read("defaults/config.json"))
 mpd = read("scripts/local_music_mpd.py")
 lyrics = read("scripts/local_music_lyrics.py")
+dispatch = read("scripts/native-dispatch")
 
 require(config, "property JsonObject music: JsonObject {", "Config must expose sidebar.music.")
 music_defaults = defaults.get("sidebar", {}).get("music", {})
@@ -37,10 +38,14 @@ if "music" not in left_order or "ytmusic" in left_order:
     raise SystemExit("default Left Sidebar order must use music.")
 
 for token in (
-    'Directories.scriptsPath + "/local_music_mpd.py"',
+    'readonly property string nativeDispatchPath: Directories.scriptsPath + "/native-dispatch"',
+    'root.nativeDispatchPath, "mpd", "snapshot",',
+    'root.nativeDispatchPath, "mpd", "status",',
+    'root.nativeDispatchPath, "mpd-daemon",',
+    'command: [root.nativeDispatchPath, "mpd-subscribe"]',
+    '_lyricsProc.command = [root.nativeDispatchPath, "lyrics", path]',
     'readonly property var mprisPlayer: MprisController.mpdPlayer',
     'MprisController.ensureMpdMprisBridge(mpdHost, mpdPort)',
-    'Directories.scriptsPath + "/local_music_lyrics.py"',
     'property var localLyricsLines: []',
     'readonly property int localLyricsActiveIndex:',
     'function enqueueTracks(tracks): void',
@@ -50,6 +55,12 @@ for token in (
     require(service, token, f"LocalMusic backend contract missing: {token}")
 for forbidden in ("yt-dlp", "youtube.com", "InnerTube", "YtMusic", "--input-ipc-server"):
     forbid(service, forbidden, f"LocalMusic backend must remain MPD/local-only: {forbidden}")
+
+for token in (
+    'exec /usr/bin/python3 "$ROOT_DIR/scripts/local_music_mpd.py" "$@"',
+    'exec /usr/bin/python3 "$ROOT_DIR/scripts/local_music_lyrics.py" "$track"',
+):
+    require(dispatch, token, f"native selector must retain reversible Python fallback: {token}")
 
 for token in (
     'Translation.tr("Songs")',

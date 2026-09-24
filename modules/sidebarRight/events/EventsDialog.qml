@@ -104,6 +104,8 @@ WindowDialog {
     }
 
     WindowDialogTitle {
+        Layout.leftMargin: root.embeddedPresentation ? 6 : 0
+        Layout.rightMargin: root.embeddedPresentation ? 6 : 0
         text: root.isEditing ? Translation.tr("Edit Event") : Translation.tr("New Event")
         font.pixelSize: root.embeddedPresentation
             ? Appearance.font.pixelSize.normal
@@ -138,6 +140,7 @@ WindowDialog {
 
             // ─── Basic Info Section ───────────────────────────────────
             EventSectionHeader {
+                visible: !root.embeddedPresentation
                 text: Translation.tr("Basic Info")
             }
 
@@ -173,8 +176,9 @@ WindowDialog {
 
             // ─── Date & Time Section ──────────────────────────────────
             EventSectionHeader {
+                visible: !root.embeddedPresentation
                 text: Translation.tr("Date & Time")
-                topPadding: root.embeddedPresentation ? 6 : 16
+                topPadding: root.embeddedPresentation ? 0 : 16
             }
 
             WindowDialogSeparator {
@@ -185,6 +189,7 @@ WindowDialog {
             Column {
                 width: parent.width
                 spacing: 0
+                topPadding: root.embeddedPresentation ? 4 : 0
 
                 // Date picker
                 DatePicker {

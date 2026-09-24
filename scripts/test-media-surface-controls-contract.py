@@ -85,16 +85,35 @@ forbid(
     "LocalMusic must not duplicate Repeat below PlayerControl.",
 )
 
-for source, name, lifecycle in (
-    (compact, "Compact right sidebar", "GlobalStates.sidebarRightOpen"),
-    (dash, "Dashboard", "root.presentationActive"),
+# Dashboard and compact right-sidebar cards sit immediately above their shared
+# EQ/DSP surface. They must not run a second decorative CAVA analyzer.
+for source, name in (
+    (compact, "Compact right sidebar"),
+    (dash, "Dashboard"),
 ):
-    require(source, "CavaProcess {", f"{name} must own a lifecycle-gated CAVA subscription.")
-    require(source, "WaveVisualizer {", f"{name} must render CAVA in its media surface.")
-    require(source, lifecycle, f"{name} CAVA must follow its presentation lifecycle.")
+    forbid(source, "CavaProcess {", f"{name} must not run duplicate CAVA.")
+    forbid(source, "WaveVisualizer {", f"{name} must not render a decorative CAVA wave.")
+
+for token in (
+    "MprisController.shuffleSupportedForPlayer(playerBase.player)",
+    "MprisController.shuffleForPlayer(playerBase.player)",
+    "MprisController.toggleShuffleForPlayer(playerBase.player)",
+    "MprisController.loopSupportedForPlayer(playerBase.player)",
+    "MprisController.loopStateForPlayer(playerBase.player)",
+    "MprisController.cycleLoopForPlayer(playerBase.player)",
+    'tooltipText: Translation.tr("Shuffle")',
+    'tooltipText: Translation.tr("Repeat")',
+):
+    require(compact, token, f"Compact right-sidebar transport parity missing: {token}")
+
+for token in (
+    "PlayerControl {",
+    "visualizerPoints: []",
+    "showVisualizer: false",
+):
+    require(dash, token, f"Dashboard duplicate-visualizer suppression missing: {token}")
 
 for source, name in (
-    (dash, "Dashboard"),
     (control_panel, "Control Panel"),
     (left_widget, "Left Sidebar widget"),
 ):

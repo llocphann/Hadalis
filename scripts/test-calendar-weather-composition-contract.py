@@ -57,12 +57,18 @@ def main() -> None:
         "fabSize: 36",
         "fabMargins: 10",
         "fabLeftAligned: true",
+        "readonly property real paneWidth:",
+        "implicitWidth: root.paneWidth * 2 + 25",
+        "Layout.preferredWidth: root.paneWidth",
         "Layout.preferredHeight: Math.max(120, root.height - 64)",
         "Layout.alignment: Qt.AlignVCenter",
         "color: Appearance.colors.colPrimary",
         "opacity: 0.28",
     ):
         require(calendar, token, "ClockCalendarContent.qml")
+
+    require(events_widget, 'text: Translation.tr("Events")', "EventsWidget.qml")
+    forbid(events_widget, 'text: Translation.tr("Events & Reminders")', "EventsWidget.qml")
 
     for token in (
         "property int fabSize: 48",

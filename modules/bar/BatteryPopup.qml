@@ -127,5 +127,48 @@ StyledPopup {
                 }
             }
         }
+
+        RowLayout {
+            spacing: 8
+            Layout.fillWidth: true
+
+            MaterialSymbol {
+                text: "sync"
+                color: Appearance.colors.colOnSurfaceVariant
+                iconSize: Appearance.font.pixelSize.large
+            }
+            StyledText {
+                text: Translation.tr("Charge cycles")
+                color: Appearance.colors.colOnSurfaceVariant
+            }
+            StyledText {
+                Layout.fillWidth: true
+                horizontalAlignment: Text.AlignRight
+                text: Battery.chargeCycles >= 0 ? String(Battery.chargeCycles) : "—"
+                color: Appearance.colors.colOnSurfaceVariant
+            }
+        }
+
+        RowLayout {
+            spacing: 8
+            Layout.fillWidth: true
+
+            MaterialSymbol {
+                text: "battery_alert"
+                color: Appearance.colors.colOnSurfaceVariant
+                iconSize: Appearance.font.pixelSize.large
+            }
+            StyledText {
+                text: Translation.tr("Battery wear")
+                color: Appearance.colors.colOnSurfaceVariant
+            }
+            StyledText {
+                Layout.fillWidth: true
+                horizontalAlignment: Text.AlignRight
+                text: Battery.wearPercentage >= 0
+                    ? `${Math.round(Battery.wearPercentage)}%` : "—"
+                color: Appearance.colors.colOnSurfaceVariant
+            }
+        }
     }
 }

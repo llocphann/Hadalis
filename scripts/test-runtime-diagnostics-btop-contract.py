@@ -21,6 +21,7 @@ SESSION = ROOT / "services" / "RuntimeDiagnosticsSession.qml"
 RUNTIME = ROOT / "services" / "RuntimeDiagnostics.qml"
 TARGET_RUNTIME = ROOT / "services" / "CodeWorkflowRuntimeTarget.qml"
 SAMPLER = ROOT / "scripts" / "runtime-diagnostics-sampler.py"
+SETTINGS_WINDOW = ROOT / "settings.qml"
 WIDGETS = ROOT / "modules" / "settings" / "widgets"
 WIDGET_QMLDIR = WIDGETS / "qmldir"
 
@@ -43,6 +44,7 @@ def main() -> None:
     runtime = RUNTIME.read_text(encoding="utf-8")
     target_runtime = TARGET_RUNTIME.read_text(encoding="utf-8")
     sampler = SAMPLER.read_text(encoding="utf-8")
+    settings_window = SETTINGS_WINDOW.read_text(encoding="utf-8")
     sparkline = SPARKLINE.read_text(encoding="utf-8")
     metric_panel = METRIC_PANEL.read_text(encoding="utf-8")
     network_panel = NETWORK_PANEL.read_text(encoding="utf-8")
@@ -117,6 +119,23 @@ def main() -> None:
         "textFormat: Text.PlainText",
     ):
         require(page + board, token, "compact Material Diagnostics and dashboard")
+
+    # The shipped standalone Settings window is 1100x750. Keep the compact
+    # Diagnostics composition in its two-column observability layout at the
+    # current content width, and never add a nested scrolling surface to make
+    # the dashboard fit.
+    require(settings_window, "width: 1100",
+            "standalone Settings viewport width contract")
+    require(settings_window, "height: 750",
+            "standalone Settings viewport height contract")
+    require(board, "columns: width >= 720 ? 2 : 1",
+            "Diagnostics default-width two-column breakpoint")
+    require(board, "columns: width >= 500 ? 2 : 1",
+            "Resource suspects default-width split")
+    require(board, "columns: width >= 260 ? 2 : 1",
+            "Secondary context default-width micro-card split")
+    forbid(board, "Flickable {",
+           "Diagnostics dashboard must not add nested scrolling")
 
     for retired in (
         'title: Translation.tr("Live diagnostics")',

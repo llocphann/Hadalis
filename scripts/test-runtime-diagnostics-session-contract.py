@@ -63,6 +63,16 @@ for token in (
 
 require(
     dispatch,
+    'MODE="${MODE:-rust}"',
+    "native selector must keep Rust as the production default",
+)
+require(
+    dispatch,
+    '"$BIN_DIR/inir-native" diagnostics "$@"',
+    "native selector must route Diagnostics through the Rust backend",
+)
+require(
+    dispatch,
     'exec /usr/bin/env python3 "$ROOT_DIR/scripts/runtime-diagnostics-sampler.py" "$@"',
     "native selector must retain the reversible Python Diagnostics fallback",
 )

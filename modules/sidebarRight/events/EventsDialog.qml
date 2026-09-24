@@ -12,6 +12,20 @@ import Quickshell
 WindowDialog {
     id: root
     backgroundHeight: 600
+    contentSpacing: root.embeddedPresentation ? 8 : 16
+    embeddedBackgroundColor: Appearance.angelEverywhere
+        ? Appearance.angel.colGlassPopup
+        : Appearance.inirEverywhere ? Appearance.inir.colLayer1
+        : Appearance.auroraEverywhere ? Appearance.aurora.colDialogSurface
+        : Appearance.colors.colSurfaceContainerHigh
+
+    component EventSectionHeader: EventSectionHeader {
+        color: Appearance.colors.colOnSurfaceVariant
+        font.pixelSize: root.embeddedPresentation
+            ? Appearance.font.pixelSize.small
+            : Appearance.font.pixelSize.large
+        font.weight: Font.Medium
+    }
 
     property var editingEvent: null
     property bool isEditing: editingEvent !== null
@@ -91,6 +105,10 @@ WindowDialog {
 
     WindowDialogTitle {
         text: root.isEditing ? Translation.tr("Edit Event") : Translation.tr("New Event")
+        font.pixelSize: root.embeddedPresentation
+            ? Appearance.font.pixelSize.large
+            : Appearance.font.pixelSize.title
+        font.weight: Font.Medium
     }
 
     WindowDialogSeparator {}
@@ -100,7 +118,8 @@ WindowDialog {
         Layout.fillWidth: true
         Layout.fillHeight: true
 
-        contentHeight: formColumn.implicitHeight + 16
+        contentHeight: formColumn.implicitHeight
+            + (root.embeddedPresentation ? 8 : 16)
         clip: true
         boundsBehavior: Flickable.StopAtBounds
 
@@ -111,10 +130,10 @@ WindowDialog {
         Column {
             id: formColumn
             width: parent.width
-            spacing: 4
+            spacing: root.embeddedPresentation ? 2 : 4
 
             // ─── Basic Info Section ───────────────────────────────────
-            WindowDialogSectionHeader {
+            EventSectionHeader {
                 text: Translation.tr("Basic Info")
             }
 
@@ -124,12 +143,13 @@ WindowDialog {
 
             Column {
                 width: parent.width
-                spacing: 8
-                topPadding: 8
+                spacing: root.embeddedPresentation ? 6 : 8
+                topPadding: root.embeddedPresentation ? 4 : 8
 
                 MaterialTextField {
                     id: titleField
-                    width: parent.width - 16
+                    width: parent.width - (root.embeddedPresentation ? 12 : 16)
+                    implicitHeight: root.embeddedPresentation ? 46 : 56
                     anchors.horizontalCenter: parent.horizontalCenter
                     placeholderText: Translation.tr("Event title") + " *"
                     text: root.eventTitle
@@ -137,7 +157,8 @@ WindowDialog {
                 }
 
                 MaterialTextField {
-                    width: parent.width - 16
+                    width: parent.width - (root.embeddedPresentation ? 12 : 16)
+                    implicitHeight: root.embeddedPresentation ? 46 : 56
                     anchors.horizontalCenter: parent.horizontalCenter
                     placeholderText: Translation.tr("Description (optional)")
                     text: root.eventDescription
@@ -146,9 +167,9 @@ WindowDialog {
             }
 
             // ─── Date & Time Section ──────────────────────────────────
-            WindowDialogSectionHeader {
+            EventSectionHeader {
                 text: Translation.tr("Date & Time")
-                topPadding: 16
+                topPadding: root.embeddedPresentation ? 10 : 16
             }
 
             WindowDialogSeparator {
@@ -162,6 +183,7 @@ WindowDialog {
                 // Date picker
                 DatePicker {
                     width: parent.width
+                    compact: root.embeddedPresentation
                     selectedDate: root.eventDate
                     onDateSelected: (date) => { root.eventDate = date }
                 }
@@ -180,9 +202,9 @@ WindowDialog {
             }
 
             // ─── Category Section ─────────────────────────────────────
-            WindowDialogSectionHeader {
+            EventSectionHeader {
                 text: Translation.tr("Category")
-                topPadding: 16
+                topPadding: root.embeddedPresentation ? 10 : 16
             }
 
             WindowDialogSeparator {
@@ -209,9 +231,9 @@ WindowDialog {
             }
 
             // ─── Priority Section ─────────────────────────────────────
-            WindowDialogSectionHeader {
+            EventSectionHeader {
                 text: Translation.tr("Priority")
-                topPadding: 16
+                topPadding: root.embeddedPresentation ? 10 : 16
             }
 
             WindowDialogSeparator {
@@ -236,9 +258,9 @@ WindowDialog {
             }
 
             // ─── Reminder Section ─────────────────────────────────────
-            WindowDialogSectionHeader {
+            EventSectionHeader {
                 text: Translation.tr("Reminder")
-                topPadding: 16
+                topPadding: root.embeddedPresentation ? 10 : 16
             }
 
             WindowDialogSeparator {
@@ -265,9 +287,9 @@ WindowDialog {
             }
 
             // ─── Repeat Section ───────────────────────────────────────
-            WindowDialogSectionHeader {
+            EventSectionHeader {
                 text: Translation.tr("Repeat")
-                topPadding: 16
+                topPadding: root.embeddedPresentation ? 10 : 16
             }
 
             WindowDialogSeparator {
@@ -294,7 +316,10 @@ WindowDialog {
             }
 
             // Bottom padding
-            Item { width: 1; height: 16 }
+            Item {
+                width: 1
+                height: root.embeddedPresentation ? 8 : 16
+            }
         }
     }
 

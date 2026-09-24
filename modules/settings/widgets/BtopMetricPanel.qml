@@ -17,12 +17,14 @@ Item {
     property string detail: ""
     property string provenance: ""
     property bool showDetails: false
+    property bool compactMode: false
     property var samples: []
     property real graphHeight: 28
     property bool dottedGraph: false
     property color accentColor: Appearance.colors.colPrimary
 
-    implicitHeight: metricColumn.implicitHeight + 24
+    implicitHeight: metricColumn.implicitHeight
+        + (root.compactMode ? 18 : 24)
 
     Rectangle {
         anchors.fill: parent
@@ -32,13 +34,13 @@ Item {
             root.accentColor.r,
             root.accentColor.g,
             root.accentColor.b,
-            0.42)
+            root.compactMode ? 0.18 : 0.42)
 
         ColumnLayout {
             id: metricColumn
             anchors.fill: parent
-            anchors.margins: 12
-            spacing: 8
+            anchors.margins: root.compactMode ? 9 : 12
+            spacing: root.compactMode ? 5 : 8
 
             RowLayout {
                 Layout.fillWidth: true
@@ -51,7 +53,9 @@ Item {
                         Layout.fillWidth: true
                         text: root.title
                         font.weight: Font.DemiBold
-                        color: root.accentColor
+                        color: root.compactMode
+                            ? Appearance.colors.colOnLayer1
+                            : root.accentColor
                         elide: Text.ElideRight
                     }
                     StyledText {
@@ -79,8 +83,8 @@ Item {
 
             Rectangle {
                 Layout.fillWidth: true
-                Layout.preferredHeight: 8
-                radius: 4
+                Layout.preferredHeight: root.compactMode ? 5 : 8
+                radius: height / 2
                 color: Appearance.colors.colLayer2
 
                 Rectangle {

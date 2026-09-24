@@ -17,6 +17,7 @@ Item {
     property string txTotal: ""
     property string provenance: ""
     property bool showDetails: false
+    property bool compactMode: false
     property var rxSamples: []
     property var txSamples: []
     property real graphHeight: 38
@@ -40,7 +41,8 @@ Item {
         root.peak(root.rxSamples),
         root.peak(root.txSamples))
 
-    implicitHeight: networkColumn.implicitHeight + 24
+    implicitHeight: networkColumn.implicitHeight
+        + (root.compactMode ? 18 : 24)
 
     Rectangle {
         anchors.fill: parent
@@ -50,13 +52,13 @@ Item {
             root.rxColor.r,
             root.rxColor.g,
             root.rxColor.b,
-            0.42)
+            root.compactMode ? 0.18 : 0.42)
 
         ColumnLayout {
             id: networkColumn
             anchors.fill: parent
-            anchors.margins: 12
-            spacing: 8
+            anchors.margins: root.compactMode ? 9 : 12
+            spacing: root.compactMode ? 5 : 8
 
             ColumnLayout {
                 Layout.fillWidth: true
@@ -67,7 +69,8 @@ Item {
                     textFormat: Text.PlainText
                     Layout.fillWidth: true
                     text: root.title
-                    color: root.rxColor
+                    color: root.compactMode
+                        ? Appearance.colors.colOnLayer1 : root.rxColor
                     font.family: Appearance.font.family.monospace
                     font.weight: Font.DemiBold
                     elide: Text.ElideRight

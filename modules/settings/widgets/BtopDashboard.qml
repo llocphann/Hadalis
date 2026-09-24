@@ -191,102 +191,147 @@ ColumnLayout {
         return found ? total : null
     }
 
-    // Compact Diagnostics is deliberately attribution-oriented. System totals
-    // remain visible, but space is reserved for the two kinds of evidence that
-    // can actually identify suspects: real child-process CPU/RSS and Workflow
-    // lifecycle activity. QML activity is never presented as CPU/RAM.
+    // Compact Diagnostics follows an observability hierarchy: suspect evidence
+    // dominates the viewport while system-wide totals stay secondary context.
     GridLayout {
-        id: compactMetrics
+        id: compactObservability
         visible: root.compactMode
         Layout.fillWidth: true
-        columns: width >= 900 ? 4 : 2
-        columnSpacing: 6
-        rowSpacing: 6
+        columns: width >= 920 ? 2 : 1
+        columnSpacing: 8
+        rowSpacing: 8
 
-        BtopMetricPanel {
+        Rectangle {
+            id: resourceSuspects
             Layout.fillWidth: true
             Layout.fillHeight: true
-            title: Translation.tr("CPU")
-            subtitle: ""
-            value: root.systemEvidence?.cpu?.percent ?? null
-            detail: root.formatLoadAverage(
-                    root.systemEvidence?.cpu?.loadAverage)
-                + " · " + Translation.tr("Hadalis") + " "
-                + root.formatPercent(root.shellEvidence?.cpu?.percent)
-            samples: root.historyValues("systemCpuPercent")
-            graphHeight: 12
-            dottedGraph: true
+            Layout.minimumWidth: 0
+            Layout.preferredWidth: compactObservability.columns === 2
+                ? compactObservability.width * 0.64 : -1
+            radius: Appearance.rounding.small
+            color: Appearance.colors.colLayer1
+            border.width: 1
+            border.color: Qt.rgba(
+                Appearance.colors.colPrimary.r,
+                Appearance.colors.colPrimary.g,
+                Appearance.colors.colPrimary.b, 0.24)
+            implicitHeight: suspectsColumn.implicitHeight + 20
+
+            ColumnLayout {
+                id: suspectsColumn
+                anchors { left: parent.left; right: parent.right; top: parent.top; margins: 10 }
+                spacing: 6
+                RowLayout {
+                    Layout.fillWidth: true
+                    spacing: 8
+                    ColumnLayout {
+                        Layout.fillWidth: true
+                        spacing: 0
+                        StyledText {
+                            textFormat: Text.PlainText
+                            Layout.fillWidth: true
+                            text: Translation.tr("Resource suspects")
+                            color: Appearance.colors.colOnLayer1
+                            font.weight: Font.DemiBold
+                        }
+                        StyledText {
+                            textFormat: Text.PlainText
+                            Layout.fillWidth: true
+                            text: Translation.tr(
+                                "Top components and processes by meaningful runtime signals")
+                            color: Appearance.colors.colSubtext
+                            font.pixelSize: Appearance.font.pixelSize.smallest
+                            elide: Text.ElideRight
+                        }
+                    }
+                    StyledText {
+                        textFormat: Text.PlainText
+                        visible: resourceSuspects.width >= 620
+                        text: Translation.tr("Kernel + lifecycle evidence")
+                        color: Appearance.colors.colPrimary
+                        font.pixelSize: Appearance.font.pixelSize.smallest
+                    }
+                }
+                GridLayout {
+                    Layout.fillWidth: true
+                    columns: width >= 610 ? 2 : 1
+                    columnSpacing: 6
+                    rowSpacing: 6
+                    BtopActivityTable {
+                        Layout.fillWidth: true
+                        Layout.fillHeight: true
+                        targets: root.targets
+                        records: root.records
+                        events: root.events
+                        maxRows: 5
+                    }
+                    BtopProcessTable {
+                        Layout.fillWidth: true
+                        Layout.fillHeight: true
+                        compactMode: true
+                        processes: root.shellEvidence?.children ?? []
+                        maxRows: 5
+                    }
+                }
+            }
         }
 
-        BtopMetricPanel {
+        GridLayout {
+            id: compactSystemContext
             Layout.fillWidth: true
             Layout.fillHeight: true
-            title: Translation.tr("Memory")
-            value: root.systemRamPercent()
-            detail: root.formatKiB(root.systemEvidence?.memory
-                    ?.valuesKiB?.MemUsed) + " / "
-                + root.formatKiB(root.systemEvidence?.memory
-                    ?.valuesKiB?.MemTotal)
-            samples: root.historyValues("systemRamPercent")
-            graphHeight: 12
-            dottedGraph: true
-            accentColor: Appearance.colors.colSecondary
-        }
-
-        BtopMetricPanel {
-            Layout.fillWidth: true
-            Layout.fillHeight: true
-            title: Translation.tr("GPU")
-            value: root.shellEvidence?.gpu?.available === true
-                ? root.shellGpuBusy() : null
-            detail: root.shellEvidence?.gpu?.available === true
-                ? root.formatKiB(root.shellGpuMemoryKiB()) + " "
-                    + Translation.tr("resident")
-                : Translation.tr("DRM fdinfo unavailable")
-            samples: root.historyValues("shellGpuPeakPercent")
-            graphHeight: 12
-            dottedGraph: true
-            accentColor: Appearance.colors.colTertiary
-        }
-
-        BtopNetworkPanel {
-            Layout.fillWidth: true
-            Layout.fillHeight: true
-            title: Translation.tr("Network")
-            graphHeight: 12
-            dottedGraph: true
-            rx: root.formatRate(root.networkEvidence
-                ?.aggregateNonLoopback?.rxBytesPerSec)
-            tx: root.formatRate(root.networkEvidence
-                ?.aggregateNonLoopback?.txBytesPerSec)
-            rxSamples: root.historyValues("rxBytesPerSec")
-            txSamples: root.historyValues("txBytesPerSec")
-        }
-    }
-
-    GridLayout {
-        id: compactAttribution
-        visible: root.compactMode
-        Layout.fillWidth: true
-        columns: width >= 720 ? 2 : 1
-        columnSpacing: 6
-        rowSpacing: 6
-
-        BtopActivityTable {
-            Layout.fillWidth: true
-            Layout.fillHeight: true
-            targets: root.targets
-            records: root.records
-            events: root.events
-            maxRows: 4
-        }
-
-        BtopProcessTable {
-            Layout.fillWidth: true
-            Layout.fillHeight: true
-            compactMode: true
-            processes: root.shellEvidence?.children ?? []
-            maxRows: 4
+            Layout.minimumWidth: 0
+            Layout.preferredWidth: compactObservability.columns === 2
+                ? compactObservability.width * 0.36 : -1
+            columns: width >= 360 ? 2 : 1
+            columnSpacing: 6
+            rowSpacing: 6
+            BtopMetricPanel {
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                compactMode: true
+                title: Translation.tr("CPU")
+                value: root.systemEvidence?.cpu?.percent ?? null
+                detail: root.formatLoadAverage(root.systemEvidence?.cpu?.loadAverage)
+                samples: root.historyValues("systemCpuPercent")
+                graphHeight: 18
+            }
+            BtopMetricPanel {
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                compactMode: true
+                title: Translation.tr("Memory")
+                value: root.systemRamPercent()
+                detail: root.formatKiB(root.systemEvidence?.memory?.valuesKiB?.MemUsed)
+                    + " / " + root.formatKiB(root.systemEvidence?.memory?.valuesKiB?.MemTotal)
+                samples: root.historyValues("systemRamPercent")
+                graphHeight: 18
+                accentColor: Appearance.colors.colSecondary
+            }
+            BtopMetricPanel {
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                compactMode: true
+                title: Translation.tr("GPU")
+                value: root.shellEvidence?.gpu?.available === true ? root.shellGpuBusy() : null
+                detail: root.shellEvidence?.gpu?.available === true
+                    ? root.formatKiB(root.shellGpuMemoryKiB()) + " " + Translation.tr("resident")
+                    : Translation.tr("DRM fdinfo unavailable")
+                samples: root.historyValues("shellGpuPeakPercent")
+                graphHeight: 18
+                accentColor: Appearance.colors.colTertiary
+            }
+            BtopNetworkPanel {
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                compactMode: true
+                title: Translation.tr("Network")
+                graphHeight: 18
+                rx: root.formatRate(root.networkEvidence?.aggregateNonLoopback?.rxBytesPerSec)
+                tx: root.formatRate(root.networkEvidence?.aggregateNonLoopback?.txBytesPerSec)
+                rxSamples: root.historyValues("rxBytesPerSec")
+                txSamples: root.historyValues("txBytesPerSec")
+            }
         }
     }
 
@@ -294,74 +339,61 @@ ColumnLayout {
         id: compactRuntimeStrip
         visible: root.compactMode
         Layout.fillWidth: true
-        implicitHeight: 38
+        implicitHeight: 40
         radius: Appearance.rounding.small
         color: Appearance.colors.colLayer1
-        border.color: Appearance.colors.colOutline
-
+        border.width: 1
+        border.color: Qt.rgba(
+            Appearance.colors.colPrimary.r,
+            Appearance.colors.colPrimary.g,
+            Appearance.colors.colPrimary.b, 0.20)
         RowLayout {
             anchors.fill: parent
             anchors.leftMargin: 10
             anchors.rightMargin: 10
             spacing: 12
-
             StyledText {
                 textFormat: Text.PlainText
                 text: Translation.tr("Hadalis")
                 color: Appearance.colors.colPrimary
                 font.weight: Font.DemiBold
             }
-
             StyledText {
                 textFormat: Text.PlainText
-                text: "PID "
-                    + (root.shellEvidence?.pid
-                        ? String(root.shellEvidence.pid) : "—")
+                text: "PID " + (root.shellEvidence?.pid ? String(root.shellEvidence.pid) : "—")
                 color: Appearance.colors.colSubtext
                 font.family: Appearance.font.family.monospace
                 font.pixelSize: Appearance.font.pixelSize.small
             }
-
             StyledText {
                 textFormat: Text.PlainText
-                text: "CPU "
-                    + root.formatPercent(root.shellEvidence?.cpu?.percent)
+                text: "CPU " + root.formatPercent(root.shellEvidence?.cpu?.percent)
                 color: Appearance.colors.colOnLayer1
                 font.family: Appearance.font.family.monospace
                 font.pixelSize: Appearance.font.pixelSize.small
             }
-
             StyledText {
                 textFormat: Text.PlainText
-                text: "RAM "
-                    + root.formatKiB(root.shellEvidence?.memory?.valuesKiB?.Pss
-                        ?? root.shellEvidence?.memory?.valuesKiB?.Rss)
+                text: "RAM " + root.formatKiB(root.shellEvidence?.memory?.valuesKiB?.Pss
+                    ?? root.shellEvidence?.memory?.valuesKiB?.Rss)
                 color: Appearance.colors.colOnLayer1
                 font.family: Appearance.font.family.monospace
                 font.pixelSize: Appearance.font.pixelSize.small
             }
-
             Item { Layout.fillWidth: true }
-
             StyledText {
                 textFormat: Text.PlainText
                 visible: compactRuntimeStrip.width >= 760
-                text: "I/O R "
-                    + root.formatRate(
-                        root.shellEvidence?.io?.rates?.readBytesPerSec)
-                    + " · W "
-                    + root.formatRate(
-                        root.shellEvidence?.io?.rates?.writeBytesPerSec)
+                text: "I/O R " + root.formatRate(root.shellEvidence?.io?.rates?.readBytesPerSec)
+                    + " · W " + root.formatRate(root.shellEvidence?.io?.rates?.writeBytesPerSec)
                 color: Appearance.colors.colSubtext
                 font.family: Appearance.font.family.monospace
                 font.pixelSize: Appearance.font.pixelSize.small
                 elide: Text.ElideRight
             }
-
             StyledText {
                 textFormat: Text.PlainText
-                text: String(
-                        root.shellEvidence?.children?.length ?? 0)
+                text: String(root.shellEvidence?.children?.length ?? 0)
                     + " " + Translation.tr("helpers")
                 color: Appearance.colors.colSubtext
                 font.pixelSize: Appearance.font.pixelSize.small

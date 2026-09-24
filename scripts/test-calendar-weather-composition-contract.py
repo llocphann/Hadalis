@@ -59,36 +59,21 @@ def main() -> None:
 
     for token in (
         "id: popupContent",
-        "readonly property real editorPaneHeight:",
-        "Behavior on implicitHeight",
-        "id: editorPane",
-        "dialog.focusEditor()",
-        "property var eventsDialogDate: null",
-        "function setEventEditorDate(date): void",
-        "eventDateSelectionEnabled: root.showEventsDialog",
-        "selectedEventDate: root.eventsDialogDate",
-        "onEventDateSelected: date => root.setEventEditorDate(date)",
-        "embeddedPresentation: true",
-        "backgroundHeight: -1",
-        "Math.max(264, Math.min(320,",
-        "* 0.30",
-        "root.showEventsDialog ? 3 : 0",
-        "topMargin: root.showEventsDialog ? 2 : 0",
-        "color: Appearance.colors.colOutlineVariant",
-        "opacity: 0.32",
+        "implicitWidth: calendarContent.implicitWidth",
+        "implicitHeight: calendarContent.implicitHeight",
+        "ClockCalendarContent {",
         "anchors.fill: parent",
-        'embeddedBackgroundColor: "transparent"',
     ):
         require(calendar_popup, token, "ClockCalendarPopup.qml")
-    forbid(calendar_popup,
-           "backgroundHeight: Math.max(300, Math.min(500,",
-           "ClockCalendarPopup.qml")
-    forbid(calendar_popup,
-           "margins: 8",
-           "ClockCalendarPopup embedded editor must not restore nested card inset")
-    forbid(calendar_popup,
-           "border.width: 1",
-           "ClockCalendarPopup embedded editor must not restore nested card border")
+    for retired in (
+        "showEventsDialog",
+        "editorPaneHeight",
+        "id: editorPane",
+        "EventsDialog {",
+        "Behavior on implicitHeight",
+    ):
+        forbid(calendar_popup, retired,
+               "ClockCalendarPopup must stay fixed-size while Events edits inline")
 
     for token in (
         "property bool embeddedPresentation: false",
@@ -119,6 +104,8 @@ def main() -> None:
         "component CompactEventOptionButton: Button",
         "renderType: Text.QtRendering",
         "font.weight: Font.Medium",
+        '? Translation.tr("Add Event")',
+        ': Translation.tr("New Event"))',
         "placeholderTextColor: Appearance.colors.colOnSurface",
         "DatePicker {",
         "compact: false",
@@ -217,9 +204,11 @@ def main() -> None:
         "ObsidianMonthCalendar {",
         "property bool eventDateSelectionEnabled: false",
         "property var selectedEventDate: null",
-        "selectedDate: root.selectedEventDate",
-        "interactiveDays: root.eventDateSelectionEnabled",
-        "onDayActivated: date => root.eventDateSelected(date)",
+        "id: eventsPane",
+        "selectedDate: eventsPane.inlineEditorMode",
+        "? eventsPane.inlineEditorDate",
+        "interactiveDays: eventsPane.inlineEditorMode",
+        "eventsPane.setInlineEditorDate(date)",
         "anchors.horizontalCenter: parent.horizontalCenter",
         "fabSize: 36",
         "fabMargins: 10",
@@ -238,6 +227,21 @@ def main() -> None:
     forbid(events_widget, 'text: Translation.tr("Events & Reminders")', "EventsWidget.qml")
 
     for token in (
+        "property bool inlineEditorMode: false",
+        "readonly property var inlineEditorDate:",
+        "function openInlineEditor(editEvent): void",
+        "function closeInlineEditor(): void",
+        "function setInlineEditorDate(date): void",
+        "visible: !root.inlineEditorMode",
+        "root.openInlineEditor(evt)",
+        "EventsDialog {",
+        "id: inlineEditor",
+        "show: root.inlineEditorMode",
+        "embeddedPresentation: true",
+        'embeddedBackgroundColor: "transparent"',
+        "backgroundHeight: -1",
+        "onDismiss: root.closeInlineEditor()",
+        "onClicked: root.openInlineEditor(null)",
         "property int fabSize: 48",
         "property int fabMargins: 14",
         "property bool fabLeftAligned: false",

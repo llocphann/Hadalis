@@ -85,6 +85,23 @@ def main() -> None:
             f"color picker Niri replacement is incomplete: {token}",
         )
 
+    region_finder = read("scripts/images/find_regions.py")
+    forbid(
+        region_finder,
+        "--hyprctl",
+        "content-region detector must not expose retired Hyprland-shaped CLI mode",
+    )
+    require(
+        region_finder,
+        '"at": [r[',
+        "content-region detector must emit region positions through the {at,size} contract",
+    )
+    require(
+        region_finder,
+        '"size": [r[',
+        "content-region detector must emit region dimensions through the {at,size} contract",
+    )
+
     ipc = read("scripts/lib/ipc-registry.sh")
     ipc_contracts = (
         '[controlPanel]="toggle close open"',

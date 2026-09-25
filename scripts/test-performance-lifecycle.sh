@@ -211,6 +211,7 @@ reject "$dash_media" 'CavaProcess {' 'Dashboard media must not run duplicate Cav
 require "$dash_media" 'visualizerPoints: []' 'Dashboard PlayerControl must not consume decorative Cava points'
 require "$dash_media" 'showVisualizer: false' 'Dashboard PlayerControl decorative visualizer must remain disabled'
 require "$dash_media" 'positionUpdatesActive: root.presentationActive && root.visible' 'Hidden Dashboard media must pause retained PlayerControl position refreshes'
+require "$dash_media" 'visible: root.presentationActive && root.visible' 'Hidden Dashboard PlayerControl must stop visibility-aware child animations while remaining resident'
 require "$player_control" 'property bool positionUpdatesActive: true' 'PlayerControl must expose an opt-in lifecycle gate without changing existing callers'
 require "$player_control" 'running: root.positionUpdatesActive' 'PlayerControl position timer must honor the host lifecycle gate'
 require "$player_control" 'onPositionUpdatesActiveChanged:' 'PlayerControl must refresh position immediately when lifecycle updates resume'

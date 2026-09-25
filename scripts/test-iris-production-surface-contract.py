@@ -54,7 +54,7 @@ for token in (
     "ConnectedSurfaceIrisFrame {",
     "ConnectedSurfaceContentHost {",
     "ConnectedSurfaceBodyMask {",
-    "fuseDepth: PerimeterTokens.irisFuseDepth",
+    "fuseDepth: PerimeterTokens.popupFuseDepth",
     "externalFrameThickness: root._screenEdgeThickness",
     "readonly property real _popupScreenMargin: root._screenEdgeThickness",
     "seamOverlap: PerimeterTokens.irisWeldDepth",

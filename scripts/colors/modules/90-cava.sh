@@ -85,12 +85,6 @@ palette_color() {
   printf '%s\n' "${CAVA_PALETTE[$key]-}"
 }
 
-cover_color() {
-  local idx="$1"
-  [[ -f "$COVER_COLORS_FILE" ]] || return 1
-  jq -r ".[$idx] // empty" "$COVER_COLORS_FILE" 2>/dev/null
-}
-
 # Boost saturation of a hex color by mixing toward its hue at full saturation
 saturate_hex() {
   local hex="$1" factor="${2:-1.4}"
@@ -177,11 +171,9 @@ build_gradient_cover() {
   refresh_cover_colors "$count" || true
   [[ -f "$COVER_COLORS_FILE" ]] || { log_module "No cover colors file, falling back to theme"; build_gradient_theme "$count"; return; }
   local -a colors=()
-  local c
-  for i in $(seq 0 $((count - 1))); do
-    c=$(cover_color "$i")
-    [[ -n "$c" ]] && colors+=("$c")
-  done
+  mapfile -t colors < <(
+    jq -r --argjson count "$count" '.[:$count][] // empty' "$COVER_COLORS_FILE" 2>/dev/null || true
+  )
   if (( ${#colors[@]} < 1 )); then
     log_module "Not enough cover colors (${#colors[@]}), falling back to theme"
     build_gradient_theme "$count"

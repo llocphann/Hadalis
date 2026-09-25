@@ -266,6 +266,9 @@ require "$cava_theme_module" 'CAVA_CONFIG_VALUES["$key"]="$value"' 'Cava config 
 require "$cava_theme_module" 'CAVA_PALETTE["$key"]="$value"' 'Cava palette reads must use the in-process snapshot'
 reject "$cava_theme_module" 'config_json ".appearance.cava.${key}' 'Cava theming must not restore one config jq per setting'
 reject "$cava_theme_module" 'jq -r ".${key} // empty" "$PALETTE_FILE"' 'Cava theming must not restore one palette jq per color'
+require "$cava_theme_module" 'jq -r --argjson count "$count"' 'Cava cover gradients must batch color-array reads'
+reject "$cava_theme_module" 'cover_color() {' 'Cava cover gradients must not restore one jq process per color'
+reject "$cava_theme_module" 'for i in $(seq 0 $((count - 1)))' 'Cava cover gradients must not restore an external seq loop'
 cava_theme_jq_reads="$(grep -Ec '^[[:space:]]*jq -r ' "$cava_theme_module")"
 if (( cava_theme_jq_reads > 3 )); then
     fail "Cava theming must keep config, palette, and cover JSON reads batched, found $cava_theme_jq_reads jq sites"

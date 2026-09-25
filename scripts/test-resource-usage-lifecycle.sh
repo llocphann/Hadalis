@@ -66,6 +66,12 @@ assert_contains 'readonly property int _expensiveGpuUpdateIntervalMs:' "$(cat "$
 assert_contains '? Math.max(15000, root._effectiveUpdateIntervalMs)' "$(cat "$service")" 'Low Power process-backed GPU sampling must slow to at least 15 seconds'
 assert_contains 'function _expensiveGpuPollDue(nowMs: real): bool {' "$(cat "$service")" 'expensive GPU polling must be cadence-gated'
 assert_contains 'root._lastExpensiveGpuPollMs = nowMs' "$poll_block" 'process-backed GPU polling must record its last launch time'
+assert_contains 'if (memTotalMatch && memAvailableMatch)' "$poll_block" 'transient meminfo reads must preserve the last good RAM sample'
+assert_contains 'if (totalDiff > 0)' "$poll_block" 'duplicate/stale proc stat reads must preserve the last good CPU sample'
+assert_not_contains 'cpuUsage = totalDiff > 0 ?' "$poll_block" 'stale CPU samples must not collapse usage to zero'
+assert_contains 'if (!isNaN(cpuTempRaw))' "$poll_block" 'transient CPU hwmon reads must preserve the last good temperature'
+assert_contains 'if (!isNaN(gpuTempRaw))' "$poll_block" 'transient GPU hwmon reads must preserve the last good temperature'
+assert_not_contains 'if (isNaN(gpuBusyPercent)) {' "$poll_block" 'transient GPU sysfs reads must not collapse usage to zero'
 
 assert_contains 'root._gpuUsageSource = "none"' "$gpu_block" 'GPU startup failure must fail closed to no usage source'
 assert_contains 'root._gpuUsagePath = ""' "$gpu_block" 'GPU startup failure must clear stale sysfs path'

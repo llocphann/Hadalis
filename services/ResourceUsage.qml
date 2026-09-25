@@ -359,12 +359,21 @@ Singleton {
                 fileGpuUsage.reload();
         }
 
-        // Empty text() on first call collapses to 0% via the percentage guards.
+        // FileView.reload() can briefly expose an empty/stale buffer. Never
+        // overwrite the last good telemetry sample with a transient read miss.
         const textMeminfo = fileMeminfo.text();
-        memoryTotal = Number(textMeminfo.match(/MemTotal: *(\d+)/)?.[1] ?? 0);
-        memoryFree = Number(textMeminfo.match(/MemAvailable: *(\d+)/)?.[1] ?? 0);
-        swapTotal = Number(textMeminfo.match(/SwapTotal: *(\d+)/)?.[1] ?? 0);
-        swapFree = Number(textMeminfo.match(/SwapFree: *(\d+)/)?.[1] ?? 0);
+        const memTotalMatch = textMeminfo.match(/MemTotal: *(\d+)/);
+        const memAvailableMatch = textMeminfo.match(/MemAvailable: *(\d+)/);
+        if (memTotalMatch && memAvailableMatch) {
+            memoryTotal = Number(memTotalMatch[1]);
+            memoryFree = Number(memAvailableMatch[1]);
+            const swapTotalMatch = textMeminfo.match(/SwapTotal: *(\d+)/);
+            const swapFreeMatch = textMeminfo.match(/SwapFree: *(\d+)/);
+            if (swapTotalMatch)
+                swapTotal = Number(swapTotalMatch[1]);
+            if (swapFreeMatch)
+                swapFree = Number(swapFreeMatch[1]);
+        }
 
         // Parse aggregate non-loopback network traffic from the same shared
         // polling service instead of spawning a separate /proc/net/dev reader
@@ -412,7 +421,8 @@ Singleton {
             if (previousCpuStats) {
                 const totalDiff = total - previousCpuStats.total;
                 const idleDiff = idle - previousCpuStats.idle;
-                cpuUsage = totalDiff > 0 ? (1 - idleDiff / totalDiff) : 0;
+                if (totalDiff > 0)
+                    cpuUsage = root.clampPercentToUnit(1 - idleDiff / totalDiff);
             }
 
             previousCpuStats = {
@@ -421,13 +431,16 @@ Singleton {
             };
         }
 
-        // Parse temperatures (millidegrees to degrees)
-        const cpuTempRaw = parseInt(fileCpuTemp.text()) || 0;
-        cpuTemp = Math.round(cpuTempRaw / 1000);
+        // Parse temperatures (millidegrees to degrees). An empty hwmon
+        // read is transient/unknown, not a real 0°C sample.
+        const cpuTempRaw = parseInt(fileCpuTemp.text());
+        if (!isNaN(cpuTempRaw))
+            cpuTemp = Math.round(cpuTempRaw / 1000);
         // GPU temp: skip when suspended/disabled to avoid hwmon reads waking a suspended dGPU
         if (!skipGpu && root._gpuUsageSource !== "nvidia-smi") {
-            const gpuTempRaw = parseInt(fileGpuTemp.text()) || 0;
-            gpuTemp = Math.round(gpuTempRaw / 1000);
+            const gpuTempRaw = parseInt(fileGpuTemp.text());
+            if (!isNaN(gpuTempRaw))
+                gpuTemp = Math.round(gpuTempRaw / 1000);
         }
 
         // Parse GPU usage — skip entirely when dGPU is suspended or monitoring is disabled
@@ -435,11 +448,8 @@ Singleton {
             gpuUsage = 0;
         } else if (root._gpuUsageSource === "sysfs") {
             const gpuBusyPercent = parseInt(fileGpuUsage.text());
-            if (isNaN(gpuBusyPercent)) {
-                gpuUsage = 0;
-            } else {
+            if (!isNaN(gpuBusyPercent))
                 gpuUsage = root.clampPercentToUnit(gpuBusyPercent / 100);
-            }
         } else if (root._gpuUsageSource === "nvidia-smi" && !nvidiaGpuProc.running) {
             const nowMs = Date.now()
             if (root._expensiveGpuPollDue(nowMs)) {

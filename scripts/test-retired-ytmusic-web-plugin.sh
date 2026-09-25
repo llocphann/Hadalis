@@ -126,8 +126,9 @@ for active_file in \
   "$repo_root/modules/settings/SidebarsConfig.qml" \
   "$repo_root/modules/bar/BarTaskbarButton.qml" \
   "$repo_root/modules/dock/DockAppButton.qml" \
-  "$repo_root/scripts/cava/resolve_audio_source.py"; do
-  ! grep -Eqi 'ytmusic|youtube[ _-]?music|music\.youtube\.com|com\.github\.th_ch\.youtube_music|pear-desktop' "$active_file" \
+  "$repo_root/scripts/cava/resolve_audio_source.py" \
+  "$repo_root/services/deferred/SessionWarnings.qml"; do
+  ! grep -Eqi 'ytmusic|youtube[ _-]?music|music\.youtube\.com|com\.github\.th_ch\.youtube_music|yt-dlp|pear-desktop' "$active_file" \
     || fail "retired YTMusic special-case remains in active runtime: $active_file"
 done
 ! grep -Fq 'music.youtube.com' "$repo_root/services/MprisController.qml" \

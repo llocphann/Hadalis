@@ -131,4 +131,14 @@ if grep -Fq 'head -200' <<<"$changelog_block"; then
     fail 'remote changelog must not restore an external head process'
 fi
 
+local_mod_block="$(sed -n '/id: localModsProc/,/\/\/ Note: Update runs/p' "$service")"
+[[ -n "$local_mod_block" ]] || fail 'local modification process block is missing'
+assert_contains 'root.configDir + "/scripts/check-local-modifications.sh"' "$local_mod_block" 'local modification scan must use the batched helper'
+if grep -Fq 'sha256sum \\"$target/$path\\"' <<<"$local_mod_block"; then
+    fail 'local modification scan must not restore per-file checksum subprocesses'
+fi
+if grep -Fq 'cut -d' <<<"$local_mod_block"; then
+    fail 'local modification scan must not restore per-file cut subprocesses'
+fi
+
 printf 'shell updates check lifecycle guards: ok\n'

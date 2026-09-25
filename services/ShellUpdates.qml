@@ -1186,24 +1186,10 @@ Singleton {
         id: localModsProc
         running: false
         command: [
-            "/usr/bin/bash", "-c",
-            "manifest='" + root.manifestPath + "'; " +
-            "target='" + root.configDir + "'; " +
-            "repo='" + root.repoPath + "'; " +
-            "[[ -f \"$manifest\" ]] || exit 0; " +
-            "while IFS=: read -r path checksum; do " +
-            "  [[ \"$path\" =~ ^# ]] && continue; " +
-            "  [[ -z \"$path\" ]] && continue; " +
-            "  [[ -f \"$target/$path\" ]] || continue; " +
-            "  if [[ -n \"$checksum\" ]]; then " +
-            "    current=$(sha256sum \"$target/$path\" 2>/dev/null | cut -d' ' -f1); " +
-            "    [[ \"$current\" != \"$checksum\" ]] && echo \"$path\"; " +
-            "  elif [[ -d \"$repo/.git\" ]]; then " +
-            "    repo_hash=$(git -C \"$repo\" show HEAD:\"$path\" 2>/dev/null | sha256sum | cut -d' ' -f1); " +
-            "    local_hash=$(sha256sum \"$target/$path\" 2>/dev/null | cut -d' ' -f1); " +
-            "    [[ -n \"$repo_hash\" && \"$repo_hash\" != \"$local_hash\" ]] && echo \"$path\"; " +
-            "  fi; " +
-            "done < \"$manifest\""
+            root.configDir + "/scripts/check-local-modifications.sh",
+            root.manifestPath,
+            root.configDir,
+            root.repoPath
         ]
         stdout: StdioCollector {
             onStreamFinished: {

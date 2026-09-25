@@ -192,6 +192,9 @@ Singleton {
             root._reanchor(reported);
             root._publishedTrackKey = root._latestTrackKey;
             root.status = "ok";
+            // A paused player does not run syncTimer, so publish the correct
+            // current lyric immediately from the last reported position.
+            root._syncPosition(false);
         });
     }
 
@@ -237,33 +240,50 @@ Singleton {
 
     on_PlayingChanged: root._reanchor(root._estimatedPosition())
 
+    function _syncPosition(refreshPlayer: bool): void {
+        if (refreshPlayer)
+            root.activePlayer?.positionChanged();
+
+        const reported = root.activePlayer?.position ?? 0;
+        if (reported !== root._lastReported) {
+            root._lastReported = reported;
+            if (reported > 0 || root._anchorPos === 0)
+                root._reanchor(reported);
+        }
+
+        const pos = root._estimatedPosition();
+        let idx = -1;
+        for (let i = 0; i < root.lyricsLines.length; i++) {
+            if (root.lyricsLines[i].time <= pos)
+                idx = i;
+            else
+                break;
+        }
+        if (idx !== root.activeIndex) {
+            root.activeIndex = idx;
+            root.slots = root.buildSlots(idx);
+        }
+    }
+
+    Connections {
+        target: root.activePlayer
+
+        // While paused the periodic timer sleeps. A manual seek still changes
+        // MPRIS position, so update the displayed lyric from that event.
+        function onPositionChanged(): void {
+            if (!root._playing && root.active && root.status === "ok"
+                    && root.lyricsLines.length > 0)
+                root._syncPosition(false);
+        }
+    }
+
     Timer {
         id: syncTimer
         interval: 300
         repeat: true
-        running: root.active && root.status === "ok" && root.lyricsLines.length > 0
-        onTriggered: {
-            root.activePlayer?.positionChanged();
-            const reported = root.activePlayer?.position ?? 0;
-            if (reported !== root._lastReported) {
-                root._lastReported = reported;
-                if (reported > 0 || root._anchorPos === 0)
-                    root._reanchor(reported);
-            }
-
-            const pos = root._estimatedPosition();
-            let idx = -1;
-            for (let i = 0; i < root.lyricsLines.length; i++) {
-                if (root.lyricsLines[i].time <= pos)
-                    idx = i;
-                else
-                    break;
-            }
-            if (idx !== root.activeIndex) {
-                root.activeIndex = idx;
-                root.slots = root.buildSlots(idx);
-            }
-        }
+        running: root.active && root.status === "ok"
+            && root.lyricsLines.length > 0 && root._playing
+        onTriggered: root._syncPosition(true)
     }
 
     Process {

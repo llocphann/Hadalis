@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Regression contract for v9 intent-based Settings navigation and ownership."""
+"""Regression contract for v10 intent-based Settings navigation and ownership."""
 
 import re
 from pathlib import Path
@@ -76,7 +76,7 @@ def main() -> None:
     wkeys = re.findall(r'key: "([^"]+)"', waffle.split("property var pages: [", 1)[1].split(
         "property int currentPage:", 1
     )[0])
-    assert len(wkeys) == 20 and len(set(wkeys)) == 20, "Waffle page keys"
+    assert len(wkeys) == 19 and len(set(wkeys)) == 19, "Waffle page keys"
     wgroups = wcontent.split("readonly property var navigationGroups: [", 1)[1].split(
         "readonly property var navigationItems:", 1
     )[0]
@@ -118,7 +118,7 @@ def main() -> None:
     require(data, "pageIndex: 2, pageName: root.pages[2].name,\n"
                   '            section: Translation.tr("Appearance & Layout"),',
             "Bar search destination")
-    print("Settings v9 information architecture, routing and ownership: OK")
+    print("Settings v10 information architecture, routing and ownership: OK")
 
 
 if __name__ == "__main__":

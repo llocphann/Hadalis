@@ -5460,5 +5460,7 @@
   "Deep QML owners": "Deep QML owners",
   "Components": "Components",
   "QML work · QV4 allocation — not CPU/RSS/GPU attribution": "QML work · QV4 allocation — not CPU/RSS/GPU attribution",
-  "No deep QML profile captured": "No deep QML profile captured"
+  "No deep QML profile captured": "No deep QML profile captured",
+  "Deep profile ready": "Deep profile ready",
+  "Profile 5s": "Profile 5s"
 }

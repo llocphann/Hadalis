@@ -1,7 +1,6 @@
-use std::cmp::Ordering;
 use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 use anyhow::{Context, Result, anyhow};
 use regex::Regex;
@@ -27,7 +26,6 @@ struct EventType {
 struct WorkRange {
     start_ns: i64,
     end_ns: i64,
-    event_index: usize,
     source_path: Option<String>,
 }
 

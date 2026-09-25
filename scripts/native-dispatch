@@ -64,7 +64,7 @@ rust_ready() {
 
 cmd="${1:-}"
 [[ -n "$cmd" ]] || {
-    echo "usage: native-dispatch <input-lock|input-keys|niri|diagnostics|clipboard-store|mpd|mpd-daemon|mpd-subscribe|lyrics|theme|desktop-icons|backend-info> [args...]" >&2
+    echo "usage: native-dispatch <input-lock|input-keys|niri|diagnostics|qml-profile|clipboard-store|mpd|mpd-daemon|mpd-subscribe|lyrics|theme|desktop-icons|backend-info> [args...]" >&2
     exit 64
 }
 shift
@@ -73,7 +73,7 @@ if [[ "$MODE" == rust && "$STRICT" == 1 ]]; then
     required_binary=""
     case "$cmd" in
         input-lock|input-keys) required_binary=inir-inputd ;;
-        niri|diagnostics|clipboard-store|desktop-icons) required_binary=inir-native ;;
+        niri|diagnostics|qml-profile|clipboard-store|desktop-icons) required_binary=inir-native ;;
         mpd|mpd-daemon|mpd-subscribe|lyrics) required_binary=inir-mpdd ;;
         theme) required_binary=inir-theme ;;
     esac
@@ -134,6 +134,14 @@ case "$cmd" in
             echo "[native-dispatch] Rust diagnostics failed ($rc), falling back to Python" >&2
         fi
         exec /usr/bin/env python3 "$ROOT_DIR/scripts/runtime-diagnostics-sampler.py" "$@"
+        ;;
+
+    qml-profile)
+        if rust_ready inir-native; then
+            exec "$BIN_DIR/inir-native" qml-profile "$@"
+        fi
+        echo "[native-dispatch] QML profile attribution requires the Rust inir-native backend" >&2
+        exit 69
         ;;
 
     clipboard-store)

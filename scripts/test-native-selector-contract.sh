@@ -68,7 +68,7 @@ grep -Fq 'python_exec_with_module evdev -u "$ROOT_DIR/scripts/daemon/osk_physica
 if grep -Eq 'exec /usr/bin/(env[[:space:]]+)?python3' "$dispatch"; then
     fail 'native-dispatch must not bypass the packaged/venv Python fallback'
 fi
-grep -Eq '^[[:space:]]+evdev "$root/nix/package.nix" \
+grep -Eq "^[[:space:]]+evdev[[:space:]]*$" "$root/nix/package.nix" \
     || fail 'Nix Python runtime must include evdev for input daemon fallback'
 
 printf 'PASS: native runtime selector is wired and reversible\n'

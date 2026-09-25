@@ -77,6 +77,13 @@ def main() -> None:
         "Night Light must retain its Niri backend",
     )
 
+    widget_sdk = read("defaults/widgets/WIDGET-SDK.md")
+    forbid(
+        widget_sdk,
+        "CompositorService.isHyprland",
+        "widget SDK must not advertise the retired Hyprland capability flag",
+    )
+
     color_picker = read("scripts/colorpicker.sh")
     for token in ("slurp -p", 'grim -g "$geometry"', "magick ppm:-"):
         require(

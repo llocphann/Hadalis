@@ -290,13 +290,20 @@ Scope {
         color: "transparent"
         WlrLayershell.namespace: "quickshell:clipboardPanel"
         WlrLayershell.layer: WlrLayer.Overlay
-        WlrLayershell.keyboardFocus: GlobalStates.clipboardOpen ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
+        readonly property bool acceptsInput: GlobalStates.clipboardOpen
+        WlrLayershell.keyboardFocus: window.acceptsInput
+            ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
 
         anchors {
             top: true
             bottom: true
             left: true
             right: true
+        }
+
+        Item { id: emptyClipboardInput; width: 0; height: 0 }
+        mask: Region {
+            item: window.acceptsInput ? keyHandler : emptyClipboardInput
         }
 
         Item {

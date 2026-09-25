@@ -469,10 +469,11 @@ Scope {
             WlrLayershell.layer: GlobalStates.settingsNativeDialogOpen
                 ? WlrLayer.Bottom
                 : PolkitService.active ? WlrLayer.Top : WlrLayer.Overlay
-            WlrLayershell.keyboardFocus: root.settingsOpen
+            readonly property bool acceptsInput: root.settingsOpen
                 && !GlobalStates.regionSelectorOpen
                 && !GlobalStates.settingsNativeDialogOpen
                 && !PolkitService.active
+            WlrLayershell.keyboardFocus: settingsPanel.acceptsInput
                 ? WlrKeyboardFocus.Exclusive
                 : WlrKeyboardFocus.None
             color: "transparent"
@@ -482,6 +483,14 @@ Scope {
                 bottom: true
                 left: true
                 right: true
+            }
+
+            // Keep drawing the exit animation, but stop owning pointer input as
+            // soon as Settings closes or yields to another native surface.
+            Item { id: emptyFocusInput; width: 0; height: 0 }
+            Item { id: fullFocusInput; anchors.fill: parent }
+            mask: Region {
+                item: settingsPanel.acceptsInput ? fullFocusInput : emptyFocusInput
             }
 
             // Blurred backdrop, using the same GlassBackground every other panel

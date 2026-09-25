@@ -51,10 +51,10 @@ def main() -> None:
         "event_work_ns",
         '"qmlWorkMsPerSecond"',
         '"allocatedBytes"',
-        '"cumulative positive QV4 SmallItem/LargeItem allocations"',
-        '"not per-owner CPU percent"',
-        '"not retained RSS/PSS"',
-        '"per-owner GPU usage is intentionally unavailable"',
+        "cumulative positive QV4 SmallItem/LargeItem allocations",
+        "not per-owner CPU percent",
+        "not retained RSS/PSS",
+        "per-owner GPU usage is intentionally unavailable",
     ):
         require(rust, token, "Rust QML profile attribution")
 

@@ -33,12 +33,14 @@ Item {
                 }))
             }
         }
-        appendGroup(Translation.tr("Modules"), "module",
-            root.profile?.modules ?? [])
-        appendGroup(Translation.tr("Services"), "service",
-            root.profile?.services ?? [])
+        // Component ownership is the primary question in Diagnostics; keep it
+        // above aggregate module/service views so useful rows are immediately visible.
         appendGroup(Translation.tr("Components"), "component",
             root.profile?.components ?? [])
+        appendGroup(Translation.tr("Services"), "service",
+            root.profile?.services ?? [])
+        appendGroup(Translation.tr("Modules"), "module",
+            root.profile?.modules ?? [])
         return result
     }
 
@@ -48,23 +50,27 @@ Item {
             ? number.toFixed(number >= 10 ? 1 : 2) + " ms/s" : "—"
     }
 
-    function formatRate(value): string {
+    function formatBytes(value): string {
         const bytes = Number(value)
         if (!Number.isFinite(bytes) || bytes < 0)
             return "—"
+        if (bytes >= 1024 * 1024 * 1024)
+            return (bytes / (1024 * 1024 * 1024)).toFixed(2) + " GiB"
         if (bytes >= 1024 * 1024)
-            return (bytes / (1024 * 1024)).toFixed(1) + " MiB/s"
+            return (bytes / (1024 * 1024)).toFixed(1) + " MiB"
         if (bytes >= 1024)
-            return (bytes / 1024).toFixed(1) + " KiB/s"
-        return bytes.toFixed(0) + " B/s"
+            return (bytes / 1024).toFixed(1) + " KiB"
+        return bytes.toFixed(0) + " B"
     }
 
-    function allocationRate(row): string {
-        if (root.traceSeconds <= 0)
-            return "—"
-        return root.formatRate(
-            Number(row?.allocations?.allocatedBytes ?? 0)
-                / root.traceSeconds)
+    function allocatedBytes(row): string {
+        return root.formatBytes(
+            Number(row?.allocations?.allocatedBytes ?? 0))
+    }
+
+    function freedBytes(row): string {
+        return root.formatBytes(
+            Number(row?.allocations?.freedBytes ?? 0))
     }
 
     implicitHeight: 260
@@ -113,7 +119,7 @@ Item {
                 Layout.fillWidth: true
                 Layout.bottomMargin: 5
                 text: Translation.tr(
-                    "QML work · QV4 allocation — not CPU/RSS/GPU attribution")
+                    "Per-owner QV4 alloc/free activity — not retained RAM/RSS/PSS")
                 color: Appearance.colors.colSubtext
                 font.pixelSize: Appearance.font.pixelSize.smallest
                 elide: Text.ElideRight
@@ -238,10 +244,10 @@ Item {
                                 textFormat: Text.PlainText
                                 Layout.fillWidth: true
                                 horizontalAlignment: Text.AlignRight
-                                text: "Alloc "
-                                    + root.allocationRate(
-                                        ownerRow.modelData)
-                                    + " · GPU —"
+                                text: "QV4 +"
+                                    + root.allocatedBytes(ownerRow.modelData)
+                                    + "  −"
+                                    + root.freedBytes(ownerRow.modelData)
                                 color: Appearance.colors.colSubtext
                                 font.family:
                                     Appearance.font.family.monospace

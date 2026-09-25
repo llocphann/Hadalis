@@ -8,6 +8,7 @@ ToolbarButton {
     id: iconBtn
     implicitWidth: height
     property int iconRenderType: Text.NativeRendering
+    property int iconSize: 22
 
     colBackgroundToggled: Appearance.colors.colSecondaryContainer
     colBackgroundToggledHover: Appearance.colors.colSecondaryContainerHover
@@ -20,7 +21,7 @@ ToolbarButton {
         anchors.centerIn: parent
         horizontalAlignment: Text.AlignHCenter
         verticalAlignment: Text.AlignVCenter
-        iconSize: 22
+        iconSize: iconBtn.iconSize
         text: iconBtn.text
         textRenderType: iconBtn.iconRenderType
         color: iconBtn.colText

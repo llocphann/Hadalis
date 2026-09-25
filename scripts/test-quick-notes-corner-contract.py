@@ -81,6 +81,7 @@ for token in (
     "|| root.entryBridgeHeld || root.pinnedOpen",
     "property bool pinnedOpen: false",
     "id: popupPinButton",
+    "iconSize: 17",
     'text: "push_pin"',
     "toggled: root.pinnedOpen",
     "onClicked: root.pinnedOpen = !root.pinnedOpen",

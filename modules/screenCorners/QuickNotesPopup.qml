@@ -290,6 +290,7 @@ Bar.StyledPopup {
                     anchors.right: parent.right
                     implicitWidth: 30
                     implicitHeight: 30
+                    iconSize: 17
                     text: "push_pin"
                     toggled: root.pinnedOpen
                     onClicked: root.pinnedOpen = !root.pinnedOpen

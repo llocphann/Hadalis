@@ -238,7 +238,6 @@
             "enableSpicetify": false,
             "spicetifyTheme": "Inir",
             "enableSteam": false,
-            "enablePearDesktop": true,
             "enableNeovim": false,
             "colorStrength": 1,
             "useBackdropForColors": false,

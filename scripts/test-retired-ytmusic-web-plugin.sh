@@ -58,4 +58,28 @@ migration_apply
 [[ -f "$XDG_CONFIG_HOME/inir/plugins/music/manifest.json" ]] \
   || fail 'migration must preserve custom music plugins'
 
-echo 'retired YTMusic web-plugin contract passed'
+theme_migration="$repo_root/sdata/migrations/055-retire-ytmusic-theming.sh"
+[[ -f "$theme_migration" ]] || fail 'YTMusic theming retirement migration is missing'
+for retired in "$repo_root/scripts/colors/modules/80-pear-desktop.sh" "$repo_root/scripts/colors/pear-css-inject.py" "$repo_root/scripts/colors/targets/pear-desktop.json"; do
+  [[ ! -e "$retired" ]] || fail "retired YTMusic theming artifact still shipped: $retired"
+done
+! grep -Fq 'enablePearDesktop' "$repo_root/modules/common/Config.qml" || fail 'retired Pear Desktop config key remains in QML schema'
+! grep -Fq 'enablePearDesktop' "$repo_root/defaults/config.json" || fail 'retired Pear Desktop config key remains in default config'
+
+export HOME="$tmp/home"; export XDG_CONFIG_HOME="$tmp/theme-config"; export XDG_STATE_HOME="$tmp/theme-state"
+mkdir -p "$HOME/.local/share/applications" "$XDG_CONFIG_HOME/inir" "$XDG_CONFIG_HOME/YouTube Music" "$XDG_STATE_HOME/quickshell/user/generated"
+printf '%s\n' '{"appearance":{"wallpaperTheming":{"enablePearDesktop":true,"enableChrome":true}}}' > "$XDG_CONFIG_HOME/inir/config.json"
+css="$XDG_STATE_HOME/quickshell/user/generated/pear-desktop-theme.css"; printf 'retired css\n' > "$css"
+printf '{"options":{"themes":["%s","/keep.css"]}}\n' "$css" > "$XDG_CONFIG_HOME/YouTube Music/config.json"
+printf '%s\n' '[Desktop Entry]' 'Name=YouTube Music' 'Exec=youtube-music --remote-debugging-port=9223 %U' > "$HOME/.local/share/applications/youtube-music.desktop"
+# shellcheck disable=SC1090
+source "$theme_migration"
+migration_check || fail 'theming migration must detect retired Hadalis YTMusic state'
+migration_apply
+! jq -e '.appearance.wallpaperTheming | has("enablePearDesktop")' "$XDG_CONFIG_HOME/inir/config.json" >/dev/null || fail 'theming migration must remove enablePearDesktop'
+jq -e '.appearance.wallpaperTheming.enableChrome == true' "$XDG_CONFIG_HOME/inir/config.json" >/dev/null || fail 'theming migration must preserve unrelated wallpaper theming config'
+jq -e '.options.themes == ["/keep.css"]' "$XDG_CONFIG_HOME/YouTube Music/config.json" >/dev/null || fail 'theming migration must remove only the Hadalis-generated YTMusic CSS'
+[[ ! -e "$css" ]] || fail 'theming migration must remove generated YTMusic CSS'
+grep -Fq 'Exec=youtube-music %U' "$HOME/.local/share/applications/youtube-music.desktop" || fail 'theming migration must remove only the Hadalis CDP flag'
+
+echo 'retired YTMusic web-plugin and theming contracts passed'

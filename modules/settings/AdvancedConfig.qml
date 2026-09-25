@@ -156,18 +156,6 @@ ContentPage {
                 }
             }
             SettingsSwitch {
-                buttonIcon: "music_note"
-                text: Translation.tr("Pear Desktop (YouTube Music)")
-                checked: Config.options?.appearance?.wallpaperTheming?.enablePearDesktop ?? true
-                onCheckedChanged: {
-                    Config.setNestedValue("appearance.wallpaperTheming.enablePearDesktop", checked);
-                    colorRegenTimer.restart();
-                }
-                StyledToolTip {
-                    text: Translation.tr("Apply Material You colors to YouTube Music Desktop App")
-                }
-            }
-            SettingsSwitch {
                 buttonIcon: "code"
                 text: Translation.tr("Zed editor")
                 checked: Config.options?.appearance?.wallpaperTheming?.enableZed ?? true

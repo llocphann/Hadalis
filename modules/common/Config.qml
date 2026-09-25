@@ -713,7 +713,6 @@ Singleton {
                     property bool enableSpicetify: false
                     property string spicetifyTheme: "Inir"
                     property bool enableSteam: false
-                    property bool enablePearDesktop: true
                     property bool enableOpenCode: false
                     property bool enableNeovim: false
                     property bool enableCava: false

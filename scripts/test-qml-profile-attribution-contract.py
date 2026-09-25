@@ -51,7 +51,7 @@ def main() -> None:
         "event_work_ns",
         '"qmlWorkMsPerSecond"',
         '"allocatedBytes"',
-        '"freedBytes"',
+        '"cumulative positive QV4 SmallItem/LargeItem allocations"',
         '"not per-owner CPU percent"',
         '"not retained RSS/PSS"',
         '"per-owner GPU usage is intentionally unavailable"',
@@ -92,6 +92,13 @@ def main() -> None:
         '"qml-profile", "--help"',
         "runtime_environment()",
         '"NIRI_SOCKET"',
+        "reserve_debug_port()",
+        "wait_for_debug_listener",
+        '"--debug"',
+        '"--waitfordebug"',
+        '"--attach"',
+        '"127.0.0.1"',
+        '"--port"',
     ):
         require(capture, token, "bounded QML profile capture")
 
@@ -125,19 +132,20 @@ def main() -> None:
         'Translation.tr("Services")',
         'Translation.tr("Components")',
         '"QML "',
-        '"QV4 +"',
+        '"JS alloc "',
         "root.allocatedBytes(ownerRow.modelData)",
-        "root.freedBytes(ownerRow.modelData)",
+        "root.allocationRate(ownerRow.modelData)",
         "interactive: contentHeight > height",
     ):
         require(owner_table, token, "deep QML owner table")
     require(
         owner_table,
-        "Per-owner QV4 alloc/free activity — not retained RAM/RSS/PSS",
+        "JS/QV4 allocated by owner — cumulative pressure, not retained RAM/PSS",
         "deep QML owner semantics",
     )
     forbid(owner_table, "CPU %", "deep owner table fake CPU attribution")
     forbid(owner_table, "RAM %", "deep owner table fake RAM attribution")
+    forbid(owner_table, "freedBytes(", "owner frees cannot be attributed reliably")
 
     require(
         qmldir,

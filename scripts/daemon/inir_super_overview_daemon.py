@@ -28,6 +28,7 @@ last_toggle_time = 0.0
 super_down_global = False
 interaction_since_super_down = False
 tap_handled = False
+super_down_devices = set()
 
 # Cache of inir's environment so we don't hit /proc on every tap.
 INIR_ENV_CACHE = {}
@@ -118,6 +119,66 @@ def get_inir_env():
         return {}
 
 
+def run_inir_command(*args):
+    """Run one iNiR CLI command in the live shell session environment."""
+    try:
+        inir_env = get_inir_env()
+        if not inir_env:
+            print(
+                "[inir-super-daemon] No inir env available, skipping command",
+                flush=True,
+            )
+            return False
+
+        env = os.environ.copy()
+        env.update(inir_env)
+        inir_bin = os.environ.get(
+            "INIR_LAUNCHER_PATH",
+            shutil.which("inir") or "inir",
+        )
+        subprocess.Popen(
+            [inir_bin, *args],
+            env=env,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+        return True
+    except Exception as e:
+        print(
+            f"[inir-super-daemon] Error running inir command {args}: {e}",
+            flush=True,
+        )
+        return False
+
+
+def notify_shell_super_state(pressed):
+    function = "superPress" if pressed else "superRelease"
+    return run_inir_command("ipc", "overview", function)
+
+
+def set_super_device_state(path, pressed):
+    global super_down_global, interaction_since_super_down, tap_handled
+
+    was_down = bool(super_down_devices)
+    if pressed:
+        super_down_devices.add(path)
+    else:
+        super_down_devices.discard(path)
+
+    is_down = bool(super_down_devices)
+    super_down_global = is_down
+    if is_down == was_down:
+        return
+
+    if is_down:
+        interaction_since_super_down = False
+        tap_handled = False
+        notify_shell_super_state(True)
+    else:
+        interaction_since_super_down = False
+        notify_shell_super_state(False)
+
+
 def find_keyboard_devices():
     keyboards = []
     pointers = []
@@ -181,9 +242,7 @@ async def monitor_device(path):
                 if value == key_event.key_down:
                     super_down = True
                     chord = False
-                    super_down_global = True
-                    interaction_since_super_down = False
-                    tap_handled = False
+                    set_super_device_state(path, True)
                 elif value == key_event.key_up:
                     if (
                         super_down
@@ -204,8 +263,7 @@ async def monitor_device(path):
                             run_inir_command("overview", "toggle")
                     super_down = False
                     chord = False
-                    super_down_global = False
-                    interaction_since_super_down = False
+                    set_super_device_state(path, False)
                 continue
 
             # Any other key while Super is down marks this as a chord.
@@ -219,6 +277,9 @@ async def monitor_device(path):
         # Device vanished (unplug, suspend/resume). Returning lets the supervisor
         # in main() re-adopt it on the next rescan instead of killing the daemon.
         return
+    finally:
+        if super_down:
+            set_super_device_state(path, False)
 
 
 async def monitor_pointer_device(path):

@@ -52,6 +52,29 @@ contracts = {
         "WlrLayershell.keyboardFocus: window.acceptsInput",
         "window.acceptsInput ? cheatsheetBackdrop : emptyCheatsheetInput",
     ),
+    "modules/waffle/startMenu/WaffleStartMenu.qml": (
+        "readonly property bool acceptsInput: GlobalStates.searchOpen",
+        "WlrLayershell.keyboardFocus: panelWindow.acceptsInput",
+        "panelWindow.acceptsInput ? content : emptyStartMenuPanelInput",
+        "? startMenuBackdropMouse : emptyStartMenuBackdropInput",
+    ),
+    "modules/waffle/actionCenter/WaffleActionCenter.qml": (
+        "readonly property bool acceptsInput: GlobalStates.waffleActionCenterOpen",
+        "WlrLayershell.keyboardFocus: panelWindow.acceptsInput",
+        "panelWindow.acceptsInput ? content : emptyActionCenterPanelInput",
+        "? actionCenterBackdropMouse : emptyActionCenterBackdropInput",
+    ),
+    "modules/waffle/notificationCenter/WaffleNotificationCenter.qml": (
+        "readonly property bool acceptsInput: GlobalStates.waffleNotificationCenterOpen",
+        "WlrLayershell.keyboardFocus: panelWindow.acceptsInput",
+        "panelWindow.acceptsInput ? content : emptyNotificationCenterPanelInput",
+        "? notificationCenterBackdropMouse : emptyNotificationCenterBackdropInput",
+    ),
+    "modules/waffle/widgets/WaffleWidgets.qml": (
+        "readonly property bool acceptsInput: GlobalStates.waffleWidgetsOpen",
+        "WlrLayershell.keyboardFocus: panelWindow.acceptsInput",
+        "panelWindow.acceptsInput ? content : emptyWidgetsPanelInput",
+    ),
 }
 
 for path, tokens in contracts.items():

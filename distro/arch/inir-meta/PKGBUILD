@@ -57,7 +57,6 @@ depends=(
   pavucontrol
   plasma-browser-integration
   plasma-integration
-  python-ytmusicapi
   qt6-avif-image-plugin
   qt6-svg
   qt6-virtualkeyboard

@@ -107,7 +107,6 @@ depends=(
   mpd
   mpd-mpris
   yt-dlp
-  python-ytmusicapi
 
   #--- Theming ---
   noto-fonts-emoji

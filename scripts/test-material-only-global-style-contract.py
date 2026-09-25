@@ -1594,7 +1594,9 @@ def main() -> None:
         "ColorUtils.transparentize(Appearance.colors.colPrimary, 0.7)",
         "ColorUtils.transparentize(Appearance.colors.colSurfaceContainerHigh, 0.5)",
         "color: Appearance.colors.colOnLayer0",
-        "color: Appearance.colors.colSubtext",
+        "color: root.hovered",
+        "? Appearance.colors.colOnLayer0",
+        ": Appearance.colors.colSubtext",
         "color: Appearance.colors.colSurfaceContainerLow",
     ):
         require(bar_taskbar_window_preview, token, "BarTaskbarWindowPreview.qml")

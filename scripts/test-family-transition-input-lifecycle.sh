@@ -4,6 +4,7 @@ set -euo pipefail
 repo_root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
 overlay="$repo_root/FamilyTransitionOverlay.qml"
 shell="$repo_root/shell.qml"
+modules="$repo_root/modules/settings/ModulesConfig.qml"
 
 fail() {
     printf 'family transition input lifecycle guard failed: %s\n' "$1" >&2
@@ -43,5 +44,15 @@ require "$overlay" 'GlobalStates.familyTransitionActive = false' \
     'watchdog fail-open path must clear the singleton transition state itself'
 require "$shell" 'if (_transitionInProgress && !GlobalStates.familyTransitionActive)' \
     'shell must retain stale local transition recovery'
+
+# Settings must never bypass the shell transition lifecycle. The Material
+# overlay is itself a fullscreen input owner, so close it before dispatching
+# the family change or the new family can appear under an input-blocking layer.
+reject "$modules" 'Config.setNestedValue("panelFamily",' \
+    'settings must not write panelFamily directly'
+require "$modules" 'GlobalStates.settingsOverlayOpen = false' \
+    'settings family switch must release the fullscreen settings input surface'
+require "$modules" 'Quickshell.shellPath("scripts/inir"), "panelFamily", "set", target' \
+    'settings family switch must use the canonical shell IPC lifecycle'
 
 printf 'family transition input lifecycle guards: ok\n'

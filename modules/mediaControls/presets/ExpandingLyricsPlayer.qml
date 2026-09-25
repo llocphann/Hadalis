@@ -279,6 +279,7 @@ Item {
                     anchors.topMargin: 10
                     anchors.bottomMargin: 14
                     showPlaceholder: false
+            serviceActive: root.positionUpdatesActive
                     opacity: lyricSheet.hasLyrics ? 1 : 0
                     textAlignment: Text.AlignHCenter
                     baseSize: Appearance.font.pixelSize.normal

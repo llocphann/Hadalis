@@ -87,6 +87,7 @@ themes_config="$repo_root/modules/settings/ThemesConfig.qml"
 desktop_media_widget="$repo_root/modules/background/widgets/mediaControls/MediaControlsWidget.qml"
 bar_media_popup="$repo_root/modules/mediaControls/BarMediaPopup.qml"
 player_base="$repo_root/modules/mediaControls/components/PlayerBase.qml"
+player_lyrics="$repo_root/modules/mediaControls/components/PlayerLyrics.qml"
 player_control="$repo_root/modules/mediaControls/PlayerControl.qml"
 media_presets=(
     "$repo_root/modules/mediaControls/presets/FullPlayer.qml"
@@ -95,6 +96,11 @@ media_presets=(
     "$repo_root/modules/mediaControls/presets/ClassicPlayer.qml"
     "$repo_root/modules/mediaControls/presets/AlbumArtPlayer.qml"
     "$repo_root/modules/mediaControls/presets/VisualizerPlayer.qml"
+    "$repo_root/modules/mediaControls/presets/LyricsPlayer.qml"
+    "$repo_root/modules/mediaControls/presets/LyricsSplitPlayer.qml"
+    "$repo_root/modules/mediaControls/presets/ExpandingLyricsPlayer.qml"
+)
+lyrics_presets=(
     "$repo_root/modules/mediaControls/presets/LyricsPlayer.qml"
     "$repo_root/modules/mediaControls/presets/LyricsSplitPlayer.qml"
     "$repo_root/modules/mediaControls/presets/ExpandingLyricsPlayer.qml"
@@ -129,6 +135,12 @@ require "$player_base" 'running: root.positionUpdatesActive' 'PlayerBase positio
 require "$player_base" 'onPositionUpdatesActiveChanged:' 'PlayerBase must refresh position immediately when lifecycle updates resume'
 for preset in "${media_presets[@]}"; do
     require "$preset" 'property alias positionUpdatesActive: playerBase.positionUpdatesActive' 'Media presets must expose the shared position lifecycle gate'
+done
+require "$player_lyrics" 'property bool serviceActive: true' 'PlayerLyrics lifecycle gate must preserve default standalone behavior'
+require "$player_lyrics" 'const shouldSubscribe = root.visible && root.serviceActive;' 'PlayerLyrics must unsubscribe when its host lifecycle sleeps'
+require "$player_lyrics" 'onServiceActiveChanged: root.syncSubscription()' 'PlayerLyrics must react immediately to host lifecycle changes'
+for preset in "${lyrics_presets[@]}"; do
+    require "$preset" 'serviceActive: root.positionUpdatesActive' 'Desktop lyrics presets must share the media power lifecycle gate'
 done
 
 require "$it_thumbnail" 'ClippingRectangle {' 'InnerTune thumbnails must use scene-graph clipping'

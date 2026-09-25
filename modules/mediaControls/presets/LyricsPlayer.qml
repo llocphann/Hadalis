@@ -156,6 +156,7 @@ Item {
         PlayerLyrics {
             id: lyricSheet
             showPlaceholder: false
+            serviceActive: root.positionUpdatesActive
             opacity: lyricSheet.hasLyrics ? 1 : 0
             Behavior on opacity {
                 enabled: Appearance.animationsEnabled

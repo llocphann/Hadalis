@@ -26,10 +26,13 @@ Item {
 
     readonly property int activeIndex: LyricsService.activeIndex
     readonly property bool hasLyrics: LyricsService.status === "ok" && LyricsService.lyricsLines.length > 0
+    // Hosts with an explicit power/presentation lifecycle can suspend the
+    // shared 300 ms lyrics sync without destroying the preset.
+    property bool serviceActive: true
     property bool _subscribed: false
 
     function syncSubscription(): void {
-        const shouldSubscribe = root.visible;
+        const shouldSubscribe = root.visible && root.serviceActive;
         if (shouldSubscribe === root._subscribed)
             return;
 
@@ -41,6 +44,7 @@ Item {
     }
 
     onVisibleChanged: root.syncSubscription()
+    onServiceActiveChanged: root.syncSubscription()
     Component.onCompleted: root.syncSubscription()
     Component.onDestruction: {
         if (root._subscribed) {

@@ -40,35 +40,29 @@ Singleton {
     readonly property int minuteEpoch: Math.floor(clock.date.getTime() / 60000)
     property string uptime: "0h, 0m"
 
-    Timer {
-        triggeredOnStart: true
-        // Uptime doesn't change fast - 60s updates are sufficient and reduce I/O
-        interval: 60000
-        running: true
-        repeat: true
-        onTriggered: {
-            fileUptime.reload();
-            const textUptime = String(fileUptime.text() ?? "").trim();
-            const uptimeSeconds = Number(textUptime.split(/\s+/)[0]);
-            if (!Number.isFinite(uptimeSeconds) || uptimeSeconds < 0)
-                return;
+    function refreshUptime(): void {
+        fileUptime.reload();
+        const textUptime = String(fileUptime.text() ?? "").trim();
+        const uptimeSeconds = Number(textUptime.split(/\s+/)[0]);
+        if (!Number.isFinite(uptimeSeconds) || uptimeSeconds < 0)
+            return;
 
-            // Convert seconds to days, hours, and minutes
-            const days = Math.floor(uptimeSeconds / 86400);
-            const hours = Math.floor((uptimeSeconds % 86400) / 3600);
-            const minutes = Math.floor((uptimeSeconds % 3600) / 60);
+        const days = Math.floor(uptimeSeconds / 86400);
+        const hours = Math.floor((uptimeSeconds % 86400) / 3600);
+        const minutes = Math.floor((uptimeSeconds % 3600) / 60);
 
-            // Build the formatted uptime string
-            let formatted = "";
-            if (days > 0)
-                formatted += `${days}d`;
-            if (hours > 0)
-                formatted += `${formatted ? ", " : ""}${hours}h`;
-            if (minutes > 0 || !formatted)
-                formatted += `${formatted ? ", " : ""}${minutes}m`;
-            uptime = formatted;
-        }
+        let formatted = "";
+        if (days > 0)
+            formatted += `${days}d`;
+        if (hours > 0)
+            formatted += `${formatted ? ", " : ""}${hours}h`;
+        if (minutes > 0 || !formatted)
+            formatted += `${formatted ? ", " : ""}${minutes}m`;
+        uptime = formatted;
     }
+
+    onMinuteEpochChanged: refreshUptime()
+    Component.onCompleted: refreshUptime()
 
     FileView {
         id: fileUptime

@@ -21,6 +21,12 @@ def main() -> int:
 
     if "readonly property int minuteEpoch: Math.floor(clock.date.getTime() / 60000)" not in date_time:
         raise AssertionError("DateTime must expose a stable shared minute epoch")
+    if "onMinuteEpochChanged: refreshUptime()" not in date_time:
+        raise AssertionError("DateTime uptime must reuse the shared minute epoch")
+    if "Component.onCompleted: refreshUptime()" not in date_time:
+        raise AssertionError("DateTime uptime must retain its immediate initial refresh")
+    if "interval: 60000" in date_time:
+        raise AssertionError("DateTime must not restore a parallel uptime minute timer")
 
     if "readonly property int _clockTick: DateTime.minuteEpoch" not in weather:
         raise AssertionError("Weather live context must reuse DateTime.minuteEpoch")

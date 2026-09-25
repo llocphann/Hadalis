@@ -369,7 +369,12 @@ Item { // Bar content region
     }
     Component {
         id: taskbarComponent
-        Bar.BarTaskbar { vertical: true; parentWindow: root.QsWindow.window; maximumHeight: Math.max(80, root.height * 0.3) }
+        Bar.BarTaskbar {
+            vertical: true
+            parentWindow: root.QsWindow.window
+            maximumHeight: Math.max(80, root.height * 0.3)
+            presentationActive: root.presentationActive
+        }
     }
     Component { id: resourcesComponent; Resources {} }
     Component { id: mediaComponent; VerticalMedia { presentationActive: root.presentationActive } }

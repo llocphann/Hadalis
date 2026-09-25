@@ -624,6 +624,7 @@ Item {
                 sourceComponent: BarTaskbar {
                     parentWindow: root.QsWindow.window
                     slotSize: _tbLoader.height
+                    presentationActive: root.presentationActive
                 }
             }
         }

@@ -18,6 +18,9 @@ import qs.modules.common.models
 Item {
     id: root
     property bool _sortingConsumerAcquired: false
+    // Hosts keep taskbar delegates resident through auto-hide/fullscreen.
+    // Model rebuilds are presentation-only work and can catch up on reveal.
+    property bool presentationActive: true
 
     property var parentWindow: null
     property bool vertical: false
@@ -126,11 +129,25 @@ Item {
         id: rebuildTimer
         interval: 80
         repeat: false
-        onTriggered: root._doRebuildDockItems()
+        onTriggered: {
+            if (root.presentationActive)
+                root._doRebuildDockItems()
+        }
     }
 
     function rebuildDockItems(): void {
+        if (!root.presentationActive) {
+            rebuildTimer.stop()
+            return
+        }
         rebuildTimer.restart()
+    }
+
+    onPresentationActiveChanged: {
+        if (root.presentationActive)
+            root.rebuildDockItems()
+        else
+            rebuildTimer.stop()
     }
 
     function _toplevelLiveKey(toplevel: var): string {
@@ -347,19 +364,23 @@ Item {
 
     Connections {
         target: ToplevelManager.toplevels
+        enabled: root.presentationActive
         function onValuesChanged() { root.rebuildDockItems() }
     }
     Connections {
         target: CompositorService
+        enabled: root.presentationActive
         function onSortedToplevelsChanged() { root.rebuildDockItems() }
     }
     Connections {
         target: Config.options?.dock
+        enabled: root.presentationActive
         function onPinnedAppsChanged() { root.rebuildDockItems() }
         function onIgnoredAppRegexesChanged() { root.rebuildDockItems() }
     }
     Connections {
         target: Config.options?.windows
+        enabled: root.presentationActive
         function onAppIdentityRulesChanged() { root.rebuildDockItems() }
     }
     Component.onCompleted: {

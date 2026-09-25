@@ -24,6 +24,7 @@ Item {
     readonly property int notificationCount: notifications.length
     readonly property bool multipleNotifications: notificationCount > 1
     readonly property bool hasCritical: notifications.some(n => n.urgency === NotificationUrgency.Critical)
+    property bool presentationActive: true
     property bool expanded: false
     
     implicitHeight: background.height
@@ -331,6 +332,7 @@ Item {
                         required property var modelData
                         width: parent.width
                         notification: modelData
+                        presentationActive: root.presentationActive
                         onlyNotification: root.notificationCount === 1
                         
                         // Staggered entrance animation

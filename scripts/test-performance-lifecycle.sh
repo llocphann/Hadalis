@@ -43,6 +43,8 @@ waffle_notification_pane="$repo_root/modules/waffle/notificationCenter/Notificat
 waffle_notification_center="$repo_root/modules/waffle/notificationCenter/NotificationCenterContent.qml"
 waffle_notification_list="$repo_root/modules/waffle/notificationPopup/WNotificationListView.qml"
 waffle_notification_popup="$repo_root/modules/waffle/notificationPopup/WaffleNotificationPopup.qml"
+waffle_popup_group="$repo_root/modules/waffle/notificationPopup/WNotificationGroup.qml"
+waffle_popup_item="$repo_root/modules/waffle/notificationPopup/WNotificationItem.qml"
 workspace_thumb="$repo_root/modules/waffle/taskview/WorkspaceThumbnail.qml"
 window_thumb="$repo_root/modules/waffle/taskview/WindowThumbnail.qml"
 easyeffects="$repo_root/services/deferred/EasyEffects.qml"
@@ -160,6 +162,9 @@ require "$waffle_notification_pane" 'presentationActive: root.presentationActive
 require "$waffle_notification_center" 'presentationActive: root.presented || root.closing' 'Notification Center pulses must stay live through exit motion and sleep after close'
 require "$waffle_notification_list" 'presentationActive: root.presentationActive' 'Notification popup group delegates must inherit native-window visibility'
 require "$waffle_notification_popup" 'presentationActive: panelWindow.visible' 'Suppressed Waffle notification popups must suspend retained pulse animations'
+require "$waffle_popup_group" 'property bool presentationActive: true' 'Waffle popup notification groups must accept host presentation state'
+require "$waffle_popup_group" 'presentationActive: root.presentationActive' 'Waffle popup notification items must inherit popup presentation state'
+require "$waffle_popup_item" 'running: root.presentationActive && root.isCritical && Looks.transition.enabled' 'Suppressed Waffle popup critical pulses must stop'
 require "$local_music" 'property bool _mpdSubscriptionEligible: false' 'Local Music must track event-subscription availability separately from the Rust daemon'
 require "$local_music" 'pythonReady && !(mode === "rust" && strict === "1")' 'Local Music Python subscriber must honor strict Rust mode'
 require "$local_music" 'running: root.enabled && !root._mpdSubscriptionActive' 'Local Music 900ms status polling must remain fallback-only'

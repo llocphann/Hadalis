@@ -19,6 +19,7 @@ Item {
     id: root
     
     required property var notification
+    property bool presentationActive: true
     property bool onlyNotification: false
 
     readonly property string notifImage: notification?.image ?? ""
@@ -110,7 +111,7 @@ Item {
                     color: Looks.colors.danger
 
                     SequentialAnimation on opacity {
-                        running: root.isCritical && Looks.transition.enabled
+                        running: root.presentationActive && root.isCritical && Looks.transition.enabled
                         loops: Animation.Infinite
                         NumberAnimation { to: 0.4; duration: 800; easing.type: Easing.InOutQuad }
                         NumberAnimation { to: 1; duration: 800; easing.type: Easing.InOutQuad }

@@ -1072,6 +1072,32 @@ ShellRoot {
         }
     }
 
+    function _dismissOutgoingFamilyTransientInput(family: string): void {
+        if (family === "waffle") {
+            GlobalStates.searchOpen = false
+            GlobalStates.waffleActionCenterOpen = false
+            GlobalStates.waffleNotificationCenterOpen = false
+            GlobalStates.waffleWidgetsOpen = false
+            GlobalStates.waffleClipboardOpen = false
+            GlobalStates.waffleTaskViewOpen = false
+            GlobalStates.waffleAltSwitcherOpen = false
+            return
+        }
+
+        // ii-only interactive surfaces should never survive as latent state
+        // after their family host is destroyed. Shared surfaces (Overview, OSK,
+        // Wallpaper selectors, Session) deliberately remain untouched.
+        GlobalStates.controlPanelOpen = false
+        GlobalStates.dashboardOpen = false
+        GlobalStates.sidebarLeftOpen = false
+        GlobalStates.sidebarRightOpen = false
+        GlobalStates.mediaControlsOpen = false
+        GlobalStates.clipboardOpen = false
+        GlobalStates.altSwitcherOpen = false
+        GlobalStates.notificationCenterExplicitOpen = false
+        GlobalStates.notificationCenterHoverOutput = ""
+    }
+
     function startFamilyTransition(targetFamily: string, direction: string) {
         // A transition that never finished used to wedge every later switch:
         // the guard stayed true, so this returned silently, and because the
@@ -1089,6 +1115,8 @@ ShellRoot {
         // IPC) must release Settings before changing family.
         if (GlobalStates.settingsOverlayOpen)
             GlobalStates.settingsOverlayOpen = false
+        root._dismissOutgoingFamilyTransientInput(
+            Config.options?.panelFamily ?? "ii")
 
         // If animation is disabled, switch instantly
         if (!(Config.options?.familyTransitionAnimation ?? true)) {

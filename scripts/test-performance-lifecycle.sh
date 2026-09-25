@@ -321,7 +321,7 @@ fi
 
 require "$themes_config" 'shopt -s nullglob; files=(' 'saved-theme discovery must batch matching files before parsing'
 require "$themes_config" 'input_filename | split("/")[-1] | rtrimstr(".json")' 'saved-theme discovery must derive names inside the batched jq process'
-require "$themes_config" '"${files[@]}"' 'saved-theme discovery must feed all theme files to one jq invocation'
+require "$themes_config" '"\${files[@]}"' 'saved-theme discovery must feed all theme files to one jq invocation'
 reject "$themes_config" '/usr/bin/basename "$f" .json' 'saved-theme discovery must not spawn basename per theme'
 reject "$themes_config" 'for f in "${root.savedThemesDir}"/*.json' 'saved-theme discovery must not restore per-file parser fan-out'
 require "$system24_theme" 'def _write_if_changed(path: Path, content: str) -> bool:' 'System24 outputs must avoid unchanged rewrites'

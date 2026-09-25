@@ -37,7 +37,7 @@ def main() -> None:
         "Appearance.colors.colLayer0",
         "PerimeterTokens.popupRadius",
         "geometry.revealProgress",
-        "CompositorFocusGrab",
+        "WlrLayershell.layer: WlrLayer.Overlay",
         "WlrKeyboardFocus.OnDemand",
         "requestedVisible",
         "_lingerVisible",

@@ -56,6 +56,17 @@ if grep -Fq 'id: localVersionStartupProc' "$service"; then
     fail 'local VERSION startup must not restore the bash/cat process chain'
 fi
 
+detail_version_block="$(sed -n '/id: detailLocalVersionFile/,/^    }/p' "$service")"
+[[ -n "$detail_version_block" ]] || fail 'detail local VERSION FileView is missing'
+assert_contains 'property bool tryingConfigFallback: false' "$detail_version_block" 'detail local VERSION reader must retain fallback state'
+assert_contains 'root._setDetailLocalVersionPath(root.configDir + "/VERSION")' "$detail_version_block" 'detail local VERSION reader must fall back to the active config copy'
+assert_contains 'root._finishDetailLocalVersion("")' "$detail_version_block" 'missing detail VERSION files must continue the detail chain'
+assert_contains 'root._loadDetailLocalVersion()' "$(sed -n '/id: remoteVersionProc/,/\/\/ Detail Step 3:/p' "$service")" 'remote VERSION completion must enter the in-process local reader'
+assert_contains 'remoteChangelogProc.running = true' "$(sed -n '/function _finishDetailLocalVersion/,/^    }/p' "$service")" 'detail local VERSION completion must continue to changelog loading'
+if grep -Fq 'id: localVersionProc' "$service"; then
+    fail 'detail local VERSION must not restore the bash/cat process chain'
+fi
+
 progress_reader_block="$(sed -n '/id: updateProgressFile/,/^    }/p' "$service")"
 [[ -n "$progress_reader_block" ]] || fail 'update progress FileView is missing'
 assert_contains 'onLoaded: root._consumeUpdateProgress(updateProgressFile.text())' "$progress_reader_block" 'update progress must be consumed in-process'

@@ -1135,25 +1135,43 @@ Singleton {
             }
         }
         onExited: (exitCode, exitStatus) => {
-            localVersionProc.running = true
+            root._loadDetailLocalVersion()
         }
     }
 
-    // Detail Step 3: Get local VERSION (try repo, then config dir, then version.json)
-    Process {
-        id: localVersionProc
-        running: false
-        command: [
-            "/usr/bin/bash", "-c",
-            "cat '" + root.repoPath + "/VERSION' 2>/dev/null || cat '" + root.configDir + "/VERSION' 2>/dev/null || echo ''"
-        ]
-        stdout: StdioCollector {
-            onStreamFinished: {
-                root.localVersion = (text ?? "").trim()
+    // Detail Step 3: Get local VERSION (try repo, then config dir) in-process.
+    function _setDetailLocalVersionPath(path: string): void {
+        if (detailLocalVersionFile.path === path)
+            detailLocalVersionFile.reload()
+        else
+            detailLocalVersionFile.path = path
+    }
+
+    function _loadDetailLocalVersion(): void {
+        detailLocalVersionFile.tryingConfigFallback = false
+        root._setDetailLocalVersionPath(root.repoPath + "/VERSION")
+    }
+
+    function _finishDetailLocalVersion(text: string): void {
+        root.localVersion = (text ?? "").trim()
+        detailLocalVersionFile.path = ""
+        remoteChangelogProc.running = true
+    }
+
+    FileView {
+        id: detailLocalVersionFile
+        property bool tryingConfigFallback: false
+        path: ""
+        printErrors: false
+
+        onLoaded: root._finishDetailLocalVersion(detailLocalVersionFile.text())
+        onLoadFailed: {
+            if (!detailLocalVersionFile.tryingConfigFallback) {
+                detailLocalVersionFile.tryingConfigFallback = true
+                root._setDetailLocalVersionPath(root.configDir + "/VERSION")
+                return
             }
-        }
-        onExited: (exitCode, exitStatus) => {
-            remoteChangelogProc.running = true
+            root._finishDetailLocalVersion("")
         }
     }
 

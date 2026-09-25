@@ -5,6 +5,8 @@ repo_root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
 overlay="$repo_root/FamilyTransitionOverlay.qml"
 shell="$repo_root/shell.qml"
 modules="$repo_root/modules/settings/ModulesConfig.qml"
+settings_overlay="$repo_root/modules/settings/SettingsOverlay.qml"
+settings_focus="$repo_root/modules/settings/SettingsFocus.qml"
 
 fail() {
     printf 'family transition input lifecycle guard failed: %s\n' "$1" >&2
@@ -54,5 +56,21 @@ require "$modules" 'GlobalStates.settingsOverlayOpen = false' \
     'settings family switch must release the fullscreen settings input surface'
 require "$modules" 'Quickshell.shellPath("scripts/inir"), "panelFamily", "set", target' \
     'settings family switch must use the canonical shell IPC lifecycle'
+
+require "$shell" 'if (GlobalStates.settingsOverlayOpen)' \
+    'canonical family switch must close shared Settings overlays for every caller'
+
+# Both fullscreen Settings variants may stay mapped during their exit animation,
+# but must become pointer-transparent immediately when they stop owning Settings.
+for settings_surface in "$settings_overlay" "$settings_focus"; do
+    require "$settings_surface" 'readonly property bool acceptsInput: root.settingsOpen' \
+        'Settings surface must expose an explicit input-ownership gate'
+    require "$settings_surface" 'WlrLayershell.keyboardFocus: settingsPanel.acceptsInput' \
+        'Settings keyboard focus must follow the same input-ownership gate'
+    require "$settings_surface" 'mask: Region {' \
+        'Settings fullscreen surface must define an explicit pointer input mask'
+    require "$settings_surface" 'settingsPanel.acceptsInput ?' \
+        'Settings pointer mask must collapse when the surface yields input'
+done
 
 printf 'family transition input lifecycle guards: ok\n'

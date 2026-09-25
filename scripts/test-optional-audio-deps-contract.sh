@@ -143,6 +143,12 @@ for installer, array_name in (
 print("PASS: source audio installers keep mpv/mpv-mpris optional")
 PY
 
+switchwall="scripts/colors/switchwall.sh"
+if grep -Eq 'kill_existing_mpvpaper|pkill[^\n]*mpvpaper' "$switchwall"; then
+  printf 'FAIL: retired mpvpaper backend must not be killed by wallpaper switching\n' >&2
+  exit 1
+fi
+
 media_controller="services/MprisController.qml"
 audio_doc="docs/AUDIO_MEDIA.md"
 packages_doc="docs/PACKAGES.md"

@@ -169,10 +169,6 @@ has_valid_file() {
     [[ -n "$path" && -f "$path" && -s "$path" ]]
 }
 
-kill_existing_mpvpaper() {
-    pkill -f -9 mpvpaper || true
-}
-
 # The mpvpaper restore-script machinery is gone: video wallpapers are played by
 # Qt Multimedia natively (CHANGELOG: "Replaced mpvpaper with Qt Multimedia"), so
 # start_mpvpaper_for_all_outputs() had no callers and the script written by
@@ -366,7 +362,6 @@ switch() {
         fi
 
         check_and_prompt_upscale "$imgpath" &
-        kill_existing_mpvpaper
 
         if is_video "$imgpath"; then
             mkdir -p "$THUMBNAIL_DIR"

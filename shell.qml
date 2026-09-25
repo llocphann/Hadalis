@@ -1094,8 +1094,7 @@ ShellRoot {
         GlobalStates.mediaControlsOpen = false
         GlobalStates.clipboardOpen = false
         GlobalStates.altSwitcherOpen = false
-        GlobalStates.notificationCenterExplicitOpen = false
-        GlobalStates.notificationCenterHoverOutput = ""
+        GlobalStates.closeNotificationCenter()
     }
 
     function startFamilyTransition(targetFamily: string, direction: string) {

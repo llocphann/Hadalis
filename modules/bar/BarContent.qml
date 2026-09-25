@@ -520,7 +520,6 @@ Item {
         id: resourcesModuleComponent
         Resources {
             visible: root._moduleVisible("resources")
-            presentationActive: root.presentationActive
             Layout.alignment: Qt.AlignVCenter
             Layout.fillWidth: root.useShortenedForm === 2
             alwaysShowAllResources: root.useShortenedForm === 2

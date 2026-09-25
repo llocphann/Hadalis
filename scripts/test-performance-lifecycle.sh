@@ -202,13 +202,9 @@ require "$bar_content" 'TimerIndicator { presentationActive: root.presentationAc
 require "$bar_content" 'ShellUpdateIndicator { presentationActive: root.presentationActive; Layout.alignment: Qt.AlignVCenter }' 'Bar update indicator must follow Bar presentation lifecycle'
 require "$bar_content" 'presentationActive: false' 'Horizontal Bar natural-size utility probe must stay animation-idle'
 require "$vertical_bar_content" 'presentationActive: false' 'Vertical Bar natural-size utility probe must stay animation-idle'
-horizontal_resources_block="$(sed -n '/id: resourcesModuleComponent/,/^    }/p' "$bar_content")"
-grep -Fq 'presentationActive: root.presentationActive' <<<"$horizontal_resources_block" \
-    || fail 'Horizontal Bar resources must follow Bar presentation lifecycle'
 horizontal_utilities_block="$(sed -n '/id: utilButtonsModuleComponent/,/^    }/p' "$bar_content")"
 grep -Fq 'presentationActive: root.presentationActive' <<<"$horizontal_utilities_block" \
     || fail 'Horizontal Bar utilities must follow Bar presentation lifecycle'
-require "$vertical_bar_content" 'Component { id: resourcesComponent; Resources { presentationActive: root.presentationActive } }' 'Vertical Bar resources must follow Bar presentation lifecycle'
 require "$vertical_bar_content" 'compactRequested: root.verticalUtilitiesCompact; presentationActive: root.presentationActive' 'Vertical Bar utilities must follow Bar presentation lifecycle'
 require "$vertical_bar_content" 'Bar.TimerIndicator { vertical: true; presentationActive: root.presentationActive }' 'Vertical Bar timer pulse must sleep off-screen'
 require "$vertical_bar_content" 'Bar.ShellUpdateIndicator { vertical: true; presentationActive: root.presentationActive }' 'Vertical Bar update spinner must sleep off-screen'
@@ -344,12 +340,10 @@ require "$resource_usage" 'command: ["/usr/bin/lscpu"]' 'CPU max-frequency detec
 require "$resource_usage" 'outputCollector.text.match(/^CPU max MHz:\s*([\d.]+)/m)' 'CPU max-frequency detection must parse lscpu output in-process'
 reject "$resource_usage" 'CPU max MHz:\\s*([\\d.]+)' 'CPU max-frequency parser must not double-escape regex classes'
 reject "$resource_usage" "/usr/bin/lscpu | /usr/bin/grep 'CPU max MHz'" 'CPU max-frequency detection must not restore bash+grep+awk fan-out'
-require "$bar_resources" 'property bool presentationActive: true' 'Horizontal Bar resources must expose a retained-surface lifecycle gate'
-require "$bar_resources" 'root.visible && root.presentationActive && !GameMode.active' 'Auto-hidden horizontal Bar must release ResourceUsage polling'
-require "$bar_resources" 'onPresentationActiveChanged: root.syncResourceUsageLifecycle()' 'Horizontal Bar resources must reacquire telemetry when presentation returns'
-require "$vertical_bar_resources" 'property bool presentationActive: true' 'Vertical Bar resources must expose a retained-surface lifecycle gate'
-require "$vertical_bar_resources" 'root.visible && root.presentationActive && !GameMode.active' 'Auto-hidden vertical Bar must release ResourceUsage polling'
-require "$vertical_bar_resources" 'onPresentationActiveChanged: root.syncResourceUsageLifecycle()' 'Vertical Bar resources must reacquire telemetry when presentation returns'
+require "$bar_resources" 'root.visible && !GameMode.active' 'Horizontal Bar system monitor must keep telemetry alive without hover'
+reject "$bar_resources" 'root.visible && root.presentationActive' 'Horizontal Bar telemetry must not depend on auto-hide presentation state'
+require "$vertical_bar_resources" 'root.visible && !GameMode.active' 'Vertical Bar system monitor must keep telemetry alive without hover'
+reject "$vertical_bar_resources" 'root.visible && root.presentationActive' 'Vertical Bar telemetry must not depend on auto-hide presentation state'
 require "$recorder_status" '(Config.options?.performance?.lowPower ?? false) ? 30000 : 15000' 'idle recorder detection must not spawn pgrep every five seconds'
 require "$recorder_status" 'interval: root.idlePollIntervalMs' 'RecorderStatus idle polling must use its power-aware cadence'
 require "$timer_service" 'property int stopwatchHighPrecisionSubscribers: 0' 'Stopwatch service must track visible centisecond consumers'

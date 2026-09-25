@@ -86,5 +86,9 @@ assert_contains 'root.visible && !GameMode.active' "$(cat "$bar_resources")" \
     'horizontal Bar resource polling must pause during GameMode'
 assert_contains 'root.visible && !GameMode.active' "$(cat "$vertical_bar_resources")" \
     'vertical Bar resource polling must pause during GameMode'
+assert_not_contains 'root.visible && root.presentationActive' "$(cat "$bar_resources")" \
+    'horizontal Bar telemetry must not become hover/presentation gated'
+assert_not_contains 'root.visible && root.presentationActive' "$(cat "$vertical_bar_resources")" \
+    'vertical Bar telemetry must not become hover/presentation gated'
 
 printf 'resource usage and visual idle lifecycle guards: ok\n'

@@ -376,7 +376,7 @@ Item { // Bar content region
             presentationActive: root.presentationActive
         }
     }
-    Component { id: resourcesComponent; Resources { presentationActive: root.presentationActive } }
+    Component { id: resourcesComponent; Resources {} }
     Component { id: mediaComponent; VerticalMedia { presentationActive: root.presentationActive } }
     Component {
         id: workspacesComponent

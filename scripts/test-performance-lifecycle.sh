@@ -167,6 +167,8 @@ require "$bar_taskbar" 'CompositorService.sortedToplevels?.length' 'Bar taskbar 
 require "$waffle_taskbar_apps" '&& GlobalStates.barOpen' 'Waffle taskbar sorting must sleep while the Waffle Bar is closed'
 require "$waffle_taskbar_apps" 'CompositorService.setSortingConsumer("waffleTaskbar",' 'Waffle taskbar must retain named sorting-demand ownership'
 require "$waffle_taskbar_apps" 'onSortingEnabledChanged: syncSortingDemand()' 'Waffle taskbar must react immediately to Bar presentation changes'
+require "$waffle_taskbar_apps" 'if (!root.sortingEnabled)' 'Closed Waffle Bar must short-circuit TaskbarApps model recomputation'
+require "$waffle_taskbar_apps" 'enabled: root.sortingEnabled' 'Closed Waffle Bar must suspend taskbar identity-rule subscriptions'
 taskbar_connection_gates="$(grep -Fc 'enabled: root.presentationActive' "$bar_taskbar")"
 if (( taskbar_connection_gates < 4 )); then
     fail "Hidden Bar taskbar must suspend all four heavy model-update Connections, found $taskbar_connection_gates gates"

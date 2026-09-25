@@ -19,6 +19,7 @@ Singleton {
 
     Connections {
         target: Config.options?.windows
+        enabled: root.sortingEnabled
         function onAppIdentityRulesChanged() {
             root._identityRulesRevision++
         }
@@ -68,6 +69,12 @@ Singleton {
     }
 
     property list<var> apps: {
+        // No live consumer exists while the Waffle Bar is closed. Returning
+        // before touching shared sorted/config state also detaches those
+        // reactive dependencies until sortingEnabled becomes true again.
+        if (!root.sortingEnabled)
+            return [];
+
         const identityRulesRevision = root._identityRulesRevision;
         var map = new Map();
         let hasResolvedPinnedApps = false;

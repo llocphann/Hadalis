@@ -48,8 +48,12 @@ require(overview, "opacity: root.dashboardOpacity",
 forbid(overview,
        "transform: Translate { y: (1 - root.dashboardProgress) * dashboardViewport.height }",
        "Dashboard/Search transition must not use the old vertical slide.")
-require(overview, "resultsOpacity: 1 - root.dashboardProgress",
-        "Search results must crossfade against Dashboard content.")
+require(overview, "readonly property real searchResultsOpacity:",
+        "Search results must expose the eased crossfade opacity.")
+require(overview, "root._smooth01((root.searchTransitionProgress - 0.22) / 0.78)",
+        "Search results crossfade must remain derived from search transition progress.")
+require(overview, "resultsOpacity: root.searchResultsOpacity",
+        "Search results must consume the eased crossfade against Dashboard content.")
 require(search, "property real resultsOpacity: 1",
         "SearchWidget must expose the embedded result-layer opacity.")
 require(search, "opacity: root.resultsOpacity",

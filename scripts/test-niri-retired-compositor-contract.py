@@ -26,6 +26,7 @@ def main() -> None:
         "services/Hyprsunset.qml",
         "modules/overview/OverviewWidget.qml",
         "modules/sidebar/SidebarEdgeConnectors.qml",
+        "modules/bar/HyprlandXkbIndicator.qml",
     )
     for rel in retired_paths:
         if (ROOT / rel).exists():
@@ -40,6 +41,9 @@ def main() -> None:
         "HyprlandXkb",
         "HyprlandKeybinds",
         "Hyprsunset",
+        "HyprlandXkbIndicator",
+        "OverviewWidget",
+        "SidebarEdgeConnectors",
         "hyprctl",
     )
     for base in (ROOT / "modules", ROOT / "services"):

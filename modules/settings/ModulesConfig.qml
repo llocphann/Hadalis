@@ -76,12 +76,17 @@ ContentPage {
         if (!["ii", "waffle"].includes(target) || target === current)
             return
 
-        // The Material settings overlay owns a fullscreen layer-shell surface.
-        // Close it before asking the shell to switch families; writing panelFamily
-        // directly from this page used to leave that input surface alive over the
-        // newly selected family, so the pointer moved but clicks never reached apps.
+        // Overlay mode owns a fullscreen layer-shell surface. Standalone
+        // settings uses an ApplicationWindow in a separate Quickshell process.
+        // Release whichever settings host owns pointer input before the main
+        // shell tears down the outgoing panel family.
         if (GlobalStates.settingsOverlayOpen)
             GlobalStates.settingsOverlayOpen = false
+        if (Quickshell.env("INIR_STANDALONE_WINDOW") === "1") {
+            const hostWindow = modulesPage.Window.window
+            if (hostWindow)
+                hostWindow.close()
+        }
 
         // Keep every family switch on the shell's canonical transition lifecycle.
         // This also preserves enabled/known panel bookkeeping in shell.qml.

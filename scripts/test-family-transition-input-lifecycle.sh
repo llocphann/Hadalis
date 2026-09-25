@@ -5,6 +5,7 @@ repo_root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
 overlay="$repo_root/FamilyTransitionOverlay.qml"
 shell="$repo_root/shell.qml"
 modules="$repo_root/modules/settings/ModulesConfig.qml"
+waffle_modules="$repo_root/modules/waffle/settings/pages/WModulesPage.qml"
 settings_overlay="$repo_root/modules/settings/SettingsOverlay.qml"
 settings_focus="$repo_root/modules/settings/SettingsFocus.qml"
 
@@ -56,6 +57,16 @@ require "$modules" 'GlobalStates.settingsOverlayOpen = false' \
     'settings family switch must release the fullscreen settings input surface'
 require "$modules" 'Quickshell.shellPath("scripts/inir"), "panelFamily", "set", target' \
     'settings family switch must use the canonical shell IPC lifecycle'
+for standalone_page in "$modules" "$waffle_modules"; do
+    require "$standalone_page" 'Quickshell.env("INIR_STANDALONE_WINDOW") === "1"' \
+        'standalone settings family switch must identify native window ownership'
+    require "$standalone_page" 'Window.window' \
+        'standalone settings family switch must resolve its host window'
+    require "$standalone_page" 'hostWindow.close()' \
+        'standalone settings family switch must release native input before IPC'
+    require "$standalone_page" 'Quickshell.shellPath("scripts/inir"), "panelFamily", "set", target' \
+        'standalone settings family switch must use canonical shell IPC'
+done
 
 require "$shell" 'if (GlobalStates.settingsOverlayOpen)' \
     'canonical family switch must close shared Settings overlays for every caller'

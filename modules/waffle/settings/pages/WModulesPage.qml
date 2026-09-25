@@ -19,6 +19,23 @@ WSettingsPage {
 
     property bool isWaffleActive: Config.options?.panelFamily === "waffle"
 
+    function switchPanelFamily(family: string): void {
+        const target = String(family ?? "")
+        const current = Config.options?.panelFamily ?? "waffle"
+        if (!["ii", "waffle"].includes(target) || target === current)
+            return
+
+        if (Quickshell.env("INIR_STANDALONE_WINDOW") === "1") {
+            const hostWindow = root.Window.window
+            if (hostWindow)
+                hostWindow.close()
+        }
+
+        Quickshell.execDetached([
+            Quickshell.shellPath("scripts/inir"), "panelFamily", "set", target
+        ])
+    }
+
     // Helper functions for enabledPanels management
     function isPanelEnabled(panelId: string): bool {
         return (Config.options?.enabledPanels ?? []).includes(panelId)
@@ -95,11 +112,7 @@ WSettingsPage {
                 { value: "ii", displayName: Translation.tr("Material (ii)") },
                 { value: "waffle", displayName: Translation.tr("Windows 11 (Waffle)") }
             ]
-            onSelected: newValue => {
-                if (newValue !== Config.options?.panelFamily) {
-                    Quickshell.execDetached([Quickshell.shellPath("scripts/inir"), "panelFamily", "set", newValue])
-                }
-            }
+            onSelected: newValue => root.switchPanelFamily(newValue)
         }
     }
 

@@ -5,6 +5,7 @@ members = [
     "inir-inputd",
     "inir-mpdd",
     "inir-native",
+    "inir-superd",
     "inir-theme",
 ]
 

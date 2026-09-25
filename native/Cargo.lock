@@ -713,6 +713,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "inir-superd"
+version = "0.1.0"
+dependencies = [
+ "evdev",
+]
+
+[[package]]
 name = "inir-theme"
 version = "0.1.0"
 dependencies = [

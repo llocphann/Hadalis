@@ -381,8 +381,6 @@ Singleton {
 		return players[0] ?? null;
 	}
 
-	// Temporary compatibility surface while media callers move to generic MPRIS.
-	readonly property bool isYtMusicActive: false
 	
 	property bool hasPlasmaIntegration: false
 	property bool hasWtype: false

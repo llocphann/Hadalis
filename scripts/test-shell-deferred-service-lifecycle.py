@@ -12,6 +12,9 @@ def main() -> int:
     text = SHELL.read_text(encoding="utf-8")
 
     required = (
+        "function _ensureThinkFanService(): void",
+        'Config.getNestedValue("powerProfiles.fanControl.enabled", false) === true',
+        "root._thinkFanService = ThinkFanService",
         "function _ensureCavaThemeService(): void",
         "function _ensureWeatherService(): void",
         "function _ensureFontSyncService(): void",
@@ -33,6 +36,16 @@ def main() -> int:
     for needle in required:
         if needle not in text:
             raise AssertionError(f"shell optional-service contract missing: {needle}")
+
+    if "property var _thinkFanService: ThinkFanService" in text:
+        raise AssertionError("disabled ThinkFan profile following must not instantiate at root construction")
+    completed = re.search(
+        r"Component\.onCompleted: \{(?P<body>.*?)\n\s*\}\n\n\s*// Shell entry animation",
+        text,
+        flags=re.S,
+    )
+    if not completed or "root._ensureThinkFanService();" not in completed.group("body"):
+        raise AssertionError("already-ready Config must activate enabled ThinkFan following")
 
     tier = re.search(
         r'id: deferredInitTimer(?P<body>.*?)\n\s*\}\n\n\s*Connections',
@@ -81,6 +94,18 @@ def main() -> int:
         raise AssertionError("config changes must activate FontSyncService when enabled later")
     if "root._ensureCalendarSyncService()" not in config.group("body"):
         raise AssertionError("config changes must activate CalendarSync when enabled later")
+    if "root._ensureThinkFanService()" not in config.group("body"):
+        raise AssertionError("config changes must activate ThinkFan following when enabled later")
+
+    ready_connections = re.findall(
+        r"Connections \{\s*\n\s*target: Config(?P<body>.*?)\n\s*\}",
+        text,
+        flags=re.S,
+    )
+    if not any("function onReadyChanged()" in body
+               and "root._ensureThinkFanService()" in body
+               for body in ready_connections):
+        raise AssertionError("Config readiness must activate enabled ThinkFan following")
 
     print("shell deferred service lifecycle contract: ok")
     return 0

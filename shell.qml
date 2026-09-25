@@ -38,8 +38,15 @@ ShellRoot {
     property var _idleService: Idle
     property var _powerProfilePersistence: PowerProfilePersistence
     property var _deviceStatePersistence: DeviceStatePersistence
-    // Keep fan-profile following alive even when Settings/System Monitor are closed.
-    property var _thinkFanService: ThinkFanService
+    // Keep fan-profile following alive even when Settings/System Monitor are closed,
+    // but only when the opt-in profile follower is actually enabled. UI surfaces
+    // can still instantiate ThinkFanService on demand for manual status/control.
+    property var _thinkFanService
+    function _ensureThinkFanService(): void {
+        if (Config.ready
+                && Config.getNestedValue("powerProfiles.fanControl.enabled", false) === true)
+            root._thinkFanService = ThinkFanService
+    }
     property var _devNavigationService: DevNavigation
     property var _shellEditSessionService: ShellEditSession
     // Acquire org.kde.StatusNotifierWatcher before graphical-session.target
@@ -139,6 +146,7 @@ ShellRoot {
         GlobalStates.deferredPanelsReady = false;
 
         if (Config.ready) {
+            root._ensureThinkFanService();
             root._bootConfigReadyAt = Date.now();
             console.info("[Boot] T+" + (root._bootConfigReadyAt - root._bootCompletedAt) + "ms: Config.ready (immediate)");
             // Config was already ready before this root was (re)built (hot-reload / preserved
@@ -199,6 +207,7 @@ ShellRoot {
     Connections {
         target: Config
         function onConfigChanged(): void {
+            root._ensureThinkFanService()
             root._ensureWeatherService()
             root._ensureFontSyncService()
             root._ensureCavaThemeService()
@@ -261,6 +270,7 @@ ShellRoot {
         target: Config
         function onReadyChanged() {
             if (Config.ready) {
+                root._ensureThinkFanService()
                 if (!root._bootConfigReadyAt) {
                     root._bootConfigReadyAt = Date.now();
                     console.info("[Boot] T+" + (root._bootConfigReadyAt - root._bootCompletedAt) + "ms: Config.ready (async)");

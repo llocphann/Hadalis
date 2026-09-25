@@ -291,10 +291,13 @@ Singleton {
         id: saveProcess
         property bool rerunAfterExit: false
         command: [
-            "/usr/bin/bash",
+            "/bin/sh",
             "-c",
-            "mkdir -p " + Directories.stateUserPath + "\n" +
-            "echo " + (root._manualActive ? "1" : "0") + " > " + root._stateFile
+            "mkdir -p -- \"$1\" && printf '%s\\n' \"$2\" > \"$3\"",
+            "_",
+            Directories.stateUserPath,
+            root._manualActive ? "1" : "0",
+            root._stateFile
         ]
         onExited: {
             root._log("[GameMode] State saved:", root._manualActive)

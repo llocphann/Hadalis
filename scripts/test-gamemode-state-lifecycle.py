@@ -33,8 +33,13 @@ def main() -> int:
 
     # Manual writes retain a defensive mkdir fallback for runtime deletion or
     # directory-preparation failure; only the unconditional startup spawn is retired.
-    if '"mkdir -p " + Directories.stateUserPath' not in game:
+    # Paths travel as positional arguments so XDG_STATE_HOME may safely contain spaces.
+    if '"mkdir -p -- \\\"$1\\\" && printf' not in game:
         raise AssertionError("GameMode state writes must retain directory self-healing")
+    if '"_",\n            Directories.stateUserPath,' not in game:
+        raise AssertionError("GameMode state writes must pass stateUserPath as an argument")
+    if 'root._stateFile\n        ]' not in game:
+        raise AssertionError("GameMode state writes must pass the state file as an argument")
 
     print("gamemode state lifecycle contract: ok")
     return 0

@@ -87,7 +87,7 @@ assert_contains 'ResourceUsage.keepAlive()' "$monitor_text" 'ResourceUsageMonito
 assert_contains 'ResourceUsage.releaseKeepAlive()' "$monitor_text" 'ResourceUsageMonitor must release the shared telemetry lease'
 assert_contains 'ResourceUsageMonitor 1.0 ResourceUsageMonitor.qml' "$(cat "$widgets_qmldir")" 'ResourceUsageMonitor must be exported'
 
-for lifecycle_file in "$resources_popup" "$status_rings" "$overlay_resources" "$bar_resources" "$vertical_bar_resources"; do
+for lifecycle_file in "$resources_popup" "$status_rings" "$overlay_resources" "$sysmon_widget" "$waffle_widgets" "$dash_system" "$bar_resources" "$vertical_bar_resources"; do
     lifecycle_text="$(cat "$lifecycle_file")"
     assert_contains 'ResourceUsageMonitor {' "$lifecycle_text" "$lifecycle_file must use centralized telemetry lifecycle ownership"
     assert_not_contains 'ResourceUsage.keepAlive()' "$lifecycle_text" "$lifecycle_file must not duplicate telemetry reference counting"
@@ -104,5 +104,11 @@ assert_contains 'active: popup.active' "$(cat "$resources_popup")" \
     'Bar resource popup must poll only while active'
 assert_contains 'active: GlobalStates.sidebarLeftOpen' "$(cat "$status_rings")" \
     'left-sidebar status rings must poll only while the sidebar is open'
+assert_contains 'active: GlobalStates.sidebarRightOpen' "$(cat "$sysmon_widget")" \
+    'right-sidebar system monitor must poll only while the sidebar is open'
+assert_contains 'active: GlobalStates.waffleWidgetsOpen' "$(cat "$waffle_widgets")" \
+    'Waffle widgets must poll only while the panel is open'
+assert_contains 'target: root' "$(cat "$dash_system")" \
+    'Dashboard system telemetry must follow the card presentation lifecycle'
 
 printf 'resource usage and visual idle lifecycle guards: ok\n'

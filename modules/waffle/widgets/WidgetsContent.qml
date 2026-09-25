@@ -19,32 +19,9 @@ WBarAttachedPanelContent {
     revealFromSides: true
     revealFromLeft: true
 
-    property bool _resourceUsageHeld: false
-
-    function syncResourceUsageLifecycle(): void {
-        const shouldHold = GlobalStates.waffleWidgetsOpen
-        if (shouldHold === root._resourceUsageHeld)
-            return
-        if (shouldHold)
-            ResourceUsage.keepAlive()
-        else
-            ResourceUsage.releaseKeepAlive()
-        root._resourceUsageHeld = shouldHold
-    }
-
-    Component.onCompleted: root.syncResourceUsageLifecycle()
-    Component.onDestruction: {
-        if (root._resourceUsageHeld) {
-            root._resourceUsageHeld = false
-            ResourceUsage.releaseKeepAlive()
-        }
-    }
-
-    Connections {
-        target: GlobalStates
-        function onWaffleWidgetsOpenChanged(): void {
-            root.syncResourceUsageLifecycle()
-        }
+    property QtObject resourceMonitor: ResourceUsageMonitor {
+        target: root
+        active: GlobalStates.waffleWidgetsOpen
     }
 
     readonly property bool barAtBottom: Config.options?.waffles?.bar?.bottom ?? false

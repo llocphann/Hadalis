@@ -36,24 +36,16 @@ DashCard {
         : ResourceUsage.gpuUsage > 0.7 ? Appearance.colors.colTertiary
         : Appearance.colors.colPrimary
 
-    property bool _holding: false
-    function _syncPolling(): void {
-        if (visible && !_holding) {
-            _holding = true
-            ResourceUsage.keepAlive()
-            ThinkFanService.refresh()
-        } else if (!visible && _holding) {
-            _holding = false
-            ResourceUsage.releaseKeepAlive()
-        }
+    property QtObject resourceMonitor: ResourceUsageMonitor {
+        target: root
     }
-    onVisibleChanged: _syncPolling()
-    Component.onCompleted: _syncPolling()
-    Component.onDestruction: {
-        if (_holding) {
-            _holding = false
-            ResourceUsage.releaseKeepAlive()
-        }
+    onVisibleChanged: {
+        if (root.visible)
+            ThinkFanService.refresh()
+    }
+    Component.onCompleted: {
+        if (root.visible)
+            ThinkFanService.refresh()
     }
 
     component UsageRow: ColumnLayout {

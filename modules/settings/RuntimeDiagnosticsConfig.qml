@@ -20,7 +20,7 @@ ContentPage {
     readonly property int collisionCount: root.diagnosticsActive
         ? CodeWorkflowRuntime.identityCollisions.length : 0
     readonly property var evidence: RuntimeDiagnosticsSession.evidence
-    readonly property var systemEvidence: root.evidence?.system ?? null
+    readonly property var shellEvidence: root.evidence?.shell ?? null
     readonly property var discoveryEvidence: root.evidence?.discovery ?? null
     readonly property string discoveryStatus:
         String(root.discoveryEvidence?.status ?? "")
@@ -67,7 +67,7 @@ ContentPage {
             return false
         const heartbeatAge = tick
             - RuntimeDiagnosticsSession.pageOpenedHeartbeatTick
-        if (!root.samplerRunning || root.systemEvidence === null)
+        if (!root.samplerRunning || root.shellEvidence === null)
             return heartbeatAge >= 3
         const sampleAtMs = Number(root.evidence?.sampleAtMs)
         if (!Number.isFinite(sampleAtMs) || sampleAtMs <= 0)
@@ -85,7 +85,7 @@ ContentPage {
             return Translation.tr("Diagnostics error")
         if (root.sessionStalled)
             return Translation.tr("Diagnostics stalled")
-        if (!root.samplerRunning || root.systemEvidence === null)
+        if (!root.samplerRunning || root.shellEvidence === null)
             return Translation.tr("Diagnostics starting")
         return Translation.tr("Diagnostics live")
     }
@@ -95,23 +95,6 @@ ContentPage {
             return "— " + Translation.tr("boundaries")
         return String(root.discoveryEvidence?.boundaryCount ?? 0)
             + " " + Translation.tr("boundaries")
-    }
-
-    function formatUptime(value): string {
-        if (value === null || value === undefined)
-            return "—"
-        const seconds = Number(value)
-        if (!Number.isFinite(seconds) || seconds < 0)
-            return "—"
-        const totalMinutes = Math.floor(seconds / 60)
-        const days = Math.floor(totalMinutes / 1440)
-        const hours = Math.floor((totalMinutes % 1440) / 60)
-        const minutes = totalMinutes % 60
-        if (days > 0)
-            return days + "d " + hours + "h"
-        if (hours > 0)
-            return hours + "h " + minutes + "m"
-        return minutes + "m"
     }
 
     // One compact status strip replaces the old expanded live-sampling card.
@@ -157,10 +140,10 @@ ContentPage {
 
             StyledText {
                 textFormat: Text.PlainText
-                text: Translation.tr("Uptime") + " "
-                    + root.formatUptime(
-                        root.systemEvidence?.uptimeSeconds)
+                text: root.shellEvidence?.pid
+                    ? "PID " + String(root.shellEvidence.pid) : "PID —"
                 color: Appearance.colors.colSubtext
+                font.family: Appearance.font.family.monospace
                 font.pixelSize: Appearance.font.pixelSize.small
             }
 

@@ -409,15 +409,15 @@ If the maintainer gives a newer explicit instruction, that instruction supersede
 
 This section contains **unfinished work only**. Source-complete migrations/features belong in the status sections above; completed history belongs in Git / `CHANGELOG.md`.
 
-2. **Settings task-tab indicator:** Headings expand/collapse can still move the active indicator downward. Re-audit the failed geometry/lifecycle approach before making another fix.
-3. **System Monitor popup:** live-validate CPU width stability and ThinkFan RPM/Level alignment.
-4. **Connected surfaces:** complete live acceptance for iRiS/direct-seam contact across ii Popups, Left/Right Sidebar, Dashboard, Settings, Dock and OSK on top/bottom/left/right ownership, fractional scale and multi-output. Preserve locked physical Screen Edge/Bar geometry.
-5. **Screen Edge / Bar lifecycle:** verify idle/maximized visibility, configurable width/radius/shadow, auto-hide ownership, fullscreen enter/exit, lock/unlock and output transitions without blank/stranded surfaces.
-6. **Music/media:** live-test Local Music idle resume, bulk selection/queue operations and unified Shuffle/Repeat/CAVA. Validate EasyEffects DSP/CAVA lifecycle through pause/resume, player switch and reopen.
-7. **Dashboard/Overview + Calendar/Weather:** finish live motion/layout/gesture smoke tests across supported scaling without reintroducing the rejected whole-surface cache or a second date/weather backend.
-8. **ThinkFan/TLP:** validate helper/polkit reconciliation, profile-follow synchronization, active-session authorization and uninstall ownership on supported hardware.
-9. **Material-only final audit:** public/runtime Material-only routing is in place; remove only proven-dead residue outside intentional migration compatibility, then perform live visual acceptance.
-9. **Release validation:** run the canonical maintainer validator plus Niri live smoke tests on the exact candidate SHA. Rust production and Diagnostics source contracts do not waive this gate.
+1. **Settings task-tab indicator:** Headings expand/collapse can still move the active indicator downward. Re-audit the failed geometry/lifecycle approach before making another fix.
+2. **System Monitor popup:** live-validate CPU width stability and ThinkFan RPM/Level alignment.
+3. **Connected surfaces:** complete live acceptance for iRiS/direct-seam contact across ii Popups, Left/Right Sidebar, Dashboard, Settings, Dock and OSK on top/bottom/left/right ownership, fractional scale and multi-output. Preserve locked physical Screen Edge/Bar geometry.
+4. **Screen Edge / Bar lifecycle:** verify idle/maximized visibility, configurable width/radius/shadow, auto-hide ownership, fullscreen enter/exit, lock/unlock and output transitions without blank/stranded surfaces.
+5. **Music/media:** live-test Local Music idle resume, bulk selection/queue operations and unified Shuffle/Repeat/CAVA. Validate EasyEffects DSP/CAVA lifecycle through pause/resume, player switch and reopen.
+6. **Dashboard/Overview + Calendar/Weather:** finish live motion/layout/gesture smoke tests across supported scaling without reintroducing the rejected whole-surface cache or a second date/weather backend.
+7. **ThinkFan/TLP:** validate helper/polkit reconciliation, profile-follow synchronization, active-session authorization and uninstall ownership on supported hardware.
+8. **Material-only final audit:** public/runtime Material-only routing is in place; remove only proven-dead residue outside intentional migration compatibility, then perform live visual acceptance.
+9. **Release validation:** run the canonical maintainer validator plus Niri live smoke tests on the exact candidate SHA. Rust/native source contracts do not waive this gate.
 
 **Failure-handling requirement:** do not fix a failed fix with another patch on top. Once a change is demonstrated ineffective, revert that failed change first (or surgically revert its exact change set when unrelated concurrent work shares the commit), then re-investigate and implement a materially different root-cause fix.
 

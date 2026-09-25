@@ -109,7 +109,7 @@ Singleton {
         ? "This iNiR installation is managed outside the runtime copy. Use your package manager or installation workflow to update it."
         : "Repository not found. The update system cannot locate the iNiR git repository."
     readonly property string unavailableHint: managedExternally
-        ? "Runtime diagnostics are still available, but in-shell self-update is disabled for this installation mode."
+        ? "Update diagnostics are still available, but in-shell self-update is disabled for this installation mode."
         : "Run './setup doctor' in your terminal to diagnose the issue, or use the diagnose command below."
 
     // Handler: notify when availability changes to false (after initial check)

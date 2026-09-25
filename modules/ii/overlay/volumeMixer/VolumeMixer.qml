@@ -95,6 +95,9 @@ StyledOverlayWidget {
 
         readonly property MprisPlayer activePlayer: MprisController.activePlayer
         readonly property string cleanedTitle: StringUtils.cleanMusicTitle(activePlayer?.trackTitle) || Translation.tr("No media")
+        // Overlay widgets stay resident after the overlay closes. Only keep
+        // playback polling/effects hot while this Music page is presented.
+        readonly property bool presentationActive: root.visible && SwipeView.isCurrentItem
 
         // Datos de carátula (cover art) y progreso para la pestaña Music
         property var artUrl: activePlayer?.trackArtUrl
@@ -119,7 +122,7 @@ StyledOverlayWidget {
         }
 
         Timer {
-            running: activePlayer?.playbackState == MprisPlaybackState.Playing
+            running: musicContent.presentationActive && activePlayer?.playbackState == MprisPlaybackState.Playing
             interval: Config.options?.resources?.updateInterval ?? 3000
             repeat: true
             onTriggered: activePlayer?.positionChanged()
@@ -202,7 +205,7 @@ StyledOverlayWidget {
 
                     StyledProgressBar {
                         Layout.fillWidth: true
-                        wavy: activePlayer?.isPlaying ?? false
+                        wavy: musicContent.presentationActive && (activePlayer?.isPlaying ?? false)
                         highlightColor: Appearance.colors.colPrimary
                         trackColor: Appearance.colors.colSecondaryContainer
                         value: (activePlayer && activePlayer.length > 0)

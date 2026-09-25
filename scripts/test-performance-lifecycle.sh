@@ -50,6 +50,7 @@ bar_resources="$repo_root/modules/bar/Resources.qml"
 vertical_bar_resources="$repo_root/modules/verticalBar/Resources.qml"
 recorder_status="$repo_root/services/RecorderStatus.qml"
 control_panel_media="$repo_root/modules/controlPanel/MediaSection.qml"
+volume_mixer="$repo_root/modules/ii/overlay/volumeMixer/VolumeMixer.qml"
 weather="$repo_root/services/Weather.qml"
 keyboard_indicators="$repo_root/services/KeyboardIndicators.qml"
 sidebar_anime="$repo_root/modules/sidebarLeft/Anime.qml"
@@ -116,6 +117,9 @@ require "$control_panel_media" 'readonly property bool presentationActive: Globa
 require "$control_panel_media" 'wavy: root.presentationActive && (root.player?.isPlaying ?? false)' 'Hidden retained Control Panel must stop wavy progress animation'
 require "$control_panel_media" 'animateWave: root.presentationActive && (root.player?.isPlaying ?? false)' 'Hidden retained Control Panel must stop infinite wave motion'
 require "$control_panel_media" 'running: root.presentationActive' 'Hidden retained Control Panel must stop its MPRIS position timer'
+require "$volume_mixer" 'readonly property bool presentationActive: root.visible && SwipeView.isCurrentItem' 'Volume Mixer Music lifecycle must follow actual overlay/tab presentation'
+require "$volume_mixer" 'running: musicContent.presentationActive' 'Hidden/non-Music Volume Mixer must stop its MPRIS position timer'
+require "$volume_mixer" 'wavy: musicContent.presentationActive' 'Hidden/non-Music Volume Mixer must stop infinite progress motion'
 
 require "$desktop_media_widget" 'item.positionUpdatesActive = Qt.binding(() => root.powerActive)' 'Desktop media position refresh must sleep with widget power state'
 require "$bar_media_popup" 'positionUpdatesActive: root.presentationActive && playerDelegate.enabled' 'Bar media position refresh must sleep while popup is hidden and for off-screen tabs'

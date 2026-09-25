@@ -171,7 +171,7 @@ done
 # contracts even when hosted CI cannot start a runner. Target membership is the
 # invariant; dependency ordering may change as independent gates are added.
 test_local_rule="$(grep -m1 '^test-local:' "$makefile")"
-for target in test-optional-audio-deps test-news-contract test-equalizer-contracts test-docs; do
+for target in test-optional-audio-deps test-news-contract test-equalizer-contracts test-weather-contracts test-docs; do
   [[ " $test_local_rule " == *" $target "* ]] \
     || fail "make test-local no longer includes required gate: $target"
 done
@@ -179,6 +179,8 @@ grep -Fq '@bash scripts/test-equalizer-boundary-contract.sh' "$makefile" \
   || fail 'make test-local no longer runs the Equalizer architecture boundary contract'
 grep -Fq '@bash scripts/test-equalizer-service-contract.sh' "$makefile" \
   || fail 'make test-local no longer runs the Equalizer lifecycle/protocol contract'
+grep -Fq '@bash scripts/test-weather-orbital-visual-lock.sh' "$makefile" \
+  || fail 'make test-local no longer runs the approved Orbital Weather visual lock'
 grep -Fq '@bash scripts/verify-docs.sh' "$makefile" \
   || fail 'make test-local no longer runs documentation verification'
 
@@ -211,6 +213,8 @@ grep -Fq '"$script_dir/test-equalizer-service-contract.sh"' "$release_script" \
   || fail 'release publish preflight no longer includes the Equalizer lifecycle/protocol contract'
 grep -Fq '"$script_dir/test-optional-audio-deps-contract.sh"' "$release_script" \
   || fail 'release publish preflight no longer includes the optional audio dependency contract'
+grep -Fq '"$script_dir/test-weather-orbital-visual-lock.sh"' "$release_script" \
+  || fail 'release publish preflight no longer includes the approved Orbital Weather visual lock'
 grep -Fq '"$script_dir/test-battery-charge-limit-helper.sh"' "$release_script" \
   || fail 'release publish preflight no longer includes the battery charge-limit helper contract'
 grep -Fq '"$script_dir/test-thinkfan-helper.sh"' "$release_script" \

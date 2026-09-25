@@ -228,6 +228,7 @@ require "$weather" 'running: root.enabled' 'Weather minute clock must sleep when
 require "$weather_popup_content" 'property bool presentationActive: true' 'Weather popup lifecycle gate must preserve standalone behavior'
 require "$weather_popup_content" 'running: root.presentationActive' 'Hidden retained Weather popup must stop its 30s clock'
 require "$weather_popup_content" 'triggeredOnStart: true' 'Weather popup clock must refresh immediately when presentation resumes'
+require "$weather_popup_content" 'liquidAnimationActive: root.presentationActive && (' 'Hidden retained Weather popup must stop liquid frame animation'
 require "$weather_popup" 'presentationActive: root.active' 'Weather popup content lifecycle must follow StyledPopup residency'
 require "$keyboard_indicators" 'interval: (Config.options?.performance?.lowPower ?? false) ? 120000 : 30000' 'keyboard sysfs hotplug discovery must stay low cadence'
 require "$sidebar_anime" 'layer.enabled: root.visible && GlobalStates.sidebarLeftOpen' 'Anime list mask must sleep with the sidebar'

@@ -106,8 +106,9 @@ Item {
             liquidMode: true
             // Keep the field alive while its page is still visibly sliding out;
             // stop it only after the clipped page has fully left the viewport.
-            liquidAnimationActive: root.currentTab === 0
-                || timeWeatherPanel.y > -timeWeatherPanel.height + 1
+            liquidAnimationActive: root.presentationActive && (
+                root.currentTab === 0
+                    || timeWeatherPanel.y > -timeWeatherPanel.height + 1)
         }
     }
 

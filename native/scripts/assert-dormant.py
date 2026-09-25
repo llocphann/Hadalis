@@ -16,6 +16,7 @@ NATIVE_BINARY_MARKERS = (
     "inir-inputd",
     "inir-native",
     "inir-mpdd",
+    "inir-superd",
     "inir-theme",
 )
 

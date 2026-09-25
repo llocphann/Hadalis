@@ -89,7 +89,7 @@ rust_ready() {
 
 cmd="${1:-}"
 [[ -n "$cmd" ]] || {
-    echo "usage: native-dispatch <input-lock|input-keys|niri|diagnostics|qml-profile|clipboard-store|mpd|mpd-daemon|mpd-subscribe|lyrics|theme|desktop-icons|backend-info> [args...]" >&2
+    echo "usage: native-dispatch <input-lock|input-keys|super-tap|niri|diagnostics|qml-profile|clipboard-store|mpd|mpd-daemon|mpd-subscribe|lyrics|theme|desktop-icons|backend-info> [args...]" >&2
     exit 64
 }
 shift
@@ -98,6 +98,7 @@ if [[ "$MODE" == rust && "$STRICT" == 1 ]]; then
     required_binary=""
     case "$cmd" in
         input-lock|input-keys) required_binary=inir-inputd ;;
+        super-tap) required_binary=inir-superd ;;
         niri|diagnostics|qml-profile|clipboard-store|desktop-icons) required_binary=inir-native ;;
         mpd|mpd-daemon|mpd-subscribe|lyrics) required_binary=inir-mpdd ;;
         theme) required_binary=inir-theme ;;
@@ -113,7 +114,7 @@ case "$cmd" in
         printf 'mode=%s\n' "$MODE"
         printf 'bin_dir=%s\n' "$BIN_DIR"
         printf 'strict=%s\n' "$STRICT"
-        for binary in inir-inputd inir-native inir-mpdd inir-theme; do
+        for binary in inir-inputd inir-superd inir-native inir-mpdd inir-theme; do
             if rust_ready "$binary"; then
                 printf '%s=ready\n' "$binary"
             else
@@ -145,6 +146,16 @@ case "$cmd" in
             echo "[native-dispatch] Rust input-keys failed ($rc), falling back to Python" >&2
         fi
         python_exec_with_module evdev -u "$ROOT_DIR/scripts/daemon/osk_physical_key_daemon.py" "$@"
+        ;;
+
+    super-tap)
+        if want_rust && rust_ready inir-superd; then
+            "$BIN_DIR/inir-superd" "$@"
+            rc=$?
+            if (( rc == 0 || STRICT == 1 )); then exit "$rc"; fi
+            echo "[native-dispatch] Rust Super-tap daemon failed ($rc), falling back to Python" >&2
+        fi
+        python_exec_with_module evdev -u "$ROOT_DIR/scripts/daemon/inir_super_overview_daemon.py" "$@"
         ;;
 
     niri)

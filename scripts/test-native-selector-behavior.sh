@@ -18,7 +18,11 @@ cat > "$trial/rust-b/inir-native" <<'SH'
 #!/usr/bin/env bash
 printf 'rust-b:%s\n' "$*"
 SH
-chmod +x "$trial/rust-a/inir-native" "$trial/rust-b/inir-native"
+cat > "$trial/rust-a/inir-superd" <<'SH'
+#!/usr/bin/env bash
+printf 'super-rust:%s\\n' "$*"
+SH
+chmod +x "$trial/rust-a/inir-native" "$trial/rust-b/inir-native" "$trial/rust-a/inir-superd"
 
 dispatch="$trial/runtime/scripts/native-dispatch"
 base_env=(env -u INIR_NATIVE_BACKEND -u INIR_NATIVE_BIN_DIR -u INIR_NATIVE_STRICT
@@ -51,10 +55,11 @@ printf '%s\n' "$trial/rust-a" > "$trial/state/inir/native-bin-dir"
 assert_equal "$("${base_env[@]}" "$dispatch" niri get-hot-corners)" 'rust-a:niri get-hot-corners'
 assert_equal "$("${base_env[@]}" INIR_NATIVE_BACKEND=python "$dispatch" niri get-hot-corners)" 'python:get-hot-corners'
 assert_equal "$("${base_env[@]}" INIR_NATIVE_BIN_DIR="$trial/rust-b" "$dispatch" niri get-hot-corners)" 'rust-b:niri get-hot-corners'
+assert_equal "$("${base_env[@]}" INIR_NATIVE_BIN_DIR="$trial/rust-a" "$dispatch" super-tap --probe)" 'super-rust:--probe'
 assert_equal "$("${base_env[@]}" "$dispatch" backend-info | sed -n '1,2p')" \
     "$(printf 'mode=rust\nbin_dir=%s' "$trial/rust-a")"
 
-for command in input-lock input-keys niri diagnostics clipboard-store mpd mpd-daemon mpd-subscribe lyrics theme desktop-icons; do
+for command in input-lock input-keys super-tap niri diagnostics clipboard-store mpd mpd-daemon mpd-subscribe lyrics theme desktop-icons; do
     assert_status 127 "${base_env[@]}" INIR_NATIVE_BACKEND=rust INIR_NATIVE_STRICT=1 \
         INIR_NATIVE_BIN_DIR="$trial/missing" "$dispatch" "$command" fake
     [[ ! -s "$trial/stdout" ]] || { echo "strict $command fell back to Python" >&2; exit 1; }

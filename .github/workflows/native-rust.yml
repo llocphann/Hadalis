@@ -9,6 +9,7 @@ on:
       - 'scripts/test-native-selector-contract.sh'
       - 'scripts/test-native-selector-behavior.sh'
       - 'scripts/test-native-production-contract.sh'
+      - 'scripts/test-native-super-daemon-contract.py'
       - 'scripts/native-backend'
       - 'sdata/migrations/050-rust-native-default.sh'
       - 'scripts/benchmark-python-vs-rust.sh'
@@ -38,6 +39,7 @@ on:
       - 'scripts/native-dispatch'
       - 'scripts/test-native-selector-behavior.sh'
       - 'scripts/test-native-production-contract.sh'
+      - 'scripts/test-native-super-daemon-contract.py'
       - 'scripts/native-backend'
       - 'sdata/migrations/050-rust-native-default.sh'
       - 'native/scripts/check-niri-customizations.py'
@@ -78,6 +80,7 @@ jobs:
           bash scripts/test-native-selector-contract.sh
           bash scripts/test-native-selector-behavior.sh
           bash scripts/test-native-production-contract.sh
+          python3 scripts/test-native-super-daemon-contract.py
           bash -n scripts/native-backend
           bash -n native/scripts/install-runtime.sh
           bash -n sdata/migrations/050-rust-native-default.sh

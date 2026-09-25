@@ -16,7 +16,7 @@ let
       native_bin="$(find target -type f -path '*/release/inir-native' -perm -0100 -print -quit)"
       test -n "$native_bin"
       release="$(dirname "$native_bin")"
-      for binary in inir-inputd inir-mpdd inir-native inir-theme; do
+      for binary in inir-inputd inir-mpdd inir-native inir-superd inir-theme; do
         test -x "$release/$binary"
         install -m0755 "$release/$binary" "$out/bin/$binary"
       done
@@ -195,7 +195,7 @@ pkgs.stdenvNoCC.mkDerivation {
     python3 sdata/lib/runtime-payload.py copy --root . --target "$runtime"
 
     mkdir -p "$runtime/native/bin"
-    for binary in inir-inputd inir-mpdd inir-native inir-theme; do
+    for binary in inir-inputd inir-mpdd inir-native inir-superd inir-theme; do
       install -m0755 "${nativeBackend}/bin/$binary" "$runtime/native/bin/$binary"
     done
 

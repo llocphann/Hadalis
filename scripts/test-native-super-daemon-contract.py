@@ -11,6 +11,11 @@ CARGO = (ROOT / "native/inir-superd/Cargo.toml").read_text()
 SOURCE = (ROOT / "native/inir-superd/src/main.rs").read_text()
 PYTHON = (ROOT / "scripts/daemon/inir_super_overview_daemon.py").read_text()
 SERVICE = (ROOT / "scripts/systemd/inir-super-overview.service").read_text()
+DISPATCH = (ROOT / "scripts/native-dispatch").read_text()
+INSTALLER = (ROOT / "native/scripts/install-runtime.sh").read_text()
+NIX = (ROOT / "nix/package.nix").read_text()
+ARCH = (ROOT / "distro/arch/inir-shell/PKGBUILD").read_text()
+ARCH_GIT = (ROOT / "distro/arch/inir-shell-git/PKGBUILD").read_text()
 
 
 def require(text: str, token: str, message: str) -> None:
@@ -37,9 +42,20 @@ for token in (
 ):
     require(SOURCE, token, f"Rust Super daemon parity contract missing: {token}")
 
-# Stage one is intentionally non-invasive: build and unit-test the native port,
-# but keep the opt-in production service on the established Python daemon until
-# a later cutover milestone adds selector/fallback coverage.
+# Stage two wires the daemon through the reversible native selector and ships
+# the binary in every native runtime package. The systemd service intentionally
+# remains on Python until selector parity has passed CI before production cutover.
+require(DISPATCH, "super-tap)", "native-dispatch must expose the Super-tap route")
+require(DISPATCH, "required_binary=inir-superd", "strict mode must require inir-superd")
+require(DISPATCH, '"$BIN_DIR/inir-superd" "$@"', "Super-tap selector must execute the Rust daemon")
+require(
+    DISPATCH,
+    'python_exec_with_module evdev -u "$ROOT_DIR/scripts/daemon/inir_super_overview_daemon.py" "$@"',
+    "Super-tap selector must retain the Python evdev fallback",
+)
+for packaging in (INSTALLER, NIX, ARCH, ARCH_GIT):
+    require(packaging, "inir-superd", "native packaging must ship inir-superd")
+
 require(
     SERVICE,
     "inir_super_overview_daemon.py",

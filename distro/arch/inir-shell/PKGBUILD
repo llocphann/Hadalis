@@ -139,7 +139,7 @@ package() {
 
   python3 "$srcroot/sdata/lib/runtime-payload.py" copy --root "$srcroot" --target "$shellroot" || return
   mkdir -p "$shellroot/native/bin"
-  for binary in inir-inputd inir-mpdd inir-native inir-theme; do install -Dm0755 "$srcdir/inir-native-target/release/$binary" "$shellroot/native/bin/$binary"; done
+  for binary in inir-inputd inir-mpdd inir-native inir-superd inir-theme; do install -Dm0755 "$srcdir/inir-native-target/release/$binary" "$shellroot/native/bin/$binary"; done
   # The pinned 2.29.3 snapshot predates qmldir in the canonical root manifest.
   install -Dm644 "$srcroot/qmldir" "$shellroot/qmldir"
   chmod +x "$shellroot/setup" "$shellroot/scripts/inir"

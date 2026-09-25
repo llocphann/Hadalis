@@ -705,12 +705,15 @@ Singleton {
                 LANG: "C",
                 LC_ALL: "C"
             })
-        command: ["/usr/bin/bash", "-c", "/usr/bin/lscpu | /usr/bin/grep 'CPU max MHz' | /usr/bin/awk '{print $4}'"]
+        // lscpu is already the authoritative fallback here. Parse its output
+        // in-process instead of spawning bash + grep + awk around it.
+        command: ["/usr/bin/lscpu"]
         running: false
         stdout: StdioCollector {
             id: outputCollector
             onStreamFinished: {
-                const mhz = parseFloat(outputCollector.text);
+                const match = outputCollector.text.match(/^CPU max MHz:\\s*([\\d.]+)/m)
+                const mhz = parseFloat(match?.[1] ?? "")
                 if (isNaN(mhz) || mhz <= 0) {
                     root.maxAvailableCpuString = "--";
                 } else {

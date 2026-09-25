@@ -83,6 +83,7 @@ steam_theme="$repo_root/scripts/colors/modules/70-steam.sh"
 cava_theme_module="$repo_root/scripts/colors/modules/90-cava.sh"
 themes_config="$repo_root/modules/settings/ThemesConfig.qml"
 desktop_media_widget="$repo_root/modules/background/widgets/mediaControls/MediaControlsWidget.qml"
+bar_media_popup="$repo_root/modules/mediaControls/BarMediaPopup.qml"
 player_base="$repo_root/modules/mediaControls/components/PlayerBase.qml"
 player_control="$repo_root/modules/mediaControls/PlayerControl.qml"
 media_presets=(
@@ -117,6 +118,7 @@ require "$control_panel_media" 'animateWave: root.presentationActive && (root.pl
 require "$control_panel_media" 'running: root.presentationActive' 'Hidden retained Control Panel must stop its MPRIS position timer'
 
 require "$desktop_media_widget" 'item.positionUpdatesActive = Qt.binding(() => root.powerActive)' 'Desktop media position refresh must sleep with widget power state'
+require "$bar_media_popup" 'positionUpdatesActive: root.presentationActive && playerDelegate.enabled' 'Bar media position refresh must sleep while popup is hidden and for off-screen tabs'
 require "$player_base" 'running: root.positionUpdatesActive' 'PlayerBase position timer must honor the host lifecycle gate'
 require "$player_base" 'onPositionUpdatesActiveChanged:' 'PlayerBase must refresh position immediately when lifecycle updates resume'
 for preset in "${media_presets[@]}"; do

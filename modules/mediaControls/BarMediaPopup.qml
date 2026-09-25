@@ -192,6 +192,10 @@ Item {
                         player: modelData
                         visualizerPoints: []
                         showVisualizer: false
+                        // StyledPopup keeps this content resident after its
+                        // presentation window closes. Pause MPRIS position ticks
+                        // while hidden, and for off-screen player tabs.
+                        positionUpdatesActive: root.presentationActive && playerDelegate.enabled
                         compactLayout: root.compactLayout
                         radius: root.popupRounding
                         screenX: root.screenX + playerDelegate.x + playerControl.x

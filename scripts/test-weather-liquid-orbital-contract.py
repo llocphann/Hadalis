@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Regression contract for the popup's continuous liquid-mass renderer."""
+"""Regression contract for the popup's animated liquid orbit."""
 
 from pathlib import Path
 import shutil
@@ -26,36 +26,25 @@ def main() -> None:
     popup = (WEATHER_DIR / "WeatherPopupContent.qml").read_text()
     dashboard = (ROOT / "modules/dashboard/DashWeather.qml").read_text()
 
-    # The accepted visual contract is the moving Canvas mass union. The GPU
-    # QSB remains available for parity work, but its ring-distance approximation
-    # must never become primary merely because it compiles.
-    require(field, "property bool experimentalGpuRenderer: false",
-            "ShaderEffect {",
-            'fragmentShader: Qt.resolvedUrl("LiquidOrbitalField.frag.qsb")',
-            "visible: root.experimentalGpuRenderer",
-            "&& status === ShaderEffect.Compiled",
-            "visible: !root.experimentalGpuRenderer",
-            "|| liquidShader.status !== ShaderEffect.Compiled",
+    # The GPU field is primary; the Canvas is a fallback for Qt backends
+    # which cannot compile the bundled shader pack.
+    require(field, "ShaderEffect {", 'fragmentShader: Qt.resolvedUrl("LiquidOrbitalField.frag.qsb")',
+            "visible: status === ShaderEffect.Compiled",
+            "visible: liquidShader.status !== ShaderEffect.Compiled",
             "renderTarget: Canvas.Image", "FrameAnimation {",
-            "seconds: root.timeSeconds", "property int activeIndex: 0",
-            "function drawMassUnion(", "function drawBridgeMass(",
-            "root.drawMassUnion(ctx, time, 0, root.bodyColor)")
+            "seconds: root.timeSeconds", "property int activeIndex: 0")
     if "&& Appearance.effectsEnabled" in field.split("FrameAnimation {", 1)[1].split("}", 1)[0]:
         raise AssertionError("Disabling visual effects must not freeze the orbit")
     if not compiled_path.is_file() or compiled_path.stat().st_size < 1000:
         raise AssertionError("Compiled Qt shader pack is missing")
 
-    # Keep the optional shader build healthy, but do not confuse shader compile
-    # success with visual parity. The production connector itself must remain a
-    # mass union with no stroke/path fallback.
-    require(shader, "float softUnion(", "float displacement =", "float neck =",
-            "float foldPhase =", "float brightFold =", "float darkFold =",
-            "float fineCaustic =", "float podAlpha =", "float halo =",
-            "u.seconds", "u.selectedIndex")
+    # One shaded distance field has a moving contour and independent folds.
+    require(shader, "float softUnion(", "fieldDistance = softUnion(",
+            "float displacement =", "float neck =", "float foldPhase =",
+            "float brightFold =", "float darkFold =", "float fineCaustic =",
+            "float podAlpha =", "float halo =", "u.seconds", "u.selectedIndex")
     if "ctx.stroke()" in field or "ctx.lineTo(" in field:
-        raise AssertionError("Production connector must remain a mass union, not a stroke")
-    if "experimentalGpuRenderer: true" in popup or "experimentalGpuRenderer: true" in orbital:
-        raise AssertionError("Weather popup must not opt into the non-parity GPU ribbon renderer")
+        raise AssertionError("Fallback connector must be a mass union, not a stroke")
 
     qsb = shutil.which("qsb") or "/usr/lib/qt6/bin/qsb"
     if Path(qsb).is_file():
@@ -74,7 +63,7 @@ def main() -> None:
     if "liquidMode: true" in dashboard:
         raise AssertionError("Dashboard must retain its simpler shared orbital view")
 
-    print("Weather continuous liquid-mass renderer contract: PASS")
+    print("Weather animated liquid orbital contract: PASS")
 
 
 if __name__ == "__main__":

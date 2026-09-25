@@ -21,13 +21,6 @@ Item {
     property int activeIndex: 0
     property bool animate: false
 
-    // The Canvas mass union is the accepted visual contract. The bundled GPU
-    // shader is still a ring-distance approximation, not a union of moving
-    // bridge/node masses; making it primary caused the 2026-09-24 regression
-    // where the liquid body collapsed visually into a ribbon. Keep this opt-in
-    // false until the shader reproduces the same mass topology.
-    property bool experimentalGpuRenderer: false
-
     readonly property real regularNodeRadius:
         Math.max(14, Math.min(root.nodeWidth, root.nodeHeight) * 0.5)
     readonly property real activeNodeScale: 1.28
@@ -60,9 +53,8 @@ Item {
     readonly property color activePodEdge: ColorUtils.applyAlpha(
         Appearance.colors.colPrimary, 0.84)
 
-    readonly property bool ready: liquidCanvas.available
-        || (root.experimentalGpuRenderer
-            && liquidShader.status === ShaderEffect.Compiled)
+    readonly property bool ready: liquidShader.status === ShaderEffect.Compiled
+        || liquidCanvas.available
 
     FrameAnimation {
         id: liquidClock
@@ -108,14 +100,13 @@ Item {
             + Math.sin(Number(root.hourAngles[index])) * root.orbitRadiusY
     }
 
-    // Experimental acceleration path only. Its current ring-distance field is
-    // not visually/topologically equivalent to drawMassUnion(), so it must not
-    // replace the accepted mass renderer merely because the QSB compiles.
+    // The GPU pass shades one soft-unioned signed-distance field at display
+    // resolution. The image-backed Canvas below remains a compatibility path
+    // for renderers that cannot compile the bundled Qt shader pack.
     ShaderEffect {
         id: liquidShader
         anchors.fill: parent
-        visible: root.experimentalGpuRenderer
-            && status === ShaderEffect.Compiled
+        visible: status === ShaderEffect.Compiled
         blending: true
         fragmentShader: Qt.resolvedUrl("LiquidOrbitalField.frag.qsb")
 
@@ -424,8 +415,7 @@ Item {
     Canvas {
         id: liquidCanvas
         anchors.fill: parent
-        visible: !root.experimentalGpuRenderer
-            || liquidShader.status !== ShaderEffect.Compiled
+        visible: liquidShader.status !== ShaderEffect.Compiled
         antialiasing: true
         renderStrategy: Canvas.Threaded
         renderTarget: Canvas.Image

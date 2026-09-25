@@ -1,7 +1,7 @@
 pkgbase = inir-shell
 	pkgdesc = Hadalis shell payload, launcher, and user service
 	pkgver = 2.29.3
-	pkgrel = 15
+	pkgrel = 16
 	url = https://github.com/llocphann/Hadalis
 	install = inir-shell.install
 	arch = x86_64
@@ -13,6 +13,7 @@ pkgbase = inir-shell
 	depends = curl
 	depends = fish
 	depends = grim
+	depends = imagemagick
 	depends = jq
 	depends = kirigami
 	depends = libnotify
@@ -65,7 +66,6 @@ pkgbase = inir-shell
 	optdepends = gum: setup TUI helpers
 	optdepends = inir-workflow-parser: native QML parser capability for Code Workflow
 	optdepends = kde-cli-tools: Dolphin Open With dialog (QT_QPA_PLATFORMTHEME=kde)
-	optdepends = imagemagick: image conversion helpers
 	optdepends = hyprpicker: enhanced Wayland color picker with magnifier
 	optdepends = kconfig: KDE configuration integration
 	optdepends = kdialog: KDE dialog integration for scripts

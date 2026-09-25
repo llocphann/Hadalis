@@ -49,8 +49,14 @@ for source, text in (
             f"{source} must retain the preferred picker on full/default Arch installs")
 
 for source, text in (("inir-shell", arch_shell), ("inir-shell-git", arch_shell_git)):
+    require(text, "\n  imagemagick\n",
+            f"{source} must ship the generic color-picker backend")
     require(text, "'hyprpicker: enhanced Wayland color picker with magnifier'",
             f"{source} must advertise the optional enhanced picker")
+    if "'imagemagick: image conversion helpers'" in text:
+        raise SystemExit(
+            f"colorpicker contract failed: {source} must not leave the required fallback backend optional"
+        )
 
 require(packages_doc, "| `hyprpicker` | Preferred Wayland color picker with magnifier",
         "package docs must explain the preferred picker and fallback boundary")

@@ -4,6 +4,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import Quickshell
 import Quickshell.Io
+import Quickshell.Wayland
 import qs
 import qs.modules.common
 import qs.services
@@ -153,28 +154,84 @@ Singleton {
         stateReader.reload()
     }
 
-    // Check if a window is fullscreen.
-    // Niri 25.11+ doesn't expose is_fullscreen on windows. The IPC layout's
-    // tile_size is the visual tile/backdrop size and therefore remains
-    // output-sized even when a fullscreen client keeps a smaller fixed
-    // window_size inside the black fullscreen backdrop. Prefer tile_size and
-    // retain window_size only as a compatibility fallback.
+    function _toplevelMatchScore(toplevel, window, outputName: string): int {
+        if (!toplevel || !window || toplevel.appId !== window.app_id)
+            return 0
+
+        const screens = toplevel.screens ?? []
+        if (outputName.length > 0 && screens.length > 0) {
+            let targetsOutput = false
+            for (let i = 0; i < screens.length; i++) {
+                if (String(screens[i]?.name ?? "") === outputName) {
+                    targetsOutput = true
+                    break
+                }
+            }
+            if (!targetsOutput)
+                return 0
+        }
+
+        if (window.title && toplevel.title) {
+            if (toplevel.title === window.title)
+                return 3
+            if (toplevel.title.includes(window.title)
+                    || window.title.includes(toplevel.title))
+                return 2
+        }
+        return 1
+    }
+
+    function _foreignToplevelForWindow(window, outputName: string) {
+        if (!window)
+            return null
+
+        // Focus switches within one Niri workspace are the failure-prone path.
+        // Prefer Quickshell's active foreign-toplevel handle for the focused
+        // Niri window, then fall back to a scored app/title/output match for
+        // visible windows on other outputs.
+        const active = ToplevelManager.activeToplevel
+        if ((window.is_focused ?? false)
+                && root._toplevelMatchScore(active, window, outputName) > 0)
+            return active
+
+        const toplevels = ToplevelManager.toplevels?.values ?? []
+        let best = null
+        let bestScore = 0
+        for (let i = 0; i < toplevels.length; i++) {
+            const score = root._toplevelMatchScore(toplevels[i], window, outputName)
+            if (score > bestScore) {
+                best = toplevels[i]
+                bestScore = score
+                if (score === 3)
+                    break
+            }
+        }
+        return best
+    }
+
+    // Niri IPC 26.04 does not expose an exact fullscreen state on Window.
+    // Geometry alone is insufficient: an ordinary maximized/one-column tile
+    // can also have tile_size == output size. Require the compositor's
+    // foreign-toplevel fullscreen state first, then use Niri tile geometry only
+    // to distinguish real fullscreen from windowed-fullscreen and to support
+    // fixed-size clients centered inside a fullscreen backdrop.
     function isWindowFullscreen(window) {
         if (!window) return false
         if (!CompositorService.isNiri) return false
 
-        // If niri ever adds is_fullscreen back, prefer it
         if (window.is_fullscreen === true) return true
 
-        // Compare the visual tile/backdrop to the output logical size. Using
-        // window_size alone misses valid fullscreen windows whose client
-        // geometry is smaller than the compositor-owned fullscreen backdrop.
+        const ws = NiriService.workspaces[window.workspace_id]
+        const outputName = String(ws?.output ?? "")
+        const toplevel = root._foreignToplevelForWindow(window, outputName)
+        if (toplevel?.fullscreen !== true)
+            return false
+
         const tileSize = window.layout?.tile_size
         const windowSize = window.layout?.window_size
         const fullscreenSize = tileSize && tileSize.length >= 2 ? tileSize : windowSize
         if (!fullscreenSize || fullscreenSize.length < 2) return false
 
-        const ws = NiriService.workspaces[window.workspace_id]
         let output = ws ? NiriService.outputs[ws.output] : null
         // Niri can deliver WindowLayoutsChanged before the matching workspace
         // snapshot reaches the service. On a single-output session the target
@@ -190,7 +247,7 @@ Singleton {
             && Math.abs(fullscreenSize[1] - output.logical.height) <= tolerance
     }
 
-    // Niri keeps fullscreen geometry on a window when focus moves away from it.
+    // Niri keeps fullscreen state/geometry on a window when focus moves away from it.
     // An active workspace can therefore contain a fullscreen-sized background
     // window that no longer covers the user-visible surface. Prefer the
     // workspace's active_window_id so bars and GameMode follow what is actually

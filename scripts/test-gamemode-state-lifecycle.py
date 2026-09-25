@@ -41,14 +41,24 @@ def main() -> int:
     if 'root._stateFile\n        ]' not in game:
         raise AssertionError("GameMode state writes must pass the state file as an argument")
 
-    # Fullscreen detection must follow the visual tile/backdrop size. A fixed-size
-    # client can remain smaller than the compositor-owned fullscreen backdrop, so
-    # window_size alone is not an authoritative fullscreen signal.
+    # Niri geometry alone cannot distinguish a normal maximized/one-column
+    # window from real fullscreen. Require the foreign-toplevel fullscreen bit
+    # and use tile_size only as the geometry confirmation.
     for token, message in (
+        ("import Quickshell.Wayland",
+         "GameMode must consume the compositor foreign-toplevel fullscreen state"),
+        ("function _foreignToplevelForWindow(window, outputName: string)",
+         "GameMode must resolve the Niri window to a foreign toplevel"),
+        ("const active = ToplevelManager.activeToplevel",
+         "focused same-workspace switches must prefer the active toplevel handle"),
+        ("ToplevelManager.toplevels?.values ?? []",
+         "multi-output fullscreen matching must retain non-global toplevel access"),
+        ("if (toplevel?.fullscreen !== true)",
+         "fullscreen geometry must be rejected unless the compositor marks the window fullscreen"),
         ("const tileSize = window.layout?.tile_size",
-         "GameMode must inspect niri's visual tile size for fullscreen"),
+         "GameMode must still inspect niri's visual tile size"),
         ("const fullscreenSize = tileSize && tileSize.length >= 2 ? tileSize : windowSize",
-         "GameMode must prefer tile_size while retaining the compatibility fallback"),
+         "GameMode must prefer tile_size while retaining the fixed-client fallback"),
         ("Math.abs(fullscreenSize[0] - output.logical.width)",
          "fullscreen width detection must use the visual fullscreen size"),
         ("Math.abs(fullscreenSize[1] - output.logical.height)",

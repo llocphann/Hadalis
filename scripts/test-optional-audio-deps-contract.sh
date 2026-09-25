@@ -108,6 +108,41 @@ for raw_path in sys.argv[1:]:
 print("PASS: Arch packaging keeps EasyEffects and socat optional with consistent Equalizer metadata")
 PY
 
+python3 - <<'PY'
+from pathlib import Path
+import re
+
+path = Path("sdata/dist-arch/inir-audio/PKGBUILD")
+text = path.read_text(encoding="utf-8")
+
+def block(name: str) -> str:
+    match = re.search(rf"(?ms)^{name}=\(\n(?P<body>.*?)^\)\s*$", text)
+    if not match:
+        raise SystemExit(f"FAIL: {path} is missing {name}=()")
+    return match.group("body")
+
+hard = block("depends")
+optional = block("optdepends")
+for package in ("mpv", "mpv-mpris"):
+    if re.search(rf"(?m)^\s*{re.escape(package)}\s*$", hard):
+        raise SystemExit(f"FAIL: inir-audio hard-requires optional external player integration: {package}")
+    if not re.search(rf"(?m)^\s*['\"]?{re.escape(package)}:", optional):
+        raise SystemExit(f"FAIL: inir-audio does not advertise optional external player integration: {package}")
+
+for installer, array_name in (
+    (Path("sdata/dist-debian/install-deps.sh"), "DEBIAN_AUDIO_PKGS"),
+    (Path("sdata/dist-fedora/install-deps.sh"), "FEDORA_AUDIO_PKGS"),
+):
+    source = installer.read_text(encoding="utf-8")
+    match = re.search(rf"(?ms)^{array_name}=\(\n(?P<body>.*?)^\)\s*$", source)
+    if not match:
+        raise SystemExit(f"FAIL: {installer} is missing {array_name}=()")
+    if re.search(r"(?m)^\s*mpv\s*$", match.group("body")):
+        raise SystemExit(f"FAIL: {installer} force-installs optional external mpv player")
+
+print("PASS: source audio installers keep mpv/mpv-mpris optional")
+PY
+
 media_controller="services/MprisController.qml"
 audio_doc="docs/AUDIO_MEDIA.md"
 packages_doc="docs/PACKAGES.md"

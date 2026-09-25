@@ -1,6 +1,6 @@
 pkgname=inir-audio
 pkgver=1.0
-pkgrel=4
+pkgrel=5
 pkgdesc='iNiR - audio dependency bundle'
 arch=(any)
 license=('GPL-3.0-only')
@@ -18,14 +18,14 @@ depends=(
   # Audio visualizer
   cava
 
-  # Media playback
-  mpv
-  mpv-mpris
+  # Local Music backend
   mpd
   mpd-mpris
 )
 
 optdepends=(
   'easyeffects: optional audio effects and equalizer backend'
+  'mpv: optional external media player'
+  'mpv-mpris: optional MPRIS integration for mpv'
   'socat: optional EasyEffects control transport for equalizer'
 )

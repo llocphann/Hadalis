@@ -97,7 +97,6 @@ check_dependencies() {
         "missioncenter:mission-center"
         "nm-connection-editor:nm-connection-editor"
         "xdg-settings:xdg-utils"
-        "mpv:mpv"
         "swaylock:swaylock"
         "swayidle:swayidle"
         "songrec:SongRec"

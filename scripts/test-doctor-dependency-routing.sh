@@ -49,6 +49,9 @@ if leaked_optional:
         + ", ".join(leaked_optional)
     )
 
+if "mpv" in doctor_cmds:
+    raise SystemExit("FAIL: doctor hard-requires optional external mpv player")
+
 # CAVA is the live Media visualizer process. Generic/manual source-install
 # guidance must expose the same required capability as doctor and the distro
 # installers, without making the entire shell pre-flight fail when omitted.

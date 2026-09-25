@@ -130,19 +130,19 @@ Core audio stack and media dependencies declared by `sdata/dist-arch/inir-audio/
 | `libdbusmenu-gtk3` | Tray/menu integration |
 | `pavucontrol` | Advanced volume-control GUI |
 | `cava` | Audio visualizer |
-| `mpv` | Media playback backend |
-| `mpv-mpris` | MPRIS bridge for mpv |
 | `mpd` | Local Music library, saved-playlist and queue backend |
 | `mpd-mpris` | MPRIS bridge for MPD/rmpc/Hadalis Music sessions |
 
-Equalizer Phase 1 keeps its backend and control transport optional. The group advertises these through `optdepends`, so the source install remains usable without them:
+External-player and Equalizer integrations are optional. The group advertises these through `optdepends`, so source installs do not force an unused media player or effects backend:
 
 | Optional package | Purpose |
 |------------------|---------|
 | `easyeffects` | Optional audio-effects and Equalizer backend |
+| `mpv` | Optional external media player |
+| `mpv-mpris` | Optional MPRIS integration for mpv |
 | `socat` | Optional EasyEffects control transport for Equalizer |
 
-Missing either optional package must not make Media playback or shell startup fail. Equalizer capability should degrade to unavailable/error state instead.
+Missing these optional packages must not make shell startup fail. Media controls continue to discover any MPRIS-compatible player that is installed; Equalizer capability degrades to unavailable/error state when its optional backend is absent.
 
 The installer separately ensures `plasma-browser-integration` is present for browser media sessions and artwork.
 
@@ -266,7 +266,7 @@ These integrations are useful when their corresponding feature is desired, but t
 | `ollama` | Local LLM backend | AI integrations |
 | `whisper-cpp` | Local speech-to-text | Voice input/search |
 
-`cava` and `mpv` remain required members of the `inir-audio` dependency group. `easyeffects` and `socat` are advertised by the audio group and dependency tracker as optional feature dependencies; their absence should leave Equalizer unavailable/degraded without breaking Media playback.
+`cava` remains a required member of the `inir-audio` dependency group because Hadalis owns the visualizer process. `mpv` and `mpv-mpris` are optional external-player integrations; Hadalis does not launch mpv for its own media path. `easyeffects` and `socat` remain optional Equalizer feature dependencies.
 
 ---
 

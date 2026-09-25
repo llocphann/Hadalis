@@ -261,7 +261,6 @@ FEDORA_AUDIO_PKGS=(
   pavucontrol
   cava
   easyeffects
-  mpv
   socat
 )
 

@@ -17,6 +17,10 @@ require(DAEMON, 'notify_shell_super_state(False)',
         "Super key-up/device loss must reach the shell")
 require(DAEMON, 'run_inir_command("ipc", "overview", function)',
         "daemon must use the existing Niri shell IPC transport")
+require(DAEMON, 'def resolve_inir_launcher(inir_env):',
+        "daemon must resolve the installed launcher without relying on systemd PATH")
+require(DAEMON, 'os.path.expanduser("~/.local/bin")',
+        "daemon must retain the default XDG launcher fallback")
 require(DAEMON, 'super_down_devices = set()',
         "multi-device Super state must not collapse to a single-device boolean")
 require(DAEMON, 'len(super_down_devices) == 1',

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Lifecycle contract for TimerService second-resolution timers."""
+"""Lifecycle contract for TimerService scheduled and adaptive timers."""
 
 from pathlib import Path
 import re
@@ -47,8 +47,12 @@ def main() -> int:
             raise AssertionError(f"{timer_id} lifecycle must be scheduled explicitly")
 
     stopwatch = timer_block(text, "stopwatchTimer")
-    if "interval: 33" not in stopwatch or "repeat: true" not in stopwatch:
-        raise AssertionError("stopwatch high-resolution presentation must remain unchanged")
+    if "interval: root.stopwatchHighPrecisionActive ? 33 : 250" not in stopwatch:
+        raise AssertionError("stopwatch must keep 33 ms presentation precision and downshift only when hidden")
+    if "running: root.stopwatchRunning && !root.stopwatchPaused" not in stopwatch:
+        raise AssertionError("stopwatch lifecycle must remain tied to running and paused state")
+    if "repeat: true" not in stopwatch:
+        raise AssertionError("stopwatch refresh must remain repeating while active")
 
     print("timer service lifecycle contract: ok")
     return 0

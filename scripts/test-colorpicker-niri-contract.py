@@ -13,22 +13,25 @@ arch_shell = read("distro/arch/inir-shell/PKGBUILD")
 arch_shell_git = read("distro/arch/inir-shell-git/PKGBUILD")
 arch_meta = read("distro/arch/inir-meta/PKGBUILD")
 packages_doc = read("docs/PACKAGES.md")
+nix_package = read("nix/package.nix")
+debian_installer = read("sdata/dist-debian/install-deps.sh")
+fedora_installer = read("sdata/dist-fedora/install-deps.sh")
 
-def require(token: str, message: str) -> None:
-    if token not in picker:
+def require(text: str, token: str, message: str) -> None:
+    if token not in text:
         raise SystemExit(f"colorpicker contract failed: {message}")
 
-require("command -v hyprpicker",
+require(picker, "command -v hyprpicker",
         "installed hyprpicker must remain usable on Niri")
-require("args=(--format=hex --no-fancy)",
+require(picker, "args=(--format=hex --no-fancy)",
         "hyprpicker output must stay script-safe")
-require("args+=(--autocopy)",
+require(picker, "args+=(--autocopy)",
         "normal picker requests must preserve clipboard copy")
-require("for command_name in grim slurp magick; do",
+require(picker, "for command_name in grim slurp magick; do",
         "generic picker fallback must remain available without hyprpicker")
-require('geometry="$(slurp -p)"',
+require(picker, 'geometry="$(slurp -p)"',
         "fallback must still select a pixel through slurp")
-require('grim -g "$geometry"',
+require(picker, 'grim -g "$geometry"',
         "fallback must still sample the selected pixel")
 
 for forbidden in ("Quickshell.Hyprland", "CompositorService.isHyprland", "hyprctl"):
@@ -51,5 +54,16 @@ for source, text in (("inir-shell", arch_shell), ("inir-shell-git", arch_shell_g
 
 require(packages_doc, "| `hyprpicker` | Preferred Wayland color picker with magnifier",
         "package docs must explain the preferred picker and fallback boundary")
+
+require(nix_package, '++ optionalTop "hyprpicker"',
+        "Nix runtime must retain the preferred picker when nixpkgs provides it")
+require(fedora_installer, '[hyprpicker]="hyprpicker"',
+        "Fedora missing-dependency repair must know the preferred picker package")
+require(fedora_installer, "FEDORA_SCREENCAPTURE_PKGS=(\n  grim\n  slurp\n  hyprpicker",
+        "Fedora default screen-capture install must include the preferred picker")
+require(debian_installer, "DEBIAN_SCREENCAPTURE_PKGS+=(hyprpicker)",
+        "Debian must install the preferred picker when the distro package exists")
+require(debian_installer, "https://github.com/hyprwm/hyprpicker.git",
+        "Debian must retain a best-effort source path when no package exists")
 
 print("colorpicker Niri compatibility contract: ok")

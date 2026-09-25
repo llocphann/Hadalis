@@ -71,7 +71,7 @@ For everything else, check [PACKAGES.md](PACKAGES.md). It's organized by categor
 > **Note on quickshell package:** iNiR intentionally uses `quickshell` from official repos to avoid long AUR compile times and update-time build failures.
 >
 > **Runtime extras used by features:**
-> - `socat` for YTMusic IPC fallback control and, when available, optional EasyEffects Equalizer transport
+> - `socat` for optional EasyEffects Equalizer transport
 > - `fprintd` for fingerprint lockscreen support
 >
 > EasyEffects itself is optional. The Equalizer capability stays unavailable when its backend/transport is absent; normal Media playback and volume controls continue to work.

@@ -536,36 +536,19 @@ Display brightness control.
 
 ### mpris
 
-Media player control. Automatically detects and uses YtMusic controls when active, otherwise uses the active MPRIS player.
+Media player control for the active MPRIS player.
 
 | Function | Description |
 |----------|-------------|
 | `pauseAll` | Pause all players |
-| `playPause` | Toggle play/pause (uses YtMusic if active) |
-| `previous` | Previous track (uses YtMusic if active) |
-| `next` | Next track (uses YtMusic if active) |
+| `playPause` | Toggle play/pause for the active MPRIS player |
+| `previous` | Previous track for the active MPRIS player |
+| `next` | Next track for the active MPRIS player |
 
 ```kdl
 bind "Ctrl+Mod+Space" { spawn "inir" "mpris" "playPause"; }
 bind "Mod+Alt+N" { spawn "inir" "mpris" "next"; }
 bind "Mod+Alt+P" { spawn "inir" "mpris" "previous"; }
-```
-
----
-
-### ytmusic
-
-Direct YtMusic player control. Use these if you want to control YtMusic specifically, regardless of what other players are active.
-
-| Function | Description |
-|----------|-------------|
-| `playPause` | Toggle YtMusic play/pause |
-| `next` | Play next track in YtMusic |
-| `previous` | Play previous track in YtMusic |
-| `stop` | Stop YtMusic playback |
-
-```kdl
-bind "Mod+M+Space" { spawn "inir" "ytmusic" "playPause"; }
 ```
 
 ---

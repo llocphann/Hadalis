@@ -2295,7 +2295,6 @@ def main() -> None:
         "AnimeScheduleView {}",
         "WallhavenView {",
         "NewsView {}",
-        "InnerTuneView {}",
         "ToolsView {}",
         "SoftwareView {}",
     ):

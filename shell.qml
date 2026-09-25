@@ -1083,6 +1083,13 @@ ShellRoot {
         }
         if (_transitionInProgress) return
 
+        // Settings overlays are shared fullscreen layer-shell surfaces. A family
+        // change can rebuild Config-bound UI while their close animation is still
+        // mapped, so every entry point (settings button, keybind, GlobalActions,
+        // IPC) must release Settings before changing family.
+        if (GlobalStates.settingsOverlayOpen)
+            GlobalStates.settingsOverlayOpen = false
+
         // If animation is disabled, switch instantly
         if (!(Config.options?.familyTransitionAnimation ?? true)) {
             Config.setNestedValue("panelFamily", targetFamily)

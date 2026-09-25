@@ -1207,8 +1207,36 @@ Singleton {
     // Note: Update runs via Quickshell.execDetached() in performUpdate()
     // so it survives the shell restart that ./setup update triggers.
 
-    // Progress poller: reads the status file every 2s while updating to parse
-    // structured progress markers written by setup's _report_progress().
+    function _reloadUpdateProgress(): void {
+        const target = Directories.updateStatusPath
+        if (updateProgressFile.path === target)
+            updateProgressFile.reload()
+        else
+            updateProgressFile.path = target
+    }
+
+    function _consumeUpdateProgress(text: string): void {
+        const status = (text ?? "").trim()
+        if (status.startsWith("progress:")) {
+            // Format: progress:STEP:TOTAL:MESSAGE
+            const parts = status.split(":")
+            if (parts.length >= 4) {
+                root.updateStep = parseInt(parts[1]) || 0
+                root.updateTotalSteps = parseInt(parts[2]) || 0
+                root.updateStepMessage = parts.slice(3).join(":")
+            }
+        } else if (status === "updating") {
+            // Legacy/initial marker — no granular progress yet
+            root.updateStep = 0
+            root.updateStepMessage = ""
+        } else if (status.startsWith("failed")) {
+            // Update failed — stop polling, let watchdog handle error display
+            updateProgressPoller.running = false
+        }
+    }
+
+    // Progress poller: keep the existing 2s cadence, but read the local status
+    // file in-process instead of spawning one cat helper on every tick.
     Timer {
         id: updateProgressPoller
         interval: 2000
@@ -1219,35 +1247,15 @@ Singleton {
                 updateProgressPoller.running = false
                 return
             }
-            updateProgressReader.running = true
+            root._reloadUpdateProgress()
         }
     }
 
-    Process {
-        id: updateProgressReader
-        running: false
-        command: ["cat", Directories.updateStatusPath]
-        stdout: StdioCollector {
-            onStreamFinished: {
-                const status = (text ?? "").trim()
-                if (status.startsWith("progress:")) {
-                    // Format: progress:STEP:TOTAL:MESSAGE
-                    const parts = status.split(":")
-                    if (parts.length >= 4) {
-                        root.updateStep = parseInt(parts[1]) || 0
-                        root.updateTotalSteps = parseInt(parts[2]) || 0
-                        root.updateStepMessage = parts.slice(3).join(":")
-                    }
-                } else if (status === "updating") {
-                    // Legacy/initial marker — no granular progress yet
-                    root.updateStep = 0
-                    root.updateStepMessage = ""
-                } else if (status.startsWith("failed")) {
-                    // Update failed — stop polling, let watchdog handle error display
-                    updateProgressPoller.running = false
-                }
-            }
-        }
+    FileView {
+        id: updateProgressFile
+        path: ""
+        printErrors: false
+        onLoaded: root._consumeUpdateProgress(updateProgressFile.text())
     }
 
     // Watchdog: if the shell is still alive after 120s, the update likely failed.

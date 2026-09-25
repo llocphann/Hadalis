@@ -56,6 +56,14 @@ if grep -Fq 'id: localVersionStartupProc' "$service"; then
     fail 'local VERSION startup must not restore the bash/cat process chain'
 fi
 
+progress_reader_block="$(sed -n '/id: updateProgressFile/,/^    }/p' "$service")"
+[[ -n "$progress_reader_block" ]] || fail 'update progress FileView is missing'
+assert_contains 'onLoaded: root._consumeUpdateProgress(updateProgressFile.text())' "$progress_reader_block" 'update progress must be consumed in-process'
+assert_contains 'root._reloadUpdateProgress()' "$(sed -n '/id: updateProgressPoller/,/^    }/p' "$service")" '2s progress cadence must reload the in-process FileView'
+if grep -Fq 'id: updateProgressReader' "$service"; then
+    fail 'update progress polling must not restore one cat process every two seconds'
+fi
+
 assert_guarded_process fetchProc "$fetch_block"
 assert_guarded_process currentBranchProc "$branch_block"
 assert_guarded_process localCommitProc "$local_block"

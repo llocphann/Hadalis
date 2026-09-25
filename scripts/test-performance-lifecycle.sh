@@ -32,7 +32,6 @@ local_music_view="$repo_root/modules/sidebarLeft/LocalMusicView.qml"
 local_music="$repo_root/services/LocalMusic.qml"
 local_music_mpd="$repo_root/scripts/local_music_mpd.py"
 native_dispatch="$repo_root/scripts/native-dispatch"
-it_thumbnail="$repo_root/modules/sidebarLeft/innertune/ITThumbnail.qml"
 screen_edges="$repo_root/modules/screenCorners/ScreenEdges.qml"
 alt_switcher="$repo_root/modules/altSwitcher/AltSwitcher.qml"
 waffle_alt="$repo_root/modules/waffle/altSwitcher/WaffleAltSwitcher.qml"
@@ -199,9 +198,6 @@ for preset in "${lyrics_presets[@]}"; do
     require "$preset" 'serviceActive: root.positionUpdatesActive' 'Desktop lyrics presets must share the media power lifecycle gate'
 done
 
-require "$it_thumbnail" 'ClippingRectangle {' 'InnerTune thumbnails must use scene-graph clipping'
-reject "$it_thumbnail" 'GE.OpacityMask' 'InnerTune list thumbnails must not allocate an OpacityMask layer'
-require "$it_thumbnail" 'GlobalStates.sidebarLeftOpen' 'InnerTune decorative equalizer must stop with the sidebar'
 
 require "$screen_edges" 'readonly property bool physicalShadowActive:' 'Screen Edge must compute physical shadow activity explicitly'
 require "$screen_edges" 'layer.enabled: frameShape.physicalShadowActive' 'Screen Edge full-screen layer must sleep when physical shadow is off'

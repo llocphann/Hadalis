@@ -9,7 +9,6 @@ overlay_resources="$repo_root/modules/ii/overlay/resources/Resources.qml"
 sysmon_widget="$repo_root/modules/sidebarRight/sysmon/SysMonWidget.qml"
 waffle_widgets="$repo_root/modules/waffle/widgets/WidgetsContent.qml"
 dash_system="$repo_root/modules/dashboard/DashSystem.qml"
-inner_tube_thumbnail="$repo_root/modules/sidebarLeft/innertune/ITThumbnail.qml"
 bar_resources="$repo_root/modules/bar/Resources.qml"
 vertical_bar_resources="$repo_root/modules/verticalBar/Resources.qml"
 
@@ -83,8 +82,6 @@ for lifecycle_file in "$resources_popup" "$status_rings" "$overlay_resources" "$
     assert_contains 'ResourceUsage.releaseKeepAlive()' "$lifecycle_text" "$lifecycle_file must release resource polling when hidden or destroyed"
 done
 
-assert_contains 'running: root.isActive && root.isPlaying && root.visible && GlobalStates.sidebarLeftOpen' "$(cat "$inner_tube_thumbnail")" \
-    'hidden InnerTune thumbnail must stop its decorative equalizer timer'
 assert_contains 'root.visible && !GameMode.active' "$(cat "$bar_resources")" \
     'horizontal Bar resource polling must pause during GameMode'
 assert_contains 'root.visible && !GameMode.active' "$(cat "$vertical_bar_resources")" \

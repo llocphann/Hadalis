@@ -52,6 +52,14 @@ ShellRoot {
     property var _gameModeService
     property var _windowPreviewService
     property var _weatherService
+    function _ensureWeatherService(): void {
+        // Weather is globally disabled through bar.weather.enable. Avoid
+        // constructing its resolver/process graph in Tier 3 until that same
+        // feature gate is enabled; Config changes can activate it later.
+        if (GlobalStates.deferredPanelsReady
+                && (Config.options?.bar?.weather?.enable ?? false))
+            root._weatherService = Weather
+    }
     property var _voiceSearchService
     property var _fontSyncService
     property var _cavaThemeService
@@ -154,11 +162,11 @@ ShellRoot {
             root._log("[Boot] T+" + (Date.now() - root._bootCompletedAt) + "ms: Tier 3 (display/interaction)");
             root._gameModeService = GameMode;
             root._windowPreviewService = WindowPreviewService;
-            root._weatherService = Weather;
             root._voiceSearchService = VoiceSearch;
             root._fontSyncService = FontSyncService;
             NightLight.load();
             GlobalStates.deferredPanelsReady = true;
+            root._ensureWeatherService();
             root._ensureCavaThemeService();
             root._ensureScreenTimeService();
             // Boot greeting: show once per session (singleton preserves bootGreetingDone across hot-reload)
@@ -176,6 +184,7 @@ ShellRoot {
     Connections {
         target: Config
         function onConfigChanged(): void {
+            root._ensureWeatherService()
             root._ensureCavaThemeService()
             root._ensureScreenTimeService()
         }

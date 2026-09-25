@@ -13,10 +13,14 @@ def main() -> int:
 
     required = (
         "function _ensureCavaThemeService(): void",
+        "function _ensureWeatherService(): void",
         "GlobalStates.deferredPanelsReady",
         "Config.options?.appearance?.wallpaperTheming?.enableCava ?? false",
         "root._cavaThemeService = CavaTheme",
         "root._ensureCavaThemeService();",
+        "Config.options?.bar?.weather?.enable ?? false",
+        "root._weatherService = Weather",
+        "root._ensureWeatherService();",
     )
     for needle in required:
         if needle not in text:
@@ -32,8 +36,12 @@ def main() -> int:
     body = tier.group("body")
     if "root._cavaThemeService = CavaTheme;" in body:
         raise AssertionError("Tier 3 must not eagerly instantiate disabled CavaTheme")
+    if "root._weatherService = Weather;" in body:
+        raise AssertionError("Tier 3 must not eagerly instantiate disabled Weather")
     if body.find("GlobalStates.deferredPanelsReady = true;") > body.find("root._ensureCavaThemeService();"):
         raise AssertionError("Cava demand gate must run after deferred services become eligible")
+    if body.find("GlobalStates.deferredPanelsReady = true;") > body.find("root._ensureWeatherService();"):
+        raise AssertionError("Weather demand gate must run after deferred services become eligible")
 
     config = re.search(
         r"Connections \{\s*\n\s*target: Config(?P<body>.*?)\n\s*\}",
@@ -42,6 +50,8 @@ def main() -> int:
     )
     if not config or "root._ensureCavaThemeService()" not in config.group("body"):
         raise AssertionError("config changes must activate CavaTheme when enabled later")
+    if "root._ensureWeatherService()" not in config.group("body"):
+        raise AssertionError("config changes must activate Weather when enabled later")
 
     print("shell deferred service lifecycle contract: ok")
     return 0

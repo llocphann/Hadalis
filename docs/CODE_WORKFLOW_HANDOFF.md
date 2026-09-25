@@ -177,17 +177,18 @@ module work, commit directly to `dev`, and never force-push or modify `stable`.
   PSS-or-RSS, disk I/O rates and helper count.
 - Deep owner profiling is an explicit, bounded mode rather than a permanently
   enabled debug service. `inir dev profile --duration 5` temporarily stops the
-  managed shell, lets Qt's `qmlprofiler` launch Quickshell with its local debug
-  transport, records only JavaScript/memory/creating/binding/signal-handler
-  features, flushes the trace, restores `inir.service`, and persists the latest
-  owner summary under `$XDG_STATE_HOME/inir/qml-profiles`. The Rust
-  `inir-native qml-profile` parser resolves source files against the active
-  shell root and publishes module/service/component rows. QML work is exclusive
-  wall-clock time for Binding/HandlingSignal/Javascript/Creating/Compiling
-  ranges; nested ranges are not double-counted. QV4 allocation/deallocation
-  events are associated with the innermost active range, matching the profiler's
-  call-stack ownership model, but are labelled allocation activity rather than
-  retained RAM. The compact Diagnostics table shows these captured rows when a
+  managed shell, launches Quickshell with its explicit `--debug` /
+  `--waitfordebug` localhost endpoint, attaches Qt's `qmlprofiler`, records
+  only JavaScript/memory/creating/binding/signal-handler features, flushes the
+  trace, restores `inir.service`, and persists the latest owner summary under
+  `$XDG_STATE_HOME/inir/qml-profiles`. The Rust `inir-native qml-profile`
+  parser resolves source files against the active shell root and publishes
+  module/service/component rows. QML work is exclusive wall-clock time for
+  Binding/HandlingSignal/Javascript/Creating/Compiling ranges; nested ranges are
+  not double-counted. Positive QV4 SmallItem/LargeItem allocations are
+  associated with the innermost active range, matching Qt Creator's flame-graph
+  memory view; heap-page reservation and GC frees are not assigned to owners.
+  These values are cumulative allocation pressure, not retained RAM/PSS. The compact Diagnostics table shows these captured rows when a
   profile exists and falls back to lifecycle hotspots otherwise.
 - This does **not** manufacture per-owner CPU/RSS/GPU percentages. Kernel CPU,
   PSS/RSS and DRM fdinfo remain exact only for the Quickshell process/helper

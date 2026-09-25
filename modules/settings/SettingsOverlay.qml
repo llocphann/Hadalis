@@ -493,10 +493,11 @@ Scope {
             WlrLayershell.layer: GlobalStates.settingsNativeDialogOpen
                 ? WlrLayer.Bottom
                 : PolkitService.active ? WlrLayer.Top : WlrLayer.Overlay
-            WlrLayershell.keyboardFocus: root.settingsOpen
+            readonly property bool acceptsInput: root.settingsOpen
                 && !GlobalStates.regionSelectorOpen
                 && !GlobalStates.settingsNativeDialogOpen
                 && !PolkitService.active
+            WlrLayershell.keyboardFocus: settingsPanel.acceptsInput
                 ? WlrKeyboardFocus.Exclusive
                 : WlrKeyboardFocus.None
             color: "transparent"
@@ -506,6 +507,17 @@ Scope {
                 bottom: true
                 left: true
                 right: true
+            }
+
+            // The native fullscreen surface remains mapped briefly for the exit
+            // animation. Releasing keyboard focus is not enough: Wayland still
+            // treats an unspecified input region as the full surface. Collapse
+            // the pointer region immediately on close/yield so an interrupted
+            // reload can never leave a transparent click-blocking layer behind.
+            Item { id: emptySettingsInput; width: 0; height: 0 }
+            Item { id: fullSettingsInput; anchors.fill: parent }
+            mask: Region {
+                item: settingsPanel.acceptsInput ? fullSettingsInput : emptySettingsInput
             }
 
             // Blurred backdrop — see SettingsFocus for the contract. Both overlay

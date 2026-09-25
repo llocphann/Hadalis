@@ -174,7 +174,9 @@ PopupWindow {
                 ColorAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve }
             }
 
-            layer.enabled: true
+            // PopupWindow stays resident between hovers; release the full
+            // content mask texture while the popup is not presented.
+            layer.enabled: root.visible
             layer.smooth: true
             layer.mipmap: true
             layer.effect: OpacityMask {

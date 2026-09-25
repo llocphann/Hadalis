@@ -48,6 +48,7 @@ workspace_thumb="$repo_root/modules/waffle/taskview/WorkspaceThumbnail.qml"
 window_thumb="$repo_root/modules/waffle/taskview/WindowThumbnail.qml"
 dock_window_preview="$repo_root/modules/dock/DockWindowPreview.qml"
 dock_preview="$repo_root/modules/dock/DockPreview.qml"
+notification_item="$repo_root/modules/common/widgets/NotificationItem.qml"
 bar_taskbar_window_preview="$repo_root/modules/bar/BarTaskbarWindowPreview.qml"
 bar_taskbar_preview="$repo_root/modules/bar/BarTaskbarPreview.qml"
 easyeffects="$repo_root/services/deferred/EasyEffects.qml"
@@ -244,6 +245,8 @@ require "$dock_window_preview" 'property bool presentationActive: true' 'Dock pr
 require "$dock_window_preview" 'running: root.presentationActive && shimmerBg.visible' 'Hidden Dock preview tiles must stop shimmer animation'
 require "$dock_window_preview" 'layer.enabled: root.presentationActive && windowPreview.status === Image.Ready' 'Hidden Dock preview tiles must release thumbnail mask layers'
 require "$dock_preview" 'presentationActive: root.visible' 'Dock preview host must power tiles only while its popup is visible'
+require "$dock_preview" 'layer.enabled: root.visible' 'Hidden Dock preview popup must release its content mask FBO'
+require "$notification_item" 'layer.enabled: !root.modernLayout && expandedContentColumn.visible' 'Collapsed notification actions must release their legacy rounded-mask FBO'
 require "$bar_taskbar_window_preview" 'property bool presentationActive: true' 'Bar taskbar preview tiles must expose a retained-surface lifecycle gate'
 require "$bar_taskbar_window_preview" 'running: root.presentationActive && shimmerBg.visible' 'Hidden Bar taskbar preview tiles must stop shimmer animation'
 require "$bar_taskbar_window_preview" 'layer.enabled: root.presentationActive && windowPreview.status === Image.Ready' 'Hidden Bar taskbar preview tiles must release thumbnail mask layers'

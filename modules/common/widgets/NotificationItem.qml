@@ -284,7 +284,10 @@ Item { // Notification item area
                     implicitWidth: actionsFlickable.implicitWidth
                     implicitHeight: actionsFlickable.implicitHeight
 
-                    layer.enabled: !root.modernLayout
+                    // Collapsed notification rows retain their action strip.
+                    // Keep the rounded mask only through the expanded/fade-out
+                    // presentation instead of holding one FBO per row at rest.
+                    layer.enabled: !root.modernLayout && expandedContentColumn.visible
                     layer.effect: OpacityMask {
                         maskSource: Rectangle {
                             width: actionsFlickable.width

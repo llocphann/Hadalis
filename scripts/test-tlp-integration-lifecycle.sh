@@ -125,6 +125,13 @@ assert_text_contains 'tlpPdProbe.startObserved = true' "$tlp_probe_started_block
   'tlp-pd process start must be observed before timeout handling'
 assert_text_contains 'tlpPdTimeout.restart()' "$tlp_probe_started_block" \
   'tlp-pd process start must arm its timeout'
+assert_file_contains 'command: ["/usr/bin/systemctl", "is-active", "--quiet", "tlp-pd.service"]' "$power_persistence" \
+  'tlp-pd probe must call systemctl directly'
+assert_file_contains 'tlpPdProbe.command = ["/usr/bin/systemctl", "is-enabled", "--quiet", "tlp-pd.service"]' "$power_persistence" \
+  'tlp-pd probe must preserve is-enabled fallback'
+if grep -Fq '"/usr/bin/sh",' "$power_persistence"; then
+  fail 'tlp-pd ownership probe must not restore a shell wrapper'
+fi
 assert_text_contains 'if (!tlpPdProbe.running)' "$tlp_probe_timeout_block" \
   'tlp-pd timeout must ignore an already-stopped process'
 assert_text_contains 'tlpPdProbe.timedOut = true' "$tlp_probe_timeout_block" \

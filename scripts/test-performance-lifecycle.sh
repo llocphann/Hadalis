@@ -129,6 +129,10 @@ require "$thinkfan" 'running: root.profileFanControlEnabled || root.active || ro
 require "$tlp_caps" 'interval: 300000' 'TLP runtime capability probes must remain low cadence'
 require "$tlp_settings" 'interval: 300000' 'TLP settings background refresh must remain low cadence'
 require "$power_profiles" 'interval: 300000' 'tlp-pd ownership probes must remain low cadence'
+require "$power_profiles" 'command: ["/usr/bin/systemctl", "is-active", "--quiet", "tlp-pd.service"]' 'tlp-pd ownership probe must start systemctl directly'
+require "$power_profiles" 'tlpPdProbe.command = ["/usr/bin/systemctl", "is-enabled", "--quiet", "tlp-pd.service"]' 'tlp-pd ownership probe must preserve enabled fallback'
+require "$power_profiles" 'property string probeStage: "active"' 'tlp-pd ownership probe must retain explicit active/enabled stages'
+reject "$power_profiles" '"/usr/bin/sh",' 'tlp-pd ownership probe must avoid a shell wrapper'
 
 require "$world_clock" 'id: minuteTick' 'WorldClock must tick at minute precision without a permanent 1 Hz timer'
 reject "$world_clock" 'interval: 1000' 'WorldClock must not restore a 1 Hz background timer'

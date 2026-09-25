@@ -108,6 +108,7 @@ sysmon_widget="$repo_root/modules/sidebarRight/sysmon/SysMonWidget.qml"
 graph_widget="$repo_root/modules/common/widgets/Graph.qml"
 overlay_resources="$repo_root/modules/ii/overlay/resources/Resources.qml"
 overlay_floating_image="$repo_root/modules/ii/overlay/floatingImage/FloatingImage.qml"
+overlay_taskbar="$repo_root/modules/ii/overlay/OverlayTaskbar.qml"
 voice_search="$repo_root/services/VoiceSearch.qml"
 gtk_theme="$repo_root/scripts/colors/apply-gtk-theme.sh"
 terminal_theme="$repo_root/scripts/colors/modules/10-terminals.sh"
@@ -435,6 +436,11 @@ require "$graph_widget" 'if (root.visible)' 'Graph repaint scheduling must be vi
 require "$overlay_resources" 'layer.enabled: root.visible' 'Hidden Resources overlay must release its rounded graph mask FBO'
 require "$overlay_floating_image" 'layer.enabled: root.visible' 'Hidden unpinned Floating Image must release its rounded-mask FBO'
 require "$overlay_floating_image" 'playing: root.visible && status === Image.Ready' 'Hidden unpinned Floating Image must stop animated image playback'
+require "$overlay_taskbar" 'GlobalStates.overlayOpen || root.opacity > 0.001' 'Overlay taskbar heavy resources must stay live through exit fade only'
+require "$overlay_taskbar" 'layer.enabled: root.presentationActive && Appearance.angelEverywhere' 'Hidden Overlay taskbar must release its Angel mask FBO'
+require "$overlay_taskbar" 'visible: root.presentationActive && Appearance.angelEverywhere' 'Hidden Overlay taskbar must release its fullscreen Angel wallpaper source'
+require "$overlay_taskbar" 'layer.enabled: root.presentationActive && Appearance.effectsEnabled && Appearance.angelEverywhere' 'Hidden Overlay taskbar must release its Angel blur FBO'
+require "$overlay_taskbar" 'visible: root.presentationActive && Appearance.regaliaEverywhere' 'Hidden Overlay taskbar must suspend retained Regalia presentation work'
 require "$voice_search" 'root._startLocalProbe()' 'VoiceSearch backend refresh must use the centralized probe lifecycle'
 require "$voice_search" 'command -v whisper-cli' 'VoiceSearch normal local-backend probe must avoid Python interpreter startup'
 require "$voice_search" 'if (localProbe.usePythonFallback)' 'VoiceSearch must retain Python probe compatibility for edge-case paths'

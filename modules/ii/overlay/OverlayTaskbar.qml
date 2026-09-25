@@ -17,6 +17,10 @@ Rectangle {
     property real padding: 8
 
     opacity: GlobalStates.overlayOpen ? 1 : 0
+    // Keep expensive presentation resources alive through the exit fade, then
+    // release them while a pinned widget keeps the full OverlayWindow resident.
+    readonly property bool presentationActive:
+        GlobalStates.overlayOpen || root.opacity > 0.001
     implicitWidth: contentRow.implicitWidth + (padding * 2)
     implicitHeight: contentRow.implicitHeight + (padding * 2)
     color: Appearance.angelEverywhere || Appearance.regaliaEverywhere ? "transparent"
@@ -34,7 +38,7 @@ Rectangle {
         : Appearance.angelEverywhere ? Appearance.angel.cardBorderWidth : 1
     clip: true
 
-    layer.enabled: Appearance.angelEverywhere
+    layer.enabled: root.presentationActive && Appearance.angelEverywhere
     layer.effect: GE.OpacityMask {
         maskSource: Rectangle {
             width: root.width
@@ -50,14 +54,14 @@ Rectangle {
         y: -root.y
         width: Quickshell.screens[0]?.width ?? 1920
         height: Quickshell.screens[0]?.height ?? 1080
-        visible: Appearance.angelEverywhere
+        visible: root.presentationActive && Appearance.angelEverywhere
         source: visible ? Wallpapers.effectiveWallpaperUrl : ""
         fillMode: Image.PreserveAspectCrop
         cache: true
         sourceSize.width: Quickshell.screens[0]?.width ?? 1920
         sourceSize.height: Quickshell.screens[0]?.height ?? 1080
         asynchronous: true
-        layer.enabled: Appearance.effectsEnabled && Appearance.angelEverywhere
+        layer.enabled: root.presentationActive && Appearance.effectsEnabled && Appearance.angelEverywhere
         layer.effect: MultiEffect {
             source: taskbarBlurWallpaper
             anchors.fill: source
@@ -75,7 +79,7 @@ Rectangle {
 
     RegaliaPlate {
         anchors.fill: parent
-        visible: Appearance.regaliaEverywhere
+        visible: root.presentationActive && Appearance.regaliaEverywhere
         fillColor: Appearance.regalia.bg2
         radius: root.radius
         inset: Appearance.regalia.controlInset
@@ -85,7 +89,7 @@ Rectangle {
 
     AngelPartialBorder {
         targetRadius: root.radius
-        visible: Appearance.angelEverywhere
+        visible: root.presentationActive && Appearance.angelEverywhere
     }
 
     Behavior on opacity {

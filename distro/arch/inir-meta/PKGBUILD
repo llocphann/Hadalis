@@ -1,6 +1,6 @@
 pkgname=inir-meta
 pkgver=2.29.3
-pkgrel=6
+pkgrel=7
 pkgdesc='Full Hadalis desktop experience meta-package'
 arch=(any)
 url='https://github.com/llocphann/Hadalis'
@@ -36,6 +36,7 @@ depends=(
   gowall-bin
   gum
   hicolor-icon-theme
+  hyprpicker
   imagemagick
   inir-shell
   kconfig

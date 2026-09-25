@@ -158,6 +158,7 @@ Screenshot, OCR, and recording dependencies declared by `sdata/dist-arch/inir-sc
 |---------|---------|
 | `grim` | Screenshots |
 | `slurp` | Region selection |
+| `hyprpicker` | Preferred Wayland color picker with magnifier; generic fallback remains available |
 | `swappy` | Screenshot annotation |
 | `tesseract` | OCR engine |
 | `tesseract-data-eng` | English OCR data |

@@ -7,7 +7,7 @@
 
 pkgname=inir-deps
 pkgver=2.29.3
-pkgrel=7
+pkgrel=8
 pkgdesc='iNiR desktop shell - dependency tracker (meta-package)'
 url='https://github.com/llocphann/Hadalis'
 arch=(any)
@@ -85,6 +85,7 @@ depends=(
   swaylock
   grim
   slurp
+  hyprpicker
   swappy
   wf-recorder
   xwayland-satellite

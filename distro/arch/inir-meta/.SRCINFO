@@ -1,7 +1,7 @@
 pkgbase = inir-meta
 	pkgdesc = Full Hadalis desktop experience meta-package
 	pkgver = 2.29.3
-	pkgrel = 6
+	pkgrel = 7
 	url = https://github.com/llocphann/Hadalis
 	arch = any
 	license = GPL-3.0-only
@@ -28,6 +28,7 @@ pkgbase = inir-meta
 	depends = gowall-bin
 	depends = gum
 	depends = hicolor-icon-theme
+	depends = hyprpicker
 	depends = imagemagick
 	depends = inir-shell
 	depends = kconfig

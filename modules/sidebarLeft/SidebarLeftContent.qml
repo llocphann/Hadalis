@@ -430,8 +430,20 @@ Item {
 
         Component { id: aiChatComp; AiChat {} }
         Component { id: translatorComp; Translator {} }
-        Component { id: animeComp; Anime {} }
-        Component { id: animeScheduleComp; AnimeScheduleView {} }
+        Component {
+            id: animeComp
+            Anime {
+                presentationActive: GlobalStates.sidebarLeftOpen
+                    && root.selectedTabId === "anime"
+            }
+        }
+        Component {
+            id: animeScheduleComp
+            AnimeScheduleView {
+                presentationActive: GlobalStates.sidebarLeftOpen
+                    && root.selectedTabId === "animeSchedule"
+            }
+        }
         Component {
             id: newsComp
             NewsView {

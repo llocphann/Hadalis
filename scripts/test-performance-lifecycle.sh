@@ -74,6 +74,7 @@ volume_mixer="$repo_root/modules/ii/overlay/volumeMixer/VolumeMixer.qml"
 weather="$repo_root/services/Weather.qml"
 keyboard_indicators="$repo_root/services/KeyboardIndicators.qml"
 sidebar_anime="$repo_root/modules/sidebarLeft/Anime.qml"
+sidebar_anime_schedule="$repo_root/modules/sidebarLeft/animeSchedule/AnimeScheduleView.qml"
 sidebar_wallhaven="$repo_root/modules/sidebarLeft/WallhavenView.qml"
 sidebar_ai="$repo_root/modules/sidebarLeft/AiChat.qml"
 sidebar_news="$repo_root/modules/sidebarLeft/news/NewsView.qml"
@@ -292,7 +293,12 @@ if grep -Fq 'root.refreshStatus()' <<<"$active_recorder_poll"; then
 fi
 require "$weather" 'running: root.enabled' 'Weather minute clock must sleep when weather is disabled'
 require "$keyboard_indicators" 'interval: (Config.options?.performance?.lowPower ?? false) ? 120000 : 30000' 'keyboard sysfs hotplug discovery must stay low cadence'
-require "$sidebar_anime" 'layer.enabled: root.visible && GlobalStates.sidebarLeftOpen' 'Anime list mask must sleep with the sidebar'
+require "$sidebar_anime" 'layer.enabled: root.presentationActive && root.visible' 'Anime list mask must sleep outside the selected tab'
+require "$sidebar_anime" 'loading: root.presentationActive && (root.pullLoading || Booru.runningRequests > 0)' 'Hidden Anime tab must stop its loading gear'
+require "$sidebar_anime_schedule" 'property bool presentationActive: true' 'Anime Schedule must expose a host lifecycle gate'
+require "$sidebar_anime_schedule" 'visible: root.presentationActive && AnimeService.loading' 'Hidden Anime Schedule must stop loading presentation animations'
+require "$sidebar_anime_schedule" 'loading: root.presentationActive' 'Hidden Anime Schedule must stop its loading gear'
+require "$sidebar_anime_schedule" 'running: root.presentationActive && AnimeService.loading' 'Hidden Anime Schedule must stop refresh icon rotation'
 require "$sidebar_wallhaven" 'layer.enabled: root.visible && GlobalStates.sidebarLeftOpen' 'Wallhaven list mask must sleep with the sidebar'
 require "$sidebar_ai" 'layer.enabled: root.visible && GlobalStates.sidebarLeftOpen' 'AI history mask must sleep with the sidebar'
 require "$sidebar_news" 'property bool presentationActive: true' 'News view must expose a host lifecycle gate'
@@ -300,6 +306,8 @@ require "$sidebar_news" 'visible: root.presentationActive && NewsService.loading
 require "$sidebar_news" 'loading: root.presentationActive' 'Hidden News tab must stop its loading gear animation'
 require "$sidebar_news" 'running: root.presentationActive && NewsService.loading' 'Hidden News tab must stop refresh icon rotation'
 require "$sidebar_left_content" '&& root.selectedTabId === "news"' 'Sidebar Left must power News animations only for the selected tab'
+require "$sidebar_left_content" '&& root.selectedTabId === "anime"' 'Sidebar Left must power Anime animations only for the selected tab'
+require "$sidebar_left_content" '&& root.selectedTabId === "animeSchedule"' 'Sidebar Left must power Anime Schedule animations only for the selected tab'
 require "$sidebar_quick_wallpaper" 'layer.enabled: root.visible && GlobalStates.sidebarLeftOpen' 'Quick Wallpaper masks must sleep with the sidebar'
 require "$booru_image" 'layer.enabled: root.visible && GlobalStates.sidebarLeftOpen' 'Booru image masks must sleep with the sidebar'
 require "$booru_response" 'layer.enabled: root.visible && GlobalStates.sidebarLeftOpen' 'Booru tag masks must sleep with the sidebar'

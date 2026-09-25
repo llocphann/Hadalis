@@ -12,6 +12,7 @@ import qs.services.deferred
 
 Item {
     id: root
+    property bool presentationActive: true
     
     property int currentTab: 0  // 0: Schedule, 1: Seasonal, 2: Top
     property string selectedDay: "today"
@@ -317,7 +318,8 @@ Item {
             // Loading text only; refresh-without-text keeps the shared gear.
             LoadingText {
                 anchors.centerIn: parent
-                visible: AnimeService.loading && root.getCurrentData().length === 0
+                visible: root.presentationActive && AnimeService.loading
+                    && root.getCurrentData().length === 0
             }
             
             // Error message
@@ -396,8 +398,9 @@ Item {
                 anchors.horizontalCenter: parent.horizontalCenter
                 anchors.top: parent.top
                 anchors.topMargin: 10
-                visible: AnimeService.loading && root.getCurrentData().length > 0
-                loading: true
+                visible: root.presentationActive && AnimeService.loading
+                    && root.getCurrentData().length > 0
+                loading: root.presentationActive
                 implicitSize: 32
             }
         }
@@ -438,7 +441,8 @@ Item {
                     color: Appearance.colors.colOnLayer1
                     
                     RotationAnimation on rotation {
-                        running: AnimeService.loading && GlobalStates.sidebarLeftOpen
+                        running: root.presentationActive && AnimeService.loading
+                            && GlobalStates.sidebarLeftOpen && Appearance.animationsEnabled
                         from: 0
                         to: 360
                         duration: 1000

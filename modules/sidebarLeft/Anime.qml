@@ -12,6 +12,7 @@ import Quickshell
 
 Item {
     id: root
+    property bool presentationActive: true
     property real padding: 4
 
     property var inputField: tagInputField
@@ -163,7 +164,8 @@ Item {
 
             // The sidebar keeps nearby tab loaders warm. Do not retain a
             // full-size offscreen mask texture while this surface is hidden.
-            layer.enabled: root.visible && GlobalStates.sidebarLeftOpen
+            layer.enabled: root.presentationActive && root.visible
+                && GlobalStates.sidebarLeftOpen
             layer.effect: OpacityMask {
                 maskSource: Rectangle {
                     width: swipeView.width
@@ -275,7 +277,8 @@ Item {
                         }
                     }
                 }
-                loading: root.pullLoading || Booru.runningRequests > 0
+                visible: root.presentationActive
+                loading: root.presentationActive && (root.pullLoading || Booru.runningRequests > 0)
                 pullProgress: Math.min(1, booruResponseListView.verticalOvershoot / root.pullLoadingGap * booruResponseListView.dragging)
                 scale: root.pullLoading ? 1 : Math.min(1, root.normalizedPullDistance * 2)
             }

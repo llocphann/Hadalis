@@ -121,15 +121,19 @@ Scope {
 
             WlrLayershell.namespace: "quickshell:overview"
             WlrLayershell.layer: WlrLayer.Overlay
-            // Keyboard focus only on the monitor that should show
-            WlrLayershell.keyboardFocus: root.shouldShow
+            // The window stays mapped through the exit animation. Both keyboard
+            // and pointer ownership must follow the live presentation state, not
+            // the native window lifetime, or the transparent close tail can eat
+            // desktop clicks.
+            readonly property bool acceptsInput: root.shouldShow
                 && !root.applicationDragActive
                 && !GlobalStates.regionSelectorOpen
+            WlrLayershell.keyboardFocus: root.acceptsInput
                 ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
             color: "transparent"
 
             mask: Region {
-                item: root.applicationDragActive ? emptyDragMask : overviewInputMask
+                item: root.acceptsInput ? overviewInputMask : emptyDragMask
             }
 
             Item {

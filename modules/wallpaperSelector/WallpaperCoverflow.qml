@@ -148,7 +148,9 @@ Scope {
             exclusionMode: ExclusionMode.Ignore
             WlrLayershell.namespace: "quickshell:coverflowSelector"
             WlrLayershell.layer: WlrLayer.Overlay
-            WlrLayershell.keyboardFocus: root._closing ? WlrKeyboardFocus.None : WlrKeyboardFocus.OnDemand
+            readonly property bool acceptsInput: GlobalStates.coverflowSelectorOpen
+            WlrLayershell.keyboardFocus: panelWindow.acceptsInput
+                ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
             color: "transparent"
 
             anchors {
@@ -156,6 +158,12 @@ Scope {
                 left: true
                 right: true
                 bottom: true
+            }
+
+            Item { id: emptyCoverflowInput; width: 0; height: 0 }
+            Item { id: fullCoverflowInput; anchors.fill: parent }
+            mask: Region {
+                item: panelWindow.acceptsInput ? fullCoverflowInput : emptyCoverflowInput
             }
 
             // ─── Staggered entry state ───

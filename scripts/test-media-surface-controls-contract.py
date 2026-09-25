@@ -67,7 +67,7 @@ for token in (
     "id: localMusicPlayerAdapter",
     "playbackAdapter: localMusicPlayerAdapter",
     "visible: LocalMusic.hasCurrentTrack",
-    "active: root.visible && LocalMusic.playing",
+    "active: root.visible && GlobalStates.sidebarLeftOpen && LocalMusic.playing",
     'tip: Translation.tr("Play selection")',
     'tip: Translation.tr("Add to queue")',
     "configuration: StyledSlider.Configuration.XS",

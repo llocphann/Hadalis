@@ -1266,7 +1266,6 @@ def main() -> None:
     for token in (
         "Appearance.colors.colPrimary",
         "Appearance.colors.colLayer2",
-        "color: Appearance.colors.colLayer0",
         "radius: root.popupRounding",
         'border.color: "transparent"',
         "color: Appearance.colors.colOnLayer0",

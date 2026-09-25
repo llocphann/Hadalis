@@ -72,6 +72,12 @@ assert_not_contains 'cpuUsage = totalDiff > 0 ?' "$poll_block" 'stale CPU sample
 assert_contains 'if (!isNaN(cpuTempRaw))' "$poll_block" 'transient CPU hwmon reads must preserve the last good temperature'
 assert_contains 'if (!isNaN(gpuTempRaw))' "$poll_block" 'transient GPU hwmon reads must preserve the last good temperature'
 assert_not_contains 'if (isNaN(gpuBusyPercent)) {' "$poll_block" 'transient GPU sysfs reads must not collapse usage to zero'
+assert_contains 'function _appendHistorySnapshot(history, value): var {' "$(cat "$service")" 'Resource history updates must build bounded snapshots off-property'
+assert_contains 'const next = [...history, value]' "$(cat "$service")" 'Resource history snapshots must preserve append order'
+history_property_shifts="$(grep -Ec '(cpuUsageHistory|gpuUsageHistory|gpuTempHistory|memoryUsageHistory|swapUsageHistory)\.shift\(' "$service" || true)"
+if (( history_property_shifts != 0 )); then
+    fail "Resource history properties must not be mutated twice per poll; found $history_property_shifts direct shift calls"
+fi
 
 assert_contains 'root._gpuUsageSource = "none"' "$gpu_block" 'GPU startup failure must fail closed to no usage source'
 assert_contains 'root._gpuUsagePath = ""' "$gpu_block" 'GPU startup failure must clear stale sysfs path'

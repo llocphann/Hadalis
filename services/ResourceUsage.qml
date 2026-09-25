@@ -84,11 +84,19 @@ Singleton {
         return (kb / (1024 * 1024)).toFixed(1) + " GB";
     }
 
+    function _appendHistorySnapshot(history, value): var {
+        // Build the bounded list off-property and publish once. Mutating the
+        // QML list again with shift() after assignment can fan out a second
+        // change notification to every graph binding on each sensor poll.
+        const next = [...history, value]
+        if (next.length > historyLength)
+            next.shift()
+        return next
+    }
+
     function updateMemoryUsageHistory() {
-        memoryUsageHistory = [...memoryUsageHistory, memoryUsedPercentage];
-        if (memoryUsageHistory.length > historyLength) {
-            memoryUsageHistory.shift();
-        }
+        memoryUsageHistory = root._appendHistorySnapshot(
+            memoryUsageHistory, memoryUsedPercentage)
     }
 
     Process {
@@ -227,28 +235,20 @@ Singleton {
         }
     }
     function updateSwapUsageHistory() {
-        swapUsageHistory = [...swapUsageHistory, swapUsedPercentage];
-        if (swapUsageHistory.length > historyLength) {
-            swapUsageHistory.shift();
-        }
+        swapUsageHistory = root._appendHistorySnapshot(
+            swapUsageHistory, swapUsedPercentage)
     }
     function updateCpuUsageHistory() {
-        cpuUsageHistory = [...cpuUsageHistory, cpuUsage];
-        if (cpuUsageHistory.length > historyLength) {
-            cpuUsageHistory.shift();
-        }
+        cpuUsageHistory = root._appendHistorySnapshot(
+            cpuUsageHistory, cpuUsage)
     }
     function updateGpuUsageHistory() {
-        gpuUsageHistory = [...gpuUsageHistory, gpuUsage];
-        if (gpuUsageHistory.length > historyLength) {
-            gpuUsageHistory.shift();
-        }
+        gpuUsageHistory = root._appendHistorySnapshot(
+            gpuUsageHistory, gpuUsage)
     }
     function updateGpuTempHistory() {
-        gpuTempHistory = [...gpuTempHistory, gpuTempPercentage];
-        if (gpuTempHistory.length > historyLength) {
-            gpuTempHistory.shift();
-        }
+        gpuTempHistory = root._appendHistorySnapshot(
+            gpuTempHistory, gpuTempPercentage)
     }
     function updateHistories() {
         updateMemoryUsageHistory();

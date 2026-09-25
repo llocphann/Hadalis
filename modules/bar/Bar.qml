@@ -146,17 +146,29 @@ Scope {
                     BarContent {
                         id: barContent
                         // FULLSCREEN-BAR-CONTENT-LIFECYCLE-LOCK:
-                        // Keep the QML content subtree continuously presented.
-                        // Toggling either visible or opacity across fullscreen
-                        // can strand native-rendered Text/MaterialSymbol nodes
-                        // after focus moves to a sibling window on the same
-                        // workspace. Hide fullscreen spatially instead, using
-                        // the same off-surface margin path as normal auto-hide.
+                        // Keep the QML subtree continuously presented: toggling
+                        // visible/opacity strands native Text/MaterialSymbol
+                        // nodes after same-workspace fullscreen focus changes.
+                        //
+                        // Fullscreen is intentionally NOT routed through the
+                        // animated auto-hide margins. ScreenEdges.qml lives on
+                        // Top and Niri covers/reveals that physical frame
+                        // immediately, so the Overlay Bar must snap by the same
+                        // amount or its text/modules visibly trail the chrome.
+                        // Auto-hide/coverflow keep their normal slide animation.
                         readonly property bool spatiallyHidden:
-                            barRoot.fullscreenCovered
-                            || (Config?.options.bar.autoHide.enable && !mustShow)
+                            (Config?.options.bar.autoHide.enable && !mustShow)
                             || GlobalStates.coverflowSelectorOpen
                             || !GlobalStates.shellEntryReady
+                        readonly property real fullscreenOffsetY:
+                            barRoot.fullscreenCovered
+                                ? (barRoot.anchors.bottom
+                                    ? barRoot.panelSurfaceHeight
+                                    : -barRoot.panelSurfaceHeight)
+                                : 0
+                        transform: Translate {
+                            y: barContent.fullscreenOffsetY
+                        }
                         nativeBlurAllowed: false
                         // Keep the spectrum live through the visible slide-out
                         // tail, then release CAVA once the Bar is off-screen.

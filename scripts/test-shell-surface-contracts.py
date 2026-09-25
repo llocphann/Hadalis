@@ -1034,12 +1034,17 @@ def main() -> None:
           and "item: barRoot.fullscreenCovered ? emptyMask : hoverMaskRegion" in bar_runtime
           and "FULLSCREEN-BAR-CONTENT-LIFECYCLE-LOCK" in bar_runtime
           and "readonly property bool spatiallyHidden:" in bar_runtime
-          and "barRoot.fullscreenCovered" in bar_runtime
+          and "readonly property real fullscreenOffsetY:" in bar_runtime
+          and "transform: Translate {" in bar_runtime
+          and "y: barContent.fullscreenOffsetY" in bar_runtime
+          and "? (barRoot.anchors.bottom" in bar_runtime
+          and ": -barRoot.panelSurfaceHeight)" in bar_runtime
+          and "barRoot.fullscreenCovered\n                            || (Config?.options.bar.autoHide.enable" not in bar_runtime
           and "topMargin: barContent.spatiallyHidden ? -barRoot.panelSurfaceHeight : 0" in bar_runtime
           and "anchors.bottomMargin: barContent.spatiallyHidden ? -barRoot.panelSurfaceHeight : 0" in bar_runtime
           and "visible: !barRoot.fullscreenCovered" not in bar_runtime
           and "opacity: barRoot.fullscreenCovered ? 0 : 1" not in bar_runtime,
-          "Horizontal Bar must keep its QML subtree resident and hide fullscreen spatially")
+          "Horizontal Bar fullscreen must snap with Top-layer Screen Edge while auto-hide keeps its slide")
     check("FULLSCREEN-BAR-LIFECYCLE-LOCK (maintainer approved 2026-09-19)" in vertical_bar_runtime
           and "fullscreenCovered" not in vertical_bar_runtime
           and "visible: !fullscreenCovered" not in vertical_bar_runtime

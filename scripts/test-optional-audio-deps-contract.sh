@@ -152,7 +152,6 @@ fi
 media_controller="services/MprisController.qml"
 audio_doc="docs/AUDIO_MEDIA.md"
 packages_doc="docs/PACKAGES.md"
-deps_map="sdata/lib/deps-map.sh"
 audio_bundle="sdata/dist-arch/inir-audio/PKGBUILD"
 deps_bundle="sdata/dist-arch/inir-deps/PKGBUILD"
 meta_pkg="distro/arch/inir-meta/PKGBUILD"
@@ -176,8 +175,8 @@ grep -Eq '^[[:space:]]+mpd-mpris$' "$meta_pkg" \
   || { printf 'FAIL: full Arch meta-package must install mpd-mpris for MPD/rmpc media integration\n' >&2; exit 1; }
 grep -Fq "depends = mpd-mpris" "$meta_srcinfo" \
   || { printf 'FAIL: inir-meta .SRCINFO must include mpd-mpris\n' >&2; exit 1; }
-grep -Fq 'DEPS_AUDIO_MPD_MPRIS="arch:mpd-mpris' "$deps_map" \
-  || { printf 'FAIL: dependency routing omits the Arch mpd-mpris bridge\n' >&2; exit 1; }
+[[ ! -e "sdata/lib/deps-map.sh" ]] \
+  || { printf 'FAIL: retired dependency map returned; installers must use package/array sources of truth\n' >&2; exit 1; }
 
 for marker in \
   'MIGRATION_ID="042-mpd-mpris-bridge"' \

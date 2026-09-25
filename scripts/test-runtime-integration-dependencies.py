@@ -33,7 +33,6 @@ def main() -> None:
     arch_installer = read("sdata/dist-arch/install-deps.sh")
     debian = read("sdata/dist-debian/install-deps.sh")
     fedora = read("sdata/dist-fedora/install-deps.sh")
-    deps_map = read("sdata/lib/deps-map.sh")
     uninstall = read("sdata/lib/uninstall.sh")
     nix = read("nix/package.nix")
     arch = read("distro/arch/inir-shell/PKGBUILD")
@@ -88,7 +87,8 @@ def main() -> None:
     forbid(debian, '[dunstify]="dunst"', "Debian installer")
     forbid(fedora, '[dunstify]="dunst"', "Fedora installer")
     forbid(generic, "dunst, libnotify", "generic installer")
-    forbid(deps_map, "DEPS_MISC_DUNST", "dependency map")
+    if (ROOT / "sdata/lib/deps-map.sh").exists():
+        failures.append("retired sdata/lib/deps-map.sh dependency map returned")
     forbid(uninstall, '["dunstify"]', "uninstall ownership")
 
     # Browser media must not depend on the KDE compatibility bridge. Native

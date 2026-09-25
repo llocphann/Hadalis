@@ -71,8 +71,6 @@ Singleton {
     }
 
     readonly property string playerDesktopEntry: {
-        if (YtMusic.isPlaying)
-            return "mpv ytmusic youtube-music"
         const player = MprisController.activePlayer
         return player?.desktopEntry || player?.identity || "__inir_music_player__"
     }
@@ -215,13 +213,6 @@ Singleton {
         }
     }
 
-    Connections {
-        target: YtMusic
-        function onCurrentVideoIdChanged(): void {
-            if (root.active)
-                sourceRefresh.restart()
-        }
-    }
 
     Timer {
         id: sourceRefresh

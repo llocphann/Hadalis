@@ -29,18 +29,11 @@ Item {
 
     readonly property bool compactMode: Config.options?.controlPanel?.compactMode ?? true
     readonly property MprisPlayer player: MprisController.activePlayer
-    readonly property bool isYtMusicActive: MprisController.isYtMusicActive
-    readonly property bool hasPlayer:
-        (player && player.trackTitle) || (isYtMusicActive && YtMusic.currentVideoId)
-
-    readonly property string effectiveArtUrl: isYtMusicActive && YtMusic.currentThumbnail
-        ? YtMusic.currentThumbnail : (player?.trackArtUrl ?? "")
-    readonly property string effectiveTitle: isYtMusicActive && YtMusic.currentTitle
-        ? YtMusic.currentTitle : (player?.trackTitle ?? "")
-    readonly property string effectiveArtist: isYtMusicActive && YtMusic.currentArtist
-        ? YtMusic.currentArtist : (player?.trackArtist ?? "")
-    readonly property bool effectiveIsPlaying: isYtMusicActive
-        ? YtMusic.isPlaying : (player?.isPlaying ?? false)
+    readonly property bool hasPlayer: !!(player && player.trackTitle)
+    readonly property string effectiveArtUrl: player?.trackArtUrl ?? ""
+    readonly property string effectiveTitle: player?.trackTitle ?? ""
+    readonly property string effectiveArtist: player?.trackArtist ?? ""
+    readonly property bool effectiveIsPlaying: player?.isPlaying ?? false
     readonly property bool presentationActive: GlobalStates.controlPanelOpen && root.visible
 
     property string artDownloadLocation: Directories.coverArt

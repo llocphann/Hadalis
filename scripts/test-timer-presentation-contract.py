@@ -71,23 +71,39 @@ for token in (
 # Timer mode tabs should fit inside the existing corner popup without making
 # the popup resize or letting long labels cross into adjacent pills.
 for token in (
+    "property bool showTabBar: true",
+    "property bool showPinButton: true",
+    "visible: root.showTabBar || root.showPinButton",
     "anchors.horizontalCenter: parent.horizontalCenter",
     "root.compactMode ? 296 : 260",
-    "parent.width - (pinButton.width + 6) * 2",
+    "root.showPinButton",
+    "(pinButton.width + 6) * 2 : 0",
     "pillHeight: root.compactMode ? 28 : 30",
-    "Layout.topMargin: 6",
+    "Layout.topMargin: (root.showTabBar || root.showPinButton) ? 6 : 0",
 ):
     require(widget, token, "Timer mode tabs must remain compact and centered")
 
 for token in (
+    "property real horizontalContentPadding: 10",
+    "property int hoveredIndex: -1",
     "readonly property bool hasIcon:",
     "readonly property bool hasBadge:",
     "clip: true",
+    "Appearance.colors.colPrimaryContainerHover",
+    "Appearance.colors.colLayer1Hover",
+    "onEntered: root.hoveredIndex = tab.index",
     "width: Math.min(implicitWidth, Math.max(0,",
     "tab.width",
     "horizontalAlignment: Text.AlignHCenter",
 ):
     require(pill_tab, token,
             "PillTabBar must constrain centered labels to their own tab slot")
+
+for token in (
+    "Item { Layout.preferredWidth: settingsButton.width }",
+    "id: settingsButton",
+):
+    require(pomodoro, token,
+            "Pomodoro Start/Reset group must stay centered around the full row")
 
 print("ok - timer presentation contract")

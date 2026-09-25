@@ -24,17 +24,33 @@ Bar.StyledPopup {
     property bool entryBridgeHeld: false
     property int selectedMainTab: 0
     property int selectedNotesTab: 0
+    readonly property int selectedTimerTab: Math.max(0, Math.min(
+        2, Persistent.states?.timer?.tab ?? 0))
+    property bool pinnedOpen: false
     // Notes/To-do is a transient child tray of the large Notes & To-do tab.
     // Its animated height participates in ColumnLayout so it takes space from
     // the editor instead of covering note content.
     property bool notesTrayOpen: false
+    property bool timerTrayOpen: false
     // One animated progress drives both reserved layout height and opacity.
     // This avoids the 4px end-of-close snap from separate height/gap states and
     // also makes hover reversals continue smoothly from the current frame.
     property real notesTrayReveal:
         root.selectedMainTab === 0 && root.notesTrayOpen ? 1.0 : 0.0
+    property real timerTrayReveal:
+        root.selectedMainTab === 1 && root.timerTrayOpen ? 1.0 : 0.0
 
     Behavior on notesTrayReveal {
+        enabled: Appearance.animationsEnabled
+        NumberAnimation {
+            duration: Appearance.animation.elementResize.duration
+            easing.type: Appearance.animation.elementResize.type
+            easing.bezierCurve:
+                Appearance.animation.elementResize.bezierCurve
+        }
+    }
+
+    Behavior on timerTrayReveal {
         enabled: Appearance.animationsEnabled
         NumberAnimation {
             duration: Appearance.animation.elementResize.duration
@@ -61,7 +77,7 @@ Bar.StyledPopup {
     attachmentThicknessOverride: root.cornerAttachmentThickness
     hoverActivates: true
     alternativeVisibleCondition: root.editorFocused || root.todoDialogOpen
-        || root.entryBridgeHeld
+        || root.entryBridgeHeld || root.pinnedOpen
     // Pre-arm click-to-focus before the first editor click. OnDemand does not
     // steal focus merely because the hover popup is visible.
     keyboardFocusOnDemand: true
@@ -108,6 +124,17 @@ Bar.StyledPopup {
             notesTrayHideTimer.restart()
     }
 
+    function holdTimerTray(): void {
+        timerTrayHideTimer.stop()
+        if (root.selectedMainTab === 1)
+            root.timerTrayOpen = true
+    }
+
+    function releaseTimerTray(): void {
+        if (root.timerTrayOpen)
+            timerTrayHideTimer.restart()
+    }
+
     onRequestClose: {
         root.leaveEditorMode()
         if (todoViewLoader.item)
@@ -115,12 +142,26 @@ Bar.StyledPopup {
     }
     onSelectedMainTabChanged: {
         root.leaveEditorMode()
-        if (root.selectedMainTab !== 0) {
-            notesTrayHideTimer.stop()
-            root.notesTrayOpen = false
+        notesTrayHideTimer.stop()
+        timerTrayHideTimer.stop()
+        root.notesTrayOpen = false
+        root.timerTrayOpen = false
+
+        // Switching the large tab does not change HoverHandler state, so open
+        // the newly selected child tray explicitly while the pointer is still
+        // inside the shared dock.
+        if (tabDockHover.hovered) {
+            if (root.selectedMainTab === 0)
+                root.holdNotesTray()
+            else
+                root.holdTimerTray()
         }
     }
-    onSelectedNotesTabChanged: root.leaveEditorMode()
+    onSelectedNotesTabChanged: {
+        root.leaveEditorMode()
+        if (tabDockHover.hovered && root.selectedMainTab === 0)
+            root.holdNotesTray()
+    }
     onActiveChanged: {
         if (active) {
             if (!root.editorFocused) {
@@ -162,6 +203,13 @@ Bar.StyledPopup {
         onTriggered: root.notesTrayOpen = false
     }
 
+    property QtObject _timerTrayHideTimer: Timer {
+        id: timerTrayHideTimer
+        interval: 220
+        repeat: false
+        onTriggered: root.timerTrayOpen = false
+    }
+
     Item {
         id: contentRoot
 
@@ -195,7 +243,8 @@ Bar.StyledPopup {
                 // Quick Notes/To-do consumes editor height rather than drawing
                 // over the editor.
                 implicitHeight: mainTabs.height
-                    + 32 * root.notesTrayReveal
+                    + 32 * Math.max(root.notesTrayReveal,
+                        root.timerTrayReveal)
                 z: 20
                 clip: false
 
@@ -207,10 +256,15 @@ Bar.StyledPopup {
                     acceptedDevices:
                         PointerDevice.Mouse | PointerDevice.TouchPad
                     onHoveredChanged: {
-                        if (hovered)
-                            root.holdNotesTray()
-                        else
+                        if (hovered) {
+                            if (root.selectedMainTab === 0)
+                                root.holdNotesTray()
+                            else
+                                root.holdTimerTray()
+                        } else {
                             root.releaseNotesTray()
+                            root.releaseTimerTray()
+                        }
                     }
                 }
 
@@ -219,7 +273,8 @@ Bar.StyledPopup {
                     anchors.top: parent.top
                     anchors.horizontalCenter: parent.horizontalCenter
                     width: Math.min(276, Math.max(
-                        180, contentRoot.width - 8))
+                        180, contentRoot.width
+                            - (popupPinButton.width + 12) * 2))
                     pillHeight: 30
                     currentIndex: root.selectedMainTab
                     tabs: [
@@ -229,11 +284,28 @@ Bar.StyledPopup {
                     onTabSelected: index => root.selectedMainTab = index
                 }
 
+                IconToolbarButton {
+                    id: popupPinButton
+                    anchors.top: parent.top
+                    anchors.right: parent.right
+                    implicitWidth: 30
+                    implicitHeight: 30
+                    text: "push_pin"
+                    toggled: root.pinnedOpen
+                    onClicked: root.pinnedOpen = !root.pinnedOpen
+
+                    StyledToolTip {
+                        text: root.pinnedOpen
+                            ? Translation.tr("Unpin this popup")
+                            : Translation.tr("Pin this popup on the current tab")
+                    }
+                }
+
                 Item {
                     id: notesTraySlot
                     anchors.top: mainTabs.bottom
                     anchors.horizontalCenter: parent.horizontalCenter
-                    width: Math.min(248, Math.max(
+                    width: Math.min(260, Math.max(
                         160, contentRoot.width - 24))
                     // 32px = 4px visual separation + 28px pill. The entire
                     // extent collapses continuously so the editor receives
@@ -256,7 +328,37 @@ Bar.StyledPopup {
                             { icon: "checklist", label: Translation.tr("To-do") }
                         ]
                         onTabSelected: index => root.selectedNotesTab = index
+                    }
+                }
 
+                Item {
+                    id: timerTraySlot
+                    anchors.top: mainTabs.bottom
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    width: Math.min(300, Math.max(
+                        210, contentRoot.width - 24))
+                    height: 32 * root.timerTrayReveal
+                    clip: true
+
+                    PillTabBar {
+                        id: timerTray
+                        anchors {
+                            left: parent.left
+                            right: parent.right
+                            bottom: parent.bottom
+                        }
+                        pillHeight: 28
+                        currentIndex: root.selectedTimerTab
+                        opacity: root.timerTrayReveal
+                        tabs: [
+                            { icon: "search_activity", label: Translation.tr("Pomodoro") },
+                            { icon: "hourglass_empty", label: Translation.tr("Timer") },
+                            { icon: "timer", label: Translation.tr("Stopwatch") }
+                        ]
+                        onTabSelected: index => {
+                            if (Persistent?.states?.timer)
+                                Persistent.states.timer.tab = index
+                        }
                     }
                 }
             }
@@ -297,6 +399,8 @@ Bar.StyledPopup {
                     visible: root.selectedMainTab === 1
                     sourceComponent: PomodoroWidget {
                         compactMode: true
+                        showTabBar: false
+                        showPinButton: false
                     }
                 }
             }

@@ -9,6 +9,8 @@ Item {
     id: root
     property bool compactMode: false
     property bool centerMode: true
+    property bool showTabBar: true
+    property bool showPinButton: true
     property int currentTab: Persistent.states?.timer?.tab ?? 0
     property var tabButtonList: [
         {"name": Translation.tr("Pomodoro"), "icon": "search_activity"},
@@ -64,16 +66,21 @@ Item {
         // Tab bar row with pin button
         Item {
             Layout.fillWidth: true
-            implicitHeight: tabBar.implicitHeight
+            visible: root.showTabBar || root.showPinButton
+            implicitHeight: visible
+                ? Math.max(tabBar.implicitHeight, pinButton.implicitHeight)
+                : 0
 
             PillTabBar {
                 id: tabBar
+                visible: root.showTabBar
                 anchors.horizontalCenter: parent.horizontalCenter
                 // Compact corner mode gets enough width for Pomodoro/Timer/
                 // Stopwatch without changing the popup's outer dimensions.
                 width: Math.max(root.compactMode ? 210 : 150, Math.min(
                     root.compactMode ? 296 : 260,
-                    parent.width - (pinButton.width + 6) * 2))
+                    parent.width - (root.showPinButton
+                        ? (pinButton.width + 6) * 2 : 0)))
                 pillHeight: root.compactMode ? 28 : 30
                 currentIndex: root.currentTab
                 tabs: root.tabButtonList.map(item => ({
@@ -95,6 +102,7 @@ Item {
 
             IconToolbarButton {
                 id: pinButton
+                visible: root.showPinButton
                 anchors.right: parent.right
                 anchors.verticalCenter: tabBar.verticalCenter
                 text: "push_pin"
@@ -112,7 +120,7 @@ Item {
         }
 
         StackLayout {
-            Layout.topMargin: 6
+            Layout.topMargin: (root.showTabBar || root.showPinButton) ? 6 : 0
             Layout.fillWidth: true
             Layout.fillHeight: true
             clip: true

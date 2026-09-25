@@ -12,6 +12,9 @@ Item {
     property var tabs: []
     property int currentIndex: 0
     property int pillHeight: 36
+    property real horizontalContentPadding: 10
+    property real iconTextSpacing: 5
+    property int hoveredIndex: -1
     signal tabSelected(int index)
 
     implicitHeight: root.pillHeight
@@ -27,7 +30,16 @@ Item {
         height: parent.height
         x: width * Math.max(0, Math.min(root.currentIndex, root.tabs.length - 1))
         radius: height / 2
-        color: Appearance.colors.colPrimaryContainer
+        color: root.hoveredIndex === root.currentIndex
+            ? Appearance.colors.colPrimaryContainerHover
+            : Appearance.colors.colPrimaryContainer
+
+        Behavior on color {
+            enabled: Appearance.animationsEnabled
+            ColorAnimation {
+                duration: Appearance.animation.elementMoveFast.duration
+            }
+        }
 
         Behavior on x {
             enabled: Appearance.animationsEnabled
@@ -57,13 +69,29 @@ Item {
                 height: root.height
                 clip: true
 
+                Rectangle {
+                    anchors.fill: parent
+                    radius: height / 2
+                    visible: !tab.selected
+                    color: root.hoveredIndex === tab.index
+                        ? Appearance.colors.colLayer1Hover
+                        : "transparent"
+
+                    Behavior on color {
+                        enabled: Appearance.animationsEnabled
+                        ColorAnimation {
+                            duration: Appearance.animation.elementMoveFast.duration
+                        }
+                    }
+                }
+
                 // Center icon + label as one visual unit. Optional badges are
                 // anchored independently so their width can never push the tab
                 // title off-center.
                 Row {
                     id: centeredTabLabel
                     anchors.centerIn: parent
-                    spacing: 5
+                    spacing: root.iconTextSpacing
 
                     MaterialSymbol {
                         visible: tab.hasIcon
@@ -82,8 +110,9 @@ Item {
                         // while preserving the centered icon+text unit.
                         width: Math.min(implicitWidth, Math.max(0,
                             tab.width
+                                - root.horizontalContentPadding * 2
                                 - (tab.hasIcon ? 22 : 0)
-                                - (tab.hasBadge ? 34 : 12)))
+                                - (tab.hasBadge ? 24 : 0)))
                         text: tab.modelData.label ?? ""
                         horizontalAlignment: Text.AlignHCenter
                         elide: Text.ElideRight
@@ -122,6 +151,11 @@ Item {
                     anchors.fill: parent
                     hoverEnabled: true
                     cursorShape: Qt.PointingHandCursor
+                    onEntered: root.hoveredIndex = tab.index
+                    onExited: {
+                        if (root.hoveredIndex === tab.index)
+                            root.hoveredIndex = -1
+                    }
                     onClicked: root.tabSelected(tab.index)
                 }
             }

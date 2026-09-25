@@ -158,7 +158,11 @@ require "$bar_surface" 'barContent.anchors.bottomMargin > -barRoot.panelSurfaceH
 require "$bar_surface" 'barContent.anchors.topMargin > -barRoot.panelSurfaceHeight + 1' 'Top Bar Cava must remain live through its visible exit slide'
 require "$bar_taskbar" 'property bool presentationActive: true' 'Bar taskbar must expose a retained-surface presentation lifecycle gate'
 require "$bar_taskbar" 'if (!root.presentationActive)' 'Hidden Bar taskbar must defer model rebuild scheduling'
-require "$bar_taskbar" 'onPresentationActiveChanged:' 'Bar taskbar must rebuild current state when presentation resumes'
+require "$bar_taskbar" 'onPresentationActiveChanged: root.syncSortingDemand()' 'Bar taskbar sorting demand must follow presentation changes'
+require "$bar_taskbar" 'root.presentationActive && !root._sortingConsumerAcquired' 'Visible Bar taskbar must acquire shared sorting demand'
+require "$bar_taskbar" '!root.presentationActive && root._sortingConsumerAcquired' 'Hidden Bar taskbar must release shared sorting demand'
+require "$bar_taskbar" 'CompositorService.releaseSortingConsumer()' 'Hidden/destroyed Bar taskbar must release its sorting lease'
+require "$bar_taskbar" 'CompositorService.sortedToplevels?.length' 'Bar taskbar reveal must retain its previous model while a cold sorted snapshot warms'
 taskbar_connection_gates="$(grep -Fc 'enabled: root.presentationActive' "$bar_taskbar")"
 if (( taskbar_connection_gates < 4 )); then
     fail "Hidden Bar taskbar must suspend all four heavy model-update Connections, found $taskbar_connection_gates gates"

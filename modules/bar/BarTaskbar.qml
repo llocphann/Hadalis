@@ -143,12 +143,24 @@ Item {
         rebuildTimer.restart()
     }
 
-    onPresentationActiveChanged: {
-        if (root.presentationActive)
-            root.rebuildDockItems()
-        else
+    function syncSortingDemand(): void {
+        if (root.presentationActive && !root._sortingConsumerAcquired) {
+            CompositorService.acquireSortingConsumer()
+            root._sortingConsumerAcquired = true
+            // If another consumer kept the shared snapshot warm, use it now.
+            // Otherwise retain the previous local model until the scheduled
+            // CompositorService refresh emits onSortedToplevelsChanged.
+            if (!CompositorService.isNiri
+                    || (CompositorService.sortedToplevels?.length ?? 0) > 0)
+                root.rebuildDockItems()
+        } else if (!root.presentationActive && root._sortingConsumerAcquired) {
             rebuildTimer.stop()
+            CompositorService.releaseSortingConsumer()
+            root._sortingConsumerAcquired = false
+        }
     }
+
+    onPresentationActiveChanged: root.syncSortingDemand()
 
     function _toplevelLiveKey(toplevel: var): string {
         if (!toplevel) return ""
@@ -383,14 +395,12 @@ Item {
         enabled: root.presentationActive
         function onAppIdentityRulesChanged() { root.rebuildDockItems() }
     }
-    Component.onCompleted: {
-        CompositorService.acquireSortingConsumer()
-        _sortingConsumerAcquired = true
-        rebuildDockItems()
-    }
+    Component.onCompleted: root.syncSortingDemand()
     Component.onDestruction: {
-        if (_sortingConsumerAcquired)
+        if (_sortingConsumerAcquired) {
             CompositorService.releaseSortingConsumer()
+            _sortingConsumerAcquired = false
+        }
     }
 
     // ─── Hover preview state ────────────────────────────────────────

@@ -138,6 +138,10 @@ Scope {
     property bool _sidebarShown: false
     property bool _presentationRequested: false
     property int _presentationReadyFrames: 0
+    property int _presentationPollTicks: 0
+    // 300 * 16 ms ~= 4.8 s. Normal opens finish in 1-2 frames; this only
+    // bounds broken/blocked loader paths that would otherwise wake forever.
+    readonly property int _presentationPollMaxTicks: 300
     property bool _presentationCold: false
     property bool _renderUpdatesNeeded: true
     property bool _contentResident: false
@@ -386,6 +390,13 @@ Scope {
             GlobalStates.sidebarLeftExpanded = false
     }
 
+    function rearmPresentationPolling(): void {
+        if (!root._presentationRequested || !root.presentationOpen)
+            return
+        root._presentationPollTicks = 0
+        presentationTimer.restart()
+    }
+
     function requestPresentation(): void {
         // The compositor must receive one closed frame before the open state.
         // Warm content needs one frame; a cold map keeps the historical two
@@ -395,18 +406,23 @@ Scope {
         root._contentResident = true
         root._presentationRequested = true
         root._presentationReadyFrames = 0
-        presentationTimer.restart()
+        root.rearmPresentationPolling()
     }
 
     function tryPresent(): void {
-        if (!root._presentationRequested || !root.presentationOpen)
+        if (!root._presentationRequested || !root.presentationOpen) {
+            presentationTimer.stop()
             return
-        if (sidebarRoot.height <= 0 || sidebarContentLoader.height <= 0)
+        }
+        if (sidebarRoot.height <= 0 || sidebarContentLoader.height <= 0
+                || sidebarContentLoader.status !== Loader.Ready) {
+            root._presentationPollTicks++
+            if (root._presentationPollTicks >= root._presentationPollMaxTicks)
+                presentationTimer.stop()
             return
+        }
         if (!sidebarContentLoader._everMounted)
             sidebarContentLoader._everMounted = true
-        if (sidebarContentLoader.status !== Loader.Ready)
-            return
         root._presentationReadyFrames++
         const requiredFrames = root._presentationCold ? 2 : 1
         if (root._presentationReadyFrames < requiredFrames)
@@ -795,6 +811,11 @@ Scope {
                         "on", root.edge)
                     ShellEditSession.reportSurfaceFailure(root.roleId,
                         "Sidebar content is temporarily unavailable")
+                    // Keep the request pending, but do not spin at 62.5 Hz while
+                    // a failed Loader has no chance of becoming ready.
+                    presentationTimer.stop()
+                } else {
+                    root.rearmPresentationPolling()
                 }
                 root.tryPresent()
                 Qt.callLater(root.reportRuntime)
@@ -802,6 +823,7 @@ Scope {
             onActiveChanged: Qt.callLater(root.reportRuntime)
             onWidthChanged: Qt.callLater(root.reportRuntime)
             onHeightChanged: {
+                root.rearmPresentationPolling()
                 root.tryPresent()
                 Qt.callLater(root.reportRuntime)
             }

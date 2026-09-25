@@ -5,6 +5,8 @@ repo_root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
 service="$repo_root/services/MaterialThemeLoader.qml"
 appearance="$repo_root/modules/common/Appearance.qml"
 tools_view="$repo_root/modules/sidebarLeft/ToolsView.qml"
+control_wallpaper="$repo_root/modules/controlPanel/WallpaperSection.qml"
+waffle_widgets="$repo_root/modules/waffle/widgets/WidgetsContent.qml"
 
 fail() {
     printf 'material theme lifecycle guard failed: %s\n' "$1" >&2
@@ -49,6 +51,16 @@ grep -Fq -- 'onToggledByUser: checked => MaterialThemeLoader.setDarkMode(checked
 if grep -Fq -- 'Config.setNestedValue("appearance.customTheme.darkmode"' "$tools_view"; then
     fail 'ToolsView must not bypass MaterialThemeLoader with a direct darkmode config write'
 fi
+
+for palette_surface in "$control_wallpaper" "$waffle_widgets"; do
+    grep -Fq -- 'Config.setNestedValue("appearance.palette.type", newValue)' "$palette_surface" \
+        || fail "$palette_surface must persist palette selection"
+    grep -Fq -- 'if (!ThemeService.isAutoTheme)' "$palette_surface" \
+        || fail "$palette_surface must preserve immediate manual-preset variant application"
+    if grep -Fq -- 'wallpaperSwitchScriptPath} --noswitch --type ${newValue}' "$palette_surface"; then
+        fail "$palette_surface must not spawn a duplicate auto-theme regeneration"
+    fi
+done
 
 start_guard_count="$(grep -Fc -- 'property bool startObserved: false' "$service")"
 if (( start_guard_count < 3 )); then

@@ -158,13 +158,14 @@ PanelSurface {
                 currentValue: Config.options?.appearance?.palette?.type ?? "auto"
                 onSelected: newValue => {
                     Config.setNestedValue("appearance.palette.type", newValue)
-                    if (ThemeService.isAutoTheme) {
-                        Quickshell.execDetached(["/usr/bin/bash", "-c", `${Directories.wallpaperSwitchScriptPath} --noswitch --type ${newValue}`]);
-                    } else {
+                    if (!ThemeService.isAutoTheme) {
                         const hex = MaterialThemeLoader.colorToHex(Appearance.m3colors.m3primary)
                         const mode = Appearance.m3colors.darkmode ? "dark" : "light"
                         MaterialThemeLoader.applySchemeVariant(hex, newValue, mode)
                     }
+                    // Auto theme is regenerated once by ThemeService's config
+                    // debounce; spawning switchwall.sh here would duplicate the
+                    // full palette/external-app generation wave.
                 }
                 options: [
                     { "value": "auto", "displayName": Translation.tr("Auto") },

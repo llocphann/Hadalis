@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import re
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -30,6 +31,8 @@ require(registry, 'Config.setNestedValue("bar.cornerStyle", 0)',
         "legacy Bar cornerStyle is no longer normalized to Hug")
 
 # Canonical Bar Settings owns the Screen Edge controls required by the v1.0 gate.
+# Normalize whitespace so formatting-only line wraps do not invalidate behavior.
+bar_contract = re.sub(r"\s+", " ", bar)
 for needle in [
     'title: Translation.tr("Screen Edge")',
     'text: Translation.tr("Screen edge width (px)")',
@@ -39,7 +42,7 @@ for needle in [
     '"appearance.screenEdge.physicalShadow.size"',
     '"appearance.screenEdge.physicalShadow.opacity"',
 ]:
-    require(bar, needle, "public Bar Settings lost a Screen Edge control")
+    require(bar_contract, needle, "public Bar Settings lost a Screen Edge control")
 
 # Search must be useful before lazy page materialization and must not advertise
 # retired Float/Rectangle corner-style controls that no longer exist in BarConfig.

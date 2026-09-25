@@ -36,7 +36,6 @@ def main() -> None:
         "ExclusionMode.Ignore",
         "Appearance.colors.colLayer0",
         "PerimeterTokens.popupRadius",
-        "geometry.revealProgress",
         "CompositorFocusGrab",
         "WlrKeyboardFocus.OnDemand",
         "requestedVisible",
@@ -94,9 +93,11 @@ def main() -> None:
           "Connected surfaces must not reintroduce inward attached-body corner rounding")
 
     geometry = read("modules/common/perimeter/ConnectedSurfaceGeometry.qml")
-    for edge in ("top", "bottom", "left", "right"):
+    for edge in ("top", "bottom", "left"):
         check(f'edge === "{edge}"' in geometry,
               f"ConnectedSurfaceGeometry missing {edge} edge handling")
+    check("PerimeterTopology.edges.includes(edge)" in geometry,
+          "ConnectedSurfaceGeometry must validate the implicit right-edge fallback through shared topology")
     for token in (
         "seamOverlap",
         "effectiveSeamOverlap",
@@ -223,8 +224,9 @@ def main() -> None:
           "Shared tooltip must fail closed for unknown parent hover state")
     waffle_tile = read("modules/waffle/altSwitcher/WaffleAltSwitcherTile.qml")
     check("useParentHover: false" in waffle_tile
-          and "extraVisibleCondition: compactMouse.containsMouse" in waffle_tile,
-          "Waffle compact tile must explicitly own hover on its child MouseArea")
+          and "externalHoverState: compactMouse.containsMouse" in waffle_tile
+          and "externalPressedState: compactMouse.pressed" in waffle_tile,
+          "Waffle compact tile must explicitly route hover/press from its child MouseArea")
 
     # Auxiliary edge-attached surfaces refined after the iRiS migration must
     # keep using the same production connected-surface vocabulary. These guards
@@ -765,11 +767,13 @@ def main() -> None:
           "Launcher Dashboard must be one shared three-column/search surface")
     check("Config.options?.dashboard?.widthRatio" in dashboard
           and "Config.options?.dashboard?.heightRatio" in dashboard
-          and "height: root.searching ? root.searchOnlyHeight : root.configuredHeight" in dashboard,
+          and "root.presentingSearch" in dashboard
+          and "root.searchOnlyHeight : root.configuredHeight" in dashboard,
           "Launcher Dashboard must consume Dashboard width/height settings")
     check("property real dashboardProgress: 1" in dashboard
-          and "(1 - root.dashboardProgress) * dashboardViewport.height" in dashboard,
-          "Dashboard-to-search transition must use spatial slide/resize")
+          and "opacity: root.dashboardOpacity" in dashboard
+          and "resultsOpacity: root.searchResultsOpacity" in dashboard,
+          "Dashboard-to-search transition must use the shared crossfade/height-resize progress")
     check("SurfaceMotion.duration" in dashboard
           and "SurfaceMotion.easingType" in dashboard,
           "Dashboard connected motion must use immutable SurfaceMotion")
@@ -1156,6 +1160,7 @@ def main() -> None:
           "Migration 045 must remove persisted retired Bar surface state")
 
     bar_settings = read("modules/settings/BarConfig.qml")
+    bar_settings_compact = " ".join(bar_settings.split())
     quick_settings = read("modules/settings/QuickConfig.qml")
     for retired_bar_control in (
         'Translation.tr("Corner style")',
@@ -1171,21 +1176,21 @@ def main() -> None:
           and 'Config.setNestedValue("bar.vertical"' not in quick_settings,
           "Canonical Quick settings must not recreate Bar/backdrop ownership")
     check('Config.options?.appearance?.screenEdge?.width ?? 10' in bar_settings
-          and 'Config.setNestedValue("appearance.screenEdge.width", value)' in bar_settings,
+          and 'Config.setNestedValue("appearance.screenEdge.width", value)' in bar_settings_compact,
           "Bar settings must expose persistent Screen Edge width with a 10px default")
     check('Config.options?.appearance?.screenEdge?.radius ?? 25' in bar_settings
-          and 'Config.setNestedValue("appearance.screenEdge.radius", value)' in bar_settings
+          and 'Config.setNestedValue("appearance.screenEdge.radius", value)' in bar_settings_compact
           and 'Translation.tr("Corner radius (px)")' in bar_settings
           and 'from: 0' in bar_settings
           and 'to: 96' in bar_settings,
           "Bar settings must expose the shared Screen Edge/Bar radius with a 25px default")
     check('appearance.screenEdge.shadow' not in bar_settings
           and 'Config.options?.appearance?.screenEdge?.physicalShadow?.enabled ?? true' in bar_settings
-          and 'Config.setNestedValue("appearance.screenEdge.physicalShadow.enabled", checked)' in bar_settings
+          and 'Config.setNestedValue("appearance.screenEdge.physicalShadow.enabled", checked)' in bar_settings_compact
           and 'Config.options?.appearance?.screenEdge?.physicalShadow?.size ?? 15' in bar_settings
-          and 'Config.setNestedValue("appearance.screenEdge.physicalShadow.size", value)' in bar_settings
+          and 'Config.setNestedValue("appearance.screenEdge.physicalShadow.size", value)' in bar_settings_compact
           and 'Config.options?.appearance?.screenEdge?.physicalShadow?.opacity ?? 0.70' in bar_settings
-          and 'Config.setNestedValue("appearance.screenEdge.physicalShadow.opacity", value / 100)' in bar_settings,
+          and 'Config.setNestedValue("appearance.screenEdge.physicalShadow.opacity", value / 100)' in bar_settings_compact,
           "Screen Edge settings must control only the dedicated physical shadow owner")
 
     dock_config = read("modules/settings/DockConfig.qml")

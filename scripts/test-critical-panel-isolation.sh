@@ -30,10 +30,12 @@ fi
 if grep -Fq '../../perimeter/PerimeterRuntime.qml' "$critical"; then
     fail 'critical root reintroduced the retired PerimeterRuntime source'
 fi
+if grep -Fq '../../sidebar/SidebarEdgeConnectors.qml' "$critical"; then
+    fail 'critical root reintroduced the retired standalone Sidebar edge bridge'
+fi
 
 for source_path in \
     '../../screenCorners/ScreenEdges.qml' \
-    '../../sidebar/SidebarEdgeConnectors.qml' \
     '../../background/Background.qml' \
     '../../bar/Bar.qml' \
     '../../verticalBar/VerticalBar.qml' \

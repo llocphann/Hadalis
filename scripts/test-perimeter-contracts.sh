@@ -148,7 +148,7 @@ for token in \
     'id: dockIrisSurface' \
     'edge: root.position' \
     'ownerThickness: dockRoot.screenEdgeThickness' \
-    'dockMouseArea.x + dockBackground.x + dockVisualBackground.x' \
+    'dockMouseArea.x + dockBackground.x + dockConnectedBody.x' \
     'screenEdge?.physicalShadow?.enabled ?? true' \
     'screenEdge?.physicalShadow?.size ?? 15' \
     'screenEdge?.physicalShadow?.opacity ?? 0.70' \

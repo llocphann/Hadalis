@@ -78,6 +78,7 @@ keyboard_indicators="$repo_root/services/KeyboardIndicators.qml"
 sidebar_anime="$repo_root/modules/sidebarLeft/Anime.qml"
 sidebar_anime_schedule="$repo_root/modules/sidebarLeft/animeSchedule/AnimeScheduleView.qml"
 sidebar_wallhaven="$repo_root/modules/sidebarLeft/WallhavenView.qml"
+wallhaven_service="$repo_root/services/Wallhaven.qml"
 sidebar_ai="$repo_root/modules/sidebarLeft/AiChat.qml"
 sidebar_news="$repo_root/modules/sidebarLeft/news/NewsView.qml"
 sidebar_left_content="$repo_root/modules/sidebarLeft/SidebarLeftContent.qml"
@@ -309,6 +310,12 @@ require "$sidebar_anime_schedule" 'visible: root.presentationActive && AnimeServ
 require "$sidebar_anime_schedule" 'loading: root.presentationActive' 'Hidden Anime Schedule must stop its loading gear'
 require "$sidebar_anime_schedule" 'running: root.presentationActive && AnimeService.loading' 'Hidden Anime Schedule must stop refresh icon rotation'
 require "$sidebar_wallhaven" 'layer.enabled: root.visible && GlobalStates.sidebarLeftOpen' 'Wallhaven list mask must sleep with the sidebar'
+require "$wallhaven_service" 'running: root.pendingSearch !== null' 'Wallhaven search scheduler must sleep when no search is pending'
+require "$wallhaven_service" 'running: root._tagCountQueue && root._tagCountQueue.length > 0' 'Wallhaven tag-count scheduler must sleep with an empty queue'
+require "$wallhaven_service" 'running: root.tagQueue && root.tagQueue.length > 0' 'Wallhaven tag-detail scheduler must sleep with an empty queue'
+reject "$wallhaven_service" 'running: root._active || (root.pendingSearch !== null)' 'Opening Sidebar Left must not start idle Wallhaven search polling'
+reject "$wallhaven_service" 'running: root._active || (root._tagCountQueue' 'Opening Sidebar Left must not start idle Wallhaven tag-count polling'
+reject "$wallhaven_service" 'running: root._active || ((root.tagQueue' 'Opening Sidebar Left must not start idle Wallhaven tag-detail polling'
 require "$sidebar_ai" 'layer.enabled: root.visible && GlobalStates.sidebarLeftOpen' 'AI history mask must sleep with the sidebar'
 require "$sidebar_news" 'property bool presentationActive: true' 'News view must expose a host lifecycle gate'
 require "$sidebar_news" 'visible: root.presentationActive && NewsService.loading && NewsService.articles.length === 0' 'Hidden News tab must stop LoadingText animations'

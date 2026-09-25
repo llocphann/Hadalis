@@ -95,7 +95,9 @@ QtObject {
     property Timer pendingSearchTimer: Timer {
         interval: 300
         repeat: true
-        running: root._active || (root.pendingSearch !== null)
+        // Queue assignment is reactive; do not wake every 300 ms merely
+        // because Sidebar Left is open when there is no search to service.
+        running: root.pendingSearch !== null
         onTriggered: {
             root.nowMs = Date.now()
             if (!root.pendingSearch)
@@ -232,7 +234,9 @@ QtObject {
     property Timer _tagCountTimer: Timer {
         interval: 350
         repeat: true
-        running: root._active || (root._tagCountQueue && root._tagCountQueue.length > 0)
+        // The queue is reassigned on enqueue/dequeue, so it can drive the
+        // worker timer directly without an idle Sidebar heartbeat.
+        running: root._tagCountQueue && root._tagCountQueue.length > 0
         onTriggered: root._fetchNextTagCount()
     }
 
@@ -568,7 +572,7 @@ QtObject {
     property Timer tagQueueTimer: Timer {
         interval: 350
         repeat: true
-        running: root._active || ((root.tagQueue && root.tagQueue.length > 0))
+        running: root.tagQueue && root.tagQueue.length > 0
         onTriggered: root._fetchNextTag()
     }
 

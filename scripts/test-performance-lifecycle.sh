@@ -120,6 +120,7 @@ bar_media_popup="$repo_root/modules/mediaControls/BarMediaPopup.qml"
 player_base="$repo_root/modules/mediaControls/components/PlayerBase.qml"
 player_lyrics="$repo_root/modules/mediaControls/components/PlayerLyrics.qml"
 player_control="$repo_root/modules/mediaControls/PlayerControl.qml"
+media_cross_slide="$repo_root/modules/common/widgets/MediaCrossSlideImage.qml"
 equalizer_panel="$repo_root/modules/mediaControls/EqualizerPanel.qml"
 media_presets=(
     "$repo_root/modules/mediaControls/presets/FullPlayer.qml"
@@ -370,6 +371,8 @@ require "$player_control" 'property bool positionUpdatesActive: true' 'PlayerCon
 require "$player_control" 'running: root.positionUpdatesActive' 'PlayerControl position timer must honor the host lifecycle gate'
 require "$player_control" 'animateWave: root.positionUpdatesActive && root.effectiveIsPlaying' 'PlayerControl wavy progress must honor the host lifecycle gate'
 require "$player_control" 'onPositionUpdatesActiveChanged:' 'PlayerControl must refresh position immediately when lifecycle updates resume'
+require "$player_control" 'layer.enabled: root.visible' 'Hidden retained PlayerControl must release its rounded-mask FBO'
+require "$media_cross_slide" 'layer.enabled: root.visible' 'Hidden retained media artwork must release its rounded-mask FBO'
 require "$equalizer_panel" 'if (root.active && analyzerCanvas.visible)' 'Equalizer Canvas paint requests must sleep outside active presentation'
 require "$equalizer_panel" 'running: root.active && analyzerCanvas.visible' 'Equalizer live graph must keep one 33 ms presentation cadence'
 reject "$equalizer_panel" 'target: eqCava' 'Equalizer must not schedule a second Canvas paint stream from CAVA sample signals'

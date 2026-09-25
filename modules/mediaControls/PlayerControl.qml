@@ -273,7 +273,9 @@ Item {
         }
         clip: true
 
-        layer.enabled: true
+        // PlayerControl is frequently retained by Dashboard/sidebar hosts.
+        // Drop the rounded-mask FBO whenever the player is not presented.
+        layer.enabled: root.visible
         layer.effect: GE.OpacityMask {
             maskSource: Rectangle { width: card.width; height: card.height; radius: card.radius }
         }

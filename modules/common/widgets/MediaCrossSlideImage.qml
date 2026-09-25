@@ -54,7 +54,9 @@ Rectangle {
     color: "transparent"
     clip: true
 
-    layer.enabled: true
+    // Artwork surfaces are retained across track changes and by their hosts.
+    // Keep cached image state, but release the rounded-mask FBO while hidden.
+    layer.enabled: root.visible
     layer.effect: GE.OpacityMask {
         maskSource: Rectangle {
             width: root.width

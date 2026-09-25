@@ -107,7 +107,9 @@ StyledOverlayWidget {
             acceptedDevices: PointerDevice.Mouse | PointerDevice.TouchPad
         }
 
-        layer.enabled: true
+        // Preserve pinned presentation, but release the rounded-mask FBO
+        // when this retained overlay widget is neither open nor pinned.
+        layer.enabled: root.visible
         layer.effect: OpacityMask {
             maskSource: Rectangle {
                 width: bg.width
@@ -124,7 +126,7 @@ StyledOverlayWidget {
             sourceSize.width: width
             sourceSize.height: height
 
-            playing: visible && status === Image.Ready
+            playing: root.visible && status === Image.Ready
             asynchronous: true
             source: ""
             onStatusChanged: {

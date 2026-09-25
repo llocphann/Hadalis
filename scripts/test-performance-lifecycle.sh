@@ -107,6 +107,7 @@ directory_icon="$repo_root/modules/common/widgets/DirectoryIcon.qml"
 sysmon_widget="$repo_root/modules/sidebarRight/sysmon/SysMonWidget.qml"
 graph_widget="$repo_root/modules/common/widgets/Graph.qml"
 overlay_resources="$repo_root/modules/ii/overlay/resources/Resources.qml"
+overlay_floating_image="$repo_root/modules/ii/overlay/floatingImage/FloatingImage.qml"
 voice_search="$repo_root/services/VoiceSearch.qml"
 gtk_theme="$repo_root/scripts/colors/apply-gtk-theme.sh"
 terminal_theme="$repo_root/scripts/colors/modules/10-terminals.sh"
@@ -432,6 +433,8 @@ require "$graph_widget" 'onValuesChanged: root._queuePaint()' 'Hidden retained G
 require "$graph_widget" 'onVisibleChanged: root._queuePaint()' 'Graph canvases must repaint the latest history when presented again'
 require "$graph_widget" 'if (root.visible)' 'Graph repaint scheduling must be visibility-gated'
 require "$overlay_resources" 'layer.enabled: root.visible' 'Hidden Resources overlay must release its rounded graph mask FBO'
+require "$overlay_floating_image" 'layer.enabled: root.visible' 'Hidden unpinned Floating Image must release its rounded-mask FBO'
+require "$overlay_floating_image" 'playing: root.visible && status === Image.Ready' 'Hidden unpinned Floating Image must stop animated image playback'
 require "$voice_search" 'root._startLocalProbe()' 'VoiceSearch backend refresh must use the centralized probe lifecycle'
 require "$voice_search" 'command -v whisper-cli' 'VoiceSearch normal local-backend probe must avoid Python interpreter startup'
 require "$voice_search" 'if (localProbe.usePythonFallback)' 'VoiceSearch must retain Python probe compatibility for edge-case paths'

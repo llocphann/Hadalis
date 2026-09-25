@@ -193,6 +193,8 @@ for marker in \
   'function _mpdPlaybackStreamPresent(): bool' \
   'function _maybeStartMpdMprisBridge(): void' \
   'id: _mpdMprisProbeProc' \
+  'command: root._mpdBridgeAvailable > 0' \
+  '? ["pgrep", "-x", "mpd"]' \
   'command -v mpd-mpris >/dev/null 2>&1 || exit 2; pgrep -x mpd >/dev/null 2>&1 || exit 1' \
   '["/usr/bin/systemctl", "--user", "start", "mpd-mpris.service"]' \
   'readonly property string _mpdPreferredMprisName:' \
@@ -202,6 +204,11 @@ for marker in \
   grep -Fq "$marker" "$media_controller" \
     || { printf 'FAIL: MprisController MPD bridge contract missing: %s\n' "$marker" >&2; exit 1; }
 done
+
+grep -Fq 'interval: 30000' "$media_controller" \
+  || { printf 'FAIL: MPD bridge retry cadence drifted\n' >&2; exit 1; }
+grep -Fq 'Avoid respawning bash + command -v on every 30-second retry.' "$media_controller" \
+  || { printf 'FAIL: MPD bridge retry must retain the direct-pgrep performance contract\n' >&2; exit 1; }
 
 grep -Fq '### MPD and rmpc' "$audio_doc" \
   || { printf 'FAIL: audio/media docs omit MPD/rmpc bridge behavior\n' >&2; exit 1; }

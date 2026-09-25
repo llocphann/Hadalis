@@ -225,8 +225,13 @@ Singleton {
 	Process {
 		id: _mpdMprisProbeProc
 		running: false
-		command: ["/usr/bin/bash", "-c",
-			"command -v mpd-mpris >/dev/null 2>&1 || exit 2; pgrep -x mpd >/dev/null 2>&1 || exit 1"]
+		// Binary discovery is needed only once. Once mpd-mpris is known to be
+		// installed, retries only need to ask whether the local MPD process exists.
+		// Avoid respawning bash + command -v on every 30-second retry.
+		command: root._mpdBridgeAvailable > 0
+			? ["pgrep", "-x", "mpd"]
+			: ["/usr/bin/bash", "-c",
+				"command -v mpd-mpris >/dev/null 2>&1 || exit 2; pgrep -x mpd >/dev/null 2>&1 || exit 1"]
 		onExited: (exitCode, _exitStatus) => {
 			if (exitCode === 2) {
 				root._mpdBridgeAvailable = 0

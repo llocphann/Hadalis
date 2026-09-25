@@ -206,7 +206,9 @@ Singleton {
                 const parts = firstLine.split(",").map(s => s.trim());
                 const rawUsage = parseInt(parts[0]);
                 const rawTemp = parseInt(parts[1]);
-                root.gpuUsage = !isNaN(rawUsage) ? root.clampPercentToUnit(rawUsage / 100) : 0;
+                // Empty/partial nvidia-smi output is an unknown sample, not 0%.
+                if (!isNaN(rawUsage))
+                    root.gpuUsage = root.clampPercentToUnit(rawUsage / 100);
                 if (!isNaN(rawTemp))
                     root.gpuTemp = rawTemp;
             }
@@ -230,7 +232,10 @@ Singleton {
                     if (!isNaN(v) && v > maxBusy)
                         maxBusy = v;
                 }
-                root.gpuUsage = maxBusy < 0 ? 0 : root.clampPercentToUnit(maxBusy / 100);
+                // timeout/partial JSON can yield no busy sample. Preserve the
+                // previous good value rather than fabricating a 0% reading.
+                if (maxBusy >= 0)
+                    root.gpuUsage = root.clampPercentToUnit(maxBusy / 100);
             }
         }
     }

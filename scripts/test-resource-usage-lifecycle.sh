@@ -72,6 +72,10 @@ assert_not_contains 'cpuUsage = totalDiff > 0 ?' "$poll_block" 'stale CPU sample
 assert_contains 'if (!isNaN(cpuTempRaw))' "$poll_block" 'transient CPU hwmon reads must preserve the last good temperature'
 assert_contains 'if (!isNaN(gpuTempRaw))' "$poll_block" 'transient GPU hwmon reads must preserve the last good temperature'
 assert_not_contains 'if (isNaN(gpuBusyPercent)) {' "$poll_block" 'transient GPU sysfs reads must not collapse usage to zero'
+assert_contains 'if (!isNaN(rawUsage))' "$(cat "$service")" 'transient nvidia-smi reads must preserve the last good GPU usage sample'
+assert_not_contains 'root.gpuUsage = !isNaN(rawUsage) ?' "$(cat "$service")" 'invalid nvidia-smi output must not collapse GPU usage to zero'
+assert_contains 'if (maxBusy >= 0)' "$(cat "$service")" 'transient intel_gpu_top reads must preserve the last good GPU usage sample'
+assert_not_contains 'root.gpuUsage = maxBusy < 0 ? 0' "$(cat "$service")" 'invalid intel_gpu_top output must not collapse GPU usage to zero'
 assert_contains 'function _appendHistorySnapshot(history, value): var {' "$(cat "$service")" 'Resource history updates must build bounded snapshots off-property'
 assert_contains 'const next = [...history, value]' "$(cat "$service")" 'Resource history snapshots must preserve append order'
 history_property_shifts="$(grep -Ec '(cpuUsageHistory|gpuUsageHistory|gpuTempHistory|memoryUsageHistory|swapUsageHistory)\.shift\(' "$service" || true)"

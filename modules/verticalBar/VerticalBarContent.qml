@@ -209,7 +209,7 @@ Item { // Bar content region
     onUtilityExpansionDeltaChanged: root._scheduleUtilityPacking()
 
     Timer { id: utilityPackingTimer; interval: 16; repeat: false; onTriggered: root._reconcileUtilityPacking() }
-    Bar.UtilButtons { id: verticalUtilMeasure; visible: false; enabled: false; vertical: true; compactRequested: false }
+    Bar.UtilButtons { id: verticalUtilMeasure; visible: false; enabled: false; vertical: true; compactRequested: false; presentationActive: false }
 
     component HorizontalBarSeparator: Rectangle {
         Layout.leftMargin: Appearance.sizes.baseBarHeight / 3

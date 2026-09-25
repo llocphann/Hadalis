@@ -15,6 +15,10 @@ Item {
     property bool borderless: Config.options?.bar?.borderless ?? false
     property bool vertical: false
     property bool compactRequested: false
+    // Natural-size probes instantiate this component while hidden. Keep the
+    // default active for real callers, but let non-presented instances stop
+    // their recording/mic/cast pulse loops.
+    property bool presentationActive: true
     property bool pinnedExpanded: false
     readonly property color neutralIconColor: Appearance.colors.colOnLayer2
     readonly property color dangerIconColor: Appearance.colors.colError
@@ -181,7 +185,7 @@ Item {
                             }
 
                             SequentialAnimation on opacity {
-                                running: recordButtonWrapper.isRecording
+                                running: root.presentationActive && recordButtonWrapper.isRecording
                                 loops: Animation.Infinite
                                 NumberAnimation { to: 0.4; duration: Appearance.animation.elementMove.duration * 2 }
                                 NumberAnimation { to: 1.0; duration: Appearance.animation.elementMove.duration * 2 }
@@ -320,7 +324,7 @@ Item {
                         }
 
                         SequentialAnimation on opacity {
-                            running: micButton.isInUse && !micButton.isMuted
+                            running: root.presentationActive && micButton.isInUse && !micButton.isMuted
                             loops: Animation.Infinite
                             NumberAnimation { to: 0.4; duration: Appearance.animation.elementMove.duration * 2 }
                             NumberAnimation { to: 1.0; duration: Appearance.animation.elementMove.duration * 2 }
@@ -394,7 +398,7 @@ Item {
                         }
 
                         SequentialAnimation on opacity {
-                            running: screenCastButton.isCasting
+                            running: root.presentationActive && screenCastButton.isCasting
                             loops: Animation.Infinite
                             NumberAnimation { to: 0.4; duration: Appearance.animation.elementMove.duration * 2 }
                             NumberAnimation { to: 1.0; duration: Appearance.animation.elementMove.duration * 2 }

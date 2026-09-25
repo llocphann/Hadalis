@@ -50,6 +50,8 @@ resource_usage="$repo_root/services/ResourceUsage.qml"
 bar_resources="$repo_root/modules/bar/Resources.qml"
 bar_surface="$repo_root/modules/bar/Bar.qml"
 bar_content="$repo_root/modules/bar/BarContent.qml"
+bar_util_buttons="$repo_root/modules/bar/UtilButtons.qml"
+vertical_bar_content="$repo_root/modules/verticalBar/VerticalBarContent.qml"
 vertical_bar_resources="$repo_root/modules/verticalBar/Resources.qml"
 recorder_status="$repo_root/services/RecorderStatus.qml"
 control_panel_media="$repo_root/modules/controlPanel/MediaSection.qml"
@@ -120,6 +122,12 @@ require "$bar_content" '&& root.presentationActive' 'Off-screen auto-hidden Bar 
 require "$bar_surface" 'presentationActive: !barRoot.fullscreenCovered' 'Bar Cava lifecycle must follow actual painted presentation'
 require "$bar_surface" 'barContent.anchors.bottomMargin > -barRoot.panelSurfaceHeight + 1' 'Bottom Bar Cava must remain live through its visible exit slide'
 require "$bar_surface" 'barContent.anchors.topMargin > -barRoot.panelSurfaceHeight + 1' 'Top Bar Cava must remain live through its visible exit slide'
+require "$bar_util_buttons" 'property bool presentationActive: true' 'Utility pulse lifecycle gate must preserve real caller behavior'
+require "$bar_util_buttons" 'running: root.presentationActive && recordButtonWrapper.isRecording' 'Hidden utility probes must not pulse recording state'
+require "$bar_util_buttons" 'running: root.presentationActive && micButton.isInUse && !micButton.isMuted' 'Hidden utility probes must not pulse microphone state'
+require "$bar_util_buttons" 'running: root.presentationActive && screenCastButton.isCasting' 'Hidden utility probes must not pulse screencast state'
+require "$bar_content" 'presentationActive: false' 'Horizontal Bar natural-size utility probe must stay animation-idle'
+require "$vertical_bar_content" 'presentationActive: false' 'Vertical Bar natural-size utility probe must stay animation-idle'
 require "$media_section" 'root.effectiveIsPlaying && GlobalStates.controlPanelOpen' 'Control Panel Cava must stop while playback is paused'
 require "$sidebar_media" 'root.effectiveIsPlaying && GlobalStates.sidebarLeftOpen' 'Sidebar Cava must stop while playback is paused'
 require "$local_music_view" 'active: root.visible && GlobalStates.sidebarLeftOpen && LocalMusic.playing' 'Local Music Cava must sleep while the retained Sidebar is closed'

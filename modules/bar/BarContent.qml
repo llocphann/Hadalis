@@ -257,6 +257,7 @@ Item {
         enabled: false
         vertical: false
         compactRequested: false
+        presentationActive: false
     }
 
     readonly property bool cardStyleEverywhere: false

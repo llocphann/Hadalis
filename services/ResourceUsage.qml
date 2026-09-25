@@ -712,7 +712,7 @@ Singleton {
         stdout: StdioCollector {
             id: outputCollector
             onStreamFinished: {
-                const match = outputCollector.text.match(/^CPU max MHz:\\s*([\\d.]+)/m)
+                const match = outputCollector.text.match(/^CPU max MHz:\s*([\d.]+)/m)
                 const mhz = parseFloat(match?.[1] ?? "")
                 if (isNaN(mhz) || mhz <= 0) {
                     root.maxAvailableCpuString = "--";

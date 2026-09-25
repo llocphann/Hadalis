@@ -64,6 +64,20 @@ if grep -Fq 'id: updateProgressReader' "$service"; then
     fail 'update progress polling must not restore one cat process every two seconds'
 fi
 
+resume_reader_block="$(sed -n '/id: updateResumeReader/,/stdout: StdioCollector/p' "$service")"
+[[ -n "$resume_reader_block" ]] || fail 'update resume reader is missing'
+assert_contains 'done < /proc/stat' "$resume_reader_block" 'update resume reader must derive boot time without date/uptime subprocesses on the normal path'
+assert_contains 'status=$(<"$status_file")' "$resume_reader_block" 'update resume reader must read the one-line status with Bash builtins'
+if grep -Fq '/usr/bin/printf' <<<"$resume_reader_block"; then
+    fail 'update resume reader must not restore external printf'
+fi
+if grep -Fq '/usr/bin/cut' <<<"$resume_reader_block"; then
+    fail 'update resume reader must not restore external cut'
+fi
+if grep -Fq '/usr/bin/cat' <<<"$resume_reader_block"; then
+    fail 'update resume reader must not restore external cat'
+fi
+
 assert_guarded_process fetchProc "$fetch_block"
 assert_guarded_process currentBranchProc "$branch_block"
 assert_guarded_process localCommitProc "$local_block"

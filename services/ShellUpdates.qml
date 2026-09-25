@@ -352,19 +352,31 @@ Singleton {
             status_file="$1"
             if [ ! -f "$status_file" ]; then exit 1; fi
 
-            now=$(/usr/bin/date +%s)
-            if read -r uptime _ < /proc/uptime; then
-                uptime_s=$(/usr/bin/printf '%s\n' "$uptime" | /usr/bin/cut -d. -f1)
-            else
-                uptime_s=0
-            fi
-            boot_epoch=$((now - uptime_s))
-            mtime=$(/usr/bin/stat -c %Y "$status_file" 2>/dev/null || echo 0)
+            boot_epoch=0
+            while read -r key value _; do
+                if [ "$key" = "btime" ]; then
+                    boot_epoch="$value"
+                    break
+                fi
+            done < /proc/stat
 
+            # Extremely defensive fallback for unusual /proc environments.
+            if [ "$boot_epoch" -le 0 ]; then
+                now=$(/usr/bin/date +%s)
+                if read -r uptime _ < /proc/uptime; then
+                    uptime_s=${uptime%%.*}
+                else
+                    uptime_s=0
+                fi
+                boot_epoch=$((now - uptime_s))
+            fi
+
+            mtime=$(/usr/bin/stat -c %Y "$status_file" 2>/dev/null || echo 0)
             if [ "$mtime" -lt "$boot_epoch" ]; then
-                echo "stale"
+                printf '%s\n' "stale"
             else
-                /usr/bin/cat "$status_file"
+                status=$(<"$status_file")
+                printf '%s\n' "$status"
             fi
         `, "_", Directories.updateStatusPath]
         stdout: StdioCollector {

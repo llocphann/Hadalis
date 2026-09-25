@@ -68,9 +68,11 @@ Item {
             Number(row?.allocations?.allocatedBytes ?? 0))
     }
 
-    function freedBytes(row): string {
-        return root.formatBytes(
-            Number(row?.allocations?.freedBytes ?? 0))
+    function allocationRate(row): string {
+        if (root.traceSeconds <= 0)
+            return "—"
+        const bytes = Number(row?.allocations?.allocatedBytes ?? 0)
+        return root.formatBytes(bytes / root.traceSeconds) + "/s"
     }
 
     implicitHeight: 260
@@ -119,7 +121,7 @@ Item {
                 Layout.fillWidth: true
                 Layout.bottomMargin: 5
                 text: Translation.tr(
-                    "Per-owner QV4 alloc/free activity — not retained RAM/RSS/PSS")
+                    "JS/QV4 allocated by owner — cumulative pressure, not retained RAM/PSS")
                 color: Appearance.colors.colSubtext
                 font.pixelSize: Appearance.font.pixelSize.smallest
                 elide: Text.ElideRight
@@ -244,10 +246,10 @@ Item {
                                 textFormat: Text.PlainText
                                 Layout.fillWidth: true
                                 horizontalAlignment: Text.AlignRight
-                                text: "QV4 +"
+                                text: "JS alloc "
                                     + root.allocatedBytes(ownerRow.modelData)
-                                    + "  −"
-                                    + root.freedBytes(ownerRow.modelData)
+                                    + " · "
+                                    + root.allocationRate(ownerRow.modelData)
                                 color: Appearance.colors.colSubtext
                                 font.family:
                                     Appearance.font.family.monospace

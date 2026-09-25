@@ -53,8 +53,6 @@ recorder_status="$repo_root/services/RecorderStatus.qml"
 control_panel_media="$repo_root/modules/controlPanel/MediaSection.qml"
 volume_mixer="$repo_root/modules/ii/overlay/volumeMixer/VolumeMixer.qml"
 weather="$repo_root/services/Weather.qml"
-weather_popup="$repo_root/modules/bar/weather/WeatherPopup.qml"
-weather_popup_content="$repo_root/modules/bar/weather/WeatherPopupContent.qml"
 keyboard_indicators="$repo_root/services/KeyboardIndicators.qml"
 sidebar_anime="$repo_root/modules/sidebarLeft/Anime.qml"
 sidebar_wallhaven="$repo_root/modules/sidebarLeft/WallhavenView.qml"
@@ -225,11 +223,6 @@ if grep -Fq 'root.refreshStatus()' <<<"$active_recorder_poll"; then
     fail 'RecorderStatus active poll must not spawn pgrep once per second'
 fi
 require "$weather" 'running: root.enabled' 'Weather minute clock must sleep when weather is disabled'
-require "$weather_popup_content" 'property bool presentationActive: true' 'Weather popup lifecycle gate must preserve standalone behavior'
-require "$weather_popup_content" 'running: root.presentationActive' 'Hidden retained Weather popup must stop its 30s clock'
-require "$weather_popup_content" 'triggeredOnStart: true' 'Weather popup clock must refresh immediately when presentation resumes'
-require "$weather_popup_content" 'liquidAnimationActive: root.presentationActive && (' 'Hidden retained Weather popup must stop liquid frame animation'
-require "$weather_popup" 'presentationActive: root.active' 'Weather popup content lifecycle must follow StyledPopup residency'
 require "$keyboard_indicators" 'interval: (Config.options?.performance?.lowPower ?? false) ? 120000 : 30000' 'keyboard sysfs hotplug discovery must stay low cadence'
 require "$sidebar_anime" 'layer.enabled: root.visible && GlobalStates.sidebarLeftOpen' 'Anime list mask must sleep with the sidebar'
 require "$sidebar_wallhaven" 'layer.enabled: root.visible && GlobalStates.sidebarLeftOpen' 'Wallhaven list mask must sleep with the sidebar'

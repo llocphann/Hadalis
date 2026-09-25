@@ -62,9 +62,10 @@ Singleton {
         const windows = NiriService.windows
         if (!Array.isArray(windows)) return false
         for (let i = 0; i < windows.length; i++) {
-            if (!isWindowFullscreen(windows[i])) continue
-            const ws = NiriService.workspaces[windows[i].workspace_id]
-            if (ws?.is_active) return true
+            const window = windows[i]
+            if (!isWindowFullscreen(window)) continue
+            const ws = NiriService.workspaces?.[window.workspace_id]
+            if (isWindowPresentedOnActiveWorkspace(window, ws)) return true
         }
         return false
     }
@@ -183,6 +184,22 @@ Singleton {
         return Math.abs(winSize[0] - output.logical.width) <= tolerance
             && Math.abs(winSize[1] - output.logical.height) <= tolerance
     }
+
+    // Niri keeps fullscreen geometry on a window when focus moves away from it.
+    // An active workspace can therefore contain a fullscreen-sized background
+    // window that no longer covers the user-visible surface. Prefer the
+    // workspace's active_window_id so bars and GameMode follow what is actually
+    // presented; fall back to the global focus flag only until niri publishes
+    // WorkspaceActiveWindowChanged for that workspace.
+    function isWindowPresentedOnActiveWorkspace(window, workspace): bool {
+        if (!window || !workspace || !(workspace.is_active ?? false)) return false
+
+        const activeWindowId = workspace.active_window_id
+        if (activeWindowId !== undefined && activeWindowId !== null)
+            return window.id === activeWindowId
+
+        return window.is_focused === true
+    }
     
     // True when a fullscreen window covers the given output (empty name = any
     // output). Callers gating a per-monitor surface MUST pass their output
@@ -198,7 +215,7 @@ Singleton {
         for (let i = 0; i < windows.length; i++) {
             const w = windows[i]
             const ws = NiriService.workspaces?.[w.workspace_id]
-            if (!(ws?.is_active ?? false)) continue
+            if (!isWindowPresentedOnActiveWorkspace(w, ws)) continue
             if (outputName.length > 0 && ws.output !== outputName) continue
             if (isWindowFullscreen(w)) return true
         }
@@ -321,6 +338,12 @@ Singleton {
             // A window property changed (incl. is_fullscreen). Trigger full
             // auto-detection — not just hasAnyFullscreenWindow — so we catch
             // the focused window going fullscreen without a focus change.
+            root.checkFullscreen()
+        }
+
+        function onWorkspacesChanged() {
+            // Workspace activation changes which fullscreen-sized window is
+            // actually presented even when its window geometry did not change.
             root.checkFullscreen()
         }
     }

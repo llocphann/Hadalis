@@ -41,6 +41,28 @@ def main() -> int:
     if 'root._stateFile\n        ]' not in game:
         raise AssertionError("GameMode state writes must pass the state file as an argument")
 
+    # A fullscreen-sized window that remains on an active workspace after focus
+    # moves away must not keep the Bar or GameMode hidden. Niri reports the
+    # actually presented window through workspace.active_window_id.
+    for token, message in (
+        ("function isWindowPresentedOnActiveWorkspace(window, workspace): bool",
+         "GameMode must centralize active-workspace presentation checks"),
+        ("const activeWindowId = workspace.active_window_id",
+         "fullscreen presentation must follow workspace.active_window_id"),
+        ("return window.id === activeWindowId",
+         "background fullscreen windows must not count as presented"),
+        ("return window.is_focused === true",
+         "GameMode needs a startup fallback before active_window_id arrives"),
+        ("if (isWindowPresentedOnActiveWorkspace(window, ws)) return true",
+         "visible fullscreen detection must ignore background windows"),
+        ("if (!isWindowPresentedOnActiveWorkspace(w, ws)) continue",
+         "per-output fullscreen gating must ignore background windows"),
+        ("function onWorkspacesChanged()",
+         "workspace activation must trigger a fullscreen-state refresh"),
+    ):
+        if token not in game:
+            raise AssertionError(message)
+
     print("gamemode state lifecycle contract: ok")
     return 0
 

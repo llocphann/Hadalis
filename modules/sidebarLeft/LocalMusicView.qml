@@ -997,19 +997,6 @@ Item {
                             text: Translation.tr("No results")
                             color: Appearance.colors.colSubtext
                         }
-                        RippleButton {
-                            Layout.alignment: Qt.AlignHCenter
-                            implicitWidth: 120
-                            implicitHeight: 38
-                            visible: root.query.length === 0
-                            enabled: LocalMusic.available
-                            onClicked: LocalMusic.updateDatabase()
-                            contentItem: StyledText {
-                                anchors.centerIn: parent
-                                text: Translation.tr("Update")
-                                color: Appearance.colors.colOnLayer1
-                            }
-                        }
                     }
                 }
 

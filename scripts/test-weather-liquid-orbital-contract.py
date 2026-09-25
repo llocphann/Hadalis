@@ -2,6 +2,9 @@
 """Regression contract for Orbital Weather GPU membrane and visual-parity fallback."""
 
 from pathlib import Path
+import shutil
+import subprocess
+import tempfile
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -16,7 +19,8 @@ def require(source: str, *features: str) -> None:
 
 def main() -> None:
     field = (WEATHER_DIR / "LiquidOrbitalField.qml").read_text(encoding="utf-8")
-    shader = (WEATHER_DIR / "LiquidOrbitalField.frag").read_text(encoding="utf-8")
+    shader_path = WEATHER_DIR / "LiquidOrbitalField.frag"
+    shader = shader_path.read_text(encoding="utf-8")
     qsb = WEATHER_DIR / "LiquidOrbitalField.frag.qsb"
     orbital = (WEATHER_DIR / "OrbitalWeather.qml").read_text(encoding="utf-8")
     popup = (WEATHER_DIR / "WeatherPopupContent.qml").read_text(encoding="utf-8")
@@ -39,8 +43,23 @@ def main() -> None:
     )
     if "visible: status === ShaderEffect.Compiled" in field:
         raise AssertionError("ShaderEffect must not self-gate first render on Compiled status")
+    if field.count("readonly property bool ready:") != 1:
+        raise AssertionError("LiquidOrbitalField must expose exactly one ready property")
     if not qsb.is_file() or qsb.stat().st_size < 1000:
         raise AssertionError("Bundled Weather QSB is missing")
+
+    qsb_tool = shutil.which("qsb") or "/usr/lib/qt6/bin/qsb"
+    if Path(qsb_tool).is_file():
+        with tempfile.TemporaryDirectory() as temp_dir:
+            rebuilt = Path(temp_dir) / "LiquidOrbitalField.frag.qsb"
+            subprocess.run(
+                [qsb_tool, "--qt6", "-o", str(rebuilt), str(shader_path)],
+                check=True,
+                capture_output=True,
+                text=True,
+            )
+            if rebuilt.read_bytes() != qsb.read_bytes():
+                raise AssertionError("Bundled Weather QSB differs from its GLSL source")
 
     # The reference GPU shape remains one soft-unioned, wavy field.
     require(

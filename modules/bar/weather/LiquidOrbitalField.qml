@@ -82,7 +82,6 @@ Item {
             Appearance.colors.colPrimary, 0.30), 0.56)
     readonly property color activePodHighlight: ColorUtils.applyAlpha(
         Appearance.colors.colOnPrimaryContainer, 0.24)
-    readonly property bool ready: true
 
     FrameAnimation {
         id: liquidClock

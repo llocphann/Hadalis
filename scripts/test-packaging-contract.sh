@@ -58,6 +58,16 @@ for iris_asset in \
     || fail "runtime payload omits production iRiS shader asset: $iris_asset"
 done
 
+# Orbital Weather's accepted visual is shader-backed on hardware renderers.
+# Shipping only the QML fallback silently changes its appearance, so keep the
+# source and compiled QSB in the same fail-closed runtime payload contract.
+for weather_asset in \
+  modules/bar/weather/LiquidOrbitalField.frag \
+  modules/bar/weather/LiquidOrbitalField.frag.qsb; do
+  grep -Fqx "$weather_asset" <<<"$payload_list" \
+    || fail "runtime payload omits Orbital Weather shader asset: $weather_asset"
+done
+
 for pair in \
   "$stable_pkg:$stable_srcinfo" \
   "$git_pkg:$git_srcinfo" \

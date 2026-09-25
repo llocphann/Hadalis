@@ -163,12 +163,19 @@ module work, commit directly to `dev`, and never force-push or modify `stable`.
   **Component hotspots** ranks only Workflow-owned lifecycle evidence from
   timestamped `CodeWorkflowRuntime` events plus resident/visible instances,
   reporting recent changes/min and explicitly stating that this is not CPU/RAM
-  attribution. **Top helper processes** uses the kernel-backed descendant list
-  and displays real per-process CPU plus RSS. Aggregate CPU, Memory, GPU and
-  Network are secondary context cards; the compact Hadalis strip carries the
-  shell PID, CPU, PSS-or-RSS, disk IO rates and helper count. Per-component
-  CPU/RAM/Swap/GPU/Network remains unavailable until a reviewed attribution
-  method exists.
+  attribution. The compact page renders the complete hotspot set inside its own
+  scrollable column instead of truncating the list or making the whole
+  Diagnostics page scroll. **Top helper processes** uses the kernel-backed
+  descendant list and displays real per-process CPU plus RSS.
+- The four compact monitor cards are deliberately **Quickshell-process scoped**:
+  process CPU from summed task `schedstat`, PSS-or-RSS memory share plus exact
+  PSS/RSS/Swap detail from `smaps_rollup`, DRM engine/memory evidence from the
+  Quickshell-owned fdinfo clients, and Quickshell disk I/O rates from
+  `/proc/<pid>/io`. System CPU, system RAM and `/proc/net/dev` network rates
+  are not presented as Quickshell monitors because they are not process
+  attribution. The compact Hadalis strip carries the same shell-owned PID, CPU,
+  PSS-or-RSS, disk I/O rates and helper count. Per-component CPU/RAM/Swap/GPU/
+  Network remains unavailable until a reviewed attribution method exists.
 - Source-boundary discovery is optional parser capability, not sampler health.
   An index status of `unavailable` (for example `grammar-missing`) therefore
   leaves the boundary count unknown in Diagnostics instead of promoting the raw

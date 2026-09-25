@@ -117,11 +117,12 @@ for token in (
 ):
     require(service, token, "EqualizerService")
 
-# Helper mirrors Serpantinum's 10 -> 32 mapping and only commits persisted state
-# after EasyEffects accepts the generic preset-load command. The local server is
-# reached directly with Python AF_UNIX so missing socat cannot disable DSP.
+# Helper mirrors Serpantinum's 10 -> 32 mapping inside the output preset
+# EasyEffects is already using. It queries that preset from the local server,
+# patches only the Equalizer while preserving the rest of the pipeline, then
+# reloads the same preset name so DSP changes become live without switching
+# EasyEffects to a Hadalis-owned scratch preset.
 for token in (
-    'preset_name="hadalis_live_eq"',
     "slider_map = {",
     "0: 0,",
     "1: 3,",
@@ -135,23 +136,32 @@ for token in (
     "9: 27,",
     '"num-bands": 32',
     '"split-channels": False',
-    'plugins_order": ["equalizer"]',
     "socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)",
-    'client.sendall(f"load_preset:output:{preset}\\n".encode("utf-8"))',
+    'client.sendall(b"get_last_loaded_preset:output\\n")',
+    'output = document.get("output")',
+    'eq_key = "equalizer#0" if modern_schema else "equalizer"',
+    "atomic_text_write(preset_path, new_text)",
+    'client.sendall(f"load_preset:output:{active_preset}\\n".encode("utf-8"))',
     'mv -f "$state_candidate" "$state_file"',
 ):
     require(helper, token, "equalizer-control.sh")
 
-load_pos = helper.index('client.sendall(f"load_preset:output:{preset}\\n"')
+query_pos = helper.index('client.sendall(b"get_last_loaded_preset:output\\n")')
+preset_write_pos = helper.index("atomic_text_write(preset_path, new_text)")
+load_pos = helper.index('client.sendall(f"load_preset:output:{active_preset}\\n"')
 state_commit_pos = helper.index('mv -f "$state_candidate" "$state_file"')
-if state_commit_pos < load_pos:
-    raise SystemExit("FAIL: Equalizer state is persisted before backend preset load succeeds")
+if not query_pos < preset_write_pos < load_pos < state_commit_pos:
+    raise SystemExit("FAIL: active preset query/patch/reload/state commit ordering regressed")
 
+forbid(helper, "hadalis_live_eq", "equalizer-control.sh")
 forbid(helper, "socat", "equalizer-control.sh")
 
 for token in (
-    '$HOME/.var/app/com.github.wwmm.easyeffects/config/easyeffects/output',
-    '${XDG_CONFIG_HOME:-$HOME/.config}/easyeffects/output',
+    '"XDG_DATA_HOME"',
+    '"XDG_CONFIG_HOME"',
+    '".var/app/com.github.wwmm.easyeffects"',
+    '"data/easyeffects/output"',
+    '"config/easyeffects/output"',
     "command -v python3",
 ):
     require(helper, token, "equalizer-control.sh")

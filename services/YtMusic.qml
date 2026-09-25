@@ -13,10 +13,11 @@ Singleton {
     id: root
 
     property bool _resumeRestored: false
+    property string _lastResumeSnapshot: ""
 
     function _persistResume(): void {
         if (!root.currentVideoId) return
-        Config.setNestedValues({
+        const updates = {
             'sidebar.ytmusic.resume.videoId': root.currentVideoId,
             'sidebar.ytmusic.resume.title': root.currentTitle,
             'sidebar.ytmusic.resume.artist': root.currentArtist,
@@ -27,10 +28,16 @@ Singleton {
             'sidebar.ytmusic.resume.activePlaylist': root.activePlaylist,
             'sidebar.ytmusic.resume.currentIndex': root.currentIndex,
             'sidebar.ytmusic.resume.activePlaylistSource': root.activePlaylistSource
-        })
+        }
+        const snapshot = JSON.stringify(updates)
+        if (snapshot === root._lastResumeSnapshot)
+            return
+        Config.setNestedValues(updates)
+        root._lastResumeSnapshot = snapshot
     }
 
     function _clearResume(): void {
+        root._lastResumeSnapshot = ""
         Config.setNestedValues({
             'sidebar.ytmusic.resume.videoId': "",
             'sidebar.ytmusic.resume.title': "",

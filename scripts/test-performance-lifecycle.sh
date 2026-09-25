@@ -295,6 +295,14 @@ require "$shell_updates" 'id: resumeStatusProbe' 'ShellUpdates restart recovery 
 require "$shell_updates" 'onTriggered: root._probeResumeStatusFile()' 'ShellUpdates startup recovery must avoid unconditional shell startup'
 reject "$shell_updates" 'onTriggered: updateResumeReader.running = true' 'ShellUpdates must not spawn the resume shell when no status marker exists'
 
+require "$ytmusic" 'property string _lastResumeSnapshot: ""' 'YtMusic resume persistence must remember the last written snapshot'
+require "$ytmusic" 'const snapshot = JSON.stringify(updates)' 'YtMusic resume persistence must compare serialized state before writing'
+require "$ytmusic" 'if (snapshot === root._lastResumeSnapshot)' 'YtMusic must skip unchanged 5s resume writes'
+require "$ytmusic" 'root._lastResumeSnapshot = snapshot' 'YtMusic must update resume dedupe state after persistence'
+require "$ytmusic" 'root._lastResumeSnapshot = ""' 'YtMusic resume dedupe state must reset when playback is cleared'
+require "$ytmusic" 'interval: 5000' 'YtMusic resume checkpoint cadence must remain unchanged'
+require "$ytmusic" 'running: root.currentVideoId !== ""' 'YtMusic resume timer availability semantics must remain unchanged'
+
 require "$screen_time" 'target: NiriService' 'Screen Time must use Niri focus events'
 require "$screen_time" 'interval: 30000' 'Screen Time must keep only a coarse Niri heartbeat'
 require "$screen_time" 'id: startupTodayFile' 'Screen Time startup history must use FileView'

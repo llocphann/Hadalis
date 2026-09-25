@@ -25,12 +25,23 @@ Singleton {
         name: Fuzzy.prepare(`${a.replace(/^\s*\S+\s+/, "")}`),
         entry: a
     }))
+    readonly property var preparedFilterEntries: entries.map(entry => {
+        let cleaned = StringUtils.cleanCliphistEntry(entry)
+        if (root.entryIsImage(entry))
+            cleaned = cleaned.replace(/^\s*\[\[.*?\]\]\s*/, "")
+        const unwrapped = StringUtils.cliphistMarkupPreview(cleaned)
+        if (unwrapped !== cleaned)
+            cleaned = unwrapped.length > 0 ? unwrapped : Translation.tr("Rich text")
+        const waffleKey = cleaned.trim().toLowerCase()
+        const iiKey = StringUtils.sanitizeDisplayText(cleaned).trim().toLowerCase()
+        return ({ entry: entry, iiKey: iiKey, waffleKey: waffleKey })
+    })
 
     function _log(...args): void {
         if (Quickshell.env("QS_DEBUG") === "1") console.log(...args);
     }
 
-    function fuzzyQuery(search: string, limit: int = 0): var {
+    function fuzzyQuery(search: string, limit): var {
         if (search.trim() === "") {
             const count = limit > 0 ? Math.min(limit, root.maxEntries) : root.maxEntries
             return entries.slice(0, count);

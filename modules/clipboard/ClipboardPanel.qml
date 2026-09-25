@@ -108,6 +108,7 @@ Scope {
 
     function updateFilteredModel() {
         const entries = Cliphist.entries
+        const filterEntries = Cliphist.preparedFilterEntries
         const entryCount = entries.length
 
         filteredClipboardModel.clear()
@@ -130,7 +131,7 @@ Scope {
             // Navigate mode: show ALL entries, mark which ones match
             for (let i = 0; i < entryCount; i++) {
                 const entry = entries[i]
-                const content = formatCliphistName(entry).toLowerCase()
+                const content = filterEntries[i]?.iiKey ?? formatCliphistName(entry).toLowerCase()
                 const hit = content.includes(trimmedSearch)
                 if (hit) matches++
                 filteredClipboardModel.append({ "rawEntry": entry, "pinText": "", "isPin": false, "isMatch": hit })
@@ -142,7 +143,7 @@ Scope {
                 if (!hasSearch) {
                     filteredClipboardModel.append({ "rawEntry": entry, "pinText": "", "isPin": false, "isMatch": true })
                 } else {
-                    const content = formatCliphistName(entry).toLowerCase()
+                    const content = filterEntries[i]?.iiKey ?? formatCliphistName(entry).toLowerCase()
                     if (content.includes(trimmedSearch)) {
                         filteredClipboardModel.append({ "rawEntry": entry, "pinText": "", "isPin": false, "isMatch": true })
                         matches++

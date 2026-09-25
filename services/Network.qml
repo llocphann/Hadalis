@@ -246,7 +246,6 @@ Singleton {
         updateConnectionType.startCheck();
         wifiStatusProcess.running = true
         updateNetworkName.running = true;
-        updateNetworkStrength.running = true;
     }
 
     property bool _destroying: false
@@ -370,8 +369,12 @@ Singleton {
             // updateNetworkStrength's awk prints nothing when no AP is in use, so
             // its SplitParser never fires and networkStrength would keep the value
             // from the last connected AP. Clear it here instead.
-            if (wifiStatus !== "connected" && wifiStatus !== "limited")
-                root.networkStrength = 0;
+            if (wifiStatus === "connected" || wifiStatus === "limited") {
+                if (!updateNetworkStrength.running)
+                    updateNetworkStrength.running = true
+            } else {
+                root.networkStrength = 0
+            }
         }
     }
 

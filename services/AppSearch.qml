@@ -255,7 +255,7 @@ Singleton {
         _desktopIdStemMap = idMap;
     }
 
-    function fuzzyQuery(search: string, limit: int = 0): var {
+    function fuzzyQuery(search: string, limit): var {
         if (_cachedList.length === 0) return []
         if (!search || search.trim() === "") return []
 

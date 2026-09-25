@@ -36,13 +36,10 @@ Canvas {
         if (validCount < 2)
             return
 
-        function valueIndex(i) {
-            return root.alignment === Graph.Alignment.Right
-                ? root.values.length - n + i : i
-        }
-
+        var rightAligned = root.alignment === Graph.Alignment.Right
+        var firstValueIndex = rightAligned ? root.values.length - n + firstIndex : firstIndex
         var firstX = firstIndex * dx
-        var firstY = height - root.values[valueIndex(firstIndex)] * height
+        var firstY = height - root.values[firstValueIndex] * height
         var previousX = firstX
         var previousY = firstY
         var lastX = firstX
@@ -58,7 +55,8 @@ Canvas {
 
         for (var i = firstIndex + 1; i < endIndex; ++i) {
             var currentX = i * dx
-            var currentY = height - root.values[valueIndex(i)] * height
+            var vi = rightAligned ? root.values.length - n + i : i
+            var currentY = height - root.values[vi] * height
             if (root.smooth && validCount > 2) {
                 var cpx = (previousX + currentX) / 2
                 ctx.bezierCurveTo(cpx, previousY, cpx, currentY, currentX, currentY)

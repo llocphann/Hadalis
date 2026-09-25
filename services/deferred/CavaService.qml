@@ -163,10 +163,13 @@ Singleton {
 
         let peak = 0
         let sum = 0
+        let frameChanged = parsed.length !== root.points.length
         for (let i = 0; i < parsed.length; ++i) {
             const value = Number(parsed[i]) || 0
             peak = Math.max(peak, value)
             sum += value
+            if (!frameChanged && parsed[i] !== root.points[i])
+                frameChanged = true
         }
 
         const target = Math.max(root.normalizationFloor, peak * 1.15)
@@ -183,15 +186,6 @@ Singleton {
         root.framePeak = peak
         root.frameAverage = sum / parsed.length
 
-        let frameChanged = parsed.length !== root.points.length
-        if (!frameChanged) {
-            for (let i = 0; i < parsed.length; ++i) {
-                if (parsed[i] !== root.points[i]) {
-                    frameChanged = true
-                    break
-                }
-            }
-        }
         if (frameChanged)
             root.points = parsed
 

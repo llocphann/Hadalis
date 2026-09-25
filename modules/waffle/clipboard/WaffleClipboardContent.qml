@@ -48,6 +48,7 @@ Item {
     function updateFilteredModel() {
         filteredClipboardModel.clear()
         const trimmedSearch = searchText.trim().toLowerCase()
+        const filterEntries = Cliphist.preparedFilterEntries
 
         // Pinned entries always lead the list.
         const pins = Cliphist.pinned
@@ -63,7 +64,7 @@ Item {
             if (trimmedSearch.length === 0) {
                 filteredClipboardModel.append({ "rawEntry": entry, "pinText": "", "isPinRow": false })
             } else {
-                const content = formatCliphistName(entry).toLowerCase()
+                const content = filterEntries[i]?.waffleKey ?? formatCliphistName(entry).toLowerCase()
                 if (content.includes(trimmedSearch)) {
                     filteredClipboardModel.append({ "rawEntry": entry, "pinText": "", "isPinRow": false })
                 }

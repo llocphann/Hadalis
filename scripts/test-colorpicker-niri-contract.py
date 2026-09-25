@@ -8,12 +8,6 @@ def require(token: str, message: str) -> None:
     if token not in picker:
         raise SystemExit(f"colorpicker contract failed: {message}")
 
-require("command -v hyprpicker",
-        "installed hyprpicker must remain usable on Niri")
-require("args=(--format=hex --no-fancy)",
-        "hyprpicker output must stay script-safe")
-require("args+=(--autocopy)",
-        "normal picker requests must preserve clipboard copy")
 require("for command_name in grim slurp magick; do",
         "generic picker fallback must remain available without hyprpicker")
 require('geometry="$(slurp -p)"',
@@ -21,7 +15,7 @@ require('geometry="$(slurp -p)"',
 require('grim -g "$geometry"',
         "fallback must still sample the selected pixel")
 
-for forbidden in ("Quickshell.Hyprland", "CompositorService.isHyprland", "hyprctl"):
+for forbidden in ("Quickshell.Hyprland", "CompositorService.isHyprland", "hyprctl", "hyprpicker"):
     if forbidden in picker:
         raise SystemExit(
             f"colorpicker contract failed: compositor backend returned: {forbidden}"

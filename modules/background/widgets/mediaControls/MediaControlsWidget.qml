@@ -342,6 +342,7 @@ AbstractBackgroundWidget {
 
                     onLoaded: {
                         item.player = delegateRoot.modelData
+                        item.positionUpdatesActive = Qt.binding(() => root.powerActive)
                         item.blendedColors = root._desktopInkOverride
                         item.themeSourceColor = Qt.binding(() => root.widgetAccentVisible)
                         item.visualizerPoints = Qt.binding(() => root.visualizerPoints)

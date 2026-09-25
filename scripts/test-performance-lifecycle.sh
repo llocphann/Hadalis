@@ -79,6 +79,19 @@ editor_theme="$repo_root/scripts/colors/modules/30-editors.sh"
 system24_theme="$repo_root/scripts/colors/system24_palette.py"
 steam_theme="$repo_root/scripts/colors/modules/70-steam.sh"
 cava_theme_module="$repo_root/scripts/colors/modules/90-cava.sh"
+desktop_media_widget="$repo_root/modules/background/widgets/mediaControls/MediaControlsWidget.qml"
+player_base="$repo_root/modules/mediaControls/components/PlayerBase.qml"
+media_presets=(
+    "$repo_root/modules/mediaControls/presets/FullPlayer.qml"
+    "$repo_root/modules/mediaControls/presets/CompactPlayer.qml"
+    "$repo_root/modules/mediaControls/presets/MinimalPlayer.qml"
+    "$repo_root/modules/mediaControls/presets/ClassicPlayer.qml"
+    "$repo_root/modules/mediaControls/presets/AlbumArtPlayer.qml"
+    "$repo_root/modules/mediaControls/presets/VisualizerPlayer.qml"
+    "$repo_root/modules/mediaControls/presets/LyricsPlayer.qml"
+    "$repo_root/modules/mediaControls/presets/LyricsSplitPlayer.qml"
+    "$repo_root/modules/mediaControls/presets/ExpandingLyricsPlayer.qml"
+)
 
 require "$config" 'property int framerate: 30' 'Cava schema default must remain 30 fps'
 require "$defaults" '"framerate": 30' 'persisted Cava default must remain 30 fps'
@@ -94,6 +107,13 @@ require "$sidebar_media" 'sourceSize.width: Math.max(1, Math.ceil(card.width * r
 require "$control_panel_media" 'layer.enabled: root.visible && GlobalStates.controlPanelOpen' 'Control Panel media masks must release their FBOs while closed'
 require "$control_panel_media" 'sourceSize.width: Math.max(1, Math.ceil(card.width * root._dpr))' 'Control Panel blurred artwork decode must remain bounded'
 require "$control_panel_media" 'mipmap: false' 'Control Panel artwork must not generate unused mipmaps'
+
+require "$desktop_media_widget" 'item.positionUpdatesActive = Qt.binding(() => root.powerActive)' 'Desktop media position refresh must sleep with widget power state'
+require "$player_base" 'running: root.positionUpdatesActive' 'PlayerBase position timer must honor the host lifecycle gate'
+require "$player_base" 'onPositionUpdatesActiveChanged:' 'PlayerBase must refresh position immediately when lifecycle updates resume'
+for preset in "${media_presets[@]}"; do
+    require "$preset" 'property alias positionUpdatesActive: playerBase.positionUpdatesActive' 'Media presets must expose the shared position lifecycle gate'
+done
 
 require "$it_thumbnail" 'ClippingRectangle {' 'InnerTune thumbnails must use scene-graph clipping'
 reject "$it_thumbnail" 'GE.OpacityMask' 'InnerTune list thumbnails must not allocate an OpacityMask layer'

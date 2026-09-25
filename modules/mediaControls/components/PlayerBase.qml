@@ -20,6 +20,12 @@ QtObject {
     required property MprisPlayer player
     property int slideDirection: 1
     property bool positionUpdatesActive: true
+
+    // Refresh immediately when a host resumes periodic position updates.
+    onPositionUpdatesActiveChanged: {
+        if (root.positionUpdatesActive)
+            root.player?.positionChanged()
+    }
     
     // YtMusic detection
     readonly property bool isYtMusicPlayer: {

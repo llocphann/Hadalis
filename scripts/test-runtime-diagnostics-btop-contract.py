@@ -6,6 +6,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 PAGE = ROOT / "modules" / "settings" / "RuntimeDiagnosticsConfig.qml"
 WAFFLE_PAGE = ROOT / "modules" / "waffle" / "settings" / "pages" / "WDiagnosticsPage.qml"
+CONTENT_PAGE = ROOT / "modules" / "common" / "widgets" / "ContentPage.qml"
+WAFFLE_BASE_PAGE = ROOT / "modules" / "waffle" / "settings" / "WSettingsPage.qml"
 BOARD = ROOT / "modules" / "settings" / "widgets" / "BtopDashboard.qml"
 SPARKLINE = ROOT / "modules" / "settings" / "widgets" / "BtopSparkline.qml"
 METRIC_PANEL = ROOT / "modules" / "settings" / "widgets" / "BtopMetricPanel.qml"
@@ -39,6 +41,8 @@ def forbid(text: str, token: str, source: str) -> None:
 def main() -> None:
     page = PAGE.read_text(encoding="utf-8")
     waffle_page = WAFFLE_PAGE.read_text(encoding="utf-8")
+    content_page = CONTENT_PAGE.read_text(encoding="utf-8")
+    waffle_base_page = WAFFLE_BASE_PAGE.read_text(encoding="utf-8")
     board = BOARD.read_text(encoding="utf-8")
     session = SESSION.read_text(encoding="utf-8")
     runtime = RUNTIME.read_text(encoding="utf-8")
@@ -83,6 +87,9 @@ def main() -> None:
         'settingsPageIndex: 31',
         'settingsPageName: Translation.tr("Diagnostics")',
         "bottomContentPadding: 8",
+        "fillViewportHeight: true",
+        "Layout.fillHeight: true",
+        "Layout.minimumHeight: 360",
         "readonly property bool diagnosticsActive:",
         "RuntimeDiagnosticsSession.pageCurrent",
         "readonly property var runtimeCatalog: root.diagnosticsActive",
@@ -94,17 +101,26 @@ def main() -> None:
         'Translation.tr("Diagnostics live")',
         "id: compactObservability",
         "visible: root.compactMode",
+        "Layout.fillHeight: root.compactMode",
+        "Layout.minimumHeight: root.compactMode ? 300 : 0",
         "columns: width >= 720 ? 2 : 1",
+        "height >= 540 ? 10",
+        ": height >= 470 ? 8",
+        ": height >= 400 ? 6 : 5",
         "id: resourceSuspects",
+        "compactObservability.width * 0.68",
         'Translation.tr("Resource suspects")',
         '"Top components and processes by meaningful runtime signals"',
         "id: compactSystemContext",
+        "compactObservability.width * 0.32",
         "columns: width >= 260 ? 2 : 1",
         "BtopActivityTable {",
         "BtopProcessTable {",
         "compactMode: true",
         "events: root.events",
         "id: compactRuntimeStrip",
+        "Layout.preferredHeight: 52",
+        "Layout.minimumHeight: 52",
         "graphHeight: 18",
         'root.historyValues("systemCpuPercent")',
         'root.historyValues("systemSwapPercent")',
@@ -134,8 +150,25 @@ def main() -> None:
             "Resource suspects default-width split")
     require(board, "columns: width >= 260 ? 2 : 1",
             "Secondary context default-width micro-card split")
+    require(board, "Layout.fillHeight: root.compactMode",
+            "Diagnostics body must consume spare viewport height")
+    require(board, "maxRows: compactObservability.suspectRowLimit",
+            "Diagnostics lists must use available vertical space")
+    require(board, "Layout.preferredHeight: 52",
+            "Hadalis runtime strip must retain visible hierarchy")
     forbid(board, "Flickable {",
            "Diagnostics dashboard must not add nested scrolling")
+
+    for source, text in (
+        ("Material ContentPage", content_page),
+        ("Waffle WSettingsPage", waffle_base_page),
+    ):
+        require(text, "property bool fillViewportHeight: false",
+                f"{source} must expose opt-in viewport filling")
+        require(text, "Math.max(root.height,",
+                f"{source} must fill spare height without clipping tall content")
+        require(text, "Math.max(implicitHeight,",
+                f"{source} must preserve scrolling when content exceeds viewport")
 
     for retired in (
         'title: Translation.tr("Live diagnostics")',
@@ -149,7 +182,13 @@ def main() -> None:
         forbid(page, retired, "compact Material Diagnostics page")
 
     for source, text in (("Material", page), ("Waffle", waffle_page)):
+        require(text, "fillViewportHeight: true",
+                f"{source} Diagnostics must opt into viewport filling")
         require(text, "BtopDashboard {", f"{source} shared diagnostics dashboard")
+        require(text, "Layout.fillHeight: true",
+                f"{source} Diagnostics dashboard must stretch vertically")
+        require(text, "Layout.minimumHeight: 360",
+                f"{source} Diagnostics must fall back to scrolling below its safe minimum")
         require(text, "compactMode: true", f"{source} compact diagnostics viewport")
         require(text, "evidence: root.evidence", f"{source} shared diagnostics evidence")
         require(text, "targets: root.runtimeCatalog", f"{source} Workflow target catalog")

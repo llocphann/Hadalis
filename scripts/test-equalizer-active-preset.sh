@@ -29,9 +29,10 @@ cat >"$preset_file" <<'JSON'
 {
     "output": {
         "blocklist": ["keep-me"],
-        "compressor#0": {
+        "convolver#0": {
             "bypass": false,
-            "threshold": -18.0
+            "input-gain": -1.0,
+            "kernel-name": "room.irs"
         },
         "equalizer#0": {
             "balance": 0.25,
@@ -68,9 +69,15 @@ cat >"$preset_file" <<'JSON'
             },
             "split-channels": false
         },
+        "limiter#0": {
+            "bypass": false,
+            "ceiling": -1.0,
+            "lookahead": 5.0
+        },
         "plugins_order": [
-            "compressor#0",
-            "equalizer#0"
+            "convolver#0",
+            "equalizer#0",
+            "limiter#0"
         ]
     }
 }
@@ -85,34 +92,75 @@ import sys
 socket_path = pathlib.Path(sys.argv[1])
 log_path = pathlib.Path(sys.argv[2])
 
+props = {
+    ("equalizer", "0", None, "numBands"): "1",
+    ("equalizer", "0", None, "splitChannels"): "false",
+    ("equalizer", "0", "left", "band0Gain"): "1.0",
+    ("equalizer", "0", "right", "band0Gain"): "1.0",
+}
+commands = []
+
+def parse_set(parts):
+    plugin = parts[2]
+    instance = parts[3]
+    if len(parts) == 7:
+        channel = parts[4]
+        prop = parts[5]
+        value = parts[6]
+    else:
+        channel = None
+        prop = parts[4]
+        value = parts[5]
+    return plugin, instance, channel, prop, value
+
 server = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
 server.bind(str(socket_path))
 server.listen(1)
 conn, _ = server.accept()
 with conn:
-    first = b""
-    while not first.endswith(b"\n"):
-        chunk = conn.recv(4096)
+    pending = b""
+    while True:
+        chunk = conn.recv(8192)
         if not chunk:
             break
-        first += chunk
-    if first != b"get_last_loaded_preset:output\n":
-        raise SystemExit(f"unexpected first command: {first!r}")
-    conn.sendall(b"Music\n")
+        pending += chunk
+        while b"\n" in pending:
+            raw, pending = pending.split(b"\n", 1)
+            command = raw.decode("utf-8")
+            commands.append(command)
 
-    second = b""
-    while not second.endswith(b"\n"):
-        chunk = conn.recv(4096)
-        if not chunk:
-            break
-        second += chunk
-    if second != b"load_preset:output:Music\n":
-        raise SystemExit(f"unexpected second command: {second!r}")
+            if command == "get_last_loaded_preset:output":
+                conn.sendall(b"Music\n")
+                continue
 
-log_path.write_text(
-    first.decode("utf-8") + second.decode("utf-8"),
-    encoding="utf-8",
-)
+            parts = command.split(":")
+            if parts[0] == "get_property":
+                plugin = parts[2]
+                instance = parts[3]
+                if len(parts) == 6:
+                    channel = parts[4]
+                    prop = parts[5]
+                else:
+                    channel = None
+                    prop = parts[4]
+                value = props.get((plugin, instance, channel, prop))
+                if value is None:
+                    if plugin != "equalizer" or instance != "0":
+                        value = "error_plugin_not_found"
+                    elif prop.startswith("band") and (
+                        prop.endswith("Gain") or prop.endswith("Frequency")
+                    ):
+                        value = "0"
+                    else:
+                        value = "error_property_not_found"
+                conn.sendall((value + "\n").encode("utf-8"))
+                continue
+
+            if parts[0] == "set_property":
+                plugin, instance, channel, prop, value = parse_set(parts)
+                props[(plugin, instance, channel, prop)] = value
+
+log_path.write_text("\n".join(commands) + "\n", encoding="utf-8")
 server.close()
 PY
 server_pid=$!
@@ -141,21 +189,37 @@ log_path = pathlib.Path(sys.argv[3])
 
 preset = json.loads(preset_path.read_text(encoding="utf-8"))
 output = preset["output"]
-if output["plugins_order"] != ["compressor#0", "equalizer#0"]:
-    raise SystemExit("FAIL: existing plugin order changed")
+
+expected_order = ["convolver#0", "equalizer#0", "limiter#0"]
+if output["plugins_order"] != expected_order:
+    raise SystemExit("FAIL: Convolver -> EQ -> Limiter order changed")
 if output["blocklist"] != ["keep-me"]:
     raise SystemExit("FAIL: output blocklist was replaced")
-if output["compressor#0"] != {"bypass": False, "threshold": -18.0}:
-    raise SystemExit("FAIL: non-equalizer effect was modified")
+if output["convolver#0"] != {
+    "bypass": False,
+    "input-gain": -1.0,
+    "kernel-name": "room.irs",
+}:
+    raise SystemExit("FAIL: Convolver was modified")
+if output["limiter#0"] != {
+    "bypass": False,
+    "ceiling": -1.0,
+    "lookahead": 5.0,
+}:
+    raise SystemExit("FAIL: Limiter was modified")
 
 eq = output["equalizer#0"]
 if eq["balance"] != 0.25 or eq["input-gain"] != -1.5 or eq["output-gain"] != 2.0:
-    raise SystemExit("FAIL: unrelated equalizer settings were replaced")
+    raise SystemExit("FAIL: unrelated Equalizer settings were replaced")
+if eq["mode"] != "IIR":
+    raise SystemExit("FAIL: Equalizer processing mode changed")
 if eq["num-bands"] != 32 or eq["split-channels"] is not False:
-    raise SystemExit("FAIL: Hadalis 32-band equalizer shape was not applied")
+    raise SystemExit("FAIL: Hadalis 32-band Equalizer shape was not persisted")
 
-expected = {0: 5.0, 3: 7.0, 6: 5.0, 9: 2.0, 12: 1.0,
-            15: 0.0, 18: 0.0, 21: 0.0, 24: 1.0, 27: 2.0}
+expected = {
+    0: 5.0, 3: 7.0, 6: 5.0, 9: 2.0, 12: 1.0,
+    15: 0.0, 18: 0.0, 21: 0.0, 24: 1.0, 27: 2.0,
+}
 for index in range(32):
     left = eq["left"][f"band{index}"]
     right = eq["right"][f"band{index}"]
@@ -166,15 +230,28 @@ for index in range(32):
         raise SystemExit(f"FAIL: band{index} channel frequencies diverged")
 
 state = json.loads(state_path.read_text(encoding="utf-8"))
-if state["preset"] != "Bass" or state["gains"] != [5.0, 7.0, 5.0, 2.0, 1.0, 0.0, 0.0, 0.0, 1.0, 2.0]:
-    raise SystemExit("FAIL: Hadalis DSP state did not commit after reload")
+if state["preset"] != "Bass":
+    raise SystemExit("FAIL: Hadalis preset label did not commit")
+if state["gains"] != [5.0, 7.0, 5.0, 2.0, 1.0, 0.0, 0.0, 0.0, 1.0, 2.0]:
+    raise SystemExit("FAIL: Hadalis DSP gains did not commit")
 
-commands = log_path.read_text(encoding="utf-8")
-if commands != "get_last_loaded_preset:output\nload_preset:output:Music\n":
-    raise SystemExit("FAIL: active preset was not queried and reloaded in place")
-
-if any(p.name == "hadalis_live_eq.json" for p in preset_path.parent.iterdir()):
-    raise SystemExit("FAIL: retired Hadalis scratch preset was recreated")
+commands = log_path.read_text(encoding="utf-8").splitlines()
+if "get_last_loaded_preset:output" not in commands:
+    raise SystemExit("FAIL: active preset was not queried")
+if any(command.startswith("load_preset:") for command in commands):
+    raise SystemExit("FAIL: DSP update reloaded the pipeline")
+if any(":convolver:" in command or ":limiter:" in command for command in commands):
+    raise SystemExit("FAIL: DSP update touched Convolver or Limiter")
+if not any(
+    command.startswith("set_property:output:equalizer:0:left:band27Gain:2")
+    for command in commands
+):
+    raise SystemExit("FAIL: live left Equalizer gain was not updated")
+if not any(
+    command.startswith("set_property:output:equalizer:0:right:band27Gain:2")
+    for command in commands
+):
+    raise SystemExit("FAIL: live right Equalizer gain was not updated")
 PY
 
-printf 'PASS: EQ DSP patches and reloads the active EasyEffects preset without creating a new preset\n'
+printf 'PASS: EQ DSP updates the live Equalizer without reloading Convolver -> EQ -> Limiter\n'

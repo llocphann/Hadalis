@@ -8,11 +8,11 @@ import Quickshell.Io
 /**
  * Optional 10-band DSP Equalizer facade for the Media Popup.
  *
- * Hadalis keeps one EqualizerService/backend boundary, but deliberately avoids
- * direct per-channel EasyEffects local-server band properties. Those properties
- * are version-dependent. The DSP facade instead mirrors Serpantinum's proven
- * model: persist ten gains, render them into one 32-band EasyEffects preset,
- * then load that preset through EasyEffects' generic local-server command.
+ * Hadalis keeps one EqualizerService/backend boundary. The helper feature-probes
+ * EasyEffects' local property API, applies the 10-to-32-band curve directly to
+ * the active Equalizer instance, and persists only those Equalizer fields into
+ * the currently selected preset. It never reloads the preset, so Convolver,
+ * Limiter, ordering, and unsaved live pipeline state are not reconstructed.
  * The helper talks to EasyEffectsServer directly with Python's AF_UNIX socket;
  * socat is not required for the DSP path.
  */

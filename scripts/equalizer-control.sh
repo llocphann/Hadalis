@@ -70,20 +70,77 @@ for raw in raw_gains:
         raise SystemExit(64)
     gains.append(max(-12.0, min(12.0, value)))
 
+slider_map = {
+    0: 0,
+    1: 3,
+    2: 6,
+    3: 9,
+    4: 12,
+    5: 15,
+    6: 18,
+    7: 21,
+    8: 24,
+    9: 27,
+}
+frequencies = [
+    31, 40, 50, 63, 80, 100, 125, 160,
+    200, 250, 315, 400, 500, 630, 800, 1000,
+    1250, 1600, 2000, 2500, 3150, 4000, 5000, 6300,
+    8000, 10000, 12500, 16000, 20000, 22000, 24000, 24000,
+]
+gain_by_backend_index = {
+    backend_index: gains[dsp_index]
+    for dsp_index, backend_index in slider_map.items()
+}
+backend_gains = [gain_by_backend_index.get(index, 0.0) for index in range(32)]
+
+def atomic_text_write(path: pathlib.Path, text: str) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    fd, tmp_name = tempfile.mkstemp(prefix=path.name + ".", dir=str(path.parent))
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as handle:
+            handle.write(text)
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.replace(tmp_name, path)
+    finally:
+        if os.path.exists(tmp_name):
+            os.unlink(tmp_name)
+
 client = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
 client.settimeout(3.0)
-try:
-    client.connect(socket_path)
-    client.sendall(b"get_last_loaded_preset:output\n")
 
+def send(command: str) -> None:
+    client.sendall((command + "\n").encode("utf-8"))
+
+def read_line() -> str:
     response = bytearray()
     while b"\n" not in response and len(response) < 4096:
         chunk = client.recv(4096)
         if not chunk:
             break
         response.extend(chunk)
+    return response.partition(b"\n")[0].decode("utf-8", errors="strict").strip()
 
-    active_preset = response.partition(b"\n")[0].decode("utf-8", errors="strict").strip()
+def request(command: str) -> str:
+    send(command)
+    return read_line()
+
+def require_property(command: str) -> str:
+    value = request(command)
+    if not value or value.startswith("error_"):
+        print(
+            "EasyEffects live Equalizer property API is unavailable: "
+            f"{command} -> {value or '<empty>'}",
+            file=sys.stderr,
+        )
+        raise SystemExit(67)
+    return value
+
+try:
+    client.connect(socket_path)
+
+    active_preset = request("get_last_loaded_preset:output")
     if not active_preset:
         print("EasyEffects has no active output preset", file=sys.stderr)
         raise SystemExit(66)
@@ -145,128 +202,94 @@ try:
         None,
     )
     if eq_key is None:
-        eq_key = next(
-            (
-                key for key in output
-                if key == "equalizer" or key.startswith("equalizer#")
-            ),
-            None,
+        print(
+            "active EasyEffects preset does not contain an Equalizer in plugins_order",
+            file=sys.stderr,
         )
-
-    modern_schema = (
-        preset_path == preset_candidates[0]
-        or any("#" in item for item in order)
-        or any(
-            "#" in key
-            for key in output
-            if key not in {"blocklist", "plugins_order"}
-        )
-    )
-    if eq_key is None:
-        eq_key = "equalizer#0" if modern_schema else "equalizer"
-        order.append(eq_key)
+        raise SystemExit(66)
 
     equalizer = output.get(eq_key)
     if not isinstance(equalizer, dict):
-        equalizer = {}
-        output[eq_key] = equalizer
+        print("active EasyEffects preset has malformed Equalizer data", file=sys.stderr)
+        raise SystemExit(66)
 
-    slider_map = {
-        0: 0,
-        1: 3,
-        2: 6,
-        3: 9,
-        4: 12,
-        5: 15,
-        6: 18,
-        7: 21,
-        8: 24,
-        9: 27,
-    }
-    frequencies = [
-        31, 40, 50, 63, 80, 100, 125, 160,
-        200, 250, 315, 400, 500, 630, 800, 1000,
-        1250, 1600, 2000, 2500, 3150, 4000, 5000, 6300,
-        8000, 10000, 12500, 16000, 20000, 22000, 24000, 24000,
-    ]
-    gain_by_backend_index = {
-        backend_index: gains[dsp_index]
-        for dsp_index, backend_index in slider_map.items()
-    }
+    if eq_key == "equalizer":
+        instance_id = "0"
+    else:
+        instance_id = eq_key.partition("#")[2]
+        if not instance_id.isdigit():
+            print("active EasyEffects preset has an invalid Equalizer instance id", file=sys.stderr)
+            raise SystemExit(66)
 
-    band_template = None
-    left = equalizer.get("left")
-    if isinstance(left, dict):
-        for band in left.values():
-            if isinstance(band, dict):
-                band_template = band
-                break
+    plugin_prefix = f"output:equalizer:{instance_id}"
+    require_property(f"get_property:{plugin_prefix}:numBands")
+    require_property(f"get_property:{plugin_prefix}:left:band0Gain")
+    require_property(f"get_property:{plugin_prefix}:right:band0Gain")
 
-    if band_template is None:
-        band_template = {
-            "mode": "RLC (BT)" if modern_schema else "Bell",
-            "mute": False,
-            "q": 1.0,
-            "solo": False,
-            "width": 1.0,
-            "slope": "x1",
-        }
-        if modern_schema:
-            band_template["type"] = "Bell"
-
-    bands = {}
-    for index in range(32):
-        band = copy.deepcopy(band_template)
-        band.update({
-            "frequency": frequencies[index],
-            "gain": gain_by_backend_index.get(index, 0.0),
-            "mute": False,
-            "q": 1.0,
-            "solo": False,
-            "width": 1.0,
-            "slope": "x1",
-        })
-        if modern_schema:
-            band.setdefault("type", "Bell")
-            band.setdefault("mode", "RLC (BT)")
-        else:
-            band.setdefault("mode", "Bell")
-        bands[f"band{index}"] = band
-
-    equalizer.update({
-        "bypass": False,
-        "left": copy.deepcopy(bands),
-        "right": copy.deepcopy(bands),
-        "mode": "IIR",
-        "num-bands": 32,
-        "split-channels": False,
-    })
-    output["plugins_order"] = order
-
-    state = {"gains": gains, "preset": preset_label}
-
-    def atomic_text_write(path: pathlib.Path, text: str) -> None:
-        path.parent.mkdir(parents=True, exist_ok=True)
-        fd, tmp_name = tempfile.mkstemp(prefix=path.name + ".", dir=str(path.parent))
-        try:
-            with os.fdopen(fd, "w", encoding="utf-8") as handle:
-                handle.write(text)
-                handle.flush()
-                os.fsync(handle.fileno())
-            os.replace(tmp_name, path)
-        finally:
-            if os.path.exists(tmp_name):
-                os.unlink(tmp_name)
-
-    new_text = json.dumps(document, indent=4) + "\n"
-    atomic_text_write(preset_path, new_text)
+    # Change only the active Equalizer database. No preset reload occurs, so
+    # Convolver/Limiter and any unsaved live pipeline state remain untouched.
+    send(f"set_property:{plugin_prefix}:bypass:false")
+    send(f"set_property:{plugin_prefix}:numBands:32")
+    send(f"set_property:{plugin_prefix}:splitChannels:false")
+    for index, (frequency, gain) in enumerate(zip(frequencies, backend_gains)):
+        for channel in ("left", "right"):
+            send(f"set_property:{plugin_prefix}:{channel}:band{index}Frequency:{frequency}")
+            send(f"set_property:{plugin_prefix}:{channel}:band{index}Gain:{gain}")
 
     try:
-        client.sendall(f"load_preset:output:{active_preset}\n".encode("utf-8"))
-    except Exception:
-        atomic_text_write(preset_path, original_text)
-        raise
+        if int(float(require_property(f"get_property:{plugin_prefix}:numBands"))) != 32:
+            raise ValueError("numBands")
+        split_value = require_property(f"get_property:{plugin_prefix}:splitChannels").lower()
+        if split_value not in {"false", "0"}:
+            raise ValueError("splitChannels")
+        for channel in ("left", "right"):
+            live_gain = float(require_property(f"get_property:{plugin_prefix}:{channel}:band27Gain"))
+            live_frequency = float(require_property(f"get_property:{plugin_prefix}:{channel}:band27Frequency"))
+            if not math.isclose(live_gain, backend_gains[27], abs_tol=1e-6):
+                raise ValueError(f"{channel} band27 gain")
+            if not math.isclose(live_frequency, frequencies[27], abs_tol=1e-6):
+                raise ValueError(f"{channel} band27 frequency")
+    except (TypeError, ValueError):
+        print("EasyEffects did not accept the live Equalizer update", file=sys.stderr)
+        raise SystemExit(67)
 
+    # Persist only Equalizer fields into the selected preset. The rest of the
+    # preset document and plugins_order remain unchanged in value.
+    modern_schema = "#" in eq_key
+    for channel in ("left", "right"):
+        channel_bands = equalizer.get(channel)
+        if not isinstance(channel_bands, dict):
+            channel_bands = {}
+            equalizer[channel] = channel_bands
+
+        template = next((band for band in channel_bands.values() if isinstance(band, dict)), None)
+        if template is None:
+            template = {
+                "mode": "RLC (BT)" if modern_schema else "Bell",
+                "mute": False,
+                "q": 1.0,
+                "solo": False,
+                "width": 1.0,
+                "slope": "x1",
+            }
+            if modern_schema:
+                template["type"] = "Bell"
+
+        for index, (frequency, gain) in enumerate(zip(frequencies, backend_gains)):
+            band_key = f"band{index}"
+            existing = channel_bands.get(band_key)
+            band = copy.deepcopy(existing if isinstance(existing, dict) else template)
+            band["frequency"] = frequency
+            band["gain"] = gain
+            channel_bands[band_key] = band
+
+    equalizer["bypass"] = False
+    equalizer["num-bands"] = 32
+    equalizer["split-channels"] = False
+
+    atomic_text_write(preset_path, json.dumps(document, indent=4) + "\n")
+
+    state = {"gains": gains, "preset": preset_label}
     atomic_text_write(state_path, json.dumps(state, indent=4) + "\n")
 finally:
     client.close()

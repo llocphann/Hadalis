@@ -93,13 +93,12 @@ for token in (
 ):
     forbid(service, token, "EqualizerService")
 
-# Runtime compatibility fix: Hadalis must no longer depend on channel-scoped
-# EasyEffects local-server properties, which are version-dependent.
+# Backend socket/property protocol remains helper-owned rather than leaking into
+# the deferred QML facade.
 for token in (
-    "get_property:output:equalizer:0:left:",
-    "get_property:output:equalizer:0:right:",
-    "set_property:output:equalizer:0:left:",
-    "set_property:output:equalizer:0:right:",
+    "get_property:output:equalizer:",
+    "set_property:output:equalizer:",
+    "load_preset:output:",
     "malformed-band-response",
     "id: bandRefreshProc",
 ):
@@ -117,11 +116,10 @@ for token in (
 ):
     require(service, token, "EqualizerService")
 
-# Helper mirrors Serpantinum's 10 -> 32 mapping inside the output preset
-# EasyEffects is already using. It queries that preset from the local server,
-# patches only the Equalizer while preserving the rest of the pipeline, then
-# reloads the same preset name so DSP changes become live without switching
-# EasyEffects to a Hadalis-owned scratch preset.
+# Helper updates the active Equalizer database directly and persists the same
+# Equalizer fields into the active preset file. It must never reload the preset,
+# because reloading rebuilds the whole pipeline and can discard unsaved
+# Convolver/Limiter state.
 for token in (
     "slider_map = {",
     "0: 0,",
@@ -134,27 +132,34 @@ for token in (
     "7: 21,",
     "8: 24,",
     "9: 27,",
-    '"num-bands": 32',
-    '"split-channels": False',
     "socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)",
-    'client.sendall(b"get_last_loaded_preset:output\\n")',
-    'output = document.get("output")',
-    'eq_key = "equalizer#0" if modern_schema else "equalizer"',
-    "atomic_text_write(preset_path, new_text)",
-    'client.sendall(f"load_preset:output:{active_preset}\\n".encode("utf-8"))',
+    'active_preset = request("get_last_loaded_preset:output")',
+    'plugin_prefix = f"output:equalizer:{instance_id}"',
+    'require_property(f"get_property:{plugin_prefix}:numBands")',
+    'send(f"set_property:{plugin_prefix}:numBands:32")',
+    'f"band{index}Frequency:{frequency}"',
+    'f"band{index}Gain:{gain}"',
+    'equalizer["num-bands"] = 32',
+    'equalizer["split-channels"] = False',
+    'atomic_text_write(preset_path, json.dumps(document, indent=4) + "\\n")',
     'mv -f "$state_candidate" "$state_file"',
 ):
     require(helper, token, "equalizer-control.sh")
 
-query_pos = helper.index('client.sendall(b"get_last_loaded_preset:output\\n")')
-preset_write_pos = helper.index("atomic_text_write(preset_path, new_text)")
-load_pos = helper.index('client.sendall(f"load_preset:output:{active_preset}\\n"')
-state_commit_pos = helper.index('mv -f "$state_candidate" "$state_file"')
-if not query_pos < preset_write_pos < load_pos < state_commit_pos:
-    raise SystemExit("FAIL: active preset query/patch/reload/state commit ordering regressed")
+for token in (
+    "load_preset:output:",
+    "hadalis_live_eq",
+    "socat",
+):
+    forbid(helper, token, "equalizer-control.sh")
 
-forbid(helper, "hadalis_live_eq", "equalizer-control.sh")
-forbid(helper, "socat", "equalizer-control.sh")
+live_apply_pos = helper.index('send(f"set_property:{plugin_prefix}:numBands:32")')
+preset_write_pos = helper.index(
+    'atomic_text_write(preset_path, json.dumps(document, indent=4) + "\\n")'
+)
+state_commit_pos = helper.index('mv -f "$state_candidate" "$state_file"')
+if not live_apply_pos < preset_write_pos < state_commit_pos:
+    raise SystemExit("FAIL: live EQ apply/preset persistence/state commit ordering regressed")
 
 for token in (
     '"XDG_DATA_HOME"',
@@ -245,5 +250,5 @@ for token in (
 ):
     require(backend, token, "EasyEffects")
 
-print("PASS: Media DSP uses version-compatible preset loading, integrated CAVA response graph, and compact transport UI")
+print("PASS: Media DSP updates the live active Equalizer without pipeline reload, with integrated CAVA response graph and compact transport UI")
 PY

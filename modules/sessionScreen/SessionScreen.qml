@@ -101,7 +101,9 @@ Scope {
             exclusionMode: ExclusionMode.Ignore
             WlrLayershell.namespace: "quickshell:session"
             WlrLayershell.layer: WlrLayer.Overlay
-            WlrLayershell.keyboardFocus: visible ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
+            readonly property bool acceptsInput: GlobalStates.sessionOpen
+            WlrLayershell.keyboardFocus: sessionRoot.acceptsInput
+                ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
             color: "transparent"
 
             anchors {
@@ -109,6 +111,11 @@ Scope {
                 bottom: true
                 left: true
                 right: true
+            }
+
+            Item { id: emptySessionInput; width: 0; height: 0 }
+            mask: Region {
+                item: sessionRoot.acceptsInput ? sessionMouseArea : emptySessionInput
             }
 
             readonly property string _monitorName: root.focusedScreen?.name ?? ""
@@ -211,6 +218,7 @@ Scope {
             MouseArea {
                 id: sessionMouseArea
                 anchors.fill: parent
+                enabled: sessionRoot.acceptsInput
                 onClicked: {
                     sessionRoot.hide()
                 }

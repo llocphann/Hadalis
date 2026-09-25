@@ -43,6 +43,18 @@ Item {
         tooltipLoader.item?.anchor?.updateAnchor()
     }
 
+    // Do not bind Loader.active directly to Item.visible. Effective Item
+    // visibility can itself change while the presentation is materialized or
+    // reparented, which lets QML form an active <-> visibility dependency
+    // cycle. Lifecycle signals drive the lazy Loader imperatively instead.
+    function syncPresentation(): void {
+        const shouldBeActive = root.visible && root.internalVisibleCondition
+        if (tooltipLoader.active !== shouldBeActive)
+            tooltipLoader.active = shouldBeActive
+        if (_anchorRefreshTimer.running !== shouldBeActive)
+            _anchorRefreshTimer.running = shouldBeActive
+    }
+
     // PopupAnchor item geometry is sampled only when a PopupWindow is shown.
     // Keep a tiny revision heartbeat while a tooltip is live so both the
     // PopupWindow anchor and the ApplicationWindow fallback follow moving
@@ -116,6 +128,7 @@ Item {
             _showDelayTimer.stop()
             root.setContentShown(false)
         }
+        root.syncPresentation()
     }
     onVisibleChanged: {
         if (!root.visible) {
@@ -123,9 +136,13 @@ Item {
             _showDelayTimer.stop()
             root.setContentShown(false)
         }
+        root.syncPresentation()
     }
     property bool _anchorInitialized: false
-    Component.onCompleted: root._anchorInitialized = true
+    Component.onCompleted: {
+        root._anchorInitialized = true
+        Qt.callLater(root.syncPresentation)
+    }
     onParentChanged: {
         if (!root._anchorInitialized)
             return
@@ -133,6 +150,7 @@ Item {
         root.anchorRevision += 1
         _showDelayTimer.stop()
         root.setContentShown(false)
+        Qt.callLater(root.syncPresentation)
     }
 
     property var anchorEdges: Edges.Top
@@ -167,7 +185,6 @@ Item {
         id: _anchorRefreshTimer
         interval: 50
         repeat: true
-        running: root.visible && root.internalVisibleCondition
         onTriggered: {
             root.anchorRevision += 1
             if (tooltipLoader.active)
@@ -175,77 +192,72 @@ Item {
         }
     }
 
-    // Primary path: PopupWindow for shell overlay contexts (PanelWindow)
+    // One Loader owns both presentation paths. Its active state follows only
+    // tooltip lifecycle; window association selects the loaded component.
     Loader {
         id: tooltipLoader
         anchors.fill: parent
-        active: root._canUsePopupWindow && root.visible && root.internalVisibleCondition
+        active: false
+        sourceComponent: root._canUsePopupWindow
+            ? popupWindowPresentation : fallbackItemPresentation
+
+        onLoaded: {
+            root.setContentShown(false)
+            _showDelayTimer.restart()
+        }
         onActiveChanged: {
-            if (active) {
-                root.setContentShown(false)
-                _showDelayTimer.restart()
-            } else {
+            if (!active) {
                 _showDelayTimer.stop()
                 root.setContentShown(false)
             }
         }
-        sourceComponent: PopupWindow {
+    }
+
+    Component {
+        id: popupWindowPresentation
+        PopupWindow {
             visible: true
             readonly property real _gap: 4
             anchor {
                 window: root.QsWindow.window
                 item: root.parent
-                rect.x: (root.anchorEdges === Edges.Left) ? -_gap : 0
-                rect.y: (root.anchorEdges === Edges.Top) ? -_gap : 0
-                rect.width: (root.parent?.width ?? 0) + ((root.anchorEdges === Edges.Left || root.anchorEdges === Edges.Right) ? _gap : 0)
-                rect.height: (root.parent?.height ?? 0) + ((root.anchorEdges === Edges.Top || root.anchorEdges === Edges.Bottom) ? _gap : 0)
+                rect.x: root.anchorEdges === Edges.Left ? -_gap : 0
+                rect.y: root.anchorEdges === Edges.Top ? -_gap : 0
+                rect.width: (root.parent?.width ?? 0)
+                    + ((root.anchorEdges === Edges.Left
+                        || root.anchorEdges === Edges.Right) ? _gap : 0)
+                rect.height: (root.parent?.height ?? 0)
+                    + ((root.anchorEdges === Edges.Top
+                        || root.anchorEdges === Edges.Bottom) ? _gap : 0)
                 edges: root.anchorEdges
                 gravity: root.anchorGravity
             }
-            mask: Region {
-                item: null
-            }
-
+            mask: Region { item: null }
             color: "transparent"
-            implicitWidth: root.contentItem.implicitWidth + root.horizontalMargin * 2
-            implicitHeight: root.contentItem.implicitHeight + root.verticalMargin * 2
-
+            implicitWidth: root.contentItem.implicitWidth
+                + root.horizontalMargin * 2
+            implicitHeight: root.contentItem.implicitHeight
+                + root.verticalMargin * 2
             data: [root.contentItem]
         }
     }
 
-    // Fallback path: Item-based tooltip for ApplicationWindow contexts
-    // Reparents to the Window's contentItem so the tooltip escapes all
-    // clipping containers (Flickable, clip:true parents, etc.).
-    Loader {
-        id: fallbackLoader
-        active: !root._canUsePopupWindow && root.visible && root.internalVisibleCondition
-        onActiveChanged: {
-            if (active) {
-                root.setContentShown(false)
-                _showDelayTimer.restart()
-            } else {
-                _showDelayTimer.stop()
-                root.setContentShown(false)
-            }
-        }
-        sourceComponent: Item {
+    Component {
+        id: fallbackItemPresentation
+        Item {
             id: fallbackItem
-            // Reparent to Window.contentItem to escape clipped containers
             parent: root.Window.window?.contentItem ?? root.parent ?? root
             z: 1000
 
-            readonly property real tooltipW: root.contentItem.implicitWidth + root.horizontalMargin * 2
-            readonly property real tooltipH: root.contentItem.implicitHeight + root.verticalMargin * 2
-
+            readonly property real tooltipW:
+                root.contentItem.implicitWidth + root.horizontalMargin * 2
+            readonly property real tooltipH:
+                root.contentItem.implicitHeight + root.verticalMargin * 2
             width: tooltipW
             height: tooltipH
 
-            // Position via x/y computed from the anchor item's geometry
             readonly property Item anchorItem: root.parent
             readonly property point anchorPos: {
-                // Force mapToItem() to re-evaluate while the tooltip is live;
-                // coordinate mapping itself is intentionally non-reactive.
                 const revision = root.anchorRevision
                 if (!anchorItem || !fallbackItem.parent)
                     return Qt.point(0, 0)
@@ -259,7 +271,8 @@ Item {
                     return anchorPos.x - tooltipW - gap
                 if (edges === Edges.Right)
                     return anchorPos.x + (anchorItem?.width ?? 0) + gap
-                return anchorPos.x + ((anchorItem?.width ?? 0) - tooltipW) / 2
+                return anchorPos.x
+                    + ((anchorItem?.width ?? 0) - tooltipW) / 2
             }
             readonly property real preferredY: {
                 const edges = root.anchorEdges
@@ -267,15 +280,18 @@ Item {
                     return anchorPos.y - tooltipH - gap
                 if (edges === Edges.Bottom)
                     return anchorPos.y + (anchorItem?.height ?? 0) + gap
-                return anchorPos.y + ((anchorItem?.height ?? 0) - tooltipH) / 2
+                return anchorPos.y
+                    + ((anchorItem?.height ?? 0) - tooltipH) / 2
             }
 
             x: Math.max(viewportMargin, Math.min(preferredX,
-                Math.max(viewportMargin, (parent?.width ?? tooltipW) - tooltipW - viewportMargin)))
+                Math.max(viewportMargin,
+                    (parent?.width ?? tooltipW) - tooltipW - viewportMargin)))
             y: Math.max(viewportMargin, Math.min(preferredY,
-                Math.max(viewportMargin, (parent?.height ?? tooltipH) - tooltipH - viewportMargin)))
-
+                Math.max(viewportMargin,
+                    (parent?.height ?? tooltipH) - tooltipH - viewportMargin)))
             data: [root.contentItem]
         }
     }
+
 }

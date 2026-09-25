@@ -81,6 +81,7 @@ steam_theme="$repo_root/scripts/colors/modules/70-steam.sh"
 cava_theme_module="$repo_root/scripts/colors/modules/90-cava.sh"
 desktop_media_widget="$repo_root/modules/background/widgets/mediaControls/MediaControlsWidget.qml"
 player_base="$repo_root/modules/mediaControls/components/PlayerBase.qml"
+player_control="$repo_root/modules/mediaControls/PlayerControl.qml"
 media_presets=(
     "$repo_root/modules/mediaControls/presets/FullPlayer.qml"
     "$repo_root/modules/mediaControls/presets/CompactPlayer.qml"

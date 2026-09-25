@@ -107,7 +107,7 @@ A ready-to-use fresh-chat prompt for that phase is stored at
 
 **Fullscreen Bar lifecycle lock (maintainer-approved 2026-09-19):**
 
-- Horizontal and vertical ii Bar `PanelWindow` surfaces must remain **mapped and updating while a client is fullscreen**. Do not gate Bar `visible`, `updatesEnabled`, Loader lifetime or content visibility on `GameMode.hasFullscreenOnOutput()`.
+- Horizontal and vertical ii Bar `PanelWindow` surfaces must remain **mapped and updating while a client is fullscreen**. Never gate Bar `visible`, `updatesEnabled` or Loader lifetime on fullscreen. The horizontal Bar may suppress its exclusive zone, paint, blur and input while `GameMode.hasFullscreenOnOutput()` is true, but the native layer surface must stay alive so exiting fullscreen cannot strand Bar contents blank.
 - Niri/compositor stacking naturally covers Top-layer Bar surfaces during fullscreen. Explicitly unmapping/remapping the Bar caused a confirmed regression where Bar contents stayed blank after leaving fullscreen until Quickshell was reloaded.
 - The painted Screen Edge `FrameWindow` must also remain mapped and updating across fullscreen. It shares the same Top-layer stacking domain as the Bar; destroying/recreating only the frame can remap the Bar-thick physical perimeter above `BarContent` after fullscreen exits. Niri already renders focused fullscreen clients above Top-layer surfaces.
 - The four transparent Screen Edge `ReservationWindow` surfaces may still unmap during fullscreen to release their exclusive work-area reservation. This reservation lifecycle must remain separate from the persistent painted frame lifecycle.

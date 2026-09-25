@@ -154,10 +154,11 @@ Singleton {
     }
 
     // Check if a window is fullscreen.
-    // Niri 25.11+ doesn't expose is_fullscreen on windows.
-    // We detect fullscreen by comparing window_size to the output's logical
-    // resolution (via workspace → output mapping). A small tolerance (2px)
-    // accounts for sub-pixel rounding differences.
+    // Niri 25.11+ doesn't expose is_fullscreen on windows. The IPC layout's
+    // tile_size is the visual tile/backdrop size and therefore remains
+    // output-sized even when a fullscreen client keeps a smaller fixed
+    // window_size inside the black fullscreen backdrop. Prefer tile_size and
+    // retain window_size only as a compatibility fallback.
     function isWindowFullscreen(window) {
         if (!window) return false
         if (!CompositorService.isNiri) return false
@@ -165,9 +166,13 @@ Singleton {
         // If niri ever adds is_fullscreen back, prefer it
         if (window.is_fullscreen === true) return true
 
-        // Fallback: compare window size to output logical size
-        const winSize = window.layout?.window_size
-        if (!winSize || winSize.length < 2) return false
+        // Compare the visual tile/backdrop to the output logical size. Using
+        // window_size alone misses valid fullscreen windows whose client
+        // geometry is smaller than the compositor-owned fullscreen backdrop.
+        const tileSize = window.layout?.tile_size
+        const windowSize = window.layout?.window_size
+        const fullscreenSize = tileSize && tileSize.length >= 2 ? tileSize : windowSize
+        if (!fullscreenSize || fullscreenSize.length < 2) return false
 
         const ws = NiriService.workspaces[window.workspace_id]
         let output = ws ? NiriService.outputs[ws.output] : null
@@ -181,8 +186,8 @@ Singleton {
         if (!output?.logical) return false
 
         const tolerance = 2
-        return Math.abs(winSize[0] - output.logical.width) <= tolerance
-            && Math.abs(winSize[1] - output.logical.height) <= tolerance
+        return Math.abs(fullscreenSize[0] - output.logical.width) <= tolerance
+            && Math.abs(fullscreenSize[1] - output.logical.height) <= tolerance
     }
 
     // Niri keeps fullscreen geometry on a window when focus moves away from it.

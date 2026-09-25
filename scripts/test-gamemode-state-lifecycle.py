@@ -41,6 +41,22 @@ def main() -> int:
     if 'root._stateFile\n        ]' not in game:
         raise AssertionError("GameMode state writes must pass the state file as an argument")
 
+    # Fullscreen detection must follow the visual tile/backdrop size. A fixed-size
+    # client can remain smaller than the compositor-owned fullscreen backdrop, so
+    # window_size alone is not an authoritative fullscreen signal.
+    for token, message in (
+        ("const tileSize = window.layout?.tile_size",
+         "GameMode must inspect niri's visual tile size for fullscreen"),
+        ("const fullscreenSize = tileSize && tileSize.length >= 2 ? tileSize : windowSize",
+         "GameMode must prefer tile_size while retaining the compatibility fallback"),
+        ("Math.abs(fullscreenSize[0] - output.logical.width)",
+         "fullscreen width detection must use the visual fullscreen size"),
+        ("Math.abs(fullscreenSize[1] - output.logical.height)",
+         "fullscreen height detection must use the visual fullscreen size"),
+    ):
+        if token not in game:
+            raise AssertionError(message)
+
     # A fullscreen-sized window that remains on an active workspace after focus
     # moves away must not keep the Bar or GameMode hidden. Niri reports the
     # actually presented window through workspace.active_window_id.

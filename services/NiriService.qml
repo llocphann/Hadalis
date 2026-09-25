@@ -400,7 +400,11 @@ Singleton {
         for (const ws of data.workspaces) {
             const oldWs = root.workspaces[ws.id]
             newWorkspaces[ws.id] = ws
-            if (oldWs && oldWs.active_window_id !== undefined) {
+            // Current niri workspace snapshots carry active_window_id. Keep
+            // that authoritative value; only bridge from the previous
+            // event-stream state for older snapshots that omit the field.
+            if (ws.active_window_id === undefined
+                    && oldWs && oldWs.active_window_id !== undefined) {
                 newWorkspaces[ws.id].active_window_id = oldWs.active_window_id
             }
         }

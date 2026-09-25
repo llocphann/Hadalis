@@ -48,6 +48,20 @@ def main() -> int:
     if "if (orderMayChange !== false)" not in text:
         raise AssertionError("order comparison must be gated by the event hint")
 
+    # Workspace snapshots in current niri already carry active_window_id.
+    # Never overwrite that fresh compositor value with a stale cached one; the
+    # cache is only a compatibility bridge for older snapshots lacking it.
+    for needle in (
+        "if (ws.active_window_id === undefined",
+        "&& oldWs && oldWs.active_window_id !== undefined)",
+        "newWorkspaces[ws.id].active_window_id = oldWs.active_window_id",
+    ):
+        if needle not in text:
+            raise AssertionError(f"workspace active-window snapshot contract missing: {needle}")
+
+    if "if (oldWs && oldWs.active_window_id !== undefined)" in text:
+        raise AssertionError("fresh workspace active_window_id must not be overwritten unconditionally")
+
     # Order dirtiness must still cover membership and spatial placement.
     for needle in (
         "_windowOrderDiffers(",

@@ -458,6 +458,21 @@ def _build_palette_css(palette: Dict[str, str]) -> str:
     return "\n".join(palette_lines)
 
 
+def _write_if_changed(path: Path, content: str) -> bool:
+    """Write generated theme content only when the bytes changed."""
+    try:
+        if path.read_text(encoding="utf-8") == content:
+            return False
+    except (FileNotFoundError, OSError):
+        # Preserve the old best-effort write behavior when the destination
+        # cannot be read but may still be writable.
+        pass
+
+    with path.open("w", encoding="utf-8") as fh:
+        fh.write(content)
+    return True
+
+
 def _write_palette(palette: Dict[str, str]) -> None:
     """Write the complete theme files with embedded palette."""
     palette_css = _build_palette_css(palette)
@@ -474,21 +489,18 @@ def _write_palette(palette: Dict[str, str]) -> None:
     tui_content = TUI_THEME_TEMPLATE.format(palette_css=palette_css)
 
     for out in system24_outputs:
-        with out.open("w", encoding="utf-8") as fh:
-            fh.write(system24_content)
+        _write_if_changed(out, system24_content)
         print(f"Generated: {out}")
 
     for out in midnight_outputs:
-        with out.open("w", encoding="utf-8") as fh:
-            fh.write(midnight_content)
+        _write_if_changed(out, midnight_content)
         legacy_out = out.parent / "ii-midnight.theme.css"
         if legacy_out != out:
             legacy_out.unlink(missing_ok=True)
         print(f"Generated: {out}")
 
     for out in tui_outputs:
-        with out.open("w", encoding="utf-8") as fh:
-            fh.write(tui_content)
+        _write_if_changed(out, tui_content)
         print(f"Generated: {out}")
 
 

@@ -76,6 +76,7 @@ gtk_theme="$repo_root/scripts/colors/apply-gtk-theme.sh"
 terminal_theme="$repo_root/scripts/colors/modules/10-terminals.sh"
 directories="$repo_root/modules/common/Directories.qml"
 editor_theme="$repo_root/scripts/colors/modules/30-editors.sh"
+system24_theme="$repo_root/scripts/colors/system24_palette.py"
 
 require "$config" 'property int framerate: 30' 'Cava schema default must remain 30 fps'
 require "$defaults" '"framerate": 30' 'persisted Cava default must remain 30 fps'
@@ -242,5 +243,10 @@ editor_jq_reads="$(grep -Ec '^[[:space:]]*jq -r ' "$editor_theme")"
 if (( editor_jq_reads > 1 )); then
     fail "editor theming parser must use at most one jq read, found $editor_jq_reads"
 fi
+
+require "$system24_theme" 'def _write_if_changed(path: Path, content: str) -> bool:' 'System24 outputs must avoid unchanged rewrites'
+require "$system24_theme" '_write_if_changed(out, system24_content)' 'System24 primary theme must use idempotent writes'
+require "$system24_theme" '_write_if_changed(out, midnight_content)' 'System24 midnight theme must use idempotent writes'
+require "$system24_theme" '_write_if_changed(out, tui_content)' 'System24 TUI theme must use idempotent writes'
 
 printf 'performance lifecycle guards: ok\n'

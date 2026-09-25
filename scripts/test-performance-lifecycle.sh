@@ -495,6 +495,14 @@ require "$dash_media" 'active: root.hasPlayer' 'Dashboard shared PlayerControl m
 require "$dash_media" 'PlayerControl {' 'Dashboard media must reuse the canonical shared player surface'
 require "$dash_welcome" 'layer.enabled: root.visible && status === Image.Ready' 'Dashboard avatar mask must stay circular through the visible exit slide and sleep once hidden'
 require "$dash_welcome" 'mipmap: false' 'Dashboard avatar must not generate unused mipmaps'
+media_controls_host_block="$(sed -n '/identifier: "iiMediaControls"/,+8p' "$ii_panels")"
+grep -Fq 'open: GlobalStates.mediaControlsOpen' <<<"$media_controls_host_block" \
+    || fail 'Media Controls outer scope must load only on presentation demand'
+grep -Fq 'retainAfterUse: true' <<<"$media_controls_host_block" \
+    || fail 'Media Controls outer scope must retain a warm reopen window after first use'
+if grep -Fq 'DeferredPanelLoader' <<<"$media_controls_host_block"; then
+    fail 'Media Controls must not return to eager deferred residency'
+fi
 require "$ii_panels" 'keepLoaded: (Config.options?.dashboard?.keepLoaded ?? false) || used' 'Dashboard must remain resident after first use'
 require "$dashboard" 'visible: true' 'Dashboard native layer-shell surface must remain mapped after first use'
 require "$dashboard" 'updatesEnabled: root._renderUpdatesNeeded' 'Hidden Dashboard must suspend rendering without unmapping'

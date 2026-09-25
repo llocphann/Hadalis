@@ -162,7 +162,16 @@ Item {
         source: "../dashboard/Dashboard.qml"
     }
     DeferredPanelLoader { identifier: "iiLock"; workflowSourcePath: "modules/lock/Lock.qml"; component: Lock {} }
-    DeferredPanelLoader { identifier: "iiMediaControls"; workflowSourcePath: "modules/mediaControls/MediaControls.qml"; component: MediaControls {} }
+    OnDemandPanelLoader {
+        identifier: "iiMediaControls"
+        open: GlobalStates.mediaControlsOpen
+        // Avoid boot-time player/screen binding fan-out. Keep the lightweight
+        // outer scope warm briefly after first use; its own player surface still
+        // releases after the existing 350 ms close animation.
+        retainAfterUse: true
+        workflowSourcePath: "modules/mediaControls/MediaControls.qml"
+        component: MediaControls {}
+    }
     OnDemandPanelLoader { identifier: "iiOnScreenKeyboard"; open: GlobalStates.oskOpen; workflowSourcePath: "modules/onScreenKeyboard/OnScreenKeyboard.qml"; component: OnScreenKeyboard {} }
     OnDemandPanelLoader {
         identifier: "iiOverlay"

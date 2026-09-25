@@ -73,6 +73,7 @@ Item {
                     sourceSize.height: 84
                     opacity: status === Image.Ready ? 1 : 0
                     visible: opacity > 0
+                    onStatusChanged: profileAvatarResolver.handleImageStatus(status)
 
                     Behavior on opacity {
                         enabled: Appearance.animationsEnabled
@@ -97,9 +98,8 @@ Item {
 
                     onPrimaryWatchChanged: avatarIndex = 0
 
-                    readonly property int imgStatus: avatarImg.status
-                    onImgStatusChanged: {
-                        if (imgStatus === Image.Error) {
+                    function handleImageStatus(status): void {
+                        if (status === Image.Error) {
                             const nextIdx = avatarIndex + 1
                             if (nextIdx < Directories.userAvatarPaths.length)
                                 avatarIndex = nextIdx

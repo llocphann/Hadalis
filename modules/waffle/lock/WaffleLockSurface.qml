@@ -1206,6 +1206,7 @@ MouseArea {
                         sourceSize.width: avatarCircle.width * 2
                         sourceSize.height: avatarCircle.height * 2
                         visible: status === Image.Ready
+                        onStatusChanged: waffleLockAvatarResolver.handleImageStatus(status)
                         
                         layer.enabled: root.effectsSafe
                         layer.effect: OpacityMask {
@@ -1223,9 +1224,8 @@ MouseArea {
                         readonly property string resolvedSource: Directories.avatarSourceAt(avatarIndex)
                         readonly property string primaryWatch: Directories.userAvatarSourcePrimary
                         onPrimaryWatchChanged: avatarIndex = 0
-                        readonly property int imgStatus: avatarImage.status
-                        onImgStatusChanged: {
-                            if (imgStatus === Image.Error) {
+                        function handleImageStatus(status): void {
+                            if (status === Image.Error) {
                                 const nextIdx = avatarIndex + 1
                                 if (nextIdx < Directories.userAvatarPaths.length)
                                     avatarIndex = nextIdx

@@ -987,6 +987,7 @@ MouseArea {
                         sourceSize.width: avatarCircle.width * 2
                         sourceSize.height: avatarCircle.height * 2
                         visible: false
+                        onStatusChanged: safeLockAvatarResolver.handleImageStatus(status)
                     }
 
                     QtObject {
@@ -995,9 +996,8 @@ MouseArea {
                         readonly property string resolvedSource: Directories.avatarSourceAt(avatarIndex)
                         readonly property string primaryWatch: Directories.userAvatarSourcePrimary
                         onPrimaryWatchChanged: avatarIndex = 0
-                        readonly property int imgStatus: avatarImage.status
-                        onImgStatusChanged: {
-                            if (imgStatus === Image.Error) {
+                        function handleImageStatus(status): void {
+                            if (status === Image.Error) {
                                 const nextIdx = avatarIndex + 1
                                 if (nextIdx < Directories.userAvatarPaths.length)
                                     avatarIndex = nextIdx

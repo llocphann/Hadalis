@@ -172,7 +172,7 @@ Item {
                         anchors.fill: parent
                         opacity: root.showSheet ? 1 : 0
                         showPlaceholder: false
-            serviceActive: root.positionUpdatesActive
+                        serviceActive: root.positionUpdatesActive
                         baseSize: Appearance.font.pixelSize.normal
                         activeScale: 1.14
                         lineSpacing: 6

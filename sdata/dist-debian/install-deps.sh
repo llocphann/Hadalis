@@ -71,6 +71,7 @@ if [[ -n "${ONLY_MISSING_DEPS:-}" ]]; then
     [wl-paste]="wl-clipboard"
     [fuzzel]="fuzzel"
     [gum]="gum"
+    [hyprpicker]="hyprpicker"
     [xwayland-satellite]="xwayland-satellite"
     [missioncenter]="io.missioncenter.MissionCenter"
   )
@@ -448,6 +449,13 @@ DEBIAN_SCREENCAPTURE_PKGS=(
   imagemagick
   ffmpeg
 )
+
+# hyprpicker is compositor-neutral at runtime and restores the magnified picker
+# UX. Prefer a distro package when available; the installer has a best-effort
+# source fallback below for releases that do not ship it.
+if apt_pkg_available hyprpicker; then
+  DEBIAN_SCREENCAPTURE_PKGS+=(hyprpicker)
+fi
 
 # Check if swappy is available (only in trixie/sid, not bookworm)
 if apt_pkg_available swappy; then
@@ -986,6 +994,74 @@ if ! command -v awww &>/dev/null; then
     rm -rf "$AWWW_BUILD_DIR"
   else
     log_warning "Failed to clone awww repository"
+  fi
+fi
+
+#####################################################################################
+# Install hyprpicker (enhanced Wayland color picker)
+#####################################################################################
+# The shell remains Niri-only. hyprpicker is used only as a standalone
+# wlroots-compatible utility; scripts/colorpicker.sh keeps a generic fallback.
+if ${INSTALL_SCREENCAPTURE:-true} && ! command -v hyprpicker &>/dev/null; then
+  tui_info "Installing enhanced color picker..."
+  log_info "hyprpicker not found in current repositories, trying a source build..."
+
+  HYPRPICKER_DEPS=(
+    cmake
+    pkg-config
+    libpango1.0-dev
+    libcairo2-dev
+    libwayland-dev
+    wayland-protocols
+    libxkbcommon-dev
+    libjpeg-dev
+  )
+
+  if apt_pkg_available libhyprutils-dev; then
+    HYPRPICKER_DEPS+=(libhyprutils-dev)
+  fi
+  if apt_pkg_available libhyprwayland-scanner-dev; then
+    HYPRPICKER_DEPS+=(libhyprwayland-scanner-dev)
+  elif apt_pkg_available hyprwayland-scanner; then
+    HYPRPICKER_DEPS+=(hyprwayland-scanner)
+  fi
+
+  sudo apt install $installflags "${HYPRPICKER_DEPS[@]}" 2>/dev/null || true
+
+  HYPRUTILS_INSTALLED=false
+  if pkg-config --exists hyprutils 2>/dev/null; then
+    HYPRUTILS_INSTALLED=true
+  fi
+
+  if [[ "$HYPRUTILS_INSTALLED" == "false" ]]; then
+    HYPRUTILS_BUILD_DIR="/tmp/hyprutils-build-$"
+    if git clone --depth 1 https://github.com/hyprwm/hyprutils.git "$HYPRUTILS_BUILD_DIR" 2>/dev/null; then
+      cd "$HYPRUTILS_BUILD_DIR"
+      if cmake -B build && cmake --build build && sudo cmake --install build; then
+        HYPRUTILS_INSTALLED=true
+        log_success "hyprutils installed for hyprpicker"
+      else
+        log_warning "hyprutils build failed; generic color picker fallback will remain available"
+      fi
+      cd "${REPO_ROOT}"
+      rm -rf "$HYPRUTILS_BUILD_DIR"
+    fi
+  fi
+
+  if [[ "$HYPRUTILS_INSTALLED" == "true" ]] && command -v hyprwayland-scanner &>/dev/null; then
+    HYPRPICKER_BUILD_DIR="/tmp/hyprpicker-build-$"
+    if git clone --depth 1 https://github.com/hyprwm/hyprpicker.git "$HYPRPICKER_BUILD_DIR" 2>/dev/null; then
+      cd "$HYPRPICKER_BUILD_DIR"
+      if cmake -B build && cmake --build build && sudo cmake --install build; then
+        log_success "hyprpicker installed"
+      else
+        log_warning "hyprpicker build failed; generic color picker fallback will remain available"
+      fi
+      cd "${REPO_ROOT}"
+      rm -rf "$HYPRPICKER_BUILD_DIR"
+    fi
+  else
+    log_warning "hyprpicker build dependencies unavailable; using generic color picker fallback"
   fi
 fi
 

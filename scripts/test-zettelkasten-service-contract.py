@@ -24,7 +24,7 @@ for token in (
     "readonly property bool canSaveZettel:",
     'Translation.tr("Saved to Zettelkasten")',
     '/^Note \\d+$/.test(tabTitle)',
-    "Notepad.setTextValue(textArea.text)",
+    "Notepad.setTabTextById(root._loadedTabId, textArea.text)",
     "draft cleanup remains an explicit user action",
     "property bool compactPresentation: false",
     "visible: !root.compactPresentation",

@@ -147,6 +147,12 @@ Scope {
                         id: barContent
                         opacity: barRoot.fullscreenCovered ? 0 : 1
                         nativeBlurAllowed: false
+                        // Keep the spectrum live through the visible slide-out
+                        // tail, then release CAVA once the Bar is off-screen.
+                        presentationActive: !barRoot.fullscreenCovered
+                            && (barRoot.anchors.bottom
+                                ? barContent.anchors.bottomMargin > -barRoot.panelSurfaceHeight + 1
+                                : barContent.anchors.topMargin > -barRoot.panelSurfaceHeight + 1)
 
                         implicitHeight: barRoot.panelSurfaceHeight
                         anchors {

@@ -35,6 +35,9 @@ Item {
     property var brightnessMonitor: Brightness.getMonitorForScreen(screen)
     property alias backgroundItem: barBackground
     property bool nativeBlurAllowed: true
+    // Hosts that move a still-resident Bar off-screen can suspend expensive
+    // presentation-only work after the exit animation completes.
+    property bool presentationActive: true
 
     property Item barContextMenuSource: null
     property rect barContextMenuRect: Qt.rect(0, 0, 1, 1)
@@ -317,6 +320,7 @@ Item {
         && root.barSpectrumOutputEnabled
         && !Appearance.gameModeMinimal
         && root.visible
+        && root.presentationActive
     readonly property bool barSpectrumProcessWanted: root.barSpectrumConfigured
         && root.barSpectrumAudioPlaying
     readonly property bool barSpectrumVisible: root.barSpectrumConfigured

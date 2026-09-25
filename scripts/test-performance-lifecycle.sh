@@ -48,6 +48,8 @@ session="$repo_root/modules/common/functions/Session.qml"
 overview_window="$repo_root/modules/overview/OverviewWindow.qml"
 resource_usage="$repo_root/services/ResourceUsage.qml"
 bar_resources="$repo_root/modules/bar/Resources.qml"
+bar_surface="$repo_root/modules/bar/Bar.qml"
+bar_content="$repo_root/modules/bar/BarContent.qml"
 vertical_bar_resources="$repo_root/modules/verticalBar/Resources.qml"
 recorder_status="$repo_root/services/RecorderStatus.qml"
 control_panel_media="$repo_root/modules/controlPanel/MediaSection.qml"
@@ -113,6 +115,11 @@ require "$cava" '? Math.min(24, root.requestedFramerate)' 'Low Power must cap Ca
 require "$cava_generator" 'FRAMERATE="${2:-30}"' 'Cava generator fallback must remain 30 fps'
 require "$advanced" '"appearance.cava.framerate": 30' 'ii Cava reset must remain 30 fps'
 require "$waffle_themes" '"appearance.cava.framerate": 30' 'Waffle Cava reset must remain 30 fps'
+require "$bar_content" 'property bool presentationActive: true' 'Bar presentation lifecycle gate must preserve standalone behavior'
+require "$bar_content" '&& root.presentationActive' 'Off-screen auto-hidden Bar must release its Cava subscription'
+require "$bar_surface" 'presentationActive: !barRoot.fullscreenCovered' 'Bar Cava lifecycle must follow actual painted presentation'
+require "$bar_surface" 'barContent.anchors.bottomMargin > -barRoot.panelSurfaceHeight + 1' 'Bottom Bar Cava must remain live through its visible exit slide'
+require "$bar_surface" 'barContent.anchors.topMargin > -barRoot.panelSurfaceHeight + 1' 'Top Bar Cava must remain live through its visible exit slide'
 require "$media_section" 'root.effectiveIsPlaying && GlobalStates.controlPanelOpen' 'Control Panel Cava must stop while playback is paused'
 require "$sidebar_media" 'root.effectiveIsPlaying && GlobalStates.sidebarLeftOpen' 'Sidebar Cava must stop while playback is paused'
 require "$local_music_view" 'active: root.visible && GlobalStates.sidebarLeftOpen && LocalMusic.playing' 'Local Music Cava must sleep while the retained Sidebar is closed'

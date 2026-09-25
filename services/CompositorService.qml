@@ -9,9 +9,9 @@ Singleton {
     id: root
 
     readonly property string niriSocket: Quickshell.env("NIRI_SOCKET")
-    // Niri is the only supported compositor. Keep the retired capability flag
-    // fail-closed until legacy consumers finish migrating, so they never turn
-    // a removed property into runtime binding errors.
+    // Niri is the only supported compositor. This flag reports whether the
+    // current shell process has a live Niri IPC socket, so callers can guard
+    // startup-time operations before the compositor connection is available.
     readonly property bool isNiri: niriSocket.length > 0
 
     property var sortedToplevels: []

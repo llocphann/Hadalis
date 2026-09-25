@@ -364,7 +364,7 @@ Singleton {
             if [ "$boot_epoch" -le 0 ]; then
                 now=$(/usr/bin/date +%s)
                 if read -r uptime _ < /proc/uptime; then
-                    uptime_s=${uptime%%.*}
+                    uptime_s=\${uptime%%.*}
                 else
                     uptime_s=0
                 fi

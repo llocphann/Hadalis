@@ -67,6 +67,7 @@ fi
 resume_reader_block="$(sed -n '/id: updateResumeReader/,/stdout: StdioCollector/p' "$service")"
 [[ -n "$resume_reader_block" ]] || fail 'update resume reader is missing'
 assert_contains 'done < /proc/stat' "$resume_reader_block" 'update resume reader must derive boot time without date/uptime subprocesses on the normal path'
+assert_contains 'uptime_s=\${uptime%%.*}' "$resume_reader_block" 'fallback uptime truncation must escape shell expansion inside the QML template literal'
 assert_contains 'status=$(<"$status_file")' "$resume_reader_block" 'update resume reader must read the one-line status with Bash builtins'
 if grep -Fq '/usr/bin/printf' <<<"$resume_reader_block"; then
     fail 'update resume reader must not restore external printf'

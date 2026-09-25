@@ -404,17 +404,6 @@ Scope {
                 }
             }
 
-            // Outside-click closing is handled by the panel input surface
-            CompositorFocusGrab {
-                id: grab
-                windows: [ panelWindow ]
-                active: false
-                onCleared: () => {
-                    if (!active) {
-                        GlobalStates.coverflowSelectorOpen = false
-                    }
-                }
-            }
         }
     }
 

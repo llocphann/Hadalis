@@ -65,6 +65,22 @@ def main() -> int:
     require(native_surfaces["WaffleBarPopup"], "StandardKey.Cancel", "WaffleBarPopup")
     require(native_surfaces["WaffleBarPopup"], "id: clickOutsideBackdrop", "WaffleBarPopup")
 
+    # Wallpaper selectors keep close semantics in their real Niri surfaces/views.
+    wallpaper_selector = read("modules/wallpaperSelector/WallpaperSelector.qml")
+    wallpaper_content = read("modules/wallpaperSelector/WallpaperSelectorContent.qml")
+    coverflow = read("modules/wallpaperSelector/WallpaperCoverflow.qml")
+    coverflow_gallery = read("modules/wallpaperSelector/WallpaperCoverflowGallery.qml")
+    coverflow_skew = read("modules/wallpaperSelector/WallpaperSkewView.qml")
+
+    reject(wallpaper_selector, "CompositorFocusGrab {", "WallpaperSelector")
+    require(wallpaper_selector, "WlrKeyboardFocus.Exclusive", "WallpaperSelector")
+    require(wallpaper_selector, "MouseArea {", "WallpaperSelector")
+    require(wallpaper_content, "Qt.Key_Escape", "WallpaperSelectorContent")
+    reject(coverflow, "CompositorFocusGrab {", "WallpaperCoverflow")
+    require(coverflow, "WlrKeyboardFocus.OnDemand", "WallpaperCoverflow")
+    require(coverflow_gallery, "Qt.Key_Escape", "WallpaperCoverflowGallery")
+    require(coverflow_skew, "Qt.Key_Escape", "WallpaperSkewView")
+
     # ii Overlay already derives keyboard ownership and input masking directly
     # from semantic state; the retired bridge/timer never supplied Niri behavior.
     require(overlay, "WlrKeyboardFocus.Exclusive", "Overlay")

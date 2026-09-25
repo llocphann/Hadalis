@@ -69,15 +69,6 @@ Scope {
                 bottom: true
             }
 
-            CompositorFocusGrab { // Compatibility focus bridge
-                id: grab
-                windows: [ panelWindow ]
-                active: false
-                onCleared: () => {
-                    if (!active) GlobalStates.wallpaperSelectorOpen = false;
-                }
-            }
-
             // Click outside to close
             MouseArea {
                 anchors.fill: parent

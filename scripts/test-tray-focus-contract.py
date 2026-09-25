@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Guard tray focus-grab state and Niri menu output ownership."""
+"""Guard tray active-menu identity and Niri-native close/focus ownership."""
 
 from pathlib import Path
 import re
@@ -18,79 +18,76 @@ def main() -> int:
     failures: list[str] = []
 
     required = (
-        "overflowPopup.presentationWindow",
         "root.activeMenu = window;",
-        "active: (root.trayOverflowOpen && overflowPopup.presentationWindow !== null)",
-        ".filter(window => window !== null)",
-        "function releaseFocus(window)",
+        "function registerActiveMenu(window)",
+        "function releaseActiveMenu(window)",
         "if (root.activeMenu === window)",
-        "onMenuClosed: (qsWindow) => root.releaseFocus(qsWindow);",
+        "onMenuClosed: (qsWindow) => root.releaseActiveMenu(qsWindow);",
+        "root.registerActiveMenu(qsWindow);",
+        "if (root.activeMenu !== null)",
     )
     for needle in required:
         if needle not in text:
-            failures.append(f"missing tray focus contract: {needle}")
+            failures.append(f"missing tray menu-tracking contract: {needle}")
 
-    item_required = (
+    if "CompositorFocusGrab" in text:
+        failures.append("SysTray must not allocate the retired compatibility focus bridge")
+    if "overflowPopup.presentationWindow" in text:
+        failures.append("SysTray must not retain presentation-window state solely for retired focus grabbing")
+    if "setExtraWindowAndGrabFocus" in text or "releaseFocus(" in text:
+        failures.append("SysTray must use compositor-neutral active-menu tracking names")
+
+    for needle in (
         "signal menuClosed(qsWindow: var)",
         "const window = menu.item;",
         "root.menuClosed(window);",
-    )
-    for needle in item_required:
+    ):
         if needle not in item_text:
             failures.append(f"missing tray-item close identity contract: {needle}")
 
-    # Tray menus must use the same source-owned connected surface as other Bar
-    # popups. StyledPopup owns the full-output backdrop on the anchor's output.
-    tray_connected_required = (
+    for needle in (
         "StyledPopup {",
         "hoverTarget: root.anchorItem",
         "alternativeVisibleCondition: root.menuRequestedOpen",
         "closeOnOutsideClick: true",
         "keyboardFocus: root.keyboardMode",
         "root.menuOpened(presentationWindow)",
-    )
-    for needle in tray_connected_required:
+        "Qt.Key_Escape",
+    ):
         if needle not in tray_menu_text:
             failures.append(f"missing connected tray-menu contract: {needle}")
+
     if "PopupWindow {" in tray_menu_text or "PanelWindow {" in tray_menu_text:
         failures.append("tray menu must not own a detached PopupWindow/PanelWindow presentation")
     if "anchorItem: root" not in item_text:
         failures.append("tray item must hand its real visual anchor to the connected menu")
     if "anchor {" in item_text[item_text.find("sourceComponent: SysTrayMenu {"):]:
         failures.append("tray item must not recreate compositor popup-anchor geometry")
-
-    # Shared ContextMenu still owns its own PopupWindow for now; its Niri catcher
-    # must remain on the same output until it is migrated separately.
     if "screen: popupWindow.screen" not in context_menu_text:
         failures.append("context-menu Niri backdrop must bind screen to the owning popup")
 
-    # QML imperative assignment to a bound property removes that binding. The
-    # focus-grab active state must therefore remain derived from popup/menu state.
-    if re.search(r"\bfocusGrab\.active\s*=", text):
-        failures.append("focusGrab.active must stay declarative; imperative assignment breaks its binding")
-
     release_match = re.search(
-        r"function\s+releaseFocus\s*\(\s*window\s*\)\s*\{(?P<body>.*?)\}",
+        r"function\s+releaseActiveMenu\s*\(\s*window\s*\)\s*\{(?P<body>.*?)\}",
         text,
         re.DOTALL,
     )
     if not release_match:
-        failures.append("releaseFocus(window) must remain identity-aware")
+        failures.append("releaseActiveMenu(window) must remain identity-aware")
     else:
         body = release_match.group("body")
         if "root.activeMenu === window" not in body or "root.activeMenu = null;" not in body:
-            failures.append("releaseFocus(window) must clear only the matching activeMenu")
+            failures.append("releaseActiveMenu(window) must clear only the matching activeMenu")
 
-    if re.search(r"onMenuClosed\s*:\s*root\.releaseFocus\s*\(\s*\)", text):
+    if re.search(r"onMenuClosed\s*:\s*root\.releaseActiveMenu\s*\(\s*\)", text):
         failures.append("tray menu close handlers must forward the closing window identity")
 
     if failures:
-        print("Tray/menu focus-output contract failures:")
+        print("Tray/menu Niri lifecycle contract failures:")
         for failure in failures:
             print(f"  - {failure}")
         return 1
 
-    print("Tray/menu focus-output contract: PASS")
+    print("Tray/menu Niri lifecycle contract: PASS")
     return 0
 
 

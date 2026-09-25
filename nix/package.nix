@@ -108,6 +108,7 @@ let
     ++ optionalTop "pavucontrol"
     ++ optionalTop "songrec"
     ++ optionalTop "swappy"
+    ++ optionalTop "swaylock"
     ++ optionalTop "tesseract"
     ++ optionalTop "translate-shell"
     ++ optionalTop "upower"

@@ -1157,17 +1157,23 @@ Singleton {
         }
     }
 
-    // Detail Step 4: Get remote CHANGELOG.md (first 200 lines)
+    // Detail Step 4: Get remote CHANGELOG.md (first 200 lines).
+    // Keep the line cap in-process so opening the overlay needs only git,
+    // rather than bash + git + head.
     Process {
         id: remoteChangelogProc
         running: false
         command: [
-            "/usr/bin/bash", "-c",
-            "git -C '" + root.repoPath + "' show 'origin/" + root._remoteBranch + ":CHANGELOG.md' 2>/dev/null | head -200"
+            ...root._gitCmd, "show",
+            "origin/" + root._remoteBranch + ":CHANGELOG.md"
         ]
         stdout: StdioCollector {
             onStreamFinished: {
-                root.remoteChangelog = (text ?? "").trim()
+                root.remoteChangelog = (text ?? "")
+                    .split("\n")
+                    .slice(0, 200)
+                    .join("\n")
+                    .trim()
             }
         }
         onExited: (exitCode, exitStatus) => {

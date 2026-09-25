@@ -119,4 +119,16 @@ assert_contains 'root._finishCountFallback()' "$count_start" 'count startup fail
 assert_contains 'root.latestMessage = ""' "$message_start" 'latest-message startup failure must clear stale message text'
 assert_contains 'root._finishCheck()' "$message_start" 'latest-message startup failure must complete the check cycle'
 
+changelog_block="$(sed -n '/id: remoteChangelogProc/,/\/\/ Detail Step 5:/p' "$service")"
+[[ -n "$changelog_block" ]] || fail 'remote changelog process block is missing'
+assert_contains '...root._gitCmd, "show"' "$changelog_block" 'remote changelog must invoke git directly'
+assert_contains '.slice(0, 200)' "$changelog_block" 'remote changelog must retain the 200-line display cap in-process'
+assert_contains 'localModsProc.running = true' "$changelog_block" 'remote changelog completion must continue detail fetching'
+if grep -Fq '"/usr/bin/bash", "-c"' <<<"$changelog_block"; then
+    fail 'remote changelog must not restore a bash wrapper'
+fi
+if grep -Fq 'head -200' <<<"$changelog_block"; then
+    fail 'remote changelog must not restore an external head process'
+fi
+
 printf 'shell updates check lifecycle guards: ok\n'

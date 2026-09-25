@@ -149,6 +149,7 @@ require "$sidebar_media" 'root.effectiveIsPlaying && GlobalStates.sidebarLeftOpe
 require "$local_music_view" 'active: root.visible && GlobalStates.sidebarLeftOpen && LocalMusic.playing' 'Local Music Cava must sleep while the retained Sidebar is closed'
 require "$local_music_view" 'positionUpdatesActive: root.visible && GlobalStates.sidebarLeftOpen' 'Local Music retained PlayerControl must sleep with the Sidebar'
 require "$local_music" 'property bool _mpdSubscriptionEligible: false' 'Local Music must track event-subscription availability separately from the Rust daemon'
+require "$local_music" 'pythonReady && !(mode === "rust" && strict === "1")' 'Local Music Python subscriber must honor strict Rust mode'
 require "$local_music" 'running: root.enabled && !root._mpdSubscriptionActive' 'Local Music 900ms status polling must remain fallback-only'
 require "$local_music_mpd" 'client.command("idle", *IDLE_SUBSYSTEMS)' 'Python Local Music fallback must use blocking MPD idle events'
 require "$native_dispatch" 'python_exec "$ROOT_DIR/scripts/local_music_mpd.py" subscribe "$@"' 'Local Music selector must prefer event-driven Python fallback over 900ms polling'

@@ -19,6 +19,8 @@ grep -Fq 'root.nativeDispatchPath, "mpd", "snapshot",' "$service"     || fail 'L
 grep -Fq 'root.nativeDispatchPath, "mpd-daemon",' "$service"     || fail 'Rust MPD persistent daemon must remain selector-routed'
 grep -Fq 'root.nativeDispatchPath, "mpd-subscribe",' "$service"     || fail 'MPD idle subscription must remain selector-routed with endpoint context'
 grep -Fq 'property bool _mpdSubscriptionEligible: false' "$service"     || fail 'LocalMusic must distinguish event subscription availability from the Rust daemon'
+grep -Fq 'pythonReady && !(mode === "rust" && strict === "1")' "$service"     || fail 'LocalMusic must preserve strict-Rust no-fallback semantics'
+grep -Fq "printf 'strict=%s\\n' \"\$STRICT\"" "$dispatch"     || fail 'native-dispatch backend info must expose strict fallback policy'
 grep -Fq 'scripts/local_music_mpd.py' "$dispatch"     || fail 'native-dispatch must retain the Python MPD fallback'
 grep -Fq 'python_exec "$ROOT_DIR/scripts/local_music_mpd.py" subscribe "$@"' "$dispatch"     || fail 'native-dispatch must provide an event-driven Python MPD subscription fallback'
 grep -Fq 'def subscribe(host: str, port: int, override_root: str) -> int:' "$root/scripts/local_music_mpd.py" || fail 'Python MPD fallback must expose an idle subscriber'

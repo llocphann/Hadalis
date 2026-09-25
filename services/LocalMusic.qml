@@ -790,6 +790,7 @@ Singleton {
         onExited: (code, _status) => {
             root._nativeBackendChecked = true
             let mode = ""
+            let strict = "0"
             let mpdReady = false
             let pythonReady = false
             if (code === 0) {
@@ -803,6 +804,8 @@ Singleton {
                     const value = line.substring(separator + 1)
                     if (key === "mode")
                         mode = value
+                    else if (key === "strict")
+                        strict = value
                     else if (key === "inir-mpdd")
                         mpdReady = value === "ready"
                     else if (key === "python")
@@ -811,7 +814,8 @@ Singleton {
             }
 
             root._nativeMpdEligible = mpdReady && (mode === "rust" || mode === "auto")
-            root._mpdSubscriptionEligible = root._nativeMpdEligible || pythonReady
+            const pythonFallbackAllowed = pythonReady && !(mode === "rust" && strict === "1")
+            root._mpdSubscriptionEligible = root._nativeMpdEligible || pythonFallbackAllowed
             root._stopNativeMpdBridge()
             if (root.enabled) {
                 if (root._nativeMpdEligible)

@@ -44,6 +44,7 @@ for token in (
     'root.nativeDispatchPath, "mpd-daemon",',
     'root.nativeDispatchPath, "mpd-subscribe",',
     'property bool _mpdSubscriptionEligible: false',
+    'pythonReady && !(mode === "rust" && strict === "1")',
     'if (event.payload && typeof event.payload === "object")',
     'function _scheduleStatusFallback(): void',
     '_lyricsProc.command = [root.nativeDispatchPath, "lyrics", path]',
@@ -58,6 +59,8 @@ for token in (
     require(service, token, f"LocalMusic backend contract missing: {token}")
 for forbidden in ("yt-dlp", "youtube.com", "InnerTube", "YtMusic", "--input-ipc-server"):
     forbid(service, forbidden, f"LocalMusic backend must remain MPD/local-only: {forbidden}")
+
+require(dispatch, "printf 'strict=%s\\n' \"$STRICT\"", "native selector must expose strict fallback policy")
 
 for token in (
     'python_exec "$ROOT_DIR/scripts/local_music_mpd.py" "$@"',

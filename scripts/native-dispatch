@@ -111,6 +111,7 @@ fi
 case "$cmd" in
     backend-info)
         printf 'mode=%s\n' "$MODE"
+        printf 'strict=%s\n' "$STRICT"
         printf 'bin_dir=%s\n' "$BIN_DIR"
         for binary in inir-inputd inir-native inir-mpdd inir-theme; do
             if rust_ready "$binary"; then

@@ -18,7 +18,7 @@ _ytmusic_desktop_override_has_cdp() {
   local app file
   for app in pear-desktop youtube-music; do
     file="$HOME/.local/share/applications/$app.desktop"
-    [[ -f "$file" ]] && grep -Fq -- '--remote-debugging-port=9223' "$file" && return 0
+    [[ -f "$file" ]] && grep -Eq -- '--remote-debugging-port=(9222|9223)([[:space:]]|$)' "$file" && return 0
   done
   return 1
 }
@@ -52,7 +52,7 @@ migration_apply() {
   rm -f -- "$css"
   for app in pear-desktop youtube-music; do
     file="$HOME/.local/share/applications/$app.desktop"
-    [[ -f "$file" ]] && grep -Fq -- '--remote-debugging-port=9223' "$file" && sed -i 's/ --remote-debugging-port=9223//g' "$file"
+    [[ -f "$file" ]] && grep -Eq -- '--remote-debugging-port=(9222|9223)([[:space:]]|$)' "$file" && sed -E -i 's/ --remote-debugging-port=(9222|9223)//g' "$file"
   done
   echo "Retired YouTube Music/Pear Desktop theming integration"
 }

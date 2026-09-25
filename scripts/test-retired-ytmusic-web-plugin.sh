@@ -107,6 +107,8 @@ printf '%s\n' '{"appearance":{"wallpaperTheming":{"enablePearDesktop":true,"enab
 css="$XDG_STATE_HOME/quickshell/user/generated/pear-desktop-theme.css"; printf 'retired css\n' > "$css"
 printf '{"options":{"themes":["%s","/keep.css"]}}\n' "$css" > "$XDG_CONFIG_HOME/YouTube Music/config.json"
 printf '%s\n' '[Desktop Entry]' 'Name=YouTube Music' 'Exec=youtube-music --remote-debugging-port=9223 %U' > "$HOME/.local/share/applications/youtube-music.desktop"
+printf '%s\n' '[Desktop Entry]' 'Name=Pear Desktop' 'Exec=pear-desktop --remote-debugging-port=9222 %U' > "$HOME/.local/share/applications/pear-desktop.desktop"
+printf '%s\n' '[Desktop Entry]' 'Name=Spotify' 'Exec=spotify --remote-debugging-port=9222 %U' > "$HOME/.local/share/applications/spotify.desktop"
 # shellcheck disable=SC1090
 source "$theme_migration"
 migration_check || fail 'theming migration must detect retired Hadalis YTMusic state'
@@ -115,7 +117,9 @@ migration_apply
 jq -e '.appearance.wallpaperTheming.enableChrome == true' "$XDG_CONFIG_HOME/inir/config.json" >/dev/null || fail 'theming migration must preserve unrelated wallpaper theming config'
 jq -e '.options.themes == ["/keep.css"]' "$XDG_CONFIG_HOME/YouTube Music/config.json" >/dev/null || fail 'theming migration must remove only the Hadalis-generated YTMusic CSS'
 [[ ! -e "$css" ]] || fail 'theming migration must remove generated YTMusic CSS'
-grep -Fq 'Exec=youtube-music %U' "$HOME/.local/share/applications/youtube-music.desktop" || fail 'theming migration must remove only the Hadalis CDP flag'
+grep -Fq 'Exec=youtube-music %U' "$HOME/.local/share/applications/youtube-music.desktop" || fail 'theming migration must remove the newer YTMusic CDP flag'
+grep -Fq 'Exec=pear-desktop %U' "$HOME/.local/share/applications/pear-desktop.desktop" || fail 'theming migration must remove the legacy Pear Desktop CDP flag'
+grep -Fq 'Exec=spotify --remote-debugging-port=9222 %U' "$HOME/.local/share/applications/spotify.desktop" || fail 'theming migration must not touch unrelated Spotify CDP state'
 
 for active_file in \
   "$repo_root/services/AppSearch.qml" \

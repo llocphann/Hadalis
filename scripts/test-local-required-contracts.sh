@@ -20,25 +20,23 @@ require_exact() {
 }
 
 printf '== translation runtime boundary ==\n'
-generator=scripts/ai/gemini-translate.sh
 translation_service=services/Translation.qml
-require_contains 'SOURCE_FILE="${TRANSLATIONS_DIR}/en_US.json"' "$generator" \
-    'runtime locale generation no longer anchors to en_US.json'
-require_contains 'if [[ ! "$TARGET_LOCALE" =~ ^[A-Za-z]{2,3}([_-][A-Za-z0-9]{2,8})*$ ]]; then' "$generator" \
-    'runtime locale generation no longer validates locale identifiers'
-require_contains '--slurpfile source "$SOURCE_FILE"' "$generator" \
-    'runtime locale generation no longer merges against the source catalog'
+require_contains 'readonly property var availableLanguages: ["en_US"]' "$translation_service" \
+    'Translation service must remain English-only'
+require_contains 'readonly property string languageCode: "en_US"' "$translation_service" \
+    'Translation service language code must remain pinned to en_US'
+require_contains 'path: `${Quickshell.shellPath("translations")}/en_US.json`' "$translation_service" \
+    'Translation service no longer loads the canonical en_US catalog'
 require_contains '"translations/tools"' sdata/runtime-exclusions.json \
     'source-only translation tooling leaked into runtime payload policy'
-if grep -Fq 'translations/tools/manage-translations.sh' "$generator"; then
-    fail 'runtime locale generator depends on source-only translation tooling'
+if grep -Fq 'scanGeneratedLanguagesProcess' "$translation_service"; then
+    fail 'retired generated-locale discovery returned to the English-only runtime'
 fi
-require_contains 'scanLanguagesProcess.running || scanGeneratedLanguagesProcess.running' "$translation_service" \
-    'Translation service no longer represents both locale scan processes'
-require_contains 'fallbackLanguages: []' "$translation_service" \
-    'Translation service fallback locale contract drifted'
-require_contains 'scanGeneratedLanguagesProcess.running = true' "$translation_service" \
-    'Translation service no longer starts generated-locale discovery'
+if [[ -e scripts/ai/gemini-translate.sh ]]; then
+    fail 'retired runtime translation generator returned to the source tree'
+fi
+python3 translations/tools/l10n.py audit-all >/dev/null \
+    || fail 'English-only translation catalog audit failed'
 
 printf '== package and release source identity ==\n'
 for pkg in \

@@ -10,18 +10,20 @@ fail() {
 }
 
 tool="translations/tools/apply-reviewed-replacements.py"
-[[ -f "$tool" ]] || fail "missing reviewed replacement helper: $tool"
+[[ ! -e "$tool" ]] || fail "retired reviewed replacement helper returned: $tool"
 
 shopt -s nullglob
 manifests=(translations/l10n/*-repairs.json)
+[[ ${#manifests[@]} -eq 0 ]] \
+    || fail "retired reviewed replacement manifests returned under translations/l10n"
 
-for manifest in "${manifests[@]}"; do
-    python3 "$tool" "$manifest" --status \
-        || fail "reviewed replacement manifest is partial, drifted, or invalid: $manifest"
-done
+python3 translations/tools/l10n.py audit-all >/dev/null \
+    || fail 'English-only translation catalog audit failed'
+python3 translations/tools/source-parity.py >/dev/null \
+    || fail 'English source catalog parity audit failed'
 
 grep -Fq '"$script_dir/test-reviewed-replacement-manifests.sh"' scripts/release.sh \
-    || fail 'release helper no longer requires reviewed replacement manifest integrity'
+    || fail 'release helper no longer requires translation catalog integrity'
 
 printf '%s\n' '1..1'
-printf 'ok 1 - %d reviewed replacement manifest(s) are provenance-consistent\n' "${#manifests[@]}"
+printf '%s\n' 'ok 1 - retired replacement manifests stay absent and English catalog is canonical'

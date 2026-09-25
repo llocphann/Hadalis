@@ -109,7 +109,6 @@
     "scripts/test-perimeter-contracts.sh",
     "scripts/test-perimeter-family-contracts.sh",
     "scripts/test-perimeter-route-contracts.sh",
-    "scripts/test-perimeter-runtime-health-contract.sh",
     "scripts/test-perimeter-settings-contracts.sh",
     "scripts/test-perimeter-source-contracts.sh",
     "scripts/test-thinkfan-helper.sh",

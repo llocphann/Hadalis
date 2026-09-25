@@ -74,6 +74,74 @@ Singleton {
     property var _nextOffsets: []
     property bool _refreshQueued: false
     property string _offsetText: ""
+    property var _intlFormatters: ({})
+
+    function _intlFormatter(tz: string): var {
+        if (typeof Intl === "undefined" || typeof Intl.DateTimeFormat !== "function")
+            return null
+
+        const key = String(tz ?? "UTC")
+        const cached = root._intlFormatters[key]
+        if (cached)
+            return cached
+
+        try {
+            const formatter = new Intl.DateTimeFormat("en-US", {
+                timeZone: key,
+                year: "numeric",
+                month: "2-digit",
+                day: "2-digit",
+                hour: "2-digit",
+                minute: "2-digit",
+                second: "2-digit",
+                hourCycle: "h23"
+            })
+            root._intlFormatters[key] = formatter
+            return formatter
+        } catch (error) {
+            return null
+        }
+    }
+
+    function _intlOffsetMinutes(tz: string, instant: var): var {
+        const formatter = root._intlFormatter(tz)
+        if (!formatter || typeof formatter.formatToParts !== "function")
+            return null
+
+        try {
+            const values = {}
+            const parts = formatter.formatToParts(instant)
+            for (const part of parts) {
+                if (part.type === "year" || part.type === "month"
+                        || part.type === "day" || part.type === "hour"
+                        || part.type === "minute" || part.type === "second")
+                    values[part.type] = Number(part.value)
+            }
+
+            if (![values.year, values.month, values.day, values.hour,
+                    values.minute, values.second].every(Number.isFinite))
+                return null
+
+            const zonedAsUtc = Date.UTC(values.year, values.month - 1, values.day,
+                values.hour, values.minute, values.second)
+            const instantMs = Math.floor(instant.getTime() / 1000) * 1000
+            return Math.round((zonedAsUtc - instantMs) / 60000)
+        } catch (error) {
+            return null
+        }
+    }
+
+    function _intlOffsets(timezones: var): var {
+        const instant = new Date()
+        const offsets = []
+        for (const tz of timezones) {
+            const offset = root._intlOffsetMinutes(String(tz ?? "UTC"), instant)
+            if (!Number.isFinite(offset))
+                return null
+            offsets.push(offset)
+        }
+        return offsets
+    }
 
     function refreshOffsets(): void {
         if (!root.enabled)
@@ -82,7 +150,22 @@ Singleton {
             root._refreshQueued = true;
             return;
         }
+
         root._refreshQueued = false;
+
+        // Modern Qt JS runtimes already expose Intl timezone data. Compute all
+        // offsets in-process and avoid spawning one date(1) process per city on
+        // every refresh. The existing date path remains the compatibility
+        // fallback for older or incomplete Intl implementations.
+        const intlOffsets = root._intlOffsets(root.timezones)
+        if (intlOffsets !== null) {
+            root.offsetsMinutes = intlOffsets
+            root._offsetIndex = -1
+            root._offsetTimezones = []
+            root._nextOffsets = []
+            return
+        }
+
         root._offsetIndex = 0;
         root._offsetTimezones = root.timezones.slice();
         root._nextOffsets = [];

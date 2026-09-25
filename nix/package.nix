@@ -95,6 +95,7 @@ let
     ++ optionalTop "foot"
     ++ optionalTop "fuzzel"
     ++ optionalTop "geoclue2"
+    ++ optionalTop "hyprpicker"
     ++ optionalTop "gum"
     ++ optionalTop "imagemagick"
     ++ optionalTop "kitty"

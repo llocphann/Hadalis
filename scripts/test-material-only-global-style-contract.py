@@ -1088,15 +1088,22 @@ def main() -> None:
         "ZzzPlate {",
     ):
         forbid(sys_tray_menu, token, "SysTrayMenu.qml")
+    # Tray menu presentation is owned by the shared Material-only StyledPopup.
+    # Do not require the retired private popup card tokens here: doing so would
+    # regress the connected Bar-surface routing.
     for token in (
-        "color: Appearance.colors.colLayer0",
-        "radius: Appearance.rounding.windowRounding",
-        "border.width: 1",
-        "border.color: Appearance.colors.colLayer0Border",
-        "Appearance.motion.popupReveal.enableFade",
-        "Appearance.motion.popupReveal.enableScale",
+        "StyledPopup {",
+        "popupBackgroundMargin: 0",
+        "alternativeVisibleCondition: root.menuRequestedOpen",
+        "closeOnOutsideClick: true",
     ):
         require(sys_tray_menu, token, "SysTrayMenu.qml")
+    for token in (
+        "PopupWindow {",
+        "PanelWindow {",
+        "id: popupBackground",
+    ):
+        forbid(sys_tray_menu, token, "SysTrayMenu.qml")
 
     # ContextMenu is shared by Bar and other active shell controls. Keep its
     # focus/input/close behavior intact while locking visual chrome to Material.

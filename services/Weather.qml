@@ -549,8 +549,8 @@ Singleton {
         } else {
             query = encodeURIComponent(root.location.name.split(',')[0].trim());
         }
-        const cmd = `curl -s --max-time 15 'https://wttr.in/${query}?format=j1'`;
-        fetcher.command = ["/usr/bin/bash", "-c", cmd];
+        const url = "https://wttr.in/" + query + "?format=j1";
+        fetcher.command = ["/usr/bin/curl", "-s", "--max-time", "15", url];
         fetcher.running = true;
     }
 
@@ -822,8 +822,9 @@ Singleton {
     Process {
         id: gpsLocator
         property bool _handledFallback: false
-        command: ["/usr/bin/bash", "-c", "where-am-i -t 10 2>/dev/null | grep -oP '(Latitude|Longitude):\\s*\\K[\\d.-]+' | head -2 | paste -sd' '"]
+        command: ["where-am-i", "-t", "10"]
         onRunningChanged: if (running) _handledFallback = false
+        stderr: StdioCollector {}
         stdout: StdioCollector {
             onStreamFinished: {
                 if (text.trim().length === 0) {
@@ -832,7 +833,14 @@ Singleton {
                     root.getLocation();
                     return;
                 }
-                const parts = text.trim().split(/\s+/);
+                // Preserve the old pipeline semantics: consume the first two
+                // Latitude/Longitude numeric fields in output order, but parse
+                // them in-process instead of spawning grep + head + paste.
+                const coordinatePattern = /(?:Latitude|Longitude):\s*([\d.-]+)/g;
+                const parts = [];
+                let match;
+                while (parts.length < 2 && (match = coordinatePattern.exec(text)) !== null)
+                    parts.push(match[1]);
                 if (parts.length >= 2) {
                     const lat = parseFloat(parts[0]);
                     const lon = parseFloat(parts[1]);
@@ -941,7 +949,7 @@ Singleton {
         id: fetcher
         // Guard: prevent double fallback invocation from both onStreamFinished and onExited
         property bool _fallbackTriggered: false
-        command: ["/usr/bin/bash", "-c", ""]
+        command: ["/usr/bin/curl", "-s", "--max-time", "15", ""]
         onRunningChanged: if (running) _fallbackTriggered = false
         stdout: StdioCollector {
             onStreamFinished: {

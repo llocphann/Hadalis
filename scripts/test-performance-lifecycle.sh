@@ -69,6 +69,7 @@ dashboard="$repo_root/modules/dashboard/Dashboard.qml"
 ii_panels="$repo_root/modules/ii/ShellIiPanelsImpl.qml"
 dashboard_settings="$repo_root/modules/settings/DashboardConfig.qml"
 screen_time="$repo_root/services/ScreenTime.qml"
+shell_updates="$repo_root/services/ShellUpdates.qml"
 ytmusic="$repo_root/services/YtMusic.qml"
 directory_icon="$repo_root/modules/common/widgets/DirectoryIcon.qml"
 sysmon_widget="$repo_root/modules/sidebarRight/sysmon/SysMonWidget.qml"
@@ -247,6 +248,10 @@ require "$dashboard" 'scale: 1' 'Dashboard entrance must not use scale animation
 reject "$dashboard" 'onTriggered: panelRoot.visible = false' 'Dashboard close must not unmap the native surface after the slide'
 reject "$dashboard" 'Qt.callLater(() => { root._presentedOpen' 'Dashboard open must not race compositor mapping with a zero-delay state flip'
 require "$dashboard_settings" 'text: Translation.tr("Preload Dashboard")' 'Dashboard keepLoaded option must describe eager preload only'
+
+require "$shell_updates" 'id: resumeStatusProbe' 'ShellUpdates restart recovery must probe the status marker in-process before spawning validation'
+require "$shell_updates" 'onTriggered: root._probeResumeStatusFile()' 'ShellUpdates startup recovery must avoid unconditional shell startup'
+reject "$shell_updates" 'onTriggered: updateResumeReader.running = true' 'ShellUpdates must not spawn the resume shell when no status marker exists'
 
 require "$screen_time" 'target: NiriService' 'Screen Time must use Niri focus events'
 require "$screen_time" 'interval: 30000' 'Screen Time must keep only a coarse Niri heartbeat'

@@ -337,12 +337,33 @@ Singleton {
     // detect the prior state from the status file and either clean up
     // (if the final step was reached) or resume polling so the bar indicator
     // and overlay don't go silent while the update keeps running underneath.
+    function _probeResumeStatusFile(): void {
+        if (resumeStatusProbe.path === Directories.updateStatusPath)
+            resumeStatusProbe.reload()
+        else
+            resumeStatusProbe.path = Directories.updateStatusPath
+    }
+
     Timer {
         id: resumeUpdateCheck
         interval: 1000  // 1s — get the indicator back up fast
         repeat: false
         running: true
-        onTriggered: updateResumeReader.running = true
+        onTriggered: root._probeResumeStatusFile()
+    }
+
+    // Missing update-status is the normal startup case. Probe it in-process so
+    // we only pay for the boot/mtime shell validation when a marker exists.
+    FileView {
+        id: resumeStatusProbe
+        path: ""
+        printErrors: false
+        onLoaded: {
+            resumeStatusProbe.path = ""
+            if (!updateResumeReader.running)
+                updateResumeReader.running = true
+        }
+        onLoadFailed: resumeStatusProbe.path = ""
     }
 
     Process {

@@ -180,7 +180,6 @@ Input simulation, hardware control, idle handling, screenshot helpers, and utili
 | `ydotool` | Virtual input |
 | `python-evdev` | Evdev bindings |
 | `python-pillow` | Python image processing |
-| `hyprpicker` | Color picker |
 | `translate-shell` | Translation CLI |
 | `fprintd` | Fingerprint authentication |
 | `brightnessctl` | Backlight control |

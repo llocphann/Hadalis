@@ -681,7 +681,7 @@ ContentPage {
                     Config.setNestedValue("lock.launchOnStartup", checked);
                 }
                 StyledToolTip {
-                    text: Translation.tr("Enable this if you want to use Quickshell as your lock screen provider")
+                    text: Translation.tr("Lock the session automatically when Hadalis starts")
                 }
             }
 

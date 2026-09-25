@@ -1682,6 +1682,7 @@
   "Lock screen behaviour and style": "Lock screen behaviour and style",
   "Lock screen blur": "Lock screen blur",
   "Lock the screen": "Lock the screen",
+  "Lock the session automatically when Hadalis starts": "Lock the session automatically when Hadalis starts",
   "Lock the screen before the system goes to sleep": "Lock the screen before the system goes to sleep",
   "Lock timeout": "Lock timeout",
   "Locked": "Locked",

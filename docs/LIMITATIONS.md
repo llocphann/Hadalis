@@ -138,7 +138,7 @@ Historical migration files may still mention retired compositor service names so
 
 ### Fallback Locker
 
-If Quickshell session locking cannot be activated, Hadalis can fall back to `swaylock` when it is installed.
+If Quickshell session locking cannot be activated, Hadalis tries `swaylock` first and then `hyprlock` when available. Both are external session-lock clients on the Niri path; `hyprlock` support does not imply a Hyprland compositor backend.
 
 ---
 

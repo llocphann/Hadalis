@@ -989,10 +989,10 @@ These are top-level `inir` commands that work directly, without going through IP
 
 ### colorpicker
 
-Launch `hyprpicker` to pick a color from anywhere on the screen. The hex value is copied to the clipboard (`-a` flag).
+Pick a color from anywhere on the screen. Hadalis prefers `hyprpicker` when it is installed because it provides a magnifier, then falls back to the compositor-neutral `slurp + grim + ImageMagick` helper.
 
 ```kdl
 bind "Super+Shift+C" { spawn "inir" "colorpicker"; }
 ```
 
-Requires `hyprpicker` installed.
+`hyprpicker` is optional; the fallback requires `slurp`, `grim`, and ImageMagick.

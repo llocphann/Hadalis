@@ -66,4 +66,9 @@ require(debian_installer, "DEBIAN_SCREENCAPTURE_PKGS+=(hyprpicker)",
 require(debian_installer, "https://github.com/hyprwm/hyprpicker.git",
         "Debian must retain a best-effort source path when no package exists")
 
+require(debian_installer, 'HYPRPICKER_BUILD_DIR="/tmp/hyprpicker-build-${BASHPID}"',
+        "Debian hyprpicker source builds must use a per-process temporary directory")
+require(debian_installer, 'HYPRUTILS_BUILD_DIR="/tmp/hyprutils-build-${BASHPID}"',
+        "Debian hyprutils source builds must use a per-process temporary directory")
+
 print("colorpicker Niri compatibility contract: ok")

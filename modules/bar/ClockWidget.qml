@@ -7,19 +7,6 @@ import QtQuick.Layouts
 Item {
     id: root
 
-    CodeWorkflowRuntimeTarget {
-        runtimeObject: root
-        targetId: "bar/clock"
-        label: "Bar · Clock"
-        icon: "schedule"
-        kind: "component"
-        family: "ii"
-        panelId: "iiBar"
-        parentId: "bar"
-        depth: 1
-        sourcePath: "modules/bar/ClockWidget.qml"
-    }
-
     property bool borderless: Config.options?.bar?.borderless ?? false
     property bool showDate: Config.options?.bar?.verbose ?? true
     readonly property string _timeFontFamily: Config.options?.bar?.clock?.timeFontFamily ?? ""

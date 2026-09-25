@@ -80,7 +80,6 @@ Scope {
                 property bool superShow: false
                 property bool mustShow: hoverRegion.containsMouse || superShow
                     || ShellEditSession.active
-                    || CodeWorkflowPicker.holdsOutput(barRoot.outputName)
                     || GlobalStates.barPopupHoverHeld(barRoot.outputName)
                     || (GlobalStates.overviewOpen
                         && (!GlobalStates.overviewTargetOutput

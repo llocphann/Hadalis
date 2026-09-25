@@ -254,32 +254,6 @@ Singleton {
                 property string gowallTheme: ""
                 property string gowallEffect: "grayscale"
 
-                // Code Workflow editor continuity. Live QObject references are
-                // never persisted across Quickshell engine generations.
-                property string codeWorkflowTargetId: "bar"
-                property string codeWorkflowInstanceId: ""
-                property string codeWorkflowOutputName: ""
-                property string codeWorkflowSubflowTargetId: "bar"
-                property string codeWorkflowNodeId: "bar.component"
-                property string codeWorkflowEdgeId: ""
-                property string codeWorkflowConnectTargetId: ""
-                property string codeWorkflowSemanticAnchor: ""
-                property string codeWorkflowSemanticAnchorNodeId: ""
-                property real codeWorkflowPanX: 32
-                property real codeWorkflowPanY: 28
-                property real codeWorkflowZoom: 1
-                property bool codeWorkflowSourcePreview: true
-                property real codeWorkflowTargetsPaneWidth: 224
-                property real codeWorkflowInspectorPaneWidth: 280
-                property bool codeWorkflowTargetsPaneCollapsed: false
-                property bool codeWorkflowInspectorPaneCollapsed: false
-                property real codeWorkflowSourcePreviewHeight: 190
-                property bool codeWorkflowMinimap: true
-                property string codeWorkflowPinnedTargetId: ""
-                property list<string> codeWorkflowRecentTargetIds: []
-                // Presentation-only graph positions. Stored as JSON because
-                // JsonObject needs a typed property while graph/node ids are dynamic.
-                property string codeWorkflowGraphNodeLayoutOffsets: "{}"
             }
 
             // Desktop-widget editor workspace state. This is transient UI

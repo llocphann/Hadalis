@@ -10,6 +10,7 @@ WEATHER = ROOT / "services/Weather.qml"
 EVENTS = ROOT / "services/Events.qml"
 THEME = ROOT / "services/ThemeService.qml"
 SCREEN_TIME = ROOT / "services/ScreenTime.qml"
+DATE_TIME_HEADER = ROOT / "modules/controlPanel/DateTimeHeader.qml"
 
 
 def main() -> int:
@@ -18,6 +19,7 @@ def main() -> int:
     events = EVENTS.read_text(encoding="utf-8")
     theme = THEME.read_text(encoding="utf-8")
     screen_time = SCREEN_TIME.read_text(encoding="utf-8")
+    date_time_header = DATE_TIME_HEADER.read_text(encoding="utf-8")
 
     if "readonly property int minuteEpoch: Math.floor(clock.date.getTime() / 60000)" not in date_time:
         raise AssertionError("DateTime must expose a stable shared minute epoch")
@@ -57,6 +59,11 @@ def main() -> int:
         raise AssertionError("ScreenTime rollover callback must retain lifecycle gating")
     if "id: dayRolloverTimer" in screen_time:
         raise AssertionError("ScreenTime must not restore its private rollover minute timer")
+
+    if "GlobalStates.controlPanelOpen ? DateTime.minuteEpoch : 0" not in date_time_header:
+        raise AssertionError("Control-panel date header must share the minute epoch only while visible")
+    if "interval: 60000" in date_time_header or "property int _tick" in date_time_header:
+        raise AssertionError("Control-panel date header must not restore a private minute timer")
 
     print("shared minute tick contract: ok")
     return 0

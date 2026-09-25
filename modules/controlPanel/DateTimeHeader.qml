@@ -11,9 +11,11 @@ Rectangle {
     Layout.fillWidth: true
     implicitHeight: dateTimeRow.implicitHeight + 24
     
-    // Reactive property to force date re-evaluation
-    property int _tick: 0
-    readonly property date _currentDate: { _tick; return new Date() }
+    // Reuse the shell-wide minute epoch while this panel is visible. The
+    // conditional binding drops the dependency while closed, so the header
+    // neither owns a timer nor recomputes hidden date text.
+    readonly property int _minuteEpoch: GlobalStates.controlPanelOpen ? DateTime.minuteEpoch : 0
+    readonly property date _currentDate: { root._minuteEpoch; return new Date() }
 
     radius: Appearance.rounding.normal
     color: Appearance.colors.colLayer1
@@ -60,11 +62,4 @@ Rectangle {
         }
     }
 
-    Timer {
-        interval: 60000  // Update every minute (day/date don't need second precision)
-        running: GlobalStates.controlPanelOpen
-        repeat: true
-        triggeredOnStart: true
-        onTriggered: root._tick++
-    }
 }

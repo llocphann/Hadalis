@@ -101,8 +101,13 @@ Singleton {
     }
 
     function refreshStoredAudioConfig(): void {
-        if (Config.ready && !storedConfigProcess.running)
-            storedConfigProcess.running = true
+        if (!Config.ready || storedConfigFile.loadPending)
+            return
+        storedConfigFile.loadPending = true
+        if (storedConfigFile.path === Config.filePath)
+            storedConfigFile.reload()
+        else
+            storedConfigFile.path = Config.filePath
     }
 
     function resetAudioMetadata(): void {
@@ -113,8 +118,13 @@ Singleton {
     }
 
     function loadAudioMetadata(): void {
-        if (!metadataProcess.running)
-            metadataProcess.running = true
+        if (metadataFile.loadPending)
+            return
+        metadataFile.loadPending = true
+        if (metadataFile.path === root.recorderStatusPath)
+            metadataFile.reload()
+        else
+            metadataFile.path = root.recorderStatusPath
     }
 
     onIsRecordingChanged: {
@@ -194,57 +204,32 @@ Singleton {
         Qt.callLater(root.refreshStoredAudioConfig)
     }
 
-    Process {
-        id: storedConfigProcess
-        property bool startObserved: false
-        command: ["/usr/bin/cat", Config.filePath]
-        stdout: StdioCollector {
-            id: storedConfigCollector
+    FileView {
+        id: storedConfigFile
+        property bool loadPending: false
+        path: ""
+        printErrors: false
+
+        onLoaded: {
+            loadPending = false
+            root.parseStoredAudioConfig(text())
         }
-        stderr: StdioCollector {}
-        onRunningChanged: {
-            if (storedConfigProcess.running) {
-                storedConfigProcess.startObserved = false
-                return
-            }
-            if (storedConfigProcess.startObserved)
-                return
+        onLoadFailed: {
+            loadPending = false
             root.resetStoredAudioConfig()
-        }
-        onStarted: storedConfigProcess.startObserved = true
-        onExited: (exitCode, exitStatus) => {
-            if (exitCode === 0)
-                root.parseStoredAudioConfig(storedConfigCollector.text)
-            else
-                root.resetStoredAudioConfig()
         }
     }
 
-    Process {
-        id: metadataProcess
-        property bool startObserved: false
-        command: ["/usr/bin/cat", root.recorderStatusPath]
-        stdout: StdioCollector {
-            id: metadataCollector
-        }
-        stderr: StdioCollector {}
-        onRunningChanged: {
-            if (metadataProcess.running) {
-                metadataProcess.startObserved = false
-                return
-            }
-            if (metadataProcess.startObserved)
-                return
-            root.resetAudioMetadata()
-        }
-        onStarted: metadataProcess.startObserved = true
-        onExited: (exitCode, exitStatus) => {
-            if (exitCode !== 0) {
-                root.resetAudioMetadata()
-                return
-            }
+    FileView {
+        id: metadataFile
+        property bool loadPending: false
+        path: ""
+        printErrors: false
+
+        onLoaded: {
+            loadPending = false
             try {
-                const payload = JSON.parse(metadataCollector.text)
+                const payload = JSON.parse(text())
                 const payloadPid = Number(payload.recorderPid ?? 0)
                 if (!root.isRecording || payloadPid <= 0 || payloadPid !== root.recorderPid) {
                     root.resetAudioMetadata()
@@ -257,6 +242,10 @@ Singleton {
             } catch (error) {
                 root.resetAudioMetadata()
             }
+        }
+        onLoadFailed: {
+            loadPending = false
+            root.resetAudioMetadata()
         }
     }
 

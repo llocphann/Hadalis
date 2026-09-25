@@ -115,4 +115,11 @@ require(
     "Dashboard is permanently mapped and must keep its existing zero-sized closed input region",
 )
 
+osd = read("modules/onScreenDisplay/OnScreenDisplay.qml")
+require(
+    osd,
+    "item: root._visualOpen ? detachedHost : emptyOsdInput",
+    "Detached OSDs must release their retained input region as soon as the visual closes",
+)
+
 print("fullscreen input lifecycle contracts: ok")

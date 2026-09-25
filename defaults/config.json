@@ -1504,51 +1504,6 @@
             "mpdHost": "127.0.0.1",
             "mpdPort": 6600
         },
-        "ytmusic": {
-            "enable": false,
-            "autoConnect": true,
-            "hideSyncBanner": false,
-            "browser": "firefox",
-            "cookiesPath": "",
-            "useManualCookies": false,
-            "connected": false,
-            "resolvedBrowserArg": "",
-            "audioQuality": "best",
-            "normalizeVolume": true,
-            "verbose": false,
-            "shuffleMode": false,
-            "repeatMode": 0,
-            "recentSearches": [],
-            "queue": [],
-            "playlists": [],
-            "liked": [],
-            "lastLikedSync": "",
-            "upNextNotifications": true,
-            "suppressUpNextInFullscreen": true,
-            "volume": 100,
-            "profile": {
-                "name": "",
-                "avatar": "",
-                "url": ""
-            },
-            "cache": {
-                "playlists": [],
-                "albums": [],
-                "liked": []
-            },
-            "resume": {
-                "videoId": "",
-                "title": "",
-                "artist": "",
-                "thumbnail": "",
-                "url": "",
-                "position": 0,
-                "wasPlaying": false,
-                "activePlaylist": [],
-                "currentIndex": -1,
-                "activePlaylistSource": ""
-            }
-        },
         "wallhaven": {
             "enable": true,
             "limit": 24,

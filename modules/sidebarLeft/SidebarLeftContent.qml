@@ -135,26 +135,6 @@ Item {
         return -1
     }
 
-    function migrateLegacyMusicConfig(): void {
-        const legacyEnabled = Config.options?.sidebar?.ytmusic?.enable ?? false
-        const localEnabled = Config.options?.sidebar?.music?.enable ?? false
-        const savedOrder = Config.options?.sidebar?.left?.tabOrder ?? []
-        const migratedOrder = []
-        let orderChanged = false
-        for (const rawId of savedOrder) {
-            const id = rawId === "ytmusic" ? "music" : rawId
-            if (id !== rawId) orderChanged = true
-            if (!migratedOrder.includes(id)) migratedOrder.push(id)
-        }
-
-        const values = {}
-        if (legacyEnabled) {
-            values["sidebar.ytmusic.enable"] = false
-            if (!localEnabled) values["sidebar.music.enable"] = true
-        }
-        if (orderChanged) values["sidebar.left.tabOrder"] = migratedOrder
-        if (Object.keys(values).length > 0) Config.setNestedValues(values)
-    }
 
     function focusActiveItem() {
         swipeView.currentItem?.forceActiveFocus()
@@ -195,7 +175,6 @@ Item {
             "ai": "neurology", "translator": "translate",
             "anime": "bookmark_heart", "anime-schedule": "calendar_month",
             "news": "newspaper", "music": "library_music",
-            "ytmusic": "library_music", // legacy dev-navigation alias
             "tools": "build"
         }
         const icon = iconByView[view] ?? ""
@@ -206,7 +185,6 @@ Item {
     onTabButtonListChanged: Qt.callLater(root.syncSelectedTabIndex)
 
     Component.onCompleted: {
-        root.migrateLegacyMusicConfig()
         root.applyDevDestination()
         Qt.callLater(() => {
             root.selectedTabId = root.tabButtonList[swipeView.currentIndex]?.id ?? ""

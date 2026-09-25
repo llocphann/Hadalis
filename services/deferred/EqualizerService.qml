@@ -5,15 +5,6 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 
-/**
- * Optional 10-band DSP Equalizer facade for the Media Popup.
- *
- * Hadalis keeps one EqualizerService/backend boundary, but deliberately avoids
- * direct per-channel EasyEffects local-server band properties. Those properties
- * are version-dependent. The DSP facade instead mirrors Serpantinum's proven
- * model: persist ten gains, render them into one 32-band EasyEffects preset,
- * then load that preset through EasyEffects' generic local-server command.
- */
 Singleton {
     id: root
 

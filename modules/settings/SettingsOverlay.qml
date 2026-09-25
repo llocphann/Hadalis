@@ -554,34 +554,6 @@ Scope {
                 onActivated: if (typeof overlaySearchField !== "undefined" && overlaySearchField) overlaySearchField.forceActiveFocus()
             }
 
-            // Compatibility focus bridge
-            CompositorFocusGrab {
-                id: grab
-                windows: [settingsPanel]
-                active: false
-                onCleared: () => {
-                    if (!active && !GlobalStates.settingsNativeDialogOpen)
-                        GlobalStates.settingsOverlayOpen = false
-                }
-            }
-
-            Connections {
-                target: GlobalStates
-                function onSettingsOverlayOpenChanged() {
-                    grabTimer.restart()
-                }
-                function onSettingsNativeDialogOpenChanged() {
-                    grabTimer.restart()
-                }
-            }
-
-            Timer {
-                id: grabTimer
-                interval: 100
-                onTriggered: grab.active = (GlobalStates.settingsOverlayOpen ?? false)
-                    && !GlobalStates.settingsNativeDialogOpen
-            }
-
             // Dim only the workspace, never the physical Screen Edge or the
             // translucent connected body. The card cutout follows its slide.
             SettingsWorkspaceScrim {

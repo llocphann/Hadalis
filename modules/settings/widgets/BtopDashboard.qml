@@ -28,7 +28,8 @@ ColumnLayout {
         root.systemEvidence?.cpu?.coreNames ?? []
 
     Layout.fillWidth: true
-    spacing: 8
+    Layout.fillHeight: true
+    spacing: 10
 
     function percentOf(used, total): var {
         if (used === null || used === undefined
@@ -197,9 +198,15 @@ ColumnLayout {
         id: compactObservability
         visible: root.compactMode
         Layout.fillWidth: true
+        Layout.fillHeight: root.compactMode
+        Layout.minimumHeight: root.compactMode ? 300 : 0
         columns: width >= 720 ? 2 : 1
-        columnSpacing: 8
-        rowSpacing: 8
+        columnSpacing: 10
+        rowSpacing: 10
+        readonly property int suspectRowLimit:
+            height >= 540 ? 10
+                : height >= 470 ? 8
+                : height >= 400 ? 6 : 5
 
         Rectangle {
             id: resourceSuspects
@@ -207,7 +214,7 @@ ColumnLayout {
             Layout.fillHeight: true
             Layout.minimumWidth: 0
             Layout.preferredWidth: compactObservability.columns === 2
-                ? compactObservability.width * 0.66 : -1
+                ? compactObservability.width * 0.68 : -1
             radius: Appearance.rounding.small
             color: Appearance.colors.colLayer1
             border.width: 1
@@ -219,8 +226,9 @@ ColumnLayout {
 
             ColumnLayout {
                 id: suspectsColumn
-                anchors { left: parent.left; right: parent.right; top: parent.top; margins: 10 }
-                spacing: 6
+                anchors.fill: parent
+                anchors.margins: 12
+                spacing: 8
                 RowLayout {
                     Layout.fillWidth: true
                     spacing: 8
@@ -254,23 +262,25 @@ ColumnLayout {
                 }
                 GridLayout {
                     Layout.fillWidth: true
+                    Layout.fillHeight: true
+                    Layout.minimumHeight: 0
                     columns: width >= 500 ? 2 : 1
-                    columnSpacing: 6
-                    rowSpacing: 6
+                    columnSpacing: 8
+                    rowSpacing: 8
                     BtopActivityTable {
                         Layout.fillWidth: true
                         Layout.fillHeight: true
                         targets: root.targets
                         records: root.records
                         events: root.events
-                        maxRows: 5
+                        maxRows: compactObservability.suspectRowLimit
                     }
                     BtopProcessTable {
                         Layout.fillWidth: true
                         Layout.fillHeight: true
                         compactMode: true
                         processes: root.shellEvidence?.children ?? []
-                        maxRows: 5
+                        maxRows: compactObservability.suspectRowLimit
                     }
                 }
             }
@@ -282,10 +292,10 @@ ColumnLayout {
             Layout.fillHeight: true
             Layout.minimumWidth: 0
             Layout.preferredWidth: compactObservability.columns === 2
-                ? compactObservability.width * 0.34 : -1
+                ? compactObservability.width * 0.32 : -1
             columns: width >= 260 ? 2 : 1
-            columnSpacing: 6
-            rowSpacing: 6
+            columnSpacing: 8
+            rowSpacing: 8
             BtopMetricPanel {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
@@ -339,7 +349,9 @@ ColumnLayout {
         id: compactRuntimeStrip
         visible: root.compactMode
         Layout.fillWidth: true
-        implicitHeight: 40
+        Layout.preferredHeight: 52
+        Layout.minimumHeight: 52
+        implicitHeight: 52
         radius: Appearance.rounding.small
         color: Appearance.colors.colLayer1
         border.width: 1
@@ -349,9 +361,9 @@ ColumnLayout {
             Appearance.colors.colPrimary.b, 0.20)
         RowLayout {
             anchors.fill: parent
-            anchors.leftMargin: 10
-            anchors.rightMargin: 10
-            spacing: 12
+            anchors.leftMargin: 14
+            anchors.rightMargin: 14
+            spacing: 14
             StyledText {
                 textFormat: Text.PlainText
                 text: Translation.tr("Hadalis")

@@ -10,6 +10,7 @@ ContentPage {
     settingsPageIndex: 31
     settingsPageName: Translation.tr("Diagnostics")
     bottomContentPadding: 8
+    fillViewportHeight: true
 
     readonly property bool diagnosticsActive:
         RuntimeDiagnosticsSession.pageCurrent
@@ -208,6 +209,8 @@ ContentPage {
 
     BtopDashboard {
         Layout.fillWidth: true
+        Layout.fillHeight: true
+        Layout.minimumHeight: 360
         compactMode: true
         evidence: root.evidence
         targets: root.runtimeCatalog

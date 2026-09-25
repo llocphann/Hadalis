@@ -13,6 +13,7 @@ WSettingsPage {
     pageTitle: Translation.tr("Diagnostics")
     pageIcon: "info"
     pageDescription: Translation.tr("On-demand runtime resource diagnostics")
+    fillViewportHeight: true
 
     readonly property bool diagnosticsActive:
         RuntimeDiagnosticsSession.pageCurrent
@@ -193,6 +194,8 @@ WSettingsPage {
 
     BtopDashboard {
         Layout.fillWidth: true
+        Layout.fillHeight: true
+        Layout.minimumHeight: 360
         compactMode: true
         evidence: root.evidence
         targets: root.runtimeCatalog

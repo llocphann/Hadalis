@@ -401,7 +401,9 @@ Scope {
         color: "transparent"
         WlrLayershell.namespace: "quickshell:altSwitcher"
         WlrLayershell.layer: WlrLayer.Overlay
-        WlrLayershell.keyboardFocus: root.panelVisible ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
+        readonly property bool acceptsInput: GlobalStates.altSwitcherOpen
+        WlrLayershell.keyboardFocus: window.acceptsInput
+            ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
         anchors {
             top: true
             bottom: true
@@ -409,8 +411,14 @@ Scope {
             right: true
         }
 
+        Item { id: emptyAltSwitcherInput; width: 0; height: 0 }
+        mask: Region {
+            item: window.acceptsInput ? windowMouseArea : emptyAltSwitcherInput
+        }
+
         MouseArea {
             id: windowMouseArea
+            enabled: window.acceptsInput
             anchors.fill: parent
             onClicked: function (mouse) {
                 // mouse.x/mouse.y están en coordenadas del PanelWindow.

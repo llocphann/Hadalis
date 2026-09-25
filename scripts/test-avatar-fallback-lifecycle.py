@@ -23,13 +23,18 @@ def main() -> None:
                 f"avatar fallback lifecycle failed: {rel} binds Image.status into a resolver that mutates its source"
             )
 
+        source_token = f"source: {resolver}.resolvedSource"
         signal_token = f"onStatusChanged: {resolver}.handleImageStatus(status)"
-        if signal_token not in source:
+        handler_token = "function handleImageStatus(status): void {"
+        source_pos = source.find(source_token)
+        signal_pos = source.find(signal_token)
+        handler_pos = source.find(handler_token)
+        if source_pos < 0 or signal_pos < 0 or not (source_pos < signal_pos < handler_pos):
             raise SystemExit(
-                f"avatar fallback lifecycle failed: {rel} does not advance from the Image status signal"
+                f"avatar fallback lifecycle failed: {rel} does not handle status on its avatar Image"
             )
 
-        if "function handleImageStatus(status): void {" not in source:
+        if handler_pos < 0:
             raise SystemExit(
                 f"avatar fallback lifecycle failed: {rel} lost ordered avatar fallback handling"
             )

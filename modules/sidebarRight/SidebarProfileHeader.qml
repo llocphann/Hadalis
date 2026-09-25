@@ -204,7 +204,6 @@ Item {
                     sourceSize.height: Math.max(240, Math.round(height * 2))
                     opacity: status === Image.Ready ? 1 : 0
                     visible: opacity > 0
-                    onStatusChanged: avatarResolver.handleImageStatus(status)
                     Behavior on opacity {
                         enabled: Appearance.animationsEnabled
                         NumberAnimation {
@@ -325,6 +324,7 @@ Item {
                     sourceSize.height: 96
                     opacity: status === Image.Ready ? 1 : 0
                     visible: opacity > 0
+                    onStatusChanged: avatarResolver.handleImageStatus(status)
                     Behavior on opacity {
                         enabled: Appearance.animationsEnabled
                         NumberAnimation {

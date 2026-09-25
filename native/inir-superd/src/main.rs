@@ -75,7 +75,11 @@ impl TapState {
         }
 
         let mut toggle = false;
-        if !local_chord && !self.interaction_since_super_down && !self.tap_handled {
+        if !local_chord
+            && !self.interaction_since_super_down
+            && !self.tap_handled
+            && self.super_down_devices.len() == 1
+        {
             let outside_debounce = self
                 .last_toggle
                 .is_none_or(|last| now.duration_since(last) >= DEBOUNCE);
@@ -533,11 +537,11 @@ mod tests {
         assert!(!state.super_press(&second));
 
         let first_release = state.super_release(&first, false, now);
-        assert!(first_release.toggle);
+        assert!(!first_release.toggle);
         assert!(!first_release.notify_release);
 
         let second_release = state.super_release(&second, false, now + Duration::from_secs(1));
-        assert!(!second_release.toggle);
+        assert!(second_release.toggle);
         assert!(second_release.notify_release);
     }
 

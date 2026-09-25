@@ -70,6 +70,26 @@ ContentPage {
         Config.setNestedValue("enabledPanels", [...(defaultPanels[family] ?? [])])
     }
 
+    function switchPanelFamily(family: string): void {
+        const target = String(family ?? "")
+        const current = Config.options?.panelFamily ?? "ii"
+        if (!["ii", "waffle"].includes(target) || target === current)
+            return
+
+        // The Material settings overlay owns a fullscreen layer-shell surface.
+        // Close it before asking the shell to switch families; writing panelFamily
+        // directly from this page used to leave that input surface alive over the
+        // newly selected family, so the pointer moved but clicks never reached apps.
+        if (GlobalStates.settingsOverlayOpen)
+            GlobalStates.settingsOverlayOpen = false
+
+        // Keep every family switch on the shell's canonical transition lifecycle.
+        // This also preserves enabled/known panel bookkeeping in shell.qml.
+        Quickshell.execDetached([
+            Quickshell.shellPath("scripts/inir"), "panelFamily", "set", target
+        ])
+    }
+
     property string activeSection: "panels"
 
     SettingsTaskNavigator {
@@ -182,10 +202,7 @@ ContentPage {
                         }
                     }
 
-                    onClicked: {
-                        Config.setNestedValue("panelFamily", "ii")
-                        Config.setNestedValue("enabledPanels", [...modulesPage.defaultPanels["ii"]])
-                    }
+                    onClicked: modulesPage.switchPanelFamily("ii")
                 }
 
                 RippleButton {
@@ -213,10 +230,7 @@ ContentPage {
                         }
                     }
 
-                    onClicked: {
-                        Config.setNestedValue("panelFamily", "waffle")
-                        Config.setNestedValue("enabledPanels", [...modulesPage.defaultPanels["waffle"]])
-                    }
+                    onClicked: modulesPage.switchPanelFamily("waffle")
                 }
             }
         }

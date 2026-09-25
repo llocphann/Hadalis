@@ -76,6 +76,8 @@ keyboard_indicators="$repo_root/services/KeyboardIndicators.qml"
 sidebar_anime="$repo_root/modules/sidebarLeft/Anime.qml"
 sidebar_wallhaven="$repo_root/modules/sidebarLeft/WallhavenView.qml"
 sidebar_ai="$repo_root/modules/sidebarLeft/AiChat.qml"
+sidebar_news="$repo_root/modules/sidebarLeft/news/NewsView.qml"
+sidebar_left_content="$repo_root/modules/sidebarLeft/SidebarLeftContent.qml"
 sidebar_quick_wallpaper="$repo_root/modules/sidebarLeft/widgets/QuickWallpaper.qml"
 booru_image="$repo_root/modules/sidebarLeft/anime/BooruImage.qml"
 booru_response="$repo_root/modules/sidebarLeft/anime/BooruResponse.qml"
@@ -293,6 +295,11 @@ require "$keyboard_indicators" 'interval: (Config.options?.performance?.lowPower
 require "$sidebar_anime" 'layer.enabled: root.visible && GlobalStates.sidebarLeftOpen' 'Anime list mask must sleep with the sidebar'
 require "$sidebar_wallhaven" 'layer.enabled: root.visible && GlobalStates.sidebarLeftOpen' 'Wallhaven list mask must sleep with the sidebar'
 require "$sidebar_ai" 'layer.enabled: root.visible && GlobalStates.sidebarLeftOpen' 'AI history mask must sleep with the sidebar'
+require "$sidebar_news" 'property bool presentationActive: true' 'News view must expose a host lifecycle gate'
+require "$sidebar_news" 'visible: root.presentationActive && NewsService.loading && NewsService.articles.length === 0' 'Hidden News tab must stop LoadingText animations'
+require "$sidebar_news" 'loading: root.presentationActive' 'Hidden News tab must stop its loading gear animation'
+require "$sidebar_news" 'running: root.presentationActive && NewsService.loading' 'Hidden News tab must stop refresh icon rotation'
+require "$sidebar_left_content" '&& root.selectedTabId === "news"' 'Sidebar Left must power News animations only for the selected tab'
 require "$sidebar_quick_wallpaper" 'layer.enabled: root.visible && GlobalStates.sidebarLeftOpen' 'Quick Wallpaper masks must sleep with the sidebar'
 require "$booru_image" 'layer.enabled: root.visible && GlobalStates.sidebarLeftOpen' 'Booru image masks must sleep with the sidebar'
 require "$booru_response" 'layer.enabled: root.visible && GlobalStates.sidebarLeftOpen' 'Booru tag masks must sleep with the sidebar'

@@ -432,7 +432,13 @@ Item {
         Component { id: translatorComp; Translator {} }
         Component { id: animeComp; Anime {} }
         Component { id: animeScheduleComp; AnimeScheduleView {} }
-        Component { id: newsComp; NewsView {} }
+        Component {
+            id: newsComp
+            NewsView {
+                presentationActive: GlobalStates.sidebarLeftOpen
+                    && root.selectedTabId === "news"
+            }
+        }
         Component { id: musicComp; LocalMusicView {} }
         Component { id: toolsComp; ToolsView {} }
         // DISABLED: webapps — requires quickshell-webengine rebuild

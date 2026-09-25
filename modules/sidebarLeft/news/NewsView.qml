@@ -13,6 +13,10 @@ import qs.services
 
 Item {
     id: root
+    // SidebarLeft keeps current/adjacent tabs resident for smooth swipes.
+    // Hosts can therefore suspend presentation-only work without disabling
+    // NewsService fetch/cache behavior.
+    property bool presentationActive: true
 
     // Boards: "local" (geo, via Weather location) / "top" / one topic per entry.
     readonly property var boards: {
@@ -138,7 +142,7 @@ Item {
             // Loading text only; refresh-without-text keeps the shared gear.
             LoadingText {
                 anchors.centerIn: parent
-                visible: NewsService.loading && NewsService.articles.length === 0
+                visible: root.presentationActive && NewsService.loading && NewsService.articles.length === 0
             }
 
             // Error
@@ -239,8 +243,8 @@ Item {
                 anchors.horizontalCenter: parent.horizontalCenter
                 anchors.top: parent.top
                 anchors.topMargin: 10
-                visible: NewsService.loading && NewsService.articles.length > 0
-                loading: true
+                visible: root.presentationActive && NewsService.loading && NewsService.articles.length > 0
+                loading: root.presentationActive
                 implicitSize: 32
             }
         }
@@ -281,7 +285,8 @@ Item {
                     color: Appearance.colors.colOnLayer1
 
                     RotationAnimation on rotation {
-                        running: NewsService.loading && GlobalStates.sidebarLeftOpen
+                        running: root.presentationActive && NewsService.loading
+                            && GlobalStates.sidebarLeftOpen && Appearance.animationsEnabled
                         from: 0
                         to: 360
                         duration: 1000

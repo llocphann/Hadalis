@@ -81,6 +81,7 @@ editor_theme="$repo_root/scripts/colors/modules/30-editors.sh"
 system24_theme="$repo_root/scripts/colors/system24_palette.py"
 steam_theme="$repo_root/scripts/colors/modules/70-steam.sh"
 cava_theme_module="$repo_root/scripts/colors/modules/90-cava.sh"
+themes_config="$repo_root/modules/settings/ThemesConfig.qml"
 desktop_media_widget="$repo_root/modules/background/widgets/mediaControls/MediaControlsWidget.qml"
 player_base="$repo_root/modules/mediaControls/components/PlayerBase.qml"
 player_control="$repo_root/modules/mediaControls/PlayerControl.qml"
@@ -318,6 +319,11 @@ if (( editor_jq_reads > 1 )); then
     fail "editor theming parser must use at most one jq read, found $editor_jq_reads"
 fi
 
+require "$themes_config" 'shopt -s nullglob; files=(' 'saved-theme discovery must batch matching files before parsing'
+require "$themes_config" 'input_filename | split("/")[-1] | rtrimstr(".json")' 'saved-theme discovery must derive names inside the batched jq process'
+require "$themes_config" '"${files[@]}"' 'saved-theme discovery must feed all theme files to one jq invocation'
+reject "$themes_config" '/usr/bin/basename "$f" .json' 'saved-theme discovery must not spawn basename per theme'
+reject "$themes_config" 'for f in "${root.savedThemesDir}"/*.json' 'saved-theme discovery must not restore per-file parser fan-out'
 require "$system24_theme" 'def _write_if_changed(path: Path, content: str) -> bool:' 'System24 outputs must avoid unchanged rewrites'
 require "$system24_theme" '_write_if_changed(out, system24_content)' 'System24 primary theme must use idempotent writes'
 require "$system24_theme" '_write_if_changed(out, midnight_content)' 'System24 midnight theme must use idempotent writes'

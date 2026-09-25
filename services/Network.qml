@@ -246,7 +246,6 @@ Singleton {
         updateConnectionType.startCheck();
         wifiStatusProcess.running = true
         updateNetworkName.running = true;
-        updateNetworkStrength.running = true;
     }
 
     property bool _destroying: false
@@ -367,11 +366,15 @@ Singleton {
             root.wifiStatus = wifiStatus;
             root.ethernet = hasEthernet;
             root.wifi = hasWifi;
-            // updateNetworkStrength's awk prints nothing when no AP is in use, so
-            // its SplitParser never fires and networkStrength would keep the value
-            // from the last connected AP. Clear it here instead.
-            if (wifiStatus !== "connected" && wifiStatus !== "limited")
+            // Signal strength is only meaningful for an associated Wi-Fi AP.
+            // Avoid spawning a full "nmcli device wifi" scan for Ethernet-only,
+            // disabled, connecting, or disconnected states.
+            if (wifiStatus === "connected" || wifiStatus === "limited") {
+                if (!updateNetworkStrength.running)
+                    updateNetworkStrength.running = true;
+            } else {
                 root.networkStrength = 0;
+            }
         }
     }
 
@@ -394,6 +397,12 @@ Singleton {
         command: ["nmcli", "-f", "IN-USE,SIGNAL,SSID", "device", "wifi"]
         stdout: StdioCollector {
             onStreamFinished: {
+                // A disconnect can arrive while a previous scan is finishing.
+                // Never let that stale result restore a non-zero signal.
+                if (root.wifiStatus !== "connected" && root.wifiStatus !== "limited") {
+                    root.networkStrength = 0
+                    return
+                }
                 // Parse the same active-row SIGNAL column that the old awk
                 // helper selected, but keep filtering inside QML.
                 for (const rawLine of String(text ?? "").split("\n")) {

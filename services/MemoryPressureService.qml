@@ -122,10 +122,12 @@ Singleton {
     Process {
         id: _mapsReader
         property bool startObserved: false
-        // /proc/$PPID, not /proc/self: this runs in an sh child of the shell, so
-        // /proc/self is that sh process (zero JSGCHeap mappings) and the counter
-        // always read 0 — the threshold could never trip. $PPID is the shell.
-        command: ["sh", "-c", "grep -c 'JSGCHeap.*deleted' /proc/$PPID/maps 2>/dev/null || echo 0; grep -c JSGCHeap /proc/$PPID/maps 2>/dev/null || echo 0"]
+        // Parse the shell's maps in one lightweight process. Quickshell exposes
+        // its own PID, so there is no need to spawn a shell plus two grep
+        // children just to recover the parent PID and produce two counters.
+        command: ["awk",
+            "/JSGCHeap/ { total++; if ($0 ~ /deleted/) deleted++ } END { print deleted + 0; print total + 0 }",
+            "/proc/" + Quickshell.processId + "/maps"]
         stdout: SplitParser {
             property int lineNum: 0
             onRead: line => {

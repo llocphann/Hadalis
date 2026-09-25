@@ -35,7 +35,6 @@ def main() -> None:
         "anchors.leftMargin: root.mediaInset",
         "anchors.rightMargin: root.mediaInset",
         "Layout.minimumWidth: 0",
-        "horizontalAlignment: titleScroller.overflowing ? Text.AlignLeft : Text.AlignHCenter",
         "font.pixelSize: Math.max(11, Math.round(Appearance.font.pixelSize.small * Appearance.sizes.barModuleScale))",
         "titleScroller.resetMarquee()",
         "onWidthChanged: resetMarquee()",
@@ -44,6 +43,10 @@ def main() -> None:
         "if (!_marqueeReady) return",
     ):
         require(media, token, f"Bar Media label alignment contract missing: {token}")
+
+    require(" ".join(media.split()),
+            "horizontalAlignment: titleScroller.overflowing ? Text.AlignLeft : Text.AlignHCenter",
+            "Bar Media title alignment must remain centered until the marquee overflows.")
 
     require(config, "property JsonObject media: JsonObject {",
             "Typed Bar config lost the media subsection.")

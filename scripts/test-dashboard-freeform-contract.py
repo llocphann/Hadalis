@@ -87,7 +87,7 @@ def main() -> None:
         'readonly property real smartGuideThreshold:',
         'DashboardAlignmentGuides {',
         'A restored widget must join the same collision contract as drag/resize.',
-        'Existing visible modules stay fixed; only the module being added may shrink.',
+        'visible modules stay fixed; only the module being added may shrink.',
         'case "system": return { width: 260, height: 180 }',
         'baselineRects: root._snapshotVisibleRects()',
         'root._applyPreviewRects(resolved)',

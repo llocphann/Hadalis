@@ -65,6 +65,11 @@ require(
 )
 require(
     tooltip,
+    "_anchorRefreshTimer.running = shouldBeActive",
+    "tooltip lifecycle must drive the anchor heartbeat imperatively",
+)
+require(
+    tooltip,
     "active: false",
     "tooltip presentation Loader must start without a reactive active binding",
 )
@@ -86,6 +91,7 @@ require(tooltip, "onLoaded:",
         "deferred reveal must restart after presentation reparenting")
 for forbidden in (
     "active: root.visible && root.internalVisibleCondition",
+    "running: root.visible && root.internalVisibleCondition",
     "active: root._canUsePopupWindow &&",
     "active: !root._canUsePopupWindow &&",
     "id: fallbackLoader",

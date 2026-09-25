@@ -39,6 +39,32 @@ def main() -> int:
         reject(text, "id: grabTimer", label)
         reject(text, "grab.active =", label)
 
+    # Shared and long-lived shell surfaces must not allocate a dead focus bridge.
+    # Each one already owns its Niri focus and close behavior explicitly.
+    native_surfaces = {
+        "StyledPopup": read("modules/bar/StyledPopup.qml"),
+        "ContextMenu": read("modules/common/widgets/ContextMenu.qml"),
+        "ControlPanel": read("modules/controlPanel/ControlPanel.qml"),
+        "Dashboard": read("modules/dashboard/Dashboard.qml"),
+        "SidebarHost": read("modules/sidebar/SidebarHost.qml"),
+        "WaffleBarPopup": read("modules/waffle/bar/BarPopup.qml"),
+    }
+    for label, text in native_surfaces.items():
+        reject(text, "CompositorFocusGrab {", label)
+
+    require(native_surfaces["StyledPopup"], "id: clickOutsideBackdrop", "StyledPopup")
+    require(native_surfaces["StyledPopup"], "WlrKeyboardFocus.OnDemand", "StyledPopup")
+    require(native_surfaces["ContextMenu"], "id: clickOutsideBackdrop", "ContextMenu")
+    require(native_surfaces["ContextMenu"], "Qt.Key_Escape", "ContextMenu")
+    require(native_surfaces["ControlPanel"], "WlrKeyboardFocus.Exclusive", "ControlPanel")
+    require(native_surfaces["ControlPanel"], "Qt.Key_Escape", "ControlPanel")
+    require(native_surfaces["Dashboard"], "mask: dashboardInputRegion", "Dashboard")
+    require(native_surfaces["Dashboard"], "Qt.Key_Escape", "Dashboard")
+    require(native_surfaces["SidebarHost"], "WlrKeyboardFocus.Exclusive", "SidebarHost")
+    require(native_surfaces["SidebarHost"], "Qt.Key_Escape", "SidebarHost")
+    require(native_surfaces["WaffleBarPopup"], "StandardKey.Cancel", "WaffleBarPopup")
+    require(native_surfaces["WaffleBarPopup"], "id: clickOutsideBackdrop", "WaffleBarPopup")
+
     # ii Overlay already derives keyboard ownership and input masking directly
     # from semantic state; the retired bridge/timer never supplied Niri behavior.
     require(overlay, "WlrKeyboardFocus.Exclusive", "Overlay")

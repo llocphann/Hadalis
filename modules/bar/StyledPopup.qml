@@ -385,15 +385,6 @@ LazyLoader {
                 root.presentationWindow = null
         }
 
-        // Niri layer-shell keyboard interactivity above is authoritative.
-        // Keep the compatibility object structurally available to shared popup
-        // callers, but never let it compete with Niri focus ownership.
-        CompositorFocusGrab {
-            active: false
-            windows: [popupWindow]
-            onCleared: root.requestClose()
-        }
-
         ConnectedSurfaceGeometry {
             id: geometry
             edge: root._attachmentEdge

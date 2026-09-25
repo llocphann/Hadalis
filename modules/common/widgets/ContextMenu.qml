@@ -140,13 +140,6 @@ Loader {
                 : (root.popupAbove ? Edges.Top : Edges.Bottom)
         }
 
-        CompositorFocusGrab {
-            id: focusGrab
-            active: false
-            windows: [popupWindow]
-            onCleared: root.focusCleared();
-        }
-
         Timer {
             id: closeTimer
             interval: root.closeOnHoverLostDelay

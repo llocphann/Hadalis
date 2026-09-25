@@ -135,15 +135,6 @@ Scope {
             left: true
         }
 
-        CompositorFocusGrab {
-            id: grab
-            windows: [ panelRoot ]
-            active: false
-            onCleared: () => {
-                if (!active) panelRoot.hide()
-            }
-        }
-
         Item {
             id: dashboardInputArea
             anchors.fill: parent

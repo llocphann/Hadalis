@@ -760,15 +760,6 @@ Scope {
             : root.roleHoldOpen || root.otherRoleOpen
                 ? sidebarInputRegion : null
 
-        CompositorFocusGrab {
-            windows: [sidebarRoot]
-            active: false
-            onCleared: () => {
-                if (!active && !root.roleHoldOpen)
-                    sidebarRoot.hide()
-            }
-        }
-
         MouseArea {
             anchors.fill: parent
             enabled: !ShellEditSession.active && root.roleOpen

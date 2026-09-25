@@ -186,13 +186,6 @@ Loader {
             onActivated: root.close()
         }
 
-        CompositorFocusGrab {
-            id: focusGrab
-            active: false
-            windows: [popupWindow]
-            onCleared: root.focusCleared()
-        }
-
         Timer {
             interval: root.closeOnHoverLostDelay
             running: root.closeOnHoverLost

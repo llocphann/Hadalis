@@ -151,14 +151,45 @@ Item {
                 }
 
                 RippleButton {
-                    Layout.preferredWidth: 84
-                    Layout.preferredHeight: 24
+                    Layout.alignment: Qt.AlignVCenter
+                    Layout.preferredWidth: 104
+                    Layout.preferredHeight: 28
                     buttonRadius: height / 2
                     buttonText: Translation.tr("Profile 5s")
-                    colBackground: Appearance.colors.colLayer1
-                    colBackgroundHover:
-                        Appearance.colors.colLayer1Hover
+                    colBackground: Qt.rgba(
+                        Appearance.colors.colPrimary.r,
+                        Appearance.colors.colPrimary.g,
+                        Appearance.colors.colPrimary.b, 0.10)
+                    colBackgroundHover: Qt.rgba(
+                        Appearance.colors.colPrimary.r,
+                        Appearance.colors.colPrimary.g,
+                        Appearance.colors.colPrimary.b, 0.18)
+                    colRipple: Qt.rgba(
+                        Appearance.colors.colPrimary.r,
+                        Appearance.colors.colPrimary.g,
+                        Appearance.colors.colPrimary.b, 0.28)
                     onClicked: root.deepProfileRequested()
+
+                    contentItem: Row {
+                        anchors.centerIn: parent
+                        spacing: 5
+
+                        MaterialSymbol {
+                            anchors.verticalCenter: parent.verticalCenter
+                            text: "memory"
+                            iconSize: 15
+                            color: Appearance.colors.colPrimary
+                        }
+
+                        StyledText {
+                            anchors.verticalCenter: parent.verticalCenter
+                            textFormat: Text.PlainText
+                            text: Translation.tr("Profile 5s")
+                            color: Appearance.colors.colOnLayer1
+                            font.pixelSize: Appearance.font.pixelSize.smallest
+                            font.weight: Font.DemiBold
+                        }
+                    }
                 }
             }
 

@@ -269,6 +269,10 @@ reject "$cava_theme_module" 'jq -r ".${key} // empty" "$PALETTE_FILE"' 'Cava the
 require "$cava_theme_module" 'jq -r --argjson count "$count"' 'Cava cover gradients must batch color-array reads'
 reject "$cava_theme_module" 'cover_color() {' 'Cava cover gradients must not restore one jq process per color'
 reject "$cava_theme_module" 'for i in $(seq 0 $((count - 1)))' 'Cava cover gradients must not restore an external seq loop'
+require "$cava_theme_module" 'saturate_colors() {' 'Cava vibrant gradients must batch saturation into one interpreter'
+require "$cava_theme_module" 'mapfile -t colors < <(saturate_colors 1.6 "${raw_colors[@]}")' 'Cava vibrant gradient must consume the batched saturation output'
+reject "$cava_theme_module" 'saturate_hex() {' 'Cava vibrant gradients must not restore one Python interpreter per color'
+reject "$cava_theme_module" 'sat=$(saturate_hex "$c" 1.6)' 'Cava vibrant gradients must not restore per-color Python startup'
 cava_theme_jq_reads="$(grep -Ec '^[[:space:]]*jq -r ' "$cava_theme_module")"
 if (( cava_theme_jq_reads > 3 )); then
     fail "Cava theming must keep config, palette, and cover JSON reads batched, found $cava_theme_jq_reads jq sites"

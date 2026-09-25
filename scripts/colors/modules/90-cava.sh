@@ -85,19 +85,37 @@ palette_color() {
   printf '%s\n' "${CAVA_PALETTE[$key]-}"
 }
 
-# Boost saturation of a hex color by mixing toward its hue at full saturation
-saturate_hex() {
-  local hex="$1" factor="${2:-1.4}"
-  python3 -c "
-import colorsys, sys
-h = '${hex}'.lstrip('#')
-r, g, b = int(h[0:2],16)/255, int(h[2:4],16)/255, int(h[4:6],16)/255
-hue, sat, val = colorsys.rgb_to_hsv(r, g, b)
-sat = min(1.0, sat * ${factor})
-val = min(1.0, val * 1.1)
-r2, g2, b2 = colorsys.hsv_to_rgb(hue, sat, val)
-print('#%02x%02x%02x' % (int(r2*255), int(g2*255), int(b2*255)))
-" 2>/dev/null || printf '%s\n' "$hex"
+# Boost a batch of colors in one interpreter. Invalid individual colors keep
+# the old per-color fallback semantics, while interpreter failure falls back to
+# the complete unmodified batch.
+saturate_colors() {
+  local factor="$1"
+  shift
+  (( $# > 0 )) || return 0
+
+  local output=""
+  if output="$(python3 - "$factor" "$@" <<'PY' 2>/dev/null
+import colorsys
+import sys
+
+factor = float(sys.argv[1])
+for raw in sys.argv[2:]:
+    try:
+        h = raw.lstrip("#")
+        r, g, b = int(h[0:2], 16) / 255, int(h[2:4], 16) / 255, int(h[4:6], 16) / 255
+        hue, sat, val = colorsys.rgb_to_hsv(r, g, b)
+        sat = min(1.0, sat * factor)
+        val = min(1.0, val * 1.1)
+        r2, g2, b2 = colorsys.hsv_to_rgb(hue, sat, val)
+        print("#%02x%02x%02x" % (int(r2 * 255), int(g2 * 255), int(b2 * 255)))
+    except Exception:
+        print(raw)
+PY
+  )"; then
+    printf '%s\n' "$output"
+  else
+    printf '%s\n' "$@"
+  fi
 }
 
 # Build gradient from palette - uses bright, visible colors first
@@ -119,17 +137,17 @@ build_gradient_theme() {
 build_gradient_vibrant() {
   local count="$1"
   local -a keys=(primary tertiary secondary error success primary_fixed tertiary_fixed inverse_primary)
-  local -a colors=()
-  local c sat
+  local -a raw_colors=()
+  local c
   for key in "${keys[@]}"; do
     c=$(palette_color "$key")
-    if [[ -n "$c" ]]; then
-      sat=$(saturate_hex "$c" 1.6)
-      colors+=("$sat")
-    fi
-    (( ${#colors[@]} >= count )) && break
+    [[ -n "$c" ]] && raw_colors+=("$c")
+    (( ${#raw_colors[@]} >= count )) && break
   done
-  (( ${#colors[@]} >= 1 )) || return 1
+  (( ${#raw_colors[@]} >= 1 )) || return 1
+
+  local -a colors=()
+  mapfile -t colors < <(saturate_colors 1.6 "${raw_colors[@]}")
   printf '%s\n' "${colors[@]}"
 }
 

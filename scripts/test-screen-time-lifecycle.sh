@@ -112,7 +112,8 @@ fi
 for token in \
     'property var tabs: []' \
     'property int currentIndex: 0' \
-    'color: Appearance.colors.colPrimaryContainer' \
+    'Appearance.colors.colPrimaryContainerHover' \
+    'Appearance.colors.colPrimaryContainer' \
     'id: centeredTabLabel' \
     'anchors.centerIn: parent' \
     'anchors.right: parent.right' \

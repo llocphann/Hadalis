@@ -109,7 +109,7 @@ for token in (
 
 require(
     dispatch,
-    'exec /usr/bin/env python3 "$ROOT_DIR/scripts/runtime-diagnostics-sampler.py" "$@"',
+    'python_exec "$ROOT_DIR/scripts/runtime-diagnostics-sampler.py" "$@"',
     "native selector must retain the reversible Python Diagnostics fallback",
 )
 

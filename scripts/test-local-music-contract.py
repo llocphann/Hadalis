@@ -59,8 +59,8 @@ for forbidden in ("yt-dlp", "youtube.com", "InnerTube", "YtMusic", "--input-ipc-
     forbid(service, forbidden, f"LocalMusic backend must remain MPD/local-only: {forbidden}")
 
 for token in (
-    'exec /usr/bin/python3 "$ROOT_DIR/scripts/local_music_mpd.py" "$@"',
-    'exec /usr/bin/python3 "$ROOT_DIR/scripts/local_music_lyrics.py" "$track"',
+    'python_exec "$ROOT_DIR/scripts/local_music_mpd.py" "$@"',
+    'python_exec "$ROOT_DIR/scripts/local_music_lyrics.py" "$track"',
 ):
     require(dispatch, token, f"native selector must retain reversible Python fallback: {token}")
 

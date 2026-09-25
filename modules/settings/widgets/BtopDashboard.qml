@@ -23,6 +23,17 @@ ColumnLayout {
     readonly property var systemEvidence: root.evidence?.system ?? null
     readonly property var shellEvidence: root.evidence?.shell ?? null
     readonly property var qmlOwnerProfile: root.evidence?.qmlProfile ?? null
+
+    function launchDeepProfile(): void {
+        Quickshell.execDetached([
+            "/usr/bin/systemd-run",
+            "--user", "--collect", "--quiet",
+            "--service-type=exec",
+            "/usr/bin/env", "bash",
+            Quickshell.shellPath("scripts/inir"),
+            "dev", "profile", "--duration", "5"
+        ])
+    }
     readonly property var networkEvidence: root.evidence?.network ?? null
     readonly property var cpuCores:
         root.systemEvidence?.cpu?.coresPercent ?? []
@@ -277,36 +288,14 @@ ColumnLayout {
                             elide: Text.ElideRight
                         }
                     }
-                    RowLayout {
-                        spacing: 6
-
-                        StyledText {
-                            textFormat: Text.PlainText
-                            visible: resourceSuspects.width >= 620
-                            text: root.qmlOwnerProfile !== null
-                                ? Translation.tr("Deep profile ready")
-                                : Translation.tr("Kernel + lifecycle evidence")
-                            color: Appearance.colors.colPrimary
-                            font.pixelSize: Appearance.font.pixelSize.smallest
-                        }
-
-                        RippleButton {
-                            Layout.preferredWidth: 82
-                            Layout.preferredHeight: 26
-                            buttonRadius: height / 2
-                            buttonText: Translation.tr("Profile 5s")
-                            colBackground: Appearance.colors.colLayer2
-                            colBackgroundHover:
-                                Appearance.colors.colLayer2Hover
-                            onClicked: Quickshell.execDetached([
-                                "/usr/bin/systemd-run",
-                                "--user", "--collect", "--quiet",
-                                "--service-type=exec",
-                                "/usr/bin/env", "bash",
-                                Quickshell.shellPath("scripts/inir"),
-                                "dev", "profile", "--duration", "5"
-                            ])
-                        }
+                    StyledText {
+                        textFormat: Text.PlainText
+                        visible: resourceSuspects.width >= 620
+                        text: root.qmlOwnerProfile !== null
+                            ? Translation.tr("Deep profile ready")
+                            : Translation.tr("Kernel + lifecycle evidence")
+                        color: Appearance.colors.colPrimary
+                        font.pixelSize: Appearance.font.pixelSize.smallest
                     }
                 }
                 GridLayout {
@@ -330,6 +319,10 @@ ColumnLayout {
                         records: root.records
                         events: root.events
                         localScroll: true
+                        profileError: String(
+                            root.evidence?.qmlProfileError ?? "")
+                        onDeepProfileRequested:
+                            root.launchDeepProfile()
                     }
                     BtopProcessTable {
                         Layout.fillWidth: true

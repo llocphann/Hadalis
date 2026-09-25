@@ -5464,5 +5464,6 @@
   "Deep profile ready": "Deep profile ready",
   "Profile 5s": "Profile 5s",
   "Per-owner QV4 alloc/free activity — not retained RAM/RSS/PSS": "Per-owner QV4 alloc/free activity — not retained RAM/RSS/PSS",
-  "JS/QV4 allocated by owner — cumulative pressure, not retained RAM/PSS": "JS/QV4 allocated by owner — cumulative pressure, not retained RAM/PSS"
+  "JS/QV4 allocated by owner — cumulative pressure, not retained RAM/PSS": "JS/QV4 allocated by owner — cumulative pressure, not retained RAM/PSS",
+  "Per-owner RAM/PSS unavailable · capture JS/QV4 memory": "Per-owner RAM/PSS unavailable · capture JS/QV4 memory"
 }

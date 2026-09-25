@@ -15,6 +15,8 @@ Item {
     property var events: []
     property int maxRows: 5
     property bool localScroll: false
+    property string profileError: ""
+    signal deepProfileRequested()
     readonly property int activityWindowMs: 60000
     readonly property double activityClockMs: {
         // Reuse the Diagnostics session heartbeat so lifecycle rates age only
@@ -122,11 +124,42 @@ Item {
             StyledText {
                 textFormat: Text.PlainText
                 Layout.fillWidth: true
-                Layout.bottomMargin: 5
+                Layout.bottomMargin: 3
                 text: Translation.tr("Lifecycle activity — not CPU/RAM attribution")
                 color: Appearance.colors.colSubtext
                 font.pixelSize: Appearance.font.pixelSize.smallest
                 elide: Text.ElideRight
+            }
+
+            RowLayout {
+                Layout.fillWidth: true
+                Layout.bottomMargin: 5
+                spacing: 6
+
+                StyledText {
+                    textFormat: Text.PlainText
+                    Layout.fillWidth: true
+                    text: root.profileError.length > 0
+                        ? root.profileError
+                        : Translation.tr(
+                            "Per-owner RAM/PSS unavailable · capture JS/QV4 memory")
+                    color: root.profileError.length > 0
+                        ? Appearance.colors.colError
+                        : Appearance.colors.colSubtext
+                    font.pixelSize: Appearance.font.pixelSize.smallest
+                    elide: Text.ElideRight
+                }
+
+                RippleButton {
+                    Layout.preferredWidth: 84
+                    Layout.preferredHeight: 24
+                    buttonRadius: height / 2
+                    buttonText: Translation.tr("Profile 5s")
+                    colBackground: Appearance.colors.colLayer1
+                    colBackgroundHover:
+                        Appearance.colors.colLayer1Hover
+                    onClicked: root.deepProfileRequested()
+                }
             }
 
             StyledListView {

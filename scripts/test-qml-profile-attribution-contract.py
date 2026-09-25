@@ -117,7 +117,9 @@ def main() -> None:
         "BtopOwnerProfileTable {",
         "visible: root.qmlOwnerProfile !== null",
         "visible: root.qmlOwnerProfile === null",
-        'Translation.tr("Profile 5s")',
+        "function launchDeepProfile(): void",
+        "onDeepProfileRequested:",
+        "root.launchDeepProfile()",
         '"/usr/bin/systemd-run"',
         '"--user", "--collect", "--quiet"',
         '"--service-type=exec"',
@@ -146,6 +148,16 @@ def main() -> None:
     forbid(owner_table, "CPU %", "deep owner table fake CPU attribution")
     forbid(owner_table, "RAM %", "deep owner table fake RAM attribution")
     forbid(owner_table, "freedBytes(", "owner frees cannot be attributed reliably")
+
+    activity_table = (ROOT / "modules" / "settings" / "widgets"
+                      / "BtopActivityTable.qml").read_text(encoding="utf-8")
+    for token in (
+        "signal deepProfileRequested()",
+        "Per-owner RAM/PSS unavailable · capture JS/QV4 memory",
+        'Translation.tr("Profile 5s")',
+        "onClicked: root.deepProfileRequested()",
+    ):
+        require(activity_table, token, "component memory profile affordance")
 
     require(
         qmldir,

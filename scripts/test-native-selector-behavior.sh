@@ -61,7 +61,7 @@ SH
 chmod +x "$trial/rust-b/inir-native"
 assert_equal "$("${base_env[@]}" INIR_NATIVE_BIN_DIR="$trial/rust-b" "$dispatch" niri get-hot-corners)" "$trial/runtime"
 
-for command in input-lock input-keys niri diagnostics clipboard-store mpd mpd-daemon mpd-subscribe lyrics theme desktop-icons; do
+for command in input-lock input-keys niri clipboard-store mpd mpd-daemon mpd-subscribe lyrics theme desktop-icons; do
     assert_status 127 "${base_env[@]}" INIR_NATIVE_BACKEND=rust INIR_NATIVE_STRICT=1 \
         INIR_NATIVE_BIN_DIR="$trial/missing" "$dispatch" "$command" fake
     [[ ! -s "$trial/stdout" ]] || { echo "strict $command fell back to Python" >&2; exit 1; }

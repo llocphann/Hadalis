@@ -51,6 +51,8 @@ Item {
         const shouldBeActive = root.visible && root.internalVisibleCondition
         if (tooltipLoader.active !== shouldBeActive)
             tooltipLoader.active = shouldBeActive
+        if (_anchorRefreshTimer.running !== shouldBeActive)
+            _anchorRefreshTimer.running = shouldBeActive
     }
 
     // PopupAnchor item geometry is sampled only when a PopupWindow is shown.
@@ -183,7 +185,6 @@ Item {
         id: _anchorRefreshTimer
         interval: 50
         repeat: true
-        running: root.visible && root.internalVisibleCondition
         onTriggered: {
             root.anchorRevision += 1
             if (tooltipLoader.active)

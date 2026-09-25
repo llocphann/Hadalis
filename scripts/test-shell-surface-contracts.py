@@ -273,6 +273,30 @@ def main() -> None:
           and "ConnectedSurfaceMask {" not in osd,
           "Compact IPC/OSD popups must not restore the legacy connected frame/mask")
 
+    clipboard_panel = read("modules/clipboard/ClipboardPanel.qml")
+    for token in (
+        "qs.modules.common.perimeter",
+        "ConnectedSurfaceGeometry {",
+        'edge: "bottom"',
+        "ConnectedSurfaceRevealClip {",
+        "ConnectedSurfaceIrisFrame {",
+        "ConnectedSurfaceContentHost {",
+        "PerimeterTokens.popupRadius",
+        "screenMargin: root._screenEdgeThickness",
+        "connectorLength: 0",
+        "seamOverlap: PerimeterTokens.irisWeldDepth",
+        "externalFrameThickness: root._screenEdgeThickness",
+        "physicalShadow?.enabled ?? true",
+        "Appearance.m3colors.m3shadow",
+        "duration: SurfaceMotion.duration",
+        "easing.type: SurfaceMotion.easingType",
+        "root._bottomOwnerThickness(outputName)",
+    ):
+        check(token in clipboard_panel,
+              f"Clipboard connected bottom-surface contract missing: {token}")
+    check("GlassBackground {" not in clipboard_panel,
+          "Clipboard history must not keep the detached legacy GlassBackground shell")
+
     toast_manager = read("modules/common/ToastManager.qml")
     toast_notification = read("modules/common/widgets/ToastNotification.qml")
     check("\nimport qs\n" in toast_manager

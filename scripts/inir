@@ -3371,7 +3371,6 @@ EOF
                         *News*) select_prefix "sidebar-left/news" ;;
                         *Software*) select_prefix "sidebar-left/software" ;;
                         *LocalMusic*) select_prefix "sidebar-left/music" ;;
-                        *YtMusic*|innertune) select_prefix "sidebar-left/ytmusic" ;;
                         *Translator*) select_prefix "sidebar-left/translator" ;;
                         *Wallhaven*) select_prefix "sidebar-left/wallhaven" ;;
                         *Tools*|plugins) select_prefix "sidebar-left/tools" ;;

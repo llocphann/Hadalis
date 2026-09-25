@@ -101,7 +101,6 @@ complete -c inir -n '__fish_use_subcommand' -a wbar -d 'Waffle taskbar'
 complete -c inir -n '__fish_use_subcommand' -a wnotificationCenter -d 'Waffle notifications'
 complete -c inir -n '__fish_use_subcommand' -a wnotification-center -d 'Waffle notifications'
 complete -c inir -n '__fish_use_subcommand' -a wwidgets -d 'Waffle widgets'
-complete -c inir -n '__fish_use_subcommand' -a ytmusic -d 'YtMusic player control'
 complete -c inir -n '__fish_use_subcommand' -a zoom -d 'Screen zoom'
 
 # Subcommand completions: service
@@ -158,5 +157,4 @@ complete -c inir -n '__fish_seen_subcommand_from wallpaperSelector wallpaper-sel
 complete -c inir -n '__fish_seen_subcommand_from wbar' -a 'toggle close open'
 complete -c inir -n '__fish_seen_subcommand_from wnotificationCenter wnotification-center' -a 'toggle'
 complete -c inir -n '__fish_seen_subcommand_from wwidgets' -a 'toggle close open'
-complete -c inir -n '__fish_seen_subcommand_from ytmusic' -a 'playPause next previous stop'
 complete -c inir -n '__fish_seen_subcommand_from zoom' -a 'zoomIn zoomOut'

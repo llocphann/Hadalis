@@ -362,7 +362,14 @@ require "$player_control" 'property bool positionUpdatesActive: true' 'PlayerCon
 require "$player_control" 'running: root.positionUpdatesActive' 'PlayerControl position timer must honor the host lifecycle gate'
 require "$player_control" 'animateWave: root.positionUpdatesActive && root.effectiveIsPlaying' 'PlayerControl wavy progress must honor the host lifecycle gate'
 require "$player_control" 'onPositionUpdatesActiveChanged:' 'PlayerControl must refresh position immediately when lifecycle updates resume'
-require "$equalizer_panel" 'if (root.active && analyzerCanvas.visible)' 'Equalizer Canvas paint requests must sleep outside active presentation'\nrequire "$equalizer_panel" 'running: root.active && analyzerCanvas.visible' 'Equalizer live graph must keep one 33 ms presentation cadence'\nreject "$equalizer_panel" 'target: eqCava' 'Equalizer must not schedule a second Canvas paint stream from CAVA sample signals'\nequalizer_direct_paints="$(grep -Fc 'analyzerCanvas.requestPaint()' "$equalizer_panel")"\nif (( equalizer_direct_paints != 1 )); then\n    fail "Equalizer Canvas must centralize direct repaint scheduling, found $equalizer_direct_paints direct sites"\nfi\nrequire "$dash_media" 'active: root.hasPlayer' 'Dashboard shared PlayerControl must stay resident so artwork/masks do not rebuild during slide presentation'
+require "$equalizer_panel" 'if (root.active && analyzerCanvas.visible)' 'Equalizer Canvas paint requests must sleep outside active presentation'
+require "$equalizer_panel" 'running: root.active && analyzerCanvas.visible' 'Equalizer live graph must keep one 33 ms presentation cadence'
+reject "$equalizer_panel" 'target: eqCava' 'Equalizer must not schedule a second Canvas paint stream from CAVA sample signals'
+equalizer_direct_paints="$(grep -Fc 'analyzerCanvas.requestPaint()' "$equalizer_panel")"
+if (( equalizer_direct_paints != 1 )); then
+    fail "Equalizer Canvas must centralize direct repaint scheduling, found $equalizer_direct_paints direct sites"
+fi
+require "$dash_media" 'active: root.hasPlayer' 'Dashboard shared PlayerControl must stay resident so artwork/masks do not rebuild during slide presentation'
 require "$dash_media" 'PlayerControl {' 'Dashboard media must reuse the canonical shared player surface'
 require "$dash_welcome" 'layer.enabled: root.visible && status === Image.Ready' 'Dashboard avatar mask must stay circular through the visible exit slide and sleep once hidden'
 require "$dash_welcome" 'mipmap: false' 'Dashboard avatar must not generate unused mipmaps'

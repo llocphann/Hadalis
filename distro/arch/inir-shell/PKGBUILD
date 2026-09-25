@@ -36,6 +36,7 @@ depends=(
   playerctl
   polkit-gnome
   python
+  python-evdev
   python-materialyoucolor
   python-numpy
   python-pillow

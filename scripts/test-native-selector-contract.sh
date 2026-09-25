@@ -61,6 +61,10 @@ done
 
 grep -Fq 'python_exec() {' "$dispatch" \
     || fail 'native-dispatch must resolve Python fallbacks through the packaged/venv interpreter'
+grep -Fq 'python_exec_with_module evdev -u "$ROOT_DIR/scripts/daemon/keyboard_lock_state_daemon.py"' "$dispatch" \
+    || fail 'input-lock Python rollback must select an interpreter with evdev'
+grep -Fq 'python_exec_with_module evdev -u "$ROOT_DIR/scripts/daemon/osk_physical_key_daemon.py"' "$dispatch" \
+    || fail 'input-keys Python rollback must select an interpreter with evdev'
 if grep -Eq 'exec /usr/bin/(env[[:space:]]+)?python3' "$dispatch"; then
     fail 'native-dispatch must not bypass the packaged/venv Python fallback'
 fi

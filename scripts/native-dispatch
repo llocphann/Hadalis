@@ -59,6 +59,22 @@ python_exec() {
     exec "$py" "$@"
 }
 
+python_exec_with_module() {
+    local module="$1"
+    shift
+    local candidate=""
+    local preferred=""
+    preferred="$(command -v python3 2>/dev/null || true)"
+    for candidate in "$preferred" /usr/bin/python3 "$(python_bin 2>/dev/null || true)"; do
+        [[ -n "$candidate" && -x "$candidate" ]] || continue
+        if "$candidate" -c "import ${module}" >/dev/null 2>&1; then
+            exec "$candidate" "$@"
+        fi
+    done
+    echo "[native-dispatch] Python fallback unavailable: missing module ${module}" >&2
+    return 127
+}
+
 want_rust() {
     case "$MODE" in
         rust|auto) return 0 ;;
@@ -112,7 +128,7 @@ case "$cmd" in
             if (( rc == 0 || STRICT == 1 )); then exit "$rc"; fi
             echo "[native-dispatch] Rust input-lock failed ($rc), falling back to Python" >&2
         fi
-        python_exec -u "$ROOT_DIR/scripts/daemon/keyboard_lock_state_daemon.py" "$@"
+        python_exec_with_module evdev -u "$ROOT_DIR/scripts/daemon/keyboard_lock_state_daemon.py" "$@"
         ;;
 
     input-keys)
@@ -122,7 +138,7 @@ case "$cmd" in
             if (( rc == 0 || STRICT == 1 )); then exit "$rc"; fi
             echo "[native-dispatch] Rust input-keys failed ($rc), falling back to Python" >&2
         fi
-        python_exec -u "$ROOT_DIR/scripts/daemon/osk_physical_key_daemon.py" "$@"
+        python_exec_with_module evdev -u "$ROOT_DIR/scripts/daemon/osk_physical_key_daemon.py" "$@"
         ;;
 
     niri)

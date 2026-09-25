@@ -25,6 +25,7 @@ pkgbase = inir-shell
 	depends = playerctl
 	depends = polkit-gnome
 	depends = python
+	depends = python-evdev
 	depends = python-materialyoucolor
 	depends = python-numpy
 	depends = python-pillow

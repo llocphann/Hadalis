@@ -174,8 +174,28 @@ module work, commit directly to `dev`, and never force-push or modify `stable`.
   `/proc/<pid>/io`. System CPU, system RAM and `/proc/net/dev` network rates
   are not presented as Quickshell monitors because they are not process
   attribution. The compact Hadalis strip carries the same shell-owned PID, CPU,
-  PSS-or-RSS, disk I/O rates and helper count. Per-component CPU/RAM/Swap/GPU/
-  Network remains unavailable until a reviewed attribution method exists.
+  PSS-or-RSS, disk I/O rates and helper count.
+- Deep owner profiling is an explicit, bounded mode rather than a permanently
+  enabled debug service. `inir dev profile --duration 5` temporarily stops the
+  managed shell, lets Qt's `qmlprofiler` launch Quickshell with its local debug
+  transport, records only JavaScript/memory/creating/binding/signal-handler
+  features, flushes the trace, restores `inir.service`, and persists the latest
+  owner summary under `$XDG_STATE_HOME/inir/qml-profiles`. The Rust
+  `inir-native qml-profile` parser resolves source files against the active
+  shell root and publishes module/service/component rows. QML work is exclusive
+  wall-clock time for Binding/HandlingSignal/Javascript/Creating/Compiling
+  ranges; nested ranges are not double-counted. QV4 allocation/deallocation
+  events are associated with the innermost active range, matching the profiler's
+  call-stack ownership model, but are labelled allocation activity rather than
+  retained RAM. The compact Diagnostics table shows these captured rows when a
+  profile exists and falls back to lifecycle hotspots otherwise.
+- This does **not** manufacture per-owner CPU/RSS/GPU percentages. Kernel CPU,
+  PSS/RSS and DRM fdinfo remain exact only for the Quickshell process/helper
+  boundaries. Qt's QML profiler exposes source locations for QML/JS work, while
+  scene-graph frame/GPU timing does not retain a reliable reverse owner back to
+  the originating QML item after scene-graph batching. Owner rows therefore say
+  `QML ms/s`, QV4 `Alloc`, and `GPU —` until a renderer-level ownership
+  proof exists.
 - Source-boundary discovery is optional parser capability, not sampler health.
   An index status of `unavailable` (for example `grammar-missing`) therefore
   leaves the boundary count unknown in Diagnostics instead of promoting the raw

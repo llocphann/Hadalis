@@ -8,6 +8,11 @@ RUST = ROOT / "native" / "inir-native" / "src" / "qml_profile.rs"
 MAIN = ROOT / "native" / "inir-native" / "src" / "main.rs"
 DISPATCH = ROOT / "scripts" / "native-dispatch"
 CAPTURE = ROOT / "scripts" / "qml-profile-capture.py"
+RUNTIME = ROOT / "services" / "RuntimeDiagnostics.qml"
+DASHBOARD = ROOT / "modules" / "settings" / "widgets" / "BtopDashboard.qml"
+OWNER_TABLE = ROOT / "modules" / "settings" / "widgets" / "BtopOwnerProfileTable.qml"
+QMLEDIR = ROOT / "modules" / "settings" / "widgets" / "qmldir"
+CLI = ROOT / "scripts" / "inir"
 
 
 def require(text: str, token: str, source: str) -> None:
@@ -25,6 +30,11 @@ def main() -> None:
     main_rs = MAIN.read_text(encoding="utf-8")
     dispatch = DISPATCH.read_text(encoding="utf-8")
     capture = CAPTURE.read_text(encoding="utf-8")
+    runtime = RUNTIME.read_text(encoding="utf-8")
+    dashboard = DASHBOARD.read_text(encoding="utf-8")
+    owner_table = OWNER_TABLE.read_text(encoding="utf-8")
+    qmldir = QMLEDIR.read_text(encoding="utf-8")
+    cli = CLI.read_text(encoding="utf-8")
 
     for token in (
         '"Binding"',
@@ -81,6 +91,49 @@ def main() -> None:
         require(capture, token, "bounded QML profile capture")
 
     forbid(capture, "QSG_RHI_PROFILE", "QML owner capture GPU attribution")
+
+    for token in (
+        'qmlOwnerProfilePath:',
+        'watchChanges: true',
+        'qmlProfile: root.qmlOwnerProfile',
+        'parsed?.source !== "qt-qml-profiler-xml"',
+    ):
+        require(runtime, token, "RuntimeDiagnostics persisted owner profile")
+
+    for token in (
+        "readonly property var qmlOwnerProfile:",
+        "BtopOwnerProfileTable {",
+        "visible: root.qmlOwnerProfile !== null",
+        "visible: root.qmlOwnerProfile === null",
+    ):
+        require(dashboard, token, "Diagnostics deep profile presentation")
+
+    for token in (
+        'Translation.tr("Deep QML owners")',
+        'Translation.tr("Modules")',
+        'Translation.tr("Services")',
+        'Translation.tr("Components")',
+        '"QML "',
+        '"Alloc "',
+        '"+ " · GPU —"',
+        "interactive: contentHeight > height",
+    ):
+        require(owner_table, token, "deep QML owner table")
+    require(
+        owner_table,
+        "QML work · QV4 allocation — not CPU/RSS/GPU attribution",
+        "deep QML owner semantics",
+    )
+    forbid(owner_table, "CPU %", "deep owner table fake CPU attribution")
+    forbid(owner_table, "RAM %", "deep owner table fake RAM attribution")
+
+    require(
+        qmldir,
+        "BtopOwnerProfileTable 1.0 BtopOwnerProfileTable.qml",
+        "settings widget type export",
+    )
+    require(cli, 'elif [[ "${1:-}" == "profile" ]]', "inir dev profile route")
+    require(cli, 'qml-profile-capture.py"', "inir dev profile capture worker")
     print("PASS: QML owner profiling is opt-in and attribution semantics stay truthful")
 
 

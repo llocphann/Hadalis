@@ -78,6 +78,7 @@ directories="$repo_root/modules/common/Directories.qml"
 editor_theme="$repo_root/scripts/colors/modules/30-editors.sh"
 system24_theme="$repo_root/scripts/colors/system24_palette.py"
 steam_theme="$repo_root/scripts/colors/modules/70-steam.sh"
+cava_theme_module="$repo_root/scripts/colors/modules/90-cava.sh"
 
 require "$config" 'property int framerate: 30' 'Cava schema default must remain 30 fps'
 require "$defaults" '"framerate": 30' 'persisted Cava default must remain 30 fps'
@@ -257,6 +258,17 @@ reject "$steam_theme" 'hex=$(jq -r ".${token} // empty"' 'Steam Millennium CSS g
 steam_palette_jq_reads="$(grep -Fc "jq -r 'to_entries[] | select(.value != null)" "$steam_theme")"
 if (( steam_palette_jq_reads != 1 )); then
     fail "Steam Millennium palette must use exactly one batched jq read, found $steam_palette_jq_reads"
+fi
+
+require "$cava_theme_module" 'load_cava_config() {' 'Cava theming must snapshot config once per apply'
+require "$cava_theme_module" 'load_cava_palette() {' 'Cava theming must snapshot the palette once per apply'
+require "$cava_theme_module" 'CAVA_CONFIG_VALUES["$key"]="$value"' 'Cava config reads must use the in-process snapshot'
+require "$cava_theme_module" 'CAVA_PALETTE["$key"]="$value"' 'Cava palette reads must use the in-process snapshot'
+reject "$cava_theme_module" 'config_json ".appearance.cava.${key}' 'Cava theming must not restore one config jq per setting'
+reject "$cava_theme_module" 'jq -r ".${key} // empty" "$PALETTE_FILE"' 'Cava theming must not restore one palette jq per color'
+cava_theme_jq_reads="$(grep -Ec '^[[:space:]]*jq -r ' "$cava_theme_module")"
+if (( cava_theme_jq_reads > 3 )); then
+    fail "Cava theming must keep config, palette, and cover JSON reads batched, found $cava_theme_jq_reads jq sites"
 fi
 
 printf 'performance lifecycle guards: ok\n'

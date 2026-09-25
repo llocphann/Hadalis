@@ -15,15 +15,74 @@ CAVA_CONFIG="$CAVA_CONFIG_DIR/config"
 MARKER_BEGIN="# BEGIN inir-managed"
 MARKER_END="# END inir-managed"
 
-# Read a cava config value from appearance.cava
+declare -A CAVA_CONFIG_VALUES=()
+declare -A CAVA_PALETTE=()
+
+load_cava_config() {
+  CAVA_CONFIG_VALUES=(
+    [enableCava]=false
+    [colorSource]=theme
+    [gradientCount]=8
+    [foreground]=""
+    [background]=""
+    [sensitivity]=100
+    [bars]=0
+    [framerate]=60
+    [barWidth]=2
+    [barSpacing]=1
+    [stereo]=true
+  )
+
+  [[ -f "$CONFIG_FILE" ]] || return 0
+  command -v jq >/dev/null 2>&1 || return 0
+
+  local config_rows=""
+  config_rows="$(
+    jq -r '[
+      "enableCava=\(if .appearance.wallpaperTheming.enableCava == null then false else .appearance.wallpaperTheming.enableCava end)",
+      "colorSource=\(.appearance.cava.colorSource // "theme")",
+      "gradientCount=\(.appearance.cava.gradientCount // "8")",
+      "foreground=\(.appearance.cava.foreground // "")",
+      "background=\(.appearance.cava.background // "")",
+      "sensitivity=\(.appearance.cava.sensitivity // "100")",
+      "bars=\(.appearance.cava.bars // "0")",
+      "framerate=\(.appearance.cava.framerate // "60")",
+      "barWidth=\(.appearance.cava.barWidth // "2")",
+      "barSpacing=\(.appearance.cava.barSpacing // "1")",
+      "stereo=\(.appearance.cava.stereo // "true")"
+    ] | .[]' "$CONFIG_FILE" 2>/dev/null
+  )" || return 0
+
+  local key value
+  while IFS='=' read -r key value; do
+    [[ -n "$key" ]] || continue
+    CAVA_CONFIG_VALUES["$key"]="$value"
+  done <<< "$config_rows"
+}
+
+# Read a cava config value from the per-apply snapshot.
 cava_cfg() {
   local key="$1" fallback="$2"
-  config_json ".appearance.cava.${key} // \"${fallback}\"" "$fallback"
+  printf '%s\n' "${CAVA_CONFIG_VALUES[$key]-$fallback}"
+}
+
+load_cava_palette() {
+  CAVA_PALETTE=()
+  local palette_rows=""
+  palette_rows="$(
+    jq -r 'to_entries[] | select(.value != null) | "\(.key)=\(.value)"' "$PALETTE_FILE" 2>/dev/null
+  )" || return 1
+
+  local key value
+  while IFS='=' read -r key value; do
+    [[ -n "$key" ]] || continue
+    CAVA_PALETTE["$key"]="$value"
+  done <<< "$palette_rows"
 }
 
 palette_color() {
   local key="$1"
-  jq -r ".$key // empty" "$PALETTE_FILE" 2>/dev/null
+  printf '%s\n' "${CAVA_PALETTE[$key]-}"
 }
 
 cover_color() {
@@ -248,6 +307,7 @@ generate_managed_block() {
 apply_cava_config() {
   [[ -f "$PALETTE_FILE" ]] || { log_module "palette.json not found, skipping"; return 0; }
   command -v cava &>/dev/null || { log_module "cava not installed, skipping"; return 0; }
+  load_cava_palette || { log_module "palette.json unreadable, skipping"; return 0; }
 
   local block
   block=$(generate_managed_block) || { log_module "Failed to generate config"; return 0; }
@@ -316,8 +376,8 @@ strip_cava_config() {
 }
 
 main() {
-  local enabled
-  enabled=$(config_bool '.appearance.wallpaperTheming.enableCava' false)
+  load_cava_config
+  local enabled="${CAVA_CONFIG_VALUES[enableCava]-false}"
 
   if [[ "$enabled" == 'true' ]]; then
     apply_cava_config

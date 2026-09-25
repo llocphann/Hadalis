@@ -106,8 +106,6 @@ depends=(
   mpv-mpris
   mpd
   mpd-mpris
-  yt-dlp
-
   #--- Theming ---
   noto-fonts-emoji
   ttf-dejavu

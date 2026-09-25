@@ -48,7 +48,6 @@ if [[ -n "${ONLY_MISSING_DEPS:-}" ]]; then
     [uv]="uv"
     [cava]="cava"
     [qalc]="libqalculate"
-    [yt-dlp]="yt-dlp"
     [socat]="socat"
     [brightnessctl]="brightnessctl"
     [slurp]="slurp"

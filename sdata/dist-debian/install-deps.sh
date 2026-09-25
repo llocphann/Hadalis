@@ -417,8 +417,6 @@ DEBIAN_AUDIO_PKGS=(
   pavucontrol
   easyeffects
   mpv
-  yt-dlp
-  python3-ytmusicapi
   socat
 )
 

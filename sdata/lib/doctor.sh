@@ -84,7 +84,6 @@ check_dependencies() {
         "uv:uv"
         "cava:cava"
         "qalc:qalculate"
-        "yt-dlp:yt-dlp"
         "brightnessctl:brightnessctl"
         "slurp:slurp"
         "wf-recorder:wf-recorder"

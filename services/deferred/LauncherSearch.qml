@@ -99,7 +99,7 @@ Singleton {
         // Clipboard search
         if (q.startsWith(clipboardPrefix)) {
             const searchStr = StringUtils.cleanPrefix(q, clipboardPrefix)
-            return Cliphist.fuzzyQuery(searchStr).map(entry => {
+            return Cliphist.fuzzyQuery(searchStr, 24).map(entry => {
                 return ({
                     rawValue: entry,
                     name: StringUtils.cleanCliphistEntry(entry),
@@ -115,7 +115,7 @@ Singleton {
         // Emoji search
         if (q.startsWith(emojisPrefix)) {
             const searchStr = StringUtils.cleanPrefix(q, emojisPrefix)
-            return Emojis.fuzzyQuery(searchStr).map(entry => {
+            return Emojis.fuzzyQuery(searchStr, 24).map(entry => {
                 const emoji = entry.match(/^\s*(\S+)/)?.[1] ?? ""
                 return ({
                     rawValue: entry,
@@ -193,7 +193,7 @@ Singleton {
 
         // Apps
         const appQuery = StringUtils.cleanPrefix(q, appPrefix)
-        const appEntries = AppSearch.fuzzyQuery(appQuery)
+        const appEntries = AppSearch.fuzzyQuery(appQuery, 32)
 
         // Dedupe by display name. Some systems have multiple desktop entries for the same app
         // (e.g. Flatpak + system), which otherwise shows up as duplicated results.

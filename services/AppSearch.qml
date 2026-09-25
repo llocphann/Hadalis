@@ -255,7 +255,7 @@ Singleton {
         _desktopIdStemMap = idMap;
     }
 
-    function fuzzyQuery(search: string): var {
+    function fuzzyQuery(search: string, limit: int = 0): var {
         if (_cachedList.length === 0) return []
         if (!search || search.trim() === "") return []
 
@@ -289,7 +289,8 @@ Singleton {
             }).filter(item => item.score > root.scoreThreshold)
               .sort((a, b) => b.score - a.score)
 
-            return results.map(item => root._decorateEntry(item.entry))
+            const ranked = limit > 0 ? results.slice(0, limit) : results
+            return ranked.map(item => root._decorateEntry(item.entry))
         }
 
         // Hybrid approach: combine fuzzysort with smart scoring
@@ -321,7 +322,8 @@ Singleton {
             return { entry, score }
         }).sort((a, b) => b.score - a.score)
 
-        return scoredResults.map(item => root._decorateEntry(item.entry))
+        const ranked = limit > 0 ? scoredResults.slice(0, limit) : scoredResults
+        return ranked.map(item => root._decorateEntry(item.entry))
     }
 
     function _decorateEntry(entry): var {

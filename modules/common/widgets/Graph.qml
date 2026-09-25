@@ -26,16 +26,26 @@ Canvas {
             return
 
         var n = root.points
+        if (n < 2)
+            return
         var dx = width / (n - 1)
+        var firstIndex = root.alignment === Graph.Alignment.Right
+            ? Math.max(0, n - root.values.length) : 0
+        var endIndex = Math.min(n, firstIndex + root.values.length)
+        var validCount = endIndex - firstIndex
+        if (validCount < 2)
+            return
 
-        // Build point array, skipping gaps
-        var pts = []
-        for (var i = 0; i < n; ++i) {
-            var vi = (root.alignment === Graph.Alignment.Right) ? root.values.length - n + i : i
-            if (vi < 0 || vi >= root.values.length) continue
-            pts.push({ x: i * dx, y: height - root.values[vi] * height })
+        function valueIndex(i) {
+            return root.alignment === Graph.Alignment.Right
+                ? root.values.length - n + i : i
         }
-        if (pts.length < 2) return
+
+        var firstX = firstIndex * dx
+        var firstY = height - root.values[valueIndex(firstIndex)] * height
+        var previousX = firstX
+        var previousY = firstY
+        var lastX = firstX
 
         ctx.strokeStyle = root.color
         ctx.fillStyle = ColorUtils.transparentize(root.color, 1 - root.fillOpacity)
@@ -43,21 +53,24 @@ Canvas {
         ctx.lineJoin = "round"
         ctx.lineCap = "round"
         ctx.beginPath()
-        ctx.moveTo(pts[0].x, height)
-        ctx.lineTo(pts[0].x, pts[0].y)
+        ctx.moveTo(firstX, height)
+        ctx.lineTo(firstX, firstY)
 
-        if (root.smooth && pts.length > 2) {
-            // Monotone cubic interpolation for smooth curves
-            for (var j = 1; j < pts.length; ++j) {
-                var cpx = (pts[j - 1].x + pts[j].x) / 2
-                ctx.bezierCurveTo(cpx, pts[j - 1].y, cpx, pts[j].y, pts[j].x, pts[j].y)
+        for (var i = firstIndex + 1; i < endIndex; ++i) {
+            var currentX = i * dx
+            var currentY = height - root.values[valueIndex(i)] * height
+            if (root.smooth && validCount > 2) {
+                var cpx = (previousX + currentX) / 2
+                ctx.bezierCurveTo(cpx, previousY, cpx, currentY, currentX, currentY)
+            } else {
+                ctx.lineTo(currentX, currentY)
             }
-        } else {
-            for (var k = 1; k < pts.length; ++k)
-                ctx.lineTo(pts[k].x, pts[k].y)
+            previousX = currentX
+            previousY = currentY
+            lastX = currentX
         }
         ctx.stroke()
-        ctx.lineTo(pts[pts.length - 1].x, height)
+        ctx.lineTo(lastX, height)
         ctx.fill()
     }
 }

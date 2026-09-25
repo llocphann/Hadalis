@@ -182,7 +182,19 @@ Singleton {
             root.normalizationCeiling = nextCeiling
         root.framePeak = peak
         root.frameAverage = sum / parsed.length
-        root.points = parsed
+
+        let frameChanged = parsed.length !== root.points.length
+        if (!frameChanged) {
+            for (let i = 0; i < parsed.length; ++i) {
+                if (parsed[i] !== root.points[i]) {
+                    frameChanged = true
+                    break
+                }
+            }
+        }
+        if (frameChanged)
+            root.points = parsed
+
         if (!ceilingRises)
             root.normalizationCeiling = nextCeiling
 

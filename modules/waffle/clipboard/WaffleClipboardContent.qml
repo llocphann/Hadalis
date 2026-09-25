@@ -20,6 +20,13 @@ Item {
     property string lastCopiedEntry: ""
     property bool showClearConfirmation: false
 
+    Timer {
+        id: searchDebounce
+        interval: 70
+        repeat: false
+        onTriggered: root.updateFilteredModel()
+    }
+
     implicitWidth: pane.implicitWidth + 24
     implicitHeight: pane.implicitHeight + 24
 
@@ -324,7 +331,12 @@ Item {
 
                             onTextChanged: {
                                 root.searchText = text
-                                root.updateFilteredModel()
+                                if (root.searchText.trim().length === 0) {
+                                    searchDebounce.stop()
+                                    root.updateFilteredModel()
+                                } else {
+                                    searchDebounce.restart()
+                                }
                             }
 
                             WText {

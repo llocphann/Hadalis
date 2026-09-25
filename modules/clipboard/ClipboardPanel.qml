@@ -84,6 +84,16 @@ Scope {
     property bool showClearConfirmation: false
     property bool navigateMode: false
 
+    Timer {
+        id: searchDebounce
+        interval: 70
+        repeat: false
+        onTriggered: {
+            if (GlobalStates.clipboardOpen)
+                root.updateFilteredModel()
+        }
+    }
+
     function formatCliphistName(entry) {
         let cleaned = StringUtils.cleanCliphistEntry(entry)
         if (Cliphist.entryIsImage(entry)) {
@@ -252,6 +262,7 @@ Scope {
     }
 
     function prepareOpen(): void {
+        searchDebounce.stop()
         refresh()
         searchText = ""
         navigateMode = false
@@ -567,7 +578,12 @@ Scope {
                             placeholderText: Translation.tr("Search clipboard history")
                             onTextChanged: {
                                 root.searchText = text
-                                root.updateFilteredModel()
+                                if (root.searchText.trim().length === 0) {
+                                    searchDebounce.stop()
+                                    root.updateFilteredModel()
+                                } else {
+                                    searchDebounce.restart()
+                                }
                             }
                             Keys.onEscapePressed: function(event) {
                                 GlobalStates.clipboardOpen = false

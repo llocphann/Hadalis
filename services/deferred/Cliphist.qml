@@ -30,9 +30,10 @@ Singleton {
         if (Quickshell.env("QS_DEBUG") === "1") console.log(...args);
     }
 
-    function fuzzyQuery(search: string): var {
+    function fuzzyQuery(search: string, limit: int = 0): var {
         if (search.trim() === "") {
-            return entries.slice(0, root.maxEntries);
+            const count = limit > 0 ? Math.min(limit, root.maxEntries) : root.maxEntries
+            return entries.slice(0, count);
         }
         if (root.sloppySearch) {
             const results = entries.slice(0, Math.min(100, root.maxEntries)).map(str => ({
@@ -40,14 +41,17 @@ Singleton {
                 score: Levendist.computeTextMatchScore(str.toLowerCase(), search.toLowerCase())
             })).filter(item => item.score > root.scoreThreshold)
                 .sort((a, b) => b.score - a.score)
-            return results
+            const ranked = limit > 0 ? results.slice(0, limit) : results
+            return ranked
                 .map(item => item.entry)
         }
 
-        return Fuzzy.go(search, preparedEntries, {
+        const results = Fuzzy.go(search, preparedEntries, {
             all: true,
             key: "name"
-        }).map(r => {
+        })
+        const ranked = limit > 0 ? results.slice(0, limit) : results
+        return ranked.map(r => {
             return r.obj.entry
         });
     }

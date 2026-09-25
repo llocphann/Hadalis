@@ -141,7 +141,9 @@ Singleton {
             "org.freedesktop.login1.Manager",
             "CanHibernate",
         ]
-        running: true
+        // SessionScreen refreshes this capability on presentation. Avoid a
+        // busctl process when Session is instantiated for unrelated actions.
+        running: false
 
         stdout: StdioCollector {
             onStreamFinished: {

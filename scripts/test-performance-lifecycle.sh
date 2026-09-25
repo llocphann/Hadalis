@@ -43,6 +43,7 @@ tlp_settings="$repo_root/services/TlpSettingsService.qml"
 power_profiles="$repo_root/services/PowerProfilePersistence.qml"
 world_clock="$repo_root/services/WorldClock.qml"
 game_mode="$repo_root/services/GameMode.qml"
+session="$repo_root/modules/common/functions/Session.qml"
 overview_window="$repo_root/modules/overview/OverviewWindow.qml"
 resource_usage="$repo_root/services/ResourceUsage.qml"
 bar_resources="$repo_root/modules/bar/Resources.qml"
@@ -169,6 +170,9 @@ require "$world_clock" 'target: DateTime' 'WorldClock must share the shell minut
 require "$world_clock" 'function onMinuteEpochChanged(): void' 'WorldClock must refresh from minute-precision DateTime events'
 reject "$world_clock" 'interval: 1000' 'WorldClock must not restore a 1 Hz background timer'
 require "$game_mode" 'Math.max(10000, Math.round(configured))' 'GameMode fallback polling must remain low cadence'
+require "$session" 'function onSessionOpenChanged()' 'Sleep capability detection must remain presentation-driven'
+require "$session" 'root.refreshSleepCapabilities()' 'Opening the session screen must refresh hibernate capability'
+require "$session" 'running: false' 'Session hibernate capability probe must stay idle until needed'
 require "$overview_window" 'layer.enabled: GlobalStates.overviewOpen' 'retained Overview window masks must sleep while Overview is closed'
 require "$resource_usage" '? Math.max(6000, root._configuredUpdateIntervalMs)' 'Low Power must slow resource sampling to at least 6 seconds'
 require "$resource_usage" 'interval: root._effectiveUpdateIntervalMs' 'resource sensor timer must use the effective power-aware cadence'

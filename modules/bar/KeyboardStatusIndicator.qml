@@ -5,8 +5,8 @@ import qs.modules.common
 import qs.modules.common.widgets
 
 // Niri-backed keyboard state for Bar/VerticalBar status surfaces.
-// The old HyprlandXkbIndicator type was retired with Hyprland support; this
-// renderer consumes the compositor-neutral KeyboardIndicators service.
+// The old compositor-specific keyboard indicator was retired with the legacy
+// backend; this renderer consumes the compositor-neutral KeyboardIndicators service.
 Loader {
     id: root
     property bool vertical: false

@@ -14,6 +14,7 @@ Item {
     property var records: []
     property var events: []
     property int maxRows: 5
+    property bool localScroll: false
     readonly property int activityWindowMs: 60000
     readonly property double activityClockMs: {
         // Reuse the Diagnostics session heartbeat so lifecycle rates age only
@@ -26,8 +27,10 @@ Item {
     readonly property var activityRows: root.buildActivityRows()
     readonly property var visibleRows:
         root.activityRows.slice(0, Math.max(0, root.maxRows))
+    readonly property var renderedRows:
+        root.localScroll ? root.activityRows : root.visibleRows
     readonly property int peakActivityPerMinute:
-        root.visibleRows.reduce((peak, row) =>
+        root.renderedRows.reduce((peak, row) =>
             Math.max(peak, Number(row?.eventsPerMinute ?? 0)), 0)
 
     function buildActivityRows(): var {
@@ -90,7 +93,8 @@ Item {
                 || String(left.label).localeCompare(String(right.label)))
     }
 
-    implicitHeight: activityColumn.implicitHeight + 16
+    implicitHeight: root.localScroll
+        ? 260 : activityColumn.implicitHeight + 16
 
     Rectangle {
         anchors.fill: parent
@@ -104,7 +108,8 @@ Item {
 
         ColumnLayout {
             id: activityColumn
-            anchors { left: parent.left; right: parent.right; top: parent.top; margins: 8 }
+            anchors.fill: parent
+            anchors.margins: 8
             spacing: 0
 
             StyledText {
@@ -124,12 +129,26 @@ Item {
                 elide: Text.ElideRight
             }
 
-            Repeater {
-                model: root.visibleRows
+            StyledListView {
+                id: activityList
+                Layout.fillWidth: true
+                Layout.fillHeight: root.localScroll
+                Layout.minimumHeight: root.localScroll ? 0
+                    : root.renderedRows.length * 38
+                Layout.preferredHeight: root.localScroll ? 0
+                    : root.renderedRows.length * 38
+                model: root.renderedRows
+                clip: true
+                spacing: 0
+                interactive: root.localScroll && contentHeight > height
+                boundsBehavior: Flickable.StopAtBounds
+                animateAppearance: false
+                animateMovement: false
+
                 delegate: Item {
                     id: activityRow
-                    Layout.fillWidth: true
-                    implicitHeight: 38
+                    width: ListView.view?.width ?? 0
+                    height: 38
                     required property var modelData
                     required property int index
                     readonly property real activityFraction:
@@ -139,9 +158,17 @@ Item {
                                 / root.peakActivityPerMinute) : 0
 
                     RowLayout {
-                        anchors { left: parent.left; right: parent.right; top: parent.top }
+                        anchors {
+                            left: parent.left
+                            right: parent.right
+                            top: parent.top
+                            rightMargin: root.localScroll
+                                && activityList.contentHeight > activityList.height
+                                ? 6 : 0
+                        }
                         height: 32
                         spacing: 7
+
                         Rectangle {
                             Layout.preferredWidth: 24
                             Layout.preferredHeight: 24
@@ -153,10 +180,12 @@ Item {
                                 text: String(activityRow.index + 1)
                                 color: Appearance.colors.colPrimary
                                 font.family: Appearance.font.family.monospace
-                                font.pixelSize: Appearance.font.pixelSize.smallest
+                                font.pixelSize:
+                                    Appearance.font.pixelSize.smallest
                                 font.weight: Font.DemiBold
                             }
                         }
+
                         ColumnLayout {
                             Layout.fillWidth: true
                             spacing: -2
@@ -173,13 +202,16 @@ Item {
                             StyledText {
                                 textFormat: Text.PlainText
                                 Layout.fillWidth: true
-                                text: String(activityRow.modelData?.targetId ?? "")
+                                text: String(
+                                    activityRow.modelData?.targetId ?? "")
                                 color: Appearance.colors.colSubtext
                                 opacity: 0.78
-                                font.pixelSize: Appearance.font.pixelSize.smallest
+                                font.pixelSize:
+                                    Appearance.font.pixelSize.smallest
                                 elide: Text.ElideMiddle
                             }
                         }
+
                         ColumnLayout {
                             Layout.preferredWidth: 96
                             spacing: -2
@@ -187,32 +219,47 @@ Item {
                                 textFormat: Text.PlainText
                                 Layout.fillWidth: true
                                 horizontalAlignment: Text.AlignRight
-                                text: String(activityRow.modelData?.eventsPerMinute ?? 0)
+                                text: String(
+                                    activityRow.modelData
+                                        ?.eventsPerMinute ?? 0)
                                     + " " + Translation.tr("changes/min")
-                                color: Number(activityRow.modelData?.eventsPerMinute ?? 0) > 0
+                                color: Number(
+                                    activityRow.modelData
+                                        ?.eventsPerMinute ?? 0) > 0
                                     ? Appearance.colors.colPrimary
                                     : Appearance.colors.colSubtext
-                                font.family: Appearance.font.family.monospace
-                                font.pixelSize: Appearance.font.pixelSize.smallest
+                                font.family:
+                                    Appearance.font.family.monospace
+                                font.pixelSize:
+                                    Appearance.font.pixelSize.smallest
                                 font.weight: Font.DemiBold
                             }
                             StyledText {
                                 textFormat: Text.PlainText
                                 Layout.fillWidth: true
                                 horizontalAlignment: Text.AlignRight
-                                text: String(activityRow.modelData?.resident ?? 0)
+                                text: String(
+                                    activityRow.modelData?.resident ?? 0)
                                     + " " + Translation.tr("live") + " · "
-                                    + String(activityRow.modelData?.visible ?? 0)
+                                    + String(
+                                        activityRow.modelData?.visible ?? 0)
                                     + " " + Translation.tr("visible")
                                 color: Appearance.colors.colSubtext
-                                font.pixelSize: Appearance.font.pixelSize.smallest
+                                font.pixelSize:
+                                    Appearance.font.pixelSize.smallest
                             }
                         }
                     }
+
                     Rectangle {
                         anchors {
-                            left: parent.left; right: parent.right; bottom: parent.bottom
-                            leftMargin: 31; rightMargin: 2
+                            left: parent.left
+                            right: parent.right
+                            bottom: parent.bottom
+                            leftMargin: 31
+                            rightMargin: root.localScroll
+                                && activityList.contentHeight > activityList.height
+                                ? 8 : 2
                         }
                         height: 3
                         radius: 2
@@ -231,7 +278,7 @@ Item {
             StyledText {
                 textFormat: Text.PlainText
                 Layout.fillWidth: true
-                visible: root.visibleRows.length === 0
+                visible: root.activityRows.length === 0
                 Layout.topMargin: 8
                 text: Translation.tr("No active QML targets")
                 color: Appearance.colors.colSubtext
@@ -240,7 +287,8 @@ Item {
             StyledText {
                 textFormat: Text.PlainText
                 Layout.fillWidth: true
-                visible: root.activityRows.length > root.visibleRows.length
+                visible: !root.localScroll
+                    && root.activityRows.length > root.visibleRows.length
                 Layout.topMargin: 3
                 text: "+" + String(root.activityRows.length - root.visibleRows.length)
                     + " " + Translation.tr("more components")

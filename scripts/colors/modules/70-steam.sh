@@ -28,9 +28,22 @@ hex_to_rgb() {
   printf '%d, %d, %d' "0x${hex:0:2}" "0x${hex:2:2}" "0x${hex:4:2}"
 }
 
+declare -A COLOR_TOKENS=()
+
+load_color_tokens() {
+  COLOR_TOKENS=()
+  local key value
+  while IFS='=' read -r key value; do
+    [[ -n "$key" ]] || continue
+    COLOR_TOKENS["$key"]="$value"
+  done < <(
+    jq -r 'to_entries[] | select(.value != null) | "\(.key)=\(.value)"' "$COLORS_JSON" 2>/dev/null || true
+  )
+}
+
 read_token() {
   local token="$1" fallback="${2:-0, 0, 0}" hex
-  hex=$(jq -r ".${token} // empty" "$COLORS_JSON" 2>/dev/null) || true
+  hex="${COLOR_TOKENS[$token]-}"
   if [[ -n "$hex" ]]; then
     hex_to_rgb "$hex"
   else
@@ -39,6 +52,10 @@ read_token() {
 }
 
 generate_millennium_css_from_colors_json() {
+  # The CSS template references palette tokens 87 times. Snapshot the palette
+  # once so nested fallback reads stay in-process instead of spawning jq for
+  # every token lookup.
+  load_color_tokens
   cat <<EOCSS
 :root {
     --theme-color: "Matugen";

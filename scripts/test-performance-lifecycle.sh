@@ -77,6 +77,7 @@ terminal_theme="$repo_root/scripts/colors/modules/10-terminals.sh"
 directories="$repo_root/modules/common/Directories.qml"
 editor_theme="$repo_root/scripts/colors/modules/30-editors.sh"
 system24_theme="$repo_root/scripts/colors/system24_palette.py"
+steam_theme="$repo_root/scripts/colors/modules/70-steam.sh"
 
 require "$config" 'property int framerate: 30' 'Cava schema default must remain 30 fps'
 require "$defaults" '"framerate": 30' 'persisted Cava default must remain 30 fps'
@@ -248,5 +249,14 @@ require "$system24_theme" 'def _write_if_changed(path: Path, content: str) -> bo
 require "$system24_theme" '_write_if_changed(out, system24_content)' 'System24 primary theme must use idempotent writes'
 require "$system24_theme" '_write_if_changed(out, midnight_content)' 'System24 midnight theme must use idempotent writes'
 require "$system24_theme" '_write_if_changed(out, tui_content)' 'System24 TUI theme must use idempotent writes'
+
+require "$steam_theme" 'load_color_tokens() {' 'Steam Millennium palette must be snapshotted once per CSS generation'
+require "$steam_theme" 'declare -A COLOR_TOKENS=()' 'Steam Millennium token lookups must stay in-process'
+require "$steam_theme" 'hex="${COLOR_TOKENS[$token]-}"' 'Steam Millennium token reads must use the palette snapshot'
+reject "$steam_theme" 'hex=$(jq -r ".${token} // empty"' 'Steam Millennium CSS generation must not spawn jq per token'
+steam_palette_jq_reads="$(grep -Fc "jq -r 'to_entries[] | select(.value != null)" "$steam_theme")"
+if (( steam_palette_jq_reads != 1 )); then
+    fail "Steam Millennium palette must use exactly one batched jq read, found $steam_palette_jq_reads"
+fi
 
 printf 'performance lifecycle guards: ok\n'

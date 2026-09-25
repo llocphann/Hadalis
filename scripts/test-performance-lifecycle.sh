@@ -74,6 +74,7 @@ sysmon_widget="$repo_root/modules/sidebarRight/sysmon/SysMonWidget.qml"
 voice_search="$repo_root/services/VoiceSearch.qml"
 gtk_theme="$repo_root/scripts/colors/apply-gtk-theme.sh"
 terminal_theme="$repo_root/scripts/colors/modules/10-terminals.sh"
+directories="$repo_root/modules/common/Directories.qml"
 
 require "$config" 'property int framerate: 30' 'Cava schema default must remain 30 fps'
 require "$defaults" '"framerate": 30' 'persisted Cava default must remain 30 fps'
@@ -219,5 +220,14 @@ terminal_jq_reads="$(grep -Ec '^[[:space:]]*jq -r ' "$terminal_theme")"
 if (( terminal_jq_reads > 2 )); then
     fail "terminal theming parser must use at most two jq reads, found $terminal_jq_reads"
 fi
+
+require "$directories" 'id: preparePersistentDirsProc' 'Directories startup must serialize persistent directory creation'
+require "$directories" 'onExited: cleanupSessionDirsProc.running = true' 'Directories persistent setup must continue into cache cleanup'
+require "$directories" 'id: cleanupSessionDirsProc' 'Directories startup must batch session cache cleanup'
+require "$directories" 'onExited: prepareSessionDirsProc.running = true' 'Directories cache cleanup must continue into cache recreation'
+require "$directories" 'id: prepareSessionDirsProc' 'Directories startup must batch session cache recreation'
+require "$directories" 'Component.onCompleted: preparePersistentDirsProc.running = true' 'Directories startup must enter the serialized preparation chain'
+reject "$directories" 'Quickshell.execDetached(["mkdir"' 'Directories startup must not restore detached mkdir fan-out'
+reject "$directories" 'Quickshell.execDetached(["rm"' 'Directories startup must not restore detached rm fan-out'
 
 printf 'performance lifecycle guards: ok\n'

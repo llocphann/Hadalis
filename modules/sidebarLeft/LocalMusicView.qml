@@ -666,6 +666,7 @@ Item {
                 anchors.fill: parent
                 player: LocalMusic.mprisPlayer
                 playbackAdapter: localMusicPlayerAdapter
+                positionUpdatesActive: root.visible && GlobalStates.sidebarLeftOpen
                 visualizerPoints: localMusicCava.points
                 visualizerMaxValue: Math.max(1, localMusicCava.normalizationCeiling)
                 radius: Appearance.rounding.normal

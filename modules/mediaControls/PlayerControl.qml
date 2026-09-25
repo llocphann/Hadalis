@@ -421,7 +421,7 @@ Item {
                             Accessible.name: Translation.tr("Playback position")
                             configuration: StyledSlider.Configuration.Wavy
                             wavy: root.effectiveIsPlaying
-                            animateWave: root.effectiveIsPlaying
+                            animateWave: root.positionUpdatesActive && root.effectiveIsPlaying
                             highlightColor: blendedColors?.colPrimary ?? Appearance.colors.colPrimary
                             trackColor: blendedColors?.colSecondaryContainer ?? Appearance.colors.colSecondaryContainer
                             handleColor: blendedColors?.colPrimary ?? Appearance.colors.colPrimary
@@ -436,7 +436,7 @@ Item {
                         active: !(root.effectiveCanSeek)
                         sourceComponent: StyledProgressBar {
                             wavy: root.effectiveIsPlaying
-                            animateWave: root.effectiveIsPlaying
+                            animateWave: root.positionUpdatesActive && root.effectiveIsPlaying
                             highlightColor: blendedColors?.colPrimary ?? Appearance.colors.colPrimary
                             trackColor: blendedColors?.colSecondaryContainer ?? Appearance.colors.colSecondaryContainer
                             value: root.effectiveLength > 0 ? root.effectivePosition / root.effectiveLength : 0

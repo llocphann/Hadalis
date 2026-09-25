@@ -144,7 +144,7 @@ External-player and Equalizer integrations are optional. The group advertises th
 
 Missing these optional packages must not make shell startup fail. Media controls continue to discover any MPRIS-compatible player that is installed; Equalizer capability degrades to unavailable/error state when its optional backend is absent.
 
-The installer separately ensures `plasma-browser-integration` is present for browser media sessions and artwork.
+`plasma-browser-integration` is an optional browser MPRIS compatibility/artwork bridge. Hadalis still consumes native browser MPRIS sessions without it, and keeps bridge-specific deduplication when it is installed.
 
 Hadalis Music and MPD clients such as `rmpc` share one MPD session. The Arch audio bundle installs both `mpd` and `mpd-mpris`; LocalMusic uses MPD protocol only for library/database/queue operations that MPRIS does not expose, while normal transport stays on the MPRIS boundary. The default bridge service targets MPD at `localhost:6600`.
 
@@ -244,7 +244,7 @@ Always ensured from configured repositories include:
 - `niri`, `cliphist`, `gum`, `starship`, `eza`, `xwayland-satellite`
 - `noto-fonts-emoji`, `nautilus`, `polkit-gnome`
 - `hicolor-icon-theme`, `adwaita-icon-theme`, `papirus-icon-theme`, `breeze-icons`
-- `qt6ct`, `kvantum`, `plasma-integration`, `plasma-browser-integration`
+- `qt6ct`, `kvantum`, `plasma-integration`
 - `frameworkintegration`, `kdecoration`
 - `sddm`, `qt6-svg`, `qt6-virtualkeyboard`, `qt6-multimedia-ffmpeg`
 - `ffmpeg`

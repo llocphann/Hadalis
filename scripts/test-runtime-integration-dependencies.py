@@ -2,6 +2,7 @@
 """Static contract for CAVA, Weather and ThinkFan runtime dependencies."""
 
 from pathlib import Path
+import re
 
 ROOT = Path(__file__).resolve().parents[1]
 failures: list[str] = []
@@ -25,6 +26,7 @@ def main() -> None:
     cava = read("services/deferred/CavaService.qml")
     weather = read("services/Weather.qml")
     songrec = read("services/deferred/SongRec.qml")
+    mpris = read("services/MprisController.qml")
     helper = read("assets/helpers/inir-thinkfan")
     doctor = read("sdata/lib/doctor.sh")
     generic = read("sdata/dist-generic/install-deps.sh")
@@ -88,6 +90,49 @@ def main() -> None:
     forbid(generic, "dunst, libnotify", "generic installer")
     forbid(deps_map, "DEPS_MISC_DUNST", "dependency map")
     forbid(uninstall, '["dunstify"]', "uninstall ownership")
+
+    # Browser media must not depend on the KDE compatibility bridge. Native
+    # Firefox/Chromium MPRIS remains supported, while the Plasma bridge is
+    # handled opportunistically when present.
+    for token in (
+        "org.mpris.MediaPlayer2.firefox",
+        "org.mpris.MediaPlayer2.chromium",
+        "org.mpris.MediaPlayer2.chrome",
+        "org.mpris.MediaPlayer2.plasma-browser-integration",
+    ):
+        require(mpris, token, "MprisController.qml")
+
+    forbid(
+        arch_installer,
+        "plasma-browser-integration   # Provides browser MPRIS sessions and artwork",
+        "Arch source installer",
+    )
+    for source, text, array_name in (
+        ("Debian installer", debian, "DEBIAN_AUDIO_PKGS"),
+        ("Fedora installer", fedora, "FEDORA_AUDIO_PKGS"),
+    ):
+        match = re.search(
+            rf"(?ms)^{array_name}=\(\n(?P<body>.*?)^\)\s*$",
+            text,
+        )
+        if not match:
+            failures.append(f"{source} is missing {array_name}=()")
+        elif re.search(r"(?m)^\s*plasma-browser-integration\s*$", match.group("body")):
+            failures.append(
+                f"{source} hard-requires optional plasma-browser-integration"
+            )
+
+    require(
+        generic,
+        "plasma-browser-integration (optional browser MPRIS compatibility/artwork bridge)",
+        "generic installer",
+    )
+    for source, text in (("inir-shell", arch), ("inir-shell-git", arch_git)):
+        require(
+            text,
+            "'plasma-browser-integration: browser MPRIS sessions and artwork'",
+            source,
+        )
 
     # ThinkFan is intentionally optional and hardware-specific. Hadalis owns the
     # bridge, while upstream executable/service/config remain external.

@@ -337,9 +337,6 @@ OFFICIAL_PACKAGES=(
   kvantum
   plasma-integration   # Provides QT_QPA_PLATFORMTHEME=kde plugin (reads kdeglobals colors)
 
-  # Browser media integration
-  plasma-browser-integration   # Provides browser MPRIS sessions and artwork
-
   # KDE Frameworks needed by darkly-bin Qt style (lightweight, NOT Plasma)
   frameworkintegration
   kdecoration

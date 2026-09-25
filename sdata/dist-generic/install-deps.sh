@@ -214,7 +214,6 @@ echo ""
 
 echo -e "${STY_BLUE}Audio (required):${STY_RST}"
 echo "  pipewire, pipewire-pulse, wireplumber, pavucontrol, cava"
-echo "  plasma-browser-integration (browser MPRIS sessions and artwork)"
 echo ""
 
 echo -e "${STY_BLUE}Utilities (required):${STY_RST}"
@@ -230,6 +229,7 @@ echo ""
 echo -e "${STY_BLUE}Optional but recommended:${STY_RST}"
 echo "  kitty (terminal), nautilus (file manager), fuzzel (launcher)"
 echo "  easyeffects, mpv, tesseract-ocr"
+echo "  plasma-browser-integration (optional browser MPRIS compatibility/artwork bridge)"
 echo ""
 
 #####################################################################################

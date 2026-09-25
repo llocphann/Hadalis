@@ -62,7 +62,7 @@ The bare minimum runtime packages to not crash immediately:
 | `pipewire` + `wireplumber` | Audio. |
 | `grim` + `slurp` | Screenshots. |
 | `materialyoucolor` | Material You colors from wallpaper (Python, installed via venv). |
-| `plasma-browser-integration` | Browser MPRIS sessions, controls, and artwork. |
+| `plasma-browser-integration` | Optional browser MPRIS compatibility/artwork bridge; native browser MPRIS works without it. |
 | `plasma-integration` | KDE platform theme plugin (reads kdeglobals for Qt app colors). |
 | `darkly-bin` (AUR) | Darkly Qt style (Material You widget rendering). |
 

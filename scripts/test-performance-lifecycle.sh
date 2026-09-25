@@ -109,6 +109,7 @@ graph_widget="$repo_root/modules/common/widgets/Graph.qml"
 overlay_resources="$repo_root/modules/ii/overlay/resources/Resources.qml"
 overlay_floating_image="$repo_root/modules/ii/overlay/floatingImage/FloatingImage.qml"
 overlay_taskbar="$repo_root/modules/ii/overlay/OverlayTaskbar.qml"
+styled_overlay_widget="$repo_root/modules/ii/overlay/StyledOverlayWidget.qml"
 voice_search="$repo_root/services/VoiceSearch.qml"
 gtk_theme="$repo_root/scripts/colors/apply-gtk-theme.sh"
 terminal_theme="$repo_root/scripts/colors/modules/10-terminals.sh"
@@ -446,6 +447,10 @@ require "$overlay_taskbar" 'layer.enabled: root.presentationActive && Appearance
 require "$overlay_taskbar" 'visible: root.presentationActive && Appearance.angelEverywhere' 'Hidden Overlay taskbar must release its fullscreen Angel wallpaper source'
 require "$overlay_taskbar" 'layer.enabled: root.presentationActive && Appearance.effectsEnabled && Appearance.angelEverywhere' 'Hidden Overlay taskbar must release its Angel blur FBO'
 require "$overlay_taskbar" 'visible: root.presentationActive && Appearance.regaliaEverywhere' 'Hidden Overlay taskbar must suspend retained Regalia presentation work'
+overlay_visibility_animation_gates="$(grep -Fc 'enabled: root.visible' "$styled_overlay_widget")"
+if (( overlay_visibility_animation_gates != 2 )); then
+    fail "Retained overlay opacity transitions must both sleep while hidden, found $overlay_visibility_animation_gates lifecycle gates"
+fi
 require "$voice_search" 'root._startLocalProbe()' 'VoiceSearch backend refresh must use the centralized probe lifecycle'
 require "$voice_search" 'command -v whisper-cli' 'VoiceSearch normal local-backend probe must avoid Python interpreter startup'
 require "$voice_search" 'if (localProbe.usePythonFallback)' 'VoiceSearch must retain Python probe compatibility for edge-case paths'

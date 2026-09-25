@@ -25,6 +25,35 @@ Item {
     property var contextMenuModel: []
     property bool playlistDialogVisible: false
     property var pendingPlaylistTracks: []
+    property bool _fallbackPollingHeld: false
+    readonly property bool _fallbackPollingWanted:
+        root.visible && GlobalStates.sidebarLeftOpen
+
+    function syncFallbackPollingDemand(): void {
+        if (root._fallbackPollingWanted === root._fallbackPollingHeld)
+            return
+        if (root._fallbackPollingWanted)
+            LocalMusic.acquireFallbackPolling()
+        else
+            LocalMusic.releaseFallbackPolling()
+        root._fallbackPollingHeld = root._fallbackPollingWanted
+    }
+
+    Component.onCompleted: root.syncFallbackPollingDemand()
+    Component.onDestruction: {
+        if (root._fallbackPollingHeld) {
+            root._fallbackPollingHeld = false
+            LocalMusic.releaseFallbackPolling()
+        }
+    }
+    onVisibleChanged: root.syncFallbackPollingDemand()
+
+    Connections {
+        target: GlobalStates
+        function onSidebarLeftOpenChanged(): void {
+            root.syncFallbackPollingDemand()
+        }
+    }
 
     QtObject {
         id: localMusicPlayerAdapter

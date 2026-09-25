@@ -77,6 +77,20 @@ Singleton {
     property bool _nativeBackendChecked: false
     property bool _mpdSubscriptionEligible: false
     property bool _mpdSubscriptionActive: false
+    // Only a presented LocalMusicView needs the high-frequency status fallback.
+    // The preferred Rust/Python MPD idle subscription remains event-driven globally.
+    property int _fallbackPollingConsumers: 0
+
+    function acquireFallbackPolling(): void {
+        const wasInactive = root._fallbackPollingConsumers === 0
+        root._fallbackPollingConsumers++
+        if (wasInactive && root.enabled && !root._mpdSubscriptionActive)
+            Qt.callLater(root.refreshStatus)
+    }
+
+    function releaseFallbackPolling(): void {
+        root._fallbackPollingConsumers = Math.max(0, root._fallbackPollingConsumers - 1)
+    }
 
     // Bulk music actions can easily exceed Linux's per-argument exec limit
     // when thousands of MPD URIs are serialized into one JSON argv entry.
@@ -875,7 +889,9 @@ Singleton {
         id: pollTimer
         interval: 900
         repeat: true
-        running: root.enabled && !root._mpdSubscriptionActive
+        running: root.enabled
+            && root._fallbackPollingConsumers > 0
+            && !root._mpdSubscriptionActive
         onTriggered: root.refreshStatus()
     }
 

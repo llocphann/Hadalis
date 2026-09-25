@@ -60,6 +60,19 @@ require "$modules" 'Quickshell.shellPath("scripts/inir"), "panelFamily", "set", 
 require "$shell" 'if (GlobalStates.settingsOverlayOpen)' \
     'canonical family switch must close shared Settings overlays for every caller'
 
+require "$shell" 'function _dismissOutgoingFamilyTransientInput(family: string): void' \
+    'family switch must own cleanup of outgoing family-local input state'
+for waffle_state in searchOpen waffleActionCenterOpen waffleNotificationCenterOpen waffleWidgetsOpen waffleClipboardOpen waffleTaskViewOpen waffleAltSwitcherOpen; do
+    require "$shell" "GlobalStates.$waffle_state = false" \
+        "Waffle family switch must dismiss $waffle_state before teardown"
+done
+for ii_state in controlPanelOpen dashboardOpen sidebarLeftOpen sidebarRightOpen mediaControlsOpen clipboardOpen altSwitcherOpen; do
+    require "$shell" "GlobalStates.$ii_state = false" \
+        "Material family switch must dismiss $ii_state before teardown"
+done
+require "$shell" 'root._dismissOutgoingFamilyTransientInput(' \
+    'canonical family transition must invoke family-local input cleanup'
+
 # Both fullscreen Settings variants may stay mapped during their exit animation,
 # but must become pointer-transparent immediately when they stop owning Settings.
 for settings_surface in "$settings_overlay" "$settings_focus"; do

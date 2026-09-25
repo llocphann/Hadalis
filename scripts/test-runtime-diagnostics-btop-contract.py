@@ -111,8 +111,9 @@ def main() -> None:
         "compactObservability.width * 0.68",
         'Translation.tr("Resource suspects")',
         '"Top components and processes by meaningful runtime signals"',
-        "id: compactSystemContext",
+        "id: compactShellContext",
         "compactObservability.width * 0.32",
+        'Translation.tr("Quickshell monitors")',
         "columns: width >= 260 ? 2 : 1",
         "BtopActivityTable {",
         "BtopProcessTable {",
@@ -122,13 +123,14 @@ def main() -> None:
         "Layout.preferredHeight: 52",
         "Layout.minimumHeight: 52",
         "graphHeight: 18",
-        'root.historyValues("systemCpuPercent")',
-        'root.historyValues("systemSwapPercent")',
+        'root.historyValues("shellCpuPercent")',
+        'root.historyValues("shellMemoryPercent")',
         'root.historyValues("shellGpuPeakPercent")',
         'root.historyValues("shellReadBytesPerSec")',
         'root.historyValues("shellWriteBytesPerSec")',
         "result.push(null)",
-        "root.formatLoadAverage(",
+        "function shellMemorySharePercent(): var {",
+        "function shellMemoryDetail(): string {",
         "function shellGpuBusy(): var {",
         "function shellGpuMemoryKiB(): var {",
         "return found ? total : null",
@@ -152,12 +154,37 @@ def main() -> None:
             "Secondary context default-width micro-card split")
     require(board, "Layout.fillHeight: root.compactMode",
             "Diagnostics body must consume spare viewport height")
+    require(board, "localScroll: true",
+            "Component hotspots must scroll locally instead of truncating rows")
     require(board, "maxRows: compactObservability.suspectRowLimit",
-            "Diagnostics lists must use available vertical space")
+            "Helper process list must use available vertical space")
     require(board, "Layout.preferredHeight: 52",
             "Hadalis runtime strip must retain visible hierarchy")
     forbid(board, "Flickable {",
            "Diagnostics dashboard must not add nested scrolling")
+
+    compact_start = board.index("id: compactObservability")
+    compact_end = board.index("id: compactRuntimeStrip")
+    compact = board[compact_start:compact_end]
+    for token in (
+        "root.shellEvidence?.cpu?.percent",
+        "root.shellMemorySharePercent()",
+        "root.shellGpuBusy()",
+        "root.shellEvidence?.io?.rates?.readBytesPerSec",
+        "root.shellEvidence?.io?.rates?.writeBytesPerSec",
+        'Translation.tr("I/O")',
+    ):
+        require(compact, token,
+                "compact Diagnostics Quickshell-only monitor scope")
+    for forbidden in (
+        "root.systemEvidence?.cpu?.percent",
+        "root.systemRamPercent()",
+        "root.networkEvidence",
+        "aggregateNonLoopback",
+        'Translation.tr("Network")',
+    ):
+        forbid(compact, forbidden,
+               "compact Diagnostics must not present system-wide monitors")
 
     for source, text in (
         ("Material ContentPage", content_page),
@@ -195,6 +222,14 @@ def main() -> None:
         require(text, "records: root.runtimeRecords", f"{source} Workflow runtime records")
         require(text, "events: root.runtimeSnapshot?.events ?? []",
                 f"{source} Workflow lifecycle event evidence")
+        require(text, "readonly property var shellEvidence:",
+                f"{source} Diagnostics must health-check Quickshell evidence")
+        require(text, '"PID " + String(root.shellEvidence.pid)',
+                f"{source} status strip must identify the Quickshell PID")
+        forbid(text, "readonly property var systemEvidence:",
+               f"{source} page must not expose system evidence as page health")
+        forbid(text, 'Translation.tr("Uptime")',
+               f"{source} status strip must not show system uptime")
         forbid(text, 'buttonText: root.showSourceDetails',
                f"{source} must not expose source-details expansion")
         forbid(text, 'buttonText: root.showDetails',
@@ -329,6 +364,12 @@ def main() -> None:
         "right.eventsPerMinute - left.eventsPerMinute",
         'Translation.tr("changes/min")',
         "property int maxRows: 5",
+        "property bool localScroll: false",
+        "readonly property var renderedRows:",
+        "StyledListView {",
+        "model: root.renderedRows",
+        "interactive: root.localScroll && contentHeight > height",
+        "visible: !root.localScroll",
         "RuntimeDiagnosticsSession.pageCurrent",
         "RuntimeDiagnosticsSession.heartbeatTick",
     ):
@@ -375,6 +416,7 @@ def main() -> None:
 
     for token in (
         "systemSwapPercent:",
+        "shellMemoryPercent:",
         "shellReadBytesPerSec:",
         "shellWriteBytesPerSec:",
         "if (used === null || used === undefined",

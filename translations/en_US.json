@@ -5454,5 +5454,7 @@
   "Quickshell monitors": "Quickshell monitors",
   "All Quickshell threads": "All Quickshell threads",
   "I/O": "I/O",
-  "resident": "resident"
+  "resident": "resident",
+  "On-demand Quickshell runtime diagnostics": "On-demand Quickshell runtime diagnostics",
+  "Quickshell CPU, memory, GPU, I/O and helper-process diagnostics": "Quickshell CPU, memory, GPU, I/O and helper-process diagnostics"
 }

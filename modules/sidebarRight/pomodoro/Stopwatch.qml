@@ -1,3 +1,4 @@
+import qs
 import qs.services
 import qs.modules.common
 import qs.modules.common.widgets
@@ -12,6 +13,32 @@ Item {
     Layout.fillHeight: true
     property bool compactMode: false
     property bool centerMode: true
+    property bool _highPrecisionSubscribed: false
+
+    function syncHighPrecisionDemand(): void {
+        const shouldSubscribe = stopwatchTab.visible && GlobalStates.sidebarRightOpen
+        if (shouldSubscribe === stopwatchTab._highPrecisionSubscribed)
+            return
+        stopwatchTab._highPrecisionSubscribed = shouldSubscribe
+        if (shouldSubscribe)
+            TimerService.subscribeStopwatchHighPrecision()
+        else
+            TimerService.unsubscribeStopwatchHighPrecision()
+    }
+
+    onVisibleChanged: stopwatchTab.syncHighPrecisionDemand()
+    Component.onCompleted: stopwatchTab.syncHighPrecisionDemand()
+    Component.onDestruction: {
+        if (stopwatchTab._highPrecisionSubscribed)
+            TimerService.unsubscribeStopwatchHighPrecision()
+    }
+
+    Connections {
+        target: GlobalStates
+        function onSidebarRightOpenChanged(): void {
+            stopwatchTab.syncHighPrecisionDemand()
+        }
+    }
 
     Item {
         anchors {

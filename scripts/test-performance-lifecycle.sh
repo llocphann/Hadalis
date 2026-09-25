@@ -68,6 +68,8 @@ vertical_bar_content="$repo_root/modules/verticalBar/VerticalBarContent.qml"
 vertical_bar_media="$repo_root/modules/verticalBar/VerticalMedia.qml"
 vertical_bar_resources="$repo_root/modules/verticalBar/Resources.qml"
 recorder_status="$repo_root/services/RecorderStatus.qml"
+timer_service="$repo_root/services/TimerService.qml"
+stopwatch_view="$repo_root/modules/sidebarRight/pomodoro/Stopwatch.qml"
 control_panel_media="$repo_root/modules/controlPanel/MediaSection.qml"
 volume_mixer="$repo_root/modules/ii/overlay/volumeMixer/VolumeMixer.qml"
 weather="$repo_root/services/Weather.qml"
@@ -271,6 +273,11 @@ require "$bar_resources" 'root.visible && !GameMode.active' 'horizontal Bar reso
 require "$vertical_bar_resources" 'root.visible && !GameMode.active' 'vertical Bar resource polling must pause in GameMode'
 require "$recorder_status" '(Config.options?.performance?.lowPower ?? false) ? 30000 : 15000' 'idle recorder detection must not spawn pgrep every five seconds'
 require "$recorder_status" 'interval: root.idlePollIntervalMs' 'RecorderStatus idle polling must use its power-aware cadence'
+require "$timer_service" 'property int stopwatchHighPrecisionSubscribers: 0' 'Stopwatch service must track visible centisecond consumers'
+require "$timer_service" 'interval: root.stopwatchHighPrecisionActive ? 33 : 250' 'Background stopwatch refresh must downshift when centisecond UI is hidden'
+require "$stopwatch_view" 'stopwatchTab.visible && GlobalStates.sidebarRightOpen' 'Stopwatch centisecond refresh must follow actual Sidebar Right presentation'
+require "$stopwatch_view" 'TimerService.subscribeStopwatchHighPrecision()' 'Visible Stopwatch UI must request high precision updates'
+require "$stopwatch_view" 'TimerService.unsubscribeStopwatchHighPrecision()' 'Hidden/destroyed Stopwatch UI must release high precision updates'
 require "$recorder_status" 'id: storedConfigFile' 'RecorderStatus config compatibility read must stay in-process'
 require "$recorder_status" 'id: metadataFile' 'RecorderStatus metadata read must stay in-process'
 require "$recorder_status" 'storedConfigFile.reload()' 'RecorderStatus config compatibility refresh must reuse FileView'

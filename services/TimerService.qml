@@ -122,7 +122,22 @@ Singleton {
 
     property bool stopwatchRunning: Persistent.states?.timer?.stopwatch?.running ?? false
     property bool stopwatchPaused: Persistent.states?.timer?.stopwatch?.paused ?? false
+    property int stopwatchHighPrecisionSubscribers: 0
+    readonly property bool stopwatchHighPrecisionActive: root.stopwatchHighPrecisionSubscribers > 0
     property int stopwatchTime: 0
+
+    function subscribeStopwatchHighPrecision(): void {
+        root.stopwatchHighPrecisionSubscribers++
+    }
+
+    function unsubscribeStopwatchHighPrecision(): void {
+        root.stopwatchHighPrecisionSubscribers = Math.max(0, root.stopwatchHighPrecisionSubscribers - 1)
+    }
+
+    onStopwatchHighPrecisionActiveChanged: {
+        if (root.stopwatchRunning && !root.stopwatchPaused)
+            root.refreshStopwatch()
+    }
     property int stopwatchStart: root._stopwatchTick(Persistent.states?.timer?.stopwatch?.start ?? 0)
     property var stopwatchLaps: {
         const stored = Persistent.states?.timer?.stopwatch?.laps
@@ -301,7 +316,9 @@ Singleton {
 
     Timer {
         id: stopwatchTimer
-        interval: 33
+        // Bars only render whole seconds. Keep centisecond-rate updates only
+        // while the dedicated Stopwatch surface is actually presented.
+        interval: root.stopwatchHighPrecisionActive ? 33 : 250
         running: root.stopwatchRunning && !root.stopwatchPaused
         repeat: true
         onTriggered: refreshStopwatch()

@@ -111,6 +111,7 @@ dash_media="$repo_root/modules/dashboard/DashMedia.qml"
 dash_welcome="$repo_root/modules/dashboard/DashWelcome.qml"
 dashboard="$repo_root/modules/dashboard/Dashboard.qml"
 ii_panels="$repo_root/modules/ii/ShellIiPanelsImpl.qml"
+waffle_panels="$repo_root/modules/waffle/ShellWafflePanelsImpl.qml"
 dashboard_settings="$repo_root/modules/settings/DashboardConfig.qml"
 screen_time="$repo_root/services/ScreenTime.qml"
 shell_updates="$repo_root/services/ShellUpdates.qml"
@@ -495,6 +496,14 @@ require "$dash_media" 'active: root.hasPlayer' 'Dashboard shared PlayerControl m
 require "$dash_media" 'PlayerControl {' 'Dashboard media must reuse the canonical shared player surface'
 require "$dash_welcome" 'layer.enabled: root.visible && status === Image.Ready' 'Dashboard avatar mask must stay circular through the visible exit slide and sleep once hidden'
 require "$dash_welcome" 'mipmap: false' 'Dashboard avatar must not generate unused mipmaps'
+ii_boot_greeting_host="$(grep -F 'identifier: "iiBootGreeting"' "$ii_panels")"
+waffle_boot_greeting_host="$(grep -F 'identifier: "iiBootGreeting"' "$waffle_panels")"
+for boot_host in "$ii_boot_greeting_host" "$waffle_boot_greeting_host"; do
+    grep -Fq 'OnDemandPanelLoader' <<<"$boot_host" \
+        || fail 'Boot Greeting must not stay resident as a deferred panel'
+    grep -Fq 'open: GlobalStates.bootGreetingOpen' <<<"$boot_host" \
+        || fail 'Boot Greeting residency must follow its one-shot open state'
+done
 media_controls_host_block="$(sed -n '/identifier: "iiMediaControls"/,+8p' "$ii_panels")"
 grep -Fq 'open: GlobalStates.mediaControlsOpen' <<<"$media_controls_host_block" \
     || fail 'Media Controls outer scope must load only on presentation demand'

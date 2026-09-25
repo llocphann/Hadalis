@@ -145,7 +145,7 @@ Item {
     PanelLoader { identifier: "iiNotificationPopup"; workflowSourcePath: "modules/notificationPopup/NotificationPopup.qml"; component: NotificationPopup {} }
     PanelLoader { identifier: "iiOnScreenDisplay"; workflowSourcePath: "modules/onScreenDisplay/OnScreenDisplay.qml"; component: OnScreenDisplay {} }
 
-    DeferredPanelLoader { identifier: "iiBootGreeting"; workflowSourcePath: "modules/bootGreeting/BootGreeting.qml"; component: BootGreeting {} }
+    OnDemandPanelLoader { identifier: "iiBootGreeting"; open: GlobalStates.bootGreetingOpen; workflowSourcePath: "modules/bootGreeting/BootGreeting.qml"; component: BootGreeting {} }
     OnDemandPanelLoader { identifier: "iiCheatsheet"; open: GlobalStates.cheatsheetOpen; source: "../cheatsheet/Cheatsheet.qml" }
     OnDemandPanelLoader {
         identifier: "iiControlPanel"

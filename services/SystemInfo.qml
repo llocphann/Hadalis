@@ -14,9 +14,9 @@ Singleton {
     property string distroId: "unknown"
     property string distroIcon: "linux-symbolic"
     // Seed identity from the process environment so consumers do not build
-    // transient paths for the placeholder user while `id -un` is starting.
-    // The asynchronous lookup below remains the authoritative refresh.
-    property string username: Quickshell.env("USER") || "user"
+    // transient paths for a placeholder user. Normal desktop sessions already
+    // export USER, so the external id(1) lookup is only a compatibility fallback.
+    property string username: String(Quickshell.env("USER") ?? "").trim() || "user"
     property string displayName: ""
     // Static hostname. `/etc/hostname` is the portable source; the env var is a
     // seed for the frame before the file is read and is absent on most systems.
@@ -52,6 +52,17 @@ Singleton {
     function refreshIdentity(): void {
         if (getUsername.running || getDisplayName.running)
             return
+
+        const envUsername = String(Quickshell.env("USER") ?? "").trim()
+        if (envUsername.length > 0) {
+            root.username = envUsername
+            getDisplayName.command = ["/usr/bin/getent", "passwd", envUsername]
+            getDisplayName.running = true
+            return
+        }
+
+        // USER can be absent in unusual launch environments. Preserve id(1) as
+        // the compatibility path instead of making environment state mandatory.
         getUsername.running = true
     }
 

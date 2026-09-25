@@ -57,7 +57,13 @@ Singleton {
         watchChanges: true
         onFileChanged: fileReloadTimer.restart()
         onAdapterUpdated: fileWriteTimer.restart()
-        onSaved: root._completeWrite()
+        onSaved: {
+            // A missing first-run file is initialized from the adapter defaults.
+            // Saving that adapter is already a valid initialized state even when
+            // no FileView reload/fileChanged signal follows creation.
+            root.ready = true
+            root._completeWrite()
+        }
         onSaveFailed: error => {
             console.warn("[Persistent] Save failed:", error);
             root._completeWrite();

@@ -8,11 +8,9 @@ import qs.services
 QtObject {
     id: root
 
-    readonly property int layoutSchemaVersion: 9
+    readonly property int layoutSchemaVersion: 10
     readonly property int retiredTlpPageIndex: 28
     readonly property int overviewPageIndex: 29
-    readonly property int codeWorkflowPageIndex: 30
-    readonly property int diagnosticsPageIndex: 31
 
     function snapshot(): var {
         return ({
@@ -25,14 +23,13 @@ QtObject {
     }
 
     function save(snapshot): void {
-        // The internal data registry still has the historical page 28 so its
-        // existing arrangement sanitizer remains reusable. Persist 28 as an
-        // implementation-only hidden index to stop it being re-added as a
-        // missing "More" page. The public registry facade filters it out, so
-        // users never see it in navigation or Arrange.
+        // Persist all retired slots as implementation-only hidden indices so
+        // old numeric routes cannot be re-added under a generated "More" group.
+        const retired = SettingsPageRegistryData.legacyHiddenIndexes
         const hidden = (Array.isArray(snapshot.hidden) ? snapshot.hidden : [])
-            .filter(index => index !== root.retiredTlpPageIndex)
-        hidden.push(root.retiredTlpPageIndex)
+            .filter(index => !retired.includes(index))
+        for (const index of retired)
+            hidden.push(index)
 
         Config.setNestedValue("settingsUi.categories", JSON.stringify({
             version: root.layoutSchemaVersion,
@@ -141,99 +138,6 @@ QtObject {
                 const panelsIndex = pages.indexOf(5)
                 pages.splice(panelsIndex >= 0 ? panelsIndex + 1 : pages.length,
                     0, root.overviewPageIndex)
-            }
-        }
-
-        // v6 appends Code Workflow without shifting historical indices.
-        // Saved layouts would otherwise discover page 30 under a generated More
-        // group. Find the group that already owns the Reference peers and insert
-        // Code Workflow before them.
-        if (sourceVersion < 6
-                && !migratedHidden.includes(root.codeWorkflowPageIndex)) {
-            for (const group of migratedGroups) {
-                if (!group || !Array.isArray(group.pages))
-                    continue
-                group.pages = group.pages.filter(
-                    index => index !== root.codeWorkflowPageIndex)
-            }
-
-            const defaults = SettingsPageRegistry.defaultCategories.find(
-                category => category.pages.includes(root.codeWorkflowPageIndex))
-            const peers = defaults?.pages?.filter(
-                index => index !== root.codeWorkflowPageIndex) ?? [9, 13]
-
-            let targetIndex = -1
-            let bestScore = -1
-            for (let i = 0; i < migratedGroups.length; i++) {
-                const pages = migratedGroups[i]?.pages ?? []
-                let score = 0
-                for (const peer of peers)
-                    if (pages.includes(peer))
-                        score++
-                if (score > bestScore) {
-                    bestScore = score
-                    targetIndex = i
-                }
-            }
-
-            if (targetIndex >= 0) {
-                const pages = migratedGroups[targetIndex].pages
-                let insertIndex = pages.length
-                for (const peer of peers) {
-                    const peerIndex = pages.indexOf(peer)
-                    if (peerIndex >= 0)
-                        insertIndex = Math.min(insertIndex, peerIndex)
-                }
-                pages.splice(insertIndex, 0, root.codeWorkflowPageIndex)
-            }
-        }
-
-        // v9 appends Runtime Diagnostics at index 31 without shifting any
-        // existing route. Saved layouts should keep it beside Workflow rather
-        // than discovering it later under a generated More group.
-        if (sourceVersion < 9
-                && !migratedHidden.includes(root.diagnosticsPageIndex)) {
-            for (const group of migratedGroups) {
-                if (!group || !Array.isArray(group.pages))
-                    continue
-                group.pages = group.pages.filter(
-                    index => index !== root.diagnosticsPageIndex)
-            }
-
-            const defaults = SettingsPageRegistry.defaultCategories.find(
-                category => category.pages.includes(root.diagnosticsPageIndex))
-            const peers = defaults?.pages?.filter(
-                index => index !== root.diagnosticsPageIndex) ?? [20, 30, 9, 13]
-
-            let targetIndex = -1
-            let bestScore = -1
-            for (let i = 0; i < migratedGroups.length; i++) {
-                const pages = migratedGroups[i]?.pages ?? []
-                let score = 0
-                for (const peer of peers)
-                    if (pages.includes(peer))
-                        score++
-                if (score > bestScore) {
-                    bestScore = score
-                    targetIndex = i
-                }
-            }
-
-            if (targetIndex >= 0) {
-                const pages = migratedGroups[targetIndex].pages
-                const workflowIndex = pages.indexOf(root.codeWorkflowPageIndex)
-                if (workflowIndex >= 0) {
-                    pages.splice(workflowIndex + 1, 0,
-                        root.diagnosticsPageIndex)
-                } else {
-                    let insertIndex = pages.length
-                    for (const peer of [9, 13]) {
-                        const peerIndex = pages.indexOf(peer)
-                        if (peerIndex >= 0)
-                            insertIndex = Math.min(insertIndex, peerIndex)
-                    }
-                    pages.splice(insertIndex, 0, root.diagnosticsPageIndex)
-                }
             }
         }
 

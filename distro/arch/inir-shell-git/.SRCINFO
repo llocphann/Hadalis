@@ -65,7 +65,6 @@ pkgbase = inir-shell-git
 	optdepends = gowall-bin: wallpaper theme conversion and effects editor
 	optdepends = gum: setup TUI helpers
 	optdepends = hyprpicker: color picker support
-	optdepends = inir-workflow-parser: native QML parser capability for Code Workflow
 	optdepends = kde-cli-tools: Dolphin Open With dialog (QT_QPA_PLATFORMTHEME=kde)
 	optdepends = imagemagick: image conversion helpers
 	optdepends = kconfig: KDE configuration integration

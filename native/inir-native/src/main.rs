@@ -1,6 +1,5 @@
 mod clipboard;
 mod desktop;
-mod diagnostics;
 mod niri;
 
 use anyhow::Result;
@@ -29,13 +28,6 @@ enum Command {
         command: desktop::DesktopCommand,
     },
 
-    /// Native parity implementation of scripts/runtime-diagnostics-sampler.py.
-    Diagnostics {
-        #[arg(long)]
-        pid: i32,
-        #[arg(long, default_value_t = 1000)]
-        interval_ms: u64,
-    },
 
     /// Native Niri configuration/query implementation staged beside niri-config.py.
     Niri {
@@ -53,7 +45,6 @@ fn run() -> Result<i32> {
             println!("{}", serde_json::to_string(&value)?);
             Ok(0)
         }
-        Command::Diagnostics { pid, interval_ms } => diagnostics::run(pid, interval_ms),
         Command::Niri { command } => {
             let outcome = niri::run(command)?;
             println!("{}", serde_json::to_string(&outcome.value)?);

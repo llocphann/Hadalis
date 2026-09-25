@@ -15,19 +15,6 @@ singleton CalendarSync 1.0 CalendarSync.qml
 singleton CavaTheme 1.0 CavaTheme.qml
 singleton CompositorService 1.0 CompositorService.qml
 singleton ConflictKiller 1.0 ConflictKiller.qml
-singleton CodeWorkflowIdentity 1.0 CodeWorkflowIdentity.qml
-singleton CodeWorkflowIndex 1.0 CodeWorkflowIndex.qml
-singleton CodeWorkflowRuntime 1.0 CodeWorkflowRuntime.qml
-singleton RuntimeDiagnostics 1.0 RuntimeDiagnostics.qml
-singleton RuntimeDiagnosticsSession 1.0 RuntimeDiagnosticsSession.qml
-singleton CodeWorkflowAnalyzer 1.0 CodeWorkflowAnalyzer.qml
-singleton CodeWorkflowIr 1.0 CodeWorkflowIr.qml
-singleton CodeWorkflowPicker 1.0 CodeWorkflowPicker.qml
-singleton CodeWorkflowSession 1.0 CodeWorkflowSession.qml
-singleton CodeWorkflowTransaction 1.0 CodeWorkflowTransaction.qml
-CodeWorkflowReloadBridge 1.0 CodeWorkflowReloadBridge.qml
-CodeWorkflowRuntimeDeclaration 1.0 CodeWorkflowRuntimeDeclaration.qml
-CodeWorkflowRuntimeTarget 1.0 CodeWorkflowRuntimeTarget.qml
 singleton CustomWidgets 1.0 CustomWidgets.qml
 DankSocket 1.0 DankSocket.qml
 singleton DateTime 1.0 DateTime.qml

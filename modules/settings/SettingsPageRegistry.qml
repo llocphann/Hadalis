@@ -14,7 +14,7 @@ import qs.modules.common
 Singleton {
     id: root
 
-    readonly property var retiredFeaturePageIndexes: [18, 19, 21, 27]
+    readonly property var retiredFeaturePageIndexes: [18, 19, 21, 27, 30, 31]
     readonly property int retiredTlpPageIndex: 28
     readonly property int systemPageIndex: 1
     readonly property int barPageIndex: 2

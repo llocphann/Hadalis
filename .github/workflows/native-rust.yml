@@ -16,7 +16,6 @@ on:
       - 'native/scripts/check-niri-customizations.py'
       - 'scripts/inir'
       - 'services/KeyboardIndicators.qml'
-      - 'services/RuntimeDiagnostics.qml'
       - 'services/NiriService.qml'
       - 'services/LocalMusic.qml'
       - 'services/IconThemeService.qml'
@@ -103,11 +102,10 @@ jobs:
           cargo build --locked --manifest-path native/Cargo.toml -p inir-mpdd
           python3 native/scripts/check-mpd-mutation-parity.py native/target/debug/inir-mpdd
 
-      - name: Clipboard and diagnostics isolated parity
+      - name: Clipboard isolated parity
         run: |
           cargo build --locked --manifest-path native/Cargo.toml -p inir-native
           python3 native/scripts/check-clipboard-parity.py native/target/debug/inir-native
-          python3 native/scripts/check-diagnostics-parity.py native/target/debug/inir-native
 
       - name: Desktop icon configuration parity
         run: |

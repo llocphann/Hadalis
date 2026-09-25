@@ -119,7 +119,11 @@ assert 'Translation.tr("Create a Fleeting Zettelkasten note.' not in quick_view
 assert "font.pixelSize: Appearance.font.pixelSize.smallest" not in quick_view
 assert "_clearCapturedDraft" not in widget
 assert "_pendingZettelCapture" not in widget
-assert "Notepad.removeTab(index)" not in widget
+capture_start = widget.index("function _captureZettel(): bool")
+capture_end = widget.index("function saveAsZettel(): bool", capture_start)
+capture_block = widget[capture_start:capture_end]
+assert "Notepad.removeTab(" not in capture_block
+assert "Notepad.setTextValue(" not in capture_block
 assert "draft clears after verified save" not in quick_view
 assert 'text: Translation.tr("Capture")' not in quick_view
 

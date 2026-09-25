@@ -50,6 +50,8 @@ def main() -> None:
         "enabled: root.active",
     ):
         check(token in styled_popup, f"StyledPopup must preserve connected-perimeter contract: {token}")
+    check("CompositorFocusGrab" not in styled_popup,
+          "StyledPopup must use Niri-native focus/close lifecycle without the retired compatibility bridge")
     for edge in ("top", "bottom", "left", "right"):
         check(f'"{edge}"' in styled_popup,
               f"StyledPopup must preserve {edge} attachment handling")

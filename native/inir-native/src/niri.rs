@@ -1600,6 +1600,22 @@ fn defaults_dir(override_path: Option<&Path>) -> Result<PathBuf> {
             return Ok(path);
         }
     }
+
+    // The settings UI launches inir-native from an arbitrary process working
+    // directory. Resolve the shipped defaults from the binary location before
+    // consulting cwd so direct native invocations work in both repo and
+    // installed native/bin layouts.
+    if let Ok(executable) = std::env::current_exe()
+        && let Some(parent) = executable.parent()
+    {
+        for ancestor in parent.ancestors() {
+            let candidate = ancestor.join("defaults/niri");
+            if candidate.is_dir() {
+                return Ok(candidate);
+            }
+        }
+    }
+
     let cwd = std::env::current_dir()?;
     let candidate = cwd.join("defaults/niri");
     if candidate.is_dir() {

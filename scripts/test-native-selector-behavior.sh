@@ -21,7 +21,7 @@ SH
 chmod +x "$trial/rust-a/inir-native" "$trial/rust-b/inir-native"
 
 dispatch="$trial/runtime/scripts/native-dispatch"
-base_env=(env -u INIR_NATIVE_BACKEND -u INIR_NATIVE_BIN_DIR -u INIR_NATIVE_STRICT
+base_env=(env -u INIR_NATIVE_BACKEND -u INIR_NATIVE_BIN_DIR -u INIR_NATIVE_STRICT -u INIR_SHELL_ROOT
     XDG_STATE_HOME="$trial/state" HOME="$trial/home")
 assert_equal() {
     [[ "$1" == "$2" ]] || { printf 'expected <%s>, got <%s>\n' "$2" "$1" >&2; exit 1; }
@@ -54,6 +54,13 @@ assert_equal "$("${base_env[@]}" INIR_NATIVE_BIN_DIR="$trial/rust-b" "$dispatch"
 assert_equal "$("${base_env[@]}" "$dispatch" backend-info | sed -n '1,2p')" \
     "$(printf 'mode=rust\nbin_dir=%s' "$trial/rust-a")"
 
+cat > "$trial/rust-b/inir-native" <<'SH'
+#!/usr/bin/env bash
+printf '%s\n' "${INIR_SHELL_ROOT:-missing}"
+SH
+chmod +x "$trial/rust-b/inir-native"
+assert_equal "$("${base_env[@]}" INIR_NATIVE_BIN_DIR="$trial/rust-b" "$dispatch" niri get-hot-corners)" "$trial/runtime"
+
 for command in input-lock input-keys niri diagnostics clipboard-store mpd mpd-daemon mpd-subscribe lyrics theme desktop-icons; do
     assert_status 127 "${base_env[@]}" INIR_NATIVE_BACKEND=rust INIR_NATIVE_STRICT=1 \
         INIR_NATIVE_BIN_DIR="$trial/missing" "$dispatch" "$command" fake
@@ -65,16 +72,18 @@ assert_equal "$("${base_env[@]}" INIR_NATIVE_BACKEND=auto \
     INIR_NATIVE_BIN_DIR="$trial/missing" "$dispatch" niri get-hot-corners)" 'python:get-hot-corners'
 cat > "$trial/rust-b/inir-native" <<'SH'
 #!/usr/bin/env bash
+printf '{"error":"rust failed"}\n'
 exit 42
 SH
 chmod +x "$trial/rust-b/inir-native"
 assert_status 0 "${base_env[@]}" INIR_NATIVE_BACKEND=rust \
     INIR_NATIVE_BIN_DIR="$trial/rust-b" "$dispatch" niri get-hot-corners
 assert_equal "$(cat "$trial/stdout")" 'python:get-hot-corners'
+grep -Fq '{"error":"rust failed"}' "$trial/stderr"
 grep -Fq 'falling back to Python' "$trial/stderr"
 assert_status 42 "${base_env[@]}" INIR_NATIVE_BACKEND=rust INIR_NATIVE_STRICT=1 \
     INIR_NATIVE_BIN_DIR="$trial/rust-b" "$dispatch" niri get-hot-corners
-[[ ! -s "$trial/stdout" ]] || { echo 'strict Rust failure fell back to Python' >&2; exit 1; }
+assert_equal "$(cat "$trial/stdout")" '{"error":"rust failed"}'
 
 assert_status 64 "${base_env[@]}" INIR_NATIVE_BACKEND=invalid "$dispatch" niri get-hot-corners
 [[ ! -s "$trial/stdout" ]] || { echo 'invalid mode fell back to Python' >&2; exit 1; }

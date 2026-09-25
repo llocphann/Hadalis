@@ -35,6 +35,22 @@ def command_exists(name: str) -> str:
     raise RuntimeError(f"required command not found: {name}")
 
 
+def runtime_environment() -> dict[str, str]:
+    env = os.environ.copy()
+    runtime_dir = Path(env.get("XDG_RUNTIME_DIR", f"/run/user/{os.getuid()}"))
+    if not env.get("WAYLAND_DISPLAY"):
+        candidates = sorted(runtime_dir.glob("wayland-[0-9]*"))
+        if candidates:
+            env["WAYLAND_DISPLAY"] = candidates[0].name
+    if not env.get("NIRI_SOCKET"):
+        candidates = sorted(runtime_dir.glob("niri.wayland-*.sock"))
+        if candidates:
+            env["NIRI_SOCKET"] = str(candidates[0])
+        elif (runtime_dir / "niri" / "socket").exists():
+            env["NIRI_SOCKET"] = str(runtime_dir / "niri" / "socket")
+    return env
+
+
 def service_active() -> bool:
     if shutil.which("systemctl") is None:
         return False
@@ -119,6 +135,18 @@ def capture(root: Path, duration: float, state_dir: Path) -> tuple[Path, Path]:
         raise RuntimeError("required command not found: qs/quickshell")
     if not NATIVE_DISPATCH.is_file():
         raise RuntimeError(f"native dispatcher not found: {NATIVE_DISPATCH}")
+    preflight = subprocess.run(
+        [str(NATIVE_DISPATCH), "qml-profile", "--help"],
+        check=False,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.PIPE,
+        text=True,
+    )
+    if preflight.returncode != 0:
+        raise RuntimeError(
+            "inir-native qml-profile is unavailable; update/rebuild the native "
+            "runtime before deep profiling"
+        )
 
     state_dir.mkdir(parents=True, exist_ok=True)
     stamp = time.strftime("%Y%m%d-%H%M%S")
@@ -152,7 +180,7 @@ def capture(root: Path, duration: float, state_dir: Path) -> tuple[Path, Path]:
             stderr=subprocess.STDOUT,
             text=True,
             bufsize=1,
-            env=os.environ.copy(),
+            env=runtime_environment(),
         )
         assert profiler.stdin is not None
         assert profiler.stdout is not None

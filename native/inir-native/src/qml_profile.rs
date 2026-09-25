@@ -439,7 +439,6 @@ pub fn summarize(trace_path: &Path, shell_root: &Path) -> Result<Value> {
             work_ranges.push(WorkRange {
                 start_ns,
                 end_ns: start_ns.saturating_add(duration),
-                event_index,
                 source_path,
             });
             continue;

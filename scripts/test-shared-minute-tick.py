@@ -7,11 +7,13 @@ import re
 ROOT = Path(__file__).resolve().parents[1]
 DATE_TIME = ROOT / "services/DateTime.qml"
 WEATHER = ROOT / "services/Weather.qml"
+EVENTS = ROOT / "services/Events.qml"
 
 
 def main() -> int:
     date_time = DATE_TIME.read_text(encoding="utf-8")
     weather = WEATHER.read_text(encoding="utf-8")
+    events = EVENTS.read_text(encoding="utf-8")
 
     if "readonly property int minuteEpoch: Math.floor(clock.date.getTime() / 60000)" not in date_time:
         raise AssertionError("DateTime must expose a stable shared minute epoch")
@@ -24,6 +26,11 @@ def main() -> int:
         raise AssertionError("Weather sun progress must retain minute dependency")
     if re.search(r"property int _clockTick:\s*0", weather):
         raise AssertionError("Weather clock tick must stay bound to the shared clock")
+
+    if "target: DateTime" not in events or "function onMinuteEpochChanged()" not in events:
+        raise AssertionError("Events reminders must reuse DateTime.minuteEpoch")
+    if "id: checkTimer" in events or "interval: 60000 // 1 minute" in events:
+        raise AssertionError("Events must not restore its private reminder minute timer")
 
     print("shared minute tick contract: ok")
     return 0

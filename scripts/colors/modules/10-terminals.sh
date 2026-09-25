@@ -97,8 +97,6 @@ find_terminal_ancestor() {
 is_terminal_themed() {
   local term_key="$1"
   [[ "${TERMINAL_THEME_ENABLED[$term_key]:-true}" == 'true' ]]
-}" true)
-  [[ "$enabled" == 'true' ]]
 }
 
 apply_term_sequences() {

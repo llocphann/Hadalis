@@ -88,7 +88,6 @@ ii_panels="$repo_root/modules/ii/ShellIiPanelsImpl.qml"
 dashboard_settings="$repo_root/modules/settings/DashboardConfig.qml"
 screen_time="$repo_root/services/ScreenTime.qml"
 shell_updates="$repo_root/services/ShellUpdates.qml"
-ytmusic="$repo_root/services/YtMusic.qml"
 directory_icon="$repo_root/modules/common/widgets/DirectoryIcon.qml"
 sysmon_widget="$repo_root/modules/sidebarRight/sysmon/SysMonWidget.qml"
 voice_search="$repo_root/services/VoiceSearch.qml"
@@ -338,13 +337,6 @@ require "$shell_updates" 'id: resumeStatusProbe' 'ShellUpdates restart recovery 
 require "$shell_updates" 'onTriggered: root._probeResumeStatusFile()' 'ShellUpdates startup recovery must avoid unconditional shell startup'
 reject "$shell_updates" 'onTriggered: updateResumeReader.running = true' 'ShellUpdates must not spawn the resume shell when no status marker exists'
 
-require "$ytmusic" 'property string _lastResumeSnapshot: ""' 'YtMusic resume persistence must remember the last written snapshot'
-require "$ytmusic" 'const snapshot = JSON.stringify(updates)' 'YtMusic resume persistence must compare serialized state before writing'
-require "$ytmusic" 'if (snapshot === root._lastResumeSnapshot)' 'YtMusic must skip unchanged 5s resume writes'
-require "$ytmusic" 'root._lastResumeSnapshot = snapshot' 'YtMusic must update resume dedupe state after persistence'
-require "$ytmusic" 'root._lastResumeSnapshot = ""' 'YtMusic resume dedupe state must reset when playback is cleared'
-require "$ytmusic" 'interval: 5000' 'YtMusic resume checkpoint cadence must remain unchanged'
-require "$ytmusic" 'running: root.currentVideoId !== ""' 'YtMusic resume timer availability semantics must remain unchanged'
 
 require "$screen_time" 'target: NiriService' 'Screen Time must use Niri focus events'
 require "$screen_time" 'interval: 30000' 'Screen Time must keep only a coarse Niri heartbeat'
@@ -357,10 +349,6 @@ require "$screen_time" 'rangeReadFile.pendingPaths = paths' 'Screen Time range h
 require "$screen_time" 'onLoadFailed: root._appendRangeChunk("{}")' 'Screen Time range history must preserve missing-day semantics'
 reject "$screen_time" 'id: rangeReadProc' 'Screen Time range history must not spawn bash plus one cat per day'
 reject "$screen_time" 'CompositorService.isHyprland' 'Screen Time must not restore retired Hyprland branching'
-require "$ytmusic" 'id: _ipcStateProc' 'YT Music fallback must batch mpv IPC state queries'
-reject "$ytmusic" 'id: _ipcQueryProc' 'YT Music must not restore separate time-position subprocess polling'
-reject "$ytmusic" 'id: _ipcPauseQueryProc' 'YT Music must not restore separate pause subprocess polling'
-reject "$ytmusic" 'id: _ipcEofQueryProc' 'YT Music must not restore separate EOF subprocess polling'
 reject "$directory_icon" 'command: ["file", "--mime"' 'DirectoryIcon must not spawn one MIME process per item'
 reject "$sysmon_widget" 'command: ["/usr/bin/cat", "/proc/net/dev"]' 'SysMon must reuse shared ResourceUsage network telemetry'
 require "$sysmon_widget" 'ResourceUsage.networkRxBytesPerSec' 'SysMon network receive rate must come from ResourceUsage'

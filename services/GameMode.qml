@@ -195,8 +195,8 @@ Singleton {
         if (!window || !workspace || !(workspace.is_active ?? false)) return false
 
         const activeWindowId = workspace.active_window_id
-        if (activeWindowId !== undefined && activeWindowId !== null)
-            return window.id === activeWindowId
+        if (activeWindowId !== undefined)
+            return activeWindowId !== null && window.id === activeWindowId
 
         return window.is_focused === true
     }

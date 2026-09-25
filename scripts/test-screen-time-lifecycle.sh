@@ -38,10 +38,14 @@ fi
 
 require 'function _finishStartupRead(rawText: string): void' \
     'startup history read must have a shared completion path'
-require 'onStarted: startupReadProc.startObserved = true' \
-    'startup history reader must record successful startup'
-require 'console.warn("[ScreenTime] startup history reader failed to start")' \
-    'startup history reader must handle spawn failure'
+require 'id: startupTodayFile' \
+    'startup history must use an in-process FileView'
+require 'root._finishStartupRead(text())' \
+    'startup history FileView must preserve the normal completion path'
+require 'root._finishStartupRead("__NOFILE__")' \
+    'startup history FileView must preserve missing-file fallback'
+reject 'id: startupReadProc' \
+    'startup history must not restore a shell reader'
 require 'root._finishStartupRead("__NOFILE__")' \
     'startup spawn failure must fall back to an empty current day'
 require 'root._loadingToday = false' \

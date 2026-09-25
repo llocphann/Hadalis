@@ -206,6 +206,10 @@ require "$dashboard_settings" 'text: Translation.tr("Preload Dashboard")' 'Dashb
 
 require "$screen_time" 'target: NiriService' 'Screen Time must use Niri focus events'
 require "$screen_time" 'interval: 30000' 'Screen Time must keep only a coarse Niri heartbeat'
+require "$screen_time" 'id: startupTodayFile' 'Screen Time startup history must use FileView'
+require "$screen_time" 'root._finishStartupRead(text())' 'Screen Time startup history must preserve in-process completion'
+reject "$screen_time" 'id: startupReadProc' 'Screen Time startup history must not spawn a shell reader'
+reject "$screen_time" 'test -f "${path}" && cat "${path}"' 'Screen Time startup history must not restore bash+cat file reads'
 reject "$screen_time" 'CompositorService.isHyprland' 'Screen Time must not restore retired Hyprland branching'
 require "$ytmusic" 'id: _ipcStateProc' 'YT Music fallback must batch mpv IPC state queries'
 reject "$ytmusic" 'id: _ipcQueryProc' 'YT Music must not restore separate time-position subprocess polling'

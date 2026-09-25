@@ -87,12 +87,15 @@ Singleton {
     }
 
     function _loadTodayFromFile(): void {
-        if (root._loadingToday || startupReadProc.running)
+        if (root._loadingToday || startupTodayFile.loadPending)
             return
         root._loadingToday = true
+        startupTodayFile.loadPending = true
         const path = root._todayFilePath()
-        startupReadProc.command = ["/usr/bin/bash", "-c", `test -f "${path}" && cat "${path}" || echo "__NOFILE__"`]
-        startupReadProc.running = true
+        if (startupTodayFile.path === path)
+            startupTodayFile.reload()
+        else
+            startupTodayFile.path = path
     }
 
     IdleMonitor {
@@ -557,25 +560,20 @@ Singleton {
         root.dataChanged()
     }
 
-    Process {
-        id: startupReadProc
-        property bool startObserved: false
-        command: ["/usr/bin/bash", "-c", ""]
-        stdout: StdioCollector {
-            onStreamFinished: root._finishStartupRead(text)
-        }
-        onRunningChanged: {
-            if (startupReadProc.running) {
-                startupReadProc.startObserved = false
-                return
-            }
-            if (startupReadProc.startObserved)
-                return
+    FileView {
+        id: startupTodayFile
+        property bool loadPending: false
+        path: ""
+        printErrors: false
 
-            console.warn("[ScreenTime] startup history reader failed to start")
+        onLoaded: {
+            loadPending = false
+            root._finishStartupRead(text())
+        }
+        onLoadFailed: {
+            loadPending = false
             root._finishStartupRead("__NOFILE__")
         }
-        onStarted: startupReadProc.startObserved = true
     }
 
     Process {

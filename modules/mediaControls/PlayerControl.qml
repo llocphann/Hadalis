@@ -20,6 +20,13 @@ Item {
     // Bar media already hosts the live analyzer inside EqualizerPanel. Owners
     // without that DSP surface keep the historical decorative wave by default.
     property bool showVisualizer: true
+    // Retained hosts can pause the 1 Hz MPRIS position refresh while hidden.
+    // Default true preserves the historical behavior for popup/sidebar callers.
+    property bool positionUpdatesActive: true
+    onPositionUpdatesActiveChanged: {
+        if (root.positionUpdatesActive && !root.usingPlaybackAdapter)
+            root.player?.positionChanged()
+    }
     // Optional backend adapter. LocalMusic uses this to keep the same media
     // surface usable even while mpd-mpris is temporarily absent.
     property var playbackAdapter: null
@@ -229,7 +236,8 @@ Item {
     }
 
     Timer {
-        running: !root.usingPlaybackAdapter
+        running: root.positionUpdatesActive
+            && !root.usingPlaybackAdapter
             && root.player?.playbackState === MprisPlaybackState.Playing
         interval: 1000
         repeat: true

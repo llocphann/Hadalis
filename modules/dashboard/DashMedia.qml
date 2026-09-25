@@ -52,6 +52,7 @@ DashCard {
                     player: root.player
                     visualizerPoints: []
                     showVisualizer: false
+                    positionUpdatesActive: root.presentationActive && root.visible
                     compactLayout: true
                     radius: Appearance.rounding.normal
                 }

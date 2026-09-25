@@ -41,14 +41,23 @@ Scope {
     // A nested Loader with active=true completes this heavyweight start-menu
     // subtree synchronously in the click handler and can stall the render loop.
     PanelWindow {
+        id: startMenuBackdropWindow
         visible: root.panelMapped
         anchors { top: true; bottom: true; left: true; right: true }
         WlrLayershell.namespace: "quickshell:wStartMenuBg"
         WlrLayershell.layer: WlrLayer.Top
         color: "transparent"
 
+        Item { id: emptyStartMenuBackdropInput; width: 0; height: 0 }
+        mask: Region {
+            item: GlobalStates.searchOpen
+                ? startMenuBackdropMouse : emptyStartMenuBackdropInput
+        }
+
         MouseArea {
+            id: startMenuBackdropMouse
             anchors.fill: parent
+            enabled: GlobalStates.searchOpen
             onClicked: GlobalStates.searchOpen = false
         }
     }
@@ -59,9 +68,15 @@ Scope {
         exclusiveZone: 0
         WlrLayershell.namespace: "quickshell:wStartMenu"
         WlrLayershell.layer: WlrLayer.Overlay
-        WlrLayershell.keyboardFocus: GlobalStates.searchOpen
+        readonly property bool acceptsInput: GlobalStates.searchOpen
+        WlrLayershell.keyboardFocus: panelWindow.acceptsInput
             ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
         color: "transparent"
+
+        Item { id: emptyStartMenuPanelInput; width: 0; height: 0 }
+        mask: Region {
+            item: panelWindow.acceptsInput ? content : emptyStartMenuPanelInput
+        }
 
         // Adaptive minimum size based on preset
         property string preset: Config.options.waffles?.startMenu?.sizePreset ?? "normal"

@@ -1,5 +1,6 @@
 pragma ComponentBehavior: Bound
 import QtQuick
+import QtQuick.Window
 import qs.modules.common
 import qs.modules.common.widgets
 
@@ -25,7 +26,9 @@ Item {
         color: root.color
 
         RotationAnimation on rotation {
-            running: root.loading && root.visible && Appearance.animationsEnabled
+            running: root.loading && root.visible
+                && (root.Window.window?.visible ?? true)
+                && Appearance.animationsEnabled
             from: 0
             to: 360
             duration: 1800

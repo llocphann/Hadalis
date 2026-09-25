@@ -73,6 +73,8 @@ directory_icon="$repo_root/modules/common/widgets/DirectoryIcon.qml"
 sysmon_widget="$repo_root/modules/sidebarRight/sysmon/SysMonWidget.qml"
 timer_service="$repo_root/services/TimerService.qml"
 levendist="$repo_root/modules/common/functions/levendist.js"
+loading_indicator="$repo_root/modules/common/widgets/MaterialLoadingIndicator.qml"
+circular_progress="$repo_root/modules/common/widgets/CircularProgress.qml"
 
 require "$config" 'property int framerate: 30' 'Cava schema default must remain 30 fps'
 require "$defaults" '"framerate": 30' 'persisted Cava default must remain 30 fps'
@@ -206,5 +208,10 @@ require "$levendist" 'function levenshteinDistance(s1, s2, rows)' 'fuzzy search 
 require "$levendist" 'if (longS.includes(shortS)) return 1.0;' 'fuzzy search must fast-path exact substring matches'
 require "$levendist" 'const rows = [new Array(lenS + 1), new Array(lenS + 1)];' 'partial fuzzy matching must reuse one row workspace'
 require "$levendist" 'levenshteinDistance(shortS, sub, rows)' 'partial fuzzy matching must reuse the shared row workspace'
+
+require "$loading_indicator" 'import QtQuick.Window' 'loading indicator must observe owning window visibility'
+require "$loading_indicator" '(root.Window.window?.visible ?? true)' 'loading indicator must stop while its owning window is hidden'
+require "$circular_progress" 'import QtQuick.Window' 'circular progress must observe owning window visibility'
+require "$circular_progress" 'root.visible && (root.Window.window?.visible ?? true)' 'circular progress animations must sleep while hidden'
 
 printf 'performance lifecycle guards: ok\n'

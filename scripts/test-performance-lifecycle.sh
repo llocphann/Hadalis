@@ -73,6 +73,7 @@ directory_icon="$repo_root/modules/common/widgets/DirectoryIcon.qml"
 sysmon_widget="$repo_root/modules/sidebarRight/sysmon/SysMonWidget.qml"
 voice_search="$repo_root/services/VoiceSearch.qml"
 gtk_theme="$repo_root/scripts/colors/apply-gtk-theme.sh"
+terminal_theme="$repo_root/scripts/colors/modules/10-terminals.sh"
 
 require "$config" 'property int framerate: 30' 'Cava schema default must remain 30 fps'
 require "$defaults" '"framerate": 30' 'persisted Cava default must remain 30 fps'
@@ -206,6 +207,17 @@ reject "$gtk_theme" 'enable_apps_shell=$(jq -r ' 'GTK theming must not restore s
 gtk_jq_reads="$(grep -Ec '^[[:space:]]*jq -r ' "$gtk_theme")"
 if (( gtk_jq_reads > 2 )); then
     fail "GTK theming parser must use at most two jq reads, found $gtk_jq_reads"
+fi
+
+require "$terminal_theme" 'load_terminal_theme_config() {' 'terminal theming must snapshot config once per apply'
+require "$terminal_theme" 'terminal_fields="$(' 'terminal palette reads must remain batched'
+require "$terminal_theme" 'sed_args+=(-e ' 'terminal OSC substitutions must remain batched into one sed'
+reject "$terminal_theme" 'enabled=$(config_bool ".appearance.wallpaperTheming.terminals.${term}" true)' 'terminal theming must not restore one config jq per target'
+reject "$terminal_theme" 'value=$(jq -r ".term${idx} // empty"' 'terminal theming must not restore one palette jq per color'
+reject "$terminal_theme" 'for idx in $(seq 0 15)' 'terminal palette batching must not restore an external seq loop'
+terminal_jq_reads="$(grep -Ec '^[[:space:]]*jq -r ' "$terminal_theme")"
+if (( terminal_jq_reads > 2 )); then
+    fail "terminal theming parser must use at most two jq reads, found $terminal_jq_reads"
 fi
 
 printf 'performance lifecycle guards: ok\n'

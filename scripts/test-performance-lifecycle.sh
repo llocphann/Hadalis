@@ -178,6 +178,14 @@ require "$recorder_status" 'storedConfigFile.reload()' 'RecorderStatus config co
 require "$recorder_status" 'metadataFile.reload()' 'RecorderStatus metadata refresh must reuse FileView'
 reject "$recorder_status" 'command: ["/usr/bin/cat", Config.filePath]' 'RecorderStatus must not spawn cat for config compatibility'
 reject "$recorder_status" 'command: ["/usr/bin/cat", root.recorderStatusPath]' 'RecorderStatus must not spawn cat for recording metadata'
+require "$recorder_status" 'id: activePidFile' 'RecorderStatus active verification must use an in-process /proc reader'
+require "$recorder_status" 'const target = "/proc/" + root.recorderPid + "/comm"' 'RecorderStatus must verify the known recorder PID directly'
+active_recorder_poll="$(sed -n '/id: activePollTimer/,/^[[:space:]]*}/p' "$recorder_status")"
+grep -Fq 'root.refreshActivePid()' <<<"$active_recorder_poll" \
+    || fail 'RecorderStatus active poll must verify the known PID without pgrep'
+if grep -Fq 'root.refreshStatus()' <<<"$active_recorder_poll"; then
+    fail 'RecorderStatus active poll must not spawn pgrep once per second'
+fi
 require "$weather" 'running: root.enabled' 'Weather minute clock must sleep when weather is disabled'
 require "$keyboard_indicators" 'interval: (Config.options?.performance?.lowPower ?? false) ? 120000 : 30000' 'keyboard sysfs hotplug discovery must stay low cadence'
 require "$sidebar_anime" 'layer.enabled: root.visible && GlobalStates.sidebarLeftOpen' 'Anime list mask must sleep with the sidebar'

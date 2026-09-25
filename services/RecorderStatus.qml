@@ -135,6 +135,8 @@ Singleton {
             recordingStartTime = 0
             elapsedSeconds = 0
             recorderPid = 0
+            activePidFile.loadPending = false
+            activePidFile.path = ""
             resetAudioMetadata()
         }
     }
@@ -142,6 +144,19 @@ Singleton {
     function refreshStatus() {
         if (!checkProcess.running)
             checkProcess.running = true
+    }
+
+    function refreshActivePid(): void {
+        if (!root.isRecording || root.recorderPid <= 0 || activePidFile.loadPending)
+            return
+
+        activePidFile.pid = root.recorderPid
+        activePidFile.loadPending = true
+        const target = "/proc/" + root.recorderPid + "/comm"
+        if (activePidFile.path === target)
+            activePidFile.reload()
+        else
+            activePidFile.path = target
     }
 
     readonly property int idlePollIntervalMs:
@@ -158,7 +173,8 @@ Singleton {
         onTriggered: root.refreshStatus()
     }
 
-    // Active poll: 1s tick while recording (elapsed counter + stop detection)
+    // Active poll: keep elapsed UI precise, but verify the known recorder PID
+    // in-process. Fall back to pgrep only when that PID disappears or changes.
     Timer {
         id: activePollTimer
         interval: 1000
@@ -167,7 +183,7 @@ Singleton {
         onTriggered: {
             if (root.recordingStartTime > 0)
                 root.elapsedSeconds = Math.floor((Date.now() - root.recordingStartTime) / 1000)
-            root.refreshStatus()
+            root.refreshActivePid()
         }
     }
 
@@ -246,6 +262,29 @@ Singleton {
         onLoadFailed: {
             loadPending = false
             root.resetAudioMetadata()
+        }
+    }
+
+    FileView {
+        id: activePidFile
+        property bool loadPending: false
+        property int pid: 0
+        path: ""
+        printErrors: false
+
+        onLoaded: {
+            const probedPid = activePidFile.pid
+            loadPending = false
+            if (!root.isRecording || root.recorderPid !== probedPid)
+                return
+            if (text().trim() !== "wf-recorder")
+                root.refreshStatus()
+        }
+        onLoadFailed: {
+            const probedPid = activePidFile.pid
+            loadPending = false
+            if (root.isRecording && root.recorderPid === probedPid)
+                root.refreshStatus()
         }
     }
 

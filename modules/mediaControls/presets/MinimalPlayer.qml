@@ -87,7 +87,7 @@ Item {
             anchors { left: parent.left; right: parent.right }
             y: root.vizPosition === "top" ? 0 : (parent.height - height)
             height: root.vizPosition === "fill" ? parent.height : 25
-            live: playerBase.effectiveIsPlaying
+            live: root.positionUpdatesActive && playerBase.effectiveIsPlaying
             points: root.visualizerPoints
             maxVisualizerValue: 1000; smoothing: 2
             color: ColorUtils.transparentize(root.themeSourceColor, 0.5)
@@ -97,7 +97,7 @@ Item {
             anchors { left: parent.left; right: parent.right }
             y: root.vizPosition === "top" ? 0 : (parent.height - height)
             height: root.vizPosition === "fill" ? parent.height : 25
-            live: playerBase.effectiveIsPlaying
+            live: root.positionUpdatesActive && playerBase.effectiveIsPlaying
             points: root.visualizerPoints
             maxVisualizerValue: 1000; smoothing: 2
             barCount: 24; barSpacing: 2; barRadius: 1; barMinHeight: 1

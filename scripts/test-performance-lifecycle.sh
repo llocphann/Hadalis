@@ -182,8 +182,9 @@ reject "$dashboard" 'onTriggered: panelRoot.visible = false' 'Dashboard close mu
 reject "$dashboard" 'Qt.callLater(() => { root._presentedOpen' 'Dashboard open must not race compositor mapping with a zero-delay state flip'
 require "$dashboard_settings" 'text: Translation.tr("Preload Dashboard")' 'Dashboard keepLoaded option must describe eager preload only'
 
-require "$screen_time" 'target: CompositorService.isNiri ? NiriService : null' 'Screen Time must use Niri focus events'
-require "$screen_time" 'interval: CompositorService.isNiri' 'Screen Time must keep only a coarse Niri heartbeat'
+require "$screen_time" 'target: NiriService' 'Screen Time must use Niri focus events'
+require "$screen_time" 'interval: 30000' 'Screen Time must keep only a coarse Niri heartbeat'
+reject "$screen_time" 'CompositorService.isHyprland' 'Screen Time must not restore retired Hyprland branching'
 require "$ytmusic" 'id: _ipcStateProc' 'YT Music fallback must batch mpv IPC state queries'
 reject "$ytmusic" 'id: _ipcQueryProc' 'YT Music must not restore separate time-position subprocess polling'
 reject "$ytmusic" 'id: _ipcPauseQueryProc' 'YT Music must not restore separate pause subprocess polling'

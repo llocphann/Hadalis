@@ -17,7 +17,6 @@ make_fixture() {
         "$root/modules/ii/critical" \
         "$root/modules/ii" \
         "$root/modules/screenCorners" \
-        "$root/modules/sidebar" \
         "$root/modules/background" \
         "$root/modules/bar" \
         "$root/modules/verticalBar" \
@@ -34,9 +33,6 @@ Item {
 
     LazyLoader {
         source: Qt.resolvedUrl("../../screenCorners/ScreenEdges.qml")
-    }
-    LazyLoader {
-        source: Qt.resolvedUrl("../../sidebar/SidebarEdgeConnectors.qml")
     }
     CriticalPanelLoader {
         source: Qt.resolvedUrl("../../background/Background.qml")
@@ -63,7 +59,6 @@ QML
 
     for target in \
         modules/screenCorners/ScreenEdges.qml \
-        modules/sidebar/SidebarEdgeConnectors.qml \
         modules/background/Background.qml \
         modules/bar/Bar.qml \
         modules/verticalBar/VerticalBar.qml \
@@ -110,6 +105,12 @@ make_fixture "$runtime_source"
 sed -i '/^Item {/a\    LazyLoader { source: Qt.resolvedUrl("../../perimeter/PerimeterRuntime.qml") }' \
     "$runtime_source/modules/ii/critical/ShellIiCriticalPanels.qml"
 expect_failure "$runtime_source" 'critical root reintroduced the retired PerimeterRuntime source'
+
+retired_sidebar_bridge="$stage/retired-sidebar-bridge"
+make_fixture "$retired_sidebar_bridge"
+sed -i '/^Item {/a\    LazyLoader { source: Qt.resolvedUrl("../../sidebar/SidebarEdgeConnectors.qml") }' \
+    "$retired_sidebar_bridge/modules/ii/critical/ShellIiCriticalPanels.qml"
+expect_failure "$retired_sidebar_bridge" 'critical root must not source-load the retired standalone sidebar bridge'
 
 inline_bar="$stage/inline-bar"
 make_fixture "$inline_bar"

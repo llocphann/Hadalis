@@ -43,7 +43,7 @@ iNiR はデスクトップ全体です。上のバー、ドック、通知、設
 
 ### 動かすのに何が必要？
 
-コンポジター。ウィンドウを管理して画面にピクセルを描く部分。iNiR は [Niri](https://github.com/YaLTeR/niri)（タイリング Wayland コンポジター）向けに作られています。end-4 の dots からフォークした時の古い Hyprland コードもあるけど、実際にテストして使ってるのは Niri。
+コンポジター。ウィンドウを管理して画面にピクセルを描く部分。iNiR は [Niri](https://github.com/YaLTeR/niri)（タイリング Wayland コンポジター）向けに作られています。現在は Niri 専用で、Hyprland への言及はプロジェクトの来歴とフォーク元を示すためだけです。
 
 シェルは [Quickshell](https://quickshell.outfoxxed.me/) 上で動きます。QML（Qt の UI 言語）でシェルを作るフレームワーク。これを知らなくても使えます、設定は全部 GUI か JSON ファイルでできる。
 

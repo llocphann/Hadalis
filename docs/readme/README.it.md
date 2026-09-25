@@ -43,7 +43,7 @@ iNiR è tutto il tuo desktop. La barra in alto, il dock, notifiche, impostazioni
 
 ### Cosa serve per farlo girare?
 
-Un compositor. È quello che gestisce le finestre e mette i pixel sullo schermo. iNiR è fatto per [Niri](https://github.com/YaLTeR/niri) (un compositor Wayland a tiling). C'è del vecchio codice Hyprland da quando era un fork dei dots di end-4, ma Niri è quello che testo e uso davvero.
+Un compositor. È quello che gestisce le finestre e mette i pixel sullo schermo. iNiR è fatto per [Niri](https://github.com/YaLTeR/niri) (un compositor Wayland a tiling). Ora è Niri-only; Hyprland è citato qui solo come storia del progetto e origine del fork.
 
 La shell gira su [Quickshell](https://quickshell.outfoxxed.me/), un framework per costruire shell in QML (il linguaggio UI di Qt). Non serve saperlo per usarla, tutto si configura dalla GUI o un file JSON.
 

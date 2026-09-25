@@ -43,7 +43,7 @@ iNiR은 데스크톱 전체입니다. 위의 바, 독, 알림, 설정, 배경화
 
 ### 실행하려면 뭐가 필요해요?
 
-컴포지터. 창을 관리하고 화면에 픽셀을 그리는 거예요. iNiR은 [Niri](https://github.com/YaLTeR/niri) (타일링 Wayland 컴포지터)용으로 만들어졌어요. end-4의 dots에서 포크했을 때의 오래된 Hyprland 코드가 있지만, 실제로 테스트하고 쓰는 건 Niri입니다.
+컴포지터. 창을 관리하고 화면에 픽셀을 그리는 거예요. iNiR은 [Niri](https://github.com/YaLTeR/niri) (타일링 Wayland 컴포지터)용으로 만들어졌어요. 현재는 Niri 전용이며, Hyprland 언급은 프로젝트 역사와 포크 출처를 설명하기 위한 것뿐입니다.
 
 셸은 [Quickshell](https://quickshell.outfoxxed.me/) 위에서 돌아가요. QML(Qt의 UI 언어)로 셸을 만드는 프레임워크. 이걸 몰라도 쓸 수 있어요, 모든 설정은 GUI나 JSON 파일로 가능합니다.
 

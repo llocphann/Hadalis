@@ -43,7 +43,7 @@ iNiR 是你的整个桌面。顶部的栏、Dock、通知、设置、壁纸，�
 
 ### 运行需要什么？
 
-一个合成器。就是管理窗口、把像素画到屏幕上的东西。iNiR 是为 [Niri](https://github.com/YaLTeR/niri)（一个平铺式 Wayland 合成器）做的。有一些从 end-4 的 dots fork 过来的 Hyprland 旧代码，但真正在测试和使用的是 Niri。
+一个合成器。就是管理窗口、把像素画到屏幕上的东西。iNiR 是为 [Niri](https://github.com/YaLTeR/niri)（一个平铺式 Wayland 合成器）做的。现在只支持 Niri；这里提到 Hyprland 只是为了说明项目历史和 fork 来源。
 
 Shell 运行在 [Quickshell](https://quickshell.outfoxxed.me/) 上，一个用 QML（Qt 的 UI 语言）构建 Shell 的框架。不需要懂这些也能用，所有配置都可以通过 GUI 或 JSON 文件完成。
 

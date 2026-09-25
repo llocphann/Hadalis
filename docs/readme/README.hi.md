@@ -43,7 +43,7 @@ iNiR आपका पूरा डेस्कटॉप है। ऊपर क�
 
 ### चलाने के लिए क्या चाहिए?
 
-एक compositor। ये वो चीज़ है जो विंडोज़ को मैनेज करती है और स्क्रीन पर पिक्सल्स डालती है। iNiR [Niri](https://github.com/YaLTeR/niri) (एक tiling Wayland compositor) के लिए बना है। end-4 के dots से फोर्क होने के समय का पुराना Hyprland कोड है, लेकिन असल में टेस्ट और इस्तेमाल Niri होता है।
+एक compositor। ये वो चीज़ है जो विंडोज़ को मैनेज करती है और स्क्रीन पर पिक्सल्स डालती है। iNiR [Niri](https://github.com/YaLTeR/niri) (एक tiling Wayland compositor) के लिए बना है। अब यह सिर्फ Niri के लिए है; Hyprland का ज़िक्र यहाँ केवल प्रोजेक्ट के इतिहास और fork के स्रोत के रूप में है।
 
 शेल [Quickshell](https://quickshell.outfoxxed.me/) पर चलता है, QML (Qt की UI भाषा) में शेल बनाने का फ्रेमवर्क। इसे जानने की ज़रूरत नहीं, सब कुछ GUI या JSON फाइल से configure होता है।
 

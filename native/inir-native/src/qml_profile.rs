@@ -51,7 +51,9 @@ impl OwnerStats {
         self.qml_work_ns = self.qml_work_ns.saturating_add(other.qml_work_ns);
         self.range_count = self.range_count.saturating_add(other.range_count);
         self.allocated_bytes = self.allocated_bytes.saturating_add(other.allocated_bytes);
-        self.allocation_events = self.allocation_events.saturating_add(other.allocation_events);
+        self.allocation_events = self
+            .allocation_events
+            .saturating_add(other.allocation_events);
         for (kind, count) in &other.ranges_by_type {
             *self.ranges_by_type.entry(kind.clone()).or_default() += count;
         }
@@ -105,9 +107,7 @@ fn parse_event_types(xml: &str) -> Result<BTreeMap<usize, EventType>> {
                 filename: tag_text(block, "filename"),
                 line: tag_text(block, "line").parse::<u64>().ok(),
                 details: tag_text(block, "details"),
-                memory_type: tag_text(block, "memoryEventType")
-                    .parse::<u8>()
-                    .ok(),
+                memory_type: tag_text(block, "memoryEventType").parse::<u8>().ok(),
             },
         );
     }
@@ -262,9 +262,7 @@ fn allocate_exclusive_work(
         {
             let duration = (at_ns - previous) as u64;
             components.entry(source.clone()).or_default().qml_work_ns += duration;
-            *event_work_ns
-                .entry(ranges[index].event_index)
-                .or_default() += duration;
+            *event_work_ns.entry(ranges[index].event_index).or_default() += duration;
             attributed = attributed.saturating_add(duration);
         }
 
@@ -298,9 +296,7 @@ fn attribute_memory(
     let mut attributed_allocated_bytes = 0_u64;
 
     for point in points {
-        while next_range < order.len()
-            && ranges[order[next_range]].start_ns <= point.at_ns
-        {
+        while next_range < order.len() && ranges[order[next_range]].start_ns <= point.at_ns {
             active.insert(order[next_range]);
             next_range += 1;
         }
@@ -314,8 +310,7 @@ fn attribute_memory(
         let stats = components.entry(source.clone()).or_default();
         stats.record_allocation(point.amount);
         attributed_events = attributed_events.saturating_add(1);
-        attributed_allocated_bytes =
-            attributed_allocated_bytes.saturating_add(point.amount);
+        attributed_allocated_bytes = attributed_allocated_bytes.saturating_add(point.amount);
     }
 
     (attributed_events, attributed_allocated_bytes)
@@ -395,9 +390,7 @@ fn hotspot_rows(
         let Some(event_type) = event_types.get(event_index) else {
             continue;
         };
-        let Some(source_path) =
-            normalized_source(&event_type.filename, shell_root)
-        else {
+        let Some(source_path) = normalized_source(&event_type.filename, shell_root) else {
             continue;
         };
         let work_ms_per_second = if duration_seconds > 0.0 {
@@ -427,14 +420,12 @@ fn hotspot_rows(
     rows.sort_by(|left, right| {
         let left_work = left["qmlWorkNs"].as_u64().unwrap_or(0);
         let right_work = right["qmlWorkNs"].as_u64().unwrap_or(0);
-        right_work
-            .cmp(&left_work)
-            .then_with(|| {
-                left["id"]
-                    .as_str()
-                    .unwrap_or("")
-                    .cmp(right["id"].as_str().unwrap_or(""))
-            })
+        right_work.cmp(&left_work).then_with(|| {
+            left["id"]
+                .as_str()
+                .unwrap_or("")
+                .cmp(right["id"].as_str().unwrap_or(""))
+        })
     });
     rows
 }
@@ -518,12 +509,10 @@ pub fn summarize(trace_path: &Path, shell_root: &Path) -> Result<Value> {
             // cumulative JS allocations, never retained process RAM.
             if matches!(event_type.memory_type, Some(1 | 2)) {
                 qv4_usage_bytes = qv4_usage_bytes.saturating_add(amount);
-                qv4_usage_peak_bytes =
-                    qv4_usage_peak_bytes.max(qv4_usage_bytes.max(0) as u64);
+                qv4_usage_peak_bytes = qv4_usage_peak_bytes.max(qv4_usage_bytes.max(0) as u64);
                 if amount > 0 {
                     total_memory_events = total_memory_events.saturating_add(1);
-                    total_allocated_bytes =
-                        total_allocated_bytes.saturating_add(amount as u64);
+                    total_allocated_bytes = total_allocated_bytes.saturating_add(amount as u64);
                     memory_points.push(MemoryPoint {
                         at_ns: start_ns,
                         amount: amount as u64,
@@ -533,11 +522,8 @@ pub fn summarize(trace_path: &Path, shell_root: &Path) -> Result<Value> {
         }
     }
 
-    let attributed_work_ns = allocate_exclusive_work(
-        &work_ranges,
-        &mut components,
-        &mut event_work_ns,
-    );
+    let attributed_work_ns =
+        allocate_exclusive_work(&work_ranges, &mut components, &mut event_work_ns);
     let (attributed_memory_events, attributed_allocated_bytes) =
         attribute_memory(&memory_points, &work_ranges, &mut components);
 
@@ -712,14 +698,8 @@ mod tests {
         assert_eq!(bar["qmlWorkNs"], 200_000_000);
         assert_eq!(clock["qmlWorkNs"], 100_000_000);
         assert_eq!(service["qmlWorkNs"], 100_000_000);
-        assert_eq!(
-            value_at(clock, &["allocations", "allocatedBytes"]),
-            4096
-        );
-        assert_eq!(
-            value_at(service, &["allocations", "allocatedBytes"]),
-            2048
-        );
+        assert_eq!(value_at(clock, &["allocations", "allocatedBytes"]), 4096);
+        assert_eq!(value_at(service, &["allocations", "allocatedBytes"]), 2048);
 
         let modules = summary["modules"].as_array().unwrap();
         let bar_module = modules

@@ -299,6 +299,9 @@ ColumnLayout {
                             colBackgroundHover:
                                 Appearance.colors.colLayer2Hover
                             onClicked: Quickshell.execDetached([
+                                "/usr/bin/systemd-run",
+                                "--user", "--collect", "--quiet",
+                                "--service-type=exec",
                                 "/usr/bin/env", "bash",
                                 Quickshell.shellPath("scripts/inir"),
                                 "dev", "profile", "--duration", "5"

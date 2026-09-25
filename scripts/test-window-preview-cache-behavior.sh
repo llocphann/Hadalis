@@ -115,13 +115,17 @@ assert.ok(scope.captureProcess.command.includes('11')
 root.capturing = false;
 root.previewCache[11].timestamp = p.nextRevision(1, 1);
 assert.notEqual(root.getPreviewUrl(11), stable, 'force refresh produces a new URL revision');
+const createdBeforeRevisionWarm = created;
 root.warmForOverview([11,11,12]); sync();
-assert.equal(created, 1, 'only existing visible previews warm');
+assert.equal(created, createdBeforeRevisionWarm + 1,
+    'changed visible preview revision replaces its stale decoder while missing previews stay cold');
 root.warmForOverview([11]); sync();
-assert.equal(created, 1, 'reopening retains previously decoded Image object');
+assert.equal(created, createdBeforeRevisionWarm + 1,
+    'reopening retains the decoder for the current preview revision');
 root.previewCache[12] = {path: '/tmp/previews/window-12.png', timestamp: 1};
 root.warmForOverview([11,12]); sync();
-assert.equal(created, 2, 'second preview warms into resident budget');
+assert.equal(created, createdBeforeRevisionWarm + 2,
+    'second existing preview warms into resident budget');
 root.previewCache[13] = {path: '/tmp/previews/window-13.png', timestamp: 1};
 root.warmForOverview([12,13]); sync();
 assert.equal(Object.keys(root.overviewWarmImages).length, 2, 'LRU budget is enforced');

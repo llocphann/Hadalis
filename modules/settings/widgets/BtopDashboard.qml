@@ -55,6 +55,27 @@ ColumnLayout {
             root.systemEvidence?.memory?.valuesKiB?.SwapTotal)
     }
 
+    function shellMemoryKiB(): var {
+        const values = root.shellEvidence?.memory?.valuesKiB ?? ({})
+        return values.Pss ?? values.Rss ?? null
+    }
+
+    function shellMemorySharePercent(): var {
+        return root.percentOf(
+            root.shellMemoryKiB(),
+            root.systemEvidence?.memory?.valuesKiB?.MemTotal)
+    }
+
+    function shellMemoryDetail(): string {
+        const values = root.shellEvidence?.memory?.valuesKiB ?? ({})
+        const primaryLabel = values.Pss !== null
+            && values.Pss !== undefined ? "PSS" : "RSS"
+        const primary = values.Pss ?? values.Rss
+        const swap = values.SwapPss ?? values.Swap
+        return primaryLabel + " " + root.formatKiB(primary)
+            + " · Swap " + root.formatKiB(swap)
+    }
+
     function formatPercent(value): string {
         if (value === null || value === undefined)
             return "—"
@@ -192,8 +213,10 @@ ColumnLayout {
         return found ? total : null
     }
 
-    // Compact Diagnostics follows an observability hierarchy: suspect evidence
-    // dominates the viewport while system-wide totals stay secondary context.
+    // Compact Diagnostics follows an observability hierarchy: Workflow
+    // lifecycle evidence and Quickshell-owned kernel telemetry only. System
+    // totals may remain in the sampler for compatibility, but are never shown
+    // here as if they described Quickshell.
     GridLayout {
         id: compactObservability
         visible: root.compactMode
@@ -273,7 +296,7 @@ ColumnLayout {
                         targets: root.targets
                         records: root.records
                         events: root.events
-                        maxRows: compactObservability.suspectRowLimit
+                        localScroll: true
                     }
                     BtopProcessTable {
                         Layout.fillWidth: true
@@ -286,61 +309,103 @@ ColumnLayout {
             }
         }
 
-        GridLayout {
-            id: compactSystemContext
+        ColumnLayout {
+            id: compactShellContext
             Layout.fillWidth: true
             Layout.fillHeight: true
             Layout.minimumWidth: 0
             Layout.preferredWidth: compactObservability.columns === 2
                 ? compactObservability.width * 0.32 : -1
-            columns: width >= 260 ? 2 : 1
-            columnSpacing: 8
-            rowSpacing: 8
-            BtopMetricPanel {
+            spacing: 6
+
+            RowLayout {
                 Layout.fillWidth: true
-                Layout.fillHeight: true
-                compactMode: true
-                title: Translation.tr("CPU")
-                value: root.systemEvidence?.cpu?.percent ?? null
-                detail: root.formatLoadAverage(root.systemEvidence?.cpu?.loadAverage)
-                samples: root.historyValues("systemCpuPercent")
-                graphHeight: 18
+                spacing: 6
+
+                StyledText {
+                    textFormat: Text.PlainText
+                    Layout.fillWidth: true
+                    text: Translation.tr("Quickshell monitors")
+                    color: Appearance.colors.colOnLayer1
+                    font.weight: Font.DemiBold
+                    font.pixelSize: Appearance.font.pixelSize.small
+                    elide: Text.ElideRight
+                }
+
+                StyledText {
+                    textFormat: Text.PlainText
+                    text: root.shellEvidence?.pid
+                        ? "PID " + String(root.shellEvidence.pid) : "PID —"
+                    color: Appearance.colors.colSubtext
+                    font.family: Appearance.font.family.monospace
+                    font.pixelSize: Appearance.font.pixelSize.smallest
+                }
             }
-            BtopMetricPanel {
+
+            GridLayout {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
-                compactMode: true
-                title: Translation.tr("Memory")
-                value: root.systemRamPercent()
-                detail: root.formatKiB(root.systemEvidence?.memory?.valuesKiB?.MemUsed)
-                    + " / " + root.formatKiB(root.systemEvidence?.memory?.valuesKiB?.MemTotal)
-                samples: root.historyValues("systemRamPercent")
-                graphHeight: 18
-                accentColor: Appearance.colors.colSecondary
-            }
-            BtopMetricPanel {
-                Layout.fillWidth: true
-                Layout.fillHeight: true
-                compactMode: true
-                title: Translation.tr("GPU")
-                value: root.shellEvidence?.gpu?.available === true ? root.shellGpuBusy() : null
-                detail: root.shellEvidence?.gpu?.available === true
-                    ? root.formatKiB(root.shellGpuMemoryKiB()) + " " + Translation.tr("resident")
-                    : Translation.tr("DRM fdinfo unavailable")
-                samples: root.historyValues("shellGpuPeakPercent")
-                graphHeight: 18
-                accentColor: Appearance.colors.colTertiary
-            }
-            BtopNetworkPanel {
-                Layout.fillWidth: true
-                Layout.fillHeight: true
-                compactMode: true
-                title: Translation.tr("Network")
-                graphHeight: 18
-                rx: root.formatRate(root.networkEvidence?.aggregateNonLoopback?.rxBytesPerSec)
-                tx: root.formatRate(root.networkEvidence?.aggregateNonLoopback?.txBytesPerSec)
-                rxSamples: root.historyValues("rxBytesPerSec")
-                txSamples: root.historyValues("txBytesPerSec")
+                columns: width >= 260 ? 2 : 1
+                columnSpacing: 8
+                rowSpacing: 8
+
+                BtopMetricPanel {
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
+                    compactMode: true
+                    title: Translation.tr("CPU")
+                    value: root.shellEvidence?.cpu?.percent ?? null
+                    detail: Translation.tr("All Quickshell threads")
+                        + " · schedstat"
+                    samples: root.historyValues("shellCpuPercent")
+                    graphHeight: 18
+                }
+
+                BtopMetricPanel {
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
+                    compactMode: true
+                    title: Translation.tr("Memory")
+                    value: root.shellMemorySharePercent()
+                    detail: root.shellMemoryDetail()
+                    samples: root.historyValues("shellMemoryPercent")
+                    graphHeight: 18
+                    accentColor: Appearance.colors.colSecondary
+                }
+
+                BtopMetricPanel {
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
+                    compactMode: true
+                    title: Translation.tr("GPU")
+                    value: root.shellEvidence?.gpu?.available === true
+                        ? root.shellGpuBusy() : null
+                    detail: root.shellEvidence?.gpu?.available === true
+                        ? root.formatKiB(root.shellGpuMemoryKiB()) + " "
+                            + Translation.tr("resident")
+                        : Translation.tr("DRM fdinfo unavailable")
+                    samples: root.historyValues("shellGpuPeakPercent")
+                    graphHeight: 18
+                    accentColor: Appearance.colors.colTertiary
+                }
+
+                BtopNetworkPanel {
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
+                    compactMode: true
+                    title: Translation.tr("I/O")
+                    rxLabel: "READ"
+                    txLabel: "WRITE"
+                    rxPrefix: "R "
+                    txPrefix: "W "
+                    graphHeight: 18
+                    rx: root.formatRate(
+                        root.shellEvidence?.io?.rates?.readBytesPerSec)
+                    tx: root.formatRate(
+                        root.shellEvidence?.io?.rates?.writeBytesPerSec)
+                    rxSamples: root.historyValues("shellReadBytesPerSec")
+                    txSamples: root.historyValues("shellWriteBytesPerSec")
+                }
             }
         }
     }
@@ -386,8 +451,10 @@ ColumnLayout {
             }
             StyledText {
                 textFormat: Text.PlainText
-                text: "RAM " + root.formatKiB(root.shellEvidence?.memory?.valuesKiB?.Pss
-                    ?? root.shellEvidence?.memory?.valuesKiB?.Rss)
+                text: (root.shellEvidence?.memory?.valuesKiB?.Pss !== null
+                        && root.shellEvidence?.memory?.valuesKiB?.Pss !== undefined
+                        ? "PSS " : "RSS ")
+                    + root.formatKiB(root.shellMemoryKiB())
                 color: Appearance.colors.colOnLayer1
                 font.family: Appearance.font.family.monospace
                 font.pixelSize: Appearance.font.pixelSize.small

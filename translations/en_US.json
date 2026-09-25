@@ -5456,5 +5456,9 @@
   "I/O": "I/O",
   "resident": "resident",
   "On-demand Quickshell runtime diagnostics": "On-demand Quickshell runtime diagnostics",
-  "Quickshell CPU, memory, GPU, I/O and helper-process diagnostics": "Quickshell CPU, memory, GPU, I/O and helper-process diagnostics"
+  "Quickshell CPU, memory, GPU, I/O and helper-process diagnostics": "Quickshell CPU, memory, GPU, I/O and helper-process diagnostics",
+  "Deep QML owners": "Deep QML owners",
+  "Components": "Components",
+  "QML work · QV4 allocation — not CPU/RSS/GPU attribution": "QML work · QV4 allocation — not CPU/RSS/GPU attribution",
+  "No deep QML profile captured": "No deep QML profile captured"
 }

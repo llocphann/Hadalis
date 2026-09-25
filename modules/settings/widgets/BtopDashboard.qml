@@ -21,6 +21,7 @@ ColumnLayout {
 
     readonly property var systemEvidence: root.evidence?.system ?? null
     readonly property var shellEvidence: root.evidence?.shell ?? null
+    readonly property var qmlOwnerProfile: root.evidence?.qmlProfile ?? null
     readonly property var networkEvidence: root.evidence?.network ?? null
     readonly property var cpuCores:
         root.systemEvidence?.cpu?.coresPercent ?? []
@@ -290,9 +291,16 @@ ColumnLayout {
                     columns: width >= 500 ? 2 : 1
                     columnSpacing: 8
                     rowSpacing: 8
+                    BtopOwnerProfileTable {
+                        Layout.fillWidth: true
+                        Layout.fillHeight: true
+                        visible: root.qmlOwnerProfile !== null
+                        profile: root.qmlOwnerProfile
+                    }
                     BtopActivityTable {
                         Layout.fillWidth: true
                         Layout.fillHeight: true
+                        visible: root.qmlOwnerProfile === null
                         targets: root.targets
                         records: root.records
                         events: root.events

@@ -54,11 +54,6 @@ Scope {
     property int level: 0
     property int currentPage: -1
 
-    CodeWorkflowPickerHost {
-        hostId: "focus"
-        settingsLoaded: root._panelLoaded
-        currentPage: root.level === 1 ? root.currentPage : -1
-    }
 
     readonly property bool easyMode: Config.options?.settingsUi?.easyMode ?? false
 
@@ -2118,8 +2113,6 @@ Scope {
 
                             pages: root.pages
                             requestedIndex: root.currentPage
-                            workflowHostId: "settings-focus"
-                            workflowDiscoveryEnabled: true
                             // Keep recently visited pages warm while Settings is open,
                             // including home ↔ page navigation, but release them when
                             // the Settings surface itself closes.

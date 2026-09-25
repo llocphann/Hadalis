@@ -1525,10 +1525,8 @@ ApplicationWindow {
                     id: windowPageHeader
                     anchors { top: parent.top; left: parent.left; right: parent.right }
                     readonly property var meta: root.pages[root.currentPage] ?? {}
-                    readonly property bool delegatedToPage:
-                        String(meta.key ?? "") === "code-workflow"
-                    height: delegatedToPage || root.settingsSearchText.trim().length > 0 ? 0 : 48
-                    visible: !delegatedToPage && root.settingsSearchText.trim().length === 0
+                    height: root.settingsSearchText.trim().length > 0 ? 0 : 48
+                    visible: root.settingsSearchText.trim().length === 0
 
                     RowLayout {
                         id: windowPageHeaderRow
@@ -1588,9 +1586,6 @@ ApplicationWindow {
                     requestedIndex: root.currentPage
                     visible: root.settingsSearchText.trim().length === 0
                     enabled: visible
-                    // This is a separate process: keep the shell's runtime
-                    // catalog sourced through IPC rather than local page probes.
-                    workflowDiscoveryEnabled: false
                     loadEnabled: Config.ready && root._navigationInitialized
 
                     SettingsPageLoadingOverlay {

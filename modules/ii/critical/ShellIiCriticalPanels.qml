@@ -14,19 +14,10 @@ Item {
         id: criticalPanelLoader
         required property string identifier
         property bool extraCondition: true
-        property string workflowSourcePath: ""
         readonly property bool enabledPanel: Config.ready
             && (Config.options?.enabledPanels ?? []).includes(identifier)
             && extraCondition
         active: enabledPanel
-        property CodeWorkflowRuntimeDeclaration workflowDeclaration:
-            CodeWorkflowRuntimeDeclaration {
-                loader: criticalPanelLoader
-                panelId: criticalPanelLoader.identifier
-                sourcePath: criticalPanelLoader.workflowSourcePath
-                configured: criticalPanelLoader.enabledPanel
-                presented: criticalPanelLoader.active
-            }
     }
 
     // Screen edge is shell chrome, not a replacement runtime. Keep it on a URL
@@ -35,14 +26,6 @@ Item {
         id: screenEdgesLoader
         active: Config.ready
         source: Qt.resolvedUrl("../../screenCorners/ScreenEdges.qml")
-        property CodeWorkflowRuntimeDeclaration workflowDeclaration:
-            CodeWorkflowRuntimeDeclaration {
-                loader: screenEdgesLoader
-                panelId: "iiScreenEdges"
-                sourcePath: "modules/screenCorners/ScreenEdges.qml"
-                configured: Config.ready
-                presented: screenEdgesLoader.active
-            }
     }
 
     // Sidebar edge bridges live inside SidebarHost so connector and card share

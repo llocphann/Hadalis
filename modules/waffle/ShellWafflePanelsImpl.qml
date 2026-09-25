@@ -54,19 +54,10 @@ Item {
         id: panelLoader
         required property string identifier
         property bool extraCondition: true
-        property string workflowSourcePath: ""
         readonly property bool enabledPanel: Config.ready
             && (Config.options?.enabledPanels ?? []).includes(identifier)
             && extraCondition
         active: enabledPanel
-        property CodeWorkflowRuntimeDeclaration workflowDeclaration:
-            CodeWorkflowRuntimeDeclaration {
-                loader: panelLoader
-                panelId: panelLoader.identifier
-                sourcePath: panelLoader.workflowSourcePath
-                configured: panelLoader.enabledPanel
-                presented: panelLoader.active
-            }
     }
 
     // Deferred panels — loaded asynchronously after first frame to reduce boot contention
@@ -74,20 +65,11 @@ Item {
         id: deferredPanelLoader
         required property string identifier
         property bool extraCondition: true
-        property string workflowSourcePath: ""
         readonly property bool enabledPanel: Config.ready
             && (Config.options?.enabledPanels ?? []).includes(identifier)
             && extraCondition
         loading: Config.ready && GlobalStates.shellEntryReady && enabledPanel
         activeAsync: Config.ready && GlobalStates.deferredPanelsReady && enabledPanel
-        property CodeWorkflowRuntimeDeclaration workflowDeclaration:
-            CodeWorkflowRuntimeDeclaration {
-                loader: deferredPanelLoader
-                panelId: deferredPanelLoader.identifier
-                sourcePath: deferredPanelLoader.workflowSourcePath
-                configured: deferredPanelLoader.enabledPanel
-                presented: deferredPanelLoader.active
-            }
     }
 
     component OnDemandPanelLoader: LazyLoader {
@@ -109,15 +91,6 @@ Item {
         }
         readonly property bool enabledPanel: Config.ready
             && (Config.options?.enabledPanels ?? []).includes(identifier)
-        property string workflowSourcePath: ""
-        property CodeWorkflowRuntimeDeclaration workflowDeclaration:
-            CodeWorkflowRuntimeDeclaration {
-                loader: onDemandLoader
-                panelId: onDemandLoader.identifier
-                sourcePath: onDemandLoader.workflowSourcePath
-                configured: onDemandLoader.enabledPanel
-                presented: onDemandLoader.open
-            }
         onOpenChanged: {
             if (open) {
                 used = true
@@ -170,7 +143,6 @@ Item {
         identifier: "iiTilingOverlay"
         open: GlobalStates.tilingOverlayPickerOpen || GlobalStates.tilingOverlayOsdOpen
         closeGraceMs: 250
-        workflowSourcePath: "modules/tilingOverlay/TilingOverlay.qml"
         component: TilingOverlay {}
     }
 
@@ -180,14 +152,6 @@ Item {
             && Config.options?.panelFamily === "waffle"
         activeAsync: Config.ready && GlobalStates.deferredPanelsReady && Config.options?.panelFamily === "waffle"
         component: WaffleClipboardModule.WaffleClipboard {}
-        property CodeWorkflowRuntimeDeclaration workflowDeclaration:
-            CodeWorkflowRuntimeDeclaration {
-                loader: waffleClipboardLoader
-                panelId: "wClipboard"
-                sourcePath: "modules/waffle/clipboard/WaffleClipboard.qml"
-                configured: Config.ready && Config.options?.panelFamily === "waffle"
-                presented: waffleClipboardLoader.active
-            }
     }
 
     LazyLoader {
@@ -199,16 +163,6 @@ Item {
             && Config.options?.panelFamily === "waffle"
             && root.waffleAltSwitcherVisual
         component: WaffleAltSwitcherModule.WaffleAltSwitcher {}
-        property CodeWorkflowRuntimeDeclaration workflowDeclaration:
-            CodeWorkflowRuntimeDeclaration {
-                loader: waffleAltSwitcherLoader
-                panelId: "wAltSwitcher"
-                sourcePath: "modules/waffle/altSwitcher/WaffleAltSwitcher.qml"
-                configured: Config.ready
-                    && Config.options?.panelFamily === "waffle"
-                    && root.waffleAltSwitcherVisual
-                presented: waffleAltSwitcherLoader.active
-            }
     }
 
     WaffleBackgroundModule.WaffleShellEditHud {}

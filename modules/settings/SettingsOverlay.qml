@@ -34,11 +34,6 @@ Scope {
     readonly property real _screenEdgeThickness: Math.max(1, Math.min(32,
         Math.round(Config.options?.appearance?.screenEdge?.width ?? 10)))
 
-    CodeWorkflowPickerHost {
-        hostId: "rail"
-        settingsLoaded: root._panelLoaded
-        currentPage: root.overlayCurrentPage
-    }
 
     Behavior on _surfaceReveal {
         enabled: Appearance.animationsEnabled
@@ -1592,10 +1587,8 @@ Scope {
                                 id: overlayPageHeader
                                 anchors { top: parent.top; left: parent.left; right: parent.right }
                                 readonly property var meta: root.overlayPages[root.overlayCurrentPage] ?? {}
-                                readonly property bool delegatedToPage:
-                                    String(meta.key ?? "") === "code-workflow"
-                                height: delegatedToPage || root.overlaySearchText.trim().length > 0 ? 0 : 48
-                                visible: !delegatedToPage && root.overlaySearchText.trim().length === 0
+                                height: root.overlaySearchText.trim().length > 0 ? 0 : 48
+                                visible: root.overlaySearchText.trim().length === 0
 
                                 RowLayout {
                                     id: overlayPageHeaderRow
@@ -1656,8 +1649,6 @@ Scope {
                                 requestedIndex: root.overlayCurrentPage
                                 visible: root.overlaySearchText.trim().length === 0
                                 enabled: visible
-                                workflowHostId: "settings-overlay"
-                                workflowDiscoveryEnabled: true
                                 loadEnabled: Config.ready && root.settingsOpen
                             }
 

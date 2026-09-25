@@ -35,40 +35,22 @@ Item {
         id: panelLoader
         required property string identifier
         property bool extraCondition: true
-        property string workflowSourcePath: ""
         readonly property bool enabledPanel: Config.ready
             && (Config.options?.enabledPanels ?? []).includes(identifier)
             && extraCondition
         loading: enabledPanel
         activeAsync: enabledPanel
-        property CodeWorkflowRuntimeDeclaration workflowDeclaration:
-            CodeWorkflowRuntimeDeclaration {
-                loader: panelLoader
-                panelId: panelLoader.identifier
-                sourcePath: panelLoader.workflowSourcePath
-                configured: panelLoader.enabledPanel
-                presented: panelLoader.active
-            }
     }
 
     component DeferredPanelLoader: LazyLoader {
         id: deferredPanelLoader
         required property string identifier
         property bool extraCondition: true
-        property string workflowSourcePath: ""
         readonly property bool enabledPanel: Config.ready
             && (Config.options?.enabledPanels ?? []).includes(identifier)
             && extraCondition
         loading: Config.ready && GlobalStates.shellEntryReady && enabledPanel
         activeAsync: Config.ready && GlobalStates.deferredPanelsReady && enabledPanel
-        property CodeWorkflowRuntimeDeclaration workflowDeclaration:
-            CodeWorkflowRuntimeDeclaration {
-                loader: deferredPanelLoader
-                panelId: deferredPanelLoader.identifier
-                sourcePath: deferredPanelLoader.workflowSourcePath
-                configured: deferredPanelLoader.enabledPanel
-                presented: deferredPanelLoader.active
-            }
     }
 
     component OnDemandPanelLoader: LazyLoader {
@@ -91,15 +73,6 @@ Item {
         }
         readonly property bool enabledPanel: Config.ready
             && (Config.options?.enabledPanels ?? []).includes(identifier)
-        property string workflowSourcePath: ""
-        property CodeWorkflowRuntimeDeclaration workflowDeclaration:
-            CodeWorkflowRuntimeDeclaration {
-                loader: onDemandLoader
-                panelId: onDemandLoader.identifier
-                sourcePath: onDemandLoader.workflowSourcePath
-                configured: onDemandLoader.enabledPanel
-                presented: onDemandLoader.open
-            }
 
         onOpenChanged: {
             if (open) {
@@ -168,7 +141,6 @@ Item {
     OnDemandPanelLoader {
         identifier: "iiOverlay"
         open: GlobalStates.overlayOpen || OverlayContext.hasPinnedWidgets || OverlayContext.nativeDialogOpen
-        workflowSourcePath: "modules/ii/overlay/Overlay.qml"
         component: Overlay {}
     }
     OnDemandPanelLoader { identifier: "iiOverview"; open: GlobalStates.overviewOpen; retainAfterUse: true; closeGraceMs: 300; source: "../overview/Overview.qml" }
@@ -235,7 +207,6 @@ Item {
         identifier: "iiTilingOverlay"
         open: GlobalStates.tilingOverlayPickerOpen || GlobalStates.tilingOverlayOsdOpen
         closeGraceMs: 250
-        workflowSourcePath: "modules/tilingOverlay/TilingOverlay.qml"
         component: TilingOverlay {}
     }
 

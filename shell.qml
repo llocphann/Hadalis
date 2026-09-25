@@ -23,9 +23,6 @@ import qs.services
 ShellRoot {
     id: root
 
-    // Cross-generation Code Workflow transaction state must live in the root
-    // reload tree; QML singletons are outside that matching scope.
-    CodeWorkflowReloadBridge {}
 
     readonly property bool disableHotReload: Quickshell.env("INIR_DISABLE_HOT_RELOAD") === "1"
         || Quickshell.env("INIR_DISABLE_HOT_RELOAD") === "true"
@@ -502,49 +499,6 @@ ShellRoot {
         }
     }
 
-    // Code Workflow may run inside the shell overlay or in settings.qml as a
-    // separate process. Expose only plain JSON runtime evidence across that
-    // boundary; QObject references remain process-local.
-    IpcHandler {
-        target: "codeWorkflowRuntime"
-
-        function snapshot(): string {
-            const payload = CodeWorkflowRuntime.localSnapshot()
-            payload.diagnostics = RuntimeDiagnostics.snapshot()
-            return JSON.stringify(payload)
-        }
-    }
-
-    // Runtime Diagnostics samplers live in the main shell process. Separate
-    // Settings processes only own short-lived leases over IPC; if they crash,
-    // the server TTL expires and sampling returns to zero automatically.
-    IpcHandler {
-        target: "runtimeDiagnostics"
-        function acquire(clientId: string): string {
-            return JSON.stringify({
-                ok: RuntimeDiagnostics.acquire(clientId),
-                status: RuntimeDiagnostics.status()
-            })
-        }
-        function heartbeat(clientId: string): string {
-            return JSON.stringify({
-                ok: RuntimeDiagnostics.heartbeat(clientId),
-                status: RuntimeDiagnostics.status()
-            })
-        }
-        function release(clientId: string): string {
-            return JSON.stringify({
-                ok: RuntimeDiagnostics.release(clientId),
-                status: RuntimeDiagnostics.status()
-            })
-        }
-        function status(): string {
-            return JSON.stringify(RuntimeDiagnostics.status())
-        }
-        function snapshot(): string {
-            return JSON.stringify(RuntimeDiagnostics.snapshot())
-        }
-    }
 
     // IPC for settings - overlay mode or separate window based on config
     // Note: waffle family ALWAYS uses its own window (waffleSettings.qml), never the Material overlay
@@ -593,46 +547,22 @@ ShellRoot {
     // Any unrecognised style falls back to the nav rail.
     LazyLoader {
         id: settingsRailLoader
-        readonly property bool workflowConfigured:
+        readonly property bool loaderConfigured:
             Config.ready
             && (Config.options?.settingsUi?.overlayMode ?? false)
             && (Config.options?.settingsUi?.overlayStyle ?? "rail") !== "focus"
-        active: workflowConfigured
+        active: loaderConfigured
         component: SettingsOverlay {}
-        property CodeWorkflowRuntimeDeclaration workflowDeclaration:
-            CodeWorkflowRuntimeDeclaration {
-                loader: settingsRailLoader
-                panelId: "settingsRail"
-                targetId: "settings"
-                label: "Settings"
-                icon: "settings"
-                family: "shared"
-                sourcePath: "modules/settings/SettingsOverlay.qml"
-                configured: settingsRailLoader.workflowConfigured
-                presented: settingsRailLoader.active
-            }
     }
 
     LazyLoader {
         id: settingsFocusLoader
-        readonly property bool workflowConfigured:
+        readonly property bool loaderConfigured:
             Config.ready
             && (Config.options?.settingsUi?.overlayMode ?? false)
             && (Config.options?.settingsUi?.overlayStyle ?? "rail") === "focus"
-        active: workflowConfigured
+        active: loaderConfigured
         component: SettingsFocus {}
-        property CodeWorkflowRuntimeDeclaration workflowDeclaration:
-            CodeWorkflowRuntimeDeclaration {
-                loader: settingsFocusLoader
-                panelId: "settingsFocus"
-                targetId: "settings"
-                label: "Settings"
-                icon: "settings"
-                family: "shared"
-                sourcePath: "modules/settings/SettingsFocus.qml"
-                configured: settingsFocusLoader.workflowConfigured
-                presented: settingsFocusLoader.active
-            }
     }
 
     // === Panel Loaders ===
@@ -648,39 +578,15 @@ ShellRoot {
         id: altSwitcherRouterLoader
         active: Config.ready
         source: "modules/altSwitcher/AltSwitcherNoVisual.qml"
-        property CodeWorkflowRuntimeDeclaration workflowDeclaration:
-            CodeWorkflowRuntimeDeclaration {
-                loader: altSwitcherRouterLoader
-                panelId: "runtimeAltSwitcherRouter"
-                targetId: "runtime/alt-switcher-router"
-                label: "Alt Switcher Router"
-                family: "shared"
-                sourcePath: "modules/altSwitcher/AltSwitcherNoVisual.qml"
-                internal: true
-                configured: Config.ready
-                presented: altSwitcherRouterLoader.active
-            }
     }
 
     LazyLoader {
         id: iiAltSwitcherLoader
-        readonly property bool workflowConfigured: Config.ready
+        readonly property bool loaderConfigured: Config.ready
             && (Config.options?.panelFamily ?? "ii") !== "waffle"
             && !root.iiAltSwitcherNoVisual
-        active: workflowConfigured
+        active: loaderConfigured
         source: "modules/altSwitcher/AltSwitcher.qml"
-        property CodeWorkflowRuntimeDeclaration workflowDeclaration:
-            CodeWorkflowRuntimeDeclaration {
-                loader: iiAltSwitcherLoader
-                panelId: "iiAltSwitcher"
-                targetId: "alt-switcher"
-                label: "Alt Switcher"
-                icon: "switch_access_shortcut"
-                family: "ii"
-                sourcePath: "modules/altSwitcher/AltSwitcher.qml"
-                configured: iiAltSwitcherLoader.workflowConfigured
-                presented: iiAltSwitcherLoader.active
-            }
     }
 
     // Load ONLY the active family panels to reduce startup time.
@@ -695,52 +601,16 @@ ShellRoot {
         id: regionSelectorRouterLoader
         active: Config.ready
         source: "modules/regionSelector/RegionSelectorRouter.qml"
-        property CodeWorkflowRuntimeDeclaration workflowDeclaration:
-            CodeWorkflowRuntimeDeclaration {
-                loader: regionSelectorRouterLoader
-                panelId: "runtimeRegionSelectorRouter"
-                targetId: "runtime/region-selector-router"
-                label: "Region Selector Router"
-                family: "shared"
-                sourcePath: "modules/regionSelector/RegionSelectorRouter.qml"
-                internal: true
-                configured: Config.ready
-                presented: regionSelectorRouterLoader.active
-            }
     }
     LazyLoader {
         id: tilingOverlayRouterLoader
         active: Config.ready
         source: "modules/tilingOverlay/TilingOverlayRouter.qml"
-        property CodeWorkflowRuntimeDeclaration workflowDeclaration:
-            CodeWorkflowRuntimeDeclaration {
-                loader: tilingOverlayRouterLoader
-                panelId: "runtimeTilingOverlayRouter"
-                targetId: "runtime/tiling-overlay-router"
-                label: "Tiling Overlay Router"
-                family: "shared"
-                sourcePath: "modules/tilingOverlay/TilingOverlayRouter.qml"
-                internal: true
-                configured: Config.ready
-                presented: tilingOverlayRouterLoader.active
-            }
     }
     LazyLoader {
         id: wallpaperSelectorRouterLoader
         active: Config.ready
         source: "modules/wallpaperSelector/WallpaperSelectorRouter.qml"
-        property CodeWorkflowRuntimeDeclaration workflowDeclaration:
-            CodeWorkflowRuntimeDeclaration {
-                loader: wallpaperSelectorRouterLoader
-                panelId: "runtimeWallpaperSelectorRouter"
-                targetId: "runtime/wallpaper-selector-router"
-                label: "Wallpaper Selector Router"
-                family: "shared"
-                sourcePath: "modules/wallpaperSelector/WallpaperSelectorRouter.qml"
-                internal: true
-                configured: Config.ready
-                presented: wallpaperSelectorRouterLoader.active
-            }
     }
 
     // Same reason as the routers: both panel files declared these, so every
@@ -837,23 +707,11 @@ ShellRoot {
 
     LazyLoader {
         id: iiCriticalHostLoader
-        readonly property bool workflowConfigured:
+        readonly property bool loaderConfigured:
             Config.ready && (Config.options?.panelFamily ?? "ii") !== "waffle"
-        loading: workflowConfigured
-        activeAsync: workflowConfigured
+        loading: loaderConfigured
+        activeAsync: loaderConfigured
         source: "modules/ii/critical/ShellIiCriticalPanels.qml"
-        property CodeWorkflowRuntimeDeclaration workflowDeclaration:
-            CodeWorkflowRuntimeDeclaration {
-                loader: iiCriticalHostLoader
-                panelId: "runtimeIiCriticalHost"
-                targetId: "runtime/ii-critical-host"
-                label: "ii Critical Host"
-                family: "ii"
-                sourcePath: "modules/ii/critical/ShellIiCriticalPanels.qml"
-                internal: true
-                configured: iiCriticalHostLoader.workflowConfigured
-                presented: iiCriticalHostLoader.active
-            }
     }
 
     LazyLoader {
@@ -864,39 +722,15 @@ ShellRoot {
         loading: enabled
         activeAsync: enabled
         source: "ShellIiPanels.qml"
-        property CodeWorkflowRuntimeDeclaration workflowDeclaration:
-            CodeWorkflowRuntimeDeclaration {
-                loader: iiDeferredHostLoader
-                panelId: "runtimeIiDeferredHost"
-                targetId: "runtime/ii-deferred-host"
-                label: "ii Deferred Host"
-                family: "ii"
-                sourcePath: "ShellIiPanels.qml"
-                internal: true
-                configured: iiDeferredHostLoader.enabled
-                presented: iiDeferredHostLoader.active
-            }
     }
 
     LazyLoader {
         id: waffleCriticalHostLoader
-        readonly property bool workflowConfigured:
+        readonly property bool loaderConfigured:
             Config.ready && (Config.options?.panelFamily ?? "ii") === "waffle"
-        loading: workflowConfigured
-        activeAsync: workflowConfigured
+        loading: loaderConfigured
+        activeAsync: loaderConfigured
         source: "modules/waffle/critical/ShellWaffleCriticalPanels.qml"
-        property CodeWorkflowRuntimeDeclaration workflowDeclaration:
-            CodeWorkflowRuntimeDeclaration {
-                loader: waffleCriticalHostLoader
-                panelId: "runtimeWaffleCriticalHost"
-                targetId: "runtime/waffle-critical-host"
-                label: "Waffle Critical Host"
-                family: "waffle"
-                sourcePath: "modules/waffle/critical/ShellWaffleCriticalPanels.qml"
-                internal: true
-                configured: waffleCriticalHostLoader.workflowConfigured
-                presented: waffleCriticalHostLoader.active
-            }
     }
 
     LazyLoader {
@@ -907,18 +741,6 @@ ShellRoot {
         loading: enabled
         activeAsync: enabled
         source: "ShellWafflePanels.qml"
-        property CodeWorkflowRuntimeDeclaration workflowDeclaration:
-            CodeWorkflowRuntimeDeclaration {
-                loader: waffleDeferredHostLoader
-                panelId: "runtimeWaffleDeferredHost"
-                targetId: "runtime/waffle-deferred-host"
-                label: "Waffle Deferred Host"
-                family: "waffle"
-                sourcePath: "ShellWafflePanels.qml"
-                internal: true
-                configured: waffleDeferredHostLoader.enabled
-                presented: waffleDeferredHostLoader.active
-            }
     }
 
     // Close confirmation dialog (always loaded, handles IPC)
@@ -926,18 +748,6 @@ ShellRoot {
         id: closeConfirmLoader
         active: Config.ready
         source: "modules/closeConfirm/CloseConfirm.qml"
-        property CodeWorkflowRuntimeDeclaration workflowDeclaration:
-            CodeWorkflowRuntimeDeclaration {
-                loader: closeConfirmLoader
-                panelId: "iiCloseConfirm"
-                targetId: "close-confirm"
-                label: "Close Confirmation"
-                icon: "warning"
-                family: "shared"
-                sourcePath: "modules/closeConfirm/CloseConfirm.qml"
-                configured: Config.ready
-                presented: closeConfirmLoader.active
-            }
     }
 
     // Shared (always loaded via ToastManager)
@@ -1063,19 +873,6 @@ ShellRoot {
         active: Config.ready
             && (GlobalStates.familyTransitionActive || root._transitionInProgress)
         source: "FamilyTransitionOverlay.qml"
-        property CodeWorkflowRuntimeDeclaration workflowDeclaration:
-            CodeWorkflowRuntimeDeclaration {
-                loader: familyTransitionLoader
-                panelId: "familyTransitionOverlay"
-                targetId: "runtime/family-transition-overlay"
-                label: "Family Transition Overlay"
-                icon: "swap_horiz"
-                family: "shared"
-                sourcePath: "FamilyTransitionOverlay.qml"
-                internal: true
-                configured: Config.ready
-                presented: familyTransitionLoader.active && familyTransitionLoader.visible
-            }
         onLoaded: {
             item.exitComplete.connect(root.applyPendingFamily)
             item.enterComplete.connect(root.finishFamilyTransition)

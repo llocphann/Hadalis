@@ -26,19 +26,6 @@ Item {
     property string searchText: ""
     property var searchResults: []
     property bool navExpanded: width > Looks.dp(760)
-    readonly property int diagnosticsPageIndex:
-        root.pages.findIndex(page => page.key === "diagnostics")
-    readonly property string diagnosticsLeaseOwner:
-        "waffle-settings:diagnostics"
-
-    function syncDiagnosticsLease(): void {
-        RuntimeDiagnosticsSession.setOwnerCurrent(
-            root.diagnosticsLeaseOwner,
-            root.loadEnabled
-                && root.diagnosticsPageIndex >= 0
-                && root.currentPage === root.diagnosticsPageIndex)
-    }
-
     // One information architecture for both renderer families. Page keys keep
     // Waffle's persisted numeric indices and search/deep links unchanged.
     readonly property var navigationGroups: [
@@ -47,7 +34,7 @@ Item {
         { label: Translation.tr("Desktop & Layout"), keys: ["monitors", "shell-layout", "bar", "workspace-strip", "panels", "waffle-style", "modules"] },
         { label: Translation.tr("System"), keys: ["system", "power", "autostart"] },
         { label: Translation.tr("Features & Services"), keys: ["ai", "mascot"] },
-        { label: Translation.tr("Advanced & Help"), keys: ["diagnostics", "shortcuts", "about"] }
+        { label: Translation.tr("Advanced & Help"), keys: ["shortcuts", "about"] }
     ]
     property var expandedNavGroups: ({})
     function groupExpanded(index, pageIndices): bool {
@@ -79,10 +66,7 @@ Item {
 
     onCurrentPageChanged: {
         root.revealCurrentNavGroup()
-        root.syncDiagnosticsLease()
     }
-    onLoadEnabledChanged: root.syncDiagnosticsLease()
-    onDiagnosticsPageIndexChanged: root.syncDiagnosticsLease()
 
     readonly property var navigationItems: {
         const items = []
@@ -123,15 +107,9 @@ Item {
 
     Component.onCompleted: {
         Qt.callLater(() => root.navigationReady = true)
-        root.syncDiagnosticsLease()
-    }
-    Component.onDestruction:
-        RuntimeDiagnosticsSession.setOwnerCurrent(
-            root.diagnosticsLeaseOwner, false)
-    
+    }    
     // Complete search index with all individual options + targetLabel for spotlight
     property var searchIndex: [
-        { pageIndex: 19, pageName: "Diagnostics", section: "Runtime Diagnostics", label: "Runtime diagnostics", targetLabel: "Runtime diagnostics", keywords: ["diagnostics", "btop", "runtime", "cpu", "ram", "memory", "swap", "gpu", "network", "interface", "disk", "io", "shell", "debug", "workflow", "resource", "process", "telemetry"] },
         { pageIndex: 18, pageName: "Battery", section: "Power management", label: "Battery and TLP settings", targetLabel: "Configuration categories", keywords: ["tlp", "power", "battery", "cpu", "processor", "disk", "pcie", "usb", "radio", "energy", "profile"] },
         { pageIndex: 18, pageName: "Battery", section: "Battery Care", label: "Charge limit", targetLabel: "Hardware-aware charge care", keywords: ["tlp", "battery", "charge", "limit", "threshold", "thinkpad", "conservation"] },
         { pageIndex: 17, pageName: "Shell Layout", section: "Live shell layout", label: "Edit live", targetLabel: "Edit live", keywords: ["layout", "move", "position", "taskbar", "output", "edit", "live"] },

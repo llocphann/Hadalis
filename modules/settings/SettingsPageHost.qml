@@ -7,7 +7,6 @@ import qs.modules.common
 import qs.modules.common.widgets
 import qs.services
 import "SettingsPageLoadingState.js" as PageLoadState
-import "RuntimeDiagnosticsPageState.js" as DiagnosticsPageState
 
 Item {
     id: root
@@ -16,14 +15,6 @@ Item {
     required property int requestedIndex
     property bool loadEnabled: true
     property int cacheLimit: 2
-    // Host IDs disambiguate the Focus and Rail page caches. Standalone
-    // Settings keeps IPC discovery remote and does not register local pages.
-    property string workflowHostId: "settings"
-    property bool workflowDiscoveryEnabled: false
-    readonly property int diagnosticsPageIndex:
-        SettingsPageRegistry.pageIndexForKey("diagnostics")
-    readonly property string diagnosticsLeaseOwner:
-        root.workflowHostId + ":diagnostics"
 
     readonly property int currentIndex: _currentIndex
     readonly property bool error: _errorIndex === requestedIndex
@@ -57,15 +48,6 @@ Item {
     property int _requestGeneration: 0
 
     clip: _transitionRunning
-
-    function _syncDiagnosticsLease() {
-        RuntimeDiagnosticsSession.setOwnerCurrent(
-            root.diagnosticsLeaseOwner,
-            DiagnosticsPageState.shouldLease(
-                root.loadEnabled, root.visible,
-                root.requestedIndex, root.currentIndex,
-                root.diagnosticsPageIndex))
-    }
 
     function _sourceFor(index) {
         if (index < 0 || index >= pages.length)
@@ -321,13 +303,9 @@ Item {
     }
 
     onRequestedIndexChanged: {
-        root._syncDiagnosticsLease()
         root._scheduleRequestPage()
     }
-    onCurrentIndexChanged: root._syncDiagnosticsLease()
-    onVisibleChanged: root._syncDiagnosticsLease()
     onLoadEnabledChanged: {
-        root._syncDiagnosticsLease()
         if (loadEnabled)
             root._scheduleRequestPage()
         else
@@ -336,13 +314,8 @@ Item {
     onCacheLimitChanged: _trimCache()
     Component.onCompleted: {
         SettingsArrangement.migrateLegacyPageIndices()
-        root._syncDiagnosticsLease()
         root._scheduleRequestPage()
     }
-    Component.onDestruction:
-        RuntimeDiagnosticsSession.setOwnerCurrent(
-            root.diagnosticsLeaseOwner, false)
-
     Connections {
         target: Config
         function onReadyChanged(): void {
@@ -373,30 +346,6 @@ Item {
 
             // Register each real Loader without forcing item creation. Cached
             // pages remain loaded-hidden; evicted pages become unloaded.
-            property CodeWorkflowRuntimeDeclaration workflowDeclaration:
-                CodeWorkflowRuntimeDeclaration {
-                    loader: pageLoader
-                    panelId: "settings-page-" + root.workflowHostId + "-" + pageLoader.index
-                    targetId: "runtime/" + root.workflowHostId + "/page/"
-                        + String(root.pages[pageLoader.index]?.key ?? pageLoader.index)
-                    label: "Settings · "
-                        + String(root.pages[pageLoader.index]?.name ?? pageLoader.index)
-                    icon: String(root.pages[pageLoader.index]?.icon ?? "settings")
-                    kind: "component"
-                    family: "shared"
-                    parentId: "settings"
-                    depth: 2
-                    sourcePath: CodeWorkflowRuntime.relativeSourcePath(
-                        root._sourceFor(pageLoader.index))
-                    internal: true
-                    configured: root.loadEnabled
-                    // A ready pending Loader starts fully transparent while
-                    // the previous page is still onscreen. It is resident,
-                    // but not presented until the transition actually paints it.
-                    presented: pageLoader.visible && pageLoader.opacity > 0.01
-                        && root.visible
-                    registrationEnabled: root.workflowDiscoveryEnabled
-                }
 
             onStatusChanged: root._handleStatus(index, status)
             onActiveChanged: {

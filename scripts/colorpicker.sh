@@ -11,6 +11,14 @@ if (($# > 0)); then
     exit 2
 fi
 
+if command -v hyprpicker >/dev/null 2>&1; then
+    # hyprpicker is wlroots-compatible and provides a useful magnifier. Its name
+    # is historical; using it here does not enable a Hyprland compositor path.
+    args=(--format=hex --no-fancy)
+    $copy && args+=(--autocopy)
+    exec hyprpicker "${args[@]}"
+fi
+
 for command_name in grim slurp magick; do
     command -v "$command_name" >/dev/null 2>&1 || {
         printf 'colorpicker: missing required command: %s\n' "$command_name" >&2

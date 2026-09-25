@@ -52,6 +52,7 @@ notification_item="$repo_root/modules/common/widgets/NotificationItem.qml"
 bar_taskbar_window_preview="$repo_root/modules/bar/BarTaskbarWindowPreview.qml"
 bar_taskbar_preview="$repo_root/modules/bar/BarTaskbarPreview.qml"
 bar_taskbar="$repo_root/modules/bar/BarTaskbar.qml"
+waffle_taskbar_apps="$repo_root/services/TaskbarApps.qml"
 easyeffects="$repo_root/services/deferred/EasyEffects.qml"
 tlp="$repo_root/services/TlpService.qml"
 thinkfan="$repo_root/services/ThinkFanService.qml"
@@ -163,6 +164,9 @@ require "$bar_taskbar" 'root.presentationActive && !root._sortingConsumerAcquire
 require "$bar_taskbar" '!root.presentationActive && root._sortingConsumerAcquired' 'Hidden Bar taskbar must release shared sorting demand'
 require "$bar_taskbar" 'CompositorService.releaseSortingConsumer()' 'Hidden/destroyed Bar taskbar must release its sorting lease'
 require "$bar_taskbar" 'CompositorService.sortedToplevels?.length' 'Bar taskbar reveal must retain its previous model while a cold sorted snapshot warms'
+require "$waffle_taskbar_apps" '&& GlobalStates.barOpen' 'Waffle taskbar sorting must sleep while the Waffle Bar is closed'
+require "$waffle_taskbar_apps" 'CompositorService.setSortingConsumer("waffleTaskbar",' 'Waffle taskbar must retain named sorting-demand ownership'
+require "$waffle_taskbar_apps" 'onSortingEnabledChanged: syncSortingDemand()' 'Waffle taskbar must react immediately to Bar presentation changes'
 taskbar_connection_gates="$(grep -Fc 'enabled: root.presentationActive' "$bar_taskbar")"
 if (( taskbar_connection_gates < 4 )); then
     fail "Hidden Bar taskbar must suspend all four heavy model-update Connections, found $taskbar_connection_gates gates"

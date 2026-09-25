@@ -1,5 +1,6 @@
 pragma Singleton
 
+import qs
 import qs.modules.common
 import QtQuick
 import Quickshell
@@ -9,8 +10,11 @@ import qs.services
 Singleton {
     id: root
 
+    // The singleton can also be instantiated by Start Menu pin actions.
+    // Only the Waffle Bar consumes the live sorted window model.
     readonly property bool sortingEnabled:
         (Config.options?.panelFamily ?? "ii") === "waffle"
+        && GlobalStates.barOpen
     property int _identityRulesRevision: 0
 
     Connections {

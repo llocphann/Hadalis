@@ -1,6 +1,5 @@
 pragma Singleton
 
-import qs
 import qs.modules.common
 import QtQuick
 import Quickshell
@@ -10,16 +9,12 @@ import qs.services
 Singleton {
     id: root
 
-    // The singleton can also be instantiated by Start Menu pin actions.
-    // Only the Waffle Bar consumes the live sorted window model.
     readonly property bool sortingEnabled:
         (Config.options?.panelFamily ?? "ii") === "waffle"
-        && GlobalStates.barOpen
     property int _identityRulesRevision: 0
 
     Connections {
         target: Config.options?.windows
-        enabled: root.sortingEnabled
         function onAppIdentityRulesChanged() {
             root._identityRulesRevision++
         }
@@ -69,12 +64,6 @@ Singleton {
     }
 
     property list<var> apps: {
-        // No live consumer exists while the Waffle Bar is closed. Returning
-        // before touching shared sorted/config state also detaches those
-        // reactive dependencies until sortingEnabled becomes true again.
-        if (!root.sortingEnabled)
-            return [];
-
         const identityRulesRevision = root._identityRulesRevision;
         var map = new Map();
         let hasResolvedPinnedApps = false;

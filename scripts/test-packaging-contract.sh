@@ -58,16 +58,6 @@ for iris_asset in \
     || fail "runtime payload omits production iRiS shader asset: $iris_asset"
 done
 
-# Orbital Weather's accepted visual is shader-backed on hardware renderers.
-# Shipping only the QML fallback silently changes its appearance, so keep the
-# source and compiled QSB in the same fail-closed runtime payload contract.
-for weather_asset in \
-  modules/bar/weather/LiquidOrbitalField.frag \
-  modules/bar/weather/LiquidOrbitalField.frag.qsb; do
-  grep -Fqx "$weather_asset" <<<"$payload_list" \
-    || fail "runtime payload omits Orbital Weather shader asset: $weather_asset"
-done
-
 for pair in \
   "$stable_pkg:$stable_srcinfo" \
   "$git_pkg:$git_srcinfo" \
@@ -171,7 +161,7 @@ done
 # contracts even when hosted CI cannot start a runner. Target membership is the
 # invariant; dependency ordering may change as independent gates are added.
 test_local_rule="$(grep -m1 '^test-local:' "$makefile")"
-for target in test-optional-audio-deps test-news-contract test-equalizer-contracts test-weather-contracts test-docs; do
+for target in test-optional-audio-deps test-news-contract test-equalizer-contracts test-docs; do
   [[ " $test_local_rule " == *" $target "* ]] \
     || fail "make test-local no longer includes required gate: $target"
 done
@@ -179,8 +169,6 @@ grep -Fq '@bash scripts/test-equalizer-boundary-contract.sh' "$makefile" \
   || fail 'make test-local no longer runs the Equalizer architecture boundary contract'
 grep -Fq '@bash scripts/test-equalizer-service-contract.sh' "$makefile" \
   || fail 'make test-local no longer runs the Equalizer lifecycle/protocol contract'
-grep -Fq '@bash scripts/test-weather-orbital-visual-lock.sh' "$makefile" \
-  || fail 'make test-local no longer runs the approved Orbital Weather visual lock'
 grep -Fq '@bash scripts/verify-docs.sh' "$makefile" \
   || fail 'make test-local no longer runs documentation verification'
 
@@ -213,8 +201,6 @@ grep -Fq '"$script_dir/test-equalizer-service-contract.sh"' "$release_script" \
   || fail 'release publish preflight no longer includes the Equalizer lifecycle/protocol contract'
 grep -Fq '"$script_dir/test-optional-audio-deps-contract.sh"' "$release_script" \
   || fail 'release publish preflight no longer includes the optional audio dependency contract'
-grep -Fq '"$script_dir/test-weather-orbital-visual-lock.sh"' "$release_script" \
-  || fail 'release publish preflight no longer includes the approved Orbital Weather visual lock'
 grep -Fq '"$script_dir/test-battery-charge-limit-helper.sh"' "$release_script" \
   || fail 'release publish preflight no longer includes the battery charge-limit helper contract'
 grep -Fq '"$script_dir/test-thinkfan-helper.sh"' "$release_script" \
@@ -268,11 +254,6 @@ for hook in "$stable_hook" "$git_hook"; do
     || fail "$hook no longer provides dangling service-link cleanup"
   grep -Fq "run 'inir service disable' as each affected user" "$hook" \
     || fail "$hook no longer documents the safe pre-removal service step"
-done
-
-for pkg in "$stable_pkg" "$git_pkg"; do
-  grep -Fq '  python-evdev' "$pkg" \
-    || fail "$pkg must package python-evdev for emergency input-daemon rollback"
 done
 
 # Pacman owns the canonical user unit under /usr/lib/systemd/user. Both Arch

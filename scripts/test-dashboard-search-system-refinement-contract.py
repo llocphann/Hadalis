@@ -39,21 +39,13 @@ require(song_block, 'colBackgroundToggled: "transparent"',
 require(song_block, "? Appearance.colors.colPrimary",
         "SongRec running state must remain visible through icon ink.")
 
-require(overview, "readonly property real dashboardOpacity:",
-        "Dashboard content must expose its eased crossfade opacity.")
-require(overview, "1 - root._smooth01(root.searchTransitionProgress / 0.44)",
-        "Dashboard crossfade must remain derived from search transition progress.")
-require(overview, "opacity: root.dashboardOpacity",
-        "Dashboard content must consume the eased crossfade instead of sliding away.")
+require(overview, "opacity: root.dashboardProgress",
+        "Dashboard content must crossfade instead of sliding away.")
 forbid(overview,
        "transform: Translate { y: (1 - root.dashboardProgress) * dashboardViewport.height }",
        "Dashboard/Search transition must not use the old vertical slide.")
-require(overview, "readonly property real searchResultsOpacity:",
-        "Search results must expose the eased crossfade opacity.")
-require(overview, "root._smooth01((root.searchTransitionProgress - 0.22) / 0.78)",
-        "Search results crossfade must remain derived from search transition progress.")
-require(overview, "resultsOpacity: root.searchResultsOpacity",
-        "Search results must consume the eased crossfade against Dashboard content.")
+require(overview, "resultsOpacity: 1 - root.dashboardProgress",
+        "Search results must crossfade against Dashboard content.")
 require(search, "property real resultsOpacity: 1",
         "SearchWidget must expose the embedded result-layer opacity.")
 require(search, "opacity: root.resultsOpacity",

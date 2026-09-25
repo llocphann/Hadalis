@@ -20,6 +20,7 @@ Singleton {
         { id: "sidebar-left/wallhaven", family: "shared", surface: "sidebar-left", view: "wallhaven", safe: true, settleMs: 450 },
         { id: "sidebar-left/news", family: "shared", surface: "sidebar-left", view: "news", safe: true, settleMs: 500 },
         { id: "sidebar-left/music", family: "shared", surface: "sidebar-left", view: "music", safe: true, settleMs: 450 },
+        { id: "sidebar-left/ytmusic", family: "shared", surface: "sidebar-left", view: "ytmusic", safe: true, settleMs: 450 },
         { id: "sidebar-left/tools", family: "shared", surface: "sidebar-left", view: "tools", safe: true, settleMs: 350 },
         { id: "sidebar-left/software", family: "shared", surface: "sidebar-left", view: "software", safe: true, settleMs: 450 },
         { id: "sidebar-right/controls", family: "shared", surface: "sidebar-right", view: "controls", safe: true, settleMs: 350 },

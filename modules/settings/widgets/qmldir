@@ -7,7 +7,6 @@ BtopCoveragePanel 1.0 BtopCoveragePanel.qml
 BtopInterfaceTable 1.0 BtopInterfaceTable.qml
 BtopMetricPanel 1.0 BtopMetricPanel.qml
 BtopNetworkPanel 1.0 BtopNetworkPanel.qml
-BtopOwnerProfileTable 1.0 BtopOwnerProfileTable.qml
 BtopProcessTable 1.0 BtopProcessTable.qml
 BtopRuntimePanel 1.0 BtopRuntimePanel.qml
 BtopSparkline 1.0 BtopSparkline.qml

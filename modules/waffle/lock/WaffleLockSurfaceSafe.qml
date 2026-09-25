@@ -266,9 +266,9 @@ MouseArea {
                     border.width: 1
 
                     readonly property MprisPlayer player: root.activePlayer
-                    readonly property string effectiveArtUrl: player?.trackArtUrl ?? ""
-                    readonly property string effectiveTitle: player?.trackTitle ?? ""
-                    readonly property string effectiveArtist: player?.trackArtist ?? ""
+                    readonly property string effectiveArtUrl: MprisController.isYtMusicActive ? YtMusic.currentThumbnail : (player?.trackArtUrl ?? "")
+                    readonly property string effectiveTitle: MprisController.isYtMusicActive ? YtMusic.currentTitle : (player?.trackTitle ?? "")
+                    readonly property string effectiveArtist: MprisController.isYtMusicActive ? YtMusic.currentArtist : (player?.trackArtist ?? "")
 
                     RowLayout {
                         id: mediaRow
@@ -987,7 +987,6 @@ MouseArea {
                         sourceSize.width: avatarCircle.width * 2
                         sourceSize.height: avatarCircle.height * 2
                         visible: false
-                        onStatusChanged: safeLockAvatarResolver.handleImageStatus(status)
                     }
 
                     QtObject {
@@ -996,8 +995,9 @@ MouseArea {
                         readonly property string resolvedSource: Directories.avatarSourceAt(avatarIndex)
                         readonly property string primaryWatch: Directories.userAvatarSourcePrimary
                         onPrimaryWatchChanged: avatarIndex = 0
-                        function handleImageStatus(status): void {
-                            if (status === Image.Error) {
+                        readonly property int imgStatus: avatarImage.status
+                        onImgStatusChanged: {
+                            if (imgStatus === Image.Error) {
                                 const nextIdx = avatarIndex + 1
                                 if (nextIdx < Directories.userAvatarPaths.length)
                                     avatarIndex = nextIdx

@@ -36,7 +36,7 @@ Item {
                 color: root.contentColor
             }
         }
-        KeyboardStatusIndicator {
+        HyprlandXkbIndicator {
             vertical: root.vertical
             Layout.alignment: Qt.AlignVCenter | Qt.AlignHCenter
             color: root.contentColor

@@ -20,7 +20,6 @@ MouseArea {
             root._pointerFocused = false
     }
     property bool vertical: false
-    property bool presentationActive: true
 
     visible: implicitWidth > 0
     implicitWidth: (ShellUpdates.showUpdate || ShellUpdates.isUpdating)
@@ -122,20 +121,17 @@ MouseArea {
 
             RotationAnimation on rotation {
                 loops: Animation.Infinite
-                running: root.presentationActive && ShellUpdates.isUpdating
+                running: ShellUpdates.isUpdating
                 from: 0
                 to: 360
                 duration: 1200
-                onRunningChanged: if (!running) updateIcon.rotation = 0
             }
 
             SequentialAnimation on opacity {
                 loops: Animation.Infinite
-                running: root.presentationActive && !ShellUpdates.isUpdating
-                    && root.containsMouse
+                running: !ShellUpdates.isUpdating && root.containsMouse
                 NumberAnimation { to: 0.5; duration: 800; easing.type: Easing.InOutSine }
                 NumberAnimation { to: 1.0; duration: 800; easing.type: Easing.InOutSine }
-                onRunningChanged: if (!running) updateIcon.opacity = 1
             }
         }
 
@@ -207,8 +203,7 @@ MouseArea {
 
                     LoadingText {
                         anchors.verticalCenter: parent.verticalCenter
-                        visible: root.presentationActive && updatePopup.active
-                            && ShellUpdates.isUpdating
+                        visible: ShellUpdates.isUpdating
                         color: Appearance.colors.colOnSurfaceVariant
                     }
                 }

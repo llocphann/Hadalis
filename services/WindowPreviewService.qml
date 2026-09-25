@@ -95,12 +95,7 @@ Singleton {
         if (!previous || previous.url !== url) {
             if (previous)
                 previous.image.destroy()
-            // The singleton is not a QQuickItem. Parenting an Image to it makes
-            // Qt warn that the graphical object was not placed in a scene.
-            // Keep the predecoder deliberately parentless; the JS cache owns
-            // the reference and every lifecycle path explicitly destroy()s it.
-            const image = overviewWarmImageComponent.createObject(
-                null, { source: url })
+            const image = overviewWarmImageComponent.createObject(root, { source: url })
             if (!image) {
                 delete overviewWarmImages[windowId]
                 return
@@ -280,45 +275,46 @@ Singleton {
                 return
 
             console.warn("[WindowPreviewService] preview directory helper failed to start")
-            root._readSessionMarker()
+            sessionReadProcess.running = true
         }
         onStarted: ensureDirProcess.startObserved = true
-        onExited: root._readSessionMarker()
+        onExited: sessionReadProcess.running = true
     }
 
-    function _readSessionMarker(): void {
-        if (!root.initialized || root.sessionReady || sessionFileView.readPending)
-            return
-        sessionFileView.readPending = true
-        sessionFileView.reload()
-    }
-
-    FileView {
-        id: sessionFileView
-        property bool readPending: false
-        path: root.sessionMarkerPath
-        blockLoading: true
-        atomicWrites: true
-        printErrors: false
-
-        onLoaded: {
-            if (!sessionFileView.readPending)
+    Process {
+        id: sessionReadProcess
+        property bool startObserved: false
+        command: ["/usr/bin/cat", root.sessionMarkerPath]
+        stdout: StdioCollector { id: sessionReadOutput }
+        onRunningChanged: {
+            if (sessionReadProcess.running) {
+                sessionReadProcess.startObserved = false
                 return
-            sessionFileView.readPending = false
-            const previousKey = sessionFileView.text().trim()
+            }
+            if (sessionReadProcess.startObserved)
+                return
+
+            console.warn("[WindowPreviewService] session marker reader failed to start")
+            if (root.initialized && !root.sessionReady)
+                root._resetForCurrentSession()
+        }
+        onStarted: sessionReadProcess.startObserved = true
+        onExited: exitCode => {
+            if (!root.initialized || root.sessionReady) return
+            const previousKey = exitCode === 0 ? sessionReadOutput.text.trim() : ""
             if (root.sessionKey.length > 0 && previousKey === root.sessionKey)
                 scanProcess.running = true
             else
                 root._resetForCurrentSession()
         }
+    }
 
-        onLoadFailed: {
-            if (!sessionFileView.readPending)
-                return
-            sessionFileView.readPending = false
-            if (root.initialized && !root.sessionReady)
-                root._resetForCurrentSession()
-        }
+    FileView {
+        id: sessionFileView
+        path: root.sessionMarkerPath
+        blockLoading: true
+        atomicWrites: true
+        printErrors: false
     }
 
     Process {

@@ -53,54 +53,6 @@ require(
     "return false\n    }\n    readonly property bool parentPressedState:",
     "unknown parent hover must be false, not implicitly true",
 )
-require(
-    tooltip,
-    "function syncPresentation(): void",
-    "tooltip lifecycle must drive presentation activation explicitly",
-)
-require(
-    tooltip,
-    "tooltipLoader.active = shouldBeActive",
-    "tooltip lifecycle must assign Loader.active imperatively",
-)
-require(
-    tooltip,
-    "_anchorRefreshTimer.running = shouldBeActive",
-    "tooltip lifecycle must drive the anchor heartbeat imperatively",
-)
-require(
-    tooltip,
-    "active: false",
-    "tooltip presentation Loader must start without a reactive active binding",
-)
-require(
-    tooltip,
-    "Qt.callLater(root.syncPresentation)",
-    "tooltip initialization/reparenting must resync presentation lazily",
-)
-require(
-    tooltip,
-    "sourceComponent: root._canUsePopupWindow",
-    "tooltip presentation path must switch by source component",
-)
-require(tooltip, "id: popupWindowPresentation",
-        "PopupWindow presentation path missing")
-require(tooltip, "id: fallbackItemPresentation",
-        "ApplicationWindow fallback presentation path missing")
-require(tooltip, "onLoaded:",
-        "deferred reveal must restart after presentation reparenting")
-for forbidden in (
-    "active: root.visible && root.internalVisibleCondition",
-    "running: root.visible && root.internalVisibleCondition",
-    "active: root._canUsePopupWindow &&",
-    "active: !root._canUsePopupWindow &&",
-    "id: fallbackLoader",
-):
-    if forbidden in tooltip:
-        raise SystemExit(
-            "FAIL: tooltip retained split Loader activity binding: " + forbidden
-        )
-
 for clause in (
     "useParentHover: false",
     "externalHoverState: compactMouse.containsMouse",

@@ -275,7 +275,7 @@ Singleton {
             key: "diagnostics",
             name: Translation.tr("Diagnostics"),
             icon: "monitoring",
-            desc: Translation.tr("On-demand Quickshell runtime diagnostics"),
+            desc: Translation.tr("On-demand runtime resource diagnostics"),
             essential: false,
             component: "modules/settings/RuntimeDiagnosticsConfig.qml"
         }
@@ -360,7 +360,7 @@ Singleton {
             pageIndex: 31, pageName: root.pages[31].name,
             section: Translation.tr("Runtime Diagnostics"),
             label: Translation.tr("Runtime diagnostics"),
-            description: Translation.tr("Quickshell CPU, memory, GPU, I/O and helper-process diagnostics"),
+            description: Translation.tr("On-demand CPU, memory, swap, GPU and network diagnostics for Hadalis runtime owners"),
             keywords: ["diagnostics", "btop", "runtime", "cpu", "ram", "memory", "swap", "gpu", "network", "interface", "disk", "io", "shell", "debug", "workflow", "resource", "process", "telemetry"]
         },
         {
@@ -578,7 +578,7 @@ Singleton {
             section: Translation.tr("Audio spectrum"),
             label: Translation.tr("Bar audio spectrum"),
             description: Translation.tr("Bars, waves, frequency accents and dynamic curve fit"),
-            keywords: ["spectrum", "audio", "cava", "bars", "wave", "origin", "bottom", "top", "center", "mirror", "ribbon", "density", "gap", "smoothing", "edge", "curve", "headroom", "profile", "accent", "bass", "warm", "vocal", "treble", "smile"]
+            keywords: ["spectrum", "audio", "cava", "bars", "wave", "origin", "bottom", "top", "center", "mirror", "ribbon", "density", "gap", "smoothing", "edge", "curve", "headroom", "profile", "accent", "bass", "warm", "vocal", "treble", "smile", "ytmusic", "youtube music"]
         },
         {
             pageIndex: 2, pageName: root.pages[2].name,

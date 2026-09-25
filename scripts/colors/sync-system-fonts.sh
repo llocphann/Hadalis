@@ -44,17 +44,10 @@ def replace_line(path: str, pattern: str, replacement: str, prefix: str) -> None
         return
     with open(path, "r", encoding="utf-8") as handle:
         content = handle.read()
-    original = content
     if re.search(pattern, content, flags=re.MULTILINE):
         content = re.sub(pattern, replacement, content, flags=re.MULTILINE)
     else:
         content = content.rstrip() + f"\n{replacement}\n"
-
-    # FontSyncService reconciles desktop settings on every shell start. Avoid
-    # replacing GTK/xsettings files when they already contain the requested
-    # value, preserving reconciliation without generating redundant disk I/O.
-    if content == original:
-        return
 
     mode = os.stat(path).st_mode
     fd, temp_path = tempfile.mkstemp(prefix=prefix, dir=os.path.dirname(path))

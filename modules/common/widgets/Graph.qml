@@ -18,16 +18,7 @@ Canvas {
     property bool smooth: true
     property var alignment: Graph.Alignment.Left
 
-    // Histories can keep changing while retained hosts are hidden. Avoid
-    // scheduling Canvas work until the graph is actually presented; repaint
-    // once on re-entry so the latest history is shown immediately.
-    function _queuePaint(): void {
-        if (root.visible)
-            root.requestPaint()
-    }
-
-    onValuesChanged: root._queuePaint()
-    onVisibleChanged: root._queuePaint()
+    onValuesChanged: root.requestPaint()
     onPaint: {
         var ctx = getContext("2d")
         ctx.clearRect(0, 0, width, height)

@@ -8,6 +8,7 @@ import QtQuick.Controls
 import Quickshell
 import Quickshell.Io
 import Quickshell.Wayland
+import Quickshell.Hyprland
 
 Scope {
     id: root
@@ -53,16 +54,15 @@ Scope {
                 }
                 return GlobalStates.focusedScreen ?? GlobalStates.primaryScreen
             }
-            property bool monitorIsFocused:
-                panelWindow.screen?.name === NiriService.currentOutput
+            readonly property HyprlandMonitor monitor: CompositorService.isHyprland ? Hyprland.monitorFor(panelWindow.screen) : null
+            property bool monitorIsFocused: CompositorService.isHyprland 
+                ? (Hyprland.focusedMonitor?.id == monitor?.id)
+                : (CompositorService.isNiri ? (panelWindow.screen?.name === NiriService.currentOutput) : true)
 
             exclusionMode: ExclusionMode.Ignore
             WlrLayershell.namespace: "quickshell:wallpaperSelector"
             WlrLayershell.layer: WlrLayer.Overlay
-            readonly property bool acceptsInput: GlobalStates.wallpaperSelectorOpen
-                && !GlobalStates.regionSelectorOpen
-            WlrLayershell.keyboardFocus: panelWindow.acceptsInput
-                ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
+            WlrLayershell.keyboardFocus: GlobalStates.wallpaperSelectorOpen && !GlobalStates.regionSelectorOpen ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
             color: "transparent"
 
             anchors {
@@ -72,15 +72,17 @@ Scope {
                 bottom: true
             }
 
-            Item { id: emptyWallpaperSelectorInput; width: 0; height: 0 }
-            mask: Region {
-                item: panelWindow.acceptsInput
-                    ? wallpaperSelectorBackdrop : emptyWallpaperSelectorInput
+            CompositorFocusGrab { // Click outside to close (Hyprland)
+                id: grab
+                windows: [ panelWindow ]
+                active: CompositorService.isHyprland && wallpaperSelectorLoader.active
+                onCleared: () => {
+                    if (!active) GlobalStates.wallpaperSelectorOpen = false;
+                }
             }
 
-            // Click outside to close
+            // Click outside to close (all compositors)
             MouseArea {
-                id: wallpaperSelectorBackdrop
                 anchors.fill: parent
                 onClicked: mouse => {
                     const localPos = mapToItem(content, mouse.x, mouse.y)
@@ -96,7 +98,7 @@ Scope {
                 anchors {
                     top: parent.top
                     horizontalCenter: parent.horizontalCenter
-                    topMargin: (Config.options?.bar?.vertical ?? false) ? Appearance.sizes.surfaceGap : Appearance.sizes.barHeight + Appearance.sizes.surfaceGap
+                    topMargin: (Config.options?.bar?.vertical ?? false) ? Appearance.sizes.hyprlandGapsOut : Appearance.sizes.barHeight + Appearance.sizes.hyprlandGapsOut
                 }
                 implicitHeight: Appearance.sizes.wallpaperSelectorHeight
                 implicitWidth: Appearance.sizes.wallpaperSelectorWidth

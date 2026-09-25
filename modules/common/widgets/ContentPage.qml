@@ -6,10 +6,6 @@ import qs.modules.common.widgets
 StyledFlickable {
     id: root
     property real bottomContentPadding: 48
-    // Opt-in for pages that should distribute spare viewport height among
-    // Layout.fillHeight children instead of collapsing to implicit content.
-    property bool fillViewportHeight: false
-    readonly property real _contentTopMargin: 16
     // Metadatos opcionales para páginas de Settings
     property int settingsPageIndex: -1
     property string settingsPageName: ""
@@ -17,11 +13,7 @@ StyledFlickable {
     default property alias contentData: contentColumn.data
 
     clip: true
-    contentHeight: root.fillViewportHeight
-        ? Math.max(root.height,
-            contentColumn.height + root._contentTopMargin
-                + root.bottomContentPadding)
-        : contentColumn.implicitHeight + root.bottomContentPadding
+    contentHeight: contentColumn.implicitHeight + root.bottomContentPadding
     implicitWidth: contentColumn.implicitWidth
 
     // Fill the available width up to a generous cap so normal-sized hosts
@@ -38,16 +30,11 @@ StyledFlickable {
 
     ColumnLayout {
         id: contentColumn
-        height: root.fillViewportHeight
-            ? Math.max(implicitHeight,
-                root.height - root._contentTopMargin
-                    - root.bottomContentPadding)
-            : implicitHeight
         anchors {
             top: parent.top
             left: parent.left
             right: parent.right
-            topMargin: root._contentTopMargin
+            topMargin: 16
             bottomMargin: 16
             leftMargin: root._horizontalMargin
             rightMargin: root._horizontalMargin

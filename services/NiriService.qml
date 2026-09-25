@@ -400,11 +400,7 @@ Singleton {
         for (const ws of data.workspaces) {
             const oldWs = root.workspaces[ws.id]
             newWorkspaces[ws.id] = ws
-            // Current niri workspace snapshots carry active_window_id. Keep
-            // that authoritative value; only bridge from the previous
-            // event-stream state for older snapshots that omit the field.
-            if (ws.active_window_id === undefined
-                    && oldWs && oldWs.active_window_id !== undefined) {
+            if (oldWs && oldWs.active_window_id !== undefined) {
                 newWorkspaces[ws.id].active_window_id = oldWs.active_window_id
             }
         }
@@ -503,10 +499,7 @@ Singleton {
         }
 
         const currentList = root._windowsDirty ? root._pendingWindows : root.windows
-        // Focus flags do not change membership or spatial ordering. Preserve any
-        // order dirtiness already queued by an earlier event, but skip a fresh
-        // O(n) order-map comparison for this high-frequency focus event.
-        scheduleWindowsUpdate(currentList, false)
+        scheduleWindowsUpdate(currentList)
         const focusedWindow = currentList.find(window => window.id === focusedWindowId)
 
         if (focusedWindow) {
@@ -601,13 +594,8 @@ Singleton {
         repeat: false
         onTriggered: {
             if (_windowsDirty) {
+                const nextWindows = sortWindowsByLayout(_pendingWindows)
                 const orderChanged = _windowOrderDirty
-                // Focus/title-only event batches preserve the already-canonical
-                // window order. Avoid rebuilding enrichment objects and sorting
-                // the full list unless a membership/spatial key actually moved.
-                const nextWindows = orderChanged
-                    ? sortWindowsByLayout(_pendingWindows)
-                    : _pendingWindows
                 windows = nextWindows
                 activeWindow = nextWindows.find(window => window.is_focused) ?? null
                 _windowsDirty = false
@@ -618,12 +606,10 @@ Singleton {
         }
     }
 
-    function scheduleWindowsUpdate(newWindowsList, orderMayChange) {
+    function scheduleWindowsUpdate(newWindowsList) {
         const normalizedWindows = root._normalizeWindowFocus(newWindowsList)
-        if (orderMayChange !== false) {
-            _windowOrderDirty = _windowOrderDirty
-                || _windowOrderDiffers(_windowsDirty ? _pendingWindows : windows, normalizedWindows)
-        }
+        _windowOrderDirty = _windowOrderDirty
+            || _windowOrderDiffers(_windowsDirty ? _pendingWindows : windows, normalizedWindows)
         _pendingWindows = normalizedWindows
         _windowsDirty = true
         if (!windowsUpdateTimer.running) {

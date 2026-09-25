@@ -6,6 +6,7 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 import Quickshell.Wayland
+import Quickshell.Hyprland
 
 Scope {
     id: root
@@ -15,14 +16,14 @@ Scope {
     readonly property var dockConfig: Config.options?.dock ?? ({})
     readonly property bool dockEnabled: dockConfig?.enable ?? false
     readonly property real safePadding: Math.max(
-        Appearance.sizes.surfaceGap * 2,
+        Appearance.sizes.hyprlandGapsOut * 2,
         Math.round(Math.min(screenWidth, screenHeight) * 0.02)
     )
     readonly property real topReservedSpace: safePadding
-        + (!(Config.options?.bar?.bottom ?? false) ? Appearance.sizes.baseBarHeight + Appearance.sizes.surfaceGap * 2 : 0)
+        + (!(Config.options?.bar?.bottom ?? false) ? Appearance.sizes.baseBarHeight + Appearance.sizes.hyprlandGapsOut * 2 : 0)
         + ((dockEnabled && dockConfig?.position === "top") ? ((dockConfig?.height ?? 60) + safePadding) : 0)
     readonly property real bottomReservedSpace: safePadding
-        + ((Config.options?.bar?.bottom ?? false) ? Appearance.sizes.baseBarHeight + Appearance.sizes.surfaceGap * 2 : 0)
+        + ((Config.options?.bar?.bottom ?? false) ? Appearance.sizes.baseBarHeight + Appearance.sizes.hyprlandGapsOut * 2 : 0)
         + ((dockEnabled && dockConfig?.position === "bottom") ? ((dockConfig?.height ?? 60) + safePadding) : 0)
     readonly property real leftReservedSpace: safePadding
         + ((dockEnabled && dockConfig?.position === "left") ? ((dockConfig?.width ?? dockConfig?.height ?? 60) + safePadding) : 0)
@@ -78,9 +79,7 @@ Scope {
         implicitHeight: screen?.height ?? 1080
         WlrLayershell.namespace: "quickshell:controlPanel"
         WlrLayershell.layer: WlrLayer.Overlay
-        readonly property bool acceptsInput: GlobalStates.controlPanelOpen
-        WlrLayershell.keyboardFocus: panelRoot.acceptsInput
-            ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
+        WlrLayershell.keyboardFocus: GlobalStates.controlPanelOpen ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
         color: "transparent"
 
         anchors {
@@ -90,9 +89,13 @@ Scope {
             left: true
         }
 
-        Item { id: emptyControlPanelInput; width: 0; height: 0 }
-        mask: Region {
-            item: panelRoot.acceptsInput ? backdropClickArea : emptyControlPanelInput
+        CompositorFocusGrab {
+            id: grab
+            windows: [ panelRoot ]
+            active: CompositorService.isHyprland && panelRoot.visible
+            onCleared: () => {
+                if (!active) panelRoot.hide()
+            }
         }
 
         // Backdrop click to close

@@ -6,6 +6,7 @@ import Qt5Compat.GraphicalEffects as GE
 import Quickshell
 import Quickshell.Io
 import Quickshell.Wayland
+import Quickshell.Hyprland
 import qs.services
 import qs.modules.settings
 import qs.modules.common
@@ -493,11 +494,10 @@ Scope {
             WlrLayershell.layer: GlobalStates.settingsNativeDialogOpen
                 ? WlrLayer.Bottom
                 : PolkitService.active ? WlrLayer.Top : WlrLayer.Overlay
-            readonly property bool acceptsInput: root.settingsOpen
+            WlrLayershell.keyboardFocus: root.settingsOpen
                 && !GlobalStates.regionSelectorOpen
                 && !GlobalStates.settingsNativeDialogOpen
                 && !PolkitService.active
-            WlrLayershell.keyboardFocus: settingsPanel.acceptsInput
                 ? WlrKeyboardFocus.Exclusive
                 : WlrKeyboardFocus.None
             color: "transparent"
@@ -507,17 +507,6 @@ Scope {
                 bottom: true
                 left: true
                 right: true
-            }
-
-            // The native fullscreen surface remains mapped briefly for the exit
-            // animation. Releasing keyboard focus is not enough: Wayland still
-            // treats an unspecified input region as the full surface. Collapse
-            // the pointer region immediately on close/yield so an interrupted
-            // reload can never leave a transparent click-blocking layer behind.
-            Item { id: emptySettingsInput; width: 0; height: 0 }
-            Item { id: fullSettingsInput; anchors.fill: parent }
-            mask: Region {
-                item: settingsPanel.acceptsInput ? fullSettingsInput : emptySettingsInput
             }
 
             // Blurred backdrop — see SettingsFocus for the contract. Both overlay
@@ -564,6 +553,34 @@ Scope {
                 sequences: ["Ctrl+F"]
                 context: Qt.WindowShortcut
                 onActivated: if (typeof overlaySearchField !== "undefined" && overlaySearchField) overlaySearchField.forceActiveFocus()
+            }
+
+            // Focus grab for Hyprland
+            CompositorFocusGrab {
+                id: grab
+                windows: [settingsPanel]
+                active: false
+                onCleared: () => {
+                    if (!active && !GlobalStates.settingsNativeDialogOpen)
+                        GlobalStates.settingsOverlayOpen = false
+                }
+            }
+
+            Connections {
+                target: GlobalStates
+                function onSettingsOverlayOpenChanged() {
+                    grabTimer.restart()
+                }
+                function onSettingsNativeDialogOpenChanged() {
+                    grabTimer.restart()
+                }
+            }
+
+            Timer {
+                id: grabTimer
+                interval: 100
+                onTriggered: grab.active = (GlobalStates.settingsOverlayOpen ?? false)
+                    && !GlobalStates.settingsNativeDialogOpen
             }
 
             // Dim only the workspace, never the physical Screen Edge or the

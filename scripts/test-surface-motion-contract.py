@@ -154,7 +154,7 @@ for name, source, card_marker in (
     assert "SurfaceMotion.easingType" in reveal, f"{name} Settings easing drift"
     assert "easing.bezierCurve" not in reveal, f"{name} Settings curve override returned"
 
-    scrim = qml_block(source, "SettingsWorkspaceScrim {\n                id: scrimBg")
+    scrim = qml_block(source, "Rectangle {\n                id: scrimBg")
     assert "Behavior on opacity" not in scrim, f"{name} Settings scrim fade returned"
 
     glass = qml_block(source, "sourceComponent: GlassBackground {")

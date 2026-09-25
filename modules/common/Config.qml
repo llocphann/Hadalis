@@ -491,11 +491,6 @@ Singleton {
                     property int width: 10
                     property int radius: 25
 
-                    // Smooth-union radius used only by ii Bar StyledPopup contact
-                    // with its owning Bar/Screen Edge. This is deliberately
-                    // independent from the physical Screen Edge corner radius.
-                    property int popupConnectionRadius: 30
-
                     // Connected-surface body shadow contract. Kept separate from
                     // the physical Screen Edge frame so popup/sidebar tuning can
                     // never change the perimeter shadow itself.
@@ -713,6 +708,7 @@ Singleton {
                     property bool enableSpicetify: false
                     property string spicetifyTheme: "Inir"
                     property bool enableSteam: false
+                    property bool enablePearDesktop: true
                     property bool enableOpenCode: false
                     property bool enableNeovim: false
                     property bool enableCava: false
@@ -1931,9 +1927,7 @@ Singleton {
             }
 
             property JsonObject lock: JsonObject {
-                // Lock-request provider. External lockers are ext-session-lock
-                // clients under Niri, not alternate compositor backends.
-                property string provider: "quickshell"
+                property bool useHyprlock: false
                 property bool launchOnStartup: false
                 property JsonObject blur: JsonObject {
                     property bool enable: true
@@ -2302,6 +2296,51 @@ Singleton {
                     property string libraryFolder: ""
                     property string mpdHost: "127.0.0.1"
                     property int mpdPort: 6600
+                }
+                property JsonObject ytmusic: JsonObject {
+                    property bool enable: false
+                    property bool autoConnect: true
+                    property bool hideSyncBanner: false
+                    property string browser: "firefox"
+                    property string cookiesPath: ""
+                    property bool useManualCookies: false
+                    property bool connected: false
+                    property string resolvedBrowserArg: ""
+                    property string audioQuality: "best"
+                    property bool normalizeVolume: true
+                    property bool verbose: false
+                    property bool shuffleMode: false
+                    property int repeatMode: 0
+                    property list<string> recentSearches: []
+                    property list<var> queue: []
+                    property list<var> playlists: []
+                    property list<var> liked: []
+                    property string lastLikedSync: ""
+                    property bool upNextNotifications: true
+                    property bool suppressUpNextInFullscreen: true
+                    property int volume: 100
+                    property JsonObject profile: JsonObject {
+                        property string name: ""
+                        property string avatar: ""
+                        property string url: ""
+                    }
+                    property JsonObject cache: JsonObject {
+                        property list<var> playlists: []
+                        property list<var> albums: []
+                        property list<var> liked: []
+                    }
+                    property JsonObject resume: JsonObject {
+                        property string videoId: ""
+                        property string title: ""
+                        property string artist: ""
+                        property string thumbnail: ""
+                        property string url: ""
+                        property real position: 0
+                        property bool wasPlaying: false
+                        property list<var> activePlaylist: []
+                        property int currentIndex: -1
+                        property string activePlaylistSource: ""
+                    }
                 }
                 property JsonObject widgets: JsonObject {
                     property bool enable: true

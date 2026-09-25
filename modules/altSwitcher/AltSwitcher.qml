@@ -20,6 +20,8 @@ Scope {
     // Animation and visibility control
     readonly property var altSwitcherOptions: Config.options?.altSwitcher ?? {}
     readonly property string altPreset: altSwitcherOptions.preset ?? "default"
+    readonly property bool altNoVisualUi: altSwitcherOptions.noVisualUi ?? false
+    readonly property bool effectiveNoVisualUi: altNoVisualUi && altPreset !== "skew"
     readonly property bool altMonochromeIcons: altSwitcherOptions.monochromeIcons ?? false
     readonly property bool altEnableAnimation: altSwitcherOptions.enableAnimation ?? true
     readonly property int altAnimationDurationMs: altSwitcherOptions.animationDurationMs ?? 200
@@ -97,6 +99,10 @@ Scope {
     readonly property bool effectiveEnableBlurGlass: root.altEnableBlurGlass && !isHighLoad
     readonly property bool effectiveEnableAnimation: root.altEnableAnimation && !isHighLoad
 
+    property bool quickSwitchDone: false
+    property var noUiSnapshot: []
+    property int noUiIndex: 0
+
     property var _pendingWindowsUpdate: null
     Timer {
         id: windowsUpdateDebounce
@@ -106,6 +112,19 @@ Scope {
             if (root._pendingWindowsUpdate) {
                 root._pendingWindowsUpdate()
                 root._pendingWindowsUpdate = null
+            }
+        }
+    }
+
+    Timer {
+        id: quickSwitchResetTimer
+        interval: 800
+        repeat: false
+        onTriggered: {
+            if (!GlobalStates.altSwitcherOpen) {
+                root.quickSwitchDone = false
+                root.noUiSnapshot = []
+                root.noUiIndex = 0
             }
         }
     }
@@ -271,6 +290,37 @@ Scope {
         itemSnapshot = buildItemsFrom(windows, workspaces, mruIds)
     }
 
+    property bool _noUiRebuildPending: false
+    
+    // Synchronous version for immediate use in noVisualUi mode
+    function rebuildNoUiSnapshotSync() {
+        const windows = NiriService.windows || []
+        const workspaces = NiriService.workspaces || {}
+        const mruIds = NiriService.mruWindowIds || []
+        root.noUiSnapshot = buildItemsFrom(windows, workspaces, mruIds)
+        root.noUiIndex = 0
+    }
+    
+    function rebuildNoUiSnapshot() {
+        if (_noUiRebuildPending) return
+        _noUiRebuildPending = true
+        
+        Qt.callLater(function() {
+            _noUiRebuildPending = false
+            rebuildNoUiSnapshotSync()
+        })
+    }
+
+    function focusNoUiIndex() {
+        const len = root.noUiSnapshot?.length ?? 0
+        if (len <= 0)
+            return
+        const idx = Math.max(0, Math.min(len - 1, root.noUiIndex))
+        const id = root.noUiSnapshot[idx]?.id
+        if (id !== undefined)
+            NiriService.focusWindow(id)
+    }
+
     function ensureSnapshot() {
         if (!itemSnapshot || itemSnapshot.length === 0) {
             if (root.skewStyle)
@@ -351,9 +401,7 @@ Scope {
         color: "transparent"
         WlrLayershell.namespace: "quickshell:altSwitcher"
         WlrLayershell.layer: WlrLayer.Overlay
-        readonly property bool acceptsInput: GlobalStates.altSwitcherOpen
-        WlrLayershell.keyboardFocus: window.acceptsInput
-            ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
+        WlrLayershell.keyboardFocus: root.panelVisible ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
         anchors {
             top: true
             bottom: true
@@ -361,14 +409,8 @@ Scope {
             right: true
         }
 
-        Item { id: emptyAltSwitcherInput; width: 0; height: 0 }
-        mask: Region {
-            item: window.acceptsInput ? windowMouseArea : emptyAltSwitcherInput
-        }
-
         MouseArea {
             id: windowMouseArea
-            enabled: window.acceptsInput
             anchors.fill: parent
             onClicked: function (mouse) {
                 // mouse.x/mouse.y están en coordenadas del PanelWindow.
@@ -429,7 +471,7 @@ Scope {
 
         Rectangle {
             id: panel
-            width: root.skewStyle ? Math.min(root.skewPanelWidth, parent.width - Appearance.sizes.surfaceGap * 2)
+            width: root.skewStyle ? Math.min(root.skewPanelWidth, parent.width - Appearance.sizes.hyprlandGapsOut * 2)
                 : (root.listStyle ? 420 : (root.compactStyle ? compactRow.implicitWidth + 40 : root.panelWidth))
             height: root.compactStyle ? 100 : undefined
             color: "transparent"
@@ -467,11 +509,11 @@ Scope {
             anchors.verticalCenter: parent.verticalCenter
 
             implicitHeight: root.skewStyle
-                ? Math.min(cardContainer.height + Appearance.sizes.surfaceGap * 2, parent.height - Appearance.sizes.surfaceGap * 2)
+                ? Math.min(cardContainer.height + Appearance.sizes.hyprlandGapsOut * 2, parent.height - Appearance.sizes.hyprlandGapsOut * 2)
                 : (root.listStyle 
-                ? Math.min(listContent.implicitHeight, parent.height - Appearance.sizes.surfaceGap * 2)
-                : (root.compactStyle ? 100 : Math.min(contentColumn.implicitHeight + Appearance.sizes.surfaceGap * 2,
-                                      parent.height - Appearance.sizes.surfaceGap * 2)))
+                ? Math.min(listContent.implicitHeight, parent.height - Appearance.sizes.hyprlandGapsOut * 2)
+                : (root.compactStyle ? 100 : Math.min(contentColumn.implicitHeight + Appearance.sizes.hyprlandGapsOut * 2,
+                                      parent.height - Appearance.sizes.hyprlandGapsOut * 2)))
 
             Rectangle {
                 id: panelBackground
@@ -482,7 +524,7 @@ Scope {
                     : Appearance.zzzEverywhere ? Appearance.zzz.panelRadius
                     : Appearance.angelEverywhere ? Appearance.angel.roundingLarge
                     : Appearance.inirEverywhere ? Appearance.inir.roundingLarge
-                    : (Appearance.rounding.screenRounding - Appearance.sizes.surfaceGap + 1)
+                    : (Appearance.rounding.screenRounding - Appearance.sizes.hyprlandGapsOut + 1)
                 Behavior on radius { enabled: Appearance.animationsEnabled; NumberAnimation { duration: Appearance.animation.elementResize.duration; easing.type: Appearance.animation.elementResize.type; easing.bezierCurve: Appearance.animation.elementResize.bezierCurve } }
                 color: {
                     if (Appearance.zzzEverywhere || Appearance.regaliaEverywhere)
@@ -1421,7 +1463,7 @@ Scope {
                 visible: !root.compactStyle && !root.listStyle && !root.skewStyle
                 z: 1
                 anchors.fill: parent
-                anchors.margins: Appearance.sizes.surfaceGap
+                anchors.margins: Appearance.sizes.hyprlandGapsOut
                 spacing: Appearance.sizes.spacingSmall
 
                 ListView {
@@ -1458,7 +1500,7 @@ Scope {
                         Rectangle {
                             id: highlightBase
                             anchors.fill: parent
-                            radius: Appearance.rounding.screenRounding - Appearance.sizes.surfaceGap
+                            radius: Appearance.rounding.screenRounding - Appearance.sizes.hyprlandGapsOut
                             visible: selected
                             color: Appearance.colors.colLayer1
                         }
@@ -1845,6 +1887,25 @@ Scope {
         }
     }
     
+    Timer {
+        id: noUiSnapshotUpdateTimer
+        interval: GameMode.active ? 10000 : 3000
+        repeat: true
+        running: root.effectiveNoVisualUi && !GlobalStates.altSwitcherOpen
+        onTriggered: {
+            if (GameMode.active) return
+            
+            if (NiriService.windows?.length > 0) {
+                Qt.callLater(function() {
+                    const windows = NiriService.windows || []
+                    const workspaces = NiriService.workspaces || {}
+                    const mruIds = NiriService.mruWindowIds || []
+                    root.noUiSnapshot = buildItemsFrom(windows, workspaces, mruIds)
+                })
+            }
+        }
+    }
+
     function handleOpen(): void {
         if (root.skewStyle) {
             root.openSkewSwitcher()

@@ -39,13 +39,17 @@ if [[ -n "${ONLY_MISSING_DEPS:-}" ]]; then
     [fuzzel]="fuzzel"
     [awww]="awww"
     [awww-daemon]="awww"
+    [hyprpicker]="hyprpicker"
+    [playerctl]="playerctl"
     [notify-send]="libnotify"
     [flock]="util-linux"
+    [go]="go"
     [wlsunset]="wlsunset"
     [easyeffects]="easyeffects"
     [uv]="uv"
     [cava]="cava"
     [qalc]="libqalculate"
+    [yt-dlp]="yt-dlp"
     [socat]="socat"
     [brightnessctl]="brightnessctl"
     [slurp]="slurp"
@@ -67,6 +71,7 @@ if [[ -n "${ONLY_MISSING_DEPS:-}" ]]; then
     [songrec]="songrec"
     [trans]="translate-shell"
     # Legacy/package-level checks with no direct command binary.
+    [dunstify]="dunst"
     [syntax-highlighting]="syntax-highlighting"
     [kirigami]="kirigami"
     [kdialog]="kdialog"
@@ -335,6 +340,9 @@ OFFICIAL_PACKAGES=(
   qt6ct
   kvantum
   plasma-integration   # Provides QT_QPA_PLATFORMTHEME=kde plugin (reads kdeglobals colors)
+
+  # Browser media integration
+  plasma-browser-integration   # Provides browser MPRIS sessions and artwork
 
   # KDE Frameworks needed by darkly-bin Qt style (lightweight, NOT Plasma)
   frameworkintegration

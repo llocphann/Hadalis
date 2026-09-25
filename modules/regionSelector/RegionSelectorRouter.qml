@@ -2,6 +2,7 @@ pragma ComponentBehavior: Bound
 
 import QtQuick
 import Quickshell
+import Quickshell.Hyprland
 import Quickshell.Io
 import qs
 import qs.modules.common
@@ -47,4 +48,15 @@ Scope {
         }
     }
 
+    Loader {
+        active: CompositorService.isHyprland
+        sourceComponent: Item {
+            GlobalShortcut { name: "regionScreenshot"; description: "Takes a screenshot of the selected region"; onPressed: root.screenshot() }
+            GlobalShortcut { name: "regionSearch"; description: "Searches the selected region"; onPressed: root.search() }
+            GlobalShortcut { name: "regionOcr"; description: "Recognizes text in the selected region"; onPressed: root.ocr() }
+            GlobalShortcut { name: "regionRecord"; description: "Records the selected region"; onPressed: root.record() }
+            GlobalShortcut { name: "regionRecordWithSound"; description: "Records the selected region with the configured audio profile"; onPressed: root.recordWithSound() }
+            GlobalShortcut { name: "regionMenu"; description: "Opens the unified snip menu"; onPressed: root.menu() }
+        }
+    }
 }

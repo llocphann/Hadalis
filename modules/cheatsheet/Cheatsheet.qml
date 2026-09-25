@@ -9,6 +9,7 @@ import QtQuick.Layouts
 import Quickshell.Io
 import Quickshell
 import Quickshell.Wayland
+import Quickshell.Hyprland
 
 Scope {
     id: root
@@ -70,20 +71,13 @@ Scope {
         color: "transparent"
         WlrLayershell.namespace: "quickshell:cheatsheet"
         WlrLayershell.layer: WlrLayer.Overlay
-        readonly property bool acceptsInput: root.cheatsheetOpen
-        WlrLayershell.keyboardFocus: window.acceptsInput
-            ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
+        WlrLayershell.keyboardFocus: root.cheatsheetOpen ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
 
         anchors {
             top: true
             bottom: true
             left: true
             right: true
-        }
-
-        Item { id: emptyCheatsheetInput; width: 0; height: 0 }
-        mask: Region {
-            item: window.acceptsInput ? cheatsheetBackdrop : emptyCheatsheetInput
         }
 
         // Scrim backdrop (matches Overview pattern)
@@ -114,9 +108,7 @@ Scope {
 
         // Click outside to close
         MouseArea {
-            id: cheatsheetBackdrop
             anchors.fill: parent
-            enabled: window.acceptsInput
             acceptedButtons: Qt.LeftButton
             onClicked: mouse => {
                 const localPos = mapToItem(cheatsheetBackground, mouse.x, mouse.y)

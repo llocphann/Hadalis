@@ -27,6 +27,7 @@ import QtQuick.Controls
 import QtQuick.Layouts
 import Quickshell
 import Quickshell.Bluetooth
+import Quickshell.Hyprland
 import Qt5Compat.GraphicalEffects as GE
 
 import qs.modules.sidebarRight.quickToggles
@@ -56,7 +57,7 @@ Item {
     property int screenWidth: 1920
     property int screenHeight: 1080
     property var panelScreen: null
-    property real panelScreenY: Appearance.sizes.surfaceGap
+    property real panelScreenY: Appearance.sizes.hyprlandGapsOut
     property bool externalConnectedSurface: false
     readonly property color connectedSurfaceColor:
         bg.cardStyle ? Appearance.colors.colLayer1 : Appearance.colors.colLayer0
@@ -761,7 +762,7 @@ Item {
         radius: bg.radius
         glassEnabled: true
         screen: root.panelScreen ?? root.QsWindow?.window?.screen ?? null
-        glassScreenX: root.screenWidth - bg.width - Appearance.sizes.surfaceGap
+        glassScreenX: root.screenWidth - bg.width - Appearance.sizes.hyprlandGapsOut
         glassScreenY: root.panelScreenY
         glassScreenWidth: root.screenWidth
         glassScreenHeight: root.screenHeight
@@ -797,7 +798,7 @@ Item {
 
         radius: cardStyle
             ? Appearance.rounding.normal
-            : (Appearance.rounding.screenRounding - Appearance.sizes.surfaceGap + 1)
+            : (Appearance.rounding.screenRounding - Appearance.sizes.hyprlandGapsOut + 1)
         topLeftRadius: root.attachedEdge === "left" ? 0 : radius
         bottomLeftRadius: root.attachedEdge === "left" ? 0 : radius
         topRightRadius: root.attachedEdge === "right" ? 0 : radius
@@ -1409,11 +1410,11 @@ Item {
                                                         accessibleName: Translation.tr("Night Light")
                                                         buttonIcon: (Config.options?.light?.night?.automatic ?? false)
                                                             ? "night_sight_auto" : "bedtime"
-                                                        toggled: NightLight.active ?? false
-                                                        onClicked: NightLight.toggle()
+                                                        toggled: Hyprsunset.active ?? false
+                                                        onClicked: Hyprsunset.toggle()
                                                         altAction: () => { root.showNightLightDialog = true }
 
-                                                        Component.onCompleted: NightLight.fetchState()
+                                                        Component.onCompleted: Hyprsunset.fetchState()
 
                                                         StyledToolTip {
                                                             text: Translation.tr("Night Light | Right-click for settings")
@@ -1659,7 +1660,10 @@ Item {
         if (!root.reloadButtonEnabled) return
         root.reloadButtonEnabled = false
         reloadCooldown.restart()
-        Quickshell.execDetached(["/usr/bin/niri", "msg", "action", "load-config-file"])
+        if (CompositorService.isHyprland)
+            Hyprland.dispatch("reload")
+        else if (CompositorService.isNiri)
+            Quickshell.execDetached(["/usr/bin/niri", "msg", "action", "load-config-file"])
         Quickshell.execDetached(["/usr/bin/bash", Quickshell.shellPath("scripts/restart-shell.sh")])
     }
 
@@ -1876,7 +1880,7 @@ Item {
                 label: Translation.tr("Color Picker")
                 onClicked: {
                     GlobalStates.sidebarRightOpen = false
-                    Qt.callLater(() => Quickshell.execDetached([Quickshell.shellPath("scripts/inir"), "colorpicker"]))
+                    Qt.callLater(() => ShellExec.execDetachedArgs(["/usr/bin/hyprpicker", "-a"], "Pick color"))
                 }
             }
 

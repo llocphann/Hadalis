@@ -3,7 +3,7 @@
 # Do not edit manually.
 # Regenerate: python3 scripts/lib/generate-ipc-registry.py
 # IPC.md metadata: docs/IPC.md
-# Targets: 60
+# Targets: 61
 
 declare -gA IPC_TARGET_DESC=(
   [ai]="Shared multi-provider AI service. It supports Gemini, OpenAI-compatible chat and Responses APIs, Mistral and Anthropic; live provider catalogs are normalized into capability-aware model records. Catalog visibility is separate from execution readiness, so public model lists remain browseable without pretending an API key exists. OpenCode Zen and Go resolve their current model lists and per-model API routes dynamically. Normal shell tools use typed actions and approval cards, while arbitrary commands are isolated in Advanced mode."
@@ -32,7 +32,7 @@ declare -gA IPC_TARGET_DESC=(
   [mediaControls]="Floating media controls panel."
   [memory]="Memory pressure monitoring for JSGCHeap accumulation (Qt V4 memfd leak). Notifies user when memory is high, lets them decide when to restart."
   [minimize]="Window minimization (Niri workaround - moves windows to hidden workspace)."
-  [mpris]="Media player control for the active MPRIS player."
+  [mpris]="Media player control. Automatically detects and uses YtMusic controls when active, otherwise uses the active MPRIS player."
   [notificationCenter]="Family-aware notification history surface. On Material ii this opens the standalone bottom-right Notification Center; on Waffle it routes to the native Waffle notification center. The CLI alias is \`notification-center\`."
   [notifications]="Notification management."
   [osd]="Waffle on-screen display indicator (volume, brightness)."
@@ -65,6 +65,8 @@ declare -gA IPC_TARGET_DESC=(
   [widgetpower]="Desktop-widget power management (pauses widget rendering on game mode, fullscreen, present windows, or edit mode). Service: \`services/WidgetPowerManager.qml\`."
   [wnotificationCenter]="Waffle notification center."
   [wwidgets]="Waffle widgets panel."
+  [ytmusic]="Direct YtMusic player control. Use these if you want to control YtMusic specifically, regardless of what other players are active."
+  [zoom]="Screen zoom. Accessibility feature, or for reading tiny UI without pretending your monitor is the problem."
 )
 
 declare -gA IPC_TARGET_FAMILY=(
@@ -127,6 +129,8 @@ declare -gA IPC_TARGET_FAMILY=(
   [widgetpower]="waffle"
   [wnotificationCenter]="waffle"
   [wwidgets]="waffle"
+  [ytmusic]="shared"
+  [zoom]="shared"
 )
 
 declare -gA IPC_TARGET_FUNCTIONS=(
@@ -164,7 +168,7 @@ declare -gA IPC_TARGET_FUNCTIONS=(
   [osdVolume]="trigger hide toggle"
   [osk]="toggle close open"
   [overlay]="toggle"
-  [overview]="toggle close open toggleReleaseInterrupt superPress superRelease clipboardToggle actionOpen"
+  [overview]="toggle close open toggleReleaseInterrupt clipboardToggle actionOpen"
   [packageSearch]="search results"
   [panelFamily]="cycle set"
   [recordingOsd]="toggle show hide"
@@ -189,6 +193,8 @@ declare -gA IPC_TARGET_FUNCTIONS=(
   [widgetpower]="status"
   [wnotificationCenter]="toggle close open"
   [wwidgets]="toggle close open"
+  [ytmusic]="playPause next previous stop"
+  [zoom]="zoomIn zoomOut"
 )
 
 declare -gA IPC_FUNCTION_DESC=(
@@ -300,9 +306,9 @@ declare -gA IPC_FUNCTION_DESC=(
   ["minimize:restore"]="Restore a minimized window by ID"
   ["minimize:restoreOriginal"]="Restore a minimized window to the workspace it came from"
   ["mpris:pauseAll"]="Pause all players"
-  ["mpris:playPause"]="Toggle play/pause for the active MPRIS player"
-  ["mpris:previous"]="Previous track for the active MPRIS player"
-  ["mpris:next"]="Next track for the active MPRIS player"
+  ["mpris:playPause"]="Toggle play/pause (uses YtMusic if active)"
+  ["mpris:previous"]="Previous track (uses YtMusic if active)"
+  ["mpris:next"]="Next track (uses YtMusic if active)"
   ["notificationCenter:toggle"]="Open/close notification history"
   ["notificationCenter:close"]="Close notification history"
   ["notificationCenter:open"]="Open notification history"
@@ -323,8 +329,6 @@ declare -gA IPC_FUNCTION_DESC=(
   ["overview:close"]="Close overview"
   ["overview:open"]="Open overview"
   ["overview:toggleReleaseInterrupt"]="Clear the super-key release interrupt flag"
-  ["overview:superPress"]="Internal Super-key down signal used by Niri input integration"
-  ["overview:superRelease"]="Internal Super-key up signal used by Niri input integration"
   ["overview:clipboardToggle"]="Open clipboard search, or close if already open"
   ["overview:actionOpen"]="Open overview in action search mode"
   ["packageSearch:search"]="Start a package search"
@@ -438,6 +442,12 @@ declare -gA IPC_FUNCTION_DESC=(
   ["wwidgets:toggle"]="Open/close widgets"
   ["wwidgets:close"]="Close widgets"
   ["wwidgets:open"]="Open widgets"
+  ["ytmusic:playPause"]="Toggle YtMusic play/pause"
+  ["ytmusic:next"]="Play next track in YtMusic"
+  ["ytmusic:previous"]="Play previous track in YtMusic"
+  ["ytmusic:stop"]="Stop YtMusic playback"
+  ["zoom:zoomIn"]="Increase compositor zoom"
+  ["zoom:zoomOut"]="Decrease compositor zoom"
 )
 
 declare -gA IPC_FUNCTION_ARGS=(
@@ -517,10 +527,11 @@ bind "Ctrl+Shift+S" { spawn "inir" "region" "menu"; }'
   [voiceSearch]='bind "Super+Shift+V" { spawn "inir" "voiceSearch" "toggle"; }'
   [wallpaperSelector]='bind "Ctrl+Alt+T" { spawn "inir" "wallpaperSelector" "toggle"; }
 bind "Ctrl+Alt+A" { spawn "inir" "wallpaperSelector" "openLauncher" "animated"; }'
+  [ytmusic]='bind "Mod+M+Space" { spawn "inir" "ytmusic" "playPause"; }'
 )
 
-IPC_ALL_TARGETS=(ai altSwitcher appCatalog audio autostart background bar brightness cheatsheet clipboard cliphistService closeConfirm codeWorkflowCapture codeWorkflowRuntime controlPanel coverflowSelector customWidgets dashboard dev gamemode globalActions keyboard lock mediaControls memory minimize mpris notificationCenter notifications osd osdInput osdVolume osk overlay overview packageSearch panelFamily recordingOsd region runtimeDiagnostics search session settings settingsNav shellLayout shellUpdate sidebarLeft sidebarRight taskview tiling voiceSearch wactionCenter waffleAltSwitcher wallpaperLauncher wallpaperSelector wbar widgetpower wnotificationCenter wwidgets)
-IPC_SHARED_TARGETS=(ai altSwitcher appCatalog audio background bar brightness cheatsheet clipboard cliphistService closeConfirm codeWorkflowCapture codeWorkflowRuntime controlPanel coverflowSelector dashboard dev gamemode globalActions keyboard lock mediaControls memory minimize mpris notificationCenter notifications osdInput osdVolume osk overlay overview packageSearch panelFamily region runtimeDiagnostics session settings settingsNav shellLayout shellUpdate sidebarLeft sidebarRight taskview tiling voiceSearch wallpaperLauncher wallpaperSelector)
+IPC_ALL_TARGETS=(ai altSwitcher appCatalog audio autostart background bar brightness cheatsheet clipboard cliphistService closeConfirm codeWorkflowCapture codeWorkflowRuntime controlPanel coverflowSelector customWidgets dashboard dev gamemode globalActions keyboard lock mediaControls memory minimize mpris notificationCenter notifications osd osdInput osdVolume osk overlay overview packageSearch panelFamily recordingOsd region runtimeDiagnostics search session settings settingsNav shellLayout shellUpdate sidebarLeft sidebarRight taskview tiling voiceSearch wactionCenter waffleAltSwitcher wallpaperLauncher wallpaperSelector wbar widgetpower wnotificationCenter wwidgets ytmusic zoom)
+IPC_SHARED_TARGETS=(ai altSwitcher appCatalog audio background bar brightness cheatsheet clipboard cliphistService closeConfirm codeWorkflowCapture codeWorkflowRuntime controlPanel coverflowSelector dashboard dev gamemode globalActions keyboard lock mediaControls memory minimize mpris notificationCenter notifications osdInput osdVolume osk overlay overview packageSearch panelFamily region runtimeDiagnostics session settings settingsNav shellLayout shellUpdate sidebarLeft sidebarRight taskview tiling voiceSearch wallpaperLauncher wallpaperSelector ytmusic zoom)
 IPC_II_TARGETS=()
 IPC_WAFFLE_TARGETS=(autostart customWidgets osd recordingOsd search wactionCenter waffleAltSwitcher wbar widgetpower wnotificationCenter wwidgets)
 

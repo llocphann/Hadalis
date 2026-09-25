@@ -15,9 +15,6 @@ Item {
     readonly property var notifications: notificationGroup?.notifications ?? []
     readonly property int notificationCount: notifications.length
     readonly property bool hasCritical: notificationGroup?.hasCritical ?? false
-    // Hosts may keep notification delegates resident after their native surface
-    // stops painting. Default true preserves standalone callers.
-    property bool presentationActive: true
     property bool expanded: false
 
     implicitWidth: contentLayout.implicitWidth
@@ -130,7 +127,6 @@ Item {
                 required property var modelData
                 width: ListView.view.width
                 notification: modelData
-                presentationActive: root.presentationActive
                 groupExpandControlMessage: {
                     if (root.notificationCount <= 1) return "";
                     const displayedCount = Math.min(root.notificationCount, 5);
@@ -178,7 +174,7 @@ Item {
                 color: Looks.colors.danger
 
                 SequentialAnimation on opacity {
-                    running: root.presentationActive && root.hasCritical
+                    running: root.hasCritical
                     loops: Animation.Infinite
                     NumberAnimation { to: 0.4; duration: 600 }
                     NumberAnimation { to: 1; duration: 600 }

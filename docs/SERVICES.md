@@ -8,16 +8,20 @@
 
 | Service | What it does |
 |---------|-------------|
-| **NiriService** | Niri IPC/event-stream authority for workspaces, windows, outputs, keyboard layouts and compositor actions. IPC target: `keyboard` (layout switching). |
-| **CompositorService** | Niri runtime façade for sorted toplevels, workspace filtering and monitor power helpers. |
+| **NiriService** | Niri IPC via Unix socket. Tracks workspaces, windows, outputs, keyboard layouts. Event-driven with reactive properties. IPC target: `keyboard` (layout switching). |
+| **CompositorService** | Detects compositor (Niri/Hyprland/GNOME), provides sorted toplevel windows and compositor-agnostic APIs. |
+| **HyprlandData** | Hyprland window, workspace, monitor, and layer data via `hyprctl`. |
+| **HyprlandKeybinds** | Parses Hyprland config for keybind cheatsheet. |
+| **HyprlandXkb** | Keyboard layout tracking for Hyprland. |
 
 ## Audio and Media
 
 | Service | What it does |
 |---------|-------------|
 | **Audio** | PipeWire integration. Default sink/source, volume, mute, per-app mixer. EasyEffects virtual sink detection. IPC target: `audio`. |
-| **MprisController** | MPRIS player management. Filters real players, tracks the active player with a grace period for track transitions, and binds MPD Music to the matching default or Hadalis-named `mpd-mpris` instance. IPC target: `mpris`. |
+| **MprisController** | MPRIS player management. Filters real players, retains legacy YT Music deduplication compatibility, tracks the active player with a grace period for track transitions, and binds MPD Music to the matching default or Hadalis-named `mpd-mpris` instance. IPC target: `mpris`. |
 | **LocalMusic** | Left Sidebar MPD frontend. Reads MPD songs/saved playlists/queue, performs MPD-only database/queue operations, and requests an endpoint-matched `mpd-mpris` player from MprisController for normal transport. |
+| **YtMusic** | Legacy YouTube Music compatibility backend retained in source while the Left Sidebar has moved to `LocalMusic`; it is no longer the user-facing sidebar music route. IPC target: `ytmusic`. |
 | **SongRec** | Music recognition via SongRec (Shazam-like audio fingerprinting). |
 
 ## System
@@ -85,7 +89,7 @@
 | **Autostart** | Autostart manager. Reads/writes the managed section of `~/.config/niri/config.d/50-startup.kdl`. Niri's own `spawn-at-startup` directives are the source of truth, not a Config JSON list. IPC target: `autostart`. |
 | **TrayService** | System tray with workarounds for problematic apps (Vesktop, Steam, etc.). |
 | **PolkitService** | PolicyKit authentication agent for privileged operations. |
-| **NightLight** | Scheduled/manual Niri night light backed by `wlsunset`, with owned-process lifecycle and detached-process state detection. |
+| **Hyprsunset** | Night light via wlsunset (Niri) or hyprsunset (Hyprland). Scheduled or manual. |
 | **EasyEffects** | EasyEffects audio effects toggle. Supports native and flatpak. |
 | **RecorderStatus** | Screen recording status detection (wf-recorder). |
 | **SessionWarnings** | Detects running package managers before logout. |
@@ -126,7 +130,7 @@
 | **ShellUpdates** | iNiR update checker. Git-based, tracks commits behind remote. IPC target: `shellUpdate`. |
 | **Ydotool** | Virtual keyboard input for on-screen keyboard. |
 | **LatexRenderer** | LaTeX math rendering via MicroTeX. |
-| **Translation** | i18n string lookup with the current English catalog and fallback behavior. |
+| **Translation** | i18n string lookup. Auto language detection, 15 languages. |
 | **DevNavigation** | Deterministic development navigation for loading lazy surfaces and internal settings views. IPC target: `dev`. |
 | **CustomWidgets** | User-installed custom widget management (scan/create/list/remove from the widgets dir). IPC target: `customWidgets`. |
 | **MemoryPressureService** | Monitors JSGCHeap accumulation (Qt V4 memfd leak); notifies and offers a shell restart. IPC target: `memory`. |

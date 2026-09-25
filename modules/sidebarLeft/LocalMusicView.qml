@@ -25,35 +25,6 @@ Item {
     property var contextMenuModel: []
     property bool playlistDialogVisible: false
     property var pendingPlaylistTracks: []
-    property bool _fallbackPollingHeld: false
-    readonly property bool _fallbackPollingWanted:
-        root.visible && GlobalStates.sidebarLeftOpen
-
-    function syncFallbackPollingDemand(): void {
-        if (root._fallbackPollingWanted === root._fallbackPollingHeld)
-            return
-        if (root._fallbackPollingWanted)
-            LocalMusic.acquireFallbackPolling()
-        else
-            LocalMusic.releaseFallbackPolling()
-        root._fallbackPollingHeld = root._fallbackPollingWanted
-    }
-
-    Component.onCompleted: root.syncFallbackPollingDemand()
-    Component.onDestruction: {
-        if (root._fallbackPollingHeld) {
-            root._fallbackPollingHeld = false
-            LocalMusic.releaseFallbackPolling()
-        }
-    }
-    onVisibleChanged: root.syncFallbackPollingDemand()
-
-    Connections {
-        target: GlobalStates
-        function onSidebarLeftOpenChanged(): void {
-            root.syncFallbackPollingDemand()
-        }
-    }
 
     QtObject {
         id: localMusicPlayerAdapter
@@ -394,7 +365,7 @@ Item {
 
     CavaProcess {
         id: localMusicCava
-        active: root.visible && GlobalStates.sidebarLeftOpen && LocalMusic.playing
+        active: root.visible && LocalMusic.playing
         sampleCount: 64
     }
 
@@ -670,6 +641,12 @@ Item {
                 onClicked: folderDialog.open()
             }
             ToolIconButton {
+                symbol: "database"
+                tip: Translation.tr("Update")
+                enabled: LocalMusic.available && !LocalMusic.scanning
+                onClicked: LocalMusic.updateDatabase()
+            }
+            ToolIconButton {
                 symbol: "refresh"
                 tip: Translation.tr("Refresh")
                 enabled: !LocalMusic.scanning
@@ -689,7 +666,6 @@ Item {
                 anchors.fill: parent
                 player: LocalMusic.mprisPlayer
                 playbackAdapter: localMusicPlayerAdapter
-                positionUpdatesActive: root.visible && GlobalStates.sidebarLeftOpen
                 visualizerPoints: localMusicCava.points
                 visualizerMaxValue: Math.max(1, localMusicCava.normalizationCeiling)
                 radius: Appearance.rounding.normal
@@ -990,6 +966,19 @@ Item {
                             Layout.alignment: Qt.AlignHCenter
                             text: Translation.tr("No results")
                             color: Appearance.colors.colSubtext
+                        }
+                        RippleButton {
+                            Layout.alignment: Qt.AlignHCenter
+                            implicitWidth: 120
+                            implicitHeight: 38
+                            visible: root.query.length === 0
+                            enabled: LocalMusic.available
+                            onClicked: LocalMusic.updateDatabase()
+                            contentItem: StyledText {
+                                anchors.centerIn: parent
+                                text: Translation.tr("Update")
+                                color: Appearance.colors.colOnLayer1
+                            }
                         }
                     }
                 }

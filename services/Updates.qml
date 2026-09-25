@@ -2,7 +2,6 @@ pragma Singleton
 
 import qs.modules.common
 import qs.modules.common.functions
-import QtCore
 import QtQuick
 import Quickshell
 import Quickshell.Io
@@ -41,17 +40,6 @@ Singleton {
         checkUpdatesProc.running = true;
     }
 
-    function _refreshAvailability(): void {
-        // Match QProcess PATH lookup in-process instead of spawning a shell
-        // solely for an external shell command lookup.
-        root.available = String(StandardPaths.findExecutable("checkupdates", []) ?? "").length > 0
-        if (!root.available) {
-            root.count = 0
-            return
-        }
-        root.refresh()
-    }
-
     Timer {
         interval: root.checkIntervalMinutes * 60 * 1000
         repeat: true
@@ -60,8 +48,8 @@ Singleton {
             if (root.available) {
                 print("[Updates] Periodic update check due")
                 root.refresh();
-            } else {
-                root._refreshAvailability()
+            } else if (!checkAvailabilityProc.running) {
+                checkAvailabilityProc.running = true;
             }
         }
     }
@@ -70,7 +58,7 @@ Singleton {
         id: availabilityDefer
         interval: 1500
         repeat: false
-        onTriggered: root._refreshAvailability()
+        onTriggered: checkAvailabilityProc.running = true
     }
 
     Connections {
@@ -82,6 +70,60 @@ Singleton {
 
     Component.onCompleted: {
         if (Config.ready) availabilityDefer.start()
+    }
+
+    Process {
+        id: checkAvailabilityProc
+        running: false
+        property bool startObserved: false
+        property bool timedOut: false
+        command: ["/usr/bin/sh", "-c", "command -v checkupdates >/dev/null 2>&1"]
+
+        onRunningChanged: {
+            if (checkAvailabilityProc.running) {
+                checkAvailabilityProc.startObserved = false
+                return
+            }
+            if (checkAvailabilityProc.startObserved)
+                return
+
+            availabilityTimeout.stop()
+            root.available = false
+            root.count = 0
+            console.warn("[Updates] Failed to start update availability probe")
+        }
+
+        onStarted: {
+            checkAvailabilityProc.startObserved = true
+            checkAvailabilityProc.timedOut = false
+            availabilityTimeout.restart()
+        }
+
+        onExited: (exitCode, exitStatus) => {
+            availabilityTimeout.stop()
+            if (checkAvailabilityProc.timedOut) {
+                root.available = false
+                root.count = 0
+                console.warn("[Updates] Timed out probing checkupdates availability")
+                return
+            }
+            root.available = (exitCode === 0);
+            if (!root.available)
+                root.count = 0;
+            root.refresh();
+        }
+    }
+
+    Timer {
+        id: availabilityTimeout
+        interval: 5000
+        repeat: false
+        onTriggered: {
+            if (!checkAvailabilityProc.running)
+                return
+            checkAvailabilityProc.timedOut = true
+            checkAvailabilityProc.running = false
+        }
     }
 
     Process {

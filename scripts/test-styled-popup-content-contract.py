@@ -215,11 +215,9 @@ def source_contract_failures() -> list[str]:
             "Item-compatible StyledPopup content root"
         )
 
-    # Tray overflow/menu focus is Niri-native now. The tray keeps only active
-    # menu identity for hover-close suppression and must not retain a
-    # presentation-window handle solely for the retired focus bridge.
-    require(tray, "function registerActiveMenu(window)", str(TRAY_PATH), failures)
-    forbid(tray, "overflowPopup.presentationWindow", str(TRAY_PATH), failures)
+    # Presentation peers that need the lazily-created surface (tray focus grab)
+    # must use the explicit handle rather than QsWindow on the StyledPopup loader.
+    require(tray, "overflowPopup.presentationWindow", str(TRAY_PATH), failures)
     forbid(tray, "overflowPopup.QsWindow", str(TRAY_PATH), failures)
 
     # The bar media popup can reverse/reopen while StyledPopup's presentation
@@ -228,8 +226,12 @@ def source_contract_failures() -> list[str]:
     require(media, "function restoreInitialFocus(): void", str(MEDIA_PATH), failures)
     require(media, "onRequestedVisibleChanged:", str(MEDIA_PATH), failures)
     require(media, "onPresentationWindowChanged:", str(MEDIA_PATH), failures)
-    require(media, "&& barMediaPopup.requestedVisible", str(MEDIA_PATH), failures)
-    require(media, "&& barMediaPopup.presentationWindow)", str(MEDIA_PATH), failures)
+    require(
+        media,
+        "barMediaPopup.requestedVisible && barMediaPopup.presentationWindow",
+        str(MEDIA_PATH),
+        failures,
+    )
     require(media, "mediaPopupContent.focusInitialControl()", str(MEDIA_PATH), failures)
     forbid(
         media,

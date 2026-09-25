@@ -57,8 +57,11 @@ def main() -> None:
         ": (root.keyboardFocus || root.keyboardFocusOnDemand)",
         "? WlrKeyboardFocus.OnDemand",
         ": WlrKeyboardFocus.None",
-        "WlrLayershell.layer: WlrLayer.Overlay",
-        "id: clickOutsideBackdrop",
+        "CompositorFocusGrab {",
+        "active: CompositorService.isHyprland",
+        "&& root.keyboardFocus && root.requestedVisible",
+        "windows: [popupWindow]",
+        "onCleared: root.requestClose()",
     ):
         check(token in popup,
               f"Focused connected popup must preserve the layer-shell/focus-grab lifecycle: {token}")
@@ -66,8 +69,7 @@ def main() -> None:
     for forbidden in (
         "property bool _niriFocusSeen",
         "popupWindow._niriFocusSeen",
-        "CompositorService.isHyprland",
-        "CompositorFocusGrab {",
+        "CompositorService.isNiri",
     ):
         check(forbidden not in popup,
               f"StyledPopup must not revive the retired PanelWindow active-focus workaround: {forbidden}")

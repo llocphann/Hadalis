@@ -217,6 +217,7 @@ Notifications.discardAllNotifications()
 ### Other Useful Services
 ```qml
 CompositorService.isNiri        // bool — guard compositor-specific code
+CompositorService.isHyprland    // bool
 Brightness.screenBrightness     // 0.0-1.0
 GameMode.active                 // bool
 SystemInfo.hostname             // "mypc"

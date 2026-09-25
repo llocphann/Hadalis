@@ -13,7 +13,6 @@ import qs.modules.mediaControls.components
 Item {
     id: root
     property MprisPlayer player: null
-    property alias positionUpdatesActive: playerBase.positionUpdatesActive
     property list<real> visualizerPoints: []
     property real radius: Appearance.zzzEverywhere ? Appearance.zzz.panelRadius : Appearance.angelEverywhere ? Appearance.angel.roundingNormal : Appearance.rounding.verylarge
     property real screenX: 0
@@ -279,7 +278,6 @@ Item {
                     anchors.topMargin: 10
                     anchors.bottomMargin: 14
                     showPlaceholder: false
-                    serviceActive: root.positionUpdatesActive
                     opacity: lyricSheet.hasLyrics ? 1 : 0
                     textAlignment: Text.AlignHCenter
                     baseSize: Appearance.font.pixelSize.normal
@@ -317,7 +315,7 @@ Item {
                     WaveVisualizer {
                         anchors.fill: parent
                         visible: root.vizType === "wave" && root.vizPosition !== "none"
-                        live: root.positionUpdatesActive && playerBase.effectiveIsPlaying
+                        live: playerBase.effectiveIsPlaying
                         points: root.visualizerPoints
                         maxVisualizerValue: 1000
                         smoothing: 2
@@ -327,7 +325,7 @@ Item {
                     CavaVisualizer {
                         anchors.fill: parent
                         visible: root.vizType === "bars" && root.vizPosition !== "none"
-                        live: root.positionUpdatesActive && playerBase.effectiveIsPlaying
+                        live: playerBase.effectiveIsPlaying
                         points: root.visualizerPoints
                         maxVisualizerValue: 1000
                         smoothing: 2

@@ -106,10 +106,7 @@ Scope {
 
     Process {
         id: fingerprintCheckProc
-        // Lock is deferred-loaded during normal shell startup, but fingerprint
-        // capability is only consumed while a lock session is active. Defer the
-        // fprintd probe until then instead of spawning bash/fprintd on every boot.
-        running: GlobalStates.screenLocked
+        running: true
         command: ["/usr/bin/bash", "-c", "command -v fprintd-list >/dev/null && fprintd-list $(whoami) 2>/dev/null || exit 1"]
         stdout: StdioCollector {
             id: fingerprintOutputCollector

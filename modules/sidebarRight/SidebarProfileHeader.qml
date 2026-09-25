@@ -324,7 +324,6 @@ Item {
                     sourceSize.height: 96
                     opacity: status === Image.Ready ? 1 : 0
                     visible: opacity > 0
-                    onStatusChanged: avatarResolver.handleImageStatus(status)
                     Behavior on opacity {
                         enabled: Appearance.animationsEnabled
                         NumberAnimation {
@@ -341,8 +340,9 @@ Item {
                     readonly property string resolvedSource: Directories.avatarSourceAt(avatarIndex)
                     readonly property string primaryWatch: Directories.userAvatarSourcePrimary
                     onPrimaryWatchChanged: avatarIndex = 0
-                    function handleImageStatus(status): void {
-                        if (status !== Image.Error) return
+                    readonly property int imgStatus: avatarImg.status
+                    onImgStatusChanged: {
+                        if (imgStatus !== Image.Error) return
                         const nextIdx = avatarIndex + 1
                         if (nextIdx < Directories.userAvatarPaths.length)
                             avatarIndex = nextIdx

@@ -35,9 +35,6 @@ Item {
     property var brightnessMonitor: Brightness.getMonitorForScreen(screen)
     property alias backgroundItem: barBackground
     property bool nativeBlurAllowed: true
-    // Hosts that move a still-resident Bar off-screen can suspend expensive
-    // presentation-only work after the exit animation completes.
-    property bool presentationActive: true
 
     property Item barContextMenuSource: null
     property rect barContextMenuRect: Qt.rect(0, 0, 1, 1)
@@ -257,7 +254,6 @@ Item {
         enabled: false
         vertical: false
         compactRequested: false
-        presentationActive: false
     }
 
     readonly property bool cardStyleEverywhere: false
@@ -311,7 +307,7 @@ Item {
 
     readonly property string leftAction: Config.options?.bar?.leftScrollAction ?? "brightness"
     readonly property string rightAction: Config.options?.bar?.rightScrollAction ?? "volume"
-    readonly property bool barSpectrumAudioPlaying: MprisController.isPlaying
+    readonly property bool barSpectrumAudioPlaying: MprisController.isPlaying || YtMusic.isPlaying
     readonly property bool barSpectrumOutputEnabled:
         (Config.options?.bar?.visualizer?.multiMonitorMode ?? "primary") === "all"
         || Quickshell.screens.length <= 1
@@ -321,7 +317,6 @@ Item {
         && root.barSpectrumOutputEnabled
         && !Appearance.gameModeMinimal
         && root.visible
-        && root.presentationActive
     readonly property bool barSpectrumProcessWanted: root.barSpectrumConfigured
         && root.barSpectrumAudioPlaying
     readonly property bool barSpectrumVisible: root.barSpectrumConfigured
@@ -372,8 +367,12 @@ Item {
         } else if (action === "workspace") {
             let up = isUp;
             if (Config.options?.bar?.workspaces?.invertScroll ?? false) up = !up;
-            if (up) NiriService.focusWorkspaceUp();
-            else NiriService.focusWorkspaceDown();
+            if (CompositorService.isNiri) {
+                if (up) NiriService.focusWorkspaceUp();
+                else NiriService.focusWorkspaceDown();
+            } else if (CompositorService.isHyprland) {
+                Hyprland.dispatch(up ? "workspace r-1" : "workspace r+1");
+            }
         }
     }
 
@@ -528,7 +527,6 @@ Item {
     Component {
         id: mediaModuleComponent
         Media {
-            presentationActive: root.presentationActive
             visible: root._moduleVisible("media") && root.useShortenedForm < 2
         }
     }
@@ -536,7 +534,6 @@ Item {
         id: workspacesModuleComponent
         Workspaces {
             visible: root._moduleVisible("workspaces")
-            presentationActive: root.presentationActive
             Layout.fillHeight: true
             MouseArea {
                 anchors.fill: parent
@@ -561,7 +558,6 @@ Item {
             visible: root._moduleVisible("utilButtons")
                 && (Config.options?.bar?.verbose ?? true)
             compactRequested: root.horizontalUtilitiesCompact
-            presentationActive: root.presentationActive
             Layout.alignment: Qt.AlignVCenter
         }
     }
@@ -615,7 +611,6 @@ Item {
             ActiveWindow {
                 id: _awItem
                 anchors.fill: parent
-                presentationActive: root.presentationActive
                 visible: root._moduleVisible("activeWindow")
                     && root.useShortenedForm === 0 && !root.taskbarEnabled
             }
@@ -627,7 +622,6 @@ Item {
                 sourceComponent: BarTaskbar {
                     parentWindow: root.QsWindow.window
                     slotSize: _tbLoader.height
-                    presentationActive: root.presentationActive
                 }
             }
         }
@@ -1252,11 +1246,11 @@ Item {
 
     Component {
         id: timerComponent
-        TimerIndicator { presentationActive: root.presentationActive; Layout.alignment: Qt.AlignVCenter }
+        TimerIndicator { Layout.alignment: Qt.AlignVCenter }
     }
     Component {
         id: shellUpdateComponent
-        ShellUpdateIndicator { presentationActive: root.presentationActive; Layout.alignment: Qt.AlignVCenter }
+        ShellUpdateIndicator { Layout.alignment: Qt.AlignVCenter }
     }
     Component {
         id: spacerComponent

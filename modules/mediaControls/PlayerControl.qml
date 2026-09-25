@@ -20,13 +20,6 @@ Item {
     // Bar media already hosts the live analyzer inside EqualizerPanel. Owners
     // without that DSP surface keep the historical decorative wave by default.
     property bool showVisualizer: true
-    // Retained hosts can pause the 1 Hz MPRIS position refresh while hidden.
-    // Default true preserves the historical behavior for popup/sidebar callers.
-    property bool positionUpdatesActive: true
-    onPositionUpdatesActiveChanged: {
-        if (root.positionUpdatesActive && !root.usingPlaybackAdapter)
-            root.player?.positionChanged()
-    }
     // Optional backend adapter. LocalMusic uses this to keep the same media
     // surface usable even while mpd-mpris is temporarily absent.
     property var playbackAdapter: null
@@ -56,9 +49,20 @@ Item {
     // before the track advances so the cross-slide reads as directed.
     property int slideDirection: 1
     
+    // Use centralized YtMusic detection from MprisController
+    readonly property bool isYtMusicPlayer: {
+        if (!player) return false
+        // Direct match with YtMusic.mpvPlayer
+        if (YtMusic.mpvPlayer && player === YtMusic.mpvPlayer) return true
+        // Use MprisController's detection for consistency
+        return MprisController._isYtMusicMpv(player)
+    }
+    
     function doTogglePlaying(): void {
         if (root.usingPlaybackAdapter) {
             root.playbackAdapter.togglePlaying()
+        } else if (isYtMusicPlayer) {
+            YtMusic.togglePlaying()
         } else {
             player?.togglePlaying()
         }
@@ -83,6 +87,8 @@ Item {
     function doSeek(seconds: real): void {
         if (root.usingPlaybackAdapter)
             root.playbackAdapter.seek(seconds)
+        else if (root.isYtMusicPlayer)
+            YtMusic.seek(seconds)
         else if (root.player)
             root.player.position = seconds
     }
@@ -118,13 +124,13 @@ Item {
 
     readonly property string effectiveArtUrl: root.usingPlaybackAdapter
         ? String(root.playbackAdapter.artUrl ?? "")
-        : MprisController.effectiveArtUrl(player)
+        : (isYtMusicPlayer ? YtMusic.currentThumbnail : MprisController.effectiveArtUrl(player))
     readonly property string effectiveTitle: root.usingPlaybackAdapter
         ? String(root.playbackAdapter.title ?? "")
-        : (player?.trackTitle ?? "")
+        : (isYtMusicPlayer ? YtMusic.currentTitle : (player?.trackTitle ?? ""))
     readonly property string effectiveArtist: root.usingPlaybackAdapter
         ? String(root.playbackAdapter.artist ?? "")
-        : (player?.trackArtist ?? "")
+        : (isYtMusicPlayer ? YtMusic.currentArtist : (player?.trackArtist ?? ""))
     // Only the artwork identity may trigger cover motion. Title/artist often
     // arrive before the real art URL and caused the same cover to slide twice.
     readonly property string mediaTransitionKey: (root.effectiveArtUrl ?? "").split("?")[0].split("#")[0]
@@ -134,22 +140,22 @@ Item {
     property string displayedArtFilePath: ""
     readonly property real effectivePosition: root.usingPlaybackAdapter
         ? Number(root.playbackAdapter.position ?? 0)
-        : (root.player?.position ?? 0)
+        : (root.isYtMusicPlayer ? YtMusic.currentPosition : (root.player?.position ?? 0))
     readonly property real effectiveLength: root.usingPlaybackAdapter
         ? Number(root.playbackAdapter.length ?? 0)
-        : (root.player?.length ?? 0)
+        : (root.isYtMusicPlayer ? YtMusic.currentDuration : (root.player?.length ?? 0))
     readonly property bool effectiveIsPlaying: root.usingPlaybackAdapter
         ? !!root.playbackAdapter.isPlaying
-        : (root.player?.isPlaying ?? false)
+        : (root.isYtMusicPlayer ? YtMusic.isPlaying : (root.player?.isPlaying ?? false))
     readonly property bool effectiveCanSeek: root.usingPlaybackAdapter
         ? !!root.playbackAdapter.canSeek
-        : (root.player?.canSeek ?? false)
+        : (root.isYtMusicPlayer ? YtMusic.canSeek : (root.player?.canSeek ?? false))
     readonly property bool effectiveCanGoPrevious: root.usingPlaybackAdapter
         ? !!root.playbackAdapter.canGoPrevious
-        : MprisController.canGoPreviousForPlayer(root.player)
+        : (isYtMusicPlayer ? YtMusic.canGoPrevious : MprisController.canGoPreviousForPlayer(root.player))
     readonly property bool effectiveCanGoNext: root.usingPlaybackAdapter
         ? !!root.playbackAdapter.canGoNext
-        : MprisController.canGoNextForPlayer(root.player)
+        : (isYtMusicPlayer ? YtMusic.canGoNext : MprisController.canGoNextForPlayer(root.player))
     readonly property bool effectiveShuffleSupported: root.usingPlaybackAdapter
         ? !!root.playbackAdapter.shuffleSupported
         : MprisController.shuffleSupportedForPlayer(root.player)
@@ -173,7 +179,8 @@ Item {
     Connections {
         target: root.usingPlaybackAdapter ? null : root.player
         function onTrackArtUrlChanged() {
-            root.checkAndDownloadArt()
+            if (!root.isYtMusicPlayer)
+                root.checkAndDownloadArt()
         }
         function onTrackTitleChanged() {
             Qt.callLater(root.checkAndDownloadArt)
@@ -222,8 +229,7 @@ Item {
     }
 
     Timer {
-        running: root.positionUpdatesActive
-            && !root.usingPlaybackAdapter
+        running: !root.usingPlaybackAdapter
             && root.player?.playbackState === MprisPlaybackState.Playing
         interval: 1000
         repeat: true
@@ -273,9 +279,7 @@ Item {
         }
         clip: true
 
-        // PlayerControl is frequently retained by Dashboard/sidebar hosts.
-        // Drop the rounded-mask FBO whenever the player is not presented.
-        layer.enabled: root.visible
+        layer.enabled: true
         layer.effect: GE.OpacityMask {
             maskSource: Rectangle { width: card.width; height: card.height; radius: card.radius }
         }
@@ -409,7 +413,7 @@ Item {
                             Accessible.name: Translation.tr("Playback position")
                             configuration: StyledSlider.Configuration.Wavy
                             wavy: root.effectiveIsPlaying
-                            animateWave: root.positionUpdatesActive && root.effectiveIsPlaying
+                            animateWave: root.effectiveIsPlaying
                             highlightColor: blendedColors?.colPrimary ?? Appearance.colors.colPrimary
                             trackColor: blendedColors?.colSecondaryContainer ?? Appearance.colors.colSecondaryContainer
                             handleColor: blendedColors?.colPrimary ?? Appearance.colors.colPrimary
@@ -424,7 +428,7 @@ Item {
                         active: !(root.effectiveCanSeek)
                         sourceComponent: StyledProgressBar {
                             wavy: root.effectiveIsPlaying
-                            animateWave: root.positionUpdatesActive && root.effectiveIsPlaying
+                            animateWave: root.effectiveIsPlaying
                             highlightColor: blendedColors?.colPrimary ?? Appearance.colors.colPrimary
                             trackColor: blendedColors?.colSecondaryContainer ?? Appearance.colors.colSecondaryContainer
                             value: root.effectiveLength > 0 ? root.effectivePosition / root.effectiveLength : 0

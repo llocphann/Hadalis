@@ -6,7 +6,6 @@ import Quickshell.Io
 import QtQuick
 
 import qs.modules.common
-import qs.services
 
 Singleton {
     id: root
@@ -86,10 +85,19 @@ Singleton {
     }
 
     // ── Live sun/moon context ─────────────────────────────────────────────
-    // Reuse DateTime's SystemClock minute epoch instead of owning another
-    // repeating 60s timer. This remains minute-resolution even when the global
-    // clock temporarily switches to second precision.
-    readonly property int _clockTick: DateTime.minuteEpoch
+    // Ticks once a minute so sun progress and moon age stay current without a
+    // weather refresh. Raw ms, never gated on animationsEnabled (P0-10).
+    property int _clockTick: 0
+    Timer {
+        id: clockTickTimer
+        interval: 60000
+        repeat: true
+        // Weather's live sun/moon context is only consumed when the weather
+        // service itself is enabled. Do not keep a global minute wakeup alive
+        // for users that disable weather entirely.
+        running: root.enabled
+        onTriggered: root._clockTick++
+    }
 
     // Parse "HH:MM", "H:MM", or "hh:MM AM/PM" into minutes-of-day; -1 if unknown.
     function _timeToMinutes(s): int {
@@ -549,8 +557,8 @@ Singleton {
         } else {
             query = encodeURIComponent(root.location.name.split(',')[0].trim());
         }
-        const url = "https://wttr.in/" + query + "?format=j1";
-        fetcher.command = ["/usr/bin/curl", "-s", "--max-time", "15", url];
+        const cmd = `curl -s --max-time 15 'https://wttr.in/${query}?format=j1'`;
+        fetcher.command = ["/usr/bin/bash", "-c", cmd];
         fetcher.running = true;
     }
 
@@ -822,9 +830,8 @@ Singleton {
     Process {
         id: gpsLocator
         property bool _handledFallback: false
-        command: ["where-am-i", "-t", "10"]
+        command: ["/usr/bin/bash", "-c", "where-am-i -t 10 2>/dev/null | grep -oP '(Latitude|Longitude):\\s*\\K[\\d.-]+' | head -2 | paste -sd' '"]
         onRunningChanged: if (running) _handledFallback = false
-        stderr: StdioCollector {}
         stdout: StdioCollector {
             onStreamFinished: {
                 if (text.trim().length === 0) {
@@ -833,14 +840,7 @@ Singleton {
                     root.getLocation();
                     return;
                 }
-                // Preserve the old pipeline semantics: consume the first two
-                // Latitude/Longitude numeric fields in output order, but parse
-                // them in-process instead of spawning grep + head + paste.
-                const coordinatePattern = /(?:Latitude|Longitude):\s*([\d.-]+)/g;
-                const parts = [];
-                let match;
-                while (parts.length < 2 && (match = coordinatePattern.exec(text)) !== null)
-                    parts.push(match[1]);
+                const parts = text.trim().split(/\s+/);
                 if (parts.length >= 2) {
                     const lat = parseFloat(parts[0]);
                     const lon = parseFloat(parts[1]);
@@ -949,7 +949,7 @@ Singleton {
         id: fetcher
         // Guard: prevent double fallback invocation from both onStreamFinished and onExited
         property bool _fallbackTriggered: false
-        command: ["/usr/bin/curl", "-s", "--max-time", "15", ""]
+        command: ["/usr/bin/bash", "-c", ""]
         onRunningChanged: if (running) _fallbackTriggered = false
         stdout: StdioCollector {
             onStreamFinished: {

@@ -140,6 +140,13 @@ Loader {
                 : (root.popupAbove ? Edges.Top : Edges.Bottom)
         }
 
+        CompositorFocusGrab {
+            id: focusGrab
+            active: root.closeOnFocusLost && CompositorService.isHyprland
+            windows: [popupWindow]
+            onCleared: root.focusCleared();
+        }
+
         Timer {
             id: closeTimer
             interval: root.closeOnHoverLostDelay

@@ -12,11 +12,6 @@ Flickable {
     property string pageTitle: ""
     property string pageIcon: ""
     property string pageDescription: ""
-    // Opt-in viewport filling for dense dashboard-style pages. Normal pages
-    // retain their existing implicit-height scrolling behavior.
-    property bool fillViewportHeight: false
-    readonly property real _contentTopMargin: 24
-    readonly property real _contentBottomMargin: 20
     default property alias content: contentColumn.data
     signal navigateRequested(int pageIndex)
     
@@ -25,11 +20,7 @@ Flickable {
     property string settingsPageName: pageTitle
     
     clip: true
-    contentHeight: root.fillViewportHeight
-        ? Math.max(root.height,
-            contentColumn.height + root._contentTopMargin
-                + root._contentBottomMargin)
-        : contentColumn.implicitHeight + 48
+    contentHeight: contentColumn.implicitHeight + 48
     boundsBehavior: Flickable.StopAtBounds
     pressDelay: 50
     
@@ -37,19 +28,14 @@ Flickable {
     
     ColumnLayout {
         id: contentColumn
-        height: root.fillViewportHeight
-            ? Math.max(implicitHeight,
-                root.height - root._contentTopMargin
-                    - root._contentBottomMargin)
-            : implicitHeight
         anchors {
             top: parent.top
             left: parent.left
             right: parent.right
-            topMargin: root._contentTopMargin
+            topMargin: 24
             leftMargin: 28
             rightMargin: 28
-            bottomMargin: root._contentBottomMargin
+            bottomMargin: 20
         }
         spacing: 10
 

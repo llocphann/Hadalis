@@ -23,6 +23,8 @@ detect_system() {
     # DE/WM detection
     if [[ -n "$NIRI_SOCKET" ]]; then
         DETECTED_DE="Niri"
+    elif [[ -n "$HYPRLAND_INSTANCE_SIGNATURE" ]]; then
+        DETECTED_DE="Hyprland"
     elif [[ -n "$SWAYSOCK" ]]; then
         DETECTED_DE="Sway"
     elif [[ -n "$XDG_CURRENT_DESKTOP" ]]; then

@@ -1,7 +1,6 @@
 pragma Singleton
 pragma ComponentBehavior: Bound
 import qs.modules.common
-import qs.services
 import QtQuick
 import Quickshell
 import Quickshell.Io
@@ -25,7 +24,10 @@ Singleton {
     signal eventUpdated(var event)
     signal eventTriggered(var event)
 
-    Component.onCompleted: loadFromFile()
+    Component.onCompleted: {
+        loadFromFile()
+        checkTimer.start()
+    }
 
     function _ensureStorageDirectory(): void {
         const parentDir = root.filePath.substring(0, root.filePath.lastIndexOf('/'))
@@ -133,13 +135,13 @@ Singleton {
         }
     }
 
-    // DateTime already owns the shell's wall clock. Reuse its minute epoch
-    // instead of keeping a second repeating timer alive for reminders.
-    Connections {
-        target: DateTime
-        function onMinuteEpochChanged(): void {
-            root.checkDueEvents()
-        }
+    // Check for due events every minute
+    Timer {
+        id: checkTimer
+        interval: 60000 // 1 minute
+        running: false
+        repeat: true
+        onTriggered: root.checkDueEvents()
     }
 
     signal reminderTriggered(var event, int minutesBefore)

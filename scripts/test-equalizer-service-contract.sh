@@ -195,10 +195,8 @@ for token in (
     "id: bandRepeater",
     "cursorShape: bandSlider.enabled",
     "Qt.SizeVerCursor",
-    "readonly property int presetStripHeight:",
-    "Layout.preferredHeight: root.presetStripHeight",
-    "colBackground: \"transparent\"",
-    "buttonRadius: height / 2",
+    "uniformCellWidths: true",
+    "implicitHeight: root.compactLayout ? 22 : 24",
     "RowLayout {",
     "Layout.alignment: Qt.AlignVCenter",
 ):

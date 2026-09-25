@@ -36,7 +36,7 @@ Relevant security concerns include, but are not limited to:
 - **Unsafe update/install behavior** — repository, package, migration, or install flows overwriting user/system state outside their documented ownership.
 - **Optional integration handling** — missing services, permissions, hardware, or binaries leading to unsafe fallbacks rather than graceful failure.
 
-Upstream vulnerabilities in Niri, Qt, Quickshell, systemd, polkit, TLP, ThinkFan, or other dependencies should normally be reported upstream. A Hadalis-specific misuse, unsafe configuration, packaging error, or privilege-boundary issue involving those dependencies remains in scope here.
+Upstream vulnerabilities in Niri/Hyprland, Qt, Quickshell, systemd, polkit, TLP, ThinkFan, or other dependencies should normally be reported upstream. A Hadalis-specific misuse, unsafe configuration, packaging error, or privilege-boundary issue involving those dependencies remains in scope here.
 
 ## Security-sensitive changes
 

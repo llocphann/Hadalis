@@ -246,11 +246,10 @@ Singleton {
         updateConnectionType.startCheck();
         wifiStatusProcess.running = true
         updateNetworkName.running = true;
+        updateNetworkStrength.running = true;
     }
 
     property bool _destroying: false
-    property int _subscriberRestartDelayMs: 2000
-    readonly property int _subscriberRestartMaxDelayMs: 60000
 
     function _startSubscriber(): void {
         if (!root._destroying && !subscriber.running)
@@ -258,15 +257,8 @@ Singleton {
     }
 
     function _scheduleSubscriberRestart(): void {
-        if (root._destroying)
-            return
-        // Avoid a permanent 2-second spawn loop when nmcli/NetworkManager is
-        // unavailable, while still recovering quickly from a one-off exit.
-        subscriberRestart.interval = root._subscriberRestartDelayMs
-        subscriberRestart.restart()
-        root._subscriberRestartDelayMs = Math.min(
-            root._subscriberRestartMaxDelayMs,
-            root._subscriberRestartDelayMs * 2)
+        if (!root._destroying)
+            subscriberRestart.restart()
     }
 
     Component.onCompleted: {
@@ -278,7 +270,6 @@ Singleton {
     Component.onDestruction: {
         root._destroying = true;
         subscriberRestart.stop()
-        subscriberHealthyTimer.stop()
         subscriber.running = false;
     }
 
@@ -287,16 +278,6 @@ Singleton {
         interval: 2000
         repeat: false
         onTriggered: root._startSubscriber()
-    }
-
-    Timer {
-        id: subscriberHealthyTimer
-        interval: 10000
-        repeat: false
-        onTriggered: {
-            if (subscriber.running)
-                root._subscriberRestartDelayMs = 2000
-        }
     }
 
     Process {
@@ -317,173 +298,99 @@ Singleton {
             console.warn("[Network] Failed to start nmcli monitor; retrying")
             root._scheduleSubscriberRestart()
         }
-        onStarted: {
-            subscriber.startObserved = true
-            // A successful spawn is not yet a healthy monitor: some failures
-            // start and exit immediately. Reset backoff only after stability.
-            subscriberHealthyTimer.restart()
-        }
-        onExited: {
-            subscriberHealthyTimer.stop()
-            root._scheduleSubscriberRestart()
-        }
+        onStarted: subscriber.startObserved = true
+        onExited: root._scheduleSubscriberRestart()
         stdout: SplitParser {
             onRead: root.update()
         }
     }
 
-    function _applyConnectionTypeSnapshot(deviceText: string, connectivity: string): void {
-        const lines = String(deviceText ?? "").trim().split("\n")
-        let hasEthernet = false
-        let hasWifi = false
-        let wifiStatus = "disconnected"
-        lines.forEach(line => {
-            const separator = line.indexOf(":")
-            if (separator < 0)
-                return
-
-            const type = line.slice(0, separator)
-            const state = line.slice(separator + 1)
-            const connected = state === "connected" || state.startsWith("connected ")
-
-            if (type === "ethernet" && connected)
-                hasEthernet = true
-            else if (type === "wifi") {
-                if (state === "disconnected") {
-                    wifiStatus = "disconnected"
-                } else if (connected) {
-                    hasWifi = true
-                    wifiStatus = "connected"
-                    if (connectivity === "limited") {
-                        hasWifi = false
-                        wifiStatus = "limited"
-                    }
-                } else if (state.startsWith("connecting")) {
-                    wifiStatus = "connecting"
-                } else if (state === "unavailable") {
-                    wifiStatus = "disabled"
-                }
-            }
-        })
-        root.wifiStatus = wifiStatus
-        root.ethernet = hasEthernet
-        root.wifi = hasWifi
-
-        // Signal strength is only meaningful for an associated Wi-Fi AP.
-        if (wifiStatus === "connected" || wifiStatus === "limited") {
-            if (!updateNetworkStrength.running)
-                updateNetworkStrength.running = true
-        } else {
-            root.networkStrength = 0
-        }
-    }
-
     Process {
         id: updateConnectionType
-        property string buffer: ""
-        property string deviceBuffer: ""
-        property string stage: "devices"
-        property bool chaining: false
-        property bool refreshPending: false
-        // LANG=C: nmcli localizes device STATE ("connected" → "conectado" etc.).
+        property string buffer
+        // LANG=C: nmcli localizes device STATE ("connected" → "conectado" etc.), and the
+        // parser below matches English keywords. Without this, wifi state detection silently
+        // fails on non-English desktops — indicator shows disconnected while actually connected.
         environment: ({
             LANG: "C",
             LC_ALL: "C"
         })
-        command: ["nmcli", "-t", "-f", "TYPE,STATE", "d", "status"]
+        command: ["sh", "-c", "nmcli -t -f TYPE,STATE d status && nmcli -t -f CONNECTIVITY g"]
         running: false
-
-        function startCheck(): void {
-            if (updateConnectionType.running || updateConnectionType.chaining) {
-                updateConnectionType.refreshPending = true
-                return
-            }
-            updateConnectionType.refreshPending = false
-            updateConnectionType.chaining = true
-            updateConnectionType.stage = "devices"
-            updateConnectionType.buffer = ""
-            updateConnectionType.deviceBuffer = ""
-            updateConnectionType.command =
-                ["nmcli", "-t", "-f", "TYPE,STATE", "d", "status"]
-            updateConnectionType.running = true
+        function startCheck() {
+            buffer = "";
+            updateConnectionType.running = true;
         }
-
-        function finishCheck(): void {
-            updateConnectionType.chaining = false
-            if (updateConnectionType.refreshPending) {
-                updateConnectionType.refreshPending = false
-                Qt.callLater(updateConnectionType.startCheck)
-            }
-        }
-
         stdout: SplitParser {
             onRead: data => {
-                updateConnectionType.buffer += data + "\n"
+                updateConnectionType.buffer += data + "\n";
             }
         }
+        onExited: (exitCode, exitStatus) => {
+            const lines = updateConnectionType.buffer.trim().split('\n');
+            const connectivity = lines.pop() // none, limited, full
+            let hasEthernet = false;
+            let hasWifi = false;
+            let wifiStatus = "disconnected";
+            lines.forEach(line => {
+                const separator = line.indexOf(":");
+                if (separator < 0)
+                    return;
 
-        onExited: (exitCode, _exitStatus) => {
-            if (updateConnectionType.stage === "devices") {
-                if (exitCode !== 0) {
-                    updateConnectionType.finishCheck()
-                    return
+                const type = line.slice(0, separator);
+                const state = line.slice(separator + 1);
+                const connected = state === "connected" || state.startsWith("connected ");
+
+                if (type === "ethernet" && connected)
+                    hasEthernet = true;
+                else if (type === "wifi") {
+                    if (state === "disconnected") {
+                        wifiStatus = "disconnected"
+                    }
+                    else if (connected) {
+                        hasWifi = true;
+                        wifiStatus = "connected"
+
+                        if (connectivity === "limited") {
+                            hasWifi = false;
+                            wifiStatus = "limited"
+                        }
+                    }
+                    else if (state.startsWith("connecting")) {
+                        wifiStatus = "connecting"
+                    }
+                    else if (state === "unavailable") {
+                        wifiStatus = "disabled"
+                    }
                 }
-                updateConnectionType.deviceBuffer = updateConnectionType.buffer
-                updateConnectionType.buffer = ""
-                updateConnectionType.stage = "connectivity"
-                updateConnectionType.command =
-                    ["nmcli", "-t", "-f", "CONNECTIVITY", "g"]
-                Qt.callLater(() => {
-                    if (updateConnectionType.chaining
-                            && !updateConnectionType.running)
-                        updateConnectionType.running = true
-                })
-                return
-            }
-
-            if (exitCode === 0)
-                root._applyConnectionTypeSnapshot(
-                    updateConnectionType.deviceBuffer,
-                    updateConnectionType.buffer.trim())
-            updateConnectionType.finishCheck()
+            });
+            root.wifiStatus = wifiStatus;
+            root.ethernet = hasEthernet;
+            root.wifi = hasWifi;
+            // updateNetworkStrength's awk prints nothing when no AP is in use, so
+            // its SplitParser never fires and networkStrength would keep the value
+            // from the last connected AP. Clear it here instead.
+            if (wifiStatus !== "connected" && wifiStatus !== "limited")
+                root.networkStrength = 0;
         }
     }
 
     Process {
         id: updateNetworkName
-        command: ["nmcli", "-t", "-f", "NAME", "c", "show", "--active"]
+        command: ["sh", "-c", "nmcli -t -f NAME c show --active | head -1"]
         running: false
         stdout: StdioCollector {
-            onStreamFinished: {
-                // Keep the old head -1 contract without a shell/head helper.
-                const lines = String(text ?? "").split("\n")
-                root.networkName = lines.length > 0 ? lines[0].trim() : ""
-            }
+            onStreamFinished: root.networkName = text.trim()
         }
     }
 
     Process {
         id: updateNetworkStrength
         running: false
-        command: ["nmcli", "-f", "IN-USE,SIGNAL,SSID", "device", "wifi"]
-        stdout: StdioCollector {
-            onStreamFinished: {
-                // A disconnect can arrive while a previous scan is finishing.
-                // Never let that stale result restore a non-zero signal.
-                if (root.wifiStatus !== "connected" && root.wifiStatus !== "limited") {
-                    root.networkStrength = 0
-                    return
-                }
-                // Parse the same active-row SIGNAL column that the old awk
-                // helper selected, but keep filtering inside QML.
-                for (const rawLine of String(text ?? "").split("\n")) {
-                    const line = rawLine.trim()
-                    const match = line.match(/^\*\s+(\d+)/)
-                    if (!match)
-                        continue
-                    root.networkStrength = parseInt(match[1])
-                    return
-                }
+        command: ["sh", "-c", "nmcli -f IN-USE,SIGNAL,SSID device wifi | awk '/^\\*/{if (NR!=1) {print $2}}'"]
+        stdout: SplitParser {
+            onRead: data => {
+                root.networkStrength = parseInt(data);
             }
         }
     }

@@ -1,6 +1,6 @@
 pkgname=inir-shell-git
 pkgver=2.29.3.r0.g0000000
-pkgrel=13
+pkgrel=9
 pkgdesc='Hadalis shell payload, launcher, and user service (git)'
 arch=('x86_64')
 url='https://github.com/llocphann/Hadalis'
@@ -15,7 +15,6 @@ depends=(
   fcitx5-qt
   fcitx5-unikey
   grim
-  imagemagick
   jq
   kirigami
   libnotify
@@ -25,9 +24,9 @@ depends=(
   pipewire
   pipewire-alsa
   pipewire-pulse
+  playerctl
   polkit-gnome
   python
-  python-evdev
   python-materialyoucolor
   python-numpy
   python-pillow
@@ -43,7 +42,6 @@ depends=(
   swaylock
   wlsunset
   syntax-highlighting
-  util-linux
   ttf-jetbrains-mono-nerd
   ttf-material-symbols-variable
   ttf-roboto-flex
@@ -65,24 +63,23 @@ optdepends=(
   'easyeffects: optional audio effects and equalizer backend'
   'ffmpeg: recording and video wallpaper helpers'
   'fprintd: fingerprint authentication integration'
-  'fuzzel: optional emoji picker and external dmenu launcher integration'
-  'git: optional repo/developer update and status tooling'
   'fcitx5-gtk: GTK/XWayland input method compatibility'
   'fcitx5-configtool: configure Vietnamese input and shortcuts'
   'geoclue: GPS-backed weather location detection'
   'gnome-keyring: secret storage for API keys and credentials'
   'gowall-bin: wallpaper theme conversion and effects editor'
   'gum: setup TUI helpers'
+  'hyprpicker: color picker support'
   'inir-workflow-parser: native QML parser capability for Code Workflow'
   'kde-cli-tools: Dolphin Open With dialog (QT_QPA_PLATFORMTHEME=kde)'
-  'hyprpicker: enhanced Wayland color picker with magnifier'
+  'imagemagick: image conversion helpers'
   'kconfig: KDE configuration integration'
   'kdialog: KDE dialog integration for scripts'
   'kitty: default terminal integration'
   'kvantum: Qt style engine'
   'libqalculate: calculator widget backend'
   'mission-center: graphical system monitor (default task manager)'
-  'mpv: general media playback backend'
+  'mpv: media playback and YouTube Music support'
   'mpv-mpris: richer mpv media session integration'
   'mpd: local Music library and queue backend'
   'mpd-mpris: MPD/rmpc/Hadalis Music controls through MPRIS'
@@ -105,6 +102,8 @@ optdepends=(
   'wf-recorder: screen recording support'
   'wtype: Wayland text injection helper'
   'ydotool: virtual keyboard and clipboard paste helper'
+  'yt-dlp: YouTube media backend'
+  'python-ytmusicapi: YouTube Music browsing (InnerTube engine)'
   'millennium-bin: Steam theming via Millennium (requires steam)'
 )
 makedepends=(git cargo)
@@ -145,7 +144,7 @@ package() {
 
   python3 "$srcroot/sdata/lib/runtime-payload.py" copy --root "$srcroot" --target "$shellroot" || return
   mkdir -p "$shellroot/native/bin"
-  for binary in inir-inputd inir-mpdd inir-native inir-superd inir-theme; do install -Dm0755 "$srcdir/inir-native-target/release/$binary" "$shellroot/native/bin/$binary"; done
+  for binary in inir-inputd inir-mpdd inir-native inir-theme; do install -Dm0755 "$srcdir/inir-native-target/release/$binary" "$shellroot/native/bin/$binary"; done
   chmod +x "$shellroot/setup" "$shellroot/scripts/inir"
   find "$shellroot/scripts" -type f \( -name '*.sh' -o -name '*.fish' -o -name '*.py' \) -exec chmod +x {} +
   python3 -c 'from pathlib import Path; import sys; p=Path(sys.argv[1]); t=p.read_text(); m="sync_launcher_from_repo() {\n"; assert t.count(m) == 1, "expected one sync_launcher_from_repo definition"; g=m+"    if [[ \"$(get_installed_update_strategy 2>/dev/null || true)\" == \"package-manager\" ]]; then\n        return 0\n    fi\n"; p.write_text(t.replace(m, g, 1))' "$shellroot/setup"

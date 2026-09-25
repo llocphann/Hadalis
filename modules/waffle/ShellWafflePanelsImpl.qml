@@ -151,7 +151,7 @@ Item {
     OnDemandPanelLoader { identifier: "wTaskView"; open: GlobalStates.waffleTaskViewOpen; workflowSourcePath: "modules/waffle/taskview/WaffleTaskView.qml"; component: WaffleTaskViewModule.WaffleTaskView {} }
 
     // Shared modules that work with waffle
-    OnDemandPanelLoader { identifier: "iiBootGreeting"; open: GlobalStates.bootGreetingOpen; workflowSourcePath: "modules/bootGreeting/BootGreeting.qml"; component: BootGreeting {} }
+    DeferredPanelLoader { identifier: "iiBootGreeting"; workflowSourcePath: "modules/bootGreeting/BootGreeting.qml"; component: BootGreeting {} }
     OnDemandPanelLoader { identifier: "iiCheatsheet"; open: GlobalStates.cheatsheetOpen; workflowSourcePath: "modules/cheatsheet/Cheatsheet.qml"; component: Cheatsheet {} }
     OnDemandPanelLoader { identifier: "iiOnScreenKeyboard"; open: GlobalStates.oskOpen; workflowSourcePath: "modules/onScreenKeyboard/OnScreenKeyboard.qml"; component: OnScreenKeyboard {} }
     OnDemandPanelLoader { identifier: "iiOverlay"; open: GlobalStates.overlayOpen || OverlayContext.hasPinnedWidgets || OverlayContext.nativeDialogOpen; workflowSourcePath: "modules/ii/overlay/Overlay.qml"; component: Overlay {} }

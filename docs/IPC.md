@@ -112,8 +112,6 @@ Toggle the workspace overview panel. The one with all your windows looking tiny 
 | `clipboardToggle` | Open clipboard search, or close if already open |
 | `actionOpen` | Open overview in action search mode |
 | `toggleReleaseInterrupt` | Clear the super-key release interrupt flag |
-| `superPress` | Internal Super-key down signal used by Niri input integration |
-| `superRelease` | Internal Super-key up signal used by Niri input integration |
 
 ```kdl
 bind "Mod+Space" { spawn "inir" "overview" "toggle"; }
@@ -536,19 +534,36 @@ Display brightness control.
 
 ### mpris
 
-Media player control for the active MPRIS player.
+Media player control. Automatically detects and uses YtMusic controls when active, otherwise uses the active MPRIS player.
 
 | Function | Description |
 |----------|-------------|
 | `pauseAll` | Pause all players |
-| `playPause` | Toggle play/pause for the active MPRIS player |
-| `previous` | Previous track for the active MPRIS player |
-| `next` | Next track for the active MPRIS player |
+| `playPause` | Toggle play/pause (uses YtMusic if active) |
+| `previous` | Previous track (uses YtMusic if active) |
+| `next` | Next track (uses YtMusic if active) |
 
 ```kdl
 bind "Ctrl+Mod+Space" { spawn "inir" "mpris" "playPause"; }
 bind "Mod+Alt+N" { spawn "inir" "mpris" "next"; }
 bind "Mod+Alt+P" { spawn "inir" "mpris" "previous"; }
+```
+
+---
+
+### ytmusic
+
+Direct YtMusic player control. Use these if you want to control YtMusic specifically, regardless of what other players are active.
+
+| Function | Description |
+|----------|-------------|
+| `playPause` | Toggle YtMusic play/pause |
+| `next` | Play next track in YtMusic |
+| `previous` | Play previous track in YtMusic |
+| `stop` | Stop YtMusic playback |
+
+```kdl
+bind "Mod+M+Space" { spawn "inir" "ytmusic" "playPause"; }
 ```
 
 ---
@@ -788,6 +803,17 @@ bind "Mod+Alt+K" { spawn "inir" "keyboard" "switchLayout"; }
 
 ---
 
+### zoom
+
+Screen zoom. Accessibility feature, or for reading tiny UI without pretending your monitor is the problem.
+
+| Function | Description |
+|----------|-------------|
+| `zoomIn` | Increase compositor zoom |
+| `zoomOut` | Decrease compositor zoom |
+
+---
+
 ## Waffle-Specific Targets
 
 These targets only work when using the Waffle (Windows 11) panel style.
@@ -972,10 +998,10 @@ These are top-level `inir` commands that work directly, without going through IP
 
 ### colorpicker
 
-Pick a color from anywhere on the screen. Hadalis prefers `hyprpicker` when it is installed because it provides a magnifier, then falls back to the compositor-neutral `slurp + grim + ImageMagick` helper.
+Launch `hyprpicker` to pick a color from anywhere on the screen. The hex value is copied to the clipboard (`-a` flag).
 
 ```kdl
 bind "Super+Shift+C" { spawn "inir" "colorpicker"; }
 ```
 
-`hyprpicker` is optional; the fallback requires `slurp`, `grim`, and ImageMagick.
+Requires `hyprpicker` installed.

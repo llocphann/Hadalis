@@ -31,65 +31,6 @@ remote_master_block="$(sed -n '/id: remoteCommitFallback2Proc/,/\/\/ Step 6:/p' 
 count_block="$(sed -n '/id: countCommitsProc/,/\/\/ Step 7:/p' "$service")"
 message_block="$(sed -n '/id: latestMessageProc/,/Detail fetching/p' "$service")"
 
-version_reader_block="$(sed -n '/id: versionMetadataFile/,/^    }/p' "$service")"
-[[ -n "$version_reader_block" ]] || fail 'version metadata FileView is missing'
-assert_contains 'onLoaded: root._consumeVersionMetadata(versionMetadataFile.text())' "$version_reader_block" 'version metadata must be consumed in-process'
-assert_contains 'onLoadFailed:' "$version_reader_block" 'missing version metadata must retain repository-search fallback'
-if grep -Fq 'command: ["cat", Directories.shellConfig + "/version.json"]' "$service"; then
-    fail 'version metadata must not spawn cat during startup'
-fi
-
-manifest_reader_block="$(sed -n '/id: manifestMetadataFile/,/^    }/p' "$service")"
-[[ -n "$manifest_reader_block" ]] || fail 'manifest metadata FileView is missing'
-assert_contains 'onLoaded: root._consumeManifestInfo(manifestMetadataFile.text())' "$manifest_reader_block" 'manifest metadata must be consumed in-process'
-assert_contains 'onLoadFailed: recentLocalLogProc.running = true' "$manifest_reader_block" 'missing manifest must continue the update startup chain'
-if grep -Fq 'id: manifestInfoProc' "$service"; then
-    fail 'manifest metadata must not restore the bash/head/grep/sed process pipeline'
-fi
-
-local_version_block="$(sed -n '/id: localVersionFile/,/^    }/p' "$service")"
-[[ -n "$local_version_block" ]] || fail 'local VERSION FileView is missing'
-assert_contains 'property bool tryingConfigFallback: false' "$local_version_block" 'local VERSION reader must retain repo-to-config fallback state'
-assert_contains 'root._setLocalVersionPath(root.configDir + "/VERSION")' "$local_version_block" 'local VERSION reader must fall back to the active config copy'
-assert_contains 'root._finishLocalVersion("")' "$local_version_block" 'missing local VERSION files must still complete the update check'
-if grep -Fq 'id: localVersionStartupProc' "$service"; then
-    fail 'local VERSION startup must not restore the bash/cat process chain'
-fi
-
-detail_version_block="$(sed -n '/id: detailLocalVersionFile/,/^    }/p' "$service")"
-[[ -n "$detail_version_block" ]] || fail 'detail local VERSION FileView is missing'
-assert_contains 'property bool tryingConfigFallback: false' "$detail_version_block" 'detail local VERSION reader must retain fallback state'
-assert_contains 'root._setDetailLocalVersionPath(root.configDir + "/VERSION")' "$detail_version_block" 'detail local VERSION reader must fall back to the active config copy'
-assert_contains 'root._finishDetailLocalVersion("")' "$detail_version_block" 'missing detail VERSION files must continue the detail chain'
-assert_contains 'root._loadDetailLocalVersion()' "$(sed -n '/id: remoteVersionProc/,/\/\/ Detail Step 3:/p' "$service")" 'remote VERSION completion must enter the in-process local reader'
-assert_contains 'remoteChangelogProc.running = true' "$(sed -n '/function _finishDetailLocalVersion/,/^    }/p' "$service")" 'detail local VERSION completion must continue to changelog loading'
-if grep -Fq 'id: localVersionProc' "$service"; then
-    fail 'detail local VERSION must not restore the bash/cat process chain'
-fi
-
-progress_reader_block="$(sed -n '/id: updateProgressFile/,/^    }/p' "$service")"
-[[ -n "$progress_reader_block" ]] || fail 'update progress FileView is missing'
-assert_contains 'onLoaded: root._consumeUpdateProgress(updateProgressFile.text())' "$progress_reader_block" 'update progress must be consumed in-process'
-assert_contains 'root._reloadUpdateProgress()' "$(sed -n '/id: updateProgressPoller/,/^    }/p' "$service")" '2s progress cadence must reload the in-process FileView'
-if grep -Fq 'id: updateProgressReader' "$service"; then
-    fail 'update progress polling must not restore one cat process every two seconds'
-fi
-
-resume_reader_block="$(sed -n '/id: updateResumeReader/,/stdout: StdioCollector/p' "$service")"
-[[ -n "$resume_reader_block" ]] || fail 'update resume reader is missing'
-assert_contains 'done < /proc/stat' "$resume_reader_block" 'update resume reader must derive boot time without date/uptime subprocesses on the normal path'
-assert_contains 'uptime_s=\${uptime%%.*}' "$resume_reader_block" 'fallback uptime truncation must escape shell expansion inside the QML template literal'
-assert_contains 'status=$(<"$status_file")' "$resume_reader_block" 'update resume reader must read the one-line status with Bash builtins'
-if grep -Fq '/usr/bin/printf' <<<"$resume_reader_block"; then
-    fail 'update resume reader must not restore external printf'
-fi
-if grep -Fq '/usr/bin/cut' <<<"$resume_reader_block"; then
-    fail 'update resume reader must not restore external cut'
-fi
-if grep -Fq '/usr/bin/cat' <<<"$resume_reader_block"; then
-    fail 'update resume reader must not restore external cat'
-fi
-
 assert_guarded_process fetchProc "$fetch_block"
 assert_guarded_process currentBranchProc "$branch_block"
 assert_guarded_process localCommitProc "$local_block"
@@ -129,27 +70,5 @@ assert_contains 'root._failCheckStart("remote commit lookup")' "$remote_master_s
 assert_contains 'root._finishCountFallback()' "$count_start" 'count startup failure must use the direct commit fallback'
 assert_contains 'root.latestMessage = ""' "$message_start" 'latest-message startup failure must clear stale message text'
 assert_contains 'root._finishCheck()' "$message_start" 'latest-message startup failure must complete the check cycle'
-
-changelog_block="$(sed -n '/id: remoteChangelogProc/,/\/\/ Detail Step 5:/p' "$service")"
-[[ -n "$changelog_block" ]] || fail 'remote changelog process block is missing'
-assert_contains '...root._gitCmd, "show"' "$changelog_block" 'remote changelog must invoke git directly'
-assert_contains '.slice(0, 200)' "$changelog_block" 'remote changelog must retain the 200-line display cap in-process'
-assert_contains 'localModsProc.running = true' "$changelog_block" 'remote changelog completion must continue detail fetching'
-if grep -Fq '"/usr/bin/bash", "-c"' <<<"$changelog_block"; then
-    fail 'remote changelog must not restore a bash wrapper'
-fi
-if grep -Fq 'head -200' <<<"$changelog_block"; then
-    fail 'remote changelog must not restore an external head process'
-fi
-
-local_mod_block="$(sed -n '/id: localModsProc/,/\/\/ Note: Update runs/p' "$service")"
-[[ -n "$local_mod_block" ]] || fail 'local modification process block is missing'
-assert_contains 'root.configDir + "/scripts/check-local-modifications.sh"' "$local_mod_block" 'local modification scan must use the batched helper'
-if grep -Fq 'sha256sum \\"$target/$path\\"' <<<"$local_mod_block"; then
-    fail 'local modification scan must not restore per-file checksum subprocesses'
-fi
-if grep -Fq 'cut -d' <<<"$local_mod_block"; then
-    fail 'local modification scan must not restore per-file cut subprocesses'
-fi
 
 printf 'shell updates check lifecycle guards: ok\n'

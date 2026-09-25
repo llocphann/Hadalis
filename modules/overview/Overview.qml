@@ -11,6 +11,7 @@ import QtQuick.Layouts
 import Quickshell
 import Quickshell.Io
 import Quickshell.Wayland
+import Quickshell.Hyprland
 
 Scope {
     id: overviewScope
@@ -26,8 +27,10 @@ Scope {
             property bool _presentedOpen: false
             property string searchingText: ""
             readonly property bool taskViewMode: GlobalStates.overviewMode === "taskview"
-            property bool monitorIsFocused:
-                NiriService.currentOutput === root.screen?.name
+            readonly property HyprlandMonitor monitor: CompositorService.isHyprland ? Hyprland.monitorFor(root.screen) : null
+            property bool monitorIsFocused: CompositorService.isHyprland 
+                ? (Hyprland.focusedMonitor?.id == monitor?.id)
+                : (NiriService.currentOutput === root.screen?.name)
             readonly property bool activeScreenOnly: Config.options?.overview?.activeScreenOnly ?? true
             readonly property bool isTargetOutput:
                 GlobalStates.overviewPresentationOutput === (root.modelData?.name ?? "")
@@ -97,6 +100,7 @@ Scope {
                         dashboardPanel.item?.focusSearchInput()
                         root.maybeSwitchWorkspaceOnOpen()
                     }
+                    delayedGrabTimer.start()
                 })
             }
 
@@ -121,19 +125,15 @@ Scope {
 
             WlrLayershell.namespace: "quickshell:overview"
             WlrLayershell.layer: WlrLayer.Overlay
-            // The window stays mapped through the exit animation. Both keyboard
-            // and pointer ownership must follow the live presentation state, not
-            // the native window lifetime, or the transparent close tail can eat
-            // desktop clicks.
-            readonly property bool acceptsInput: root.shouldShow
+            // Keyboard focus only on the monitor that should show
+            WlrLayershell.keyboardFocus: root.shouldShow
                 && !root.applicationDragActive
                 && !GlobalStates.regionSelectorOpen
-            WlrLayershell.keyboardFocus: root.acceptsInput
                 ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
             color: "transparent"
 
             mask: Region {
-                item: root.acceptsInput ? overviewInputMask : emptyDragMask
+                item: root.applicationDragActive ? emptyDragMask : overviewInputMask
             }
 
             Item {
@@ -218,9 +218,22 @@ Scope {
                 }
             }
 
-            // Close on Niri focus change when configured.
+            // Focus grab for Hyprland (doesn't work on Niri)
+            CompositorFocusGrab {
+                id: grab
+                windows: [root]
+                property bool canBeActive: root.shouldShow && root.isTargetOutput
+                active: false
+                onCleared: () => {
+                    if (!active)
+                        GlobalStates.overviewOpen = false;
+                }
+            }
+            
+            // For Niri: detect window focus changes to close overview (if configured)
             Connections {
-                target: NiriService
+                target: CompositorService.isNiri ? NiriService : null
+                enabled: CompositorService.isNiri
                 function onActiveWindowChanged() {
                     // Respect keepOverviewOpenOnWindowClick setting
                     const keepOpen = Config.options?.overview?.keepOverviewOpenOnWindowClick ?? true;
@@ -249,6 +262,16 @@ Scope {
                 }
             }
 
+            Timer {
+                id: delayedGrabTimer
+                interval: Config.options.hacks.arbitraryRaceConditionDelay
+                repeat: false
+                onTriggered: {
+                    if (!root.shouldShow || !grab.canBeActive)
+                        return;
+                    grab.active = GlobalStates.overviewOpen;
+                }
+            }
 
             implicitWidth: columnLayout.implicitWidth
             implicitHeight: columnLayout.implicitHeight
@@ -264,16 +287,23 @@ Scope {
                 if (!ov || !ov.switchToWorkspaceOnOpen || !ov.switchWorkspaceIndex || ov.switchWorkspaceIndex <= 0)
                     return;
 
-                const screenName = root.modelData && root.modelData.name;
-                if (!screenName)
-                    return;
-                const targetIdx = ov.switchWorkspaceIndex;
-                if (!targetIdx || targetIdx <= 0)
-                    return;
-                const targetWorkspace = NiriService.allWorkspaces.find(workspace =>
-                    workspace.output === screenName && workspace.idx === targetIdx)
-                if (targetWorkspace)
-                    NiriService.switchToWorkspaceById(targetWorkspace.id)
+                if (CompositorService.isNiri) {
+                    const screenName = root.modelData && root.modelData.name;
+                    if (!screenName)
+                        return;
+                    const targetIdx = ov.switchWorkspaceIndex;
+                    if (!targetIdx || targetIdx <= 0)
+                        return;
+                    const targetWorkspace = NiriService.allWorkspaces.find(workspace =>
+                        workspace.output === screenName && workspace.idx === targetIdx)
+                    if (targetWorkspace)
+                        NiriService.switchToWorkspaceById(targetWorkspace.id)
+                } else if (CompositorService.isHyprland) {
+                    if (!root.isTargetOutput)
+                        return;
+                    const wsNumber = ov.switchWorkspaceIndex;
+                    Hyprland.dispatch(`workspace ${wsNumber}`);
+                }
             }
 
             Column {
@@ -378,23 +408,31 @@ Scope {
                         GlobalStates.overviewOpen = false;
                     } else if (event.key === Qt.Key_Left) {
                         if (!root.searchingText) {
-                            const outputName = root.screen?.name ?? ""
-                            const workspaces = NiriService.allWorkspaces
-                                .filter(workspace => workspace.output === outputName)
-                                .sort((a, b) => a.idx - b.idx)
-                            const currentIndex = workspaces.findIndex(workspace => workspace.is_active)
-                            if (currentIndex > 0)
-                                NiriService.switchToWorkspaceById(workspaces[currentIndex - 1].id)
+                            if (CompositorService.isNiri) {
+                                const outputName = root.screen?.name ?? ""
+                                const workspaces = NiriService.allWorkspaces
+                                    .filter(workspace => workspace.output === outputName)
+                                    .sort((a, b) => a.idx - b.idx)
+                                const currentIndex = workspaces.findIndex(workspace => workspace.is_active)
+                                if (currentIndex > 0)
+                                    NiriService.switchToWorkspaceById(workspaces[currentIndex - 1].id)
+                            } else {
+                                Hyprland.dispatch("workspace r-1");
+                            }
                         }
                     } else if (event.key === Qt.Key_Right) {
                         if (!root.searchingText) {
-                            const outputName = root.screen?.name ?? ""
-                            const workspaces = NiriService.allWorkspaces
-                                .filter(workspace => workspace.output === outputName)
-                                .sort((a, b) => a.idx - b.idx)
-                            const currentIndex = workspaces.findIndex(workspace => workspace.is_active)
-                            if (currentIndex >= 0 && currentIndex < workspaces.length - 1)
-                                NiriService.switchToWorkspaceById(workspaces[currentIndex + 1].id)
+                            if (CompositorService.isNiri) {
+                                const outputName = root.screen?.name ?? ""
+                                const workspaces = NiriService.allWorkspaces
+                                    .filter(workspace => workspace.output === outputName)
+                                    .sort((a, b) => a.idx - b.idx)
+                                const currentIndex = workspaces.findIndex(workspace => workspace.is_active)
+                                if (currentIndex >= 0 && currentIndex < workspaces.length - 1)
+                                    NiriService.switchToWorkspaceById(workspaces[currentIndex + 1].id)
+                            } else {
+                                Hyprland.dispatch("workspace r+1");
+                            }
                         }
                     }
                 }
@@ -408,7 +446,7 @@ Scope {
                     // This full-screen loader remains only for explicit Task View.
                     active: root.shouldShow && root.taskViewMode
                     visible: active && (root.searchingText == "")
-                    sourceComponent: niriComponent
+                    sourceComponent: CompositorService.isNiri ? niriComponent : hyprComponent
                 }
 
                 Loader {
@@ -421,6 +459,13 @@ Scope {
                     sourceComponent: allAppsGridComponent
                 }
 
+                Component {
+                    id: hyprComponent
+                    OverviewWidget {
+                        panelWindow: root
+                        visible: (root.searchingText == "")
+                    }
+                }
 
                 Component {
                     id: niriComponent

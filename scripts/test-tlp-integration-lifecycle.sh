@@ -71,12 +71,6 @@ assert_file_contains 'applyProcess.running = false' "$tlp_service" \
   'TLP battery policy apply timeout must stop the helper process'
 assert_file_contains 'root.busy = false' "$tlp_service" \
   'TLP battery policy apply exit must release the busy state'
-assert_file_contains 'running: root.enabled || root.managed || root.busy' "$tlp_service" \
-  'TLP battery status polling must sleep when disabled and unmanaged'
-assert_file_contains 'onEnabledChanged:' "$tlp_service" \
-  'TLP charge-limit toggles must trigger a fresh ownership/capability probe'
-assert_file_contains 'root._reconcileAfterDetect = true' "$tlp_service" \
-  'TLP toggle refresh must preserve reconciliation after the fresh probe'
 
 # The full TLP settings surface uses the same helper for status plus privileged
 # config mutations. Both paths must remain bounded, and a privileged spawn
@@ -131,13 +125,6 @@ assert_text_contains 'tlpPdProbe.startObserved = true' "$tlp_probe_started_block
   'tlp-pd process start must be observed before timeout handling'
 assert_text_contains 'tlpPdTimeout.restart()' "$tlp_probe_started_block" \
   'tlp-pd process start must arm its timeout'
-assert_file_contains 'command: ["/usr/bin/systemctl", "is-active", "--quiet", "tlp-pd.service"]' "$power_persistence" \
-  'tlp-pd probe must call systemctl directly'
-assert_file_contains 'tlpPdProbe.command = ["/usr/bin/systemctl", "is-enabled", "--quiet", "tlp-pd.service"]' "$power_persistence" \
-  'tlp-pd probe must preserve is-enabled fallback'
-if grep -Fq '"/usr/bin/sh",' "$power_persistence"; then
-  fail 'tlp-pd ownership probe must not restore a shell wrapper'
-fi
 assert_text_contains 'if (!tlpPdProbe.running)' "$tlp_probe_timeout_block" \
   'tlp-pd timeout must ignore an already-stopped process'
 assert_text_contains 'tlpPdProbe.timedOut = true' "$tlp_probe_timeout_block" \

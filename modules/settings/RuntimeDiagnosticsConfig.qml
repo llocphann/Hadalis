@@ -10,7 +10,6 @@ ContentPage {
     settingsPageIndex: 31
     settingsPageName: Translation.tr("Diagnostics")
     bottomContentPadding: 8
-    fillViewportHeight: true
 
     readonly property bool diagnosticsActive:
         RuntimeDiagnosticsSession.pageCurrent
@@ -20,10 +19,8 @@ ContentPage {
     readonly property int collisionCount: root.diagnosticsActive
         ? CodeWorkflowRuntime.identityCollisions.length : 0
     readonly property var evidence: RuntimeDiagnosticsSession.evidence
-    readonly property var shellEvidence: root.evidence?.shell ?? null
+    readonly property var systemEvidence: root.evidence?.system ?? null
     readonly property var discoveryEvidence: root.evidence?.discovery ?? null
-    readonly property string discoveryStatus:
-        String(root.discoveryEvidence?.status ?? "")
     readonly property var runtimeSnapshot: root.diagnosticsActive
         ? CodeWorkflowRuntime.snapshot() : ({ records: [], events: [] })
     readonly property var runtimeRecords:
@@ -51,13 +48,7 @@ ContentPage {
         if (root.samplerError.length > 0)
             return Translation.tr("Diagnostics sampler error") + ": "
                 + root.samplerError
-        if (root.discoveryStatus === "error") {
-            const detail = String(root.discoveryEvidence?.error ?? "")
-            return detail.length > 0
-                ? Translation.tr("Source discovery error") + ": " + detail
-                : Translation.tr("Source discovery error")
-        }
-        return ""
+        return String(root.discoveryEvidence?.error ?? "")
     }
 
     function sampleIsStale(): bool {
@@ -67,7 +58,7 @@ ContentPage {
             return false
         const heartbeatAge = tick
             - RuntimeDiagnosticsSession.pageOpenedHeartbeatTick
-        if (!root.samplerRunning || root.shellEvidence === null)
+        if (!root.samplerRunning || root.systemEvidence === null)
             return heartbeatAge >= 3
         const sampleAtMs = Number(root.evidence?.sampleAtMs)
         if (!Number.isFinite(sampleAtMs) || sampleAtMs <= 0)
@@ -85,16 +76,26 @@ ContentPage {
             return Translation.tr("Diagnostics error")
         if (root.sessionStalled)
             return Translation.tr("Diagnostics stalled")
-        if (!root.samplerRunning || root.shellEvidence === null)
+        if (!root.samplerRunning || root.systemEvidence === null)
             return Translation.tr("Diagnostics starting")
         return Translation.tr("Diagnostics live")
     }
 
-    function boundaryStatusLabel(): string {
-        if (root.discoveryStatus !== "ready")
-            return "— " + Translation.tr("boundaries")
-        return String(root.discoveryEvidence?.boundaryCount ?? 0)
-            + " " + Translation.tr("boundaries")
+    function formatUptime(value): string {
+        if (value === null || value === undefined)
+            return "—"
+        const seconds = Number(value)
+        if (!Number.isFinite(seconds) || seconds < 0)
+            return "—"
+        const totalMinutes = Math.floor(seconds / 60)
+        const days = Math.floor(totalMinutes / 1440)
+        const hours = Math.floor((totalMinutes % 1440) / 60)
+        const minutes = totalMinutes % 60
+        if (days > 0)
+            return days + "d " + hours + "h"
+        if (hours > 0)
+            return hours + "h " + minutes + "m"
+        return minutes + "m"
     }
 
     // One compact status strip replaces the old expanded live-sampling card.
@@ -140,10 +141,10 @@ ContentPage {
 
             StyledText {
                 textFormat: Text.PlainText
-                text: root.shellEvidence?.pid
-                    ? "PID " + String(root.shellEvidence.pid) : "PID —"
+                text: Translation.tr("Uptime") + " "
+                    + root.formatUptime(
+                        root.systemEvidence?.uptimeSeconds)
                 color: Appearance.colors.colSubtext
-                font.family: Appearance.font.family.monospace
                 font.pixelSize: Appearance.font.pixelSize.small
             }
 
@@ -161,7 +162,8 @@ ContentPage {
             StyledText {
                 textFormat: Text.PlainText
                 visible: statusRow.width >= 760
-                text: root.boundaryStatusLabel()
+                text: String(root.discoveryEvidence?.boundaryCount ?? 0)
+                    + " " + Translation.tr("boundaries")
                 color: Appearance.colors.colSubtext
                 font.pixelSize: Appearance.font.pixelSize.small
             }
@@ -192,8 +194,6 @@ ContentPage {
 
     BtopDashboard {
         Layout.fillWidth: true
-        Layout.fillHeight: true
-        Layout.minimumHeight: 360
         compactMode: true
         evidence: root.evidence
         targets: root.runtimeCatalog

@@ -17,7 +17,6 @@ Item {
     property string txTotal: ""
     property string provenance: ""
     property bool showDetails: false
-    property bool compactMode: false
     property var rxSamples: []
     property var txSamples: []
     property real graphHeight: 38
@@ -41,8 +40,7 @@ Item {
         root.peak(root.rxSamples),
         root.peak(root.txSamples))
 
-    implicitHeight: networkColumn.implicitHeight
-        + (root.compactMode ? 18 : 24)
+    implicitHeight: networkColumn.implicitHeight + 24
 
     Rectangle {
         anchors.fill: parent
@@ -52,13 +50,13 @@ Item {
             root.rxColor.r,
             root.rxColor.g,
             root.rxColor.b,
-            root.compactMode ? 0.18 : 0.42)
+            0.42)
 
         ColumnLayout {
             id: networkColumn
             anchors.fill: parent
-            anchors.margins: root.compactMode ? 9 : 12
-            spacing: root.compactMode ? 5 : 8
+            anchors.margins: 12
+            spacing: 8
 
             ColumnLayout {
                 Layout.fillWidth: true
@@ -69,8 +67,7 @@ Item {
                     textFormat: Text.PlainText
                     Layout.fillWidth: true
                     text: root.title
-                    color: root.compactMode
-                        ? Appearance.colors.colOnLayer1 : root.rxColor
+                    color: root.rxColor
                     font.family: Appearance.font.family.monospace
                     font.weight: Font.DemiBold
                     elide: Text.ElideRight
@@ -79,7 +76,7 @@ Item {
                 GridLayout {
                     id: rateHeader
                     Layout.fillWidth: true
-                    columns: root.compactMode ? 2 : (width >= 360 ? 2 : 1)
+                    columns: width >= 360 ? 2 : 1
                     columnSpacing: 12
                     rowSpacing: 2
 
@@ -98,8 +95,7 @@ Item {
 
                         textFormat: Text.PlainText
                         Layout.fillWidth: true
-                        horizontalAlignment: root.compactMode
-                            || rateHeader.width >= 360
+                        horizontalAlignment: rateHeader.width >= 360
                             ? Text.AlignRight : Text.AlignLeft
                         text: root.txPrefix + root.tx
                         color: root.txColor

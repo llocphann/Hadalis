@@ -81,6 +81,8 @@ The sidebar now-playing surface reuses the same `PlayerControl` component as the
 
 The **Lyrics** tab is local-only. For the current MPD track, Hadalis looks beside the resolved audio path for same-name `.lrc` (preferred) or `.txt` sidecars. Timed LRC lines follow MPRIS/MPD playback position; unsynchronized text remains manually scrollable. This tab performs no network lyric lookup.
 
+The historical `YtMusic` source remains only as compatibility code and is no longer routed from the Left Sidebar or its Settings UI.
+
 ### Media controls layouts
 
 The media controls popup has multiple layout presets you can choose from in Settings. Different presets show different arrangements of album art, controls, and track info.

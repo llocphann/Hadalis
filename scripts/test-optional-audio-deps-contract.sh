@@ -108,50 +108,10 @@ for raw_path in sys.argv[1:]:
 print("PASS: Arch packaging keeps EasyEffects and socat optional with consistent Equalizer metadata")
 PY
 
-python3 - <<'PY'
-from pathlib import Path
-import re
-
-path = Path("sdata/dist-arch/inir-audio/PKGBUILD")
-text = path.read_text(encoding="utf-8")
-
-def block(name: str) -> str:
-    match = re.search(rf"(?ms)^{name}=\(\n(?P<body>.*?)^\)\s*$", text)
-    if not match:
-        raise SystemExit(f"FAIL: {path} is missing {name}=()")
-    return match.group("body")
-
-hard = block("depends")
-optional = block("optdepends")
-for package in ("mpv", "mpv-mpris"):
-    if re.search(rf"(?m)^\s*{re.escape(package)}\s*$", hard):
-        raise SystemExit(f"FAIL: inir-audio hard-requires optional external player integration: {package}")
-    if not re.search(rf"(?m)^\s*['\"]?{re.escape(package)}:", optional):
-        raise SystemExit(f"FAIL: inir-audio does not advertise optional external player integration: {package}")
-
-for installer, array_name in (
-    (Path("sdata/dist-debian/install-deps.sh"), "DEBIAN_AUDIO_PKGS"),
-    (Path("sdata/dist-fedora/install-deps.sh"), "FEDORA_AUDIO_PKGS"),
-):
-    source = installer.read_text(encoding="utf-8")
-    match = re.search(rf"(?ms)^{array_name}=\(\n(?P<body>.*?)^\)\s*$", source)
-    if not match:
-        raise SystemExit(f"FAIL: {installer} is missing {array_name}=()")
-    if re.search(r"(?m)^\s*mpv\s*$", match.group("body")):
-        raise SystemExit(f"FAIL: {installer} force-installs optional external mpv player")
-
-print("PASS: source audio installers keep mpv/mpv-mpris optional")
-PY
-
-switchwall="scripts/colors/switchwall.sh"
-if grep -Eq 'kill_existing_mpvpaper|pkill[^\n]*mpvpaper' "$switchwall"; then
-  printf 'FAIL: retired mpvpaper backend must not be killed by wallpaper switching\n' >&2
-  exit 1
-fi
-
 media_controller="services/MprisController.qml"
 audio_doc="docs/AUDIO_MEDIA.md"
 packages_doc="docs/PACKAGES.md"
+deps_map="sdata/lib/deps-map.sh"
 audio_bundle="sdata/dist-arch/inir-audio/PKGBUILD"
 deps_bundle="sdata/dist-arch/inir-deps/PKGBUILD"
 meta_pkg="distro/arch/inir-meta/PKGBUILD"
@@ -175,8 +135,8 @@ grep -Eq '^[[:space:]]+mpd-mpris$' "$meta_pkg" \
   || { printf 'FAIL: full Arch meta-package must install mpd-mpris for MPD/rmpc media integration\n' >&2; exit 1; }
 grep -Fq "depends = mpd-mpris" "$meta_srcinfo" \
   || { printf 'FAIL: inir-meta .SRCINFO must include mpd-mpris\n' >&2; exit 1; }
-[[ ! -e "sdata/lib/deps-map.sh" ]] \
-  || { printf 'FAIL: retired dependency map returned; installers must use package/array sources of truth\n' >&2; exit 1; }
+grep -Fq 'DEPS_AUDIO_MPD_MPRIS="arch:mpd-mpris' "$deps_map" \
+  || { printf 'FAIL: dependency routing omits the Arch mpd-mpris bridge\n' >&2; exit 1; }
 
 for marker in \
   'MIGRATION_ID="042-mpd-mpris-bridge"' \
@@ -192,8 +152,6 @@ for marker in \
   'function _mpdPlaybackStreamPresent(): bool' \
   'function _maybeStartMpdMprisBridge(): void' \
   'id: _mpdMprisProbeProc' \
-  'command: root._mpdBridgeAvailable > 0' \
-  '? ["pgrep", "-x", "mpd"]' \
   'command -v mpd-mpris >/dev/null 2>&1 || exit 2; pgrep -x mpd >/dev/null 2>&1 || exit 1' \
   '["/usr/bin/systemctl", "--user", "start", "mpd-mpris.service"]' \
   'readonly property string _mpdPreferredMprisName:' \
@@ -203,11 +161,6 @@ for marker in \
   grep -Fq "$marker" "$media_controller" \
     || { printf 'FAIL: MprisController MPD bridge contract missing: %s\n' "$marker" >&2; exit 1; }
 done
-
-grep -Fq 'interval: 30000' "$media_controller" \
-  || { printf 'FAIL: MPD bridge retry cadence drifted\n' >&2; exit 1; }
-grep -Fq 'Avoid respawning bash + command -v on every 30-second retry.' "$media_controller" \
-  || { printf 'FAIL: MPD bridge retry must retain the direct-pgrep performance contract\n' >&2; exit 1; }
 
 grep -Fq '### MPD and rmpc' "$audio_doc" \
   || { printf 'FAIL: audio/media docs omit MPD/rmpc bridge behavior\n' >&2; exit 1; }

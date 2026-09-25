@@ -26,7 +26,7 @@ def main() -> None:
         "property bool requestedVisible",
         "property bool _lingerVisible",
         "property real revealProgress",
-        "active: root._anchorReady && (root.requestedVisible || root._lingerVisible)",
+        "readonly property bool visualVisible",
         "retractTimer",
         "progress: root.revealProgress",
         "mask: connectedMask",
@@ -58,22 +58,16 @@ def main() -> None:
           "Normal Weather UX must not depend on retired broad perimeter routing")
 
     for token in (
-        "ConnectedSurfaceIrisEdgeSurface {",
-        "ownerThickness: root.screenEdgeHoverWidth",
-        "readonly property real hiddenTranslateDistance:",
+        "ConnectedSurfaceConnector",
+        "id: sidebarBridgeGeometry",
+        "geometry: sidebarBridgeGeometry",
         "PerimeterTokens.seamOverlap",
         "Config.options?.appearance?.screenEdge?.width ?? 10",
     ):
         check(token in sidebar,
               f"Sidebar connected route contract missing: {token}")
-    for retired in (
-        "ConnectedSurfaceConnector",
-        "id: sidebarBridgeGeometry",
-        "geometry: sidebarBridgeGeometry",
-        "SidebarEdgeConnectors.qml",
-    ):
-        check(retired not in sidebar,
-              f"Sidebar lifecycle must not revive retired connector geometry: {retired}")
+    check("SidebarEdgeConnectors.qml" not in sidebar,
+          "Sidebar lifecycle must not depend on the retired standalone bridge window")
 
     if failures:
         print("Connected presentation lifecycle regression(s):")

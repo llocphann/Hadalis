@@ -101,13 +101,8 @@ Singleton {
     }
 
     function refreshStoredAudioConfig(): void {
-        if (!Config.ready || storedConfigFile.loadPending)
-            return
-        storedConfigFile.loadPending = true
-        if (storedConfigFile.path === Config.filePath)
-            storedConfigFile.reload()
-        else
-            storedConfigFile.path = Config.filePath
+        if (Config.ready && !storedConfigProcess.running)
+            storedConfigProcess.running = true
     }
 
     function resetAudioMetadata(): void {
@@ -118,13 +113,8 @@ Singleton {
     }
 
     function loadAudioMetadata(): void {
-        if (metadataFile.loadPending)
-            return
-        metadataFile.loadPending = true
-        if (metadataFile.path === root.recorderStatusPath)
-            metadataFile.reload()
-        else
-            metadataFile.path = root.recorderStatusPath
+        if (!metadataProcess.running)
+            metadataProcess.running = true
     }
 
     onIsRecordingChanged: {
@@ -135,8 +125,6 @@ Singleton {
             recordingStartTime = 0
             elapsedSeconds = 0
             recorderPid = 0
-            activePidFile.loadPending = false
-            activePidFile.path = ""
             resetAudioMetadata()
         }
     }
@@ -144,19 +132,6 @@ Singleton {
     function refreshStatus() {
         if (!checkProcess.running)
             checkProcess.running = true
-    }
-
-    function refreshActivePid(): void {
-        if (!root.isRecording || root.recorderPid <= 0 || activePidFile.loadPending)
-            return
-
-        activePidFile.pid = root.recorderPid
-        activePidFile.loadPending = true
-        const target = "/proc/" + root.recorderPid + "/comm"
-        if (activePidFile.path === target)
-            activePidFile.reload()
-        else
-            activePidFile.path = target
     }
 
     readonly property int idlePollIntervalMs:
@@ -173,8 +148,7 @@ Singleton {
         onTriggered: root.refreshStatus()
     }
 
-    // Active poll: keep elapsed UI precise, but verify the known recorder PID
-    // in-process. Fall back to pgrep only when that PID disappears or changes.
+    // Active poll: 1s tick while recording (elapsed counter + stop detection)
     Timer {
         id: activePollTimer
         interval: 1000
@@ -183,7 +157,7 @@ Singleton {
         onTriggered: {
             if (root.recordingStartTime > 0)
                 root.elapsedSeconds = Math.floor((Date.now() - root.recordingStartTime) / 1000)
-            root.refreshActivePid()
+            root.refreshStatus()
         }
     }
 
@@ -220,32 +194,57 @@ Singleton {
         Qt.callLater(root.refreshStoredAudioConfig)
     }
 
-    FileView {
-        id: storedConfigFile
-        property bool loadPending: false
-        path: ""
-        printErrors: false
-
-        onLoaded: {
-            loadPending = false
-            root.parseStoredAudioConfig(text())
+    Process {
+        id: storedConfigProcess
+        property bool startObserved: false
+        command: ["/usr/bin/cat", Config.filePath]
+        stdout: StdioCollector {
+            id: storedConfigCollector
         }
-        onLoadFailed: {
-            loadPending = false
+        stderr: StdioCollector {}
+        onRunningChanged: {
+            if (storedConfigProcess.running) {
+                storedConfigProcess.startObserved = false
+                return
+            }
+            if (storedConfigProcess.startObserved)
+                return
             root.resetStoredAudioConfig()
+        }
+        onStarted: storedConfigProcess.startObserved = true
+        onExited: (exitCode, exitStatus) => {
+            if (exitCode === 0)
+                root.parseStoredAudioConfig(storedConfigCollector.text)
+            else
+                root.resetStoredAudioConfig()
         }
     }
 
-    FileView {
-        id: metadataFile
-        property bool loadPending: false
-        path: ""
-        printErrors: false
-
-        onLoaded: {
-            loadPending = false
+    Process {
+        id: metadataProcess
+        property bool startObserved: false
+        command: ["/usr/bin/cat", root.recorderStatusPath]
+        stdout: StdioCollector {
+            id: metadataCollector
+        }
+        stderr: StdioCollector {}
+        onRunningChanged: {
+            if (metadataProcess.running) {
+                metadataProcess.startObserved = false
+                return
+            }
+            if (metadataProcess.startObserved)
+                return
+            root.resetAudioMetadata()
+        }
+        onStarted: metadataProcess.startObserved = true
+        onExited: (exitCode, exitStatus) => {
+            if (exitCode !== 0) {
+                root.resetAudioMetadata()
+                return
+            }
             try {
-                const payload = JSON.parse(text())
+                const payload = JSON.parse(metadataCollector.text)
                 const payloadPid = Number(payload.recorderPid ?? 0)
                 if (!root.isRecording || payloadPid <= 0 || payloadPid !== root.recorderPid) {
                     root.resetAudioMetadata()
@@ -258,33 +257,6 @@ Singleton {
             } catch (error) {
                 root.resetAudioMetadata()
             }
-        }
-        onLoadFailed: {
-            loadPending = false
-            root.resetAudioMetadata()
-        }
-    }
-
-    FileView {
-        id: activePidFile
-        property bool loadPending: false
-        property int pid: 0
-        path: ""
-        printErrors: false
-
-        onLoaded: {
-            const probedPid = activePidFile.pid
-            loadPending = false
-            if (!root.isRecording || root.recorderPid !== probedPid)
-                return
-            if (text().trim() !== "wf-recorder")
-                root.refreshStatus()
-        }
-        onLoadFailed: {
-            const probedPid = activePidFile.pid
-            loadPending = false
-            if (root.isRecording && root.recorderPid === probedPid)
-                root.refreshStatus()
         }
     }
 

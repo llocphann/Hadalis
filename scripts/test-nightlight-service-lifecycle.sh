@@ -2,7 +2,7 @@
 set -euo pipefail
 
 repo_root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
-service="$repo_root/services/NightLight.qml"
+service="$repo_root/services/Hyprsunset.qml"
 
 fail() {
     printf 'night-light lifecycle guard failed: %s\n' "$1" >&2
@@ -15,19 +15,34 @@ require() {
     grep -Fq -- "$needle" "$service" || fail "$message"
 }
 
-require 'id: stateProbeProc' 'wlsunset state probe is missing'
-require 'property bool startObserved: false' 'state probe startup guard is missing'
-require 'property bool timedOut: false' 'state probe timeout state is missing'
-require 'stateProbeTimeout.restart()' 'state probe must arm its watchdog after start'
-require 'stateProbeTimeout.stop()' 'state probe terminal paths must cancel the watchdog'
-require 'root._finishStateProbe(!stateProbeProc.timedOut && exitCode === 0)' \
-    'timed-out probes must fail closed'
-require 'id: stateProbeTimeout' 'state probe watchdog timer is missing'
-require 'interval: 5000' 'state probe watchdog interval changed unexpectedly'
-require 'stateProbeProc.timedOut = true' 'watchdog must mark timeout state'
-require 'stateProbeProc.running = false' 'watchdog must terminate a stuck probe'
+require_started_block() {
+    local process_id="$1"
+    local timeout_id="$2"
+    local block
+    block="$(sed -n "/id: ${process_id}$/,/^    }/p" "$service")"
+    [[ -n "$block" ]] || fail "$process_id process block is missing"
+    grep -Fq "${process_id}.startObserved = true" <<<"$block" \
+        || fail "$process_id must record successful startup"
+    grep -Fq "${timeout_id}.restart()" <<<"$block" \
+        || fail "$process_id must restart its state-probe timeout after spawn"
+}
+
+require 'id: fetchProc' 'Hyprland state probe is missing'
+require_started_block 'fetchProc' 'hyprStateProbeTimeout'
+require 'console.warn("[Hyprsunset] Hyprland state probe failed to start")' \
+    'Hyprland state probe must handle spawn failure'
+require 'id: niriFetchProc' 'Niri state probe is missing'
+require_started_block 'niriFetchProc' 'niriStateProbeTimeout'
+require 'console.warn("[Hyprsunset] Niri state probe failed to start")' \
+    'Niri state probe must handle spawn failure'
+
+fallback_count="$(grep -Fc -- 'root._finishStateProbe(false)' "$service")"
+if (( fallback_count < 2 )); then
+    fail "both state probes must settle unknown state on spawn failure"
+fi
+
 require 'if (root._pendingEnable)' \
-    'state-probe completion must drain pending enable requests'
+    'state-probe completion must still drain pending enable requests'
 require 'root.stateKnown = true' \
     'state-probe completion must mark state as known'
 require 'property bool _pendingDisable: false' \
@@ -35,29 +50,28 @@ require 'property bool _pendingDisable: false' \
 require 'property bool _toggleAfterProbe: false' \
     'unknown-state toggles must defer inversion until the first state probe'
 require 'property real manualOverrideUntilMs: 0' \
-    'manual automatic-mode overrides must track the next schedule boundary'
+    'manual automatic-mode overrides must track their next schedule boundary'
 require 'function _nextScheduleBoundaryMs()' \
-    'manual override expiry must be derived from the configured schedule'
+    'manual override expiry must be derived from the next configured schedule boundary'
 require 'Date.now() >= root.manualOverrideUntilMs' \
-    'manual override must expire at the boundary'
+    'manual override must expire at the boundary rather than on the next minute tick'
 require 'id: backendStopProc' \
     'night-light service must have an authoritative backend stop process'
 require '["/usr/bin/pkill", "-TERM", "-x", "wlsunset"]' \
-    'OFF requests must disable a detached wlsunset backend'
+    'Niri OFF requests must disable a legacy/detached wlsunset backend'
+require '["/usr/bin/pkill", "-TERM", "-x", "hyprsunset"]' \
+    'Hyprland OFF requests must stop a legacy/detached hyprsunset backend'
 require 'root._applyManualDesiredState(!root.active)' \
     'unknown-state toggle must invert the probed backend state exactly once'
-require 'function load(): void {' \
+require 'function load() {' \
     'deferred shell initialization must explicitly initialize night-light state'
 require 'root.reEvaluate()' \
     'night-light load path must evaluate the configured schedule'
-require 'if (wlsunsetProc.startObserved)' \
-    'owned wlsunset spawn failure must settle through onRunningChanged'
-if grep -Fq -- 'if (!wlsunsetProc.startObserved)' "$service"; then
-    fail 'owned wlsunset lifecycle guard is inverted and skips spawn-failure cleanup'
+if grep -Fq -- 'running: !CompositorService.isNiri' "$service"; then
+    fail 'Hyprland state probe must be one-shot, not permanently bound running'
 fi
-
-if grep -Eqi -- 'hyprland|hyprsunset|hyprctl' "$service"; then
-    fail 'Niri-only night-light service must not contain Hyprland backend residue'
+if grep -Fq -- 'running: CompositorService.isNiri' "$service"; then
+    fail 'Niri state probe must be one-shot, not permanently bound running'
 fi
 
 printf 'night-light service lifecycle guards: ok\n'

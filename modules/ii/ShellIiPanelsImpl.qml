@@ -20,6 +20,7 @@ import qs.modules.clipboard as ClipboardModule
 
 import QtQuick
 import Quickshell
+import Quickshell.Hyprland
 import Quickshell.Io
 import Quickshell.Wayland
 import qs
@@ -145,7 +146,7 @@ Item {
     PanelLoader { identifier: "iiNotificationPopup"; workflowSourcePath: "modules/notificationPopup/NotificationPopup.qml"; component: NotificationPopup {} }
     PanelLoader { identifier: "iiOnScreenDisplay"; workflowSourcePath: "modules/onScreenDisplay/OnScreenDisplay.qml"; component: OnScreenDisplay {} }
 
-    OnDemandPanelLoader { identifier: "iiBootGreeting"; open: GlobalStates.bootGreetingOpen; workflowSourcePath: "modules/bootGreeting/BootGreeting.qml"; component: BootGreeting {} }
+    DeferredPanelLoader { identifier: "iiBootGreeting"; workflowSourcePath: "modules/bootGreeting/BootGreeting.qml"; component: BootGreeting {} }
     OnDemandPanelLoader { identifier: "iiCheatsheet"; open: GlobalStates.cheatsheetOpen; source: "../cheatsheet/Cheatsheet.qml" }
     OnDemandPanelLoader {
         identifier: "iiControlPanel"
@@ -162,16 +163,7 @@ Item {
         source: "../dashboard/Dashboard.qml"
     }
     DeferredPanelLoader { identifier: "iiLock"; workflowSourcePath: "modules/lock/Lock.qml"; component: Lock {} }
-    OnDemandPanelLoader {
-        identifier: "iiMediaControls"
-        open: GlobalStates.mediaControlsOpen
-        // Avoid boot-time player/screen binding fan-out. Keep the lightweight
-        // outer scope warm briefly after first use; its own player surface still
-        // releases after the existing 350 ms close animation.
-        retainAfterUse: true
-        workflowSourcePath: "modules/mediaControls/MediaControls.qml"
-        component: MediaControls {}
-    }
+    DeferredPanelLoader { identifier: "iiMediaControls"; workflowSourcePath: "modules/mediaControls/MediaControls.qml"; component: MediaControls {} }
     OnDemandPanelLoader { identifier: "iiOnScreenKeyboard"; open: GlobalStates.oskOpen; workflowSourcePath: "modules/onScreenKeyboard/OnScreenKeyboard.qml"; component: OnScreenKeyboard {} }
     OnDemandPanelLoader {
         identifier: "iiOverlay"
@@ -253,6 +245,112 @@ Item {
     OnDemandPanelLoader { identifier: "iiClipboard"; open: GlobalStates.clipboardOpen; retainAfterUse: true; closeGraceMs: 250; workflowSourcePath: "modules/clipboard/ClipboardPanel.qml"; component: ClipboardModule.ClipboardPanel {} }
     OnDemandPanelLoader { identifier: "iiShellUpdate"; open: ShellUpdates.overlayOpen; closeGraceMs: 250; workflowSourcePath: "modules/shellUpdate/ShellUpdateOverlay.qml"; component: ShellUpdateOverlay {} }
     OnDemandPanelLoader { identifier: "iiRecordingOsd"; open: RecorderStatus.isRecording; closeGraceMs: 250; workflowSourcePath: "modules/recordingOsd/RecordingOsd.qml"; component: RecordingOsd {} }
+
+    Loader {
+        active: CompositorService.isHyprland
+        sourceComponent: GlobalShortcut {
+            name: "controlPanelToggle"
+            description: "Toggles control panel on press"
+            onPressed: GlobalStates.controlPanelOpen = !GlobalStates.controlPanelOpen
+        }
+    }
+
+    Loader {
+        active: CompositorService.isHyprland
+        sourceComponent: Item {
+            GlobalShortcut { name: "oskToggle"; description: "Toggles on screen keyboard on press"; onPressed: GlobalStates.oskOpen = !GlobalStates.oskOpen }
+            GlobalShortcut { name: "oskOpen"; description: "Opens on screen keyboard on press"; onPressed: GlobalStates.oskOpen = true }
+            GlobalShortcut { name: "oskClose"; description: "Closes on screen keyboard on press"; onPressed: GlobalStates.oskOpen = false }
+            GlobalShortcut { name: "overlayToggle"; description: "Toggles overlay on press"; onPressed: GlobalStates.overlayOpen = !GlobalStates.overlayOpen }
+            GlobalShortcut { name: "sessionToggle"; description: "Toggles session screen on press"; onPressed: GlobalStates.sessionOpen = !GlobalStates.sessionOpen }
+            GlobalShortcut { name: "sessionOpen"; description: "Opens session screen on press"; onPressed: GlobalStates.sessionOpen = true }
+            GlobalShortcut { name: "sessionClose"; description: "Closes session screen on press"; onPressed: GlobalStates.sessionOpen = false }
+            GlobalShortcut { name: "cheatsheetToggle"; description: "Toggles cheatsheet on press"; onPressed: GlobalStates.cheatsheetOpen = !GlobalStates.cheatsheetOpen }
+            GlobalShortcut { name: "cheatsheetOpen"; description: "Opens cheatsheet on press"; onPressed: GlobalStates.cheatsheetOpen = true }
+            GlobalShortcut { name: "cheatsheetClose"; description: "Closes cheatsheet on press"; onPressed: GlobalStates.cheatsheetOpen = false }
+        }
+    }
+
+    Loader {
+        active: CompositorService.isHyprland
+        sourceComponent: Item {
+            GlobalShortcut {
+                name: "mediaControlsToggle"
+                description: "Toggles media controls on press"
+                onPressed: GlobalStates.mediaControlsOpen = !GlobalStates.mediaControlsOpen
+            }
+            GlobalShortcut {
+                name: "mediaControlsOpen"
+                description: "Opens media controls on press"
+                onPressed: GlobalStates.mediaControlsOpen = true
+            }
+            GlobalShortcut {
+                name: "mediaControlsClose"
+                description: "Closes media controls on press"
+                onPressed: GlobalStates.mediaControlsOpen = false
+            }
+            GlobalShortcut {
+                name: "mediaControlsPlayPause"
+                description: "Toggles play/pause when media controls are open"
+                onPressed: {
+                    const player = MprisController.activePlayer
+                    if (GlobalStates.mediaControlsOpen && player?.canTogglePlaying)
+                        player.togglePlaying()
+                }
+            }
+        }
+    }
+
+    Loader {
+        active: CompositorService.isHyprland
+        sourceComponent: Item {
+            GlobalShortcut {
+                name: "sidebarLeftToggle"
+                description: "Toggles left sidebar on press"
+                onPressed: GlobalStates.toggleSidebarLeft("")
+            }
+            GlobalShortcut {
+                name: "sidebarLeftOpen"
+                description: "Opens left sidebar on press"
+                onPressed: GlobalStates.openSidebarLeft("")
+            }
+            GlobalShortcut {
+                name: "sidebarLeftClose"
+                description: "Closes left sidebar on press"
+                onPressed: GlobalStates.closeSidebarLeft()
+            }
+        }
+    }
+
+    Loader {
+        active: CompositorService.isHyprland
+        sourceComponent: Item {
+            GlobalShortcut {
+                name: "sidebarRightToggle"
+                description: "Toggles right sidebar on press"
+                onPressed: GlobalStates.toggleSidebarRight("")
+            }
+            GlobalShortcut {
+                name: "sidebarRightOpen"
+                description: "Opens right sidebar on press"
+                onPressed: GlobalStates.openSidebarRight("")
+            }
+            GlobalShortcut {
+                name: "sidebarRightClose"
+                description: "Closes right sidebar on press"
+                onPressed: GlobalStates.closeSidebarRight()
+            }
+        }
+    }
+
+    Loader {
+        active: CompositorService.isHyprland
+        sourceComponent: GlobalShortcut {
+            name: "dashboardToggle"
+            description: "Toggles the dashboard on press"
+            onPressed: GlobalStates.dashboardOpen = !GlobalStates.dashboardOpen
+        }
+    }
 
     LazyLoader {
         active: Config.ready && (Config.options?.background?.effects?.ripple?.enable ?? false)

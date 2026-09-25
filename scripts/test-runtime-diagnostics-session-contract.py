@@ -63,17 +63,7 @@ for token in (
 
 require(
     dispatch,
-    'MODE="${MODE:-rust}"',
-    "native selector must keep Rust as the production default",
-)
-require(
-    dispatch,
-    '"$BIN_DIR/inir-native" diagnostics "$@"',
-    "native selector must route Diagnostics through the Rust backend",
-)
-require(
-    dispatch,
-    'python_exec "$ROOT_DIR/scripts/runtime-diagnostics-sampler.py" "$@"',
+    'exec /usr/bin/env python3 "$ROOT_DIR/scripts/runtime-diagnostics-sampler.py" "$@"',
     "native selector must retain the reversible Python Diagnostics fallback",
 )
 
@@ -235,19 +225,9 @@ for source, text in (
     )
     require(
         text,
-        'root.discoveryStatus === "error"',
-        f"{source} must classify runtime boundary index failures",
+        'String(root.discoveryEvidence?.error ?? "")',
+        f"{source} must surface runtime boundary index failures",
     )
-    require(
-        text,
-        'Translation.tr("Source discovery error")',
-        f"{source} must label actual source discovery failures",
-    )
-    if 'return String(root.discoveryEvidence?.error ?? "")' in text:
-        raise SystemExit(
-            f"FAIL: {source} must not promote optional parser unavailability "
-            "to the primary Diagnostics error channel"
-        )
     require(text, "BtopDashboard {",
             f"{source} must show the shared resource dashboard")
 

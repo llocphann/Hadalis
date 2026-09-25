@@ -49,9 +49,11 @@ MouseArea {
             const configTarget = Config.options?.wallpaperSelector?.targetMonitor ?? ""
             if (configTarget && WallpaperListener.screenNames.includes(configTarget)) {
                 _lockedTarget = configTarget
-            } else {
-                // Last resort: capture Niri's focused output.
+            } else if (CompositorService.isNiri) {
+                // Last resort: capture focused monitor (may be stale if overlay already took focus)
                 _capturedMonitor = NiriService.currentOutput ?? ""
+            } else if (CompositorService.isHyprland) {
+                _capturedMonitor = Hyprland.focusedMonitor?.name ?? ""
             }
         }
         Qt.callLater(() => {
@@ -237,7 +239,7 @@ MouseArea {
         radius: Appearance.zzzEverywhere ? Appearance.zzz.panelRadius
             : Appearance.angelEverywhere ? Appearance.angel.roundingLarge
             : Appearance.inirEverywhere ? Appearance.inir.roundingLarge 
-            : (Appearance.rounding.screenRounding - Appearance.sizes.surfaceGap + 1)
+            : (Appearance.rounding.screenRounding - Appearance.sizes.hyprlandGapsOut + 1)
         Behavior on radius { enabled: Appearance.animationsEnabled; NumberAnimation { duration: Appearance.animation.elementResize.duration; easing.type: Appearance.animation.elementResize.type; easing.bezierCurve: Appearance.animation.elementResize.bezierCurve } }
 
         property int calculatedRows: Math.ceil(grid.count / grid.columns)

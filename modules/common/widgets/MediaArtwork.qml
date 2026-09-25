@@ -10,9 +10,10 @@ Item {
     id: root
 
     readonly property MprisPlayer player: MprisController.activePlayer
-    readonly property string sourceUrl: MprisController.effectiveArtUrl(root.player)
-    readonly property string title: root.player?.trackTitle ?? ""
-    readonly property string artist: root.player?.trackArtist ?? ""
+    readonly property bool isYtMusicActive: MprisController.isYtMusicActive
+    readonly property string sourceUrl: root.isYtMusicActive && YtMusic.currentThumbnail ? YtMusic.currentThumbnail : MprisController.effectiveArtUrl(root.player)
+    readonly property string title: root.isYtMusicActive && YtMusic.currentTitle ? YtMusic.currentTitle : (root.player?.trackTitle ?? "")
+    readonly property string artist: root.isYtMusicActive && YtMusic.currentArtist ? YtMusic.currentArtist : (root.player?.trackArtist ?? "")
     readonly property string album: root.player?.trackAlbum ?? ""
     readonly property bool ready: artworkResolver.ready
     readonly property string displaySource: artworkResolver.displaySource
@@ -26,7 +27,8 @@ Item {
         target: root.player
 
         function onTrackArtUrlChanged(): void {
-            Qt.callLater(root.refresh);
+            if (!root.isYtMusicActive)
+                Qt.callLater(root.refresh);
         }
 
         function onTrackTitleChanged(): void {
@@ -42,6 +44,24 @@ Item {
         }
     }
 
+    Connections {
+        target: YtMusic
+
+        function onCurrentThumbnailChanged(): void {
+            if (root.isYtMusicActive)
+                Qt.callLater(root.refresh);
+        }
+
+        function onCurrentTitleChanged(): void {
+            if (root.isYtMusicActive)
+                Qt.callLater(root.refresh);
+        }
+
+        function onCurrentArtistChanged(): void {
+            if (root.isYtMusicActive)
+                Qt.callLater(root.refresh);
+        }
+    }
 
     MediaArtworkResolver {
         id: artworkResolver

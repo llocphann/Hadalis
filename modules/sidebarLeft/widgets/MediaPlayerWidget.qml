@@ -19,15 +19,16 @@ Item {
     visible: hasPlayer
 
     property MprisPlayer player: MprisController.activePlayer
-    readonly property bool hasPlayer: !!(player && player.trackTitle)
+    readonly property bool isYtMusicPlayer: MprisController.isYtMusicActive
+    readonly property bool hasPlayer: (player && player.trackTitle) || (isYtMusicPlayer && YtMusic.currentVideoId)
     
-    readonly property string effectiveTitle: player?.trackTitle ?? ""
-    readonly property string effectiveArtist: player?.trackArtist ?? ""
-    readonly property string effectiveArtUrl: player?.trackArtUrl ?? ""
-    readonly property real effectivePosition: player?.position ?? 0
-    readonly property real effectiveLength: player?.length ?? 0
-    readonly property bool effectiveIsPlaying: player?.isPlaying ?? false
-    readonly property bool effectiveCanSeek: player?.canSeek ?? false
+    readonly property string effectiveTitle: isYtMusicPlayer ? YtMusic.currentTitle : (player?.trackTitle ?? "")
+    readonly property string effectiveArtist: isYtMusicPlayer ? YtMusic.currentArtist : (player?.trackArtist ?? "")
+    readonly property string effectiveArtUrl: isYtMusicPlayer ? YtMusic.currentThumbnail : (player?.trackArtUrl ?? "")
+    readonly property real effectivePosition: isYtMusicPlayer ? YtMusic.currentPosition : (player?.position ?? 0)
+    readonly property real effectiveLength: isYtMusicPlayer ? YtMusic.currentDuration : (player?.length ?? 0)
+    readonly property bool effectiveIsPlaying: isYtMusicPlayer ? YtMusic.isPlaying : (player?.isPlaying ?? false)
+    readonly property bool effectiveCanSeek: isYtMusicPlayer ? YtMusic.canSeek : (player?.canSeek ?? false)
     
     property string artDownloadLocation: Directories.coverArt
     readonly property bool downloaded: MediaArtwork.ready
@@ -243,8 +244,11 @@ Item {
                                 : Appearance.inirEverywhere ? root.jiraColPrimary : (blendedColors?.colPrimary ?? Appearance.colors.colPrimary)
                             value: root.effectiveLength > 0 ? root.effectivePosition / root.effectiveLength : 0
                             onMoved: {
-                                if (root.player)
+                                if (root.isYtMusicPlayer) {
+                                    YtMusic.seek(value * root.effectiveLength)
+                                } else if (root.player) {
                                     root.player.position = value * root.player.length
+                                }
                             }
                             scrollable: true
                         }
@@ -487,6 +491,10 @@ Item {
         running: root.effectiveIsPlaying && GlobalStates.sidebarLeftOpen
         interval: 1000
         repeat: true
-        onTriggered: root.player?.positionChanged()
+        onTriggered: {
+            if (!root.isYtMusicPlayer && root.player) {
+                root.player.positionChanged()
+            }
+        }
     }
 }

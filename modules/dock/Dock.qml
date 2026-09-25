@@ -306,11 +306,11 @@ Scope {
                             }
 
                             implicitWidth: root.isVertical
-                                ? (dockRoot.width - Appearance.sizes.elevationMargin - Appearance.sizes.surfaceGap)
+                                ? (dockRoot.width - Appearance.sizes.elevationMargin - Appearance.sizes.hyprlandGapsOut)
                                 : (dockRow.implicitWidth + 10)
                             implicitHeight: root.isVertical
                                 ? (dockColumn.implicitHeight + 10)
-                                : (dockRoot.height - Appearance.sizes.elevationMargin - Appearance.sizes.surfaceGap)
+                                : (dockRoot.height - Appearance.sizes.elevationMargin - Appearance.sizes.hyprlandGapsOut)
                             width: implicitWidth
                             height: implicitHeight
 
@@ -529,7 +529,7 @@ Scope {
                                             ? 0
                                             : (-(dockRoot.screen?.width ?? 1920)
                                                 + dockVisualBackground.width
-                                                + Appearance.sizes.surfaceGap))
+                                                + Appearance.sizes.hyprlandGapsOut))
                                         : (-(dockRoot.screen?.width ?? 1920) / 2
                                             + dockVisualBackground.width / 2)
                                     y: root.isVertical
@@ -539,7 +539,7 @@ Scope {
                                             ? 0
                                             : (-(dockRoot.screen?.height ?? 1080)
                                                 + dockVisualBackground.height
-                                                + Appearance.sizes.surfaceGap))
+                                                + Appearance.sizes.hyprlandGapsOut))
                                     width: dockRoot.screen?.width ?? 1920
                                     height: dockRoot.screen?.height ?? 1080
                                     visible: dockVisualBackground.auroraEverywhere

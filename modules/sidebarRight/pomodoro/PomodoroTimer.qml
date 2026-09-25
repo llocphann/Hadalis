@@ -350,9 +350,6 @@ Item {
                 Layout.rightMargin: 6
                 spacing: 10
 
-                // Mirror the trailing settings control so the two primary
-                // actions are centered against the full timer width.
-                Item { Layout.preferredWidth: settingsButton.width }
                 Item { Layout.fillWidth: true }
 
                 RippleButton {
@@ -423,7 +420,6 @@ Item {
                 Item { Layout.fillWidth: true }
 
                 RippleButton {
-                    id: settingsButton
                     implicitWidth: 36
                     implicitHeight: 36
                     buttonRadius: height / 2

@@ -121,7 +121,7 @@ Diagnoses and **automatically fixes** common issues:
 - Version tracking
 - File manifest
 
-For externally managed installs, `doctor` can rebuild `~/.config/illogical-impulse/version.json` from the runtime metadata already present under `~/.config/quickshell/inir/version.json`. It also skips the repo-sync manifest requirement when the install is package-managed. Feature integrations shipped as package `optdepends` are reported as warnings when absent; they do not fail the package-managed health check or trigger automatic dependency repair.
+For externally managed installs, `doctor` can rebuild `~/.config/illogical-impulse/version.json` from the runtime metadata already present under `~/.config/quickshell/inir/version.json`. It also skips the repo-sync manifest requirement when the install is package-managed.
 
 If you want the same repair flow plus restart and filtered logs:
 
@@ -303,7 +303,6 @@ These checks cover:
 | Launcher (`make install` / package style) | `inir` in the install prefix                                         |
 | User service (`./setup install`)          | `${XDG_CONFIG_HOME:-~/.config}/systemd/user/inir.service`            |
 | Super daemon                              | `~/.local/bin/inir_super_overview_daemon.py`                         |
-| Super daemon selector launcher             | `~/.local/bin/inir_super_overview_launcher.sh`                       |
 | Daemon service                            | `~/.config/systemd/user/inir-super-overview.service`                 |
 
 For `make install`, the package-style system payload also includes the user service unit, desktop entries/icon, docs/license, battery/TLP and ThinkFan helpers, matching polkit policies, and the TLP settings schema. See [Installation](INSTALL.md#3-install-the-packaged-runtime-assets) for the default paths and packaging overrides.
@@ -392,7 +391,6 @@ ${XDG_STATE_HOME:-~/.local/state}/quickshell/user/              # Notifications,
 ${XDG_CACHE_HOME:-~/.cache}/quickshell/inir/                    # Cache
 ${XDG_BIN_HOME:-~/.local/bin}/inir                              # User launcher
 ~/.local/bin/inir_super_overview_daemon.py                      # Super daemon
-~/.local/bin/inir_super_overview_launcher.sh                    # Rust/Python selector launcher
 ${XDG_CONFIG_HOME:-~/.config}/systemd/user/inir.service         # Canonical user service
 ${XDG_CONFIG_HOME:-~/.config}/systemd/user/inir-super-overview.service # Daemon service
 ${XDG_DATA_HOME:-~/.local/share}/applications/inir.desktop      # Desktop entry
@@ -436,7 +434,7 @@ The script lists packages installed by iNiR but does not remove them automatical
 **System tools:**
 
 - `cliphist`, `fuzzel`, `swaylock`, `grim`, `slurp`
-- `wl-clipboard`, `brightnessctl`
+- `wl-clipboard`, `brightnessctl`, `playerctl`, `dunst`
 
 **Optional tools:**
 
@@ -488,7 +486,6 @@ rm -rf "${XDG_STATE_HOME:-$HOME/.local/state}/quickshell/user"
 rm -rf "${XDG_CACHE_HOME:-$HOME/.cache}/quickshell/inir"
 rm -f "${XDG_BIN_HOME:-$HOME/.local/bin}/inir"
 rm -f ~/.local/bin/inir_super_overview_daemon.py
-rm -f ~/.local/bin/inir_super_overview_launcher.sh
 rm -f "${XDG_CONFIG_HOME:-$HOME/.config}/systemd/user/inir.service"
 rm -f "${XDG_CONFIG_HOME:-$HOME/.config}/systemd/user/inir-super-overview.service"
 rm -f "${XDG_DATA_HOME:-$HOME/.local/share}/applications/inir.desktop"

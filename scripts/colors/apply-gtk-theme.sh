@@ -35,20 +35,8 @@ SHELL_CONFIG_FILE="$(inir_config_file)"
 enable_apps_shell="true"
 enable_qt_apps="true"
 if [[ -f "$SHELL_CONFIG_FILE" ]] && command -v jq &>/dev/null; then
-    # Read both toggles in one jq process. Keep the existing // true semantics
-    # exactly as-is so this optimization does not change compatibility behavior.
-    theme_config_fields="$(
-        jq -r '[
-            "enable_apps_shell=\(.appearance.wallpaperTheming.enableAppsAndShell // true)",
-            "enable_qt_apps=\(.appearance.wallpaperTheming.enableQtApps // true)"
-        ] | .[]' "$SHELL_CONFIG_FILE"
-    )"
-    while IFS='=' read -r config_key config_value; do
-        case "$config_key" in
-            enable_apps_shell) enable_apps_shell="$config_value" ;;
-            enable_qt_apps) enable_qt_apps="$config_value" ;;
-        esac
-    done <<< "$theme_config_fields"
+    enable_apps_shell=$(jq -r '.appearance.wallpaperTheming.enableAppsAndShell // true' "$SHELL_CONFIG_FILE")
+    enable_qt_apps=$(jq -r '.appearance.wallpaperTheming.enableQtApps // true' "$SHELL_CONFIG_FILE")
 fi
 
 # Exit only when both shell/GTK and Qt app theming are disabled
@@ -70,68 +58,34 @@ if [[ ! -f "$COLOR_SOURCE" ]] || ! command -v jq &>/dev/null; then
     exit 0
 fi
 
-# Parse the palette contract once instead of spawning jq once per token.
-# KEY=value lines avoid whitespace-field collapsing while preserving empty values.
-palette_fields="$(
-    jq -r '[
-        "BG=\(.app_background // .background // "")",
-        "FG=\(.app_foreground // .on_background // "")",
-        "PRIMARY=\(.app_accent // .primary // "")",
-        "ON_PRIMARY=\(.app_on_accent // .on_primary // "")",
-        "PRIMARY_CONTAINER=\(.primary_container // "")",
-        "ON_PRIMARY_CONTAINER=\(.on_primary_container // "")",
-        "SURFACE=\(.app_view_bg // .surface // "")",
-        "ON_SURFACE=\(.app_on_surface // .on_surface // "")",
-        "SURFACE_CONTAINER=\(.app_surface_elevated // .surface_container // "")",
-        "SURFACE_CONTAINER_HIGH=\(.app_surface_popup // .surface_container_high // "")",
-        "SURFACE_CONTAINER_LOW=\(.app_surface // .surface_container_low // "")",
-        "SURFACE_DIM=\(.app_window_bg // .surface_dim // "")",
-        "OUTLINE_VARIANT=\(.app_border_subtle // .outline_variant // "")",
-        "SURFACE_CONTAINER_HIGHEST=\(.app_thumbnail_bg // .surface_container_highest // "")",
-        "APP_HEADERBAR_BG=\(.app_headerbar_bg // "")",
-        "APP_SIDEBAR_BG=\(.app_sidebar_bg // "")",
-        "APP_CARD_BG=\(.app_card_bg // "")",
-        "APP_POPOVER_BG=\(.app_popover_bg // "")",
-        "APP_DIALOG_BG=\(.app_dialog_bg // "")",
-        "APP_SELECTION=\(.app_selection // "")",
-        "APP_SELECTION_HOVER=\(.app_selection_hover // "")",
-        "APP_ON_SELECTION=\(.app_on_selection // "")",
-        "ERROR_COLOR=\(.error // "")",
-        "TERTIARY=\(.tertiary // "")",
-        "SECONDARY=\(.secondary // "")",
-        "SECONDARY_CONTAINER=\(.secondary_container // "")"
-    ] | .[]' "$COLOR_SOURCE"
-)"
-while IFS='=' read -r palette_key palette_value; do
-    case "$palette_key" in
-        BG) BG="$palette_value" ;;
-        FG) FG="$palette_value" ;;
-        PRIMARY) PRIMARY="$palette_value" ;;
-        ON_PRIMARY) ON_PRIMARY="$palette_value" ;;
-        PRIMARY_CONTAINER) PRIMARY_CONTAINER="$palette_value" ;;
-        ON_PRIMARY_CONTAINER) ON_PRIMARY_CONTAINER="$palette_value" ;;
-        SURFACE) SURFACE="$palette_value" ;;
-        ON_SURFACE) ON_SURFACE="$palette_value" ;;
-        SURFACE_CONTAINER) SURFACE_CONTAINER="$palette_value" ;;
-        SURFACE_CONTAINER_HIGH) SURFACE_CONTAINER_HIGH="$palette_value" ;;
-        SURFACE_CONTAINER_LOW) SURFACE_CONTAINER_LOW="$palette_value" ;;
-        SURFACE_DIM) SURFACE_DIM="$palette_value" ;;
-        OUTLINE_VARIANT) OUTLINE_VARIANT="$palette_value" ;;
-        SURFACE_CONTAINER_HIGHEST) SURFACE_CONTAINER_HIGHEST="$palette_value" ;;
-        APP_HEADERBAR_BG) APP_HEADERBAR_BG="$palette_value" ;;
-        APP_SIDEBAR_BG) APP_SIDEBAR_BG="$palette_value" ;;
-        APP_CARD_BG) APP_CARD_BG="$palette_value" ;;
-        APP_POPOVER_BG) APP_POPOVER_BG="$palette_value" ;;
-        APP_DIALOG_BG) APP_DIALOG_BG="$palette_value" ;;
-        APP_SELECTION) APP_SELECTION="$palette_value" ;;
-        APP_SELECTION_HOVER) APP_SELECTION_HOVER="$palette_value" ;;
-        APP_ON_SELECTION) APP_ON_SELECTION="$palette_value" ;;
-        ERROR_COLOR) ERROR_COLOR="$palette_value" ;;
-        TERTIARY) TERTIARY="$palette_value" ;;
-        SECONDARY) SECONDARY="$palette_value" ;;
-        SECONDARY_CONTAINER) SECONDARY_CONTAINER="$palette_value" ;;
-    esac
-done <<< "$palette_fields"
+BG=$(jq -r '.app_background // .background // empty' "$COLOR_SOURCE" 2>/dev/null || echo "#1e1e2e")
+FG=$(jq -r '.app_foreground // .on_background // empty' "$COLOR_SOURCE" 2>/dev/null || echo "#cdd6f4")
+PRIMARY=$(jq -r '.app_accent // .primary // empty' "$COLOR_SOURCE" 2>/dev/null || echo "#cba6f7")
+ON_PRIMARY=$(jq -r '.app_on_accent // .on_primary // empty' "$COLOR_SOURCE" 2>/dev/null || echo "#1e1e2e")
+PRIMARY_CONTAINER=$(jq -r '.primary_container // empty' "$COLOR_SOURCE" 2>/dev/null)
+ON_PRIMARY_CONTAINER=$(jq -r '.on_primary_container // empty' "$COLOR_SOURCE" 2>/dev/null)
+SURFACE=$(jq -r '.app_view_bg // .surface // empty' "$COLOR_SOURCE" 2>/dev/null || echo "$BG")
+ON_SURFACE=$(jq -r '.app_on_surface // .on_surface // empty' "$COLOR_SOURCE" 2>/dev/null || echo "$FG")
+SURFACE_CONTAINER=$(jq -r '.app_surface_elevated // .surface_container // empty' "$COLOR_SOURCE" 2>/dev/null)
+SURFACE_CONTAINER_HIGH=$(jq -r '.app_surface_popup // .surface_container_high // empty' "$COLOR_SOURCE" 2>/dev/null)
+SURFACE_CONTAINER_LOW=$(jq -r '.app_surface // .surface_container_low // empty' "$COLOR_SOURCE" 2>/dev/null)
+SURFACE_DIM=$(jq -r '.app_window_bg // .surface_dim // empty' "$COLOR_SOURCE" 2>/dev/null)
+OUTLINE_VARIANT=$(jq -r '.app_border_subtle // .outline_variant // empty' "$COLOR_SOURCE" 2>/dev/null)
+SURFACE_CONTAINER_HIGHEST=$(jq -r '.app_thumbnail_bg // .surface_container_highest // empty' "$COLOR_SOURCE" 2>/dev/null)
+APP_HEADERBAR_BG=$(jq -r '.app_headerbar_bg // empty' "$COLOR_SOURCE" 2>/dev/null)
+APP_SIDEBAR_BG=$(jq -r '.app_sidebar_bg // empty' "$COLOR_SOURCE" 2>/dev/null)
+APP_CARD_BG=$(jq -r '.app_card_bg // empty' "$COLOR_SOURCE" 2>/dev/null)
+APP_POPOVER_BG=$(jq -r '.app_popover_bg // empty' "$COLOR_SOURCE" 2>/dev/null)
+APP_DIALOG_BG=$(jq -r '.app_dialog_bg // empty' "$COLOR_SOURCE" 2>/dev/null)
+APP_SELECTION=$(jq -r '.app_selection // empty' "$COLOR_SOURCE" 2>/dev/null)
+APP_SELECTION_HOVER=$(jq -r '.app_selection_hover // empty' "$COLOR_SOURCE" 2>/dev/null)
+APP_ON_SELECTION=$(jq -r '.app_on_selection // empty' "$COLOR_SOURCE" 2>/dev/null)
+
+# Semantic colors from Material tokens
+ERROR_COLOR=$(jq -r '.error // empty' "$COLOR_SOURCE" 2>/dev/null)
+TERTIARY=$(jq -r '.tertiary // empty' "$COLOR_SOURCE" 2>/dev/null)
+SECONDARY=$(jq -r '.secondary // empty' "$COLOR_SOURCE" 2>/dev/null)
+SECONDARY_CONTAINER=$(jq -r '.secondary_container // empty' "$COLOR_SOURCE" 2>/dev/null)
 
 # If ThemePresets passes args (bg fg primary on_primary surface surface_dim), use them
 # This avoids the race condition between generateColorsJson() writing to disk and this script reading

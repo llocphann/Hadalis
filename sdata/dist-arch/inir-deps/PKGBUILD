@@ -7,7 +7,7 @@
 
 pkgname=inir-deps
 pkgver=2.29.3
-pkgrel=8
+pkgrel=7
 pkgdesc='iNiR desktop shell - dependency tracker (meta-package)'
 url='https://github.com/llocphann/Hadalis'
 arch=(any)
@@ -85,7 +85,6 @@ depends=(
   swaylock
   grim
   slurp
-  hyprpicker
   swappy
   wf-recorder
   xwayland-satellite
@@ -100,12 +99,16 @@ depends=(
   pipewire-pulse
   pipewire-alsa
   wireplumber
+  playerctl
   libdbusmenu-gtk3
   pavucontrol
   mpv
   mpv-mpris
   mpd
   mpd-mpris
+  yt-dlp
+  python-ytmusicapi
+
   #--- Theming ---
   noto-fonts-emoji
   ttf-dejavu
@@ -171,6 +174,7 @@ optdepends=(
   'socat: optional EasyEffects control transport for equalizer'
   'songrec: song recognition'
   'translate-shell: translation widget'
+  'hyprpicker: color picker'
   'inir-workflow-parser: native QML parser capability for Code Workflow'
   'python-evdev: input device access'
   'python-pillow: image processing in scripts'

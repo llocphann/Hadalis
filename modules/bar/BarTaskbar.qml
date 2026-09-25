@@ -18,9 +18,6 @@ import qs.modules.common.models
 Item {
     id: root
     property bool _sortingConsumerAcquired: false
-    // Hosts keep taskbar delegates resident through auto-hide/fullscreen.
-    // Model rebuilds are presentation-only work and can catch up on reveal.
-    property bool presentationActive: true
 
     property var parentWindow: null
     property bool vertical: false
@@ -129,38 +126,12 @@ Item {
         id: rebuildTimer
         interval: 80
         repeat: false
-        onTriggered: {
-            if (root.presentationActive)
-                root._doRebuildDockItems()
-        }
+        onTriggered: root._doRebuildDockItems()
     }
 
     function rebuildDockItems(): void {
-        if (!root.presentationActive) {
-            rebuildTimer.stop()
-            return
-        }
         rebuildTimer.restart()
     }
-
-    function syncSortingDemand(): void {
-        if (root.presentationActive && !root._sortingConsumerAcquired) {
-            CompositorService.acquireSortingConsumer()
-            root._sortingConsumerAcquired = true
-            // If another consumer kept the shared snapshot warm, use it now.
-            // Otherwise retain the previous local model until the scheduled
-            // CompositorService refresh emits onSortedToplevelsChanged.
-            if (!CompositorService.isNiri
-                    || (CompositorService.sortedToplevels?.length ?? 0) > 0)
-                root.rebuildDockItems()
-        } else if (!root.presentationActive && root._sortingConsumerAcquired) {
-            rebuildTimer.stop()
-            CompositorService.releaseSortingConsumer()
-            root._sortingConsumerAcquired = false
-        }
-    }
-
-    onPresentationActiveChanged: root.syncSortingDemand()
 
     function _toplevelLiveKey(toplevel: var): string {
         if (!toplevel) return ""
@@ -376,31 +347,29 @@ Item {
 
     Connections {
         target: ToplevelManager.toplevels
-        enabled: root.presentationActive
         function onValuesChanged() { root.rebuildDockItems() }
     }
     Connections {
         target: CompositorService
-        enabled: root.presentationActive
         function onSortedToplevelsChanged() { root.rebuildDockItems() }
     }
     Connections {
         target: Config.options?.dock
-        enabled: root.presentationActive
         function onPinnedAppsChanged() { root.rebuildDockItems() }
         function onIgnoredAppRegexesChanged() { root.rebuildDockItems() }
     }
     Connections {
         target: Config.options?.windows
-        enabled: root.presentationActive
         function onAppIdentityRulesChanged() { root.rebuildDockItems() }
     }
-    Component.onCompleted: root.syncSortingDemand()
+    Component.onCompleted: {
+        CompositorService.acquireSortingConsumer()
+        _sortingConsumerAcquired = true
+        rebuildDockItems()
+    }
     Component.onDestruction: {
-        if (_sortingConsumerAcquired) {
+        if (_sortingConsumerAcquired)
             CompositorService.releaseSortingConsumer()
-            _sortingConsumerAcquired = false
-        }
     }
 
     // ─── Hover preview state ────────────────────────────────────────

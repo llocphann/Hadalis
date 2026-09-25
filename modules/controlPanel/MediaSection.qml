@@ -29,12 +29,18 @@ Item {
 
     readonly property bool compactMode: Config.options?.controlPanel?.compactMode ?? true
     readonly property MprisPlayer player: MprisController.activePlayer
-    readonly property bool hasPlayer: !!(player && player.trackTitle)
-    readonly property string effectiveArtUrl: player?.trackArtUrl ?? ""
-    readonly property string effectiveTitle: player?.trackTitle ?? ""
-    readonly property string effectiveArtist: player?.trackArtist ?? ""
-    readonly property bool effectiveIsPlaying: player?.isPlaying ?? false
-    readonly property bool presentationActive: GlobalStates.controlPanelOpen && root.visible
+    readonly property bool isYtMusicActive: MprisController.isYtMusicActive
+    readonly property bool hasPlayer:
+        (player && player.trackTitle) || (isYtMusicActive && YtMusic.currentVideoId)
+
+    readonly property string effectiveArtUrl: isYtMusicActive && YtMusic.currentThumbnail
+        ? YtMusic.currentThumbnail : (player?.trackArtUrl ?? "")
+    readonly property string effectiveTitle: isYtMusicActive && YtMusic.currentTitle
+        ? YtMusic.currentTitle : (player?.trackTitle ?? "")
+    readonly property string effectiveArtist: isYtMusicActive && YtMusic.currentArtist
+        ? YtMusic.currentArtist : (player?.trackArtist ?? "")
+    readonly property bool effectiveIsPlaying: isYtMusicActive
+        ? YtMusic.isPlaying : (player?.isPlaying ?? false)
 
     property string artDownloadLocation: Directories.coverArt
     readonly property bool downloaded: MediaArtwork.ready
@@ -152,7 +158,7 @@ Item {
             anchors.right: parent.right
             anchors.bottom: parent.bottom
             height: root.compactMode ? 28 : 40
-            live: root.presentationActive && (root.player?.isPlaying ?? false)
+            live: root.player?.isPlaying ?? false
             points: root.visualizerPoints
             maxVisualizerValue: 1000
             smoothing: 2
@@ -266,8 +272,8 @@ Item {
                         sourceComponent: StyledSlider {
                             Accessible.name: Translation.tr("Playback position")
                             configuration: StyledSlider.Configuration.Wavy
-                            wavy: root.presentationActive && (root.player?.isPlaying ?? false)
-                            animateWave: root.presentationActive && (root.player?.isPlaying ?? false)
+                            wavy: root.player?.isPlaying ?? false
+                            animateWave: root.player?.isPlaying ?? false
                             highlightColor: root.blendedColors?.colPrimary
                                 ?? Appearance.colors.colPrimary
                             trackColor: root.blendedColors?.colSecondaryContainer
@@ -285,8 +291,8 @@ Item {
                         anchors.fill: parent
                         active: !(root.player?.canSeek ?? false)
                         sourceComponent: StyledProgressBar {
-                            wavy: root.presentationActive && (root.player?.isPlaying ?? false)
-                            animateWave: root.presentationActive && (root.player?.isPlaying ?? false)
+                            wavy: root.player?.isPlaying ?? false
+                            animateWave: root.player?.isPlaying ?? false
                             highlightColor: root.blendedColors?.colPrimary
                                 ?? Appearance.colors.colPrimary
                             trackColor: root.blendedColors?.colSecondaryContainer
@@ -472,14 +478,9 @@ Item {
     }
 
     Timer {
-        running: root.presentationActive
-            && root.player?.playbackState === MprisPlaybackState.Playing
+        running: root.player?.playbackState === MprisPlaybackState.Playing
         interval: 1000
         repeat: true
-        onRunningChanged: {
-            if (running)
-                root.player?.positionChanged()
-        }
         onTriggered: root.player?.positionChanged()
     }
 }

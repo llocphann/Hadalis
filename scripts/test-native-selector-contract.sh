@@ -10,7 +10,7 @@ harness="$root/scripts/native-cutover-benchmark.sh"
 [[ -x "$dispatch" ]] || fail 'native-dispatch must be executable'
 [[ -x "$harness" ]] || fail 'native cutover harness must be executable'
 
-for token in     'input-lock)'     'input-keys)'     'super-tap)'     'niri)'     'diagnostics)'     'clipboard-store)'     'mpd)'     'mpd-daemon)'     'mpd-subscribe)'     'lyrics)'     'theme)'     'desktop-icons)'
+for token in     'input-lock)'     'input-keys)'     'niri)'     'diagnostics)'     'clipboard-store)'     'mpd)'     'mpd-daemon)'     'mpd-subscribe)'     'lyrics)'     'theme)'     'desktop-icons)'
 do
     grep -Fq "$token" "$dispatch"         || fail "native-dispatch missing route: $token"
 done
@@ -54,23 +54,9 @@ grep -Fq 'DEFAULT_BIN_DIR="$ROOT_DIR/native/bin"' "$dispatch"     || fail 'nativ
 grep -Fq -- '--restore' "$harness"     || fail 'cutover harness must expose --restore'
 
 # Python remains the explicit emergency fallback after production cutover.
-for fallback in     scripts/daemon/keyboard_lock_state_daemon.py     scripts/daemon/osk_physical_key_daemon.py     scripts/daemon/inir_super_overview_daemon.py     scripts/runtime-diagnostics-sampler.py     scripts/local_music_mpd.py     scripts/niri-config.py     scripts/clipboard-store.py     scripts/colors/generate_colors_material.py
+for fallback in     scripts/daemon/keyboard_lock_state_daemon.py     scripts/daemon/osk_physical_key_daemon.py     scripts/runtime-diagnostics-sampler.py     scripts/local_music_mpd.py     scripts/niri-config.py     scripts/clipboard-store.py     scripts/colors/generate_colors_material.py
 do
     [[ -f "$root/$fallback" ]] || fail "Python fallback missing: $fallback"
 done
-
-grep -Fq 'python_exec() {' "$dispatch" \
-    || fail 'native-dispatch must resolve Python fallbacks through the packaged/venv interpreter'
-grep -Fq 'python_exec_with_module evdev -u "$ROOT_DIR/scripts/daemon/keyboard_lock_state_daemon.py"' "$dispatch" \
-    || fail 'input-lock Python rollback must select an interpreter with evdev'
-grep -Fq 'python_exec_with_module evdev -u "$ROOT_DIR/scripts/daemon/osk_physical_key_daemon.py"' "$dispatch" \
-    || fail 'input-keys Python rollback must select an interpreter with evdev'
-grep -Fq 'python_exec_with_module evdev -u "$ROOT_DIR/scripts/daemon/inir_super_overview_daemon.py"' "$dispatch" \
-    || fail 'Super-tap Python rollback must select an interpreter with evdev'
-if grep -Eq 'exec /usr/bin/(env[[:space:]]+)?python3' "$dispatch"; then
-    fail 'native-dispatch must not bypass the packaged/venv Python fallback'
-fi
-grep -Eq "^[[:space:]]+evdev[[:space:]]*$" "$root/nix/package.nix" \
-    || fail 'Nix Python runtime must include evdev for input daemon fallback'
 
 printf 'PASS: native runtime selector is wired and reversible\n'

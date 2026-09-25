@@ -4,7 +4,6 @@ pragma Singleton
 import QtQuick
 import Quickshell
 import Quickshell.Io
-import qs
 
 Singleton {
     id: root
@@ -19,18 +18,6 @@ Singleton {
     property string intelGpuDriver: ""
     property bool rdwProbeDone: false
     property bool rdwAvailable: false
-
-    // Runtime capability discovery is only consumed by the Settings surfaces.
-    // Preserve cached values after close, but stop repeated sysfs/GPU/RDW probes.
-    readonly property bool standaloneSettingsWindow:
-        (Quickshell.env("INIR_STANDALONE_WINDOW") ?? "") === "1"
-    readonly property bool uiDemand:
-        root.standaloneSettingsWindow || (GlobalStates.settingsOverlayOpen ?? false)
-
-    onUiDemandChanged: {
-        if (root.uiDemand)
-            root.refresh()
-    }
 
     readonly property var cpuDriverModeKeys: [
         "CPU_DRIVER_OPMODE_ON_AC",
@@ -288,14 +275,14 @@ Singleton {
             "global_min=''; global_max=''; has_i915=0; has_xe=0; "
             + "for card in /sys/class/drm/card[0-9]*; do "
             + "[ -e \"$card/device/driver\" ] || continue; "
-            + "driver_path=$(readlink -f \"$card/device/driver\") || continue; driver=${driver_path##*/}; lo=''; hi=''; "
+            + "driver=$(basename \"$(readlink -f \"$card/device/driver\")\"); lo=''; hi=''; "
             + "case \"$driver\" in "
             + "i915) [ -r \"$card/gt_RPn_freq_mhz\" ] && [ -r \"$card/gt_RP0_freq_mhz\" ] || continue; "
-            + "IFS= read -r lo < \"$card/gt_RPn_freq_mhz\"; IFS= read -r hi < \"$card/gt_RP0_freq_mhz\"; has_i915=1 ;; "
+            + "lo=$(cat \"$card/gt_RPn_freq_mhz\"); hi=$(cat \"$card/gt_RP0_freq_mhz\"); has_i915=1 ;; "
             + "xe) freqdir=''; for candidate in \"$card\"/device/tile*/gt*/freq*; do "
             + "[ -d \"$candidate\" ] || continue; freqdir=$candidate; break; done; "
             + "[ -n \"$freqdir\" ] && [ -r \"$freqdir/rpn_freq\" ] && [ -r \"$freqdir/rp0_freq\" ] || continue; "
-            + "IFS= read -r lo < \"$freqdir/rpn_freq\"; IFS= read -r hi < \"$freqdir/rp0_freq\"; has_xe=1 ;; "
+            + "lo=$(cat \"$freqdir/rpn_freq\"); hi=$(cat \"$freqdir/rp0_freq\"); has_xe=1 ;; "
             + "*) continue ;; esac; "
             + "case \"$lo\" in ''|*[!0-9]*) continue ;; esac; case \"$hi\" in ''|*[!0-9]*) continue ;; esac; "
             + "if [ -z \"$global_min\" ] || [ \"$lo\" -gt \"$global_min\" ]; then global_min=$lo; fi; "
@@ -435,15 +422,12 @@ Singleton {
         }
     }
 
-    Component.onCompleted: {
-        if (root.uiDemand)
-            root.refresh()
-    }
+    Component.onCompleted: root.refresh()
 
     Timer {
         interval: 300000
         repeat: true
-        running: root.uiDemand
+        running: true
         onTriggered: root.refresh()
     }
 }

@@ -14,9 +14,9 @@ Singleton {
     property string distroId: "unknown"
     property string distroIcon: "linux-symbolic"
     // Seed identity from the process environment so consumers do not build
-    // transient paths for a placeholder user. Normal desktop sessions already
-    // export USER, so the external id(1) lookup is only a compatibility fallback.
-    property string username: String(Quickshell.env("USER") ?? "").trim() || "user"
+    // transient paths for the placeholder user while `id -un` is starting.
+    // The asynchronous lookup below remains the authoritative refresh.
+    property string username: Quickshell.env("USER") || "user"
     property string displayName: ""
     // Static hostname. `/etc/hostname` is the portable source; the env var is a
     // seed for the frame before the file is read and is absent on most systems.
@@ -49,57 +49,9 @@ Singleton {
         return ""
     }
 
-    function _startDisplayNameFallback(name: string): void {
-        const normalized = String(name ?? "").trim()
-        if (normalized.length === 0 || getDisplayName.running)
-            return
-        getDisplayName.command = ["/usr/bin/getent", "passwd", normalized]
-        getDisplayName.running = true
-    }
-
-    function _resolveDisplayName(name: string): void {
-        const normalized = String(name ?? "").trim()
-        if (normalized.length === 0) {
-            root.displayName = root.username
-            return
-        }
-
-        root.username = normalized
-        passwdFile.lookupName = normalized
-        if (passwdFile.path === "/etc/passwd")
-            passwdFile.reload()
-        else
-            passwdFile.path = "/etc/passwd"
-    }
-
-    function _consumePasswd(text: string): void {
-        const name = passwdFile.lookupName
-        for (const line of String(text ?? "").split("\n")) {
-            const fields = line.split(":")
-            if (fields.length < 5 || fields[0] !== name)
-                continue
-            const gecos = fields[4].split(",")[0].trim()
-            root.displayName = gecos.length > 0 ? gecos : name
-            return
-        }
-
-        // NSS-backed users (SSSD/LDAP/etc.) may not exist in /etc/passwd.
-        // Preserve getent as a compatibility fallback only for that case.
-        root._startDisplayNameFallback(name)
-    }
-
     function refreshIdentity(): void {
         if (getUsername.running || getDisplayName.running)
             return
-
-        const envUsername = String(Quickshell.env("USER") ?? "").trim()
-        if (envUsername.length > 0) {
-            root._resolveDisplayName(envUsername)
-            return
-        }
-
-        // USER can be absent in unusual launch environments. Preserve id(1) as
-        // the compatibility path instead of making environment state mandatory.
         getUsername.running = true
     }
 
@@ -179,7 +131,9 @@ Singleton {
                 return
 
             const name = Quickshell.env("USER") || root.username || "user"
-            root._resolveDisplayName(name)
+            root.username = name
+            getDisplayName.command = ["/usr/bin/getent", "passwd", name]
+            getDisplayName.running = true
             console.warn("[SystemInfo] Failed to start username lookup; using environment fallback")
         }
 
@@ -189,7 +143,9 @@ Singleton {
             id: usernameCollector
             onStreamFinished: {
                 const name = usernameCollector.text.trim() || Quickshell.env("USER") || root.username
-                root._resolveDisplayName(name)
+                root.username = name
+                getDisplayName.command = ["/usr/bin/getent", "passwd", name]
+                getDisplayName.running = true
             }
         }
     }
@@ -224,15 +180,6 @@ Singleton {
                 root.displayName = name.length > 0 ? name : root.username
             }
         }
-    }
-
-    FileView {
-        id: passwdFile
-        property string lookupName: ""
-        path: ""
-        printErrors: false
-        onLoaded: root._consumePasswd(passwdFile.text())
-        onLoadFailed: root._startDisplayNameFallback(passwdFile.lookupName)
     }
 
     FileView {

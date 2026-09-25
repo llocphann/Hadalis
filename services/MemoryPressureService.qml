@@ -82,31 +82,8 @@ Singleton {
     }
 
     function _checkMemoryPressure(): void {
-        if (!root.enabled || _mapsReader.loadPending) return
-        _mapsReader.loadPending = true
-        const mapsPath = "/proc/" + Quickshell.processId + "/maps"
-        if (_mapsReader.path === mapsPath)
-            _mapsReader.reload()
-        else
-            _mapsReader.path = mapsPath
-    }
-
-    function _consumeMaps(text: string): void {
-        let deleted = 0
-        let total = 0
-        for (const line of String(text ?? "").split("\n")) {
-            if (!line.includes("JSGCHeap"))
-                continue
-            total++
-            if (line.includes("deleted"))
-                deleted++
-        }
-        root.currentDeletedMappings = deleted
-        root.currentTotalMappings = total
-        if (root.currentDeletedMappings >= root.deletedMappingsThreshold) {
-            root._log("threshold exceeded:", root.currentDeletedMappings, ">=", root.deletedMappingsThreshold)
-            root._notifyUser()
-        }
+        if (!root.enabled || _mapsReader.running) return
+        _mapsReader.running = true
     }
 
     function _notifyUser(): void {
@@ -142,20 +119,47 @@ Singleton {
     }
 
     // ── Maps reader ───────────────────────────────────────────────────────
-    FileView {
+    Process {
         id: _mapsReader
-        property bool loadPending: false
-        path: ""
-        printErrors: false
-
-        onLoaded: {
-            loadPending = false
-            root._consumeMaps(text())
+        property bool startObserved: false
+        // /proc/$PPID, not /proc/self: this runs in an sh child of the shell, so
+        // /proc/self is that sh process (zero JSGCHeap mappings) and the counter
+        // always read 0 — the threshold could never trip. $PPID is the shell.
+        command: ["sh", "-c", "grep -c 'JSGCHeap.*deleted' /proc/$PPID/maps 2>/dev/null || echo 0; grep -c JSGCHeap /proc/$PPID/maps 2>/dev/null || echo 0"]
+        stdout: SplitParser {
+            property int lineNum: 0
+            onRead: line => {
+                const val = parseInt(line.trim()) || 0
+                if (lineNum === 0) {
+                    root.currentDeletedMappings = val
+                } else {
+                    root.currentTotalMappings = val
+                }
+                lineNum++
+            }
         }
-        onLoadFailed: error => {
-            loadPending = false
-            // Keep the last good counters on a transient procfs read failure.
-            root._log("maps reader failed:", error)
+        onRunningChanged: {
+            if (_mapsReader.running) {
+                _mapsReader.startObserved = false
+                _mapsReader.stdout.lineNum = 0
+                return
+            }
+            if (_mapsReader.startObserved)
+                return
+
+            _mapsReader.stdout.lineNum = 0
+            root.currentDeletedMappings = 0
+            root.currentTotalMappings = 0
+            root._log("maps reader failed to start")
+        }
+        onStarted: _mapsReader.startObserved = true
+        onExited: (code, status) => {
+            _mapsReader.stdout.lineNum = 0
+            
+            if (root.currentDeletedMappings >= root.deletedMappingsThreshold) {
+                _log("threshold exceeded:", root.currentDeletedMappings, ">=", root.deletedMappingsThreshold)
+                root._notifyUser()
+            }
         }
     }
 

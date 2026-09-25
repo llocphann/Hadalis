@@ -141,7 +141,7 @@ Connected popup presentation is already active through `StyledPopup.qml` for exi
 - `services/Translation.qml` — English-only shell UI lookup using `translations/en_US.json`.
 - `services/DevNavigation.qml` — semantic dev navigation/IPC.
 - `services/GlobalActions.qml` — global actions.
-- `services/CompositorService.qml` — Niri runtime state and shared toplevel helpers.
+- `services/CompositorService.qml` — Niri/Hyprland detection.
 
 ### Tests/checks
 - `scripts/test-shell-surface-contracts.py` — focused Connected Popup/Dock/Waffle/en_US contract guard.

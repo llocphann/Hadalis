@@ -18,7 +18,13 @@ Singleton {
         id: _hibernateMonitorsOffTimer
         interval: 450
         repeat: false
-        onTriggered: NiriService.powerOffMonitors()
+        onTriggered: {
+            if (CompositorService.isNiri) {
+                Quickshell.execDetached(["/usr/bin/niri", "msg", "action", "power-off-monitors"])
+            } else if (CompositorService.isHyprland) {
+                Quickshell.execDetached(["/usr/bin/hyprctl", "dispatch", "dpms", "off"])
+            }
+        }
     }
 
     Timer {
@@ -63,12 +69,13 @@ Singleton {
     }
 
     function closeAllWindows() {
-        const windows = NiriService.windows ?? []
-        windows.forEach(window => {
-            const id = window?.id
-            if (id !== undefined && id !== null)
-                NiriService.closeWindow(id)
-        })
+        // Sólo tiene sentido en sesiones Hyprland; en Niri no hay HyprlandData
+        if (!CompositorService.isHyprland)
+            return;
+
+        HyprlandData.windowList.map(w => w.pid).forEach(pid => {
+            Quickshell.execDetached(["/usr/bin/kill", pid]);
+        });
     }
 
     function lock() {
@@ -85,7 +92,13 @@ Singleton {
     }
 
     function logout() {
-        NiriService.quit()
+        if (CompositorService.isNiri) {
+            NiriService.quit();
+            return;
+        }
+
+        closeAllWindows();
+        Quickshell.execDetached(["/usr/bin/pkill", "-i", "Hyprland"]);
     }
 
     function launchTaskManager() {
@@ -141,9 +154,7 @@ Singleton {
             "org.freedesktop.login1.Manager",
             "CanHibernate",
         ]
-        // SessionScreen refreshes this capability on presentation. Avoid a
-        // busctl process when Session is instantiated for unrelated actions.
-        running: false
+        running: true
 
         stdout: StdioCollector {
             onStreamFinished: {

@@ -19,7 +19,6 @@ import qs.modules.mediaControls.components
 Item {
     id: root
     property MprisPlayer player: null
-    property alias positionUpdatesActive: playerBase.positionUpdatesActive
     property list<real> visualizerPoints: []
     property real radius: Appearance.zzzEverywhere ? Appearance.zzz.panelRadius
         : Appearance.angelEverywhere ? Appearance.angel.roundingNormal : Appearance.rounding.normal
@@ -129,7 +128,7 @@ Item {
             anchors { left: parent.left; right: parent.right }
             y: root.vizPosition === "top" ? 0 : (parent.height - height)
             height: root.vizPosition === "fill" ? parent.height : 30
-            live: root.positionUpdatesActive && playerBase.effectiveIsPlaying
+            live: playerBase.effectiveIsPlaying
             points: root.visualizerPoints
             maxVisualizerValue: 1000; smoothing: 2
             color: ColorUtils.transparentize(root.themeSourceColor, 0.4)
@@ -139,7 +138,7 @@ Item {
             anchors { left: parent.left; right: parent.right }
             y: root.vizPosition === "top" ? 0 : (parent.height - height)
             height: root.vizPosition === "fill" ? parent.height : 30
-            live: root.positionUpdatesActive && playerBase.effectiveIsPlaying
+            live: playerBase.effectiveIsPlaying
             points: root.visualizerPoints
             maxVisualizerValue: 1000; smoothing: 2
             barCount: 32; barSpacing: 2; barRadius: 2; barMinHeight: 1

@@ -5,7 +5,6 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 import qs.modules.common
-import qs.services
 
 Singleton {
     id: root
@@ -75,74 +74,6 @@ Singleton {
     property var _nextOffsets: []
     property bool _refreshQueued: false
     property string _offsetText: ""
-    property var _intlFormatters: ({})
-
-    function _intlFormatter(tz: string): var {
-        if (typeof Intl === "undefined" || typeof Intl.DateTimeFormat !== "function")
-            return null
-
-        const key = String(tz ?? "UTC")
-        const cached = root._intlFormatters[key]
-        if (cached)
-            return cached
-
-        try {
-            const formatter = new Intl.DateTimeFormat("en-US", {
-                timeZone: key,
-                year: "numeric",
-                month: "2-digit",
-                day: "2-digit",
-                hour: "2-digit",
-                minute: "2-digit",
-                second: "2-digit",
-                hourCycle: "h23"
-            })
-            root._intlFormatters[key] = formatter
-            return formatter
-        } catch (error) {
-            return null
-        }
-    }
-
-    function _intlOffsetMinutes(tz: string, instant: var): var {
-        const formatter = root._intlFormatter(tz)
-        if (!formatter || typeof formatter.formatToParts !== "function")
-            return null
-
-        try {
-            const values = {}
-            const parts = formatter.formatToParts(instant)
-            for (const part of parts) {
-                if (part.type === "year" || part.type === "month"
-                        || part.type === "day" || part.type === "hour"
-                        || part.type === "minute" || part.type === "second")
-                    values[part.type] = Number(part.value)
-            }
-
-            if (![values.year, values.month, values.day, values.hour,
-                    values.minute, values.second].every(Number.isFinite))
-                return null
-
-            const zonedAsUtc = Date.UTC(values.year, values.month - 1, values.day,
-                values.hour, values.minute, values.second)
-            const instantMs = Math.floor(instant.getTime() / 1000) * 1000
-            return Math.round((zonedAsUtc - instantMs) / 60000)
-        } catch (error) {
-            return null
-        }
-    }
-
-    function _intlOffsets(timezones: var): var {
-        const instant = new Date()
-        const offsets = []
-        for (const tz of timezones) {
-            const offset = root._intlOffsetMinutes(String(tz ?? "UTC"), instant)
-            if (!Number.isFinite(offset))
-                return null
-            offsets.push(offset)
-        }
-        return offsets
-    }
 
     function refreshOffsets(): void {
         if (!root.enabled)
@@ -151,22 +82,7 @@ Singleton {
             root._refreshQueued = true;
             return;
         }
-
         root._refreshQueued = false;
-
-        // Modern Qt JS runtimes already expose Intl timezone data. Compute all
-        // offsets in-process and avoid spawning one date(1) process per city on
-        // every refresh. The existing date path remains the compatibility
-        // fallback for older or incomplete Intl implementations.
-        const intlOffsets = root._intlOffsets(root.timezones)
-        if (intlOffsets !== null) {
-            root.offsetsMinutes = intlOffsets
-            root._offsetIndex = -1
-            root._offsetTimezones = []
-            root._nextOffsets = []
-            return
-        }
-
         root._offsetIndex = 0;
         root._offsetTimezones = root.timezones.slice();
         root._nextOffsets = [];
@@ -207,29 +123,47 @@ Singleton {
         });
     }
 
+    function _scheduleMinuteTick(): void {
+        root.now = new Date()
+        if (!root.enabled) {
+            minuteTick.stop()
+            return
+        }
+
+        // The rendered world-clock strings have minute precision. Wake once at
+        // the next minute boundary instead of keeping the shell on a 1 Hz timer.
+        const nowMs = root.now.getTime()
+        minuteTick.interval = Math.max(250, 60000 - (nowMs % 60000) + 25)
+        minuteTick.restart()
+    }
+
     onTimezonesChanged: root.refreshOffsets()
     onEnabledChanged: {
-        if (!root.enabled)
-            return
-        root.now = new Date()
-        root.refreshOffsets()
+        if (root.enabled) {
+            root._scheduleMinuteTick()
+            root.refreshOffsets()
+        } else {
+            minuteTick.stop()
+        }
     }
     Component.onCompleted: {
-        root.now = new Date()
         root.refreshOffsets()
+        if (root.enabled)
+            root._scheduleMinuteTick()
     }
 
-    Connections {
-        target: DateTime
-        enabled: root.enabled
+    Timer {
+        id: minuteTick
+        interval: 60000
+        repeat: false
+        onTriggered: root._scheduleMinuteTick()
+    }
 
-        function onMinuteEpochChanged(): void {
-            root.now = new Date()
-            // Offset changes are rare (DST), so preserve the existing five-minute
-            // refresh cadence without owning a second repeating timer.
-            if ((DateTime.minuteEpoch % 5) === 0)
-                root.refreshOffsets()
-        }
+    Timer {
+        interval: 5 * 60 * 1000
+        running: root.enabled
+        repeat: true
+        onTriggered: root.refreshOffsets()
     }
 
     Process {

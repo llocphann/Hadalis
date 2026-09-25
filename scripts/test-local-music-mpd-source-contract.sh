@@ -6,7 +6,6 @@ fail() { printf 'FAIL: %s\n' "$1" >&2; exit 1; }
 service="$root/services/LocalMusic.qml"
 mpris="$root/services/MprisController.qml"
 view="$root/modules/sidebarLeft/LocalMusicView.qml"
-settings="$root/modules/settings/SidebarsConfig.qml"
 sidebar="$root/modules/sidebarLeft/SidebarLeftContent.qml"
 editor="$root/modules/common/widgets/SidebarLayoutEditor.qml"
 defaults="$root/defaults/config.json"
@@ -18,22 +17,15 @@ dispatch="$root/scripts/native-dispatch"
 grep -Fq 'readonly property string nativeDispatchPath: Directories.scriptsPath + "/native-dispatch"' "$service"     || fail 'LocalMusic must route MPD/local lyrics through native-dispatch'
 grep -Fq 'root.nativeDispatchPath, "mpd", "snapshot",' "$service"     || fail 'LocalMusic snapshot must route through native-dispatch'
 grep -Fq 'root.nativeDispatchPath, "mpd-daemon",' "$service"     || fail 'Rust MPD persistent daemon must remain selector-routed'
-grep -Fq 'root.nativeDispatchPath, "mpd-subscribe",' "$service"     || fail 'MPD idle subscription must remain selector-routed with endpoint context'
-grep -Fq 'property bool _mpdSubscriptionEligible: false' "$service"     || fail 'LocalMusic must distinguish event subscription availability from the Rust daemon'
-grep -Fq 'pythonReady && !(mode === "rust" && strict === "1")' "$service"     || fail 'LocalMusic must preserve strict-Rust no-fallback semantics'
-grep -Fq "printf 'strict=%s\\n' \"\$STRICT\"" "$dispatch"     || fail 'native-dispatch backend info must expose strict fallback policy'
+grep -Fq 'command: [root.nativeDispatchPath, "mpd-subscribe"]' "$service"     || fail 'Rust MPD idle subscription must remain selector-routed'
 grep -Fq 'scripts/local_music_mpd.py' "$dispatch"     || fail 'native-dispatch must retain the Python MPD fallback'
-grep -Fq 'python_exec "$ROOT_DIR/scripts/local_music_mpd.py" subscribe "$@"' "$dispatch"     || fail 'native-dispatch must provide an event-driven Python MPD subscription fallback'
-grep -Fq 'def subscribe(host: str, port: int, override_root: str) -> int:' "$root/scripts/local_music_mpd.py" || fail 'Python MPD fallback must expose an idle subscriber'
-grep -Fq 'client.command("idle", *IDLE_SUBSYSTEMS)' "$root/scripts/local_music_mpd.py" || fail 'Python MPD fallback must block on MPD idle instead of polling'
 grep -Fq 'readonly property var mprisPlayer: MprisController.mpdPlayer' "$service" || fail 'LocalMusic must use MPD MPRIS player'
 grep -Fq 'MprisController.ensureMpdMprisBridge(mpdHost, mpdPort)' "$service" || fail 'LocalMusic must request MPRIS for its configured MPD endpoint'
 grep -Fq 'property MprisPlayer mpdPlayer: null' "$mpris" || fail 'MprisController must expose MPD player'
 grep -Fq 'org.mpris.MediaPlayer2.mpd.hadalis' "$mpris" || fail 'custom MPD endpoints need a dedicated Hadalis MPRIS instance'
 grep -Fq '_mpdMprisCustomProc.command = root._mpdCustomBridgeCommand()' "$mpris" || fail 'custom MPD endpoint must launch endpoint-bound mpd-mpris'
 grep -Fq 'command: ["/usr/bin/systemctl", "--user", "start", "mpd-mpris.service"]' "$mpris" || fail 'default localhost MPD must retain distro mpd-mpris service path'
-! grep -Fq 'LocalMusic.updateDatabase()' "$view" || fail 'Left Sidebar Music must not duplicate the Settings MPD update action'
-grep -Fq 'LocalMusic.updateDatabase()' "$settings" || fail 'Music Settings must retain MPD database update'
+grep -Fq 'LocalMusic.updateDatabase()' "$view" || fail 'Music UI must expose MPD update'
 grep -Fq 'PlayerControl {' "$view" || fail 'Music now-playing UI must reuse Media popup PlayerControl'
 grep -Fq 'id: nowPlayingPanel' "$view" || fail 'Music media must live above its section tabs'
 grep -Fq 'id: classicPlaybackOptions' "$view" || fail 'Music must retain the compact transport-adjacent volume row'

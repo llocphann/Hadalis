@@ -26,7 +26,7 @@ Item {
     property int screenWidth: 1920
     property int screenHeight: 1080
     property var panelScreen: null
-    property real panelScreenY: Appearance.sizes.surfaceGap
+    property real panelScreenY: Appearance.sizes.hyprlandGapsOut
     property bool externalConnectedSurface: false
     readonly property color connectedSurfaceColor:
         sidebarLeftBackground.cardStyle ? Appearance.colors.colLayer1 : Appearance.colors.colLayer0
@@ -55,7 +55,7 @@ Item {
             || root.outerSizeMode === "fit")
         && !pluginViewActive && !activeTabEditing && activeTabContentHeight > 0
     readonly property real availableContentHeight: Math.max(0,
-        root.screenHeight - Appearance.sizes.surfaceGap * 2)
+        root.screenHeight - Appearance.sizes.hyprlandGapsOut * 2)
     readonly property real preferredContentHeight: root.fitToContent
         ? SidebarGeometry.leftFitHeight(root.availableContentHeight,
             sidebarLeftBackground.naturalFitHeight)
@@ -135,6 +135,26 @@ Item {
         return -1
     }
 
+    function migrateLegacyMusicConfig(): void {
+        const legacyEnabled = Config.options?.sidebar?.ytmusic?.enable ?? false
+        const localEnabled = Config.options?.sidebar?.music?.enable ?? false
+        const savedOrder = Config.options?.sidebar?.left?.tabOrder ?? []
+        const migratedOrder = []
+        let orderChanged = false
+        for (const rawId of savedOrder) {
+            const id = rawId === "ytmusic" ? "music" : rawId
+            if (id !== rawId) orderChanged = true
+            if (!migratedOrder.includes(id)) migratedOrder.push(id)
+        }
+
+        const values = {}
+        if (legacyEnabled) {
+            values["sidebar.ytmusic.enable"] = false
+            if (!localEnabled) values["sidebar.music.enable"] = true
+        }
+        if (orderChanged) values["sidebar.left.tabOrder"] = migratedOrder
+        if (Object.keys(values).length > 0) Config.setNestedValues(values)
+    }
 
     function focusActiveItem() {
         swipeView.currentItem?.forceActiveFocus()
@@ -175,6 +195,7 @@ Item {
             "ai": "neurology", "translator": "translate",
             "anime": "bookmark_heart", "anime-schedule": "calendar_month",
             "news": "newspaper", "music": "library_music",
+            "ytmusic": "library_music", // legacy dev-navigation alias
             "tools": "build"
         }
         const icon = iconByView[view] ?? ""
@@ -185,6 +206,7 @@ Item {
     onTabButtonListChanged: Qt.callLater(root.syncSelectedTabIndex)
 
     Component.onCompleted: {
+        root.migrateLegacyMusicConfig()
         root.applyDevDestination()
         Qt.callLater(() => {
             root.selectedTabId = root.tabButtonList[swipeView.currentIndex]?.id ?? ""
@@ -225,7 +247,7 @@ Item {
         radius: sidebarLeftBackground.radius
         glassEnabled: true
         screen: root.panelScreen ?? root.QsWindow?.window?.screen ?? null
-        glassScreenX: Appearance.sizes.surfaceGap
+        glassScreenX: Appearance.sizes.hyprlandGapsOut
         glassScreenY: root.panelScreenY
         glassScreenWidth: root.screenWidth
         glassScreenHeight: root.screenHeight
@@ -269,7 +291,7 @@ Item {
         border.color: "transparent"
         radius: cardStyle
             ? Appearance.rounding.normal
-            : (Appearance.rounding.screenRounding - Appearance.sizes.surfaceGap + 1)
+            : (Appearance.rounding.screenRounding - Appearance.sizes.hyprlandGapsOut + 1)
         topLeftRadius: root.attachedEdge === "left" ? 0 : radius
         bottomLeftRadius: root.attachedEdge === "left" ? 0 : radius
         topRightRadius: root.attachedEdge === "right" ? 0 : radius
@@ -430,27 +452,9 @@ Item {
 
         Component { id: aiChatComp; AiChat {} }
         Component { id: translatorComp; Translator {} }
-        Component {
-            id: animeComp
-            Anime {
-                presentationActive: GlobalStates.sidebarLeftOpen
-                    && root.selectedTabId === "anime"
-            }
-        }
-        Component {
-            id: animeScheduleComp
-            AnimeScheduleView {
-                presentationActive: GlobalStates.sidebarLeftOpen
-                    && root.selectedTabId === "animeSchedule"
-            }
-        }
-        Component {
-            id: newsComp
-            NewsView {
-                presentationActive: GlobalStates.sidebarLeftOpen
-                    && root.selectedTabId === "news"
-            }
-        }
+        Component { id: animeComp; Anime {} }
+        Component { id: animeScheduleComp; AnimeScheduleView {} }
+        Component { id: newsComp; NewsView {} }
         Component { id: musicComp; LocalMusicView {} }
         Component { id: toolsComp; ToolsView {} }
         // DISABLED: webapps — requires quickshell-webengine rebuild

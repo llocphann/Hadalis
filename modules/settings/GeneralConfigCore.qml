@@ -657,19 +657,16 @@ ContentPage {
         title: Translation.tr("Lock screen")
 
         SettingsGroup {
-            ContentSubsection {
-                title: Translation.tr("Lock provider")
-                tooltip: Translation.tr("Choose which locker handles Hadalis lock requests on Niri.")
-
-                ConfigSelectionArray {
-                    currentValue: Config.options?.lock?.provider ?? "quickshell"
-                    options: [
-                        { displayName: "Quickshell", value: "quickshell" },
-                        { displayName: "swaylock", value: "swaylock" },
-                        { displayName: "hyprlock", value: "hyprlock" }
-                    ]
-                    onSelected: newValue =>
-                        Config.setNestedValue("lock.provider", newValue)
+            SettingsSwitch {
+                visible: CompositorService.isHyprland
+                buttonIcon: "water_drop"
+                text: Translation.tr('Use Hyprlock (instead of Quickshell)')
+                checked: Config.options?.lock?.useHyprlock ?? false
+                onCheckedChanged: {
+                    Config.setNestedValue("lock.useHyprlock", checked);
+                }
+                StyledToolTip {
+                    text: Translation.tr("If you want to somehow use fingerprint unlock...")
                 }
             }
 
@@ -681,7 +678,7 @@ ContentPage {
                     Config.setNestedValue("lock.launchOnStartup", checked);
                 }
                 StyledToolTip {
-                    text: Translation.tr("Lock the session automatically when Hadalis starts")
+                    text: Translation.tr("Enable this if you want to use Quickshell as your lock screen provider")
                 }
             }
 

@@ -24,14 +24,6 @@ require() {
     grep -Fq -- "$needle" "$service" || fail "$message"
 }
 
-reject() {
-    local needle="$1"
-    local message="$2"
-    if grep -Fq -- "$needle" "$service"; then
-        fail "$message"
-    fi
-}
-
 require_in() {
     local file="$1"
     local needle="$2"
@@ -46,14 +38,10 @@ fi
 
 require 'function _finishStartupRead(rawText: string): void' \
     'startup history read must have a shared completion path'
-require 'id: startupTodayFile' \
-    'startup history must use an in-process FileView'
-require 'root._finishStartupRead(text())' \
-    'startup history FileView must preserve the normal completion path'
-require 'root._finishStartupRead("__NOFILE__")' \
-    'startup history FileView must preserve missing-file fallback'
-reject 'id: startupReadProc' \
-    'startup history must not restore a shell reader'
+require 'onStarted: startupReadProc.startObserved = true' \
+    'startup history reader must record successful startup'
+require 'console.warn("[ScreenTime] startup history reader failed to start")' \
+    'startup history reader must handle spawn failure'
 require 'root._finishStartupRead("__NOFILE__")' \
     'startup spawn failure must fall back to an empty current day'
 require 'root._loadingToday = false' \
@@ -61,16 +49,10 @@ require 'root._loadingToday = false' \
 require 'root.ready = true' \
     'startup completion must release the ready gate'
 
-require 'id: rangeReadFile' \
-    'range history must use an in-process FileView'
-require 'rangeReadFile.pendingPaths = paths' \
-    'range history must queue requested day files in-process'
-require 'onLoaded: root._appendRangeChunk(text())' \
-    'range history must append loaded day data'
-require 'onLoadFailed: root._appendRangeChunk("{}")' \
-    'range history must preserve missing-day fallback'
-reject 'id: rangeReadProc' \
-    'range history must not restore a shell reader'
+require 'onStarted: rangeReadProc.startObserved = true' \
+    'range history reader must record successful startup'
+require 'console.warn("[ScreenTime] range history reader failed to start")' \
+    'range history reader must handle spawn failure'
 require 'root._activeRangeDays = 0' \
     'range reader failure must release the active-range gate'
 require 'Qt.callLater(root._startNextRangeRead)' \
@@ -112,8 +94,7 @@ fi
 for token in \
     'property var tabs: []' \
     'property int currentIndex: 0' \
-    'Appearance.colors.colPrimaryContainerHover' \
-    'Appearance.colors.colPrimaryContainer' \
+    'color: Appearance.colors.colPrimaryContainer' \
     'id: centeredTabLabel' \
     'anchors.centerIn: parent' \
     'anchors.right: parent.right' \

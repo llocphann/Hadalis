@@ -28,7 +28,6 @@ last_toggle_time = 0.0
 super_down_global = False
 interaction_since_super_down = False
 tap_handled = False
-super_down_devices = set()
 
 # Cache of inir's environment so we don't hit /proc on every tap.
 INIR_ENV_CACHE = {}
@@ -108,9 +107,6 @@ def get_inir_env():
                 "XDG_RUNTIME_DIR",
                 "QT_QPA_PLATFORM",
                 "NIRI_SOCKET",
-                "PATH",
-                "XDG_BIN_HOME",
-                "INIR_LAUNCHER_PATH",
             ):
                 env_vars[k] = v
         INIR_ENV_CACHE = env_vars
@@ -120,90 +116,6 @@ def get_inir_env():
     except Exception as e:
         print(f"[inir-super-daemon] Error reading inir env: {e}", flush=True)
         return {}
-
-
-def resolve_inir_launcher(inir_env):
-    """Resolve the installed launcher without assuming systemd's PATH."""
-    search_path = inir_env.get("PATH") or os.environ.get("PATH")
-    xdg_bin_home = (
-        inir_env.get("XDG_BIN_HOME")
-        or os.environ.get("XDG_BIN_HOME")
-        or os.path.expanduser("~/.local/bin")
-    )
-    candidates = (
-        os.environ.get("INIR_LAUNCHER_PATH", ""),
-        inir_env.get("INIR_LAUNCHER_PATH", ""),
-        shutil.which("inir", path=search_path) or "",
-        os.path.join(xdg_bin_home, "inir"),
-        os.path.join(os.path.dirname(os.path.realpath(__file__)), "inir"),
-    )
-    for candidate in candidates:
-        if candidate and os.path.isfile(candidate) and os.access(candidate, os.X_OK):
-            return candidate
-    return ""
-
-
-def run_inir_command(*args):
-    """Run one iNiR CLI command in the live shell session environment."""
-    try:
-        inir_env = get_inir_env()
-        if not inir_env:
-            print(
-                "[inir-super-daemon] No inir env available, skipping command",
-                flush=True,
-            )
-            return False
-
-        env = os.environ.copy()
-        env.update(inir_env)
-        inir_bin = resolve_inir_launcher(inir_env)
-        if not inir_bin:
-            print(
-                "[inir-super-daemon] inir launcher not found, skipping command",
-                flush=True,
-            )
-            return False
-        subprocess.Popen(
-            [inir_bin, *args],
-            env=env,
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-        )
-        return True
-    except Exception as e:
-        print(
-            f"[inir-super-daemon] Error running inir command {args}: {e}",
-            flush=True,
-        )
-        return False
-
-
-def notify_shell_super_state(pressed):
-    function = "superPress" if pressed else "superRelease"
-    return run_inir_command("ipc", "overview", function)
-
-
-def set_super_device_state(path, pressed):
-    global super_down_global, interaction_since_super_down, tap_handled
-
-    was_down = bool(super_down_devices)
-    if pressed:
-        super_down_devices.add(path)
-    else:
-        super_down_devices.discard(path)
-
-    is_down = bool(super_down_devices)
-    super_down_global = is_down
-    if is_down == was_down:
-        return
-
-    if is_down:
-        interaction_since_super_down = False
-        tap_handled = False
-        notify_shell_super_state(True)
-    else:
-        interaction_since_super_down = False
-        notify_shell_super_state(False)
 
 
 def find_keyboard_devices():
@@ -269,15 +181,15 @@ async def monitor_device(path):
                 if value == key_event.key_down:
                     super_down = True
                     chord = False
-                    set_super_device_state(path, True)
+                    super_down_global = True
+                    interaction_since_super_down = False
+                    tap_handled = False
                 elif value == key_event.key_up:
                     if (
                         super_down
                         and not chord
                         and not interaction_since_super_down
                         and not tap_handled
-                        and path in super_down_devices
-                        and len(super_down_devices) == 1
                     ):
                         # Tap of Super with no other keys or clicks: toggle inir overview
                         # with a global debounce so multiple devices don't double-trigger.
@@ -289,10 +201,41 @@ async def monitor_device(path):
                                 "[inir-super-daemon] Super tap detected, toggling inir overview",
                                 flush=True,
                             )
-                            run_inir_command("overview", "toggle")
+                            try:
+                                inir_env = get_inir_env()
+                                if not inir_env:
+                                    print(
+                                        "[inir-super-daemon] No inir env available, skipping toggle",
+                                        flush=True,
+                                    )
+                                    super_down = False
+                                    super_down_global = False
+                                    interaction_since_super_down = False
+                                    continue
+
+                                env = os.environ.copy()
+                                env.update(inir_env)
+
+                                # Resolve the inir launcher for the IPC call
+                                inir_bin = os.environ.get(
+                                    "INIR_LAUNCHER_PATH",
+                                    shutil.which("inir") or "inir",
+                                )
+                                subprocess.Popen(
+                                    [inir_bin, "overview", "toggle"],
+                                    env=env,
+                                    stdout=subprocess.DEVNULL,
+                                    stderr=subprocess.DEVNULL,
+                                )
+                            except Exception as e:
+                                print(
+                                    f"[inir-super-daemon] Error running toggle command: {e}",
+                                    flush=True,
+                                )
                     super_down = False
                     chord = False
-                    set_super_device_state(path, False)
+                    super_down_global = False
+                    interaction_since_super_down = False
                 continue
 
             # Any other key while Super is down marks this as a chord.
@@ -306,9 +249,6 @@ async def monitor_device(path):
         # Device vanished (unplug, suspend/resume). Returning lets the supervisor
         # in main() re-adopt it on the next rescan instead of killing the daemon.
         return
-    finally:
-        if super_down:
-            set_super_device_state(path, False)
 
 
 async def monitor_pointer_device(path):

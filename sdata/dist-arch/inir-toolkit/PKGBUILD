@@ -10,6 +10,7 @@ depends=(
   ydotool
   python-evdev
   python-pillow
+  hyprpicker
   translate-shell
   fprintd
 

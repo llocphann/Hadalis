@@ -39,6 +39,8 @@ def main() -> None:
     workspace_overview = read("modules/bar/BarWorkspaceOverview.qml")
     styled_popup = read("modules/bar/StyledPopup.qml")
     screen_edges = read("modules/screenCorners/ScreenEdges.qml")
+    overview_niri = read("modules/overview/OverviewNiriWidget.qml")
+    overview_hypr = read("modules/overview/OverviewWidget.qml")
     timer_indicator = read("modules/bar/TimerIndicator.qml")
     shell_update_indicator = read("modules/bar/ShellUpdateIndicator.qml")
     critical = read("modules/ii/critical/ShellIiCriticalPanels.qml")

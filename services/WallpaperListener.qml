@@ -2,6 +2,7 @@ pragma Singleton
 
 import QtQuick
 import Quickshell
+import Quickshell.Hyprland
 
 import qs.modules.common
 import qs.modules.common.functions
@@ -90,7 +91,12 @@ Singleton {
 
     // Get focused monitor name from compositor
     function getFocusedMonitor(): string {
-        return NiriService.currentOutput ?? ""
+        if (CompositorService.isNiri) {
+            return NiriService.currentOutput ?? ""
+        } else if (CompositorService.isHyprland) {
+            return Hyprland.focusedMonitor?.name ?? ""
+        }
+        return ""
     }
 
     // Refresh the effective per-monitor map
@@ -152,7 +158,16 @@ Singleton {
 
     // Get monitor name for a screen (compositor-agnostic)
     function getMonitorName(screen: ShellScreen): string {
-        return screen?.name ?? ""
+        if (!screen) return ""
+
+        if (CompositorService.isNiri) {
+            return screen.name ?? ""
+        } else if (CompositorService.isHyprland) {
+            const monitor = Hyprland.monitorFor(screen)
+            return monitor?.name ?? screen.name ?? ""
+        }
+
+        return screen.name ?? ""
     }
 
     Component.onCompleted: {

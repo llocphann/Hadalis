@@ -1,6 +1,6 @@
 pkgname=inir-shell
 pkgver=2.29.3
-pkgrel=18
+pkgrel=13
 pkgdesc='Hadalis shell payload, launcher, and user service'
 arch=('x86_64')
 url='https://github.com/llocphann/Hadalis'
@@ -24,7 +24,6 @@ depends=(
   fcitx5-qt
   fcitx5-unikey
   grim
-  imagemagick
   jq
   kirigami
   libnotify
@@ -34,9 +33,9 @@ depends=(
   pipewire
   pipewire-alsa
   pipewire-pulse
+  playerctl
   polkit-gnome
   python
-  python-evdev
   python-materialyoucolor
   python-numpy
   python-pillow
@@ -52,7 +51,6 @@ depends=(
   swaylock
   wlsunset
   syntax-highlighting
-  util-linux
   ttf-jetbrains-mono-nerd
   ttf-material-symbols-variable
   ttf-roboto-flex
@@ -74,24 +72,22 @@ optdepends=(
   'easyeffects: optional audio effects and equalizer backend'
   'ffmpeg: recording and video wallpaper helpers'
   'fprintd: fingerprint authentication integration'
-  'fuzzel: optional emoji picker and external dmenu launcher integration'
-  'git: optional repo/developer update and status tooling'
   'fcitx5-gtk: GTK/XWayland input method compatibility'
   'fcitx5-configtool: configure Vietnamese input and shortcuts'
   'geoclue: GPS-backed weather location detection'
   'gnome-keyring: secret storage for API keys and credentials'
   'gowall-bin: wallpaper theme conversion and effects editor'
   'gum: setup TUI helpers'
-  'inir-workflow-parser: native QML parser capability for Code Workflow'
+  'hyprpicker: color picker support'
   'kde-cli-tools: Dolphin Open With dialog (QT_QPA_PLATFORMTHEME=kde)'
-  'hyprpicker: enhanced Wayland color picker with magnifier'
+  'imagemagick: image conversion helpers'
   'kconfig: KDE configuration integration'
   'kdialog: KDE dialog integration for scripts'
   'kitty: default terminal integration'
   'kvantum: Qt style engine'
   'libqalculate: calculator widget backend'
   'mission-center: graphical system monitor (default task manager)'
-  'mpv: general media playback backend'
+  'mpv: media playback and YouTube Music support'
   'mpv-mpris: richer mpv media session integration'
   'mpd: local Music library and queue backend'
   'mpd-mpris: MPD/rmpc/Hadalis Music controls through MPRIS'
@@ -114,6 +110,8 @@ optdepends=(
   'wf-recorder: screen recording support'
   'wtype: Wayland text injection helper'
   'ydotool: virtual keyboard and clipboard paste helper'
+  'yt-dlp: YouTube media backend'
+  'python-ytmusicapi: YouTube Music browsing (InnerTube engine)'
   'millennium-bin: Steam theming via Millennium (requires steam)'
 )
 conflicts=('inir-shell-git' 'noctalia-qs' 'noctalia-shell' 'cachyos-niri-noctalia')
@@ -142,7 +140,7 @@ package() {
 
   python3 "$srcroot/sdata/lib/runtime-payload.py" copy --root "$srcroot" --target "$shellroot" || return
   mkdir -p "$shellroot/native/bin"
-  for binary in inir-inputd inir-mpdd inir-native inir-superd inir-theme; do install -Dm0755 "$srcdir/inir-native-target/release/$binary" "$shellroot/native/bin/$binary"; done
+  for binary in inir-inputd inir-mpdd inir-native inir-theme; do install -Dm0755 "$srcdir/inir-native-target/release/$binary" "$shellroot/native/bin/$binary"; done
   # The pinned 2.29.3 snapshot predates qmldir in the canonical root manifest.
   install -Dm644 "$srcroot/qmldir" "$shellroot/qmldir"
   chmod +x "$shellroot/setup" "$shellroot/scripts/inir"

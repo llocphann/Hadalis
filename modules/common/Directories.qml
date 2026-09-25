@@ -6,7 +6,6 @@ import qs.services
 import QtCore
 import QtQuick
 import Quickshell
-import Quickshell.Io
 
 Singleton {
     id: root
@@ -117,84 +116,21 @@ Singleton {
 
         return userAvatarSourcePrimary
     }
-    // Startup directory preparation is deliberately serialized. The old
-    // detached fan-out spawned fourteen helpers and let rm/mkdir race on the
-    // same session caches. Keep persistent paths available first, then clear
-    // transient caches, then recreate only the caches consumers expect.
-    Process {
-        id: preparePersistentDirsProc
-        property bool startObserved: false
-        command: [
-            "mkdir", "-p",
-            root.shellConfig,
-            root.stateUserPath,
-            root.favicons,
-            root.coverArt,
-            root.aiChats,
-            root.screenTimePath,
-            root.userActions
-        ]
-        onRunningChanged: {
-            if (preparePersistentDirsProc.running) {
-                preparePersistentDirsProc.startObserved = false
-                return
-            }
-            if (preparePersistentDirsProc.startObserved)
-                return
-
-            console.warn("[Directories] persistent directory helper failed to start")
-            cleanupSessionDirsProc.running = true
-        }
-        onStarted: preparePersistentDirsProc.startObserved = true
-        onExited: cleanupSessionDirsProc.running = true
+    // Cleanup on init
+    Component.onCompleted: {
+        Quickshell.execDetached(["mkdir", "-p", `${shellConfig}`])
+        Quickshell.execDetached(["mkdir", "-p", `${stateUserPath}`])
+        Quickshell.execDetached(["mkdir", "-p", `${favicons}`])
+        Quickshell.execDetached(["mkdir", "-p", `${coverArt}`])
+        Quickshell.execDetached(["rm", "-rf", `${booruPreviews}`])
+        Quickshell.execDetached(["mkdir", "-p", `${booruPreviews}`])
+        Quickshell.execDetached(["rm", "-rf", `${latexOutput}`])
+        Quickshell.execDetached(["mkdir", "-p", `${latexOutput}`])
+        Quickshell.execDetached(["rm", "-rf", `${cliphistDecode}`])
+        Quickshell.execDetached(["mkdir", "-p", `${cliphistDecode}`])
+        Quickshell.execDetached(["mkdir", "-p", `${aiChats}`])
+        Quickshell.execDetached(["mkdir", "-p", `${screenTimePath}`])
+        Quickshell.execDetached(["mkdir", "-p", `${userActions}`])
+        Quickshell.execDetached(["rm", "-rf", `${tempImages}`])
     }
-
-    Process {
-        id: cleanupSessionDirsProc
-        property bool startObserved: false
-        command: [
-            "rm", "-rf",
-            root.booruPreviews,
-            root.latexOutput,
-            root.cliphistDecode,
-            root.tempImages
-        ]
-        onRunningChanged: {
-            if (cleanupSessionDirsProc.running) {
-                cleanupSessionDirsProc.startObserved = false
-                return
-            }
-            if (cleanupSessionDirsProc.startObserved)
-                return
-
-            console.warn("[Directories] session cache cleanup helper failed to start")
-            prepareSessionDirsProc.running = true
-        }
-        onStarted: cleanupSessionDirsProc.startObserved = true
-        onExited: prepareSessionDirsProc.running = true
-    }
-
-    Process {
-        id: prepareSessionDirsProc
-        property bool startObserved: false
-        command: [
-            "mkdir", "-p",
-            root.booruPreviews,
-            root.latexOutput,
-            root.cliphistDecode
-        ]
-        onRunningChanged: {
-            if (prepareSessionDirsProc.running) {
-                prepareSessionDirsProc.startObserved = false
-                return
-            }
-            if (prepareSessionDirsProc.startObserved)
-                return
-
-            console.warn("[Directories] session cache directory helper failed to start")
-        }
-        onStarted: prepareSessionDirsProc.startObserved = true
-    }
-
-    Component.onCompleted: preparePersistentDirsProc.running = true
 }

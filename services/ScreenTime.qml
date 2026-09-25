@@ -87,15 +87,12 @@ Singleton {
     }
 
     function _loadTodayFromFile(): void {
-        if (root._loadingToday || startupTodayFile.loadPending)
+        if (root._loadingToday || startupReadProc.running)
             return
         root._loadingToday = true
-        startupTodayFile.loadPending = true
         const path = root._todayFilePath()
-        if (startupTodayFile.path === path)
-            startupTodayFile.reload()
-        else
-            startupTodayFile.path = path
+        startupReadProc.command = ["/usr/bin/bash", "-c", `test -f "${path}" && cat "${path}" || echo "__NOFILE__"`]
+        startupReadProc.running = true
     }
 
     IdleMonitor {
@@ -127,7 +124,9 @@ Singleton {
         id: pollTimer
         // Niri focus changes are event-driven below. Keep only a coarse
         // heartbeat for visible session time and periodic persistence.
-        interval: 30000
+        interval: CompositorService.isNiri
+            ? 30000
+            : (Config.options?.sidebar?.screenTime?.pollIntervalSeconds ?? 5) * 1000
         running: root.enabled && root.ready && root._initialized
         repeat: true
         triggeredOnStart: true
@@ -135,19 +134,20 @@ Singleton {
     }
 
     Connections {
-        target: NiriService
-        enabled: root.enabled && root.ready && root._initialized
+        target: CompositorService.isNiri ? NiriService : null
+        enabled: root.enabled && root.ready && root._initialized && CompositorService.isNiri
 
         function onActiveWindowChanged(): void {
             root._tick()
         }
     }
 
-    Connections {
-        target: DateTime
-        enabled: root.enabled && root.ready && root._initialized
-
-        function onMinuteEpochChanged(): void {
+    Timer {
+        id: dayRolloverTimer
+        interval: 60000
+        running: root.enabled && root.ready && root._initialized
+        repeat: true
+        onTriggered: {
             const now = root._dateString(new Date())
             if (now !== root._currentDate) {
                 root._persistToday()
@@ -176,13 +176,26 @@ Singleton {
         let appId = ""
         let appName = ""
 
-        // Niri's window list is authoritative; activeWindow can be null until
-        // the first focus event, so use the reactive list as startup fallback.
-        const win = NiriService.activeWindow
-            ?? (NiriService.windows ?? []).find(w => w.is_focused)
-        if (win) {
-            appId = win.app_id || ""
-            appName = appId ? _humanizeAppId(appId) : ""
+        if (CompositorService.isNiri) {
+            // The initial WindowsChanged snapshot already marks the focused
+            // window, but NiriService.activeWindow is event-driven and can stay
+            // null until the next focus change. Use the reactive list as the
+            // startup fallback without spawning a compositor query per tick.
+            const win = NiriService.activeWindow
+                ?? (NiriService.windows ?? []).find(w => w.is_focused)
+            if (win) {
+                appId = win.app_id || ""
+                appName = appId ? _humanizeAppId(appId) : ""
+            }
+        } else if (CompositorService.isHyprland) {
+            const wins = HyprlandData.windowList || []
+            for (let i = 0; i < wins.length; i++) {
+                if (wins[i].focusHistoryID === 0) {
+                    appId = wins[i].class || ""
+                    appName = appId ? _humanizeAppId(appId) : ""
+                    break
+                }
+            }
         }
 
         const elapsed = root._lastTickTime > 0
@@ -318,71 +331,25 @@ Singleton {
     }
 
     function _startNextRangeRead(): void {
-        if (rangeReadFile.loadPending || root._activeRangeDays > 0 || root._rangeQueue.length === 0)
+        if (rangeReadProc.running || root._activeRangeDays > 0 || root._rangeQueue.length === 0)
             return
         const queue = root._rangeQueue.slice()
         const count = queue.shift()
         root._rangeQueue = queue
 
-        const paths = []
+        let script = ""
         const now = new Date()
         for (let i = 1; i < count; i++) {
             const d = new Date(now)
             d.setDate(d.getDate() - i)
-            paths.push(`${Directories.screenTimePath}/${root._dateString(d)}.json`)
+            const path = `${Directories.screenTimePath}/${root._dateString(d)}.json`
+            script += `cat "${path}" 2>/dev/null || echo "{}"; echo "---DELIM---";\n`
         }
-
         root._activeRangeDays = count
-        rangeReadFile.requestedDays = count
-        rangeReadFile.generation = root._rangeGeneration
-        rangeReadFile.pendingPaths = paths
-        rangeReadFile.chunks = []
-        rangeReadFile.nextIndex = 0
-        root._loadNextRangeFile()
-    }
-
-    function _loadNextRangeFile(): void {
-        if (rangeReadFile.loadPending)
-            return
-        if (rangeReadFile.nextIndex >= rangeReadFile.pendingPaths.length) {
-            root._finishRangeRead()
-            return
-        }
-
-        const path = rangeReadFile.pendingPaths[rangeReadFile.nextIndex]
-        rangeReadFile.nextIndex++
-        rangeReadFile.loadPending = true
-        if (rangeReadFile.path === path)
-            rangeReadFile.reload()
-        else
-            rangeReadFile.path = path
-    }
-
-    function _appendRangeChunk(text: string): void {
-        rangeReadFile.loadPending = false
-        rangeReadFile.chunks = rangeReadFile.chunks.concat([String(text ?? "{}")])
-        Qt.callLater(root._loadNextRangeFile)
-    }
-
-    function _finishRangeRead(): void {
-        const days = rangeReadFile.requestedDays
-        const generation = rangeReadFile.generation
-        const rawText = rangeReadFile.chunks.join("\n---DELIM---\n")
-
-        if (generation === root._rangeGeneration) {
-            const history = root._mergeDays(root._emptyDay("history"), rawText)
-            const cache = {}
-            cache[days] = history
-            root._rangeHistoryData = Object.assign({}, root._rangeHistoryData, cache)
-            root.rangeLoaded(days,
-                root._mergeHistoricalData(root.getToday(), history))
-        }
-
-        root._activeRangeDays = 0
-        rangeReadFile.pendingPaths = []
-        rangeReadFile.chunks = []
-        rangeReadFile.nextIndex = 0
-        Qt.callLater(root._startNextRangeRead)
+        rangeReadProc._requestedDays = count
+        rangeReadProc._generation = root._rangeGeneration
+        rangeReadProc.command = ["/usr/bin/bash", "-c", script]
+        rangeReadProc.running = true
     }
 
     function getCachedDays(count: int): var {
@@ -605,34 +572,68 @@ Singleton {
         root.dataChanged()
     }
 
-    FileView {
-        id: startupTodayFile
-        property bool loadPending: false
-        path: ""
-        printErrors: false
-
-        onLoaded: {
-            loadPending = false
-            root._finishStartupRead(text())
+    Process {
+        id: startupReadProc
+        property bool startObserved: false
+        command: ["/usr/bin/bash", "-c", ""]
+        stdout: StdioCollector {
+            onStreamFinished: root._finishStartupRead(text)
         }
-        onLoadFailed: {
-            loadPending = false
+        onRunningChanged: {
+            if (startupReadProc.running) {
+                startupReadProc.startObserved = false
+                return
+            }
+            if (startupReadProc.startObserved)
+                return
+
+            console.warn("[ScreenTime] startup history reader failed to start")
             root._finishStartupRead("__NOFILE__")
         }
+        onStarted: startupReadProc.startObserved = true
     }
 
-    FileView {
-        id: rangeReadFile
-        property int requestedDays: 1
-        property int generation: 0
-        property int nextIndex: 0
-        property bool loadPending: false
-        property var pendingPaths: []
-        property var chunks: []
-        path: ""
-        printErrors: false
+    Process {
+        id: rangeReadProc
+        property int _requestedDays: 1
+        property int _generation: 0
+        property bool _completed: false
+        property bool startObserved: false
+        command: ["/usr/bin/bash", "-c", ""]
+        stdout: StdioCollector {
+            onStreamFinished: {
+                rangeReadProc._completed = true
+                const days = rangeReadProc._requestedDays
+                if (rangeReadProc._generation === root._rangeGeneration) {
+                    const history = root._mergeDays(root._emptyDay("history"), text)
+                    const cache = {}
+                    cache[days] = history
+                    root._rangeHistoryData = Object.assign({}, root._rangeHistoryData, cache)
+                    root.rangeLoaded(days,
+                        root._mergeHistoricalData(root.getToday(), history))
+                }
+                root._activeRangeDays = 0
+            }
+        }
+        onRunningChanged: {
+            if (rangeReadProc.running) {
+                rangeReadProc.startObserved = false
+                return
+            }
+            if (rangeReadProc.startObserved)
+                return
 
-        onLoaded: root._appendRangeChunk(text())
-        onLoadFailed: root._appendRangeChunk("{}")
+            console.warn("[ScreenTime] range history reader failed to start")
+            root._activeRangeDays = 0
+            rangeReadProc._completed = false
+            Qt.callLater(root._startNextRangeRead)
+        }
+        onStarted: rangeReadProc.startObserved = true
+        onExited: {
+            if (!rangeReadProc._completed)
+                root._activeRangeDays = 0
+            rangeReadProc._completed = false
+            Qt.callLater(root._startNextRangeRead)
+        }
     }
 }

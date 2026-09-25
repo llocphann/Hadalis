@@ -469,11 +469,10 @@ Scope {
             WlrLayershell.layer: GlobalStates.settingsNativeDialogOpen
                 ? WlrLayer.Bottom
                 : PolkitService.active ? WlrLayer.Top : WlrLayer.Overlay
-            readonly property bool acceptsInput: root.settingsOpen
+            WlrLayershell.keyboardFocus: root.settingsOpen
                 && !GlobalStates.regionSelectorOpen
                 && !GlobalStates.settingsNativeDialogOpen
                 && !PolkitService.active
-            WlrLayershell.keyboardFocus: settingsPanel.acceptsInput
                 ? WlrKeyboardFocus.Exclusive
                 : WlrKeyboardFocus.None
             color: "transparent"
@@ -483,14 +482,6 @@ Scope {
                 bottom: true
                 left: true
                 right: true
-            }
-
-            // Keep drawing the exit animation, but stop owning pointer input as
-            // soon as Settings closes or yields to another native surface.
-            Item { id: emptyFocusInput; width: 0; height: 0 }
-            Item { id: fullFocusInput; anchors.fill: parent }
-            mask: Region {
-                item: settingsPanel.acceptsInput ? fullFocusInput : emptyFocusInput
             }
 
             // Blurred backdrop, using the same GlassBackground every other panel
@@ -587,6 +578,29 @@ Scope {
                     if (focusSearchField.text !== root.searchText)
                         focusSearchField.text = root.searchText;
                 }
+            }
+
+            CompositorFocusGrab {
+                id: grab
+                windows: [settingsPanel]
+                active: false
+                onCleared: () => {
+                    if (!active && !GlobalStates.settingsNativeDialogOpen)
+                        GlobalStates.settingsOverlayOpen = false;
+                }
+            }
+
+            Connections {
+                target: GlobalStates
+                function onSettingsOverlayOpenChanged() { grabTimer.restart() }
+                function onSettingsNativeDialogOpenChanged() { grabTimer.restart() }
+            }
+
+            Timer {
+                id: grabTimer
+                interval: 100
+                onTriggered: grab.active = (GlobalStates.settingsOverlayOpen ?? false)
+                    && !GlobalStates.settingsNativeDialogOpen
             }
 
             // Dim only the workspace, never the physical Screen Edge or the
@@ -902,7 +916,6 @@ Scope {
                                 sourceSize.height: 96
                                 opacity: status === Image.Ready ? 1 : 0
                                 visible: opacity > 0
-                                onStatusChanged: avatarResolver.handleImageStatus(status)
                             }
 
                             // Directories publishes an ordered candidate list; walk
@@ -913,8 +926,9 @@ Scope {
                                 readonly property string resolvedSource: Directories.avatarSourceAt(avatarIndex)
                                 readonly property string primaryWatch: Directories.userAvatarSourcePrimary
                                 onPrimaryWatchChanged: avatarIndex = 0
-                                function handleImageStatus(status): void {
-                                    if (status !== Image.Error)
+                                readonly property int imgStatus: avatarImage.status
+                                onImgStatusChanged: {
+                                    if (imgStatus !== Image.Error)
                                         return;
                                     const next = avatarIndex + 1;
                                     if (next < Directories.userAvatarPaths.length)

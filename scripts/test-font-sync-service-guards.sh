@@ -27,7 +27,5 @@ require_literal "$service" 'interval: 30000' 'font-sync watchdog interval change
 require_literal "$service" 'fontSyncProc.timedOut = true' 'watchdog does not mark timeout state'
 require_literal "$service" 'fontSyncProc.running = false' 'watchdog does not terminate a stuck helper'
 require_literal "$helper" 'flock -w 15 9' 'helper lock wait must remain bounded below the service watchdog'
-require_literal "$helper" 'original = content' 'helper must retain the pre-edit bytes for no-op detection'
-require_literal "$helper" 'if content == original:' 'helper must skip identical GTK/xsettings rewrites'
 
 printf 'font-sync lifecycle guards: ok\n'

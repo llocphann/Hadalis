@@ -1,5 +1,4 @@
 import QtQuick
-import QtQuick.Window
 import QtQuick.Layouts
 import Quickshell
 import qs.services
@@ -69,31 +68,6 @@ ContentPage {
     function resetToDefaults() {
         const family = Config.options?.panelFamily ?? "ii"
         Config.setNestedValue("enabledPanels", [...(defaultPanels[family] ?? [])])
-    }
-
-    function switchPanelFamily(family: string): void {
-        const target = String(family ?? "")
-        const current = Config.options?.panelFamily ?? "ii"
-        if (!["ii", "waffle"].includes(target) || target === current)
-            return
-
-        // Overlay mode owns a fullscreen layer-shell surface. Standalone
-        // settings uses an ApplicationWindow in a separate Quickshell process.
-        // Release whichever settings host owns pointer input before the main
-        // shell tears down the outgoing panel family.
-        if (GlobalStates.settingsOverlayOpen)
-            GlobalStates.settingsOverlayOpen = false
-        if (Quickshell.env("INIR_STANDALONE_WINDOW") === "1") {
-            const hostWindow = modulesPage.Window.window
-            if (hostWindow)
-                hostWindow.close()
-        }
-
-        // Keep every family switch on the shell's canonical transition lifecycle.
-        // This also preserves enabled/known panel bookkeeping in shell.qml.
-        Quickshell.execDetached([
-            Quickshell.shellPath("scripts/inir"), "panelFamily", "set", target
-        ])
     }
 
     property string activeSection: "panels"
@@ -208,7 +182,10 @@ ContentPage {
                         }
                     }
 
-                    onClicked: modulesPage.switchPanelFamily("ii")
+                    onClicked: {
+                        Config.setNestedValue("panelFamily", "ii")
+                        Config.setNestedValue("enabledPanels", [...modulesPage.defaultPanels["ii"]])
+                    }
                 }
 
                 RippleButton {
@@ -236,7 +213,10 @@ ContentPage {
                         }
                     }
 
-                    onClicked: modulesPage.switchPanelFamily("waffle")
+                    onClicked: {
+                        Config.setNestedValue("panelFamily", "waffle")
+                        Config.setNestedValue("enabledPanels", [...modulesPage.defaultPanels["waffle"]])
+                    }
                 }
             }
         }

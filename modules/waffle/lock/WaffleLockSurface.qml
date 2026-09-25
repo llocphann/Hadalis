@@ -622,9 +622,9 @@ MouseArea {
                     border.width: 1
                     
                     readonly property MprisPlayer player: root.activePlayer
-                    readonly property string effectiveArtUrl: player?.trackArtUrl ?? ""
-                    readonly property string effectiveTitle: player?.trackTitle ?? ""
-                    readonly property string effectiveArtist: player?.trackArtist ?? ""
+                    readonly property string effectiveArtUrl: MprisController.isYtMusicActive ? YtMusic.currentThumbnail : (player?.trackArtUrl ?? "")
+                    readonly property string effectiveTitle: MprisController.isYtMusicActive ? YtMusic.currentTitle : (player?.trackTitle ?? "")
+                    readonly property string effectiveArtist: MprisController.isYtMusicActive ? YtMusic.currentArtist : (player?.trackArtist ?? "")
 
                     layer.enabled: root.effectsSafe
                     layer.effect: DropShadow {
@@ -1206,7 +1206,6 @@ MouseArea {
                         sourceSize.width: avatarCircle.width * 2
                         sourceSize.height: avatarCircle.height * 2
                         visible: status === Image.Ready
-                        onStatusChanged: waffleLockAvatarResolver.handleImageStatus(status)
                         
                         layer.enabled: root.effectsSafe
                         layer.effect: OpacityMask {
@@ -1224,8 +1223,9 @@ MouseArea {
                         readonly property string resolvedSource: Directories.avatarSourceAt(avatarIndex)
                         readonly property string primaryWatch: Directories.userAvatarSourcePrimary
                         onPrimaryWatchChanged: avatarIndex = 0
-                        function handleImageStatus(status): void {
-                            if (status === Image.Error) {
+                        readonly property int imgStatus: avatarImage.status
+                        onImgStatusChanged: {
+                            if (imgStatus === Image.Error) {
                                 const nextIdx = avatarIndex + 1
                                 if (nextIdx < Directories.userAvatarPaths.length)
                                     avatarIndex = nextIdx
@@ -1596,7 +1596,7 @@ MouseArea {
             
             // Keyboard layout
             Loader {
-                active: KeyboardIndicators.currentLayoutCode.length > 0
+                active: typeof HyprlandXkb !== "undefined" && HyprlandXkb.currentLayoutCode.length > 0
                 visible: active
                 anchors.verticalCenter: parent.verticalCenter
                 
@@ -1621,7 +1621,7 @@ MouseArea {
                     
                     Text {
                         anchors.verticalCenter: parent.verticalCenter
-                        text: KeyboardIndicators.currentLayoutCode.toUpperCase()
+                        text: HyprlandXkb.currentLayoutCode.toUpperCase()
                         font.pixelSize: Looks.font.pixelSize.small
                         font.family: Looks.font.family.ui
                         color: root.textColor

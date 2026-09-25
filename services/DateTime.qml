@@ -34,35 +34,37 @@ Singleton {
     property string shortDate: Qt.locale().toString(clock.date, Config.options?.time.shortDateFormat ?? "dd/MM")
     property string date: Qt.locale().toString(clock.date, Config.options?.time.dateFormat ?? "dddd, dd/MM")
     property string collapsedCalendarFormat: Qt.locale().toString(clock.date, "dd MMMM yyyy")
-    // Shared minute-resolution epoch for services that only need coarse wall
-    // clock changes. The value stays stable across second-precision clock ticks,
-    // so consumers can share SystemClock instead of owning parallel 60s timers.
-    readonly property int minuteEpoch: Math.floor(clock.date.getTime() / 60000)
     property string uptime: "0h, 0m"
 
-    function refreshUptime(): void {
-        fileUptime.reload();
-        const textUptime = String(fileUptime.text() ?? "").trim();
-        const uptimeSeconds = Number(textUptime.split(/\s+/)[0]);
-        if (!Number.isFinite(uptimeSeconds) || uptimeSeconds < 0)
-            return;
+    Timer {
+        triggeredOnStart: true
+        // Uptime doesn't change fast - 60s updates are sufficient and reduce I/O
+        interval: 60000
+        running: true
+        repeat: true
+        onTriggered: {
+            fileUptime.reload();
+            const textUptime = String(fileUptime.text() ?? "").trim();
+            const uptimeSeconds = Number(textUptime.split(/\s+/)[0]);
+            if (!Number.isFinite(uptimeSeconds) || uptimeSeconds < 0)
+                return;
 
-        const days = Math.floor(uptimeSeconds / 86400);
-        const hours = Math.floor((uptimeSeconds % 86400) / 3600);
-        const minutes = Math.floor((uptimeSeconds % 3600) / 60);
+            // Convert seconds to days, hours, and minutes
+            const days = Math.floor(uptimeSeconds / 86400);
+            const hours = Math.floor((uptimeSeconds % 86400) / 3600);
+            const minutes = Math.floor((uptimeSeconds % 3600) / 60);
 
-        let formatted = "";
-        if (days > 0)
-            formatted += `${days}d`;
-        if (hours > 0)
-            formatted += `${formatted ? ", " : ""}${hours}h`;
-        if (minutes > 0 || !formatted)
-            formatted += `${formatted ? ", " : ""}${minutes}m`;
-        uptime = formatted;
+            // Build the formatted uptime string
+            let formatted = "";
+            if (days > 0)
+                formatted += `${days}d`;
+            if (hours > 0)
+                formatted += `${formatted ? ", " : ""}${hours}h`;
+            if (minutes > 0 || !formatted)
+                formatted += `${formatted ? ", " : ""}${minutes}m`;
+            uptime = formatted;
+        }
     }
-
-    onMinuteEpochChanged: refreshUptime()
-    Component.onCompleted: refreshUptime()
 
     FileView {
         id: fileUptime

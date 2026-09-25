@@ -29,15 +29,7 @@ Item {
     }
 
     property bool borderless: Config.options?.bar?.borderless ?? false
-    // The Bar can stay resident while auto-hidden. Default true preserves
-    // standalone callers; BarContent binds this to its slide lifecycle.
-    property bool presentationActive: true
     readonly property MprisPlayer activePlayer: MprisController.activePlayer
-    // BarMediaPopup is lazy, but artwork should not be. Keep the shared
-    // active-player resolver warm while the bar media module is resident so
-    // opening the popup hits the validated cover-art cache instead of starting
-    // its first network/local-file fetch on the popup's first frame.
-    property var _mediaArtworkPreloader: MediaArtwork
     readonly property string cleanedTitle: StringUtils.cleanMusicTitle(activePlayer?.trackTitle) || Translation.tr("No media")
     readonly property string fullTrackText: `${cleanedTitle}${activePlayer?.trackArtist ? ' • ' + activePlayer.trackArtist : ''}`
     readonly property string popupMode: Config.options?.media?.popupMode ?? "dock"
@@ -71,15 +63,8 @@ Item {
     implicitHeight: Appearance.sizes.barHeight
     clip: true
 
-    onPresentationActiveChanged: {
-        if (root.presentationActive)
-            root.activePlayer?.positionChanged()
-        titleScroller.resetMarquee()
-    }
-
     Timer {
-        running: root.presentationActive
-            && activePlayer?.playbackState == MprisPlaybackState.Playing
+        running: activePlayer?.playbackState == MprisPlaybackState.Playing
         interval: Config.options?.resources?.updateInterval ?? 3000
         repeat: true
         onTriggered: activePlayer?.positionChanged()
@@ -193,8 +178,7 @@ Item {
                 value: (activePlayer && activePlayer.length > 0) ? (activePlayer.position / activePlayer.length) : 0
                 implicitSize: Math.round(22 * Appearance.sizes.barModuleScale)
                 colPrimary: Appearance.colors.colOnLayer0
-                enableAnimation: root.presentationActive
-                    && activePlayer?.playbackState === MprisPlaybackState.Playing
+                enableAnimation: activePlayer?.playbackState === MprisPlaybackState.Playing
 
                 Item {
                     anchors.centerIn: parent
@@ -303,8 +287,7 @@ Item {
             }
 
             function _startHoldTimer() {
-                if (!root.presentationActive || !titleScroller.visible
-                        || !titleScroller.overflowing
+                if (!titleScroller.visible || !titleScroller.overflowing
                         || !Appearance.animationsEnabled || _marqueeHovered) return
                 holdTimer.start()
             }

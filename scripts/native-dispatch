@@ -50,31 +50,6 @@ python_bin() {
     fi
 }
 
-python_exec() {
-    local py
-    if ! py="$(python_bin)"; then
-        echo "[native-dispatch] Python fallback unavailable: python3 not found" >&2
-        return 127
-    fi
-    exec "$py" "$@"
-}
-
-python_exec_with_module() {
-    local module="$1"
-    shift
-    local candidate=""
-    local preferred=""
-    preferred="$(command -v python3 2>/dev/null || true)"
-    for candidate in "$preferred" /usr/bin/python3 "$(python_bin 2>/dev/null || true)"; do
-        [[ -n "$candidate" && -x "$candidate" ]] || continue
-        if "$candidate" -c "import ${module}" >/dev/null 2>&1; then
-            exec "$candidate" "$@"
-        fi
-    done
-    echo "[native-dispatch] Python fallback unavailable: missing module ${module}" >&2
-    return 127
-}
-
 want_rust() {
     case "$MODE" in
         rust|auto) return 0 ;;
@@ -89,7 +64,7 @@ rust_ready() {
 
 cmd="${1:-}"
 [[ -n "$cmd" ]] || {
-    echo "usage: native-dispatch <input-lock|input-keys|super-tap|niri|diagnostics|qml-profile|clipboard-store|mpd|mpd-daemon|mpd-subscribe|lyrics|theme|desktop-icons|backend-info> [args...]" >&2
+    echo "usage: native-dispatch <input-lock|input-keys|niri|diagnostics|clipboard-store|mpd|mpd-daemon|mpd-subscribe|lyrics|theme|desktop-icons|backend-info> [args...]" >&2
     exit 64
 }
 shift
@@ -98,8 +73,7 @@ if [[ "$MODE" == rust && "$STRICT" == 1 ]]; then
     required_binary=""
     case "$cmd" in
         input-lock|input-keys) required_binary=inir-inputd ;;
-        super-tap) required_binary=inir-superd ;;
-        niri|diagnostics|qml-profile|clipboard-store|desktop-icons) required_binary=inir-native ;;
+        niri|diagnostics|clipboard-store|desktop-icons) required_binary=inir-native ;;
         mpd|mpd-daemon|mpd-subscribe|lyrics) required_binary=inir-mpdd ;;
         theme) required_binary=inir-theme ;;
     esac
@@ -113,19 +87,13 @@ case "$cmd" in
     backend-info)
         printf 'mode=%s\n' "$MODE"
         printf 'bin_dir=%s\n' "$BIN_DIR"
-        printf 'strict=%s\n' "$STRICT"
-        for binary in inir-inputd inir-superd inir-native inir-mpdd inir-theme; do
+        for binary in inir-inputd inir-native inir-mpdd inir-theme; do
             if rust_ready "$binary"; then
                 printf '%s=ready\n' "$binary"
             else
                 printf '%s=missing\n' "$binary"
             fi
         done
-        if python_bin >/dev/null 2>&1; then
-            printf 'python=ready\n'
-        else
-            printf 'python=missing\n'
-        fi
         ;;
 
     input-lock)
@@ -135,7 +103,7 @@ case "$cmd" in
             if (( rc == 0 || STRICT == 1 )); then exit "$rc"; fi
             echo "[native-dispatch] Rust input-lock failed ($rc), falling back to Python" >&2
         fi
-        python_exec_with_module evdev -u "$ROOT_DIR/scripts/daemon/keyboard_lock_state_daemon.py" "$@"
+        exec /usr/bin/python3 -u "$ROOT_DIR/scripts/daemon/keyboard_lock_state_daemon.py" "$@"
         ;;
 
     input-keys)
@@ -145,17 +113,7 @@ case "$cmd" in
             if (( rc == 0 || STRICT == 1 )); then exit "$rc"; fi
             echo "[native-dispatch] Rust input-keys failed ($rc), falling back to Python" >&2
         fi
-        python_exec_with_module evdev -u "$ROOT_DIR/scripts/daemon/osk_physical_key_daemon.py" "$@"
-        ;;
-
-    super-tap)
-        if want_rust && rust_ready inir-superd; then
-            "$BIN_DIR/inir-superd" "$@"
-            rc=$?
-            if (( rc == 0 || STRICT == 1 )); then exit "$rc"; fi
-            echo "[native-dispatch] Rust Super-tap daemon failed ($rc), falling back to Python" >&2
-        fi
-        python_exec_with_module evdev -u "$ROOT_DIR/scripts/daemon/inir_super_overview_daemon.py" "$@"
+        exec /usr/bin/python3 -u "$ROOT_DIR/scripts/daemon/osk_physical_key_daemon.py" "$@"
         ;;
 
     niri)
@@ -165,7 +123,7 @@ case "$cmd" in
             if (( rc == 0 || STRICT == 1 )); then exit "$rc"; fi
             echo "[native-dispatch] Rust niri helper failed ($rc), falling back to Python" >&2
         fi
-        python_exec "$ROOT_DIR/scripts/niri-config.py" "$@"
+        exec /usr/bin/python3 "$ROOT_DIR/scripts/niri-config.py" "$@"
         ;;
 
     diagnostics)
@@ -175,15 +133,7 @@ case "$cmd" in
             if (( rc == 0 || STRICT == 1 )); then exit "$rc"; fi
             echo "[native-dispatch] Rust diagnostics failed ($rc), falling back to Python" >&2
         fi
-        python_exec "$ROOT_DIR/scripts/runtime-diagnostics-sampler.py" "$@"
-        ;;
-
-    qml-profile)
-        if rust_ready inir-native; then
-            exec "$BIN_DIR/inir-native" qml-profile "$@"
-        fi
-        echo "[native-dispatch] QML profile attribution requires the Rust inir-native backend" >&2
-        exit 69
+        exec /usr/bin/env python3 "$ROOT_DIR/scripts/runtime-diagnostics-sampler.py" "$@"
         ;;
 
     clipboard-store)
@@ -193,7 +143,7 @@ case "$cmd" in
             if (( rc == 0 || STRICT == 1 )); then exit "$rc"; fi
             echo "[native-dispatch] Rust clipboard filter failed ($rc), falling back to Python" >&2
         fi
-        python_exec "$ROOT_DIR/scripts/clipboard-store.py" "$@"
+        exec /usr/bin/python3 "$ROOT_DIR/scripts/clipboard-store.py" "$@"
         ;;
 
     mpd)
@@ -212,7 +162,7 @@ case "$cmd" in
             if (( rc == 0 || STRICT == 1 )); then exit "$rc"; fi
             echo "[native-dispatch] Rust MPD compatibility mode failed ($rc), falling back to Python" >&2
         fi
-        python_exec "$ROOT_DIR/scripts/local_music_mpd.py" "$@"
+        exec /usr/bin/python3 "$ROOT_DIR/scripts/local_music_mpd.py" "$@"
         ;;
 
     mpd-daemon)
@@ -227,11 +177,8 @@ case "$cmd" in
         if want_rust && rust_ready inir-mpdd; then
             exec "$BIN_DIR/inir-mpdd" --subscribe --socket "$MPD_SOCKET"
         fi
-        [[ $# -ge 2 ]] || {
-            echo "[native-dispatch] Python MPD subscription requires HOST PORT [MUSIC_ROOT]" >&2
-            exit 64
-        }
-        python_exec "$ROOT_DIR/scripts/local_music_mpd.py" subscribe "$@"
+        echo "[native-dispatch] MPD event subscription requires the Rust backend" >&2
+        exit 69
         ;;
 
     lyrics)
@@ -243,7 +190,7 @@ case "$cmd" in
             if (( rc == 0 || STRICT == 1 )); then exit "$rc"; fi
             echo "[native-dispatch] Rust lyrics parser failed ($rc), falling back to Python" >&2
         fi
-        python_exec "$ROOT_DIR/scripts/local_music_lyrics.py" "$track"
+        exec /usr/bin/python3 "$ROOT_DIR/scripts/local_music_lyrics.py" "$track"
         ;;
 
     theme)
@@ -253,7 +200,8 @@ case "$cmd" in
             if (( rc == 0 || STRICT == 1 )); then exit "$rc"; fi
             echo "[native-dispatch] Rust theme generator failed ($rc), falling back to Python" >&2
         fi
-        python_exec "$ROOT_DIR/scripts/colors/generate_colors_material.py" "$@"
+        py="$(python_bin)"
+        exec "$py" "$ROOT_DIR/scripts/colors/generate_colors_material.py" "$@"
         ;;
 
     desktop-icons)

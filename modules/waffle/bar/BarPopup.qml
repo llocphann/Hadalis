@@ -186,6 +186,15 @@ Loader {
             onActivated: root.close()
         }
 
+        CompositorFocusGrab {
+            id: focusGrab
+            active: (root.closeOnFocusLost || popupWindow.focusGrabRequested)
+                && root.active
+                && CompositorService.isHyprland
+            windows: [popupWindow]
+            onCleared: root.focusCleared()
+        }
+
         Timer {
             interval: root.closeOnHoverLostDelay
             running: root.closeOnHoverLost

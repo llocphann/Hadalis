@@ -79,7 +79,6 @@ Quick start:
   inir logs              View runtime logs (--full: all categories, --debug: foreground debug, -f: follow)
   inir status            Shell status info
   inir doctor            Health checks (--perf: runtime graphics/media snapshot)
-  inir dev profile       Capture a bounded deep QML owner profile (restarts shell)
   inir input-method start Initialize Fcitx5/Unikey for the desktop session
 
 EOF
@@ -913,8 +912,11 @@ _inir_doctor_perf() {
         qt_ver="$(readlink /usr/lib/libQt6Core.so.6 | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1)"
         [[ -z "$qt_ver" ]] && qt_ver="(unknown)"
     fi
-    local compositor="niri"
-    [[ -z "${NIRI_SOCKET:-}" ]] && compositor="niri (disconnected)"
+    local compositor="unknown"
+    if [[ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" ]]; then compositor="hyprland"
+    elif [[ -n "${NIRI_SOCKET:-}" ]]; then compositor="niri"
+    elif [[ -n "${XDG_CURRENT_DESKTOP:-}" ]]; then compositor="$XDG_CURRENT_DESKTOP"
+    fi
     printf 'Version:    %s (%s)\n' "$inir_version" "$inir_commit"
     printf 'Quickshell: %s | Qt: %s | Compositor: %s\n' "$qs_ver" "$qt_ver" "$compositor"
     printf '\n'
@@ -1505,7 +1507,7 @@ apply_shell_scale() {
     # the user's shell environment. These override the compositor's native DPI
     # and create a mismatch between the Qt logical size and the Wayland buffer
     # physical size — resulting in blurry surfaces (dock, bar, tray, etc).
-    # The compositor Niri already handles HiDPI correctly; Qt should
+    # The compositor (Niri/Hyprland) already handles HiDPI correctly; Qt should
     # use its native DPI detection via the Wayland protocol, not forced values.
     unset QT_WAYLAND_FORCE_DPI 2>/dev/null || true
     unset QT_FONT_DPI 2>/dev/null || true
@@ -1518,7 +1520,7 @@ apply_shell_scale() {
 wait_for_wayland_socket() {
     # Block until a Wayland compositor socket appears in XDG_RUNTIME_DIR.
     # At session boot, systemd may start inir.service before the compositor
-    # Niri has created its socket.  Without WAYLAND_DISPLAY, Qt
+    # (Niri/Hyprland) has created its socket.  Without WAYLAND_DISPLAY, Qt
     # falls back to XCB and crashes (SIGABRT — no X11 server on Wayland-only).
     # Polling here is cheaper than crash-restart loops and gives instant start
     # the moment the socket appears.
@@ -1762,7 +1764,7 @@ apply_qt_runtime_env() {
     # When inir.service races compositor startup (graphical-session.target),
     # the process environment is minimal (PATH=/usr/local/bin:/usr/bin, no
     # XDG_SESSION_TYPE, no DISPLAY, no XCURSOR_*, etc.).  By the time
-    # wait_for_wayland_socket() returns, the compositor Niri has
+    # wait_for_wayland_socket() returns, the compositor (niri/hyprland) has
     # already run its import-environment step, so the systemd user manager's
     # environment is complete. We still pull missing critical vars into the
     # Quickshell process because internal helpers and the shell itself need a
@@ -1984,7 +1986,13 @@ detect_compositor_service() {
         return 0
     fi
 
-    # No supported compositor found.
+    # 2. Hyprland via UWSM — creates wayland-wm@Hyprland.service
+    if systemctl --user cat 'wayland-wm@Hyprland.service' &>/dev/null; then
+        printf 'wayland-wm@Hyprland.service\n'
+        return 0
+    fi
+
+    # 3. No supported compositor found
     return 1
 }
 
@@ -2911,7 +2919,7 @@ enable_inir_service() {
     target="$(detect_compositor_service 2>/dev/null)" || true
 
     if [[ -z "$target" ]]; then
-        echo "ERROR: Niri compositor service not detected." >&2
+        echo "ERROR: No supported compositor detected (niri or Hyprland)." >&2
         echo "       Install a supported compositor first, then re-run 'inir service enable'." >&2
         return 1
     fi
@@ -3371,6 +3379,7 @@ EOF
                         *News*) select_prefix "sidebar-left/news" ;;
                         *Software*) select_prefix "sidebar-left/software" ;;
                         *LocalMusic*) select_prefix "sidebar-left/music" ;;
+                        *YtMusic*|innertune) select_prefix "sidebar-left/ytmusic" ;;
                         *Translator*) select_prefix "sidebar-left/translator" ;;
                         *Wallhaven*) select_prefix "sidebar-left/wallhaven" ;;
                         *Tools*|plugins) select_prefix "sidebar-left/tools" ;;
@@ -3823,8 +3832,11 @@ case "$command_name" in
                     ;;
             esac
         done
-        resolve_config_dir
-        exec "$config_dir/scripts/colorpicker.sh"
+        if ! command -v hyprpicker >/dev/null 2>&1; then
+            echo "hyprpicker not found — install it to use colorpicker" >&2
+            exit 1
+        fi
+        exec /usr/bin/hyprpicker -a
         ;;
     ipc)
         require_qs
@@ -3865,12 +3877,6 @@ case "$command_name" in
         if [[ "${1:-}" == "audit" ]]; then
             shift
             run_dev_audit "$@"
-        elif [[ "${1:-}" == "profile" ]]; then
-            shift
-            require_qs
-            resolve_config_dir
-            exec /usr/bin/env python3 "$script_dir/qml-profile-capture.py" \
-                --root "$config_dir" "$@"
         else
             require_qs
             run_ipc_target_command dev "$@"

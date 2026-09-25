@@ -4,6 +4,7 @@ import qs.modules.common.functions
 import QtQuick
 import QtQuick.Layouts
 import Quickshell
+import Quickshell.Hyprland
 import Quickshell.Services.SystemTray
 import qs.services
 
@@ -77,21 +78,46 @@ Item {
         if (unpinnedItems.length == 0) root.closeOverflowMenu();
     }
 
-    function registerActiveMenu(window) {
-        // Active-menu identity is used only to suppress overflow hover-close while
-        // a tray menu owns pointer/keyboard interaction.
+    function setExtraWindowAndGrabFocus(window) {
+        // Keep CompositorFocusGrab.active declarative. Imperatively assigning the
+        // bound property would detach it from trayOverflowOpen/activeMenu and make
+        // subsequent connected-surface opens lose focus-grab tracking.
         root.activeMenu = window;
     }
 
-    function releaseActiveMenu(window) {
+    function releaseFocus(window) {
         // Menu close animations are asynchronous. Ignore a delayed close from a
-        // superseded menu so it cannot clear the current menu registration.
+        // superseded menu so it cannot clear the focus grab of the current menu.
         if (root.activeMenu === window)
             root.activeMenu = null;
     }
 
     function closeOverflowMenu() {
         root.trayOverflowOpen = false;
+    }
+
+    // The overflow is now a lazy full-output connected surface rather than a
+    // visual child window. Track the presentation window explicitly; QsWindow on
+    // the StyledPopup loader describes the loader's own visual ancestry and is
+    // not the lazily-created overlay surface.
+    CompositorFocusGrab {
+        id: focusGrab
+        active: (root.trayOverflowOpen && overflowPopup.presentationWindow !== null)
+            || root.activeMenu !== null
+        windows: [overflowPopup.presentationWindow, root.activeMenu]
+            .filter(window => window !== null)
+        onCleared: {
+            if (root.activeMenu) {
+                root.activeMenu.close();
+                root.activeMenu = null;
+            }
+            // If still hovering the overflow area, keep it open and let the timer handle it
+            if (trayOverflowButton.hovered || overflowPopup.popupHovered) {
+                root.updateOverflowAutoClose();
+            } else {
+                root.trayOverflowOpen = false;
+            }
+        }
     }
 
     GridLayout {
@@ -162,8 +188,8 @@ Item {
                             trayParent: root
                             Layout.fillHeight: !root.vertical
                             Layout.fillWidth: root.vertical
-                            onMenuClosed: (qsWindow) => root.releaseActiveMenu(qsWindow);
-                            onMenuOpened: (qsWindow) => root.registerActiveMenu(qsWindow);
+                            onMenuClosed: (qsWindow) => root.releaseFocus(qsWindow);
+                            onMenuOpened: (qsWindow) => root.setExtraWindowAndGrabFocus(qsWindow);
                         }
                     }
                 }
@@ -181,9 +207,9 @@ Item {
                 trayParent: root
                 Layout.fillHeight: !root.vertical
                 Layout.fillWidth: root.vertical
-                onMenuClosed: (qsWindow) => root.releaseActiveMenu(qsWindow);
+                onMenuClosed: (qsWindow) => root.releaseFocus(qsWindow);
                 onMenuOpened: (qsWindow) => {
-                    root.registerActiveMenu(qsWindow);
+                    root.setExtraWindowAndGrabFocus(qsWindow);
                 }
             }
         }

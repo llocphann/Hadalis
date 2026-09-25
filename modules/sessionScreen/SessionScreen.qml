@@ -11,6 +11,7 @@ import Qt5Compat.GraphicalEffects
 import Quickshell
 import Quickshell.Io
 import Quickshell.Wayland
+import Quickshell.Hyprland
 
 Scope {
     id: root
@@ -18,9 +19,19 @@ Scope {
     Component.onCompleted: if (GlobalStates.sessionOpen)
         Qt.callLater(() => { root._presentedOpen = GlobalStates.sessionOpen })
     property var focusedScreen: {
-        const name = NiriService.currentOutput ?? ""
-        return Quickshell.screens.find(s => s && s.name === name)
-            ?? GlobalStates.primaryScreen
+        if (CompositorService.isNiri && typeof NiriService !== "undefined" && NiriService.currentOutput) {
+            const name = NiriService.currentOutput;
+            const matchNiri = Quickshell.screens.find(s => s && s.name === name);
+            if (matchNiri)
+                return matchNiri;
+        }
+        if (Hyprland.focusedMonitor && Hyprland.focusedMonitor.name) {
+            const name = Hyprland.focusedMonitor.name;
+            const matchHypr = Quickshell.screens.find(s => s && s.name === name);
+            if (matchHypr)
+                return matchHypr;
+        }
+        return GlobalStates.primaryScreen;
     }
     readonly property bool packageManagerRunning: SessionWarnings.packageManagerRunning
     readonly property bool downloadRunning: SessionWarnings.downloadRunning
@@ -101,9 +112,7 @@ Scope {
             exclusionMode: ExclusionMode.Ignore
             WlrLayershell.namespace: "quickshell:session"
             WlrLayershell.layer: WlrLayer.Overlay
-            readonly property bool acceptsInput: GlobalStates.sessionOpen
-            WlrLayershell.keyboardFocus: sessionRoot.acceptsInput
-                ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
+            WlrLayershell.keyboardFocus: visible ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
             color: "transparent"
 
             anchors {
@@ -111,11 +120,6 @@ Scope {
                 bottom: true
                 left: true
                 right: true
-            }
-
-            Item { id: emptySessionInput; width: 0; height: 0 }
-            mask: Region {
-                item: sessionRoot.acceptsInput ? sessionMouseArea : emptySessionInput
             }
 
             readonly property string _monitorName: root.focusedScreen?.name ?? ""
@@ -218,7 +222,6 @@ Scope {
             MouseArea {
                 id: sessionMouseArea
                 anchors.fill: parent
-                enabled: sessionRoot.acceptsInput
                 onClicked: {
                     sessionRoot.hide()
                 }

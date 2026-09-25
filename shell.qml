@@ -38,15 +38,8 @@ ShellRoot {
     property var _idleService: Idle
     property var _powerProfilePersistence: PowerProfilePersistence
     property var _deviceStatePersistence: DeviceStatePersistence
-    // Keep fan-profile following alive even when Settings/System Monitor are closed,
-    // but only when the opt-in profile follower is actually enabled. UI surfaces
-    // can still instantiate ThinkFanService on demand for manual status/control.
-    property var _thinkFanService
-    function _ensureThinkFanService(): void {
-        if (Config.ready
-                && Config.getNestedValue("powerProfiles.fanControl.enabled", false) === true)
-            root._thinkFanService = ThinkFanService
-    }
+    // Keep fan-profile following alive even when Settings/System Monitor are closed.
+    property var _thinkFanService: ThinkFanService
     property var _devNavigationService: DevNavigation
     property var _shellEditSessionService: ShellEditSession
     // Acquire org.kde.StatusNotifierWatcher before graphical-session.target
@@ -59,32 +52,9 @@ ShellRoot {
     property var _gameModeService
     property var _windowPreviewService
     property var _weatherService
-    function _ensureWeatherService(): void {
-        // Weather is globally disabled through bar.weather.enable. Avoid
-        // constructing its resolver/process graph in Tier 3 until that same
-        // feature gate is enabled; Config changes can activate it later.
-        if (GlobalStates.deferredPanelsReady
-                && (Config.options?.bar?.weather?.enable ?? false))
-            root._weatherService = Weather
-    }
     property var _voiceSearchService
     property var _fontSyncService
-    function _ensureFontSyncService(): void {
-        // System font synchronization is optional. When disabled, avoid keeping
-        // its debounce/process/timeout graph resident solely for future changes.
-        if (GlobalStates.deferredPanelsReady
-                && (Config.options?.appearance?.typography?.syncWithSystem ?? true))
-            root._fontSyncService = FontSyncService
-    }
     property var _cavaThemeService
-    function _ensureCavaThemeService(): void {
-        // Cava theming is opt-in (disabled by default). Keep its artwork
-        // resolver/quantizer out of the Tier-3 resident set until the feature
-        // is actually enabled; once loaded, the singleton owns later changes.
-        if (GlobalStates.deferredPanelsReady
-                && (Config.options?.appearance?.wallpaperTheming?.enableCava ?? false))
-            root._cavaThemeService = CavaTheme
-    }
     // Screen Time must exist for the whole enabled session so the Material
     // notification-center Activity tab has history before it is first opened.
     // Waffle keeps the existing explicit Screen Time opt-in.
@@ -103,14 +73,6 @@ ShellRoot {
     property var _calendarSyncService
     property var _todoService
     property var _notepadService
-    property bool _lateFeaturesReady: false
-    function _ensureCalendarSyncService(): void {
-        // External ICS sync is opt-in. Keep its cache/parser/fetch lifecycle out
-        // of the resident Tier-4 set until the same feature gate is enabled.
-        if (root._lateFeaturesReady
-                && (Config.options?.calendar?.externalSync?.enable ?? false))
-            root._calendarSyncService = CalendarSync
-    }
 
     // Boot phase timing (ms since epoch). Written to ~/.cache/inir/last-boot.json
     // when the deferred phase finishes. `inir status` reads this back to show users
@@ -146,7 +108,6 @@ ShellRoot {
         GlobalStates.deferredPanelsReady = false;
 
         if (Config.ready) {
-            root._ensureThinkFanService();
             root._bootConfigReadyAt = Date.now();
             console.info("[Boot] T+" + (root._bootConfigReadyAt - root._bootCompletedAt) + "ms: Config.ready (immediate)");
             // Config was already ready before this root was (re)built (hot-reload / preserved
@@ -185,12 +146,12 @@ ShellRoot {
             root._log("[Boot] T+" + (Date.now() - root._bootCompletedAt) + "ms: Tier 3 (display/interaction)");
             root._gameModeService = GameMode;
             root._windowPreviewService = WindowPreviewService;
+            root._weatherService = Weather;
             root._voiceSearchService = VoiceSearch;
-            NightLight.load();
+            root._fontSyncService = FontSyncService;
+            root._cavaThemeService = CavaTheme;
+            Hyprsunset.load();
             GlobalStates.deferredPanelsReady = true;
-            root._ensureWeatherService();
-            root._ensureFontSyncService();
-            root._ensureCavaThemeService();
             root._ensureScreenTimeService();
             // Boot greeting: show once per session (singleton preserves bootGreetingDone across hot-reload)
             if (!GlobalStates.bootGreetingDone && (Config.options?.bootGreeting?.enable ?? true)) {
@@ -207,12 +168,7 @@ ShellRoot {
     Connections {
         target: Config
         function onConfigChanged(): void {
-            root._ensureThinkFanService()
-            root._ensureWeatherService()
-            root._ensureFontSyncService()
-            root._ensureCavaThemeService()
             root._ensureScreenTimeService()
-            root._ensureCalendarSyncService()
         }
     }
 
@@ -227,8 +183,7 @@ ShellRoot {
             root._log("[Boot] T+" + (Date.now() - root._bootCompletedAt) + "ms: Tier 4 (background features)");
             root._shellUpdatesService = ShellUpdates;
             root._autostartService = Autostart;
-            root._lateFeaturesReady = true;
-            root._ensureCalendarSyncService();
+            root._calendarSyncService = CalendarSync;
             root._todoService = Todo;
             root._notepadService = Notepad;
             root._bootLateFeaturesAt = Date.now();
@@ -270,7 +225,6 @@ ShellRoot {
         target: Config
         function onReadyChanged() {
             if (Config.ready) {
-                root._ensureThinkFanService()
                 if (!root._bootConfigReadyAt) {
                     root._bootConfigReadyAt = Date.now();
                     console.info("[Boot] T+" + (root._bootConfigReadyAt - root._bootCompletedAt) + "ms: Config.ready (async)");
@@ -855,13 +809,6 @@ ShellRoot {
             GlobalStates.openOverview("")
         }
         function toggleReleaseInterrupt(): void { GlobalStates.superReleaseMightTrigger = false }
-        function superPress(): void {
-            GlobalStates.superReleaseMightTrigger = true
-            GlobalStates.superDown = true
-        }
-        function superRelease(): void {
-            GlobalStates.superDown = false
-        }
         function clipboardToggle(): void {
             const prefix = Config.options?.search?.prefix?.clipboard ?? ";"
             if (_isWaffle()) {
@@ -1072,31 +1019,6 @@ ShellRoot {
         }
     }
 
-    function _dismissOutgoingFamilyTransientInput(family: string): void {
-        if (family === "waffle") {
-            GlobalStates.searchOpen = false
-            GlobalStates.waffleActionCenterOpen = false
-            GlobalStates.waffleNotificationCenterOpen = false
-            GlobalStates.waffleWidgetsOpen = false
-            GlobalStates.waffleClipboardOpen = false
-            GlobalStates.waffleTaskViewOpen = false
-            GlobalStates.waffleAltSwitcherOpen = false
-            return
-        }
-
-        // ii-only interactive surfaces should never survive as latent state
-        // after their family host is destroyed. Shared surfaces (Overview, OSK,
-        // Wallpaper selectors, Session) deliberately remain untouched.
-        GlobalStates.controlPanelOpen = false
-        GlobalStates.dashboardOpen = false
-        GlobalStates.sidebarLeftOpen = false
-        GlobalStates.sidebarRightOpen = false
-        GlobalStates.mediaControlsOpen = false
-        GlobalStates.clipboardOpen = false
-        GlobalStates.altSwitcherOpen = false
-        GlobalStates.closeNotificationCenter()
-    }
-
     function startFamilyTransition(targetFamily: string, direction: string) {
         // A transition that never finished used to wedge every later switch:
         // the guard stayed true, so this returned silently, and because the
@@ -1107,15 +1029,6 @@ ShellRoot {
             _transitionInProgress = false
         }
         if (_transitionInProgress) return
-
-        // Settings overlays are shared fullscreen layer-shell surfaces. A family
-        // change can rebuild Config-bound UI while their close animation is still
-        // mapped, so every entry point (settings button, keybind, GlobalActions,
-        // IPC) must release Settings before changing family.
-        if (GlobalStates.settingsOverlayOpen)
-            GlobalStates.settingsOverlayOpen = false
-        root._dismissOutgoingFamilyTransientInput(
-            Config.options?.panelFamily ?? "ii")
 
         // If animation is disabled, switch instantly
         if (!(Config.options?.familyTransitionAnimation ?? true)) {

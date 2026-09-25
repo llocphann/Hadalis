@@ -75,22 +75,7 @@ Singleton {
     property bool _playlistPayloadWriting: false
     property bool _nativeMpdEligible: false
     property bool _nativeBackendChecked: false
-    property bool _mpdSubscriptionEligible: false
     property bool _mpdSubscriptionActive: false
-    // Only a presented LocalMusicView needs the high-frequency status fallback.
-    // The preferred Rust/Python MPD idle subscription remains event-driven globally.
-    property int _fallbackPollingConsumers: 0
-
-    function acquireFallbackPolling(): void {
-        const wasInactive = root._fallbackPollingConsumers === 0
-        root._fallbackPollingConsumers++
-        if (wasInactive && root.enabled && !root._mpdSubscriptionActive)
-            Qt.callLater(root.refreshStatus)
-    }
-
-    function releaseFallbackPolling(): void {
-        root._fallbackPollingConsumers = Math.max(0, root._fallbackPollingConsumers - 1)
-    }
 
     // Bulk music actions can easily exceed Linux's per-argument exec limit
     // when thousands of MPD URIs are serialized into one JSON argv entry.
@@ -292,19 +277,6 @@ Singleton {
         _nativeBackendInfoProc.running = true
     }
 
-    function _startMpdSubscription(): void {
-        if (!enabled || !_mpdSubscriptionEligible || _mpdSubscriptionProc.running)
-            return
-        const command = [
-            root.nativeDispatchPath, "mpd-subscribe",
-            mpdHost, String(mpdPort)
-        ]
-        if (configuredLibraryFolder.length > 0)
-            command.push(configuredLibraryFolder)
-        _mpdSubscriptionProc.command = command
-        _mpdSubscriptionProc.running = true
-    }
-
     function _startNativeMpdBridge(): void {
         if (!enabled || !_nativeMpdEligible)
             return
@@ -335,13 +307,10 @@ Singleton {
     }
 
     function _restartNativeMpdBridge(): void {
-        if (!enabled || !_mpdSubscriptionEligible)
+        if (!_nativeMpdEligible || !enabled)
             return
         _stopNativeMpdBridge()
-        if (root._nativeMpdEligible)
-            Qt.callLater(root._startNativeMpdBridge)
-        else
-            Qt.callLater(root._startMpdSubscription)
+        Qt.callLater(root._startNativeMpdBridge)
     }
 
     function _handleMpdEvent(line): void {
@@ -390,7 +359,7 @@ Singleton {
     function _configurationChanged(): void {
         if (!enabled)
             return
-        if (_mpdSubscriptionEligible)
+        if (_nativeMpdEligible)
             _restartNativeMpdBridge()
         Qt.callLater(root.rescan)
     }
@@ -804,9 +773,7 @@ Singleton {
         onExited: (code, _status) => {
             root._nativeBackendChecked = true
             let mode = ""
-            let strict = "0"
             let mpdReady = false
-            let pythonReady = false
             if (code === 0) {
                 const lines = String(_nativeBackendInfoProc.output ?? "").split("\n")
                 for (const rawLine of lines) {
@@ -818,25 +785,16 @@ Singleton {
                     const value = line.substring(separator + 1)
                     if (key === "mode")
                         mode = value
-                    else if (key === "strict")
-                        strict = value
                     else if (key === "inir-mpdd")
                         mpdReady = value === "ready"
-                    else if (key === "python")
-                        pythonReady = value === "ready"
                 }
             }
 
             root._nativeMpdEligible = mpdReady && (mode === "rust" || mode === "auto")
-            const pythonFallbackAllowed = pythonReady && !(mode === "rust" && strict === "1")
-            root._mpdSubscriptionEligible = root._nativeMpdEligible || pythonFallbackAllowed
-            root._stopNativeMpdBridge()
-            if (root.enabled) {
-                if (root._nativeMpdEligible)
-                    root._startNativeMpdBridge()
-                else if (root._mpdSubscriptionEligible)
-                    Qt.callLater(root._startMpdSubscription)
-            }
+            if (root._nativeMpdEligible && root.enabled)
+                root._startNativeMpdBridge()
+            else
+                root._stopNativeMpdBridge()
         }
     }
 
@@ -853,6 +811,7 @@ Singleton {
 
     Process {
         id: _mpdSubscriptionProc
+        command: [root.nativeDispatchPath, "mpd-subscribe"]
 
         stdout: SplitParser {
             onRead: line => root._handleMpdEvent(line)
@@ -860,7 +819,7 @@ Singleton {
 
         onExited: (_code, _status) => {
             root._mpdSubscriptionActive = false
-            if (root.enabled && root._mpdSubscriptionEligible)
+            if (root.enabled && root._nativeMpdEligible)
                 mpdSubscribeRetryTimer.restart()
         }
     }
@@ -880,8 +839,8 @@ Singleton {
         interval: 500
         repeat: false
         onTriggered: {
-            if (root.enabled && root._mpdSubscriptionEligible)
-                root._startMpdSubscription()
+            if (root.enabled && root._nativeMpdEligible && !_mpdSubscriptionProc.running)
+                _mpdSubscriptionProc.running = true
         }
     }
 
@@ -889,9 +848,7 @@ Singleton {
         id: pollTimer
         interval: 900
         repeat: true
-        running: root.enabled
-            && root._fallbackPollingConsumers > 0
-            && !root._mpdSubscriptionActive
+        running: root.enabled && !root._mpdSubscriptionActive
         onTriggered: root.refreshStatus()
     }
 

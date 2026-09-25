@@ -37,16 +37,16 @@ motion = read("modules/common/SurfaceMotion.qml")
 waffle = read("modules/waffle/bar/BarPopup.qml")
 
 production_qsb = ROOT / "modules/common/perimeter/IrisField.frag.qsb"
+locked_qsb = ROOT / "scripts/iris-corner-poc/IrisField.frag.qsb"
 production_frag = ROOT / "modules/common/perimeter/IrisField.frag"
+locked_frag = ROOT / "scripts/iris-corner-poc/IrisField.frag"
 
-# The G1/G2 PoC is a locked research fixture, not the production shader ABI.
-# Production intentionally evolved after cutover (corner-join fixes compile both
-# source and QSB together), so this gate validates deployable artifacts here and
-# leaves the locked PoC byte identity to test-iris-g2-contract.py.
-if not production_qsb.is_file() or production_qsb.stat().st_size <= 0:
-    raise SystemExit("iRiS production surface contract failed: production QSB is missing or empty")
-if not production_frag.is_file() or production_frag.stat().st_size <= 0:
-    raise SystemExit("iRiS production surface contract failed: production shader source is missing or empty")
+if production_qsb.read_bytes() != locked_qsb.read_bytes():
+    raise SystemExit("iRiS production surface contract failed: production QSB differs from locked G1/G2 QSB")
+if production_frag.read_bytes() != locked_frag.read_bytes():
+    raise SystemExit("iRiS production surface contract failed: production shader source differs from locked G1/G2 source")
+if production_qsb.stat().st_size != 16765:
+    raise SystemExit("iRiS production surface contract failed: unexpected QSB byte size")
 
 for token in (
     "ConnectedSurfaceGeometry {",
@@ -54,7 +54,7 @@ for token in (
     "ConnectedSurfaceIrisFrame {",
     "ConnectedSurfaceContentHost {",
     "ConnectedSurfaceBodyMask {",
-    "fuseDepth: PerimeterTokens.popupFuseDepth",
+    "fuseDepth: PerimeterTokens.irisFuseDepth",
     "externalFrameThickness: root._screenEdgeThickness",
     "readonly property real _popupScreenMargin: root._screenEdgeThickness",
     "seamOverlap: PerimeterTokens.irisWeldDepth",
@@ -85,7 +85,7 @@ for token in (
     "readonly property var frameEndShape: !root.tangentEndJoined",
     "readonly property var popupShape:",
     "readonly property bool needsEndJoinAux:",
-    'joins: ["owner", "frame-end"]',
+    'joins: ["frame-end"]',
     "ShaderEffectSource {",
     "id: shadowMaskField",
     "shapes: field.shapes",

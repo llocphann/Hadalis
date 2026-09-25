@@ -4,7 +4,6 @@ pragma Singleton
 import QtQuick
 import Quickshell
 import Quickshell.Io
-import qs
 import qs.modules.common
 
 Singleton {
@@ -52,16 +51,6 @@ Singleton {
     property string lastError: ""
     property bool _refreshPending: false
     property string _mutationKind: ""
-
-    readonly property bool standaloneSettingsWindow:
-        (Quickshell.env("INIR_STANDALONE_WINDOW") ?? "") === "1"
-    readonly property bool uiDemand:
-        root.standaloneSettingsWindow || (GlobalStates.settingsOverlayOpen ?? false)
-
-    onUiDemandChanged: {
-        if (root.uiDemand && root.schemaLoaded)
-            root.refresh()
-    }
 
     readonly property bool hasPendingChanges: Object.keys(root.pendingValues).length > 0
         || root.pendingChargePolicy !== null
@@ -668,8 +657,7 @@ Singleton {
                     throw new Error("unsupported schema")
                 root.categories = data.categories
                 root.schemaLoaded = true
-                if (root.uiDemand)
-                    root.refresh()
+                root.refresh()
             } catch (error) {
                 root.categories = []
                 root.schemaLoaded = false
@@ -839,7 +827,7 @@ Singleton {
     Timer {
         interval: 300000
         repeat: true
-        running: root.schemaLoaded && root.uiDemand
+        running: root.schemaLoaded
         onTriggered: root.refresh()
     }
 }

@@ -155,55 +155,20 @@ module work, commit directly to `dev`, and never force-push or modify `stable`.
   shell IO from `/proc/<pid>/io`, shell DRM engine/memory evidence from fdinfo,
   non-loopback aggregate plus per-interface network rates from `/proc/net/dev`,
   and a PID-reuse-checked shell descendant process tree using `comm`, schedstat
-  and status on the 2 s slow-probe cadence. `scripts/native-dispatch diagnostics`
-  uses the Rust `inir-native` backend by default; the Python sampler remains the
-  explicit rollback/failure fallback rather than a second production sampler.
-- Compact Runtime Diagnostics now follows the observability hierarchy used by
-  both Settings renderers. **Resource suspects** is the primary surface:
-  **Component hotspots** ranks only Workflow-owned lifecycle evidence from
-  timestamped `CodeWorkflowRuntime` events plus resident/visible instances,
-  reporting recent changes/min and explicitly stating that this is not CPU/RAM
-  attribution. The compact page renders the complete hotspot set inside its own
-  scrollable column instead of truncating the list or making the whole
-  Diagnostics page scroll. **Top helper processes** uses the kernel-backed
-  descendant list and displays real per-process CPU plus RSS.
-- The four compact monitor cards are deliberately **Quickshell-process scoped**:
-  process CPU from summed task `schedstat`, PSS-or-RSS memory share plus exact
-  PSS/RSS/Swap detail from `smaps_rollup`, DRM engine/memory evidence from the
-  Quickshell-owned fdinfo clients, and Quickshell disk I/O rates from
-  `/proc/<pid>/io`. System CPU, system RAM and `/proc/net/dev` network rates
-  are not presented as Quickshell monitors because they are not process
-  attribution. The compact Hadalis strip carries the same shell-owned PID, CPU,
-  PSS-or-RSS, disk I/O rates and helper count.
-- Deep owner profiling is an explicit, bounded mode rather than a permanently
-  enabled debug service. `inir dev profile --duration 5` temporarily stops the
-  managed shell, launches Quickshell with its explicit `--debug` /
-  `--waitfordebug` localhost endpoint, attaches Qt's `qmlprofiler`, records
-  only JavaScript/memory/creating/binding/signal-handler features, flushes the
-  trace, restores `inir.service`, and persists the latest owner summary under
-  `$XDG_STATE_HOME/inir/qml-profiles`. The Rust `inir-native qml-profile`
-  parser resolves source files against the active shell root and publishes
-  module/service/component rows. QML work is exclusive wall-clock time for
-  Binding/HandlingSignal/Javascript/Creating/Compiling ranges; nested ranges are
-  not double-counted. Positive QV4 SmallItem/LargeItem allocations are
-  associated with the innermost active range, matching Qt Creator's flame-graph
-  memory view; heap-page reservation and GC frees are not assigned to owners.
-  These values are cumulative allocation pressure, not retained RAM/PSS. The compact Diagnostics table shows these captured rows when a
-  profile exists and falls back to lifecycle hotspots otherwise.
-- This does **not** manufacture per-owner CPU/RSS/GPU percentages. Kernel CPU,
-  PSS/RSS and DRM fdinfo remain exact only for the Quickshell process/helper
-  boundaries. Qt's QML profiler exposes source locations for QML/JS work, while
-  scene-graph frame/GPU timing does not retain a reliable reverse owner back to
-  the originating QML item after scene-graph batching. Owner rows therefore say
-  `QML ms/s`, QV4 `Alloc`, and `GPU —` until a renderer-level ownership
-  proof exists.
-- Source-boundary discovery is optional parser capability, not sampler health.
-  An index status of `unavailable` (for example `grammar-missing`) therefore
-  leaves the boundary count unknown in Diagnostics instead of promoting the raw
-  capability reason into the red lease/sampler error channel. A genuine index
-  `error` still surfaces as a source-discovery error. Cached/hidden Settings
-  pages continue to release Diagnostics demand, and remote Settings still
-  suppresses stale evidence until a fresh Diagnostics generation arrives.
+  and status on the 2 s slow-probe cadence. Material Diagnostics now presents
+  the shared evidence as a compact,
+  responsive btop-style dashboard with 60-sample CPU/RAM/Swap/GPU/network/IO
+  graphs, core meters, interface/process tables, Hadalis runtime metrics and the
+  Workflow-owned target/instance inspector. Remote Settings suppresses cached
+  Diagnostics evidence until the Diagnostics generation advances after reopen,
+  while a diagnostics-free runtime projection prevents 1 Hz resource samples
+  from republishing unchanged Workflow catalogs/records. Lease rejection,
+  IPC/sampler failures and stalled startup/live sampling remain
+  visible without keeping the sampler alive off-page. Waffle consumes the same
+  backend/lifecycle and exact detail evidence. This is shell/system evidence only:
+  per-component CPU/RAM/Swap/GPU/Network remains unavailable until a reviewed
+  attribution method exists, so Diagnostics must still not be described as full
+  btop-equivalent component attribution.
 - Future-target discovery has started at the existing ownership boundaries.
   Dynamic desktop custom widgets now register loaded instances through
   `CodeWorkflowRuntimeTarget` using the manifest ID under the Workflow-owned

@@ -56,15 +56,8 @@ require_waffle_preview() {
 
 require 'console.warn("[WindowPreviewService] preview directory helper failed to start")' \
     'preview directory startup failure must continue initialization'
-require 'property bool readPending: false' \
-    'session marker FileView must track explicit initialization reads'
-require 'root._readSessionMarker()' \
-    'preview initialization must read the session marker without a cat helper'
-require 'onLoadFailed: {' \
-    'session marker FileView failures must recover through session reset'
-if grep -Fq '"/usr/bin/cat", root.sessionMarkerPath' "$service"; then
-    fail 'session marker reads must not restore a dedicated cat process'
-fi
+require 'console.warn("[WindowPreviewService] session marker reader failed to start")' \
+    'session marker startup failure must recover'
 require 'console.warn("[WindowPreviewService] session reset helper failed to start")' \
     'session reset startup failure must release session readiness'
 require 'console.warn("[WindowPreviewService] preview cache scan failed to start")' \
@@ -102,10 +95,6 @@ require_capture "printf 'PREVIEW_READY %s" \
     'capture script must publish a completion record on atomic rename'
 require 'function refreshForOverview(windowIds): void {' \
     'Overview must be able to refresh cached visible windows without a global cache reset'
-require 'overviewWarmImageComponent.createObject(' \
-    'resident preview cache must keep explicit Image ownership'
-require 'null, { source: url })' \
-    'resident preview decoder must not parent a QQuickImage to the singleton'
 require 'forceRequestedWindowIds' \
     'Overview refresh must use a targeted one-shot force queue'
 require 'function captureAllWindows(): void {' \
@@ -177,12 +166,14 @@ require_bar_preview 'function showWorkspace(workspaceId: var, button: Item): voi
     'shared Bar preview must expose workspace hover mode'
 require_bar_preview 'NiriService.sortToplevels(' \
     'Niri workspace preview must reuse authoritative enriched toplevel mapping'
+require_bar_preview 'Hyprland.toplevels?.values ?? []' \
+    'Hyprland workspace preview must derive windows from compositor workspace ownership'
 require_bar_preview 'values: root.previewToplevels' \
     'app and workspace previews must share one window-preview tile model'
 require_workspaces 'workspacePreviewPopup.showWorkspace(workspaceId, button)' \
     'workspace strip must route hover through the shared Bar preview'
-require_workspaces ': (Config.options?.dock?.hoverPreviewDelay ?? 400)' \
-    'compact workspace preview fallback must reuse the existing hover-preview delay'
+require_workspaces 'interval: Config.options?.dock?.hoverPreviewDelay ?? 400' \
+    'workspace preview must reuse the existing hover-preview delay'
 require_workspaces 'BarWorkspaceOverview {' \
     'workspace strip must use the connected workspace Overview popup by default'
 require_workspaces 'Config.options?.overview?.workspaceHover?.delayMs ?? 280' \
@@ -191,9 +182,8 @@ require_workspace_overview 'StyledPopup {' \
     'workspace Overview must reuse the shared Bar-connected popup surface'
 require_workspace_overview 'OverviewNiriWidget {' \
     'workspace Overview must reuse the Niri Overview renderer'
-if grep -Fq 'OverviewWidget {' "$workspace_overview"; then
-    fail 'workspace Overview must not reference the retired Hyprland renderer'
-fi
+require_workspace_overview 'OverviewWidget {' \
+    'workspace Overview must retain Hyprland Overview support'
 require_workspace_overview 'WindowPreviewService.captureForTaskView()' \
     'workspace Overview must preserve the shared preview capture lifecycle'
 require_workspaces 'BarTaskbarPreview {' \
@@ -215,8 +205,8 @@ grep -Fq 'readonly property bool popupContainsMouse:' "$waffle_bar_popup" \
     || fail 'Waffle BarPopup must expose popup hover state to task preview lifecycle'
 
 start_guard_count="$(grep -Fc -- 'property bool startObserved: false' "$service")"
-if (( start_guard_count < 4 )); then
-    fail "expected startup guards for remaining init and capture processes, found $start_guard_count"
+if (( start_guard_count < 5 )); then
+    fail "expected startup guards for init and capture processes, found $start_guard_count"
 fi
 
 # Niri live/adaptive preview experiments are retired. Snapshot capture is the

@@ -57,15 +57,6 @@ Singleton {
         return decoded
     }
 
-    // Pomodoro and Countdown expose integer-second state. Wake just after the
-    // next whole-second boundary instead of polling five times per second.
-    function _nextSecondBoundaryDelayMs(): int {
-        const remainder = Date.now() % 1000
-        return Math.max(25, Math.round(1000 - remainder + 20))
-    }
-
-    property bool _timerObjectsReady: false
-
     // Helper to sync all pomodoro values from Config
     function _syncPomodoroConfig() {
         root.focusTime = root._positiveInt(Config.options?.time?.pomodoro?.focus, 1500)
@@ -88,11 +79,8 @@ Singleton {
     }
 
     Component.onCompleted: {
-        root._timerObjectsReady = true
         if (Config.ready) root._syncPomodoroConfig()
         if (Persistent.ready) root._restorePersistedTimers()
-        root._syncPomodoroTick(true)
-        root._syncCountdownTick(true)
     }
 
     property bool pomodoroRunning: Persistent.states?.timer?.pomodoro?.running ?? false
@@ -122,22 +110,7 @@ Singleton {
 
     property bool stopwatchRunning: Persistent.states?.timer?.stopwatch?.running ?? false
     property bool stopwatchPaused: Persistent.states?.timer?.stopwatch?.paused ?? false
-    property int stopwatchHighPrecisionSubscribers: 0
-    readonly property bool stopwatchHighPrecisionActive: root.stopwatchHighPrecisionSubscribers > 0
     property int stopwatchTime: 0
-
-    function subscribeStopwatchHighPrecision(): void {
-        root.stopwatchHighPrecisionSubscribers++
-    }
-
-    function unsubscribeStopwatchHighPrecision(): void {
-        root.stopwatchHighPrecisionSubscribers = Math.max(0, root.stopwatchHighPrecisionSubscribers - 1)
-    }
-
-    onStopwatchHighPrecisionActiveChanged: {
-        if (root.stopwatchRunning && !root.stopwatchPaused)
-            root.refreshStopwatch()
-    }
     property int stopwatchStart: root._stopwatchTick(Persistent.states?.timer?.stopwatch?.start ?? 0)
     property var stopwatchLaps: {
         const stored = Persistent.states?.timer?.stopwatch?.laps
@@ -193,13 +166,8 @@ Singleton {
     Connections {
         target: Persistent
         function onReadyChanged() {
-            if (!Persistent.ready)
-                return
-            root._restorePersistedTimers()
-            if (root._timerObjectsReady) {
-                root._syncPomodoroTick(true)
-                root._syncCountdownTick(true)
-            }
+            if (Persistent.ready)
+                root._restorePersistedTimers()
         }
     }
 
@@ -242,34 +210,12 @@ Singleton {
         pomodoroSecondsLeft = pomodoroLapDuration - (getCurrentTimeInSeconds() - Persistent.states.timer.pomodoro.start);
     }
 
-    function _syncPomodoroTick(refreshNow: bool): void {
-        pomodoroTimer.stop()
-        if (!root.pomodoroRunning || root.pomodoroPaused)
-            return
-
-        if (refreshNow)
-            root.refreshPomodoro()
-        if (!root.pomodoroRunning || root.pomodoroPaused)
-            return
-
-        pomodoroTimer.interval = root._nextSecondBoundaryDelayMs()
-        pomodoroTimer.restart()
-    }
-
-    onPomodoroRunningChanged: {
-        if (root._timerObjectsReady)
-            root._syncPomodoroTick(true)
-    }
-    onPomodoroPausedChanged: {
-        if (root._timerObjectsReady)
-            root._syncPomodoroTick(true)
-    }
-
     Timer {
         id: pomodoroTimer
-        interval: 1000
-        repeat: false
-        onTriggered: root._syncPomodoroTick(true)
+        interval: 200
+        running: root.pomodoroRunning && !root.pomodoroPaused
+        repeat: true
+        onTriggered: refreshPomodoro()
     }
 
     function togglePomodoro() {
@@ -316,9 +262,7 @@ Singleton {
 
     Timer {
         id: stopwatchTimer
-        // Bars only render whole seconds. Keep centisecond-rate updates only
-        // while the dedicated Stopwatch surface is actually presented.
-        interval: root.stopwatchHighPrecisionActive ? 33 : 250
+        interval: 33
         running: root.stopwatchRunning && !root.stopwatchPaused
         repeat: true
         onTriggered: refreshStopwatch()
@@ -395,34 +339,12 @@ Singleton {
         }
     }
 
-    function _syncCountdownTick(refreshNow: bool): void {
-        countdownTimer.stop()
-        if (!root.countdownRunning || root.countdownPaused)
-            return
-
-        if (refreshNow)
-            root.refreshCountdown()
-        if (!root.countdownRunning || root.countdownPaused)
-            return
-
-        countdownTimer.interval = root._nextSecondBoundaryDelayMs()
-        countdownTimer.restart()
-    }
-
-    onCountdownRunningChanged: {
-        if (root._timerObjectsReady)
-            root._syncCountdownTick(true)
-    }
-    onCountdownPausedChanged: {
-        if (root._timerObjectsReady)
-            root._syncCountdownTick(true)
-    }
-
     Timer {
         id: countdownTimer
-        interval: 1000
-        repeat: false
-        onTriggered: root._syncCountdownTick(true)
+        interval: 200
+        running: root.countdownRunning && !root.countdownPaused
+        repeat: true
+        onTriggered: refreshCountdown()
     }
 
     function toggleCountdown(): void {

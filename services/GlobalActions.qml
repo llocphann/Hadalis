@@ -147,8 +147,8 @@ Singleton {
             description: Translation.tr("Toggle blue light filter"),
             icon: "nightlight",
             category: "system",
-            keywords: ["night", "light", "blue", "filter", "redshift"],
-            execute: () => { NightLight.toggle() }
+            keywords: ["night", "light", "blue", "filter", "hyprsunset", "redshift"],
+            execute: () => { Hyprsunset.toggle() }
         },
         {
             id: "toggle-gamemode",
@@ -332,7 +332,7 @@ Singleton {
             category: "tools",
             keywords: ["color", "picker", "eyedropper", "hex"],
             execute: () => {
-                root.runLauncher(["colorpicker"])
+                ShellExec.execDetachedArgs(["/usr/bin/hyprpicker", "-a"], "Pick color")
             }
         },
         {
@@ -651,6 +651,33 @@ Singleton {
             execute: () => {
                 root.runLauncher(["osk", "toggle"])
             }
+        },
+        {
+            id: "zoom-in",
+            name: Translation.tr("Zoom In"),
+            description: Translation.tr("Increase screen zoom level"),
+            icon: "zoom_in",
+            category: "settings",
+            keywords: ["zoom", "in", "magnify", "increase", "accessibility"],
+            execute: () => { GlobalStates.screenZoom = Math.min(GlobalStates.screenZoom + 0.4, 3.0) }
+        },
+        {
+            id: "zoom-out",
+            name: Translation.tr("Zoom Out"),
+            description: Translation.tr("Decrease screen zoom level"),
+            icon: "zoom_out",
+            category: "settings",
+            keywords: ["zoom", "out", "reduce", "decrease", "accessibility"],
+            execute: () => { GlobalStates.screenZoom = Math.max(GlobalStates.screenZoom - 0.4, 1.0) }
+        },
+        {
+            id: "zoom-reset",
+            name: Translation.tr("Reset Zoom"),
+            description: Translation.tr("Reset screen zoom to 100%"),
+            icon: "fit_screen",
+            category: "settings",
+            keywords: ["zoom", "reset", "100", "normal"],
+            execute: () => { GlobalStates.screenZoom = 1.0 }
         },
         {
             id: "switch-family-ii",

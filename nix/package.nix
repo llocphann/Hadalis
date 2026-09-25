@@ -16,7 +16,7 @@ let
       native_bin="$(find target -type f -path '*/release/inir-native' -perm -0100 -print -quit)"
       test -n "$native_bin"
       release="$(dirname "$native_bin")"
-      for binary in inir-inputd inir-mpdd inir-native inir-superd inir-theme; do
+      for binary in inir-inputd inir-mpdd inir-native inir-theme; do
         test -x "$release/$binary"
         install -m0755 "$release/$binary" "$out/bin/$binary"
       done
@@ -46,7 +46,6 @@ let
 
   colorPython = with pkgs;
     (python3.withPackages (pythonPackages: with pythonPackages; [
-      evdev
       materialyoucolor
       numpy
       pillow
@@ -78,6 +77,7 @@ let
       cliphist
       grim
       slurp
+      playerctl
       libnotify
       glib
       pipewire
@@ -95,6 +95,7 @@ let
     ++ optionalTop "foot"
     ++ optionalTop "fuzzel"
     ++ optionalTop "geoclue2"
+    ++ optionalTop "hyprland"
     ++ optionalTop "hyprpicker"
     ++ optionalTop "gum"
     ++ optionalTop "imagemagick"
@@ -108,7 +109,6 @@ let
     ++ optionalTop "pavucontrol"
     ++ optionalTop "songrec"
     ++ optionalTop "swappy"
-    ++ optionalTop "swaylock"
     ++ optionalTop "tesseract"
     ++ optionalTop "translate-shell"
     ++ optionalTop "upower"
@@ -195,7 +195,7 @@ pkgs.stdenvNoCC.mkDerivation {
     python3 sdata/lib/runtime-payload.py copy --root . --target "$runtime"
 
     mkdir -p "$runtime/native/bin"
-    for binary in inir-inputd inir-mpdd inir-native inir-superd inir-theme; do
+    for binary in inir-inputd inir-mpdd inir-native inir-theme; do
       install -m0755 "${nativeBackend}/bin/$binary" "$runtime/native/bin/$binary"
     done
 

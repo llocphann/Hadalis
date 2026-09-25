@@ -47,8 +47,8 @@ Item {
         Toggle { 
             btnIcon: "nightlight"
             tip: Translation.tr("Night light")
-            active: NightLight.active ?? false
-            onClicked: NightLight.toggle()
+            active: Hyprsunset.active ?? false
+            onClicked: Hyprsunset.toggle()
             visible: Config.options?.sidebar?.widgets?.controlsCard?.showNightLight ?? true
         }
         Toggle { 

@@ -16,14 +16,7 @@ assert_text_contains() {
 
 finish_block="$(sed -n '/function _finishLyricsProcess/,/onActiveChanged:/p' "$service")"
 process_block="$(sed -n '/id: lyricsProc/,/Connections {/p' "$service")"
-service_text="$(<"$service")"
 [[ -n "$finish_block" && -n "$process_block" ]] || fail 'lyrics process lifecycle blocks are missing'
-
-assert_text_contains 'function _syncPosition(refreshPlayer: bool): void' "$service_text" 'lyrics position sync helper is missing'
-assert_text_contains '&& root.lyricsLines.length > 0 && root._playing' "$service_text" 'paused lyrics must not keep the 300ms sync timer awake'
-assert_text_contains 'function onPositionChanged(): void' "$service_text" 'paused lyrics must react to manual seek position changes'
-assert_text_contains 'if (!root._playing && root.active && root.status === "ok"' "$service_text" 'paused seek handling must stay scoped to active published lyrics'
-assert_text_contains 'root._syncPosition(false);' "$service_text" 'paused/published lyrics must sync without forcing MPRIS polling'
 
 assert_text_contains 'const requestId = root._runningRequestId' "$finish_block" 'shared cleanup must capture the running request before clearing it'
 assert_text_contains 'root._runningRequestId = ""' "$finish_block" 'shared cleanup must release the running request id'

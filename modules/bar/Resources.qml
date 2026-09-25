@@ -32,8 +32,6 @@ MouseArea {
     Accessible.focusable: true
 
     property bool _resourceUsageHeld: false
-    // The Bar resource readout is itself a persistent telemetry consumer.
-    // Hover only controls the popup; it must never decide whether sampling lives.
     readonly property bool _resourceUsageWanted: root.visible && !GameMode.active
 
     function syncResourceUsageLifecycle(): void {

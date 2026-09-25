@@ -1262,7 +1262,6 @@ MouseArea {
                         sourceSize.width: avatarCircle.width * 2
                         sourceSize.height: avatarCircle.height * 2
                         visible: false
-                        onStatusChanged: lockAvatarResolver.handleImageStatus(status)
                     }
 
                     OpacityMask {
@@ -1282,8 +1281,9 @@ MouseArea {
                         readonly property string resolvedSource: Directories.avatarSourceAt(avatarIndex)
                         readonly property string primaryWatch: Directories.userAvatarSourcePrimary
                         onPrimaryWatchChanged: avatarIndex = 0
-                        function handleImageStatus(status): void {
-                            if (status === Image.Error) {
+                        readonly property int imgStatus: avatarImage.status
+                        onImgStatusChanged: {
+                            if (imgStatus === Image.Error) {
                                 const nextIdx = avatarIndex + 1
                                 if (nextIdx < Directories.userAvatarPaths.length)
                                     avatarIndex = nextIdx
@@ -1696,7 +1696,7 @@ MouseArea {
             
             // Keyboard layout
             Loader {
-                active: KeyboardIndicators.currentLayoutCode.length > 0
+                active: typeof HyprlandXkb !== "undefined" && HyprlandXkb.currentLayoutCode.length > 0
                 asynchronous: true
                 visible: active
                 anchors.verticalCenter: parent.verticalCenter
@@ -1723,7 +1723,7 @@ MouseArea {
                     
                     Text {
                         anchors.verticalCenter: parent.verticalCenter
-                        text: KeyboardIndicators.currentLayoutCode.toUpperCase()
+                        text: HyprlandXkb.currentLayoutCode.toUpperCase()
                         font.pixelSize: Appearance.font.pixelSize.small
                         font.family: Appearance.font.family.main
                         color: Appearance.colors.colOnSurfaceVariant

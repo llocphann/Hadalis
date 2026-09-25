@@ -12,16 +12,16 @@ QuickToggleModel {
     name: Translation.tr("Night Light")
     statusText: (auto ? Translation.tr("Auto, ") : "") + (toggled ? Translation.tr("Active") : Translation.tr("Inactive"))
 
-    toggled: NightLight.active
+    toggled: Hyprsunset.active
     icon: auto ? "night_sight_auto" : "bedtime"
     
     mainAction: () => {
-        NightLight.toggle()
+        Hyprsunset.toggle()
     }
     hasMenu: true
 
     Component.onCompleted: {
-        NightLight.fetchState()
+        Hyprsunset.fetchState()
     }
     
     tooltipText: Translation.tr("Night Light | Right-click to configure")

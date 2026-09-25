@@ -16,7 +16,6 @@ Scope {
         if (!root.allowMultiplePanels && GlobalStates.waffleActionCenterOpen) {
             GlobalStates.searchOpen = false
             GlobalStates.waffleNotificationCenterOpen = false
-            GlobalStates.waffleWidgetsOpen = false
         }
     }
 
@@ -35,23 +34,14 @@ Scope {
     }
 
     PanelWindow {
-        id: actionCenterBackdropWindow
         visible: root.panelMapped
         anchors { top: true; bottom: true; left: true; right: true }
         WlrLayershell.namespace: "quickshell:wActionCenterBg"
         WlrLayershell.layer: WlrLayer.Top
         color: "transparent"
 
-        Item { id: emptyActionCenterBackdropInput; width: 0; height: 0 }
-        mask: Region {
-            item: GlobalStates.waffleActionCenterOpen
-                ? actionCenterBackdropMouse : emptyActionCenterBackdropInput
-        }
-
         MouseArea {
-            id: actionCenterBackdropMouse
             anchors.fill: parent
-            enabled: GlobalStates.waffleActionCenterOpen
             onClicked: GlobalStates.waffleActionCenterOpen = false
         }
     }
@@ -62,15 +52,9 @@ Scope {
         exclusiveZone: 0
         WlrLayershell.namespace: "quickshell:wactionCenter"
         WlrLayershell.layer: WlrLayer.Overlay
-        readonly property bool acceptsInput: GlobalStates.waffleActionCenterOpen
-        WlrLayershell.keyboardFocus: panelWindow.acceptsInput
+        WlrLayershell.keyboardFocus: visible
             ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
         color: "transparent"
-
-        Item { id: emptyActionCenterPanelInput; width: 0; height: 0 }
-        mask: Region {
-            item: panelWindow.acceptsInput ? content : emptyActionCenterPanelInput
-        }
 
         anchors {
             bottom: Config.options?.waffles?.bar?.bottom ?? false

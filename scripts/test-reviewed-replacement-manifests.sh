@@ -10,22 +10,10 @@ fail() {
 }
 
 tool="translations/tools/apply-reviewed-replacements.py"
+[[ -f "$tool" ]] || fail "missing reviewed replacement helper: $tool"
 
 shopt -s nullglob
 manifests=(translations/l10n/*-repairs.json)
-
-# Runtime localization is currently English-only. The reviewed-replacement
-# helper was intentionally retired with the non-English catalogs, so an empty
-# manifest set is a valid release state rather than a missing-tool failure.
-if (( ${#manifests[@]} == 0 )); then
-    grep -Fq '"$script_dir/test-reviewed-replacement-manifests.sh"' scripts/release.sh \
-        || fail 'release helper no longer checks reviewed replacement manifest state'
-    printf '%s\n' '1..1'
-    printf '%s\n' 'ok 1 - no reviewed replacement manifests are tracked'
-    exit 0
-fi
-
-[[ -f "$tool" ]] || fail "missing reviewed replacement helper: $tool"
 
 for manifest in "${manifests[@]}"; do
     python3 "$tool" "$manifest" --status \

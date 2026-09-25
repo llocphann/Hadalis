@@ -17,7 +17,6 @@ ListView {
 
     property int dragIndex: -1
     property real dragDistance: 0
-    property bool presentationActive: true
 
     function resetDrag() {
         dragIndex = -1
@@ -98,7 +97,6 @@ ListView {
 
         width: root.width
         notificationGroup: Notifications.popupGroupsByAppName[modelData]
-        presentationActive: root.presentationActive
         qmlParent: root
     }
 }

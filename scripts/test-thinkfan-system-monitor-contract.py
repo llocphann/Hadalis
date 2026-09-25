@@ -52,9 +52,9 @@ def main() -> None:
     for token in (
         "ThinkFanService.refresh()",
         "ThinkFanService.applyProfile(",
-        'Translation.tr("Fan control")',
+        'Translation.tr("Fan")',
         'Translation.tr("RPM:")',
-        'Translation.tr("L%1").arg(ThinkFanService.fanLevel)',
+        'Translation.tr("Level:")',
         "ThinkFanService.fanRpm",
         "ThinkFanService.fanLevel",
         "root.thinkFanCanApply",
@@ -164,8 +164,7 @@ def main() -> None:
         "function applyConfiguredPowerProfileFanLevel(): bool",
         "Config.flushWrites()",
         'root.lastApplyError = "managed-control-active"',
-        '? "direct-control-unavailable"',
-        ': "helper-update-required"',
+        'root.lastApplyError = "helper-update-required"',
         'Config.getNestedValue("powerProfiles.fanControl.enabled", false)',
         'Config.getNestedValue(path, 0)',
         "function _scheduleConfiguredFanLevelApply(): void",
@@ -232,12 +231,8 @@ def main() -> None:
         check(token in config_schema,
               f"Explicit Config flushes must serialize safely before fan apply: {token}")
 
-    check("function _ensureThinkFanService(): void" in shell_root
-          and 'Config.getNestedValue("powerProfiles.fanControl.enabled", false) === true' in shell_root
-          and "root._thinkFanService = ThinkFanService" in shell_root,
-          "Shell root must keep enabled ThinkFan profile following alive with Settings closed")
-    check("property var _thinkFanService: ThinkFanService" not in shell_root,
-          "Disabled ThinkFan profile following must not instantiate at shell-root construction")
+    check("property var _thinkFanService: ThinkFanService" in shell_root,
+          "Shell root must keep ThinkFanService alive so power-profile following works with Settings closed")
 
     for token in (
         'value.includes("fan")',

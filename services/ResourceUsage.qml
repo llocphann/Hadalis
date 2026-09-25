@@ -84,19 +84,11 @@ Singleton {
         return (kb / (1024 * 1024)).toFixed(1) + " GB";
     }
 
-    function _appendHistorySnapshot(history, value): var {
-        // Build the bounded list off-property and publish once. Mutating the
-        // QML list again with shift() after assignment can fan out a second
-        // change notification to every graph binding on each sensor poll.
-        const next = [...history, value]
-        if (next.length > historyLength)
-            next.shift()
-        return next
-    }
-
     function updateMemoryUsageHistory() {
-        memoryUsageHistory = root._appendHistorySnapshot(
-            memoryUsageHistory, memoryUsedPercentage)
+        memoryUsageHistory = [...memoryUsageHistory, memoryUsedPercentage];
+        if (memoryUsageHistory.length > historyLength) {
+            memoryUsageHistory.shift();
+        }
     }
 
     Process {
@@ -192,23 +184,15 @@ Singleton {
         id: nvidiaGpuProc
         // Query utilization and temperature together for efficiency.
         // temperature.gpu returns the hotspot/junction temp matching what btop shows.
-        command: [
-            root._nvidiaSmiPath,
-            "--query-gpu=utilization.gpu,temperature.gpu",
-            "--format=csv,noheader,nounits"
-        ]
+        command: ["/usr/bin/bash", "-c", root._nvidiaSmiPath + " --query-gpu=utilization.gpu,temperature.gpu --format=csv,noheader,nounits 2>/dev/null | head -n 1"]
         running: false
-        stderr: StdioCollector {}
         stdout: StdioCollector {
             id: nvidiaGpuCollector
             onStreamFinished: {
-                const firstLine = nvidiaGpuCollector.text.trim().split("\n")[0] ?? "";
-                const parts = firstLine.split(",").map(s => s.trim());
+                const parts = nvidiaGpuCollector.text.trim().split(",").map(s => s.trim());
                 const rawUsage = parseInt(parts[0]);
                 const rawTemp = parseInt(parts[1]);
-                // Empty/partial nvidia-smi output is an unknown sample, not 0%.
-                if (!isNaN(rawUsage))
-                    root.gpuUsage = root.clampPercentToUnit(rawUsage / 100);
+                root.gpuUsage = !isNaN(rawUsage) ? root.clampPercentToUnit(rawUsage / 100) : 0;
                 if (!isNaN(rawTemp))
                     root.gpuTemp = rawTemp;
             }
@@ -219,9 +203,8 @@ Singleton {
         id: intelGpuProc
         // One short PMU sample (~one 500ms period, killed by timeout). intel_gpu_top -J emits
         // per-engine "busy" percentages; aggregate GPU usage = the busiest engine this window.
-        command: ["timeout", "1", root._intelGpuTopPath, "-J", "-s", "500"]
+        command: ["/usr/bin/bash", "-c", "timeout 1 " + root._intelGpuTopPath + " -J -s 500 2>/dev/null"]
         running: false
-        stderr: StdioCollector {}
         stdout: StdioCollector {
             id: intelGpuCollector
             onStreamFinished: {
@@ -232,28 +215,33 @@ Singleton {
                     if (!isNaN(v) && v > maxBusy)
                         maxBusy = v;
                 }
-                // timeout/partial JSON can yield no busy sample. Preserve the
-                // previous good value rather than fabricating a 0% reading.
-                if (maxBusy >= 0)
-                    root.gpuUsage = root.clampPercentToUnit(maxBusy / 100);
+                root.gpuUsage = maxBusy < 0 ? 0 : root.clampPercentToUnit(maxBusy / 100);
             }
         }
     }
     function updateSwapUsageHistory() {
-        swapUsageHistory = root._appendHistorySnapshot(
-            swapUsageHistory, swapUsedPercentage)
+        swapUsageHistory = [...swapUsageHistory, swapUsedPercentage];
+        if (swapUsageHistory.length > historyLength) {
+            swapUsageHistory.shift();
+        }
     }
     function updateCpuUsageHistory() {
-        cpuUsageHistory = root._appendHistorySnapshot(
-            cpuUsageHistory, cpuUsage)
+        cpuUsageHistory = [...cpuUsageHistory, cpuUsage];
+        if (cpuUsageHistory.length > historyLength) {
+            cpuUsageHistory.shift();
+        }
     }
     function updateGpuUsageHistory() {
-        gpuUsageHistory = root._appendHistorySnapshot(
-            gpuUsageHistory, gpuUsage)
+        gpuUsageHistory = [...gpuUsageHistory, gpuUsage];
+        if (gpuUsageHistory.length > historyLength) {
+            gpuUsageHistory.shift();
+        }
     }
     function updateGpuTempHistory() {
-        gpuTempHistory = root._appendHistorySnapshot(
-            gpuTempHistory, gpuTempPercentage)
+        gpuTempHistory = [...gpuTempHistory, gpuTempPercentage];
+        if (gpuTempHistory.length > historyLength) {
+            gpuTempHistory.shift();
+        }
     }
     function updateHistories() {
         updateMemoryUsageHistory();
@@ -364,21 +352,12 @@ Singleton {
                 fileGpuUsage.reload();
         }
 
-        // FileView.reload() can briefly expose an empty/stale buffer. Never
-        // overwrite the last good telemetry sample with a transient read miss.
+        // Empty text() on first call collapses to 0% via the percentage guards.
         const textMeminfo = fileMeminfo.text();
-        const memTotalMatch = textMeminfo.match(/MemTotal: *(\d+)/);
-        const memAvailableMatch = textMeminfo.match(/MemAvailable: *(\d+)/);
-        if (memTotalMatch && memAvailableMatch) {
-            memoryTotal = Number(memTotalMatch[1]);
-            memoryFree = Number(memAvailableMatch[1]);
-            const swapTotalMatch = textMeminfo.match(/SwapTotal: *(\d+)/);
-            const swapFreeMatch = textMeminfo.match(/SwapFree: *(\d+)/);
-            if (swapTotalMatch)
-                swapTotal = Number(swapTotalMatch[1]);
-            if (swapFreeMatch)
-                swapFree = Number(swapFreeMatch[1]);
-        }
+        memoryTotal = Number(textMeminfo.match(/MemTotal: *(\d+)/)?.[1] ?? 0);
+        memoryFree = Number(textMeminfo.match(/MemAvailable: *(\d+)/)?.[1] ?? 0);
+        swapTotal = Number(textMeminfo.match(/SwapTotal: *(\d+)/)?.[1] ?? 0);
+        swapFree = Number(textMeminfo.match(/SwapFree: *(\d+)/)?.[1] ?? 0);
 
         // Parse aggregate non-loopback network traffic from the same shared
         // polling service instead of spawning a separate /proc/net/dev reader
@@ -426,8 +405,7 @@ Singleton {
             if (previousCpuStats) {
                 const totalDiff = total - previousCpuStats.total;
                 const idleDiff = idle - previousCpuStats.idle;
-                if (totalDiff > 0)
-                    cpuUsage = root.clampPercentToUnit(1 - idleDiff / totalDiff);
+                cpuUsage = totalDiff > 0 ? (1 - idleDiff / totalDiff) : 0;
             }
 
             previousCpuStats = {
@@ -436,16 +414,13 @@ Singleton {
             };
         }
 
-        // Parse temperatures (millidegrees to degrees). An empty hwmon
-        // read is transient/unknown, not a real 0°C sample.
-        const cpuTempRaw = parseInt(fileCpuTemp.text());
-        if (!isNaN(cpuTempRaw))
-            cpuTemp = Math.round(cpuTempRaw / 1000);
+        // Parse temperatures (millidegrees to degrees)
+        const cpuTempRaw = parseInt(fileCpuTemp.text()) || 0;
+        cpuTemp = Math.round(cpuTempRaw / 1000);
         // GPU temp: skip when suspended/disabled to avoid hwmon reads waking a suspended dGPU
         if (!skipGpu && root._gpuUsageSource !== "nvidia-smi") {
-            const gpuTempRaw = parseInt(fileGpuTemp.text());
-            if (!isNaN(gpuTempRaw))
-                gpuTemp = Math.round(gpuTempRaw / 1000);
+            const gpuTempRaw = parseInt(fileGpuTemp.text()) || 0;
+            gpuTemp = Math.round(gpuTempRaw / 1000);
         }
 
         // Parse GPU usage — skip entirely when dGPU is suspended or monitoring is disabled
@@ -453,8 +428,11 @@ Singleton {
             gpuUsage = 0;
         } else if (root._gpuUsageSource === "sysfs") {
             const gpuBusyPercent = parseInt(fileGpuUsage.text());
-            if (!isNaN(gpuBusyPercent))
+            if (isNaN(gpuBusyPercent)) {
+                gpuUsage = 0;
+            } else {
                 gpuUsage = root.clampPercentToUnit(gpuBusyPercent / 100);
+            }
         } else if (root._gpuUsageSource === "nvidia-smi" && !nvidiaGpuProc.running) {
             const nowMs = Date.now()
             if (root._expensiveGpuPollDue(nowMs)) {
@@ -720,15 +698,12 @@ Singleton {
                 LANG: "C",
                 LC_ALL: "C"
             })
-        // lscpu is already the authoritative fallback here. Parse its output
-        // in-process instead of spawning bash + grep + awk around it.
-        command: ["/usr/bin/lscpu"]
+        command: ["/usr/bin/bash", "-c", "/usr/bin/lscpu | /usr/bin/grep 'CPU max MHz' | /usr/bin/awk '{print $4}'"]
         running: false
         stdout: StdioCollector {
             id: outputCollector
             onStreamFinished: {
-                const match = outputCollector.text.match(/^CPU max MHz:\s*([\d.]+)/m)
-                const mhz = parseFloat(match?.[1] ?? "")
+                const mhz = parseFloat(outputCollector.text);
                 if (isNaN(mhz) || mhz <= 0) {
                     root.maxAvailableCpuString = "--";
                 } else {

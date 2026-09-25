@@ -33,6 +33,7 @@ fi
 
 for source_path in \
     '../../screenCorners/ScreenEdges.qml' \
+    '../../sidebar/SidebarEdgeConnectors.qml' \
     '../../background/Background.qml' \
     '../../bar/Bar.qml' \
     '../../verticalBar/VerticalBar.qml' \
@@ -42,10 +43,6 @@ for source_path in \
     resolved="$(realpath -m "$(dirname -- "$critical")/$source_path")"
     [[ -f "$resolved" ]] || fail "critical source target is missing: $source_path"
 done
-
-if grep -Fq 'SidebarEdgeConnectors.qml' "$critical"; then
-    fail 'critical root must not source-load the retired standalone sidebar bridge'
-fi
 
 grep -Fq 'component CriticalPanelLoader: LazyLoader {' "$critical" \
     || fail 'critical presentation loader no longer inherits LazyLoader'

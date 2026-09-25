@@ -4,6 +4,7 @@ import QtQuick.Layouts
 import Quickshell
 import Quickshell.Io
 import Quickshell.Wayland
+import Quickshell.Hyprland
 import qs
 import qs.modules.common
 import qs.modules.common.widgets
@@ -177,7 +178,7 @@ Scope { // Scope
 
             // Re-raise within wlr-layer Overlay when another overlay opens.
             // wlr-layer-shell does not define z-order within a layer, but every
-            // compositor appends a freshly-mapped
+            // compositor (Niri, Hyprland, sway, river) appends a freshly-mapped
             // surface to the top of its layer. We exploit that by briefly
             // unmapping the OSK surface so the next map lands on top.
             // `set_layer` alone does NOT re-stack — tested, doesn't work.
@@ -195,7 +196,7 @@ Scope { // Scope
             }
             on_CompetingTokenChanged: oskRoot.restack()
             readonly property int _competingToken: root._competingStackToken
-            // Niri owns focus through the layer-shell surface; overriding it here breaks mouse focus
+            // Hyprland 0.49: Focus is always exclusive and setting this breaks mouse focus grab
             // WlrLayershell.keyboardFocus: WlrKeyboardFocus.Exclusive
             color: "transparent"
 

@@ -45,8 +45,8 @@ WindowDialog {
             buttonIcon: "lightbulb"
             text: Translation.tr("Enable now")
             autoToggle: false
-            checked: NightLight.active
-            onToggledByUser: checked => NightLight.toggle(checked)
+            checked: Hyprsunset.active
+            onToggledByUser: checked => Hyprsunset.toggle(checked)
         }
 
         ConfigSwitch {

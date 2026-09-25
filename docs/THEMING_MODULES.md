@@ -27,6 +27,7 @@ Examples:
 - `50-spicetify.sh`
 - `60-sddm.sh`
 - `70-steam.sh`
+- `80-pear-desktop.sh`
 - `90-cava.sh`
 
 Rules:

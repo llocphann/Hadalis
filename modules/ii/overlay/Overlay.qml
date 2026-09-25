@@ -8,6 +8,7 @@ import QtQuick.Layouts
 import Quickshell
 import Quickshell.Io
 import Quickshell.Wayland
+import Quickshell.Hyprland
 
 Scope {
     id: root
@@ -128,6 +129,43 @@ Scope {
                 bottom: true
                 left: true
                 right: true
+            }
+
+            CompositorFocusGrab {
+                id: grab
+                windows: [overlayWindow]
+                active: false
+                onCleared: () => {
+                    if (!active && !OverlayContext.nativeDialogOpen)
+                        GlobalStates.overlayOpen = false;
+                }
+            }
+
+            Connections {
+                target: GlobalStates
+                function onOverlayOpenChanged() {
+                    delayedGrabTimer.restart()
+                }
+            }
+
+            Connections {
+                target: OverlayContext
+                function onNativeDialogOpenChanged() {
+                    if (OverlayContext.nativeDialogOpen)
+                        grab.active = false
+                    else
+                        delayedGrabTimer.restart()
+                }
+            }
+
+            Timer {
+                id: delayedGrabTimer
+                interval: Appearance.calcEffectiveDuration(
+                    Config.options.overlay.animationDurationMs ?? Appearance.animation.elementMoveFast.duration)
+                onTriggered: {
+                    grab.active = GlobalStates.overlayOpen
+                        && !OverlayContext.nativeDialogOpen;
+                }
             }
 
             OverlayContent {

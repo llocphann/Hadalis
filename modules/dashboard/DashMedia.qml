@@ -52,10 +52,6 @@ DashCard {
                     player: root.player
                     visualizerPoints: []
                     showVisualizer: false
-                    // Keep the object resident, but make descendants effectively
-                    // invisible so visibility-aware infinite animations sleep.
-                    visible: root.presentationActive && root.visible
-                    positionUpdatesActive: root.presentationActive && root.visible
                     compactLayout: true
                     radius: Appearance.rounding.normal
                 }

@@ -6,6 +6,7 @@ import Qt5Compat.GraphicalEffects as GE
 import Quickshell
 import Quickshell.Io
 import Quickshell.Wayland
+import Quickshell.Hyprland
 import qs
 import qs.services
 import qs.modules.common
@@ -89,7 +90,8 @@ Scope {
                     (barRoot.fullscreenCovered || GlobalStates.coverflowSelectorOpen || (Config?.options.bar.autoHide.enable && (!mustShow || !Config?.options.bar.autoHide.pushWindows))) ? 0 :
                     barRoot.panelSurfaceHeight
                 WlrLayershell.namespace: "quickshell:bar"
-                WlrLayershell.layer: WlrLayer.Overlay
+                WlrLayershell.layer: CompositorService.isNiri
+                    ? WlrLayer.Overlay : WlrLayer.Top
                 implicitHeight: barRoot.panelSurfaceHeight
                 // Explicit zero-size item prevents ambiguous null input region during
                 // surface map/unmap transitions. Region { item: null } can be interpreted
@@ -145,37 +147,8 @@ Scope {
 
                     BarContent {
                         id: barContent
-                        // FULLSCREEN-BAR-CONTENT-LIFECYCLE-LOCK:
-                        // Keep the QML subtree continuously presented: toggling
-                        // visible/opacity strands native Text/MaterialSymbol
-                        // nodes after same-workspace fullscreen focus changes.
-                        //
-                        // Fullscreen is intentionally NOT routed through the
-                        // animated auto-hide margins. ScreenEdges.qml lives on
-                        // Top and Niri covers/reveals that physical frame
-                        // immediately, so the Overlay Bar must snap by the same
-                        // amount or its text/modules visibly trail the chrome.
-                        // Auto-hide/coverflow keep their normal slide animation.
-                        readonly property bool spatiallyHidden:
-                            (Config?.options.bar.autoHide.enable && !mustShow)
-                            || GlobalStates.coverflowSelectorOpen
-                            || !GlobalStates.shellEntryReady
-                        readonly property real fullscreenOffsetY:
-                            barRoot.fullscreenCovered
-                                ? (barRoot.anchors.bottom
-                                    ? barRoot.panelSurfaceHeight
-                                    : -barRoot.panelSurfaceHeight)
-                                : 0
-                        transform: Translate {
-                            y: barContent.fullscreenOffsetY
-                        }
+                        opacity: barRoot.fullscreenCovered ? 0 : 1
                         nativeBlurAllowed: false
-                        // Keep the spectrum live through the visible slide-out
-                        // tail, then release CAVA once the Bar is off-screen.
-                        presentationActive: !barRoot.fullscreenCovered
-                            && (barRoot.anchors.bottom
-                                ? barContent.anchors.bottomMargin > -barRoot.panelSurfaceHeight + 1
-                                : barContent.anchors.topMargin > -barRoot.panelSurfaceHeight + 1)
 
                         implicitHeight: barRoot.panelSurfaceHeight
                         anchors {
@@ -183,7 +156,7 @@ Scope {
                             left: parent.left
                             top: parent.top
                             bottom: undefined
-                            topMargin: barContent.spatiallyHidden ? -barRoot.panelSurfaceHeight : 0
+                            topMargin: ((Config?.options.bar.autoHide.enable && !mustShow) || GlobalStates.coverflowSelectorOpen || !GlobalStates.shellEntryReady) ? -barRoot.panelSurfaceHeight : 0
                             bottomMargin: barRoot.bottomDeadPixelWorkaround ? -1 : 0
                             rightMargin: barRoot.rightDeadPixelWorkaround ? -1 : 0
                         }
@@ -211,7 +184,7 @@ Scope {
                             PropertyChanges {
                                 target: barContent
                                 anchors.topMargin: 0
-                                anchors.bottomMargin: barContent.spatiallyHidden ? -barRoot.panelSurfaceHeight : 0
+                                anchors.bottomMargin: ((Config?.options.bar.autoHide.enable && !mustShow) || GlobalStates.coverflowSelectorOpen || !GlobalStates.shellEntryReady) ? -barRoot.panelSurfaceHeight : 0
                             }
                         }
                     }
@@ -252,4 +225,35 @@ Scope {
     // so a handler here would collide with VerticalBar's and Quickshell would
     // drop one with a "registered but will not be used" warning.
 
+    Loader {
+        active: CompositorService.isHyprland
+        sourceComponent: Item {
+            GlobalShortcut {
+                name: "barToggle"
+                description: "Toggles bar on press"
+
+                onPressed: {
+                    GlobalStates.barOpen = !GlobalStates.barOpen;
+                }
+            }
+
+            GlobalShortcut {
+                name: "barOpen"
+                description: "Opens bar on press"
+
+                onPressed: {
+                    GlobalStates.barOpen = true;
+                }
+            }
+
+            GlobalShortcut {
+                name: "barClose"
+                description: "Closes bar on press"
+
+                onPressed: {
+                    GlobalStates.barOpen = false;
+                }
+            }
+        }
+    }
 }

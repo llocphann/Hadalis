@@ -15,107 +15,36 @@ CAVA_CONFIG="$CAVA_CONFIG_DIR/config"
 MARKER_BEGIN="# BEGIN inir-managed"
 MARKER_END="# END inir-managed"
 
-declare -A CAVA_CONFIG_VALUES=()
-declare -A CAVA_PALETTE=()
-
-load_cava_config() {
-  CAVA_CONFIG_VALUES=(
-    [enableCava]=false
-    [colorSource]=theme
-    [gradientCount]=8
-    [foreground]=""
-    [background]=""
-    [sensitivity]=100
-    [bars]=0
-    [framerate]=60
-    [barWidth]=2
-    [barSpacing]=1
-    [stereo]=true
-  )
-
-  [[ -f "$CONFIG_FILE" ]] || return 0
-  command -v jq >/dev/null 2>&1 || return 0
-
-  local config_rows=""
-  config_rows="$(
-    jq -r '[
-      "enableCava=\(if .appearance.wallpaperTheming.enableCava == null then false else .appearance.wallpaperTheming.enableCava end)",
-      "colorSource=\(.appearance.cava.colorSource // "theme")",
-      "gradientCount=\(.appearance.cava.gradientCount // "8")",
-      "foreground=\(.appearance.cava.foreground // "")",
-      "background=\(.appearance.cava.background // "")",
-      "sensitivity=\(.appearance.cava.sensitivity // "100")",
-      "bars=\(.appearance.cava.bars // "0")",
-      "framerate=\(.appearance.cava.framerate // "60")",
-      "barWidth=\(.appearance.cava.barWidth // "2")",
-      "barSpacing=\(.appearance.cava.barSpacing // "1")",
-      "stereo=\(.appearance.cava.stereo // "true")"
-    ] | .[]' "$CONFIG_FILE" 2>/dev/null
-  )" || return 0
-
-  local key value
-  while IFS='=' read -r key value; do
-    [[ -n "$key" ]] || continue
-    CAVA_CONFIG_VALUES["$key"]="$value"
-  done <<< "$config_rows"
-}
-
-# Read a cava config value from the per-apply snapshot.
+# Read a cava config value from appearance.cava
 cava_cfg() {
   local key="$1" fallback="$2"
-  printf '%s\n' "${CAVA_CONFIG_VALUES[$key]-$fallback}"
-}
-
-load_cava_palette() {
-  CAVA_PALETTE=()
-  local palette_rows=""
-  palette_rows="$(
-    jq -r 'to_entries[] | select(.value != null) | "\(.key)=\(.value)"' "$PALETTE_FILE" 2>/dev/null
-  )" || return 1
-
-  local key value
-  while IFS='=' read -r key value; do
-    [[ -n "$key" ]] || continue
-    CAVA_PALETTE["$key"]="$value"
-  done <<< "$palette_rows"
+  config_json ".appearance.cava.${key} // \"${fallback}\"" "$fallback"
 }
 
 palette_color() {
   local key="$1"
-  printf '%s\n' "${CAVA_PALETTE[$key]-}"
+  jq -r ".$key // empty" "$PALETTE_FILE" 2>/dev/null
 }
 
-# Boost a batch of colors in one interpreter. Invalid individual colors keep
-# the old per-color fallback semantics, while interpreter failure falls back to
-# the complete unmodified batch.
-saturate_colors() {
-  local factor="$1"
-  shift
-  (( $# > 0 )) || return 0
+cover_color() {
+  local idx="$1"
+  [[ -f "$COVER_COLORS_FILE" ]] || return 1
+  jq -r ".[$idx] // empty" "$COVER_COLORS_FILE" 2>/dev/null
+}
 
-  local output=""
-  if output="$(python3 - "$factor" "$@" <<'PY' 2>/dev/null
-import colorsys
-import sys
-
-factor = float(sys.argv[1])
-for raw in sys.argv[2:]:
-    try:
-        h = raw.lstrip("#")
-        r, g, b = int(h[0:2], 16) / 255, int(h[2:4], 16) / 255, int(h[4:6], 16) / 255
-        hue, sat, val = colorsys.rgb_to_hsv(r, g, b)
-        sat = min(1.0, sat * factor)
-        val = min(1.0, val * 1.1)
-        r2, g2, b2 = colorsys.hsv_to_rgb(hue, sat, val)
-        print("#%02x%02x%02x" % (int(r2 * 255), int(g2 * 255), int(b2 * 255)))
-    except Exception:
-        print(raw)
-PY
-  )"; then
-    printf '%s\n' "$output"
-  else
-    printf '%s\n' "$@"
-  fi
+# Boost saturation of a hex color by mixing toward its hue at full saturation
+saturate_hex() {
+  local hex="$1" factor="${2:-1.4}"
+  python3 -c "
+import colorsys, sys
+h = '${hex}'.lstrip('#')
+r, g, b = int(h[0:2],16)/255, int(h[2:4],16)/255, int(h[4:6],16)/255
+hue, sat, val = colorsys.rgb_to_hsv(r, g, b)
+sat = min(1.0, sat * ${factor})
+val = min(1.0, val * 1.1)
+r2, g2, b2 = colorsys.hsv_to_rgb(hue, sat, val)
+print('#%02x%02x%02x' % (int(r2*255), int(g2*255), int(b2*255)))
+" 2>/dev/null || printf '%s\n' "$hex"
 }
 
 # Build gradient from palette - uses bright, visible colors first
@@ -137,17 +66,17 @@ build_gradient_theme() {
 build_gradient_vibrant() {
   local count="$1"
   local -a keys=(primary tertiary secondary error success primary_fixed tertiary_fixed inverse_primary)
-  local -a raw_colors=()
-  local c
+  local -a colors=()
+  local c sat
   for key in "${keys[@]}"; do
     c=$(palette_color "$key")
-    [[ -n "$c" ]] && raw_colors+=("$c")
-    (( ${#raw_colors[@]} >= count )) && break
+    if [[ -n "$c" ]]; then
+      sat=$(saturate_hex "$c" 1.6)
+      colors+=("$sat")
+    fi
+    (( ${#colors[@]} >= count )) && break
   done
-  (( ${#raw_colors[@]} >= 1 )) || return 1
-
-  local -a colors=()
-  mapfile -t colors < <(saturate_colors 1.6 "${raw_colors[@]}")
+  (( ${#colors[@]} >= 1 )) || return 1
   printf '%s\n' "${colors[@]}"
 }
 
@@ -189,9 +118,11 @@ build_gradient_cover() {
   refresh_cover_colors "$count" || true
   [[ -f "$COVER_COLORS_FILE" ]] || { log_module "No cover colors file, falling back to theme"; build_gradient_theme "$count"; return; }
   local -a colors=()
-  mapfile -t colors < <(
-    jq -r --argjson count "$count" '.[:$count][] // empty' "$COVER_COLORS_FILE" 2>/dev/null || true
-  )
+  local c
+  for i in $(seq 0 $((count - 1))); do
+    c=$(cover_color "$i")
+    [[ -n "$c" ]] && colors+=("$c")
+  done
   if (( ${#colors[@]} < 1 )); then
     log_module "Not enough cover colors (${#colors[@]}), falling back to theme"
     build_gradient_theme "$count"
@@ -317,7 +248,6 @@ generate_managed_block() {
 apply_cava_config() {
   [[ -f "$PALETTE_FILE" ]] || { log_module "palette.json not found, skipping"; return 0; }
   command -v cava &>/dev/null || { log_module "cava not installed, skipping"; return 0; }
-  load_cava_palette || { log_module "palette.json unreadable, skipping"; return 0; }
 
   local block
   block=$(generate_managed_block) || { log_module "Failed to generate config"; return 0; }
@@ -386,8 +316,8 @@ strip_cava_config() {
 }
 
 main() {
-  load_cava_config
-  local enabled="${CAVA_CONFIG_VALUES[enableCava]-false}"
+  local enabled
+  enabled=$(config_bool '.appearance.wallpaperTheming.enableCava' false)
 
   if [[ "$enabled" == 'true' ]]; then
     apply_cava_config

@@ -62,7 +62,7 @@ The bare minimum runtime packages to not crash immediately:
 | `pipewire` + `wireplumber` | Audio. |
 | `grim` + `slurp` | Screenshots. |
 | `materialyoucolor` | Material You colors from wallpaper (Python, installed via venv). |
-| `plasma-browser-integration` | Optional browser MPRIS compatibility/artwork bridge; native browser MPRIS works without it. |
+| `plasma-browser-integration` | Browser MPRIS sessions, controls, and artwork. |
 | `plasma-integration` | KDE platform theme plugin (reads kdeglobals for Qt app colors). |
 | `darkly-bin` (AUR) | Darkly Qt style (Material You widget rendering). |
 
@@ -71,7 +71,7 @@ For everything else, check [PACKAGES.md](PACKAGES.md). It's organized by categor
 > **Note on quickshell package:** iNiR intentionally uses `quickshell` from official repos to avoid long AUR compile times and update-time build failures.
 >
 > **Runtime extras used by features:**
-> - `socat` for optional EasyEffects Equalizer transport
+> - `socat` for YTMusic IPC fallback control and, when available, optional EasyEffects Equalizer transport
 > - `fprintd` for fingerprint lockscreen support
 >
 > EasyEffects itself is optional. The Equalizer capability stays unavailable when its backend/transport is absent; normal Media playback and volume controls continue to work.

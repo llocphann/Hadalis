@@ -23,53 +23,6 @@ declare -A KNOWN_TERMINALS=(
   [konsole]=konsole
 )
 
-ALL_SUPPORTED_TERMINALS=(kitty alacritty foot wezterm ghostty konsole starship omp btop lazygit yazi)
-declare -A TERMINAL_THEME_ENABLED=()
-TERMINAL_THEME_GLOBAL_ENABLED=true
-
-load_terminal_theme_config() {
-  local term
-  TERMINAL_THEME_GLOBAL_ENABLED=true
-  for term in "${ALL_SUPPORTED_TERMINALS[@]}"; do
-    TERMINAL_THEME_ENABLED["$term"]=true
-  done
-
-  [[ -f "$CONFIG_FILE" ]] || return 0
-  command -v jq >/dev/null 2>&1 || return 0
-
-  local config_rows=""
-  config_rows="$(
-    jq -r '
-      def enabled($value): if $value == null then true else $value end;
-      .appearance.wallpaperTheming as $w
-      | [
-          "__global__=\(enabled($w.enableTerminal))",
-          "kitty=\(enabled($w.terminals.kitty))",
-          "alacritty=\(enabled($w.terminals.alacritty))",
-          "foot=\(enabled($w.terminals.foot))",
-          "wezterm=\(enabled($w.terminals.wezterm))",
-          "ghostty=\(enabled($w.terminals.ghostty))",
-          "konsole=\(enabled($w.terminals.konsole))",
-          "starship=\(enabled($w.terminals.starship))",
-          "omp=\(enabled($w.terminals.omp))",
-          "btop=\(enabled($w.terminals.btop))",
-          "lazygit=\(enabled($w.terminals.lazygit))",
-          "yazi=\(enabled($w.terminals.yazi))"
-        ] | .[]
-    ' "$CONFIG_FILE" 2>/dev/null
-  )" || return 0
-
-  local key value
-  while IFS='=' read -r key value; do
-    [[ -n "$key" ]] || continue
-    if [[ "$key" == "__global__" ]]; then
-      TERMINAL_THEME_GLOBAL_ENABLED="$value"
-    else
-      TERMINAL_THEME_ENABLED["$key"]="$value"
-    fi
-  done <<< "$config_rows"
-}
-
 # Walk /proc ancestor chain from $1 to find the terminal emulator.
 # Returns the config key (e.g. "alacritty") or empty string if unknown.
 find_terminal_ancestor() {
@@ -96,7 +49,9 @@ find_terminal_ancestor() {
 # $1 = config key (e.g. "alacritty")
 is_terminal_themed() {
   local term_key="$1"
-  [[ "${TERMINAL_THEME_ENABLED[$term_key]:-true}" == 'true' ]]
+  local enabled
+  enabled=$(config_bool ".appearance.wallpaperTheming.terminals.${term_key}" true)
+  [[ "$enabled" == 'true' ]]
 }
 
 apply_term_sequences() {
@@ -107,29 +62,24 @@ apply_term_sequences() {
   sequences_tmp="$(mktemp "$STATE_DIR/user/generated/terminal/sequences.XXXXXX")"
   cp "$SEQUENCES_TEMPLATE" "$sequences_tmp"
 
-  local sed_args=()
   if [[ -f "$TERMINAL_FILE" ]] && command -v jq &>/dev/null; then
-    local terminal_fields idx value
-    terminal_fields="$(
-      jq -r '[range(0; 16) as $idx | "\($idx)=\(.["term\($idx)"] // empty)"] | .[]' "$TERMINAL_FILE" 2>/dev/null || true
-    )"
-    while IFS='=' read -r idx value; do
-      [[ "$idx" =~ ^([0-9]|1[0-5])$ ]] || continue
+    local idx value
+    for idx in $(seq 0 15); do
+      value=$(jq -r ".term${idx} // empty" "$TERMINAL_FILE" 2>/dev/null || true)
       [[ -n "$value" ]] || continue
-      sed_args+=(-e "s/\$term${idx} #/${value#\#}/g")
-    done <<< "$terminal_fields"
+      sed -i "s/\$term${idx} #/${value#\#}/g" "$sequences_tmp"
+    done
   else
     local color_names color_values
     mapfile -t color_names < <(cut -d: -f1 "$SCSS_FILE")
     mapfile -t color_values < <(cut -d: -f2 "$SCSS_FILE" | cut -d ' ' -f2 | cut -d ';' -f1)
 
     for i in "${!color_names[@]}"; do
-      sed_args+=(-e "s/${color_names[$i]} #/${color_values[$i]#\#}/g")
+      sed -i "s/${color_names[$i]} #/${color_values[$i]#\#}/g" "$sequences_tmp"
     done
   fi
 
-  sed_args+=(-e 's/\$alpha/100/g')
-  sed -i "${sed_args[@]}" "$sequences_tmp"
+  sed -i 's/\$alpha/100/g' "$sequences_tmp"
   mv "$sequences_tmp" "$sequences_file"
 
   local shell_pids
@@ -213,9 +163,11 @@ reload_terminal_colors() {
 apply_terminal_configs() {
   [[ -f "$SCSS_FILE" ]] || return 0
 
+  local all_supported=(kitty alacritty foot wezterm ghostty konsole starship omp btop lazygit yazi)
   local enabled_terminals=()
-  for term in "${ALL_SUPPORTED_TERMINALS[@]}"; do
-    local enabled="${TERMINAL_THEME_ENABLED[$term]:-true}"
+  for term in "${all_supported[@]}"; do
+    local enabled
+    enabled=$(config_bool ".appearance.wallpaperTheming.terminals.${term}" true)
     local binary_name="$term"
     [[ "$term" == "omp" ]] && binary_name='oh-my-posh'
     [[ "$enabled" == 'true' ]] && command -v "$binary_name" &>/dev/null && enabled_terminals+=("$term")
@@ -232,8 +184,9 @@ apply_terminal_configs() {
 }
 
 main() {
-  load_terminal_theme_config
-  [[ "$TERMINAL_THEME_GLOBAL_ENABLED" == 'true' ]] || exit 0
+  local enable_terminal
+  enable_terminal=$(config_bool '.appearance.wallpaperTheming.enableTerminal' true)
+  [[ "$enable_terminal" == 'true' ]] || exit 0
   [[ -f "$SCSS_FILE" ]] || exit 0
   apply_term_sequences &
   apply_terminal_configs &

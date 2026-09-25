@@ -92,9 +92,6 @@ AbstractOverlayWidget {
              ? 1
              : (Config.options?.overlay?.clickthroughOpacity ?? 0.8)
     Behavior on opacity {
-        // Unpinned widgets are hidden immediately when Overlay closes; do not
-        // keep an invisible opacity animation alive in the retained widget.
-        enabled: root.visible
         animation: NumberAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve }
     }
 
@@ -237,9 +234,6 @@ AbstractOverlayWidget {
                 // border.color: Appearance.colors.colOutlineVariant
                 // border.width: 1
                 Behavior on opacity {
-                    // Opening and pinned close transitions remain animated;
-                    // hidden unpinned widgets snap because they are not painted.
-                    enabled: root.visible
                     animation: NumberAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve }
                 }
                 

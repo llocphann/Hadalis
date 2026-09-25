@@ -11,6 +11,7 @@ import Qt5Compat.GraphicalEffects as GE
 import Quickshell
 import Quickshell.Io
 import Quickshell.Wayland
+import Quickshell.Hyprland
 
 /**
  * Fullscreen coverflow wallpaper selector — alternative to the grid WallpaperSelector.
@@ -79,7 +80,12 @@ Scope {
         }
 
         _lockedTarget = ""
-        _capturedMonitor = NiriService.currentOutput ?? ""
+        if (CompositorService.isNiri)
+            _capturedMonitor = NiriService.currentOutput ?? ""
+        else if (CompositorService.isHyprland)
+            _capturedMonitor = Hyprland.focusedMonitor?.name ?? ""
+        else
+            _capturedMonitor = ""
     }
 
     // ─── Selection logic (mirrors WallpaperSelectorContent.selectWallpaperPath) ───
@@ -148,9 +154,7 @@ Scope {
             exclusionMode: ExclusionMode.Ignore
             WlrLayershell.namespace: "quickshell:coverflowSelector"
             WlrLayershell.layer: WlrLayer.Overlay
-            readonly property bool acceptsInput: GlobalStates.coverflowSelectorOpen
-            WlrLayershell.keyboardFocus: panelWindow.acceptsInput
-                ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
+            WlrLayershell.keyboardFocus: root._closing ? WlrKeyboardFocus.None : WlrKeyboardFocus.OnDemand
             color: "transparent"
 
             anchors {
@@ -158,12 +162,6 @@ Scope {
                 left: true
                 right: true
                 bottom: true
-            }
-
-            Item { id: emptyCoverflowInput; width: 0; height: 0 }
-            Item { id: fullCoverflowInput; anchors.fill: parent }
-            mask: Region {
-                item: panelWindow.acceptsInput ? fullCoverflowInput : emptyCoverflowInput
             }
 
             // ─── Staggered entry state ───
@@ -412,6 +410,17 @@ Scope {
                 }
             }
 
+            // Click outside to close (Hyprland)
+            CompositorFocusGrab {
+                id: grab
+                windows: [ panelWindow ]
+                active: CompositorService.isHyprland && coverflowLoader.active && !root._closing
+                onCleared: () => {
+                    if (!active) {
+                        GlobalStates.coverflowSelectorOpen = false
+                    }
+                }
+            }
         }
     }
 

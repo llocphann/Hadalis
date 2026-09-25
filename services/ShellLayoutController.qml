@@ -262,7 +262,7 @@ Singleton {
             root._applyInset(result, result.dockEdge,
                 (Config.options?.dock?.height ?? 70)
                     + Appearance.sizes.elevationMargin
-                    + Appearance.sizes.surfaceGap)
+                    + Appearance.sizes.hyprlandGapsOut)
         }
         return result
     }

@@ -65,69 +65,9 @@ apply_code_editors() {
   local python_cmd
   python_cmd=$(venv_python)
 
-  local enable_vscode=true
-  local enable_neovim=false
-  local enable_opencode=false
-  local -A vscode_editor_enabled=(
-    [code]=true
-    [codium]=true
-    [codeOss]=true
-    [codeInsiders]=true
-    [cursor]=true
-    [windsurf]=true
-    [windsurfNext]=true
-    [qoder]=true
-    [antigravity]=true
-    [positron]=true
-    [voidEditor]=true
-    [melty]=true
-    [pearai]=true
-    [aide]=true
-  )
-
-  # Snapshot all editor toggles in one jq process. Keep the current fallback
-  # contract exactly: VS Code defaults on, Neovim/OpenCode default off, and
-  # per-fork values retain the historical "// true" semantics.
-  if [[ -f "$CONFIG_FILE" ]] && command -v jq >/dev/null 2>&1; then
-    local editor_config_rows=""
-    editor_config_rows="$(
-      jq -r '
-        (.appearance.wallpaperTheming // {}) as $w
-        | ($w.vscodeEditors // {}) as $editors
-        | [
-            "enable_vscode=\(if ($w | has("enableVSCode")) then $w.enableVSCode else true end)",
-            "enable_neovim=\(if $w.enableNeovim == null then false else $w.enableNeovim end)",
-            "enable_opencode=\(if $w.enableOpenCode == null then false else $w.enableOpenCode end)",
-            "code=\($editors.code // true)",
-            "codium=\($editors.codium // true)",
-            "codeOss=\($editors.codeOss // true)",
-            "codeInsiders=\($editors.codeInsiders // true)",
-            "cursor=\($editors.cursor // true)",
-            "windsurf=\($editors.windsurf // true)",
-            "windsurfNext=\($editors.windsurfNext // true)",
-            "qoder=\($editors.qoder // true)",
-            "antigravity=\($editors.antigravity // true)",
-            "positron=\($editors.positron // true)",
-            "voidEditor=\($editors.voidEditor // true)",
-            "melty=\($editors.melty // true)",
-            "pearai=\($editors.pearai // true)",
-            "aide=\($editors.aide // true)"
-          ] | .[]
-      ' "$CONFIG_FILE" 2>/dev/null
-    )" || editor_config_rows=""
-
-    local config_key config_value
-    while IFS='=' read -r config_key config_value; do
-      case "$config_key" in
-        enable_vscode) enable_vscode="$config_value" ;;
-        enable_neovim) enable_neovim="$config_value" ;;
-        enable_opencode) enable_opencode="$config_value" ;;
-        code|codium|codeOss|codeInsiders|cursor|windsurf|windsurfNext|qoder|antigravity|positron|voidEditor|melty|pearai|aide)
-          vscode_editor_enabled["$config_key"]="$config_value"
-          ;;
-      esac
-    done <<< "$editor_config_rows"
-  fi
+  local enable_vscode enable_neovim
+  enable_vscode=$(config_json 'if .appearance.wallpaperTheming | has("enableVSCode") then .appearance.wallpaperTheming.enableVSCode else true end' true)
+  enable_neovim=$(config_bool '.appearance.wallpaperTheming.enableNeovim' false)
 
   if [[ "$enable_neovim" == 'true' ]] && [[ -d "$NEOVIM_CONFIG_DIR" || -x "$(command -v nvim 2>/dev/null)" ]]; then
     generate_neovim_spec "$colors_file"
@@ -138,31 +78,36 @@ apply_code_editors() {
   if [[ "$enable_vscode" == 'true' ]]; then
     local enabled_forks=()
     local disabled_forks=()
-    _check_vscode_fork() {
-      local config_key="$1" fork_key="$2" config_dir="$3"
-      if [[ "${vscode_editor_enabled[$config_key]:-true}" == 'true' ]] && [[ -d "$config_dir" ]]; then
-        enabled_forks+=("$fork_key")
-      elif [[ -d "$config_dir" ]]; then
-        disabled_forks+=("$fork_key")
-      fi
-    }
+    if [[ -f "$CONFIG_FILE" ]] && command -v jq >/dev/null 2>&1; then
+      local editors_config
+      editors_config=$(jq -r '.appearance.wallpaperTheming.vscodeEditors // {}' "$CONFIG_FILE" 2>/dev/null || echo '{}')
 
-    _check_vscode_fork code code "$HOME/.config/Code"
-    _check_vscode_fork codium codium "$HOME/.config/VSCodium"
-    _check_vscode_fork codeOss code-oss "$HOME/.config/Code - OSS"
-    _check_vscode_fork codeInsiders code-insiders "$HOME/.config/Code - Insiders"
-    _check_vscode_fork cursor cursor "$HOME/.config/Cursor"
-    _check_vscode_fork windsurf windsurf "$HOME/.config/Windsurf"
-    _check_vscode_fork windsurfNext windsurf-next "$HOME/.config/Windsurf - Next"
-    _check_vscode_fork qoder qoder "$HOME/.config/Qoder"
-    _check_vscode_fork antigravity antigravity "$HOME/.config/Antigravity"
-    _check_vscode_fork positron positron "$HOME/.config/Positron"
-    _check_vscode_fork voidEditor void "$HOME/.config/Void"
-    _check_vscode_fork melty melty "$HOME/.config/Melty"
-    _check_vscode_fork pearai pearai "$HOME/.config/PearAI"
-    _check_vscode_fork aide aide "$HOME/.config/Aide"
+      _check_vscode_fork() {
+        local jq_key="$1" fork_key="$2" config_dir="$3"
+        if [[ $(echo "$editors_config" | jq -r ".$jq_key // true") == 'true' ]] && [[ -d "$config_dir" ]]; then
+          enabled_forks+=("$fork_key")
+        elif [[ -d "$config_dir" ]]; then
+          disabled_forks+=("$fork_key")
+        fi
+      }
 
-    unset -f _check_vscode_fork
+      _check_vscode_fork code code "$HOME/.config/Code"
+      _check_vscode_fork codium codium "$HOME/.config/VSCodium"
+      _check_vscode_fork codeOss code-oss "$HOME/.config/Code - OSS"
+      _check_vscode_fork codeInsiders code-insiders "$HOME/.config/Code - Insiders"
+      _check_vscode_fork cursor cursor "$HOME/.config/Cursor"
+      _check_vscode_fork windsurf windsurf "$HOME/.config/Windsurf"
+      _check_vscode_fork windsurfNext windsurf-next "$HOME/.config/Windsurf - Next"
+      _check_vscode_fork qoder qoder "$HOME/.config/Qoder"
+      _check_vscode_fork antigravity antigravity "$HOME/.config/Antigravity"
+      _check_vscode_fork positron positron "$HOME/.config/Positron"
+      _check_vscode_fork voidEditor void "$HOME/.config/Void"
+      _check_vscode_fork melty melty "$HOME/.config/Melty"
+      _check_vscode_fork pearai pearai "$HOME/.config/PearAI"
+      _check_vscode_fork aide aide "$HOME/.config/Aide"
+
+      unset -f _check_vscode_fork
+    fi
 
     if [[ ${#enabled_forks[@]} -gt 0 ]]; then
       if ensure_vscode_themegen; then
@@ -198,6 +143,8 @@ apply_code_editors() {
   fi
 
   if command -v opencode &>/dev/null; then
+    local enable_opencode
+    enable_opencode=$(config_bool '.appearance.wallpaperTheming.enableOpenCode' false)
     if [[ "$enable_opencode" == 'true' ]]; then
       if ensure_opencode_themegen; then
         "$OPENCODE_THEMEGEN_BIN" "$SCSS_FILE" "$colors_file" "$TERMINAL_FILE" >> "$STATE_DIR/user/generated/code_editor_themes.log" 2>&1 || true

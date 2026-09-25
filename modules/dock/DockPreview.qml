@@ -174,13 +174,9 @@ PopupWindow {
                 ColorAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve }
             }
 
-            // PopupWindow stays resident between hovers; release the full
-            // content mask texture while the popup is not presented.
-            layer.enabled: root.visible
+            layer.enabled: true
             layer.smooth: true
-            // The popup mask is never scale-transformed; generating a mip chain
-            // for this transient FBO adds GPU work without improving sampling.
-            layer.mipmap: false
+            layer.mipmap: true
             layer.effect: OpacityMask {
                 maskSource: Rectangle {
                     width: contentItem.width
@@ -206,7 +202,6 @@ PopupWindow {
                     delegate: DockWindowPreview {
                         required property var modelData
                         toplevel: modelData?.toplevel ?? null
-                        presentationActive: root.visible
                         onWindowActivated: {
                             if (!(Config.options?.dock?.keepPreviewOnClick ?? false))
                                 root.close()

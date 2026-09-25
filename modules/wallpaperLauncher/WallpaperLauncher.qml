@@ -25,13 +25,10 @@ PanelWindow {
     exclusionMode: ExclusionMode.Ignore
     WlrLayershell.namespace: "quickshell:wallpaperLauncher"
     WlrLayershell.layer: WlrLayer.Overlay
-    readonly property bool acceptsInput: GlobalStates.wallpaperLauncherOpen
-    WlrLayershell.keyboardFocus: root.acceptsInput
+    WlrLayershell.keyboardFocus: GlobalStates.wallpaperLauncherOpen
         ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
     color: "transparent"
     anchors { top: true; right: true; bottom: true; left: true }
-
-    Item { id: emptyWallpaperLauncherInput; width: 0; height: 0 }
 
     Component.onCompleted: {
         if (GlobalStates.wallpaperLauncherOpen)
@@ -72,14 +69,9 @@ PanelWindow {
         function status(): string { return content.statusJson() }
     }
 
-    mask: Region {
-        item: root.acceptsInput ? launcherBackdrop : emptyWallpaperLauncherInput
-    }
-
     MouseArea {
-        id: launcherBackdrop
         anchors.fill: parent
-        enabled: root.acceptsInput
+        enabled: GlobalStates.wallpaperLauncherOpen
         onClicked: mouse => {
             const local = mapToItem(content, mouse.x, mouse.y)
             if (local.x < 0 || local.x > content.width
@@ -97,11 +89,11 @@ PanelWindow {
             horizontalCenter: parent.horizontalCenter
             bottom: parent.bottom
             bottomMargin: Math.max(Appearance.sizes.spacingLarge,
-                Appearance.sizes.surfaceGap * 2)
+                Appearance.sizes.hyprlandGapsOut * 2)
         }
         width: Math.min(implicitWidth,
             parent.width - Math.max(Appearance.sizes.spacingLarge * 2,
-                Appearance.sizes.surfaceGap * 4))
+                Appearance.sizes.hyprlandGapsOut * 4))
         height: implicitHeight
         transformOrigin: Item.Bottom
         scale: root.presented ? 1 : (root.closing ? 0.985 : 0.96)

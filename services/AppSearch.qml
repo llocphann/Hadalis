@@ -126,6 +126,9 @@ Singleton {
         // Quickshell (NoDisplay desktop entry, excluded from DesktopEntries.applications)
         "quickshell": "org.quickshell",
 
+        // YouTube Music (pear launcher)
+        "com.github.th_ch.youtube_music": "youtube-music",
+        "youtube-music": "youtube-music",
     })
     property var regexSubstitutions: [
         // Steam games

@@ -64,27 +64,8 @@ Singleton {
     function _probeTlpPd(): void {
         if (!tlpPdProbe.running) {
             root._tlpProbeDone = false
-            tlpPdProbe.probeStage = "active"
-            tlpPdProbe.command = ["/usr/bin/systemctl", "is-active", "--quiet", "tlp-pd.service"]
             tlpPdProbe.running = true
         }
-    }
-
-    function _finishTlpPdProbe(managed: bool): void {
-        tlpPdTimeout.stop()
-        root._tlpPdManaged = managed
-        root._tlpProbeDone = true
-
-        if (root._tlpPdManaged) {
-            root._pendingProfile = ""
-        } else if (root._initialized && root._pendingProfile.length > 0) {
-            const pending = root._pendingProfile
-            root._pendingProfile = ""
-            Config.setNestedValue("powerProfiles.preferredProfile", pending)
-        }
-
-        if (Config.ready)
-            Qt.callLater(() => root._applyPreferredProfile())
     }
 
     Connections {
@@ -105,8 +86,12 @@ Singleton {
         id: tlpPdProbe
         property bool timedOut: false
         property bool startObserved: false
-        property string probeStage: "active"
-        command: ["/usr/bin/systemctl", "is-active", "--quiet", "tlp-pd.service"]
+        command: [
+            "/usr/bin/sh",
+            "-c",
+            "/usr/bin/systemctl is-active --quiet tlp-pd.service || " +
+            "/usr/bin/systemctl is-enabled --quiet tlp-pd.service"
+        ]
 
         onRunningChanged: {
             if (tlpPdProbe.running) {
@@ -123,33 +108,31 @@ Singleton {
 
         onStarted: {
             tlpPdProbe.startObserved = true
-            if (tlpPdProbe.probeStage === "active") {
-                tlpPdProbe.timedOut = false
-                // Keep one deadline across both checks, matching the old shell OR.
-                tlpPdTimeout.restart()
-            }
+            tlpPdProbe.timedOut = false
+            tlpPdTimeout.restart()
         }
 
         onExited: (exitCode, exitStatus) => {
+            tlpPdTimeout.stop()
             if (tlpPdProbe.timedOut) {
-                tlpPdTimeout.stop()
                 root._tlpProbeDone = false
                 console.warn("[PowerProfilePersistence] Timed out probing tlp-pd ownership")
                 return
             }
 
-            if (tlpPdProbe.probeStage === "active" && exitCode !== 0) {
-                // Preserve "is-active || is-enabled" without an extra shell.
-                tlpPdProbe.probeStage = "enabled"
-                tlpPdProbe.command = ["/usr/bin/systemctl", "is-enabled", "--quiet", "tlp-pd.service"]
-                Qt.callLater(() => {
-                    if (!tlpPdProbe.running && !root._tlpProbeDone)
-                        tlpPdProbe.running = true
-                })
-                return
+            root._tlpPdManaged = exitCode === 0
+            root._tlpProbeDone = true
+
+            if (root._tlpPdManaged) {
+                root._pendingProfile = ""
+            } else if (root._initialized && root._pendingProfile.length > 0) {
+                const pending = root._pendingProfile
+                root._pendingProfile = ""
+                Config.setNestedValue("powerProfiles.preferredProfile", pending)
             }
 
-            root._finishTlpPdProbe(exitCode === 0)
+            if (Config.ready)
+                Qt.callLater(() => root._applyPreferredProfile())
         }
     }
 

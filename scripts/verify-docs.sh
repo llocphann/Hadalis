@@ -177,27 +177,26 @@ if [ -f "$router" ] && [ -f "$install_doc" ] \
   fi
 fi
 
-# 9. The v1 Equalizer implementation is maintainer-accepted. Keep README
-#    aligned with the current optional, consumer-driven backend boundary instead
-#    of resurrecting the retired Implemented/Stabilizing/Planned roadmap states.
+# 9. If the Phase 1 Equalizer service exists, README must distinguish the
+#    implemented backend contract from stabilization work and deferred UI scope.
+#    This prevents roadmap text from regressing to treating all Equalizer work as
+#    either fully shipped or entirely hypothetical.
 equalizer_service="services/deferred/EqualizerService.qml"
 readme="README.md"
-echo "[roadmap] Equalizer accepted-v1 status"
+echo "[roadmap] Equalizer implementation states"
 if [ -f "$equalizer_service" ] && [ -f "$readme" ]; then
   grep -Fq 'property bool enabled: false' "$equalizer_service" \
-    || note "EqualizerService no longer idles without an active consumer"
+    || note "EqualizerService no longer exposes the disabled-by-default Phase 1 contract"
   grep -Fq '## Equalizer implementation status' "$readme" \
     || note "README no longer has an Equalizer implementation-status section"
-  grep -Fq 'The v1.0 Media Popup equalizer work is complete and accepted.' "$readme" \
-    || note "README no longer records the maintainer-accepted v1 Equalizer state"
-  grep -Fq '`EqualizerService.qml` remains the single optional 10-band DSP backend/service contract' "$readme" \
-    || note "README no longer documents the single optional Equalizer backend/service boundary"
-  grep -Fq 'consumer-driven lifecycle' "$readme" \
-    || note "README no longer documents the Equalizer consumer-driven lifecycle"
-  grep -Fq 'degrade gracefully when optional dependencies are absent' "$readme" \
-    || note "README no longer documents fail-soft Equalizer capability handling"
-  grep -Fq 'post-v1.0/non-blocking' "$readme" \
-    || note "README no longer keeps future Equalizer presentation work outside v1 release blockers"
+  for state in Implemented Stabilizing Planned; do
+    grep -Fq "### $state" "$readme" \
+      || note "README Equalizer roadmap no longer distinguishes $state work"
+  done
+  grep -Fq '`EqualizerService.qml` provides the Phase 1 backend/service contract and is disabled by default.' "$readme" \
+    || note "README no longer identifies the implemented disabled-by-default Equalizer Phase 1 backend"
+  grep -Fq 'planned/deferred rather than current release prerequisites' "$readme" \
+    || note "README no longer keeps the future Equalizer presentation outside current release prerequisites"
 fi
 
 # 10. Release documentation must mirror release.sh when privileged helper

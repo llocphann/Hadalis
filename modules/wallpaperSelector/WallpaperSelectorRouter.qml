@@ -2,6 +2,7 @@ pragma ComponentBehavior: Bound
 
 import QtQuick
 import Quickshell
+import Quickshell.Hyprland
 import Quickshell.Io
 import qs
 import qs.modules.common
@@ -220,4 +221,12 @@ Scope {
         function close(): void { GlobalStates.coverflowSelectorOpen = false }
     }
 
+    Loader {
+        active: CompositorService.isHyprland
+        sourceComponent: Item {
+            GlobalShortcut { name: "wallpaperSelectorToggle"; description: "Toggle wallpaper selector"; onPressed: root.toggle() }
+            GlobalShortcut { name: "wallpaperSelectorRandom"; description: "Select random wallpaper in current folder"; onPressed: Wallpapers.randomFromCurrentFolder() }
+            GlobalShortcut { name: "coverflowSelectorToggle"; description: "Toggle coverflow wallpaper selector"; onPressed: root.toggleCoverflow() }
+        }
+    }
 }

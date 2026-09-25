@@ -4,7 +4,6 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import Quickshell
 import Quickshell.Io
-import Quickshell.Wayland
 import qs
 import qs.modules.common
 import qs.services
@@ -63,10 +62,9 @@ Singleton {
         const windows = NiriService.windows
         if (!Array.isArray(windows)) return false
         for (let i = 0; i < windows.length; i++) {
-            const window = windows[i]
-            if (!isWindowFullscreen(window)) continue
-            const ws = NiriService.workspaces?.[window.workspace_id]
-            if (isWindowPresentedOnActiveWorkspace(window, ws)) return true
+            if (!isWindowFullscreen(windows[i])) continue
+            const ws = NiriService.workspaces[windows[i].workspace_id]
+            if (ws?.is_active) return true
         }
         return false
     }
@@ -107,8 +105,8 @@ Singleton {
     readonly property bool suppressNotifications: Config.options?.gameMode?.suppressNotifications ?? true
     readonly property string _discoverOverlayServiceName: "discover-overlay.service"
 
-    // State file path. Directories owns XDG state-path creation during startup.
-    readonly property string _stateFile: Directories.stateUserPath + "/gamemode_active"
+    // State file path
+    readonly property string _stateFile: Quickshell.env("HOME") + "/.local/state/quickshell/user/gamemode_active"
 
     // IPC handler for external control
     IpcHandler {
@@ -154,84 +152,23 @@ Singleton {
         stateReader.reload()
     }
 
-    function _toplevelMatchScore(toplevel, window, outputName: string): int {
-        if (!toplevel || !window || toplevel.appId !== window.app_id)
-            return 0
-
-        const screens = toplevel.screens ?? []
-        if (outputName.length > 0 && screens.length > 0) {
-            let targetsOutput = false
-            for (let i = 0; i < screens.length; i++) {
-                if (String(screens[i]?.name ?? "") === outputName) {
-                    targetsOutput = true
-                    break
-                }
-            }
-            if (!targetsOutput)
-                return 0
-        }
-
-        if (window.title && toplevel.title) {
-            if (toplevel.title === window.title)
-                return 3
-            if (toplevel.title.includes(window.title)
-                    || window.title.includes(toplevel.title))
-                return 2
-        }
-        return 1
-    }
-
-    function _foreignToplevelForWindow(window, outputName: string) {
-        if (!window)
-            return null
-
-        // Focus switches within one Niri workspace are the failure-prone path.
-        // Prefer Quickshell's active foreign-toplevel handle for the focused
-        // Niri window, then fall back to a scored app/title/output match for
-        // visible windows on other outputs.
-        const active = ToplevelManager.activeToplevel
-        if ((window.is_focused ?? false)
-                && root._toplevelMatchScore(active, window, outputName) > 0)
-            return active
-
-        const toplevels = ToplevelManager.toplevels?.values ?? []
-        let best = null
-        let bestScore = 0
-        for (let i = 0; i < toplevels.length; i++) {
-            const score = root._toplevelMatchScore(toplevels[i], window, outputName)
-            if (score > bestScore) {
-                best = toplevels[i]
-                bestScore = score
-                if (score === 3)
-                    break
-            }
-        }
-        return best
-    }
-
-    // Niri IPC 26.04 does not expose an exact fullscreen state on Window.
-    // Geometry alone is insufficient: an ordinary maximized/one-column tile
-    // can also have tile_size == output size. Require the compositor's
-    // foreign-toplevel fullscreen state first, then use Niri tile geometry only
-    // to distinguish real fullscreen from windowed-fullscreen and to support
-    // fixed-size clients centered inside a fullscreen backdrop.
+    // Check if a window is fullscreen.
+    // Niri 25.11+ doesn't expose is_fullscreen on windows.
+    // We detect fullscreen by comparing window_size to the output's logical
+    // resolution (via workspace → output mapping). A small tolerance (2px)
+    // accounts for sub-pixel rounding differences.
     function isWindowFullscreen(window) {
         if (!window) return false
         if (!CompositorService.isNiri) return false
 
+        // If niri ever adds is_fullscreen back, prefer it
         if (window.is_fullscreen === true) return true
 
+        // Fallback: compare window size to output logical size
+        const winSize = window.layout?.window_size
+        if (!winSize || winSize.length < 2) return false
+
         const ws = NiriService.workspaces[window.workspace_id]
-        const outputName = String(ws?.output ?? "")
-        const toplevel = root._foreignToplevelForWindow(window, outputName)
-        if (toplevel?.fullscreen !== true)
-            return false
-
-        const tileSize = window.layout?.tile_size
-        const windowSize = window.layout?.window_size
-        const fullscreenSize = tileSize && tileSize.length >= 2 ? tileSize : windowSize
-        if (!fullscreenSize || fullscreenSize.length < 2) return false
-
         let output = ws ? NiriService.outputs[ws.output] : null
         // Niri can deliver WindowLayoutsChanged before the matching workspace
         // snapshot reaches the service. On a single-output session the target
@@ -243,24 +180,8 @@ Singleton {
         if (!output?.logical) return false
 
         const tolerance = 2
-        return Math.abs(fullscreenSize[0] - output.logical.width) <= tolerance
-            && Math.abs(fullscreenSize[1] - output.logical.height) <= tolerance
-    }
-
-    // Niri keeps fullscreen state/geometry on a window when focus moves away from it.
-    // An active workspace can therefore contain a fullscreen-sized background
-    // window that no longer covers the user-visible surface. Prefer the
-    // workspace's active_window_id so bars and GameMode follow what is actually
-    // presented; fall back to the global focus flag only until niri publishes
-    // WorkspaceActiveWindowChanged for that workspace.
-    function isWindowPresentedOnActiveWorkspace(window, workspace): bool {
-        if (!window || !workspace || !(workspace.is_active ?? false)) return false
-
-        const activeWindowId = workspace.active_window_id
-        if (activeWindowId !== undefined)
-            return activeWindowId !== null && window.id === activeWindowId
-
-        return window.is_focused === true
+        return Math.abs(winSize[0] - output.logical.width) <= tolerance
+            && Math.abs(winSize[1] - output.logical.height) <= tolerance
     }
     
     // True when a fullscreen window covers the given output (empty name = any
@@ -277,7 +198,7 @@ Singleton {
         for (let i = 0; i < windows.length; i++) {
             const w = windows[i]
             const ws = NiriService.workspaces?.[w.workspace_id]
-            if (!isWindowPresentedOnActiveWorkspace(w, ws)) continue
+            if (!(ws?.is_active ?? false)) continue
             if (outputName.length > 0 && ws.output !== outputName) continue
             if (isWindowFullscreen(w)) return true
         }
@@ -370,13 +291,10 @@ Singleton {
         id: saveProcess
         property bool rerunAfterExit: false
         command: [
-            "/bin/sh",
+            "/usr/bin/bash",
             "-c",
-            "mkdir -p -- \"$1\" && printf '%s\\n' \"$2\" > \"$3\"",
-            "_",
-            Directories.stateUserPath,
-            root._manualActive ? "1" : "0",
-            root._stateFile
+            "mkdir -p ~/.local/state/quickshell/user\n" +
+            "echo " + (root._manualActive ? "1" : "0") + " > " + root._stateFile
         ]
         onExited: {
             root._log("[GameMode] State saved:", root._manualActive)
@@ -402,12 +320,6 @@ Singleton {
             // the focused window going fullscreen without a focus change.
             root.checkFullscreen()
         }
-
-        function onWorkspacesChanged() {
-            // Workspace activation changes which fullscreen-sized window is
-            // actually presented even when its window geometry did not change.
-            root.checkFullscreen()
-        }
     }
 
     // Periodic check as fallback - uses config interval
@@ -426,8 +338,7 @@ Singleton {
     // Initial setup
     Component.onCompleted: {
         root._log("[GameMode] Service starting...")
-        // Directories prepares stateUserPath centrally before this Tier-3 service
-        // is instantiated; avoid a second detached mkdir on every shell start.
+        Quickshell.execDetached(["/usr/bin/mkdir", "-p", Quickshell.env("HOME") + "/.local/state/quickshell/user"])
         initTimer.restart()
     }
 

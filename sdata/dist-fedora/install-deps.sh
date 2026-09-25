@@ -40,6 +40,7 @@ if [[ -n "${ONLY_MISSING_DEPS:-}" ]]; then
     [git]="git"
     [python3]="python3"
     [wlsunset]="wlsunset"
+    [dunstify]="dunst"
     [fish]="fish"
     [magick]="ImageMagick"
     [swaylock]="swaylock"
@@ -183,6 +184,7 @@ FEDORA_CORE_PKGS=(
   wl-clipboard
   libnotify
   wlsunset
+  dunst
   gum
   cliphist
   
@@ -255,10 +257,15 @@ FEDORA_AUDIO_PKGS=(
   pipewire-pulseaudio
   pipewire-alsa
   wireplumber
+  playerctl
+  plasma-browser-integration
   libdbusmenu-gtk3
   pavucontrol
   cava
   easyeffects
+  mpv
+  yt-dlp
+  python3-ytmusicapi
   socat
 )
 
@@ -276,6 +283,7 @@ FEDORA_TOOLKIT_PKGS=(
   swaylock
   grim
   slurp
+  hyprpicker
   ImageMagick
   libqalculate
   blueman
@@ -291,7 +299,6 @@ FEDORA_TOOLKIT_PKGS=(
 FEDORA_SCREENCAPTURE_PKGS=(
   grim
   slurp
-  hyprpicker
   swappy
   wf-recorder
   ImageMagick

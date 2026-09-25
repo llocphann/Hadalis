@@ -58,7 +58,7 @@ body:
         ```
         inir version
         qs --version
-        niri msg version
+        niri msg version   # or: hyprctl version
         ```
         Also include your distribution and display scale when relevant.
       render: shell

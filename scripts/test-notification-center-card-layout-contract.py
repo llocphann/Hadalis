@@ -41,7 +41,7 @@ require(ITEM, "? Appearance.colors.colOnLayer3", "modern notification body contr
 
 # The large two-column action footer from the old sidebar should become compact
 # trailing actions in the standalone center.
-require(ITEM, "? (root.compactActions ? 28 : 34)", "compact action geometry missing")
+require(ITEM, "implicitWidth: root.modernLayout ? 34", "compact action geometry missing")
 require(ITEM, "visible: root.modernLayout", "modern action spacer/alignment missing")
 
 # Footer controls are icon-only. Their labels remain available to accessibility
@@ -50,7 +50,7 @@ require(ITEM, "visible: root.modernLayout", "modern action spacer/alignment miss
 for token in (
     "id: notificationModeButton",
     "id: clearAllButton",
-    "implicitWidth: root.popupPresentation ? 30 : 36",
+    "implicitWidth: 36",
     "StyledToolTip { text: notificationModeButton.buttonText }",
     "StyledToolTip { text: clearAllButton.buttonText }",
     "Appearance.colors.colOnPrimaryContainer",

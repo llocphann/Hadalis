@@ -109,7 +109,7 @@ for token in (
 
 require(
     dispatch,
-    'python_exec "$ROOT_DIR/scripts/runtime-diagnostics-sampler.py" "$@"',
+    'exec /usr/bin/env python3 "$ROOT_DIR/scripts/runtime-diagnostics-sampler.py" "$@"',
     "native selector must retain the reversible Python Diagnostics fallback",
 )
 
@@ -321,6 +321,7 @@ for page in (material_page, waffle_page):
         "?.readBytesPerSec)",
         "?.writeBytesPerSec)",
         "root.evidence?.discovery ?? null",
+        "Source boundaries are parser evidence, not proof that a component executed.",
     ):
         require(presentation, token,
                 "Diagnostics UI must render exact shell evidence: " + token)
@@ -350,15 +351,18 @@ for token in (
             "Shared btop Diagnostics presentation missing " + token)
 require(target_table, 'text: "Runtime targets"',
         "Shared dashboard must identify Workflow targets")
-for source, page in (("Material", material_page), ("Waffle", waffle_page)):
-    require(page, "function boundaryStatusLabel(): string",
-            source + " compact Diagnostics must retain source-boundary status")
-    require(page, 'Translation.tr("boundaries")',
-            source + " compact Diagnostics must label source-boundary status")
+require(material_page, 'Translation.tr("Matched source boundaries")',
+        "Material must explain source-boundary reconciliation")
 require(dashboard, "pid: root.shellEvidence?.pid",
-        "Shared Diagnostics dashboard must identify the sampled shell process")
-require(dashboard, 'Translation.tr("Kernel + lifecycle evidence")',
-        "Shared compact Diagnostics must preserve evidence provenance")
+        "Material Diagnostics must identify the sampled shell process")
+require(waffle_page, "Main shell PID",
+        "Waffle Diagnostics must identify the sampled shell process")
+for token in (
+    "Runtime boundaries",
+    "Canonical source matches",
+):
+    require(waffle_page, token,
+            "Waffle Diagnostics presentation missing " + token)
 
 for token in (
     'import "widgets"',

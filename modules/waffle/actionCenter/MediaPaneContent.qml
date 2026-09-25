@@ -17,12 +17,17 @@ Rectangle {
     color: Looks.colors.bgPanelBody
 
     readonly property var activePlayer: MprisController.activePlayer
-    readonly property string effectiveTitle: activePlayer?.trackTitle ?? ""
-    readonly property string effectiveArtist: activePlayer?.trackArtist ?? ""
-    readonly property real effectivePosition: activePlayer?.position ?? 0
-    readonly property real effectiveLength: (activePlayer?.lengthSupported ?? false) ? activePlayer.length : 0
-    readonly property bool effectiveCanSeek: (activePlayer?.canSeek ?? false)
-        && (activePlayer?.positionSupported ?? false)
+    readonly property string effectiveTitle: MprisController.isYtMusicActive ? YtMusic.currentTitle : (activePlayer?.trackTitle ?? "")
+    readonly property string effectiveArtist: MprisController.isYtMusicActive ? YtMusic.currentArtist : (activePlayer?.trackArtist ?? "")
+    readonly property real effectivePosition: MprisController.isYtMusicActive
+        ? YtMusic.currentPosition : (activePlayer?.position ?? 0)
+    readonly property real effectiveLength: MprisController.isYtMusicActive
+        ? YtMusic.currentDuration
+        : ((activePlayer?.lengthSupported ?? false) ? activePlayer.length : 0)
+    readonly property bool effectiveCanSeek: MprisController.isYtMusicActive
+        ? YtMusic.canSeek
+        : ((activePlayer?.canSeek ?? false)
+            && (activePlayer?.positionSupported ?? false))
     readonly property real effectiveVolume: MprisController.getVolume()
 
     function formatTime(seconds: real): string {
@@ -34,6 +39,7 @@ Rectangle {
 
     Timer {
         running: (root.QsWindow?.window?.visible ?? false)
+            && !MprisController.isYtMusicActive
             && (root.activePlayer?.isPlaying ?? false)
         interval: 1000
         repeat: true
@@ -219,7 +225,9 @@ Rectangle {
                         when: !seekSlider.pressed && !seekSlider._userInteracting
                     }
                     onMoved: {
-                        if (root.activePlayer && root.effectiveCanSeek)
+                        if (MprisController.isYtMusicActive && root.effectiveCanSeek)
+                            YtMusic.seek(value)
+                        else if (root.activePlayer && root.effectiveCanSeek)
                             root.activePlayer.position = value
                     }
                 }

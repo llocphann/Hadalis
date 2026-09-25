@@ -104,10 +104,6 @@ Item {
     }
 
     component Ring: Item {
-        id: ring
-        readonly property bool presentationActive:
-            GlobalStates.sidebarLeftOpen && ring.visible
-
         property string icon
         property string label
         property string tip
@@ -139,29 +135,16 @@ Item {
                 property real progressValue: value
                 property color progressColor: ringColor
 
-                function queuePaint(): void {
-                    if (ring.presentationActive && canvas.visible)
-                        canvas.requestPaint()
-                }
-
-                onProgressValueChanged: canvas.queuePaint()
-                onProgressColorChanged: canvas.queuePaint()
-                onVisibleChanged: canvas.queuePaint()
-
-                Connections {
-                    target: ring
-                    function onPresentationActiveChanged(): void {
-                        canvas.queuePaint()
-                    }
-                }
+                onProgressValueChanged: requestPaint()
+                onProgressColorChanged: requestPaint()
 
                 Behavior on progressValue {
-                    enabled: ring.presentationActive && Appearance.animationsEnabled
+                    enabled: Appearance.animationsEnabled
                     NumberAnimation { duration: Appearance.animation.elementMoveFast.duration }
                 }
 
                 Behavior on progressColor {
-                    enabled: ring.presentationActive && Appearance.animationsEnabled
+                    enabled: Appearance.animationsEnabled
                     ColorAnimation { duration: Appearance.animation.elementMoveFast.duration }
                 }
 

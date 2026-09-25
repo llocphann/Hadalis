@@ -85,8 +85,7 @@ Item {
     }
 
     function requestGraphPaint(): void {
-        if (root.active && analyzerCanvas.visible)
-            analyzerCanvas.requestPaint()
+        analyzerCanvas.requestPaint()
     }
 
     function triggerEqLightning(): void {
@@ -101,29 +100,29 @@ Item {
         eqLightningAnim.stop()
         root._editingBand = index
         root.eqLightningHighlight = 1.0
-        root.requestGraphPaint()
+        analyzerCanvas.requestPaint()
     }
 
     function previewBandLightning(index, gain): void {
         root.eqLightningHighlight = 1.0
-        root.requestGraphPaint()
+        analyzerCanvas.requestPaint()
     }
 
     function endBandLightning(index, gain): void {
         root._editingBand = -1
         root.triggerEqLightning()
-        root.requestGraphPaint()
+        analyzerCanvas.requestPaint()
     }
 
     function applyPreset(name): void {
         if (EqualizerService.applyDspPreset(name)) {
             root.triggerPresetSweep()
-            root.requestGraphPaint()
+            analyzerCanvas.requestPaint()
         }
     }
 
-    onEqLightningHighlightChanged: root.requestGraphPaint()
-    onEqPresetSweepProgressChanged: root.requestGraphPaint()
+    onEqLightningHighlightChanged: analyzerCanvas.requestPaint()
+    onEqPresetSweepProgressChanged: analyzerCanvas.requestPaint()
 
     SequentialAnimation {
         id: presetSweepAnim
@@ -172,20 +171,20 @@ Item {
     onActiveChanged: {
         root.syncRegistration()
         if (active)
-            root.requestGraphPaint()
+            analyzerCanvas.requestPaint()
     }
 
     Connections {
         target: EqualizerService
 
         function onDspBandsChanged(): void {
-            root.requestGraphPaint()
+            analyzerCanvas.requestPaint()
         }
     }
 
     Component.onCompleted: {
         root.syncRegistration()
-        root.requestGraphPaint()
+        analyzerCanvas.requestPaint()
     }
 
     Component.onDestruction: {
@@ -203,9 +202,17 @@ Item {
         sampleCount: 64
     }
 
-    // analyzerCanvas owns the single 33 ms presentation cadence below.
-    // Each frame samples the latest shared CAVA points and normalization ceiling,
-    // avoiding a second asynchronous paint scheduler from CavaProcess signals.
+    Connections {
+        target: eqCava
+
+        function onPointsChanged(): void {
+            analyzerCanvas.requestPaint()
+        }
+
+        function onNormalizationCeilingChanged(): void {
+            analyzerCanvas.requestPaint()
+        }
+    }
 
     ColumnLayout {
         anchors.fill: parent
@@ -299,7 +306,7 @@ Item {
                         interval: 33
                         running: root.active && analyzerCanvas.visible
                         repeat: true
-                        onTriggered: root.requestGraphPaint()
+                        onTriggered: analyzerCanvas.requestPaint()
                     }
 
                     onWidthChanged: requestPaint()
@@ -615,6 +622,7 @@ Item {
                                         if (!bandSlider.pressed)
                                             bandSlider.value =
                                                 bandDelegate.backendGain
+                                        analyzerCanvas.requestPaint()
                                     }
                                 }
 

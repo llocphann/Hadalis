@@ -127,24 +127,26 @@ Core audio stack and media dependencies declared by `sdata/dist-arch/inir-audio/
 | `pipewire-pulse` | PulseAudio compatibility |
 | `pipewire-alsa` | ALSA compatibility |
 | `wireplumber` | PipeWire session manager |
+| `playerctl` | Media-player control |
 | `libdbusmenu-gtk3` | Tray/menu integration |
 | `pavucontrol` | Advanced volume-control GUI |
 | `cava` | Audio visualizer |
+| `mpv` | Media playback backend |
+| `mpv-mpris` | MPRIS bridge for mpv |
 | `mpd` | Local Music library, saved-playlist and queue backend |
 | `mpd-mpris` | MPRIS bridge for MPD/rmpc/Hadalis Music sessions |
+| `yt-dlp` | YouTube extraction backend |
 
-External-player and Equalizer integrations are optional. The group advertises these through `optdepends`, so source installs do not force an unused media player or effects backend:
+Equalizer Phase 1 keeps its backend and control transport optional. The group advertises these through `optdepends`, so the source install remains usable without them:
 
 | Optional package | Purpose |
 |------------------|---------|
 | `easyeffects` | Optional audio-effects and Equalizer backend |
-| `mpv` | Optional external media player |
-| `mpv-mpris` | Optional MPRIS integration for mpv |
 | `socat` | Optional EasyEffects control transport for Equalizer |
 
-Missing these optional packages must not make shell startup fail. Media controls continue to discover any MPRIS-compatible player that is installed; Equalizer capability degrades to unavailable/error state when its optional backend is absent.
+Missing either optional package must not make Media playback or shell startup fail. Equalizer capability should degrade to unavailable/error state instead.
 
-`plasma-browser-integration` is an optional browser MPRIS compatibility/artwork bridge. Hadalis still consumes native browser MPRIS sessions without it, and keeps bridge-specific deduplication when it is installed.
+The installer separately ensures `plasma-browser-integration` is present for browser media sessions and artwork.
 
 Hadalis Music and MPD clients such as `rmpc` share one MPD session. The Arch audio bundle installs both `mpd` and `mpd-mpris`; LocalMusic uses MPD protocol only for library/database/queue operations that MPRIS does not expose, while normal transport stays on the MPRIS boundary. The default bridge service targets MPD at `localhost:6600`.
 
@@ -158,7 +160,6 @@ Screenshot, OCR, and recording dependencies declared by `sdata/dist-arch/inir-sc
 |---------|---------|
 | `grim` | Screenshots |
 | `slurp` | Region selection |
-| `hyprpicker` | Preferred Wayland color picker with magnifier; generic fallback remains available |
 | `swappy` | Screenshot annotation |
 | `tesseract` | OCR engine |
 | `tesseract-data-eng` | English OCR data |
@@ -179,6 +180,7 @@ Input simulation, hardware control, idle handling, screenshot helpers, and utili
 | `ydotool` | Virtual input |
 | `python-evdev` | Evdev bindings |
 | `python-pillow` | Python image processing |
+| `hyprpicker` | Color picker |
 | `translate-shell` | Translation CLI |
 | `fprintd` | Fingerprint authentication |
 | `brightnessctl` | Backlight control |
@@ -244,7 +246,7 @@ Always ensured from configured repositories include:
 - `niri`, `cliphist`, `gum`, `starship`, `eza`, `xwayland-satellite`
 - `noto-fonts-emoji`, `nautilus`, `polkit-gnome`
 - `hicolor-icon-theme`, `adwaita-icon-theme`, `papirus-icon-theme`, `breeze-icons`
-- `qt6ct`, `kvantum`, `plasma-integration`
+- `qt6ct`, `kvantum`, `plasma-integration`, `plasma-browser-integration`
 - `frameworkintegration`, `kdecoration`
 - `sddm`, `qt6-svg`, `qt6-virtualkeyboard`, `qt6-multimedia-ffmpeg`
 - `ffmpeg`
@@ -266,8 +268,9 @@ These integrations are useful when their corresponding feature is desired, but t
 | `warp-cli` | Cloudflare WARP VPN toggle | Quick toggles |
 | `ollama` | Local LLM backend | AI integrations |
 | `whisper-cpp` | Local speech-to-text | Voice input/search |
+| `deno` / `node` / `bun` | JavaScript runtime for yt-dlp | YouTube media extraction when a JS runtime is required |
 
-`cava` remains a required member of the `inir-audio` dependency group because Hadalis owns the visualizer process. `mpv` and `mpv-mpris` are optional external-player integrations; Hadalis does not launch mpv for its own media path. `easyeffects` and `socat` remain optional Equalizer feature dependencies.
+`cava`, `yt-dlp`, and `mpv` remain required members of the `inir-audio` dependency group. `easyeffects` and `socat` are advertised by the audio group and dependency tracker as optional feature dependencies; their absence should leave Equalizer unavailable/degraded without breaking Media playback.
 
 ---
 

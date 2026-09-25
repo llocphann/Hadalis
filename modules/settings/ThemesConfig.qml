@@ -39,7 +39,7 @@ ContentPage {
 
     Process {
         id: savedThemesProcess
-        command: ["/usr/bin/bash", "-lc", `shopt -s nullglob; files=("${root.savedThemesDir}"/*.json); ((\${#files[@]})) || exit 0; /usr/bin/jq -c '{name:(input_filename | split("/")[-1] | rtrimstr(".json"))} as $meta | {id:("saved:" + $meta.name),name:$meta.name,description:"Saved custom theme",tags:["saved"],saved:true,colors:.}' "\${files[@]}"`]
+        command: ["/usr/bin/bash", "-lc", `for f in "${root.savedThemesDir}"/*.json; do [ -f "$f" ] || continue; /usr/bin/jq -c --arg name "$(/usr/bin/basename "$f" .json)" '{id:("saved:" + $name),name:$name,description:"Saved custom theme",tags:["saved"],saved:true,colors:.}' "$f"; done`]
         stdout: SplitParser {
             onRead: data => {
                 try {

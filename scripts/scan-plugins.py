@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
 """Scan plugin directory for valid manifest.json files and output JSON array.
 
-On first run (empty plugins dir), copies supported built-in plugins from
-defaults/plugins/. Retired plugins are removed by migrations instead of being
-silently re-seeded.
+On first run (empty plugins dir), copies built-in plugins from defaults/plugins/
+so existing users get Discord + YouTube Music out of the box after updating.
 """
 
 import json

@@ -43,7 +43,7 @@ iNiR c'est tout ton bureau. La barre en haut, le dock, les notifications, les pa
 
 ### Qu'est-ce qu'il faut ?
 
-Un compositeur. C'est ce qui gère tes fenêtres et met les pixels à l'écran. iNiR est fait pour [Niri](https://github.com/YaLTeR/niri) (un compositeur Wayland en tiling). C'est maintenant Niri-only ; Hyprland n'est mentionné ici que pour l'historique du projet et l'origine du fork.
+Un compositeur. C'est ce qui gère tes fenêtres et met les pixels à l'écran. iNiR est fait pour [Niri](https://github.com/YaLTeR/niri) (un compositeur Wayland en tiling). Y'a du vieux code Hyprland de quand c'était un fork des dots de end-4, mais c'est Niri que je teste et utilise vraiment.
 
 Le shell tourne sur [Quickshell](https://quickshell.outfoxxed.me/), un framework pour créer des shells en QML (le langage UI de Qt). T'as pas besoin de connaître ça pour l'utiliser, tout se configure via la GUI ou un fichier JSON.
 

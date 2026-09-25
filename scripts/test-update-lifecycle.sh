@@ -27,7 +27,6 @@ arch_meta_package="$repo_root/distro/arch/inir-meta/PKGBUILD"
 arch_meta_srcinfo="$repo_root/distro/arch/inir-meta/.SRCINFO"
 arch_dependency_installer="$repo_root/sdata/dist-arch/install-deps.sh"
 arch_dependency_meta="$repo_root/sdata/dist-arch/inir-deps/PKGBUILD"
-keyboard_indicator_test="$repo_root/scripts/test-keyboard-indicator-lifecycle.sh"
 
 for required in \
     "$setup_file" "$robust" "$snapshots" "$payload_tool" "$updates_service" "$release_script" \
@@ -38,12 +37,6 @@ for required in \
     "$arch_dependency_installer" "$arch_dependency_meta"; do
     [[ -f "$required" ]] || fail "missing lifecycle file: ${required#$repo_root/}"
 done
-
-# Critical command entrypoints must stay executable in the committed payload.
-# Losing this bit makes `inir update` unable to hand control to the freshly
-# pulled repository before it can repair itself.
-[[ -x "$setup_file" ]] || fail 'setup lost its executable bit'
-[[ -x "$keyboard_indicator_test" ]]     || fail 'keyboard indicator lifecycle test lost its executable bit'
 
 # The generic Wayland variable must never be used as the update/rollback
 # compositor gate; KDE and GNOME export it too.
@@ -236,18 +229,12 @@ if restart < 0 or version < restart or success < version:
 PY
 
 # Arch's checkupdates uses exit 2 for the normal "nothing to update" state.
-# Resolve availability through Qt's PATH-aware StandardPaths API so the shell
-# does not spawn a helper process just to perform command lookup.
-grep -Fq 'StandardPaths.findExecutable("checkupdates", [])' "$updates_service" \
-    || fail 'updates availability lookup must stay in-process and PATH-aware'
-if grep -Fq 'id: checkAvailabilityProc' "$updates_service"; then
-    fail 'updates availability lookup regressed to a helper process'
-fi
-if grep -Fq 'command -v checkupdates' "$updates_service"; then
-    fail 'updates availability lookup regressed to a shell command-v probe'
-fi
+# Keep the availability probe self-contained in the declared shell dependency
+# instead of requiring the separate `which` package.
+grep -Fq 'command: ["/usr/bin/sh", "-c", "command -v checkupdates >/dev/null 2>&1"]' "$updates_service" \
+    || fail 'updates availability probe still depends on an external which executable'
 if grep -Fq 'command: ["which", "checkupdates"]' "$updates_service"; then
-    fail 'updates availability lookup regressed to the undeclared which dependency'
+    fail 'updates availability probe regressed to the undeclared which dependency'
 fi
 python3 - "$updates_service" <<'PY'
 from pathlib import Path

@@ -754,6 +754,14 @@ WSettingsPage {
         }
 
         WSettingsSwitch {
+            label: Translation.tr("Pear Desktop (YouTube Music)")
+            icon: "music-note-2"
+            description: Translation.tr("Apply Material You colors to YouTube Music Desktop App")
+            checked: Config.options?.appearance?.wallpaperTheming?.enablePearDesktop ?? true
+            onCheckedChanged: Config.setNestedValue("appearance.wallpaperTheming.enablePearDesktop", checked)
+        }
+
+        WSettingsSwitch {
             label: Translation.tr("Zed editor")
             icon: "terminal"
             description: Translation.tr("Generate Zed editor theme from wallpaper colors")

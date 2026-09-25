@@ -5,16 +5,10 @@ on:
     paths:
       - 'native/**'
       - 'scripts/native-dispatch'
-      - 'scripts/daemon/inir_super_overview_launcher.sh'
-      - 'scripts/systemd/inir-super-overview.service'
-      - 'sdata/subcmd-install/2.setups.sh'
-      - 'sdata/subcmd-install/3.files.sh'
-      - 'sdata/migrations/056-super-tap-native-selector.sh'
       - 'scripts/native-cutover-benchmark.sh'
       - 'scripts/test-native-selector-contract.sh'
       - 'scripts/test-native-selector-behavior.sh'
       - 'scripts/test-native-production-contract.sh'
-      - 'scripts/test-native-super-daemon-contract.py'
       - 'scripts/native-backend'
       - 'sdata/migrations/050-rust-native-default.sh'
       - 'scripts/benchmark-python-vs-rust.sh'
@@ -42,14 +36,8 @@ on:
     paths:
       - 'native/**'
       - 'scripts/native-dispatch'
-      - 'scripts/daemon/inir_super_overview_launcher.sh'
-      - 'scripts/systemd/inir-super-overview.service'
-      - 'sdata/subcmd-install/2.setups.sh'
-      - 'sdata/subcmd-install/3.files.sh'
-      - 'sdata/migrations/056-super-tap-native-selector.sh'
       - 'scripts/test-native-selector-behavior.sh'
       - 'scripts/test-native-production-contract.sh'
-      - 'scripts/test-native-super-daemon-contract.py'
       - 'scripts/native-backend'
       - 'sdata/migrations/050-rust-native-default.sh'
       - 'native/scripts/check-niri-customizations.py'
@@ -90,11 +78,6 @@ jobs:
           bash scripts/test-native-selector-contract.sh
           bash scripts/test-native-selector-behavior.sh
           bash scripts/test-native-production-contract.sh
-          python3 scripts/test-native-super-daemon-contract.py
-          bash -n scripts/daemon/inir_super_overview_launcher.sh
-          bash -n sdata/subcmd-install/2.setups.sh
-          bash -n sdata/subcmd-install/3.files.sh
-          bash -n sdata/migrations/056-super-tap-native-selector.sh
           bash -n scripts/native-backend
           bash -n native/scripts/install-runtime.sh
           bash -n sdata/migrations/050-rust-native-default.sh

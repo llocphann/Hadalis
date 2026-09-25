@@ -9,6 +9,7 @@ overlay_resources="$repo_root/modules/ii/overlay/resources/Resources.qml"
 sysmon_widget="$repo_root/modules/sidebarRight/sysmon/SysMonWidget.qml"
 waffle_widgets="$repo_root/modules/waffle/widgets/WidgetsContent.qml"
 dash_system="$repo_root/modules/dashboard/DashSystem.qml"
+inner_tube_thumbnail="$repo_root/modules/sidebarLeft/innertune/ITThumbnail.qml"
 bar_resources="$repo_root/modules/bar/Resources.qml"
 vertical_bar_resources="$repo_root/modules/verticalBar/Resources.qml"
 
@@ -66,22 +67,6 @@ assert_contains 'readonly property int _expensiveGpuUpdateIntervalMs:' "$(cat "$
 assert_contains '? Math.max(15000, root._effectiveUpdateIntervalMs)' "$(cat "$service")" 'Low Power process-backed GPU sampling must slow to at least 15 seconds'
 assert_contains 'function _expensiveGpuPollDue(nowMs: real): bool {' "$(cat "$service")" 'expensive GPU polling must be cadence-gated'
 assert_contains 'root._lastExpensiveGpuPollMs = nowMs' "$poll_block" 'process-backed GPU polling must record its last launch time'
-assert_contains 'if (memTotalMatch && memAvailableMatch)' "$poll_block" 'transient meminfo reads must preserve the last good RAM sample'
-assert_contains 'if (totalDiff > 0)' "$poll_block" 'duplicate/stale proc stat reads must preserve the last good CPU sample'
-assert_not_contains 'cpuUsage = totalDiff > 0 ?' "$poll_block" 'stale CPU samples must not collapse usage to zero'
-assert_contains 'if (!isNaN(cpuTempRaw))' "$poll_block" 'transient CPU hwmon reads must preserve the last good temperature'
-assert_contains 'if (!isNaN(gpuTempRaw))' "$poll_block" 'transient GPU hwmon reads must preserve the last good temperature'
-assert_not_contains 'if (isNaN(gpuBusyPercent)) {' "$poll_block" 'transient GPU sysfs reads must not collapse usage to zero'
-assert_contains 'if (!isNaN(rawUsage))' "$(cat "$service")" 'transient nvidia-smi reads must preserve the last good GPU usage sample'
-assert_not_contains 'root.gpuUsage = !isNaN(rawUsage) ?' "$(cat "$service")" 'invalid nvidia-smi output must not collapse GPU usage to zero'
-assert_contains 'if (maxBusy >= 0)' "$(cat "$service")" 'transient intel_gpu_top reads must preserve the last good GPU usage sample'
-assert_not_contains 'root.gpuUsage = maxBusy < 0 ? 0' "$(cat "$service")" 'invalid intel_gpu_top output must not collapse GPU usage to zero'
-assert_contains 'function _appendHistorySnapshot(history, value): var {' "$(cat "$service")" 'Resource history updates must build bounded snapshots off-property'
-assert_contains 'const next = [...history, value]' "$(cat "$service")" 'Resource history snapshots must preserve append order'
-history_property_shifts="$(grep -Ec '(cpuUsageHistory|gpuUsageHistory|gpuTempHistory|memoryUsageHistory|swapUsageHistory)\.shift\(' "$service" || true)"
-if (( history_property_shifts != 0 )); then
-    fail "Resource history properties must not be mutated twice per poll; found $history_property_shifts direct shift calls"
-fi
 
 assert_contains 'root._gpuUsageSource = "none"' "$gpu_block" 'GPU startup failure must fail closed to no usage source'
 assert_contains 'root._gpuUsagePath = ""' "$gpu_block" 'GPU startup failure must clear stale sysfs path'
@@ -98,13 +83,11 @@ for lifecycle_file in "$resources_popup" "$status_rings" "$overlay_resources" "$
     assert_contains 'ResourceUsage.releaseKeepAlive()' "$lifecycle_text" "$lifecycle_file must release resource polling when hidden or destroyed"
 done
 
+assert_contains 'running: root.isActive && root.isPlaying && root.visible && GlobalStates.sidebarLeftOpen' "$(cat "$inner_tube_thumbnail")" \
+    'hidden InnerTune thumbnail must stop its decorative equalizer timer'
 assert_contains 'root.visible && !GameMode.active' "$(cat "$bar_resources")" \
     'horizontal Bar resource polling must pause during GameMode'
 assert_contains 'root.visible && !GameMode.active' "$(cat "$vertical_bar_resources")" \
     'vertical Bar resource polling must pause during GameMode'
-assert_not_contains 'root.visible && root.presentationActive' "$(cat "$bar_resources")" \
-    'horizontal Bar telemetry must not become hover/presentation gated'
-assert_not_contains 'root.visible && root.presentationActive' "$(cat "$vertical_bar_resources")" \
-    'vertical Bar telemetry must not become hover/presentation gated'
 
 printf 'resource usage and visual idle lifecycle guards: ok\n'

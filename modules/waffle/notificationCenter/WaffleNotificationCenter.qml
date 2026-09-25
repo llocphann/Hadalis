@@ -16,7 +16,6 @@ Scope {
         if (!root.allowMultiplePanels && GlobalStates.waffleNotificationCenterOpen) {
             GlobalStates.searchOpen = false
             GlobalStates.waffleActionCenterOpen = false
-            GlobalStates.waffleWidgetsOpen = false
         }
     }
 
@@ -36,23 +35,14 @@ Scope {
     }
 
     PanelWindow {
-        id: notificationCenterBackdropWindow
         visible: root.panelMapped
         anchors { top: true; bottom: true; left: true; right: true }
         WlrLayershell.namespace: "quickshell:wNotificationCenterBg"
         WlrLayershell.layer: WlrLayer.Top
         color: "transparent"
 
-        Item { id: emptyNotificationCenterBackdropInput; width: 0; height: 0 }
-        mask: Region {
-            item: GlobalStates.waffleNotificationCenterOpen
-                ? notificationCenterBackdropMouse : emptyNotificationCenterBackdropInput
-        }
-
         MouseArea {
-            id: notificationCenterBackdropMouse
             anchors.fill: parent
-            enabled: GlobalStates.waffleNotificationCenterOpen
             onClicked: GlobalStates.waffleNotificationCenterOpen = false
         }
     }
@@ -63,15 +53,9 @@ Scope {
         exclusiveZone: 0
         WlrLayershell.namespace: "quickshell:wNotificationCenter"
         WlrLayershell.layer: WlrLayer.Overlay
-        readonly property bool acceptsInput: GlobalStates.waffleNotificationCenterOpen
-        WlrLayershell.keyboardFocus: panelWindow.acceptsInput
+        WlrLayershell.keyboardFocus: visible
             ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
         color: "transparent"
-
-        Item { id: emptyNotificationCenterPanelInput; width: 0; height: 0 }
-        mask: Region {
-            item: panelWindow.acceptsInput ? content : emptyNotificationCenterPanelInput
-        }
 
         anchors {
             bottom: Config.options?.waffles?.bar?.bottom ?? false

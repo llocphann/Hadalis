@@ -152,25 +152,19 @@ function setup_super_daemon(){
   tui_info "Setting up Super-tap daemon..."
   
   local daemon_src="${REPO_ROOT}/scripts/daemon/inir_super_overview_daemon.py"
-  local launcher_src="${REPO_ROOT}/scripts/daemon/inir_super_overview_launcher.sh"
   local service_src="${REPO_ROOT}/scripts/systemd/inir-super-overview.service"
   local daemon_dst="${HOME}/.local/bin/inir_super_overview_daemon.py"
-  local launcher_dst="${HOME}/.local/bin/inir_super_overview_launcher.sh"
   local service_dst="${XDG_CONFIG_HOME}/systemd/user/inir-super-overview.service"
   
-  if [[ ! -f "$daemon_src" || ! -f "$launcher_src" || ! -f "$service_src" ]]; then
-    log_warning "Super-tap runtime files not found in repo, skipping"
+  if [[ ! -f "$daemon_src" ]]; then
+    log_warning "Super-tap daemon not found in repo, skipping"
     return 0
   fi
   
-  # Install the Python fallback and stable selector launcher. During a fresh
-  # install the launcher can use Python until the Rust runtime is built in the
-  # files stage, then the service is restarted onto native-dispatch.
+  # Install daemon script
   x mkdir -p "$(dirname "$daemon_dst")"
   x cp "$daemon_src" "$daemon_dst"
   x chmod +x "$daemon_dst"
-  x cp "$launcher_src" "$launcher_dst"
-  x chmod +x "$launcher_dst"
   
   # Install systemd service
   x mkdir -p "$(dirname "$service_dst")"

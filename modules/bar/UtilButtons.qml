@@ -15,10 +15,6 @@ Item {
     property bool borderless: Config.options?.bar?.borderless ?? false
     property bool vertical: false
     property bool compactRequested: false
-    // Natural-size probes instantiate this component while hidden. Keep the
-    // default active for real callers, but let non-presented instances stop
-    // their recording/mic/cast pulse loops.
-    property bool presentationActive: true
     property bool pinnedExpanded: false
     readonly property color neutralIconColor: Appearance.colors.colOnLayer2
     readonly property color dangerIconColor: Appearance.colors.colError
@@ -185,7 +181,7 @@ Item {
                             }
 
                             SequentialAnimation on opacity {
-                                running: root.presentationActive && recordButtonWrapper.isRecording
+                                running: recordButtonWrapper.isRecording
                                 loops: Animation.Infinite
                                 NumberAnimation { to: 0.4; duration: Appearance.animation.elementMove.duration * 2 }
                                 NumberAnimation { to: 1.0; duration: Appearance.animation.elementMove.duration * 2 }
@@ -202,7 +198,7 @@ Item {
             sourceComponent: CircleUtilButton {
                 Layout.alignment: Qt.AlignVCenter
                 Accessible.name: Translation.tr("Pick color")
-                onClicked: Quickshell.execDetached([Quickshell.shellPath("scripts/inir"), "colorpicker"])
+                onClicked: ShellExec.execDetachedArgs(["/usr/bin/hyprpicker", "-a"], "Pick color")
                 MaterialSymbol {
                     horizontalAlignment: Qt.AlignHCenter
                     fill: 1
@@ -324,7 +320,7 @@ Item {
                         }
 
                         SequentialAnimation on opacity {
-                            running: root.presentationActive && micButton.isInUse && !micButton.isMuted
+                            running: micButton.isInUse && !micButton.isMuted
                             loops: Animation.Infinite
                             NumberAnimation { to: 0.4; duration: Appearance.animation.elementMove.duration * 2 }
                             NumberAnimation { to: 1.0; duration: Appearance.animation.elementMove.duration * 2 }
@@ -398,7 +394,7 @@ Item {
                         }
 
                         SequentialAnimation on opacity {
-                            running: root.presentationActive && screenCastButton.isCasting
+                            running: screenCastButton.isCasting
                             loops: Animation.Infinite
                             NumberAnimation { to: 0.4; duration: Appearance.animation.elementMove.duration * 2 }
                             NumberAnimation { to: 1.0; duration: Appearance.animation.elementMove.duration * 2 }

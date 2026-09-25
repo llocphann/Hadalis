@@ -41,59 +41,6 @@ for command, _friendly in re.findall(r'^\s*"([^":]+):([^"\n]+)"\s*$', cmd_block.
 if not doctor_cmds:
     raise SystemExit("FAIL: doctor dependency command list is empty")
 
-# Package-managed installs may omit feature optdepends without making doctor fail.
-for command in (
-    "awww",
-    "awww-daemon",
-    "fuzzel",
-    "git",
-    "uv",
-    "cava",
-    "qalc",
-    "wf-recorder",
-    "ffmpeg",
-    "swappy",
-    "tesseract",
-    "blueman-manager",
-    "gowall",
-    "kwriteconfig6",
-    "checkupdates",
-    "ddcutil",
-    "missioncenter",
-    "nm-connection-editor",
-    "songrec",
-    "trans",
-):
-    token = '        "' + command + '"'
-    if token not in doctor:
-        raise SystemExit(f"FAIL: package-managed optional command is missing from doctor routing: {command}")
-for token in (
-    'installed_strategy="$(get_installed_update_strategy)"',
-    'if [[ "$installed_strategy" == "package-manager" ]]; then',
-    'package_optional["$optional_cmd"]=1',
-    'if [[ -n "${package_optional[$cmd]:-}" ]]; then',
-    'optional_missing+=("$name")',
-    'tui_warn "Optional integrations unavailable: ${optional_missing[*]}"',
-):
-    if token not in doctor:
-        raise SystemExit("FAIL: package-managed doctor optional routing is incomplete: " + token)
-
-if '"go:go"' in doctor:
-    raise SystemExit("FAIL: doctor hard-requires Go even though editor theming has Python fallbacks")
-if '[go]="go"' in installer:
-    raise SystemExit("FAIL: Arch missing-dependency repair retains stale Go doctor routing")
-
-for source, package_path in (
-    ("inir-shell", Path("distro/arch/inir-shell/PKGBUILD")),
-    ("inir-shell-git", Path("distro/arch/inir-shell-git/PKGBUILD")),
-):
-    package_text = package_path.read_text(encoding="utf-8")
-    if not re.search(r"^\s+util-linux\s*$", package_text, re.M):
-        raise SystemExit(f"FAIL: {source} is missing util-linux for core flock usage")
-    if "'fuzzel: optional emoji picker and external dmenu launcher integration'" not in package_text:
-        raise SystemExit(f"FAIL: {source} does not advertise optional fuzzel integration")
-    if "'git: optional repo/developer update and status tooling'" not in package_text:
-        raise SystemExit(f"FAIL: {source} does not advertise optional Git repo tooling")
 optional_equalizer_cmds = {"easyeffects", "socat"}
 leaked_optional = sorted(optional_equalizer_cmds & set(doctor_cmds))
 if leaked_optional:
@@ -102,9 +49,6 @@ if leaked_optional:
         + ", ".join(leaked_optional)
     )
 
-if "mpv" in doctor_cmds:
-    raise SystemExit("FAIL: doctor hard-requires optional external mpv player")
-
 # CAVA is the live Media visualizer process. Generic/manual source-install
 # guidance must expose the same required capability as doctor and the distro
 # installers, without making the entire shell pre-flight fail when omitted.
@@ -112,7 +56,7 @@ if "cava" not in doctor_cmds:
     raise SystemExit("FAIL: doctor no longer checks the CAVA runtime")
 for token in (
     'check_cmd "cava" "CAVA audio visualizer"',
-    'pipewire, pipewire-pulse, wireplumber, pavucontrol, cava',
+    'pipewire, pipewire-pulse, wireplumber, playerctl, pavucontrol, cava',
 ):
     if token not in generic_installer:
         raise SystemExit(

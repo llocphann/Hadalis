@@ -87,8 +87,8 @@ Item {
             description: Translation.tr("More comfortable viewing at night")
             iconName: WIcons.nightLightIcon
             autoToggle: false
-            checked: NightLight.active
-            onToggledByUser: checked => NightLight.toggle(checked)
+            checked: Hyprsunset.active
+            onToggledByUser: checked => Hyprsunset.toggle(checked)
         }
 
         IntensityEntry {

@@ -12,6 +12,13 @@ Singleton {
     property string filePath: Directories.persistentStatesPath
 
     property bool ready: false
+    property string previousHyprlandInstanceSignature: ""
+    property bool isNewHyprlandInstance: previousHyprlandInstanceSignature !== states.hyprlandInstanceSignature
+
+    onReadyChanged: {
+        root.previousHyprlandInstanceSignature = root.states.hyprlandInstanceSignature
+        root.states.hyprlandInstanceSignature = Quickshell.env("HYPRLAND_INSTANCE_SIGNATURE") || ""
+    }
 
     // writeAdapter() is async; suppress reloads triggered by our own write
     // so reload() doesn't drop the in-flight write operation.
@@ -57,13 +64,7 @@ Singleton {
         watchChanges: true
         onFileChanged: fileReloadTimer.restart()
         onAdapterUpdated: fileWriteTimer.restart()
-        onSaved: {
-            // A missing first-run file is initialized from the adapter defaults.
-            // Saving that adapter is already a valid initialized state even when
-            // no FileView reload/fileChanged signal follows creation.
-            root.ready = true
-            root._completeWrite()
-        }
+        onSaved: root._completeWrite()
         onSaveFailed: error => {
             console.warn("[Persistent] Save failed:", error);
             root._completeWrite();
@@ -82,6 +83,8 @@ Singleton {
 
         adapter: JsonAdapter {
             id: persistentStatesJsonAdapter
+
+            property string hyprlandInstanceSignature: ""
 
             property JsonObject ai: JsonObject {
                 property string model: "gemini-2.5-flash"

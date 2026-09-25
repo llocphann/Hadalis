@@ -205,17 +205,6 @@ ContentPage {
                 }
             }
 
-            ConfigSpinBox {
-                icon: "rounded_corner"
-                text: Translation.tr("Popup connection radius (px)")
-                value: Config.options?.appearance?.screenEdge?.popupConnectionRadius ?? 30
-                from: 0
-                to: 64
-                stepSize: 1
-                onValueChanged: Config.setNestedValue(
-                    "appearance.screenEdge.popupConnectionRadius", value)
-            }
-
             SettingsSwitch {
                 buttonIcon: "shadow"
                 text: Translation.tr("Screen edge shadow")

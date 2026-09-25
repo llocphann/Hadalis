@@ -42,9 +42,7 @@ for token in (
     'root.nativeDispatchPath, "mpd", "snapshot",',
     'root.nativeDispatchPath, "mpd", "status",',
     'root.nativeDispatchPath, "mpd-daemon",',
-    'root.nativeDispatchPath, "mpd-subscribe",',
-    'property bool _mpdSubscriptionEligible: false',
-    'pythonReady && !(mode === "rust" && strict === "1")',
+    'command: [root.nativeDispatchPath, "mpd-subscribe"]',
     'if (event.payload && typeof event.payload === "object")',
     'function _scheduleStatusFallback(): void',
     '_lyricsProc.command = [root.nativeDispatchPath, "lyrics", path]',
@@ -60,22 +58,11 @@ for token in (
 for forbidden in ("yt-dlp", "youtube.com", "InnerTube", "YtMusic", "--input-ipc-server"):
     forbid(service, forbidden, f"LocalMusic backend must remain MPD/local-only: {forbidden}")
 
-require(dispatch, "printf 'strict=%s\\n' \"$STRICT\"", "native selector must expose strict fallback policy")
-
 for token in (
-    'python_exec "$ROOT_DIR/scripts/local_music_mpd.py" "$@"',
-    'python_exec "$ROOT_DIR/scripts/local_music_mpd.py" subscribe "$@"',
-    'python_exec "$ROOT_DIR/scripts/local_music_lyrics.py" "$track"',
+    'exec /usr/bin/python3 "$ROOT_DIR/scripts/local_music_mpd.py" "$@"',
+    'exec /usr/bin/python3 "$ROOT_DIR/scripts/local_music_lyrics.py" "$track"',
 ):
     require(dispatch, token, f"native selector must retain reversible Python fallback: {token}")
-
-for token in (
-    'def subscribe(host: str, port: int, override_root: str) -> int:',
-    'client.command("idle", *IDLE_SUBSYSTEMS)',
-    '"type": "subscribed"',
-    '"type": "changed"',
-):
-    require(mpd, token, f"Python MPD event fallback contract missing: {token}")
 
 for token in (
     'Translation.tr("Songs")',
@@ -113,12 +100,6 @@ for token in (
     require(view, token, f"Local Music frontend contract missing: {token}")
 for forbidden in ("YtMusic", "InnerTune", "yt-dlp", "youtube"):
     forbid(view, forbidden, f"Local Music frontend must stay local-only: {forbidden}")
-forbid(view, 'tip: Translation.tr("Update")',
-       "Left Sidebar Music must keep MPD database maintenance out of the playback toolbar.")
-forbid(view, 'LocalMusic.updateDatabase()',
-       "Left Sidebar Music must not duplicate the Settings-only MPD database update action.")
-require(settings, 'onClicked: LocalMusic.updateDatabase()',
-        "Music Settings must retain the MPD database update action.")
 
 if "model: LocalMusic.collections" in view:
     raise SystemExit("Playlists must contain only saved MPD playlists, not folder collections.")

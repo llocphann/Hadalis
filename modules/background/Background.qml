@@ -13,6 +13,7 @@ import QtMultimedia
 import Quickshell
 import Quickshell.Io
 import Quickshell.Wayland
+import Quickshell.Hyprland
 
 import qs.modules.background.widgets
 import qs.modules.background.widgets.clock
@@ -324,25 +325,28 @@ Scope {
 
         required property var modelData
 
-        // Hide when fullscreen.
-        property bool hasFullscreenWindow:
-            GameMode.hasFullscreenOnOutput(modelData?.name ?? "")
+        // Hide when fullscreen
+        property list<HyprlandWorkspace> workspacesForMonitor: CompositorService.isHyprland ? Hyprland.workspaces.values.filter(workspace => workspace.monitor && workspace.monitor.name == monitor.name) : []
+        property var activeWorkspaceWithFullscreen: workspacesForMonitor.filter(workspace => ((workspace.toplevels.values.filter(window => window.wayland?.fullscreen)[0] != undefined) && workspace.active))[0]
+        property bool hasFullscreenWindow: {
+            if (CompositorService.isHyprland) {
+                return activeWorkspaceWithFullscreen != undefined
+            }
+            if (CompositorService.isNiri) {
+                return GameMode.hasFullscreenOnOutput(modelData?.name ?? "")
+            }
+            return false
+        }
         visible: GlobalStates.screenLocked
             || !hasFullscreenWindow
             || !(Config.options?.background?.hideWhenFullscreen ?? false)
 
+        // Workspaces
+        property HyprlandMonitor monitor: CompositorService.isHyprland ? Hyprland.monitorFor(modelData) : null
+        property list<var> relevantWindows: CompositorService.isHyprland ? HyprlandData.windowList.filter(win => win.monitor == monitor?.id && win.workspace.id >= 0).sort((a, b) => a.workspace.id - b.workspace.id) : []
+        property int firstWorkspaceId: relevantWindows[0]?.workspace.id || 1
+        property int lastWorkspaceId: relevantWindows[relevantWindows.length - 1]?.workspace.id || 10
         readonly property string screenName: screen?.name ?? ""
-        readonly property real monitorScale:
-            (NiriService.displayScales
-                && NiriService.displayScales[bgRoot.screenName] !== undefined)
-                ? NiriService.displayScales[bgRoot.screenName] : 1
-        readonly property var outputWorkspaces: (NiriService.allWorkspaces ?? [])
-            .filter(workspace => workspace.output === bgRoot.screenName)
-            .sort((a, b) => a.idx - b.idx)
-        property int firstWorkspaceId: outputWorkspaces[0]?.idx ?? 1
-        property int lastWorkspaceId:
-            outputWorkspaces[outputWorkspaces.length - 1]?.idx
-                ?? (Config.options?.bar?.workspaces?.shown ?? 10)
         readonly property var backgroundOptions: Config.options?.background ?? {}
         readonly property var parallaxOptions: backgroundOptions.parallax ?? {}
         readonly property var effectsOptions: backgroundOptions.effects ?? {}
@@ -536,7 +540,14 @@ Scope {
         // When disabled, use direct config path to preserve QML reactive bindings
         // that Aurora glass/blur depends on.
         readonly property bool _multiMonEnabled: WallpaperListener.multiMonitorEnabled
-        readonly property string monitorName: modelData.name ?? ""
+        readonly property string monitorName: {
+            if (CompositorService.isNiri) {
+                return modelData.name ?? ""
+            } else if (CompositorService.isHyprland && bgRoot.monitor) {
+                return bgRoot.monitor.name ?? ""
+            }
+            return modelData.name ?? ""
+        }
         readonly property var wallpaperData: _multiMonEnabled
             ? (WallpaperListener.effectivePerMonitor[monitorName] ?? { path: "" })
             : ({ path: "" })
@@ -765,17 +776,21 @@ Scope {
         // Dynamic focus based on windows
         property bool hasWindowsOnCurrentWorkspace: {
             try {
-                const allWs = Object.values(NiriService.workspaces ?? {})
-                const outputName = bgRoot.modelData?.name ?? ""
-                const currentWs = allWs.find(ws =>
-                    ws.output === outputName && ws.is_active)
-                if (!currentWs)
-                    return false
-                return (NiriService.windows ?? [])
-                    .some(w => w.workspace_id === currentWs.id)
-            } catch (e) {
-                return false
-            }
+                if (CompositorService.isNiri && typeof NiriService !== "undefined" && NiriService.windows && NiriService.workspaces) {
+                    const allWs = Object.values(NiriService.workspaces);
+                    if (!allWs || allWs.length === 0) return false;
+                    const outputName = bgRoot.modelData?.name ?? "";
+                    const currentWs = allWs.find(ws => ws.output === outputName
+                        && ws.is_active);
+                    if (!currentWs) return false;
+                    return NiriService.windows.some(w => w.workspace_id === currentWs.id);
+                }
+                if (CompositorService.isHyprland && monitor && monitor.activeWorkspace) {
+                    const wsId = monitor.activeWorkspace.id;
+                    return relevantWindows.some(w => w.workspace.id === wsId);
+                }
+                return relevantWindows.length > 0;
+            } catch (e) { return false; }
         }
 
         property bool focusWindowsPresent: !GlobalStates.screenLocked && hasWindowsOnCurrentWorkspace
@@ -1121,10 +1136,7 @@ Scope {
                     bgRoot.effectiveWorkspaceLast :
                     (Math.ceil(bgRoot.lastWorkspaceId / chunkSize) * chunkSize)
                 property int range: Math.max(1, upper - lower)
-                property int currentWorkspaceId: {
-                    const current = bgRoot.outputWorkspaces.find(workspace => workspace.is_active)
-                    return current?.idx ?? NiriService.getCurrentWorkspaceNumber()
-                }
+                property int currentWorkspaceId: CompositorService.isNiri ? (NiriService.focusedWorkspaceIndex ?? 1) : (bgRoot.monitor?.activeWorkspace?.id ?? 1)
                 property real workspaceProgress: ParallaxMath.normalizedWorkspaceProgress(currentWorkspaceId, lower, upper)
                 property real valueX: ParallaxMath.axisValue(
                     "horizontal",
@@ -1284,8 +1296,8 @@ Scope {
                         // Decode at screen resolution × monitor DPI scale. Do NOT multiply by
                         // parallax effectiveWallpaperScale — that causes CPU upscaling which
                         // produces pixelation. GPU scaling handles the parallax zoom cleanly.
-                        width: Math.max(1, Math.round(bgRoot.screen.width * bgRoot.monitorScale))
-                        height: Math.max(1, Math.round(bgRoot.screen.height * bgRoot.monitorScale))
+                        width: Math.max(1, Math.round(bgRoot.screen.width * (bgRoot.monitor?.scale ?? 1)))
+                        height: Math.max(1, Math.round(bgRoot.screen.height * (bgRoot.monitor?.scale ?? 1)))
                     }
 
                     onTransitionStarted: {

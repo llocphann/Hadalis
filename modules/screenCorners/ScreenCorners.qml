@@ -8,6 +8,7 @@ import QtQuick.Controls
 import QtQuick.Layouts
 import Quickshell
 import Quickshell.Wayland
+import Quickshell.Hyprland
 
 Scope {
     id: screenCorners
@@ -631,8 +632,23 @@ Scope {
         Scope {
             id: monitorScope
             required property var modelData
-            property bool fullscreen:
-                GameMode.hasFullscreenOnOutput(modelData?.name ?? "")
+            property HyprlandMonitor monitor: CompositorService.isHyprland ? Hyprland.monitorFor(modelData) : null
+
+            // Hide when fullscreen
+            property list<HyprlandWorkspace> workspacesForMonitor: CompositorService.isHyprland
+                ? Hyprland.workspaces.values.filter(workspace => workspace.monitor && workspace.monitor.name == monitor.name)
+                : []
+            property var activeWorkspaceWithFullscreen: workspacesForMonitor.filter(workspace => ((workspace.toplevels.values.filter(window => window.wayland?.fullscreen)[0] != undefined) && workspace.active))[0]
+            property bool fullscreen: {
+                if (CompositorService.isHyprland) {
+                    return activeWorkspaceWithFullscreen != undefined;
+                }
+                // Corner windows are interaction-only and reserve no work area,
+                // so they can safely follow automatic fullscreen detection.
+                if (CompositorService.isNiri)
+                    return GameMode.hasFullscreenOnOutput(modelData?.name ?? "")
+                return false;
+            }
 
             CornerPanelWindow {
                 screen: modelData

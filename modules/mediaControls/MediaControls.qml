@@ -10,6 +10,7 @@ import Quickshell
 import Quickshell.Io
 import Quickshell.Services.Mpris
 import Quickshell.Wayland
+import Quickshell.Hyprland
 
 Scope {
     id: root
@@ -35,13 +36,13 @@ Scope {
     readonly property real widgetWidth: Appearance.sizes.mediaControlsWidth
     readonly property real widgetHeight: Appearance.sizes.mediaControlsHeight
     readonly property real dockHeight: Config.options?.dock?.height ?? 60
-    readonly property real dockMargin: Appearance.sizes.elevationMargin + Appearance.sizes.surfaceGap
+    readonly property real dockMargin: Appearance.sizes.elevationMargin + Appearance.sizes.hyprlandGapsOut
     property real popupRounding: Appearance.zzzEverywhere ? Appearance.zzz.panelRadius
         : Appearance.inirEverywhere ? Appearance.inir.roundingLarge : Appearance.rounding.large
     readonly property bool visualizerActive: mediaControlsLoader.active && MprisController.isPlaying
-    property var focusedScreen: GlobalStates.focusedScreen
-        ?? Quickshell.screens.find(s => s.name === NiriService.currentOutput)
-        ?? GlobalStates.primaryScreen
+    property var focusedScreen: GlobalStates.focusedScreen ?? (CompositorService.isNiri
+        ? Quickshell.screens.find(s => s.name === NiriService.currentOutput) ?? GlobalStates.primaryScreen
+        : Quickshell.screens.find(s => s.name === Hyprland.focusedMonitor?.name) ?? GlobalStates.primaryScreen)
     property var targetScreens: screensFromList(
         Config.options?.media?.screenList ?? [])
     readonly property string keyboardScreenName: {
@@ -102,8 +103,7 @@ Scope {
                 color: "transparent"
                 WlrLayershell.namespace: "quickshell:mediaControls"
                 WlrLayershell.layer: WlrLayer.Overlay
-                readonly property bool acceptsInput: GlobalStates.mediaControlsOpen
-                WlrLayershell.keyboardFocus: mediaControlsRoot.acceptsInput
+                WlrLayershell.keyboardFocus: GlobalStates.mediaControlsOpen
                     && String(mediaControlsRoot.screen?.name ?? "") === root.keyboardScreenName
                     ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
 
@@ -112,11 +112,6 @@ Scope {
                     bottom: true
                     left: true
                     right: true
-                }
-
-                Item { id: emptyMediaControlsInput; width: 0; height: 0 }
-                mask: Region {
-                    item: mediaControlsRoot.acceptsInput ? inputScope : emptyMediaControlsInput
                 }
 
                 // Click outside to close - covers entire screen

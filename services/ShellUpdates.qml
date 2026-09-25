@@ -325,7 +325,7 @@ Singleton {
         running: root.enabled && Config.ready
         onTriggered: {
             print("[ShellUpdates] Loading repo path from version.json...")
-            root._loadVersionMetadata()
+            loadRepoPathProc.running = true
         }
     }
 
@@ -337,33 +337,12 @@ Singleton {
     // detect the prior state from the status file and either clean up
     // (if the final step was reached) or resume polling so the bar indicator
     // and overlay don't go silent while the update keeps running underneath.
-    function _probeResumeStatusFile(): void {
-        if (resumeStatusProbe.path === Directories.updateStatusPath)
-            resumeStatusProbe.reload()
-        else
-            resumeStatusProbe.path = Directories.updateStatusPath
-    }
-
     Timer {
         id: resumeUpdateCheck
         interval: 1000  // 1s — get the indicator back up fast
         repeat: false
         running: true
-        onTriggered: root._probeResumeStatusFile()
-    }
-
-    // Missing update-status is the normal startup case. Probe it in-process so
-    // we only pay for the boot/mtime shell validation when a marker exists.
-    FileView {
-        id: resumeStatusProbe
-        path: ""
-        printErrors: false
-        onLoaded: {
-            resumeStatusProbe.path = ""
-            if (!updateResumeReader.running)
-                updateResumeReader.running = true
-        }
-        onLoadFailed: resumeStatusProbe.path = ""
+        onTriggered: updateResumeReader.running = true
     }
 
     Process {
@@ -373,31 +352,19 @@ Singleton {
             status_file="$1"
             if [ ! -f "$status_file" ]; then exit 1; fi
 
-            boot_epoch=0
-            while read -r key value _; do
-                if [ "$key" = "btime" ]; then
-                    boot_epoch="$value"
-                    break
-                fi
-            done < /proc/stat
-
-            # Extremely defensive fallback for unusual /proc environments.
-            if [ "$boot_epoch" -le 0 ]; then
-                now=$(/usr/bin/date +%s)
-                if read -r uptime _ < /proc/uptime; then
-                    uptime_s=\${uptime%%.*}
-                else
-                    uptime_s=0
-                fi
-                boot_epoch=$((now - uptime_s))
-            fi
-
-            mtime=$(/usr/bin/stat -c %Y "$status_file" 2>/dev/null || echo 0)
-            if [ "$mtime" -lt "$boot_epoch" ]; then
-                printf '%s\n' "stale"
+            now=$(/usr/bin/date +%s)
+            if read -r uptime _ < /proc/uptime; then
+                uptime_s=$(/usr/bin/printf '%s\n' "$uptime" | /usr/bin/cut -d. -f1)
             else
-                status=$(<"$status_file")
-                printf '%s\n' "$status"
+                uptime_s=0
+            fi
+            boot_epoch=$((now - uptime_s))
+            mtime=$(/usr/bin/stat -c %Y "$status_file" 2>/dev/null || echo 0)
+
+            if [ "$mtime" -lt "$boot_epoch" ]; then
+                echo "stale"
+            else
+                /usr/bin/cat "$status_file"
             fi
         `, "_", Directories.updateStatusPath]
         stdout: StdioCollector {
@@ -471,72 +438,67 @@ Singleton {
         command: ["rm", "-f", Directories.updateStatusPath]
     }
 
-    // Load repo path from version.json (stored in shellConfig dir, NOT in quickshell config dir).
-    // This is local file I/O, so keep it inside Quickshell instead of spawning
-    // one cat process on every enabled shell startup.
-    function _loadVersionMetadata(): void {
-        const target = Directories.shellConfig + "/version.json"
-        if (versionMetadataFile.path === target)
-            versionMetadataFile.reload()
-        else
-            versionMetadataFile.path = target
-    }
-
-    function _consumeVersionMetadata(text: string): void {
-        try {
-            const json = JSON.parse(text ?? "{}")
-            // Extract version from version.json (always available even if VERSION file missing)
-            if (json.version && json.version !== "0.0.0") {
-                root.localVersion = json.version
+    // Load repo path from version.json (stored in shellConfig dir, NOT in quickshell config dir)
+    Process {
+        id: loadRepoPathProc
+        property bool _handledFallback: false
+        running: false
+        onRunningChanged: if (running) _handledFallback = false
+        command: ["cat", Directories.shellConfig + "/version.json"]
+        stdout: StdioCollector {
+            onStreamFinished: {
+                try {
+                    const json = JSON.parse(text ?? "{}")
+                    // Extract version from version.json (always available even if VERSION file missing)
+                    if (json.version && json.version !== "0.0.0") {
+                        root.localVersion = json.version
+                    }
+                    const storedInstallMode = json.installMode ?? json.install_mode ?? ""
+                    const storedUpdateStrategy = json.updateStrategy ?? json.update_strategy ?? ""
+                    const storedSource = json.installSource ?? json.install_source ?? json.source ?? ""
+                    if (storedInstallMode.length > 0) {
+                        root.installMode = storedInstallMode
+                    }
+                    if (storedUpdateStrategy.length > 0) {
+                        root.updateStrategy = storedUpdateStrategy
+                    }
+                    if (storedSource.length > 0) {
+                        root.installSource = storedSource
+                    }
+                    const storedRepoPath = json.repoPath ?? json.repo_path ?? ""
+                    if (storedRepoPath.length > 0 && root.installMode === "unknown") {
+                        root.installMode = "repo-copy"
+                    }
+                    if (storedRepoPath.length > 0 && root.updateStrategy === "unknown") {
+                        root.updateStrategy = "repo-setup"
+                    }
+                    if (root.managedExternally) {
+                        root.repoPathLoaded = true
+                        root.initialAvailabilityChecked = true
+                        root.initialUpdateCheckDone = true
+                        root.available = false
+                        print("[ShellUpdates] Update strategy is managed externally: " + root.updateStrategy)
+                        return
+                    }
+                    if (storedRepoPath.length > 0) {
+                        root.pendingRepoPath = storedRepoPath
+                        preferConfigRepoProc.running = true
+                        return
+                    }
+                } catch (e) {
+                    print("[ShellUpdates] Failed to parse version.json: " + e)
+                }
+                // No repo_path in version.json, try to find it
+                print("[ShellUpdates] No repo_path in version.json, searching for repository...")
+                loadRepoPathProc._handledFallback = true
+                searchRepoProc.running = true
             }
-            const storedInstallMode = json.installMode ?? json.install_mode ?? ""
-            const storedUpdateStrategy = json.updateStrategy ?? json.update_strategy ?? ""
-            const storedSource = json.installSource ?? json.install_source ?? json.source ?? ""
-            if (storedInstallMode.length > 0) {
-                root.installMode = storedInstallMode
-            }
-            if (storedUpdateStrategy.length > 0) {
-                root.updateStrategy = storedUpdateStrategy
-            }
-            if (storedSource.length > 0) {
-                root.installSource = storedSource
-            }
-            const storedRepoPath = json.repoPath ?? json.repo_path ?? ""
-            if (storedRepoPath.length > 0 && root.installMode === "unknown") {
-                root.installMode = "repo-copy"
-            }
-            if (storedRepoPath.length > 0 && root.updateStrategy === "unknown") {
-                root.updateStrategy = "repo-setup"
-            }
-            if (root.managedExternally) {
-                root.repoPathLoaded = true
-                root.initialAvailabilityChecked = true
-                root.initialUpdateCheckDone = true
-                root.available = false
-                print("[ShellUpdates] Update strategy is managed externally: " + root.updateStrategy)
-                return
-            }
-            if (storedRepoPath.length > 0) {
-                root.pendingRepoPath = storedRepoPath
-                preferConfigRepoProc.running = true
-                return
-            }
-        } catch (e) {
-            print("[ShellUpdates] Failed to parse version.json: " + e)
         }
-        // No repo_path in version.json, try to find it.
-        print("[ShellUpdates] No repo_path in version.json, searching for repository...")
-        searchRepoProc.running = true
-    }
-
-    FileView {
-        id: versionMetadataFile
-        path: ""
-        printErrors: false
-        onLoaded: root._consumeVersionMetadata(versionMetadataFile.text())
-        onLoadFailed: {
-            print("[ShellUpdates] version.json not found, searching for repository...")
-            searchRepoProc.running = true
+        onExited: (exitCode, exitStatus) => {
+            if (exitCode !== 0 && !_handledFallback) {
+                print("[ShellUpdates] version.json not found, searching for repository...")
+                searchRepoProc.running = true
+            }
         }
     }
 
@@ -740,44 +702,38 @@ Singleton {
             root.initialAvailabilityChecked = true
             print("[ShellUpdates] Git available: " + root.available)
             if (root.available) {
-                // Load system info (manifest + local log) before checking for updates.
-                root._loadManifestInfo()
+                // Load system info (manifest + local log) before checking for updates
+                manifestInfoProc.running = true
             }
         }
     }
 
-    // Step 1b: Parse manifest for installed commit and date.
-    // The previous shell pipeline spawned bash + head + grep + sed for a tiny
-    // local file. FileView keeps the same first-three-lines contract in-process.
-    function _loadManifestInfo(): void {
-        if (manifestMetadataFile.path === root.manifestPath)
-            manifestMetadataFile.reload()
-        else
-            manifestMetadataFile.path = root.manifestPath
-    }
-
-    function _consumeManifestInfo(text: string): void {
-        const lines = (text ?? "").split("\n").slice(0, 3)
-        for (const rawLine of lines) {
-            if (!rawLine.startsWith("# "))
-                continue
-            const line = rawLine.substring(2)
-            if (line.startsWith("generated: ")) {
-                root.installedDate = line.substring(11).trim()
-            } else if (line.startsWith("commit: ")) {
-                root.installedCommit = line.substring(8).trim()
+    // Step 1b: Parse manifest for installed commit and date
+    Process {
+        id: manifestInfoProc
+        running: false
+        command: [
+            "/usr/bin/bash", "-c",
+            "manifest='" + root.manifestPath + "'; " +
+            "[[ -f \"$manifest\" ]] || exit 1; " +
+            "head -3 \"$manifest\" | grep -E '^# (generated|commit):' | sed 's/^# //'"
+        ]
+        stdout: StdioCollector {
+            onStreamFinished: {
+                const lines = (text ?? "").trim().split("\n")
+                for (const line of lines) {
+                    if (line.startsWith("generated: ")) {
+                        root.installedDate = line.substring(11).trim()
+                    } else if (line.startsWith("commit: ")) {
+                        root.installedCommit = line.substring(8).trim()
+                    }
+                }
+                print("[ShellUpdates] Manifest: commit=" + root.installedCommit + " date=" + root.installedDate)
             }
         }
-        print("[ShellUpdates] Manifest: commit=" + root.installedCommit + " date=" + root.installedDate)
-        recentLocalLogProc.running = true
-    }
-
-    FileView {
-        id: manifestMetadataFile
-        path: ""
-        printErrors: false
-        onLoaded: root._consumeManifestInfo(manifestMetadataFile.text())
-        onLoadFailed: recentLocalLogProc.running = true
+        onExited: (exitCode, exitStatus) => {
+            recentLocalLogProc.running = true
+        }
     }
 
     // Step 1c: Get recent local commit history (last 15 commits)
@@ -795,50 +751,32 @@ Singleton {
             }
         }
         onExited: (exitCode, exitStatus) => {
-            // Also read local VERSION on startup.
-            root._loadLocalVersion()
+            // Also read local VERSION on startup
+            localVersionStartupProc.running = true
         }
     }
 
-    // Step 1d: Read local VERSION on startup.
-    // Preserve the repo -> config fallback order without spawning bash + cat.
-    function _setLocalVersionPath(path: string): void {
-        if (localVersionFile.path === path)
-            localVersionFile.reload()
-        else
-            localVersionFile.path = path
-    }
-
-    function _loadLocalVersion(): void {
-        localVersionFile.tryingConfigFallback = false
-        root._setLocalVersionPath(root.repoPath + "/VERSION")
-    }
-
-    function _finishLocalVersion(text: string): void {
-        const ver = (text ?? "").trim()
-        // Only override if we got a better version than what version.json gave us.
-        if (ver.length > 0 && ver !== root.localVersion) {
-            root.localVersion = ver
-        }
-        print("[ShellUpdates] Local version: " + root.localVersion)
-        localVersionFile.path = ""
-        root.check()
-    }
-
-    FileView {
-        id: localVersionFile
-        property bool tryingConfigFallback: false
-        path: ""
-        printErrors: false
-
-        onLoaded: root._finishLocalVersion(localVersionFile.text())
-        onLoadFailed: {
-            if (!localVersionFile.tryingConfigFallback) {
-                localVersionFile.tryingConfigFallback = true
-                root._setLocalVersionPath(root.configDir + "/VERSION")
-                return
+    // Step 1d: Read local VERSION on startup
+    // Try repo path first (VERSION is there), fallback to config dir (dev setup)
+    Process {
+        id: localVersionStartupProc
+        running: false
+        command: [
+            "/usr/bin/bash", "-c",
+            "cat '" + root.repoPath + "/VERSION' 2>/dev/null || cat '" + root.configDir + "/VERSION' 2>/dev/null || echo ''"
+        ]
+        stdout: StdioCollector {
+            onStreamFinished: {
+                const ver = (text ?? "").trim()
+                // Only override if we got a better version than what version.json gave us
+                if (ver.length > 0 && ver !== root.localVersion) {
+                    root.localVersion = ver
+                }
+                print("[ShellUpdates] Local version: " + root.localVersion)
             }
-            root._finishLocalVersion("")
+        }
+        onExited: (exitCode, exitStatus) => {
+            root.check()
         }
     }
 
@@ -1156,63 +1094,39 @@ Singleton {
             }
         }
         onExited: (exitCode, exitStatus) => {
-            root._loadDetailLocalVersion()
+            localVersionProc.running = true
         }
     }
 
-    // Detail Step 3: Get local VERSION (try repo, then config dir) in-process.
-    function _setDetailLocalVersionPath(path: string): void {
-        if (detailLocalVersionFile.path === path)
-            detailLocalVersionFile.reload()
-        else
-            detailLocalVersionFile.path = path
-    }
-
-    function _loadDetailLocalVersion(): void {
-        detailLocalVersionFile.tryingConfigFallback = false
-        root._setDetailLocalVersionPath(root.repoPath + "/VERSION")
-    }
-
-    function _finishDetailLocalVersion(text: string): void {
-        root.localVersion = (text ?? "").trim()
-        detailLocalVersionFile.path = ""
-        remoteChangelogProc.running = true
-    }
-
-    FileView {
-        id: detailLocalVersionFile
-        property bool tryingConfigFallback: false
-        path: ""
-        printErrors: false
-
-        onLoaded: root._finishDetailLocalVersion(detailLocalVersionFile.text())
-        onLoadFailed: {
-            if (!detailLocalVersionFile.tryingConfigFallback) {
-                detailLocalVersionFile.tryingConfigFallback = true
-                root._setDetailLocalVersionPath(root.configDir + "/VERSION")
-                return
+    // Detail Step 3: Get local VERSION (try repo, then config dir, then version.json)
+    Process {
+        id: localVersionProc
+        running: false
+        command: [
+            "/usr/bin/bash", "-c",
+            "cat '" + root.repoPath + "/VERSION' 2>/dev/null || cat '" + root.configDir + "/VERSION' 2>/dev/null || echo ''"
+        ]
+        stdout: StdioCollector {
+            onStreamFinished: {
+                root.localVersion = (text ?? "").trim()
             }
-            root._finishDetailLocalVersion("")
+        }
+        onExited: (exitCode, exitStatus) => {
+            remoteChangelogProc.running = true
         }
     }
 
-    // Detail Step 4: Get remote CHANGELOG.md (first 200 lines).
-    // Keep the line cap in-process so opening the overlay needs only git,
-    // rather than bash + git + head.
+    // Detail Step 4: Get remote CHANGELOG.md (first 200 lines)
     Process {
         id: remoteChangelogProc
         running: false
         command: [
-            ...root._gitCmd, "show",
-            "origin/" + root._remoteBranch + ":CHANGELOG.md"
+            "/usr/bin/bash", "-c",
+            "git -C '" + root.repoPath + "' show 'origin/" + root._remoteBranch + ":CHANGELOG.md' 2>/dev/null | head -200"
         ]
         stdout: StdioCollector {
             onStreamFinished: {
-                root.remoteChangelog = (text ?? "")
-                    .split("\n")
-                    .slice(0, 200)
-                    .join("\n")
-                    .trim()
+                root.remoteChangelog = (text ?? "").trim()
             }
         }
         onExited: (exitCode, exitStatus) => {
@@ -1225,10 +1139,24 @@ Singleton {
         id: localModsProc
         running: false
         command: [
-            root.configDir + "/scripts/check-local-modifications.sh",
-            root.manifestPath,
-            root.configDir,
-            root.repoPath
+            "/usr/bin/bash", "-c",
+            "manifest='" + root.manifestPath + "'; " +
+            "target='" + root.configDir + "'; " +
+            "repo='" + root.repoPath + "'; " +
+            "[[ -f \"$manifest\" ]] || exit 0; " +
+            "while IFS=: read -r path checksum; do " +
+            "  [[ \"$path\" =~ ^# ]] && continue; " +
+            "  [[ -z \"$path\" ]] && continue; " +
+            "  [[ -f \"$target/$path\" ]] || continue; " +
+            "  if [[ -n \"$checksum\" ]]; then " +
+            "    current=$(sha256sum \"$target/$path\" 2>/dev/null | cut -d' ' -f1); " +
+            "    [[ \"$current\" != \"$checksum\" ]] && echo \"$path\"; " +
+            "  elif [[ -d \"$repo/.git\" ]]; then " +
+            "    repo_hash=$(git -C \"$repo\" show HEAD:\"$path\" 2>/dev/null | sha256sum | cut -d' ' -f1); " +
+            "    local_hash=$(sha256sum \"$target/$path\" 2>/dev/null | cut -d' ' -f1); " +
+            "    [[ -n \"$repo_hash\" && \"$repo_hash\" != \"$local_hash\" ]] && echo \"$path\"; " +
+            "  fi; " +
+            "done < \"$manifest\""
         ]
         stdout: StdioCollector {
             onStreamFinished: {
@@ -1250,36 +1178,8 @@ Singleton {
     // Note: Update runs via Quickshell.execDetached() in performUpdate()
     // so it survives the shell restart that ./setup update triggers.
 
-    function _reloadUpdateProgress(): void {
-        const target = Directories.updateStatusPath
-        if (updateProgressFile.path === target)
-            updateProgressFile.reload()
-        else
-            updateProgressFile.path = target
-    }
-
-    function _consumeUpdateProgress(text: string): void {
-        const status = (text ?? "").trim()
-        if (status.startsWith("progress:")) {
-            // Format: progress:STEP:TOTAL:MESSAGE
-            const parts = status.split(":")
-            if (parts.length >= 4) {
-                root.updateStep = parseInt(parts[1]) || 0
-                root.updateTotalSteps = parseInt(parts[2]) || 0
-                root.updateStepMessage = parts.slice(3).join(":")
-            }
-        } else if (status === "updating") {
-            // Legacy/initial marker — no granular progress yet
-            root.updateStep = 0
-            root.updateStepMessage = ""
-        } else if (status.startsWith("failed")) {
-            // Update failed — stop polling, let watchdog handle error display
-            updateProgressPoller.running = false
-        }
-    }
-
-    // Progress poller: keep the existing 2s cadence, but read the local status
-    // file in-process instead of spawning one cat helper on every tick.
+    // Progress poller: reads the status file every 2s while updating to parse
+    // structured progress markers written by setup's _report_progress().
     Timer {
         id: updateProgressPoller
         interval: 2000
@@ -1290,15 +1190,35 @@ Singleton {
                 updateProgressPoller.running = false
                 return
             }
-            root._reloadUpdateProgress()
+            updateProgressReader.running = true
         }
     }
 
-    FileView {
-        id: updateProgressFile
-        path: ""
-        printErrors: false
-        onLoaded: root._consumeUpdateProgress(updateProgressFile.text())
+    Process {
+        id: updateProgressReader
+        running: false
+        command: ["cat", Directories.updateStatusPath]
+        stdout: StdioCollector {
+            onStreamFinished: {
+                const status = (text ?? "").trim()
+                if (status.startsWith("progress:")) {
+                    // Format: progress:STEP:TOTAL:MESSAGE
+                    const parts = status.split(":")
+                    if (parts.length >= 4) {
+                        root.updateStep = parseInt(parts[1]) || 0
+                        root.updateTotalSteps = parseInt(parts[2]) || 0
+                        root.updateStepMessage = parts.slice(3).join(":")
+                    }
+                } else if (status === "updating") {
+                    // Legacy/initial marker — no granular progress yet
+                    root.updateStep = 0
+                    root.updateStepMessage = ""
+                } else if (status.startsWith("failed")) {
+                    // Update failed — stop polling, let watchdog handle error display
+                    updateProgressPoller.running = false
+                }
+            }
+        }
     }
 
     // Watchdog: if the shell is still alive after 120s, the update likely failed.

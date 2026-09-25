@@ -132,6 +132,7 @@ OVERVIEW_ALL_APPS_GRID = ROOT / "modules" / "overview" / "OverviewAllAppsGrid.qm
 OVERVIEW_DASHBOARD = ROOT / "modules" / "overview" / "OverviewDashboard.qml"
 DASHBOARD_CONTENT = ROOT / "modules" / "dashboard" / "DashboardContent.qml"
 OVERVIEW_NIRI_WIDGET = ROOT / "modules" / "overview" / "OverviewNiriWidget.qml"
+OVERVIEW_WIDGET = ROOT / "modules" / "overview" / "OverviewWidget.qml"
 WELCOME = ROOT / "welcome.qml"
 
 
@@ -282,6 +283,7 @@ def main() -> None:
     overview_dashboard = OVERVIEW_DASHBOARD.read_text(encoding="utf-8")
     dashboard_content = DASHBOARD_CONTENT.read_text(encoding="utf-8")
     overview_niri_widget = OVERVIEW_NIRI_WIDGET.read_text(encoding="utf-8")
+    overview_widget = OVERVIEW_WIDGET.read_text(encoding="utf-8")
     welcome = WELCOME.read_text(encoding="utf-8")
 
     # Runtime must never expose a persisted legacy shell-wide style, even during
@@ -698,7 +700,7 @@ def main() -> None:
         "Appearance.colors.colLayer3",
         "border.width: 0",
         "color: Appearance.colors.colOnLayer3",
-        "Appearance.colors.colSubtext",
+        "color: Appearance.colors.colSubtext",
     ):
         require(notification_item, token, "NotificationItem.qml")
     forbid(notification_item, "RegaliaPlate {", "NotificationItem.qml")
@@ -706,11 +708,7 @@ def main() -> None:
         "ColorUtils.applyAlpha(Appearance.colors.colLayer2, 1 - Appearance.backgroundTransparency)",
         "radius: Appearance.rounding.normal",
         "border.width: 0",
-        "color: root.modernLayout",
-        "? Appearance.colors.colOnLayer2",
-        ": (topRow.showAppName",
-        "? Appearance.colors.colSubtext",
-        ": Appearance.colors.colOnLayer2)",
+        "color: topRow.showAppName ? Appearance.colors.colSubtext : Appearance.colors.colOnLayer2",
         "color: Appearance.colors.colSubtext",
     ):
         require(notification_group, token, "NotificationGroup.qml")
@@ -1063,7 +1061,7 @@ def main() -> None:
         'readonly property color _surfaceColor: Appearance.colors.colLayer0',
         'readonly property color _borderColor: Appearance.colors.colLayer0Border',
         'readonly property real _borderWidth: 0',
-        'readonly property real _surfaceRadius: PerimeterTokens.popupRadius',
+        'readonly property real _surfaceRadius: Appearance.rounding.large',
     ):
         require(styled_popup, token, "StyledPopup.qml")
 
@@ -1088,22 +1086,15 @@ def main() -> None:
         "ZzzPlate {",
     ):
         forbid(sys_tray_menu, token, "SysTrayMenu.qml")
-    # Tray menu presentation is owned by the shared Material-only StyledPopup.
-    # Do not require the retired private popup card tokens here: doing so would
-    # regress the connected Bar-surface routing.
     for token in (
-        "StyledPopup {",
-        "popupBackgroundMargin: 0",
-        "alternativeVisibleCondition: root.menuRequestedOpen",
-        "closeOnOutsideClick: true",
+        "color: Appearance.colors.colLayer0",
+        "radius: Appearance.rounding.windowRounding",
+        "border.width: 1",
+        "border.color: Appearance.colors.colLayer0Border",
+        "Appearance.motion.popupReveal.enableFade",
+        "Appearance.motion.popupReveal.enableScale",
     ):
         require(sys_tray_menu, token, "SysTrayMenu.qml")
-    for token in (
-        "PopupWindow {",
-        "PanelWindow {",
-        "id: popupBackground",
-    ):
-        forbid(sys_tray_menu, token, "SysTrayMenu.qml")
 
     # ContextMenu is shared by Bar and other active shell controls. Keep its
     # focus/input/close behavior intact while locking visual chrome to Material.
@@ -1230,6 +1221,7 @@ def main() -> None:
     forbid(bar, "showBarBackground", "Bar.qml")
     forbid(vertical_bar, "showBarBackground", "VerticalBar.qml")
     for token in (
+        "readonly property bool showBarBackground: true",
         "id: barRoot",
         "BackgroundEffect.blurRegion: Region {",
     ):
@@ -1243,13 +1235,7 @@ def main() -> None:
         "Appearance.inir.",
     ):
         forbid(weather_bar, token, "WeatherBar.qml")
-    for token in (
-        "property color foregroundColor: root.vertical",
-        "? Appearance.colors.colOnLayer0",
-        ": Appearance.colors.colOnLayer1",
-        "color: root.foregroundColor",
-    ):
-        require(weather_bar, token, "WeatherBar.qml")
+    require(weather_bar, "color: Appearance.colors.colOnLayer1", "WeatherBar.qml")
 
     for token in (
         "Appearance.zzzEverywhere",
@@ -1266,7 +1252,11 @@ def main() -> None:
     for token in (
         "Appearance.colors.colPrimary",
         "Appearance.colors.colLayer2",
+        "color: Appearance.colors.colLayer0",
         "radius: root.popupRounding",
+        'border.color: "transparent"',
+        "color: Appearance.colors.colOnLayer0",
+        "color: Appearance.colors.colSubtext",
     ):
         require(bar_media_popup, token, "BarMediaPopup.qml")
 
@@ -1440,9 +1430,7 @@ def main() -> None:
         "colBackgroundToggled: Appearance.colors.colSecondaryContainer",
         "colBackgroundToggledHover: Appearance.colors.colSecondaryContainerHover",
         "colRippleToggled: Appearance.colors.colSecondaryContainerActive",
-        "color: root.toggled",
-        "? Appearance.colors.colOnSecondaryContainer",
-        ": Appearance.colors.colOnLayer0",
+        "color: Appearance.colors.colOnLayer0",
         "color: Appearance.colors.colTertiary",
     ):
         require(left_sidebar_button, token, "LeftSidebarButton.qml")
@@ -1594,9 +1582,7 @@ def main() -> None:
         "ColorUtils.transparentize(Appearance.colors.colPrimary, 0.7)",
         "ColorUtils.transparentize(Appearance.colors.colSurfaceContainerHigh, 0.5)",
         "color: Appearance.colors.colOnLayer0",
-        "color: root.hovered",
-        "? Appearance.colors.colOnLayer0",
-        ": Appearance.colors.colSubtext",
+        "color: Appearance.colors.colSubtext",
         "color: Appearance.colors.colSurfaceContainerLow",
     ):
         require(bar_taskbar_window_preview, token, "BarTaskbarWindowPreview.qml")
@@ -2182,7 +2168,7 @@ def main() -> None:
         "Network.rescanWifi()", "Bluetooth.defaultAdapter.discovering = true",
         "function doReload()", "function doSettings()",
         '"region", "screenshot"', '"region", "record"', '"region", "ocr"', '"region", "search"',
-        'Quickshell.shellPath("scripts/inir"), "colorpicker"', '["xdg-open", Quickshell.env("HOME")]',
+        '"/usr/bin/hyprpicker"', '["xdg-open", Quickshell.env("HOME")]',
     ):
         require(compact_sidebar_right_content, token, "sidebarRight/CompactSidebarRightContent.qml")
 
@@ -2295,6 +2281,7 @@ def main() -> None:
         "AnimeScheduleView {}",
         "WallhavenView {",
         "NewsView {}",
+        "InnerTuneView {}",
         "ToolsView {}",
         "SoftwareView {}",
     ):
@@ -2602,6 +2589,25 @@ def main() -> None:
     ):
         require(overview_niri_widget, token, "overview/OverviewNiriWidget.qml")
 
+    # Hyprland OverviewWidget keeps its compositor behavior while its visual
+    # Global Theme branches collapse to the terminal Material fallbacks.
+    for token in legacy_style_tokens:
+        forbid(overview_widget, token, "overview/OverviewWidget.qml")
+    for token in (
+        "property color activeBorderColor: Appearance.colors.colSecondary",
+        "property real largeWorkspaceRadius: Appearance.rounding.large",
+        "property real smallWorkspaceRadius: Appearance.rounding.verysmall",
+        "color: Appearance.colors.colBackgroundSurfaceContainer",
+        "border.width: 1",
+        "ColorUtils.transparentize(Appearance.colors.colOutlineVariant, 0.68)",
+        "Appearance.colors.colSurfaceContainerHigh, 0.8",
+        "defaultWorkspaceColor, Appearance.colors.colLayer1Hover, 0.1",
+        "property color hoveredBorderColor: Appearance.colors.colLayer2Hover",
+        "ColorUtils.transparentize(Appearance.colors.colOutlineVariant, 0.74)",
+        "Appearance.colors.colOnLayer1, 0.7",
+        "property real minRadius: Appearance.rounding.small",
+    ):
+        require(overview_widget, token, "overview/OverviewWidget.qml")
 
     forbid(
         control_panel_date_time,

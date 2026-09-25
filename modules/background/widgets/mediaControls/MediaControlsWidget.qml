@@ -126,7 +126,7 @@ AbstractBackgroundWidget {
         property color colOnLayer0: root.mediaSurfaceInk
         property color colSubtext: root.mediaSurfaceInkMuted
     }
-    property real popupRounding: Appearance.rounding.screenRounding - Appearance.sizes.surfaceGap + 1
+    property real popupRounding: Appearance.rounding.screenRounding - Appearance.sizes.hyprlandGapsOut + 1
     resizableAxes: ({ uniform: "widgetScale" })
     resizeMinWidth: 160
     resizeMinHeight: 80
@@ -342,7 +342,6 @@ AbstractBackgroundWidget {
 
                     onLoaded: {
                         item.player = delegateRoot.modelData
-                        item.positionUpdatesActive = Qt.binding(() => root.powerActive)
                         item.blendedColors = root._desktopInkOverride
                         item.themeSourceColor = Qt.binding(() => root.widgetAccentVisible)
                         item.visualizerPoints = Qt.binding(() => root.visualizerPoints)

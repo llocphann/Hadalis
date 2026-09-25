@@ -23,7 +23,6 @@ declare -A INIR_ONLY_PATHS=(
     ["${XDG_CACHE_HOME}/quickshell/inir"]="iNiR cache"
     ["${XDG_BIN_HOME}/inir"]="iNiR launcher"
     ["${HOME}/.local/bin/inir_super_overview_daemon.py"]="iNiR super daemon"
-    ["${HOME}/.local/bin/inir_super_overview_launcher.sh"]="iNiR super daemon selector launcher"
     ["${XDG_CONFIG_HOME}/systemd/user/inir.service"]="iNiR user service"
     ["${XDG_CONFIG_HOME}/systemd/user/inir-super-overview.service"]="iNiR daemon service"
     ["${XDG_CONFIG_HOME}/vesktop/themes/system24.theme.css"]="iNiR Vesktop Material theme"
@@ -75,7 +74,9 @@ declare -A INIR_PACKAGES=(
     ["slurp"]="slurp|Region selector|system_tool"
     ["wl-copy"]="wl-clipboard|Clipboard utilities|system_tool"
     ["brightnessctl"]="brightnessctl|Brightness control|system_tool"
+    ["playerctl"]="playerctl|Media control|system_tool"
     ["plasma-browser-integration-host"]="plasma-browser-integration|Browser media integration|system_tool"
+    ["dunstify"]="dunst|Notification daemon|system_tool"
     ["cava"]="cava|Audio visualizer|optional_tool"
     ["easyeffects"]="easyeffects|Audio effects|optional_tool"
 )

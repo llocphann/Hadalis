@@ -5,10 +5,10 @@ MANIFEST="$ROOT_DIR/native/Cargo.toml"
 TARGET_DIR="${CARGO_TARGET_DIR:-$ROOT_DIR/native/target}"
 DEST_DIR=""
 BUILD_ONLY=0
-BINARIES=(inir-inputd inir-mpdd inir-native inir-superd inir-theme)
+BINARIES=(inir-inputd inir-mpdd inir-native inir-theme)
 usage() { cat <<'EOF'
 Usage: native/scripts/install-runtime.sh [--dest DIR] [--build-only]
-Builds the locked release workspace and installs the five production helpers.
+Builds the locked release workspace and installs the four production helpers.
 EOF
 }
 while (($#)); do case "$1" in --dest) [[ $# -ge 2 ]] || exit 64; DEST_DIR="$2"; shift 2;; --build-only) BUILD_ONLY=1; shift;; --help|-h) usage; exit 0;; *) usage >&2; exit 64;; esac; done

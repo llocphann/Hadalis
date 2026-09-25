@@ -5,6 +5,7 @@ import qs.modules.common
 import qs.services
 import QtQuick
 import Quickshell
+import Quickshell.Hyprland
 import Quickshell.Io
 
 Singleton {
@@ -60,8 +61,9 @@ Singleton {
     property bool sidebarLeftOpen: false
     property string sidebarLeftTargetOutput: ""
     property bool sidebarLeftExpanded: false
-    // A left-sidebar feature may request that the panel stay open through
-    // implicit closes (backdrop click / focus loss) while yielding keyboard focus.
+    // A left-sidebar feature requests the panel stay open through implicit closes
+    // (backdrop click / focus loss) and yield keyboard focus — e.g. the InnerTune
+    // device-flow login, where the user must type a code into an external browser.
     property bool sidebarLeftHoldOpen: false
     property bool aiChatDetached: false
     property bool sidebarRightOpen: false
@@ -359,7 +361,11 @@ Singleton {
     // separate from primaryScreen: the latter is a user fallback, while this
     // follows the compositor and only falls back when focus cannot be resolved.
     readonly property var focusedScreen: {
-        const name = NiriService.currentOutput ?? ""
+        let name = ""
+        if (CompositorService.isNiri)
+            name = NiriService.currentOutput ?? ""
+        else if (CompositorService.isHyprland)
+            name = Hyprland.focusedMonitor?.name ?? ""
         return Quickshell.screens.find(screen => (screen?.name ?? "") === name)
             ?? root.primaryScreen
             ?? Quickshell.screens[0]
@@ -621,4 +627,42 @@ Singleton {
             root.closeNotificationCenter()
     }
 
+    property real screenZoom: 1
+    onScreenZoomChanged: {
+        // Niri doesn't have native zoom support like Hyprland's cursor:zoom_factor
+        // The IPC handler still works but zoom is Hyprland-only for now
+        if (!CompositorService.isHyprland)
+            return;
+        Quickshell.execDetached(["hyprctl", "keyword", "cursor:zoom_factor", root.screenZoom.toString()]);
+    }
+    Behavior on screenZoom {
+        animation: NumberAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve }
+    }
+
+    Loader {
+        active: CompositorService.isHyprland
+        sourceComponent: GlobalShortcut {
+            name: "workspaceNumber"
+            description: "Hold to show workspace numbers, release to show icons"
+
+            onPressed: {
+                root.superDown = true
+            }
+            onReleased: {
+                root.superDown = false
+            }
+        }
+    }
+
+    IpcHandler {
+		target: "zoom"
+
+		function zoomIn(): void {
+            screenZoom = Math.min(screenZoom + 0.4, 3.0)
+        }
+
+        function zoomOut(): void {
+            screenZoom = Math.max(screenZoom - 0.4, 1)
+        }
+	}
 }

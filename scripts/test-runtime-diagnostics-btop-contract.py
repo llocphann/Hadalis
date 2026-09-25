@@ -6,8 +6,6 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 PAGE = ROOT / "modules" / "settings" / "RuntimeDiagnosticsConfig.qml"
 WAFFLE_PAGE = ROOT / "modules" / "waffle" / "settings" / "pages" / "WDiagnosticsPage.qml"
-CONTENT_PAGE = ROOT / "modules" / "common" / "widgets" / "ContentPage.qml"
-WAFFLE_BASE_PAGE = ROOT / "modules" / "waffle" / "settings" / "WSettingsPage.qml"
 BOARD = ROOT / "modules" / "settings" / "widgets" / "BtopDashboard.qml"
 SPARKLINE = ROOT / "modules" / "settings" / "widgets" / "BtopSparkline.qml"
 METRIC_PANEL = ROOT / "modules" / "settings" / "widgets" / "BtopMetricPanel.qml"
@@ -23,7 +21,6 @@ SESSION = ROOT / "services" / "RuntimeDiagnosticsSession.qml"
 RUNTIME = ROOT / "services" / "RuntimeDiagnostics.qml"
 TARGET_RUNTIME = ROOT / "services" / "CodeWorkflowRuntimeTarget.qml"
 SAMPLER = ROOT / "scripts" / "runtime-diagnostics-sampler.py"
-SETTINGS_WINDOW = ROOT / "settings.qml"
 WIDGETS = ROOT / "modules" / "settings" / "widgets"
 WIDGET_QMLDIR = WIDGETS / "qmldir"
 
@@ -41,14 +38,11 @@ def forbid(text: str, token: str, source: str) -> None:
 def main() -> None:
     page = PAGE.read_text(encoding="utf-8")
     waffle_page = WAFFLE_PAGE.read_text(encoding="utf-8")
-    content_page = CONTENT_PAGE.read_text(encoding="utf-8")
-    waffle_base_page = WAFFLE_BASE_PAGE.read_text(encoding="utf-8")
     board = BOARD.read_text(encoding="utf-8")
     session = SESSION.read_text(encoding="utf-8")
     runtime = RUNTIME.read_text(encoding="utf-8")
     target_runtime = TARGET_RUNTIME.read_text(encoding="utf-8")
     sampler = SAMPLER.read_text(encoding="utf-8")
-    settings_window = SETTINGS_WINDOW.read_text(encoding="utf-8")
     sparkline = SPARKLINE.read_text(encoding="utf-8")
     metric_panel = METRIC_PANEL.read_text(encoding="utf-8")
     network_panel = NETWORK_PANEL.read_text(encoding="utf-8")
@@ -87,9 +81,6 @@ def main() -> None:
         'settingsPageIndex: 31',
         'settingsPageName: Translation.tr("Diagnostics")',
         "bottomContentPadding: 8",
-        "fillViewportHeight: true",
-        "Layout.fillHeight: true",
-        "Layout.minimumHeight: 360",
         "readonly property bool diagnosticsActive:",
         "RuntimeDiagnosticsSession.pageCurrent",
         "readonly property var runtimeCatalog: root.diagnosticsActive",
@@ -99,103 +90,29 @@ def main() -> None:
         "targets: root.runtimeCatalog",
         "readonly property string primaryError:",
         'Translation.tr("Diagnostics live")',
-        "id: compactObservability",
+        "id: compactMetrics",
         "visible: root.compactMode",
-        "Layout.fillHeight: root.compactMode",
-        "Layout.minimumHeight: root.compactMode ? 300 : 0",
-        "columns: width >= 720 ? 2 : 1",
-        "height >= 540 ? 10",
-        ": height >= 470 ? 8",
-        ": height >= 400 ? 6 : 5",
-        "id: resourceSuspects",
-        "compactObservability.width * 0.68",
-        'Translation.tr("Resource suspects")',
-        '"Top components and processes by meaningful runtime signals"',
-        "id: compactShellContext",
-        "compactObservability.width * 0.32",
-        'Translation.tr("Quickshell monitors")',
-        "columns: width >= 260 ? 2 : 1",
+        "columns: width >= 900 ? 4 : 2",
+        "id: compactAttribution",
         "BtopActivityTable {",
         "BtopProcessTable {",
         "compactMode: true",
         "events: root.events",
         "id: compactRuntimeStrip",
-        "Layout.preferredHeight: 52",
-        "Layout.minimumHeight: 52",
-        "graphHeight: 18",
-        'root.historyValues("shellCpuPercent")',
-        'root.historyValues("shellMemoryPercent")',
+        "graphHeight: 12",
+        'root.historyValues("systemCpuPercent")',
+        'root.historyValues("systemSwapPercent")',
         'root.historyValues("shellGpuPeakPercent")',
         'root.historyValues("shellReadBytesPerSec")',
         'root.historyValues("shellWriteBytesPerSec")',
         "result.push(null)",
-        "function shellMemorySharePercent(): var {",
-        "function shellMemoryDetail(): string {",
+        "root.formatLoadAverage(",
         "function shellGpuBusy(): var {",
         "function shellGpuMemoryKiB(): var {",
         "return found ? total : null",
         "textFormat: Text.PlainText",
     ):
         require(page + board, token, "compact Material Diagnostics and dashboard")
-
-    # The shipped standalone Settings window is 1100x750. Keep the compact
-    # Diagnostics composition in its two-column observability layout at the
-    # current content width, and never add a nested scrolling surface to make
-    # the dashboard fit.
-    require(settings_window, "width: 1100",
-            "standalone Settings viewport width contract")
-    require(settings_window, "height: 750",
-            "standalone Settings viewport height contract")
-    require(board, "columns: width >= 720 ? 2 : 1",
-            "Diagnostics default-width two-column breakpoint")
-    require(board, "columns: width >= 500 ? 2 : 1",
-            "Resource suspects default-width split")
-    require(board, "columns: width >= 260 ? 2 : 1",
-            "Secondary context default-width micro-card split")
-    require(board, "Layout.fillHeight: root.compactMode",
-            "Diagnostics body must consume spare viewport height")
-    require(board, "localScroll: true",
-            "Component hotspots must scroll locally instead of truncating rows")
-    require(board, "maxRows: compactObservability.suspectRowLimit",
-            "Helper process list must use available vertical space")
-    require(board, "Layout.preferredHeight: 52",
-            "Hadalis runtime strip must retain visible hierarchy")
-    forbid(board, "Flickable {",
-           "Diagnostics dashboard must not add nested scrolling")
-
-    compact_start = board.index("id: compactObservability")
-    compact_end = board.index("id: compactRuntimeStrip")
-    compact = board[compact_start:compact_end]
-    for token in (
-        "root.shellEvidence?.cpu?.percent",
-        "root.shellMemorySharePercent()",
-        "root.shellGpuBusy()",
-        "root.shellEvidence?.io?.rates?.readBytesPerSec",
-        "root.shellEvidence?.io?.rates?.writeBytesPerSec",
-        'Translation.tr("I/O")',
-    ):
-        require(compact, token,
-                "compact Diagnostics Quickshell-only monitor scope")
-    for forbidden in (
-        "root.systemEvidence?.cpu?.percent",
-        "root.systemRamPercent()",
-        "root.networkEvidence",
-        "aggregateNonLoopback",
-        'Translation.tr("Network")',
-    ):
-        forbid(compact, forbidden,
-               "compact Diagnostics must not present system-wide monitors")
-
-    for source, text in (
-        ("Material ContentPage", content_page),
-        ("Waffle WSettingsPage", waffle_base_page),
-    ):
-        require(text, "property bool fillViewportHeight: false",
-                f"{source} must expose opt-in viewport filling")
-        require(text, "Math.max(root.height,",
-                f"{source} must fill spare height without clipping tall content")
-        require(text, "Math.max(implicitHeight,",
-                f"{source} must preserve scrolling when content exceeds viewport")
 
     for retired in (
         'title: Translation.tr("Live diagnostics")',
@@ -209,27 +126,13 @@ def main() -> None:
         forbid(page, retired, "compact Material Diagnostics page")
 
     for source, text in (("Material", page), ("Waffle", waffle_page)):
-        require(text, "fillViewportHeight: true",
-                f"{source} Diagnostics must opt into viewport filling")
         require(text, "BtopDashboard {", f"{source} shared diagnostics dashboard")
-        require(text, "Layout.fillHeight: true",
-                f"{source} Diagnostics dashboard must stretch vertically")
-        require(text, "Layout.minimumHeight: 360",
-                f"{source} Diagnostics must fall back to scrolling below its safe minimum")
         require(text, "compactMode: true", f"{source} compact diagnostics viewport")
         require(text, "evidence: root.evidence", f"{source} shared diagnostics evidence")
         require(text, "targets: root.runtimeCatalog", f"{source} Workflow target catalog")
         require(text, "records: root.runtimeRecords", f"{source} Workflow runtime records")
         require(text, "events: root.runtimeSnapshot?.events ?? []",
                 f"{source} Workflow lifecycle event evidence")
-        require(text, "readonly property var shellEvidence:",
-                f"{source} Diagnostics must health-check Quickshell evidence")
-        require(text, '"PID " + String(root.shellEvidence.pid)',
-                f"{source} status strip must identify the Quickshell PID")
-        forbid(text, "readonly property var systemEvidence:",
-               f"{source} page must not expose system evidence as page health")
-        forbid(text, 'Translation.tr("Uptime")',
-               f"{source} status strip must not show system uptime")
         forbid(text, 'buttonText: root.showSourceDetails',
                f"{source} must not expose source-details expansion")
         forbid(text, 'buttonText: root.showDetails',
@@ -300,9 +203,7 @@ def main() -> None:
         "id: rateHeader",
         "columns: width >= 360 ? 2 : 1",
         "id: totalsGrid",
-        "columns: root.compactMode ? 2 : (width >= 360 ? 2 : 1)",
-        "horizontalAlignment: root.compactMode",
-        "|| rateHeader.width >= 360",
+        "horizontalAlignment: rateHeader.width >= 360",
         "horizontalAlignment: totalsGrid.width >= 360",
     ):
         require(
@@ -344,34 +245,22 @@ def main() -> None:
         "function buildProcessDepths(): var",
         "readonly property int processDepth:",
         "property bool compactMode: false",
-        "implicitHeight: 38",
-        'Translation.tr("Top helper processes")',
-        'Translation.tr("Kernel process CPU · RSS")',
-        "function cpuFraction(process): real",
+        "root.compactMode ? 30 : 38",
+        'Translation.tr("Shell processes")',
         "visible: !root.compactMode",
     ):
         require(process_table, token,
                 "BtopProcessTable.qml compact real-process evidence")
 
     for token in (
-        'text: Translation.tr("Component hotspots")',
-        'Lifecycle activity — not CPU/RAM attribution',
+        'text: Translation.tr("QML activity")',
+        'Translation.tr("lifecycle · not CPU/RAM")',
         "function buildActivityRows(): var",
         "row.resident += 1",
         "row.visible += 1",
-        "row.recentEvents += 1",
-        "event?.atMs",
-        "right.eventsPerMinute - left.eventsPerMinute",
-        'Translation.tr("changes/min")',
-        "property int maxRows: 5",
-        "property bool localScroll: false",
-        "readonly property var renderedRows:",
-        "StyledListView {",
-        "model: root.renderedRows",
-        "interactive: root.localScroll && contentHeight > height",
-        "visible: !root.localScroll",
-        "RuntimeDiagnosticsSession.pageCurrent",
-        "RuntimeDiagnosticsSession.heartbeatTick",
+        "row.events += 1",
+        "right.events - left.events",
+        "property int maxRows: 4",
     ):
         require(activity_table, token,
                 "BtopActivityTable.qml truthful lifecycle activity")
@@ -401,7 +290,7 @@ def main() -> None:
         "if (value === null || value === undefined)",
         "readonly property bool showSwapColumn:",
         "!root.compactMode && width >= 520",
-        "Layout.preferredHeight: 24",
+        "Layout.preferredHeight: root.compactMode ? 20 : 24",
     ):
         require(process_table, token, "BtopProcessTable.qml")
     for token in (
@@ -416,7 +305,6 @@ def main() -> None:
 
     for token in (
         "systemSwapPercent:",
-        "shellMemoryPercent:",
         "shellReadBytesPerSec:",
         "shellWriteBytesPerSec:",
         "if (used === null || used === undefined",

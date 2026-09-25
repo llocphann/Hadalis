@@ -87,7 +87,7 @@ def main() -> None:
         'readonly property real smartGuideThreshold:',
         'DashboardAlignmentGuides {',
         'A restored widget must join the same collision contract as drag/resize.',
-        'visible modules stay fixed; only the module being added may shrink.',
+        'Existing visible modules stay fixed; only the module being added may shrink.',
         'case "system": return { width: 260, height: 180 }',
         'baselineRects: root._snapshotVisibleRects()',
         'root._applyPreviewRects(resolved)',
@@ -197,8 +197,9 @@ def main() -> None:
         "bottomRightRadius: 0",
         'Translation.tr("Edit widgets")',
         "id: editActions",
-        "horizontalAlignment: Text.AlignHCenter",
+        "Layout.alignment: Qt.AlignHCenter",
         "focusPolicy: Qt.StrongFocus",
+        'Config.setNestedValue(\n                    "dashboard.canvas.autoAdjustSize"',
         "border.width: tool.visualFocus ? 2 : (tool.toggled ? 1 : 0)",
         "id: toolbarRow",
         "id: editActions",
@@ -216,12 +217,6 @@ def main() -> None:
         "readonly property real horizontalPadding: 7",
     ):
         require(toolbar, token, "DashboardEditToolbar.qml")
-    compact_toolbar = " ".join(toolbar.split())
-    require(
-        compact_toolbar,
-        'onClicked: Config.setNestedValue( "dashboard.canvas.autoAdjustSize", !(root.canvasController?.autoAdjustSizeEnabled ?? true))',
-        "DashboardEditToolbar.qml",
-    )
     forbid(toolbar, "Flow {", "DashboardEditToolbar.qml")
     for source, text in (
         ("Dashboard.qml", standalone),
@@ -248,16 +243,7 @@ def main() -> None:
     forbid(welcome,
         "GlobalStates.dashboardOpen || GlobalStates.overviewOpen",
         "DashWelcome avatar mask lifecycle")
-    require(
-        todo,
-        "Layout.minimumHeight: root.veryShallowLayout",
-        "DashTodo.qml",
-    )
-    require(
-        todo,
-        "? 8 : (root.shallowLayout ? 56 : 72)",
-        "DashTodo.qml",
-    )
+    require(todo, "Layout.minimumHeight: 0", "DashTodo.qml")
 
     require(canvas, "cursorShape: root.editMode", "DashboardCanvas.qml")
     require(canvas, ": Qt.ArrowCursor", "DashboardCanvas.qml")
@@ -307,7 +293,7 @@ def main() -> None:
 
     for token in (
         "radius: Appearance.rounding.small",
-        "readonly property color sidebarRaisedSurface: Appearance.colors.colLayer1",
+        "Appearance.colors.colSurfaceContainerHigh",
         "border.width: 0",
         'border.color: "transparent"',
     ):

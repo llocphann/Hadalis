@@ -600,9 +600,9 @@ WBarAttachedPanelContent {
                     clip: true
 
                     readonly property MprisPlayer activePlayer: MprisController.activePlayer
-                    readonly property string effectiveArtUrl: activePlayer?.trackArtUrl ?? ""
-                    readonly property string effectiveTitle: activePlayer?.trackTitle ?? ""
-                    readonly property string effectiveArtist: activePlayer?.trackArtist ?? ""
+                    readonly property string effectiveArtUrl: MprisController.isYtMusicActive ? YtMusic.currentThumbnail : (activePlayer?.trackArtUrl ?? "")
+                    readonly property string effectiveTitle: MprisController.isYtMusicActive ? YtMusic.currentTitle : (activePlayer?.trackTitle ?? "")
+                    readonly property string effectiveArtist: MprisController.isYtMusicActive ? YtMusic.currentArtist : (activePlayer?.trackArtist ?? "")
 
                     // Blurred album art background
                     Image {
@@ -821,13 +821,13 @@ WBarAttachedPanelContent {
                             currentValue: Config.options?.appearance?.palette?.type ?? "auto"
                             onSelected: newValue => {
                                 Config.setNestedValue("appearance.palette.type", newValue)
-                                if (!ThemeService.isAutoTheme) {
+                                if (ThemeService.isAutoTheme) {
+                                    Quickshell.execDetached(["/usr/bin/bash", "-c", `${Directories.wallpaperSwitchScriptPath} --noswitch --type ${newValue}`]);
+                                } else {
                                     const hex = MaterialThemeLoader.colorToHex(Appearance.m3colors.m3primary)
                                     const mode = Appearance.m3colors.darkmode ? "dark" : "light"
                                     MaterialThemeLoader.applySchemeVariant(hex, newValue, mode)
                                 }
-                                // Auto theme is regenerated once by ThemeService's
-                                // config debounce; do not launch a parallel pipeline.
                             }
                             options: [
                                 { "value": "auto",                 "displayName": Translation.tr("Auto") },

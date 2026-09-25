@@ -150,7 +150,6 @@ AbstractBackgroundWidget {
                     sourceSize.width: 96
                     sourceSize.height: 96
                     visible: status === Image.Ready
-                    onStatusChanged: avatarResolver.handleImageStatus(status)
                     layer.enabled: status === Image.Ready
                     layer.effect: GE.OpacityMask {
                         maskSource: avatarMask
@@ -165,8 +164,9 @@ AbstractBackgroundWidget {
                     readonly property string primaryWatch: Directories.userAvatarSourcePrimary
                     onPrimaryWatchChanged: avatarIndex = 0
 
-                    function handleImageStatus(status): void {
-                        if (status === Image.Error) {
+                    readonly property int imgStatus: avatarImg.status
+                    onImgStatusChanged: {
+                        if (imgStatus === Image.Error) {
                             const nextIdx = avatarIndex + 1;
                             if (nextIdx < Directories.userAvatarPaths.length)
                                 avatarIndex = nextIdx;

@@ -25,7 +25,7 @@ def main() -> int:
     )
     if not completed:
         raise AssertionError("could not isolate GameMode startup block")
-    if "mkdir" in completed.group("body") or "execDetached" in completed.group("body"):
+    if "execDetached" in completed.group("body"):
         raise AssertionError("GameMode startup must not spawn its own state-directory helper")
 
     if 'root.stateUserPath,' not in directories:

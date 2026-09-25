@@ -78,7 +78,6 @@ let
       cliphist
       grim
       slurp
-      playerctl
       libnotify
       glib
       pipewire

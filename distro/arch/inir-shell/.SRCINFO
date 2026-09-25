@@ -22,7 +22,6 @@ pkgbase = inir-shell
 	depends = pipewire
 	depends = pipewire-alsa
 	depends = pipewire-pulse
-	depends = playerctl
 	depends = polkit-gnome
 	depends = python
 	depends = python-evdev

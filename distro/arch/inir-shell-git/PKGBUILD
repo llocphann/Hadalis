@@ -24,7 +24,6 @@ depends=(
   pipewire
   pipewire-alsa
   pipewire-pulse
-  playerctl
   polkit-gnome
   python
   python-evdev

@@ -71,6 +71,20 @@ QtObject {
         return decodeURIComponent(path.startsWith("/") ? path : "/" + path);
     }
 
+    function _isOwnedCacheFileUrl(url: string): bool {
+        const filePath = root._pathFromFileUrl(url);
+        if (!filePath.length || !root.cacheDirectory.length)
+            return false;
+
+        let cachePath = root.cacheDirectory.toString();
+        if (cachePath.startsWith("file://"))
+            cachePath = root._pathFromFileUrl(cachePath);
+        while (cachePath.length > 1 && cachePath.endsWith("/"))
+            cachePath = cachePath.slice(0, -1);
+
+        return cachePath.length > 0 && filePath.startsWith(`${cachePath}/`);
+    }
+
     function _cacheFileName(key: string, path: string): string {
         return `${Qt.md5(key)}${root._imageExtension(path)}`;
     }
@@ -107,6 +121,23 @@ QtObject {
         const nextSource = root._cacheBust(value);
 
         if (value.startsWith("file://")) {
+            // Files in our cover-art cache are only installed by this resolver
+            // through temp-file + atomic rename writers (or have already passed
+            // the cache existence check). Re-running the external-file stability
+            // probe here adds a guaranteed 120 ms timer + 200 ms sleep before a
+            // popup can paint artwork, without adding safety for these files.
+            // Keep the stability probe for player-owned/external file:// sources.
+            if (root._isOwnedCacheFileUrl(value)) {
+                fileSourceReadyChecker.running = false;
+                fileSourcePublishTimer.stop();
+                root._pendingDisplaySource = "";
+                root._pendingDisplayGeneration = 0;
+                root._pendingDisplayChecksLeft = 0;
+                root.ready = true;
+                root.displaySource = nextSource;
+                return;
+            }
+
             root._pendingDisplaySource = nextSource;
             root._pendingDisplayGeneration = generation;
             root._pendingDisplayChecksLeft = 5;

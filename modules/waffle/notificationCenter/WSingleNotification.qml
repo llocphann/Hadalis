@@ -15,6 +15,7 @@ MouseArea {
     id: root
 
     required property var notification
+    property bool presentationActive: true
     property bool expanded: false
     property string groupExpandControlMessage: ""
     readonly property bool isPopup: root.notification
@@ -328,7 +329,7 @@ MouseArea {
                     color: Looks.colors.danger
 
                     SequentialAnimation on opacity {
-                        running: root.isCritical
+                        running: root.presentationActive && root.isCritical
                         loops: Animation.Infinite
                         NumberAnimation { to: 0.4; duration: 600 }
                         NumberAnimation { to: 1; duration: 600 }

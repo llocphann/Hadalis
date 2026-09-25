@@ -37,6 +37,12 @@ screen_edges="$repo_root/modules/screenCorners/ScreenEdges.qml"
 alt_switcher="$repo_root/modules/altSwitcher/AltSwitcher.qml"
 waffle_alt="$repo_root/modules/waffle/altSwitcher/WaffleAltSwitcher.qml"
 waffle_alt_content="$repo_root/modules/waffle/altSwitcher/WaffleAltSwitcherContent.qml"
+waffle_notification_group="$repo_root/modules/waffle/notificationCenter/WNotificationGroup.qml"
+waffle_single_notification="$repo_root/modules/waffle/notificationCenter/WSingleNotification.qml"
+waffle_notification_pane="$repo_root/modules/waffle/notificationCenter/NotificationPaneContent.qml"
+waffle_notification_center="$repo_root/modules/waffle/notificationCenter/NotificationCenterContent.qml"
+waffle_notification_list="$repo_root/modules/waffle/notificationPopup/WNotificationListView.qml"
+waffle_notification_popup="$repo_root/modules/waffle/notificationPopup/WaffleNotificationPopup.qml"
 workspace_thumb="$repo_root/modules/waffle/taskview/WorkspaceThumbnail.qml"
 window_thumb="$repo_root/modules/waffle/taskview/WindowThumbnail.qml"
 easyeffects="$repo_root/services/deferred/EasyEffects.qml"
@@ -148,6 +154,13 @@ require "$media_section" 'root.effectiveIsPlaying && GlobalStates.controlPanelOp
 require "$sidebar_media" 'root.effectiveIsPlaying && GlobalStates.sidebarLeftOpen' 'Sidebar Cava must stop while playback is paused'
 require "$local_music_view" 'active: root.visible && GlobalStates.sidebarLeftOpen && LocalMusic.playing' 'Local Music Cava must sleep while the retained Sidebar is closed'
 require "$local_music_view" 'positionUpdatesActive: root.visible && GlobalStates.sidebarLeftOpen' 'Local Music retained PlayerControl must sleep with the Sidebar'
+require "$waffle_notification_group" 'property bool presentationActive: true' 'Waffle notification groups must expose a host lifecycle gate'
+require "$waffle_notification_group" 'running: root.presentationActive && root.hasCritical' 'Hidden Waffle notification groups must stop critical pulse animations'
+require "$waffle_single_notification" 'running: root.presentationActive && root.isCritical' 'Hidden Waffle notification rows must stop critical pulse animations'
+require "$waffle_notification_pane" 'presentationActive: root.presentationActive' 'Notification Center group delegates must inherit panel presentation state'
+require "$waffle_notification_center" 'presentationActive: root.presented || root.closing' 'Notification Center pulses must stay live through exit motion and sleep after close'
+require "$waffle_notification_list" 'presentationActive: root.presentationActive' 'Notification popup group delegates must inherit native-window visibility'
+require "$waffle_notification_popup" 'presentationActive: panelWindow.visible' 'Suppressed Waffle notification popups must suspend retained pulse animations'
 require "$local_music" 'property bool _mpdSubscriptionEligible: false' 'Local Music must track event-subscription availability separately from the Rust daemon'
 require "$local_music" 'pythonReady && !(mode === "rust" && strict === "1")' 'Local Music Python subscriber must honor strict Rust mode'
 require "$local_music" 'running: root.enabled && !root._mpdSubscriptionActive' 'Local Music 900ms status polling must remain fallback-only'

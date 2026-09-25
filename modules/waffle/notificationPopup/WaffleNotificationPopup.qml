@@ -86,6 +86,7 @@ Scope {
 
                 WNotificationListView {
                     id: listview
+                    presentationActive: panelWindow.visible
                     anchors {
                         fill: parent
                         margins: 8

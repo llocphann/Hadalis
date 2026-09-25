@@ -36,6 +36,9 @@ WBarAttachedPanelContent {
                 anchors.fill: parent
                 contentItem: NotificationPaneContent {
                     implicitWidth: calendarColumnLayout.implicitWidth
+                    // Keep pulses alive through the visible exit animation, then
+                    // suspend them once this retained panel is fully closed.
+                    presentationActive: root.presented || root.closing
                 }
             }
         }

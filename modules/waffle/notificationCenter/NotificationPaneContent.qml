@@ -14,6 +14,7 @@ BodyRectangle {
 
     readonly property int notificationCount: Notifications.list.length
     readonly property bool hasNotifications: notificationCount > 0
+    property bool presentationActive: true
     property string filterQuery: ""
     readonly property bool searching: filterQuery.trim().length > 0
 
@@ -191,6 +192,7 @@ BodyRectangle {
                 required property var modelData
                 width: ListView.view.width
                 notificationGroup: Notifications.groupsByAppName[modelData]
+                presentationActive: root.presentationActive
             }
 
             // Empty state — also covers "search matched nothing"

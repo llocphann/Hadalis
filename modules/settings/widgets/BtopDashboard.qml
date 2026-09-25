@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Layouts
+import Quickshell
 import qs.services
 import qs.modules.common
 import qs.modules.common.widgets
@@ -276,12 +277,33 @@ ColumnLayout {
                             elide: Text.ElideRight
                         }
                     }
-                    StyledText {
-                        textFormat: Text.PlainText
+                    RowLayout {
                         visible: resourceSuspects.width >= 620
-                        text: Translation.tr("Kernel + lifecycle evidence")
-                        color: Appearance.colors.colPrimary
-                        font.pixelSize: Appearance.font.pixelSize.smallest
+                        spacing: 6
+
+                        StyledText {
+                            textFormat: Text.PlainText
+                            text: root.qmlOwnerProfile !== null
+                                ? Translation.tr("Deep profile ready")
+                                : Translation.tr("Kernel + lifecycle evidence")
+                            color: Appearance.colors.colPrimary
+                            font.pixelSize: Appearance.font.pixelSize.smallest
+                        }
+
+                        RippleButton {
+                            Layout.preferredWidth: 82
+                            Layout.preferredHeight: 26
+                            buttonRadius: height / 2
+                            buttonText: Translation.tr("Profile 5s")
+                            colBackground: Appearance.colors.colLayer2
+                            colBackgroundHover:
+                                Appearance.colors.colLayer2Hover
+                            onClicked: Quickshell.execDetached([
+                                "/usr/bin/env", "bash",
+                                Quickshell.shellPath("scripts/inir"),
+                                "dev", "profile", "--duration", "5"
+                            ])
+                        }
                     }
                 }
                 GridLayout {

@@ -79,6 +79,9 @@ clipped_filled_progress="$repo_root/modules/common/widgets/ClippedFilledCircular
 clipped_outline_progress="$repo_root/modules/common/widgets/ClippedOutlineCircularProgress.qml"
 wavy_line="$repo_root/modules/common/widgets/WavyLine.qml"
 shell_update_indicator="$repo_root/modules/bar/ShellUpdateIndicator.qml"
+util_buttons="$repo_root/modules/bar/UtilButtons.qml"
+waffle_system_button="$repo_root/modules/waffle/bar/SystemButton.qml"
+waffle_timer_button="$repo_root/modules/waffle/bar/TimerButton.qml"
 
 require "$config" 'property int framerate: 30' 'Cava schema default must remain 30 fps'
 require "$defaults" '"framerate": 30' 'persisted Cava default must remain 30 fps'
@@ -224,5 +227,8 @@ require "$clipped_outline_progress" 'root.visible && (root.Window.window?.visibl
 require "$wavy_line" '(root.Window.window?.visible ?? true)' 'wavy line animation must sleep with its owning window'
 require "$shell_update_indicator" 'ShellUpdates.isUpdating && root.visible' 'shell update spinner must stop when the indicator is hidden'
 require "$shell_update_indicator" '(root.Window.window?.visible ?? true)' 'shell update animations must sleep with the Bar window'
+require "$util_buttons" '(root.QsWindow.window?.visible ?? true)' 'ii Bar status pulses must sleep with the Bar window'
+require "$waffle_system_button" '(root.Window.window?.visible ?? true)' 'Waffle system status pulses must sleep with the taskbar window'
+require "$waffle_timer_button" '(root.Window.window?.visible ?? true)' 'Waffle timer pulse must sleep with the taskbar window'
 
 printf 'performance lifecycle guards: ok\n'

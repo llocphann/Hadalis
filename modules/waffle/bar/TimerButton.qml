@@ -1,5 +1,6 @@
 import qs
 import QtQuick
+import QtQuick.Window
 import QtQuick.Layouts
 import qs.services
 import qs.modules.common
@@ -80,6 +81,7 @@ BarButton {
 
                 SequentialAnimation on opacity {
                     running: root.pomodoroActive && !(TimerService?.pomodoroBreak ?? false)
+                        && root.visible && (root.Window.window?.visible ?? true)
                     loops: Animation.Infinite
                     NumberAnimation { to: 0.5; duration: 800; easing.type: Easing.InOutSine }
                     NumberAnimation { to: 1.0; duration: 800; easing.type: Easing.InOutSine }

@@ -181,7 +181,8 @@ Item {
                             }
 
                             SequentialAnimation on opacity {
-                                running: recordButtonWrapper.isRecording
+                                running: recordButtonWrapper.isRecording && root.visible
+                                    && (root.QsWindow.window?.visible ?? true)
                                 loops: Animation.Infinite
                                 NumberAnimation { to: 0.4; duration: Appearance.animation.elementMove.duration * 2 }
                                 NumberAnimation { to: 1.0; duration: Appearance.animation.elementMove.duration * 2 }
@@ -320,7 +321,8 @@ Item {
                         }
 
                         SequentialAnimation on opacity {
-                            running: micButton.isInUse && !micButton.isMuted
+                            running: micButton.isInUse && !micButton.isMuted && root.visible
+                                && (root.QsWindow.window?.visible ?? true)
                             loops: Animation.Infinite
                             NumberAnimation { to: 0.4; duration: Appearance.animation.elementMove.duration * 2 }
                             NumberAnimation { to: 1.0; duration: Appearance.animation.elementMove.duration * 2 }
@@ -394,7 +396,8 @@ Item {
                         }
 
                         SequentialAnimation on opacity {
-                            running: screenCastButton.isCasting
+                            running: screenCastButton.isCasting && root.visible
+                                && (root.QsWindow.window?.visible ?? true)
                             loops: Animation.Infinite
                             NumberAnimation { to: 0.4; duration: Appearance.animation.elementMove.duration * 2 }
                             NumberAnimation { to: 1.0; duration: Appearance.animation.elementMove.duration * 2 }

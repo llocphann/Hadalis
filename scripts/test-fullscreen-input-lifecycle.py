@@ -75,6 +75,31 @@ contracts = {
         "WlrLayershell.keyboardFocus: panelWindow.acceptsInput",
         "panelWindow.acceptsInput ? content : emptyWidgetsPanelInput",
     ),
+    "modules/sessionScreen/SessionScreen.qml": (
+        "readonly property bool acceptsInput: GlobalStates.sessionOpen",
+        "WlrLayershell.keyboardFocus: sessionRoot.acceptsInput",
+        "sessionRoot.acceptsInput ? sessionMouseArea : emptySessionInput",
+    ),
+    "modules/mediaControls/MediaControls.qml": (
+        "readonly property bool acceptsInput: GlobalStates.mediaControlsOpen",
+        "WlrLayershell.keyboardFocus: mediaControlsRoot.acceptsInput",
+        "mediaControlsRoot.acceptsInput ? inputScope : emptyMediaControlsInput",
+    ),
+    "modules/clipboard/ClipboardPanel.qml": (
+        "readonly property bool acceptsInput: GlobalStates.clipboardOpen",
+        "WlrLayershell.keyboardFocus: window.acceptsInput",
+        "window.acceptsInput ? keyHandler : emptyClipboardInput",
+    ),
+    "modules/wallpaperSelector/WallpaperCoverflow.qml": (
+        "readonly property bool acceptsInput: GlobalStates.coverflowSelectorOpen",
+        "WlrLayershell.keyboardFocus: panelWindow.acceptsInput",
+        "panelWindow.acceptsInput ? fullCoverflowInput : emptyCoverflowInput",
+    ),
+    "modules/altSwitcher/AltSwitcher.qml": (
+        "readonly property bool acceptsInput: GlobalStates.altSwitcherOpen",
+        "WlrLayershell.keyboardFocus: window.acceptsInput",
+        "window.acceptsInput ? windowMouseArea : emptyAltSwitcherInput",
+    ),
 }
 
 for path, tokens in contracts.items():

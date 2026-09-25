@@ -316,77 +316,120 @@ Singleton {
         }
     }
 
+    function _applyConnectionTypeSnapshot(deviceText: string, connectivity: string): void {
+        const lines = String(deviceText ?? "").trim().split("\n")
+        let hasEthernet = false
+        let hasWifi = false
+        let wifiStatus = "disconnected"
+        lines.forEach(line => {
+            const separator = line.indexOf(":")
+            if (separator < 0)
+                return
+
+            const type = line.slice(0, separator)
+            const state = line.slice(separator + 1)
+            const connected = state === "connected" || state.startsWith("connected ")
+
+            if (type === "ethernet" && connected)
+                hasEthernet = true
+            else if (type === "wifi") {
+                if (state === "disconnected") {
+                    wifiStatus = "disconnected"
+                } else if (connected) {
+                    hasWifi = true
+                    wifiStatus = "connected"
+                    if (connectivity === "limited") {
+                        hasWifi = false
+                        wifiStatus = "limited"
+                    }
+                } else if (state.startsWith("connecting")) {
+                    wifiStatus = "connecting"
+                } else if (state === "unavailable") {
+                    wifiStatus = "disabled"
+                }
+            }
+        })
+        root.wifiStatus = wifiStatus
+        root.ethernet = hasEthernet
+        root.wifi = hasWifi
+
+        // Signal strength is only meaningful for an associated Wi-Fi AP.
+        if (wifiStatus === "connected" || wifiStatus === "limited") {
+            if (!updateNetworkStrength.running)
+                updateNetworkStrength.running = true
+        } else {
+            root.networkStrength = 0
+        }
+    }
+
     Process {
         id: updateConnectionType
-        property string buffer
-        // LANG=C: nmcli localizes device STATE ("connected" → "conectado" etc.), and the
-        // parser below matches English keywords. Without this, wifi state detection silently
-        // fails on non-English desktops — indicator shows disconnected while actually connected.
+        property string buffer: ""
+        property string deviceBuffer: ""
+        property string stage: "devices"
+        property bool chaining: false
+        property bool refreshPending: false
+        // LANG=C: nmcli localizes device STATE ("connected" → "conectado" etc.).
         environment: ({
             LANG: "C",
             LC_ALL: "C"
         })
-        command: ["sh", "-c", "nmcli -t -f TYPE,STATE d status && nmcli -t -f CONNECTIVITY g"]
+        command: ["nmcli", "-t", "-f", "TYPE,STATE", "d", "status"]
         running: false
-        function startCheck() {
-            buffer = "";
-            updateConnectionType.running = true;
+
+        function startCheck(): void {
+            if (updateConnectionType.running || updateConnectionType.chaining) {
+                updateConnectionType.refreshPending = true
+                return
+            }
+            updateConnectionType.refreshPending = false
+            updateConnectionType.chaining = true
+            updateConnectionType.stage = "devices"
+            updateConnectionType.buffer = ""
+            updateConnectionType.deviceBuffer = ""
+            updateConnectionType.command =
+                ["nmcli", "-t", "-f", "TYPE,STATE", "d", "status"]
+            updateConnectionType.running = true
         }
+
+        function finishCheck(): void {
+            updateConnectionType.chaining = false
+            if (updateConnectionType.refreshPending) {
+                updateConnectionType.refreshPending = false
+                Qt.callLater(updateConnectionType.startCheck)
+            }
+        }
+
         stdout: SplitParser {
             onRead: data => {
-                updateConnectionType.buffer += data + "\n";
+                updateConnectionType.buffer += data + "\n"
             }
         }
-        onExited: (exitCode, exitStatus) => {
-            const lines = updateConnectionType.buffer.trim().split('\n');
-            const connectivity = lines.pop() // none, limited, full
-            let hasEthernet = false;
-            let hasWifi = false;
-            let wifiStatus = "disconnected";
-            lines.forEach(line => {
-                const separator = line.indexOf(":");
-                if (separator < 0)
-                    return;
 
-                const type = line.slice(0, separator);
-                const state = line.slice(separator + 1);
-                const connected = state === "connected" || state.startsWith("connected ");
-
-                if (type === "ethernet" && connected)
-                    hasEthernet = true;
-                else if (type === "wifi") {
-                    if (state === "disconnected") {
-                        wifiStatus = "disconnected"
-                    }
-                    else if (connected) {
-                        hasWifi = true;
-                        wifiStatus = "connected"
-
-                        if (connectivity === "limited") {
-                            hasWifi = false;
-                            wifiStatus = "limited"
-                        }
-                    }
-                    else if (state.startsWith("connecting")) {
-                        wifiStatus = "connecting"
-                    }
-                    else if (state === "unavailable") {
-                        wifiStatus = "disabled"
-                    }
+        onExited: (exitCode, _exitStatus) => {
+            if (updateConnectionType.stage === "devices") {
+                if (exitCode !== 0) {
+                    updateConnectionType.finishCheck()
+                    return
                 }
-            });
-            root.wifiStatus = wifiStatus;
-            root.ethernet = hasEthernet;
-            root.wifi = hasWifi;
-            // Signal strength is only meaningful for an associated Wi-Fi AP.
-            // Avoid spawning a full "nmcli device wifi" scan for Ethernet-only,
-            // disabled, connecting, or disconnected states.
-            if (wifiStatus === "connected" || wifiStatus === "limited") {
-                if (!updateNetworkStrength.running)
-                    updateNetworkStrength.running = true;
-            } else {
-                root.networkStrength = 0;
+                updateConnectionType.deviceBuffer = updateConnectionType.buffer
+                updateConnectionType.buffer = ""
+                updateConnectionType.stage = "connectivity"
+                updateConnectionType.command =
+                    ["nmcli", "-t", "-f", "CONNECTIVITY", "g"]
+                Qt.callLater(() => {
+                    if (updateConnectionType.chaining
+                            && !updateConnectionType.running)
+                        updateConnectionType.running = true
+                })
+                return
             }
+
+            if (exitCode === 0)
+                root._applyConnectionTypeSnapshot(
+                    updateConnectionType.deviceBuffer,
+                    updateConnectionType.buffer.trim())
+            updateConnectionType.finishCheck()
         }
     }
 

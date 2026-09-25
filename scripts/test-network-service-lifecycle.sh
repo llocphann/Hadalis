@@ -32,6 +32,14 @@ require_literal 'readonly property int _subscriberRestartMaxDelayMs: 60000' 'Net
 require_literal 'subscriberRestart.interval = root._subscriberRestartDelayMs' 'Network subscriber retry must use the current backoff delay'
 require_literal 'root._subscriberRestartDelayMs * 2' 'Repeated nmcli monitor failures must exponentially back off'
 require_literal 'root._subscriberRestartDelayMs = 2000' 'Successful nmcli monitor startup must reset retry backoff'
+require_literal 'command: ["nmcli", "-t", "-f", "TYPE,STATE", "d", "status"]' 'Network device-state probe must invoke nmcli directly'
+require_literal '["nmcli", "-t", "-f", "CONNECTIVITY", "g"]' 'Network connectivity probe must invoke nmcli directly'
+require_literal 'property bool chaining: false' 'Network status probe must serialize its direct nmcli stages'
+require_literal 'property bool refreshPending: false' 'Network status probe must coalesce monitor events while a snapshot is in flight'
+require_literal 'root._applyConnectionTypeSnapshot(' 'Network status probe must apply one coherent two-stage snapshot'
+if grep -Fq 'command: ["sh", "-c", "nmcli -t -f TYPE,STATE d status' "$service"; then
+    fail 'Network status updates must not spawn a shell around nmcli'
+fi
 
 update_block="$(sed -n '/function _doUpdate()/,/^    }/p' "$service")"
 if grep -Fq 'updateNetworkStrength.running = true' <<<"$update_block"; then

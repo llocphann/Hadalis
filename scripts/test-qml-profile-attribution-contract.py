@@ -47,6 +47,8 @@ def main() -> None:
         '"components": sorted_rows',
         '"modules": sorted_rows',
         '"services": sorted_rows',
+        '"hotspots": hotspot_rows',
+        "event_work_ns",
         '"qmlWorkMsPerSecond"',
         '"allocatedBytes"',
         '"freedBytes"',
@@ -87,6 +89,9 @@ def main() -> None:
         '"latest.json"',
         'service_action("stop")',
         'service_action("restart")',
+        '"qml-profile", "--help"',
+        "runtime_environment()",
+        '"NIRI_SOCKET"',
     ):
         require(capture, token, "bounded QML profile capture")
 
@@ -105,6 +110,9 @@ def main() -> None:
         "BtopOwnerProfileTable {",
         "visible: root.qmlOwnerProfile !== null",
         "visible: root.qmlOwnerProfile === null",
+        'Translation.tr("Profile 5s")',
+        'Quickshell.shellPath("scripts/inir")',
+        '"dev", "profile", "--duration", "5"',
     ):
         require(dashboard, token, "Diagnostics deep profile presentation")
 

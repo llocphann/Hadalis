@@ -59,7 +59,10 @@ Scope {
             exclusionMode: ExclusionMode.Ignore
             WlrLayershell.namespace: "quickshell:wallpaperSelector"
             WlrLayershell.layer: WlrLayer.Overlay
-            WlrLayershell.keyboardFocus: GlobalStates.wallpaperSelectorOpen && !GlobalStates.regionSelectorOpen ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
+            readonly property bool acceptsInput: GlobalStates.wallpaperSelectorOpen
+                && !GlobalStates.regionSelectorOpen
+            WlrLayershell.keyboardFocus: panelWindow.acceptsInput
+                ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
             color: "transparent"
 
             anchors {
@@ -69,8 +72,15 @@ Scope {
                 bottom: true
             }
 
+            Item { id: emptyWallpaperSelectorInput; width: 0; height: 0 }
+            mask: Region {
+                item: panelWindow.acceptsInput
+                    ? wallpaperSelectorBackdrop : emptyWallpaperSelectorInput
+            }
+
             // Click outside to close
             MouseArea {
+                id: wallpaperSelectorBackdrop
                 anchors.fill: parent
                 onClicked: mouse => {
                     const localPos = mapToItem(content, mouse.x, mouse.y)

@@ -170,9 +170,8 @@ for token in (
     "? WlrKeyboardFocus.Exclusive",
     "(root.keyboardFocus || root.keyboardFocusOnDemand)",
     "? WlrKeyboardFocus.OnDemand",
-    "CompositorService.isHyprland",
-    "&& root.keyboardFocus && root.requestedVisible",
-    "? WlrLayer.Top : WlrLayer.Overlay",
+    "WlrLayershell.layer: WlrLayer.Overlay",
+    "root.keyboardFocus && root.exclusiveKeyboardFocus",
 ):
     require(styled_popup, token,
             "StyledPopup must support click-activated exclusive keyboard ownership")

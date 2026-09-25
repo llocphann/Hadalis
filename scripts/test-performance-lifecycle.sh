@@ -160,7 +160,8 @@ require "$power_profiles" 'tlpPdProbe.command = ["/usr/bin/systemctl", "is-enabl
 require "$power_profiles" 'property string probeStage: "active"' 'tlp-pd ownership probe must retain explicit active/enabled stages'
 reject "$power_profiles" '"/usr/bin/sh",' 'tlp-pd ownership probe must avoid a shell wrapper'
 
-require "$world_clock" 'id: minuteTick' 'WorldClock must tick at minute precision without a permanent 1 Hz timer'
+require "$world_clock" 'target: DateTime' 'WorldClock must share the shell minute cadence'
+require "$world_clock" 'function onMinuteEpochChanged(): void' 'WorldClock must refresh from minute-precision DateTime events'
 reject "$world_clock" 'interval: 1000' 'WorldClock must not restore a 1 Hz background timer'
 require "$game_mode" 'Math.max(10000, Math.round(configured))' 'GameMode fallback polling must remain low cadence'
 require "$overview_window" 'layer.enabled: GlobalStates.overviewOpen' 'retained Overview window masks must sleep while Overview is closed'

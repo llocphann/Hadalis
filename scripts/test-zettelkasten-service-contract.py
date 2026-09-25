@@ -9,6 +9,7 @@ widget = (ROOT / "modules/sidebarRight/notepad/NotepadWidget.qml").read_text(enc
 service = (ROOT / "services/Zettelkasten.qml").read_text(encoding="utf-8")
 todo_service = (ROOT / "services/Todo.qml").read_text(encoding="utf-8")
 dash = (ROOT / "modules/dashboard/DashNotes.qml").read_text(encoding="utf-8")
+quick_view = (ROOT / "modules/sidebarRight/notepad/QuickNotesView.qml").read_text(encoding="utf-8")
 helper = (ROOT / "scripts" / "notes" / "zettelkasten.py").read_text(encoding="utf-8")
 settings = (ROOT / "modules" / "settings" / "ServicesConfig.qml").read_text(encoding="utf-8")
 qmldir = (ROOT / "services/qmldir").read_text(encoding="utf-8")
@@ -44,6 +45,14 @@ for token in (
     assert token in service, f"Zettelkasten service contract lost: {token}"
 
 for token in (
+    "QuickNotesView {",
+    "surfaceLocalTabSelection: true",
+    "showZettelkastenActions: true",
+    "margin: 0",
+):
+    assert token in dash, f"Dashboard Notes shared-view contract lost: {token}"
+
+for token in (
     'Translation.tr("Quick Notes")',
     'Translation.tr("Zettelkasten capture")',
     'Translation.tr("%1 note · draft stays in Notepad")',
@@ -56,7 +65,7 @@ for token in (
     "readonly property bool constrainedHeight:",
     "Layout.minimumHeight: root.constrainedHeight ? 76 : 130",
 ):
-    assert token in dash, f"Dashboard Notes Zettelkasten contract lost: {token}"
+    assert token in quick_view, f"Shared Quick Notes Zettelkasten contract lost: {token}"
 
 for token in (
     'ALLOWED_TYPES = ("Permanent", "Literature", "Fleeting")',
@@ -106,13 +115,13 @@ assert "color: Appearance.colors.colSubtext" not in zettel_settings
 assert 'placeholderText: Translation.tr("Leave blank to reuse the Todo Obsidian vault")' not in zettel_settings
 assert 'placeholderText: "00_Capture/03_Zettelkasten"' not in zettel_settings
 
-assert 'Translation.tr("Create a Fleeting Zettelkasten note.' not in dash
-assert "font.pixelSize: Appearance.font.pixelSize.smallest" not in dash
+assert 'Translation.tr("Create a Fleeting Zettelkasten note.' not in quick_view
+assert "font.pixelSize: Appearance.font.pixelSize.smallest" not in quick_view
 assert "_clearCapturedDraft" not in widget
 assert "_pendingZettelCapture" not in widget
 assert "Notepad.removeTab(index)" not in widget
-assert "draft clears after verified save" not in dash
-assert 'text: Translation.tr("Capture")' not in dash
+assert "draft clears after verified save" not in quick_view
+assert 'text: Translation.tr("Capture")' not in quick_view
 
 # A single settings card and one editable shared vault must feed both services.
 unified_settings = settings[unified_start:zettel_end]
@@ -129,4 +138,4 @@ assert todo_service.count("vaultPath: root.sharedVaultPath") == 2
 assert "readonly property string configuredVaultPath: Todo.sharedVaultPath" in service
 assert 'Config.setNestedValue("notes.zettelkasten.vaultPath", "")' in unified_settings
 assert "notes.zettelkasten.vaultPath" not in service
-assert 'GlobalStates.openSettingsSection(7, "To-do & Quick Notes")' in dash
+assert 'GlobalStates.openSettingsSection(7, "To-do & Quick Notes")' in quick_view

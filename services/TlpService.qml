@@ -44,6 +44,16 @@ Singleton {
     readonly property bool discrete: root.limitKind === "discrete"
     readonly property bool continuous: root.limitKind === "continuous"
 
+    onEnabledChanged: {
+        if (!Config.ready)
+            return
+        // The idle status poll sleeps while charge limiting is disabled and
+        // unmanaged. Re-probe on either toggle edge so reconciliation never
+        // relies on a stale capability/ownership snapshot.
+        root._reconcileAfterDetect = true
+        root.refresh()
+    }
+
     property bool _statusSeen: false
     property bool _reconcileAfterDetect: false
     property bool _redetectAfterCurrent: false
@@ -365,7 +375,10 @@ Singleton {
     Timer {
         interval: 120000
         repeat: true
-        running: true
+        // The initial Component.onCompleted probe establishes capability and
+        // ownership. Afterwards, background verification is only useful while
+        // the feature is enabled, iNiR still owns a policy, or an apply is live.
+        running: root.enabled || root.managed || root.busy
         onTriggered: root._detect()
     }
 }

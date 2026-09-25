@@ -145,13 +145,18 @@ Scope {
 
                     BarContent {
                         id: barContent
-                        // Keep the layer-shell PanelWindow mapped, but remove the
-                        // content subtree from scene-graph presentation while a
-                        // fullscreen client owns this output. An opacity-only
-                        // hide can leave native-rendered Text/MaterialSymbol
-                        // nodes blank when focus moves to a non-fullscreen
-                        // sibling window on the same workspace.
-                        visible: !barRoot.fullscreenCovered
+                        // FULLSCREEN-BAR-CONTENT-LIFECYCLE-LOCK:
+                        // Keep the QML content subtree continuously presented.
+                        // Toggling either visible or opacity across fullscreen
+                        // can strand native-rendered Text/MaterialSymbol nodes
+                        // after focus moves to a sibling window on the same
+                        // workspace. Hide fullscreen spatially instead, using
+                        // the same off-surface margin path as normal auto-hide.
+                        readonly property bool spatiallyHidden:
+                            barRoot.fullscreenCovered
+                            || (Config?.options.bar.autoHide.enable && !mustShow)
+                            || GlobalStates.coverflowSelectorOpen
+                            || !GlobalStates.shellEntryReady
                         nativeBlurAllowed: false
                         // Keep the spectrum live through the visible slide-out
                         // tail, then release CAVA once the Bar is off-screen.
@@ -166,7 +171,7 @@ Scope {
                             left: parent.left
                             top: parent.top
                             bottom: undefined
-                            topMargin: ((Config?.options.bar.autoHide.enable && !mustShow) || GlobalStates.coverflowSelectorOpen || !GlobalStates.shellEntryReady) ? -barRoot.panelSurfaceHeight : 0
+                            topMargin: barContent.spatiallyHidden ? -barRoot.panelSurfaceHeight : 0
                             bottomMargin: barRoot.bottomDeadPixelWorkaround ? -1 : 0
                             rightMargin: barRoot.rightDeadPixelWorkaround ? -1 : 0
                         }
@@ -194,7 +199,7 @@ Scope {
                             PropertyChanges {
                                 target: barContent
                                 anchors.topMargin: 0
-                                anchors.bottomMargin: ((Config?.options.bar.autoHide.enable && !mustShow) || GlobalStates.coverflowSelectorOpen || !GlobalStates.shellEntryReady) ? -barRoot.panelSurfaceHeight : 0
+                                anchors.bottomMargin: barContent.spatiallyHidden ? -barRoot.panelSurfaceHeight : 0
                             }
                         }
                     }

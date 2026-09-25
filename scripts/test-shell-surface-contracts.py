@@ -1032,9 +1032,14 @@ def main() -> None:
           and "visible: !fullscreenCovered" not in bar_runtime
           and "updatesEnabled: !fullscreenCovered" not in bar_runtime
           and "item: barRoot.fullscreenCovered ? emptyMask : hoverMaskRegion" in bar_runtime
-          and "visible: !barRoot.fullscreenCovered" in bar_runtime
+          and "FULLSCREEN-BAR-CONTENT-LIFECYCLE-LOCK" in bar_runtime
+          and "readonly property bool spatiallyHidden:" in bar_runtime
+          and "barRoot.fullscreenCovered" in bar_runtime
+          and "topMargin: barContent.spatiallyHidden ? -barRoot.panelSurfaceHeight : 0" in bar_runtime
+          and "anchors.bottomMargin: barContent.spatiallyHidden ? -barRoot.panelSurfaceHeight : 0" in bar_runtime
+          and "visible: !barRoot.fullscreenCovered" not in bar_runtime
           and "opacity: barRoot.fullscreenCovered ? 0 : 1" not in bar_runtime,
-          "Horizontal Bar must stay mapped while fullscreen hides only the QML content/input subtree")
+          "Horizontal Bar must keep its QML subtree resident and hide fullscreen spatially")
     check("FULLSCREEN-BAR-LIFECYCLE-LOCK (maintainer approved 2026-09-19)" in vertical_bar_runtime
           and "fullscreenCovered" not in vertical_bar_runtime
           and "visible: !fullscreenCovered" not in vertical_bar_runtime

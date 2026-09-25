@@ -215,6 +215,10 @@ require "$player_base" 'running: root.positionUpdatesActive' 'PlayerBase positio
 require "$player_base" 'onPositionUpdatesActiveChanged:' 'PlayerBase must refresh position immediately when lifecycle updates resume'
 for preset in "${media_presets[@]}"; do
     require "$preset" 'property alias positionUpdatesActive: playerBase.positionUpdatesActive' 'Media presets must expose the shared position lifecycle gate'
+    preset_visualizer_lifecycle="$(grep -Fc 'live: root.positionUpdatesActive && playerBase.effectiveIsPlaying' "$preset")"
+    if (( preset_visualizer_lifecycle != 2 )); then
+        fail "Media preset visualizers must both sleep with the shared lifecycle gate: $preset has $preset_visualizer_lifecycle guarded visualizers"
+    fi
 done
 require "$player_lyrics" 'property bool serviceActive: true' 'PlayerLyrics lifecycle gate must preserve default standalone behavior'
 require "$player_lyrics" 'const shouldSubscribe = root.visible && root.serviceActive;' 'PlayerLyrics must unsubscribe when its host lifecycle sleeps'

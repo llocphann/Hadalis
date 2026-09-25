@@ -118,7 +118,7 @@ Item {
             WaveVisualizer {
                 anchors.fill: parent
                 visible: root.vizType === "wave" && root.vizPosition !== "none"
-                live: playerBase.effectiveIsPlaying
+                live: root.positionUpdatesActive && playerBase.effectiveIsPlaying
                 points: root.visualizerPoints
                 maxVisualizerValue: 1000
                 smoothing: 2
@@ -128,7 +128,7 @@ Item {
             CavaVisualizer {
                 anchors.fill: parent
                 visible: root.vizType === "bars" && root.vizPosition !== "none"
-                live: playerBase.effectiveIsPlaying
+                live: root.positionUpdatesActive && playerBase.effectiveIsPlaying
                 points: root.visualizerPoints
                 maxVisualizerValue: 1000
                 smoothing: 2

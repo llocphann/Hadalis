@@ -83,7 +83,7 @@ Item {
             anchors { left: parent.left; right: parent.right; margins: root.vizPosition === "fill" ? 8 : 0 }
             y: root.vizPosition === "top" ? 0 : (root.vizPosition === "fill" ? 8 : (parent.height - height))
             height: root.vizPosition === "fill" ? (parent.height - 16) : parent.height * 0.4
-            live: playerBase.effectiveIsPlaying
+            live: root.positionUpdatesActive && playerBase.effectiveIsPlaying
             points: root.visualizerPoints
             maxVisualizerValue: 1000; smoothing: 2
             color: ColorUtils.transparentize(root.themeSourceColor, 0.2)
@@ -95,7 +95,7 @@ Item {
             anchors { left: parent.left; right: parent.right; margins: root.vizPosition === "fill" ? 8 : 0 }
             y: root.vizPosition === "top" ? 0 : (root.vizPosition === "fill" ? 8 : (parent.height - height))
             height: root.vizPosition === "fill" ? (parent.height - 16) : parent.height * 0.4
-            live: playerBase.effectiveIsPlaying
+            live: root.positionUpdatesActive && playerBase.effectiveIsPlaying
             points: root.visualizerPoints
             maxVisualizerValue: 1000; smoothing: 2
             barCount: 32; barSpacing: 2; barRadius: 2; barMinHeight: 1

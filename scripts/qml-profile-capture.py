@@ -2,8 +2,9 @@
 """Capture an opt-in Qt QML profile and persist Hadalis owner attribution.
 
 The normal shell never enables QML debugging. This worker temporarily stops the
-managed shell, lets qmlprofiler launch Quickshell with its local debug transport,
-records a bounded trace, flushes it, and restores the service. It is safe to
+managed shell, launches Quickshell with its explicit local QML debugger port,
+attaches qmlprofiler, records a bounded trace, flushes it, and restores the
+service. It is safe to
 launch from Quickshell because inir.service intentionally uses KillMode=process.
 """
 
@@ -15,6 +16,7 @@ import os
 from pathlib import Path
 import selectors
 import shutil
+import socket
 import subprocess
 import sys
 import time
@@ -49,6 +51,42 @@ def runtime_environment() -> dict[str, str]:
         elif (runtime_dir / "niri" / "socket").exists():
             env["NIRI_SOCKET"] = str(runtime_dir / "niri" / "socket")
     return env
+
+
+def reserve_debug_port() -> int:
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+        sock.bind(("127.0.0.1", 0))
+        return int(sock.getsockname()[1])
+
+
+def wait_for_debug_listener(
+    port: int,
+    proc: subprocess.Popen[bytes],
+    timeout: float,
+) -> None:
+    port_hex = f"{port:04X}"
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        if proc.poll() is not None:
+            raise RuntimeError(
+                f"Quickshell profiler instance exited early ({proc.returncode})"
+            )
+        for table in (Path("/proc/net/tcp"), Path("/proc/net/tcp6")):
+            try:
+                lines = table.read_text(encoding="ascii").splitlines()[1:]
+            except OSError:
+                continue
+            for line in lines:
+                fields = line.split()
+                if len(fields) < 4 or fields[3] != "0A":
+                    continue
+                local = fields[1].rsplit(":", 1)
+                if len(local) == 2 and local[1].upper() == port_hex:
+                    return
+        time.sleep(0.05)
+    raise RuntimeError(
+        f"Quickshell QML debugger did not listen on localhost:{port}"
+    )
 
 
 def service_active() -> bool:
@@ -156,10 +194,31 @@ def capture(root: Path, duration: float, state_dir: Path) -> tuple[Path, Path]:
 
     was_service_active = service_active()
     profiler: subprocess.Popen[str] | None = None
+    profile_shell: subprocess.Popen[bytes] | None = None
+    shell_log = None
     try:
         if was_service_active:
             service_action("stop")
             time.sleep(0.35)
+
+        debug_port = reserve_debug_port()
+        shell_log = (state_dir / f"shell-{stamp}.log").open("wb")
+        profile_shell = subprocess.Popen(
+            [
+                qs,
+                "-n",
+                "-p",
+                str(root),
+                "--debug",
+                str(debug_port),
+                "--waitfordebug",
+            ],
+            stdin=subprocess.DEVNULL,
+            stdout=shell_log,
+            stderr=subprocess.STDOUT,
+            env=runtime_environment(),
+        )
+        wait_for_debug_listener(debug_port, profile_shell, timeout=12.0)
 
         command = [
             qmlprofiler,
@@ -168,10 +227,10 @@ def capture(root: Path, duration: float, state_dir: Path) -> tuple[Path, Path]:
             "off",
             "--include",
             PROFILE_FEATURES,
-            qs,
-            "-n",
-            "-p",
-            str(root),
+            "--attach",
+            "127.0.0.1",
+            "--port",
+            str(debug_port),
         ]
         profiler = subprocess.Popen(
             command,
@@ -235,6 +294,14 @@ def capture(root: Path, duration: float, state_dir: Path) -> tuple[Path, Path]:
                 profiler.wait(timeout=2.0)
             except subprocess.TimeoutExpired:
                 profiler.kill()
+        if profile_shell is not None and profile_shell.poll() is None:
+            profile_shell.terminate()
+            try:
+                profile_shell.wait(timeout=3.0)
+            except subprocess.TimeoutExpired:
+                profile_shell.kill()
+        if shell_log is not None:
+            shell_log.close()
         if was_service_active:
             try:
                 service_action("restart")

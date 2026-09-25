@@ -79,6 +79,7 @@ Quick start:
   inir logs              View runtime logs (--full: all categories, --debug: foreground debug, -f: follow)
   inir status            Shell status info
   inir doctor            Health checks (--perf: runtime graphics/media snapshot)
+  inir dev profile       Capture a bounded deep QML owner profile (restarts shell)
   inir input-method start Initialize Fcitx5/Unikey for the desktop session
 
 EOF
@@ -3865,6 +3866,12 @@ case "$command_name" in
         if [[ "${1:-}" == "audit" ]]; then
             shift
             run_dev_audit "$@"
+        elif [[ "${1:-}" == "profile" ]]; then
+            shift
+            require_qs
+            resolve_config_dir
+            exec /usr/bin/env python3 "$script_dir/qml-profile-capture.py" \
+                --root "$config_dir" "$@"
         else
             require_qs
             run_ipc_target_command dev "$@"

@@ -84,6 +84,7 @@ grep -Fq 'Exec=youtube-music %U' "$HOME/.local/share/applications/youtube-music.
 
 for active_file in \
   "$repo_root/services/AppSearch.qml" \
+  "$repo_root/modules/settings/SidebarsConfig.qml" \
   "$repo_root/modules/bar/BarTaskbarButton.qml" \
   "$repo_root/modules/dock/DockAppButton.qml" \
   "$repo_root/scripts/cava/resolve_audio_source.py"; do

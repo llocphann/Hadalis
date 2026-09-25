@@ -6,6 +6,7 @@ import Quickshell.Io
 import QtQuick
 
 import qs.modules.common
+import qs.services
 
 Singleton {
     id: root
@@ -85,19 +86,10 @@ Singleton {
     }
 
     // ── Live sun/moon context ─────────────────────────────────────────────
-    // Ticks once a minute so sun progress and moon age stay current without a
-    // weather refresh. Raw ms, never gated on animationsEnabled (P0-10).
-    property int _clockTick: 0
-    Timer {
-        id: clockTickTimer
-        interval: 60000
-        repeat: true
-        // Weather's live sun/moon context is only consumed when the weather
-        // service itself is enabled. Do not keep a global minute wakeup alive
-        // for users that disable weather entirely.
-        running: root.enabled
-        onTriggered: root._clockTick++
-    }
+    // Reuse DateTime's SystemClock minute epoch instead of owning another
+    // repeating 60s timer. This remains minute-resolution even when the global
+    // clock temporarily switches to second precision.
+    readonly property int _clockTick: DateTime.minuteEpoch
 
     // Parse "HH:MM", "H:MM", or "hh:MM AM/PM" into minutes-of-day; -1 if unknown.
     function _timeToMinutes(s): int {

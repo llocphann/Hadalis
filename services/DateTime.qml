@@ -34,6 +34,10 @@ Singleton {
     property string shortDate: Qt.locale().toString(clock.date, Config.options?.time.shortDateFormat ?? "dd/MM")
     property string date: Qt.locale().toString(clock.date, Config.options?.time.dateFormat ?? "dddd, dd/MM")
     property string collapsedCalendarFormat: Qt.locale().toString(clock.date, "dd MMMM yyyy")
+    // Shared minute-resolution epoch for services that only need coarse wall
+    // clock changes. The value stays stable across second-precision clock ticks,
+    // so consumers can share SystemClock instead of owning parallel 60s timers.
+    readonly property int minuteEpoch: Math.floor(clock.date.getTime() / 60000)
     property string uptime: "0h, 0m"
 
     Timer {

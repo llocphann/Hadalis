@@ -151,43 +151,70 @@ Item {
                 }
 
                 RippleButton {
+                    id: profileButton
                     Layout.alignment: Qt.AlignVCenter
-                    Layout.preferredWidth: 104
-                    Layout.preferredHeight: 28
-                    buttonRadius: height / 2
+                    Layout.preferredWidth: 118
+                    Layout.preferredHeight: 32
+                    buttonRadius: Appearance.rounding.small
                     buttonText: Translation.tr("Profile 5s")
                     colBackground: Qt.rgba(
                         Appearance.colors.colPrimary.r,
                         Appearance.colors.colPrimary.g,
-                        Appearance.colors.colPrimary.b, 0.10)
+                        Appearance.colors.colPrimary.b, 0.14)
                     colBackgroundHover: Qt.rgba(
                         Appearance.colors.colPrimary.r,
                         Appearance.colors.colPrimary.g,
-                        Appearance.colors.colPrimary.b, 0.18)
+                        Appearance.colors.colPrimary.b, 0.22)
                     colRipple: Qt.rgba(
                         Appearance.colors.colPrimary.r,
                         Appearance.colors.colPrimary.g,
-                        Appearance.colors.colPrimary.b, 0.28)
+                        Appearance.colors.colPrimary.b, 0.32)
                     onClicked: root.deepProfileRequested()
 
-                    contentItem: Row {
-                        anchors.centerIn: parent
-                        spacing: 5
+                    contentItem: Item {
+                        implicitWidth: 118
+                        implicitHeight: 32
 
-                        MaterialSymbol {
-                            anchors.verticalCenter: parent.verticalCenter
-                            text: "memory"
-                            iconSize: 15
-                            color: Appearance.colors.colPrimary
+                        Rectangle {
+                            anchors.fill: parent
+                            radius: profileButton.buttonRadius
+                            color: "transparent"
+                            border.width: 1
+                            border.color: Qt.rgba(
+                                Appearance.colors.colPrimary.r,
+                                Appearance.colors.colPrimary.g,
+                                Appearance.colors.colPrimary.b,
+                                profileButton.buttonHovered ? 0.48 : 0.30)
+
+                            Behavior on border.color {
+                                enabled: Appearance.animationsEnabled
+                                ColorAnimation {
+                                    duration: Appearance.animation
+                                        .elementMoveFast.duration
+                                }
+                            }
                         }
 
-                        StyledText {
-                            anchors.verticalCenter: parent.verticalCenter
-                            textFormat: Text.PlainText
-                            text: Translation.tr("Profile 5s")
-                            color: Appearance.colors.colOnLayer1
-                            font.pixelSize: Appearance.font.pixelSize.smallest
-                            font.weight: Font.DemiBold
+                        Row {
+                            anchors.centerIn: parent
+                            spacing: 7
+
+                            MaterialSymbol {
+                                anchors.verticalCenter: parent.verticalCenter
+                                text: "query_stats"
+                                iconSize: 16
+                                fill: 1
+                                color: Appearance.colors.colPrimary
+                            }
+
+                            StyledText {
+                                anchors.verticalCenter: parent.verticalCenter
+                                textFormat: Text.PlainText
+                                text: Translation.tr("Profile 5s")
+                                color: Appearance.colors.colOnLayer1
+                                font.pixelSize: Appearance.font.pixelSize.small
+                                font.weight: Font.DemiBold
+                            }
                         }
                     }
                 }

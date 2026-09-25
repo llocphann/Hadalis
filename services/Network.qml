@@ -278,6 +278,7 @@ Singleton {
     Component.onDestruction: {
         root._destroying = true;
         subscriberRestart.stop()
+        subscriberHealthyTimer.stop()
         subscriber.running = false;
     }
 
@@ -286,6 +287,16 @@ Singleton {
         interval: 2000
         repeat: false
         onTriggered: root._startSubscriber()
+    }
+
+    Timer {
+        id: subscriberHealthyTimer
+        interval: 10000
+        repeat: false
+        onTriggered: {
+            if (subscriber.running)
+                root._subscriberRestartDelayMs = 2000
+        }
     }
 
     Process {
@@ -308,9 +319,14 @@ Singleton {
         }
         onStarted: {
             subscriber.startObserved = true
-            root._subscriberRestartDelayMs = 2000
+            // A successful spawn is not yet a healthy monitor: some failures
+            // start and exit immediately. Reset backoff only after stability.
+            subscriberHealthyTimer.restart()
         }
-        onExited: root._scheduleSubscriberRestart()
+        onExited: {
+            subscriberHealthyTimer.stop()
+            root._scheduleSubscriberRestart()
+        }
         stdout: SplitParser {
             onRead: root.update()
         }

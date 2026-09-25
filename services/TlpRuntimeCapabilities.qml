@@ -4,6 +4,7 @@ pragma Singleton
 import QtQuick
 import Quickshell
 import Quickshell.Io
+import qs
 
 Singleton {
     id: root
@@ -18,6 +19,18 @@ Singleton {
     property string intelGpuDriver: ""
     property bool rdwProbeDone: false
     property bool rdwAvailable: false
+
+    // Runtime capability discovery is only consumed by the Settings surfaces.
+    // Preserve cached values after close, but stop repeated sysfs/GPU/RDW probes.
+    readonly property bool standaloneSettingsWindow:
+        (Quickshell.env("INIR_STANDALONE_WINDOW") ?? "") === "1"
+    readonly property bool uiDemand:
+        root.standaloneSettingsWindow || (GlobalStates.settingsOverlayOpen ?? false)
+
+    onUiDemandChanged: {
+        if (root.uiDemand)
+            root.refresh()
+    }
 
     readonly property var cpuDriverModeKeys: [
         "CPU_DRIVER_OPMODE_ON_AC",
@@ -422,12 +435,15 @@ Singleton {
         }
     }
 
-    Component.onCompleted: root.refresh()
+    Component.onCompleted: {
+        if (root.uiDemand)
+            root.refresh()
+    }
 
     Timer {
         interval: 300000
         repeat: true
-        running: true
+        running: root.uiDemand
         onTriggered: root.refresh()
     }
 }

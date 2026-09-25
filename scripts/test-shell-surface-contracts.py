@@ -909,7 +909,7 @@ def main() -> None:
         "float roundedBoxCorners(",
         "float tangentAwareBody(",
         "primaryRelation > 0.5 && tangentRelation > 0.5",
-        "!(join > 0.5 && also > 0.5)",
+        "also < -0.5 || also > 0.5",
     ):
         check(token in iris_frag,
               f"Production tangent-contact shader contract missing: {token}")

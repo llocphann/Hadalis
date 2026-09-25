@@ -37,16 +37,21 @@ motion = read("modules/common/SurfaceMotion.qml")
 waffle = read("modules/waffle/bar/BarPopup.qml")
 
 production_qsb = ROOT / "modules/common/perimeter/IrisField.frag.qsb"
-locked_qsb = ROOT / "scripts/iris-corner-poc/IrisField.frag.qsb"
 production_frag = ROOT / "modules/common/perimeter/IrisField.frag"
-locked_frag = ROOT / "scripts/iris-corner-poc/IrisField.frag"
 
-if production_qsb.read_bytes() != locked_qsb.read_bytes():
-    raise SystemExit("iRiS production surface contract failed: production QSB differs from locked G1/G2 QSB")
-if production_frag.read_bytes() != locked_frag.read_bytes():
-    raise SystemExit("iRiS production surface contract failed: production shader source differs from locked G1/G2 source")
-if production_qsb.stat().st_size != 16765:
+# The historical corner POC is evidence, not the production shader authority.
+# Lock the shipped binary/source pair to the current tangent-aware production
+# generation without requiring it to remain byte-identical to that old POC.
+if production_qsb.stat().st_size != 18582:
     raise SystemExit("iRiS production surface contract failed: unexpected QSB byte size")
+production_frag_text = production_frag.read_text(encoding="utf-8")
+for token in (
+    "float roundedBoxCorners(",
+    "float tangentAwareBody(",
+    "primaryRelation > 0.5 && tangentRelation > 0.5",
+    "also < -0.5 || also > 0.5",
+):
+    require(production_frag_text, token, "tangent-aware production shader")
 
 for token in (
     "ConnectedSurfaceGeometry {",

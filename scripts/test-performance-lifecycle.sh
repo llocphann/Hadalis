@@ -192,6 +192,16 @@ require "$bar_content" 'TimerIndicator { presentationActive: root.presentationAc
 require "$bar_content" 'ShellUpdateIndicator { presentationActive: root.presentationActive; Layout.alignment: Qt.AlignVCenter }' 'Bar update indicator must follow Bar presentation lifecycle'
 require "$bar_content" 'presentationActive: false' 'Horizontal Bar natural-size utility probe must stay animation-idle'
 require "$vertical_bar_content" 'presentationActive: false' 'Vertical Bar natural-size utility probe must stay animation-idle'
+horizontal_resources_block="$(sed -n '/id: resourcesModuleComponent/,/^    }/p' "$bar_content")"
+grep -Fq 'presentationActive: root.presentationActive' <<<"$horizontal_resources_block" \
+    || fail 'Horizontal Bar resources must follow Bar presentation lifecycle'
+horizontal_utilities_block="$(sed -n '/id: utilButtonsModuleComponent/,/^    }/p' "$bar_content")"
+grep -Fq 'presentationActive: root.presentationActive' <<<"$horizontal_utilities_block" \
+    || fail 'Horizontal Bar utilities must follow Bar presentation lifecycle'
+require "$vertical_bar_content" 'Component { id: resourcesComponent; Resources { presentationActive: root.presentationActive } }' 'Vertical Bar resources must follow Bar presentation lifecycle'
+require "$vertical_bar_content" 'compactRequested: root.verticalUtilitiesCompact; presentationActive: root.presentationActive' 'Vertical Bar utilities must follow Bar presentation lifecycle'
+require "$vertical_bar_content" 'Bar.TimerIndicator { vertical: true; presentationActive: root.presentationActive }' 'Vertical Bar timer pulse must sleep off-screen'
+require "$vertical_bar_content" 'Bar.ShellUpdateIndicator { vertical: true; presentationActive: root.presentationActive }' 'Vertical Bar update spinner must sleep off-screen'
 require "$media_section" 'root.effectiveIsPlaying && GlobalStates.controlPanelOpen' 'Control Panel Cava must stop while playback is paused'
 require "$sidebar_media" 'root.effectiveIsPlaying && GlobalStates.sidebarLeftOpen' 'Sidebar Cava must stop while playback is paused'
 require "$local_music_view" 'active: root.visible && GlobalStates.sidebarLeftOpen && LocalMusic.playing' 'Local Music Cava must sleep while the retained Sidebar is closed'
@@ -320,8 +330,12 @@ require "$resource_usage" 'const firstLine = nvidiaGpuCollector.text.trim().spli
 require "$resource_usage" 'command: ["timeout", "1", root._intelGpuTopPath, "-J", "-s", "500"]' 'Intel GPU sampling must invoke timeout directly without a shell wrapper'
 reject "$resource_usage" '2>/dev/null | head -n 1' 'NVIDIA GPU sampling must not spawn bash and head around nvidia-smi'
 reject "$resource_usage" 'command: ["/usr/bin/bash", "-c", "timeout 1 " + root._intelGpuTopPath' 'Intel GPU sampling must not spawn bash around timeout'
-require "$bar_resources" 'root.visible && !GameMode.active' 'horizontal Bar resource polling must pause in GameMode'
-require "$vertical_bar_resources" 'root.visible && !GameMode.active' 'vertical Bar resource polling must pause in GameMode'
+require "$bar_resources" 'property bool presentationActive: true' 'Horizontal Bar resources must expose a retained-surface lifecycle gate'
+require "$bar_resources" 'root.visible && root.presentationActive && !GameMode.active' 'Auto-hidden horizontal Bar must release ResourceUsage polling'
+require "$bar_resources" 'onPresentationActiveChanged: root.syncResourceUsageLifecycle()' 'Horizontal Bar resources must reacquire telemetry when presentation returns'
+require "$vertical_bar_resources" 'property bool presentationActive: true' 'Vertical Bar resources must expose a retained-surface lifecycle gate'
+require "$vertical_bar_resources" 'root.visible && root.presentationActive && !GameMode.active' 'Auto-hidden vertical Bar must release ResourceUsage polling'
+require "$vertical_bar_resources" 'onPresentationActiveChanged: root.syncResourceUsageLifecycle()' 'Vertical Bar resources must reacquire telemetry when presentation returns'
 require "$recorder_status" '(Config.options?.performance?.lowPower ?? false) ? 30000 : 15000' 'idle recorder detection must not spawn pgrep every five seconds'
 require "$recorder_status" 'interval: root.idlePollIntervalMs' 'RecorderStatus idle polling must use its power-aware cadence'
 require "$timer_service" 'property int stopwatchHighPrecisionSubscribers: 0' 'Stopwatch service must track visible centisecond consumers'

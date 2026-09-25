@@ -7,12 +7,15 @@ import qs.modules.bar as Bar
 MouseArea {
     id: root
     property bool alwaysShowAllResources: false
+    // Auto-hidden/fullscreen Bars keep their QML tree resident.
+    property bool presentationActive: true
     implicitHeight: columnLayout.implicitHeight
     implicitWidth: columnLayout.implicitWidth
     hoverEnabled: true
 
     property bool _resourceUsageHeld: false
-    readonly property bool _resourceUsageWanted: root.visible && !GameMode.active
+    readonly property bool _resourceUsageWanted:
+        root.visible && root.presentationActive && !GameMode.active
 
     function syncResourceUsageLifecycle(): void {
         if (root._resourceUsageWanted === root._resourceUsageHeld)
@@ -32,6 +35,7 @@ MouseArea {
         }
     }
     onVisibleChanged: root.syncResourceUsageLifecycle()
+    onPresentationActiveChanged: root.syncResourceUsageLifecycle()
 
     Connections {
         target: GameMode

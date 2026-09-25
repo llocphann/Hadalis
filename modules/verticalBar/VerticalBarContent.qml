@@ -376,7 +376,7 @@ Item { // Bar content region
             presentationActive: root.presentationActive
         }
     }
-    Component { id: resourcesComponent; Resources {} }
+    Component { id: resourcesComponent; Resources { presentationActive: root.presentationActive } }
     Component { id: mediaComponent; VerticalMedia { presentationActive: root.presentationActive } }
     Component {
         id: workspacesComponent
@@ -390,11 +390,11 @@ Item { // Bar content region
         }
     }
     Component { id: clockComponent; VerticalClockModule {} }
-    Component { id: utilButtonsComponent; Bar.UtilButtons { vertical: true; compactRequested: root.verticalUtilitiesCompact } }
+    Component { id: utilButtonsComponent; Bar.UtilButtons { vertical: true; compactRequested: root.verticalUtilitiesCompact; presentationActive: root.presentationActive } }
     Component { id: batteryComponent; Bar.BatteryIndicator {} }
     Component { id: trayComponent; Bar.SysTray { vertical: true; invertSide: Config.options?.bar?.bottom ?? false } }
-    Component { id: timerComponent; Bar.TimerIndicator { vertical: true } }
-    Component { id: shellUpdateComponent; Bar.ShellUpdateIndicator { vertical: true } }
+    Component { id: timerComponent; Bar.TimerIndicator { vertical: true; presentationActive: root.presentationActive } }
+    Component { id: shellUpdateComponent; Bar.ShellUpdateIndicator { vertical: true; presentationActive: root.presentationActive } }
     Component {
         id: weatherComponent
         BarWeather.WeatherBar {

@@ -481,6 +481,8 @@ Item {
         AnimatedTabIndexPair {
             id: idxPair
             index: root.workspaceIndexInGroup
+            animationsEnabled: root.occupancyPresentationActive
+                && Appearance.animationsEnabled
         }
         property real indicatorPosition: Math.min(idxPair.idx1, idxPair.idx2) * workspaceButtonWidth + root.activeWorkspaceMargin
         property real indicatorLength: Math.abs(idxPair.idx1 - idxPair.idx2) * workspaceButtonWidth + workspaceButtonWidth - root.activeWorkspaceMargin * 2
@@ -794,6 +796,8 @@ Item {
         AnimatedTabIndexPair {
             id: columnIdxPair
             index: root.currentWindowIndex
+            animationsEnabled: root.occupancyPresentationActive
+                && Appearance.animationsEnabled
         }
         property real indicatorPosition: Math.min(columnIdxPair.idx1, columnIdxPair.idx2) * workspaceButtonWidth + root.activeWorkspaceMargin
         property real indicatorLength: Math.abs(columnIdxPair.idx1 - columnIdxPair.idx2) * workspaceButtonWidth + workspaceButtonWidth - root.activeWorkspaceMargin * 2

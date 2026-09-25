@@ -69,6 +69,7 @@ bar_surface="$repo_root/modules/bar/Bar.qml"
 bar_content="$repo_root/modules/bar/BarContent.qml"
 bar_active_window="$repo_root/modules/bar/ActiveWindow.qml"
 bar_workspaces="$repo_root/modules/bar/Workspaces.qml"
+animated_tab_pair="$repo_root/modules/common/models/AnimatedTabIndexPair.qml"
 bar_media="$repo_root/modules/bar/Media.qml"
 bar_util_buttons="$repo_root/modules/bar/UtilButtons.qml"
 bar_timer_indicator="$repo_root/modules/bar/TimerIndicator.qml"
@@ -216,6 +217,15 @@ require "$bar_workspaces" 'root.presentationActive && root.visible' 'Hidden work
 require "$bar_workspaces" 'enabled: root.occupancyPresentationActive' 'Hidden Workspaces must detach occupancy-only Niri signal fan-out'
 require "$bar_workspaces" 'updateWorkspaceOccupiedTimer.stop()' 'Hidden Workspaces must cancel pending occupancy rebuilds'
 require "$bar_workspaces" 'root.doUpdateWorkspaceOccupied()' 'Workspaces must rebuild authoritative occupancy on reveal'
+require "$animated_tab_pair" 'property bool animationsEnabled: true' 'Animated tab indices must expose a lifecycle animation gate'
+animated_tab_pair_gates="$(grep -Fc 'enabled: root.animationsEnabled' "$animated_tab_pair")"
+if (( animated_tab_pair_gates != 2 )); then
+    fail "Both AnimatedTabIndexPair interpolation paths must honor animationsEnabled"
+fi
+workspace_indicator_gates="$(grep -Fc 'animationsEnabled: root.occupancyPresentationActive' "$bar_workspaces")"
+if (( workspace_indicator_gates != 2 )); then
+    fail "Both workspace indicator pairs must stop interpolation while hidden"
+fi
 horizontal_workspaces_block="$(sed -n '/id: workspacesModuleComponent/,/^    }/p' "$bar_content")"
 grep -Fq 'presentationActive: root.presentationActive' <<<"$horizontal_workspaces_block" \
     || fail 'Horizontal Bar Workspaces must follow Bar presentation lifecycle'

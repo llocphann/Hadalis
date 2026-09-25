@@ -34,6 +34,8 @@ local_music_mpd="$repo_root/scripts/local_music_mpd.py"
 native_dispatch="$repo_root/scripts/native-dispatch"
 screen_edges="$repo_root/modules/screenCorners/ScreenEdges.qml"
 alt_switcher="$repo_root/modules/altSwitcher/AltSwitcher.qml"
+alt_switcher_router="$repo_root/modules/altSwitcher/AltSwitcherNoVisual.qml"
+shell_entry="$repo_root/shell.qml"
 waffle_alt="$repo_root/modules/waffle/altSwitcher/WaffleAltSwitcher.qml"
 waffle_alt_content="$repo_root/modules/waffle/altSwitcher/WaffleAltSwitcherContent.qml"
 waffle_notification_group="$repo_root/modules/waffle/notificationCenter/WNotificationGroup.qml"
@@ -310,6 +312,13 @@ require "$screen_edges" 'readonly property bool physicalShadowActive:' 'Screen E
 require "$screen_edges" 'layer.enabled: frameShape.physicalShadowActive' 'Screen Edge full-screen layer must sleep when physical shadow is off'
 require "$screen_edges" 'fillRule: ShapePath.OddEvenFill' 'Screen Edge geometry lock must remain one odd-even frame'
 
+require "$shell_entry" 'source: "modules/altSwitcher/AltSwitcherNoVisual.qml"' 'No-UI AltSwitcher must stay owned by the permanent lightweight router'
+require "$shell_entry" '&& !root.iiAltSwitcherNoVisual' 'Visual ii AltSwitcher must stay unloaded in no-UI mode'
+require "$alt_switcher_router" 'readonly property bool iiNoVisual:' 'Lightweight AltSwitcher router must retain ii no-visual ownership'
+reject "$alt_switcher" 'effectiveNoVisualUi' 'Visual AltSwitcher must not retain unreachable no-UI mode state'
+reject "$alt_switcher" 'noUiSnapshotUpdateTimer' 'Visual AltSwitcher must not restore dead 3-second no-UI snapshot polling'
+reject "$alt_switcher" 'rebuildNoUiSnapshot' 'Visual AltSwitcher must not duplicate no-UI snapshot ownership'
+reject "$alt_switcher" 'quickSwitchDone' 'Visual AltSwitcher must not retain dead no-UI session state'
 require "$alt_switcher" 'cacheBuffer: root.skewExpandedWidth' 'ii skew AltSwitcher cache must stay bounded'
 reject "$alt_switcher" 'cacheBuffer: root.skewExpandedWidth * 2' 'ii skew AltSwitcher must not restore the doubled preview cache'
 require "$alt_switcher" 'layer.samples: Appearance.effectsEnabled ? 4 : 1' 'ii skew mask sampling must scale down with effects'

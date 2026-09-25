@@ -20,8 +20,6 @@ Scope {
     // Animation and visibility control
     readonly property var altSwitcherOptions: Config.options?.altSwitcher ?? {}
     readonly property string altPreset: altSwitcherOptions.preset ?? "default"
-    readonly property bool altNoVisualUi: altSwitcherOptions.noVisualUi ?? false
-    readonly property bool effectiveNoVisualUi: altNoVisualUi && altPreset !== "skew"
     readonly property bool altMonochromeIcons: altSwitcherOptions.monochromeIcons ?? false
     readonly property bool altEnableAnimation: altSwitcherOptions.enableAnimation ?? true
     readonly property int altAnimationDurationMs: altSwitcherOptions.animationDurationMs ?? 200
@@ -99,10 +97,6 @@ Scope {
     readonly property bool effectiveEnableBlurGlass: root.altEnableBlurGlass && !isHighLoad
     readonly property bool effectiveEnableAnimation: root.altEnableAnimation && !isHighLoad
 
-    property bool quickSwitchDone: false
-    property var noUiSnapshot: []
-    property int noUiIndex: 0
-
     property var _pendingWindowsUpdate: null
     Timer {
         id: windowsUpdateDebounce
@@ -112,19 +106,6 @@ Scope {
             if (root._pendingWindowsUpdate) {
                 root._pendingWindowsUpdate()
                 root._pendingWindowsUpdate = null
-            }
-        }
-    }
-
-    Timer {
-        id: quickSwitchResetTimer
-        interval: 800
-        repeat: false
-        onTriggered: {
-            if (!GlobalStates.altSwitcherOpen) {
-                root.quickSwitchDone = false
-                root.noUiSnapshot = []
-                root.noUiIndex = 0
             }
         }
     }
@@ -288,37 +269,6 @@ Scope {
         const workspaces = NiriService.workspaces || {}
         const mruIds = NiriService.mruWindowIds || []
         itemSnapshot = buildItemsFrom(windows, workspaces, mruIds)
-    }
-
-    property bool _noUiRebuildPending: false
-    
-    // Synchronous version for immediate use in noVisualUi mode
-    function rebuildNoUiSnapshotSync() {
-        const windows = NiriService.windows || []
-        const workspaces = NiriService.workspaces || {}
-        const mruIds = NiriService.mruWindowIds || []
-        root.noUiSnapshot = buildItemsFrom(windows, workspaces, mruIds)
-        root.noUiIndex = 0
-    }
-    
-    function rebuildNoUiSnapshot() {
-        if (_noUiRebuildPending) return
-        _noUiRebuildPending = true
-        
-        Qt.callLater(function() {
-            _noUiRebuildPending = false
-            rebuildNoUiSnapshotSync()
-        })
-    }
-
-    function focusNoUiIndex() {
-        const len = root.noUiSnapshot?.length ?? 0
-        if (len <= 0)
-            return
-        const idx = Math.max(0, Math.min(len - 1, root.noUiIndex))
-        const id = root.noUiSnapshot[idx]?.id
-        if (id !== undefined)
-            NiriService.focusWindow(id)
     }
 
     function ensureSnapshot() {
@@ -1895,25 +1845,6 @@ Scope {
         }
     }
     
-    Timer {
-        id: noUiSnapshotUpdateTimer
-        interval: GameMode.active ? 10000 : 3000
-        repeat: true
-        running: root.effectiveNoVisualUi && !GlobalStates.altSwitcherOpen
-        onTriggered: {
-            if (GameMode.active) return
-            
-            if (NiriService.windows?.length > 0) {
-                Qt.callLater(function() {
-                    const windows = NiriService.windows || []
-                    const workspaces = NiriService.workspaces || {}
-                    const mruIds = NiriService.mruWindowIds || []
-                    root.noUiSnapshot = buildItemsFrom(windows, workspaces, mruIds)
-                })
-            }
-        }
-    }
-
     function handleOpen(): void {
         if (root.skewStyle) {
             root.openSkewSwitcher()

@@ -67,6 +67,7 @@ resource_usage="$repo_root/services/ResourceUsage.qml"
 bar_resources="$repo_root/modules/bar/Resources.qml"
 bar_surface="$repo_root/modules/bar/Bar.qml"
 bar_content="$repo_root/modules/bar/BarContent.qml"
+bar_active_window="$repo_root/modules/bar/ActiveWindow.qml"
 bar_media="$repo_root/modules/bar/Media.qml"
 bar_util_buttons="$repo_root/modules/bar/UtilButtons.qml"
 bar_timer_indicator="$repo_root/modules/bar/TimerIndicator.qml"
@@ -204,6 +205,14 @@ require "$bar_shell_update_indicator" 'visible: root.presentationActive && updat
 require "$bar_content" 'TimerIndicator { presentationActive: root.presentationActive; Layout.alignment: Qt.AlignVCenter }' 'Bar timer indicator must follow Bar presentation lifecycle'
 require "$bar_content" 'ShellUpdateIndicator { presentationActive: root.presentationActive; Layout.alignment: Qt.AlignVCenter }' 'Bar update indicator must follow Bar presentation lifecycle'
 require "$bar_content" 'presentationActive: false' 'Horizontal Bar natural-size utility probe must stay animation-idle'
+require "$bar_active_window" 'property bool presentationActive: true' 'Active Window must expose the Bar presentation lifecycle'
+require "$bar_active_window" 'root.presentationActive && root.visible' 'Hidden Active Window title settling must sleep'
+require "$bar_active_window" 'if (root.titlePresentationActive)' 'Active Window title churn must schedule settling only while presented'
+require "$bar_active_window" 'titleSettleTimer.stop()' 'Active Window must cancel pending title settling when hidden'
+require "$bar_active_window" 'root.stableDisplayTitle = root.displayTitle' 'Active Window must reveal the newest title immediately'
+active_window_host_block="$(sed -n '/ActiveWindow {/,/^            }/p' "$bar_content")"
+grep -Fq 'presentationActive: root.presentationActive' <<<"$active_window_host_block" \
+    || fail 'Horizontal Bar Active Window must follow Bar presentation lifecycle'
 require "$vertical_bar_content" 'presentationActive: false' 'Vertical Bar natural-size utility probe must stay animation-idle'
 horizontal_utilities_block="$(sed -n '/id: utilButtonsModuleComponent/,/^    }/p' "$bar_content")"
 grep -Fq 'presentationActive: root.presentationActive' <<<"$horizontal_utilities_block" \

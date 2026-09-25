@@ -614,6 +614,7 @@ Item {
             ActiveWindow {
                 id: _awItem
                 anchors.fill: parent
+                presentationActive: root.presentationActive
                 visible: root._moduleVisible("activeWindow")
                     && root.useShortenedForm === 0 && !root.taskbarEnabled
             }

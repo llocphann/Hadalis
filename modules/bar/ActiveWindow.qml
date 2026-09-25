@@ -43,11 +43,25 @@ Item {
     }
 
     // Terminal spinners and browser progress titles can change many times per
-    // second. Keep the app identity reactive, but only repaint the title after
-    // a short quiet period so those updates do not continuously dirty the bar.
+    // second. Keep app/focus identity reactive, but do not keep dirtying an
+    // auto-hidden Bar (or an inactive taskbar replacement) just to settle text.
+    property bool presentationActive: true
+    readonly property bool titlePresentationActive:
+        root.presentationActive && root.visible
     property string stableDisplayTitle: displayTitle
     Component.onCompleted: stableDisplayTitle = displayTitle
-    onDisplayTitleChanged: titleSettleTimer.restart()
+    onDisplayTitleChanged: {
+        if (root.titlePresentationActive)
+            titleSettleTimer.restart()
+    }
+    onTitlePresentationActiveChanged: {
+        if (!root.titlePresentationActive) {
+            titleSettleTimer.stop()
+            return
+        }
+        // Reveal with the newest title immediately; no stale 180 ms frame.
+        root.stableDisplayTitle = root.displayTitle
+    }
     Timer {
         id: titleSettleTimer
         interval: 180

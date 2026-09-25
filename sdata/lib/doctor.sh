@@ -52,6 +52,39 @@ doctor_detect_compositor_service() {
 check_dependencies() {
     local missing=()
     local missing_cmds=()
+    local optional_missing=()
+    local installed_strategy
+    installed_strategy="$(get_installed_update_strategy)"
+
+    # Package-managed installs deliberately keep feature integrations optional.
+    # Source/repo installs still validate the full default setup surface below.
+    local package_optional_cmds=(
+        "awww"
+        "awww-daemon"
+        "uv"
+        "cava"
+        "qalc"
+        "wf-recorder"
+        "ffmpeg"
+        "swappy"
+        "tesseract"
+        "blueman-manager"
+        "gowall"
+        "kwriteconfig6"
+        "checkupdates"
+        "ddcutil"
+        "missioncenter"
+        "nm-connection-editor"
+        "songrec"
+        "trans"
+    )
+    local -A package_optional=()
+    if [[ "$installed_strategy" == "package-manager" ]]; then
+        local optional_cmd
+        for optional_cmd in "${package_optional_cmds[@]}"; do
+            package_optional["$optional_cmd"]=1
+        done
+    fi
     
     # Commands to check (command:friendly_name)
     # These are distro-agnostic - we check for the command, not the package.
@@ -103,15 +136,24 @@ check_dependencies() {
         "trans:translate-shell"
     )
 
-    # Check required commands
+    # Check required commands. Package-managed optdepends are warning-only and
+    # must never be routed into the automatic dependency repair path.
     for item in "${cmds[@]}"; do
         local cmd="${item%%:*}"
         local name="${item##*:}"
         if ! command -v "$cmd" &>/dev/null; then
+            if [[ -n "${package_optional[$cmd]:-}" ]]; then
+                optional_missing+=("$name")
+                continue
+            fi
             missing+=("$name")
             missing_cmds+=("$cmd")
         fi
     done
+
+    if [[ ${#optional_missing[@]} -gt 0 ]]; then
+        tui_warn "Optional integrations unavailable: ${optional_missing[*]}"
+    fi
     
     if [[ ${#missing[@]} -eq 0 ]]; then
         doctor_missing_deps=()

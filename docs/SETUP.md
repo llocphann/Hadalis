@@ -121,7 +121,7 @@ Diagnoses and **automatically fixes** common issues:
 - Version tracking
 - File manifest
 
-For externally managed installs, `doctor` can rebuild `~/.config/illogical-impulse/version.json` from the runtime metadata already present under `~/.config/quickshell/inir/version.json`. It also skips the repo-sync manifest requirement when the install is package-managed.
+For externally managed installs, `doctor` can rebuild `~/.config/illogical-impulse/version.json` from the runtime metadata already present under `~/.config/quickshell/inir/version.json`. It also skips the repo-sync manifest requirement when the install is package-managed. Feature integrations shipped as package `optdepends` are reported as warnings when absent; they do not fail the package-managed health check or trigger automatic dependency repair.
 
 If you want the same repair flow plus restart and filtered logs:
 

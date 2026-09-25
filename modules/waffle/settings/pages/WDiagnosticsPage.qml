@@ -12,7 +12,7 @@ WSettingsPage {
     settingsPageIndex: 19
     pageTitle: Translation.tr("Diagnostics")
     pageIcon: "info"
-    pageDescription: Translation.tr("On-demand runtime resource diagnostics")
+    pageDescription: Translation.tr("On-demand Quickshell runtime diagnostics")
     fillViewportHeight: true
 
     readonly property bool diagnosticsActive:

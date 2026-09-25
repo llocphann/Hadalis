@@ -62,6 +62,13 @@ ShellRoot {
     }
     property var _voiceSearchService
     property var _fontSyncService
+    function _ensureFontSyncService(): void {
+        // System font synchronization is optional. When disabled, avoid keeping
+        // its debounce/process/timeout graph resident solely for future changes.
+        if (GlobalStates.deferredPanelsReady
+                && (Config.options?.appearance?.typography?.syncWithSystem ?? true))
+            root._fontSyncService = FontSyncService
+    }
     property var _cavaThemeService
     function _ensureCavaThemeService(): void {
         // Cava theming is opt-in (disabled by default). Keep its artwork
@@ -171,10 +178,10 @@ ShellRoot {
             root._gameModeService = GameMode;
             root._windowPreviewService = WindowPreviewService;
             root._voiceSearchService = VoiceSearch;
-            root._fontSyncService = FontSyncService;
             NightLight.load();
             GlobalStates.deferredPanelsReady = true;
             root._ensureWeatherService();
+            root._ensureFontSyncService();
             root._ensureCavaThemeService();
             root._ensureScreenTimeService();
             // Boot greeting: show once per session (singleton preserves bootGreetingDone across hot-reload)
@@ -193,6 +200,7 @@ ShellRoot {
         target: Config
         function onConfigChanged(): void {
             root._ensureWeatherService()
+            root._ensureFontSyncService()
             root._ensureCavaThemeService()
             root._ensureScreenTimeService()
             root._ensureCalendarSyncService()

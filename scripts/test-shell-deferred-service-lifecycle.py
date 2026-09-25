@@ -14,6 +14,7 @@ def main() -> int:
     required = (
         "function _ensureCavaThemeService(): void",
         "function _ensureWeatherService(): void",
+        "function _ensureFontSyncService(): void",
         "GlobalStates.deferredPanelsReady",
         "Config.options?.appearance?.wallpaperTheming?.enableCava ?? false",
         "root._cavaThemeService = CavaTheme",
@@ -21,6 +22,9 @@ def main() -> int:
         "Config.options?.bar?.weather?.enable ?? false",
         "root._weatherService = Weather",
         "root._ensureWeatherService();",
+        "Config.options?.appearance?.typography?.syncWithSystem ?? true",
+        "root._fontSyncService = FontSyncService",
+        "root._ensureFontSyncService();",
         "function _ensureCalendarSyncService(): void",
         "Config.options?.calendar?.externalSync?.enable ?? false",
         "root._calendarSyncService = CalendarSync",
@@ -42,10 +46,14 @@ def main() -> int:
         raise AssertionError("Tier 3 must not eagerly instantiate disabled CavaTheme")
     if "root._weatherService = Weather;" in body:
         raise AssertionError("Tier 3 must not eagerly instantiate disabled Weather")
+    if "root._fontSyncService = FontSyncService;" in body:
+        raise AssertionError("Tier 3 must not eagerly instantiate disabled FontSyncService")
     if body.find("GlobalStates.deferredPanelsReady = true;") > body.find("root._ensureCavaThemeService();"):
         raise AssertionError("Cava demand gate must run after deferred services become eligible")
     if body.find("GlobalStates.deferredPanelsReady = true;") > body.find("root._ensureWeatherService();"):
         raise AssertionError("Weather demand gate must run after deferred services become eligible")
+    if body.find("GlobalStates.deferredPanelsReady = true;") > body.find("root._ensureFontSyncService();"):
+        raise AssertionError("Font sync demand gate must run after deferred services become eligible")
 
     tier4 = re.search(
         r'id: lateFeaturesTimer(?P<body>.*?)\n\s*\}\n\n\s*// Persist boot phase',
@@ -69,6 +77,8 @@ def main() -> int:
         raise AssertionError("config changes must activate CavaTheme when enabled later")
     if "root._ensureWeatherService()" not in config.group("body"):
         raise AssertionError("config changes must activate Weather when enabled later")
+    if "root._ensureFontSyncService()" not in config.group("body"):
+        raise AssertionError("config changes must activate FontSyncService when enabled later")
     if "root._ensureCalendarSyncService()" not in config.group("body"):
         raise AssertionError("config changes must activate CalendarSync when enabled later")
 

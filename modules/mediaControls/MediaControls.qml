@@ -102,7 +102,8 @@ Scope {
                 color: "transparent"
                 WlrLayershell.namespace: "quickshell:mediaControls"
                 WlrLayershell.layer: WlrLayer.Overlay
-                WlrLayershell.keyboardFocus: GlobalStates.mediaControlsOpen
+                readonly property bool acceptsInput: GlobalStates.mediaControlsOpen
+                WlrLayershell.keyboardFocus: mediaControlsRoot.acceptsInput
                     && String(mediaControlsRoot.screen?.name ?? "") === root.keyboardScreenName
                     ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
 
@@ -111,6 +112,11 @@ Scope {
                     bottom: true
                     left: true
                     right: true
+                }
+
+                Item { id: emptyMediaControlsInput; width: 0; height: 0 }
+                mask: Region {
+                    item: mediaControlsRoot.acceptsInput ? inputScope : emptyMediaControlsInput
                 }
 
                 // Click outside to close - covers entire screen

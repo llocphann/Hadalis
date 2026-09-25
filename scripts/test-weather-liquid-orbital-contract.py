@@ -1,7 +1,10 @@
 #!/usr/bin/env python3
-"""Regression contract for the accepted translucent Orbital Weather liquid sheet."""
+"""Regression contract for the popup's animated liquid orbit."""
 
 from pathlib import Path
+import shutil
+import subprocess
+import tempfile
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -11,83 +14,56 @@ WEATHER_DIR = ROOT / "modules/bar/weather"
 def require(source: str, *features: str) -> None:
     for feature in features:
         if feature not in source:
-            raise AssertionError(f"Weather liquid sheet lost {feature!r}")
+            raise AssertionError(f"Weather liquid orbit lost {feature!r}")
 
 
 def main() -> None:
-    field = (WEATHER_DIR / "LiquidOrbitalField.qml").read_text(encoding="utf-8")
-    orbital = (WEATHER_DIR / "OrbitalWeather.qml").read_text(encoding="utf-8")
-    popup = (WEATHER_DIR / "WeatherPopupContent.qml").read_text(encoding="utf-8")
-    dashboard = (ROOT / "modules/dashboard/DashWeather.qml").read_text(encoding="utf-8")
+    field = (WEATHER_DIR / "LiquidOrbitalField.qml").read_text()
+    shader_path = WEATHER_DIR / "LiquidOrbitalField.frag"
+    shader = shader_path.read_text()
+    compiled_path = WEATHER_DIR / "LiquidOrbitalField.frag.qsb"
+    orbital = (WEATHER_DIR / "OrbitalWeather.qml").read_text()
+    popup = (WEATHER_DIR / "WeatherPopupContent.qml").read_text()
+    dashboard = (ROOT / "modules/dashboard/DashWeather.qml").read_text()
 
-    # Visual parity, not implementation novelty, is the contract. The accepted
-    # reference is the b0629861 continuous translucent ribbon: one deformed
-    # annulus with smoky sheets/bands and moving caustics.
-    require(
-        field,
-        "VISUAL CONTRACT (2026-09-25)",
-        "readonly property int sampleCount: 120",
-        "readonly property real baseThickness: Math.max(5.5,",
-        "let outerThickness = root.baseThickness",
-        "let innerThickness = root.baseThickness * 0.96",
-        "function liquidSample(angle: real, time: real): var",
-        "function traceClosed(ctx, points): void",
-        "function traceOpen(ctx, points): void",
-        "for (let sheet = 0; sheet < 2; ++sheet)",
-        "for (let band = 0; band < 3; ++band)",
-        "for (let streak = 0; streak < 4; ++streak)",
-        "root.traceClosed(ctx, outer)",
-        "root.traceClosed(ctx, inner.slice().reverse())",
-        "root.sheetColorA",
-        "root.sheetColorB",
-        "root.podFill",
-        "root.activePodFill",
-        "renderStrategy: Canvas.Threaded",
-        "renderTarget: Canvas.Image",
-        "onTriggered: liquidCanvas.requestPaint()",
-    )
+    # The GPU field is primary; the Canvas is a fallback for Qt backends
+    # which cannot compile the bundled shader pack.
+    require(field, "ShaderEffect {", 'fragmentShader: Qt.resolvedUrl("LiquidOrbitalField.frag.qsb")',
+            "visible: status === ShaderEffect.Compiled",
+            "visible: liquidShader.status !== ShaderEffect.Compiled",
+            "renderTarget: Canvas.Image", "FrameAnimation {",
+            "seconds: root.timeSeconds", "property int activeIndex: 0")
+    if "&& Appearance.effectsEnabled" in field.split("FrameAnimation {", 1)[1].split("}", 1)[0]:
+        raise AssertionError("Disabling visual effects must not freeze the orbit")
+    if not compiled_path.is_file() or compiled_path.stat().st_size < 1000:
+        raise AssertionError("Compiled Qt shader pack is missing")
 
-    # These are the exact topology changes that produced the segmented/capsule
-    # appearance seen in the regression screenshots.
-    for forbidden in (
-        "ShaderEffect {",
-        "fragmentShader:",
-        "function drawBridgeMass(",
-        "function drawMassUnion(",
-        "function drawPulseLobe(",
-        "root.drawBridgeMass(",
-        "root.drawMassUnion(",
-        "ConnectedSurfaceIrisField",
-    ):
-        if forbidden in field:
-            raise AssertionError(
-                f"Liquid sheet regressed to segmented/shader topology: {forbidden!r}"
-            )
+    # One shaded distance field has a moving contour and independent folds.
+    require(shader, "float softUnion(", "fieldDistance = softUnion(",
+            "float displacement =", "float neck =", "float foldPhase =",
+            "float brightFold =", "float darkFold =", "float fineCaustic =",
+            "float podAlpha =", "float halo =", "u.seconds", "u.selectedIndex")
+    if "ctx.stroke()" in field or "ctx.lineTo(" in field:
+        raise AssertionError("Fallback connector must be a mass union, not a stroke")
 
-    # Reduced visual effects may simplify highlights, but must not freeze the
-    # physical surface motion.
-    frame_block = field.split("FrameAnimation {", 1)[1].split("}", 1)[0]
-    if "&& Appearance.effectsEnabled" in frame_block:
-        raise AssertionError("Disabling visual effects must not freeze the liquid sheet")
+    qsb = shutil.which("qsb") or "/usr/lib/qt6/bin/qsb"
+    if Path(qsb).is_file():
+        with tempfile.TemporaryDirectory() as temp_dir:
+            rebuilt = Path(temp_dir) / "LiquidOrbitalField.frag.qsb"
+            subprocess.run([qsb, "--qt6", "-o", str(rebuilt), str(shader_path)],
+                           check=True, capture_output=True, text=True)
+            if rebuilt.read_bytes() != compiled_path.read_bytes():
+                raise AssertionError("Bundled shader pack differs from its GLSL source")
 
-    # Keep current popup/layout integration intact; only its renderer is pinned.
-    require(
-        orbital,
-        "property bool liquidMode: false",
-        "LiquidOrbitalField {",
-        "hourAngles: root.hourAngles",
-        "activeIndex: root.activeIndex",
-        "animate: root.liquidAnimationActive",
-    )
-    require(
-        popup,
-        "liquidMode: true",
-        "liquidAnimationActive: root.currentTab === 0",
-    )
+    require(orbital, "property bool liquidMode: false", "LiquidOrbitalField {",
+            "hourAngles: root.hourAngles", "activeIndex: root.activeIndex",
+            "animate: root.liquidAnimationActive")
+    require(popup, "liquidMode: true",
+            "liquidAnimationActive: root.currentTab === 0")
     if "liquidMode: true" in dashboard:
         raise AssertionError("Dashboard must retain its simpler shared orbital view")
 
-    print("Weather translucent liquid-sheet contract: PASS")
+    print("Weather animated liquid orbital contract: PASS")
 
 
 if __name__ == "__main__":

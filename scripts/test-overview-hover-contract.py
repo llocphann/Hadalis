@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 from pathlib import Path
+import re
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -112,8 +113,12 @@ def main() -> None:
            "Overview Settings must keep advanced motion tuning out of the primary UI")
     require(dashboard_settings, 'Config.setNestedValue("dashboard.widthRatio", value / 100)',
             "Dashboard Settings must own the shared Dashboard/launcher width setting")
-    require(arrangement, "readonly property int layoutSchemaVersion: 6",
-            "Settings arrangement must preserve the Overview migration while adding Code Workflow")
+    schema_match = re.search(r"readonly property int layoutSchemaVersion:\s*(\d+)", arrangement)
+    if schema_match is None or int(schema_match.group(1)) < 6:
+        raise SystemExit(
+            "overview hover contract failed: Settings arrangement must preserve "
+            "the Overview migration while allowing later schema revisions"
+        )
     require(arrangement, "root.overviewPageIndex",
             "Overview Shell placement migration must remain explicit")
     require(registry, 'key: "overview"',

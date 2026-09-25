@@ -125,14 +125,15 @@ def main() -> None:
         'Translation.tr("Services")',
         'Translation.tr("Components")',
         '"QML "',
-        '"Alloc "',
-        '+ " · GPU —"',
+        '"QV4 +"',
+        "root.allocatedBytes(ownerRow.modelData)",
+        "root.freedBytes(ownerRow.modelData)",
         "interactive: contentHeight > height",
     ):
         require(owner_table, token, "deep QML owner table")
     require(
         owner_table,
-        "QML work · QV4 allocation — not CPU/RSS/GPU attribution",
+        "Per-owner QV4 alloc/free activity — not retained RAM/RSS/PSS",
         "deep QML owner semantics",
     )
     forbid(owner_table, "CPU %", "deep owner table fake CPU attribution")

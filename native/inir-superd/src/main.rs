@@ -149,7 +149,9 @@ impl EnvCache {
 }
 
 fn lock_recover<T>(mutex: &Mutex<T>) -> MutexGuard<'_, T> {
-    mutex.lock().unwrap_or_else(|poisoned| poisoned.into_inner())
+    mutex
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner())
 }
 
 fn is_super(code: KeyCode) -> bool {
@@ -179,8 +181,7 @@ fn classify_device(device: &Device) -> Option<DeviceRoles> {
         return None;
     }
     let keys = device.supported_keys()?;
-    let keyboard =
-        keys.contains(KeyCode::KEY_LEFTMETA) || keys.contains(KeyCode::KEY_RIGHTMETA);
+    let keyboard = keys.contains(KeyCode::KEY_LEFTMETA) || keys.contains(KeyCode::KEY_RIGHTMETA);
     let pointer = [
         KeyCode::BTN_LEFT,
         KeyCode::BTN_RIGHT,
@@ -321,7 +322,11 @@ fn run_inir_command(cache: &Arc<Mutex<EnvCache>>, args: &[&str]) -> bool {
 }
 
 fn notify_super_state(cache: &Arc<Mutex<EnvCache>>, pressed: bool) {
-    let function = if pressed { "superPress" } else { "superRelease" };
+    let function = if pressed {
+        "superPress"
+    } else {
+        "superRelease"
+    };
     let _ = run_inir_command(cache, &["ipc", "overview", function]);
 }
 
@@ -456,13 +461,7 @@ fn run() {
     let mut next_token = 0u64;
 
     loop {
-        refresh_devices(
-            &mut monitored,
-            &mut next_token,
-            &state,
-            &env_cache,
-            &tx,
-        );
+        refresh_devices(&mut monitored, &mut next_token, &state, &env_cache, &tx);
 
         match rx.recv_timeout(RESCAN_INTERVAL) {
             Ok(InternalEvent::DeviceGone(key)) => {

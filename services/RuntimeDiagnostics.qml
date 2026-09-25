@@ -10,6 +10,16 @@ Singleton {
     // running/active state to root.samplingEnabled; this service never acquires
     // a lease merely because a Settings page object exists in an LRU cache.
     readonly property string nativeDispatchPath: Quickshell.shellPath("scripts/native-dispatch")
+    readonly property string qmlProfileStateRoot: {
+        const explicit = String(Quickshell.env("XDG_STATE_HOME") ?? "").trim()
+        if (explicit.length > 0)
+            return explicit
+        const home = String(Quickshell.env("HOME") ?? "").trim()
+        return home.length > 0 ? home + "/.local/state" : ""
+    }
+    readonly property string qmlOwnerProfilePath:
+        root.qmlProfileStateRoot.length > 0
+            ? root.qmlProfileStateRoot + "/inir/qml-profiles/latest.json" : ""
     readonly property int leaseTtlMs: 6000
     readonly property int maxLeases: 16
     readonly property int sampleIntervalMs: 1000
@@ -23,6 +33,8 @@ Singleton {
     property var sampleHistory: []
     property double sampleUpdatedAtMs: 0
     property string samplerError: ""
+    property var qmlOwnerProfile: null
+    property string qmlOwnerProfileError: ""
     property var sourceBoundaryReconciliation: ({
         matchedBoundaryCount: 0,
         unmatchedBoundaryCount: 0,
@@ -324,6 +336,8 @@ Singleton {
                 running: diagnosticsSampler.running,
                 error: root.samplerError
             },
+            qmlProfile: root.qmlOwnerProfile,
+            qmlProfileError: root.qmlOwnerProfileError,
             discovery: root.sourceDiscoverySummary()
         }
     }
@@ -370,6 +384,41 @@ Singleton {
             if (root.sessionActive
                     && CodeWorkflowIndex.status === "ready")
                 root._reconcileSourceBoundaries(false)
+        }
+    }
+
+    FileView {
+        id: qmlOwnerProfileFile
+        path: root.qmlOwnerProfilePath
+        watchChanges: true
+        printErrors: false
+
+        onLoaded: {
+            try {
+                const parsed = JSON.parse(text())
+                if (Number(parsed?.schema ?? 0) !== 1
+                        || parsed?.source !== "qt-qml-profiler-xml") {
+                    root.qmlOwnerProfile = null
+                    root.qmlOwnerProfileError =
+                        "Unsupported QML owner profile schema"
+                } else {
+                    root.qmlOwnerProfile = parsed
+                    root.qmlOwnerProfileError = ""
+                }
+            } catch (error) {
+                root.qmlOwnerProfile = null
+                root.qmlOwnerProfileError =
+                    "QML owner profile decode failed: " + String(error)
+            }
+            root.revision += 1
+        }
+
+        onLoadFailed: error => {
+            root.qmlOwnerProfile = null
+            root.qmlOwnerProfileError =
+                error === FileViewError.FileNotFound ? ""
+                    : "QML owner profile unavailable: " + String(error)
+            root.revision += 1
         }
     }
 

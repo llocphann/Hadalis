@@ -26,6 +26,7 @@ struct EventType {
 struct WorkRange {
     start_ns: i64,
     end_ns: i64,
+    event_index: usize,
     source_path: Option<String>,
 }
 
@@ -219,6 +220,7 @@ fn innermost_range(active: &BTreeSet<usize>, ranges: &[WorkRange]) -> Option<usi
 fn allocate_exclusive_work(
     ranges: &[WorkRange],
     components: &mut BTreeMap<String, OwnerStats>,
+    event_work_ns: &mut BTreeMap<usize, u64>,
 ) -> u64 {
     #[derive(Clone, Copy)]
     struct Boundary {
@@ -262,6 +264,9 @@ fn allocate_exclusive_work(
         {
             let duration = (at_ns - previous) as u64;
             components.entry(source.clone()).or_default().qml_work_ns += duration;
+            *event_work_ns
+                .entry(ranges[index].event_index)
+                .or_default() += duration;
             attributed = attributed.saturating_add(duration);
         }
 
@@ -385,6 +390,63 @@ fn sorted_rows(
         .collect()
 }
 
+fn hotspot_rows(
+    event_work_ns: &BTreeMap<usize, u64>,
+    event_range_counts: &BTreeMap<usize, u64>,
+    event_types: &BTreeMap<usize, EventType>,
+    shell_root: &Path,
+    trace_duration_ns: u64,
+) -> Vec<Value> {
+    let duration_seconds = trace_duration_ns as f64 / 1_000_000_000.0;
+    let mut rows = Vec::new();
+    for (event_index, work_ns) in event_work_ns {
+        let Some(event_type) = event_types.get(event_index) else {
+            continue;
+        };
+        let Some(source_path) =
+            normalized_source(&event_type.filename, shell_root)
+        else {
+            continue;
+        };
+        let work_ms_per_second = if duration_seconds > 0.0 {
+            *work_ns as f64 / 1_000_000.0 / duration_seconds
+        } else {
+            0.0
+        };
+        rows.push(json!({
+            "id": format!(
+                "{}:{}:{}",
+                source_path,
+                event_type.line.unwrap_or(0),
+                event_type.kind
+            ),
+            "sourcePath": source_path,
+            "line": event_type.line,
+            "type": event_type.kind,
+            "details": event_type.details,
+            "qmlWorkNs": work_ns,
+            "qmlWorkMsPerSecond": work_ms_per_second,
+            "rangeCount": event_range_counts
+                .get(event_index)
+                .copied()
+                .unwrap_or(0),
+        }));
+    }
+    rows.sort_by(|left, right| {
+        let left_work = left["qmlWorkNs"].as_u64().unwrap_or(0);
+        let right_work = right["qmlWorkNs"].as_u64().unwrap_or(0);
+        right_work
+            .cmp(&left_work)
+            .then_with(|| {
+                left["id"]
+                    .as_str()
+                    .unwrap_or("")
+                    .cmp(right["id"].as_str().unwrap_or(""))
+            })
+    });
+    rows
+}
+
 pub fn summarize(trace_path: &Path, shell_root: &Path) -> Result<Value> {
     let xml = fs::read_to_string(trace_path)
         .with_context(|| format!("failed to read qmlprofiler trace {}", trace_path.display()))?;
@@ -397,6 +459,8 @@ pub fn summarize(trace_path: &Path, shell_root: &Path) -> Result<Value> {
     let mut work_ranges = Vec::new();
     let mut memory_points = Vec::new();
     let mut components: BTreeMap<String, OwnerStats> = BTreeMap::new();
+    let mut event_range_counts: BTreeMap<usize, u64> = BTreeMap::new();
+    let mut event_work_ns: BTreeMap<usize, u64> = BTreeMap::new();
     let mut total_work_range_ns = 0_u64;
     let mut total_memory_events = 0_u64;
     let mut total_allocated_bytes = 0_u64;
@@ -436,9 +500,11 @@ pub fn summarize(trace_path: &Path, shell_root: &Path) -> Result<Value> {
                     .or_default() += 1;
             }
             total_work_range_ns = total_work_range_ns.saturating_add(duration as u64);
+            *event_range_counts.entry(event_index).or_default() += 1;
             work_ranges.push(WorkRange {
                 start_ns,
                 end_ns: start_ns.saturating_add(duration),
+                event_index,
                 source_path,
             });
             continue;
@@ -462,7 +528,11 @@ pub fn summarize(trace_path: &Path, shell_root: &Path) -> Result<Value> {
         }
     }
 
-    let attributed_work_ns = allocate_exclusive_work(&work_ranges, &mut components);
+    let attributed_work_ns = allocate_exclusive_work(
+        &work_ranges,
+        &mut components,
+        &mut event_work_ns,
+    );
     let (attributed_memory_events, attributed_allocated_bytes) =
         attribute_memory(&memory_points, &work_ranges, &mut components);
 
@@ -535,6 +605,13 @@ pub fn summarize(trace_path: &Path, shell_root: &Path) -> Result<Value> {
         "components": sorted_rows(&components, "component", trace_duration_ns),
         "modules": sorted_rows(&modules, "module", trace_duration_ns),
         "services": sorted_rows(&services, "service", trace_duration_ns),
+        "hotspots": hotspot_rows(
+            &event_work_ns,
+            &event_range_counts,
+            &event_types,
+            shell_root,
+            trace_duration_ns,
+        ),
         "eventCatalog": event_catalog,
     }))
 }
@@ -642,6 +719,15 @@ mod tests {
             .find(|row| row["id"] == "modules/bar")
             .unwrap();
         assert_eq!(bar_module["qmlWorkNs"], 300_000_000);
+
+        let hotspots = summary["hotspots"].as_array().unwrap();
+        let clock_hotspot = hotspots
+            .iter()
+            .find(|row| row["sourcePath"] == "modules/bar/Clock.qml")
+            .unwrap();
+        assert_eq!(clock_hotspot["line"], 20);
+        assert_eq!(clock_hotspot["type"], "Javascript");
+        assert_eq!(clock_hotspot["qmlWorkNs"], 100_000_000);
 
         let services = summary["services"].as_array().unwrap();
         assert_eq!(services.len(), 1);

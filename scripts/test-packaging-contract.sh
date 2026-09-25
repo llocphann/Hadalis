@@ -267,62 +267,7 @@ for hook in "$stable_hook" "$git_hook"; do
 done
 
 for pkg in "$stable_pkg" "$git_pkg"; do
-  grep -Eq '^[[:space:]]+python-evdev[[:space:]]*# recipes must patch their packaged launchers so compositor wiring targets that
-# unit directly, legacy identical user copies are migrated away, custom user
-# overrides are never silently deleted, and service uninstall stays package-owned.
-for pkg in "$stable_pkg" "$git_pkg"; do
-  grep -Fq 'local package_unit="/usr/lib/systemd/user/inir.service"' "$pkg" \
-    || fail "$pkg no longer binds service lifecycle to the package-owned unit"
-  grep -Fq 'cmp -s "$user_unit" "$package_unit"' "$pkg" \
-    || fail "$pkg no longer safely migrates identical legacy user units"
-  grep -Fq 'custom user inir.service shadows the package unit' "$pkg" \
-    || fail "$pkg no longer preserves custom user service overrides"
-  grep -Fq 'ln -sf "$package_unit" "$correct_link"' "$pkg" \
-    || fail "$pkg no longer retargets existing enabled wiring during legacy-unit migration"
-  grep -Fq 'ln -sf "/usr/lib/systemd/user/inir.service"' "$pkg" \
-    || fail "$pkg no longer wires compositor startup to the package-owned unit"
-  grep -Fq 'inir.service is owned by the pacman package' "$pkg" \
-    || fail "$pkg can again uninstall package-owned service state through the launcher"
-  grep -Fq 'install_end = text.find(install_next_marker, install_start)' "$pkg" \
-    || fail "$pkg no longer replaces the complete install_user_service function"
-  grep -Fq 'text = text[:install_start] + install_guard + text[install_end:]' "$pkg" \
-    || fail "$pkg no longer slices out the legacy install_user_service body"
-  grep -Fq 'bash -n "$launcher" || return' "$pkg" \
-    || fail "$pkg no longer syntax-checks the transformed launcher"
-  if grep -Fq 'text = text.replace(install_marker, install_guard, 1)' "$pkg"; then
-    fail "$pkg again replaces only the install_user_service opening marker"
-  fi
-done
-
-# Audio/media docs must preserve the Phase 1 optional-backend boundary.
-grep -Fq 'The Equalizer Phase 1 capability is disabled by default and is separate from normal Media playback.' "$audio_doc" \
-  || fail 'audio/media docs no longer state that Equalizer Phase 1 is disabled by default'
-grep -Fq 'EasyEffects is its first optional backend, while `socat` is used only as an optional transport' "$audio_doc" \
-  || fail 'audio/media docs no longer distinguish the optional Equalizer backend and transport'
-grep -Fq 'If either the backend or transport is unavailable, the Equalizer capability remains unavailable and playback continues normally.' "$audio_doc" \
-  || fail 'audio/media docs no longer preserve graceful degradation without Equalizer backend tools'
-grep -Fq 'Package-managed installs therefore do not need to hard-depend on EasyEffects or `socat`' "$audio_doc" \
-  || fail 'audio/media docs no longer preserve the package optional-dependency contract'
-
-# Teardown docs must preserve the ownership boundary across all install modes.
-grep -Fq 'inir service disable' "$uninstall_doc" \
-  || fail 'uninstall docs no longer remove per-user service wiring before manual/package removal'
-grep -Fq 'inir service uninstall' "$uninstall_doc" \
-  || fail 'uninstall docs no longer remove the manual make-install user unit before launcher removal'
-grep -Fq 'sudo make uninstall' "$uninstall_doc" \
-  || fail 'uninstall docs no longer document Makefile teardown'
-grep -Fq '/usr/lib/systemd/user/inir.service' "$uninstall_doc" \
-  || fail 'uninstall docs no longer identify pacman service ownership'
-grep -Fq 'NixOS/Home Manager modules own `inir.service` declaratively' "$uninstall_doc" \
-  || fail 'uninstall docs no longer preserve declarative Nix service ownership'
-grep -Fq 'Run it as the user whose iNiR service was configured' "$uninstall_doc" \
-  || fail 'uninstall docs no longer warn against root cross-home cleanup'
-grep -Fq -- "-type l -path '*.wants/inir.service' -delete" "$uninstall_doc" \
-  || fail 'uninstall docs no longer use the working stale wants-link cleanup glob'
-
-printf '%s\n' '1..1'
-printf '%s\n' 'ok 1 - packaging metadata and distribution contracts are coherent'
- "$pkg" \
+  grep -Fq '  python-evdev' "$pkg" \
     || fail "$pkg must package python-evdev for emergency input-daemon rollback"
 done
 

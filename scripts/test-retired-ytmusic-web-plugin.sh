@@ -2,6 +2,7 @@
 set -euo pipefail
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+config_migration="$repo_root/sdata/migrations/053-retire-ytmusic.sh"
 migration="$repo_root/sdata/migrations/054-retire-ytmusic-web-plugin.sh"
 scan="$repo_root/scripts/scan-plugins.py"
 
@@ -16,10 +17,44 @@ grep -Fq 'Retired plugins are removed by migrations' "$scan" \
   || fail 'plugin bootstrap must document retired-plugin behavior'
 ! grep -Fqi 'YouTube Music' "$scan" \
   || fail 'plugin bootstrap must not advertise the retired YouTube Music default'
+[[ -f "$config_migration" ]] || fail 'YTMusic config retirement migration is missing'
 [[ -f "$migration" ]] || fail 'YTMusic web-plugin retirement migration is missing'
 
 tmp="$(mktemp -d)"
 trap 'rm -rf "$tmp"' EXIT
+
+export XDG_CONFIG_HOME="$tmp/config-migration"
+mkdir -p "$XDG_CONFIG_HOME/inir"
+cat > "$XDG_CONFIG_HOME/inir/config.json" <<'JSON'
+{
+  "sidebar": {
+    "music": {
+      "enable": false,
+      "libraryFolder": "/keep/music"
+    },
+    "ytmusic": {
+      "enable": true,
+      "volume": 0.7
+    },
+    "left": {
+      "tabOrder": ["ai", "ytmusic", "music", "tools", "ytmusic"]
+    }
+  }
+}
+JSON
+
+# shellcheck disable=SC1090
+source "$config_migration"
+migration_check || fail 'config migration must detect retired sidebar.ytmusic state'
+migration_apply
+jq -e '.sidebar.music.enable == true' "$XDG_CONFIG_HOME/inir/config.json" >/dev/null   || fail 'config migration must carry enabled YTMusic state into local Music'
+jq -e '.sidebar.music.libraryFolder == "/keep/music"' "$XDG_CONFIG_HOME/inir/config.json" >/dev/null   || fail 'config migration must preserve existing local Music settings'
+jq -e '(.sidebar | has("ytmusic")) | not' "$XDG_CONFIG_HOME/inir/config.json" >/dev/null   || fail 'config migration must remove the retired sidebar.ytmusic subtree'
+jq -e '.sidebar.left.tabOrder == ["ai", "music", "tools"]' "$XDG_CONFIG_HOME/inir/config.json" >/dev/null   || fail 'config migration must normalize and deduplicate ytmusic tab ids'
+if migration_check; then
+  fail 'config migration must be idempotent after retired state is removed'
+fi
+
 export XDG_CONFIG_HOME="$tmp/config"
 mkdir -p "$XDG_CONFIG_HOME/inir/plugins/music"
 cat > "$XDG_CONFIG_HOME/inir/plugins/music/manifest.json" <<'JSON'

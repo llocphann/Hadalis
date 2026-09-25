@@ -58,8 +58,7 @@ def main() -> None:
         "? WlrKeyboardFocus.OnDemand",
         ": WlrKeyboardFocus.None",
         "CompositorFocusGrab {",
-        "active: CompositorService.isHyprland",
-        "&& root.keyboardFocus && root.requestedVisible",
+        "active: false",
         "windows: [popupWindow]",
         "onCleared: root.requestClose()",
     ):
@@ -69,7 +68,7 @@ def main() -> None:
     for forbidden in (
         "property bool _niriFocusSeen",
         "popupWindow._niriFocusSeen",
-        "CompositorService.isNiri",
+        "CompositorService.isHyprland",
     ):
         check(forbidden not in popup,
               f"StyledPopup must not revive the retired PanelWindow active-focus workaround: {forbidden}")

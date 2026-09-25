@@ -247,6 +247,8 @@ Singleton {
 
     function _appendHistory(sample): void {
         const memory = sample?.system?.memory?.valuesKiB ?? ({})
+        const shellMemory = sample?.shell?.memory?.valuesKiB ?? ({})
+        const shellMemoryKiB = shellMemory.Pss ?? shellMemory.Rss ?? null
         root.sampleHistory = root.sampleHistory.concat([{
             atMs: Number(sample?.atMs ?? Date.now()),
             systemCpuPercent: sample?.system?.cpu?.percent ?? null,
@@ -257,6 +259,8 @@ Singleton {
             coresPercent: Array.isArray(sample?.system?.cpu?.coresPercent)
                 ? sample.system.cpu.coresPercent.slice() : [],
             shellCpuPercent: sample?.shell?.cpu?.percent ?? null,
+            shellMemoryPercent: root._historyPercent(
+                shellMemoryKiB, memory.MemTotal),
             systemRamPercent: root._historyPercent(
                 memory.MemUsed, memory.MemTotal),
             systemSwapPercent: root._historyPercent(

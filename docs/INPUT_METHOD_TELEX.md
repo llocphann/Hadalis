@@ -39,13 +39,13 @@ Focused regression: python3 scripts/test-fcitx5-settings-integration.py
 
 The icon is the single native Fcitx5 StatusNotifierItem in Hadalis's existing System Tray, pinned inline with neighboring status indicators. The ii Bar tints it monochrome; Waffle pins the same native item in its own tray. Click/right-click uses Fcitx's real actions and menu, not a separate simulated icon. The normal Ctrl+Space shortcut switches between English and Unikey; customize it and the engine in fcitx5-configtool.
 
-The Hadalis on-screen keyboard still sends keycodes via ydotool; the focused application's native input context handles composition. Code Workflow retains NORMAL/VISUAL hjkl navigation; Unicode/IME composition belongs to INSERT. AI Chat prevents Enter/Tab submit actions during a pending preedit.
+The Hadalis on-screen keyboard still sends keycodes via ydotool; the focused application's native input context handles composition. AI Chat prevents Enter/Tab submit actions during a pending preedit.
 
 ## Acceptance
 
 Run the focused regression with: python3 scripts/test-fcitx5-session-integration.py
 Run the full local validator with: bash scripts/validate-maintainer-local.sh
 
-Then verify on a live Niri desktop: a single interactive icon in both tray families; Vietnamese composition and caret edits in Quick Notes, Notepad, AI Chat, Settings, a Qt/GTK application and Firefox; native keyboard plus OSK input; Code Workflow hjkl navigation and INSERT Telex; and idempotent setup. Electron/Flatpak and proprietary apps may require application-specific Wayland/IME configuration. A static PASS does not substitute for live compositor testing.
+Then verify on a live Niri desktop: a single interactive icon in both tray families; Vietnamese composition and caret edits in Quick Notes, Notepad, AI Chat, Settings, a Qt/GTK application and Firefox; native keyboard plus OSK input; and idempotent setup. Electron/Flatpak and proprietary apps may require application-specific Wayland/IME configuration. A static PASS does not substitute for live compositor testing.
 
 Upstream guidance: https://fcitx-im.org/wiki/Using_Fcitx_5_on_Wayland/en

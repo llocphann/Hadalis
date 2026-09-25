@@ -64,7 +64,7 @@ This was re-verified against current `dev` for all relevant paths, including:
 - perimeter/shell-surface regression scripts
 - `README.md`
 
-Any later `dev` commits after the revert were Code Workflow Editor work and did not reintroduce the corner experiment into those files.
+Any later `dev` commits after the revert were unrelated work and did not reintroduce the corner experiment into those files.
 
 ### Do not resurrect the reverted patch stack
 
@@ -373,28 +373,10 @@ A native `.so` QML plugin changes that assumption:
 - installed at a QML import path;
 - rebuilt when plugin source/Qt ABI changes.
 
-### Arch precedent already exists
+### Native packaging boundary
 
-Hadalis now has a native optional capability for Code Workflow:
+A native QML renderer would introduce a stronger packaging requirement than the current file-only surface path: it needs an architecture- and Qt-compatible module installed on the QML import path. Treat that module as a separate capability package rather than compiling inside the runtime update path.
 
-- `distro/arch/inir-workflow-parser/PKGBUILD`
-- packages `qmljs.so`;
-- architecture-specific `x86_64`;
-- source shell remains architecture-neutral.
-
-This proves the project can manage optional native artifacts, but that parser is loaded through Python/ctypes, **not** imported as a Qt QML plugin.
-
-A surface renderer would need stronger QML import integration.
-
-### Nix precedent
-
-`nix/workflow-parser.nix` separately builds a native parser capability while the default shell can remain parser-free.
-
-Again, this shows native capability packaging is feasible, but a QML renderer plugin would need to be added to:
-
-- the Qt QML import search path;
-- wrapper environment;
-- closure/build inputs.
 
 ### Current Nix shell
 
@@ -1161,14 +1143,11 @@ Nix:
 Use \`qt_add_qml_module()\` and \`qt_add_shaders()\`; do not hand-maintain plugin
 metadata that Qt can generate.
 
-The Code Workflow parser packaging is useful only as a **lifecycle pattern**:
+A future native surface capability should follow a narrow lifecycle pattern:
 
 - native capability has its own Arch/Nix package;
 - runtime shell can remain separately deployable;
-- developer-only build helper does not install into runtime.
-
-It is **not** a direct technical template because the workflow parser is loaded as
-a native grammar/library, not as a Qt QML plugin.
+- developer-only build helpers do not install into runtime.
 
 ### 22.4 Repo-copy and fallback contract for a future native renderer
 

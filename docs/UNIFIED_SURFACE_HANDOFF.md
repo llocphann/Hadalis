@@ -10,7 +10,7 @@ refinement unless new runtime evidence disproves an architectural invariant.
 
 ## First actions
 
-1. Refetch current `dev` before editing anything. Concurrent Code Workflow / Dashboard / media work may land between turns.
+1. Refetch current `dev` before editing anything. Concurrent Dashboard / media / surface work may land between turns.
 2. Read `README.md` §1.1 and §2.1.
 3. Do not merge `stable` unless the maintainer explicitly asks.
 4. Run source-contract review against the exact current SHA before creating a commit.

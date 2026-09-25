@@ -28,7 +28,6 @@ enum Command {
         command: desktop::DesktopCommand,
     },
 
-
     /// Native Niri configuration/query implementation staged beside niri-config.py.
     Niri {
         #[command(subcommand)]

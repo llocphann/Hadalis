@@ -269,6 +269,8 @@ Singleton {
     Component.onCompleted: {
         if (Config.ready)
             root.normalizeGlobalStyle()
+        if (root.scheduleEnabled)
+            Qt.callLater(root.applyScheduledTheme)
     }
 
     Timer {
@@ -333,11 +335,16 @@ Singleton {
         }
     }
     
-    Timer {
-        interval: 60000  // Check every minute
-        running: root.scheduleEnabled
-        repeat: true
-        triggeredOnStart: true
-        onTriggered: root.applyScheduledTheme()
+    onScheduleEnabledChanged: {
+        if (root.scheduleEnabled)
+            Qt.callLater(root.applyScheduledTheme)
+    }
+
+    Connections {
+        target: DateTime
+        enabled: root.scheduleEnabled
+        function onMinuteEpochChanged(): void {
+            root.applyScheduledTheme()
+        }
     }
 }

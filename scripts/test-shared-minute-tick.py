@@ -8,12 +8,14 @@ ROOT = Path(__file__).resolve().parents[1]
 DATE_TIME = ROOT / "services/DateTime.qml"
 WEATHER = ROOT / "services/Weather.qml"
 EVENTS = ROOT / "services/Events.qml"
+THEME = ROOT / "services/ThemeService.qml"
 
 
 def main() -> int:
     date_time = DATE_TIME.read_text(encoding="utf-8")
     weather = WEATHER.read_text(encoding="utf-8")
     events = EVENTS.read_text(encoding="utf-8")
+    theme = THEME.read_text(encoding="utf-8")
 
     if "readonly property int minuteEpoch: Math.floor(clock.date.getTime() / 60000)" not in date_time:
         raise AssertionError("DateTime must expose a stable shared minute epoch")
@@ -31,6 +33,15 @@ def main() -> int:
         raise AssertionError("Events reminders must reuse DateTime.minuteEpoch")
     if "id: checkTimer" in events or "interval: 60000 // 1 minute" in events:
         raise AssertionError("Events must not restore its private reminder minute timer")
+
+    if "target: DateTime" not in theme or "function onMinuteEpochChanged()" not in theme:
+        raise AssertionError("Theme scheduling must reuse DateTime.minuteEpoch")
+    if "enabled: root.scheduleEnabled" not in theme:
+        raise AssertionError("Theme minute callback must sleep while scheduling is disabled")
+    if "onScheduleEnabledChanged:" not in theme or "Qt.callLater(root.applyScheduledTheme)" not in theme:
+        raise AssertionError("Theme scheduling must retain immediate activation behavior")
+    if "interval: 60000  // Check every minute" in theme:
+        raise AssertionError("ThemeService must not restore its private schedule timer")
 
     print("shared minute tick contract: ok")
     return 0

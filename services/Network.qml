@@ -377,20 +377,33 @@ Singleton {
 
     Process {
         id: updateNetworkName
-        command: ["sh", "-c", "nmcli -t -f NAME c show --active | head -1"]
+        command: ["nmcli", "-t", "-f", "NAME", "c", "show", "--active"]
         running: false
         stdout: StdioCollector {
-            onStreamFinished: root.networkName = text.trim()
+            onStreamFinished: {
+                // Keep the old head -1 contract without a shell/head helper.
+                const lines = String(text ?? "").split("\n")
+                root.networkName = lines.length > 0 ? lines[0].trim() : ""
+            }
         }
     }
 
     Process {
         id: updateNetworkStrength
         running: false
-        command: ["sh", "-c", "nmcli -f IN-USE,SIGNAL,SSID device wifi | awk '/^\\*/{if (NR!=1) {print $2}}'"]
-        stdout: SplitParser {
-            onRead: data => {
-                root.networkStrength = parseInt(data);
+        command: ["nmcli", "-f", "IN-USE,SIGNAL,SSID", "device", "wifi"]
+        stdout: StdioCollector {
+            onStreamFinished: {
+                // Parse the same active-row SIGNAL column that the old awk
+                // helper selected, but keep filtering inside QML.
+                for (const rawLine of String(text ?? "").split("\n")) {
+                    const line = rawLine.trim()
+                    const match = line.match(/^\*\s+(\d+)/)
+                    if (!match)
+                        continue
+                    root.networkStrength = parseInt(match[1])
+                    return
+                }
             }
         }
     }

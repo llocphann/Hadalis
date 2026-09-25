@@ -54,6 +54,7 @@ DashCard {
                 sourceSize.height: 144
                 opacity: status === Image.Ready ? 1 : 0
                 visible: opacity > 0
+                onStatusChanged: avatarResolver.handleImageStatus(status)
                 Behavior on opacity {
                     enabled: Appearance.animationsEnabled
                     NumberAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve }
@@ -73,9 +74,8 @@ DashCard {
                 readonly property string primaryWatch: Directories.userAvatarSourcePrimary
                 onPrimaryWatchChanged: avatarIndex = 0
 
-                readonly property int imgStatus: avatarImg.status
-                onImgStatusChanged: {
-                    if (imgStatus === Image.Error) {
+                function handleImageStatus(status): void {
+                    if (status === Image.Error) {
                         const nextIdx = avatarIndex + 1
                         if (nextIdx < Directories.userAvatarPaths.length)
                             avatarIndex = nextIdx

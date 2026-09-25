@@ -893,6 +893,7 @@ Scope {
                                 sourceSize.height: 96
                                 opacity: status === Image.Ready ? 1 : 0
                                 visible: opacity > 0
+                                onStatusChanged: avatarResolver.handleImageStatus(status)
                             }
 
                             // Directories publishes an ordered candidate list; walk
@@ -903,9 +904,8 @@ Scope {
                                 readonly property string resolvedSource: Directories.avatarSourceAt(avatarIndex)
                                 readonly property string primaryWatch: Directories.userAvatarSourcePrimary
                                 onPrimaryWatchChanged: avatarIndex = 0
-                                readonly property int imgStatus: avatarImage.status
-                                onImgStatusChanged: {
-                                    if (imgStatus !== Image.Error)
+                                function handleImageStatus(status): void {
+                                    if (status !== Image.Error)
                                         return;
                                     const next = avatarIndex + 1;
                                     if (next < Directories.userAvatarPaths.length)

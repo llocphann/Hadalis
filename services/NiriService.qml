@@ -594,8 +594,13 @@ Singleton {
         repeat: false
         onTriggered: {
             if (_windowsDirty) {
-                const nextWindows = sortWindowsByLayout(_pendingWindows)
                 const orderChanged = _windowOrderDirty
+                // Focus/title-only event batches preserve the already-canonical
+                // window order. Avoid rebuilding enrichment objects and sorting
+                // the full list unless a membership/spatial key actually moved.
+                const nextWindows = orderChanged
+                    ? sortWindowsByLayout(_pendingWindows)
+                    : _pendingWindows
                 windows = nextWindows
                 activeWindow = nextWindows.find(window => window.is_focused) ?? null
                 _windowsDirty = false

@@ -134,6 +134,24 @@ done
   || fail 'redundant YTMusic-specific streaming URL special-case remains'
 ! grep -Fq 'yt-dlp' "$repo_root/docs/PACKAGES.md" \
   || fail 'retired YTMusic extractor dependency remains documented'
+
+for packaging_file in \
+  "$repo_root/distro/arch/inir-shell/PKGBUILD" \
+  "$repo_root/distro/arch/inir-shell-git/PKGBUILD" \
+  "$repo_root/distro/arch/inir-meta/PKGBUILD" \
+  "$repo_root/nix/package.nix" \
+  "$repo_root/sdata/dist-arch/inir-audio/PKGBUILD" \
+  "$repo_root/sdata/dist-arch/inir-deps/PKGBUILD" \
+  "$repo_root/sdata/dist-arch/install-deps.sh" \
+  "$repo_root/sdata/dist-debian/install-deps.sh" \
+  "$repo_root/sdata/dist-fedora/install-deps.sh" \
+  "$repo_root/sdata/dist-generic/install-deps.sh" \
+  "$repo_root/sdata/lib/deps-map.sh" \
+  "$repo_root/sdata/lib/doctor.sh"; do
+  ! grep -Eqi 'yt-dlp|ytmusicapi|youtube[ _-]?music|pear-desktop' "$packaging_file" \
+    || fail "retired YTMusic dependency remains in packaging: $packaging_file"
+done
+
 ! grep -Eqi 'YouTube Music|YT Music|music\.youtube\.com|yt-dlp|ytmusicapi' "$repo_root/translations/en_US.json" \
   || fail 'retired YTMusic translation strings remain'
 

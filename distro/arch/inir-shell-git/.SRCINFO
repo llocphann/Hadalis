@@ -1,7 +1,7 @@
 pkgbase = inir-shell-git
 	pkgdesc = Hadalis shell payload, launcher, and user service (git)
 	pkgver = 2.29.3.r0.g0000000
-	pkgrel = 12
+	pkgrel = 13
 	url = https://github.com/llocphann/Hadalis
 	install = inir-shell-git.install
 	arch = x86_64
@@ -63,6 +63,7 @@ pkgbase = inir-shell-git
 	optdepends = ffmpeg: recording and video wallpaper helpers
 	optdepends = fprintd: fingerprint authentication integration
 	optdepends = fuzzel: optional emoji picker and external dmenu launcher integration
+	optdepends = git: optional repo/developer update and status tooling
 	optdepends = geoclue: GPS-backed weather location detection
 	optdepends = gnome-keyring: secret storage for API keys and credentials
 	optdepends = gowall-bin: wallpaper theme conversion and effects editor

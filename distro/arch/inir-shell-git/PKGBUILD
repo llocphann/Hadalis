@@ -1,6 +1,6 @@
 pkgname=inir-shell-git
 pkgver=2.29.3.r0.g0000000
-pkgrel=12
+pkgrel=13
 pkgdesc='Hadalis shell payload, launcher, and user service (git)'
 arch=('x86_64')
 url='https://github.com/llocphann/Hadalis'
@@ -66,6 +66,7 @@ optdepends=(
   'ffmpeg: recording and video wallpaper helpers'
   'fprintd: fingerprint authentication integration'
   'fuzzel: optional emoji picker and external dmenu launcher integration'
+  'git: optional repo/developer update and status tooling'
   'fcitx5-gtk: GTK/XWayland input method compatibility'
   'fcitx5-configtool: configure Vietnamese input and shortcuts'
   'geoclue: GPS-backed weather location detection'

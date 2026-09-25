@@ -62,6 +62,7 @@ check_dependencies() {
         "awww"
         "awww-daemon"
         "fuzzel"
+        "git"
         "uv"
         "cava"
         "qalc"

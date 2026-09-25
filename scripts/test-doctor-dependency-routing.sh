@@ -46,6 +46,7 @@ for command in (
     "awww",
     "awww-daemon",
     "fuzzel",
+    "git",
     "uv",
     "cava",
     "qalc",
@@ -91,6 +92,8 @@ for source, package_path in (
         raise SystemExit(f"FAIL: {source} is missing util-linux for core flock usage")
     if "'fuzzel: optional emoji picker and external dmenu launcher integration'" not in package_text:
         raise SystemExit(f"FAIL: {source} does not advertise optional fuzzel integration")
+    if "'git: optional repo/developer update and status tooling'" not in package_text:
+        raise SystemExit(f"FAIL: {source} does not advertise optional Git repo tooling")
 optional_equalizer_cmds = {"easyeffects", "socat"}
 leaked_optional = sorted(optional_equalizer_cmds & set(doctor_cmds))
 if leaked_optional:

@@ -536,6 +536,7 @@ Item {
         id: workspacesModuleComponent
         Workspaces {
             visible: root._moduleVisible("workspaces")
+            presentationActive: root.presentationActive
             Layout.fillHeight: true
             MouseArea {
                 anchors.fill: parent

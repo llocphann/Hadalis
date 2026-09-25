@@ -382,6 +382,7 @@ Item { // Bar content region
         id: workspacesComponent
         Bar.Workspaces {
             vertical: true
+            presentationActive: root.presentationActive
             MouseArea {
                 anchors.fill: parent
                 acceptedButtons: Qt.RightButton

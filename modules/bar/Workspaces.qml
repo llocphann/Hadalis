@@ -13,6 +13,11 @@ import Qt5Compat.GraphicalEffects
 
 Item {
     id: root
+    // Bar surfaces remain resident through auto-hide/fullscreen transitions.
+    // Only visual occupancy bookkeeping needs to follow presentation.
+    property bool presentationActive: true
+    readonly property bool occupancyPresentationActive:
+        root.presentationActive && root.visible
     property bool vertical: false
     readonly property string barPosition: root.vertical
         ? ((Config.options?.bar?.bottom ?? false) ? "right" : "left")
@@ -276,7 +281,21 @@ Item {
     }
 
     function updateWorkspaceOccupied() {
+        if (!root.occupancyPresentationActive) {
+            updateWorkspaceOccupiedTimer.stop()
+            return
+        }
         updateWorkspaceOccupiedTimer.restart()
+    }
+
+    onOccupancyPresentationActiveChanged: {
+        if (!root.occupancyPresentationActive) {
+            updateWorkspaceOccupiedTimer.stop()
+            return
+        }
+        // Hidden Niri events were intentionally skipped; rebuild from the
+        // authoritative snapshot before the workspace strip is painted again.
+        root.doUpdateWorkspaceOccupied()
     }
 
     function doUpdateWorkspaceOccupied() {
@@ -303,6 +322,7 @@ Item {
     }
     Connections {
         target: NiriService
+        enabled: root.occupancyPresentationActive
         function onAllWorkspacesChanged() {
             updateWorkspaceOccupied();
         }

@@ -68,6 +68,7 @@ bar_resources="$repo_root/modules/bar/Resources.qml"
 bar_surface="$repo_root/modules/bar/Bar.qml"
 bar_content="$repo_root/modules/bar/BarContent.qml"
 bar_active_window="$repo_root/modules/bar/ActiveWindow.qml"
+bar_workspaces="$repo_root/modules/bar/Workspaces.qml"
 bar_media="$repo_root/modules/bar/Media.qml"
 bar_util_buttons="$repo_root/modules/bar/UtilButtons.qml"
 bar_timer_indicator="$repo_root/modules/bar/TimerIndicator.qml"
@@ -210,6 +211,17 @@ require "$bar_active_window" 'root.presentationActive && root.visible' 'Hidden A
 require "$bar_active_window" 'if (root.titlePresentationActive)' 'Active Window title churn must schedule settling only while presented'
 require "$bar_active_window" 'titleSettleTimer.stop()' 'Active Window must cancel pending title settling when hidden'
 require "$bar_active_window" 'root.stableDisplayTitle = root.displayTitle' 'Active Window must reveal the newest title immediately'
+require "$bar_workspaces" 'property bool presentationActive: true' 'Workspaces must expose the Bar presentation lifecycle'
+require "$bar_workspaces" 'root.presentationActive && root.visible' 'Hidden workspace occupancy bookkeeping must sleep'
+require "$bar_workspaces" 'enabled: root.occupancyPresentationActive' 'Hidden Workspaces must detach occupancy-only Niri signal fan-out'
+require "$bar_workspaces" 'updateWorkspaceOccupiedTimer.stop()' 'Hidden Workspaces must cancel pending occupancy rebuilds'
+require "$bar_workspaces" 'root.doUpdateWorkspaceOccupied()' 'Workspaces must rebuild authoritative occupancy on reveal'
+horizontal_workspaces_block="$(sed -n '/id: workspacesModuleComponent/,/^    }/p' "$bar_content")"
+grep -Fq 'presentationActive: root.presentationActive' <<<"$horizontal_workspaces_block" \
+    || fail 'Horizontal Bar Workspaces must follow Bar presentation lifecycle'
+vertical_workspaces_block="$(sed -n '/id: workspacesComponent/,/^    }/p' "$vertical_bar_content")"
+grep -Fq 'presentationActive: root.presentationActive' <<<"$vertical_workspaces_block" \
+    || fail 'Vertical Bar Workspaces must follow Bar presentation lifecycle'
 active_window_host_block="$(sed -n '/ActiveWindow {/,/^            }/p' "$bar_content")"
 grep -Fq 'presentationActive: root.presentationActive' <<<"$active_window_host_block" \
     || fail 'Horizontal Bar Active Window must follow Bar presentation lifecycle'

@@ -55,6 +55,14 @@ ShellRoot {
     property var _voiceSearchService
     property var _fontSyncService
     property var _cavaThemeService
+    function _ensureCavaThemeService(): void {
+        // Cava theming is opt-in (disabled by default). Keep its artwork
+        // resolver/quantizer out of the Tier-3 resident set until the feature
+        // is actually enabled; once loaded, the singleton owns later changes.
+        if (GlobalStates.deferredPanelsReady
+                && (Config.options?.appearance?.wallpaperTheming?.enableCava ?? false))
+            root._cavaThemeService = CavaTheme
+    }
     // Screen Time must exist for the whole enabled session so the Material
     // notification-center Activity tab has history before it is first opened.
     // Waffle keeps the existing explicit Screen Time opt-in.
@@ -149,9 +157,9 @@ ShellRoot {
             root._weatherService = Weather;
             root._voiceSearchService = VoiceSearch;
             root._fontSyncService = FontSyncService;
-            root._cavaThemeService = CavaTheme;
             NightLight.load();
             GlobalStates.deferredPanelsReady = true;
+            root._ensureCavaThemeService();
             root._ensureScreenTimeService();
             // Boot greeting: show once per session (singleton preserves bootGreetingDone across hot-reload)
             if (!GlobalStates.bootGreetingDone && (Config.options?.bootGreeting?.enable ?? true)) {
@@ -168,6 +176,7 @@ ShellRoot {
     Connections {
         target: Config
         function onConfigChanged(): void {
+            root._ensureCavaThemeService()
             root._ensureScreenTimeService()
         }
     }

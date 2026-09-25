@@ -1063,7 +1063,7 @@ def main() -> None:
         'readonly property color _surfaceColor: Appearance.colors.colLayer0',
         'readonly property color _borderColor: Appearance.colors.colLayer0Border',
         'readonly property real _borderWidth: 0',
-        'readonly property real _surfaceRadius: Appearance.rounding.large',
+        'readonly property real _surfaceRadius: PerimeterTokens.popupRadius',
     ):
         require(styled_popup, token, "StyledPopup.qml")
 

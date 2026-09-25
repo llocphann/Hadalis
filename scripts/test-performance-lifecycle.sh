@@ -82,6 +82,8 @@ stopwatch_view="$repo_root/modules/sidebarRight/pomodoro/Stopwatch.qml"
 control_panel_media="$repo_root/modules/controlPanel/MediaSection.qml"
 volume_mixer="$repo_root/modules/ii/overlay/volumeMixer/VolumeMixer.qml"
 weather="$repo_root/services/Weather.qml"
+weather_popup="$repo_root/modules/bar/weather/WeatherPopup.qml"
+weather_popup_content="$repo_root/modules/bar/weather/WeatherPopupContent.qml"
 keyboard_indicators="$repo_root/services/KeyboardIndicators.qml"
 sidebar_anime="$repo_root/modules/sidebarLeft/Anime.qml"
 sidebar_anime_schedule="$repo_root/modules/sidebarLeft/animeSchedule/AnimeScheduleView.qml"
@@ -377,6 +379,10 @@ if grep -Fq 'root.refreshStatus()' <<<"$active_recorder_poll"; then
     fail 'RecorderStatus active poll must not spawn pgrep once per second'
 fi
 require "$weather" 'running: root.enabled' 'Weather minute clock must sleep when weather is disabled'
+require "$weather_popup" 'presentationActive: root.active' 'Weather popup content must follow the connected popup linger lifecycle'
+require "$weather_popup_content" 'property bool presentationActive: true' 'Weather popup content must expose a presentation lifecycle gate'
+require "$weather_popup_content" 'running: root.presentationActive' 'Closed Weather popup must stop its retained 30-second clock timer'
+require "$weather_popup_content" 'liquidAnimationActive: root.presentationActive' 'Closed Weather popup must stop the retained Orbital liquid animation'
 require "$keyboard_indicators" 'interval: (Config.options?.performance?.lowPower ?? false) ? 120000 : 30000' 'keyboard sysfs hotplug discovery must stay low cadence'
 require "$sidebar_anime" 'layer.enabled: root.presentationActive && root.visible' 'Anime list mask must sleep outside the selected tab'
 require "$sidebar_anime" 'loading: root.presentationActive && (root.pullLoading || Booru.runningRequests > 0)' 'Hidden Anime tab must stop its loading gear'

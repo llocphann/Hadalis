@@ -9,6 +9,9 @@ Item {
     id: root
 
     property bool compact: false
+    // StyledPopup keeps its content item resident while only the presentation
+    // window is lazy. Keep time/orbit work tied to that presentation lifecycle.
+    property bool presentationActive: true
     readonly property real compactBreakpoint: 900
     readonly property real panelHeight: root.compact ? 270 : 300
     // Keep one stable connected-surface width for both tabs. Detailed Weather
@@ -57,10 +60,15 @@ Item {
         return hour * 60 + minute
     }
 
+    onPresentationActiveChanged: {
+        if (root.presentationActive)
+            root.now = new Date()
+    }
+
     Timer {
         interval: 30000
         repeat: true
-        running: true
+        running: root.presentationActive
         onTriggered: root.now = new Date()
     }
 
@@ -101,8 +109,9 @@ Item {
             liquidMode: true
             // Keep the field alive while its page is still visibly sliding out;
             // stop it only after the clipped page has fully left the viewport.
-            liquidAnimationActive: root.currentTab === 0
-                || timeWeatherPanel.y > -timeWeatherPanel.height + 1
+            liquidAnimationActive: root.presentationActive
+                && (root.currentTab === 0
+                    || timeWeatherPanel.y > -timeWeatherPanel.height + 1)
         }
     }
 

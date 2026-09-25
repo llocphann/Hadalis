@@ -199,7 +199,6 @@ def main() -> None:
         "id: editActions",
         "horizontalAlignment: Text.AlignHCenter",
         "focusPolicy: Qt.StrongFocus",
-        'Config.setNestedValue(\n                    "dashboard.canvas.autoAdjustSize"',
         "border.width: tool.visualFocus ? 2 : (tool.toggled ? 1 : 0)",
         "id: toolbarRow",
         "id: editActions",
@@ -217,6 +216,12 @@ def main() -> None:
         "readonly property real horizontalPadding: 7",
     ):
         require(toolbar, token, "DashboardEditToolbar.qml")
+    compact_toolbar = " ".join(toolbar.split())
+    require(
+        compact_toolbar,
+        'onClicked: Config.setNestedValue( "dashboard.canvas.autoAdjustSize", !(root.canvasController?.autoAdjustSizeEnabled ?? true))',
+        "DashboardEditToolbar.qml",
+    )
     forbid(toolbar, "Flow {", "DashboardEditToolbar.qml")
     for source, text in (
         ("Dashboard.qml", standalone),

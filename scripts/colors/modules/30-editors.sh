@@ -95,7 +95,7 @@ apply_code_editors() {
         (.appearance.wallpaperTheming // {}) as $w
         | ($w.vscodeEditors // {}) as $editors
         | [
-            "enable_vscode=\(if ($w | has(\"enableVSCode\")) then $w.enableVSCode else true end)",
+            "enable_vscode=\(if ($w | has("enableVSCode")) then $w.enableVSCode else true end)",
             "enable_neovim=\(if $w.enableNeovim == null then false else $w.enableNeovim end)",
             "enable_opencode=\(if $w.enableOpenCode == null then false else $w.enableOpenCode end)",
             "code=\($editors.code // true)",

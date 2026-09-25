@@ -237,6 +237,7 @@ reject "$editor_theme" 'enable_vscode=$(config_json ' 'editor theming must not r
 reject "$editor_theme" 'enable_neovim=$(config_bool ' 'editor theming must not restore a separate Neovim config jq'
 reject "$editor_theme" 'enable_opencode=$(config_bool ' 'editor theming must not restore a separate OpenCode config jq'
 reject "$editor_theme" 'echo "$editors_config" | jq -r' 'editor theming must not restore one jq process per VS Code fork'
+reject "$editor_theme" 'has(\"enableVSCode\")' 'editor jq program must not escape nested has() quotes'
 editor_jq_reads="$(grep -Ec '^[[:space:]]*jq -r ' "$editor_theme")"
 if (( editor_jq_reads > 1 )); then
     fail "editor theming parser must use at most one jq read, found $editor_jq_reads"

@@ -275,7 +275,7 @@ Singleton {
             key: "diagnostics",
             name: Translation.tr("Diagnostics"),
             icon: "monitoring",
-            desc: Translation.tr("On-demand runtime resource diagnostics"),
+            desc: Translation.tr("On-demand Quickshell runtime diagnostics"),
             essential: false,
             component: "modules/settings/RuntimeDiagnosticsConfig.qml"
         }
@@ -360,7 +360,7 @@ Singleton {
             pageIndex: 31, pageName: root.pages[31].name,
             section: Translation.tr("Runtime Diagnostics"),
             label: Translation.tr("Runtime diagnostics"),
-            description: Translation.tr("On-demand CPU, memory, swap, GPU and network diagnostics for Hadalis runtime owners"),
+            description: Translation.tr("Quickshell CPU, memory, GPU, I/O and helper-process diagnostics"),
             keywords: ["diagnostics", "btop", "runtime", "cpu", "ram", "memory", "swap", "gpu", "network", "interface", "disk", "io", "shell", "debug", "workflow", "resource", "process", "telemetry"]
         },
         {

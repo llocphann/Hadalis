@@ -5450,5 +5450,9 @@
   "Shell descendants": "Shell descendants",
   "No shell child processes": "No shell child processes",
   "more processes": "more processes",
-  "Source discovery error": "Source discovery error"
+  "Source discovery error": "Source discovery error",
+  "Quickshell monitors": "Quickshell monitors",
+  "All Quickshell threads": "All Quickshell threads",
+  "I/O": "I/O",
+  "resident": "resident"
 }

@@ -2,10 +2,12 @@ mod clipboard;
 mod desktop;
 mod diagnostics;
 mod niri;
+mod qml_profile;
 
 use anyhow::Result;
 use clap::{Parser, Subcommand};
 use serde_json::json;
+use std::path::PathBuf;
 
 #[derive(Debug, Parser)]
 #[command(about = "Dormant one-shot native helpers for Hadalis")]
@@ -37,6 +39,16 @@ enum Command {
         interval_ms: u64,
     },
 
+    /// Summarize a Qt qmlprofiler XML trace into Hadalis owner attribution.
+    QmlProfile {
+        /// qmlprofiler XML trace (.qtd/.xml).
+        #[arg(long)]
+        trace: PathBuf,
+        /// Hadalis/Quickshell configuration root used to resolve source owners.
+        #[arg(long)]
+        root: PathBuf,
+    },
+
     /// Native Niri configuration/query implementation staged beside niri-config.py.
     Niri {
         #[command(subcommand)]
@@ -54,6 +66,11 @@ fn run() -> Result<i32> {
             Ok(0)
         }
         Command::Diagnostics { pid, interval_ms } => diagnostics::run(pid, interval_ms),
+        Command::QmlProfile { trace, root } => {
+            let value = qml_profile::summarize(&trace, &root)?;
+            println!("{}", serde_json::to_string(&value)?);
+            Ok(0)
+        }
         Command::Niri { command } => {
             let outcome = niri::run(command)?;
             println!("{}", serde_json::to_string(&outcome.value)?);

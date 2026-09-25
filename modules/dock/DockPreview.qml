@@ -178,7 +178,9 @@ PopupWindow {
             // content mask texture while the popup is not presented.
             layer.enabled: root.visible
             layer.smooth: true
-            layer.mipmap: true
+            // The popup mask is never scale-transformed; generating a mip chain
+            // for this transient FBO adds GPU work without improving sampling.
+            layer.mipmap: false
             layer.effect: OpacityMask {
                 maskSource: Rectangle {
                     width: contentItem.width

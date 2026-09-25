@@ -252,6 +252,7 @@ require "$dock_window_preview" 'running: root.presentationActive && shimmerBg.vi
 require "$dock_window_preview" 'layer.enabled: root.presentationActive && windowPreview.status === Image.Ready' 'Hidden Dock preview tiles must release thumbnail mask layers'
 require "$dock_preview" 'presentationActive: root.visible' 'Dock preview host must power tiles only while its popup is visible'
 require "$dock_preview" 'layer.enabled: root.visible' 'Hidden Dock preview popup must release its content mask FBO'
+require "$dock_preview" 'layer.mipmap: false' 'Dock preview content mask must not generate an unused mip chain'
 require "$notification_item" 'layer.enabled: !root.modernLayout && expandedContentColumn.visible' 'Collapsed notification actions must release their legacy rounded-mask FBO'
 require "$bar_taskbar_window_preview" 'property bool presentationActive: true' 'Bar taskbar preview tiles must expose a retained-surface lifecycle gate'
 require "$bar_taskbar_window_preview" 'running: root.presentationActive && shimmerBg.visible' 'Hidden Bar taskbar preview tiles must stop shimmer animation'

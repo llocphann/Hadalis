@@ -41,6 +41,40 @@ for command, _friendly in re.findall(r'^\s*"([^":]+):([^"\n]+)"\s*$', cmd_block.
 if not doctor_cmds:
     raise SystemExit("FAIL: doctor dependency command list is empty")
 
+# Package-managed installs may omit feature optdepends without making doctor fail.
+for command in (
+    "awww",
+    "awww-daemon",
+    "uv",
+    "cava",
+    "qalc",
+    "wf-recorder",
+    "ffmpeg",
+    "swappy",
+    "tesseract",
+    "blueman-manager",
+    "gowall",
+    "kwriteconfig6",
+    "checkupdates",
+    "ddcutil",
+    "missioncenter",
+    "nm-connection-editor",
+    "songrec",
+    "trans",
+):
+    token = '        "' + command + '"'
+    if token not in doctor:
+        raise SystemExit(f"FAIL: package-managed optional command is missing from doctor routing: {command}")
+for token in (
+    'installed_strategy="$(get_installed_update_strategy)"',
+    'if [[ "$installed_strategy" == "package-manager" ]]; then',
+    'package_optional["$optional_cmd"]=1',
+    'if [[ -n "${package_optional[$cmd]:-}" ]]; then',
+    'optional_missing+=("$name")',
+    'tui_warn "Optional integrations unavailable: ${optional_missing[*]}"',
+):
+    if token not in doctor:
+        raise SystemExit("FAIL: package-managed doctor optional routing is incomplete: " + token)
 optional_equalizer_cmds = {"easyeffects", "socat"}
 leaked_optional = sorted(optional_equalizer_cmds & set(doctor_cmds))
 if leaked_optional:

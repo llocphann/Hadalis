@@ -40,7 +40,6 @@ if [[ -n "${ONLY_MISSING_DEPS:-}" ]]; then
     [git]="git"
     [python3]="python3"
     [wlsunset]="wlsunset"
-    [dunstify]="dunst"
     [fish]="fish"
     [magick]="ImageMagick"
     [swaylock]="swaylock"
@@ -183,7 +182,6 @@ FEDORA_CORE_PKGS=(
   wl-clipboard
   libnotify
   wlsunset
-  dunst
   gum
   cliphist
   

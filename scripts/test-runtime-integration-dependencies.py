@@ -24,11 +24,15 @@ def forbid(text: str, token: str, source: str) -> None:
 def main() -> None:
     cava = read("services/deferred/CavaService.qml")
     weather = read("services/Weather.qml")
+    songrec = read("services/deferred/SongRec.qml")
     helper = read("assets/helpers/inir-thinkfan")
     doctor = read("sdata/lib/doctor.sh")
     generic = read("sdata/dist-generic/install-deps.sh")
+    arch_installer = read("sdata/dist-arch/install-deps.sh")
     debian = read("sdata/dist-debian/install-deps.sh")
     fedora = read("sdata/dist-fedora/install-deps.sh")
+    deps_map = read("sdata/lib/deps-map.sh")
+    uninstall = read("sdata/lib/uninstall.sh")
     nix = read("nix/package.nix")
     arch = read("distro/arch/inir-shell/PKGBUILD")
     arch_git = read("distro/arch/inir-shell-git/PKGBUILD")
@@ -64,6 +68,26 @@ def main() -> None:
     for source, text in (("inir-shell", arch), ("inir-shell-git", arch_git)):
         require(text, "  curl", source)
         require(text, "'geoclue: GPS-backed weather location detection'", source)
+
+    # Song recognition uses the standard freedesktop notification client.
+    # Installing dunst just for dunstify would conflict with Hadalis' own
+    # notification server; notify-send supports actions and returns the chosen
+    # action identifier on stdout.
+    for token in (
+        '"/usr/bin/notify-send"',
+        '"-A", "shazam=Shazam"',
+        '"-A", "youtube=YouTube"',
+        'action === "shazam"',
+        'action === "youtube"',
+    ):
+        require(songrec, token, "SongRec.qml")
+    forbid(songrec, "dunstify", "SongRec.qml")
+    forbid(arch_installer, '[dunstify]="dunst"', "Arch installer")
+    forbid(debian, '[dunstify]="dunst"', "Debian installer")
+    forbid(fedora, '[dunstify]="dunst"', "Fedora installer")
+    forbid(generic, "dunst, libnotify", "generic installer")
+    forbid(deps_map, "DEPS_MISC_DUNST", "dependency map")
+    forbid(uninstall, '["dunstify"]', "uninstall ownership")
 
     # ThinkFan is intentionally optional and hardware-specific. Hadalis owns the
     # bridge, while upstream executable/service/config remain external.

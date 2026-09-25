@@ -16,7 +16,6 @@ Singleton {
     property int timeoutInterval: Config.options?.musicRecognition?.interval ?? 10
     property int timeoutDuration: Config.options?.musicRecognition?.timeout ?? 10
     readonly property bool running: recognizeMusicProc.running
-    property bool dunstifyAvailable: false
     property string _recognitionOutput: ""
 
     function toggleRunning(running) {
@@ -49,19 +48,6 @@ Singleton {
     property var recognizedTrack: ({ title:"", subtitle:"", url:""})
     property bool manuallyStopped: false
 
-    Component.onCompleted: {
-        dunstifyCheckProc.running = true
-    }
-
-    Process {
-        id: dunstifyCheckProc
-        running: false
-        command: ["/usr/bin/bash", "-c", "command -v dunstify >/dev/null 2>&1"]
-        onExited: (exitCode, exitStatus) => {
-            root.dunstifyAvailable = (exitCode === 0)
-        }
-    }
-
     function handleRecognition(jsonText) {
         try {
             if ((jsonText ?? "").trim() === "") {
@@ -75,12 +61,7 @@ Singleton {
                 url: obj.track.url
             }
 
-            if (root.dunstifyAvailable) {
-                musicReconizedProc.running = true
-            } else {
-                Quickshell.execDetached(["/usr/bin/notify-send", Translation.tr("Music Recognized"), root.recognizedTrack.title + " - " + root.recognizedTrack.subtitle, "-a", "Shell"])
-                Qt.openUrlExternally(root.recognizedTrack.url);
-            }
+            musicReconizedProc.running = true
         } catch(e) {
             Quickshell.execDetached(["/usr/bin/notify-send", Translation.tr("Couldn't recognize music"), Translation.tr("Perhaps what you're listening to is too niche"), "-a", "Shell"])
         }
@@ -125,19 +106,19 @@ Singleton {
         id: musicReconizedProc
         running: false
         command: [
-            "/usr/bin/dunstify",
-            Translation.tr("Music Recognized"), 
-            root.recognizedTrack.title + " - " + root.recognizedTrack.subtitle, 
-            "-A", "Shazam",
-            "-A", "YouTube",
-            "-a", "Shell"
+            "/usr/bin/notify-send",
+            "-a", "Shell",
+            "-A", "shazam=Shazam",
+            "-A", "youtube=YouTube",
+            Translation.tr("Music Recognized"),
+            root.recognizedTrack.title + " - " + root.recognizedTrack.subtitle
         ]
         stdout: StdioCollector {
             onStreamFinished: {
-                if (this.text === "") return
-                if (this.text == 0) {
+                const action = (this.text ?? "").trim()
+                if (action === "shazam") {
                     Qt.openUrlExternally(root.recognizedTrack.url);
-                } else {
+                } else if (action === "youtube") {
                     Qt.openUrlExternally("https://www.youtube.com/results?search_query=" + root.recognizedTrack.title + " - " + root.recognizedTrack.subtitle);
                 }
             }

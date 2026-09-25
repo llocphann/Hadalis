@@ -68,7 +68,6 @@ if [[ -n "${ONLY_MISSING_DEPS:-}" ]]; then
     [songrec]="songrec"
     [trans]="translate-shell"
     # Legacy/package-level checks with no direct command binary.
-    [dunstify]="dunst"
     [syntax-highlighting]="syntax-highlighting"
     [kirigami]="kirigami"
     [kdialog]="kdialog"

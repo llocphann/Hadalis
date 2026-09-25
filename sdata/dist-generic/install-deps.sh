@@ -219,7 +219,7 @@ echo ""
 
 echo -e "${STY_BLUE}Utilities (required):${STY_RST}"
 echo "  fish, jq, curl, wget, git, rsync, ripgrep, bc"
-echo "  dunst, libnotify, imagemagick, brightnessctl"
+echo "  libnotify, imagemagick, brightnessctl"
 echo ""
 
 echo -e "${STY_BLUE}Desktop integration:${STY_RST}"

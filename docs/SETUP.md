@@ -436,7 +436,7 @@ The script lists packages installed by iNiR but does not remove them automatical
 **System tools:**
 
 - `cliphist`, `fuzzel`, `swaylock`, `grim`, `slurp`
-- `wl-clipboard`, `brightnessctl`, `dunst`
+- `wl-clipboard`, `brightnessctl`
 
 **Optional tools:**
 

@@ -144,7 +144,6 @@ DEPS_BUILD_CARGO="arch:rust fedora:cargo debian:cargo ubuntu:cargo opensuse:carg
 DEPS_MISC_FISH="arch:fish fedora:fish debian:fish ubuntu:fish opensuse:fish void:fish"
 DEPS_MISC_GUM="arch:gum fedora:COPR:atim/gum debian:COMPILE:https://github.com/charmbracelet/gum ubuntu:COMPILE:https://github.com/charmbracelet/gum opensuse:gum void:gum"
 DEPS_MISC_STARSHIP="arch:starship fedora:starship debian:GITHUB:starship/starship ubuntu:GITHUB:starship/starship opensuse:starship void:starship"
-DEPS_MISC_DUNST="arch:dunst fedora:dunst debian:dunst ubuntu:dunst opensuse:dunst void:dunst"
 DEPS_MISC_LIBNOTIFY="arch:libnotify fedora:libnotify debian:libnotify-bin ubuntu:libnotify-bin opensuse:libnotify-tools void:libnotify"
 DEPS_MISC_IMAGEMAGICK="arch:imagemagick fedora:ImageMagick debian:imagemagick ubuntu:imagemagick opensuse:ImageMagick void:ImageMagick"
 DEPS_MISC_FFMPEG="arch:ffmpeg fedora:ffmpeg debian:ffmpeg ubuntu:ffmpeg opensuse:ffmpeg void:ffmpeg"

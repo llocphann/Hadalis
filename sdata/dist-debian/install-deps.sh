@@ -60,7 +60,6 @@ if [[ -n "${ONLY_MISSING_DEPS:-}" ]]; then
     [git]="git"
     [python3]="python3"
     [wlsunset]="wlsunset"
-    [dunstify]="dunst"
     [fish]="fish"
     [magick]="imagemagick"
     [swaylock]="swaylock"
@@ -326,7 +325,6 @@ DEBIAN_CORE_PKGS=(
   wl-clipboard
   libnotify-bin
   wlsunset
-  dunst
   unzip
   
   # XDG Portals

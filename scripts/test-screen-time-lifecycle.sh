@@ -24,6 +24,14 @@ require() {
     grep -Fq -- "$needle" "$service" || fail "$message"
 }
 
+reject() {
+    local needle="$1"
+    local message="$2"
+    if grep -Fq -- "$needle" "$service"; then
+        fail "$message"
+    fi
+}
+
 require_in() {
     local file="$1"
     local needle="$2"

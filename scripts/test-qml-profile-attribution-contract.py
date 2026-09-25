@@ -156,6 +156,12 @@ def main() -> None:
         "Per-owner RAM/PSS unavailable · capture JS/QV4 memory",
         'Translation.tr("Profile 5s")',
         "onClicked: root.deepProfileRequested()",
+        "Layout.preferredWidth: 104",
+        "Layout.preferredHeight: 28",
+        "contentItem: Row {",
+        "anchors.centerIn: parent",
+        'text: "memory"',
+        "iconSize: 15",
     ):
         require(activity_table, token, "component memory profile affordance")
 

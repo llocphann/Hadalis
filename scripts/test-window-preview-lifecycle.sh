@@ -56,8 +56,15 @@ require_waffle_preview() {
 
 require 'console.warn("[WindowPreviewService] preview directory helper failed to start")' \
     'preview directory startup failure must continue initialization'
-require 'console.warn("[WindowPreviewService] session marker reader failed to start")' \
-    'session marker startup failure must recover'
+require 'property bool readPending: false' \
+    'session marker FileView must track explicit initialization reads'
+require 'root._readSessionMarker()' \
+    'preview initialization must read the session marker without a cat helper'
+require 'onLoadFailed: {' \
+    'session marker FileView failures must recover through session reset'
+if grep -Fq '"/usr/bin/cat", root.sessionMarkerPath' "$service"; then
+    fail 'session marker reads must not restore a dedicated cat process'
+fi
 require 'console.warn("[WindowPreviewService] session reset helper failed to start")' \
     'session reset startup failure must release session readiness'
 require 'console.warn("[WindowPreviewService] preview cache scan failed to start")' \
@@ -208,8 +215,8 @@ grep -Fq 'readonly property bool popupContainsMouse:' "$waffle_bar_popup" \
     || fail 'Waffle BarPopup must expose popup hover state to task preview lifecycle'
 
 start_guard_count="$(grep -Fc -- 'property bool startObserved: false' "$service")"
-if (( start_guard_count < 5 )); then
-    fail "expected startup guards for init and capture processes, found $start_guard_count"
+if (( start_guard_count < 4 )); then
+    fail "expected startup guards for remaining init and capture processes, found $start_guard_count"
 fi
 
 # Niri live/adaptive preview experiments are retired. Snapshot capture is the

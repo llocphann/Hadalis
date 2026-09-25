@@ -115,7 +115,7 @@ def main() -> None:
         'Translation.tr("Components")',
         '"QML "',
         '"Alloc "',
-        '"+ " · GPU —"',
+        '+ " · GPU —"',
         "interactive: contentHeight > height",
     ):
         require(owner_table, token, "deep QML owner table")

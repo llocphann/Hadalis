@@ -15,26 +15,9 @@ StyledOverlayWidget {
     minimumWidth: 300
     minimumHeight: 200
 
-    property bool _resourceUsageHeld: false
-
-    function syncResourceUsageLifecycle(): void {
-        if (root.visible === root._resourceUsageHeld)
-            return
-        if (root.visible)
-            ResourceUsage.keepAlive()
-        else
-            ResourceUsage.releaseKeepAlive()
-        root._resourceUsageHeld = root.visible
+    property QtObject resourceMonitor: ResourceUsageMonitor {
+        target: root
     }
-
-    Component.onCompleted: root.syncResourceUsageLifecycle()
-    Component.onDestruction: {
-        if (root._resourceUsageHeld) {
-            root._resourceUsageHeld = false
-            ResourceUsage.releaseKeepAlive()
-        }
-    }
-    onVisibleChanged: root.syncResourceUsageLifecycle()
 
     property list<var> resources: [
         {

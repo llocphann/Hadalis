@@ -12,32 +12,9 @@ Item {
     id: root
     implicitHeight: 64
 
-    property bool _resourceUsageHeld: false
-
-    function syncResourceUsageLifecycle(): void {
-        const shouldHold = GlobalStates.sidebarLeftOpen
-        if (shouldHold === root._resourceUsageHeld)
-            return
-        if (shouldHold)
-            ResourceUsage.keepAlive()
-        else
-            ResourceUsage.releaseKeepAlive()
-        root._resourceUsageHeld = shouldHold
-    }
-
-    Component.onCompleted: root.syncResourceUsageLifecycle()
-    Component.onDestruction: {
-        if (root._resourceUsageHeld) {
-            root._resourceUsageHeld = false
-            ResourceUsage.releaseKeepAlive()
-        }
-    }
-
-    Connections {
-        target: GlobalStates
-        function onSidebarLeftOpenChanged(): void {
-            root.syncResourceUsageLifecycle()
-        }
+    property QtObject resourceMonitor: ResourceUsageMonitor {
+        target: root
+        active: GlobalStates.sidebarLeftOpen
     }
 
     RowLayout {

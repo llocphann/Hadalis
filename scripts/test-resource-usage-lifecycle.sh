@@ -12,6 +12,8 @@ dash_system="$repo_root/modules/dashboard/DashSystem.qml"
 inner_tube_thumbnail="$repo_root/modules/sidebarLeft/innertune/ITThumbnail.qml"
 bar_resources="$repo_root/modules/bar/Resources.qml"
 vertical_bar_resources="$repo_root/modules/verticalBar/Resources.qml"
+resource_monitor="$repo_root/modules/common/widgets/ResourceUsageMonitor.qml"
+widgets_qmldir="$repo_root/modules/common/widgets/qmldir"
 
 fail() {
     printf 'resource usage lifecycle guard failed: %s\n' "$1" >&2
@@ -77,17 +79,30 @@ assert_contains 'root._gpuTempPath = ""' "$temp_block" 'temperature startup fail
 assert_contains 'root._dGpuRuntimeStatusPath = ""' "$hybrid_block" 'hybrid GPU startup failure must clear stale runtime-status path'
 assert_contains 'root.maxAvailableCpuString = "--"' "$cpu_block" 'CPU frequency startup failure must restore unknown display state'
 
-for lifecycle_file in "$resources_popup" "$status_rings" "$overlay_resources" "$sysmon_widget" "$waffle_widgets" "$dash_system" "$bar_resources" "$vertical_bar_resources"; do
+monitor_text="$(cat "$resource_monitor")"
+assert_contains 'readonly property bool monitoring:' "$monitor_text" 'ResourceUsageMonitor must expose presentation-aware demand'
+assert_contains 'root.target.visible' "$monitor_text" 'ResourceUsageMonitor must gate on target visibility'
+assert_contains 'root.target.QsWindow.window.visible' "$monitor_text" 'ResourceUsageMonitor must gate on native window visibility'
+assert_contains 'ResourceUsage.keepAlive()' "$monitor_text" 'ResourceUsageMonitor must acquire the shared telemetry lease'
+assert_contains 'ResourceUsage.releaseKeepAlive()' "$monitor_text" 'ResourceUsageMonitor must release the shared telemetry lease'
+assert_contains 'ResourceUsageMonitor 1.0 ResourceUsageMonitor.qml' "$(cat "$widgets_qmldir")" 'ResourceUsageMonitor must be exported'
+
+for lifecycle_file in "$resources_popup" "$status_rings" "$overlay_resources" "$bar_resources" "$vertical_bar_resources"; do
     lifecycle_text="$(cat "$lifecycle_file")"
-    assert_contains 'ResourceUsage.keepAlive()' "$lifecycle_text" "$lifecycle_file must acquire resource polling only while presented"
-    assert_contains 'ResourceUsage.releaseKeepAlive()' "$lifecycle_text" "$lifecycle_file must release resource polling when hidden or destroyed"
+    assert_contains 'ResourceUsageMonitor {' "$lifecycle_text" "$lifecycle_file must use centralized telemetry lifecycle ownership"
+    assert_not_contains 'ResourceUsage.keepAlive()' "$lifecycle_text" "$lifecycle_file must not duplicate telemetry reference counting"
+    assert_not_contains 'ResourceUsage.releaseKeepAlive()' "$lifecycle_text" "$lifecycle_file must not duplicate telemetry reference counting"
 done
 
 assert_contains 'running: root.isActive && root.isPlaying && root.visible && GlobalStates.sidebarLeftOpen' "$(cat "$inner_tube_thumbnail")" \
     'hidden InnerTune thumbnail must stop its decorative equalizer timer'
-assert_contains 'root.visible && !GameMode.active' "$(cat "$bar_resources")" \
+assert_contains 'active: !GameMode.active' "$(cat "$bar_resources")" \
     'horizontal Bar resource polling must pause during GameMode'
-assert_contains 'root.visible && !GameMode.active' "$(cat "$vertical_bar_resources")" \
+assert_contains 'active: !GameMode.active' "$(cat "$vertical_bar_resources")" \
     'vertical Bar resource polling must pause during GameMode'
+assert_contains 'active: popup.active' "$(cat "$resources_popup")" \
+    'Bar resource popup must poll only while active'
+assert_contains 'active: GlobalStates.sidebarLeftOpen' "$(cat "$status_rings")" \
+    'left-sidebar status rings must poll only while the sidebar is open'
 
 printf 'resource usage and visual idle lifecycle guards: ok\n'

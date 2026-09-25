@@ -89,6 +89,14 @@ ShellRoot {
     property var _calendarSyncService
     property var _todoService
     property var _notepadService
+    property bool _lateFeaturesReady: false
+    function _ensureCalendarSyncService(): void {
+        // External ICS sync is opt-in. Keep its cache/parser/fetch lifecycle out
+        // of the resident Tier-4 set until the same feature gate is enabled.
+        if (root._lateFeaturesReady
+                && (Config.options?.calendar?.externalSync?.enable ?? false))
+            root._calendarSyncService = CalendarSync
+    }
 
     // Boot phase timing (ms since epoch). Written to ~/.cache/inir/last-boot.json
     // when the deferred phase finishes. `inir status` reads this back to show users
@@ -187,6 +195,7 @@ ShellRoot {
             root._ensureWeatherService()
             root._ensureCavaThemeService()
             root._ensureScreenTimeService()
+            root._ensureCalendarSyncService()
         }
     }
 
@@ -201,7 +210,8 @@ ShellRoot {
             root._log("[Boot] T+" + (Date.now() - root._bootCompletedAt) + "ms: Tier 4 (background features)");
             root._shellUpdatesService = ShellUpdates;
             root._autostartService = Autostart;
-            root._calendarSyncService = CalendarSync;
+            root._lateFeaturesReady = true;
+            root._ensureCalendarSyncService();
             root._todoService = Todo;
             root._notepadService = Notepad;
             root._bootLateFeaturesAt = Date.now();

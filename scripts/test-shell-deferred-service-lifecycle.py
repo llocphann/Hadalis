@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Regression contract for demand-driven Tier-3 optional services."""
+"""Regression contract for demand-driven deferred optional services."""
 
 from pathlib import Path
 import re
@@ -21,6 +21,10 @@ def main() -> int:
         "Config.options?.bar?.weather?.enable ?? false",
         "root._weatherService = Weather",
         "root._ensureWeatherService();",
+        "function _ensureCalendarSyncService(): void",
+        "Config.options?.calendar?.externalSync?.enable ?? false",
+        "root._calendarSyncService = CalendarSync",
+        "root._ensureCalendarSyncService();",
     )
     for needle in required:
         if needle not in text:
@@ -43,6 +47,19 @@ def main() -> int:
     if body.find("GlobalStates.deferredPanelsReady = true;") > body.find("root._ensureWeatherService();"):
         raise AssertionError("Weather demand gate must run after deferred services become eligible")
 
+    tier4 = re.search(
+        r'id: lateFeaturesTimer(?P<body>.*?)\n\s*\}\n\n\s*// Persist boot phase',
+        text,
+        flags=re.S,
+    )
+    if not tier4:
+        raise AssertionError("could not isolate Tier-4 deferred init")
+    tier4_body = tier4.group("body")
+    if "root._calendarSyncService = CalendarSync;" in tier4_body:
+        raise AssertionError("Tier 4 must not eagerly instantiate disabled CalendarSync")
+    if tier4_body.find("root._lateFeaturesReady = true;") > tier4_body.find("root._ensureCalendarSyncService();"):
+        raise AssertionError("CalendarSync demand gate must run after Tier 4 becomes eligible")
+
     config = re.search(
         r"Connections \{\s*\n\s*target: Config(?P<body>.*?)\n\s*\}",
         text,
@@ -52,6 +69,8 @@ def main() -> int:
         raise AssertionError("config changes must activate CavaTheme when enabled later")
     if "root._ensureWeatherService()" not in config.group("body"):
         raise AssertionError("config changes must activate Weather when enabled later")
+    if "root._ensureCalendarSyncService()" not in config.group("body"):
+        raise AssertionError("config changes must activate CalendarSync when enabled later")
 
     print("shell deferred service lifecycle contract: ok")
     return 0

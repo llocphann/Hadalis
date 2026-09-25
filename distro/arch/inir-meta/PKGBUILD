@@ -86,7 +86,6 @@ depends=(
   whitesur-icon-theme
   wtype
   ydotool
-  yt-dlp
 )
 optdepends=(
   'easyeffects: optional audio effects and equalizer backend'

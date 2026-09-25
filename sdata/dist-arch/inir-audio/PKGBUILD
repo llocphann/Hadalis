@@ -24,7 +24,6 @@ depends=(
   mpv-mpris
   mpd
   mpd-mpris
-  yt-dlp
 )
 
 optdepends=(

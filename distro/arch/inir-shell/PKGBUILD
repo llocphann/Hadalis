@@ -88,7 +88,7 @@ optdepends=(
   'kvantum: Qt style engine'
   'libqalculate: calculator widget backend'
   'mission-center: graphical system monitor (default task manager)'
-  'mpv: media playback and YouTube Music support'
+  'mpv: general media playback backend'
   'mpv-mpris: richer mpv media session integration'
   'mpd: local Music library and queue backend'
   'mpd-mpris: MPD/rmpc/Hadalis Music controls through MPRIS'
@@ -111,7 +111,6 @@ optdepends=(
   'wf-recorder: screen recording support'
   'wtype: Wayland text injection helper'
   'ydotool: virtual keyboard and clipboard paste helper'
-  'yt-dlp: YouTube media backend'
   'millennium-bin: Steam theming via Millennium (requires steam)'
 )
 conflicts=('inir-shell-git' 'noctalia-qs' 'noctalia-shell' 'cachyos-niri-noctalia')

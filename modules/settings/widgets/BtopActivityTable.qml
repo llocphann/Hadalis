@@ -147,7 +147,8 @@ Item {
 
                 delegate: Item {
                     id: activityRow
-                    width: ListView.view?.width ?? 0
+                    width: ListView.view
+                        ? ListView.view.width : 0
                     height: 38
                     required property var modelData
                     required property int index

@@ -1267,9 +1267,6 @@ def main() -> None:
         "Appearance.colors.colPrimary",
         "Appearance.colors.colLayer2",
         "radius: root.popupRounding",
-        'border.color: "transparent"',
-        "color: Appearance.colors.colOnLayer0",
-        "color: Appearance.colors.colSubtext",
     ):
         require(bar_media_popup, token, "BarMediaPopup.qml")
 

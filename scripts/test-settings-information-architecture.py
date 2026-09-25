@@ -41,7 +41,7 @@ def main() -> None:
     ], groups
     page_indices = [index for _, pages in groups for index in pages]
     assert len(page_indices) == len(set(page_indices)), "duplicate Material page"
-    assert set(page_indices) == set(range(32)) - {18, 19, 21, 27, 28, 30, 31}, (
+    assert set(page_indices) == set(range(30)) - {18, 19, 21, 27, 28}, (
         "active Material pages must have exactly one default owner", page_indices
     )
 

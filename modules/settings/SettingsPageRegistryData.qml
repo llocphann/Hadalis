@@ -12,14 +12,13 @@ import qs.modules.common
  * Quickshell.shellPath(page.component).
  *
  * Historical page slots 18, 19, 21, 27 and 28 intentionally remain in-place
- * so persisted numeric page/category values do not shift. The public registry
- * hides and redirects them; the retired feature slots carry no feature UI or
- * searchable metadata.
+ * because active pages follow them. The removed terminal slots need no
+ * placeholders because deleting them cannot shift any live page index.
  */
 Singleton {
     id: root
 
-    readonly property var legacyHiddenIndexes: [18, 19, 21, 27, 28, 30, 31]
+    readonly property var legacyHiddenIndexes: [18, 19, 21, 27, 28]
 
     readonly property var pages: [
         {
@@ -262,22 +261,6 @@ Singleton {
             desc: Translation.tr("Workspace hover and workspace preview layout"),
             essential: false,
             component: "modules/settings/OverviewConfig.qml"
-        },
-        {
-            key: "_retired-30",
-            name: "",
-            icon: "settings",
-            desc: "",
-            essential: false,
-            component: "modules/settings/GeneralConfig.qml"
-        },
-        {
-            key: "_retired-31",
-            name: "",
-            icon: "settings",
-            desc: "",
-            essential: false,
-            component: "modules/settings/GeneralConfig.qml"
         }
     ]
 

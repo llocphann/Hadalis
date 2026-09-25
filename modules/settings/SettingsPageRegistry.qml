@@ -7,13 +7,15 @@ import qs.modules.common
 /**
  * Public Settings registry facade.
  *
- * SettingsPageRegistryData intentionally keeps historical indices so persisted
- * settings-page values remain loadable. Retired feature pages are hidden here
- * and redirected to live pages only when an old direct index is opened.
+ * SettingsPageRegistryData keeps only historical slots that precede live pages.
+ * Retired terminal indices are handled here as migration-only persisted values,
+ * without retaining placeholder pages in the active registry.
  */
 Singleton {
     id: root
 
+    // 30/31 were terminal pages, so their slots are gone; keeping the numbers
+    // here only migrates old persisted direct-page values to a supported page.
     readonly property var retiredFeaturePageIndexes: [18, 19, 21, 27, 30, 31]
     readonly property int retiredTlpPageIndex: 28
     readonly property int systemPageIndex: 1

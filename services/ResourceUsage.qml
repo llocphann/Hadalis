@@ -184,12 +184,18 @@ Singleton {
         id: nvidiaGpuProc
         // Query utilization and temperature together for efficiency.
         // temperature.gpu returns the hotspot/junction temp matching what btop shows.
-        command: ["/usr/bin/bash", "-c", root._nvidiaSmiPath + " --query-gpu=utilization.gpu,temperature.gpu --format=csv,noheader,nounits 2>/dev/null | head -n 1"]
+        command: [
+            root._nvidiaSmiPath,
+            "--query-gpu=utilization.gpu,temperature.gpu",
+            "--format=csv,noheader,nounits"
+        ]
         running: false
+        stderr: StdioCollector {}
         stdout: StdioCollector {
             id: nvidiaGpuCollector
             onStreamFinished: {
-                const parts = nvidiaGpuCollector.text.trim().split(",").map(s => s.trim());
+                const firstLine = nvidiaGpuCollector.text.trim().split("\n")[0] ?? "";
+                const parts = firstLine.split(",").map(s => s.trim());
                 const rawUsage = parseInt(parts[0]);
                 const rawTemp = parseInt(parts[1]);
                 root.gpuUsage = !isNaN(rawUsage) ? root.clampPercentToUnit(rawUsage / 100) : 0;
@@ -203,8 +209,9 @@ Singleton {
         id: intelGpuProc
         // One short PMU sample (~one 500ms period, killed by timeout). intel_gpu_top -J emits
         // per-engine "busy" percentages; aggregate GPU usage = the busiest engine this window.
-        command: ["/usr/bin/bash", "-c", "timeout 1 " + root._intelGpuTopPath + " -J -s 500 2>/dev/null"]
+        command: ["timeout", "1", root._intelGpuTopPath, "-J", "-s", "500"]
         running: false
+        stderr: StdioCollector {}
         stdout: StdioCollector {
             id: intelGpuCollector
             onStreamFinished: {

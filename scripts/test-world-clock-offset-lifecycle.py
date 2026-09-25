@@ -29,6 +29,13 @@ def main() -> int:
     if 'command: ["date", "+%z"]' not in text:
         raise AssertionError("WorldClock must preserve the date(1) compatibility fallback")
 
+    if "target: DateTime" not in text or "function onMinuteEpochChanged()" not in text:
+        raise AssertionError("WorldClock must reuse the shared DateTime minute tick")
+    if "if ((DateTime.minuteEpoch % 5) === 0)" not in text:
+        raise AssertionError("WorldClock must preserve its five-minute offset refresh cadence")
+    if "id: minuteTick" in text or "interval: 5 * 60 * 1000" in text:
+        raise AssertionError("WorldClock must not restore private minute/offset timers")
+
     refresh = re.search(
         r"function refreshOffsets\(\): void \{(?P<body>.*?)\n    \}\n\n"
         r"    function _completeOffset",

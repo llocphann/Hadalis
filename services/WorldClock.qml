@@ -5,6 +5,7 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 import qs.modules.common
+import qs.services
 
 Singleton {
     id: root
@@ -206,47 +207,29 @@ Singleton {
         });
     }
 
-    function _scheduleMinuteTick(): void {
-        root.now = new Date()
-        if (!root.enabled) {
-            minuteTick.stop()
-            return
-        }
-
-        // The rendered world-clock strings have minute precision. Wake once at
-        // the next minute boundary instead of keeping the shell on a 1 Hz timer.
-        const nowMs = root.now.getTime()
-        minuteTick.interval = Math.max(250, 60000 - (nowMs % 60000) + 25)
-        minuteTick.restart()
-    }
-
     onTimezonesChanged: root.refreshOffsets()
     onEnabledChanged: {
-        if (root.enabled) {
-            root._scheduleMinuteTick()
-            root.refreshOffsets()
-        } else {
-            minuteTick.stop()
-        }
+        if (!root.enabled)
+            return
+        root.now = new Date()
+        root.refreshOffsets()
     }
     Component.onCompleted: {
+        root.now = new Date()
         root.refreshOffsets()
-        if (root.enabled)
-            root._scheduleMinuteTick()
     }
 
-    Timer {
-        id: minuteTick
-        interval: 60000
-        repeat: false
-        onTriggered: root._scheduleMinuteTick()
-    }
+    Connections {
+        target: DateTime
+        enabled: root.enabled
 
-    Timer {
-        interval: 5 * 60 * 1000
-        running: root.enabled
-        repeat: true
-        onTriggered: root.refreshOffsets()
+        function onMinuteEpochChanged(): void {
+            root.now = new Date()
+            // Offset changes are rare (DST), so preserve the existing five-minute
+            // refresh cadence without owning a second repeating timer.
+            if ((DateTime.minuteEpoch % 5) === 0)
+                root.refreshOffsets()
+        }
     }
 
     Process {

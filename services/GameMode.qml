@@ -105,8 +105,8 @@ Singleton {
     readonly property bool suppressNotifications: Config.options?.gameMode?.suppressNotifications ?? true
     readonly property string _discoverOverlayServiceName: "discover-overlay.service"
 
-    // State file path
-    readonly property string _stateFile: Quickshell.env("HOME") + "/.local/state/quickshell/user/gamemode_active"
+    // State file path. Directories owns XDG state-path creation during startup.
+    readonly property string _stateFile: Directories.stateUserPath + "/gamemode_active"
 
     // IPC handler for external control
     IpcHandler {
@@ -293,7 +293,7 @@ Singleton {
         command: [
             "/usr/bin/bash",
             "-c",
-            "mkdir -p ~/.local/state/quickshell/user\n" +
+            "mkdir -p " + Directories.stateUserPath + "\n" +
             "echo " + (root._manualActive ? "1" : "0") + " > " + root._stateFile
         ]
         onExited: {
@@ -338,7 +338,8 @@ Singleton {
     // Initial setup
     Component.onCompleted: {
         root._log("[GameMode] Service starting...")
-        Quickshell.execDetached(["/usr/bin/mkdir", "-p", Quickshell.env("HOME") + "/.local/state/quickshell/user"])
+        // Directories prepares stateUserPath centrally before this Tier-3 service
+        // is instantiated; avoid a second detached mkdir on every shell start.
         initTimer.restart()
     }
 

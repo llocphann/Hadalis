@@ -25,10 +25,13 @@ PanelWindow {
     exclusionMode: ExclusionMode.Ignore
     WlrLayershell.namespace: "quickshell:wallpaperLauncher"
     WlrLayershell.layer: WlrLayer.Overlay
-    WlrLayershell.keyboardFocus: GlobalStates.wallpaperLauncherOpen
+    readonly property bool acceptsInput: GlobalStates.wallpaperLauncherOpen
+    WlrLayershell.keyboardFocus: root.acceptsInput
         ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
     color: "transparent"
     anchors { top: true; right: true; bottom: true; left: true }
+
+    Item { id: emptyWallpaperLauncherInput; width: 0; height: 0 }
 
     Component.onCompleted: {
         if (GlobalStates.wallpaperLauncherOpen)
@@ -69,9 +72,14 @@ PanelWindow {
         function status(): string { return content.statusJson() }
     }
 
+    mask: Region {
+        item: root.acceptsInput ? launcherBackdrop : emptyWallpaperLauncherInput
+    }
+
     MouseArea {
+        id: launcherBackdrop
         anchors.fill: parent
-        enabled: GlobalStates.wallpaperLauncherOpen
+        enabled: root.acceptsInput
         onClicked: mouse => {
             const local = mapToItem(content, mouse.x, mouse.y)
             if (local.x < 0 || local.x > content.width

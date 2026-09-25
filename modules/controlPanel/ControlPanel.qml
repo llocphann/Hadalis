@@ -78,7 +78,9 @@ Scope {
         implicitHeight: screen?.height ?? 1080
         WlrLayershell.namespace: "quickshell:controlPanel"
         WlrLayershell.layer: WlrLayer.Overlay
-        WlrLayershell.keyboardFocus: GlobalStates.controlPanelOpen ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
+        readonly property bool acceptsInput: GlobalStates.controlPanelOpen
+        WlrLayershell.keyboardFocus: panelRoot.acceptsInput
+            ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
         color: "transparent"
 
         anchors {
@@ -86,6 +88,11 @@ Scope {
             right: true
             bottom: true
             left: true
+        }
+
+        Item { id: emptyControlPanelInput; width: 0; height: 0 }
+        mask: Region {
+            item: panelRoot.acceptsInput ? backdropClickArea : emptyControlPanelInput
         }
 
         // Backdrop click to close

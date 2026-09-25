@@ -1034,7 +1034,7 @@ if ${INSTALL_SCREENCAPTURE:-true} && ! command -v hyprpicker &>/dev/null; then
   fi
 
   if [[ "$HYPRUTILS_INSTALLED" == "false" ]]; then
-    HYPRUTILS_BUILD_DIR="/tmp/hyprutils-build-$"
+    HYPRUTILS_BUILD_DIR="/tmp/hyprutils-build-${BASHPID}"
     if git clone --depth 1 https://github.com/hyprwm/hyprutils.git "$HYPRUTILS_BUILD_DIR" 2>/dev/null; then
       cd "$HYPRUTILS_BUILD_DIR"
       if cmake -B build && cmake --build build && sudo cmake --install build; then
@@ -1049,7 +1049,7 @@ if ${INSTALL_SCREENCAPTURE:-true} && ! command -v hyprpicker &>/dev/null; then
   fi
 
   if [[ "$HYPRUTILS_INSTALLED" == "true" ]] && command -v hyprwayland-scanner &>/dev/null; then
-    HYPRPICKER_BUILD_DIR="/tmp/hyprpicker-build-$"
+    HYPRPICKER_BUILD_DIR="/tmp/hyprpicker-build-${BASHPID}"
     if git clone --depth 1 https://github.com/hyprwm/hyprpicker.git "$HYPRPICKER_BUILD_DIR" 2>/dev/null; then
       cd "$HYPRPICKER_BUILD_DIR"
       if cmake -B build && cmake --build build && sudo cmake --install build; then

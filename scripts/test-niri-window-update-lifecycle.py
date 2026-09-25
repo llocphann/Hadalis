@@ -41,6 +41,13 @@ def main() -> int:
     if unconditional:
         raise AssertionError("focus/metadata-only batches must not unconditionally sort")
 
+    if "scheduleWindowsUpdate(currentList, false)" not in text:
+        raise AssertionError("focus-only events must skip fresh order comparisons")
+    if "function scheduleWindowsUpdate(newWindowsList, orderMayChange)" not in text:
+        raise AssertionError("window batcher must expose the order-change hint")
+    if "if (orderMayChange !== false)" not in text:
+        raise AssertionError("order comparison must be gated by the event hint")
+
     # Order dirtiness must still cover membership and spatial placement.
     for needle in (
         "_windowOrderDiffers(",

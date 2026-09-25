@@ -499,7 +499,10 @@ Singleton {
         }
 
         const currentList = root._windowsDirty ? root._pendingWindows : root.windows
-        scheduleWindowsUpdate(currentList)
+        // Focus flags do not change membership or spatial ordering. Preserve any
+        // order dirtiness already queued by an earlier event, but skip a fresh
+        // O(n) order-map comparison for this high-frequency focus event.
+        scheduleWindowsUpdate(currentList, false)
         const focusedWindow = currentList.find(window => window.id === focusedWindowId)
 
         if (focusedWindow) {
@@ -611,10 +614,12 @@ Singleton {
         }
     }
 
-    function scheduleWindowsUpdate(newWindowsList) {
+    function scheduleWindowsUpdate(newWindowsList, orderMayChange) {
         const normalizedWindows = root._normalizeWindowFocus(newWindowsList)
-        _windowOrderDirty = _windowOrderDirty
-            || _windowOrderDiffers(_windowsDirty ? _pendingWindows : windows, normalizedWindows)
+        if (orderMayChange !== false) {
+            _windowOrderDirty = _windowOrderDirty
+                || _windowOrderDiffers(_windowsDirty ? _pendingWindows : windows, normalizedWindows)
+        }
         _pendingWindows = normalizedWindows
         _windowsDirty = true
         if (!windowsUpdateTimer.running) {

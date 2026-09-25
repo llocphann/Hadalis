@@ -278,11 +278,11 @@ ColumnLayout {
                         }
                     }
                     RowLayout {
-                        visible: resourceSuspects.width >= 620
                         spacing: 6
 
                         StyledText {
                             textFormat: Text.PlainText
+                            visible: resourceSuspects.width >= 620
                             text: root.qmlOwnerProfile !== null
                                 ? Translation.tr("Deep profile ready")
                                 : Translation.tr("Kernel + lifecycle evidence")

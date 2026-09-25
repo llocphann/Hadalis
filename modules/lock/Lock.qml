@@ -41,13 +41,16 @@ Scope {
         })
     }
 
-    // Fallback lock screen when Quickshell session-lock fails.
+    // External fallback when the Quickshell session-lock surface fails.
+    // Both commands are ordinary ext-session-lock clients on this Niri path;
+    // the executable name does not imply a second compositor backend.
     function useFallbackLock(): void {
-        console.warn("[Lock] Activating swaylock fallback")
+        console.warn("[Lock] Activating external locker fallback")
         GlobalStates.screenLocked = false
         Quickshell.execDetached(["/usr/bin/bash", "-c",
             "command -v swaylock >/dev/null 2>&1 && exec swaylock -f -c 1a1a2e || " +
-            "notify-send -u critical 'Lock Failed' 'Install swaylock as fallback'"
+            "command -v hyprlock >/dev/null 2>&1 && exec hyprlock || " +
+            "notify-send -u critical 'Lock Failed' 'Install swaylock or hyprlock as fallback'"
         ])
     }
 

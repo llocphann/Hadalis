@@ -111,6 +111,9 @@ def main() -> None:
         "visible: root.qmlOwnerProfile !== null",
         "visible: root.qmlOwnerProfile === null",
         'Translation.tr("Profile 5s")',
+        '"/usr/bin/systemd-run"',
+        '"--user", "--collect", "--quiet"',
+        '"--service-type=exec"',
         'Quickshell.shellPath("scripts/inir")',
         '"dev", "profile", "--duration", "5"',
     ):

@@ -21,9 +21,10 @@ spawn-at-startup "inir" "input-method" "start"
 // rich content out of an editor like ChatGPT's), wl-paste matches that and the
 // raw <meta http-equiv=...> markup is what would land in the history. Asking
 // for text/plain instead would drop those entries entirely.
+// Niri owns each long-running watcher directly; do not background them inside bash.
 // Access via iNiR's clipboard overlay (Mod+V).
-spawn-at-startup "bash" "-c" "wl-paste --type text --watch ~/.config/quickshell/inir/scripts/native-dispatch clipboard-store &"
-spawn-at-startup "bash" "-c" "wl-paste --type image --watch cliphist store &"
+spawn-at-startup "bash" "-c" "exec wl-paste --type text --watch ~/.config/quickshell/inir/scripts/native-dispatch clipboard-store"
+spawn-at-startup "bash" "-c" "exec wl-paste --type image --watch cliphist store"
 
 // Polkit authentication agent — needed for GUI sudo prompts (software install,
 // disk mount, etc.). iNiR's setup auto-detects which agent is installed and

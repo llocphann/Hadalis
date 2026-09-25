@@ -30,12 +30,12 @@ There are two layers of autostart in a typical iNiR setup:
 
 These are defined in `~/.config/niri/config.d/50-startup.kdl` and managed by the compositor:
 
-- `wl-paste --type text --watch cliphist store` (clipboard text history)
-- `wl-paste --type image --watch cliphist store` (clipboard image history)
+- `exec wl-paste --type text --watch ~/.config/quickshell/inir/scripts/native-dispatch clipboard-store` (clipboard text history, browser-markup filtering)
+- `exec wl-paste --type image --watch cliphist store` (clipboard image history)
 - `polkit-mate-authentication-agent-1` (GUI sudo prompts)
 - `kbuildsycoca6` (KDE desktop entry cache)
 
-These run before iNiR starts and are independent of the shell.
+These run before iNiR starts and are independent of the shell. The two clipboard watchers are single-instance startup writers: Niri owns each long-running `wl-paste` process directly, so the command must not add a nested background `&`.
 
 ### Shell level (Autostart service)
 

@@ -468,7 +468,6 @@ Singleton {
 		const u = url.toLowerCase();
 		// Video platforms
 		if (u.includes("youtube.com") || u.includes("youtu.be")) return true;
-		if (u.includes("music.youtube.com")) return true;
 		if (u.includes("twitch.tv")) return true;
 		if (u.includes("vimeo.com")) return true;
 		if (u.includes("dailymotion.com")) return true;

@@ -174,7 +174,6 @@ RippleButton {
 
     function launchFromDesktopEntry(): bool {
         var id = appEntry?.originalAppId ?? appEntry?.appId ?? "";
-        if (id === "com.github.th_ch.youtube_music") id = "pear-desktop";
         if (id === "spotify" || id === "spotify-launcher") id = "spotify-launcher";
         if (id && id !== "" && id !== "SEPARATOR") {
             const entry = AppSearch.lookupDesktopEntry(id);

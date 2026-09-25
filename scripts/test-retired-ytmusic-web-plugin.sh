@@ -82,4 +82,19 @@ jq -e '.options.themes == ["/keep.css"]' "$XDG_CONFIG_HOME/YouTube Music/config.
 [[ ! -e "$css" ]] || fail 'theming migration must remove generated YTMusic CSS'
 grep -Fq 'Exec=youtube-music %U' "$HOME/.local/share/applications/youtube-music.desktop" || fail 'theming migration must remove only the Hadalis CDP flag'
 
-echo 'retired YTMusic web-plugin and theming contracts passed'
+for active_file in \
+  "$repo_root/services/AppSearch.qml" \
+  "$repo_root/modules/bar/BarTaskbarButton.qml" \
+  "$repo_root/modules/dock/DockAppButton.qml" \
+  "$repo_root/scripts/cava/resolve_audio_source.py"; do
+  ! grep -Eqi 'ytmusic|youtube[ _-]?music|music\.youtube\.com|com\.github\.th_ch\.youtube_music|pear-desktop' "$active_file" \
+    || fail "retired YTMusic special-case remains in active runtime: $active_file"
+done
+! grep -Fq 'music.youtube.com' "$repo_root/services/MprisController.qml" \
+  || fail 'redundant YTMusic-specific streaming URL special-case remains'
+! grep -Fq 'yt-dlp' "$repo_root/docs/PACKAGES.md" \
+  || fail 'retired YTMusic extractor dependency remains documented'
+! grep -Eqi 'YouTube Music|YT Music|music\.youtube\.com|yt-dlp|ytmusicapi' "$repo_root/translations/en_US.json" \
+  || fail 'retired YTMusic translation strings remain'
+
+echo 'retired YTMusic runtime, plugin, theming, and packaging contracts passed'

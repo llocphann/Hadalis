@@ -229,7 +229,7 @@ echo ""
 
 echo -e "${STY_BLUE}Optional but recommended:${STY_RST}"
 echo "  kitty (terminal), nautilus (file manager), fuzzel (launcher)"
-echo "  easyeffects, mpv, yt-dlp, tesseract-ocr"
+echo "  easyeffects, mpv, tesseract-ocr"
 echo ""
 
 #####################################################################################

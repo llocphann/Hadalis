@@ -1729,7 +1729,7 @@ run_install() {
     #         tui_info "Enable Web Apps in Settings → Interface → Sidebars"
     #     elif $has_webengine; then
     #         tui_info "qt6-webengine is installed but quickshell needs to be recompiled"
-    #         tui_info "Web Apps (Discord, YouTube Music, etc.) require a patched quickshell"
+    #         tui_info "Web Apps (for example Discord) require a patched quickshell"
     #         if $ask; then
     #             if tui_confirm "Build and install quickshell with WebEngine support?"; then
     #                 echo ""
@@ -1739,7 +1739,7 @@ run_install() {
     #             tui_info "Run: cd ${REPO_ROOT}/scripts/quickshell-webengine && makepkg -si"
     #         fi
     #     else
-    #         tui_info "WebApp plugins available (Discord, YouTube Music with adblock)"
+    #         tui_info "WebApp plugins available (for example Discord)"
     #         tui_info "Requires: qt6-webengine + patched quickshell"
     #         if $ask; then
     #             if tui_confirm "Install qt6-webengine and build patched quickshell?"; then
@@ -2722,7 +2722,7 @@ run_update() {
     #         tui_info "Enable Web Apps in Settings → Interface → Sidebars"
     #     elif $has_webengine; then
     #         tui_info "qt6-webengine is installed but quickshell needs to be recompiled"
-    #         tui_info "Web Apps (Discord, YouTube Music, etc.) require a patched quickshell"
+    #         tui_info "Web Apps (for example Discord) require a patched quickshell"
     #         if $ask; then
     #             if tui_confirm "Build and install quickshell with WebEngine support?"; then
     #                 echo ""
@@ -2732,7 +2732,7 @@ run_update() {
     #             tui_info "Run: cd ${REPO_ROOT}/scripts/quickshell-webengine && makepkg -si"
     #         fi
     #     else
-    #         tui_info "WebApp plugins available (Discord, YouTube Music with adblock)"
+    #         tui_info "WebApp plugins available (for example Discord)"
     #         tui_info "Requires: qt6-webengine + patched quickshell"
     #         if $ask; then
     #             if tui_confirm "Install qt6-webengine and build patched quickshell?"; then

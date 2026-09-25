@@ -135,7 +135,6 @@ Core audio stack and media dependencies declared by `sdata/dist-arch/inir-audio/
 | `mpv-mpris` | MPRIS bridge for mpv |
 | `mpd` | Local Music library, saved-playlist and queue backend |
 | `mpd-mpris` | MPRIS bridge for MPD/rmpc/Hadalis Music sessions |
-| `yt-dlp` | YouTube extraction backend |
 
 Equalizer Phase 1 keeps its backend and control transport optional. The group advertises these through `optdepends`, so the source install remains usable without them:
 
@@ -267,9 +266,8 @@ These integrations are useful when their corresponding feature is desired, but t
 | `warp-cli` | Cloudflare WARP VPN toggle | Quick toggles |
 | `ollama` | Local LLM backend | AI integrations |
 | `whisper-cpp` | Local speech-to-text | Voice input/search |
-| `deno` / `node` / `bun` | JavaScript runtime for yt-dlp | YouTube media extraction when a JS runtime is required |
 
-`cava`, `yt-dlp`, and `mpv` remain required members of the `inir-audio` dependency group. `easyeffects` and `socat` are advertised by the audio group and dependency tracker as optional feature dependencies; their absence should leave Equalizer unavailable/degraded without breaking Media playback.
+`cava` and `mpv` remain required members of the `inir-audio` dependency group. `easyeffects` and `socat` are advertised by the audio group and dependency tracker as optional feature dependencies; their absence should leave Equalizer unavailable/degraded without breaking Media playback.
 
 ---
 

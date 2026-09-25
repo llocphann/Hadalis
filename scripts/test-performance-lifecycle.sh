@@ -28,6 +28,7 @@ advanced="$repo_root/modules/settings/AdvancedConfig.qml"
 waffle_themes="$repo_root/modules/waffle/settings/pages/WThemesPage.qml"
 media_section="$repo_root/modules/controlPanel/MediaSection.qml"
 sidebar_media="$repo_root/modules/sidebarLeft/widgets/MediaPlayerWidget.qml"
+local_music_view="$repo_root/modules/sidebarLeft/LocalMusicView.qml"
 it_thumbnail="$repo_root/modules/sidebarLeft/innertune/ITThumbnail.qml"
 screen_edges="$repo_root/modules/screenCorners/ScreenEdges.qml"
 alt_switcher="$repo_root/modules/altSwitcher/AltSwitcher.qml"
@@ -108,6 +109,7 @@ require "$advanced" '"appearance.cava.framerate": 30' 'ii Cava reset must remain
 require "$waffle_themes" '"appearance.cava.framerate": 30' 'Waffle Cava reset must remain 30 fps'
 require "$media_section" 'root.effectiveIsPlaying && GlobalStates.controlPanelOpen' 'Control Panel Cava must stop while playback is paused'
 require "$sidebar_media" 'root.effectiveIsPlaying && GlobalStates.sidebarLeftOpen' 'Sidebar Cava must stop while playback is paused'
+require "$local_music_view" 'active: root.visible && GlobalStates.sidebarLeftOpen && LocalMusic.playing' 'Local Music Cava must sleep while the retained Sidebar is closed'
 require "$sidebar_media" 'layer.enabled: root.visible && GlobalStates.sidebarLeftOpen' 'Sidebar media mask must release its FBO while the sidebar is closed'
 require "$sidebar_media" 'sourceSize.width: Math.max(1, Math.ceil(card.width * root._dpr))' 'Sidebar blurred artwork decode must remain bounded to the displayed card'
 require "$control_panel_media" 'layer.enabled: root.visible && GlobalStates.controlPanelOpen' 'Control Panel media masks must release their FBOs while closed'

@@ -62,6 +62,8 @@ bar_surface="$repo_root/modules/bar/Bar.qml"
 bar_content="$repo_root/modules/bar/BarContent.qml"
 bar_media="$repo_root/modules/bar/Media.qml"
 bar_util_buttons="$repo_root/modules/bar/UtilButtons.qml"
+bar_timer_indicator="$repo_root/modules/bar/TimerIndicator.qml"
+bar_shell_update_indicator="$repo_root/modules/bar/ShellUpdateIndicator.qml"
 vertical_bar_surface="$repo_root/modules/verticalBar/VerticalBar.qml"
 vertical_bar_content="$repo_root/modules/verticalBar/VerticalBarContent.qml"
 vertical_bar_media="$repo_root/modules/verticalBar/VerticalMedia.qml"
@@ -153,6 +155,13 @@ require "$bar_util_buttons" 'property bool presentationActive: true' 'Utility pu
 require "$bar_util_buttons" 'running: root.presentationActive && recordButtonWrapper.isRecording' 'Hidden utility probes must not pulse recording state'
 require "$bar_util_buttons" 'running: root.presentationActive && micButton.isInUse && !micButton.isMuted' 'Hidden utility probes must not pulse microphone state'
 require "$bar_util_buttons" 'running: root.presentationActive && screenCastButton.isCasting' 'Hidden utility probes must not pulse screencast state'
+require "$bar_timer_indicator" 'property bool presentationActive: true' 'Bar timer pulse must expose a presentation lifecycle gate'
+require "$bar_timer_indicator" 'running: root.presentationActive && root.pomodoroActive' 'Hidden Bar must stop Pomodoro pulse animation'
+require "$bar_shell_update_indicator" 'property bool presentationActive: true' 'Shell update indicator must expose a presentation lifecycle gate'
+require "$bar_shell_update_indicator" 'running: root.presentationActive && ShellUpdates.isUpdating' 'Hidden Bar must stop update spinner rotation'
+require "$bar_shell_update_indicator" 'visible: root.presentationActive && updatePopup.active' 'Closed Shell Update popup must stop retained LoadingText animation'
+require "$bar_content" 'TimerIndicator { presentationActive: root.presentationActive; Layout.alignment: Qt.AlignVCenter }' 'Bar timer indicator must follow Bar presentation lifecycle'
+require "$bar_content" 'ShellUpdateIndicator { presentationActive: root.presentationActive; Layout.alignment: Qt.AlignVCenter }' 'Bar update indicator must follow Bar presentation lifecycle'
 require "$bar_content" 'presentationActive: false' 'Horizontal Bar natural-size utility probe must stay animation-idle'
 require "$vertical_bar_content" 'presentationActive: false' 'Vertical Bar natural-size utility probe must stay animation-idle'
 require "$media_section" 'root.effectiveIsPlaying && GlobalStates.controlPanelOpen' 'Control Panel Cava must stop while playback is paused'

@@ -1248,11 +1248,11 @@ Item {
 
     Component {
         id: timerComponent
-        TimerIndicator { Layout.alignment: Qt.AlignVCenter }
+        TimerIndicator { presentationActive: root.presentationActive; Layout.alignment: Qt.AlignVCenter }
     }
     Component {
         id: shellUpdateComponent
-        ShellUpdateIndicator { Layout.alignment: Qt.AlignVCenter }
+        ShellUpdateIndicator { presentationActive: root.presentationActive; Layout.alignment: Qt.AlignVCenter }
     }
     Component {
         id: spacerComponent

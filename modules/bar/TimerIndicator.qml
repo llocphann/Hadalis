@@ -21,6 +21,7 @@ MouseArea {
             root._pointerFocused = false
     }
     property bool vertical: false
+    property bool presentationActive: true
 
     readonly property bool pinnedToBar: Persistent.states?.timer?.pinnedToBar ?? false
 
@@ -216,6 +217,7 @@ MouseArea {
         spacing: 4 * Appearance.sizes.barModuleScale
 
         MaterialSymbol {
+            id: timerIcon
             text: root.showPinnedIdle ? "schedule" : root.iconName
             iconSize: Math.round(Appearance.font.pixelSize.normal * Appearance.sizes.barModuleScale)
             color: root.paused
@@ -224,10 +226,12 @@ MouseArea {
             Layout.alignment: Qt.AlignVCenter
 
             SequentialAnimation on opacity {
-                running: root.pomodoroActive && root.pomodoroRunning && !(TimerService?.pomodoroBreak ?? false)
+                running: root.presentationActive && root.pomodoroActive
+                    && root.pomodoroRunning && !(TimerService?.pomodoroBreak ?? false)
                 loops: Animation.Infinite
                 NumberAnimation { to: 0.5; duration: 800; easing.type: Easing.InOutSine }
                 NumberAnimation { to: 1.0; duration: 800; easing.type: Easing.InOutSine }
+                onRunningChanged: if (!running) timerIcon.opacity = 1
             }
         }
 

@@ -14,7 +14,64 @@ import Quickshell.Wayland
 Scope {
     id: root
 
-    readonly property bool _lockActivating: lockActivateDelay.running
+    readonly property bool _lockActivating:
+        lockActivateDelay.running || externalLockerProbe.running
+    readonly property string configuredProvider: {
+        const provider = String(Config.options?.lock?.provider ?? "quickshell")
+        return ["quickshell", "swaylock", "hyprlock"].includes(provider)
+            ? provider : "quickshell"
+    }
+
+    function activateQuickshellLock(): void {
+        if (GlobalStates.screenLocked || lockActivateDelay.running)
+            return
+        lockActivateDelay.restart()
+    }
+
+    function activateConfiguredLock(): void {
+        if (GlobalStates.screenLocked || root._lockActivating)
+            return
+        if (root.configuredProvider === "quickshell") {
+            root.activateQuickshellLock()
+            return
+        }
+
+        externalLockerProbe.requestedProvider = root.configuredProvider
+        externalLockerProbe.command = [
+            "/usr/bin/bash", "-lc",
+            "command -v -- \"$1\" >/dev/null 2>&1",
+            "_", externalLockerProbe.requestedProvider
+        ]
+        externalLockerProbe.running = true
+    }
+
+    Process {
+        id: externalLockerProbe
+        property string requestedProvider: ""
+        running: false
+
+        onExited: (exitCode, exitStatus) => {
+            const provider = externalLockerProbe.requestedProvider
+            externalLockerProbe.requestedProvider = ""
+
+            if (exitCode === 0) {
+                if (provider === "swaylock")
+                    Quickshell.execDetached(["swaylock", "-f", "-c", "1a1a2e"])
+                else if (provider === "hyprlock")
+                    Quickshell.execDetached(["hyprlock"])
+                return
+            }
+
+            console.warn("[Lock] Selected external locker is unavailable:", provider,
+                         "— falling back to Quickshell")
+            Quickshell.execDetached([
+                "notify-send", "-u", "normal",
+                "Lock provider unavailable",
+                provider + " is not installed; using the Hadalis lock screen instead."
+            ])
+            root.activateQuickshellLock()
+        }
+    }
 
     Timer {
         id: lockActivateDelay
@@ -239,9 +296,7 @@ Scope {
         target: "lock"
 
         function activate(): void {
-            if (GlobalStates.screenLocked || root._lockActivating)
-                return;
-            lockActivateDelay.restart();
+            root.activateConfiguredLock()
         }
 
         function deactivate(): void {
@@ -279,7 +334,7 @@ Scope {
 
         if (Config.options?.lock?.launchOnStartup ?? false) {
             if (!GlobalStates.screenLocked && !root._lockActivating)
-                lockActivateDelay.restart()
+                root.activateConfiguredLock()
         } else {
             KeyringStorage.fetchKeyringData();
         }

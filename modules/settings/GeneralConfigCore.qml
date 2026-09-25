@@ -657,6 +657,22 @@ ContentPage {
         title: Translation.tr("Lock screen")
 
         SettingsGroup {
+            ContentSubsection {
+                title: Translation.tr("Lock provider")
+                tooltip: Translation.tr("Choose which locker handles Hadalis lock requests on Niri.")
+
+                ConfigSelectionArray {
+                    currentValue: Config.options?.lock?.provider ?? "quickshell"
+                    options: [
+                        { displayName: "Quickshell", value: "quickshell" },
+                        { displayName: "swaylock", value: "swaylock" },
+                        { displayName: "hyprlock", value: "hyprlock" }
+                    ]
+                    onSelected: newValue =>
+                        Config.setNestedValue("lock.provider", newValue)
+                }
+            }
+
             SettingsSwitch {
                 buttonIcon: "account_circle"
                 text: Translation.tr('Launch on startup')

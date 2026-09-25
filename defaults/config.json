@@ -1142,6 +1142,7 @@
             "opacity": 0.3
         },
         "launchOnStartup": false,
+        "provider": "quickshell",
         "materialShapeChars": true,
         "enableAnimation": false,
         "notifications": {

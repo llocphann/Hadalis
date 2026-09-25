@@ -1932,6 +1932,9 @@ Singleton {
             }
 
             property JsonObject lock: JsonObject {
+                // Lock-request provider. External lockers are ext-session-lock
+                // clients under Niri, not alternate compositor backends.
+                property string provider: "quickshell"
                 property bool launchOnStartup: false
                 property JsonObject blur: JsonObject {
                     property bool enable: true

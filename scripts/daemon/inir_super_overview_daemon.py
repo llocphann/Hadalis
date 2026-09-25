@@ -249,6 +249,8 @@ async def monitor_device(path):
                         and not chord
                         and not interaction_since_super_down
                         and not tap_handled
+                        and path in super_down_devices
+                        and len(super_down_devices) == 1
                     ):
                         # Tap of Super with no other keys or clicks: toggle inir overview
                         # with a global debounce so multiple devices don't double-trigger.

@@ -19,6 +19,8 @@ require(DAEMON, 'run_inir_command("ipc", "overview", function)',
         "daemon must use the existing Niri shell IPC transport")
 require(DAEMON, 'super_down_devices = set()',
         "multi-device Super state must not collapse to a single-device boolean")
+require(DAEMON, 'len(super_down_devices) == 1',
+        "Super tap must wait for the final held Super device to release")
 
 require(SHELL, 'function superPress(): void {',
         "overview IPC must expose Super press")

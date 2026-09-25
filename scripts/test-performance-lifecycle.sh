@@ -103,6 +103,8 @@ screen_time="$repo_root/services/ScreenTime.qml"
 shell_updates="$repo_root/services/ShellUpdates.qml"
 directory_icon="$repo_root/modules/common/widgets/DirectoryIcon.qml"
 sysmon_widget="$repo_root/modules/sidebarRight/sysmon/SysMonWidget.qml"
+graph_widget="$repo_root/modules/common/widgets/Graph.qml"
+overlay_resources="$repo_root/modules/ii/overlay/resources/Resources.qml"
 voice_search="$repo_root/services/VoiceSearch.qml"
 gtk_theme="$repo_root/scripts/colors/apply-gtk-theme.sh"
 terminal_theme="$repo_root/scripts/colors/modules/10-terminals.sh"
@@ -404,6 +406,10 @@ reject "$directory_icon" 'command: ["file", "--mime"' 'DirectoryIcon must not sp
 reject "$sysmon_widget" 'command: ["/usr/bin/cat", "/proc/net/dev"]' 'SysMon must reuse shared ResourceUsage network telemetry'
 require "$sysmon_widget" 'ResourceUsage.networkRxBytesPerSec' 'SysMon network receive rate must come from ResourceUsage'
 require "$sysmon_widget" 'ResourceUsage.networkTxBytesPerSec' 'SysMon network transmit rate must come from ResourceUsage'
+require "$graph_widget" 'onValuesChanged: root._queuePaint()' 'Hidden retained Graph canvases must not repaint on every history sample'
+require "$graph_widget" 'onVisibleChanged: root._queuePaint()' 'Graph canvases must repaint the latest history when presented again'
+require "$graph_widget" 'if (root.visible)' 'Graph repaint scheduling must be visibility-gated'
+require "$overlay_resources" 'layer.enabled: root.visible' 'Hidden Resources overlay must release its rounded graph mask FBO'
 require "$voice_search" 'root._startLocalProbe()' 'VoiceSearch backend refresh must use the centralized probe lifecycle'
 require "$voice_search" 'command -v whisper-cli' 'VoiceSearch normal local-backend probe must avoid Python interpreter startup'
 require "$voice_search" 'if (localProbe.usePythonFallback)' 'VoiceSearch must retain Python probe compatibility for edge-case paths'

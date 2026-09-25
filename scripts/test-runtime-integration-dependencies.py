@@ -38,7 +38,7 @@ def main() -> None:
     require(cava, 'command: ["cava", "-p", root.configPath]', "CavaService.qml")
     require(doctor, '"cava:cava"', "doctor.sh")
     require(generic, 'check_cmd "cava" "CAVA audio visualizer"', "generic installer")
-    require(generic, "pipewire, pipewire-pulse, wireplumber, playerctl, pavucontrol, cava",
+    require(generic, "pipewire, pipewire-pulse, wireplumber, pavucontrol, cava",
             "generic installer")
     require(debian, "DEBIAN_AUDIO_PKGS+=(cava)", "Debian installer")
     require(debian, "if ! command -v cava &>/dev/null; then", "Debian installer")

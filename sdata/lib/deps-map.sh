@@ -92,7 +92,6 @@ DEPS_WAYLAND_XWAYLANDSATELLITE="arch:xwayland-satellite fedora:COPR:alebastr/swa
 DEPS_AUDIO_PIPEWIRE="arch:pipewire fedora:pipewire debian:pipewire ubuntu:pipewire opensuse:pipewire void:pipewire"
 DEPS_AUDIO_PIPEWIRE_PULSE="arch:pipewire-pulse fedora:pipewire-pulseaudio debian:pipewire-pulse ubuntu:pipewire-pulse opensuse:pipewire-pulseaudio void:pipewire-pulse"
 DEPS_AUDIO_WIREPLUMBER="arch:wireplumber fedora:wireplumber debian:wireplumber ubuntu:wireplumber opensuse:wireplumber void:wireplumber"
-DEPS_AUDIO_PLAYERCTL="arch:playerctl fedora:playerctl debian:playerctl ubuntu:playerctl opensuse:playerctl void:playerctl"
 DEPS_AUDIO_PLASMA_BROWSER_INTEGRATION="arch:plasma-browser-integration fedora:plasma-browser-integration debian:plasma-browser-integration ubuntu:plasma-browser-integration opensuse:plasma-browser-integration void:plasma-browser-integration"
 DEPS_AUDIO_PAVUCONTROL="arch:pavucontrol fedora:pavucontrol debian:pavucontrol ubuntu:pavucontrol opensuse:pavucontrol void:pavucontrol"
 DEPS_AUDIO_CAVA="arch:AUR:cava fedora:cava debian:COMPILE:https://github.com/karlstav/cava ubuntu:COMPILE:https://github.com/karlstav/cava opensuse:cava void:cava"

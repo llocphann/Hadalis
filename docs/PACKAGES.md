@@ -127,7 +127,6 @@ Core audio stack and media dependencies declared by `sdata/dist-arch/inir-audio/
 | `pipewire-pulse` | PulseAudio compatibility |
 | `pipewire-alsa` | ALSA compatibility |
 | `wireplumber` | PipeWire session manager |
-| `playerctl` | Media-player control |
 | `libdbusmenu-gtk3` | Tray/menu integration |
 | `pavucontrol` | Advanced volume-control GUI |
 | `cava` | Audio visualizer |

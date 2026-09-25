@@ -12,7 +12,6 @@ depends=(
   wireplumber
 
   # Media control
-  playerctl
   libdbusmenu-gtk3
   pavucontrol
 

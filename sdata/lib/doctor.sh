@@ -76,7 +76,6 @@ check_dependencies() {
         "fuzzel:fuzzel"
         "awww:awww"
         "awww-daemon:awww"
-        "playerctl:playerctl"
         "notify-send:libnotify"
         "flock:util-linux"
         "go:go"

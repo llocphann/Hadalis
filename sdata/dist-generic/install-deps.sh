@@ -213,7 +213,7 @@ echo "    Install: cargo install --git https://codeberg.org/LGFae/awww.git"
 echo ""
 
 echo -e "${STY_BLUE}Audio (required):${STY_RST}"
-echo "  pipewire, pipewire-pulse, wireplumber, playerctl, pavucontrol, cava"
+echo "  pipewire, pipewire-pulse, wireplumber, pavucontrol, cava"
 echo "  plasma-browser-integration (browser MPRIS sessions and artwork)"
 echo ""
 

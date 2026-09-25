@@ -56,7 +56,7 @@ if "cava" not in doctor_cmds:
     raise SystemExit("FAIL: doctor no longer checks the CAVA runtime")
 for token in (
     'check_cmd "cava" "CAVA audio visualizer"',
-    'pipewire, pipewire-pulse, wireplumber, playerctl, pavucontrol, cava',
+    'pipewire, pipewire-pulse, wireplumber, pavucontrol, cava',
 ):
     if token not in generic_installer:
         raise SystemExit(

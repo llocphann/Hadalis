@@ -411,7 +411,6 @@ DEBIAN_AUDIO_PKGS=(
   pipewire-pulse
   pipewire-alsa
   wireplumber
-  playerctl
   plasma-browser-integration
   libdbusmenu-gtk3-4
   pavucontrol

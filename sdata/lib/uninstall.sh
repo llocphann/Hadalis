@@ -75,7 +75,6 @@ declare -A INIR_PACKAGES=(
     ["slurp"]="slurp|Region selector|system_tool"
     ["wl-copy"]="wl-clipboard|Clipboard utilities|system_tool"
     ["brightnessctl"]="brightnessctl|Brightness control|system_tool"
-    ["playerctl"]="playerctl|Media control|system_tool"
     ["plasma-browser-integration-host"]="plasma-browser-integration|Browser media integration|system_tool"
     ["dunstify"]="dunst|Notification daemon|system_tool"
     ["cava"]="cava|Audio visualizer|optional_tool"

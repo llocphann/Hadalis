@@ -46,6 +46,10 @@ waffle_popup_group="$repo_root/modules/waffle/notificationPopup/WNotificationGro
 waffle_popup_item="$repo_root/modules/waffle/notificationPopup/WNotificationItem.qml"
 workspace_thumb="$repo_root/modules/waffle/taskview/WorkspaceThumbnail.qml"
 window_thumb="$repo_root/modules/waffle/taskview/WindowThumbnail.qml"
+dock_window_preview="$repo_root/modules/dock/DockWindowPreview.qml"
+dock_preview="$repo_root/modules/dock/DockPreview.qml"
+bar_taskbar_window_preview="$repo_root/modules/bar/BarTaskbarWindowPreview.qml"
+bar_taskbar_preview="$repo_root/modules/bar/BarTaskbarPreview.qml"
 easyeffects="$repo_root/services/deferred/EasyEffects.qml"
 tlp="$repo_root/services/TlpService.qml"
 thinkfan="$repo_root/services/ThinkFanService.qml"
@@ -231,6 +235,14 @@ require "$workspace_thumb" 'sourceSize.width: Math.max(1, Math.ceil(root.thumbna
 require "$window_thumb" 'GlobalStates.waffleTaskViewOpen && shimmerBg.visible' 'TaskView shimmer must stop when TaskView closes'
 require "$window_thumb" 'mipmap: false' 'TaskView window previews must avoid unnecessary mipmap generation'
 require "$window_thumb" 'sourceSize.width: Math.max(1, Math.ceil(root.thumbnailWidth * 1.5))' 'TaskView window previews must use bounded decode size'
+require "$dock_window_preview" 'property bool presentationActive: true' 'Dock preview tiles must expose a retained-surface lifecycle gate'
+require "$dock_window_preview" 'running: root.presentationActive && shimmerBg.visible' 'Hidden Dock preview tiles must stop shimmer animation'
+require "$dock_window_preview" 'layer.enabled: root.presentationActive && windowPreview.status === Image.Ready' 'Hidden Dock preview tiles must release thumbnail mask layers'
+require "$dock_preview" 'presentationActive: root.visible' 'Dock preview host must power tiles only while its popup is visible'
+require "$bar_taskbar_window_preview" 'property bool presentationActive: true' 'Bar taskbar preview tiles must expose a retained-surface lifecycle gate'
+require "$bar_taskbar_window_preview" 'running: root.presentationActive && shimmerBg.visible' 'Hidden Bar taskbar preview tiles must stop shimmer animation'
+require "$bar_taskbar_window_preview" 'layer.enabled: root.presentationActive && windowPreview.status === Image.Ready' 'Hidden Bar taskbar preview tiles must release thumbnail mask layers'
+require "$bar_taskbar_preview" 'presentationActive: root.active' 'Bar taskbar preview host must keep tiles live through retract and sleep afterward'
 
 require "$easyeffects" 'readonly property bool uiDemand:' 'EasyEffects must expose demand-aware state polling'
 require "$easyeffects" 'interval: root.uiDemand ? 5000 : 30000' 'EasyEffects must use slow background verification'

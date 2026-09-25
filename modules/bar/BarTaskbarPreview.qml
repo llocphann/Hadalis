@@ -204,6 +204,9 @@ StyledPopup {
                     required property var modelData
 
                     toplevel: modelData
+                    // StyledPopup.active stays true through its retract tail,
+                    // then sleeps retained preview delegates once fully hidden.
+                    presentationActive: root.active
                     onWindowActivated: {
                         if (!(Config.options?.dock?.keepPreviewOnClick ?? false))
                             root.close()

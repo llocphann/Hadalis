@@ -15,6 +15,9 @@ Button {
     id: root
 
     required property var toplevel
+    // Preview hosts stay resident between hovers to preserve cache/delegate
+    // identity. Presentation-only GPU work must follow the popup surface.
+    property bool presentationActive: true
     padding: 6
     Layout.fillHeight: true
 
@@ -176,7 +179,7 @@ Button {
                     }
 
                     SequentialAnimation on x {
-                        running: shimmerBg.visible
+                        running: root.presentationActive && shimmerBg.visible
                         loops: Animation.Infinite
                         NumberAnimation {
                             from: -shimmer.width
@@ -223,7 +226,7 @@ Button {
                     NumberAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve }
                 }
 
-                layer.enabled: true
+                layer.enabled: root.presentationActive && windowPreview.status === Image.Ready
                 layer.effect: OpacityMask {
                     maskSource: Rectangle {
                         width: windowPreview.width

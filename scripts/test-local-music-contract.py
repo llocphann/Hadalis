@@ -113,8 +113,12 @@ for token in (
     require(view, token, f"Local Music frontend contract missing: {token}")
 for forbidden in ("YtMusic", "InnerTune", "yt-dlp", "youtube"):
     forbid(view, forbidden, f"Local Music frontend must stay local-only: {forbidden}")
-forbid(view, 'text: Translation.tr("Update")',
-       "Local Music empty state must not duplicate the toolbar database action.")
+forbid(view, 'tip: Translation.tr("Update")',
+       "Left Sidebar Music must keep MPD database maintenance out of the playback toolbar.")
+forbid(view, 'LocalMusic.updateDatabase()',
+       "Left Sidebar Music must not duplicate the Settings-only MPD database update action.")
+require(settings, 'onClicked: LocalMusic.updateDatabase()',
+        "Music Settings must retain the MPD database update action.")
 
 if "model: LocalMusic.collections" in view:
     raise SystemExit("Playlists must contain only saved MPD playlists, not folder collections.")

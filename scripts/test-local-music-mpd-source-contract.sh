@@ -6,6 +6,7 @@ fail() { printf 'FAIL: %s\n' "$1" >&2; exit 1; }
 service="$root/services/LocalMusic.qml"
 mpris="$root/services/MprisController.qml"
 view="$root/modules/sidebarLeft/LocalMusicView.qml"
+settings="$root/modules/settings/SidebarsConfig.qml"
 sidebar="$root/modules/sidebarLeft/SidebarLeftContent.qml"
 editor="$root/modules/common/widgets/SidebarLayoutEditor.qml"
 defaults="$root/defaults/config.json"
@@ -31,7 +32,8 @@ grep -Fq 'property MprisPlayer mpdPlayer: null' "$mpris" || fail 'MprisControlle
 grep -Fq 'org.mpris.MediaPlayer2.mpd.hadalis' "$mpris" || fail 'custom MPD endpoints need a dedicated Hadalis MPRIS instance'
 grep -Fq '_mpdMprisCustomProc.command = root._mpdCustomBridgeCommand()' "$mpris" || fail 'custom MPD endpoint must launch endpoint-bound mpd-mpris'
 grep -Fq 'command: ["/usr/bin/systemctl", "--user", "start", "mpd-mpris.service"]' "$mpris" || fail 'default localhost MPD must retain distro mpd-mpris service path'
-grep -Fq 'LocalMusic.updateDatabase()' "$view" || fail 'Music UI must expose MPD update'
+! grep -Fq 'LocalMusic.updateDatabase()' "$view" || fail 'Left Sidebar Music must not duplicate the Settings MPD update action'
+grep -Fq 'LocalMusic.updateDatabase()' "$settings" || fail 'Music Settings must retain MPD database update'
 grep -Fq 'PlayerControl {' "$view" || fail 'Music now-playing UI must reuse Media popup PlayerControl'
 grep -Fq 'id: nowPlayingPanel' "$view" || fail 'Music media must live above its section tabs'
 grep -Fq 'id: classicPlaybackOptions' "$view" || fail 'Music must retain the compact transport-adjacent volume row'

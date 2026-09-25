@@ -670,12 +670,6 @@ Item {
                 onClicked: folderDialog.open()
             }
             ToolIconButton {
-                symbol: "database"
-                tip: Translation.tr("Update")
-                enabled: LocalMusic.available && !LocalMusic.scanning
-                onClicked: LocalMusic.updateDatabase()
-            }
-            ToolIconButton {
                 symbol: "refresh"
                 tip: Translation.tr("Refresh")
                 enabled: !LocalMusic.scanning

@@ -14,31 +14,13 @@ Hadalis has two different Arch packaging trees with different responsibilities:
 | Path | Purpose |
 |---|---|
 | `sdata/dist-arch/` | Dependency-group recipes consumed by the source installer, plus the `inir-deps` orphan-protection tracker. |
-| `distro/arch/` | Distributable packages: `inir-shell`, `inir-shell-git`, optional `inir-workflow-parser`, and the `inir-meta` full-experience meta-package. |
+| `distro/arch/` | Distributable packages: `inir-shell`, `inir-shell-git`, and the `inir-meta` full-experience meta-package. |
 
 The source installer reads the `depends` arrays from the dependency-group PKGBUILDs under `sdata/dist-arch/`; those group recipes are dependency declarations, not the packaged Hadalis shell payload.
 
 `inir-deps` is different from the dependency groups. It is excluded from the dependency-install loop and is built only after dependency installation finishes. The installer stages its PKGBUILD in a temporary directory, filters its `depends` array to packages that are actually installed, and reinstalls the tracker so changes to `--no-*` choices are reflected in pacman's dependency metadata. The tracker contains no files of its own and exists to keep installed Hadalis dependencies from being removed by orphan cleanup.
 
 The committed `sdata/dist-arch/inir-deps/PKGBUILD` version follows the repository `VERSION`; release publication checks this invariant.
-
-### Optional Code Workflow parser (`inir-workflow-parser`)
-
-Code Workflow's reviewed graph/IR does not require a native parser. When users
-want CST-backed QML diagnostics, the optional `distro/arch/inir-workflow-parser`
-package compiles the pinned `tree-sitter-qmljs 0.3.1` generated C parser/scanner
-into `/usr/lib/inir/code-workflow/qmljs.so` and depends on the system
-`tree-sitter` shared library.
-
-The parser package is deliberately architecture-specific while `inir-shell`
-remains `arch=(any)`. It does not ship Node, npm, tree-sitter-cli, or a grammar
-generator. Code Workflow discovers the native grammar on demand; if the package
-is absent, source analysis reports unavailable and the reviewed read-only graph
-continues to work.
-
-`inir-shell-git` advertises this package as an optional capability because its
-live source contains the analyzer. The stable `inir-shell` recipe must advertise
-it only after its pinned `_source_ref` also contains that analyzer.
 
 ---
 

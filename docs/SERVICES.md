@@ -42,17 +42,6 @@
 | **ShellLayoutController** | Validates and persists bar, dock, taskbar and sidebar placement across panel families. IPC target: `shellLayout`. |
 | **Privacy** | Mic and screen sharing detection via PipeWire link analysis. |
 
-## Developer Inspection
-
-| Service | What it does |
-|---------|-------------|
-| **CodeWorkflowRuntime** | Narrow semantic runtime registry for live Code Workflow targets and safe allowlisted values. Its bounded lifecycle event buffer can reveal component churn/instance activity, but is not CPU/RAM attribution. |
-| **RuntimeDiagnostics** | On-demand kernel-backed shell/system sampler for Diagnostics. Reports whole-shell CPU/RAM/I/O/GPU plus real descendant-process CPU/RSS; compact Diagnostics combines that process evidence with CodeWorkflow lifecycle activity without inventing per-QML resource percentages. |
-| **CodeWorkflowAnalyzer** | On-demand read-only QML parser process boundary. Reports parser availability, diagnostics, transient CST evidence and fail-closed stable semantic-anchor rebind state without regex fallback or source writes. |
-| **CodeWorkflowIr** | Loads the versioned read-only semantic projection manifest used by the workflow graph; source-range parsing remains a separate boundary. |
-| **CodeWorkflowPicker** | In-process per-output component picker lifecycle for overlay Settings; no standalone cross-process bridge. |
-| **CodeWorkflowSession** | Persists primitive Workflow target, subflow, selected-node and viewport state across lazy page/reload lifetimes. |
-| **CodeWorkflowTransaction** | Owns Phase 2 semantic preview history, pre-Apply diagnostics, exact artifacts and the watcher-driven atomic commit/verify/rebind/rollback lifecycle. Cross-generation primitive handoff is persisted by the root-owned CodeWorkflowReloadBridge. After qualified Gate 2H evidence, Settings may trigger Apply only for an artifacts-prepared identity-matched literal-property command; broader transforms remain disabled. |
 
 ## Theming and Appearance
 

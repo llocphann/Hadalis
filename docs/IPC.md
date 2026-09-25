@@ -57,48 +57,6 @@ excluded.
 
 ---
 
-### codeWorkflowRuntime
-
-Internal Code Workflow runtime inspection bridge. This target exists so a
-standalone Settings process can read plain runtime evidence from the main shell
-without sharing QObject references across processes.
-
-| Function | Description |
-|----------|-------------|
-| `snapshot` | Return the current Code Workflow runtime descriptors, lifecycle records, outputs, and recent events as JSON |
-
----
-
-### runtimeDiagnostics
-
-Internal on-demand Diagnostics lease bridge. The main shell owns diagnostics
-sampling; standalone Material or Waffle Settings only renew a short-lived lease
-while the Diagnostics page is current. A missed heartbeat expires server-side,
-so closing or crashing Settings cannot leave diagnostics sampling running.
-
-| Function | Description |
-|----------|-------------|
-| `acquire(clientId)` | Acquire or renew a bounded Diagnostics sampling lease for the caller |
-| `heartbeat(clientId)` | Renew an existing Diagnostics lease |
-| `release(clientId)` | Release the caller's Diagnostics lease immediately |
-| `status` | Return active/lease-count/TTL sampling-session state as JSON |
-| `snapshot` | Return the current shell/system Diagnostics sample plus sampler/session state as JSON |
-
----
-
-### codeWorkflowCapture
-
-Internal deterministic capture harness for Code Workflow UI regression tests.
-It is enabled only when the dedicated capture environment is active.
-
-| Function | Description |
-|----------|-------------|
-| `begin` | Snapshot the current Code Workflow UI/session state for a deterministic capture run |
-| `status` | Return the current Code Workflow capture state and geometry diagnostics as JSON |
-| `scenario(name)` | Apply a named deterministic Code Workflow capture scenario |
-| `restore` | Restore the Code Workflow UI/session state saved by `begin` |
-
----
 
 ### overview
 

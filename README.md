@@ -10,7 +10,6 @@
 >
 > **Current `dev` snapshot (2026-09-25):**
 > - The qualified **Rust native workspace is the production backend**. `inir-native`, `inir-inputd`, `inir-mpdd` and `inir-theme` are built/shipped by supported install paths; Python implementations remain an explicit rollback/fail-soft path rather than the default selector.
-> - **Runtime Diagnostics is implemented as a production MVP**, not a research-only plan. Material and Waffle Settings share the same compact dashboard, main-shell evidence transport and demand-driven lease/session lifecycle.
 > - **Material is the only public shell-wide Global Theme**. Legacy persisted theme/style values are migration input only and must normalize to supported Material behavior rather than reactivate retired renderers.
 > - The **iRiS connected-surface migration is the production baseline** for ii connected presentation. Full `iiPerimeter` composition ownership remains a separate guarded cutover boundary.
 > - **Waffle remains a supported independent panel family** and must not be removed or treated as legacy during ii cleanup.
@@ -113,86 +112,6 @@ A ready-to-use fresh-chat prompt for that phase is stored at
 - The four transparent Screen Edge `ReservationWindow` surfaces may still unmap during fullscreen to release their exclusive work-area reservation. This reservation lifecycle must remain separate from the persistent painted frame lifecycle.
 
 
-### 1.3 Runtime Diagnostics / Quickshell btop — production MVP status (2026-09-25)
-
-Runtime Diagnostics is now an implemented Hadalis runtime debugger rather than a planned research feature. Its purpose remains narrow: explain **Hadalis shell resource behavior and runtime activity**, not replace a general desktop process manager.
-
-#### Production ownership and lifecycle
-
-- `services/RuntimeDiagnostics.qml` is the main-shell sampling authority. It is passive by default and samples only while at least one valid Diagnostics lease exists.
-- `services/RuntimeDiagnosticsSession.qml` owns Settings-page demand. Material and Waffle use the same owner-aware current-page contract; a cached/hidden page does not keep sampling alive.
-- Remote Settings processes acquire/heartbeat/release the main-shell lease through the dedicated `runtimeDiagnostics` IPC target. Lease TTL is **6 seconds**, heartbeat is **2 seconds**, the lease table is bounded, and a crashed Settings process naturally expires.
-- Sampling is **1 Hz** with a bounded **60-sample** history. Slower memory/DRM/descendant work is internally decimated so expensive process traversal is not repeated on every fast sample.
-- `scripts/native-dispatch diagnostics` selects the production Rust implementation in `inir-native` by default. `scripts/runtime-diagnostics-sampler.py` remains the compatible Python fallback.
-- Leaving the Diagnostics page clears live sample/history state and stops the sampler. Diagnostics must not become an always-on background monitor.
-
-#### Evidence that is implemented
-
-The current sampler exposes provenance-bearing evidence for:
-
-- system CPU and per-logical-core CPU from `/proc/stat`;
-- load average and uptime;
-- system RAM and Swap from `/proc/meminfo`;
-- Hadalis shell CPU from task `schedstat`;
-- shell RSS/PSS/Swap from `smaps_rollup` with `/proc/<pid>/status` fallback;
-- shell disk I/O counters/rates from `/proc/<pid>/io`;
-- aggregate and per-interface network counters/rates from `/proc/net/dev`;
-- shell DRM/GPU client engine activity and resident memory when `drm-fdinfo` is available;
-- real Hadalis child/descendant processes with PID, parent PID, command, CPU and RSS/Swap evidence;
-- Workflow runtime records/events plus source-boundary reconciliation from the shared Code Workflow index.
-
-The kernel sampler intentionally **does not emit `targetId`, component CPU or component RAM**. Quickshell QML objects share the shell process, so Linux does not provide truthful per-QML CPU/RAM ownership.
-
-#### Canonical identity and QML activity
-
-`CodeWorkflowRuntime` remains the canonical identity/runtime-evidence authority. Diagnostics consumes its target catalog, records and lifecycle events rather than maintaining a second component registry.
-
-The compact **QML activity** table is therefore lifecycle evidence only:
-
-- resident instances;
-- visible instances;
-- recent lifecycle event counts.
-
-It is explicitly labeled **“lifecycle · not CPU/RAM”**. Do not convert those counters into fake resource percentages or attach shell-process metrics to individual QML components without a reviewed attribution mechanism.
-
-Unknown source/runtime boundaries remain discovery/coverage problems, not permission to invent a new Diagnostics identity.
-
-#### Current Settings presentation
-
-Both Settings families use the shared widgets under `modules/settings/widgets/` and the same `BtopDashboard.qml`:
-
-- Material: `modules/settings/RuntimeDiagnosticsConfig.qml`;
-- Waffle: `modules/waffle/settings/pages/WDiagnosticsPage.qml`.
-
-The production compact view keeps one-viewport observability density: CPU, Memory, GPU and Network summaries; QML lifecycle activity; real shell helper processes; and a compact Hadalis runtime strip. Error provenance is surfaced explicitly for lease, bridge, evidence and sampler failures.
-
-Presentation may continue to evolve toward the maintainer's modern observability/resource-suspects concept, but the evidence boundaries above are hard contracts. UI refinement must not reintroduce fake per-component resources, background sampling or a second identity catalog.
-
-#### Regression coverage already in-tree
-
-Focused contracts include:
-
-- `scripts/test-runtime-diagnostics-session-contract.py`;
-- `scripts/test-runtime-diagnostics-btop-contract.py`;
-- `scripts/test-runtime-diagnostics-core-history.py`;
-- `scripts/test-runtime-diagnostics-page-state.py`;
-- `scripts/test-runtime-diagnostics-remote-lease.py`;
-- `scripts/test-runtime-diagnostics-source-boundaries.py`;
-- `scripts/test-runtime-diagnostics-sampler.py`;
-- `native/scripts/check-diagnostics-parity.py`.
-
-These contracts are source-level evidence, not a substitute for the exact-SHA maintainer validator or live desktop acceptance.
-
-#### Remaining Diagnostics work
-
-The old research plan included deeper Target Debug Mode, broader ownership inference and profiler-style inspection. Those ideas are **not automatically current release blockers** now that the production MVP exists. Promote them only when the maintainer explicitly makes them active scope.
-
-Current open work is narrower:
-
-1. refine the Settings presentation into a modern observability/resource-suspects console without breaking the truthful evidence model;
-2. keep Material and Waffle presentation behavior aligned where they share Diagnostics primitives;
-3. validate real sampler overhead, DRM-driver availability and stale/error behavior on the maintainer runtime;
-4. preserve demand-driven lifecycle while future Workflow/runtime instrumentation evolves.
 
 ## 2. v1.0 product direction
 
@@ -251,7 +170,7 @@ Further equalizer presentation experiments are planned/deferred rather than curr
 
 Checkboxes below are **release gates**, not an assertion that no partial implementation exists. A line explicitly labeled **source-complete** may be checked once its source/contract work is complete; runtime-sensitive acceptance remains open until the relevant local/live validation passes.
 
-> **Current release status (2026-09-25):** current `dev` has the production Rust cutover, demand-driven Runtime Diagnostics MVP, Material-only public Global Theme boundary, iRiS connected-surface baseline, ThinkFan integration, compact System Monitor refinements, current Calendar/Weather composition and the existing media/equalizer implementation. Rust/native and Diagnostics now have dedicated parity/contract coverage. Remaining release work is primarily live desktop acceptance, hardware/compositor validation, the known Settings/navigation defect, final active-tree residue cleanup, and exact-candidate validation. Historical implementation sequences belong in Git history / `CHANGELOG.md`, not in this active checklist.
+> **Current release status (2026-09-25):** current `dev` has the production Rust cutover, Material-only public Global Theme boundary, iRiS connected-surface baseline, ThinkFan integration, compact System Monitor refinements, current Calendar/Weather composition and the existing media/equalizer implementation. Rust/native has dedicated parity/contract coverage. Remaining release work is primarily live desktop acceptance, hardware/compositor validation, the known Settings/navigation defect, final active-tree residue cleanup, and exact-candidate validation. Historical implementation sequences belong in Git history / `CHANGELOG.md`, not in this active checklist.
 
 ### A. Screen Edge and connected surfaces — P0
 
@@ -345,11 +264,10 @@ Material is the **single canonical Global Theme** for Hadalis 1.0.
 
 Only unresolved runtime findings belong here. Remove an item after the maintainer accepts the fix on the target desktop instead of retaining completed history.
 
-- **Runtime Diagnostics UI:** the backend/session/evidence path and compact shared dashboard are source-complete. Current work is presentation refinement toward a modern observability/resource-suspects console. Preserve demand-driven sampling, main-shell measurement, explicit error provenance and the “QML lifecycle, not CPU/RAM” truth boundary.
 - **Rust production backend:** source cutover is complete. Rust is the default selector and supported install/package paths ship `inir-inputd`, `inir-mpdd`, `inir-native` and `inir-theme`; Python remains explicit rollback/fail-soft compatibility. Do not treat benchmark selector state as the production contract.
 - **Settings navigation indicator:** still unresolved. Expanding/collapsing **Headings** can make the active task-tab indicator jump downward. The previous attempt is not accepted; re-audit/replace the failed geometry or lifecycle approach rather than stacking another workaround.
 - **System Monitor popup refinement:** source-side two-digit CPU Load width reservation and RPM/Level Material icons are present; live-validate that one/two-digit CPU changes no longer resize the popup and fan metrics remain aligned/readable.
-- **Shell boot integrity:** source guards exist for recent Code Workflow construction issues, but the installed/runtime shell must remain free of `Type ... unavailable`, duplicate-identifier and singleton-construction failures on the exact candidate.
+- **Shell boot integrity:** the installed/runtime shell must remain free of `Type ... unavailable`, duplicate-identifier and singleton-construction failures on the exact candidate.
 - **Connected-surface acceptance:** Popup, Left/Right Sidebar, Dashboard, Settings, Dock and OSK still require live Niri validation for contact geometry, seam/gap behavior, edge ownership, hover transfer/retract, fractional scale and multi-output.
 - **Screen Edge / Bar lifecycle:** validate idle/maximized visibility, width/radius/shadow settings, auto-hide ownership and fullscreen enter/exit without stranded or blank Bar content.
 - **Music/media:** validate Local Music Stop -> long idle -> Play, bulk folder/track selection, queue operations and unified Shuffle/Repeat/CAVA behavior. CAVA/EasyEffects DSP lifecycle still needs live audio/player-switch/reopen validation.
@@ -491,7 +409,6 @@ If the maintainer gives a newer explicit instruction, that instruction supersede
 
 This section contains **unfinished work only**. Source-complete migrations/features belong in the status sections above; completed history belongs in Git / `CHANGELOG.md`.
 
-1. **Runtime Diagnostics presentation:** keep the implemented lease/session/native-evidence architecture and redesign the Settings surface toward the agreed modern observability/resource-suspects console. Do not add background sampling, a second component catalog or fake per-QML CPU/RAM. Preserve Material/Waffle shared primitives and compact one-viewport behavior unless the maintainer explicitly changes that UX constraint.
 2. **Settings task-tab indicator:** Headings expand/collapse can still move the active indicator downward. Re-audit the failed geometry/lifecycle approach before making another fix.
 3. **System Monitor popup:** live-validate CPU width stability and ThinkFan RPM/Level alignment.
 4. **Connected surfaces:** complete live acceptance for iRiS/direct-seam contact across ii Popups, Left/Right Sidebar, Dashboard, Settings, Dock and OSK on top/bottom/left/right ownership, fractional scale and multi-output. Preserve locked physical Screen Edge/Bar geometry.
@@ -500,7 +417,7 @@ This section contains **unfinished work only**. Source-complete migrations/featu
 7. **Dashboard/Overview + Calendar/Weather:** finish live motion/layout/gesture smoke tests across supported scaling without reintroducing the rejected whole-surface cache or a second date/weather backend.
 8. **ThinkFan/TLP:** validate helper/polkit reconciliation, profile-follow synchronization, active-session authorization and uninstall ownership on supported hardware.
 9. **Material-only final audit:** public/runtime Material-only routing is in place; remove only proven-dead residue outside intentional migration compatibility, then perform live visual acceptance.
-10. **Release validation:** run the canonical maintainer validator plus Niri live smoke tests on the exact candidate SHA. Rust production and Diagnostics source contracts do not waive this gate.
+9. **Release validation:** run the canonical maintainer validator plus Niri live smoke tests on the exact candidate SHA. Rust production and Diagnostics source contracts do not waive this gate.
 
 **Failure-handling requirement:** do not fix a failed fix with another patch on top. Once a change is demonstrated ineffective, revert that failed change first (or surgically revert its exact change set when unrelated concurrent work shares the commit), then re-investigate and implement a materially different root-cause fix.
 
@@ -517,19 +434,16 @@ Không patch chồng patch. Nếu runtime evidence/regression test xác nhận m
 
 Baseline hiện tại:
 - Rust native workspace là production backend mặc định: `inir-native`, `inir-inputd`, `inir-mpdd`, `inir-theme`; Python chỉ là rollback/fail-soft path.
-- Runtime Diagnostics đã có production MVP: demand-driven lease/session, main-shell sampling, Rust diagnostics mặc định + Python fallback, CPU/RAM/Swap/GPU/Network + real child processes, Workflow identity/lifecycle evidence, shared compact Material/Waffle dashboard.
-- Diagnostics tuyệt đối không được giả per-QML CPU/RAM; QML activity chỉ là resident/visible/lifecycle events.
 - Material là Global Theme public duy nhất; legacy values chỉ được normalize, không revive renderer cũ.
 - iRiS connected surfaces là production baseline; physical Screen Edge/normal ii Bar geometry đang locked.
 - Waffle là panel family riêng được support đầy đủ, không phải legacy.
 
 Ưu tiên unfinished hiện tại:
-1. refine Diagnostics thành modern observability/resource-suspects console mà không phá truth/lifecycle contracts;
-2. sửa Settings task-tab indicator;
-3. live-validate connected surfaces + Screen Edge/Bar lifecycle;
-4. live-validate media/equalizer, Dashboard/Overview, Calendar/Weather và ThinkFan/TLP;
-5. final Material-only residue audit;
-6. chạy `bash scripts/validate-maintainer-local.sh` và live Niri/Quickshell smoke test trên exact candidate SHA.
+1. sửa Settings task-tab indicator;
+2. live-validate connected surfaces + Screen Edge/Bar lifecycle;
+3. live-validate media/equalizer, Dashboard/Overview, Calendar/Weather và ThinkFan/TLP;
+4. final Material-only residue audit;
+5. chạy `bash scripts/validate-maintainer-local.sh` và live Niri/Quickshell smoke test trên exact candidate SHA.
 
 Không coi GitHub Actions hay source-only test là bằng chứng release cuối cùng.
 ```

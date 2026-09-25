@@ -125,8 +125,8 @@ def main() -> None:
            "Overview Settings must keep advanced motion tuning out of the primary UI")
     require(dashboard_settings, 'Config.setNestedValue("dashboard.widthRatio", value / 100)',
             "Dashboard Settings must own the shared Dashboard/launcher width setting")
-    require(arrangement, "readonly property int layoutSchemaVersion: 6",
-            "Settings arrangement must preserve the Overview migration while adding Code Workflow")
+    require(arrangement, "readonly property int layoutSchemaVersion: 10",
+            "Settings arrangement must preserve the Overview migration after retired-page cleanup")
     require(arrangement, "root.overviewPageIndex",
             "Overview Shell placement migration must remain explicit")
     require(registry, 'key: "overview"',

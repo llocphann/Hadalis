@@ -372,7 +372,7 @@ measure_service_mode() {
 
     printf 'processes(%s round=%s):\n' "$mode" "$round"
     ps -eo pid,ppid,rss,etimes,comm,args \
-        | grep -E 'quickshell|inir-inputd|inir-mpdd|inir-native|inir-theme|keyboard_lock_state_daemon|osk_physical_key_daemon|runtime-diagnostics-sampler' \
+        | grep -E 'quickshell|inir-inputd|inir-mpdd|inir-native|inir-theme|keyboard_lock_state_daemon|osk_physical_key_daemon' \
         | grep -v grep || true
 
     printf 'journal(%s round=%s since=%s):\n' "$mode" "$round" "$started_at"
@@ -445,7 +445,7 @@ activate_rust() {
     local relative
     for relative in \
         scripts/native-dispatch scripts/inir scripts/colors/switchwall.sh \
-        services/KeyboardIndicators.qml services/RuntimeDiagnostics.qml \
+        services/KeyboardIndicators.qml \
         services/NiriService.qml services/LocalMusic.qml services/IconThemeService.qml \
         services/Wallpapers.qml services/deferred/Cliphist.qml \
         services/deferred/NiriKeybinds.qml \
@@ -646,7 +646,6 @@ run_gate "Niri customization fixture parity" 8 python3 native/scripts/check-niri
 run_gate "Niri isolated write parity" 8 python3 native/scripts/check-niri-write-parity.py "$BIN_DIR/inir-native"
 run_gate "MPD isolated mutation parity" 8 python3 native/scripts/check-mpd-mutation-parity.py "$BIN_DIR/inir-mpdd"
 run_gate "Clipboard corpus parity" 8 python3 native/scripts/check-clipboard-parity.py "$BIN_DIR/inir-native"
-run_gate "Diagnostics isolated value/lifecycle parity" 20 python3 native/scripts/check-diagnostics-parity.py "$BIN_DIR/inir-native"
 run_gate "Theme image/template + consumer parity" 25 python3 native/scripts/check-theme-parity.py "$BIN_DIR/inir-theme"
 run_gate "Desktop icon isolated parity" 8 python3 native/scripts/check-desktop-icon-parity.py "$BIN_DIR/inir-native"
 "$DISPATCH" backend-info
@@ -886,31 +885,6 @@ proc_metrics "input rust resident" "$BIN_DIR/inir-inputd" --mode locks || block_
 proc_metrics "osk keys python resident" python3 -u scripts/daemon/osk_physical_key_daemon.py || block_activation "Python OSK key listener exited early"
 proc_metrics "osk keys rust resident" "$BIN_DIR/inir-inputd" --mode keys || block_activation "Rust OSK key listener exited early"
 
-section "DIAGNOSTICS SCHEMA + RESIDENT COST"
-target_pid="$(systemctl --user show -p MainPID --value inir.service 2>/dev/null || true)"
-[[ "$target_pid" =~ ^[1-9][0-9]*$ ]] || target_pid="$$"
-timeout 2s python3 scripts/runtime-diagnostics-sampler.py --pid "$target_pid" --interval-ms 1000 >"$TMP_ROOT/diag.py" 2>"$TMP_ROOT/diag.py.err" || true
-timeout 2s "$BIN_DIR/inir-native" diagnostics --pid "$target_pid" --interval-ms 1000 >"$TMP_ROOT/diag.rs" 2>"$TMP_ROOT/diag.rs.err" || true
-head -n 1 "$TMP_ROOT/diag.py" >"$TMP_ROOT/diag.py.one" || true
-head -n 1 "$TMP_ROOT/diag.rs" >"$TMP_ROOT/diag.rs.one" || true
-if command_exists jq && jq -e . "$TMP_ROOT/diag.py.one" >/dev/null 2>&1 && jq -e . "$TMP_ROOT/diag.rs.one" >/dev/null 2>&1; then
-    # Child processes may enter or leave between the two samples. Compare the
-    # schema of child entries without treating their transient indices as fields.
-    jq -S '[paths | map(if type == "number" then "[]" else tostring end) | join(".")] | unique' "$TMP_ROOT/diag.py.one" >"$TMP_ROOT/diag.py.paths"
-    jq -S '[paths | map(if type == "number" then "[]" else tostring end) | join(".")] | unique' "$TMP_ROOT/diag.rs.one" >"$TMP_ROOT/diag.rs.paths"
-    if cmp -s "$TMP_ROOT/diag.py.paths" "$TMP_ROOT/diag.rs.paths"; then
-        kv "diagnostics schema parity" "PASS"
-    else
-        kv "diagnostics schema parity" "DIFF (dynamic/optional fields may differ; report retains path sets)"
-        diff -U0 "$TMP_ROOT/diag.py.paths" "$TMP_ROOT/diag.rs.paths" | head -n 80 || true
-        block_activation "diagnostics schema parity failed"
-    fi
-else
-    kv "diagnostics schema parity" "ERROR (missing/invalid first sample)"
-    block_activation "diagnostics sample unavailable"
-fi
-proc_metrics "diagnostics python" python3 scripts/runtime-diagnostics-sampler.py --pid "$target_pid" --interval-ms 1000 || block_activation "Python diagnostics sampler exited early"
-proc_metrics "diagnostics rust" "$BIN_DIR/inir-native" diagnostics --pid "$target_pid" --interval-ms 1000 || block_activation "Rust diagnostics sampler exited early"
 
 section "MPD READ-ONLY PARITY + BENCHMARK"
 MPD_HOST_TEST="${MPD_HOST:-127.0.0.1}"

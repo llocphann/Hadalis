@@ -106,9 +106,6 @@ node_modules/
 *.jsc
 /native/target/
 
-# Local Code Workflow capture evidence (not distributed)
-/hadalis-code-workflow-capture-*/
-/hadalis-code-workflow-capture-*.tar.gz
 
 # ── Logs / Debug / Temp ──────────────────────────────────────
 *.log

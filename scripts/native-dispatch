@@ -50,6 +50,15 @@ python_bin() {
     fi
 }
 
+python_exec() {
+    local py
+    if ! py="$(python_bin)"; then
+        echo "[native-dispatch] Python fallback unavailable: python3 not found" >&2
+        return 127
+    fi
+    exec "$py" "$@"
+}
+
 want_rust() {
     case "$MODE" in
         rust|auto) return 0 ;;
@@ -103,7 +112,7 @@ case "$cmd" in
             if (( rc == 0 || STRICT == 1 )); then exit "$rc"; fi
             echo "[native-dispatch] Rust input-lock failed ($rc), falling back to Python" >&2
         fi
-        exec /usr/bin/python3 -u "$ROOT_DIR/scripts/daemon/keyboard_lock_state_daemon.py" "$@"
+        python_exec -u "$ROOT_DIR/scripts/daemon/keyboard_lock_state_daemon.py" "$@"
         ;;
 
     input-keys)
@@ -113,7 +122,7 @@ case "$cmd" in
             if (( rc == 0 || STRICT == 1 )); then exit "$rc"; fi
             echo "[native-dispatch] Rust input-keys failed ($rc), falling back to Python" >&2
         fi
-        exec /usr/bin/python3 -u "$ROOT_DIR/scripts/daemon/osk_physical_key_daemon.py" "$@"
+        python_exec -u "$ROOT_DIR/scripts/daemon/osk_physical_key_daemon.py" "$@"
         ;;
 
     niri)
@@ -123,7 +132,7 @@ case "$cmd" in
             if (( rc == 0 || STRICT == 1 )); then exit "$rc"; fi
             echo "[native-dispatch] Rust niri helper failed ($rc), falling back to Python" >&2
         fi
-        exec /usr/bin/python3 "$ROOT_DIR/scripts/niri-config.py" "$@"
+        python_exec "$ROOT_DIR/scripts/niri-config.py" "$@"
         ;;
 
     diagnostics)
@@ -133,7 +142,7 @@ case "$cmd" in
             if (( rc == 0 || STRICT == 1 )); then exit "$rc"; fi
             echo "[native-dispatch] Rust diagnostics failed ($rc), falling back to Python" >&2
         fi
-        exec /usr/bin/env python3 "$ROOT_DIR/scripts/runtime-diagnostics-sampler.py" "$@"
+        python_exec "$ROOT_DIR/scripts/runtime-diagnostics-sampler.py" "$@"
         ;;
 
     qml-profile)
@@ -151,7 +160,7 @@ case "$cmd" in
             if (( rc == 0 || STRICT == 1 )); then exit "$rc"; fi
             echo "[native-dispatch] Rust clipboard filter failed ($rc), falling back to Python" >&2
         fi
-        exec /usr/bin/python3 "$ROOT_DIR/scripts/clipboard-store.py" "$@"
+        python_exec "$ROOT_DIR/scripts/clipboard-store.py" "$@"
         ;;
 
     mpd)
@@ -170,7 +179,7 @@ case "$cmd" in
             if (( rc == 0 || STRICT == 1 )); then exit "$rc"; fi
             echo "[native-dispatch] Rust MPD compatibility mode failed ($rc), falling back to Python" >&2
         fi
-        exec /usr/bin/python3 "$ROOT_DIR/scripts/local_music_mpd.py" "$@"
+        python_exec "$ROOT_DIR/scripts/local_music_mpd.py" "$@"
         ;;
 
     mpd-daemon)
@@ -198,7 +207,7 @@ case "$cmd" in
             if (( rc == 0 || STRICT == 1 )); then exit "$rc"; fi
             echo "[native-dispatch] Rust lyrics parser failed ($rc), falling back to Python" >&2
         fi
-        exec /usr/bin/python3 "$ROOT_DIR/scripts/local_music_lyrics.py" "$track"
+        python_exec "$ROOT_DIR/scripts/local_music_lyrics.py" "$track"
         ;;
 
     theme)
@@ -208,8 +217,7 @@ case "$cmd" in
             if (( rc == 0 || STRICT == 1 )); then exit "$rc"; fi
             echo "[native-dispatch] Rust theme generator failed ($rc), falling back to Python" >&2
         fi
-        py="$(python_bin)"
-        exec "$py" "$ROOT_DIR/scripts/colors/generate_colors_material.py" "$@"
+        python_exec "$ROOT_DIR/scripts/colors/generate_colors_material.py" "$@"
         ;;
 
     desktop-icons)

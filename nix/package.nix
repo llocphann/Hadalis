@@ -46,6 +46,7 @@ let
 
   colorPython = with pkgs;
     (python3.withPackages (pythonPackages: with pythonPackages; [
+      evdev
       materialyoucolor
       numpy
       pillow

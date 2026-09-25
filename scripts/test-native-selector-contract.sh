@@ -59,4 +59,12 @@ do
     [[ -f "$root/$fallback" ]] || fail "Python fallback missing: $fallback"
 done
 
+grep -Fq 'python_exec() {' "$dispatch" \
+    || fail 'native-dispatch must resolve Python fallbacks through the packaged/venv interpreter'
+if grep -Eq 'exec /usr/bin/(env[[:space:]]+)?python3' "$dispatch"; then
+    fail 'native-dispatch must not bypass the packaged/venv Python fallback'
+fi
+grep -Eq '^[[:space:]]+evdev "$root/nix/package.nix" \
+    || fail 'Nix Python runtime must include evdev for input daemon fallback'
+
 printf 'PASS: native runtime selector is wired and reversible\n'

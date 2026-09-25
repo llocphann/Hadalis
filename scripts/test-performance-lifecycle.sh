@@ -87,6 +87,7 @@ sidebar_ai="$repo_root/modules/sidebarLeft/AiChat.qml"
 sidebar_news="$repo_root/modules/sidebarLeft/news/NewsView.qml"
 sidebar_left_content="$repo_root/modules/sidebarLeft/SidebarLeftContent.qml"
 sidebar_quick_wallpaper="$repo_root/modules/sidebarLeft/widgets/QuickWallpaper.qml"
+status_rings="$repo_root/modules/sidebarLeft/widgets/StatusRings.qml"
 booru_image="$repo_root/modules/sidebarLeft/anime/BooruImage.qml"
 booru_response="$repo_root/modules/sidebarLeft/anime/BooruResponse.qml"
 ai_think_block="$repo_root/modules/sidebarLeft/aiChat/MessageThinkBlock.qml"
@@ -340,6 +341,13 @@ require "$sidebar_left_content" '&& root.selectedTabId === "news"' 'Sidebar Left
 require "$sidebar_left_content" '&& root.selectedTabId === "anime"' 'Sidebar Left must power Anime animations only for the selected tab'
 require "$sidebar_left_content" '&& root.selectedTabId === "animeSchedule"' 'Sidebar Left must power Anime Schedule animations only for the selected tab'
 require "$sidebar_quick_wallpaper" 'layer.enabled: root.visible && GlobalStates.sidebarLeftOpen' 'Quick Wallpaper masks must sleep with the sidebar'
+require "$status_rings" 'GlobalStates.sidebarLeftOpen && ring.visible' 'Status rings must expose explicit sidebar presentation state'
+require "$status_rings" 'onProgressValueChanged: canvas.queuePaint()' 'Hidden status-ring value updates must use the lifecycle-gated paint path'
+require "$status_rings" 'onPresentationActiveChanged(): void' 'Status rings must repaint their latest values when the sidebar returns'
+status_ring_animation_gates="$(grep -Fc 'enabled: ring.presentationActive && Appearance.animationsEnabled' "$status_rings")"
+if (( status_ring_animation_gates != 2 )); then
+    fail "Status ring progress animations must both sleep with Sidebar Left, found $status_ring_animation_gates gates"
+fi
 require "$booru_image" 'layer.enabled: root.visible && GlobalStates.sidebarLeftOpen' 'Booru image masks must sleep with the sidebar'
 require "$booru_response" 'layer.enabled: root.visible && GlobalStates.sidebarLeftOpen' 'Booru tag masks must sleep with the sidebar'
 require "$ai_think_block" 'layer.enabled: root.visible && GlobalStates.sidebarLeftOpen' 'AI think-block masks must sleep with the sidebar'

@@ -43,7 +43,7 @@ Singleton {
 
     function _refreshAvailability(): void {
         // Match QProcess PATH lookup in-process instead of spawning a shell
-        // solely for `command -v checkupdates`.
+        // solely for an external shell command lookup.
         root.available = String(StandardPaths.findExecutable("checkupdates", []) ?? "").length > 0
         if (!root.available) {
             root.count = 0

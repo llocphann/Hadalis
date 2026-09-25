@@ -53,10 +53,16 @@ require 'root._loadingToday = false' \
 require 'root.ready = true' \
     'startup completion must release the ready gate'
 
-require 'onStarted: rangeReadProc.startObserved = true' \
-    'range history reader must record successful startup'
-require 'console.warn("[ScreenTime] range history reader failed to start")' \
-    'range history reader must handle spawn failure'
+require 'id: rangeReadFile' \
+    'range history must use an in-process FileView'
+require 'rangeReadFile.pendingPaths = paths' \
+    'range history must queue requested day files in-process'
+require 'onLoaded: root._appendRangeChunk(text())' \
+    'range history must append loaded day data'
+require 'onLoadFailed: root._appendRangeChunk("{}")' \
+    'range history must preserve missing-day fallback'
+reject 'id: rangeReadProc' \
+    'range history must not restore a shell reader'
 require 'root._activeRangeDays = 0' \
     'range reader failure must release the active-range gate'
 require 'Qt.callLater(root._startNextRangeRead)' \

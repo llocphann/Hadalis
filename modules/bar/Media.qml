@@ -30,6 +30,11 @@ Item {
 
     property bool borderless: Config.options?.bar?.borderless ?? false
     readonly property MprisPlayer activePlayer: MprisController.activePlayer
+    // BarMediaPopup is lazy, but artwork should not be. Keep the shared
+    // active-player resolver warm while the bar media module is resident so
+    // opening the popup hits the validated cover-art cache instead of starting
+    // its first network/local-file fetch on the popup's first frame.
+    property var _mediaArtworkPreloader: MediaArtwork
     readonly property string cleanedTitle: StringUtils.cleanMusicTitle(activePlayer?.trackTitle) || Translation.tr("No media")
     readonly property string fullTrackText: `${cleanedTitle}${activePlayer?.trackArtist ? ' • ' + activePlayer.trackArtist : ''}`
     readonly property string popupMode: Config.options?.media?.popupMode ?? "dock"

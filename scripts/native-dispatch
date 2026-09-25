@@ -119,6 +119,11 @@ case "$cmd" in
                 printf '%s=missing\n' "$binary"
             fi
         done
+        if python_bin >/dev/null 2>&1; then
+            printf 'python=ready\n'
+        else
+            printf 'python=missing\n'
+        fi
         ;;
 
     input-lock)
@@ -210,8 +215,11 @@ case "$cmd" in
         if want_rust && rust_ready inir-mpdd; then
             exec "$BIN_DIR/inir-mpdd" --subscribe --socket "$MPD_SOCKET"
         fi
-        echo "[native-dispatch] MPD event subscription requires the Rust backend" >&2
-        exit 69
+        [[ $# -ge 2 ]] || {
+            echo "[native-dispatch] Python MPD subscription requires HOST PORT [MUSIC_ROOT]" >&2
+            exit 64
+        }
+        python_exec "$ROOT_DIR/scripts/local_music_mpd.py" subscribe "$@"
         ;;
 
     lyrics)

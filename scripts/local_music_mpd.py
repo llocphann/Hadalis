@@ -12,12 +12,14 @@ import json
 import os
 import socket
 import sys
+import time
 from pathlib import Path
 from typing import Any
 
 ART_NAMES = ("cover", "folder", "front", "album", "artwork")
 ART_EXTENSIONS = (".jpg", ".jpeg", ".png", ".webp", ".avif")
 ART_CACHE_DIR = Path(os.environ.get("XDG_CACHE_HOME") or (Path.home() / ".cache")) / "hadalis" / "music-covers"
+IDLE_SUBSYSTEMS = ("player", "playlist", "mixer", "options", "database", "stored_playlist")
 
 
 class MpdError(RuntimeError):
@@ -41,7 +43,7 @@ def _load_json_list_argument(value: str) -> list[Any]:
 
 
 class MpdClient:
-    def __init__(self, host: str, port: int, timeout: float = 2.0) -> None:
+    def __init__(self, host: str, port: int, timeout: float | None = 2.0) -> None:
         self.host = host
         self.port = port
         self.timeout = timeout
@@ -49,17 +51,19 @@ class MpdClient:
         self.stream = None
 
     def __enter__(self) -> "MpdClient":
+        connect_timeout = 2.0 if self.timeout is None else self.timeout
         if self.host.startswith("/"):
             sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-            sock.settimeout(self.timeout)
+            sock.settimeout(connect_timeout)
             sock.connect(self.host)
         else:
-            sock = socket.create_connection((self.host, self.port), self.timeout)
+            sock = socket.create_connection((self.host, self.port), connect_timeout)
         self.sock = sock
         self.stream = sock.makefile("rwb", buffering=0)
         greeting = self.stream.readline().decode("utf-8", errors="replace").strip()
         if not greeting.startswith("OK MPD "):
             raise MpdError("invalid_greeting")
+        sock.settimeout(self.timeout)
         return self
 
     def __exit__(self, *_exc: Any) -> None:
@@ -386,18 +390,74 @@ def _music_root(client: MpdClient, override: str) -> str:
     return os.path.expanduser(config.get("music_directory", ""))
 
 
-def _status_payload(client: MpdClient, music_root: str) -> dict[str, Any]:
+def _status_payload(
+    client: MpdClient,
+    music_root: str,
+    include_queue: bool = True,
+) -> dict[str, Any]:
     status = _pairs(client.command("status"))
     current_records = _records(client.command("currentsong"))
-    queue_records = _records(client.command("playlistinfo"))
     current = _track(current_records[0], music_root) if current_records else None
-    queue = [_track(record, music_root) for record in queue_records]
-    return {
+    payload: dict[str, Any] = {
         "connected": True,
         "status": status,
         "current": current,
-        "queue": queue,
     }
+    if include_queue:
+        queue_records = _records(client.command("playlistinfo"))
+        payload["queue"] = [_track(record, music_root) for record in queue_records]
+    return payload
+
+
+def _emit_event(payload: dict[str, Any]) -> None:
+    print(json.dumps(payload, ensure_ascii=False, separators=(",", ":")), flush=True)
+
+
+def subscribe(host: str, port: int, override_root: str) -> int:
+    """Stream MPD idle events using the same JSON-line ABI as inir-mpdd."""
+    _emit_event({"v": 1, "type": "subscribed"})
+    try:
+        while True:
+            try:
+                with MpdClient(host, port, timeout=None) as client:
+                    music_root = _music_root(client, override_root)
+                    _emit_event({"v": 1, "type": "connection", "connected": True})
+                    while True:
+                        lines = client.command("idle", *IDLE_SUBSYSTEMS)
+                        changed = [
+                            line.split(": ", 1)[1]
+                            for line in lines
+                            if line.lower().startswith("changed: ")
+                        ]
+                        if not changed:
+                            continue
+                        requires_rescan = any(
+                            subsystem in ("database", "stored_playlist")
+                            for subsystem in changed
+                        )
+                        payload = None
+                        if not requires_rescan:
+                            payload = _status_payload(
+                                client,
+                                music_root,
+                                include_queue="playlist" in changed,
+                            )
+                        _emit_event({
+                            "v": 1,
+                            "type": "changed",
+                            "subsystems": changed,
+                            "payload": payload,
+                        })
+            except (OSError, MpdError, ValueError) as exc:
+                _emit_event({
+                    "v": 1,
+                    "type": "connection",
+                    "connected": False,
+                    "error": str(exc),
+                })
+                time.sleep(2.0)
+    except KeyboardInterrupt:
+        return 0
 
 
 def snapshot(client: MpdClient, override_root: str) -> dict[str, Any]:
@@ -562,6 +622,10 @@ def main() -> int:
         port = int(sys.argv[3])
     except ValueError:
         return 2
+
+    if mode == "subscribe":
+        override_root = sys.argv[4] if len(sys.argv) > 4 else ""
+        return subscribe(host, port, override_root)
 
     try:
         with MpdClient(host, port) as client:

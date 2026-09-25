@@ -42,7 +42,8 @@ for token in (
     'root.nativeDispatchPath, "mpd", "snapshot",',
     'root.nativeDispatchPath, "mpd", "status",',
     'root.nativeDispatchPath, "mpd-daemon",',
-    'command: [root.nativeDispatchPath, "mpd-subscribe"]',
+    'root.nativeDispatchPath, "mpd-subscribe",',
+    'property bool _mpdSubscriptionEligible: false',
     'if (event.payload && typeof event.payload === "object")',
     'function _scheduleStatusFallback(): void',
     '_lyricsProc.command = [root.nativeDispatchPath, "lyrics", path]',
@@ -60,9 +61,18 @@ for forbidden in ("yt-dlp", "youtube.com", "InnerTube", "YtMusic", "--input-ipc-
 
 for token in (
     'python_exec "$ROOT_DIR/scripts/local_music_mpd.py" "$@"',
+    'python_exec "$ROOT_DIR/scripts/local_music_mpd.py" subscribe "$@"',
     'python_exec "$ROOT_DIR/scripts/local_music_lyrics.py" "$track"',
 ):
     require(dispatch, token, f"native selector must retain reversible Python fallback: {token}")
+
+for token in (
+    'def subscribe(host: str, port: int, override_root: str) -> int:',
+    'client.command("idle", *IDLE_SUBSYSTEMS)',
+    '"type": "subscribed"',
+    '"type": "changed"',
+):
+    require(mpd, token, f"Python MPD event fallback contract missing: {token}")
 
 for token in (
     'Translation.tr("Songs")',

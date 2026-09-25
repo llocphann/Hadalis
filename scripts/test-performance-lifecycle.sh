@@ -29,6 +29,9 @@ waffle_themes="$repo_root/modules/waffle/settings/pages/WThemesPage.qml"
 media_section="$repo_root/modules/controlPanel/MediaSection.qml"
 sidebar_media="$repo_root/modules/sidebarLeft/widgets/MediaPlayerWidget.qml"
 local_music_view="$repo_root/modules/sidebarLeft/LocalMusicView.qml"
+local_music="$repo_root/services/LocalMusic.qml"
+local_music_mpd="$repo_root/scripts/local_music_mpd.py"
+native_dispatch="$repo_root/scripts/native-dispatch"
 it_thumbnail="$repo_root/modules/sidebarLeft/innertune/ITThumbnail.qml"
 screen_edges="$repo_root/modules/screenCorners/ScreenEdges.qml"
 alt_switcher="$repo_root/modules/altSwitcher/AltSwitcher.qml"
@@ -145,6 +148,10 @@ require "$media_section" 'root.effectiveIsPlaying && GlobalStates.controlPanelOp
 require "$sidebar_media" 'root.effectiveIsPlaying && GlobalStates.sidebarLeftOpen' 'Sidebar Cava must stop while playback is paused'
 require "$local_music_view" 'active: root.visible && GlobalStates.sidebarLeftOpen && LocalMusic.playing' 'Local Music Cava must sleep while the retained Sidebar is closed'
 require "$local_music_view" 'positionUpdatesActive: root.visible && GlobalStates.sidebarLeftOpen' 'Local Music retained PlayerControl must sleep with the Sidebar'
+require "$local_music" 'property bool _mpdSubscriptionEligible: false' 'Local Music must track event-subscription availability separately from the Rust daemon'
+require "$local_music" 'running: root.enabled && !root._mpdSubscriptionActive' 'Local Music 900ms status polling must remain fallback-only'
+require "$local_music_mpd" 'client.command("idle", *IDLE_SUBSYSTEMS)' 'Python Local Music fallback must use blocking MPD idle events'
+require "$native_dispatch" 'python_exec "$ROOT_DIR/scripts/local_music_mpd.py" subscribe "$@"' 'Local Music selector must prefer event-driven Python fallback over 900ms polling'
 require "$sidebar_media" 'layer.enabled: root.visible && GlobalStates.sidebarLeftOpen' 'Sidebar media mask must release its FBO while the sidebar is closed'
 require "$sidebar_media" 'sourceSize.width: Math.max(1, Math.ceil(card.width * root._dpr))' 'Sidebar blurred artwork decode must remain bounded to the displayed card'
 require "$control_panel_media" 'layer.enabled: root.visible && GlobalStates.controlPanelOpen' 'Control Panel media masks must release their FBOs while closed'

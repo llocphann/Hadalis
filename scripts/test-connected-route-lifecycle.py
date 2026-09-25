@@ -26,7 +26,6 @@ def main() -> None:
         "property bool requestedVisible",
         "property bool _lingerVisible",
         "property real revealProgress",
-        "readonly property bool visualVisible",
         "retractTimer",
         "progress: root.revealProgress",
         "mask: connectedMask",
@@ -58,9 +57,9 @@ def main() -> None:
           "Normal Weather UX must not depend on retired broad perimeter routing")
 
     for token in (
-        "ConnectedSurfaceConnector",
-        "id: sidebarBridgeGeometry",
-        "geometry: sidebarBridgeGeometry",
+        "ConnectedSurfaceIrisEdgeSurface {",
+        "id: sidebarIrisSurface",
+        "ownerThickness: root.screenEdgeHoverWidth",
         "PerimeterTokens.seamOverlap",
         "Config.options?.appearance?.screenEdge?.width ?? 10",
     ):

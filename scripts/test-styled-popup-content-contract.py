@@ -226,8 +226,9 @@ def source_contract_failures() -> list[str]:
     require(media, "function restoreInitialFocus(): void", str(MEDIA_PATH), failures)
     require(media, "onRequestedVisibleChanged:", str(MEDIA_PATH), failures)
     require(media, "onPresentationWindowChanged:", str(MEDIA_PATH), failures)
+    compact_media = re.sub(r"\\s+", " ", media)
     require(
-        media,
+        compact_media,
         "barMediaPopup.requestedVisible && barMediaPopup.presentationWindow",
         str(MEDIA_PATH),
         failures,

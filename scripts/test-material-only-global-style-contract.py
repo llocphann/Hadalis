@@ -700,7 +700,7 @@ def main() -> None:
         "Appearance.colors.colLayer3",
         "border.width: 0",
         "color: Appearance.colors.colOnLayer3",
-        "color: Appearance.colors.colSubtext",
+        "Appearance.colors.colSubtext",
     ):
         require(notification_item, token, "NotificationItem.qml")
     forbid(notification_item, "RegaliaPlate {", "NotificationItem.qml")

@@ -166,7 +166,8 @@ for token in (
     "function setNotificationCenterHoverOutput(outputName, open): void",
     "function onScreensChanged(): void",
     "const hoverOutput = root.notificationCenterHoverOutput",
-    "if (!stillConnected)",
+    "const connected = Quickshell.screens.map(",
+    "if (hoverOutput && !connected.includes(hoverOutput))",
     'root.notificationCenterHoverOutput = ""',
     "Config.options?.notificationCenter?.markReadOnOpen ?? true",
 ):

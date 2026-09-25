@@ -13,7 +13,7 @@ for token in (
     "function _attachmentThicknessFor(outputName): real",
     "ConnectedSurfaceGeometry {",
     "connectorLength: 0",
-    "seamOverlap: 0",
+    "seamOverlap: PerimeterTokens.irisWeldDepth",
     "ConnectedSurfaceRevealClip {",
     "ConnectedSurfaceFrame {",
     "connectorVisible: false",

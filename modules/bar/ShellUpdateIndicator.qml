@@ -1,4 +1,5 @@
 import QtQuick
+import QtQuick.Window
 import QtQuick.Layouts
 import qs.services
 import qs.modules.common
@@ -121,7 +122,8 @@ MouseArea {
 
             RotationAnimation on rotation {
                 loops: Animation.Infinite
-                running: ShellUpdates.isUpdating
+                running: ShellUpdates.isUpdating && root.visible
+                    && (root.Window.window?.visible ?? true)
                 from: 0
                 to: 360
                 duration: 1200
@@ -130,6 +132,7 @@ MouseArea {
             SequentialAnimation on opacity {
                 loops: Animation.Infinite
                 running: !ShellUpdates.isUpdating && root.containsMouse
+                    && root.visible && (root.Window.window?.visible ?? true)
                 NumberAnimation { to: 0.5; duration: 800; easing.type: Easing.InOutSine }
                 NumberAnimation { to: 1.0; duration: 800; easing.type: Easing.InOutSine }
             }

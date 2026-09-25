@@ -1,6 +1,7 @@
 pragma ComponentBehavior: Bound
 import qs.modules.common
 import QtQuick
+import QtQuick.Window
 
 Item {
     id: root
@@ -68,6 +69,7 @@ Item {
             duration: root.phaseDuration
             loops: Animation.Infinite
             running: root.animate && root.visible
+                && (root.Window.window?.visible ?? true)
                 && root.width > 0 && root.height > 0 && root.frequency > 0
             easing.type: Easing.Linear
         }

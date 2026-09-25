@@ -75,6 +75,10 @@ timer_service="$repo_root/services/TimerService.qml"
 levendist="$repo_root/modules/common/functions/levendist.js"
 loading_indicator="$repo_root/modules/common/widgets/MaterialLoadingIndicator.qml"
 circular_progress="$repo_root/modules/common/widgets/CircularProgress.qml"
+clipped_filled_progress="$repo_root/modules/common/widgets/ClippedFilledCircularProgress.qml"
+clipped_outline_progress="$repo_root/modules/common/widgets/ClippedOutlineCircularProgress.qml"
+wavy_line="$repo_root/modules/common/widgets/WavyLine.qml"
+shell_update_indicator="$repo_root/modules/bar/ShellUpdateIndicator.qml"
 
 require "$config" 'property int framerate: 30' 'Cava schema default must remain 30 fps'
 require "$defaults" '"framerate": 30' 'persisted Cava default must remain 30 fps'
@@ -215,5 +219,10 @@ require "$loading_indicator" 'import QtQuick.Window' 'loading indicator must obs
 require "$loading_indicator" '(root.Window.window?.visible ?? true)' 'loading indicator must stop while its owning window is hidden'
 require "$circular_progress" 'import QtQuick.Window' 'circular progress must observe owning window visibility'
 require "$circular_progress" 'root.visible && (root.Window.window?.visible ?? true)' 'circular progress animations must sleep while hidden'
+require "$clipped_filled_progress" 'root.visible && (root.Window.window?.visible ?? true)' 'filled clipped progress animation must sleep while hidden'
+require "$clipped_outline_progress" 'root.visible && (root.Window.window?.visible ?? true)' 'outline clipped progress animation must sleep while hidden'
+require "$wavy_line" '(root.Window.window?.visible ?? true)' 'wavy line animation must sleep with its owning window'
+require "$shell_update_indicator" 'ShellUpdates.isUpdating && root.visible' 'shell update spinner must stop when the indicator is hidden'
+require "$shell_update_indicator" '(root.Window.window?.visible ?? true)' 'shell update animations must sleep with the Bar window'
 
 printf 'performance lifecycle guards: ok\n'

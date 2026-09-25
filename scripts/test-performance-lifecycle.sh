@@ -71,6 +71,8 @@ screen_time="$repo_root/services/ScreenTime.qml"
 ytmusic="$repo_root/services/YtMusic.qml"
 directory_icon="$repo_root/modules/common/widgets/DirectoryIcon.qml"
 sysmon_widget="$repo_root/modules/sidebarRight/sysmon/SysMonWidget.qml"
+timer_service="$repo_root/services/TimerService.qml"
+levendist="$repo_root/modules/common/functions/levendist.js"
 
 require "$config" 'property int framerate: 30' 'Cava schema default must remain 30 fps'
 require "$defaults" '"framerate": 30' 'persisted Cava default must remain 30 fps'
@@ -191,5 +193,18 @@ reject "$directory_icon" 'command: ["file", "--mime"' 'DirectoryIcon must not sp
 reject "$sysmon_widget" 'command: ["/usr/bin/cat", "/proc/net/dev"]' 'SysMon must reuse shared ResourceUsage network telemetry'
 require "$sysmon_widget" 'ResourceUsage.networkRxBytesPerSec' 'SysMon network receive rate must come from ResourceUsage'
 require "$sysmon_widget" 'ResourceUsage.networkTxBytesPerSec' 'SysMon network transmit rate must come from ResourceUsage'
+
+require "$timer_service" 'SystemClock {' 'Pomodoro and countdown must share one second-aligned clock'
+require "$timer_service" 'precision: SystemClock.Seconds' 'shared timer clock must use second precision'
+require "$timer_service" 'function refreshSecondTimers(): void {' 'shared timer refresh fan-out must remain explicit'
+require "$timer_service" 'id: stopwatchTimer' 'stopwatch must retain its independent high-frequency timer'
+require "$timer_service" 'interval: 33' 'stopwatch must retain the 33 ms presentation cadence'
+reject "$timer_service" 'id: pomodoroTimer' 'Pomodoro must not restore a dedicated 200 ms timer'
+reject "$timer_service" 'id: countdownTimer' 'Countdown must not restore a dedicated 200 ms timer'
+
+require "$levendist" 'function levenshteinDistance(s1, s2, rows)' 'fuzzy search must accept reusable Levenshtein rows'
+require "$levendist" 'if (longS.includes(shortS)) return 1.0;' 'fuzzy search must fast-path exact substring matches'
+require "$levendist" 'const rows = [new Array(lenS + 1), new Array(lenS + 1)];' 'partial fuzzy matching must reuse one row workspace'
+require "$levendist" 'levenshteinDistance(shortS, sub, rows)' 'partial fuzzy matching must reuse the shared row workspace'
 
 printf 'performance lifecycle guards: ok\n'

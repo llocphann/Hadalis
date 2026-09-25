@@ -41,7 +41,6 @@ if [[ -n "${ONLY_MISSING_DEPS:-}" ]]; then
     [awww-daemon]="awww"
     [notify-send]="libnotify"
     [flock]="util-linux"
-    [go]="go"
     [wlsunset]="wlsunset"
     [easyeffects]="easyeffects"
     [uv]="uv"

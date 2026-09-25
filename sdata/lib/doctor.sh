@@ -61,6 +61,7 @@ check_dependencies() {
     local package_optional_cmds=(
         "awww"
         "awww-daemon"
+        "fuzzel"
         "uv"
         "cava"
         "qalc"
@@ -111,7 +112,6 @@ check_dependencies() {
         "awww-daemon:awww"
         "notify-send:libnotify"
         "flock:util-linux"
-        "go:go"
         "wlsunset:wlsunset"
         "uv:uv"
         "cava:cava"

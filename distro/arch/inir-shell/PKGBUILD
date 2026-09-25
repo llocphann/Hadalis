@@ -1,6 +1,6 @@
 pkgname=inir-shell
 pkgver=2.29.3
-pkgrel=16
+pkgrel=17
 pkgdesc='Hadalis shell payload, launcher, and user service'
 arch=('x86_64')
 url='https://github.com/llocphann/Hadalis'
@@ -52,6 +52,7 @@ depends=(
   swaylock
   wlsunset
   syntax-highlighting
+  util-linux
   ttf-jetbrains-mono-nerd
   ttf-material-symbols-variable
   ttf-roboto-flex
@@ -73,6 +74,7 @@ optdepends=(
   'easyeffects: optional audio effects and equalizer backend'
   'ffmpeg: recording and video wallpaper helpers'
   'fprintd: fingerprint authentication integration'
+  'fuzzel: optional emoji picker and external dmenu launcher integration'
   'fcitx5-gtk: GTK/XWayland input method compatibility'
   'fcitx5-configtool: configure Vietnamese input and shortcuts'
   'geoclue: GPS-backed weather location detection'

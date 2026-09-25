@@ -45,6 +45,7 @@ if not doctor_cmds:
 for command in (
     "awww",
     "awww-daemon",
+    "fuzzel",
     "uv",
     "cava",
     "qalc",
@@ -75,6 +76,21 @@ for token in (
 ):
     if token not in doctor:
         raise SystemExit("FAIL: package-managed doctor optional routing is incomplete: " + token)
+
+if '"go:go"' in doctor:
+    raise SystemExit("FAIL: doctor hard-requires Go even though editor theming has Python fallbacks")
+if '[go]="go"' in installer:
+    raise SystemExit("FAIL: Arch missing-dependency repair retains stale Go doctor routing")
+
+for source, package_path in (
+    ("inir-shell", Path("distro/arch/inir-shell/PKGBUILD")),
+    ("inir-shell-git", Path("distro/arch/inir-shell-git/PKGBUILD")),
+):
+    package_text = package_path.read_text(encoding="utf-8")
+    if not re.search(r"^\s+util-linux\s*$", package_text, re.M):
+        raise SystemExit(f"FAIL: {source} is missing util-linux for core flock usage")
+    if "'fuzzel: optional emoji picker and external dmenu launcher integration'" not in package_text:
+        raise SystemExit(f"FAIL: {source} does not advertise optional fuzzel integration")
 optional_equalizer_cmds = {"easyeffects", "socat"}
 leaked_optional = sorted(optional_equalizer_cmds & set(doctor_cmds))
 if leaked_optional:

@@ -148,6 +148,14 @@ case "${SKIP_QUICKSHELL}" in
     tui_info "Building qualified Rust runtime..."
     "${REPO_ROOT}/native/scripts/install-runtime.sh" --dest "$native_dest"
 
+    # The optional Super-tap service is installed earlier so fresh installs can
+    # fall back to Python before native/bin exists. Once the Rust runtime is
+    # ready, restart only an already-running opt-in service onto native-dispatch.
+    if [[ "${II_ENABLE_SUPER_DAEMON:-0}" == "1" && -n "${DBUS_SESSION_BUS_ADDRESS:-}" ]]; then
+      systemctl --user try-restart inir-super-overview.service >/dev/null 2>&1 || \
+        log_warning "Could not restart Super-tap daemon onto the native selector"
+    fi
+
     # Finalize manifest
     mv "${II_TARGET}/.inir-manifest.new" "${II_TARGET}/.inir-manifest"
 

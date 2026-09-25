@@ -23,6 +23,7 @@ declare -A INIR_ONLY_PATHS=(
     ["${XDG_CACHE_HOME}/quickshell/inir"]="iNiR cache"
     ["${XDG_BIN_HOME}/inir"]="iNiR launcher"
     ["${HOME}/.local/bin/inir_super_overview_daemon.py"]="iNiR super daemon"
+    ["${HOME}/.local/bin/inir_super_overview_launcher.sh"]="iNiR super daemon selector launcher"
     ["${XDG_CONFIG_HOME}/systemd/user/inir.service"]="iNiR user service"
     ["${XDG_CONFIG_HOME}/systemd/user/inir-super-overview.service"]="iNiR daemon service"
     ["${XDG_CONFIG_HOME}/vesktop/themes/system24.theme.css"]="iNiR Vesktop Material theme"

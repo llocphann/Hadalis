@@ -16,6 +16,11 @@ INSTALLER = (ROOT / "native/scripts/install-runtime.sh").read_text()
 NIX = (ROOT / "nix/package.nix").read_text()
 ARCH = (ROOT / "distro/arch/inir-shell/PKGBUILD").read_text()
 ARCH_GIT = (ROOT / "distro/arch/inir-shell-git/PKGBUILD").read_text()
+LAUNCHER = (ROOT / "scripts/daemon/inir_super_overview_launcher.sh").read_text()
+SETUP = (ROOT / "sdata/subcmd-install/2.setups.sh").read_text()
+FILES_STAGE = (ROOT / "sdata/subcmd-install/3.files.sh").read_text()
+MIGRATION = (ROOT / "sdata/migrations/056-super-tap-native-selector.sh").read_text()
+UNINSTALL = (ROOT / "sdata/lib/uninstall.sh").read_text()
 
 
 def require(text: str, token: str, message: str) -> None:
@@ -42,9 +47,9 @@ for token in (
 ):
     require(SOURCE, token, f"Rust Super daemon parity contract missing: {token}")
 
-# Stage two wires the daemon through the reversible native selector and ships
-# the binary in every native runtime package. The systemd service intentionally
-# remains on Python until selector parity has passed CI before production cutover.
+# Stage three cuts the opt-in user service over to a stable launcher. The launcher
+# enters native-dispatch when the runtime exists and keeps the established Python
+# daemon as a bootstrap/emergency fallback.
 require(DISPATCH, "super-tap)", "native-dispatch must expose the Super-tap route")
 require(DISPATCH, "required_binary=inir-superd", "strict mode must require inir-superd")
 require(DISPATCH, '"$BIN_DIR/inir-superd" "$@"', "Super-tap selector must execute the Rust daemon")
@@ -58,13 +63,32 @@ for packaging in (INSTALLER, NIX, ARCH, ARCH_GIT):
 
 require(
     SERVICE,
-    "inir_super_overview_daemon.py",
-    "Stage-one Rust Super daemon must not silently cut over the user service",
+    "inir_super_overview_launcher.sh",
+    "Super-tap service must enter through the stable selector launcher",
 )
+if "ExecStart=/usr/bin/env python3" in SERVICE:
+    print("Super-tap service must not bind directly to the Python daemon after cutover")
+    sys.exit(1)
+require(LAUNCHER, "scripts/native-dispatch", "Super launcher must discover native-dispatch")
+require(LAUNCHER, "super-tap", "Super launcher must enter the native Super-tap route")
+require(
+    LAUNCHER,
+    "inir_super_overview_daemon.py",
+    "Super launcher must retain bootstrap Python fallback",
+)
+require(SETUP, "inir_super_overview_launcher.sh", "fresh install must deploy the Super selector launcher")
+require(
+    FILES_STAGE,
+    "try-restart inir-super-overview.service",
+    "fresh install must restart the opt-in service after native runtime build",
+)
+require(MIGRATION, 'MIGRATION_ID="056-super-tap-native-selector"', "existing opt-in service needs a required migration")
+require(MIGRATION, "inir_super_overview_launcher.sh", "migration must deploy the selector launcher")
+require(UNINSTALL, "inir_super_overview_launcher.sh", "uninstall must remove the selector launcher")
 require(
     PYTHON,
     "async def main():",
-    "Python Super daemon fallback must remain available during staged migration",
+    "Python Super daemon fallback must remain available after Rust cutover",
 )
 
 print("Rust Super-tap staged migration contract OK")

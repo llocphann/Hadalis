@@ -550,9 +550,11 @@ Scope {
                     inputEnabled: root.connectedIndicator && root._visualOpen
                 }
 
+                Item { id: emptyOsdInput; width: 0; height: 0 }
+
                 Region {
                     id: detachedMask
-                    item: detachedHost
+                    item: root._visualOpen ? detachedHost : emptyOsdInput
                 }
 
                 Item {

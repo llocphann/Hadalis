@@ -528,6 +528,7 @@ Item {
     Component {
         id: mediaModuleComponent
         Media {
+            presentationActive: root.presentationActive
             visible: root._moduleVisible("media") && root.useShortenedForm < 2
         }
     }

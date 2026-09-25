@@ -20,6 +20,8 @@ Item { // Bar content region
     property var brightnessMonitor: Brightness.getMonitorForScreen(screen)
     property alias backgroundItem: barBackground
     property bool nativeBlurAllowed: true
+    // VerticalBar keeps this tree resident while auto-hidden.
+    property bool presentationActive: true
     readonly property string nativeBlurTopology: Appearance.blurTopology.unsupported
     readonly property bool nativeBlurActive: Appearance.useCompositorBlur("bar", root.nativeBlurTopology)
         && root.nativeBlurAllowed
@@ -370,7 +372,7 @@ Item { // Bar content region
         Bar.BarTaskbar { vertical: true; parentWindow: root.QsWindow.window; maximumHeight: Math.max(80, root.height * 0.3) }
     }
     Component { id: resourcesComponent; Resources {} }
-    Component { id: mediaComponent; VerticalMedia {} }
+    Component { id: mediaComponent; VerticalMedia { presentationActive: root.presentationActive } }
     Component {
         id: workspacesComponent
         Bar.Workspaces {

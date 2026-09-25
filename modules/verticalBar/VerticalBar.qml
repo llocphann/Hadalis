@@ -122,6 +122,11 @@ Scope {
 
                     VerticalBarContent {
                         id: barContent
+                        // Keep media work alive through the visible exit slide,
+                        // then sleep once this Bar is fully outside the viewport.
+                        presentationActive: (Config.options?.bar?.bottom ?? false)
+                            ? barContent.anchors.rightMargin > -Appearance.sizes.verticalBarWidth + 1
+                            : barContent.anchors.leftMargin > -Appearance.sizes.verticalBarWidth + 1
 
                         implicitWidth: Appearance.sizes.verticalBarWidth
                         anchors {

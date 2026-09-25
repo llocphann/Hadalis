@@ -50,8 +50,11 @@ resource_usage="$repo_root/services/ResourceUsage.qml"
 bar_resources="$repo_root/modules/bar/Resources.qml"
 bar_surface="$repo_root/modules/bar/Bar.qml"
 bar_content="$repo_root/modules/bar/BarContent.qml"
+bar_media="$repo_root/modules/bar/Media.qml"
 bar_util_buttons="$repo_root/modules/bar/UtilButtons.qml"
+vertical_bar_surface="$repo_root/modules/verticalBar/VerticalBar.qml"
 vertical_bar_content="$repo_root/modules/verticalBar/VerticalBarContent.qml"
+vertical_bar_media="$repo_root/modules/verticalBar/VerticalMedia.qml"
 vertical_bar_resources="$repo_root/modules/verticalBar/Resources.qml"
 recorder_status="$repo_root/services/RecorderStatus.qml"
 control_panel_media="$repo_root/modules/controlPanel/MediaSection.qml"
@@ -122,6 +125,16 @@ require "$bar_content" '&& root.presentationActive' 'Off-screen auto-hidden Bar 
 require "$bar_surface" 'presentationActive: !barRoot.fullscreenCovered' 'Bar Cava lifecycle must follow actual painted presentation'
 require "$bar_surface" 'barContent.anchors.bottomMargin > -barRoot.panelSurfaceHeight + 1' 'Bottom Bar Cava must remain live through its visible exit slide'
 require "$bar_surface" 'barContent.anchors.topMargin > -barRoot.panelSurfaceHeight + 1' 'Top Bar Cava must remain live through its visible exit slide'
+require "$bar_media" 'property bool presentationActive: true' 'Horizontal Bar media lifecycle gate must preserve standalone behavior'
+require "$bar_media" 'running: root.presentationActive' 'Auto-hidden horizontal Bar must stop its MPRIS position timer'
+require "$bar_media" 'enableAnimation: root.presentationActive' 'Auto-hidden horizontal Bar must stop circular media progress animation'
+require "$bar_media" 'if (!root.presentationActive || !titleScroller.visible' 'Auto-hidden horizontal Bar must stop its title marquee'
+require "$bar_content" 'presentationActive: root.presentationActive' 'Horizontal Bar media must follow the Bar presentation lifecycle'
+require "$vertical_bar_media" 'property bool presentationActive: true' 'Vertical Bar media lifecycle gate must preserve standalone behavior'
+require "$vertical_bar_media" 'running: root.presentationActive' 'Auto-hidden vertical Bar must stop its MPRIS position timer'
+require "$vertical_bar_content" 'VerticalMedia { presentationActive: root.presentationActive }' 'Vertical Bar media must follow its content presentation lifecycle'
+require "$vertical_bar_surface" 'barContent.anchors.rightMargin > -Appearance.sizes.verticalBarWidth + 1' 'Right Vertical Bar media must remain live through its visible exit slide'
+require "$vertical_bar_surface" 'barContent.anchors.leftMargin > -Appearance.sizes.verticalBarWidth + 1' 'Left Vertical Bar media must remain live through its visible exit slide'
 require "$bar_util_buttons" 'property bool presentationActive: true' 'Utility pulse lifecycle gate must preserve real caller behavior'
 require "$bar_util_buttons" 'running: root.presentationActive && recordButtonWrapper.isRecording' 'Hidden utility probes must not pulse recording state'
 require "$bar_util_buttons" 'running: root.presentationActive && micButton.isInUse && !micButton.isMuted' 'Hidden utility probes must not pulse microphone state'

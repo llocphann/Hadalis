@@ -29,6 +29,9 @@ Item {
     }
 
     property bool borderless: Config.options?.bar?.borderless ?? false
+    // The Bar can stay resident while auto-hidden. Default true preserves
+    // standalone callers; BarContent binds this to its slide lifecycle.
+    property bool presentationActive: true
     readonly property MprisPlayer activePlayer: MprisController.activePlayer
     // BarMediaPopup is lazy, but artwork should not be. Keep the shared
     // active-player resolver warm while the bar media module is resident so
@@ -68,8 +71,15 @@ Item {
     implicitHeight: Appearance.sizes.barHeight
     clip: true
 
+    onPresentationActiveChanged: {
+        if (root.presentationActive)
+            root.activePlayer?.positionChanged()
+        titleScroller.resetMarquee()
+    }
+
     Timer {
-        running: activePlayer?.playbackState == MprisPlaybackState.Playing
+        running: root.presentationActive
+            && activePlayer?.playbackState == MprisPlaybackState.Playing
         interval: Config.options?.resources?.updateInterval ?? 3000
         repeat: true
         onTriggered: activePlayer?.positionChanged()
@@ -183,7 +193,8 @@ Item {
                 value: (activePlayer && activePlayer.length > 0) ? (activePlayer.position / activePlayer.length) : 0
                 implicitSize: Math.round(22 * Appearance.sizes.barModuleScale)
                 colPrimary: Appearance.colors.colOnLayer0
-                enableAnimation: activePlayer?.playbackState === MprisPlaybackState.Playing
+                enableAnimation: root.presentationActive
+                    && activePlayer?.playbackState === MprisPlaybackState.Playing
 
                 Item {
                     anchors.centerIn: parent
@@ -292,7 +303,8 @@ Item {
             }
 
             function _startHoldTimer() {
-                if (!titleScroller.visible || !titleScroller.overflowing
+                if (!root.presentationActive || !titleScroller.visible
+                        || !titleScroller.overflowing
                         || !Appearance.animationsEnabled || _marqueeHovered) return
                 holdTimer.start()
             }

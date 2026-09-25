@@ -15,6 +15,7 @@ import qs.modules.bar as Bar
 MouseArea {
     id: root
     property bool borderless: Config.options.bar.borderless
+    property bool presentationActive: true
     readonly property MprisPlayer activePlayer: MprisController.activePlayer
     readonly property string cleanedTitle: StringUtils.cleanMusicTitle(activePlayer?.trackTitle) || Translation.tr("No media")
     readonly property string popupMode: Config.options?.media?.popupMode ?? "dock"
@@ -24,8 +25,14 @@ MouseArea {
     implicitHeight: mediaCircProg.implicitHeight
     implicitWidth: Appearance.sizes.verticalBarWidth
 
+    onPresentationActiveChanged: {
+        if (root.presentationActive)
+            root.activePlayer?.positionChanged()
+    }
+
     Timer {
-        running: activePlayer?.playbackState == MprisPlaybackState.Playing
+        running: root.presentationActive
+            && activePlayer?.playbackState == MprisPlaybackState.Playing
         interval: Config.options?.resources?.updateInterval ?? 3000
         repeat: true
         onTriggered: activePlayer?.positionChanged()

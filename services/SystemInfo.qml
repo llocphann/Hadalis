@@ -49,15 +49,52 @@ Singleton {
         return ""
     }
 
+    function _startDisplayNameFallback(name: string): void {
+        const normalized = String(name ?? "").trim()
+        if (normalized.length === 0 || getDisplayName.running)
+            return
+        getDisplayName.command = ["/usr/bin/getent", "passwd", normalized]
+        getDisplayName.running = true
+    }
+
+    function _resolveDisplayName(name: string): void {
+        const normalized = String(name ?? "").trim()
+        if (normalized.length === 0) {
+            root.displayName = root.username
+            return
+        }
+
+        root.username = normalized
+        passwdFile.lookupName = normalized
+        if (passwdFile.path === "/etc/passwd")
+            passwdFile.reload()
+        else
+            passwdFile.path = "/etc/passwd"
+    }
+
+    function _consumePasswd(text: string): void {
+        const name = passwdFile.lookupName
+        for (const line of String(text ?? "").split("\n")) {
+            const fields = line.split(":")
+            if (fields.length < 5 || fields[0] !== name)
+                continue
+            const gecos = fields[4].split(",")[0].trim()
+            root.displayName = gecos.length > 0 ? gecos : name
+            return
+        }
+
+        // NSS-backed users (SSSD/LDAP/etc.) may not exist in /etc/passwd.
+        // Preserve getent as a compatibility fallback only for that case.
+        root._startDisplayNameFallback(name)
+    }
+
     function refreshIdentity(): void {
         if (getUsername.running || getDisplayName.running)
             return
 
         const envUsername = String(Quickshell.env("USER") ?? "").trim()
         if (envUsername.length > 0) {
-            root.username = envUsername
-            getDisplayName.command = ["/usr/bin/getent", "passwd", envUsername]
-            getDisplayName.running = true
+            root._resolveDisplayName(envUsername)
             return
         }
 
@@ -142,9 +179,7 @@ Singleton {
                 return
 
             const name = Quickshell.env("USER") || root.username || "user"
-            root.username = name
-            getDisplayName.command = ["/usr/bin/getent", "passwd", name]
-            getDisplayName.running = true
+            root._resolveDisplayName(name)
             console.warn("[SystemInfo] Failed to start username lookup; using environment fallback")
         }
 
@@ -154,9 +189,7 @@ Singleton {
             id: usernameCollector
             onStreamFinished: {
                 const name = usernameCollector.text.trim() || Quickshell.env("USER") || root.username
-                root.username = name
-                getDisplayName.command = ["/usr/bin/getent", "passwd", name]
-                getDisplayName.running = true
+                root._resolveDisplayName(name)
             }
         }
     }
@@ -191,6 +224,15 @@ Singleton {
                 root.displayName = name.length > 0 ? name : root.username
             }
         }
+    }
+
+    FileView {
+        id: passwdFile
+        property string lookupName: ""
+        path: ""
+        printErrors: false
+        onLoaded: root._consumePasswd(passwdFile.text())
+        onLoadFailed: root._startDisplayNameFallback(passwdFile.lookupName)
     }
 
     FileView {

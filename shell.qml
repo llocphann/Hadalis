@@ -809,6 +809,13 @@ ShellRoot {
             GlobalStates.openOverview("")
         }
         function toggleReleaseInterrupt(): void { GlobalStates.superReleaseMightTrigger = false }
+        function superPress(): void {
+            GlobalStates.superReleaseMightTrigger = true
+            GlobalStates.superDown = true
+        }
+        function superRelease(): void {
+            GlobalStates.superDown = false
+        }
         function clipboardToggle(): void {
             const prefix = Config.options?.search?.prefix?.clipboard ?? ";"
             if (_isWaffle()) {

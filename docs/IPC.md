@@ -112,6 +112,8 @@ Toggle the workspace overview panel. The one with all your windows looking tiny 
 | `clipboardToggle` | Open clipboard search, or close if already open |
 | `actionOpen` | Open overview in action search mode |
 | `toggleReleaseInterrupt` | Clear the super-key release interrupt flag |
+| `superPress` | Internal Super-key down signal used by Niri input integration |
+| `superRelease` | Internal Super-key up signal used by Niri input integration |
 
 ```kdl
 bind "Mod+Space" { spawn "inir" "overview" "toggle"; }

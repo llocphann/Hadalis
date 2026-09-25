@@ -201,37 +201,7 @@ async def monitor_device(path):
                                 "[inir-super-daemon] Super tap detected, toggling inir overview",
                                 flush=True,
                             )
-                            try:
-                                inir_env = get_inir_env()
-                                if not inir_env:
-                                    print(
-                                        "[inir-super-daemon] No inir env available, skipping toggle",
-                                        flush=True,
-                                    )
-                                    super_down = False
-                                    super_down_global = False
-                                    interaction_since_super_down = False
-                                    continue
-
-                                env = os.environ.copy()
-                                env.update(inir_env)
-
-                                # Resolve the inir launcher for the IPC call
-                                inir_bin = os.environ.get(
-                                    "INIR_LAUNCHER_PATH",
-                                    shutil.which("inir") or "inir",
-                                )
-                                subprocess.Popen(
-                                    [inir_bin, "overview", "toggle"],
-                                    env=env,
-                                    stdout=subprocess.DEVNULL,
-                                    stderr=subprocess.DEVNULL,
-                                )
-                            except Exception as e:
-                                print(
-                                    f"[inir-super-daemon] Error running toggle command: {e}",
-                                    flush=True,
-                                )
+                            run_inir_command("overview", "toggle")
                     super_down = False
                     chord = False
                     super_down_global = False

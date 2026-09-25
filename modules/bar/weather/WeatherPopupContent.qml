@@ -22,6 +22,10 @@ Item {
     readonly property int tabCount: 2
     readonly property int slideDuration: Appearance.animation.elementMove.duration
     property int currentTab: 0
+    // StyledPopup keeps this content item instantiated even while its lazy
+    // presentation window is unloaded. Standalone callers keep the historical
+    // always-active behavior unless a host supplies a presentation lifecycle.
+    property bool presentationActive: true
     property date now: new Date()
     readonly property real sunProgress: {
         const sunrise = root.timeToMinutes(Weather.data?.sunrise)
@@ -60,7 +64,8 @@ Item {
     Timer {
         interval: 30000
         repeat: true
-        running: true
+        running: root.presentationActive
+        triggeredOnStart: true
         onTriggered: root.now = new Date()
     }
 

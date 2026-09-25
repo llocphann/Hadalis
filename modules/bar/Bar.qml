@@ -145,7 +145,13 @@ Scope {
 
                     BarContent {
                         id: barContent
-                        opacity: barRoot.fullscreenCovered ? 0 : 1
+                        // Keep the layer-shell PanelWindow mapped, but remove the
+                        // content subtree from scene-graph presentation while a
+                        // fullscreen client owns this output. An opacity-only
+                        // hide can leave native-rendered Text/MaterialSymbol
+                        // nodes blank when focus moves to a non-fullscreen
+                        // sibling window on the same workspace.
+                        visible: !barRoot.fullscreenCovered
                         nativeBlurAllowed: false
                         // Keep the spectrum live through the visible slide-out
                         // tail, then release CAVA once the Bar is off-screen.

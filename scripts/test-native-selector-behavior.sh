@@ -20,7 +20,7 @@ printf 'rust-b:%s\n' "$*"
 SH
 cat > "$trial/rust-a/inir-superd" <<'SH'
 #!/usr/bin/env bash
-printf 'super-rust:%s\\n' "$*"
+printf 'super-rust:%s\n' "$*"
 SH
 chmod +x "$trial/rust-a/inir-native" "$trial/rust-b/inir-native" "$trial/rust-a/inir-superd"
 

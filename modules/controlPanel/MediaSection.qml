@@ -41,6 +41,7 @@ Item {
         ? YtMusic.currentArtist : (player?.trackArtist ?? "")
     readonly property bool effectiveIsPlaying: isYtMusicActive
         ? YtMusic.isPlaying : (player?.isPlaying ?? false)
+    readonly property bool presentationActive: GlobalStates.controlPanelOpen && root.visible
 
     property string artDownloadLocation: Directories.coverArt
     readonly property bool downloaded: MediaArtwork.ready
@@ -158,7 +159,7 @@ Item {
             anchors.right: parent.right
             anchors.bottom: parent.bottom
             height: root.compactMode ? 28 : 40
-            live: root.player?.isPlaying ?? false
+            live: root.presentationActive && (root.player?.isPlaying ?? false)
             points: root.visualizerPoints
             maxVisualizerValue: 1000
             smoothing: 2
@@ -272,8 +273,8 @@ Item {
                         sourceComponent: StyledSlider {
                             Accessible.name: Translation.tr("Playback position")
                             configuration: StyledSlider.Configuration.Wavy
-                            wavy: root.player?.isPlaying ?? false
-                            animateWave: root.player?.isPlaying ?? false
+                            wavy: root.presentationActive && (root.player?.isPlaying ?? false)
+                            animateWave: root.presentationActive && (root.player?.isPlaying ?? false)
                             highlightColor: root.blendedColors?.colPrimary
                                 ?? Appearance.colors.colPrimary
                             trackColor: root.blendedColors?.colSecondaryContainer
@@ -291,8 +292,8 @@ Item {
                         anchors.fill: parent
                         active: !(root.player?.canSeek ?? false)
                         sourceComponent: StyledProgressBar {
-                            wavy: root.player?.isPlaying ?? false
-                            animateWave: root.player?.isPlaying ?? false
+                            wavy: root.presentationActive && (root.player?.isPlaying ?? false)
+                            animateWave: root.presentationActive && (root.player?.isPlaying ?? false)
                             highlightColor: root.blendedColors?.colPrimary
                                 ?? Appearance.colors.colPrimary
                             trackColor: root.blendedColors?.colSecondaryContainer
@@ -478,9 +479,14 @@ Item {
     }
 
     Timer {
-        running: root.player?.playbackState === MprisPlaybackState.Playing
+        running: root.presentationActive
+            && root.player?.playbackState === MprisPlaybackState.Playing
         interval: 1000
         repeat: true
+        onRunningChanged: {
+            if (running)
+                root.player?.positionChanged()
+        }
         onTriggered: root.player?.positionChanged()
     }
 }

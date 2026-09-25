@@ -108,6 +108,10 @@ require "$sidebar_media" 'sourceSize.width: Math.max(1, Math.ceil(card.width * r
 require "$control_panel_media" 'layer.enabled: root.visible && GlobalStates.controlPanelOpen' 'Control Panel media masks must release their FBOs while closed'
 require "$control_panel_media" 'sourceSize.width: Math.max(1, Math.ceil(card.width * root._dpr))' 'Control Panel blurred artwork decode must remain bounded'
 require "$control_panel_media" 'mipmap: false' 'Control Panel artwork must not generate unused mipmaps'
+require "$control_panel_media" 'readonly property bool presentationActive: GlobalStates.controlPanelOpen && root.visible' 'Control Panel media lifecycle must follow actual presentation state'
+require "$control_panel_media" 'wavy: root.presentationActive && (root.player?.isPlaying ?? false)' 'Hidden retained Control Panel must stop wavy progress animation'
+require "$control_panel_media" 'animateWave: root.presentationActive && (root.player?.isPlaying ?? false)' 'Hidden retained Control Panel must stop infinite wave motion'
+require "$control_panel_media" 'running: root.presentationActive' 'Hidden retained Control Panel must stop its MPRIS position timer'
 
 require "$desktop_media_widget" 'item.positionUpdatesActive = Qt.binding(() => root.powerActive)' 'Desktop media position refresh must sleep with widget power state'
 require "$player_base" 'running: root.positionUpdatesActive' 'PlayerBase position timer must honor the host lifecycle gate'

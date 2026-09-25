@@ -51,11 +51,16 @@ Scope {
         exclusiveZone: 0
         WlrLayershell.namespace: "quickshell:wWidgets"
         WlrLayershell.layer: WlrLayer.Top
-        // Never retain the compositor-wide exclusive keyboard grab during the
-        // close tail. The panel still receives Escape while it is presented.
-        WlrLayershell.keyboardFocus: GlobalStates.waffleWidgetsOpen
+        // Never retain input ownership during the loader's close grace.
+        readonly property bool acceptsInput: GlobalStates.waffleWidgetsOpen
+        WlrLayershell.keyboardFocus: panelWindow.acceptsInput
             ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
         color: "transparent"
+
+        Item { id: emptyWidgetsPanelInput; width: 0; height: 0 }
+        mask: Region {
+            item: panelWindow.acceptsInput ? content : emptyWidgetsPanelInput
+        }
 
         anchors {
             bottom: Config.options?.waffles?.bar?.bottom ?? false

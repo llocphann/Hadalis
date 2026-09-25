@@ -33,28 +33,42 @@ assert.ok(service.includes('command: ["/usr/bin/getent", "passwd", root.username
     'display-name lookup must remain available');
 
 let envUser = 'alice';
-const root = {username: 'seed'};
+const root = {username: 'seed', displayName: ''};
 const getUsername = {running: false};
 const getDisplayName = {running: false, command: []};
+const passwdFile = {
+    path: '',
+    lookupName: '',
+    reloadCount: 0,
+    reload() { this.reloadCount++; },
+};
 const ctx = {
     root,
     getUsername,
     getDisplayName,
+    passwdFile,
     Quickshell: {env(name) { return name === 'USER' ? envUser : ''; }},
     String,
 };
 vm.createContext(ctx);
-vm.runInContext(method('refreshIdentity') + '\nroot.refreshIdentity = refreshIdentity;', ctx);
+vm.runInContext(
+    method('_resolveDisplayName')
+        + '\nroot._resolveDisplayName = _resolveDisplayName;'
+        + '\n' + method('refreshIdentity')
+        + '\nroot.refreshIdentity = refreshIdentity;',
+    ctx,
+);
 
 root.refreshIdentity();
 assert.equal(root.username, 'alice', 'normal session uses USER identity');
 assert.equal(getUsername.running, false,
     'normal session must not spawn id -un');
-assert.equal(getDisplayName.running, true,
-    'normal session still resolves the display name');
-assert.deepEqual(Array.from(getDisplayName.command),
-    ['/usr/bin/getent', 'passwd', 'alice'],
-    'display-name lookup targets the environment username');
+assert.equal(getDisplayName.running, false,
+    'normal /etc/passwd resolution must not spawn getent');
+assert.equal(passwdFile.lookupName, 'alice',
+    'in-process passwd lookup targets the environment username');
+assert.equal(passwdFile.path, '/etc/passwd',
+    'normal identity lookup reads the local passwd database');
 
 getDisplayName.running = false;
 getDisplayName.command = [];
@@ -65,7 +79,7 @@ root.refreshIdentity();
 assert.equal(getUsername.running, true,
     'missing USER must preserve id -un fallback');
 assert.equal(getDisplayName.running, false,
-    'fallback waits for the resolved username before getent');
+    'fallback waits for the resolved username before display-name lookup');
 
 getUsername.running = false;
 getDisplayName.running = true;

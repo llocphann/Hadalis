@@ -27,6 +27,11 @@ require_literal 'root.wifiScanning = false' 'Wi-Fi rescan terminal paths do not 
 require_literal 'if (wifiStatus === "connected" || wifiStatus === "limited") {' 'Wi-Fi strength scans must be gated by associated states'
 require_literal 'if (!updateNetworkStrength.running)' 'Wi-Fi strength refresh must not overlap an in-flight scan'
 require_literal 'if (root.wifiStatus !== "connected" && root.wifiStatus !== "limited") {' 'late Wi-Fi strength results must not restore stale signal state'
+require_literal 'property int _subscriberRestartDelayMs: 2000' 'Network subscriber retry must start with a bounded 2s recovery delay'
+require_literal 'readonly property int _subscriberRestartMaxDelayMs: 60000' 'Network subscriber retry backoff must cap at 60s'
+require_literal 'subscriberRestart.interval = root._subscriberRestartDelayMs' 'Network subscriber retry must use the current backoff delay'
+require_literal 'root._subscriberRestartDelayMs * 2' 'Repeated nmcli monitor failures must exponentially back off'
+require_literal 'root._subscriberRestartDelayMs = 2000' 'Successful nmcli monitor startup must reset retry backoff'
 
 update_block="$(sed -n '/function _doUpdate()/,/^    }/p' "$service")"
 if grep -Fq 'updateNetworkStrength.running = true' <<<"$update_block"; then

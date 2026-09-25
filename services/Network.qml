@@ -249,6 +249,8 @@ Singleton {
     }
 
     property bool _destroying: false
+    property int _subscriberRestartDelayMs: 2000
+    readonly property int _subscriberRestartMaxDelayMs: 60000
 
     function _startSubscriber(): void {
         if (!root._destroying && !subscriber.running)
@@ -256,8 +258,15 @@ Singleton {
     }
 
     function _scheduleSubscriberRestart(): void {
-        if (!root._destroying)
-            subscriberRestart.restart()
+        if (root._destroying)
+            return
+        // Avoid a permanent 2-second spawn loop when nmcli/NetworkManager is
+        // unavailable, while still recovering quickly from a one-off exit.
+        subscriberRestart.interval = root._subscriberRestartDelayMs
+        subscriberRestart.restart()
+        root._subscriberRestartDelayMs = Math.min(
+            root._subscriberRestartMaxDelayMs,
+            root._subscriberRestartDelayMs * 2)
     }
 
     Component.onCompleted: {
@@ -297,7 +306,10 @@ Singleton {
             console.warn("[Network] Failed to start nmcli monitor; retrying")
             root._scheduleSubscriberRestart()
         }
-        onStarted: subscriber.startObserved = true
+        onStarted: {
+            subscriber.startObserved = true
+            root._subscriberRestartDelayMs = 2000
+        }
         onExited: root._scheduleSubscriberRestart()
         stdout: SplitParser {
             onRead: root.update()

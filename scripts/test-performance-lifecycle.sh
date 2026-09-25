@@ -72,6 +72,7 @@ ytmusic="$repo_root/services/YtMusic.qml"
 directory_icon="$repo_root/modules/common/widgets/DirectoryIcon.qml"
 sysmon_widget="$repo_root/modules/sidebarRight/sysmon/SysMonWidget.qml"
 voice_search="$repo_root/services/VoiceSearch.qml"
+gtk_theme="$repo_root/scripts/colors/apply-gtk-theme.sh"
 
 require "$config" 'property int framerate: 30' 'Cava schema default must remain 30 fps'
 require "$defaults" '"framerate": 30' 'persisted Cava default must remain 30 fps'
@@ -197,5 +198,14 @@ require "$voice_search" 'root._startLocalProbe()' 'VoiceSearch backend refresh m
 require "$voice_search" 'command -v whisper-cli' 'VoiceSearch normal local-backend probe must avoid Python interpreter startup'
 require "$voice_search" 'if (localProbe.usePythonFallback)' 'VoiceSearch must retain Python probe compatibility for edge-case paths'
 require "$voice_search" 'root.localAvailable = executable.length > 0 && model.length > 0' 'VoiceSearch lightweight probe must preserve availability semantics'
+
+require "$gtk_theme" 'theme_config_fields="$(' 'GTK theming config reads must remain batched'
+require "$gtk_theme" 'palette_fields="$(' 'GTK palette reads must remain batched'
+reject "$gtk_theme" 'BG=$(jq -r ' 'GTK theming must not restore one jq process per palette token'
+reject "$gtk_theme" 'enable_apps_shell=$(jq -r ' 'GTK theming must not restore separate config jq processes'
+gtk_jq_reads="$(grep -Ec '^[[:space:]]*jq -r ' "$gtk_theme")"
+if (( gtk_jq_reads > 2 )); then
+    fail "GTK theming parser must use at most two jq reads, found $gtk_jq_reads"
+fi
 
 printf 'performance lifecycle guards: ok\n'

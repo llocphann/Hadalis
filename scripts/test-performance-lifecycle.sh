@@ -75,6 +75,7 @@ voice_search="$repo_root/services/VoiceSearch.qml"
 gtk_theme="$repo_root/scripts/colors/apply-gtk-theme.sh"
 terminal_theme="$repo_root/scripts/colors/modules/10-terminals.sh"
 directories="$repo_root/modules/common/Directories.qml"
+editor_theme="$repo_root/scripts/colors/modules/30-editors.sh"
 
 require "$config" 'property int framerate: 30' 'Cava schema default must remain 30 fps'
 require "$defaults" '"framerate": 30' 'persisted Cava default must remain 30 fps'
@@ -229,5 +230,16 @@ require "$directories" 'id: prepareSessionDirsProc' 'Directories startup must ba
 require "$directories" 'Component.onCompleted: preparePersistentDirsProc.running = true' 'Directories startup must enter the serialized preparation chain'
 reject "$directories" 'Quickshell.execDetached(["mkdir"' 'Directories startup must not restore detached mkdir fan-out'
 reject "$directories" 'Quickshell.execDetached(["rm"' 'Directories startup must not restore detached rm fan-out'
+
+require "$editor_theme" 'editor_config_rows="$(' 'editor theming must snapshot config once per apply'
+require "$editor_theme" 'local -A vscode_editor_enabled=(' 'editor theming must cache VS Code fork toggles'
+reject "$editor_theme" 'enable_vscode=$(config_json ' 'editor theming must not restore a separate VS Code config jq'
+reject "$editor_theme" 'enable_neovim=$(config_bool ' 'editor theming must not restore a separate Neovim config jq'
+reject "$editor_theme" 'enable_opencode=$(config_bool ' 'editor theming must not restore a separate OpenCode config jq'
+reject "$editor_theme" 'echo "$editors_config" | jq -r' 'editor theming must not restore one jq process per VS Code fork'
+editor_jq_reads="$(grep -Ec '^[[:space:]]*jq -r ' "$editor_theme")"
+if (( editor_jq_reads > 1 )); then
+    fail "editor theming parser must use at most one jq read, found $editor_jq_reads"
+fi
 
 printf 'performance lifecycle guards: ok\n'

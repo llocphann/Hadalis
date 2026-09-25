@@ -9,6 +9,7 @@ DATE_TIME = ROOT / "services/DateTime.qml"
 WEATHER = ROOT / "services/Weather.qml"
 EVENTS = ROOT / "services/Events.qml"
 THEME = ROOT / "services/ThemeService.qml"
+SCREEN_TIME = ROOT / "services/ScreenTime.qml"
 
 
 def main() -> int:
@@ -16,6 +17,7 @@ def main() -> int:
     weather = WEATHER.read_text(encoding="utf-8")
     events = EVENTS.read_text(encoding="utf-8")
     theme = THEME.read_text(encoding="utf-8")
+    screen_time = SCREEN_TIME.read_text(encoding="utf-8")
 
     if "readonly property int minuteEpoch: Math.floor(clock.date.getTime() / 60000)" not in date_time:
         raise AssertionError("DateTime must expose a stable shared minute epoch")
@@ -42,6 +44,13 @@ def main() -> int:
         raise AssertionError("Theme scheduling must retain immediate activation behavior")
     if "interval: 60000  // Check every minute" in theme:
         raise AssertionError("ThemeService must not restore its private schedule timer")
+
+    if "target: DateTime" not in screen_time or "function onMinuteEpochChanged()" not in screen_time:
+        raise AssertionError("ScreenTime day rollover must reuse DateTime.minuteEpoch")
+    if "enabled: root.enabled && root.ready && root._initialized" not in screen_time:
+        raise AssertionError("ScreenTime rollover callback must retain lifecycle gating")
+    if "id: dayRolloverTimer" in screen_time:
+        raise AssertionError("ScreenTime must not restore its private rollover minute timer")
 
     print("shared minute tick contract: ok")
     return 0

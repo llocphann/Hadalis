@@ -143,12 +143,11 @@ Singleton {
         }
     }
 
-    Timer {
-        id: dayRolloverTimer
-        interval: 60000
-        running: root.enabled && root.ready && root._initialized
-        repeat: true
-        onTriggered: {
+    Connections {
+        target: DateTime
+        enabled: root.enabled && root.ready && root._initialized
+
+        function onMinuteEpochChanged(): void {
             const now = root._dateString(new Date())
             if (now !== root._currentDate) {
                 root._persistToday()

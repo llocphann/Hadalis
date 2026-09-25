@@ -82,8 +82,31 @@ Singleton {
     }
 
     function _checkMemoryPressure(): void {
-        if (!root.enabled || _mapsReader.running) return
-        _mapsReader.running = true
+        if (!root.enabled || _mapsReader.loadPending) return
+        _mapsReader.loadPending = true
+        const mapsPath = "/proc/" + Quickshell.processId + "/maps"
+        if (_mapsReader.path === mapsPath)
+            _mapsReader.reload()
+        else
+            _mapsReader.path = mapsPath
+    }
+
+    function _consumeMaps(text: string): void {
+        let deleted = 0
+        let total = 0
+        for (const line of String(text ?? "").split("\n")) {
+            if (!line.includes("JSGCHeap"))
+                continue
+            total++
+            if (line.includes("deleted"))
+                deleted++
+        }
+        root.currentDeletedMappings = deleted
+        root.currentTotalMappings = total
+        if (root.currentDeletedMappings >= root.deletedMappingsThreshold) {
+            root._log("threshold exceeded:", root.currentDeletedMappings, ">=", root.deletedMappingsThreshold)
+            root._notifyUser()
+        }
     }
 
     function _notifyUser(): void {
@@ -119,49 +142,20 @@ Singleton {
     }
 
     // ── Maps reader ───────────────────────────────────────────────────────
-    Process {
+    FileView {
         id: _mapsReader
-        property bool startObserved: false
-        // Parse the shell's maps in one lightweight process. Quickshell exposes
-        // its own PID, so there is no need to spawn a shell plus two grep
-        // children just to recover the parent PID and produce two counters.
-        command: ["awk",
-            "/JSGCHeap/ { total++; if ($0 ~ /deleted/) deleted++ } END { print deleted + 0; print total + 0 }",
-            "/proc/" + Quickshell.processId + "/maps"]
-        stdout: SplitParser {
-            property int lineNum: 0
-            onRead: line => {
-                const val = parseInt(line.trim()) || 0
-                if (lineNum === 0) {
-                    root.currentDeletedMappings = val
-                } else {
-                    root.currentTotalMappings = val
-                }
-                lineNum++
-            }
-        }
-        onRunningChanged: {
-            if (_mapsReader.running) {
-                _mapsReader.startObserved = false
-                _mapsReader.stdout.lineNum = 0
-                return
-            }
-            if (_mapsReader.startObserved)
-                return
+        property bool loadPending: false
+        path: ""
+        printErrors: false
 
-            _mapsReader.stdout.lineNum = 0
-            root.currentDeletedMappings = 0
-            root.currentTotalMappings = 0
-            root._log("maps reader failed to start")
+        onLoaded: {
+            loadPending = false
+            root._consumeMaps(text())
         }
-        onStarted: _mapsReader.startObserved = true
-        onExited: (code, status) => {
-            _mapsReader.stdout.lineNum = 0
-            
-            if (root.currentDeletedMappings >= root.deletedMappingsThreshold) {
-                _log("threshold exceeded:", root.currentDeletedMappings, ">=", root.deletedMappingsThreshold)
-                root._notifyUser()
-            }
+        onLoadFailed: error => {
+            loadPending = false
+            // Keep the last good counters on a transient procfs read failure.
+            root._log("maps reader failed:", error)
         }
     }
 

@@ -76,6 +76,7 @@ vertical_bar_content="$repo_root/modules/verticalBar/VerticalBarContent.qml"
 vertical_bar_media="$repo_root/modules/verticalBar/VerticalMedia.qml"
 vertical_bar_resources="$repo_root/modules/verticalBar/Resources.qml"
 recorder_status="$repo_root/services/RecorderStatus.qml"
+memory_pressure="$repo_root/services/MemoryPressureService.qml"
 timer_service="$repo_root/services/TimerService.qml"
 stopwatch_view="$repo_root/modules/sidebarRight/pomodoro/Stopwatch.qml"
 control_panel_media="$repo_root/modules/controlPanel/MediaSection.qml"
@@ -351,6 +352,10 @@ require "$timer_service" 'interval: root.stopwatchHighPrecisionActive ? 33 : 250
 require "$stopwatch_view" 'stopwatchTab.visible && GlobalStates.sidebarRightOpen' 'Stopwatch centisecond refresh must follow actual Sidebar Right presentation'
 require "$stopwatch_view" 'TimerService.subscribeStopwatchHighPrecision()' 'Visible Stopwatch UI must request high precision updates'
 require "$stopwatch_view" 'TimerService.unsubscribeStopwatchHighPrecision()' 'Hidden/destroyed Stopwatch UI must release high precision updates'
+require "$memory_pressure" 'FileView {' 'Memory pressure checks must read procfs in-process'
+require "$memory_pressure" 'property bool loadPending: false' 'Memory pressure procfs reader must serialize reloads'
+require "$memory_pressure" 'root._consumeMaps(text())' 'Memory pressure checks must parse procfs in QML'
+reject "$memory_pressure" 'command: ["awk"' 'Memory pressure checks must not spawn awk every five minutes'
 require "$recorder_status" 'id: storedConfigFile' 'RecorderStatus config compatibility read must stay in-process'
 require "$recorder_status" 'id: metadataFile' 'RecorderStatus metadata read must stay in-process'
 require "$recorder_status" 'storedConfigFile.reload()' 'RecorderStatus config compatibility refresh must reuse FileView'

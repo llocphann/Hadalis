@@ -20,6 +20,7 @@ struct EventType {
     filename: String,
     line: Option<u64>,
     details: String,
+    memory_type: Option<u8>,
 }
 
 #[derive(Clone, Debug)]
@@ -33,7 +34,7 @@ struct WorkRange {
 #[derive(Clone, Debug)]
 struct MemoryPoint {
     at_ns: i64,
-    amount: i64,
+    amount: u64,
 }
 
 #[derive(Clone, Debug, Default)]
@@ -42,7 +43,6 @@ struct OwnerStats {
     range_count: u64,
     ranges_by_type: BTreeMap<String, u64>,
     allocated_bytes: u64,
-    freed_bytes: u64,
     allocation_events: u64,
 }
 
@@ -51,20 +51,15 @@ impl OwnerStats {
         self.qml_work_ns = self.qml_work_ns.saturating_add(other.qml_work_ns);
         self.range_count = self.range_count.saturating_add(other.range_count);
         self.allocated_bytes = self.allocated_bytes.saturating_add(other.allocated_bytes);
-        self.freed_bytes = self.freed_bytes.saturating_add(other.freed_bytes);
         self.allocation_events = self.allocation_events.saturating_add(other.allocation_events);
         for (kind, count) in &other.ranges_by_type {
             *self.ranges_by_type.entry(kind.clone()).or_default() += count;
         }
     }
 
-    fn record_allocation(&mut self, amount: i64) {
+    fn record_allocation(&mut self, amount: u64) {
         self.allocation_events = self.allocation_events.saturating_add(1);
-        if amount >= 0 {
-            self.allocated_bytes = self.allocated_bytes.saturating_add(amount as u64);
-        } else {
-            self.freed_bytes = self.freed_bytes.saturating_add(amount.unsigned_abs());
-        }
+        self.allocated_bytes = self.allocated_bytes.saturating_add(amount);
     }
 }
 
@@ -110,6 +105,9 @@ fn parse_event_types(xml: &str) -> Result<BTreeMap<usize, EventType>> {
                 filename: tag_text(block, "filename"),
                 line: tag_text(block, "line").parse::<u64>().ok(),
                 details: tag_text(block, "details"),
+                memory_type: tag_text(block, "memoryEventType")
+                    .parse::<u8>()
+                    .ok(),
             },
         );
     }
@@ -316,10 +314,8 @@ fn attribute_memory(
         let stats = components.entry(source.clone()).or_default();
         stats.record_allocation(point.amount);
         attributed_events = attributed_events.saturating_add(1);
-        if point.amount > 0 {
-            attributed_allocated_bytes =
-                attributed_allocated_bytes.saturating_add(point.amount as u64);
-        }
+        attributed_allocated_bytes =
+            attributed_allocated_bytes.saturating_add(point.amount);
     }
 
     (attributed_events, attributed_allocated_bytes)
@@ -344,8 +340,6 @@ fn stats_json(
     } else {
         0.0
     };
-    let net_bytes = stats.allocated_bytes as i128 - stats.freed_bytes as i128;
-
     json!({
         "id": id,
         "label": label,
@@ -358,9 +352,7 @@ fn stats_json(
         "allocations": {
             "eventCount": stats.allocation_events,
             "allocatedBytes": stats.allocated_bytes,
-            "freedBytes": stats.freed_bytes,
-            "netBytes": net_bytes,
-            "semantics": "QV4 allocation/deallocation events while this owner was the innermost active QML range; not retained RSS/PSS"
+            "semantics": "cumulative positive QV4 SmallItem/LargeItem allocations while this owner was the innermost active QML range; mirrors Qt Creator flame-graph memory attribution and is not retained RSS/PSS"
         }
     })
 }
@@ -464,6 +456,8 @@ pub fn summarize(trace_path: &Path, shell_root: &Path) -> Result<Value> {
     let mut total_work_range_ns = 0_u64;
     let mut total_memory_events = 0_u64;
     let mut total_allocated_bytes = 0_u64;
+    let mut qv4_usage_bytes = 0_i64;
+    let mut qv4_usage_peak_bytes = 0_u64;
 
     for capture in range_re.captures_iter(&xml) {
         let attrs = parse_attributes(&capture[1], &attr_re);
@@ -517,14 +511,25 @@ pub fn summarize(trace_path: &Path, shell_root: &Path) -> Result<Value> {
             else {
                 continue;
             };
-            total_memory_events = total_memory_events.saturating_add(1);
-            if amount > 0 {
-                total_allocated_bytes = total_allocated_bytes.saturating_add(amount as u64);
+            // QV4::Profiling::MemoryType: HeapPage=0, LargeItem=1,
+            // SmallItem=2. Qt Creator's flame graph intentionally ignores
+            // HeapPage and deallocation events when attributing memory to
+            // QML/JS call stacks. Match that behavior so owner numbers mean
+            // cumulative JS allocations, never retained process RAM.
+            if matches!(event_type.memory_type, Some(1 | 2)) {
+                qv4_usage_bytes = qv4_usage_bytes.saturating_add(amount);
+                qv4_usage_peak_bytes =
+                    qv4_usage_peak_bytes.max(qv4_usage_bytes.max(0) as u64);
+                if amount > 0 {
+                    total_memory_events = total_memory_events.saturating_add(1);
+                    total_allocated_bytes =
+                        total_allocated_bytes.saturating_add(amount as u64);
+                    memory_points.push(MemoryPoint {
+                        at_ns: start_ns,
+                        amount: amount as u64,
+                    });
+                }
             }
-            memory_points.push(MemoryPoint {
-                at_ns: start_ns,
-                amount,
-            });
         }
     }
 
@@ -571,6 +576,7 @@ pub fn summarize(trace_path: &Path, shell_root: &Path) -> Result<Value> {
                 "filename": event_type.filename,
                 "line": event_type.line,
                 "details": event_type.details,
+                "memoryType": event_type.memory_type,
             }),
         );
     }
@@ -587,7 +593,7 @@ pub fn summarize(trace_path: &Path, shell_root: &Path) -> Result<Value> {
         },
         "semantics": {
             "qmlWork": "exclusive wall-clock duration of QML/JS Binding, HandlingSignal, Javascript, Creating and Compiling ranges, attributed by source file; this is not per-owner CPU percent",
-            "memory": "QV4 allocation/deallocation activity temporally attributed to the innermost active QML range; this is not retained RSS/PSS",
+            "memory": "cumulative positive QV4 SmallItem/LargeItem allocations attributed to the innermost active QML/JS range, matching Qt Creator flame-graph semantics; this is allocation pressure, not retained RSS/PSS",
             "cpu": "process CPU remains kernel-exact only at Quickshell/helper process scope; no fake per-QML CPU split is produced",
             "gpu": "Qt Quick scene-graph/GPU events are process/window scoped and do not retain a reliable QML item owner; per-owner GPU usage is intentionally unavailable"
         },
@@ -601,6 +607,8 @@ pub fn summarize(trace_path: &Path, shell_root: &Path) -> Result<Value> {
             "temporallyAttributedMemoryEventPercent": memory_coverage_percent,
             "allocatedBytesAllQv4Events": total_allocated_bytes,
             "allocatedBytesAttributedToShellOwners": attributed_allocated_bytes,
+            "qv4UsagePeakBytes": qv4_usage_peak_bytes,
+            "qv4UsageFinalBytes": qv4_usage_bytes.max(0) as u64,
         },
         "components": sorted_rows(&components, "component", trace_duration_ns),
         "modules": sorted_rows(&modules, "module", trace_duration_ns),

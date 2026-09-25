@@ -50,7 +50,7 @@ def main() -> None:
     # Weather hard-requires curl. GPS via Geoclue/where-am-i is optional because
     # the service falls back to IP location providers.
     require(weather, 'command: ["/usr/bin/curl"', "Weather.qml")
-    require(weather, "where-am-i -t 10", "Weather.qml")
+    require(weather, 'command: ["where-am-i", "-t", "10"]', "Weather.qml")
     require(weather, "http://ip-api.com/json/", "Weather.qml")
     require(weather, "https://ipwho.is/", "Weather.qml")
     require(doctor, '"curl:curl"', "doctor.sh")

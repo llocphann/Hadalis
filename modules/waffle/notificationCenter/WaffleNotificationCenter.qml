@@ -16,6 +16,7 @@ Scope {
         if (!root.allowMultiplePanels && GlobalStates.waffleNotificationCenterOpen) {
             GlobalStates.searchOpen = false
             GlobalStates.waffleActionCenterOpen = false
+            GlobalStates.waffleWidgetsOpen = false
         }
     }
 

@@ -9,6 +9,26 @@ import qs.modules.common.widgets
 Scope {
     id: root
 
+    readonly property bool allowMultiplePanels:
+        Config.options?.waffles?.behavior?.allowMultiplePanels ?? false
+
+    function enforceExclusivity(): void {
+        if (!root.allowMultiplePanels && GlobalStates.waffleWidgetsOpen) {
+            GlobalStates.searchOpen = false
+            GlobalStates.waffleActionCenterOpen = false
+            GlobalStates.waffleNotificationCenterOpen = false
+        }
+    }
+
+    Component.onCompleted: root.enforceExclusivity()
+
+    Connections {
+        target: GlobalStates
+        function onWaffleWidgetsOpenChanged() {
+            root.enforceExclusivity()
+        }
+    }
+
     // This component is already owned by ShellWafflePanelsImpl's asynchronous
     // OnDemandPanelLoader. Keep the windows directly in that incubation tree:
     // a nested Loader with active=true forces the heavy WidgetsContent subtree
@@ -46,17 +66,10 @@ Scope {
         implicitWidth: content.implicitWidth
         implicitHeight: content.implicitHeight
 
-        Connections {
-            target: GlobalStates
-            function onWaffleWidgetsOpenChanged() {
-                if (!GlobalStates.waffleWidgetsOpen)
-                    content.close()
-            }
-        }
-
         WidgetsContent {
             id: content
             anchors.fill: parent
+            presented: GlobalStates.waffleWidgetsOpen
 
             onClosed: GlobalStates.waffleWidgetsOpen = false
         }

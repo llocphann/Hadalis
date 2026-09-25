@@ -1,11 +1,16 @@
 #!/usr/bin/env python3
-"""Regression guard for Waffle widgets asynchronous presentation."""
+"""Regression guard for Waffle heavyweight panel presentation."""
 
 from pathlib import Path
 import sys
 
 ROOT = Path(__file__).resolve().parents[1]
 WIDGETS = (ROOT / "modules/waffle/widgets/WaffleWidgets.qml").read_text()
+START = (ROOT / "modules/waffle/startMenu/WaffleStartMenu.qml").read_text()
+ACTION = (ROOT / "modules/waffle/actionCenter/WaffleActionCenter.qml").read_text()
+NOTIFICATIONS = (
+    ROOT / "modules/waffle/notificationCenter/WaffleNotificationCenter.qml"
+).read_text()
 HOST = (ROOT / "modules/waffle/ShellWafflePanelsImpl.qml").read_text()
 
 
@@ -21,53 +26,89 @@ def forbid(text: str, token: str, message: str) -> None:
         sys.exit(1)
 
 
-# The outer Waffle host is the only lifecycle loader for this heavyweight
-# surface. It must remain asynchronous so first presentation is incubated
-# between frames rather than completed in the click handler.
-require(
-    HOST,
-    'OnDemandPanelLoader { identifier: "wWidgets"; open: GlobalStates.waffleWidgetsOpen',
-    "Waffle widgets must remain owned by the on-demand host",
-)
+# The outer Waffle host is the only lifecycle loader for heavyweight surfaces.
+# It must remain asynchronous so first presentation is incubated between frames
+# rather than completed in a button/key handler.
+for panel_id, state in (
+    ("wStartMenu", "GlobalStates.searchOpen"),
+    ("wWidgets", "GlobalStates.waffleWidgetsOpen"),
+):
+    require(
+        HOST,
+        f'OnDemandPanelLoader {{ identifier: "{panel_id}"; open: {state}',
+        f"{panel_id} must remain owned by the on-demand host",
+    )
 require(
     HOST,
     "activeAsync: enabledPanel && GlobalStates.deferredPanelsReady && resident",
     "Waffle on-demand panels must retain asynchronous activation",
 )
 
-# Do not reintroduce a nested synchronous Loader. Quickshell documents that
-# active=true completes a LazyLoader synchronously and that nested loaders must
-# explicitly support async loading; WidgetsContent is intentionally part of the
-# outer incubated tree instead.
-forbid(
-    WIDGETS,
-    "id: panelLoader",
-    "Waffle widgets reintroduced the synchronous nested panel loader",
+# Quickshell documents that active=true completes a loader synchronously and
+# that nested component loading must explicitly support async incubation.
+# Start and Widgets are already inside the outer LazyLoader, so their heavy
+# window/content trees must stay direct children of that asynchronous tree.
+for name, text in (("start menu", START), ("widgets", WIDGETS)):
+    forbid(
+        text,
+        "id: panelLoader",
+        f"Waffle {name} reintroduced a synchronous nested panel loader",
+    )
+    forbid(
+        text,
+        "sourceComponent: PanelWindow",
+        f"Waffle {name} must not synchronously instantiate a nested PanelWindow",
+    )
+
+require(
+    START,
+    "presented: GlobalStates.searchOpen",
+    "Waffle start menu must drive retained content through presented state",
 )
-forbid(
-    WIDGETS,
-    "sourceComponent: PanelWindow",
-    "Waffle widgets panel must not synchronously instantiate a nested PanelWindow",
+require(
+    START,
+    "WlrLayershell.keyboardFocus: GlobalStates.searchOpen",
+    "Waffle start menu keyboard grab must follow presentation state",
 )
 require(
     WIDGETS,
-    'WlrLayershell.namespace: "quickshell:wWidgets"',
-    "Waffle widgets panel window is missing",
+    "presented: GlobalStates.waffleWidgetsOpen",
+    "Waffle widgets must drive content through presented state",
 )
 require(
     WIDGETS,
     "WlrLayershell.keyboardFocus: GlobalStates.waffleWidgetsOpen",
     "Waffle widgets keyboard grab must follow presentation state",
 )
-require(
-    WIDGETS,
-    "? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None",
-    "Waffle widgets must release exclusive keyboard focus during close/unload",
-)
-require(
-    WIDGETS,
-    "if (!GlobalStates.waffleWidgetsOpen)\n                    content.close()",
-    "Waffle widgets close animation contract is missing",
-)
+for name, text in (("start menu", START), ("widgets", WIDGETS)):
+    require(
+        text,
+        "? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None",
+        f"Waffle {name} must release exclusive keyboard focus while closing",
+    )
 
-print("Waffle widgets lifecycle contract OK")
+# When multi-panel mode is disabled, every keyboard-exclusive Waffle surface
+# must also evict Widgets. Otherwise two layer-shell surfaces can hold competing
+# exclusive keyboard grabs at once.
+for name, text in (
+    ("start menu", START),
+    ("action center", ACTION),
+    ("notification center", NOTIFICATIONS),
+):
+    require(
+        text,
+        "GlobalStates.waffleWidgetsOpen = false",
+        f"Waffle {name} no longer closes Widgets in exclusive-panel mode",
+    )
+for token in (
+    "GlobalStates.searchOpen = false",
+    "GlobalStates.waffleActionCenterOpen = false",
+    "GlobalStates.waffleNotificationCenterOpen = false",
+):
+    require(
+        WIDGETS,
+        token,
+        "Waffle Widgets no longer closes the other exclusive panels",
+    )
+
+print("Waffle heavyweight panel lifecycle contract OK")

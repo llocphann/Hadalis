@@ -41,11 +41,11 @@ def main() -> None:
     ], groups
     page_indices = [index for _, pages in groups for index in pages]
     assert len(page_indices) == len(set(page_indices)), "duplicate Material page"
-    assert set(page_indices) == set(range(32)) - {18, 19, 21, 27, 28}, (
+    assert set(page_indices) == set(range(32)) - {18, 19, 21, 27, 28, 30, 31}, (
         "active Material pages must have exactly one default owner", page_indices
     )
 
-    require(arrangement, "layoutSchemaVersion: 9", "navigation migration")
+    require(arrangement, "layoutSchemaVersion: 10", "navigation migration")
     require(arrangement, "const untouchedStock =", "navigation migration")
     require(arrangement, "const defaults = SettingsPageRegistry.defaultCategories", "navigation migration")
     require(arrangement, "sourceVersion < 8 && untouchedStock", "legacy customized navigation migration")

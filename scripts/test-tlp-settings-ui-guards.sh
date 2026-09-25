@@ -178,8 +178,10 @@ assert_contains 'redirected.label = Translation.tr("Battery & TLP")' "$registry"
     'all retired TLP search entries must target the merged Battery/TLP card'
 assert_contains 'keywords.concat(["system", "settings", "power"])' "$registry" \
     'redirected TLP search must stay discoverable through System settings terms'
-assert_contains 'hidden.push(root.retiredTlpPageIndex)' "$arrangement" \
-    'retired page 28 must stay internal-only in saved arrangements'
+assert_contains 'const retired = SettingsPageRegistryData.legacyHiddenIndexes' "$arrangement" \
+    'saved arrangements must derive hidden compatibility slots from the canonical retired-page list'
+assert_contains 'for (const index of retired)' "$arrangement" \
+    'all retired compatibility pages, including historical page 28, must stay internal-only'
 assert_contains 'GeneralConfig {' "$legacy_tlp" \
     'legacy TlpConfig links must redirect through System settings'
 assert_contains 'activeSection: "power"' "$legacy_tlp" \

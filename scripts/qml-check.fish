@@ -98,10 +98,10 @@ set -l warnings 0
 for file in $qml_files
     set -l basename (string replace "$scan_root/" "" $file)
 
-    # qmlformat parses QML before formatting. Writing to stdout makes this a
-    # non-mutating syntax check and catches missing braces/tokens early.
+    # Parse without writing source. The helper distinguishes Qt formatter
+    # round-trip failures from syntax errors using structured Qt diagnostics.
     if test -n "$parser"
-        if not $parser $file >/dev/null 2>&1
+        if not python3 "$project_root/scripts/lib/qml-syntax-check.py" "$parser" "$file"
             echo "ERROR: $basename: QML parser rejected the file" >&2
             set fatal_errors (math $fatal_errors + 1)
         end

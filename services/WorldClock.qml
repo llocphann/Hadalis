@@ -69,58 +69,61 @@ Singleton {
 
     property var now: new Date()
     property var offsetsMinutes: [0, 0, 0, 0]
-    property int _offsetIndex: -1
     property var _offsetTimezones: []
-    property var _nextOffsets: []
     property bool _refreshQueued: false
-    property string _offsetText: ""
+
+    function _parseOffset(value): int {
+        const match = String(value ?? "").trim().match(/^([+-])(\d{2})(\d{2})$/)
+        if (!match)
+            return 0
+        return (match[1] === "-" ? -1 : 1)
+            * (parseInt(match[2]) * 60 + parseInt(match[3]))
+    }
+
+    function _finishOffsetRefresh(offsets): void {
+        const expectedCount = root._offsetTimezones.length
+        const normalized = []
+        for (let i = 0; i < expectedCount; ++i)
+            normalized.push(Number(offsets?.[i] ?? 0))
+
+        root._offsetTimezones = []
+        if (root.enabled)
+            root.offsetsMinutes = normalized
+
+        if (root._refreshQueued && root.enabled) {
+            root._refreshQueued = false
+            Qt.callLater(root.refreshOffsets)
+        }
+    }
 
     function refreshOffsets(): void {
         if (!root.enabled)
-            return;
+            return
         if (offsetProc.running) {
-            root._refreshQueued = true;
-            return;
-        }
-        root._refreshQueued = false;
-        root._offsetIndex = 0;
-        root._offsetTimezones = root.timezones.slice();
-        root._nextOffsets = [];
-        root._runNextOffset();
-    }
-
-    function _completeOffset(offset: int): void {
-        const nextOffsets = root._nextOffsets.slice();
-        nextOffsets.push(offset);
-        root._nextOffsets = nextOffsets;
-        root._offsetIndex++;
-        Qt.callLater(root._runNextOffset);
-    }
-
-    function _runNextOffset(): void {
-        if (!root.enabled) {
-            root._offsetIndex = -1;
-            root._offsetTimezones = [];
-            root._nextOffsets = [];
-            root._refreshQueued = false;
-            return;
-        }
-        if (root._offsetIndex >= root._offsetTimezones.length) {
-            root._offsetIndex = -1;
-            if (root._refreshQueued) {
-                root.refreshOffsets();
-                return;
-            }
-            root.offsetsMinutes = root._nextOffsets;
-            root._offsetTimezones = [];
-            return;
+            root._refreshQueued = true
+            return
         }
 
-        root._offsetText = "";
-        offsetProc.exec({
-            command: ["date", "+%z"],
-            environment: ({ TZ: String(root._offsetTimezones[root._offsetIndex] ?? "UTC") })
-        });
+        const zones = root.timezones.slice()
+        root._refreshQueued = false
+        root._offsetTimezones = zones
+        if (zones.length === 0) {
+            root.offsetsMinutes = []
+            return
+        }
+
+        // One shell process handles every configured timezone. Timezone names
+        // are argv entries, never interpolated into shell source.
+        const command = [
+            "/usr/bin/sh",
+            "-c",
+            "for tz; do TZ=\"$tz\" date +%z || printf '+0000\\n'; done",
+            "world-clock-offsets"
+        ]
+        for (let i = 0; i < zones.length; ++i)
+            command.push(String(zones[i]))
+
+        offsetProc.exec({ command: command })
     }
 
     function _scheduleMinuteTick(): void {
@@ -171,26 +174,28 @@ Singleton {
         property bool startObserved: false
         stdout: StdioCollector {
             id: offsetCollector
-            onStreamFinished: root._offsetText = offsetCollector.text.trim()
         }
         onRunningChanged: {
             if (offsetProc.running) {
-                offsetProc.startObserved = false;
-                return;
+                offsetProc.startObserved = false
+                return
             }
             if (offsetProc.startObserved)
-                return;
+                return
 
-            root._completeOffset(0);
+            // Failed spawn: preserve one zero offset per requested timezone so
+            // consumers never observe a mismatched list length.
+            root._finishOffsetRefresh([])
         }
         onStarted: offsetProc.startObserved = true
         onExited: {
-            const match = root._offsetText.match(/^([+-])(\d{2})(\d{2})$/);
-            const offset = match
-                ? (match[1] === "-" ? -1 : 1)
-                    * (parseInt(match[2]) * 60 + parseInt(match[3]))
-                : 0;
-            root._completeOffset(offset);
+            const rawLines = offsetCollector.text.trim().length > 0
+                ? offsetCollector.text.trim().split(/\r?\n/)
+                : []
+            const offsets = []
+            for (let i = 0; i < root._offsetTimezones.length; ++i)
+                offsets.push(root._parseOffset(rawLines[i] ?? ""))
+            root._finishOffsetRefresh(offsets)
         }
     }
 

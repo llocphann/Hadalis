@@ -9,6 +9,7 @@ widget = (ROOT / "modules/sidebarRight/notepad/NotepadWidget.qml").read_text(enc
 service = (ROOT / "services/Zettelkasten.qml").read_text(encoding="utf-8")
 todo_service = (ROOT / "services/Todo.qml").read_text(encoding="utf-8")
 dash = (ROOT / "modules/dashboard/DashNotes.qml").read_text(encoding="utf-8")
+quick_notes = (ROOT / "modules/sidebarRight/notepad/QuickNotesView.qml").read_text(encoding="utf-8")
 helper = (ROOT / "scripts" / "notes" / "zettelkasten.py").read_text(encoding="utf-8")
 settings = (ROOT / "modules" / "settings" / "ServicesConfig.qml").read_text(encoding="utf-8")
 qmldir = (ROOT / "services/qmldir").read_text(encoding="utf-8")
@@ -56,7 +57,15 @@ for token in (
     "readonly property bool constrainedHeight:",
     "Layout.minimumHeight: root.constrainedHeight ? 76 : 130",
 ):
-    assert token in dash, f"Dashboard Notes Zettelkasten contract lost: {token}"
+    assert token in quick_notes, f"Shared Quick Notes Zettelkasten contract lost: {token}"
+
+for token in (
+    "QuickNotesView {",
+    "surfaceLocalTabSelection: true",
+    "showZettelkastenActions: true",
+    "margin: 0",
+):
+    assert token in dash, f"Dashboard Notes shared-view host contract lost: {token}"
 
 for token in (
     'ALLOWED_TYPES = ("Permanent", "Literature", "Fleeting")',

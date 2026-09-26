@@ -86,7 +86,12 @@ Singleton {
     }
 
     function _touchOverviewWarmImage(windowId): void {
-        const url = root.getPreviewUrl(windowId)
+        const cached = previewCache[windowId]
+        if (PreviewPolicy.needsCapture(cached)) {
+            root._dropOverviewWarmImage(windowId)
+            return
+        }
+        const url = PreviewPolicy.previewUrl(cached)
         if (!url) {
             root._dropOverviewWarmImage(windowId)
             return

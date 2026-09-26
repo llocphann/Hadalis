@@ -56,8 +56,14 @@ require_waffle_preview() {
 
 require 'console.warn("[WindowPreviewService] preview directory helper failed to start")' \
     'preview directory startup failure must continue initialization'
-require 'console.warn("[WindowPreviewService] session marker reader failed to start")' \
-    'session marker startup failure must recover'
+require 'id: sessionFileView' \
+    'session marker must remain FileView-backed'
+require 'property bool readPending: false' \
+    'session marker FileView must track pending reads'
+require 'onLoadFailed: {' \
+    'session marker FileView must expose load-failure recovery'
+require 'root._resetForCurrentSession()' \
+    'session marker load failure must reset the current session safely'
 require 'console.warn("[WindowPreviewService] session reset helper failed to start")' \
     'session reset startup failure must release session readiness'
 require 'console.warn("[WindowPreviewService] preview cache scan failed to start")' \

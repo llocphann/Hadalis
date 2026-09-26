@@ -1261,15 +1261,21 @@ def main() -> None:
     ):
         forbid(bar_media_popup, token, "BarMediaPopup.qml")
     for token in (
+        "PlayerControl {",
+        "radius: root.popupRounding",
         "Appearance.colors.colPrimary",
         "Appearance.colors.colLayer2",
+        "EqualizerPanel {",
+        "active: root.presentationActive && root.visible",
+    ):
+        require(bar_media_popup, token, "BarMediaPopup.qml")
+    for token in (
         "color: Appearance.colors.colLayer0",
-        "radius: root.popupRounding",
         'border.color: "transparent"',
         "color: Appearance.colors.colOnLayer0",
         "color: Appearance.colors.colSubtext",
     ):
-        require(bar_media_popup, token, "BarMediaPopup.qml")
+        forbid(bar_media_popup, token, "BarMediaPopup duplicate outer chrome")
 
     for source, label, forbidden_tokens, required_tokens in (
         (

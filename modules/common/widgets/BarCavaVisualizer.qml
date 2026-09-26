@@ -458,9 +458,20 @@ Item {
             readonly property real connectorThickness:
                 Math.max(1.5, root.lineWidth * 0.8)
 
-            x: Math.max(root.edgeInset, centerX - slot / 2)
+            // Clamp both strip edges, not only x. The first sample is centered
+            // exactly on edgeInset; keeping a full slot width after clamping x
+            // makes it overlap roughly half of sample 1 and renders the left
+            // corner visibly brighter. Mirror the same half-cell treatment at
+            // the right edge while preserving the small interior seam overlap.
+            readonly property real stripLeft: Math.max(
+                root.edgeInset, centerX - slot / 2)
+            readonly property real stripRight: Math.max(stripLeft + 1,
+                Math.min(root.width - root.edgeInset,
+                    centerX + slot / 2 + (hasNext ? 0.75 : 0)))
+
+            x: stripLeft
             y: 0
-            width: Math.max(1, slot + 0.75)
+            width: Math.max(1, stripRight - stripLeft)
             height: root.height
 
             Rectangle {

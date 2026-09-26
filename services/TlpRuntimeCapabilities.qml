@@ -7,6 +7,7 @@ import Quickshell.Io
 
 Singleton {
     id: root
+    readonly property int safetyRefreshIntervalMs: 30 * 60 * 1000
 
     property var values: ({})
     property var numberRanges: ({})
@@ -425,7 +426,7 @@ Singleton {
     Component.onCompleted: root.refresh()
 
     Timer {
-        interval: 300000
+        interval: root.safetyRefreshIntervalMs
         repeat: true
         running: true
         onTriggered: root.refresh()

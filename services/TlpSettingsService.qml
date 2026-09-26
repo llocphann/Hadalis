@@ -39,6 +39,7 @@ Singleton {
     property var pendingValues: ({})
     property var pendingChargePolicy: null
     property bool schemaLoaded: false
+    readonly property int safetyRefreshIntervalMs: 30 * 60 * 1000
     property bool statusLoaded: false
     property bool available: false
     property bool supported: false
@@ -825,7 +826,7 @@ Singleton {
     }
 
     Timer {
-        interval: 300000
+        interval: root.safetyRefreshIntervalMs
         repeat: true
         running: root.schemaLoaded
         onTriggered: root.refresh()

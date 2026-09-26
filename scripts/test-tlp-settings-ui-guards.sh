@@ -11,6 +11,7 @@ waffle="$repo_root/modules/waffle/settings/WTlpSettingRow.qml"
 general="$repo_root/modules/settings/GeneralConfig.qml"
 general_core="$repo_root/modules/settings/GeneralConfigCore.qml"
 power="$repo_root/modules/settings/TlpPowerSettings.qml"
+waffle_page="$repo_root/modules/waffle/settings/pages/WTlpPage.qml"
 charge_limit="$repo_root/modules/settings/BatteryChargeLimitSettings.qml"
 selection_group_button="$repo_root/modules/common/widgets/SelectionGroupButton.qml"
 registry="$repo_root/modules/settings/SettingsPageRegistry.qml"
@@ -108,6 +109,16 @@ assert_contains 'SettingsPageRegistry.consumeLegacyTlpPowerRedirect()' "$general
     'legacy page-28 state must land on the Power task instead of Audio'
 assert_contains 'property string settingsTaskSection: "power"' "$power" \
     'TLP controls must identify themselves as part of the Power task'
+for page in "$power" "$waffle_page"; do
+    assert_contains 'property bool _tlpDemandRefreshed: false' "$page" \
+        "$(basename "$page") must coalesce demand refreshes per visible session"
+    assert_contains 'onVisibleChanged:' "$page" \
+        "$(basename "$page") must refresh TLP state when shown again"
+    assert_contains 'TlpRuntimeCapabilities.refresh()' "$page" \
+        "$(basename "$page") must refresh runtime capabilities on demand"
+    assert_contains 'TlpSettingsService.refresh()' "$page" \
+        "$(basename "$page") must refresh TLP status on demand"
+done
 assert_contains 'title: Translation.tr("Battery & TLP")' "$power" \
     'the primary TLP card title must remain a stable search target'
 assert_not_contains 'settingsTaskSection: "power"' "$general_core" \

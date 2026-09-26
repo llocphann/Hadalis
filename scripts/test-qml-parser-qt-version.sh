@@ -28,6 +28,7 @@ write_cmd qmake6 'exit 1'
 write_cmd qmake 'exit 1'
 write_cmd qml6 'exit 1'
 write_cmd qml 'exit 1'
+write_cmd pacman 'exit 1'
 
 version="$(PATH="$tmp/bin:/usr/bin:/bin" bash "$helper" "$tmp/bin/qmlformat")"
 [[ "$version" == "6.8.3" ]] || fail "qtpaths6 fallback returned '$version'"
@@ -48,6 +49,13 @@ version="$(PATH="$tmp/bin:/usr/bin:/bin" bash "$helper" "$tmp/bin/qmlformat")"
 [[ "$version" == "6.4.2" ]] || fail "direct Qt-like qmlformat version returned '$version'"
 
 write_cmd qmlformat 'printf "%s\n" "qmlformat 1.0"'
+write_cmd pacman 'if [[ "${1:-}" == "-Qqo" ]]; then printf "%s\n" "qt6-declarative"; exit 0; fi
+if [[ "${1:-}" == "-Q" && "${2:-}" == "qt6-declarative" ]]; then printf "%s\n" "qt6-declarative 6.11.2-2"; exit 0; fi
+exit 1'
+version="$(PATH="$tmp/bin:/usr/bin:/bin" bash "$helper" "$tmp/bin/qmlformat")"
+[[ "$version" == "6.11.2" ]] || fail "pacman package fallback returned '$version'"
+
+write_cmd pacman 'exit 1'
 if PATH="$tmp/bin:/usr/bin:/bin" bash "$helper" "$tmp/bin/qmlformat" >/dev/null 2>&1; then
     fail 'tool-local qmlformat 1.0 was incorrectly accepted as a Qt version'
 fi

@@ -1943,7 +1943,7 @@ def main() -> None:
     actions_start = settings_overlay.index("id: overlayNavActions")
     content_start = settings_overlay.index("id: overlayContentContainer", actions_start)
     search_results_start = settings_overlay.index(
-        "id: overlaySearchResultsOverlay", content_start
+        "id: overlayLiveSearch", content_start
     )
     nav_actions = settings_overlay[actions_start:content_start]
     content_chrome = settings_overlay[content_start:search_results_start]
@@ -1962,7 +1962,7 @@ def main() -> None:
     forbid(content_chrome, "GlassBackground {", "SettingsOverlay.qml content container")
     for token in (
         "radius: Appearance.rounding.normal",
-        "color: Appearance.colors.colSurfaceContainerLow",
+        'color: "transparent"',
         "border.width: 0",
         'border.color: "transparent"',
     ):

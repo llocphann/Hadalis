@@ -46,9 +46,20 @@ do
     fi
 done
 
+# Some distributions report the Qt version directly from qmlformat. Accept that
+# only when it looks like a Qt major version, never a tool-local 1.x version.
+version="$("$parser_path" --version 2>&1 | extract_version || true)"
+if [[ -n "$version" ]]; then
+    major="${version%%.*}"
+    if (( major >= 5 )); then
+        printf '%s\n' "$version"
+        exit 0
+    fi
+fi
+
 # qml ships with Qt Declarative alongside qmlformat on common Qt 6 installs.
-# Its --version reports the QML/Qt runtime version, which is more authoritative
-# than qmlformat's tool-local version string when qtpaths/qmake are unavailable.
+# Its --version reports the QML/Qt runtime version, which is useful when
+# qmlformat exposes only its tool-local 1.x version.
 for candidate in     "$parser_dir/qml6" "$parser_dir/qml"     /usr/lib/qt6/bin/qml /usr/lib/x86_64-linux-gnu/qt6/bin/qml     qml6 qml
 do
     resolved="$(resolve_cmd "$candidate")"
@@ -62,14 +73,21 @@ do
     fi
 done
 
-# Some distributions report the Qt version directly from qmlformat. Accept that
-# only when it looks like a Qt major version, never a tool-local 1.x version.
-version="$("$parser_path" --version 2>&1 | extract_version || true)"
-if [[ -n "$version" ]]; then
-    major="${version%%.*}"
-    if (( major >= 5 )); then
-        printf '%s\n' "$version"
-        exit 0
+# Arch packages qmlformat with the Qt Declarative package. If runtime tools are
+# not usable in the validation environment, the owning package version still
+# identifies the Qt build backing this exact formatter binary.
+pacman_path="$(resolve_cmd pacman)"
+if [[ -n "$pacman_path" ]]; then
+    owner="$("$pacman_path" -Qqo "$parser_path" 2>/dev/null | head -n1 || true)"
+    if [[ -n "$owner" ]]; then
+        version="$("$pacman_path" -Q "$owner" 2>/dev/null | extract_version || true)"
+        if [[ -n "$version" ]]; then
+            major="${version%%.*}"
+            if (( major >= 5 )); then
+                printf '%s\n' "$version"
+                exit 0
+            fi
+        fi
     fi
 fi
 

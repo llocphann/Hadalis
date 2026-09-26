@@ -140,4 +140,4 @@ assert todo_service.count("vaultPath: root.sharedVaultPath") == 2
 assert "readonly property string configuredVaultPath: Todo.sharedVaultPath" in service
 assert 'Config.setNestedValue("notes.zettelkasten.vaultPath", "")' in unified_settings
 assert "notes.zettelkasten.vaultPath" not in service
-assert 'GlobalStates.openSettingsSection(7, "To-do & Quick Notes")' in dash
+assert 'GlobalStates.openSettingsSection(7, "To-do & Quick Notes")' in quick_notes

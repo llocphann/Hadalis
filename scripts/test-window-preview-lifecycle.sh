@@ -213,8 +213,8 @@ grep -Fq 'readonly property bool popupContainsMouse:' "$waffle_bar_popup" \
     || fail 'Waffle BarPopup must expose popup hover state to task preview lifecycle'
 
 start_guard_count="$(grep -Fc -- 'property bool startObserved: false' "$service")"
-if (( start_guard_count < 5 )); then
-    fail "expected startup guards for init and capture processes, found $start_guard_count"
+if (( start_guard_count < 4 )); then
+    fail "expected startup guards for process-backed init/capture helpers, found $start_guard_count"
 fi
 
 # Niri live/adaptive preview experiments are retired. Snapshot capture is the

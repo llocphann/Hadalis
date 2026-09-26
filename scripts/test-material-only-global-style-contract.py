@@ -1087,14 +1087,19 @@ def main() -> None:
     ):
         forbid(sys_tray_menu, token, "SysTrayMenu.qml")
     for token in (
+        "StyledPopup {",
+        "popupBackgroundMargin: 0",
+        "closeOnOutsideClick: true",
+        "keyboardFocus: root.keyboardMode",
+    ):
+        require(sys_tray_menu, token, "SysTrayMenu.qml")
+    for token in (
         "color: Appearance.colors.colLayer0",
         "radius: Appearance.rounding.windowRounding",
         "border.width: 1",
         "border.color: Appearance.colors.colLayer0Border",
-        "Appearance.motion.popupReveal.enableFade",
-        "Appearance.motion.popupReveal.enableScale",
     ):
-        require(sys_tray_menu, token, "SysTrayMenu.qml")
+        forbid(sys_tray_menu, token, "SysTrayMenu duplicate popup chrome")
 
     # ContextMenu is shared by Bar and other active shell controls. Keep its
     # focus/input/close behavior intact while locking visual chrome to Material.

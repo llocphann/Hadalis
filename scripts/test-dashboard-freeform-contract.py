@@ -244,7 +244,8 @@ def main() -> None:
     forbid(welcome,
         "GlobalStates.dashboardOpen || GlobalStates.overviewOpen",
         "DashWelcome avatar mask lifecycle")
-    require(todo, "Layout.minimumHeight: 0", "DashTodo.qml")
+    require(todo, "Layout.minimumHeight: root.veryShallowLayout", "DashTodo.qml")
+    require(todo, "? 8 : (root.shallowLayout ? 56 : 72)", "DashTodo.qml")
 
     require(canvas, "cursorShape: root.editMode", "DashboardCanvas.qml")
     require(canvas, ": Qt.ArrowCursor", "DashboardCanvas.qml")

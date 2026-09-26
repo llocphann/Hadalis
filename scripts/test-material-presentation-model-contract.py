@@ -24,6 +24,7 @@ elastic = re.search(r"readonly property bool usesElasticPool: (.+)", sidebar)[1]
 media = (root / "modules/controlPanel/MediaSection.qml").read_text()
 ticker = media.split("readonly property bool positionTickerActive:", 1)[1].split("\n\n", 1)[0].strip()
 cava = re.search(r"active: (root.visible && root.hasPlayer[^\n]+)", media)[1]
+icons = block((root / "services/IconThemeService.qml").read_text(), "function ensureThemesLoaded(")
 program = r"""
 const assert = require('node:assert/strict');
 const root = {_sectionDefaultOrder: ['system','sliders','toggles','widgets']};
@@ -56,6 +57,15 @@ function visualizes() { return """ + cava + """; }
 root.visible = true; root.hasPlayer = true; root.effectiveIsPlaying = true;
 assert(visualizes()); root.effectiveIsPlaying = false; assert(!visualizes());
 root.effectiveIsPlaying = true; root.visible = false; assert(!visualizes());
+const listThemesProc = {running:false, themes:['cached']};
+function ensureThemesLoaded(force = false) {""" + icons + """}
+root._themesLoaded = true; ensureThemesLoaded();
+assert(!listThemesProc.running); assert.deepEqual(listThemesProc.themes,['cached']);
+ensureThemesLoaded(true); assert(listThemesProc.running); assert.deepEqual(listThemesProc.themes,[]);
+listThemesProc.themes = ['in-flight']; ensureThemesLoaded(true);
+assert.deepEqual(listThemesProc.themes,['in-flight']); // no duplicate process/reset
+listThemesProc.running = false; root._themesLoaded = false; ensureThemesLoaded();
+assert(listThemesProc.running);
 """
 result = subprocess.run(["node", "-e", program])
 if result.returncode: raise SystemExit(result.returncode)

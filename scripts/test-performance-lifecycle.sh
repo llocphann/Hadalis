@@ -58,6 +58,7 @@ lock_surface="$repo_root/modules/lock/LockSurface.qml"
 waffle_lock="$repo_root/modules/waffle/lock/WaffleLockSurface.qml"
 waffle_lock_safe="$repo_root/modules/waffle/lock/WaffleLockSurfaceSafe.qml"
 weather="$repo_root/services/Weather.qml"
+wallhaven_service="$repo_root/services/Wallhaven.qml"
 keyboard_indicators="$repo_root/services/KeyboardIndicators.qml"
 sidebar_anime="$repo_root/modules/sidebarLeft/Anime.qml"
 sidebar_wallhaven="$repo_root/modules/sidebarLeft/WallhavenView.qml"
@@ -229,6 +230,10 @@ require "$vertical_bar_resources" 'active: !GameMode.active' 'vertical Bar resou
 require "$recorder_status" '(Config.options?.performance?.lowPower ?? false) ? 30000 : 15000' 'idle recorder detection must not spawn pgrep every five seconds'
 require "$recorder_status" 'interval: root.idlePollIntervalMs' 'RecorderStatus idle polling must use its power-aware cadence'
 require "$weather" 'running: root.enabled' 'Weather minute clock must sleep when weather is disabled'
+require "$wallhaven_service" 'running: root.pendingSearch !== null' 'Wallhaven search queue timer must sleep without pending work'
+require "$wallhaven_service" 'running: root._tagCountQueue && root._tagCountQueue.length > 0' 'Wallhaven tag-count timer must sleep with an empty queue'
+require "$wallhaven_service" 'running: root.tagQueue && root.tagQueue.length > 0' 'Wallhaven tag-detail timer must sleep with an empty queue'
+reject "$wallhaven_service" 'running: root._active || (root.pendingSearch !== null)' 'Wallhaven must not poll an empty search queue while Sidebar is merely open'
 require "$keyboard_indicators" 'interval: (Config.options?.performance?.lowPower ?? false) ? 120000 : 30000' 'keyboard sysfs hotplug discovery must stay low cadence'
 require "$sidebar_anime" 'layer.enabled: root.visible && GlobalStates.sidebarLeftOpen' 'Anime list mask must sleep with the sidebar'
 require "$sidebar_wallhaven" 'layer.enabled: root.visible && GlobalStates.sidebarLeftOpen' 'Wallhaven list mask must sleep with the sidebar'

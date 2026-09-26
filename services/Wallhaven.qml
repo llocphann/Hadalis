@@ -95,7 +95,7 @@ QtObject {
     property Timer pendingSearchTimer: Timer {
         interval: 300
         repeat: true
-        running: root._active || (root.pendingSearch !== null)
+        running: root.pendingSearch !== null
         onTriggered: {
             root.nowMs = Date.now()
             if (!root.pendingSearch)
@@ -232,7 +232,7 @@ QtObject {
     property Timer _tagCountTimer: Timer {
         interval: 350
         repeat: true
-        running: root._active || (root._tagCountQueue && root._tagCountQueue.length > 0)
+        running: root._tagCountQueue && root._tagCountQueue.length > 0
         onTriggered: root._fetchNextTagCount()
     }
 
@@ -568,7 +568,7 @@ QtObject {
     property Timer tagQueueTimer: Timer {
         interval: 350
         repeat: true
-        running: root._active || ((root.tagQueue && root.tagQueue.length > 0))
+        running: root.tagQueue && root.tagQueue.length > 0
         onTriggered: root._fetchNextTag()
     }
 

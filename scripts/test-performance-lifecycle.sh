@@ -72,6 +72,7 @@ sidebar_right_tasks="$repo_root/modules/sidebarRight/todo/TaskList.qml"
 sidebar_right_notifications="$repo_root/modules/sidebarRight/notifications/NotificationList.qml"
 sidebar_right_media="$repo_root/modules/sidebarRight/CompactMediaPlayer.qml"
 video_crossfader="$repo_root/modules/common/widgets/VideoCrossfader.qml"
+media_cross_slide="$repo_root/modules/common/widgets/MediaCrossSlideImage.qml"
 custom_image_widget="$repo_root/modules/background/widgets/CustomImageWidget.qml"
 control_panel_wallpaper="$repo_root/modules/controlPanel/WallpaperSection.qml"
 wallpaper_skew_view="$repo_root/modules/wallpaperSelector/WallpaperSkewView.qml"
@@ -221,6 +222,10 @@ require "$custom_image_widget" 'return videoPlayerLoader.item' 'Custom image wid
 if grep -Eq '^[[:space:]]*id:[[:space:]]+videoPlayer[[:space:]]*$' "$custom_image_widget"; then
     fail 'Custom image widget must not restore an eager MediaPlayer per slot'
 fi
+require "$media_cross_slide" 'ClippingRectangle {' 'Media artwork rounded clipping must use scene-graph clipping'
+require "$media_cross_slide" 'import Quickshell.Widgets' 'Media artwork clipping must use the Quickshell scene-graph primitive'
+reject "$media_cross_slide" 'GE.OpacityMask' 'Media artwork must not allocate a permanent rounded-mask FBO'
+reject "$media_cross_slide" 'layer.enabled: true' 'Media artwork root must not restore a permanent layer FBO'
 require "$control_panel_media" 'running: root.positionTickerActive' 'Control Panel MPRIS position timer must sleep while closed'
 require "$control_panel_media" 'triggeredOnStart: true' 'Control Panel position must refresh immediately when reopened'
 require "$control_panel_media" 'sourceSize.width: Math.max(1, Math.ceil(card.width * root._dpr))' 'Control Panel blurred artwork decode must remain bounded'

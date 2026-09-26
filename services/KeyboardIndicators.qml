@@ -65,6 +65,11 @@ Singleton {
     readonly property string currentLayoutCodeMultiline: root.abbreviateLayoutCode(root.currentLayoutCode, "\n")
     readonly property string currentLayoutCodeInline: root.abbreviateLayoutCode(root.currentLayoutCode, " ").toUpperCase()
     readonly property bool usingEvdev: root._lockSource === "evdev"
+    readonly property bool hasKnownLedPaths:
+        root.capsLockPaths.length > 0 || root.numLockPaths.length > 0
+    readonly property int ledDiscoveryIntervalMs: root.hasKnownLedPaths
+        ? ((Config.options?.performance?.lowPower ?? false) ? 600000 : 300000)
+        : ((Config.options?.performance?.lowPower ?? false) ? 120000 : 30000)
     readonly property bool layoutVisible:
         root.showLayoutPanel &&
         root.hasMultipleLayouts &&
@@ -459,10 +464,10 @@ Singleton {
     }
 
     Timer {
-        // Once sysfs paths are known, FileView watches their value changes.
-        // This timer only needs to rediscover devices after hotplug, so avoid
-        // spawning a shell scan every eight seconds for the lifetime of the shell.
-        interval: (Config.options?.performance?.lowPower ?? false) ? 120000 : 30000
+        // FileView watches known LED values directly. Keep discovery responsive
+        // while no path is known, then back off once the path set is stable.
+        // A watched-path load failure below triggers an immediate rescan.
+        interval: root.ledDiscoveryIntervalMs
         running: !root.usingEvdev
         repeat: true
         onTriggered: root.refreshLedPaths()
@@ -477,7 +482,10 @@ Singleton {
             watchChanges: true
             onFileChanged: reload()
             onLoaded: root._setLockState("caps", modelData, text())
-            onLoadFailed: root._clearLockState("caps", modelData)
+            onLoadFailed: {
+                root._clearLockState("caps", modelData)
+                Qt.callLater(() => root.refreshLedPaths())
+            }
         }
     }
 
@@ -490,7 +498,10 @@ Singleton {
             watchChanges: true
             onFileChanged: reload()
             onLoaded: root._setLockState("num", modelData, text())
-            onLoadFailed: root._clearLockState("num", modelData)
+            onLoadFailed: {
+                root._clearLockState("num", modelData)
+                Qt.callLater(() => root.refreshLedPaths())
+            }
         }
     }
 

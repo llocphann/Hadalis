@@ -8,6 +8,7 @@ import subprocess
 import tempfile
 
 ROOT = Path(__file__).resolve().parents[1]
+CLIPHIST = ROOT / "services/deferred/Cliphist.qml"
 DEFAULT_STARTUP = ROOT / "defaults/niri/config.d/50-startup.kdl"
 DOTS_NIRI = ROOT / "dots/.config/niri/config.kdl"
 MIGRATION = ROOT / "sdata/migrations/051-cliphist-single-watchers.sh"
@@ -106,6 +107,16 @@ def check_disabled_history_is_respected() -> None:
 
 
 def main() -> None:
+
+    cliphist = CLIPHIST.read_text(encoding="utf-8")
+    for token in (
+        "readonly property var preparedFilterEntries:",
+        "function _ensurePreparedEntries(): var",
+        "root._preparedEntriesRevision === root._entriesRevision",
+        "Fuzzy.go(search, root._ensurePreparedEntries(),",
+    ):
+        if token not in cliphist:
+            raise AssertionError(f"Cliphist lazy search-index contract missing: {token}")
     check_source_contract()
     check_duplicate_repair()
     check_disabled_history_is_respected()

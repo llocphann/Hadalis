@@ -21,7 +21,11 @@ Singleton {
     property list<string> entries: []
     property int _readAttempts: 0
     property bool _refreshQueued: false
-    readonly property var preparedEntries: entries.map(entry => {
+    property int _entriesRevision: 0
+    property int _preparedEntriesRevision: -1
+    property var _preparedEntriesCache: []
+
+    readonly property var preparedFilterEntries: entries.map(entry => {
         let cleaned = StringUtils.cleanCliphistEntry(entry)
         if (root.entryIsImage(entry))
             cleaned = cleaned.replace(/^\s*\[\[.*?\]\]\s*/, "")
@@ -30,14 +34,32 @@ Singleton {
             cleaned = unwrapped.length > 0 ? unwrapped : Translation.tr("Rich text")
         const waffleKey = cleaned.trim().toLowerCase()
         const iiKey = StringUtils.sanitizeDisplayText(cleaned).trim().toLowerCase()
-        return ({
-            name: Fuzzy.prepare(`${entry.replace(/^\s*\S+\s+/, "")}`),
-            entry: entry,
-            iiKey: iiKey,
-            waffleKey: waffleKey
-        })
+        return ({ entry: entry, iiKey: iiKey, waffleKey: waffleKey })
     })
-    readonly property var preparedFilterEntries: preparedEntries
+
+    onEntriesChanged: {
+        root._entriesRevision++
+        root._preparedEntriesRevision = -1
+        root._preparedEntriesCache = []
+    }
+
+    function _ensurePreparedEntries(): var {
+        if (root._preparedEntriesRevision === root._entriesRevision)
+            return root._preparedEntriesCache
+
+        const source = root.entries
+        const prepared = new Array(source.length)
+        for (let i = 0; i < source.length; ++i) {
+            const entry = source[i]
+            prepared[i] = {
+                name: Fuzzy.prepare(`${entry.replace(/^\s*\S+\s+/, "")}`),
+                entry: entry
+            }
+        }
+        root._preparedEntriesCache = prepared
+        root._preparedEntriesRevision = root._entriesRevision
+        return prepared
+    }
 
     function _log(...args): void {
         if (Quickshell.env("QS_DEBUG") === "1") console.log(...args);
@@ -59,7 +81,7 @@ Singleton {
                 .map(item => item.entry)
         }
 
-        const results = Fuzzy.go(search, preparedEntries, {
+        const results = Fuzzy.go(search, root._ensurePreparedEntries(), {
             all: true,
             key: "name",
             limit: limit > 0 ? limit : undefined

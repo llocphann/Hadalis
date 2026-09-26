@@ -235,6 +235,19 @@ Singleton {
         return root._anchorPos + (Date.now() - root._anchorMs) / 1000;
     }
 
+    function _indexForPosition(position: real): int {
+        let low = 0
+        let high = root.lyricsLines.length
+        while (low < high) {
+            const mid = (low + high) >> 1
+            if ((root.lyricsLines[mid]?.time ?? Infinity) <= position)
+                low = mid + 1
+            else
+                high = mid
+        }
+        return low - 1
+    }
+
     on_PlayingChanged: root._reanchor(root._estimatedPosition())
 
     Timer {
@@ -252,13 +265,7 @@ Singleton {
             }
 
             const pos = root._estimatedPosition();
-            let idx = -1;
-            for (let i = 0; i < root.lyricsLines.length; i++) {
-                if (root.lyricsLines[i].time <= pos)
-                    idx = i;
-                else
-                    break;
-            }
+            const idx = root._indexForPosition(pos)
             if (idx !== root.activeIndex) {
                 root.activeIndex = idx;
                 root.slots = root.buildSlots(idx);
@@ -307,7 +314,8 @@ Singleton {
                     .map(line => ({
                         time: line.t,
                         text: line.text ?? ""
-                    }));
+                    }))
+                    .sort((a, b) => a.time - b.time);
 
                 if (lines.length === 0) {
                     root._publishFailure(requestId, "not_found");

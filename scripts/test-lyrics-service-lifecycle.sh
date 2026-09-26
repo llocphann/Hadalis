@@ -33,4 +33,9 @@ assert_text_contains 'root._finishLyricsProcess(true)' "$process_block" 'failed 
 assert_text_contains 'onStarted: lyricsProc.startObserved = true' "$process_block" 'successful startup must be observed explicitly'
 assert_text_contains 'onExited: root._finishLyricsProcess(false)' "$process_block" 'normal exit must use shared terminal cleanup'
 
+service_text="$(cat "$service")"
+assert_text_contains 'function _indexForPosition(position: real): int' "$service_text" 'lyrics position lookup must use the bounded binary-search helper'
+assert_text_contains 'const idx = root._indexForPosition(pos)' "$service_text" 'sync timer must not rescan the full lyrics list each tick'
+assert_text_contains '.sort((a, b) => a.time - b.time)' "$service_text" 'lyrics input must be timestamp-sorted before binary search'
+
 printf 'lyrics service lifecycle guards: ok\n'

@@ -34,6 +34,23 @@ StyledOverlayWidget {
     property string folderDialogTarget: "recordings"
     property bool _folderDialogEngaged: false
 
+    property bool _statusDemandRegistered: false
+
+    function syncRecorderStatusDemand(): void {
+        const wanted = root.visible
+        if (wanted === root._statusDemandRegistered)
+            return
+        root._statusDemandRegistered = wanted
+        RecorderStatus.setFastStatusDemand("ii-overlay-recorder", wanted)
+    }
+
+    onVisibleChanged: root.syncRecorderStatusDemand()
+    Component.onCompleted: root.syncRecorderStatusDemand()
+    Component.onDestruction: {
+        if (root._statusDemandRegistered)
+            RecorderStatus.setFastStatusDemand("ii-overlay-recorder", false)
+    }
+
     function audioModeLabel(mode: string): string {
         switch (mode) {
         case "none": return Translation.tr("No audio")

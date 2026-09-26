@@ -50,6 +50,8 @@ resource_usage="$repo_root/services/ResourceUsage.qml"
 bar_resources="$repo_root/modules/bar/Resources.qml"
 vertical_bar_resources="$repo_root/modules/verticalBar/Resources.qml"
 recorder_status="$repo_root/services/RecorderStatus.qml"
+recorder_overlay_widget="$repo_root/modules/ii/overlay/recorder/Recorder.qml"
+waffle_widgets_content="$repo_root/modules/waffle/widgets/WidgetsContent.qml"
 control_panel_media="$repo_root/modules/controlPanel/MediaSection.qml"
 date_time_header="$repo_root/modules/controlPanel/DateTimeHeader.qml"
 date_time_service="$repo_root/services/DateTime.qml"
@@ -337,6 +339,14 @@ require "$vertical_bar_resources" 'ResourceUsageMonitor {' 'vertical Bar resourc
 require "$vertical_bar_resources" 'active: !GameMode.active' 'vertical Bar resource polling must pause in GameMode'
 require "$recorder_status" '(Config.options?.performance?.lowPower ?? false) ? 30000 : 15000' 'idle recorder detection must not spawn pgrep every five seconds'
 require "$recorder_status" 'interval: root.idlePollIntervalMs' 'RecorderStatus idle polling must use its power-aware cadence'
+require "$recorder_status" 'property int fastDemandCount: 0' 'RecorderStatus fast polling must be explicitly demand-owned'
+require "$recorder_status" 'function setFastStatusDemand(owner: string, active: bool): void' 'RecorderStatus must expose keyed demand ownership'
+require "$recorder_status" 'running: Config.ready && !root.isRecording && !root.fastStatusDemand' 'RecorderStatus slow global fallback must remain active only without fast UI demand'
+require "$recorder_status" 'id: fastPollTimer' 'RecorderStatus must expose a separate demand-driven fast poll'
+require "$recorder_status" 'interval: 1000' 'RecorderStatus visible-UI reconciliation must use a 1 second cadence'
+require "$recorder_status" '&& !quickCheckTimer.running' 'RecorderStatus demand polling must yield to bounded action quick checks'
+require "$recorder_overlay_widget" 'RecorderStatus.setFastStatusDemand("ii-overlay-recorder", wanted)' 'ii Recorder widget must own fast status demand only while visible'
+require "$waffle_widgets_content" 'RecorderStatus.setFastStatusDemand("waffle-widgets-recorder", wanted)' 'Waffle recorder quick action must own fast status demand only while its panel is open'
 require "$weather" 'running: root.enabled' 'Weather minute clock must sleep when weather is disabled'
 require "$wallhaven_service" 'function _schedulePendingSearch(): void' 'Wallhaven pending search retries must use deadline scheduling'
 require "$wallhaven_service" '_pendingSearchTimer.interval = Math.max(1, Math.round(due - now))' 'Wallhaven pending search timer must target the exact retry deadline'

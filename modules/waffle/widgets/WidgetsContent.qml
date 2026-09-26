@@ -27,6 +27,26 @@ WBarAttachedPanelContent {
     }
 
     readonly property bool barAtBottom: Config.options?.waffles?.bar?.bottom ?? false
+    readonly property bool recorderStatusDemandWanted:
+        GlobalStates.waffleWidgetsOpen
+        && (Config.options?.waffles?.widgetsPanel?.showScreenRecord ?? true)
+    property bool _recorderStatusDemandRegistered: false
+
+    function syncRecorderStatusDemand(): void {
+        const wanted = root.recorderStatusDemandWanted
+        if (wanted === root._recorderStatusDemandRegistered)
+            return
+        root._recorderStatusDemandRegistered = wanted
+        RecorderStatus.setFastStatusDemand("waffle-widgets-recorder", wanted)
+    }
+
+    onRecorderStatusDemandWantedChanged: root.syncRecorderStatusDemand()
+    Component.onCompleted: root.syncRecorderStatusDemand()
+    Component.onDestruction: {
+        if (root._recorderStatusDemandRegistered)
+            RecorderStatus.setFastStatusDemand("waffle-widgets-recorder", false)
+    }
+
     readonly property var quickActionDefinitions: [
         { id: "files", icon: "folder", label: Translation.tr("Files"), show: Config.options?.waffles?.widgetsPanel?.showFiles ?? true },
         { id: "terminal", icon: "terminal", label: Translation.tr("Terminal"), show: Config.options?.waffles?.widgetsPanel?.showTerminal ?? true },

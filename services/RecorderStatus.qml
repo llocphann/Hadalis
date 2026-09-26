@@ -137,13 +137,62 @@ Singleton {
     readonly property int idlePollIntervalMs:
         (Config.options?.performance?.lowPower ?? false) ? 30000 : 15000
 
+    property var _fastDemandOwners: ({})
+    property int fastDemandCount: 0
+    readonly property bool fastStatusDemand: root.fastDemandCount > 0
+
+    function setFastStatusDemand(owner: string, active: bool): void {
+        const demandOwner = String(owner ?? "").trim()
+        if (demandOwner.length === 0)
+            return
+
+        const current = root._fastDemandOwners
+        const alreadyActive = current[demandOwner] === true
+        if (alreadyActive === active)
+            return
+
+        const next = ({})
+        const keys = Object.keys(current)
+        for (let i = 0; i < keys.length; ++i) {
+            const key = keys[i]
+            if (current[key] === true)
+                next[key] = true
+        }
+        if (active)
+            next[demandOwner] = true
+        else
+            delete next[demandOwner]
+
+        root._fastDemandOwners = next
+        root.fastDemandCount = Object.keys(next).length
+    }
+
+    onFastStatusDemandChanged: {
+        if (root.fastStatusDemand && Config.ready)
+            Qt.callLater(root.refreshStatus)
+    }
+
     // External recorders are uncommon, and in-shell recording actions already
     // schedule a fast bounded recheck. Avoid spawning pgrep every five seconds
     // for the entire desktop session just to discover an external recorder.
     Timer {
         id: idlePollTimer
         interval: root.idlePollIntervalMs
-        running: Config.ready && !root.isRecording
+        running: Config.ready && !root.isRecording && !root.fastStatusDemand
+        repeat: true
+        onTriggered: root.refreshStatus()
+    }
+
+    // Visible recorder controls need quicker reconciliation, especially for
+    // externally started/stopped wf-recorder instances. Keep this demand-owned
+    // so the shell does not pay a permanent 1s pgrep cost.
+    Timer {
+        id: fastPollTimer
+        interval: 1000
+        running: Config.ready
+            && !root.isRecording
+            && root.fastStatusDemand
+            && !quickCheckTimer.running
         repeat: true
         onTriggered: root.refreshStatus()
     }

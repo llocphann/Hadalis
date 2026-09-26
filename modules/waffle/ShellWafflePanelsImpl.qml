@@ -17,6 +17,7 @@ import qs.modules.ii.overlay
 import qs.modules.clipboard as ClipboardModule
 
 import qs.modules.waffle.actionCenter
+import qs.modules.waffle.looks
 import qs.modules.waffle.altSwitcher as WaffleAltSwitcherModule
 import qs.modules.waffle.background as WaffleBackgroundModule
 import qs.modules.waffle.bar as WaffleBarModule
@@ -115,7 +116,7 @@ Item {
 
     // === Deferred panels ===
     OnDemandPanelLoader { identifier: "wStartMenu"; open: GlobalStates.searchOpen; retainAfterUse: true; component: WaffleStartMenu {} }
-    OnDemandPanelLoader { identifier: "wActionCenter"; open: GlobalStates.waffleActionCenterOpen; retainAfterUse: true; component: WaffleActionCenter {} }
+    OnDemandPanelLoader { identifier: "wActionCenter"; open: GlobalStates.waffleActionCenterOpen; closeGraceMs: Looks.transition.enabled ? Looks.transition.duration.medium + 40 : 40; component: WaffleActionCenter {} }
     OnDemandPanelLoader { identifier: "wNotificationCenter"; open: GlobalStates.waffleNotificationCenterOpen; component: WaffleNotificationCenter {} }
     OnDemandPanelLoader { identifier: "wWidgets"; open: GlobalStates.waffleWidgetsOpen && (Config.options?.waffles?.modules?.widgets ?? true); component: WaffleWidgets {} }
     DeferredPanelLoader { identifier: "wLock"; component: Lock {} }

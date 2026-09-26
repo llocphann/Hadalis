@@ -14,6 +14,9 @@ Singleton {
     property bool _tlpProbeDone: false
     property bool _tlpPdManaged: false
     property string _pendingProfile: ""
+    property real _lastTlpProbeAt: 0
+    readonly property int _tlpProbeFreshnessMs: 5 * 60 * 1000
+    readonly property int _tlpSafetyProbeIntervalMs: 30 * 60 * 1000
 
     function _profileToString(profile): string {
         switch (profile) {
@@ -122,6 +125,7 @@ Singleton {
 
             root._tlpPdManaged = exitCode === 0
             root._tlpProbeDone = true
+            root._lastTlpProbeAt = Date.now()
 
             if (root._tlpPdManaged) {
                 root._pendingProfile = ""
@@ -148,9 +152,11 @@ Singleton {
         }
     }
 
-    // Re-probe if package, migration, or service state changes at runtime.
+    // Rare safety net for package/migration/service changes that happen without
+    // a power-profile event. Relevant profile changes below re-probe immediately
+    // once the cached ownership result is older than the former 5-minute cadence.
     Timer {
-        interval: 300000
+        interval: root._tlpSafetyProbeIntervalMs
         repeat: true
         running: Config.ready
         onTriggered: root._probeTlpPd()
@@ -169,6 +175,14 @@ Singleton {
             if (!root._tlpProbeDone) {
                 if (root._initialized)
                     root._pendingProfile = s
+                return
+            }
+
+            const ownershipStale = root._lastTlpProbeAt <= 0
+                || Date.now() - root._lastTlpProbeAt >= root._tlpProbeFreshnessMs
+            if (root._initialized && ownershipStale) {
+                root._pendingProfile = s
+                root._probeTlpPd()
                 return
             }
 

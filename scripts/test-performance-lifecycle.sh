@@ -299,7 +299,10 @@ require "$thinkfan" 'interval: 30000' 'ThinkFan background polling must remain r
 require "$thinkfan" 'running: root.profileFanControlEnabled || root.active || root.busy' 'ThinkFan polling must sleep while fan control is irrelevant'
 require "$tlp_caps" 'interval: 300000' 'TLP runtime capability probes must remain low cadence'
 require "$tlp_settings" 'interval: 300000' 'TLP settings background refresh must remain low cadence'
-require "$power_profiles" 'interval: 300000' 'tlp-pd ownership probes must remain low cadence'
+require "$power_profiles" 'readonly property int _tlpProbeFreshnessMs: 5 * 60 * 1000' 'tlp-pd ownership demand refresh must preserve the former five-minute freshness bound'
+require "$power_profiles" 'readonly property int _tlpSafetyProbeIntervalMs: 30 * 60 * 1000' 'tlp-pd ownership idle safety probes must stay sparse'
+require "$power_profiles" 'interval: root._tlpSafetyProbeIntervalMs' 'tlp-pd ownership safety timer must use the sparse cadence'
+require "$power_profiles" 'Date.now() - root._lastTlpProbeAt >= root._tlpProbeFreshnessMs' 'power-profile changes must demand-refresh stale tlp-pd ownership'
 
 require "$world_clock" 'id: minuteTick' 'WorldClock must tick at minute precision without a permanent 1 Hz timer'
 reject "$world_clock" 'interval: 1000' 'WorldClock must not restore a 1 Hz background timer'

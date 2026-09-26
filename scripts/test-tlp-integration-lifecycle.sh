@@ -125,6 +125,12 @@ assert_text_contains 'tlpPdProbe.startObserved = true' "$tlp_probe_started_block
   'tlp-pd process start must be observed before timeout handling'
 assert_text_contains 'tlpPdTimeout.restart()' "$tlp_probe_started_block" \
   'tlp-pd process start must arm its timeout'
+assert_file_contains 'root._lastTlpProbeAt = Date.now()' "$power_persistence" \
+  'successful tlp-pd probes must timestamp the cached ownership result'
+assert_file_contains 'Date.now() - root._lastTlpProbeAt >= root._tlpProbeFreshnessMs' "$power_persistence" \
+  'stale power-profile ownership must be refreshed on demand'
+assert_file_contains 'interval: root._tlpSafetyProbeIntervalMs' "$power_persistence" \
+  'tlp-pd background safety probing must use the sparse adaptive cadence'
 assert_text_contains 'if (!tlpPdProbe.running)' "$tlp_probe_timeout_block" \
   'tlp-pd timeout must ignore an already-stopped process'
 assert_text_contains 'tlpPdProbe.timedOut = true' "$tlp_probe_timeout_block" \

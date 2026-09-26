@@ -28,5 +28,8 @@ require_literal 'const hasActiveLink = hasEthernet || wifiStatus === "connected"
 require_literal 'if (!updateNetworkName.running)' 'active connection name query must not overlap'
 require_literal 'root.networkName = ""' 'disconnected state must clear stale active connection name'
 require_literal 'if (!updateNetworkStrength.running)' 'Wi-Fi signal query must be demand-gated and non-overlapping'
+require_literal 'nmcli -t -f CONNECTIVITY g && nmcli radio wifi' 'radio state must share the main status process'
+require_literal 'const radioState = lines.pop()' 'combined status parser must consume radio state'
+require_literal 'if (!wifiStatusProcess.running)' 'failed combined status query must retain a radio-state fallback'
 
 printf 'network lifecycle guards: ok\n'

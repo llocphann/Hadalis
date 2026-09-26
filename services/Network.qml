@@ -243,8 +243,7 @@ Singleton {
 
     // Actual update logic
     function _doUpdate() {
-        updateConnectionType.startCheck();
-        wifiStatusProcess.running = true
+        updateConnectionType.startCheck()
     }
 
     property bool _destroying: false
@@ -313,7 +312,7 @@ Singleton {
             LANG: "C",
             LC_ALL: "C"
         })
-        command: ["sh", "-c", "nmcli -t -f TYPE,STATE d status && nmcli -t -f CONNECTIVITY g"]
+        command: ["sh", "-c", "nmcli -t -f TYPE,STATE d status && nmcli -t -f CONNECTIVITY g && nmcli radio wifi"]
         running: false
         function startCheck() {
             buffer = "";
@@ -325,8 +324,22 @@ Singleton {
             }
         }
         onExited: (exitCode, exitStatus) => {
+            if (exitCode !== 0) {
+                // Keep radio state available even if the combined status query
+                // fails part-way through.
+                if (!wifiStatusProcess.running)
+                    wifiStatusProcess.running = true
+                return
+            }
+
             const lines = updateConnectionType.buffer.trim().split('\n');
+            const radioState = lines.pop()
             const connectivity = lines.pop() // none, limited, full
+            if (radioState === "enabled" || radioState === "disabled") {
+                root.wifiEnabled = radioState === "enabled"
+                root.wifiStateKnown = true
+            }
+
             let hasEthernet = false;
             let hasWifi = false;
             let wifiStatus = "disconnected";
@@ -407,8 +420,9 @@ Singleton {
 
     Process {
         id: wifiStatusProcess
+        // Failure-only fallback. Normal status updates include radio state in
+        // updateConnectionType so they do not spawn this extra process.
         command: ["nmcli", "radio", "wifi"]
-        Component.onCompleted: running = true
         environment: ({
             LANG: "C",
             LC_ALL: "C"

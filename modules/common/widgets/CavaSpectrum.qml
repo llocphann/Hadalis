@@ -26,6 +26,10 @@ Canvas {
     property string barsOrigin: "bottom"
     property int smoothing: 2
     property string waveMode: "fill"
+    // Filled/ribbon waves already get their visual edge from the gradient fill.
+    // Owners that cover large surfaces can disable the extra top-edge stroke,
+    // avoiding a second rasterized path over the same samples every CAVA frame.
+    property bool waveOutlineEnabled: true
     property real lineWidth: 2
     property real edgeInset: 0
     property real leftRadius: 0
@@ -544,15 +548,17 @@ Canvas {
         ctx.fillStyle = gradient
         ctx.fill()
 
-        ctx.beginPath()
-        root._traceSmooth(ctx, primary)
-        ctx.globalAlpha = 0.9
-        ctx.strokeStyle = gradient
-        ctx.lineWidth = Math.max(1, root.lineWidth * 0.65)
-        ctx.lineCap = "round"
-        ctx.lineJoin = "round"
-        ctx.stroke()
-        ctx.globalAlpha = 1
+        if (root.waveOutlineEnabled) {
+            ctx.beginPath()
+            root._traceSmooth(ctx, primary)
+            ctx.globalAlpha = 0.9
+            ctx.strokeStyle = gradient
+            ctx.lineWidth = Math.max(1, root.lineWidth * 0.65)
+            ctx.lineCap = "round"
+            ctx.lineJoin = "round"
+            ctx.stroke()
+            ctx.globalAlpha = 1
+        }
     }
 
     onPaint: {
@@ -602,6 +608,7 @@ Canvas {
     onBarsOriginChanged: root._queuePaint()
     onSmoothingChanged: root._queuePaint()
     onWaveModeChanged: root._queuePaint()
+    onWaveOutlineEnabledChanged: root._queuePaint()
     onLineWidthChanged: root._queuePaint()
     onEdgeInsetChanged: root._queuePaint()
     onLeftRadiusChanged: root._queuePaint()

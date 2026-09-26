@@ -83,15 +83,18 @@ monitor_text="$(cat "$resource_monitor")"
 assert_contains 'readonly property bool monitoring:' "$monitor_text" 'ResourceUsageMonitor must expose presentation-aware demand'
 assert_contains 'root.target.visible' "$monitor_text" 'ResourceUsageMonitor must gate on target visibility'
 assert_contains 'root.target.QsWindow.window.visible' "$monitor_text" 'ResourceUsageMonitor must gate on native window visibility'
-assert_contains 'ResourceUsage.keepAlive()' "$monitor_text" 'ResourceUsageMonitor must acquire the shared telemetry lease'
-assert_contains 'ResourceUsage.releaseKeepAlive()' "$monitor_text" 'ResourceUsageMonitor must release the shared telemetry lease'
+assert_contains 'property bool histories: true' "$monitor_text" 'ResourceUsageMonitor must preserve history sampling by default'
+assert_contains 'ResourceUsage.keepAlive(root._holdingHistories)' "$monitor_text" 'ResourceUsageMonitor must acquire the shared telemetry lease with history demand'
+assert_contains 'ResourceUsage.releaseKeepAlive(root._holdingHistories)' "$monitor_text" 'ResourceUsageMonitor must release the matching telemetry lease'
+assert_contains 'property int _historyConsumers: 0' "$(cat "$service")" 'ResourceUsage must track history demand independently'
+assert_contains 'root._historyConsumers <= 0' "$(cat "$service")" 'ResourceUsage history updates must be demand-gated'
 assert_contains 'ResourceUsageMonitor 1.0 ResourceUsageMonitor.qml' "$(cat "$widgets_qmldir")" 'ResourceUsageMonitor must be exported'
 
 for lifecycle_file in "$resources_popup" "$status_rings" "$overlay_resources" "$sysmon_widget" "$waffle_widgets" "$dash_system" "$bar_resources" "$vertical_bar_resources"; do
     lifecycle_text="$(cat "$lifecycle_file")"
     assert_contains 'ResourceUsageMonitor {' "$lifecycle_text" "$lifecycle_file must use centralized telemetry lifecycle ownership"
-    assert_not_contains 'ResourceUsage.keepAlive()' "$lifecycle_text" "$lifecycle_file must not duplicate telemetry reference counting"
-    assert_not_contains 'ResourceUsage.releaseKeepAlive()' "$lifecycle_text" "$lifecycle_file must not duplicate telemetry reference counting"
+    assert_not_contains 'ResourceUsage.keepAlive(' "$lifecycle_text" "$lifecycle_file must not duplicate telemetry reference counting"
+    assert_not_contains 'ResourceUsage.releaseKeepAlive(' "$lifecycle_text" "$lifecycle_file must not duplicate telemetry reference counting"
 done
 
 assert_contains 'running: root.isActive && root.isPlaying && root.visible && GlobalStates.sidebarLeftOpen' "$(cat "$inner_tube_thumbnail")" \
@@ -108,6 +111,14 @@ assert_contains 'active: GlobalStates.sidebarRightOpen' "$(cat "$sysmon_widget")
     'right-sidebar system monitor must poll only while the sidebar is open'
 assert_contains 'active: GlobalStates.waffleWidgetsOpen' "$(cat "$waffle_widgets")" \
     'Waffle widgets must poll only while the panel is open'
+
+for scalar_file in "$resources_popup" "$status_rings" "$waffle_widgets" "$bar_resources" "$vertical_bar_resources"; do
+    assert_contains 'histories: false' "$(cat "$scalar_file")" "$scalar_file must not churn history arrays for scalar-only telemetry"
+done
+for graph_file in "$overlay_resources" "$sysmon_widget" "$dash_system"; do
+    assert_not_contains 'histories: false' "$(cat "$graph_file")" "$graph_file must retain history sampling for graphs"
+done
+
 assert_contains 'target: root' "$(cat "$dash_system")" \
     'Dashboard system telemetry must follow the card presentation lifecycle'
 

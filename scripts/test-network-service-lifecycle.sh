@@ -24,5 +24,9 @@ require_literal 'interval: 30000' 'Wi-Fi rescan watchdog interval changed unexpe
 require_literal 'rescanProcess.timedOut = true' 'Wi-Fi rescan watchdog does not mark timeout state'
 require_literal 'rescanProcess.running = false' 'Wi-Fi rescan watchdog does not terminate a stuck nmcli process'
 require_literal 'root.wifiScanning = false' 'Wi-Fi rescan terminal paths do not release scanning UI state'
+require_literal 'const hasActiveLink = hasEthernet || wifiStatus === "connected" || wifiStatus === "limited"' 'active connection name must be demand-gated by link state'
+require_literal 'if (!updateNetworkName.running)' 'active connection name query must not overlap'
+require_literal 'root.networkName = ""' 'disconnected state must clear stale active connection name'
+require_literal 'if (!updateNetworkStrength.running)' 'Wi-Fi signal query must be demand-gated and non-overlapping'
 
 printf 'network lifecycle guards: ok\n'

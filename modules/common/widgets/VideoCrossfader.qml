@@ -31,6 +31,10 @@ Item {
     property string _loadingSource: ""
     property bool _slotAHasFrame: false
     property bool _slotBHasFrame: false
+    // MediaPlayer construction has measurable startup/teardown cost even with
+    // an empty source. Keep the lightweight visual shell resident, but only
+    // create the decoder pair while a caller actually requests video.
+    readonly property bool _decoderActive: root.source !== ""
     readonly property bool hasFrame: root.activeSlot === 0
         ? root._slotAHasFrame : root._slotBHasFrame
 
@@ -40,8 +44,10 @@ Item {
         return value.startsWith("file://") ? value : ("file://" + value)
     }
 
-    function _activePlayer(): var { return root.activeSlot === 0 ? playerA : playerB }
-    function _inactivePlayer(): var { return root.activeSlot === 0 ? playerB : playerA }
+    function _playerA(): var { return playerALoader.item }
+    function _playerB(): var { return playerBLoader.item }
+    function _activePlayer(): var { return root.activeSlot === 0 ? root._playerA() : root._playerB() }
+    function _inactivePlayer(): var { return root.activeSlot === 0 ? root._playerB() : root._playerA() }
 
     onSourceChanged: root._applySource()
     Component.onCompleted: root._applySource()
@@ -55,7 +61,7 @@ Item {
     function _cancelPendingLoad(): void {
         if (!root._loadingSource) return
         const pending = root._inactivePlayer()
-        if (String(pending.source) === root._loadingSource)
+        if (pending && String(pending.source) === root._loadingSource)
             pending.source = ""
         root._loadingSource = ""
     }
@@ -63,13 +69,19 @@ Item {
     function _applySource(): void {
         const next = root._normalized(root.source)
         if (!next) {
-            root._cancelPendingLoad()
-            playerA.source = ""
-            playerB.source = ""
+            cleanupTimer.stop()
+            root._loadingSource = ""
+            root._slotAHasFrame = false
+            root._slotBHasFrame = false
             return
         }
 
         const active = root._activePlayer()
+        const inactive = root._inactivePlayer()
+        // Loader activation and onSourceChanged can be delivered in either
+        // order. onLoaded retries _applySource once both decoders exist.
+        if (!active || !inactive)
+            return
 
         // Already showing it: drop any pending load rather than letting it land.
         if (next === String(active.source) && String(active.source) !== "") {
@@ -91,7 +103,7 @@ Item {
         // fade never reveals a black or half-buffered surface.
         root._cancelPendingLoad()
         root._loadingSource = next
-        root._inactivePlayer().source = next
+        inactive.source = next
         root._syncPlayback()
     }
 
@@ -127,8 +139,10 @@ Item {
     function _syncPlayback(): void {
         // The outgoing slot keeps playing through the fade. When playback is
         // suspended, a slot without a frame is briefly played only to prime it.
+        const playerA = root._playerA()
+        const playerB = root._playerB()
         for (const player of [playerA, playerB]) {
-            if (!String(player.source)) continue
+            if (!player || !String(player.source)) continue
             const hasFrame = player === playerA
                 ? root._slotAHasFrame : root._slotBHasFrame
             if (root.shouldPlay || !hasFrame) {
@@ -191,7 +205,7 @@ Item {
         function onVideoFrameChanged(): void {
             const size = outputA.videoSink.videoSize
             if (size.width > 0 && size.height > 0)
-                root._handleFrame(0, playerA)
+                root._handleFrame(0, root._playerA())
         }
     }
 
@@ -201,28 +215,40 @@ Item {
         function onVideoFrameChanged(): void {
             const size = outputB.videoSink.videoSize
             if (size.width > 0 && size.height > 0)
-                root._handleFrame(1, playerB)
+                root._handleFrame(1, root._playerB())
         }
     }
 
-    // No audioOutput is assigned, so wallpapers stay silent.
-    MediaPlayer {
-        id: playerA
-        videoOutput: outputA
-        loops: MediaPlayer.Infinite
-        onSourceChanged: {
-            root._slotAHasFrame = false
-            root._syncPlayback()
+    // No audioOutput is assigned, so wallpapers stay silent. Loaders destroy
+    // both multimedia pipelines as soon as source becomes empty; video->video
+    // switches keep them resident so the existing two-slot crossfade is intact.
+    Loader {
+        id: playerALoader
+        active: root._decoderActive
+        asynchronous: false
+        onLoaded: root._applySource()
+        sourceComponent: MediaPlayer {
+            videoOutput: outputA
+            loops: MediaPlayer.Infinite
+            onSourceChanged: {
+                root._slotAHasFrame = false
+                root._syncPlayback()
+            }
         }
     }
 
-    MediaPlayer {
-        id: playerB
-        videoOutput: outputB
-        loops: MediaPlayer.Infinite
-        onSourceChanged: {
-            root._slotBHasFrame = false
-            root._syncPlayback()
+    Loader {
+        id: playerBLoader
+        active: root._decoderActive
+        asynchronous: false
+        onLoaded: root._applySource()
+        sourceComponent: MediaPlayer {
+            videoOutput: outputB
+            loops: MediaPlayer.Infinite
+            onSourceChanged: {
+                root._slotBHasFrame = false
+                root._syncPlayback()
+            }
         }
     }
 }

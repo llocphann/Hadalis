@@ -71,6 +71,7 @@ ai_think_block="$repo_root/modules/sidebarLeft/aiChat/MessageThinkBlock.qml"
 sidebar_right_tasks="$repo_root/modules/sidebarRight/todo/TaskList.qml"
 sidebar_right_notifications="$repo_root/modules/sidebarRight/notifications/NotificationList.qml"
 sidebar_right_media="$repo_root/modules/sidebarRight/CompactMediaPlayer.qml"
+video_crossfader="$repo_root/modules/common/widgets/VideoCrossfader.qml"
 control_panel_wallpaper="$repo_root/modules/controlPanel/WallpaperSection.qml"
 dash_media="$repo_root/modules/dashboard/DashMedia.qml"
 dash_welcome="$repo_root/modules/dashboard/DashWelcome.qml"
@@ -200,6 +201,13 @@ require "$sidebar_media" 'layer.enabled: root.visible && GlobalStates.sidebarLef
 require "$sidebar_media" 'sourceSize.width: Math.max(1, Math.ceil(card.width * root._dpr))' 'Sidebar blurred artwork decode must remain bounded to the displayed card'
 require "$control_panel_media" 'layer.enabled: root.visible && GlobalStates.controlPanelOpen' 'Control Panel media masks must release their FBOs while closed'
 require "$control_panel_media" 'readonly property bool positionTickerActive:' 'Control Panel must expose the position-ticker lifecycle'
+require "$video_crossfader" 'readonly property bool _decoderActive: root.source !== ""' 'video wallpaper decoders must sleep while no video source is requested'
+require "$video_crossfader" 'id: playerALoader' 'video wallpaper slot A must be lazy-loaded'
+require "$video_crossfader" 'id: playerBLoader' 'video wallpaper slot B must be lazy-loaded'
+require "$video_crossfader" 'active: root._decoderActive' 'video wallpaper decoder loaders must follow source lifecycle'
+require "$video_crossfader" 'onLoaded: root._applySource()' 'video wallpaper source application must resume after lazy decoder creation'
+reject "$video_crossfader" 'id: playerA' 'video wallpaper must not restore an eager slot A MediaPlayer'
+reject "$video_crossfader" 'id: playerB' 'video wallpaper must not restore an eager slot B MediaPlayer'
 require "$control_panel_media" 'running: root.positionTickerActive' 'Control Panel MPRIS position timer must sleep while closed'
 require "$control_panel_media" 'triggeredOnStart: true' 'Control Panel position must refresh immediately when reopened'
 require "$control_panel_media" 'sourceSize.width: Math.max(1, Math.ceil(card.width * root._dpr))' 'Control Panel blurred artwork decode must remain bounded'

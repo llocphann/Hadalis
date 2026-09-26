@@ -21,8 +21,8 @@ monolithic = Path(sys.argv[2])
 text_line = 'spawn-at-startup "bash" "-c" "exec wl-paste --type text --watch ~/.config/quickshell/inir/scripts/native-dispatch clipboard-store"'
 image_line = 'spawn-at-startup "bash" "-c" "exec wl-paste --type image --watch cliphist store"'
 watcher = re.compile(
-    r'^(?![ \\t]*//)[ \\t]*(?:spawn-at-startup|spawn-sh-at-startup)\\b'
-    r'.*\\bwl-paste\\b.*(?:cliphist[ \\t]+store|native-dispatch[ \\t]+clipboard-store|clipboard-store\\.py).*$'
+    r'^(?![ \t]*//)[ \t]*(?:spawn-at-startup|spawn-sh-at-startup)\b'
+    r'.*\bwl-paste\b.*(?:cliphist[ \t]+store|native-dispatch[ \t]+clipboard-store|clipboard-store\.py).*$'
 )
 
 def active_watchers(path: Path):
@@ -78,8 +78,8 @@ monolithic = Path(sys.argv[2])
 text_line = 'spawn-at-startup "bash" "-c" "exec wl-paste --type text --watch ~/.config/quickshell/inir/scripts/native-dispatch clipboard-store"'
 image_line = 'spawn-at-startup "bash" "-c" "exec wl-paste --type image --watch cliphist store"'
 watcher = re.compile(
-    r'^(?![ \\t]*//)[ \\t]*(?:spawn-at-startup|spawn-sh-at-startup)\\b'
-    r'.*\\bwl-paste\\b.*(?:cliphist[ \\t]+store|native-dispatch[ \\t]+clipboard-store|clipboard-store\\.py).*$'
+    r'^(?![ \t]*//)[ \t]*(?:spawn-at-startup|spawn-sh-at-startup)\b'
+    r'.*\bwl-paste\b.*(?:cliphist[ \t]+store|native-dispatch[ \t]+clipboard-store|clipboard-store\.py).*$'
 )
 
 destination = startup if startup.is_file() else monolithic

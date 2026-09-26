@@ -168,8 +168,8 @@ Singleton {
     }
 
     function refreshRdw(): void {
-        if (!rdwBinaryProbe.running && !rdwDispatcherProbe.running)
-            rdwBinaryProbe.running = true
+        if (!rdwCapabilityProbe.running)
+            rdwCapabilityProbe.running = true
     }
 
     function refresh(): void {
@@ -343,67 +343,41 @@ Singleton {
     }
 
     Process {
-        id: rdwBinaryProbe
-        property bool startObserved: false
-        command: ["/usr/bin/test", "-x", "/usr/bin/tlp-rdw"]
-
-        onRunningChanged: {
-            if (rdwBinaryProbe.running) {
-                rdwBinaryProbe.startObserved = false
-                return
-            }
-            if (rdwBinaryProbe.startObserved)
-                return
-
-            root.rdwAvailable = false
-            root.rdwProbeDone = false
-            console.warn("[TLP] Failed to start RDW binary probe")
-        }
-
-        onStarted: rdwBinaryProbe.startObserved = true
-
-        onExited: (exitCode, exitStatus) => {
-            if (exitCode === 0) {
-                rdwDispatcherProbe.running = true
-                return
-            }
-            root.rdwAvailable = false
-            root.rdwProbeDone = true
-        }
-    }
-
-    Process {
-        id: rdwDispatcherProbe
+        id: rdwCapabilityProbe
         property bool timedOut: false
         property bool startObserved: false
-        command: ["/usr/bin/systemctl", "is-enabled", "--quiet", "NetworkManager-dispatcher.service"]
+        command: [
+            "/usr/bin/sh", "-c",
+            "[ -x /usr/bin/tlp-rdw ] && "
+                + "/usr/bin/systemctl is-enabled --quiet NetworkManager-dispatcher.service"
+        ]
 
         onRunningChanged: {
-            if (rdwDispatcherProbe.running) {
-                rdwDispatcherProbe.startObserved = false
+            if (rdwCapabilityProbe.running) {
+                rdwCapabilityProbe.startObserved = false
                 return
             }
-            if (rdwDispatcherProbe.startObserved)
+            if (rdwCapabilityProbe.startObserved)
                 return
 
-            rdwDispatcherTimeout.stop()
+            rdwCapabilityTimeout.stop()
             root.rdwAvailable = false
             root.rdwProbeDone = false
-            console.warn("[TLP] Failed to start NetworkManager dispatcher probe")
+            console.warn("[TLP] Failed to start RDW capability probe")
         }
 
         onStarted: {
-            rdwDispatcherProbe.startObserved = true
-            rdwDispatcherProbe.timedOut = false
-            rdwDispatcherTimeout.restart()
+            rdwCapabilityProbe.startObserved = true
+            rdwCapabilityProbe.timedOut = false
+            rdwCapabilityTimeout.restart()
         }
 
         onExited: (exitCode, exitStatus) => {
-            rdwDispatcherTimeout.stop()
-            if (rdwDispatcherProbe.timedOut) {
+            rdwCapabilityTimeout.stop()
+            if (rdwCapabilityProbe.timedOut) {
                 root.rdwAvailable = false
                 root.rdwProbeDone = false
-                console.warn("[TLP] Timed out while probing NetworkManager dispatcher")
+                console.warn("[TLP] Timed out while probing RDW capabilities")
                 return
             }
             root.rdwAvailable = exitCode === 0
@@ -412,14 +386,14 @@ Singleton {
     }
 
     Timer {
-        id: rdwDispatcherTimeout
+        id: rdwCapabilityTimeout
         interval: 5000
         repeat: false
         onTriggered: {
-            if (!rdwDispatcherProbe.running)
+            if (!rdwCapabilityProbe.running)
                 return
-            rdwDispatcherProbe.timedOut = true
-            rdwDispatcherProbe.running = false
+            rdwCapabilityProbe.timedOut = true
+            rdwCapabilityProbe.running = false
         }
     }
 

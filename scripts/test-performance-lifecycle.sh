@@ -21,6 +21,7 @@ reject() {
 }
 
 config="$repo_root/modules/common/Config.qml"
+shell_qml="$repo_root/shell.qml"
 defaults="$repo_root/defaults/config.json"
 cava="$repo_root/services/deferred/CavaService.qml"
 cava_generator="$repo_root/scripts/cava/generate_config.sh"
@@ -370,6 +371,14 @@ require "$conflict_killer" 'mako|dunst) notifs=1 ;;' 'conflict detection must pr
 require "$conflict_killer" 'kded6) trays=1 ;;' 'conflict detection must preserve tray-conflict detection'
 reject "$conflict_killer" 'id: pidofTraysProc' 'conflict detection must not restore a dedicated tray pidof process'
 reject "$conflict_killer" 'id: pidofNotifsProc' 'conflict detection must not restore a dedicated notification pidof process'
+
+require "$shell_qml" 'root._shellUpdatesService = ShellUpdates;' 'Tier 4 must retain background shell-update initialization'
+require "$shell_qml" 'root._autostartService = Autostart;' 'Tier 4 must retain the Autostart IPC/file-watch service'
+require "$shell_qml" 'root._calendarSyncService = CalendarSync;' 'Tier 4 must retain configured calendar background sync'
+reject "$shell_qml" 'property var _todoService' 'Todo must remain demand-loaded instead of forced at shell startup'
+reject "$shell_qml" 'property var _notepadService' 'Notepad must remain demand-loaded instead of forced at shell startup'
+reject "$shell_qml" 'root._todoService = Todo;' 'Tier 4 must not force-load Todo storage'
+reject "$shell_qml" 'root._notepadService = Notepad;' 'Tier 4 must not force-load Notepad storage'
 require "$overview_window" 'layer.enabled: GlobalStates.overviewOpen' 'retained Overview window masks must sleep while Overview is closed'
 require "$ii_panels" 'OnDemandPanelLoader { identifier: "iiOverview"; open: GlobalStates.overviewOpen; closeGraceMs: Appearance.animation.elementMoveExit.duration + 80;' 'ii Overview must unload after its exit animation instead of using long idle retention'
 reject "$ii_panels" 'identifier: "iiOverview"; open: GlobalStates.overviewOpen; retainAfterUse: true' 'ii Overview must not restore five-minute post-use residency'

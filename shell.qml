@@ -64,12 +64,10 @@ ShellRoot {
                             .includes("iiScreenCorners"))))
             root._screenTimeService = ScreenTime
     }
-    // Tier 4: T+1500ms (background features - updates, sync, content services)
+    // Tier 4: T+1500ms (background features - updates, sync, IPC services)
     property var _shellUpdatesService
     property var _autostartService
     property var _calendarSyncService
-    property var _todoService
-    property var _notepadService
 
     // Boot phase timing (ms since epoch). Written to ~/.cache/inir/last-boot.json
     // when the deferred phase finishes. `inir status` reads this back to show users
@@ -181,8 +179,9 @@ ShellRoot {
             root._shellUpdatesService = ShellUpdates;
             root._autostartService = Autostart;
             root._calendarSyncService = CalendarSync;
-            root._todoService = Todo;
-            root._notepadService = Notepad;
+            // Todo/Notepad are pure content storage. Their real UI consumers
+            // instantiate the singletons on first use, so do not force file
+            // reads/watchers into every shell startup.
             root._bootLateFeaturesAt = Date.now();
             root._writeBootPhase();
         }

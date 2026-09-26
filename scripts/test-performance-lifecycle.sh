@@ -351,7 +351,7 @@ reject "$game_mode" 'Quickshell.execDetached(["/usr/bin/mkdir"' 'GameMode must n
 require "$directories" 'Quickshell.execDetached([' 'directory bootstrap must remain asynchronous'
 require "$directories" '"/usr/bin/bash", "-c"' 'directory bootstrap must consolidate startup filesystem work'
 require "$directories" 'rm -rf -- \"$1\" \"$2\" \"$3\" \"$4\"' 'directory bootstrap must clean transient trees before recreation'
-require "$directories" 'mkdir -p -- \"$5\" \"$6\" \"$7\"' 'directory bootstrap must recreate required state/cache directories in one batch'
+require "$directories" 'mkdir -p -- \"$5\" \"$6\" \"$7\" \"$8\" \"$9\" \"$10\" \"$11\" \"$12\" \"$13\" \"$14\"' 'directory bootstrap must recreate every required state/cache directory in one batch'
 directories_exec_count="$(grep -Fc 'Quickshell.execDetached([' "$directories")"
 [[ "$directories_exec_count" -eq 1 ]] || fail "Directories startup must use exactly one detached bootstrap command (found $directories_exec_count)"
 require "$overview_window" 'layer.enabled: GlobalStates.overviewOpen' 'retained Overview window masks must sleep while Overview is closed'

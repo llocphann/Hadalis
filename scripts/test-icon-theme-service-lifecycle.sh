@@ -44,6 +44,19 @@ require 'console.warn("[IconThemeService] qt6ct updater failed to start; continu
 require 'root._startGtkSync(qt6ctProc.themeName)' \
     'qt6ct spawn failure/exit must continue into GTK sync'
 
+require 'property bool _themesLoaded: false' \
+    'icon-theme enumeration must expose cached demand state'
+require 'function ensureThemesLoaded(force: bool = false): void' \
+    'icon-theme enumeration must be demand-driven'
+require 'if (root._themesLoaded && !force)' \
+    'icon-theme enumeration must not rescan after the first successful demand load'
+require 'root._themesLoaded = true' \
+    'icon-theme enumeration must mark even an empty scan complete'
+if sed -n '/function ensureInitialized()/,/function ensureThemesLoaded/p' "$service" \
+    | grep -Fq -- 'listThemesProc.running = true'; then
+    fail 'icon-theme startup initialization must not enumerate themes eagerly'
+fi
+
 start_guard_count="$(grep -Fc -- 'property bool startObserved: false' "$service")"
 if (( start_guard_count < 4 )); then
     fail "expected at least four startup guards in icon theme pipeline, found $start_guard_count"

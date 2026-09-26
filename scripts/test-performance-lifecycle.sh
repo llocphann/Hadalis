@@ -69,6 +69,8 @@ waffle_lock_safe="$repo_root/modules/waffle/lock/WaffleLockSurfaceSafe.qml"
 weather="$repo_root/services/Weather.qml"
 wallhaven_service="$repo_root/services/Wallhaven.qml"
 keyboard_indicators="$repo_root/services/KeyboardIndicators.qml"
+icon_theme_service="$repo_root/services/IconThemeService.qml"
+icon_theme_selector="$repo_root/modules/common/widgets/IconThemeSelector.qml"
 sidebar_anime="$repo_root/modules/sidebarLeft/Anime.qml"
 sidebar_wallhaven="$repo_root/modules/sidebarLeft/WallhavenView.qml"
 sidebar_ai="$repo_root/modules/sidebarLeft/AiChat.qml"
@@ -405,6 +407,10 @@ require "$keyboard_indicators" 'readonly property int ledDiscoveryIntervalMs: ro
 require "$keyboard_indicators" '? ((Config.options?.performance?.lowPower ?? false) ? 600000 : 300000)' 'stable keyboard LED paths must use sparse safety discovery'
 require "$keyboard_indicators" ': ((Config.options?.performance?.lowPower ?? false) ? 120000 : 30000)' 'missing keyboard LED paths must retain responsive discovery'
 require "$keyboard_indicators" 'Qt.callLater(() => root.refreshLedPaths())' 'lost watched keyboard LED paths must trigger immediate rediscovery'
+
+require "$icon_theme_service" 'function ensureThemesLoaded(force: bool = false): void' 'icon theme enumeration must be demand-driven'
+require "$icon_theme_service" 'if (root._themesLoaded && !force)' 'icon theme enumeration must be cached after first demand'
+require "$icon_theme_selector" 'IconThemeService.ensureThemesLoaded()' 'icon theme selector must trigger enumeration only when opened'
 require "$sidebar_anime" 'layer.enabled: root.visible && GlobalStates.sidebarLeftOpen' 'Anime list mask must sleep with the sidebar'
 require "$sidebar_wallhaven" 'layer.enabled: root.visible && GlobalStates.sidebarLeftOpen' 'Wallhaven list mask must sleep with the sidebar'
 require "$sidebar_ai" 'layer.enabled: root.visible && GlobalStates.sidebarLeftOpen' 'AI history mask must sleep with the sidebar'

@@ -19,6 +19,7 @@ Singleton {
     property string dockTheme: ""  // Separate theme for dock icons
 
     property bool _initialized: false
+    property bool _themesLoaded: false
     property bool _restartQueued: false
     readonly property string nativeDispatchPath: Quickshell.shellPath("scripts/native-dispatch")
     readonly property string nativeBackendStatePath: {
@@ -111,9 +112,6 @@ Singleton {
             return;
         root._initialized = true;
         
-        listThemesProc.running = false
-        listThemesProc.running = true
-        
         // Load system theme
         const savedTheme = Config.ready ? (Config.options?.appearance?.iconTheme ?? "") : ""
         if (savedTheme && String(savedTheme).trim().length > 0) {
@@ -130,6 +128,16 @@ Singleton {
         
         // Load dock theme
         root.dockTheme = Config.options?.appearance?.dockIconTheme ?? ""
+    }
+
+    function ensureThemesLoaded(force: bool = false): void {
+        if (listThemesProc.running)
+            return
+        if (root._themesLoaded && !force)
+            return
+
+        listThemesProc.themes = []
+        listThemesProc.running = true
     }
 
     function setTheme(themeName) {
@@ -523,11 +531,13 @@ for subdir in ["gtk-3.0", "gtk-4.0"]:
         }
         
         onRunningChanged: {
-            if (!running && themes.length > 0) {
-                const uniqueSorted = Array.from(new Set(themes)).sort()
-                root.availableThemes = uniqueSorted
-                themes = []
-            }
+            if (running)
+                return
+
+            const uniqueSorted = Array.from(new Set(themes)).sort()
+            root.availableThemes = uniqueSorted
+            root._themesLoaded = true
+            themes = []
         }
     }
 }

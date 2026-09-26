@@ -436,10 +436,18 @@ Singleton {
         const textStat = fileStat.text();
         const cpuLine = textStat.match(/^cpu\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+)/);
         if (cpuLine) {
-            const stats = cpuLine.slice(1).map(Number);
-            const total = stats.reduce((a, b) => a + b, 0);
-            // idle (stats[3]) + iowait (stats[4]) = not working
-            const idle = stats[3] + stats[4];
+            // Avoid slice/map/reduce allocations in the regular sensor poll.
+            // /proc/stat fields here are user,nice,system,idle,iowait,irq,softirq.
+            const user = Number(cpuLine[1]) || 0
+            const nice = Number(cpuLine[2]) || 0
+            const system = Number(cpuLine[3]) || 0
+            const idleRaw = Number(cpuLine[4]) || 0
+            const iowait = Number(cpuLine[5]) || 0
+            const irq = Number(cpuLine[6]) || 0
+            const softirq = Number(cpuLine[7]) || 0
+            const total = user + nice + system + idleRaw + iowait + irq + softirq
+            // idle + iowait = not working
+            const idle = idleRaw + iowait
 
             if (previousCpuStats) {
                 const totalDiff = total - previousCpuStats.total;

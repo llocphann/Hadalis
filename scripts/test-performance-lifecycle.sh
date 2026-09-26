@@ -49,6 +49,7 @@ sidebar_world_clock="$repo_root/modules/sidebarLeft/widgets/WorldClockWidget.qml
 game_mode="$repo_root/services/GameMode.qml"
 directories="$repo_root/modules/common/Directories.qml"
 conflict_killer="$repo_root/services/ConflictKiller.qml"
+first_run="$repo_root/services/FirstRunExperience.qml"
 overview_window="$repo_root/modules/overview/OverviewWindow.qml"
 resource_usage="$repo_root/services/ResourceUsage.qml"
 memory_pressure="$repo_root/services/MemoryPressureService.qml"
@@ -376,6 +377,12 @@ require "$conflict_killer" 'mako|dunst) notifs=1 ;;' 'conflict detection must pr
 require "$conflict_killer" 'kded6) trays=1 ;;' 'conflict detection must preserve tray-conflict detection'
 reject "$conflict_killer" 'id: pidofTraysProc' 'conflict detection must not restore a dedicated tray pidof process'
 reject "$conflict_killer" 'id: pidofNotifsProc' 'conflict detection must not restore a dedicated notification pidof process'
+
+require "$first_run" 'id: firstRunMarker' 'first-run marker detection must use in-process file I/O'
+require "$first_run" 'firstRunMarker.reload()' 'first-run load must refresh the marker directly'
+require "$first_run" 'blockLoading: true' 'first-run marker reload must resolve before deciding whether to launch first-run work'
+reject "$first_run" 'id: checkFirstRunProc' 'normal shell startup must not spawn a process just to test the first-run marker'
+reject "$first_run" 'command: ["/usr/bin/test", "-f", root.firstRunFilePath]' 'first-run marker detection must not shell out to test -f'
 
 require "$shell_qml" 'root._shellUpdatesService = ShellUpdates;' 'Tier 4 must retain background shell-update initialization'
 require "$shell_qml" 'root._autostartService = Autostart;' 'Tier 4 must retain the Autostart IPC/file-watch service'

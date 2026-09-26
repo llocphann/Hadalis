@@ -15,6 +15,7 @@ Singleton {
     property string defaultWallpaperPath: ""
     property bool _pendingFirstRun: false
     property bool _dockStyleNormalized: false
+    property bool _markerProbeRequested: false
 
     function _normalizeDockStyle(): void {
         if (root._dockStyleNormalized || !Config.ready)
@@ -28,10 +29,11 @@ Singleton {
     function load() {
         root._normalizeDockStyle()
 
-        if (checkFirstRunProc.running || listWallpapersProc.running)
-            return;
+        if (root._markerProbeRequested || listWallpapersProc.running)
+            return
 
-        checkFirstRunProc.running = true
+        root._markerProbeRequested = true
+        firstRunMarker.reload()
     }
 
     function enableNextTime() {
@@ -127,27 +129,27 @@ Singleton {
         onExited: (exitCode) => root._completeFirstRun()
     }
 
-    Process {
-        id: checkFirstRunProc
-        property bool startObserved: false
-        command: ["/usr/bin/test", "-f", root.firstRunFilePath]
-        onRunningChanged: {
-            if (checkFirstRunProc.running) {
-                checkFirstRunProc.startObserved = false
-                return
-            }
-            if (checkFirstRunProc.startObserved)
-                return
+    FileView {
+        id: firstRunMarker
+        path: root.firstRunFilePath
+        watchChanges: false
+        blockLoading: true
+        printErrors: false
 
+        onLoaded: {
+            if (!root._markerProbeRequested)
+                return
+            root._markerProbeRequested = false
             root._pendingFirstRun = false
-            console.warn("[FirstRunExperience] Failed to start first-run marker probe")
         }
-        onStarted: checkFirstRunProc.startObserved = true
-        onExited: (exitCode) => {
-            if (exitCode !== 0) {
-                root._pendingFirstRun = true
+
+        onLoadFailed: error => {
+            if (!root._markerProbeRequested)
+                return
+            root._markerProbeRequested = false
+            root._pendingFirstRun = true
+            if (!listWallpapersProc.running)
                 listWallpapersProc.running = true
-            }
         }
     }
 }

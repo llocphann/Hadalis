@@ -83,6 +83,7 @@ ytmusic="$repo_root/services/YtMusic.qml"
 directory_icon="$repo_root/modules/common/widgets/DirectoryIcon.qml"
 sysmon_widget="$repo_root/modules/sidebarRight/sysmon/SysMonWidget.qml"
 timer_service="$repo_root/services/TimerService.qml"
+settings_page_host="$repo_root/modules/settings/SettingsPageHost.qml"
 levendist="$repo_root/modules/common/functions/levendist.js"
 emojis="$repo_root/services/deferred/Emojis.qml"
 app_search="$repo_root/services/AppSearch.qml"
@@ -379,6 +380,10 @@ require "$app_search" 'function _ensurePreppedNames(): var' 'AppSearch fuzzy nam
 require "$app_search" 'function _ensurePreppedIcons(): var' 'AppSearch fuzzy icons must stay lazy'
 reject "$app_search" '_cachedPreppedNames = entries.map' 'AppSearch rebuild must not fuzzy-prepare every app name'
 reject "$app_search" '_cachedPreppedIcons = entries.map' 'AppSearch rebuild must not fuzzy-prepare every app icon'
+
+require "$settings_page_host" 'const source = pages[index]?.component ?? ""' 'Settings page host must normalize the resolved page source once'
+require "$settings_page_host" 'if (source.startsWith("/"))' 'Settings page host must recognize absolute local QML page paths'
+require "$settings_page_host" 'return "file://" + source' 'Settings page host must expose local pages as file URLs so Qt can reuse the QML disk cache'
 
 require "$loading_indicator" 'import QtQuick.Window' 'loading indicator must observe owning window visibility'
 require "$loading_indicator" '(root.Window.window?.visible ?? true)' 'loading indicator must stop while its owning window is hidden'

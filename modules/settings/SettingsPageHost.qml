@@ -52,7 +52,14 @@ Item {
     function _sourceFor(index) {
         if (index < 0 || index >= pages.length)
             return ""
-        return pages[index]?.component ?? ""
+        const source = pages[index]?.component ?? ""
+        // Settings chrome resolves registry-relative pages through
+        // Quickshell.shellPath(), yielding absolute local paths. Loader URLs on
+        // file:// can reuse Qt's compiled QML disk cache across page eviction
+        // and re-entry instead of recompiling through the shell VFS path.
+        if (source.startsWith("/"))
+            return "file://" + source
+        return source
     }
 
     function _loaderFor(index) {

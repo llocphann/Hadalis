@@ -245,7 +245,6 @@ Singleton {
     function _doUpdate() {
         updateConnectionType.startCheck();
         wifiStatusProcess.running = true
-        updateNetworkName.running = true;
     }
 
     property bool _destroying: false
@@ -369,6 +368,14 @@ Singleton {
             // updateNetworkStrength's awk prints nothing when no AP is in use, so
             // its SplitParser never fires and networkStrength would keep the value
             // from the last connected AP. Clear it here instead.
+            const hasActiveLink = hasEthernet || wifiStatus === "connected" || wifiStatus === "limited"
+            if (hasActiveLink) {
+                if (!updateNetworkName.running)
+                    updateNetworkName.running = true
+            } else {
+                root.networkName = ""
+            }
+
             if (wifiStatus === "connected" || wifiStatus === "limited") {
                 if (!updateNetworkStrength.running)
                     updateNetworkStrength.running = true

@@ -21,11 +21,7 @@ Singleton {
     property list<string> entries: []
     property int _readAttempts: 0
     property bool _refreshQueued: false
-    readonly property var preparedEntries: entries.map(a => ({
-        name: Fuzzy.prepare(`${a.replace(/^\s*\S+\s+/, "")}`),
-        entry: a
-    }))
-    readonly property var preparedFilterEntries: entries.map(entry => {
+    readonly property var preparedEntries: entries.map(entry => {
         let cleaned = StringUtils.cleanCliphistEntry(entry)
         if (root.entryIsImage(entry))
             cleaned = cleaned.replace(/^\s*\[\[.*?\]\]\s*/, "")
@@ -34,8 +30,14 @@ Singleton {
             cleaned = unwrapped.length > 0 ? unwrapped : Translation.tr("Rich text")
         const waffleKey = cleaned.trim().toLowerCase()
         const iiKey = StringUtils.sanitizeDisplayText(cleaned).trim().toLowerCase()
-        return ({ entry: entry, iiKey: iiKey, waffleKey: waffleKey })
+        return ({
+            name: Fuzzy.prepare(`${entry.replace(/^\s*\S+\s+/, "")}`),
+            entry: entry,
+            iiKey: iiKey,
+            waffleKey: waffleKey
+        })
     })
+    readonly property var preparedFilterEntries: preparedEntries
 
     function _log(...args): void {
         if (Quickshell.env("QS_DEBUG") === "1") console.log(...args);

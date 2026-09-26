@@ -203,7 +203,11 @@ Singleton {
         const entries = Array.from(DesktopEntries.applications.values)
             .sort((a, b) => a.name.localeCompare(b.name))
         _cachedList = entries
-        _cachedPreppedNames = entries.map(a => ({ name: Fuzzy.prepare(`${a.name} `), entry: a }))
+        _cachedPreppedNames = entries.map(a => ({
+            name: Fuzzy.prepare(`${a.name} `),
+            nameLower: (a.name ?? "").toLowerCase(),
+            entry: a
+        }))
         _cachedPreppedIcons = entries.map(a => ({ name: Fuzzy.prepare(`${a.icon} `), entry: a }))
 
         // Build reverse-lookup maps for matching toplevel appIds to desktop entries.
@@ -261,15 +265,10 @@ Singleton {
 
         const searchLower = search.toLowerCase().trim()
 
-        // Fast path: exact prefix match gets priority
-        const exactPrefixMatches = _cachedList.filter(obj =>
-            obj.name?.toLowerCase().startsWith(searchLower)
-        )
-
         if (root.sloppySearch) {
             // Levenshtein-based scoring
-            const results = _cachedList.map(obj => {
-                const nameLower = obj.name?.toLowerCase() ?? ""
+            const results = _cachedList.map((obj, index) => {
+                const nameLower = _cachedPreppedNames[index]?.nameLower ?? ""
                 let score = Levendist.computeScore(nameLower, searchLower)
 
                 // Boost for prefix match
@@ -303,7 +302,7 @@ Singleton {
         // Score and sort results
         const scoredResults = fuzzyResults.map(r => {
             const entry = r.obj.entry
-            const nameLower = entry.name?.toLowerCase() ?? ""
+            const nameLower = r.obj.nameLower ?? ""
             let score = r.score
 
             // Significant boost for exact prefix match

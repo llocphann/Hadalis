@@ -81,9 +81,38 @@ Singleton {
             console.log("[MemoryPressure]", ...args)
     }
 
+    function _applyMapsText(rawText: string): void {
+        let deleted = 0
+        let total = 0
+        const lines = String(rawText ?? "").split("\n")
+        for (const line of lines) {
+            if (!line.includes("JSGCHeap"))
+                continue
+            total++
+            if (line.includes("deleted"))
+                deleted++
+        }
+
+        root.currentDeletedMappings = deleted
+        root.currentTotalMappings = total
+
+        if (root.currentDeletedMappings >= root.deletedMappingsThreshold) {
+            _log("threshold exceeded:", root.currentDeletedMappings, ">=", root.deletedMappingsThreshold)
+            root._notifyUser()
+        }
+    }
+
     function _checkMemoryPressure(): void {
-        if (!root.enabled || _mapsReader.running) return
-        _mapsReader.running = true
+        if (!root.enabled)
+            return
+        try {
+            mapsFile.reload()
+            root._applyMapsText(mapsFile.text())
+        } catch (error) {
+            root.currentDeletedMappings = 0
+            root.currentTotalMappings = 0
+            root._log("maps read failed", error)
+        }
     }
 
     function _notifyUser(): void {
@@ -119,48 +148,15 @@ Singleton {
     }
 
     // ── Maps reader ───────────────────────────────────────────────────────
-    Process {
-        id: _mapsReader
-        property bool startObserved: false
-        // /proc/$PPID, not /proc/self: this runs in an sh child of the shell, so
-        // /proc/self is that sh process (zero JSGCHeap mappings) and the counter
-        // always read 0 — the threshold could never trip. $PPID is the shell.
-        command: ["sh", "-c", "grep -c 'JSGCHeap.*deleted' /proc/$PPID/maps 2>/dev/null || echo 0; grep -c JSGCHeap /proc/$PPID/maps 2>/dev/null || echo 0"]
-        stdout: SplitParser {
-            property int lineNum: 0
-            onRead: line => {
-                const val = parseInt(line.trim()) || 0
-                if (lineNum === 0) {
-                    root.currentDeletedMappings = val
-                } else {
-                    root.currentTotalMappings = val
-                }
-                lineNum++
-            }
-        }
-        onRunningChanged: {
-            if (_mapsReader.running) {
-                _mapsReader.startObserved = false
-                _mapsReader.stdout.lineNum = 0
-                return
-            }
-            if (_mapsReader.startObserved)
-                return
-
-            _mapsReader.stdout.lineNum = 0
-            root.currentDeletedMappings = 0
-            root.currentTotalMappings = 0
-            root._log("maps reader failed to start")
-        }
-        onStarted: _mapsReader.startObserved = true
-        onExited: (code, status) => {
-            _mapsReader.stdout.lineNum = 0
-            
-            if (root.currentDeletedMappings >= root.deletedMappingsThreshold) {
-                _log("threshold exceeded:", root.currentDeletedMappings, ">=", root.deletedMappingsThreshold)
-                root._notifyUser()
-            }
-        }
+    // FileView runs inside the shell process, so /proc/self/maps is the exact
+    // QML/JS runtime we need to inspect. This avoids spawning sh+grep every five
+    // minutes while preserving the same monitoring cadence and thresholds.
+    FileView {
+        id: mapsFile
+        path: "/proc/self/maps"
+        watchChanges: false
+        blockLoading: true
+        printErrors: false
     }
 
     // ── IPC ───────────────────────────────────────────────────────────────

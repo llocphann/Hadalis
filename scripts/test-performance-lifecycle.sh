@@ -47,6 +47,7 @@ sidebar_world_clock="$repo_root/modules/sidebarLeft/widgets/WorldClockWidget.qml
 game_mode="$repo_root/services/GameMode.qml"
 overview_window="$repo_root/modules/overview/OverviewWindow.qml"
 resource_usage="$repo_root/services/ResourceUsage.qml"
+memory_pressure="$repo_root/services/MemoryPressureService.qml"
 bar_resources="$repo_root/modules/bar/Resources.qml"
 vertical_bar_resources="$repo_root/modules/verticalBar/Resources.qml"
 recorder_status="$repo_root/services/RecorderStatus.qml"
@@ -303,6 +304,12 @@ require "$power_profiles" 'readonly property int _tlpProbeFreshnessMs: 5 * 60 * 
 require "$power_profiles" 'readonly property int _tlpSafetyProbeIntervalMs: 30 * 60 * 1000' 'tlp-pd ownership idle safety probes must stay sparse'
 require "$power_profiles" 'interval: root._tlpSafetyProbeIntervalMs' 'tlp-pd ownership safety timer must use the sparse cadence'
 require "$power_profiles" 'Date.now() - root._lastTlpProbeAt >= root._tlpProbeFreshnessMs' 'power-profile changes must demand-refresh stale tlp-pd ownership'
+
+require "$memory_pressure" 'path: "/proc/self/maps"' 'memory pressure monitoring must read the shell process maps directly'
+require "$memory_pressure" 'blockLoading: true' 'memory pressure proc-map reads must complete before parsing the snapshot'
+require "$memory_pressure" 'root._applyMapsText(mapsFile.text())' 'memory pressure monitoring must parse the direct proc-map snapshot'
+reject "$memory_pressure" 'Process {' 'memory pressure monitoring must not spawn a helper process for periodic proc-map reads'
+reject "$memory_pressure" '/proc/$PPID/maps' 'memory pressure monitoring must not depend on a child-process parent PID workaround'
 
 require "$world_clock" 'id: minuteTick' 'WorldClock must tick at minute precision without a permanent 1 Hz timer'
 reject "$world_clock" 'interval: 1000' 'WorldClock must not restore a 1 Hz background timer'

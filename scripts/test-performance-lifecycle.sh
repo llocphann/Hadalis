@@ -346,6 +346,7 @@ require "$recorder_status" 'id: fastPollTimer' 'RecorderStatus must expose a sep
 require "$recorder_status" 'interval: 1000' 'RecorderStatus visible-UI reconciliation must use a 1 second cadence'
 require "$recorder_status" '&& !quickCheckTimer.running' 'RecorderStatus demand polling must yield to bounded action quick checks'
 require "$recorder_overlay_widget" 'RecorderStatus.setFastStatusDemand("ii-overlay-recorder", wanted)' 'ii Recorder widget must own fast status demand only while visible'
+require "$recorder_overlay_widget" 'if (root._statusDemandRegistered)' 'ii Recorder widget must release its fast-demand lease on destruction'
 require "$waffle_widgets_content" 'RecorderStatus.setFastStatusDemand("waffle-widgets-recorder", wanted)' 'Waffle recorder quick action must own fast status demand only while its panel is open'
 require "$weather" 'running: root.enabled' 'Weather minute clock must sleep when weather is disabled'
 require "$wallhaven_service" 'function _schedulePendingSearch(): void' 'Wallhaven pending search retries must use deadline scheduling'

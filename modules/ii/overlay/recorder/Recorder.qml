@@ -46,11 +46,6 @@ StyledOverlayWidget {
 
     onVisibleChanged: root.syncRecorderStatusDemand()
     Component.onCompleted: root.syncRecorderStatusDemand()
-    Component.onDestruction: {
-        if (root._statusDemandRegistered)
-            RecorderStatus.setFastStatusDemand("ii-overlay-recorder", false)
-    }
-
     function audioModeLabel(mode: string): string {
         switch (mode) {
         case "none": return Translation.tr("No audio")
@@ -373,6 +368,8 @@ StyledOverlayWidget {
     }
 
     Component.onDestruction: {
+        if (root._statusDemandRegistered)
+            RecorderStatus.setFastStatusDemand("ii-overlay-recorder", false)
         if (root._folderDialogEngaged)
             OverlayContext.setNativeDialogVisible("recorder-folder", false)
     }

@@ -33,6 +33,7 @@ ShellRoot {
         Qt.quit()
         return false
     }
+    Loader { id: deferred; source: "modules/abyss/ShellAbyssPanelsImpl.qml" }
     Item {
         width: 1000; height: 700
         AbyssBodyHost {
@@ -48,6 +49,7 @@ ShellRoot {
         onTriggered: {
             if (failed) return
             if (step === 0) {
+                if (!check(deferred.status === Loader.Ready,"shared fallback composition")) return
                 GlobalStates.shellEntryReady = true
                 GlobalStates.deferredPanelsReady = false
                 body.open = true
@@ -83,7 +85,8 @@ if ! QT_QPA_PLATFORM=offscreen XDG_CONFIG_HOME="$abyss_test_root/config" XDG_STA
     cat "$abyss_test_root/runtime.log"
     exit 1
 fi
-if ! rg -q 'ABYSS_RUNTIME_PASS' "$abyss_test_root/runtime.log"; then
+if ! rg -q 'ABYSS_RUNTIME_PASS' "$abyss_test_root/runtime.log" \
+        || rg -q 'ReferenceError:|TypeError:|Binding loop|ABYSS_RUNTIME_FAIL' "$abyss_test_root/runtime.log"; then
     cat "$abyss_test_root/runtime.log"
     exit 1
 fi

@@ -3,7 +3,7 @@ import Quickshell
 import qs
 import qs.services
 import qs.modules.common
-import qs.modules.common.models
+import qs.modules.ii.overlay
 
 // Critical and specialist workflows deliberately retain their shared renderer.
 // Native perimeter content is composed by the critical Abyss host.

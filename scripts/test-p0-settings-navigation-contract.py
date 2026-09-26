@@ -36,7 +36,7 @@ bar_contract = re.sub(r"\s+", " ", bar)
 for needle in [
     'title: Translation.tr("Screen Edge")',
     'text: Translation.tr("Screen edge width (px)")',
-    'Config.setNestedValue("appearance.screenEdge.width", value)',
+    '"appearance.screenEdge.width", value)',
     'text: Translation.tr("Screen edge shadow")',
     '"appearance.screenEdge.physicalShadow.enabled"',
     '"appearance.screenEdge.physicalShadow.size"',

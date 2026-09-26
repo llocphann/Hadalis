@@ -1045,14 +1045,20 @@ def main() -> None:
           "Vertical Hug body must ignore persisted retired cornerStyle at runtime")
     check("(Config.options?.bar?.cornerStyle ?? 0) === 0" not in vertical_bar_runtime,
           "Vertical Hug shoulders must not depend on legacy cornerStyle state")
-    for fullscreen_bar_surface in (bar_runtime, vertical_bar_runtime):
-        check("FULLSCREEN-BAR-LIFECYCLE-LOCK (maintainer approved 2026-09-19)" in fullscreen_bar_surface,
-              "Bar fullscreen lifecycle lock marker must remain present")
-        check("fullscreenCovered" not in fullscreen_bar_surface
-              and "visible: !fullscreenCovered" not in fullscreen_bar_surface
-              and "updatesEnabled: !fullscreenCovered" not in fullscreen_bar_surface
-              and "GameMode.hasFullscreenOnOutput" not in fullscreen_bar_surface,
-              "Bar PanelWindow must stay mapped/updating across fullscreen; compositor stacking owns coverage")
+    check("readonly property bool fullscreenCovered:" in bar_runtime
+          and "GameMode.hasFullscreenOnOutput(barRoot.outputName)" in bar_runtime
+          and "item: barRoot.fullscreenCovered ? emptyMask : hoverMaskRegion" in bar_runtime
+          and "enabled: !barRoot.fullscreenCovered" in bar_runtime
+          and "opacity: barRoot.fullscreenCovered ? 0 : 1" in bar_runtime,
+          "Horizontal Bar fullscreen lifecycle must keep the window mapped while sleeping input/paint")
+    check("visible: !fullscreenCovered" not in bar_runtime
+          and "updatesEnabled: !fullscreenCovered" not in bar_runtime,
+          "Horizontal Bar must not unmap or disable window updates across fullscreen")
+    check("fullscreenCovered" not in vertical_bar_runtime
+          and "visible: !fullscreenCovered" not in vertical_bar_runtime
+          and "updatesEnabled: !fullscreenCovered" not in vertical_bar_runtime
+          and "GameMode.hasFullscreenOnOutput" not in vertical_bar_runtime,
+          "Vertical Bar must not gain a fullscreen mapping gate")
     for bar_surface in (bar_runtime, vertical_bar_runtime, bar_content, vertical_bar_content):
         for forbidden_corner_owner in (
             "PerimeterTokens.frameRadius",
@@ -1185,6 +1191,7 @@ def main() -> None:
 
     bar_settings = read("modules/settings/BarConfig.qml")
     bar_settings_compact = " ".join(bar_settings.split())
+    bar_settings_dense = "".join(bar_settings.split())
     quick_settings = read("modules/settings/QuickConfig.qml")
     for retired_bar_control in (
         'Translation.tr("Corner style")',
@@ -1200,21 +1207,21 @@ def main() -> None:
           and 'Config.setNestedValue("bar.vertical"' not in quick_settings,
           "Canonical Quick settings must not recreate Bar/backdrop ownership")
     check('Config.options?.appearance?.screenEdge?.width ?? 10' in bar_settings
-          and 'Config.setNestedValue("appearance.screenEdge.width", value)' in bar_settings_compact,
+          and 'Config.setNestedValue("appearance.screenEdge.width",value)' in bar_settings_dense,
           "Bar settings must expose persistent Screen Edge width with a 10px default")
     check('Config.options?.appearance?.screenEdge?.radius ?? 25' in bar_settings
-          and 'Config.setNestedValue("appearance.screenEdge.radius", value)' in bar_settings_compact
+          and 'Config.setNestedValue("appearance.screenEdge.radius",value)' in bar_settings_dense
           and 'Translation.tr("Corner radius (px)")' in bar_settings
           and 'from: 0' in bar_settings
           and 'to: 96' in bar_settings,
           "Bar settings must expose the shared Screen Edge/Bar radius with a 25px default")
     check('appearance.screenEdge.shadow' not in bar_settings
           and 'Config.options?.appearance?.screenEdge?.physicalShadow?.enabled ?? true' in bar_settings
-          and 'Config.setNestedValue("appearance.screenEdge.physicalShadow.enabled", checked)' in bar_settings_compact
+          and 'Config.setNestedValue("appearance.screenEdge.physicalShadow.enabled",checked)' in bar_settings_dense
           and 'Config.options?.appearance?.screenEdge?.physicalShadow?.size ?? 15' in bar_settings
-          and 'Config.setNestedValue("appearance.screenEdge.physicalShadow.size", value)' in bar_settings_compact
+          and 'Config.setNestedValue("appearance.screenEdge.physicalShadow.size",value)' in bar_settings_dense
           and 'Config.options?.appearance?.screenEdge?.physicalShadow?.opacity ?? 0.70' in bar_settings
-          and 'Config.setNestedValue("appearance.screenEdge.physicalShadow.opacity", value / 100)' in bar_settings_compact,
+          and 'Config.setNestedValue("appearance.screenEdge.physicalShadow.opacity",value/100)' in bar_settings_dense,
           "Screen Edge settings must control only the dedicated physical shadow owner")
 
     dock_config = read("modules/settings/DockConfig.qml")
@@ -1335,8 +1342,8 @@ def main() -> None:
     check('label: Translation.tr("Sidebar style")' not in settings_registry_data,
           "Settings search source must not retain the retired Sidebar surface selector")
     check('label: Translation.tr("Corner radius (px)")' in settings_registry_data
-          and 'description: Translation.tr("Set Screen Edge, Bar and attached popup corner radius")' in settings_registry_data,
-          "Settings search must expose the shared Screen Edge/Bar/attached-popup corner radius")
+          and 'description: Translation.tr("Set Screen Edge, Bar and outward popup contact radius")' in settings_registry_data,
+          "Settings search must expose the shared Screen Edge/Bar/popup contact radius")
     check('label: Translation.tr("Screen edge shadow")' in settings_registry_data
           and 'description: Translation.tr("Configure Screen Edge and connected surface shadows")' in settings_registry_data,
           "Settings search must expose the shared Screen Edge/connected-surface shadow controls")

@@ -116,21 +116,29 @@ Singleton {
 
         return userAvatarSourcePrimary
     }
-    // Cleanup on init
+    // Cleanup/bootstrap on init. Keep this ordered: the previous
+    // implementation launched 14 detached rm/mkdir processes independently,
+    // so cleanup and recreation of the same directory could race each other.
     Component.onCompleted: {
-        Quickshell.execDetached(["mkdir", "-p", `${shellConfig}`])
-        Quickshell.execDetached(["mkdir", "-p", `${stateUserPath}`])
-        Quickshell.execDetached(["mkdir", "-p", `${favicons}`])
-        Quickshell.execDetached(["mkdir", "-p", `${coverArt}`])
-        Quickshell.execDetached(["rm", "-rf", `${booruPreviews}`])
-        Quickshell.execDetached(["mkdir", "-p", `${booruPreviews}`])
-        Quickshell.execDetached(["rm", "-rf", `${latexOutput}`])
-        Quickshell.execDetached(["mkdir", "-p", `${latexOutput}`])
-        Quickshell.execDetached(["rm", "-rf", `${cliphistDecode}`])
-        Quickshell.execDetached(["mkdir", "-p", `${cliphistDecode}`])
-        Quickshell.execDetached(["mkdir", "-p", `${aiChats}`])
-        Quickshell.execDetached(["mkdir", "-p", `${screenTimePath}`])
-        Quickshell.execDetached(["mkdir", "-p", `${userActions}`])
-        Quickshell.execDetached(["rm", "-rf", `${tempImages}`])
+        Quickshell.execDetached([
+            "/usr/bin/bash", "-c",
+            "rm -rf -- \"$1\" \"$2\" \"$3\" \"$4\"; " +
+            "mkdir -p -- \"$5\" \"$6\" \"$7\" \"$8\" \"$9\" \"$10\" \"$11\" \"$12\" \"$13\"",
+            "_",
+            booruPreviews,
+            latexOutput,
+            cliphistDecode,
+            tempImages,
+            shellConfig,
+            stateUserPath,
+            favicons,
+            coverArt,
+            booruPreviews,
+            latexOutput,
+            cliphistDecode,
+            aiChats,
+            screenTimePath,
+            userActions
+        ])
     }
 }

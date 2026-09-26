@@ -46,6 +46,7 @@ power_profiles="$repo_root/services/PowerProfilePersistence.qml"
 world_clock="$repo_root/services/WorldClock.qml"
 sidebar_world_clock="$repo_root/modules/sidebarLeft/widgets/WorldClockWidget.qml"
 game_mode="$repo_root/services/GameMode.qml"
+directories="$repo_root/modules/common/Directories.qml"
 overview_window="$repo_root/modules/overview/OverviewWindow.qml"
 resource_usage="$repo_root/services/ResourceUsage.qml"
 memory_pressure="$repo_root/services/MemoryPressureService.qml"
@@ -346,6 +347,13 @@ require "$game_mode" 'atomicWrites: true' 'GameMode state persistence must remai
 require "$game_mode" 'property bool _stateWriteQueued: false' 'GameMode rapid toggles must retain last-write queueing'
 reject "$game_mode" 'id: saveProcess' 'GameMode manual state writes must not spawn a shell process'
 reject "$game_mode" 'Quickshell.execDetached(["/usr/bin/mkdir"' 'GameMode must not duplicate state-directory creation on startup'
+
+require "$directories" 'Quickshell.execDetached([' 'directory bootstrap must remain asynchronous'
+require "$directories" '"/usr/bin/bash", "-c"' 'directory bootstrap must consolidate startup filesystem work'
+require "$directories" 'rm -rf -- \"$1\" \"$2\" \"$3\" \"$4\"' 'directory bootstrap must clean transient trees before recreation'
+require "$directories" 'mkdir -p -- \"$5\" \"$6\" \"$7\"' 'directory bootstrap must recreate required state/cache directories in one batch'
+directories_exec_count="$(grep -Fc 'Quickshell.execDetached([' "$directories")"
+[[ "$directories_exec_count" -eq 1 ]] || fail "Directories startup must use exactly one detached bootstrap command (found $directories_exec_count)"
 require "$overview_window" 'layer.enabled: GlobalStates.overviewOpen' 'retained Overview window masks must sleep while Overview is closed'
 require "$ii_panels" 'OnDemandPanelLoader { identifier: "iiOverview"; open: GlobalStates.overviewOpen; closeGraceMs: Appearance.animation.elementMoveExit.duration + 80;' 'ii Overview must unload after its exit animation instead of using long idle retention'
 reject "$ii_panels" 'identifier: "iiOverview"; open: GlobalStates.overviewOpen; retainAfterUse: true' 'ii Overview must not restore five-minute post-use residency'

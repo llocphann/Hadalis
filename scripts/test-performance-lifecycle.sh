@@ -26,6 +26,7 @@ cava="$repo_root/services/deferred/CavaService.qml"
 cava_generator="$repo_root/scripts/cava/generate_config.sh"
 advanced="$repo_root/modules/settings/AdvancedConfig.qml"
 waffle_themes="$repo_root/modules/waffle/settings/pages/WThemesPage.qml"
+theme_service="$repo_root/services/ThemeService.qml"
 media_section="$repo_root/modules/controlPanel/MediaSection.qml"
 sidebar_media="$repo_root/modules/sidebarLeft/widgets/MediaPlayerWidget.qml"
 crypto_widget="$repo_root/modules/sidebarLeft/widgets/CryptoWidget.qml"
@@ -209,6 +210,13 @@ require "$cava" '? Math.min(24, root.requestedFramerate)' 'Low Power must cap Ca
 require "$cava_generator" 'FRAMERATE="${2:-30}"' 'Cava generator fallback must remain 30 fps'
 require "$advanced" '"appearance.cava.framerate": 30' 'ii Cava reset must remain 30 fps'
 require "$waffle_themes" '"appearance.cava.framerate": 30' 'Waffle Cava reset must remain 30 fps'
+
+require "$theme_service" 'function _nextScheduleDelayMs(): int' 'scheduled themes must compute the next transition boundary directly'
+require "$theme_service" 'scheduleTimer.interval = Math.max(1000, Math.round(root._nextScheduleDelayMs()))' 'scheduled themes must sleep until the next transition boundary'
+require "$theme_service" 'repeat: false' 'scheduled theme transition timer must remain single-shot'
+require "$theme_service" 'onScheduleDayStartChanged: scheduleRefreshTimer.restart()' 'scheduled theme timer must re-arm when the day boundary changes'
+require "$theme_service" 'onScheduleNightStartChanged: scheduleRefreshTimer.restart()' 'scheduled theme timer must re-arm when the night boundary changes'
+reject "$theme_service" 'interval: 60000  // Check every minute' 'scheduled themes must not poll once per minute'
 require "$media_section" 'root.effectiveIsPlaying && GlobalStates.controlPanelOpen' 'Control Panel Cava must stop while playback is paused'
 require "$sidebar_media" 'root.QsWindow.window?.visible ?? false' 'Sidebar media position ticker must sleep with its presentation window'
 require "$sidebar_media" 'triggeredOnStart: true' 'Sidebar media position ticker must prime on reopen'

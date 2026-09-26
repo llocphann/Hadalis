@@ -50,7 +50,6 @@ ShellRoot {
     property var _windowPreviewService
     property var _weatherService
     property var _voiceSearchService
-    property var _fontSyncService
     property var _cavaThemeService
     // Screen Time must exist for the whole enabled session so the Material
     // notification-center Activity tab has history before it is first opened.
@@ -68,6 +67,7 @@ ShellRoot {
     property var _shellUpdatesService
     property var _autostartService
     property var _calendarSyncService
+    property var _fontSyncService
 
     // Boot phase timing (ms since epoch). Written to ~/.cache/inir/last-boot.json
     // when the deferred phase finishes. `inir status` reads this back to show users
@@ -143,7 +143,6 @@ ShellRoot {
             root._windowPreviewService = WindowPreviewService;
             root._weatherService = Weather;
             root._voiceSearchService = VoiceSearch;
-            root._fontSyncService = FontSyncService;
             root._cavaThemeService = CavaTheme;
             Hyprsunset.load();
             GlobalStates.deferredPanelsReady = true;
@@ -179,6 +178,7 @@ ShellRoot {
             root._shellUpdatesService = ShellUpdates;
             root._autostartService = Autostart;
             root._calendarSyncService = CalendarSync;
+            root._fontSyncService = FontSyncService;
             // Todo/Notepad are pure content storage. Their real UI consumers
             // instantiate the singletons on first use, so do not force file
             // reads/watchers into every shell startup.

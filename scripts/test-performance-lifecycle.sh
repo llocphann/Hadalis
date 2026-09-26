@@ -387,10 +387,16 @@ reject "$first_run" 'command: ["/usr/bin/test", "-f", root.firstRunFilePath]' 'f
 require "$shell_qml" 'root._shellUpdatesService = ShellUpdates;' 'Tier 4 must retain background shell-update initialization'
 require "$shell_qml" 'root._autostartService = Autostart;' 'Tier 4 must retain the Autostart IPC/file-watch service'
 require "$shell_qml" 'root._calendarSyncService = CalendarSync;' 'Tier 4 must retain configured calendar background sync'
+require "$shell_qml" 'root._fontSyncService = FontSyncService;' 'Tier 4 must retain deferred desktop font synchronization'
 reject "$shell_qml" 'property var _todoService' 'Todo must remain demand-loaded instead of forced at shell startup'
 reject "$shell_qml" 'property var _notepadService' 'Notepad must remain demand-loaded instead of forced at shell startup'
 reject "$shell_qml" 'root._todoService = Todo;' 'Tier 4 must not force-load Todo storage'
 reject "$shell_qml" 'root._notepadService = Notepad;' 'Tier 4 must not force-load Notepad storage'
+
+tier3_block="$(sed -n '/Tier 3: T+500ms/,/Tier 4: T+1500ms/p' "$shell_qml")"
+if grep -Fq 'root._fontSyncService = FontSyncService;' <<<"$tier3_block"; then
+    fail 'FontSyncService must not run in Tier 3 display/interaction startup'
+fi
 require "$overview_window" 'layer.enabled: GlobalStates.overviewOpen' 'retained Overview window masks must sleep while Overview is closed'
 require "$ii_panels" 'OnDemandPanelLoader { identifier: "iiOverview"; open: GlobalStates.overviewOpen; closeGraceMs: Appearance.animation.elementMoveExit.duration + 80;' 'ii Overview must unload after its exit animation instead of using long idle retention'
 reject "$ii_panels" 'identifier: "iiOverview"; open: GlobalStates.overviewOpen; retainAfterUse: true' 'ii Overview must not restore five-minute post-use residency'

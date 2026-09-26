@@ -1855,13 +1855,43 @@ fn default_socket_path() -> PathBuf {
         .join("mpd.sock")
 }
 
+fn arm_parent_death_signal() -> Result<()> {
+    let parent = unsafe { libc::getppid() };
+    if parent <= 1 {
+        bail!("parent_process_unavailable");
+    }
+
+    let result = unsafe { libc::prctl(libc::PR_SET_PDEATHSIG, libc::SIGTERM) };
+    if result != 0 {
+        return Err(io::Error::last_os_error()).context("arm parent-death signal");
+    }
+
+    if unsafe { libc::getppid() } != parent {
+        bail!("parent_process_changed");
+    }
+    Ok(())
+}
+
 fn prepare_socket(path: &Path) -> Result<UnixListener> {
     if let Some(parent) = path.parent() {
         fs::create_dir_all(parent)?;
     }
+
     if path.exists() {
-        fs::remove_file(path).with_context(|| format!("remove stale socket {}", path.display()))?;
+        match UnixStream::connect(path) {
+            Ok(_) => bail!("daemon_socket_in_use:{}", path.display()),
+            Err(error) if error.kind() == io::ErrorKind::ConnectionRefused => {
+                fs::remove_file(path)
+                    .with_context(|| format!("remove stale socket {}", path.display()))?;
+            }
+            Err(error) if error.kind() == io::ErrorKind::NotFound => {}
+            Err(error) => {
+                return Err(error)
+                    .with_context(|| format!("probe existing socket {}", path.display()));
+            }
+        }
     }
+
     UnixListener::bind(path).with_context(|| format!("bind {}", path.display()))
 }
 
@@ -1879,6 +1909,12 @@ fn main() -> Result<()> {
     if args.client_compat {
         std::process::exit(run_client_compat(&args.compat_args, &socket));
     }
+
+    // These are Quickshell-owned long-lived helpers. Linux does not terminate
+    // children automatically when their parent exits, so bind their lifetime
+    // to the shell and avoid leaving native helpers behind after reloads.
+    arm_parent_death_signal()?;
+
     if args.subscribe {
         return run_subscribe(&socket);
     }
@@ -1919,18 +1955,56 @@ fn main() -> Result<()> {
 mod tests {
     use std::io::{BufRead, BufReader, Write};
     use std::net::TcpListener;
-    use std::os::unix::net::UnixStream;
+    use std::os::unix::net::{UnixListener, UnixStream};
+    use std::path::PathBuf;
     use std::sync::mpsc::{self, Receiver};
     use std::sync::{Arc, Mutex};
     use std::thread::{self, JoinHandle};
-    use std::time::Duration;
+    use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
     use super::{
         ART_EXTENSIONS, MpdClient, MpdManager, art_cache_key, art_filename_rank, broadcast,
-        casefold_key, legacy_request, lrc_stamp_seconds, pairs, parse_lrc, quote, records,
-        status_payload_mode, status_payload_mode_with_art, unique_trimmed_uris,
+        casefold_key, legacy_request, lrc_stamp_seconds, pairs, parse_lrc, prepare_socket, quote,
+        records, status_payload_mode, status_payload_mode_with_art, unique_trimmed_uris,
     };
     use serde_json::{Value, json};
+
+    fn test_socket_path(label: &str) -> PathBuf {
+        let nonce = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("system clock")
+            .as_nanos();
+        std::env::temp_dir().join(format!(
+            "inir-mpdd-{label}-{}-{nonce}.sock",
+            std::process::id()
+        ))
+    }
+
+    #[test]
+    fn prepare_socket_preserves_live_daemon() {
+        let path = test_socket_path("live");
+        let listener = UnixListener::bind(&path).expect("bind live socket");
+
+        let error = prepare_socket(&path).expect_err("live daemon must not be replaced");
+        assert!(error.to_string().contains("daemon_socket_in_use"));
+        assert!(path.exists(), "live socket path must remain intact");
+
+        drop(listener);
+        let _ = std::fs::remove_file(path);
+    }
+
+    #[test]
+    fn prepare_socket_reclaims_stale_socket() {
+        let path = test_socket_path("stale");
+        let listener = UnixListener::bind(&path).expect("bind stale socket");
+        drop(listener);
+
+        let replacement = prepare_socket(&path).expect("reclaim stale socket");
+        assert!(path.exists(), "replacement socket must be bound");
+
+        drop(replacement);
+        let _ = std::fs::remove_file(path);
+    }
 
     fn spawn_fake_mpd() -> (u16, Receiver<Vec<String>>, JoinHandle<()>) {
         let listener = TcpListener::bind(("127.0.0.1", 0)).expect("bind fake MPD");

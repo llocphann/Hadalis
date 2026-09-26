@@ -9,6 +9,7 @@ publish = false
 [dependencies]
 anyhow.workspace = true
 clap.workspace = true
+libc.workspace = true
 oxixml-unicode.workspace = true
 serde.workspace = true
 serde_json.workspace = true

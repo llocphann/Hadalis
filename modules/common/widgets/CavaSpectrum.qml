@@ -135,7 +135,8 @@ Canvas {
         const selectedCount = end - start
         const strength = Math.max(0, Math.min(1, root.accentStrength))
         const applyProfile = strength > 0 && root.frequencyProfile !== "flat"
-        const selected = new Array(selectedCount)
+        const selected = root._selectedScratch
+        selected.length = selectedCount
 
         for (let i = 0; i < selectedCount; ++i) {
             let value = Number(source[start + i]) || 0
@@ -174,7 +175,8 @@ Canvas {
         const radius = Math.max(0, Math.round(root.smoothing))
         if (radius === 0 || source.length < 3)
             return source
-        const out = new Array(source.length)
+        const out = root._smoothScratch
+        out.length = source.length
         let start = 0
         let end = Math.min(source.length - 1, radius)
         let sum = 0
@@ -444,9 +446,14 @@ Canvas {
         const ceiling = Math.max(1, root.normalizationCeiling)
         const ribbonMode = root.waveMode === "ribbon" || root.barsOrigin === "mirror"
         const lineMode = root.waveMode === "line"
-        const primary = []
-        const secondary = ribbonMode ? [] : null
-        const baseline = !ribbonMode && !lineMode ? [] : null
+        const primary = root._primaryScratch
+        primary.length = 0
+        const secondary = ribbonMode ? root._secondaryScratch : null
+        if (secondary)
+            secondary.length = 0
+        const baseline = !ribbonMode && !lineMode ? root._baselineScratch : null
+        if (baseline)
+            baseline.length = 0
         const radii = root._resolvedCornerRadii
         const strokeHeadroom = Math.max(0, root.lineWidth / 2 + 0.5)
 

@@ -479,6 +479,7 @@ Item {
 
     Timer {
         running: root.player?.playbackState === MprisPlaybackState.Playing
+            && GlobalStates.controlPanelOpen
         interval: 1000
         repeat: true
         onTriggered: root.player?.positionChanged()

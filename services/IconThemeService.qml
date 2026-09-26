@@ -130,7 +130,7 @@ Singleton {
         root.dockTheme = Config.options?.appearance?.dockIconTheme ?? ""
     }
 
-    function ensureThemesLoaded(force: bool = false): void {
+    function ensureThemesLoaded(force = false) {
         if (listThemesProc.running)
             return
         if (root._themesLoaded && !force)

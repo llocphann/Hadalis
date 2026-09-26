@@ -46,8 +46,11 @@ require 'root._startGtkSync(qt6ctProc.themeName)' \
 
 require 'property bool _themesLoaded: false' \
     'icon-theme enumeration must expose cached demand state'
-require 'function ensureThemesLoaded(force: bool = false): void' \
+require 'function ensureThemesLoaded(force = false)' \
     'icon-theme enumeration must be demand-driven'
+if grep -Fq -- 'function ensureThemesLoaded(force: bool = false): void' "$service"; then
+    fail 'icon-theme lazy loader must avoid unsupported typed default parameters'
+fi
 require 'if (root._themesLoaded && !force)' \
     'icon-theme enumeration must not rescan after the first successful demand load'
 require 'root._themesLoaded = true' \

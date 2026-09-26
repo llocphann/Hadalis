@@ -192,46 +192,6 @@ Canvas {
         return out
     }
 
-    function _barLevels(source, count): var {
-        const out = new Array(count)
-        const ceiling = Math.max(1, root.normalizationCeiling)
-        for (let i = 0; i < count; i++) {
-            const from = Math.floor(i * source.length / count)
-            const to = Math.min(source.length,
-                Math.max(from + 1, Math.ceil((i + 1) * source.length / count)))
-            let sum = 0
-            let peak = 0
-            let samples = 0
-            for (let j = from; j < to; j++) {
-                const value = source[j] || 0
-                sum += value
-                peak = Math.max(peak, value)
-                samples++
-            }
-            const average = samples > 0 ? sum / samples : 0
-            out[i] = Math.max(0, Math.min(1, (average * 0.72 + peak * 0.28) / ceiling))
-        }
-        return out
-    }
-
-    function _waveLevels(source, count): var {
-        const out = new Array(count)
-        const ceiling = Math.max(1, root.normalizationCeiling)
-        if (source.length === 1) {
-            out.fill(Math.max(0, Math.min(1, source[0] / ceiling)))
-            return out
-        }
-        for (let i = 0; i < count; i++) {
-            const position = i * (source.length - 1) / Math.max(1, count - 1)
-            const low = Math.floor(position)
-            const high = Math.min(source.length - 1, low + 1)
-            const fraction = position - low
-            const value = source[low] * (1 - fraction) + source[high] * fraction
-            out[i] = Math.max(0, Math.min(1, value / ceiling))
-        }
-        return out
-    }
-
     function _makeCornerRadii(): var {
         const maximum = Math.max(0, Math.min(root.width / 2, root.height / 2))
         const tl = Math.max(0, Math.min(maximum,
@@ -371,11 +331,11 @@ Canvas {
         const span = Math.max(1, x1 - x0)
         const pitch = Math.max(3, root.pixelsPerBar)
         const count = Math.max(4, Math.floor((span + root.barSpacing) / pitch))
-        const levels = root._barLevels(source, count)
         const slot = span / count
         const width = Math.max(1, slot - Math.max(0, root.barSpacing))
         const gradient = root._horizontalGradient(ctx, x0, x1, 1)
         const radii = root._resolvedCornerRadii
+        const ceiling = Math.max(1, root.normalizationCeiling)
         ctx.fillStyle = gradient
 
         for (let i = 0; i < count; i++) {
@@ -392,7 +352,22 @@ Canvas {
                 root._cornerInset(centerX, radii[2], false))
             const bottom = Math.max(top, root.height - bottomInset)
             const curveHeadroom = root._curveHeadroom(top, bottom)
-            const rawValue = levels[i] || 0
+
+            const from = Math.floor(i * source.length / count)
+            const to = Math.min(source.length,
+                Math.max(from + 1, Math.ceil((i + 1) * source.length / count)))
+            let sum = 0
+            let peak = 0
+            let samples = 0
+            for (let j = from; j < to; ++j) {
+                const sample = source[j] || 0
+                sum += sample
+                peak = Math.max(peak, sample)
+                samples++
+            }
+            const average = samples > 0 ? sum / samples : 0
+            const rawValue = Math.max(0, Math.min(1,
+                (average * 0.72 + peak * 0.28) / ceiling))
             const value = rawValue * edgeFactor
             const center = (top + bottom) / 2
             const peakTop = Math.min(center, top + curveHeadroom)
@@ -466,7 +441,7 @@ Canvas {
         const span = Math.max(1, x1 - x0)
         const count = Math.max(2, Math.min(source.length,
             Math.round(span / Math.max(4, root.pixelsPerBar))))
-        const levels = root._waveLevels(source, count)
+        const ceiling = Math.max(1, root.normalizationCeiling)
         const ribbonMode = root.waveMode === "ribbon" || root.barsOrigin === "mirror"
         const lineMode = root.waveMode === "line"
         const primary = []
@@ -489,7 +464,18 @@ Canvas {
             const curveHeadroom = root._curveHeadroom(top, bottom)
             const peakTop = Math.min(center, top + curveHeadroom + strokeHeadroom)
             const peakBottom = Math.max(center, bottom - curveHeadroom - strokeHeadroom)
-            const value = (levels[i] || 0) * edgeFactor
+            let level = 0
+            if (source.length === 1) {
+                level = Math.max(0, Math.min(1, source[0] / ceiling))
+            } else {
+                const position = i * (source.length - 1) / Math.max(1, count - 1)
+                const low = Math.floor(position)
+                const high = Math.min(source.length - 1, low + 1)
+                const fraction = position - low
+                const sample = source[low] * (1 - fraction) + source[high] * fraction
+                level = Math.max(0, Math.min(1, sample / ceiling))
+            }
+            const value = level * edgeFactor
             const fill = Math.max(0.1, Math.min(1, root.fillRatio))
 
             if (ribbonMode) {

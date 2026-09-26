@@ -104,6 +104,8 @@ reject "$cava_spectrum" 'function _peakBounds(' 'CavaSpectrum must not allocate 
 reject "$cava_spectrum" 'function _applyFrequencyProfile(' 'CavaSpectrum selection/profile must stay fused'
 reject "$cava_spectrum" 'primary.push([' 'CavaSpectrum wave coordinates must stay flat'
 require "$cava_spectrum" 'const baseline = !ribbonMode && !lineMode ? [] : null' 'CavaSpectrum line mode must not build an unused baseline'
+reject "$cava_spectrum" 'function _barLevels(' 'CavaSpectrum must calculate levels inside paint loops'
+reject "$cava_spectrum" 'function _waveLevels(' 'CavaSpectrum must not allocate a transient level array'
 require "$cava" '? Math.min(24, root.requestedFramerate)' 'Low Power must cap Cava at 24 fps'
 require "$cava_generator" 'FRAMERATE="${2:-30}"' 'Cava generator fallback must remain 30 fps'
 require "$advanced" '"appearance.cava.framerate": 30' 'ii Cava reset must remain 30 fps'

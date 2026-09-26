@@ -49,43 +49,31 @@ Canvas {
             return;
         }
 
-        // Smoothing
+        // Smoothing + drawing in one rolling-window pass. This preserves
+        // the exact edge-clamped moving average without allocating a second
+        // n-element array for every CAVA frame.
         var smoothWindow = Math.max(0, root.smoothing);
-        var smoothPoints = new Array(n);
         var count = smoothWindow * 2 + 1;
         var sum = 0;
         for (var j = -smoothWindow; j <= smoothWindow; ++j)
             sum += points[Math.max(0, Math.min(n - 1, j))];
-        for (var i = 0; i < n; ++i) {
-            smoothPoints[i] = sum / count;
-            var outgoing = Math.max(0, Math.min(n - 1, i - smoothWindow));
-            var incoming = Math.max(0, Math.min(n - 1, i + smoothWindow + 1));
-            sum += points[incoming] - points[outgoing];
-        }
+
         ctx.beginPath();
         var centerY = height / 2;
         var maxVal = 1000.0; // Cava max value usually
-        
-        // Draw Catmull-Rom spline or simple line through points
-        // Mapped to width
-        
         ctx.moveTo(0, centerY); // Start at left center
-        
+
         for (var i = 0; i < n; ++i) {
             var x = (i / (n - 1)) * width;
-            // Map magnitude to amplitude (up and down from center)
-            // Use phase to make it wave-like even with static magnitude
-            // But cava gives magnitude. Let's just map magnitude to Y offset.
-            
-            var magnitude = (smoothPoints[i] / maxVal) * (height / 2) * root.amplitudeScale;
-            // Alternating up/down for wave effect? 
-            // Cava gives positive magnitudes.
-            // Let's multiply by sin(x + phase) to make it look like a wave that is shaped by cava magnitude
-            
-            var waveCarrier = Math.sin(i * 0.5 + root.phase); 
+            var smoothed = sum / count;
+            var magnitude = (smoothed / maxVal) * (height / 2) * root.amplitudeScale;
+            var waveCarrier = Math.sin(i * 0.5 + root.phase);
             var y = centerY + magnitude * waveCarrier * 3; // *3 for visibility
-            
             ctx.lineTo(x, y);
+
+            var outgoing = Math.max(0, Math.min(n - 1, i - smoothWindow));
+            var incoming = Math.max(0, Math.min(n - 1, i + smoothWindow + 1));
+            sum += points[incoming] - points[outgoing];
         }
         
         ctx.strokeStyle = root.color;

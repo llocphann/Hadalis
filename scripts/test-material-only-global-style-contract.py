@@ -1240,7 +1240,13 @@ def main() -> None:
         "Appearance.inir.",
     ):
         forbid(weather_bar, token, "WeatherBar.qml")
-    require(weather_bar, "color: Appearance.colors.colOnLayer1", "WeatherBar.qml")
+    for token in (
+        "property color foregroundColor: root.vertical",
+        "? Appearance.colors.colOnLayer0",
+        ": Appearance.colors.colOnLayer1",
+        "color: root.foregroundColor",
+    ):
+        require(weather_bar, token, "WeatherBar.qml")
 
     for token in (
         "Appearance.zzzEverywhere",

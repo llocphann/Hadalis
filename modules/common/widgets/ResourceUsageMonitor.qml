@@ -17,39 +17,21 @@ QtObject {
             || (root.target.visible
                 && (!root.target.QsWindow.window
                     || root.target.QsWindow.window.visible)))
-    property bool _holding: false
-    property bool _holdingHistories: true
 
-    function sync(): void {
-        if (!root.monitoring) {
-            if (root._holding) {
-                root._holding = false
-                ResourceUsage.releaseKeepAlive(root._holdingHistories)
-            }
-            return
+    property QtObject _serviceLease: ServiceLease {
+        active: root.monitoring
+        value: root.histories
+        acquire: historyWanted => {
+            ResourceUsage.keepAlive(historyWanted)
+            return historyWanted
         }
-
-        if (!root._holding) {
-            root._holding = true
-            root._holdingHistories = root.histories
-            ResourceUsage.keepAlive(root._holdingHistories)
-            return
+        update: (heldHistory, historyWanted) => {
+            // Acquire the replacement first so polling never briefly drops to
+            // zero consumers while an active monitor changes history demand.
+            ResourceUsage.keepAlive(historyWanted)
+            ResourceUsage.releaseKeepAlive(heldHistory)
+            return historyWanted
         }
-
-        if (root._holdingHistories !== root.histories) {
-            ResourceUsage.keepAlive(root.histories)
-            ResourceUsage.releaseKeepAlive(root._holdingHistories)
-            root._holdingHistories = root.histories
-        }
-    }
-
-    onMonitoringChanged: root.sync()
-    onHistoriesChanged: root.sync()
-    Component.onCompleted: root.sync()
-    Component.onDestruction: {
-        if (root._holding) {
-            root._holding = false
-            ResourceUsage.releaseKeepAlive(root._holdingHistories)
-        }
+        release: heldHistory => ResourceUsage.releaseKeepAlive(heldHistory)
     }
 }

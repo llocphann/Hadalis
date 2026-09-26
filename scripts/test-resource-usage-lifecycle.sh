@@ -84,11 +84,13 @@ assert_contains 'readonly property bool monitoring:' "$monitor_text" 'ResourceUs
 assert_contains 'root.target.visible' "$monitor_text" 'ResourceUsageMonitor must gate on target visibility'
 assert_contains 'root.target.QsWindow.window.visible' "$monitor_text" 'ResourceUsageMonitor must gate on native window visibility'
 assert_contains 'property bool histories: true' "$monitor_text" 'ResourceUsageMonitor must preserve history sampling by default'
-assert_contains 'ResourceUsage.keepAlive(root._holdingHistories)' "$monitor_text" 'ResourceUsageMonitor must acquire the shared telemetry lease with history demand'
-assert_contains 'ResourceUsage.releaseKeepAlive(root._holdingHistories)' "$monitor_text" 'ResourceUsageMonitor must release the matching telemetry lease'
+assert_contains 'ServiceLease {' "$monitor_text" 'ResourceUsageMonitor must delegate lifecycle ownership to ServiceLease'
+assert_contains 'ResourceUsage.keepAlive(historyWanted)' "$monitor_text" 'ResourceUsageMonitor must acquire the shared telemetry lease with history demand'
+assert_contains 'ResourceUsage.releaseKeepAlive(heldHistory)' "$monitor_text" 'ResourceUsageMonitor must release the matching telemetry lease'
 assert_contains 'property int _historyConsumers: 0' "$(cat "$service")" 'ResourceUsage must track history demand independently'
 assert_contains 'root._historyConsumers <= 0' "$(cat "$service")" 'ResourceUsage history updates must be demand-gated'
 assert_contains 'ResourceUsageMonitor 1.0 ResourceUsageMonitor.qml' "$(cat "$widgets_qmldir")" 'ResourceUsageMonitor must be exported'
+assert_contains 'ServiceLease 1.0 ServiceLease.qml' "$(cat "$widgets_qmldir")" 'ServiceLease must be exported'
 
 for lifecycle_file in "$resources_popup" "$status_rings" "$overlay_resources" "$sysmon_widget" "$waffle_widgets" "$dash_system" "$bar_resources" "$vertical_bar_resources"; do
     lifecycle_text="$(cat "$lifecycle_file")"

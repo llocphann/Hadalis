@@ -121,12 +121,14 @@ def main() -> None:
         "Media equalizer must not depend on Canvas/layer-effect rendering",
     )
     check(
-        "CavaService.subscribe(root.sampleCount)" in cava,
-        "CavaProcess must subscribe while active",
+        "ServiceLease {" in cava
+        and "acquire: count => CavaService.subscribe(count)" in cava,
+        "CavaProcess must acquire its shared subscription through ServiceLease",
     )
     check(
-        "CavaService.unsubscribe(root._subscriptionId)" in cava,
-        "CavaProcess must unsubscribe when presentation activity drops",
+        "release: token => CavaService.unsubscribe(token)" in cava
+        and "update: (token, count) =>" in cava,
+        "CavaProcess must release and resize the exact held subscription",
     )
     check(
         "id: dataWatchdog" in cava_service

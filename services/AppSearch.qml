@@ -664,17 +664,18 @@ Singleton {
         if (_cachedPreppedIcons.length > 0) {
             const iconSearchResults = Fuzzy.go(str, preppedIcons, {
                 all: true,
-                key: "name"
-            }).map(r => r.obj.entry);
+                key: "name",
+                limit: 1
+            });
             if (iconSearchResults.length > 0) {
-                const guess = iconSearchResults[0].icon
+                const guess = iconSearchResults[0].obj.entry.icon
                 if (iconExists(guess)) {
                     return guess;
                 }
             }
         }
 
-        const nameSearchResults = root.fuzzyQuery(str);
+        const nameSearchResults = root.fuzzyQuery(str, 1);
         if (nameSearchResults.length > 0) {
             const guess = nameSearchResults[0].icon
             if (iconExists(guess)) {

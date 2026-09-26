@@ -2,6 +2,7 @@ import QtQuick
 import QtQuick.Layouts
 import Quickshell
 import qs.services
+import "../common/PanelFamilyPolicy.js" as FamilyPolicy
 import qs.modules.common
 import qs.modules.common.widgets
 
@@ -10,9 +11,12 @@ ContentPage {
     settingsPageIndex: 10
     settingsPageName: Translation.tr("Modules")
 
+    readonly property bool isIi: (Config.options?.panelFamily ?? "ii") === "ii"
+    readonly property bool isAbyss: Config.options?.panelFamily === "abyss"
     readonly property bool isWaffle: Config.options?.panelFamily === "waffle"
 
     readonly property var defaultPanels: ({
+        "abyss": FamilyPolicy.abyssPanels,
         "ii": [
             "iiBar", "iiBackground", "iiBackdrop", "iiCheatsheet", "iiControlPanel", "iiDock", "iiLock", 
             "iiMediaControls", "iiNotificationPopup", "iiOnScreenDisplay", "iiOnScreenKeyboard", 
@@ -83,7 +87,8 @@ ContentPage {
             { displayName: Translation.tr("Panels"), icon: "extension", value: "panels" },
             { displayName: Translation.tr("Terminal"), icon: "terminal", value: "terminal" },
             { displayName: Translation.tr("Modules"), icon: "dashboard", value: "modules" },
-            { displayName: Translation.tr("Interface"), icon: "tune", value: "interface" }
+            { displayName: Translation.tr("Interface"), icon: "tune", value: "interface" },
+            { displayName: "Abyss Style", icon: "water", value: "abyss" }
         ]
     }
 
@@ -143,82 +148,46 @@ ContentPage {
         title: Translation.tr("Panel Style")
 
         SettingsGroup {
-            RowLayout {
+            ConfigSelectionArray {
                 Layout.fillWidth: true
-                spacing: 8
+                currentValue: Config.options?.panelFamily ?? "ii"
+                options: [
+                    { displayName: "Material II", icon: "dashboard", value: "ii" },
+                    { displayName: "Waffle", icon: "window", value: "waffle" },
+                    { displayName: "Abyss", icon: "water", value: "abyss" }
+                ]
+                onSelected: value => Quickshell.execDetached([Quickshell.shellPath("scripts/inir"),"panelFamily","set",value])
+            }
+        }
+    }
 
-                RippleButton {
-                    Layout.fillWidth: true
-                    implicitHeight: 64
-                    buttonRadius: Appearance.zzzEverywhere ? Appearance.zzz.controlRadius : Appearance.rounding.small
-                    colBackground: !modulesPage.isWaffle
-                        ? (Appearance.zzzEverywhere ? Appearance.zzz.sticker : Appearance.colors.colPrimaryContainer)
-                        : Appearance.colors.colLayer1
-                    colBackgroundHover: !modulesPage.isWaffle
-                        ? (Appearance.zzzEverywhere ? Appearance.colors.colPrimaryHover : Appearance.colors.colPrimaryContainerHover)
-                        : Appearance.colors.colLayer1Hover
-                    colRipple: !modulesPage.isWaffle
-                        ? (Appearance.zzzEverywhere ? Appearance.colors.colPrimaryActive : Appearance.colors.colPrimaryContainerActive)
-                        : Appearance.colors.colLayer1Active
+    Loader {
+        Layout.fillWidth: true
+        Layout.preferredHeight: item?.implicitHeight ?? 0
+        active: modulesPage.activeSection === "abyss"
+        visible: active
+        source: "../abyss/settings/AbyssStyleSettings.qml"
+    }
 
-                    ColumnLayout {
-                        anchors.centerIn: parent
-                        spacing: 4
-                        MaterialSymbol {
-                            Layout.alignment: Qt.AlignHCenter
-                            text: "dashboard"
-                            iconSize: Appearance.font.pixelSize.larger
-                            color: !modulesPage.isWaffle
-                                ? (Appearance.zzzEverywhere ? Appearance.zzz.onSticker : Appearance.colors.colOnPrimaryContainer)
-                                : Appearance.colors.colOnSurface
-                        }
-                        StyledText {
-                            Layout.alignment: Qt.AlignHCenter
-                            text: "Material (ii)"
-                            font.pixelSize: Appearance.font.pixelSize.small
-                            color: !modulesPage.isWaffle
-                                ? (Appearance.zzzEverywhere ? Appearance.zzz.onSticker : Appearance.colors.colOnPrimaryContainer)
-                                : Appearance.colors.colOnSurface
-                        }
-                    }
-
-                    onClicked: {
-                        Config.setNestedValue("panelFamily", "ii")
-                        Config.setNestedValue("enabledPanels", [...modulesPage.defaultPanels["ii"]])
-                    }
-                }
-
-                RippleButton {
-                    Layout.fillWidth: true
-                    implicitHeight: 64
-                    buttonRadius: Appearance.zzzEverywhere ? Appearance.zzz.controlRadius : Appearance.rounding.small
-                    colBackground: modulesPage.isWaffle ? Appearance.colors.colPrimaryContainer : Appearance.colors.colLayer1
-                    colBackgroundHover: modulesPage.isWaffle ? Appearance.colors.colPrimaryContainerHover : Appearance.colors.colLayer1Hover
-                    colRipple: modulesPage.isWaffle ? Appearance.colors.colPrimaryContainerActive : Appearance.colors.colLayer1Active
-
-                    ColumnLayout {
-                        anchors.centerIn: parent
-                        spacing: 4
-                        MaterialSymbol {
-                            Layout.alignment: Qt.AlignHCenter
-                            text: "window"
-                            iconSize: Appearance.font.pixelSize.larger
-                            color: modulesPage.isWaffle ? Appearance.colors.colOnPrimaryContainer : Appearance.colors.colOnSurface
-                        }
-                        StyledText {
-                            Layout.alignment: Qt.AlignHCenter
-                            text: "Windows 11 (Waffle)"
-                            font.pixelSize: Appearance.font.pixelSize.small
-                            color: modulesPage.isWaffle ? Appearance.colors.colOnPrimaryContainer : Appearance.colors.colOnSurface
-                        }
-                    }
-
-                    onClicked: {
-                        Config.setNestedValue("panelFamily", "waffle")
-                        Config.setNestedValue("enabledPanels", [...modulesPage.defaultPanels["waffle"]])
-                    }
+    SettingsCardSection {
+        settingsTaskSection: "modules"
+        visible: modulesPage.isAbyss && modulesPage.activeSection === "modules"
+        expanded: true
+        title: "Abyss Core"
+        icon: "water"
+        SettingsGroup {
+            Repeater {
+                model: FamilyPolicy.abyssPanels.filter(id => id.startsWith("abyss"))
+                SettingsSwitch {
+                    required property string modelData
+                    autoToggle: false
+                    buttonIcon: "water"
+                    text: modelData.replace(/^abyss/,"").replace(/([a-z])([A-Z])/g,"$1 $2")
+                    checked: modulesPage.isPanelEnabled(modelData)
+                    onToggledByUser: checked => modulesPage.setPanelEnabled(modelData,checked)
                 }
             }
+            SettingsNote { text: "Critical and specialist flows use shared implementations. Abyss Style controls the liquid presentation."; icon: "info" }
         }
     }
 
@@ -497,7 +466,7 @@ ContentPage {
     // ==================== MATERIAL II ====================
     SettingsCardSection {
         settingsTaskSection: "modules"
-        visible: !modulesPage.isWaffle && modulesPage.activeSection === "modules"
+        visible: modulesPage.isIi && modulesPage.activeSection === "modules"
         expanded: true
         icon: "dashboard"
         title: Translation.tr("Core")
@@ -563,7 +532,7 @@ ContentPage {
 
     SettingsCardSection {
         settingsTaskSection: "modules"
-        visible: !modulesPage.isWaffle && modulesPage.activeSection === "modules"
+        visible: modulesPage.isIi && modulesPage.activeSection === "modules"
         expanded: true
         icon: "notifications"
         title: Translation.tr("Feedback")
@@ -597,7 +566,7 @@ ContentPage {
 
     SettingsCardSection {
         settingsTaskSection: "modules"
-        visible: !modulesPage.isWaffle && modulesPage.activeSection === "modules"
+        visible: modulesPage.isIi && modulesPage.activeSection === "modules"
         expanded: true
         icon: "build"
         title: Translation.tr("Utilities")
@@ -679,7 +648,7 @@ ContentPage {
 
     SettingsCardSection {
         settingsTaskSection: "modules"
-        visible: !modulesPage.isWaffle && modulesPage.activeSection === "modules"
+        visible: modulesPage.isIi && modulesPage.activeSection === "modules"
         expanded: true
         icon: "more_horiz"
         title: Translation.tr("Optional")

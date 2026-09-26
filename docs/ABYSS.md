@@ -233,3 +233,26 @@ Shared service fixes are separate: `04d0e0148` restores the uptime root callback
 pins/filtering/order/Niri authority under an executed production-model regression.
 The latest GPU capture has neither prior shared-service diagnostic. Settings,
 docs, full-shell switching and performance qualification are next.
+
+
+## Configuration checkpoint (phase 9)
+
+Inspected both settings-family selectors, the welcome profile, settings page
+registry and launcher actions. Modules and Waffle Settings now select all three
+families through the shared router, preserving disabled-panel preferences. Welcome
+also offers Abyss; Material remains the default. The common settings registry
+hides Material/Waffle-only pages for Abyss without renumbering persisted slots.
+
+`abyss/settings/*` supplies URL-loaded Abyss Style groups for Performance,
+Surface, Motion, Refraction & Glass, Perimeter, Bar & Dock, and Panels. Bar layout
+editing and output selection reuse canonical config keys. Output selection keeps
+at least one live output and safely resolves stale selections. Reduced motion is
+global. Settings is a shared standalone fallback; it is not another shell-body
+painter. [Actual settings capture](evidence/abyss/phase9-settings.png) loaded the
+new page in Wayland Quickshell with no QML reference/type/binding diagnostic.
+
+Panel-family, perimeter, architecture, structure, config and IPC docs now describe
+three independent families, native ownership and shared fallbacks. The generated
+IPC registry classifies root-owned OSD as shared. Next: complete regression
+validation, repeated full-shell switching and native input/idle qualification.
+No hardware multi-output or desktop acceptance is inferred from these checks.

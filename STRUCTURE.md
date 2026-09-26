@@ -7,6 +7,7 @@ inir/
 ├── shell.qml                     # Root entry — loads services and selects panel family
 ├── ShellIiPanels.qml             # Material ii panel family
 ├── ShellWafflePanels.qml         # Windows 11 panel family
+├── ShellAbyssPanels.qml          # Perimeter Liquid Shell family
 ├── GlobalStates.qml              # Runtime UI state
 ├── FamilyTransitionOverlay.qml   # Animated family switch
 ├── settings.qml                  # Settings GUI
@@ -27,6 +28,11 @@ inir/
 │   ├── dock/                     # App dock
 │   ├── overview/                 # Workspace overview + app search/task view
 │   ├── wallpaperLauncher/        # Compact wallpaper carousel
+│   ├── abyss/                    # Single perimeter field + embedded native content
+│   │   ├── looks/                # Style, deterministic geometry and shader
+│   │   ├── bar/                  # Five-zone horizontal/vertical modules
+│   │   ├── content/              # Lazy sidebars, dock, popup, clipboard, launcher, OSD
+│   │   └── settings/             # Abyss Style and output selection
 │   ├── waffle/                   # Windows 11 family
 │   │   ├── bar/                  # Bottom taskbar
 │   │   ├── startMenu/            # Start menu with search
@@ -53,13 +59,15 @@ The live tree intentionally has no Orbit, Mascot, Workspace Strip, `barM3`, Pill
 
 **modules/common/:** shared config, visual infrastructure, perimeter infrastructure, and reusable widgets. `Config.qml` owns the typed runtime schema and the custom-widget persistence workaround.
 
-**modules/common/perimeter/:** Connected Perimeter core substrate: topology and slot configuration, module registry/hosting, anchor publication/lookup, transient-surface routing, and connected geometry/input helpers. Existing bar popups consume this substrate through `modules/bar/StyledPopup.qml`; full `iiPerimeter` composition ownership remains a separate broader cutover.
+**modules/common/perimeter/:** Connected Perimeter core substrate: topology and slot configuration, module registry/hosting, anchor publication/lookup, transient-surface routing, and connected geometry/input helpers. Existing bar popups consume this substrate through `modules/bar/StyledPopup.qml`; the retired full `iiPerimeter` runtime remains absent.
 
 **modules/bar/:** the sole ii-family Bar implementation. It supports top/bottom/left/right placement and Classic geometry modes (Hug, Float, Rectangle, Card). Existing bar popups use `StyledPopup.qml`, which provides the connected-surface presentation path without introducing a second popup framework.
 
 **modules/dock/:** the ii-family application Dock. Panel is the canonical supported Dock surface style; legacy persisted style values are normalized to `panel` during startup.
 
 **modules/waffle/:** Windows 11-style panel family with its own bottom taskbar, Start menu, action center, notification center, visual tokens, and settings. Waffle is a separate family rather than a Dock or Classic Bar style.
+
+**modules/abyss/:** independent perimeter-centric liquid family. `AbyssPerimeter.qml` owns one painter per output; `AbyssBodyHost.qml` owns lazy content and bounded input without painting; `looks/AbyssGeometry.js` and `looks/AbyssField.frag(.qsb)` own topology; `looks/AbyssStyle.qml` centralizes palette, motion and effects. Critical/specialist fallbacks share implementations rather than backend copies.
 
 **modules/ii/:** ii-family-specific overlay/sidebar components.
 
@@ -87,6 +95,8 @@ The live tree intentionally has no Orbit, Mascot, Workspace Strip, `barM3`, Pill
 - `shell.qml` — root shell, services, IPC and family selection.
 - `ShellIiPanels.qml` — ii-family loader.
 - `ShellWafflePanels.qml` — Waffle-family loader.
+- `ShellAbyssPanels.qml` / `ShellAbyssCriticalPanels.qml` — URL-loaded Abyss compositions.
+- `modules/common/PanelFamilyPolicy.js` — normalization, cycling and default migration for three families.
 - `settings.qml` — standalone Settings process/UI.
 - `waffleSettings.qml` — Waffle settings.
 - `welcome.qml` — first-run wizard.

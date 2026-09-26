@@ -702,6 +702,15 @@ Singleton {
             }
         },
         {
+            id: "switch-family-abyss",
+            name: "Switch to Abyss Panel Family",
+            description: "Use the perimeter liquid shell",
+            icon: "water",
+            category: "settings",
+            keywords: ["family","panel","abyss","liquid","perimeter","layout"],
+            execute: () => root.runLauncher(["panelFamily","set","abyss"])
+        },
+        {
             id: "toggle-control-panel",
             name: Translation.tr("Toggle Quick Settings"),
             description: Translation.tr("Open or close the quick settings panel"),

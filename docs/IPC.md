@@ -617,12 +617,12 @@ bind "Super+F12" { spawn "inir" "gamemode" "toggle"; }
 
 ### panelFamily
 
-Switch between panel styles. ii supports two visual styles: Material ii (default) and Waffle (Windows 11-like).
+Switch between Material II (`ii`, default), Waffle (`waffle`) and the Perimeter Liquid Shell, Abyss (`abyss`).
 
 | Function | Description |
 |----------|-------------|
-| `cycle` | Cycle to next panel family (ii → waffle → ii) |
-| `set` | Set specific family ("ii" or "waffle") |
+| `cycle` | Cycle to next panel family (ii → waffle → abyss → ii) |
+| `set` | Set specific family (`"ii"`, `"waffle"` or `"abyss"`) |
 
 ```kdl
 bind "Mod+Shift+W" { spawn "inir" "panelFamily" "cycle"; }
@@ -772,6 +772,17 @@ Screen zoom. Accessibility feature, or for reading tiny UI without pretending yo
 
 ---
 
+### osd
+
+Shared on-screen display router for the active family. Material, Waffle and Abyss consume internal signals; only the root registers this target.
+
+| Function | Description |
+|----------|-------------|
+| `trigger` | Show the active family's volume indicator |
+| `hide` | Dismiss the active indicator |
+
+---
+
 ## Waffle-Specific Targets
 
 These targets only work when using the Waffle (Windows 11) panel style.
@@ -833,16 +844,6 @@ Waffle taskbar visibility.
 | `toggle` | Show/hide taskbar |
 | `open` | Show taskbar |
 | `close` | Hide taskbar |
-
----
-
-### osd
-
-Waffle on-screen display indicator (volume, brightness).
-
-| Function | Description |
-|----------|-------------|
-| `trigger` | Show the OSD indicator |
 
 ---
 

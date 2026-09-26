@@ -24,10 +24,13 @@ Singleton {
 
     // A renderer-specific page is shown only for its active panel family.
     // Keep historical slots in the registry so stored indices remain stable.
+    readonly property bool abyssFamily: Config.options?.panelFamily === "abyss"
     readonly property bool waffleFamily: Config.options?.panelFamily === "waffle"
     function isPageApplicable(index: int): bool {
         if (index < 0 || index >= root.pages.length
                 || root.isHiddenLegacyIndex(index)) return false
+        if (root.abyssFamily)
+            return ![root.barPageIndex,11,16,29].includes(index)
         if (root.waffleFamily)
             return index !== root.barPageIndex && index !== 16 && index !== 29
         return index !== 11

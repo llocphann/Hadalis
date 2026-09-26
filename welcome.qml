@@ -1406,7 +1406,7 @@ Scope {
                     RowLayout {
                         MaterialSymbol { text: "web_asset"; iconSize: 18; color: Appearance.colors.colPrimary }
                         StyledText {
-                            text: "Material II · " + Translation.tr("Bar")
+                            text: "Material II / Abyss · " + Translation.tr("Bar")
                             font.pixelSize: Appearance.font.pixelSize.small
                         }
                     }
@@ -1431,7 +1431,7 @@ Scope {
                     RowLayout {
                         MaterialSymbol { text: "dock_to_bottom"; iconSize: 18; color: Appearance.colors.colPrimary }
                         StyledText {
-                            text: "Material II · " + Translation.tr("Dock")
+                            text: "Material II / Abyss · " + Translation.tr("Dock")
                             font.pixelSize: Appearance.font.pixelSize.small
                         }
                     }
@@ -1466,7 +1466,8 @@ Scope {
                         onSelected: v => root.setProfileFeature("panelFamily", v)
                         options: [
                             { displayName: "Material II", icon: "dashboard", value: "ii" },
-                            { displayName: "Waffle", icon: "grid_view", value: "waffle" }
+                            { displayName: "Waffle", icon: "grid_view", value: "waffle" },
+                            { displayName: "Abyss", icon: "water", value: "abyss" }
                         ]
                     }
                 }
@@ -1479,14 +1480,14 @@ Scope {
 
             ConfigSwitch {
                 buttonIcon: "dock_to_bottom"
-                text: "Material II · " + Translation.tr("Show dock")
+                text: "Material II / Abyss · " + Translation.tr("Show dock")
                 description: Translation.tr("Keep dock visible at all times (Empty workspace mode only)")
                 checked: Config.options?.dock?.enable ?? true
                 onToggledByUser: checked => root.setProfileFeature("dock.enable", checked)
             }
             ConfigSwitch {
                 buttonIcon: "auto_awesome_motion"
-                text: "Material II · " + Translation.tr("Auto-hide the bar")
+                text: "Material II / Abyss · " + Translation.tr("Auto-hide the bar")
                 description: Translation.tr("A quieter desktop; the bar returns from the edge or while holding Super.")
                 checked: Config.options?.bar?.autoHide?.enable ?? false
                 onToggledByUser: checked => root.setProfileFeature("bar.autoHide.enable", checked)

@@ -1,6 +1,6 @@
 # Connected Surfaces
 
-Hadalis 1.0 uses a shared connected-surface presentation layer, not the retired full `iiPerimeter` composition runtime.
+Material II uses a shared connected-surface presentation layer, not the retired full `iiPerimeter` composition runtime. Abyss owns a separate continuous liquid perimeter; Waffle remains a separate supported family.
 
 ## Authoritative renderers
 
@@ -46,8 +46,8 @@ an iRiS adapter.
 
 ## Screen Edge ownership
 
-`modules/screenCorners/ScreenEdges.qml` is the only physical Screen Edge
-renderer. Each output has one full-screen `FrameWindow`, one odd-even
+For Material II, `modules/screenCorners/ScreenEdges.qml` is the only physical Screen Edge
+renderer. Its geometry is unchanged by Abyss. Each output has one full-screen `FrameWindow`, one odd-even
 `ShapePath`, exactly four circular `PathArc` segments for the rounded
 workspace hole, and transparent reservation windows. Bar ownership changes only
 the matching inner-frame inset. The physical frame's `MultiEffect` must
@@ -88,11 +88,21 @@ the visible fill and shadow. No full-overlay wedge/flare helper is allowed.
 ## Contributor rules
 
 - preserve `StyledPopup.qml` as the normal ii Bar-popout entry point;
-- use iRiS for curved connected contact; do not recreate Canvas/Shape wedge patches;
-- keep the physical Screen Edge renderer separate from Overlay surfaces;
+- use the existing iRiS adapter for Material curved connected contact; do not recreate Canvas/Shape wedge patches;
+- keep Material's physical Screen Edge renderer separate from its Overlay surfaces;
 - preserve output ownership, slide/retract lifecycle, focus and click-through input;
 - keep Waffle supported without reintroducing legacy corner painters;
 - do not reintroduce `modules/perimeter/`, `iiPerimeter`, cutover registries or feature-slot composition.
 
 Static contracts do not replace live Niri acceptance at left/right/top/bottom
 attachment and fractional scaling.
+
+## Abyss ownership
+
+`AbyssPerimeter.qml` is the sole Abyss painter per output. The root unloads Material/Waffle compositions before selecting it. `AbyssGeometry.js` subtracts a rounded workspace opening from the screen and supplies edge-attached deformation records. One original `AbyssField.frag.qsb` smooth-unions those records, then paints the final fill/rim/shadow once. Abyss does not use the iRiS Island field, separate panel backgrounds or corner patches.
+
+The visual layer-shell host stays mapped on Top in default fullscreen mode, with empty input and no paint when suppressed. Explicit visible-in-fullscreen uses Overlay while still releasing reservations. Bar and pinned dock reserve only persistent depth on their own edge through transparent, input-free windows; auto-hide reserves only the thin perimeter. Sidebars, popups and transient content reserve zero space.
+
+Input is the union of ready, open content rectangles and thin reveal triggers. The workspace opening is excluded. Closing drops input/focus eligibility before motion finishes; unsupported or uncompiled paint accepts no content input. Notification/OSD placement and output selection use the same stale-safe output policy. Perpendicular panels avoid overlapping content and sealed corner pockets, including throughout retraction.
+
+The renderer has no time uniform, recurring animation or per-module effect pass. A static wallpaper texture is optional, bounded and disabled by Performance mode. See [Abyss evidence](ABYSS.md) for tested geometry, visual captures and remaining environment acceptance.

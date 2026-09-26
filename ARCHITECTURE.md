@@ -21,17 +21,22 @@ Startup flow:
 
 ## Panel Families
 
-Two mutually exclusive UI families are switchable at runtime (`Super+Shift+W`):
+Three mutually exclusive UI families are switchable at runtime (`Super+Shift+W`):
 
-| | **Material ii** | **Waffle** |
-|---|---|---|
-| Active when | `panelFamily !== "waffle"` | `panelFamily === "waffle"` |
-| Visual tokens | `Appearance.*` | `Looks.*` |
-| Global theme | Material only | Waffle is a separate Fluent panel family, not a Global Theme |
-| Bar | **Classic Bar only** — top/bottom/left/right; Hug/Float/Rectangle/Card geometry | Bottom Windows 11-style taskbar |
-| App launcher | Overview | StartMenu with search |
-| Right panel | SidebarRight + bottom-right Notification Center | ActionCenter + NotificationCenter |
-| Panels | ii (`iiBar`, `iiDock`, `iiSidebarLeft`, ...) | w (`wBar`, `wStartMenu`, `wActionCenter`, ... + shared ii panels) |
+| | **Material II** | **Waffle** | **Abyss** |
+|---|---|---|---|
+| Active when | normalized `panelFamily === "ii"` | `panelFamily === "waffle"` | `panelFamily === "abyss"` |
+| Visual tokens | `Appearance.*` | `Looks.*` | Palette-derived `AbyssStyle.*` |
+| Presentation | Layered Material surfaces | Windows-inspired Fluent surfaces | One perimeter-centric liquid body |
+| Bar | Classic, four edges | Windows-style taskbar | Five zones embedded in any edge |
+| Launcher | Overview | Start Menu | Edge-attached app/action search |
+| Right panel | Sidebar + Notification Center | Action Center + Notification Center | Control/history edge deformation |
+| Panels | `ii*` | `w*` and shared panels | `abyss*` and documented shared fallbacks |
+
+Family URL loaders isolate inactive visual trees. Services/models remain shared.
+Abyss is not an iRiS Island implementation; its original single SDF owns physical
+perimeter, panel union and final silhouette shadow. Critical and specialist
+fallbacks are listed in [Panel Families](docs/PANEL_FAMILIES.md).
 
 The retired Bar renderer families (Islands, Scenic, Frame, M3 and Pill) are not runtime alternatives. Shared `island`, `pill` and `m3*` names may still appear where they describe unrelated live skins, widget shapes, Material color tokens, or other non-Bar behavior.
 
@@ -54,6 +59,7 @@ A panel loads only when `Config.ready`, its identifier is present in `enabledPan
 shell.qml                     # Root entry — loads services, selects panel family
 ShellIiPanels.qml             # Material ii family
 ShellWafflePanels.qml         # Windows 11 family
+ShellAbyssPanels.qml          # Perimeter Liquid Shell family
 GlobalStates.qml              # Runtime UI state
 FamilyTransitionOverlay.qml   # Animated family switch
 settings.qml                  # Settings GUI
@@ -75,6 +81,11 @@ modules/
 ├── dock/                     # App dock
 ├── overview/                 # Workspace overview + app search
 ├── wallpaperLauncher/        # Compact wallpaper carousel
+├── abyss/                    # Original geometry, field, content and settings
+│   ├── looks/                # Palette tokens, geometry policy and one shader
+│   ├── bar/                  # Five embedded module zones
+│   ├── content/              # Demand-loaded native bodies
+│   └── settings/             # URL-loaded Abyss Style
 ├── waffle/                   # Windows 11 family
 │   ├── bar/                  # Bottom taskbar
 │   ├── startMenu/            # Start menu with search
@@ -246,10 +257,10 @@ Never run raw `qs kill -c inir` / `qs -c inir` by hand. iNiR runs under `inir.se
 
 ## Connected Perimeter Status
 
-Connected Perimeter has two distinct runtime roles that must not be conflated:
+Material connected presentation retains its existing ownership boundary:
 
 - **Connected popup presentation is active by default** for existing ii bar popups through `StyledPopup.qml`. `ConnectedSurfaceGeometry` and `ConnectedSurfaceRevealClip` retain the slide-only lifecycle, while `ConnectedSurfaceIrisFrame` renders the exact iRiS v2.31.0 SDF union in the Overlay window using Top-layer Bar/Screen Edge owner records without repainting those owners. `ConnectedSurfaceBodyMask` keeps compositor input on the revealed rounded body only. Legacy `ConnectedSurfaceFrame` / `ConnectedSurfaceMask` remain available for Waffle and non-cutover shared surfaces; they are no longer the ii StyledPopup renderer.
-- **Full `iiPerimeter` composition ownership remains guarded/opt-in** through `PerimeterCutoverPolicy.qml`. The configurable topology, registry/hosting, anchors, routing, reservations, and module adapters exist, but broad cutover must remain disabled whenever it would drop functionality that the legacy composition still provides.
+- **Retired `iiPerimeter` composition remains absent.** Abyss is an independent family with its own output-local renderer, not a reactivation of that cutover. Material ScreenEdges geometry remains unchanged.
 
 Detailed contracts and local visual acceptance steps live in `docs/PERIMETER.md` and `docs/SHELL_SURFACE_CONTRACTS.md`.
 

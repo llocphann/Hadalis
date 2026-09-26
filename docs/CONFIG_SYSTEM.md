@@ -28,6 +28,16 @@ The Welcome wizard exposes only choices that materially affect the first session
 
 ## For contributors
 
+### Panel family and Abyss
+
+`panelFamily` accepts `ii` (default), `waffle` and `abyss`. Unknown values normalize to `ii`. Select it in Settings → Modules → Panel Style or with `inir panelFamily set abyss`; switching preserves disabled panels using `knownPanels` and `visitedPanelFamilies` rather than replacing `enabledPanels` on every visit.
+
+Settings → Modules → **Abyss Style** groups Performance, Surface, Motion, Refraction & Glass, Perimeter, Bar & Dock, and Panels. The `abyss.*` namespace contains `quality`, `surface.opacity/tension/softness`, `motion.intensity`, `perimeter.thickness/radius/visibleInFullscreen`, and `effects.blur/refraction/glow/surfaceHighlight`. Sensible defaults live in both the typed schema and `defaults/config.json`.
+
+Abyss reuses `bar.vertical/bottom`, orientation-specific module layouts and visibility, `dock.position/height/pins`, and each feature's `screenList`. An empty output list means all connected outputs; stale selections safely fall back to connected outputs. Persistent pinned docks reserve depth, hover docks do not. Fullscreen releases reservations by default. Global reduced motion and effects gating still apply.
+
+Performance omits the wallpaper texture, refraction, glow and shadow. Balanced permits static-wallpaper blur; Quality permits enabled refraction and a restrained settle. Glass follows static wallpaper only; GIF/video or a missing image uses the palette surface. It does not blur application contents.
+
 ### The sync rule
 
 Adding a new config key requires updating four things together in one commit:

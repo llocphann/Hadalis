@@ -2380,7 +2380,7 @@ Singleton {
                         property bool showLock: true
                     }
                     property JsonObject crypto_settings: JsonObject {
-                        property int refreshInterval: 60
+                        property int refreshInterval: 300
                         property list<string> coins: ["bitcoin", "ethereum"]
                     }
                     property JsonObject worldClock_settings: JsonObject {

@@ -28,6 +28,7 @@ advanced="$repo_root/modules/settings/AdvancedConfig.qml"
 waffle_themes="$repo_root/modules/waffle/settings/pages/WThemesPage.qml"
 media_section="$repo_root/modules/controlPanel/MediaSection.qml"
 sidebar_media="$repo_root/modules/sidebarLeft/widgets/MediaPlayerWidget.qml"
+crypto_widget="$repo_root/modules/sidebarLeft/widgets/CryptoWidget.qml"
 it_thumbnail="$repo_root/modules/sidebarLeft/innertune/ITThumbnail.qml"
 screen_edges="$repo_root/modules/screenCorners/ScreenEdges.qml"
 alt_switcher="$repo_root/modules/altSwitcher/AltSwitcher.qml"
@@ -174,6 +175,16 @@ require "$control_panel_media" 'running: root.positionTickerActive' 'Control Pan
 require "$control_panel_media" 'triggeredOnStart: true' 'Control Panel position must refresh immediately when reopened'
 require "$control_panel_media" 'sourceSize.width: Math.max(1, Math.ceil(card.width * root._dpr))' 'Control Panel blurred artwork decode must remain bounded'
 require "$control_panel_media" 'mipmap: false' 'Control Panel artwork must not generate unused mipmaps'
+
+require "$config" 'property int refreshInterval: 300' 'Crypto refresh schema default must remain five minutes'
+require "$crypto_widget" 'Config.options?.sidebar?.widgets?.crypto_settings?.refreshInterval ?? 300' 'Crypto runtime fallback must remain five minutes'
+require "$crypto_widget" 'readonly property bool presentationActive: GlobalStates.sidebarLeftOpen && root.visible' 'Crypto network refresh must be presentation-gated'
+require "$crypto_widget" 'running: root.presentationActive && root.coins.length > 0 && Config.ready' 'Crypto periodic refresh must sleep with the sidebar'
+require "$crypto_widget" 'root._cacheTimestamp = Number(cached.timestamp) || 0' 'Crypto cache freshness must survive shell restarts'
+require "$crypto_widget" 'function _startNextSparkline(): void' 'Crypto sparklines must use a serialized request queue'
+require "$crypto_widget" 'if (!root.presentationActive || sparklineProcess.running || root._sparklineIdx >= root.coins.length)' 'Crypto sparkline requests must not overlap or continue hidden'
+require "$crypto_widget" 'sparklineTimer.restart()' 'Crypto sparkline queue must schedule bounded one-shot work'
+reject "$crypto_widget" 'sparklineTimer.start()' 'Crypto sparklines must not restore the recurring timer-driven queue'
 
 require "$it_thumbnail" 'ClippingRectangle {' 'InnerTune thumbnails must use scene-graph clipping'
 reject "$it_thumbnail" 'GE.OpacityMask' 'InnerTune list thumbnails must not allocate an OpacityMask layer'

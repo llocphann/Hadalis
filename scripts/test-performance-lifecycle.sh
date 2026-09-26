@@ -58,6 +58,7 @@ bar_resources="$repo_root/modules/bar/Resources.qml"
 vertical_bar_resources="$repo_root/modules/verticalBar/Resources.qml"
 recorder_status="$repo_root/services/RecorderStatus.qml"
 local_music="$repo_root/services/LocalMusic.qml"
+mpris_controller="$repo_root/services/MprisController.qml"
 recorder_overlay_widget="$repo_root/modules/ii/overlay/recorder/Recorder.qml"
 overlay_taskbar="$repo_root/modules/ii/overlay/OverlayTaskbar.qml"
 overlay_floating_image="$repo_root/modules/ii/overlay/floatingImage/FloatingImage.qml"
@@ -440,6 +441,14 @@ require "$recorder_status" 'interval: root.idlePollIntervalMs' 'RecorderStatus i
 require "$local_music" 'GlobalStates.sidebarLeftOpen ? 900 : 30000' 'LocalMusic fallback status polling must slow down while the sidebar is hidden'
 require "$local_music" 'function onSidebarLeftOpenChanged(): void' 'LocalMusic must refresh fallback status immediately when its UI opens'
 require "$local_music" 'running: root.enabled && !root._mpdSubscriptionActive' 'LocalMusic fallback polling must remain disabled while native MPD subscription is active'
+
+require "$mpris_controller" 'property bool _browserCapabilitiesProbed: false' 'MPRIS browser capability probing must begin lazy'
+require "$mpris_controller" 'function _ensureBrowserCapabilities(player = null): void' 'MPRIS must expose demand-driven browser capability probing'
+require "$mpris_controller" 'root._ensureBrowserCapabilities(modelData)' 'browser capability probing must begin when a browser MPRIS player appears'
+require "$mpris_controller" 'if ((Audio.outputAppNodes?.length ?? 0) > 0)' 'MPRIS startup metadata probing must require an application audio stream'
+require "$mpris_controller" 'root._streamMetadataById = ({})' 'MPRIS must clear stale PipeWire metadata when application streams disappear'
+reject "$mpris_controller" 'id: plasmaCheckDefer' 'MPRIS must not schedule an unconditional browser-capability startup probe'
+reject "$mpris_controller" 'plasmaCheckDefer.start()' 'MPRIS browser capability probing must not run from startup/config readiness'
 require "$recorder_status" 'property int fastDemandCount: 0' 'RecorderStatus fast polling must be explicitly demand-owned'
 require "$recorder_status" 'function setFastStatusDemand(owner: string, active: bool): void' 'RecorderStatus must expose keyed demand ownership'
 require "$recorder_status" 'running: Config.ready && !root.isRecording && !root.fastStatusDemand' 'RecorderStatus slow global fallback must remain active only without fast UI demand'

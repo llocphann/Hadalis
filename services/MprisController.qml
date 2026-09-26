@@ -346,7 +346,13 @@ Singleton {
 
 	Connections {
 		target: Audio
-		function onOutputAppNodesChanged(): void { _streamMetadataRefresh.restart() }
+		function onOutputAppNodesChanged(): void {
+			if ((Audio.outputAppNodes?.length ?? 0) > 0) {
+				_streamMetadataRefresh.restart()
+				return
+			}
+			root._streamMetadataById = ({})
+		}
 	}
 	
 	// Reactive counter that forces re-evaluation when any player's state changes
@@ -392,34 +398,58 @@ Singleton {
 	
 	property bool hasPlasmaIntegration: false
 	property bool hasWtype: false
+	property bool _browserCapabilitiesProbed: false
+
+	function _isBrowserCapabilityPlayer(player): bool {
+		const name = String(player?.dbusName ?? "").toLowerCase()
+		return name.includes("firefox")
+			|| name.includes("chromium")
+			|| name.includes("chrome")
+			|| name.includes("brave")
+			|| name.includes("vivaldi")
+			|| name.includes("opera")
+			|| name.includes("librewolf")
+			|| name.includes("floorp")
+			|| name.includes("waterfox")
+			|| name.includes("plasma-browser-integration")
+	}
+
+	function _ensureBrowserCapabilities(player = null): void {
+		if (root._browserCapabilitiesProbed || plasmaIntegrationCheckProc.running)
+			return
+		if (player) {
+			if (!root._isBrowserCapabilityPlayer(player))
+				return
+		} else {
+			let relevant = false
+			for (const candidate of Mpris.players.values) {
+				if (root._isBrowserCapabilityPlayer(candidate)) {
+					relevant = true
+					break
+				}
+			}
+			if (!relevant)
+				return
+		}
+		plasmaIntegrationCheckProc.running = true
+	}
+
 	Process {
 		id: plasmaIntegrationCheckProc
 		running: false
 		command: ["/usr/bin/bash", "-c", "command -v plasma-browser-integration-host >/dev/null; plasma=$?; command -v wtype >/dev/null; wtype=$?; exit $((plasma + wtype * 10))"]
 		onExited: (exitCode) => {
+			root._browserCapabilitiesProbed = true
 			root.hasPlasmaIntegration = (exitCode % 10) === 0;
 			root.hasWtype = Math.floor(exitCode / 10) === 0;
 		}
 	}
 
-	Timer {
-		id: plasmaCheckDefer
-		interval: 1200
-		repeat: false
-		onTriggered: plasmaIntegrationCheckProc.running = true
-	}
-
 	Component.onCompleted: {
-		_streamMetadataRefresh.start()
+		if ((Audio.outputAppNodes?.length ?? 0) > 0)
+			_streamMetadataRefresh.start()
 		_mpdMprisProbeProc.running = true
-		plasmaCheckDefer.start()
-	}
-
-	Connections {
-		target: Config
-		function onReadyChanged() {
-			if (Config.ready) plasmaCheckDefer.start()
-		}
+		root._ensureBrowserCapabilities()
 	}
 	
 	// Check if player is in grace period (recently had valid metadata)
@@ -996,6 +1026,7 @@ Singleton {
 			target: modelData;
 
 			Component.onCompleted: {
+				root._ensureBrowserCapabilities(modelData)
 				// Only track if it's a real player
 				if (!root._manualPlayerSelection && isRealPlayer(modelData) && (root.trackedPlayer == null || modelData.isPlaying)) {
 					root.trackedPlayer = modelData;

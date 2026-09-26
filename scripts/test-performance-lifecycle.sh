@@ -306,6 +306,8 @@ reject "$ii_panels" 'identifier: "iiOverview"; open: GlobalStates.overviewOpen; 
 require "$waffle_panels" 'import qs.modules.waffle.looks' 'Waffle panel host must resolve animation-aware close grace from shared Looks tokens'
 require "$waffle_panels" 'OnDemandPanelLoader { identifier: "wActionCenter"; open: GlobalStates.waffleActionCenterOpen; closeGraceMs: Looks.transition.enabled ? Looks.transition.duration.medium + 40 : 40;' 'Waffle Action Center must unload after its real close animation plus safety grace'
 reject "$waffle_panels" 'identifier: "wActionCenter"; open: GlobalStates.waffleActionCenterOpen; retainAfterUse: true' 'Waffle Action Center must not restore five-minute hidden residency'
+require "$waffle_panels" 'OnDemandPanelLoader { identifier: "iiOverview"; open: GlobalStates.overviewOpen; closeGraceMs: Appearance.animation.elementMoveExit.duration + 80;' 'Waffle Overview host must unload after the same exit-aware grace as ii'
+reject "$waffle_panels" 'identifier: "iiOverview"; open: GlobalStates.overviewOpen; retainAfterUse: true' 'Waffle Overview host must not restore five-minute post-use residency'
 require "$resource_usage" '? Math.max(6000, root._configuredUpdateIntervalMs)' 'Low Power must slow resource sampling to at least 6 seconds'
 require "$resource_usage" 'interval: root._effectiveUpdateIntervalMs' 'resource sensor timer must use the effective power-aware cadence'
 require "$resource_usage" 'readonly property int _expensiveGpuUpdateIntervalMs:' 'process-backed GPU sampling must use a slower independent cadence'

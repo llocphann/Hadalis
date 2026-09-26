@@ -37,6 +37,10 @@ Item {
     property string frequencyProfile: "flat"
     property real accentStrength: 0.7
     property bool mirroredStereo: Config.options?.appearance?.cava?.stereo ?? true
+    // A short Bar does not gain useful visual detail from hundreds of
+    // horizontal wave primitives. Cap only the continuous wave path; discrete
+    // bars continue to honor the configured density exactly.
+    property int waveStripCap: 96
 
     property var _levels: []
     property var _selectedScratch: []
@@ -180,7 +184,7 @@ Item {
             return
         }
 
-        const count = Math.max(2, Math.min(sourceCount,
+        const count = Math.max(2, Math.min(sourceCount, root.waveStripCap,
             Math.round(root._innerWidth / Math.max(4, root.pixelsPerBar))))
         const levels = new Array(count)
         for (let i = 0; i < count; ++i) {

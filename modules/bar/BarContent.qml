@@ -332,6 +332,9 @@ Item {
         Config.options?.bar?.visualizer?.frequencyProfile ?? "flat"
     readonly property real barSpectrumAccentStrength: Math.max(0,
         Math.min(1, (Config.options?.bar?.visualizer?.accentStrength ?? 70) / 100))
+    // Keep the continuous wave's CAVA payload aligned with its bounded scene
+    // resolution. Bars stay density-derived because they are discrete columns.
+    readonly property int barSpectrumWaveSampleCap: 96
     readonly property color barSpectrumColor: root.inirEverywhere ? Appearance.inir.colPrimary
         : root.zzzEverywhere ? Appearance.zzz.accent
         : root.regaliaEverywhere ? Appearance.regalia.hardwarePrimary
@@ -340,8 +343,13 @@ Item {
     CavaProcess {
         id: barCavaProcess
         active: root.barSpectrumProcessWanted
-        sampleCount: Math.max(50,
-            Math.round(Math.max(1, root.width) / root.barSpectrumDensity))
+        sampleCount: {
+            const densityCount = Math.max(50,
+                Math.round(Math.max(1, root.width) / root.barSpectrumDensity))
+            return root.barSpectrumType === "wave"
+                ? Math.min(root.barSpectrumWaveSampleCap, densityCount)
+                : densityCount
+        }
     }
 
     function performScrollAction(action: string, isUp: bool): void {
@@ -910,6 +918,7 @@ Item {
             edgeSoftness: root.barSpectrumEdgeSoftness
             frequencyProfile: root.barSpectrumFrequencyProfile
             accentStrength: root.barSpectrumAccentStrength
+            waveStripCap: root.barSpectrumWaveSampleCap
             topLeftRadius: barBackground.topLeftRadius
             topRightRadius: barBackground.topRightRadius
             bottomLeftRadius: barBackground.bottomLeftRadius

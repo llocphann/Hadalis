@@ -390,10 +390,33 @@ Singleton {
 
         // Empty text() on first call collapses to 0% via the percentage guards.
         const textMeminfo = fileMeminfo.text();
-        memoryTotal = Number(textMeminfo.match(/MemTotal: *(\d+)/)?.[1] ?? 0);
-        memoryFree = Number(textMeminfo.match(/MemAvailable: *(\d+)/)?.[1] ?? 0);
-        swapTotal = Number(textMeminfo.match(/SwapTotal: *(\d+)/)?.[1] ?? 0);
-        swapFree = Number(textMeminfo.match(/SwapFree: *(\d+)/)?.[1] ?? 0);
+        let nextMemoryTotal = 0
+        let nextMemoryFree = 0
+        let nextSwapTotal = 0
+        let nextSwapFree = 0
+        const meminfoLine = /^(MemTotal|MemAvailable|SwapTotal|SwapFree):\s+(\d+)/gm
+        let meminfoMatch
+        while ((meminfoMatch = meminfoLine.exec(textMeminfo)) !== null) {
+            const value = Number(meminfoMatch[2]) || 0
+            switch (meminfoMatch[1]) {
+            case "MemTotal":
+                nextMemoryTotal = value
+                break
+            case "MemAvailable":
+                nextMemoryFree = value
+                break
+            case "SwapTotal":
+                nextSwapTotal = value
+                break
+            case "SwapFree":
+                nextSwapFree = value
+                break
+            }
+        }
+        memoryTotal = nextMemoryTotal
+        memoryFree = nextMemoryFree
+        swapTotal = nextSwapTotal
+        swapFree = nextSwapFree
 
         // /proc/net/dev stays cheaply refreshed with the other proc files, but
         // avoid its split/parse allocations unless a consumer displays throughput.

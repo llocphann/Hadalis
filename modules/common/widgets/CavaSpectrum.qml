@@ -132,9 +132,24 @@ Canvas {
         const endRatio = Math.max(startRatio, Math.min(1, root.sampleEndRatio))
         const start = Math.min(count - 1, Math.floor(startRatio * count))
         const end = Math.max(start + 1, Math.min(count, Math.ceil(endRatio * count)))
-        const selected = []
-        for (let i = start; i < end; i++)
-            selected.push(Number(source[i]) || 0)
+        const selectedCount = end - start
+        const strength = Math.max(0, Math.min(1, root.accentStrength))
+        const applyProfile = strength > 0 && root.frequencyProfile !== "flat"
+        const selected = new Array(selectedCount)
+
+        for (let i = 0; i < selectedCount; ++i) {
+            let value = Number(source[start + i]) || 0
+            if (applyProfile) {
+                const domainPosition = startRatio + (endRatio - startRatio)
+                    * (selectedCount > 1 ? i / (selectedCount - 1) : 0.5)
+                const frequencyPosition = root.mirroredStereo
+                    ? Math.abs(domainPosition * 2 - 1)
+                    : domainPosition
+                const profileWeight = root._profileWeight(frequencyPosition)
+                value *= 1 + (profileWeight - 1) * strength
+            }
+            selected[i] = value
+        }
         return selected
     }
 
@@ -153,27 +168,6 @@ Canvas {
         if (root.frequencyProfile === "smile")
             return 0.52 + 1.56 * Math.pow(Math.abs(x - 0.5) * 2, 1.45)
         return 1
-    }
-
-    function _applyFrequencyProfile(source): var {
-        const strength = Math.max(0, Math.min(1, root.accentStrength))
-        if (source.length === 0 || strength <= 0 || root.frequencyProfile === "flat")
-            return source
-
-        const start = Math.max(0, Math.min(1, root.sampleStartRatio))
-        const end = Math.max(start, Math.min(1, root.sampleEndRatio))
-        const output = new Array(source.length)
-        for (let i = 0; i < source.length; i++) {
-            const domainPosition = start + (end - start)
-                * (source.length > 1 ? i / (source.length - 1) : 0.5)
-            const frequencyPosition = root.mirroredStereo
-                ? Math.abs(domainPosition * 2 - 1)
-                : domainPosition
-            const profileWeight = root._profileWeight(frequencyPosition)
-            const mixedWeight = 1 + (profileWeight - 1) * strength
-            output[i] = source[i] * mixedWeight
-        }
-        return output
     }
 
     function _frequencySmooth(source): var {
@@ -293,33 +287,13 @@ Canvas {
         return radius - Math.sqrt(Math.max(0, radius * radius - distance * distance))
     }
 
-    function _surfaceBounds(x): var {
-        const radii = root._resolvedCornerRadii
-        const top = Math.max(
-            root._cornerInset(x, radii[0], true),
-            root._cornerInset(x, radii[1], false))
-        const bottomInset = Math.max(
-            root._cornerInset(x, radii[3], true),
-            root._cornerInset(x, radii[2], false))
-        return [top, Math.max(top, root.height - bottomInset)]
-    }
-
-    function _peakBounds(x, surfaceBounds): var {
-        const top = surfaceBounds[0]
-        const bottom = surfaceBounds[1]
+    function _curveHeadroom(top, bottom): real {
         const available = Math.max(0, bottom - top)
         const curveInset = Math.max(top, root.height - bottom)
         const pressure = Math.max(0, Math.min(1,
             curveInset / Math.max(1, root.height / 2)))
-        const curveHeadroom = available * Math.max(0, Math.min(1, root.edgeSoftness))
+        return available * Math.max(0, Math.min(1, root.edgeSoftness))
             * pressure * 0.24
-        const strokeHeadroom = root.visualizerType === "wave"
-            ? Math.max(0, root.lineWidth / 2 + 0.5) : 0
-        const center = (top + bottom) / 2
-        return [
-            Math.min(center, top + curveHeadroom + strokeHeadroom),
-            Math.max(center, bottom - curveHeadroom - strokeHeadroom)
-        ]
     }
 
     function _appendRoundedClip(ctx, x, y, width, height, radii): void {
@@ -401,6 +375,7 @@ Canvas {
         const slot = span / count
         const width = Math.max(1, slot - Math.max(0, root.barSpacing))
         const gradient = root._horizontalGradient(ctx, x0, x1, 1)
+        const radii = root._resolvedCornerRadii
         ctx.fillStyle = gradient
 
         for (let i = 0; i < count; i++) {
@@ -409,17 +384,23 @@ Canvas {
             const edgeFactor = root._edgeMorphFactor(centerX, x0, x1)
             if (edgeFactor < 0.01)
                 continue
-            const surface = root._surfaceBounds(centerX)
-            const peaks = root._peakBounds(centerX, surface)
-            const top = surface[0]
-            const bottom = surface[1]
+            const top = Math.max(
+                root._cornerInset(centerX, radii[0], true),
+                root._cornerInset(centerX, radii[1], false))
+            const bottomInset = Math.max(
+                root._cornerInset(centerX, radii[3], true),
+                root._cornerInset(centerX, radii[2], false))
+            const bottom = Math.max(top, root.height - bottomInset)
+            const curveHeadroom = root._curveHeadroom(top, bottom)
             const rawValue = levels[i] || 0
             const value = rawValue * edgeFactor
             const center = (top + bottom) / 2
+            const peakTop = Math.min(center, top + curveHeadroom)
+            const peakBottom = Math.max(center, bottom - curveHeadroom)
             ctx.globalAlpha = 0.5 + rawValue * 0.5
 
             if (root.barsOrigin === "top") {
-                const available = Math.max(0, peaks[1] - top)
+                const available = Math.max(0, peakBottom - top)
                 if (!(available > 0))
                     continue
                 const height = Math.min(available, Math.max(root.barMinHeight * edgeFactor,
@@ -427,7 +408,7 @@ Canvas {
                 root._roundedRect(ctx, x, top, width, height, root.barRadius)
                 ctx.fill()
             } else if (root.barsOrigin === "center") {
-                const available = Math.max(0, center - peaks[0])
+                const available = Math.max(0, center - peakTop)
                 if (!(available > 0))
                     continue
                 const height = Math.min(available, Math.max(root.barMinHeight * edgeFactor,
@@ -436,7 +417,7 @@ Canvas {
                 ctx.fill()
             } else if (root.barsOrigin === "mirror") {
                 const available = Math.max(0,
-                    Math.min(center - peaks[0], peaks[1] - center))
+                    Math.min(center - peakTop, peakBottom - center))
                 if (!(available > 0))
                     continue
                 const halfHeight = Math.min(available, Math.max(root.barMinHeight * edgeFactor,
@@ -446,7 +427,7 @@ Canvas {
                 root._roundedRect(ctx, x, center + 0.5, width, halfHeight, root.barRadius)
                 ctx.fill()
             } else {
-                const available = Math.max(0, bottom - peaks[0])
+                const available = Math.max(0, bottom - peakTop)
                 if (!(available > 0))
                     continue
                 const height = Math.min(available, Math.max(root.barMinHeight * edgeFactor,
@@ -482,35 +463,43 @@ Canvas {
         const primary = []
         const secondary = []
         const baseline = []
+        const radii = root._resolvedCornerRadii
+        const strokeHeadroom = Math.max(0, root.lineWidth / 2 + 0.5)
 
         for (let i = 0; i < count; i++) {
             const x = x0 + i * span / Math.max(1, count - 1)
             const edgeFactor = root._edgeMorphFactor(x, x0, x1)
-            const surface = root._surfaceBounds(x)
-            const peaks = root._peakBounds(x, surface)
-            const top = surface[0]
-            const bottom = surface[1]
+            const top = Math.max(
+                root._cornerInset(x, radii[0], true),
+                root._cornerInset(x, radii[1], false))
+            const bottomInset = Math.max(
+                root._cornerInset(x, radii[3], true),
+                root._cornerInset(x, radii[2], false))
+            const bottom = Math.max(top, root.height - bottomInset)
             const center = (top + bottom) / 2
+            const curveHeadroom = root._curveHeadroom(top, bottom)
+            const peakTop = Math.min(center, top + curveHeadroom + strokeHeadroom)
+            const peakBottom = Math.max(center, bottom - curveHeadroom - strokeHeadroom)
             const value = (levels[i] || 0) * edgeFactor
             const fill = Math.max(0.1, Math.min(1, root.fillRatio))
 
             if (root.waveMode === "ribbon" || root.barsOrigin === "mirror") {
                 const maximum = Math.max(0,
-                    Math.min(center - peaks[0], peaks[1] - center))
+                    Math.min(center - peakTop, peakBottom - center))
                 const half = value * maximum * fill
                 primary.push([x, center - half])
                 secondary.push([x, center + half])
                 baseline.push([x, center])
             } else if (root.barsOrigin === "top") {
-                const maximum = Math.max(0, peaks[1] - top)
+                const maximum = Math.max(0, peakBottom - top)
                 primary.push([x, top + value * maximum * fill])
                 baseline.push([x, top])
             } else if (root.barsOrigin === "center") {
-                const maximum = Math.max(0, center - peaks[0])
+                const maximum = Math.max(0, center - peakTop)
                 primary.push([x, center - value * maximum * fill])
                 baseline.push([x, center])
             } else {
-                const maximum = Math.max(0, bottom - peaks[0])
+                const maximum = Math.max(0, bottom - peakTop)
                 primary.push([x, bottom - value * maximum * fill])
                 baseline.push([x, bottom])
             }
@@ -557,7 +546,7 @@ Canvas {
         const ctx = getContext("2d")
         ctx.reset()
         ctx.clearRect(0, 0, root.width, root.height)
-        let selected = root._applyFrequencyProfile(root._selectedPoints())
+        let selected = root._selectedPoints()
         selected = root._frequencySmooth(selected)
         if (root.reverseFrequency)
             selected.reverse()

@@ -165,7 +165,7 @@ StyledOverlayWidget {
                         width: 8; height: 8; radius: 4
                         color: Appearance.colors.colError
                         SequentialAnimation on opacity {
-                            running: RecorderStatus.isRecording
+                            running: RecorderStatus.isRecording && root.visible
                             loops: Animation.Infinite
                             NumberAnimation { to: 0.3; duration: 600; easing.type: Easing.InOutSine }
                             NumberAnimation { to: 1.0; duration: 600; easing.type: Easing.InOutSine }

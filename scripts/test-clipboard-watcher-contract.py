@@ -17,7 +17,8 @@ TEXT_LINE = 'spawn-at-startup "bash" "-c" "exec wl-paste --type text --watch ~/.
 IMAGE_LINE = 'spawn-at-startup "bash" "-c" "exec wl-paste --type image --watch cliphist store"'
 WATCHER_RE = re.compile(
     r'^(?![ \t]*//)[ \t]*(?:spawn-at-startup|spawn-sh-at-startup)\b'
-    r'.*\bwl-paste\b.*(?:cliphist[ \t]+store|native-dispatch[ \t]+clipboard-store|clipboard-store\.py).*
+    r'.*\bwl-paste\b.*(?:cliphist[ \t]+store|native-dispatch[ \t]+clipboard-store|clipboard-store\.py).*$'
+)
 
 
 def active_watchers(text: str) -> list[str]:

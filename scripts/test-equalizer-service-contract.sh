@@ -212,7 +212,8 @@ for token in (
     "Qt.SizeVerCursor",
     "id: bandControlRow",
     "width: parent.width / 10",
-    "implicitHeight: root.compactLayout ? 22 : 24",
+    "readonly property int presetStripHeight:",
+    "implicitHeight: root.presetStripHeight",
     "RowLayout {",
     "Layout.alignment: Qt.AlignVCenter",
 ):

@@ -114,7 +114,7 @@ reject "$cava_spectrum" 'function _surfaceBounds(' 'CavaSpectrum must not alloca
 reject "$cava_spectrum" 'function _peakBounds(' 'CavaSpectrum must not allocate surface/peak arrays per sample'
 reject "$cava_spectrum" 'function _applyFrequencyProfile(' 'CavaSpectrum selection/profile must stay fused'
 reject "$cava_spectrum" 'primary.push([' 'CavaSpectrum wave coordinates must stay flat'
-require "$cava_spectrum" 'const baseline = !ribbonMode && !lineMode ? [] : null' 'CavaSpectrum line mode must not build an unused baseline'
+require "$cava_spectrum" 'const baseline = !ribbonMode && !lineMode ? root._baselineScratch : null' 'CavaSpectrum line mode must not build an unused baseline'
 reject "$cava_spectrum" 'function _barLevels(' 'CavaSpectrum must calculate levels inside paint loops'
 reject "$cava_spectrum" 'function _waveLevels(' 'CavaSpectrum must not allocate a transient level array'
 require "$cava_spectrum" 'property var _selectedScratch: []' 'CavaSpectrum must reuse per-instance frame scratch'

@@ -100,6 +100,7 @@ player_base="$repo_root/modules/mediaControls/components/PlayerBase.qml"
 player_progress="$repo_root/modules/mediaControls/components/PlayerProgress.qml"
 bar_media="$repo_root/modules/bar/Media.qml"
 vertical_bar_media="$repo_root/modules/verticalBar/VerticalMedia.qml"
+volume_mixer="$repo_root/modules/ii/overlay/volumeMixer/VolumeMixer.qml"
 
 require "$config" 'property int framerate: 30' 'Cava schema default must remain 30 fps'
 require "$defaults" '"framerate": 30' 'persisted Cava default must remain 30 fps'
@@ -157,6 +158,9 @@ require "$bar_media" 'root.QsWindow.window?.visible ?? false' 'Bar media positio
 require "$bar_media" 'triggeredOnStart: true' 'Bar media position ticker must prime on remap'
 require "$vertical_bar_media" 'root.QsWindow.window?.visible ?? false' 'Vertical Bar media ticker must sleep with its presentation window'
 require "$vertical_bar_media" 'triggeredOnStart: true' 'Vertical Bar media ticker must prime on remap'
+require "$volume_mixer" 'SwipeView.isCurrentItem' 'Volume Mixer media ticker must sleep outside the Music tab'
+require "$volume_mixer" 'root.QsWindow.window?.visible ?? false' 'Volume Mixer media ticker must sleep with the Overlay window'
+require "$volume_mixer" 'triggeredOnStart: true' 'Volume Mixer media ticker must prime when presented'
 require "$sidebar_media" 'root.effectiveIsPlaying && GlobalStates.sidebarLeftOpen' 'Sidebar Cava must stop while playback is paused'
 require "$sidebar_media" 'layer.enabled: root.visible && GlobalStates.sidebarLeftOpen' 'Sidebar media mask must release its FBO while the sidebar is closed'
 require "$sidebar_media" 'sourceSize.width: Math.max(1, Math.ceil(card.width * root._dpr))' 'Sidebar blurred artwork decode must remain bounded to the displayed card'

@@ -39,6 +39,10 @@ Singleton {
     property var points: []
     property real normalizationCeiling: 100
     property bool audioSignalActive: false
+    // Mutable JS state avoids a notifying QML property write on every raw frame.
+    // The watchdog samples this timestamp at a low cadence instead of restarting
+    // a Timer at CAVA framerate.
+    property var _watchdogState: ({ lastFrameMs: 0 })
     // Real PipeWire streams frequently peak in the 20-100 range even though
     // cava's ASCII output can represent 0-1000. Keep silence restrained without
     // flattening ordinary playback to a one-pixel line.
@@ -157,10 +161,9 @@ Singleton {
             return
 
         // A healthy raw CAVA process emits complete frames continuously,
-        // including silence. Refresh the watchdog only after a complete frame;
-        // if the selected PipeWire/Pulse source stalls, regenerate the config
-        // and resolve the source again instead of leaving an invisible EQ.
-        dataWatchdog.restart()
+        // including silence. Record the heartbeat without restarting a QML
+        // Timer at CAVA framerate; dataWatchdog checks it at low cadence.
+        root._watchdogState.lastFrameMs = Date.now()
 
         let peak = 0
         let sum = 0
@@ -193,8 +196,10 @@ Singleton {
             root.normalizationCeiling = nextCeiling
 
         if (peak >= 2 || average >= 0.35) {
-            signalRelease.stop()
-            root.audioSignalActive = true
+            if (signalRelease.running)
+                signalRelease.stop()
+            if (!root.audioSignalActive)
+                root.audioSignalActive = true
         } else if (root.audioSignalActive && !signalRelease.running) {
             signalRelease.restart()
         }
@@ -243,16 +248,22 @@ Singleton {
         onTriggered: root.audioSignalActive = false
     }
 
-    // Port Serpantinum's no-data recovery idea into the shared Hadalis service.
-    // Zero-amplitude frames still refresh this timer; it only fires when the
-    // process itself stops producing valid frames while a consumer is active.
+    // Port Serpantinum's no-data recovery idea into the shared Hadalis service,
+    // but keep the hot frame path free of Timer restart churn. A 500 ms sampler
+    // preserves the 2.4 s stall threshold with at most 0.5 s detection latency.
     Timer {
         id: dataWatchdog
-        interval: 2400
-        repeat: false
+        interval: 500
+        repeat: true
+        running: root.active && cavaProc.running
         onTriggered: {
-            if (root.active && cavaProc.running)
+            const lastFrameMs = Number(root._watchdogState.lastFrameMs || 0)
+            if (lastFrameMs > 0
+                    && Date.now() - lastFrameMs >= 2400
+                    && !configRestart.running) {
+                root._watchdogState.lastFrameMs = Date.now()
                 configRestart.restart()
+            }
         }
     }
 
@@ -328,9 +339,9 @@ Singleton {
         command: ["cava", "-p", root.configPath]
         onRunningChanged: {
             if (running) {
-                dataWatchdog.restart()
+                root._watchdogState.lastFrameMs = Date.now()
             } else {
-                dataWatchdog.stop()
+                root._watchdogState.lastFrameMs = 0
                 if (root._pendingRestart && root.active) {
                     root._pendingRestart = false
                     root._generateConfig()

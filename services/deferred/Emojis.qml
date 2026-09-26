@@ -40,10 +40,10 @@ Singleton {
 
         const results = Fuzzy.go(search, preparedEntries, {
             all: true,
-            key: "name"
+            key: "name",
+            limit: limit > 0 ? limit : undefined
         })
-        const ranked = limit > 0 ? results.slice(0, limit) : results
-        return ranked.map(r => {
+        return results.map(r => {
             return r.obj.entry
         });
     }

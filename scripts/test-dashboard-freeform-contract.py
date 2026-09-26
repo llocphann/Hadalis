@@ -295,7 +295,8 @@ def main() -> None:
 
     for token in (
         "radius: Appearance.rounding.small",
-        "Appearance.colors.colSurfaceContainerHigh",
+        "readonly property color sidebarRaisedSurface: Appearance.colors.colLayer1",
+        "root.sidebarRaisedSurface",
         "border.width: 0",
         'border.color: "transparent"',
     ):

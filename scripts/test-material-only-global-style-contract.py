@@ -1226,9 +1226,9 @@ def main() -> None:
     forbid(bar, "showBarBackground", "Bar.qml")
     forbid(vertical_bar, "showBarBackground", "VerticalBar.qml")
     for token in (
-        "readonly property bool showBarBackground: true",
         "id: barRoot",
         "BackgroundEffect.blurRegion: Region {",
+        "item: barContent.nativeBlurActive ? barContent.backgroundItem : emptyMask",
     ):
         require(vertical_bar, token, "VerticalBar.qml")
 

@@ -403,18 +403,16 @@ Singleton {
             const textNetDev = fileNetDev.text();
             let totalRx = 0;
             let totalTx = 0;
-            for (const line of textNetDev.split("\n")) {
-                const separator = line.indexOf(":");
-                if (separator < 0)
-                    continue;
-                const name = line.substring(0, separator).trim();
-                if (!name || name === "lo")
-                    continue;
-                const fields = line.substring(separator + 1).trim().split(/\s+/);
-                if (fields.length < 16)
-                    continue;
-                totalRx += Number(fields[0]) || 0;
-                totalTx += Number(fields[8]) || 0;
+            // Match one interface row directly instead of splitting the whole
+            // file into lines and then allocating a second fields[] array for
+            // every interface. Capture RX bytes and TX bytes only.
+            const netLine = /^\\s*([^:\\s]+):\\s*(\\d+)(?:\\s+\\d+){7}\\s+(\\d+)(?:\\s+\\d+){7}\\s*$/gm
+            let match
+            while ((match = netLine.exec(textNetDev)) !== null) {
+                if (match[1] === "lo")
+                    continue
+                totalRx += Number(match[2]) || 0
+                totalTx += Number(match[3]) || 0
             }
 
             const networkNowMs = Date.now();

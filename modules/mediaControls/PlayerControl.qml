@@ -30,6 +30,11 @@ Item {
     property real visualizerMaxValue: 1000
     property real radius: Appearance.rounding.large
     property bool compactLayout: false
+    // Item.visible can stay true while a retained popup/sidebar window is
+    // unmapped. Position polling is presentation work, so bind it to both the
+    // effective item visibility and the actual Quickshell window lifecycle.
+    readonly property bool presentationActive: root.visible
+        && (root.QsWindow.window?.visible ?? false)
     // Compact media cards can be substantially narrower than the Sidebar/Popup
     // surface (notably Dashboard tiles). Adapt the same PlayerControl instead
     // of letting its fixed transport row push duration outside the card.
@@ -229,10 +234,12 @@ Item {
     }
 
     Timer {
-        running: !root.usingPlaybackAdapter
+        running: root.presentationActive
+            && !root.usingPlaybackAdapter
             && root.player?.playbackState === MprisPlaybackState.Playing
         interval: 1000
         repeat: true
+        triggeredOnStart: true
         onTriggered: root.player?.positionChanged()
     }
 

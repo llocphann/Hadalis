@@ -19,6 +19,8 @@ Item { // Player instance - Old style design
     property real maxVisualizerValue: 1000
     property int visualizerSmoothing: 2
     property real radius: Appearance.angelEverywhere ? Appearance.angel.roundingNormal : Appearance.rounding.normal
+    readonly property bool presentationActive: root.visible
+        && (root.QsWindow.window?.visible ?? false)
 
     property var artUrl: MprisController.effectiveArtUrl(player)
     property string artDownloadLocation: Directories.coverArt
@@ -67,9 +69,11 @@ Item { // Player instance - Old style design
     }
 
     Timer { // Force update for position
-        running: root.player?.playbackState == MprisPlaybackState.Playing
+        running: root.presentationActive
+            && root.player?.playbackState == MprisPlaybackState.Playing
         interval: 1000
         repeat: true
+        triggeredOnStart: true
         onTriggered: {
             root.player?.positionChanged()
         }

@@ -19,6 +19,7 @@ def main() -> None:
     popup = read("modules/mediaControls/BarMediaPopup.qml")
     equalizer = read("modules/mediaControls/EqualizerPanel.qml")
     player = read("modules/mediaControls/PlayerControl.qml")
+    bar_player = read("modules/mediaControls/BarMediaPlayerItem.qml")
     dash = read("modules/dashboard/DashMedia.qml")
     compact = read("modules/sidebarRight/CompactMediaPlayer.qml")
     cava = read("modules/common/widgets/CavaProcess.qml")
@@ -67,7 +68,7 @@ def main() -> None:
         and "model: EqualizerService.dspBands" in equalizer
         and "property real eqLightningHighlight: 0.0" in equalizer
         and "property real eqPresetSweepProgress: -0.12" in equalizer
-        and "function sampledTrace(stroke)" in equalizer
+        and "function strokeSampledTrace(stroke, capture)" in equalizer
         and "const sweepTail = 0.22" in equalizer,
         "EqualizerPanel must merge live CAVA bars with the electric DSP response connector",
     )
@@ -103,6 +104,20 @@ def main() -> None:
         and "visible: root.showVisualizer" in player
         and "live: root.showVisualizer && root.effectiveIsPlaying" in player,
         "PlayerControl must preserve the optional CAVA -> WaveVisualizer route for non-EQ owners",
+    )
+    check(
+        "readonly property bool presentationActive: root.visible" in player
+        and "root.QsWindow.window?.visible ?? false" in player
+        and "running: root.presentationActive" in player
+        and "triggeredOnStart: true" in player,
+        "PlayerControl position polling must sleep with its presentation window and prime on reopen",
+    )
+    check(
+        "readonly property bool presentationActive: root.visible" in bar_player
+        and "root.QsWindow.window?.visible ?? false" in bar_player
+        and "running: root.presentationActive" in bar_player
+        and "triggeredOnStart: true" in bar_player,
+        "BarMediaPlayerItem position polling must sleep while not presented",
     )
     check(
         "maxVisualizerValue: Math.max(1, root.visualizerMaxValue)" in player

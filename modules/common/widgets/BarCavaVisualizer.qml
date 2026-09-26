@@ -46,11 +46,14 @@ Item {
             (root._innerWidth + Math.max(0, root.barSpacing))
             / Math.max(3, root.pixelsPerBar)))
         : 0
-    readonly property var _processedPoints: root._processPoints()
-    readonly property var _barLevels: root.visualizerType === "bars"
-        ? root._makeBarLevels() : []
-    readonly property var _wavePath: root.visualizerType === "wave"
-        ? root._makeWavePath() : []
+    // Frame geometry is published once per event-loop turn. CavaService updates
+    // points and normalizationCeiling separately; reactive binding chains would
+    // otherwise rebuild the same path more than once for one audio frame.
+    property var _barLevels: []
+    property var _wavePath: []
+    property var _selectedScratch: []
+    property var _smoothScratch: []
+    property bool _frameRebuildQueued: false
 
     visible: root.opacity > 0.001 || root.active
     opacity: root.active ? Math.max(0, Math.min(1, root.spectrumOpacity)) : 0
@@ -88,7 +91,8 @@ Item {
         if (count === 0)
             return []
 
-        const selected = new Array(count)
+        const selected = root._selectedScratch
+        selected.length = count
         const strength = Math.max(0, Math.min(1, root.accentStrength))
         const applyProfile = strength > 0 && root.frequencyProfile !== "flat"
         for (let i = 0; i < count; ++i) {
@@ -107,7 +111,8 @@ Item {
         if (radius === 0 || count < 3)
             return selected
 
-        const smoothed = new Array(count)
+        const smoothed = root._smoothScratch
+        smoothed.length = count
         let start = 0
         let end = Math.min(count - 1, radius)
         let sum = 0
@@ -125,8 +130,7 @@ Item {
         return smoothed
     }
 
-    function _makeBarLevels(): var {
-        const source = root._processedPoints
+    function _makeBarLevels(source): var {
         const sourceCount = source.length ?? 0
         const count = root._barCount
         if (sourceCount === 0 || count <= 0)
@@ -205,8 +209,7 @@ Item {
         return Math.max(top, root.height - bottomInset)
     }
 
-    function _sampleAt(position): real {
-        const source = root._processedPoints
+    function _sampleAt(source, position): real {
         const count = source.length ?? 0
         if (count === 0)
             return 0
@@ -220,8 +223,7 @@ Item {
             + (source[high] || 0) * fraction
     }
 
-    function _makeWavePath(): var {
-        const source = root._processedPoints
+    function _makeWavePath(source): var {
         const sourceCount = source.length ?? 0
         if (!root.active || sourceCount < 2 || !(root.width > 0) || !(root.height > 0))
             return []
@@ -247,7 +249,7 @@ Item {
             const center = (top + bottom) / 2
             const edge = root._edgeFactor(x)
             const level = Math.max(0, Math.min(1,
-                root._sampleAt(ratio) / ceiling)) * edge
+                root._sampleAt(source, ratio) / ceiling)) * edge
 
             let y = bottom
             let baseY = bottom
@@ -280,6 +282,58 @@ Item {
             polygon.push(lower[i])
         return polygon
     }
+
+    function _rebuildFrameGeometry(): void {
+        if (!root.active) {
+            if (root._barLevels.length > 0)
+                root._barLevels = []
+            if (root._wavePath.length > 0)
+                root._wavePath = []
+            return
+        }
+
+        const processed = root._processPoints()
+        if (root.visualizerType === "wave") {
+            root._barLevels = []
+            root._wavePath = root._makeWavePath(processed)
+        } else {
+            root._wavePath = []
+            root._barLevels = root._makeBarLevels(processed)
+        }
+    }
+
+    function _queueFrameGeometry(): void {
+        if (root._frameRebuildQueued)
+            return
+        root._frameRebuildQueued = true
+        Qt.callLater(() => {
+            root._frameRebuildQueued = false
+            root._rebuildFrameGeometry()
+        })
+    }
+
+    onPointsChanged: root._queueFrameGeometry()
+    onNormalizationCeilingChanged: root._queueFrameGeometry()
+    onActiveChanged: root._queueFrameGeometry()
+    onVisualizerTypeChanged: root._queueFrameGeometry()
+    onFillRatioChanged: root._queueFrameGeometry()
+    onPixelsPerBarChanged: root._queueFrameGeometry()
+    onBarSpacingChanged: root._queueFrameGeometry()
+    onBarsOriginChanged: root._queueFrameGeometry()
+    onSmoothingChanged: root._queueFrameGeometry()
+    onWaveModeChanged: root._queueFrameGeometry()
+    onEdgeInsetChanged: root._queueFrameGeometry()
+    onTopLeftRadiusChanged: root._queueFrameGeometry()
+    onTopRightRadiusChanged: root._queueFrameGeometry()
+    onBottomLeftRadiusChanged: root._queueFrameGeometry()
+    onBottomRightRadiusChanged: root._queueFrameGeometry()
+    onEdgeSoftnessChanged: root._queueFrameGeometry()
+    onFrequencyProfileChanged: root._queueFrameGeometry()
+    onAccentStrengthChanged: root._queueFrameGeometry()
+    onMirroredStereoChanged: root._queueFrameGeometry()
+    onWidthChanged: root._queueFrameGeometry()
+    onHeightChanged: root._queueFrameGeometry()
+    Component.onCompleted: root._queueFrameGeometry()
 
     function _paletteColor(position): color {
         const palette = root.spectrumColors ?? []

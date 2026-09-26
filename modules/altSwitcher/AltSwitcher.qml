@@ -136,15 +136,29 @@ Scope {
         onTriggered: root.skewCardVisible = GlobalStates.altSwitcherOpen && root.skewStyle
     }
 
-    Timer {
-        id: skewFocusTimer
-        interval: 100
-        running: root.skewStyle && GlobalStates.altSwitcherOpen
-        repeat: true
-        onTriggered: {
-            if (GlobalStates.altSwitcherOpen)
-                altReleaseDetector.forceActiveFocus()
+    property int _skewFocusRetryCount: 0
+
+    function _ensureSkewFocus(): void {
+        if (!root.skewStyle || !GlobalStates.altSwitcherOpen) {
+            skewFocusRetryTimer.stop()
+            root._skewFocusRetryCount = 0
+            return
         }
+
+        altReleaseDetector.forceActiveFocus()
+        if (!altReleaseDetector.activeFocus && root._skewFocusRetryCount < 4) {
+            root._skewFocusRetryCount++
+            skewFocusRetryTimer.restart()
+        } else {
+            skewFocusRetryTimer.stop()
+        }
+    }
+
+    Timer {
+        id: skewFocusRetryTimer
+        interval: 50
+        repeat: false
+        onTriggered: root._ensureSkewFocus()
     }
 
     function toTitleCase(name) {
@@ -1640,10 +1654,14 @@ Scope {
         Connections {
             target: GlobalStates
             function onAltSwitcherOpenChanged() {
+                root._skewFocusRetryCount = 0
                 if (GlobalStates.altSwitcherOpen) {
                     root.showPanel()
                     root.maybeOpenOverview()
+                    if (root.skewStyle)
+                        Qt.callLater(root._ensureSkewFocus)
                 } else {
+                    skewFocusRetryTimer.stop()
                     root.hidePanel()
                     root.maybeCloseOverview()
                 }

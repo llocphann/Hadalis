@@ -182,6 +182,9 @@ require "$screen_edges" 'layer.enabled: frameShape.physicalShadowActive' 'Screen
 require "$screen_edges" 'fillRule: ShapePath.OddEvenFill' 'Screen Edge geometry lock must remain one odd-even frame'
 
 require "$alt_switcher" 'cacheBuffer: root.skewExpandedWidth' 'ii skew AltSwitcher cache must stay bounded'
+require "$alt_switcher" 'id: skewFocusRetryTimer' 'ii skew AltSwitcher focus must use bounded retries'
+require "$alt_switcher" 'root._skewFocusRetryCount < 4' 'ii skew AltSwitcher focus retries must stay bounded'
+reject "$alt_switcher" 'id: skewFocusTimer' 'ii skew AltSwitcher must not restore 10 Hz focus polling'
 reject "$alt_switcher" 'cacheBuffer: root.skewExpandedWidth * 2' 'ii skew AltSwitcher must not restore the doubled preview cache'
 require "$alt_switcher" 'layer.samples: Appearance.effectsEnabled ? 4 : 1' 'ii skew mask sampling must scale down with effects'
 require "$alt_switcher" 'layer.enabled: root.skewCardVisible' 'ii skew mask FBO must sleep while the switcher is closed'

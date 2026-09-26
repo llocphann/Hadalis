@@ -34,7 +34,8 @@ QtObject {
             ResourceUsage.releaseKeepAlive((heldFlags & 1) !== 0, (heldFlags & 2) !== 0)
             return demandFlags
         }
-        release: heldFlags =>
+        release: heldFlags => {
             ResourceUsage.releaseKeepAlive((heldFlags & 1) !== 0, (heldFlags & 2) !== 0)
+        }
     }
 }

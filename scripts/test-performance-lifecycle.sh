@@ -135,7 +135,7 @@ require "$power_profiles" 'interval: 300000' 'tlp-pd ownership probes must remai
 
 require "$world_clock" 'id: minuteTick' 'WorldClock must tick at minute precision without a permanent 1 Hz timer'
 reject "$world_clock" 'interval: 1000' 'WorldClock must not restore a 1 Hz background timer'
-require "$world_clock" '"for tz; do TZ=\\"$tz\\" date +%z' 'WorldClock offset refresh must batch configured zones into one process'
+require "$world_clock" 'for tz; do TZ=\"$tz\" date +%z' 'WorldClock offset refresh must batch configured zones into one process'
 reject "$world_clock" 'environment: ({ TZ:' 'WorldClock must not restore one date process per timezone'
 require "$game_mode" 'Math.max(10000, Math.round(configured))' 'GameMode fallback polling must remain low cadence'
 require "$overview_window" 'layer.enabled: GlobalStates.overviewOpen' 'retained Overview window masks must sleep while Overview is closed'

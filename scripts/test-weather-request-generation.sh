@@ -17,6 +17,8 @@ require_literal() {
 
 require_literal 'property int _requestGeneration: 0' 'request generation state is missing'
 require_literal 'function _advanceRequestGeneration(): void' 'request generation invalidation helper is missing'
+require_literal 'function _cancelRunningRequests(): void' 'stale request cancellation helper is missing'
+require_literal 'requests[i].running = false' 'generation changes must terminate stale requests'
 require_literal 'function _startRequest(proc): void' 'request stamping helper is missing'
 require_literal 'function _requestIsCurrent(proc): bool' 'stale-request guard helper is missing'
 require_literal 'property bool _locationRefreshPending: false' 'location refresh queue is missing'

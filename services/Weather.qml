@@ -81,9 +81,27 @@ Singleton {
 
     property int _requestGeneration: 0
 
+    function _cancelRunningRequests(): void {
+        const requests = [
+            gpsLocator,
+            ipLocator,
+            fallbackLocator,
+            forwardGeocoder,
+            reverseGeocoder,
+            fetcher,
+            openMeteoFetcher,
+            airQualityFetcher
+        ]
+        for (let i = 0; i < requests.length; ++i) {
+            if (requests[i].running)
+                requests[i].running = false
+        }
+    }
+
     function _advanceRequestGeneration(): void {
         root._requestGeneration++
         retryTimer.stop()
+        root._cancelRunningRequests()
     }
 
     function _startRequest(proc): void {

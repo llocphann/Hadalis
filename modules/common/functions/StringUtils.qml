@@ -206,11 +206,6 @@ Singleton {
     }
 
     /**
-     * Converts seconds to a friendly time string (e.g. 1:23 or 1:02:03).
-     * @param { number } seconds
-     * @returns { string }
-     */
-    /**
      * Keeps an elapsed media position coherent with its reported duration.
      * Track metadata and MPRIS Position can arrive on separate D-Bus updates;
      * during that gap some players briefly expose the previous track position.
@@ -230,6 +225,11 @@ Singleton {
         return current - total <= 2 ? total : 0;
     }
 
+    /**
+     * Converts seconds to a friendly time string (e.g. 1:23 or 1:02:03).
+     * @param { number } seconds
+     * @returns { string }
+     */
     function friendlyTimeForSeconds(seconds) {
         // MPRIS players with no real duration (live streams/TV) sometimes report
         // a garbage mpris:length instead of omitting it — treat anything past a

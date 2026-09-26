@@ -27,6 +27,18 @@ def main() -> None:
     cava_service = read("services/deferred/CavaService.qml")
     cava_config = read("scripts/cava/generate_config.sh")
     wave = read("modules/common/widgets/WaveVisualizer.qml")
+    desktop_widget = read("modules/background/widgets/mediaControls/MediaControlsWidget.qml")
+    preset_paths = [
+        "modules/mediaControls/presets/FullPlayer.qml",
+        "modules/mediaControls/presets/LyricsPlayer.qml",
+        "modules/mediaControls/presets/CompactPlayer.qml",
+        "modules/mediaControls/presets/MinimalPlayer.qml",
+        "modules/mediaControls/presets/ClassicPlayer.qml",
+        "modules/mediaControls/presets/AlbumArtPlayer.qml",
+        "modules/mediaControls/presets/VisualizerPlayer.qml",
+        "modules/mediaControls/presets/LyricsSplitPlayer.qml",
+        "modules/mediaControls/presets/ExpandingLyricsPlayer.qml",
+    ]
 
     check(
         "readonly property bool presentationActive: root.QsWindow.window?.visible ?? false" in popup,
@@ -133,6 +145,18 @@ def main() -> None:
         and "maxVisualizerValue: 1000" not in player,
         "PlayerControl must scale the wave against the adaptive signal ceiling instead of a fixed 1000",
     )
+    check(
+        "item.positionUpdatesActive = Qt.binding(() =>" in desktop_widget
+        and "root.visible && root.powerActive" in desktop_widget,
+        "Desktop media widget must gate preset position polling by its power lifecycle",
+    )
+    for preset_path in preset_paths:
+        preset = read(preset_path)
+        check(
+            "property bool positionUpdatesActive: true" in preset
+            and "positionUpdatesActive: root.positionUpdatesActive" in preset,
+            f"{preset_path} must forward explicit position update lifecycle to PlayerBase",
+        )
     check(
         "Repeater {" in wave
         and "processedBars" in wave

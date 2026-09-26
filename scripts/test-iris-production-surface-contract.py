@@ -90,7 +90,7 @@ for token in (
     "readonly property var frameEndShape: !root.tangentEndJoined",
     "readonly property var popupShape:",
     "readonly property bool needsEndJoinAux:",
-    'joins: ["frame-end"]',
+    'joins: ["owner", "frame-end"]',
     "ShaderEffectSource {",
     "id: shadowMaskField",
     "shapes: field.shapes",

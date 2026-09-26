@@ -198,7 +198,7 @@ def main() -> None:
         "bottomRightRadius: 0",
         'Translation.tr("Edit widgets")',
         "id: editActions",
-        "Layout.alignment: Qt.AlignHCenter",
+        "horizontalAlignment: Text.AlignHCenter",
         "focusPolicy: Qt.StrongFocus",
         'Config.setNestedValue(\n                    "dashboard.canvas.autoAdjustSize"',
         "border.width: tool.visualFocus ? 2 : (tool.toggled ? 1 : 0)",

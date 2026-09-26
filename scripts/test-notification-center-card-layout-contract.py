@@ -51,7 +51,7 @@ require(ITEM, "visible: root.modernLayout", "modern action spacer/alignment miss
 for token in (
     "id: notificationModeButton",
     "id: clearAllButton",
-    "implicitWidth: 36",
+    "implicitWidth: root.popupPresentation ? 30 : 36",
     "StyledToolTip { text: notificationModeButton.buttonText }",
     "StyledToolTip { text: clearAllButton.buttonText }",
     "Appearance.colors.colOnPrimaryContainer",

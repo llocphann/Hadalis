@@ -15,12 +15,12 @@ for token in (
     "connectorLength: 0",
     "seamOverlap: PerimeterTokens.irisWeldDepth",
     "ConnectedSurfaceRevealClip {",
-    "ConnectedSurfaceFrame {",
-    "connectorVisible: false",
+    "ConnectedSurfaceIrisFrame {",
     "ConnectedSurfaceContentHost {",
-    "ConnectedSurfaceMask {",
+    "ConnectedSurfaceBodyMask {",
     'joinTop: connectedGeometry.edge === "top"',
-    "shadowTop: !statusFrame.joinTop",
+    "bodyItem: statusFrame.bodyItem",
+    "visibleBodyRect: statusFrame.visibleBodyRect",
     "item.connectedSurface = true",
 ):
     assert token in osd, token

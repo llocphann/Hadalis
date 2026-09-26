@@ -708,7 +708,7 @@ def main() -> None:
         "ColorUtils.applyAlpha(Appearance.colors.colLayer2, 1 - Appearance.backgroundTransparency)",
         "radius: Appearance.rounding.normal",
         "border.width: 0",
-        "color: topRow.showAppName ? Appearance.colors.colSubtext : Appearance.colors.colOnLayer2",
+        "color: root.modernLayout",
         "color: Appearance.colors.colSubtext",
     ):
         require(notification_group, token, "NotificationGroup.qml")

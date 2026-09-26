@@ -39,7 +39,9 @@ Item {
 
     Behavior on displayedProgress {
         enabled: Appearance.animationsEnabled && root.isPlaying
-        NumberAnimation { duration: 250; easing.type: Easing.Linear }
+        // Match PlayerBase's 500 ms sample cadence so the bar keeps moving
+        // continuously instead of pausing between lower-frequency updates.
+        NumberAnimation { duration: 500; easing.type: Easing.Linear }
     }
 
     // Seekable slider

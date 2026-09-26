@@ -94,6 +94,8 @@ util_buttons="$repo_root/modules/bar/UtilButtons.qml"
 waffle_system_button="$repo_root/modules/waffle/bar/SystemButton.qml"
 waffle_timer_button="$repo_root/modules/waffle/bar/TimerButton.qml"
 waffle_background_clock="$repo_root/modules/waffle/background/WaffleBackgroundClock.qml"
+player_base="$repo_root/modules/mediaControls/components/PlayerBase.qml"
+player_progress="$repo_root/modules/mediaControls/components/PlayerProgress.qml"
 bar_media="$repo_root/modules/bar/Media.qml"
 vertical_bar_media="$repo_root/modules/verticalBar/VerticalMedia.qml"
 
@@ -135,6 +137,10 @@ require "$resource_usage" 'totalRx += Number(match[2]) || 0' 'ResourceUsage netw
 require "$resource_usage" 'totalTx += Number(match[3]) || 0' 'ResourceUsage network polling must preserve TX byte aggregation'
 require "$bar_resources" 'active: !GameMode.active' 'Bar scalar resource monitoring must stay game-mode gated'
 require "$repo_root/modules/bar/BarContent.qml" 'root.QsWindow.window?.visible ?? false' 'Bar spectrum Cava must release with its presentation window'
+require "$player_base" 'interval: 500' 'PlayerBase MPRIS position polling must stay at the reduced 2 Hz cadence'
+require "$player_base" 'triggeredOnStart: true' 'PlayerBase position polling must prime immediately when activated'
+reject "$player_base" 'interval: 250' 'PlayerBase must not restore 4 Hz MPRIS position polling'
+require "$player_progress" 'NumberAnimation { duration: 500; easing.type: Easing.Linear }' 'PlayerProgress interpolation must span the reduced sample cadence'
 require "$cava" '? Math.min(24, root.requestedFramerate)' 'Low Power must cap Cava at 24 fps'
 require "$cava_generator" 'FRAMERATE="${2:-30}"' 'Cava generator fallback must remain 30 fps'
 require "$advanced" '"appearance.cava.framerate": 30' 'ii Cava reset must remain 30 fps'

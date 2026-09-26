@@ -488,9 +488,13 @@ Item {
     }
 
     Timer {
-        running: root.effectiveIsPlaying && GlobalStates.sidebarLeftOpen
+        running: root.visible
+            && GlobalStates.sidebarLeftOpen
+            && (root.QsWindow.window?.visible ?? false)
+            && root.effectiveIsPlaying
         interval: 1000
         repeat: true
+        triggeredOnStart: true
         onTriggered: {
             if (!root.isYtMusicPlayer && root.player) {
                 root.player.positionChanged()

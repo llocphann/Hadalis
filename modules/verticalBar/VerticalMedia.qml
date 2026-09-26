@@ -25,9 +25,12 @@ MouseArea {
     implicitWidth: Appearance.sizes.verticalBarWidth
 
     Timer {
-        running: activePlayer?.playbackState == MprisPlaybackState.Playing
+        running: root.visible
+            && (root.QsWindow.window?.visible ?? false)
+            && activePlayer?.playbackState == MprisPlaybackState.Playing
         interval: Config.options?.resources?.updateInterval ?? 3000
         repeat: true
+        triggeredOnStart: true
         onTriggered: activePlayer?.positionChanged()
     }
 

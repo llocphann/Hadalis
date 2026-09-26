@@ -94,6 +94,8 @@ util_buttons="$repo_root/modules/bar/UtilButtons.qml"
 waffle_system_button="$repo_root/modules/waffle/bar/SystemButton.qml"
 waffle_timer_button="$repo_root/modules/waffle/bar/TimerButton.qml"
 waffle_background_clock="$repo_root/modules/waffle/background/WaffleBackgroundClock.qml"
+bar_media="$repo_root/modules/bar/Media.qml"
+vertical_bar_media="$repo_root/modules/verticalBar/VerticalMedia.qml"
 
 require "$config" 'property int framerate: 30' 'Cava schema default must remain 30 fps'
 require "$defaults" '"framerate": 30' 'persisted Cava default must remain 30 fps'
@@ -133,6 +135,12 @@ require "$cava_generator" 'FRAMERATE="${2:-30}"' 'Cava generator fallback must r
 require "$advanced" '"appearance.cava.framerate": 30' 'ii Cava reset must remain 30 fps'
 require "$waffle_themes" '"appearance.cava.framerate": 30' 'Waffle Cava reset must remain 30 fps'
 require "$media_section" 'root.effectiveIsPlaying && GlobalStates.controlPanelOpen' 'Control Panel Cava must stop while playback is paused'
+require "$sidebar_media" 'root.QsWindow.window?.visible ?? false' 'Sidebar media position ticker must sleep with its presentation window'
+require "$sidebar_media" 'triggeredOnStart: true' 'Sidebar media position ticker must prime on reopen'
+require "$bar_media" 'root.QsWindow.window?.visible ?? false' 'Bar media position ticker must sleep with its presentation window'
+require "$bar_media" 'triggeredOnStart: true' 'Bar media position ticker must prime on remap'
+require "$vertical_bar_media" 'root.QsWindow.window?.visible ?? false' 'Vertical Bar media ticker must sleep with its presentation window'
+require "$vertical_bar_media" 'triggeredOnStart: true' 'Vertical Bar media ticker must prime on remap'
 require "$sidebar_media" 'root.effectiveIsPlaying && GlobalStates.sidebarLeftOpen' 'Sidebar Cava must stop while playback is paused'
 require "$sidebar_media" 'layer.enabled: root.visible && GlobalStates.sidebarLeftOpen' 'Sidebar media mask must release its FBO while the sidebar is closed'
 require "$sidebar_media" 'sourceSize.width: Math.max(1, Math.ceil(card.width * root._dpr))' 'Sidebar blurred artwork decode must remain bounded to the displayed card'

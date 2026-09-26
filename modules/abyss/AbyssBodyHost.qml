@@ -26,10 +26,19 @@ Item {
         ? Qt.rect(content.x,content.y,content.width,content.height) : Qt.rect(0,0,0,0)
     signal closeRequested()
     Behavior on progress {
-        NumberAnimation {
-            duration: AbyssStyle.motionNormal
-            easing.type: root.open ? (AbyssStyle.motionOvershoot > 0 ? Easing.OutBack : Easing.OutCubic) : Easing.InCubic
-            easing.overshoot: 0.4
+        id: deformation
+        enabled: AbyssStyle.motionEnabled
+        SequentialAnimation {
+            NumberAnimation {
+                to: deformation.targetValue > 0 ? deformation.targetValue+AbyssStyle.motionOvershoot : 0
+                duration: AbyssStyle.motionNormal
+                easing.type: root.open ? Easing.OutCubic : Easing.InCubic
+            }
+            NumberAnimation {
+                to: deformation.targetValue
+                duration: root.open && AbyssStyle.motionOvershoot > 0 ? AbyssStyle.motionSettle : 0
+                easing.type: Easing.OutCubic
+            }
         }
     }
     Loader {

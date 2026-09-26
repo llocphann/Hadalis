@@ -29,8 +29,8 @@ Scope {
                     && GlobalStates.resolveOutputName(GlobalStates.abyssPopupTargetOutput,[]) === name))
             && Geometry.targets(name, Config.options?.bar?.screenList ?? [], Quickshell.screens.map(s => s.name))
     }
-    function outputInsets(name) {
-        return Geometry.insets(AbyssStyle.perimeterThickness, root.barEdge, AbyssStyle.barThickness, root.barOnOutput(name))
+    function outputInsets(name, reservation = false) {
+        return Geometry.insets(AbyssStyle.perimeterThickness, root.barEdge, AbyssStyle.barThickness, root.barOnOutput(name) && (!reservation || !(Config.options?.bar?.autoHide?.enable ?? false)))
     }
     Connections {
         target: GlobalStates
@@ -129,8 +129,14 @@ Scope {
                 id: barClose; interval: 220; repeat: false
                 onTriggered: if (!barHover.hovered && !revealHover.hovered && !popup.open) root.setBarRevealed(window.outputName,false)
             }
-            readonly property var nativeInsets: root.outputInsets(window.outputName)
-            readonly property var sideObstacles: [leftPanel,rightPanel].filter(body => body.open).map(body => body.record)
+            property real barProgress: root.barOnOutput(window.outputName) ? 1 : 0
+            Behavior on barProgress {
+                enabled: AbyssStyle.motionEnabled
+                NumberAnimation { duration: AbyssStyle.motionNormal; easing.type: Easing.OutCubic }
+            }
+            readonly property var nativeInsets: Geometry.insets(AbyssStyle.perimeterThickness,root.barEdge,
+                AbyssStyle.perimeterThickness+(AbyssStyle.barThickness-AbyssStyle.perimeterThickness)*barProgress,barProgress > 0.001)
+            readonly property var sideObstacles: [leftPanel,rightPanel].filter(body => body.progress > 0.001).map(body => body.record)
             AbyssBodyHost {
                 id: leftPanel
                 anchors.fill: parent
@@ -138,6 +144,8 @@ Scope {
                 outputName: window.outputName
                 open: window.presented && field.ready && (Config.options?.enabledPanels ?? []).includes("abyssSidebarLeft")
                     && GlobalStates.sidebarLeftOpen && GlobalStates.sidebarLeftPresentationOutput === window.outputName
+                    && !(popup.open && popup.edge === edge)
+                    && !(notification.centerOnOutput && edge === "right")
                 edgeInsets: window.nativeInsets
                 along: edgeInsets.top+36
                 span: window.height-edgeInsets.top-edgeInsets.bottom-72
@@ -152,7 +160,8 @@ Scope {
                 outputName: window.outputName
                 open: window.presented && field.ready && (Config.options?.enabledPanels ?? []).includes("abyssSidebarRight")
                     && GlobalStates.sidebarRightOpen && GlobalStates.sidebarRightPresentationOutput === window.outputName
-                    && !(GlobalStates.notificationCenterOpen && GlobalStates.notificationCenterPresentationOutput === window.outputName)
+                    && !(popup.open && popup.edge === edge)
+                    && !(notification.centerOnOutput && edge === "right")
                 edgeInsets: window.nativeInsets
                 along: edgeInsets.top+36
                 span: window.height-edgeInsets.top-edgeInsets.bottom-72
@@ -195,7 +204,7 @@ Scope {
                 along: (Geometry.horizontal(edge) ? window.width : window.height)/2-span/2
                 depth: AbyssStyle.dockThickness
                 padding: 12
-                obstacles: window.sideObstacles.concat(notification.open ? [notification.record] : [])
+                obstacles: window.sideObstacles.concat(notification.progress > 0.001 ? [notification.record] : []).concat(popup.progress > 0.001 ? [popup.record] : [])
                 source: "content/AbyssDockContent.qml"
                 HoverHandler { id: dockHover; parent: dock.contentItem; onHoveredChanged: { if (hovered) { dockClose.stop(); window.dockHovered = true } else dockClose.restart() } }
             }
@@ -264,10 +273,12 @@ Scope {
             }
             AbyssField {
                 id: field
+                outputName: window.outputName
+                renderScale: window.modelData?.devicePixelRatio ?? 1
                 z: -1
                 anchors.fill: parent
                 visible: window.presented
-                edgeInsets: root.outputInsets(window.outputName)
+                edgeInsets: window.nativeInsets
                 records: (bar.visible ? bar.deformations.map(rec => Geometry.panel(window.width,window.height,edgeInsets,root.barEdge,rec.along+12,rec.span-24,rec.depth,1,0)) : [])
                     .concat([leftPanel,rightPanel,popup,dock,aux,notification,osd].filter(body => body.progress > 0.001).map(body => body.record))
             }
@@ -280,8 +291,14 @@ Scope {
         readonly property bool horizontal: Geometry.horizontal(edge)
         readonly property bool mapped: Config.ready && !GlobalStates.screenLocked
             && !GameMode.hasFullscreenOnOutput(modelData?.name ?? "")
-        readonly property real thickness: root.outputInsets(modelData?.name ?? "")[edge]
-            + (root.barOnOutput(modelData?.name ?? "") && edge === root.barEdge ? 5 : 0)
+        readonly property bool persistentDock: (Config.options?.enabledPanels ?? []).includes("abyssDock")
+            && (Config.options?.dock?.enable ?? true) && (Config.options?.dock?.pinnedOnStartup ?? false)
+            && !(Config.options?.dock?.hoverToReveal ?? false) && !GlobalStates.widgetEditMode
+            && Geometry.targets(modelData?.name ?? "",Config.options?.dock?.screenList ?? [],Quickshell.screens.map(s => s.name))
+        readonly property string dockEdge: ["top","bottom","left","right"].includes(Config.options?.dock?.position) ? Config.options.dock.position : "bottom"
+        readonly property real thickness: root.outputInsets(modelData?.name ?? "",true)[edge]
+            + (root.barOnOutput(modelData?.name ?? "") && !(Config.options?.bar?.autoHide?.enable ?? false) && edge === root.barEdge ? 5 : 0)
+            + (persistentDock && edge === dockEdge ? AbyssStyle.dockThickness : 0)
         screen: modelData
         visible: mapped
         color: "transparent"

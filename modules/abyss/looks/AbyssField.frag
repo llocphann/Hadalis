@@ -9,6 +9,8 @@ layout(std140,binding=0) uniform buf {
     vec4 viewport;
     vec4 insets;
     vec4 material;
+    vec4 effects;
+    vec4 wallpaperCrop;
     vec4 surface;
     vec4 raised;
     vec4 rim;
@@ -18,6 +20,7 @@ layout(std140,binding=0) uniform buf {
     vec4 rect4; vec4 rect5; vec4 rect6; vec4 rect7;
     vec4 rect8; vec4 rect9; vec4 rect10; vec4 rect11;
 };
+layout(binding=1) uniform sampler2D wallpaper;
 float roundedBox(vec2 p, vec4 rect, float radius) {
     float r = min(radius,min(rect.z,rect.w)*0.5);
     vec2 q = abs(p-rect.xy-rect.zw*0.5)-rect.zw*0.5+r;
@@ -43,11 +46,30 @@ float field(vec2 p) {
 void main() {
     vec2 p=qt_TexCoord0*viewport.xy;
     float d=field(p);
+    // Derivatives are evaluated before any divergent early return.
+    vec2 gradient=vec2(dFdx(d),dFdy(d));
     float aa=max(0.6,fwidth(d)*0.6);
     if(d>24.0) { fragColor=vec4(0.0); return; }
     float coverage=1.0-smoothstep(-aa,aa,d);
     float depth=exp(-abs(d)*0.075);
     vec4 body=mix(surface,raised*surface.a,depth*0.38);
+    if(effects.z>0.5 && coverage>0.0) {
+        vec2 normal=gradient/max(0.0001,length(gradient));
+        vec2 uv=qt_TexCoord0+normal*effects.y*exp(-abs(d)/30.0)/viewport.xy;
+        uv=wallpaperCrop.xy+clamp(uv,0.0,1.0)*wallpaperCrop.zw;
+        vec2 stepUv=effects.x/viewport.xy*wallpaperCrop.zw;
+        vec3 glass=texture(wallpaper,uv).rgb;
+        if(effects.x>0.0) {
+            // Bounded five-tap wallpaper blur in the same silhouette pass.
+            glass=glass*0.4+(texture(wallpaper,uv+vec2(stepUv.x,0)).rgb
+                +texture(wallpaper,uv-vec2(stepUv.x,0)).rgb
+                +texture(wallpaper,uv+vec2(0,stepUv.y)).rgb
+                +texture(wallpaper,uv-vec2(0,stepUv.y)).rgb)*0.15;
+        }
+        // Strong absorption keeps typography readable; no live application
+        // pixels are sampled. Missing/animated wallpaper uses the color body.
+        body.rgb=mix(body.rgb,glass*surface.a,0.075+depth*0.07);
+    }
     float spec=exp(-abs(d)*1.5)*material.w;
     body.rgb=mix(body.rgb,rim.rgb*body.a,spec);
     body.a=surface.a;

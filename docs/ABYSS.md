@@ -202,3 +202,34 @@ Production host regression now exercises deferred loading, output binding,
 immediate input release and unload/reopen in QML. Existing transition/input,
 family/geometry, local manifest and generated IPC registry checks pass.
 Phase 7 richer material/motion, settings and full acceptance are next.
+
+
+## Material and motion checkpoint (phase 7)
+
+[Wallpaper material capture](evidence/abyss/phase7-material.png) is a real GPU
+render with the desktop's selected static wallpaper, live content and Quality
+settings. Topology still comes from the original single SDF. A hidden static
+Image texture is decoded at bounded output resolution; the same field pass adds
+a five-tap wallpaper blur, local normal-based UV refraction, deep absorption,
+palette rim, glow and silhouette shadow. This is wallpaper glass; application
+pixels are not captured. Missing/animated wallpaper uses the palette body.
+Performance disables the texture, refraction, glow and shadow. Balanced uses
+blur without refraction; Quality permits explicit refraction and a small settle.
+Global low-power/GameMode effects gating and reduced motion remain authoritative.
+
+Body motion pulls inward over 180–260 ms, then settles only when Quality
+overshoot is present (at most 2.5%). Close drops input before retraction.
+Intensity controls bounded timing; zero/global reduced motion changes geometry
+synchronously. Bar auto-hide also retracts thickness, with a thin reservation
+throughout hover reveal. Persistent pinned docks reserve their actual inward
+depth; temporary panel/popups keep zero exclusive zone. Reservation windows
+remain transparent with empty input masks.
+
+Production host runtime tests pass, including synchronous reduced-motion close.
+Geometry tests add small logical views and a flood-fill of the actual union to
+reject sealed workspace pockets across four orientations and combined layouts.
+Shared service fixes are separate: `04d0e0148` restores the uptime root callback;
+`1f21dffce` coalesces TaskbarApps identity resolution outside a binding, preserving
+pins/filtering/order/Niri authority under an executed production-model regression.
+The latest GPU capture has neither prior shared-service diagnostic. Settings,
+docs, full-shell switching and performance qualification are next.

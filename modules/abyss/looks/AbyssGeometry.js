@@ -15,16 +15,18 @@ function panel(width, height, insets, edge, along, span, depth, progress, paddin
     var h = horizontal(edge);
     var first = h ? insets.left : insets.top;
     var last = h ? width - insets.right : height - insets.bottom;
+    var firstBound=first, lastBound=last;
     // Keep content out of perpendicular panels. Besides avoiding overlapping
     // controls this prevents a popup and sidebar sealing a second workspace
     // pocket at their corner. The final painter still computes one true union.
     for (var i=0;i<(obstacles || []).length;i++) {
         var other=obstacles[i];
         if (horizontal(other.edge) === h) continue;
-        if (other.edge === "left" || other.edge === "top") first += other.depth + 48;
-        else last -= other.depth + 48;
+        if (other.edge === "left" || other.edge === "top") first += other.depth + 48 * (other.progress ?? 1);
+        else last -= other.depth + 48 * (other.progress ?? 1);
     }
-    last = Math.max(first,last);
+    first = clamp(first,firstBound,lastBound);
+    last = Math.max(first,Math.min(last,lastBound));
     var p = clamp(padding, 0, Math.max(0, (last-first)/8));
     span = clamp(span, 0, Math.max(0, last-first-2*p));
     along = clamp(along, first+p, Math.max(first+p, last-p-span));
@@ -40,7 +42,7 @@ function panel(width, height, insets, edge, along, span, depth, progress, paddin
     var surface = h ? {x:along, y:edge==="top"?-50:y, width:span, height:d+insets[edge]+50}
         : {x:edge==="left"?-50:x, y:along, width:d+insets[edge]+50, height:span};
     if (d <= 0) surface = {x:0,y:0,width:0,height:0};
-    return {edge:edge, content:content, surface:surface, depth:depth, span:span, along:along};
+    return {edge:edge, content:content, surface:surface, depth:d, targetDepth:depth, progress:clamp(progress,0,1.035), span:span, along:along};
 }
 function roundedDistance(x, y, rect, radius) {
     var r = Math.min(radius, rect.width/2, rect.height/2);
@@ -53,12 +55,12 @@ function smoothUnion(a, b, k) {
     var h = Math.max(k-Math.abs(a-b),0)/k;
     return Math.min(a,b)-h*h*k*0.25;
 }
-function distance(x, y, width, height, insets, radius, records, softness) {
+function distance(x, y, width, height, insets, radius, records, softness, recordRadius) {
     var d = -roundedDistance(x,y,{x:insets.left,y:insets.top,width:width-insets.left-insets.right,height:height-insets.top-insets.bottom},radius);
     for (var i=0;i<records.length;i++) {
         var rec=records[i];
         if (rec.surface.width>0 && rec.surface.height>0)
-            d=smoothUnion(d,roundedDistance(x,y,rec.surface,rec.radius || radius),softness);
+            d=smoothUnion(d,roundedDistance(x,y,rec.surface,rec.radius || recordRadius || radius),softness);
     }
     return d;
 }

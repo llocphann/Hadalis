@@ -16,16 +16,17 @@ Singleton {
     readonly property real contentPadding: 20 * Appearance.fontSizeScale
     readonly property real barThickness: Math.max(48, Appearance.sizes.barHeight)
     readonly property real dockThickness: Math.max(52, Math.min(100, Config.options?.dock?.height ?? 70))
-    readonly property real blurRadius: quality === "performance" || !(options?.effects?.blur?.enabled ?? true) ? 0 : Math.max(0, Math.min(24, options?.effects?.blur?.radius ?? 10))
-    readonly property real shadowStrength: quality === "performance" ? 0 : Math.max(0, Math.min(0.5, options?.effects?.shadowStrength ?? 0.24))
-    readonly property real refractionStrength: quality !== "quality" || !(options?.effects?.refraction?.enabled ?? false) ? 0 : Math.max(0, Math.min(16, options?.effects?.refraction?.strength ?? 6))
+    readonly property real blurRadius: quality === "performance" || !Appearance.effectsEnabled || !(options?.effects?.blur?.enabled ?? true) ? 0 : Math.max(0, Math.min(24, options?.effects?.blur?.radius ?? 10))
+    readonly property real shadowStrength: quality === "performance" || !Appearance.effectsEnabled ? 0 : Math.max(0, Math.min(0.5, options?.effects?.shadowStrength ?? 0.24))
+    readonly property real refractionStrength: quality !== "quality" || !Appearance.effectsEnabled || !(options?.effects?.refraction?.enabled ?? false) ? 0 : Math.max(0, Math.min(16, options?.effects?.refraction?.strength ?? 6))
     readonly property real highlightStrength: Math.max(0, Math.min(1, options?.effects?.surfaceHighlight ?? 0.45))
-    readonly property real glowStrength: quality === "performance" ? 0 : Math.max(0, Math.min(0.3, options?.effects?.glow?.strength ?? 0.08))
-    readonly property bool motionEnabled: Appearance.animationsEnabled && (options?.motion?.intensity ?? 0.6) > 0
-    readonly property int motionFast: motionEnabled ? 140 : 0
-    readonly property int motionNormal: motionEnabled ? 220 : 0
-    readonly property int motionSettle: motionEnabled ? 280 : 0
-    readonly property real motionOvershoot: quality === "quality" ? 0.025 * (options?.motion?.intensity ?? 0.6) : 0
+    readonly property real glowStrength: quality === "performance" || !Appearance.effectsEnabled ? 0 : Math.max(0, Math.min(0.3, options?.effects?.glow?.strength ?? 0.08))
+    readonly property real motionIntensity: Math.max(0,Math.min(1,options?.motion?.intensity ?? 0.6))
+    readonly property bool motionEnabled: Appearance.animationsEnabled && motionIntensity > 0
+    readonly property int motionFast: motionEnabled ? 100 + Math.round(60*motionIntensity) : 0
+    readonly property int motionNormal: motionEnabled ? 180 + Math.round(80*motionIntensity) : 0
+    readonly property int motionSettle: motionEnabled ? 180 + Math.round(170*motionIntensity) : 0
+    readonly property real motionOvershoot: motionEnabled && quality === "quality" ? 0.025 * motionIntensity : 0
     readonly property string fontFamily: Appearance.font.family.main
     readonly property real fontSize: Appearance.font.pixelSize.normal
     readonly property color surfaceDeep: ColorUtils.colorWithLightness(Appearance.m3colors.m3surface, 0.045)

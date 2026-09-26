@@ -41,6 +41,9 @@ Item {
         ? YtMusic.currentArtist : (player?.trackArtist ?? "")
     readonly property bool effectiveIsPlaying: isYtMusicActive
         ? YtMusic.isPlaying : (player?.isPlaying ?? false)
+    readonly property bool positionTickerActive:
+        root.player?.playbackState === MprisPlaybackState.Playing
+        && GlobalStates.controlPanelOpen
 
     property string artDownloadLocation: Directories.coverArt
     readonly property bool downloaded: MediaArtwork.ready
@@ -478,10 +481,10 @@ Item {
     }
 
     Timer {
-        running: root.player?.playbackState === MprisPlaybackState.Playing
-            && GlobalStates.controlPanelOpen
+        running: root.positionTickerActive
         interval: 1000
         repeat: true
+        triggeredOnStart: true
         onTriggered: root.player?.positionChanged()
     }
 }

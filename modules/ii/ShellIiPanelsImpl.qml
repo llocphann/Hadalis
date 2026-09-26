@@ -143,7 +143,7 @@ Item {
         open: GlobalStates.overlayOpen || OverlayContext.hasPinnedWidgets || OverlayContext.nativeDialogOpen
         component: Overlay {}
     }
-    OnDemandPanelLoader { identifier: "iiOverview"; open: GlobalStates.overviewOpen; retainAfterUse: true; closeGraceMs: 300; source: "../overview/Overview.qml" }
+    OnDemandPanelLoader { identifier: "iiOverview"; open: GlobalStates.overviewOpen; closeGraceMs: Appearance.animation.elementMoveExit.duration + 80; source: "../overview/Overview.qml" }
     DeferredPanelLoader { identifier: "iiPolkit"; component: Polkit {} }
 
     DeferredPanelLoader { identifier: "iiRegionSelector"; component: RegionSelector {} }

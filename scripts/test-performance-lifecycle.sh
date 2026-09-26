@@ -300,6 +300,8 @@ reject "$sidebar_world_clock" ' date '\''+' 'Sidebar World Clock must not spawn 
 require "$sidebar_world_clock" 'root._formatOffset(rest[1])' 'Sidebar World Clock must preserve colonized UTC offsets'
 require "$game_mode" 'Math.max(10000, Math.round(configured))' 'GameMode fallback polling must remain low cadence'
 require "$overview_window" 'layer.enabled: GlobalStates.overviewOpen' 'retained Overview window masks must sleep while Overview is closed'
+require "$ii_panels" 'OnDemandPanelLoader { identifier: "iiOverview"; open: GlobalStates.overviewOpen; closeGraceMs: Appearance.animation.elementMoveExit.duration + 80;' 'ii Overview must unload after its exit animation instead of using long idle retention'
+reject "$ii_panels" 'identifier: "iiOverview"; open: GlobalStates.overviewOpen; retainAfterUse: true' 'ii Overview must not restore five-minute post-use residency'
 require "$resource_usage" '? Math.max(6000, root._configuredUpdateIntervalMs)' 'Low Power must slow resource sampling to at least 6 seconds'
 require "$resource_usage" 'interval: root._effectiveUpdateIntervalMs' 'resource sensor timer must use the effective power-aware cadence'
 require "$resource_usage" 'readonly property int _expensiveGpuUpdateIntervalMs:' 'process-backed GPU sampling must use a slower independent cadence'

@@ -109,6 +109,7 @@ skipped_checks=()
 failure_groups=()
 check_marked_skip=0
 qml_parser_status='QML parser: UNKNOWN (probe did not run)'
+qml_parser_allow_unknown=0
 environment_checks=(
     'actual Arch package build/install on a package-build host'
     'live Niri/Quickshell desktop acceptance'
@@ -268,7 +269,11 @@ probe_qml_parser() {
     fi
     qt_version="$(bash scripts/lib/qml-parser-qt-version.sh "$parser" 2>/dev/null || true)"
     if [[ -z "$qt_version" ]]; then
-        (( strict_qml == 1 )) && { qml_parser_status="QML parser: FAIL ($parser Qt version unknown; strict mode requires >= 6.8)"; return 1; }
+        if (( strict_qml == 1 )); then
+            qml_parser_allow_unknown=1
+            qml_parser_status="QML parser: AVAILABLE ($parser; Qt version unknown, strict direct project parse required)"
+            return 0
+        fi
         qml_parser_status="QML parser: SKIPPED ($parser; Qt version unknown)"; record_skip "QML parser pass ($parser Qt version could not be determined)"; return 0
     fi
     IFS=. read -r major minor _ <<<"$qt_version"
@@ -280,7 +285,7 @@ probe_qml_parser() {
 }
 run_qml_guards() {
     local output rc
-    output="$(fish scripts/qml-check.fish --all 2>&1)"; rc=$?; printf '%s\n' "$output"
+    output="$(HADALIS_QMLFORMAT_ALLOW_UNKNOWN="$qml_parser_allow_unknown" fish scripts/qml-check.fish --all 2>&1)"; rc=$?; printf '%s\n' "$output"
     if [[ "$qml_parser_status" == 'QML parser: AVAILABLE '* ]]; then
         if grep -Fq 'QML parser rejected the file' <<<"$output"; then qml_parser_status="${qml_parser_status/AVAILABLE/FAIL}"; else qml_parser_status="${qml_parser_status/AVAILABLE/PASS}"; fi
     fi

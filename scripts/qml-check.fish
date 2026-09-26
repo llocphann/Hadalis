@@ -48,11 +48,16 @@ end
 # (for example "qmlformat 1.0"), so resolve the Qt runtime version separately.
 # Treat Qt < 6.8 as unavailable instead of producing false startup failures.
 set -l parser_skip_reason ""
+set -l parser_unknown_direct 0
 if test -n "$parser"
     set -l parser_qt_version (bash "$project_root/scripts/lib/qml-parser-qt-version.sh" "$parser" 2>/dev/null | head -1)
     if test -z "$parser_qt_version"
-        set parser_skip_reason "qmlformat Qt version could not be determined"
-        set parser ""
+        if test "$HADALIS_QMLFORMAT_ALLOW_UNKNOWN" = "1"
+            set parser_unknown_direct 1
+        else
+            set parser_skip_reason "qmlformat Qt version could not be determined"
+            set parser ""
+        end
     else
         set -l parts (string split . $parser_qt_version)
         set -l version_key (math "$parts[1] * 100 + $parts[2]")
@@ -197,6 +202,8 @@ if test -z "$parser"
     else
         echo "qml-check: qmlformat unavailable; startup guards ran, parser pass skipped" >&2
     end
+else if test $parser_unknown_direct -eq 1
+    echo "qml-check: qmlformat Qt version unknown; parser capability evaluated directly against project QML" >&2
 end
 
 if test $fatal_errors -gt 0

@@ -1447,7 +1447,9 @@ def main() -> None:
         "colBackgroundToggled: Appearance.colors.colSecondaryContainer",
         "colBackgroundToggledHover: Appearance.colors.colSecondaryContainerHover",
         "colRippleToggled: Appearance.colors.colSecondaryContainerActive",
-        "color: Appearance.colors.colOnLayer0",
+        "color: root.toggled",
+        "? Appearance.colors.colOnSecondaryContainer",
+        ": Appearance.colors.colOnLayer0",
         "color: Appearance.colors.colTertiary",
     ):
         require(left_sidebar_button, token, "LeftSidebarButton.qml")

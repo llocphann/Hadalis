@@ -369,6 +369,8 @@ Singleton {
     readonly property list<string> extensions: ["jpg", "jpeg", "png", "webp", "avif", "bmp", "svg", "gif", "mp4", "webm", "mkv", "avi", "mov"]
     property list<string> wallpapers: []
     property int _wallpaperCacheIndex: 0
+    property var _wallpaperCacheBuilder: []
+    property int _wallpaperCacheBatchesSincePublish: 0
     readonly property bool thumbnailGenerationRunning: thumbgenProc.running
     property real thumbnailGenerationProgress: 0
     property var _knownThumbnailOutputs: ({})
@@ -419,21 +421,29 @@ Singleton {
 
     function rebuildWallpapersCache(): void {
         root.wallpapers = []
+        root._wallpaperCacheBuilder = []
         root._wallpaperCacheIndex = 0
+        root._wallpaperCacheBatchesSincePublish = 0
         wallpaperCacheTimer.restart()
     }
 
     function appendWallpapersCacheBatch(): void {
-        const nextBatch = root.wallpapers.slice()
+        const builder = root._wallpaperCacheBuilder
         const batchEnd = Math.min(folderModel.count, root._wallpaperCacheIndex + 64)
         for (let i = root._wallpaperCacheIndex; i < batchEnd; i++) {
             const path = folderModel.get(i, "filePath") || FileUtils.trimFileProtocol(folderModel.get(i, "fileURL"))
             if (path && path.length)
-                nextBatch.push(path)
+                builder.push(path)
         }
-        root.wallpapers = nextBatch
+
         root._wallpaperCacheIndex = batchEnd
-        if (root._wallpaperCacheIndex < folderModel.count)
+        root._wallpaperCacheBatchesSincePublish++
+        const complete = root._wallpaperCacheIndex >= folderModel.count
+        if (complete || root._wallpaperCacheBatchesSincePublish >= 4) {
+            root.wallpapers = builder.slice()
+            root._wallpaperCacheBatchesSincePublish = 0
+        }
+        if (!complete)
             wallpaperCacheTimer.restart()
     }
 

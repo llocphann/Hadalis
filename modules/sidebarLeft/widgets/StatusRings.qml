@@ -13,6 +13,7 @@ Item {
     implicitHeight: 64
 
     property QtObject resourceMonitor: ResourceUsageMonitor {
+        histories: false
         target: root
         active: GlobalStates.sidebarLeftOpen
     }

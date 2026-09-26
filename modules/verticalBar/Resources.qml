@@ -13,6 +13,7 @@ MouseArea {
     hoverEnabled: true
 
     property QtObject resourceMonitor: ResourceUsageMonitor {
+        histories: false
         target: root
         active: !GameMode.active
     }

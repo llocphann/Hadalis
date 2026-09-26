@@ -20,6 +20,7 @@ WBarAttachedPanelContent {
     revealFromLeft: true
 
     property QtObject resourceMonitor: ResourceUsageMonitor {
+        histories: false
         target: root
         active: GlobalStates.waffleWidgetsOpen
     }

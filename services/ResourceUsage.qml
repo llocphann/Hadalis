@@ -15,6 +15,8 @@ Singleton {
     property bool _runningRequested: false
     property bool _initRequested: false
     property int _persistentConsumers: 0
+    property int _historyConsumers: 0
+    property double _historyTransientUntilMs: 0
 
     // Auto-stop polling when nothing requested it recently.
     // This prevents the service from running forever after briefly opening a panel.
@@ -244,6 +246,8 @@ Singleton {
         }
     }
     function updateHistories() {
+        if (root._historyConsumers <= 0 && Date.now() >= root._historyTransientUntilMs)
+            return
         updateMemoryUsageHistory();
         updateSwapUsageHistory();
         updateCpuUsageHistory();
@@ -265,7 +269,10 @@ Singleton {
         console.warn("[ResourceUsage] Failed to start " + stage + " probe; initialization can retry on the next consumer request")
     }
 
-    function ensureRunning(): void {
+    function ensureRunning(withHistory): void {
+        const historyWanted = withHistory === undefined ? true : !!withHistory
+        if (historyWanted)
+            root._historyTransientUntilMs = Date.now() + root._autoStopDelayMs
         root._runningRequested = true;
         if (!root._initRequested) {
             root._initRequested = true;
@@ -291,22 +298,29 @@ Singleton {
 
     // Register a persistent consumer (always-visible panel like bar).
     // While any persistent consumer is registered, auto-stop is disabled.
-    function keepAlive(): void {
-        root._persistentConsumers++;
-        autoStopTimer.stop();
-        ensureRunning();
+    function keepAlive(withHistory): void {
+        const historyWanted = withHistory === undefined ? true : !!withHistory
+        root._persistentConsumers++
+        if (historyWanted)
+            root._historyConsumers++
+        autoStopTimer.stop()
+        ensureRunning(false)
     }
 
-    function releaseKeepAlive(): void {
-        root._persistentConsumers = Math.max(0, root._persistentConsumers - 1);
+    function releaseKeepAlive(withHistory): void {
+        const historyWanted = withHistory === undefined ? true : !!withHistory
+        root._persistentConsumers = Math.max(0, root._persistentConsumers - 1)
+        if (historyWanted)
+            root._historyConsumers = Math.max(0, root._historyConsumers - 1)
         if (root._persistentConsumers === 0 && root._runningRequested)
-            autoStopTimer.restart();
+            autoStopTimer.restart()
     }
 
     function stop(): void {
         root._runningRequested = false;
         root._primed = false;
         root._lastNetworkSampleMs = 0;
+        root._historyTransientUntilMs = 0;
         root.networkRxBytesPerSec = 0;
         root.networkTxBytesPerSec = 0;
         pollTimer.stop();

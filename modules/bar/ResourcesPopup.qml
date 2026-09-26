@@ -40,6 +40,7 @@ StyledPopup {
     }
 
     property QtObject resourceMonitor: ResourceUsageMonitor {
+        histories: false
         active: popup.active
     }
 

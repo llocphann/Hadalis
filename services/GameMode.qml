@@ -106,7 +106,9 @@ Singleton {
     readonly property string _discoverOverlayServiceName: "discover-overlay.service"
 
     // State file path
-    readonly property string _stateFile: Quickshell.env("HOME") + "/.local/state/quickshell/user/gamemode_active"
+    readonly property string _stateFile: Directories.stateUserPath + "/gamemode_active"
+    property bool _stateWriteInFlight: false
+    property bool _stateWriteQueued: false
 
     // IPC handler for external control
     IpcHandler {
@@ -140,12 +142,25 @@ Singleton {
     }
 
     function _saveState() {
-        if (saveProcess.running) {
-            saveProcess.rerunAfterExit = true
+        if (root._stateWriteInFlight) {
+            root._stateWriteQueued = true
             return
         }
-        saveProcess.rerunAfterExit = false
-        saveProcess.running = true
+
+        root._stateWriteQueued = false
+        root._stateWriteInFlight = true
+        stateWriter.setText(root._manualActive ? "1\n" : "0\n")
+    }
+
+    function _finishStateWrite(): void {
+        if (!root._stateWriteInFlight)
+            return
+        root._stateWriteInFlight = false
+        const saveAgain = root._stateWriteQueued
+        root._stateWriteQueued = false
+        root._log("[GameMode] State saved:", root._manualActive)
+        if (saveAgain)
+            Qt.callLater(() => root._saveState())
     }
 
     function _loadState() {
@@ -286,22 +301,23 @@ Singleton {
         }
     }
 
-    // State persistence - write via process
-    Process {
-        id: saveProcess
-        property bool rerunAfterExit: false
-        command: [
-            "/usr/bin/bash",
-            "-c",
-            "mkdir -p ~/.local/state/quickshell/user\n" +
-            "echo " + (root._manualActive ? "1" : "0") + " > " + root._stateFile
-        ]
-        onExited: {
-            root._log("[GameMode] State saved:", root._manualActive)
-            if (saveProcess.rerunAfterExit) {
-                saveProcess.rerunAfterExit = false
+    // State persistence - write in-process. Directories owns stateUserPath
+    // creation, so GameMode does not need a per-start mkdir or per-toggle shell.
+    FileView {
+        id: stateWriter
+        path: root._stateFile
+        watchChanges: false
+        atomicWrites: true
+
+        onSaved: root._finishStateWrite()
+
+        onSaveFailed: error => {
+            root._stateWriteInFlight = false
+            const retry = root._stateWriteQueued
+            root._stateWriteQueued = false
+            console.warn("[GameMode] Failed to save state:", error)
+            if (retry)
                 Qt.callLater(() => root._saveState())
-            }
         }
     }
 
@@ -338,7 +354,6 @@ Singleton {
     // Initial setup
     Component.onCompleted: {
         root._log("[GameMode] Service starting...")
-        Quickshell.execDetached(["/usr/bin/mkdir", "-p", Quickshell.env("HOME") + "/.local/state/quickshell/user"])
         initTimer.restart()
     }
 

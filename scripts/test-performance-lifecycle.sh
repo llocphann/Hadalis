@@ -111,6 +111,7 @@ require "$sidebar_media" 'root.effectiveIsPlaying && GlobalStates.sidebarLeftOpe
 require "$sidebar_media" 'layer.enabled: root.visible && GlobalStates.sidebarLeftOpen' 'Sidebar media mask must release its FBO while the sidebar is closed'
 require "$sidebar_media" 'sourceSize.width: Math.max(1, Math.ceil(card.width * root._dpr))' 'Sidebar blurred artwork decode must remain bounded to the displayed card'
 require "$control_panel_media" 'layer.enabled: root.visible && GlobalStates.controlPanelOpen' 'Control Panel media masks must release their FBOs while closed'
+require "$control_panel_media" '&& GlobalStates.controlPanelOpen' 'Control Panel MPRIS position timer must sleep while closed'
 require "$control_panel_media" 'sourceSize.width: Math.max(1, Math.ceil(card.width * root._dpr))' 'Control Panel blurred artwork decode must remain bounded'
 require "$control_panel_media" 'mipmap: false' 'Control Panel artwork must not generate unused mipmaps'
 

@@ -165,3 +165,40 @@ review; the second notification-server warning comes from running the capture
 alongside the installed shell. No notification backend is duplicated in Abyss.
 Next: native notifications/OSD, effects, settings integration and complete local
 validation. Full desktop and multi-output acceptance remain outstanding.
+
+
+## Secondary content and routing checkpoint (phase 8 foundation)
+
+Inspected notification popup/history policy and actions, all three OSD trigger
+paths, volume protection, keyboard/touchpad indicators, critical fallback sources
+and the Alt+Tab router. Added native notification/history and status OSD content.
+[Notification capture](evidence/abyss/phase8-notification.png) uses a real local
+freedesktop notification fixture on an isolated D-Bus session; it is labelled
+validation data. [OSD capture](evidence/abyss/phase8-osd.png) uses the shared Audio
+value. Both have only the final perimeter silhouette and finite retraction.
+
+Root-owned `osd`, `osdVolume` and `osdInput` IPC handlers forward internal signals
+to the active presentation. Material retains its existing trigger/timeout logic;
+Waffle retains its indicator renderer and gains working shared volume/hide input.
+Abyss observes existing Audio/Brightness/Keyboard/MPRIS state with one bounded
+OSD timeout. Popup notifications use one scrollable swell, inherit DND/quiet-hour
+and GameMode policy and preserve actions/dismiss/history. A notification center
+replaces the system sidebar's physical slot while open. Popups yield to active
+bar/launcher content rather than overlapping its controls.
+
+Abyss uses the shared no-visual Alt+Tab controller. The previous two-family
+predicate would forward Abyss commands to an absent Material visual tree; it now
+selects that tree only for `ii`. Overlay/control-panel/dashboard are documented
+shared demand-loaded fallbacks alongside critical/screenshot/OSK/update flows.
+Changing family clears ordinary presentation state without dismissing lock or
+polkit. Direct config changes share family migration at the root boundary.
+
+The actual native Wayland layer-shell host loaded, opened/closed sidebar, OSD and
+notification center without an Abyss QML diagnostic after two semantic fixes
+(read-only indicator kind and Flow implicitHeight). Unsupported/uncompiled paint
+never receives keyboard or body input. Fullscreen remains Top/mapped by default;
+explicit visible-in-fullscreen opts into Overlay and still releases reservations.
+Production host regression now exercises deferred loading, output binding,
+immediate input release and unload/reopen in QML. Existing transition/input,
+family/geometry, local manifest and generated IPC registry checks pass.
+Phase 7 richer material/motion, settings and full acceptance are next.

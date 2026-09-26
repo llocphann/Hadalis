@@ -12,7 +12,7 @@ var abyssPanels = [
     "abyssNotificationPopup", "abyssNotificationCenter", "abyssOnScreenDisplay",
     "abyssClipboard", "abyssOverview", "abyssLock", "abyssPolkit",
     "abyssSessionScreen", "iiCheatsheet", "iiOnScreenKeyboard", "iiOverlay",
-    "iiRegionSelector", "iiTilingOverlay", "iiWallpaperSelector",
+    "iiControlPanel", "iiDashboard", "iiRegionSelector", "iiTilingOverlay", "iiWallpaperSelector",
     "iiWallpaperLauncher", "iiCoverflowSelector", "iiShellUpdate", "iiRecordingOsd"
 ];
 // Seen-but-disabled panels remain disabled on subsequent visits. A family's

@@ -7,3 +7,5 @@ AbyssPopupContent 1.0 AbyssPopupContent.qml
 AbyssRightContent 1.0 AbyssRightContent.qml
 AbyssClipboardContent 1.0 AbyssClipboardContent.qml
 AbyssLauncherContent 1.0 AbyssLauncherContent.qml
+AbyssOsdContent 1.0 AbyssOsdContent.qml
+AbyssNotificationsContent 1.0 AbyssNotificationsContent.qml

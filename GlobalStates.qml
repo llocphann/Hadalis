@@ -112,6 +112,10 @@ Singleton {
     property real abyssPopupAlong: 0
     property string abyssClipboardTargetOutput: ""
     property bool mediaControlsOpen: false
+    signal osdRequested(string kind)
+    signal osdDismissed()
+    property string abyssOsdKind: "volume"
+    property string abyssOsdMessage: ""
     property bool osdBrightnessOpen: false
     property bool osdVolumeOpen: false
     property bool osdMicOpen: false

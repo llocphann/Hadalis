@@ -59,7 +59,7 @@ ShellRoot {
     function _ensureScreenTimeService(): void {
         if (GlobalStates.deferredPanelsReady
                 && ((Config.options?.sidebar?.screenTime?.enable ?? false)
-                    || ((Config.options?.panelFamily ?? "ii") !== "waffle"
+                    || ((Config.options?.panelFamily ?? "ii") === "ii"
                         && (Config.options?.enabledPanels ?? [])
                             .includes("iiScreenCorners"))))
             root._screenTimeService = ScreenTime
@@ -324,6 +324,26 @@ ShellRoot {
         if (changed)
             Config.setNestedValue("enabledPanels", panels)
         if (family === "abyss") root._ensureFamilyPanels(family)
+    }
+
+    // Presentation-independent OSD routes survive family teardown.
+    IpcHandler {
+        target: "osdVolume"
+        function trigger(): void { GlobalStates.osdRequested("current") }
+        function hide(): void { GlobalStates.osdDismissed() }
+        function toggle(): void { GlobalStates.osdVolumeOpen = !GlobalStates.osdVolumeOpen }
+    }
+    IpcHandler {
+        target: "osdInput"
+        function touchpad(state: string): void {
+            const normalized = state.trim().toLowerCase()
+            if (normalized === "on" || normalized === "off")
+                KeyboardIndicators.showTouchpadPopup(normalized === "on")
+        }
+    }
+    IpcHandler {
+        target: "osd"
+        function trigger(): void { GlobalStates.osdRequested("volume") }
     }
 
     // IPC target "bar" — registered once here (always loaded) instead of inside
@@ -775,6 +795,40 @@ ShellRoot {
     ToastManager {}
 
     readonly property string activePanelFamily: FamilyPolicy.normalize(Config.options?.panelFamily ?? "ii")
+
+    // Direct config edits and IPC switching share migration and transient cleanup.
+    onActivePanelFamilyChanged: {
+        if (!Config.ready || !root._migrationDone) return
+        root.closeFamilySurfaces()
+        root._ensureFamilyPanels(root.activePanelFamily)
+        if (Config.options.panelFamily !== root.activePanelFamily)
+            Config.setNestedValue("panelFamily",root.activePanelFamily)
+    }
+    function closeFamilySurfaces(): void {
+        GlobalStates.closeSidebarLeft()
+        GlobalStates.closeSidebarRight()
+        GlobalStates.closeNotificationCenter()
+        GlobalStates.waffleNotificationCenterOpen = false
+        GlobalStates.waffleActionCenterOpen = false
+        GlobalStates.searchOpen = false
+        GlobalStates.waffleWidgetsOpen = false
+        GlobalStates.waffleTaskViewOpen = false
+        GlobalStates.waffleClipboardOpen = false
+        GlobalStates.waffleAltSwitcherOpen = false
+        GlobalStates.mediaControlsOpen = false
+        GlobalStates.abyssPopupKind = ""
+        GlobalStates.clipboardOpen = false
+        GlobalStates.overviewOpen = false
+        GlobalStates.altSwitcherOpen = false
+        GlobalStates.controlPanelOpen = false
+        GlobalStates.dashboardOpen = false
+        GlobalStates.osdVolumeOpen = false
+        GlobalStates.osdBrightnessOpen = false
+        GlobalStates.osdMicOpen = false
+        GlobalStates.osdMediaOpen = false
+        GlobalStates.osdKeyboardLayoutOpen = false
+        GlobalStates.osdDismissed()
+    }
 
     // === Panel Families ===
     // AltSwitcher controller selection lives above the family loaders. Waffle

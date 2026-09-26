@@ -621,34 +621,13 @@ Scope {
         }
     }
 
-    IpcHandler {
-        target: "osdVolume"
-
-        function trigger(): void {
-            root.triggerOsd();
+    Connections {
+        target: GlobalStates
+        function onOsdRequested(kind: string): void {
+            if (kind === "current") root.triggerOsd()
+            else root.openIndicator(kind,true)
         }
-
-        function hide(): void {
-            root.hideOsd();
-        }
-
-        function toggle(): void {
-            GlobalStates.osdVolumeOpen = !GlobalStates.osdVolumeOpen;
-        }
-    }
-
-    IpcHandler {
-        target: "osdInput"
-
-        function touchpad(state: string): void {
-            const normalized = state.trim().toLowerCase();
-
-            if (normalized === "on") {
-                KeyboardIndicators.showTouchpadPopup(true);
-            } else if (normalized === "off") {
-                KeyboardIndicators.showTouchpadPopup(false);
-            }
-        }
+        function onOsdDismissed(): void { root.hideOsd() }
     }
 
     Loader {

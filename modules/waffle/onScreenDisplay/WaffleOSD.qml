@@ -210,11 +210,12 @@ Scope {
     }
     }
 
-    IpcHandler {
-        target: "osd"
-
-        function trigger(): void {
-            root.trigger();
+    Connections {
+        target: GlobalStates
+        function onOsdRequested(kind: string): void { root.triggerVolumeOSD() }
+        function onOsdDismissed(): void {
+            panelLoader.active = false
+            root.indicators.forEach(i => GlobalStates[i.globalStateValue] = false)
         }
     }
 }

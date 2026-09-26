@@ -39,6 +39,8 @@ Scope {
                 GlobalStates.abyssClipboardTargetOutput = GlobalStates.resolveOutputName("",[])
         }
     }
+    AbyssOsdController {}
+    Component.onCompleted: Notifications.ensureInitialized()
     Variants {
         model: Quickshell.screens
         PanelWindow {
@@ -55,11 +57,11 @@ Scope {
             exclusionMode: ExclusionMode.Ignore
             exclusiveZone: 0
             WlrLayershell.namespace: "hadalis:abyss-perimeter"
-            WlrLayershell.layer: WlrLayer.Top
-            WlrLayershell.keyboardFocus: !window.presented || GlobalStates.regionSelectorOpen
+            WlrLayershell.layer: window.fullscreenCovered && window.presented ? WlrLayer.Overlay : WlrLayer.Top
+            WlrLayershell.keyboardFocus: !window.presented || !field.ready || GlobalStates.regionSelectorOpen
                 ? WlrKeyboardFocus.None
                 : (aux.open && aux.ready) ? WlrKeyboardFocus.Exclusive
-                : ((leftPanel.open && leftPanel.ready) || (rightPanel.open && rightPanel.ready) || (popup.open && popup.ready))
+                : ((leftPanel.open && leftPanel.ready) || (rightPanel.open && rightPanel.ready) || (popup.open && popup.ready) || (notification.open && notification.ready && notification.contentKind === "center"))
                     ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
             anchors { top: true; bottom: true; left: true; right: true }
             Item { id: emptyInput; width: 0; height: 0 }
@@ -71,6 +73,7 @@ Scope {
                 Region { x: rightPanel.inputBounds.x; y: rightPanel.inputBounds.y; width: window.presented && field.ready ? rightPanel.inputBounds.width : 0; height: rightPanel.inputBounds.height }
                 Region { x: popup.inputBounds.x; y: popup.inputBounds.y; width: window.presented && field.ready ? popup.inputBounds.width : 0; height: popup.inputBounds.height }
                 Region { x: dock.inputBounds.x; y: dock.inputBounds.y; width: window.presented && field.ready ? dock.inputBounds.width : 0; height: dock.inputBounds.height }
+                Region { x: notification.inputBounds.x; y: notification.inputBounds.y; width: window.presented && field.ready ? notification.inputBounds.width : 0; height: notification.inputBounds.height }
                 Region { x: aux.inputBounds.x; y: aux.inputBounds.y; width: window.presented && field.ready ? aux.inputBounds.width : 0; height: aux.inputBounds.height }
             }
             function closePopup(): void {
@@ -86,13 +89,14 @@ Scope {
                     GlobalStates.closeSidebarRight()
                     GlobalStates.clipboardOpen = false
                     GlobalStates.overviewOpen = false
+                    GlobalStates.closeNotificationCenter()
                 }
             }
             AbyssBar {
                 id: bar
                 outputName: window.outputName
                 edge: root.barEdge
-                visible: window.presented && root.barOnOutput(window.outputName)
+                visible: window.presented && field.ready && root.barOnOutput(window.outputName)
                 x: edge === "right" ? window.width-width : 0
                 y: edge === "bottom" ? window.height-height : 0
                 width: vertical ? AbyssStyle.barThickness : window.width
@@ -112,7 +116,7 @@ Scope {
             }
             Item {
                 id: revealTrigger
-                visible: window.presented && (Config.options?.bar?.autoHide?.enable ?? false)
+                visible: window.presented && field.ready && (Config.options?.bar?.autoHide?.enable ?? false)
                     && GlobalStates.barOpen && (Config.options?.enabledPanels ?? []).includes("abyssBar")
                     && Geometry.targets(window.outputName,Config.options?.bar?.screenList ?? [],Quickshell.screens.map(s => s.name))
                 x: root.barEdge === "right" ? window.width-width : 0
@@ -132,7 +136,7 @@ Scope {
                 anchors.fill: parent
                 edge: ShellLayoutController.sidebarAssignments().featureSidebar
                 outputName: window.outputName
-                open: window.presented && (Config.options?.enabledPanels ?? []).includes("abyssSidebarLeft")
+                open: window.presented && field.ready && (Config.options?.enabledPanels ?? []).includes("abyssSidebarLeft")
                     && GlobalStates.sidebarLeftOpen && GlobalStates.sidebarLeftPresentationOutput === window.outputName
                 edgeInsets: window.nativeInsets
                 along: edgeInsets.top+36
@@ -146,8 +150,9 @@ Scope {
                 anchors.fill: parent
                 edge: ShellLayoutController.sidebarAssignments().systemSidebar
                 outputName: window.outputName
-                open: window.presented && (Config.options?.enabledPanels ?? []).includes("abyssSidebarRight")
+                open: window.presented && field.ready && (Config.options?.enabledPanels ?? []).includes("abyssSidebarRight")
                     && GlobalStates.sidebarRightOpen && GlobalStates.sidebarRightPresentationOutput === window.outputName
+                    && !(GlobalStates.notificationCenterOpen && GlobalStates.notificationCenterPresentationOutput === window.outputName)
                 edgeInsets: window.nativeInsets
                 along: edgeInsets.top+36
                 span: window.height-edgeInsets.top-edgeInsets.bottom-72
@@ -160,7 +165,7 @@ Scope {
                 anchors.fill: parent
                 edge: root.barEdge
                 outputName: window.outputName
-                open: window.presented && (Config.options?.enabledPanels ?? []).includes("abyssPopup")
+                open: window.presented && field.ready && (Config.options?.enabledPanels ?? []).includes("abyssPopup")
                     && (GlobalStates.abyssPopupKind.length > 0 || GlobalStates.mediaControlsOpen)
                     && GlobalStates.resolveOutputName(GlobalStates.abyssPopupTargetOutput,[]) === window.outputName
                 edgeInsets: window.nativeInsets
@@ -179,7 +184,7 @@ Scope {
                 anchors.fill: parent
                 edge: window.dockEdge
                 outputName: window.outputName
-                open: window.presented && GlobalStates.shellEntryReady && !GlobalStates.widgetEditMode
+                open: window.presented && field.ready && GlobalStates.shellEntryReady && !GlobalStates.widgetEditMode
                     && (Config.options?.enabledPanels ?? []).includes("abyssDock") && (Config.options?.dock?.enable ?? true)
                     && Geometry.targets(window.outputName,Config.options?.dock?.screenList ?? [],Quickshell.screens.map(s => s.name))
                     && !aux.open && !(popup.open && popup.edge === edge)
@@ -190,13 +195,13 @@ Scope {
                 along: (Geometry.horizontal(edge) ? window.width : window.height)/2-span/2
                 depth: AbyssStyle.dockThickness
                 padding: 12
-                obstacles: window.sideObstacles
+                obstacles: window.sideObstacles.concat(notification.open ? [notification.record] : [])
                 source: "content/AbyssDockContent.qml"
                 HoverHandler { id: dockHover; parent: dock.contentItem; onHoveredChanged: { if (hovered) { dockClose.stop(); window.dockHovered = true } else dockClose.restart() } }
             }
             Item {
                 id: dockTrigger
-                visible: window.presented && (Config.options?.dock?.hoverToReveal ?? false)
+                visible: window.presented && field.ready && (Config.options?.dock?.hoverToReveal ?? false)
                     && (Config.options?.dock?.enable ?? true) && (Config.options?.enabledPanels ?? []).includes("abyssDock")
                     && Geometry.targets(window.outputName,Config.options?.dock?.screenList ?? [],Quickshell.screens.map(s => s.name))
                 width: Geometry.horizontal(window.dockEdge) ? dock.span : AbyssStyle.perimeterThickness
@@ -211,7 +216,7 @@ Scope {
                 anchors.fill: parent
                 edge: "bottom"
                 outputName: window.outputName
-                open: window.presented && ((GlobalStates.clipboardOpen && (Config.options?.enabledPanels ?? []).includes("abyssClipboard")
+                open: window.presented && field.ready && ((GlobalStates.clipboardOpen && (Config.options?.enabledPanels ?? []).includes("abyssClipboard")
                     && GlobalStates.resolveOutputName(GlobalStates.abyssClipboardTargetOutput,[]) === window.outputName)
                     || (GlobalStates.overviewOpen && (Config.options?.enabledPanels ?? []).includes("abyssOverview") && GlobalStates.overviewPresentationOutput === window.outputName))
                 edgeInsets: window.nativeInsets
@@ -222,6 +227,41 @@ Scope {
                 source: GlobalStates.clipboardOpen ? "content/AbyssClipboardContent.qml" : "content/AbyssLauncherContent.qml"
                 onCloseRequested: { GlobalStates.clipboardOpen = false; GlobalStates.overviewOpen = false }
             }
+            AbyssBodyHost {
+                id: notification
+                anchors.fill: parent
+                readonly property bool centerOnOutput: GlobalStates.notificationCenterOpen && GlobalStates.notificationCenterPresentationOutput === window.outputName
+                readonly property string position: Config.options?.notifications?.position ?? "topRight"
+                edge: centerOnOutput ? "right" : position.startsWith("bottom") ? "bottom" : "top"
+                outputName: window.outputName
+                open: window.presented && field.ready && (centerOnOutput && (Config.options?.enabledPanels ?? []).includes("abyssNotificationCenter")
+                    || (!GlobalStates.notificationCenterOpen && !popup.open && !aux.open && !Notifications.popupInhibited && Notifications.popupList.length > 0
+                        && (Config.options?.enabledPanels ?? []).includes("abyssNotificationPopup")
+                        && Geometry.targets(window.outputName,Config.options?.notifications?.screenList ?? [],Quickshell.screens.map(s => s.name))))
+                edgeInsets: window.nativeInsets
+                span: centerOnOutput ? window.height-edgeInsets.top-edgeInsets.bottom-72 : 360
+                along: centerOnOutput ? edgeInsets.top+36 : position.endsWith("Left") ? 40 : window.width-span-40
+                depth: centerOnOutput ? 390 : Math.min(340,Notifications.popupList.length*130+48)
+                obstacles: centerOnOutput ? [] : window.sideObstacles.concat(popup.open ? [popup.record] : [])
+                contentKind: centerOnOutput ? "center" : "popup"
+                source: "content/AbyssNotificationsContent.qml"
+                onCloseRequested: GlobalStates.closeNotificationCenter()
+            }
+            AbyssBodyHost {
+                id: osd
+                anchors.fill: parent
+                edge: root.barEdge === "right" ? "left" : "right"
+                outputName: window.outputName
+                open: window.presented && field.ready && (Config.options?.enabledPanels ?? []).includes("abyssOnScreenDisplay")
+                    && (GlobalStates.osdVolumeOpen || GlobalStates.osdBrightnessOpen || GlobalStates.osdMicOpen || GlobalStates.osdMediaOpen || GlobalStates.osdKeyboardLayoutOpen)
+                    && Geometry.targets(window.outputName,Config.options?.osd?.screenList ?? [],Quickshell.screens.map(s => s.name))
+                    && !rightPanel.open && !leftPanel.open && !notification.open
+                edgeInsets: window.nativeInsets
+                span: 120
+                along: window.height/2-span/2
+                depth: 240
+                source: "content/AbyssOsdContent.qml"
+            }
             AbyssField {
                 id: field
                 z: -1
@@ -229,7 +269,7 @@ Scope {
                 visible: window.presented
                 edgeInsets: root.outputInsets(window.outputName)
                 records: (bar.visible ? bar.deformations.map(rec => Geometry.panel(window.width,window.height,edgeInsets,root.barEdge,rec.along+12,rec.span-24,rec.depth,1,0)) : [])
-                    .concat([leftPanel,rightPanel,popup,dock,aux].filter(body => body.progress > 0.001).map(body => body.record))
+                    .concat([leftPanel,rightPanel,popup,dock,aux,notification,osd].filter(body => body.progress > 0.001).map(body => body.record))
             }
         }
     }

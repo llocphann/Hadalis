@@ -45,6 +45,12 @@ Item {
     property var _levels: []
     property var _selectedScratch: []
     property var _smoothScratch: []
+    // Alternate two stable frame buffers so _levels still receives a new
+    // object identity (and therefore notifies delegates) without allocating a
+    // fresh JS array on every CAVA frame.
+    property var _levelScratchA: []
+    property var _levelScratchB: []
+    property bool _levelScratchFlip: false
 
     readonly property real _innerWidth: Math.max(1, width - edgeInset * 2)
     readonly property int _barCount: root.active && root.visualizerType === "bars"
@@ -144,6 +150,14 @@ Item {
             + (source[high] || 0) * fraction
     }
 
+    function _nextLevelScratch(count): var {
+        root._levelScratchFlip = !root._levelScratchFlip
+        const levels = root._levelScratchFlip
+            ? root._levelScratchA : root._levelScratchB
+        levels.length = count
+        return levels
+    }
+
     function _rebuildLevels(): void {
         if (!root.active) {
             if (root._levels.length > 0)
@@ -162,7 +176,7 @@ Item {
         const ceiling = Math.max(1, root.normalizationCeiling)
         if (root.visualizerType === "bars") {
             const count = root._barCount
-            const levels = new Array(count)
+            const levels = root._nextLevelScratch(count)
             for (let i = 0; i < count; ++i) {
                 const from = Math.floor(i * sourceCount / count)
                 const to = Math.min(sourceCount,
@@ -186,7 +200,7 @@ Item {
 
         const count = Math.max(2, Math.min(sourceCount, root.waveStripCap,
             Math.round(root._innerWidth / Math.max(4, root.pixelsPerBar))))
-        const levels = new Array(count)
+        const levels = root._nextLevelScratch(count)
         for (let i = 0; i < count; ++i) {
             const ratio = count > 1 ? i / (count - 1) : 0
             levels[i] = Math.max(0, Math.min(1,

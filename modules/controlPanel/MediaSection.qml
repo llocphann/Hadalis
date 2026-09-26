@@ -442,7 +442,7 @@ Item {
                         buttonText: Translation.tr("Repeat")
                         enabled: MprisController.loopSupported
                         buttonRadius: Appearance.rounding.full
-                        colBackground: MprisController.loopState !== 0
+                        colBackground: MprisController.loopActive
                             ? ColorUtils.transparentize(root.blendedColors?.colPrimary
                                 ?? Appearance.colors.colPrimary, 0.78)
                             : "transparent"
@@ -454,10 +454,10 @@ Item {
                         contentItem: Item {
                             MaterialSymbol {
                                 anchors.centerIn: parent
-                                text: MprisController.loopState === 2 ? "repeat_one" : "repeat"
+                                text: MprisController.loopTrack ? "repeat_one" : "repeat"
                                 iconSize: root.controlIconSize
-                                fill: MprisController.loopState !== 0 ? 1 : 0
-                                color: MprisController.loopState !== 0
+                                fill: MprisController.loopActive ? 1 : 0
+                                color: MprisController.loopActive
                                     ? (root.blendedColors?.colPrimary ?? Appearance.colors.colPrimary)
                                     : (root.blendedColors?.colOnLayer0 ?? Appearance.colors.colOnLayer0)
                             }

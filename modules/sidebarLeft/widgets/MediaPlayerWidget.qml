@@ -452,7 +452,7 @@ Item {
                         implicitHeight: 30
                         enabled: MprisController.loopSupported
                         buttonRadius: Appearance.rounding.full
-                        colBackground: MprisController.loopState !== 0
+                        colBackground: MprisController.loopActive
                             ? ColorUtils.transparentize(blendedColors?.colPrimary
                                 ?? Appearance.colors.colPrimary, 0.78)
                             : "transparent"
@@ -462,10 +462,10 @@ Item {
                         contentItem: Item {
                             MaterialSymbol {
                                 anchors.centerIn: parent
-                                text: MprisController.loopState === 2 ? "repeat_one" : "repeat"
+                                text: MprisController.loopTrack ? "repeat_one" : "repeat"
                                 iconSize: 19
-                                fill: MprisController.loopState !== 0 ? 1 : 0
-                                color: MprisController.loopState !== 0
+                                fill: MprisController.loopActive ? 1 : 0
+                                color: MprisController.loopActive
                                     ? (blendedColors?.colPrimary ?? Appearance.colors.colPrimary)
                                     : (blendedColors?.colOnLayer0 ?? Appearance.colors.colOnLayer0)
                             }

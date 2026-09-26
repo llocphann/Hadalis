@@ -174,10 +174,10 @@ Item {
         : MprisController.loopSupportedForPlayer(root.player)
     readonly property bool effectiveRepeatActive: root.usingPlaybackAdapter
         ? Number(root.playbackAdapter.repeatMode ?? 0) !== 0
-        : Number(MprisController.loopStateForPlayer(root.player)) !== 0
+        : MprisController.loopActiveForPlayer(root.player)
     readonly property bool effectiveRepeatOne: root.usingPlaybackAdapter
         ? Number(root.playbackAdapter.repeatMode ?? 0) === 1
-        : Number(MprisController.loopStateForPlayer(root.player)) === 2
+        : MprisController.loopTrackForPlayer(root.player)
 
     function checkAndDownloadArt() {
         artworkResolver.refresh()

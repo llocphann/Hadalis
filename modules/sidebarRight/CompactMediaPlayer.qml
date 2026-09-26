@@ -667,11 +667,9 @@ Item {
                 }
 
                 TransportBtn {
-                    readonly property int loopState:
-                        Number(MprisController.loopStateForPlayer(playerBase.player)) || 0
-                    icon: loopState === 2 ? "repeat_one" : "repeat"
+                    icon: MprisController.loopTrackForPlayer(playerBase.player) ? "repeat_one" : "repeat"
                     enabled: MprisController.loopSupportedForPlayer(playerBase.player)
-                    toggled: loopState !== 0
+                    toggled: MprisController.loopActiveForPlayer(playerBase.player)
                     onClicked: MprisController.cycleLoopForPlayer(playerBase.player)
                     tooltipText: Translation.tr("Repeat")
                     small: true

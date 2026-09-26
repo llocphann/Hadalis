@@ -49,6 +49,18 @@ for token in (
     require(mpris, token, f"Player-scoped media option contract missing: {token}")
 
 for token in (
+    "function _isYtMusicOptionTarget(player): bool",
+    "if (YtMusic.repeatMode === 1) return MprisLoopState.Track;",
+    "if (YtMusic.repeatMode === 2) return MprisLoopState.Playlist;",
+    "function loopActiveForPlayer(player): bool",
+    "function loopTrackForPlayer(player): bool",
+    "next = MprisLoopState.Track;",
+    "next = MprisLoopState.Playlist;",
+    "YtMusic.shuffleMode = shuffle;",
+):
+    require(mpris, token, f"Repeat/shuffle backend routing contract missing: {token}")
+
+for token in (
     "property var playbackAdapter: null",
     "readonly property bool effectiveShuffleSupported:",
     "readonly property bool effectiveRepeatSupported:",
@@ -127,7 +139,8 @@ for token in (
     "MprisController.shuffleForPlayer(playerBase.player)",
     "MprisController.toggleShuffleForPlayer(playerBase.player)",
     "MprisController.loopSupportedForPlayer(playerBase.player)",
-    "MprisController.loopStateForPlayer(playerBase.player)",
+    "MprisController.loopActiveForPlayer(playerBase.player)",
+    "MprisController.loopTrackForPlayer(playerBase.player)",
     "MprisController.cycleLoopForPlayer(playerBase.player)",
     'tooltipText: Translation.tr("Shuffle")',
     'tooltipText: Translation.tr("Repeat")',
@@ -147,5 +160,17 @@ for source, name in (
 ):
     require(source, "toggleShuffleForPlayer", f"{name} media must expose Shuffle.")
     require(source, "cycleLoopForPlayer", f"{name} media must expose Repeat.")
+
+for source, name in (
+    (player, "PlayerControl"),
+    (compact, "Compact right sidebar"),
+    (control_panel, "Control Panel"),
+    (left_widget, "Left Sidebar widget"),
+):
+    forbid(
+        source,
+        "loopState === 2",
+        f"{name} must not treat MPRIS Playlist as repeat-one.",
+    )
 
 print("Unified media controls/CAVA + sidebar edge reveal contract: OK")

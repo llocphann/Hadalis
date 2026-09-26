@@ -1472,29 +1472,62 @@ Singleton {
 			root.activePlayer.volume = clamped;
 	}
 
+	function _isYtMusicOptionTarget(player): bool {
+		return root._isYtMusicMpv(player) && !!YtMusic.currentVideoId;
+	}
+
 	function loopSupportedForPlayer(player): bool {
+		if (root._isYtMusicOptionTarget(player)) return true;
 		return !!(player && player.loopSupported && player.canControl);
 	}
 	function loopStateForPlayer(player): var {
+		if (root._isYtMusicOptionTarget(player)) {
+			if (YtMusic.repeatMode === 1) return MprisLoopState.Track;
+			if (YtMusic.repeatMode === 2) return MprisLoopState.Playlist;
+			return MprisLoopState.None;
+		}
 		return player?.loopState ?? MprisLoopState.None;
 	}
 	function setLoopStateForPlayer(player, loopState: var): bool {
+		if (root._isYtMusicOptionTarget(player)) {
+			const requested = Number(loopState);
+			YtMusic.repeatMode = requested === Number(MprisLoopState.Track) ? 1
+				: (requested === Number(MprisLoopState.Playlist) ? 2 : 0);
+			return true;
+		}
 		if (!root.loopSupportedForPlayer(player)) return false;
 		player.loopState = loopState;
 		return true;
 	}
+	function loopActiveForPlayer(player): bool {
+		return Number(root.loopStateForPlayer(player)) !== Number(MprisLoopState.None);
+	}
+	function loopTrackForPlayer(player): bool {
+		return Number(root.loopStateForPlayer(player)) === Number(MprisLoopState.Track);
+	}
 	function cycleLoopForPlayer(player): bool {
-		const current = Number(root.loopStateForPlayer(player)) || 0;
-		return root.setLoopStateForPlayer(player, (current + 1) % 3);
+		const current = Number(root.loopStateForPlayer(player));
+		let next = MprisLoopState.None;
+		if (current === Number(MprisLoopState.None))
+			next = MprisLoopState.Track;
+		else if (current === Number(MprisLoopState.Track))
+			next = MprisLoopState.Playlist;
+		return root.setLoopStateForPlayer(player, next);
 	}
 
 	function shuffleSupportedForPlayer(player): bool {
+		if (root._isYtMusicOptionTarget(player)) return true;
 		return !!(player && player.shuffleSupported && player.canControl);
 	}
 	function shuffleForPlayer(player): bool {
+		if (root._isYtMusicOptionTarget(player)) return YtMusic.shuffleMode;
 		return player?.shuffle ?? false;
 	}
 	function setShuffleForPlayer(player, shuffle: bool): bool {
+		if (root._isYtMusicOptionTarget(player)) {
+			YtMusic.shuffleMode = shuffle;
+			return true;
+		}
 		if (!root.shuffleSupportedForPlayer(player)) return false;
 		player.shuffle = shuffle;
 		return true;
@@ -1505,6 +1538,8 @@ Singleton {
 
 	property bool loopSupported: root.loopSupportedForPlayer(root.activePlayer);
 	property var loopState: root.loopStateForPlayer(root.activePlayer);
+	property bool loopActive: root.loopActiveForPlayer(root.activePlayer);
+	property bool loopTrack: root.loopTrackForPlayer(root.activePlayer);
 	function setLoopState(loopState: var): void {
 		root.setLoopStateForPlayer(root.activePlayer, loopState);
 	}

@@ -399,11 +399,18 @@ Item {
                         ctx.lineCap = "round"
                         ctx.lineJoin = "round"
 
-                        function sampledTrace(stroke) {
-                            const samples = [{
-                                x: points[0].x,
-                                y: points[0].y
-                            }]
+                        const sweepActive =
+                            sweep >= -0.12 && sweep <= 1.16
+
+                        function strokeSampledTrace(stroke, capture) {
+                            const samples = capture ? [] : null
+                            const firstX = points[0].x
+                            const firstY = points[0].y
+                            ctx.beginPath()
+                            ctx.moveTo(firstX, firstY)
+                            if (capture)
+                                samples.push({ x: firstX, y: firstY })
+
                             for (let i = 0; i < points.length - 1; ++i) {
                                 const p1 = points[i]
                                 const p2 = points[i + 1]
@@ -425,31 +432,24 @@ Item {
                                         now * (6.1 - stroke * 0.4) + i - j)
                                         * Math.sin(now * 4.8 + i - j)
                                         * amplitudeY * envelope
-                                    samples.push({
-                                        x: x + noiseX,
-                                        y: y + noiseY
-                                    })
+                                    const sampleX = x + noiseX
+                                    const sampleY = y + noiseY
+                                    ctx.lineTo(sampleX, sampleY)
+                                    if (capture)
+                                        samples.push({ x: sampleX, y: sampleY })
                                 }
                             }
-                            return samples
-                        }
-
-                        function strokeTrace(samples) {
-                            ctx.beginPath()
-                            ctx.moveTo(samples[0].x, samples[0].y)
-                            for (let i = 1; i < samples.length; ++i)
-                                ctx.lineTo(samples[i].x, samples[i].y)
                             ctx.stroke()
+                            return samples
                         }
 
                         // Three compact strokes recreate the original Hadalis
                         // electric-wire connector while staying inside this
-                        // single CAVA + DSP graph.
-                        const traces = []
+                        // single CAVA + DSP graph. The normal 33 ms paint path
+                        // draws directly; sample arrays exist only during the
+                        // short preset sweep that needs to replay segments.
+                        const traces = sweepActive ? [] : null
                         for (let stroke = 0; stroke < 3; ++stroke) {
-                            const samples = sampledTrace(stroke)
-                            traces.push(samples)
-
                             if (stroke === 0) {
                                 ctx.lineWidth = 5.5
                                 ctx.strokeStyle = root.eqAccentColor
@@ -465,12 +465,16 @@ Item {
                                 ctx.strokeStyle = "#ffffff"
                                 ctx.globalAlpha = 0.55 + highlight * 0.45
                             }
-                            strokeTrace(samples)
+
+                            const samples =
+                                strokeSampledTrace(stroke, sweepActive)
+                            if (sweepActive)
+                                traces.push(samples)
                         }
 
                         // Preset changes send the old left-to-right charge
                         // sweep through the exact same wire geometry.
-                        if (sweep >= -0.12 && sweep <= 1.16) {
+                        if (sweepActive) {
                             const sweepTail = 0.22
                             const sweepLead = 0.035
 

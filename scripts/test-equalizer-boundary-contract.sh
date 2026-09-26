@@ -74,6 +74,9 @@ for token in \
     'id: eqLightningAnim' \
     'const sweepTail = 0.22' \
     'const sweepLead = 0.035' \
+    'const sweepActive =' \
+    'function strokeSampledTrace(stroke, capture)' \
+    'const traces = sweepActive ? [] : null' \
     'ctx.lineWidth = 5.5' \
     'ctx.lineWidth = 2.4' \
     'ctx.lineWidth = 1.0' \
@@ -92,6 +95,8 @@ done
 
 for retired in \
     'id: lightningCanvas' \
+    'function sampledTrace(stroke)' \
+    'function strokeTrace(samples)' \
     'ctx.bezierCurveTo('; do
     if grep -Fq "$retired" "$equalizer_panel"; then
         fail "retired detached/smooth DSP connector token returned: $retired"

@@ -15,6 +15,10 @@ Rectangle {
     id: root
 
     property real padding: 8
+    // Keep expensive Angel resources alive through the visible fade, then
+    // release them once this retained taskbar is fully transparent.
+    readonly property bool presentationActive:
+        GlobalStates.overlayOpen || root.opacity > 0.001
 
     opacity: GlobalStates.overlayOpen ? 1 : 0
     implicitWidth: contentRow.implicitWidth + (padding * 2)
@@ -34,7 +38,7 @@ Rectangle {
         : Appearance.angelEverywhere ? Appearance.angel.cardBorderWidth : 1
     clip: true
 
-    layer.enabled: Appearance.angelEverywhere
+    layer.enabled: Appearance.angelEverywhere && root.presentationActive
     layer.effect: GE.OpacityMask {
         maskSource: Rectangle {
             width: root.width
@@ -50,14 +54,14 @@ Rectangle {
         y: -root.y
         width: Quickshell.screens[0]?.width ?? 1920
         height: Quickshell.screens[0]?.height ?? 1080
-        visible: Appearance.angelEverywhere
+        visible: Appearance.angelEverywhere && root.presentationActive
         source: visible ? Wallpapers.effectiveWallpaperUrl : ""
         fillMode: Image.PreserveAspectCrop
         cache: true
         sourceSize.width: Quickshell.screens[0]?.width ?? 1920
         sourceSize.height: Quickshell.screens[0]?.height ?? 1080
         asynchronous: true
-        layer.enabled: Appearance.effectsEnabled && Appearance.angelEverywhere
+        layer.enabled: Appearance.effectsEnabled && Appearance.angelEverywhere && root.presentationActive
         layer.effect: MultiEffect {
             source: taskbarBlurWallpaper
             anchors.fill: source

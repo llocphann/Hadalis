@@ -51,6 +51,9 @@ bar_resources="$repo_root/modules/bar/Resources.qml"
 vertical_bar_resources="$repo_root/modules/verticalBar/Resources.qml"
 recorder_status="$repo_root/services/RecorderStatus.qml"
 recorder_overlay_widget="$repo_root/modules/ii/overlay/recorder/Recorder.qml"
+overlay_taskbar="$repo_root/modules/ii/overlay/OverlayTaskbar.qml"
+overlay_floating_image="$repo_root/modules/ii/overlay/floatingImage/FloatingImage.qml"
+overlay_resources="$repo_root/modules/ii/overlay/resources/Resources.qml"
 waffle_widgets_content="$repo_root/modules/waffle/widgets/WidgetsContent.qml"
 control_panel_media="$repo_root/modules/controlPanel/MediaSection.qml"
 date_time_header="$repo_root/modules/controlPanel/DateTimeHeader.qml"
@@ -348,6 +351,13 @@ require "$recorder_status" '&& !quickCheckTimer.running' 'RecorderStatus demand 
 require "$recorder_overlay_widget" 'RecorderStatus.setFastStatusDemand("ii-overlay-recorder", wanted)' 'ii Recorder widget must own fast status demand only while visible'
 require "$recorder_overlay_widget" 'if (root._statusDemandRegistered)' 'ii Recorder widget must release its fast-demand lease on destruction'
 require "$recorder_overlay_widget" 'running: RecorderStatus.isRecording && root.visible' 'retained ii Recorder pulse must sleep while the widget is hidden'
+require "$overlay_taskbar" 'readonly property bool presentationActive:' 'retained Overlay taskbar must expose fade-aware presentation state'
+require "$overlay_taskbar" 'layer.enabled: Appearance.angelEverywhere && root.presentationActive' 'Overlay taskbar mask FBO must sleep after its exit fade'
+require "$overlay_taskbar" 'visible: Appearance.angelEverywhere && root.presentationActive' 'Overlay Angel wallpaper source must unload after the taskbar fade'
+require "$overlay_taskbar" 'layer.enabled: Appearance.effectsEnabled && Appearance.angelEverywhere && root.presentationActive' 'Overlay Angel blur FBO must sleep while the taskbar is hidden'
+require "$overlay_floating_image" 'layer.enabled: root.visible && (root.QsWindow.window?.visible ?? false)' 'retained Floating Image mask FBO must sleep while hidden'
+require "$overlay_floating_image" 'playing: root.visible && (root.QsWindow.window?.visible ?? false)' 'retained Floating Image animation decoder must pause while hidden'
+require "$overlay_resources" 'layer.enabled: root.visible && (root.QsWindow.window?.visible ?? false)' 'retained Overlay resource graph mask must sleep while hidden'
 require "$waffle_widgets_content" 'RecorderStatus.setFastStatusDemand("waffle-widgets-recorder", wanted)' 'Waffle recorder quick action must own fast status demand only while its panel is open'
 require "$weather" 'running: root.enabled' 'Weather minute clock must sleep when weather is disabled'
 require "$wallhaven_service" 'function _schedulePendingSearch(): void' 'Wallhaven pending search retries must use deadline scheduling'

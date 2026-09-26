@@ -107,7 +107,7 @@ StyledOverlayWidget {
             acceptedDevices: PointerDevice.Mouse | PointerDevice.TouchPad
         }
 
-        layer.enabled: true
+        layer.enabled: root.visible && (root.QsWindow.window?.visible ?? false)
         layer.effect: OpacityMask {
             maskSource: Rectangle {
                 width: bg.width
@@ -124,7 +124,8 @@ StyledOverlayWidget {
             sourceSize.width: width
             sourceSize.height: height
 
-            playing: visible && status === Image.Ready
+            playing: root.visible && (root.QsWindow.window?.visible ?? false)
+                && visible && status === Image.Ready
             asynchronous: true
             source: ""
             onStatusChanged: {

@@ -138,7 +138,7 @@ StyledOverlayWidget {
             // the plotted line, not the track behind it.
             color: Appearance.zzzEverywhere ? Appearance.zzz.bg3 : Appearance.colors.colSecondaryContainer
             Behavior on color { enabled: Appearance.animationsEnabled; ColorAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve } }
-            layer.enabled: true
+            layer.enabled: root.visible && (root.QsWindow.window?.visible ?? false)
             layer.effect: OpacityMask {
                 maskSource: Rectangle {
                     width: graphBg.width

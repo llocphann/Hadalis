@@ -23,6 +23,7 @@ Flickable {
         spacing: AbyssStyle.sectionSpacing
         RowLayout {
             AbyssLabel { text: "System"; font.pixelSize: AbyssStyle.fontSize*1.4; font.bold: true; Layout.fillWidth: true }
+            AbyssButton { glyph: "notifications"; description: "Notification history"; onClicked: GlobalStates.toggleNotificationCenter(root.outputName) }
             AbyssButton { glyph: "close"; description: "Close system panel"; onClicked: root.closeRequested() }
         }
         AbyssLabel { text: "CPU  "+Math.round(ResourceUsage.cpuUsage*100)+"%    "+ResourceUsage.cpuTemp+"°\nRAM  "+Math.round(ResourceUsage.memoryUsedPercentage*100)+"%\nGPU  "+Math.round(ResourceUsage.gpuUsage*100)+"%\nStorage  "+Math.round(ResourceUsage.diskUsedPercentage*100)+"%"; Layout.fillWidth: true }

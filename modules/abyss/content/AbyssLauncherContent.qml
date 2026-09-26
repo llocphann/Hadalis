@@ -12,7 +12,7 @@ Item {
     id: root
     property string outputName: ""
     signal closeRequested()
-    readonly property var entries: search.text.length > 0 ? LauncherSearch.results : AppSearch.list.slice(0,80)
+    readonly property var entries: search.text.length > 0 ? LauncherSearch.results : AppSearch.list.filter(entry => entry.shown !== false)
     readonly property var windows: CompositorService.isNiri
         ? NiriService.windows.filter(w => NiriService.workspaces[w.workspace_id]?.output === outputName)
         : ToplevelManager.toplevels.values
@@ -32,18 +32,18 @@ Item {
             AbyssButton { glyph: "close"; description: "Close launcher"; onClicked: root.closeRequested() }
         }
         AbyssWorkspaces { Layout.fillWidth: true; Layout.preferredHeight: 36; outputName: root.outputName; vertical: false }
-        RowLayout {
-            Layout.fillWidth: true
+        ListView {
+            id: windowList
+            Layout.fillWidth: true; Layout.preferredHeight: 36
             visible: search.text.length === 0 && root.windows.length > 0
-            Repeater {
-                model: root.windows.slice(0,4)
-                AbyssButton {
-                    required property var modelData
-                    Layout.fillWidth: true
-                    text: modelData.title || modelData.app_id || modelData.appId
-                    glyph: "window"
-                    onClicked: { root.closeRequested(); if (CompositorService.isNiri) NiriService.focusWindow(modelData.id); else modelData.activate() }
-                }
+            clip: true; orientation: ListView.Horizontal
+            model: root.windows
+            delegate: AbyssButton {
+                required property var modelData
+                width: Math.min(160,windowList.width/3); height: 36
+                text: modelData.title || modelData.app_id || modelData.appId
+                glyph: "window"
+                onClicked: { root.closeRequested(); if (CompositorService.isNiri) NiriService.focusWindow(modelData.id); else modelData.activate() }
             }
         }
         AbyssSearchField {

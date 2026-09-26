@@ -32,7 +32,7 @@ Flickable {
         AbyssLabel { visible: root.kind === "audio"; text: "Volume · " + Math.round(Audio.value*100)+"%" }
         AbyssSlider { visible: root.kind === "audio"; Layout.fillWidth: true; value: Audio.value; onMoved: Audio.setSinkVolume(value) }
         AbyssButton { visible: root.kind === "audio"; glyph: "volume_off"; text: "Mute"; onClicked: Audio.toggleMute() }
-        AbyssButton { text: "Related settings"; glyph: "settings"; onClicked: GlobalStates.openSettingsPage(root.kind === "battery" || root.kind === "audio" ? 1 : 2) }
+        AbyssButton { text: "Related settings"; glyph: "settings"; onClicked: GlobalStates.openSettingsSection(root.kind === "battery" || root.kind === "audio" ? 1 : 10, root.kind === "battery" || root.kind === "audio" ? "" : "abyss") }
     }
     property bool resourceLease: false
     function syncLease(): void {

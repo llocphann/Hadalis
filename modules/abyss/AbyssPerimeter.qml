@@ -34,9 +34,12 @@ Scope {
     }
     Connections {
         target: GlobalStates
+        function onOverviewOpenChanged(): void { if (GlobalStates.overviewOpen) GlobalStates.clipboardOpen = false }
         function onClipboardOpenChanged(): void {
-            if (GlobalStates.clipboardOpen)
+            if (GlobalStates.clipboardOpen) {
                 GlobalStates.abyssClipboardTargetOutput = GlobalStates.resolveOutputName("",[])
+                GlobalStates.overviewOpen = false
+            }
         }
     }
     AbyssOsdController {}

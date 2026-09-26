@@ -30,7 +30,7 @@ Item {
         case "activeWindow": return ToplevelManager.activeToplevel?.title ?? "Desktop"
         case "resources": return "CPU " + Math.round(ResourceUsage.cpuUsage*100) + "% · RAM " + Math.round(ResourceUsage.memoryUsedPercentage*100) + "%"
         case "media": return MprisController.activePlayer?.trackTitle || "No media"
-        case "clock": return DateTime.time
+        case "clock": return DateTime.timeDisplay
         case "battery": return Battery.available ? Math.round(Battery.percentage*100)+"%" : "Power"
         case "weather": return Weather.data.temp
         case "timer": return "Timer"
@@ -68,9 +68,10 @@ Item {
     Component {
         id: buttonComponent
         AbyssButton {
-            text: root.label
-            glyph: root.icon
-            compact: root.vertical
+            text: root.vertical && root.kind === "clock" ? root.label.replace(/:/g,"\n") : root.label
+            glyph: root.vertical && root.kind === "clock" ? "" : root.icon
+            compact: root.vertical && root.kind !== "clock"
+            font.pixelSize: root.vertical && root.kind === "clock" ? AbyssStyle.fontSize*0.8 : AbyssStyle.fontSize
             description: root.label || root.kind
             onClicked: {
                 if (root.kind === "leftSidebarButton") ShellLayoutController.toggleSidebarAtSlot("left",root.outputName)

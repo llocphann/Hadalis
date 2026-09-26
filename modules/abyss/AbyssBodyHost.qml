@@ -25,6 +25,7 @@ Item {
     readonly property rect inputBounds: open && ready
         ? Qt.rect(content.x,content.y,content.width,content.height) : Qt.rect(0,0,0,0)
     signal closeRequested()
+    Keys.onEscapePressed: root.closeRequested()
     Behavior on progress {
         id: deformation
         enabled: AbyssStyle.motionEnabled

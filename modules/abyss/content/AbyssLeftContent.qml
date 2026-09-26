@@ -35,7 +35,7 @@ Item {
             AbyssButton { text: "Clipboard history"; glyph: "content_paste"; Layout.fillWidth: true; onClicked: GlobalStates.clipboardOpen = true }
             AbyssButton { text: "Wallpaper"; glyph: "wallpaper"; Layout.fillWidth: true; onClicked: GlobalStates.wallpaperSelectorOpen = true }
             AbyssButton { text: "Screenshot"; glyph: "screenshot_region"; Layout.fillWidth: true; onClicked: GlobalStates.openRegionScreenshot() }
-            AbyssButton { text: "Settings"; glyph: "settings"; Layout.fillWidth: true; onClicked: GlobalStates.openSettingsPage(10) }
+            AbyssButton { text: "Settings"; glyph: "settings"; Layout.fillWidth: true; onClicked: GlobalStates.openSettingsSection(10,"abyss") }
             Item { Layout.fillHeight: true }
         }
     }

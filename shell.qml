@@ -144,6 +144,7 @@ ShellRoot {
             root._weatherService = Weather;
             root._voiceSearchService = VoiceSearch;
             root._cavaThemeService = CavaTheme;
+            root._globalActionsService.refreshSetupActions();
             Hyprsunset.load();
             GlobalStates.deferredPanelsReady = true;
             root._ensureScreenTimeService();

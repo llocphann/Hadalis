@@ -49,6 +49,7 @@ sidebar_world_clock="$repo_root/modules/sidebarLeft/widgets/WorldClockWidget.qml
 game_mode="$repo_root/services/GameMode.qml"
 directories="$repo_root/modules/common/Directories.qml"
 conflict_killer="$repo_root/services/ConflictKiller.qml"
+global_actions="$repo_root/services/GlobalActions.qml"
 first_run="$repo_root/services/FirstRunExperience.qml"
 overview_window="$repo_root/modules/overview/OverviewWindow.qml"
 resource_usage="$repo_root/services/ResourceUsage.qml"
@@ -377,6 +378,13 @@ require "$conflict_killer" 'mako|dunst) notifs=1 ;;' 'conflict detection must pr
 require "$conflict_killer" 'kded6) trays=1 ;;' 'conflict detection must preserve tray-conflict detection'
 reject "$conflict_killer" 'id: pidofTraysProc' 'conflict detection must not restore a dedicated tray pidof process'
 reject "$conflict_killer" 'id: pidofNotifsProc' 'conflict detection must not restore a dedicated notification pidof process'
+
+require "$shell_qml" 'root._globalActionsService = GlobalActions;' 'GlobalActions IPC singleton must remain resident at Tier 0'
+require "$shell_qml" 'root._globalActionsService.refreshSetupActions();' 'setup recipe discovery must be deferred until Tier 3'
+require "$global_actions" 'property bool _setupScanEnabled: false' 'GlobalActions setup discovery must start disabled'
+require "$global_actions" 'function refreshSetupActions(): void {' 'GlobalActions must expose explicit deferred setup discovery'
+require "$global_actions" 'if (root._setupScanEnabled)' 'setup-folder changes must not spawn the scanner before deferred initialization'
+reject "$global_actions" 'Component.onCompleted: { setupScanner.running = false; setupScanner.running = true }' 'GlobalActions must not run the setup scanner during Tier 0 construction'
 
 require "$first_run" 'id: firstRunMarker' 'first-run marker detection must use in-process file I/O'
 require "$first_run" 'firstRunMarker.reload()' 'first-run load must refresh the marker directly'

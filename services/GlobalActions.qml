@@ -792,13 +792,23 @@ Singleton {
     // See scripts/setup/README.md for the @meta header contract and the
     // _scan.sh JSON output format.
     property var _setupTargets: []
+    property bool _setupScanEnabled: false
+
+    function refreshSetupActions(): void {
+        root._setupScanEnabled = true
+        setupScanner.running = false
+        setupScanner.running = true
+    }
 
     FolderListModel {
         id: setupScriptsFolder
         folder: Qt.resolvedUrl(`file://${Directories.scriptsPath}/setup`)
         nameFilters: ["*.sh"]
         showDirs: false; showHidden: false; sortField: FolderListModel.Name
-        onCountChanged: { setupScanner.running = false; setupScanner.running = true }
+        onCountChanged: {
+            if (root._setupScanEnabled)
+                root.refreshSetupActions()
+        }
     }
 
     Process {
@@ -811,8 +821,6 @@ Singleton {
             }
         }
     }
-
-    Component.onCompleted: { setupScanner.running = false; setupScanner.running = true }
 
     function _safeTerminal(): string {
         const t = (Config.options?.apps?.terminal ?? "kitty").trim()

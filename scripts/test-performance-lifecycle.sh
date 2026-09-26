@@ -323,7 +323,9 @@ require "$control_panel_wallpaper" 'mipmap: false' 'Control Panel wallpaper prev
 require "$wallpaper_skew_view" 'id: videoPreviewPlayerLoader' 'Wallpaper Skew preview decoder must be lazy-loaded per current video'
 require "$wallpaper_skew_view" 'active: videoPreviewOutput._shouldPlay' 'Wallpaper Skew preview decoder must sleep for cached non-current delegates'
 require "$wallpaper_skew_view" 'onLoaded: if (item) item.play()' 'Wallpaper Skew preview must start playback after lazy decoder creation'
-reject "$wallpaper_skew_view" 'id: videoPreviewPlayer' 'Wallpaper Skew cached delegates must not restore eager MediaPlayer instances'
+if grep -Eq '^[[:space:]]*id:[[:space:]]+videoPreviewPlayer[[:space:]]*$' "$wallpaper_skew_view"; then
+    fail 'Wallpaper Skew cached delegates must not restore eager MediaPlayer instances'
+fi
 require "$dash_media" 'property bool presentationActive:' 'Dashboard media lifecycle must remain writable for DashboardCanvas and Overview hosts'
 reject "$dash_media" 'readonly property bool presentationActive:' 'Dashboard media lifecycle must not become readonly while DashboardCanvas binds it'
 reject "$dash_media" 'CavaProcess {' 'Dashboard media must not run duplicate Cava above the shared EQ'

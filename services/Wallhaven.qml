@@ -192,7 +192,8 @@ QtObject {
                 root._handleTagCountResponse(text)
             }
         }
-        onExited: (_exitCode, _exitStatus) => root._scheduleTagCount()
+        onExited: (_exitCode, _exitStatus) =>
+            Qt.callLater(root._scheduleTagCount)
     }
 
     // Process for tag suggestions
@@ -215,7 +216,8 @@ QtObject {
                 root._handleTagDetailResponse(text)
             }
         }
-        onExited: (_exitCode, _exitStatus) => root._scheduleTagDetail()
+        onExited: (_exitCode, _exitStatus) =>
+            Qt.callLater(root._scheduleTagDetail)
     }
 
     function _tagDelayMs(): int {

@@ -200,7 +200,7 @@ def main() -> None:
         "id: editActions",
         "horizontalAlignment: Text.AlignHCenter",
         "focusPolicy: Qt.StrongFocus",
-        'Config.setNestedValue(\n                    "dashboard.canvas.autoAdjustSize"',
+        '"dashboard.canvas.autoAdjustSize"',
         "border.width: tool.visualFocus ? 2 : (tool.toggled ? 1 : 0)",
         "id: toolbarRow",
         "id: editActions",

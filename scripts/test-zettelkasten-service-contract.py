@@ -119,7 +119,9 @@ assert 'Translation.tr("Create a Fleeting Zettelkasten note.' not in dash
 assert "font.pixelSize: Appearance.font.pixelSize.smallest" not in dash
 assert "_clearCapturedDraft" not in widget
 assert "_pendingZettelCapture" not in widget
-assert "Notepad.removeTab(index)" not in widget
+assert "function removeTabSafely(index): void" in widget
+assert "root.flushPendingSave()" in widget
+assert "if (!Notepad.removeTab(index))" in widget
 assert "draft clears after verified save" not in dash
 assert 'text: Translation.tr("Capture")' not in dash
 

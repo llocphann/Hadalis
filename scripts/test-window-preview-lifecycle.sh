@@ -178,8 +178,10 @@ require_bar_preview 'values: root.previewToplevels' \
     'app and workspace previews must share one window-preview tile model'
 require_workspaces 'workspacePreviewPopup.showWorkspace(workspaceId, button)' \
     'workspace strip must route hover through the shared Bar preview'
-require_workspaces 'interval: Config.options?.dock?.hoverPreviewDelay ?? 400' \
-    'workspace preview must reuse the existing hover-preview delay'
+require_workspaces 'interval: root.workspaceOverviewHoverEnabled' \
+    'workspace hover timer must select between Overview and compact preview delays'
+require_workspaces ': (Config.options?.dock?.hoverPreviewDelay ?? 400)' \
+    'compact workspace preview must reuse the existing hover-preview delay'
 require_workspaces 'BarWorkspaceOverview {' \
     'workspace strip must use the connected workspace Overview popup by default'
 require_workspaces 'Config.options?.overview?.workspaceHover?.delayMs ?? 280' \

@@ -54,6 +54,7 @@ Singleton {
     }
 
     function _clearPublished(): void {
+        syncTimer.stop();
         root.lyricsLines = [];
         root.activeIndex = -1;
         root.slots = ["", "", "", "", "", "", ""];
@@ -192,6 +193,7 @@ Singleton {
             root._reanchor(reported);
             root._publishedTrackKey = root._latestTrackKey;
             root.status = "ok";
+            root._syncLyricsPosition();
         });
     }
 
@@ -208,7 +210,13 @@ Singleton {
         Qt.callLater(root._startPendingRequest);
     }
 
-    onActiveChanged: root.scheduleRefresh()
+    onActiveChanged: {
+        root.scheduleRefresh();
+        if (root.active && root.status === "ok" && root.lyricsLines.length > 0)
+            root._syncLyricsPosition();
+        else
+            syncTimer.stop();
+    }
     onActivePlayerChanged: root.scheduleRefresh()
 
     Timer {
@@ -248,29 +256,45 @@ Singleton {
         return low - 1
     }
 
-    on_PlayingChanged: root._reanchor(root._estimatedPosition())
+    function _scheduleNextLyricsTick(position: real, idx: int): void {
+        syncTimer.stop();
+        if (!root.active || root.status !== "ok" || !root._playing)
+            return;
+
+        const nextLine = root.lyricsLines[idx + 1];
+        if (!nextLine || typeof nextLine.time !== "number")
+            return;
+
+        const delayMs = Math.ceil((nextLine.time - position) * 1000);
+        syncTimer.interval = Math.max(1, Math.min(2147483647, delayMs));
+        syncTimer.start();
+    }
+
+    function _syncLyricsPosition(): void {
+        syncTimer.stop();
+        if (!root.active || root.status !== "ok" || root.lyricsLines.length === 0)
+            return;
+
+        const reported = root.activePlayer?.position ?? 0;
+        root._lastReported = reported;
+        root._reanchor(Math.max(0, reported));
+
+        const pos = root._estimatedPosition();
+        const idx = root._indexForPosition(pos);
+        if (idx !== root.activeIndex) {
+            root.activeIndex = idx;
+            root.slots = root.buildSlots(idx);
+        }
+
+        root._scheduleNextLyricsTick(pos, idx);
+    }
+
+    on_PlayingChanged: root._syncLyricsPosition()
 
     Timer {
         id: syncTimer
-        interval: 300
-        repeat: true
-        running: root.active && root.status === "ok" && root.lyricsLines.length > 0
-        onTriggered: {
-            root.activePlayer?.positionChanged();
-            const reported = root.activePlayer?.position ?? 0;
-            if (reported !== root._lastReported) {
-                root._lastReported = reported;
-                if (reported > 0 || root._anchorPos === 0)
-                    root._reanchor(reported);
-            }
-
-            const pos = root._estimatedPosition();
-            const idx = root._indexForPosition(pos)
-            if (idx !== root.activeIndex) {
-                root.activeIndex = idx;
-                root.slots = root.buildSlots(idx);
-            }
-        }
+        repeat: false
+        onTriggered: root._syncLyricsPosition()
     }
 
     Process {
@@ -342,6 +366,11 @@ Singleton {
 
     Connections {
         target: root.activePlayer
+
+        function onPositionChanged(): void {
+            if (root.active && root.status === "ok" && root.lyricsLines.length > 0)
+                root._syncLyricsPosition();
+        }
 
         function onPostTrackChanged(): void {
             root.scheduleRefresh();

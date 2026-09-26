@@ -35,7 +35,19 @@ assert_text_contains 'onExited: root._finishLyricsProcess(false)' "$process_bloc
 
 service_text="$(cat "$service")"
 assert_text_contains 'function _indexForPosition(position: real): int' "$service_text" 'lyrics position lookup must use the bounded binary-search helper'
-assert_text_contains 'const idx = root._indexForPosition(pos)' "$service_text" 'sync timer must not rescan the full lyrics list each tick'
+assert_text_contains 'const idx = root._indexForPosition(pos)' "$service_text" 'lyrics sync must not rescan the full lyrics list'
 assert_text_contains '.sort((a, b) => a.time - b.time)' "$service_text" 'lyrics input must be timestamp-sorted before binary search'
+assert_text_contains 'function _scheduleNextLyricsTick(position: real, idx: int): void' "$service_text" 'lyrics sync must schedule the next timestamp instead of fixed-rate polling'
+assert_text_contains 'syncTimer.interval = Math.max(1, Math.min(2147483647, delayMs))' "$service_text" 'lyrics next-cue timer must be bounded'
+assert_text_contains 'repeat: false' "$service_text" 'lyrics synchronization timer must be one-shot'
+assert_text_contains 'function onPositionChanged(): void' "$service_text" 'nonlinear MPRIS position changes must resynchronize lyrics'
+assert_text_contains 'onTriggered: root._syncLyricsPosition()' "$service_text" 'next-cue timer must resynchronize before scheduling the following cue'
+
+if grep -Fq -- 'interval: 300' <<<"$service_text"; then
+    fail 'fixed 300 ms lyrics polling must not return'
+fi
+if grep -Fq -- 'root.activePlayer?.positionChanged();' <<<"$service_text"; then
+    fail 'lyrics service must not synthesize periodic MPRIS positionChanged signals'
+fi
 
 printf 'lyrics service lifecycle guards: ok\n'

@@ -98,6 +98,7 @@ util_buttons="$repo_root/modules/bar/UtilButtons.qml"
 waffle_system_button="$repo_root/modules/waffle/bar/SystemButton.qml"
 waffle_timer_button="$repo_root/modules/waffle/bar/TimerButton.qml"
 waffle_background_clock="$repo_root/modules/waffle/background/WaffleBackgroundClock.qml"
+waffle_media_pane="$repo_root/modules/waffle/actionCenter/MediaPaneContent.qml"
 player_base="$repo_root/modules/mediaControls/components/PlayerBase.qml"
 player_progress="$repo_root/modules/mediaControls/components/PlayerProgress.qml"
 bar_media="$repo_root/modules/bar/Media.qml"
@@ -112,6 +113,7 @@ reject "$date_time_service" 'cookie?.secondHandStyle' 'Cookie second hand must n
 require "$clock_widget" 'readonly property bool cookieNeedsSeconds:' 'Background CookieClock must own its seconds demand'
 require "$clock_widget" 'clockSecond: displayClock.seconds' 'Background CookieClock seconds must stay local'
 require "$waffle_background_clock" '&& root.clockEnabled' 'Disabled Waffle clock must not keep a 1 Hz SystemClock'
+require "$waffle_media_pane" 'triggeredOnStart: true' 'Waffle Action Center media position must prime when presented'
 require "$cookie_clock" 'property int clockSecond: DateTime.clock.seconds' 'CookieClock must preserve the lock-screen fallback clock'
 reject "$date_time_header" 'onTriggered: root._tick++' 'Control Panel must not restore a duplicate minute timer'
 for lock_date_surface in "$lock_surface" "$waffle_lock" "$waffle_lock_safe"; do

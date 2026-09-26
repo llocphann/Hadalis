@@ -28,6 +28,10 @@ Singleton {
     property string pendingOperation: ""
     property bool _refreshQueued: false
     property bool _profileFollowArmed: false
+    property real _lastStatusRefreshAt: 0
+    readonly property int _statusFreshnessMs: 30 * 1000
+    readonly property int _activePollMs: 30 * 1000
+    readonly property int _idleSafetyPollMs: 5 * 60 * 1000
     property string _queuedFanLevel: ""
     property bool _fanConfigApplyQueued: false
 
@@ -117,6 +121,7 @@ Singleton {
         root.configPath = String(data.configPath ?? "")
         root.statusReason = String(data.reason ?? "")
         root.stateKnown = true
+        root._lastStatusRefreshAt = Date.now()
         root._scheduleConfiguredFanLevelApply()
         return true
     }
@@ -297,19 +302,31 @@ Singleton {
         })
     }
 
+    function _handleProfileFollowEvent(): void {
+        if (!root.profileFanControlEnabled)
+            return
+        const stale = root._lastStatusRefreshAt <= 0
+            || Date.now() - root._lastStatusRefreshAt >= root._statusFreshnessMs
+        if (stale) {
+            root.refresh()
+            return
+        }
+        root._scheduleConfiguredFanLevelApply()
+    }
+
     Component.onCompleted: root.refresh()
 
     Connections {
         target: PowerProfiles
         function onProfileChanged(): void {
-            root._scheduleConfiguredFanLevelApply()
+            root._handleProfileFollowEvent()
         }
     }
 
     Connections {
         target: Config
         function onConfigChanged(): void {
-            root._scheduleConfiguredFanLevelApply()
+            root._handleProfileFollowEvent()
         }
     }
 
@@ -350,6 +367,7 @@ Singleton {
 
             detectorTimeout.stop()
             root._clearStatus("helper-unavailable")
+            root._lastStatusRefreshAt = Date.now()
             if (root._refreshQueued) {
                 root._refreshQueued = false
                 Qt.callLater(() => root.refresh())
@@ -368,6 +386,7 @@ Singleton {
             else if (exitCode !== 0 || !detector.statusSeen)
                 root._clearStatus(exitCode === 127
                     ? "helper-unavailable" : "status-failed")
+            root._lastStatusRefreshAt = Date.now()
             if (root._refreshQueued) {
                 root._refreshQueued = false
                 Qt.callLater(() => root.refresh())
@@ -457,12 +476,13 @@ Singleton {
     }
 
     Timer {
-        interval: 30000
+        id: statusRefreshTimer
+        interval: (root.active || root.busy)
+            ? root._activePollMs : root._idleSafetyPollMs
         repeat: true
-        // The shell keeps this singleton alive for profile following, but the
-        // default configuration does not need a helper status process every
-        // 30 seconds. Keep background verification only while the feature is
-        // actively relevant; UI surfaces call refresh() when opened.
+        // Active ThinkFan state keeps the responsive 30-second status cadence.
+        // Profile-follow alone uses a sparse safety poll; PowerProfiles/Config
+        // changes demand-refresh stale state immediately before applying intent.
         running: root.profileFanControlEnabled || root.active || root.busy
         onTriggered: root.refresh()
     }

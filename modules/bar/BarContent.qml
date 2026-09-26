@@ -304,6 +304,7 @@ Item {
         && root.barSpectrumOutputEnabled
         && !Appearance.gameModeMinimal
         && root.visible
+        && (root.QsWindow.window?.visible ?? false)
     readonly property bool barSpectrumProcessWanted: root.barSpectrumConfigured
         && root.barSpectrumAudioPlaying
     readonly property bool barSpectrumVisible: root.barSpectrumConfigured

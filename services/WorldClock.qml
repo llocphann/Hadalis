@@ -115,9 +115,9 @@ Singleton {
         // One shell process handles every configured timezone. Timezone names
         // are argv entries, never interpolated into shell source.
         const command = [
-            "/usr/bin/sh",
+            "/usr/bin/bash",
             "-c",
-            "for tz; do TZ=\"$tz\" date +%z || printf '+0000\\n'; done",
+            "for tz; do TZ=\"$tz\" printf '%(%z)T\\n' -1 || printf '+0000\\n'; done",
             "world-clock-offsets"
         ]
         for (let i = 0; i < zones.length; ++i)

@@ -81,6 +81,7 @@ sysmon_widget="$repo_root/modules/sidebarRight/sysmon/SysMonWidget.qml"
 timer_service="$repo_root/services/TimerService.qml"
 levendist="$repo_root/modules/common/functions/levendist.js"
 emojis="$repo_root/services/deferred/Emojis.qml"
+app_search="$repo_root/services/AppSearch.qml"
 loading_indicator="$repo_root/modules/common/widgets/MaterialLoadingIndicator.qml"
 circular_progress="$repo_root/modules/common/widgets/CircularProgress.qml"
 clipped_filled_progress="$repo_root/modules/common/widgets/ClippedFilledCircularProgress.qml"
@@ -257,6 +258,10 @@ require "$levendist" 'levenshteinDistance(shortS, sub, rows)' 'partial fuzzy mat
 require "$emojis" 'function _ensurePreparedEntries(): var' 'Emoji fuzzy index must stay lazy'
 require "$emojis" 'Fuzzy.go(search, root._ensurePreparedEntries(),' 'Emoji search must build its index only on demand'
 reject "$emojis" 'readonly property var preparedEntries:' 'Emoji service must not eagerly prepare the full list'
+require "$app_search" 'function _ensurePreppedNames(): var' 'AppSearch fuzzy names must stay lazy'
+require "$app_search" 'function _ensurePreppedIcons(): var' 'AppSearch fuzzy icons must stay lazy'
+reject "$app_search" '_cachedPreppedNames = entries.map' 'AppSearch rebuild must not fuzzy-prepare every app name'
+reject "$app_search" '_cachedPreppedIcons = entries.map' 'AppSearch rebuild must not fuzzy-prepare every app icon'
 
 require "$loading_indicator" 'import QtQuick.Window' 'loading indicator must observe owning window visibility'
 require "$loading_indicator" '(root.Window.window?.visible ?? true)' 'loading indicator must stop while its owning window is hidden'

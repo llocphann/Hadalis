@@ -172,8 +172,12 @@ Singleton {
 
     // Cached - rebuilt with debounce to avoid UI freeze on DesktopEntries updates
     property var _cachedList: []
+    property var _cachedNameLowers: []
     property var _cachedPreppedNames: []
     property var _cachedPreppedIcons: []
+    property int _cacheRevision: 0
+    property int _preppedNamesRevision: -1
+    property int _preppedIconsRevision: -1
     // Reverse-lookup maps for matching running windows to desktop entries
     // Key: lowercased startupClass/exec-basename/desktop-id-stem → DesktopEntry
     property var _startupClassMap: ({})
@@ -203,12 +207,12 @@ Singleton {
         const entries = Array.from(DesktopEntries.applications.values)
             .sort((a, b) => a.name.localeCompare(b.name))
         _cachedList = entries
-        _cachedPreppedNames = entries.map(a => ({
-            name: Fuzzy.prepare(`${a.name} `),
-            nameLower: (a.name ?? "").toLowerCase(),
-            entry: a
-        }))
-        _cachedPreppedIcons = entries.map(a => ({ name: Fuzzy.prepare(`${a.icon} `), entry: a }))
+        _cachedNameLowers = entries.map(entry => (entry.name ?? "").toLowerCase())
+        _cachedPreppedNames = []
+        _cachedPreppedIcons = []
+        _cacheRevision++
+        _preppedNamesRevision = -1
+        _preppedIconsRevision = -1
 
         // Build reverse-lookup maps for matching toplevel appIds to desktop entries.
         // This is how we find icons for AppImages, Electron apps, and other apps whose
@@ -259,6 +263,41 @@ Singleton {
         _desktopIdStemMap = idMap;
     }
 
+    function _ensurePreppedNames(): var {
+        if (root._preppedNamesRevision === root._cacheRevision)
+            return root._cachedPreppedNames
+
+        const entries = root._cachedList
+        const prepared = new Array(entries.length)
+        for (let i = 0; i < entries.length; ++i) {
+            prepared[i] = {
+                name: Fuzzy.prepare(`${entries[i].name} `),
+                nameLower: root._cachedNameLowers[i] ?? "",
+                entry: entries[i]
+            }
+        }
+        root._cachedPreppedNames = prepared
+        root._preppedNamesRevision = root._cacheRevision
+        return prepared
+    }
+
+    function _ensurePreppedIcons(): var {
+        if (root._preppedIconsRevision === root._cacheRevision)
+            return root._cachedPreppedIcons
+
+        const entries = root._cachedList
+        const prepared = new Array(entries.length)
+        for (let i = 0; i < entries.length; ++i) {
+            prepared[i] = {
+                name: Fuzzy.prepare(`${entries[i].icon} `),
+                entry: entries[i]
+            }
+        }
+        root._cachedPreppedIcons = prepared
+        root._preppedIconsRevision = root._cacheRevision
+        return prepared
+    }
+
     function _insertTopScored(top, candidate, limit): void {
         let low = 0
         let high = top.length
@@ -288,7 +327,7 @@ Singleton {
                 const top = []
                 for (let index = 0; index < _cachedList.length; ++index) {
                     const obj = _cachedList[index]
-                    const nameLower = _cachedPreppedNames[index]?.nameLower ?? ""
+                    const nameLower = _cachedNameLowers[index] ?? ""
                     let score = Levendist.computeScore(nameLower, searchLower)
 
                     if (nameLower.startsWith(searchLower))
@@ -306,7 +345,7 @@ Singleton {
             }
 
             const results = _cachedList.map((obj, index) => {
-                const nameLower = _cachedPreppedNames[index]?.nameLower ?? ""
+                const nameLower = _cachedNameLowers[index] ?? ""
                 let score = Levendist.computeScore(nameLower, searchLower)
 
                 if (nameLower.startsWith(searchLower))
@@ -324,7 +363,7 @@ Singleton {
         }
 
         // Hybrid approach: combine fuzzysort with smart scoring
-        const fuzzyResults = Fuzzy.go(search, preppedNames, {
+        const fuzzyResults = Fuzzy.go(search, root._ensurePreppedNames(), {
             all: true,
             key: "name",
             threshold: -10000 // Get all results, we'll filter ourselves
@@ -706,9 +745,12 @@ Singleton {
             if (iconExists(candidate)) return candidate;
         }
 
-        // Search in desktop entries
-        if (_cachedPreppedIcons.length > 0) {
-            const iconSearchResults = Fuzzy.go(str, preppedIcons, {
+        // Search in desktop entries only after cheaper direct/icon-theme
+        // heuristics fail. Building this fuzzy index at shell startup is wasted
+        // work for the common case.
+        const preparedIcons = root._ensurePreppedIcons()
+        if (preparedIcons.length > 0) {
+            const iconSearchResults = Fuzzy.go(str, preparedIcons, {
                 all: true,
                 key: "name",
                 limit: 1

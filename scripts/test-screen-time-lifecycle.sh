@@ -60,12 +60,12 @@ require 'Qt.callLater(root._startNextRangeRead)' \
 
 require '(Config.options?.sidebar?.screenTime?.enable ?? false)' \
     'Screen Time must retain the Waffle/explicit opt-in owner'
-require '(Config.options?.panelFamily ?? "ii") !== "waffle"' \
+require '(Config.options?.panelFamily ?? "ii") === "ii"' \
     'Material Activity tracking must stay limited to the ii panel family'
 require '.includes("iiScreenCorners")' \
     'Material Activity tracking must follow its ScreenCorners popup host'
 
-require_in "$shell_root" '(Config.options?.panelFamily ?? "ii") !== "waffle"' \
+require_in "$shell_root" '(Config.options?.panelFamily ?? "ii") === "ii"' \
     'shell must limit automatic Activity tracking to the ii family'
 require_in "$shell_root" '.includes("iiScreenCorners")' \
     'shell must materialize ScreenTime for the Activity popup host'

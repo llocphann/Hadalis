@@ -16,7 +16,7 @@ Singleton {
     // when ScreenCorners (the Activity popup host) is enabled.
     readonly property bool enabled:
         (Config.options?.sidebar?.screenTime?.enable ?? false)
-        || ((Config.options?.panelFamily ?? "ii") !== "waffle"
+        || ((Config.options?.panelFamily ?? "ii") === "ii"
             && (Config.options?.enabledPanels ?? []).includes("iiScreenCorners"))
     property bool ready: false
 

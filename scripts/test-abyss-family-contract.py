@@ -27,6 +27,21 @@ assert(result.enabled.includes('abyssNew')); // update migration
 """
 subprocess.run(["node", "-e", program], check=True)
 
+screen_time = (root / "services/ScreenTime.qml").read_text()
+tracking = screen_time.split("readonly property bool enabled:", 1)[1].split("\n    property", 1)[0].strip()
+subprocess.run(["node", "-e", """
+const assert = require('node:assert/strict');
+const Config = {options:{sidebar:{screenTime:{enable:false}},enabledPanels:['iiScreenCorners']}};
+function tracks() { return """ + tracking + """; }
+for (const family of ['ii','waffle','abyss']) {
+    Config.options.panelFamily = family;
+    assert.equal(tracks(), family === 'ii');
+    Config.options.sidebar.screenTime.enable = true; assert(tracks());
+    Config.options.sidebar.screenTime.enable = false;
+}
+Config.options.panelFamily = 'ii'; Config.options.enabledPanels = []; assert(!tracks());
+"""], check=True)
+
 # Execute the real settings applicability function rather than mirroring it.
 registry = (root / "modules/settings/SettingsPageRegistry.qml").read_text()
 applicability = registry.split("function isPageApplicable(index: int): bool {", 1)[1].split("\n    }", 1)[0]

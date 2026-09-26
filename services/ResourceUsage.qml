@@ -406,7 +406,7 @@ Singleton {
             // Match one interface row directly instead of splitting the whole
             // file into lines and then allocating a second fields[] array for
             // every interface. Capture RX bytes and TX bytes only.
-            const netLine = /^\\s*([^:\\s]+):\\s*(\\d+)(?:\\s+\\d+){7}\\s+(\\d+)(?:\\s+\\d+){7}\\s*$/gm
+            const netLine = /^\s*([^:\s]+):\s*(\d+)(?:\s+\d+){7}\s+(\d+)(?:\s+\d+){7}\s*$/gm
             let match
             while ((match = netLine.exec(textNetDev)) !== null) {
                 if (match[1] === "lo")

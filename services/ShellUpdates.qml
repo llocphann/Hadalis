@@ -557,8 +557,6 @@ Singleton {
         searchRepoProc.running = true
     }
 
-    }
-
     Process {
         id: preferConfigRepoProc
         running: false

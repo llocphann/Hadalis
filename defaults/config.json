@@ -2043,6 +2043,37 @@
         }
     },
     "familyTransitionAnimation": true,
+    "abyss": {
+        "quality": "balanced",
+        "perimeter": {
+            "thickness": 8,
+            "radius": 34,
+            "visibleInFullscreen": false
+        },
+        "surface": {
+            "opacity": 0.91,
+            "tension": 0.5,
+            "softness": 24
+        },
+        "motion": {
+            "intensity": 0.6
+        },
+        "effects": {
+            "blur": {
+                "enabled": true,
+                "radius": 10
+            },
+            "refraction": {
+                "enabled": false,
+                "strength": 6
+            },
+            "glow": {
+                "strength": 0.08
+            },
+            "surfaceHighlight": 0.45,
+            "shadowStrength": 0.24
+        }
+    },
     "panelFamily": "ii",
     "visitedPanelFamilies": [],
     "enabledPanels": [

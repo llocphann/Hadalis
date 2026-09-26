@@ -461,6 +461,28 @@ Singleton {
             property string panelFamily: "ii"
             property bool familyTransitionAnimation: true
 
+            property JsonObject abyss: JsonObject {
+                property string quality: "balanced"
+                property JsonObject perimeter: JsonObject {
+                    property int thickness: 8
+                    property int radius: 34
+                    property bool visibleInFullscreen: false
+                }
+                property JsonObject surface: JsonObject {
+                    property real opacity: 0.91
+                    property real tension: 0.5
+                    property int softness: 24
+                }
+                property JsonObject motion: JsonObject { property real intensity: 0.6 }
+                property JsonObject effects: JsonObject {
+                    property JsonObject blur: JsonObject { property bool enabled: true; property int radius: 10 }
+                    property JsonObject refraction: JsonObject { property bool enabled: false; property real strength: 6 }
+                    property JsonObject glow: JsonObject { property real strength: 0.08 }
+                    property real surfaceHighlight: 0.45
+                    property real shadowStrength: 0.24
+                }
+            }
+
             property JsonObject policies: JsonObject {
                 property int ai: 0
                 property int weeb: 0

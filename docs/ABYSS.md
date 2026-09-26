@@ -51,7 +51,9 @@ Findings:
 1. Add the `abyss` family boundary, safe lazy tree, panel IDs, migration,
    selection and a short input-free transition. Keep `ii` as the default and
    normalize unknown families to `ii`.
-2. Prove a single deterministic contour using Qt Quick Shape/CurveRenderer.
+2. Prove a single deterministic SDF silhouette using one shared ShaderEffect.
+   Intersecting perpendicular deformations require a real union; a sampled
+   Shape contour would need an additional boolean-geometry implementation.
    Subtract one rounded workspace opening from the screen; deform that opening
    for edge-attached content. One silhouette owns fill, rim and optional shadow.
    Transparent reservations remain separate from the visual host.
@@ -71,3 +73,30 @@ Findings:
 Topology precedes interaction, legibility, motion, glass and glow. Abyss is not
 an iRiS Island implementation. No Material tree duplication or corner patches
 are part of this plan.
+
+
+## Foundation checkpoint (phases 1–2)
+
+- Family skeleton: `69c90e79f`, pushed to `dev`. Three-family policy tests and
+  existing transition/critical isolation tests pass. Qt 6.11.2 parses the new tree.
+- Native foundation: original `AbyssField.frag(.qsb)`, `AbyssGeometry.js`,
+  `AbyssStyle.qml`, `AbyssPerimeter.qml` and the Abyss critical entry. Config gains
+  an isolated `abyss.*` namespace; existing palettes and Material geometry stay intact.
+- Visual: [actual GPU topology capture](evidence/abyss/phase2-topology.png),
+  Quickshell 0.3.1 / Wayland / OpenGL, 1100 × 700 logical pixels. The shader reports
+  compiled. Perimeter, popup, sidebar and dock share one silhouette and shadow.
+  This is a renderer capture, not multi-monitor or full desktop acceptance.
+- Input: foundation host and reservation windows have empty input masks and no
+  keyboard focus. Expanded content will add bounded regions in the next milestone.
+- Geometry tests execute the production JS for four bar/dock directions and
+  scales 1, 1.25, 1.5 and 2. Opposing deformations preserve the workspace center.
+- A perpendicular placement rule keeps popup/dock content out of sidebars. It
+  also prevents intersecting panels sealing an isolated corner workspace pocket.
+  The renderer still computes the union; this is content placement, not corner paint.
+- Idle: no timer or time uniform in the field; geometry and color bindings are
+  unchanged at rest. One ShaderEffect per output, no per-module texture passes.
+- Baseline validator on `b66aaf3` found pre-existing stale `IslandPanel` and update
+  availability assertions (the latter also fails the aggregate distribution test).
+  Baseline is not green. Parser probing also skipped because `/usr/bin/qmlformat`
+  version detection fails; the explicit `/usr/lib/qt6/bin/qmlformat` parser works.
+- Next: embedded content, bounded input, native bar, dock, sidebar and popup.

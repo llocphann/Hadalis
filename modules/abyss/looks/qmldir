@@ -1,0 +1,3 @@
+module qs.modules.abyss.looks
+singleton AbyssStyle 1.0 AbyssStyle.qml
+AbyssField 1.0 AbyssField.qml

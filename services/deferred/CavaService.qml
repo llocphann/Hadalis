@@ -165,10 +165,10 @@ Singleton {
         let sum = 0
         let frameChanged = parsed.length !== root.points.length
         for (let i = 0; i < parsed.length; ++i) {
-            const value = Number(parsed[i]) || 0
+            const value = parsed[i]
             peak = Math.max(peak, value)
             sum += value
-            if (!frameChanged && parsed[i] !== root.points[i])
+            if (!frameChanged && value !== root.points[i])
                 frameChanged = true
         }
 
@@ -347,13 +347,17 @@ Singleton {
         }
         stdout: SplitParser {
             onRead: data => {
-                const fields = data.split(";")
-                const parsed = []
-                for (let i = 0; i < fields.length; ++i) {
-                    const value = parseFloat(fields[i])
+                // SplitParser already gives us one frame-sized string. Reuse
+                // the split array itself as the numeric frame instead of
+                // allocating a second parsed[] array at CAVA framerate.
+                const parsed = data.split(";")
+                let writeIndex = 0
+                for (let i = 0; i < parsed.length; ++i) {
+                    const value = parseFloat(parsed[i])
                     if (!isNaN(value))
-                        parsed.push(value)
+                        parsed[writeIndex++] = value
                 }
+                parsed.length = writeIndex
                 root._publishFrame(parsed)
             }
         }

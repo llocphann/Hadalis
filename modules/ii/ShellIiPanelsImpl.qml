@@ -59,17 +59,11 @@ Item {
         required property string identifier
         required property bool open
         property bool keepLoaded: false
-        property bool retainAfterUse: false
         property bool used: false
         property int closeGraceMs: 300
-        property int retainIdleMs: 5 * 60 * 1000
         property bool resident: open || keepLoaded
         property Timer closeGrace: Timer {
             interval: onDemandLoader.closeGraceMs
-            onTriggered: onDemandLoader.resident = onDemandLoader.open || onDemandLoader.keepLoaded
-        }
-        property Timer retainIdle: Timer {
-            interval: onDemandLoader.retainIdleMs
             onTriggered: onDemandLoader.resident = onDemandLoader.open || onDemandLoader.keepLoaded
         }
         readonly property bool enabledPanel: Config.ready
@@ -79,25 +73,17 @@ Item {
             if (open) {
                 used = true
                 closeGrace.stop()
-                retainIdle.stop()
                 resident = true
             } else if (!keepLoaded) {
-                if (retainAfterUse && used)
-                    retainIdle.restart()
-                else
-                    closeGrace.restart()
+                closeGrace.restart()
             }
         }
         onKeepLoadedChanged: {
             if (keepLoaded) {
                 closeGrace.stop()
-                retainIdle.stop()
                 resident = true
             } else if (!open) {
-                if (retainAfterUse && used)
-                    retainIdle.restart()
-                else
-                    closeGrace.restart()
+                closeGrace.restart()
             }
         }
 
@@ -211,7 +197,7 @@ Item {
         component: TilingOverlay {}
     }
 
-    OnDemandPanelLoader { identifier: "iiWallpaperSelector"; open: GlobalStates.wallpaperSelectorOpen; retainAfterUse: true; closeGraceMs: 250; component: WallpaperSelector {} }
+    OnDemandPanelLoader { identifier: "iiWallpaperSelector"; open: GlobalStates.wallpaperSelectorOpen; closeGraceMs: 250; component: WallpaperSelector {} }
     OnDemandPanelLoader { identifier: "iiWallpaperLauncher"; open: GlobalStates.wallpaperLauncherOpen; closeGraceMs: Appearance.animationsEnabled ? Math.max(240, Appearance.animation.elementMoveExit.duration + 60) : 40; component: WallpaperLauncher {} }
     OnDemandPanelLoader { identifier: "iiCoverflowSelector"; open: GlobalStates.coverflowSelectorOpen; closeGraceMs: Appearance.animationsEnabled ? Appearance.calcEffectiveDuration(450) + 40 : 40; component: WallpaperCoverflow {} }
     OnDemandPanelLoader { identifier: "iiClipboard"; open: GlobalStates.clipboardOpen; closeGraceMs: Appearance.animationsEnabled ? SurfaceMotion.duration + 48 : 40; component: ClipboardModule.ClipboardPanel {} }

@@ -1,16 +1,14 @@
 pragma ComponentBehavior: Bound
 
 import QtQuick
-import QtQuick.Shapes
 import qs.modules.common
 import qs.services
 
 // Scene-graph renderer for the full-width Bar audio spectrum.
 //
-// CavaSpectrum is Canvas-based and therefore rasterizes the complete Bar surface
-// in QQuickContext2D on every audio frame. This component keeps the same shared
-// CAVA data/lifecycle but renders bars as Rectangle scene-graph nodes and waves
-// as Qt Quick Shapes, avoiding the hot software-raster Canvas path.
+// Keep the hot audio-frame path to one level-array rebuild plus primitive
+// Rectangle updates. In particular, do not use Canvas/QQuickContext2D or a
+// dynamically tessellated Shape/PathPolyline for the Bar.
 Item {
     id: root
 
@@ -40,20 +38,17 @@ Item {
     property real accentStrength: 0.7
     property bool mirroredStereo: Config.options?.appearance?.cava?.stereo ?? true
 
+    property var _levels: []
+    property var _selectedScratch: []
+    property var _smoothScratch: []
+
     readonly property real _innerWidth: Math.max(1, width - edgeInset * 2)
     readonly property int _barCount: root.active && root.visualizerType === "bars"
         ? Math.max(4, Math.floor(
             (root._innerWidth + Math.max(0, root.barSpacing))
             / Math.max(3, root.pixelsPerBar)))
         : 0
-    // Frame geometry is published once per event-loop turn. CavaService updates
-    // points and normalizationCeiling separately; reactive binding chains would
-    // otherwise rebuild the same path more than once for one audio frame.
-    property var _barLevels: []
-    property var _wavePath: []
-    property var _selectedScratch: []
-    property var _smoothScratch: []
-    property bool _frameRebuildQueued: false
+    readonly property int _levelCount: root._levels.length
 
     visible: root.opacity > 0.001 || root.active
     opacity: root.active ? Math.max(0, Math.min(1, root.spectrumOpacity)) : 0
@@ -83,18 +78,17 @@ Item {
         return 1
     }
 
-    function _processPoints(): var {
-        if (!root.active)
-            return []
+    function _processedSource(): var {
         const source = root.points ?? []
         const count = source.length ?? 0
-        if (count === 0)
+        if (!root.active || count === 0)
             return []
 
         const selected = root._selectedScratch
         selected.length = count
         const strength = Math.max(0, Math.min(1, root.accentStrength))
         const applyProfile = strength > 0 && root.frequencyProfile !== "flat"
+
         for (let i = 0; i < count; ++i) {
             let value = Number(source[i]) || 0
             if (applyProfile) {
@@ -118,6 +112,7 @@ Item {
         let sum = 0
         for (let i = start; i <= end; ++i)
             sum += selected[i]
+
         for (let i = 0; i < count; ++i) {
             const nextStart = Math.max(0, i - radius)
             const nextEnd = Math.min(count - 1, i + radius)
@@ -130,33 +125,87 @@ Item {
         return smoothed
     }
 
-    function _makeBarLevels(source): var {
-        const sourceCount = source.length ?? 0
-        const count = root._barCount
-        if (sourceCount === 0 || count <= 0)
-            return []
+    function _sampleAt(source, ratio): real {
+        const count = source.length ?? 0
+        if (count === 0)
+            return 0
+        if (count === 1)
+            return source[0] || 0
 
-        const result = new Array(count)
-        const ceiling = Math.max(1, root.normalizationCeiling)
-        for (let i = 0; i < count; ++i) {
-            const from = Math.floor(i * sourceCount / count)
-            const to = Math.min(sourceCount,
-                Math.max(from + 1, Math.ceil((i + 1) * sourceCount / count)))
-            let sum = 0
-            let peak = 0
-            let samples = 0
-            for (let j = from; j < to; ++j) {
-                const sample = source[j] || 0
-                sum += sample
-                peak = Math.max(peak, sample)
-                samples++
-            }
-            const average = samples > 0 ? sum / samples : 0
-            result[i] = Math.max(0, Math.min(1,
-                (average * 0.72 + peak * 0.28) / ceiling))
-        }
-        return result
+        const position = Math.max(0, Math.min(count - 1, ratio * (count - 1)))
+        const low = Math.floor(position)
+        const high = Math.min(count - 1, low + 1)
+        const fraction = position - low
+        return (source[low] || 0) * (1 - fraction)
+            + (source[high] || 0) * fraction
     }
+
+    function _rebuildLevels(): void {
+        if (!root.active) {
+            if (root._levels.length > 0)
+                root._levels = []
+            return
+        }
+
+        const source = root._processedSource()
+        const sourceCount = source.length ?? 0
+        if (sourceCount === 0) {
+            if (root._levels.length > 0)
+                root._levels = []
+            return
+        }
+
+        const ceiling = Math.max(1, root.normalizationCeiling)
+        if (root.visualizerType === "bars") {
+            const count = root._barCount
+            const levels = new Array(count)
+            for (let i = 0; i < count; ++i) {
+                const from = Math.floor(i * sourceCount / count)
+                const to = Math.min(sourceCount,
+                    Math.max(from + 1, Math.ceil((i + 1) * sourceCount / count)))
+                let sum = 0
+                let peak = 0
+                let samples = 0
+                for (let j = from; j < to; ++j) {
+                    const sample = source[j] || 0
+                    sum += sample
+                    peak = Math.max(peak, sample)
+                    samples++
+                }
+                const average = samples > 0 ? sum / samples : 0
+                levels[i] = Math.max(0, Math.min(1,
+                    (average * 0.72 + peak * 0.28) / ceiling))
+            }
+            root._levels = levels
+            return
+        }
+
+        const count = Math.max(2, Math.min(sourceCount,
+            Math.round(root._innerWidth / Math.max(4, root.pixelsPerBar))))
+        const levels = new Array(count)
+        for (let i = 0; i < count; ++i) {
+            const ratio = count > 1 ? i / (count - 1) : 0
+            levels[i] = Math.max(0, Math.min(1,
+                root._sampleAt(source, ratio) / ceiling))
+        }
+        root._levels = levels
+    }
+
+    // CavaService raises the adaptive ceiling before publishing louder points
+    // and lowers it after weaker points. Rebuild on points only: this gives a
+    // coherent loud frame and at most one-frame lag while the ceiling decays,
+    // instead of doing a second geometry pass for the same CAVA frame.
+    onPointsChanged: root._rebuildLevels()
+    onActiveChanged: root._rebuildLevels()
+    onVisualizerTypeChanged: root._rebuildLevels()
+    onPixelsPerBarChanged: root._rebuildLevels()
+    onBarSpacingChanged: root._rebuildLevels()
+    onSmoothingChanged: root._rebuildLevels()
+    onFrequencyProfileChanged: root._rebuildLevels()
+    onAccentStrengthChanged: root._rebuildLevels()
+    onMirroredStereoChanged: root._rebuildLevels()
+    onWidthChanged: root._rebuildLevels()
+    Component.onCompleted: root._rebuildLevels()
 
     function _cornerInset(x, radius, fromLeft): real {
         if (!(radius > 0))
@@ -209,131 +258,27 @@ Item {
         return Math.max(top, root.height - bottomInset)
     }
 
-    function _sampleAt(source, position): real {
-        const count = source.length ?? 0
-        if (count === 0)
-            return 0
-        if (count === 1)
-            return source[0] || 0
-        const p = Math.max(0, Math.min(count - 1, position * (count - 1)))
-        const low = Math.floor(p)
-        const high = Math.min(count - 1, low + 1)
-        const fraction = p - low
-        return (source[low] || 0) * (1 - fraction)
-            + (source[high] || 0) * fraction
+    function _waveX(index): real {
+        if (root._levelCount <= 1)
+            return root.edgeInset
+        return root.edgeInset
+            + index * root._innerWidth / (root._levelCount - 1)
     }
 
-    function _makeWavePath(source): var {
-        const sourceCount = source.length ?? 0
-        if (!root.active || sourceCount < 2 || !(root.width > 0) || !(root.height > 0))
-            return []
-
-        const x0 = Math.max(0, root.edgeInset)
-        const x1 = Math.max(x0 + 1, root.width - root.edgeInset)
-        const span = Math.max(1, x1 - x0)
-        const count = Math.max(2, Math.min(sourceCount,
-            Math.round(span / Math.max(4, root.pixelsPerBar))))
-        const ceiling = Math.max(1, root.normalizationCeiling)
+    function _waveY(index, rawLevel): real {
+        const x = root._waveX(index)
+        const top = root._topAt(x)
+        const bottom = root._bottomAt(x)
+        const center = (top + bottom) / 2
+        const level = Math.max(0, Math.min(1, rawLevel))
+            * root._edgeFactor(x)
         const fill = Math.max(0.1, Math.min(1, root.fillRatio))
-        const ribbon = root.waveMode === "ribbon" || root.barsOrigin === "mirror"
-        const primary = new Array(count)
-        const secondary = ribbon ? new Array(count) : null
-        const baseline = !ribbon && root.waveMode !== "line"
-            ? new Array(count) : null
-
-        for (let i = 0; i < count; ++i) {
-            const ratio = count > 1 ? i / (count - 1) : 0
-            const x = x0 + ratio * span
-            const top = root._topAt(x)
-            const bottom = root._bottomAt(x)
-            const center = (top + bottom) / 2
-            const edge = root._edgeFactor(x)
-            const level = Math.max(0, Math.min(1,
-                root._sampleAt(source, ratio) / ceiling)) * edge
-
-            let y = bottom
-            let baseY = bottom
-            if (ribbon) {
-                const half = level * Math.max(0, (bottom - top) / 2) * fill
-                primary[i] = Qt.point(x, center - half)
-                secondary[i] = Qt.point(x, center + half)
-                continue
-            } else if (root.barsOrigin === "top") {
-                y = top + level * Math.max(0, bottom - top) * fill
-                baseY = top
-            } else if (root.barsOrigin === "center") {
-                y = center - level * Math.max(0, center - top) * fill
-                baseY = center
-            } else {
-                y = bottom - level * Math.max(0, bottom - top) * fill
-                baseY = bottom
-            }
-            primary[i] = Qt.point(x, y)
-            if (baseline)
-                baseline[i] = Qt.point(x, baseY)
-        }
-
-        if (root.waveMode === "line")
-            return primary
-
-        const polygon = primary.slice()
-        const lower = secondary ?? baseline
-        for (let i = lower.length - 1; i >= 0; --i)
-            polygon.push(lower[i])
-        return polygon
+        if (root.barsOrigin === "top")
+            return top + level * Math.max(0, bottom - top) * fill
+        if (root.barsOrigin === "center" || root.barsOrigin === "mirror")
+            return center - level * Math.max(0, center - top) * fill
+        return bottom - level * Math.max(0, bottom - top) * fill
     }
-
-    function _rebuildFrameGeometry(): void {
-        if (!root.active) {
-            if (root._barLevels.length > 0)
-                root._barLevels = []
-            if (root._wavePath.length > 0)
-                root._wavePath = []
-            return
-        }
-
-        const processed = root._processPoints()
-        if (root.visualizerType === "wave") {
-            root._barLevels = []
-            root._wavePath = root._makeWavePath(processed)
-        } else {
-            root._wavePath = []
-            root._barLevels = root._makeBarLevels(processed)
-        }
-    }
-
-    function _queueFrameGeometry(): void {
-        if (root._frameRebuildQueued)
-            return
-        root._frameRebuildQueued = true
-        Qt.callLater(() => {
-            root._frameRebuildQueued = false
-            root._rebuildFrameGeometry()
-        })
-    }
-
-    onPointsChanged: root._queueFrameGeometry()
-    onNormalizationCeilingChanged: root._queueFrameGeometry()
-    onActiveChanged: root._queueFrameGeometry()
-    onVisualizerTypeChanged: root._queueFrameGeometry()
-    onFillRatioChanged: root._queueFrameGeometry()
-    onPixelsPerBarChanged: root._queueFrameGeometry()
-    onBarSpacingChanged: root._queueFrameGeometry()
-    onBarsOriginChanged: root._queueFrameGeometry()
-    onSmoothingChanged: root._queueFrameGeometry()
-    onWaveModeChanged: root._queueFrameGeometry()
-    onEdgeInsetChanged: root._queueFrameGeometry()
-    onTopLeftRadiusChanged: root._queueFrameGeometry()
-    onTopRightRadiusChanged: root._queueFrameGeometry()
-    onBottomLeftRadiusChanged: root._queueFrameGeometry()
-    onBottomRightRadiusChanged: root._queueFrameGeometry()
-    onEdgeSoftnessChanged: root._queueFrameGeometry()
-    onFrequencyProfileChanged: root._queueFrameGeometry()
-    onAccentStrengthChanged: root._queueFrameGeometry()
-    onMirroredStereoChanged: root._queueFrameGeometry()
-    onWidthChanged: root._queueFrameGeometry()
-    onHeightChanged: root._queueFrameGeometry()
-    Component.onCompleted: root._queueFrameGeometry()
 
     function _paletteColor(position): color {
         const palette = root.spectrumColors ?? []
@@ -359,6 +304,7 @@ Item {
     }
 
     Repeater {
+        id: barRepeater
         model: root.visualizerType === "bars" ? root._barCount : 0
 
         delegate: Item {
@@ -371,9 +317,9 @@ Item {
             readonly property real centerX: root.edgeInset
                 + index * slot + slot / 2
             readonly property real rawLevel:
-                Number(root._barLevels[index] ?? 0)
-            readonly property real level:
-                rawLevel * root._edgeFactor(centerX)
+                Number(root._levels[index] ?? 0)
+            readonly property real edge: root._edgeFactor(centerX)
+            readonly property real level: rawLevel * edge
             readonly property real topY: root._topAt(centerX)
             readonly property real bottomY: root._bottomAt(centerX)
             readonly property real centerY: (topY + bottomY) / 2
@@ -387,17 +333,15 @@ Item {
             opacity: 0.5 + rawLevel * 0.5
 
             Rectangle {
-                id: normalBar
                 visible: root.barsOrigin !== "mirror"
                 width: parent.width
                 radius: Math.min(root.barRadius, width / 2, height / 2)
                 color: parent.barColor
-
                 readonly property real available: root.barsOrigin === "center"
                     ? Math.max(0, parent.centerY - parent.topY)
                     : Math.max(0, parent.bottomY - parent.topY)
                 height: Math.min(available,
-                    Math.max(root.barMinHeight * root._edgeFactor(parent.centerX),
+                    Math.max(root.barMinHeight * parent.edge,
                         parent.level * available
                             * Math.max(0.1, Math.min(1, root.fillRatio))))
                 y: root.barsOrigin === "top"
@@ -414,11 +358,11 @@ Item {
                 color: parent.barColor
                 readonly property real halfAvailable: Math.max(
                     0, (parent.bottomY - parent.topY) / 2 - 0.5)
-                readonly property real halfHeight: Math.max(
-                    root.barMinHeight * root._edgeFactor(parent.centerX),
-                    parent.level * halfAvailable
-                        * Math.max(0.1, Math.min(1, root.fillRatio)))
-                height: Math.min(halfAvailable, halfHeight)
+                readonly property real halfHeight: Math.min(halfAvailable,
+                    Math.max(root.barMinHeight * parent.edge,
+                        parent.level * halfAvailable
+                            * Math.max(0.1, Math.min(1, root.fillRatio))))
+                height: halfHeight
                 y: parent.centerY - height - 0.5
             }
 
@@ -429,51 +373,95 @@ Item {
                 color: parent.barColor
                 readonly property real halfAvailable: Math.max(
                     0, (parent.bottomY - parent.topY) / 2 - 0.5)
-                readonly property real halfHeight: Math.max(
-                    root.barMinHeight * root._edgeFactor(parent.centerX),
-                    parent.level * halfAvailable
-                        * Math.max(0.1, Math.min(1, root.fillRatio)))
-                height: Math.min(halfAvailable, halfHeight)
+                readonly property real halfHeight: Math.min(halfAvailable,
+                    Math.max(root.barMinHeight * parent.edge,
+                        parent.level * halfAvailable
+                            * Math.max(0.1, Math.min(1, root.fillRatio))))
+                height: halfHeight
                 y: parent.centerY + 0.5
             }
         }
     }
 
-    Shape {
-        id: waveShape
-        anchors.fill: parent
-        visible: root.visualizerType === "wave"
-            && root._wavePath.length >= 2
-        asynchronous: false
-        preferredRendererType: Shape.CurveRenderer
+    // Filled and ribbon waves are drawn as narrow scene-graph strips. At the
+    // Bar's small height this keeps the same silhouette while avoiding dynamic
+    // path tessellation on every audio frame.
+    Repeater {
+        id: waveFillRepeater
+        model: root.visualizerType === "wave" && root.waveMode !== "line"
+            ? root._levelCount : 0
 
-        ShapePath {
-            pathHints: ShapePath.PathLinear
-            strokeWidth: root.waveMode === "line"
-                ? Math.max(1, root.lineWidth) : 0
-            strokeColor: root.waveMode === "line"
-                ? root._paletteColor(0.5) : "transparent"
-            capStyle: ShapePath.RoundCap
-            joinStyle: ShapePath.RoundJoin
-            fillColor: root.waveMode === "line" ? "transparent" : root.spectrumColor
-            fillGradient: root.waveMode === "line" ? null : waveGradient
+        delegate: Rectangle {
+            required property int index
 
-            PathPolyline {
-                path: root._wavePath
-            }
+            readonly property real slot: root._innerWidth
+                / Math.max(1, root._levelCount - 1)
+            readonly property real centerX: root._waveX(index)
+            readonly property real topY: root._topAt(centerX)
+            readonly property real bottomY: root._bottomAt(centerX)
+            readonly property real centerY: (topY + bottomY) / 2
+            readonly property real edge: root._edgeFactor(centerX)
+            readonly property real level: Math.max(0,
+                Math.min(1, Number(root._levels[index] ?? 0))) * edge
+            readonly property real amplitude:
+                level * (root.barsOrigin === "center" || root.barsOrigin === "mirror"
+                    || root.waveMode === "ribbon"
+                    ? Math.max(0, centerY - topY)
+                    : Math.max(0, bottomY - topY))
+                    * Math.max(0.1, Math.min(1, root.fillRatio))
+            readonly property bool ribbon:
+                root.waveMode === "ribbon" || root.barsOrigin === "mirror"
+
+            x: Math.max(root.edgeInset, centerX - slot / 2)
+            width: Math.max(1, slot + 0.75)
+            color: root._paletteColor(
+                root._levelCount > 1 ? index / (root._levelCount - 1) : 0.5)
+            radius: Math.min(width / 2, 1.5)
+            y: ribbon
+                ? centerY - amplitude
+                : root.barsOrigin === "top"
+                    ? topY
+                    : root.barsOrigin === "center"
+                        ? centerY - amplitude
+                        : bottomY - amplitude
+            height: ribbon ? amplitude * 2 : amplitude
         }
+    }
 
-        LinearGradient {
-            id: waveGradient
-            x1: root.edgeInset
-            y1: 0
-            x2: Math.max(root.edgeInset + 1, root.width - root.edgeInset)
-            y2: 0
-            GradientStop { position: 0.00; color: root._paletteColor(0.00) }
-            GradientStop { position: 0.25; color: root._paletteColor(0.25) }
-            GradientStop { position: 0.50; color: root._paletteColor(0.50) }
-            GradientStop { position: 0.75; color: root._paletteColor(0.75) }
-            GradientStop { position: 1.00; color: root._paletteColor(1.00) }
+    // Line mode uses GPU-friendly quads between adjacent samples instead of a
+    // ShapePath. No JS point arrays or per-frame tessellation are involved.
+    Repeater {
+        id: waveLineRepeater
+        model: root.visualizerType === "wave" && root.waveMode === "line"
+            ? Math.max(0, root._levelCount - 1) : 0
+
+        delegate: Item {
+            required property int index
+
+            readonly property real x0: root._waveX(index)
+            readonly property real x1: root._waveX(index + 1)
+            readonly property real y0: root._waveY(
+                index, Number(root._levels[index] ?? 0))
+            readonly property real y1: root._waveY(
+                index + 1, Number(root._levels[index + 1] ?? 0))
+            readonly property real dx: x1 - x0
+            readonly property real dy: y1 - y0
+            readonly property real segmentLength: Math.sqrt(dx * dx + dy * dy)
+
+            x: x0
+            y: y0 - Math.max(1, root.lineWidth) / 2
+            width: segmentLength
+            height: Math.max(1, root.lineWidth)
+            transformOrigin: Item.Left
+            rotation: Math.atan2(dy, dx) * 180 / Math.PI
+
+            Rectangle {
+                anchors.fill: parent
+                radius: height / 2
+                color: root._paletteColor(
+                    root._levelCount > 1
+                        ? index / (root._levelCount - 1) : 0.5)
+            }
         }
     }
 }

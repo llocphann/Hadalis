@@ -116,6 +116,7 @@ cava_spectrum="$repo_root/modules/common/widgets/CavaSpectrum.qml"
 bar_cava_visualizer="$repo_root/modules/common/widgets/BarCavaVisualizer.qml"
 shell_update_indicator="$repo_root/modules/bar/ShellUpdateIndicator.qml"
 shell_updates="$repo_root/services/ShellUpdates.qml"
+system_updates="$repo_root/services/Updates.qml"
 util_buttons="$repo_root/modules/bar/UtilButtons.qml"
 waffle_system_button="$repo_root/modules/waffle/bar/SystemButton.qml"
 waffle_timer_button="$repo_root/modules/waffle/bar/TimerButton.qml"
@@ -532,6 +533,11 @@ require "$shell_updates" 'id: updateResumeFile' 'shell update startup must check
 reject "$shell_updates" 'id: loadRepoPathProc' 'shell update startup must not spawn cat for version.json'
 reject "$shell_updates" 'id: manifestInfoProc' 'shell update startup must not spawn a shell pipeline for manifest metadata'
 reject "$shell_updates" 'id: localVersionStartupProc' 'shell update startup must not spawn a shell helper for VERSION'
+
+require "$system_updates" 'if (checkUpdatesProc.running) return;' 'system update checks must deduplicate the real checker process'
+require "$system_updates" 'root.available = true' 'a successful system update checker spawn must establish availability'
+reject "$system_updates" 'checkAvailabilityProc' 'system updates must not spawn a separate availability process'
+reject "$system_updates" 'command -v checkupdates' 'system updates must not shell out solely to probe checkupdates availability'
 require "$util_buttons" '(root.QsWindow.window?.visible ?? true)' 'ii Bar status pulses must sleep with the Bar window'
 require "$waffle_system_button" '(root.Window.window?.visible ?? true)' 'Waffle system status pulses must sleep with the taskbar window'
 require "$waffle_timer_button" '(root.Window.window?.visible ?? true)' 'Waffle timer pulse must sleep with the taskbar window'

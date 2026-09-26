@@ -35,7 +35,10 @@ Singleton {
 
     function load() {}
     function refresh() {
-        if (!available || checkUpdatesProc.running) return;
+        // Starting the real checker is also the availability probe: a successful
+        // spawn proves pacman-contrib/checkupdates exists, so a separate
+        // command-v shell process would only duplicate startup work.
+        if (checkUpdatesProc.running) return;
         print("[Updates] Checking for system updates")
         checkUpdatesProc.running = true;
     }
@@ -45,12 +48,8 @@ Singleton {
         repeat: true
         running: Config.ready
         onTriggered: {
-            if (root.available) {
-                print("[Updates] Periodic update check due")
-                root.refresh();
-            } else if (!checkAvailabilityProc.running) {
-                checkAvailabilityProc.running = true;
-            }
+            print("[Updates] Periodic update check due")
+            root.refresh();
         }
     }
 
@@ -58,7 +57,7 @@ Singleton {
         id: availabilityDefer
         interval: 1500
         repeat: false
-        onTriggered: checkAvailabilityProc.running = true
+        onTriggered: root.refresh()
     }
 
     Connections {
@@ -70,60 +69,6 @@ Singleton {
 
     Component.onCompleted: {
         if (Config.ready) availabilityDefer.start()
-    }
-
-    Process {
-        id: checkAvailabilityProc
-        running: false
-        property bool startObserved: false
-        property bool timedOut: false
-        command: ["/usr/bin/sh", "-c", "command -v checkupdates >/dev/null 2>&1"]
-
-        onRunningChanged: {
-            if (checkAvailabilityProc.running) {
-                checkAvailabilityProc.startObserved = false
-                return
-            }
-            if (checkAvailabilityProc.startObserved)
-                return
-
-            availabilityTimeout.stop()
-            root.available = false
-            root.count = 0
-            console.warn("[Updates] Failed to start update availability probe")
-        }
-
-        onStarted: {
-            checkAvailabilityProc.startObserved = true
-            checkAvailabilityProc.timedOut = false
-            availabilityTimeout.restart()
-        }
-
-        onExited: (exitCode, exitStatus) => {
-            availabilityTimeout.stop()
-            if (checkAvailabilityProc.timedOut) {
-                root.available = false
-                root.count = 0
-                console.warn("[Updates] Timed out probing checkupdates availability")
-                return
-            }
-            root.available = (exitCode === 0);
-            if (!root.available)
-                root.count = 0;
-            root.refresh();
-        }
-    }
-
-    Timer {
-        id: availabilityTimeout
-        interval: 5000
-        repeat: false
-        onTriggered: {
-            if (!checkAvailabilityProc.running)
-                return
-            checkAvailabilityProc.timedOut = true
-            checkAvailabilityProc.running = false
-        }
     }
 
     Process {
@@ -149,6 +94,7 @@ Singleton {
         onStarted: {
             checkUpdatesProc.startObserved = true
             checkUpdatesProc.timedOut = false
+            root.available = true
             updateCheckTimeout.restart()
         }
 

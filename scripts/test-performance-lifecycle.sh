@@ -72,6 +72,7 @@ sidebar_right_tasks="$repo_root/modules/sidebarRight/todo/TaskList.qml"
 sidebar_right_notifications="$repo_root/modules/sidebarRight/notifications/NotificationList.qml"
 sidebar_right_media="$repo_root/modules/sidebarRight/CompactMediaPlayer.qml"
 video_crossfader="$repo_root/modules/common/widgets/VideoCrossfader.qml"
+custom_image_widget="$repo_root/modules/background/widgets/CustomImageWidget.qml"
 control_panel_wallpaper="$repo_root/modules/controlPanel/WallpaperSection.qml"
 wallpaper_skew_view="$repo_root/modules/wallpaperSelector/WallpaperSkewView.qml"
 dash_media="$repo_root/modules/dashboard/DashMedia.qml"
@@ -213,6 +214,12 @@ if grep -Eq '^[[:space:]]*id:[[:space:]]+playerA[[:space:]]*$' "$video_crossfade
 fi
 if grep -Eq '^[[:space:]]*id:[[:space:]]+playerB[[:space:]]*$' "$video_crossfader"; then
     fail 'video wallpaper must not restore an eager slot B MediaPlayer'
+fi
+require "$custom_image_widget" 'id: videoPlayerLoader' 'Custom image widget video decoders must be lazy-loaded'
+require "$custom_image_widget" 'active: slot.isVideo && slot.sourcePath.length > 0' 'Custom image widget decoder must sleep for image and GIF slots'
+require "$custom_image_widget" 'return videoPlayerLoader.item' 'Custom image widget playback must resolve the lazy decoder safely'
+if grep -Eq '^[[:space:]]*id:[[:space:]]+videoPlayer[[:space:]]*$' "$custom_image_widget"; then
+    fail 'Custom image widget must not restore an eager MediaPlayer per slot'
 fi
 require "$control_panel_media" 'running: root.positionTickerActive' 'Control Panel MPRIS position timer must sleep while closed'
 require "$control_panel_media" 'triggeredOnStart: true' 'Control Panel position must refresh immediately when reopened'

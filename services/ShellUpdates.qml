@@ -86,6 +86,9 @@ Singleton {
     // Derived
     readonly property bool enabled: Config.options?.shellUpdates?.enabled ?? true
     readonly property int checkIntervalMs: (Config.options?.shellUpdates?.checkIntervalMinutes ?? 360) * 60 * 1000
+    readonly property int startupFreshnessMs: Math.min(root.checkIntervalMs, 30 * 60 * 1000)
+    readonly property string lastCheckCachePath: `${Directories.stateUserPath}/shell-update-last-check`
+    property real _lastRemoteCheckAt: 0
     readonly property string dismissedCommit: Config.options?.shellUpdates?.dismissedCommit ?? ""
     readonly property string lastNotifiedCommit: Config.options?.shellUpdates?.lastNotifiedCommit ?? ""
     readonly property bool showUpdate: hasUpdate && !isDismissed && !isUpdating
@@ -147,6 +150,30 @@ Singleton {
         })
         Config.setNestedValue("shellUpdates.lastNotifiedCommit", remoteCommit)
         print("[ShellUpdates] Notification sent: Update available" + version)
+    }
+
+    function _loadLastRemoteCheckAt(): void {
+        let cached = 0
+        try {
+            lastCheckFile.reload()
+            cached = Number(String(lastCheckFile.text() ?? "").trim())
+        } catch (error) {
+            cached = 0
+        }
+        root._lastRemoteCheckAt = Number.isFinite(cached) && cached > 0 ? cached : 0
+    }
+
+    function _startupRemoteCheckFresh(): bool {
+        root._loadLastRemoteCheckAt()
+        return root._lastRemoteCheckAt > 0
+            && Date.now() - root._lastRemoteCheckAt < root.startupFreshnessMs
+    }
+
+    function _startLocalComparison(): void {
+        if (!enabled || isChecking || isUpdating || managedExternally || !available) return
+        root.isChecking = true
+        root.lastError = ""
+        currentBranchProc.running = true
     }
 
     function check(): void {
@@ -312,9 +339,19 @@ Singleton {
             localVersion: root.localVersion,
             remoteVersion: root.remoteVersion,
             overlayOpen: root.overlayOpen,
-            isFetchingDetails: root.isFetchingDetails
+            isFetchingDetails: root.isFetchingDetails,
+            lastRemoteCheckAt: root._lastRemoteCheckAt,
+            startupFreshnessMs: root.startupFreshnessMs
         }
         return JSON.stringify(diag, null, 2)
+    }
+
+    FileView {
+        id: lastCheckFile
+        path: root.lastCheckCachePath
+        watchChanges: false
+        blockLoading: true
+        printErrors: false
     }
 
     // Initial check after startup delay
@@ -776,6 +813,11 @@ Singleton {
             }
         }
         onExited: (exitCode, exitStatus) => {
+            if (root._startupRemoteCheckFresh()) {
+                print("[ShellUpdates] Reusing fresh remote refs on startup; skipping network fetch")
+                root._startLocalComparison()
+                return
+            }
             root.check()
         }
     }
@@ -819,9 +861,14 @@ Singleton {
                 }
                 return
             }
-            // Success - reset error counters
+            // Success - reset error counters and persist remote freshness so a
+            // quick shell restart can rebuild update state from the fetched refs
+            // without immediately hitting the network again.
             root.consecutiveFetchErrors = 0
             root.fetchErrorNotificationShown = false
+            const now = Date.now()
+            root._lastRemoteCheckAt = now
+            lastCheckFile.setText(String(Math.floor(now)))
             currentBranchProc.running = true
         }
     }

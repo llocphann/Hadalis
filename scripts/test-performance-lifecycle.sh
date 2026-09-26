@@ -114,6 +114,7 @@ cava_wavy_line="$repo_root/modules/common/widgets/CavaWavyLine.qml"
 cava_spectrum="$repo_root/modules/common/widgets/CavaSpectrum.qml"
 bar_cava_visualizer="$repo_root/modules/common/widgets/BarCavaVisualizer.qml"
 shell_update_indicator="$repo_root/modules/bar/ShellUpdateIndicator.qml"
+shell_updates="$repo_root/services/ShellUpdates.qml"
 util_buttons="$repo_root/modules/bar/UtilButtons.qml"
 waffle_system_button="$repo_root/modules/waffle/bar/SystemButton.qml"
 waffle_timer_button="$repo_root/modules/waffle/bar/TimerButton.qml"
@@ -498,6 +499,14 @@ require "$clipped_outline_progress" 'root.visible && (root.Window.window?.visibl
 require "$wavy_line" '(root.Window.window?.visible ?? true)' 'wavy line animation must sleep with its owning window'
 require "$shell_update_indicator" 'ShellUpdates.isUpdating && root.visible' 'shell update spinner must stop when the indicator is hidden'
 require "$shell_update_indicator" '(root.Window.window?.visible ?? true)' 'shell update animations must sleep with the Bar window'
+
+require "$shell_updates" 'readonly property int startupFreshnessMs: Math.min(root.checkIntervalMs, 30 * 60 * 1000)' 'shell update startup network freshness must stay bounded'
+require "$shell_updates" 'path: root.lastCheckCachePath' 'shell update remote freshness must persist across shell restarts'
+require "$shell_updates" 'root._startupRemoteCheckFresh()' 'shell update startup must consult remote freshness before fetching'
+require "$shell_updates" 'root._startLocalComparison()' 'fresh shell update startup checks must rebuild state from local remote refs'
+require "$shell_updates" 'lastCheckFile.setText(String(Math.floor(now)))' 'successful shell update fetches must persist freshness'
+require "$shell_updates" 'function check(): void {' 'manual shell update check API must remain available'
+require "$shell_updates" 'fetchProc.running = true' 'manual and periodic shell update checks must continue to fetch the remote'
 require "$util_buttons" '(root.QsWindow.window?.visible ?? true)' 'ii Bar status pulses must sleep with the Bar window'
 require "$waffle_system_button" '(root.Window.window?.visible ?? true)' 'Waffle system status pulses must sleep with the taskbar window'
 require "$waffle_timer_button" '(root.Window.window?.visible ?? true)' 'Waffle timer pulse must sleep with the taskbar window'

@@ -143,12 +143,14 @@ Item {
     readonly property string resolverDisplaySource: artworkResolver.displaySource
     readonly property bool downloaded: root.displayedArtFilePath !== ""
     property string displayedArtFilePath: ""
-    readonly property real effectivePosition: root.usingPlaybackAdapter
-        ? Number(root.playbackAdapter.position ?? 0)
-        : (root.isYtMusicPlayer ? YtMusic.currentPosition : (root.player?.position ?? 0))
     readonly property real effectiveLength: root.usingPlaybackAdapter
         ? Number(root.playbackAdapter.length ?? 0)
         : (root.isYtMusicPlayer ? YtMusic.currentDuration : (root.player?.length ?? 0))
+    readonly property real _rawEffectivePosition: root.usingPlaybackAdapter
+        ? Number(root.playbackAdapter.position ?? 0)
+        : (root.isYtMusicPlayer ? YtMusic.currentPosition : (root.player?.position ?? 0))
+    readonly property real effectivePosition: StringUtils.boundedMediaPosition(
+        root._rawEffectivePosition, root.effectiveLength)
     readonly property bool effectiveIsPlaying: root.usingPlaybackAdapter
         ? !!root.playbackAdapter.isPlaying
         : (root.isYtMusicPlayer ? YtMusic.isPlaying : (root.player?.isPlaying ?? false))

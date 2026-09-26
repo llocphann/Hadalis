@@ -24,6 +24,9 @@ mpris = read("services/MprisController.qml")
 local_service = read("services/LocalMusic.qml")
 local_view = read("modules/sidebarLeft/LocalMusicView.qml")
 player = read("modules/mediaControls/PlayerControl.qml")
+player_base = read("modules/mediaControls/components/PlayerBase.qml")
+player_progress = read("modules/mediaControls/components/PlayerProgress.qml")
+string_utils = read("modules/common/functions/StringUtils.qml")
 compact = read("modules/sidebarRight/CompactMediaPlayer.qml")
 dash = read("modules/dashboard/DashMedia.qml")
 control_panel = read("modules/controlPanel/MediaSection.qml")
@@ -54,6 +57,30 @@ for token in (
     "WaveVisualizer {",
 ):
     require(player, token, f"PlayerControl unified media contract missing: {token}")
+
+# MPRIS metadata and Position can update independently during a track change.
+# Shared media surfaces must never render an elapsed timestamp beyond the new
+# duration; a clearly stale previous-track position resets to zero until the
+# next valid Position sample arrives.
+for token in (
+    "function boundedMediaPosition(position, duration)",
+    "return current - total <= 2 ? total : 0;",
+):
+    require(string_utils, token, f"Media timeline normalization missing: {token}")
+for source, name in (
+    (player, "PlayerControl"),
+    (player_base, "PlayerBase"),
+):
+    require(
+        source,
+        "StringUtils.boundedMediaPosition(",
+        f"{name} must normalize stale cross-track MPRIS position.",
+    )
+require(
+    player_progress,
+    "readonly property real boundedPosition: StringUtils.boundedMediaPosition(",
+    "PlayerProgress must bound raw caller position before rendering progress.",
+)
 
 for token in (
     "property int resumeIndex: -1",

@@ -41,12 +41,14 @@ QtObject {
     // Artwork motion is keyed only by real art identity. Metadata-only updates
     // must not move the cover, or one track change animates twice.
     readonly property string mediaTransitionKey: (root.effectiveArtUrl ?? "").split("?")[0].split("#")[0]
-    readonly property real effectivePosition: isYtMusicPlayer 
-        ? YtMusic.currentPosition 
-        : (player?.position ?? 0)
     readonly property real effectiveLength: isYtMusicPlayer 
         ? YtMusic.currentDuration 
         : (player?.length ?? 0)
+    readonly property real _rawEffectivePosition: isYtMusicPlayer
+        ? YtMusic.currentPosition
+        : (player?.position ?? 0)
+    readonly property real effectivePosition: StringUtils.boundedMediaPosition(
+        root._rawEffectivePosition, root.effectiveLength)
     readonly property bool effectiveIsPlaying: isYtMusicPlayer 
         ? YtMusic.isPlaying 
         : (player?.isPlaying ?? false)

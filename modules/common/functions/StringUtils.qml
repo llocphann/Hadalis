@@ -210,6 +210,26 @@ Singleton {
      * @param { number } seconds
      * @returns { string }
      */
+    /**
+     * Keeps an elapsed media position coherent with its reported duration.
+     * Track metadata and MPRIS Position can arrive on separate D-Bus updates;
+     * during that gap some players briefly expose the previous track position.
+     * A tiny end-of-track overrun is clamped, while an impossible larger
+     * overrun is treated as stale and rendered from zero until Position catches
+     * up with the new track.
+     */
+    function boundedMediaPosition(position, duration) {
+        const current = Number(position);
+        const total = Number(duration);
+        if (!Number.isFinite(current) || current <= 0)
+            return 0;
+        if (!Number.isFinite(total) || total <= 0)
+            return current;
+        if (current <= total)
+            return current;
+        return current - total <= 2 ? total : 0;
+    }
+
     function friendlyTimeForSeconds(seconds) {
         // MPRIS players with no real duration (live streams/TV) sometimes report
         // a garbage mpris:length instead of omitting it — treat anything past a

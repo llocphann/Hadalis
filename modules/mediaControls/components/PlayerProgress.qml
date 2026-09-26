@@ -31,8 +31,10 @@ Item {
     // Signals
     signal seekRequested(real seconds)
     
+    readonly property real boundedPosition: StringUtils.boundedMediaPosition(
+        root.position, root.length)
     readonly property real progressValue: length > 0
-        ? Math.max(0, Math.min(1, position / length)) : 0
+        ? Math.max(0, Math.min(1, boundedPosition / length)) : 0
     readonly property bool waveAnimationActive: root.enableWavy && root.isPlaying
         && root.visible && Appearance.animationsEnabled
     property real displayedProgress: progressValue

@@ -19,6 +19,7 @@ MouseArea {
     Accessible.focusable: true
 
     property QtObject resourceMonitor: ResourceUsageMonitor {
+        network: false
         histories: false
         target: root
         active: !GameMode.active

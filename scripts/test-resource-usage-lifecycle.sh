@@ -7,6 +7,7 @@ resources_popup="$repo_root/modules/bar/ResourcesPopup.qml"
 status_rings="$repo_root/modules/sidebarLeft/widgets/StatusRings.qml"
 overlay_resources="$repo_root/modules/ii/overlay/resources/Resources.qml"
 sysmon_widget="$repo_root/modules/sidebarRight/sysmon/SysMonWidget.qml"
+background_sysmon="$repo_root/modules/background/widgets/systemMonitor/SystemMonitorWidget.qml"
 waffle_widgets="$repo_root/modules/waffle/widgets/WidgetsContent.qml"
 dash_system="$repo_root/modules/dashboard/DashSystem.qml"
 inner_tube_thumbnail="$repo_root/modules/sidebarLeft/innertune/ITThumbnail.qml"
@@ -89,10 +90,13 @@ assert_contains 'ResourceUsage.keepAlive(historyWanted)' "$monitor_text" 'Resour
 assert_contains 'ResourceUsage.releaseKeepAlive(heldHistory)' "$monitor_text" 'ResourceUsageMonitor must release the matching telemetry lease'
 assert_contains 'property int _historyConsumers: 0' "$(cat "$service")" 'ResourceUsage must track history demand independently'
 assert_contains 'root._historyConsumers <= 0' "$(cat "$service")" 'ResourceUsage history updates must be demand-gated'
+assert_contains 'property int _networkConsumers: 0' "$(cat "$service")" 'ResourceUsage must track throughput demand independently'
+assert_contains 'if (networkDemanded)' "$(cat "$service")" 'network throughput parsing must be demand-gated'
+assert_contains 'property bool network: true' "$monitor_text" 'ResourceUsageMonitor must preserve network sampling by default'
 assert_contains 'ResourceUsageMonitor 1.0 ResourceUsageMonitor.qml' "$(cat "$widgets_qmldir")" 'ResourceUsageMonitor must be exported'
 assert_contains 'ServiceLease 1.0 ServiceLease.qml' "$(cat "$widgets_qmldir")" 'ServiceLease must be exported'
 
-for lifecycle_file in "$resources_popup" "$status_rings" "$overlay_resources" "$sysmon_widget" "$waffle_widgets" "$dash_system" "$bar_resources" "$vertical_bar_resources"; do
+for lifecycle_file in "$resources_popup" "$status_rings" "$overlay_resources" "$sysmon_widget" "$waffle_widgets" "$dash_system" "$bar_resources" "$vertical_bar_resources" "$background_sysmon"; do
     lifecycle_text="$(cat "$lifecycle_file")"
     assert_contains 'ResourceUsageMonitor {' "$lifecycle_text" "$lifecycle_file must use centralized telemetry lifecycle ownership"
     assert_not_contains 'ResourceUsage.keepAlive(' "$lifecycle_text" "$lifecycle_file must not duplicate telemetry reference counting"
@@ -120,6 +124,13 @@ done
 for graph_file in "$overlay_resources" "$sysmon_widget" "$dash_system"; do
     assert_not_contains 'histories: false' "$(cat "$graph_file")" "$graph_file must retain history sampling for graphs"
 done
+
+for no_network_file in "$resources_popup" "$status_rings" "$overlay_resources" "$waffle_widgets" "$dash_system" "$bar_resources" "$vertical_bar_resources" "$background_sysmon"; do
+    assert_contains 'network: false' "$(cat "$no_network_file")" "$no_network_file must not request throughput parsing"
+done
+assert_contains 'network: true' "$(cat "$sysmon_widget")" 'SysMon must retain live throughput sampling'
+assert_contains 'histories: root.displayMode === "graph"' "$(cat "$background_sysmon")" \
+    'background system monitor must sample history only in graph mode'
 
 assert_contains 'target: root' "$(cat "$dash_system")" \
     'Dashboard system telemetry must follow the card presentation lifecycle'

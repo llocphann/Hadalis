@@ -17,6 +17,8 @@ Singleton {
     property int _persistentConsumers: 0
     property int _historyConsumers: 0
     property double _historyTransientUntilMs: 0
+    property int _networkConsumers: 0
+    property double _networkTransientUntilMs: 0
 
     // Auto-stop polling when nothing requested it recently.
     // This prevents the service from running forever after briefly opening a panel.
@@ -269,10 +271,14 @@ Singleton {
         console.warn("[ResourceUsage] Failed to start " + stage + " probe; initialization can retry on the next consumer request")
     }
 
-    function ensureRunning(withHistory): void {
+    function ensureRunning(withHistory, withNetwork): void {
         const historyWanted = withHistory === undefined ? true : !!withHistory
+        const networkWanted = withNetwork === undefined ? true : !!withNetwork
+        const nowMs = Date.now()
         if (historyWanted)
-            root._historyTransientUntilMs = Date.now() + root._autoStopDelayMs
+            root._historyTransientUntilMs = nowMs + root._autoStopDelayMs
+        if (networkWanted)
+            root._networkTransientUntilMs = nowMs + root._autoStopDelayMs
         root._runningRequested = true;
         if (!root._initRequested) {
             root._initRequested = true;
@@ -298,20 +304,35 @@ Singleton {
 
     // Register a persistent consumer (always-visible panel like bar).
     // While any persistent consumer is registered, auto-stop is disabled.
-    function keepAlive(withHistory): void {
+    function keepAlive(withHistory, withNetwork): void {
         const historyWanted = withHistory === undefined ? true : !!withHistory
+        const networkWanted = withNetwork === undefined ? true : !!withNetwork
         root._persistentConsumers++
         if (historyWanted)
             root._historyConsumers++
+        if (networkWanted) {
+            if (root._networkConsumers === 0)
+                root._lastNetworkSampleMs = 0
+            root._networkConsumers++
+        }
         autoStopTimer.stop()
-        ensureRunning(false)
+        ensureRunning(false, false)
     }
 
-    function releaseKeepAlive(withHistory): void {
+    function releaseKeepAlive(withHistory, withNetwork): void {
         const historyWanted = withHistory === undefined ? true : !!withHistory
+        const networkWanted = withNetwork === undefined ? true : !!withNetwork
         root._persistentConsumers = Math.max(0, root._persistentConsumers - 1)
         if (historyWanted)
             root._historyConsumers = Math.max(0, root._historyConsumers - 1)
+        if (networkWanted) {
+            root._networkConsumers = Math.max(0, root._networkConsumers - 1)
+            if (root._networkConsumers === 0 && Date.now() >= root._networkTransientUntilMs) {
+                root._lastNetworkSampleMs = 0
+                root.networkRxBytesPerSec = 0
+                root.networkTxBytesPerSec = 0
+            }
+        }
         if (root._persistentConsumers === 0 && root._runningRequested)
             autoStopTimer.restart()
     }
@@ -321,6 +342,7 @@ Singleton {
         root._primed = false;
         root._lastNetworkSampleMs = 0;
         root._historyTransientUntilMs = 0;
+        root._networkTransientUntilMs = 0;
         root.networkRxBytesPerSec = 0;
         root.networkTxBytesPerSec = 0;
         pollTimer.stop();
@@ -373,39 +395,42 @@ Singleton {
         swapTotal = Number(textMeminfo.match(/SwapTotal: *(\d+)/)?.[1] ?? 0);
         swapFree = Number(textMeminfo.match(/SwapFree: *(\d+)/)?.[1] ?? 0);
 
-        // Parse aggregate non-loopback network traffic from the same shared
-        // polling service instead of spawning a separate /proc/net/dev reader
-        // in each consumer.
-        const textNetDev = fileNetDev.text();
-        let totalRx = 0;
-        let totalTx = 0;
-        for (const line of textNetDev.split("\n")) {
-            const separator = line.indexOf(":");
-            if (separator < 0)
-                continue;
-            const name = line.substring(0, separator).trim();
-            if (!name || name === "lo")
-                continue;
-            const fields = line.substring(separator + 1).trim().split(/\s+/);
-            if (fields.length < 16)
-                continue;
-            totalRx += Number(fields[0]) || 0;
-            totalTx += Number(fields[8]) || 0;
-        }
-
-        const networkNowMs = Date.now();
-        if (root._lastNetworkSampleMs > 0) {
-            const elapsedSeconds = (networkNowMs - root._lastNetworkSampleMs) / 1000;
-            if (elapsedSeconds > 0) {
-                root.networkRxBytesPerSec = Math.max(
-                    0, (totalRx - root._lastNetworkRxBytes) / elapsedSeconds);
-                root.networkTxBytesPerSec = Math.max(
-                    0, (totalTx - root._lastNetworkTxBytes) / elapsedSeconds);
+        // /proc/net/dev stays cheaply refreshed with the other proc files, but
+        // avoid its split/parse allocations unless a consumer displays throughput.
+        const networkDemanded = root._networkConsumers > 0
+            || Date.now() < root._networkTransientUntilMs
+        if (networkDemanded) {
+            const textNetDev = fileNetDev.text();
+            let totalRx = 0;
+            let totalTx = 0;
+            for (const line of textNetDev.split("\n")) {
+                const separator = line.indexOf(":");
+                if (separator < 0)
+                    continue;
+                const name = line.substring(0, separator).trim();
+                if (!name || name === "lo")
+                    continue;
+                const fields = line.substring(separator + 1).trim().split(/\s+/);
+                if (fields.length < 16)
+                    continue;
+                totalRx += Number(fields[0]) || 0;
+                totalTx += Number(fields[8]) || 0;
             }
+
+            const networkNowMs = Date.now();
+            if (root._lastNetworkSampleMs > 0) {
+                const elapsedSeconds = (networkNowMs - root._lastNetworkSampleMs) / 1000;
+                if (elapsedSeconds > 0) {
+                    root.networkRxBytesPerSec = Math.max(
+                        0, (totalRx - root._lastNetworkRxBytes) / elapsedSeconds);
+                    root.networkTxBytesPerSec = Math.max(
+                        0, (totalTx - root._lastNetworkTxBytes) / elapsedSeconds);
+                }
+            }
+            root._lastNetworkRxBytes = totalRx;
+            root._lastNetworkTxBytes = totalTx;
+            root._lastNetworkSampleMs = networkNowMs;
         }
-        root._lastNetworkRxBytes = totalRx;
-        root._lastNetworkTxBytes = totalTx;
-        root._lastNetworkSampleMs = networkNowMs;
 
         // Parse CPU usage
         const textStat = fileStat.text();

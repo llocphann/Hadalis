@@ -12,6 +12,8 @@ QtObject {
     property Item target: null
     property bool active: true
     property bool histories: true
+    property bool network: true
+    readonly property int _demandFlags: (root.histories ? 1 : 0) | (root.network ? 2 : 0)
     readonly property bool monitoring: root.active
         && (!root.target
             || (root.target.visible
@@ -20,18 +22,19 @@ QtObject {
 
     property QtObject _serviceLease: ServiceLease {
         active: root.monitoring
-        value: root.histories
-        acquire: historyWanted => {
-            ResourceUsage.keepAlive(historyWanted)
-            return historyWanted
+        value: root._demandFlags
+        acquire: demandFlags => {
+            ResourceUsage.keepAlive((demandFlags & 1) !== 0, (demandFlags & 2) !== 0)
+            return demandFlags
         }
-        update: (heldHistory, historyWanted) => {
+        update: (heldFlags, demandFlags) => {
             // Acquire the replacement first so polling never briefly drops to
-            // zero consumers while an active monitor changes history demand.
-            ResourceUsage.keepAlive(historyWanted)
-            ResourceUsage.releaseKeepAlive(heldHistory)
-            return historyWanted
+            // zero consumers while an active monitor changes demand.
+            ResourceUsage.keepAlive((demandFlags & 1) !== 0, (demandFlags & 2) !== 0)
+            ResourceUsage.releaseKeepAlive((heldFlags & 1) !== 0, (heldFlags & 2) !== 0)
+            return demandFlags
         }
-        release: heldHistory => ResourceUsage.releaseKeepAlive(heldHistory)
+        release: heldFlags =>
+            ResourceUsage.releaseKeepAlive((heldFlags & 1) !== 0, (heldFlags & 2) !== 0)
     }
 }

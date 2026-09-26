@@ -16,6 +16,7 @@ StyledOverlayWidget {
     minimumHeight: 200
 
     property QtObject resourceMonitor: ResourceUsageMonitor {
+        network: false
         target: root
     }
 

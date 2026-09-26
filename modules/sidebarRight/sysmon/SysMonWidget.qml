@@ -14,6 +14,7 @@ Item {
     id: root
     property int margin: 10
     property QtObject resourceMonitor: ResourceUsageMonitor {
+        network: true
         target: root
         active: GlobalStates.sidebarRightOpen
     }

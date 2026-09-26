@@ -37,6 +37,7 @@ DashCard {
         : Appearance.colors.colPrimary
 
     property QtObject resourceMonitor: ResourceUsageMonitor {
+        network: false
         target: root
     }
     onVisibleChanged: {

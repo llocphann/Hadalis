@@ -40,7 +40,7 @@ Item {
     // A short Bar does not gain useful visual detail from hundreds of
     // horizontal wave primitives. Cap only the continuous wave path; discrete
     // bars continue to honor the configured density exactly.
-    property int waveStripCap: 72
+    property int waveStripCap: 60
 
     property var _levels: []
     property var _selectedScratch: []

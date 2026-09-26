@@ -67,13 +67,6 @@ QtObject {
 
     readonly property bool _active: (Config.options?.sidebar?.wallhaven?.enable ?? true) && (GlobalStates?.sidebarLeftOpen ?? false)
 
-    property Timer wallhavenClock: Timer {
-        // Removed: nowMs is updated on-demand in handlers that need it
-        interval: 500
-        repeat: false
-        running: false
-    }
-
     Component.onCompleted: {
         root.nowMs = Date.now()
     }
@@ -82,36 +75,30 @@ QtObject {
     property int minSearchIntervalMs: 1200
     property int minTagIntervalMs: 1200
     property real _nextSearchAllowedMs: 0
-
-    property Timer _pendingSearchTimer: Timer {
-        interval: Math.max(0, root._nextSearchAllowedMs - root.nowMs)
-        onTriggered: root._processPendingSearch()
-    }
     property real _nextTagAllowedMs: 0
 
     // Pending search request (coalesced)
     property var pendingSearch: null
 
-    property Timer pendingSearchTimer: Timer {
-        interval: 300
-        repeat: true
-        running: root.pendingSearch !== null
-        onTriggered: {
-            root.nowMs = Date.now()
-            if (!root.pendingSearch)
-                return
-            if (root.runningRequests > 0 || root.searchProcess.running)
-                return
-            if (root.nowMs < root._nextSearchAllowedMs)
-                return
-
-            const next = root.pendingSearch
-            if (root.isRateLimited && next.provider === "wallhaven")
-                return
-            root.pendingSearch = null
-            root.makeRequest(next.tags, next.nsfw, next.limit, next.page,
-                next.category, next.generation, next.provider, next.fitProfile)
+    function _schedulePendingSearch(): void {
+        if (!root.pendingSearch) {
+            _pendingSearchTimer.stop()
+            return
         }
+
+        const now = Date.now()
+        root.nowMs = now
+        let due = Math.max(now, root._nextSearchAllowedMs)
+        if (root.pendingSearch.provider === "wallhaven")
+            due = Math.max(due, root.rateLimitedUntilMs)
+        _pendingSearchTimer.interval = Math.max(1, Math.round(due - now))
+        _pendingSearchTimer.restart()
+    }
+
+    property Timer _pendingSearchTimer: Timer {
+        interval: 1
+        repeat: false
+        onTriggered: root._processPendingSearch()
     }
 
     // Tag fetch queue
@@ -710,9 +697,10 @@ QtObject {
                 fitProfile: requestedFit
             }
             // Without an in-flight response to trigger _processPendingSearch,
-            // a throttled search would stay queued forever.
+            // a throttled search would stay queued forever. Schedule one wakeup
+            // at the exact throttle/rate-limit deadline instead of polling.
             if (runningRequests <= 0)
-                root._pendingSearchTimer.restart()
+                root._schedulePendingSearch()
             return
         }
 
@@ -1003,13 +991,22 @@ QtObject {
 
     function _processPendingSearch(): void {
         root.nowMs = Date.now()
-        if (root.pendingSearch) {
-            const next = root.pendingSearch
-            if (root.isRateLimited && next.provider === "wallhaven")
-                return
-            root.pendingSearch = null
-            Qt.callLater(() => root.makeRequest(next.tags, next.nsfw, next.limit,
-                next.page, next.category, next.generation, next.provider, next.fitProfile))
+        if (!root.pendingSearch)
+            return
+        if (root.runningRequests > 0 || root.searchProcess.running)
+            return
+
+        const next = root.pendingSearch
+        const blockedUntil = next.provider === "wallhaven"
+            ? Math.max(root._nextSearchAllowedMs, root.rateLimitedUntilMs)
+            : root._nextSearchAllowedMs
+        if (root.nowMs < blockedUntil) {
+            root._schedulePendingSearch()
+            return
         }
+
+        root.pendingSearch = null
+        Qt.callLater(() => root.makeRequest(next.tags, next.nsfw, next.limit,
+            next.page, next.category, next.generation, next.provider, next.fitProfile))
     }
 }

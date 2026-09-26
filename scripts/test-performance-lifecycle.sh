@@ -50,6 +50,7 @@ resource_usage="$repo_root/services/ResourceUsage.qml"
 bar_resources="$repo_root/modules/bar/Resources.qml"
 vertical_bar_resources="$repo_root/modules/verticalBar/Resources.qml"
 recorder_status="$repo_root/services/RecorderStatus.qml"
+local_music="$repo_root/services/LocalMusic.qml"
 recorder_overlay_widget="$repo_root/modules/ii/overlay/recorder/Recorder.qml"
 overlay_taskbar="$repo_root/modules/ii/overlay/OverlayTaskbar.qml"
 overlay_floating_image="$repo_root/modules/ii/overlay/floatingImage/FloatingImage.qml"
@@ -342,6 +343,9 @@ require "$vertical_bar_resources" 'ResourceUsageMonitor {' 'vertical Bar resourc
 require "$vertical_bar_resources" 'active: !GameMode.active' 'vertical Bar resource polling must pause in GameMode'
 require "$recorder_status" '(Config.options?.performance?.lowPower ?? false) ? 30000 : 15000' 'idle recorder detection must not spawn pgrep every five seconds'
 require "$recorder_status" 'interval: root.idlePollIntervalMs' 'RecorderStatus idle polling must use its power-aware cadence'
+require "$local_music" 'GlobalStates.sidebarLeftOpen ? 900 : 30000' 'LocalMusic fallback status polling must slow down while the sidebar is hidden'
+require "$local_music" 'function onSidebarLeftOpenChanged(): void' 'LocalMusic must refresh fallback status immediately when its UI opens'
+require "$local_music" 'running: root.enabled && !root._mpdSubscriptionActive' 'LocalMusic fallback polling must remain disabled while native MPD subscription is active'
 require "$recorder_status" 'property int fastDemandCount: 0' 'RecorderStatus fast polling must be explicitly demand-owned'
 require "$recorder_status" 'function setFastStatusDemand(owner: string, active: bool): void' 'RecorderStatus must expose keyed demand ownership'
 require "$recorder_status" 'running: Config.ready && !root.isRecording && !root.fastStatusDemand' 'RecorderStatus slow global fallback must remain active only without fast UI demand'

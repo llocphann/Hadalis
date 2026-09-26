@@ -4,6 +4,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import Quickshell
 import Quickshell.Io
+import qs
 import qs.modules.common
 import qs.modules.common.functions
 
@@ -11,6 +12,8 @@ Singleton {
     id: root
 
     readonly property bool enabled: Config.options?.sidebar?.music?.enable ?? false
+    readonly property int fallbackPollIntervalMs:
+        GlobalStates.sidebarLeftOpen ? 900 : 30000
     readonly property string configuredLibraryFolder:
         Config.options?.sidebar?.music?.libraryFolder ?? ""
     readonly property string configuredHost:
@@ -846,10 +849,20 @@ Singleton {
 
     Timer {
         id: pollTimer
-        interval: 900
+        interval: root.fallbackPollIntervalMs
         repeat: true
         running: root.enabled && !root._mpdSubscriptionActive
         onTriggered: root.refreshStatus()
+    }
+
+    Connections {
+        target: GlobalStates
+        function onSidebarLeftOpenChanged(): void {
+            if (GlobalStates.sidebarLeftOpen
+                    && root.enabled
+                    && !root._mpdSubscriptionActive)
+                root.refreshStatus()
+        }
     }
 
     Timer {

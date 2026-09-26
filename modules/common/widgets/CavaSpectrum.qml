@@ -47,6 +47,15 @@ Canvas {
     property real startTaper: -1
     property real endTaper: -1
     property var clipSegments: []
+
+    // Per-instance frame scratch. These arrays are internal and reused across
+    // paint frames to avoid transient JS allocation at the CAVA refresh rate.
+    property var _selectedScratch: []
+    property var _smoothScratch: []
+    property var _primaryScratch: []
+    property var _secondaryScratch: []
+    property var _baselineScratch: []
+
     readonly property var _resolvedPalette: root._makePalette()
     readonly property var _resolvedCornerRadii: root._makeCornerRadii()
     readonly property var _resolvedEdgeTapers: root._makeEdgeTapers()

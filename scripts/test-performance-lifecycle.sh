@@ -82,6 +82,8 @@ timer_service="$repo_root/services/TimerService.qml"
 levendist="$repo_root/modules/common/functions/levendist.js"
 emojis="$repo_root/services/deferred/Emojis.qml"
 app_search="$repo_root/services/AppSearch.qml"
+cliphist="$repo_root/services/deferred/Cliphist.qml"
+emojis_service="$repo_root/services/deferred/Emojis.qml"
 loading_indicator="$repo_root/modules/common/widgets/MaterialLoadingIndicator.qml"
 circular_progress="$repo_root/modules/common/widgets/CircularProgress.qml"
 clipped_filled_progress="$repo_root/modules/common/widgets/ClippedFilledCircularProgress.qml"
@@ -288,6 +290,10 @@ require "$levendist" 'if (longS.includes(shortS)) return 1.0;' 'fuzzy search mus
 require "$levendist" 'const rows = [new Array(lenS + 1), new Array(lenS + 1)];' 'partial fuzzy matching must reuse one row workspace'
 require "$levendist" 'levenshteinDistance(shortS, sub, rows)' 'partial fuzzy matching must reuse the shared row workspace'
 
+require "$cliphist" 'const searchLower = search.toLowerCase()' 'Clipboard sloppy search must lowercase the query once'
+require "$cliphist" 'root._insertTopScored(top,' 'Clipboard bounded sloppy search must avoid full sorting'
+require "$emojis_service" 'const searchLower = search.toLowerCase()' 'Emoji sloppy search must lowercase the query once'
+require "$emojis_service" 'root._insertTopScored(top,' 'Emoji bounded sloppy search must avoid full sorting'
 require "$emojis" 'function _ensurePreparedEntries(): var' 'Emoji fuzzy index must stay lazy'
 require "$emojis" 'Fuzzy.go(search, root._ensurePreparedEntries(),' 'Emoji search must build its index only on demand'
 reject "$emojis" 'readonly property var preparedEntries:' 'Emoji service must not eagerly prepare the full list'

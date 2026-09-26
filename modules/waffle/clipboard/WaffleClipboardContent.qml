@@ -48,7 +48,7 @@ Item {
     function updateFilteredModel() {
         filteredClipboardModel.clear()
         const trimmedSearch = searchText.trim().toLowerCase()
-        const filterEntries = Cliphist.preparedFilterEntries
+        const filterEntries = trimmedSearch.length > 0 ? Cliphist.filterEntries() : []
 
         // Pinned entries always lead the list.
         const pins = Cliphist.pinned

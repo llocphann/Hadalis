@@ -24,23 +24,40 @@ Singleton {
     property int _entriesRevision: 0
     property int _preparedEntriesRevision: -1
     property var _preparedEntriesCache: []
-
-    readonly property var preparedFilterEntries: entries.map(entry => {
-        let cleaned = StringUtils.cleanCliphistEntry(entry)
-        if (root.entryIsImage(entry))
-            cleaned = cleaned.replace(/^\s*\[\[.*?\]\]\s*/, "")
-        const unwrapped = StringUtils.cliphistMarkupPreview(cleaned)
-        if (unwrapped !== cleaned)
-            cleaned = unwrapped.length > 0 ? unwrapped : Translation.tr("Rich text")
-        const waffleKey = cleaned.trim().toLowerCase()
-        const iiKey = StringUtils.sanitizeDisplayText(cleaned).trim().toLowerCase()
-        return ({ entry: entry, iiKey: iiKey, waffleKey: waffleKey })
-    })
+    property int _filterEntriesRevision: -1
+    property var _filterEntriesCache: []
 
     onEntriesChanged: {
         root._entriesRevision++
         root._preparedEntriesRevision = -1
         root._preparedEntriesCache = []
+        root._filterEntriesRevision = -1
+        root._filterEntriesCache = []
+    }
+
+    function filterEntries(): var {
+        if (root._filterEntriesRevision === root._entriesRevision)
+            return root._filterEntriesCache
+
+        const source = root.entries
+        const prepared = new Array(source.length)
+        for (let i = 0; i < source.length; ++i) {
+            const entry = source[i]
+            let cleaned = StringUtils.cleanCliphistEntry(entry)
+            if (root.entryIsImage(entry))
+                cleaned = cleaned.replace(/^\s*\[\[.*?\]\]\s*/, "")
+            const unwrapped = StringUtils.cliphistMarkupPreview(cleaned)
+            if (unwrapped !== cleaned)
+                cleaned = unwrapped.length > 0 ? unwrapped : Translation.tr("Rich text")
+            prepared[i] = {
+                entry: entry,
+                iiKey: StringUtils.sanitizeDisplayText(cleaned).trim().toLowerCase(),
+                waffleKey: cleaned.trim().toLowerCase()
+            }
+        }
+        root._filterEntriesCache = prepared
+        root._filterEntriesRevision = root._entriesRevision
+        return prepared
     }
 
     function _ensurePreparedEntries(): var {

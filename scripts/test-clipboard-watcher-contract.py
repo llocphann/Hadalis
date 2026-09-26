@@ -110,7 +110,8 @@ def main() -> None:
 
     cliphist = CLIPHIST.read_text(encoding="utf-8")
     for token in (
-        "readonly property var preparedFilterEntries:",
+        "function filterEntries(): var",
+        "root._filterEntriesRevision === root._entriesRevision",
         "function _ensurePreparedEntries(): var",
         "root._preparedEntriesRevision === root._entriesRevision",
         "Fuzzy.go(search, root._ensurePreparedEntries(),",

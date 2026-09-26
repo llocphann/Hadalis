@@ -108,13 +108,13 @@ Scope {
 
     function updateFilteredModel() {
         const entries = Cliphist.entries
-        const filterEntries = Cliphist.preparedFilterEntries
         const entryCount = entries.length
 
         filteredClipboardModel.clear()
 
         const trimmedSearch = searchText.trim().toLowerCase()
         const hasSearch = trimmedSearch.length > 0
+        const filterEntries = hasSearch ? Cliphist.filterEntries() : []
         let matches = 0
 
         // Pinned entries always lead the list, in both filter and navigate mode.

@@ -14,6 +14,7 @@ Item {
     id: root
     property MprisPlayer player: null
     property list<real> visualizerPoints: []
+    property bool positionUpdatesActive: true
     property real radius: Appearance.zzzEverywhere ? Appearance.zzz.panelRadius : Appearance.angelEverywhere ? Appearance.angel.roundingNormal : Appearance.rounding.normal
     Behavior on radius {
         enabled: Appearance.animationsEnabled
@@ -29,6 +30,7 @@ Item {
     PlayerBase {
         id: playerBase
         player: root.player
+        positionUpdatesActive: root.positionUpdatesActive
     }
 
     property color themeSourceColor: playerBase.artDominantColor

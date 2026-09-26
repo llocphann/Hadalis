@@ -126,7 +126,7 @@ Scope {
             fadeOut.stop()
             bgScaleOut.stop()
 
-            root._isWaffle = GlobalStates.familyTransitionDirection === "left"
+            root._isWaffle = GlobalStates.familyTransitionTarget === "waffle"
             root._phase = false
             root._active = true
 

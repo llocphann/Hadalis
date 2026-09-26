@@ -76,7 +76,9 @@ Singleton {
     readonly property bool notificationCenterAvailable:
         (Config.options?.panelFamily ?? "ii") !== "waffle"
         && (Config.options?.notificationCenter?.enable ?? true)
-        && (Config.options?.enabledPanels ?? []).includes("iiScreenCorners")
+        && ((Config.options?.panelFamily === "abyss")
+            ? (Config.options?.enabledPanels ?? []).includes("abyssNotificationCenter")
+            : (Config.options?.enabledPanels ?? []).includes("iiScreenCorners"))
     readonly property bool notificationCenterOpen:
         root.notificationCenterAvailable
         && (root.notificationCenterExplicitOpen
@@ -342,6 +344,7 @@ Singleton {
     property bool waffleClipboardOpen: false
     property bool waffleTaskViewOpen: false
     // Panel family transition animation state
+    property string familyTransitionTarget: "ii"
     property bool familyTransitionActive: false
     property string familyTransitionDirection: "left" // "left" = current exits left, new enters from right
 

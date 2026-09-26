@@ -13,6 +13,7 @@
 //-@ pragma Env QTWEBENGINE_CHROMIUM_FLAGS=--disable-features=ThirdPartyCookieBlocking,StorageAccessAPI
 
 import qs.modules.common
+import "modules/common/PanelFamilyPolicy.js" as FamilyPolicy
 import qs.modules.settings
 
 import QtQuick
@@ -111,6 +112,7 @@ ShellRoot {
             Qt.callLater(() => ThemeService.applyCurrentTheme());
             Qt.callLater(() => IconThemeService.ensureInitialized());
             shellEntryTimer.start();
+            Qt.callLater(root.migrateEnabledPanels);
         }
     }
 
@@ -252,7 +254,11 @@ ShellRoot {
         if (_migrationDone) return;
         _migrationDone = true;
 
-        const family = Config.options?.panelFamily ?? "ii";
+        const configuredFamily = Config.options?.panelFamily ?? "ii";
+        const family = FamilyPolicy.normalize(configuredFamily);
+        if (configuredFamily !== family) Config.setNestedValue("panelFamily", family);
+        if ((Config.options?.visitedPanelFamilies ?? []).length === 0)
+            Config.setNestedValue("visitedPanelFamilies", [family]);
         let panels = [...(Config.options?.enabledPanels ?? [])];
         let changed = false;
 
@@ -264,11 +270,11 @@ ShellRoot {
         const isFirstRun = known.length === 0;
 
         if (isFirstRun) {
-            // First boot with this logic — seed knownPanels with ALL families' panels.
+            // Seed existing families; Abyss is initialized only on its first visit.
             // This prevents re-adding panels that existing users already disabled,
             // including across family switches.
             const allPanels = [];
-            for (const fam of root.families) {
+            for (const fam of ["ii", "waffle"]) {
                 for (const p of (root.panelFamilies[fam] ?? [])) {
                     if (!allPanels.includes(p)) allPanels.push(p);
                 }
@@ -317,6 +323,7 @@ ShellRoot {
 
         if (changed)
             Config.setNestedValue("enabledPanels", panels)
+        if (family === "abyss") root._ensureFamilyPanels(family)
     }
 
     // IPC target "bar" — registered once here (always loaded) instead of inside
@@ -583,7 +590,7 @@ ShellRoot {
     LazyLoader {
         id: iiAltSwitcherLoader
         readonly property bool loaderConfigured: Config.ready
-            && (Config.options?.panelFamily ?? "ii") !== "waffle"
+            && root.activePanelFamily === "ii"
             && !root.iiAltSwitcherNoVisual
         active: loaderConfigured
         source: "modules/altSwitcher/AltSwitcher.qml"
@@ -708,7 +715,7 @@ ShellRoot {
     LazyLoader {
         id: iiCriticalHostLoader
         readonly property bool loaderConfigured:
-            Config.ready && (Config.options?.panelFamily ?? "ii") !== "waffle"
+            Config.ready && root.activePanelFamily === "ii"
         loading: loaderConfigured
         activeAsync: loaderConfigured
         source: "modules/ii/critical/ShellIiCriticalPanels.qml"
@@ -718,7 +725,7 @@ ShellRoot {
         id: iiDeferredHostLoader
         readonly property bool enabled: Config.ready
             && GlobalStates.deferredPanelsReady
-            && (Config.options?.panelFamily ?? "ii") !== "waffle"
+            && root.activePanelFamily === "ii"
         loading: enabled
         activeAsync: enabled
         source: "ShellIiPanels.qml"
@@ -743,6 +750,20 @@ ShellRoot {
         source: "ShellWafflePanels.qml"
     }
 
+    LazyLoader {
+        id: abyssCriticalHostLoader
+        active: Config.ready && root.activePanelFamily === "abyss"
+        source: "modules/abyss/critical/ShellAbyssCriticalPanels.qml"
+    }
+    LazyLoader {
+        id: abyssDeferredHostLoader
+        readonly property bool enabled: Config.ready && GlobalStates.deferredPanelsReady
+            && root.activePanelFamily === "abyss"
+        loading: enabled
+        activeAsync: enabled
+        source: "ShellAbyssPanels.qml"
+    }
+
     // Close confirmation dialog (always loaded, handles IPC)
     LazyLoader {
         id: closeConfirmLoader
@@ -753,11 +774,13 @@ ShellRoot {
     // Shared (always loaded via ToastManager)
     ToastManager {}
 
+    readonly property string activePanelFamily: FamilyPolicy.normalize(Config.options?.panelFamily ?? "ii")
+
     // === Panel Families ===
     // AltSwitcher controller selection lives above the family loaders. Waffle
     // receives the lightweight shared router; ii receives either that controller
     // or the full visual tree according to its no-visual setting.
-    property list<string> families: ["ii", "waffle"]
+    property list<string> families: ["ii", "waffle", "abyss"]
     property var panelFamilies: ({
         "ii": [
             "iiBar", "iiBackground", "iiBackdrop", "iiBootGreeting", "iiCheatsheet", "iiControlPanel", "iiDock", "iiLock",
@@ -766,6 +789,7 @@ ShellRoot {
             "iiSessionScreen", "iiSidebarLeft", "iiSidebarRight", "iiTilingOverlay", "iiVerticalBar",
             "iiWallpaperSelector", "iiWallpaperLauncher", "iiCoverflowSelector", "iiClipboard", "iiShellUpdate", "iiRecordingOsd", "iiDashboard"
         ],
+        "abyss": FamilyPolicy.abyssPanels,
         "waffle": [
             "wBar", "wBackground", "wBackdrop", "wStartMenu", "wActionCenter", "wNotificationCenter", "wNotificationPopup", "wOnScreenDisplay", "wWidgets", "wTaskView", "wLock", "wPolkit", "wSessionScreen",
             // Shared modules that work with waffle
@@ -781,31 +805,17 @@ ShellRoot {
     property bool _transitionInProgress: false
 
     function _ensureFamilyPanels(family: string): void {
-        const basePanels = root.panelFamilies[family] ?? []
-        const currentPanels = Config.options?.enabledPanels ?? []
-
-        if (basePanels.length === 0) return
-        if (currentPanels.length === 0) {
-            Config.setNestedValue("enabledPanels", [...basePanels])
-            return
-        }
-
-        const merged = [...currentPanels]
-        for (const panel of basePanels) {
-            if (!merged.includes(panel)) merged.push(panel)
-        }
-        Config.setNestedValue("enabledPanels", merged)
-
-        // Update knownPanels so the new family's panels are tracked before the user can disable them
-        const known = [...(Config.options?.knownPanels ?? [])]
-        let knownChanged = false
-        for (const panel of basePanels) {
-            if (!known.includes(panel)) {
-                known.push(panel)
-                knownChanged = true
-            }
-        }
-        if (knownChanged) Config.setNestedValue("knownPanels", known)
+        const result = FamilyPolicy.ensure(family, root.panelFamilies[family] ?? [],
+            [...(Config.options?.enabledPanels ?? [])], [...(Config.options?.knownPanels ?? [])],
+            [...(Config.options?.visitedPanelFamilies ?? [])])
+        const updates = {}
+        if (JSON.stringify(result.enabled) !== JSON.stringify(Config.options?.enabledPanels ?? []))
+            updates.enabledPanels = result.enabled
+        if (JSON.stringify(result.known) !== JSON.stringify(Config.options?.knownPanels ?? []))
+            updates.knownPanels = result.known
+        if (JSON.stringify(result.visited) !== JSON.stringify(Config.options?.visitedPanelFamilies ?? []))
+            updates.visitedPanelFamilies = result.visited
+        if (Object.keys(updates).length > 0) Config.setNestedValues(updates)
     }
 
     function cyclePanelFamily() {
@@ -849,6 +859,7 @@ ShellRoot {
 
         _transitionInProgress = true
         _pendingFamily = targetFamily
+        GlobalStates.familyTransitionTarget = targetFamily
         GlobalStates.familyTransitionDirection = direction
         GlobalStates.familyTransitionActive = true
     }
@@ -872,7 +883,8 @@ ShellRoot {
         id: familyTransitionLoader
         active: Config.ready
             && (GlobalStates.familyTransitionActive || root._transitionInProgress)
-        source: "FamilyTransitionOverlay.qml"
+        source: GlobalStates.familyTransitionTarget === "abyss"
+            ? "modules/abyss/AbyssFamilyTransition.qml" : "FamilyTransitionOverlay.qml"
         onLoaded: {
             item.exitComplete.connect(root.applyPendingFamily)
             item.enterComplete.connect(root.finishFamilyTransition)

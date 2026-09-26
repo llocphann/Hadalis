@@ -2044,6 +2044,7 @@
     },
     "familyTransitionAnimation": true,
     "panelFamily": "ii",
+    "visitedPanelFamilies": [],
     "enabledPanels": [
         "iiBar",
         "iiBackground",

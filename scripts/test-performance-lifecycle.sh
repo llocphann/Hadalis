@@ -251,6 +251,7 @@ require "$easyeffects" 'interval: root.uiDemand ? 5000 : 30000' 'EasyEffects mus
 require "$easyeffects" 'running: Config.ready && root.available && (root.uiDemand || root.active)' 'EasyEffects polling must sleep when inactive and hidden'
 
 require "$tlp" 'interval: 120000' 'battery/TLP status polling must not run every 30 seconds'
+require "$tlp" 'running: root.enabled || root.managed || root.busy' 'battery/TLP status polling must sleep while charge-limit ownership is irrelevant'
 require "$thinkfan" 'interval: 30000' 'ThinkFan background polling must remain reduced'
 require "$thinkfan" 'running: root.profileFanControlEnabled || root.active || root.busy' 'ThinkFan polling must sleep while fan control is irrelevant'
 require "$tlp_caps" 'interval: 300000' 'TLP runtime capability probes must remain low cadence'

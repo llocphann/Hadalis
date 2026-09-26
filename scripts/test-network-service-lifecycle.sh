@@ -15,6 +15,14 @@ require_literal() {
     grep -Fq -- "$literal" "$service" || fail "$label"
 }
 
+forbid_literal() {
+    local literal="$1"
+    local label="$2"
+    if grep -Fq -- "$literal" "$service"; then
+        fail "$label"
+    fi
+}
+
 require_literal 'property bool attempted: false' 'Wi-Fi rescan attempt state is missing'
 require_literal 'property bool startObserved: false' 'Wi-Fi rescan startup guard is missing'
 require_literal 'property bool timedOut: false' 'Wi-Fi rescan timeout state is missing'
@@ -31,5 +39,9 @@ require_literal 'if (!updateNetworkStrength.running)' 'Wi-Fi signal query must b
 require_literal 'nmcli -t -f CONNECTIVITY g && nmcli radio wifi' 'radio state must share the main status process'
 require_literal 'const radioState = lines.pop()' 'combined status parser must consume radio state'
 require_literal 'if (!wifiStatusProcess.running)' 'failed combined status query must retain a radio-state fallback'
+require_literal 'function _wifiNetworkKey(network): string' 'Wi-Fi scan reconciliation key helper is missing'
+require_literal 'const existingByKey = new Map()' 'Wi-Fi scan reconciliation must index existing rows once'
+require_literal 'const nextKeys = new Set()' 'Wi-Fi scan reconciliation must index incoming rows once'
+forbid_literal 'rNetworks.filter(rn => !wifiNetworks.find' 'Wi-Fi scan reconciliation must not restore quadratic filter/find matching'
 
 printf 'network lifecycle guards: ok\n'

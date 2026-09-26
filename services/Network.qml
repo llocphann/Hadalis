@@ -248,6 +248,14 @@ Singleton {
 
     property bool _destroying: false
 
+    function _wifiNetworkKey(network): string {
+        if (!network)
+            return ""
+        return String(network.frequency ?? "") + "\u0000"
+            + String(network.ssid ?? "") + "\u0000"
+            + String(network.bssid ?? "")
+    }
+
     function _startSubscriber(): void {
         if (!root._destroying && !subscriber.running)
             subscriber.running = true
@@ -488,19 +496,39 @@ Singleton {
                 const wifiNetworks = Array.from(networkMap.values());
 
                 const rNetworks = root.wifiNetworks;
+                const existingByKey = new Map()
+                for (let i = 0; i < rNetworks.length; ++i)
+                    existingByKey.set(root._wifiNetworkKey(rNetworks[i]), rNetworks[i])
 
-                const destroyed = rNetworks.filter(rn => !wifiNetworks.find(n => n.frequency === rn.frequency && n.ssid === rn.ssid && n.bssid === rn.bssid));
-                for (const network of destroyed)
-                    rNetworks.splice(rNetworks.indexOf(network), 1).forEach(n => n.destroy());
+                const nextKeys = new Set()
+                for (let i = 0; i < wifiNetworks.length; ++i)
+                    nextKeys.add(root._wifiNetworkKey(wifiNetworks[i]))
 
-                for (const network of wifiNetworks) {
-                    const match = rNetworks.find(n => n.frequency === network.frequency && n.ssid === network.ssid && n.bssid === network.bssid);
+                // Remove stale QObject rows in one reverse pass. This avoids the
+                // old filter(find()) + indexOf reconciliation, which became O(n²)
+                // in dense Wi-Fi environments.
+                for (let i = rNetworks.length - 1; i >= 0; --i) {
+                    const existing = rNetworks[i]
+                    const key = root._wifiNetworkKey(existing)
+                    if (nextKeys.has(key))
+                        continue
+                    rNetworks.splice(i, 1)
+                    existingByKey.delete(key)
+                    existing.destroy()
+                }
+
+                for (let i = 0; i < wifiNetworks.length; ++i) {
+                    const network = wifiNetworks[i]
+                    const key = root._wifiNetworkKey(network)
+                    const match = existingByKey.get(key)
                     if (match) {
-                        match.lastIpcObject = network;
+                        match.lastIpcObject = network
                     } else {
-                        rNetworks.push(apComp.createObject(root, {
+                        const created = apComp.createObject(root, {
                             lastIpcObject: network
-                        }));
+                        })
+                        rNetworks.push(created)
+                        existingByKey.set(key, created)
                     }
                 }
             }

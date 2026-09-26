@@ -119,19 +119,10 @@ Singleton {
     }
 
     // ── Live sun/moon context ─────────────────────────────────────────────
-    // Ticks once a minute so sun progress and moon age stay current without a
-    // weather refresh. Raw ms, never gated on animationsEnabled (P0-10).
-    property int _clockTick: 0
-    Timer {
-        id: clockTickTimer
-        interval: 60000
-        repeat: true
-        // Weather's live sun/moon context is only consumed when the weather
-        // service itself is enabled. Do not keep a global minute wakeup alive
-        // for users that disable weather entirely.
-        running: root.enabled
-        onTriggered: root._clockTick++
-    }
+    // Reuse the shared DateTime minute tick instead of owning another 60-second
+    // timer. The conditional keeps Weather out of that dependency graph while
+    // the service is disabled.
+    readonly property int _clockMinute: root.enabled ? DateTime.clock.minutes : -1
 
     // Parse "HH:MM", "H:MM", or "hh:MM AM/PM" into minutes-of-day; -1 if unknown.
     function _timeToMinutes(s): int {
@@ -152,7 +143,7 @@ Singleton {
 
     // 0..1 progress from sunrise to sunset (0 before sunrise, 1 after sunset).
     readonly property real sunProgress: {
-        root._clockTick // recompute every minute
+        root._clockMinute // recompute every minute
         const sr = root._timeToMinutes(root.data?.sunrise)
         const ss = root._timeToMinutes(root.data?.sunset)
         if (sr < 0 || ss < 0 || ss <= sr) return 0
@@ -162,7 +153,7 @@ Singleton {
         return (nowMin - sr) / (ss - sr)
     }
     readonly property string sunState: {
-        root._clockTick
+        root._clockMinute
         const sr = root._timeToMinutes(root.data?.sunrise)
         const ss = root._timeToMinutes(root.data?.sunset)
         if (sr < 0 || ss < 0) return root.isNightNow() ? "night" : "day"
@@ -173,7 +164,7 @@ Singleton {
     // Local lunar phase from the synodic cycle. Open-Meteo does not expose moon
     // phase, so this is computed honestly rather than faked from an API field.
     readonly property real moonAge: {
-        root._clockTick
+        root._clockMinute
         const now = new Date()
         const ref = Date.UTC(2000, 0, 6, 18, 14, 0) // known new moon (UTC)
         const synodic = 29.530588853

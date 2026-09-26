@@ -105,6 +105,7 @@ SETTINGS_GROUP = ROOT / "modules" / "common" / "widgets" / "SettingsGroup.qml"
 STYLED_TEXT_INPUT = ROOT / "modules" / "common" / "widgets" / "StyledTextInput.qml"
 STYLED_SLIDER = ROOT / "modules" / "common" / "widgets" / "StyledSlider.qml"
 SETTINGS_OVERLAY = ROOT / "modules" / "settings" / "SettingsOverlay.qml"
+SETTINGS_LIVE_SEARCH_RESULTS = ROOT / "modules" / "common" / "widgets" / "SettingsLiveSearchResults.qml"
 SETTINGS_WINDOW = ROOT / "settings.qml"
 CONTROL_PANEL_DATE_TIME = ROOT / "modules" / "controlPanel" / "DateTimeHeader.qml"
 CONTROL_PANEL_WALLPAPER = ROOT / "modules" / "controlPanel" / "WallpaperSection.qml"
@@ -256,6 +257,7 @@ def main() -> None:
     styled_text_input = STYLED_TEXT_INPUT.read_text(encoding="utf-8")
     styled_slider = STYLED_SLIDER.read_text(encoding="utf-8")
     settings_overlay = SETTINGS_OVERLAY.read_text(encoding="utf-8")
+    settings_live_search_results = SETTINGS_LIVE_SEARCH_RESULTS.read_text(encoding="utf-8")
     settings_window = SETTINGS_WINDOW.read_text(encoding="utf-8")
     control_panel_date_time = CONTROL_PANEL_DATE_TIME.read_text(encoding="utf-8")
     control_panel_wallpaper = CONTROL_PANEL_WALLPAPER.read_text(encoding="utf-8")
@@ -1984,11 +1986,12 @@ def main() -> None:
     # Window-mode Settings uses the same Material-only public contract.
     for token in ("ZzzDiagonalPattern {", "ZzzSurfaceAccent {"):
         forbid(settings_window, token, "settings.qml root chrome")
-    require(
-        settings_window,
-        "? Appearance.m3colors.m3background",
-        "settings.qml root chrome",
-    )
+    for token in (
+        'color: "transparent"',
+        "id: windowBaseSurface",
+        'color: root.uiReady ? Appearance.colors.colLayer0 : "transparent"',
+    ):
+        require(settings_window, token, "settings.qml root chrome")
     window_search_start = settings_window.index("id: searchContainer")
     window_nav_start = settings_window.index("id: navRail", window_search_start)
     window_search = settings_window[window_search_start:window_nav_start]
@@ -2042,10 +2045,10 @@ def main() -> None:
         forbid(settings_window, token, "settings.qml")
 
     window_content_start = settings_window.index("id: contentContainer")
-    window_results_start = settings_window.index("id: searchResultsCard", window_content_start)
+    window_results_start = settings_window.index("id: settingsLiveSearch", window_content_start)
     window_content = settings_window[window_content_start:window_results_start]
     for token in (
-        "color: Appearance.colors.colSurfaceContainerLow",
+        'color: "transparent"',
         "radius: Appearance.rounding.windowRounding - root.contentPadding",
         "border.width: 0",
         'border.color: "transparent"',
@@ -2053,25 +2056,30 @@ def main() -> None:
     ):
         require(window_content, token, "settings.qml content container")
 
-    window_results_end = settings_window.index("id: resultsListView", window_results_start)
-    window_results = settings_window[window_results_start:window_results_end]
+    require(settings_window, "SettingsLiveSearchResults {",
+        "settings.qml shared live-search host")
+    for token in (
+        "Appearance.zzzEverywhere",
+        "Appearance.regaliaEverywhere",
+        "Appearance.angelEverywhere",
+        "Appearance.inirEverywhere",
+        "Appearance.auroraEverywhere",
+        "Appearance.cookieEverywhere",
+    ):
+        forbid(settings_live_search_results, token,
+            "SettingsLiveSearchResults.qml")
     for token in (
         "radius: Appearance.rounding.normal",
+        "color: Appearance.colors.colLayer1",
         "border.width: 1",
         "border.color: Appearance.m3colors.m3outlineVariant",
-        "layer.enabled: Appearance.effectsEnabled",
-    ):
-        require(window_results, token, "settings.qml search results card")
-
-    results_delegate_start = settings_window.index("id: resultItem", window_results_end)
-    results_delegate_end = settings_window.index("contentItem: RowLayout", results_delegate_start)
-    results_delegate = settings_window[results_delegate_start:results_delegate_end]
-    for token in (
+        "id: resultsList",
         "buttonRadius: Appearance.rounding.small",
-        "? Appearance.colors.colPrimaryContainer",
+        '? Appearance.colors.colLayer2 : "transparent"',
         "colBackgroundHover: Appearance.colors.colLayer2",
     ):
-        require(results_delegate, token, "settings.qml search result delegate")
+        require(settings_live_search_results, token,
+            "SettingsLiveSearchResults.qml")
 
     # Small active Control Panel leaves are safe to collapse independently of
     # the larger panel shell. Lock them to the Material fallbacks that were

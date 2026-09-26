@@ -17,10 +17,11 @@ extract_version() {
     grep -oE '[0-9]+\.[0-9]+(\.[0-9]+)?' | head -n1
 }
 
-parser_path="$(resolve_cmd "$parser")"
-[[ -n "$parser_path" ]] || exit 1
-parser_path="$(realpath "$parser_path" 2>/dev/null || printf '%s\n' "$parser_path")"
+parser_invocation_path="$(resolve_cmd "$parser")"
+[[ -n "$parser_invocation_path" ]] || exit 1
+parser_path="$(realpath "$parser_invocation_path" 2>/dev/null || printf '%s\n' "$parser_invocation_path")"
 parser_dir="$(cd -- "$(dirname -- "$parser_path")" && pwd -P)"
+system_fallbacks="${HADALIS_QML_VERSION_SYSTEM_FALLBACKS:-1}"
 
 # qmlformat's own --version may be the formatter's tool version (for example
 # "qmlformat 1.0"), not the Qt runtime version. Prefer Qt installation tools.
@@ -58,9 +59,9 @@ if [[ -n "$version" ]]; then
 fi
 
 # qml ships with Qt Declarative alongside qmlformat on common Qt 6 installs.
-# Its --version reports the QML/Qt runtime version, which is useful when
-# qmlformat exposes only its tool-local 1.x version.
-for candidate in     "$parser_dir/qml6" "$parser_dir/qml"     /usr/lib/qt6/bin/qml /usr/lib/x86_64-linux-gnu/qt6/bin/qml     qml6 qml
+# First probe sibling runtimes from the same Qt installation. System-wide
+# fallbacks can be disabled by the detector regression test to keep it hermetic.
+for candidate in "$parser_dir/qml6" "$parser_dir/qml"
 do
     resolved="$(resolve_cmd "$candidate")"
     [[ -n "$resolved" ]] || continue
@@ -73,12 +74,34 @@ do
     fi
 done
 
-# Arch packages qmlformat with the Qt Declarative package. If runtime tools are
-# not usable in the validation environment, the owning package version still
-# identifies the Qt build backing this exact formatter binary.
-pacman_path="$(resolve_cmd pacman)"
+if [[ "$system_fallbacks" != "0" ]]; then
+    for candidate in /usr/lib/qt6/bin/qml /usr/lib/x86_64-linux-gnu/qt6/bin/qml qml6 qml
+    do
+        resolved="$(resolve_cmd "$candidate")"
+        [[ -n "$resolved" ]] || continue
+        version="$("$resolved" --version 2>&1 | extract_version || true)"
+        [[ -n "$version" ]] || continue
+        major="${version%%.*}"
+        if (( major >= 5 )); then
+            printf '%s\n' "$version"
+            exit 0
+        fi
+    done
+fi
+
+# Arch packages qmlformat with the Qt Declarative package. Query ownership using
+# the path the shell actually invoked: package databases may own /usr/bin/qmlformat
+# while its canonical symlink target is not separately tracked.
+pacman_path="$(resolve_cmd "$parser_dir/pacman")"
+if [[ -z "$pacman_path" && "$system_fallbacks" != "0" ]]; then
+    pacman_path="$(resolve_cmd pacman)"
+fi
 if [[ -n "$pacman_path" ]]; then
-    owner="$("$pacman_path" -Qqo "$parser_path" 2>/dev/null | head -n1 || true)"
+    owner=""
+    for owned_path in "$parser_invocation_path" "$parser_path"; do
+        owner="$("$pacman_path" -Qqo "$owned_path" 2>/dev/null | head -n1 || true)"
+        [[ -n "$owner" ]] && break
+    done
     if [[ -n "$owner" ]]; then
         version="$("$pacman_path" -Q "$owner" 2>/dev/null | extract_version || true)"
         if [[ -n "$version" ]]; then

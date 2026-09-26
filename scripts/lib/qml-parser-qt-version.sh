@@ -19,6 +19,7 @@ extract_version() {
 
 parser_path="$(resolve_cmd "$parser")"
 [[ -n "$parser_path" ]] || exit 1
+parser_path="$(realpath "$parser_path" 2>/dev/null || printf '%s\n' "$parser_path")"
 parser_dir="$(cd -- "$(dirname -- "$parser_path")" && pwd -P)"
 
 # qmlformat's own --version may be the formatter's tool version (for example
@@ -40,6 +41,22 @@ do
     [[ -n "$resolved" ]] || continue
     version="$("$resolved" -query QT_VERSION 2>/dev/null | extract_version || true)"
     if [[ -n "$version" ]]; then
+        printf '%s\n' "$version"
+        exit 0
+    fi
+done
+
+# qml ships with Qt Declarative alongside qmlformat on common Qt 6 installs.
+# Its --version reports the QML/Qt runtime version, which is more authoritative
+# than qmlformat's tool-local version string when qtpaths/qmake are unavailable.
+for candidate in     "$parser_dir/qml6" "$parser_dir/qml"     /usr/lib/qt6/bin/qml /usr/lib/x86_64-linux-gnu/qt6/bin/qml     qml6 qml
+do
+    resolved="$(resolve_cmd "$candidate")"
+    [[ -n "$resolved" ]] || continue
+    version="$("$resolved" --version 2>&1 | extract_version || true)"
+    [[ -n "$version" ]] || continue
+    major="${version%%.*}"
+    if (( major >= 5 )); then
         printf '%s\n' "$version"
         exit 0
     fi

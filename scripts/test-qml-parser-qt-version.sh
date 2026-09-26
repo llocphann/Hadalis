@@ -26,6 +26,8 @@ write_cmd qtpaths6 '[[ "${1:-}" == "--qt-version" ]] && printf "%s\n" "6.8.3"'
 write_cmd qtpaths 'exit 1'
 write_cmd qmake6 'exit 1'
 write_cmd qmake 'exit 1'
+write_cmd qml6 'exit 1'
+write_cmd qml 'exit 1'
 
 version="$(PATH="$tmp/bin:/usr/bin:/bin" bash "$helper" "$tmp/bin/qmlformat")"
 [[ "$version" == "6.8.3" ]] || fail "qtpaths6 fallback returned '$version'"
@@ -36,6 +38,11 @@ version="$(PATH="$tmp/bin:/usr/bin:/bin" bash "$helper" "$tmp/bin/qmlformat")"
 [[ "$version" == "6.9.1" ]] || fail "qmake6 fallback returned '$version'"
 
 write_cmd qmake6 'exit 1'
+write_cmd qml 'printf "%s\n" "Qml Runtime 6.10.2"'
+version="$(PATH="$tmp/bin:/usr/bin:/bin" bash "$helper" "$tmp/bin/qmlformat")"
+[[ "$version" == "6.10.2" ]] || fail "qml runtime fallback returned '$version'"
+
+write_cmd qml 'exit 1'
 write_cmd qmlformat 'printf "%s\n" "qmlformat 6.4.2"'
 version="$(PATH="$tmp/bin:/usr/bin:/bin" bash "$helper" "$tmp/bin/qmlformat")"
 [[ "$version" == "6.4.2" ]] || fail "direct Qt-like qmlformat version returned '$version'"

@@ -123,3 +123,45 @@ A pre-existing `DateTime.qml` missing-root-id warning was exposed by the capture
 and remains queued for an independent correction. Sidebar, dock and popup
 content are the next milestone; this checkpoint does not claim functional core
 acceptance yet. Native tray menus deliberately keep the existing shared control.
+
+
+## Connected content checkpoint (phases 4–6)
+
+Inspected DockApps/TaskbarApps and sorting demand, physical sidebar role routing,
+MPRIS controls, brightness output resolution, Cliphist pin/copy/delete contracts
+and LauncherSearch actions. `AbyssBodyHost` supplies a deformation record and a
+clipped content rectangle without painting a body. `AbyssPerimeter` consumes all
+records in the same field and unions only live content input rectangles.
+
+- [Dock capture](evidence/abyss/phase4-dock.png): pinned/running app icons and
+  launcher grow from the selected edge; right click toggles pinning through the
+  existing service. No dock background, gap or second shadow is painted.
+- [Sidebar capture](evidence/abyss/phase5-sidebar.png): shared CPU/RAM/GPU/storage,
+  output brightness, audio, Wi-Fi/Bluetooth/DND, media, locations and weather
+  appear as typography and fine separators inside a right-edge deformation.
+- [Popup capture](evidence/abyss/phase6-popup.png): bar-origin media, sidebar and
+  dock share one silhouette. Perpendicular placement keeps content and the
+  workspace opening connected. Calendar/resources/weather/battery/audio use the
+  same host, with content loaded only for the chosen kind.
+- Tools navigation is native. AI chat and local music deliberately use the
+  existing content implementation when their tabs are requested. These are
+  specialist content fallbacks, not separately owned Material shell panels.
+- Native clipboard reuses Cliphist history, search, text pins, copy/delete and
+  two-step clear. Native launcher reuses LauncherSearch actions/prefixes and
+  AppSearch, with output-local workspaces/window activation. Both enter through
+  the bottom deformation and demand-load their existing deferred services.
+- Every host releases input immediately on close while its contour retracts.
+  Wayland runtime recorded live bounded rectangles and `0×0` for all closed
+  hosts. Loader bodies were ready for dock, system sidebar, popup, launcher and
+  clipboard. This does not substitute for manual click/drag/fullscreen acceptance.
+- Bar auto-hide and dock edge reveal have thin bounded triggers and finite close
+  timers. Dock sorting and resources use balanced demand leases. Body motion is
+  bounded and observes disabled animations.
+
+Qt 6.11.2 parsed the new QML. Production geometry and family tests pass. Real GPU
+captures caught missing deferred-service imports, which are corrected. Existing
+DateTime root-id and TaskbarApps initial binding-loop diagnostics remain under
+review; the second notification-server warning comes from running the capture
+alongside the installed shell. No notification backend is duplicated in Abyss.
+Next: native notifications/OSD, effects, settings integration and complete local
+validation. Full desktop and multi-output acceptance remain outstanding.

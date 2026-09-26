@@ -1,0 +1,9 @@
+module qs.modules.abyss.content
+AbyssCalendar 1.0 AbyssCalendar.qml
+AbyssDockContent 1.0 AbyssDockContent.qml
+AbyssLeftContent 1.0 AbyssLeftContent.qml
+AbyssMediaSection 1.0 AbyssMediaSection.qml
+AbyssPopupContent 1.0 AbyssPopupContent.qml
+AbyssRightContent 1.0 AbyssRightContent.qml
+AbyssClipboardContent 1.0 AbyssClipboardContent.qml
+AbyssLauncherContent 1.0 AbyssLauncherContent.qml

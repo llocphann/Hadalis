@@ -1,2 +1,3 @@
 module qs.modules.abyss
 AbyssPerimeter 1.0 AbyssPerimeter.qml
+AbyssBodyHost 1.0 AbyssBodyHost.qml

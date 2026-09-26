@@ -107,6 +107,10 @@ Singleton {
         }
     }
 
+    property string abyssPopupKind: ""
+    property string abyssPopupTargetOutput: ""
+    property real abyssPopupAlong: 0
+    property string abyssClipboardTargetOutput: ""
     property bool mediaControlsOpen: false
     property bool osdBrightnessOpen: false
     property bool osdVolumeOpen: false

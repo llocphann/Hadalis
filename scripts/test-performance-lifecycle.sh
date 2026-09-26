@@ -50,6 +50,9 @@ vertical_bar_resources="$repo_root/modules/verticalBar/Resources.qml"
 recorder_status="$repo_root/services/RecorderStatus.qml"
 control_panel_media="$repo_root/modules/controlPanel/MediaSection.qml"
 date_time_header="$repo_root/modules/controlPanel/DateTimeHeader.qml"
+date_time_service="$repo_root/services/DateTime.qml"
+clock_widget="$repo_root/modules/background/widgets/clock/ClockWidget.qml"
+cookie_clock="$repo_root/modules/background/widgets/clock/CookieClock.qml"
 lock_surface="$repo_root/modules/lock/LockSurface.qml"
 waffle_lock="$repo_root/modules/waffle/lock/WaffleLockSurface.qml"
 waffle_lock_safe="$repo_root/modules/waffle/lock/WaffleLockSurfaceSafe.qml"
@@ -93,6 +96,10 @@ require "$config" 'property int framerate: 30' 'Cava schema default must remain 
 require "$defaults" '"framerate": 30' 'persisted Cava default must remain 30 fps'
 require "$cava" 'Config.options?.appearance?.cava?.framerate ?? 30' 'Cava runtime fallback must remain 30 fps'
 require "$date_time_header" 'DateTime.clock.date' 'Control Panel date must use the shared SystemClock'
+reject "$date_time_service" 'cookie?.secondHandStyle' 'Cookie second hand must not force the global DateTime clock to 1 Hz'
+require "$clock_widget" 'readonly property bool cookieNeedsSeconds:' 'Background CookieClock must own its seconds demand'
+require "$clock_widget" 'clockSecond: displayClock.seconds' 'Background CookieClock seconds must stay local'
+require "$cookie_clock" 'property int clockSecond: DateTime.clock.seconds' 'CookieClock must preserve the lock-screen fallback clock'
 reject "$date_time_header" 'onTriggered: root._tick++' 'Control Panel must not restore a duplicate minute timer'
 for lock_date_surface in "$lock_surface" "$waffle_lock" "$waffle_lock_safe"; do
     require "$lock_date_surface" 'Qt.formatDate(DateTime.clock.date,' 'Lock dates must use the shared SystemClock'

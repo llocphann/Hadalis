@@ -12,15 +12,9 @@ import Quickshell.Io
 Singleton {
     property var clock: SystemClock {
         id: clock
-        precision: {
-            if ((Config.options?.time?.secondPrecision ?? false) || GlobalStates.screenLocked)
-                return SystemClock.Seconds;
-            // Cookie clock second hand needs sub-minute ticks without requiring global secondPrecision
-            if ((Config.options?.background?.widgets?.clock?.style ?? "cookie") === "cookie"
-                    && (Config.options?.background?.widgets?.clock?.cookie?.secondHandStyle ?? "hide") !== "hide")
-                return SystemClock.Seconds;
-            return SystemClock.Minutes;
-        }
+        precision: ((Config.options?.time?.secondPrecision ?? false)
+                || GlobalStates.screenLocked)
+            ? SystemClock.Seconds : SystemClock.Minutes
     }
     property string time: Qt.locale().toString(clock.date, Config.options?.time.format ?? "hh:mm")
     // Like time, but appends :ss when secondPrecision is enabled — used by bar clocks

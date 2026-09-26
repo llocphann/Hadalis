@@ -84,6 +84,7 @@ waffle_panels="$repo_root/modules/waffle/ShellWafflePanelsImpl.qml"
 global_states="$repo_root/GlobalStates.qml"
 wallpaper_launcher_content="$repo_root/modules/wallpaperLauncher/WallpaperLauncherContent.qml"
 wallpaper_launcher="$repo_root/modules/wallpaperLauncher/WallpaperLauncher.qml"
+wallpaper_coverflow="$repo_root/modules/wallpaperSelector/WallpaperCoverflow.qml"
 dashboard_settings="$repo_root/modules/settings/DashboardConfig.qml"
 screen_time="$repo_root/services/ScreenTime.qml"
 ytmusic="$repo_root/services/YtMusic.qml"
@@ -321,6 +322,11 @@ require "$ii_panels" 'identifier: "iiWallpaperLauncher"; open: GlobalStates.wall
 reject "$ii_panels" 'identifier: "iiWallpaperLauncher"; open: GlobalStates.wallpaperLauncherOpen; retainAfterUse: true' 'ii Wallpaper Launcher must not restore five-minute hidden residency'
 require "$waffle_panels" 'identifier: "iiWallpaperLauncher"; open: GlobalStates.wallpaperLauncherOpen; closeGraceMs: Appearance.animationsEnabled ? Math.max(240, Appearance.animation.elementMoveExit.duration + 60) : 40;' 'Waffle Wallpaper Launcher host must release after its exit animation plus grace'
 reject "$waffle_panels" 'identifier: "iiWallpaperLauncher"; open: GlobalStates.wallpaperLauncherOpen; retainAfterUse: true' 'Waffle Wallpaper Launcher host must not restore five-minute hidden residency'
+require "$wallpaper_coverflow" 'interval: Appearance.calcEffectiveDuration(450)' 'Coverflow inner loader must preserve the full exit lifecycle'
+require "$ii_panels" 'identifier: "iiCoverflowSelector"; open: GlobalStates.coverflowSelectorOpen; closeGraceMs: Appearance.animationsEnabled ? Appearance.calcEffectiveDuration(450) + 40 : 40;' 'ii Coverflow outer loader must release only after the inner exit lifecycle'
+reject "$ii_panels" 'identifier: "iiCoverflowSelector"; open: GlobalStates.coverflowSelectorOpen; retainAfterUse: true' 'ii Coverflow must not restore five-minute outer-scope residency'
+require "$waffle_panels" 'identifier: "iiCoverflowSelector"; open: GlobalStates.coverflowSelectorOpen; closeGraceMs: Appearance.animationsEnabled ? Appearance.calcEffectiveDuration(450) + 40 : 40;' 'Waffle Coverflow host must release only after the inner exit lifecycle'
+reject "$waffle_panels" 'identifier: "iiCoverflowSelector"; open: GlobalStates.coverflowSelectorOpen; retainAfterUse: true' 'Waffle Coverflow host must not restore five-minute outer-scope residency'
 require "$resource_usage" '? Math.max(6000, root._configuredUpdateIntervalMs)' 'Low Power must slow resource sampling to at least 6 seconds'
 require "$resource_usage" 'interval: root._effectiveUpdateIntervalMs' 'resource sensor timer must use the effective power-aware cadence'
 require "$resource_usage" 'readonly property int _expensiveGpuUpdateIntervalMs:' 'process-backed GPU sampling must use a slower independent cadence'

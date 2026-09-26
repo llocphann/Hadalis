@@ -182,9 +182,12 @@ for token in \
     'function barOwnsEdge(outputName, edge)' \
     'GlobalStates.widgetEditMode' \
     'Config.options?.bar?.screenList' \
-    '&& !root.barOwnsEdge(outputName, edge)' \
-    'readonly property bool adjacentBarOwned:' \
-    '&& !adjacentBarOwned'; do
+    'function iiBarOwnsEdge(outputName, edge)' \
+    'root.iiBarOwnsEdge(outputName, "left")' \
+    'root.iiBarOwnsEdge(outputName, "right")' \
+    'root.iiBarOwnsEdge(outputName, "top")' \
+    'root.iiBarOwnsEdge(outputName, "bottom")' \
+    '&& !root.barOwnsEdge(outputName, edge)'; do
     grep -Fq "$token" "$screen_edge" \
         || fail "Screen Edge must suppress the Bar-owned edge/corners and share the Material Bar surface token: $token"
 done

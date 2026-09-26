@@ -191,14 +191,18 @@ Item {
         return Math.max(0, Math.min(1, factor))
     }
 
-    function _surfaceBounds(x): var {
-        const top = Math.max(
+    function _topAt(x): real {
+        return Math.max(
             root._cornerInset(x, root.topLeftRadius, true),
             root._cornerInset(x, root.topRightRadius, false))
+    }
+
+    function _bottomAt(x): real {
+        const top = root._topAt(x)
         const bottomInset = Math.max(
             root._cornerInset(x, root.bottomLeftRadius, true),
             root._cornerInset(x, root.bottomRightRadius, false))
-        return [top, Math.max(top, root.height - bottomInset)]
+        return Math.max(top, root.height - bottomInset)
     }
 
     function _sampleAt(position): real {
@@ -238,9 +242,8 @@ Item {
         for (let i = 0; i < count; ++i) {
             const ratio = count > 1 ? i / (count - 1) : 0
             const x = x0 + ratio * span
-            const bounds = root._surfaceBounds(x)
-            const top = bounds[0]
-            const bottom = bounds[1]
+            const top = root._topAt(x)
+            const bottom = root._bottomAt(x)
             const center = (top + bottom) / 2
             const edge = root._edgeFactor(x)
             const level = Math.max(0, Math.min(1,
@@ -317,9 +320,8 @@ Item {
                 Number(root._barLevels[index] ?? 0)
             readonly property real level:
                 rawLevel * root._edgeFactor(centerX)
-            readonly property var bounds: root._surfaceBounds(centerX)
-            readonly property real topY: bounds[0]
-            readonly property real bottomY: bounds[1]
+            readonly property real topY: root._topAt(centerX)
+            readonly property real bottomY: root._bottomAt(centerX)
             readonly property real centerY: (topY + bottomY) / 2
             readonly property color barColor:
                 root._paletteColor(count > 1 ? index / (count - 1) : 0.5)
@@ -340,8 +342,10 @@ Item {
                 readonly property real available: root.barsOrigin === "center"
                     ? Math.max(0, parent.centerY - parent.topY)
                     : Math.max(0, parent.bottomY - parent.topY)
-                height: Math.max(root.barMinHeight * root._edgeFactor(parent.centerX),
-                    parent.level * available * Math.max(0.1, Math.min(1, root.fillRatio)))
+                height: Math.min(available,
+                    Math.max(root.barMinHeight * root._edgeFactor(parent.centerX),
+                        parent.level * available
+                            * Math.max(0.1, Math.min(1, root.fillRatio))))
                 y: root.barsOrigin === "top"
                     ? parent.topY
                     : root.barsOrigin === "center"
@@ -387,8 +391,10 @@ Item {
         visible: root.visualizerType === "wave"
             && root._wavePath.length >= 2
         asynchronous: false
+        preferredRendererType: Shape.CurveRenderer
 
         ShapePath {
+            pathHints: ShapePath.PathLinear
             strokeWidth: root.waveMode === "line"
                 ? Math.max(1, root.lineWidth) : 0
             strokeColor: root.waveMode === "line"

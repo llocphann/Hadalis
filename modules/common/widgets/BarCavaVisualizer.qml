@@ -401,15 +401,16 @@ Item {
         }
     }
 
-    // Filled and ribbon waves are drawn as narrow scene-graph strips. At the
-    // Bar's small height this keeps the same silhouette while avoiding dynamic
-    // path tessellation on every audio frame.
+    // Filled and ribbon waves keep cheap vertical fill strips, but each sample
+    // also bridges its visible edge to the next sample with a scene-graph quad.
+    // This preserves the low-cost renderer while making the silhouette read as
+    // one continuous waveform instead of a row of individually rounded spikes.
     Repeater {
         id: waveFillRepeater
         model: root.visualizerType === "wave" && root.waveMode !== "line"
             ? root._levelCount : 0
 
-        delegate: Rectangle {
+        delegate: Item {
             required property int index
 
             readonly property real slot: root._innerWidth
@@ -418,31 +419,101 @@ Item {
             readonly property real topY: root._topAt(centerX)
             readonly property real bottomY: root._bottomAt(centerX)
             readonly property real centerY: (topY + bottomY) / 2
-            readonly property real edge: root._edgeFactor(centerX)
-            readonly property real level: Math.max(0,
-                Math.min(1, Number(root._levels[index] ?? 0))) * edge
-            readonly property real amplitude:
-                level * (root.barsOrigin === "center" || root.barsOrigin === "mirror"
-                    || root.waveMode === "ribbon"
-                    ? Math.max(0, centerY - topY)
-                    : Math.max(0, bottomY - topY))
-                    * Math.max(0.1, Math.min(1, root.fillRatio))
             readonly property bool ribbon:
                 root.waveMode === "ribbon" || root.barsOrigin === "mirror"
+            readonly property real rawLevel:
+                Number(root._levels[index] ?? 0)
+            readonly property real waveY: root._waveY(index, rawLevel)
+            readonly property real lowerWaveY: ribbon
+                ? centerY + Math.max(0, centerY - waveY)
+                : waveY
+            readonly property color waveColor: root._paletteColor(
+                root._levelCount > 1 ? index / (root._levelCount - 1) : 0.5)
+
+            readonly property bool hasNext: index + 1 < root._levelCount
+            readonly property real nextX: hasNext
+                ? root._waveX(index + 1) : centerX
+            readonly property real nextWaveY: hasNext
+                ? root._waveY(index + 1,
+                    Number(root._levels[index + 1] ?? 0))
+                : waveY
+            readonly property real nextTopY: hasNext
+                ? root._topAt(nextX) : topY
+            readonly property real nextBottomY: hasNext
+                ? root._bottomAt(nextX) : bottomY
+            readonly property real nextCenterY:
+                (nextTopY + nextBottomY) / 2
+            readonly property real nextLowerWaveY: ribbon
+                ? nextCenterY + Math.max(0, nextCenterY - nextWaveY)
+                : nextWaveY
+            readonly property real connectorDx: nextX - centerX
+            readonly property real connectorDy: nextWaveY - waveY
+            readonly property real connectorLength: Math.sqrt(
+                connectorDx * connectorDx + connectorDy * connectorDy)
+            readonly property real lowerConnectorDy:
+                nextLowerWaveY - lowerWaveY
+            readonly property real lowerConnectorLength: Math.sqrt(
+                connectorDx * connectorDx
+                    + lowerConnectorDy * lowerConnectorDy)
+            readonly property real connectorThickness:
+                Math.max(1.5, root.lineWidth * 0.8)
 
             x: Math.max(root.edgeInset, centerX - slot / 2)
+            y: 0
             width: Math.max(1, slot + 0.75)
-            color: root._paletteColor(
-                root._levelCount > 1 ? index / (root._levelCount - 1) : 0.5)
-            radius: Math.min(width / 2, 1.5)
-            y: ribbon
-                ? centerY - amplitude
-                : root.barsOrigin === "top"
-                    ? topY
-                    : root.barsOrigin === "center"
-                        ? centerY - amplitude
-                        : bottomY - amplitude
-            height: ribbon ? amplitude * 2 : amplitude
+            height: root.height
+
+            Rectangle {
+                x: 0
+                width: parent.width
+                radius: 0
+                color: parent.waveColor
+                y: parent.ribbon
+                    ? parent.waveY
+                    : root.barsOrigin === "top"
+                        ? parent.topY
+                        : parent.waveY
+                height: parent.ribbon
+                    ? Math.max(0, parent.lowerWaveY - parent.waveY)
+                    : root.barsOrigin === "top"
+                        ? Math.max(0, parent.waveY - parent.topY)
+                        : root.barsOrigin === "center"
+                            ? Math.max(0, parent.centerY - parent.waveY)
+                            : Math.max(0, parent.bottomY - parent.waveY)
+            }
+
+            Rectangle {
+                visible: parent.hasNext
+                x: parent.centerX - parent.x
+                y: parent.waveY - height / 2
+                width: parent.connectorLength
+                height: parent.connectorThickness
+                radius: height / 2
+                color: root._paletteColor(
+                    root._levelCount > 1
+                        ? (parent.index + 0.5) / (root._levelCount - 1)
+                        : 0.5)
+                transformOrigin: Item.Left
+                rotation: Math.atan2(
+                    parent.connectorDy, parent.connectorDx) * 180 / Math.PI
+            }
+
+            Rectangle {
+                visible: parent.ribbon && parent.hasNext
+                x: parent.centerX - parent.x
+                y: parent.lowerWaveY - height / 2
+                width: parent.lowerConnectorLength
+                height: parent.connectorThickness
+                radius: height / 2
+                color: root._paletteColor(
+                    root._levelCount > 1
+                        ? (parent.index + 0.5) / (root._levelCount - 1)
+                        : 0.5)
+                transformOrigin: Item.Left
+                rotation: Math.atan2(
+                    parent.lowerConnectorDy, parent.connectorDx)
+                    * 180 / Math.PI
+            }
         }
     }
 

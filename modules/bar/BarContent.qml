@@ -340,14 +340,8 @@ Item {
     CavaProcess {
         id: barCavaProcess
         active: root.barSpectrumProcessWanted
-        // Wave rendering interpolates a continuous trace, so requesting one
-        // CAVA sample per final bar-density slot only inflates parser/QML work.
-        // Use the shared service floor for waves; bars retain density-derived
-        // sampling so their discrete columns stay one-to-one with the setting.
-        sampleCount: root.barSpectrumType === "wave"
-            ? 50
-            : Math.max(50,
-                Math.round(Math.max(1, root.width) / root.barSpectrumDensity))
+        sampleCount: Math.max(50,
+            Math.round(Math.max(1, root.width) / root.barSpectrumDensity))
     }
 
     function performScrollAction(action: string, isUp: bool): void {

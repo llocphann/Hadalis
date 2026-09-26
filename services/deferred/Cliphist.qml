@@ -65,6 +65,16 @@ Singleton {
         if (Quickshell.env("QS_DEBUG") === "1") console.log(...args);
     }
 
+    function _entriesEqual(nextEntries): bool {
+        if (!nextEntries || nextEntries.length !== root.entries.length)
+            return false
+        for (let i = 0; i < nextEntries.length; ++i) {
+            if (nextEntries[i] !== root.entries[i])
+                return false
+        }
+        return true
+    }
+
     function fuzzyQuery(search: string, limit): var {
         if (search.trim() === "") {
             const count = limit > 0 ? Math.min(limit, root.maxEntries) : root.maxEntries
@@ -339,8 +349,11 @@ Singleton {
 
         onExited: (exitCode, exitStatus) => {
             if (exitCode === 0) {
-                // Cap the number of entries we keep to avoid heavy models
-                root.entries = readProc.buffer.slice(0, root.maxEntries)
+                // Cap the number of entries we keep and do not emit a false
+                // entriesChanged when an explicit refresh returns the same list.
+                const nextEntries = readProc.buffer.slice(0, root.maxEntries)
+                if (!root._entriesEqual(nextEntries))
+                    root.entries = nextEntries
                 root._readAttempts = 0
                 if (root._refreshQueued) {
                     root._refreshQueued = false

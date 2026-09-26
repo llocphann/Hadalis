@@ -114,6 +114,8 @@ def main() -> None:
         "function _ensurePreparedEntries(): var",
         "root._preparedEntriesRevision === root._entriesRevision",
         "Fuzzy.go(search, root._ensurePreparedEntries(),",
+        "function _entriesEqual(nextEntries): bool",
+        "if (!root._entriesEqual(nextEntries))",
     ):
         if token not in cliphist:
             raise AssertionError(f"Cliphist lazy search-index contract missing: {token}")

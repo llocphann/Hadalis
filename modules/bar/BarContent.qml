@@ -334,7 +334,7 @@ Item {
         Math.min(1, (Config.options?.bar?.visualizer?.accentStrength ?? 70) / 100))
     // Keep the continuous wave's CAVA payload aligned with its bounded scene
     // resolution. Bars stay density-derived because they are discrete columns.
-    readonly property int barSpectrumWaveSampleCap: 60
+    readonly property int barSpectrumWaveSampleCap: 72
     readonly property color barSpectrumColor: root.inirEverywhere ? Appearance.inir.colPrimary
         : root.zzzEverywhere ? Appearance.zzz.accent
         : root.regaliaEverywhere ? Appearance.regalia.hardwarePrimary

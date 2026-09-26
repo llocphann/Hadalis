@@ -26,27 +26,14 @@ Item {
 
     readonly property int activeIndex: LyricsService.activeIndex
     readonly property bool hasLyrics: LyricsService.status === "ok" && LyricsService.lyricsLines.length > 0
-    property bool _subscribed: false
 
-    function syncSubscription(): void {
-        const shouldSubscribe = root.visible;
-        if (shouldSubscribe === root._subscribed)
-            return;
-
-        root._subscribed = shouldSubscribe;
-        if (shouldSubscribe)
-            LyricsService.subscribe();
-        else
-            LyricsService.unsubscribe();
-    }
-
-    onVisibleChanged: root.syncSubscription()
-    Component.onCompleted: root.syncSubscription()
-    Component.onDestruction: {
-        if (root._subscribed) {
-            root._subscribed = false;
-            LyricsService.unsubscribe();
+    property QtObject _lyricsLease: ServiceLease {
+        active: root.visible
+        acquire: () => {
+            LyricsService.subscribe()
+            return true
         }
+        release: () => LyricsService.unsubscribe()
     }
 
     Item {

@@ -5,6 +5,7 @@ repo_root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
 lease="$repo_root/modules/common/widgets/ServiceLease.qml"
 cava="$repo_root/modules/common/widgets/CavaProcess.qml"
 resource="$repo_root/modules/common/widgets/ResourceUsageMonitor.qml"
+lyrics="$repo_root/modules/mediaControls/components/PlayerLyrics.qml"
 
 fail() {
     printf 'service lease lifecycle guard failed: %s\n' "$1" >&2
@@ -26,5 +27,8 @@ require_literal 'onActiveChanged: root.sync()' "$lease" 'ServiceLease must react
 require_literal 'onValueChanged: root.syncValue()' "$lease" 'ServiceLease must update active parameterized leases'
 require_literal 'ServiceLease {' "$cava" 'CavaProcess must use ServiceLease'
 require_literal 'ServiceLease {' "$resource" 'ResourceUsageMonitor must use ServiceLease'
+require_literal 'ServiceLease {' "$lyrics" 'PlayerLyrics must use ServiceLease'
+require_literal 'LyricsService.subscribe()' "$lyrics" 'PlayerLyrics lease must acquire LyricsService'
+require_literal 'LyricsService.unsubscribe()' "$lyrics" 'PlayerLyrics lease must release LyricsService'
 
 printf 'service lease lifecycle guards: ok\n'

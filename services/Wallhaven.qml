@@ -192,6 +192,7 @@ QtObject {
                 root._handleTagCountResponse(text)
             }
         }
+        onExited: (_exitCode, _exitStatus) => root._scheduleTagCount()
     }
 
     // Process for tag suggestions
@@ -214,12 +215,29 @@ QtObject {
                 root._handleTagDetailResponse(text)
             }
         }
+        onExited: (_exitCode, _exitStatus) => root._scheduleTagDetail()
+    }
+
+    function _tagDelayMs(): int {
+        const now = Date.now()
+        root.nowMs = now
+        const due = Math.max(now, root._nextTagAllowedMs, root.rateLimitedUntilMs)
+        return Math.max(1, Math.round(due - now))
+    }
+
+    function _scheduleTagCount(): void {
+        if (!root._tagCountQueue || root._tagCountQueue.length === 0
+                || root.tagCountProcess.running) {
+            _tagCountTimer.stop()
+            return
+        }
+        _tagCountTimer.interval = root._tagDelayMs()
+        _tagCountTimer.restart()
     }
 
     property Timer _tagCountTimer: Timer {
-        interval: 350
-        repeat: true
-        running: root._tagCountQueue && root._tagCountQueue.length > 0
+        interval: 1
+        repeat: false
         onTriggered: root._fetchNextTagCount()
     }
 
@@ -287,25 +305,26 @@ QtObject {
         if (root._tagCountQueue.indexOf(id) !== -1)
             return
         root._tagCountQueue = [...root._tagCountQueue, id]
+        root._scheduleTagCount()
     }
 
     function _fetchNextTagCount(): void {
         root.nowMs = Date.now()
-        if (root.isRateLimited)
-            return
-        if (root.nowMs < root._nextTagAllowedMs)
-            return
         if (!root._tagCountQueue || root._tagCountQueue.length === 0)
             return
         if (root.tagCountProcess.running)
             return
+        if (root.isRateLimited || root.nowMs < root._nextTagAllowedMs) {
+            root._scheduleTagCount()
+            return
+        }
 
         const id = root._tagCountQueue[0]
         root._tagCountQueue = root._tagCountQueue.slice(1)
-        if (!id || id.length === 0)
+        if (!id || id.length === 0 || root._tagCountRequests[id]) {
+            root._scheduleTagCount()
             return
-        if (root._tagCountRequests[id])
-            return
+        }
 
         root._tagCountRequests[id] = true
         root._nextTagAllowedMs = root.nowMs + root.minTagIntervalMs
@@ -483,28 +502,29 @@ QtObject {
 
     function ensureWallpaperTags(id) {
         root.nowMs = Date.now()
-        if (!id || id.length === 0)
+        if (!id || id.length === 0
+                || wallpaperTagCache[id] !== undefined
+                || wallpaperTagRequests[id]) {
+            root._scheduleTagDetail()
             return
-        if (wallpaperTagCache[id] !== undefined)
-            return
-        if (wallpaperTagRequests[id])
-            return
+        }
 
         if (tagQueue.indexOf(id) === -1) {
             tagQueue = [...tagQueue, id]
+            root._scheduleTagDetail()
         }
     }
 
     function _fetchNextTag(): void {
         root.nowMs = Date.now()
-        if (root.isRateLimited)
-            return
-        if (root.nowMs < root._nextTagAllowedMs)
-            return
         if (!tagQueue || tagQueue.length === 0)
             return
         if (root.tagDetailProcess.running)
             return
+        if (root.isRateLimited || root.nowMs < root._nextTagAllowedMs) {
+            root._scheduleTagDetail()
+            return
+        }
 
         const id = tagQueue[0]
         tagQueue = tagQueue.slice(1)
@@ -552,10 +572,19 @@ QtObject {
         }
     }
 
+    function _scheduleTagDetail(): void {
+        if (!root.tagQueue || root.tagQueue.length === 0
+                || root.tagDetailProcess.running) {
+            tagQueueTimer.stop()
+            return
+        }
+        tagQueueTimer.interval = root._tagDelayMs()
+        tagQueueTimer.restart()
+    }
+
     property Timer tagQueueTimer: Timer {
-        interval: 350
-        repeat: true
-        running: root.tagQueue && root.tagQueue.length > 0
+        interval: 1
+        repeat: false
         onTriggered: root._fetchNextTag()
     }
 

@@ -440,18 +440,25 @@ Canvas {
     }
 
     function _traceSmooth(ctx, coordinates): void {
-        if (coordinates.length === 0)
+        const pointCount = Math.floor(coordinates.length / 2)
+        if (pointCount === 0)
             return
-        ctx.moveTo(coordinates[0][0], coordinates[0][1])
-        for (let i = 1; i < coordinates.length - 1; i++) {
-            const next = coordinates[i + 1]
-            const current = coordinates[i]
-            ctx.quadraticCurveTo(current[0], current[1],
-                (current[0] + next[0]) / 2, (current[1] + next[1]) / 2)
+        ctx.moveTo(coordinates[0], coordinates[1])
+        for (let i = 1; i < pointCount - 1; ++i) {
+            const offset = i * 2
+            const nextOffset = offset + 2
+            const currentX = coordinates[offset]
+            const currentY = coordinates[offset + 1]
+            const nextX = coordinates[nextOffset]
+            const nextY = coordinates[nextOffset + 1]
+            ctx.quadraticCurveTo(currentX, currentY,
+                (currentX + nextX) / 2, (currentY + nextY) / 2)
         }
-        if (coordinates.length > 1) {
-            const last = coordinates[coordinates.length - 1]
-            ctx.quadraticCurveTo(last[0], last[1], last[0], last[1])
+        if (pointCount > 1) {
+            const lastOffset = (pointCount - 1) * 2
+            const lastX = coordinates[lastOffset]
+            const lastY = coordinates[lastOffset + 1]
+            ctx.quadraticCurveTo(lastX, lastY, lastX, lastY)
         }
     }
 
@@ -460,9 +467,11 @@ Canvas {
         const count = Math.max(2, Math.min(source.length,
             Math.round(span / Math.max(4, root.pixelsPerBar))))
         const levels = root._waveLevels(source, count)
+        const ribbonMode = root.waveMode === "ribbon" || root.barsOrigin === "mirror"
+        const lineMode = root.waveMode === "line"
         const primary = []
-        const secondary = []
-        const baseline = []
+        const secondary = ribbonMode ? [] : null
+        const baseline = !ribbonMode && !lineMode ? [] : null
         const radii = root._resolvedCornerRadii
         const strokeHeadroom = Math.max(0, root.lineWidth / 2 + 0.5)
 
@@ -483,31 +492,33 @@ Canvas {
             const value = (levels[i] || 0) * edgeFactor
             const fill = Math.max(0.1, Math.min(1, root.fillRatio))
 
-            if (root.waveMode === "ribbon" || root.barsOrigin === "mirror") {
+            if (ribbonMode) {
                 const maximum = Math.max(0,
                     Math.min(center - peakTop, peakBottom - center))
                 const half = value * maximum * fill
-                primary.push([x, center - half])
-                secondary.push([x, center + half])
-                baseline.push([x, center])
+                primary.push(x, center - half)
+                secondary.push(x, center + half)
             } else if (root.barsOrigin === "top") {
                 const maximum = Math.max(0, peakBottom - top)
-                primary.push([x, top + value * maximum * fill])
-                baseline.push([x, top])
+                primary.push(x, top + value * maximum * fill)
+                if (baseline)
+                    baseline.push(x, top)
             } else if (root.barsOrigin === "center") {
                 const maximum = Math.max(0, center - peakTop)
-                primary.push([x, center - value * maximum * fill])
-                baseline.push([x, center])
+                primary.push(x, center - value * maximum * fill)
+                if (baseline)
+                    baseline.push(x, center)
             } else {
                 const maximum = Math.max(0, bottom - peakTop)
-                primary.push([x, bottom - value * maximum * fill])
-                baseline.push([x, bottom])
+                primary.push(x, bottom - value * maximum * fill)
+                if (baseline)
+                    baseline.push(x, bottom)
             }
         }
 
         const gradient = root._horizontalGradient(ctx, x0, x1, 1)
 
-        if (root.waveMode === "line") {
+        if (lineMode) {
             ctx.beginPath()
             root._traceSmooth(ctx, primary)
             ctx.strokeStyle = gradient
@@ -520,12 +531,12 @@ Canvas {
 
         ctx.beginPath()
         root._traceSmooth(ctx, primary)
-        if (secondary.length > 0) {
-            for (let i = secondary.length - 1; i >= 0; i--)
-                ctx.lineTo(secondary[i][0], secondary[i][1])
-        } else {
-            for (let i = baseline.length - 1; i >= 0; i--)
-                ctx.lineTo(baseline[i][0], baseline[i][1])
+        if (secondary) {
+            for (let i = secondary.length - 2; i >= 0; i -= 2)
+                ctx.lineTo(secondary[i], secondary[i + 1])
+        } else if (baseline) {
+            for (let i = baseline.length - 2; i >= 0; i -= 2)
+                ctx.lineTo(baseline[i], baseline[i + 1])
         }
         ctx.closePath()
         ctx.fillStyle = gradient

@@ -1095,15 +1095,19 @@ Item {
 
                     property bool _shouldPlay: visible && delegateItem.filePath.length > 0
 
-                    MediaPlayer {
-                        id: videoPreviewPlayer
-                        source: videoPreviewOutput._shouldPlay
-                            ? ("file://" + delegateItem.filePath) : ""
-                        videoOutput: videoPreviewOutput
-                        loops: MediaPlayer.Infinite
-                        onSourceChanged: {
-                            if (source.toString().length > 0)
-                                play()
+                    // ListView keeps several neighboring delegates alive via
+                    // cacheBuffer. A MediaPlayer per cached card is wasted when
+                    // only the current video can animate, so create the decoder
+                    // strictly for the active preview and destroy it on exit.
+                    Loader {
+                        id: videoPreviewPlayerLoader
+                        active: videoPreviewOutput._shouldPlay
+                        asynchronous: false
+                        onLoaded: if (item) item.play()
+                        sourceComponent: MediaPlayer {
+                            source: "file://" + delegateItem.filePath
+                            videoOutput: videoPreviewOutput
+                            loops: MediaPlayer.Infinite
                         }
                     }
                 }

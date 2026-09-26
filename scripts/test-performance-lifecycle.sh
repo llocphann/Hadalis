@@ -73,6 +73,7 @@ sidebar_right_notifications="$repo_root/modules/sidebarRight/notifications/Notif
 sidebar_right_media="$repo_root/modules/sidebarRight/CompactMediaPlayer.qml"
 video_crossfader="$repo_root/modules/common/widgets/VideoCrossfader.qml"
 control_panel_wallpaper="$repo_root/modules/controlPanel/WallpaperSection.qml"
+wallpaper_skew_view="$repo_root/modules/wallpaperSelector/WallpaperSkewView.qml"
 dash_media="$repo_root/modules/dashboard/DashMedia.qml"
 dash_welcome="$repo_root/modules/dashboard/DashWelcome.qml"
 dashboard="$repo_root/modules/dashboard/Dashboard.qml"
@@ -315,6 +316,10 @@ reject "$sidebar_right_media" 'CavaProcess {' 'right-sidebar media must not run 
 reject "$sidebar_right_media" 'WaveVisualizer {' 'right-sidebar media must not render duplicate Cava above the shared EQ'
 require "$control_panel_wallpaper" 'layer.enabled: root.visible && GlobalStates.controlPanelOpen' 'Control Panel wallpaper mask must sleep while closed'
 require "$control_panel_wallpaper" 'mipmap: false' 'Control Panel wallpaper preview must not generate unused mipmaps'
+require "$wallpaper_skew_view" 'id: videoPreviewPlayerLoader' 'Wallpaper Skew preview decoder must be lazy-loaded per current video'
+require "$wallpaper_skew_view" 'active: videoPreviewOutput._shouldPlay' 'Wallpaper Skew preview decoder must sleep for cached non-current delegates'
+require "$wallpaper_skew_view" 'onLoaded: if (item) item.play()' 'Wallpaper Skew preview must start playback after lazy decoder creation'
+reject "$wallpaper_skew_view" 'id: videoPreviewPlayer' 'Wallpaper Skew cached delegates must not restore eager MediaPlayer instances'
 require "$dash_media" 'property bool presentationActive:' 'Dashboard media lifecycle must remain writable for DashboardCanvas and Overview hosts'
 reject "$dash_media" 'readonly property bool presentationActive:' 'Dashboard media lifecycle must not become readonly while DashboardCanvas binds it'
 reject "$dash_media" 'CavaProcess {' 'Dashboard media must not run duplicate Cava above the shared EQ'

@@ -43,24 +43,21 @@ for candidate in qmlformat qmlformat6 /usr/lib/qt6/bin/qmlformat /usr/lib/x86_64
     end
 end
 
-# Ubuntu 24.04 ships qmlformat 6.4, which rejects valid modern syntax used by
-# current iNiR/Quickshell QML. Treat an old parser as unavailable instead of
-# producing dozens of false startup failures. Arch/current Qt (>= 6.8) gets the
-# real parser pass; the project-specific guards below always run regardless.
+# Ubuntu 24.04 ships Qt 6.4, which rejects valid modern syntax used by
+# current Hadalis/Quickshell QML. qmlformat may report its own tool version
+# (for example "qmlformat 1.0"), so resolve the Qt runtime version separately.
+# Treat Qt < 6.8 as unavailable instead of producing false startup failures.
 set -l parser_skip_reason ""
 if test -n "$parser"
-    set -l version_text ($parser --version 2>&1)
-    # Fish 3.7 does not support `string match -o`; plain regex mode prints the
-    # matched substring and is portable across supported Fish versions.
-    set -l parser_version (string match -r '[0-9]+\.[0-9]+(\.[0-9]+)?' -- $version_text | head -1)
-    if test -z "$parser_version"
-        set parser_skip_reason "qmlformat version could not be determined"
+    set -l parser_qt_version (bash "$project_root/scripts/lib/qml-parser-qt-version.sh" "$parser" 2>/dev/null | head -1)
+    if test -z "$parser_qt_version"
+        set parser_skip_reason "qmlformat Qt version could not be determined"
         set parser ""
     else
-        set -l parts (string split . $parser_version)
+        set -l parts (string split . $parser_qt_version)
         set -l version_key (math "$parts[1] * 100 + $parts[2]")
         if test $version_key -lt 608
-            set parser_skip_reason "qmlformat $parser_version is too old for project syntax"
+            set parser_skip_reason "Qt $parser_qt_version is too old for project syntax"
             set parser ""
         end
     end

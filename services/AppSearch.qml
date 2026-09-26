@@ -259,6 +259,21 @@ Singleton {
         _desktopIdStemMap = idMap;
     }
 
+    function _insertTopScored(top, candidate, limit): void {
+        let low = 0
+        let high = top.length
+        while (low < high) {
+            const mid = (low + high) >> 1
+            if (candidate.score > top[mid].score)
+                high = mid
+            else
+                low = mid + 1
+        }
+        top.splice(low, 0, candidate)
+        if (top.length > limit)
+            top.pop()
+    }
+
     function fuzzyQuery(search: string, limit): var {
         if (_cachedList.length === 0) return []
         if (!search || search.trim() === "") return []
@@ -266,30 +281,46 @@ Singleton {
         const searchLower = search.toLowerCase().trim()
 
         if (root.sloppySearch) {
-            // Levenshtein-based scoring
+            // Levenshtein-based scoring. When a caller only needs a small
+            // prefix of the ranking, keep that prefix sorted incrementally
+            // instead of allocating and sorting the full result set.
+            if (limit > 0) {
+                const top = []
+                for (let index = 0; index < _cachedList.length; ++index) {
+                    const obj = _cachedList[index]
+                    const nameLower = _cachedPreppedNames[index]?.nameLower ?? ""
+                    let score = Levendist.computeScore(nameLower, searchLower)
+
+                    if (nameLower.startsWith(searchLower))
+                        score += 0.3
+                    else if (nameLower.includes(" " + searchLower) || nameLower.includes("-" + searchLower))
+                        score += 0.15
+                    else if (nameLower.includes(searchLower))
+                        score += 0.1
+
+                    score = Math.min(1.0, score)
+                    if (score > root.scoreThreshold)
+                        root._insertTopScored(top, { entry: obj, score: score }, limit)
+                }
+                return top.map(item => root._decorateEntry(item.entry))
+            }
+
             const results = _cachedList.map((obj, index) => {
                 const nameLower = _cachedPreppedNames[index]?.nameLower ?? ""
                 let score = Levendist.computeScore(nameLower, searchLower)
 
-                // Boost for prefix match
-                if (nameLower.startsWith(searchLower)) {
+                if (nameLower.startsWith(searchLower))
                     score += 0.3
-                }
-                // Boost for word boundary match
-                else if (nameLower.includes(" " + searchLower) || nameLower.includes("-" + searchLower)) {
+                else if (nameLower.includes(" " + searchLower) || nameLower.includes("-" + searchLower))
                     score += 0.15
-                }
-                // Boost for contains
-                else if (nameLower.includes(searchLower)) {
+                else if (nameLower.includes(searchLower))
                     score += 0.1
-                }
 
                 return { entry: obj, score: Math.min(1.0, score) }
             }).filter(item => item.score > root.scoreThreshold)
               .sort((a, b) => b.score - a.score)
 
-            const ranked = limit > 0 ? results.slice(0, limit) : results
-            return ranked.map(item => root._decorateEntry(item.entry))
+            return results.map(item => root._decorateEntry(item.entry))
         }
 
         // Hybrid approach: combine fuzzysort with smart scoring
@@ -299,30 +330,45 @@ Singleton {
             threshold: -10000 // Get all results, we'll filter ourselves
         })
 
-        // Score and sort results
+        // Apply Hadalis' custom boosts after fuzzysort. Keep only the
+        // requested top-K when a bounded caller (launcher/icon lookup) asks for
+        // it; unlimited callers preserve the original full-sort behavior.
+        if (limit > 0) {
+            const top = []
+            for (let i = 0; i < fuzzyResults.length; ++i) {
+                const r = fuzzyResults[i]
+                const entry = r.obj.entry
+                const nameLower = r.obj.nameLower ?? ""
+                let score = r.score
+
+                if (nameLower.startsWith(searchLower))
+                    score += 50000
+                else if (nameLower.includes(" " + searchLower) || nameLower.includes("-" + searchLower))
+                    score += 20000
+                else if (nameLower.includes(searchLower))
+                    score += 10000
+
+                root._insertTopScored(top, { entry: entry, score: score }, limit)
+            }
+            return top.map(item => root._decorateEntry(item.entry))
+        }
+
         const scoredResults = fuzzyResults.map(r => {
             const entry = r.obj.entry
             const nameLower = r.obj.nameLower ?? ""
             let score = r.score
 
-            // Significant boost for exact prefix match
-            if (nameLower.startsWith(searchLower)) {
+            if (nameLower.startsWith(searchLower))
                 score += 50000
-            }
-            // Boost for word start match
-            else if (nameLower.includes(" " + searchLower) || nameLower.includes("-" + searchLower)) {
+            else if (nameLower.includes(" " + searchLower) || nameLower.includes("-" + searchLower))
                 score += 20000
-            }
-            // Small boost for substring match
-            else if (nameLower.includes(searchLower)) {
+            else if (nameLower.includes(searchLower))
                 score += 10000
-            }
 
             return { entry, score }
         }).sort((a, b) => b.score - a.score)
 
-        const ranked = limit > 0 ? scoredResults.slice(0, limit) : scoredResults
-        return ranked.map(item => root._decorateEntry(item.entry))
+        return scoredResults.map(item => root._decorateEntry(item.entry))
     }
 
     function _decorateEntry(entry): var {

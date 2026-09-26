@@ -219,6 +219,7 @@ Singleton {
     property bool wallpaperSelectorOpen: false
     property bool wallpaperLauncherOpen: false
     property string wallpaperLauncherMode: "static"
+    property string wallpaperLauncherSearchText: ""
     property bool widgetEditMode: false
     property string selectedDesktopWidget: ""
     property string selectedDesktopItem: ""

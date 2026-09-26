@@ -81,6 +81,9 @@ dash_welcome="$repo_root/modules/dashboard/DashWelcome.qml"
 dashboard="$repo_root/modules/dashboard/Dashboard.qml"
 ii_panels="$repo_root/modules/ii/ShellIiPanelsImpl.qml"
 waffle_panels="$repo_root/modules/waffle/ShellWafflePanelsImpl.qml"
+global_states="$repo_root/GlobalStates.qml"
+wallpaper_launcher_content="$repo_root/modules/wallpaperLauncher/WallpaperLauncherContent.qml"
+wallpaper_launcher="$repo_root/modules/wallpaperLauncher/WallpaperLauncher.qml"
 dashboard_settings="$repo_root/modules/settings/DashboardConfig.qml"
 screen_time="$repo_root/services/ScreenTime.qml"
 ytmusic="$repo_root/services/YtMusic.qml"
@@ -308,6 +311,15 @@ require "$waffle_panels" 'OnDemandPanelLoader { identifier: "wActionCenter"; ope
 reject "$waffle_panels" 'identifier: "wActionCenter"; open: GlobalStates.waffleActionCenterOpen; retainAfterUse: true' 'Waffle Action Center must not restore five-minute hidden residency'
 require "$waffle_panels" 'OnDemandPanelLoader { identifier: "iiOverview"; open: GlobalStates.overviewOpen; closeGraceMs: Appearance.animation.elementMoveExit.duration + 80;' 'Waffle Overview host must unload after the same exit-aware grace as ii'
 reject "$waffle_panels" 'identifier: "iiOverview"; open: GlobalStates.overviewOpen; retainAfterUse: true' 'Waffle Overview host must not restore five-minute post-use residency'
+require "$global_states" 'property string wallpaperLauncherSearchText: ""' 'Wallpaper Launcher query state must survive visual-tree teardown'
+require "$wallpaper_launcher_content" 'text: GlobalStates.wallpaperLauncherSearchText' 'Wallpaper Launcher search field must restore lightweight query state'
+require "$wallpaper_launcher_content" 'GlobalStates.wallpaperLauncherSearchText = ""' 'Wallpaper Launcher mode switches must clear persistent query state'
+require "$wallpaper_launcher_content" 'GlobalStates.wallpaperLauncherSearchText += event.text' 'Wallpaper Launcher keyboard search must update persistent query state'
+require "$wallpaper_launcher" 'interval: Math.max(220, Appearance.animation.elementMoveExit.duration + 20)' 'Wallpaper Launcher close timer must still cover the visible exit animation'
+require "$ii_panels" 'identifier: "iiWallpaperLauncher"; open: GlobalStates.wallpaperLauncherOpen; closeGraceMs: Appearance.animationsEnabled ? Math.max(240, Appearance.animation.elementMoveExit.duration + 60) : 40;' 'ii Wallpaper Launcher must release after its exit animation plus grace'
+reject "$ii_panels" 'identifier: "iiWallpaperLauncher"; open: GlobalStates.wallpaperLauncherOpen; retainAfterUse: true' 'ii Wallpaper Launcher must not restore five-minute hidden residency'
+require "$waffle_panels" 'identifier: "iiWallpaperLauncher"; open: GlobalStates.wallpaperLauncherOpen; closeGraceMs: Appearance.animationsEnabled ? Math.max(240, Appearance.animation.elementMoveExit.duration + 60) : 40;' 'Waffle Wallpaper Launcher host must release after its exit animation plus grace'
+reject "$waffle_panels" 'identifier: "iiWallpaperLauncher"; open: GlobalStates.wallpaperLauncherOpen; retainAfterUse: true' 'Waffle Wallpaper Launcher host must not restore five-minute hidden residency'
 require "$resource_usage" '? Math.max(6000, root._configuredUpdateIntervalMs)' 'Low Power must slow resource sampling to at least 6 seconds'
 require "$resource_usage" 'interval: root._effectiveUpdateIntervalMs' 'resource sensor timer must use the effective power-aware cadence'
 require "$resource_usage" 'readonly property int _expensiveGpuUpdateIntervalMs:' 'process-backed GPU sampling must use a slower independent cadence'

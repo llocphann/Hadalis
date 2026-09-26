@@ -77,7 +77,7 @@ FocusScope {
 
     function _commitMode(nextMode: string): void {
         GlobalStates.wallpaperLauncherMode = nextMode
-        searchField.text = ""
+        GlobalStates.wallpaperLauncherSearchText = ""
         Qt.callLater(carousel.syncCurrentIndexAndPreview)
     }
 
@@ -163,8 +163,8 @@ FocusScope {
             searchField.forceActiveFocus()
             event.accepted = true
         } else if (event.text.length > 0 && !(event.modifiers & Qt.ControlModifier)) {
-            searchField.text += event.text
-            searchField.cursorPosition = searchField.text.length
+            GlobalStates.wallpaperLauncherSearchText += event.text
+            searchField.cursorPosition = GlobalStates.wallpaperLauncherSearchText.length
             searchField.forceActiveFocus()
             event.accepted = true
         }
@@ -373,6 +373,11 @@ FocusScope {
                     Layout.fillWidth: true
                     implicitHeight: Appearance.sizes.baseBarHeight
                     leftPadding: Appearance.sizes.spacingLarge * 2
+                    text: GlobalStates.wallpaperLauncherSearchText
+                    onTextChanged: {
+                        if (GlobalStates.wallpaperLauncherSearchText !== text)
+                            GlobalStates.wallpaperLauncherSearchText = text
+                    }
                     placeholderText: Translation.tr("Search wallpapers")
                     Keys.onPressed: event => {
                         if (event.key === Qt.Key_Tab || event.key === Qt.Key_Backtab) {

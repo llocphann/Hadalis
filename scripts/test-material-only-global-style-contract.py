@@ -2207,7 +2207,7 @@ def main() -> None:
 
     # Default SidebarRightContent is the primary right-sidebar content tree.
     # Keep connected-edge geometry, explicit island skin, section reordering/
-    # resizing, dialogs and quick-toggle routing while collapsing chrome to Material.
+    # elastic section layout, dialogs and quick-toggle routing with Material chrome.
     for token in legacy_style_tokens:
         forbid(sidebar_right_content, token, "sidebarRight/SidebarRightContent.qml")
     for token in (
@@ -2226,7 +2226,7 @@ def main() -> None:
         "readonly property color connectedSurfaceColor:",
         "readonly property real connectedSurfaceRadius: sidebarRightBackground.radius",
         'readonly property bool islandStyle: surfaceDialect === "island"',
-        "IslandPanel {",
+        "RicelinSurface {",
         "visible: sidebarRightBackground.islandStyle",
         "color: root.externalConnectedSurface",
         "Appearance.colors.colLayer1",
@@ -2240,21 +2240,19 @@ def main() -> None:
         "startSectionDrag(",
         "updateSectionDrag(",
         "endSectionDrag()",
-        "startSectionResize(",
-        "updateSectionResize(",
-        "endSectionResize()",
-        "Config.setNestedValues({",
+        "Layout.fillHeight: usesElasticPool",
+        "Layout.minimumHeight: !isElastic ? -1",
+        "readonly property bool contentCollapsed:",
         "radius: Appearance.rounding.verysmall",
         "Appearance.colors.colLayer1Hover",
-        "Appearance.colors.colPrimaryContainer",
-        "Appearance.colors.colOutlineVariant",
-        "Appearance.colors.colOnLayer2",
+        "Appearance.colors.colPrimary",
+        "Appearance.colors.colOnLayer1",
         "SidebarProfileHeader {",
         "surfaceDialect: sidebarRightBackground.surfaceDialect",
         "QuickSliders {}",
         "ClassicQuickPanel {}",
         "AndroidQuickPanel { editMode: root.editMode }",
-        "CenterWidgetGroup { collapsed: root.notifsCollapsed }",
+        "readonly property bool usesElasticPool: isElastic && !contentCollapsed",
         "BottomWidgetGroup {}",
         "ToggleDialog {",
         "Network.rescanWifi()",
@@ -2285,7 +2283,7 @@ def main() -> None:
         "readonly property color connectedSurfaceColor:",
         "readonly property real connectedSurfaceRadius: sidebarLeftBackground.radius",
         'readonly property bool islandStyle: surfaceDialect === "island"',
-        "IslandPanel {",
+        "RicelinSurface {",
         "visible: sidebarLeftBackground.islandStyle",
         "color: root.externalConnectedSurface",
         "Appearance.colors.colLayer1",
@@ -2307,16 +2305,16 @@ def main() -> None:
         "Ai.ensureInitialized()",
         "SwipeView {",
         "interactive: !root.tabEditMode",
-        "WidgetsView {}",
+        "active: SwipeView.isCurrentItem || SwipeView.isNextItem || SwipeView.isPreviousItem",
         "AiChat {}",
         "Translator {}",
         "Anime {}",
         "AnimeScheduleView {}",
-        "WallhavenView {",
+        'case "newspaper": return newsComp',
         "NewsView {}",
-        "InnerTuneView {}",
+        'case "library_music": return musicComp',
         "ToolsView {}",
-        "SoftwareView {}",
+        'case "build": return toolsComp',
     ):
         require(sidebar_left_content, token, "sidebarLeft/SidebarLeftContent.qml")
 
@@ -2443,7 +2441,7 @@ def main() -> None:
         "property bool embeddedSurface: false",
         "readonly property real collapsedHeight:",
         "readonly property bool islandStyle:",
-        "IslandPanel {",
+        "RicelinSurface {",
         "visible: !root.embeddedSurface && root.islandStyle",
         'fallbackColor: root.embeddedSurface || root.islandStyle',
         '? "transparent"',
@@ -2548,7 +2546,7 @@ def main() -> None:
         "border.width: 0",
         'border.color: "transparent"',
         "StyledRectangularShadow {",
-        "ColorUtils.applyAlpha(Appearance.colors.colShadow",
+        "Qt.alpha(Appearance.m3colors.m3shadow,",
     ):
         require(dashboard_content, token, "dashboard/DashboardContent.qml")
 
@@ -2596,9 +2594,9 @@ def main() -> None:
         "property color activeBorderColor: Appearance.colors.colSecondary",
         "StyledRectangularShadow {",
         "target: overviewBackground",
-        "radius: Appearance.rounding.large + padding",
-        "color: Appearance.colors.colBackgroundSurfaceContainer",
-        "border.width: 1",
+        "radius: root.embeddedSurface ? 0 : (Appearance.rounding.large + padding)",
+        'color: root.embeddedSurface ? "transparent"',
+        "border.width: root.embeddedSurface ? 0 : 1",
         "ColorUtils.transparentize(Appearance.colors.colOutlineVariant, 0.68)",
         "? Appearance.colors.colBackgroundSurfaceContainer",
         "Appearance.colors.colBackgroundSurfaceContainer, 0.3",
@@ -2616,8 +2614,8 @@ def main() -> None:
         "colBackgroundHover: Appearance.colors.colLayer4Hover",
         "NiriService.switchToWorkspaceById(nextWorkspace.id)",
         "NiriService.moveWindowToWorkspaceById(\n                                        draggedWindowId, targetWorkspace, false)",
-        "NiriService.focusWindow(windowData.id)",
-        "NiriService.closeWindow(windowData.id)",
+        "NiriService.focusWindow(draggedWindowId)",
+        "NiriService.closeWindow(windowItem.windowId)",
         "WindowPreviewService.getPreviewUrl",
     ):
         require(overview_niri_widget, token, "overview/OverviewNiriWidget.qml")
@@ -2630,8 +2628,8 @@ def main() -> None:
         "property color activeBorderColor: Appearance.colors.colSecondary",
         "property real largeWorkspaceRadius: Appearance.rounding.large",
         "property real smallWorkspaceRadius: Appearance.rounding.verysmall",
-        "color: Appearance.colors.colBackgroundSurfaceContainer",
-        "border.width: 1",
+        'color: root.embeddedSurface ? "transparent"',
+        "border.width: root.embeddedSurface ? 0 : 1",
         "ColorUtils.transparentize(Appearance.colors.colOutlineVariant, 0.68)",
         "Appearance.colors.colSurfaceContainerHigh, 0.8",
         "defaultWorkspaceColor, Appearance.colors.colLayer1Hover, 0.1",
@@ -2654,7 +2652,7 @@ def main() -> None:
         "color: Appearance.colors.colPrimary",
         "color: Appearance.colors.colOnLayer1",
         "color: Appearance.colors.colSubtext",
-        "running: GlobalStates.controlPanelOpen",
+        "DateTime.clock.date",
     ):
         require(control_panel_date_time, token, "controlPanel/DateTimeHeader.qml")
 
@@ -2754,7 +2752,7 @@ def main() -> None:
     forbid(control_panel_media, "AngelPartialBorder {", "controlPanel/MediaSection.qml")
     for token in (
         "CavaProcess {",
-        "active: root.visible && root.hasPlayer && GlobalStates.controlPanelOpen",
+        "active: root.visible && root.hasPlayer && root.effectiveIsPlaying && GlobalStates.controlPanelOpen",
         "ColorQuantizer {",
         "AdaptedMaterialScheme {",
         "radius: Appearance.rounding.normal",
@@ -2772,7 +2770,7 @@ def main() -> None:
         "onClicked: MprisController.togglePlaying()",
         "onClicked: MprisController.next()",
         "onMoved: root.player.position = value * root.player.length",
-        "running: root.player?.playbackState === MprisPlaybackState.Playing",
+        "running: root.positionTickerActive",
     ):
         require(control_panel_media, token, "controlPanel/MediaSection.qml")
     for token in (

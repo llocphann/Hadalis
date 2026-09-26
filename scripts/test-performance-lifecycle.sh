@@ -94,6 +94,7 @@ clipped_outline_progress="$repo_root/modules/common/widgets/ClippedOutlineCircul
 wavy_line="$repo_root/modules/common/widgets/WavyLine.qml"
 cava_wavy_line="$repo_root/modules/common/widgets/CavaWavyLine.qml"
 cava_spectrum="$repo_root/modules/common/widgets/CavaSpectrum.qml"
+bar_cava_visualizer="$repo_root/modules/common/widgets/BarCavaVisualizer.qml"
 shell_update_indicator="$repo_root/modules/bar/ShellUpdateIndicator.qml"
 util_buttons="$repo_root/modules/bar/UtilButtons.qml"
 waffle_system_button="$repo_root/modules/waffle/bar/SystemButton.qml"
@@ -129,7 +130,12 @@ reject "$cava_spectrum" 'primary.push([' 'CavaSpectrum wave coordinates must sta
 require "$cava_spectrum" 'const baseline = !ribbonMode && !lineMode ? root._baselineScratch : null' 'CavaSpectrum line mode must not build an unused baseline'
 require "$cava_spectrum" 'property bool waveOutlineEnabled: true' 'CavaSpectrum must keep outline control explicit'
 require "$cava_spectrum" 'if (root.waveOutlineEnabled) {' 'CavaSpectrum filled-wave outline must remain optional'
-require "$repo_root/modules/bar/BarContent.qml" 'waveOutlineEnabled: false' 'Full-width Bar spectrum must skip the duplicate wave outline raster pass'
+require "$repo_root/modules/bar/BarContent.qml" 'BarCavaVisualizer {' 'Bar spectrum must use the scene-graph renderer'
+reject "$repo_root/modules/bar/BarContent.qml" 'threadedRendering: true' 'Bar spectrum must not restore threaded Canvas rasterization'
+reject "$repo_root/modules/bar/BarContent.qml" 'CavaSpectrum {' 'Bar spectrum must not restore the full-width Canvas renderer'
+require "$bar_cava_visualizer" 'import QtQuick.Shapes' 'Bar visualizer wave path must use Qt Quick Shapes'
+require "$bar_cava_visualizer" 'Repeater {' 'Bar visualizer bars must use scene-graph Rectangle nodes'
+reject "$bar_cava_visualizer" 'Canvas {' 'Bar visualizer must stay off QQuickContext2D'
 require "$repo_root/modules/background/widgets/visualizer/VisualizerWidget.qml" 'waveOutlineEnabled: false' 'Desktop spectrum must skip the duplicate wave outline raster pass'
 reject "$cava_spectrum" 'function _barLevels(' 'CavaSpectrum must calculate levels inside paint loops'
 reject "$cava_spectrum" 'function _waveLevels(' 'CavaSpectrum must not allocate a transient level array'

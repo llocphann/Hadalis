@@ -9,6 +9,7 @@ BarWidgetSwitcherArea 1.0 BarWidgetSwitcherArea.qml
 ButtonGroup 1.0 ButtonGroup.qml
 CalendarView 1.0 CalendarView.qml
 CavaProcess 1.0 CavaProcess.qml
+BarCavaVisualizer 1.0 BarCavaVisualizer.qml
 CavaSpectrum 1.0 CavaSpectrum.qml
 CavaVisualizer 1.0 CavaVisualizer.qml
 CavaWavyLine 1.0 CavaWavyLine.qml

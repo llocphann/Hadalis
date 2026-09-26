@@ -891,10 +891,9 @@ Item {
             accentColor: Appearance.zzz.chromeStroke
         }
 
-        CavaSpectrum {
+        BarCavaVisualizer {
             anchors.fill: parent
             active: root.barSpectrumVisible
-            threadedRendering: true
             points: active ? barCavaProcess.points : []
             normalizationCeiling: active ? barCavaProcess.normalizationCeiling : 100
             visualizerType: root.barSpectrumType
@@ -906,9 +905,6 @@ Item {
             barSpacing: root.barSpectrumGap
             smoothing: root.barSpectrumSmoothing
             waveMode: root.barSpectrumWaveMode
-            // Full-width threaded Canvas: the fill already defines the wave edge.
-            // Skip the duplicate outline pass measured as a dominant raster cost.
-            waveOutlineEnabled: false
             lineWidth: root.barSpectrumLineWidth
             edgeInset: root.barSpectrumEdgeInset
             edgeSoftness: root.barSpectrumEdgeSoftness

@@ -21,10 +21,33 @@ Singleton {
     property bool sloppySearch: Config.options?.search?.sloppy ?? false
     property real scoreThreshold: 0.2
 
-    readonly property var preparedEntries: list.map(a => ({
-        name: Fuzzy.prepare(`${a}`),
-        entry: a
-    }))
+    property int _listRevision: 0
+    property int _preparedRevision: -1
+    property var _preparedEntriesCache: []
+
+    onListChanged: {
+        root._listRevision++
+        root._preparedRevision = -1
+        root._preparedEntriesCache = []
+    }
+
+    function _ensurePreparedEntries(): var {
+        if (root._preparedRevision === root._listRevision)
+            return root._preparedEntriesCache
+
+        const source = root.list
+        const prepared = new Array(source.length)
+        for (let i = 0; i < source.length; ++i) {
+            const entry = source[i]
+            prepared[i] = {
+                name: Fuzzy.prepare(`${entry}`),
+                entry: entry
+            }
+        }
+        root._preparedEntriesCache = prepared
+        root._preparedRevision = root._listRevision
+        return prepared
+    }
 
     function fuzzyQuery(search: string, limit): var {
         if (root.sloppySearch) {
@@ -38,7 +61,7 @@ Singleton {
                 .map(item => item.entry)
         }
 
-        const results = Fuzzy.go(search, preparedEntries, {
+        const results = Fuzzy.go(search, root._ensurePreparedEntries(), {
             all: true,
             key: "name",
             limit: limit > 0 ? limit : undefined

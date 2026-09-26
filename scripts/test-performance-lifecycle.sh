@@ -80,6 +80,7 @@ directory_icon="$repo_root/modules/common/widgets/DirectoryIcon.qml"
 sysmon_widget="$repo_root/modules/sidebarRight/sysmon/SysMonWidget.qml"
 timer_service="$repo_root/services/TimerService.qml"
 levendist="$repo_root/modules/common/functions/levendist.js"
+emojis="$repo_root/services/deferred/Emojis.qml"
 loading_indicator="$repo_root/modules/common/widgets/MaterialLoadingIndicator.qml"
 circular_progress="$repo_root/modules/common/widgets/CircularProgress.qml"
 clipped_filled_progress="$repo_root/modules/common/widgets/ClippedFilledCircularProgress.qml"
@@ -252,6 +253,10 @@ require "$levendist" 'function levenshteinDistance(s1, s2, rows)' 'fuzzy search 
 require "$levendist" 'if (longS.includes(shortS)) return 1.0;' 'fuzzy search must fast-path exact substring matches'
 require "$levendist" 'const rows = [new Array(lenS + 1), new Array(lenS + 1)];' 'partial fuzzy matching must reuse one row workspace'
 require "$levendist" 'levenshteinDistance(shortS, sub, rows)' 'partial fuzzy matching must reuse the shared row workspace'
+
+require "$emojis" 'function _ensurePreparedEntries(): var' 'Emoji fuzzy index must stay lazy'
+require "$emojis" 'Fuzzy.go(search, root._ensurePreparedEntries(),' 'Emoji search must build its index only on demand'
+reject "$emojis" 'readonly property var preparedEntries:' 'Emoji service must not eagerly prepare the full list'
 
 require "$loading_indicator" 'import QtQuick.Window' 'loading indicator must observe owning window visibility'
 require "$loading_indicator" '(root.Window.window?.visible ?? true)' 'loading indicator must stop while its owning window is hidden'

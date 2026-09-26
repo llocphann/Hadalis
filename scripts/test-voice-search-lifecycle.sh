@@ -29,6 +29,16 @@ assert_contains 'root.detectedLocalExecutable = ""' "$probe_block" 'failed local
 assert_contains 'root.detectedLocalModel = ""' "$probe_block" 'failed local probe must clear stale model'
 assert_contains 'root._drainProbeQueue()' "$probe_block" 'failed local probe must drain a queued refresh'
 assert_contains 'onStarted: localProbe.startObserved = true' "$probe_block" 'local probe must distinguish a successful start'
+assert_contains 'root._tryStartPending()' "$probe_block" 'local probe completion must resume a pending first-use start'
+
+assert_contains 'property bool initialized: false' "$(cat "$service")" 'voice search must begin uninitialized so backend probing stays off the boot path'
+assert_contains 'function ensureInitialized(): void' "$(cat "$service")" 'voice search must expose an explicit lazy initialization entry point'
+assert_contains 'root.initialized = true' "$(cat "$service")" 'backend refresh must mark voice search initialized'
+assert_contains 'root.ensureInitialized()' "$(cat "$service")" 'voice search start must initialize backends on first use'
+assert_contains 'function _tryStartPending(): void' "$(cat "$service")" 'first-use recording must wait for backend/keyring readiness'
+if grep -Fq 'Component.onCompleted: root.refreshBackends()' "$service"; then
+    fail 'voice search must not probe backends eagerly during singleton construction'
+fi
 
 assert_contains 'property bool startObserved: false' "$record_block" 'recorder startup guard state is missing'
 assert_contains 'onRunningChanged:' "$record_block" 'recorder startup failure path is missing'

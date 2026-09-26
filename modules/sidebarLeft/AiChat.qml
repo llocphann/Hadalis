@@ -29,6 +29,8 @@ Item {
     property var suggestionQuery: ""
     property var suggestionList: []
 
+    Component.onCompleted: VoiceSearch.ensureInitialized()
+
     Connections {
         target: VoiceSearch
         function onTranscriptionReady(text) {

@@ -45,7 +45,10 @@ ContentPage {
         ]
     }
 
-    Component.onCompleted: Ai.ensureInitialized()
+    Component.onCompleted: {
+        Ai.ensureInitialized()
+        VoiceSearch.ensureInitialized()
+    }
 
     // ── Setup status ─────────────────────────────────────────────
     SettingsCardSection {

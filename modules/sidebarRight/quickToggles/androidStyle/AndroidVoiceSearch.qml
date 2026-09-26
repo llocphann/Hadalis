@@ -8,6 +8,8 @@ import qs.services
 AndroidQuickToggleButton {
     id: root
 
+    Component.onCompleted: VoiceSearch.ensureInitialized()
+
     toggled: VoiceSearch.running
     // Must stay clickable in edit mode without a configured backend, otherwise
     // the toggle can never be unpinned.

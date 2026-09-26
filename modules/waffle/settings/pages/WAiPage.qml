@@ -31,7 +31,10 @@ WSettingsPage {
     pageIcon: "wand"
     pageDescription: Translation.tr("Providers, models, behavior, voice input")
 
-    Component.onCompleted: Ai.ensureInitialized()
+    Component.onCompleted: {
+        Ai.ensureInitialized()
+        VoiceSearch.ensureInitialized()
+    }
 
     readonly property bool hasModel: (Ai.getModel() ?? null) !== null
     readonly property bool hasLocalModel: AiProviderCatalog.localModelCount > 0

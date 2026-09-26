@@ -47,6 +47,7 @@ world_clock="$repo_root/services/WorldClock.qml"
 sidebar_world_clock="$repo_root/modules/sidebarLeft/widgets/WorldClockWidget.qml"
 game_mode="$repo_root/services/GameMode.qml"
 directories="$repo_root/modules/common/Directories.qml"
+conflict_killer="$repo_root/services/ConflictKiller.qml"
 overview_window="$repo_root/modules/overview/OverviewWindow.qml"
 resource_usage="$repo_root/services/ResourceUsage.qml"
 memory_pressure="$repo_root/services/MemoryPressureService.qml"
@@ -356,6 +357,13 @@ require "$directories" 'rm -rf -- \"$1\" \"$2\" \"$3\" \"$4\"' 'directory bootst
 require "$directories" 'mkdir -p -- \"$5\" \"$6\" \"$7\" \"$8\" \"$9\" \"${10}\" \"${11}\" \"${12}\" \"${13}\" \"${14}\"' 'directory bootstrap must recreate every required state/cache directory in one batch'
 directories_exec_count="$(grep -Fc 'Quickshell.execDetached([' "$directories")"
 [[ "$directories_exec_count" -eq 1 ]] || fail "Directories startup must use exactly one detached bootstrap command (found $directories_exec_count)"
+
+require "$conflict_killer" 'id: conflictProbe' 'conflict detection must use one consolidated startup probe'
+require "$conflict_killer" 'for comm in /proc/[0-9]*/comm; do' 'conflict detection must inspect process names without separate pidof helpers'
+require "$conflict_killer" 'mako|dunst) notifs=1 ;;' 'conflict detection must preserve notification-daemon detection'
+require "$conflict_killer" 'kded6) trays=1 ;;' 'conflict detection must preserve tray-conflict detection'
+reject "$conflict_killer" 'id: pidofTraysProc' 'conflict detection must not restore a dedicated tray pidof process'
+reject "$conflict_killer" 'id: pidofNotifsProc' 'conflict detection must not restore a dedicated notification pidof process'
 require "$overview_window" 'layer.enabled: GlobalStates.overviewOpen' 'retained Overview window masks must sleep while Overview is closed'
 require "$ii_panels" 'OnDemandPanelLoader { identifier: "iiOverview"; open: GlobalStates.overviewOpen; closeGraceMs: Appearance.animation.elementMoveExit.duration + 80;' 'ii Overview must unload after its exit animation instead of using long idle retention'
 reject "$ii_panels" 'identifier: "iiOverview"; open: GlobalStates.overviewOpen; retainAfterUse: true' 'ii Overview must not restore five-minute post-use residency'

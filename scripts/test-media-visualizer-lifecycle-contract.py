@@ -20,6 +20,7 @@ def main() -> None:
     equalizer = read("modules/mediaControls/EqualizerPanel.qml")
     player = read("modules/mediaControls/PlayerControl.qml")
     bar_player = read("modules/mediaControls/BarMediaPlayerItem.qml")
+    lock_player = read("modules/lock/LockMediaWidget.qml")
     dash = read("modules/dashboard/DashMedia.qml")
     compact = read("modules/sidebarRight/CompactMediaPlayer.qml")
     cava = read("modules/common/widgets/CavaProcess.qml")
@@ -118,6 +119,14 @@ def main() -> None:
         and "running: root.presentationActive" in bar_player
         and "triggeredOnStart: true" in bar_player,
         "BarMediaPlayerItem position polling must sleep while not presented",
+    )
+    check(
+        "readonly property bool presentationActive: GlobalStates.screenLocked" in lock_player
+        and "root.QsWindow.window?.visible ?? false" in lock_player
+        and "active: root.presentationActive && root.hasPlayer" in lock_player
+        and "running: root.presentationActive" in lock_player
+        and "triggeredOnStart: true" in lock_player,
+        "Lock media CAVA and position polling must sleep outside the presented lock screen",
     )
     check(
         "maxVisualizerValue: Math.max(1, root.visualizerMaxValue)" in player

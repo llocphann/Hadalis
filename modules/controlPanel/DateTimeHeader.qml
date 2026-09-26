@@ -11,10 +11,6 @@ Rectangle {
     Layout.fillWidth: true
     implicitHeight: dateTimeRow.implicitHeight + 24
     
-    // Reactive property to force date re-evaluation
-    property int _tick: 0
-    readonly property date _currentDate: { _tick; return new Date() }
-
     radius: Appearance.rounding.normal
     color: Appearance.colors.colLayer1
     border.width: 0
@@ -31,14 +27,14 @@ Rectangle {
             spacing: 2
 
             StyledText {
-                text: Qt.formatDateTime(root._currentDate, "dddd")
+                text: Qt.formatDateTime(DateTime.clock.date, "dddd")
                 font.pixelSize: Appearance.font.pixelSize.small
                 font.weight: Font.Medium
                 color: Appearance.colors.colPrimary
             }
 
             StyledText {
-                text: Qt.formatDateTime(root._currentDate, "MMMM d, yyyy")
+                text: Qt.formatDateTime(DateTime.clock.date, "MMMM d, yyyy")
                 font.pixelSize: Appearance.font.pixelSize.larger
                 font.weight: Font.Medium
                 color: Appearance.colors.colOnLayer1
@@ -60,11 +56,4 @@ Rectangle {
         }
     }
 
-    Timer {
-        interval: 60000  // Update every minute (day/date don't need second precision)
-        running: GlobalStates.controlPanelOpen
-        repeat: true
-        triggeredOnStart: true
-        onTriggered: root._tick++
-    }
 }

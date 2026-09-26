@@ -49,6 +49,10 @@ bar_resources="$repo_root/modules/bar/Resources.qml"
 vertical_bar_resources="$repo_root/modules/verticalBar/Resources.qml"
 recorder_status="$repo_root/services/RecorderStatus.qml"
 control_panel_media="$repo_root/modules/controlPanel/MediaSection.qml"
+date_time_header="$repo_root/modules/controlPanel/DateTimeHeader.qml"
+lock_surface="$repo_root/modules/lock/LockSurface.qml"
+waffle_lock="$repo_root/modules/waffle/lock/WaffleLockSurface.qml"
+waffle_lock_safe="$repo_root/modules/waffle/lock/WaffleLockSurfaceSafe.qml"
 weather="$repo_root/services/Weather.qml"
 keyboard_indicators="$repo_root/services/KeyboardIndicators.qml"
 sidebar_anime="$repo_root/modules/sidebarLeft/Anime.qml"
@@ -88,6 +92,12 @@ waffle_timer_button="$repo_root/modules/waffle/bar/TimerButton.qml"
 require "$config" 'property int framerate: 30' 'Cava schema default must remain 30 fps'
 require "$defaults" '"framerate": 30' 'persisted Cava default must remain 30 fps'
 require "$cava" 'Config.options?.appearance?.cava?.framerate ?? 30' 'Cava runtime fallback must remain 30 fps'
+require "$date_time_header" 'DateTime.clock.date' 'Control Panel date must use the shared SystemClock'
+reject "$date_time_header" 'onTriggered: root._tick++' 'Control Panel must not restore a duplicate minute timer'
+for lock_date_surface in "$lock_surface" "$waffle_lock" "$waffle_lock_safe"; do
+    require "$lock_date_surface" 'Qt.formatDate(DateTime.clock.date,' 'Lock dates must use the shared SystemClock'
+    reject "$lock_date_surface" 'onTriggered: dateText.text = Qt.formatDate(' 'Lock date labels must not restore private minute timers'
+done
 require "$cava_spectrum" 'function _curveHeadroom(top, bottom): real' 'CavaSpectrum must keep scalar edge geometry'
 reject "$cava_spectrum" 'function _surfaceBounds(' 'CavaSpectrum must not allocate surface arrays per sample'
 reject "$cava_spectrum" 'function _peakBounds(' 'CavaSpectrum must not allocate surface/peak arrays per sample'

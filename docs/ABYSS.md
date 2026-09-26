@@ -100,3 +100,26 @@ are part of this plan.
   Baseline is not green. Parser probing also skipped because `/usr/bin/qmlformat`
   version detection fails; the explicit `/usr/lib/qt6/bin/qmlformat` parser works.
 - Next: embedded content, bounded input, native bar, dock, sidebar and popup.
+
+
+## Embedded bar checkpoint (phase 3)
+
+Inspected the two orientation presets, workspace IDs/output resolution, tray
+interaction, MPRIS metadata and resource polling leases. Added `abyss/bar/*` and
+`AbyssButton`; the perimeter now hosts bar content and its five shallow bulges.
+Shared services are reused and no bar module owns a surface background. The
+transparent reservation includes the maximum 5 px bar bulge. Only the actual
+bar bounds receive input; the center stays empty.
+
+[GPU bar capture](evidence/abyss/phase3-bar.png) uses actual workspace, tray,
+MPRIS and clock data. Runtime testing caught a final `AbstractButton.icon`
+collision, then an `onSurface` token initialized as a handler-shaped name rather
+than the intended color. The API now uses `textColor`/`textColorMuted`; the runtime
+measured text contrast is 16.40:1 against the deep surface. Qt fonts and palette
+are inherited. Five-zone ordering/deduplication/visibility use the tested pure
+geometry policy. Resource consumers release their lease when hidden or destroyed.
+
+A pre-existing `DateTime.qml` missing-root-id warning was exposed by the capture
+and remains queued for an independent correction. Sidebar, dock and popup
+content are the next milestone; this checkpoint does not claim functional core
+acceptance yet. Native tray menus deliberately keep the existing shared control.

@@ -39,6 +39,8 @@ for (const scale of [1,1.25,1.5,2]) {
         }
     }
 }
+assert.deepEqual(barZones({left:['media','tray'],centerLeft:['media','resources'],center:['workspaces'],right:['sysTray','weather']},false,{resources:false}),[['media','tray'],[],['workspaces'],[],['weather']]);
+assert.deepEqual(barZones({top:['clock'],center:['workspaces'],bottom:['media']},true,{}),[['clock'],[],['workspaces'],[],['media']]);
 const host = require('node:fs').readFileSync('modules/abyss/AbyssPerimeter.qml','utf8');
 assert(host.includes('exclusionMode: ExclusionMode.Ignore'));
 assert(host.includes('exclusiveZone: 0'));

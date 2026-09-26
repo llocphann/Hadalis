@@ -5,6 +5,7 @@ import Quickshell.Wayland
 import qs
 import qs.services
 import qs.modules.common
+import qs.modules.abyss.bar
 import qs.modules.abyss.looks
 import "looks/AbyssGeometry.js" as Geometry
 
@@ -38,11 +39,24 @@ Scope {
             WlrLayershell.layer: WlrLayer.Top
             WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
             anchors { top: true; bottom: true; left: true; right: true }
-            mask: Region {}
+            Item { id: emptyInput; width: 0; height: 0 }
+            mask: Region { item: window.presented && bar.visible ? bar : emptyInput }
+            AbyssBar {
+                id: bar
+                outputName: window.outputName
+                edge: root.barEdge
+                visible: window.presented && root.barOnOutput(window.outputName)
+                x: edge === "right" ? window.width-width : 0
+                y: edge === "bottom" ? window.height-height : 0
+                width: vertical ? AbyssStyle.barThickness : window.width
+                height: vertical ? window.height : AbyssStyle.barThickness
+            }
             AbyssField {
+                z: -1
                 anchors.fill: parent
                 visible: window.presented
                 edgeInsets: root.outputInsets(window.outputName)
+                records: bar.visible ? bar.deformations.map(rec => Geometry.panel(window.width,window.height,edgeInsets,root.barEdge,rec.along+12,rec.span-24,rec.depth,1,0)) : []
             }
         }
     }
@@ -54,6 +68,7 @@ Scope {
         readonly property bool mapped: Config.ready && !GlobalStates.screenLocked
             && !GameMode.hasFullscreenOnOutput(modelData?.name ?? "")
         readonly property real thickness: root.outputInsets(modelData?.name ?? "")[edge]
+            + (root.barOnOutput(modelData?.name ?? "") && edge === root.barEdge ? 5 : 0)
         screen: modelData
         visible: mapped
         color: "transparent"

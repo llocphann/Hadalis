@@ -62,3 +62,16 @@ function distance(x, y, width, height, insets, radius, records, softness) {
     }
     return d;
 }
+
+function barZones(layout, vertical, modules) {
+    var keys=vertical ? ["top","centerTop","center","centerBottom","bottom"] : ["left","centerLeft","center","centerRight","right"];
+    var seen={};
+    return keys.map(function(key) {
+        return (layout[key] || []).map(function(id) { return id === "sysTray" ? "tray" : id; })
+            .filter(function(id) {
+                if (id === "spacer" || seen[id]) return false;
+                seen[id]=true;
+                return modules[id === "tray" ? "sysTray" : id] !== false;
+            });
+    });
+}

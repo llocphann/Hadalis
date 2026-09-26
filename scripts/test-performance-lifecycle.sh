@@ -93,6 +93,7 @@ shell_update_indicator="$repo_root/modules/bar/ShellUpdateIndicator.qml"
 util_buttons="$repo_root/modules/bar/UtilButtons.qml"
 waffle_system_button="$repo_root/modules/waffle/bar/SystemButton.qml"
 waffle_timer_button="$repo_root/modules/waffle/bar/TimerButton.qml"
+waffle_background_clock="$repo_root/modules/waffle/background/WaffleBackgroundClock.qml"
 
 require "$config" 'property int framerate: 30' 'Cava schema default must remain 30 fps'
 require "$defaults" '"framerate": 30' 'persisted Cava default must remain 30 fps'
@@ -101,6 +102,7 @@ require "$date_time_header" 'DateTime.clock.date' 'Control Panel date must use t
 reject "$date_time_service" 'cookie?.secondHandStyle' 'Cookie second hand must not force the global DateTime clock to 1 Hz'
 require "$clock_widget" 'readonly property bool cookieNeedsSeconds:' 'Background CookieClock must own its seconds demand'
 require "$clock_widget" 'clockSecond: displayClock.seconds' 'Background CookieClock seconds must stay local'
+require "$waffle_background_clock" '&& root.clockEnabled' 'Disabled Waffle clock must not keep a 1 Hz SystemClock'
 require "$cookie_clock" 'property int clockSecond: DateTime.clock.seconds' 'CookieClock must preserve the lock-screen fallback clock'
 reject "$date_time_header" 'onTriggered: root._tick++' 'Control Panel must not restore a duplicate minute timer'
 for lock_date_surface in "$lock_surface" "$waffle_lock" "$waffle_lock_safe"; do

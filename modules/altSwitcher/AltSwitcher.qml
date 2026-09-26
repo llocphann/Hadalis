@@ -125,6 +125,8 @@ Scope {
                 root.quickSwitchDone = false
                 root.noUiSnapshot = []
                 root.noUiIndex = 0
+                if (root.effectiveNoVisualUi && !GameMode.active)
+                    root.rebuildNoUiSnapshot()
             }
         }
     }
@@ -1905,22 +1907,30 @@ Scope {
         }
     }
     
-    Timer {
-        id: noUiSnapshotUpdateTimer
-        interval: GameMode.active ? 10000 : 3000
-        repeat: true
-        running: root.effectiveNoVisualUi && !GlobalStates.altSwitcherOpen
-        onTriggered: {
-            if (GameMode.active) return
-            
-            if (NiriService.windows?.length > 0) {
-                Qt.callLater(function() {
-                    const windows = NiriService.windows || []
-                    const workspaces = NiriService.workspaces || {}
-                    const mruIds = NiriService.mruWindowIds || []
-                    root.noUiSnapshot = buildItemsFrom(windows, workspaces, mruIds)
-                })
-            }
+    onEffectiveNoVisualUiChanged: {
+        if (root.effectiveNoVisualUi && !GlobalStates.altSwitcherOpen && !GameMode.active) {
+            root.rebuildNoUiSnapshot()
+        } else if (!root.effectiveNoVisualUi) {
+            root.noUiSnapshot = []
+            root.noUiIndex = 0
+        }
+    }
+
+    Connections {
+        target: NiriService
+        enabled: root.effectiveNoVisualUi && !GlobalStates.altSwitcherOpen && !GameMode.active
+
+        function onWindowsChanged() { root.rebuildNoUiSnapshot() }
+        function onWorkspacesChanged() { root.rebuildNoUiSnapshot() }
+        function onMruWindowIdsChanged() { root.rebuildNoUiSnapshot() }
+    }
+
+    Connections {
+        target: GameMode
+
+        function onActiveChanged() {
+            if (!GameMode.active && root.effectiveNoVisualUi && !GlobalStates.altSwitcherOpen)
+                root.rebuildNoUiSnapshot()
         }
     }
 

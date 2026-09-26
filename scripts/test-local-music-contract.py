@@ -75,6 +75,7 @@ for token in (
     'id: nowPlayingPanel',
     'player: LocalMusic.mprisPlayer',
     'visualizerPoints: localMusicCava.points',
+    'active: root.visible && GlobalStates.sidebarLeftOpen',
     'LocalMusic.localLyricsLines',
     'readonly property var songEntries: root.buildSongEntries()',
     'property var selectedTrackKeys: []',

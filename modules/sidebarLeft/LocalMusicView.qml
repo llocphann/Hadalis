@@ -365,7 +365,8 @@ Item {
 
     CavaProcess {
         id: localMusicCava
-        active: root.visible && LocalMusic.playing
+        active: root.visible && GlobalStates.sidebarLeftOpen
+            && LocalMusic.playing
         sampleCount: 64
     }
 

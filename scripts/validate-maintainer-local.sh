@@ -256,28 +256,27 @@ run_shell_regression() {
 }
 
 probe_qml_parser() {
-    local parser='' candidate version_text parser_version major minor
+    local parser='' candidate qt_version major minor
     for candidate in qmlformat qmlformat6 /usr/lib/qt6/bin/qmlformat /usr/lib/x86_64-linux-gnu/qt6/bin/qmlformat; do
         if [[ "$candidate" == /* ]]; then [[ -x "$candidate" ]] && { parser="$candidate"; break; }
         elif command -v "$candidate" >/dev/null 2>&1; then parser="$(command -v "$candidate")"; break
         fi
     done
     if [[ -z "$parser" ]]; then
-        (( strict_qml == 1 )) && { qml_parser_status='QML parser: FAIL (qmlformat unavailable; strict mode requires >= 6.8)'; return 1; }
+        (( strict_qml == 1 )) && { qml_parser_status='QML parser: FAIL (qmlformat unavailable; strict mode requires Qt >= 6.8)'; return 1; }
         qml_parser_status='QML parser: SKIPPED (qmlformat unavailable)'; record_skip 'QML parser pass (qmlformat unavailable)'; return 0
     fi
-    version_text="$($parser --version 2>&1 || true)"
-    parser_version="$(grep -oE '[0-9]+\.[0-9]+(\.[0-9]+)?' <<<"$version_text" | head -n1)"
-    if [[ -z "$parser_version" ]]; then
-        (( strict_qml == 1 )) && { qml_parser_status="QML parser: FAIL ($parser version unknown; strict mode requires >= 6.8)"; return 1; }
-        qml_parser_status="QML parser: SKIPPED ($parser; version unknown)"; record_skip "QML parser pass ($parser version could not be determined)"; return 0
+    qt_version="$(bash scripts/lib/qml-parser-qt-version.sh "$parser" 2>/dev/null || true)"
+    if [[ -z "$qt_version" ]]; then
+        (( strict_qml == 1 )) && { qml_parser_status="QML parser: FAIL ($parser Qt version unknown; strict mode requires >= 6.8)"; return 1; }
+        qml_parser_status="QML parser: SKIPPED ($parser; Qt version unknown)"; record_skip "QML parser pass ($parser Qt version could not be determined)"; return 0
     fi
-    IFS=. read -r major minor _ <<<"$parser_version"
+    IFS=. read -r major minor _ <<<"$qt_version"
     if (( major * 100 + minor < 608 )); then
-        (( strict_qml == 1 )) && { qml_parser_status="QML parser: FAIL (qmlformat $parser_version < required 6.8)"; return 1; }
-        qml_parser_status="QML parser: SKIPPED (qmlformat $parser_version is below required 6.8)"; record_skip "QML parser pass (qmlformat $parser_version too old; need >= 6.8)"; return 0
+        (( strict_qml == 1 )) && { qml_parser_status="QML parser: FAIL (Qt $qt_version via qmlformat < required 6.8)"; return 1; }
+        qml_parser_status="QML parser: SKIPPED (Qt $qt_version via qmlformat is below required 6.8)"; record_skip "QML parser pass (Qt $qt_version too old; need >= 6.8)"; return 0
     fi
-    qml_parser_status="QML parser: AVAILABLE (qmlformat $parser_version; parser pass runs inside qml-check)"
+    qml_parser_status="QML parser: AVAILABLE (qmlformat on Qt $qt_version; parser pass runs inside qml-check)"
 }
 run_qml_guards() {
     local output rc

@@ -26,6 +26,7 @@ import Quickshell.Wayland
 import qs
 import qs.services
 import qs.modules.common
+import qs.modules.common.perimeter
 import qs.modules.common.widgets
 
 Item {
@@ -213,7 +214,7 @@ Item {
     OnDemandPanelLoader { identifier: "iiWallpaperSelector"; open: GlobalStates.wallpaperSelectorOpen; retainAfterUse: true; closeGraceMs: 250; component: WallpaperSelector {} }
     OnDemandPanelLoader { identifier: "iiWallpaperLauncher"; open: GlobalStates.wallpaperLauncherOpen; closeGraceMs: Appearance.animationsEnabled ? Math.max(240, Appearance.animation.elementMoveExit.duration + 60) : 40; component: WallpaperLauncher {} }
     OnDemandPanelLoader { identifier: "iiCoverflowSelector"; open: GlobalStates.coverflowSelectorOpen; retainAfterUse: true; closeGraceMs: 300; component: WallpaperCoverflow {} }
-    OnDemandPanelLoader { identifier: "iiClipboard"; open: GlobalStates.clipboardOpen; retainAfterUse: true; closeGraceMs: 250; component: ClipboardModule.ClipboardPanel {} }
+    OnDemandPanelLoader { identifier: "iiClipboard"; open: GlobalStates.clipboardOpen; closeGraceMs: Appearance.animationsEnabled ? SurfaceMotion.duration + 48 : 40; component: ClipboardModule.ClipboardPanel {} }
     OnDemandPanelLoader { identifier: "iiShellUpdate"; open: ShellUpdates.overlayOpen; closeGraceMs: 250; component: ShellUpdateOverlay {} }
     OnDemandPanelLoader { identifier: "iiRecordingOsd"; open: RecorderStatus.isRecording; closeGraceMs: 250; component: RecordingOsd {} }
 

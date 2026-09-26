@@ -95,6 +95,7 @@ levendist="$repo_root/modules/common/functions/levendist.js"
 emojis="$repo_root/services/deferred/Emojis.qml"
 app_search="$repo_root/services/AppSearch.qml"
 cliphist="$repo_root/services/deferred/Cliphist.qml"
+clipboard_panel="$repo_root/modules/clipboard/ClipboardPanel.qml"
 emojis_service="$repo_root/services/deferred/Emojis.qml"
 loading_indicator="$repo_root/modules/common/widgets/MaterialLoadingIndicator.qml"
 circular_progress="$repo_root/modules/common/widgets/CircularProgress.qml"
@@ -419,6 +420,9 @@ require "$levendist" 'levenshteinDistance(shortS, sub, rows)' 'partial fuzzy mat
 
 require "$cliphist" 'const searchLower = search.toLowerCase()' 'Clipboard sloppy search must lowercase the query once'
 require "$cliphist" 'root._insertTopScored(top,' 'Clipboard bounded sloppy search must avoid full sorting'
+require "$clipboard_panel" 'interval: Appearance.animationsEnabled ? SurfaceMotion.duration + 16 : 1' 'Clipboard native window must stay mapped through the full connected-surface exit'
+require "$ii_panels" 'identifier: "iiClipboard"; open: GlobalStates.clipboardOpen; closeGraceMs: Appearance.animationsEnabled ? SurfaceMotion.duration + 48 : 40;' 'ii Clipboard outer loader must outlive its close animation then release'
+reject "$ii_panels" 'identifier: "iiClipboard"; open: GlobalStates.clipboardOpen; retainAfterUse: true' 'ii Clipboard must not restore five-minute hidden residency'
 require "$emojis_service" 'const searchLower = search.toLowerCase()' 'Emoji sloppy search must lowercase the query once'
 require "$emojis_service" 'root._insertTopScored(top,' 'Emoji bounded sloppy search must avoid full sorting'
 require "$emojis" 'function _ensurePreparedEntries(): var' 'Emoji fuzzy index must stay lazy'

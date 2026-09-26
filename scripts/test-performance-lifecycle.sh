@@ -42,6 +42,7 @@ tlp_caps="$repo_root/services/TlpRuntimeCapabilities.qml"
 tlp_settings="$repo_root/services/TlpSettingsService.qml"
 power_profiles="$repo_root/services/PowerProfilePersistence.qml"
 world_clock="$repo_root/services/WorldClock.qml"
+sidebar_world_clock="$repo_root/modules/sidebarLeft/widgets/WorldClockWidget.qml"
 game_mode="$repo_root/services/GameMode.qml"
 overview_window="$repo_root/modules/overview/OverviewWindow.qml"
 resource_usage="$repo_root/services/ResourceUsage.qml"
@@ -211,6 +212,10 @@ reject "$world_clock" 'interval: 1000' 'WorldClock must not restore a 1 Hz backg
 require "$world_clock" 'printf '\''%(%z)T\\n'\'' -1' 'WorldClock offset refresh must use one shell process with builtin timezone formatting'
 reject "$world_clock" 'date +%z' 'WorldClock must not spawn one date child per timezone'
 reject "$world_clock" 'environment: ({ TZ:' 'WorldClock must not restore one date process per timezone'
+require "$sidebar_world_clock" 'printf '\''%s|%(' 'Sidebar World Clock must format zones with Bash builtin printf'
+require "$sidebar_world_clock" 'command.push(String(tzs[i]))' 'Sidebar World Clock must pass timezone names as argv'
+reject "$sidebar_world_clock" ' date '\''+' 'Sidebar World Clock must not spawn one date child per timezone'
+require "$sidebar_world_clock" 'root._formatOffset(rest[1])' 'Sidebar World Clock must preserve colonized UTC offsets'
 require "$game_mode" 'Math.max(10000, Math.round(configured))' 'GameMode fallback polling must remain low cadence'
 require "$overview_window" 'layer.enabled: GlobalStates.overviewOpen' 'retained Overview window masks must sleep while Overview is closed'
 require "$resource_usage" '? Math.max(6000, root._configuredUpdateIntervalMs)' 'Low Power must slow resource sampling to at least 6 seconds'

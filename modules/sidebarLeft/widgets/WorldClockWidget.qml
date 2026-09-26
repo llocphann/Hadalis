@@ -93,14 +93,23 @@ Item {
         const timeFmt = use24Hour
             ? (showSeconds ? "%H:%M:%S" : "%H:%M")
             : (showSeconds ? "%I:%M:%S %p" : "%I:%M %p")
-        // One shell pass: emit "tz|time|offset|date|doy|hour24" per line.
-        let script = ""
-        for (let i = 0; i < tzs.length; i++) {
-            const tz = tzs[i]
-            script += `printf '%s|%s\\n' "${tz}" "$(TZ='${tz}' date '+${timeFmt}|%:z|%a %d %b|%j|%H')"\n`
-        }
-        clockProcess.command = ["/usr/bin/bash", "-c", script]
+        // Pass zone names as argv rather than shell source. Bash printf's
+        // %(...)T formatter uses strftime internally, so this stays one OS
+        // process per refresh instead of spawning one date child per zone.
+        const script = "for tz; do TZ=\"$tz\" printf '%s|%("
+            + timeFmt + "|%z|%a %d %b|%j|%H)T\\n' \"$tz\" -1; done"
+        const command = ["/usr/bin/bash", "-c", script, "world-clock-widget"]
+        for (let i = 0; i < tzs.length; ++i)
+            command.push(String(tzs[i]))
+        clockProcess.command = command
         clockProcess.running = true
+    }
+
+    function _formatOffset(value): string {
+        const raw = String(value ?? "")
+        return /^[+-]\\d{4}$/.test(raw)
+            ? raw.slice(0, 3) + ":" + raw.slice(3)
+            : raw
     }
 
     Process {
@@ -122,7 +131,7 @@ Item {
                     if (tz === root.systemTz) localDoy = doy
                     data[tz] = {
                         time: rest[0],
-                        offset: rest[1],
+                        offset: root._formatOffset(rest[1]),
                         date: rest[2],
                         doy: doy,
                         hour24: parseInt(rest[4])

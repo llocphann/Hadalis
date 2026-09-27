@@ -2452,7 +2452,8 @@ Scope {
                                 RippleButton {
                                     id: quickWidgetButton
                                     required property var modelData
-                                    readonly property bool widgetEnabled: bgRoot._widgetEnabled(modelData.key, modelData.defaultOn)
+                                    // Repeater delegates can outlive their window's QML context during teardown.
+                                    readonly property bool widgetEnabled: bgRoot?._widgetEnabled(modelData.key, modelData.defaultOn) ?? false
                                     width: 36; height: 36
                                     buttonRadius: Appearance.rounding.full
                                     toggled: widgetEnabled

@@ -12,6 +12,12 @@ Item {
     required property string kind
     required property string outputName
     property bool vertical: false
+    property bool compact: false
+    readonly property bool hovered: hoverTracker.hovered
+    readonly property bool pressed: pressTracker.active
+    signal interaction(real strength)
+    HoverHandler { id: hoverTracker; onHoveredChanged: root.interaction(hovered ? 0.35 : -0.15) }
+    PointHandler { id: pressTracker; acceptedButtons: Qt.LeftButton; onActiveChanged: root.interaction(active ? 1 : -0.3) }
     signal request(string kind)
     property bool resourceLease: false
     function syncResources(): void {
@@ -70,7 +76,7 @@ Item {
         AbyssButton {
             text: root.vertical && root.kind === "clock" ? root.label.replace(/:/g,"\n") : root.label
             glyph: root.vertical && root.kind === "clock" ? "" : root.icon
-            compact: root.vertical && root.kind !== "clock"
+            compact: root.compact || (root.vertical && root.kind !== "clock")
             font.pixelSize: root.vertical && root.kind === "clock" ? AbyssStyle.fontSize*0.8 : AbyssStyle.fontSize
             description: root.label || root.kind
             onClicked: {

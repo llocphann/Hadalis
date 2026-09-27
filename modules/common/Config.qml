@@ -473,6 +473,14 @@ Singleton {
                     property real tension: 0.5
                     property int softness: 24
                 }
+                property JsonObject modules: JsonObject {
+                    property bool configured: false
+                    property list<var> placements: []
+                    property list<var> outputLayouts: []
+                    property real gap: 8
+                    property real size: 1
+                    property real depth: 36
+                }
                 property JsonObject motion: JsonObject { property real intensity: 0.6 }
                 property JsonObject effects: JsonObject {
                     property JsonObject blur: JsonObject { property bool enabled: true; property int radius: 10 }

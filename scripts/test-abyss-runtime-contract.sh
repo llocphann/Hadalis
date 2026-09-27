@@ -23,6 +23,7 @@ import Quickshell
 import qs
 import qs.modules.common
 import qs.modules.abyss
+import qs.modules.abyss.bar
 ShellRoot {
     property int step: 0
     property bool failed: false
@@ -36,6 +37,7 @@ ShellRoot {
     Loader { id: deferred; source: "modules/abyss/ShellAbyssPanelsImpl.qml" }
     AbyssSurfaceController { id: firstOutput; outputName: "DP-test" }
     AbyssSurfaceController { id: secondOutput; outputName: "DP-other" }
+    AbyssBar { id: moduleLayer; outputName: "DP-test"; edge: "top"; width: 1000; height: 700 }
     Item {
         width: 1000; height: 700
         AbyssBodyHost {
@@ -71,6 +73,9 @@ ShellRoot {
                 if (!check(!body.ready && body.record.surface.width === 0,"retracted host unload")) return
                 if (!check(firstOutput.records.length === 0,"registry retracts with body")) return
                 body.controller = secondOutput
+                moduleLayer.draftPlacements = [
+                    {id:"clock",kind:"clock",edge:"top",position:.4,enabled:true,size:1,depth:1,influence:1},
+                    {id:"media",kind:"media",edge:"right",position:.5,enabled:true,size:1,depth:1,influence:1}]
                 Config.setNestedValue("performance.reduceAnimations",true)
                 body.open = true
             } else if (step === 5) {
@@ -81,6 +86,9 @@ ShellRoot {
                 if (!check(body.progress === 0,"reduced motion closes synchronously")) return
             } else if (step === 7) {
                 if (!check(!body.ready,"reopen unload")) return
+                if (!check(moduleLayer.layoutRecords.length === 2 && moduleLayer.inputRegions.length === 2,"module-only input regions follow cross-edge placement")) return
+                if (!check(moduleLayer.deformations.length === 2,"each module owns a deformation")) return
+                if (!check(moduleLayer.inputRegions.every(region => region.item.width <= 200 && region.item.height <= 100),"no fullscreen module input")) return
                 console.info("ABYSS_RUNTIME_PASS")
                 Qt.quit()
             }

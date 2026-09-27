@@ -109,6 +109,7 @@ Singleton {
 
     property string abyssPopupKind: ""
     property string abyssPopupTargetOutput: ""
+    property string abyssPopupEdge: ""
     property real abyssPopupAlong: 0
     property string abyssClipboardTargetOutput: ""
     property bool mediaControlsOpen: false

@@ -8,6 +8,7 @@ import qs.modules.common
 import qs.modules.abyss.bar
 import qs.modules.abyss.looks
 import "looks/AbyssGeometry.js" as Geometry
+import "looks/AbyssLayout.js" as ModuleLayout
 
 Scope {
     id: root
@@ -30,7 +31,14 @@ Scope {
             && Geometry.targets(name, Config.options?.bar?.screenList ?? [], Quickshell.screens.map(s => s.name))
     }
     function outputInsets(name, reservation = false) {
-        return Geometry.insets(AbyssStyle.perimeterThickness, root.barEdge, AbyssStyle.barThickness, root.barOnOutput(name) && (!reservation || !(Config.options?.bar?.autoHide?.enable ?? false)))
+        const result = Geometry.insets(AbyssStyle.perimeterThickness,root.barEdge,AbyssStyle.perimeterThickness,false)
+        if (!root.barOnOutput(name) || (reservation && (Config.options?.bar?.autoHide?.enable ?? false))) return result
+        const screen = Quickshell.screens.find(s => s.name === name)
+        const vertical = !Geometry.horizontal(root.barEdge)
+        const zones = Geometry.barZones((vertical ? Config.options?.bar?.verticalLayout : Config.options?.bar?.layout) ?? {},vertical,Config.options?.bar?.modules ?? {})
+        const placements = ModuleLayout.resolve(Config.options?.abyss?.modules,name,ModuleLayout.seed(zones,root.barEdge,screen?.width ?? 1920,screen?.height ?? 1080))
+        placements.filter(p => p.enabled).forEach(p => result[p.edge] = Math.max(result[p.edge],48))
+        return result
     }
     Connections {
         target: GlobalStates
@@ -69,7 +77,7 @@ Scope {
             anchors { top: true; bottom: true; left: true; right: true }
             Item { id: emptyInput; width: 0; height: 0 }
             mask: Region {
-                Region { item: window.presented && field.ready && bar.visible ? bar : emptyInput }
+                Region { regions: window.presented && field.ready && bar.visible ? bar.inputRegions : [] }
                 Region { item: window.presented && revealTrigger.visible ? revealTrigger : emptyInput }
                 Region { item: window.presented && dockTrigger.visible ? dockTrigger : emptyInput }
                 Region { x: leftPanel.inputBounds.x; y: leftPanel.inputBounds.y; width: window.presented && field.ready ? leftPanel.inputBounds.width : 0; height: leftPanel.inputBounds.height }
@@ -100,18 +108,16 @@ Scope {
                 outputName: window.outputName
                 edge: root.barEdge
                 visible: window.presented && field.ready && root.barOnOutput(window.outputName)
-                x: edge === "right" ? window.width-width : 0
-                y: edge === "bottom" ? window.height-height : 0
-                width: vertical ? AbyssStyle.barThickness : window.width
-                height: vertical ? window.height : AbyssStyle.barThickness
+                anchors.fill: parent
                 HoverHandler { id: barHover; onHoveredChanged: { if (hovered) { barClose.stop(); root.setBarRevealed(window.outputName,true) } else barClose.restart() } }
-                onPopupRequested: (kind,along) => {
+                onPopupRequested: (kind,edge,along) => {
                     const same = (GlobalStates.abyssPopupKind === kind || (kind === "media" && GlobalStates.mediaControlsOpen))
                         && GlobalStates.abyssPopupTargetOutput === window.outputName
                     window.closePopup()
                     if (!same) {
                         GlobalStates.abyssPopupTargetOutput = window.outputName
                         GlobalStates.abyssPopupAlong = along
+                        GlobalStates.abyssPopupEdge = edge
                         if (kind === "media") GlobalStates.mediaControlsOpen = true
                         else GlobalStates.abyssPopupKind = kind
                     }
@@ -137,12 +143,11 @@ Scope {
                 enabled: AbyssStyle.motionEnabled
                 NumberAnimation { duration: AbyssStyle.motionNormal; easing.type: Easing.OutCubic }
             }
-            readonly property var nativeInsets: Geometry.insets(AbyssStyle.perimeterThickness,root.barEdge,
-                AbyssStyle.perimeterThickness+(AbyssStyle.barThickness-AbyssStyle.perimeterThickness)*barProgress,barProgress > 0.001)
+            readonly property var nativeInsets: Geometry.insets(AbyssStyle.perimeterThickness,root.barEdge,AbyssStyle.perimeterThickness,false)
             AbyssSurfaceController {
                 id: liquid
                 outputName: window.outputName
-                moduleRecords: bar.visible ? bar.deformations.map(rec => Geometry.panel(window.width,window.height,window.nativeInsets,root.barEdge,rec.along+12,rec.span-24,rec.depth,1,0)) : []
+                moduleRecords: bar.visible ? bar.deformations : []
             }
             readonly property var sideObstacles: [leftPanel,rightPanel].filter(body => body.progress > 0.001).map(body => body.record)
             AbyssBodyHost {
@@ -186,7 +191,7 @@ Scope {
                 identity: "popup"
                 controller: liquid
                 anchors.fill: parent
-                edge: root.barEdge
+                edge: GlobalStates.abyssPopupEdge || root.barEdge
                 outputName: window.outputName
                 open: window.presented && field.ready && (Config.options?.enabledPanels ?? []).includes("abyssPopup")
                     && (GlobalStates.abyssPopupKind.length > 0 || GlobalStates.mediaControlsOpen)

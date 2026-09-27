@@ -2055,6 +2055,14 @@
             "tension": 0.5,
             "softness": 24
         },
+        "modules": {
+            "configured": false,
+            "placements": [],
+            "outputLayouts": [],
+            "gap": 8,
+            "size": 1,
+            "depth": 36
+        },
         "motion": {
             "intensity": 0.6
         },

@@ -1002,7 +1002,12 @@ Item {
         return result
     }
 
-    function _layoutHasOverlap(rects) {
+    function _sameRect(a, b) {
+        return a && b && ["x", "y", "width", "height"].every(
+            key => Math.abs(a[key] - b[key]) < 0.001)
+    }
+
+    function _layoutHasOverlap(rects, baselineRects) {
         const ids = []
         for (let i = 0; i < root.visibleIds.length; ++i) {
             const id = String(root.visibleIds[i])
@@ -1011,9 +1016,16 @@ Item {
         }
         for (let i = 0; i < ids.length; ++i) {
             for (let j = i + 1; j < ids.length; ++j) {
-                if (root._rectsOverlap(rects[ids[i]], rects[ids[j]],
-                        root.collisionGap))
-                    return true
+                if (!root._rectsOverlap(rects[ids[i]], rects[ids[j]],
+                        root.collisionGap)) continue
+                // Old saved layouts can overlap after minimum-size clamping.
+                // An unchanged pair elsewhere must not freeze this interaction.
+                // Any moved/resized pair still obeys the full collision contract.
+                if (baselineRects
+                        && root._sameRect(rects[ids[i]], baselineRects[ids[i]])
+                        && root._sameRect(rects[ids[j]], baselineRects[ids[j]]))
+                    continue
+                return true
             }
         }
         return false
@@ -1033,14 +1045,16 @@ Item {
         const desired = root._resolveLayout(
             activeId, desiredRect, baselineRects, allowResize,
             localResizeOnly)
-        if (!root._layoutHasOverlap(desired))
+        if (!root._layoutHasOverlap(desired, baselineRects))
             return desired
 
         // If neighbours have reached their minimums/bounds, clamp the active
         // interaction to the last feasible point rather than allowing overlap.
-        let best = root._resolveLayout(
-            activeId, startRect, baselineRects, allowResize,
-            localResizeOnly)
+        // Never publish an infeasible insertion, even when the initial saved
+        // layout has unrelated overlaps or every free region is exhausted.
+        let best = ({})
+        for (const id of root.visibleIds)
+            best[id] = root._cloneRect(baselineRects[id])
         let low = 0
         let high = 1
         for (let i = 0; i < 8; ++i) {
@@ -1050,7 +1064,7 @@ Item {
             const probe = root._resolveLayout(
                 activeId, probeRect, baselineRects, allowResize,
                 localResizeOnly)
-            if (root._layoutHasOverlap(probe)) {
+            if (root._layoutHasOverlap(probe, baselineRects)) {
                 high = mid
             } else {
                 low = mid

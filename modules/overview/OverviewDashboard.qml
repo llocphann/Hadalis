@@ -219,7 +219,7 @@ Item {
             Math.max(1, dashContainer.width - 32))
         x: Math.round(dashContainer.x
             + (dashContainer.width - width) / 2)
-        y: Math.round(dashContainer.y - height + 1)
+        y: root.embeddedSurface ? 0 : Math.round(dashContainer.y - height + 1)
     }
 
     Rectangle {
@@ -230,9 +230,10 @@ Item {
             horizontalCenter: parent.horizontalCenter
             bottom: root.directBottomAttachment ? parent.bottom : undefined
             verticalCenter: root.directBottomAttachment ? undefined : parent.verticalCenter
+            verticalCenterOffset: root.embeddedSurface ? root.editToolbarReserve / 2 : 0
         }
         width: root.embeddedSurface ? root.width : root.dashboardWidth
-        height: root.embeddedSurface ? root.height : root.presentingSearch
+        height: root.embeddedSurface ? Math.max(0, root.height - root.editToolbarReserve) : root.presentingSearch
             ? root.searchOnlyHeight : root.configuredHeight
         radius: Appearance.rounding.large
         topLeftRadius: radius
@@ -256,7 +257,7 @@ Item {
             x: 12
             y: 12
             width: Math.max(0, dashContainer.width - 24)
-            height: root.embeddedSurface ? Math.max(0,root.height-searchWidget.collapsedHeight-36) : root.dashboardContentHeight
+            height: root.embeddedSurface ? Math.max(0,dashContainer.height-searchWidget.collapsedHeight-36) : root.dashboardContentHeight
             clip: true
             visible: root.dashboardOpacity > 0.001
             opacity: root.dashboardOpacity

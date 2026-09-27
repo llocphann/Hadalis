@@ -227,7 +227,7 @@ def main() -> None:
     require(overview,
         "x: Math.round(dashContainer.x", "OverviewDashboard.qml")
     require(overview,
-        "y: Math.round(dashContainer.y - height + 1)", "OverviewDashboard.qml")
+        "y: root.embeddedSurface ? 0 : Math.round(dashContainer.y - height + 1)", "OverviewDashboard.qml")
     require(overview,
         "dashboardEditToolbar.implicitWidth", "OverviewDashboard.qml")
     require(standalone,

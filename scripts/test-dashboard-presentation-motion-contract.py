@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 """Regression contract for Dashboard entry slide and Dashboard/Search fade-through."""
 from pathlib import Path
+import re
+import subprocess
 
 ROOT = Path(__file__).resolve().parents[1]
 dashboard = (ROOT / "modules/overview/OverviewDashboard.qml").read_text(encoding="utf-8")
@@ -47,7 +49,6 @@ for token in (
     "if (!root.searching)",
     "if (root.searching && searchWidget.resultsReady)",
     "root._searchSessionPresented = true",
-    "height: root.presentingSearch",
 ):
     require(dashboard, token, "Dashboard/Search readiness")
 forbid(
@@ -73,6 +74,11 @@ forbid(
     "resultsOpacity: 1 - root.dashboardProgress",
     "Dashboard/Search fade-through",
 )
+
+# Execute the actual height contract in both hosts; embedded ownership must not
+# alter the existing Material dashboard/search sizes.
+height_binding = re.search(r"height: (root.embeddedSurface \? root.height : root.presentingSearch\s*\? root.searchOnlyHeight : root.configuredHeight)", dashboard).group(1)
+subprocess.run(["node","-e","const assert=require('node:assert/strict'); const root={embeddedSurface:false,presentingSearch:false,height:600,searchOnlyHeight:280,configuredHeight:800}; function height(){return "+height_binding+";} assert.equal(height(),800); root.presentingSearch=true; assert.equal(height(),280); root.embeddedSurface=true; assert.equal(height(),600);"],check=True)
 
 if failures:
     print("Dashboard presentation motion contract regression(s):")

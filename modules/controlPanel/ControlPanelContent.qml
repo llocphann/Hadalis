@@ -10,6 +10,7 @@ Item {
 
     property int screenWidth: 1920
     property int screenHeight: 1080
+    property bool embeddedSurface: false
     readonly property bool compactMode: Config.options?.controlPanel?.compactMode ?? true
     readonly property bool islandStyle:
         (Config.options?.controlPanel?.style ?? "panel") === "island"
@@ -55,12 +56,12 @@ Item {
 
     StyledRectangularShadow {
         target: background
-        visible: !root.islandStyle && !Appearance.gameModeMinimal
+        visible: !root.embeddedSurface && !root.islandStyle && !Appearance.gameModeMinimal
     }
 
     RicelinSurface {
         anchors.fill: background
-        visible: root.islandStyle
+        visible: !root.embeddedSurface && root.islandStyle
         glassEnabled: true
         screen: root.QsWindow?.window?.screen ?? null
     }
@@ -72,11 +73,11 @@ Item {
         anchors.top: parent.top
         implicitHeight: flickable.contentHeight + (root.compactMode ? 20 : 24)
 
-        color: root.islandStyle ? "transparent" : Appearance.colors.colLayer0
+        color: root.embeddedSurface || root.islandStyle ? "transparent" : Appearance.colors.colLayer0
         radius: root.islandStyle
             ? (Config.options?.appearance?.island?.radius ?? 18)
             : Appearance.rounding.large
-        border.width: root.islandStyle ? 0 : 1
+        border.width: root.embeddedSurface || root.islandStyle ? 0 : 1
         border.color: Appearance.colors.colLayer0Border
         clip: true
 

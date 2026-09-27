@@ -23,8 +23,6 @@ Item {
         source: "../polkit/Polkit.qml"
     }
     DemandPanel { identifier: "iiOverlay"; open: GlobalStates.overlayOpen || OverlayContext.hasPinnedWidgets || OverlayContext.nativeDialogOpen; source: "../ii/overlay/Overlay.qml" }
-    DemandPanel { identifier: "iiControlPanel"; open: GlobalStates.controlPanelOpen; source: "../controlPanel/ControlPanel.qml" }
-    DemandPanel { identifier: "iiDashboard"; open: GlobalStates.dashboardOpen; source: "../dashboard/Dashboard.qml" }
     DemandPanel { identifier: "abyssSessionScreen"; open: GlobalStates.sessionOpen; source: "../sessionScreen/SessionScreen.qml" }
     DemandPanel { identifier: "iiRegionSelector"; open: GlobalStates.regionSelectorOpen; source: "../regionSelector/RegionSelector.qml" }
     DemandPanel { identifier: "iiTilingOverlay"; open: GlobalStates.tilingOverlayPickerOpen || GlobalStates.tilingOverlayOsdOpen; source: "../tilingOverlay/TilingOverlay.qml" }

@@ -12,6 +12,7 @@ import "looks/AbyssLayout.js" as ModuleLayout
 
 Scope {
     id: root
+    property string largeTargetOutput: GlobalStates.resolveOutputName("",[])
     property var revealedBars: ({})
     function setBarRevealed(name, value): void {
         const next = Object.assign({},revealedBars)
@@ -42,6 +43,8 @@ Scope {
     }
     Connections {
         target: GlobalStates
+        function onDashboardOpenChanged(): void { if (GlobalStates.dashboardOpen) root.largeTargetOutput = GlobalStates.resolveOutputName("",[]) }
+        function onControlPanelOpenChanged(): void { if (GlobalStates.controlPanelOpen) root.largeTargetOutput = GlobalStates.resolveOutputName("",[]) }
         function onOverviewOpenChanged(): void { if (GlobalStates.overviewOpen) GlobalStates.clipboardOpen = false }
         function onClipboardOpenChanged(): void {
             if (GlobalStates.clipboardOpen) {
@@ -68,15 +71,18 @@ Scope {
             exclusionMode: ExclusionMode.Ignore
             exclusiveZone: 0
             WlrLayershell.namespace: "hadalis:abyss-perimeter"
-            WlrLayershell.layer: GlobalStates.settingsNativeDialogOpen ? WlrLayer.Bottom : PolkitService.active ? WlrLayer.Top : (settings.open || (window.fullscreenCovered && window.presented)) ? WlrLayer.Overlay : WlrLayer.Top
-            WlrLayershell.keyboardFocus: !window.presented || !field.ready || GlobalStates.regionSelectorOpen || GlobalStates.settingsNativeDialogOpen || PolkitService.active
+            WlrLayershell.layer: GlobalStates.settingsNativeDialogOpen ? WlrLayer.Bottom : PolkitService.active ? WlrLayer.Top : (settings.open || dashboardBody.open || controls.open || (window.fullscreenCovered && window.presented)) ? WlrLayer.Overlay : WlrLayer.Top
+            WlrLayershell.keyboardFocus: !window.presented || !field.ready || GlobalStates.regionSelectorOpen || GlobalStates.settingsNativeDialogOpen || PolkitService.active || window.overviewDragging
                 ? WlrKeyboardFocus.None
-                : ((aux.open && aux.ready) || (settings.open && settings.ready)) ? WlrKeyboardFocus.Exclusive
+                : ((aux.open && aux.ready) || (settings.open && settings.ready) || (dashboardBody.open && dashboardBody.ready) || (controls.open && controls.ready)) ? WlrKeyboardFocus.Exclusive
                 : ((leftPanel.open && leftPanel.ready) || (rightPanel.open && rightPanel.ready) || (popup.open && popup.ready) || (notification.open && notification.ready && notification.contentKind === "center"))
                     ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
             anchors { top: true; bottom: true; left: true; right: true }
             Item { id: emptyInput; width: 0; height: 0 }
-            mask: Region {
+            readonly property bool overviewDragging: aux.open && (aux.contentItem.item?.applicationDragActive ?? false)
+            readonly property Region dragPassThrough: Region {}
+            mask: window.overviewDragging ? dragPassThrough : nativeInputMask
+            readonly property Region nativeInputMask: Region {
                 Region { regions: window.presented && field.ready && bar.visible ? bar.inputRegions : [] }
                 Region { item: window.presented && revealTrigger.visible ? revealTrigger : emptyInput }
                 Region { item: window.presented && dockTrigger.visible ? dockTrigger : emptyInput }
@@ -85,6 +91,8 @@ Scope {
                 Region { x: popup.inputBounds.x; y: popup.inputBounds.y; width: window.presented && field.ready ? popup.inputBounds.width : 0; height: popup.inputBounds.height }
                 Region { x: dock.inputBounds.x; y: dock.inputBounds.y; width: window.presented && field.ready ? dock.inputBounds.width : 0; height: dock.inputBounds.height }
                 Region { x: notification.inputBounds.x; y: notification.inputBounds.y; width: window.presented && field.ready ? notification.inputBounds.width : 0; height: notification.inputBounds.height }
+                Region { x: dashboardBody.inputBounds.x; y: dashboardBody.inputBounds.y; width: window.presented && field.ready ? dashboardBody.inputBounds.width : 0; height: dashboardBody.inputBounds.height }
+                Region { x: controls.inputBounds.x; y: controls.inputBounds.y; width: window.presented && field.ready ? controls.inputBounds.width : 0; height: controls.inputBounds.height }
                 Region { x: settings.inputBounds.x; y: settings.inputBounds.y; width: window.presented && field.ready && !GlobalStates.settingsNativeDialogOpen ? settings.inputBounds.width : 0; height: settings.inputBounds.height }
                 Region { x: aux.inputBounds.x; y: aux.inputBounds.y; width: window.presented && field.ready ? aux.inputBounds.width : 0; height: aux.inputBounds.height }
             }
@@ -99,6 +107,8 @@ Scope {
                     window.closePopup()
                     GlobalStates.closeSidebarLeft()
                     GlobalStates.closeSidebarRight()
+                    GlobalStates.dashboardOpen = false
+                    GlobalStates.controlPanelOpen = false
                     GlobalStates.settingsOverlayOpen = false
                     GlobalStates.clipboardOpen = false
                     GlobalStates.overviewOpen = false
@@ -259,11 +269,12 @@ Scope {
                     && GlobalStates.resolveOutputName(GlobalStates.abyssClipboardTargetOutput,[]) === window.outputName)
                     || (GlobalStates.overviewOpen && (Config.options?.enabledPanels ?? []).includes("abyssOverview") && GlobalStates.overviewPresentationOutput === window.outputName))
                 edgeInsets: window.nativeInsets
-                span: 640
+                largeSurface: !GlobalStates.clipboardOpen
+                span: GlobalStates.clipboardOpen ? 640 : GlobalStates.overviewMode === "taskview" ? window.width*.9 : window.width*(Config.options?.dashboard?.widthRatio ?? .72)+40
                 along: window.width/2-span/2
-                depth: window.height*0.42
-                obstacles: window.sideObstacles
-                source: GlobalStates.clipboardOpen ? "content/AbyssClipboardContent.qml" : "content/AbyssLauncherContent.qml"
+                depth: GlobalStates.clipboardOpen ? window.height*.42 : (contentItem.item?.desiredHeight ?? window.height*.72)+padding*2
+                obstacles: GlobalStates.clipboardOpen ? window.sideObstacles : []
+                source: GlobalStates.clipboardOpen ? "content/AbyssClipboardContent.qml" : "content/AbyssOverviewContent.qml"
                 onCloseRequested: { GlobalStates.clipboardOpen = false; GlobalStates.overviewOpen = false }
             }
             AbyssBodyHost {
@@ -282,6 +293,39 @@ Scope {
                 depth: Math.min(1080,Math.max(720,window.height*.92))
                 source: "content/AbyssSettingsContent.qml"
                 onCloseRequested: GlobalStates.settingsOverlayOpen = false
+            }
+            AbyssBodyHost {
+                id: dashboardBody
+                identity: "dashboard"
+                controller: liquid
+                anchors.fill: parent
+                edge: "bottom"
+                outputName: window.outputName
+                open: window.presented && field.ready && GlobalStates.dashboardOpen
+                    && root.largeTargetOutput === window.outputName && (Config.options?.enabledPanels ?? []).includes("iiDashboard")
+                largeSurface: true
+                edgeInsets: window.nativeInsets
+                span: window.width*(Config.options?.dashboard?.widthRatio ?? .72)+40
+                along: (window.width-span)/2
+                depth: window.height*(Config.options?.dashboard?.heightRatio ?? .72)+40
+                source: "content/AbyssDashboardContent.qml"
+                onCloseRequested: GlobalStates.dashboardOpen = false
+            }
+            AbyssBodyHost {
+                id: controls
+                identity: "controls"
+                controller: liquid
+                anchors.fill: parent
+                edge: "right"
+                outputName: window.outputName
+                open: window.presented && field.ready && GlobalStates.controlPanelOpen
+                    && root.largeTargetOutput === window.outputName && (Config.options?.enabledPanels ?? []).includes("iiControlPanel")
+                edgeInsets: window.nativeInsets
+                span: Math.min(950,window.height-100)
+                along: (window.height-span)/2
+                depth: Math.max(380,window.width*.23)
+                source: "content/AbyssControlContent.qml"
+                onCloseRequested: GlobalStates.controlPanelOpen = false
             }
             AbyssBodyHost {
                 id: notification

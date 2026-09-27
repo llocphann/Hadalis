@@ -11,6 +11,7 @@ import QtQuick.Layouts
 Item {
     id: root
     property bool panelVisible: true
+    property bool embeddedSurface: false
     property bool directBottomAttachment: false
     property bool popupPresented: true
     property string searchingText: ""
@@ -61,7 +62,7 @@ Item {
         Math.round(Config.options?.appearance?.screenEdge?.physicalShadow?.size ?? 15)))
     readonly property real screenEdgeShadowOpacity: Math.max(0, Math.min(1.0,
         Number(Config.options?.appearance?.screenEdge?.physicalShadow?.opacity ?? 0.70)))
-    readonly property real connectedDecorationMargin: root.directBottomAttachment
+    readonly property real connectedDecorationMargin: root.embeddedSurface ? 0 : root.directBottomAttachment
         ? Math.max(Appearance.sizes.elevationMargin,
             PerimeterTokens.irisFuseDepth, root.screenEdgeShadowSize + 2)
         : Appearance.sizes.elevationMargin
@@ -163,14 +164,14 @@ Item {
         id: dashboardSurfaceLayer
         z: 2
         anchors.fill: parent
-        transform: Translate { y: (1 - root.revealProgress) * dashContainer.height }
+        transform: Translate { y: root.embeddedSurface ? 0 : (1 - root.revealProgress) * dashContainer.height }
     }
 
     StyledRectangularShadow {
         parent: dashboardSurfaceLayer
         z: 0
         target: dashContainer
-        visible: root.panelVisible && !root.directBottomAttachment
+        visible: !root.embeddedSurface && root.panelVisible && !root.directBottomAttachment
             && root.screenEdgeShadowEnabled && root.screenEdgeShadowSize > 0
             && root.screenEdgeShadowOpacity > 0
         blur: root.screenEdgeShadowSize
@@ -187,7 +188,7 @@ Item {
         id: dashboardIrisSurface
         z: 1
         anchors.fill: parent
-        visible: root.directBottomAttachment
+        visible: !root.embeddedSurface && root.directBottomAttachment
         edge: "bottom"
         ownerThickness: root.attachmentThickness
         outputRect: Qt.rect(0, 0, root.width,
@@ -230,15 +231,15 @@ Item {
             bottom: root.directBottomAttachment ? parent.bottom : undefined
             verticalCenter: root.directBottomAttachment ? undefined : parent.verticalCenter
         }
-        width: root.dashboardWidth
-        height: root.presentingSearch
+        width: root.embeddedSurface ? root.width : root.dashboardWidth
+        height: root.embeddedSurface ? root.height : root.presentingSearch
             ? root.searchOnlyHeight : root.configuredHeight
         radius: Appearance.rounding.large
         topLeftRadius: radius
         topRightRadius: radius
         bottomLeftRadius: root.directBottomAttachment ? 0 : radius
         bottomRightRadius: root.directBottomAttachment ? 0 : radius
-        color: root.directBottomAttachment
+        color: root.embeddedSurface || root.directBottomAttachment
             ? "transparent" : Appearance.colors.colLayer0
         clip: true
 
@@ -255,7 +256,7 @@ Item {
             x: 12
             y: 12
             width: Math.max(0, dashContainer.width - 24)
-            height: root.dashboardContentHeight
+            height: root.embeddedSurface ? Math.max(0,root.height-searchWidget.collapsedHeight-36) : root.dashboardContentHeight
             clip: true
             visible: root.dashboardOpacity > 0.001
             opacity: root.dashboardOpacity

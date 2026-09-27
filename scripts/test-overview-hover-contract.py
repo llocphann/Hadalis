@@ -42,9 +42,9 @@ def main() -> None:
             "shared popup geometry must expose output-centered tangent placement")
     require(popup, "centerOnOutput: true",
             "workspace Overview must remain centered on the target output")
-    require(popup, "active: root.active",
+    require(popup, "active: root.presentationActive",
             "workspace Overview Loader must remain resident through reverse slide")
-    require(popup, "presentationActive: root.active",
+    require(popup, "presentationActive: root.presentationActive",
             "workspace Overview content must remain live through reverse slide")
     require(popup, "focusIndicatorAnimationReady:",
             "workspace Overview must explicitly gate focus-indicator animation")

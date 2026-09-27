@@ -83,14 +83,15 @@ ShellRoot {
                     except subprocess.CalledProcessError:
                         assert time.monotonic() < deadline, 'shell did not expose its probe'
                         time.sleep(.02)
-                expected = [family == name for family in ('ii', 'waffle', 'abyss')]
+                effective = 'abyss' if name == 'ii' else name
+                expected = [family == effective for family in ('ii', 'waffle', 'abyss')]
                 while True:
                     state = json.loads(ipc('mountProbe', 'state'))
                     if all(state[k] == expected for k in ('critical', 'loaded', 'deferred')):
                         break
                     assert time.monotonic() < deadline, state
                     time.sleep(.01)
-                assert ipc('sharedFamilyOwner', 'identity') == name, (index, name, state)
+                assert ipc('sharedFamilyOwner', 'identity') == effective, (index, name, state)
             diagnostics = (root / 'runtime.log').read_text()
             assert not re.search(r'Handler was registered but will not be used|ReferenceError:|TypeError:|Binding loop', diagnostics), diagnostics
             print('PASS: production loaders release shared IPC before 80 family changes; one critical/deferred tree and correct live owner')

@@ -3289,7 +3289,7 @@ Usage: inir dev audit [--all] [--all-families] [DESTINATION...]
 
 Audit destinations related to changed worktree files, or the destinations
 named explicitly. --all restores the exhaustive audit. The active panel
-family is used by default; --all-families audits both ii and waffle.
+family is used by default; --all-families audits Abyss and Waffle.
 EOF
                 return 0
                 ;;
@@ -3434,7 +3434,7 @@ EOF
     trap '"$qs_bin" -p "$config_dir" ipc call dev close >/dev/null 2>&1 || true; current_family="$(jq -r '\''.panelFamily // "ii"'\'' "$config_file" 2>/dev/null)"; if [[ "$current_family" != "$original_family" ]]; then "$qs_bin" -p "$config_dir" ipc call panelFamily set "$original_family" >/dev/null 2>&1 || true; fi' INT TERM
 
     local families=("$family")
-    $include_all_families && families=(ii waffle)
+    $include_all_families && families=(abyss waffle)
     for family in "${families[@]}"; do
         if [[ "$(jq -r '.panelFamily // "ii"' "$config_file" 2>/dev/null)" != "$family" ]]; then
             response="$("$qs_bin" -p "$config_dir" ipc call panelFamily set "$family" 2>&1 || true)"

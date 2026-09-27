@@ -59,9 +59,10 @@ ShellRoot {
     function _ensureScreenTimeService(): void {
         if (GlobalStates.deferredPanelsReady
                 && ((Config.options?.sidebar?.screenTime?.enable ?? false)
-                    || ((Config.options?.panelFamily ?? "ii") === "ii"
-                        && (Config.options?.enabledPanels ?? [])
-                            .includes("iiScreenCorners"))))
+                    || (Config.options?.panelFamily === "abyss"
+                        && (Config.options?.enabledPanels ?? []).includes("abyssNotificationCenter"))
+                    || (Config.options?.panelFamily === "ii"
+                        && (Config.options?.enabledPanels ?? []).includes("iiScreenCorners"))))
             root._screenTimeService = ScreenTime
     }
     // Tier 4: T+1500ms (background features - updates, sync, IPC services)
@@ -860,7 +861,7 @@ ShellRoot {
     // AltSwitcher controller selection lives above the family loaders. Waffle
     // receives the lightweight shared router; ii receives either that controller
     // or the full visual tree according to its no-visual setting.
-    property list<string> families: ["ii", "waffle", "abyss"]
+    property list<string> families: ["abyss", "waffle"]
     property var panelFamilies: ({
         "ii": [
             "iiBar", "iiBackground", "iiBackdrop", "iiBootGreeting", "iiCheatsheet", "iiControlPanel", "iiDock", "iiLock",
@@ -904,12 +905,14 @@ ShellRoot {
         const nextIndex = (currentIndex + 1) % families.length
         const nextFamily = families[nextIndex]
 
-        // Determine direction: ii -> waffle = left, waffle -> ii = right
+        // Preserve directional transitions between the two supported families.
         const direction = nextIndex > currentIndex ? "left" : "right"
         root.startFamilyTransition(nextFamily, direction)
     }
 
     function setPanelFamily(family: string) {
+        if (!["abyss","waffle","ii"].includes(family)) return
+        family = FamilyPolicy.normalize(family)
         const currentFamily = Config.options?.panelFamily ?? "ii"
         if (families.includes(family) && family !== currentFamily) {
             const currentIndex = families.indexOf(currentFamily)

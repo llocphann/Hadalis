@@ -2,9 +2,11 @@
 
 Hadalis has three separate UI families sharing services, models and configuration: Material II (`ii`), Waffle (`waffle`) and Abyss (`abyss`). Switch at runtime with `Super+Shift+W`, Settings → Modules → Panel Style, or `inir panelFamily set abyss`.
 
-## Material ii
+Abyss (`abyss`) is the default; Waffle (`waffle`) is the other supported panel style. Old `ii` settings and IPC calls migrate to Abyss without resetting shared feature preferences.
 
-The default family. Hadalis 1.0 exposes **Material as the only shell-wide Global Theme**. Wallpaper-derived palettes, named color presets, motion settings, and local component presentation options are independent of that Global Theme boundary.
+## Material design baseline
+
+Abyss inherits the shared content and token system described below. The former Material panel family is retired; its source is retained for shared feature reuse and regression comparison. Hadalis 1.0 exposes **Material as the only shell-wide Global Theme**. Wallpaper-derived palettes, named color presets, motion settings, and local component presentation options are independent of that Global Theme boundary.
 
 ### Global theme
 
@@ -159,7 +161,7 @@ See [Abyss audit, checkpoints and acceptance evidence](ABYSS.md). Source/local t
 
 ## Switching families
 
-`Super+Shift+W` cycles `ii → waffle → abyss → ii`. A specific family can be selected through the shared IPC router. Unknown persisted values fall back to `ii`. The transition:
+`Super+Shift+W` cycles `abyss → waffle → abyss`. A specific family can be selected through the shared IPC router. Unknown persisted values fall back to `abyss`; `ii` is a compatibility alias. The transition:
 
 1. Overlay fades in
 2. Current family panels unload

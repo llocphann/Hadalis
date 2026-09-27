@@ -1,6 +1,7 @@
 pragma Singleton
 pragma ComponentBehavior: Bound
 import QtQuick
+import "PanelFamilyPolicy.js" as FamilyPolicy
 import Quickshell
 import Quickshell.Io
 
@@ -273,6 +274,7 @@ Singleton {
     }
     property var _customSnapshotForInject: ({})
     property var _jsonMirror: ({})
+    property bool _styleMigrationWritePending: false
 
     function _cloneObject(obj: var): var {
         try {
@@ -375,7 +377,12 @@ Singleton {
             root._writeInFlight = true;
             root._writeRetries = 0;
             fileReloadTimer.stop();
-            configFileView.writeAdapter();
+            // A migration patches the original document, including keys owned
+            // by optional/custom features that JsonAdapter does not declare.
+            if (root._styleMigrationWritePending) {
+                root._styleMigrationWritePending = false;
+                root._writeMirrorToDisk();
+            } else configFileView.writeAdapter();
             writeFlightGuard.restart();
         }
     }
@@ -430,6 +437,11 @@ Singleton {
                 root._jsonMirror = {};
             }
             root._syncVarProperties();
+            const styleMigration = FamilyPolicy.migrateMaterial(root._jsonMirror);
+            if (Object.keys(styleMigration).length) {
+                root._styleMigrationWritePending = true;
+                root.setNestedValues(styleMigration);
+            }
             root._bumpRevision();
             root.ready = true;
         }
@@ -455,10 +467,11 @@ Singleton {
                 property list<var> outputs: []
             }
 
-            property list<string> enabledPanels: ["iiBar", "iiBackground", "iiBackdrop", "iiCheatsheet", "iiControlPanel", "iiDock", "iiLock", "iiMediaControls", "iiNotificationPopup", "iiOnScreenDisplay", "iiOnScreenKeyboard", "iiOverlay", "iiOverview", "iiPolkit", "iiRegionSelector", "iiScreenCorners", "iiSessionScreen", "iiSidebarLeft", "iiSidebarRight", "iiTilingOverlay", "iiVerticalBar", "iiWallpaperSelector", "iiWallpaperLauncher", "iiCoverflowSelector", "iiClipboard", "iiShellUpdate", "iiDashboard"]
+            property list<string> enabledPanels: FamilyPolicy.abyssPanels
             property list<string> knownPanels: []
             property list<string> visitedPanelFamilies: []
-            property string panelFamily: "ii"
+            property string panelFamily: "abyss"
+            property int panelStyleVersion: 1
             property bool familyTransitionAnimation: true
 
             property JsonObject abyss: JsonObject {

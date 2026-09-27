@@ -109,8 +109,8 @@ assert_contains 'active: !GameMode.active' "$(cat "$bar_resources")" \
     'horizontal Bar resource polling must pause during GameMode'
 assert_contains 'active: !GameMode.active' "$(cat "$vertical_bar_resources")" \
     'vertical Bar resource polling must pause during GameMode'
-assert_contains 'active: popup.active' "$(cat "$resources_popup")" \
-    'Bar resource popup must poll only while active'
+assert_contains 'active: popup.presentationActive' "$(cat "$resources_popup")" \
+    'Bar resource popup must poll only during its visible presentation lifetime'
 assert_contains 'active: GlobalStates.sidebarLeftOpen' "$(cat "$status_rings")" \
     'left-sidebar status rings must poll only while the sidebar is open'
 assert_contains 'active: GlobalStates.sidebarRightOpen' "$(cat "$sysmon_widget")" \

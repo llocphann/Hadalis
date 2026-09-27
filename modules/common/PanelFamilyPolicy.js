@@ -1,9 +1,9 @@
 // Pure policy shared by family routing, migration and behavioral tests.
 function normalize(family) {
-    return ["ii", "waffle", "abyss"].indexOf(family) >= 0 ? family : "ii";
+    return family === "waffle" ? "waffle" : "abyss";
 }
 function next(family) {
-    var order = ["ii", "waffle", "abyss"];
+    var order = ["abyss", "waffle"];
     return order[(order.indexOf(normalize(family)) + 1) % order.length];
 }
 var abyssPanels = [
@@ -45,4 +45,57 @@ function settingsRoute(family, index, section) {
     if (index === 10 && value.toLowerCase() === "abyss")
         return {pageIndex:2,section:"surface"};
     return {pageIndex:index,section:value};
+}
+
+// Public Material -> Abyss cutover. Shared specialist panels and Waffle remain
+// available, while old presentation IDs project onto their Abyss successors.
+var materialPanelMap = {
+    iiBar:"abyssBar",iiVerticalBar:"abyssBar",iiBackground:"abyssBackground",
+    iiBackdrop:"abyssBackground",iiDock:"abyssDock",iiSidebarLeft:"abyssSidebarLeft",
+    iiSidebarRight:"abyssSidebarRight",iiNotificationPopup:"abyssNotificationPopup",
+    iiOnScreenDisplay:"abyssOnScreenDisplay",iiClipboard:"abyssClipboard",
+    iiOverview:"abyssOverview",iiLock:"abyssLock",iiPolkit:"abyssPolkit",
+    iiSessionScreen:"abyssSessionScreen",iiScreenCorners:"abyssNotificationCenter",
+    iiMediaControls:"abyssPopup"
+};
+var materialSharedPanels = ["iiBootGreeting","iiCheatsheet","iiControlPanel",
+    "iiOnScreenKeyboard","iiOverlay","iiRegionSelector","iiTilingOverlay",
+    "iiWallpaperSelector","iiWallpaperLauncher","iiCoverflowSelector","iiShellUpdate",
+    "iiRecordingOsd","iiDashboard","iiClipboard","iiOverview"];
+function migrateMaterial(options) {
+    options = options || {};
+    var result = {};
+    var family = normalize(options.panelFamily);
+    if (family !== options.panelFamily) result.panelFamily = family;
+    if (Number(options.panelStyleVersion || 0) >= 1) return result;
+    result.panelStyleVersion = 1;
+    if (!Array.isArray(options.enabledPanels)) return result;
+    var enabled = options.enabledPanels.slice();
+    var known = Array.from(options.knownPanels || []);
+    var visited = Array.from(options.visitedPanelFamilies || []);
+    var oldIds = Object.keys(materialPanelMap);
+    var legacy = options.panelFamily === "ii" || options.panelFamily === undefined
+        || oldIds.some(function(id) { return enabled.indexOf(id) >= 0 || known.indexOf(id) >= 0; });
+    if (!legacy) return result;
+    if (!known.length) known = oldIds.concat(materialSharedPanels);
+    var successors = Array.from(new Set(Object.values(materialPanelMap)));
+    successors.forEach(function(id) {
+        // Previously visited Abyss preferences win over dormant Material IDs.
+        if (known.indexOf(id) >= 0) return;
+        var sources = oldIds.filter(function(old) { return materialPanelMap[old] === id; });
+        if (sources.some(function(old) { return enabled.indexOf(old) >= 0; }) && enabled.indexOf(id) < 0)
+            enabled.push(id);
+        known.push(id);
+    });
+    if (known.indexOf("abyssPerimeter") < 0) {
+        known.push("abyssPerimeter");enabled.push("abyssPerimeter");
+    }
+    // Keep old shared IDs because Waffle still consumes its supported modules.
+    enabled = enabled.filter(function(id) { return !materialPanelMap[id] || materialSharedPanels.indexOf(id) >= 0; });
+    visited = visited.map(function(id) { return normalize(id); });
+    if (visited.indexOf("abyss") < 0) visited.push("abyss");
+    result.enabledPanels = Array.from(new Set(enabled));
+    result.knownPanels = Array.from(new Set(known));
+    result.visitedPanelFamilies = Array.from(new Set(visited));
+    return result;
 }

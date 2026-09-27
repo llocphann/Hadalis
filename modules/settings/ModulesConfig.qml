@@ -11,7 +11,7 @@ ContentPage {
     settingsPageIndex: 10
     settingsPageName: Translation.tr("Modules")
 
-    readonly property bool isIi: (Config.options?.panelFamily ?? "ii") === "ii"
+    readonly property bool isIi: (Config.options?.panelFamily ?? "abyss") === "ii"
     readonly property bool isAbyss: Config.options?.panelFamily === "abyss"
     readonly property bool isWaffle: Config.options?.panelFamily === "waffle"
 
@@ -70,7 +70,7 @@ ContentPage {
     }
 
     function resetToDefaults() {
-        const family = Config.options?.panelFamily ?? "ii"
+        const family = Config.options?.panelFamily ?? "abyss"
         Config.setNestedValue("enabledPanels", [...(defaultPanels[family] ?? [])])
     }
 
@@ -149,9 +149,8 @@ ContentPage {
         SettingsGroup {
             ConfigSelectionArray {
                 Layout.fillWidth: true
-                currentValue: Config.options?.panelFamily ?? "ii"
+                currentValue: Config.options?.panelFamily ?? "abyss"
                 options: [
-                    { displayName: "Material II", icon: "dashboard", value: "ii" },
                     { displayName: "Waffle", icon: "window", value: "waffle" },
                     { displayName: "Abyss", icon: "water", value: "abyss" }
                 ]

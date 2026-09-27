@@ -617,12 +617,12 @@ bind "Super+F12" { spawn "inir" "gamemode" "toggle"; }
 
 ### panelFamily
 
-Switch between Material II (`ii`, default), Waffle (`waffle`) and the Perimeter Liquid Shell, Abyss (`abyss`).
+Switch between Abyss (`abyss`, default) and Waffle (`waffle`). Historical `ii` values migrate to Abyss, preserving enabled modules and shared configuration.
 
 | Function | Description |
 |----------|-------------|
-| `cycle` | Cycle to next panel family (ii → waffle → abyss → ii) |
-| `set` | Set specific family (`"ii"`, `"waffle"` or `"abyss"`) |
+| `cycle` | Cycle to next panel family (abyss → waffle → abyss) |
+| `set` | Set specific family (`"abyss"` or `"waffle"`; `"ii"` is a compatibility alias for Abyss) |
 
 ```kdl
 bind "Mod+Shift+W" { spawn "inir" "panelFamily" "cycle"; }

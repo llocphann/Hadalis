@@ -8,12 +8,13 @@ root = Path(__file__).resolve().parents[1]
 policy = (root / "modules/common/PanelFamilyPolicy.js").read_text()
 program = policy + r"""
 const assert = require('node:assert/strict');
-assert.equal(normalize('garbage'), 'ii');
+assert.equal(normalize('garbage'), 'abyss');
 assert.equal(normalize('abyss'), 'abyss');
-let family = 'ii';
+assert.equal(normalize('ii'), 'abyss');
+let family = 'abyss';
 for (let i = 0; i < 60; i++) {
     family = next(family);
-    assert.equal(family, ['waffle', 'abyss', 'ii'][i % 3]);
+    assert.equal(family, ['waffle', 'abyss'][i % 2]);
 }
 assert.equal(new Set(abyssPanels).size, abyssPanels.length);
 for (const [index,section] of [[16,'dock'],[17,'sidebars'],[29,'editor']]) {
@@ -37,11 +38,11 @@ screen_time = (root / "services/ScreenTime.qml").read_text()
 tracking = screen_time.split("readonly property bool enabled:", 1)[1].split("\n    property", 1)[0].strip()
 subprocess.run(["node", "-e", """
 const assert = require('node:assert/strict');
-const Config = {options:{sidebar:{screenTime:{enable:false}},enabledPanels:['iiScreenCorners']}};
+const Config = {options:{sidebar:{screenTime:{enable:false}},enabledPanels:['iiScreenCorners','abyssNotificationCenter']}};
 function tracks() { return """ + tracking + """; }
 for (const family of ['ii','waffle','abyss']) {
     Config.options.panelFamily = family;
-    assert.equal(tracks(), family === 'ii');
+    assert.equal(tracks(), family !== 'waffle');
     Config.options.sidebar.screenTime.enable = true; assert(tracks());
     Config.options.sidebar.screenTime.enable = false;
 }
@@ -85,7 +86,7 @@ for name in ("ii", "waffle", "abyss"):
     assert f'{name}DeferredHostLoader' in shell
 assert 'root.activePanelFamily === "ii"' in shell
 assert 'root.activePanelFamily === "abyss"' in shell
-assert json.loads((root / "defaults/config.json").read_text())["panelFamily"] == "ii"
+assert json.loads((root / "defaults/config.json").read_text())["panelFamily"] == "abyss"
 for file in (root / "modules/abyss").rglob("*.qml"):
     assert 'target: "panelFamily"' not in file.read_text()
 for target in ("osd", "osdVolume", "osdInput"):

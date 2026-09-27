@@ -14,7 +14,9 @@ Popup features supply their existing content and measured size. The central
 output field supplies the attached silhouette once, rather than each feature
 painting another connector. These instructions supersede the earlier always
 sculpted module silhouettes and default interactive waves in the concept brief.
-Material remains available for regression comparison during this cutover;
+The public panel styles are now Abyss and Waffle. Historical Material (`ii`)
+configurations migrate to Abyss without resetting shared feature preferences.
+Material source remains available for content reuse and regression comparison;
 Waffle remains independently supported.
 
 ## Audit baseline and scope
@@ -142,3 +144,29 @@ opt into a 92% depth bound; ordinary opposing sidebars retain the 42% bound.
 Geometry/orientation/flood-fill regressions, actual QML registry migration and
 body lifecycle, shader cold/cache/error/software checks and touched-file QML
 validation passed. This checkpoint does not yet add propagation or new content.
+
+## QOL and migration acceptance
+
+Edge modules share an output-local Edge size by default. A Custom size checkbox
+opts a single module into an override. Live Editor supplies center/start/end and
+neighbor-gap guides, optional snapping (Shift bypasses), alignment groups and
+transactional Save/Cancel. Editor menus use the shared styled control path.
+
+The dedicated Abyss page owns surface, waves, audio spectrum, modules, mature
+bar behavior, Dock, Sidebars, popup/IPC positions and editor controls. Common
+System, Services, Themes and feature preferences remain shared. Historical
+Dock/Sidebar/Shell Layout routes redirect into Abyss; no second settings tree is
+kept loaded. Volume and other IPC indicators reuse their original icon, dimensions
+and controls. Weather uses eight interactive forecast pills on a static ellipse.
+
+Audio leases the existing Cava service and adds signed forcing to the same spring
+field. It works independently of opt-in interaction waves, rests on constant input,
+and clears on pause, hiding, reduced motion or teardown. No second spectrum
+painter or analyzer is introduced.
+
+`panelStyleVersion` records the Material migration once. Source panel enable states
+project onto Abyss IDs, both legacy bar orientations combine, existing Abyss
+preferences win, disabled panels remain known, and Waffle/shared IDs remain usable.
+The adapter normalizes configuration before announcing readiness; historical
+`panelFamily set ii` resolves to Abyss. The legacy shell-layout IPC opens the Abyss
+module editor when Abyss is active.

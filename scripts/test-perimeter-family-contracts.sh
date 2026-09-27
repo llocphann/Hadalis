@@ -20,7 +20,7 @@ for token in \
     'source: "ShellIiPanels.qml"' \
     'source: "modules/waffle/critical/ShellWaffleCriticalPanels.qml"' \
     'source: "ShellWafflePanels.qml"' \
-    'property list<string> families: ["ii", "waffle", "abyss"]'; do
+    'property list<string> families: ["abyss", "waffle"]'; do
     grep -Fq "$token" "$shell" || fail "shell family routing missing: $token"
 done
 
@@ -41,4 +41,4 @@ if grep -Fq 'SidebarEdgeConnectors.qml' "$critical"; then
     fail 'critical ii family must not revive the retired standalone Sidebar bridge window'
 fi
 
-printf 'PASS: ii, Waffle and Abyss use isolated family roots without retired perimeter runtime\n'
+printf 'PASS: Material aliases to Abyss; Waffle and Abyss use isolated family roots without retired perimeter runtime\n'

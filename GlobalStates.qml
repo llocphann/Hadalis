@@ -115,9 +115,9 @@ Singleton {
     property string abyssClipboardTargetOutput: ""
     property bool abyssEditing: false
     property string abyssEditorTargetOutput: ""
-    function startAbyssEditing(): void {
+    function startAbyssEditing(outputName): void {
         if (Config.options?.panelFamily !== "abyss" || root.screenLocked) return
-        root.abyssEditorTargetOutput = root.resolveOutputName("",[])
+        root.abyssEditorTargetOutput = root.resolveOutputName(String(outputName ?? ""),[])
         root.sessionOpen = false
         root.cheatsheetOpen = false
         ShellUpdates.closeOverlay()

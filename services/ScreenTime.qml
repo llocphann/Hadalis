@@ -11,11 +11,12 @@ import qs.services
 Singleton {
     id: root
 
-    // The Material notification-center Activity tab owns focused-app usage.
-    // Keep Waffle's existing opt-in switch, but on ii track for the session only
-    // when ScreenCorners (the Activity popup host) is enabled.
+    // The notification-center Activity tab owns focused-app usage. Waffle keeps
+    // its explicit opt-in. Abyss inherits the Material session tracking contract.
     readonly property bool enabled:
         (Config.options?.sidebar?.screenTime?.enable ?? false)
+        || (Config.options?.panelFamily === "abyss"
+            && (Config.options?.enabledPanels ?? []).includes("abyssNotificationCenter"))
         || ((Config.options?.panelFamily ?? "ii") === "ii"
             && (Config.options?.enabledPanels ?? []).includes("iiScreenCorners"))
     property bool ready: false

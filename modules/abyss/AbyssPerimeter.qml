@@ -9,6 +9,7 @@ import qs.modules.abyss.bar
 import qs.modules.abyss.looks
 import "looks/AbyssGeometry.js" as Geometry
 import "looks/AbyssLayout.js" as ModuleLayout
+import "looks/AbyssPresentation.js" as Presentation
 
 Scope {
     id: root
@@ -69,6 +70,9 @@ Scope {
             id: window
             required property var modelData
             readonly property string outputName: modelData?.name ?? ""
+            function presentation(kind) { return Presentation.resolve(Config.options?.abyss?.positions,kind,outputName) }
+            function positionEdge(kind,fallback) { return Presentation.edge(presentation(kind),fallback) }
+            function positionAlong(kind,edge,span,fallback) { return Presentation.along(presentation(kind),edge,span,width,height,fallback,nativeInsets) }
             readonly property bool fullscreenCovered: GameMode.hasFullscreenOnOutput(outputName)
             readonly property bool presented: !GlobalStates.screenLocked
                 && (!fullscreenCovered || (Config.options?.abyss?.perimeter?.visibleInFullscreen ?? false))
@@ -216,16 +220,16 @@ Scope {
                 identity: "leftPanel"
                 controller: liquid
                 anchors.fill: parent
-                edge: ShellLayoutController.sidebarAssignments().featureSidebar
+                edge: window.positionEdge(identity,ShellLayoutController.sidebarAssignments().featureSidebar)
                 outputName: window.outputName
                 open: window.presented && field.ready && (Config.options?.enabledPanels ?? []).includes("abyssSidebarLeft")
                     && GlobalStates.sidebarLeftOpen && GlobalStates.sidebarLeftPresentationOutput === window.outputName
                     && !(popup.open && popup.edge === edge)
                     && !(notification.centerOnOutput && edge === "right")
                 edgeInsets: window.nativeInsets
-                along: edgeInsets.top+36
-                span: window.height-edgeInsets.top-edgeInsets.bottom-72
-                depth: GlobalStates.sidebarLeftExpanded ? 560 : 370
+                along: window.positionAlong(identity,edge,span,Geometry.horizontal(edge) ? (window.width-span)/2 : edgeInsets.top+36)
+                span: Geometry.horizontal(edge) ? (GlobalStates.sidebarLeftExpanded ? 560 : 370) : window.height-edgeInsets.top-edgeInsets.bottom-72
+                depth: Geometry.horizontal(edge) ? window.height-edgeInsets.top-edgeInsets.bottom-72 : (GlobalStates.sidebarLeftExpanded ? 560 : 370)
                 source: "content/AbyssLeftContent.qml"
                 onCloseRequested: GlobalStates.closeSidebarLeft()
             }
@@ -234,16 +238,16 @@ Scope {
                 identity: "rightPanel"
                 controller: liquid
                 anchors.fill: parent
-                edge: ShellLayoutController.sidebarAssignments().systemSidebar
+                edge: window.positionEdge(identity,ShellLayoutController.sidebarAssignments().systemSidebar)
                 outputName: window.outputName
                 open: window.presented && field.ready && (Config.options?.enabledPanels ?? []).includes("abyssSidebarRight")
                     && GlobalStates.sidebarRightOpen && GlobalStates.sidebarRightPresentationOutput === window.outputName
                     && !(popup.open && popup.edge === edge)
                     && !(notification.centerOnOutput && edge === "right")
                 edgeInsets: window.nativeInsets
-                along: edgeInsets.top+36
-                span: window.height-edgeInsets.top-edgeInsets.bottom-72
-                depth: 370
+                along: window.positionAlong(identity,edge,span,Geometry.horizontal(edge) ? (window.width-span)/2 : edgeInsets.top+36)
+                span: Geometry.horizontal(edge) ? 370 : window.height-edgeInsets.top-edgeInsets.bottom-72
+                depth: Geometry.horizontal(edge) ? window.height-edgeInsets.top-edgeInsets.bottom-72 : 370
                 source: "content/AbyssRightContent.qml"
                 onCloseRequested: GlobalStates.closeSidebarRight()
             }
@@ -252,13 +256,13 @@ Scope {
                 identity: "popup"
                 controller: liquid
                 anchors.fill: parent
-                edge: GlobalStates.abyssPopupEdge || root.barEdge
+                edge: window.positionEdge(contentKind,GlobalStates.abyssPopupEdge || root.barEdge)
                 outputName: window.outputName
                 open: window.presented && field.ready && (Config.options?.enabledPanels ?? []).includes("abyssPopup")
                     && (GlobalStates.abyssPopupKind.length > 0 || GlobalStates.mediaControlsOpen)
                     && GlobalStates.resolveOutputName(GlobalStates.abyssPopupTargetOutput,[]) === window.outputName
                 edgeInsets: window.nativeInsets
-                along: GlobalStates.abyssPopupAlong-span/2
+                along: window.positionAlong(contentKind,edge,span,GlobalStates.abyssPopupAlong-span/2)
                 padding: 14
                 span: (Geometry.horizontal(edge) ? (contentItem.item?.desiredWidth ?? 390) : (contentItem.item?.desiredHeight ?? 300))+padding*2
                 depth: (Geometry.horizontal(edge) ? (contentItem.item?.desiredHeight ?? 300) : (contentItem.item?.desiredWidth ?? 390))+padding*2
@@ -272,7 +276,8 @@ Scope {
                 identity: "styledPopup"
                 controller: liquid
                 anchors.fill: parent
-                edge: liquid.activePopup?._attachmentEdge ?? root.barEdge
+                readonly property string presentationKind: liquid.activePopup?._liquidAnchor?.kind ?? "popup"
+                edge: window.positionEdge(presentationKind,liquid.activePopup?._attachmentEdge ?? root.barEdge)
                 outputName: window.outputName
                 open: window.presented && field.ready && (liquid.activePopup?.presentationActive ?? false)
                     && ((liquid.activePopup?.requestedVisible ?? false)
@@ -286,7 +291,7 @@ Scope {
                 depth: (Geometry.horizontal(edge) ? (embeddedItem?.implicitHeight ?? 1) : (embeddedItem?.implicitWidth ?? 1))+padding*2
                 largeSurface: depth > (Geometry.horizontal(edge) ? window.height : window.width)*.42
                 readonly property rect anchorBounds: liquid.activePopup?._anchorRect(window.width,window.height) ?? Qt.rect(0,0,0,0)
-                along: (Geometry.horizontal(edge) ? anchorBounds.x+anchorBounds.width/2 : anchorBounds.y+anchorBounds.height/2)-span/2
+                along: window.positionAlong(presentationKind,edge,span,(Geometry.horizontal(edge) ? anchorBounds.x+anchorBounds.width/2 : anchorBounds.y+anchorBounds.height/2)-span/2)
                 obstacles: window.sideObstacles
                 onCloseRequested: if (liquid.activePopup) liquid.activePopup.dismissPresentation()
                 HoverHandler {
@@ -338,16 +343,19 @@ Scope {
                 identity: "aux"
                 controller: liquid
                 anchors.fill: parent
-                edge: "bottom"
+                readonly property string presentationKind: GlobalStates.clipboardOpen ? "clipboard" : "overview"
+                edge: window.positionEdge(presentationKind,"bottom")
                 outputName: window.outputName
                 open: window.presented && field.ready && ((GlobalStates.clipboardOpen && (Config.options?.enabledPanels ?? []).includes("abyssClipboard")
                     && GlobalStates.resolveOutputName(GlobalStates.abyssClipboardTargetOutput,[]) === window.outputName)
                     || (GlobalStates.overviewOpen && (Config.options?.enabledPanels ?? []).includes("abyssOverview") && GlobalStates.overviewPresentationOutput === window.outputName))
                 edgeInsets: window.nativeInsets
                 largeSurface: !GlobalStates.clipboardOpen
-                span: GlobalStates.clipboardOpen ? 640 : GlobalStates.overviewMode === "taskview" ? window.width*.9 : window.width*(Config.options?.dashboard?.widthRatio ?? .72)+40
-                along: window.width/2-span/2
-                depth: GlobalStates.clipboardOpen ? window.height*.42 : (contentItem.item?.desiredHeight ?? window.height*.72)+padding*2
+                readonly property real contentWidth: GlobalStates.clipboardOpen ? 640 : GlobalStates.overviewMode === "taskview" ? window.width*.9 : window.width*(Config.options?.dashboard?.widthRatio ?? .72)+40
+                readonly property real contentHeight: GlobalStates.clipboardOpen ? window.height*.42 : (contentItem.item?.desiredHeight ?? window.height*.72)+padding*2
+                span: Geometry.horizontal(edge) ? contentWidth : contentHeight
+                along: window.positionAlong(presentationKind,edge,span,(Geometry.horizontal(edge) ? window.width : window.height)/2-span/2)
+                depth: Geometry.horizontal(edge) ? contentHeight : contentWidth
                 obstacles: GlobalStates.clipboardOpen ? window.sideObstacles : []
                 source: GlobalStates.clipboardOpen ? "content/AbyssClipboardContent.qml" : "content/AbyssOverviewContent.qml"
                 onCloseRequested: { GlobalStates.clipboardOpen = false; GlobalStates.overviewOpen = false }
@@ -357,15 +365,15 @@ Scope {
                 identity: "settings"
                 controller: liquid
                 anchors.fill: parent
-                edge: "bottom"
+                edge: window.positionEdge(identity,"bottom")
                 outputName: window.outputName
                 open: window.presented && field.ready && GlobalStates.settingsOverlayOpen
                     && GlobalStates.settingsOverlayPresentationOutput === window.outputName
                 largeSurface: true
                 edgeInsets: window.nativeInsets
-                span: Math.min(1600,Math.max(900,window.width*.9))
-                along: (window.width-span)/2
-                depth: Math.min(1080,Math.max(720,window.height*.92))
+                span: Geometry.horizontal(edge) ? Math.min(1600,Math.max(900,window.width*.9)) : Math.min(1080,Math.max(720,window.height*.92))
+                along: window.positionAlong(identity,edge,span,((Geometry.horizontal(edge) ? window.width : window.height)-span)/2)
+                depth: Geometry.horizontal(edge) ? Math.min(1080,Math.max(720,window.height*.92)) : Math.min(1600,Math.max(900,window.width*.9))
                 source: "content/AbyssSettingsContent.qml"
                 onCloseRequested: GlobalStates.settingsOverlayOpen = false
             }
@@ -374,15 +382,15 @@ Scope {
                 identity: "dashboard"
                 controller: liquid
                 anchors.fill: parent
-                edge: "bottom"
+                edge: window.positionEdge(identity,"bottom")
                 outputName: window.outputName
                 open: window.presented && field.ready && GlobalStates.dashboardOpen
                     && root.largeTargetOutput === window.outputName && (Config.options?.enabledPanels ?? []).includes("iiDashboard")
                 largeSurface: true
                 edgeInsets: window.nativeInsets
-                span: window.width*(Config.options?.dashboard?.widthRatio ?? .72)+40
-                along: (window.width-span)/2
-                depth: window.height*(Config.options?.dashboard?.heightRatio ?? .72)+40
+                span: Geometry.horizontal(edge) ? window.width*(Config.options?.dashboard?.widthRatio ?? .72)+40 : window.height*(Config.options?.dashboard?.heightRatio ?? .72)+40
+                along: window.positionAlong(identity,edge,span,((Geometry.horizontal(edge) ? window.width : window.height)-span)/2)
+                depth: Geometry.horizontal(edge) ? window.height*(Config.options?.dashboard?.heightRatio ?? .72)+40 : window.width*(Config.options?.dashboard?.widthRatio ?? .72)+40
                 source: "content/AbyssDashboardContent.qml"
                 onCloseRequested: GlobalStates.dashboardOpen = false
             }
@@ -391,14 +399,14 @@ Scope {
                 identity: "controls"
                 controller: liquid
                 anchors.fill: parent
-                edge: "right"
+                edge: window.positionEdge(identity,"right")
                 outputName: window.outputName
                 open: window.presented && field.ready && GlobalStates.controlPanelOpen
                     && root.largeTargetOutput === window.outputName && (Config.options?.enabledPanels ?? []).includes("iiControlPanel")
                 edgeInsets: window.nativeInsets
-                span: Math.min(950,window.height-100)
-                along: (window.height-span)/2
-                depth: Math.max(380,window.width*.23)
+                span: Geometry.horizontal(edge) ? Math.max(380,window.width*.23) : Math.min(950,window.height-100)
+                along: window.positionAlong(identity,edge,span,((Geometry.horizontal(edge) ? window.width : window.height)-span)/2)
+                depth: Geometry.horizontal(edge) ? Math.min(950,window.height-100) : Math.max(380,window.width*.23)
                 source: "content/AbyssControlContent.qml"
                 onCloseRequested: GlobalStates.controlPanelOpen = false
             }
@@ -409,16 +417,19 @@ Scope {
                 anchors.fill: parent
                 readonly property bool centerOnOutput: GlobalStates.notificationCenterOpen && GlobalStates.notificationCenterPresentationOutput === window.outputName
                 readonly property string position: Config.options?.notifications?.position ?? "topRight"
-                edge: centerOnOutput ? "right" : position.startsWith("bottom") ? "bottom" : "top"
+                readonly property string presentationKind: centerOnOutput ? "notificationCenter" : "notifications"
+                edge: window.positionEdge(presentationKind,centerOnOutput ? "right" : position.startsWith("bottom") ? "bottom" : "top")
                 outputName: window.outputName
                 open: window.presented && field.ready && (centerOnOutput && (Config.options?.enabledPanels ?? []).includes("abyssNotificationCenter")
                     || (!GlobalStates.notificationCenterOpen && !popup.open && !aux.open && !Notifications.popupInhibited && Notifications.popupList.length > 0
                         && (Config.options?.enabledPanels ?? []).includes("abyssNotificationPopup")
                         && Geometry.targets(window.outputName,Config.options?.notifications?.screenList ?? [],Quickshell.screens.map(s => s.name))))
                 edgeInsets: window.nativeInsets
-                span: centerOnOutput ? window.height-edgeInsets.top-edgeInsets.bottom-72 : (contentItem.item?.desiredWidth ?? Appearance.sizes.notificationPopupWidth)+padding*2
-                along: centerOnOutput ? edgeInsets.top+36 : position.endsWith("Left") ? 40 : window.width-span-40
-                depth: centerOnOutput ? 390 : Math.min(window.height*.42,Math.max(100,(contentItem.item?.desiredHeight ?? 130)+padding*2))
+                readonly property real contentWidth: centerOnOutput ? 390 : (contentItem.item?.desiredWidth ?? Appearance.sizes.notificationPopupWidth)+padding*2
+                readonly property real contentHeight: centerOnOutput ? window.height-edgeInsets.top-edgeInsets.bottom-72 : Math.min(window.height*.42,Math.max(100,(contentItem.item?.desiredHeight ?? 130)+padding*2))
+                span: Geometry.horizontal(edge) ? contentWidth : contentHeight
+                along: window.positionAlong(presentationKind,edge,span,centerOnOutput ? (Geometry.horizontal(edge) ? (window.width-span)/2 : edgeInsets.top+36) : position.endsWith("Left") ? 40 : (Geometry.horizontal(edge) ? window.width : window.height)-span-40)
+                depth: Geometry.horizontal(edge) ? contentHeight : contentWidth
                 obstacles: centerOnOutput ? [] : window.sideObstacles.concat(popup.open ? [popup.record] : [])
                 contentKind: centerOnOutput ? "center" : "popup"
                 source: "content/AbyssNotificationsContent.qml"
@@ -429,7 +440,8 @@ Scope {
                 identity: "osd"
                 controller: liquid
                 anchors.fill: parent
-                edge: root.barEdge
+                readonly property string presentationKind: GlobalStates.abyssOsdKind === "media" ? "mediaOsd" : GlobalStates.abyssOsdKind
+                edge: window.positionEdge(presentationKind,root.barEdge)
                 outputName: window.outputName
                 open: window.presented && field.ready && (Config.options?.enabledPanels ?? []).includes("abyssOnScreenDisplay")
                     && (GlobalStates.osdVolumeOpen || GlobalStates.osdBrightnessOpen || GlobalStates.osdMicOpen || GlobalStates.osdMediaOpen || GlobalStates.osdKeyboardLayoutOpen)
@@ -438,7 +450,7 @@ Scope {
                 edgeInsets: window.nativeInsets
                 padding: 12
                 span: (Geometry.horizontal(edge) ? (contentItem.item?.desiredWidth ?? Appearance.sizes.osdWidth) : (contentItem.item?.desiredHeight ?? 48))+padding*2
-                along: (Geometry.horizontal(edge) ? window.width : window.height)/2-span/2
+                along: window.positionAlong(presentationKind,edge,span,(Geometry.horizontal(edge) ? window.width : window.height)/2-span/2)
                 depth: (Geometry.horizontal(edge) ? (contentItem.item?.desiredHeight ?? 48) : (contentItem.item?.desiredWidth ?? Appearance.sizes.osdWidth))+padding*2
                 source: "content/AbyssOsdContent.qml"
                 HoverHandler {
@@ -458,16 +470,16 @@ Scope {
                 identity: "utility"
                 controller: liquid
                 anchors.fill: parent
-                edge: "bottom"
+                edge: window.positionEdge(contentKind,"bottom")
                 outputName: window.outputName
                 open: window.presented && field.ready && root.utilityKind.length > 0
                     && root.largeTargetOutput === window.outputName
                     && (Config.options?.enabledPanels ?? []).includes(root.utilityIdentifier)
                 largeSurface: true
                 edgeInsets: window.nativeInsets
-                span: (contentItem.item?.desiredWidth ?? 640)+padding*2
-                along: (window.width-span)/2
-                depth: (contentItem.item?.desiredHeight ?? 700)+padding*2
+                span: (Geometry.horizontal(edge) ? (contentItem.item?.desiredWidth ?? 640) : (contentItem.item?.desiredHeight ?? 700))+padding*2
+                along: window.positionAlong(contentKind,edge,span,((Geometry.horizontal(edge) ? window.width : window.height)-span)/2)
+                depth: (Geometry.horizontal(edge) ? (contentItem.item?.desiredHeight ?? 700) : (contentItem.item?.desiredWidth ?? 640))+padding*2
                 contentKind: root.utilityKind
                 source: "content/AbyssUtilityContent.qml"
                 onCloseRequested: root.closeUtility()
@@ -478,13 +490,13 @@ Scope {
                 identity: "dialog"
                 controller: liquid
                 anchors.fill: parent
-                edge: "right"
+                edge: window.positionEdge(identity,"right")
                 outputName: window.outputName
                 open: window.presented && field.ready && liquid.activeDialog !== null
                 embeddedItem: liquid.activeDialog
-                span: (liquid.activeDialog?.liquidHeight ?? 450)+padding*2
-                depth: (liquid.activeDialog?.liquidWidth ?? 350)+padding*2
-                along: (window.height-span)/2
+                span: (Geometry.horizontal(edge) ? (liquid.activeDialog?.liquidWidth ?? 350) : (liquid.activeDialog?.liquidHeight ?? 450))+padding*2
+                depth: (Geometry.horizontal(edge) ? (liquid.activeDialog?.liquidHeight ?? 450) : (liquid.activeDialog?.liquidWidth ?? 350))+padding*2
+                along: window.positionAlong(identity,edge,span,((Geometry.horizontal(edge) ? window.width : window.height)-span)/2)
                 edgeInsets: window.nativeInsets
                 onCloseRequested: if (liquid.activeDialog) liquid.activeDialog.dismiss()
             }

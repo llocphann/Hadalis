@@ -2045,6 +2045,7 @@
     "familyTransitionAnimation": true,
     "abyss": {
         "quality": "balanced",
+        "positions": [],
         "perimeter": {
             "thickness": 16,
             "radius": 34,

@@ -144,6 +144,7 @@ ColumnLayout {
         visible:root.activeSection==="popups"
         SettingsGroup {
             SettingsNote { text:"Popups retain their existing layouts and follow the edge of their source module. The output field paints their outer surface once." }
+            AbyssPositionSettings {}
             Percent { text:"Small popup wave strength";configKey:"abyss.waves.small";fallback:.7;maximum:2 }
             Percent { text:"Large panel wave strength";configKey:"abyss.waves.large";fallback:1;maximum:2 }
             Percent { text:"Dock wave strength";configKey:"abyss.waves.dock";fallback:.5;maximum:2 }

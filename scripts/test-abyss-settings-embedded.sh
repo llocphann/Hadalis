@@ -25,6 +25,14 @@ ShellRoot {
         if(value) return true
         console.error("EMBEDDED_SETTINGS_FAIL",message);Qt.quit();return false
     }
+    function positionControls(item) {
+        if(item?.position!==undefined && item?.outputName!==undefined && typeof item.change==="function") return item
+        for(const child of Array.from(item?.children ?? [])) {
+            const found=root.positionControls(child)
+            if(found) return found
+        }
+        return null
+    }
     FloatingWindow {
         visible: true; implicitWidth: 1280; implicitHeight: 900
         AbyssBodyHost {
@@ -61,10 +69,21 @@ ShellRoot {
             if(root.step===7) {
                 if(!root.check(GlobalStates.settingsOverlayCurrentPage===2,"dedicated Abyss controls receive deep links")) return
                 if(!root.check(body.contentItem.item.currentPage?.activeSection==="waves","deep link selects the visible Waves tab")) return
+                GlobalStates.openSettingsSection(2,"popups")
+            }
+            if(root.step===9) {
+                const positions=root.positionControls(body.contentItem.item.currentPage)
+                if(!root.check(!!positions,"dedicated popup position controls load")) return
+                positions.kind="volume";positions.outputName="A";positions.change("edge","left");positions.change("alignment","end")
+                positions.outputName="B";positions.change("edge","bottom")
+                const entries=Array.from(Config.options.abyss.positions)
+                if(!root.check(entries.length===2 && entries[0].outputName==="A" && entries[0].edge==="left" && entries[0].alignment==="end" && entries[1].outputName==="B" && entries[1].edge==="bottom","Settings persists distinct per-output IPC positions")) return
+            }
+            if(root.step===11) {
                 GlobalStates.settingsOverlayOpen=false
                 if(!root.check(body.inputBounds.width===0,"Settings closes with immediate input release")) return
             }
-            if(root.step===9) { console.info("EMBEDDED_SETTINGS_PASS");Qt.quit() }
+            if(root.step===13) { console.info("EMBEDDED_SETTINGS_PASS");Qt.quit() }
             root.step++
         }
     }

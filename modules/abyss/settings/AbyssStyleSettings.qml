@@ -12,6 +12,7 @@ ColumnLayout {
     Layout.fillWidth: true
     spacing: 16
     property string activeSection: "surface"
+    property var sections: ["surface","performance"]
     readonly property var waveValues: Wave.parameters(Config.options?.abyss?.waves)
     function spectrumChange(key,value): void {
         const options=Config.options?.abyss?.spectrum
@@ -55,6 +56,8 @@ ColumnLayout {
         description:"The Material layout you know, carried by one continuous Screen Edge."
         currentValue:root.activeSection
         onSelected:value=>root.activeSection=value
+        visible:options.length > 1
+        showIntro:false
         options:[
             {displayName:"Surface",value:"surface",icon:"opacity"},
             {displayName:"Waves",value:"waves",icon:"waves"},
@@ -66,7 +69,7 @@ ColumnLayout {
             {displayName:"Popups",value:"popups",icon:"chat_bubble"},
             {displayName:"Live Editor",value:"editor",icon:"edit"},
             {displayName:"Interaction",value:"interaction",icon:"touch_app"},
-            {displayName:"Performance",value:"performance",icon:"speed"}]
+            {displayName:"Performance",value:"performance",icon:"speed"}].filter(option=>root.sections.includes(option.value))
     }
     SettingsCardSection {
         title:"Audio spectrum";icon:"graphic_eq";settingsTaskSection:"spectrum"
@@ -192,7 +195,6 @@ ColumnLayout {
                 }
             }
             SettingsNote { text:"Place modules on any edge with Live Editor. Their media, resource, clock, tray and workspace settings remain shared." }
-            RippleButton { buttonText:"Edit Abyss layout";implicitHeight:36;Layout.fillWidth:true;onClicked:GlobalStates.startAbyssEditing() }
             Percent { text:"Overall module scale";configKey:"abyss.modules.size";fallback:1;minimum:.6;maximum:1.8 }
             Percent { text:"Top Edge module size";configKey:"abyss.modules.edgeSizes.top";fallback:1;minimum:.6;maximum:1.8 }
             Percent { text:"Right Edge module size";configKey:"abyss.modules.edgeSizes.right";fallback:1;minimum:.6;maximum:1.8 }
@@ -218,7 +220,6 @@ ColumnLayout {
         visible:root.activeSection==="editor"
         SettingsGroup {
             SettingsNote { text:"Settings closes while you place modules on the desktop. Done saves; Cancel restores the saved layout. Choose a profile per output or use the layout as the global default." }
-            RippleButton { buttonText:"Edit Abyss layout";implicitHeight:36;Layout.fillWidth:true;onClicked:GlobalStates.startAbyssEditing() }
         }
     }
     SettingsCardSection {

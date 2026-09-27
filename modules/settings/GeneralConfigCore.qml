@@ -201,7 +201,7 @@ ContentPage {
 
     SettingsCardSection {
         settingsTaskSection: "safety"
-        visible: root.activeSection === "safety" && !(Config.options?.settingsUi?.easyMode ?? false)
+        visible: root.activeSection === "safety"
         expanded: true
         icon: "rule"
         title: Translation.tr("Policies")
@@ -209,7 +209,7 @@ ContentPage {
         SettingsGroup {
             ConfigRow {
                 Layout.alignment: Qt.AlignTop
-                
+
                 ContentSubsection {
                     title: Translation.tr("AI")
 
@@ -220,7 +220,7 @@ ContentPage {
                         onClicked: SettingsPageRegistry.navigateToKey("ai", "Privacy")
                     }
                 }
-                
+
                 ContentSubsection {
                     title: Translation.tr("Weeb")
                     tooltip: Translation.tr("Control anime content visibility")
@@ -356,7 +356,7 @@ ContentPage {
             }
         }
     }
-    
+
     SettingsCardSection {
         settingsTaskSection: "locale"
         visible: root.activeSection === "locale"
@@ -528,7 +528,7 @@ ContentPage {
 
     SettingsCardSection {
         settingsTaskSection: "input"
-        visible: root.activeSection === "input" && !(Config.options?.settingsUi?.easyMode ?? false)
+        visible: root.activeSection === "input"
         expanded: true
         icon: "select_window"
         title: Translation.tr("Window Management")
@@ -551,7 +551,7 @@ ContentPage {
 
     SettingsCardSection {
         settingsTaskSection: "safety"
-        visible: root.activeSection === "safety" && !(Config.options?.settingsUi?.easyMode ?? false)
+        visible: root.activeSection === "safety"
         expanded: true
         icon: "work_alert"
         title: Translation.tr("Work safety")

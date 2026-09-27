@@ -31,10 +31,10 @@ Singleton {
         if (index < 0 || index >= root.pages.length
                 || root.isHiddenLegacyIndex(index)) return false
         if (root.abyssFamily)
-            return ![11,16,17,29].includes(index)
+            return ![11,26].includes(index)
         if (root.waffleFamily)
-            return index !== root.barPageIndex && index !== 16 && index !== 29
-        return index !== 11
+            return index !== root.barPageIndex && index !== 16 && index !== 29 && index < 32
+        return index !== 11 && index < 32
     }
 
     // Stable route keys survive page reordering and legacy numeric slot
@@ -44,7 +44,7 @@ Singleton {
     function pageIndexForKey(key: string): int {
         const value = String(key ?? "").trim()
         if (!value) return -1
-        if (root.abyssFamily && ["dock","sidebars","shell-layout","bar"].includes(value)) return root.barPageIndex
+        if (root.abyssFamily && ["shell-layout","bar"].includes(value)) return value === "bar" ? 34 : root.barPageIndex
         return root.pages.findIndex((page, index) => page.key === value
             && page.devNavigationHidden !== true
             && root.isPageApplicable(index))
@@ -53,7 +53,7 @@ Singleton {
         const index = root.pageIndexForKey(key)
         if (index < 0) return false
         root.navigateRequested(index, root.abyssFamily && !section
-            ? ({dock:"dock",sidebars:"sidebars","shell-layout":"editor",bar:"modules"}[key] ?? "")
+            ? ({"shell-layout":"surface",bar:"bar"}[key] ?? "")
             : String(section ?? ""))
         return true
     }
@@ -71,7 +71,7 @@ Singleton {
 
     readonly property var pages: SettingsPageRegistryData.pages.map((page, index) => {
         if (root.abyssFamily && index === root.barPageIndex)
-            return Object.assign({},page,{key:"abyss",name:"Abyss",icon:"water",
+            return Object.assign({},page,{key:"abyss",name:"Surface",icon:"water",
                 desc:"Screen Edge, waves and surface presentation",component:"modules/settings/AbyssConfig.qml"})
         if (root.isRetiredFeaturePage(index)) {
             const panelsPage = SettingsPageRegistryData.pages[root.panelsPageIndex]
@@ -94,22 +94,16 @@ Singleton {
 
     function isHiddenLegacyIndex(index: int): bool {
         return index === root.retiredTlpPageIndex || root.isRetiredFeaturePage(index)
-            || (root.abyssFamily && [16,17,29].includes(index))
+            || (root.abyssFamily && index === 26)
     }
 
     readonly property var defaultCategories: SettingsPageRegistryData.defaultCategories.map(category => ({
-        label: category.label,
-        pages: category.pages.filter(index => !root.isHiddenLegacyIndex(index))
-    }))
+        label:category.label,pages:category.pages.filter(index=>root.isPageApplicable(index))
+    })).filter(category=>category.pages.length > 0)
 
-    readonly property var categories: {
-        const groups = SettingsPageRegistryData.categories.map(category => ({
-            label:category.label,pages:category.pages.filter(index => !root.isHiddenLegacyIndex(index)
-                && (!root.abyssFamily || index !== root.barPageIndex))
-        }))
-        if (root.abyssFamily) groups.splice(1,0,{label:"Abyss",pages:[root.barPageIndex]})
-        return groups
-    }
+    readonly property var categories: SettingsPageRegistryData.categories.map(category => ({
+        label:category.label,pages:category.pages.filter(index=>root.isPageApplicable(index))
+    })).filter(category=>category.label !== "More" || category.pages.length > 0)
 
     readonly property var hiddenPages: SettingsPageRegistryData.hiddenPages.filter(
         index => !root.isHiddenLegacyIndex(index))
@@ -121,7 +115,7 @@ Singleton {
             return
 
         const current = Number(Persistent.states.settings.iiPage ?? -1)
-        if (root.abyssFamily && [16,17,29].includes(current)) {
+        if (root.abyssFamily && current === 26) {
             Persistent.states.settings.iiPage = root.barPageIndex
             return
         }

@@ -5,6 +5,7 @@ import qs.modules.common.widgets
 import qs.modules.abyss.settings
 ContentPage {
     id: root
+    property var sections: ["surface","performance"]
     property string barSection: "modules"
     property string sidebarSection: "general"
     settingsPageIndex: 2
@@ -30,7 +31,7 @@ ContentPage {
                 sidebarSettings.item.activeSection = root.sidebarSection
         }
     }
-    AbyssStyleSettings { id: controls }
+    AbyssStyleSettings { id: controls;sections:root.sections;activeSection:root.sections[0] }
     Loader {
         id: moduleSettings
         Layout.fillWidth: true
@@ -38,7 +39,7 @@ ContentPage {
         visible: active
         active: controls.activeSection === "bar"
         source: "BarConfig.qml"
-        onLoaded: { item.embedded = true; item.activeSection = root.barSection }
+        onLoaded: { item.embedded = true; item.settingsPageIndex = root.settingsPageIndex; item.activeSection = root.barSection }
     }
     Loader {
         Layout.fillWidth: true

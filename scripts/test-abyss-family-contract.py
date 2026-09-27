@@ -17,9 +17,12 @@ for (let i = 0; i < 60; i++) {
     assert.equal(family, ['waffle', 'abyss'][i % 2]);
 }
 assert.equal(new Set(abyssPanels).size, abyssPanels.length);
-for (const [index,section] of [[16,'dock'],[17,'sidebars'],[29,'editor']]) {
-    assert.deepEqual(settingsRoute('abyss',index,''),{pageIndex:2,section});
-    assert.deepEqual(settingsRoute('waffle',index,''),{pageIndex:index,section:''});
+for (const index of [16,17,22,23,29]) {
+    assert.deepEqual(settingsRoute('abyss',index,''),{pageIndex:index,section:''},'mature stable page indices keep their meaning');
+}
+for (const [section,pageIndex] of [['waves',32],['spectrum',32],['popups',33],['bar',34],['dock',22],['sidebars',23]]) {
+    assert.deepEqual(settingsRoute('abyss',2,section),{pageIndex,section});
+    assert.deepEqual(settingsRoute('waffle',2,section),{pageIndex:2,section});
 }
 assert.deepEqual(settingsRoute('abyss',10,'panels'),{pageIndex:10,section:'panels'});
 assert.deepEqual(settingsRoute('abyss',10,'abyss'),{pageIndex:2,section:'surface'});
@@ -54,17 +57,18 @@ registry = (root / "modules/settings/SettingsPageRegistry.qml").read_text()
 applicability = registry.split("function isPageApplicable(index: int): bool {", 1)[1].split("\n    }", 1)[0]
 subprocess.run(["node", "-e", """
 const assert = require('node:assert/strict');
-const root = {pages: Array(30), barPageIndex: 2, abyssFamily: false, waffleFamily: false,
+const root = {pages: Array(35), barPageIndex: 2, abyssFamily: false, waffleFamily: false,
     isHiddenLegacyIndex: i => [18,19,21,27,28].includes(i)};
 function applicable(index) {""" + applicability + """}
 for (const family of ['ii','waffle','abyss']) {
     root.abyssFamily = family === 'abyss'; root.waffleFamily = family === 'waffle';
     assert(applicable(1)); assert(applicable(10)); // shared System/Modules routes
-    assert(!applicable(-1)); assert(!applicable(30)); assert(!applicable(18));
+    assert(!applicable(-1)); assert(!applicable(35)); assert(!applicable(18));
     assert.equal(applicable(2), family !== 'waffle');
     assert.equal(applicable(11), family === 'waffle');
-    assert.equal(applicable(16), family === 'ii');
-    assert.equal(applicable(29), family === 'ii');
+    assert.equal(applicable(16), family !== 'waffle');
+    assert.equal(applicable(29), family !== 'waffle');
+    assert.equal(applicable(32), family === 'abyss');
 }
 """], check=True)
 

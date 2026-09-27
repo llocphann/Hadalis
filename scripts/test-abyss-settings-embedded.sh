@@ -75,7 +75,7 @@ ShellRoot {
                 GlobalStates.openSettingsSection(2,"waves")
             }
             if(root.step===7) {
-                if(!root.check(GlobalStates.settingsOverlayCurrentPage===2,"dedicated Abyss controls receive deep links")) return
+                if(!root.check(GlobalStates.settingsOverlayCurrentPage===32,"dedicated Abyss controls receive deep links")) return
                 if(!root.check(body.contentItem.item.currentPage?.activeSection==="waves","deep link selects the visible Waves tab")) return
                 GlobalStates.openSettingsSection(2,"popups")
             }
@@ -90,24 +90,20 @@ ShellRoot {
             if(root.step===11) GlobalStates.openSettingsSection(2,"spectrum")
             if(root.step===13) {
                 if(!root.check(body.contentItem.item.currentPage?.activeSection==="spectrum","Spectrum deep link reaches its controls")) return
-                GlobalStates.openSettingsSection(16,"")
+                GlobalStates.openSettingsSection(22,"")
             }
             if(root.step===15) {
-                if(!root.check(GlobalStates.settingsOverlayCurrentPage===2 && body.contentItem.item.currentPage?.activeSection==="dock","historical Dock route opens dedicated Abyss tab: "+GlobalStates.settingsOverlayCurrentPage+"/"+body.contentItem.item.currentPage?.activeSection+" requested="+GlobalStates.settingsOverlayRequestedPage+"/"+GlobalStates.settingsOverlayRequestedSection)) return
-                const dock=root.embeddedPage(body.contentItem.item.currentPage,"Dock")
-                if(!root.check(dock && dock.settingsPageIndex===2 && dock.implicitHeight>100 && !dock.interactive,"mature Dock controls use outer page scrolling and search route")) return
+                if(!root.check(GlobalStates.settingsOverlayCurrentPage===22 && body.contentItem.item.currentPage?.settingsPageName==="Dock","mature Dock page keeps stable route")) return
                 GlobalStates.openSettingsSection(2,"bar")
             }
             if(root.step===17) {
                 if(!root.check(body.contentItem.item.currentPage?.activeSection==="bar","module backend settings remain accessible")) return
                 const modules=root.embeddedPage(body.contentItem.item.currentPage,"Bar")
                 if(!root.check(modules && modules.activeSection==="modules" && modules.abyssContent && modules.implicitHeight>100,"mature media/tray/workspace settings load in Abyss")) return
-                GlobalStates.openSettingsSection(17,"")
+                GlobalStates.openSettingsSection(23,"")
             }
             if(root.step===19) {
-                if(!root.check(body.contentItem.item.currentPage?.activeSection==="sidebars","historical Sidebars route opens dedicated Abyss tab")) return
-                const sidebars=root.embeddedPage(body.contentItem.item.currentPage,"Sidebars")
-                if(!root.check(sidebars && sidebars.implicitHeight>100 && !sidebars.interactive,"mature Sidebar controls use outer page scrolling")) return
+                if(!root.check(GlobalStates.settingsOverlayCurrentPage===23 && body.contentItem.item.currentPage?.settingsPageName==="Sidebars","mature Sidebars page keeps stable route")) return
             }
             if(root.step===21) {
                 GlobalStates.settingsOverlayOpen=false

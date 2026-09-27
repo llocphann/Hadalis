@@ -40,8 +40,10 @@ function ensure(family, base, enabled, known, visited) {
 function settingsRoute(family, index, section) {
     var value = String(section || "");
     if (family !== "abyss") return {pageIndex:index,section:value};
-    var tabs = {16:"dock",17:"sidebars",29:"editor"};
-    if (tabs[index]) return {pageIndex:2,section:tabs[index]};
+    if (index === 26) return {pageIndex:2,section:"surface"};
+    var tabs={waves:32,spectrum:32,interaction:32,modules:34,bar:34,dock:22,sidebars:23,popups:33};
+    if (index === 2 && tabs[value.toLowerCase()])
+        return {pageIndex:tabs[value.toLowerCase()],section:value};
     if (index === 10 && value.toLowerCase() === "abyss")
         return {pageIndex:2,section:"surface"};
     return {pageIndex:index,section:value};

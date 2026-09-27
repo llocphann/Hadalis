@@ -404,7 +404,7 @@ ContentPage {
 
     SettingsCardSection {
         settingsTaskSection: "tools"
-        visible: root.activeSection === "tools" && root.isIiActive && !(Config.options?.settingsUi?.easyMode ?? false)
+        visible: root.activeSection === "tools" && root.isIiActive
         expanded: true
         icon: "keyboard_tab"
         title: Translation.tr("Alt-Tab switcher (Material ii)")
@@ -960,7 +960,7 @@ ContentPage {
 
     SettingsCardSection {
         settingsTaskSection: "widgets"
-        visible: root.activeSection === "widgets" && root.isIiActive && !(Config.options?.settingsUi?.easyMode ?? false)
+        visible: root.activeSection === "widgets" && root.isIiActive
         expanded: true
         icon: "widgets"
         title: Translation.tr("Widgets")

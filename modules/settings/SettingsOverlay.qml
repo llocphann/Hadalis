@@ -100,7 +100,6 @@ Scope {
 
         var isWaffleActive = Config.options?.panelFamily === "waffle";
         var wafflePageIndex = getWaffleSettingsPageIndex();
-        var easyOn = root.easyMode;
 
         const overlaySearchIndex = SettingsPageRegistry.searchIndex();
 
@@ -109,9 +108,6 @@ Scope {
             var entry = overlaySearchIndex[i];
             if (!SettingsPageRegistry.isPageApplicable(entry.pageIndex)) continue;
             if (wafflePageIndex >= 0 && entry.pageIndex === wafflePageIndex && !isWaffleActive)
-                continue;
-            if (easyOn && entry.pageIndex >= 0 && entry.pageIndex < overlayPages.length
-                && overlayPages[entry.pageIndex].essential !== true)
                 continue;
 
             var label = (entry.label || "").toLowerCase();
@@ -156,11 +152,6 @@ Scope {
             widgetResults = widgetResults.filter(r => SettingsPageRegistry.isPageApplicable(r.pageIndex));
             if (!isWaffleActive && wafflePageIndex >= 0) {
                 widgetResults = widgetResults.filter(r => r.pageIndex !== wafflePageIndex);
-            }
-            if (easyOn) {
-                widgetResults = widgetResults.filter(r =>
-                    r.pageIndex >= 0 && r.pageIndex < overlayPages.length
-                    && overlayPages[r.pageIndex].essential === true);
             }
             // Prefer real controls (dynamic registry entries with optionId)
             for (var wr = 0; wr < widgetResults.length; wr++) {
@@ -439,11 +430,6 @@ Scope {
             root._lastFamily = Config.options?.panelFamily ?? "ii";
             root.overlayCurrentPage = 0;
         }
-    }
-
-    // Re-run search when easy mode flips (entries from filtered pages must drop in/out)
-    onEasyModeChanged: {
-        if (root.overlaySearchText.length > 0) root.recomputeOverlaySearchResults();
     }
 
     Connections {
@@ -1055,31 +1041,13 @@ Scope {
                                 spacing: 4
 
                                 RippleButton {
-                                    id: easyModeToggle
-                                    buttonRadius: Appearance.rounding.full
-                                    implicitWidth: 36
-                                    implicitHeight: 36
-                                    onClicked: root.setEasyMode(!root.easyMode)
-                                    contentItem: MaterialSymbol {
-                                        anchors.centerIn: parent
-                                        horizontalAlignment: Text.AlignHCenter
-                                        text: root.easyMode ? "school" : "tune"
-                                        iconSize: 20
-                                        color: root.easyMode
-                                            ? Appearance.colors.colPrimary
-                                            : Appearance.colors.colOnSurfaceVariant
-                                        Behavior on color {
-                                            enabled: Appearance.animationsEnabled
-                                            animation: ColorAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve }
-                                        }
+                                    id: editAbyssLayout
+                                    visible: Config.options?.panelFamily === "abyss"
+                                    implicitWidth: 36; implicitHeight: 36
+                                    onClicked: GlobalStates.startAbyssEditing()
+                                    contentItem: MaterialSymbol { text:"edit";iconSize:20;horizontalAlignment:Text.AlignHCenter;verticalAlignment:Text.AlignVCenter;color:Appearance.colors.colOnSurfaceVariant }
+                                    StyledToolTip { text:"Edit Abyss layout" }
                                     }
-                                    StyledToolTip {
-                                        position: "left"
-                                        text: root.easyMode
-                                            ? Translation.tr("Switch to Advanced mode")
-                                            : Translation.tr("Switch to Easy mode")
-                                    }
-                                }
 
                                 RippleButton {
                                     buttonRadius: Appearance.rounding.full
@@ -1762,7 +1730,6 @@ Scope {
     })
 
     // Easy mode helpers
-    readonly property bool easyMode: Config.options?.settingsUi?.easyMode ?? false
 
     // Collapse inactive groups by default: a navigation category is not another
     // flat list of every settings page. Explicit user toggles survive page swaps.
@@ -1797,7 +1764,6 @@ Scope {
                 var pageIdx = cat.pages[p];
                 if (pageIdx >= overlayPages.length) continue;
                 if (!SettingsPageRegistry.isPageApplicable(pageIdx)) continue;
-                if (easyMode && overlayPages[pageIdx].essential !== true) continue;
                 catPages.push(pageIdx);
             }
             if (catPages.length === 0) continue;
@@ -1824,7 +1790,7 @@ Scope {
         for (const group of SettingsPageRegistry.categories) {
             for (const index of group.pages) {
                 const page = overlayPages[index]
-                if (page && (!easyMode || page.essential === true))
+                if (page)
                     order.push(index)
             }
         }
@@ -1842,20 +1808,6 @@ Scope {
         return navPageOrder[(idx - 1 + navPageOrder.length) % navPageOrder.length];
     }
 
-    function setEasyMode(enabled) {
-        Config.setNestedValue("settingsUi.easyMode", enabled === true);
-    }
 
-    // If user toggles easy mode while on a non-essential page, fall back to first essential one (Quick)
-    Connections {
-        target: Config.options?.settingsUi ?? null
-        function onEasyModeChanged() {
-            if (root.easyMode) {
-                var current = root.overlayPages[root.overlayCurrentPage];
-                if (current && current.essential !== true) {
-                    root.overlayCurrentPage = 0;
-                }
-            }
-        }
-    }
+
 }

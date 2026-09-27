@@ -1,4 +1,5 @@
 pragma Singleton
+import "SettingsNavigation.js" as Navigation
 import QtQuick
 import Quickshell
 import qs.services
@@ -18,7 +19,7 @@ import qs.modules.common
 Singleton {
     id: root
 
-    readonly property var legacyHiddenIndexes: [18, 19, 21, 27, 28]
+    readonly property var legacyHiddenIndexes: [18, 19, 21, 27, 28, 30, 31]
 
     readonly property var pages: [
         {
@@ -261,7 +262,12 @@ Singleton {
             desc: Translation.tr("Workspace hover and workspace preview layout"),
             essential: false,
             component: "modules/settings/OverviewConfig.qml"
-        }
+        },
+        {key:"_retired-30",name:"",icon:"settings",component:"modules/settings/InterfaceConfig.qml",devNavigationHidden:true},
+        {key:"_retired-31",name:"",icon:"settings",component:"modules/settings/InterfaceConfig.qml",devNavigationHidden:true},
+        {key:"abyss-waves",name:"Waves & Audio",icon:"waves",desc:"Waves, spectrum and interaction",component:"modules/settings/AbyssWavesConfig.qml"},
+        {key:"abyss-popups",name:"Popups",icon:"chat_bubble",desc:"Popup and indicator placement",component:"modules/settings/AbyssPopupsConfig.qml"},
+        {key:"abyss-modules",name:"Modules",icon:"widgets",desc:"Edge modules and behavior",component:"modules/settings/AbyssModulesConfig.qml"}
     ]
 
     // v7 information architecture: navigation reflects the user's intent,
@@ -269,42 +275,17 @@ Singleton {
     // stable for saved routes, search results and existing deep links.
     readonly property var defaultCategories: [
         { label: Translation.tr("Home"), pages: [0] },
+        { label: "Abyss", pages: Config.options?.panelFamily === "abyss" ? [2,32,34,33,22,23,16] : [] },
         { label: Translation.tr("Appearance"), pages: [4, 3, 25, 8] },
-        { label: Translation.tr("Desktop & Layout"), pages: [15, 26, 2, 22, 23, 5, 16, 14, 29, 10, 11] },
+        { label: Translation.tr("Desktop & Layout"), pages: Config.options?.panelFamily === "abyss" ? [15,5,14,29,10,11] : [15,26,2,22,23,5,16,14,29,10,11] },
         { label: Translation.tr("System"), pages: [1, 12, 17] },
         { label: Translation.tr("Features & Services"), pages: [24, 7, 6] },
         { label: Translation.tr("Advanced & Help"), pages: [20, 9, 13] }
     ]
 
-    readonly property var _arrangement: {
-        const fallback = ({ groups: defaultCategories, hidden: [] })
-        const raw = Config.options?.settingsUi?.categories ?? ""
-        if (!raw || raw.length === 0) return fallback
-        let saved
-        try {
-            saved = JSON.parse(raw)
-        } catch (e) {
-            return fallback
-        }
-        const groupsIn = Array.isArray(saved) ? saved : (Array.isArray(saved?.groups) ? saved.groups : null)
-        if (!groupsIn || groupsIn.length === 0) return fallback
-        const hidden = (Array.isArray(saved?.hidden) ? saved.hidden : [])
-            .filter(i => Number.isInteger(i) && i >= 0 && i < pages.length && !legacyHiddenIndexes.includes(i))
-        const seen = new Set(legacyHiddenIndexes.concat(hidden))
-        const out = []
-        for (const c of groupsIn) {
-            if (!c || typeof c.label !== "string") continue
-            const pageIdxs = (Array.isArray(c.pages) ? c.pages : [])
-                .filter(i => Number.isInteger(i) && i >= 0 && i < pages.length && !seen.has(i))
-            pageIdxs.forEach(i => seen.add(i))
-            out.push({ label: c.label, pages: pageIdxs })
-        }
-        const missing = []
-        for (let i = 0; i < pages.length; i++)
-            if (!seen.has(i)) missing.push(i)
-        if (missing.length > 0) out.push({ label: Translation.tr("More"), pages: missing })
-        return out.length > 0 ? ({ groups: out, hidden: hidden }) : fallback
-    }
+    readonly property var _arrangement: Navigation.arrange(
+        Config.options?.settingsUi?.categories ?? "", defaultCategories,
+        pages.length, legacyHiddenIndexes)
     readonly property var categories: _arrangement.groups
     readonly property var hiddenPages: _arrangement.hidden
 

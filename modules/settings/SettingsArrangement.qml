@@ -8,7 +8,7 @@ import qs.services
 QtObject {
     id: root
 
-    readonly property int layoutSchemaVersion: 10
+    readonly property int layoutSchemaVersion: 11
     readonly property int retiredTlpPageIndex: 28
     readonly property int overviewPageIndex: 29
 
@@ -185,6 +185,16 @@ QtObject {
             return
         }
 
+        if (sourceVersion < 11 && Config.options?.panelFamily === "abyss") {
+            const pages = [2,32,34,33,22,23,16].filter(i=>!migratedHidden.includes(i))
+            let home = migratedGroups.find(group=>group?.label === "Abyss")
+            if (!home) { home={label:"Abyss",pages:[]};migratedGroups.splice(1,0,home) }
+            for (const group of migratedGroups) {
+                if (!Array.isArray(group?.pages)) continue
+                group.pages=group.pages.filter(i=>!pages.includes(i))
+            }
+            home.pages=pages
+        }
         root.save({ groups: migratedGroups, hidden: migratedHidden })
     }
 
@@ -306,10 +316,14 @@ QtObject {
 
     function removeCategory(index: int): bool {
         const state = root.snapshot()
-        if (state.groups.length <= 1 || !state.groups[index]
-                || state.groups[index].pages.length > 0)
+        if (state.groups.length <= 1 || !state.groups[index])
             return false
-        state.groups.splice(index, 1)
+        const removed = state.groups.splice(index, 1)[0]
+        for (const page of removed.pages) {
+            const target = root.bestRestoreCategory(page, state.groups)
+            if (!state.groups[target].pages.includes(page))
+                state.groups[target].pages.push(page)
+        }
         root.save(state)
         return true
     }

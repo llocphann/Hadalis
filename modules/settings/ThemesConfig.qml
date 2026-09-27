@@ -875,7 +875,7 @@ ContentPage {
     // Theme Scheduling Section
     SettingsCardSection {
         settingsTaskSection: "motion"
-        visible: root.activeSection === "motion" && !(Config.options?.settingsUi?.easyMode ?? false)
+        visible: root.activeSection === "motion"
         expanded: true
         icon: "schedule"
         title: Translation.tr("Theme Scheduling")
@@ -1111,7 +1111,7 @@ ContentPage {
     SettingsCardSection {
         id: terminalColorsSection
         settingsTaskSection: "advanced"
-        visible: root.activeSection === "advanced" && !(Config.options?.settingsUi?.easyMode ?? false)
+        visible: root.activeSection === "advanced"
         expanded: true
         icon: "terminal"
         title: Translation.tr("Terminal Colors")
@@ -1583,7 +1583,7 @@ ContentPage {
     SettingsCardSection {
         id: customThemeEditorSection
         settingsTaskSection: "advanced"
-        visible: root.activeSection === "advanced" && !(Config.options?.settingsUi?.easyMode ?? false)
+        visible: root.activeSection === "advanced"
         expanded: true
         icon: "edit"
         title: Translation.tr("Custom Theme Editor")
@@ -1592,7 +1592,7 @@ ContentPage {
             Loader {
                 Layout.fillWidth: true
                 active: root.activeSection === "advanced"
-                    && !(Config.options?.settingsUi?.easyMode ?? false)
+
                     && customThemeEditorSection.expanded
                 source: "CustomThemeEditor.qml"
             }
@@ -1602,7 +1602,7 @@ ContentPage {
     SettingsCardSection {
         id: gowallEditorSection
         settingsTaskSection: "advanced"
-        visible: root.activeSection === "advanced" && !(Config.options?.settingsUi?.easyMode ?? false)
+        visible: root.activeSection === "advanced"
         expanded: true
         icon: "wallpaper"
         title: Translation.tr("Gowall Wallpaper Editor")
@@ -1611,7 +1611,7 @@ ContentPage {
             Loader {
                 Layout.fillWidth: true
                 active: root.activeSection === "advanced"
-                    && !(Config.options?.settingsUi?.easyMode ?? false)
+
                     && gowallEditorSection.expanded
                 source: "GowallWallpaperEditor.qml"
             }
@@ -1890,7 +1890,7 @@ ContentPage {
 
     SettingsCardSection {
         settingsTaskSection: "advanced"
-        visible: root.activeSection === "advanced" && !(Config.options?.settingsUi?.easyMode ?? false)
+        visible: root.activeSection === "advanced"
         expanded: true
         icon: "info"
         title: Translation.tr("About Themes")

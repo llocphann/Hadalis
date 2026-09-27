@@ -55,7 +55,6 @@ Scope {
     property int currentPage: -1
 
 
-    readonly property bool easyMode: Config.options?.settingsUi?.easyMode ?? false
 
     // Component paths are registry-relative; resolve to absolute shell URLs
     // so the host's Loaders work regardless of where this file lives.
@@ -150,9 +149,7 @@ Scope {
         return false
     }
 
-    function setEasyMode(enabled: bool): void {
-        Config.setNestedValue("settingsUi.easyMode", enabled === true);
-    }
+
 
     // Switch chrome without going hunting for the option that controls it.
     // "focus" and "rail" swap the two overlay loaders in shell.qml, which are
@@ -183,8 +180,6 @@ Scope {
                 if (idx < 0 || idx >= pages.length)
                     continue;
                 if (!SettingsPageRegistry.isPageApplicable(idx))
-                    continue;
-                if (easyMode && pages[idx].essential !== true)
                     continue;
                 var entry = Object.assign({}, pages[idx]);
                 entry.realIndex = idx;
@@ -240,14 +235,6 @@ Scope {
         return root._groupShapes[index % root._groupShapes.length];
     }
 
-    // Bounce off a page that easy mode just hid
-    onEasyModeChanged: {
-        if (easyMode && currentPage >= 0 && pages[currentPage]?.essential !== true)
-            goHome();
-        if (searchText.length > 0)
-            recomputeSearch();
-    }
-
     // ── Search ──
     property string searchText: ""
     property var searchResults: []
@@ -274,8 +261,6 @@ Scope {
 
         function allowed(pageIndex) {
             if (!SettingsPageRegistry.isPageApplicable(pageIndex))
-                return false;
-            if (root.easyMode && root.pages[pageIndex].essential !== true)
                 return false;
             return true;
         }
@@ -1200,26 +1185,20 @@ Scope {
                         }
 
                         RippleButton {
-                            implicitWidth: 34
-                            implicitHeight: 34
-                            buttonRadius: Appearance.rounding.full
-                            colBackground: "transparent"
-                            colBackgroundHover: Appearance.colors.colLayer1Hover
-                            onClicked: root.setEasyMode(!root.easyMode)
-                            contentItem: MaterialSymbol {
-                                anchors.centerIn: parent
-                                text: root.easyMode ? "school" : "tune"
-                                iconSize: 19
-                                color: root.easyMode ? Appearance.colors.colPrimary
-                                     : Appearance.colors.colOnSurfaceVariant
+                            id: editAbyssLayout
+                            visible: Config.options?.panelFamily === "abyss"
+                            implicitWidth: 36; implicitHeight: 36
+                            onClicked: GlobalStates.startAbyssEditing()
+                            contentItem: MaterialSymbol { text:"edit";iconSize:20;horizontalAlignment:Text.AlignHCenter;verticalAlignment:Text.AlignVCenter;color:Appearance.colors.colOnSurfaceVariant }
+                            StyledToolTip { text:"Edit Abyss layout" }
                             }
-                            StyledToolTip {
-                                text: root.easyMode
-                                    ? Translation.tr("Easy mode — click to show all settings")
-                                    : Translation.tr("Advanced mode — click to switch to Easy mode (essentials only)")
-                            }
-                        }
 
+                        RippleButton {
+                            implicitWidth:36;implicitHeight:36
+                            onClicked:Quickshell.execDetached([Quickshell.shellPath("scripts/inir"),"lock","activate"])
+                            contentItem:MaterialSymbol { text:"lock";iconSize:20;horizontalAlignment:Text.AlignHCenter;verticalAlignment:Text.AlignVCenter;color:Appearance.colors.colOnSurfaceVariant }
+                            StyledToolTip { text:"Lock" }
+                        }
                         RippleButton {
                             implicitWidth: 34
                             implicitHeight: 34

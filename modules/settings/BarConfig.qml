@@ -772,7 +772,6 @@ ContentPage {
 
             ContentSubsection {
                 title: Translation.tr("Resources")
-                visible: !(Config.options?.settingsUi?.easyMode ?? false)
 
                 ConfigRow {
                     uniform: true

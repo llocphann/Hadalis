@@ -41,7 +41,7 @@ ContentPage {
 
     SettingsCardSection {
         settingsTaskSection: "general"
-        visible: root.isIiActive && !(Config.options?.settingsUi?.easyMode ?? false) && root.activeSection === "general"
+        visible: root.isIiActive && root.activeSection === "general"
         expanded: true
         icon: "tune"
         title: Translation.tr("General")
@@ -99,7 +99,7 @@ ContentPage {
 
     SettingsCardSection {
         settingsTaskSection: "left"
-        visible: root.isIiActive && !(Config.options?.settingsUi?.easyMode ?? false) && root.activeSection === "left"
+        visible: root.isIiActive && root.activeSection === "left"
         expanded: true
         icon: "first_page"
         title: Translation.tr("Left sidebar")
@@ -198,7 +198,7 @@ ContentPage {
 
     SettingsCardSection {
         settingsTaskSection: "right"
-        visible: root.isIiActive && !(Config.options?.settingsUi?.easyMode ?? false) && root.activeSection === "right"
+        visible: root.isIiActive && root.activeSection === "right"
         expanded: true
         icon: "last_page"
         title: Translation.tr("Right sidebar")
@@ -425,7 +425,7 @@ ContentPage {
 
     SettingsCardSection {
         settingsTaskSection: "media"
-        visible: root.isIiActive && !(Config.options?.settingsUi?.easyMode ?? false) && root.activeSection === "media"
+        visible: root.isIiActive && root.activeSection === "media"
         expanded: true
         icon: "music_note"
         title: Translation.tr("Media & content")
@@ -646,7 +646,7 @@ ContentPage {
 
     SettingsCardSection {
         settingsTaskSection: "open"
-        visible: root.isIiActive && !(Config.options?.settingsUi?.easyMode ?? false) && root.activeSection === "open"
+        visible: root.isIiActive && root.activeSection === "open"
         expanded: true
         icon: "swipe"
         title: Translation.tr("Opening")

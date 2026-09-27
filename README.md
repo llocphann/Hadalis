@@ -471,6 +471,10 @@ The following requirements remain open unless an exact local commit and behavior
 
 **Current evidence and investigation:**
 
+- Local milestones now include the embedded Dashboard toolbar/collision rollback fix, ocean-scale presets (measured distinct peaks, finite settling), 0–400% audio strength, a shared surface-wave setting and numeric Abyss sliders. GPU wave/spectrum/reduced-motion checks passed in the private Wayland harness.
+- Settings now has focused Abyss heading pages rather than one giant nested page. Mature indices 16 Dashboard, 17 Autostart, 22 Dock and 23 Sidebars retain their correct meanings; old section deep links migrate to focused routes. Easy mode rendering is removed, one header Edit Layout action remains per chrome, and nonempty heading deletion preserves its pages. Behavior tests cover repeated moves/deletion/deduplication; real embedded Settings deep-link tests pass. Continue auditing runtime visuals and stale static contracts rather than treating these results as full acceptance.
+
+
 - The last completed canonical local run was **188/188 PASS** at `28b3f5112de8d3101d4593588ad9d38225f071d8`; one dedicated Nix check was deferred. This applies only to that SHA, not subsequent edits or full desktop acceptance. Local log: `/tmp/hadalis-abyss-acceptance/qol-final-28b3f511.log`.
 - Existing published behavior includes Material→Abyss migration, dedicated style settings, shared Edge sizes/guides, mature compact OSD icons/dimensions, middle-Edge Sidebar reveal, audio→field routing and optional near-corner popup joins. The reports above identify remaining defects and refinements; none should be dismissed merely because a contract test passes.
 - Local Dashboard fix reserves the Overview edit toolbar inside the embedded body. `scripts/test-abyss-dashboard-editing.sh` passes scripted resize/persistence/empty-layout restore on both real Wayland hosts. `scripts/test-dashboard-collision-behavior.py` passes no-room rollback, free insertion, minimum-size preservation and migrated overlap isolation. Actual pointer dragging in the full production perimeter and dense saved-layout repair remain acceptance work.

@@ -367,7 +367,7 @@ def main() -> None:
         "property int currentTab: 0",
         "id: tabIndicator",
         "anchors.right: parent.right",
-        "Behavior on y",
+        "Behavior on tabPosition",
         "WheelHandler {",
         "id: timeWeatherPanel",
         "OrbitalWeather {",

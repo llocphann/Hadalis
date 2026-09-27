@@ -25,8 +25,8 @@ GroupButton {
     property bool leftmost: false
     property bool rightmost: false
     readonly property bool showZzzPreview: false
-    leftRadius: (toggled || leftmost) ? (height / 2) : Appearance.rounding.unsharpenmore
-    rightRadius: (toggled || rightmost) ? (height / 2) : Appearance.rounding.unsharpenmore
+    leftRadius: (Config.options?.panelFamily === "abyss" || toggled || leftmost) ? (height / 2) : Appearance.rounding.unsharpenmore
+    rightRadius: (Config.options?.panelFamily === "abyss" || toggled || rightmost) ? (height / 2) : Appearance.rounding.unsharpenmore
     Behavior on leftRadius {
         enabled: Appearance.animationsEnabled
         animation: NumberAnimation { duration: Appearance.animation.elementResize.duration; easing.type: Appearance.animation.elementResize.type; easing.bezierCurve: Appearance.animation.elementResize.bezierCurve }
@@ -35,9 +35,9 @@ GroupButton {
         enabled: Appearance.animationsEnabled
         animation: NumberAnimation { duration: Appearance.animation.elementResize.duration; easing.type: Appearance.animation.elementResize.type; easing.bezierCurve: Appearance.animation.elementResize.bezierCurve }
     }
-    colBackground: Appearance.colors.colSecondaryContainer
-    colBackgroundHover: Appearance.colors.colSecondaryContainerHover
-    colBackgroundActive: Appearance.colors.colSecondaryContainerActive
+    colBackground: Config.options?.panelFamily === "abyss" ? Qt.alpha(Appearance.colors.colPrimary,.1) : Appearance.colors.colSecondaryContainer
+    colBackgroundHover: Config.options?.panelFamily === "abyss" ? Qt.alpha(Appearance.colors.colPrimary,.18) : Appearance.colors.colSecondaryContainerHover
+    colBackgroundActive: Config.options?.panelFamily === "abyss" ? Qt.alpha(Appearance.colors.colPrimary,.26) : Appearance.colors.colSecondaryContainerActive
 
     contentItem: RowLayout {
         spacing: root.buttonIcon?.length > 0 && root.buttonText?.length > 0 ? 4 : 0

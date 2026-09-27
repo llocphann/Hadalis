@@ -10,14 +10,21 @@ AbstractButton {
     property string description: text
     hoverEnabled: true
     implicitHeight: 36
-    implicitWidth: Math.max(28, contentItem.implicitWidth + 12)
+    implicitWidth: Math.max(36, contentItem.implicitWidth + 24)
     Accessible.name: description
     Accessible.role: Accessible.Button
     font.family: AbyssStyle.fontFamily
     font.pixelSize: AbyssStyle.fontSize
-    leftPadding: 6
-    rightPadding: 6
-    background: null
+    leftPadding: 12
+    rightPadding: 12
+    background: Rectangle {
+        radius: height/2
+        color: Qt.alpha(AbyssStyle.accent,root.down ? .24 : root.checked ? .2 : root.hovered ? .12 : .05)
+        border.width: 1
+        border.color: Qt.alpha(AbyssStyle.accent,root.activeFocus ? .8 : root.hovered || root.checked ? .35 : .15)
+        Behavior on color { enabled: AbyssStyle.motionEnabled; ColorAnimation { duration: AbyssStyle.motionFast } }
+        Behavior on border.color { enabled: AbyssStyle.motionEnabled; ColorAnimation { duration: AbyssStyle.motionFast } }
+    }
     opacity: enabled ? (down ? 0.70 : 1) : 0.4
     contentItem: RowLayout {
         spacing: 6

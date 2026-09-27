@@ -14,7 +14,8 @@ Switch {
     implicitHeight: 32 * root.scale
     implicitWidth: 52 * root.scale
     property color activeColor: Appearance.colors.colPrimary
-    property color inactiveColor: Appearance.colors.colSurfaceContainerHighest
+    readonly property bool abyssStyle: Config.options?.panelFamily === "abyss"
+    property color inactiveColor: abyssStyle ? Qt.alpha(activeColor,.12) : Appearance.colors.colSurfaceContainerHighest
 
     PointingHandInteraction {}
 
@@ -25,7 +26,7 @@ Switch {
         radius: Appearance?.rounding.full ?? 9999
         color: root.checked ? root.activeColor : root.inactiveColor
         border.width: 2 * root.scale
-        border.color: root.checked ? root.activeColor : Appearance.colors.colOutline
+        border.color: root.checked ? root.activeColor : root.abyssStyle ? Qt.alpha(root.activeColor,.4) : Appearance.colors.colOutline
 
         Behavior on radius {
             enabled: Appearance.animationsEnabled

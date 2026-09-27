@@ -19,11 +19,12 @@ Button {
     property string buttonText
     Accessible.name: root.buttonText.length > 0 ? root.buttonText : root.text
     property bool pointingHandCursor: true
-    property real buttonRadius: Appearance?.rounding?.small ?? 4
+    readonly property bool abyssStyle: Config.options?.panelFamily === "abyss"
+    property real buttonRadius: abyssStyle ? Math.min(18,height/2) : Appearance?.rounding?.small ?? 4
     property real buttonRadiusPressed: buttonRadius
     property real buttonEffectiveRadius: root.down ? root.buttonRadiusPressed : root.buttonRadius
     property int rippleDuration: 1200
-    property bool rippleEnabled: true
+    property bool rippleEnabled: !abyssStyle
     property bool stateTransitionsEnabled: true
     property bool pressScaleEnabled: true
     // Retained as a compatibility knob for callers that still assign it. The
@@ -39,8 +40,8 @@ Button {
     property int pointerDragThreshold: 10
     readonly property bool pointerDragActive: buttonMouseArea.drag.active
 
-    property color colBackground: "transparent"
-    property color colBackgroundHover: Appearance.colLayer1Hover
+    property color colBackground: abyssStyle ? Qt.alpha(Appearance.colors.colPrimary,.04) : "transparent"
+    property color colBackgroundHover: abyssStyle ? Qt.alpha(Appearance.colors.colPrimary,.12) : Appearance.colLayer1Hover
     property color colBackgroundToggled: Appearance.colors.colPrimary
     property color colBackgroundToggledHover: Appearance.colors.colPrimaryHover
     property color colRipple: Appearance.colLayer1Active
@@ -188,8 +189,8 @@ Button {
 
         color: root.buttonColor
         radius: root.buttonEffectiveRadius
-        border.width: root.visualFocus ? 1 : 0
-        border.color: root.visualFocus ? Appearance.colors.colPrimary : "transparent"
+        border.width: root.visualFocus || root.abyssStyle ? 1 : 0
+        border.color: root.visualFocus ? Appearance.colors.colPrimary : root.abyssStyle ? Qt.alpha(Appearance.colors.colPrimary,.12) : "transparent"
         Behavior on border.color {
             enabled: Appearance.animationsEnabled && root.stateTransitionsEnabled
             animation: ColorAnimation { duration: Appearance.animation.stateChange.duration; easing.type: Appearance.animation.stateChange.type; easing.bezierCurve: Appearance.animation.stateChange.bezierCurve }

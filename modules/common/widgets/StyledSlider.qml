@@ -35,24 +35,25 @@ Slider {
     }
 
     property var configuration: StyledSlider.Configuration.S
+    readonly property bool abyssStyle: Config.options?.panelFamily === "abyss"
 
-    property real handleDefaultWidth: 3
-    property real handlePressedWidth: 1.5
+    property real handleDefaultWidth: abyssStyle ? 12 : 3
+    property real handlePressedWidth: abyssStyle ? 14 : 1.5
     property color highlightColor: Appearance.colors.colPrimary
-    property color trackColor: Appearance.colors.colSecondaryContainer
+    property color trackColor: abyssStyle ? Qt.alpha(Appearance.colors.colPrimary,.18) : Appearance.colors.colSecondaryContainer
     property color handleColor: Appearance.colors.colPrimary
     property color dotColor: Appearance.colors.colOnSecondaryContainer
     property color dotColorHighlighted: Appearance.colors.colOnPrimary
     property real unsharpenRadius: Appearance.rounding.unsharpen
-    property real trackWidth: configuration
-    property real trackRadius: trackWidth >= StyledSlider.Configuration.XL ? 21
+    property real trackWidth: abyssStyle ? 4 : configuration
+    property real trackRadius: abyssStyle ? 2 : trackWidth >= StyledSlider.Configuration.XL ? 21
         : trackWidth >= StyledSlider.Configuration.L ? 12
         : trackWidth >= StyledSlider.Configuration.M ? 9
         : trackWidth >= StyledSlider.Configuration.S ? 6
         : height / 2
-    property real handleHeight: (configuration === StyledSlider.Configuration.Wavy) ? 24 : Math.max(33, trackWidth + 9)
+    property real handleHeight: abyssStyle ? handleWidth : (configuration === StyledSlider.Configuration.Wavy) ? 24 : Math.max(33, trackWidth + 9)
     property real handleWidth: root.pressed ? handlePressedWidth : handleDefaultWidth
-    property real handleMargins: 4
+    property real handleMargins: abyssStyle ? 8 : 4
     property real trackDotSize: 3
     property string tooltipContent: `${Math.round(value * 100)}%`
     property bool scrollable: false
@@ -61,7 +62,9 @@ Slider {
     property bool animateWave: true
     property real waveAmplitudeMultiplier: wavy ? 0.5 : 0
     property real waveFrequency: 6
-    readonly property bool usesWaveTrack: wavy || configuration === StyledSlider.Configuration.Wavy
+    readonly property bool usesWaveTrack: !abyssStyle && (wavy || configuration === StyledSlider.Configuration.Wavy)
+    implicitHeight: abyssStyle ? 36 : Math.max(background?.implicitHeight ?? 0,handle?.implicitHeight ?? 0)+topPadding+bottomPadding
+    opacity: enabled ? 1 : .4
 
     Behavior on waveAmplitudeMultiplier {
         enabled: Appearance.animationsEnabled
@@ -206,7 +209,8 @@ Slider {
 
     background: Item {
         anchors.verticalCenter: parent.verticalCenter
-        width: parent.width
+        x: root.abyssStyle ? root.leftPadding : 0
+        width: root.abyssStyle ? root.availableWidth : parent.width
         implicitHeight: trackWidth
 
         // Fill left
@@ -215,15 +219,15 @@ Slider {
                 verticalCenter: parent.verticalCenter
                 left: parent.left
             }
-            width: Math.max(0, root.visualPosition * root.effectiveDraggingWidth - handle.implicitWidth / 2)
+            width: Math.max(0, root.visualPosition * root.effectiveDraggingWidth - (root.abyssStyle ? 0 : handle.implicitWidth / 2))
             height: root.trackWidth
             active: !root.usesWaveTrack
             sourceComponent: Rectangle {
                 color: root.highlightColor
                 topLeftRadius: root.trackRadius
                 bottomLeftRadius: root.trackRadius
-                topRightRadius: root.unsharpenRadius
-                bottomRightRadius: root.unsharpenRadius
+                topRightRadius: root.abyssStyle ? root.trackRadius : root.unsharpenRadius
+                bottomRightRadius: root.abyssStyle ? root.trackRadius : root.unsharpenRadius
             }
         }
 
@@ -252,18 +256,18 @@ Slider {
                 verticalCenter: parent.verticalCenter
                 right: parent.right
             }
-            width: Math.max(0, (1 - root.visualPosition) * root.effectiveDraggingWidth - handle.implicitWidth / 2)
+            width: Math.max(0, (1 - root.visualPosition) * root.effectiveDraggingWidth - (root.abyssStyle ? 0 : handle.implicitWidth / 2))
             height: trackWidth
             color: root.trackColor
             topRightRadius: root.trackRadius
             bottomRightRadius: root.trackRadius
-            topLeftRadius: root.unsharpenRadius
-            bottomLeftRadius: root.unsharpenRadius
+            topLeftRadius: root.abyssStyle ? root.trackRadius : root.unsharpenRadius
+            bottomLeftRadius: root.abyssStyle ? root.trackRadius : root.unsharpenRadius
         }
 
         // Stop indicators
         Repeater {
-            model: root.stopIndicatorValues
+            model: root.abyssStyle ? [] : root.stopIndicatorValues
             TrackDot {
                 required property real modelData
                 value: modelData
@@ -281,7 +285,8 @@ Slider {
         anchors.verticalCenter: parent.verticalCenter
         radius: Math.min(width, height) / 2
         color: root.handleColor
-        border.width: 0
+        border.width: root.abyssStyle ? 1 : 0
+        border.color: Qt.alpha(Appearance.colors.colOnSurface,.25)
 
         Behavior on implicitWidth {
             enabled: Appearance.animationsEnabled

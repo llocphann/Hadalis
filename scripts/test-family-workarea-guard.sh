@@ -7,14 +7,9 @@ if ! command -v qs >/dev/null; then
 fi
 guard_test_root="$(mktemp -d)"
 trap 'rm -rf -- "$guard_test_root"' EXIT
-# Execute the production controller; native PanelWindow geometry is qualified
+# Execute the per-output production controller; native PanelWindow geometry is qualified
 # separately in nested Niri because the offscreen plugin has no layer backend.
-python3 - "$repo_root" "$guard_test_root" <<'PY'
-from pathlib import Path
-import sys
-source = (Path(sys.argv[1])/'FamilyWorkAreaGuard.qml').read_text()
-(Path(sys.argv[2])/'Controller.qml').write_text(source.split('    Variants {',1)[0]+'}\n')
-PY
+cp "$repo_root/FamilyWorkAreaHold.qml" "$guard_test_root/Controller.qml"
 cat > "$guard_test_root/shell.qml" <<'QML'
 //@ pragma ShellId hadalis-workarea-guard-test
 import QtQuick

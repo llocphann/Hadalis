@@ -9,6 +9,7 @@ import QtQuick.Layouts
 
 Item {
     id: root
+    property bool connectedSurface: false
 
     property var track: MprisController.activeTrack
     property bool isPlaying: MprisController.isPlaying
@@ -55,8 +56,8 @@ Item {
         : root.actionFeedbackAction === "previous" ? "skip_previous"
         : root.actionFeedbackAction === "pause" ? "pause" : "play_arrow"
 
-    implicitWidth: mediaCard.implicitWidth + 2 * Appearance.sizes.elevationMargin
-    implicitHeight: mediaCard.implicitHeight + 2 * Appearance.sizes.elevationMargin
+    implicitWidth: mediaCard.implicitWidth + (connectedSurface ? 0 : 2 * Appearance.sizes.elevationMargin)
+    implicitHeight: mediaCard.implicitHeight + (connectedSurface ? 0 : 2 * Appearance.sizes.elevationMargin)
     clip: false
 
     function isCoherentTitle(title: string): bool {
@@ -290,27 +291,29 @@ Item {
 
     StyledRectangularShadow {
         target: mediaCard
+        visible: !root.connectedSurface
     }
 
     GlassBackground {
         id: mediaCard
         anchors {
             fill: parent
-            margins: Appearance.sizes.elevationMargin
+            margins: root.connectedSurface ? 0 : Appearance.sizes.elevationMargin
         }
         readonly property point screenPosition: mediaCard.mapToItem(null, 0, 0)
         screenX: screenPosition.x
         screenY: screenPosition.y
         screenWidth: root.QsWindow?.window?.screen?.width ?? root.cardWidth
         screenHeight: root.QsWindow?.window?.screen?.height ?? implicitHeight
-        radius: Appearance.zzzEverywhere ? Appearance.zzz.panelRadius
+        radius: root.connectedSurface ? 0 : Appearance.zzzEverywhere ? Appearance.zzz.panelRadius
             : Appearance.angelEverywhere ? Appearance.angel.roundingNormal
             : Appearance.inirEverywhere ? Appearance.inir.roundingNormal
             : Appearance.rounding.normal
-        fallbackColor: Appearance.colors.colLayer0
+        wallpaperBackdropEnabled: !root.connectedSurface
+        fallbackColor: root.connectedSurface ? "transparent" : Appearance.colors.colLayer0
         inirColor: Appearance.inir.colLayer1
         auroraTransparency: Appearance.aurora.popupTransparentize
-        border.width: Appearance.zzzEverywhere ? Appearance.zzz.borderThick
+        border.width: root.connectedSurface ? 0 : Appearance.zzzEverywhere ? Appearance.zzz.borderThick
             : Appearance.auroraEverywhere || Appearance.inirEverywhere ? 1 : 0
         border.color: Appearance.angelEverywhere ? Appearance.angel.colCardBorder
             : Appearance.inirEverywhere ? Appearance.inir.colBorder

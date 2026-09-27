@@ -429,17 +429,28 @@ Scope {
                 identity: "osd"
                 controller: liquid
                 anchors.fill: parent
-                edge: root.barEdge === "right" ? "left" : "right"
+                edge: root.barEdge
                 outputName: window.outputName
                 open: window.presented && field.ready && (Config.options?.enabledPanels ?? []).includes("abyssOnScreenDisplay")
                     && (GlobalStates.osdVolumeOpen || GlobalStates.osdBrightnessOpen || GlobalStates.osdMicOpen || GlobalStates.osdMediaOpen || GlobalStates.osdKeyboardLayoutOpen)
                     && Geometry.targets(window.outputName,Config.options?.osd?.screenList ?? [],Quickshell.screens.map(s => s.name))
                     && !rightPanel.open && !leftPanel.open && !notification.open
                 edgeInsets: window.nativeInsets
-                span: 120
-                along: window.height/2-span/2
-                depth: 240
+                padding: 12
+                span: (Geometry.horizontal(edge) ? (contentItem.item?.desiredWidth ?? Appearance.sizes.osdWidth) : (contentItem.item?.desiredHeight ?? 48))+padding*2
+                along: (Geometry.horizontal(edge) ? window.width : window.height)/2-span/2
+                depth: (Geometry.horizontal(edge) ? (contentItem.item?.desiredHeight ?? 48) : (contentItem.item?.desiredWidth ?? Appearance.sizes.osdWidth))+padding*2
                 source: "content/AbyssOsdContent.qml"
+                HoverHandler {
+                    parent: osd.contentParent
+                    enabled: osd.open
+                    onHoveredChanged: {
+                        if (GlobalStates.abyssOsdKind === "media") {
+                            if (hovered) GlobalStates.abyssOsdHoverOutput = window.outputName
+                            else if (GlobalStates.abyssOsdHoverOutput === window.outputName) GlobalStates.abyssOsdHoverOutput = ""
+                        } else if (hovered && GlobalStates.abyssOsdKind !== "voiceSearch") GlobalStates.osdDismissed()
+                    }
+                }
             }
             AbyssBodyHost {
                 id: utility

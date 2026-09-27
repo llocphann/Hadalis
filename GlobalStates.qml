@@ -140,6 +140,7 @@ Singleton {
     signal osdDismissed()
     property string abyssOsdKind: "volume"
     property string abyssOsdMessage: ""
+    property string abyssOsdHoverOutput: ""
     property bool osdBrightnessOpen: false
     property bool osdVolumeOpen: false
     property bool osdMicOpen: false

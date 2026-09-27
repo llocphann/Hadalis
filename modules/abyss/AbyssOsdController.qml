@@ -19,11 +19,13 @@ Item {
         GlobalStates.osdMediaOpen = false
         GlobalStates.osdKeyboardLayoutOpen = false
         GlobalStates.abyssOsdMessage = ""
+        GlobalStates.abyssOsdHoverOutput = ""
         syncing = false
     }
     function show(kind: string, autoHide = true): void {
         if (!configured || !initialized) return
         if (kind === "media" && (!(Config.options?.osd?.mediaEnabled ?? true) || !MprisController.activePlayer)) return
+        const hoveredOutput = kind === "media" && GlobalStates.abyssOsdKind === "media" ? GlobalStates.abyssOsdHoverOutput : ""
         hide()
         syncing = true
         GlobalStates.abyssOsdKind = kind
@@ -32,8 +34,9 @@ Item {
         GlobalStates.osdMicOpen = kind === "mic"
         GlobalStates.osdMediaOpen = kind === "media"
         GlobalStates.osdKeyboardLayoutOpen = kind === "keyboardLayout"
+        GlobalStates.abyssOsdHoverOutput = hoveredOutput
         syncing = false
-        if (autoHide) timeout.restart()
+        if (autoHide && !hoveredOutput) timeout.restart()
     }
     Timer { interval: 1500; running: true; onTriggered: root.initialized = true }
     Timer { id: timeout; interval: Math.max(300,Config.options?.osd?.timeout ?? 2000)+(GlobalStates.abyssOsdKind === "media" ? 1000 : 0); onTriggered: root.hide() }
@@ -47,6 +50,11 @@ Item {
         function onOsdMediaOpenChanged(): void { if (!root.syncing && GlobalStates.osdMediaOpen) root.show("media") }
         function onOsdKeyboardLayoutOpenChanged(): void { if (!root.syncing && GlobalStates.osdKeyboardLayoutOpen) root.show("keyboardLayout") }
         function onOsdMediaActionTriggered(action: string): void { if (GlobalStates.osdMediaOpen) root.show("media") }
+        function onAbyssOsdHoverOutputChanged(): void {
+            if (GlobalStates.abyssOsdKind !== "media" || !GlobalStates.osdMediaOpen) return
+            if (GlobalStates.abyssOsdHoverOutput) timeout.stop()
+            else timeout.restart()
+        }
     }
     Connections { target: Brightness; function onBrightnessChanged(): void { root.show("brightness") } }
     Connections {

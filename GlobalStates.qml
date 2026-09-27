@@ -117,6 +117,12 @@ Singleton {
     function startAbyssEditing(): void {
         if (Config.options?.panelFamily !== "abyss" || root.screenLocked) return
         root.abyssEditorTargetOutput = root.resolveOutputName("",[])
+        root.sessionOpen = false
+        root.cheatsheetOpen = false
+        ShellUpdates.closeOverlay()
+        root.wallpaperSelectorOpen = false
+        root.wallpaperLauncherOpen = false
+        root.coverflowSelectorOpen = false
         root.settingsOverlayOpen = false
         root.dashboardOpen = false
         root.controlPanelOpen = false

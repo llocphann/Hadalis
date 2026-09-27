@@ -13,6 +13,14 @@ import "looks/AbyssLayout.js" as ModuleLayout
 Scope {
     id: root
     property string largeTargetOutput: GlobalStates.resolveOutputName("",[])
+    readonly property string utilityKind: GlobalStates.sessionOpen ? "session" : GlobalStates.cheatsheetOpen ? "cheatsheet" : ShellUpdates.overlayOpen ? "update" : ""
+    readonly property string utilityIdentifier: utilityKind === "session" ? "abyssSessionScreen" : utilityKind === "cheatsheet" ? "iiCheatsheet" : "iiShellUpdate"
+    function closeUtility(): void {
+        if (utilityKind === "session") GlobalStates.sessionOpen = false
+        else if (utilityKind === "cheatsheet") GlobalStates.cheatsheetOpen = false
+        else ShellUpdates.closeOverlay()
+    }
+    onUtilityKindChanged: if (utilityKind) largeTargetOutput = GlobalStates.resolveOutputName("",[])
     property var revealedBars: ({})
     function setBarRevealed(name, value): void {
         const next = Object.assign({},revealedBars)
@@ -73,21 +81,26 @@ Scope {
             exclusionMode: ExclusionMode.Ignore
             exclusiveZone: 0
             WlrLayershell.namespace: "hadalis:abyss-perimeter"
-            WlrLayershell.layer: GlobalStates.settingsNativeDialogOpen ? WlrLayer.Bottom : PolkitService.active ? WlrLayer.Top : (window.editorOpen || styledPopup.open || dialogBody.open || settings.open || dashboardBody.open || controls.open || (window.fullscreenCovered && window.presented)) ? WlrLayer.Overlay : WlrLayer.Top
+            WlrLayershell.layer: GlobalStates.settingsNativeDialogOpen ? WlrLayer.Bottom : PolkitService.active ? WlrLayer.Top : (window.editorOpen || utility.open || styledPopup.open || dialogBody.open || settings.open || dashboardBody.open || controls.open || (window.fullscreenCovered && window.presented)) ? WlrLayer.Overlay : WlrLayer.Top
             WlrLayershell.keyboardFocus: !window.presented || !field.ready || GlobalStates.regionSelectorOpen || GlobalStates.settingsNativeDialogOpen || PolkitService.active || window.overviewDragging
                 ? WlrKeyboardFocus.None
-                : (window.editorOpen || (styledPopup.open && (liquid.activePopup?.keyboardFocus ?? false)) || (popup.open && (popup.contentItem.item?.keyboardFocus ?? false)) || (dialogBody.open && dialogBody.ready) || (aux.open && aux.ready) || (settings.open && settings.ready) || (dashboardBody.open && dashboardBody.ready) || (controls.open && controls.ready)) ? WlrKeyboardFocus.Exclusive
+                : (window.editorOpen || (utility.open && utility.ready) || (styledPopup.open && (liquid.activePopup?.keyboardFocus ?? false)) || (popup.open && (popup.contentItem.item?.keyboardFocus ?? false)) || (dialogBody.open && dialogBody.ready) || (aux.open && aux.ready) || (settings.open && settings.ready) || (dashboardBody.open && dashboardBody.ready) || (controls.open && controls.ready)) ? WlrKeyboardFocus.Exclusive
                 : ((styledPopup.open && (liquid.activePopup?.keyboardFocusOnDemand ?? false)) || (leftPanel.open && leftPanel.ready) || (rightPanel.open && rightPanel.ready) || (popup.open && popup.ready) || (notification.open && notification.ready && notification.contentKind === "center"))
                     ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
             anchors { top: true; bottom: true; left: true; right: true }
             Item { id: emptyInput; width: 0; height: 0 }
             readonly property bool overviewDragging: aux.open && (aux.contentItem.item?.applicationDragActive ?? false)
             readonly property Region dragPassThrough: Region {}
-            mask: window.overviewDragging ? dragPassThrough : liquid.activeDialog ? dialogInputMask : nativeInputMask
+            mask: window.overviewDragging ? dragPassThrough : liquid.activeDialog ? dialogInputMask : utility.open ? utilityInputMask : nativeInputMask
             readonly property Region dialogInputMask: Region {
                 x: dialogBody.inputBounds.x; y: dialogBody.inputBounds.y
                 width: window.presented && field.ready ? dialogBody.inputBounds.width : 0
                 height: dialogBody.inputBounds.height
+            }
+            readonly property Region utilityInputMask: Region {
+                x: utility.inputBounds.x; y: utility.inputBounds.y
+                width: window.presented && field.ready ? utility.inputBounds.width : 0
+                height: utility.inputBounds.height
             }
             readonly property Region nativeInputMask: Region {
                 Region { regions: window.presented && field.ready && bar.visible ? bar.inputRegions : [] }
@@ -115,6 +128,7 @@ Scope {
                 focus: aux.open || leftPanel.open || rightPanel.open || popup.open
                 Keys.onEscapePressed: {
                     window.closePopup()
+                    if (root.utilityKind) root.closeUtility()
                     GlobalStates.closeSidebarLeft()
                     GlobalStates.closeSidebarRight()
                     GlobalStates.dashboardOpen = false
@@ -293,7 +307,7 @@ Scope {
                     && (Config.options?.enabledPanels ?? []).includes("abyssDock") && (Config.options?.dock?.enable ?? true)
                     && Geometry.targets(window.outputName,Config.options?.dock?.screenList ?? [],Quickshell.screens.map(s => s.name))
                     && !window.editorOpen && !settings.open && !dashboardBody.open && !controls.open
-                    && !aux.open && !(popup.open && popup.edge === edge) && !(styledPopup.open && styledPopup.edge === edge)
+                    && !aux.open && !utility.open && !(popup.open && popup.edge === edge) && !(styledPopup.open && styledPopup.edge === edge)
                     && (((Config.options?.dock?.pinnedOnStartup ?? false) && !(Config.options?.dock?.hoverToReveal ?? false)) || window.dockHovered
                         || (contentItem.item?.requestDockShow ?? false)
                         || ((Config.options?.dock?.showOnDesktop ?? true) && !ToplevelManager.activeToplevel?.activated))
@@ -426,6 +440,26 @@ Scope {
                 along: window.height/2-span/2
                 depth: 240
                 source: "content/AbyssOsdContent.qml"
+            }
+            AbyssBodyHost {
+                id: utility
+                z: 15
+                identity: "utility"
+                controller: liquid
+                anchors.fill: parent
+                edge: "bottom"
+                outputName: window.outputName
+                open: window.presented && field.ready && root.utilityKind.length > 0
+                    && root.largeTargetOutput === window.outputName
+                    && (Config.options?.enabledPanels ?? []).includes(root.utilityIdentifier)
+                largeSurface: true
+                edgeInsets: window.nativeInsets
+                span: (contentItem.item?.desiredWidth ?? 640)+padding*2
+                along: (window.width-span)/2
+                depth: (contentItem.item?.desiredHeight ?? 700)+padding*2
+                contentKind: root.utilityKind
+                source: "content/AbyssUtilityContent.qml"
+                onCloseRequested: root.closeUtility()
             }
             AbyssBodyHost {
                 id: dialogBody

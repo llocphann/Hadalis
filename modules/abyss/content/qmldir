@@ -13,3 +13,4 @@ AbyssNotificationsContent 1.0 AbyssNotificationsContent.qml
 AbyssDashboardContent 1.0 AbyssDashboardContent.qml
 AbyssControlContent 1.0 AbyssControlContent.qml
 AbyssOverviewContent 1.0 AbyssOverviewContent.qml
+AbyssUtilityContent 1.0 AbyssUtilityContent.qml

@@ -23,14 +23,11 @@ Item {
         source: "../polkit/Polkit.qml"
     }
     DemandPanel { identifier: "iiOverlay"; open: GlobalStates.overlayOpen || OverlayContext.hasPinnedWidgets || OverlayContext.nativeDialogOpen; source: "../ii/overlay/Overlay.qml" }
-    DemandPanel { identifier: "abyssSessionScreen"; open: GlobalStates.sessionOpen; source: "../sessionScreen/SessionScreen.qml" }
     DemandPanel { identifier: "iiRegionSelector"; open: GlobalStates.regionSelectorOpen; source: "../regionSelector/RegionSelector.qml" }
     DemandPanel { identifier: "iiTilingOverlay"; open: GlobalStates.tilingOverlayPickerOpen || GlobalStates.tilingOverlayOsdOpen; source: "../tilingOverlay/TilingOverlay.qml" }
     DemandPanel { identifier: "iiOnScreenKeyboard"; open: GlobalStates.oskOpen; source: "../onScreenKeyboard/OnScreenKeyboard.qml" }
-    DemandPanel { identifier: "iiCheatsheet"; open: GlobalStates.cheatsheetOpen; source: "../cheatsheet/Cheatsheet.qml" }
     DemandPanel { identifier: "iiWallpaperSelector"; open: GlobalStates.wallpaperSelectorOpen; source: "../wallpaperSelector/WallpaperSelector.qml" }
     DemandPanel { identifier: "iiWallpaperLauncher"; open: GlobalStates.wallpaperLauncherOpen; source: "../wallpaperLauncher/WallpaperLauncher.qml" }
     DemandPanel { identifier: "iiCoverflowSelector"; open: GlobalStates.coverflowSelectorOpen; source: "../wallpaperSelector/WallpaperCoverflow.qml" }
-    DemandPanel { identifier: "iiShellUpdate"; open: ShellUpdates.overlayOpen; source: "../shellUpdate/ShellUpdateOverlay.qml" }
     DemandPanel { identifier: "iiRecordingOsd"; open: RecorderStatus.isRecording; source: "../recordingOsd/RecordingOsd.qml" }
 }

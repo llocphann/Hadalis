@@ -17,7 +17,8 @@ MouseArea {
     property bool borderless: Config.options.bar.borderless
     readonly property MprisPlayer activePlayer: MprisController.activePlayer
     readonly property string cleanedTitle: StringUtils.cleanMusicTitle(activePlayer?.trackTitle) || Translation.tr("No media")
-    readonly property string popupMode: Config.options?.media?.popupMode ?? "dock"
+    property bool edgeHostedExpansion: false
+    readonly property string popupMode: edgeHostedExpansion ? "bar" : Config.options?.media?.popupMode ?? "dock"
     property bool barMediaPopupVisible: false
 
     Layout.fillHeight: true

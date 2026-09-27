@@ -1,4 +1,5 @@
 import QtQuick
+import Quickshell
 
 // One controller per output. Content and input are not inferred from pixels.
 QtObject {
@@ -10,6 +11,35 @@ QtObject {
     property real outputHeight: 1080
     property bool presented: true
     property Item presentationItem: null
+    property var edgeInsets: ({left:16,top:48,right:16,bottom:16})
+    property var popupHost: null
+    property var activePopup: null
+    property Item popupHome: null
+    function presentPopup(popup): void {
+        if (!popup || !popupHost || !popup.contentItem || activePopup === popup) return
+        if (activePopup) activePopup.dismissPresentation()
+        popupHome = popup.contentItem.parent
+        activePopup = popup
+        const item = popup.contentItem
+        item.parent = popupHost.contentParent
+        item.x = 0; item.y = 0
+        item.width = Qt.binding(() => popupHost.contentParent.width)
+        item.height = Qt.binding(() => popupHost.contentParent.height)
+        item.visible = Qt.binding(() => popup.presentationActive)
+        popup.presentationWindow = presentationItem?.QsWindow?.window ?? null
+    }
+    function releasePopup(popup, restore = true): void {
+        if (activePopup !== popup) return
+        const home = popupHome
+        activePopup = null; popupHome = null
+        popup.presentationWindow = null
+        popup._bodyHovered = false; popup._contentHovered = false
+        if (restore && popup.contentItem) {
+            popup.contentItem.parent = home
+            popup.contentItem.visible = Qt.binding(() => popup.presentationActive)
+        }
+    }
+    onPresentedChanged: if (!presented && activePopup) activePopup.dismissPresentation()
     property var activeDialog: null
     property Item dialogHome: null
     property var dialogHost: null

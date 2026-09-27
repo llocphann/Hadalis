@@ -2,7 +2,7 @@
 # Exercise the production host's loading/input/retraction lifecycle in QML.
 set -euo pipefail
 repo_root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
-if ! command -v qs >/dev/null; then
+if ! command -v qs >/dev/null || [[ -z "${WAYLAND_DISPLAY:-}" ]]; then
     printf 'SKIP: Abyss runtime contract (Quickshell unavailable)\n'
     exit 0
 fi
@@ -101,7 +101,7 @@ ShellRoot {
     }
 }
 QML
-if ! QT_QPA_PLATFORM=offscreen XDG_CONFIG_HOME="$abyss_test_root/config" XDG_STATE_HOME="$abyss_test_root/state" XDG_CACHE_HOME="$abyss_test_root/cache" timeout 12s qs -p "$abyss_test_root" --no-color > "$abyss_test_root/runtime.log" 2>&1; then
+if ! dbus-run-session -- env -u QS_CONFIG_NAME -u QS_CONFIG_PATH -u QS_MANIFEST QT_QPA_PLATFORM=wayland XDG_CONFIG_HOME="$abyss_test_root/config" XDG_STATE_HOME="$abyss_test_root/state" XDG_CACHE_HOME="$abyss_test_root/cache" timeout 12s qs -p "$abyss_test_root" --no-color > "$abyss_test_root/runtime.log" 2>&1; then
     cat "$abyss_test_root/runtime.log"
     exit 1
 fi

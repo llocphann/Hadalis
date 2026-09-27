@@ -42,6 +42,10 @@ assert.equal(project(20,1060,1920,1080).edge,'bottom','corner projection determi
 const merged=saveProfile({outputLayouts:[{outputName:'B',placements:[],gap:3}]},'A',cross,16,true);
 assert.equal(merged['abyss.modules.outputLayouts'][0].outputName,'B','save preserves another output');
 assert.equal(optionsForOutput({gap:8,outputLayouts:merged['abyss.modules.outputLayouts']},'A').gap,16);
+const measured=geometry(initial.filter(p=>['clock','timer'].includes(p.kind)),1920,1200,{extents:{clock:300,timer:0}},1.5);
+assert.equal(measured.find(p=>p.kind==='clock').span,300,'mature module sizes already include font scale');
+assert.equal(measured.find(p=>p.kind==='timer').span,0,'idle indicators have no empty input');
+assert(geometry(initial,1920,1200,{extents:{timer:0},editing:true},1).find(p=>p.kind==='timer').span>0,'editor can select inactive indicators');
 console.log('PASS: normalized module packing, all edges/scales, output profiles, disabled state and bounded malformed input');
 """
 subprocess.run(["node", "-e", program], cwd=root, check=True)

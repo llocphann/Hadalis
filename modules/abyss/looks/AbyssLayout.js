@@ -74,6 +74,11 @@ function saveProfile(options, outputName, placements, gap, outputOnly) {
     return {"abyss.modules.configured":true,"abyss.modules.placements":normalized,
         "abyss.modules.gap":bounded(gap,8,0,32),"abyss.modules.outputLayouts":profiles.filter(function(p) { return p.outputName!==outputName; })};
 }
+function stripDepth(placements, edge, options, fontScale) {
+    return placements.filter(function(p) { return p.enabled && p.edge===edge; }).reduce(function(depth,p) {
+        return Math.max(depth,32*bounded(fontScale,1,.7,2)*p.size*p.depth*bounded(options?.size,1,.6,1.8)+16);
+    },48);
+}
 function geometry(placements, width, height, options, fontScale) {
     var result = [];
     ["top","right","bottom","left"].forEach(function(edge) {
@@ -82,7 +87,12 @@ function geometry(placements, width, height, options, fontScale) {
         var margin = Math.min(34,length/12), gap = bounded(options?.gap,8,0,32);
         var list = placements.filter(function(p) { return p.enabled && p.edge === edge; })
             .sort(function(a,b) { return a.position-b.position || a.id.localeCompare(b.id); });
-        var sizes = list.map(function(p) { return extent(p.kind,!horizontal)*p.size*bounded(options?.size,1,0.6,1.8)*bounded(fontScale,1,0.7,2); });
+        var sizes = list.map(function(p) {
+            var measured = options?.extents?.[p.id];
+            var natural = Number.isFinite(measured) && !(options?.editing && measured<1) ? Math.max(0,measured)
+                : extent(p.kind,!horizontal)*bounded(fontScale,1,0.7,2);
+            return natural*p.size*bounded(options?.size,1,0.6,1.8);
+        });
         var total = sizes.reduce(function(sum,n) { return sum+n; },0);
         if (!list.length || length < 1) return;
         gap = Math.min(gap,Math.max(0,(length-2*margin)/(list.length*4)));
@@ -102,7 +112,7 @@ function geometry(placements, width, height, options, fontScale) {
             end = records[i].along-gap;
         }
         records.forEach(function(p) {
-            var inset = 10, cross = 32;
+            var inset = 8, cross = 32*bounded(fontScale,1,.7,2)*p.size*bounded(options?.size,1,.6,1.8)*scale;
             p.content = horizontal ? {x:p.along,y:edge==="top"?inset:height-inset-cross,width:p.span,height:cross}
                 : {x:edge==="left"?inset:width-inset-cross,y:p.along,width:cross,height:p.span};
             result.push(p);

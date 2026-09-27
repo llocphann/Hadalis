@@ -9,11 +9,13 @@ import "looks/AbyssGeometry.js" as Geometry
 Item {
     id: root
     required property string edge
+    readonly property string attachedEdge: edge
     property string outputName: ""
     property string identity: ""
     property var controller: null
     readonly property var liquidController: controller
     property Item embeddedItem: null
+    property bool animatePresentation: true
     property bool largeSurface: false
     readonly property real waveInfluence: identity === "dock" ? (Config.options?.abyss?.waves?.dock ?? .5)
         : identity === "notification" ? (Config.options?.abyss?.waves?.notifications ?? .3)
@@ -55,7 +57,7 @@ Item {
     Keys.onEscapePressed: root.closeRequested()
     Behavior on progress {
         id: deformation
-        enabled: AbyssStyle.motionEnabled
+        enabled: root.animatePresentation && AbyssStyle.motionEnabled
         SequentialAnimation {
             NumberAnimation {
                 to: deformation.targetValue > 0 ? deformation.targetValue+AbyssStyle.motionOvershoot : 0

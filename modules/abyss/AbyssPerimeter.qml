@@ -38,7 +38,7 @@ Scope {
         const vertical = !Geometry.horizontal(root.barEdge)
         const zones = Geometry.barZones((vertical ? Config.options?.bar?.verticalLayout : Config.options?.bar?.layout) ?? {},vertical,Config.options?.bar?.modules ?? {})
         const placements = ModuleLayout.resolve(Config.options?.abyss?.modules,name,ModuleLayout.seed(zones,root.barEdge,screen?.width ?? 1920,screen?.height ?? 1080))
-        placements.filter(p => p.enabled).forEach(p => result[p.edge] = Math.max(result[p.edge],48))
+        placements.filter(p => p.enabled).forEach(p => result[p.edge] = Math.max(AbyssStyle.barThickness,ModuleLayout.stripDepth(placements,p.edge,ModuleLayout.optionsForOutput(Config.options?.abyss?.modules,name),Appearance.fontSizeScale)))
         return result
     }
     Connections {
@@ -73,11 +73,11 @@ Scope {
             exclusionMode: ExclusionMode.Ignore
             exclusiveZone: 0
             WlrLayershell.namespace: "hadalis:abyss-perimeter"
-            WlrLayershell.layer: GlobalStates.settingsNativeDialogOpen ? WlrLayer.Bottom : PolkitService.active ? WlrLayer.Top : (window.editorOpen || dialogBody.open || settings.open || dashboardBody.open || controls.open || (window.fullscreenCovered && window.presented)) ? WlrLayer.Overlay : WlrLayer.Top
+            WlrLayershell.layer: GlobalStates.settingsNativeDialogOpen ? WlrLayer.Bottom : PolkitService.active ? WlrLayer.Top : (window.editorOpen || styledPopup.open || dialogBody.open || settings.open || dashboardBody.open || controls.open || (window.fullscreenCovered && window.presented)) ? WlrLayer.Overlay : WlrLayer.Top
             WlrLayershell.keyboardFocus: !window.presented || !field.ready || GlobalStates.regionSelectorOpen || GlobalStates.settingsNativeDialogOpen || PolkitService.active || window.overviewDragging
                 ? WlrKeyboardFocus.None
-                : (window.editorOpen || (popup.open && (popup.contentItem.item?.keyboardFocus ?? false)) || (dialogBody.open && dialogBody.ready) || (aux.open && aux.ready) || (settings.open && settings.ready) || (dashboardBody.open && dashboardBody.ready) || (controls.open && controls.ready)) ? WlrKeyboardFocus.Exclusive
-                : ((leftPanel.open && leftPanel.ready) || (rightPanel.open && rightPanel.ready) || (popup.open && popup.ready) || (notification.open && notification.ready && notification.contentKind === "center"))
+                : (window.editorOpen || (styledPopup.open && (liquid.activePopup?.keyboardFocus ?? false)) || (popup.open && (popup.contentItem.item?.keyboardFocus ?? false)) || (dialogBody.open && dialogBody.ready) || (aux.open && aux.ready) || (settings.open && settings.ready) || (dashboardBody.open && dashboardBody.ready) || (controls.open && controls.ready)) ? WlrKeyboardFocus.Exclusive
+                : ((styledPopup.open && (liquid.activePopup?.keyboardFocusOnDemand ?? false)) || (leftPanel.open && leftPanel.ready) || (rightPanel.open && rightPanel.ready) || (popup.open && popup.ready) || (notification.open && notification.ready && notification.contentKind === "center"))
                     ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
             anchors { top: true; bottom: true; left: true; right: true }
             Item { id: emptyInput; width: 0; height: 0 }
@@ -96,6 +96,7 @@ Scope {
                 Region { item: window.presented && dockTrigger.visible ? dockTrigger : emptyInput }
                 Region { x: leftPanel.inputBounds.x; y: leftPanel.inputBounds.y; width: window.presented && field.ready ? leftPanel.inputBounds.width : 0; height: leftPanel.inputBounds.height }
                 Region { x: rightPanel.inputBounds.x; y: rightPanel.inputBounds.y; width: window.presented && field.ready ? rightPanel.inputBounds.width : 0; height: rightPanel.inputBounds.height }
+                Region { x: styledPopup.inputBounds.x; y: styledPopup.inputBounds.y; width: window.presented && field.ready ? styledPopup.inputBounds.width : 0; height: styledPopup.inputBounds.height }
                 Region { x: popup.inputBounds.x; y: popup.inputBounds.y; width: window.presented && field.ready ? popup.inputBounds.width : 0; height: popup.inputBounds.height }
                 Region { x: dock.inputBounds.x; y: dock.inputBounds.y; width: window.presented && field.ready ? dock.inputBounds.width : 0; height: dock.inputBounds.height }
                 Region { x: notification.inputBounds.x; y: notification.inputBounds.y; width: window.presented && field.ready ? notification.inputBounds.width : 0; height: notification.inputBounds.height }
@@ -105,6 +106,7 @@ Scope {
                 Region { x: aux.inputBounds.x; y: aux.inputBounds.y; width: window.presented && field.ready ? aux.inputBounds.width : 0; height: aux.inputBounds.height }
             }
             function closePopup(): void {
+                if (liquid.activePopup) liquid.activePopup.dismissPresentation()
                 GlobalStates.abyssPopupKind = ""
                 GlobalStates.mediaControlsOpen = false
             }
@@ -135,6 +137,7 @@ Scope {
             AbyssBar {
                 id: bar
                 outputName: window.outputName
+                liquidController: liquid
                 edge: root.barEdge
                 editing: editor.visible
                 draftPlacements: editor.visible ? editor.draft : null
@@ -169,7 +172,7 @@ Scope {
             }
             Timer {
                 id: barClose; interval: 220; repeat: false
-                onTriggered: if (!barHover.hovered && !revealHover.hovered && !popup.open) root.setBarRevealed(window.outputName,false)
+                onTriggered: if (!barHover.hovered && !revealHover.hovered && !popup.open && !styledPopup.open) root.setBarRevealed(window.outputName,false)
             }
             property real barProgress: root.barOnOutput(window.outputName) ? 1 : 0
             Behavior on barProgress {
@@ -178,7 +181,7 @@ Scope {
             }
             readonly property var nativeInsets: {
                 const result = Geometry.insets(AbyssStyle.perimeterThickness,root.barEdge,AbyssStyle.perimeterThickness,false)
-                if (bar.visible) bar.placements.filter(p => p.enabled).forEach(p => result[p.edge] = AbyssStyle.barThickness)
+                if (bar.visible) bar.placements.filter(p => p.enabled).forEach(p => result[p.edge] = Math.max(AbyssStyle.barThickness,ModuleLayout.stripDepth(bar.placements,p.edge,bar.layoutOptions,Appearance.fontSizeScale)))
                 return result
             }
             AbyssSurfaceController {
@@ -189,6 +192,8 @@ Scope {
                 presented: window.presented
                 presentationItem: field
                 dialogHost: dialogBody
+                popupHost: styledPopup
+                edgeInsets: window.nativeInsets
                 moduleRecords: bar.visible ? bar.deformations : []
             }
             readonly property var sideObstacles: [leftPanel,rightPanel].filter(body => body.progress > 0.001).map(body => body.record)
@@ -248,6 +253,33 @@ Scope {
                 source: "content/AbyssPopupContent.qml"
                 onCloseRequested: window.closePopup()
             }
+            AbyssBodyHost {
+                id: styledPopup
+                identity: "styledPopup"
+                controller: liquid
+                anchors.fill: parent
+                edge: liquid.activePopup?._attachmentEdge ?? root.barEdge
+                outputName: window.outputName
+                open: window.presented && field.ready && (liquid.activePopup?.presentationActive ?? false)
+                    && ((liquid.activePopup?.requestedVisible ?? false)
+                        || ((liquid.activePopup?.hoverActivates ?? false) && (liquid.activePopup?._lingerVisible ?? false)))
+                animatePresentation: false
+                progress: liquid.activePopup?.revealProgress ?? 0
+                embeddedItem: liquid.activePopup?.contentItem ?? null
+                edgeInsets: window.nativeInsets
+                padding: 14
+                span: (Geometry.horizontal(edge) ? (embeddedItem?.implicitWidth ?? 1) : (embeddedItem?.implicitHeight ?? 1))+padding*2
+                depth: (Geometry.horizontal(edge) ? (embeddedItem?.implicitHeight ?? 1) : (embeddedItem?.implicitWidth ?? 1))+padding*2
+                largeSurface: depth > (Geometry.horizontal(edge) ? window.height : window.width)*.42
+                readonly property rect anchorBounds: liquid.activePopup?._anchorRect(window.width,window.height) ?? Qt.rect(0,0,0,0)
+                along: (Geometry.horizontal(edge) ? anchorBounds.x+anchorBounds.width/2 : anchorBounds.y+anchorBounds.height/2)-span/2
+                obstacles: window.sideObstacles
+                onCloseRequested: if (liquid.activePopup) liquid.activePopup.dismissPresentation()
+                HoverHandler {
+                    parent: styledPopup.contentParent
+                    onHoveredChanged: if (liquid.activePopup) liquid.activePopup._contentHovered = hovered
+                }
+            }
             property bool dockHovered: false
             readonly property string dockEdge: ["top","bottom","left","right"].includes(Config.options?.dock?.position) ? Config.options.dock.position : "bottom"
             AbyssBodyHost {
@@ -261,7 +293,7 @@ Scope {
                     && (Config.options?.enabledPanels ?? []).includes("abyssDock") && (Config.options?.dock?.enable ?? true)
                     && Geometry.targets(window.outputName,Config.options?.dock?.screenList ?? [],Quickshell.screens.map(s => s.name))
                     && !window.editorOpen && !settings.open && !dashboardBody.open && !controls.open
-                    && !aux.open && !(popup.open && popup.edge === edge)
+                    && !aux.open && !(popup.open && popup.edge === edge) && !(styledPopup.open && styledPopup.edge === edge)
                     && (((Config.options?.dock?.pinnedOnStartup ?? false) && !(Config.options?.dock?.hoverToReveal ?? false)) || window.dockHovered
                         || (contentItem.item?.requestDockShow ?? false)
                         || ((Config.options?.dock?.showOnDesktop ?? true) && !ToplevelManager.activeToplevel?.activated))

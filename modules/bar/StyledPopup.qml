@@ -15,7 +15,40 @@ LazyLoader {
     // The same feature/content can be hosted by the output's Abyss field.
     // No second native popup, connector painter or feature implementation.
     property Item embeddedHost: null
-    readonly property bool presentationActive: embeddedHost ? embeddedHost.visible : active
+    function liquidAnchor(item) {
+        for (let ancestor = item; ancestor; ancestor = ancestor.parent)
+            if (ancestor.liquidController) return ancestor
+        return null
+    }
+    readonly property Item _liquidAnchor: liquidAnchor(hoverTarget)
+    readonly property var _liquidController: embeddedHost ? null : _liquidAnchor?.liquidController ?? null
+    property var _hostedController: null
+    property bool _liquidDismissed: false
+    readonly property bool presentationActive: embeddedHost ? embeddedHost.visible
+        : _liquidController ? _anchorReady && _liquidController.presented
+            && (requestedVisible || _lingerVisible) : active
+    function syncLiquidPresentation(): void {
+        if (_hostedController && (_hostedController !== _liquidController || !presentationActive)) {
+            _hostedController.releasePopup(root)
+            _hostedController = null
+        }
+        if (!_liquidController || !presentationActive || !contentItem) return
+        _hostedController = _liquidController
+        _hostedController.presentPopup(root)
+    }
+    function dismissPresentation(): void {
+        _liquidDismissed = true
+        _bodyHovered = false; _contentHovered = false
+        _lingerVisible = false
+        offsetScale = 1
+        requestClose()
+    }
+    property QtObject _liquidPresentationConnections: Connections {
+        target: root
+        function onPresentationActiveChanged() { root.syncLiquidPresentation(); root._syncBarAutoHideLease() }
+        function onContentItemChanged() { root.syncLiquidPresentation() }
+        function on_LiquidControllerChanged() { root.syncLiquidPresentation() }
+    }
     function syncEmbeddedContent(): void {
         if (!embeddedHost || !contentItem) return
         contentItem.parent = embeddedHost
@@ -83,8 +116,8 @@ LazyLoader {
         ? (root._trailingEdge ? "right" : "left")
         : (root._trailingEdge ? "bottom" : "top")
     readonly property string _attachmentEdge:
-        ["top", "bottom", "left", "right"].includes(root.attachmentEdgeOverride)
-            ? root.attachmentEdgeOverride : root._defaultAttachmentEdge
+        root._liquidAnchor?.attachedEdge ?? (["top", "bottom", "left", "right"].includes(root.attachmentEdgeOverride)
+            ? root.attachmentEdgeOverride : root._defaultAttachmentEdge)
     readonly property bool _attachmentVertical:
         root._attachmentEdge === "left" || root._attachmentEdge === "right"
     readonly property bool _attachmentTrailing:
@@ -93,11 +126,12 @@ LazyLoader {
     // cross-axis edge. Existing Bar callers keep canonical Bar thickness while
     // Screen Edge callers may provide the physical frame thickness.
     readonly property real _barSurfaceThickness:
-        root.attachmentThicknessOverride > 0
+        root._liquidController?.edgeInsets?.[root._attachmentEdge]
+            ?? (root.attachmentThicknessOverride > 0
             ? root.attachmentThicknessOverride
             : (root._attachmentVertical
                 ? Appearance.sizes.verticalBarWidth
-                : Appearance.sizes.barHeight)
+                : Appearance.sizes.barHeight))
     readonly property real _contentPadding: 14
     readonly property real _screenEdgeThickness: Math.max(1, Math.min(32,
         Math.round(Config.options?.appearance?.screenEdge?.width ?? 10)))
@@ -129,6 +163,7 @@ LazyLoader {
         ? root._anchorWindow.screen : null
     readonly property bool _anchorReady: root.hoverTarget !== null
         && root.hoverTarget.visible
+        && root.hoverTarget.enabled
         && root._anchorWindow !== null
         && root._anchorScreen !== null
         && root.hoverTarget.width > 0
@@ -138,11 +173,13 @@ LazyLoader {
     // semantic popup state; `active` includes only the short retract tail. While
     // hover-activated, the body itself also counts as the request so the pointer
     // can travel from the bar through the connected shoulder without collapse.
-    readonly property bool requestedVisible: root.alternativeVisibleCondition
+    readonly property bool _rawVisibleRequest: root.alternativeVisibleCondition
         || (root.hoverActivates && (
             (root.hoverTarget
                 && (root.hoverTarget.containsMouse ?? root.hoverTarget.buttonHovered ?? false))
             || root.popupHovered))
+    readonly property bool requestedVisible: !root._liquidDismissed && root._rawVisibleRequest
+    on_RawVisibleRequestChanged: if (!root._rawVisibleRequest) root._liquidDismissed = false
     property bool _lingerVisible: false
     // Match Caelestia's panel wrappers: one normalized offsetScale drives the
     // whole slide and reverses naturally from its current value. Geometry keeps
@@ -161,14 +198,14 @@ LazyLoader {
 
     signal requestClose()
 
-    active: !root.embeddedHost && root._anchorReady && (root.requestedVisible || root._lingerVisible)
+    active: !root.embeddedHost && !root._liquidController && root._anchorReady && (root.requestedVisible || root._lingerVisible)
 
     function _syncBarAutoHideLease(): void {
         if (root._barPopupHoverLeaseId <= 0)
             return
         GlobalStates.setBarPopupHoverLease(root._barPopupHoverLeaseId,
             String(root._anchorScreen?.name ?? ""),
-            root.barAutoHideHoldEnabled && root.active && root._anchorReady)
+            root.barAutoHideHoldEnabled && root.presentationActive && root._anchorReady)
     }
 
     on_AnchorScreenChanged: root._syncBarAutoHideLease()
@@ -178,6 +215,7 @@ LazyLoader {
     // last true state must not survive eviction, anchor replacement or a
     // hidden bar: otherwise requestedVisible can resurrect a stale popup.
     onActiveChanged: {
+        if (root._liquidController) return
         root._syncBarAutoHideLease()
         if (active) {
             // A hidden anchor can become ready while requestedVisible was
@@ -192,6 +230,7 @@ LazyLoader {
         root.offsetScale = 1
     }
     onHoverTargetChanged: {
+        root._liquidDismissed = false
         root._bodyHovered = false
         root._contentHovered = false
         root._syncBarAutoHideLease()
@@ -252,9 +291,12 @@ LazyLoader {
         root._barPopupHoverLeaseId = GlobalStates.allocateBarPopupHoverLease()
         root._syncBarAutoHideLease()
         root._syncRequestedVisibility()
+        root.syncLiquidPresentation()
     }
-    Component.onDestruction:
+    Component.onDestruction: {
+        if (root._hostedController) root._hostedController.releasePopup(root, false)
         GlobalStates.setBarPopupHoverLease(root._barPopupHoverLeaseId, "", false)
+    }
 
     // Immutable ii surface-motion contract: slide only, monotonic, no
     // spring/back/overshoot and no theme/config curve override.

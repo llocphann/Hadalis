@@ -65,8 +65,8 @@ StyledPopup {
             // Keep Overview content resident through StyledPopup's retract tail.
             // If this follows previewOpen, the renderer is destroyed the instant
             // close begins and the user sees content disappear/fade while only
-            // the empty surface slides. root.active includes the reverse slide.
-            active: root.active
+            // the empty surface slides. root.presentationActive includes the reverse slide.
+            active: root.presentationActive
             sourceComponent: CompositorService.isNiri ? niriOverview : hyprOverview
         }
 
@@ -77,7 +77,7 @@ StyledPopup {
                     ?? root.anchorItem?.QsWindow?.window
                 // Presentation lifetime follows the visual popup,
                 // not semantic hover state, so close is a pure reverse slide.
-                presentationActive: root.active
+                presentationActive: root.presentationActive
                 embeddedSurface: true
                 focusIndicatorAnimationReady:
                     root.requestedVisible && root.revealProgress >= 0.999
@@ -93,7 +93,7 @@ StyledPopup {
                     ?? root.anchorItem?.QsWindow?.window
                 // Keep previews/content alive until the slide-under
                 // retract reaches the Bar and StyledPopup finally unmaps.
-                presentationActive: root.active
+                presentationActive: root.presentationActive
                 embeddedSurface: true
                 focusIndicatorAnimationReady:
                     root.requestedVisible && root.revealProgress >= 0.999

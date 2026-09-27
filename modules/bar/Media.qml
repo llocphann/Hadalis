@@ -19,7 +19,8 @@ Item {
     readonly property MprisPlayer activePlayer: MprisController.activePlayer
     readonly property string cleanedTitle: StringUtils.cleanMusicTitle(activePlayer?.trackTitle) || Translation.tr("No media")
     readonly property string fullTrackText: `${cleanedTitle}${activePlayer?.trackArtist ? ' • ' + activePlayer.trackArtist : ''}`
-    readonly property string popupMode: Config.options?.media?.popupMode ?? "dock"
+    property bool edgeHostedExpansion: false
+    readonly property string popupMode: edgeHostedExpansion ? "bar" : Config.options?.media?.popupMode ?? "dock"
     readonly property bool showVerboseLabel: Config.options?.bar?.verbose ?? true
     readonly property bool hasTrackMetadata: (activePlayer?.trackTitle?.length ?? 0) > 0
         || (activePlayer?.trackArtist?.length ?? 0) > 0

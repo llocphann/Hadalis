@@ -15,7 +15,7 @@ Singleton {
     readonly property real sectionSpacing: 18 * Appearance.fontSizeScale
     readonly property real contentPadding: 20 * Appearance.fontSizeScale
     readonly property real barThickness: Math.max(48, Appearance.sizes.barHeight)
-    readonly property real dockThickness: Math.max(52, Math.min(100, Config.options?.dock?.height ?? 70))
+    readonly property real dockThickness: Math.max(74, Math.min(100, Config.options?.dock?.height ?? 70))
     readonly property real blurRadius: quality === "performance" || !Appearance.effectsEnabled || !(options?.effects?.blur?.enabled ?? true) ? 0 : Math.max(0, Math.min(24, options?.effects?.blur?.radius ?? 10))
     readonly property real shadowStrength: quality === "performance" || !Appearance.effectsEnabled ? 0 : Math.max(0, Math.min(0.5, options?.effects?.shadowStrength ?? 0.24))
     readonly property real refractionStrength: quality !== "quality" || !Appearance.effectsEnabled || !(options?.effects?.refraction?.enabled ?? false) ? 0 : Math.max(0, Math.min(16, options?.effects?.refraction?.strength ?? 6))

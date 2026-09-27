@@ -1,92 +1,103 @@
 pragma ComponentBehavior: Bound
 import QtQuick
 import Quickshell
-import Quickshell.Wayland
 import qs
 import qs.services
 import qs.modules.common
-import qs.modules.abyss.looks
+import qs.modules.common.widgets
+import qs.modules.bar as Shared
+import qs.modules.bar.weather
+import qs.modules.verticalBar as Vertical
 
+// Mature feature controls, with popup ownership discovered from this ancestor.
 Item {
     id: root
     required property string kind
     required property string outputName
+    property var liquidController: null
+    property string attachedEdge: "top"
     property bool vertical: false
     property bool compact: false
+    property real contentScale: 1
+    readonly property var feature: content.item
+    readonly property real naturalSpan: {
+        const item = feature
+        if (!item) return 0
+        if (kind === "activeWindow") return vertical ? 48 : Math.min(220,Math.max(60,item.contentImplicitWidth))
+        if (kind === "taskbar") return vertical ? Math.max(40,item.dockItems.length*item.itemPitch+item.contentInset)
+            : Math.min(320,Math.max(40,item.dockItems.length*item.itemPitch+item.contentInset))
+        return vertical ? item.implicitHeight : item.implicitWidth
+    }
     readonly property bool hovered: hoverTracker.hovered
-    readonly property bool pressed: pressTracker.active
     signal interaction(real strength)
-    HoverHandler { id: hoverTracker; onHoveredChanged: root.interaction(hovered ? 0.35 : -0.15) }
-    PointHandler { id: pressTracker; acceptedButtons: Qt.LeftButton; onActiveChanged: root.interaction(active ? 1 : -0.3) }
     signal request(string kind)
-    property bool resourceLease: false
-    function syncResources(): void {
-        const needed = visible && kind === "resources"
-        if (needed === resourceLease) return
-        if (needed) ResourceUsage.keepAlive(false,false)
-        else ResourceUsage.releaseKeepAlive(false,false)
-        resourceLease = needed
-    }
-    Component.onCompleted: syncResources()
-    onVisibleChanged: syncResources()
-    Component.onDestruction: if (resourceLease) ResourceUsage.releaseKeepAlive(false,false)
-    readonly property string label: {
-        switch(kind) {
-        case "distroIcon": return "Abyss"
-        case "activeWindow": return ToplevelManager.activeToplevel?.title ?? "Desktop"
-        case "resources": return "CPU " + Math.round(ResourceUsage.cpuUsage*100) + "% · RAM " + Math.round(ResourceUsage.memoryUsedPercentage*100) + "%"
-        case "media": return MprisController.activePlayer?.trackTitle || "No media"
-        case "clock": return DateTime.timeDisplay
-        case "battery": return Battery.available ? Math.round(Battery.percentage*100)+"%" : "Power"
-        case "weather": return Weather.data.temp
-        case "timer": return "Timer"
-        case "shellUpdate": return "Updates"
-        default: return ""
-        }
-    }
-    readonly property string icon: {
-        switch(kind) {
-        case "leftSidebarButton": return "left_panel_open"
-        case "rightSidebarButton": return "right_panel_open"
-        case "distroIcon": return "water"
-        case "resources": return "monitoring"
-        case "media": return MprisController.activePlayer?.isPlaying ? "music_note" : "pause"
-        case "clock": return "schedule"
-        case "battery": return Battery.isCharging ? "battery_charging_full" : "battery_full"
-        case "weather": return "cloud"
-        case "utilButtons": return "tune"
-        case "timer": return "timer"
-        case "shellUpdate": return "system_update"
-        case "taskbar": return "apps"
-        default: return ""
-        }
-    }
+    HoverHandler { id: hoverTracker; onHoveredChanged: root.interaction(hovered ? .35 : -.15) }
+    PointHandler { acceptedButtons: Qt.LeftButton | Qt.RightButton | Qt.MiddleButton; onActiveChanged: root.interaction(active ? 1 : -.3) }
     Loader {
-        anchors.fill: parent
-        source: root.kind === "tray" ? "AbyssTray.qml" : ""
-        sourceComponent: root.kind === "workspaces" ? workspaceComponent : root.kind === "tray" ? null : buttonComponent
-        onLoaded: if (root.kind === "tray") item.vertical = root.vertical
+        id: content
+        anchors.centerIn: parent
+        width: root.vertical ? 32*Appearance.fontSizeScale : root.width/Math.max(.01,root.contentScale)
+        height: root.vertical ? root.height/Math.max(.01,root.contentScale) : 32*Appearance.fontSizeScale
+        scale: root.contentScale
+        sourceComponent: root.kind === "resources" ? (root.vertical ? verticalResources : resources)
+            : root.kind === "clock" ? (root.vertical ? verticalClock : clock)
+            : root.kind === "media" ? (root.vertical ? verticalMedia : media)
+            : root.kind === "battery" ? (root.vertical ? verticalBattery : battery)
+            : root.kind === "workspaces" ? workspaces : root.kind === "distroIcon" ? distro
+            : root.kind === "activeWindow" ? activeWindow : root.kind === "tray" ? tray
+            : root.kind === "utilButtons" ? utilities : root.kind === "leftSidebarButton" ? leftSidebar
+            : root.kind === "rightSidebarButton" ? rightSidebar : root.kind === "timer" ? timer
+            : root.kind === "shellUpdate" ? update : root.kind === "weather" ? weather : taskbar
     }
+    Component { id: resources; Shared.Resources {} }
+    Component { id: verticalResources; Vertical.Resources {} }
+    Component { id: clock; Shared.ClockWidget { showDate: !root.compact && (Config.options?.bar?.verbose ?? true) } }
     Component {
-        id: workspaceComponent
-        AbyssWorkspaces { outputName: root.outputName; vertical: root.vertical }
+        id: verticalClock
+        MouseArea {
+            implicitHeight: clock.implicitHeight; implicitWidth: 32
+            hoverEnabled: true; acceptedButtons: Qt.NoButton
+            Vertical.VerticalClockWidget { id: clock; anchors.fill: parent }
+            Shared.ClockCalendarPopup { hoverTarget: parent }
+        }
     }
+    Component { id: media; Shared.Media { edgeHostedExpansion: true } }
+    Component { id: verticalMedia; Vertical.VerticalMedia { edgeHostedExpansion: true } }
+    Component { id: battery; Shared.BatteryIndicator {} }
+    Component { id: verticalBattery; Vertical.BatteryIndicator {} }
+    Component { id: distro; Shared.DistroIcon {} }
+    Component { id: activeWindow; Shared.ActiveWindow {} }
+    Component { id: tray; Shared.SysTray { vertical: root.vertical; showSeparator: false; showOverflowMenu: true } }
+    Component { id: utilities; Shared.UtilButtons { vertical: root.vertical; compactRequested: root.compact } }
+    Component { id: leftSidebar; Shared.LeftSidebarButton { colBackground: "transparent" } }
+    Component { id: timer; Shared.TimerIndicator { vertical: root.vertical } }
+    Component { id: update; Shared.ShellUpdateIndicator { vertical: root.vertical } }
+    Component { id: weather; WeatherBar { vertical: root.vertical } }
     Component {
-        id: buttonComponent
-        AbyssButton {
-            text: root.vertical && root.kind === "clock" ? root.label.replace(/:/g,"\n") : root.label
-            glyph: root.vertical && root.kind === "clock" ? "" : root.icon
-            compact: root.compact || (root.vertical && root.kind !== "clock")
-            font.pixelSize: root.vertical && root.kind === "clock" ? AbyssStyle.fontSize*0.8 : AbyssStyle.fontSize
-            description: root.label || root.kind
-            onClicked: {
-                if (root.kind === "leftSidebarButton") ShellLayoutController.toggleSidebarAtSlot("left",root.outputName)
-                else if (root.kind === "rightSidebarButton" || root.kind === "utilButtons") ShellLayoutController.toggleSidebarAtSlot("right",root.outputName)
-                else if (root.kind === "distroIcon" || root.kind === "taskbar" || root.kind === "activeWindow") GlobalStates.toggleOverview(root.outputName)
-                else if (root.kind === "shellUpdate") ShellUpdates.overlayOpen = !ShellUpdates.overlayOpen
-                else if (root.kind === "timer") GlobalStates.controlPanelOpen = true
-                else root.request(root.kind)
+        id: workspaces
+        Shared.Workspaces {
+            vertical: root.vertical
+            MouseArea {
+                anchors.fill: parent; acceptedButtons: Qt.RightButton
+                onPressed: GlobalStates.toggleOverview(root.outputName)
             }
+        }
+    }
+    Component { id: taskbar; Shared.BarTaskbar { vertical: root.vertical; barPosition: root.attachedEdge; parentWindow: root.QsWindow.window; slotSize: 32 } }
+    Component {
+        id: rightSidebar
+        RippleButton {
+            cookieMorphing: true
+            implicitWidth: 30 * Appearance.sizes.barModuleScale
+            implicitHeight: implicitWidth
+            buttonRadius: Appearance.rounding.full
+            colBackground: "transparent"
+            colBackgroundHover: Appearance.colors.colLayer1Hover
+            colRipple: Appearance.colors.colLayer1Active
+            toggled: ShellLayoutController.sidebarOpenAtSlot("right",root.outputName)
+            Accessible.name: Translation.tr("Toggle right sidebar")
+            onClicked: ShellLayoutController.toggleSidebarAtSlot("right",root.outputName)
+            MaterialSymbol { anchors.centerIn: parent; text:"right_panel_open"; iconSize:20; color:Appearance.colors.colOnLayer0 }
         }
     }
 }

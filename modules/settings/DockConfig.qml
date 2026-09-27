@@ -14,7 +14,7 @@ ContentPage {
         if (Quickshell.env("QS_DEBUG") === "1") console.log(...args);
     }
 
-    settingsPageIndex: 22
+    settingsPageIndex: embedded ? 2 : 22
     settingsPageName: Translation.tr("Dock")
 
     property bool isIiActive: Config.options?.panelFamily !== "waffle"
@@ -40,7 +40,7 @@ ContentPage {
 
             SettingsNote {
                 icon: "dock_to_bottom"
-                text: Translation.tr("Dock uses the Panel surface style.")
+                text: Config.options?.panelFamily === "abyss" ? "The Dock shares the Abyss Screen Edge surface." : Translation.tr("Dock uses the Panel surface style.")
             }
 
             ConfigRow {
@@ -113,6 +113,7 @@ ContentPage {
             }
             SettingsSwitch {
                 buttonIcon: "widgets"
+                visible: Config.options?.panelFamily !== "abyss"
                 text: Translation.tr("Show dock background")
                 checked: Config.options.dock.showBackground
                 onCheckedChanged: Config.setNestedValue("dock.showBackground", checked)

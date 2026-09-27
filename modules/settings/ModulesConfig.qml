@@ -87,8 +87,7 @@ ContentPage {
             { displayName: Translation.tr("Panels"), icon: "extension", value: "panels" },
             { displayName: Translation.tr("Terminal"), icon: "terminal", value: "terminal" },
             { displayName: Translation.tr("Modules"), icon: "dashboard", value: "modules" },
-            { displayName: Translation.tr("Interface"), icon: "tune", value: "interface" },
-            { displayName: "Abyss Style", icon: "water", value: "abyss" }
+            { displayName: Translation.tr("Interface"), icon: "tune", value: "interface" }
         ]
     }
 
@@ -158,36 +157,6 @@ ContentPage {
                 ]
                 onSelected: value => Quickshell.execDetached([Quickshell.shellPath("scripts/inir"),"panelFamily","set",value])
             }
-        }
-    }
-
-    Loader {
-        Layout.fillWidth: true
-        Layout.preferredHeight: item?.implicitHeight ?? 0
-        active: modulesPage.activeSection === "abyss"
-        visible: active
-        source: "../abyss/settings/AbyssStyleSettings.qml"
-    }
-
-    SettingsCardSection {
-        settingsTaskSection: "modules"
-        visible: modulesPage.isAbyss && modulesPage.activeSection === "modules"
-        expanded: true
-        title: "Abyss Core"
-        icon: "water"
-        SettingsGroup {
-            Repeater {
-                model: FamilyPolicy.abyssPanels.filter(id => id.startsWith("abyss"))
-                SettingsSwitch {
-                    required property string modelData
-                    autoToggle: false
-                    buttonIcon: "water"
-                    text: modelData.replace(/^abyss/,"").replace(/([a-z])([A-Z])/g,"$1 $2")
-                    checked: modulesPage.isPanelEnabled(modelData)
-                    onToggledByUser: checked => modulesPage.setPanelEnabled(modelData,checked)
-                }
-            }
-            SettingsNote { text: "Critical and specialist flows use shared implementations. Abyss Style controls the liquid presentation."; icon: "info" }
         }
     }
 

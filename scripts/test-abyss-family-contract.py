@@ -16,6 +16,12 @@ for (let i = 0; i < 60; i++) {
     assert.equal(family, ['waffle', 'abyss', 'ii'][i % 3]);
 }
 assert.equal(new Set(abyssPanels).size, abyssPanels.length);
+for (const [index,section] of [[16,'dock'],[17,'sidebars'],[29,'editor']]) {
+    assert.deepEqual(settingsRoute('abyss',index,''),{pageIndex:2,section});
+    assert.deepEqual(settingsRoute('waffle',index,''),{pageIndex:index,section:''});
+}
+assert.deepEqual(settingsRoute('abyss',10,'panels'),{pageIndex:10,section:'panels'});
+assert.deepEqual(settingsRoute('abyss',10,'abyss'),{pageIndex:2,section:'surface'});
 let result = ensure('abyss', abyssPanels, ['iiLock'], ['iiCheatsheet'], ['ii']);
 assert(result.enabled.includes('abyssPerimeter'));
 assert(!result.enabled.includes('iiCheatsheet')); // shared disabled preference
@@ -56,8 +62,8 @@ for (const family of ['ii','waffle','abyss']) {
     assert(!applicable(-1)); assert(!applicable(30)); assert(!applicable(18));
     assert.equal(applicable(2), family !== 'waffle');
     assert.equal(applicable(11), family === 'waffle');
-    assert.equal(applicable(16), family !== 'waffle');
-    assert.equal(applicable(29), family !== 'waffle');
+    assert.equal(applicable(16), family === 'ii');
+    assert.equal(applicable(29), family === 'ii');
 }
 """], check=True)
 

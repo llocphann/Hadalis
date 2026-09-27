@@ -25,6 +25,14 @@ ShellRoot {
         if(value) return true
         console.error("EMBEDDED_SETTINGS_FAIL",message);Qt.quit();return false
     }
+    function embeddedPage(item,name) {
+        if(item?.settingsPageName===name && item?.embedded===true) return item
+        for(const child of Array.from(item?.children ?? [])) {
+            const found=root.embeddedPage(child,name)
+            if(found) return found
+        }
+        return null
+    }
     function positionControls(item) {
         if(item?.position!==undefined && item?.outputName!==undefined && typeof item.change==="function") return item
         for(const child of Array.from(item?.children ?? [])) {
@@ -79,11 +87,33 @@ ShellRoot {
                 const entries=Array.from(Config.options.abyss.positions)
                 if(!root.check(entries.length===2 && entries[0].outputName==="A" && entries[0].edge==="left" && entries[0].alignment==="end" && entries[1].outputName==="B" && entries[1].edge==="bottom","Settings persists distinct per-output IPC positions")) return
             }
-            if(root.step===11) {
+            if(root.step===11) GlobalStates.openSettingsSection(2,"spectrum")
+            if(root.step===13) {
+                if(!root.check(body.contentItem.item.currentPage?.activeSection==="spectrum","Spectrum deep link reaches its controls")) return
+                GlobalStates.openSettingsSection(16,"")
+            }
+            if(root.step===15) {
+                if(!root.check(GlobalStates.settingsOverlayCurrentPage===2 && body.contentItem.item.currentPage?.activeSection==="dock","historical Dock route opens dedicated Abyss tab: "+GlobalStates.settingsOverlayCurrentPage+"/"+body.contentItem.item.currentPage?.activeSection+" requested="+GlobalStates.settingsOverlayRequestedPage+"/"+GlobalStates.settingsOverlayRequestedSection)) return
+                const dock=root.embeddedPage(body.contentItem.item.currentPage,"Dock")
+                if(!root.check(dock && dock.settingsPageIndex===2 && dock.implicitHeight>100 && !dock.interactive,"mature Dock controls use outer page scrolling and search route")) return
+                GlobalStates.openSettingsSection(2,"bar")
+            }
+            if(root.step===17) {
+                if(!root.check(body.contentItem.item.currentPage?.activeSection==="bar","module backend settings remain accessible")) return
+                const modules=root.embeddedPage(body.contentItem.item.currentPage,"Bar")
+                if(!root.check(modules && modules.activeSection==="modules" && modules.abyssContent && modules.implicitHeight>100,"mature media/tray/workspace settings load in Abyss")) return
+                GlobalStates.openSettingsSection(17,"")
+            }
+            if(root.step===19) {
+                if(!root.check(body.contentItem.item.currentPage?.activeSection==="sidebars","historical Sidebars route opens dedicated Abyss tab")) return
+                const sidebars=root.embeddedPage(body.contentItem.item.currentPage,"Sidebars")
+                if(!root.check(sidebars && sidebars.implicitHeight>100 && !sidebars.interactive,"mature Sidebar controls use outer page scrolling")) return
+            }
+            if(root.step===21) {
                 GlobalStates.settingsOverlayOpen=false
                 if(!root.check(body.inputBounds.width===0,"Settings closes with immediate input release")) return
             }
-            if(root.step===13) { console.info("EMBEDDED_SETTINGS_PASS");Qt.quit() }
+            if(root.step===23) { console.info("EMBEDDED_SETTINGS_PASS");Qt.quit() }
             root.step++
         }
     }
@@ -91,7 +121,7 @@ ShellRoot {
 QML
 if ! env -u QS_CONFIG_PATH -u QS_CONFIG_NAME -u QS_MANIFEST QT_QPA_PLATFORM=wayland \
     XDG_CONFIG_HOME="$settings_test_root/config" XDG_STATE_HOME="$settings_test_root/state" \
-    XDG_CACHE_HOME="$settings_test_root/cache" timeout 10s qs -p "$settings_test_root" --no-color \
+    XDG_CACHE_HOME="$settings_test_root/cache" timeout 14s qs -p "$settings_test_root" --no-color \
     > "$settings_test_root/runtime.log" 2>&1; then
     cat "$settings_test_root/runtime.log";exit 1
 fi

@@ -16,7 +16,7 @@ ContentPage {
         if (Quickshell.env("QS_DEBUG") === "1") console.log(...args);
     }
 
-    settingsPageIndex: 23
+    settingsPageIndex: embedded ? 2 : 23
     settingsPageName: Translation.tr("Sidebars")
 
     property bool isIiActive: Config.options?.panelFamily !== "waffle"
@@ -474,6 +474,8 @@ ContentPage {
                     MaterialTextField {
                         Layout.fillWidth: true
                         readOnly: true
+                        // A wrapped read-only path must not derive preferred width from its assigned layout width.
+                        implicitWidth: 220
                         text: LocalMusic.libraryFolder
                     }
 

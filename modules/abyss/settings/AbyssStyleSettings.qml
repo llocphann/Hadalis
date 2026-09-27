@@ -4,6 +4,7 @@ import QtQuick.Layouts
 import qs
 import qs.modules.common
 import qs.modules.common.widgets
+import "../../common/PanelFamilyPolicy.js" as FamilyPolicy
 import "../looks/AbyssWave.js" as Wave
 
 ColumnLayout {
@@ -55,6 +56,9 @@ ColumnLayout {
             {displayName:"Waves",value:"waves",icon:"waves"},
             {displayName:"Spectrum",value:"spectrum",icon:"graphic_eq"},
             {displayName:"Modules",value:"modules",icon:"widgets"},
+            {displayName:"Module behavior",value:"bar",icon:"tune"},
+            {displayName:"Dock",value:"dock",icon:"dock_to_bottom"},
+            {displayName:"Sidebars",value:"sidebars",icon:"side_navigation"},
             {displayName:"Popups",value:"popups",icon:"chat_bubble"},
             {displayName:"Live Editor",value:"editor",icon:"edit"},
             {displayName:"Interaction",value:"interaction",icon:"touch_app"},
@@ -160,6 +164,21 @@ ColumnLayout {
         title:"Modules";icon:"widgets";settingsTaskSection:"modules"
         visible:root.activeSection==="modules"
         SettingsGroup {
+            Repeater {
+                model: FamilyPolicy.abyssPanels.filter(id => id.startsWith("abyss"))
+                SettingsSwitch {
+                    required property string modelData
+                    autoToggle: false
+                    buttonIcon: "water"
+                    text: modelData.replace(/^abyss/,"").replace(/([a-z])([A-Z])/g,"$1 $2")
+                    checked: (Config.options?.enabledPanels ?? []).includes(modelData)
+                    onToggledByUser: checked => {
+                        const panels = (Config.options?.enabledPanels ?? []).filter(id => id !== modelData)
+                        if (checked) panels.push(modelData)
+                        Config.setNestedValue("enabledPanels",panels)
+                    }
+                }
+            }
             SettingsNote { text:"Place modules on any edge with Live Editor. Their media, resource, clock, tray and workspace settings remain shared." }
             RippleButton { buttonText:"Edit Abyss layout";implicitHeight:36;Layout.fillWidth:true;onClicked:GlobalStates.startAbyssEditing() }
             Percent { text:"Overall module scale";configKey:"abyss.modules.size";fallback:1;minimum:.6;maximum:1.8 }
@@ -169,7 +188,7 @@ ColumnLayout {
             Percent { text:"Left Edge module size";configKey:"abyss.modules.edgeSizes.left";fallback:1;minimum:.6;maximum:1.8 }
             SettingsNote { text:"Modules inherit their Edge size. Enable Custom size in Live Editor to override one module. Per-output sizes, snapping guides and start/center/end groups are available there." }
             AbyssOutputSelector { configPath:"bar.screenList";title:"Module outputs" }
-            RippleButton { buttonText:"Module functionality settings";implicitHeight:36;Layout.fillWidth:true;onClicked:GlobalStates.openSettingsSection(10,"modules") }
+            RippleButton { buttonText:"Module functionality settings";implicitHeight:36;Layout.fillWidth:true;onClicked:root.activeSection="bar" }
         }
     }
     SettingsCardSection {

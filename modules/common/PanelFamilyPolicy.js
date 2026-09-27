@@ -34,3 +34,15 @@ function ensure(family, base, enabled, known, visited) {
     }
     return result;
 }
+
+// Historical style pages still accept IPC/search routes; their controls live once
+// in the dedicated Abyss page. Common pages keep their stable numeric slots.
+function settingsRoute(family, index, section) {
+    var value = String(section || "");
+    if (family !== "abyss") return {pageIndex:index,section:value};
+    var tabs = {16:"dock",17:"sidebars",29:"editor"};
+    if (tabs[index]) return {pageIndex:2,section:tabs[index]};
+    if (index === 10 && value.toLowerCase() === "abyss")
+        return {pageIndex:2,section:"surface"};
+    return {pageIndex:index,section:value};
+}

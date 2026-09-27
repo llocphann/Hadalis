@@ -240,7 +240,8 @@ Scope {
                 && typeof pageItem.activateSettingsSearchSection === "function")
             pageItem.activateSettingsSearchSection(pendingSpotlightSection)
 
-        var control = null;
+        var control = pendingSpotlightIsSection
+            ? SettingsSearchRegistry.findSectionControl(pendingSpotlightPageIndex,pendingSpotlightSection || pendingSpotlightLabel) : null;
 
         // Try by optionId first
         if (pendingSpotlightOptionId >= 0) {
@@ -250,7 +251,7 @@ Scope {
         // Fallback: search in registry by various criteria
         // IMPORTANT: for static index entries (no optionId), treat as section navigation.
         // Don't guess a specific control by fuzzy label matching.
-        if (!control && (pendingSpotlightLabel.length > 0 || pendingSpotlightSection.length > 0)) {
+        if (!control && !pendingSpotlightIsSection && (pendingSpotlightLabel.length > 0 || pendingSpotlightSection.length > 0)) {
             var labelLower = pendingSpotlightLabel.toLowerCase();
             var sectionLower = pendingSpotlightSection.toLowerCase();
             // Remove page name prefix from sectionGroup if present (supports both delimiters)

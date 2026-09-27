@@ -7,10 +7,11 @@ import qs.modules.common.widgets
 
 ContentPage {
     id: root
-    settingsPageIndex: 2
+    settingsPageIndex: embedded ? 2 : 2
     settingsPageName: Translation.tr("Bar")
 
     property bool isIiActive: Config.options?.panelFamily !== "waffle"
+    readonly property bool abyssContent: root.embedded && Config.options?.panelFamily === "abyss"
     property string activeSection: "appearance"
     property bool spectrumControlsReady: false
 
@@ -59,12 +60,15 @@ ContentPage {
 
     SettingsTaskNavigator {
         icon: "toolbar"
-        title: Translation.tr("Classic Bar")
+        title: root.abyssContent ? Translation.tr("Module behavior") : Translation.tr("Classic Bar")
         description: Translation.tr("Position, surface, behavior, spectrum and modules for the Classic bar.")
         summary: Translation.tr("Appearance · Spectrum · Behavior · Modules")
         currentValue: root.activeSection
         onSelected: value => root.activeSection = value
-        options: [
+        options: root.abyssContent ? [
+            { displayName: Translation.tr("Modules"), icon: "widgets", value: "modules" },
+            { displayName: Translation.tr("Behavior & clock"), icon: "visibility", value: "behavior" }
+        ] : [
             { displayName: Translation.tr("Appearance"), icon: "style", value: "appearance" },
             { displayName: Translation.tr("Audio spectrum"), icon: "graphic_eq", value: "spectrum" },
             { displayName: Translation.tr("Behavior & clock"), icon: "visibility", value: "behavior" },
@@ -516,6 +520,7 @@ ContentPage {
         SettingsGroup {
             ContentSubsection {
                 title: Translation.tr("Visible modules")
+                visible: !root.abyssContent
 
                 ConfigRow {
                     uniform: true
@@ -629,11 +634,13 @@ ContentPage {
             }
 
             SettingsNote {
+                visible: !root.abyssContent
                 icon: root.isVertical ? "view_column" : "view_stream"
                 text: Translation.tr("Top/Bottom and Left/Right keep separate module layouts; module visibility remains shared.")
             }
 
             ContentSubsection {
+                visible: !root.abyssContent
                 title: root.isVertical
                     ? Translation.tr("Left/Right module layout")
                     : Translation.tr("Top/Bottom module layout")
@@ -689,7 +696,7 @@ ContentPage {
                     from: 120
                     to: 320
                     stepSize: 10
-                    enabled: Config.options?.bar?.modules?.media ?? true
+                    enabled: root.abyssContent || (Config.options?.bar?.modules?.media ?? true)
                     opacity: enabled ? 1 : 0.5
                     onValueChanged: Config.setNestedValue("bar.media.width", value)
                 }

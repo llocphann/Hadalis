@@ -3,6 +3,7 @@ import QtQuick
 import Quickshell
 import qs.services
 import qs.modules.common
+import "../common/PanelFamilyPolicy.js" as FamilyPolicy
 
 /**
  * Public Settings registry facade.
@@ -30,7 +31,7 @@ Singleton {
         if (index < 0 || index >= root.pages.length
                 || root.isHiddenLegacyIndex(index)) return false
         if (root.abyssFamily)
-            return index !== 11
+            return ![11,16,17,29].includes(index)
         if (root.waffleFamily)
             return index !== root.barPageIndex && index !== 16 && index !== 29
         return index !== 11
@@ -43,6 +44,7 @@ Singleton {
     function pageIndexForKey(key: string): int {
         const value = String(key ?? "").trim()
         if (!value) return -1
+        if (root.abyssFamily && ["dock","sidebars","shell-layout","bar"].includes(value)) return root.barPageIndex
         return root.pages.findIndex((page, index) => page.key === value
             && page.devNavigationHidden !== true
             && root.isPageApplicable(index))
@@ -50,7 +52,9 @@ Singleton {
     function navigateToKey(key: string, section: string): bool {
         const index = root.pageIndexForKey(key)
         if (index < 0) return false
-        root.navigateRequested(index, String(section ?? ""))
+        root.navigateRequested(index, root.abyssFamily && !section
+            ? ({dock:"dock",sidebars:"sidebars","shell-layout":"editor",bar:"modules"}[key] ?? "")
+            : String(section ?? ""))
         return true
     }
     property bool _legacyTlpPowerRedirectPending: false
@@ -90,6 +94,7 @@ Singleton {
 
     function isHiddenLegacyIndex(index: int): bool {
         return index === root.retiredTlpPageIndex || root.isRetiredFeaturePage(index)
+            || (root.abyssFamily && [16,17,29].includes(index))
     }
 
     readonly property var defaultCategories: SettingsPageRegistryData.defaultCategories.map(category => ({
@@ -116,6 +121,10 @@ Singleton {
             return
 
         const current = Number(Persistent.states.settings.iiPage ?? -1)
+        if (root.abyssFamily && [16,17,29].includes(current)) {
+            Persistent.states.settings.iiPage = root.barPageIndex
+            return
+        }
         if (root.isRetiredFeaturePage(current)) {
             Persistent.states.settings.iiPage = root.panelsPageIndex
             return
@@ -215,6 +224,11 @@ Singleton {
         return SettingsPageRegistryData.searchIndex()
             .filter(entry => !root.isRetiredFeaturePage(entry.pageIndex))
             .map(entry => {
+                const route = FamilyPolicy.settingsRoute(Config.options?.panelFamily,entry.pageIndex,entry.section)
+                if (route.pageIndex !== entry.pageIndex)
+                    return Object.assign({},entry,route,{pageName:"Abyss"})
+                if (root.abyssFamily && entry.pageIndex === root.barPageIndex)
+                    return Object.assign({},entry,{pageName:"Abyss"})
                 if (entry.pageIndex !== root.retiredTlpPageIndex)
                     return entry
 

@@ -2,6 +2,7 @@ pragma Singleton
 pragma ComponentBehavior: Bound
 
 import qs.modules.common
+import "modules/common/PanelFamilyPolicy.js" as FamilyPolicy
 import qs.services
 import QtQuick
 import Quickshell
@@ -184,7 +185,9 @@ Singleton {
     }
 
     function openSettingsSection(index: int, section: string): void {
-        const targetSection = String(section ?? "").trim()
+        const route = FamilyPolicy.settingsRoute(Config.options?.panelFamily,index,section)
+        index = route.pageIndex
+        const targetSection = route.section.trim()
         const isWaffle = Config.options?.panelFamily === "waffle"
             && Config.options?.waffles?.settings?.useMaterialStyle !== true
         if (isWaffle) {

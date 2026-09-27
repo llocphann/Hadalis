@@ -88,7 +88,7 @@ Item {
             }
         }
 
-        OrbitalWeather {
+        Loader {
             id: orbitalTimeline
             anchors {
                 fill: parent
@@ -97,12 +97,17 @@ Item {
                 topMargin: root.orbitalInset
                 bottomMargin: root.orbitalInset
             }
-            now: root.now
-            liquidMode: true
-            // Keep the field alive while its page is still visibly sliding out;
-            // stop it only after the clipped page has fully left the viewport.
-            liquidAnimationActive: root.currentTab === 0
-                || timeWeatherPanel.y > -timeWeatherPanel.height + 1
+            sourceComponent:Config.options?.panelFamily === "abyss" ? abyssOrbit : materialOrbit
+        }
+        Component { id:abyssOrbit;AbyssOrbitalWeather { now:root.now } }
+        Component {
+            id:materialOrbit
+            OrbitalWeather {
+                now: root.now
+                liquidMode: true
+                liquidAnimationActive: root.currentTab === 0
+                    || timeWeatherPanel.y > -timeWeatherPanel.height + 1
+            }
         }
     }
 

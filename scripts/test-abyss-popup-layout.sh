@@ -19,12 +19,21 @@ import QtQuick
 import Quickshell
 import qs.modules.common
 import qs.modules.abyss.content
+import qs.services
 ShellRoot {
     id: root
     property int step: 0
     function check(value,message): bool {
         if (value) return true
         console.error("ABYSS_POPUP_LAYOUT_FAIL",message);Qt.quit();return false
+    }
+    function findOrbit(item) {
+        if(typeof item?.angle==="function" && item?.selectedHour!==undefined) return item
+        for(const child of Array.from(item?.children ?? [])) {
+            const orbit=root.findOrbit(child)
+            if(orbit) return orbit
+        }
+        return null
     }
     FloatingWindow {
         visible: true; implicitWidth: 1200; implicitHeight: 900
@@ -33,7 +42,7 @@ ShellRoot {
     Timer {
         interval: 350; running: true; repeat: true
         onTriggered: {
-            if(root.step===0) popup.kind="clock"
+            if(root.step===0) { Config.setNestedValue("panelFamily","abyss");popup.kind="clock" }
             else if(root.step===1 || root.step===6) {
                 const calendar=popup.feature.contentItem.children.find(c=>c.calendarCells!==undefined)
                 if(!root.check(calendar && calendar.calendarCells.length===42,"mature calendar keeps six weeks")) return
@@ -45,9 +54,16 @@ ShellRoot {
                 popup.kind="battery"
             } else if(root.step===3) {
                 if(!root.check(popup.desiredWidth>100 && popup.desiredHeight>50 && !popup.feature.active,"mature battery content-sized layout")) return
+                Weather.data={temp:"31°",description:"Cloudy",wCode:"119",hourly:Array.from({length:8},(_,i)=>({label:String(i*3).padStart(2,"0")+":00",temp:String(23+i)+"°",code:"119",isNight:i<2}))}
                 popup.kind="weather"
             } else if(root.step===4) {
                 if(!root.check(popup.desiredWidth===390 && popup.desiredHeight===300,"shared two-tab weather dimensions")) return
+                const orbit=root.findOrbit(popup.feature)
+                if(!root.check(orbit && orbit.hours.length===8,"Abyss loads its forecast orbit using shared Weather data")) return
+                const nodes=Array.from(orbit.children).filter(c=>c.orbitAngle!==undefined)
+                if(!root.check(nodes.length===8 && nodes.every(n=>n.x>=0 && n.y>=0 && n.x+n.width<=orbit.width && n.y+n.height<=orbit.height),"all hourly controls fit inside the popup")) return
+                orbit.activeIndex=4
+                if(!root.check(orbit.selectedHour.temp==="27°","selected forecast updates the central summary")) return
                 popup.kind="media"
             } else if(root.step===5) {
                 if(!root.check(popup.feature.tabCount!==undefined && popup.desiredHeight>0,"shared player tabs and Equalizer")) return

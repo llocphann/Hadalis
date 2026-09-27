@@ -56,11 +56,14 @@ DashCard {
         }
     }
 
-    OrbitalWeather {
+    Loader {
         visible: root.hasData
+        active:root.hasData
         Layout.fillWidth: true
         Layout.fillHeight: true
         Layout.minimumHeight: 180
-        now: root.now
+        sourceComponent:Config.options?.panelFamily === "abyss" ? abyssOrbit : materialOrbit
     }
+    Component { id:abyssOrbit;AbyssOrbitalWeather { now:root.now } }
+    Component { id:materialOrbit;OrbitalWeather { now:root.now } }
 }

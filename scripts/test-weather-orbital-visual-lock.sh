@@ -23,6 +23,9 @@ approved_on = "2026-09-25"
 # appearance on 2026-09-25. These are Git blob IDs, so even a tiny edit to the
 # visual-defining source/QSB fails closed.
 #
+# The 2026-09-27 maintainer request explicitly redesigns Orbital Weather for
+# Abyss. WeatherPopupContent now selects that static view; the Material GPU
+# membrane and all its visual-defining blobs remain unchanged.
 # Do NOT refresh these hashes as part of refactors, cleanup, optimization,
 # renderer work, or automated formatting. An intentional visual change requires
 # explicit maintainer approval first, then a deliberate re-baseline of this map.
@@ -36,7 +39,7 @@ expected = {
     "modules/bar/weather/OrbitalWeather.qml":
         "1b74f970a179756a6ec743b310654bdaf5ae90eb",
     "modules/bar/weather/WeatherPopupContent.qml":
-        "cf6db708ed65f7d161f8e0bf391dfb0e70b8b3ab",
+        "59d1579cf638b49e590a2a1ca878ee76b021d51a",
     "modules/bar/weather/WeatherPopup.qml":
         "5c6e11509eaa5ad3eafdc755fcc7e593ba82e83e",
 }

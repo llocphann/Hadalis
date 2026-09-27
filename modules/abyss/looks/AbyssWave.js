@@ -25,6 +25,8 @@ function arc(edge, along, width, height) {
 function create(count, width, height, options) {
     return {count:count,width:width,height:height,length:Math.max(1,2*(width+height)),
         displacement:Array(count).fill(0),velocity:Array(count).fill(0),mass:Array(count).fill(1),
+        spectrumTargets:Array(count).fill(0),hasSpectrum:false,
+        acceleration:Array(count).fill(0),
         parameters:options,mode:"SLEEPING",quiet:0,age:0,steps:0};
 }
 function circularDistance(a,b,length) {
@@ -54,6 +56,35 @@ function impulse(state, edge, along, span, strength, mass) {
     }
     state.mode="ACTIVE";state.age=0;state.quiet=0;
 }
+// Feed a bounded, smooth rest shape into the same spring field. Constant audio
+// can settle to a static wave; changing CAVA frames wake it without an idle clock.
+function spectrum(state, edges, points, ceiling, strength) {
+    var count=points?.length || 0,changed=false,active=false;
+    var maximum=(4+32*state.parameters.amplitude)*unit(strength,0);
+    var normalizer=Math.max(20,Number(ceiling) || 100);
+    for(var i=0;i<state.count;i++) {
+        var location=i*state.length/state.count,edge,along,length;
+        if(location<state.width) { edge="top";along=location;length=state.width; }
+        else if(location<state.width+state.height) { edge="right";along=location-state.width;length=state.height; }
+        else if(location<2*state.width+state.height) { edge="bottom";along=2*state.width+state.height-location;length=state.width; }
+        else { edge="left";along=state.length-location;length=state.height; }
+        var t=along/Math.max(1,length),target=0;
+        if(count && edges.indexOf(edge)>=0 && maximum>0) {
+            var position=t*(count-1),low=Math.floor(position),high=Math.min(count-1,low+1);
+            var a=Number(points[low]),b=Number(points[high]);
+            var level=((Number.isFinite(a)?Math.max(0,a):0)*(1-(position-low))+(Number.isFinite(b)?Math.max(0,b):0)*(position-low))/normalizer;
+            level=Math.max(0,Math.min(1,level));
+            if(level>.025) target=maximum*level*Math.sin(t*Math.PI*6)*Math.pow(Math.sin(t*Math.PI),2);
+        }
+        if(Math.abs(target-state.spectrumTargets[i])>.005 || (target===0 && state.spectrumTargets[i]!==0)) {
+            changed=true;state.spectrumTargets[i]=target;
+        }
+        active=active || Math.abs(state.spectrumTargets[i])>.005;
+    }
+    state.hasSpectrum=active;
+    if(changed) { state.mode="ACTIVE";state.quiet=0;state.age=0; }
+    return changed;
+}
 function advance(state, elapsed) {
     if(state.mode === "SLEEPING") return false;
     var p=state.parameters,dx=state.length/state.count;
@@ -63,7 +94,7 @@ function advance(state, elapsed) {
     var limit=4+32*p.amplitude;
     var corners=[0,state.width,state.width+state.height,2*state.width+state.height];
     for(var step=0;step<parts;step++) {
-        var acceleration=Array(state.count);
+        var acceleration=state.acceleration;
         for(var i=0;i<state.count;i++) {
             var left=(i+state.count-1)%state.count,right=(i+1)%state.count;
             var location=i*dx;
@@ -73,7 +104,7 @@ function advance(state, elapsed) {
             var viscous=state.velocity[left]+state.velocity[right]-2*state.velocity[i];
             var spring=(18+62*p.tension)*(.4+.6*p.rebound);
             var damping=1.2+7*p.decay+3*(1-p.propagation)+(atCorner?(1-p.corner)*2:0);
-            acceleration[i]=(speed*speed/(dx*dx)*lap*transfer-spring*state.displacement[i]
+            acceleration[i]=(speed*speed/(dx*dx)*lap*transfer+spring*(state.spectrumTargets[i]-state.displacement[i])
                 +p.viscosity*900/(dx*dx)*viscous)/state.mass[i]-damping*state.velocity[i];
         }
         for(var j=0;j<state.count;j++) {
@@ -87,11 +118,12 @@ function advance(state, elapsed) {
         state.steps++;
     }
     state.age+=elapsed;
-    var quiet=state.displacement.every(function(v) { return Math.abs(v)<.025; })
+    var quiet=(state.hasSpectrum || state.displacement.every(function(v) { return Math.abs(v)<.025; }))
         && state.velocity.every(function(v) { return Math.abs(v)<.12; });
     state.quiet=quiet ? state.quiet+1 : 0;
     if(state.quiet>=8) {
-        state.displacement.fill(0);state.velocity.fill(0);state.mode="SLEEPING";
+        if(!state.hasSpectrum) state.displacement.fill(0);
+        state.velocity.fill(0);state.mode="SLEEPING";
     } else state.mode=state.age<.2 ? "ACTIVE" : "SETTLING";
     return true;
 }

@@ -215,6 +215,12 @@ Scope {
                 moduleRecords: bar.visible ? bar.deformations : []
             }
             readonly property var sideObstacles: [leftPanel,rightPanel].filter(body => body.progress > 0.001).map(body => body.record)
+            AbyssSpectrumController {
+                waves:liquid.waves
+                outputName:window.outputName
+                barEdge:root.barEdge
+                presented:window.presented && field.ready && !window.editorOpen
+            }
             AbyssBodyHost {
                 id: leftPanel
                 identity: "leftPanel"

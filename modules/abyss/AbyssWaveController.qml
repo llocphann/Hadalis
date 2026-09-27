@@ -19,14 +19,19 @@ Item {
     readonly property bool running: ticker.running
     readonly property var texture: textureSource
     property bool wavesEnabled: Config.options?.abyss?.waves?.enabled ?? false
+    property bool audioEnabled: false
     property bool idleDisturbance: false
     property int idlePoint: 0
     readonly property bool motionAllowed: presented && AbyssStyle.motionEnabled && wavesEnabled
+    readonly property bool audioAllowed: presented && AbyssStyle.motionEnabled && audioEnabled
+    readonly property bool integrationAllowed: motionAllowed || audioAllowed
+    signal configurationChanged()
     function reset(): void {
         simulation = Wave.create(sampleCount,outputWidth,outputHeight,parameters)
         Wave.setMass(simulation,records)
         mode = "SLEEPING"
         revision++
+        configurationChanged()
     }
     function impulse(edge, along, span, strength, mass = 1, channel = "module"): void {
         if (!motionAllowed || strength === 0) return
@@ -39,12 +44,27 @@ Item {
         mode = simulation.mode
         revision++
     }
-    onMotionAllowedChanged: if (!motionAllowed) reset()
+    function feedSpectrum(edges,points,ceiling,strength): void {
+        if(!audioAllowed) return
+        if(!simulation) reset()
+        if(!Wave.spectrum(simulation,edges,points,ceiling,strength*AbyssStyle.motionIntensity)) return
+        idleDisturbance=false
+        lastStep=Date.now();mode=simulation.mode;revision++
+    }
+    function clearSpectrum(): void {
+        if(!simulation || !simulation.hasSpectrum) return
+        if(!integrationAllowed) { reset();return }
+        Wave.spectrum(simulation,[],[],100,0)
+        lastStep=Date.now();mode=simulation.mode
+    }
+    onAudioAllowedChanged: if(!audioAllowed) clearSpectrum()
+    onIntegrationAllowedChanged: if (!integrationAllowed) reset()
     onOutputWidthChanged: reset()
     onOutputHeightChanged: reset()
     onSampleCountChanged: reset()
     onParametersChanged: {
         if (simulation) simulation.parameters = parameters
+        configurationChanged()
     }
     onRecordsChanged: if (simulation) Wave.setMass(simulation,records)
     onRevisionChanged: samples.requestPaint()
@@ -53,7 +73,7 @@ Item {
         id: ticker
         interval: root.idleDisturbance ? 100 : AbyssStyle.quality === "performance" ? 33 : 16
         repeat: true
-        running: root.motionAllowed && root.mode !== "SLEEPING"
+        running: root.integrationAllowed && root.mode !== "SLEEPING"
         onTriggered: {
             const now = Date.now()
             Wave.advance(root.simulation,Math.min(.05,(now-root.lastStep)/1000))

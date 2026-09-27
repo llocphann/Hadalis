@@ -12,6 +12,14 @@ ColumnLayout {
     spacing: 16
     property string activeSection: "surface"
     readonly property var waveValues: Wave.parameters(Config.options?.abyss?.waves)
+    function spectrumChange(key,value): void {
+        const options=Config.options?.abyss?.spectrum
+        const updates={"abyss.spectrum.configured":true,
+            "abyss.spectrum.enabled":options?.configured ? options.enabled : Config.options?.bar?.visualizer?.enable ?? false,
+            "abyss.spectrum.multiMonitorMode":options?.configured ? options.multiMonitorMode : Config.options?.bar?.visualizer?.multiMonitorMode ?? "primary"}
+        updates["abyss.spectrum."+key]=value
+        Config.setNestedValues(updates)
+    }
     function waveChange(key,value): void {
         const updates={"abyss.waves.preset":"custom"}
         Object.keys(Wave.presets.balanced).forEach(k => updates["abyss.waves."+k]=waveValues[k])
@@ -45,11 +53,36 @@ ColumnLayout {
         options:[
             {displayName:"Surface",value:"surface",icon:"opacity"},
             {displayName:"Waves",value:"waves",icon:"waves"},
+            {displayName:"Spectrum",value:"spectrum",icon:"graphic_eq"},
             {displayName:"Modules",value:"modules",icon:"widgets"},
             {displayName:"Popups",value:"popups",icon:"chat_bubble"},
             {displayName:"Live Editor",value:"editor",icon:"edit"},
             {displayName:"Interaction",value:"interaction",icon:"touch_app"},
             {displayName:"Performance",value:"performance",icon:"speed"}]
+    }
+    SettingsCardSection {
+        title:"Audio spectrum";icon:"graphic_eq";settingsTaskSection:"spectrum"
+        visible:root.activeSection==="spectrum"
+        SettingsGroup {
+            ConfigSwitch {
+                text:"Audio-driven Screen Edge wave";autoToggle:false
+                checked:(Config.options?.abyss?.spectrum?.configured ?? false) ? (Config.options?.abyss?.spectrum?.enabled ?? false) : (Config.options?.bar?.visualizer?.enable ?? false)
+                onToggledByUser:checked=>root.spectrumChange("enabled",checked)
+            }
+            Percent { text:"Audio wave strength";configKey:"abyss.spectrum.strength";fallback:.45 }
+            ConfigSelectionArray {
+                currentValue:Config.options?.abyss?.spectrum?.edge ?? "bar"
+                options:[{displayName:"Bar Edge",value:"bar"},{displayName:"All Edges",value:"all"},
+                    {displayName:"Top",value:"top"},{displayName:"Right",value:"right"},{displayName:"Bottom",value:"bottom"},{displayName:"Left",value:"left"}]
+                onSelected:value=>Config.setNestedValue("abyss.spectrum.edge",value)
+            }
+            ConfigSelectionArray {
+                currentValue:(Config.options?.abyss?.spectrum?.configured ?? false) ? Config.options?.abyss?.spectrum?.multiMonitorMode : Config.options?.bar?.visualizer?.multiMonitorMode ?? "primary"
+                options:[{displayName:"Primary output",value:"primary"},{displayName:"All outputs",value:"all"}]
+                onSelected:value=>root.spectrumChange("multiMonitorMode",value)
+            }
+            SettingsNote { text:"Audio moves the same Screen Edge surface. It shares the existing analyzer, runs only during playback on visible outputs, and clears when paused, hidden or reduced motion is enabled. Interaction waves can remain off." }
+        }
     }
     SettingsCardSection {
         title:"Surface";icon:"opacity";settingsTaskSection:"surface"

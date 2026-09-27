@@ -42,6 +42,26 @@ for(const preset of Object.keys(presets)) for(const [w,h] of [[1920,1200],[480,3
 }
 const custom=parameters({preset:'custom',amplitude:9,decay:-1});
 assert.equal(custom.amplitude,1);assert.equal(custom.decay,0);
+s=create(256,1920,1200,p);
+const raw=[20,70,40,95,30,50,80,10],rawBefore=JSON.stringify(raw);
+assert(spectrum(s,['top'],raw,100,.8));
+assert(s.spectrumTargets.some(v=>v>1) && s.spectrumTargets.some(v=>v<-1),'spectrum is a signed continuous wave');
+assert(s.spectrumTargets.every((v,i)=>i*s.length/s.count<=s.width || v===0),'only the selected edge is driven');
+assert.equal(JSON.stringify(raw),rawBefore,'shared analyzer frames are never mutated');
+for(let i=0;i<1600;i++) advance(s,1/120);
+assert.equal(s.mode,'SLEEPING','stationary spectrum can settle without continuous integration');
+assert(s.displacement.some(v=>Math.abs(v)>.1),'settled audio keeps its physical wave');
+const audioSteps=s.steps;advance(s,.05);assert.equal(s.steps,audioSteps);
+assert.equal(spectrum(s,['top'],raw,100,.8),false,'identical audio does not wake the field');
+assert(spectrum(s,['left'],raw,100,.8),'edge changes wake and release old targets');
+assert(spectrum(s,[],[],100,0),'pause clears audio targets');
+for(let i=0;i<1600;i++) advance(s,1/120);
+assert.equal(s.mode,'SLEEPING');assert(s.displacement.every(v=>v===0),'pause restores exact flat rest');
+for(const bad of [[Infinity,-2,NaN],[0,0,0],[]]) {
+    spectrum(s,['top','right','bottom','left'],bad,NaN,100);
+    for(let i=0;i<240;i++) advance(s,1/120);
+    assert(s.displacement.every(v=>Number.isFinite(v) && Math.abs(v)<=24),'malformed and extreme audio stays bounded');
+}
 console.log('PASS: propagation, corner wrap, rebound, heavy mass, bounded stability, presets and integration-free sleep');
 """
 subprocess.run(["node","-e",program],cwd=root,check=True)

@@ -2046,6 +2046,7 @@
     "abyss": {
         "quality": "balanced",
         "positions": [],
+        "spectrum": {"configured": false, "enabled": false, "strength": 0.45, "edge": "bar", "multiMonitorMode": "primary"},
         "perimeter": {
             "thickness": 16,
             "radius": 34,

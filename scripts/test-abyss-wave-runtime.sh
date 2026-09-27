@@ -25,6 +25,12 @@ ShellRoot {
     property int step: 0
     property int restingRevision: -1
     property int captured: 0
+    QtObject {
+        id: audio
+        property var points:[100,80,95,65,90,75,100,80]
+        property real normalizationCeiling:100
+        property bool audioSignalActive:false
+    }
     function check(value,message): bool {
         if(value) return true
         console.error("WAVE_RUNTIME_FAIL",message);Qt.quit();return false
@@ -38,6 +44,7 @@ ShellRoot {
             id: scene; anchors.fill: parent
             AbyssField { id: field; anchors.fill: parent; waveTexture: waves.texture }
             AbyssWaveController { id: waves; outputWidth: scene.width; outputHeight: scene.height }
+            AbyssSpectrumController { id:spectrum;waves:waves;audioSource:audio;playing:false;presented:waves.presented }
         }
     }
     Timer {
@@ -71,6 +78,37 @@ ShellRoot {
             }
             if(root.step === 15) {
                 if(!root.check(root.captured===3,"all actual GPU captures completed")) return
+                Config.setNestedValue("abyss.waves.enabled",false)
+                Config.setNestedValue("abyss.spectrum.configured",true)
+                Config.setNestedValue("abyss.spectrum.enabled",true)
+                Config.setNestedValue("abyss.spectrum.strength",1)
+                waves.presented=true;audio.audioSignalActive=true;spectrum.playing=true
+            }
+            if(root.step === 17) {
+                if(!root.check(waves.audioAllowed && !waves.motionAllowed && waves.simulation.hasSpectrum && waves.simulation.displacement.some(v=>Math.abs(v)>.1),"audio drives field while interaction waves stay off")) return
+                if(!root.check(!spectrum.held,"injected audio does not acquire an analyzer lease")) return
+                root.capture("audio")
+            }
+            if(root.step === 19) {
+                audio.audioSignalActive=false
+                if(!root.check(!waves.simulation.hasSpectrum,"silence releases audio targets")) return
+                spectrum.playing=false
+            }
+            if(root.step === 21) {
+                if(!root.check(!spectrum.wanted && !waves.running && waves.simulation.displacement.every(v=>v===0),"paused playback restores flat field and stops updates")) return
+                root.capture("paused")
+                audio.audioSignalActive=true;spectrum.playing=true
+            }
+            if(root.step === 23) {
+                Config.setNestedValue("performance.reduceAnimations",true)
+                if(!root.check(!spectrum.wanted && !waves.running && waves.mode==="SLEEPING","reduced motion disables spectrum")) return
+                root.capture("audioReduced")
+            }
+            if(root.step === 25) {
+                if(!root.check(root.captured===6,"interaction and audio GPU captures completed")) return
+                Config.setNestedValue("performance.reduceAnimations",false)
+                waves.presented=false
+                if(!root.check(!spectrum.wanted && !waves.running && waves.simulation.displacement.every(v=>v===0),"hidden output releases spectrum and restores rest")) return
                 console.info("WAVE_RUNTIME_PASS");Qt.quit()
             }
             root.step++
@@ -98,5 +136,8 @@ moving=Image.open(root/'moving.png').convert('RGB')
 reduced=Image.open(root/'reduced.png').convert('RGB')
 assert ImageChops.difference(rest,moving).crop((0,4,420,80)).getbbox(), 'solver must visibly change the actual field silhouette'
 assert ImageChops.difference(rest,reduced).getbbox() is None, 'resting silhouette must restore after reduced motion'
+assert ImageChops.difference(rest,Image.open(root/'audio.png').convert('RGB')).crop((0,4,420,80)).getbbox(), 'spectrum must move the actual field, without a second spectrum painter'
+assert ImageChops.difference(rest,Image.open(root/'paused.png').convert('RGB')).getbbox() is None, 'paused audio restores the exact resting field'
+assert ImageChops.difference(rest,Image.open(root/'audioReduced.png').convert('RGB')).getbbox() is None, 'reduced motion cancels audio deformation'
 print('PASS: production GPU wave texture deforms silhouette, restores rest and stops idle/reduced/hidden updates')
 PY

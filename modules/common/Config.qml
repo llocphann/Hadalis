@@ -464,6 +464,13 @@ Singleton {
             property JsonObject abyss: JsonObject {
                 property string quality: "balanced"
                 property list<var> positions: []
+                property JsonObject spectrum: JsonObject {
+                    property bool configured: false
+                    property bool enabled: false
+                    property real strength: 0.45
+                    property string edge: "bar"
+                    property string multiMonitorMode: "primary"
+                }
                 property JsonObject perimeter: JsonObject {
                     property int thickness: 16
                     property int radius: 34

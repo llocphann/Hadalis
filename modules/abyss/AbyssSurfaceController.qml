@@ -10,6 +10,31 @@ QtObject {
     property real outputHeight: 1080
     property bool presented: true
     property Item presentationItem: null
+    property var activeDialog: null
+    property Item dialogHome: null
+    property var dialogHost: null
+    function presentDialog(item): void {
+        if (!item || !dialogHost || activeDialog === item) return
+        if (activeDialog) activeDialog.dismiss()
+        dialogHome = item.parent
+        activeDialog = item
+        item.parent = dialogHost.contentParent
+        item.x = 0; item.y = 0
+        item.width = Qt.binding(() => dialogHost.contentParent.width)
+        item.height = Qt.binding(() => dialogHost.contentParent.height)
+        item.forceActiveFocus()
+    }
+    function releaseDialog(item, restore = true): void {
+        if (activeDialog !== item) return
+        const home = dialogHome
+        activeDialog = null
+        dialogHome = null
+        if (restore && home) {
+            item.parent = home
+            item.width = Qt.binding(() => home.width)
+            item.height = Qt.binding(() => home.height)
+        }
+    }
     readonly property AbyssWaveController waves: AbyssWaveController {
         parent: root.presentationItem
         outputWidth: root.outputWidth

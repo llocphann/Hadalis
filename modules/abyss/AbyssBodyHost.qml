@@ -11,6 +11,8 @@ Item {
     property string outputName: ""
     property string identity: ""
     property var controller: null
+    readonly property var liquidController: controller
+    property Item embeddedItem: null
     property bool largeSurface: false
     readonly property real mass: Math.max(1,span*depth/90000)
     property bool initialized: false
@@ -26,9 +28,10 @@ Item {
     property real progress: open ? 1 : 0
     readonly property var record: Geometry.panel(width,height,edgeInsets,edge,along,span,depth,progress,padding,obstacles,largeSurface)
     readonly property Item contentItem: content
-    readonly property bool ready: content.status === Loader.Ready
+    readonly property bool ready: embeddedItem !== null || content.status === Loader.Ready
+    readonly property Item contentParent: contentFrame
     readonly property rect inputBounds: open && ready
-        ? Qt.rect(content.x,content.y,content.width,content.height) : Qt.rect(0,0,0,0)
+        ? Qt.rect(contentFrame.x,contentFrame.y,contentFrame.width,contentFrame.height) : Qt.rect(0,0,0,0)
     signal closeRequested()
     AbyssParticipant {
         identity: root.identity
@@ -62,11 +65,20 @@ Item {
             }
         }
     }
-    Loader {
-        id: content
+    Item {
+        id: contentFrame
         x: root.record.content.x; y: root.record.content.y
         width: root.record.content.width; height: root.record.content.height
-        active: root.progress > 0.001 && GlobalStates.deferredPanelsReady
+        clip: true
+        opacity: Math.min(1,root.progress*1.5)
+        enabled: root.open
+    }
+    Loader {
+        id: content
+        // Keep the Loader geometry/API used by ordinary content adapters.
+        x: root.record.content.x; y: root.record.content.y
+        width: root.record.content.width; height: root.record.content.height
+        active: !root.embeddedItem && root.progress > 0.001 && GlobalStates.deferredPanelsReady
         source: root.source
         clip: true
         opacity: Math.min(1,root.progress*1.5)

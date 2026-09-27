@@ -243,7 +243,7 @@ Item {
 
     RicelinSurface {
         anchors.fill: sidebarLeftBackground
-        visible: sidebarLeftBackground.islandStyle
+        visible: !root.externalConnectedSurface && sidebarLeftBackground.islandStyle
         radius: sidebarLeftBackground.radius
         glassEnabled: true
         screen: root.panelScreen ?? root.QsWindow?.window?.screen ?? null

@@ -758,7 +758,7 @@ Item {
 
     RicelinSurface {
         anchors.fill: bg
-        visible: bg.islandStyle
+        visible: !root.externalConnectedSurface && bg.islandStyle
         radius: bg.radius
         glassEnabled: true
         screen: root.panelScreen ?? root.QsWindow?.window?.screen ?? null

@@ -71,17 +71,22 @@ Scope {
             exclusionMode: ExclusionMode.Ignore
             exclusiveZone: 0
             WlrLayershell.namespace: "hadalis:abyss-perimeter"
-            WlrLayershell.layer: GlobalStates.settingsNativeDialogOpen ? WlrLayer.Bottom : PolkitService.active ? WlrLayer.Top : (settings.open || dashboardBody.open || controls.open || (window.fullscreenCovered && window.presented)) ? WlrLayer.Overlay : WlrLayer.Top
+            WlrLayershell.layer: GlobalStates.settingsNativeDialogOpen ? WlrLayer.Bottom : PolkitService.active ? WlrLayer.Top : (dialogBody.open || settings.open || dashboardBody.open || controls.open || (window.fullscreenCovered && window.presented)) ? WlrLayer.Overlay : WlrLayer.Top
             WlrLayershell.keyboardFocus: !window.presented || !field.ready || GlobalStates.regionSelectorOpen || GlobalStates.settingsNativeDialogOpen || PolkitService.active || window.overviewDragging
                 ? WlrKeyboardFocus.None
-                : ((aux.open && aux.ready) || (settings.open && settings.ready) || (dashboardBody.open && dashboardBody.ready) || (controls.open && controls.ready)) ? WlrKeyboardFocus.Exclusive
+                : ((dialogBody.open && dialogBody.ready) || (aux.open && aux.ready) || (settings.open && settings.ready) || (dashboardBody.open && dashboardBody.ready) || (controls.open && controls.ready)) ? WlrKeyboardFocus.Exclusive
                 : ((leftPanel.open && leftPanel.ready) || (rightPanel.open && rightPanel.ready) || (popup.open && popup.ready) || (notification.open && notification.ready && notification.contentKind === "center"))
                     ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
             anchors { top: true; bottom: true; left: true; right: true }
             Item { id: emptyInput; width: 0; height: 0 }
             readonly property bool overviewDragging: aux.open && (aux.contentItem.item?.applicationDragActive ?? false)
             readonly property Region dragPassThrough: Region {}
-            mask: window.overviewDragging ? dragPassThrough : nativeInputMask
+            mask: window.overviewDragging ? dragPassThrough : liquid.activeDialog ? dialogInputMask : nativeInputMask
+            readonly property Region dialogInputMask: Region {
+                x: dialogBody.inputBounds.x; y: dialogBody.inputBounds.y
+                width: window.presented && field.ready ? dialogBody.inputBounds.width : 0
+                height: dialogBody.inputBounds.height
+            }
             readonly property Region nativeInputMask: Region {
                 Region { regions: window.presented && field.ready && bar.visible ? bar.inputRegions : [] }
                 Region { item: window.presented && revealTrigger.visible ? revealTrigger : emptyInput }
@@ -164,6 +169,7 @@ Scope {
                 outputHeight: window.height
                 presented: window.presented
                 presentationItem: field
+                dialogHost: dialogBody
                 moduleRecords: bar.visible ? bar.deformations : []
             }
             readonly property var sideObstacles: [leftPanel,rightPanel].filter(body => body.progress > 0.001).map(body => body.record)
@@ -365,6 +371,22 @@ Scope {
                 along: window.height/2-span/2
                 depth: 240
                 source: "content/AbyssOsdContent.qml"
+            }
+            AbyssBodyHost {
+                id: dialogBody
+                z: 20
+                identity: "dialog"
+                controller: liquid
+                anchors.fill: parent
+                edge: "right"
+                outputName: window.outputName
+                open: window.presented && field.ready && liquid.activeDialog !== null
+                embeddedItem: liquid.activeDialog
+                span: (liquid.activeDialog?.liquidHeight ?? 450)+padding*2
+                depth: (liquid.activeDialog?.liquidWidth ?? 350)+padding*2
+                along: (window.height-span)/2
+                edgeInsets: window.nativeInsets
+                onCloseRequested: if (liquid.activeDialog) liquid.activeDialog.dismiss()
             }
             AbyssField {
                 id: field

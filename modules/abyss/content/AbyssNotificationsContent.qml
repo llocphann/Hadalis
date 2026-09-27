@@ -1,6 +1,7 @@
 pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Layouts
+import qs.modules.notificationCenter
 import qs.services
 import qs.modules.common.functions
 import qs.modules.abyss.looks
@@ -14,7 +15,13 @@ Item {
     readonly property var notifications: center ? [...Notifications.list].sort((a,b) => b.time-a.time) : Notifications.popupList
     Component.onCompleted: if (center) Notifications.markAllRead()
     onCenterChanged: if (center) Notifications.markAllRead()
+    Loader {
+        anchors.fill: parent
+        active: root.center
+        sourceComponent: NotificationCenterContent {}
+    }
     ColumnLayout {
+        visible: !root.center
         anchors.fill: parent
         spacing: AbyssStyle.sectionSpacing/2
         RowLayout {

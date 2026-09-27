@@ -13,6 +13,27 @@ Rectangle {
     // centered modal scrim/chrome so owners can place it inside an existing
     // connected surface (for example Calendar's expanding bottom editor).
     property bool embeddedPresentation: false
+    property var liquidOwner: null
+    readonly property bool liquidHosted: liquidOwner?.activeDialog === root
+    readonly property bool effectiveEmbedded: embeddedPresentation || liquidHosted
+    readonly property real liquidWidth: Math.round(backgroundWidth)
+    readonly property real liquidHeight: dialogBackground.resolvedHeight
+    function syncLiquidHost(): void {
+        if (embeddedPresentation) return
+        if (show && !liquidOwner) {
+            for (let ancestor = parent; ancestor; ancestor = ancestor.parent) {
+                if (ancestor.liquidController !== undefined && ancestor.liquidController) {
+                    liquidOwner = ancestor.liquidController
+                    break
+                }
+            }
+        }
+        if (!liquidOwner) return
+        if (show) liquidOwner.presentDialog(root)
+        else liquidOwner.releaseDialog(root)
+    }
+    Component.onCompleted: Qt.callLater(syncLiquidHost)
+    Component.onDestruction: if (liquidOwner) liquidOwner.releaseDialog(root,false)
     // Embedded owners can lower dialog density without changing modal dialogs.
     property real contentSpacing: 16
     property color embeddedBackgroundColor: "transparent"
@@ -39,26 +60,29 @@ Rectangle {
         }
     }
 
-    color: root.embeddedPresentation
+    color: root.effectiveEmbedded
         ? root.embeddedBackgroundColor
         : (root.show ? Appearance.colors.colScrim
             : ColorUtils.transparentize(Appearance.colors.colScrim))
     Behavior on color {
         animation: ColorAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve }
     }
-    visible: root.embeddedPresentation
+    visible: root.effectiveEmbedded
         ? root.show
         : (root.show || dialogBackground.implicitHeight > 0 || contentColumn.opacity > 0)
 
-    onShowChanged: dialogBackgroundHeightAnimation.easing.bezierCurve = show
-        ? Appearance.animationCurves.emphasizedDecel
-        : Appearance.animationCurves.emphasizedAccel
+    onShowChanged: {
+        dialogBackgroundHeightAnimation.easing.bezierCurve = show
+            ? Appearance.animationCurves.emphasizedDecel
+            : Appearance.animationCurves.emphasizedAccel
+        syncLiquidHost()
+    }
 
     radius: Appearance.rounding.screenRounding - Appearance.sizes.hyprlandGapsOut + 1
 
     MouseArea { // Clicking outside the dialog should dismiss
         anchors.fill: parent
-        enabled: root.show && !root.embeddedPresentation
+        enabled: root.show && !root.effectiveEmbedded
         acceptedButtons: Qt.AllButtons
         hoverEnabled: true
         onPressed: root.dismiss()
@@ -66,7 +90,7 @@ Rectangle {
 
     GlassBackground {
         id: dialogBackground
-        visible: !root.embeddedPresentation
+        visible: !root.effectiveEmbedded
         // Keep the animated chrome on whole-pixel geometry. Dialog content uses
         // NativeRendering, which Qt documents as unsuitable under transforms;
         // centering on a half pixel makes the softened result persist after open.
@@ -118,15 +142,15 @@ Rectangle {
     // are no longer children of the translated/resized background item.
     ColumnLayout {
         id: contentColumn
-        x: root.embeddedPresentation
+        x: root.effectiveEmbedded
             ? 0 : dialogBackground.x + dialogBackground.contentPad
-        y: root.embeddedPresentation
+        y: root.effectiveEmbedded
             ? 0 : dialogBackground.targetY + dialogBackground.contentPad
-        width: root.embeddedPresentation
+        width: root.effectiveEmbedded
             ? root.width
             : Math.max(0, dialogBackground.implicitWidth
                 - dialogBackground.contentPad * 2)
-        height: root.embeddedPresentation
+        height: root.effectiveEmbedded
             ? root.height
             : Math.max(0, dialogBackground.resolvedHeight
                 - dialogBackground.contentPad * 2)

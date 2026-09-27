@@ -862,9 +862,9 @@ def main() -> None:
           and "visible: root.editMode" in dashboard_canvas,
           "Dashboard modules must only be movable/resizable in explicit Edit mode")
     check("Flickable {" not in dashboard_content
-          and "interactive:root.responsiveWorkspace" in dashboard_canvas
+          and "Flickable {" not in dashboard_canvas
           and '=== "abyss"' in dashboard_canvas,
-          "Abyss may scroll its readable workspace; mature shell viewport ownership stays intact")
+          "Dashboard stays bounded without a scrolling or expanded workspace")
     dashboard_toolbar = read("modules/dashboard/DashboardEditToolbar.qml")
     check("id: editToolbar" not in dashboard_canvas
           and "DashboardEditToolbar {" in dashboard

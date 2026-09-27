@@ -46,11 +46,12 @@ Rectangle {
             id: toolbarTitle
             Layout.fillWidth: true
             horizontalAlignment: Text.AlignHCenter
-            text: root.canvasController?.selectedId?.length > 0
-                ? Translation.tr("Editing %1").arg(
-                    root.canvasController._label(
-                        root.canvasController.selectedId))
-                : Translation.tr("Edit widgets")
+            text: root.canvasController?.layoutMessage
+                || ((root.canvasController?.workspace?.overflow?.length ?? 0) > 0
+                    ? Translation.tr("%1 modules need more space").arg(root.canvasController.workspace.overflow.length)
+                    : root.canvasController?.selectedId?.length > 0
+                        ? Translation.tr("Editing %1").arg(root.canvasController._label(root.canvasController.selectedId))
+                        : Translation.tr("Edit widgets"))
             font.pixelSize: Appearance.font.pixelSize.small
             font.weight: Font.DemiBold
             color: Appearance.colors.colOnLayer0
@@ -81,6 +82,7 @@ Rectangle {
                 }
 
                 EditToolButton {
+                    visible: !(root.canvasController?.responsiveWorkspace ?? false)
                     iconName: "fit_screen"
                     tooltipText: root.canvasController?.autoAdjustSizeEnabled
                         ? Translation.tr("Auto-adjust affected module sizes: on")

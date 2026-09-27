@@ -20,13 +20,14 @@ Item {
     property bool presentationActive: true
     readonly property bool responsiveWorkspace: (Config.options?.panelFamily ?? "abyss") === "abyss"
     readonly property var workspace: {
-        if (!responsiveWorkspace) return {width:Math.max(1,width),height:Math.max(1,height),rects:({})}
+        if (!responsiveWorkspace) return {width:Math.max(1,width),height:Math.max(1,height),rects:({}),overflow:[]}
         const entries=root._allIds.map(id=>root._entryFor(id)), minimums=({})
         for (const id of root._allIds) minimums[id]=root._minimumSize(id)
         return WorkingLayout.project(entries,root.width,root.height,minimums,root.collisionGap,
             {width:Config.options?.dashboard?.canvas?.workspaceWidth ?? 0,
              height:Config.options?.dashboard?.canvas?.workspaceHeight ?? 0})
     }
+    property string layoutMessage: ""
     signal requestEventsDialog(var event)
 
     readonly property int gridSize: Math.max(8,
@@ -119,7 +120,6 @@ Item {
     }
 
     function _storedEntries() {
-        Config.revision
         return Config.options?.dashboard?.canvas?.widgets ?? []
     }
 
@@ -150,9 +150,9 @@ Item {
     // these lists independent from _preview prevents Repeater/model churn on
     // every pointer frame while a module is moving or resizing.
     readonly property var visibleIds: root._allIds.filter(id =>
-        root._entryFor(id).visible !== false)
+        root._entryFor(id).visible !== false && (!root.responsiveWorkspace || root.workspace.rects[id] !== undefined))
     readonly property var hiddenIds: root._allIds.filter(id =>
-        root._entryFor(id).visible === false)
+        root._entryFor(id).visible === false || (root.responsiveWorkspace && root.workspace.rects[id] === undefined))
 
     function _entriesForWrite() {
         const stored = root._storedEntries()
@@ -203,10 +203,17 @@ Item {
     }
 
     function setWidgetVisible(id, visible) {
+        root.layoutMessage = ""
         if (!visible) {
             root._persistPatch(id, { visible: false })
             if (root.selectedId === id)
                 root.selectedId = ""
+            return
+        }
+
+        const readable = root._minimumSize(id)
+        if (root.responsiveWorkspace && (readable.width > canvas.width || readable.height > canvas.height)) {
+            root.layoutMessage = Translation.tr("Not enough space for %1. Hide another module or enlarge Dashboard.").arg(root._label(id))
             return
         }
 
@@ -233,8 +240,10 @@ Item {
                 break
             }
         }
-        if (blocked)
+        if (blocked) {
+            root.layoutMessage = Translation.tr("Not enough space for %1. Hide another module or enlarge Dashboard.").arg(root._label(id))
             return
+        }
 
         const g = root._normalizedRect(resolved, true)
         root._persistPatch(id, {
@@ -1070,6 +1079,22 @@ Item {
 
     function _resolveFeasibleLayout(activeId, startRect, desiredRect,
             baselineRects, allowResize, localResizeOnly) {
+        if (root.responsiveWorkspace) {
+            // A finite Dashboard never shuffles the other cards during/drop
+            // after an edit. Clamp only the active card to a feasible point.
+            const fixed = Object.assign({}, baselineRects)
+            fixed[activeId] = root._fitRectToCanvas(desiredRect, root._minimumSizeForCanvas(activeId))
+            if (!root._layoutHasOverlap(fixed, baselineRects)) return fixed
+            let safe = Object.assign({}, baselineRects), low = 0, high = 1
+            for (let i = 0; i < 12; ++i) {
+                const mid = (low + high) / 2
+                const probe = Object.assign({}, baselineRects)
+                probe[activeId] = root._fitRectToCanvas(root._interpolateRect(startRect, desiredRect, mid), root._minimumSizeForCanvas(activeId))
+                if (root._layoutHasOverlap(probe, baselineRects)) high = mid
+                else { low = mid; safe = probe }
+            }
+            return safe
+        }
         const desired = root._resolveLayout(
             activeId, desiredRect, baselineRects, allowResize,
             localResizeOnly)
@@ -1357,15 +1382,10 @@ Item {
         }
     }
 
-    Flickable {
+    Item {
         id: viewport
         anchors.fill: parent
         clip: root.responsiveWorkspace
-        contentWidth:canvas.width;contentHeight:canvas.height
-        interactive:root.responsiveWorkspace && root._interaction===null
-        boundsBehavior:Flickable.StopAtBounds
-        ScrollBar.vertical: ScrollBar { policy:root.responsiveWorkspace ? ScrollBar.AsNeeded : ScrollBar.AlwaysOff }
-        ScrollBar.horizontal: ScrollBar { policy:root.responsiveWorkspace ? ScrollBar.AsNeeded : ScrollBar.AlwaysOff }
         Item {
         id: canvas
         width:root.workspace.width;height:root.workspace.height
@@ -1402,7 +1422,7 @@ Item {
                 id: cardWrap
                 required property var modelData
                 readonly property var px: root._rectPixels(String(modelData))
-                visible: root.geometryFor(String(modelData)).visible !== false
+                visible: root.visibleIds.includes(String(modelData))
                 readonly property bool selected:
                     root.editMode && root.selectedId === String(modelData)
                 readonly property bool directlyManipulated:

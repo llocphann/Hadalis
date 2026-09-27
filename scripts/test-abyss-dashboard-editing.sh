@@ -37,7 +37,7 @@ ShellRoot {
         visible:true;implicitWidth:1100;implicitHeight:800
         AbyssBodyHost {
             id: body;anchors.fill:parent;edge:"bottom";open:true;animatePresentation:false
-            span:1060;depth:730;padding:20;largeSurface:true
+            span:1060;depth:730;padding:20;largeSurface:true;stableContentSize:true
         }
     }
     Timer {
@@ -53,6 +53,11 @@ ShellRoot {
                 root.canvas=root.find(body.contentItem.item,item=>typeof item.beginResize==="function")
                 if(!root.check(root.canvas!==null,"mature canvas loaded")) return
                 if(!root.check(!root.canvas._layoutHasOverlap(root.canvas._snapshotVisibleRects()),"default minimum-size cards project without overlap")) return
+                if(!root.check(root.canvas.workspace.width===root.canvas.width && root.canvas.workspace.height===root.canvas.height,"workspace stays bounded by Dashboard dimensions")) return
+                const fixedSize=[root.canvas.width,root.canvas.height]
+                body.progress=.15
+                if(!root.check(root.canvas.width===fixedSize[0] && root.canvas.height===fixedSize[1],"reveal clips the fixed-size canvas instead of repacking it")) return
+                body.progress=1
                 const entries=root.canvas.defaultEntries().map(p=>Object.assign({},p,{visible:p.id==="notes",x:.15,y:.15,w:.3,h:.35}))
                 Config.setNestedValue("dashboard.canvas.widgets",entries)
                 Config.setNestedValue("dashboard.canvas.snap",false)
@@ -83,6 +88,18 @@ ShellRoot {
             }
             else if(root.step===11) {
                 if(!root.check(root.canvas.visibleIds.includes("notes") && root.canvas.geometryFor("notes").visible,"hidden module restores through same controller")) return
+                const packed=root.canvas.defaultEntries().map(p=>Object.assign({},p,{visible:p.id==="notes",x:0,y:0,w:1,h:1}))
+                Config.setNestedValue("dashboard.canvas.widgets",packed)
+            }
+            else if(root.step===13) {
+                const before=JSON.stringify(Config.options.dashboard.canvas.widgets)
+                root.canvas.setWidgetVisible("system",true)
+                if(!root.check(root.canvas.visibleIds.length===1 && root.canvas.layoutMessage.length>0 && JSON.stringify(Config.options.dashboard.canvas.widgets)===before,"packed Add reports no room without changing any saved card")) return
+                root.canvas.setWidgetVisible("notes",false)
+                root.canvas.setWidgetVisible("system",true)
+            }
+            else if(root.step===15) {
+                if(!root.check(root.canvas.visibleIds.includes("system") && !root.canvas.layoutMessage,"Add succeeds when space becomes available")) return
                 root.canvas.editMode=false
                 if(root.hostIndex===0) { root.hostIndex=1;root.step=0;return }
                 console.info("DASHBOARD_EDIT_PASS");root.finished=true;return

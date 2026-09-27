@@ -402,6 +402,7 @@ Scope {
             Timer { id: dockClose; interval: 260; repeat: false; onTriggered: if (!dockRevealHover.hovered && !dockHover.hovered) window.dockHovered = false }
             AbyssBodyHost {
                 id: aux
+                stableContentSize: !GlobalStates.clipboardOpen
                 identity: "aux"
                 controller: liquid
                 anchors.fill: parent
@@ -441,6 +442,7 @@ Scope {
             }
             AbyssBodyHost {
                 id: dashboardBody
+                stableContentSize: true
                 identity: "dashboard"
                 controller: liquid
                 anchors.fill: parent

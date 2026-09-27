@@ -46,6 +46,13 @@ result=root._resolveFeasibleLayout('notes',baseline.notes,rect(300,0,240,160),ba
 assert.equal(result.notes.x,300,'insertion works when space exists');
 assert(!root._layoutHasOverlap(result));
 for(const id of root.visibleIds) {assert.equal(result[id].width,baseline[id].width);assert.equal(result[id].height,baseline[id].height);}
+root.responsiveWorkspace=true;
+for(const desired of [rect(300,0,240,160),rect(0,0,700,300)]) {
+ result=root._resolveFeasibleLayout('notes',baseline.notes,desired,baseline,true,false);
+ assert(!root._layoutHasOverlap(result),'finite Dashboard rejects occupied space');
+ assert.deepEqual(result.system,baseline.system,'other cards never shuffle');
+ assert.deepEqual(result.clock,baseline.clock,'far cards never shuffle');
+}
 console.log('PASS: Dashboard collision rollback, free insertion, local resize and migrated overlap isolation');
 """
 subprocess.run(["node", "-e", program], check=True, cwd=root)

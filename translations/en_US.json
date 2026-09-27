@@ -5432,5 +5432,7 @@
   "No active QML targets": "No active QML targets",
   "more components": "more components",
   "Shell processes": "Shell processes",
-  "helpers": "helpers"
+  "helpers": "helpers",
+  "%1 modules need more space": "%1 modules need more space",
+  "Not enough space for %1. Hide another module or enlarge Dashboard.": "Not enough space for %1. Hide another module or enlarge Dashboard."
 }

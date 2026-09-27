@@ -33,8 +33,8 @@ Item {
     readonly property var layoutRecords: Layout.geometry(placements,width,height,layoutOptions,Appearance.fontSizeScale)
     property var inputRegions: []
     property int revision: 0
-    // Resting Screen Edge is flat. Interaction bulges come only from the opt-in solver.
-    readonly property var deformations: []
+    // Optional local expansion shares the output field; it has no extra painter.
+    readonly property var deformations: Layout.localSurfaces(layoutRecords,width,height,layoutOptions,Appearance.fontSizeScale,AbyssStyle.barThickness)
 
     property var moduleIds: []
     function syncModuleIds(): void {

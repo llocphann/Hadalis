@@ -22,6 +22,8 @@ Item {
     property string selectedId: ""
     property real gap: 8
     property var edgeSizes: ({top:1,right:1,bottom:1,left:1})
+    property real moduleScale: 1
+    property var singleModuleExpansion: ({top:"edge",right:"edge",bottom:"edge",left:"edge"})
     property string editingEdge: "top"
     property var guides: []
     property bool snapEnabled: true
@@ -36,7 +38,8 @@ Item {
     property var inputRegions: []
     readonly property string nearbyCorner: Placement.adjacentEdge(moduleLayer.layoutRecords.find(p=>p.id===selectedId),width,height)
     readonly property var selected: draft.find(p => p.id === selectedId)
-    readonly property var draftOptions: Object.assign({},Config.options?.abyss?.modules,{gap:gap,edgeSizes:edgeSizes,edgeThickness:AbyssStyle.perimeterThickness})
+    readonly property var draftOptions: Object.assign({},Config.options?.abyss?.modules,{gap:gap,edgeSizes:edgeSizes,size:moduleScale,
+        singleModuleExpansion:singleModuleExpansion,edgeThickness:AbyssStyle.perimeterThickness})
     function refreshHandles(): void { handles = draft.map(p => p.id) }
     function begin(): void {
         draft = JSON.parse(JSON.stringify(Placement.resolve(Config.options?.abyss?.modules,outputName,
@@ -44,6 +47,8 @@ Item {
         const options = Placement.optionsForOutput(Config.options?.abyss?.modules,outputName)
         gap = options.gap
         edgeSizes = Object.assign({top:1,right:1,bottom:1,left:1},options.edgeSizes)
+        moduleScale = options.size
+        singleModuleExpansion = Object.assign({top:"edge",right:"edge",bottom:"edge",left:"edge"},options.singleModuleExpansion)
         editingEdge = moduleLayer.edge
         guides = []
         draftPositions=JSON.parse(JSON.stringify(Config.options?.abyss?.positions ?? []))
@@ -54,7 +59,7 @@ Item {
     }
     function finish(save): void {
         if (save) {
-            const writes=Placement.saveProfile(Config.options?.abyss?.modules,outputName,draft,gap,outputOnly,edgeSizes)
+            const writes=Placement.saveProfile(Config.options?.abyss?.modules,outputName,draft,gap,outputOnly,edgeSizes,singleModuleExpansion,moduleScale)
             let positions=Config.options?.abyss?.positions ?? []
             positionEdits.forEach(edit=>positions=Presentation.save(positions,edit.kind,edit.outputName,edit.values))
             if(positionEdits.length) writes["abyss.positions"]=positions
@@ -67,6 +72,8 @@ Item {
         draft = Placement.seed(moduleLayer.zones,moduleLayer.edge,width,height)
         gap = 8
         edgeSizes = {top:1,right:1,bottom:1,left:1}
+        moduleScale = 1
+        singleModuleExpansion = {top:"edge",right:"edge",bottom:"edge",left:"edge"}
         guides = []
         selectedId = ""
         draftPositions=JSON.parse(JSON.stringify(Config.options?.abyss?.positions ?? []));positionEdits=[]
@@ -257,6 +264,18 @@ Item {
             AbyssLabel { text: "Shared size" }
             AbyssSlider { from:.6;to:1.8;value:Placement.edgeSize(root.draftOptions,root.editingEdge);Layout.fillWidth:true;onMoved:root.edgeSizes=Object.assign({},root.edgeSizes,{[root.editingEdge]:value}) }
             AbyssCheckBox { text:"Snap to guides";checked:root.snapEnabled;onToggled:root.snapEnabled=checked }
+        }
+        RowLayout {
+            visible:!root.editingPopups
+            AbyssLabel { text:"Overall size" }
+            AbyssSlider { from:.6;to:1.8;value:root.moduleScale;Layout.fillWidth:true;onMoved:root.moduleScale=value }
+            AbyssCheckBox {
+                text:"Single module expands the whole Edge"
+                enabled:root.draft.filter(p=>p.enabled && p.edge===root.editingEdge).length===1
+                checked:root.singleModuleExpansion[root.editingEdge]!=="local"
+                onToggled:root.singleModuleExpansion=Object.assign({},root.singleModuleExpansion,{[root.editingEdge]:checked ? "edge" : "local"})
+                StyledToolTip { text:"Disable to expand only the surface around a single module. Application space remains reserved for it." }
+            }
         }
         RowLayout {
             visible:!root.editingPopups

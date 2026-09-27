@@ -78,6 +78,28 @@ assert(!normalize([{kind:'clock',size:1.3,customSize:false}], 'top')[0].customSi
 const inherited=saveProfile({edgeSizes:{top:1},outputLayouts:[{outputName:'B',placements:[],edgeSizes:{top:.7}}]},'A',sized,8,true,sizing.edgeSizes);
 assert.equal(optionsForOutput({outputLayouts:inherited['abyss.modules.outputLayouts']},'A').edgeSizes.top,1.25);
 assert.equal(inherited['abyss.modules.outputLayouts'][0].edgeSizes.top,.7,'save preserves another output size');
+const customOutput={size:1.1,outputLayouts:[{outputName:'A',size:1.5,placements:[],futureOption:'preserved'},
+    {outputName:'B',size:.8,placements:[]}]};
+const scoped=saveProfile(customOutput,'A',sized,8,true,sizing.edgeSizes,{top:'local'},1.3);
+assert.equal(scoped['abyss.modules.outputLayouts'][0].size,.8,'other output scale stays unchanged');
+assert.equal(scoped['abyss.modules.outputLayouts'][1].futureOption,'preserved','unrelated output options survive editing');
+assert.equal(optionsForOutput({...customOutput,outputLayouts:scoped['abyss.modules.outputLayouts']},'A').size,1.3);
+assert.equal(optionsForOutput(customOutput,'missing').size,1.1,'global scale remains the fallback');
+for(const edge of ['top','right','bottom','left']) {
+    const single=normalize([{kind:'clock',edge}],edge), opts={edgeThickness:16,singleModuleExpansion:{[edge]:'local'}};
+    const local=edgeInsetsForModules(single,opts,1,16,48,false);
+    const reserved=edgeInsetsForModules(single,opts,1,16,48,true);
+    assert.equal(local[edge],16,'local expansion leaves the remaining physical edge thin');
+    assert.equal(reserved[edge],48,'local expansion still reserves application space');
+    const records=geometry(single,1920,1200,opts,1), surfaces=localSurfaces(records,1920,1200,opts,1,48);
+    assert.equal(surfaces.length,1);
+    const c=records[0].content,s=surfaces[0].surface;
+    assert(s.x<=c.x && s.y<=c.y && s.x+s.width>=c.x+c.width && s.y+s.height>=c.y+c.height,'local surface contains the module');
+    assert.equal(localSurfaces(records,1920,1200,{},1,48).length,0,'default whole-edge presentation remains flat');
+    const pair=normalize(single.concat([{id:'second',kind:'clock',edge,position:.8}]),edge);
+    assert.equal(edgeInsetsForModules(pair,opts,1,16,48,false)[edge],48,'multiple modules expand the whole edge');
+    assert.equal(localSurfaces(geometry(pair,1920,1200,opts,1),1920,1200,opts,1,48).length,0);
+}
 for(const edge of ['top','right','bottom','left']) {
     const aligned=normalize([{id:'a',kind:'clock',edge,position:.2,alignment:'center'},
         {id:'b',kind:'clock',edge,position:.4,alignment:'center'}],edge);

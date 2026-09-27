@@ -59,7 +59,9 @@ function resolve(options, outputName, fallback) {
 function optionsForOutput(options, outputName) {
     var profile = Array.from(options?.outputLayouts || []).find(function(p) { return p.outputName === outputName; });
     return Object.assign({},options,{gap:profile?.gap ?? options?.gap ?? 8,
-        edgeSizes:Object.assign({},options?.edgeSizes,profile?.edgeSizes)});
+        size:bounded(profile?.size ?? options?.size,1,.6,1.8),
+        edgeSizes:Object.assign({},options?.edgeSizes,profile?.edgeSizes),
+        singleModuleExpansion:Object.assign({},options?.singleModuleExpansion,profile?.singleModuleExpansion)});
 }
 function edgeSize(options, edge) { return bounded(options?.edgeSizes?.[edge],1,.6,1.8); }
 function moduleSize(placement, options) {
@@ -106,23 +108,53 @@ function snapMove(placements, id, x, y, width, height, options, fontScale) {
     return {placements:moved,guides:Math.abs(actual.along+actual.span/2-target.center)<1
         ? [{horizontal:horizontal,along:target.line,label:target.label}] : []};
 }
-function saveProfile(options, outputName, placements, gap, outputOnly, edgeSizes) {
+function saveProfile(options, outputName, placements, gap, outputOnly, edgeSizes, singleModuleExpansion, size) {
     var normalized = normalize(placements,"top");
     var profiles = Array.from(options?.outputLayouts || []);
+    var current = optionsForOutput(options,outputName);
+    var expansion = Object.assign({},singleModuleExpansion ?? current.singleModuleExpansion);
+    var scale = bounded(size ?? current.size,1,.6,1.8);
     if (outputOnly) {
+        var existing = profiles.find(function(p) { return p.outputName===outputName; });
         profiles = profiles.filter(function(p) { return p.outputName!==outputName; });
-        profiles.push({outputName:outputName,placements:normalized,gap:bounded(gap,8,0,32),
-            edgeSizes:Object.assign({},edgeSizes ?? optionsForOutput(options,outputName).edgeSizes)});
+        profiles.push(Object.assign({},existing,{outputName:outputName,placements:normalized,gap:bounded(gap,8,0,32),
+            edgeSizes:Object.assign({},edgeSizes ?? current.edgeSizes),singleModuleExpansion:expansion,size:scale}));
         return {"abyss.modules.outputLayouts":profiles};
     }
     return {"abyss.modules.configured":true,"abyss.modules.placements":normalized,
         "abyss.modules.gap":bounded(gap,8,0,32),"abyss.modules.outputLayouts":profiles.filter(function(p) { return p.outputName!==outputName; }),
-        "abyss.modules.edgeSizes":Object.assign({},edgeSizes ?? options?.edgeSizes)};
+        "abyss.modules.edgeSizes":Object.assign({},edgeSizes ?? options?.edgeSizes),
+        "abyss.modules.singleModuleExpansion":expansion,"abyss.modules.size":scale};
 }
 function stripDepth(placements, edge, options, fontScale) {
     return placements.filter(function(p) { return p.enabled && p.edge===edge; }).reduce(function(depth,p) {
         return Math.max(depth,32*bounded(fontScale,1,.7,2)*moduleSize(p,options)*p.depth+16);
     },48);
+}
+function edgeInsetsForModules(placements, options, fontScale, thickness, minimum, reservation) {
+    var insets = {top:thickness,right:thickness,bottom:thickness,left:thickness};
+    ["top","right","bottom","left"].forEach(function(edge) {
+        var enabled = placements.filter(function(p) { return p.enabled && p.edge===edge; });
+        if (!enabled.length) return;
+        // Wayland reserves a whole edge. Local paint still reserves enough room
+        // for its module so application windows cannot obscure that foreground.
+        if (reservation || enabled.length!==1 || options?.singleModuleExpansion?.[edge]!=="local")
+            insets[edge] = Math.max(minimum,stripDepth(placements,edge,options,fontScale));
+    });
+    return insets;
+}
+function localSurfaces(records, width, height, options, fontScale, minimum) {
+    return records.filter(function(p) {
+        return options?.singleModuleExpansion?.[p.edge]==="local"
+            && records.filter(function(other) { return other.edge===p.edge; }).length===1;
+    }).map(function(p) {
+        var depth = Math.max(minimum,stripDepth([p],p.edge,options,fontScale));
+        var surface = p.edge==="top" ? {x:p.along-8,y:-50,width:p.span+16,height:depth+50}
+            : p.edge==="bottom" ? {x:p.along-8,y:height-depth,width:p.span+16,height:depth+50}
+            : p.edge==="left" ? {x:-50,y:p.along-8,width:depth+50,height:p.span+16}
+            : {x:width-depth,y:p.along-8,width:depth+50,height:p.span+16};
+        return {edge:p.edge,surface:surface,content:p.content,span:p.span,along:p.along,depth:depth,progress:1,mass:1};
+    });
 }
 function geometry(placements, width, height, options, fontScale) {
     var result = [];

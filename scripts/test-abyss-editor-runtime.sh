@@ -13,6 +13,7 @@ import QtQuick
 import Quickshell
 import qs
 import qs.modules.common
+import qs.modules.common.functions
 import qs.modules.abyss
 import qs.modules.abyss.bar
 ShellRoot {
@@ -55,6 +56,18 @@ ShellRoot {
             if(root.step===1) {
                 root.originalModule=layer.itemForId("clock")
                 if(!root.check(root.originalModule!==null,"mature module exists before drag")) return
+                editor.moduleScale=1.2
+                for(const edge of ["top","right","bottom","left"]) {
+                    const x=edge==="left" ? 10 : edge==="right" ? editor.width-10 : editor.width/2
+                    const y=edge==="top" ? 10 : edge==="bottom" ? editor.height-10 : editor.height/2
+                    editor.move("clock",x,y,false)
+                    editor.edgeSizes=Object.assign({},editor.edgeSizes,{[edge]:1.4})
+                    editor.singleModuleExpansion=Object.assign({},editor.singleModuleExpansion,{[edge]:"local"})
+                    const record=layer.layoutRecords[0]
+                    const cross=["top","bottom"].includes(edge) ? record.content.height : record.content.width
+                    if(!root.check(Math.abs(cross-32*Appearance.fontSizeScale*1.4*1.2)<.1,"shared size and overall scale update the actual "+edge+" module")) return
+                    if(!root.check(layer.deformations.length===1 && layer.deformations[0].edge===edge,"single-module local surface follows "+edge)) return
+                }
                 editor.move("clock",editor.width*.6,10)
                 editor.move("clock",editor.width-10,editor.height/2)
                 if(!root.check(layer.itemForId("clock")===root.originalModule,"drag preserves the mature module instance")) return
@@ -67,11 +80,13 @@ ShellRoot {
             if(root.step===2) {
                 if(!root.check(layer.layoutRecords[0].edge==="top","Cancel restores saved presentation")) return
                 if(!root.check(!layer.placements[0].joinCorner,"Cancel restores unchecked corner preference")) return
+                if(!root.check(layer.layoutOptions.size===1 && layer.deformations.length===0,"Cancel restores saved scale and full Edge presentation")) return
                 GlobalStates.abyssEditing=true
             }
             if(root.step===3) {
                 editor.move("clock",editor.width-10,editor.height/2);editor.gap=17
                 editor.edgeSizes={top:1.1,right:1.25,bottom:1,left:1}
+                editor.moduleScale=1.3;editor.singleModuleExpansion={right:"local"}
                 editor.change("alignment","center");editor.change("joinCorner",true)
                 if(!root.check(editor.selected.joinCorner,"corner option belongs to draft module")) return
                 editor.add("media");editor.change("enabled",false)
@@ -82,6 +97,7 @@ ShellRoot {
                 if(!root.check(profiles.length===2 && profiles[0].outputName==="B","Done merges latest output profiles")) return
                 if(!root.check(layer.layoutRecords[0].edge==="right" && profiles[1].gap===17 && !profiles[1].placements[1].enabled,"persisted normalized edge, gap and disable")) return
                 if(!root.check(profiles[1].edgeSizes.right===1.25 && !profiles[1].placements[0].customSize && profiles[1].placements[0].alignment==="center" && profiles[1].placements[0].joinCorner,"Done persists shared edge sizes and grouped alignment")) return
+                if(!root.check(profiles[1].size===1.3 && profiles[1].singleModuleExpansion.right==="local" && layer.layoutOptions.size===1.3 && layer.deformations.length===1,"Done keeps scale and local expansion scoped to this output")) return
                 GlobalStates.abyssEditing=true
                 editor.editingPopups=true
                 root.beforePositions=JSON.stringify(Config.options.abyss.positions)

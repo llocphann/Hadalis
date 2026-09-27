@@ -532,6 +532,12 @@ Singleton {
                     property list<var> outputLayouts: []
                     property real gap: 8
                     property real size: 1
+                    property JsonObject singleModuleExpansion: JsonObject {
+                        property string top: "edge"
+                        property string right: "edge"
+                        property string bottom: "edge"
+                        property string left: "edge"
+                    }
                     property JsonObject edgeSizes: JsonObject {
                         property real top: 1
                         property real right: 1

@@ -47,8 +47,8 @@ Scope {
         const vertical = !Geometry.horizontal(root.barEdge)
         const zones = Geometry.barZones((vertical ? Config.options?.bar?.verticalLayout : Config.options?.bar?.layout) ?? {},vertical,Config.options?.bar?.modules ?? {})
         const placements = ModuleLayout.resolve(Config.options?.abyss?.modules,name,ModuleLayout.seed(zones,root.barEdge,screen?.width ?? 1920,screen?.height ?? 1080))
-        placements.filter(p => p.enabled).forEach(p => result[p.edge] = Math.max(AbyssStyle.barThickness,ModuleLayout.stripDepth(placements,p.edge,Object.assign({},ModuleLayout.optionsForOutput(Config.options?.abyss?.modules,name),{edgeThickness:AbyssStyle.perimeterThickness}),Appearance.fontSizeScale)))
-        return result
+        return ModuleLayout.edgeInsetsForModules(placements,Object.assign({},ModuleLayout.optionsForOutput(Config.options?.abyss?.modules,name),
+            {edgeThickness:AbyssStyle.perimeterThickness}),Appearance.fontSizeScale,AbyssStyle.perimeterThickness,AbyssStyle.barThickness,reservation)
     }
     Connections {
         target: GlobalStates
@@ -205,8 +205,8 @@ Scope {
             }
             readonly property var nativeInsets: {
                 const result = Geometry.insets(AbyssStyle.perimeterThickness,root.barEdge,AbyssStyle.perimeterThickness,false)
-                if (bar.visible) bar.placements.filter(p => p.enabled).forEach(p => result[p.edge] = Math.max(AbyssStyle.barThickness,ModuleLayout.stripDepth(bar.placements,p.edge,bar.layoutOptions,Appearance.fontSizeScale)))
-                return result
+                return bar.visible ? ModuleLayout.edgeInsetsForModules(bar.placements,bar.layoutOptions,Appearance.fontSizeScale,
+                    AbyssStyle.perimeterThickness,AbyssStyle.barThickness,false) : result
             }
             AbyssSurfaceController {
                 id: liquid

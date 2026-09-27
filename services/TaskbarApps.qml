@@ -32,9 +32,11 @@ Singleton {
         CompositorService.setSortingConsumer("waffleTaskbar", false)
 
     function _stringArray(value): var {
-        if (!Array.isArray(value))
+        // Config exposes QML list<string>, which is a sequence but not a JS Array.
+        if (!value || typeof value === "string"
+                || !Number.isInteger(value.length) || value.length < 0)
             return []
-        return value.map(item => String(item ?? "").trim())
+        return Array.from(value, item => String(item ?? "").trim())
             .filter(item => item.length > 0)
     }
 

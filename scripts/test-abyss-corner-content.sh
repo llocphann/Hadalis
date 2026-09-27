@@ -41,13 +41,14 @@ ShellRoot {
                 span:(liquid.activePopup?.requestedPopupWidth ?? 420)
                 depth:(liquid.activePopup?.requestedPopupHeight ?? 300)
                 along:liquid.activePopup===corners.centerPopup ? scene.width-span-16 : 16
-                animatePresentation:false
+                animatePresentation:false;largeSurface:depth>height*.42
             }
         }
     }
     Timer {
         interval:240;running:!root.finished;repeat:true
         onTriggered: {
+            if(!Config.ready) return
             if(root.step===0) {
                 Config.setNestedValue("panelFamily","abyss")
                 Config.setNestedValue("performance.reduceAnimations",true)
@@ -98,6 +99,6 @@ QML
 runtime_status=0
 dbus-run-session -- env -u QS_CONFIG_NAME -u QS_CONFIG_PATH -u QS_MANIFEST QT_QPA_PLATFORM=wayland \
  XDG_CONFIG_HOME="$corner_test_root/config" XDG_STATE_HOME="$corner_test_root/state" XDG_CACHE_HOME="$corner_test_root/cache" \
- timeout 8s qs -p "$corner_test_root" --no-color > "$corner_test_root/runtime.log" 2>&1 || runtime_status=$?
+ timeout 15s qs -p "$corner_test_root" --no-color > "$corner_test_root/runtime.log" 2>&1 || runtime_status=$?
 if [[ "$runtime_status" != 124 ]] || ! rg -q ABYSS_CORNERS_PASS "$corner_test_root/runtime.log" || rg -q 'ABYSS_CORNERS_FAIL|ReferenceError:|TypeError:|Binding loop|Cannot anchor|Unable to assign|is not a type|Type .* unavailable' "$corner_test_root/runtime.log";then cat "$corner_test_root/runtime.log";exit 1;fi
 printf 'PASS: mature Notes, To-do, Timers, Notifications and Activity load in the shared field with focus and input release\n'

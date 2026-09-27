@@ -21,9 +21,10 @@ import qs.modules.settings
 ShellRoot {
     id: root
     property int step: 0
+    property bool finished: false
     function check(value,message): bool {
         if(value) return true
-        console.error("EMBEDDED_SETTINGS_FAIL",message);Qt.quit();return false
+        console.error("EMBEDDED_SETTINGS_FAIL",message);finished=true;return false
     }
     function embeddedPage(item,name) {
         if(item?.settingsPageName===name && item?.embedded===true) return item
@@ -51,8 +52,9 @@ ShellRoot {
         }
     }
     Timer {
-        interval: 300; running: true; repeat: true
+        interval: 300; running: !root.finished; repeat: true
         onTriggered: {
+            if(!Config.ready || !Persistent.ready) return
             if(root.step===0) {
                 Config.setNestedValue("panelFamily","abyss")
                 Config.setNestedValue("settingsUi.overlayMode",false)
@@ -109,19 +111,20 @@ ShellRoot {
                 GlobalStates.settingsOverlayOpen=false
                 if(!root.check(body.inputBounds.width===0,"Settings closes with immediate input release")) return
             }
-            if(root.step===23) { console.info("EMBEDDED_SETTINGS_PASS");Qt.quit() }
+            if(root.step===23) { console.info("EMBEDDED_SETTINGS_PASS");root.finished=true }
             root.step++
         }
     }
 }
 QML
-if ! env -u QS_CONFIG_PATH -u QS_CONFIG_NAME -u QS_MANIFEST QT_QPA_PLATFORM=wayland \
+status=0
+env -u QS_CONFIG_PATH -u QS_CONFIG_NAME -u QS_MANIFEST QT_QPA_PLATFORM=wayland \
     XDG_CONFIG_HOME="$settings_test_root/config" XDG_STATE_HOME="$settings_test_root/state" \
-    XDG_CACHE_HOME="$settings_test_root/cache" timeout 14s qs -p "$settings_test_root" --no-color \
-    > "$settings_test_root/runtime.log" 2>&1; then
-    cat "$settings_test_root/runtime.log";exit 1
-fi
-if ! rg -q 'EMBEDDED_SETTINGS_PASS' "$settings_test_root/runtime.log" || rg -q 'EMBEDDED_SETTINGS_FAIL|ReferenceError:|TypeError:|Binding loop|Unable to assign' "$settings_test_root/runtime.log"; then
+    XDG_CACHE_HOME="$settings_test_root/cache" timeout 20s qs -p "$settings_test_root" --no-color \
+    > "$settings_test_root/runtime.log" 2>&1 || status=$?
+# Keep the scene alive after its assertions: an early exit/crash fails, including
+# one after PASS. Avoid Qt.quit tearing down a live embedded Settings scene.
+if [[ "$status" != 124 ]] || ! rg -q 'EMBEDDED_SETTINGS_PASS' "$settings_test_root/runtime.log" || rg -q 'EMBEDDED_SETTINGS_FAIL|ReferenceError:|TypeError:|Binding loop|Unable to assign' "$settings_test_root/runtime.log"; then
     cat "$settings_test_root/runtime.log";exit 1
 fi
 printf 'PASS: mature Settings card embeds at original scale, consumes deep links, navigates and releases input\n'

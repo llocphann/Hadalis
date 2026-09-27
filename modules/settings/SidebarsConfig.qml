@@ -39,6 +39,27 @@ ContentPage {
         ]
     }
 
+    component SidebarSize: ContentSubsection {
+        id:sizing
+        required property string role
+        readonly property var state:ShellLayoutController.currentState(role,"")
+        WindowDialogSlider {
+            text:"Width";Layout.fillWidth:true;from:320;to:900;stepSize:1
+            value:sizing.state.width;valueText:Math.round(value)+" px"
+            onMoved:ShellLayoutController.setProperty(sizing.role,"thickness",value,"")
+        }
+        ConfigSelectionArray {
+            currentValue:sizing.state.sizeMode === "custom" ? "custom" : "fit"
+            options:[{displayName:"Fit content",value:"fit"},{displayName:"Custom height",value:"custom"}]
+            onSelected:value=>ShellLayoutController.setProperty(sizing.role,"sizeMode",value,"")
+        }
+        WindowDialogSlider {
+            text:"Height";Layout.fillWidth:true;from:320;to:2160;stepSize:1
+            visible:sizing.state.sizeMode === "custom"
+            value:sizing.state.customHeight;valueText:Math.round(value)+" px"
+            onMoved:ShellLayoutController.setProperty(sizing.role,"height",value,"")
+        }
+    }
     SettingsCardSection {
         settingsTaskSection: "general"
         visible: root.isIiActive && root.activeSection === "general"
@@ -47,6 +68,8 @@ ContentPage {
         title: Translation.tr("General")
 
         SettingsGroup {
+            SidebarSize { role:"featureSidebar";title:"Left Sidebar size" }
+            SidebarSize { role:"systemSidebar";title:"Right Sidebar size" }
             ContentSubsection {
                 title: Translation.tr("General")
 

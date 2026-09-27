@@ -17,7 +17,7 @@ Item {
     property bool editing: false
     property var liquidController: null
     property var measuredExtents: ({})
-    readonly property var layoutOptions: Object.assign({},draftOptions ?? Layout.optionsForOutput(Config.options?.abyss?.modules,outputName),{extents:measuredExtents,editing:editing})
+    readonly property var layoutOptions: Object.assign({},draftOptions ?? Layout.optionsForOutput(Config.options?.abyss?.modules,outputName),{extents:measuredExtents,editing:editing,edgeThickness:AbyssStyle.perimeterThickness})
     function measure(id, span): void {
         if (!Number.isFinite(span) || Math.abs((measuredExtents[id] ?? -1)-span)<.5) return
         measuredExtents = Object.assign({},measuredExtents,{[id]:span})
@@ -36,9 +36,17 @@ Item {
     // Resting Screen Edge is flat. Interaction bulges come only from the opt-in solver.
     readonly property var deformations: []
 
+    property var moduleIds: []
+    function syncModuleIds(): void {
+        const next=placements.filter(p=>p.enabled).map(p=>p.id)
+        if (JSON.stringify(next)!==JSON.stringify(moduleIds)) moduleIds=next
+    }
+    function itemForId(id): var { return modules.itemAt(moduleIds.indexOf(id)) }
+    onPlacementsChanged: syncModuleIds()
+    Component.onCompleted: syncModuleIds()
     Repeater {
         id: modules
-        model: root.placements.filter(p => p.enabled)
+        model: root.moduleIds
         onItemAdded: (index,item) => {
             root.inputRegions = root.inputRegions.concat([item.inputRegion])
             root.revision++
@@ -49,20 +57,21 @@ Item {
         }
         AbyssBarModule {
             id: module
-            required property var modelData
+            required property string modelData
             required property int index
+            readonly property var placement: root.placements.find(p=>p.id===modelData)
             readonly property Region inputRegion: Region { item: module }
-            readonly property var geometry: root.layoutRecords.find(rec => rec.id === modelData.id)
+            readonly property var geometry: root.layoutRecords.find(rec => rec.id === modelData)
             liquidController: root.liquidController
-            attachedEdge: modelData.edge
-            popupJoinedEdge: modelData.joinCorner ? Layout.adjacentEdge(geometry,root.width,root.height) : ""
+            attachedEdge: placement?.edge ?? "top"
+            popupJoinedEdge: placement?.joinCorner ? Layout.adjacentEdge(geometry,root.width,root.height) : ""
             contentScale: (geometry?.span ?? 0)/Math.max(1,naturalSpan)
-            onNaturalSpanChanged: root.measure(modelData.id,naturalSpan)
-            Component.onCompleted: root.measure(modelData.id,naturalSpan)
-            kind: modelData.kind
+            onNaturalSpanChanged: root.measure(modelData,naturalSpan)
+            Component.onCompleted: root.measure(modelData,naturalSpan)
+            kind: placement?.kind ?? "clock"
             outputName: root.outputName
-            vertical: modelData.edge === "left" || modelData.edge === "right"
-            compact: modelData.compact
+            vertical: placement?.edge === "left" || placement?.edge === "right"
+            compact: placement?.compact ?? false
             enabled: !root.editing
             x: geometry?.content.x ?? 0; y: geometry?.content.y ?? 0
             width: geometry?.content.width ?? 0; height: geometry?.content.height ?? 0

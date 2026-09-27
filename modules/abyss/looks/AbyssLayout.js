@@ -63,7 +63,7 @@ function optionsForOutput(options, outputName) {
 }
 function edgeSize(options, edge) { return bounded(options?.edgeSizes?.[edge],1,.6,1.8); }
 function moduleSize(placement, options) {
-    return (placement.customSize ? placement.size : edgeSize(options,placement.edge))*bounded(options?.size,1,.6,1.8);
+    return (placement.customSize ? placement.size : edgeSize(options,placement.edge)*bounded(options?.edgeThickness,16,10,40)/16)*bounded(options?.size,1,.6,1.8);
 }
 function project(x, y, width, height) {
     var distances = [y,width-x,height-y,x];

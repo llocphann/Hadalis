@@ -28,7 +28,7 @@ Item {
     property var inputRegions: []
     readonly property string nearbyCorner: Placement.adjacentEdge(moduleLayer.layoutRecords.find(p=>p.id===selectedId),width,height)
     readonly property var selected: draft.find(p => p.id === selectedId)
-    readonly property var draftOptions: Object.assign({},Config.options?.abyss?.modules,{gap:gap,edgeSizes:edgeSizes})
+    readonly property var draftOptions: Object.assign({},Config.options?.abyss?.modules,{gap:gap,edgeSizes:edgeSizes,edgeThickness:AbyssStyle.perimeterThickness})
     function refreshHandles(): void { handles = draft.map(p => p.id) }
     function begin(): void {
         draft = JSON.parse(JSON.stringify(Placement.resolve(Config.options?.abyss?.modules,outputName,

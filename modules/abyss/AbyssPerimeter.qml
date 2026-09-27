@@ -47,7 +47,7 @@ Scope {
         const vertical = !Geometry.horizontal(root.barEdge)
         const zones = Geometry.barZones((vertical ? Config.options?.bar?.verticalLayout : Config.options?.bar?.layout) ?? {},vertical,Config.options?.bar?.modules ?? {})
         const placements = ModuleLayout.resolve(Config.options?.abyss?.modules,name,ModuleLayout.seed(zones,root.barEdge,screen?.width ?? 1920,screen?.height ?? 1080))
-        placements.filter(p => p.enabled).forEach(p => result[p.edge] = Math.max(AbyssStyle.barThickness,ModuleLayout.stripDepth(placements,p.edge,ModuleLayout.optionsForOutput(Config.options?.abyss?.modules,name),Appearance.fontSizeScale)))
+        placements.filter(p => p.enabled).forEach(p => result[p.edge] = Math.max(AbyssStyle.barThickness,ModuleLayout.stripDepth(placements,p.edge,Object.assign({},ModuleLayout.optionsForOutput(Config.options?.abyss?.modules,name),{edgeThickness:AbyssStyle.perimeterThickness}),Appearance.fontSizeScale)))
         return result
     }
     Connections {
@@ -269,8 +269,12 @@ Scope {
                     && !(notification.centerOnOutput && edge === "right")
                 edgeInsets: window.nativeInsets
                 along: window.positionAlong(identity,edge,span,Geometry.horizontal(edge) ? (window.width-span)/2 : edgeInsets.top+36)
-                span: Geometry.horizontal(edge) ? (GlobalStates.sidebarLeftExpanded ? 560 : 370) : window.height-edgeInsets.top-edgeInsets.bottom-72
-                depth: Geometry.horizontal(edge) ? window.height-edgeInsets.top-edgeInsets.bottom-72 : (GlobalStates.sidebarLeftExpanded ? 560 : 370)
+                readonly property var sizeState:ShellLayoutController.currentState("featureSidebar",window.outputName)
+                readonly property real bodyWidth:Math.min(window.width*.8,(sizeState.width ?? 460)+(GlobalStates.sidebarLeftExpanded ? 190 : 0))
+                readonly property real bodyHeight:Math.min(window.height-edgeInsets.top-edgeInsets.bottom-72,
+                    sizeState.sizeMode === "custom" ? sizeState.customHeight : Math.max(320,contentItem.item?.preferredContentHeight ?? window.height*.7))
+                span:Geometry.horizontal(edge) ? bodyWidth : bodyHeight
+                depth:Geometry.horizontal(edge) ? bodyHeight : bodyWidth
                 source: "content/AbyssLeftContent.qml"
                 onCloseRequested: GlobalStates.closeSidebarLeft()
             }
@@ -287,8 +291,12 @@ Scope {
                     && !(notification.centerOnOutput && edge === "right")
                 edgeInsets: window.nativeInsets
                 along: window.positionAlong(identity,edge,span,Geometry.horizontal(edge) ? (window.width-span)/2 : edgeInsets.top+36)
-                span: Geometry.horizontal(edge) ? 370 : window.height-edgeInsets.top-edgeInsets.bottom-72
-                depth: Geometry.horizontal(edge) ? window.height-edgeInsets.top-edgeInsets.bottom-72 : 370
+                readonly property var sizeState:ShellLayoutController.currentState("systemSidebar",window.outputName)
+                readonly property real bodyWidth:Math.min(window.width*.8,sizeState.width ?? 460)
+                readonly property real bodyHeight:Math.min(window.height-edgeInsets.top-edgeInsets.bottom-72,
+                    sizeState.sizeMode === "custom" ? sizeState.customHeight : Math.max(420,contentItem.item?.preferredContentHeight ?? window.height*.7))
+                span:Geometry.horizontal(edge) ? bodyWidth : bodyHeight
+                depth:Geometry.horizontal(edge) ? bodyHeight : bodyWidth
                 source: "content/AbyssRightContent.qml"
                 onCloseRequested: GlobalStates.closeSidebarRight()
             }

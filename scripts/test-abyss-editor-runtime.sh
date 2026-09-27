@@ -19,6 +19,7 @@ ShellRoot {
     id: root
     property int step: 0
     property string before: ""
+    property var originalModule: null
     function check(ok,message): bool {
         if(ok) return true
         console.error("EDITOR_FAIL",message);Qt.quit();return false
@@ -48,8 +49,10 @@ ShellRoot {
                 GlobalStates.abyssEditing=true
             }
             if(root.step===1) {
+                root.originalModule=layer.itemForId("clock")
                 editor.move("clock",editor.width*.6,10)
                 editor.move("clock",editor.width-10,editor.height/2)
+                if(!root.check(layer.itemForId("clock")===root.originalModule,"drag preserves the mature module instance")) return
                 if(!root.check(layer.layoutRecords[0].edge==="right","cross edge live placement")) return
                 editor.move("clock",editor.width-10,40);editor.change("joinCorner",true)
                 if(!root.check(layer.children.find(item=>item.kind==="clock")?.popupJoinedEdge==="top","near-corner draft reaches the actual module popup anchor")) return

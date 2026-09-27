@@ -13,6 +13,7 @@ Item {
     required property string outputName
     required property string edge
     property var draftPlacements: null
+    property var draftOptions: null
     property bool editing: false
     readonly property bool vertical: edge === "left" || edge === "right"
     signal popupRequested(string kind, string edge, real along)
@@ -22,7 +23,7 @@ Item {
         root.vertical, Config.options?.bar?.modules ?? {})
     readonly property var placements: draftPlacements ?? Layout.resolve(Config.options?.abyss?.modules,outputName,
         Layout.seed(zones,edge,width,height))
-    readonly property var layoutRecords: Layout.geometry(placements,width,height,Config.options?.abyss?.modules,Appearance.fontSizeScale)
+    readonly property var layoutRecords: Layout.geometry(placements,width,height,draftOptions ?? Layout.optionsForOutput(Config.options?.abyss?.modules,outputName),Appearance.fontSizeScale)
     property var inputRegions: []
     property int revision: 0
     readonly property var deformations: {

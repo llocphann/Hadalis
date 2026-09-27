@@ -34,6 +34,14 @@ assert.deepEqual(resolve(profile,'B',initial),[],'explicit empty output layout s
 assert.deepEqual(resolve(profile,'A',[]),initial);
 assert.deepEqual(resolve({configured:false},'A',initial),initial);
 assert.equal(normalize(Array(100).fill(0).map((_,i)=>({id:String(i),kind:'clock'})),'top').length,24,'bounded renderer capacity');
+const cross=move(initial,'clock',1890,540,1920,1080);
+assert.equal(cross.find(p=>p.id==='clock').edge,'right');
+assert.equal(cross.find(p=>p.id==='clock').position,.5);
+assert.equal(initial.find(p=>p.id==='clock').edge,'top','draft does not mutate saved snapshot');
+assert.equal(project(20,1060,1920,1080).edge,'bottom','corner projection deterministic');
+const merged=saveProfile({outputLayouts:[{outputName:'B',placements:[],gap:3}]},'A',cross,16,true);
+assert.equal(merged['abyss.modules.outputLayouts'][0].outputName,'B','save preserves another output');
+assert.equal(optionsForOutput({gap:8,outputLayouts:merged['abyss.modules.outputLayouts']},'A').gap,16);
 console.log('PASS: normalized module packing, all edges/scales, output profiles, disabled state and bounded malformed input');
 """
 subprocess.run(["node", "-e", program], cwd=root, check=True)

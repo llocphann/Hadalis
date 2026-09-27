@@ -1,3 +1,4 @@
+import qs
 import QtQuick
 import QtQuick.Layouts
 import qs.modules.common
@@ -20,6 +21,7 @@ ColumnLayout {
                 icon: "water"
                 text: "The screen edge is the shell. Panels grow inward from one liquid perimeter."
             }
+            RippleButton { text: "Edit Abyss layout"; onClicked: GlobalStates.startAbyssEditing() }
             ContentSubsectionLabel {
                 text: "Performance"
             }

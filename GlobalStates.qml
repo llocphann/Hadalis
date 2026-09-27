@@ -112,6 +112,23 @@ Singleton {
     property string abyssPopupEdge: ""
     property real abyssPopupAlong: 0
     property string abyssClipboardTargetOutput: ""
+    property bool abyssEditing: false
+    property string abyssEditorTargetOutput: ""
+    function startAbyssEditing(): void {
+        if (Config.options?.panelFamily !== "abyss" || root.screenLocked) return
+        root.abyssEditorTargetOutput = root.resolveOutputName("",[])
+        root.settingsOverlayOpen = false
+        root.dashboardOpen = false
+        root.controlPanelOpen = false
+        root.overviewOpen = false
+        root.clipboardOpen = false
+        root.closeSidebarLeft()
+        root.closeSidebarRight()
+        root.closeNotificationCenter()
+        root.abyssPopupKind = ""
+        root.mediaControlsOpen = false
+        root.abyssEditing = true
+    }
     property bool mediaControlsOpen: false
     signal osdRequested(string kind)
     signal osdDismissed()

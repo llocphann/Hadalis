@@ -64,6 +64,8 @@ Scope {
             readonly property bool fullscreenCovered: GameMode.hasFullscreenOnOutput(outputName)
             readonly property bool presented: !GlobalStates.screenLocked
                 && (!fullscreenCovered || (Config.options?.abyss?.perimeter?.visibleInFullscreen ?? false))
+            readonly property bool editorOpen: GlobalStates.abyssEditing && GlobalStates.abyssEditorTargetOutput === outputName
+            onPresentedChanged: if (!presented && editorOpen) GlobalStates.abyssEditing = false
             screen: modelData
             // Keep the Top surface mapped across fullscreen, preserving stack order.
             visible: Config.ready && !GlobalStates.screenLocked
@@ -71,10 +73,10 @@ Scope {
             exclusionMode: ExclusionMode.Ignore
             exclusiveZone: 0
             WlrLayershell.namespace: "hadalis:abyss-perimeter"
-            WlrLayershell.layer: GlobalStates.settingsNativeDialogOpen ? WlrLayer.Bottom : PolkitService.active ? WlrLayer.Top : (dialogBody.open || settings.open || dashboardBody.open || controls.open || (window.fullscreenCovered && window.presented)) ? WlrLayer.Overlay : WlrLayer.Top
+            WlrLayershell.layer: GlobalStates.settingsNativeDialogOpen ? WlrLayer.Bottom : PolkitService.active ? WlrLayer.Top : (window.editorOpen || dialogBody.open || settings.open || dashboardBody.open || controls.open || (window.fullscreenCovered && window.presented)) ? WlrLayer.Overlay : WlrLayer.Top
             WlrLayershell.keyboardFocus: !window.presented || !field.ready || GlobalStates.regionSelectorOpen || GlobalStates.settingsNativeDialogOpen || PolkitService.active || window.overviewDragging
                 ? WlrKeyboardFocus.None
-                : ((dialogBody.open && dialogBody.ready) || (aux.open && aux.ready) || (settings.open && settings.ready) || (dashboardBody.open && dashboardBody.ready) || (controls.open && controls.ready)) ? WlrKeyboardFocus.Exclusive
+                : (window.editorOpen || (dialogBody.open && dialogBody.ready) || (aux.open && aux.ready) || (settings.open && settings.ready) || (dashboardBody.open && dashboardBody.ready) || (controls.open && controls.ready)) ? WlrKeyboardFocus.Exclusive
                 : ((leftPanel.open && leftPanel.ready) || (rightPanel.open && rightPanel.ready) || (popup.open && popup.ready) || (notification.open && notification.ready && notification.contentKind === "center"))
                     ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
             anchors { top: true; bottom: true; left: true; right: true }
@@ -89,6 +91,7 @@ Scope {
             }
             readonly property Region nativeInputMask: Region {
                 Region { regions: window.presented && field.ready && bar.visible ? bar.inputRegions : [] }
+                Region { regions: window.presented && field.ready && editor.visible ? editor.regions : [] }
                 Region { item: window.presented && revealTrigger.visible ? revealTrigger : emptyInput }
                 Region { item: window.presented && dockTrigger.visible ? dockTrigger : emptyInput }
                 Region { x: leftPanel.inputBounds.x; y: leftPanel.inputBounds.y; width: window.presented && field.ready ? leftPanel.inputBounds.width : 0; height: leftPanel.inputBounds.height }
@@ -120,11 +123,23 @@ Scope {
                     GlobalStates.closeNotificationCenter()
                 }
             }
+            AbyssEdgeEditor {
+                id: editor
+                z: 30
+                anchors.fill: parent
+                visible: window.editorOpen && window.presented && field.ready
+                outputName: window.outputName
+                moduleLayer: bar
+                controller: liquid
+            }
             AbyssBar {
                 id: bar
                 outputName: window.outputName
                 edge: root.barEdge
-                visible: window.presented && field.ready && root.barOnOutput(window.outputName)
+                editing: editor.visible
+                draftPlacements: editor.visible ? editor.draft : null
+                draftOptions: editor.visible ? editor.draftOptions : null
+                visible: window.presented && field.ready && (window.editorOpen || root.barOnOutput(window.outputName))
                 anchors.fill: parent
                 HoverHandler { id: barHover; onHoveredChanged: { if (hovered) { barClose.stop(); root.setBarRevealed(window.outputName,true) } else barClose.restart() } }
                 onInteraction: (edge,along,span,strength) => liquid.impulse(edge,along,span,strength)
@@ -240,6 +255,7 @@ Scope {
                 open: window.presented && field.ready && GlobalStates.shellEntryReady && !GlobalStates.widgetEditMode
                     && (Config.options?.enabledPanels ?? []).includes("abyssDock") && (Config.options?.dock?.enable ?? true)
                     && Geometry.targets(window.outputName,Config.options?.dock?.screenList ?? [],Quickshell.screens.map(s => s.name))
+                    && !window.editorOpen && !settings.open && !dashboardBody.open && !controls.open
                     && !aux.open && !(popup.open && popup.edge === edge)
                     && (((Config.options?.dock?.pinnedOnStartup ?? false) && !(Config.options?.dock?.hoverToReveal ?? false)) || window.dockHovered
                         || ((Config.options?.dock?.showOnDesktop ?? true) && !ToplevelManager.activeToplevel?.activated))

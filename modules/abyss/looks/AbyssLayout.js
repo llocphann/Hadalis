@@ -49,6 +49,31 @@ function resolve(options, outputName, fallback) {
     if (profile) return normalize(profile.placements,"top");
     return options?.configured ? normalize(options.placements,"top") : fallback;
 }
+function optionsForOutput(options, outputName) {
+    var profile = Array.from(options?.outputLayouts || []).find(function(p) { return p.outputName === outputName; });
+    return Object.assign({},options,{gap:profile?.gap ?? options?.gap ?? 8});
+}
+function project(x, y, width, height) {
+    var distances = [y,width-x,height-y,x];
+    var index = distances.indexOf(Math.min.apply(null,distances));
+    var edge = ["top","right","bottom","left"][index];
+    return {edge:edge,position:bounded((index%2===0 ? x : y)/Math.max(1,index%2===0 ? width : height),.5,0,1)};
+}
+function move(placements, id, x, y, width, height) {
+    var location = project(x,y,width,height);
+    return normalize(placements.map(function(p) { return p.id===id ? Object.assign({},p,location) : p; }),"top");
+}
+function saveProfile(options, outputName, placements, gap, outputOnly) {
+    var normalized = normalize(placements,"top");
+    var profiles = Array.from(options?.outputLayouts || []);
+    if (outputOnly) {
+        profiles = profiles.filter(function(p) { return p.outputName!==outputName; });
+        profiles.push({outputName:outputName,placements:normalized,gap:bounded(gap,8,0,32)});
+        return {"abyss.modules.outputLayouts":profiles};
+    }
+    return {"abyss.modules.configured":true,"abyss.modules.placements":normalized,
+        "abyss.modules.gap":bounded(gap,8,0,32),"abyss.modules.outputLayouts":profiles.filter(function(p) { return p.outputName!==outputName; })};
+}
 function geometry(placements, width, height, options, fontScale) {
     var result = [];
     ["top","right","bottom","left"].forEach(function(edge) {

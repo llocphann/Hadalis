@@ -829,6 +829,7 @@ ShellRoot {
             Config.setNestedValue("panelFamily",root.activePanelFamily)
     }
     function closeFamilySurfaces(): void {
+        GlobalStates.abyssEditing = false
         GlobalStates.closeSidebarLeft()
         GlobalStates.closeSidebarRight()
         GlobalStates.closeNotificationCenter()
@@ -974,5 +975,10 @@ ShellRoot {
         target: "panelFamily"
         function cycle(): void { root.cyclePanelFamily() }
         function set(family: string): void { root.setPanelFamily(family) }
+    }
+    IpcHandler {
+        target: "abyss"
+        function editLayout(): void { GlobalStates.startAbyssEditing() }
+        function cancelEdit(): void { GlobalStates.abyssEditing = false }
     }
 }

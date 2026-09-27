@@ -19,13 +19,13 @@ import qs.modules.common
 ShellRoot {
     id: root
     property int step: 0
-    readonly property var sources: ["AbyssDashboardContent","AbyssControlContent","AbyssOverviewContent","AbyssLeftContent","AbyssRightContent"]
+    readonly property var sources: ["AbyssDashboardContent","AbyssControlContent","AbyssOverviewContent","AbyssLeftContent","AbyssRightContent","AbyssNotificationsContent"]
     FloatingWindow {
         visible: true; implicitWidth: 1380; implicitHeight: 900
         Loader {
             id: content; anchors.fill: parent
             onLoaded: {
-                item.participant={open:true,width:1920,height:1080,outputName:"test",controller:null}
+                if(item.participant!==undefined) item.participant={open:true,width:1920,height:1080,outputName:"test",controller:null}
                 if(item.outputName!==undefined) item.outputName="test"
             }
         }
@@ -61,4 +61,4 @@ fi
 if ! rg -q 'SHARED_CONTENT_PASS' "$content_test_root/runtime.log" || rg -q 'SHARED_CONTENT_FAIL|ReferenceError:|TypeError:|Binding loop|Unable to assign|is not a type|Type .* unavailable' "$content_test_root/runtime.log"; then
     cat "$content_test_root/runtime.log";exit 1
 fi
-printf 'PASS: mature Dashboard, Control Panel, Overview, feature and system content adapters load and unload at usable size\n'
+printf 'PASS: mature Dashboard, Control Panel, Overview, feature, system and notification content adapters load and unload at usable size\n'

@@ -402,9 +402,9 @@ Scope {
                         && (Config.options?.enabledPanels ?? []).includes("abyssNotificationPopup")
                         && Geometry.targets(window.outputName,Config.options?.notifications?.screenList ?? [],Quickshell.screens.map(s => s.name))))
                 edgeInsets: window.nativeInsets
-                span: centerOnOutput ? window.height-edgeInsets.top-edgeInsets.bottom-72 : 360
+                span: centerOnOutput ? window.height-edgeInsets.top-edgeInsets.bottom-72 : (contentItem.item?.desiredWidth ?? Appearance.sizes.notificationPopupWidth)+padding*2
                 along: centerOnOutput ? edgeInsets.top+36 : position.endsWith("Left") ? 40 : window.width-span-40
-                depth: centerOnOutput ? 390 : Math.min(340,Notifications.popupList.length*130+48)
+                depth: centerOnOutput ? 390 : Math.min(window.height*.42,Math.max(100,(contentItem.item?.desiredHeight ?? 130)+padding*2))
                 obstacles: centerOnOutput ? [] : window.sideObstacles.concat(popup.open ? [popup.record] : [])
                 contentKind: centerOnOutput ? "center" : "popup"
                 source: "content/AbyssNotificationsContent.qml"

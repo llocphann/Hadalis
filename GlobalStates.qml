@@ -146,6 +146,8 @@ Singleton {
     property var activeContextMenu: null
     property bool clipboardOpen: false
     property bool settingsOverlayOpen: false
+    property string settingsOverlayTargetOutput: ""
+    readonly property string settingsOverlayPresentationOutput: root.resolveOutputName(settingsOverlayTargetOutput,[])
     property int settingsOverlayRequestedPage: -1 // Set before opening to navigate to a specific page
     property string settingsOverlayRequestedSection: "" // Optional deep-link target inside the requested page
     property int settingsOverlayCurrentPage: -1 // Published by whichever overlay chrome is loaded
@@ -164,7 +166,8 @@ Singleton {
         if (isWaffle) {
             Quickshell.execDetached([Quickshell.shellPath("scripts/inir"),
                 "waffle-settings-window"])
-        } else if (Config.options?.settingsUi?.overlayMode ?? false) {
+        } else if (Config.options?.panelFamily === "abyss" || (Config.options?.settingsUi?.overlayMode ?? false)) {
+            root.settingsOverlayTargetOutput = root.resolveOutputName("",[])
             root.settingsOverlayRequestedSection = targetSection
             root.settingsOverlayRequestedPage = index
             root.settingsOverlayOpen = true

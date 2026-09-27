@@ -68,10 +68,10 @@ Scope {
             exclusionMode: ExclusionMode.Ignore
             exclusiveZone: 0
             WlrLayershell.namespace: "hadalis:abyss-perimeter"
-            WlrLayershell.layer: window.fullscreenCovered && window.presented ? WlrLayer.Overlay : WlrLayer.Top
-            WlrLayershell.keyboardFocus: !window.presented || !field.ready || GlobalStates.regionSelectorOpen
+            WlrLayershell.layer: GlobalStates.settingsNativeDialogOpen ? WlrLayer.Bottom : PolkitService.active ? WlrLayer.Top : (settings.open || (window.fullscreenCovered && window.presented)) ? WlrLayer.Overlay : WlrLayer.Top
+            WlrLayershell.keyboardFocus: !window.presented || !field.ready || GlobalStates.regionSelectorOpen || GlobalStates.settingsNativeDialogOpen || PolkitService.active
                 ? WlrKeyboardFocus.None
-                : (aux.open && aux.ready) ? WlrKeyboardFocus.Exclusive
+                : ((aux.open && aux.ready) || (settings.open && settings.ready)) ? WlrKeyboardFocus.Exclusive
                 : ((leftPanel.open && leftPanel.ready) || (rightPanel.open && rightPanel.ready) || (popup.open && popup.ready) || (notification.open && notification.ready && notification.contentKind === "center"))
                     ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
             anchors { top: true; bottom: true; left: true; right: true }
@@ -85,6 +85,7 @@ Scope {
                 Region { x: popup.inputBounds.x; y: popup.inputBounds.y; width: window.presented && field.ready ? popup.inputBounds.width : 0; height: popup.inputBounds.height }
                 Region { x: dock.inputBounds.x; y: dock.inputBounds.y; width: window.presented && field.ready ? dock.inputBounds.width : 0; height: dock.inputBounds.height }
                 Region { x: notification.inputBounds.x; y: notification.inputBounds.y; width: window.presented && field.ready ? notification.inputBounds.width : 0; height: notification.inputBounds.height }
+                Region { x: settings.inputBounds.x; y: settings.inputBounds.y; width: window.presented && field.ready && !GlobalStates.settingsNativeDialogOpen ? settings.inputBounds.width : 0; height: settings.inputBounds.height }
                 Region { x: aux.inputBounds.x; y: aux.inputBounds.y; width: window.presented && field.ready ? aux.inputBounds.width : 0; height: aux.inputBounds.height }
             }
             function closePopup(): void {
@@ -98,6 +99,7 @@ Scope {
                     window.closePopup()
                     GlobalStates.closeSidebarLeft()
                     GlobalStates.closeSidebarRight()
+                    GlobalStates.settingsOverlayOpen = false
                     GlobalStates.clipboardOpen = false
                     GlobalStates.overviewOpen = false
                     GlobalStates.closeNotificationCenter()
@@ -263,6 +265,23 @@ Scope {
                 obstacles: window.sideObstacles
                 source: GlobalStates.clipboardOpen ? "content/AbyssClipboardContent.qml" : "content/AbyssLauncherContent.qml"
                 onCloseRequested: { GlobalStates.clipboardOpen = false; GlobalStates.overviewOpen = false }
+            }
+            AbyssBodyHost {
+                id: settings
+                identity: "settings"
+                controller: liquid
+                anchors.fill: parent
+                edge: "bottom"
+                outputName: window.outputName
+                open: window.presented && field.ready && GlobalStates.settingsOverlayOpen
+                    && GlobalStates.settingsOverlayPresentationOutput === window.outputName
+                largeSurface: true
+                edgeInsets: window.nativeInsets
+                span: Math.min(1600,Math.max(900,window.width*.9))
+                along: (window.width-span)/2
+                depth: Math.min(1080,Math.max(720,window.height*.92))
+                source: "content/AbyssSettingsContent.qml"
+                onCloseRequested: GlobalStates.settingsOverlayOpen = false
             }
             AbyssBodyHost {
                 id: notification

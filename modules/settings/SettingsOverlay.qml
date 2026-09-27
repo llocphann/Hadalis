@@ -22,6 +22,9 @@ import qs.modules.common.functions as CF
  */
 Scope {
     id: root
+    // Optional host supplied by a family's continuous surface compositor.
+    // The ordinary Material layer host remains unchanged when this is null.
+    property Item embeddedHost: null
 
     property bool settingsOpen: GlobalStates.settingsOverlayOpen ?? false
     property bool navEditMode: false
@@ -476,32 +479,17 @@ Scope {
         id: panelLoader
         active: root._panelLoaded
 
-        sourceComponent: PanelWindow {
+        sourceComponent: Item {
             id: settingsPanel
-
-            // Stay visible during the close-animation window so the exit morph
-            // renders; the Loader tears down after closeAnimTimer fires.
+            parent: root.embeddedHost ?? nativeHost.item?.contentItem ?? null
+            anchors.fill: parent
             visible: root.settingsOpen || root._closeAnimRunning
-
-            exclusionMode: ExclusionMode.Ignore
-            WlrLayershell.namespace: "quickshell:settingsOverlay"
-            // Yield the layer-shell overlay while a native dialog is visible.
-            WlrLayershell.layer: GlobalStates.settingsNativeDialogOpen
-                ? WlrLayer.Bottom
-                : PolkitService.active ? WlrLayer.Top : WlrLayer.Overlay
-            WlrLayershell.keyboardFocus: root.settingsOpen
-                && !GlobalStates.regionSelectorOpen
-                && !GlobalStates.settingsNativeDialogOpen
-                && !PolkitService.active
-                ? WlrKeyboardFocus.Exclusive
-                : WlrKeyboardFocus.None
-            color: "transparent"
-
-            anchors {
-                top: true
-                bottom: true
-                left: true
-                right: true
+            readonly property var screen: root.embeddedHost?.QsWindow?.window?.screen ?? nativeHost.item?.screen ?? null
+            Loader {
+                id: nativeHost
+                active: !root.embeddedHost
+                source: active ? "SettingsOverlayNativeHost.qml" : ""
+                onLoaded: item.controller = root
             }
 
             // Blurred backdrop — see SettingsFocus for the contract. Both overlay
@@ -513,7 +501,7 @@ Scope {
             Loader {
                 anchors.fill: parent
                 z: -1
-                active: settingsPanel.backdropBlur > 0 && Appearance.effectsEnabled
+                active: !root.embeddedHost && settingsPanel.backdropBlur > 0 && Appearance.effectsEnabled
                 visible: active && (GlobalStates.settingsOverlayOpen ?? false)
 
                 sourceComponent: GlassBackground {
@@ -553,7 +541,7 @@ Scope {
             // Focus grab for Hyprland
             CompositorFocusGrab {
                 id: grab
-                windows: [settingsPanel]
+                windows: nativeHost.item ? [nativeHost.item] : []
                 active: false
                 onCleared: () => {
                     if (!active && !GlobalStates.settingsNativeDialogOpen)
@@ -574,7 +562,7 @@ Scope {
             Timer {
                 id: grabTimer
                 interval: 100
-                onTriggered: grab.active = (GlobalStates.settingsOverlayOpen ?? false)
+                onTriggered: grab.active = !root.embeddedHost && (GlobalStates.settingsOverlayOpen ?? false)
                     && !GlobalStates.settingsNativeDialogOpen
             }
 
@@ -587,7 +575,7 @@ Scope {
                 cardRect: Qt.rect(settingsCard.x, settingsCard.y,
                     settingsCard.width, settingsCard.height)
                 cardRadius: settingsCard.radius
-                dim: (GlobalStates.settingsOverlayOpen ?? false)
+                dim: !root.embeddedHost && (GlobalStates.settingsOverlayOpen ?? false)
                     ? (Config.options?.settingsUi?.overlayAppearance?.scrimDim ?? 35) / 100 : 0
             }
 
@@ -610,6 +598,7 @@ Scope {
 // ── Bottom-connected settings popup ──
             ConnectedSurfaceIrisEdgeSurface {
                 id: settingsIrisSurface
+                visible: !root.embeddedHost
                 z: 1
                 anchors.fill: parent
                 edge: "bottom"
@@ -632,12 +621,13 @@ Scope {
 
             Rectangle {
                 id: settingsCard
+                parent: root.embeddedHost ?? settingsPanel
 
-                readonly property real maxCardWidth: Math.min(
+                readonly property real maxCardWidth: root.embeddedHost ? root.embeddedHost.width : Math.min(
                     1600,
                     Math.max(900, settingsPanel.width * 0.90),
                     Math.max(0, settingsPanel.width - 48))
-                readonly property real maxCardHeight: Math.min(
+                readonly property real maxCardHeight: root.embeddedHost ? root.embeddedHost.height : Math.min(
                     1080,
                     Math.max(720, settingsPanel.height * 0.92),
                     Math.max(0, settingsPanel.height - 24))
@@ -646,7 +636,7 @@ Scope {
                 readonly property color surfaceFillColor: Appearance.colors.colLayer0
 
                 anchors.horizontalCenter: parent.horizontalCenter
-                y: settingsPanel.height - root._screenEdgeThickness - height
+                y: root.embeddedHost ? 0 : settingsPanel.height - root._screenEdgeThickness - height
                     + (1 - root._surfaceReveal) * height
                 width: maxCardWidth
                 height: maxCardHeight

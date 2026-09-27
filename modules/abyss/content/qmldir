@@ -1,4 +1,5 @@
 module qs.modules.abyss.content
+AbyssSettingsContent 1.0 AbyssSettingsContent.qml
 AbyssCalendar 1.0 AbyssCalendar.qml
 AbyssDockContent 1.0 AbyssDockContent.qml
 AbyssLeftContent 1.0 AbyssLeftContent.qml

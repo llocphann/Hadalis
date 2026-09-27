@@ -539,8 +539,9 @@ ShellRoot {
                 // Waffle always opens its own Win11-style settings window
                 Quickshell.execDetached([Quickshell.shellPath("scripts/inir"),
                     "waffle-settings-window"])
-            } else if (Config.options?.settingsUi?.overlayMode ?? false) {
+            } else if (Config.options?.panelFamily === "abyss" || (Config.options?.settingsUi?.overlayMode ?? false)) {
                 // ii overlay mode — toggle inline panel
+                GlobalStates.settingsOverlayTargetOutput = GlobalStates.resolveOutputName("",[])
                 GlobalStates.settingsOverlayOpen = !GlobalStates.settingsOverlayOpen
             } else {
                 // ii window mode (default) — launch separate process
@@ -576,6 +577,7 @@ ShellRoot {
         id: settingsRailLoader
         readonly property bool loaderConfigured:
             Config.ready
+            && Config.options?.panelFamily !== "abyss"
             && (Config.options?.settingsUi?.overlayMode ?? false)
             && (Config.options?.settingsUi?.overlayStyle ?? "rail") !== "focus"
         active: loaderConfigured
@@ -586,6 +588,7 @@ ShellRoot {
         id: settingsFocusLoader
         readonly property bool loaderConfigured:
             Config.ready
+            && Config.options?.panelFamily !== "abyss"
             && (Config.options?.settingsUi?.overlayMode ?? false)
             && (Config.options?.settingsUi?.overlayStyle ?? "rail") === "focus"
         active: loaderConfigured
@@ -843,6 +846,7 @@ ShellRoot {
         GlobalStates.altSwitcherOpen = false
         GlobalStates.controlPanelOpen = false
         GlobalStates.dashboardOpen = false
+        GlobalStates.settingsOverlayOpen = false
         GlobalStates.osdVolumeOpen = false
         GlobalStates.osdBrightnessOpen = false
         GlobalStates.osdMicOpen = false

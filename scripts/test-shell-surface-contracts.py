@@ -731,6 +731,8 @@ def main() -> None:
         "modules/settings/SettingsFocus.qml",
     ):
         settings_surface = read(settings_path)
+        if settings_path.endswith("SettingsOverlay.qml"):
+            settings_surface += read("modules/settings/SettingsOverlayNativeHost.qml")
         for token in (
             "PolkitService.active ? WlrLayer.Top : WlrLayer.Overlay",
             "ConnectedSurfaceIrisEdgeSurface {",

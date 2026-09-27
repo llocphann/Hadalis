@@ -19,6 +19,13 @@ layout(std140,binding=0) uniform buf {
     vec4 rect0; vec4 rect1; vec4 rect2; vec4 rect3;
     vec4 rect4; vec4 rect5; vec4 rect6; vec4 rect7;
     vec4 rect8; vec4 rect9; vec4 rect10; vec4 rect11;
+    vec4 rect12; vec4 rect13; vec4 rect14; vec4 rect15;
+    vec4 rect16; vec4 rect17; vec4 rect18; vec4 rect19;
+    vec4 rect20; vec4 rect21; vec4 rect22; vec4 rect23;
+    vec4 rect24; vec4 rect25; vec4 rect26; vec4 rect27;
+    vec4 rect28; vec4 rect29; vec4 rect30; vec4 rect31;
+    vec4 rect32; vec4 rect33; vec4 rect34; vec4 rect35;
+    vec4 rect36; vec4 rect37; vec4 rect38; vec4 rect39;
 };
 layout(binding=1) uniform sampler2D wallpaper;
 float roundedBox(vec2 p, vec4 rect, float radius) {
@@ -41,6 +48,13 @@ float field(vec2 p) {
     d=record(d,p,rect0); d=record(d,p,rect1); d=record(d,p,rect2); d=record(d,p,rect3);
     d=record(d,p,rect4); d=record(d,p,rect5); d=record(d,p,rect6); d=record(d,p,rect7);
     d=record(d,p,rect8); d=record(d,p,rect9); d=record(d,p,rect10); d=record(d,p,rect11);
+    d=record(d,p,rect12); d=record(d,p,rect13); d=record(d,p,rect14); d=record(d,p,rect15);
+    d=record(d,p,rect16); d=record(d,p,rect17); d=record(d,p,rect18); d=record(d,p,rect19);
+    d=record(d,p,rect20); d=record(d,p,rect21); d=record(d,p,rect22); d=record(d,p,rect23);
+    d=record(d,p,rect24); d=record(d,p,rect25); d=record(d,p,rect26); d=record(d,p,rect27);
+    d=record(d,p,rect28); d=record(d,p,rect29); d=record(d,p,rect30); d=record(d,p,rect31);
+    d=record(d,p,rect32); d=record(d,p,rect33); d=record(d,p,rect34); d=record(d,p,rect35);
+    d=record(d,p,rect36); d=record(d,p,rect37); d=record(d,p,rect38); d=record(d,p,rect39);
     return d;
 }
 void main() {

@@ -139,9 +139,16 @@ Scope {
             }
             readonly property var nativeInsets: Geometry.insets(AbyssStyle.perimeterThickness,root.barEdge,
                 AbyssStyle.perimeterThickness+(AbyssStyle.barThickness-AbyssStyle.perimeterThickness)*barProgress,barProgress > 0.001)
+            AbyssSurfaceController {
+                id: liquid
+                outputName: window.outputName
+                moduleRecords: bar.visible ? bar.deformations.map(rec => Geometry.panel(window.width,window.height,window.nativeInsets,root.barEdge,rec.along+12,rec.span-24,rec.depth,1,0)) : []
+            }
             readonly property var sideObstacles: [leftPanel,rightPanel].filter(body => body.progress > 0.001).map(body => body.record)
             AbyssBodyHost {
                 id: leftPanel
+                identity: "leftPanel"
+                controller: liquid
                 anchors.fill: parent
                 edge: ShellLayoutController.sidebarAssignments().featureSidebar
                 outputName: window.outputName
@@ -158,6 +165,8 @@ Scope {
             }
             AbyssBodyHost {
                 id: rightPanel
+                identity: "rightPanel"
+                controller: liquid
                 anchors.fill: parent
                 edge: ShellLayoutController.sidebarAssignments().systemSidebar
                 outputName: window.outputName
@@ -174,6 +183,8 @@ Scope {
             }
             AbyssBodyHost {
                 id: popup
+                identity: "popup"
+                controller: liquid
                 anchors.fill: parent
                 edge: root.barEdge
                 outputName: window.outputName
@@ -193,6 +204,8 @@ Scope {
             readonly property string dockEdge: ["top","bottom","left","right"].includes(Config.options?.dock?.position) ? Config.options.dock.position : "bottom"
             AbyssBodyHost {
                 id: dock
+                identity: "dock"
+                controller: liquid
                 anchors.fill: parent
                 edge: window.dockEdge
                 outputName: window.outputName
@@ -225,6 +238,8 @@ Scope {
             Timer { id: dockClose; interval: 260; repeat: false; onTriggered: if (!dockRevealHover.hovered && !dockHover.hovered) window.dockHovered = false }
             AbyssBodyHost {
                 id: aux
+                identity: "aux"
+                controller: liquid
                 anchors.fill: parent
                 edge: "bottom"
                 outputName: window.outputName
@@ -241,6 +256,8 @@ Scope {
             }
             AbyssBodyHost {
                 id: notification
+                identity: "notification"
+                controller: liquid
                 anchors.fill: parent
                 readonly property bool centerOnOutput: GlobalStates.notificationCenterOpen && GlobalStates.notificationCenterPresentationOutput === window.outputName
                 readonly property string position: Config.options?.notifications?.position ?? "topRight"
@@ -261,6 +278,8 @@ Scope {
             }
             AbyssBodyHost {
                 id: osd
+                identity: "osd"
+                controller: liquid
                 anchors.fill: parent
                 edge: root.barEdge === "right" ? "left" : "right"
                 outputName: window.outputName
@@ -282,8 +301,7 @@ Scope {
                 anchors.fill: parent
                 visible: window.presented
                 edgeInsets: window.nativeInsets
-                records: (bar.visible ? bar.deformations.map(rec => Geometry.panel(window.width,window.height,edgeInsets,root.barEdge,rec.along+12,rec.span-24,rec.depth,1,0)) : [])
-                    .concat([leftPanel,rightPanel,popup,dock,aux,notification,osd].filter(body => body.progress > 0.001).map(body => body.record))
+                records: liquid.records
             }
         }
     }

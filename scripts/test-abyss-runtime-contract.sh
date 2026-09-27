@@ -34,12 +34,15 @@ ShellRoot {
         return false
     }
     Loader { id: deferred; source: "modules/abyss/ShellAbyssPanelsImpl.qml" }
+    AbyssSurfaceController { id: firstOutput; outputName: "DP-test" }
+    AbyssSurfaceController { id: secondOutput; outputName: "DP-other" }
     Item {
         width: 1000; height: 700
         AbyssBodyHost {
             id: body
             anchors.fill: parent
             edge: "right"; outputName: "DP-test"
+            identity: "runtimeBody"; controller: firstOutput
             along: 80; span: 450; depth: 300
             source: Qt.resolvedUrl("Content.qml")
         }
@@ -58,16 +61,21 @@ ShellRoot {
                 GlobalStates.deferredPanelsReady = true
             } else if (step === 2) {
                 if (!check(body.ready && body.inputBounds.width > 0 && body.inputBounds.height > 0,"visible content input")) return
+                if (!check(firstOutput.records.length === 1 && firstOutput.inputBounds.length === 1 && secondOutput.records.length === 0,"output-local participant geometry/input")) return
                 if (!check(body.contentItem.item.outputName === "DP-test","output binding")) return
                 body.open = false
                 if (!check(body.inputBounds.width === 0 && body.inputBounds.height === 0,"immediate input release")) return
+                if (!check(firstOutput.inputBounds.length === 0,"registry immediate input release")) return
                 if (!check(!body.contentItem.enabled,"disabled content while retracting")) return
             } else if (step === 4) {
                 if (!check(!body.ready && body.record.surface.width === 0,"retracted host unload")) return
+                if (!check(firstOutput.records.length === 0,"registry retracts with body")) return
+                body.controller = secondOutput
                 Config.setNestedValue("performance.reduceAnimations",true)
                 body.open = true
             } else if (step === 5) {
                 if (!check(body.ready && body.inputBounds.width > 0,"reopen")) return
+                if (!check(firstOutput.records.length === 0 && secondOutput.records.length === 1,"participant migration releases previous output")) return
                 body.open = false
                 if (!check(body.inputBounds.width === 0,"reopen close input release")) return
                 if (!check(body.progress === 0,"reduced motion closes synchronously")) return

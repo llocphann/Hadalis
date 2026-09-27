@@ -9,6 +9,9 @@ Item {
     id: root
     required property string edge
     property string outputName: ""
+    property string identity: ""
+    property var controller: null
+    property bool largeSurface: false
     property bool open: false
     property real along: 0
     property real span: 380
@@ -19,12 +22,19 @@ Item {
     property string source: ""
     property string contentKind: ""
     property real progress: open ? 1 : 0
-    readonly property var record: Geometry.panel(width,height,edgeInsets,edge,along,span,depth,progress,padding,obstacles)
+    readonly property var record: Geometry.panel(width,height,edgeInsets,edge,along,span,depth,progress,padding,obstacles,largeSurface)
     readonly property Item contentItem: content
     readonly property bool ready: content.status === Loader.Ready
     readonly property rect inputBounds: open && ready
         ? Qt.rect(content.x,content.y,content.width,content.height) : Qt.rect(0,0,0,0)
     signal closeRequested()
+    AbyssParticipant {
+        identity: root.identity
+        controller: root.controller
+        geometry: root.record
+        inputBounds: root.inputBounds
+        mass: Math.max(1, root.span * root.depth / 90000)
+    }
     Keys.onEscapePressed: root.closeRequested()
     Behavior on progress {
         id: deformation

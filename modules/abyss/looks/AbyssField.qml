@@ -13,7 +13,7 @@ Item {
     readonly property bool wallpaperReady: wallpaperImage.status === Image.Ready
     property var records: []
     property var edgeInsets: ({left:8,top:8,right:8,bottom:8})
-    readonly property int capacity: 12
+    readonly property int capacity: 40
     // Qt's QSB reflection cache can render a recreated effect while its new
     // manager still reports Uncompiled. Gate input on a presented frame and
     // supported backend instead; malformed packages still report Error.
@@ -73,6 +73,34 @@ Item {
         readonly property vector4d rect9: root.packed(9)
         readonly property vector4d rect10: root.packed(10)
         readonly property vector4d rect11: root.packed(11)
+        readonly property vector4d rect12: root.packed(12)
+        readonly property vector4d rect13: root.packed(13)
+        readonly property vector4d rect14: root.packed(14)
+        readonly property vector4d rect15: root.packed(15)
+        readonly property vector4d rect16: root.packed(16)
+        readonly property vector4d rect17: root.packed(17)
+        readonly property vector4d rect18: root.packed(18)
+        readonly property vector4d rect19: root.packed(19)
+        readonly property vector4d rect20: root.packed(20)
+        readonly property vector4d rect21: root.packed(21)
+        readonly property vector4d rect22: root.packed(22)
+        readonly property vector4d rect23: root.packed(23)
+        readonly property vector4d rect24: root.packed(24)
+        readonly property vector4d rect25: root.packed(25)
+        readonly property vector4d rect26: root.packed(26)
+        readonly property vector4d rect27: root.packed(27)
+        readonly property vector4d rect28: root.packed(28)
+        readonly property vector4d rect29: root.packed(29)
+        readonly property vector4d rect30: root.packed(30)
+        readonly property vector4d rect31: root.packed(31)
+        readonly property vector4d rect32: root.packed(32)
+        readonly property vector4d rect33: root.packed(33)
+        readonly property vector4d rect34: root.packed(34)
+        readonly property vector4d rect35: root.packed(35)
+        readonly property vector4d rect36: root.packed(36)
+        readonly property vector4d rect37: root.packed(37)
+        readonly property vector4d rect38: root.packed(38)
+        readonly property vector4d rect39: root.packed(39)
         onStatusChanged: if (status === ShaderEffect.Error) console.error("[AbyssField]", log)
     }
 }

@@ -2,3 +2,5 @@ module qs.modules.abyss
 AbyssPerimeter 1.0 AbyssPerimeter.qml
 AbyssBodyHost 1.0 AbyssBodyHost.qml
 AbyssOsdController 1.0 AbyssOsdController.qml
+AbyssSurfaceController 1.0 AbyssSurfaceController.qml
+AbyssParticipant 1.0 AbyssParticipant.qml

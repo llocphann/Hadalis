@@ -11,7 +11,7 @@ function targets(name, list, connected) {
     if (!list || !list.length) return true;
     return list.indexOf(name) >= 0 || !connected.some(function(n) { return list.indexOf(n) >= 0; });
 }
-function panel(width, height, insets, edge, along, span, depth, progress, padding, obstacles) {
+function panel(width, height, insets, edge, along, span, depth, progress, padding, obstacles, largeSurface) {
     var h = horizontal(edge);
     var first = h ? insets.left : insets.top;
     var last = h ? width - insets.right : height - insets.bottom;
@@ -31,7 +31,7 @@ function panel(width, height, insets, edge, along, span, depth, progress, paddin
     span = clamp(span, 0, Math.max(0, last-first-2*p));
     along = clamp(along, first+p, Math.max(first+p, last-p-span));
     // Opposing panels can never close the workspace opening.
-    depth = clamp(depth, 0, (h ? height-insets.top-insets.bottom : width-insets.left-insets.right)*0.42);
+    depth = clamp(depth, 0, (h ? height-insets.top-insets.bottom : width-insets.left-insets.right)*(largeSurface ? 0.92 : 0.42));
     var d = depth * clamp(progress, 0, 1.035);
     var x = h ? along : edge === "left" ? insets.left : width-insets.right-d;
     var y = h ? edge === "top" ? insets.top : height-insets.bottom-d : along;

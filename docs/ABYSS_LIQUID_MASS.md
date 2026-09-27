@@ -114,3 +114,14 @@ used to produce them. Material and Waffle retain independent presentation.
 Physical multi-monitor/hotplug/suspend/mixed-DPI acceptance remains separate
 from a nested single-output run. Any unavailable native or specialized adapter
 is reported explicitly; no local parser pass substitutes for live interaction.
+
+### Reservoir checkpoint
+
+The output controller now collects independently registered body geometry and
+input records. Participant migration removes the old registration, and close
+releases input immediately while presentation retracts. Forty bounded shader
+slots leave room for individual modules and large envelopes. Large surfaces
+opt into a 92% depth bound; ordinary opposing sidebars retain the 42% bound.
+Geometry/orientation/flood-fill regressions, actual QML registry migration and
+body lifecycle, shader cold/cache/error/software checks and touched-file QML
+validation passed. This checkpoint does not yet add propagation or new content.

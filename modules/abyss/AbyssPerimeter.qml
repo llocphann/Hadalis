@@ -242,7 +242,7 @@ Scope {
                 x: 0
                 available: window.sidebarRevealAvailable && (Config.options?.enabledPanels ?? []).includes("abyssSidebarLeft")
                 open: leftPanel.open
-                bodyItem: leftPanel.contentParent
+                bodyItem: leftPanel.contentItem
                 onRevealRequested: GlobalStates.openSidebarLeft(window.outputName)
                 onHideRequested: if (GlobalStates.sidebarLeftPresentationOutput===window.outputName) GlobalStates.closeSidebarLeft()
             }
@@ -251,7 +251,7 @@ Scope {
                 x: window.width-width
                 available: window.sidebarRevealAvailable && (Config.options?.enabledPanels ?? []).includes("abyssSidebarRight")
                 open: rightPanel.open
-                bodyItem: rightPanel.contentParent
+                bodyItem: rightPanel.contentItem
                 onRevealRequested: GlobalStates.openSidebarRight(window.outputName)
                 onHideRequested: if (GlobalStates.sidebarRightPresentationOutput===window.outputName) GlobalStates.closeSidebarRight()
             }

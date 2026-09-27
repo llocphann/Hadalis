@@ -24,6 +24,10 @@ Item {
     readonly property real mass: Math.max(1,span*depth/90000)
     property bool initialized: false
     property bool open: false
+    property int activationOrder: 0
+    readonly property var placement: controller?.bodyPlacements?.[identity] ?? null
+    readonly property bool placementVisible: placement?.visible !== false
+    readonly property bool presented: open && placementVisible
     property real along: 0
     property real span: 380
     property real depth: 320
@@ -32,28 +36,37 @@ Item {
     property var obstacles: []
     property string source: ""
     property string contentKind: ""
-    property real progress: open ? 1 : 0
-    readonly property var record: Geometry.joinCorner(Geometry.panel(width,height,edgeInsets,edge,along,span,depth,progress,padding,obstacles,largeSurface),joinedEdge,width,height,edgeInsets)
-    readonly property var targetRecord: Geometry.panel(width,height,edgeInsets,edge,along,span,depth,1,padding,obstacles,largeSurface)
+    property real progress: presented ? 1 : 0
+    readonly property var requestedRecord: Geometry.panel(width,height,edgeInsets,edge,along,span,depth,1,padding,[],largeSurface)
+    readonly property var record: Geometry.joinCorner(Geometry.placedPanel(width,height,edgeInsets,edge,along,span,depth,progress,padding,obstacles,largeSurface,placement),joinedEdge,width,height,edgeInsets)
+    readonly property var targetRecord: Geometry.placedPanel(width,height,edgeInsets,edge,along,span,depth,1,padding,obstacles,largeSurface,placement)
     readonly property Item contentItem: content
     readonly property bool ready: embeddedItem !== null || content.status === Loader.Ready
     readonly property Item contentParent: contentFrame
-    readonly property rect inputBounds: open && ready
+    readonly property rect inputBounds: presented && ready
         ? Qt.rect(contentFrame.x,contentFrame.y,contentFrame.width,contentFrame.height) : Qt.rect(0,0,0,0)
     signal closeRequested()
     AbyssParticipant {
         identity: root.identity
         controller: root.controller
         geometry: root.record
+        placementRequest: ({id:root.identity,open:root.open,order:root.activationOrder,
+            priority:root.identity === "dialog" ? 2 : root.identity === "utility" ? 1 : root.identity === "dock" ? -1 : 0,
+            record:root.requestedRecord})
         inputBounds: root.inputBounds
         mass: root.mass
     }
     function react(opening): void {
         if (controller) controller.impulse(edge,along+span/2,span,(opening ? 0.85 : -0.65)*waveInfluence,mass,opening ? "open" : "close")
     }
-    onOpenChanged: if (initialized) react(open)
+    function markOpened(): void { if (open && controller?.nextPresentationOrder) activationOrder=controller.nextPresentationOrder() }
+    onOpenChanged: if (initialized) { markOpened();react(open) }
+    onEmbeddedItemChanged: if (initialized) markOpened()
+    onContentKindChanged: if (initialized) markOpened()
+    onControllerChanged: if (initialized) markOpened()
     Component.onCompleted: {
         initialized = true
+        markOpened()
         if (open) Qt.callLater(() => { if (root.open) root.react(true) })
     }
     Keys.onEscapePressed: root.closeRequested()
@@ -64,11 +77,11 @@ Item {
             NumberAnimation {
                 to: deformation.targetValue > 0 ? deformation.targetValue+AbyssStyle.motionOvershoot : 0
                 duration: Math.round(AbyssStyle.motionNormal*(1+Math.min(0.5,Math.sqrt(root.mass)*0.1)))
-                easing.type: root.open ? Easing.OutCubic : Easing.InCubic
+                easing.type: root.presented ? Easing.OutCubic : Easing.InCubic
             }
             NumberAnimation {
                 to: deformation.targetValue
-                duration: root.open && AbyssStyle.motionOvershoot > 0 ? Math.round(AbyssStyle.motionSettle*(1+Math.min(0.5,Math.sqrt(root.mass)*0.1))) : 0
+                duration: root.presented && AbyssStyle.motionOvershoot > 0 ? Math.round(AbyssStyle.motionSettle*(1+Math.min(0.5,Math.sqrt(root.mass)*0.1))) : 0
                 easing.type: Easing.OutCubic
             }
         }
@@ -76,10 +89,12 @@ Item {
     Item {
         id: contentFrame
         x: root.record.content.x; y: root.record.content.y
-        width: root.record.content.width; height: root.record.content.height
+        width: root.placementVisible ? root.record.content.width : root.targetRecord.content.width
+        height: root.placementVisible ? root.record.content.height : root.targetRecord.content.height
         clip: true
+        visible: root.placementVisible
         opacity: Math.min(1,root.progress*1.5)
-        enabled: root.open
+        enabled: root.presented
     }
     Loader {
         id: content
@@ -89,11 +104,13 @@ Item {
         // retain their dimensions throughout opening, closing and reversals.
         width: root.stableContentSize ? root.targetRecord.content.width : contentFrame.width
         height: root.stableContentSize ? root.targetRecord.content.height : contentFrame.height
-        active: !root.embeddedItem && root.progress > 0.001 && GlobalStates.deferredPanelsReady
+        // A space-constrained body retains drafts/focus state while hidden. It
+        // unloads only after a semantic close and completion of the reveal.
+        active: !root.embeddedItem && (root.open || root.progress > 0.001) && GlobalStates.deferredPanelsReady
         source: root.source
         clip: true
         opacity: 1
-        enabled: root.open
+        enabled: root.presented
         onLoaded: {
             if (item.participant !== undefined) item.participant = root
             if (item.outputName !== undefined) item.outputName = Qt.binding(() => root.outputName)

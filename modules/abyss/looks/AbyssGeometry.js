@@ -44,6 +44,30 @@ function panel(width, height, insets, edge, along, span, depth, progress, paddin
     if (d <= 0) surface = {x:0,y:0,width:0,height:0};
     return {edge:edge, content:content, surface:surface, depth:d, targetDepth:depth, progress:clamp(progress,0,1.035), span:span, along:along};
 }
+// Keep each body's readable contents at its requested size while its one union
+// record reaches through the inner tier to the physical Edge.
+function placedPanel(width,height,insets,edge,along,span,depth,progress,padding,obstacles,largeSurface,placement) {
+    if (!placement) return panel(width,height,insets,edge,along,span,depth,progress,padding,obstacles,largeSurface);
+    var base = panel(width,height,insets,edge,along,span,depth,progress,padding,[],largeSurface);
+    var shift = placement.along-base.along;
+    if (horizontal(edge)) { base.content.x += shift;base.surface.x += shift; }
+    else { base.content.y += shift;base.surface.y += shift; }
+    base.along = placement.along;
+    var p = clamp(progress,0,1.035), offset = placement.inward*p;
+    if (horizontal(edge)) {
+        base.content.y += edge === "top" ? offset : -offset;
+        if (edge === "bottom") base.surface.y -= offset;
+        base.surface.height += offset;
+    } else {
+        base.content.x += edge === "left" ? offset : -offset;
+        if (edge === "right") base.surface.x -= offset;
+        base.surface.width += offset;
+    }
+    base.depth += offset;
+    base.targetDepth += placement.inward;
+    if (!placement.visible) base.surface = {x:0,y:0,width:0,height:0};
+    return base;
+}
 function roundedDistance(x, y, rect, radius) {
     var r = Math.min(radius, rect.width/2, rect.height/2);
     var qx = Math.abs(x-rect.x-rect.width/2)-rect.width/2+r;

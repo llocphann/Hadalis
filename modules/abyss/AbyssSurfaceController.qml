@@ -1,5 +1,6 @@
 import QtQuick
 import Quickshell
+import "looks/AbyssBodyPlacement.js" as BodyPlacement
 
 // One controller per output. Content and input are not inferred from pixels.
 QtObject {
@@ -7,6 +8,11 @@ QtObject {
     property string outputName: ""
     property var participants: ({})
     property var moduleRecords: []
+    property int presentationOrder: 0
+    function nextPresentationOrder(): int { return ++presentationOrder }
+    readonly property var bodyPlacements: BodyPlacement.arrange(Object.keys(participants)
+        .map(key => participants[key]?.placementRequest).filter(request => request !== null && request !== undefined),
+        outputWidth,outputHeight,edgeInsets)
     property real outputWidth: 1920
     property real outputHeight: 1080
     property bool presented: true

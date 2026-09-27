@@ -88,8 +88,8 @@ Scope {
             WlrLayershell.layer: GlobalStates.settingsNativeDialogOpen ? WlrLayer.Bottom : PolkitService.active ? WlrLayer.Top : (window.editorOpen || utility.open || styledPopup.open || dialogBody.open || settings.open || dashboardBody.open || controls.open || (window.fullscreenCovered && window.presented)) ? WlrLayer.Overlay : WlrLayer.Top
             WlrLayershell.keyboardFocus: !window.presented || !field.ready || GlobalStates.regionSelectorOpen || GlobalStates.settingsNativeDialogOpen || PolkitService.active || window.overviewDragging
                 ? WlrKeyboardFocus.None
-                : (window.editorOpen || (utility.open && utility.ready) || (styledPopup.open && (liquid.activePopup?.keyboardFocus ?? false)) || (popup.open && (popup.contentItem.item?.keyboardFocus ?? false)) || (dialogBody.open && dialogBody.ready) || (aux.open && aux.ready) || (settings.open && settings.ready) || (dashboardBody.open && dashboardBody.ready) || (controls.open && controls.ready)) ? WlrKeyboardFocus.Exclusive
-                : ((styledPopup.open && (liquid.activePopup?.keyboardFocusOnDemand ?? false)) || (leftPanel.open && leftPanel.ready) || (rightPanel.open && rightPanel.ready) || (popup.open && popup.ready) || (notification.open && notification.ready && notification.contentKind === "center"))
+                : (window.editorOpen || (utility.presented && utility.ready) || (styledPopup.presented && (liquid.activePopup?.keyboardFocus ?? false)) || (popup.presented && (popup.contentItem.item?.keyboardFocus ?? false)) || (dialogBody.presented && dialogBody.ready) || (aux.presented && aux.ready) || (settings.presented && settings.ready) || (dashboardBody.presented && dashboardBody.ready) || (controls.presented && controls.ready)) ? WlrKeyboardFocus.Exclusive
+                : ((styledPopup.presented && (liquid.activePopup?.keyboardFocusOnDemand ?? false)) || (leftPanel.presented && leftPanel.ready) || (rightPanel.presented && rightPanel.ready) || (popup.presented && popup.ready) || (notification.presented && notification.ready && notification.contentKind === "center"))
                     ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
             anchors { top: true; bottom: true; left: true; right: true }
             Item { id: emptyInput; width: 0; height: 0 }
@@ -135,7 +135,7 @@ Scope {
             }
             Item {
                 anchors.fill: parent
-                focus: aux.open || leftPanel.open || rightPanel.open || popup.open
+                focus: aux.presented || leftPanel.presented || rightPanel.presented || popup.presented
                 Keys.onEscapePressed: {
                     window.closePopup()
                     if (root.utilityKind) root.closeUtility()
@@ -275,8 +275,7 @@ Scope {
                 outputName: window.outputName
                 open: window.presented && field.ready && (Config.options?.enabledPanels ?? []).includes("abyssSidebarLeft")
                     && GlobalStates.sidebarLeftOpen && GlobalStates.sidebarLeftPresentationOutput === window.outputName
-                    && !(popup.open && popup.edge === edge)
-                    && !(notification.centerOnOutput && edge === "right")
+
                 edgeInsets: window.nativeInsets
                 along: window.positionAlong(identity,edge,span,Geometry.horizontal(edge) ? (window.width-span)/2 : edgeInsets.top+36)
                 readonly property var sizeState:ShellLayoutController.currentState("featureSidebar",window.outputName)
@@ -297,8 +296,7 @@ Scope {
                 outputName: window.outputName
                 open: window.presented && field.ready && (Config.options?.enabledPanels ?? []).includes("abyssSidebarRight")
                     && GlobalStates.sidebarRightOpen && GlobalStates.sidebarRightPresentationOutput === window.outputName
-                    && !(popup.open && popup.edge === edge)
-                    && !(notification.centerOnOutput && edge === "right")
+
                 edgeInsets: window.nativeInsets
                 along: window.positionAlong(identity,edge,span,Geometry.horizontal(edge) ? (window.width-span)/2 : edgeInsets.top+36)
                 readonly property var sizeState:ShellLayoutController.currentState("systemSidebar",window.outputName)
@@ -484,7 +482,7 @@ Scope {
                 readonly property string presentationKind: centerOnOutput ? "notificationCenter" : "notifications"
                 edge: window.positionEdge(presentationKind,centerOnOutput ? "right" : position.startsWith("bottom") ? "bottom" : "top")
                 outputName: window.outputName
-                open: window.presented && field.ready && (!GlobalStates.notificationCenterOpen && !popup.open && !aux.open && !Notifications.popupInhibited && Notifications.popupList.length > 0
+                open: window.presented && field.ready && (!GlobalStates.notificationCenterOpen && !Notifications.popupInhibited && Notifications.popupList.length > 0
                         && (Config.options?.enabledPanels ?? []).includes("abyssNotificationPopup")
                         && Geometry.targets(window.outputName,Config.options?.notifications?.screenList ?? [],Quickshell.screens.map(s => s.name)))
                 edgeInsets: window.nativeInsets
@@ -509,7 +507,6 @@ Scope {
                 open: window.presented && field.ready && (Config.options?.enabledPanels ?? []).includes("abyssOnScreenDisplay")
                     && (GlobalStates.osdVolumeOpen || GlobalStates.osdBrightnessOpen || GlobalStates.osdMicOpen || GlobalStates.osdMediaOpen || GlobalStates.osdKeyboardLayoutOpen)
                     && Geometry.targets(window.outputName,Config.options?.osd?.screenList ?? [],Quickshell.screens.map(s => s.name))
-                    && !rightPanel.open && !leftPanel.open && !notification.open
                 edgeInsets: window.nativeInsets
                 padding: 12
                 span: (Geometry.horizontal(edge) ? (contentItem.item?.desiredWidth ?? Appearance.sizes.osdWidth) : (contentItem.item?.desiredHeight ?? 48))+padding*2

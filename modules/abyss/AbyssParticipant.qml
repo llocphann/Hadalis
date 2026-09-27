@@ -5,6 +5,7 @@ QtObject {
     required property string identity
     property var controller: null
     property var geometry: null
+    property var placementRequest: null
     property rect inputBounds: Qt.rect(0,0,0,0)
     property real mass: 1
     property var heldController: null

@@ -178,6 +178,9 @@ Singleton {
     property int _cacheRevision: 0
     property int _preppedNamesRevision: -1
     property int _preppedIconsRevision: -1
+    // Plain JS memo fields have no QML NOTIFY signal. Lazy construction from a
+    // property binding must not synchronously invalidate that same binding.
+    property var _lazyPrepared: ({namesRevision:-1,iconsRevision:-1,names:[],icons:[]})
     // Reverse-lookup maps for matching running windows to desktop entries
     // Key: lowercased startupClass/exec-basename/desktop-id-stem → DesktopEntry
     property var _startupClassMap: ({})
@@ -264,8 +267,8 @@ Singleton {
     }
 
     function _ensurePreppedNames(): var {
-        if (root._preppedNamesRevision === root._cacheRevision)
-            return root._cachedPreppedNames
+        if (root._lazyPrepared.namesRevision === root._cacheRevision)
+            return root._lazyPrepared.names
 
         const entries = root._cachedList
         const prepared = new Array(entries.length)
@@ -276,14 +279,20 @@ Singleton {
                 entry: entries[i]
             }
         }
-        root._cachedPreppedNames = prepared
-        root._preppedNamesRevision = root._cacheRevision
+        const revision = root._cacheRevision
+        root._lazyPrepared.names = prepared
+        root._lazyPrepared.namesRevision = revision
+        Qt.callLater(() => {
+            if (root._cacheRevision !== revision) return
+            root._cachedPreppedNames = prepared
+            root._preppedNamesRevision = revision
+        })
         return prepared
     }
 
     function _ensurePreppedIcons(): var {
-        if (root._preppedIconsRevision === root._cacheRevision)
-            return root._cachedPreppedIcons
+        if (root._lazyPrepared.iconsRevision === root._cacheRevision)
+            return root._lazyPrepared.icons
 
         const entries = root._cachedList
         const prepared = new Array(entries.length)
@@ -293,8 +302,14 @@ Singleton {
                 entry: entries[i]
             }
         }
-        root._cachedPreppedIcons = prepared
-        root._preppedIconsRevision = root._cacheRevision
+        const revision = root._cacheRevision
+        root._lazyPrepared.icons = prepared
+        root._lazyPrepared.iconsRevision = revision
+        Qt.callLater(() => {
+            if (root._cacheRevision !== revision) return
+            root._cachedPreppedIcons = prepared
+            root._preppedIconsRevision = revision
+        })
         return prepared
     }
 

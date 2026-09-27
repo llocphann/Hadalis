@@ -35,14 +35,16 @@ def main() -> None:
     # Two pages still slide inside one clipped surface, with the dot rail
     # remaining at the right edge as the compact tab control.
     require(source, "id: tabViewport", "clip: true",
-            "y: (0 - root.currentTab) * tabViewport.height",
-            "y: (1 - root.currentTab) * tabViewport.height",
+            "y: -root.tabPosition * tabViewport.height",
+            "y: (1 - root.tabPosition) * tabViewport.height",
             "liquidMode: true", "id: detailPanel",
             "id: tabIndicator", "anchors.right: parent.right",
             "anchors.verticalCenter: parent.verticalCenter",
             "id: primaryMetrics", "id: sunTimeline", "WheelHandler {")
-    if source.count("Behavior on y") != 2:
-        raise AssertionError("Hourly and Daily must each retain a slide transition")
+    # Both pages share one animated choice. Pixel-position animations replay on
+    # popup reveal/rehost and briefly overlay Detailed on Orbital. The native
+    # test-weather-tab-motion.sh exercises reveal, selection, resize and rehost.
+    require(source, "Behavior on tabPosition")
     for removed in ("id: modeSwitch", "component OrbitArrow:",
                     "selectedHourIndex", "function cycleHour(",
                     "model: (Weather.data?.forecast ?? []).slice("):

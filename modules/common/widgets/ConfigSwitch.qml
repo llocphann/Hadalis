@@ -17,6 +17,8 @@ RippleButton {
     signal toggledByUser(bool checked)
 
     Layout.fillWidth: true
+    // Settings rows inherit the enclosing panel fill, like sliders and labels.
+    colBackground: "transparent"
     implicitHeight: contentItem.implicitHeight + 6 * 2
     font.pixelSize: Appearance.font.pixelSize.small
     Accessible.checkable: true

@@ -2055,6 +2055,23 @@
             "tension": 0.5,
             "softness": 24
         },
+        "waves": {
+            "preset": "balanced",
+            "amplitude": 0.6,
+            "propagation": 0.8,
+            "speed": 0.55,
+            "decay": 0.55,
+            "tension": 0.5,
+            "viscosity": 0.55,
+            "rebound": 0.6,
+            "corner": 0.8,
+            "hover": 1,
+            "press": 1,
+            "open": 1,
+            "close": 1,
+            "drag": 1,
+            "idle": false
+        },
         "modules": {
             "configured": false,
             "placements": [],

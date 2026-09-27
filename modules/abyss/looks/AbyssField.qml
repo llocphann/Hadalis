@@ -12,6 +12,7 @@ Item {
     readonly property bool usableWallpaper: wallpaperPath.length > 0 && !/\.(gif|mp4|webm|mkv|avi)$/i.test(wallpaperPath)
     readonly property bool wallpaperReady: wallpaperImage.status === Image.Ready
     property var records: []
+    property var waveTexture: null
     property var edgeInsets: ({left:8,top:8,right:8,bottom:8})
     readonly property int capacity: 40
     // Qt's QSB reflection cache can render a recreated effect while its new
@@ -48,6 +49,7 @@ Item {
         readonly property vector4d insets: Qt.vector4d(root.edgeInsets.left,root.edgeInsets.top,root.edgeInsets.right,root.edgeInsets.bottom)
         readonly property vector4d material: Qt.vector4d(AbyssStyle.perimeterRadius,AbyssStyle.connectionDepth,AbyssStyle.neckRadius,AbyssStyle.highlightStrength)
         readonly property var wallpaper: wallpaperImage
+        readonly property var waveSamples: root.waveTexture
         readonly property vector4d effects: Qt.vector4d(AbyssStyle.blurRadius,AbyssStyle.refractionStrength,root.wallpaperReady ? 1 : 0,0)
         readonly property vector4d wallpaperCrop: {
             const imageAspect = wallpaperImage.implicitWidth/Math.max(1,wallpaperImage.implicitHeight)

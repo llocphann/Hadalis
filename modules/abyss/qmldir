@@ -4,3 +4,4 @@ AbyssBodyHost 1.0 AbyssBodyHost.qml
 AbyssOsdController 1.0 AbyssOsdController.qml
 AbyssSurfaceController 1.0 AbyssSurfaceController.qml
 AbyssParticipant 1.0 AbyssParticipant.qml
+AbyssWaveController 1.0 AbyssWaveController.qml

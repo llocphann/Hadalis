@@ -1,0 +1,89 @@
+import QtQuick
+import qs.modules.common
+import qs.modules.abyss.looks
+import "looks/AbyssWave.js" as Wave
+
+Item {
+    id: root
+    width: sampleCount; height: 1
+    property real outputWidth: 1920
+    property real outputHeight: 1080
+    property bool presented: true
+    property var records: []
+    readonly property int sampleCount: AbyssStyle.quality === "performance" ? 128 : 256
+    readonly property var parameters: Wave.parameters(Config.options?.abyss?.waves)
+    property var simulation: null
+    property string mode: "SLEEPING"
+    property int revision: 0
+    property real lastStep: 0
+    readonly property bool running: ticker.running
+    readonly property var texture: textureSource
+    readonly property bool motionAllowed: presented && AbyssStyle.motionEnabled
+    function reset(): void {
+        simulation = Wave.create(sampleCount,outputWidth,outputHeight,parameters)
+        Wave.setMass(simulation,records)
+        mode = "SLEEPING"
+        revision++
+    }
+    function impulse(edge, along, span, strength, mass = 1, channel = "module"): void {
+        if (!motionAllowed || strength === 0) return
+        if (!simulation) reset()
+        const factor = channel === "module" ? (Math.abs(strength)<0.5 ? parameters.hover : parameters.press)
+            : (parameters[channel] ?? 1)
+        Wave.impulse(simulation,edge,along,span,strength*factor*AbyssStyle.motionIntensity,mass)
+        lastStep = Date.now()
+        mode = simulation.mode
+        revision++
+    }
+    onMotionAllowedChanged: if (!motionAllowed) reset()
+    onOutputWidthChanged: reset()
+    onOutputHeightChanged: reset()
+    onSampleCountChanged: reset()
+    onParametersChanged: {
+        if (simulation) simulation.parameters = parameters
+    }
+    onRecordsChanged: if (simulation) Wave.setMass(simulation,records)
+    onRevisionChanged: samples.requestPaint()
+    Component.onCompleted: reset()
+    Timer {
+        id: ticker
+        interval: AbyssStyle.quality === "performance" ? 33 : 16
+        repeat: true
+        running: root.motionAllowed && root.mode !== "SLEEPING"
+        onTriggered: {
+            const now = Date.now()
+            Wave.advance(root.simulation,Math.min(.05,(now-root.lastStep)/1000))
+            root.lastStep = now
+            root.mode = root.simulation.mode
+            root.revision++
+        }
+    }
+    // One tiny, explicitly updated texture; no desktop capture or time uniform.
+    Canvas {
+        id: samples
+        width: root.sampleCount; height: 1
+        renderTarget: Canvas.Image
+        onAvailableChanged: if (available) requestPaint()
+        onPainted: textureSource.scheduleUpdate()
+        onPaint: {
+            if (!root.simulation) return
+            const ctx = getContext("2d")
+            ctx.clearRect(0,0,width,height)
+            for (let i=0;i<width;i++) {
+                const value = Math.round((root.simulation.displacement[i]/96+.5)*65535)
+                ctx.fillStyle = "rgb("+(value>>8)+","+(value&255)+",0)"
+                ctx.fillRect(i,0,1,1)
+            }
+        }
+    }
+    ShaderEffectSource {
+        id: textureSource
+        width: samples.width; height: samples.height
+        x: -width; y: -height
+        sourceItem: samples
+        hideSource: true
+        live: false
+        smooth: true
+        textureSize: Qt.size(root.sampleCount,1)
+    }
+}

@@ -473,6 +473,23 @@ Singleton {
                     property real tension: 0.5
                     property int softness: 24
                 }
+                property JsonObject waves: JsonObject {
+                    property string preset: "balanced"
+                    property real amplitude: 0.6
+                    property real propagation: 0.8
+                    property real speed: 0.55
+                    property real decay: 0.55
+                    property real tension: 0.5
+                    property real viscosity: 0.55
+                    property real rebound: 0.6
+                    property real corner: 0.8
+                    property real hover: 1
+                    property real press: 1
+                    property real open: 1
+                    property real close: 1
+                    property real drag: 1
+                    property bool idle: false
+                }
                 property JsonObject modules: JsonObject {
                     property bool configured: false
                     property list<var> placements: []

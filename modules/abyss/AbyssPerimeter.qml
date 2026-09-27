@@ -110,6 +110,7 @@ Scope {
                 visible: window.presented && field.ready && root.barOnOutput(window.outputName)
                 anchors.fill: parent
                 HoverHandler { id: barHover; onHoveredChanged: { if (hovered) { barClose.stop(); root.setBarRevealed(window.outputName,true) } else barClose.restart() } }
+                onInteraction: (edge,along,span,strength) => liquid.impulse(edge,along,span,strength)
                 onPopupRequested: (kind,edge,along) => {
                     const same = (GlobalStates.abyssPopupKind === kind || (kind === "media" && GlobalStates.mediaControlsOpen))
                         && GlobalStates.abyssPopupTargetOutput === window.outputName
@@ -147,6 +148,10 @@ Scope {
             AbyssSurfaceController {
                 id: liquid
                 outputName: window.outputName
+                outputWidth: window.width
+                outputHeight: window.height
+                presented: window.presented
+                presentationItem: field
                 moduleRecords: bar.visible ? bar.deformations : []
             }
             readonly property var sideObstacles: [leftPanel,rightPanel].filter(body => body.progress > 0.001).map(body => body.record)
@@ -307,6 +312,7 @@ Scope {
                 visible: window.presented
                 edgeInsets: window.nativeInsets
                 records: liquid.records
+                waveTexture: liquid.waves.texture
             }
         }
     }

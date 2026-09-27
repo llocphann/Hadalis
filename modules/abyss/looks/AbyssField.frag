@@ -28,6 +28,20 @@ layout(std140,binding=0) uniform buf {
     vec4 rect36; vec4 rect37; vec4 rect38; vec4 rect39;
 };
 layout(binding=1) uniform sampler2D wallpaper;
+layout(binding=2) uniform sampler2D waveSamples;
+float waveAt(float arc) {
+    vec4 encoded=texture(waveSamples,vec2(fract(arc/(2.0*(viewport.x+viewport.y))),0.5));
+    return encoded.a<0.5 ? 0.0 : ((encoded.r*65280.0+encoded.g*255.0)/65535.0-0.5)*96.0;
+}
+float displacement(vec2 p) {
+    vec4 distances=vec4(p.y,viewport.x-p.x,viewport.y-p.y,p.x);
+    float nearest=min(min(distances.x,distances.y),min(distances.z,distances.w));
+    // Blend corner projections; adjacent sides share the same circular state.
+    vec4 weights=exp(-max(vec4(0.0),distances-nearest)/28.0);
+    vec4 arcs=vec4(p.x,viewport.x+p.y,2.0*viewport.x+viewport.y-p.x,2.0*(viewport.x+viewport.y)-p.y);
+    vec4 waves=vec4(waveAt(arcs.x),waveAt(arcs.y),waveAt(arcs.z),waveAt(arcs.w));
+    return dot(waves,weights)/dot(weights,vec4(1.0))*smoothstep(0.0,10.0,nearest);
+}
 float roundedBox(vec2 p, vec4 rect, float radius) {
     float r = min(radius,min(rect.z,rect.w)*0.5);
     vec2 q = abs(p-rect.xy-rect.zw*0.5)-rect.zw*0.5+r;
@@ -55,7 +69,7 @@ float field(vec2 p) {
     d=record(d,p,rect28); d=record(d,p,rect29); d=record(d,p,rect30); d=record(d,p,rect31);
     d=record(d,p,rect32); d=record(d,p,rect33); d=record(d,p,rect34); d=record(d,p,rect35);
     d=record(d,p,rect36); d=record(d,p,rect37); d=record(d,p,rect38); d=record(d,p,rect39);
-    return d;
+    return d-displacement(p);
 }
 void main() {
     vec2 p=qt_TexCoord0*viewport.xy;
@@ -65,7 +79,7 @@ void main() {
     float aa=max(0.6,fwidth(d)*0.6);
     if(d>24.0) { fragColor=vec4(0.0); return; }
     float coverage=1.0-smoothstep(-aa,aa,d);
-    float depth=exp(-abs(d)*0.075);
+    float depth=exp(-abs(d)*0.045);
     vec4 body=mix(surface,raised*surface.a,depth*0.38);
     if(effects.z>0.5 && coverage>0.0) {
         vec2 normal=gradient/max(0.0001,length(gradient));
@@ -84,8 +98,13 @@ void main() {
         // pixels are sampled. Missing/animated wallpaper uses the color body.
         body.rgb=mix(body.rgb,glass*surface.a,0.075+depth*0.07);
     }
-    float spec=exp(-abs(d)*1.5)*material.w;
-    body.rgb=mix(body.rgb,rim.rgb*body.a,spec);
+    vec2 normal=gradient/max(0.0001,length(gradient));
+    float facing=clamp(dot(normal,normalize(vec2(-0.45,-0.85)))*0.5+0.5,0.0,1.0);
+    float reflection=exp(-abs(d)*0.19)*(0.10+0.40*pow(facing,3.0))*material.w;
+    float spec=exp(-abs(d)*0.8)*pow(facing,5.0)*material.w;
+    body.rgb=mix(body.rgb,raised.rgb*body.a,reflection);
+    body.rgb+=rim.rgb*body.a*(spec*0.65+reflection*0.32);
+    body.rgb*=1.0-exp(-max(-d,0.0)*0.10)*(1.0-facing)*0.18;
     body.a=surface.a;
     vec4 outside=shadow*exp(-max(d,0.0)/5.0)+glow*exp(-max(d,0.0)/7.0);
     outside*=smoothstep(-aa,aa,d)*(1.0-smoothstep(16.0,24.0,d));

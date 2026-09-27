@@ -50,6 +50,7 @@ ShellRoot {
             }
             if(root.step===1) {
                 root.originalModule=layer.itemForId("clock")
+                if(!root.check(root.originalModule!==null,"mature module exists before drag")) return
                 editor.move("clock",editor.width*.6,10)
                 editor.move("clock",editor.width-10,editor.height/2)
                 if(!root.check(layer.itemForId("clock")===root.originalModule,"drag preserves the mature module instance")) return

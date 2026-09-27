@@ -6,6 +6,14 @@ import subprocess
 root = Path(__file__).resolve().parents[1]
 program = (root / "modules/abyss/looks/AbyssLayout.js").read_text() + r"""
 const assert = require('node:assert/strict');
+for (const edge of ['top','right','bottom','left']) {
+ const shared={edge,size:1,customSize:false}, custom={...shared,size:1.3,customSize:true};
+ assert.equal(moduleSize(shared,{edgeThickness:32}),2,'thicker Edge scales shared modules');
+ assert.equal(moduleSize(shared,{edgeThickness:10}),.625,'narrower Edge scales shared modules');
+ assert.equal(moduleSize(custom,{edgeThickness:32}),1.3,'explicit custom size stays independent');
+ assert.equal(moduleSize(shared,{edgeThickness:Infinity}),1,'invalid thickness is bounded');
+}
+
 assert(!catalog.includes('leftSidebarButton') && !catalog.includes('rightSidebarButton'));
 assert.deepEqual(normalize([{id:'old-left',kind:'leftSidebarButton'},{id:'clock',kind:'clock'},{id:'old-right',kind:'rightSidebarButton'}],'top').map(p=>p.id),['clock']);
 const initial = seed([catalog.slice(0,3),catalog.slice(3,5),[catalog[5]],catalog.slice(6,9),catalog.slice(9)],'top',1920,1200);

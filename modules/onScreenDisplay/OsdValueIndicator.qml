@@ -43,10 +43,10 @@ Item {
         inirColor: Appearance.inir.colLayer1
         auroraTransparency: Appearance.aurora.popupTransparentize
         border.width: root.connectedSurface ? 0
-            : root._zzz || auroraEverywhere || inirEverywhere ? 1 : 0
+            : root._zzz || Appearance.auroraEverywhere || Appearance.inirEverywhere ? 1 : 0
         border.color: root._zzz ? Appearance.zzz.borderColor
             : Appearance.angelEverywhere ? Appearance.angel.colCardBorder
-            : inirEverywhere ? Appearance.inir.colBorder
+            : Appearance.inirEverywhere ? Appearance.inir.colBorder
             : Appearance.auroraEverywhere ? Appearance.aurora.colTooltipBorder : Appearance.colors.colLayer0Border
 
         implicitWidth: valueRow.implicitWidth

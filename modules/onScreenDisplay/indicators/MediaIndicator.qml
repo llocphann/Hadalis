@@ -311,9 +311,9 @@ Item {
         inirColor: Appearance.inir.colLayer1
         auroraTransparency: Appearance.aurora.popupTransparentize
         border.width: Appearance.zzzEverywhere ? Appearance.zzz.borderThick
-            : auroraEverywhere || inirEverywhere ? 1 : 0
+            : Appearance.auroraEverywhere || Appearance.inirEverywhere ? 1 : 0
         border.color: Appearance.angelEverywhere ? Appearance.angel.colCardBorder
-            : inirEverywhere ? Appearance.inir.colBorder
+            : Appearance.inirEverywhere ? Appearance.inir.colBorder
             : Appearance.auroraEverywhere ? Appearance.aurora.colTooltipBorder : Appearance.colors.colLayer0Border
         implicitWidth: root.cardWidth
         implicitHeight: root.cardHeight

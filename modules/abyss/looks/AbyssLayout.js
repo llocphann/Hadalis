@@ -1,10 +1,10 @@
 // Persist normalized positions; derive pixel geometry independently per output.
-var catalog = ["leftSidebarButton","distroIcon","activeWindow","resources","media",
-    "workspaces","clock","utilButtons","battery","rightSidebarButton","tray",
+var catalog = ["distroIcon","activeWindow","resources","media",
+    "workspaces","clock","utilButtons","battery","tray",
     "timer","shellUpdate","weather","taskbar"];
-var labels = {leftSidebarButton:"Left sidebar",distroIcon:"Launcher",activeWindow:"Active window",
+var labels = {distroIcon:"Launcher",activeWindow:"Active window",
     resources:"System resources",media:"Media",workspaces:"Workspaces",clock:"Clock",
-    utilButtons:"Quick actions",battery:"Battery",rightSidebarButton:"Right sidebar",tray:"System tray",
+    utilButtons:"Quick actions",battery:"Battery",tray:"System tray",
     timer:"Timer",shellUpdate:"Updates",weather:"Weather",taskbar:"Taskbar"};
 function label(kind) { return labels[kind] || kind; }
 function bounded(value, fallback, low, high) {
@@ -12,7 +12,7 @@ function bounded(value, fallback, low, high) {
     return Number.isFinite(number) ? Math.max(low,Math.min(high,number)) : fallback;
 }
 function extent(kind, vertical) {
-    var sizes = {leftSidebarButton:36,rightSidebarButton:36,utilButtons:36,distroIcon:88,
+    var sizes = {utilButtons:36,distroIcon:88,
         activeWindow:178,resources:178,media:166,workspaces:192,clock:104,battery:72,
         tray:72,timer:68,shellUpdate:86,weather:80,taskbar:40};
     return vertical ? (kind === "workspaces" ? 192 : kind === "clock" ? 86 : kind === "tray" ? 72 : 42) : (sizes[kind] || 48);

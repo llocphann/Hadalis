@@ -45,8 +45,8 @@ Item {
             : root.kind === "battery" ? (root.vertical ? verticalBattery : battery)
             : root.kind === "workspaces" ? workspaces : root.kind === "distroIcon" ? distro
             : root.kind === "activeWindow" ? activeWindow : root.kind === "tray" ? tray
-            : root.kind === "utilButtons" ? utilities : root.kind === "leftSidebarButton" ? leftSidebar
-            : root.kind === "rightSidebarButton" ? rightSidebar : root.kind === "timer" ? timer
+            : root.kind === "utilButtons" ? utilities
+            : root.kind === "timer" ? timer
             : root.kind === "shellUpdate" ? update : root.kind === "weather" ? weather : taskbar
     }
     Component { id: resources; Shared.Resources {} }
@@ -69,7 +69,6 @@ Item {
     Component { id: activeWindow; Shared.ActiveWindow {} }
     Component { id: tray; Shared.SysTray { vertical: root.vertical; showSeparator: false; showOverflowMenu: true } }
     Component { id: utilities; Shared.UtilButtons { vertical: root.vertical; compactRequested: root.compact } }
-    Component { id: leftSidebar; Shared.LeftSidebarButton { colBackground: "transparent" } }
     Component { id: timer; Shared.TimerIndicator { vertical: root.vertical } }
     Component { id: update; Shared.ShellUpdateIndicator { vertical: root.vertical } }
     Component { id: weather; WeatherBar { vertical: root.vertical } }
@@ -84,20 +83,5 @@ Item {
         }
     }
     Component { id: taskbar; Shared.BarTaskbar { vertical: root.vertical; barPosition: root.attachedEdge; parentWindow: root.QsWindow.window; slotSize: 32 } }
-    Component {
-        id: rightSidebar
-        RippleButton {
-            cookieMorphing: true
-            implicitWidth: 30 * Appearance.sizes.barModuleScale
-            implicitHeight: implicitWidth
-            buttonRadius: Appearance.rounding.full
-            colBackground: "transparent"
-            colBackgroundHover: Appearance.colors.colLayer1Hover
-            colRipple: Appearance.colors.colLayer1Active
-            toggled: ShellLayoutController.sidebarOpenAtSlot("right",root.outputName)
-            Accessible.name: Translation.tr("Toggle right sidebar")
-            onClicked: ShellLayoutController.toggleSidebarAtSlot("right",root.outputName)
-            MaterialSymbol { anchors.centerIn: parent; text:"right_panel_open"; iconSize:20; color:Appearance.colors.colOnLayer0 }
-        }
-    }
+
 }

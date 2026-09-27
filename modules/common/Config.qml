@@ -477,6 +477,9 @@ Singleton {
             property JsonObject abyss: JsonObject {
                 property string quality: "balanced"
                 property list<var> positions: []
+                property JsonObject sidebars: JsonObject {
+                    property bool hoverEnabled: true
+                }
                 property JsonObject spectrum: JsonObject {
                     property bool configured: false
                     property bool enabled: false

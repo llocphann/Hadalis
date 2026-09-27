@@ -170,3 +170,10 @@ preferences win, disabled panels remain known, and Waffle/shared IDs remain usab
 The adapter normalizes configuration before announcing readiness; historical
 `panelFamily set ii` resolves to Abyss. The legacy shell-layout IPC opens the Abyss
 module editor when Abyss is active.
+
+Sidebars open from the middle 180 px of the physical left/right Screen Edge,
+without separate bar modules. A short dwell acquires an output-local hover lease;
+moving into the content keeps it open and moving away releases it after 240 ms.
+Context menus/dialogs defer release. Explicit IPC/shortcut opens retain their own
+lifetime. Hidden/fullscreen/locked outputs and Live Editor remove the trigger input.
+Historic sidebar-button placements are filtered from the Abyss module catalog.

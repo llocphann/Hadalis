@@ -111,6 +111,8 @@ Scope {
                 Region { regions: window.presented && field.ready && editor.visible ? editor.regions : [] }
                 Region { item: window.presented && revealTrigger.visible ? revealTrigger : emptyInput }
                 Region { item: window.presented && dockTrigger.visible ? dockTrigger : emptyInput }
+                Region { x: leftReveal.x; y: leftReveal.y; width: leftReveal.available ? leftReveal.width : 0; height: leftReveal.height }
+                Region { x: rightReveal.x; y: rightReveal.y; width: rightReveal.available ? rightReveal.width : 0; height: rightReveal.height }
                 Region { x: leftPanel.inputBounds.x; y: leftPanel.inputBounds.y; width: window.presented && field.ready ? leftPanel.inputBounds.width : 0; height: leftPanel.inputBounds.height }
                 Region { x: rightPanel.inputBounds.x; y: rightPanel.inputBounds.y; width: window.presented && field.ready ? rightPanel.inputBounds.width : 0; height: rightPanel.inputBounds.height }
                 Region { x: styledPopup.inputBounds.x; y: styledPopup.inputBounds.y; width: window.presented && field.ready ? styledPopup.inputBounds.width : 0; height: styledPopup.inputBounds.height }
@@ -220,6 +222,38 @@ Scope {
                 outputName:window.outputName
                 barEdge:root.barEdge
                 presented:window.presented && field.ready && !window.editorOpen
+            }
+            readonly property bool sidebarRevealAvailable: window.presented && field.ready && !window.editorOpen
+                && (Config.options?.abyss?.sidebars?.hoverEnabled ?? true)
+                && Geometry.targets(window.outputName,Config.options?.sidebar?.screenList ?? [],Quickshell.screens.map(s=>s.name))
+            readonly property bool sidebarOpeningAllowed: !utility.open && !settings.open && !dashboardBody.open
+                && !controls.open && !aux.open && !dialogBody.open && !GlobalStates.settingsNativeDialogOpen
+                && !PolkitService.active && !GlobalStates.regionSelectorOpen
+            component SidebarReveal: AbyssSidebarReveal {
+                y: (window.height-height)/2
+                width: Math.max(AbyssStyle.perimeterThickness,Config.options?.sidebar?.edgeOpen?.regionWidth ?? 2)
+                height: Math.min(180,window.height*.25)
+                openingAllowed: window.sidebarOpeningAllowed
+                closeBlocked: GlobalStates.activeContextMenuCount>0 || dialogBody.open || GlobalStates.settingsNativeDialogOpen
+                z: 220
+            }
+            SidebarReveal {
+                id: leftReveal
+                x: 0
+                available: window.sidebarRevealAvailable && (Config.options?.enabledPanels ?? []).includes("abyssSidebarLeft")
+                open: leftPanel.open
+                bodyItem: leftPanel.contentParent
+                onRevealRequested: GlobalStates.openSidebarLeft(window.outputName)
+                onHideRequested: if (GlobalStates.sidebarLeftPresentationOutput===window.outputName) GlobalStates.closeSidebarLeft()
+            }
+            SidebarReveal {
+                id: rightReveal
+                x: window.width-width
+                available: window.sidebarRevealAvailable && (Config.options?.enabledPanels ?? []).includes("abyssSidebarRight")
+                open: rightPanel.open
+                bodyItem: rightPanel.contentParent
+                onRevealRequested: GlobalStates.openSidebarRight(window.outputName)
+                onHideRequested: if (GlobalStates.sidebarRightPresentationOutput===window.outputName) GlobalStates.closeSidebarRight()
             }
             AbyssBodyHost {
                 id: leftPanel

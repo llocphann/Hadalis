@@ -654,15 +654,15 @@ ContentPage {
         SettingsGroup {
             ContentSubsection {
                 title: Translation.tr("Side edge open")
-                tooltip: Translation.tr("Open the left or right sidebar by touching that screen edge")
+                tooltip: Config.options?.panelFamily === "abyss" ? "Hover the middle of the left or right Screen Edge. Move into the sidebar to keep it open; moving away closes a hover-opened sidebar." : Translation.tr("Open the left or right sidebar by touching that screen edge")
 
                 ConfigRow {
                     uniform: true
                     SettingsSwitch {
                         buttonIcon: "dock_to_left"
                         text: Translation.tr("Hover screen edges")
-                        checked: Config.options?.sidebar?.edgeOpen?.enable ?? false
-                        onCheckedChanged: Config.setNestedValue("sidebar.edgeOpen.enable", checked)
+                        checked: Config.options?.panelFamily === "abyss" ? (Config.options?.abyss?.sidebars?.hoverEnabled ?? true) : (Config.options?.sidebar?.edgeOpen?.enable ?? false)
+                        onCheckedChanged: Config.setNestedValue(Config.options?.panelFamily === "abyss" ? "abyss.sidebars.hoverEnabled" : "sidebar.edgeOpen.enable", checked)
                     }
                     ConfigSpinBox {
                         icon: "width"
@@ -671,7 +671,7 @@ ContentPage {
                         from: 1
                         to: 12
                         stepSize: 1
-                        enabled: Config.options?.sidebar?.edgeOpen?.enable ?? false
+                        enabled: Config.options?.panelFamily === "abyss" ? (Config.options?.abyss?.sidebars?.hoverEnabled ?? true) : (Config.options?.sidebar?.edgeOpen?.enable ?? false)
                         opacity: enabled ? 1 : 0.5
                         onValueChanged: Config.setNestedValue("sidebar.edgeOpen.regionWidth", value)
                     }
@@ -680,6 +680,7 @@ ContentPage {
 
 
             ContentSubsection {
+                visible: Config.options?.panelFamily !== "abyss"
                 title: Translation.tr("Corner open")
                 tooltip: Translation.tr("Allows you to open sidebars by clicking or hovering screen corners regardless of bar position")
                 ConfigRow {

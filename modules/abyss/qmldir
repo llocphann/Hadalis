@@ -7,3 +7,4 @@ AbyssParticipant 1.0 AbyssParticipant.qml
 AbyssWaveController 1.0 AbyssWaveController.qml
 AbyssEdgeEditor 1.0 AbyssEdgeEditor.qml
 AbyssSpectrumController 1.0 AbyssSpectrumController.qml
+AbyssSidebarReveal 1.0 AbyssSidebarReveal.qml

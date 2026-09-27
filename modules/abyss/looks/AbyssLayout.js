@@ -148,7 +148,9 @@ function localSurfaces(records, width, height, options, fontScale, minimum) {
         return options?.singleModuleExpansion?.[p.edge]==="local"
             && records.filter(function(other) { return other.edge===p.edge; }).length===1;
     }).map(function(p) {
-        var depth = Math.max(minimum,stripDepth([p],p.edge,options,fontScale));
+        // Geometry records express depth in pixels, unlike placement depth's
+        // multiplier. Derive the paint extent from the packed foreground.
+        var depth = Math.max(minimum,(p.vertical ? p.content.width : p.content.height)+16);
         var surface = p.edge==="top" ? {x:p.along-8,y:-50,width:p.span+16,height:depth+50}
             : p.edge==="bottom" ? {x:p.along-8,y:height-depth,width:p.span+16,height:depth+50}
             : p.edge==="left" ? {x:-50,y:p.along-8,width:depth+50,height:p.span+16}

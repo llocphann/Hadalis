@@ -735,7 +735,7 @@ ShellRoot {
     LazyLoader {
         id: iiCriticalHostLoader
         readonly property bool loaderConfigured:
-            Config.ready && root.activePanelFamily === "ii"
+            Config.ready && root.activePanelFamily === "ii" && root.familyMountReady
         loading: loaderConfigured
         activeAsync: loaderConfigured
         source: "modules/ii/critical/ShellIiCriticalPanels.qml"
@@ -746,6 +746,7 @@ ShellRoot {
         readonly property bool enabled: Config.ready
             && GlobalStates.deferredPanelsReady
             && root.activePanelFamily === "ii"
+            && root.familyMountReady
         loading: enabled
         activeAsync: enabled
         source: "ShellIiPanels.qml"
@@ -754,7 +755,7 @@ ShellRoot {
     LazyLoader {
         id: waffleCriticalHostLoader
         readonly property bool loaderConfigured:
-            Config.ready && (Config.options?.panelFamily ?? "ii") === "waffle"
+            Config.ready && (Config.options?.panelFamily ?? "ii") === "waffle" && root.familyMountReady
         loading: loaderConfigured
         activeAsync: loaderConfigured
         source: "modules/waffle/critical/ShellWaffleCriticalPanels.qml"
@@ -765,6 +766,7 @@ ShellRoot {
         readonly property bool enabled: Config.ready
             && GlobalStates.deferredPanelsReady
             && (Config.options?.panelFamily ?? "ii") === "waffle"
+            && root.familyMountReady
         loading: enabled
         activeAsync: enabled
         source: "ShellWafflePanels.qml"
@@ -772,13 +774,14 @@ ShellRoot {
 
     LazyLoader {
         id: abyssCriticalHostLoader
-        active: Config.ready && root.activePanelFamily === "abyss"
+        active: Config.ready && root.activePanelFamily === "abyss" && root.familyMountReady
         source: "modules/abyss/critical/ShellAbyssCriticalPanels.qml"
     }
     LazyLoader {
         id: abyssDeferredHostLoader
         readonly property bool enabled: Config.ready && GlobalStates.deferredPanelsReady
             && root.activePanelFamily === "abyss"
+            && root.familyMountReady
         loading: enabled
         activeAsync: enabled
         source: "ShellAbyssPanels.qml"
@@ -795,6 +798,17 @@ ShellRoot {
     ToastManager {}
 
     readonly property string activePanelFamily: FamilyPolicy.normalize(Config.options?.panelFamily ?? "ii")
+    // Unmount the outgoing tree before constructing the next family. Shared
+    // presentation components (e.g. Background) otherwise register their IPC
+    // target while its old owner is still alive; the new handler is discarded.
+    property string mountedPanelFamily: ""
+    readonly property bool familyMountReady: mountedPanelFamily === activePanelFamily
+    Timer {
+        id: familyMountTimer
+        interval: 1
+        running: Config.ready && !root.familyMountReady
+        onTriggered: root.mountedPanelFamily = root.activePanelFamily
+    }
 
     // Direct config edits and IPC switching share migration and transient cleanup.
     onActivePanelFamilyChanged: {

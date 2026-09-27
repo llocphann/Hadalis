@@ -803,6 +803,13 @@ ShellRoot {
     // target while its old owner is still alive; the new handler is discarded.
     property string mountedPanelFamily: ""
     readonly property bool familyMountReady: mountedPanelFamily === activePanelFamily
+    Loader {
+        id: familyWorkAreaGuardLoader
+        // PanelWindow requires a native backend. Keep headless contracts usable.
+        active: Config.ready && !["offscreen","minimal"].includes((Quickshell.env("QT_QPA_PLATFORM") ?? "").split(":")[0])
+        source: "FamilyWorkAreaGuard.qml"
+        onLoaded: item.guarded = Qt.binding(() => !GlobalStates.shellEntryReady || GlobalStates.familyTransitionActive || !root.familyMountReady)
+    }
     Timer {
         id: familyMountTimer
         interval: 1

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""Regression contract for v10 intent-based Settings navigation and ownership."""
+"""Regression contract for v11 intent-based Settings navigation and ownership."""
 
-import re
+import re, json, subprocess
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -28,24 +28,24 @@ def main() -> None:
     group_block = data.split("readonly property var defaultCategories: [", 1)[1].split(
         "readonly property var _arrangement:", 1
     )[0]
-    groups = [
-        (label, [int(item) for item in numbers.split(",")])
-        for label, numbers in re.findall(
-            r'\{ label: Translation\.tr\("([^"]+)"\), pages: \[([\d, ]+)\] \}',
-            group_block,
-        )
-    ]
-    assert [name for name, _ in groups] == [
-        "Home", "Appearance", "Desktop & Layout", "System",
-        "Features & Services", "Advanced & Help",
-    ], groups
-    page_indices = [index for _, pages in groups for index in pages]
-    assert len(page_indices) == len(set(page_indices)), "duplicate Material page"
-    assert set(page_indices) == set(range(30)) - {18, 19, 21, 27, 28}, (
-        "active Material pages must have exactly one default owner", page_indices
-    )
+    expression = "[" + group_block.strip()
+    for family in ("abyss", "ii"):
+        program = "const Config={options:{panelFamily:" + json.dumps(family) + "}};const Translation={tr:v=>v};console.log(JSON.stringify(" + expression + "))"
+        groups = json.loads(subprocess.check_output(["node", "-e", program], text=True))
+        groups = [group for group in groups if group["pages"]]
+        labels = [group["label"] for group in groups]
+        assert labels == (["Home", "Abyss"] if family == "abyss" else ["Home"]) + [
+            "Appearance", "Desktop & Layout", "System", "Features & Services", "Advanced & Help"
+        ], labels
+        page_indices = [index for group in groups for index in group["pages"]]
+        assert len(page_indices) == len(set(page_indices)), "duplicate default page"
+        excluded = {18, 19, 21, 27, 28}
+        if family == "abyss": excluded.update({26, 30, 31})
+        assert set(page_indices) == set(range(35 if family == "abyss" else 30)) - excluded
+        if family == "abyss":
+            assert next(group for group in groups if group["label"] == "Abyss")["pages"] == [2,32,34,33,22,23,16]
 
-    require(arrangement, "layoutSchemaVersion: 10", "navigation migration")
+    require(arrangement, "layoutSchemaVersion: 11", "navigation migration")
     require(arrangement, "const untouchedStock =", "navigation migration")
     require(arrangement, "const defaults = SettingsPageRegistry.defaultCategories", "navigation migration")
     require(arrangement, "sourceVersion < 8 && untouchedStock", "legacy customized navigation migration")
@@ -118,7 +118,7 @@ def main() -> None:
     require(data, "pageIndex: 2, pageName: root.pages[2].name,\n"
                   '            section: Translation.tr("Appearance & Layout"),',
             "Bar search destination")
-    print("Settings v10 information architecture, routing and ownership: OK")
+    print("Settings v11 information architecture, routing and ownership: OK")
 
 
 if __name__ == "__main__":

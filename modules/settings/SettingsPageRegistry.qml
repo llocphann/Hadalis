@@ -15,8 +15,8 @@ import "../common/PanelFamilyPolicy.js" as FamilyPolicy
 Singleton {
     id: root
 
-    // 30/31 were terminal pages, so their slots are gone; keeping the numbers
-    // here only migrates old persisted direct-page values to a supported page.
+    // Historical 30/31 slots stay hidden now that focused Abyss pages follow
+    // them. Stored indices migrate without shifting any live page identity.
     readonly property var retiredFeaturePageIndexes: [18, 19, 21, 27, 30, 31]
     readonly property int retiredTlpPageIndex: 28
     readonly property int systemPageIndex: 1

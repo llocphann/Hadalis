@@ -644,7 +644,7 @@ def main() -> None:
         "property real baseHeight: contentItem.implicitHeight + verticalPadding * 2",
         "property color colBackgroundHover: Appearance.colors.colLayer1Hover",
         "property color colBackgroundToggled: Appearance.colors.colPrimary",
-        "color: root.color",
+        "color: root.waveFace ? \"transparent\" : root.color",
         "color: Appearance.colors.colOnLayer0",
     ):
         require(group_button, token, "GroupButton.qml")
@@ -1175,11 +1175,11 @@ def main() -> None:
     for token in (
         "property int rippleDuration: 1200",
         "property bool rippleEnabled: !abyssStyle",
-        'property color colBackground: abyssStyle ? Qt.alpha(Appearance.colors.colPrimary,.04) : "transparent"',
-        "property color colBackgroundHover: abyssStyle ? Qt.alpha(Appearance.colors.colPrimary,.12) : Appearance.colLayer1Hover",
+        'property color colBackground: abyssStyle ? Qt.alpha(Appearance.colors.colPrimary,.14) : "transparent"',
+        "property color colBackgroundHover: abyssStyle ? Qt.alpha(Appearance.colors.colPrimary,.24) : Appearance.colLayer1Hover",
         "property color colBackgroundToggled: Appearance.colors.colPrimary",
-        "border.width: root.visualFocus || root.abyssStyle ? 1 : 0",
-        'border.color: root.visualFocus ? Appearance.colors.colPrimary : root.abyssStyle ? Qt.alpha(Appearance.colors.colPrimary,.12) : "transparent"',
+        "border.width: root.visualFocus ? 1 : 0",
+        'border.color: root.visualFocus ? Appearance.colors.colPrimary : "transparent"',
         "radius: root.buttonEffectiveRadius",
         "color: Appearance.colors.colOnLayer0",
     ):
@@ -1682,7 +1682,7 @@ def main() -> None:
         "readonly property color _popupColor: Appearance.colors.colLayer3Base",
         "readonly property color _selectedColor: abyssStyle ? Qt.alpha(Appearance.colors.colPrimary,.22) : Appearance.colors.colPrimaryContainer",
         "color: root.down ? root._bgActiveColor",
-        "border.width: 1",
+        "border.width: root.abyssStyle ? 0 : 1",
         "width: root.width - 8",
         "height: 36",
         "radius: Appearance.rounding.unsharpenmore",
@@ -2562,7 +2562,7 @@ def main() -> None:
         "Config.options?.dashboard?.widthRatio",
         "Config.options?.dashboard?.heightRatio",
         "property real dashboardProgress: 1",
-        "height: root.embeddedSurface ? root.height : root.presentingSearch",
+        "height: root.embeddedSurface ? Math.max(0, root.height - root.editToolbarReserve) : root.presentingSearch",
         "y: root.embeddedSurface ? 0 : (1 - root.revealProgress) * dashContainer.height",
         "opacity: root.dashboardOpacity",
         "resultsOpacity: root.searchResultsOpacity",

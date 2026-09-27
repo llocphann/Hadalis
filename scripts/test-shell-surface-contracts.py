@@ -862,13 +862,14 @@ def main() -> None:
           and "visible: root.editMode" in dashboard_canvas,
           "Dashboard modules must only be movable/resizable in explicit Edit mode")
     check("Flickable {" not in dashboard_content
-          and "Flickable {" not in dashboard_canvas,
-          "Dashboard canvas must not restore Dashboard-level scrolling")
+          and "interactive:root.responsiveWorkspace" in dashboard_canvas
+          and '=== "abyss"' in dashboard_canvas,
+          "Abyss may scroll its readable workspace; mature shell viewport ownership stays intact")
     dashboard_toolbar = read("modules/dashboard/DashboardEditToolbar.qml")
     check("id: editToolbar" not in dashboard_canvas
           and "DashboardEditToolbar {" in dashboard
           and "x: Math.round(dashContainer.x" in dashboard
-          and "y: Math.round(dashContainer.y - height + 1)" in dashboard,
+          and "y: root.embeddedSurface ? 0 : Math.round(dashContainer.y - height + 1)" in dashboard,
           "Dashboard edit toolbar must stay centered and attached above the Dashboard canvas")
     check("bottomLeftRadius: 0" in dashboard_toolbar
           and "bottomRightRadius: 0" in dashboard_toolbar,

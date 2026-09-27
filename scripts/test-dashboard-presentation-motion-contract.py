@@ -77,8 +77,8 @@ forbid(
 
 # Execute the actual height contract in both hosts; embedded ownership must not
 # alter the existing Material dashboard/search sizes.
-height_binding = re.search(r"height: (root.embeddedSurface \? root.height : root.presentingSearch\s*\? root.searchOnlyHeight : root.configuredHeight)", dashboard).group(1)
-subprocess.run(["node","-e","const assert=require('node:assert/strict'); const root={embeddedSurface:false,presentingSearch:false,height:600,searchOnlyHeight:280,configuredHeight:800}; function height(){return "+height_binding+";} assert.equal(height(),800); root.presentingSearch=true; assert.equal(height(),280); root.embeddedSurface=true; assert.equal(height(),600);"],check=True)
+height_binding = re.search(r"height: (root.embeddedSurface \? Math\.max\(0, root.height - root.editToolbarReserve\) : root.presentingSearch\s*\? root.searchOnlyHeight : root.configuredHeight)", dashboard).group(1)
+subprocess.run(["node","-e","const assert=require('node:assert/strict'); const root={embeddedSurface:false,presentingSearch:false,height:600,editToolbarReserve:48,searchOnlyHeight:280,configuredHeight:800}; function height(){return "+height_binding+";} assert.equal(height(),800); root.presentingSearch=true; assert.equal(height(),280); root.embeddedSurface=true; assert.equal(height(),552);"],check=True)
 
 if failures:
     print("Dashboard presentation motion contract regression(s):")

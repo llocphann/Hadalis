@@ -175,7 +175,7 @@ assert_contains 'function isHiddenLegacyIndex(index: int): bool' "$registry" \
     'the registry must centralize filtering of retired navigation indexes'
 assert_contains 'return index === root.retiredTlpPageIndex || root.isRetiredFeaturePage(index)' "$registry" \
     'the hidden-index invariant must include both the retired TLP page and retired feature pages'
-assert_contains 'pages: category.pages.filter(index => !root.isHiddenLegacyIndex(index))' "$registry" \
+assert_contains 'pages:category.pages.filter(index=>root.isPageApplicable(index))' "$registry" \
     'retired compatibility pages must never reappear in sidebar categories'
 assert_contains 'Persistent.states.settings.iiPage = root.systemPageIndex' "$registry" \
     'persisted legacy page 28 must migrate to System when Persistent becomes available'

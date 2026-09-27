@@ -12,9 +12,8 @@ import qs.modules.common
  * Component paths are relative to the shell root — resolve with
  * Quickshell.shellPath(page.component).
  *
- * Historical page slots 18, 19, 21, 27 and 28 intentionally remain in-place
- * because active pages follow them. The removed terminal slots need no
- * placeholders because deleting them cannot shift any live page index.
+ * Historical page slots stay hidden in place so the appended focused Abyss
+ * pages do not shift stored indices. Navigation consumes only applicable pages.
  */
 Singleton {
     id: root

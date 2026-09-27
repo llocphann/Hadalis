@@ -263,9 +263,11 @@ Scope {
                     && !window.editorOpen && !settings.open && !dashboardBody.open && !controls.open
                     && !aux.open && !(popup.open && popup.edge === edge)
                     && (((Config.options?.dock?.pinnedOnStartup ?? false) && !(Config.options?.dock?.hoverToReveal ?? false)) || window.dockHovered
+                        || (contentItem.item?.requestDockShow ?? false)
                         || ((Config.options?.dock?.showOnDesktop ?? true) && !ToplevelManager.activeToplevel?.activated))
                 edgeInsets: window.nativeInsets
-                span: Math.min(640,Math.max(140,TaskbarApps.apps.filter(app => app.appId !== "SEPARATOR").length*48+80))
+                span: Math.min((Geometry.horizontal(edge) ? window.width : window.height)-80,
+                    Math.max(140,contentItem.item?.desiredSpan ?? 220))
                 along: (Geometry.horizontal(edge) ? window.width : window.height)/2-span/2
                 depth: AbyssStyle.dockThickness
                 padding: 12

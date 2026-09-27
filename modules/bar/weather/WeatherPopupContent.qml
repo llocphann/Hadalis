@@ -22,6 +22,18 @@ Item {
     readonly property int tabCount: 2
     readonly property int slideDuration: Appearance.animation.elementMove.duration
     property int currentTab: 0
+    // Animate tab selection, never the viewport's physical size. A newly
+    // rehosted popup starts at zero height; animating y would briefly paint
+    // both tabs on top of one another while its first layout is established.
+    property real tabPosition: root.currentTab
+    Behavior on tabPosition {
+        enabled: Appearance.animationsEnabled && root.visible
+        NumberAnimation {
+            duration: root.slideDuration
+            easing.type: Appearance.animation.elementMove.type
+            easing.bezierCurve: Appearance.animation.elementMove.bezierCurve
+        }
+    }
     property date now: new Date()
     readonly property real sunProgress: {
         const sunrise = root.timeToMinutes(Weather.data?.sunrise)
@@ -60,7 +72,7 @@ Item {
     Timer {
         interval: 30000
         repeat: true
-        running: true
+        running: root.visible && root.width > 0 && root.height > 0
         onTriggered: root.now = new Date()
     }
 
@@ -76,17 +88,9 @@ Item {
         height: tabViewport.height
         radius: Appearance.rounding.large
         color: "transparent"
-        y: (0 - root.currentTab) * tabViewport.height
+        y: -root.tabPosition * tabViewport.height
         enabled: root.currentTab === 0
 
-        Behavior on y {
-            enabled: Appearance.animationsEnabled
-            NumberAnimation {
-                duration: root.slideDuration
-                easing.type: Appearance.animation.elementMove.type
-                easing.bezierCurve: Appearance.animation.elementMove.bezierCurve
-            }
-        }
 
         Loader {
             id: orbitalTimeline
@@ -118,17 +122,9 @@ Item {
         height: tabViewport.height
         radius: Appearance.rounding.small
         color: "transparent"
-        y: (1 - root.currentTab) * tabViewport.height
+        y: (1 - root.tabPosition) * tabViewport.height
         enabled: root.currentTab === 1
 
-        Behavior on y {
-            enabled: Appearance.animationsEnabled
-            NumberAnimation {
-                duration: root.slideDuration
-                easing.type: Appearance.animation.elementMove.type
-                easing.bezierCurve: Appearance.animation.elementMove.bezierCurve
-            }
-        }
 
         ColumnLayout {
             id: detailColumn

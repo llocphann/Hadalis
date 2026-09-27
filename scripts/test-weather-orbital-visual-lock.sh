@@ -24,7 +24,9 @@ approved_on = "2026-09-25"
 # visual-defining source/QSB fails closed.
 #
 # The 2026-09-27 maintainer request explicitly redesigns Orbital Weather for
-# Abyss. WeatherPopupContent now selects that static view; the Material GPU
+# Abyss. The 2026-09-28 hover defect fix changes only the shared tab motion
+# to prevent the detail page painting over the orbit on first layout.
+# WeatherPopupContent selects the Abyss view; the Material GPU
 # membrane and all its visual-defining blobs remain unchanged.
 # Do NOT refresh these hashes as part of refactors, cleanup, optimization,
 # renderer work, or automated formatting. An intentional visual change requires
@@ -39,7 +41,7 @@ expected = {
     "modules/bar/weather/OrbitalWeather.qml":
         "1b74f970a179756a6ec743b310654bdaf5ae90eb",
     "modules/bar/weather/WeatherPopupContent.qml":
-        "59d1579cf638b49e590a2a1ca878ee76b021d51a",
+        "d0342726a1b6337f7495d1099a1e7a4a38c21ca3",
     "modules/bar/weather/WeatherPopup.qml":
         "5c6e11509eaa5ad3eafdc755fcc7e593ba82e83e",
 }

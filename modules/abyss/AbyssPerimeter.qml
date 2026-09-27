@@ -119,6 +119,7 @@ Scope {
                 Region { x: popup.inputBounds.x; y: popup.inputBounds.y; width: window.presented && field.ready ? popup.inputBounds.width : 0; height: popup.inputBounds.height }
                 Region { x: dock.inputBounds.x; y: dock.inputBounds.y; width: window.presented && field.ready ? dock.inputBounds.width : 0; height: dock.inputBounds.height }
                 Region { x: notification.inputBounds.x; y: notification.inputBounds.y; width: window.presented && field.ready ? notification.inputBounds.width : 0; height: notification.inputBounds.height }
+                Region { x: osd.inputBounds.x; y: osd.inputBounds.y; width: window.presented && field.ready ? osd.inputBounds.width : 0; height: osd.inputBounds.height }
                 Region { x: dashboardBody.inputBounds.x; y: dashboardBody.inputBounds.y; width: window.presented && field.ready ? dashboardBody.inputBounds.width : 0; height: dashboardBody.inputBounds.height }
                 Region { x: controls.inputBounds.x; y: controls.inputBounds.y; width: window.presented && field.ready ? controls.inputBounds.width : 0; height: controls.inputBounds.height }
                 Region { x: settings.inputBounds.x; y: settings.inputBounds.y; width: window.presented && field.ready && !GlobalStates.settingsNativeDialogOpen ? settings.inputBounds.width : 0; height: settings.inputBounds.height }
@@ -495,7 +496,7 @@ Scope {
                 depth: (Geometry.horizontal(edge) ? (contentItem.item?.desiredHeight ?? 48) : (contentItem.item?.desiredWidth ?? Appearance.sizes.osdWidth))+padding*2
                 source: "content/AbyssOsdContent.qml"
                 HoverHandler {
-                    parent: osd.contentParent
+                    parent: osd.contentItem
                     enabled: osd.open
                     onHoveredChanged: {
                         if (GlobalStates.abyssOsdKind === "media") {

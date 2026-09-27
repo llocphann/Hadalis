@@ -24,11 +24,13 @@ Flickable {
             AbyssButton { glyph: "close"; description: "Close popup"; onClicked: root.closeRequested() }
         }
         AbyssSeparator { Layout.fillWidth: true }
-        Loader { Layout.fillWidth: true; active: root.kind === "media"; source: "AbyssMediaSection.qml" }
+        // Loader keeps its last implicit size after unloading. Exclude inactive
+        // content from the layout so another popup never inherits its gap.
+        Loader { Layout.fillWidth: true; active: root.kind === "media"; visible: active; source: "AbyssMediaSection.qml" }
         AbyssLabel { visible: root.kind === "resources"; Layout.fillWidth: true; text: "CPU   " + Math.round(ResourceUsage.cpuUsage*100) + "%\nRAM   " + Math.round(ResourceUsage.memoryUsedPercentage*100) + "%\nGPU   " + Math.round(ResourceUsage.gpuUsage*100) + "%\nStorage   " + Math.round(ResourceUsage.diskUsedPercentage*100) + "%" }
         AbyssLabel { visible: root.kind === "weather"; Layout.fillWidth: true; text: (Weather.showVisibleCity ? Weather.visibleCity+"\n" : "") + Weather.data.temp+" · "+Weather.data.description+"\nFeels like "+Weather.data.tempFeelsLike+"\nWind "+Weather.data.wind+"\nHumidity "+Weather.data.humidity }
         AbyssLabel { visible: root.kind === "battery"; text: Battery.available ? Math.round(Battery.percentage*100)+"% · "+(Battery.isCharging ? "Charging" : "Battery power") : "No battery" }
-        Loader { active: root.kind === "clock"; Layout.fillWidth: true; source: "AbyssCalendar.qml" }
+        Loader { active: root.kind === "clock"; visible: active; Layout.fillWidth: true; source: "AbyssCalendar.qml" }
         AbyssLabel { visible: root.kind === "audio"; text: "Volume · " + Math.round(Audio.value*100)+"%" }
         AbyssSlider { visible: root.kind === "audio"; Layout.fillWidth: true; value: Audio.value; onMoved: Audio.setSinkVolume(value) }
         AbyssButton { visible: root.kind === "audio"; glyph: "volume_off"; text: "Mute"; onClicked: Audio.toggleMute() }

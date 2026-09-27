@@ -256,3 +256,143 @@ three independent families, native ownership and shared fallbacks. The generated
 IPC registry classifies root-owned OSD as shared. Next: complete regression
 validation, repeated full-shell switching and native input/idle qualification.
 No hardware multi-output or desktop acceptance is inferred from these checks.
+
+
+## Native qualification checkpoint (2026-09-27)
+
+Final code: `58aae0b91e214deeafb9c58841dc57273ac2cb7c`, tree
+`08dc1bcffb50b350ce4205afb074b6080d61ccf6`. **Core status: NOT_COMPLETE.**
+The implemented core is qualified locally within the one-output scope described below. Physical
+multi-output/hotplug/suspend and desktop resize acceptance remain open.
+
+Switching, input and idle measurements below use code `47718a415`. The final
+delta excludes unloaded content loaders from the popup layout; it is covered
+by an executed rendered-Qt regression and the final native capture. Each artifact
+records its own SHA. Family ownership, field/mask geometry and idle workload are
+unchanged by that content-layout correction.
+
+Inspected the root family loaders and shared IPC lifetime, Qt ShaderEffect
+readiness/cache behavior, Niri/GameMode fullscreen size heuristic, compositor
+layer/input state and shared OSD bindings. Runtime evidence led to nine focused
+corrections:
+
+| Commit | Change and observed reason |
+| --- | --- |
+| `b92f1d4dd` | Release the outgoing critical/deferred family before constructing the next. The previous lifecycle registered duplicate shared `background` IPC and discarded an owner. The executed old-source control reproduces duplicate registrations. |
+| `ff6a1cd1d` | Gate field input on a presented frame, supported graphics backend and absence of shader error. Qt's QSB reflection cache can draw a recreated effect while its new manager remains Uncompiled; Compiled-only gating hid content on the second visit. The old predicate fails the real-GPU recreation test; five cold/cached creations, malformed QSB and software fail-closed checks pass. |
+| `bb9dde2b0` | Hold a transparent, input-free 3 px reservation during family handoff. Gapless tiled clients otherwise temporarily fill the output, triggering the existing fullscreen-size heuristic and hiding incoming reservations. |
+| `609a75ef4` | Resolve OSD border style flags through Appearance. Old value/media indicators reproduce ReferenceError for bare auroraEverywhere/inirEverywhere; production components now instantiate cleanly. |
+| `12e210182` | Keep the guard per output during fullscreen and for 80 ms after exit. Fullscreen clients ignore exclusive zones; unfullscreen tiled clients become distinguishable before family reservations return. The guard has alpha 0, empty input, no keyboard focus and settled zone 0. |
+| `1758ce02d` | Preserve Qt `list<string>` pins and ignore patterns with sequence normalization. `Array.isArray` rejected these real config values. The old-source Qt list test fails; pin/unpin now retains other pins and the live app model resolves installed apps. |
+| `d1ff545fc` | Release the desktop widget-toggle binding when its background owner is destroyed. The restored app workload exposed 15 late-binding TypeErrors during switching; the nullable owner now yields false during teardown. |
+| `47718a415` | Remove the outgoing Waffle host's Material clipboard fallback. Its inverse family predicate could incubate an unowned transparent full-screen window while leaving Waffle. Wayland trace showed default full input and pointer enter on clipboardPanel with all ordinary state closed; stopping the shell restored clicks. The old-source lifecycle control creates Material on exit; the corrected loader preserves Waffle's native clipboard and never constructs that owner. |
+| `58aae0b91` | Hide inactive popup content loaders from the layout. Qt retains their previous implicit size after unload; the old media loader left a blank gap and clipped calendar weeks. The old-source rendered-window control fails. The final popup fits all 42 days after media/weather changes and at 1.5x typography; the native capture shows all six rows. |
+
+Changed code: `shell.qml`, `FamilyWorkAreaGuard.qml`, `FamilyWorkAreaHold.qml`,
+root `qmldir`, `modules/waffle/ShellWafflePanelsImpl.qml`, `modules/abyss/looks/AbyssField.qml`, shared OSD value/media indicators, `background/Background.qml`, `services/TaskbarApps.qml`, `modules/abyss/content/AbyssPopupContent.qml` and
+six focused shell/shader/controller/Qt-list/clipboard/popup regression scripts. Material's production
+`modules/screenCorners/ScreenEdges.qml` has **zero diff** against audit baseline
+`b66aaf3`. Waffle remains an independent supported family.
+
+### Environment and source identity
+
+Quickshell 0.3.1, Qt 6.11.2, Niri 26.04, Wayland/OpenGL on the AMD Radeon 740M
+host. The nested compositor has one winit output, 1920 x 1200, scale 1, zero gaps
+and full-width columns. The owner desktop remains running. The shell uses a
+private D-Bus session, isolated XDG profile, production defaults and a static
+wallpaper. The archive uses the supported Python helper fallback.
+
+[Source hashes](evidence/abyss/phase9-native-identity.json) and the
+[instrumentation patch](evidence/abyss/phase9-native-harness.patch) identify six
+copies with frame counters/state observations plus isolated config/popup test
+commands. Production rendering and family logic otherwise match the code tree.
+Native pointer/keyboard events use wlr virtual pointer and wtype. The winit
+window stays visible because an occluded nested output defers frame callbacks.
+1590 other production files match their Git blobs, including symlink targets.
+These are local native-device checks, not human physical-device acceptance or CI.
+
+### Observed behavior
+
+[Switching evidence](evidence/abyss/phase9-switching.json): 20 complete animated
+Material -> Abyss -> Waffle -> Abyss -> Material cycles, then four reduced-motion
+cycles. Four additional animation-disabled cycles are in the
+[native input evidence](evidence/abyss/phase9-native-input.json). Each transition
+has exactly one active/loaded family, one Abyss painter in Abyss and one Material
+Screen Edge in ii; default Waffle has no Screen Edge. Launcher opened before
+leaving Abyss releases exclusive keyboard focus and app clicks. No crash, stale
+ordinary state, duplicate IPC, QML reference/type error or binding loop was found
+in the qualified run.
+
+Native input checks pass for center/all four edges, bare-desktop right click, launcher/sidebar Escape,
+four bar orientations with bounded popup/sidebar/dock geometry, bar auto-hide,
+dock hover reveal/retract, fullscreen suppression, explicit fullscreen Overlay,
+unfullscreen restoration, workspace round trip, compositor resize/move and
+pointer titlebar drag. Output scale 1 -> 1.25 -> 1.5 -> 2 -> 1 passes with live
+field readiness and app input at every step. This is one compositor output;
+it does not prove simultaneous mixed-DPI displays.
+
+The Qt probe's client-decoration corner resize did not change dimensions; a
+product cause was not established. Compositor resize succeeds and near-edge
+app clicks remain live. Physical desktop resize acceptance is still pending.
+The source-archive preview helper also reports exit 126 from its pre-existing
+non-executable self-invocation; window identity/icon rows work, thumbnail fallback
+is not qualified here. Shared icon lookup warnings for unavailable fallback identifiers
+are also separate from the QML error checks. These limitations are retained in the evidence.
+
+### Idle and recovery measurements
+
+[Bounded measurements](evidence/abyss/phase9-idle.json) use a fresh QS process
+for each family, the same full-width input client/static wallpaper/default pins,
+10 s warm-up and one 20 s sample per idle mode. Abyss uses Balanced with
+refraction off. CPU is the QS process percentage of one logical core; resident
+memory excludes child processes. Presented scene frames are not GPU utilization.
+
+| Mode | Seconds | CPU, one core | RSS after, MiB | Perimeter frames | Separate bar frames |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| ii / idle | 20.0 | 4.9% | 871.37 | 0 | 16 |
+| abyss / idle | 20.0 | 3.4% | 678.89 | 6 | included |
+| abyss / eight finite sidebar open-close cycles | 7.181 | 9.33% | 682.19 | 222 | included |
+| abyss / idle after interactions | 20.0 | 3.15% | 680.82 | 8 | included |
+
+Eight finite sidebar open/close cycles repaint while moving; after a 5 s settle,
+the next sample returns to occasional clock/resource updates. No sustained
+60/120 fps loop was observed. These bounded observations are not a statistical
+speedup claim. Earlier samples with rejected typed pins or a narrow client column
+are superseded; only the restored app workload is tabulated here.
+
+### Final native appearance
+
+[1920 x 1200 native capture](evidence/abyss/phase9-native.jpg) and
+[capture metadata](evidence/abyss/phase9-native-capture.json) use final code
+`58aae0b91`, the selected city wallpaper, Quality/refraction, Tools and a native
+calendar connected to the same field. This image is an actual compositor capture;
+the earlier cropped-calendar capture was rejected. All six calendar rows and the
+related-settings action are visible in the final image. The image's Quality
+settings are separate from the Balanced performance measurements.
+
+### Acceptance boundary and next readiness
+
+| Gate | Local result / remaining scope |
+| --- | --- |
+| Family routing, owners and cleanup | Native repeated switching plus executed loader/IPC regression. |
+| One field, embedded bar/dock/sidebar/popup | Production geometry/flood-fill tests and native GPU capture; no independent body fill/shadow owners. |
+| Input and fullscreen | Native event checks pass within one output; physical client-decoration resize remains open. |
+| Material and Waffle | Local regressions and native tree/input checks; Material Screen Edge source unchanged. |
+| Idle renderer | Bounded scene-frame and process measurements below; no sustained frame loop observed. |
+| Multi-output/hotplug/mixed DPI/suspend | **PENDING: only eDP-1 hardware is attached.** Single nested-output scale tests are separate evidence. |
+| Canonical source/package acceptance | Run the exact-HEAD local command after this evidence publication; its printed SHA and final result are the authority. |
+
+Reproduce local acceptance with:
+
+```sh
+PATH=/usr/lib/qt6/bin:$PATH bash scripts/validate-maintainer-local.sh --current-repo --strict-qml
+```
+
+This clean-clones the committed HEAD, checks repository regressions and the
+required QML parser. A PASS applies only to its printed SHA. Nix is deferred and
+non-blocking. No GitHub Actions status is used as a substitute for local checks.
+
+Next readiness is hardware desktop acceptance: two outputs with different scales,
+output-targeted popups/focus, fullscreen isolated to one display, hotplug and
+suspend/resume, plus a physical-client resize gesture. Retain **NOT_COMPLETE**
+until those gates close; do not expand secondary surface ports first.

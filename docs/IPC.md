@@ -779,7 +779,8 @@ Shared on-screen display router for the active family. Material, Waffle and Abys
 | Function | Description |
 |----------|-------------|
 | `trigger` | Show the active family's volume indicator |
-| `hide` | Dismiss the active indicator |
+
+Dismiss the active volume indicator through `osdVolume.hide`. The root `osd` router only exposes `trigger`.
 
 ---
 

@@ -72,6 +72,7 @@ Item {
         opacity: Math.min(1,root.progress*1.5)
         enabled: root.open
         onLoaded: {
+            if (item.participant !== undefined) item.participant = root
             if (item.outputName !== undefined) item.outputName = Qt.binding(() => root.outputName)
             if (item.kind !== undefined) item.kind = Qt.binding(() => root.contentKind)
             if (item.edge !== undefined) item.edge = Qt.binding(() => root.edge)

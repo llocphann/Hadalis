@@ -121,14 +121,16 @@ Item {
         return false
     }
 
-    onMeaningfulPlayersChanged:
-        Qt.callLater(() => root.syncCurrentTabToActivePlayer())
-
-    onActivePlayerChanged:
-        Qt.callLater(() => root.syncCurrentTabToActivePlayer())
-
-    Component.onCompleted:
-        Qt.callLater(() => root.syncCurrentTabToActivePlayer())
+    // An owned timer is cancelled with the popup. A queued closure could outlive
+    // the content during a family switch or an output/body unload.
+    Timer {
+        id: tabSyncTimer
+        interval: 0
+        onTriggered: root.syncCurrentTabToActivePlayer()
+    }
+    onMeaningfulPlayersChanged: tabSyncTimer.restart()
+    onActivePlayerChanged: tabSyncTimer.restart()
+    Component.onCompleted: tabSyncTimer.restart()
 
     implicitWidth: widgetWidth
     implicitHeight: playerColumn.implicitHeight

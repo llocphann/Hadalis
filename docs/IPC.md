@@ -784,6 +784,24 @@ Dismiss the active volume indicator through `osdVolume.hide`. The root `osd` rou
 
 ---
 
+### abyss
+
+Edit the Abyss module layout on the focused output. The editor uses a draft:
+Done saves its changes; Cancel or Escape restores the saved layout.
+These methods apply while Abyss is active.
+
+| Function | Description |
+|----------|-------------|
+| `editLayout` | Open the Abyss module editor on the focused output |
+| `cancelEdit` | Cancel editing and restore the saved layout |
+
+```bash
+inir abyss editLayout
+inir abyss cancelEdit
+```
+
+---
+
 ## Waffle-Specific Targets
 
 These targets only work when using the Waffle (Windows 11) panel style.

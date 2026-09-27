@@ -3,9 +3,10 @@
 # Do not edit manually.
 # Regenerate: python3 scripts/lib/generate-ipc-registry.py
 # IPC.md metadata: docs/IPC.md
-# Targets: 58
+# Targets: 59
 
 declare -gA IPC_TARGET_DESC=(
+  [abyss]="Edit the Abyss module layout on the focused output. The editor uses a draft: Done saves its changes; Cancel or Escape restores the saved layout. These methods apply while Abyss is active."
   [ai]="Shared multi-provider AI service. It supports Gemini, OpenAI-compatible chat and Responses APIs, Mistral and Anthropic; live provider catalogs are normalized into capability-aware model records. Catalog visibility is separate from execution readiness, so public model lists remain browseable without pretending an API key exists. OpenCode Zen and Go resolve their current model lists and per-model API routes dynamically. Normal shell tools use typed actions and approval cards, while arbitrary commands are isolated in Advanced mode."
   [altSwitcher]="Alt+Tab window switcher. Works across workspaces, unlike some other implementations we won't name."
   [appCatalog]="App catalog service. Browse, search, and install curated applications."
@@ -67,6 +68,7 @@ declare -gA IPC_TARGET_DESC=(
 )
 
 declare -gA IPC_TARGET_FAMILY=(
+  [abyss]="shared"
   [ai]="shared"
   [altSwitcher]="shared"
   [appCatalog]="shared"
@@ -128,6 +130,7 @@ declare -gA IPC_TARGET_FAMILY=(
 )
 
 declare -gA IPC_TARGET_FUNCTIONS=(
+  [abyss]="editLayout cancelEdit"
   [ai]="ensureInitialized diagnose refreshCatalog catalog providers run runGet"
   [altSwitcher]="open close toggle next previous"
   [appCatalog]="refresh search install list"
@@ -189,6 +192,8 @@ declare -gA IPC_TARGET_FUNCTIONS=(
 )
 
 declare -gA IPC_FUNCTION_DESC=(
+  ["abyss:editLayout"]="Open the Abyss module editor on the focused output"
+  ["abyss:cancelEdit"]="Cancel editing and restore the saved layout"
   ["ai:ensureInitialized"]="Force-load models, provider catalogs and API keys"
   ["ai:diagnose"]="Dump current AI, catalog and tool state as JSON"
   ["ai:refreshCatalog"]="Refresh every live provider model catalog"
@@ -507,8 +512,8 @@ bind "Ctrl+Alt+A" { spawn "inir" "wallpaperSelector" "openLauncher" "animated"; 
   [ytmusic]='bind "Mod+M+Space" { spawn "inir" "ytmusic" "playPause"; }'
 )
 
-IPC_ALL_TARGETS=(ai altSwitcher appCatalog audio autostart background bar brightness cheatsheet clipboard cliphistService closeConfirm controlPanel coverflowSelector customWidgets dashboard dev gamemode globalActions keyboard lock mediaControls memory minimize mpris notificationCenter notifications osd osdInput osdVolume osk overlay overview packageSearch panelFamily recordingOsd region search session settings settingsNav shellLayout shellUpdate sidebarLeft sidebarRight taskview tiling voiceSearch wactionCenter waffleAltSwitcher wallpaperLauncher wallpaperSelector wbar widgetpower wnotificationCenter wwidgets ytmusic zoom)
-IPC_SHARED_TARGETS=(ai altSwitcher appCatalog audio background bar brightness cheatsheet clipboard cliphistService closeConfirm controlPanel coverflowSelector dashboard dev gamemode globalActions keyboard lock mediaControls memory minimize mpris notificationCenter notifications osd osdInput osdVolume osk overlay overview packageSearch panelFamily region session settings settingsNav shellLayout shellUpdate sidebarLeft sidebarRight taskview tiling voiceSearch wallpaperLauncher wallpaperSelector ytmusic zoom)
+IPC_ALL_TARGETS=(abyss ai altSwitcher appCatalog audio autostart background bar brightness cheatsheet clipboard cliphistService closeConfirm controlPanel coverflowSelector customWidgets dashboard dev gamemode globalActions keyboard lock mediaControls memory minimize mpris notificationCenter notifications osd osdInput osdVolume osk overlay overview packageSearch panelFamily recordingOsd region search session settings settingsNav shellLayout shellUpdate sidebarLeft sidebarRight taskview tiling voiceSearch wactionCenter waffleAltSwitcher wallpaperLauncher wallpaperSelector wbar widgetpower wnotificationCenter wwidgets ytmusic zoom)
+IPC_SHARED_TARGETS=(abyss ai altSwitcher appCatalog audio background bar brightness cheatsheet clipboard cliphistService closeConfirm controlPanel coverflowSelector dashboard dev gamemode globalActions keyboard lock mediaControls memory minimize mpris notificationCenter notifications osd osdInput osdVolume osk overlay overview packageSearch panelFamily region session settings settingsNav shellLayout shellUpdate sidebarLeft sidebarRight taskview tiling voiceSearch wallpaperLauncher wallpaperSelector ytmusic zoom)
 IPC_II_TARGETS=()
 IPC_WAFFLE_TARGETS=(autostart customWidgets recordingOsd search wactionCenter waffleAltSwitcher wbar widgetpower wnotificationCenter wwidgets)
 

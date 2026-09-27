@@ -2640,7 +2640,6 @@ Singleton {
             property JsonObject settingsUi: JsonObject {
                 property bool overlayMode: true
                 property string overlayStyle: "rail"
-                property bool easyMode: true
                 property string categories: ""
                 property string chromeLayout: ""
                 property JsonObject overlayAppearance: JsonObject {

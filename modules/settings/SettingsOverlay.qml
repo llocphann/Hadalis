@@ -1729,8 +1729,6 @@ Scope {
         return entry;
     })
 
-    // Easy mode helpers
-
     // Collapse inactive groups by default: a navigation category is not another
     // flat list of every settings page. Explicit user toggles survive page swaps.
     property var expandedNavGroups: ({})
@@ -1754,7 +1752,7 @@ Scope {
         expandedNavGroups = next
     }
 
-    // Nav model: category headers + page entries, filtered by easy mode
+    // Nav model: category headers and applicable pages.
     readonly property var visibleNavItems: {
         var items = [];
         for (var c = 0; c < navCategories.length; c++) {

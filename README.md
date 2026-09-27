@@ -6,12 +6,12 @@
 > **Target:** `1.0`  
 > **Primary development branch:** `dev`  
 > **Stable baseline:** `stable`  
-> **Scope refresh:** 2026-09-25
+> **Scope refresh:** 2026-09-28
 >
-> **Current `dev` snapshot (2026-09-25):**
+> **Current `dev` snapshot (2026-09-28):**
 > - The qualified **Rust native workspace is the production backend**. `inir-native`, `inir-inputd`, `inir-mpdd` and `inir-theme` are built/shipped by supported install paths; Python implementations remain an explicit rollback/fail-soft path rather than the default selector.
 > - **Material is the only public shell-wide Global Theme**. Legacy persisted theme/style values are migration input only and must normalize to supported Material behavior rather than reactivate retired renderers.
-> - The **iRiS connected-surface migration is the production baseline** for ii connected presentation. Full `iiPerimeter` composition ownership remains a separate guarded cutover boundary.
+> - **Abyss and Waffle are the public panel families.** Material/`ii` panel values migrate to Abyss; Material remains the shared color/theme system, not a third panel family. Abyss inherits mature content and backends through one output-local liquid surface. Existing ii source is compatibility/reuse input, not permission to restore a public Material panel mode.
 > - **Waffle remains a supported independent panel family** and must not be removed or treated as legacy during ii cleanup.
 > - Source/contract completion is not the same as release acceptance: runtime-sensitive gates still require the canonical local validator and live Niri/Quickshell checks on the exact candidate SHA.
 
@@ -46,6 +46,8 @@ This section is the **maintainer handoff for new chat sessions**. Read it before
 **Maintainer workflow lock (2026-09-25):** Hadalis development is `dev`-only. Do not create feature/fix branches and do not open pull requests unless the maintainer explicitly asks for them. Refetch and re-read the latest `dev` target before every write, then commit focused changes directly to `dev`. `stable` is comparison-only unless the maintainer explicitly changes that rule.
 
 **Failed-fix rule — no patch stacking:** when a proposed fix is shown by runtime evidence, regression testing or maintainer acceptance to be ineffective, revert that fix before attempting a replacement. Do not layer a second workaround over the failed approach. Restore the last known-good behavior, identify why the previous approach failed, then implement a materially different root-cause fix. Preserve concurrent unrelated work by reverting only the failed change set when necessary.
+
+**2026-09-28 scope override:** The maintainer explicitly authorized the Abyss Screen Edge/Bar/popup rework. The historical ii geometry locks below apply to preserved ii sources, not the new Abyss field. Abyss keeps a thick, flat resting edge; optional waves, transparency and blur add presentation without replacing mature content. With these effects off, preserve the old Material layout. Waffle remains independent. Read §11–12 for current priorities.
 
 **Frozen / do-not-touch unless the maintainer explicitly asks:**
 
@@ -446,45 +448,50 @@ To avoid future contradictions:
 
 If the maintainer gives a newer explicit instruction, that instruction supersedes this document and this README should be refreshed to match it.
 
-## 11. Current unfinished handoff (2026-09-25)
+## 11. Current unfinished handoff (2026-09-28)
 
-This section contains **unfinished work only**. Source-complete migrations/features belong in the status sections above; completed history belongs in Git / `CHANGELOG.md`.
+The maintainer requests **local development only; do not push** until instructed again. Continue in one agent context on `dev`, preserving unrelated dirty files. Record unfinished work and exact validation here before usage becomes exhausted. Latest screenshots are defect reports, not acceptance evidence.
 
-1. **Settings task-tab indicator:** Headings expand/collapse can still move the active indicator downward. Re-audit the failed geometry/lifecycle approach before making another fix.
-2. **System Monitor popup:** live-validate CPU width stability and ThinkFan RPM/Level alignment.
-3. **Connected surfaces:** complete live acceptance for iRiS/direct-seam contact across ii Popups, Left/Right Sidebar, Dashboard, Settings, Dock and OSK on top/bottom/left/right ownership, fractional scale and multi-output. Preserve locked physical Screen Edge/Bar geometry.
-4. **Screen Edge / Bar lifecycle:** verify idle/maximized visibility, configurable width/radius/shadow, auto-hide ownership, fullscreen enter/exit, lock/unlock and output transitions without blank/stranded surfaces.
-5. **Music/media:** live-test Local Music idle resume, bulk selection/queue operations and unified Shuffle/Repeat/CAVA. Validate EasyEffects DSP/CAVA lifecycle through pause/resume, player switch and reopen.
-6. **Dashboard/Overview + Calendar/Weather:** finish live motion/layout/gesture smoke tests across supported scaling without reintroducing the rejected whole-surface cache or a second date/weather backend.
-7. **ThinkFan/TLP:** validate helper/polkit reconciliation, profile-follow synchronization, active-session authorization and uninstall ownership on supported hardware.
-8. **Material-only final audit:** public/runtime Material-only routing is in place; remove only proven-dead residue outside intentional migration compatibility, then perform live visual acceptance.
-9. **Release validation:** run the canonical maintainer validator plus Niri live smoke tests on the exact candidate SHA. Rust/native source contracts do not waive this gate.
+The following requirements remain open unless an exact local commit and behavior/runtime evidence below explicitly close them:
 
-**Failure-handling requirement:** do not fix a failed fix with another patch on top. Once a change is demonstrated ineffective, revert that failed change first (or surgically revert its exact change set when unrelated concurrent work shares the commit), then re-investigate and implement a materially different root-cause fix.
+1. **Dashboard correctness first:** resize the modules inside Dashboard (not merely its outer frame). Keep editing/add controls accessible after hiding every widget. Moving into occupied space must resolve safely or reject/clamp the move when no space exists; never scramble or overlap other widgets. Preserve saved layout, minimum sizes, cancel, undo/reset and both Dashboard/Overview routes.
+2. **Inherited feature parity:** restore Quick Notes, To-do and Timers at bottom left plus Notifications and Activities from mature Material content. Audit actual routes and enabled/hidden state before claiming a missing backend.
+3. **Ocean-scale waves:** raise safe amplitude/strength limits and make Calm/Balanced/Fluid/Deep presets visibly distinct. Show detailed wave controls only for Custom. Keep waves optional/default off, finite propagation, bounded stability and idle sleep. Audio spectrum must visibly drive the same Screen Edge and have a numeric strength readout.
+4. **One wave-strength control:** combine popup/Dashboard/IPC/Settings/etc. strength controls into one shared setting with migration from old per-surface keys. Adjust small control ripples sensibly using that shared setting.
+5. **Numeric settings:** sliders display their current value at the right, with meaningful units (% for opacity/scale, px for dimensions/blur, etc.), including audio strength. Reuse a common control instead of special-casing every page.
+6. **Surface placement/composition:** simultaneous popup/Dashboard/IPC/Settings bodies at one position should form an ordered pyramid when space permits; otherwise hide/suspend the older body and show the newer one. Fit/reflow each content allocation to avoid content overlap while merging outer geometry. Preserve focus, hit masks, close behavior and reopen state.
+7. **Edge/module sizing:** Screen Edge width also influences module sizing on that Edge, respecting shared Edge size and explicit per-module overrides. Keep the resting physical edge flat and thick, not permanently indented by modules.
+8. **Material presentation:** add opacity/blur controls for module/popup backgrounds. Remove thin borders around transparent, unfilled controls/results/context-menu rows; use coherent Abyss fills. Main Settings tabs have no border; subsidiary choice buttons have a wave shape and ripple on click, honoring shared wave/reduced-motion settings.
+9. **Sidebar/hot-corner parity:** inherit mature hot-corner hover settings; restore custom Sidebar width and height. Keep left/right reveal at the middle of physical edges and no sidebar icon modules. Remove the redundant Desktop & Layout Sidebars page; retain the Abyss route and shared feature preferences.
+10. **Settings navigation:** remove Easy mode and its toggle; there is one mode. Put one Edit Abyss Layout icon beside the lock at top right in the old mode-toggle location. Remove scattered duplicate editor buttons/pages. Abyss is a heading with focused tabs, not one giant tab containing every setting. Audit/merge overlapping Abyss and Desktop & Layout pages and similar settings. Fix heading removal, drag/drop persistence, duplicate Abyss headings and repeated generated More groups. Preserve custom navigation without losing settings.
+11. **Live Editor:** support representative popup/IPC previews and position edits, including near-corner joins. Smooth module dragging and resizing; avoid reloading heavy content or persisting the whole config every pointer event. Preserve guide/snapping/start-center-end alignment, per-output profiles, custom size and Cancel/Done.
+12. **Tray/app interaction:** hovering system-tray/application icons opens the actionable menu normally shown on right click, instead of a name tooltip. Preserve dismissal, keyboard and pointer access and application actions.
+13. **Dock motion:** opening/closing a popup must retain Dock content size; remove shrinking/jitter while preserving normal autohide, previews and menu input.
+14. **Acceptance still open:** native motion/layout/gesture videos, multiple outputs/hotplug/suspend/fractional scaling, fullscreen/lock lifecycle and apples-to-apples CPU/RSS/frame evidence. Do not infer completion from solver idle sleep alone. Validate media idle resume/queue/Shuffle/Repeat/CAVA and ThinkFan/TLP hardware authorization. Recheck Settings active-indicator behavior and System Monitor widths/alignment. Keep lock/polkit/region-selection critical native hosts safe.
+
+**Current evidence and investigation:**
+
+- The last completed canonical local run was **188/188 PASS** at `28b3f5112de8d3101d4593588ad9d38225f071d8`; one dedicated Nix check was deferred. This applies only to that SHA, not subsequent edits or full desktop acceptance. Local log: `/tmp/hadalis-abyss-acceptance/qol-final-28b3f511.log`.
+- Existing published behavior includes Material→Abyss migration, dedicated style settings, shared Edge sizes/guides, mature compact OSD icons/dimensions, middle-Edge Sidebar reveal, audio→field routing and optional near-corner popup joins. The reports above identify remaining defects and refinements; none should be dismissed merely because a contract test passes.
+- Dashboard reproduction is `scripts/test-abyss-dashboard-editing.sh`. At the starting SHA, the direct Dashboard adapter passes its scripted resize/hide/restore cycle, while the Overview adapter fails because its edit toolbar lies outside the content/input clip. `OverviewDashboard.qml` positions the toolbar above `dashContainer`, whose embedded y is zero. Reserve space inside the embedded body and test actual input.
+- A separate resize hypothesis needs proof: strict whole-layout overlap checks may reject a resize because unrelated old/minimum-size-clamped widgets already overlap. Check `DashboardCanvas.qml` against persisted layouts; do not waive new overlaps to make a test pass. No solver fix had been made when this handoff was first recorded.
+- Private native harness/evidence: `/tmp/hadalis-abyss-liquid`, with source metadata in `evidence/source.json`; only debug instrumentation is private. `native-motion.py` interaction recording stopped at a failed Calendar hover, so the existing video is incomplete. Multi-output/resource acceptance is not qualified. Do not kill or reconfigure the owner's desktop while using private harnesses.
+- Preserve unrelated `native/Cargo.lock`, `hadalis-code-workflow-capture-*` and `perf.data*` unless their owner explicitly asks to include them.
 
 ## 12. New-conversation continuation prompt
 
-Copy/paste the following into a new conversation when continuing Hadalis work:
+Copy/paste this prompt into the next conversation:
 
 ```text
-Bạn đang tiếp tục phát triển repo GitHub `llocphann/Hadalis` cho Hadalis 1.0.
+Tiếp tục hoàn thiện Hadalis Abyss trong repo hiện tại, cho đến khi toàn bộ yêu cầu và kiểm thử nghiệm thu hoàn tất. Đọc AGENTS.md và README §11 trước, kiểm tra git status và HEAD thật; trạng thái mới nhất thắng context cũ.
 
-Làm trực tiếp trên branch `dev`; không tạo branch/PR mới và không merge/chỉnh `stable` trừ khi tôi yêu cầu rõ ràng. Trước mỗi audit quan trọng và ngay trước mọi write/ref update, refetch HEAD mới nhất của `dev`, rồi đọc lại target file/caller để tránh overwrite thay đổi concurrent. Fix forward, không force-push/rewrite shared history.
+Làm single-agent trực tiếp trên dev. Fetch origin dev trước audit và ngay trước mỗi write/ref update; đọc lại target/caller, giữ thay đổi concurrent. Commit atomic local; hiện tại KHÔNG PUSH, không tạo branch/PR, không sửa stable, không rewrite history. Không tự động thêm Cargo.lock/capture/perf của người dùng.
 
-Không patch chồng patch. Nếu runtime evidence/regression test xác nhận một fix không hiệu quả, revert fix/change-set đó trước rồi điều tra lại root cause.
+Abyss kế thừa nội dung/design/backends Material nhưng rework cách Screen Edge/Bar/Popup/Dashboard hoạt động qua một output-local liquid field. Public panel families chỉ Abyss và Waffle. Tắt transparency/blur/waves phải giữ layout Material cũ. Geometry locks của ii cũ không cấm rework Abyss đã được tôi cho phép; Waffle vẫn là family độc lập được support.
 
-Baseline hiện tại:
-- Rust native workspace là production backend mặc định: `inir-native`, `inir-inputd`, `inir-mpdd`, `inir-theme`; Python chỉ là rollback/fail-soft path.
-- Material là Global Theme public duy nhất; legacy values chỉ được normalize, không revive renderer cũ.
-- iRiS connected surfaces là production baseline; physical Screen Edge/normal ii Bar geometry đang locked.
-- Waffle là panel family riêng được support đầy đủ, không phải legacy.
+Ưu tiên sửa resize/chồng lấn các MODULE BÊN TRONG Dashboard và thanh thêm lại module bị ẩn; rồi xử lý lần lượt toàn bộ yêu cầu §11, gồm feature parity, sóng biển/spectrum mạnh, numeric slider units, shared wave strength, collision-safe surface stacking/reflow, Sidebar dimensions/hot corner, Settings navigation một mode và một Edit Layout icon, popup/IPC editor previews, tray hover menus, Dock motion và surface fills. Không bỏ sót yêu cầu vì danh sách dài; cập nhật trạng thái khi có evidence thật.
 
-Ưu tiên unfinished hiện tại:
-1. sửa Settings task-tab indicator;
-2. live-validate connected surfaces + Screen Edge/Bar lifecycle;
-3. live-validate media/equalizer, Dashboard/Overview, Calendar/Weather và ThinkFan/TLP;
-4. final Material-only residue audit;
-5. chạy `bash scripts/validate-maintainer-local.sh` và live Niri/Quickshell smoke test trên exact candidate SHA.
+Dùng regression behavior tests và bash scripts/validate-maintainer-local.sh. PASS chỉ áp dụng exact SHA được in bởi run đó; GitHub Actions không thay thế local acceptance. Native input/video, nhiều outputs/fractional scaling và CPU/RSS so sánh vẫn là gates riêng. Không báo hoàn tất nếu mới có static/source checks.
 
-Không coi GitHub Actions hay source-only test là bằng chứng release cuối cùng.
+Theo dõi usage; trước khi gần hết, dừng phát triển và ghi rõ files/commit local đã đổi, tests/evidence đã xác nhận, lỗi chưa giải quyết và bước tiếp theo vào repo/README để chatbot khác tiếp tục. Không push nếu tôi chưa đổi yêu cầu này.
 ```

@@ -86,6 +86,7 @@ MouseArea {
         event.accepted = true;
     }
     onEntered: {
+        if (Config.options?.panelFamily === "abyss") { hoverMenu.restart();return }
         if (!item) return;
         const tooltipTitle = item.tooltipTitle ?? "";
         const title = item.title ?? "";
@@ -95,6 +96,12 @@ MouseArea {
                 : (title.length > 0 ? title : "");
         if (tooltip.text.length === 0) return;
         if (tooltipDescription.length > 0) tooltip.text += " • " + tooltipDescription;
+    }
+
+    onExited: hoverMenu.stop()
+    Timer {
+        id:hoverMenu;interval:350
+        onTriggered: if(root.containsMouse && !root.pressed && Config.options?.panelFamily === "abyss") root.openContextMenu(false)
     }
 
     // Listen for close signal from parent tray
@@ -176,7 +183,7 @@ MouseArea {
 
     PopupToolTip {
         id: tooltip
-        extraVisibleCondition: root.containsMouse
+        extraVisibleCondition: root.containsMouse && Config.options?.panelFamily !== "abyss"
         alternativeVisibleCondition: extraVisibleCondition
         anchorEdges: (Config.options?.bar?.vertical ?? false)
             ? ((Config.options?.bar?.bottom ?? false) ? Edges.Left : Edges.Right)

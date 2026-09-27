@@ -15,6 +15,7 @@ DockButton {
     property var appToplevel
     property var appListRoot
     property int lastFocused: -1
+    property bool hoverContextOpen: false
     property real iconSize: Config.options?.dock?.iconSize ?? 35
     property real countDotWidth: 10
     property real countDotHeight: 4
@@ -110,6 +111,10 @@ DockButton {
         id: hoverDelayTimer
         interval: Config.options?.dock?.hoverPreviewDelay ?? 400
         onTriggered: {
+            if(root.abyssStyle) {
+                if(root.buttonHovered && !root.down && !root.pointerDragActive && !root.appListRoot?.dragActive) root.showContextMenu(true)
+                return
+            }
             if (root.hasWindows && root.buttonHovered) {
                 root.hoverPreviewRequested()
             }
@@ -253,6 +258,16 @@ DockButton {
 
     // Use RippleButton's built-in buttonHovered instead of separate MouseArea
     onButtonHoveredChanged: {
+        if(root.abyssStyle) {
+            if(buttonHovered && !root.isSeparator) {
+                hoverDelayTimer.restart()
+                if(root.appListRoot) { root.appListRoot.lastHoveredButton=root;root.appListRoot.buttonHovered=true }
+            } else {
+                hoverDelayTimer.stop()
+                if(root.appListRoot?.lastHoveredButton===root) root.appListRoot.buttonHovered=false
+            }
+            return
+        }
         if (toplevels.length > 0) {
             if (buttonHovered) {
                 appListRoot.lastHoveredButton = root
@@ -381,7 +396,8 @@ DockButton {
         showContextMenu()
     }
 
-    function showContextMenu(): void {
+    function showContextMenu(fromHover): void {
+        root.hoverContextOpen=fromHover===true
         root.appListRoot.closeAllContextMenus()
         root.appListRoot.contextMenuOpen = true
         root.hoverPreviewDismissed()
@@ -535,6 +551,7 @@ DockButton {
 
     DockContextMenu {
         id: contextMenu
+        keyboardGrab: !root.hoverContextOpen
         anchorItem: root
         anchorHovered: root.buttonHovered
 

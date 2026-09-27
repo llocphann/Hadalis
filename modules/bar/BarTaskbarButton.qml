@@ -18,6 +18,7 @@ RippleButton {
 
     property var appEntry
     property var taskbarRoot
+    property bool hoverContextOpen: false
     property real iconSize: 24 * Appearance.sizes.barModuleScale
     property bool vertical: false
     // "top", "bottom", "left", "right"
@@ -147,6 +148,10 @@ RippleButton {
         id: hoverDelayTimer
         interval: Config.options?.dock?.hoverPreviewDelay ?? 400
         onTriggered: {
+            if(root.abyssStyle) {
+                if(root.buttonHovered && !root.down && !root.pointerDragActive && !root.taskbarRoot?.dragActive) root.showContextMenu(true)
+                return
+            }
             if (root.hasWindows && root.buttonHovered) {
                 root.taskbarRoot?.showPreviewPopup(root.appEntry, root)
             }
@@ -154,6 +159,16 @@ RippleButton {
     }
 
     onButtonHoveredChanged: {
+        if(root.abyssStyle) {
+            if(buttonHovered) {
+                hoverDelayTimer.restart()
+                if(root.taskbarRoot) { root.taskbarRoot.lastHoveredButton=root;root.taskbarRoot.buttonHovered=true }
+            } else {
+                hoverDelayTimer.stop()
+                if(root.taskbarRoot?.lastHoveredButton===root) root.taskbarRoot.buttonHovered=false
+            }
+            return
+        }
         if (toplevels.length > 0) {
             if (buttonHovered) {
                 taskbarRoot.lastHoveredButton = root
@@ -213,7 +228,8 @@ RippleButton {
         root.showContextMenu()
     }
 
-    function showContextMenu(): void {
+    function showContextMenu(fromHover): void {
+        root.hoverContextOpen=fromHover===true
         taskbarRoot.closeAllContextMenus()
         taskbarRoot.contextMenuOpen = true
         hoverDelayTimer.stop()
@@ -231,6 +247,7 @@ RippleButton {
     // button through StyledPopup instead of compositor PopupWindow gravity.
     BarContextMenu {
         id: contextMenu
+        keyboardMode: !root.hoverContextOpen
         anchorItem: root
         anchorHovered: root.buttonHovered
 

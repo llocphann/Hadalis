@@ -23,9 +23,10 @@ import qs.services
 ShellRoot {
     id: root
     property int step: 0
+    property bool finished: false
     function check(value,message): bool {
         if (value) return true
-        console.error("ABYSS_POPUP_LAYOUT_FAIL",message);Qt.quit();return false
+        console.error("ABYSS_POPUP_LAYOUT_FAIL",message);root.finished=true;return false
     }
     function findOrbit(item) {
         if(typeof item?.angle==="function" && item?.selectedHour!==undefined) return item
@@ -40,14 +41,15 @@ ShellRoot {
         AbyssPopupContent { id: popup; width:desiredWidth; height:desiredHeight }
     }
     Timer {
-        interval: 350; running: true; repeat: true
+        interval: 350; running: !root.finished; repeat: true
         onTriggered: {
+            if(!Config.ready) return
             if(root.step===0) { Config.setNestedValue("panelFamily","abyss");popup.kind="clock" }
             else if(root.step===1 || root.step===6) {
                 const calendar=popup.feature.contentItem.children.find(c=>c.calendarCells!==undefined)
                 if(!root.check(calendar && calendar.calendarCells.length===42,"mature calendar keeps six weeks")) return
                 if(!root.check(popup.desiredWidth>=600 && calendar.width===popup.width && calendar.height<=popup.height,"Events and Calendar retain full shared layout")) return
-                if(root.step===6) { console.info("ABYSS_POPUP_LAYOUT_PASS");Qt.quit();return }
+                if(root.step===6) { console.info("ABYSS_POPUP_LAYOUT_PASS");root.finished=true;return }
                 popup.kind="resources"
             } else if(root.step===2) {
                 if(!root.check(popup.feature.presentationActive && !popup.feature.active && popup.feature.thinkFanCanApply!==undefined,"shared resources/fan controls active without another popup host")) return
@@ -75,11 +77,9 @@ ShellRoot {
     }
 }
 QML
-if ! QT_QPA_PLATFORM=wayland XDG_CONFIG_HOME="$popup_test_root/config" XDG_STATE_HOME="$popup_test_root/state" XDG_CACHE_HOME="$popup_test_root/cache" timeout 8s qs -p "$popup_test_root" --no-color > "$popup_test_root/runtime.log" 2>&1; then
-    cat "$popup_test_root/runtime.log"
-    exit 1
-fi
-if ! rg -q 'ABYSS_POPUP_LAYOUT_PASS' "$popup_test_root/runtime.log" || rg -q 'ABYSS_POPUP_LAYOUT_FAIL|ReferenceError:|TypeError:|Binding loop' "$popup_test_root/runtime.log"; then
+status=0
+QT_QPA_PLATFORM=wayland XDG_CONFIG_HOME="$popup_test_root/config" XDG_STATE_HOME="$popup_test_root/state" XDG_CACHE_HOME="$popup_test_root/cache" timeout 20s qs -p "$popup_test_root" --no-color > "$popup_test_root/runtime.log" 2>&1 || status=$?
+if [[ "$status" != 124 ]] || ! rg -q 'ABYSS_POPUP_LAYOUT_PASS' "$popup_test_root/runtime.log" || rg -q 'ABYSS_POPUP_LAYOUT_FAIL|ReferenceError:|TypeError:|Binding loop|Unable to assign|is not a type' "$popup_test_root/runtime.log"; then
     cat "$popup_test_root/runtime.log"
     exit 1
 fi

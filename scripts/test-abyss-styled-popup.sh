@@ -23,9 +23,10 @@ import qs.modules.abyss
 ShellRoot {
     id: root
     property int step: 0
+    property bool finished: false
     function check(value,message): bool {
         if(value) return true
-        console.error("ABYSS_STYLED_POPUP_FAIL",message);Qt.quit();return false
+        console.error("ABYSS_STYLED_POPUP_FAIL",message);root.finished=true;return false
     }
     AbyssSurfaceController { id: first; presentationItem: scene; popupHost: body; outputWidth:scene.width;outputHeight:scene.height }
     AbyssSurfaceController { id: second; presentationItem: scene; popupHost: body; outputWidth:scene.width;outputHeight:scene.height }
@@ -55,8 +56,9 @@ ShellRoot {
     }
     ClockCalendarPopup { id: popup;hoverTarget:anchor;hoverActivates:false;alternativeVisibleCondition:false }
     Timer {
-        interval:350;running:true;repeat:true
+        interval:350;running:!root.finished;repeat:true
         onTriggered: {
+            if(!Config.ready) return
             if(root.step===0) popup.alternativeVisibleCondition=true
             else if(root.step===1) {
                 if(!root.check(first.activePopup===popup && popup.presentationActive && !popup.active,"mature popup uses field without native popup")) return
@@ -79,18 +81,16 @@ ShellRoot {
                 if(!root.check(popup.contentItem.parent===body.contentParent && popup.presentationActive,"same popup reopens")) return
                 second.presented=false
                 if(!root.check(second.activePopup===null && !popup.presentationActive && body.inputBounds.width===0,"hidden output closes and releases popup")) return
-                console.info("ABYSS_STYLED_POPUP_PASS");Qt.quit();return
+                console.info("ABYSS_STYLED_POPUP_PASS");root.finished=true;return
             }
             root.step++
         }
     }
 }
 QML
-if ! QT_QPA_PLATFORM=wayland XDG_CONFIG_HOME="$popup_test_root/config" XDG_STATE_HOME="$popup_test_root/state" XDG_CACHE_HOME="$popup_test_root/cache" timeout 8s qs -p "$popup_test_root" --no-color > "$popup_test_root/runtime.log" 2>&1; then
-    cat "$popup_test_root/runtime.log"
-    exit 1
-fi
-if ! rg -q 'ABYSS_STYLED_POPUP_PASS' "$popup_test_root/runtime.log" || rg -q 'ABYSS_STYLED_POPUP_FAIL|ReferenceError:|TypeError:|Binding loop' "$popup_test_root/runtime.log"; then
+status=0
+QT_QPA_PLATFORM=wayland XDG_CONFIG_HOME="$popup_test_root/config" XDG_STATE_HOME="$popup_test_root/state" XDG_CACHE_HOME="$popup_test_root/cache" timeout 20s qs -p "$popup_test_root" --no-color > "$popup_test_root/runtime.log" 2>&1 || status=$?
+if [[ "$status" != 124 ]] || ! rg -q 'ABYSS_STYLED_POPUP_PASS' "$popup_test_root/runtime.log" || rg -q 'ABYSS_STYLED_POPUP_FAIL|ReferenceError:|TypeError:|Binding loop|Unable to assign|is not a type' "$popup_test_root/runtime.log"; then
     cat "$popup_test_root/runtime.log"
     exit 1
 fi

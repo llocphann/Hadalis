@@ -823,9 +823,9 @@ def main() -> None:
           and 'radius: root.embeddedSurface ? 0 : Appearance.rounding.large' in dashboard_content
           and "border.width: 0" in dashboard_content,
           "Dashboard outer surface must reuse the canonical Material popup/sidebar background")
-    check("readonly property color sidebarRaisedSurface: Appearance.colors.colLayer1" in dashboard_card
+    check('Config.options?.panelFamily === "abyss" ? AbyssStyle.contentLayer : Appearance.colors.colLayer1' in dashboard_card
           and "Appearance.colors.colSurfaceContainerHigh" not in dashboard_card,
-          "Dashboard module cards must use Sidebar layer-1 above the layer-0 Dashboard shell")
+          "Dashboard cards must use the adjustable Abyss content layer and retain Sidebar layer-1 for Waffle")
     for retired_dashboard_surface in (
         "ColorQuantizer {",
         "AdaptedMaterialScheme {",

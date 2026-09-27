@@ -5,6 +5,7 @@ import QtQuick.Layouts
 import Quickshell
 import qs
 import qs.modules.common
+import qs.modules.common.widgets
 import qs.modules.abyss.looks
 import "looks/AbyssLayout.js" as Placement
 
@@ -18,36 +19,53 @@ Item {
     property var handles: []
     property string selectedId: ""
     property real gap: 8
+    property var edgeSizes: ({top:1,right:1,bottom:1,left:1})
+    property string editingEdge: "top"
+    property var guides: []
+    property bool snapEnabled: true
     property bool outputOnly: true
     property real lastImpulse: 0
     property var inputRegions: []
     readonly property var selected: draft.find(p => p.id === selectedId)
-    readonly property var draftOptions: Object.assign({},Config.options?.abyss?.modules,{gap:gap})
+    readonly property var draftOptions: Object.assign({},Config.options?.abyss?.modules,{gap:gap,edgeSizes:edgeSizes})
     function refreshHandles(): void { handles = draft.map(p => p.id) }
     function begin(): void {
         draft = JSON.parse(JSON.stringify(Placement.resolve(Config.options?.abyss?.modules,outputName,
             Placement.seed(moduleLayer.zones,moduleLayer.edge,width,height))))
-        gap = Placement.optionsForOutput(Config.options?.abyss?.modules,outputName).gap
+        const options = Placement.optionsForOutput(Config.options?.abyss?.modules,outputName)
+        gap = options.gap
+        edgeSizes = Object.assign({top:1,right:1,bottom:1,left:1},options.edgeSizes)
+        editingEdge = moduleLayer.edge
+        guides = []
         selectedId = ""
         refreshHandles()
         forceActiveFocus()
     }
     function finish(save): void {
-        if (save) Config.setNestedValues(Placement.saveProfile(Config.options?.abyss?.modules,outputName,draft,gap,outputOnly))
+        if (save) Config.setNestedValues(Placement.saveProfile(Config.options?.abyss?.modules,outputName,draft,gap,outputOnly,edgeSizes))
+        guides = []
         GlobalStates.abyssEditing = false
     }
     function reset(): void {
         draft = Placement.seed(moduleLayer.zones,moduleLayer.edge,width,height)
         gap = 8
+        edgeSizes = {top:1,right:1,bottom:1,left:1}
+        guides = []
         selectedId = ""
         refreshHandles()
     }
     function change(key,value): void {
         draft = draft.map(p => p.id === selectedId ? Object.assign({},p,{[key]:value}) : p)
     }
-    function move(id,x,y): void {
+    function move(id,x,y,snap = true): void {
         selectedId = id
-        draft = Placement.move(draft,id,x,y,width,height)
+        if (snap && snapEnabled) {
+            const options = Object.assign({},draftOptions,{extents:moduleLayer.measuredExtents,editing:true})
+            const result = Placement.snapMove(draft,id,x,y,width,height,options,Appearance.fontSizeScale)
+            draft = result.placements
+            guides = result.guides
+        } else { draft = Placement.move(draft,id,x,y,width,height); guides = [] }
+        editingEdge = draft.find(p => p.id===id)?.edge ?? editingEdge
         const now = Date.now()
         if (now-lastImpulse > 80) {
             const p = draft.find(p => p.id === id)
@@ -55,12 +73,13 @@ Item {
             lastImpulse = now
         }
     }
+    onSelectedChanged: if (selected) editingEdge = selected.edge
     function add(kind): void {
         if (draft.length >= 24) return
         const existing = draft.find(p => p.kind === kind && !p.enabled)
         if (existing) { selectedId = existing.id;change("enabled",true);return }
         const id = kind+"-"+Date.now()
-        draft = Placement.normalize(draft.concat([{id:id,kind:kind,edge:"top",position:.5}]),"top")
+        draft = Placement.normalize(draft.concat([{id:id,kind:kind,edge:editingEdge,position:.5}]),"top")
         selectedId = id
         refreshHandles()
     }
@@ -93,11 +112,33 @@ Item {
                 anchors.fill: parent
                 cursorShape: pressed ? Qt.ClosedHandCursor : Qt.OpenHandCursor
                 onPressed: root.selectedId = handle.modelData
+                onReleased: root.guides = []
+                onCanceled: root.guides = []
                 onPositionChanged: mouse => {
                     if (!pressed) return
                     const point = mapToItem(root,mouse.x,mouse.y)
-                    root.move(handle.modelData,point.x,point.y)
+                    root.move(handle.modelData,point.x,point.y,!(mouse.modifiers & Qt.ShiftModifier))
                 }
+            }
+        }
+    }
+    Repeater {
+        model: root.guides
+        Item {
+            required property var modelData
+            anchors.fill: parent
+            Rectangle {
+                x: modelData.horizontal ? modelData.along : 0
+                y: modelData.horizontal ? 0 : modelData.along
+                width: modelData.horizontal ? 1 : root.width
+                height: modelData.horizontal ? root.height : 1
+                color: AbyssStyle.accent; opacity: .6
+            }
+            AbyssLabel {
+                text: modelData.label
+                x: modelData.horizontal ? modelData.along+8 : root.width/2
+                y: modelData.horizontal ? 76 : modelData.along+8
+                color: AbyssStyle.accent
             }
         }
     }
@@ -118,11 +159,15 @@ Item {
         edge: "bottom"; identity: "edgeEditor"; outputName: root.outputName
         controller: root.controller
         open: root.visible
-        span: Math.min(root.width-80,1000); along: (root.width-span)/2; depth: 192
+        span: Math.min(root.width-48,1180); along: (root.width-span)/2; depth: 246
         embeddedItem: toolbar
     }
     readonly property Region toolbarRegion: Region { item: toolbar }
-    readonly property var regions: inputRegions.concat([toolbarRegion])
+    readonly property Region paletteRegion: Region { item: palette.popup.contentItem; width: palette.popup.visible ? palette.popup.contentItem.width : 0 }
+    readonly property Region selectionRegion: Region { item: selection.popup.contentItem; width: selection.popup.visible ? selection.popup.contentItem.width : 0 }
+    readonly property Region edgeRegion: Region { item: edgeChoice.popup.contentItem; width: edgeChoice.popup.visible ? edgeChoice.popup.contentItem.width : 0 }
+    readonly property Region alignmentRegion: Region { item: alignmentChoice.popup.contentItem; width: alignmentChoice.popup.visible ? alignmentChoice.popup.contentItem.width : 0 }
+    readonly property var regions: inputRegions.concat([toolbarRegion,paletteRegion,selectionRegion,edgeRegion,alignmentRegion])
     ColumnLayout {
         id: toolbar
         parent: editorBody.contentParent
@@ -135,20 +180,45 @@ Item {
             AbyssButton { text: "Done"; glyph: "check"; onClicked: root.finish(true) }
         }
         RowLayout {
-            ComboBox { id: palette; model: Placement.catalog; Layout.preferredWidth: 190 }
-            AbyssButton { text: "Add module"; glyph: "add"; enabled: root.draft.length<24; onClicked: root.add(palette.currentText) }
+            StyledComboBox { id: palette; model: Placement.catalog.map(kind => ({label:Placement.label(kind),kind:kind})); textRole:"label";valueRole:"kind";Layout.preferredWidth: 190 }
+            AbyssButton { text: "Add module"; glyph: "add"; enabled: root.draft.length<24; onClicked: root.add(palette.currentValue) }
             AbyssLabel { text: "Gap" }
             AbyssSlider { from: 0; to: 32; value: root.gap; onMoved: root.gap=value; Layout.fillWidth: true }
-            CheckBox { text: "This output only"; checked: root.outputOnly; onToggled: root.outputOnly=checked }
+            AbyssCheckBox { text: "This output only"; checked: root.outputOnly; onToggled: root.outputOnly=checked }
         }
         RowLayout {
-            AbyssLabel { text: root.selected?.kind ?? "Drag a module to any edge"; Layout.fillWidth: true }
-            ComboBox { model: root.draft.map(p => p.id); onActivated: root.selectedId=currentText; Layout.preferredWidth: 170 }
+            AbyssLabel { text: "Edge" }
+            StyledComboBox { id: edgeChoice; model:["top","right","bottom","left"]; currentIndex:model.indexOf(root.editingEdge); onActivated:root.editingEdge=currentText; Layout.preferredWidth:110 }
+            AbyssLabel { text: "Shared size" }
+            AbyssSlider { from:.6;to:1.8;value:Placement.edgeSize(root.draftOptions,root.editingEdge);Layout.fillWidth:true;onMoved:root.edgeSizes=Object.assign({},root.edgeSizes,{[root.editingEdge]:value}) }
+            AbyssLabel { text: Math.round(Placement.edgeSize(root.draftOptions,root.editingEdge)*100)+"%" }
+            AbyssCheckBox { text:"Snap to guides";checked:root.snapEnabled;onToggled:root.snapEnabled=checked }
+        }
+        RowLayout {
+            StyledComboBox {
+                id: selection
+                model: root.draft.map(p => ({label:Placement.label(p.kind)+(p.enabled ? "" : " (disabled)"),id:p.id}))
+                textRole:"label";valueRole:"id";currentIndex:root.draft.findIndex(p => p.id===root.selectedId)
+                displayText:root.selected ? Placement.label(root.selected.kind) : "Select a module"
+                onActivated:root.selectedId=currentValue;Layout.preferredWidth:190
+            }
             AbyssButton { text: root.selected?.enabled === false ? "Enable" : "Disable"; enabled: root.selected !== undefined; onClicked: root.change("enabled",!root.selected.enabled) }
             AbyssButton { text: "Remove"; enabled: root.selected !== undefined; onClicked: { root.draft=root.draft.filter(p => p.id!==root.selectedId);root.selectedId="";root.refreshHandles() } }
-            AbyssLabel { text: "Size" }
-            AbyssSlider { from: .6; to: 1.8; value: root.selected?.size ?? 1; enabled: root.selected !== undefined; Layout.preferredWidth: 100; onMoved: root.change("size",value) }
+            StyledComboBox {
+                id: alignmentChoice
+                model:[{label:"Free position",value:"free"},{label:"Align start",value:"start"},{label:"Align center",value:"center"},{label:"Align end",value:"end"}]
+                textRole:"label";valueRole:"value";currentIndex:Math.max(0,model.findIndex(p => p.value===root.selected?.alignment))
+                enabled:root.selected !== undefined;onActivated:root.change("alignment",currentValue);Layout.preferredWidth:146
+            }
+            AbyssCheckBox {
+                text:"Custom size";checked:root.selected?.customSize ?? false;enabled:root.selected !== undefined
+                onToggled: {
+                    if(checked) root.change("size",Placement.edgeSize(root.draftOptions,root.selected.edge))
+                    root.change("customSize",checked)
+                }
+            }
+            AbyssSlider { from: .6; to: 1.8; value: root.selected?.customSize ? root.selected.size : Placement.edgeSize(root.draftOptions,root.selected?.edge ?? root.editingEdge); enabled: root.selected?.customSize ?? false; Layout.fillWidth:true; onMoved: root.change("size",value) }
         }
-        AbyssLabel { text: "Drag along an edge to reorder. Drag toward another edge to move there. Enter saves; Escape cancels."; color: AbyssStyle.textColorMuted }
+        AbyssLabel { text: "Drag to move or reorder. Aligned modules form groups on their edge. Hold Shift to bypass snapping. Enter saves; Escape cancels."; color: AbyssStyle.textColorMuted;Layout.fillWidth:true;wrapMode:Text.WordWrap }
     }
 }

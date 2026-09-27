@@ -15,22 +15,23 @@ ComboBox {
     property list<string> settingsSearchKeywords: []
 
     property real baseHeight: 38
-    property real radius: Appearance.rounding.small
+    readonly property bool abyssStyle: Config.options?.panelFamily === "abyss"
+    property real radius: abyssStyle ? baseHeight/2 : Appearance.rounding.small
 
     hoverEnabled: true
     opacity: root.enabled ? 1 : 0.4
 
-    readonly property color _bgColor: Appearance.colors.colLayer2
-    readonly property color _bgHoverColor: Appearance.colors.colLayer2Hover
-    readonly property color _bgActiveColor: Appearance.colors.colLayer2Active
+    readonly property color _bgColor: abyssStyle ? Qt.alpha(Appearance.colors.colPrimary,.08) : Appearance.colors.colLayer2
+    readonly property color _bgHoverColor: abyssStyle ? Qt.alpha(Appearance.colors.colPrimary,.16) : Appearance.colors.colLayer2Hover
+    readonly property color _bgActiveColor: abyssStyle ? Qt.alpha(Appearance.colors.colPrimary,.24) : Appearance.colors.colLayer2Active
     readonly property color _textColor: Appearance.colors.colOnLayer2
     readonly property color _subtextColor: Appearance.colors.colSubtext
-    readonly property color _borderColor: "transparent"
-    readonly property real _borderWidth: 0
+    readonly property color _borderColor: abyssStyle ? Qt.alpha(Appearance.colors.colPrimary,.28) : "transparent"
+    readonly property real _borderWidth: abyssStyle ? 1 : 0
     readonly property color _popupColor: Appearance.colors.colLayer3Base
-    readonly property color _popupBorderColor: Appearance.colors.colLayer0Border
-    readonly property color _popupHoverColor: Appearance.colors.colLayer3Hover
-    readonly property color _selectedColor: Appearance.colors.colPrimaryContainer
+    readonly property color _popupBorderColor: abyssStyle ? Qt.alpha(Appearance.colors.colPrimary,.35) : Appearance.colors.colLayer0Border
+    readonly property color _popupHoverColor: abyssStyle ? Qt.alpha(Appearance.colors.colPrimary,.12) : Appearance.colors.colLayer3Hover
+    readonly property color _selectedColor: abyssStyle ? Qt.alpha(Appearance.colors.colPrimary,.22) : Appearance.colors.colPrimaryContainer
 
     background: Rectangle {
         implicitHeight: root.baseHeight
@@ -87,6 +88,7 @@ ComboBox {
 
     popup: Popup {
         y: root.height + 4
+        margins: 8
         width: root.width
         implicitHeight: Math.min(contentItem.implicitHeight + 8, 300)
         padding: 4
@@ -129,7 +131,7 @@ ComboBox {
 
         background: Rectangle {
             id: popupBg
-            radius: root.radius
+            radius: root.abyssStyle ? 16 : root.radius
             color: root._popupColor
             border.width: 1
             border.color: root._popupBorderColor
@@ -167,7 +169,7 @@ ComboBox {
         background: Rectangle {
             radius: Appearance.rounding.unsharpenmore
             color: delegateItem.index === root.currentIndex ? root._selectedColor
-                : delegateItem.hovered ? root._popupHoverColor
+                : delegateItem.hovered || delegateItem.highlighted ? root._popupHoverColor
                 : "transparent"
 
             Behavior on color {

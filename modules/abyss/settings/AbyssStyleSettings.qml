@@ -129,7 +129,12 @@ ColumnLayout {
         SettingsGroup {
             SettingsNote { text:"Place modules on any edge with Live Editor. Their media, resource, clock, tray and workspace settings remain shared." }
             RippleButton { buttonText:"Edit Abyss layout";implicitHeight:36;Layout.fillWidth:true;onClicked:GlobalStates.startAbyssEditing() }
-            Percent { text:"Module size";configKey:"abyss.modules.size";fallback:1;minimum:.6;maximum:1.8 }
+            Percent { text:"Overall module scale";configKey:"abyss.modules.size";fallback:1;minimum:.6;maximum:1.8 }
+            Percent { text:"Top Edge module size";configKey:"abyss.modules.edgeSizes.top";fallback:1;minimum:.6;maximum:1.8 }
+            Percent { text:"Right Edge module size";configKey:"abyss.modules.edgeSizes.right";fallback:1;minimum:.6;maximum:1.8 }
+            Percent { text:"Bottom Edge module size";configKey:"abyss.modules.edgeSizes.bottom";fallback:1;minimum:.6;maximum:1.8 }
+            Percent { text:"Left Edge module size";configKey:"abyss.modules.edgeSizes.left";fallback:1;minimum:.6;maximum:1.8 }
+            SettingsNote { text:"Modules inherit their Edge size. Enable Custom size in Live Editor to override one module. Per-output sizes, snapping guides and start/center/end groups are available there." }
             AbyssOutputSelector { configPath:"bar.screenList";title:"Module outputs" }
             RippleButton { buttonText:"Module functionality settings";implicitHeight:36;Layout.fillWidth:true;onClicked:GlobalStates.openSettingsSection(10,"modules") }
         }

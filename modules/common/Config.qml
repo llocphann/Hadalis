@@ -501,6 +501,12 @@ Singleton {
                     property list<var> outputLayouts: []
                     property real gap: 8
                     property real size: 1
+                    property JsonObject edgeSizes: JsonObject {
+                        property real top: 1
+                        property real right: 1
+                        property real bottom: 1
+                        property real left: 1
+                    }
                     property real depth: 36
                 }
                 property JsonObject motion: JsonObject { property real intensity: 0.6 }

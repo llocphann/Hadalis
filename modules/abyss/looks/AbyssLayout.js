@@ -2,6 +2,11 @@
 var catalog = ["leftSidebarButton","distroIcon","activeWindow","resources","media",
     "workspaces","clock","utilButtons","battery","rightSidebarButton","tray",
     "timer","shellUpdate","weather","taskbar"];
+var labels = {leftSidebarButton:"Left sidebar",distroIcon:"Launcher",activeWindow:"Active window",
+    resources:"System resources",media:"Media",workspaces:"Workspaces",clock:"Clock",
+    utilButtons:"Quick actions",battery:"Battery",rightSidebarButton:"Right sidebar",tray:"System tray",
+    timer:"Timer",shellUpdate:"Updates",weather:"Weather",taskbar:"Taskbar"};
+function label(kind) { return labels[kind] || kind; }
 function bounded(value, fallback, low, high) {
     var number = Number(value);
     return Number.isFinite(number) ? Math.max(low,Math.min(high,number)) : fallback;
@@ -24,6 +29,8 @@ function normalize(list, fallbackEdge) {
         return {id:String(p.id || p.kind),kind:String(p.kind),
             edge:["top","right","bottom","left"].indexOf(p.edge)>=0 ? p.edge : fallbackEdge,
             position:bounded(p.position,0.5,0,1),enabled:p.enabled !== false,
+            alignment:["start","center","end"].indexOf(p.alignment)>=0 ? p.alignment : "free",
+            customSize:p.customSize === true || (p.customSize === undefined && Number.isFinite(Number(p.size)) && Number(p.size)!==1),
             size:bounded(p.size,1,0.6,1.8),depth:bounded(p.depth,1,0.5,2),
             influence:bounded(p.influence,1,0,2),compact:p.compact === true};
     });
@@ -51,7 +58,12 @@ function resolve(options, outputName, fallback) {
 }
 function optionsForOutput(options, outputName) {
     var profile = Array.from(options?.outputLayouts || []).find(function(p) { return p.outputName === outputName; });
-    return Object.assign({},options,{gap:profile?.gap ?? options?.gap ?? 8});
+    return Object.assign({},options,{gap:profile?.gap ?? options?.gap ?? 8,
+        edgeSizes:Object.assign({},options?.edgeSizes,profile?.edgeSizes)});
+}
+function edgeSize(options, edge) { return bounded(options?.edgeSizes?.[edge],1,.6,1.8); }
+function moduleSize(placement, options) {
+    return (placement.customSize ? placement.size : edgeSize(options,placement.edge))*bounded(options?.size,1,.6,1.8);
 }
 function project(x, y, width, height) {
     var distances = [y,width-x,height-y,x];
@@ -61,22 +73,55 @@ function project(x, y, width, height) {
 }
 function move(placements, id, x, y, width, height) {
     var location = project(x,y,width,height);
-    return normalize(placements.map(function(p) { return p.id===id ? Object.assign({},p,location) : p; }),"top");
+    return normalize(placements.map(function(p) { return p.id===id ? Object.assign({},p,location,{alignment:"free"}) : p; }),"top");
 }
-function saveProfile(options, outputName, placements, gap, outputOnly) {
+// Snap to the output center, end margins, and adjacent modules at the configured gap.
+// Guides are presentation data only; positions stay normalized for other resolutions.
+function snapMove(placements, id, x, y, width, height, options, fontScale) {
+    var moved = move(placements,id,x,y,width,height);
+    var selected = moved.find(function(p) { return p.id===id; });
+    if (!selected) return {placements:moved,guides:[]};
+    var horizontal = selected.edge==="top" || selected.edge==="bottom";
+    var length = horizontal ? width : height;
+    var margin = Math.min(34,length/12), usable = length-2*margin;
+    var records = geometry(moved,width,height,options,fontScale);
+    var own = records.find(function(p) { return p.id===id; });
+    if (!own || usable<=0) return {placements:moved,guides:[]};
+    var center = margin+selected.position*usable;
+    var gap = bounded(options?.gap,8,0,32);
+    var targets = [{center:length/2,line:length/2,label:"Center"},
+        {center:margin+own.span/2,line:margin,label:"Start"},
+        {center:length-margin-own.span/2,line:length-margin,label:"End"}];
+    geometry(moved.filter(function(p) { return p.id!==id; }),width,height,options,fontScale)
+        .filter(function(p) { return p.edge===selected.edge; }).forEach(function(p) {
+        targets.push({center:p.along-gap-own.span/2,line:p.along-gap,label:Math.round(gap)+" px gap"});
+        targets.push({center:p.along+p.span+gap+own.span/2,line:p.along+p.span+gap,label:Math.round(gap)+" px gap"});
+    });
+    var target = targets.filter(function(t) { return t.center-own.span/2>=margin && t.center+own.span/2<=length-margin; })
+        .sort(function(a,b) { return Math.abs(a.center-center)-Math.abs(b.center-center); })[0];
+    if (!target || Math.abs(target.center-center)>10) return {placements:moved,guides:[]};
+    moved = moved.map(function(p) { return p.id===id ? Object.assign({},p,{position:(target.center-margin)/usable}) : p; });
+    var actual = geometry(moved,width,height,options,fontScale).find(function(p) { return p.id===id; });
+    // Do not show a misleading guide when collision packing prevented this snap.
+    return {placements:moved,guides:Math.abs(actual.along+actual.span/2-target.center)<1
+        ? [{horizontal:horizontal,along:target.line,label:target.label}] : []};
+}
+function saveProfile(options, outputName, placements, gap, outputOnly, edgeSizes) {
     var normalized = normalize(placements,"top");
     var profiles = Array.from(options?.outputLayouts || []);
     if (outputOnly) {
         profiles = profiles.filter(function(p) { return p.outputName!==outputName; });
-        profiles.push({outputName:outputName,placements:normalized,gap:bounded(gap,8,0,32)});
+        profiles.push({outputName:outputName,placements:normalized,gap:bounded(gap,8,0,32),
+            edgeSizes:Object.assign({},edgeSizes ?? optionsForOutput(options,outputName).edgeSizes)});
         return {"abyss.modules.outputLayouts":profiles};
     }
     return {"abyss.modules.configured":true,"abyss.modules.placements":normalized,
-        "abyss.modules.gap":bounded(gap,8,0,32),"abyss.modules.outputLayouts":profiles.filter(function(p) { return p.outputName!==outputName; })};
+        "abyss.modules.gap":bounded(gap,8,0,32),"abyss.modules.outputLayouts":profiles.filter(function(p) { return p.outputName!==outputName; }),
+        "abyss.modules.edgeSizes":Object.assign({},edgeSizes ?? options?.edgeSizes)};
 }
 function stripDepth(placements, edge, options, fontScale) {
     return placements.filter(function(p) { return p.enabled && p.edge===edge; }).reduce(function(depth,p) {
-        return Math.max(depth,32*bounded(fontScale,1,.7,2)*p.size*p.depth*bounded(options?.size,1,.6,1.8)+16);
+        return Math.max(depth,32*bounded(fontScale,1,.7,2)*moduleSize(p,options)*p.depth+16);
     },48);
 }
 function geometry(placements, width, height, options, fontScale) {
@@ -91,16 +136,29 @@ function geometry(placements, width, height, options, fontScale) {
             var measured = options?.extents?.[p.id];
             var natural = Number.isFinite(measured) && !(options?.editing && measured<1) ? Math.max(0,measured)
                 : extent(p.kind,!horizontal)*bounded(fontScale,1,0.7,2);
-            return natural*p.size*bounded(options?.size,1,0.6,1.8);
+            return natural*moduleSize(p,options);
         });
         var total = sizes.reduce(function(sum,n) { return sum+n; },0);
         if (!list.length || length < 1) return;
         gap = Math.min(gap,Math.max(0,(length-2*margin)/(list.length*4)));
         var scale = Math.min(1,Math.max(0.01,(length-2*margin-gap*(list.length-1))/Math.max(1,total)));
+        // Each aligned group keeps its internal order; free placements keep their
+        // requested position. Resolve collisions once across the entire edge.
+        var targets = list.map(function(p,index) { return margin+p.position*(length-2*margin)-sizes[index]*scale/2; });
+        ["start","center","end"].forEach(function(alignment) {
+            var indices = list.map(function(p,i) { return p.alignment===alignment ? i : -1; }).filter(function(i) { return i>=0; });
+            var groupSpan = indices.reduce(function(sum,i) { return sum+sizes[i]*scale; },0)+Math.max(0,indices.length-1)*gap;
+            var start = alignment==="start" ? margin : alignment==="end" ? length-margin-groupSpan : (length-groupSpan)/2;
+            indices.forEach(function(i) { targets[i]=start;start+=sizes[i]*scale+gap; });
+        });
+        var order = list.map(function(p,index) { return {placement:p,index:index}; }).sort(function(a,b) {
+            return targets[a.index]-targets[b.index] || a.placement.id.localeCompare(b.placement.id);
+        });
         var cursor = margin;
-        var records = list.map(function(p,index) {
+        var records = order.map(function(entry) {
+            var p=entry.placement,index=entry.index;
             var size = sizes[index]*scale;
-            var start = Math.max(cursor,margin+p.position*(length-2*margin)-size/2);
+            var start = Math.max(cursor,targets[index]);
             cursor = start+size+gap;
             return Object.assign({},p,{along:start,span:size,vertical:!horizontal,
                 depth:bounded(options?.depth,36,22,64)*p.depth,
@@ -112,7 +170,7 @@ function geometry(placements, width, height, options, fontScale) {
             end = records[i].along-gap;
         }
         records.forEach(function(p) {
-            var inset = 8, cross = 32*bounded(fontScale,1,.7,2)*p.size*bounded(options?.size,1,.6,1.8)*scale;
+            var inset = 8, cross = 32*bounded(fontScale,1,.7,2)*moduleSize(p,options)*scale;
             p.content = horizontal ? {x:p.along,y:edge==="top"?inset:height-inset-cross,width:p.span,height:cross}
                 : {x:edge==="left"?inset:width-inset-cross,y:p.along,width:cross,height:p.span};
             result.push(p);

@@ -46,6 +46,35 @@ const measured=geometry(initial.filter(p=>['clock','timer'].includes(p.kind)),19
 assert.equal(measured.find(p=>p.kind==='clock').span,300,'mature module sizes already include font scale');
 assert.equal(measured.find(p=>p.kind==='timer').span,0,'idle indicators have no empty input');
 assert(geometry(initial,1920,1200,{extents:{timer:0},editing:true},1).find(p=>p.kind==='timer').span>0,'editor can select inactive indicators');
+const sized=normalize([{id:'a',kind:'clock',edge:'top',position:.1},{id:'b',kind:'clock',edge:'top',position:.4},
+    {id:'c',kind:'clock',edge:'right',position:.5},{id:'custom',kind:'clock',edge:'top',position:.8,size:1.6,customSize:true}], 'top');
+const sizing={edgeSizes:{top:1.25,right:.8},extents:{a:100,b:100,c:100,custom:100}};
+const sizes=geometry(sized,1920,1200,sizing,1);
+assert.equal(sizes.find(p=>p.id==='a').span,125);assert.equal(sizes.find(p=>p.id==='b').span,125,'one edge inherits one size');
+assert.equal(sizes.find(p=>p.id==='c').span,80,'another edge can have another size');
+assert.equal(sizes.find(p=>p.id==='custom').span,160,'explicit custom size overrides shared edge size');
+assert.equal(stripDepth(sized,'top',sizing,1),67.2,'reservation contains the largest custom module');
+assert(normalize([{kind:'clock',size:1.3}], 'top')[0].customSize,'historic non-default sizes migrate to explicit overrides');
+assert(!normalize([{kind:'clock',size:1.3,customSize:false}], 'top')[0].customSize,'unchecked override inherits even when old size is saved');
+const inherited=saveProfile({edgeSizes:{top:1},outputLayouts:[{outputName:'B',placements:[],edgeSizes:{top:.7}}]},'A',sized,8,true,sizing.edgeSizes);
+assert.equal(optionsForOutput({outputLayouts:inherited['abyss.modules.outputLayouts']},'A').edgeSizes.top,1.25);
+assert.equal(inherited['abyss.modules.outputLayouts'][0].edgeSizes.top,.7,'save preserves another output size');
+for(const edge of ['top','right','bottom','left']) {
+    const aligned=normalize([{id:'a',kind:'clock',edge,position:.2,alignment:'center'},
+        {id:'b',kind:'clock',edge,position:.4,alignment:'center'}],edge);
+    const length=['top','bottom'].includes(edge)?1920:1200;
+    for(const alignment of ['start','center','end']) {
+        const group=geometry(aligned.map(p=>({...p,alignment})),1920,1200,{gap:8,extents:{a:100,b:100}},1);
+        assert.equal(group[1].along-group[0].along,108,'aligned groups preserve order and gap');
+        assert.equal(group[0].along,alignment==='start'?34:alignment==='end'?length-34-208:(length-208)/2);
+    }
+}
+const solo=normalize([{id:'clock',kind:'clock',edge:'top',position:.2}], 'top');
+const snapped=snapMove(solo,'clock',964,10,1920,1200,{extents:{clock:100}},1);
+assert.equal(snapped.placements[0].position,.5);assert.equal(snapped.guides[0].along,960);
+assert.equal(snapMove(solo,'clock',990,10,1920,1200,{},1).guides.length,0,'outside tolerance stays free');
+assert.equal(snapMove(solo,'clock',1900,601,1920,1200,{},1).guides[0].horizontal,false,'vertical edge uses horizontal guide');
+assert.equal(move([{...solo[0],alignment:'center'}],'clock',600,10,1920,1200)[0].alignment,'free','drag releases group alignment');
 console.log('PASS: normalized module packing, all edges/scales, output profiles, disabled state and bounded malformed input');
 """
 subprocess.run(["node", "-e", program], cwd=root, check=True)

@@ -1,4 +1,5 @@
 import QtQuick
+import QtQuick.Window
 import qs.modules.common
 import qs.services
 
@@ -13,7 +14,18 @@ Item {
     property var records: []
     property var edgeInsets: ({left:8,top:8,right:8,bottom:8})
     readonly property int capacity: 12
-    readonly property bool ready: pass.status === ShaderEffect.Compiled
+    // Qt's QSB reflection cache can render a recreated effect while its new
+    // manager still reports Uncompiled. Gate input on a presented frame and
+    // supported backend instead; malformed packages still report Error.
+    property bool framePresented: false
+    readonly property bool ready: framePresented && GraphicsInfo.api !== GraphicsInfo.Software
+        && GraphicsInfo.api !== GraphicsInfo.Null && pass.status !== ShaderEffect.Error
+    Window.onWindowChanged: root.framePresented = false
+    Connections {
+        target: root.Window.window
+        enabled: !root.framePresented
+        function onFrameSwapped(): void { root.framePresented = true }
+    }
     readonly property string diagnostic: pass.log
     function packed(index) {
         const r = root.records[index]?.surface

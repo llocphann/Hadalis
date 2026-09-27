@@ -1953,6 +1953,8 @@ Singleton {
                 property real widthRatio: 0.72
                 property real heightRatio: 0.72
                 property JsonObject canvas: JsonObject {
+                    property real workspaceWidth: 0
+                    property real workspaceHeight: 0
                     property int gridSize: 24
                     property bool snap: true
                     property bool autoAdjustSize: true

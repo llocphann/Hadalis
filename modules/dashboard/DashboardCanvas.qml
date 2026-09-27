@@ -1,12 +1,14 @@
 pragma ComponentBehavior: Bound
 
 import QtQuick
+import QtQuick.Controls
 import QtQuick.Layouts
 import qs
 import qs.services
 import qs.modules.common
 import qs.modules.common.widgets
 import qs.modules.common.functions
+import "DashboardLayout.js" as WorkingLayout
 
 Item {
     id: root
@@ -16,6 +18,15 @@ Item {
 
     property bool editMode: false
     property bool presentationActive: true
+    readonly property bool responsiveWorkspace: (Config.options?.panelFamily ?? "abyss") === "abyss"
+    readonly property var workspace: {
+        if (!responsiveWorkspace) return {width:Math.max(1,width),height:Math.max(1,height),rects:({})}
+        const entries=root._allIds.map(id=>root._entryFor(id)), minimums=({})
+        for (const id of root._allIds) minimums[id]=root._minimumSize(id)
+        return WorkingLayout.project(entries,root.width,root.height,minimums,root.collisionGap,
+            {width:Config.options?.dashboard?.canvas?.workspaceWidth ?? 0,
+             height:Config.options?.dashboard?.canvas?.workspaceHeight ?? 0})
+    }
     signal requestEventsDialog(var event)
 
     readonly property int gridSize: Math.max(8,
@@ -145,10 +156,16 @@ Item {
 
     function _entriesForWrite() {
         const stored = root._storedEntries()
-        const source = stored.length > 0 ? stored : root.defaultEntries()
+        const source = root._allIds.map(id=>root._entryFor(id)).concat(
+            stored.filter(entry=>!root._allIds.includes(String(entry?.id ?? ""))))
         const result = []
         for (let i = 0; i < source.length; ++i) {
             const entry = source[i]
+            const projected = root.workspace.rects[String(entry?.id ?? "")]
+            if (root.responsiveWorkspace && projected) {
+                result.push(Object.assign({id:String(entry.id)},root._normalizedRect(projected,entry.visible)))
+                continue
+            }
             result.push({
                 id: String(entry?.id ?? ""),
                 x: Number(entry?.x ?? 0),
@@ -159,6 +176,15 @@ Item {
             })
         }
         return result
+    }
+
+    function _writeEntries(entries) {
+        const updates={"dashboard.canvas.widgets":entries}
+        if(root.responsiveWorkspace) {
+            updates["dashboard.canvas.workspaceWidth"]=canvas.width
+            updates["dashboard.canvas.workspaceHeight"]=canvas.height
+        }
+        Config.setNestedValues(updates)
     }
 
     function _persistPatch(id, patch) {
@@ -173,7 +199,7 @@ Item {
         }
         if (!found)
             entries.push(Object.assign({}, root._defaultEntry(id), patch))
-        Config.setNestedValue("dashboard.canvas.widgets", entries)
+        root._writeEntries(entries)
     }
 
     function setWidgetVisible(id, visible) {
@@ -220,7 +246,8 @@ Item {
         root._preview = ({})
         root._interaction = null
         root.selectedId = ""
-        Config.setNestedValue("dashboard.canvas.widgets", root.defaultEntries())
+        Config.setNestedValues({"dashboard.canvas.widgets":root.defaultEntries(),
+            "dashboard.canvas.workspaceWidth":0,"dashboard.canvas.workspaceHeight":0})
     }
 
     function _minimumSize(id) {
@@ -253,7 +280,8 @@ Item {
     }
 
     function _rectPixels(id) {
-        return root._rectPixelsForGeometry(id, root.geometryFor(id))
+        if(root._preview[id]) return root._rectPixelsForGeometry(id,root._preview[id])
+        return root.workspace.rects[id] ?? root._rectPixelsForGeometry(id,root._entryFor(id))
     }
 
     function _normalizedRect(px, visible) {
@@ -739,7 +767,7 @@ Item {
         for (let i = 0; i < root.visibleIds.length; ++i) {
             const id = String(root.visibleIds[i])
             result[id] = root._cloneRect(
-                root._rectPixelsForGeometry(id, root._entryFor(id)))
+                root._rectPixels(id))
         }
         return result
     }
@@ -1107,7 +1135,7 @@ Item {
                 entries[index] = Object.assign({}, entries[index], patch)
             }
         }
-        Config.setNestedValue("dashboard.canvas.widgets", entries)
+        root._writeEntries(entries)
     }
 
     function beginMove(id, point) {
@@ -1329,12 +1357,19 @@ Item {
         }
     }
 
-    Item {
-        id: canvas
+    Flickable {
+        id: viewport
         anchors.fill: parent
-        // Per-card content remains clipped by cardViewport; elevation is a
-        // sibling outside that clip and needs to reach into shell padding.
-        clip: false
+        clip: root.responsiveWorkspace
+        contentWidth:canvas.width;contentHeight:canvas.height
+        interactive:root.responsiveWorkspace && root._interaction===null
+        boundsBehavior:Flickable.StopAtBounds
+        ScrollBar.vertical: ScrollBar { policy:root.responsiveWorkspace ? ScrollBar.AsNeeded : ScrollBar.AlwaysOff }
+        ScrollBar.horizontal: ScrollBar { policy:root.responsiveWorkspace ? ScrollBar.AsNeeded : ScrollBar.AlwaysOff }
+        Item {
+        id: canvas
+        width:root.workspace.width;height:root.workspace.height
+        clip:false
 
         DashboardEditGrid {
             anchors.fill: parent
@@ -1558,6 +1593,8 @@ Item {
                 ResizeHandle { widgetId: String(cardWrap.modelData); edge: "se"; cardItem: cardWrap }
             }
         }
+
+    }
 
     }
 

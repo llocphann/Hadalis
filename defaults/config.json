@@ -1058,6 +1058,8 @@
         "widthRatio": 0.72,
         "heightRatio": 0.72,
         "canvas": {
+            "workspaceWidth": 0,
+            "workspaceHeight": 0,
             "gridSize": 24,
             "snap": true,
             "autoAdjustSize": true,

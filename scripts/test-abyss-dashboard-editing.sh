@@ -51,6 +51,7 @@ ShellRoot {
             else if(root.step===3) {
                 root.canvas=root.find(body.contentItem.item,item=>typeof item.beginResize==="function")
                 if(!root.check(root.canvas!==null,"mature canvas loaded")) return
+                if(!root.check(!root.canvas._layoutHasOverlap(root.canvas._snapshotVisibleRects()),"default minimum-size cards project without overlap")) return
                 const entries=root.canvas.defaultEntries().map(p=>Object.assign({},p,{visible:p.id==="notes",x:.15,y:.15,w:.3,h:.35}))
                 Config.setNestedValue("dashboard.canvas.widgets",entries)
                 Config.setNestedValue("dashboard.canvas.snap",false)

@@ -13,8 +13,8 @@ StyledPopup {
     outsideClickBackdropBelowPopup: true
     closeOnOutsideClick: calendarContent.eventEditorActive
     onRequestClose: calendarContent.closeEventEditor()
-    onActiveChanged: {
-        if (!active)
+    onPresentationActiveChanged: {
+        if (!presentationActive)
             calendarContent.closeEventEditor()
     }
 

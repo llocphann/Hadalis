@@ -18,7 +18,7 @@ Item {
     property real lastStep: 0
     readonly property bool running: ticker.running
     readonly property var texture: textureSource
-    readonly property bool motionAllowed: presented && AbyssStyle.motionEnabled
+    readonly property bool motionAllowed: presented && AbyssStyle.motionEnabled && (Config.options?.abyss?.waves?.enabled ?? false)
     function reset(): void {
         simulation = Wave.create(sampleCount,outputWidth,outputHeight,parameters)
         Wave.setMass(simulation,records)

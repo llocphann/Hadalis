@@ -43,7 +43,7 @@ ShellRoot {
     Timer {
         interval: 100; running: true; repeat: true
         onTriggered: {
-            if(root.step === 0) Config.setNestedValue("abyss.quality","performance")
+            if(root.step === 0) { Config.setNestedValue("abyss.quality","performance");Config.setNestedValue("abyss.waves.enabled",true) }
             if(root.step === 4) {
                 if(!root.check(field.ready && waves.mode === "SLEEPING" && !waves.running,"ready and sleeping before input")) return
                 root.restingRevision = waves.revision;root.capture("rest")

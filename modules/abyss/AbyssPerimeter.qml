@@ -76,7 +76,7 @@ Scope {
             WlrLayershell.layer: GlobalStates.settingsNativeDialogOpen ? WlrLayer.Bottom : PolkitService.active ? WlrLayer.Top : (window.editorOpen || dialogBody.open || settings.open || dashboardBody.open || controls.open || (window.fullscreenCovered && window.presented)) ? WlrLayer.Overlay : WlrLayer.Top
             WlrLayershell.keyboardFocus: !window.presented || !field.ready || GlobalStates.regionSelectorOpen || GlobalStates.settingsNativeDialogOpen || PolkitService.active || window.overviewDragging
                 ? WlrKeyboardFocus.None
-                : (window.editorOpen || (dialogBody.open && dialogBody.ready) || (aux.open && aux.ready) || (settings.open && settings.ready) || (dashboardBody.open && dashboardBody.ready) || (controls.open && controls.ready)) ? WlrKeyboardFocus.Exclusive
+                : (window.editorOpen || (popup.open && (popup.contentItem.item?.keyboardFocus ?? false)) || (dialogBody.open && dialogBody.ready) || (aux.open && aux.ready) || (settings.open && settings.ready) || (dashboardBody.open && dashboardBody.ready) || (controls.open && controls.ready)) ? WlrKeyboardFocus.Exclusive
                 : ((leftPanel.open && leftPanel.ready) || (rightPanel.open && rightPanel.ready) || (popup.open && popup.ready) || (notification.open && notification.ready && notification.contentKind === "center"))
                     ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
             anchors { top: true; bottom: true; left: true; right: true }
@@ -176,7 +176,11 @@ Scope {
                 enabled: AbyssStyle.motionEnabled
                 NumberAnimation { duration: AbyssStyle.motionNormal; easing.type: Easing.OutCubic }
             }
-            readonly property var nativeInsets: Geometry.insets(AbyssStyle.perimeterThickness,root.barEdge,AbyssStyle.perimeterThickness,false)
+            readonly property var nativeInsets: {
+                const result = Geometry.insets(AbyssStyle.perimeterThickness,root.barEdge,AbyssStyle.perimeterThickness,false)
+                if (bar.visible) bar.placements.filter(p => p.enabled).forEach(p => result[p.edge] = AbyssStyle.barThickness)
+                return result
+            }
             AbyssSurfaceController {
                 id: liquid
                 outputName: window.outputName
@@ -236,8 +240,9 @@ Scope {
                     && GlobalStates.resolveOutputName(GlobalStates.abyssPopupTargetOutput,[]) === window.outputName
                 edgeInsets: window.nativeInsets
                 along: GlobalStates.abyssPopupAlong-span/2
-                span: Geometry.horizontal(edge) ? 390 : 440
-                depth: Geometry.horizontal(edge) ? 380 : 390
+                padding: 14
+                span: (Geometry.horizontal(edge) ? (contentItem.item?.desiredWidth ?? 390) : (contentItem.item?.desiredHeight ?? 300))+padding*2
+                depth: (Geometry.horizontal(edge) ? (contentItem.item?.desiredHeight ?? 300) : (contentItem.item?.desiredWidth ?? 390))+padding*2
                 obstacles: window.sideObstacles
                 contentKind: GlobalStates.abyssPopupKind || "media"
                 source: "content/AbyssPopupContent.qml"
@@ -430,7 +435,6 @@ Scope {
             && Geometry.targets(modelData?.name ?? "",Config.options?.dock?.screenList ?? [],Quickshell.screens.map(s => s.name))
         readonly property string dockEdge: ["top","bottom","left","right"].includes(Config.options?.dock?.position) ? Config.options.dock.position : "bottom"
         readonly property real thickness: root.outputInsets(modelData?.name ?? "",true)[edge]
-            + (root.barOnOutput(modelData?.name ?? "") && !(Config.options?.bar?.autoHide?.enable ?? false) && edge === root.barEdge ? 5 : 0)
             + (persistentDock && edge === dockEdge ? AbyssStyle.dockThickness : 0)
         screen: modelData
         visible: mapped

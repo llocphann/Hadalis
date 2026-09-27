@@ -54,6 +54,7 @@ ShellRoot {
         onTriggered: {
             if (failed) return
             if (step === 0) {
+                Config.setNestedValue("abyss.waves.enabled",true)
                 if (!check(deferred.status === Loader.Ready,"shared fallback composition")) return
                 GlobalStates.shellEntryReady = true
                 GlobalStates.deferredPanelsReady = false
@@ -90,7 +91,7 @@ ShellRoot {
             } else if (step === 7) {
                 if (!check(!body.ready,"reopen unload")) return
                 if (!check(moduleLayer.layoutRecords.length === 2 && moduleLayer.inputRegions.length === 2,"module-only input regions follow cross-edge placement")) return
-                if (!check(moduleLayer.deformations.length === 2,"each module owns a deformation")) return
+                if (!check(moduleLayer.deformations.length === 0,"resting modules do not dent the flat Screen Edge")) return
                 if (!check(moduleLayer.inputRegions.every(region => region.item.width <= 200 && region.item.height <= 100),"no fullscreen module input")) return
                 console.info("ABYSS_RUNTIME_PASS")
                 Qt.quit()

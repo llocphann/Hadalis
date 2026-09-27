@@ -464,16 +464,17 @@ Singleton {
             property JsonObject abyss: JsonObject {
                 property string quality: "balanced"
                 property JsonObject perimeter: JsonObject {
-                    property int thickness: 8
+                    property int thickness: 16
                     property int radius: 34
                     property bool visibleInFullscreen: false
                 }
                 property JsonObject surface: JsonObject {
-                    property real opacity: 0.91
+                    property real opacity: 0.78
                     property real tension: 0.5
                     property int softness: 24
                 }
                 property JsonObject waves: JsonObject {
+                    property bool enabled: false
                     property string preset: "balanced"
                     property real amplitude: 0.6
                     property real propagation: 0.8

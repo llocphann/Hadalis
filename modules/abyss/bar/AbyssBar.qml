@@ -26,14 +26,9 @@ Item {
     readonly property var layoutRecords: Layout.geometry(placements,width,height,draftOptions ?? Layout.optionsForOutput(Config.options?.abyss?.modules,outputName),Appearance.fontSizeScale)
     property var inputRegions: []
     property int revision: 0
-    readonly property var deformations: {
-        const unused = revision
-        return layoutRecords.map((rec,index) => {
-            const module = modules.itemAt(index)
-            return Geometry.panel(width,height,{left:8,top:8,right:8,bottom:8},rec.edge,rec.along-8,rec.span+16,
-                rec.depth+(module?.hovered ? 4 : 0)+(module?.pressed ? 3 : 0),1,0)
-        })
-    }
+    // Resting Screen Edge is flat. Interaction bulges come only from the opt-in solver.
+    readonly property var deformations: []
+
     Repeater {
         id: modules
         model: root.layoutRecords

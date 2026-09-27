@@ -86,10 +86,10 @@ def main() -> None:
         'property color embeddedBackgroundColor: "transparent"',
         "? root.embeddedBackgroundColor",
         "spacing: root.contentSpacing",
-        "visible: !root.embeddedPresentation",
-        "x: root.embeddedPresentation",
-        "width: root.embeddedPresentation",
-        "height: root.embeddedPresentation",
+        "visible: !root.effectiveEmbedded",
+        "x: root.effectiveEmbedded",
+        "width: root.effectiveEmbedded",
+        "height: root.effectiveEmbedded",
     ):
         require(window_dialog, token, "WindowDialog.qml")
 

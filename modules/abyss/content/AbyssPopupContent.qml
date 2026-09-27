@@ -4,47 +4,42 @@ import QtQuick.Layouts
 import qs
 import qs.services
 import qs.modules.common
+import qs.modules.bar
+import qs.modules.bar.weather
+import qs.modules.mediaControls
 import qs.modules.abyss.looks
 
-Flickable {
+// Rehost the mature popup contents, including Events, ThinkFan and Equalizer.
+Item {
     id: root
     property string kind: "media"
     property string outputName: ""
+    property var participant: null
     signal closeRequested()
-    contentHeight: column.implicitHeight
-    clip: true
-    boundsBehavior: Flickable.StopAtBounds
-    ColumnLayout {
-        id: column
-        width: root.width
-        spacing: AbyssStyle.sectionSpacing
-        RowLayout {
-            Layout.fillWidth: true
-            AbyssLabel { text: root.kind === "media" ? "Now Playing" : root.kind.charAt(0).toUpperCase()+root.kind.slice(1); font.bold: true; Layout.fillWidth: true }
-            AbyssButton { glyph: "close"; description: "Close popup"; onClicked: root.closeRequested() }
+    readonly property var feature: content.item
+    readonly property var featureContent: feature?.contentItem ?? feature
+    readonly property real desiredWidth: featureContent?.implicitWidth || 390
+    readonly property real desiredHeight: featureContent?.implicitHeight || 300
+    readonly property bool keyboardFocus: kind === "clock" && (feature?.keyboardFocus ?? false)
+    Loader {
+        id: content
+        anchors.fill: parent
+        sourceComponent: root.kind === "clock" ? calendar : root.kind === "battery" ? battery
+            : root.kind === "resources" ? resources : root.kind === "weather" ? weather
+            : root.kind === "audio" ? audio : media
+    }
+    Component { id: calendar; ClockCalendarPopup { embeddedHost: root } }
+    Component { id: battery; BatteryPopup { embeddedHost: root } }
+    Component { id: resources; ResourcesPopup { embeddedHost: root } }
+    Component { id: weather; WeatherPopupContent { compact: (root.participant?.width ?? 1920)<compactBreakpoint } }
+    Component { id: media; BarMediaPopup { onCloseRequested: root.closeRequested() } }
+    Component {
+        id: audio
+        ColumnLayout {
+            implicitWidth: 350
+            AbyssLabel { text: "Volume" }
+            AbyssSlider { Layout.fillWidth: true;value:Audio.value;onMoved:Audio.setSinkVolume(value) }
+            AbyssButton { text:"Mute";onClicked:Audio.toggleMute() }
         }
-        AbyssSeparator { Layout.fillWidth: true }
-        // Loader keeps its last implicit size after unloading. Exclude inactive
-        // content from the layout so another popup never inherits its gap.
-        Loader { Layout.fillWidth: true; active: root.kind === "media"; visible: active; source: "AbyssMediaSection.qml" }
-        AbyssLabel { visible: root.kind === "resources"; Layout.fillWidth: true; text: "CPU   " + Math.round(ResourceUsage.cpuUsage*100) + "%\nRAM   " + Math.round(ResourceUsage.memoryUsedPercentage*100) + "%\nGPU   " + Math.round(ResourceUsage.gpuUsage*100) + "%\nStorage   " + Math.round(ResourceUsage.diskUsedPercentage*100) + "%" }
-        AbyssLabel { visible: root.kind === "weather"; Layout.fillWidth: true; text: (Weather.showVisibleCity ? Weather.visibleCity+"\n" : "") + Weather.data.temp+" · "+Weather.data.description+"\nFeels like "+Weather.data.tempFeelsLike+"\nWind "+Weather.data.wind+"\nHumidity "+Weather.data.humidity }
-        AbyssLabel { visible: root.kind === "battery"; text: Battery.available ? Math.round(Battery.percentage*100)+"% · "+(Battery.isCharging ? "Charging" : "Battery power") : "No battery" }
-        Loader { active: root.kind === "clock"; visible: active; Layout.fillWidth: true; source: "AbyssCalendar.qml" }
-        AbyssLabel { visible: root.kind === "audio"; text: "Volume · " + Math.round(Audio.value*100)+"%" }
-        AbyssSlider { visible: root.kind === "audio"; Layout.fillWidth: true; value: Audio.value; onMoved: Audio.setSinkVolume(value) }
-        AbyssButton { visible: root.kind === "audio"; glyph: "volume_off"; text: "Mute"; onClicked: Audio.toggleMute() }
-        AbyssButton { text: "Related settings"; glyph: "settings"; onClicked: GlobalStates.openSettingsSection(root.kind === "battery" || root.kind === "audio" ? 1 : 10, root.kind === "battery" || root.kind === "audio" ? "" : "abyss") }
     }
-    property bool resourceLease: false
-    function syncLease(): void {
-        const wanted = kind === "resources"
-        if (wanted === resourceLease) return
-        if (wanted) ResourceUsage.keepAlive(false,false)
-        else ResourceUsage.releaseKeepAlive(false,false)
-        resourceLease = wanted
-    }
-    Component.onCompleted: syncLease()
-    onKindChanged: syncLease()
-    Component.onDestruction: if (resourceLease) ResourceUsage.releaseKeepAlive(false,false)
 }

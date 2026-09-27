@@ -42,11 +42,11 @@ StyledPopup {
     property QtObject resourceMonitor: ResourceUsageMonitor {
         network: false
         histories: false
-        active: popup.active
+        active: popup.presentationActive
     }
 
-    onActiveChanged: {
-        if (popup.active)
+    onPresentationActiveChanged: {
+        if (popup.presentationActive)
             ThinkFanService.refresh()
     }
 

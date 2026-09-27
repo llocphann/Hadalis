@@ -2046,16 +2046,17 @@
     "abyss": {
         "quality": "balanced",
         "perimeter": {
-            "thickness": 8,
+            "thickness": 16,
             "radius": 34,
             "visibleInFullscreen": false
         },
         "surface": {
-            "opacity": 0.91,
+            "opacity": 0.78,
             "tension": 0.5,
             "softness": 24
         },
         "waves": {
+            "enabled": false,
             "preset": "balanced",
             "amplitude": 0.6,
             "propagation": 0.8,

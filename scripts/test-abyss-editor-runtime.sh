@@ -47,8 +47,8 @@ ShellRoot {
                 GlobalStates.abyssEditing=true
             }
             if(root.step===1) {
-                editor.move("clock",600,10)
-                editor.move("clock",990,350)
+                editor.move("clock",editor.width*.6,10)
+                editor.move("clock",editor.width-10,editor.height/2)
                 if(!root.check(layer.layoutRecords[0].edge==="right","cross edge live placement")) return
                 if(!root.check(JSON.stringify(Config.options.abyss.modules.placements)===root.before,"drag writes only draft")) return
                 editor.finish(false)
@@ -58,7 +58,7 @@ ShellRoot {
                 GlobalStates.abyssEditing=true
             }
             if(root.step===3) {
-                editor.move("clock",990,350);editor.gap=17
+                editor.move("clock",editor.width-10,editor.height/2);editor.gap=17
                 editor.add("media");editor.change("enabled",false)
                 editor.finish(true)
             }

@@ -1,5 +1,22 @@
 # Abyss continuous liquid mass
 
+## Maintainer clarification (September 27)
+
+Abyss is the intended successor to Material. Shared layouts, controls, sizes and
+feature behavior remain the design baseline. The rework concerns ownership and
+presentation of Screen Edge, modules, popups, Dock and large surfaces.
+
+The resting Screen Edge is a thicker **flat, continuous strip**, with no permanent
+module depressions or bulges. Waves are optional and disabled by default.
+Transparency, wallpaper blur and wave controls enhance the existing design;
+opaque, blur-free, wave-free presentation uses the original Material surface ink.
+Popup features supply their existing content and measured size. The central
+output field supplies the attached silhouette once, rather than each feature
+painting another connector. These instructions supersede the earlier always
+sculpted module silhouettes and default interactive waves in the concept brief.
+Material remains available for regression comparison during this cutover;
+Waffle remains independently supported.
+
 ## Audit baseline and scope
 
 The September 27 redesign starts at dev `aed7241f202e7d99f248aaeb1a1989ed99d7acc2`.

@@ -12,6 +12,19 @@ LazyLoader {
     id: root
 
     property Item hoverTarget
+    // The same feature/content can be hosted by the output's Abyss field.
+    // No second native popup, connector painter or feature implementation.
+    property Item embeddedHost: null
+    readonly property bool presentationActive: embeddedHost ? embeddedHost.visible : active
+    function syncEmbeddedContent(): void {
+        if (!embeddedHost || !contentItem) return
+        contentItem.parent = embeddedHost
+        contentItem.x = 0; contentItem.y = 0
+        contentItem.width = Qt.binding(() => embeddedHost.width)
+        contentItem.height = Qt.binding(() => embeddedHost.height)
+    }
+    onEmbeddedHostChanged: syncEmbeddedContent()
+    onContentItemChanged: syncEmbeddedContent()
     // Optional rect in hoverTarget-local coordinates. The target itself remains
     // the real visual/source control for output ownership; this rect only narrows
     // tangent placement (for example a right-click point inside a broad Bar zone).
@@ -148,7 +161,7 @@ LazyLoader {
 
     signal requestClose()
 
-    active: root._anchorReady && (root.requestedVisible || root._lingerVisible)
+    active: !root.embeddedHost && root._anchorReady && (root.requestedVisible || root._lingerVisible)
 
     function _syncBarAutoHideLease(): void {
         if (root._barPopupHoverLeaseId <= 0)
@@ -235,6 +248,7 @@ LazyLoader {
 
     onRequestedVisibleChanged: root._syncRequestedVisibility()
     Component.onCompleted: {
+        root.syncEmbeddedContent()
         root._barPopupHoverLeaseId = GlobalStates.allocateBarPopupHoverLease()
         root._syncBarAutoHideLease()
         root._syncRequestedVisibility()

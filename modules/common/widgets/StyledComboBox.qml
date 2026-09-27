@@ -27,7 +27,7 @@ ComboBox {
     readonly property color _textColor: Appearance.colors.colOnLayer2
     readonly property color _subtextColor: Appearance.colors.colSubtext
     readonly property color _borderColor: abyssStyle ? Qt.alpha(Appearance.colors.colPrimary,.28) : "transparent"
-    readonly property real _borderWidth: abyssStyle ? 1 : 0
+    readonly property real _borderWidth: abyssStyle && visualFocus ? 1 : 0
     readonly property color _popupColor: Appearance.colors.colLayer3Base
     readonly property color _popupBorderColor: abyssStyle ? Qt.alpha(Appearance.colors.colPrimary,.35) : Appearance.colors.colLayer0Border
     readonly property color _popupHoverColor: abyssStyle ? Qt.alpha(Appearance.colors.colPrimary,.12) : Appearance.colors.colLayer3Hover
@@ -133,7 +133,7 @@ ComboBox {
             id: popupBg
             radius: root.abyssStyle ? 16 : root.radius
             color: root._popupColor
-            border.width: 1
+            border.width: root.abyssStyle ? 0 : 1
             border.color: root._popupBorderColor
 
             Behavior on radius { enabled: Appearance.animationsEnabled; NumberAnimation { duration: Appearance.animation.elementResize.duration; easing.type: Appearance.animation.elementResize.type; easing.bezierCurve: Appearance.animation.elementResize.bezierCurve } }

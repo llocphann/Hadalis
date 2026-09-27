@@ -24,6 +24,8 @@ Button {
     property bool altActionEnabled: true
     property var middleClickAction // When middle clicking
     property bool bounce: true
+    property bool waveFace: false
+    readonly property Item waveFaceItem: waveLoader.item
     // Cookie Shapes: an organic face costs a Canvas, and a segmented group needs
     // its members to share one continuous silhouette. Standalone semantic
     // controls opt in; grouped ones stay rectangular on purpose.
@@ -81,6 +83,7 @@ Button {
             colBackground)) : colBackground
 
     onDownChanged: {
+        if (root.down && root.waveFaceItem) root.waveFaceItem.swell(buttonMouseArea.mouseX/Math.max(1,width))
         if (root.parent.clickIndex === undefined)
             return
         if (root.down)
@@ -165,7 +168,11 @@ Button {
         bottomRightRadius: root.rightRadius
         implicitHeight: 50
 
-        color: root.color
+        color: root.waveFace ? "transparent" : root.color
+        Loader {
+            id:waveLoader;anchors.fill:parent;active:root.waveFace
+            sourceComponent:AbyssChoiceFace { fillColor:root.color }
+        }
         border.width: 0
         border.color: "transparent"
         Behavior on color {

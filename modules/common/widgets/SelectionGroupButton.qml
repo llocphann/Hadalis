@@ -15,6 +15,7 @@ GroupButton {
     horizontalPadding: 11
     verticalPadding: 6
     bounce: false
+    waveFace: Config.options?.panelFamily === "abyss"
     property string buttonIcon
     property string buttonPreviewKind: ""
     property real maxTextWidth: 180

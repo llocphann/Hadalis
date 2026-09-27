@@ -40,8 +40,8 @@ Button {
     property int pointerDragThreshold: 10
     readonly property bool pointerDragActive: buttonMouseArea.drag.active
 
-    property color colBackground: abyssStyle ? Qt.alpha(Appearance.colors.colPrimary,.04) : "transparent"
-    property color colBackgroundHover: abyssStyle ? Qt.alpha(Appearance.colors.colPrimary,.12) : Appearance.colLayer1Hover
+    property color colBackground: abyssStyle ? Qt.alpha(Appearance.colors.colPrimary,.14) : "transparent"
+    property color colBackgroundHover: abyssStyle ? Qt.alpha(Appearance.colors.colPrimary,.24) : Appearance.colLayer1Hover
     property color colBackgroundToggled: Appearance.colors.colPrimary
     property color colBackgroundToggledHover: Appearance.colors.colPrimaryHover
     property color colRipple: Appearance.colLayer1Active
@@ -189,8 +189,8 @@ Button {
 
         color: root.buttonColor
         radius: root.buttonEffectiveRadius
-        border.width: root.visualFocus || root.abyssStyle ? 1 : 0
-        border.color: root.visualFocus ? Appearance.colors.colPrimary : root.abyssStyle ? Qt.alpha(Appearance.colors.colPrimary,.12) : "transparent"
+        border.width: root.visualFocus ? 1 : 0
+        border.color: root.visualFocus ? Appearance.colors.colPrimary : "transparent"
         Behavior on border.color {
             enabled: Appearance.animationsEnabled && root.stateTransitionsEnabled
             animation: ColorAnimation { duration: Appearance.animation.stateChange.duration; easing.type: Appearance.animation.stateChange.type; easing.bezierCurve: Appearance.animation.stateChange.bezierCurve }

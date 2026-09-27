@@ -497,6 +497,12 @@ Singleton {
                     property real tension: 0.5
                     property int softness: 24
                 }
+                property JsonObject content: JsonObject {
+                    // -1 follows the Screen Edge material until customized.
+                    property real opacity: -1
+                    property int blurRadius: -1
+                    property real cardOpacity: 0.9
+                }
                 property JsonObject waves: JsonObject {
                     property real strength: -1
                     property bool enabled: false

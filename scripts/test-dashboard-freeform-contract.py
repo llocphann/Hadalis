@@ -295,7 +295,7 @@ def main() -> None:
 
     for token in (
         "radius: Appearance.rounding.small",
-        "readonly property color sidebarRaisedSurface: Appearance.colors.colLayer1",
+        "readonly property color sidebarRaisedSurface: Config.options?.panelFamily === \"abyss\" ? AbyssStyle.contentLayer : Appearance.colors.colLayer1",
         "root.sidebarRaisedSurface",
         "border.width: 0",
         'border.color: "transparent"',

@@ -124,7 +124,7 @@ Item {
         implicitHeight: cardColumn.implicitHeight + SettingsMaterialPreset.cardPadding * 2
         radius: SettingsMaterialPreset.cardRadius
         color: SettingsMaterialPreset.cardColor
-        border.width: 1
+        border.width: Config.options?.panelFamily === "abyss" ? 0 : 1
         border.color: SettingsMaterialPreset.cardBorderColor
 
         Behavior on color {

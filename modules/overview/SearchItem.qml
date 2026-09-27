@@ -5,6 +5,7 @@ import qs.services.deferred
 import qs.modules.common
 import qs.modules.common.widgets
 import qs.modules.common.functions
+import qs.modules.abyss.looks
 import QtQuick
 import QtQuick.Layouts
 import Quickshell
@@ -45,9 +46,9 @@ RippleButton {
     readonly property color selectedTextColor: Appearance.colors.colOnLayer1
     readonly property color descriptionTextColor: root.isHighlighted
         ? root.selectedTextColor : Appearance.colors.colSubtext
-    readonly property color selectedBackgroundColor: Appearance.colors.colLayer1
-    readonly property color hoverBackgroundColor: Appearance.colors.colLayer1
-    readonly property color pressedBackgroundColor: Appearance.colors.colLayer1Hover
+    readonly property color selectedBackgroundColor: root.abyssStyle ? Qt.alpha(Appearance.colors.colLayer2Base,AbyssStyle.cardOpacity) : Appearance.colors.colLayer1
+    readonly property color hoverBackgroundColor: root.abyssStyle ? Qt.alpha(Appearance.colors.colLayer2Base,AbyssStyle.cardOpacity) : Appearance.colors.colLayer1
+    readonly property color pressedBackgroundColor: root.abyssStyle ? Qt.alpha(Appearance.colors.colLayer2Base,AbyssStyle.cardOpacity) : Appearance.colors.colLayer1Hover
     readonly property color activeRippleColor: Appearance.colors.colLayer1Hover
 
     // No fade-in animation - prevents flickering when results update rapidly
@@ -60,7 +61,7 @@ RippleButton {
         ? root.pressedBackgroundColor
         : (root.isHighlighted
             ? root.selectedBackgroundColor
-            : (root.hovered ? root.hoverBackgroundColor : "transparent"))
+            : (root.hovered ? root.hoverBackgroundColor : root.abyssStyle ? AbyssStyle.contentLayer : "transparent"))
     colBackgroundHover: root.hoverBackgroundColor
     colRipple: root.activeRippleColor
 

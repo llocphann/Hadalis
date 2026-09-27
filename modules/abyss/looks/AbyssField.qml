@@ -7,7 +7,7 @@ Item {
     id: root
     property string outputName: ""
     property real renderScale: 1
-    readonly property bool wantsWallpaper: AbyssStyle.blurRadius > 0 || AbyssStyle.refractionStrength > 0
+    readonly property bool wantsWallpaper: AbyssStyle.blurRadius > 0 || AbyssStyle.contentBlurRadius > 0 || AbyssStyle.refractionStrength > 0
     readonly property string wallpaperPath: wantsWallpaper ? Wallpapers.currentMainWallpaperPath(outputName) : ""
     readonly property bool usableWallpaper: wallpaperPath.length > 0 && !/\.(gif|mp4|webm|mkv|avi)$/i.test(wallpaperPath)
     readonly property bool wallpaperReady: wallpaperImage.status === Image.Ready
@@ -51,6 +51,7 @@ Item {
         readonly property var wallpaper: wallpaperImage
         readonly property var waveSamples: root.waveTexture
         readonly property vector4d effects: Qt.vector4d(AbyssStyle.blurRadius,AbyssStyle.refractionStrength,root.wallpaperReady ? 1 : 0,0)
+        readonly property vector4d contentMaterial: Qt.vector4d(AbyssStyle.contentOpacity,AbyssStyle.contentBlurRadius,0,0)
         readonly property vector4d wallpaperCrop: {
             const imageAspect = wallpaperImage.implicitWidth/Math.max(1,wallpaperImage.implicitHeight)
             const viewAspect = root.width/Math.max(1,root.height)

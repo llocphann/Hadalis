@@ -3,6 +3,7 @@ import QtQuick.Layouts
 import qs.modules.common
 import qs.modules.common.widgets
 import qs.modules.common.functions
+import qs.modules.abyss.looks
 
 /**
  * Shared Material card surface for Dashboard modules.
@@ -41,7 +42,7 @@ Rectangle {
     implicitHeight: contentColumn.implicitHeight + root.pad * 2
 
     radius: Appearance.rounding.small
-    readonly property color sidebarRaisedSurface: Appearance.colors.colLayer1
+    readonly property color sidebarRaisedSurface: Config.options?.panelFamily === "abyss" ? AbyssStyle.contentLayer : Appearance.colors.colLayer1
     color: root.cardOpacity >= 0.999
         ? root.sidebarRaisedSurface
         : ColorUtils.applyAlpha(

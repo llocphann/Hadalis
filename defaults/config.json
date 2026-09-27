@@ -2062,6 +2062,7 @@
             "tension": 0.5,
             "softness": 24
         },
+        "content": {"opacity": -1, "blurRadius": -1, "cardOpacity": 0.9},
         "waves": {
             "strength": -1,
             "enabled": false,

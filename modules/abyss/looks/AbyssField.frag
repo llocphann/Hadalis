@@ -10,6 +10,7 @@ layout(std140,binding=0) uniform buf {
     vec4 insets;
     vec4 material;
     vec4 effects;
+    vec4 contentMaterial;
     vec4 wallpaperCrop;
     vec4 surface;
     vec4 raised;
@@ -80,14 +81,20 @@ void main() {
     if(d>24.0) { fragColor=vec4(0.0); return; }
     float coverage=1.0-smoothstep(-aa,aa,d);
     float depth=exp(-abs(d)*0.045);
-    vec4 body=mix(surface,raised*surface.a,depth*0.38*material.w);
+    // Bodies occupy the workspace side of the resting Edge. Blend their
+    // independent material into the same union pass at each attachment neck.
+    float bodyBlend=smoothstep(0.0,24.0,-roundedBox(p,vec4(insets.xy,viewport.xy-insets.xy-insets.zw),material.x));
+    float opacity=mix(surface.a,contentMaterial.x,bodyBlend);
+    float blurRadius=mix(effects.x,contentMaterial.y,bodyBlend);
+    vec4 tint=vec4(surface.rgb/max(surface.a,0.0001)*opacity,opacity);
+    vec4 body=mix(tint,raised*opacity,depth*0.38*material.w);
     if(effects.z>0.5 && coverage>0.0) {
         vec2 normal=gradient/max(0.0001,length(gradient));
         vec2 uv=qt_TexCoord0+normal*effects.y*exp(-abs(d)/30.0)/viewport.xy;
         uv=wallpaperCrop.xy+clamp(uv,0.0,1.0)*wallpaperCrop.zw;
-        vec2 stepUv=effects.x/viewport.xy*wallpaperCrop.zw;
+        vec2 stepUv=blurRadius/viewport.xy*wallpaperCrop.zw;
         vec3 glass=texture(wallpaper,uv).rgb;
-        if(effects.x>0.0) {
+        if(blurRadius>0.0) {
             // Bounded five-tap wallpaper blur in the same silhouette pass.
             glass=glass*0.4+(texture(wallpaper,uv+vec2(stepUv.x,0)).rgb
                 +texture(wallpaper,uv-vec2(stepUv.x,0)).rgb
@@ -96,7 +103,7 @@ void main() {
         }
         // Strong absorption keeps typography readable; no live application
         // pixels are sampled. Missing/animated wallpaper uses the color body.
-        body.rgb=mix(body.rgb,glass*surface.a,0.075+depth*0.07);
+        body.rgb=mix(body.rgb,glass*opacity,0.075+depth*0.07);
     }
     vec2 normal=gradient/max(0.0001,length(gradient));
     float facing=clamp(dot(normal,normalize(vec2(-0.45,-0.85)))*0.5+0.5,0.0,1.0);
@@ -105,7 +112,7 @@ void main() {
     body.rgb=mix(body.rgb,raised.rgb*body.a,reflection);
     body.rgb+=rim.rgb*body.a*(spec*0.65+reflection*0.32);
     body.rgb*=1.0-exp(-max(-d,0.0)*0.10)*(1.0-facing)*0.18*material.w;
-    body.a=surface.a;
+    body.a=opacity;
     vec4 outside=shadow*exp(-max(d,0.0)/5.0)+glow*exp(-max(d,0.0)/7.0);
     outside*=smoothstep(-aa,aa,d)*(1.0-smoothstep(16.0,24.0,d));
     float alpha=coverage*body.a;

@@ -177,3 +177,9 @@ moving into the content keeps it open and moving away releases it after 240 ms.
 Context menus/dialogs defer release. Explicit IPC/shortcut opens retain their own
 lifetime. Hidden/fullscreen/locked outputs and Live Editor remove the trigger input.
 Historic sidebar-button placements are filtered from the Abyss module catalog.
+
+A module within 160 logical pixels of a corner offers a **Join nearby corner**
+checkbox in Live Editor. It persists per placement and output profile. The popup's
+existing field record extends into the adjacent physical Screen Edge, preserving
+content dimensions and input bounds. Moving away disables the join; an independently
+positioned distant popup cannot create a bridge across the workspace.

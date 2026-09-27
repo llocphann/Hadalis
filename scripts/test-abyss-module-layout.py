@@ -11,6 +11,15 @@ assert.deepEqual(normalize([{id:'old-left',kind:'leftSidebarButton'},{id:'clock'
 const initial = seed([catalog.slice(0,3),catalog.slice(3,5),[catalog[5]],catalog.slice(6,9),catalog.slice(9)],'top',1920,1200);
 assert.equal(initial.length,catalog.length);
 assert.equal(new Set(initial.map(p=>p.id)).size,initial.length);
+assert(normalize([{kind:'clock',joinCorner:true}],'top')[0].joinCorner);
+assert(!normalize([{kind:'clock'}],'top')[0].joinCorner);
+for (const edge of ['top','right','bottom','left']) {
+ const horizontal=edge==='top'||edge==='bottom', length=horizontal?1920:1200;
+ assert.equal(adjacentEdge({edge,along:40,span:100},1920,1200),horizontal?'left':'top');
+ assert.equal(adjacentEdge({edge,along:length-140,span:100},1920,1200),horizontal?'right':'bottom');
+ assert.equal(adjacentEdge({edge,along:length/2,span:100},1920,1200),'');
+}
+
 const saved = JSON.stringify(initial);
 for (const [w,h] of [[1920,1200],[1536,960],[960,600],[480,320]]) {
     for (const edge of ['top','right','bottom','left']) {

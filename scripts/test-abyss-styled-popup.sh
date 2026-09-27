@@ -39,9 +39,11 @@ ShellRoot {
                 x:900;y:100;width:32;height:80
                 property var liquidController: first
                 property string attachedEdge: "right"
+                property string popupJoinedEdge: "top"
             }
             AbyssBodyHost {
                 id: body;anchors.fill:parent;identity:"styledPopup";edge:popup._attachmentEdge
+                joinedEdge: popup._liquidAnchor?.popupJoinedEdge ?? ""
                 controller: anchor.liquidController
                 open: popup.presentationActive && popup.requestedVisible
                 embeddedItem: anchor.liquidController.activePopup?.contentItem ?? null
@@ -60,6 +62,12 @@ ShellRoot {
                 if(!root.check(first.activePopup===popup && popup.presentationActive && !popup.active,"mature popup uses field without native popup")) return
                 if(!root.check(popup._attachmentEdge==="right" && popup.presentationWindow===window,"actual module edge and window own presentation")) return
                 if(!root.check(popup.contentItem.parent===body.contentParent && body.inputBounds.width>0,"mature content rehosted with local input")) return
+                if(!root.check(body.record.joinedEdge==="top" && body.record.surface.y===-50,"module preference joins adjacent physical Edge")) return
+                const joinedContent=JSON.stringify(body.record.content),joinedInput=JSON.stringify(body.inputBounds)
+                anchor.popupJoinedEdge=""
+                if(!root.check(body.record.surface.y>0 && body.record.joinedEdge===undefined,"unchecked preference restores one Edge attachment")) return
+                if(!root.check(JSON.stringify(body.record.content)===joinedContent && JSON.stringify(body.inputBounds)===joinedInput,"corner preference preserves mature content and input geometry")) return
+                anchor.popupJoinedEdge="top"
                 anchor.liquidController=second
                 if(!root.check(first.activePopup===null && second.activePopup===popup,"output migration releases old ownership")) return
                 popup.alternativeVisibleCondition=false
@@ -86,4 +94,4 @@ if ! rg -q 'ABYSS_STYLED_POPUP_PASS' "$popup_test_root/runtime.log" || rg -q 'AB
     cat "$popup_test_root/runtime.log"
     exit 1
 fi
-printf 'PASS: mature StyledPopup field ownership, actual edge, migration, input release and reopen\n'
+printf 'PASS: mature StyledPopup ownership, optional corner join, content bounds, migration, input release and reopen\n'

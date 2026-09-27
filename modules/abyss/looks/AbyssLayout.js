@@ -32,7 +32,7 @@ function normalize(list, fallbackEdge) {
             alignment:["start","center","end"].indexOf(p.alignment)>=0 ? p.alignment : "free",
             customSize:p.customSize === true || (p.customSize === undefined && Number.isFinite(Number(p.size)) && Number(p.size)!==1),
             size:bounded(p.size,1,0.6,1.8),depth:bounded(p.depth,1,0.5,2),
-            influence:bounded(p.influence,1,0,2),compact:p.compact === true};
+            influence:bounded(p.influence,1,0,2),compact:p.compact === true,joinCorner:p.joinCorner === true};
     });
 }
 function seed(zones, edge, width, height) {
@@ -177,4 +177,15 @@ function geometry(placements, width, height, options, fontScale) {
         });
     });
     return result;
+}
+
+// Only modules within a short distance of a physical corner offer a second weld.
+function adjacentEdge(record,width,height) {
+    if (!record) return "";
+    var horizontal = record.edge === "top" || record.edge === "bottom";
+    var length = horizontal ? width : height;
+    var first = Math.max(0,record.along);
+    var last = Math.max(0,length-record.along-record.span);
+    if (Math.min(first,last)>160) return "";
+    return horizontal ? (first<=last ? "left" : "right") : (first<=last ? "top" : "bottom");
 }

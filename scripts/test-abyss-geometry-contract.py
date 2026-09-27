@@ -5,6 +5,28 @@ import subprocess
 root = Path(__file__).resolve().parents[1]
 program = (root / "modules/abyss/looks/AbyssGeometry.js").read_text() + r"""
 const assert = require('node:assert/strict');
+for(const owner of ['top','right','bottom','left']) {
+  for(const adjacent of horizontal(owner)?['left','right']:['top','bottom']) {
+    const ins=insets(16,owner,48,true);
+    const length=horizontal(owner)?1920:1200;
+    const trailing=adjacent==='right'||adjacent==='bottom';
+    const base=panel(1920,1200,ins,owner,trailing?length-430:40,390,280,1,14);
+    const original=JSON.stringify(base);
+    const joined=joinCorner(base,adjacent,1920,1200,ins);
+    assert.equal(JSON.stringify(base),original,'joining never mutates its original record');
+    assert.deepEqual(joined.content,base.content,'joining preserves input/content geometry');
+    assert.equal(joined.joinedEdge,adjacent);
+    const boundary=adjacent==='left'?joined.surface.x:adjacent==='right'?joined.surface.x+joined.surface.width
+        :adjacent==='top'?joined.surface.y:joined.surface.y+joined.surface.height;
+    assert.equal(boundary,trailing?length+50:-50);
+    assert.equal(joinCorner(base,'',1920,1200,ins),base,'joining is opt-in');
+    const far=panel(1920,1200,ins,owner,500,390,280,1,14);
+    assert.equal(joinCorner(far,adjacent,1920,1200,ins),far,'independently positioned distant popup does not bridge workspace');
+    const closed=panel(1920,1200,ins,owner,40,390,280,0,14);
+    assert.equal(joinCorner(closed,adjacent,1920,1200,ins),closed,'closed popup paints no corner connector');
+    assert.equal(joinCorner(base,owner,1920,1200,ins),base,'only an adjacent Edge can join');
+  }
+}
 assert.equal(edge(false,false),'top'); assert.equal(edge(false,true),'bottom');
 assert.equal(edge(true,false),'left'); assert.equal(edge(true,true),'right');
 assert(targets('DP-2',['missing'],['DP-1','DP-2']));

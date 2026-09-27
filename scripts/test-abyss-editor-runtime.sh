@@ -51,17 +51,21 @@ ShellRoot {
                 editor.move("clock",editor.width*.6,10)
                 editor.move("clock",editor.width-10,editor.height/2)
                 if(!root.check(layer.layoutRecords[0].edge==="right","cross edge live placement")) return
+                editor.move("clock",editor.width-10,40);editor.change("joinCorner",true)
+                if(!root.check(layer.children.find(item=>item.kind==="clock")?.popupJoinedEdge==="top","near-corner draft reaches the actual module popup anchor")) return
                 if(!root.check(JSON.stringify(Config.options.abyss.modules.placements)===root.before,"drag writes only draft")) return
                 editor.finish(false)
             }
             if(root.step===2) {
                 if(!root.check(layer.layoutRecords[0].edge==="top","Cancel restores saved presentation")) return
+                if(!root.check(!layer.placements[0].joinCorner,"Cancel restores unchecked corner preference")) return
                 GlobalStates.abyssEditing=true
             }
             if(root.step===3) {
                 editor.move("clock",editor.width-10,editor.height/2);editor.gap=17
                 editor.edgeSizes={top:1.1,right:1.25,bottom:1,left:1}
-                editor.change("alignment","center")
+                editor.change("alignment","center");editor.change("joinCorner",true)
+                if(!root.check(editor.selected.joinCorner,"corner option belongs to draft module")) return
                 editor.add("media");editor.change("enabled",false)
                 editor.finish(true)
             }
@@ -69,7 +73,7 @@ ShellRoot {
                 const profiles=Array.from(Config.options.abyss.modules.outputLayouts)
                 if(!root.check(profiles.length===2 && profiles[0].outputName==="B","Done merges latest output profiles")) return
                 if(!root.check(layer.layoutRecords[0].edge==="right" && profiles[1].gap===17 && !profiles[1].placements[1].enabled,"persisted normalized edge, gap and disable")) return
-                if(!root.check(profiles[1].edgeSizes.right===1.25 && !profiles[1].placements[0].customSize && profiles[1].placements[0].alignment==="center","Done persists shared edge sizes and grouped alignment")) return
+                if(!root.check(profiles[1].edgeSizes.right===1.25 && !profiles[1].placements[0].customSize && profiles[1].placements[0].alignment==="center" && profiles[1].placements[0].joinCorner,"Done persists shared edge sizes and grouped alignment")) return
                 console.info("EDITOR_PASS");Qt.quit()
             }
             root.step++

@@ -314,6 +314,7 @@ Scope {
             AbyssBodyHost {
                 id: styledPopup
                 identity: "styledPopup"
+                joinedEdge: liquid.activePopup?._liquidAnchor?.popupJoinedEdge ?? ""
                 controller: liquid
                 anchors.fill: parent
                 readonly property string presentationKind: liquid.activePopup?._liquidAnchor?.kind ?? "popup"

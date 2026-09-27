@@ -77,3 +77,23 @@ function barZones(layout, vertical, modules) {
             });
     });
 }
+
+// Extend the same union record through a nearby adjacent Edge. Content geometry
+// and input bounds stay unchanged; no second connector/painter is constructed.
+function joinCorner(record, adjacent, width, height, insets) {
+    if (!record || !record.surface || record.surface.width<=0 || record.surface.height<=0
+            || !["left","right","top","bottom"].includes(adjacent)
+            || horizontal(record.edge)===horizontal(adjacent)) return record;
+    var surface = record.surface;
+    var gap = adjacent==="left" ? surface.x-insets.left
+        : adjacent==="right" ? width-insets.right-surface.x-surface.width
+        : adjacent==="top" ? surface.y-insets.top
+        : height-insets.bottom-surface.y-surface.height;
+    if (gap>160) return record; // A separately positioned popup cannot bridge the workspace.
+    surface = Object.assign({},surface);
+    if (adjacent==="left") { surface.width += surface.x+50;surface.x=-50; }
+    else if (adjacent==="right") surface.width=width+50-surface.x;
+    else if (adjacent==="top") { surface.height += surface.y+50;surface.y=-50; }
+    else surface.height=height+50-surface.y;
+    return Object.assign({},record,{surface:surface,joinedEdge:adjacent});
+}

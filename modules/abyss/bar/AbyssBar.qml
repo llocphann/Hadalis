@@ -55,6 +55,7 @@ Item {
             readonly property var geometry: root.layoutRecords.find(rec => rec.id === modelData.id)
             liquidController: root.liquidController
             attachedEdge: modelData.edge
+            popupJoinedEdge: modelData.joinCorner ? Layout.adjacentEdge(geometry,root.width,root.height) : ""
             contentScale: (geometry?.span ?? 0)/Math.max(1,naturalSpan)
             onNaturalSpanChanged: root.measure(modelData.id,naturalSpan)
             Component.onCompleted: root.measure(modelData.id,naturalSpan)

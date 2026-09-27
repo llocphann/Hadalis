@@ -16,6 +16,7 @@ Item {
     required property string outputName
     property var liquidController: null
     property string attachedEdge: "top"
+    property string popupJoinedEdge: ""
     property bool vertical: false
     property bool compact: false
     property real contentScale: 1

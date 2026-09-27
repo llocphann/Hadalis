@@ -9,6 +9,7 @@ import "looks/AbyssGeometry.js" as Geometry
 Item {
     id: root
     required property string edge
+    property string joinedEdge: ""
     readonly property string attachedEdge: edge
     property string outputName: ""
     property string identity: ""
@@ -32,7 +33,7 @@ Item {
     property string source: ""
     property string contentKind: ""
     property real progress: open ? 1 : 0
-    readonly property var record: Geometry.panel(width,height,edgeInsets,edge,along,span,depth,progress,padding,obstacles,largeSurface)
+    readonly property var record: Geometry.joinCorner(Geometry.panel(width,height,edgeInsets,edge,along,span,depth,progress,padding,obstacles,largeSurface),joinedEdge,width,height,edgeInsets)
     readonly property Item contentItem: content
     readonly property bool ready: embeddedItem !== null || content.status === Loader.Ready
     readonly property Item contentParent: contentFrame

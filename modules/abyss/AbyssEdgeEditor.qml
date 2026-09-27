@@ -26,6 +26,7 @@ Item {
     property bool outputOnly: true
     property real lastImpulse: 0
     property var inputRegions: []
+    readonly property string nearbyCorner: Placement.adjacentEdge(moduleLayer.layoutRecords.find(p=>p.id===selectedId),width,height)
     readonly property var selected: draft.find(p => p.id === selectedId)
     readonly property var draftOptions: Object.assign({},Config.options?.abyss?.modules,{gap:gap,edgeSizes:edgeSizes})
     function refreshHandles(): void { handles = draft.map(p => p.id) }
@@ -216,6 +217,13 @@ Item {
                     if(checked) root.change("size",Placement.edgeSize(root.draftOptions,root.selected.edge))
                     root.change("customSize",checked)
                 }
+            }
+            AbyssCheckBox {
+                text: root.nearbyCorner ? "Join "+root.nearbyCorner+" Edge" : "Join nearby corner"
+                checked: root.selected?.joinCorner ?? false
+                enabled: root.selected !== undefined && (!!root.nearbyCorner || checked)
+                onToggled: root.change("joinCorner",checked)
+                StyledToolTip { text: root.nearbyCorner ? "Fuse this module's nearby popup with both Screen Edges, preserving its content layout." : "Move the module within 160 px of a corner to join the adjacent Screen Edge." }
             }
             AbyssSlider { from: .6; to: 1.8; value: root.selected?.customSize ? root.selected.size : Placement.edgeSize(root.draftOptions,root.selected?.edge ?? root.editingEdge); enabled: root.selected?.customSize ?? false; Layout.fillWidth:true; onMoved: root.change("size",value) }
         }

@@ -25,6 +25,7 @@ Item {
     property bool initialized: false
     property bool open: false
     property int activationOrder: 0
+    property int placementPriority: identity === "dialog" ? 2 : ["utility","edgeEditor"].includes(identity) ? 1 : identity === "dock" ? -1 : 0
     readonly property var placement: controller?.bodyPlacements?.[identity] ?? null
     readonly property bool placementVisible: placement?.visible !== false
     readonly property bool presented: open && placementVisible
@@ -51,7 +52,7 @@ Item {
         controller: root.controller
         geometry: root.record
         placementRequest: ({id:root.identity,open:root.open,order:root.activationOrder,
-            priority:root.identity === "dialog" ? 2 : root.identity === "utility" ? 1 : root.identity === "dock" ? -1 : 0,
+            priority:root.placementPriority,
             record:root.requestedRecord})
         inputBounds: root.inputBounds
         mass: root.mass

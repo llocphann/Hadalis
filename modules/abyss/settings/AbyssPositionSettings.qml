@@ -12,13 +12,29 @@ ColumnLayout {
     spacing: 8
     property string kind: "popup"
     property string outputName: ""
-    readonly property var position: Presentation.resolve(Config.options?.abyss?.positions,kind,outputName)
+    property var positions: Config.options?.abyss?.positions ?? []
+    property bool commitImmediately: true
+    property bool outputSelectionEnabled: true
+    property var allowedKinds: []
+    signal positionsEdited(var positions,string kind,string outputName,var values)
+    readonly property var position: Presentation.resolve(positions,kind,outputName)
+    function apply(values): void {
+        const next=Presentation.save(positions,kind,outputName,values)
+        if(commitImmediately) Config.setNestedValue("abyss.positions",next)
+        else positionsEdited(next,kind,outputName,values)
+    }
     function change(key,value): void {
         const values=Object.assign({edge:"source",alignment:"source",position:.5},position,{[key]:value})
-        Config.setNestedValue("abyss.positions",Presentation.save(Config.options?.abyss?.positions,kind,outputName,values))
+        apply(values)
     }
+    readonly property var inputRegions: [kindRegion,outputRegion,edgeRegion,alignmentRegion]
+    readonly property Region kindRegion: Region { item:kindChoice.popup.contentItem;width:kindChoice.popup.visible ? kindChoice.popup.contentItem.width : 0 }
+    readonly property Region outputRegion: Region { item:outputChoice.popup.contentItem;width:outputChoice.popup.visible ? outputChoice.popup.contentItem.width : 0 }
+    readonly property Region edgeRegion: Region { item:edgeChoice.popup.contentItem;width:edgeChoice.popup.visible ? edgeChoice.popup.contentItem.width : 0 }
+    readonly property Region alignmentRegion: Region { item:alignmentChoice.popup.contentItem;width:alignmentChoice.popup.visible ? alignmentChoice.popup.contentItem.width : 0 }
     RowLayout {
         StyledComboBox {
+            id:kindChoice
             Layout.fillWidth:true
             textRole:"label";valueRole:"value"
             model:[{label:"All bar popups",value:"popup"},{label:"Calendar",value:"clock"},
@@ -34,11 +50,13 @@ ColumnLayout {
                 {label:"Left sidebar",value:"leftPanel"},{label:"Right sidebar",value:"rightPanel"},
                 {label:"Quick Notes & Timers",value:"quickNotes"},{label:"Notification center",value:"notificationCenter"},{label:"Notification popups",value:"notifications"},
                 {label:"Session menu",value:"session"},{label:"Cheatsheet",value:"cheatsheet"},
-                {label:"Shell update",value:"update"},{label:"Dialogs",value:"dialog"}]
+                {label:"Shell update",value:"update"},{label:"Dialogs",value:"dialog"}].filter(option=>!root.allowedKinds.length || root.allowedKinds.includes(option.value))
             currentIndex:model.findIndex(p => p.value===root.kind)
             onActivated:root.kind=currentValue
         }
         StyledComboBox {
+            id:outputChoice
+            enabled:root.outputSelectionEnabled
             Layout.fillWidth:true
             textRole:"label";valueRole:"value"
             model:[{label:"All outputs",value:""}].concat(Quickshell.screens.map(s => ({label:s.name,value:s.name})))
@@ -48,6 +66,7 @@ ColumnLayout {
     }
     RowLayout {
         StyledComboBox {
+            id:edgeChoice
             Layout.fillWidth:true
             textRole:"label";valueRole:"value"
             model:[{label:"Follow source edge",value:"source"},{label:"Top Edge",value:"top"},
@@ -56,6 +75,7 @@ ColumnLayout {
             onActivated:root.change("edge",currentValue)
         }
         StyledComboBox {
+            id:alignmentChoice
             Layout.fillWidth:true
             textRole:"label";valueRole:"value"
             model:[{label:"Follow source position",value:"source"},{label:"Align start",value:"start"},
@@ -65,13 +85,14 @@ ColumnLayout {
         }
         RippleButton {
             buttonText:"Reset position";implicitWidth:140;implicitHeight:38
-            onClicked:Config.setNestedValue("abyss.positions",Presentation.save(Config.options?.abyss?.positions,root.kind,root.outputName,null))
+            onClicked:root.apply(null)
         }
     }
     WindowDialogSlider {
         text:"Position along Edge";Layout.fillWidth:true
         visible:root.position.alignment==="custom"
         from:0;to:100;stepSize:1;value:(root.position.position ?? .5)*100
+        valueText:Math.round(value)+" %"
         onMoved:root.change("position",value/100)
     }
     SettingsNote { text:"Positions follow the source unless overridden. Each popup or IPC indicator can use any Edge, globally or per output; content and input are clamped inside that output." }

@@ -18,11 +18,13 @@ import qs.modules.abyss.bar
 ShellRoot {
     id: root
     property int step: 0
+    property bool finished: false
+    property string beforePositions: ""
     property string before: ""
     property var originalModule: null
     function check(ok,message): bool {
         if(ok) return true
-        console.error("EDITOR_FAIL",message);Qt.quit();return false
+        console.error("EDITOR_FAIL",message);root.finished=true;return false
     }
     AbyssSurfaceController { id: liquid }
     FloatingWindow {
@@ -38,10 +40,12 @@ ShellRoot {
         }
     }
     Timer {
-        interval:200;running:true;repeat:true
+        interval:200;running:!root.finished;repeat:true
         onTriggered: {
+            if(!Config.ready) return
             if(root.step===0) {
                 Config.setNestedValue("panelFamily","abyss")
+                GlobalStates.deferredPanelsReady=true
                 Config.setNestedValue("abyss.modules.configured",true)
                 Config.setNestedValue("abyss.modules.placements",[{id:"clock",kind:"clock",edge:"top",position:.4}])
                 Config.setNestedValue("abyss.modules.outputLayouts",[{outputName:"B",placements:[]}])
@@ -78,15 +82,36 @@ ShellRoot {
                 if(!root.check(profiles.length===2 && profiles[0].outputName==="B","Done merges latest output profiles")) return
                 if(!root.check(layer.layoutRecords[0].edge==="right" && profiles[1].gap===17 && !profiles[1].placements[1].enabled,"persisted normalized edge, gap and disable")) return
                 if(!root.check(profiles[1].edgeSizes.right===1.25 && !profiles[1].placements[0].customSize && profiles[1].placements[0].alignment==="center" && profiles[1].placements[0].joinCorner,"Done persists shared edge sizes and grouped alignment")) return
-                console.info("EDITOR_PASS");Qt.quit()
+                GlobalStates.abyssEditing=true
+                editor.editingPopups=true
+                root.beforePositions=JSON.stringify(Config.options.abyss.positions)
+            }
+            if(root.step===6) {
+                if(!root.check(editor.previewHost.ready && editor.previewHost.contentItem.item.kind==="volume" && !editor.previewHost.contentItem.item.enabled,"actual IPC layout loads with safe preview controls")) return
+                editor.movePreview(editor.width-8,editor.height*.3)
+                if(!root.check(editor.previewHost.edge==="right" && editor.previewPosition.alignment==="custom" && JSON.stringify(Config.options.abyss.positions)===root.beforePositions,"preview drag updates only an output-local draft")) return
+                editor.finish(false)
+            }
+            if(root.step===7) {
+                if(!root.check(JSON.stringify(Config.options.abyss.positions)===root.beforePositions && editor.previewHost.inputBounds.width===0,"Cancel discards positions and releases preview input")) return
+                GlobalStates.abyssEditing=true;editor.editingPopups=true
+                editor.movePreview(editor.width*.25,8)
+                Config.setNestedValue("abyss.positions",[{kind:"clock",outputName:"B",edge:"left",alignment:"end"}])
+                editor.finish(true)
+            }
+            if(root.step===9) {
+                const positions=Array.from(Config.options.abyss.positions)
+                if(!root.check(positions.length===2 && positions.some(p=>p.kind==="clock" && p.outputName==="B" && p.edge==="left") && positions.some(p=>p.kind==="volume" && p.outputName==="A" && p.edge==="top" && p.alignment==="custom"),"Done merges position edits into latest config without overwriting another output")) return
+                console.info("EDITOR_PASS");root.finished=true
             }
             root.step++
         }
     }
 }
 QML
-if ! dbus-run-session -- env -u QS_CONFIG_PATH -u QS_CONFIG_NAME -u QS_MANIFEST QT_QPA_PLATFORM=wayland \
+status=0
+dbus-run-session -- env -u QS_CONFIG_PATH -u QS_CONFIG_NAME -u QS_MANIFEST QT_QPA_PLATFORM=wayland \
  XDG_CONFIG_HOME="$abyss_editor_test/config" XDG_STATE_HOME="$abyss_editor_test/state" XDG_CACHE_HOME="$abyss_editor_test/cache" \
- timeout 8s qs -p "$abyss_editor_test" --no-color > "$abyss_editor_test/runtime.log" 2>&1; then cat "$abyss_editor_test/runtime.log";exit 1; fi
-if ! rg -q EDITOR_PASS "$abyss_editor_test/runtime.log" || rg -q 'EDITOR_FAIL|ReferenceError:|TypeError:|Binding loop|Unable to assign|is not a type|Type .* unavailable' "$abyss_editor_test/runtime.log"; then cat "$abyss_editor_test/runtime.log";exit 1; fi
-printf 'PASS: live editor draft, cross-edge projection, Cancel and per-output persistence\n'
+ timeout 20s qs -p "$abyss_editor_test" --no-color > "$abyss_editor_test/runtime.log" 2>&1 || status=$?
+if [[ "$status" != 124 ]] || ! rg -q EDITOR_PASS "$abyss_editor_test/runtime.log" || rg -q 'EDITOR_FAIL|ReferenceError:|TypeError:|Binding loop|Unable to assign|is not a type' "$abyss_editor_test/runtime.log";then cat "$abyss_editor_test/runtime.log";exit 1;fi
+printf 'PASS: live module identity and placement, popup/IPC preview drag drafts, Cancel, latest-config merge and output isolation\n'

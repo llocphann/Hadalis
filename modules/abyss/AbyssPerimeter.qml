@@ -118,6 +118,9 @@ Scope {
                 Region { x: styledPopup.inputBounds.x; y: styledPopup.inputBounds.y; width: window.presented && field.ready ? styledPopup.inputBounds.width : 0; height: styledPopup.inputBounds.height }
                 Region { x: popup.inputBounds.x; y: popup.inputBounds.y; width: window.presented && field.ready ? popup.inputBounds.width : 0; height: popup.inputBounds.height }
                 Region { x: dock.inputBounds.x; y: dock.inputBounds.y; width: window.presented && field.ready ? dock.inputBounds.width : 0; height: dock.inputBounds.height }
+                Region { item:corners.notesAvailable ? corners.notesAnchor : emptyInput }
+                Region { item:corners.centerAvailable ? corners.centerAnchor : emptyInput }
+                Region { regions:corners.sidebarRegions }
                 Region { x: notification.inputBounds.x; y: notification.inputBounds.y; width: window.presented && field.ready ? notification.inputBounds.width : 0; height: notification.inputBounds.height }
                 Region { x: osd.inputBounds.x; y: osd.inputBounds.y; width: window.presented && field.ready ? osd.inputBounds.width : 0; height: osd.inputBounds.height }
                 Region { x: dashboardBody.inputBounds.x; y: dashboardBody.inputBounds.y; width: window.presented && field.ready ? dashboardBody.inputBounds.width : 0; height: dashboardBody.inputBounds.height }
@@ -255,6 +258,13 @@ Scope {
                 bodyItem: rightPanel.contentItem
                 onRevealRequested: GlobalStates.openSidebarRight(window.outputName)
                 onHideRequested: if (GlobalStates.sidebarRightPresentationOutput===window.outputName) GlobalStates.closeSidebarRight()
+            }
+            AbyssCorners {
+                id:corners;anchors.fill:parent;controller:liquid;outputName:window.outputName
+                attachmentThickness:window.nativeInsets.bottom
+                presentationEnabled:window.presented && field.ready && !window.editorOpen
+                blocked:settings.open || dashboardBody.open || utility.open || controls.open || aux.open
+                    || GlobalStates.settingsNativeDialogOpen || PolkitService.active || GlobalStates.regionSelectorOpen
             }
             AbyssBodyHost {
                 id: leftPanel
@@ -470,10 +480,9 @@ Scope {
                 readonly property string presentationKind: centerOnOutput ? "notificationCenter" : "notifications"
                 edge: window.positionEdge(presentationKind,centerOnOutput ? "right" : position.startsWith("bottom") ? "bottom" : "top")
                 outputName: window.outputName
-                open: window.presented && field.ready && (centerOnOutput && (Config.options?.enabledPanels ?? []).includes("abyssNotificationCenter")
-                    || (!GlobalStates.notificationCenterOpen && !popup.open && !aux.open && !Notifications.popupInhibited && Notifications.popupList.length > 0
+                open: window.presented && field.ready && (!GlobalStates.notificationCenterOpen && !popup.open && !aux.open && !Notifications.popupInhibited && Notifications.popupList.length > 0
                         && (Config.options?.enabledPanels ?? []).includes("abyssNotificationPopup")
-                        && Geometry.targets(window.outputName,Config.options?.notifications?.screenList ?? [],Quickshell.screens.map(s => s.name))))
+                        && Geometry.targets(window.outputName,Config.options?.notifications?.screenList ?? [],Quickshell.screens.map(s => s.name)))
                 edgeInsets: window.nativeInsets
                 readonly property real contentWidth: centerOnOutput ? 390 : (contentItem.item?.desiredWidth ?? Appearance.sizes.notificationPopupWidth)+padding*2
                 readonly property real contentHeight: centerOnOutput ? window.height-edgeInsets.top-edgeInsets.bottom-72 : Math.min(window.height*.42,Math.max(100,(contentItem.item?.desiredHeight ?? 130)+padding*2))

@@ -758,7 +758,7 @@ DashCard {
 
     property Item addDialogOverlay: Item {
         parent: root
-        anchors.fill: root
+        anchors.fill: parent
         z: 100
         visible: opacity > 0
         opacity: root.showAddDialog ? 1 : 0

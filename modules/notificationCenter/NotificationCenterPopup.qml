@@ -61,7 +61,7 @@ Bar.StyledPopup {
     readonly property bool hoverLeaseRequested:
         root.hoverAllowed
         && !root.explicitForThisOutput
-        && root.active
+        && root.presentationActive
         && (root._anchorHovered
             || root.popupHovered
             || root.entryBridgeHeld
@@ -87,7 +87,7 @@ Bar.StyledPopup {
     popupBackgroundMargin: 0
 
     function enterKeyboardMode(): void {
-        if (!root.active)
+        if (!root.presentationActive)
             return
         if (!GlobalStates.openNotificationCenter(root.outputName))
             return
@@ -144,7 +144,7 @@ Bar.StyledPopup {
     }
 
     function rearmHoverIfIdle(): void {
-        if (!root.active && !root._anchorHovered)
+        if (!root.presentationActive && !root._anchorHovered)
             root.hoverSessionArmed = true
     }
 
@@ -165,7 +165,7 @@ Bar.StyledPopup {
             return
         }
 
-        if (root.active && !root.explicitForThisOutput) {
+        if (root.presentationActive && !root.explicitForThisOutput) {
             root.exitGraceHeld = true
             exitGraceTimer.restart()
             return
@@ -174,12 +174,14 @@ Bar.StyledPopup {
         GlobalStates.setNotificationCenterHoverOutput(root.outputName, false)
     }
 
-    onActiveChanged: {
-        if (active) {
-            if (!root.explicitForThisOutput) {
-                root.entryBridgeHeld = true
-                entryBridgeTimer.restart()
-            }
+    onPresentationActiveChanged: {
+        if (presentationActive) {
+            Qt.callLater(() => {
+                if (root.presentationActive && !root.explicitForThisOutput) {
+                    root.entryBridgeHeld = true
+                    entryBridgeTimer.restart()
+                }
+            })
             return
         }
 
@@ -227,7 +229,7 @@ Bar.StyledPopup {
         Shortcut {
             sequences: [StandardKey.Cancel]
             context: Qt.WindowShortcut
-            enabled: root.active
+            enabled: root.presentationActive
                 && (root.explicitForThisOutput || root.keyboardInteraction)
             onActivated: root.dismissAndDisarm()
         }
@@ -268,7 +270,7 @@ Bar.StyledPopup {
                 Loader {
                     id: contentLoader
                     anchors.fill: parent
-                    active: root.active && root.selectedTab === 0
+                    active: root.presentationActive && root.selectedTab === 0
                     sourceComponent: NotificationCenterContent {
                         popupPresentation: true
                         onSearchFocusRequested: root.enterKeyboardMode()

@@ -74,7 +74,7 @@ Bar.StyledPopup {
     popupBackgroundMargin: 0
 
     function enterEditorMode(): void {
-        if (!root.active || !Notepad.ready || !notesViewLoader.item)
+        if (!root.presentationActive || !Notepad.ready || !notesViewLoader.item)
             return
         // editorActivated is emitted only after TextArea actually gains
         // activeFocus through the pre-armed OnDemand layer-shell surface.
@@ -121,12 +121,14 @@ Bar.StyledPopup {
         }
     }
     onSelectedNotesTabChanged: root.leaveEditorMode()
-    onActiveChanged: {
-        if (active) {
-            if (!root.editorFocused) {
-                root.entryBridgeHeld = true
-                entryBridgeTimer.restart()
-            }
+    onPresentationActiveChanged: {
+        if (presentationActive) {
+            Qt.callLater(() => {
+                if (root.presentationActive && !root.editorFocused) {
+                    root.entryBridgeHeld = true
+                    entryBridgeTimer.restart()
+                }
+            })
             return
         }
 
@@ -170,7 +172,7 @@ Bar.StyledPopup {
         Shortcut {
             sequences: [StandardKey.Cancel]
             context: Qt.WindowShortcut
-            enabled: root.active && root.editorFocused
+            enabled: root.presentationActive && root.editorFocused
             onActivated: root.leaveEditorMode()
         }
 
@@ -268,7 +270,7 @@ Bar.StyledPopup {
                 Loader {
                     id: notesViewLoader
                     anchors.fill: parent
-                    active: root.active && root.selectedMainTab === 0
+                    active: root.presentationActive && root.selectedMainTab === 0
                         && root.selectedNotesTab === 0
                     sourceComponent: QuickNotesView {
                         margin: 0
@@ -283,7 +285,7 @@ Bar.StyledPopup {
                 Loader {
                     id: todoViewLoader
                     anchors.fill: parent
-                    active: root.active && root.selectedMainTab === 0
+                    active: root.presentationActive && root.selectedMainTab === 0
                         && root.selectedNotesTab === 1
                     sourceComponent: DashTodo {
                         color: "transparent"
@@ -293,7 +295,7 @@ Bar.StyledPopup {
                 Loader {
                     id: timerViewLoader
                     anchors.fill: parent
-                    active: root.active
+                    active: root.presentationActive
                     visible: root.selectedMainTab === 1
                     sourceComponent: PomodoroWidget {
                         compactMode: true

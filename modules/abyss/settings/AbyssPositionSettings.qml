@@ -32,7 +32,7 @@ ColumnLayout {
                 {label:"Dashboard",value:"dashboard"},{label:"Overview",value:"overview"},
                 {label:"Clipboard",value:"clipboard"},{label:"Controls",value:"controls"},
                 {label:"Left sidebar",value:"leftPanel"},{label:"Right sidebar",value:"rightPanel"},
-                {label:"Notification center",value:"notificationCenter"},{label:"Notification popups",value:"notifications"},
+                {label:"Quick Notes & Timers",value:"quickNotes"},{label:"Notification center",value:"notificationCenter"},{label:"Notification popups",value:"notifications"},
                 {label:"Session menu",value:"session"},{label:"Cheatsheet",value:"cheatsheet"},
                 {label:"Shell update",value:"update"},{label:"Dialogs",value:"dialog"}]
             currentIndex:model.findIndex(p => p.value===root.kind)

@@ -64,8 +64,11 @@ ShellRoot {
             } else if (step === 2) {
                 if (!check(body.ready && body.inputBounds.width > 0 && body.inputBounds.height > 0,"visible content input")) return
                 if (!check(firstOutput.records.length === 1 && firstOutput.inputBounds.length === 1 && secondOutput.records.length === 0,"output-local participant geometry/input")) return
+                if (!check(firstOutput.waves.simulation.displacement.some(value => value > 0.01),"opening pulls the physical wave loop")) return
                 if (!check(body.contentItem.item.outputName === "DP-test","output binding")) return
+                firstOutput.waves.reset()
                 body.open = false
+                if (!check(firstOutput.waves.simulation.velocity.some(value => value < 0),"closing returns a negative rebound impulse")) return
                 if (!check(body.inputBounds.width === 0 && body.inputBounds.height === 0,"immediate input release")) return
                 if (!check(firstOutput.inputBounds.length === 0,"registry immediate input release")) return
                 if (!check(!body.contentItem.enabled,"disabled content while retracting")) return

@@ -12,6 +12,8 @@ Item {
     property string identity: ""
     property var controller: null
     property bool largeSurface: false
+    readonly property real mass: Math.max(1,span*depth/90000)
+    property bool initialized: false
     property bool open: false
     property real along: 0
     property real span: 380
@@ -33,7 +35,15 @@ Item {
         controller: root.controller
         geometry: root.record
         inputBounds: root.inputBounds
-        mass: Math.max(1, root.span * root.depth / 90000)
+        mass: root.mass
+    }
+    function react(opening): void {
+        if (controller) controller.impulse(edge,along+span/2,span,opening ? 0.85 : -0.65,mass,opening ? "open" : "close")
+    }
+    onOpenChanged: if (initialized) react(open)
+    Component.onCompleted: {
+        initialized = true
+        if (open) Qt.callLater(() => { if (root.open) root.react(true) })
     }
     Keys.onEscapePressed: root.closeRequested()
     Behavior on progress {
@@ -42,12 +52,12 @@ Item {
         SequentialAnimation {
             NumberAnimation {
                 to: deformation.targetValue > 0 ? deformation.targetValue+AbyssStyle.motionOvershoot : 0
-                duration: AbyssStyle.motionNormal
+                duration: Math.round(AbyssStyle.motionNormal*(1+Math.min(0.5,Math.sqrt(root.mass)*0.1)))
                 easing.type: root.open ? Easing.OutCubic : Easing.InCubic
             }
             NumberAnimation {
                 to: deformation.targetValue
-                duration: root.open && AbyssStyle.motionOvershoot > 0 ? AbyssStyle.motionSettle : 0
+                duration: root.open && AbyssStyle.motionOvershoot > 0 ? Math.round(AbyssStyle.motionSettle*(1+Math.min(0.5,Math.sqrt(root.mass)*0.1))) : 0
                 easing.type: Easing.OutCubic
             }
         }

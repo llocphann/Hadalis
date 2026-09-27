@@ -26,7 +26,7 @@ Singleton {
     readonly property int motionFast: motionEnabled ? 100 + Math.round(60*motionIntensity) : 0
     readonly property int motionNormal: motionEnabled ? 180 + Math.round(80*motionIntensity) : 0
     readonly property int motionSettle: motionEnabled ? 180 + Math.round(170*motionIntensity) : 0
-    readonly property real motionOvershoot: motionEnabled && quality === "quality" ? 0.025 * motionIntensity : 0
+    readonly property real motionOvershoot: motionEnabled ? 0.03 * motionIntensity : 0
     readonly property string fontFamily: Appearance.font.family.main
     readonly property real fontSize: Appearance.font.pixelSize.normal
     readonly property color surfaceDeep: ColorUtils.colorWithLightness(Appearance.m3colors.m3surface, 0.045)

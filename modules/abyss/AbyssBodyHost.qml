@@ -18,6 +18,7 @@ Item {
     readonly property var liquidController: controller
     property Item embeddedItem: null
     property bool animatePresentation: true
+    property bool stableContentSize: false
     property bool largeSurface: false
     readonly property real waveInfluence: Wave.bodyStrength(Config.options?.abyss?.waves)
     readonly property real mass: Math.max(1,span*depth/90000)
@@ -33,6 +34,7 @@ Item {
     property string contentKind: ""
     property real progress: open ? 1 : 0
     readonly property var record: Geometry.joinCorner(Geometry.panel(width,height,edgeInsets,edge,along,span,depth,progress,padding,obstacles,largeSurface),joinedEdge,width,height,edgeInsets)
+    readonly property var targetRecord: Geometry.panel(width,height,edgeInsets,edge,along,span,depth,1,padding,obstacles,largeSurface)
     readonly property Item contentItem: content
     readonly property bool ready: embeddedItem !== null || content.status === Loader.Ready
     readonly property Item contentParent: contentFrame
@@ -81,13 +83,16 @@ Item {
     }
     Loader {
         id: content
-        // Keep the Loader geometry/API used by ordinary content adapters.
-        x: root.record.content.x; y: root.record.content.y
-        width: root.record.content.width; height: root.record.content.height
+        parent: contentFrame
+        x: 0; y: 0
+        // Reveal clips/slides a Dock's fixed-size contents. Icons and menus
+        // retain their dimensions throughout opening, closing and reversals.
+        width: root.stableContentSize ? root.targetRecord.content.width : contentFrame.width
+        height: root.stableContentSize ? root.targetRecord.content.height : contentFrame.height
         active: !root.embeddedItem && root.progress > 0.001 && GlobalStates.deferredPanelsReady
         source: root.source
         clip: true
-        opacity: Math.min(1,root.progress*1.5)
+        opacity: 1
         enabled: root.open
         onLoaded: {
             if (item.participant !== undefined) item.participant = root

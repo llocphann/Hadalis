@@ -363,6 +363,10 @@ Scope {
             readonly property string dockEdge: ["top","bottom","left","right"].includes(Config.options?.dock?.position) ? Config.options.dock.position : "bottom"
             AbyssBodyHost {
                 id: dock
+                stableContentSize: true
+                property real cachedSpan: 220
+                readonly property real measuredSpan: contentItem.item?.desiredSpan ?? cachedSpan
+                onMeasuredSpanChanged: if(contentItem.item && measuredSpan>0) cachedSpan=measuredSpan
                 identity: "dock"
                 controller: liquid
                 anchors.fill: parent
@@ -378,7 +382,7 @@ Scope {
                         || ((Config.options?.dock?.showOnDesktop ?? true) && !ToplevelManager.activeToplevel?.activated))
                 edgeInsets: window.nativeInsets
                 span: Math.min((Geometry.horizontal(edge) ? window.width : window.height)-80,
-                    Math.max(140,contentItem.item?.desiredSpan ?? 220))
+                    Math.max(140,measuredSpan))
                 along: (Geometry.horizontal(edge) ? window.width : window.height)/2-span/2
                 depth: AbyssStyle.dockThickness
                 padding: 12

@@ -6,6 +6,7 @@ import qs
 import qs.modules.common
 import qs.modules.common.widgets
 import qs.modules.dock
+import "../looks/AbyssWave.js" as Wave
 
 // Keep the existing app model, menus, preview, launch and drag/reorder behavior.
 // Only the surrounding shell is supplied by the output's field.
@@ -22,7 +23,7 @@ Item {
         if (!participant?.controller) return
         const point = root.mapToItem(participant, position.x, position.y)
         participant.controller.impulse(edge, vertical ? point.y : point.x, 50,
-            strength * (Config.options?.abyss?.waves?.dock ?? .5), 1, "module")
+            strength * Wave.bodyStrength(Config.options?.abyss?.waves), 1, "module")
     }
     HoverHandler {
         onHoveredChanged: root.react(point.position, hovered ? .4 : -.15)

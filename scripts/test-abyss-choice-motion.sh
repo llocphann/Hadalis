@@ -23,6 +23,7 @@ ShellRoot {
     Timer {
         interval:120;running:!root.finished;repeat:true
         onTriggered: {
+            if(!Config.ready) return
             if(root.step===0) {
                 Config.setNestedValue("panelFamily","abyss")
                 Config.setNestedValue("abyss.waves.enabled",true)
@@ -58,6 +59,6 @@ ShellRoot {
 }
 QML
 status=0
-env -u QS_CONFIG_PATH -u QS_CONFIG_NAME -u QS_MANIFEST QT_QPA_PLATFORM=wayland XDG_CONFIG_HOME="$choice_test_root/config" XDG_STATE_HOME="$choice_test_root/state" XDG_CACHE_HOME="$choice_test_root/cache" timeout 5s qs -p "$choice_test_root" --no-color > "$choice_test_root/runtime.log" 2>&1 || status=$?
+env -u QS_CONFIG_PATH -u QS_CONFIG_NAME -u QS_MANIFEST QT_QPA_PLATFORM=wayland XDG_CONFIG_HOME="$choice_test_root/config" XDG_STATE_HOME="$choice_test_root/state" XDG_CACHE_HOME="$choice_test_root/cache" timeout 15s qs -p "$choice_test_root" --no-color > "$choice_test_root/runtime.log" 2>&1 || status=$?
 if [[ "$status" != 124 ]] || ! rg -q CHOICE_PASS "$choice_test_root/runtime.log" || rg -q 'CHOICE_FAIL|ReferenceError:|TypeError:|Binding loop|Unable to assign|is not a type' "$choice_test_root/runtime.log";then cat "$choice_test_root/runtime.log";exit 1;fi
 printf 'PASS: choice wave press/settle, reduced motion, disabled waves, borderless tabs and Waffle isolation\n'

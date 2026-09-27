@@ -43,6 +43,7 @@ ShellRoot {
     Timer {
         interval:120;running:!root.finished;repeat:true
         onTriggered: {
+            if(!Config.ready) return
             if(root.step===0) {
                 Config.setNestedValue("performance.reduceAnimations",true)
                 GlobalStates.deferredPanelsReady=true;GlobalStates.overviewOpen=true
@@ -95,7 +96,7 @@ runtime_status=0
 dbus-run-session -- env -u QS_CONFIG_NAME -u QS_CONFIG_PATH -u QS_MANIFEST \
  QT_QPA_PLATFORM=wayland \
  XDG_CONFIG_HOME="$dashboard_test_root/config" XDG_STATE_HOME="$dashboard_test_root/state" XDG_CACHE_HOME="$dashboard_test_root/cache" \
- timeout 12s qs -p "$dashboard_test_root" --no-color > "$dashboard_test_root/runtime.log" 2>&1 || runtime_status=$?
+ timeout 20s qs -p "$dashboard_test_root" --no-color > "$dashboard_test_root/runtime.log" 2>&1 || runtime_status=$?
 # The harness stays alive after its assertions; timeout owns its termination.
 # An early crash/exit is a failure even if a success marker was emitted.
 if [[ "$runtime_status" != 124 ]]; then cat "$dashboard_test_root/runtime.log";exit 1;fi

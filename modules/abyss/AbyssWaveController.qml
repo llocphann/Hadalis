@@ -102,7 +102,7 @@ Item {
             const ctx = getContext("2d")
             ctx.clearRect(0,0,width,height)
             for (let i=0;i<width;i++) {
-                const value = Math.round((root.simulation.displacement[i]/96+.5)*65535)
+                const value = Math.round((root.simulation.displacement[i]/384+.5)*65535)
                 ctx.fillStyle = "rgb("+(value>>8)+","+(value&255)+",0)"
                 ctx.fillRect(i,0,1,1)
             }

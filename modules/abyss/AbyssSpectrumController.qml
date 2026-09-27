@@ -21,7 +21,7 @@ Item {
     readonly property var options: Config.options?.abyss?.spectrum
     readonly property bool configured: options?.configured ?? false
     readonly property bool spectrumEnabled: configured ? (options?.enabled ?? false) : (Config.options?.bar?.visualizer?.enable ?? false)
-    readonly property real strength: Math.max(0,Math.min(1,options?.strength ?? .45))
+    readonly property real strength: Math.max(0,Math.min(4,options?.strength ?? .45))
     readonly property bool outputEnabled: (configured ? options?.multiMonitorMode : Config.options?.bar?.visualizer?.multiMonitorMode) === "all"
         || Quickshell.screens.length<=1 || outputName===(GlobalStates.primaryScreen?.name ?? Quickshell.screens[0]?.name ?? "")
     readonly property var edges: options?.edge === "all" ? ["top","right","bottom","left"]

@@ -2061,6 +2061,7 @@
             "softness": 24
         },
         "waves": {
+            "strength": -1,
             "enabled": false,
             "preset": "balanced",
             "amplitude": 0.6,

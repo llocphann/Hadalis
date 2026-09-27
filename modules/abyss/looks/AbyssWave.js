@@ -1,19 +1,34 @@
 // A damped spring string on one closed output perimeter, in logical pixels.
 var presets = {
-    calm:{amplitude:.25,propagation:.45,speed:.35,decay:.8,tension:.7,viscosity:.8,rebound:.25,corner:.6},
-    balanced:{amplitude:.6,propagation:.8,speed:.55,decay:.55,tension:.5,viscosity:.55,rebound:.6,corner:.8},
-    fluid:{amplitude:.8,propagation:.9,speed:.65,decay:.4,tension:.35,viscosity:.35,rebound:.8,corner:.9},
-    deep:{amplitude:.7,propagation:.7,speed:.3,decay:.5,tension:.3,viscosity:.7,rebound:.7,corner:.75}
+    calm:{amplitude:.12,propagation:.35,speed:.3,decay:.85,tension:.8,viscosity:.85,rebound:.2,corner:.4},
+    balanced:{amplitude:.8,propagation:.8,speed:.55,decay:.55,tension:.5,viscosity:.55,rebound:.6,corner:.8},
+    fluid:{amplitude:2,propagation:1,speed:.8,decay:.45,tension:.3,viscosity:.25,rebound:.85,corner:1},
+    deep:{amplitude:4,propagation:1,speed:.3,decay:.6,tension:.15,viscosity:.45,rebound:.9,corner:1}
 };
+function bounded(value, fallback, maximum) {
+    return Number.isFinite(Number(value)) ? Math.max(0,Math.min(maximum,Number(value))) : fallback;
+}
+function heightLimit(state) {
+    return Math.min(4+32*state.parameters.amplitude, Math.min(state.width,state.height)*.3, 144);
+}
+function bodyStrength(options) {
+    if (Number.isFinite(Number(options?.strength)) && Number(options.strength)>=0)
+        return bounded(options.strength,1,4);
+    // Preserve the strongest old presentation response until the shared control
+    // is explicitly set. Old fields remain migration input, not active controls.
+    return Math.max(.1,...["small","large","dock","notifications"].map(
+        key=>bounded(options?.[key],1,4)));
+}
 function unit(value, fallback) {
     return Number.isFinite(Number(value)) ? Math.max(0,Math.min(1,Number(value))) : fallback;
 }
 function parameters(options) {
     var base = presets[options?.preset] || presets.balanced;
     var result = {};
-    Object.keys(base).forEach(function(key) { result[key] = options?.preset === "custom" ? unit(options[key],base[key]) : base[key]; });
+    Object.keys(base).forEach(function(key) { result[key] = options?.preset === "custom" ? bounded(options[key],base[key],key === "amplitude" ? 4 : 1) : base[key]; });
     ["hover","press","open","close","drag"].forEach(function(key) { result[key] = unit(options?.[key],1); });
     result.idle = options?.idle === true;
+    result.strength = bodyStrength(options);
     return result;
 }
 function arc(edge, along, width, height) {
@@ -49,10 +64,10 @@ function impulse(state, edge, along, span, strength, mass) {
     var p=state.parameters;
     var center=arc(edge,along,state.width,state.height)%state.length;
     var width=Math.max(state.length/state.count*1.5,span*(.35+.3*p.propagation));
-    var amount=strength*(30+150*p.amplitude)*Math.sqrt(Math.max(1,Math.min(6,mass || 1)));
+    var amount=strength*(60+280*p.amplitude)*Math.sqrt(Math.max(1,Math.min(6,mass || 1)));
     for(var i=0;i<state.count;i++) {
         var d=circularDistance(i*state.length/state.count,center,state.length)/width;
-        state.velocity[i]=Math.max(-500,Math.min(500,state.velocity[i]+amount*Math.exp(-d*d*2)/Math.sqrt(state.mass[i])));
+        state.velocity[i]=Math.max(-2000,Math.min(2000,state.velocity[i]+amount*Math.exp(-d*d*2)/Math.sqrt(state.mass[i])));
     }
     state.mode="ACTIVE";state.age=0;state.quiet=0;
 }
@@ -60,7 +75,7 @@ function impulse(state, edge, along, span, strength, mass) {
 // can settle to a static wave; changing CAVA frames wake it without an idle clock.
 function spectrum(state, edges, points, ceiling, strength) {
     var count=points?.length || 0,changed=false,active=false;
-    var maximum=(4+32*state.parameters.amplitude)*unit(strength,0);
+    var maximum=heightLimit(state)*bounded(strength,0,4)*2;
     var normalizer=Math.max(20,Number(ceiling) || 100);
     for(var i=0;i<state.count;i++) {
         var location=i*state.length/state.count,edge,along,length;
@@ -73,8 +88,8 @@ function spectrum(state, edges, points, ceiling, strength) {
             var position=t*(count-1),low=Math.floor(position),high=Math.min(count-1,low+1);
             var a=Number(points[low]),b=Number(points[high]);
             var level=((Number.isFinite(a)?Math.max(0,a):0)*(1-(position-low))+(Number.isFinite(b)?Math.max(0,b):0)*(position-low))/normalizer;
-            level=Math.max(0,Math.min(1,level));
-            if(level>.025) target=maximum*level*Math.sin(t*Math.PI*6)*Math.pow(Math.sin(t*Math.PI),2);
+            level=Math.sqrt(Math.max(0,Math.min(1,level)));
+            if(level>.025) target=Math.min(heightLimit(state),maximum*level)*Math.sin(t*Math.PI*6)*Math.pow(Math.sin(t*Math.PI),2);
         }
         if(Math.abs(target-state.spectrumTargets[i])>.005 || (target===0 && state.spectrumTargets[i]!==0)) {
             changed=true;state.spectrumTargets[i]=target;
@@ -91,7 +106,7 @@ function advance(state, elapsed) {
     var speed=(160+700*p.speed)*(.3+.7*p.propagation);
     var parts=Math.ceil(Math.max(0,Math.min(.05,elapsed))*Math.max(120,2.5*speed/dx));
     var dt=Math.max(0,Math.min(.05,elapsed))/Math.max(1,parts);
-    var limit=4+32*p.amplitude;
+    var limit=heightLimit(state);
     var corners=[0,state.width,state.width+state.height,2*state.width+state.height];
     for(var step=0;step<parts;step++) {
         var acceleration=state.acceleration;

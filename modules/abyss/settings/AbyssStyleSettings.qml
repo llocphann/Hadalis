@@ -33,17 +33,21 @@ ColumnLayout {
         property real fallback: 0
         property real minimum: 0
         property real maximum: 1
+        property string unit: maximum > 4 ? "px" : "%"
         Layout.fillWidth:true
-        from:0;to:100;stepSize:1
-        value:100*(Config.getNestedValue(configKey,fallback)-minimum)/(maximum-minimum)
-        onMoved: Config.setNestedValue(configKey,minimum+(maximum-minimum)*value/100)
+        from:minimum;to:maximum;stepSize:unit === "%" ? .01 : 1
+        value:Config.getNestedValue(configKey,fallback)
+        valueText:Math.round(value*(unit === "%" ? 100 : 1))+" "+unit
+        onMoved: Config.setNestedValue(configKey,value)
     }
     component WaveControl: WindowDialogSlider {
         id: control
         required property string parameter
         Layout.fillWidth:true
-        from:0;to:100;stepSize:1
+        from:0;to:parameter === "amplitude" ? 400 : 100;stepSize:1
+        visible:(Config.options?.abyss?.waves?.preset ?? "balanced") === "custom"
         value:root.waveValues[parameter]*100
+        valueText:parameter === "amplitude" ? Math.round(4+32*value/100)+" px" : Math.round(value)+" %"
         onMoved: root.waveChange(parameter,value/100)
     }
     SettingsTaskNavigator {
@@ -73,7 +77,7 @@ ColumnLayout {
                 checked:(Config.options?.abyss?.spectrum?.configured ?? false) ? (Config.options?.abyss?.spectrum?.enabled ?? false) : (Config.options?.bar?.visualizer?.enable ?? false)
                 onToggledByUser:checked=>root.spectrumChange("enabled",checked)
             }
-            Percent { text:"Audio wave strength";configKey:"abyss.spectrum.strength";fallback:.45 }
+            Percent { text:"Audio wave strength";configKey:"abyss.spectrum.strength";fallback:.45;maximum:4 }
             ConfigSelectionArray {
                 currentValue:Config.options?.abyss?.spectrum?.edge ?? "bar"
                 options:[{displayName:"Bar Edge",value:"bar"},{displayName:"All Edges",value:"all"},
@@ -144,6 +148,13 @@ ColumnLayout {
                 }
             }
             AbyssWavePreview {}
+            WindowDialogSlider {
+                text:"Surface wave strength";Layout.fillWidth:true;from:0;to:4;stepSize:.01
+                visible:(Config.options?.abyss?.waves?.preset ?? "balanced") === "custom"
+                value:Wave.bodyStrength(Config.options?.abyss?.waves)
+                valueText:Math.round(value*100)+" %"
+                onMoved:Config.setNestedValue("abyss.waves.strength",value)
+            }
             WaveControl { text:"Wave size";parameter:"amplitude" }
             WaveControl { text:"Propagation distance";parameter:"propagation" }
             WaveControl { text:"Wave speed";parameter:"speed" }
@@ -154,6 +165,7 @@ ColumnLayout {
             WaveControl { text:"Corner propagation";parameter:"corner" }
             ConfigSwitch {
                 text:"Occasional idle ripple";autoToggle:false
+                visible:(Config.options?.abyss?.waves?.preset ?? "balanced") === "custom"
                 checked:Config.options?.abyss?.waves?.idle ?? false
                 onToggledByUser:checked=>Config.setNestedValue("abyss.waves.idle",checked)
             }
@@ -197,10 +209,6 @@ ColumnLayout {
         SettingsGroup {
             SettingsNote { text:"Popups retain their existing layouts and follow the edge of their source module. The output field paints their outer surface once." }
             AbyssPositionSettings {}
-            Percent { text:"Small popup wave strength";configKey:"abyss.waves.small";fallback:.7;maximum:2 }
-            Percent { text:"Large panel wave strength";configKey:"abyss.waves.large";fallback:1;maximum:2 }
-            Percent { text:"Dock wave strength";configKey:"abyss.waves.dock";fallback:.5;maximum:2 }
-            Percent { text:"Notification wave strength";configKey:"abyss.waves.notifications";fallback:.3;maximum:2 }
             AbyssOutputSelector { configPath:"sidebar.screenList";title:"Sidebar outputs" }
             AbyssOutputSelector { configPath:"notifications.screenList";title:"Notification outputs" }
         }

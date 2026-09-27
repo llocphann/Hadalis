@@ -31,7 +31,7 @@ layout(binding=1) uniform sampler2D wallpaper;
 layout(binding=2) uniform sampler2D waveSamples;
 float waveAt(float arc) {
     vec4 encoded=texture(waveSamples,vec2(fract(arc/(2.0*(viewport.x+viewport.y))),0.5));
-    return encoded.a<0.5 ? 0.0 : ((encoded.r*65280.0+encoded.g*255.0)/65535.0-0.5)*96.0;
+    return encoded.a<0.5 ? 0.0 : ((encoded.r*65280.0+encoded.g*255.0)/65535.0-0.5)*384.0;
 }
 float displacement(vec2 p) {
     vec4 distances=vec4(p.y,viewport.x-p.x,viewport.y-p.y,p.x);

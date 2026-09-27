@@ -3,6 +3,7 @@ import qs
 import qs.modules.common
 import qs.modules.abyss.looks
 import "looks/AbyssGeometry.js" as Geometry
+import "looks/AbyssWave.js" as Wave
 
 // This host never paints a panel. Its geometry record is consumed by the one
 // output field, and its clipped content rectangle is the entire input region.
@@ -18,9 +19,7 @@ Item {
     property Item embeddedItem: null
     property bool animatePresentation: true
     property bool largeSurface: false
-    readonly property real waveInfluence: identity === "dock" ? (Config.options?.abyss?.waves?.dock ?? .5)
-        : identity === "notification" ? (Config.options?.abyss?.waves?.notifications ?? .3)
-        : largeSurface ? (Config.options?.abyss?.waves?.large ?? 1) : (Config.options?.abyss?.waves?.small ?? .7)
+    readonly property real waveInfluence: Wave.bodyStrength(Config.options?.abyss?.waves)
     readonly property real mass: Math.max(1,span*depth/90000)
     property bool initialized: false
     property bool open: false

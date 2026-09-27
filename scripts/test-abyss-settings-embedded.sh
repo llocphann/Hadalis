@@ -2,7 +2,7 @@
 # Exercise the real mature card in an embedded surface with deep-link routing.
 set -euo pipefail
 repo_root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
-if ! command -v qs >/dev/null; then printf 'SKIP: embedded Settings (Quickshell unavailable)\n'; exit 0; fi
+if ! command -v qs >/dev/null || [[ -z "${WAYLAND_DISPLAY:-}" ]]; then printf 'SKIP: embedded Settings (Quickshell unavailable)\n'; exit 0; fi
 settings_test_root="$(mktemp -d)"
 trap 'rm -rf -- "$settings_test_root"' EXIT
 for entry in modules services GlobalStates.qml qmldir assets scripts defaults translations; do
@@ -17,6 +17,7 @@ import Quickshell
 import qs
 import qs.modules.common
 import qs.modules.abyss
+import qs.modules.settings
 ShellRoot {
     id: root
     property int step: 0
@@ -54,16 +55,22 @@ ShellRoot {
             }
             if(root.step===5) {
                 if(!root.check(GlobalStates.settingsOverlayCurrentPage===1,"shared page navigation remains functional")) return
+                if(!root.check(SettingsPageRegistry.pageIndexForKey("abyss")===2,"Abyss replaces the former Bar route without renumbering shared pages")) return
+                GlobalStates.openSettingsSection(2,"waves")
+            }
+            if(root.step===7) {
+                if(!root.check(GlobalStates.settingsOverlayCurrentPage===2,"dedicated Abyss controls receive deep links")) return
+                if(!root.check(body.contentItem.item.currentPage?.activeSection==="waves","deep link selects the visible Waves tab")) return
                 GlobalStates.settingsOverlayOpen=false
                 if(!root.check(body.inputBounds.width===0,"Settings closes with immediate input release")) return
             }
-            if(root.step===7) { console.info("EMBEDDED_SETTINGS_PASS");Qt.quit() }
+            if(root.step===9) { console.info("EMBEDDED_SETTINGS_PASS");Qt.quit() }
             root.step++
         }
     }
 }
 QML
-if ! env -u QS_CONFIG_PATH -u QS_CONFIG_NAME -u QS_MANIFEST QT_QPA_PLATFORM=offscreen \
+if ! env -u QS_CONFIG_PATH -u QS_CONFIG_NAME -u QS_MANIFEST QT_QPA_PLATFORM=wayland \
     XDG_CONFIG_HOME="$settings_test_root/config" XDG_STATE_HOME="$settings_test_root/state" \
     XDG_CACHE_HOME="$settings_test_root/cache" timeout 10s qs -p "$settings_test_root" --no-color \
     > "$settings_test_root/runtime.log" 2>&1; then

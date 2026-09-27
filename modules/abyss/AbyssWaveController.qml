@@ -18,7 +18,10 @@ Item {
     property real lastStep: 0
     readonly property bool running: ticker.running
     readonly property var texture: textureSource
-    readonly property bool motionAllowed: presented && AbyssStyle.motionEnabled && (Config.options?.abyss?.waves?.enabled ?? false)
+    property bool wavesEnabled: Config.options?.abyss?.waves?.enabled ?? false
+    property bool idleDisturbance: false
+    property int idlePoint: 0
+    readonly property bool motionAllowed: presented && AbyssStyle.motionEnabled && wavesEnabled
     function reset(): void {
         simulation = Wave.create(sampleCount,outputWidth,outputHeight,parameters)
         Wave.setMass(simulation,records)
@@ -31,6 +34,7 @@ Item {
         const factor = channel === "module" ? (Math.abs(strength)<0.5 ? parameters.hover : parameters.press)
             : (parameters[channel] ?? 1)
         Wave.impulse(simulation,edge,along,span,strength*factor*AbyssStyle.motionIntensity,mass)
+        idleDisturbance = channel === "idle"
         lastStep = Date.now()
         mode = simulation.mode
         revision++
@@ -47,7 +51,7 @@ Item {
     Component.onCompleted: reset()
     Timer {
         id: ticker
-        interval: AbyssStyle.quality === "performance" ? 33 : 16
+        interval: root.idleDisturbance ? 100 : AbyssStyle.quality === "performance" ? 33 : 16
         repeat: true
         running: root.motionAllowed && root.mode !== "SLEEPING"
         onTriggered: {
@@ -56,6 +60,14 @@ Item {
             root.lastStep = now
             root.mode = root.simulation.mode
             root.revision++
+        }
+    }
+    Timer {
+        interval: 8000;repeat:true
+        running: root.motionAllowed && root.parameters.idle
+        onTriggered: if (root.mode === "SLEEPING") {
+            root.idlePoint = (root.idlePoint+1)%7
+            root.impulse("top",root.outputWidth*(root.idlePoint+.5)/7,120,.04,1,"idle")
         }
     }
     // One tiny, explicitly updated texture; no desktop capture or time uniform.

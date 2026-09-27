@@ -54,10 +54,10 @@ for (const family of ['ii','waffle','abyss']) {
     root.abyssFamily = family === 'abyss'; root.waffleFamily = family === 'waffle';
     assert(applicable(1)); assert(applicable(10)); // shared System/Modules routes
     assert(!applicable(-1)); assert(!applicable(30)); assert(!applicable(18));
-    assert.equal(applicable(2), family === 'ii');
+    assert.equal(applicable(2), family !== 'waffle');
     assert.equal(applicable(11), family === 'waffle');
-    assert.equal(applicable(16), family === 'ii');
-    assert.equal(applicable(29), family === 'ii');
+    assert.equal(applicable(16), family !== 'waffle');
+    assert.equal(applicable(29), family !== 'waffle');
 }
 """], check=True)
 

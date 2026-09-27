@@ -1,5 +1,6 @@
 import QtQuick
 import qs
+import qs.modules.common
 import qs.modules.abyss.looks
 import "looks/AbyssGeometry.js" as Geometry
 
@@ -14,6 +15,9 @@ Item {
     readonly property var liquidController: controller
     property Item embeddedItem: null
     property bool largeSurface: false
+    readonly property real waveInfluence: identity === "dock" ? (Config.options?.abyss?.waves?.dock ?? .5)
+        : identity === "notification" ? (Config.options?.abyss?.waves?.notifications ?? .3)
+        : largeSurface ? (Config.options?.abyss?.waves?.large ?? 1) : (Config.options?.abyss?.waves?.small ?? .7)
     readonly property real mass: Math.max(1,span*depth/90000)
     property bool initialized: false
     property bool open: false
@@ -41,7 +45,7 @@ Item {
         mass: root.mass
     }
     function react(opening): void {
-        if (controller) controller.impulse(edge,along+span/2,span,opening ? 0.85 : -0.65,mass,opening ? "open" : "close")
+        if (controller) controller.impulse(edge,along+span/2,span,(opening ? 0.85 : -0.65)*waveInfluence,mass,opening ? "open" : "close")
     }
     onOpenChanged: if (initialized) react(open)
     Component.onCompleted: {

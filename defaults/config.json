@@ -2071,7 +2071,11 @@
             "open": 1,
             "close": 1,
             "drag": 1,
-            "idle": false
+            "idle": false,
+            "small": 0.7,
+            "large": 1,
+            "dock": 0.5,
+            "notifications": 0.3
         },
         "modules": {
             "configured": false,

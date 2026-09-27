@@ -490,6 +490,10 @@ Singleton {
                     property real close: 1
                     property real drag: 1
                     property bool idle: false
+                    property real small: 0.7
+                    property real large: 1
+                    property real dock: 0.5
+                    property real notifications: 0.3
                 }
                 property JsonObject modules: JsonObject {
                     property bool configured: false

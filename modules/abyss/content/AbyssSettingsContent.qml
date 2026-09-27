@@ -5,5 +5,9 @@ import qs.modules.settings
 Item {
     id: root
     property string outputName: ""
-    SettingsOverlay { embeddedHost: root }
+    readonly property Item currentPage: settings.pageHost?.currentItem ?? null
+    SettingsOverlay {
+        id: settings
+        embeddedHost: root
+    }
 }

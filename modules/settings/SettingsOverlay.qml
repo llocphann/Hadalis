@@ -25,6 +25,7 @@ Scope {
     // Optional host supplied by a family's continuous surface compositor.
     // The ordinary Material layer host remains unchanged when this is null.
     property Item embeddedHost: null
+    property var pageHost: null
 
     property bool settingsOpen: GlobalStates.settingsOverlayOpen ?? false
     property bool navEditMode: false
@@ -233,8 +234,8 @@ Scope {
     }
 
     function trySpotlight() {
-        const pageItem = overlayPagesHost.currentItem
-        if (pageItem && overlayPagesHost.currentIndex === pendingSpotlightPageIndex
+        const pageItem = root.pageHost?.currentItem
+        if (pageItem && root.pageHost.currentIndex === pendingSpotlightPageIndex
                 && pendingSpotlightSection.length > 0
                 && typeof pageItem.activateSettingsSearchSection === "function")
             pageItem.activateSettingsSearchSection(pendingSpotlightSection)
@@ -1634,6 +1635,8 @@ Scope {
 
                             SettingsPageHost {
                                 id: overlayPagesHost
+                                Component.onCompleted: root.pageHost = this
+                                Component.onDestruction: if (root.pageHost === this) root.pageHost = null
                                 anchors { top: overlayPageHeader.bottom; left: parent.left; right: parent.right; bottom: parent.bottom }
                                 pages: root.overlayPages
                                 requestedIndex: root.overlayCurrentPage

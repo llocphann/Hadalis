@@ -30,7 +30,7 @@ Singleton {
         if (index < 0 || index >= root.pages.length
                 || root.isHiddenLegacyIndex(index)) return false
         if (root.abyssFamily)
-            return ![root.barPageIndex,11,16,29].includes(index)
+            return index !== 11
         if (root.waffleFamily)
             return index !== root.barPageIndex && index !== 16 && index !== 29
         return index !== 11
@@ -66,6 +66,9 @@ Singleton {
     }
 
     readonly property var pages: SettingsPageRegistryData.pages.map((page, index) => {
+        if (root.abyssFamily && index === root.barPageIndex)
+            return Object.assign({},page,{key:"abyss",name:"Abyss",icon:"water",
+                desc:"Screen Edge, waves and surface presentation",component:"modules/settings/AbyssConfig.qml"})
         if (root.isRetiredFeaturePage(index)) {
             const panelsPage = SettingsPageRegistryData.pages[root.panelsPageIndex]
             return Object.assign({}, panelsPage, {
@@ -94,10 +97,14 @@ Singleton {
         pages: category.pages.filter(index => !root.isHiddenLegacyIndex(index))
     }))
 
-    readonly property var categories: SettingsPageRegistryData.categories.map(category => ({
-        label: category.label,
-        pages: category.pages.filter(index => !root.isHiddenLegacyIndex(index))
-    }))
+    readonly property var categories: {
+        const groups = SettingsPageRegistryData.categories.map(category => ({
+            label:category.label,pages:category.pages.filter(index => !root.isHiddenLegacyIndex(index)
+                && (!root.abyssFamily || index !== root.barPageIndex))
+        }))
+        if (root.abyssFamily) groups.splice(1,0,{label:"Abyss",pages:[root.barPageIndex]})
+        return groups
+    }
 
     readonly property var hiddenPages: SettingsPageRegistryData.hiddenPages.filter(
         index => !root.isHiddenLegacyIndex(index))

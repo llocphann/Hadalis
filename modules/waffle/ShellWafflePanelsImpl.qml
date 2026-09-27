@@ -14,7 +14,6 @@ import qs.modules.sessionScreen
 import qs.modules.wallpaperSelector
 import qs.modules.wallpaperLauncher
 import qs.modules.ii.overlay
-import qs.modules.clipboard as ClipboardModule
 
 import qs.modules.waffle.actionCenter
 import qs.modules.waffle.looks
@@ -126,7 +125,6 @@ Item {
     OnDemandPanelLoader { identifier: "iiWallpaperSelector"; open: GlobalStates.wallpaperSelectorOpen; closeGraceMs: 250; component: WallpaperSelector {} }
     OnDemandPanelLoader { identifier: "iiWallpaperLauncher"; open: GlobalStates.wallpaperLauncherOpen; closeGraceMs: Appearance.animationsEnabled ? Math.max(240, Appearance.animation.elementMoveExit.duration + 60) : 40; component: WallpaperLauncher {} }
     OnDemandPanelLoader { identifier: "iiCoverflowSelector"; open: GlobalStates.coverflowSelectorOpen; closeGraceMs: Appearance.animationsEnabled ? Appearance.calcEffectiveDuration(450) + 40 : 40; component: WallpaperCoverflow {} }
-    DeferredPanelLoader { identifier: "iiClipboard"; extraCondition: Config.options?.panelFamily !== "waffle"; component: ClipboardModule.ClipboardPanel {} }
     OnDemandPanelLoader { identifier: "iiRecordingOsd"; open: RecorderStatus.isRecording; closeGraceMs: 250; component: RecordingOsd {} }
 
     OnDemandPanelLoader {

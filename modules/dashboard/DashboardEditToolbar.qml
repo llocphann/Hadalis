@@ -125,6 +125,17 @@ Rectangle {
                             root.canvasController.resetLayout()
                     }
                 }
+
+                EditToolButton {
+                    visible: root.hiddenIds.length > 0
+                    iconName: "auto_awesome_motion"
+                    tooltipText: Translation.tr(
+                        "Add all modules and fit them automatically")
+                    onClicked: {
+                        if (root.canvasController)
+                            root.canvasController.fitAllWidgets()
+                    }
+                }
             }
 
             Flickable {

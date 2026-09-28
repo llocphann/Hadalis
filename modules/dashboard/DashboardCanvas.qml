@@ -24,8 +24,8 @@ Item {
         const entries=root._allIds.map(id=>root._entryFor(id)), minimums=({})
         for (const id of root._allIds) minimums[id]=root._minimumSize(id)
         return WorkingLayout.project(entries,root.width,root.height,minimums,root.collisionGap,
-            {width:Config.options?.dashboard?.canvas?.workspaceWidth ?? 0,
-             height:Config.options?.dashboard?.canvas?.workspaceHeight ?? 0})
+            {width:root._workspaceReferenceWidth,
+             height:root._workspaceReferenceHeight})
     }
     property string layoutMessage: ""
     signal requestEventsDialog(var event)
@@ -90,6 +90,20 @@ Item {
     property var _smartGuides: []
     property var _smartSnapAxes: ({ x: false, y: false })
 
+    // Dashboard layout editing is transactional. The live editor works against
+    // this in-memory draft; persistent Config is touched only by Done.
+    property var _draftEntries: null
+    property real _draftWorkspaceWidth: 0
+    property real _draftWorkspaceHeight: 0
+    readonly property real _workspaceReferenceWidth:
+        root.editMode && root._draftEntries !== null
+            ? root._draftWorkspaceWidth
+            : Number(Config.options?.dashboard?.canvas?.workspaceWidth ?? 0)
+    readonly property real _workspaceReferenceHeight:
+        root.editMode && root._draftEntries !== null
+            ? root._draftWorkspaceHeight
+            : Number(Config.options?.dashboard?.canvas?.workspaceHeight ?? 0)
+
     function _icon(id) {
         return root._catalog[id]?.icon ?? "widgets"
     }
@@ -120,7 +134,51 @@ Item {
     }
 
     function _storedEntries() {
+        if (root.editMode && root._draftEntries !== null)
+            return root._draftEntries
         return Config.options?.dashboard?.canvas?.widgets ?? []
+    }
+
+    function _cloneEntries(entries) {
+        return JSON.parse(JSON.stringify(entries ?? []))
+    }
+
+    function _captureEditDraft() {
+        if (root._draftEntries !== null)
+            return
+        root._draftEntries = root._cloneEntries(root._entriesForWrite())
+        root._draftWorkspaceWidth = Number(
+            Config.options?.dashboard?.canvas?.workspaceWidth ?? 0)
+        root._draftWorkspaceHeight = Number(
+            Config.options?.dashboard?.canvas?.workspaceHeight ?? 0)
+    }
+
+    function beginEditMode() {
+        if (!root.editMode)
+            root.editMode = true
+    }
+
+    function commitEditMode() {
+        if (!root.editMode)
+            return
+        root.finishInteraction(true)
+        const updates = {
+            "dashboard.canvas.widgets":
+                root._cloneEntries(root._draftEntries ?? root._entriesForWrite())
+        }
+        if (root.responsiveWorkspace) {
+            updates["dashboard.canvas.workspaceWidth"] =
+                root._draftWorkspaceWidth
+            updates["dashboard.canvas.workspaceHeight"] =
+                root._draftWorkspaceHeight
+        }
+        Config.setNestedValues(updates)
+        root.editMode = false
+    }
+
+    function cancelEditMode() {
+        if (root.editMode)
+            root.editMode = false
     }
 
     function _entryFor(id) {
@@ -179,6 +237,14 @@ Item {
     }
 
     function _writeEntries(entries) {
+        if (root.editMode) {
+            root._draftEntries = root._cloneEntries(entries)
+            if (root.responsiveWorkspace) {
+                root._draftWorkspaceWidth = canvas.width
+                root._draftWorkspaceHeight = canvas.height
+            }
+            return
+        }
         const updates={"dashboard.canvas.widgets":entries}
         if(root.responsiveWorkspace) {
             updates["dashboard.canvas.workspaceWidth"]=canvas.width
@@ -255,8 +321,100 @@ Item {
         root._preview = ({})
         root._interaction = null
         root.selectedId = ""
-        Config.setNestedValues({"dashboard.canvas.widgets":root.defaultEntries(),
-            "dashboard.canvas.workspaceWidth":0,"dashboard.canvas.workspaceHeight":0})
+        if (root.editMode) {
+            root._draftEntries = root._cloneEntries(root.defaultEntries())
+            root._draftWorkspaceWidth = 0
+            root._draftWorkspaceHeight = 0
+        } else {
+            Config.setNestedValues({
+                "dashboard.canvas.widgets":root.defaultEntries(),
+                "dashboard.canvas.workspaceWidth":0,
+                "dashboard.canvas.workspaceHeight":0
+            })
+        }
+    }
+
+    function fitAllWidgets() {
+        root.layoutMessage = ""
+        root.finishInteraction(false)
+        root._preview = ({})
+
+        const stored = root._entriesForWrite()
+        const existingById = ({})
+        for (let i = 0; i < stored.length; ++i) {
+            const id = String(stored[i]?.id ?? "")
+            if (id.length > 0)
+                existingById[id] = stored[i]
+        }
+
+        const canonical = root._allIds.map(id =>
+            Object.assign({}, root._defaultEntry(id),
+                existingById[id] ?? {}, { id: id, visible: true }))
+        const minimums = ({})
+        for (let i = 0; i < root._allIds.length; ++i) {
+            const id = String(root._allIds[i])
+            minimums[id] = root._minimumSize(id)
+        }
+
+        function ordered(entries) {
+            return entries.slice().sort((a, b) => {
+                const am = minimums[String(a.id)]
+                const bm = minimums[String(b.id)]
+                return (bm.width * bm.height) - (am.width * am.height)
+            })
+        }
+
+        let projection = WorkingLayout.project(
+            ordered(canonical), canvas.width, canvas.height,
+            minimums, root.collisionGap,
+            { width: root._workspaceReferenceWidth,
+              height: root._workspaceReferenceHeight })
+
+        // Hidden widgets may carry stale custom geometry. If that cannot pack,
+        // retry from readable minimum sizes before declaring the finite canvas
+        // too small. Existing collision/readability limits remain authoritative.
+        if (projection.overflow.length > 0) {
+            const compact = canonical.map(entry => {
+                const id = String(entry.id)
+                const min = minimums[id]
+                const fallback = root._defaultEntry(id)
+                return Object.assign({}, entry, {
+                    x: fallback.x,
+                    y: fallback.y,
+                    w: Math.min(1, min.width / Math.max(1, canvas.width)),
+                    h: Math.min(1, min.height / Math.max(1, canvas.height)),
+                    visible: true
+                })
+            })
+            projection = WorkingLayout.project(
+                ordered(compact), canvas.width, canvas.height,
+                minimums, root.collisionGap,
+                { width: canvas.width, height: canvas.height })
+        }
+
+        if (projection.overflow.length > 0) {
+            root.layoutMessage = Translation.tr(
+                "Not enough Dashboard space for %1 modules")
+                    .arg(projection.overflow.length)
+            return
+        }
+
+        const fitted = canonical.map(entry => {
+            const id = String(entry.id)
+            const rect = projection.rects[id]
+            const geometry = root._normalizedRect(rect, true)
+            return Object.assign({}, entry, {
+                x: geometry.x, y: geometry.y,
+                w: geometry.w, h: geometry.h,
+                visible: true
+            })
+        })
+        const extras = stored.filter(entry =>
+            root._allIds.indexOf(String(entry?.id ?? "")) === -1)
+        root._writeEntries(fitted.concat(extras))
+        root.selectedId = ""
+        root.layoutMessage = Translation.tr(
+            "Added and fitted all Dashboard modules")
     }
 
     function _minimumSize(id) {
@@ -1346,14 +1504,20 @@ Item {
     }
 
     onEditModeChanged: {
-        if (!editMode) {
-            root.finishInteraction(false)
-            root._smartGuides = []
-            root._smartSnapAxes = ({ x: false, y: false })
-            root.selectedId = ""
+        if (editMode) {
+            root._captureEditDraft()
+            return
         }
+        root.finishInteraction(false)
+        root._smartGuides = []
+        root._smartSnapAxes = ({ x: false, y: false })
+        root.selectedId = ""
+        root._draftEntries = null
+        root._draftWorkspaceWidth = 0
+        root._draftWorkspaceHeight = 0
     }
-    onPresentationActiveChanged: if (!presentationActive) root.editMode = false
+    onPresentationActiveChanged:
+        if (!presentationActive) root.cancelEditMode()
 
     Component { id: welcomeComponent; DashWelcome {} }
     Component { id: clockComponent; DashClock {} }

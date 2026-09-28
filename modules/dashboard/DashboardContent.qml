@@ -89,8 +89,12 @@ Item {
                 Layout.fillWidth: true
                 visible: root.showHeader
                 editMode: dashboardCanvas.editMode
-                onEditModeRequested:
-                    dashboardCanvas.editMode = !dashboardCanvas.editMode
+                onEditModeRequested: {
+                    if (dashboardCanvas.editMode)
+                        dashboardCanvas.commitEditMode()
+                    else
+                        dashboardCanvas.beginEditMode()
+                }
             }
 
             DashboardCanvas {

@@ -34,7 +34,8 @@ assert.equal(saveProfile(thicknessProfile,'A',[],8,false,undefined,undefined,und
 
 assert(!catalog.includes('leftSidebarButton') && !catalog.includes('rightSidebarButton'));
 assert(!catalog.includes('wifi') && !catalog.includes('bluetooth'),'connectivity lives in System Tray, not duplicate Edge modules');
-assert.deepEqual(normalize([{id:'old-left',kind:'leftSidebarButton'},{id:'old-wifi',kind:'wifi'},{id:'clock',kind:'clock'},{id:'old-bt',kind:'bluetooth'},{id:'old-right',kind:'rightSidebarButton'}],'top').map(p=>p.id),['clock']);
+assert(!catalog.includes('utilities'),'Utilities lives inside Quick Actions, not as a standalone Edge module');
+assert.deepEqual(normalize([{id:'old-left',kind:'leftSidebarButton'},{id:'old-wifi',kind:'wifi'},{id:'old-util',kind:'utilities'},{id:'clock',kind:'clock'},{id:'old-bt',kind:'bluetooth'},{id:'old-right',kind:'rightSidebarButton'}],'top').map(p=>p.id),['clock']);
 const initial = seed([catalog.slice(0,3),catalog.slice(3,5),[catalog[5]],catalog.slice(6,9),catalog.slice(9)],'top',1920,1200);
 assert.equal(initial.length,catalog.length);
 assert.equal(new Set(initial.map(p=>p.id)).size,initial.length);

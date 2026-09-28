@@ -16,6 +16,10 @@ Item {
     property bool vertical: false
     property bool compactRequested: false
     property bool pinnedExpanded: false
+    // Abyss owns the connected Utilities popup; other families keep the shared
+    // Quick Actions implementation without gaining a new popup route.
+    property bool showUtilitiesLauncher: false
+    signal utilitiesRequested()
     readonly property color neutralIconColor: Appearance.colors.colOnLayer2
     readonly property color dangerIconColor: Appearance.colors.colError
     readonly property bool hasUrgentState: RecorderStatus.isRecording
@@ -456,6 +460,23 @@ Item {
                         case PowerProfile.Balanced: return "settings_slow_motion"
                         case PowerProfile.Performance: return "local_fire_department"
                     }
+                    iconSize: Math.round(Appearance.font.pixelSize.large * Appearance.sizes.barModuleScale)
+                    color: root.neutralIconColor
+                }
+            }
+        }
+
+        Loader {
+            active: root.showUtilitiesLauncher
+            visible: active
+            sourceComponent: CircleUtilButton {
+                Layout.alignment: Qt.AlignVCenter
+                Accessible.name: Translation.tr("Open utilities")
+                onClicked: root.utilitiesRequested()
+                MaterialSymbol {
+                    horizontalAlignment: Qt.AlignHCenter
+                    fill: 0
+                    text: "display_settings"
                     iconSize: Math.round(Appearance.font.pixelSize.large * Appearance.sizes.barModuleScale)
                     color: root.neutralIconColor
                 }

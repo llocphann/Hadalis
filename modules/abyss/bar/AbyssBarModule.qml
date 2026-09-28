@@ -49,7 +49,6 @@ Item {
             : root.kind === "workspaces" ? workspaces : root.kind === "distroIcon" ? distro
             : root.kind === "activeWindow" ? activeWindow : root.kind === "tray" ? tray
             : root.kind === "utilButtons" ? utilities
-            : root.kind === "utilities" ? utilitiesPopup
             : root.kind === "timer" ? timer
             : root.kind === "shellUpdate" ? update : root.kind === "weather" ? weather : taskbar
     }
@@ -80,14 +79,13 @@ Item {
             onHoverPopupRequested: kind => root.hoverRequest(kind)
         }
     }
-    Component { id: utilities; Shared.UtilButtons { vertical: root.vertical; compactRequested: root.compact } }
     Component {
-        id: utilitiesPopup
-        AbyssButton {
-            compact: true
-            glyph: "display_settings"
-            description: "Utilities"
-            onClicked: root.request("utilities")
+        id: utilities
+        Shared.UtilButtons {
+            vertical: root.vertical
+            compactRequested: root.compact
+            showUtilitiesLauncher: true
+            onUtilitiesRequested: root.request("utilities")
         }
     }
     Component { id: timer; Shared.TimerIndicator { vertical: root.vertical } }

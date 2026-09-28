@@ -22,9 +22,13 @@ Item {
     readonly property var pageTitles: [
         "Monitor arrangement", "Display mode", "Sound output", "Eye protection"
     ]
+    readonly property var pageWidths: [620, 540, 440, 460]
+    readonly property var pageHeights: [430, 390, 350, 500]
 
-    implicitWidth: 760
-    implicitHeight: 620
+    // Size the connected body to the active page instead of reserving the old
+    // 760×620 maximum for every utility.
+    implicitWidth: pageWidths[Math.max(0, Math.min(currentPage, pageWidths.length - 1))]
+    implicitHeight: pageHeights[Math.max(0, Math.min(currentPage, pageHeights.length - 1))]
     focus: true
     signal closeRequested()
 
@@ -138,7 +142,7 @@ Item {
                 width: Math.min(parent.width - 40, 520)
                 visible: !CompositorService.isNiri
                 horizontalAlignment: Text.AlignHCenter
-                text: "Monitor arrangement currently uses Niri's supported output backend."
+                text: "Niri only."
                 color: AbyssStyle.textColorMuted
             }
         }
@@ -154,7 +158,7 @@ Item {
 
                 AbyssLabel {
                     Layout.fillWidth: true
-                    text: "Switch active outputs without rewriting the saved monitor arrangement. Targets are enabled before old outputs are disabled, and a failed switch restores the previous active-output set."
+                    text: "Choose active displays."
                     color: AbyssStyle.textColorMuted
                 }
 
@@ -279,8 +283,8 @@ Item {
                             AbyssLabel {
                                 Layout.fillWidth: true
                                 text: DisplayMode.mirrorAvailable
-                                    ? "Niri has no native output mirroring; Hadalis keeps both outputs on and uses wl-mirror fullscreen on the target."
-                                    : "Install wl-mirror to enable real mirroring. Hadalis will not fake mirror mode by overlapping output coordinates."
+                                    ? "Mirror via wl-mirror."
+                                    : "Install wl-mirror."
                                 color: AbyssStyle.textColorMuted
                             }
                             AbyssButton {

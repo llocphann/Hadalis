@@ -1193,9 +1193,13 @@ ContentPage {
             NoticeBox {
                 Layout.fillWidth: true
                 materialIcon: "drag_pan"
-                text: root.niriOutputNames().length > 1
-                    ? Translation.tr("Drag displays to match your desk. Nearby edges and alignments snap automatically. Gaps are allowed, but Niri's pointer only crosses directly adjacent outputs.")
-                    : Translation.tr("Connect another display to arrange monitor positions.")
+                text: root.embeddedArrangementOnly
+                    ? (root.niriOutputNames().length > 1
+                        ? Translation.tr("Drag to arrange.")
+                        : Translation.tr("One display connected."))
+                    : (root.niriOutputNames().length > 1
+                        ? Translation.tr("Drag displays to match your desk. Nearby edges and alignments snap automatically. Gaps are allowed, but Niri's pointer only crosses directly adjacent outputs.")
+                        : Translation.tr("Connect another display to arrange monitor positions."))
             }
 
             Rectangle {

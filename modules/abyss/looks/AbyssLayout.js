@@ -1,11 +1,11 @@
 // Persist normalized positions; derive pixel geometry independently per output.
 var catalog = ["distroIcon","activeWindow","resources","media",
     "workspaces","clock","utilButtons","battery","tray",
-    "timer","shellUpdate","weather","taskbar","utilities"];
+    "timer","shellUpdate","weather","taskbar"];
 var labels = {distroIcon:"Launcher",activeWindow:"Active window",
     resources:"System resources",media:"Media",workspaces:"Workspaces",clock:"Clock",
     utilButtons:"Quick actions",battery:"Battery",tray:"System tray",
-    timer:"Timer",shellUpdate:"Updates",weather:"Weather",taskbar:"Taskbar",utilities:"Utilities"};
+    timer:"Timer",shellUpdate:"Updates",weather:"Weather",taskbar:"Taskbar"};
 function label(kind) { return labels[kind] || kind; }
 function bounded(value, fallback, low, high) {
     var number = Number(value);
@@ -14,7 +14,7 @@ function bounded(value, fallback, low, high) {
 function extent(kind, vertical) {
     var sizes = {utilButtons:36,distroIcon:88,
         activeWindow:178,resources:178,media:166,workspaces:192,clock:104,battery:72,
-        tray:72,timer:68,shellUpdate:86,weather:80,taskbar:40,utilities:42};
+        tray:72,timer:68,shellUpdate:86,weather:80,taskbar:40};
     return vertical ? (kind === "workspaces" ? 192 : kind === "clock" ? 86 : kind === "tray" ? 72 : 42) : (sizes[kind] || 48);
 }
 function normalize(list, fallbackEdge) {

@@ -15,6 +15,7 @@ assert "cancelAuthenticationRequest()" in impl
 assert "property var queue" not in impl
 assert "onAuthenticationFailed" in impl
 assert "onIsResponseRequiredChanged" in impl
+assert "onInputPromptChanged" in impl
 
 for token in ("actionId", "responseVisible", "responseRequired", "failed",
               "supplementaryMessage", "identities", "identityLabel",

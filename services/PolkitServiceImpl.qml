@@ -45,6 +45,12 @@ Scope {
             if (root.flow?.isResponseRequired ?? false)
                 root.interactionAvailable = true
         }
+        function onInputPromptChanged() {
+            // Multi-turn PAM conversations may replace the prompt while the
+            // response-required state stays true (for example a second factor).
+            if (root.flow?.isResponseRequired ?? false)
+                root.interactionAvailable = true
+        }
         function onAuthenticationSucceeded() {
             root.interactionAvailable = false
         }

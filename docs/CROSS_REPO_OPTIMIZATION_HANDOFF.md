@@ -2679,3 +2679,330 @@ The highest-value next measurements are now:
 
 Do not implement any of these from static evidence alone except where the maintainer separately authorizes code changes. This handoff remains research-only.
 
+---
+
+## 25. Audit round 11 — active Pyramid v2, demand gating, cache/process dedup and Config invalidation fan-out (2026-09-28)
+
+### Snapshot
+
+- Hadalis runtime/documentation HEAD reconciled immediately before this checkpoint: `96bd4562783befae30bf7ede8ddc965e2ccee755`
+- Previous optimization-note commit: `68b59a4f43169395a8dc85d7c81f65e92756361d`
+- Delta since Audit round 10: two Pyramid v2 follow-up commits touching `AbyssBodyHost.qml`, `AbyssGenericPopupPresenter.qml`, tests and documentation.
+- Important correction to §24.1: Pyramid v2 motion is no longer foundation-only. `AbyssBodyHost.qml` now imports and executes `AbyssPyramidMotion.js` in the live presentation path.
+- No runtime/source implementation was changed during this round. Only this handoff is updated.
+
+### 25.1 Pyramid v2 allocation warning is now a live runtime hot-path candidate — PROMOTE to P1 PROFILE
+
+Audit round 10 recorded `AbyssPyramidMotion.js` as a future design guard because it had no live importer at that snapshot. That conclusion is now obsolete.
+
+Current `AbyssBodyHost.qml`:
+
+- imports `looks/AbyssPyramidMotion.js`;
+- enables Pyramid motion for `stackPolicy === "pyramid"` hosts using external reveal progress;
+- computes `rawPresentationRecord` with `PyramidMotion.interpolateRecord(..., root.progress)`;
+- snapshots/restores placements and records through `clonePlacement()` / `cloneRecord()`;
+- uses `AbyssPyramidCoordinator` to freeze/reconcile same-anchor peers during close/reopen.
+
+The new path is semantically well separated from resting allocation, but it is allocation-heavy.
+
+For one `interpolateRecord(from,to,progress)` evaluation alone:
+
+- `cloneRecord(to)` creates a record object plus cloned `surface` and `content` objects;
+- two `interpolateRect()` calls create two more objects;
+- therefore at least roughly five fresh JS objects are created before `joinCorner()`, aggregate-record cloning or shader uniform packing.
+
+When a peer placement moves, `capturePyramidRestingState()` can additionally clone the placement and resting record.
+
+This now composes directly with the previously documented reveal chain:
+
+1. reveal `progress` changes;
+2. Pyramid interpolation creates presentation record objects;
+3. `AbyssParticipant.geometry` changes;
+4. `AbyssSurfaceController.records` rebuilds/clones aggregate records;
+5. `AbyssField.rect0..rect39` repack from the new records list;
+6. waves-off sessions may still invoke `Wave.setMass()` through `onRecordsChanged`.
+
+Do not optimize away the Pyramid transaction model or frozen-peer semantics. Profile allocation/binding cost first.
+
+Required profile additions:
+
+- JS calls/time for `PyramidMotion.interpolateRecord`, `cloneRecord`, `clonePlacement`;
+- allocation/GC during one popup open, close and mid-close reversal;
+- same-anchor two/three-popup reflow;
+- `AbyssSurfaceController.records` and `AbyssField.packed()` in the same trace;
+- compare Pyramid popup reveal to a non-Pyramid body reveal of similar size.
+
+The lossless goal is to reduce redundant temporary-object propagation while preserving identical per-frame geometry.
+
+### 25.2 Compact Sidebar keeps Equalizer/CAVA live while the Controls section is hidden — ADAPT / P1 strong lossless candidate
+
+The earlier Equalizer candidate needed a more precise lifecycle audit.
+
+Current `EqualizerPanel.qml` has:
+
+- an `active` lease into `EqualizerService`;
+- a `CavaProcess { active: root.active }`;
+- a 33 ms analyzer repaint timer while `root.active && analyzerCanvas.visible`.
+
+The 33 ms timer is **not globally redundant**. `onPaint` deliberately uses `Date.now()` to animate the electric-wire/noise trace, so replacing it with event-only repaint would change motion semantics. Keep that distinction explicit.
+
+The clear lossless bug is in compact-sidebar ownership.
+
+Current `CompactSidebarRightContent.qml`:
+
+- keeps the `controls` section loaded because it is the base section;
+- creates the reordered control subsections through a Repeater;
+- the media subsection Loader is active whenever its model item is `"media"`;
+- its `EqualizerPanel` currently uses only `active: root.panelVisible`.
+
+When the compact sidebar is open on Calendar, Events, or another non-Controls section:
+
+- the Controls section is opacity 0 / not visible;
+- its media Equalizer still remains constructed;
+- `EqualizerPanel.active` remains true because the overall panel is visible;
+- EqualizerService demand, shared CAVA demand and the analyzer repaint timer continue even though the surface cannot be seen.
+
+This is a strong lossless demand-gating target.
+
+Acceptance requirements:
+
+- no Equalizer/CAVA lease when the Controls section is not the current visible section;
+- opening/switching back to Controls restores the same analyzer state/visual behavior;
+- do not change the 33 ms cadence while the analyzer is actually visible;
+- verify rapid section switching and sidebar close/reopen.
+
+A second, lower-confidence optimization can later test viewport visibility inside the scrollable Controls section, but do not conflate that with the already-proven section-level hidden case.
+
+### 25.3 Bar media can keep non-current PlayerControl timers alive — INVESTIGATE / P2
+
+`BarMediaPopup` constructs one `PlayerControl` per visible MPRIS player to support tab sliding.
+
+Non-current delegates are positioned off viewport and disabled, but they remain `visible: true`.
+
+`PlayerControl.presentationActive` is:
+
+`root.visible && root.QsWindow.window.visible`
+
+and its 1 Hz MPRIS position timer uses `presentationActive`, not current-tab ownership.
+
+Therefore with several simultaneously playing MPRIS players, opening Bar Media can leave position timers running for offscreen non-current delegates. Those delegates also retain artwork resolver / color-quantizer state.
+
+This is not a priority rewrite because the resident delegates intentionally support smooth tab changes. Profile only under multiple-player scenarios and prefer narrowing time-based work over unloading the delegates.
+
+### 25.4 WindowPreview Fish compatibility wrapper adds one avoidable interpreter launch per capture — ADAPT / P2 clear lossless candidate
+
+The WindowPreview eager-vs-lazy policy remains an A/B question because changing prewarm timing can change first-hover latency.
+
+A smaller lossless overhead is now confirmed.
+
+`WindowPreviewService._doCapture()` chooses Fish when available:
+
+- Fish path: `scripts/capture-windows.fish`
+- fallback path: `scripts/capture-windows.sh`
+
+Current `capture-windows.fish` contains no independent capture behavior. It immediately:
+
+`exec /usr/bin/bash .../capture-windows.sh $argv`
+
+Therefore a Fish-capable system pays Fish startup/parsing only to replace itself with the Bash implementation that all actual behavior already uses.
+
+Lossless direction:
+
+- invoke `capture-windows.sh` directly for this path;
+- retain the Fish file only if it is still a public compatibility entry point for external callers.
+
+Acceptance is simple:
+
+- identical arguments/exit status/stdout `PREVIEW_READY` protocol;
+- identical clipboard/capture cleanup behavior;
+- one fewer interpreter process on every internal capture.
+
+Do not treat this as evidence for lazy WindowPreview initialization; it is independent of prewarm policy.
+
+### 25.5 MediaArtworkResolver warm-cache path pays redundant process/stability checks — ADAPT / P1 process-churn candidate
+
+`MediaArtworkResolver.qml` is used from multiple media surfaces, including `CavaTheme`, `MediaArtwork`, `PlayerControl`, `BarMediaPlayerItem`, `PlayerBase` and `YtMusicPlayerCard`.
+
+Its own cache publishers are atomic:
+
+- local-file cache copy: copy to temp then rename;
+- data-URI decode: write temp then rename;
+- remote download: curl to temp, validate MIME, then rename.
+
+However a warm internal cache hit still performs this lifecycle:
+
+1. spawn `/usr/bin/test -s <cached path>`;
+2. call `_setReadySource(file://...)`;
+3. wait on a 120 ms publish timer;
+4. spawn Bash;
+5. Bash checks size, runs `stat`, sleeps 200 ms, runs `stat` again and requires the size to remain stable.
+
+The stability check is justified for arbitrary external local files that may be actively written, but it is redundant for a resolver-owned cache file that was already atomically published.
+
+This creates both child-process churn and avoidable warm-cache display latency.
+
+Lossless direction:
+
+- distinguish trusted resolver-owned cache entries from arbitrary external local files;
+- trusted warm cache: publish directly after an in-process/shared cache-validity check;
+- external local source: keep the current stability contract.
+
+Measure:
+
+- child-process count and time-to-display when repeatedly constructing the same warm cached artwork;
+- remote/local/data-URI behavior separately;
+- corrupt/zero-byte cache recovery.
+
+### 25.6 MediaArtworkResolver has no shared in-flight miss deduplication — INVESTIGATE / P1
+
+Each resolver instance owns independent `artExistsChecker` and `artworkDownloader` processes.
+
+Several simultaneously visible shell surfaces can resolve the same track metadata and therefore the same cache path. On a cold cache miss they can race:
+
+1. each runs its own `test -s`;
+2. each observes the miss;
+3. each starts its own Bash/curl download;
+4. each writes a process-specific temp file;
+5. multiple successful downloads may rename to the same logical cache target.
+
+Atomic rename prevents a partial final file, so this is primarily duplicated network/process/CPU work rather than a correctness bug.
+
+A shared in-flight registry keyed by final cache identity is a potentially lossless service-level optimization:
+
+- first resolver owns download;
+- peers subscribe to its completion;
+- all publish the identical final cached bytes/path afterward.
+
+Acceptance must include owner destruction mid-download, failure/retry, and track changes while an old request is in flight.
+
+### 25.7 Config.getNestedValue creates global binding invalidation for unrelated keys — INVESTIGATE / P1 broad fan-out candidate
+
+`Config.qml` already debounces persistence for 50 ms and uses non-blocking FileView writes by default. The more important cost is reactivity.
+
+Every `setNestedValue()` / `setNestedValues()`:
+
+1. mutates the requested config value;
+2. updates the JSON mirror;
+3. restarts the write debounce;
+4. increments one global `Config.revision`;
+5. emits one global `Config.configChanged()`.
+
+`Config.getNestedValue()` deliberately reads `root.revision` before traversing the requested path. This means every active QML binding using `getNestedValue()` depends on one global revision regardless of its actual key.
+
+Current repository search returns at least:
+
+- 41 files containing direct `Config.getNestedValue(...)` calls;
+- 88 occurrences in the returned search snippets alone.
+
+The concentration is especially high in persistent desktop widgets and media presets:
+
+- clock and Cookie-clock children;
+- battery;
+- visualizer;
+- calendar;
+- system monitor;
+- Japanese typography;
+- background layout/edit helpers;
+- media-control presets;
+- custom widget helpers.
+
+Therefore changing an unrelated config value can cause these bindings to reevaluate even when their final value is unchanged. QML may suppress downstream property propagation when the result compares equal, but the binding traversal/JS call itself has already happened.
+
+This matters because config updates are not rare one-shot events. Several sliders call `Config.setNestedValue()` from `onMoved`, including night-light temperature, widget opacity/layout parameters and other live editors.
+
+Profile scenario:
+
+- keep several desktop widgets resident;
+- drag an unrelated settings slider for several seconds;
+- record Binding + JavaScript time and reevaluation counts;
+- identify how many `getNestedValue()` bindings fire per revision.
+
+Potential lossless architecture:
+
+- schema-backed config should rely on narrow QML property notifications where reliable;
+- dynamic/custom-widget paths need a scoped revision or key/path invalidation mechanism rather than one global revision;
+- preserve the current correctness fallback for JsonAdapter/list/var cases that motivated the revision dependency.
+
+Do not remove `Config.revision` globally without a binding-correctness matrix; it exists to cover real nested-notify gaps.
+
+### 25.8 Global configChanged also triggers several broad consumers; MPRIS and Background are the strongest current targets — INVESTIGATE
+
+Repository search currently finds roughly sixteen source files with `onConfigChanged` handlers.
+
+Most are low-cost guards or debounce triggers. Two are materially broader.
+
+#### MprisController
+
+On every config change it currently calls:
+
+- `_updateMpvCache()`;
+- `_rebuildPlayerList()`.
+
+The rebuild is debounced by 50 ms, which is good, but the eventual work:
+
+- iterates every MPRIS player;
+- executes the large `isRealPlayer()` metadata/filter heuristic;
+- runs `_filterYtMusicDuplicates()`;
+- duplicate grouping contains a pairwise player comparison loop.
+
+The config inputs that materially affect player membership are much narrower, principally:
+
+- `media.filterDuplicatePlayers`;
+- `sidebar.ytmusic.enable`.
+
+Changing wallpaper opacity, widget size, night-light temperature, etc. should not require a full media-player refilter.
+
+This is a clean narrow-invalidation candidate if profiler traces show meaningful rebuild activity during unrelated settings interaction.
+
+#### Background
+
+Each output-local Background instance:
+
+- increments `_zoneRevision` on every Config change;
+- recomputes zone occupancy over fifteen built-in widget definitions plus custom widgets;
+- reads widget state through `DesktopWidgetLayout`, which itself ultimately uses `Config.getNestedValue()` for base values;
+- schedules every custom-widget Loader's `_syncLoaded()` on every Config change.
+
+This can multiply global config traffic by output count and custom-widget count.
+
+Lossless direction is to invalidate zone/layout ownership only when relevant background-widget configuration changes, while preserving output override and dynamic custom-widget reactivity.
+
+### 25.9 Lower-priority global Config consumers closed/deprioritized
+
+This round also checked several superficially broad handlers:
+
+- **TlpService:** any Config change schedules `apply()`, but `_matchesRequestedPolicy()` and enabled/managed guards usually return before spawning a privileged helper. Keep it below MPRIS/Background.
+- **WallpaperListener:** any Config change restarts an 80 ms debounce; refresh rebuilds the per-output wallpaper map and JSON-compares it before publishing. This is avoidable unrelated work, but it is small relative to the stronger fan-out candidates.
+- **AppLauncher:** its private config revision is currently consumed by Niri Settings app-command controls rather than the whole shell; low priority.
+- **ThemeService:** global changes restart a debounce, but the live-regeneration signature check prevents unrelated settings from launching the heavy theme pipeline.
+
+These can be narrowed later if a profiler points at them; do not expand the backlog simply because they subscribe globally.
+
+### 25.10 Equalizer repaint classification correction
+
+Preserve this correction for future agents:
+
+- **Do not** describe the Equalizer 33 ms analyzer timer as obviously redundant.
+- It is intentionally time-driven because the wire trace uses `Date.now()`.
+- The lossless win is currently hidden-surface demand gating, especially Compact Sidebar.
+- An event-only repaint conversion is a visual/motion behavior change unless the animated noise is reproduced through an equivalent scene-graph mechanism.
+
+### 25.11 Revised research priority after round 11
+
+The evidence order is now:
+
+1. **Startup T+0..T+8 trace** from §24, because process contention can dominate all micro-optimizations.
+2. **Abyss/Pyramid QML allocation profile** on current HEAD, including the newly live `PyramidMotion.interpolateRecord` chain and the existing records/uniform/waves-off paths.
+3. **Config invalidation trace during live settings interaction**:
+   - global `revision` / `getNestedValue`;
+   - MPRIS rebuilds;
+   - Background zone/custom-loader fan-out.
+4. **Compact Sidebar hidden Equalizer/CAVA demand test.**
+5. **MediaArtworkResolver warm-cache process count + cold-cache duplicate-download test.**
+6. **Notification-history serialization scaling.**
+7. **Favicon warm-cache process count.**
+8. **WindowPreview internal Fish-wrapper removal can be treated as a small independent lossless cleanup after authorization; eager/hybrid policy still needs A/B evidence.**
+9. Existing WindowPreview eager/hybrid, Equalizer visible-render cost and Abyss GPU/frame-time experiments.
+
+Do not implement any candidate from this research-only handoff unless the maintainer separately authorizes code changes.
+

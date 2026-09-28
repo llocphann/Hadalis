@@ -16,6 +16,7 @@ import qs.modules.common
 import qs.modules.common.functions
 import qs.modules.abyss
 import qs.modules.abyss.bar
+import "modules/abyss/looks/AbyssPresentation.js" as Presentation
 ShellRoot {
     id: root
     property int step: 0
@@ -117,18 +118,27 @@ ShellRoot {
                 if(!root.check(editor.previewHost.edge==="right" && editor.previewPosition.alignment==="custom" && JSON.stringify(Config.options.abyss.positions)===root.beforePositions,"preview drag updates only an output-local draft")) return
                 const moved=editor.previewHost.record.content
                 if(!root.check(moved.x+moved.width<=module.x,"IPC preview clears the local module on its source Edge")) return
+                editor.movePreview(8,80)
+                const joined=Object.assign({},editor.previewPosition,{joinCorner:true})
+                editor.editPosition(Presentation.save(editor.draftPositions,"volume","A",joined),"volume","A",joined)
+                if(!root.check(editor.previewHost.joinedEdge==="top" && editor.previewHost.record.joinedEdge==="top" && editor.previewHost.record.surface.y===-50,"IPC draft joins the adjacent physical Edge in the shared geometry")) return
+                editor.movePreview(8,editor.height/2)
+                if(!root.check(editor.previewHost.joinedEdge==="" && editor.previewPosition.joinCorner,"moving away suspends the connector without losing its preference")) return
+                if(!root.check(JSON.stringify(Config.options.abyss.positions)===root.beforePositions,"IPC join remains draft-only")) return
                 editor.finish(false)
             }
             if(root.step===7) {
                 if(!root.check(JSON.stringify(Config.options.abyss.positions)===root.beforePositions && editor.previewHost.inputBounds.width===0,"Cancel discards positions and releases preview input")) return
                 GlobalStates.abyssEditing=true;editor.editingPopups=true
-                editor.movePreview(editor.width*.25,8)
+                editor.movePreview(editor.width-80,8)
+                const joined=Object.assign({},editor.previewPosition,{joinCorner:true})
+                editor.editPosition(Presentation.save(editor.draftPositions,"volume","A",joined),"volume","A",joined)
                 Config.setNestedValue("abyss.positions",[{kind:"clock",outputName:"B",edge:"left",alignment:"end"}])
                 editor.finish(true)
             }
             if(root.step===9) {
                 const positions=Array.from(Config.options.abyss.positions)
-                if(!root.check(positions.length===2 && positions.some(p=>p.kind==="clock" && p.outputName==="B" && p.edge==="left") && positions.some(p=>p.kind==="volume" && p.outputName==="A" && p.edge==="top" && p.alignment==="custom"),"Done merges position edits into latest config without overwriting another output")) return
+                if(!root.check(positions.length===2 && positions.some(p=>p.kind==="clock" && p.outputName==="B" && p.edge==="left") && positions.some(p=>p.kind==="volume" && p.outputName==="A" && p.edge==="top" && p.alignment==="custom" && p.joinCorner),"Done merges position and join edits into latest config without overwriting another output")) return
                 console.info("EDITOR_PASS");root.finished=true
             }
             root.step++

@@ -38,6 +38,12 @@ assert.equal(resolve(saved,'volume','A').edge,'right');
 assert.equal(resolve(saved,'volume','B').position,.25,'another output stays intact');
 assert.equal(JSON.stringify(positions),before,'save does not mutate stale config snapshot');
 assert.equal(resolve(save(saved,'volume','A',null),'volume','A').edge,'top','reset restores inherited category');
+const joined=save(positions,'osd','',{edge:'top',alignment:'start',joinCorner:true});
+assert(resolve(joined,'brightness','A').joinCorner,'IPC corner preference inherits the OSD category');
+const isolated=save(joined,'brightness','A',{edge:'left',alignment:'end',joinCorner:false});
+assert.equal(resolve(isolated,'brightness','A').joinCorner,false,'explicit output can disable inherited joining');
+assert(resolve(isolated,'brightness','B').joinCorner,'another output retains inherited joining');
+assert(resolve(save(isolated,'brightness','A',null),'brightness','A').joinCorner,'reset restores inherited joining');
 console.log('PASS: popup/IPC position inheritance, output isolation, reset and bounds across edges/scales');
 """
 subprocess.run(["node", "-e", program], cwd=root, check=True)

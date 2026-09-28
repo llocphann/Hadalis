@@ -4,6 +4,7 @@ import QtQuick.Layouts
 import Quickshell
 import qs.modules.common
 import qs.modules.common.widgets
+import qs.modules.abyss.looks
 import "../looks/AbyssPresentation.js" as Presentation
 
 ColumnLayout {
@@ -16,6 +17,7 @@ ColumnLayout {
     property bool commitImmediately: true
     property bool outputSelectionEnabled: true
     property var allowedKinds: []
+    property string nearbyEdge: ""
     signal positionsEdited(var positions,string kind,string outputName,var values)
     readonly property var position: Presentation.resolve(positions,kind,outputName)
     function apply(values): void {
@@ -95,6 +97,14 @@ ColumnLayout {
         from:0;to:100;stepSize:1;value:(root.position.position ?? .5)*100
         valueText:Math.round(value)+" %"
         onMoved:root.change("position",value/100)
+    }
+    AbyssCheckBox {
+        Layout.fillWidth:true
+        visible:root.kind==="osd" || Presentation.osds.includes(root.kind)
+        text:"Join nearby corner"+(root.nearbyEdge ? " · "+root.nearbyEdge+" Edge" : "")
+        enabled:root.commitImmediately || root.nearbyEdge.length>0 || checked
+        checked:root.position.joinCorner===true
+        onToggled:root.change("joinCorner",checked)
     }
     SettingsNote { text:"Positions follow the source unless overridden. Each popup or IPC indicator can use any Edge, globally or per output; content and input are clamped inside that output." }
 }

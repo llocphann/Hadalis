@@ -611,6 +611,8 @@ Scope {
                 anchors.fill: parent
                 readonly property string presentationKind: GlobalStates.abyssOsdKind === "media" ? "mediaOsd" : GlobalStates.abyssOsdKind
                 edge: window.positionEdge(presentationKind,root.barEdge)
+                joinedEdge: window.presentation(presentationKind).joinCorner===true
+                    ? ModuleLayout.adjacentEdge({edge:edge,along:along,span:span},window.width,window.height) : ""
                 outputName: window.outputName
                 open: window.presented && field.ready && (Config.options?.enabledPanels ?? []).includes("abyssOnScreenDisplay")
                     && (GlobalStates.osdVolumeOpen || GlobalStates.osdBrightnessOpen || GlobalStates.osdMicOpen || GlobalStates.osdMediaOpen || GlobalStates.osdKeyboardLayoutOpen)

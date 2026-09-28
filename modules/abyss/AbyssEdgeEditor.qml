@@ -37,6 +37,7 @@ Item {
     property alias previewKind:previewPositions.kind
     readonly property var previewPosition: Presentation.resolve(draftPositions,previewKind,outputOnly ? outputName : "")
     property alias previewHost:previewBody
+    readonly property string previewNearbyCorner: Placement.adjacentEdge({edge:previewBody.edge,along:previewBody.along,span:previewBody.span},width,height)
     property real lastImpulse: 0
     property var inputRegions: []
     readonly property string nearbyCorner: Placement.adjacentEdge(moduleLayer.layoutRecords.find(p=>p.id===selectedId),width,height)
@@ -214,6 +215,7 @@ Item {
         open:root.visible && root.editingPopups
         contentKind:root.previewKind;source:"content/AbyssLayoutPreview.qml"
         edge:Presentation.edge(root.previewPosition,root.moduleLayer.edge)
+        joinedEdge:Presentation.osds.includes(root.previewKind) && root.previewPosition.joinCorner===true ? root.previewNearbyCorner : ""
         edgeInsets:Placement.clearanceInsets(root.edgeInsets,root.moduleLayer.deformations,edge,along,span)
         span:(["top","bottom"].includes(edge) ? contentItem.item?.desiredWidth ?? 390 : contentItem.item?.desiredHeight ?? 120)+padding*2
         depth:(["top","bottom"].includes(edge) ? contentItem.item?.desiredHeight ?? 120 : contentItem.item?.desiredWidth ?? 390)+padding*2
@@ -253,6 +255,7 @@ Item {
             id:previewPositions;visible:root.editingPopups;kind:"volume"
             commitImmediately:false;positions:root.draftPositions
             outputSelectionEnabled:false;outputName:root.outputOnly ? root.outputName : ""
+            nearbyEdge:root.previewNearbyCorner
             allowedKinds:["clock","resources","battery","media","weather","wifi","bluetooth","utilities","volume","brightness","mic","mediaOsd","keyboardLayout"]
             onPositionsEdited:(positions,kind,outputName,values)=>root.editPosition(positions,kind,outputName,values)
         }

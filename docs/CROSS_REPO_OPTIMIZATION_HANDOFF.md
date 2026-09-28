@@ -3437,3 +3437,127 @@ Revised Config order:
 
 No runtime implementation is authorized by this handoff.
 
+## 28. Audit round 14 — warm-cache delegate processes and residency revalidation (2026-09-29)
+
+This round is documentation/research only. No runtime source was changed.
+
+### 28.1 CliphistImage still launches Bash on every first-visible image delegate even when the decoded file is already warm — ADAPT / P1-low to P2
+
+`modules/common/widgets/CliphistImage.qml` correctly avoids eager decode storms by waiting until the image delegate becomes visible, and it publishes newly decoded output through a per-process temporary file plus atomic `mv`.
+
+However, first visibility still does:
+
+```qml
+decodeImageProcess.running = true
+```
+
+and the process always launches Bash whose first operation is effectively:
+
+```sh
+if [ -s <session decoded path> ]; then
+    exit 0
+fi
+```
+
+Therefore a decoded image that is already present in `Directories.cliphistDecode` still pays one child-process launch for every new `CliphistImage` instance.
+
+Live consumers include:
+
+- Overview search clipboard-image results;
+- classic Clipboard rows;
+- Waffle Clipboard rows.
+
+The shared decoded path is keyed by the numeric cliphist entry id, and writers already publish atomically. That makes this the same lossless warm-cache ownership class as Favicon and MediaArtworkResolver, but with a clipboard-specific cache.
+
+**Lossless direction:**
+
+- move known-decoded ownership into `Cliphist` or another shared lightweight resolver;
+- once a decoded path has been verified/published in the session, new delegates should consume it without spawning Bash;
+- deduplicate an in-flight decode for the same cliphist id so two surfaces cannot both start the same decode work;
+- preserve the existing atomic temp-file publication and image-byte behavior.
+
+Acceptance target: after prewarming decoded clipboard images, repeatedly recreating/scrolling image delegates should produce **zero decode/check child processes** for already-known entries.
+
+### 28.2 ThumbnailImage eliminated per-item magick/ffmpeg generation, but a warm disk cache can still create one `test -f` process per delegate — ADAPT / P1-low
+
+The earlier audit correctly closed the expensive thundering-herd generator problem: `ThumbnailImage.qml` now sends generation work through Wallpapers' shared/serialized thumbnail queue.
+
+A narrower warm-cache cost remains.
+
+For a thumbnail not yet present in the in-memory `Wallpapers._knownThumbnailOutputs` map, every `ThumbnailImage` instance starts its own `Process`:
+
+```qml
+_thumbnailCheckProc.command = ["test", "-f", targetPath]
+_thumbnailCheckProc.running = true
+```
+
+Only after that process succeeds does the delegate call `Wallpapers.rememberThumbnail()`.
+
+Consequences:
+
+- the first gallery/picker open in a new shell session can launch many tiny `test` processes even when the thumbnail disk cache is already fully warm from a previous session;
+- the shared known-output map prevents repeat checks only **after** each path has been individually discovered in the current session;
+- generation itself is serialized, but existence discovery is still per delegate.
+
+Current QML consumers span multiple wallpaper/settings surfaces, including Quick Wallpaper, Wallpaper Directory/Coverflow/Skew/Gallery and Waffle quick-wallpaper UI.
+
+**Lossless direction:**
+
+- centralize disk-cache discovery in `Wallpapers` rather than giving every visual delegate its own existence process;
+- prefer one directory/batch discovery or another shared bounded existence mechanism that seeds `_knownThumbnailOutputs`;
+- keep the existing source path/hash semantics and current thumbnail-generation queue;
+- do not reintroduce parallel magick/ffmpeg generation.
+
+Acceptance target: with a fully prewarmed thumbnail cache, opening a directory containing N visible/cached thumbnails should not create O(N) `test` child processes.
+
+### 28.3 The old five-minute `retainAfterUse` concern is stale at current HEAD — CLOSED for general panel loaders
+
+A revalidation was necessary because GitHub code-search results can still surface an older indexed commit containing:
+
+- `retainAfterUse`;
+- `retainIdleMs: 5 * 60 * 1000`.
+
+Current live `modules/ii/ShellIiPanelsImpl.qml` and `modules/waffle/ShellWafflePanelsImpl.qml` no longer use that five-minute policy for ordinary on-demand panels.
+
+The current contract is:
+
+- become resident when opened;
+- remain resident only through a short close grace (roughly 250–300 ms, or animation-derived equivalent);
+- unload after the close/settle window.
+
+Therefore do **not** create a new optimization project around five-minute retention for Overview, Wallpaper Selector/Launcher/Coverflow, Start Menu or Action Center based on stale search-index snippets.
+
+### 28.4 Dashboard is the deliberate residency exception; hidden heavy work is already substantially gated — P2 memory/reactivity measurement only
+
+The detached ii Dashboard intentionally becomes session-resident after first use:
+
+```qml
+keepLoaded: (Config.options?.dashboard?.keepLoaded ?? false) || used
+```
+
+This is not the removed generic five-minute retention policy. It exists to keep the fullscreen layer-shell surface mapped and avoid compositor map/unmap effects masking the Dashboard's own slide transition.
+
+Current hidden-state guards are substantial:
+
+- `PanelWindow.updatesEnabled` drops after the exit animation;
+- Dashboard content becomes invisible after the exit slide;
+- `DashSystem` uses `ResourceUsageMonitor`, whose lease sleeps when the target/native window is hidden;
+- `DashWeather`'s 30 s timer runs only while visible;
+- `DashMedia` gates its active media/equalizer work with `presentationActive`;
+- `DashGithub` refreshes only when visible and has a one-hour cache.
+
+Residual cost after close is therefore primarily retained memory plus reactive model trees such as notification/calendar/agenda state, not an obvious fixed-rate CPU/GPU loop.
+
+Keep Dashboard residency as **P2 measurement only** unless heap/VRAM or notification/calendar mutation traces show material hidden cost. Do not blindly unload it and reintroduce the compositor transition regression.
+
+### 28.5 Add two process-count scenarios to the measurement bundle
+
+Alongside Favicon and MediaArtworkResolver warm-cache tests, add:
+
+1. **Cliphist image warm cache:** predecode several image entries, recreate/scroll the corresponding delegates, count Bash/cliphist/native-dispatch processes.
+2. **Thumbnail warm disk cache:** pre-generate a wallpaper directory's thumbnails, restart the shell, open the relevant picker/gallery and count `test` processes before any new thumbnail generation is needed.
+
+These tests distinguish “heavy generation was fixed” from “warm cache is actually process-free.”
+
+No runtime implementation is authorized by this handoff.
+

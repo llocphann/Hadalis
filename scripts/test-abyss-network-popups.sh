@@ -27,6 +27,10 @@ grep -Fq 'showEmbeddedFooter: false' "$repo_root/modules/abyss/content/AbyssNetw
     || { printf 'FAIL: System Tray network popup still exposes mature footer actions\n' >&2; exit 1; }
 grep -Fq 'glyph: "settings"' "$repo_root/modules/abyss/content/AbyssNetworkPopup.qml" \
     || { printf 'FAIL: network Details action was not promoted to a compact header icon\n' >&2; exit 1; }
+grep -Fq 'visible:Presentation.canJoin(root.kind)' "$repo_root/modules/abyss/settings/AbyssPositionSettings.qml" \
+    || { printf 'FAIL: Wi-Fi/Bluetooth Join Edge option is not exposed in Edit Abyss Layout\n' >&2; exit 1; }
+grep -Fq 'joinedEdge: window.presentation(contentKind).joinCorner===true' "$repo_root/modules/abyss/AbyssPerimeter.qml" \
+    || { printf 'FAIL: connected Wi-Fi/Bluetooth host does not consume Join Edge position state\n' >&2; exit 1; }
 
 migration_tmp="$(mktemp -d)"
 trap 'rm -rf -- "$migration_tmp"' EXIT

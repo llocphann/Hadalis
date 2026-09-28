@@ -101,7 +101,7 @@ ColumnLayout {
     }
     AbyssCheckBox {
         Layout.fillWidth:true
-        visible:root.kind==="osd" || Presentation.osds.includes(root.kind)
+        visible:Presentation.canJoin(root.kind)
         text:"Join nearby corner"+(root.nearbyEdge ? " · "+root.nearbyEdge+" Edge" : "")
         enabled:root.commitImmediately || root.nearbyEdge.length>0 || checked
         checked:root.position.joinCorner===true

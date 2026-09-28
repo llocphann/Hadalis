@@ -44,6 +44,16 @@ const isolated=save(joined,'brightness','A',{edge:'left',alignment:'end',joinCor
 assert.equal(resolve(isolated,'brightness','A').joinCorner,false,'explicit output can disable inherited joining');
 assert(resolve(isolated,'brightness','B').joinCorner,'another output retains inherited joining');
 assert(resolve(save(isolated,'brightness','A',null),'brightness','A').joinCorner,'reset restores inherited joining');
-console.log('PASS: popup/IPC position inheritance, output isolation, reset and bounds across edges/scales');
+for (const kind of ['quickNotes','notificationCenter','notifications','wifi','bluetooth','osd',...osds])
+  assert(canJoin(kind),kind+' exposes nearby-Edge joining');
+for (const kind of ['media','utilities','dashboard'])
+  assert(!canJoin(kind),kind+' does not expose a misleading corner-join control');
+const cornerJoined=save(positions,'quickNotes','A',{edge:'bottom',alignment:'start',joinCorner:true});
+assert(resolve(cornerJoined,'quickNotes','A').joinCorner,'Quick Notes join persists per output');
+const networkJoined=save(cornerJoined,'wifi','A',{edge:'top',alignment:'end',joinCorner:true});
+assert(resolve(networkJoined,'wifi','A').joinCorner,'Wi-Fi join persists independently of popup fallback');
+const centerJoined=save(networkJoined,'notificationCenter','A',{edge:'bottom',alignment:'end',joinCorner:true});
+assert(resolve(centerJoined,'notificationCenter','A').joinCorner,'Notifications/Activity join persists per output');
+console.log('PASS: popup/IPC position inheritance, join capability, output isolation, reset and bounds across edges/scales');
 """
 subprocess.run(["node", "-e", program], cwd=root, check=True)

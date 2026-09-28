@@ -1,6 +1,8 @@
 var edges = ["top","right","bottom","left"];
 var osds = ["volume","brightness","mic","mediaOsd","keyboardLayout","voiceSearch"];
+var cornerJoinKinds = ["osd","quickNotes","notificationCenter","notifications","wifi","bluetooth"].concat(osds);
 function key(kind) { return kind==="calendar" ? "clock" : kind; }
+function canJoin(kind) { return cornerJoinKinds.indexOf(key(kind)) >= 0; }
 function resolve(positions, kind, outputName) {
     kind=key(kind);
     var fallback=osds.indexOf(kind)>=0 ? "osd" : ["clock","resources","battery","media","weather","workspaces","tray","audio","wifi","bluetooth","utilities"].indexOf(kind)>=0 ? "popup" : "";

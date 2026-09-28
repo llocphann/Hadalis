@@ -368,6 +368,8 @@ Scope {
                 controller: liquid
                 anchors.fill: parent
                 edge: window.positionEdge(contentKind,GlobalStates.abyssPopupEdge || root.barEdge)
+                joinedEdge: window.presentation(contentKind).joinCorner===true
+                    ? ModuleLayout.adjacentEdge({edge:edge,along:along,span:span},window.width,window.height) : ""
                 outputName: window.outputName
                 open: window.presented && field.ready && (Config.options?.enabledPanels ?? []).includes("abyssPopup")
                     && (GlobalStates.abyssPopupKind.length > 0 || GlobalStates.mediaControlsOpen)
@@ -404,7 +406,15 @@ Scope {
                         hostedPopup?._liquidAnchor?.kind ?? "popup"
 
                     identity: "styledPopup" + index
-                    joinedEdge: hostedPopup?._liquidAnchor?.popupJoinedEdge ?? ""
+                    readonly property var configuredPresentation:
+                        window.presentation(presentationKind)
+                    readonly property string configuredJoinedEdge:
+                        configuredPresentation.joinCorner===true
+                            ? ModuleLayout.adjacentEdge({edge:edge,along:along,span:span},
+                                window.width,window.height) : ""
+                    joinedEdge: configuredJoinedEdge.length > 0
+                        ? configuredJoinedEdge
+                        : (hostedPopup?._liquidAnchor?.popupJoinedEdge ?? "")
                     controller: liquid
                     anchors.fill: parent
                     edge: window.positionEdge(presentationKind,
@@ -602,6 +612,8 @@ Scope {
                 readonly property string position: Config.options?.notifications?.position ?? "topRight"
                 readonly property string presentationKind: centerOnOutput ? "notificationCenter" : "notifications"
                 edge: window.positionEdge(presentationKind,centerOnOutput ? "right" : position.startsWith("bottom") ? "bottom" : "top")
+                joinedEdge: window.presentation(presentationKind).joinCorner===true
+                    ? ModuleLayout.adjacentEdge({edge:edge,along:along,span:span},window.width,window.height) : ""
                 outputName: window.outputName
                 open: window.presented && field.ready && (!GlobalStates.notificationCenterOpen && !Notifications.popupInhibited && Notifications.popupList.length > 0
                         && (Config.options?.enabledPanels ?? []).includes("abyssNotificationPopup")

@@ -215,7 +215,7 @@ Item {
         open:root.visible && root.editingPopups
         contentKind:root.previewKind;source:"content/AbyssLayoutPreview.qml"
         edge:Presentation.edge(root.previewPosition,root.moduleLayer.edge)
-        joinedEdge:Presentation.osds.includes(root.previewKind) && root.previewPosition.joinCorner===true ? root.previewNearbyCorner : ""
+        joinedEdge:Presentation.canJoin(root.previewKind) && root.previewPosition.joinCorner===true ? root.previewNearbyCorner : ""
         edgeInsets:Placement.clearanceInsets(root.edgeInsets,root.moduleLayer.deformations,edge,along,span)
         span:(["top","bottom"].includes(edge) ? contentItem.item?.desiredWidth ?? 390 : contentItem.item?.desiredHeight ?? 120)+padding*2
         depth:(["top","bottom"].includes(edge) ? contentItem.item?.desiredHeight ?? 120 : contentItem.item?.desiredWidth ?? 390)+padding*2
@@ -256,7 +256,9 @@ Item {
             commitImmediately:false;positions:root.draftPositions
             outputSelectionEnabled:false;outputName:root.outputOnly ? root.outputName : ""
             nearbyEdge:root.previewNearbyCorner
-            allowedKinds:["clock","resources","battery","media","weather","wifi","bluetooth","utilities","volume","brightness","mic","mediaOsd","keyboardLayout"]
+            allowedKinds:["clock","resources","battery","media","weather","wifi","bluetooth","utilities",
+                "quickNotes","notificationCenter","notifications",
+                "volume","brightness","mic","mediaOsd","keyboardLayout"]
             onPositionsEdited:(positions,kind,outputName,values)=>root.editPosition(positions,kind,outputName,values)
         }
         RowLayout {

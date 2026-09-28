@@ -4,6 +4,9 @@ set -euo pipefail
 repo_root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
 perimeter="$repo_root/modules/abyss/AbyssPerimeter.qml"
 corners="$repo_root/modules/abyss/AbyssCorners.qml"
+editor="$repo_root/modules/abyss/AbyssEdgeEditor.qml"
+positions="$repo_root/modules/abyss/settings/AbyssPositionSettings.qml"
+presentation="$repo_root/modules/abyss/looks/AbyssPresentation.js"
 for token in \
     'property string quickNotesEditorOutput: ""' \
     'function setQuickNotesEditorOutput(outputName, focused): void' \
@@ -28,7 +31,20 @@ for token in \
     '!root.niriOverviewOwnsCorner(corner.cornerName)'; do
     grep -Fq "$token" "$corners" || { printf 'FAIL: Abyss corner Niri Overview priority missing: %s\n' "$token" >&2; exit 1; }
 done
-if ! command -v qs >/dev/null || [[ -z "${WAYLAND_DISPLAY:-}" ]]; then printf 'SKIP: Abyss corner content runtime (source lease + Niri hot-corner priority contracts passed; Quickshell/Wayland unavailable)\n';exit 0;fi
+for token in \
+    'var cornerJoinKinds = ["osd","quickNotes","notificationCenter","notifications","wifi","bluetooth"].concat(osds);' \
+    'function canJoin(kind)' ; do
+    grep -Fq "$token" "$presentation" || { printf 'FAIL: corner popup join capability missing: %s\n' "$token" >&2; exit 1; }
+done
+grep -Fq 'visible:Presentation.canJoin(root.kind)' "$positions" \
+    || { printf 'FAIL: popup position editor does not expose Join nearby corner for corner/network kinds\n' >&2; exit 1; }
+for token in '"quickNotes","notificationCenter","notifications"' 'joinedEdge:Presentation.canJoin(root.previewKind)'; do
+    grep -Fq "$token" "$editor" || { printf 'FAIL: live editor corner join preview missing: %s\n' "$token" >&2; exit 1; }
+done
+for token in 'readonly property string configuredJoinedEdge:' 'configuredPresentation.joinCorner===true'; do
+    grep -Fq "$token" "$perimeter" || { printf 'FAIL: mature StyledPopup join routing missing: %s\n' "$token" >&2; exit 1; }
+done
+if ! command -v qs >/dev/null || [[ -z "${WAYLAND_DISPLAY:-}" ]]; then printf 'SKIP: Abyss corner content runtime (source lease + Niri hot-corner + Join Edge contracts passed; Quickshell/Wayland unavailable)\n';exit 0;fi
 corner_test_root="$(mktemp -d)"
 trap 'rm -rf -- "$corner_test_root"' EXIT
 for entry in modules services GlobalStates.qml qmldir assets scripts defaults translations; do ln -s "$repo_root/$entry" "$corner_test_root/$entry";done

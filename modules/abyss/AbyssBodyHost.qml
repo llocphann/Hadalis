@@ -185,8 +185,9 @@ Item {
         if (initialized && semanticOpen)
             syncTransitionSnapshot()
     }
-    onOpenChanged: if (initialized) {
+    onSemanticOpenChanged: if (initialized)
         syncTransitionSnapshot()
+    onOpenChanged: if (initialized) {
         markOpened()
         react(open)
     }

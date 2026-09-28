@@ -234,7 +234,8 @@ QtObject {
         }
     }
     function observeSemantic(identity,open,request,placement,record): void {
-        if (!identity) return
+        if (!identity || !(request?.pyramidStack ?? false))
+            return
         const states=Object.assign({},root.semanticStates)
         const previous=states[identity]
         states[identity]=open === true

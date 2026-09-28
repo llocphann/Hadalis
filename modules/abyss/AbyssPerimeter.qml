@@ -277,7 +277,7 @@ Scope {
                     && GlobalStates.sidebarLeftOpen && GlobalStates.sidebarLeftPresentationOutput === window.outputName
 
                 edgeInsets: window.nativeInsets
-                along: window.positionAlong(identity,edge,span,Geometry.horizontal(edge) ? (window.width-span)/2 : edgeInsets.top+36)
+                along: window.positionAlong(identity,edge,span,Geometry.horizontal(edge) ? (window.width-span)/2 : (window.height-span)/2)
                 readonly property var sizeState:ShellLayoutController.currentState("featureSidebar",window.outputName)
                 readonly property real bodyWidth:Math.min(window.width*.8,(sizeState.width ?? 460)+(GlobalStates.sidebarLeftExpanded ? 190 : 0))
                 readonly property real bodyHeight:Math.min(window.height-edgeInsets.top-edgeInsets.bottom-72,
@@ -298,7 +298,7 @@ Scope {
                     && GlobalStates.sidebarRightOpen && GlobalStates.sidebarRightPresentationOutput === window.outputName
 
                 edgeInsets: window.nativeInsets
-                along: window.positionAlong(identity,edge,span,Geometry.horizontal(edge) ? (window.width-span)/2 : edgeInsets.top+36)
+                along: window.positionAlong(identity,edge,span,Geometry.horizontal(edge) ? (window.width-span)/2 : (window.height-span)/2)
                 readonly property var sizeState:ShellLayoutController.currentState("systemSidebar",window.outputName)
                 readonly property real bodyWidth:Math.min(window.width*.8,sizeState.width ?? 460)
                 readonly property real bodyHeight:Math.min(window.height-edgeInsets.top-edgeInsets.bottom-72,

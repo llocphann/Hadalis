@@ -18,6 +18,7 @@ ShellRoot {
     id: root
     property int step: 0
     property bool finished: false
+    property real notificationHeight: 0
     function check(ok,message): bool {
         if(ok) return true
         console.error("ABYSS_CORNERS_FAIL",message);finished=true;return false
@@ -74,9 +75,12 @@ ShellRoot {
                 if(!root.check(root.find(body.contentParent,item=>typeof item.focusSearch==="function")!==null,"real Notifications content loads")) return
                 corners.centerPopup.enterKeyboardMode()
                 if(!root.check(corners.centerPopup.keyboardInteraction,"notification search can acquire keyboard focus")) return
+                root.notificationHeight=body.inputBounds.height
                 corners.centerPopup.selectedTab=1
             } else if(root.step===11) {
-                if(!root.check(corners.centerPopup.selectedTab===1 && corners.centerPopup.requestedPopupHeight===310 && body.inputBounds.width>200,"Activity tab fits its own content envelope")) return
+                if(!root.check(corners.centerPopup.selectedTab===1 && corners.centerPopup.requestedPopupHeight===560 && body.inputBounds.height===root.notificationHeight,"Activity keeps the exact Notification footprint")) return
+                Config.setNestedValue("notificationCenter.popupHeight",260)
+                if(!root.check(corners.centerPopup.visibleAppLimit===2,"short custom Activity footprint limits rows to readable space")) return
                 corners.centerPopup.dismissPresentation()
                 Config.setNestedValue("sidebar.cornerOpen.enable",true)
                 Config.setNestedValue("sidebar.cornerOpen.cornerRegionWidth",180)

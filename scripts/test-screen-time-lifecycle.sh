@@ -77,7 +77,7 @@ for token in \
     'label: Translation.tr("Activity")' \
     'readonly property var todayApps:' \
     'ScreenTime.getAppList(1)' \
-    'readonly property var visibleApps: root.todayApps.slice(0, 4)' \
+    'readonly property var visibleApps: root.todayApps.slice(0, root.visibleAppLimit)' \
     'value: DateTime.uptime || "--"' \
     'ScreenTime.formatDuration(' \
     'text: Translation.tr("App usage")' \

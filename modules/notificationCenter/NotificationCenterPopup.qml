@@ -32,10 +32,8 @@ Bar.StyledPopup {
         && GlobalStates.notificationCenterPresentationOutput === root.outputName
     readonly property real requestedPopupWidth: Math.max(320, Math.min(760,
         Config.options?.notificationCenter?.popupWidth ?? 420))
-    readonly property real requestedPopupHeight: root.selectedTab === 0
-        ? Math.max(260, Math.min(900,
-            Config.options?.notificationCenter?.popupHeight ?? 560))
-        : 310
+    readonly property real requestedPopupHeight: Math.max(260, Math.min(900,
+        Config.options?.notificationCenter?.popupHeight ?? 560))
     readonly property var todayUsage: {
         const revision = root._screenTimeRevision
         return ScreenTime.getToday()
@@ -44,9 +42,11 @@ Bar.StyledPopup {
         const revision = root._screenTimeRevision
         return ScreenTime.getAppList(1)
     }
-    // Four full-width rows are intentionally capped to the fixed popup height.
-    // Extra apps are summarized as +N rather than introducing another scroller.
-    readonly property var visibleApps: root.todayApps.slice(0, 4)
+    // Keep rows readable in the shared footprint, including a custom short
+    // popup. Extra apps are summarized as +N without another scroller.
+    readonly property int visibleAppLimit: Math.max(0, Math.min(4,
+        Math.floor((root.requestedPopupHeight - root._contentPadding * 2 - 123) / 39)))
+    readonly property var visibleApps: root.todayApps.slice(0, root.visibleAppLimit)
     readonly property int hiddenAppCount:
         Math.max(0, root.todayApps.length - root.visibleApps.length)
     readonly property real maxAppSeconds: {
@@ -286,6 +286,7 @@ Bar.StyledPopup {
                     RowLayout {
                         Layout.fillWidth: true
                         Layout.preferredHeight: 52
+                        Layout.maximumHeight: 52
                         spacing: 7
 
                         Repeater {
@@ -367,6 +368,7 @@ Bar.StyledPopup {
                     RowLayout {
                         Layout.fillWidth: true
                         Layout.preferredHeight: 18
+                        Layout.maximumHeight: 18
                         spacing: 6
 
                         StyledText {
@@ -402,6 +404,7 @@ Bar.StyledPopup {
 
                                 Layout.fillWidth: true
                                 Layout.preferredHeight: 34
+                                Layout.maximumHeight: 34
                                 radius: 12
                                 clip: true
 

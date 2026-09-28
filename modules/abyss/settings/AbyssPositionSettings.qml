@@ -39,7 +39,7 @@ ColumnLayout {
             id:kindChoice
             Layout.fillWidth:true
             textRole:"label";valueRole:"value"
-            model:[{label:"All bar popups",value:"popup"},{label:"Calendar",value:"clock"},
+            model:[{label:"All Edge Bar popups",value:"popup"},{label:"Calendar",value:"clock"},
                 {label:"System resources",value:"resources"},{label:"Battery",value:"battery"},
                 {label:"Media popup",value:"media"},{label:"Weather",value:"weather"},
                 {label:"Wi-Fi / Bluetooth",value:"wifi"},
@@ -52,7 +52,7 @@ ColumnLayout {
                 {label:"Dashboard",value:"dashboard"},{label:"Overview",value:"overview"},
                 {label:"Clipboard",value:"clipboard"},{label:"Controls",value:"controls"},
                 {label:"Left sidebar",value:"leftPanel"},{label:"Right sidebar",value:"rightPanel"},
-                {label:"Quick Notes & Timers",value:"quickNotes"},{label:"Notification center",value:"notificationCenter"},{label:"Notification popups",value:"notifications"},
+                {label:"Quick Notes / Timers Edge Bar",value:"quickNotes"},{label:"Notifications / Activity Edge Bar",value:"notificationCenter"},{label:"Notification popups",value:"notifications"},
                 {label:"Session menu",value:"session"},{label:"Cheatsheet",value:"cheatsheet"},
                 {label:"Shell update",value:"update"},{label:"Dialogs",value:"dialog"}].filter(option=>!root.allowedKinds.length || root.allowedKinds.includes(option.value))
             currentIndex:model.findIndex(p => p.value===root.kind)

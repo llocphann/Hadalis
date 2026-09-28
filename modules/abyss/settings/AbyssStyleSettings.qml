@@ -238,8 +238,45 @@ ColumnLayout {
         title:"Popups";icon:"chat_bubble";settingsTaskSection:"popups"
         visible:root.activeSection==="popups"
         SettingsGroup {
-            SettingsNote { text:"Popups retain their existing layouts and follow the edge of their source module. The output field paints their outer surface once." }
+            SettingsNote {
+                text:"Popups retain their existing layouts and follow the edge of their source module. Quick Notes / Timers and Notifications / Activity are Edge Bar surfaces: they participate in the same output field, Edge placement and collision rules while retaining their mature content."
+            }
             AbyssPositionSettings {}
+
+            SettingsNote { text:"Quick Notes / Timers Edge Bar size" }
+            WindowDialogSlider {
+                text:"Quick Notes / Timers width";Layout.fillWidth:true
+                from:280;to:720;stepSize:10
+                value:Config.options?.quickNotes?.popupWidth ?? 420
+                valueText:Math.round(value)+" px"
+                onMoved:Config.setNestedValue("quickNotes.popupWidth",value)
+            }
+            WindowDialogSlider {
+                text:"Quick Notes / Timers height";Layout.fillWidth:true
+                from:300;to:640;stepSize:10
+                value:Config.options?.quickNotes?.popupHeight ?? 300
+                valueText:Math.round(value)+" px"
+                onMoved:Config.setNestedValue("quickNotes.popupHeight",value)
+            }
+
+            SettingsDivider {}
+
+            SettingsNote { text:"Notifications / Activity Edge Bar size" }
+            WindowDialogSlider {
+                text:"Notifications / Activity width";Layout.fillWidth:true
+                from:320;to:760;stepSize:10
+                value:Config.options?.notificationCenter?.popupWidth ?? 420
+                valueText:Math.round(value)+" px"
+                onMoved:Config.setNestedValue("notificationCenter.popupWidth",value)
+            }
+            WindowDialogSlider {
+                text:"Notifications / Activity height";Layout.fillWidth:true
+                from:260;to:900;stepSize:10
+                value:Config.options?.notificationCenter?.popupHeight ?? 560
+                valueText:Math.round(value)+" px"
+                onMoved:Config.setNestedValue("notificationCenter.popupHeight",value)
+            }
+
             AbyssOutputSelector { configPath:"sidebar.screenList";title:"Sidebar outputs" }
             AbyssOutputSelector { configPath:"notifications.screenList";title:"Notification outputs" }
         }

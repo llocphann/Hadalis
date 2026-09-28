@@ -41,12 +41,16 @@ Item {
     readonly property real mass: Math.max(1,span*depth/90000)
     property bool initialized: false
     property bool open: false
-    // Phase-1 lifecycle split. These names are intentionally independent even
-    // though visualResident still mirrors the existing reveal tail for now.
-    readonly property bool semanticOpen: root.open
+    // Mature StyledPopup keeps visual open/linger separate from its semantic
+    // request. Generic Abyss bodies leave this undefined and use open directly.
+    property var semanticOpenOverride: undefined
+    readonly property bool semanticOpen:
+        semanticOpenOverride === undefined
+            ? root.open : Boolean(semanticOpenOverride)
     readonly property bool visualResident:
-        root.semanticOpen || root.progress > 0.001
-    readonly property bool acceptsInput: root.presented
+        root.open || root.progress > 0.001
+    readonly property bool acceptsInput:
+        root.semanticOpen && root.placementVisible
     property int activationOrder: 0
     property int placementPriority: identity === "dialog" ? 2 : ["utility","edgeEditor"].includes(identity) ? 1 : identity === "dock" ? -1 : 0
     readonly property var placement: controller?.bodyPlacements?.[identity] ?? null

@@ -497,6 +497,8 @@ Scope {
                         && ((hostedPopup?.requestedVisible ?? false)
                             || ((hostedPopup?.hoverActivates ?? false)
                                 && (hostedPopup?._lingerVisible ?? false)))
+                    semanticOpenOverride:
+                        hostedPopup?.requestedVisible ?? false
                     animatePresentation: true
                     externalProgress: hostedPopup?.revealProgress ?? 0
                     embeddedItem: hostedPopup?.contentItem ?? null

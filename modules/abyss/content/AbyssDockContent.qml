@@ -18,7 +18,27 @@ Item {
     readonly property bool vertical: edge === "left" || edge === "right"
     readonly property real desiredSpan: (vertical ? content.implicitHeight : content.implicitWidth) + 24
     readonly property bool requestDockShow: apps.requestDockShow
+        || (GlobalStates.abyssPopupKind === "dockAppMenu"
+            && GlobalStates.abyssPopupTargetOutput === root.outputName)
     readonly property var appContent: apps
+    function openAppMenu(model, localX, localY, ownerId): void {
+        if (!root.participant)
+            return
+        const point = apps.mapToItem(root.participant, localX, localY)
+        GlobalStates.abyssDockMenuModel = model ?? []
+        GlobalStates.abyssDockMenuOwnerId = String(ownerId ?? "")
+        GlobalStates.abyssDockMenuTriggerHovered = true
+        GlobalStates.abyssPopupTargetOutput = root.outputName
+        GlobalStates.abyssPopupEdge = root.edge
+        GlobalStates.abyssPopupAlong = root.vertical ? point.y : point.x
+        GlobalStates.mediaControlsOpen = false
+        GlobalStates.abyssPopupKind = "dockAppMenu"
+    }
+    function updateAppMenuHover(ownerId, hovered): void {
+        if (String(ownerId ?? "") !== GlobalStates.abyssDockMenuOwnerId)
+            return
+        GlobalStates.abyssDockMenuTriggerHovered = hovered
+    }
     function react(position, strength): void {
         if (!participant?.controller) return
         const point = root.mapToItem(participant, position.x, position.y)
@@ -40,6 +60,10 @@ Item {
         DockApps {
             id: apps
             vertical: root.vertical
+            abyssMenuPresenter: (model, x, y, ownerId) =>
+                root.openAppMenu(model, x, y, ownerId)
+            abyssMenuHoverPresenter: (ownerId, hovered) =>
+                root.updateAppMenuHover(ownerId, hovered)
             dockPosition: root.edge
             parentWindow: root.QsWindow.window
             Layout.preferredHeight: root.vertical ? implicitHeight : 50

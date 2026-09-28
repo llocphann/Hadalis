@@ -165,6 +165,11 @@ Scope {
                 const current = String(GlobalStates.abyssPopupKind ?? "")
                 if (expectedKind && current !== expectedKind)
                     return
+                if (current === "dockAppMenu") {
+                    GlobalStates.abyssDockMenuModel = []
+                    GlobalStates.abyssDockMenuOwnerId = ""
+                    GlobalStates.abyssDockMenuTriggerHovered = false
+                }
                 GlobalStates.abyssPopupKind = ""
             }
             function closePopup(): void {
@@ -409,8 +414,11 @@ Scope {
                 pyramidStack: true
                 obstacles: window.sideObstacles
                 contentKind: GlobalStates.abyssPopupKind || "media"
-                property bool triggerHovered: ["wifi","bluetooth","utilities","launcher"].includes(contentKind)
-                    && window.transientPopupHoverKind === contentKind
+                property bool triggerHovered:
+                    contentKind === "dockAppMenu"
+                        ? GlobalStates.abyssDockMenuTriggerHovered
+                        : ["wifi","bluetooth","utilities","launcher"].includes(contentKind)
+                            && window.transientPopupHoverKind === contentKind
                 source: "content/AbyssPopupContent.qml"
                 onCloseRequested: window.closeGenericPopup(popup.contentKind)
             }

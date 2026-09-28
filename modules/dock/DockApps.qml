@@ -30,6 +30,8 @@ Item {
     property bool buttonHovered: false
     property bool contextMenuOpen: false
     property bool requestDockShow: dockPreviewPopup.visible || contextMenuOpen || dragActive
+    property var abyssMenuPresenter: null
+    property var abyssMenuHoverPresenter: null
 
     signal closeAllContextMenus(var exceptOwner)
 
@@ -40,10 +42,38 @@ Item {
         dockPreviewPopup.show(appEntry, button)
     }
 
+    readonly property real axisExtent: {
+        const values = root.dockItems ?? []
+        let extent = 0
+        for (const item of values)
+            extent += item?.appId === "SEPARATOR" ? 8 : 50
+        if (values.length > 1)
+            extent += (values.length - 1) * 2
+        return extent
+    }
     Layout.fillHeight: !vertical
     Layout.fillWidth: vertical
-    implicitWidth: listView.contentWidth
-    implicitHeight: listView.contentHeight
+    implicitWidth: vertical ? 50 : axisExtent
+    implicitHeight: vertical ? axisExtent : 50
+
+    function openAbyssContextMenu(model, button): bool {
+        if (!root.abyssMenuPresenter || !button)
+            return false
+        const point = button.mapToItem(root, button.width / 2, button.height / 2)
+        const ownerId = String(button.appToplevel?.uniqueId
+            ?? button.appToplevel?.originalAppId
+            ?? button.appToplevel?.appId ?? "")
+        root.abyssMenuPresenter(model, point.x, point.y, ownerId)
+        return true
+    }
+    function setAbyssContextMenuHover(button, hovered): void {
+        if (!root.abyssMenuHoverPresenter || !button)
+            return
+        const ownerId = String(button.appToplevel?.uniqueId
+            ?? button.appToplevel?.originalAppId
+            ?? button.appToplevel?.appId ?? "")
+        root.abyssMenuHoverPresenter(ownerId, hovered)
+    }
 
     readonly property bool dragEnabled: Config.options?.dock?.enableDragReorder ?? true
     property bool dragActive: false
@@ -550,17 +580,17 @@ Item {
 
     StyledListView {
         id: listView
+        anchors.fill: parent
         spacing: 2
         orientation: root.vertical ? ListView.Vertical : ListView.Horizontal
-        anchors {
-            top: root.vertical ? undefined : parent.top
-            bottom: root.vertical ? undefined : parent.bottom
-            left: root.vertical ? parent.left : undefined
-            right: root.vertical ? parent.right : undefined
-        }
-        implicitWidth: contentWidth
-        implicitHeight: contentHeight
+        implicitWidth: root.implicitWidth
+        implicitHeight: root.implicitHeight
+        // Dock item counts are small. Keep every delegate resident so an
+        // orientation switch cannot strand a virtualized horizontal viewport
+        // while the same ListView becomes vertical (or vice versa).
+        cacheBuffer: Math.max(256, root.axisExtent + 100)
         interactive: false
+        clip: false
 
         Behavior on implicitWidth {
             enabled: Appearance.animationsEnabled

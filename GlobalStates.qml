@@ -121,6 +121,12 @@ Singleton {
     property string abyssPopupTargetOutput: ""
     property string abyssPopupEdge: ""
     property real abyssPopupAlong: 0
+    // Dock application menus are rehosted by the same connected Abyss popup
+    // body as Bar popups. The model intentionally stays runtime-only because
+    // its actions are live function closures owned by DockAppButton.
+    property var abyssDockMenuModel: []
+    property string abyssDockMenuOwnerId: ""
+    property bool abyssDockMenuTriggerHovered: false
     property string abyssClipboardTargetOutput: ""
     property bool abyssEditing: false
     property string abyssEditorTargetOutput: ""

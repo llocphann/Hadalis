@@ -261,10 +261,18 @@ DockButton {
         if(root.abyssStyle) {
             if(buttonHovered && !root.isSeparator) {
                 hoverDelayTimer.restart()
-                if(root.appListRoot) { root.appListRoot.lastHoveredButton=root;root.appListRoot.buttonHovered=true }
+                if(root.appListRoot) {
+                    root.appListRoot.lastHoveredButton=root
+                    root.appListRoot.buttonHovered=true
+                    root.appListRoot.setAbyssContextMenuHover(root, true)
+                }
             } else {
                 hoverDelayTimer.stop()
-                if(root.appListRoot?.lastHoveredButton===root) root.appListRoot.buttonHovered=false
+                if(root.appListRoot) {
+                    root.appListRoot.setAbyssContextMenuHover(root, false)
+                    if(root.appListRoot.lastHoveredButton===root)
+                        root.appListRoot.buttonHovered=false
+                }
             }
             return
         }
@@ -398,14 +406,24 @@ DockButton {
 
     function showContextMenu(fromHover): void {
         root.hoverContextOpen=fromHover===true
-        root.appListRoot.closeAllContextMenus(root)
-        root.appListRoot.contextMenuOpen = true
+        const snapshot = root.buildContextMenuModel()
         root.hoverPreviewDismissed()
         hoverDelayTimer.stop()
+
+        // Abyss owns one connected popup field. Rehost Dock menus there instead
+        // of creating a detached PopupWindow that visually floats above it.
+        if (root.abyssStyle
+                && root.appListRoot?.openAbyssContextMenu(snapshot, root)) {
+            root.appListRoot.closeAllContextMenus(root)
+            return
+        }
+
+        root.appListRoot.closeAllContextMenus(root)
+        root.appListRoot.contextMenuOpen = true
         // Snapshot the entries. A live binding on `toplevels` re-evaluates on
         // every window/title event, which resets the menu's Repeater and kills
         // the hover state of the item under the cursor.
-        contextMenu.model = root.buildContextMenuModel()
+        contextMenu.model = snapshot
         contextMenu.requestOpen()
     }
 

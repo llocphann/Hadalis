@@ -20,9 +20,13 @@ MouseArea {
         || (Config.options?.bar?.tray?.monochromeIcons ?? false)
     property bool targetMenuOpen: false
     property bool keyboardMenuMode: false
+    readonly property string abyssConnectivityKind:
+        Config.options?.panelFamily === "abyss"
+            ? TrayService.connectivityKind(root.item) : ""
 
     signal menuOpened(qsWindow: var)
     signal menuClosed(qsWindow: var)
+    signal hoverPopupRequested(string kind)
 
     hoverEnabled: true
     cursorShape: Qt.PointingHandCursor
@@ -100,8 +104,21 @@ MouseArea {
 
     onExited: hoverMenu.stop()
     Timer {
-        id:hoverMenu;interval:350
-        onTriggered: if(root.containsMouse && !root.pressed && Config.options?.panelFamily === "abyss") root.openContextMenu(false)
+        id: hoverMenu
+        interval: 350
+        onTriggered: {
+            if (!root.containsMouse || root.pressed
+                    || Config.options?.panelFamily !== "abyss"
+                    || menu.active)
+                return
+            if (root.abyssConnectivityKind.length > 0) {
+                if (root.trayParent)
+                    root.trayParent.closeAllTrayMenus()
+                root.hoverPopupRequested(root.abyssConnectivityKind)
+                return
+            }
+            root.openContextMenu(false)
+        }
     }
 
     // Listen for close signal from parent tray

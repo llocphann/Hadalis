@@ -49,7 +49,6 @@ Item {
             : root.kind === "activeWindow" ? activeWindow : root.kind === "tray" ? tray
             : root.kind === "utilButtons" ? utilities
             : root.kind === "utilities" ? utilitiesPopup
-            : ["wifi","bluetooth"].includes(root.kind) ? network
             : root.kind === "timer" ? timer
             : root.kind === "shellUpdate" ? update : root.kind === "weather" ? weather : taskbar
     }
@@ -71,7 +70,15 @@ Item {
     Component { id: verticalBattery; Vertical.BatteryIndicator {} }
     Component { id: distro; Shared.DistroIcon {} }
     Component { id: activeWindow; Shared.ActiveWindow {} }
-    Component { id: tray; Shared.SysTray { vertical: root.vertical; showSeparator: false; showOverflowMenu: true } }
+    Component {
+        id: tray
+        Shared.SysTray {
+            vertical: root.vertical
+            showSeparator: false
+            showOverflowMenu: true
+            onHoverPopupRequested: kind => root.request(kind)
+        }
+    }
     Component { id: utilities; Shared.UtilButtons { vertical: root.vertical; compactRequested: root.compact } }
     Component {
         id: utilitiesPopup
@@ -80,15 +87,6 @@ Item {
             glyph: "display_settings"
             description: "Utilities"
             onClicked: root.request("utilities")
-        }
-    }
-    Component {
-        id: network
-        AbyssButton {
-            compact: true
-            glyph: root.kind === "wifi" ? Network.materialSymbol : BluetoothStatus.activeIcon
-            description: root.kind === "wifi" ? "Wi-Fi connections" : "Bluetooth devices"
-            onClicked: root.request(root.kind)
         }
     }
     Component { id: timer; Shared.TimerIndicator { vertical: root.vertical } }

@@ -2,6 +2,42 @@
 # Rehost real network forms without opening another dialog or touching a radio.
 set -euo pipefail
 repo_root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
+layout="$repo_root/modules/abyss/looks/AbyssLayout.js"
+module="$repo_root/modules/abyss/bar/AbyssBarModule.qml"
+tray="$repo_root/modules/bar/SysTray.qml"
+tray_item="$repo_root/modules/bar/SysTrayItem.qml"
+tray_service="$repo_root/services/TrayService.qml"
+migration="$repo_root/sdata/migrations/053-retire-abyss-connectivity-modules.sh"
+
+for token in '"wifi"' '"bluetooth"'; do
+    grep -Fq "$token" "$layout" && {
+        printf 'FAIL: retired connectivity Edge module remains in Abyss catalog: %s\n' "$token" >&2
+        exit 1
+    }
+done
+grep -Fq 'onHoverPopupRequested: kind => root.request(kind)' "$module"     || { printf 'FAIL: Abyss System Tray does not route connectivity hover into connected popup\n' >&2; exit 1; }
+grep -Fq 'signal hoverPopupRequested(string kind)' "$tray"     || { printf 'FAIL: shared System Tray hover popup signal missing\n' >&2; exit 1; }
+grep -Fq 'TrayService.connectivityKind(root.item)' "$tray_item"     || { printf 'FAIL: tray item does not classify connectivity icons\n' >&2; exit 1; }
+grep -Fq 'root.hoverPopupRequested(root.abyssConnectivityKind)' "$tray_item"     || { printf 'FAIL: tray item does not request connectivity popup on Abyss hover\n' >&2; exit 1; }
+grep -Fq 'function connectivityKind(item): string' "$tray_service"     || { printf 'FAIL: centralized connectivity tray classifier missing\n' >&2; exit 1; }
+grep -Fq 'MIGRATION_ID="053-retire-abyss-connectivity-modules"' "$migration"     || { printf 'FAIL: retired connectivity module migration missing\n' >&2; exit 1; }
+
+migration_tmp="$(mktemp -d)"
+trap 'rm -rf -- "$migration_tmp"' EXIT
+mkdir -p "$migration_tmp/inir"
+cat > "$migration_tmp/inir/config.json" <<'JSON'
+{"abyss":{"modules":{"placements":[{"id":"wifi","kind":"wifi"},{"id":"clock","kind":"clock"},{"id":"bluetooth","kind":"bluetooth"}],"outputLayouts":[{"outputName":"A","placements":[{"id":"bt-a","kind":"bluetooth"},{"id":"media","kind":"media"}]}]}}}
+JSON
+(
+    export XDG_CONFIG_HOME="$migration_tmp"
+    source "$migration"
+    migration_check || { printf 'FAIL: connectivity migration did not detect retired modules\n' >&2; exit 1; }
+    migration_apply || { printf 'FAIL: connectivity migration apply failed\n' >&2; exit 1; }
+    migration_check && { printf 'FAIL: connectivity migration is not idempotent\n' >&2; exit 1; }
+    jq -e '(.abyss.modules.placements | map(.kind)) == ["clock"]
+        and (.abyss.modules.outputLayouts[0].placements | map(.kind)) == ["media"]'         "$XDG_CONFIG_HOME/inir/config.json" >/dev/null         || { printf 'FAIL: connectivity migration removed/preserved wrong placements\n' >&2; exit 1; }
+)
+
 if ! command -v qs >/dev/null || [[ -z "${WAYLAND_DISPLAY:-}" ]]; then
     printf 'SKIP: Abyss network popup runtime (Quickshell/Wayland unavailable)\n'
     exit 0
@@ -49,8 +85,8 @@ ShellRoot {
             onCloseRequested: { root.dismissed++;open=false }
         }
         AbyssBarModule {
-            id: button; width: 36; height: 32; outputName: "network-test"; kind: "wifi"
-            onRequest: kind=> { if(kind===button.kind) root.requests++ }
+            id: trayModule; width: 160; height: 32; outputName: "network-test"; kind: "tray"
+            onRequest: kind=> { if(["wifi","bluetooth"].includes(kind)) root.requests++ }
         }
     }
     Timer {
@@ -65,10 +101,10 @@ ShellRoot {
                 const popup=body.contentItem.item,form=popup?.feature?.dialog
                 if(!root.check(body.ready && body.inputBounds.width>0 && popup.desiredWidth===380 && popup.desiredHeight===500,"bounded network popup content loads")) return
                 if(!root.check(form?.show && form.effectiveEmbedded && !form.liquidHosted && controller.activeDialog===null,"mature form reuses the popup rather than acquiring a dialog host")) return
-                if(!root.check(button.feature && button.naturalSpan>0,"network Edge module is usable")) return
-                button.feature.clicked()
-                if(!root.check(root.requests===(root.step===1 ? 1 : 2),"module sends the matching popup request")) return
-                if(root.step===1) { body.contentKind="bluetooth";button.kind="bluetooth" }
+                if(!root.check(trayModule.feature && trayModule.naturalSpan>=0,"System Tray module is usable")) return
+                trayModule.feature.hoverPopupRequested(root.step===1 ? "wifi" : "bluetooth")
+                if(!root.check(root.requests===(root.step===1 ? 1 : 2),"System Tray hover sends the matching popup request")) return
+                if(root.step===1) { body.contentKind="bluetooth" }
                 else { form.dismiss() }
             } else if(root.step===4) {
                 if(!root.check(root.dismissed===1 && !body.open && body.inputBounds.width===0,"Done dismisses the existing host and releases input")) return
@@ -96,4 +132,4 @@ if [[ "$status" != 124 ]] || ! rg -q 'NETWORK_POPUP_PASS' "$network_test_root/ru
         || rg -q 'NETWORK_POPUP_FAIL|ReferenceError:|TypeError:|Binding loop|Unable to assign|is not a type' "$network_test_root/runtime.log"; then
     cat "$network_test_root/runtime.log"; exit 1
 fi
-printf 'PASS: Wi-Fi/Bluetooth forms, module requests, vertical placement, safe previews and unload/input release\n'
+printf 'PASS: Wi-Fi/Bluetooth forms, System Tray hover routing, retired Edge modules, migration, vertical placement and input release\n'

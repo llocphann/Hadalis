@@ -165,6 +165,39 @@ Singleton {
         const title = String(item.title || "").toLowerCase();
         return id.includes("fcitx") || title.includes("fcitx");
     }
+
+    // Abyss does not expose Wi-Fi/Bluetooth as duplicate Edge modules. When the
+    // corresponding SNI already exists in System Tray, hovering that icon opens
+    // the shell's mature connection popup instead. Keep matching centralized so
+    // SysTrayItem does not grow applet-specific policy.
+    function connectivityKind(item): string {
+        if (!root.isValidItem(item)) return "";
+        const haystack = [
+            item.id ?? "",
+            item.title ?? "",
+            item.tooltipTitle ?? "",
+            item.tooltipDescription ?? ""
+        ].join(" ").toLowerCase();
+
+        const bluetoothPatterns = [
+            "blueman", "bluetooth", "bluez", "org.kde.plasma.bluetooth"
+        ];
+        for (const pattern of bluetoothPatterns) {
+            if (haystack.includes(pattern))
+                return "bluetooth";
+        }
+
+        const wifiPatterns = [
+            "nm-applet", "networkmanager", "network manager",
+            "networkmanagement", "network management", "plasma-nm",
+            "wireless", "wi-fi", "wifi"
+        ];
+        for (const pattern of wifiPatterns) {
+            if (haystack.includes(pattern))
+                return "wifi";
+        }
+        return "";
+    }
     
     property var _pinnedItems: {
         const value = Config.options?.tray?.pinnedItems

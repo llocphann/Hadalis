@@ -42,8 +42,11 @@ Item {
         else overflowAutoCloseTimer.restart();
     }
 
-    // Signal to close all tray menus before opening a new one
+    // Signal to close all tray menus before opening a new one.
     signal closeAllTrayMenus()
+    // Abyss consumes this and opens its connected Wi-Fi/Bluetooth body at the
+    // System Tray module anchor. Other families ignore it.
+    signal hoverPopupRequested(string kind)
 
     property bool smartTray: Config.options.bar.tray.filterPassive
     
@@ -190,6 +193,10 @@ Item {
                             Layout.fillWidth: root.vertical
                             onMenuClosed: (qsWindow) => root.releaseFocus(qsWindow);
                             onMenuOpened: (qsWindow) => root.setExtraWindowAndGrabFocus(qsWindow);
+                            onHoverPopupRequested: kind => {
+                                root.closeOverflowMenu()
+                                root.hoverPopupRequested(kind)
+                            }
                         }
                     }
                 }
@@ -211,6 +218,7 @@ Item {
                 onMenuOpened: (qsWindow) => {
                     root.setExtraWindowAndGrabFocus(qsWindow);
                 }
+                onHoverPopupRequested: kind => root.hoverPopupRequested(kind)
             }
         }
 

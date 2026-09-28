@@ -18,9 +18,9 @@ Pyramid v2 does not restore those fields.
 
 `AbyssBodyPlacement.js` remains deterministic resting layout only. A popup opts in with `stackPolicy: "pyramid"`. Pyramid grouping now follows the common runtime case rather than requiring nearly identical anchors. Two popup requests on the same physical Edge join one neighborhood when their requested tangent content intervals overlap or are within the normal 24 logical-pixel allocator clearance. Connected neighborhoods are transitive (A↔B↔C). Within that neighborhood, the largest requested popup owns the Edge-direct slot and smaller peers stack inward. Far-apart intervals, perpendicular Edges and non-popup bodies remain independent.
 
-`AbyssPyramidCoordinator.qml` owns visual transactions only. When a popup begins a semantic close it snapshots the closing placement, freezes only surviving peers at that same anchor, and builds a collapsed origin from the nearest lower popup. Input/focus ownership is revoked immediately. The closing body remains visually resident only because its existing reveal scalar is still above zero.
+`AbyssPyramidCoordinator.qml` owns visual transactions only. When a popup begins a semantic close it snapshots **that closing popup's** placement and builds a collapsed origin from the nearest lower popup. Input/focus ownership is revoked immediately. The closing body remains visually resident only because its existing reveal scalar is still above zero.
 
-After the closing tail reaches zero, the coordinator releases that group's freeze. Surviving bodies then animate from their frozen visual positions to the allocator's already-computed resting positions through the existing placement Behaviors.
+Surviving popups are no longer frozen behind the closing tail. As soon as semantic close removes the old request from the allocator, survivors receive their new resting placements and their existing placement Behaviors start reflowing in the same frame. For the common Utilities → Media case, Utilities can retract while Media remains fully visible and simultaneously slides toward its new tier. The closing popup alone keeps its snapshot so its retract path cannot jump.
 
 ## Motion contract
 
@@ -81,22 +81,22 @@ Two additional motion invariants are enforced:
 - **Entry origin is latched once reveal begins.** While progress is still at zero, allocator updates may re-arm the origin so the popup starts from the correct lower tier. Once progress is above the reveal threshold, peer reflow may change the final resting target but cannot rewrite the already-visible origin. This avoids a mid-flight discontinuity.
 - **A lower popup that is already closing contributes its current visual boundary.** When another popup starts an overlapping open/close transaction, the coordinator samples the lower host's currently published geometry instead of using its old full resting record. The new transaction therefore meets the surface that is actually visible on that frame. The original full snapshot remains only as a fallback after the host stops publishing.
 - **An exhausted lower tail is absent immediately.** If that live closing record has already reached the same 0.001 reveal threshold used by the host to finish the close, the coordinator ignores it even if transaction bookkeeping survives for the remainder of the current QML binding turn. A new popup therefore cannot collapse toward an invisible stale lower tier.
-- **Cancel/reopen is not the same as finish.** If a popup reverses its close while another same-neighborhood transaction is still active, the reopened identity is inserted into the remaining transaction's frozen map at its closing snapshot. It therefore reverses from the visible path instead of jumping into the allocator's already-reflowed slot. A true finished close is removed without this preservation.
+- **Reopen reverses both motions from their current frames.** The closing popup keeps its own O/F snapshot until its reveal scalar returns to 1. Semantic survivors are not transaction-frozen; when the closing request becomes open again, allocator targets change back and their placement Behaviors naturally reverse from their current reflow positions.
 
 These rules are presentation-only and do not change allocator ordering or resting geometry.
 
 ## Reduced / disabled motion
 
-Close cleanup cannot depend only on a future `progressChanged` callback. A popup owner may jump its reveal scalar directly to zero when motion is disabled, and that progress update can occur before Pyramid semantic-close bookkeeping arms the transaction. After `beginClose`, the host therefore evaluates the same completion predicate synchronously. If progress is already at or below 0.001, the closing transaction is finished immediately and its group freeze is released. The normal `onProgressChanged` path calls the same helper for animated closes.
+Close cleanup cannot depend only on a future `progressChanged` callback. A popup owner may jump its reveal scalar directly to zero when motion is disabled, and that progress update can occur before Pyramid semantic-close bookkeeping arms the transaction. After `beginClose`, the host therefore evaluates the same completion predicate synchronously. If progress is already at or below 0.001, the closing popup's transaction snapshot is finished immediately. Surviving peers are already following live allocator targets, so there is no group freeze to release. The normal `onProgressChanged` path calls the same helper for animated closes.
 
 
 ## Reversal transaction
 
-Reopen during a retract stays inside the same Pyramid visual transaction until reveal reaches 1. The coordinator changes phase from `closing` to `reopening` but keeps the popup's placement snapshot, collapsed origin, full record and same-neighborhood survivor freeze intact. The existing owner `revealProgress` simply reverses direction.
+Reopen during a retract stays inside the same Pyramid visual transaction until reveal reaches 1. The coordinator changes phase from `closing` to `reopening` and keeps only the reopening popup's placement snapshot, collapsed origin and full record intact. The existing owner `revealProgress` reverses direction, while semantic survivors receive the allocator's restored targets and reverse their placement motion from the current frame.
 
-Cancelling the transaction at semantic reopen would be geometrically unsafe if another popup changed allocator targets during the retract: a partially revealed surface could suddenly receive a different full target even though its scalar reversed smoothly. Keeping the transaction frozen guarantees that the reverse follows exactly the same `O <-> F` path. At progress 1 the coordinator releases this transaction; ordinary placement Behaviors may then reflow to any newer resting layout.
+Cancelling the transaction at semantic reopen would be geometrically unsafe if another popup changed allocator targets during the retract: a partially revealed surface could suddenly receive a different full target even though its scalar reversed smoothly. Keeping the closing popup's own snapshot guarantees that its reverse follows exactly the same `O <-> F` path. Surviving peers are deliberately live during that reversal: allocator targets switch back as soon as semantic reopen occurs, so their placement Behaviors reverse concurrently. At progress 1 the coordinator releases the closing popup's transaction snapshot.
 
-If the popup closes again before the reverse completes, phase flips back to `closing` with the same snapshot. No new origin, no second clock and no content scale/fade are introduced. Reduced/disabled motion uses the same symmetric finish predicates, so a scalar that has already jumped to 0 or 1 cannot leave a frozen transaction behind.
+If the popup closes again before the reverse completes, phase flips back to `closing` with the same snapshot. No new origin, no second clock and no content scale/fade are introduced. Reduced/disabled motion uses the same symmetric finish predicates, so a scalar that has already jumped to 0 or 1 cannot leave a stale transaction snapshot behind.
 
 
 ## Record-depth coherence
@@ -118,3 +118,17 @@ The allocator now performs two deterministic stages. First it computes the uncha
 The previous <=2 px anchor-center rule made Pyramid almost invisible in ordinary use because independent Bar modules rarely share an exact center. The current experiment promotes the allocator's actual interaction domain instead: requested popup content intervals on one Edge form a Pyramid neighborhood when they overlap or lie within 24 logical pixels. The threshold is carried on the placement request as `stackProximity`, so the resting allocator and animation coordinator use the same rule.
 
 This does **not** relax the tangent-motion invariant. Group membership may come from another popup's interval, but every animated record still keeps its own `along/span`; a peer contributes only an Edge-normal collapse boundary. The expected visible change is therefore tiering/reflow for ordinary overlapping popup pairs, not a popup sliding sideways toward another module.
+
+
+## Concurrent survivor reflow
+
+The owner recording `recording_2026-09-29_01.40.56.mp4` exposed the most common close transition: one popup retracts while a surviving peer waits at its old inward tier and only moves after the first tail disappears. That sequencing was caused by the coordinator's `frozenPlacements` map, not by the allocator.
+
+The current policy removes survivor freezing. A semantic close now has two simultaneous visual effects:
+
+1. the closing popup keeps its own transaction snapshot and retracts along its existing `F -> O` path;
+2. every still-open peer immediately consumes the allocator's new resting placement and begins its ordinary placement reflow.
+
+For Pyramid participants, placement reflow uses `InOutCubic` with the existing Abyss normal duration so a common Utilities → Media transition reads as one coordinated glide. Non-Pyramid placement changes keep the prior `OutCubic` curve.
+
+This change intentionally preserves the tangent invariant: the survivor moves only toward its own new allocator placement; it never borrows the closing popup's `along/span` or Screen-Edge origin.

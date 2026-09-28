@@ -242,8 +242,8 @@ Item {
         if (root.semanticOpen) {
             if (root.pyramidClosing) {
                 // Reopen is a phase reversal of this exact visual transaction.
-                // Keep O/F snapshots and the same-neighborhood freeze until progress
-                // returns to 1, even if allocator targets changed meanwhile.
+                // Keep this popup's O/F snapshots until progress returns to 1.
+                // Surviving peers independently follow live allocator targets.
                 root.pyramidCoordinator?.beginReopen(root.identity)
                 root.pyramidClosing=false
                 root.pyramidReopening=true
@@ -343,22 +343,38 @@ Item {
     Behavior on visualPlacementAlong {
         enabled: root.animatePlacementChanges && root.placementMotionReady
             && AbyssStyle.motionEnabled
-        NumberAnimation { duration: AbyssStyle.motionNormal; easing.type: Easing.OutCubic }
+        NumberAnimation {
+            duration: AbyssStyle.motionNormal
+            easing.type: root.pyramidMotionEnabled
+                ? Easing.InOutCubic : Easing.OutCubic
+        }
     }
     Behavior on visualPlacementSpan {
         enabled: root.animatePlacementChanges && root.placementMotionReady
             && AbyssStyle.motionEnabled
-        NumberAnimation { duration: AbyssStyle.motionNormal; easing.type: Easing.OutCubic }
+        NumberAnimation {
+            duration: AbyssStyle.motionNormal
+            easing.type: root.pyramidMotionEnabled
+                ? Easing.InOutCubic : Easing.OutCubic
+        }
     }
     Behavior on visualPlacementDepth {
         enabled: root.animatePlacementChanges && root.placementMotionReady
             && AbyssStyle.motionEnabled
-        NumberAnimation { duration: AbyssStyle.motionNormal; easing.type: Easing.OutCubic }
+        NumberAnimation {
+            duration: AbyssStyle.motionNormal
+            easing.type: root.pyramidMotionEnabled
+                ? Easing.InOutCubic : Easing.OutCubic
+        }
     }
     Behavior on visualPlacementInward {
         enabled: root.animatePlacementChanges && root.placementMotionReady
             && AbyssStyle.motionEnabled
-        NumberAnimation { duration: AbyssStyle.motionNormal; easing.type: Easing.OutCubic }
+        NumberAnimation {
+            duration: AbyssStyle.motionNormal
+            easing.type: root.pyramidMotionEnabled
+                ? Easing.InOutCubic : Easing.OutCubic
+        }
     }
     Behavior on availabilityProgress {
         id: availabilityMotion

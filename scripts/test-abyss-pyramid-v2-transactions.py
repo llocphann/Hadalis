@@ -59,7 +59,9 @@ def lower_peer(subject: Peer, peers: list[Peer]) -> Peer | None:
     return max(candidates, key=lambda peer: peer.inward, default=None)
 
 
-def frozen_survivors(subject: Peer, peers: list[Peer]) -> set[str]:
+def reflowing_survivors(subject: Peer, peers: list[Peer]) -> set[str]:
+    # Semantic survivors remain open and therefore receive their new allocator
+    # resting placements immediately when subject closes.
     return {peer.name for peer in component(subject, peers)}
 
 
@@ -74,7 +76,9 @@ def main() -> None:
     assert "function _pyramidDescriptorsRelated(a,b): bool" in coord
     assert "tangentStart" in coord and "tangentEnd" in coord
     assert "root._lowerPeer(identity,request,placement)" in coord
-    assert "root._rebuildFrozen()" in coord
+    assert "root._rebuildFrozen()" not in coord
+    assert "property var frozenPlacements: ({})" not in coord
+    assert "return transaction?.placement ?? livePlacement ?? null" in coord
     assert 'phase:"closing"' in coord
     assert 'root._setPhase(identity,"reopening")' in coord
     assert 'root._setPhase(identity,"closing")' in coord
@@ -82,10 +86,9 @@ def main() -> None:
     assert "const liveRecord=" in coord
     assert "liveRecord ?? closing.fullRecord" in coord
     assert "root._number(liveRecord.progress,1) <= .001" in coord
-    assert "function cancelClose(identity, preserveForPeers = true): void" in coord
-    assert "reopening.descriptor,entry?.descriptor" in coord
-    assert "frozen[identity]=Motion.clonePlacement(" in coord
-    assert "root.cancelClose(identity,false)" in coord
+    assert "function cancelClose(identity): void" in coord
+    assert "preserveForPeers" not in coord
+    assert "frozen[identity]" not in coord
     assert "root.pyramidOriginRecord && root.progress > 0.001" in host
     assert "root.pyramidAllocatorPlacement,root.pyramidAllocatorRecord" in host
     assert "Qt.callLater(root.syncPyramidEntryOrigin)" not in host
@@ -112,9 +115,9 @@ def main() -> None:
     assert lower_peer(middle, group) == bottom
     assert lower_peer(bottom, group) is None
 
-    # Closing top freezes the full connected same-Edge neighborhood, including
-    # bottom reached transitively through middle.
-    assert frozen_survivors(top, group) == {"bottom", "middle"}
+    # Closing top makes the connected semantic survivors reflow immediately;
+    # they do not wait for the closing tail to reach zero.
+    assert reflowing_survivors(top, group) == {"bottom", "middle"}
 
     # If middle closes while top is already visual-only, bottom remains its
     # lower semantic peer; remote and perpendicular peers stay independent.
@@ -122,7 +125,7 @@ def main() -> None:
         bottom, Peer("middle", "top", 620, 900, 220, True),
         Peer("top", "top", 820, 1040, 420, False), remote, side
     ]
-    assert frozen_survivors(
+    assert reflowing_survivors(
         after_top_semantic_close[1], after_top_semantic_close
     ) == {"bottom"}
 
@@ -131,26 +134,18 @@ def main() -> None:
     closing_tail_progress = 0.001
     assert closing_tail_progress <= 0.001
 
-    # Reopen reverses the same transaction and preserves its own frozen group.
-    # A second close flips phase back without replacing O/F snapshots.
+    # Reopen reverses the closing popup's O/F transaction. Survivors do not
+    # need a frozen map: when semantic open returns, allocator targets change
+    # again and their existing placement Behaviors reverse from the current frame.
     phase = "closing"
-    frozen = {"bottom", "middle"}
     phase = "reopening"
-    assert frozen == {"bottom", "middle"}
+    assert phase == "reopening"
     phase = "closing"
-    assert frozen == {"bottom", "middle"}
-
-    # Once reopen reaches 1 its own transaction can finish. If another
-    # same-neighborhood close remains, finishReopen preserves this identity in that
-    # peer's frozen map until the remaining tail ends.
-    remaining_close_freeze = {"bottom"}
-    reopened_identity = "middle"
-    remaining_close_freeze.add(reopened_identity)
-    assert reopened_identity in remaining_close_freeze
+    assert phase == "closing"
 
     # Different anchors/Edges still stay independent.
-    assert frozen_survivors(remote, group) == set()
-    assert frozen_survivors(side, group) == set()
+    assert reflowing_survivors(remote, group) == set()
+    assert reflowing_survivors(side, group) == set()
 
     print("Pyramid Popup v2 transaction-order contract: ok")
 

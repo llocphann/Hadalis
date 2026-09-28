@@ -5,14 +5,14 @@ import "looks/AbyssPyramidMotion.js" as Motion
 // Pyramid Popup v2 presentation coordinator.
 //
 // AbyssBodyPlacement remains the only resting-layout allocator. This object owns
-// only visual transactions: group freeze during a close, popup-to-popup reveal
-// origins, immediate semantic/input revocation, and reversible closing tails.
+// only visual transactions: closing-popup snapshots, popup-to-popup reveal
+// origins, immediate semantic/input revocation, concurrent survivor reflow,
+// and reversible closing tails.
 QtObject {
     id: root
     required property var controller
 
     property var closings: ({})
-    property var frozenPlacements: ({})
     property int revision: 0
 
     function _number(value, fallback = 0) {
@@ -165,27 +165,17 @@ QtObject {
         return Motion.collapsedRecord(
             fullRecord,lower?.record ?? null)
     }
-    function _rebuildFrozen(): void {
-        const next={}
-        for (const key of Object.keys(root.closings)) {
-            const frozen=root.closings[key]?.frozen ?? {}
-            for (const peer of Object.keys(frozen)) {
-                if (next[peer] === undefined)
-                    next[peer]=Motion.clonePlacement(frozen[peer])
-            }
-        }
-        root.frozenPlacements=next
+    function _publishClosings(next): void {
+        root.closings=next
         root.revision += 1
     }
     function targetFor(identity, livePlacement) {
-        // Touch revision so callers also update if a rebuilt map happens to
-        // contain numerically-equal placement objects.
+        // Only the popup that is itself closing/reopening keeps its transaction
+        // snapshot. Surviving peers follow allocator truth immediately, so their
+        // existing placement Behaviors begin reflow in the same close frame.
         root.revision
-        const closing=root.closings[String(identity)]
-        if (closing?.placement)
-            return closing.placement
-        return root.frozenPlacements[String(identity)]
-            ?? livePlacement ?? null
+        const transaction=root.closings[String(identity)]
+        return transaction?.placement ?? livePlacement ?? null
     }
     function beginClose(identity, request, placement, fullRecord) {
         identity=String(identity ?? "")
@@ -193,13 +183,6 @@ QtObject {
             return Motion.collapsedRecord(fullRecord,null)
 
         const descriptor=root._descriptor(request)
-        const frozen={}
-        for (const peer of root._pyramidGroupCandidates(
-                identity,request,false)) {
-            if (peer.placement)
-                frozen[peer.identity]=Motion.clonePlacement(
-                    peer.placement)
-        }
         const lower=root._lowerPeer(identity,request,placement)
         const next=Object.assign({},root.closings)
         next[identity]={
@@ -208,11 +191,9 @@ QtObject {
             placement:Motion.clonePlacement(placement),
             fullRecord:Motion.cloneRecord(fullRecord),
             originRecord:Motion.collapsedRecord(
-                fullRecord,lower?.record ?? null),
-            frozen:frozen
+                fullRecord,lower?.record ?? null)
         }
-        root.closings=next
-        root._rebuildFrozen()
+        root._publishClosings(next)
         return Motion.cloneRecord(next[identity].originRecord)
     }
     function _setPhase(identity, phase): void {
@@ -222,8 +203,7 @@ QtObject {
             return
         const next=Object.assign({},root.closings)
         next[identity]=Object.assign({},current,{phase:String(phase)})
-        root.closings=next
-        root.revision += 1
+        root._publishClosings(next)
     }
     function beginReopen(identity): void {
         root._setPhase(identity,"reopening")
@@ -231,63 +211,26 @@ QtObject {
     function resumeClose(identity): void {
         root._setPhase(identity,"closing")
     }
-    function cancelClose(identity, preserveForPeers = true): void {
+    function cancelClose(identity): void {
         identity=String(identity ?? "")
         if (!identity || root.closings[identity] === undefined)
             return
-        const reopening=root.closings[identity]
         const next=Object.assign({},root.closings)
         delete next[identity]
-
-        if (preserveForPeers && reopening?.placement
-                && reopening?.descriptor) {
-            // Reopen during another same-neighborhood close must reverse from the
-            // current transaction without jumping into the allocator's already
-            // reflowed slot. Keep this identity frozen by remaining peers until
-            // their own tails finish, then normal placement motion can resume.
-            for (const key of Object.keys(next)) {
-                const entry=Object.assign({},next[key])
-                if (!root._pyramidDescriptorsRelated(
-                        reopening.descriptor,entry?.descriptor))
-                    continue
-                const frozen=Object.assign({},entry.frozen ?? {})
-                if (frozen[identity] === undefined)
-                    frozen[identity]=Motion.clonePlacement(
-                        reopening.placement)
-                entry.frozen=frozen
-                next[key]=entry
-            }
-        }
-
-        root.closings=next
-        root._rebuildFrozen()
+        root._publishClosings(next)
     }
     function finishClose(identity): void {
-        // A finished popup is gone; only a completed reopen may need to remain
-        // frozen by another overlapping same-neighborhood transaction.
-        root.cancelClose(identity,false)
+        root.cancelClose(identity)
     }
     function finishReopen(identity): void {
-        root.cancelClose(identity,true)
+        root.cancelClose(identity)
     }
     function resetIdentity(identity): void {
         identity=String(identity ?? "")
+        if (!identity || root.closings[identity] === undefined)
+            return
         const next=Object.assign({},root.closings)
-        if (next[identity] !== undefined)
-            delete next[identity]
-        // A stable StyledPopup slot may be reused by another popup. Remove that
-        // identity from other transactions so stale geometry cannot leak into
-        // the new owner.
-        for (const key of Object.keys(next)) {
-            const entry=Object.assign({},next[key])
-            const frozen=Object.assign({},entry.frozen ?? {})
-            if (frozen[identity] !== undefined) {
-                delete frozen[identity]
-                entry.frozen=frozen
-                next[key]=entry
-            }
-        }
-        root.closings=next
-        root._rebuildFrozen()
+        delete next[identity]
+        root._publishClosings(next)
     }
 }

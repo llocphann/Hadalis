@@ -17,22 +17,30 @@ assert "readonly property AbyssPyramidCoordinator pyramidCoordinator" in ctrl
 assert "function beginClose(identity, request, placement, fullRecord)" in coord
 assert "function entryOrigin(identity, request, placement, fullRecord)" in coord
 assert "function targetFor(identity, livePlacement)" in coord
+assert "function _publishClosings(next): void" in coord
+assert "root.closings=next" in coord
+assert "root.revision += 1" in coord
 assert "property var closings: ({})" in coord
-assert "property var frozenPlacements: ({})" in coord
+assert "property var frozenPlacements: ({})" not in coord
 assert "function _pyramidDescriptorsRelated(a,b): bool" in coord
 assert "function _pyramidGroupCandidates(identity, request," in coord
 assert "root._descriptorGap(a,b)" in coord
 assert "tangentStart" in coord and "tangentEnd" in coord
 assert "stackProximity:root.stackProximity" in host
 
-# Closing freezes only its same-neighborhood peer group; finish/cancel releases it.
-assert "frozen[peer.identity]" in coord
-assert "function cancelClose(identity, preserveForPeers = true): void" in coord
+# The closing popup keeps its own snapshot, while semantic survivors consume
+# live allocator targets immediately and start their reflow in the same frame.
+assert "return transaction?.placement ?? livePlacement ?? null" in coord
+assert "frozen[peer.identity]" not in coord
+assert "_rebuildFrozen" not in coord
+assert "function cancelClose(identity): void" in coord
 assert "function finishClose(identity): void" in coord
 assert "function beginReopen(identity): void" in coord
 assert "function resumeClose(identity): void" in coord
 assert "function finishReopen(identity): void" in coord
 assert "function resetIdentity(identity): void" in coord
+assert host.count("root.pyramidMotionEnabled") >= 5
+assert host.count("Easing.InOutCubic") >= 4
 
 # Presentation records use snapshot interpolation, then Join Edge is applied.
 assert 'import "looks/AbyssPyramidMotion.js" as PyramidMotion' in host

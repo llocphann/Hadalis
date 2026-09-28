@@ -33,6 +33,46 @@ Item {
         ? controlsLayout.implicitHeight : controlsLayout.implicitWidth
     readonly property real compactMainAxisLength: root.vertical
         ? compactTrigger.implicitHeight : compactTrigger.implicitWidth
+    readonly property var defaultUtilityOrder: [
+        "screenSnip","screenRecord","colorPicker","notepad","keyboard",
+        "keyboardLayout","mic","screenCast","darkMode","performance","utilities"
+    ]
+    readonly property var utilityOrder: {
+        const configured = Config.options?.bar?.utilButtons?.order ?? []
+        const result = []
+        for (const id of configured) {
+            if (root.defaultUtilityOrder.includes(id) && !result.includes(id))
+                result.push(id)
+        }
+        for (const id of root.defaultUtilityOrder)
+            if (!result.includes(id)) result.push(id)
+        return result
+    }
+    function utilityActive(id): bool {
+        switch (id) {
+        case "screenSnip": return Config.options?.bar?.utilButtons?.showScreenSnip ?? true
+        case "screenRecord": return Config.options?.bar?.utilButtons?.showScreenRecord ?? false
+        case "colorPicker": return Config.options?.bar?.utilButtons?.showColorPicker ?? false
+        case "notepad": return Config.options?.bar?.utilButtons?.showNotepad ?? true
+        case "keyboard": return Config.options?.bar?.utilButtons?.showKeyboardToggle ?? true
+        case "keyboardLayout": return (Config.options?.bar?.utilButtons?.showKeyboardLayoutSwitch ?? false)
+            && CompositorService.isNiri && NiriService.hasMultipleKeyboardLayouts
+        case "mic": return (Config.options?.bar?.utilButtons?.showMicToggle ?? false)
+            || Privacy.micActive || (Audio?.micBeingAccessed ?? false)
+        case "screenCast": return (Config.options?.bar?.utilButtons?.showScreenCast ?? false)
+            && CompositorService.isNiri
+        case "darkMode": return Config.options?.bar?.utilButtons?.showDarkModeToggle ?? true
+        case "performance": return Config.options?.bar?.utilButtons?.showPerformanceProfileToggle ?? false
+        case "utilities": return root.showUtilitiesLauncher
+        default: return false
+        }
+    }
+    readonly property int visibleUtilityCount:
+        root.utilityOrder.filter(id => root.utilityActive(id)).length
+    function utilityIndex(id): int {
+        return Math.max(0,root.utilityOrder.filter(
+            candidate => root.utilityActive(candidate)).indexOf(id))
+    }
 
     // Compact Utilities stays inside the Bar. Revealer animates the main axis
     // in-place instead of opening a popup/native surface.
@@ -100,13 +140,15 @@ Item {
             GridLayout {
                 id: controlsLayout
 
-                columns: root.vertical ? 1 : Math.max(1, children.length)
+                columns: root.vertical ? 1 : Math.max(1, root.visibleUtilityCount)
                 columnSpacing: root.vertical ? 0 : 4 * Appearance.sizes.barModuleScale
                 rowSpacing: root.vertical ? 4 * Appearance.sizes.barModuleScale : 0
 
         Loader {
-            active: Config.options?.bar?.utilButtons?.showScreenSnip ?? true
+            active: root.utilityActive("screenSnip")
             visible: active
+            Layout.row: root.vertical ? root.utilityIndex("screenSnip") : 0
+            Layout.column: root.vertical ? 0 : root.utilityIndex("screenSnip")
             sourceComponent: CircleUtilButton {
                 Layout.alignment: Qt.AlignVCenter
                 Accessible.name: Translation.tr("Take screenshot")
@@ -122,8 +164,10 @@ Item {
         }
 
         Loader {
-            active: Config.options?.bar?.utilButtons?.showScreenRecord ?? false
+            active: root.utilityActive("screenRecord")
             visible: active
+            Layout.row: root.vertical ? root.utilityIndex("screenRecord") : 0
+            Layout.column: root.vertical ? 0 : root.utilityIndex("screenRecord")
             sourceComponent: Item {
                 id: recordButtonWrapper
                 Layout.alignment: Qt.AlignVCenter
@@ -199,8 +243,10 @@ Item {
         }
 
         Loader {
-            active: Config.options?.bar?.utilButtons?.showColorPicker ?? false
+            active: root.utilityActive("colorPicker")
             visible: active
+            Layout.row: root.vertical ? root.utilityIndex("colorPicker") : 0
+            Layout.column: root.vertical ? 0 : root.utilityIndex("colorPicker")
             sourceComponent: CircleUtilButton {
                 Layout.alignment: Qt.AlignVCenter
                 Accessible.name: Translation.tr("Pick color")
@@ -216,8 +262,10 @@ Item {
         }
 
         Loader {
-            active: Config.options?.bar?.utilButtons?.showNotepad ?? true
+            active: root.utilityActive("notepad")
             visible: active
+            Layout.row: root.vertical ? root.utilityIndex("notepad") : 0
+            Layout.column: root.vertical ? 0 : root.utilityIndex("notepad")
             sourceComponent: CircleUtilButton {
                 Layout.alignment: Qt.AlignVCenter
                 Accessible.name: Translation.tr("Open notepad")
@@ -236,8 +284,10 @@ Item {
         }
 
         Loader {
-            active: Config.options?.bar?.utilButtons?.showKeyboardToggle ?? true
+            active: root.utilityActive("keyboard")
             visible: active
+            Layout.row: root.vertical ? root.utilityIndex("keyboard") : 0
+            Layout.column: root.vertical ? 0 : root.utilityIndex("keyboard")
             sourceComponent: CircleUtilButton {
                 Layout.alignment: Qt.AlignVCenter
                 Accessible.name: Translation.tr("Toggle on-screen keyboard")
@@ -254,10 +304,10 @@ Item {
 
         // Keyboard layout switch (Niri only)
         Loader {
-            active: (Config.options?.bar?.utilButtons?.showKeyboardLayoutSwitch ?? false)
-                    && CompositorService.isNiri
-                    && NiriService.hasMultipleKeyboardLayouts
+            active: root.utilityActive("keyboardLayout")
             visible: active
+            Layout.row: root.vertical ? root.utilityIndex("keyboardLayout") : 0
+            Layout.column: root.vertical ? 0 : root.utilityIndex("keyboardLayout")
             sourceComponent: CircleUtilButton {
                 Layout.alignment: Qt.AlignVCenter
                 Accessible.name: Translation.tr("Switch keyboard layout")
@@ -278,8 +328,10 @@ Item {
 
         Loader {
             readonly property bool micInUse: Privacy.micActive || (Audio?.micBeingAccessed ?? false)
-            active: (Config.options?.bar?.utilButtons?.showMicToggle ?? false) || micInUse
+            active: root.utilityActive("mic")
             visible: active
+            Layout.row: root.vertical ? root.utilityIndex("mic") : 0
+            Layout.column: root.vertical ? 0 : root.utilityIndex("mic")
             sourceComponent: CircleUtilButton {
                 id: micButton
                 Layout.alignment: Qt.AlignVCenter
@@ -340,9 +392,10 @@ Item {
         // Screen casting toggle (PR #29 by levpr1c)
         // Toggles Niri dynamic casting to configured output
         Loader {
-            active: (Config.options?.bar?.utilButtons?.showScreenCast ?? false)
-                    && CompositorService.isNiri
+            active: root.utilityActive("screenCast")
             visible: active
+            Layout.row: root.vertical ? root.utilityIndex("screenCast") : 0
+            Layout.column: root.vertical ? 0 : root.utilityIndex("screenCast")
             sourceComponent: CircleUtilButton {
                 id: screenCastButton
                 Layout.alignment: Qt.AlignVCenter
@@ -413,8 +466,10 @@ Item {
         }
 
         Loader {
-            active: Config.options?.bar?.utilButtons?.showDarkModeToggle ?? true
+            active: root.utilityActive("darkMode")
             visible: active
+            Layout.row: root.vertical ? root.utilityIndex("darkMode") : 0
+            Layout.column: root.vertical ? 0 : root.utilityIndex("darkMode")
             sourceComponent: CircleUtilButton {
                 Layout.alignment: Qt.AlignVCenter
                 Accessible.name: Appearance.m3colors.darkmode
@@ -434,8 +489,10 @@ Item {
         }
 
         Loader {
-            active: Config.options?.bar?.utilButtons?.showPerformanceProfileToggle ?? false
+            active: root.utilityActive("performance")
             visible: active
+            Layout.row: root.vertical ? root.utilityIndex("performance") : 0
+            Layout.column: root.vertical ? 0 : root.utilityIndex("performance")
             sourceComponent: CircleUtilButton {
                 Layout.alignment: Qt.AlignVCenter
                 Accessible.name: Translation.tr("Change power profile")
@@ -468,8 +525,10 @@ Item {
         }
 
         Loader {
-            active: root.showUtilitiesLauncher
+            active: root.utilityActive("utilities")
             visible: active
+            Layout.row: root.vertical ? root.utilityIndex("utilities") : 0
+            Layout.column: root.vertical ? 0 : root.utilityIndex("utilities")
             sourceComponent: CircleUtilButton {
                 id: utilitiesButton
                 Layout.alignment: Qt.AlignVCenter

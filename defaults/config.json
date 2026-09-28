@@ -910,7 +910,20 @@
             "showScreenRecord": true,
             "showScreenSnip": true,
             "showScreenCast": false,
-            "screenCastOutput": "HDMI-A-1"
+            "screenCastOutput": "HDMI-A-1",
+            "order": [
+                "screenSnip",
+                "screenRecord",
+                "colorPicker",
+                "notepad",
+                "keyboard",
+                "keyboardLayout",
+                "mic",
+                "screenCast",
+                "darkMode",
+                "performance",
+                "utilities"
+            ]
         },
         "verbose": true,
         "vertical": false,

@@ -11,7 +11,7 @@ import "../looks/AbyssWave.js" as Wave
 // mode/preset exposes its label.
 Item {
     id: root
-    implicitWidth: 260
+    implicitWidth: Math.ceil(contentColumn.implicitWidth)
     implicitHeight: contentColumn.implicitHeight
     width: parent ? parent.width : implicitWidth
     height: parent ? parent.height : implicitHeight
@@ -47,7 +47,6 @@ Item {
 
     ColumnLayout {
         id: contentColumn
-        width: parent.width
         spacing: 6
 
         Row {

@@ -4227,3 +4227,269 @@ Current repository tracing shows its actual runtime consumer is the floating-ima
 Therefore do **not** create a repo-wide media dedup task around `ImageDownloaderProcess` from its generic name alone.
 
 No runtime implementation is authorized by this handoff.
+
+## 32. Audit round 18 — Hyprland client-derived work and exact duplicate shell IPC/image probes (2026-09-29)
+
+This round is documentation/research only. No runtime/source implementation is authorized.
+
+### Snapshot
+
+- Hadalis `dev` at round start: `1f8d8942e77c48cfd80a08b071ad143834ef1dcb`.
+- No runtime/source delta was introduced before this round.
+
+The governing constraint for this round is stricter than “looks equivalent”: only eliminate work when the same semantic result can be preserved. Event throttling, stale snapshots, changed selection order, changed image decode paths or changed compositor timing are not accepted as lossless.
+
+### 32.1 `clients -j` consumer matrix is now narrow enough to reason about field parity — HIGH CONFIDENCE inventory
+
+Current `HyprlandData.windowList` consumers and raw fields are:
+
+- `modules/background/Background.qml`
+  - `monitor`, `workspace.id`
+  - used for per-output workspace range and “windows on active workspace” presence.
+- `modules/bar/Workspaces.qml`
+  - `workspace.id`, `size`, `class`
+  - used by `biggestWindowForWorkspace()` for workspace icon selection.
+- `modules/bar/ActiveWindow.qml`
+  - same biggest-window helper plus `class/title` fallback semantics.
+- `services/ScreenTime.qml`
+  - `focusHistoryID`, `class`
+  - scans the snapshot on its Hyprland poll tick.
+- `modules/overview/OverviewWidget.qml`
+  - `address`, `monitor`, `workspace.id`, `at`, `floating`, `title`, `class`, `xwayland` and related raw geometry.
+- `modules/regionSelector/RegionSelection.qml`
+  - `floating`, `workspace.id`, `at`, `size`, `class`, `title`.
+- `modules/lock/Lock.qml`
+  - `floating`, `workspace.id`, `address`, `at`.
+- `modules/common/functions/Session.qml`
+  - `pid` only, and only when session actions close windows.
+
+This confirms that raw client JSON is still semantically useful, but most consumers do not need every field and several are demand-only.
+
+### 32.2 Quickshell can carry the same raw toplevel JSON without a child `hyprctl` process — HIGH CONFIDENCE candidate, parity proof required
+
+Current Quickshell Hyprland API exposes:
+
+- `Hyprland.toplevels`;
+- `Hyprland.activeToplevel`;
+- `Hyprland.refreshToplevels()`;
+- `HyprlandToplevel.lastIpcObject`, documented as the last JSON returned for that toplevel.
+
+Hadalis already uses `lastIpcObject` in `CompositorService.qml` for raw fields such as:
+
+- `monitor`;
+- `workspace.id`;
+- `at`.
+
+Therefore a plausible exact-safe architecture is:
+
+1. preserve the same refresh points initially;
+2. ask Quickshell to refresh toplevels in-process;
+3. rebuild Hadalis' raw snapshot/indexes from `lastIpcObject`;
+4. compare field-for-field against `hyprctl clients -j` under the same compositor state.
+
+This would remove the external child-process spawn while retaining an IPC refresh. It is **not yet classified CONFIRMED** because ordering, XWayland coverage, object publication timing and every raw field used by Overview/Lock/Session must match.
+
+Required parity corpus:
+
+- native Wayland + XWayland;
+- tiled/floating/pinned/special workspace;
+- title/class changes;
+- move/resize/workspace move;
+- fullscreen;
+- monitor move/hotplug;
+- lock transition;
+- window open/close during refresh.
+
+Do not replace `clients -j` until the raw snapshots agree for every field consumed above.
+
+### 32.3 `biggestWindowForWorkspace()` repeats full-window scans for every workspace button — CONFIRMED pure-QML lossless candidate / P1-P2
+
+The helper currently does:
+
+1. `windowList.filter(w => w.workspace.id == workspaceId)`;
+2. `reduce()` by `size[0] * size[1]`.
+
+`Workspaces.qml` instantiates one `biggestWindow` binding per rendered workspace button. The configured fallback workspace count is 10. `ActiveWindow.qml` also calls the same helper.
+
+When `windowList` is replaced, each dependent binding can independently scan the entire list and allocate its filtered array.
+
+Exact-safe direction:
+
+- while publishing one raw client snapshot, compute `biggestWindowByWorkspaceId` in a single pass;
+- preserve the current strict `>` area comparison so equal-area tie behavior remains first-in-snapshot;
+- make `biggestWindowForWorkspace(id)` an O(1) lookup.
+
+For 10 workspace buttons, the biggest-window portion changes from approximately ten full list filters/reduces per bar refresh to one shared O(N) indexing pass. This is an operation-count estimate only, not a shell-wide CPU percentage.
+
+### 32.4 Background repeats per-output filter + sort even though it only needs range/presence — CONFIRMED pure-QML lossless candidate / P1-P2
+
+Every Hyprland `Background.qml` output currently derives:
+
+`windowList.filter(win => win.monitor == monitor.id && win.workspace.id >= 0).sort(...workspace id...)`
+
+The resulting array is only used to obtain:
+
+- first workspace id;
+- last workspace id;
+- whether the active workspace contains at least one window;
+- fallback “any relevant window” presence.
+
+The full sorted arrays are not otherwise consumed.
+
+Exact-safe direction:
+
+During the same single pass that receives the client snapshot, build per-monitor derived state:
+
+- min non-negative workspace id;
+- max non-negative workspace id;
+- occupied workspace-id set/count.
+
+This preserves the current result without per-output filtered-array allocation or sorting.
+
+Alternative after Quickshell parity is proven: derive the same values from `Hyprland.workspaces`, whose workspace objects already expose monitor association and toplevel membership. Do not mix the two routes in one implementation step; first preserve current client-snapshot semantics exactly.
+
+### 32.5 `addresses` is dead derived state; `windowByAddress` is Overview-only but built globally — CONFIRMED / P2
+
+`HyprlandData.qml` currently allocates after every client snapshot:
+
+- `windowByAddress`: one object map over all windows;
+- `addresses`: one array mapping all window addresses.
+
+Repository tracing shows:
+
+- `addresses` has no effective consumer. `OverviewWidget.qml` copies it into `windowAddresses`, but that property is never read afterward.
+- `windowByAddress` is externally consumed only by `OverviewWidget.qml`.
+
+Lossless opportunities:
+
+- remove the dead `addresses/windowAddresses` derived allocation;
+- either materialize `windowByAddress` only while Overview has a consumer, or derive it inside the Overview residency boundary.
+
+This is smaller than IPC elimination but is static, behavior-preserving allocation removal.
+
+### 32.6 ScreenTime performs a window-list scan every Hyprland poll tick — CONFIRMED subwork / P2
+
+Hyprland ScreenTime polls at:
+
+`(Config.options.sidebar.screenTime.pollIntervalSeconds ?? 5) * 1000`.
+
+Each tick scans `HyprlandData.windowList` until `focusHistoryID === 0`, then reads `class`.
+
+Exact-safe low-risk direction independent of Quickshell migration:
+
+- when the existing client snapshot is parsed, store the same first `focusHistoryID === 0` record/class;
+- ScreenTime reads that O(1) derived value.
+
+This preserves the exact source/order semantics of the current snapshot and removes repeated scans between compositor refreshes.
+
+A later native `Hyprland.activeToplevel` migration may be cleaner, but class/app-id equivalence across Wayland/XWayland must be proven before using it as a lossless replacement.
+
+### 32.7 `switchwall.sh` performs two immediate `hyprctl monitors -j` calls for one resolution result — CONFIRMED / P2 user-action latency
+
+`get_max_monitor_resolution()` currently executes:
+
+- one `hyprctl monitors -j` to compute max width;
+- a second immediately afterward to compute max height.
+
+The same monitor JSON can provide both values in one query.
+
+Operation count for this function's Hyprland branch:
+
+- compositor queries: **2 -> 1**;
+- 50% fewer `hyprctl monitors` child invocations in this step.
+
+Preserve the existing semantics that width and height are independently the maxima across all monitor records.
+
+Do not broaden this into a script-wide long-lived monitor cache: separate later queries currently have fresh-snapshot semantics and monitor state could change during a long wallpaper operation.
+
+### 32.8 `switchwall.sh` decodes image metadata twice for width/height — CONFIRMED / P2
+
+For non-video upscale checks, current code executes:
+
+- `identify -format "%w" "$img"`;
+- `identify -format "%h" "$img"`.
+
+Both target the same unchanged file back-to-back.
+
+One ImageMagick invocation can return both dimensions while preserving the same selected image/frame semantics.
+
+Operation count:
+
+- ImageMagick identify processes: **2 -> 1** for this check.
+
+This is independent of the larger OpenCV region-analysis work and should not be conflated with it.
+
+### 32.9 Several Niri script routes probe an IPC command and immediately run it again — CONFIRMED / P2
+
+Static duplicates found:
+
+**`switchwall.sh`**
+
+- `get_max_monitor_resolution()`:
+  - probe `niri msg outputs >/dev/null`;
+  - run `niri msg outputs` again for parsing.
+  - exact-safe target: capture output + exit status from one invocation.
+
+- `get_focused_monitor_name()`:
+  - probe `niri msg -j focused-output >/dev/null`;
+  - run the identical JSON request again.
+  - exact-safe target: one JSON request.
+
+**`scripts/videos/record.sh`**
+
+- `getactivemonitor()` probes `niri msg focused-output`, then immediately runs it again.
+- target: **2 -> 1** focused-output IPC calls.
+
+**`scripts/colors/random/random_osu_wall.sh` and `random_konachan_wall.sh`**
+
+Focused output:
+- probe `niri msg outputs`;
+- run `niri msg -j outputs`.
+- target: one JSON outputs request.
+
+Workspace range:
+- probe `niri msg workspaces`;
+- run `niri msg -j workspaces` once for first workspace;
+- run the identical JSON request again for last workspace.
+
+The first/last range can be extracted from one successful JSON snapshot while preserving the existing sorted idx semantics.
+
+Operation count for the random-script workspace range route:
+
+- Niri workspace queries: **3 -> 1** (about 67% fewer).
+
+These are user-action paths rather than permanent idle costs, but they are unusually safe because the duplicate calls are adjacent and semantically intended to inspect one state.
+
+### 32.10 DesktopWidgetLayout write-amplification suspicion is mostly CLOSED
+
+`services/DesktopWidgetLayout.qml` was re-read specifically for unnecessary Config revisions.
+
+Verified safeguards:
+
+- `setValues()` compares every requested value and returns without writing if nothing changed;
+- clear functions return without writing when nothing is removed;
+- `Background.initializeOutputWidgetLayout()` checks `outputLayoutMatches()` plus missing local geometry and returns before initialization when neither condition requires work.
+
+Therefore there is no evidence of an unconditional layout write loop.
+
+A broad `Config.revisionChanged` connection does restart the 1.4 s output-layout timer, so unrelated config edits can still cause a later read/geometry check. That belongs under the already-known global Config invalidation fan-out candidate (§25.7), not a new persistence/write candidate.
+
+Do not optimize DesktopWidgetLayout by suppressing required geometry initialization or by changing persisted layout semantics.
+
+### 32.11 Revised lossless priority from this round
+
+Highest-confidence no-behavior-change targets now split into two classes:
+
+**Work elimination requiring no compositor semantic change**
+1. remove unused `HyprlandData.addresses`;
+2. precompute biggest-window/workspace and Background per-monitor indexes once per client snapshot;
+3. precompute focused raw window for ScreenTime;
+4. collapse adjacent duplicate `hyprctl` / `niri msg` / ImageMagick calls in wallpaper/record scripts.
+
+**Potentially larger process elimination requiring parity proof**
+1. replace external `hyprctl clients -j` ownership with Quickshell `refreshToplevels()` + `lastIpcObject`;
+2. continue the workspaces/activeWorkspace/layers/monitors elimination/demand-gating from §31.
+
+Do not trade freshness, ordering, tie behavior, XWayland coverage or raw-field parity for a lower process count.
+
+No runtime implementation is authorized by this handoff.

@@ -2106,3 +2106,159 @@ Use runtime evidence to select the next optimization batch. The highest-value me
 6. Abyss GPU/frame time after visual stabilization
 
 Do not add new static candidates unless a runtime trace, regression or concrete subsystem change points to them.
+
+---
+
+## 22. Audit round 8 — runtime-measurement readiness and evidence gap (2026-09-28)
+
+### Snapshot
+
+- Hadalis head reconciled immediately before this checkpoint: `96e08140d33f666314c99b88ee18dfe22dca97d9`
+- iNiR comparison head: `bbd304b3ba1662ff0f41a2898b1b1b91cf02f071`
+
+The requested continuation point from the older audit snapshot was reconciled against current `dev` before this pass. From `4ca071d729118524b9c63894a6e1b91921b24ecc` to the head above there are seven commits. The only runtime-source changes are the Abyss IPC-indicator/editor refinements in `e9a20bad47` and `dc1cce16f7`; the remaining commits are audit/validation documentation. None changes WindowPreview policy, the Equalizer repaint loop, notification persistence, Favicon ownership, or `AbyssField.frag`, so the pending measurement candidates below remain current.
+
+### 22.1 The next blocker is measurement infrastructure, not another static optimization candidate — INVESTIGATE / tooling
+
+The broad static audit stop rule from §20–21 remains valid.
+
+Current Hadalis has strong contract/regression coverage, but it does **not** yet have a dedicated runtime harness for the measurements that now gate optimization decisions.
+
+Verified current coverage:
+
+- `shell.qml` writes `~/.cache/inir/last-boot.json` with Component/Config/shell-entry/Tier-3/Tier-4 timestamps and deltas.
+- `setup status` correlates that cache with the current service/Quickshell process start when both describe the same run.
+- `scripts/native-cutover-benchmark.sh` contains useful `/proc/<pid>/smaps_rollup`, RSS and CPU-tick sampling, but `proc_metrics()` launches and owns the process being sampled. It is for isolated native/Python backend comparison, not a T+0..T+8 live-shell descendant trace.
+- `scripts/test-performance-lifecycle.sh` is a large static contract guard. It does not measure live CPU/PSS/process creation.
+- iNiR prerelease also lacks a reusable live-shell profiler; its `scripts/test-iris-performance-contract.py` is structural/contract testing rather than a runtime benchmark.
+
+Therefore do not treat a green contract test as evidence that startup, panel-open CPU, notification scaling, favicon process churn or Abyss GPU cost improved.
+
+### 22.2 Startup T+0..T+8 baseline — PARTIALLY READY, live trace still missing
+
+The existing boot cache is sufficient to identify phase boundaries, but not to answer the current P0 hypothesis.
+
+Still missing from one coherent run:
+
+- child-process start/exit timeline
+- main-shell PSS/RSS/thread count sampled across the same timeline
+- CPU ticks over fixed windows
+- which helpers overlap around Tier 3/Tier 4
+- counts for WindowPreview capture, `checkupdates`, font sync, Weather/geocoder/curl, ShellUpdates/git and ConflictKiller work
+
+The first runtime report should sample at a fixed cadence from service restart through at least T+8s and preserve the exact `last-boot.json` from that same shell PID. Repeat runs before drawing conclusions; do not compare a hot-reload cache against an older service/process birth.
+
+Classification: **INVESTIGATE / measurement required before more startup code changes.**
+
+### 22.3 WindowPreview eager-vs-lazy/hybrid A/B is not runnable on one current SHA
+
+Current tests intentionally lock the eager policy:
+
+- `scripts/test-window-preview-eager-capture.sh` asserts pre-capture before Overview/hover.
+- `WindowPreviewService.qml` calls `_startPrewarming()` from `Component.onCompleted`.
+- newly observed Niri windows are queued for capture and completed previews are pre-decoded into the bounded warm cache.
+
+There is no current config/env experiment selector for:
+
+1. eager prewarm
+2. pure consumer-lazy
+3. delayed/idle hybrid prewarm
+
+So the A/B requested in earlier rounds cannot be performed fairly on one unchanged runtime build today.
+
+If implementation work is authorized, prefer a narrow experiment-only policy selector or isolated reversible commits so all three modes share the same capture/cache code. Do not first rewrite the service and then compare across unrelated revisions.
+
+Classification remains **INVESTIGATE P0**; eager behavior is still the production baseline.
+
+### 22.4 Equalizer and compact-sidebar candidate remains current; profiling is manual today
+
+Current source still contains:
+
+`EqualizerPanel.qml`:
+
+`Timer { interval: 33; running: root.active && analyzerCanvas.visible; repeat: true; onTriggered: analyzerCanvas.requestPaint() }`
+
+Current compact right Sidebar still renders the shared Equalizer with:
+
+`active: root.panelVisible`
+
+inside the Media section.
+
+Therefore the round-5 hypotheses remain valid:
+
+- fixed Canvas repaint can duplicate event-driven CAVA/DSP/animation repaint requests
+- compact-sidebar lifetime can keep Equalizer/CAVA demand broader than the actual media viewport
+
+But there is no dedicated benchmark that drives:
+
+- sidebar closed
+- sidebar open with Media outside viewport
+- Media in viewport
+- Equalizer open with active audio
+- Equalizer open during silence/paused playback
+
+and samples the same shell CPU/PSS/CAVA child-process state.
+
+Classification remains **ADAPT experiment / P1** for the fixed repaint timer and **INVESTIGATE / P1** for viewport-scoped demand.
+
+### 22.5 Notification-history and Favicon scaling candidates remain structurally reproducible but unmeasured
+
+Current notification ingress/removal still calls `stringifyList(root.list)` and rewrites the notification JSON file, while history has no count/age cap.
+
+Current `Favicon.qml` still starts a `Process` on every component completion and runs a shell `[ -f ... ] || curl ...` command even when the favicon is already present on disk.
+
+These are suitable for controlled runtime tests because their workloads can be generated deterministically:
+
+- notifications: compare small/medium/large history counts and measure ingress latency, persistence-write size/time, QML object count proxy and shell CPU/PSS
+- favicons: prewarm disk cache, then repeatedly create URL-bearing delegates and count shell/curl process launches
+
+No current script automates either measurement.
+
+Classification remains **INVESTIGATE P1–P2**. Do not add a cache/history cap until scaling is measured against product retention semantics.
+
+### 22.6 Abyss GPU candidate remains valid; neither repo provides the needed GPU/frame-time harness
+
+Current `AbyssField.frag` still evaluates wave contribution plus the perimeter/body field before the final `d > 24.0` transparent rejection. The field still supports up to 40 body records.
+
+The source-level optimization idea therefore remains valid, but the acceptance requirement is hardware/runtime-specific:
+
+- 1080p / 1440p / 4K
+- fractional scale
+- one and multiple outputs
+- 0 / typical / worst-case body-record counts
+- waves/effects off and on
+- frame time/GPU utilization plus visual seam checks
+
+Neither current Hadalis tooling nor iNiR's structural performance test supplies this data.
+
+Classification remains **INVESTIGATE P1**. Do not modify the shader from static reasoning alone.
+
+### 22.7 Measurement-readiness conclusion
+
+Static cross-repo archaeology is complete enough for the current codebase. The highest-value next work is to collect one coherent runtime evidence bundle rather than discover more candidates.
+
+Required order:
+
+1. live startup T+0..T+8 process/CPU/PSS trace on the exact current `dev` SHA
+2. WindowPreview three-policy A/B after a minimal experiment mechanism exists
+3. Equalizer/compact-sidebar CPU + CAVA-demand scenarios
+4. notification-history scaling
+5. cached-favicon delegate process churn
+6. Abyss GPU/frame-time matrix after current visual work is stable
+
+Do not combine fixes from these categories. Pick the first implementation only after its measurement identifies a material cost.
+
+### Next concrete task
+
+On the maintainer machine, capture the startup evidence bundle first. The report must include:
+
+- exact Git SHA and native backend mode
+- active panel family, enabled relevant features, monitor resolution/scale and wallpaper type
+- service/main-shell PID identity
+- `last-boot.json` from the same PID/run
+- fixed-cadence PSS/RSS/thread/CPU samples from T+0 through T+8s
+- descendant process command lines with start/exit timing
+- at least several repeated runs so cold/warm variance is visible
+
+Until that report exists, another broad static sweep would add lower-confidence work than the already documented candidates.
+

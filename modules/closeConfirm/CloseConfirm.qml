@@ -156,9 +156,10 @@ Scope {
 
     // Dialog UI
     Loader {
-        // Abyss confirmations are rehosted by AbyssPerimeter. This standalone
-        // path remains for Waffle/compatibility only.
-        active: root.dialogVisible && Config.options?.panelFamily !== "abyss"
+        // processWindow() sets dialogVisible only when the connected Abyss
+        // perimeter path is unavailable. Keep this renderer as the fail-safe
+        // so disabling abyssPerimeter can never create an invisible prompt.
+        active: root.dialogVisible
 
         sourceComponent: PanelWindow {
             screen: root.dialogScreen ?? GlobalStates.focusedScreen

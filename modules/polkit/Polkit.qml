@@ -12,9 +12,11 @@ Scope {
     
     Loader {
         // Abyss presents the real AuthFlow through its connected popup field.
-        // Keep this fullscreen renderer only for non-Abyss compatibility.
-        active: Config.options?.panelFamily !== "abyss"
-            && PolkitService.available && PolkitService.active
+        // If the perimeter is disabled, retain the existing renderer instead of
+        // owning a Polkit request with no visible authentication surface.
+        active: PolkitService.available && PolkitService.active
+            && (Config.options?.panelFamily !== "abyss"
+                || !(Config.options?.enabledPanels ?? []).includes("abyssPerimeter"))
         sourceComponent: Variants {
             model: Quickshell.screens
             delegate: PanelWindow {

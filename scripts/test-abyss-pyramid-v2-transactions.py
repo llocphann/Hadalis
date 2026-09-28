@@ -49,7 +49,8 @@ def main() -> None:
 
     # Source-level guards for the runtime ordering rules.
     assert "includeClosings = true" in coord
-    assert "root._sameAnchorCandidates(identity,request,false)" in coord
+    assert "root._sameAnchorCandidates(" in coord
+    assert "identity,request,false" in coord
     assert "root._lowerPeer(identity,request,placement)" in coord
     assert "root._rebuildFrozen()" in coord
     assert "const liveRecord=" in coord

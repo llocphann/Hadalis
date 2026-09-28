@@ -95,6 +95,9 @@ for(const edge of ['top','right','bottom','left']) {
     assert.equal(surfaces.length,1);
     const c=records[0].content,s=surfaces[0].surface;
     assert.equal(surfaces[0].depth,48,'local expansion uses pixel extent rather than a placement depth multiplier');
+    assert.equal(clearanceInsets(local,surfaces,edge,records[0].along,records[0].span)[edge],48,'a popup above this local module clears its foreground');
+    assert.equal(clearanceInsets(local,surfaces,edge,records[0].along+records[0].span+20,20)[edge],16,'another source position retains the thin Edge attachment');
+    assert.equal(local[edge],16,'per-popup clearance does not mutate the physical Edge');
     assert(s.x<=c.x && s.y<=c.y && s.x+s.width>=c.x+c.width && s.y+s.height>=c.y+c.height,'local surface contains the module');
     assert.equal(localSurfaces(records,1920,1200,{},1,48).length,0,'default whole-edge presentation remains flat');
     const pair=normalize(single.concat([{id:'second',kind:'clock',edge,position:.8}]),edge);

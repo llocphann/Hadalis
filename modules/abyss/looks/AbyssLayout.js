@@ -158,6 +158,14 @@ function localSurfaces(records, width, height, options, fontScale, minimum) {
         return {edge:p.edge,surface:surface,content:p.content,span:p.span,along:p.along,depth:depth,progress:1,mass:1};
     });
 }
+function clearanceInsets(insets, localRecords, edge, along, span) {
+    var result=Object.assign({},insets);
+    localRecords.forEach(function(record) {
+        if(record.edge===edge && record.along-8<along+span && record.along+record.span+8>along)
+            result[edge]=Math.max(result[edge],record.depth);
+    });
+    return result;
+}
 function geometry(placements, width, height, options, fontScale) {
     var result = [];
     ["top","right","bottom","left"].forEach(function(edge) {

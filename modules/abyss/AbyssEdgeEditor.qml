@@ -17,6 +17,8 @@ Item {
     required property string outputName
     required property var moduleLayer
     required property var controller
+    property var edgeInsets: Placement.edgeInsetsForModules(moduleLayer.placements,moduleLayer.layoutOptions,
+        Appearance.fontSizeScale,AbyssStyle.perimeterThickness,AbyssStyle.barThickness,false)
     property var draft: []
     property var handles: []
     property string selectedId: ""
@@ -198,6 +200,7 @@ Item {
         anchors.fill: parent
         edge: "bottom"; identity: "edgeEditor"; outputName: root.outputName
         controller: root.controller
+        edgeInsets: root.edgeInsets
         open: root.visible
         span: Math.min(root.width-48,1180); along: (root.width-span)/2; depth: Math.max(246,toolbar.implicitHeight+padding*2)
         embeddedItem: toolbar
@@ -208,10 +211,11 @@ Item {
         open:root.visible && root.editingPopups
         contentKind:root.previewKind;source:"content/AbyssLayoutPreview.qml"
         edge:Presentation.edge(root.previewPosition,root.moduleLayer.edge)
+        edgeInsets:Placement.clearanceInsets(root.edgeInsets,root.moduleLayer.deformations,edge,along,span)
         span:(["top","bottom"].includes(edge) ? contentItem.item?.desiredWidth ?? 390 : contentItem.item?.desiredHeight ?? 120)+padding*2
         depth:(["top","bottom"].includes(edge) ? contentItem.item?.desiredHeight ?? 120 : contentItem.item?.desiredWidth ?? 390)+padding*2
         along:Presentation.along(root.previewPosition,edge,span,root.width,root.height,
-            ((["top","bottom"].includes(edge) ? root.width : root.height)-span)/2,edgeInsets)
+            ((["top","bottom"].includes(edge) ? root.width : root.height)-span)/2,root.edgeInsets)
         MouseArea {
             parent:previewBody.contentParent;anchors.fill:parent
             cursorShape:pressed ? Qt.ClosedHandCursor : Qt.OpenHandCursor

@@ -104,8 +104,12 @@ ShellRoot {
             }
             if(root.step===6) {
                 if(!root.check(editor.previewHost.ready && editor.previewHost.contentItem.item.kind==="volume" && !editor.previewHost.contentItem.item.enabled,"actual IPC layout loads with safe preview controls")) return
-                editor.movePreview(editor.width-8,editor.height*.3)
+                const module=layer.layoutRecords[0].content,preview=editor.previewHost.record.content
+                if(!root.check(preview.x+preview.width<=module.x || module.x+module.width<=preview.x || preview.y+preview.height<=module.y || module.y+module.height<=preview.y,"IPC preview clears modules on another Edge")) return
+                editor.movePreview(editor.width-8,editor.height*.5)
                 if(!root.check(editor.previewHost.edge==="right" && editor.previewPosition.alignment==="custom" && JSON.stringify(Config.options.abyss.positions)===root.beforePositions,"preview drag updates only an output-local draft")) return
+                const moved=editor.previewHost.record.content
+                if(!root.check(moved.x+moved.width<=module.x,"IPC preview clears the local module on its source Edge")) return
                 editor.finish(false)
             }
             if(root.step===7) {

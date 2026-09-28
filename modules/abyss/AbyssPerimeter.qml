@@ -73,6 +73,7 @@ Scope {
             function presentation(kind) { return Presentation.resolve(Config.options?.abyss?.positions,kind,outputName) }
             function positionEdge(kind,fallback) { return Presentation.edge(presentation(kind),fallback) }
             function positionAlong(kind,edge,span,fallback) { return Presentation.along(presentation(kind),edge,span,width,height,fallback,nativeInsets) }
+            function bodyInsets(edge,along,span) { return ModuleLayout.clearanceInsets(nativeInsets,bar.visible ? bar.deformations : [],edge,along,span) }
             readonly property bool fullscreenCovered: GameMode.hasFullscreenOnOutput(outputName)
             readonly property bool presented: !GlobalStates.screenLocked
                 && (!fullscreenCovered || (Config.options?.abyss?.perimeter?.visibleInFullscreen ?? false))
@@ -157,6 +158,7 @@ Scope {
                 outputName: window.outputName
                 moduleLayer: bar
                 controller: liquid
+                edgeInsets: window.nativeInsets
             }
             AbyssBar {
                 id: bar
@@ -276,11 +278,11 @@ Scope {
                 open: window.presented && field.ready && (Config.options?.enabledPanels ?? []).includes("abyssSidebarLeft")
                     && GlobalStates.sidebarLeftOpen && GlobalStates.sidebarLeftPresentationOutput === window.outputName
 
-                edgeInsets: window.nativeInsets
+                edgeInsets: window.bodyInsets(edge,along,span)
                 along: window.positionAlong(identity,edge,span,Geometry.horizontal(edge) ? (window.width-span)/2 : (window.height-span)/2)
                 readonly property var sizeState:ShellLayoutController.currentState("featureSidebar",window.outputName)
                 readonly property real bodyWidth:Math.min(window.width*.8,(sizeState.width ?? 460)+(GlobalStates.sidebarLeftExpanded ? 190 : 0))
-                readonly property real bodyHeight:Math.min(window.height-edgeInsets.top-edgeInsets.bottom-72,
+                readonly property real bodyHeight:Math.min(window.height-window.nativeInsets.top-window.nativeInsets.bottom-72,
                     sizeState.sizeMode === "custom" ? sizeState.customHeight : Math.max(320,contentItem.item?.preferredContentHeight ?? window.height*.7))
                 span:Geometry.horizontal(edge) ? bodyWidth : bodyHeight
                 depth:Geometry.horizontal(edge) ? bodyHeight : bodyWidth
@@ -297,11 +299,11 @@ Scope {
                 open: window.presented && field.ready && (Config.options?.enabledPanels ?? []).includes("abyssSidebarRight")
                     && GlobalStates.sidebarRightOpen && GlobalStates.sidebarRightPresentationOutput === window.outputName
 
-                edgeInsets: window.nativeInsets
+                edgeInsets: window.bodyInsets(edge,along,span)
                 along: window.positionAlong(identity,edge,span,Geometry.horizontal(edge) ? (window.width-span)/2 : (window.height-span)/2)
                 readonly property var sizeState:ShellLayoutController.currentState("systemSidebar",window.outputName)
                 readonly property real bodyWidth:Math.min(window.width*.8,sizeState.width ?? 460)
-                readonly property real bodyHeight:Math.min(window.height-edgeInsets.top-edgeInsets.bottom-72,
+                readonly property real bodyHeight:Math.min(window.height-window.nativeInsets.top-window.nativeInsets.bottom-72,
                     sizeState.sizeMode === "custom" ? sizeState.customHeight : Math.max(420,contentItem.item?.preferredContentHeight ?? window.height*.7))
                 span:Geometry.horizontal(edge) ? bodyWidth : bodyHeight
                 depth:Geometry.horizontal(edge) ? bodyHeight : bodyWidth
@@ -318,7 +320,7 @@ Scope {
                 open: window.presented && field.ready && (Config.options?.enabledPanels ?? []).includes("abyssPopup")
                     && (GlobalStates.abyssPopupKind.length > 0 || GlobalStates.mediaControlsOpen)
                     && GlobalStates.resolveOutputName(GlobalStates.abyssPopupTargetOutput,[]) === window.outputName
-                edgeInsets: window.nativeInsets
+                edgeInsets: window.bodyInsets(edge,along,span)
                 along: window.positionAlong(contentKind,edge,span,GlobalStates.abyssPopupAlong-span/2)
                 padding: 14
                 span: (Geometry.horizontal(edge) ? (contentItem.item?.desiredWidth ?? 390) : (contentItem.item?.desiredHeight ?? 300))+padding*2
@@ -343,7 +345,7 @@ Scope {
                 animatePresentation: false
                 progress: liquid.activePopup?.revealProgress ?? 0
                 embeddedItem: liquid.activePopup?.contentItem ?? null
-                edgeInsets: window.nativeInsets
+                edgeInsets: window.bodyInsets(edge,along,span)
                 padding: 14
                 span: (Geometry.horizontal(edge) ? (embeddedItem?.implicitWidth ?? 1) : (embeddedItem?.implicitHeight ?? 1))+padding*2
                 depth: (Geometry.horizontal(edge) ? (embeddedItem?.implicitHeight ?? 1) : (embeddedItem?.implicitWidth ?? 1))+padding*2
@@ -378,7 +380,7 @@ Scope {
                     && (((Config.options?.dock?.pinnedOnStartup ?? false) && !(Config.options?.dock?.hoverToReveal ?? false)) || window.dockHovered
                         || (contentItem.item?.requestDockShow ?? false)
                         || ((Config.options?.dock?.showOnDesktop ?? true) && !ToplevelManager.activeToplevel?.activated))
-                edgeInsets: window.nativeInsets
+                edgeInsets: window.bodyInsets(edge,along,span)
                 span: Math.min((Geometry.horizontal(edge) ? window.width : window.height)-80,
                     Math.max(140,measuredSpan))
                 along: (Geometry.horizontal(edge) ? window.width : window.height)/2-span/2
@@ -412,7 +414,7 @@ Scope {
                 open: window.presented && field.ready && ((GlobalStates.clipboardOpen && (Config.options?.enabledPanels ?? []).includes("abyssClipboard")
                     && GlobalStates.resolveOutputName(GlobalStates.abyssClipboardTargetOutput,[]) === window.outputName)
                     || (GlobalStates.overviewOpen && (Config.options?.enabledPanels ?? []).includes("abyssOverview") && GlobalStates.overviewPresentationOutput === window.outputName))
-                edgeInsets: window.nativeInsets
+                edgeInsets: window.bodyInsets(edge,along,span)
                 largeSurface: !GlobalStates.clipboardOpen
                 readonly property real contentWidth: GlobalStates.clipboardOpen ? 640 : GlobalStates.overviewMode === "taskview" ? window.width*.9 : window.width*(Config.options?.dashboard?.widthRatio ?? .72)+40
                 readonly property real contentHeight: GlobalStates.clipboardOpen ? window.height*.42 : (contentItem.item?.desiredHeight ?? window.height*.72)+padding*2
@@ -433,7 +435,7 @@ Scope {
                 open: window.presented && field.ready && GlobalStates.settingsOverlayOpen
                     && GlobalStates.settingsOverlayPresentationOutput === window.outputName
                 largeSurface: true
-                edgeInsets: window.nativeInsets
+                edgeInsets: window.bodyInsets(edge,along,span)
                 span: Geometry.horizontal(edge) ? Math.min(1600,Math.max(900,window.width*.9)) : Math.min(1080,Math.max(720,window.height*.92))
                 along: window.positionAlong(identity,edge,span,((Geometry.horizontal(edge) ? window.width : window.height)-span)/2)
                 depth: Geometry.horizontal(edge) ? Math.min(1080,Math.max(720,window.height*.92)) : Math.min(1600,Math.max(900,window.width*.9))
@@ -451,7 +453,7 @@ Scope {
                 open: window.presented && field.ready && GlobalStates.dashboardOpen
                     && root.largeTargetOutput === window.outputName && (Config.options?.enabledPanels ?? []).includes("iiDashboard")
                 largeSurface: true
-                edgeInsets: window.nativeInsets
+                edgeInsets: window.bodyInsets(edge,along,span)
                 span: Geometry.horizontal(edge) ? window.width*(Config.options?.dashboard?.widthRatio ?? .72)+40 : window.height*(Config.options?.dashboard?.heightRatio ?? .72)+40
                 along: window.positionAlong(identity,edge,span,((Geometry.horizontal(edge) ? window.width : window.height)-span)/2)
                 depth: Geometry.horizontal(edge) ? window.height*(Config.options?.dashboard?.heightRatio ?? .72)+40 : window.width*(Config.options?.dashboard?.widthRatio ?? .72)+40
@@ -467,7 +469,7 @@ Scope {
                 outputName: window.outputName
                 open: window.presented && field.ready && GlobalStates.controlPanelOpen
                     && root.largeTargetOutput === window.outputName && (Config.options?.enabledPanels ?? []).includes("iiControlPanel")
-                edgeInsets: window.nativeInsets
+                edgeInsets: window.bodyInsets(edge,along,span)
                 span: Geometry.horizontal(edge) ? Math.max(380,window.width*.23) : Math.min(950,window.height-100)
                 along: window.positionAlong(identity,edge,span,((Geometry.horizontal(edge) ? window.width : window.height)-span)/2)
                 depth: Geometry.horizontal(edge) ? Math.min(950,window.height-100) : Math.max(380,window.width*.23)
@@ -487,11 +489,11 @@ Scope {
                 open: window.presented && field.ready && (!GlobalStates.notificationCenterOpen && !Notifications.popupInhibited && Notifications.popupList.length > 0
                         && (Config.options?.enabledPanels ?? []).includes("abyssNotificationPopup")
                         && Geometry.targets(window.outputName,Config.options?.notifications?.screenList ?? [],Quickshell.screens.map(s => s.name)))
-                edgeInsets: window.nativeInsets
+                edgeInsets: window.bodyInsets(edge,along,span)
                 readonly property real contentWidth: centerOnOutput ? 390 : (contentItem.item?.desiredWidth ?? Appearance.sizes.notificationPopupWidth)+padding*2
-                readonly property real contentHeight: centerOnOutput ? window.height-edgeInsets.top-edgeInsets.bottom-72 : Math.min(window.height*.42,Math.max(100,(contentItem.item?.desiredHeight ?? 130)+padding*2))
+                readonly property real contentHeight: centerOnOutput ? window.height-window.nativeInsets.top-window.nativeInsets.bottom-72 : Math.min(window.height*.42,Math.max(100,(contentItem.item?.desiredHeight ?? 130)+padding*2))
                 span: Geometry.horizontal(edge) ? contentWidth : contentHeight
-                along: window.positionAlong(presentationKind,edge,span,centerOnOutput ? (Geometry.horizontal(edge) ? (window.width-span)/2 : edgeInsets.top+36) : position.endsWith("Left") ? 40 : (Geometry.horizontal(edge) ? window.width : window.height)-span-40)
+                along: window.positionAlong(presentationKind,edge,span,centerOnOutput ? (Geometry.horizontal(edge) ? (window.width-span)/2 : window.nativeInsets.top+36) : position.endsWith("Left") ? 40 : (Geometry.horizontal(edge) ? window.width : window.height)-span-40)
                 depth: Geometry.horizontal(edge) ? contentHeight : contentWidth
                 obstacles: centerOnOutput ? [] : window.sideObstacles.concat(popup.open ? [popup.record] : [])
                 contentKind: centerOnOutput ? "center" : "popup"
@@ -509,7 +511,7 @@ Scope {
                 open: window.presented && field.ready && (Config.options?.enabledPanels ?? []).includes("abyssOnScreenDisplay")
                     && (GlobalStates.osdVolumeOpen || GlobalStates.osdBrightnessOpen || GlobalStates.osdMicOpen || GlobalStates.osdMediaOpen || GlobalStates.osdKeyboardLayoutOpen)
                     && Geometry.targets(window.outputName,Config.options?.osd?.screenList ?? [],Quickshell.screens.map(s => s.name))
-                edgeInsets: window.nativeInsets
+                edgeInsets: window.bodyInsets(edge,along,span)
                 padding: 12
                 span: (Geometry.horizontal(edge) ? (contentItem.item?.desiredWidth ?? Appearance.sizes.osdWidth) : (contentItem.item?.desiredHeight ?? 48))+padding*2
                 along: window.positionAlong(presentationKind,edge,span,(Geometry.horizontal(edge) ? window.width : window.height)/2-span/2)
@@ -538,7 +540,7 @@ Scope {
                     && root.largeTargetOutput === window.outputName
                     && (Config.options?.enabledPanels ?? []).includes(root.utilityIdentifier)
                 largeSurface: true
-                edgeInsets: window.nativeInsets
+                edgeInsets: window.bodyInsets(edge,along,span)
                 span: (Geometry.horizontal(edge) ? (contentItem.item?.desiredWidth ?? 640) : (contentItem.item?.desiredHeight ?? 700))+padding*2
                 along: window.positionAlong(contentKind,edge,span,((Geometry.horizontal(edge) ? window.width : window.height)-span)/2)
                 depth: (Geometry.horizontal(edge) ? (contentItem.item?.desiredHeight ?? 700) : (contentItem.item?.desiredWidth ?? 640))+padding*2
@@ -559,7 +561,7 @@ Scope {
                 span: (Geometry.horizontal(edge) ? (liquid.activeDialog?.liquidWidth ?? 350) : (liquid.activeDialog?.liquidHeight ?? 450))+padding*2
                 depth: (Geometry.horizontal(edge) ? (liquid.activeDialog?.liquidHeight ?? 450) : (liquid.activeDialog?.liquidWidth ?? 350))+padding*2
                 along: window.positionAlong(identity,edge,span,((Geometry.horizontal(edge) ? window.width : window.height)-span)/2)
-                edgeInsets: window.nativeInsets
+                edgeInsets: window.bodyInsets(edge,along,span)
                 onCloseRequested: if (liquid.activeDialog) liquid.activeDialog.dismiss()
             }
             AbyssField {

@@ -476,6 +476,7 @@ Scope {
             AbyssBodyHost {
                 id: dock
                 stableContentSize: true
+                residentContent: true
                 property real cachedSpan: 220
                 readonly property real measuredSpan: contentItem.item?.desiredSpan ?? cachedSpan
                 onMeasuredSpanChanged: if(contentItem.item && measuredSpan>0) cachedSpan=measuredSpan

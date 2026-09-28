@@ -19,6 +19,10 @@ Item {
     property Item embeddedItem: null
     property bool animatePresentation: true
     property bool stableContentSize: false
+    // Some owners need content-owned hold-open state even while visually closed.
+    // Keep those contents resident so open never depends on a Loader whose
+    // activation itself depends on open.
+    property bool residentContent: false
     // Allocator changes (another popup/body entering, leaving, or reflowing)
     // should travel to their new tier instead of snapping the shared field to a
     // larger silhouette in one frame. Editor/Dock geometry stays immediate.
@@ -181,7 +185,9 @@ Item {
         height: root.stableContentSize ? root.targetRecord.content.height : contentFrame.height
         // A space-constrained body retains drafts/focus state while hidden. It
         // unloads only after a semantic close and completion of the reveal.
-        active: !root.embeddedItem && (root.open || root.progress > 0.001) && GlobalStates.deferredPanelsReady
+        active: !root.embeddedItem
+            && (root.residentContent || root.open || root.progress > 0.001)
+            && GlobalStates.deferredPanelsReady
         source: root.source
         clip: true
         opacity: 1

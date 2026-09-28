@@ -16,7 +16,7 @@ Pyramid v2 does not restore those fields.
 
 ## Ownership model
 
-`AbyssBodyPlacement.js` remains deterministic resting layout only. A popup opts in with `stackPolicy: "pyramid"`. At the same physical Edge and anchor center (within 2 px), the largest requested popup owns the Edge tier and smaller popups stack inward. Different anchors and non-popup bodies keep the normal allocator order.
+`AbyssBodyPlacement.js` remains deterministic resting layout only. A popup opts in with `stackPolicy: "pyramid"`. Pyramid grouping now follows the common runtime case rather than requiring nearly identical anchors. Two popup requests on the same physical Edge join one neighborhood when their requested tangent content intervals overlap or are within the normal 24 logical-pixel allocator clearance. Connected neighborhoods are transitive (A↔B↔C). Within that neighborhood, the largest requested popup owns the Edge-direct slot and smaller peers stack inward. Far-apart intervals, perpendicular Edges and non-popup bodies remain independent.
 
 `AbyssPyramidCoordinator.qml` owns visual transactions only. When a popup begins a semantic close it snapshots the closing placement, freezes only surviving peers at that same anchor, and builds a collapsed origin from the nearest lower popup. Input/focus ownership is revoked immediately. The closing body remains visually resident only because its existing reveal scalar is still above zero.
 
@@ -34,7 +34,7 @@ For a popup with full record `F` and collapsed origin `O`:
 
 `AbyssPyramidMotion.interpolateRecord()` never interpolates a popup from another popup's tangent position. `along` and `span` always come from the popup's own final record. Only the Edge-normal surface/content extent changes. This is the key invariant that prevents the old “popup slides from somewhere else on the Screen Edge” artifact.
 
-If a lower same-anchor popup exists, `O` is its workspace-facing boundary. Otherwise `O` is the physical Screen Edge owner strip. Thus the intended chain is top -> middle, middle -> bottom, bottom -> Edge without borrowing another popup's tangent anchor.
+If a lower same-neighborhood popup exists, `O` is its workspace-facing boundary. Otherwise `O` is the physical Screen Edge owner strip. Thus the intended chain is top -> middle, middle -> bottom, bottom -> Edge without borrowing another popup's tangent anchor.
 
 Join Edge is applied after the interpolated record is produced, so corner joining remains presentation policy and is not encoded into allocator state.
 
@@ -50,12 +50,13 @@ A mature popup normally allows a 90 ms compositor leave/enter grace while the po
 
 Before Pyramid v2 can be called runtime-complete, test:
 
-- two and three same-anchor popups;
+- two and three same-neighborhood popups;
 - close top, middle and bottom in every order;
 - reopen during retract;
 - simultaneous/overlapping closes;
 - generic + mature StyledPopup mixtures;
-- different anchors on one Edge (must never pyramid);
+- different anchors on one Edge with 20/50/80% tangent overlap (must pyramid);
+- same-Edge intervals separated by more than the 24 px clearance (must remain independent);
 - Join Edge at all four corners;
 - top, bottom, left and right Edges;
 - reduced/disabled motion;
@@ -70,7 +71,7 @@ No acceptance item above is implied by source contracts alone.
 
 A newly opened pyramid tier must resolve its collapse origin before the first reveal frame. The host therefore computes the entry origin from the allocator's final `placement` / full record synchronously when that placement becomes available. It does **not** wait for the animated `visualPlacement` reflow and does not queue another `Qt.callLater` hop.
 
-This removes a subtle ordering race: both generic and mature StyledPopup owners already delay reveal by one event-loop turn, but the previous Pyramid host delayed origin resolution by an additional turn. Under load, reveal could therefore begin from the physical Screen Edge for a frame before switching to the lower-popup boundary. The current contract arms the correct same-anchor origin during the allocator update itself; close snapshots still use the current visual state so mid-reflow close/reopen remains reversible.
+This removes a subtle ordering race: both generic and mature StyledPopup owners already delay reveal by one event-loop turn, but the previous Pyramid host delayed origin resolution by an additional turn. Under load, reveal could therefore begin from the physical Screen Edge for a frame before switching to the lower-popup boundary. The current contract arms the correct same-neighborhood origin during the allocator update itself; close snapshots still use the current visual state so mid-reflow close/reopen remains reversible.
 
 
 ## Overlapping transactions
@@ -80,7 +81,7 @@ Two additional motion invariants are enforced:
 - **Entry origin is latched once reveal begins.** While progress is still at zero, allocator updates may re-arm the origin so the popup starts from the correct lower tier. Once progress is above the reveal threshold, peer reflow may change the final resting target but cannot rewrite the already-visible origin. This avoids a mid-flight discontinuity.
 - **A lower popup that is already closing contributes its current visual boundary.** When another popup starts an overlapping open/close transaction, the coordinator samples the lower host's currently published geometry instead of using its old full resting record. The new transaction therefore meets the surface that is actually visible on that frame. The original full snapshot remains only as a fallback after the host stops publishing.
 - **An exhausted lower tail is absent immediately.** If that live closing record has already reached the same 0.001 reveal threshold used by the host to finish the close, the coordinator ignores it even if transaction bookkeeping survives for the remainder of the current QML binding turn. A new popup therefore cannot collapse toward an invisible stale lower tier.
-- **Cancel/reopen is not the same as finish.** If a popup reverses its close while another same-anchor transaction is still active, the reopened identity is inserted into the remaining transaction's frozen map at its closing snapshot. It therefore reverses from the visible path instead of jumping into the allocator's already-reflowed slot. A true finished close is removed without this preservation.
+- **Cancel/reopen is not the same as finish.** If a popup reverses its close while another same-neighborhood transaction is still active, the reopened identity is inserted into the remaining transaction's frozen map at its closing snapshot. It therefore reverses from the visible path instead of jumping into the allocator's already-reflowed slot. A true finished close is removed without this preservation.
 
 These rules are presentation-only and do not change allocator ordering or resting geometry.
 
@@ -91,7 +92,7 @@ Close cleanup cannot depend only on a future `progressChanged` callback. A popup
 
 ## Reversal transaction
 
-Reopen during a retract stays inside the same Pyramid visual transaction until reveal reaches 1. The coordinator changes phase from `closing` to `reopening` but keeps the popup's placement snapshot, collapsed origin, full record and same-anchor survivor freeze intact. The existing owner `revealProgress` simply reverses direction.
+Reopen during a retract stays inside the same Pyramid visual transaction until reveal reaches 1. The coordinator changes phase from `closing` to `reopening` but keeps the popup's placement snapshot, collapsed origin, full record and same-neighborhood survivor freeze intact. The existing owner `revealProgress` simply reverses direction.
 
 Cancelling the transaction at semantic reopen would be geometrically unsafe if another popup changed allocator targets during the retract: a partially revealed surface could suddenly receive a different full target even though its scalar reversed smoothly. Keeping the transaction frozen guarantees that the reverse follows exactly the same `O <-> F` path. At progress 1 the coordinator releases this transaction; ordinary placement Behaviors may then reflow to any newer resting layout.
 
@@ -107,6 +108,13 @@ The collapsed origin reconstructs its current depth from the invariant `surfaceC
 
 ## Deterministic resting-order grouping
 
-The static allocator no longer mixes Pyramid area ordering and legacy priority/order in one pairwise sort comparator. That comparator could be non-transitive when two same-anchor pyramid peers had a third, different-anchor request between them: A could sort before B by area, B before C by activation order, and C before A by activation order. A non-transitive comparator makes the resting tier order engine/input-order dependent, which is unacceptable as an animation target.
+The static allocator no longer mixes Pyramid area ordering and legacy priority/order in one pairwise sort comparator. That comparator could be non-transitive when two same-neighborhood pyramid peers had a third, different-anchor request between them: A could sort before B by area, B before C by activation order, and C before A by activation order. A non-transitive comparator makes the resting tier order engine/input-order dependent, which is unacceptable as an animation target.
 
-The allocator now performs two deterministic stages. First it computes the unchanged legacy global order. Then each connected same-anchor Pyramid component reorders only the slots already occupied by that component, largest resting area first. Requests at other anchors never move slots because of Pyramid policy. This keeps the resting-layout/animation boundary stable and prevents apparent animation jumps caused by an unstable target order rather than by the motion layer itself.
+The allocator now performs two deterministic stages. First it computes the unchanged legacy global order. Then each connected same-neighborhood Pyramid component reorders only the slots already occupied by that component, largest resting area first. Requests at other anchors never move slots because of Pyramid policy. This keeps the resting-layout/animation boundary stable and prevents apparent animation jumps caused by an unstable target order rather than by the motion layer itself.
+
+
+## Tangent-neighborhood grouping experiment
+
+The previous <=2 px anchor-center rule made Pyramid almost invisible in ordinary use because independent Bar modules rarely share an exact center. The current experiment promotes the allocator's actual interaction domain instead: requested popup content intervals on one Edge form a Pyramid neighborhood when they overlap or lie within 24 logical pixels. The threshold is carried on the placement request as `stackProximity`, so the resting allocator and animation coordinator use the same rule.
+
+This does **not** relax the tangent-motion invariant. Group membership may come from another popup's interval, but every animated record still keeps its own `along/span`; a peer contributes only an Edge-normal collapse boundary. The expected visible change is therefore tiering/reflow for ordinary overlapping popup pairs, not a popup sliding sideways toward another module.

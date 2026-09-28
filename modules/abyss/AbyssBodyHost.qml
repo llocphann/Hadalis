@@ -55,6 +55,10 @@ Item {
     // Presentation policy only. The allocator remains a deterministic resting
     // layout producer; animation state is owned outside AbyssBodyPlacement.
     property string stackPolicy: ""
+    // Pyramid grouping follows the allocator's normal content-clearance scale.
+    // Same-Edge popup intervals that overlap or come within this many logical
+    // pixels participate in one visual neighborhood.
+    property real stackProximity: 24
     property int activationOrder: 0
     property int placementPriority: identity === "dialog" ? 2 : ["utility","edgeEditor"].includes(identity) ? 1 : identity === "dock" ? -1 : 0
     readonly property var placement: controller?.bodyPlacements?.[identity] ?? null
@@ -180,6 +184,7 @@ Item {
             priority:root.placementPriority,padding:root.padding,
             minSpan:root.minimumSpan,minDepth:root.minimumDepth,
             stackPolicy:root.stackPolicy,
+            stackProximity:root.stackProximity,
             record:root.requestedRecord})
         inputBounds: root.inputBounds
         mass: root.mass
@@ -237,7 +242,7 @@ Item {
         if (root.semanticOpen) {
             if (root.pyramidClosing) {
                 // Reopen is a phase reversal of this exact visual transaction.
-                // Keep O/F snapshots and the same-anchor freeze until progress
+                // Keep O/F snapshots and the same-neighborhood freeze until progress
                 // returns to 1, even if allocator targets changed meanwhile.
                 root.pyramidCoordinator?.beginReopen(root.identity)
                 root.pyramidClosing=false

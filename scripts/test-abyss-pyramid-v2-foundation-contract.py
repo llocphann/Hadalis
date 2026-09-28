@@ -14,8 +14,11 @@ assert "stackPolicy:root.stackPolicy" in host
 assert "root.semanticOpen && root.placementVisible" in host
 assert "(root.residentContent || root.visualResident)" in host
 
-# Static same-anchor ordering is deterministic and contains no close lifecycle.
+# Static same-neighborhood ordering is deterministic and contains no close lifecycle.
 assert 'a?.stackPolicy === "pyramid"' in placement
+assert "function _pyramidDescriptorsRelated(a,b)" in placement
+assert "function _samePyramidNeighborhood(a,b)" in placement
+assert "stackProximity:root.stackProximity" in host
 assert "_requestedArea(b)-_requestedArea(a)" in placement
 for forbidden in ("closeInward","closeTarget","closingProgress"):
     assert forbidden not in placement

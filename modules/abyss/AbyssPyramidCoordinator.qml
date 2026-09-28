@@ -21,16 +21,38 @@ QtObject {
     }
     function _descriptor(request) {
         const record=request?.record
+        if (!record) return null
+        const horizontal=record.edge === "top" || record.edge === "bottom"
+        const content=record.content ?? ({})
+        const start=horizontal
+            ? root._number(content.x,root._number(record.along))
+            : root._number(content.y,root._number(record.along))
+        const extent=Math.max(0,horizontal
+            ? root._number(content.width,root._number(record.span))
+            : root._number(content.height,root._number(record.span)))
         return {
-            edge:String(record?.edge ?? ""),
-            anchorCenter:root._number(record?.along)
-                +root._number(record?.span)/2
+            edge:String(record.edge ?? ""),
+            tangentStart:start,
+            tangentEnd:start+extent,
+            proximity:Math.max(0,
+                root._number(request?.stackProximity,24))
         }
     }
-    function _sameAnchorDescriptor(a,b): bool {
-        return !!a && !!b && a.edge === b.edge
-            && Math.abs(root._number(a.anchorCenter)
-                -root._number(b.anchorCenter)) <= 2
+    function _descriptorGap(a,b) {
+        if (!a || !b || a.edge !== b.edge)
+            return Infinity
+        if (a.tangentEnd < b.tangentStart)
+            return b.tangentStart-a.tangentEnd
+        if (b.tangentEnd < a.tangentStart)
+            return a.tangentStart-b.tangentEnd
+        return 0
+    }
+    function _pyramidDescriptorsRelated(a,b): bool {
+        if (!a || !b || a.edge !== b.edge)
+            return false
+        return root._descriptorGap(a,b)
+            <= Math.max(root._number(a.proximity,24),
+                root._number(b.proximity,24))
     }
     function _candidate(identity, participant) {
         if (!participant) return null
@@ -54,16 +76,13 @@ QtObject {
             source:"participant"
         }
     }
-    function _sameAnchorCandidates(identity, request, includeClosings = true) {
-        const wanted=root._descriptor(request)
+    function _candidatePool(identity, includeClosings = true) {
         const result=[]
         for (const key of Object.keys(root.controller?.participants ?? {})) {
             if (String(key) === String(identity)) continue
             const candidate=root._candidate(
                 key,root.controller.participants[key])
-            if (candidate
-                    && root._sameAnchorDescriptor(
-                        wanted,candidate.descriptor))
+            if (candidate)
                 result.push(candidate)
         }
         if (includeClosings) {
@@ -75,17 +94,8 @@ QtObject {
                 if (root.controller?.participants?.[key]
                         ?.placementRequest?.open === true)
                     continue
-                if (!root._sameAnchorDescriptor(
-                        wanted,closing?.descriptor))
-                    continue
-                // Overlapping transactions meet a lower closing popup at the
-                // boundary actually visible on this frame, not its old full
-                // resting depth. Keep the full snapshot only as a fallback.
                 const liveRecord=
                     root.controller?.participants?.[key]?.geometry ?? null
-                // A closing tail whose reveal reached zero is visually gone.
-                // It may remain in closings for the rest of this binding turn,
-                // but must not become a lower boundary for a new transaction.
                 if (liveRecord
                         && root._number(liveRecord.progress,1) <= .001)
                     continue
@@ -101,13 +111,42 @@ QtObject {
         }
         return result
     }
+    function _pyramidGroupCandidates(identity, request,
+            includeClosings = true) {
+        const wanted=root._descriptor(request)
+        if (!wanted) return []
+        const pool=root._candidatePool(identity,includeClosings)
+        const result=[]
+        const descriptors=[wanted]
+        const used=({})
+
+        // Match AbyssBodyPlacement's union-find semantics: a neighborhood may
+        // be transitive (A overlaps B, B overlaps C) even when A and C do not.
+        let changed=true
+        while (changed) {
+            changed=false
+            for (let i=0;i<pool.length;i++) {
+                if (used[i]) continue
+                const candidate=pool[i]
+                if (!descriptors.some(descriptor =>
+                        root._pyramidDescriptorsRelated(
+                            descriptor,candidate.descriptor)))
+                    continue
+                used[i]=true
+                result.push(candidate)
+                descriptors.push(candidate.descriptor)
+                changed=true
+            }
+        }
+        return result
+    }
     function _lowerPeer(identity, request, placement) {
         if (!placement) return null
         const inward=root._number(placement.inward)
         if (!(inward > .5)) return null
         let best=null
         let bestInward=-1
-        for (const candidate of root._sameAnchorCandidates(
+        for (const candidate of root._pyramidGroupCandidates(
                 identity,request,true)) {
             const candidateInward=root._number(
                 candidate.placement?.inward,-1)
@@ -155,7 +194,7 @@ QtObject {
 
         const descriptor=root._descriptor(request)
         const frozen={}
-        for (const peer of root._sameAnchorCandidates(
+        for (const peer of root._pyramidGroupCandidates(
                 identity,request,false)) {
             if (peer.placement)
                 frozen[peer.identity]=Motion.clonePlacement(
@@ -202,13 +241,13 @@ QtObject {
 
         if (preserveForPeers && reopening?.placement
                 && reopening?.descriptor) {
-            // Reopen during another same-anchor close must reverse from the
+            // Reopen during another same-neighborhood close must reverse from the
             // current transaction without jumping into the allocator's already
             // reflowed slot. Keep this identity frozen by remaining peers until
             // their own tails finish, then normal placement motion can resume.
             for (const key of Object.keys(next)) {
                 const entry=Object.assign({},next[key])
-                if (!root._sameAnchorDescriptor(
+                if (!root._pyramidDescriptorsRelated(
                         reopening.descriptor,entry?.descriptor))
                     continue
                 const frozen=Object.assign({},entry.frozen ?? {})
@@ -225,7 +264,7 @@ QtObject {
     }
     function finishClose(identity): void {
         // A finished popup is gone; only a completed reopen may need to remain
-        // frozen by another overlapping same-anchor transaction.
+        // frozen by another overlapping same-neighborhood transaction.
         root.cancelClose(identity,false)
     }
     function finishReopen(identity): void {

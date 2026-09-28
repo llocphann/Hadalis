@@ -19,6 +19,7 @@ function request(id,edge,order,depth=200,along=300,span=420,options={}) {
  const record=panel(1200,900,edgeInsets,edge,along,span,depth,1,padding,[],true);
  return {id,open:true,order,priority:options.priority ?? 0,padding,
    stackPolicy:options.stackPolicy ?? "",
+   stackProximity:options.stackProximity ?? 24,
    minSpan:Math.min(record.span,options.minSpan ?? 220),
    minDepth:Math.min(record.targetDepth,options.minDepth ?? 120),record};
 }
@@ -65,13 +66,13 @@ for(const edge of ['top','bottom','left','right']) {
      'reveal frames retain the same anchor');
 }
 
-// Pairwise "area if same anchor, legacy otherwise" is non-transitive when a
-// remote request sits between two pyramid peers by activation order. Lock the
-// two-phase ordering: outsiders keep their legacy slots, while same-anchor
-// pyramid members deterministically reorder those slots by resting area.
-const pyramidLarge=request('pyramidLarge','top',1,260,300,500,{stackPolicy:'pyramid'});
-const pyramidSmall=request('pyramidSmall','top',3,140,360,380,{stackPolicy:'pyramid'});
-const remote=request('remote','top',2,180,20,300,{stackPolicy:'pyramid'});
+// Pyramid grouping follows the common case: different anchors on one Edge
+// whose requested content intervals overlap (or are within the 24 px clearance).
+// Outsiders keep their legacy slots while connected neighborhood members
+// deterministically reorder those slots by resting area.
+const pyramidLarge=request('pyramidLarge','top',1,260,400,400,{stackPolicy:'pyramid'});
+const pyramidSmall=request('pyramidSmall','top',3,140,650,260,{stackPolicy:'pyramid'});
+const remote=request('remote','top',2,180,40,250,{stackPolicy:'pyramid'});
 const expectedOrder=['pyramidLarge','remote','pyramidSmall'];
 const permutations=[
  [pyramidLarge,pyramidSmall,remote],
@@ -88,9 +89,9 @@ for(const permutation of permutations)
 const pyramidPair=[pyramidLarge,pyramidSmall];
 let pyramidPacked=arrange(pyramidPair,1200,900,edgeInsets);
 assert.equal(pyramidPacked.pyramidLarge.inward,0,
-    'larger same-anchor popup owns the physical Edge tier');
+    'larger same-neighborhood popup owns the physical Edge tier');
 assert(pyramidPacked.pyramidSmall.inward>0,
-    'smaller same-anchor popup stacks inward');
+    'overlapping different-anchor popup stacks inward');
 
 const crowded=[
  request('settings','bottom',1,760,80,1040,{minSpan:520,minDepth:240}),

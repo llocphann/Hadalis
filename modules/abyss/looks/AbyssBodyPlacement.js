@@ -99,15 +99,43 @@ function _tiers(request, span, depth, accepted, gap, width, height, insets) {
         return list.findIndex(function(other) { return Math.abs(other-value) < .5; }) === index;
     }).sort(function(a,b) { return a-b; });
 }
-function _anchorCenter(request) {
-    return _number(request?.record?.along,0)
-        + _number(request?.record?.span,0)/2;
+function _pyramidDescriptor(request) {
+    var record=request?.record;
+    if (!record) return null;
+    var horizontal=record.edge === "top" || record.edge === "bottom";
+    var content=record.content || {};
+    var start=horizontal
+        ? _number(content.x,_number(record.along,0))
+        : _number(content.y,_number(record.along,0));
+    var extent=horizontal
+        ? _number(content.width,_number(record.span,0))
+        : _number(content.height,_number(record.span,0));
+    extent=Math.max(0,extent);
+    return {
+        edge:String(record.edge || ""),
+        tangentStart:start,
+        tangentEnd:start+extent,
+        proximity:Math.max(0,_number(request?.stackProximity,24))
+    };
 }
-function _samePyramidAnchor(a,b) {
+function _pyramidDescriptorGap(a,b) {
+    if (!a || !b || a.edge !== b.edge) return Infinity;
+    if (a.tangentEnd < b.tangentStart)
+        return b.tangentStart-a.tangentEnd;
+    if (b.tangentEnd < a.tangentStart)
+        return a.tangentStart-b.tangentEnd;
+    return 0;
+}
+function _pyramidDescriptorsRelated(a,b) {
+    if (!a || !b || a.edge !== b.edge) return false;
+    return _pyramidDescriptorGap(a,b)
+        <= Math.max(_number(a.proximity,24),_number(b.proximity,24));
+}
+function _samePyramidNeighborhood(a,b) {
     return a?.stackPolicy === "pyramid"
         && b?.stackPolicy === "pyramid"
-        && a?.record?.edge === b?.record?.edge
-        && Math.abs(_anchorCenter(a)-_anchorCenter(b)) <= 2;
+        && _pyramidDescriptorsRelated(
+            _pyramidDescriptor(a),_pyramidDescriptor(b));
 }
 function _requestedArea(request) {
     var record=request?.record;
@@ -122,7 +150,7 @@ function _legacyCompare(a,b) {
 }
 function _orderedRequests(requests) {
     // First establish the old globally-transitive order. Pyramid grouping is
-    // then applied only inside the slots already occupied by each same-anchor
+    // then applied only inside the slots already occupied by each same-neighborhood
     // component. This preserves every outsider's relative position while
     // avoiding the previous pairwise comparator cycle:
     // large(A)<small(B), B<remote(C), C<A.
@@ -143,7 +171,7 @@ function _orderedRequests(requests) {
     }
     for (var i=0;i<ordered.length;i++) {
         for (var j=i+1;j<ordered.length;j++) {
-            if (_samePyramidAnchor(ordered[i],ordered[j]))
+            if (_samePyramidNeighborhood(ordered[i],ordered[j]))
                 join(i,j);
         }
     }
@@ -158,7 +186,7 @@ function _orderedRequests(requests) {
         if (slots.length < 2) return;
         var members=slots.map(function(index) { return ordered[index]; });
         // All members of this component are pyramid peers connected by the
-        // same <=2 px anchor relation. Larger resting area owns the earlier
+        // same overlap/proximity relation. Larger resting area owns the earlier
         // (more Edge-direct) slot; equal areas keep the legacy tie-breaks.
         members.sort(function(a,b) {
             var areaDelta=_requestedArea(b)-_requestedArea(a);

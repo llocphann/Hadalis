@@ -19,10 +19,13 @@ assert "function entryOrigin(identity, request, placement, fullRecord)" in coord
 assert "function targetFor(identity, livePlacement)" in coord
 assert "property var closings: ({})" in coord
 assert "property var frozenPlacements: ({})" in coord
-assert "root._sameAnchorDescriptor(" in coord
-assert "Math.abs(root._number(a.anchorCenter)" in coord
+assert "function _pyramidDescriptorsRelated(a,b): bool" in coord
+assert "function _pyramidGroupCandidates(identity, request," in coord
+assert "root._descriptorGap(a,b)" in coord
+assert "tangentStart" in coord and "tangentEnd" in coord
+assert "stackProximity:root.stackProximity" in host
 
-# Closing freezes only its same-anchor peer group; finish/cancel releases it.
+# Closing freezes only its same-neighborhood peer group; finish/cancel releases it.
 assert "frozen[peer.identity]" in coord
 assert "function cancelClose(identity, preserveForPeers = true): void" in coord
 assert "function finishClose(identity): void" in coord
@@ -82,8 +85,9 @@ assert 'stackPolicy: "pyramid"' in per
 assert "semanticOpenOverride:" in generic
 assert "hostedPopup?.liquidSemanticVisible ?? false" in per
 
-# Static same-anchor order stays in allocator; old close-only geometry hacks stay out.
+# Static same-neighborhood order stays in allocator; old close-only geometry hacks stay out.
 assert 'a?.stackPolicy === "pyramid"' in placement
+assert "function _samePyramidNeighborhood(a,b)" in placement
 for forbidden in ("closeInward","pyramidCloseInward","pyramidCloseTarget"):
     assert forbidden not in geometry
     assert forbidden not in host

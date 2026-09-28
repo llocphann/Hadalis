@@ -1,6 +1,7 @@
 import QtQuick
+import qs.modules.abyss.looks
 
-// Capture-only transaction planner for same-anchor pyramid popups.
+// Transaction planner for same-anchor pyramid popups.
 //
 // Phase 1 deliberately does not drive geometry. It separates semantic state,
 // visual residency and resting-layout snapshots so later motion can consume a
@@ -9,13 +10,17 @@ QtObject {
     id: root
 
     required property var controller
-    // Infrastructure is live so snapshots can be audited in owner sessions,
-    // but motion stays disabled until the group transaction path is enabled.
-    property bool motionEnabled: false
+    property bool motionEnabled: true
     property int generation: 0
+    property int transactionGeneration: 0
+    property real transactionProgress: 1
+    property bool resettingProgress: false
     property var snapshots: ({})
     property var semanticStates: ({})
     property var plannedTransitions: ({})
+    property var publishedTargets: ({})
+    property var pendingTargets: ({})
+    property var activeClosings: ({})
 
     function cloneRect(rect): var {
         if (!rect) return null
@@ -46,6 +51,120 @@ QtObject {
             shrunk:placement.shrunk === true,
             content:cloneRect(placement.content)
         }
+    }
+    function placementEqual(a,b): bool {
+        if (!a || !b) return a === b
+        return a.visible === b.visible
+            && Math.abs(Number(a.along ?? 0)-Number(b.along ?? 0)) < .25
+            && Math.abs(Number(a.inward ?? 0)-Number(b.inward ?? 0)) < .25
+            && Math.abs(Number(a.span ?? 0)-Number(b.span ?? 0)) < .25
+            && Math.abs(Number(a.depth ?? 0)-Number(b.depth ?? 0)) < .25
+    }
+    function targetMapsEqual(a,b): bool {
+        const ak=Object.keys(a ?? {}).sort()
+        const bk=Object.keys(b ?? {}).sort()
+        if (ak.length !== bk.length) return false
+        for (let i=0;i<ak.length;++i) {
+            if (ak[i] !== bk[i] || !root.placementEqual(a[ak[i]],b[bk[i]]))
+                return false
+        }
+        return true
+    }
+    function interpolatePlacement(from,to,t): var {
+        if (!from) return root.clonePlacement(to)
+        if (!to) return root.clonePlacement(from)
+        const p=Math.max(0,Math.min(1,Number(t ?? 1)))
+        function mix(a,b) { return Number(a ?? 0)+(Number(b ?? 0)-Number(a ?? 0))*p }
+        return Object.assign({},to,{
+            along:mix(from.along,to.along),
+            inward:mix(from.inward,to.inward),
+            span:mix(from.span,to.span),
+            depth:mix(from.depth,to.depth)
+        })
+    }
+    function targetFor(identity): var {
+        return root.publishedTargets[String(identity)] ?? null
+    }
+    function hasActiveClosings(): bool {
+        return Object.keys(root.activeClosings).length > 0
+    }
+    function buildTargets(placements,participants): var {
+        const result={}
+        for (const identity of Object.keys(participants ?? {})) {
+            const request=participants[identity]?.placementRequest
+            if (!(request?.pyramidStack ?? false) || !(request?.open ?? false))
+                continue
+            const placement=placements?.[identity]
+            if (!placement || placement.visible === false)
+                continue
+            result[identity]=root.clonePlacement(placement)
+        }
+        return result
+    }
+    function publishTargets(targets,animate=true): void {
+        const next=targets ?? ({})
+        if (root.targetMapsEqual(root.publishedTargets,next))
+            return
+
+        if (!root.motionEnabled || !AbyssStyle.motionEnabled
+                || Object.keys(root.publishedTargets).length === 0 || !animate) {
+            root.resettingProgress=true
+            root.publishedTargets=next
+            root.transactionProgress=1
+            root.transactionGeneration += 1
+            root.resettingProgress=false
+            return
+        }
+
+        // Hosts snapshot their current interpolated frame when generation
+        // changes. Reset progress only after that synchronous notification.
+        root.publishedTargets=next
+        root.transactionGeneration += 1
+        root.resettingProgress=true
+        root.transactionProgress=0
+        root.resettingProgress=false
+        Qt.callLater(() => {
+            if (root.motionEnabled)
+                root.transactionProgress=1
+        })
+    }
+    function syncResting(placements,participants): void {
+        const next=root.buildTargets(placements,participants)
+        if (root.hasActiveClosings()) {
+            root.pendingTargets=next
+            return
+        }
+        root.pendingTargets=({})
+        root.publishTargets(next,true)
+    }
+    function beginClosing(identity): void {
+        if (!identity) return
+        const next=Object.assign({},root.activeClosings)
+        next[String(identity)]=true
+        root.activeClosings=next
+    }
+    function finishClosing(identity,placements,participants): void {
+        if (!identity || root.activeClosings[identity] === undefined)
+            return
+        const next=Object.assign({},root.activeClosings)
+        delete next[identity]
+        root.activeClosings=next
+        root.remove(identity)
+        if (root.hasActiveClosings())
+            return
+        const pending=Object.keys(root.pendingTargets).length > 0
+            ? root.pendingTargets : root.buildTargets(placements,participants)
+        root.pendingTargets=({})
+        root.publishTargets(pending,true)
+    }
+    function cancelClosing(identity,placements,participants): void {
+        if (!identity || root.activeClosings[identity] === undefined)
+            return
+        const next=Object.assign({},root.activeClosings)
+        delete next[identity]
+        root.activeClosings=next
+        if (!root.hasActiveClosings())
+            root.syncResting(placements,participants)
     }
     function anchorCenter(request): real {
         const record=request?.record
@@ -123,6 +242,10 @@ QtObject {
 
         if (open) {
             root.capture(identity,request,placement,record)
+            if (previous === false)
+                root.cancelClosing(identity,
+                    root.controller?.bodyPlacements,
+                    root.controller?.participants)
             if (root.plannedTransitions[identity] !== undefined) {
                 const next=Object.assign({},root.plannedTransitions)
                 delete next[identity]
@@ -133,12 +256,22 @@ QtObject {
 
         if (previous === true) {
             root.generation += 1
+            root.beginClosing(identity)
             if (root.motionEnabled) {
                 const plan=root.planClose(identity)
                 const next=Object.assign({},root.plannedTransitions)
                 if (plan) next[identity]=plan
                 root.plannedTransitions=next
             }
+        }
+    }
+
+    Behavior on transactionProgress {
+        enabled: root.motionEnabled && !root.resettingProgress
+            && AbyssStyle.motionEnabled
+        NumberAnimation {
+            duration: AbyssStyle.motionNormal
+            easing.type: Easing.InOutCubic
         }
     }
 }

@@ -16,6 +16,11 @@ QtObject {
     readonly property var bodyPlacements: BodyPlacement.arrange(Object.keys(participants)
         .map(key => participants[key]?.placementRequest).filter(request => request !== null && request !== undefined),
         outputWidth,outputHeight,edgeInsets)
+    onBodyPlacementsChanged:
+        transitionCoordinator.syncResting(bodyPlacements,participants)
+    onParticipantsChanged:
+        Qt.callLater(() =>
+            transitionCoordinator.syncResting(bodyPlacements,participants))
     property real outputWidth: 1920
     property real outputHeight: 1080
     property bool presented: true

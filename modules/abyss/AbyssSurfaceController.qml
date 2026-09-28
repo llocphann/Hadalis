@@ -18,34 +18,140 @@ QtObject {
     property bool presented: true
     property Item presentationItem: null
     property var edgeInsets: ({left:16,top:48,right:16,bottom:16})
+    // Backward-compatible single host used by isolated tests/legacy callers.
+    // Production Abyss registers stable popup slots instead, allowing several
+    // mature StyledPopup instances to coexist without dismissing each other.
     property var popupHost: null
-    property var activePopup: null
-    property Item popupHome: null
-    function presentPopup(popup): void {
-        if (!popup || !popupHost || !popup.contentItem || activePopup === popup) return
-        if (activePopup) activePopup.dismissPresentation()
-        popupHome = popup.contentItem.parent
-        activePopup = popup
+    readonly property int popupCapacity: 4
+    property var popupSlots: [null, null, null, null]
+    property var popupHosts: ({})
+    property int popupOrder: 0
+    readonly property var popupEntries: popupSlots.filter(entry => entry !== null)
+        .sort((a,b) => a.order-b.order)
+    readonly property var activePopups: popupEntries.map(entry => entry.popup)
+    readonly property var activePopup: popupEntries.length > 0
+        ? popupEntries[popupEntries.length-1].popup : null
+    readonly property Item popupHome: popupEntries.length > 0
+        ? popupEntries[popupEntries.length-1].home : null
+    readonly property bool popupsOpen: popupEntries.some(entry =>
+        entry.popup?.presentationActive ?? false)
+    readonly property var popupInputBounds: popupSlots.map((entry,index) => {
+        if (!entry) return null
+        return participants["styledPopup" + index]?.inputBounds ?? null
+    }).filter(rect => rect && rect.width > 0 && rect.height > 0)
+    readonly property bool popupExclusiveFocus: popupSlots.some((entry,index) => {
+        if (!entry || !(entry.popup?.keyboardFocus ?? false)) return false
+        const rect = participants["styledPopup" + index]?.inputBounds
+        return rect && rect.width > 0 && rect.height > 0
+    })
+    readonly property bool popupOnDemandFocus: popupSlots.some((entry,index) => {
+        if (!entry || !(entry.popup?.keyboardFocusOnDemand ?? false)) return false
+        const rect = participants["styledPopup" + index]?.inputBounds
+        return rect && rect.width > 0 && rect.height > 0
+    })
+
+    function _popupSlot(popup): int {
+        for (let i=0; i<popupSlots.length; ++i)
+            if (popupSlots[i]?.popup === popup) return i
+        return -1
+    }
+    function _popupHost(index): var {
+        return popupHosts[String(index)] ?? (index === 0 ? popupHost : null)
+    }
+    function _rehostPopup(index): void {
+        const entry = popupSlots[index]
+        const host = _popupHost(index)
+        if (!entry || !host || !entry.popup?.contentItem) return
+        const popup = entry.popup
         const item = popup.contentItem
-        item.parent = popupHost.contentParent
-        item.x = 0; item.y = 0
-        item.width = Qt.binding(() => popupHost.contentParent.width)
-        item.height = Qt.binding(() => popupHost.contentParent.height)
+        item.parent = host.contentParent
+        item.x = 0
+        item.y = 0
+        item.width = Qt.binding(() => host.contentParent.width)
+        item.height = Qt.binding(() => host.contentParent.height)
         item.visible = Qt.binding(() => popup.presentationActive)
         popup.presentationWindow = presentationItem?.QsWindow?.window ?? null
     }
+    function registerPopupHost(index, host): void {
+        if (index < 0 || index >= popupCapacity || !host) return
+        const next = Object.assign({}, popupHosts)
+        next[String(index)] = host
+        popupHosts = next
+        _rehostPopup(index)
+    }
+    function unregisterPopupHost(index, host): void {
+        if (popupHosts[String(index)] !== host) return
+        const entry = popupSlots[index]
+        if (entry?.popup?.contentItem && entry.home
+                && entry.popup.contentItem.parent === host.contentParent) {
+            entry.popup.contentItem.parent = entry.home
+            entry.popup.contentItem.visible = Qt.binding(() => entry.popup.presentationActive)
+        }
+        const next = Object.assign({}, popupHosts)
+        delete next[String(index)]
+        popupHosts = next
+    }
+    function presentPopup(popup): void {
+        if (!popup || !popup.contentItem) return
+        const existing = _popupSlot(popup)
+        if (existing >= 0) {
+            _rehostPopup(existing)
+            return
+        }
+
+        let slot = -1
+        for (let i=0; i<popupCapacity; ++i) {
+            if (popupSlots[i] === null || popupSlots[i] === undefined) {
+                slot = i
+                break
+            }
+        }
+        if (slot < 0) {
+            // Four simultaneous mature popups is already beyond ordinary shell
+            // use. If it happens, retract the oldest and retry without ever
+            // stealing/destroying its content synchronously.
+            const oldest = popupEntries[0]?.popup
+            if (oldest && oldest !== popup) oldest.dismissPresentation()
+            Qt.callLater(() => {
+                if (popup.presentationActive && root._popupSlot(popup) < 0)
+                    root.presentPopup(popup)
+            })
+            return
+        }
+
+        const next = popupSlots.slice()
+        next[slot] = {
+            popup: popup,
+            home: popup.contentItem.parent,
+            order: ++popupOrder
+        }
+        popupSlots = next
+        popup.presentationWindow = presentationItem?.QsWindow?.window ?? null
+        Qt.callLater(() => root._rehostPopup(slot))
+    }
     function releasePopup(popup, restore = true): void {
-        if (activePopup !== popup) return
-        const home = popupHome
-        activePopup = null; popupHome = null
+        const slot = _popupSlot(popup)
+        if (slot < 0) return
+        const entry = popupSlots[slot]
         popup.presentationWindow = null
-        popup._bodyHovered = false; popup._contentHovered = false
-        if (restore && popup.contentItem) {
-            popup.contentItem.parent = home
+        popup._bodyHovered = false
+        popup._contentHovered = false
+        if (restore && popup.contentItem && entry?.home) {
+            popup.contentItem.parent = entry.home
             popup.contentItem.visible = Qt.binding(() => popup.presentationActive)
         }
+        const next = popupSlots.slice()
+        next[slot] = null
+        popupSlots = next
     }
-    onPresentedChanged: if (!presented && activePopup) activePopup.dismissPresentation()
+    function dismissPopups(): void {
+        activePopups.slice().reverse().forEach(popup => popup?.dismissPresentation())
+    }
+    function hasPopupOnEdge(edge): bool {
+        return popupEntries.some(entry => (entry.popup?.presentationActive ?? false)
+            && entry.popup?._attachmentEdge === edge)
+    }
+    onPresentedChanged: if (!presented) dismissPopups()
     property var activeDialog: null
     property Item dialogHome: null
     property var dialogHost: null

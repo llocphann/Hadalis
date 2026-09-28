@@ -86,11 +86,11 @@ Scope {
             exclusionMode: ExclusionMode.Ignore
             exclusiveZone: 0
             WlrLayershell.namespace: "hadalis:abyss-perimeter"
-            WlrLayershell.layer: GlobalStates.settingsNativeDialogOpen ? WlrLayer.Bottom : PolkitService.active ? WlrLayer.Top : (window.editorOpen || utility.open || styledPopup.open || dialogBody.open || settings.open || dashboardBody.open || controls.open || (window.fullscreenCovered && window.presented)) ? WlrLayer.Overlay : WlrLayer.Top
+            WlrLayershell.layer: GlobalStates.settingsNativeDialogOpen ? WlrLayer.Bottom : PolkitService.active ? WlrLayer.Top : (window.editorOpen || utility.open || liquid.popupsOpen || dialogBody.open || settings.open || dashboardBody.open || controls.open || (window.fullscreenCovered && window.presented)) ? WlrLayer.Overlay : WlrLayer.Top
             WlrLayershell.keyboardFocus: !window.presented || !field.ready || GlobalStates.regionSelectorOpen || GlobalStates.settingsNativeDialogOpen || PolkitService.active || window.overviewDragging
                 ? WlrKeyboardFocus.None
-                : (window.editorOpen || (utility.presented && utility.ready) || (styledPopup.presented && (liquid.activePopup?.keyboardFocus ?? false)) || (popup.presented && (popup.contentItem.item?.keyboardFocus ?? false)) || (dialogBody.presented && dialogBody.ready) || (aux.presented && aux.ready) || (settings.presented && settings.ready) || (dashboardBody.presented && dashboardBody.ready) || (controls.presented && controls.ready)) ? WlrKeyboardFocus.Exclusive
-                : ((styledPopup.presented && (liquid.activePopup?.keyboardFocusOnDemand ?? false)) || (leftPanel.presented && leftPanel.ready) || (rightPanel.presented && rightPanel.ready) || (popup.presented && popup.ready) || (notification.presented && notification.ready && notification.contentKind === "center"))
+                : (window.editorOpen || (utility.presented && utility.ready) || liquid.popupExclusiveFocus || (popup.presented && (popup.contentItem.item?.keyboardFocus ?? false)) || (dialogBody.presented && dialogBody.ready) || (aux.presented && aux.ready) || (settings.presented && settings.ready) || (dashboardBody.presented && dashboardBody.ready) || (controls.presented && controls.ready)) ? WlrKeyboardFocus.Exclusive
+                : (liquid.popupOnDemandFocus || (leftPanel.presented && leftPanel.ready) || (rightPanel.presented && rightPanel.ready) || (popup.presented && popup.ready) || (notification.presented && notification.ready && notification.contentKind === "center"))
                     ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
             anchors { top: true; bottom: true; left: true; right: true }
             Item { id: emptyInput; width: 0; height: 0 }
@@ -116,7 +116,10 @@ Scope {
                 Region { x: rightReveal.x; y: rightReveal.y; width: rightReveal.available ? rightReveal.width : 0; height: rightReveal.height }
                 Region { x: leftPanel.inputBounds.x; y: leftPanel.inputBounds.y; width: window.presented && field.ready ? leftPanel.inputBounds.width : 0; height: leftPanel.inputBounds.height }
                 Region { x: rightPanel.inputBounds.x; y: rightPanel.inputBounds.y; width: window.presented && field.ready ? rightPanel.inputBounds.width : 0; height: rightPanel.inputBounds.height }
-                Region { x: styledPopup.inputBounds.x; y: styledPopup.inputBounds.y; width: window.presented && field.ready ? styledPopup.inputBounds.width : 0; height: styledPopup.inputBounds.height }
+                Region { x: liquid.popupInputBounds[0]?.x ?? 0; y: liquid.popupInputBounds[0]?.y ?? 0; width: window.presented && field.ready ? (liquid.popupInputBounds[0]?.width ?? 0) : 0; height: liquid.popupInputBounds[0]?.height ?? 0 }
+                Region { x: liquid.popupInputBounds[1]?.x ?? 0; y: liquid.popupInputBounds[1]?.y ?? 0; width: window.presented && field.ready ? (liquid.popupInputBounds[1]?.width ?? 0) : 0; height: liquid.popupInputBounds[1]?.height ?? 0 }
+                Region { x: liquid.popupInputBounds[2]?.x ?? 0; y: liquid.popupInputBounds[2]?.y ?? 0; width: window.presented && field.ready ? (liquid.popupInputBounds[2]?.width ?? 0) : 0; height: liquid.popupInputBounds[2]?.height ?? 0 }
+                Region { x: liquid.popupInputBounds[3]?.x ?? 0; y: liquid.popupInputBounds[3]?.y ?? 0; width: window.presented && field.ready ? (liquid.popupInputBounds[3]?.width ?? 0) : 0; height: liquid.popupInputBounds[3]?.height ?? 0 }
                 Region { x: popup.inputBounds.x; y: popup.inputBounds.y; width: window.presented && field.ready ? popup.inputBounds.width : 0; height: popup.inputBounds.height }
                 Region { x: dock.inputBounds.x; y: dock.inputBounds.y; width: window.presented && field.ready ? dock.inputBounds.width : 0; height: dock.inputBounds.height }
                 Region { item:corners.notesAvailable ? corners.notesAnchor : emptyInput }
@@ -130,7 +133,7 @@ Scope {
                 Region { x: aux.inputBounds.x; y: aux.inputBounds.y; width: window.presented && field.ready ? aux.inputBounds.width : 0; height: aux.inputBounds.height }
             }
             function closePopup(): void {
-                if (liquid.activePopup) liquid.activePopup.dismissPresentation()
+                liquid.dismissPopups()
                 GlobalStates.abyssPopupKind = ""
                 GlobalStates.mediaControlsOpen = false
             }
@@ -198,7 +201,7 @@ Scope {
             }
             Timer {
                 id: barClose; interval: 220; repeat: false
-                onTriggered: if (!barHover.hovered && !revealHover.hovered && !popup.open && !styledPopup.open) root.setBarRevealed(window.outputName,false)
+                onTriggered: if (!barHover.hovered && !revealHover.hovered && !popup.open && !liquid.popupsOpen) root.setBarRevealed(window.outputName,false)
             }
             property real barProgress: root.barOnOutput(window.outputName) ? 1 : 0
             Behavior on barProgress {
@@ -218,7 +221,6 @@ Scope {
                 presented: window.presented
                 presentationItem: field
                 dialogHost: dialogBody
-                popupHost: styledPopup
                 edgeInsets: window.nativeInsets
                 moduleRecords: bar.visible ? bar.deformations : []
             }
@@ -332,33 +334,72 @@ Scope {
                 source: "content/AbyssPopupContent.qml"
                 onCloseRequested: window.closePopup()
             }
-            AbyssBodyHost {
-                id: styledPopup
-                identity: "styledPopup"
-                joinedEdge: liquid.activePopup?._liquidAnchor?.popupJoinedEdge ?? ""
-                controller: liquid
-                anchors.fill: parent
-                readonly property string presentationKind: liquid.activePopup?._liquidAnchor?.kind ?? "popup"
-                edge: window.positionEdge(presentationKind,liquid.activePopup?._attachmentEdge ?? root.barEdge)
-                outputName: window.outputName
-                open: window.presented && field.ready && (liquid.activePopup?.presentationActive ?? false)
-                    && ((liquid.activePopup?.requestedVisible ?? false)
-                        || ((liquid.activePopup?.hoverActivates ?? false) && (liquid.activePopup?._lingerVisible ?? false)))
-                animatePresentation: false
-                progress: liquid.activePopup?.revealProgress ?? 0
-                embeddedItem: liquid.activePopup?.contentItem ?? null
-                edgeInsets: window.bodyInsets(edge,along,span)
-                padding: 14
-                span: (Geometry.horizontal(edge) ? (embeddedItem?.implicitWidth ?? 1) : (embeddedItem?.implicitHeight ?? 1))+padding*2
-                depth: (Geometry.horizontal(edge) ? (embeddedItem?.implicitHeight ?? 1) : (embeddedItem?.implicitWidth ?? 1))+padding*2
-                largeSurface: depth > (Geometry.horizontal(edge) ? window.height : window.width)*.42
-                readonly property rect anchorBounds: liquid.activePopup?._anchorRect(window.width,window.height) ?? Qt.rect(0,0,0,0)
-                along: window.positionAlong(presentationKind,edge,span,(Geometry.horizontal(edge) ? anchorBounds.x+anchorBounds.width/2 : anchorBounds.y+anchorBounds.height/2)-span/2)
-                obstacles: window.sideObstacles
-                onCloseRequested: if (liquid.activePopup) liquid.activePopup.dismissPresentation()
-                HoverHandler {
-                    parent: styledPopup.contentParent
-                    onHoveredChanged: if (liquid.activePopup) liquid.activePopup._contentHovered = hovered
+            // Stable slots avoid destroying/recreating a mature popup's visual
+            // content when another popup opens. The controller owns slot
+            // assignment; every host remains an ordinary Abyss participant so
+            // anchor-preserving composition, input masks and focus arbitration
+            // apply to all simultaneous popups.
+            Repeater {
+                id: styledPopupHosts
+                model: liquid.popupCapacity
+
+                delegate: AbyssBodyHost {
+                    id: styledPopupHost
+                    required property int index
+                    readonly property var popupEntry: liquid.popupSlots[index] ?? null
+                    readonly property var hostedPopup: popupEntry?.popup ?? null
+                    readonly property string presentationKind:
+                        hostedPopup?._liquidAnchor?.kind ?? "popup"
+
+                    identity: "styledPopup" + index
+                    joinedEdge: hostedPopup?._liquidAnchor?.popupJoinedEdge ?? ""
+                    controller: liquid
+                    anchors.fill: parent
+                    edge: window.positionEdge(presentationKind,
+                        hostedPopup?._attachmentEdge ?? root.barEdge)
+                    outputName: window.outputName
+                    open: window.presented && field.ready
+                        && (hostedPopup?.presentationActive ?? false)
+                        && ((hostedPopup?.requestedVisible ?? false)
+                            || ((hostedPopup?.hoverActivates ?? false)
+                                && (hostedPopup?._lingerVisible ?? false)))
+                    animatePresentation: true
+                    externalProgress: hostedPopup?.revealProgress ?? 0
+                    embeddedItem: hostedPopup?.contentItem ?? null
+                    edgeInsets: window.bodyInsets(edge,along,span)
+                    padding: 14
+                    span: (Geometry.horizontal(edge)
+                        ? (embeddedItem?.implicitWidth ?? 1)
+                        : (embeddedItem?.implicitHeight ?? 1))+padding*2
+                    depth: (Geometry.horizontal(edge)
+                        ? (embeddedItem?.implicitHeight ?? 1)
+                        : (embeddedItem?.implicitWidth ?? 1))+padding*2
+                    largeSurface: depth
+                        > (Geometry.horizontal(edge) ? window.height : window.width)*.42
+                    readonly property rect anchorBounds:
+                        hostedPopup?._anchorRect(window.width,window.height)
+                            ?? Qt.rect(0,0,0,0)
+                    along: window.positionAlong(presentationKind,edge,span,
+                        (Geometry.horizontal(edge)
+                            ? anchorBounds.x+anchorBounds.width/2
+                            : anchorBounds.y+anchorBounds.height/2)-span/2)
+                    obstacles: window.sideObstacles
+
+                    onPopupEntryChanged: retainedPlacement = null
+                    onCloseRequested: hostedPopup?.dismissPresentation()
+                    Component.onCompleted:
+                        liquid.registerPopupHost(index,styledPopupHost)
+                    Component.onDestruction:
+                        liquid.unregisterPopupHost(index,styledPopupHost)
+
+                    HoverHandler {
+                        parent: styledPopupHost.contentParent
+                        enabled: styledPopupHost.open
+                        onHoveredChanged: {
+                            if (styledPopupHost.hostedPopup)
+                                styledPopupHost.hostedPopup._contentHovered = hovered
+                        }
+                    }
                 }
             }
             property bool dockHovered: false
@@ -378,7 +419,7 @@ Scope {
                     && (Config.options?.enabledPanels ?? []).includes("abyssDock") && (Config.options?.dock?.enable ?? true)
                     && Geometry.targets(window.outputName,Config.options?.dock?.screenList ?? [],Quickshell.screens.map(s => s.name))
                     && !window.editorOpen && !settings.open && !dashboardBody.open && !controls.open
-                    && !aux.open && !utility.open && !(popup.open && popup.edge === edge) && !(styledPopup.open && styledPopup.edge === edge)
+                    && !aux.open && !utility.open && !(popup.open && popup.edge === edge) && !liquid.hasPopupOnEdge(edge)
                     && (((Config.options?.dock?.pinnedOnStartup ?? false) && !(Config.options?.dock?.hoverToReveal ?? false)) || window.dockHovered
                         || (contentItem.item?.requestDockShow ?? false)
                         || ((Config.options?.dock?.showOnDesktop ?? true) && !ToplevelManager.activeToplevel?.activated))

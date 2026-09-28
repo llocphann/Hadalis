@@ -52,7 +52,13 @@ Item {
     property var obstacles: []
     property string source: ""
     property string contentKind: ""
-    property real progress: presented ? 1 : 0
+    // External presenters such as StyledPopup own their own reveal fraction.
+    // Availability still wins: when the allocator evicts a host, progress
+    // animates to zero even if the feature itself remains semantically open.
+    property real externalProgress: -1
+    property real progress: presented
+        ? (externalProgress >= 0 ? Math.max(0,Math.min(1,externalProgress)) : 1)
+        : 0
     readonly property var requestedRecord: Geometry.panel(width,height,edgeInsets,edge,along,span,depth,1,padding,[],largeSurface)
     readonly property var record: Geometry.joinCorner(Geometry.placedPanel(width,height,edgeInsets,edge,along,span,depth,progress,padding,obstacles,largeSurface,effectivePlacement),joinedEdge,width,height,edgeInsets)
     readonly property var targetRecord: Geometry.placedPanel(width,height,edgeInsets,edge,along,span,depth,1,padding,obstacles,largeSurface,layoutPlacement)

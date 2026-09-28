@@ -168,17 +168,41 @@ QtObject {
         root._rebuildFrozen()
         return Motion.cloneRecord(next[identity].originRecord)
     }
-    function cancelClose(identity): void {
+    function cancelClose(identity, preserveForPeers = true): void {
         identity=String(identity ?? "")
         if (!identity || root.closings[identity] === undefined)
             return
+        const reopening=root.closings[identity]
         const next=Object.assign({},root.closings)
         delete next[identity]
+
+        if (preserveForPeers && reopening?.placement
+                && reopening?.descriptor) {
+            // Reopen during another same-anchor close must reverse from the
+            // current transaction without jumping into the allocator's already
+            // reflowed slot. Keep this identity frozen by remaining peers until
+            // their own tails finish, then normal placement motion can resume.
+            for (const key of Object.keys(next)) {
+                const entry=Object.assign({},next[key])
+                if (!root._sameAnchorDescriptor(
+                        reopening.descriptor,entry?.descriptor))
+                    continue
+                const frozen=Object.assign({},entry.frozen ?? {})
+                if (frozen[identity] === undefined)
+                    frozen[identity]=Motion.clonePlacement(
+                        reopening.placement)
+                entry.frozen=frozen
+                next[key]=entry
+            }
+        }
+
         root.closings=next
         root._rebuildFrozen()
     }
     function finishClose(identity): void {
-        root.cancelClose(identity)
+        // A finished popup is gone; only a canceled close/reopen needs to stay
+        // frozen by another overlapping transaction.
+        root.cancelClose(identity,false)
     }
     function resetIdentity(identity): void {
         identity=String(identity ?? "")

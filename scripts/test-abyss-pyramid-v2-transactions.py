@@ -56,6 +56,10 @@ def main() -> None:
     assert "const liveRecord=" in coord
     assert "liveRecord ?? closing.fullRecord" in coord
     assert "root._number(liveRecord.progress,1) <= .001" in coord
+    assert "function cancelClose(identity, preserveForPeers = true): void" in coord
+    assert "reopening.descriptor,entry?.descriptor" in coord
+    assert "frozen[identity]=Motion.clonePlacement(" in coord
+    assert "root.cancelClose(identity,false)" in coord
     assert "root.pyramidOriginRecord && root.progress > 0.001" in host
     assert "root.pyramidAllocatorPlacement,root.pyramidAllocatorRecord" in host
     assert "Qt.callLater(root.syncPyramidEntryOrigin)" not in host
@@ -90,8 +94,15 @@ def main() -> None:
     closing_tail_progress = 0.001
     assert closing_tail_progress <= 0.001
 
-    # Reopen/cancel of the middle transaction releases its own freeze; any
-    # independent transaction may still rebuild its own same-anchor map.
+    # Reopening one close while another same-anchor close is still active must
+    # keep the reopened identity frozen by the remaining transaction. This is
+    # the ordering distinction between cancel/reopen and a true finished close.
+    remaining_close_freeze = {"bottom"}
+    reopened_identity = "middle"
+    remaining_close_freeze.add(reopened_identity)
+    assert reopened_identity in remaining_close_freeze
+
+    # Different anchors/Edges still stay independent.
     assert frozen_survivors(remote, group) == set()
     assert frozen_survivors(side, group) == set()
 

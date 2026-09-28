@@ -174,13 +174,13 @@ StyledPopup {
 
                 ResourceHeaderItem {
                     icon: "planner_review"
-                    label: "CPU"
+                    label: Translation.tr("Load")
                 }
                 Column {
                     spacing: 4
                     ResourceItem {
                         icon: "bolt"
-                        label: Translation.tr("Load:")
+                        label: Translation.tr("CPU:")
                         value: `${Math.round(ResourceUsage.cpuUsage * 100)}%`
                         // Keep the existing reserved "99%" cell so popup
                         // geometry never changes, but align the live value to

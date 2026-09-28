@@ -52,7 +52,7 @@ Item {
 
         Row {
             spacing: 5
-            Layout.alignment: Qt.AlignHCenter
+            Layout.alignment: Qt.AlignLeft
 
             MaterialSymbol {
                 anchors.verticalCenter: parent.verticalCenter
@@ -73,7 +73,7 @@ Item {
         }
 
         RowLayout {
-            Layout.alignment: Qt.AlignHCenter
+            Layout.alignment: Qt.AlignLeft
             spacing: 5
 
             Repeater {
@@ -93,13 +93,16 @@ Item {
             }
         }
 
-        WindowDialogSeparator {
+        Rectangle {
             Layout.fillWidth: true
+            implicitHeight: 1
+            color: Appearance.colors.colLayer0Border
+            opacity: 0.65
         }
 
         Row {
             spacing: 5
-            Layout.alignment: Qt.AlignHCenter
+            Layout.alignment: Qt.AlignLeft
 
             MaterialSymbol {
                 anchors.verticalCenter: parent.verticalCenter
@@ -120,7 +123,7 @@ Item {
         }
 
         RowLayout {
-            Layout.alignment: Qt.AlignHCenter
+            Layout.alignment: Qt.AlignLeft
             spacing: 5
 
             Repeater {

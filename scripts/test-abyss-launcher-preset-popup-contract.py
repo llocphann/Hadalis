@@ -28,6 +28,11 @@ assert 'buttonText: selected ? labelText : ""' in content
 assert "buttonIcon: iconName" in content
 assert "toggled: selected" in content
 assert content.count("RowLayout {") >= 2
+assert content.count("Layout.alignment: Qt.AlignLeft") >= 4
+assert "Layout.alignment: Qt.AlignHCenter" not in content
+assert "color: Appearance.colors.colLayer0Border" in content
+assert "opacity: 0.65" in content
+assert "WindowDialogSeparator" not in content
 assert "implicitWidth: 260" in content
 assert "implicitHeight: 34" in content
 assert "AbyssButton" not in content

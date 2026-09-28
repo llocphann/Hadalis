@@ -97,6 +97,8 @@ def main() -> None:
 
     for token in (
         'label: Translation.tr("Thermal")',
+        'label: Translation.tr("Load")',
+        'label: Translation.tr("CPU:")',
         'value: `${Math.round(ResourceUsage.cpuUsage * 100)}%`',
         'value: `${Math.round(ResourceUsage.gpuUsage * 100)}%`',
         'property string minimumValueSample: ""',
@@ -112,6 +114,11 @@ def main() -> None:
     ):
         check(token in resources_popup,
               f"System Monitor compact grid must keep screenshot-aligned metrics: {token}")
+
+    check('label: "CPU"' not in resources_popup,
+          "System Monitor third-column heading must be Load, not CPU")
+    check('label: Translation.tr("Load:")' not in resources_popup,
+          "System Monitor CPU usage metric must be labelled CPU:, not Load:")
 
     for token in (
         "property bool connectAdjacentScreenEdge: false",

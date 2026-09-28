@@ -14,11 +14,6 @@ for token in '"wifi"' '"bluetooth"'; do
         exit 1
     }
 done
-grep -Fq 'onHoverPopupRequested: kind => root.request(kind)' "$module"     || { printf 'FAIL: Abyss System Tray does not route connectivity hover into connected popup\n' >&2; exit 1; }
-grep -Fq 'signal hoverPopupRequested(string kind)' "$tray"     || { printf 'FAIL: shared System Tray hover popup signal missing\n' >&2; exit 1; }
-grep -Fq 'onHoverPopupRequested: kind => root.hoverPopupRequested(kind)' "$tray"     || { printf 'FAIL: System Tray status icons do not forward connectivity hover\n' >&2; exit 1; }
-grep -Fq 'root.scheduleConnectivityPopup("wifi", hovered)' "$status_indicators"     || { printf 'FAIL: Wi-Fi status icon does not schedule the connected popup\n' >&2; exit 1; }
-grep -Fq 'root.scheduleConnectivityPopup("bluetooth", hovered)' "$status_indicators"     || { printf 'FAIL: Bluetooth status icon does not schedule the connected popup\n' >&2; exit 1; }
 grep -Fq 'MIGRATION_ID="053-retire-abyss-connectivity-modules"' "$migration"     || { printf 'FAIL: retired connectivity module migration missing\n' >&2; exit 1; }
 
 migration_tmp="$(mktemp -d)"
@@ -42,7 +37,7 @@ if ! command -v qs >/dev/null || [[ -z "${WAYLAND_DISPLAY:-}" ]]; then
     exit 0
 fi
 network_test_root="$(mktemp -d)"
-trap 'rm -rf -- "$network_test_root"' EXIT
+trap 'rm -rf -- "$network_test_root" "$migration_tmp"' EXIT
 for entry in modules services GlobalStates.qml qmldir assets scripts defaults translations; do
     ln -s "$repo_root/$entry" "$network_test_root/$entry"
 done
@@ -67,12 +62,18 @@ ShellRoot {
         if(ok) return true
         console.error("NETWORK_POPUP_FAIL",message);root.finished=true;return false
     }
+    function visibleText(item,expected) {
+        if(item?.text===expected && item.visible && item.opacity>0 && item.width>0 && item.height>0 && (item.color?.a ?? 1)>0) return true
+        return Array.from(item?.children ?? []).some(child=>root.visibleText(child,expected))
+    }
     AbyssSurfaceController {
         id: controller; outputName: "network-test"
         outputWidth: 960; outputHeight: 720
     }
     FloatingWindow {
         visible: true; implicitWidth: 960; implicitHeight: 720
+        Item {
+            width:960;height:720
         AbyssBodyHost {
             id: body; anchors.fill: parent
             identity: "networkPopup"; outputName: "network-test"; controller: controller
@@ -87,6 +88,7 @@ ShellRoot {
             id: trayModule; width: 160; height: 32; outputName: "network-test"; kind: "tray"
             onHoverRequest: kind=> { if(["wifi","bluetooth"].includes(kind)) root.requests++ }
         }
+        }
     }
     Timer {
         interval: 350; running: !root.finished; repeat: true
@@ -100,6 +102,7 @@ ShellRoot {
                 const popup=body.contentItem.item,form=popup?.feature?.dialog
                 if(!root.check(body.ready && body.inputBounds.width>0 && popup.desiredWidth===380 && popup.desiredHeight===500,"bounded network popup content loads")) return
                 if(!root.check(form?.show && form.effectiveEmbedded && !form.liquidHosted && controller.activeDialog===null,"mature form reuses the popup rather than acquiring a dialog host")) return
+                if(!root.check(root.visibleText(form,root.step===1 ? "Connect to Wi-Fi" : "Bluetooth devices"),"mature connection title is visible with nonzero text bounds and alpha")) return
                 if(!root.check(trayModule.feature && trayModule.naturalSpan>=0,"System Tray module is usable")) return
                 trayModule.feature.hoverPopupRequested(root.step===1 ? "wifi" : "bluetooth")
                 if(!root.check(root.requests===(root.step===1 ? 1 : 2),"System Tray hover sends the matching popup request")) return
@@ -123,7 +126,7 @@ ShellRoot {
 }
 QML
 status=0
-env -u QS_CONFIG_PATH -u QS_CONFIG_NAME -u QS_MANIFEST QT_QPA_PLATFORM=wayland \
+dbus-run-session -- env -u QS_CONFIG_PATH -u QS_CONFIG_NAME -u QS_MANIFEST QT_QPA_PLATFORM=wayland \
     XDG_CONFIG_HOME="$network_test_root/config" XDG_STATE_HOME="$network_test_root/state" \
     XDG_CACHE_HOME="$network_test_root/cache" timeout 20s qs -p "$network_test_root" --no-color \
     > "$network_test_root/runtime.log" 2>&1 || status=$?

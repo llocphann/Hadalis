@@ -121,7 +121,20 @@ DockButton {
         }
     }
 
+    Component.onCompleted: {
+        if (root.abyssStyle && !root.isSeparator) {
+            PopupAnchorRegistry.registerAnchor(root, "dock", () => [
+                root.appToplevel?.originalAppId,
+                root.appToplevel?.appId,
+                root.desktopEntry?.id,
+                root.desktopEntry?.startupClass,
+                root.desktopEntry?.name
+            ], 200)
+        }
+    }
+
     Component.onDestruction: {
+        PopupAnchorRegistry.unregisterAnchor(root)
         if (root.abyssStyle && root.appListRoot)
             root.appListRoot.setAbyssContextMenuHover(root, false)
     }

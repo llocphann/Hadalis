@@ -1837,6 +1837,7 @@ Singleton {
                     property bool showScreenCast: false
                     property string screenCastOutput: "HDMI-A-1"
                     property bool showNotepad: true
+                    property bool showUtilitiesLauncher: true
                     property list<string> order: ["screenSnip","screenRecord","colorPicker","notepad","keyboard","keyboardLayout","mic","screenCast","darkMode","performance","utilities"]
                 }
                 property JsonObject tray: JsonObject {

@@ -53,41 +53,6 @@ ContentPage {
         return parsed.valid ? parsed : root.workspaceThemeIndicatorColor
     }
 
-    readonly property var quickActionDefaultOrder: [
-        "screenSnip","screenRecord","colorPicker","notepad","keyboard",
-        "keyboardLayout","mic","screenCast","darkMode","performance","utilities"
-    ]
-    readonly property var quickActionOrder: {
-        const configured = Config.options?.bar?.utilButtons?.order ?? []
-        const result = []
-        for (const id of configured) {
-            if (root.quickActionDefaultOrder.includes(id) && !result.includes(id))
-                result.push(id)
-        }
-        for (const id of root.quickActionDefaultOrder)
-            if (!result.includes(id)) result.push(id)
-        return result
-    }
-    function quickActionLabel(id): string {
-        const labels = {
-            screenSnip:"Screenshot",screenRecord:"Screen record",
-            colorPicker:"Color picker",notepad:"Notepad",keyboard:"On-screen keyboard",
-            keyboardLayout:"Keyboard layout",mic:"Microphone",screenCast:"Screen cast",
-            darkMode:"Dark / light mode",performance:"Power profile",utilities:"Utilities"
-        }
-        return Translation.tr(labels[id] ?? id)
-    }
-    function moveQuickAction(id,delta): void {
-        const next = root.quickActionOrder.slice()
-        const index = next.indexOf(id)
-        const target = index + delta
-        if (index < 0 || target < 0 || target >= next.length) return
-        const moved = next[index]
-        next.splice(index,1)
-        next.splice(target,0,moved)
-        Config.setNestedValue("bar.utilButtons.order",next)
-    }
-
     function setSpectrumValue(path, value): void {
         if (root.spectrumControlsReady)
             Config.setNestedValue(path, value)
@@ -669,37 +634,11 @@ ContentPage {
             }
 
             ContentSubsection {
-                title: Translation.tr("Quick Action icon order")
+                title: Translation.tr("Quick Action Settings")
                 visible: root.abyssContent
                     || (Config.options?.bar?.modules?.utilButtons ?? false)
 
-                Repeater {
-                    model: root.quickActionOrder
-                    delegate: RowLayout {
-                        required property string modelData
-                        required property int index
-                        Layout.fillWidth: true
-                        spacing: 8
-                        StyledText {
-                            Layout.fillWidth: true
-                            text: (index + 1) + ". " + root.quickActionLabel(modelData)
-                            color: Appearance.colors.colOnSurface
-                            elide: Text.ElideRight
-                        }
-                        IconToolbarButton {
-                            text: "arrow_upward"
-                            enabled: index > 0
-                            onClicked: root.moveQuickAction(modelData,-1)
-                            StyledToolTip { text: Translation.tr("Move earlier") }
-                        }
-                        IconToolbarButton {
-                            text: "arrow_downward"
-                            enabled: index < root.quickActionOrder.length - 1
-                            onClicked: root.moveQuickAction(modelData,1)
-                            StyledToolTip { text: Translation.tr("Move later") }
-                        }
-                    }
-                }
+                QuickActionSettingsEditor {}
             }
 
             SettingsNote {

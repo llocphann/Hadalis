@@ -93,6 +93,7 @@ PagePlaceholder 1.0 PagePlaceholder.qml
 PanelSurface 1.0 PanelSurface.qml
 PillTabBar 1.0 PillTabBar.qml
 PointingHandInteraction 1.0 PointingHandInteraction.qml
+QuickActionSettingsEditor 1.0 QuickActionSettingsEditor.qml
 PointingHandLinkHover 1.0 PointingHandLinkHover.qml
 PopupToolTip 1.0 PopupToolTip.qml
 ResourceCard 1.0 ResourceCard.qml

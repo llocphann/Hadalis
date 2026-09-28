@@ -87,7 +87,8 @@ Item {
         Shared.UtilButtons {
             vertical: root.vertical
             compactRequested: root.compact
-            showUtilitiesLauncher: true
+            showUtilitiesLauncher:
+                Config.options?.bar?.utilButtons?.showUtilitiesLauncher ?? true
             onUtilitiesRequested: root.request("utilities")
             onUtilitiesHoverChanged: hovered => {
                 root.hoverState("utilities", hovered)

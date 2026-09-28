@@ -906,6 +906,7 @@
             "showKeyboardLayoutSwitch": false,
             "showMicToggle": true,
             "showNotepad": true,
+            "showUtilitiesLauncher": true,
             "showPerformanceProfileToggle": false,
             "showScreenRecord": true,
             "showScreenSnip": true,

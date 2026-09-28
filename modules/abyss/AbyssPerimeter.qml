@@ -158,7 +158,18 @@ Scope {
                 Region { x: aux.inputBounds.x; y: aux.inputBounds.y; width: window.presented && field.ready ? aux.inputBounds.width : 0; height: aux.inputBounds.height }
                 Region { x: clipboardBody.inputBounds.x; y: clipboardBody.inputBounds.y; width: window.presented && field.ready ? clipboardBody.inputBounds.width : 0; height: clipboardBody.inputBounds.height }
             }
+            function closeGenericPopup(expectedKind = ""): void {
+                // Hover-owned generic surfaces (Wi-Fi/Bluetooth/Utilities) must
+                // never dismiss a newer mature StyledPopup. A stale idle timer
+                // may only close the generic popup it originally owned.
+                const current = String(GlobalStates.abyssPopupKind ?? "")
+                if (expectedKind && current !== expectedKind)
+                    return
+                GlobalStates.abyssPopupKind = ""
+            }
             function closePopup(): void {
+                // Semantic "close all" remains reserved for Escape/backdrop
+                // and explicit global transitions.
                 liquid.dismissPopups()
                 GlobalStates.abyssPopupKind = ""
                 GlobalStates.mediaControlsOpen = false
@@ -209,7 +220,14 @@ Scope {
                     // is an idempotent keep-open action, not a surprising toggle-close.
                     if (kind === "utilities" && same)
                         return
-                    window.closePopup()
+                    if (kind === "media") {
+                        // Explicit media toggle still owns the legacy global
+                        // media state, but unrelated StyledPopups are not torn
+                        // down just because a generic popup changes.
+                        window.closeGenericPopup()
+                    } else {
+                        window.closeGenericPopup()
+                    }
                     if (!same) {
                         GlobalStates.abyssPopupTargetOutput = window.outputName
                         GlobalStates.abyssPopupAlong = along
@@ -223,7 +241,7 @@ Scope {
                         && GlobalStates.abyssPopupTargetOutput === window.outputName
                     if (same)
                         return
-                    window.closePopup()
+                    window.closeGenericPopup()
                     GlobalStates.abyssPopupTargetOutput = window.outputName
                     GlobalStates.abyssPopupAlong = along
                     GlobalStates.abyssPopupEdge = edge
@@ -393,7 +411,7 @@ Scope {
                 property bool triggerHovered: ["wifi","bluetooth","utilities"].includes(contentKind)
                     && window.transientPopupHoverKind === contentKind
                 source: "content/AbyssPopupContent.qml"
-                onCloseRequested: window.closePopup()
+                onCloseRequested: window.closeGenericPopup(popup.contentKind)
             }
             // Stable slots avoid destroying/recreating a mature popup's visual
             // content when another popup opens. The controller owns slot

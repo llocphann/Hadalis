@@ -43,6 +43,7 @@ ColumnLayout {
                 {label:"System resources",value:"resources"},{label:"Battery",value:"battery"},
                 {label:"Media popup",value:"media"},{label:"Weather",value:"weather"},
                 {label:"Wi-Fi connections",value:"wifi"},{label:"Bluetooth devices",value:"bluetooth"},
+                {label:"Utilities",value:"utilities"},
                 {label:"Workspaces",value:"workspaces"},{label:"System tray",value:"tray"},
                 {label:"All OSDs / IPC indicators",value:"osd"},{label:"Volume OSD",value:"volume"},
                 {label:"Brightness OSD",value:"brightness"},{label:"Microphone OSD",value:"mic"},

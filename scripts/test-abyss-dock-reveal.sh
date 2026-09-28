@@ -16,14 +16,21 @@ import qs.modules.abyss
 ShellRoot {
     id:root;property int step:0;property bool finished:false;property var original:null
     property int calls:0;property real lastStrength:0
-    AbyssSurfaceController { id:controller;function impulse(edge,along,span,strength,mass,kind) { root.calls++;root.lastStrength=strength } }
+    AbyssSurfaceController {
+        id:controller;outputWidth:viewport.width;outputHeight:viewport.height
+        function impulse(edge,along,span,strength,mass,kind) { root.calls++;root.lastStrength=strength }
+    }
     function check(ok,message): bool { if(ok)return true;console.error("DOCK_REVEAL_FAIL",message);finished=true;return false }
     FloatingWindow {
         visible:true;implicitWidth:1100;implicitHeight:800
+        Item {
+        id:viewport;width:1100;height:800
         AbyssBodyHost {
             id:body;anchors.fill:parent;edge:"bottom";identity:"dock";open:true
             controller:controller;stableContentSize:true;animatePresentation:false;span:600;depth:74;padding:12
+            edgeInsets:controller.edgeInsets
             source:Qt.resolvedUrl("modules/abyss/content/AbyssDockContent.qml")
+        }
         }
     }
     Timer {

@@ -21,9 +21,13 @@ import qs.modules.abyss
 ShellRoot {
     id:root;property int step:0;property bool finished:false;property var retained:null;property var allocation:null
     function check(ok,message): bool { if(ok)return true;console.error("BODY_PLACEMENT_FAIL",message);finished=true;return false }
-    AbyssSurfaceController { id:controller;outputWidth:win.width;outputHeight:win.height;edgeInsets:({left:16,right:16,top:16,bottom:16}) }
+    AbyssSurfaceController { id:controller;outputWidth:viewport.width;outputHeight:viewport.height;edgeInsets:({left:16,right:16,top:16,bottom:16}) }
     FloatingWindow {
         id:win;visible:true;implicitWidth:1100;implicitHeight:800
+        // Niri may tile this window at the output size. Keep the constrained
+        // allocator scenario independent of the compositor's assigned size.
+        Item {
+        id:viewport;width:1100;height:800
         AbyssBodyHost {
             id:older;anchors.fill:parent;controller:controller;edge:"bottom";identity:"older"
             animatePresentation:false;largeSurface:true;span:900;depth:260;along:100
@@ -33,6 +37,7 @@ ShellRoot {
             id:newer;anchors.fill:parent;controller:controller;edge:"bottom";identity:"newer"
             animatePresentation:false;largeSurface:true;span:420;depth:200;along:340
             edgeInsets:controller.edgeInsets;source:Qt.resolvedUrl("Card.qml")
+        }
         }
     }
     Timer {
@@ -51,7 +56,7 @@ ShellRoot {
                 if(!root.check(older.contentParent.width===older.requestedRecord.content.width && older.contentParent.height===older.requestedRecord.content.height,"stacking retains readable dimensions")) return
                 root.allocation=controller.bodyPlacements;newer.progress=.4
                 if(!root.check(root.allocation===controller.bodyPlacements,"reveal frames do not repack peers")) return
-                newer.progress=1;older.depth=win.height*.9
+                newer.progress=1;older.depth=viewport.height*.9
             } else if(root.step===6) {
                 if(!root.check(!older.presented && newer.presented && older.inputBounds.width===0 && !older.contentParent.visible && !older.contentItem.enabled,"no room hides the older body and releases paint/input")) return
                 if(!root.check(older.contentItem.item===root.retained && root.retained.draft==="keep this draft" && older.contentParent.width>800,"hidden state and useful content geometry survive")) return

@@ -68,7 +68,19 @@ def collapse(full: dict, lower: dict | None) -> dict:
             target_c["x"] = target_s["x"]
             target_c["width"] = 0
 
-    return {**full, "surface": target_s, "content": target_c}
+    full_cross = s["height"] if edge in ("top", "bottom") else s["width"]
+    collapsed_cross = (
+        target_s["height"] if edge in ("top", "bottom")
+        else target_s["width"]
+    )
+    owner_extent = max(0, full_cross - full["depth"])
+    depth = max(0, collapsed_cross - owner_extent)
+    return {
+        **full,
+        "depth": depth,
+        "surface": target_s,
+        "content": target_c,
+    }
 
 
 def mix(a: float, b: float, t: float) -> float:
@@ -85,6 +97,7 @@ def interpolate(origin: dict, full: dict, t: float) -> dict:
         key: mix(origin["content"][key], full["content"][key], t)
         for key in ("x", "y", "width", "height")
     }
+    out["depth"] = mix(origin["depth"], full["depth"], t)
     # This is the hard invariant in AbyssPyramidMotion.interpolateRecord().
     out["along"] = full["along"]
     out["span"] = full["span"]
@@ -145,6 +158,8 @@ def main() -> None:
     source = (ROOT / "modules/abyss/looks/AbyssPyramidMotion.js").read_text()
     assert "result.along=_number(to.along,0)" in source
     assert "result.span=Math.max(0,_number(to.span,0))" in source
+    assert "result.depth=Math.max(0,mix(from.depth,to.depth,t))" in source
+    assert "collapsedCross-ownerExtent" in source
 
     for edge in ("top", "bottom", "left", "right"):
         lower, middle, upper = records(edge)
@@ -155,6 +170,13 @@ def main() -> None:
         assert_tangent_unchanged(edge, middle_origin, middle)
         assert_tangent_unchanged(edge, upper_origin, upper)
         assert_tangent_unchanged(edge, base_origin, lower)
+
+        # Current record.depth must describe the same cross-axis reach as the
+        # interpolated surface. The lowest collapsed tier reaches only the
+        # physical owner strip, so its current depth is exactly zero.
+        assert base_origin["depth"] == 0
+        assert 0 <= middle_origin["depth"] < middle["depth"]
+        assert 0 <= upper_origin["depth"] < upper["depth"]
 
         if edge == "top":
             assert middle_origin["surface"]["y"] + middle_origin["surface"]["height"] == lower["surface"]["y"] + lower["surface"]["height"]
@@ -176,6 +198,9 @@ def main() -> None:
             assert frame == reverse_frame
             assert frame["along"] == middle["along"]
             assert frame["span"] == middle["span"]
+            assert frame["depth"] == mix(
+                middle_origin["depth"], middle["depth"], t
+            )
             assert_tangent_unchanged(edge, frame, middle)
 
     print("Pyramid Popup v2 four-edge geometry contract: ok")

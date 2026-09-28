@@ -57,6 +57,11 @@ function interpolateRecord(from,to,progress) {
     result.progress=t;
     result.surface=interpolateRect(from.surface,to.surface,t);
     result.content=interpolateRect(from.content,to.content,t);
+    // Keep semantic geometry consumers in lockstep with the visible envelope.
+    // Geometry.panel() exposes depth as the *current* Edge-normal reach while
+    // targetDepth remains the resting maximum. Leaving depth at the full value
+    // made obstacle consumers reserve a fully-open popup for the entire tail.
+    result.depth=Math.max(0,mix(from.depth,to.depth,t));
     // Tangent identity is always the final popup's own identity. Never
     // interpolate from another popup's along/span, which was the source of the
     // old Screen-Edge travel artifact.
@@ -133,6 +138,16 @@ function collapsedRecord(full,lower) {
         }
     }
 
+    // Geometry.placedPanel() has one invariant on every Edge:
+    // surfaceCross = ownerExtent + currentDepth. Reconstruct the collapsed
+    // current depth from that invariant so obstacle/layout consumers see the
+    // same Edge-normal reach as the rendered snapshot.
+    var fullCross=(edge==="top" || edge==="bottom")
+        ? surface.height : surface.width;
+    var collapsedCross=(edge==="top" || edge==="bottom")
+        ? targetSurface.height : targetSurface.width;
+    var ownerExtent=Math.max(0,fullCross-_number(full.depth,0));
+    result.depth=Math.max(0,collapsedCross-ownerExtent);
     result.progress=0;
     result.surface=targetSurface;
     result.content=targetContent;

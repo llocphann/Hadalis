@@ -46,6 +46,7 @@ Item {
             Layout.preferredWidth: root.vertical ? 50 : implicitWidth
         }
         DockButton {
+            visible: Config.options?.dock?.showDashboardButton ?? true
             vertical: root.vertical
             onClicked: GlobalStates.toggleOverview(root.outputName)
             contentItem: MaterialSymbol {

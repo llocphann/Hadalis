@@ -398,7 +398,7 @@ DockButton {
 
     function showContextMenu(fromHover): void {
         root.hoverContextOpen=fromHover===true
-        root.appListRoot.closeAllContextMenus()
+        root.appListRoot.closeAllContextMenus(root)
         root.appListRoot.contextMenuOpen = true
         root.hoverPreviewDismissed()
         hoverDelayTimer.stop()
@@ -544,8 +544,9 @@ DockButton {
 
     Connections {
         target: root.appListRoot
-        function onCloseAllContextMenus() {
-            contextMenu.close()
+        function onCloseAllContextMenus(exceptOwner) {
+            if (exceptOwner !== root)
+                contextMenu.close()
         }
     }
 

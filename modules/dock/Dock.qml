@@ -610,6 +610,7 @@ Scope {
                                     parentWindow: dockRoot
                                 }
                                 DockButton {
+                                    visible: Config.options?.dock?.showDashboardButton ?? true
                                     vertical: false
                                     onClicked: GlobalStates.toggleOverview(
                                         dockRoot.screen?.name ?? "")
@@ -647,6 +648,7 @@ Scope {
                                     parentWindow: dockRoot
                                 }
                                 DockButton {
+                                    visible: Config.options?.dock?.showDashboardButton ?? true
                                     vertical: true
                                     onClicked: GlobalStates.toggleOverview(
                                         dockRoot.screen?.name ?? "")

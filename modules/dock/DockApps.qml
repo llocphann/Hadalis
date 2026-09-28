@@ -31,7 +31,7 @@ Item {
     property bool contextMenuOpen: false
     property bool requestDockShow: dockPreviewPopup.visible || contextMenuOpen || dragActive
 
-    signal closeAllContextMenus()
+    signal closeAllContextMenus(var exceptOwner)
 
     property bool _suppressNextClick: false
 
@@ -524,7 +524,24 @@ Item {
         }
     }
 
-    onEnabledChanged: syncSortingDemand()
+    function refreshAxisLayout(): void {
+        dockPreviewPopup.close()
+        root.closeAllContextMenus(null)
+        root.cancelDrag()
+        root.rebuildDockItems()
+        Qt.callLater(() => {
+            listView.forceLayout()
+            listView.positionViewAtBeginning()
+            Qt.callLater(() => listView.forceLayout())
+        })
+    }
+
+    onVerticalChanged: root.refreshAxisLayout()
+    onDockPositionChanged: root.refreshAxisLayout()
+    onEnabledChanged: {
+        syncSortingDemand()
+        if (enabled) root.refreshAxisLayout()
+    }
     Component.onCompleted: syncSortingDemand()
     Component.onDestruction: {
         if (_sortingConsumerAcquired)

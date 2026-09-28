@@ -1041,6 +1041,7 @@
         "pinnedOnStartup": true,
         "screenList": [],
         "showBackground": true,
+        "showDashboardButton": true,
         "iconSize": 35,
         "separatePinnedFromRunning": true,
         "enableDragReorder": true,

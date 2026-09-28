@@ -101,6 +101,17 @@ ContentPage {
             }
 
             SettingsSwitch {
+                buttonIcon: "dashboard"
+                text: Translation.tr("Show Dashboard icon")
+                checked: Config.options?.dock?.showDashboardButton ?? true
+                onCheckedChanged:
+                    Config.setNestedValue("dock.showDashboardButton", checked)
+                StyledToolTip {
+                    text: Translation.tr("Show the Dashboard / Overview launcher button in the Dock")
+                }
+            }
+
+            SettingsSwitch {
                 buttonIcon: "colors"
                 text: Translation.tr("Tint app icons")
                 checked: Config.options.dock.monochromeIcons

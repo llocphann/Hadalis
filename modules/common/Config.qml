@@ -1128,6 +1128,7 @@ Singleton {
                         property int widgetScale: 100
                         property int widgetOpacity: 100
                         property bool showBackground: true
+                property bool showDashboardButton: true
                         property bool useBlur: false
                         property bool showBorder: true
                         property real backgroundOpacity: 0.16

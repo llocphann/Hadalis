@@ -26,12 +26,23 @@ Item {
     property alias rightSidebarCorner: rightSidebarCorner
     readonly property var sidebarRegions: [leftSidebarCorner.inputRegion,rightSidebarCorner.inputRegion]
     readonly property var brightnessMonitor: Brightness.getMonitorForScreen(Quickshell.screens.find(screen=>screen.name===outputName))
+
+    // Match the mature ScreenCorners ownership rule: Niri's configured built-in
+    // Overview hot corner gets the physical corner first. Leaving our input
+    // region empty is important because a layer-shell MouseArea there can keep
+    // the compositor from ever seeing the pointer reach its hot corner.
+    function niriOverviewOwnsCorner(cornerName: string): bool {
+        return CompositorService.isNiri
+            && NiriService.isOverviewHotCornerActive(root.outputName, cornerName)
+    }
+
     readonly property bool notesAvailable: presentationEnabled && !blocked
         && (Config.options?.quickNotes?.enable ?? true)
         && ((Config.options?.quickNotes?.monitorMode ?? "all") !== "primary"
             || outputName === (GlobalStates.primaryScreen?.name ?? Quickshell.screens[0]?.name ?? ""))
         && (quickNotesEditorOutput.length === 0
             || quickNotesEditorOutput === outputName)
+        && !root.niriOverviewOwnsCorner("bottomLeft")
     readonly property bool centerAvailable: presentationEnabled && !blocked
         // Match mature ScreenCorners: while Quick Notes owns an editor lease,
         // Notification Center must not map another keyboard-capable corner.
@@ -39,6 +50,7 @@ Item {
         && (Config.options?.notificationCenter?.enable ?? true)
         && (Config.options?.enabledPanels ?? []).includes("abyssNotificationCenter")
         && targets(Config.options?.notificationCenter?.screenList ?? [])
+        && !root.niriOverviewOwnsCorner("bottomRight")
     function targets(list): bool {
         return !list.length || list.includes(outputName)
             || !Quickshell.screens.some(screen=>list.includes(screen.name))
@@ -105,10 +117,14 @@ Item {
         required property bool leftSide
         readonly property var options: Config.options?.sidebar?.cornerOpen ?? ({})
         readonly property bool atBottom: options.bottom ?? false
+        readonly property string cornerName: atBottom
+            ? (leftSide ? "bottomLeft" : "bottomRight")
+            : (leftSide ? "topLeft" : "topRight")
         readonly property bool available: root.presentationEnabled && !root.blocked
             && (options.enable ?? false)
             && (Config.options?.enabledPanels ?? []).includes(leftSide ? "abyssSidebarLeft" : "abyssSidebarRight")
             && root.targets(Config.options?.sidebar?.screenList ?? [])
+            && !root.niriOverviewOwnsCorner(corner.cornerName)
             && !(atBottom && (leftSide ? root.notesAvailable : root.centerAvailable))
         readonly property Region inputRegion: Region { x:corner.x;y:corner.y;width:corner.available ? corner.width : 0;height:corner.height }
         width: Math.max(2,Math.min(root.width/2,options.cornerRegionWidth ?? 250))

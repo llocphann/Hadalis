@@ -69,7 +69,16 @@ Item {
     Component { id: verticalMedia; Vertical.VerticalMedia { edgeHostedExpansion: true } }
     Component { id: battery; Shared.BatteryIndicator {} }
     Component { id: verticalBattery; Vertical.BatteryIndicator {} }
-    Component { id: distro; Shared.DistroIcon {} }
+    Component {
+        id: distro
+        Shared.DistroIcon {
+            onAbyssControlsHoverChanged: hovered => {
+                root.hoverState("launcher", hovered)
+                if (hovered)
+                    root.hoverRequest("launcher")
+            }
+        }
+    }
     Component { id: activeWindow; Shared.ActiveWindow {} }
     Component {
         id: tray

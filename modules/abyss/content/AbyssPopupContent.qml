@@ -20,7 +20,7 @@ FocusScope {
     property bool autoDismissOnIdle: true
     property int idleDismissDelay: 650
     readonly property bool hoverDismissEnabled: root.autoDismissOnIdle
-        && ["wifi","bluetooth","utilities"].includes(root.kind)
+        && ["wifi","bluetooth","utilities","launcher"].includes(root.kind)
     readonly property bool triggerHovered: root.participant?.triggerHovered ?? false
     signal closeRequested()
 
@@ -68,6 +68,7 @@ FocusScope {
         sourceComponent: root.kind === "clock" ? calendar : root.kind === "battery" ? battery
             : root.kind === "resources" ? resources : root.kind === "weather" ? weather
             : root.kind === "utilities" ? utilities
+            : root.kind === "launcher" ? launcher
             : ["wifi","bluetooth"].includes(root.kind) ? network
             : root.kind === "audio" ? audio : media
     }
@@ -77,6 +78,7 @@ FocusScope {
     Component { id: weather; WeatherPopupContent { compact: (root.participant?.width ?? 1920)<compactBreakpoint } }
     Component { id: media; BarMediaPopup { onCloseRequested: root.closeRequested() } }
     Component { id: utilities; AbyssUtilitiesPopup { outputName: root.outputName; onCloseRequested: root.closeRequested() } }
+    Component { id: launcher; AbyssLauncherControlsPopup {} }
     Component {
         id: network
         AbyssNetworkPopup {

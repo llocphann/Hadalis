@@ -10,6 +10,7 @@ Item {
     readonly property bool abyssMode:
         (Config.options?.panelFamily ?? "ii") === "abyss"
     property bool showAbyssMark: false
+    signal abyssControlsHoverChanged(bool hovered)
     readonly property real markSize:
         19.5 * Appearance.sizes.barModuleScale
 
@@ -79,16 +80,12 @@ Item {
         onTriggered: root.showAbyssMark = !root.showAbyssMark
     }
 
-    HoverHandler { id: statusHover }
-
-    StyledToolTip {
-        useParentHover: false
-        externalHoverState: statusHover.hovered
-        extraVisibleCondition: root.abyssMode && statusHover.hovered
-        visible: root.abyssMode
-        delay: 250
-        text: Translation.tr("Surface Performance: %1\nWave Preset: %2")
-            .arg(AbyssStyle.quality)
-            .arg(Config.options?.abyss?.waves?.preset ?? "balanced")
+    HoverHandler {
+        id: statusHover
+        onHoveredChanged: {
+            if (root.abyssMode)
+                root.abyssControlsHoverChanged(hovered)
+        }
     }
+    Component.onDestruction: root.abyssControlsHoverChanged(false)
 }

@@ -54,6 +54,7 @@ Item {
     // A temporarily evicted body retracts using its last valid geometry, keeps
     // its loaded feature/draft, and can reopen in place when space returns.
     property var retainedPlacement: null
+    property real pyramidCloseInward: 0
     readonly property var layoutPlacement: placementVisible
         ? placement : (retainedPlacement ?? placement)
     // Semantic close removes the request from the allocator immediately. Keep
@@ -61,10 +62,15 @@ Item {
     // multiplies inward by progress so a pyramid child retreats through the
     // tier below and finally into its physical Screen Edge.
     readonly property var effectivePlacement: {
+        // Semantic close is different from allocator eviction. A stacked body
+        // closes into the directly underlying same-anchor body first. Only the
+        // bottom body has closeInward=0 and therefore retracts to Screen Edge.
+        if (!root.open && root.progress > 0.001 && retainedPlacement)
+            return Object.assign({}, retainedPlacement, {
+                closeInward: root.pyramidCloseInward
+            })
         if (placementAvailable && placement.visible !== false)
             return placement
-        if (!root.open && root.progress > 0.001)
-            return retainedPlacement ?? placement
         if (placementAvailable && placement.visible === false
                 && root.progress > 0.001)
             return retainedPlacement ?? placement
@@ -136,7 +142,18 @@ Item {
         if (placementAvailable && placement.visible !== false)
             retainedPlacement = placement
     }
-    onOpenChanged: if (initialized) { markOpened();react(open) }
+    onOpenChanged: if (initialized) {
+        if (!open) {
+            pyramidCloseInward = controller?.pyramidCloseTarget
+                ? controller.pyramidCloseTarget(identity,
+                    retainedPlacement, requestedRecord)
+                : 0
+        } else {
+            pyramidCloseInward = 0
+        }
+        markOpened()
+        react(open)
+    }
     onEmbeddedItemChanged: if (initialized) markOpened()
     onContentKindChanged: if (initialized) markOpened()
     onControllerChanged: if (initialized) markOpened()

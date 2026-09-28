@@ -10,7 +10,9 @@ import qs.modules.common.widgets
 Item {
     id: root
     readonly property var manager: GlobalStates.toastManager
-    readonly property real desiredWidth: Math.max(260,
+    // Reload success is a single short label; let the body hug it instead of
+    // inheriting the old wide notification floor. Error/details can still grow.
+    readonly property real desiredWidth: Math.max(160,
         Math.min(520, toastColumn.implicitWidth))
     readonly property real desiredHeight: Math.max(44,
         Math.min(700, toastColumn.implicitHeight))

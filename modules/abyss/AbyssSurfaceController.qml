@@ -162,6 +162,28 @@ QtObject {
     function dismissPopups(): void {
         activePopups.slice().reverse().forEach(popup => popup?.dismissPresentation())
     }
+    function _rectsOverlap(a, b, gap = 0): bool {
+        if (!a || !b) return false
+        return a.x < b.x + b.width + gap
+            && a.x + a.width + gap > b.x
+            && a.y < b.y + b.height + gap
+            && a.y + a.height + gap > b.y
+    }
+    function participantOverlapsRect(identity, rect, gap = 0): bool {
+        const request = participants[identity]?.placementRequest
+        if (!(request?.open ?? false)) return false
+        return root._rectsOverlap(request?.record?.surface, rect, gap)
+    }
+    function hasPopupOverlapRect(rect, gap = 0): bool {
+        for (let i = 0; i < popupSlots.length; ++i) {
+            const entry = popupSlots[i]
+            if (!entry || !(entry.popup?.presentationActive ?? false))
+                continue
+            if (root.participantOverlapsRect("styledPopup" + i, rect, gap))
+                return true
+        }
+        return false
+    }
     function hasPopupOnEdge(edge): bool {
         return popupEntries.some(entry => (entry.popup?.presentationActive ?? false)
             && entry.popup?._attachmentEdge === edge)

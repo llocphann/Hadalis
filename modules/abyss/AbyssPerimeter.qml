@@ -489,7 +489,9 @@ Scope {
                     && (Config.options?.enabledPanels ?? []).includes("abyssDock") && (Config.options?.dock?.enable ?? true)
                     && Geometry.targets(window.outputName,Config.options?.dock?.screenList ?? [],Quickshell.screens.map(s => s.name))
                     && !window.editorOpen && !settings.open && !dashboardBody.open && !controls.open
-                    && !aux.open && !clipboardBody.open && !utility.open && !(popup.open && popup.edge === edge) && !liquid.hasPopupOnEdge(edge)
+                    && !aux.open && !clipboardBody.open && !utility.open
+                    && !liquid.participantOverlapsRect("popup", requestedRecord.surface, 10)
+                    && !liquid.hasPopupOverlapRect(requestedRecord.surface, 10)
                     && (((Config.options?.dock?.pinnedOnStartup ?? false) && !(Config.options?.dock?.hoverToReveal ?? false)) || window.dockHovered
                         || (contentItem.item?.requestDockShow ?? false)
                         || ((Config.options?.dock?.showOnDesktop ?? true) && !ToplevelManager.activeToplevel?.activated))
@@ -658,7 +660,7 @@ Scope {
                 placementPriority: 1
                 edgeInsets: window.bodyInsets(edge,along,span)
                 padding: 8
-                span: (contentItem.item?.desiredWidth ?? 320)+padding*2
+                span: (contentItem.item?.desiredWidth ?? 180)+padding*2
                 depth: (contentItem.item?.desiredHeight ?? 54)+padding*2
                 along: Math.max(window.nativeInsets.left,
                     window.width-window.nativeInsets.right-span)

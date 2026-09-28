@@ -3759,3 +3759,272 @@ Promote the desktop region analyzer into the existing startup measurement bundle
 The highest-confidence new static optimization in this round is **not** a rendering trick: it is eliminating duplicate/restarted heavyweight wallpaper-region analysis while preserving identical placement/color semantics.
 
 No runtime implementation is authorized by this handoff.
+
+## 30. Audit round 16 — region-analysis request ownership, unused outputs and exact-lossless decode rules (2026-09-29)
+
+This round is documentation/research only. No runtime source was changed.
+
+There was no runtime delta after round 15: research continued from \`d497cc7108622108bd0ee987709e2f8ad9c40be6\`.
+
+This round deepens the desktop region-analysis finding and corrects one overly aggressive optimization direction from §29.3.
+
+### 30.1 Default ii auto-placement computes color/brightness that QML deliberately discards — CONFIRMED static waste / P1
+
+The default ii desktop clock is:
+
+- enabled;
+- \`placementStrategy = "leastBusy"\`;
+- loaded once per allowed output through \`Background.qml\`.
+
+At the same time, \`Config.background.widgets.adaptColorsToWallpaperPosition\` defaults to **false** and the Settings UI describes it as an explicit opt-in.
+
+For every least/most-busy result, \`AbstractBackgroundWidget.qml\` does:
+
+- always consume \`center_x/center_y\` for placement;
+- consume \`dominant_color\`, \`brightness\` and \`brightness_std\` **only when** \`positionColorAdaptationEnabled\` is true.
+
+But \`least_busy_region.py\` unconditionally performs all three stages:
+
+1. grayscale decode/resize + variance search;
+2. color decode/resize + K-means dominant color;
+3. second grayscale decode/resize + mean/std brightness.
+
+Therefore the normal default ii path pays for stages 2 and 3 even though their output is thrown away by QML.
+
+This is stronger than a profile hypothesis: the extra work is statically unnecessary for the default semantic result.
+
+**Lossless direction:**
+
+- make the request declare which outputs are required;
+- for ii auto-placement with \`positionColorAdaptationEnabled === false\`, request **position only**;
+- the worker then performs exactly the existing grayscale placement search and returns the same center/variance without K-means or brightness work.
+
+Operation-count target for this path:
+
+- image decode/resize passes: **3 -> 1**;
+- K-means calls: **1 -> 0**.
+
+This is an operation-count reduction, **not** a claim of 66% total wall-time improvement. Imports, variance scanning and process startup remain and must be measured separately.
+
+### 30.2 Waffle has an additional unused-output split — P1 when Waffle clock is enabled
+
+The Waffle clock is disabled by default, so it is not part of the default startup cost. When enabled, however, it uses the same worker and currently consumes only:
+
+- \`center_x/center_y\`;
+- \`dominant_color\`.
+
+It never consumes \`brightness\` or \`brightness_std\`.
+
+Therefore:
+
+- Waffle \`colorMode = "adaptive"\`: brightness/std computation is always unnecessary;
+- Waffle \`colorMode = "accent"\` or \`"plain"\`: dominant color is also unused, so the request can be position-only.
+
+The worker API should therefore express required products rather than treating “least busy” as an inseparable position+color+brightness bundle.
+
+### 30.3 Correction to §29.3: do NOT derive grayscale from the color decode under an exact-lossless requirement
+
+Section 29.3 proposed loading one canonical color image and deriving grayscale from it.
+
+That is too aggressive for this project's “lossless” constraint.
+
+OpenCV documents that \`IMREAD_GRAYSCALE\` may use a codec's internal grayscale conversion and that its pixel values can differ from applying \`cvtColor()\` to a color decode.
+
+The current placement algorithm and brightness calculation both use \`cv2.imread(..., IMREAD_GRAYSCALE)\`. Replacing that with color decode + \`cvtColor\` could therefore alter:
+
+- local variance;
+- tie/order of least-busy candidates;
+- selected center;
+- brightness/std.
+
+**Exact-safe consolidation when color is required:**
+
+1. keep one \`IMREAD_GRAYSCALE\` decode;
+2. resize/crop it once;
+3. reuse that exact grayscale array for both variance search and selected-region brightness/std;
+4. keep one color decode/resize for K-means.
+
+This reduces the normal position+color+brightness path from **3 decode/resize passes to 2** while preserving the existing grayscale conversion route.
+
+Do not derive brightness directly from the search's integral variance if exact output matching is required unless corpus tests prove the rounded JSON is identical. Reusing the selected slice and the existing \`np.mean/np.std\` operations is the safer contract.
+
+### 30.4 The current stop/restart pattern does not own the actual heavy worker — CONFIRMED ownership defect / P1
+
+Both ii and Waffle currently restart region analysis with:
+
+\`\`\`qml
+leastBusyRegionProc.running = false
+leastBusyRegionProc.running = true
+\`\`\`
+
+Quickshell documents that setting \`Process.running = false\` sends SIGTERM to the process it tracks.
+
+The tracked process here is \`least-busy-region-venv.sh\`, not Python. The wrapper:
+
+1. activates the venv;
+2. launches \`python3 least_busy_region.py ...\` as a normal foreground child;
+3. runs \`deactivate\` after Python exits.
+
+It does **not** \`exec\` Python.
+
+This is exactly the wrong ownership shape for cancellation. Sending SIGTERM to the Bash wrapper does not establish that the Python/OpenCV child received the same signal. The source already contains empirical evidence of this class of bug immediately beside the color-only path: its comment records that \`running=false; running=true\` did not discard the old analysis and stale output could still land.
+
+The repository already uses the safer pattern in \`scripts/thumbnails/thumbgen-venv.sh\`, where the wrapper ends with \`exec ... python3 ...\`.
+
+**Lossless direction:**
+
+- after resolving/activating the venv, replace the wrapper with the Python worker using \`exec\`;
+- no \`deactivate\` is needed after \`exec\` because the wrapper process no longer resumes;
+- still add request serialization/stale-result rejection: correct process ownership makes cancellation reliable, but deduplication is preferable to repeatedly killing useful work.
+
+Acceptance target: cancelling/replacing a region request leaves no old Python/OpenCV worker consuming CPU after the tracked Process changes generation.
+
+### 30.5 Least-busy results are not generation-checked; current properties can be mixed with old output — correctness prerequisite for optimization
+
+The color-only path snapshots:
+
+- x/y;
+- widget width/height;
+- screen width/height;
+- wallpaper path;
+
+and rejects a stale result before applying it.
+
+The least-busy path does none of this.
+
+Its Process command is bound to current geometry/path properties, but a process already started continues with the arguments from its launch. If the wallpaper or geometry changes while it runs, \`onStreamFinished\` parses the old result and applies it against the **current** root state.
+
+Potential mismatches include:
+
+- old wallpaper result applied after a wallpaper change;
+- old widget width/height center applied after content size changes;
+- old screen dimensions applied after output geometry changes;
+- old least/most-busy mode result applied after strategy changes.
+
+The request-signature work from §29.2 is therefore not only a performance optimization. It is the correctness boundary required before caching/dedup can be trusted.
+
+Required signature fields should include at least:
+
+- effective wallpaper identity;
+- screen width/height;
+- requested region width/height;
+- horizontal/vertical padding;
+- fill/fit mode;
+- least vs busiest;
+- requested output products (position/color/brightness).
+
+A completed result must be applied only to the matching generation/signature.
+
+### 30.6 Main ii clock currently analyzes the global wallpaper path, not the effective per-output wallpaper — correctness blocker for cross-output caching
+
+\`Background.qml\` correctly resolves the displayed wallpaper per output:
+
+- when multi-monitor wallpaper mode is enabled, it reads \`WallpaperListener.effectivePerMonitor[monitorName]\`;
+- it passes that through \`Wallpapers.internalPreviewFor()\`;
+- the resulting \`bgRoot.wallpaperPath\` is the effective displayed source.
+
+But \`ClockWidget\` does not receive that path.
+
+Its inherited \`AbstractBackgroundWidget.wallpaperPath\` instead reads:
+
+\`Config.options.background.wallpaperPath\`
+
+(or the global thumbnail for video).
+
+Consequently, on an ii multi-monitor setup with different wallpapers, clock auto-placement/color analysis can analyze the global wallpaper rather than the wallpaper actually displayed on that output.
+
+Waffle does not have this mismatch: \`WaffleBackground.qml\` passes its resolved per-monitor \`wallpaperSourceRaw\`/thumbnail into \`WaffleBackgroundClock.wallpaperPath\`.
+
+This must be fixed conceptually **before** introducing a shared cross-output cache. Otherwise a cache could make the wrong global-source result more efficiently reusable.
+
+For future implementation, the request source should be the same effective preview/source that the corresponding Background instance paints.
+
+### 30.7 One analysis owner can deduplicate identical multi-output requests, but only after §30.6
+
+\`Background.qml\` is a \`Variants\` tree over \`Quickshell.screens\`, and the default ii clock is enabled for all outputs unless \`screenList\` restricts it.
+
+Today every clock instance owns its own Process.
+
+For outputs that resolve to the same:
+
+- effective wallpaper;
+- screen dimensions;
+- widget dimensions;
+- padding;
+- least/busiest mode;
+- requested output products;
+
+the worker result is identical before output-local clamping. Those requests can safely share one in-flight/completed result.
+
+Do **not** key this cache only by wallpaper path. Geometry and requested products are part of the semantic input.
+
+A bounded in-session cache plus an in-flight map is lower-risk than a persistent disk cache because it needs no file-mtime/hash invalidation contract.
+
+### 30.8 Intrinsic clock size is a real request trigger; Waffle has no debounce
+
+Qt's Item/Loader sizing rules mean implicit content size can propagate to the loaded clock's effective width/height.
+
+That matters because:
+
+**ii \`AbstractBackgroundWidget\`:**
+- every width/height change restarts a 120 ms geometry debounce;
+- if placement is least/most-busy, the debounce launches region analysis;
+- this is at least coalesced and is suppressed while the edit resize gesture is active.
+
+**Waffle \`WaffleBackgroundClock\`:**
+- \`width: implicitWidth\`, \`height: implicitHeight\`;
+- \`onWidthChanged\` and \`onHeightChanged\` call \`refreshPlacementIfNeeded()\` immediately;
+- there is no debounce;
+- wallpaper, placement strategy, enable state, Config-ready and **every DesktopWidgetLayout.records change** also call the same function.
+
+Because clock implicit size is derived from time/date/status text, style and font metrics, non-user semantic changes can become heavyweight OpenCV request triggers. A minute tick is not guaranteed to change width for every font/time string, so do not claim a fixed once-per-minute process rate without runtime evidence; however, any actual intrinsic-size change is sufficient to launch/restart the worker.
+
+For Waffle, add a request debounce/signature guard before considering any deeper algorithm optimization.
+
+### 30.9 Existing debug hooks are enough to measure request amplification without changing runtime code
+
+The ii path already logs, when \`INIR_REGION_DEBUG=1\`:
+
+- each \`refreshPlacementIfNeeded()\`;
+- each least-busy result landing.
+
+The existing \`background clockDebug*\` IPC methods can manipulate diagnostic clock state while preserving/restoring config.
+
+Therefore the next runtime evidence pass does **not** require adding instrumentation first.
+
+Suggested capture:
+
+1. start the supervised shell with \`INIR_REGION_DEBUG=1\`;
+2. record timestamps for \`[Region] ... refresh\` and \`LEAST-BUSY landed\`;
+3. simultaneously record the Bash/Python process tree and CPU/RSS;
+4. test 1/2/3 outputs;
+5. test stable startup, wallpaper switch, font/style change, resize, lock/unlock and output geometry change;
+6. explicitly check for Python workers that outlive the tracked Bash wrapper;
+7. for Waffle, enable the clock only for the isolated scenario and count requests caused by width/height and unrelated \`DesktopWidgetLayout.records\` changes.
+
+### 30.10 Revised implementation priority after static proof
+
+If runtime implementation is later authorized, preserve this order:
+
+1. **Correct request identity/source**
+   - effective per-output wallpaper;
+   - launch-time signature/generation;
+   - stale-result rejection.
+2. **Fix process ownership**
+   - wrapper \`exec\` so the tracked PID is the heavy worker.
+3. **Stop computing unused products**
+   - default ii position-only;
+   - Waffle skip brightness; position-only for non-adaptive color modes.
+4. **Serialize/deduplicate**
+   - one in-flight request per signature;
+   - latest-distinct pending request;
+   - bounded in-session result cache;
+   - cross-output fan-out for identical signatures.
+5. **Consolidate exact-safe image work**
+   - one grayscale resize reused for placement + brightness;
+   - separate color resize only when dominant color is required.
+6. Only then benchmark whether the remaining Python sliding-window/import cost justifies vectorization, a persistent worker, or native implementation.
+
+Do not start with a Rust rewrite. The current source contains cheaper, behavior-preserving eliminations before algorithm/language replacement becomes necessary.
+
+No runtime implementation is authorized by this handoff.

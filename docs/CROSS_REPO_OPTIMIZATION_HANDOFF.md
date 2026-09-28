@@ -3006,3 +3006,322 @@ The evidence order is now:
 
 Do not implement any candidate from this research-only handoff unless the maintainer separately authorizes code changes.
 
+---
+
+## 26. Audit round 12 — startup state-vs-maintenance ownership split (2026-09-28)
+
+### Snapshot
+
+- Hadalis HEAD reconciled immediately before this checkpoint: `1fa3558e51e907d0edacc7b1453f46e88ce89ff4`
+- Previous optimization-note commit: `36d893c2662fcac2ef32f025790a09a3e9aadf44`
+- Runtime delta after round 11 contains Pyramid v2 correctness fixes, including zero-motion close handling and allocator-target entry origins.
+- The active Pyramid allocation candidate from §25.1 remains valid: `rawPresentationRecord` still evaluates `PyramidMotion.interpolateRecord(..., root.progress)` on the live reveal path. The new `pyramidAllocatorRecord` is allocator-target-derived rather than reveal-progress-derived, so it does not replace the per-frame profile target.
+- This round verifies startup optimization notes against current source rather than copying README commentary verbatim.
+- No runtime/source implementation was changed. Only this research handoff is updated.
+
+### 26.1 General rule: separate singleton residency from maintenance side effects — P0/P1 architecture principle
+
+Several current services legitimately need their reactive state or IPC ownership early, but their `Component.onCompleted` also launches optional process work.
+
+Trying to lazy-load the whole singleton can break:
+
+- IPC targets;
+- first-frame reactive state;
+- restoration ordering;
+- existing direct QML singleton references.
+
+The safer lossless direction is:
+
+1. keep the state/API owner resident when required;
+2. move optional probing/enumeration/reconciliation behind an idempotent demand/deferred function;
+3. explicitly request that work from the startup tier or first real consumer;
+4. preserve immediate work when an enabled feature actually depends on it.
+
+This principle applies strongly to GameMode, MPRIS enrichment and Audio below, and also helps reason about ThinkFan/TLP.
+
+### 26.2 GameMode is effectively startup-resident before its nominal Tier 3 assignment — RECLASSIFY residency, optimize only Niri reconciliation
+
+`shell.qml` declares `_gameModeService` as a Tier-3 deferred slot, but `Appearance.qml` directly binds:
+
+- `GameMode.active`;
+- `GameMode.disableEffects`;
+- `GameMode.disableAnimations`;
+- `GameMode.minimalMode`.
+
+`shellEntryTimer.interval` itself reads `Appearance.animationsEnabled`, so GameMode can materialize as part of the startup appearance dependency graph before `root._gameModeService = GameMode` runs.
+
+Do not spend effort trying to make the singleton itself truly Tier 3 unless all ubiquitous Appearance dependencies are redesigned.
+
+The stronger lossless target is its startup Niri animation reconciliation.
+
+Current `GameMode.qml`:
+
+- starts an init timer on component completion;
+- after state load, starts a 900 ms `startupNiriSyncTimer`;
+- that timer always calls `setNiriAnimations(!active)` when Niri animation control is enabled;
+- current implementation runs Bash;
+- Bash executes `sed -i` on the animation config and then always runs `niri msg action reload-config`.
+
+The normal inactive-session desired state is animations enabled. If the file already represents that state, rewriting/reloading the compositor produces no user-visible improvement.
+
+**Lossless direction:**
+
+- retain startup reconciliation so external/manual config changes are repaired;
+- detect whether the target file actually needs mutation;
+- only rewrite and reload Niri when the desired animation state differs;
+- preserve the current queued/rerun semantics for real state transitions.
+
+Measure process lifetime and compositor reload count on an unchanged normal boot.
+
+### 26.3 MprisController runs optional MPD/PipeWire discovery during ordinary media startup — ADAPT / P1
+
+The default Bar enables the media module, so ordinary MPRIS state is legitimately early data.
+
+Current `MprisController.Component.onCompleted` nevertheless always:
+
+- starts `_mpdMprisProbeProc`;
+- the probe runs Bash with `command -v mpd-mpris` plus `pgrep -x mpd`;
+- if `Audio.outputAppNodes` is non-empty, schedules `pw-dump`;
+- `pw-dump` output is parsed into `_streamMetadataById`.
+
+Current source use of `_streamMetadataById` is specifically `_mpdPlaybackStreamPresent()`, used to decide whether an MPD→MPRIS bridge should be started. Standard MPRIS player display does not need this PipeWire metadata map.
+
+Therefore state ownership and optional enrichment can be separated losslessly:
+
+- keep MPRIS player tracking/active-player state resident for the Bar;
+- defer MPD bridge capability/process discovery until:
+  - LocalMusic explicitly requests an MPD session;
+  - an MPD player/process/stream signal provides evidence;
+  - or a deferred post-first-frame reconciliation is intentionally retained for direct-ALSA MPD discovery;
+- do not run `pw-dump` merely because unrelated audio output-app nodes exist unless MPD enrichment has a consumer.
+
+Preserve automatic discovery of already-running MPD, including direct ALSA configurations. The optimization target is timing/demand, not removal.
+
+### 26.4 ThinkFan is force-instantiated even when its shipped profile-follow feature is disabled — ADAPT / P1 strong lossless candidate
+
+Current `shell.qml` startup-critical properties include:
+
+`property var _thinkFanService: ThinkFanService`
+
+The stated reason is to keep per-power-profile fan following alive.
+
+However shipped defaults have:
+
+`powerProfiles.fanControl.enabled = false`
+
+and `ThinkFanService.Component.onCompleted` immediately calls `refresh()`, which starts:
+
+`/usr/libexec/inir-thinkfan --status`
+
+even when the profile-follow feature is disabled.
+
+Other real consumers already exist in:
+
+- Resources/System Monitor popup;
+- Settings.
+
+So an ordinary session that never enabled fan control should not need the helper status probe solely because the shell started.
+
+**Lossless direction:**
+
+- keep ThinkFan resident for the whole session when `powerProfiles.fanControl.enabled` is true;
+- when false, allow Settings/Resources to instantiate/refresh it on demand;
+- retain a lightweight shell config hook that instantiates it if fan-control becomes enabled through a config change later in the session.
+
+Do not reduce polling cadence or remove managed-control detection when the feature is actually enabled.
+
+### 26.5 Default Battery visibility pulls TlpService charge-limit detection into startup even though charge care is disabled — ADAPT / P1 strong lossless candidate
+
+Shipped defaults have:
+
+- Bar `modules.battery = true`;
+- `battery.chargeLimit.enable = false`.
+
+`Battery.qml` provides ordinary UPower telemetry, but also unconditionally re-exports many `TlpService` properties:
+
+- available/supported/adjustable;
+- current limit/state;
+- managed status;
+- limit kind/range/step/allowed values.
+
+That direct dependency materializes `TlpService` whenever Battery materializes.
+
+`TlpService.Component.onCompleted` immediately runs:
+
+`/usr/libexec/inir-battery-charge-limit --status`
+
+even though normal battery percentage/charging telemetry does not consume charge-limit capability.
+
+The helper is intentionally substantial because it must detect TLP/vendor/plugin capability correctly. The optimization must not weaken it.
+
+**Lossless direction:**
+
+- separate normal UPower Battery state from charge-limit capability/status ownership;
+- demand-load or demand-refresh charge-limit status when:
+  - `battery.chargeLimit.enable` is true;
+  - Battery charge-care UI opens;
+  - TLP Settings opens;
+  - or another explicit charge-limit consumer requests it.
+
+Disabled-default Bar battery telemetry should not pay the TLP/helper probe.
+
+### 26.6 Audio startup mixes critical microphone restoration with Settings-only sound catalog enumeration — ADAPT / P1
+
+`DeviceStatePersistence` legitimately needs Audio microphone state early for persisted mute restoration.
+
+Current `Audio.Component.onCompleted` does both:
+
+1. `_refreshMicState()`;
+2. `themeSoundsProc.running = true`.
+
+`themeSoundsProc` runs:
+
+`sh -c 'ls .../stereo | sed ... | sort -u'`
+
+to build `Audio.themeSounds`.
+
+Repository search shows `Audio.themeSounds` is consumed by `SoundPicker.qml`, and SoundPicker is currently used by the classic and Waffle Settings pages.
+
+No ordinary Bar/audio-state consumer needs the complete sound-name catalog.
+
+**Lossless direction:**
+
+- preserve early microphone-state refresh;
+- expose an idempotent `ensureThemeSoundsLoaded()` / equivalent demand hook;
+- enumerate theme sounds only when a SoundPicker/settings consumer becomes resident;
+- after first demand, continue to refresh the catalog when `audioTheme` changes.
+
+This removes one shell pipeline from normal startup without changing sound playback or settings results.
+
+### 26.7 PowerProfilePersistence startup probe can be state-gated when there is no restore candidate — INVESTIGATE / P1-low
+
+`shell.qml` force-instantiates `PowerProfilePersistence` as startup-critical.
+
+Current service immediately probes TLP-PD ownership once Config is ready:
+
+`sh -c 'systemctl is-active --quiet tlp-pd.service || systemctl is-enabled --quiet tlp-pd.service'`
+
+This guard is correctness-critical before restoring a persisted power profile: shell-owned restore must not fight `tlp-pd`.
+
+However shipped defaults have:
+
+- `powerProfiles.restoreOnStart = true`;
+- `powerProfiles.preferredProfile = ""`.
+
+With an empty preferred profile there is nothing to restore, but the ownership process still runs.
+
+A lossless experiment can make startup probing conditional on actual need:
+
+- if a persisted preferred profile exists and restore is enabled, probe immediately before restore;
+- otherwise defer ownership discovery until the first relevant PowerProfiles change or Settings/feature demand;
+- preserve the existing stale-ownership re-probe and 30-minute safety net after the service begins ownership tracking.
+
+This needs a state-machine test because the service also uses ownership knowledge to decide whether later profile changes should be persisted.
+
+### 26.8 SystemInfo always resolves GECOS display name even though startup username is already seeded — INVESTIGATE / P2
+
+`SystemInfo.username` is seeded from `$USER`, which is enough for startup path construction such as avatar locations.
+
+Nevertheless its one-shot startup timer calls `refreshIdentity()`, which normally launches:
+
+`getent passwd $USER`
+
+to obtain the GECOS display name.
+
+Direct `displayName` consumers are profile/lock/dashboard/settings/user-card surfaces, not the basic startup path needed to derive the username.
+
+Lossless direction:
+
+- keep username seeded immediately;
+- preserve `getent` as the authoritative NSS-aware display-name resolver;
+- run display-name resolution on first profile/lock/settings consumer or in a later noncritical tier.
+
+This is small and should only be implemented if startup process traces show value.
+
+### 26.9 Persistent timer state is not a high-frequency write problem — CLOSED
+
+A targeted audit checked whether `TimerService` caused `states.json` serialization every stopwatch tick.
+
+It does not.
+
+- Stopwatch’s 33 ms timer updates the in-memory `stopwatchTime` property.
+- Persistent timestamp/lap/running fields are mutated on start/pause/reset/lap transitions, not every tick.
+- `Persistent.qml` debounces adapter writes for 100 ms and writes asynchronously.
+
+Do not add stopwatch persistence to the optimization backlog.
+
+### 26.10 Niri event path is already substantially demand/batch optimized — P2 only if profiler points there
+
+Current `NiriService`:
+
+- consumes the native event stream;
+- batches window publication at 50 ms normally / 200 ms in GameMode;
+- distinguishes `windowOrderChanged` from title-only churn;
+- skips nonessential event types during GameMode;
+- `CompositorService` computes sorted foreign-toplevel state only while a sorting consumer lease exists.
+
+One residual cost is that a batched update still calls `sortWindowsByLayout(_pendingWindows)` even when `_windowOrderDirty` is false, so title/focus-only batches can still map/enrich/sort the full list.
+
+This is a plausible small lossless optimization, but window counts are normally low and the current batching is already strong. Keep it below the startup/Config/Abyss candidates unless a compositor-event profile shows it materially hot.
+
+### 26.11 Booru warm-preview shell guard is the same pattern as Favicon, but lower priority
+
+For several providers, `BooruImage.qml` sets `manualDownload` and runs a Bash command of the form:
+
+`mkdir -p ... && [ -f preview ] || curl ...`
+
+A warm preview therefore still creates a Bash process even though curl is skipped.
+
+This is lossless process churn, but it is limited to specific sidebar providers and is less broadly reused than Favicon/MediaArtworkResolver. Keep it P2 unless actual wallpaper/anime browsing traces show high process counts.
+
+### 26.12 Startup measurement bundle should now distinguish required state from optional work
+
+Add explicit attribution for these source owners to the existing T+0..T+8 trace:
+
+- GameMode singleton construction versus Niri animation rewrite/reload;
+- ordinary MPRIS state versus MPD probe and `pw-dump`;
+- ThinkFan disabled/default status helper;
+- Battery UPower state versus TlpService charge-limit helper;
+- Audio mic-state restore versus theme-sound catalog enumeration;
+- PowerProfilePersistence ownership probe with/without a preferred profile;
+- SystemInfo env/file identity versus `getent` display-name lookup.
+
+The acceptance question is not “can the process be removed?” but:
+
+> Does first-frame/session correctness require this exact side effect at this exact time?
+
+Where the answer is no, defer or demand-gate the side effect while keeping the state owner intact.
+
+### 26.13 Revised candidate tiers after round 12
+
+**Highest confidence lossless / implementation candidates after measurement:**
+
+- waves-disabled `Wave.setMass()` gating;
+- Compact Sidebar hidden Equalizer/CAVA demand gating;
+- Favicon warm-cache shell avoidance;
+- MediaArtworkResolver trusted-cache/in-flight dedup;
+- WindowPreview Fish→Bash wrapper elimination;
+- ThinkFan default-disabled helper gating;
+- Battery→TLP charge-limit capability gating;
+- Audio Settings-only theme-sound enumeration gating.
+
+**Strong profiling targets:**
+
+- active Pyramid v2 JS allocation + aggregate record/uniform churn;
+- global Config revision / `getNestedValue()` fan-out;
+- MPRIS rebuilds on unrelated config changes;
+- Background zone/custom-loader config fan-out;
+- notification-history full serialization;
+- startup external-theme process fan-out;
+- MPRIS optional MPD/PipeWire enrichment timing.
+
+**Lower-priority measurement candidates:**
+
+- PowerProfilePersistence empty-restore probe;
+- SystemInfo GECOS lookup;
+- Niri title-only re-sort;
+- Bar Media offscreen PlayerControl timers;
+- Booru warm-preview shell guard.
+
+No runtime implementation is authorized by this handoff.
+

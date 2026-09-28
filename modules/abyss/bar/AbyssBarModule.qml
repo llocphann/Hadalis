@@ -48,6 +48,7 @@ Item {
             : root.kind === "workspaces" ? workspaces : root.kind === "distroIcon" ? distro
             : root.kind === "activeWindow" ? activeWindow : root.kind === "tray" ? tray
             : root.kind === "utilButtons" ? utilities
+            : root.kind === "utilities" ? utilitiesPopup
             : ["wifi","bluetooth"].includes(root.kind) ? network
             : root.kind === "timer" ? timer
             : root.kind === "shellUpdate" ? update : root.kind === "weather" ? weather : taskbar
@@ -72,6 +73,15 @@ Item {
     Component { id: activeWindow; Shared.ActiveWindow {} }
     Component { id: tray; Shared.SysTray { vertical: root.vertical; showSeparator: false; showOverflowMenu: true } }
     Component { id: utilities; Shared.UtilButtons { vertical: root.vertical; compactRequested: root.compact } }
+    Component {
+        id: utilitiesPopup
+        AbyssButton {
+            compact: true
+            glyph: "display_settings"
+            description: "Utilities"
+            onClicked: root.request("utilities")
+        }
+    }
     Component {
         id: network
         AbyssButton {

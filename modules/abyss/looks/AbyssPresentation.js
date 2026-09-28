@@ -3,7 +3,7 @@ var osds = ["volume","brightness","mic","mediaOsd","keyboardLayout","voiceSearch
 function key(kind) { return kind==="calendar" ? "clock" : kind; }
 function resolve(positions, kind, outputName) {
     kind=key(kind);
-    var fallback=osds.indexOf(kind)>=0 ? "osd" : ["clock","resources","battery","media","weather","workspaces","tray","audio","wifi","bluetooth"].indexOf(kind)>=0 ? "popup" : "";
+    var fallback=osds.indexOf(kind)>=0 ? "osd" : ["clock","resources","battery","media","weather","workspaces","tray","audio","wifi","bluetooth","utilities"].indexOf(kind)>=0 ? "popup" : "";
     var list=Array.from(positions || []).filter(function(p) { return p && typeof p==="object"; });
     return list.find(function(p) { return p.kind===kind && p.outputName===outputName; })
         || list.find(function(p) { return p.kind===kind && !p.outputName; })

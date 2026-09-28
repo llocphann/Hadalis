@@ -42,7 +42,7 @@ ColumnLayout {
             model:[{label:"All bar popups",value:"popup"},{label:"Calendar",value:"clock"},
                 {label:"System resources",value:"resources"},{label:"Battery",value:"battery"},
                 {label:"Media popup",value:"media"},{label:"Weather",value:"weather"},
-                {label:"Wi-Fi connections",value:"wifi"},{label:"Bluetooth devices",value:"bluetooth"},
+                {label:"Wi-Fi / Bluetooth",value:"wifi"},
                 {label:"Utilities",value:"utilities"},
                 {label:"Workspaces",value:"workspaces"},{label:"System tray",value:"tray"},
                 {label:"All OSDs / IPC indicators",value:"osd"},{label:"Volume OSD",value:"volume"},

@@ -61,6 +61,10 @@ Singleton {
     property bool crosshairOpen: false
     property bool sidebarLeftOpen: false
     property string sidebarLeftTargetOutput: ""
+    // Hover/clickless opens are leases, not sticky semantic opens. Abyss uses
+    // this to slide a sidebar away after the pointer leaves while shortcuts,
+    // clicks and IPC keep their existing explicit lifetime.
+    property bool sidebarLeftTransient: false
     property bool sidebarLeftExpanded: false
     // A left-sidebar feature requests the panel stay open through implicit closes
     // (backdrop click / focus loss) and yield keyboard focus — e.g. the InnerTune
@@ -69,6 +73,7 @@ Singleton {
     property bool aiChatDetached: false
     property bool sidebarRightOpen: false
     property string sidebarRightTargetOutput: ""
+    property bool sidebarRightTransient: false
     // Material notification center: explicit opens are held independently
     // from transient bottom-right hover ownership published by the popup.
     property bool notificationCenterExplicitOpen: false
@@ -107,6 +112,10 @@ Singleton {
                 root._barPopupHoverLeases = nextLeases
         }
     }
+
+    // Shell-lifetime ToastManager publishes itself here only as a presentation
+    // bridge. Queue/debounce/cooldown ownership remains in ToastManager.
+    property var toastManager: null
 
     property string abyssPopupKind: ""
     property string abyssPopupTargetOutput: ""
@@ -493,14 +502,16 @@ Singleton {
             root.openTaskView(resolved)
     }
 
-    function openSidebarLeft(outputName): void {
+    function openSidebarLeft(outputName, transient): void {
         sidebarLeftTargetOutput = root.resolveOutputName(outputName,
             Config.options?.sidebar?.screenList ?? [])
+        sidebarLeftTransient = transient === true
         sidebarLeftOpen = true
     }
 
     function closeSidebarLeft(): void {
         sidebarLeftOpen = false
+        sidebarLeftTransient = false
     }
 
     function toggleSidebarLeft(outputName): void {
@@ -509,12 +520,13 @@ Singleton {
         if (sidebarLeftOpen && sidebarLeftPresentationOutput === resolved)
             root.closeSidebarLeft()
         else
-            root.openSidebarLeft(resolved)
+            root.openSidebarLeft(resolved, false)
     }
 
-    function openSidebarRight(outputName): void {
+    function openSidebarRight(outputName, transient): void {
         sidebarRightTargetOutput = root.resolveOutputName(outputName,
             Config.options?.sidebar?.screenList ?? [])
+        sidebarRightTransient = transient === true
         sidebarRightOpen = true
     }
 
@@ -560,6 +572,7 @@ Singleton {
 
     function closeSidebarRight(): void {
         sidebarRightOpen = false
+        sidebarRightTransient = false
     }
 
     function toggleSidebarRight(outputName): void {
@@ -568,7 +581,7 @@ Singleton {
         if (sidebarRightOpen && sidebarRightPresentationOutput === resolved)
             root.closeSidebarRight()
         else
-            root.openSidebarRight(resolved)
+            root.openSidebarRight(resolved, false)
     }
 
     onOverviewOpenChanged: {

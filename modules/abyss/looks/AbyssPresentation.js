@@ -1,14 +1,19 @@
 var edges = ["top","right","bottom","left"];
 var osds = ["volume","brightness","mic","mediaOsd","keyboardLayout","voiceSearch"];
-var cornerJoinKinds = ["osd","quickNotes","notificationCenter","notifications","wifi","bluetooth"].concat(osds);
-function key(kind) { return kind==="calendar" ? "clock" : kind; }
+var cornerJoinKinds = ["osd","quickNotes","notificationCenter","notifications","wifi"].concat(osds);
+function key(kind) {
+    if (kind==="calendar") return "clock";
+    // Wi-Fi and Bluetooth are the same System Tray connectivity surface.
+    if (kind==="bluetooth") return "wifi";
+    return kind;
+}
 function canJoin(kind) { return cornerJoinKinds.indexOf(key(kind)) >= 0; }
 function resolve(positions, kind, outputName) {
     kind=key(kind);
-    var fallback=osds.indexOf(kind)>=0 ? "osd" : ["clock","resources","battery","media","weather","workspaces","tray","audio","wifi","bluetooth","utilities"].indexOf(kind)>=0 ? "popup" : "";
+    var fallback=osds.indexOf(kind)>=0 ? "osd" : ["clock","resources","battery","media","weather","workspaces","tray","audio","wifi","utilities"].indexOf(kind)>=0 ? "popup" : "";
     var list=Array.from(positions || []).filter(function(p) { return p && typeof p==="object"; });
-    return list.find(function(p) { return p.kind===kind && p.outputName===outputName; })
-        || list.find(function(p) { return p.kind===kind && !p.outputName; })
+    return list.find(function(p) { return key(p.kind)===kind && p.outputName===outputName; })
+        || list.find(function(p) { return key(p.kind)===kind && !p.outputName; })
         || list.find(function(p) { return p.kind===fallback && p.outputName===outputName; })
         || list.find(function(p) { return p.kind===fallback && !p.outputName; }) || {};
 }
@@ -25,7 +30,10 @@ function along(position, edge, span, width, height, fallback, insets) {
     return start+(end-start)*ratio;
 }
 function save(positions, kind, outputName, values) {
-    var result=Array.from(positions || []).filter(function(p) { return p && (p.kind!==kind || (p.outputName || "")!==outputName); });
+    kind=key(kind);
+    var result=Array.from(positions || []).filter(function(p) {
+        return p && (key(p.kind)!==kind || (p.outputName || "")!==outputName);
+    });
     if (values) result.push(Object.assign({},values,{kind:kind,outputName:outputName}));
     return result;
 }

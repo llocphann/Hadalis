@@ -48,6 +48,25 @@ Scope {
         PerimeterTokens.irisFuseDepth,
         root.edgeShadowEnabled ? root.edgeShadowSize + 2 : 0)
     readonly property real toastBodyPadding: 8
+    readonly property bool useAbyssPresentation:
+        (Config.options?.panelFamily ?? "ii") === "abyss"
+        && (Config.options?.enabledPanels ?? []).includes("abyssPerimeter")
+    property string presentationOutputName: ""
+
+    Component.onCompleted: GlobalStates.toastManager = root
+    Component.onDestruction: {
+        if (GlobalStates.toastManager === root)
+            GlobalStates.toastManager = null
+    }
+    onUseAbyssPresentationChanged: {
+        if (root.useAbyssPresentation) {
+            popupLoader.active = false
+            if (root.toasts.length > 0 && !root.presentationOutputName)
+                root.presentationOutputName = GlobalStates.resolveOutputName("", [])
+        } else if (root.toasts.length > 0) {
+            popupLoader.loading = true
+        }
+    }
 
     // Match StyledPopup's immutable ii motion contract: the whole connected
     // surface slides under its owner. Individual toast content never fades,
@@ -128,6 +147,8 @@ Scope {
         }
 
         const wasEmpty = toasts.length === 0
+        if (wasEmpty)
+            root.presentationOutputName = GlobalStates.resolveOutputName("", [])
         const toast = {
             id: Date.now(),
             title: title,
@@ -145,7 +166,8 @@ Scope {
             toasts = toasts.slice(-maxToasts)
         }
 
-        popupLoader.loading = true
+        if (!root.useAbyssPresentation)
+            popupLoader.loading = true
         root._revealSurface(wasEmpty)
     }
 
@@ -153,6 +175,7 @@ Scope {
         toasts = toasts.filter(t => t.id !== id)
         if (toasts.length === 0) {
             root.surfaceOffsetScale = 1
+            root.presentationOutputName = ""
             popupLoader.active = false
         }
     }

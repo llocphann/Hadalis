@@ -110,7 +110,7 @@ Scope {
             exclusionMode: ExclusionMode.Ignore
             exclusiveZone: 0
             WlrLayershell.namespace: "hadalis:abyss-perimeter"
-            WlrLayershell.layer: GlobalStates.settingsNativeDialogOpen ? WlrLayer.Bottom : PolkitService.active ? WlrLayer.Top : (window.editorOpen || utility.open || liquid.popupsOpen || dialogBody.open || settings.open || dashboardBody.open || controls.open || (window.fullscreenCovered && window.presented)) ? WlrLayer.Overlay : WlrLayer.Top
+            WlrLayershell.layer: GlobalStates.settingsNativeDialogOpen ? WlrLayer.Bottom : PolkitService.active ? WlrLayer.Top : (window.editorOpen || utility.open || liquid.popupsOpen || toastBody.open || dialogBody.open || settings.open || dashboardBody.open || controls.open || (window.fullscreenCovered && window.presented)) ? WlrLayer.Overlay : WlrLayer.Top
             WlrLayershell.keyboardFocus: !window.presented || !field.ready || GlobalStates.regionSelectorOpen || GlobalStates.settingsNativeDialogOpen || PolkitService.active || window.overviewDragging
                 ? WlrKeyboardFocus.None
                 : (window.editorOpen || (utility.presented && utility.ready) || liquid.popupExclusiveFocus || (popup.presented && (popup.contentItem.item?.keyboardFocus ?? false)) || (dialogBody.presented && dialogBody.ready) || (aux.presented && aux.ready) || (clipboardBody.presented && clipboardBody.ready) || (settings.presented && settings.ready) || (dashboardBody.presented && dashboardBody.ready) || (controls.presented && controls.ready)) ? WlrKeyboardFocus.Exclusive
@@ -150,6 +150,7 @@ Scope {
                 Region { item:corners.centerAvailable ? corners.centerAnchor : emptyInput }
                 Region { regions:corners.sidebarRegions }
                 Region { x: notification.inputBounds.x; y: notification.inputBounds.y; width: window.presented && field.ready ? notification.inputBounds.width : 0; height: notification.inputBounds.height }
+                Region { x: toastBody.inputBounds.x; y: toastBody.inputBounds.y; width: window.presented && field.ready ? toastBody.inputBounds.width : 0; height: toastBody.inputBounds.height }
                 Region { x: osd.inputBounds.x; y: osd.inputBounds.y; width: window.presented && field.ready ? osd.inputBounds.width : 0; height: osd.inputBounds.height }
                 Region { x: dashboardBody.inputBounds.x; y: dashboardBody.inputBounds.y; width: window.presented && field.ready ? dashboardBody.inputBounds.width : 0; height: dashboardBody.inputBounds.height }
                 Region { x: controls.inputBounds.x; y: controls.inputBounds.y; width: window.presented && field.ready ? controls.inputBounds.width : 0; height: controls.inputBounds.height }
@@ -297,8 +298,9 @@ Scope {
                 x: 0
                 available: window.sidebarRevealAvailable && (Config.options?.enabledPanels ?? []).includes("abyssSidebarLeft")
                 open: leftPanel.open
-                bodyItem: leftPanel.contentItem
-                onRevealRequested: GlobalStates.openSidebarLeft(window.outputName)
+                transientOpen: GlobalStates.sidebarLeftTransient
+                bodyItem: leftPanel.contentParent
+                onRevealRequested: GlobalStates.openSidebarLeft(window.outputName, true)
                 onHideRequested: if (GlobalStates.sidebarLeftPresentationOutput===window.outputName) GlobalStates.closeSidebarLeft()
             }
             SidebarReveal {
@@ -306,8 +308,9 @@ Scope {
                 x: window.width-width
                 available: window.sidebarRevealAvailable && (Config.options?.enabledPanels ?? []).includes("abyssSidebarRight")
                 open: rightPanel.open
-                bodyItem: rightPanel.contentItem
-                onRevealRequested: GlobalStates.openSidebarRight(window.outputName)
+                transientOpen: GlobalStates.sidebarRightTransient
+                bodyItem: rightPanel.contentParent
+                onRevealRequested: GlobalStates.openSidebarRight(window.outputName, true)
                 onHideRequested: if (GlobalStates.sidebarRightPresentationOutput===window.outputName) GlobalStates.closeSidebarRight()
             }
             AbyssCorners {
@@ -628,6 +631,33 @@ Scope {
                 contentKind: centerOnOutput ? "center" : "popup"
                 source: "content/AbyssNotificationsContent.qml"
                 onCloseRequested: GlobalStates.closeNotificationCenter()
+            }
+            // Reload/system toasts reuse the same output-owned Abyss field.
+            // ToastManager remains the single queue/timer owner; the legacy
+            // independent PanelWindow is never loaded while Abyss is active.
+            AbyssBodyHost {
+                id: toastBody
+                identity: "toast"
+                controller: liquid
+                anchors.fill: parent
+                edge: "top"
+                joinedEdge: "right"
+                outputName: window.outputName
+                open: window.presented && field.ready
+                    && (GlobalStates.toastManager?.useAbyssPresentation ?? false)
+                    && !(GlobalStates.toastManager?.suppressOnScreenToasts ?? false)
+                    && (GlobalStates.toastManager?.toasts?.length ?? 0) > 0
+                    && GlobalStates.toastManager?.presentationOutputName === window.outputName
+                animatePresentation: false
+                externalProgress: GlobalStates.toastManager?.surfaceRevealProgress ?? 0
+                placementPriority: 1
+                edgeInsets: window.bodyInsets(edge,along,span)
+                padding: 8
+                span: (contentItem.item?.desiredWidth ?? 320)+padding*2
+                depth: (contentItem.item?.desiredHeight ?? 54)+padding*2
+                along: Math.max(window.nativeInsets.left,
+                    window.width-window.nativeInsets.right-span)
+                source: "content/AbyssToastContent.qml"
             }
             AbyssBodyHost {
                 id: osd

@@ -15,12 +15,16 @@ Item {
     property bool bodyHovered: bodyHover.hovered
     readonly property bool hovered: edgeHovered || bodyHovered
     property bool ownedOpen: false
+    property bool transientOpen: false
     signal revealRequested()
     signal hideRequested()
     visible: available
     function release(): void {
         reveal.stop();hide.stop()
-        if (ownedOpen) { ownedOpen=false;root.hideRequested() }
+        if (ownedOpen || transientOpen) {
+            ownedOpen=false
+            root.hideRequested()
+        }
     }
     function updateHover(): void {
         if (!available) { release();return }
@@ -29,13 +33,14 @@ Item {
             if (!open && openingAllowed) reveal.restart()
         } else {
             reveal.stop()
-            if (ownedOpen && open) hide.restart()
+            if ((ownedOpen || transientOpen) && open) hide.restart()
         }
     }
     onHoveredChanged: updateHover()
     onAvailableChanged: updateHover()
     onOpeningAllowedChanged: updateHover()
     onCloseBlockedChanged: if (!closeBlocked) updateHover()
+    onTransientOpenChanged: updateHover()
     onOpenChanged: {
         if (!open) {
             if (!available) release()
@@ -58,7 +63,7 @@ Item {
         id: hide;interval: root.closeDelay
         onTriggered: {
             if (root.closeBlocked) { restart();return }
-            if (root.ownedOpen && !root.hovered) root.release()
+            if ((root.ownedOpen || root.transientOpen) && !root.hovered) root.release()
         }
     }
 }

@@ -132,15 +132,20 @@ Item {
         x: leftSide ? 0 : root.width-width
         y: atBottom ? root.height-height : 0
         visible: available
-        function activate(): void {
+        function activate(transient = false): void {
             if (!available) return
+            if (transient) {
+                if (leftSide) GlobalStates.openSidebarLeft(root.outputName, true)
+                else GlobalStates.openSidebarRight(root.outputName, true)
+                return
+            }
             if (leftSide) GlobalStates.toggleSidebarLeft(root.outputName)
             else GlobalStates.toggleSidebarRight(root.outputName)
         }
         FocusedScrollMouseArea {
             anchors.fill:parent;hoverEnabled:true
-            onEntered: if(corner.options.clickless ?? false) corner.activate()
-            onPressed: if(!(corner.options.clickless ?? false)) corner.activate()
+            onEntered: if(corner.options.clickless ?? false) corner.activate(true)
+            onPressed: if(!(corner.options.clickless ?? false)) corner.activate(false)
             onPositionChanged: {
                 if((corner.options.clickless ?? false) || !(corner.options.clicklessCornerEnd ?? false)) return
                 const offset=corner.options.clicklessCornerVerticalOffset ?? 1

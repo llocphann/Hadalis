@@ -230,6 +230,7 @@ WindowDialog {
     }
 
     WindowDialogButtonRow {
+        visible: !root.embeddedPresentation
         Layout.fillWidth: true
 
         Item {

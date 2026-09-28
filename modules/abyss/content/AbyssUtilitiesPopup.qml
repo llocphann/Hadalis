@@ -69,6 +69,7 @@ Item {
             }
 
             AbyssButton {
+                visible: pages.currentIndex !== 3
                 compact: true
                 glyph: "close"
                 description: "Close utilities"

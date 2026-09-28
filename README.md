@@ -450,7 +450,7 @@ If the maintainer gives a newer explicit instruction, that instruction supersede
 
 ## 11. Current unfinished handoff (2026-09-28)
 
-The maintainer requests **local development only; do not push** until instructed again. Continue in one agent context on `dev`, preserving unrelated dirty files. Record unfinished work and exact validation here before usage becomes exhausted. Latest screenshots are defect reports, not acceptance evidence.
+**Current maintainer instruction supersedes the older local-only note:** GitHub-connected continuation may make atomic fast-forward commits directly on `dev` and must update this handoff at milestones. Do not create a branch/PR, modify `stable`, rewrite history, or overwrite concurrent work. Continue in one agent context, preserve unrelated changes, and record unfinished work plus exact validation before usage becomes exhausted. Latest screenshots are defect reports, not acceptance evidence.
 
 **Additional maintainer requirements — scheduled continuation at 06:20 on 2026-09-28 (Asia/Ho_Chi_Minh):**
 

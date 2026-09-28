@@ -121,6 +121,8 @@ ShellRoot {
         hoverTarget: anchorA
         hoverActivates: false
         alternativeVisibleCondition: root.showA
+        keyboardFocus: true
+        exclusiveKeyboardFocus: true
         closeOnOutsideClick: true
     }
     ClockCalendarPopup {
@@ -148,6 +150,10 @@ ShellRoot {
                 if(!root.check(popupA.presentationActive && !popupA.active
                     && popupA.presentationWindow===window,
                     "first popup uses the shared Abyss field, not a native popup")) return
+                if(!root.check(controller.popupFocusOwner===popupA
+                    && controller.popupExclusiveFocus
+                    && !controller.popupOnDemandFocus,
+                    "explicit Exclusive popup owns the shared focus mode while alone")) return
                 root.retainedA=popupA.contentItem
                 root.showB=true
             } else if(root.step===2) {
@@ -164,8 +170,10 @@ ShellRoot {
                     "each popup keeps its original content object and a distinct host")) return
                 if(!root.check(a && b && a.width>0 && b.width>0 && !root.overlaps(a,b),
                     "allocator gives simultaneous popups separate input/content regions")) return
-                if(!root.check(controller.popupOnDemandFocus,
-                    "focus arbitration includes the second popup without stealing first ownership")) return
+                if(!root.check(controller.popupFocusOwner===popupB
+                    && !controller.popupExclusiveFocus
+                    && controller.popupOnDemandFocus,
+                    "newer OnDemand popup supersedes an older Exclusive lease without changing ownership")) return
                 if(!root.check(controller.popupInputBounds.length===2,
                     "shared output mask receives both popup input regions")) return
                 root.showB=false
@@ -175,6 +183,10 @@ ShellRoot {
                     "closing newer popup leaves the older popup alive")) return
                 if(!root.check(popupA.contentItem===root.retainedA,
                     "older popup content is not recreated after peer close")) return
+                if(!root.check(controller.popupFocusOwner===popupA
+                    && controller.popupExclusiveFocus
+                    && !controller.popupOnDemandFocus,
+                    "closing newer popup restores the older explicit Exclusive lease")) return
                 root.showA=false
             } else if(root.step===6) {
                 if(!root.check(controller.activePopups.length===0
@@ -199,4 +211,4 @@ if [[ "$status" != 124 ]] || ! rg -q ABYSS_MULTI_POPUP_PASS "$test_root/runtime.
     cat "$test_root/runtime.log"
     exit 1
 fi
-printf 'PASS: simultaneous mature StyledPopup ownership, non-overlap, focus/input aggregation and independent close\n'
+printf 'PASS: simultaneous StyledPopup ownership, newest-focus arbitration/restoration, non-overlap, input aggregation and independent close\n'

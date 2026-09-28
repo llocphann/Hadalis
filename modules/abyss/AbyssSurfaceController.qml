@@ -39,16 +39,31 @@ QtObject {
         if (!entry) return null
         return participants["styledPopup" + index]?.inputBounds ?? null
     }).filter(rect => rect && rect.width > 0 && rect.height > 0)
-    readonly property bool popupExclusiveFocus: popupSlots.some((entry,index) => {
-        if (!entry || !(entry.popup?.keyboardFocus ?? false)) return false
-        const rect = participants["styledPopup" + index]?.inputBounds
-        return rect && rect.width > 0 && rect.height > 0
-    })
-    readonly property bool popupOnDemandFocus: popupSlots.some((entry,index) => {
-        if (!entry || !(entry.popup?.keyboardFocusOnDemand ?? false)) return false
-        const rect = participants["styledPopup" + index]?.inputBounds
-        return rect && rect.width > 0 && rect.height > 0
-    })
+    // Match StyledPopup's native focus contract while several mature popups
+    // share one layer-shell window. The newest *focus-requesting* visible popup
+    // owns the mode; a newer passive popup does not steal an older editor lease.
+    // keyboardFocus alone is OnDemand, exactly like StyledPopup. Exclusive is an
+    // explicit opt-in through exclusiveKeyboardFocus.
+    readonly property var popupFocusOwner: {
+        const entries = popupEntries.slice().reverse()
+        for (const entry of entries) {
+            const popup = entry?.popup ?? null
+            if (!popup || (!(popup.keyboardFocus ?? false)
+                    && !(popup.keyboardFocusOnDemand ?? false)))
+                continue
+            const slot = root._popupSlot(popup)
+            if (slot < 0) continue
+            const rect = participants["styledPopup" + slot]?.inputBounds
+            if (rect && rect.width > 0 && rect.height > 0)
+                return popup
+        }
+        return null
+    }
+    readonly property bool popupExclusiveFocus: popupFocusOwner !== null
+        && (popupFocusOwner.keyboardFocus ?? false)
+        && (popupFocusOwner.exclusiveKeyboardFocus ?? false)
+    readonly property bool popupOnDemandFocus: popupFocusOwner !== null
+        && !popupExclusiveFocus
 
     function _popupSlot(popup): int {
         for (let i=0; i<popupSlots.length; ++i)

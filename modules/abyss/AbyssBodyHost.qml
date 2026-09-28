@@ -133,7 +133,7 @@ Item {
     }
     function markOpened(): void { if (open && controller?.nextPresentationOrder) activationOrder=controller.nextPresentationOrder() }
     onPlacementChanged: {
-        if (placement?.visible !== false)
+        if (placementAvailable && placement.visible !== false)
             retainedPlacement = placement
     }
     onOpenChanged: if (initialized) { markOpened();react(open) }

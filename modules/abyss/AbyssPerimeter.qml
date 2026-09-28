@@ -176,7 +176,7 @@ Scope {
                 // Semantic "close all" remains reserved for Escape/backdrop
                 // and explicit global transitions.
                 liquid.dismissPopups()
-                GlobalStates.abyssPopupKind = ""
+                window.closeGenericPopup()
                 GlobalStates.mediaControlsOpen = false
             }
             Item {

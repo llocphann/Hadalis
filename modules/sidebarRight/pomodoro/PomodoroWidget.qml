@@ -9,6 +9,8 @@ Item {
     id: root
     property bool compactMode: false
     property bool centerMode: true
+    // Timer-to-Bar pin keeps its original meaning outside Quick Notes.
+    property bool showPinButton: true
     property int currentTab: Persistent.states?.timer?.tab ?? 0
     property var tabButtonList: [
         {"name": Translation.tr("Pomodoro"), "icon": "search_activity"},
@@ -95,6 +97,7 @@ Item {
 
             IconToolbarButton {
                 id: pinButton
+                visible: root.showPinButton
                 anchors.right: parent.right
                 anchors.verticalCenter: tabBar.verticalCenter
                 text: "push_pin"

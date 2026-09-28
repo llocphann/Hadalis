@@ -22,6 +22,9 @@ Bar.StyledPopup {
     required property Item anchorItem
     property bool editorFocused: false
     property bool entryBridgeHeld: false
+    // Popup ownership is local to this output. Do not reuse timer.pinnedToBar:
+    // that persistent state controls the independent Bar timer indicator.
+    property bool popupPinned: false
     property int selectedMainTab: 0
     property int selectedNotesTab: 0
     // Notes/To-do is a transient child tray of the large Notes & To-do tab.
@@ -61,7 +64,7 @@ Bar.StyledPopup {
     attachmentThicknessOverride: root.cornerAttachmentThickness
     hoverActivates: true
     alternativeVisibleCondition: root.editorFocused || root.todoDialogOpen
-        || root.entryBridgeHeld
+        || root.entryBridgeHeld || root.popupPinned
     // Pre-arm click-to-focus before the first editor click. OnDemand does not
     // steal focus merely because the hover popup is visible.
     keyboardFocusOnDemand: true
@@ -109,6 +112,7 @@ Bar.StyledPopup {
     }
 
     onRequestClose: {
+        root.popupPinned = false
         root.leaveEditorMode()
         if (todoViewLoader.item)
             todoViewLoader.item.showAddDialog = false
@@ -221,7 +225,7 @@ Bar.StyledPopup {
                     anchors.top: parent.top
                     anchors.horizontalCenter: parent.horizontalCenter
                     width: Math.min(276, Math.max(
-                        180, contentRoot.width - 8))
+                        180, contentRoot.width - (popupPinButton.width + 8) * 2))
                     pillHeight: 30
                     currentIndex: root.selectedMainTab
                     tabs: [
@@ -229,6 +233,21 @@ Bar.StyledPopup {
                         { icon: "timer", label: Translation.tr("Timers") }
                     ]
                     onTabSelected: index => root.selectedMainTab = index
+                }
+
+                IconToolbarButton {
+                    id: popupPinButton
+                    anchors.right: parent.right
+                    anchors.verticalCenter: mainTabs.verticalCenter
+                    text: "push_pin"
+                    toggled: root.popupPinned
+                    onClicked: root.popupPinned = !root.popupPinned
+
+                    StyledToolTip {
+                        text: root.popupPinned
+                            ? Translation.tr("Unpin Quick Notes popup")
+                            : Translation.tr("Pin Quick Notes popup")
+                    }
                 }
 
                 Item {
@@ -299,6 +318,7 @@ Bar.StyledPopup {
                     visible: root.selectedMainTab === 1
                     sourceComponent: PomodoroWidget {
                         compactMode: true
+                        showPinButton: false
                     }
                 }
             }

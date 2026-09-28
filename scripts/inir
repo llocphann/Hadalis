@@ -1,6 +1,28 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# Qt requires a UTF-8 process locale. Preserve every already-valid user locale,
+# but repair legacy C/ASCII launch environments before Quickshell starts.
+_inir_ensure_utf8_locale() {
+    local charmap=""
+    charmap="$(locale charmap 2>/dev/null || true)"
+    case "${charmap^^}" in
+        UTF-8|UTF8) return ;;
+    esac
+
+    local candidate candidate_map
+    for candidate in C.UTF-8 C.utf8; do
+        candidate_map="$(LC_ALL="$candidate" locale charmap 2>/dev/null || true)"
+        case "${candidate_map^^}" in
+            UTF-8|UTF8)
+                export LC_ALL="$candidate"
+                return
+                ;;
+        esac
+    done
+}
+_inir_ensure_utf8_locale
+
 qs_bin="/usr/bin/qs"
 user_config_dir="${XDG_CONFIG_HOME:-$HOME/.config}/quickshell/inir"
 system_config_dir="${INIR_SYSTEM_RUNTIME_DIR:-/usr/local/share/quickshell/inir}"

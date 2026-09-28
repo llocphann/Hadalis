@@ -64,8 +64,8 @@ ColumnLayout {
         Repeater {
             model: root.activeKinds
             delegate: IndicatorHost {
-                required property string modelData
-                indicatorKind: String(modelData)
+                required property var modelData
+                indicatorKind: String(modelData ?? "")
             }
         }
     }

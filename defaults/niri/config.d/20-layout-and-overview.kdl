@@ -11,7 +11,9 @@ layout {
     // Gap between windows and from windows to screen edges (logical px).
     gaps 25
 
-    // Transparent so iNiR's own wallpaper/backdrop shows through.
+    // Keep the workspace itself transparent. The overview backdrop is a separate
+    // compositor plane; Hadalis places its wallpaper surface there via the layer
+    // rule in 80-layer-rules.kdl.
     background-color "transparent"
 
     // When focusing a column that's off-screen, how should the view scroll?
@@ -103,7 +105,9 @@ layout {
 overview {
     zoom 0.75
 
-    // Solid color between workspaces (default: transparent).
+    // Niri backdrop colors are opaque (their alpha channel is ignored). Leave
+    // this unset so the Hadalis wallpaper layer placed within the backdrop can
+    // own the hot-corner/overview background instead of a hard-coded gray fill.
     // backdrop-color "#777777"
 
     // Disable the shadow behind each workspace in the overview.

@@ -4,21 +4,23 @@
 // Docs: https://niri-wm.github.io/niri/Configuration:-Layer-Rules
 //
 // Layer-shell surfaces are used by bars, panels, wallpaper renderers, and
-// overlays. iNiR uses them for its backdrop wallpaper surfaces.
+// overlays. Hadalis uses them for its overview/backdrop wallpaper surfaces.
 //
-// place-within-backdrop = true tells Niri to render the surface behind
-// windows but above the compositor background, so iNiR's wallpaper shows
-// between the desktop background color and the tiled windows.
+// place-within-backdrop = true tells Niri to render the surface inside the
+// compositor overview backdrop. Background/Bottom layers otherwise zoom with
+// the workspace, leaving the area exposed by a hot-corner overview as a solid
+// compositor color.
 // ─────────────────────────────────────────────────────────────────────────────
 
-// iNiR "ii" family backdrop (wallpaper surface).
+// Shared Material/Abyss backdrop wallpaper. Abyss intentionally reuses the
+// historical namespace so upgraded installs keep the stable Niri layer rule.
 layer-rule {
     match namespace="quickshell:iiBackdrop"
     place-within-backdrop true
     opacity 1.0
 }
 
-// iNiR "waffle" family backdrop (wallpaper surface).
+// Waffle keeps its own backdrop renderer and namespace.
 layer-rule {
     match namespace="quickshell:wBackdrop"
     place-within-backdrop true

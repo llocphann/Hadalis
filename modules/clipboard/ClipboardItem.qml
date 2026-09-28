@@ -23,6 +23,8 @@ RippleButton {
     property string bigText: entry?.bigText ?? ""
     property string materialSymbol: entry?.materialSymbol ?? ""
     property string cliphistRawString: entry?.cliphistRawString ?? ""
+    readonly property bool imageEntry: root.cliphistRawString.length > 0
+        && Cliphist.entryIsImage(root.cliphistRawString)
     property bool blurImage: entry?.blurImage ?? false
     property string blurImageText: entry?.blurImageText ?? "Image hidden"
     property bool compactClipboardPreview: entry?.compactClipboardPreview ?? false
@@ -250,7 +252,7 @@ RippleButton {
                     }
                 }
                 Repeater { // Favicons for links
-                    model: root.query == root.itemName ? [] : root.urls
+                    model: root.imageEntry || root.query == root.itemName ? [] : root.urls
                     Favicon {
                         required property var modelData
                         size: parent.height
@@ -260,6 +262,7 @@ RippleButton {
                 StyledText { // Item name/content
                     Layout.fillWidth: true
                     id: nameText
+                    visible: !root.imageEntry
                     textFormat: Text.StyledText // RichText also works, but StyledText ensures elide work
                     font.pixelSize: Appearance.font.pixelSize.small
                     font.family: Appearance.font.family[root.fontType]
@@ -274,10 +277,10 @@ RippleButton {
             Loader { // Clipboard image preview
                 // Don't use Layout.fillWidth - let the image determine its own size
                 // Use rowLayout.width to avoid binding loop with contentColumn
-                active: root.cliphistRawString && Cliphist.entryIsImage(root.cliphistRawString)
+                active: root.imageEntry
                 sourceComponent: CliphistImage {
                     entry: root.cliphistRawString
-                    maxWidth: rowLayout.width - iconLoader.width - rowLayout.spacing - 160
+                    maxWidth: Math.max(48, rowLayout.width - iconLoader.width - rowLayout.spacing - 160)
                     maxHeight: root.compactClipboardPreview ? 80 : 140
                     blur: root.blurImage
                     blurText: root.blurImageText

@@ -273,7 +273,7 @@ Scope {
                     GlobalStates.abyssPopupKind = kind
                 }
                 onPopupHoverStateChanged: (kind,edge,along,hovered) => {
-                    if (!["wifi","bluetooth","utilities","launcher"].includes(kind))
+                    if (!["wifi","bluetooth","utilities"].includes(kind))
                         return
                     if (hovered) {
                         window.transientPopupHoverKind = kind
@@ -454,7 +454,7 @@ Scope {
                 property bool triggerHovered:
                     contentKind === "dockAppMenu"
                         ? GlobalStates.abyssDockMenuTriggerHovered
-                        : ["wifi","bluetooth","utilities","launcher"].includes(contentKind)
+                        : ["wifi","bluetooth","utilities"].includes(contentKind)
                             && window.transientPopupHoverKind === contentKind
                 source: "content/AbyssPopupContent.qml"
                 onCloseRequested: window.closeGenericPopup(popup.contentKind)
@@ -473,8 +473,13 @@ Scope {
                     required property int index
                     readonly property var popupEntry: liquid.popupSlots[index] ?? null
                     readonly property var hostedPopup: popupEntry?.popup ?? null
-                    readonly property string presentationKind:
-                        hostedPopup?._liquidAnchor?.kind ?? "popup"
+                    readonly property string presentationKind: {
+                        const explicitKind = String(
+                            hostedPopup?.liquidPresentationKind ?? "")
+                        return explicitKind.length > 0
+                            ? explicitKind
+                            : (hostedPopup?._liquidAnchor?.kind ?? "popup")
+                    }
 
                     identity: "styledPopup" + index
                     readonly property var configuredPresentation:

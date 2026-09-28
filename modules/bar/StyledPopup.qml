@@ -12,6 +12,10 @@ LazyLoader {
     id: root
 
     property Item hoverTarget
+    // Optional semantic kind used only when a mature popup is rehosted by the
+    // Abyss output field. Battery naturally inherits "battery" from its owning
+    // module; Launcher uses this override because its visual module is distroIcon.
+    property string liquidPresentationKind: ""
     // The same feature/content can be hosted by the output's Abyss field.
     // No second native popup, connector painter or feature implementation.
     property Item embeddedHost: null

@@ -8,6 +8,7 @@ import qs.modules.common.widgets
 import qs.modules.bar as Shared
 import qs.modules.bar.weather
 import qs.modules.abyss.looks
+import qs.modules.abyss.content
 import qs.modules.verticalBar as Vertical
 
 // Mature feature controls, with popup ownership discovered from this ancestor.
@@ -69,13 +70,28 @@ Item {
     Component { id: verticalMedia; Vertical.VerticalMedia { edgeHostedExpansion: true } }
     Component { id: battery; Shared.BatteryIndicator {} }
     Component { id: verticalBattery; Vertical.BatteryIndicator {} }
+    // Launcher follows the same ownership model as Battery: the source control
+    // owns one mature StyledPopup, and Abyss only rehosts that popup into the
+    // output field. No GlobalStates generic-popup handoff is involved.
     Component {
         id: distro
-        Shared.DistroIcon {
-            onAbyssControlsHoverChanged: hovered => {
-                root.hoverState("launcher", hovered)
-                if (hovered)
-                    root.hoverRequest("launcher")
+        MouseArea {
+            id: launcherAnchor
+            hoverEnabled: true
+            acceptedButtons: Qt.NoButton
+            implicitWidth: distroIcon.implicitWidth
+            implicitHeight: distroIcon.implicitHeight
+
+            Shared.DistroIcon {
+                id: distroIcon
+                anchors.fill: parent
+            }
+
+            Shared.StyledPopup {
+                hoverTarget: launcherAnchor
+                liquidPresentationKind: "launcher"
+
+                AbyssLauncherControlsPopup {}
             }
         }
     }

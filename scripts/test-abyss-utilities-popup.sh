@@ -9,6 +9,43 @@ migration="$repo_root/sdata/migrations/055-retire-abyss-utilities-module.sh"
 utility_popup="$repo_root/modules/abyss/content/AbyssUtilitiesPopup.qml"
 monitor_config="$repo_root/modules/settings/MonitorVisibilityConfig.qml"
 settings_section="$repo_root/modules/common/widgets/SettingsCardSection.qml"
+popup_content="$repo_root/modules/abyss/content/AbyssPopupContent.qml"
+perimeter="$repo_root/modules/abyss/AbyssPerimeter.qml"
+
+for token in \
+    'signal utilitiesHoverChanged(bool hovered)' \
+    'Component.onDestruction: root.utilitiesHoverChanged(false)'; do
+    grep -Fq "$token" "$quick_actions" \
+        || { printf 'FAIL: Utilities trigger hover contract missing: %s\n' "$token" >&2; exit 1; }
+done
+for token in \
+    'onUtilitiesHoverChanged: hovered =>' \
+    'root.hoverRequest("utilities")'; do
+    grep -Fq "$token" "$module" \
+        || { printf 'FAIL: Abyss Utilities hover routing missing: %s\n' "$token" >&2; exit 1; }
+done
+for token in \
+    '["wifi","bluetooth","utilities"].includes(root.kind)' \
+    'property bool autoDismissOnIdle: true' \
+    'id: idleDismiss'; do
+    grep -Fq "$token" "$popup_content" \
+        || { printf 'FAIL: shared popup hover/focus lease missing: %s\n' "$token" >&2; exit 1; }
+done
+grep -Fq 'kind === "utilities" && same' "$perimeter" \
+    || { printf 'FAIL: Utilities click is not idempotent while hover-open\n' >&2; exit 1; }
+if grep -Fq 'description: "Close utilities"' "$utility_popup" || grep -Fq 'glyph: "close"' "$utility_popup"; then
+    printf 'FAIL: Utilities still exposes a manual Close action\n' >&2
+    exit 1
+fi
+for token in \
+    'Audio.inputDevices.map' \
+    'Audio.setDefaultSource(device)' \
+    'Audio.micVolume' \
+    'Audio.setSourceVolume(value)' \
+    'Audio.toggleMicMute()'; do
+    grep -Fq "$token" "$utility_popup" \
+        || { printf 'FAIL: Utilities Sound page missing input control: %s\n' "$token" >&2; exit 1; }
+done
 
 for token in 'Behavior on implicitWidth' 'Behavior on implicitHeight'; do
     grep -Fq "$token" "$utility_popup" \
@@ -94,6 +131,7 @@ ShellRoot {
             id: popup
             anchors.fill: parent
             kind: "utilities"
+            autoDismissOnIdle: false
             outputName: "utilities-test"
             onCloseRequested: root.dismissed++
         }
@@ -125,7 +163,7 @@ ShellRoot {
                 utility.currentPage = 2
             } else if (root.step === 3) {
                 if (!root.check(utility.currentPage === 2 && utility.currentFeature !== null,
-                    "Sound output page loads without changing the default sink")) return
+                    "Sound page loads without changing the default sink/source")) return
                 if (!root.check(utility.loadedPageCount <= 3,
                     "lazy page window remains bounded while swiping")) return
                 utility.closeRequested()

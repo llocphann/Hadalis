@@ -189,7 +189,7 @@ Scope {
                 controller: liquid
                 edgeInsets: window.nativeInsets
             }
-            property string connectivityHoverKind: ""
+            property string transientPopupHoverKind: ""
             AbyssBar {
                 id: bar
                 outputName: window.outputName
@@ -205,6 +205,10 @@ Scope {
                 onPopupRequested: (kind,edge,along) => {
                     const same = (GlobalStates.abyssPopupKind === kind || (kind === "media" && GlobalStates.mediaControlsOpen))
                         && GlobalStates.abyssPopupTargetOutput === window.outputName
+                    // Utilities is hover-owned. A click while it is already open
+                    // is an idempotent keep-open action, not a surprising toggle-close.
+                    if (kind === "utilities" && same)
+                        return
                     window.closePopup()
                     if (!same) {
                         GlobalStates.abyssPopupTargetOutput = window.outputName
@@ -226,14 +230,14 @@ Scope {
                     GlobalStates.abyssPopupKind = kind
                 }
                 onPopupHoverStateChanged: (kind,edge,along,hovered) => {
-                    if (!["wifi","bluetooth"].includes(kind))
+                    if (!["wifi","bluetooth","utilities"].includes(kind))
                         return
                     if (hovered) {
-                        window.connectivityHoverKind = kind
+                        window.transientPopupHoverKind = kind
                         return
                     }
-                    if (window.connectivityHoverKind === kind)
-                        window.connectivityHoverKind = ""
+                    if (window.transientPopupHoverKind === kind)
+                        window.transientPopupHoverKind = ""
                 }
             }
             Item {
@@ -386,8 +390,8 @@ Scope {
                 stableContentSize: true
                 obstacles: window.sideObstacles
                 contentKind: GlobalStates.abyssPopupKind || "media"
-                property bool triggerHovered: ["wifi","bluetooth"].includes(contentKind)
-                    && window.connectivityHoverKind === contentKind
+                property bool triggerHovered: ["wifi","bluetooth","utilities"].includes(contentKind)
+                    && window.transientPopupHoverKind === contentKind
                 source: "content/AbyssPopupContent.qml"
                 onCloseRequested: window.closePopup()
             }

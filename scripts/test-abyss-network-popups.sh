@@ -23,6 +23,8 @@ grep -Fq 'signal connectivityHoverChanged(string kind, bool hovered)' "$repo_roo
     || { printf 'FAIL: connectivity trigger hover state is not exported\n' >&2; exit 1; }
 grep -Fq 'triggerHovered: root.participant?.triggerHovered ?? false' "$repo_root/modules/abyss/content/AbyssPopupContent.qml" \
     || { printf 'FAIL: popup host hover state is not bound into network content\n' >&2; exit 1; }
+grep -Fq '["wifi","bluetooth","utilities"].includes(root.kind)' "$repo_root/modules/abyss/content/AbyssPopupContent.qml" \
+    || { printf 'FAIL: network popup no longer shares the generic hover/focus dismissal lease\n' >&2; exit 1; }
 grep -Fq 'showEmbeddedFooter: false' "$repo_root/modules/abyss/content/AbyssNetworkPopup.qml" \
     || { printf 'FAIL: System Tray network popup still exposes mature footer actions\n' >&2; exit 1; }
 grep -Fq 'glyph: "settings"' "$repo_root/modules/abyss/content/AbyssNetworkPopup.qml" \
@@ -92,6 +94,7 @@ ShellRoot {
             width:960;height:720
         AbyssBodyHost {
             id: body; anchors.fill: parent
+            property bool triggerHovered: true
             identity: "networkPopup"; outputName: "network-test"; controller: controller
             edgeInsets: controller.edgeInsets
             edge: "top"; along: 100; span: 408; depth: 528

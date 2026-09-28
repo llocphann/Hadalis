@@ -89,6 +89,11 @@ Item {
             compactRequested: root.compact
             showUtilitiesLauncher: true
             onUtilitiesRequested: root.request("utilities")
+            onUtilitiesHoverChanged: hovered => {
+                root.hoverState("utilities", hovered)
+                if (hovered)
+                    root.hoverRequest("utilities")
+            }
         }
     }
     Component { id: timer; Shared.TimerIndicator { vertical: root.vertical } }

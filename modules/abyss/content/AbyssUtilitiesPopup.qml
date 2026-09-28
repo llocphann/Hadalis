@@ -20,10 +20,10 @@ Item {
     readonly property int loadedPageCount: [monitorLoader, displayLoader, audioLoader, nightLoader]
         .filter(loader => loader.active && loader.item !== null).length
     readonly property var pageTitles: [
-        "Monitor arrangement", "Display mode", "Sound output", "Eye protection"
+        "Monitor arrangement", "Display mode", "Sound", "Eye protection"
     ]
-    readonly property var pageWidths: [620, 540, 440, 460]
-    readonly property var pageHeights: [430, 390, 350, 500]
+    readonly property var pageWidths: [620, 540, 480, 460]
+    readonly property var pageHeights: [430, 390, 430, 500]
 
     // Size the connected body to the active page instead of reserving the old
     // 760×620 maximum for every utility.
@@ -68,13 +68,6 @@ Item {
                 Layout.fillWidth: true
             }
 
-            AbyssButton {
-                visible: pages.currentIndex !== 3
-                compact: true
-                glyph: "close"
-                description: "Close utilities"
-                onClicked: root.closeRequested()
-            }
         }
 
         SwipeView {
@@ -335,11 +328,11 @@ Item {
         Item {
             ColumnLayout {
                 anchors.fill: parent
-                spacing: 12
+                spacing: 10
 
                 AbyssLabel {
                     Layout.fillWidth: true
-                    text: Audio.sink ? "Current: " + Audio.friendlyDeviceName(Audio.sink)
+                    text: Audio.sink ? "Output · " + Audio.friendlyDeviceName(Audio.sink)
                         : "No active audio output"
                     font.weight: Font.DemiBold
                 }
@@ -362,47 +355,97 @@ Item {
                         to: Math.min(2, Audio.hardMaxValue)
                         value: Audio.value
                         unit: "%"
+                        enabled: !!Audio.sink?.audio
                         onMoved: Audio.setSinkVolume(value)
                     }
                 }
 
                 AbyssLabel {
-                    text: "Available outputs"
+                    text: "Output device"
                     color: AbyssStyle.textColorMuted
                 }
 
-                Flickable {
+                StyledComboBox {
                     Layout.fillWidth: true
-                    Layout.fillHeight: true
-                    clip: true
-                    contentHeight: outputList.implicitHeight
-                    boundsBehavior: Flickable.StopAtBounds
-
-                    ColumnLayout {
-                        id: outputList
-                        width: parent.width
-                        spacing: 6
-
-                        Repeater {
-                            model: Audio.outputDevices
-                            delegate: AbyssButton {
-                                required property var modelData
-                                Layout.fillWidth: true
-                                glyph: modelData.id === Audio.sink?.id ? "check_circle" : "speaker"
-                                text: Audio.friendlyDeviceName(modelData)
-                                checked: modelData.id === Audio.sink?.id
-                                onClicked: Audio.setDefaultSink(modelData)
-                            }
-                        }
-
-                        AbyssLabel {
-                            Layout.fillWidth: true
-                            visible: Audio.outputDevices.length === 0
-                            text: "No PipeWire output devices are available."
-                            color: AbyssStyle.textColorMuted
-                        }
+                    enableSettingsSearch: false
+                    model: Audio.outputDevices.map(device => Audio.friendlyDeviceName(device))
+                    currentIndex: Audio.outputDevices.findIndex(device =>
+                        device.id === Audio.sink?.id)
+                    enabled: Audio.outputDevices.length > 0
+                    onActivated: {
+                        const device = Audio.outputDevices[currentIndex]
+                        if (device)
+                            Audio.setDefaultSink(device)
                     }
                 }
+
+                Rectangle {
+                    Layout.fillWidth: true
+                    implicitHeight: 1
+                    color: Qt.alpha(AbyssStyle.textColor, .12)
+                }
+
+                AbyssLabel {
+                    Layout.fillWidth: true
+                    text: Audio.source ? "Input · " + Audio.friendlyDeviceName(Audio.source)
+                        : "No active audio input"
+                    font.weight: Font.DemiBold
+                }
+
+                RowLayout {
+                    Layout.fillWidth: true
+                    spacing: 8
+
+                    AbyssButton {
+                        compact: true
+                        glyph: Audio.micMuted ? "mic_off" : "mic"
+                        description: Audio.micMuted ? "Unmute input" : "Mute input"
+                        enabled: Audio.inputDevices.length > 0 || !!Audio.source?.audio
+                        onClicked: Audio.toggleMicMute()
+                    }
+
+                    AbyssSlider {
+                        Layout.fillWidth: true
+                        from: 0
+                        to: Math.min(2, Audio.hardMaxValue)
+                        value: Audio.micVolume
+                        unit: "%"
+                        enabled: Audio.inputDevices.length > 0 || !!Audio.source?.audio
+                        onMoved: Audio.setSourceVolume(value)
+                    }
+                }
+
+                AbyssLabel {
+                    text: "Input device"
+                    color: AbyssStyle.textColorMuted
+                }
+
+                StyledComboBox {
+                    Layout.fillWidth: true
+                    enableSettingsSearch: false
+                    model: Audio.inputDevices.map(device => Audio.friendlyDeviceName(device))
+                    currentIndex: Audio.inputDevices.findIndex(device =>
+                        device.id === Audio.source?.id)
+                    enabled: Audio.inputDevices.length > 0
+                    onActivated: {
+                        const device = Audio.inputDevices[currentIndex]
+                        if (device)
+                            Audio.setDefaultSource(device)
+                    }
+                }
+
+                AbyssLabel {
+                    Layout.fillWidth: true
+                    visible: Audio.outputDevices.length === 0 || Audio.inputDevices.length === 0
+                    text: Audio.outputDevices.length === 0 && Audio.inputDevices.length === 0
+                        ? "No PipeWire input or output devices are available."
+                        : Audio.outputDevices.length === 0
+                            ? "No PipeWire output devices are available."
+                            : "No PipeWire input devices are available."
+                    color: AbyssStyle.textColorMuted
+                }
+
+                Item { Layout.fillHeight: true }
             }
         }
     }

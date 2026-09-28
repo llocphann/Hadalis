@@ -10,12 +10,53 @@ import qs.modules.mediaControls
 import qs.modules.abyss.looks
 
 // Rehost the mature popup contents, including Events, ThinkFan and Equalizer.
-Item {
+FocusScope {
     id: root
     property string kind: "media"
     property string outputName: ""
     property var participant: null
+    // Wi-Fi, Bluetooth and Utilities share one hover/focus lease. This keeps
+    // icon→popup hand-off timing consistent and avoids a second dismissal timer.
+    property bool autoDismissOnIdle: true
+    property int idleDismissDelay: 650
+    readonly property bool hoverDismissEnabled: root.autoDismissOnIdle
+        && ["wifi","bluetooth","utilities"].includes(root.kind)
+    readonly property bool triggerHovered: root.participant?.triggerHovered ?? false
     signal closeRequested()
+
+    function refreshIdleDismiss(): void {
+        if (!root.hoverDismissEnabled || !root.enabled) {
+            idleDismiss.stop()
+            return
+        }
+        if (root.triggerHovered || popupHover.hovered || root.activeFocus)
+            idleDismiss.stop()
+        else
+            idleDismiss.restart()
+    }
+
+    Component.onCompleted: Qt.callLater(root.refreshIdleDismiss)
+    onKindChanged: root.refreshIdleDismiss()
+    onEnabledChanged: root.refreshIdleDismiss()
+    onTriggerHoveredChanged: root.refreshIdleDismiss()
+    onActiveFocusChanged: root.refreshIdleDismiss()
+
+    HoverHandler {
+        id: popupHover
+        enabled: root.hoverDismissEnabled
+        onHoveredChanged: root.refreshIdleDismiss()
+    }
+
+    Timer {
+        id: idleDismiss
+        interval: root.idleDismissDelay
+        repeat: false
+        onTriggered: {
+            if (root.hoverDismissEnabled && root.enabled
+                    && !root.triggerHovered && !popupHover.hovered && !root.activeFocus)
+                root.closeRequested()
+        }
+    }
     readonly property var feature: content.item
     readonly property var featureContent: feature?.contentItem ?? feature
     readonly property real desiredWidth: featureContent?.implicitWidth || 390
@@ -40,7 +81,9 @@ Item {
         id: network
         AbyssNetworkPopup {
             kind: root.kind
-            triggerHovered: root.participant?.triggerHovered ?? false
+            // AbyssPopupContent owns the shared Wi-Fi/Bluetooth/Utilities lease.
+            autoDismissOnIdle: false
+            triggerHovered: root.triggerHovered
             onCloseRequested: root.closeRequested()
         }
     }

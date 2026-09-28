@@ -20,6 +20,7 @@ Item {
     // Quick Actions implementation without gaining a new popup route.
     property bool showUtilitiesLauncher: false
     signal utilitiesRequested()
+    signal utilitiesHoverChanged(bool hovered)
     readonly property color neutralIconColor: Appearance.colors.colOnLayer2
     readonly property color dangerIconColor: Appearance.colors.colError
     readonly property bool hasUrgentState: RecorderStatus.isRecording
@@ -470,9 +471,14 @@ Item {
             active: root.showUtilitiesLauncher
             visible: active
             sourceComponent: CircleUtilButton {
+                id: utilitiesButton
                 Layout.alignment: Qt.AlignVCenter
                 Accessible.name: Translation.tr("Open utilities")
                 onClicked: root.utilitiesRequested()
+                Component.onDestruction: root.utilitiesHoverChanged(false)
+                HoverHandler {
+                    onHoveredChanged: root.utilitiesHoverChanged(hovered)
+                }
                 MaterialSymbol {
                     horizontalAlignment: Qt.AlignHCenter
                     fill: 0

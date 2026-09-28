@@ -3561,3 +3561,201 @@ These tests distinguish “heavy generation was fixed” from “warm cache is a
 
 No runtime implementation is authorized by this handoff.
 
+## 29. Audit round 15 — desktop auto-placement startup work, Niri route dedup and Pyramid overlap delta (2026-09-29)
+
+This round is documentation/research only. No runtime source was changed.
+
+The live branch moved from the previous audit checkpoint \`c17cd56b85a7fd9b92f69838ee0a4557265626bb\` to \`673f15f786aa9b1df8409eb653ecb3b19804f4ff\` while research continued. The four-commit runtime delta is confined to Pyramid v2 tangent-overlap grouping/transactions plus tests/docs. That delta was re-read before the broader findings below.
+
+### 29.1 Desktop clock auto-placement is a real early-session OpenCV path once a wallpaper is configured — PROMOTE / P0 trace, P1 lossless candidate
+
+Round 5 (§19.6) classified \`least_busy_region.py\` as an explicit auto-placement path rather than a periodic idle loop. That remains true, but the priority assessment was incomplete.
+
+Current defaults also say:
+
+- \`background.widgets.clock.enable = true\`;
+- \`background.widgets.clock.placementStrategy = "leastBusy"\`.
+
+The pristine default \`background.wallpaperPath\` is empty, so a brand-new untouched config does not run the analysis. However, once a normal user has selected/persisted a wallpaper, the critical Background tree creates one ClockWidget per eligible output and the clock's inherited \`AbstractBackgroundWidget\` resolves to \`leastBusy\` on every shell session.
+
+This matters because Abyss loads \`Background.qml\` from the critical family host, not from the deferred Tier-3/Tier-4 service wave. The auto-placement helper can therefore compete with first-paint/startup work before the later startup phases measured in §24/§26.
+
+The current path is:
+
+\`ClockWidget -> AbstractBackgroundWidget.refreshPlacementIfNeeded() -> least-busy-region-venv.sh -> Python -> OpenCV/NumPy\`.
+
+This is not a reason to remove least-busy placement. It is a reason to add it to the P0 startup process/CPU trace.
+
+### 29.2 The least-busy request path has no request signature/in-flight serialization and can restart equivalent work — ADAPT / P1
+
+\`AbstractBackgroundWidget\` has several independent paths that can request placement analysis:
+
+- \`Component.onCompleted\` synchronizes \`placementStrategy\` and schedules \`applyPlacementFromConfig()\`;
+- \`onPlacementStrategyChanged\` schedules the same apply path;
+- wallpaper changes restart a 500 ms placement debounce;
+- width/height/safe-area changes restart a 120 ms geometry debounce, which calls \`refreshPlacementIfNeeded()\` for auto-placement.
+
+For \`leastBusy/mostBusy\`, \`refreshPlacementIfNeeded()\` currently does:
+
+\`\`\`qml
+leastBusyRegionProc.running = false
+leastBusyRegionProc.running = true
+\`\`\`
+
+There is no:
+
+- last-completed request signature;
+- in-flight request signature;
+- queued-latest request;
+- result-generation check.
+
+The neighboring color-only path already contains an explicit warning that stop/restart did not reliably prevent the old result from landing, and it therefore serializes work with \`_colorRerunQueued\` plus launch-time geometry snapshots.
+
+Quickshell's Process contract says setting \`running = false\` sends SIGTERM to the tracked process. The tracked executable here is the Bash wrapper; the wrapper starts Python as a child rather than replacing itself with \`exec\`. Therefore the least-busy path should not assume that toggling the wrapper's \`running\` state is a complete cancellation protocol for the Python/OpenCV work.
+
+**Lossless direction:**
+
+1. define an exact request signature from wallpaper identity/revision, screen dimensions, widget dimensions, padding, screen mode and least/busiest mode;
+2. if the same signature is already complete, reuse the result;
+3. if a request is running, keep only the newest distinct pending signature instead of stop/restart churn;
+4. apply a result only if its launch signature still matches the desired signature;
+5. if cancellation is retained, make the wrapper/process ownership unambiguous (for example by ensuring the tracked process is the actual Python worker), but serialization/dedup is still preferred.
+
+Acceptance target: a stable configured wallpaper + stable clock geometry should produce one analysis per unique signature, not one per QML initialization trigger.
+
+### 29.3 One least-busy invocation decodes/resizes the same wallpaper three times — CONFIRMED static duplication / P1
+
+\`scripts/images/least_busy_region.py\` currently performs three separate image-read/scale paths in the normal least-busy mode:
+
+1. \`find_least_busy_region()\`:
+   - \`cv2.imread(..., IMREAD_GRAYSCALE)\`;
+   - resize/crop;
+   - float64 conversion;
+   - two integral images;
+   - sliding-window variance search.
+2. \`get_dominant_color()\`:
+   - reads the image again in color;
+   - resizes/crops again;
+   - runs deterministic K-means on the selected region.
+3. \`get_region_brightness()\`:
+   - reads the image again in grayscale;
+   - resizes/crops again;
+   - computes mean/std-dev.
+
+The output is deterministic for a fixed request (the K-means RNG is explicitly seeded), so there is no semantic need for three independent decodes of unchanged bytes.
+
+**Lossless direction:**
+
+- load/resize/crop one canonical color image once;
+- derive grayscale from that already-resized image;
+- reuse the same color/grayscale arrays for variance search, dominant color and brightness;
+- preserve the current interpolation, crop rules, stride, K-means seed and JSON values within an agreed numerical tolerance.
+
+Do not estimate a percentage from source alone. Benchmark representative 1080p/1440p/4K wallpapers before and after any authorized implementation.
+
+### 29.4 Background wallpaper-size cache is bounded but lacks cross-output in-flight dedup — P2
+
+\`Background.qml\` already has a shared bounded 64-entry \`_wallpaperSizeCache\` for \`magick identify\` results. This correctly makes later requests for a known wallpaper process-free.
+
+A narrower multi-output startup race remains:
+
+- each Background variant owns its own \`getWallpaperSizeProc\`;
+- each checks the shared cache;
+- if two outputs request the same uncached wallpaper before either result lands, both can launch \`magick identify\`;
+- the shared cache is populated only after one process finishes.
+
+This is much smaller than the OpenCV auto-placement path, but it is the same shared-cache ownership pattern as the warm-cache candidates in §28.
+
+Lossless direction if traces show it: add a shared in-flight registry/fan-out at the Background scope so one identify request publishes the dimensions to every waiting output.
+
+### 29.5 Niri output startup query is NOT currently safe to remove; wallpaper picker focused-output query is a narrower steady-state dedup candidate
+
+A source-only read initially suggested that \`NiriService.fetchOutputs()\` on event-stream connection might be redundant because niri documents its event stream as providing complete initial state.
+
+Further verification closes that idea for the current compatibility target:
+
+- the public \`niri_ipc::Event\` schema currently documents workspace/window/keyboard/overview/config/cast events but no \`OutputsChanged\` variant;
+- independent niri 26.04 probing likewise reports no output event in the stream;
+- Hadalis needs \`niri msg -j outputs\` for output geometry/scale used by fullscreen detection and display-scale state.
+
+Therefore **do not remove** the initial \`fetchOutputs()\` process based on the generic “complete state” wording. The existing \`OutputsChanged\` handler should be treated as compatibility/future-event support unless the deployed niri version is proven to emit it.
+
+A separate route remains worth adapting:
+
+\`WallpaperSelectorRouter._openOnFocusedMonitor()\` launches:
+
+\`niri msg -j focused-output\`
+
+for every Niri picker open that lacks an explicit monitor.
+
+But Hadalis already maintains \`NiriService.currentOutput\` from the focused workspace and exposes \`GlobalStates.focusedScreen\` from that value. This gives a safe lossless shape:
+
+- use the already-live \`NiriService.currentOutput\` / \`GlobalStates.focusedScreen\` when it is non-empty/valid;
+- retain the one-shot \`focused-output\` process only as a readiness/failure fallback.
+
+Acceptance target: after NiriService has reached normal steady state, repeated Wallpaper Selector/Launcher/Coverflow opens should spawn zero \`niri msg focused-output\` children while selecting the same output as before.
+
+### 29.6 ii SidebarHost still has a separate five-minute content residency policy; hidden fixed-rate work is mostly gated — P2 memory/reactivity only
+
+Round 14 correctly closed the old generic five-minute \`retainAfterUse\` policy for ordinary on-demand panels. A separate policy still exists inside \`modules/sidebar/SidebarHost.qml\`:
+
+\`contentIdleUnloadMs = 300000\`
+
+After an ii sidebar has been presented once, its content tree can remain resident for five minutes after close.
+
+This does **not** apply to the native Abyss sidebar host: \`AbyssBodyHost\` unloads \`AbyssLeftContent/AbyssRightContent\` after semantic close + reveal completion unless content is explicitly resident.
+
+Targeted hidden-work checks on the ii sidebar are reassuring:
+
+- \`SidebarHost\` disables window render updates after the exit settle;
+- SysMon's \`ResourceUsageMonitor\` lease is gated by \`GlobalStates.sidebarRightOpen\`;
+- LocalMusic CAVA is gated by sidebar open state;
+- News/Anime loading spinners are gated by sidebar open state;
+- the right-sidebar entrance cascade is finite and completes once.
+
+Residual cost is therefore primarily retained object/model memory and reactive bindings, not a newly found fixed-rate CPU loop.
+
+Do not shorten the five-minute policy blindly: unloading can affect local UI state and reopen latency. Measure heap/PSS and reopen latency with representative heavy tabs before deciding.
+
+One related P2 interaction note: \`SidebarLeftContent\` keeps current + previous + next SwipeView loaders active. If an adjacent enabled tab is News or Anime Schedule, its \`Component.onCompleted\` network fetch can occur before the user explicitly selects that tab. If network/process traces show this matters, separate “preload visual tree” from “activate remote fetch” rather than removing adjacent-page preload outright.
+
+### 29.7 New Pyramid tangent-overlap grouping does not create a new material per-frame regression — CLOSED pending profile
+
+The four-commit delta to \`673f15f7...\` changes Pyramid grouping from near-identical anchor centers to transitive tangent overlap/proximity neighborhoods.
+
+Static cost changes include:
+
+- \`AbyssBodyPlacement._orderedRequests()\` now builds a small union-find over open requests with an O(n²) pair comparison;
+- \`AbyssPyramidCoordinator\` builds transitive neighborhood candidate sets during entry/close/reopen transaction work;
+- descriptors/cloned placement/record objects remain small JS allocations.
+
+This is not currently a reason to optimize the new grouping:
+
+- allocator requests use full resting records rather than reveal-progress geometry;
+- the grouping work is tied to semantic placement/transaction changes, not the 60/120 Hz reveal fraction itself;
+- live popup/body counts are small;
+- the already-known per-frame risk remains \`AbyssBodyHost.rawPresentationRecord\` / geometry interpolation and the downstream records/uniform/wave cascade from §23–§25.
+
+Add the new grouping functions to the multi-popup QML profile, but do not trade away the new transitive-overlap correctness for speculative micro-optimization.
+
+### 29.8 Revised near-term evidence order
+
+Promote the desktop region analyzer into the existing startup measurement bundle.
+
+1. **Startup T+0..T+8 process/CPU/PSS trace**
+   - count \`least-busy-region-venv.sh\` and Python/OpenCV children per output;
+   - record start/end times and overlap with first paint, theming, MemoryPressure and Tier 3/4;
+   - repeat with one, two and three outputs where available;
+   - compare unchanged warm wallpaper vs wallpaper switch.
+2. **Region-analysis isolated benchmark**
+   - representative 1080p, 1440p and 4K images;
+   - record wall time, CPU time and peak RSS;
+   - count image decodes/resizes per request;
+   - test repeated identical QML triggers and verify dedup target.
+3. **Niri wallpaper-picker process count**
+   - after event-stream/workspace state is ready, repeatedly open each picker mode and count \`niri msg focused-output\` children.
+4. Keep the existing Config/Abyss/notification/warm-cache scenarios from §§25–28.
+
+The highest-confidence new static optimization in this round is **not** a rendering trick: it is eliminating duplicate/restarted heavyweight wallpaper-region analysis while preserving identical placement/color semantics.
+
+No runtime implementation is authorized by this handoff.

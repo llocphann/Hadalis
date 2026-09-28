@@ -15,6 +15,7 @@ Item {
     property var simulation: null
     property string mode: "SLEEPING"
     property int revision: 0
+    property real crestPeak: 0
     property real lastStep: 0
     readonly property bool running: ticker.running
     readonly property var texture: textureSource
@@ -105,17 +106,20 @@ Item {
         onPainted: textureSource.scheduleUpdate()
         onPaint: {
             if (!root.simulation) return
+            root.crestPeak = Wave.projectCrests(root.simulation,Appearance.effectsEnabled && AbyssStyle.quality !== "performance")
             const ctx = getContext("2d")
             ctx.clearRect(0,0,width,height)
             for (let i=0;i<width;i++) {
-                const value = Math.round((root.simulation.displacement[i]/384+.5)*65535)
-                ctx.fillStyle = "rgb("+(value>>8)+","+(value&255)+",0)"
+                const value = Math.round(root.simulation.crests[i]/256*65535)
+                const foam = Math.round(root.simulation.whitewater[i]*255)
+                ctx.fillStyle = "rgb("+(value>>8)+","+(value&255)+","+foam+")"
                 ctx.fillRect(i,0,1,1)
             }
         }
     }
     ShaderEffectSource {
         id: textureSource
+        readonly property bool activeProfile: root.crestPeak > .01
         width: samples.width; height: samples.height
         x: -width; y: -height
         sourceItem: samples

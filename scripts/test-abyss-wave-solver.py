@@ -111,6 +111,31 @@ for(const bad of [[Infinity,-2,NaN],[0,0,0],[]]) {
     for(let i=0;i<240;i++) advance(s,1/120);
     assert(s.displacement.every(v=>Number.isFinite(v) && Math.abs(v)<=heightLimit(s)+.001),'malformed and extreme audio stays bounded');
 }
-console.log('PASS: propagation, corner wrap, rebound, heavy mass, bounded stability, presets and integration-free sleep');
+
+const visual=create(256,1920,1200,parameters({preset:'deep'}));
+for(let i=0;i<visual.count;i++) {
+    visual.displacement[i]=80*Math.exp(-Math.pow((i-80)/5,2))-40*Math.exp(-Math.pow((i-150)/8,2));
+    visual.velocity[i]=180;
+}
+const signedBefore=JSON.stringify(visual.displacement),stepsBefore=visual.steps;
+projectCrests(visual,true);
+assert.equal(JSON.stringify(visual.displacement),signedBefore,'crest projection does not change signed interference');
+assert.equal(visual.steps,stepsBefore,'projection does not integrate or wake the solver');
+assert(visual.crests.every(v=>Number.isFinite(v)&&v>=0&&v<=192),'visual crests remain positive and bounded');
+assert.equal(visual.crests[150],0,'negative trough does not erode the resting Edge');
+assert(visual.crestPeak>80,'broad crests rise higher without raising physical energy');
+const rawHalf=visual.displacement.filter(v=>v>40).length;
+const visualHalf=visual.crests.filter(v=>v>visual.crestPeak*.5).length;
+assert(visualHalf<rawHalf,'taller crest has narrower half-height shoulders');
+assert(visual.whitewater.some(v=>v>.01),'moving steep crest produces whitewater');
+projectCrests(visual,false);assert(visual.whitewater.every(v=>v===0),'disabled effects have no foam');
+visual.parameters.whitewater=0;projectCrests(visual,true);
+assert(visual.whitewater.every(v=>v===0),'zero whitewater setting removes the breaker');
+visual.displacement.fill(0);visual.velocity.fill(0);projectCrests(visual,true);
+assert.equal(visual.crestPeak,0);assert(visual.whitewater.every(v=>v===0),'flat rest has no crest or residual whitewater');
+visual.displacement[80]=heightLimit(visual);projectCrests(visual,true);
+assert(visual.crestPeak<visual.displacement[80] && visual.crests[79]>0 && visual.crests[81]>0,'single-sample needle is rounded into bounded shoulders');
+console.log('PASS: signed interference, finite stability/sleep, compact positive crests and bounded crest-only whitewater');
+
 """
 subprocess.run(["node","-e",program],cwd=root,check=True)

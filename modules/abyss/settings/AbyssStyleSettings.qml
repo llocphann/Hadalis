@@ -184,6 +184,14 @@ ColumnLayout {
                 valueText:Math.round(value*100)+" %"
                 onMoved:Config.setNestedValue("abyss.waves.strength",value)
             }
+            WindowDialogSlider {
+                text:"Breaker / whitewater";Layout.fillWidth:true;from:0;to:1;stepSize:.01
+                visible:(Config.options?.abyss?.waves?.preset ?? "balanced") === "custom"
+                value:Config.options?.abyss?.waves?.whitewater ?? .65
+                valueText:Math.round(value*100)+" %"
+                onMoved:Config.setNestedValue("abyss.waves.whitewater",value)
+            }
+            SettingsNote { text:"Ripples and rounded crests rise above the resting Edge. Whitewater follows moving steep crests, and is disabled with effects or Performance quality." }
             WaveControl { text:"Wave size";parameter:"amplitude" }
             WaveControl { text:"Propagation distance";parameter:"propagation" }
             WaveControl { text:"Wave speed";parameter:"speed" }

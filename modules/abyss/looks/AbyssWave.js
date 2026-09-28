@@ -29,6 +29,7 @@ function parameters(options) {
     ["hover","press","open","close","drag"].forEach(function(key) { result[key] = unit(options?.[key],1); });
     result.idle = options?.idle === true;
     result.popupTravel = options?.popupTravel !== false;
+    result.whitewater = unit(options?.whitewater,.65);
     result.strength = bodyStrength(options);
     return result;
 }
@@ -48,6 +49,7 @@ function create(count, width, height, options) {
         // therefore belongs to initialization, not every solver substep.
         cornerSamples:Array.from({length:count},function(_,i) { return nearCorner(i*length/count,corners,length,length/count); }),
         acceleration:Array(count).fill(0),
+        crestSource:Array(count).fill(0),crests:Array(count).fill(0),whitewater:Array(count).fill(0),crestPeak:0,
         parameters:options,mode:"SLEEPING",quiet:0,age:0,steps:0};
 }
 function circularDistance(a,b,length) {
@@ -196,4 +198,44 @@ function advance(state, elapsed) {
         state.velocity.fill(0);state.mode="SLEEPING";
     } else state.mode=state.age<.2 ? "ACTIVE" : "SETTLING";
     return true;
+}
+
+// Presentation only: signed spring displacement remains untouched so opposite
+// waves still cancel. A five-tap filter removes single-sample needles; the C1
+// positive shoulder never erodes the resting Edge. Compact shoulders and a soft
+// height limit make taller round crests without hard-clipped plateaus.
+function smoothRange(low, high, value) {
+    var t=Math.max(0,Math.min(1,(value-low)/(high-low)));
+    return t*t*(3-2*t);
+}
+function projectCrests(state, foamAllowed) {
+    var count=state.count,source=state.crestSource,crests=state.crests,peak=0;
+    for(var i=0;i<count;i++) {
+        var h=(state.displacement[(i+count-2)%count]+4*state.displacement[(i+count-1)%count]
+            +6*state.displacement[i]+4*state.displacement[(i+1)%count]+state.displacement[(i+2)%count])/16;
+        h=Number.isFinite(h) ? Math.max(0,h) : 0;
+        source[i]=h*h/(h+.5);
+        peak=Math.max(peak,source[i]);
+    }
+    var limit=Math.min(192,heightLimit(state)*2,Math.min(state.width,state.height)*.35);
+    state.crestPeak=0;
+    for(var j=0;j<count;j++) {
+        var relative=peak>0 ? source[j]/peak : 0;
+        var shaped=source[j]*(.35+2.05*relative*relative);
+        crests[j]=limit>0 ? limit*(1-Math.exp(-shaped/limit)) : 0;
+        state.crestPeak=Math.max(state.crestPeak,crests[j]);
+    }
+    // Whitewater rides fast/steep crests in the existing texture's blue channel.
+    // No particles, extra render target, independent clock or foam-only timer.
+    var dx=state.length/count;
+    for(var k=0;k<count;k++) {
+        var left=crests[(k+count-1)%count],right=crests[(k+1)%count];
+        var curvature=(2*crests[k]-left-right)/dx;
+        var steepness=Math.abs(right-left)/(2*dx);
+        state.whitewater[k]=foamAllowed ? state.parameters.whitewater
+            *smoothRange(.05,.45,crests[k]/Math.max(1,limit))
+            *smoothRange(.05,.28,Math.max(curvature,steepness*.35))
+            *smoothRange(6,100,Math.abs(state.velocity[k])) : 0;
+    }
+    return state.crestPeak;
 }

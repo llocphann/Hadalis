@@ -11,6 +11,7 @@ layout(std140,binding=0) uniform buf {
     vec4 material;
     vec4 effects;
     vec4 contentMaterial;
+    vec4 waveMaterial;
     vec4 wallpaperCrop;
     vec4 surface;
     vec4 raised;
@@ -30,18 +31,40 @@ layout(std140,binding=0) uniform buf {
 };
 layout(binding=1) uniform sampler2D wallpaper;
 layout(binding=2) uniform sampler2D waveSamples;
-float waveAt(float arc) {
-    vec4 encoded=texture(waveSamples,vec2(fract(arc/(2.0*(viewport.x+viewport.y))),0.5));
-    return encoded.a<0.5 ? 0.0 : ((encoded.r*65280.0+encoded.g*255.0)/65535.0-0.5)*384.0;
+vec2 waveSample(float index) {
+    vec4 encoded=texture(waveSamples,vec2((mod(index+waveMaterial.x,waveMaterial.x)+0.5)/waveMaterial.x,0.5));
+    return encoded.a<0.5 ? vec2(0.0) : vec2((encoded.r*65280.0+encoded.g*255.0)/65535.0*256.0,encoded.b);
 }
-float displacement(vec2 p) {
+float crestSlope(float a, float b) {
+    return a*b<=0.0 ? 0.0 : 2.0*a*b/(a+b);
+}
+vec2 waveAt(float arc) {
+    float position=fract(arc/(2.0*(viewport.x+viewport.y)))*waveMaterial.x;
+    float index=floor(position),t=fract(position);
+    vec2 a=waveSample(index-1.0),b=waveSample(index),c=waveSample(index+1.0),e=waveSample(index+2.0);
+    float delta=c.x-b.x;
+    float start=crestSlope(b.x-a.x,delta),end=crestSlope(delta,e.x-c.x);
+    // Monotone cubic Hermite: continuous tangent, zero slope at a crest and no
+    // Catmull-Rom overshoot/trough. Explicit texel centers preserve corner wrap.
+    float t2=t*t,t3=t2*t;
+    float height=(2.0*t3-3.0*t2+1.0)*b.x+(t3-2.0*t2+t)*start
+        +(-2.0*t3+3.0*t2)*c.x+(t3-t2)*end;
+    return vec2(max(0.0,height),mix(b.y,c.y,t2*(3.0-2.0*t)));
+}
+vec2 waveProfile(vec2 p) {
+    // Flat/disabled/settled outputs avoid all wave texture reads.
+    if(waveMaterial.y<0.5 || waveMaterial.x<1.0) return vec2(0.0);
     vec4 distances=vec4(p.y,viewport.x-p.x,viewport.y-p.y,p.x);
     float nearest=min(min(distances.x,distances.y),min(distances.z,distances.w));
-    // Blend corner projections; adjacent sides share the same circular state.
     vec4 weights=exp(-max(vec4(0.0),distances-nearest)/28.0);
     vec4 arcs=vec4(p.x,viewport.x+p.y,2.0*viewport.x+viewport.y-p.x,2.0*(viewport.x+viewport.y)-p.y);
-    vec4 waves=vec4(waveAt(arcs.x),waveAt(arcs.y),waveAt(arcs.z),waveAt(arcs.w));
-    return dot(waves,weights)/dot(weights,vec4(1.0))*smoothstep(0.0,10.0,nearest);
+    vec2 result=vec2(0.0);
+    // Only nearby sides contribute; the corner blend shares the circular field.
+    if(weights.x>0.001) result+=waveAt(arcs.x)*weights.x;
+    if(weights.y>0.001) result+=waveAt(arcs.y)*weights.y;
+    if(weights.z>0.001) result+=waveAt(arcs.z)*weights.z;
+    if(weights.w>0.001) result+=waveAt(arcs.w)*weights.w;
+    return result/dot(weights,vec4(1.0))*smoothstep(0.0,10.0,nearest);
 }
 float roundedBox(vec2 p, vec4 rect, float radius) {
     float r = min(radius,min(rect.z,rect.w)*0.5);
@@ -70,11 +93,12 @@ float field(vec2 p) {
     d=record(d,p,rect28); d=record(d,p,rect29); d=record(d,p,rect30); d=record(d,p,rect31);
     d=record(d,p,rect32); d=record(d,p,rect33); d=record(d,p,rect34); d=record(d,p,rect35);
     d=record(d,p,rect36); d=record(d,p,rect37); d=record(d,p,rect38); d=record(d,p,rect39);
-    return d-displacement(p);
+    return d;
 }
 void main() {
     vec2 p=qt_TexCoord0*viewport.xy;
-    float d=field(p);
+    vec2 wave=waveProfile(p);
+    float d=field(p)-wave.x;
     // Derivatives are evaluated before any divergent early return.
     vec2 gradient=vec2(dFdx(d),dFdy(d));
     float aa=max(0.6,fwidth(d)*0.6);
@@ -112,6 +136,11 @@ void main() {
     body.rgb=mix(body.rgb,raised.rgb*body.a,reflection);
     body.rgb+=rim.rgb*body.a*(spec*0.65+reflection*0.32);
     body.rgb*=1.0-exp(-max(-d,0.0)*0.10)*(1.0-facing)*0.18*material.w;
+    // A thin, broken foam band follows the same crest distance. Its phase is
+    // driven by crest motion, not a wall-clock uniform, so sleeping stays static.
+    float breaker=wave.y*waveMaterial.z*exp(-abs(d+1.2)/2.8);
+    float lace=0.6+0.4*sin((p.x+p.y)*0.7+wave.x*0.12)*sin((p.x-p.y)*0.37);
+    body.rgb=mix(body.rgb,vec3(0.86,0.97,1.0)*body.a,clamp(breaker*lace,0.0,0.85));
     body.a=opacity;
     vec4 outside=shadow*exp(-max(d,0.0)/5.0)+glow*exp(-max(d,0.0)/7.0);
     outside*=smoothstep(-aa,aa,d)*(1.0-smoothstep(16.0,24.0,d));

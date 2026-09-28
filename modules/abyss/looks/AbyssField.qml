@@ -52,6 +52,8 @@ Item {
         readonly property vector4d material: Qt.vector4d(AbyssStyle.perimeterRadius,AbyssStyle.connectionDepth,AbyssStyle.neckRadius,AbyssStyle.highlightStrength)
         readonly property var wallpaper: wallpaperImage
         readonly property var waveSamples: root.waveTexture
+        readonly property vector4d waveMaterial: Qt.vector4d(root.waveTexture?.width ?? 0,
+            root.waveTexture?.activeProfile ? 1 : 0,Appearance.effectsEnabled ? 1 : 0,0)
         readonly property vector4d effects: Qt.vector4d(AbyssStyle.blurRadius,AbyssStyle.refractionStrength,root.wallpaperReady ? 1 : 0,0)
         readonly property vector4d contentMaterial: Qt.vector4d(AbyssStyle.contentOpacity,AbyssStyle.contentBlurRadius,0,0)
         readonly property vector4d wallpaperCrop: {

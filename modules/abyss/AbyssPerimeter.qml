@@ -113,7 +113,7 @@ Scope {
             WlrLayershell.layer: GlobalStates.settingsNativeDialogOpen ? WlrLayer.Bottom : PolkitService.active ? WlrLayer.Top : (window.editorOpen || utility.open || liquid.popupsOpen || dialogBody.open || settings.open || dashboardBody.open || controls.open || (window.fullscreenCovered && window.presented)) ? WlrLayer.Overlay : WlrLayer.Top
             WlrLayershell.keyboardFocus: !window.presented || !field.ready || GlobalStates.regionSelectorOpen || GlobalStates.settingsNativeDialogOpen || PolkitService.active || window.overviewDragging
                 ? WlrKeyboardFocus.None
-                : (window.editorOpen || (utility.presented && utility.ready) || liquid.popupExclusiveFocus || (popup.presented && (popup.contentItem.item?.keyboardFocus ?? false)) || (dialogBody.presented && dialogBody.ready) || (aux.presented && aux.ready) || (settings.presented && settings.ready) || (dashboardBody.presented && dashboardBody.ready) || (controls.presented && controls.ready)) ? WlrKeyboardFocus.Exclusive
+                : (window.editorOpen || (utility.presented && utility.ready) || liquid.popupExclusiveFocus || (popup.presented && (popup.contentItem.item?.keyboardFocus ?? false)) || (dialogBody.presented && dialogBody.ready) || (aux.presented && aux.ready) || (clipboardBody.presented && clipboardBody.ready) || (settings.presented && settings.ready) || (dashboardBody.presented && dashboardBody.ready) || (controls.presented && controls.ready)) ? WlrKeyboardFocus.Exclusive
                 : (liquid.popupOnDemandFocus || (leftPanel.presented && leftPanel.ready) || (rightPanel.presented && rightPanel.ready) || (popup.presented && popup.ready) || (notification.presented && notification.ready && notification.contentKind === "center"))
                     ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
             anchors { top: true; bottom: true; left: true; right: true }
@@ -155,6 +155,7 @@ Scope {
                 Region { x: controls.inputBounds.x; y: controls.inputBounds.y; width: window.presented && field.ready ? controls.inputBounds.width : 0; height: controls.inputBounds.height }
                 Region { x: settings.inputBounds.x; y: settings.inputBounds.y; width: window.presented && field.ready && !GlobalStates.settingsNativeDialogOpen ? settings.inputBounds.width : 0; height: settings.inputBounds.height }
                 Region { x: aux.inputBounds.x; y: aux.inputBounds.y; width: window.presented && field.ready ? aux.inputBounds.width : 0; height: aux.inputBounds.height }
+                Region { x: clipboardBody.inputBounds.x; y: clipboardBody.inputBounds.y; width: window.presented && field.ready ? clipboardBody.inputBounds.width : 0; height: clipboardBody.inputBounds.height }
             }
             function closePopup(): void {
                 liquid.dismissPopups()
@@ -163,7 +164,7 @@ Scope {
             }
             Item {
                 anchors.fill: parent
-                focus: aux.presented || leftPanel.presented || rightPanel.presented || popup.presented
+                focus: aux.presented || clipboardBody.presented || leftPanel.presented || rightPanel.presented || popup.presented
                 Keys.onEscapePressed: {
                     window.closePopup()
                     if (root.utilityKind) root.closeUtility()
@@ -270,7 +271,7 @@ Scope {
                 && (Config.options?.abyss?.sidebars?.hoverEnabled ?? true)
                 && Geometry.targets(window.outputName,Config.options?.sidebar?.screenList ?? [],Quickshell.screens.map(s=>s.name))
             readonly property bool sidebarOpeningAllowed: !utility.open && !settings.open && !dashboardBody.open
-                && !controls.open && !aux.open && !dialogBody.open && !GlobalStates.settingsNativeDialogOpen
+                && !controls.open && !aux.open && !clipboardBody.open && !dialogBody.open && !GlobalStates.settingsNativeDialogOpen
                 && !PolkitService.active && !GlobalStates.regionSelectorOpen
             component SidebarReveal: AbyssSidebarReveal {
                 y: (window.height-height)/2
@@ -303,7 +304,7 @@ Scope {
                 attachmentThickness:window.nativeInsets.bottom
                 quickNotesEditorOutput: root.quickNotesEditorOutput
                 presentationEnabled:window.presented && field.ready && !window.editorOpen
-                blocked:settings.open || dashboardBody.open || utility.open || controls.open || aux.open
+                blocked:settings.open || dashboardBody.open || utility.open || controls.open || aux.open || clipboardBody.open
                     || GlobalStates.settingsNativeDialogOpen || PolkitService.active || GlobalStates.regionSelectorOpen
                 onQuickNotesEditorLeaseChanged:(outputName,focused)=>
                     root.setQuickNotesEditorOutput(outputName,focused)
@@ -457,7 +458,7 @@ Scope {
                     && (Config.options?.enabledPanels ?? []).includes("abyssDock") && (Config.options?.dock?.enable ?? true)
                     && Geometry.targets(window.outputName,Config.options?.dock?.screenList ?? [],Quickshell.screens.map(s => s.name))
                     && !window.editorOpen && !settings.open && !dashboardBody.open && !controls.open
-                    && !aux.open && !utility.open && !(popup.open && popup.edge === edge) && !liquid.hasPopupOnEdge(edge)
+                    && !aux.open && !clipboardBody.open && !utility.open && !(popup.open && popup.edge === edge) && !liquid.hasPopupOnEdge(edge)
                     && (((Config.options?.dock?.pinnedOnStartup ?? false) && !(Config.options?.dock?.hoverToReveal ?? false)) || window.dockHovered
                         || (contentItem.item?.requestDockShow ?? false)
                         || ((Config.options?.dock?.showOnDesktop ?? true) && !ToplevelManager.activeToplevel?.activated))
@@ -483,28 +484,50 @@ Scope {
                 HoverHandler { id: dockRevealHover; onHoveredChanged: { if (hovered) { dockClose.stop(); window.dockHovered = true } else dockClose.restart() } }
             }
             Timer { id: dockClose; interval: 260; repeat: false; onTriggered: if (!dockRevealHover.hovered && !dockHover.hovered) window.dockHovered = false }
+            // Distinct hosts retain their own content until retraction ends.
+            // Switching the aux Loader to Overview on clipboard close briefly
+            // rendered Dashboard inside the still-visible Clipboard silhouette.
+            AbyssBodyHost {
+                id: clipboardBody
+                identity: "clipboard"
+                controller: liquid
+                anchors.fill: parent
+                edge: window.positionEdge(identity,"bottom")
+                outputName: window.outputName
+                open: window.presented && field.ready && GlobalStates.clipboardOpen
+                    && (Config.options?.enabledPanels ?? []).includes("abyssClipboard")
+                    && GlobalStates.resolveOutputName(GlobalStates.abyssClipboardTargetOutput,[]) === window.outputName
+                edgeInsets: window.bodyInsets(edge,along,span)
+                readonly property real contentWidth: 640
+                readonly property real contentHeight: window.height*.42
+                span: Geometry.horizontal(edge) ? contentWidth : contentHeight
+                along: window.positionAlong(identity,edge,span,(Geometry.horizontal(edge) ? window.width : window.height)/2-span/2)
+                depth: Geometry.horizontal(edge) ? contentHeight : contentWidth
+                obstacles: window.sideObstacles
+                source: "content/AbyssClipboardContent.qml"
+                onCloseRequested: GlobalStates.clipboardOpen = false
+            }
             AbyssBodyHost {
                 id: aux
-                stableContentSize: !GlobalStates.clipboardOpen
+                stableContentSize: true
                 identity: "aux"
                 controller: liquid
                 anchors.fill: parent
-                readonly property string presentationKind: GlobalStates.clipboardOpen ? "clipboard" : "overview"
+                readonly property string presentationKind: "overview"
                 edge: window.positionEdge(presentationKind,"bottom")
                 outputName: window.outputName
-                open: window.presented && field.ready && ((GlobalStates.clipboardOpen && (Config.options?.enabledPanels ?? []).includes("abyssClipboard")
-                    && GlobalStates.resolveOutputName(GlobalStates.abyssClipboardTargetOutput,[]) === window.outputName)
-                    || (GlobalStates.overviewOpen && (Config.options?.enabledPanels ?? []).includes("abyssOverview") && GlobalStates.overviewPresentationOutput === window.outputName))
+                open: window.presented && field.ready && GlobalStates.overviewOpen
+                    && (Config.options?.enabledPanels ?? []).includes("abyssOverview")
+                    && GlobalStates.overviewPresentationOutput === window.outputName
                 edgeInsets: window.bodyInsets(edge,along,span)
-                largeSurface: !GlobalStates.clipboardOpen
-                readonly property real contentWidth: GlobalStates.clipboardOpen ? 640 : GlobalStates.overviewMode === "taskview" ? window.width*.9 : window.width*(Config.options?.dashboard?.widthRatio ?? .72)+40
-                readonly property real contentHeight: GlobalStates.clipboardOpen ? window.height*.42 : (contentItem.item?.desiredHeight ?? window.height*.72)+padding*2
+                largeSurface: true
+                readonly property real contentWidth: GlobalStates.overviewMode === "taskview" ? window.width*.9 : window.width*(Config.options?.dashboard?.widthRatio ?? .72)+40
+                readonly property real contentHeight: (contentItem.item?.desiredHeight ?? window.height*.72)+padding*2
                 span: Geometry.horizontal(edge) ? contentWidth : contentHeight
                 along: window.positionAlong(presentationKind,edge,span,(Geometry.horizontal(edge) ? window.width : window.height)/2-span/2)
                 depth: Geometry.horizontal(edge) ? contentHeight : contentWidth
-                obstacles: GlobalStates.clipboardOpen ? window.sideObstacles : []
-                source: GlobalStates.clipboardOpen ? "content/AbyssClipboardContent.qml" : "content/AbyssOverviewContent.qml"
-                onCloseRequested: { GlobalStates.clipboardOpen = false; GlobalStates.overviewOpen = false }
+                source: "content/AbyssOverviewContent.qml"
+                onCloseRequested: GlobalStates.overviewOpen = false
             }
             AbyssBodyHost {
                 id: settings

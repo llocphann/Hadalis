@@ -30,7 +30,7 @@ There are two layers of autostart in a typical iNiR setup:
 
 These are defined in `~/.config/niri/config.d/50-startup.kdl` and managed by the compositor:
 
-- `exec wl-paste --type text --watch ~/.config/quickshell/inir/scripts/native-dispatch clipboard-store` (clipboard text history, browser-markup filtering)
+- `exec wl-paste --no-newline --type text --watch ~/.config/quickshell/inir/scripts/native-dispatch clipboard-store` (clipboard text history, browser-markup filtering)
 - `exec wl-paste --type image --watch cliphist store` (clipboard image history)
 - `polkit-mate-authentication-agent-1` (GUI sudo prompts)
 - `kbuildsycoca6` (KDE desktop entry cache)

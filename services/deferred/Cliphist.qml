@@ -159,10 +159,13 @@ Singleton {
         // exactly "ID<TAB>metadata". This also covers the owner's observed
         // "[[ binary data ... png 1194x863 ]]" rows.
         const preview = raw.replace(/^\s*\d+(?:\t|\s+)/, "").trim()
-        if (!/^\[\[\s*binary data\b[\s\S]*\]\]\s*$/i.test(preview))
+        // Owner cliphist output can append/retain extra preview material around
+        // the binary marker. Treat the marker as the authoritative signal
+        // instead of requiring it to occupy the whole list line.
+        if (!/\[\[\s*binary data\b[\s\S]*?\]\]/i.test(preview))
             return false
         return /\b(?:image\/[a-z0-9.+-]+|png|jpe?g|webp|gif|bmp|tiff?|avif|heic|heif)\b/i.test(preview)
-            || /\b\d{1,6}x\d{1,6}\b/.test(preview)
+            || /\b\d{1,6}\s*[x×]\s*\d{1,6}\b/i.test(preview)
     }
 
     function entryImageMime(entry): string {

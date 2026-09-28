@@ -47,6 +47,9 @@ for token in \
         || { printf 'FAIL: Utilities Sound page missing input control: %s\n' "$token" >&2; exit 1; }
 done
 
+grep -Fq 'focus: false' "$utility_popup" \
+    || { printf 'FAIL: hover-owned Utilities pre-focuses and can retain its dismissal lease\n' >&2; exit 1; }
+
 for token in 'Behavior on implicitWidth' 'Behavior on implicitHeight'; do
     grep -Fq "$token" "$utility_popup" \
         || { printf 'FAIL: Utilities popup size motion missing: %s\n' "$token" >&2; exit 1; }

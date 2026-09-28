@@ -41,7 +41,9 @@ Item {
         NumberAnimation { duration: AbyssStyle.motionNormal; easing.type: Easing.OutCubic }
     }
 
-    focus: true
+    // Interactive descendants acquire focus on demand. Pre-focusing this
+    // hover-owned surface would hold the shared dismissal lease forever.
+    focus: false
     signal closeRequested()
 
     Keys.onLeftPressed: event => {

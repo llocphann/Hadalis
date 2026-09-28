@@ -103,8 +103,13 @@ Item {
         hoverAllowed:root.centerAvailable
     }
     onNotesAvailableChanged: {
-        if (!notesAvailable && notesPopup.presentationActive)
+        if (!notesAvailable && notesPopup.presentationActive) {
+            // A blocked/evicted surface is an explicit ownership loss, not a
+            // hover leave. Drop its local pin so _liquidDismissed cannot leave
+            // this output permanently hidden behind a still-true pin request.
+            notesPopup.popupPinned = false
             notesPopup.dismissPresentation()
+        }
     }
     onCenterAvailableChanged: {
         if (!centerAvailable && centerPopup.presentationActive)

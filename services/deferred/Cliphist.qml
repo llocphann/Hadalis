@@ -165,6 +165,24 @@ Singleton {
             || /\b\d{1,6}x\d{1,6}\b/.test(preview)
     }
 
+    function entryImageMime(entry): string {
+        if (!root.entryIsImage(entry))
+            return ""
+        const preview = String(entry ?? "")
+            .replace(/^\s*\d+(?:\t|\s+)/, "").toLowerCase()
+        if (/\b(?:png|image\/png)\b/.test(preview)) return "image/png"
+        if (/\b(?:jpe?g|image\/jpe?g)\b/.test(preview)) return "image/jpeg"
+        if (/\b(?:webp|image\/webp)\b/.test(preview)) return "image/webp"
+        if (/\b(?:gif|image\/gif)\b/.test(preview)) return "image/gif"
+        if (/\b(?:bmp|image\/bmp)\b/.test(preview)) return "image/bmp"
+        if (/\b(?:tiff?|image\/tiff?)\b/.test(preview)) return "image/tiff"
+        if (/\b(?:avif|image\/avif)\b/.test(preview)) return "image/avif"
+        if (/\b(?:heic|image\/heic)\b/.test(preview)) return "image/heic"
+        if (/\b(?:heif|image\/heif)\b/.test(preview)) return "image/heif"
+        const explicit = preview.match(/\b(image\/[a-z0-9.+-]+)\b/)
+        return explicit ? explicit[1] : ""
+    }
+
     function entryId(entry): string {
         const match = String(entry ?? "").match(/^\s*(\d+)/)
         return match ? match[1] : ""
@@ -188,6 +206,14 @@ Singleton {
         return `${root.cliphistBinary} decode ${entryNumber} | ${root._markupFilter}`
     }
 
+    function wlCopyCommand(entry): string {
+        const mime = root.entryImageMime(entry)
+        const typeArg = mime.length > 0
+            ? ` --type '${StringUtils.shellSingleQuoteEscape(mime)}'`
+            : ""
+        return `${root.decodeCommand(entry)} | /usr/bin/wl-copy${typeArg}`
+    }
+
     function refresh() {
         if (readProc.running) {
             root._refreshQueued = true
@@ -201,12 +227,14 @@ Singleton {
         root._log("[Cliphist] copy()", String(entry).slice(0, 120))
         root._selfCopy = true
         selfCopyResetTimer.restart()
-        Quickshell.execDetached(["/usr/bin/bash", "-c", `${root.decodeCommand(entry)} | /usr/bin/wl-copy`]);
+        Quickshell.execDetached(["/usr/bin/bash", "-c",
+            root.wlCopyCommand(entry)]);
     }
 
     function paste(entry) {
         root._selfCopy = true
-        Quickshell.execDetached(["/usr/bin/bash", "-c", `${root.decodeCommand(entry)} | /usr/bin/wl-copy\n${root.pressPasteCommand}`]);
+        Quickshell.execDetached(["/usr/bin/bash", "-c",
+            `${root.wlCopyCommand(entry)}\n${root.pressPasteCommand}`]);
     }
 
     function superpaste(count, isImage = false) {
@@ -215,7 +243,8 @@ Singleton {
             if (!isImage) return true;
             return entryIsImage(entry);
         }).slice(0, count)
-        const pasteCommands = [...targetEntries].reverse().map(entry => `${root.decodeCommand(entry)} | /usr/bin/wl-copy\n/usr/bin/sleep ${root.pasteDelay}\n${root.pressPasteCommand}`)
+        const pasteCommands = [...targetEntries].reverse().map(entry =>
+            `${root.wlCopyCommand(entry)}\n/usr/bin/sleep ${root.pasteDelay}\n${root.pressPasteCommand}`)
         // Act
         Quickshell.execDetached(["/usr/bin/bash", "-c", pasteCommands.join(`\n/usr/bin/sleep ${root.pasteDelay}\n`)]);
     }

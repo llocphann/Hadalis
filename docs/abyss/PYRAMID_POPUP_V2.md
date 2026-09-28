@@ -71,3 +71,13 @@ No acceptance item above is implied by source contracts alone.
 A newly opened pyramid tier must resolve its collapse origin before the first reveal frame. The host therefore computes the entry origin from the allocator's final `placement` / full record synchronously when that placement becomes available. It does **not** wait for the animated `visualPlacement` reflow and does not queue another `Qt.callLater` hop.
 
 This removes a subtle ordering race: both generic and mature StyledPopup owners already delay reveal by one event-loop turn, but the previous Pyramid host delayed origin resolution by an additional turn. Under load, reveal could therefore begin from the physical Screen Edge for a frame before switching to the lower-popup boundary. The current contract arms the correct same-anchor origin during the allocator update itself; close snapshots still use the current visual state so mid-reflow close/reopen remains reversible.
+
+
+## Overlapping transactions
+
+Two additional motion invariants are enforced:
+
+- **Entry origin is latched once reveal begins.** While progress is still at zero, allocator updates may re-arm the origin so the popup starts from the correct lower tier. Once progress is above the reveal threshold, peer reflow may change the final resting target but cannot rewrite the already-visible origin. This avoids a mid-flight discontinuity.
+- **A lower popup that is already closing contributes its current visual boundary.** When another popup starts an overlapping open/close transaction, the coordinator samples the lower host's currently published geometry instead of using its old full resting record. The new transaction therefore meets the surface that is actually visible on that frame. The original full snapshot remains only as a fallback after the host stops publishing.
+
+These rules are presentation-only and do not change allocator ordering or resting geometry.

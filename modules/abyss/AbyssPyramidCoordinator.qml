@@ -71,11 +71,17 @@ QtObject {
                 if (!root._sameAnchorDescriptor(
                         wanted,closing?.descriptor))
                     continue
+                // Overlapping transactions meet a lower closing popup at the
+                // boundary actually visible on this frame, not its old full
+                // resting depth. Keep the full snapshot only as a fallback.
+                const liveRecord=
+                    root.controller?.participants?.[key]?.geometry ?? null
                 result.push({
                     identity:String(key),
                     descriptor:closing.descriptor,
                     placement:Motion.clonePlacement(closing.placement),
-                    record:Motion.cloneRecord(closing.fullRecord),
+                    record:Motion.cloneRecord(
+                        liveRecord ?? closing.fullRecord),
                     source:"closing"
                 })
             }

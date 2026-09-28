@@ -52,6 +52,9 @@ def main() -> None:
     assert "root._sameAnchorCandidates(identity,request,false)" in coord
     assert "root._lowerPeer(identity,request,placement)" in coord
     assert "root._rebuildFrozen()" in coord
+    assert "const liveRecord=" in coord
+    assert "liveRecord ?? closing.fullRecord" in coord
+    assert "root.pyramidOriginRecord && root.progress > 0.001" in host
     assert "root.pyramidAllocatorPlacement,root.pyramidAllocatorRecord" in host
     assert "Qt.callLater(root.syncPyramidEntryOrigin)" not in host
 

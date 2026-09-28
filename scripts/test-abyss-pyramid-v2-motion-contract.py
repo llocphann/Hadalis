@@ -40,6 +40,9 @@ assert "readonly property var pyramidAllocatorPlacement:" in host
 assert "readonly property var pyramidAllocatorRecord:" in host
 assert "root.pyramidAllocatorPlacement,root.pyramidAllocatorRecord" in host
 assert "Qt.callLater(root.syncPyramidEntryOrigin)" not in host
+assert "root.pyramidOriginRecord && root.progress > 0.001" in host
+assert "const liveRecord=" in coord
+assert "liveRecord ?? closing.fullRecord" in coord
 assert "Geometry.joinCorner(" in host
 assert "rawPresentationRecord,joinedEdge" in host
 assert "result.along=_number(to.along,0)" in motion

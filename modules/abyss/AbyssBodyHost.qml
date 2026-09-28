@@ -214,6 +214,11 @@ Item {
                 || root.pyramidClosing || !root.pyramidAllocatorPlacement
                 || !root.pyramidAllocatorRecord)
             return
+        // Once reveal has actually started, the origin is part of that visual
+        // transaction. Peer reflow may change the final resting placement, but
+        // rewriting the origin mid-flight would create a visible discontinuity.
+        if (root.pyramidOriginRecord && root.progress > 0.001)
+            return
         const origin=root.pyramidCoordinator?.entryOrigin(
             root.identity,participant.placementRequest,
             root.pyramidAllocatorPlacement,root.pyramidAllocatorRecord)

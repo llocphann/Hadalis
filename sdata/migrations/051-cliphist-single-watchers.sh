@@ -18,7 +18,7 @@ import sys
 
 startup = Path(sys.argv[1])
 monolithic = Path(sys.argv[2])
-text_line = 'spawn-at-startup "bash" "-c" "exec wl-paste --type text --watch ~/.config/quickshell/inir/scripts/native-dispatch clipboard-store"'
+text_line = 'spawn-at-startup "bash" "-c" "exec wl-paste --no-newline --type text --watch ~/.config/quickshell/inir/scripts/native-dispatch clipboard-store"'
 image_line = 'spawn-at-startup "bash" "-c" "exec wl-paste --type image --watch cliphist store"'
 watcher = re.compile(
     r'^(?![ \t]*//)[ \t]*(?:spawn-at-startup|spawn-sh-at-startup)\b'
@@ -75,7 +75,7 @@ import sys
 
 startup = Path(sys.argv[1])
 monolithic = Path(sys.argv[2])
-text_line = 'spawn-at-startup "bash" "-c" "exec wl-paste --type text --watch ~/.config/quickshell/inir/scripts/native-dispatch clipboard-store"'
+text_line = 'spawn-at-startup "bash" "-c" "exec wl-paste --no-newline --type text --watch ~/.config/quickshell/inir/scripts/native-dispatch clipboard-store"'
 image_line = 'spawn-at-startup "bash" "-c" "exec wl-paste --type image --watch cliphist store"'
 watcher = re.compile(
     r'^(?![ \t]*//)[ \t]*(?:spawn-at-startup|spawn-sh-at-startup)\b'

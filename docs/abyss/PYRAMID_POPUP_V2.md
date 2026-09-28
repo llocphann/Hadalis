@@ -82,3 +82,7 @@ Two additional motion invariants are enforced:
 - **An exhausted lower tail is absent immediately.** If that live closing record has already reached the same 0.001 reveal threshold used by the host to finish the close, the coordinator ignores it even if transaction bookkeeping survives for the remainder of the current QML binding turn. A new popup therefore cannot collapse toward an invisible stale lower tier.
 
 These rules are presentation-only and do not change allocator ordering or resting geometry.
+
+## Reduced / disabled motion
+
+Close cleanup cannot depend only on a future `progressChanged` callback. A popup owner may jump its reveal scalar directly to zero when motion is disabled, and that progress update can occur before Pyramid semantic-close bookkeeping arms the transaction. After `beginClose`, the host therefore evaluates the same completion predicate synchronously. If progress is already at or below 0.001, the closing transaction is finished immediately and its group freeze is released. The normal `onProgressChanged` path calls the same helper for animated closes.

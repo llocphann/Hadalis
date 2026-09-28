@@ -41,6 +41,9 @@ assert "readonly property var pyramidAllocatorRecord:" in host
 assert "root.pyramidAllocatorPlacement,root.pyramidAllocatorRecord" in host
 assert "Qt.callLater(root.syncPyramidEntryOrigin)" not in host
 assert "root.pyramidOriginRecord && root.progress > 0.001" in host
+assert "function finishPyramidCloseIfDone(): void" in host
+assert "root.finishPyramidCloseIfDone()" in host
+assert "onProgressChanged: root.finishPyramidCloseIfDone()" in host
 assert "const liveRecord=" in coord
 assert "liveRecord ?? closing.fullRecord" in coord
 assert "Geometry.joinCorner(" in host

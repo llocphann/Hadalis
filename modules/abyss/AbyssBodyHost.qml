@@ -254,6 +254,20 @@ Item {
             ?? PyramidMotion.collapsedRecord(
                 root.pyramidLatchedFullRecord,null)
         root.pyramidClosing=true
+        // With reduced/disabled motion the owner may already have driven
+        // externalProgress to zero before this semantic handler runs. Finish
+        // synchronously so the group freeze cannot survive without another
+        // progress change to wake it.
+        root.finishPyramidCloseIfDone()
+    }
+    function finishPyramidCloseIfDone(): void {
+        if (!root.initialized || !root.pyramidClosing
+                || root.semanticOpen || root.progress > 0.001)
+            return
+        root.pyramidCoordinator?.finishClose(root.identity)
+        root.pyramidClosing=false
+        root.pyramidLatchedFullRecord=null
+        root.pyramidOriginRecord=null
     }
     onPlacementChanged: {
         if (placement?.visible !== false)
@@ -273,15 +287,7 @@ Item {
         root.capturePyramidRestingState()
     onSemanticOpenChanged: if (initialized)
         root.syncPyramidSemanticState()
-    onProgressChanged: {
-        if (!initialized || !root.pyramidClosing
-                || root.semanticOpen || root.progress > 0.001)
-            return
-        root.pyramidCoordinator?.finishClose(root.identity)
-        root.pyramidClosing=false
-        root.pyramidLatchedFullRecord=null
-        root.pyramidOriginRecord=null
-    }
+    onProgressChanged: root.finishPyramidCloseIfDone()
     onOpenChanged: if (initialized) { markOpened();react(open) }
     onEmbeddedItemChanged: if (initialized) markOpened()
     onContentKindChanged: if (initialized) markOpened()

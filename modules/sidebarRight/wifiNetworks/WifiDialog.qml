@@ -10,6 +10,7 @@ import Quickshell
 
 WindowDialog {
     id: root
+    property bool showEmbeddedFooter: true
     backgroundHeight: 450
 
     WindowDialogTitle {
@@ -96,8 +97,11 @@ WindowDialog {
             }
         }
     }
-    WindowDialogSeparator {}
+    WindowDialogSeparator {
+        visible: !root.effectiveEmbedded || root.showEmbeddedFooter
+    }
     WindowDialogButtonRow {
+        visible: !root.effectiveEmbedded || root.showEmbeddedFooter
         DialogButton {
             buttonText: Translation.tr("Details")
             onClicked: {

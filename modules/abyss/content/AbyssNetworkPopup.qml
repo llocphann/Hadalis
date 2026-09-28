@@ -1,45 +1,110 @@
 pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Layouts
+import Quickshell
 import Quickshell.Bluetooth
 import qs.services
+import qs.modules.common.functions
 import qs.modules.abyss.looks
 import qs.modules.sidebarRight.wifiNetworks
 import qs.modules.sidebarRight.bluetoothDevices
 
 // Keep the mature connection forms inside the existing Screen Edge host.
-Item {
+FocusScope {
     id: root
     property string kind: "wifi"
+    property bool autoDismissOnIdle: true
+    property int idleDismissDelay: 650
     implicitWidth: 380
     implicitHeight: 500
     property alias dialog: form.item
     signal closeRequested()
+
+    function refreshIdleDismiss(): void {
+        if (!root.autoDismissOnIdle || !root.enabled) {
+            idleDismiss.stop()
+            return
+        }
+        if (popupHover.hovered || root.activeFocus)
+            idleDismiss.stop()
+        else
+            idleDismiss.restart()
+    }
+
+    function openDetails(): void {
+        if (root.kind === "wifi")
+            AppLauncher.launchNetworkSettings(Network.ethernet)
+        else
+            AppLauncher.launch("bluetooth")
+        root.closeRequested()
+    }
+
+    Component.onCompleted: Qt.callLater(refreshIdleDismiss)
+    onEnabledChanged: refreshIdleDismiss()
+    onActiveFocusChanged: refreshIdleDismiss()
+
+    HoverHandler {
+        id: popupHover
+        onHoveredChanged: root.refreshIdleDismiss()
+    }
+
+    Timer {
+        id: idleDismiss
+        interval: root.idleDismissDelay
+        repeat: false
+        onTriggered: {
+            if (root.autoDismissOnIdle && root.enabled
+                    && !popupHover.hovered && !root.activeFocus)
+                root.closeRequested()
+        }
+    }
+
     ColumnLayout {
         anchors.fill: parent
         spacing: 8
+
         RowLayout {
             Layout.fillWidth: true
+            spacing: 6
+
             AbyssButton {
+                compact: true
                 glyph: root.kind === "wifi" ? Network.materialSymbol : BluetoothStatus.activeIcon
-                text: (root.kind === "wifi" ? Network.wifiEnabled : BluetoothStatus.enabled) ? "On" : "Off"
-                description: root.kind === "wifi" ? "Wi-Fi radio" : "Bluetooth radio"
+                description: root.kind === "wifi"
+                    ? (Network.wifiEnabled ? "Turn Wi-Fi off" : "Turn Wi-Fi on")
+                    : (BluetoothStatus.enabled ? "Turn Bluetooth off" : "Turn Bluetooth on")
                 enabled: root.kind === "wifi" || BluetoothStatus.available
                 checked: root.kind === "wifi" ? Network.wifiEnabled : BluetoothStatus.enabled
                 onClicked: root.kind === "wifi" ? Network.toggleWifi() : BluetoothStatus.toggle()
             }
+
             Item { Layout.fillWidth: true }
+
             AbyssButton {
+                compact: true
                 glyph: "refresh"
-                text: root.kind === "wifi" ? (Network.wifiScanning ? "Scanning…" : "Scan")
-                    : (Bluetooth.defaultAdapter?.discovering ?? false) ? "Stop scan" : "Scan"
-                enabled: root.kind === "wifi" ? Network.wifiEnabled && !Network.wifiScanning : BluetoothStatus.enabled
+                description: root.kind === "wifi"
+                    ? (Network.wifiScanning ? "Scanning Wi-Fi" : "Scan Wi-Fi")
+                    : (Bluetooth.defaultAdapter?.discovering ?? false)
+                        ? "Stop Bluetooth scan" : "Scan Bluetooth"
+                enabled: root.kind === "wifi"
+                    ? Network.wifiEnabled && !Network.wifiScanning
+                    : BluetoothStatus.enabled
                 onClicked: {
                     if (root.kind === "wifi") Network.rescanWifi()
-                    else if (Bluetooth.defaultAdapter) Bluetooth.defaultAdapter.discovering = !Bluetooth.defaultAdapter.discovering
+                    else if (Bluetooth.defaultAdapter)
+                        Bluetooth.defaultAdapter.discovering = !Bluetooth.defaultAdapter.discovering
                 }
             }
+
+            AbyssButton {
+                compact: true
+                glyph: "settings"
+                description: root.kind === "wifi" ? "Network settings" : "Bluetooth settings"
+                onClicked: root.openDetails()
+            }
         }
+
         Loader {
             id: form
             Layout.fillWidth: true
@@ -47,12 +112,24 @@ Item {
             sourceComponent: root.kind === "wifi" ? wifi : bluetooth
         }
     }
+
     Component {
         id: wifi
-        WifiDialog { embeddedPresentation: true; show: true; onDismiss: root.closeRequested() }
+        WifiDialog {
+            embeddedPresentation: true
+            showEmbeddedFooter: false
+            show: true
+            onDismiss: root.closeRequested()
+        }
     }
+
     Component {
         id: bluetooth
-        BluetoothDialog { embeddedPresentation: true; show: true; onDismiss: root.closeRequested() }
+        BluetoothDialog {
+            embeddedPresentation: true
+            showEmbeddedFooter: false
+            show: true
+            onDismiss: root.closeRequested()
+        }
     }
 }

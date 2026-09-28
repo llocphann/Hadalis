@@ -15,6 +15,12 @@ for token in '"wifi"' '"bluetooth"'; do
     }
 done
 grep -Fq 'MIGRATION_ID="053-retire-abyss-connectivity-modules"' "$migration"     || { printf 'FAIL: retired connectivity module migration missing\n' >&2; exit 1; }
+grep -Fq 'property bool autoDismissOnIdle: true' "$repo_root/modules/abyss/content/AbyssNetworkPopup.qml" \
+    || { printf 'FAIL: network popup idle-dismiss contract missing\n' >&2; exit 1; }
+grep -Fq 'showEmbeddedFooter: false' "$repo_root/modules/abyss/content/AbyssNetworkPopup.qml" \
+    || { printf 'FAIL: System Tray network popup still exposes mature footer actions\n' >&2; exit 1; }
+grep -Fq 'glyph: "settings"' "$repo_root/modules/abyss/content/AbyssNetworkPopup.qml" \
+    || { printf 'FAIL: network Details action was not promoted to a compact header icon\n' >&2; exit 1; }
 
 migration_tmp="$(mktemp -d)"
 trap 'rm -rf -- "$migration_tmp"' EXIT
@@ -99,17 +105,22 @@ ShellRoot {
                 Config.setNestedValue("performance.reduceAnimations",true)
                 GlobalStates.deferredPanelsReady=true;body.open=true
             } else if(root.step===1 || root.step===3) {
-                const popup=body.contentItem.item,form=popup?.feature?.dialog
+                const popup=body.contentItem.item,network=popup?.feature,form=network?.dialog
+                if(network) network.autoDismissOnIdle=false
                 if(!root.check(body.ready && body.inputBounds.width>0 && popup.desiredWidth===380 && popup.desiredHeight===500,"bounded network popup content loads")) return
                 if(!root.check(form?.show && form.effectiveEmbedded && !form.liquidHosted && controller.activeDialog===null,"mature form reuses the popup rather than acquiring a dialog host")) return
+                if(!root.check(form.showEmbeddedFooter===false,"System Tray embedding removes the Done/Details footer")) return
                 if(!root.check(root.visibleText(form,root.step===1 ? "Connect to Wi-Fi" : "Bluetooth devices"),"mature connection title is visible with nonzero text bounds and alpha")) return
                 if(!root.check(trayModule.feature && trayModule.naturalSpan>=0,"System Tray module is usable")) return
                 trayModule.feature.hoverPopupRequested(root.step===1 ? "wifi" : "bluetooth")
                 if(!root.check(root.requests===(root.step===1 ? 1 : 2),"System Tray hover sends the matching popup request")) return
                 if(root.step===1) { body.contentKind="bluetooth" }
                 else { form.dismiss() }
+            } else if(root.step===2) {
+                const network=body.contentItem.item?.feature
+                if(network) network.autoDismissOnIdle=false
             } else if(root.step===4) {
-                if(!root.check(root.dismissed===1 && !body.open && body.inputBounds.width===0,"Done dismisses the existing host and releases input")) return
+                if(!root.check(root.dismissed===1 && !body.open && body.inputBounds.width===0,"dismissal releases the existing host and input")) return
                 body.edge="right";body.span=528;body.depth=408;body.open=true
             } else if(root.step===5) {
                 if(!root.check(body.inputBounds.x>=0 && body.inputBounds.y>=0 && body.inputBounds.x+body.inputBounds.width<=960 && body.inputBounds.y+body.inputBounds.height<=720,"popup can move to a vertical Edge")) return
@@ -134,4 +145,4 @@ if [[ "$status" != 124 ]] || ! rg -q 'NETWORK_POPUP_PASS' "$network_test_root/ru
         || rg -q 'NETWORK_POPUP_FAIL|ReferenceError:|TypeError:|Binding loop|Unable to assign|is not a type' "$network_test_root/runtime.log"; then
     cat "$network_test_root/runtime.log"; exit 1
 fi
-printf 'PASS: Wi-Fi/Bluetooth forms, built-in System Tray status-icon hover routing, retired Edge modules, migration, vertical placement and input release\n'
+printf 'PASS: Wi-Fi/Bluetooth compact actions, idle-dismiss contract, System Tray hover routing, retired Edge modules and input release\n'

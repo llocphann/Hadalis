@@ -28,6 +28,12 @@ Item {
     property real moduleScale: 1
     property var singleModuleExpansion: ({top:"edge",right:"edge",bottom:"edge",left:"edge"})
     property string editingEdge: "top"
+    // Keep the editor controls on the least-contended Screen Edge. The selected
+    // module's Edge receives a large penalty, while a small hysteresis bonus
+    // keeps the toolbar from oscillating between equal candidates mid-drag.
+    property string toolbarEdge: "bottom"
+    readonly property bool toolbarOnHorizontalEdge:
+        toolbarEdge === "top" || toolbarEdge === "bottom"
     property var guides: []
     property bool snapEnabled: true
     property bool outputOnly: true
@@ -44,6 +50,54 @@ Item {
     readonly property var selected: draft.find(p => p.id === selectedId)
     readonly property var draftOptions: Object.assign({},Config.options?.abyss?.modules,{gap:gap,edgeSizes:edgeSizes,size:moduleScale,
         singleModuleExpansion:singleModuleExpansion,edgeThicknesses:edgeThicknesses,edgeThickness:AbyssStyle.perimeterThickness})
+
+    function toolbarEdgeScore(edge): real {
+        let score = (edge === toolbarEdge ? -4 : 0)
+        // Side placement remains available, but top/bottom wins close ties
+        // because the existing control rows are naturally horizontal.
+        if (edge === "left" || edge === "right")
+            score += 6
+        if (edge === editingEdge)
+            score += selected ? 54 : 12
+        for (let i = 0; i < draft.length; ++i) {
+            const placement = draft[i]
+            if (placement?.enabled === false || placement?.edge !== edge)
+                continue
+            const scale = placement?.customSize
+                ? Number(placement?.size ?? 1)
+                : Placement.edgeSize(draftOptions,edge)
+            score += 18 + Math.max(.5,scale) * 8
+            if (placement?.id === selectedId)
+                score += 220
+        }
+        return score
+    }
+
+    function bestToolbarEdge(): string {
+        const candidates = ["bottom","top","right","left"]
+        let best = candidates[0]
+        let bestScore = toolbarEdgeScore(best)
+        for (let i = 1; i < candidates.length; ++i) {
+            const score = toolbarEdgeScore(candidates[i])
+            if (score < bestScore) {
+                best = candidates[i]
+                bestScore = score
+            }
+        }
+        return best
+    }
+
+    function scheduleToolbarRelocation(): void {
+        if (visible)
+            toolbarRelocate.restart()
+    }
+
+    function relocateToolbar(): void {
+        const next = bestToolbarEdge()
+        if (next !== toolbarEdge)
+            toolbarEdge = next
+    }
+
     function refreshHandles(): void { handles = draft.map(p => p.id) }
     function begin(): void {
         draft = JSON.parse(JSON.stringify(Placement.resolve(Config.options?.abyss?.modules,outputName,
@@ -60,6 +114,7 @@ Item {
         positionEdits=[];editingPopups=false
         selectedId = ""
         refreshHandles()
+        Qt.callLater(() => root.relocateToolbar())
         forceActiveFocus()
     }
     function finish(save): void {
@@ -112,6 +167,7 @@ Item {
             guides = result.guides
         } else { draft = Placement.move(draft,id,x,y,width,height); guides = [] }
         editingEdge = draft.find(p => p.id===id)?.edge ?? editingEdge
+        root.scheduleToolbarRelocation()
         const now = Date.now()
         if (now-lastImpulse > 80) {
             const p = draft.find(p => p.id === id)
@@ -119,7 +175,22 @@ Item {
             lastImpulse = now
         }
     }
-    onSelectedChanged: if (selected) editingEdge = selected.edge
+    onSelectedChanged: {
+        if (selected)
+            editingEdge = selected.edge
+        root.scheduleToolbarRelocation()
+    }
+    onEditingEdgeChanged: root.scheduleToolbarRelocation()
+    onDraftChanged: root.scheduleToolbarRelocation()
+    onEditingPopupsChanged: root.scheduleToolbarRelocation()
+
+    Timer {
+        id: toolbarRelocate
+        interval: 90
+        repeat: false
+        onTriggered: root.relocateToolbar()
+    }
+
     function add(kind): void {
         if (draft.length >= 24) return
         const existing = draft.find(p => p.kind === kind && !p.enabled)
@@ -202,11 +273,22 @@ Item {
     AbyssBodyHost {
         id: editorBody
         anchors.fill: parent
-        edge: "bottom"; identity: "edgeEditor"; outputName: root.outputName
+        edge: root.toolbarEdge
+        identity: "edgeEditor"
+        outputName: root.outputName
         controller: root.controller
         edgeInsets: root.edgeInsets
         open: root.visible
-        span: Math.min(root.width-48,1180); along: (root.width-span)/2; depth: Math.max(246,toolbar.implicitHeight+padding*2)
+        // Horizontal Edges use the familiar wide control strip. If both are
+        // busy, the same editor can move to a side Edge with a deeper body and
+        // a long vertical span instead of covering the module being edited.
+        span: root.toolbarOnHorizontalEdge
+            ? Math.min(root.width-48,1180)
+            : Math.min(root.height-48,900)
+        along: ((root.toolbarOnHorizontalEdge ? root.width : root.height)-span)/2
+        depth: root.toolbarOnHorizontalEdge
+            ? Math.max(246,toolbar.implicitHeight+padding*2)
+            : Math.max(220,Math.min(820,root.width*.55,root.width-48))
         embeddedItem: toolbar
     }
     AbyssBodyHost {

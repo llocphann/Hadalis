@@ -2,7 +2,24 @@
 # Exercise mature corner content through the shared Abyss host, without another popup window.
 set -euo pipefail
 repo_root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
-if ! command -v qs >/dev/null || [[ -z "${WAYLAND_DISPLAY:-}" ]]; then printf 'SKIP: Abyss corner content (Quickshell/Wayland unavailable)\n';exit 0;fi
+perimeter="$repo_root/modules/abyss/AbyssPerimeter.qml"
+corners="$repo_root/modules/abyss/AbyssCorners.qml"
+for token in \
+    'property string quickNotesEditorOutput: ""' \
+    'function setQuickNotesEditorOutput(outputName, focused): void' \
+    'quickNotesEditorOutput: root.quickNotesEditorOutput' \
+    'onQuickNotesEditorLeaseChanged:(outputName,focused)=>'; do
+    grep -Fq "$token" "$perimeter" || { printf 'FAIL: Abyss perimeter Quick Notes lease missing: %s\n' "$token" >&2; exit 1; }
+done
+for token in \
+    'signal quickNotesEditorLeaseChanged(string outputName, bool focused)' \
+    'quickNotesEditorOutput.length === 0' \
+    'quickNotesEditorOutput === outputName' \
+    'onEditorFocusedChanged:' \
+    'root.quickNotesEditorLeaseChanged(root.outputName,editorFocused)'; do
+    grep -Fq "$token" "$corners" || { printf 'FAIL: Abyss corner Quick Notes lease missing: %s\n' "$token" >&2; exit 1; }
+done
+if ! command -v qs >/dev/null || [[ -z "${WAYLAND_DISPLAY:-}" ]]; then printf 'SKIP: Abyss corner content runtime (source lease contract passed; Quickshell/Wayland unavailable)\n';exit 0;fi
 corner_test_root="$(mktemp -d)"
 trap 'rm -rf -- "$corner_test_root"' EXIT
 for entry in modules services GlobalStates.qml qmldir assets scripts defaults translations; do ln -s "$repo_root/$entry" "$corner_test_root/$entry";done
@@ -105,4 +122,4 @@ dbus-run-session -- env -u QS_CONFIG_NAME -u QS_CONFIG_PATH -u QS_MANIFEST QT_QP
  XDG_CONFIG_HOME="$corner_test_root/config" XDG_STATE_HOME="$corner_test_root/state" XDG_CACHE_HOME="$corner_test_root/cache" \
  timeout 15s qs -p "$corner_test_root" --no-color > "$corner_test_root/runtime.log" 2>&1 || runtime_status=$?
 if [[ "$runtime_status" != 124 ]] || ! rg -q ABYSS_CORNERS_PASS "$corner_test_root/runtime.log" || rg -q 'ABYSS_CORNERS_FAIL|ReferenceError:|TypeError:|Binding loop|Cannot anchor|Unable to assign|is not a type|Type .* unavailable' "$corner_test_root/runtime.log";then cat "$corner_test_root/runtime.log";exit 1;fi
-printf 'PASS: mature Notes, To-do, Timers, Notifications and Activity load in the shared field with focus and input release\n'
+printf 'PASS: mature corner content plus cross-output Quick Notes lease source contract, focus and input release\n'

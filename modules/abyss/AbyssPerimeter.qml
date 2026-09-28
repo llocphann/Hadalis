@@ -14,6 +14,20 @@ import "looks/AbyssPresentation.js" as Presentation
 Scope {
     id: root
     property string largeTargetOutput: GlobalStates.resolveOutputName("",[])
+    // Match the mature ScreenCorners keyboard lease: hover previews may exist on
+    // several outputs, but only one Quick Notes editor may own keyboard focus.
+    property string quickNotesEditorOutput: ""
+    function setQuickNotesEditorOutput(outputName, focused): void {
+        const name = String(outputName ?? "")
+        if (focused) {
+            if (name && (!root.quickNotesEditorOutput
+                    || root.quickNotesEditorOutput === name))
+                root.quickNotesEditorOutput = name
+            return
+        }
+        if (root.quickNotesEditorOutput === name)
+            root.quickNotesEditorOutput = ""
+    }
     readonly property string utilityKind: GlobalStates.sessionOpen ? "session" : GlobalStates.cheatsheetOpen ? "cheatsheet" : ShellUpdates.overlayOpen ? "update" : ""
     readonly property string utilityIdentifier: utilityKind === "session" ? "abyssSessionScreen" : utilityKind === "cheatsheet" ? "iiCheatsheet" : "iiShellUpdate"
     function closeUtility(): void {
@@ -49,6 +63,16 @@ Scope {
         const placements = ModuleLayout.resolve(Config.options?.abyss?.modules,name,ModuleLayout.seed(zones,root.barEdge,screen?.width ?? 1920,screen?.height ?? 1080))
         return ModuleLayout.edgeInsetsForModules(placements,Object.assign({},ModuleLayout.optionsForOutput(Config.options?.abyss?.modules,name),
             {edgeThickness:AbyssStyle.perimeterThickness}),Appearance.fontSizeScale,AbyssStyle.perimeterThickness,AbyssStyle.barThickness,reservation)
+    }
+    Connections {
+        target: Quickshell
+        function onScreensChanged(): void {
+            const owner = root.quickNotesEditorOutput
+            if (!owner) return
+            if (!Quickshell.screens.some(screen =>
+                    String(screen?.name ?? "") === owner))
+                root.quickNotesEditorOutput = ""
+        }
     }
     Connections {
         target: GlobalStates
@@ -266,9 +290,12 @@ Scope {
             AbyssCorners {
                 id:corners;anchors.fill:parent;controller:liquid;outputName:window.outputName
                 attachmentThickness:window.nativeInsets.bottom
+                quickNotesEditorOutput: root.quickNotesEditorOutput
                 presentationEnabled:window.presented && field.ready && !window.editorOpen
                 blocked:settings.open || dashboardBody.open || utility.open || controls.open || aux.open
                     || GlobalStates.settingsNativeDialogOpen || PolkitService.active || GlobalStates.regionSelectorOpen
+                onQuickNotesEditorLeaseChanged:(outputName,focused)=>
+                    root.setQuickNotesEditorOutput(outputName,focused)
             }
             AbyssBodyHost {
                 id: leftPanel

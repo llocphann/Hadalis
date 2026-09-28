@@ -16,6 +16,8 @@ Item {
     property bool presentationEnabled: true
     property bool blocked: false
     property real attachmentThickness: 16
+    property string quickNotesEditorOutput: ""
+    signal quickNotesEditorLeaseChanged(string outputName, bool focused)
     property alias notesAnchor: notesAnchor
     property alias centerAnchor: centerAnchor
     property alias notesPopup: notesPopup
@@ -28,7 +30,12 @@ Item {
         && (Config.options?.quickNotes?.enable ?? true)
         && ((Config.options?.quickNotes?.monitorMode ?? "all") !== "primary"
             || outputName === (GlobalStates.primaryScreen?.name ?? Quickshell.screens[0]?.name ?? ""))
+        && (quickNotesEditorOutput.length === 0
+            || quickNotesEditorOutput === outputName)
     readonly property bool centerAvailable: presentationEnabled && !blocked
+        // Match mature ScreenCorners: while Quick Notes owns an editor lease,
+        // Notification Center must not map another keyboard-capable corner.
+        && quickNotesEditorOutput.length === 0
         && (Config.options?.notificationCenter?.enable ?? true)
         && (Config.options?.enabledPanels ?? []).includes("abyssNotificationCenter")
         && targets(Config.options?.notificationCenter?.screenList ?? [])
@@ -68,6 +75,8 @@ Item {
         anchorItem:notesAnchor
         cornerAttachmentThickness:root.attachmentThickness
         hoverActivates:root.notesAvailable
+        onEditorFocusedChanged:
+            root.quickNotesEditorLeaseChanged(root.outputName,editorFocused)
     }
     Anchor {
         id: centerAnchor
@@ -80,6 +89,14 @@ Item {
         anchorItem:centerAnchor;outputName:root.outputName
         cornerAttachmentThickness:root.attachmentThickness
         hoverAllowed:root.centerAvailable
+    }
+    onNotesAvailableChanged: {
+        if (!notesAvailable && notesPopup.presentationActive)
+            notesPopup.dismissPresentation()
+    }
+    onCenterAvailableChanged: {
+        if (!centerAvailable && centerPopup.presentationActive)
+            centerPopup.dismissPresentation()
     }
     // The same public cornerOpen controls as the mature shell. Notes and the
     // notification center retain priority at the bottom corners.

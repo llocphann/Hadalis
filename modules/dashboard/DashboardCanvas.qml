@@ -374,31 +374,31 @@ Item {
         const lanes = [
             {
                 ids:["welcome","clock","system","github","notes"],
-                preferredWidth:320, maxWidth:370,
+                preferredWidth:360, maxWidth:420,
                 preferredHeights:{
-                    welcome:105,clock:110,system:210,github:105,notes:235
+                    welcome:90,clock:100,system:185,github:150,notes:280
                 },
                 maxHeights:{
-                    welcome:125,clock:130,system:245,github:125,notes:310
+                    welcome:110,clock:120,system:220,github:185,notes:350
                 },
-                growPriority:["notes","system","welcome","clock","github"]
+                growPriority:["notes","github","system","welcome","clock"]
             },
             {
                 ids:["notifications","agenda","todo","calendar"],
-                preferredWidth:420, maxWidth:510,
+                preferredWidth:430, maxWidth:500,
                 preferredHeights:{
-                    notifications:165,agenda:95,todo:190,calendar:270
+                    notifications:200,agenda:150,todo:220,calendar:220
                 },
                 maxHeights:{
-                    notifications:215,agenda:125,todo:245,calendar:335
+                    notifications:270,agenda:205,todo:295,calendar:270
                 },
-                growPriority:["calendar","todo","notifications","agenda"]
+                growPriority:["notifications","todo","agenda","calendar"]
             },
             {
                 ids:["media","weather"],
-                preferredWidth:520, maxWidth:640,
-                preferredHeights:{media:455,weather:245},
-                maxHeights:{media:540,weather:315},
+                preferredWidth:400, maxWidth:460,
+                preferredHeights:{media:330,weather:250},
+                maxHeights:{media:390,weather:300},
                 growPriority:["media","weather"]
             }
         ]
@@ -432,9 +432,10 @@ Item {
             usedWidth = widths.reduce((sum,value)=>sum+value,0)
         } else {
             let extra = availableWidth-usedWidth
-            // Rich media first, then planning, then compact status. Each lane
-            // stops at a content-derived maximum instead of stretching forever.
-            const growOrder=[2,1,0]
+            // Planning/notes benefit most from extra reading room. Media and
+            // Orbital Weather deliberately stay moderate instead of becoming
+            // the dominant lane merely because the canvas is wide.
+            const growOrder=[1,0,2]
             for (const index of growOrder) {
                 const room=Math.max(0,lanes[index].maxWidth-widths[index])
                 const add=Math.min(room,extra)

@@ -68,6 +68,7 @@ Item {
 
     function latch(kind): void {
         if (!kind) return
+        body.resetPresentationOwner()
         root.activeKind = String(kind)
         root.activePosition = Object.assign({},
             Presentation.resolve(root.positions,root.activeKind,root.outputName))
@@ -153,10 +154,10 @@ Item {
         controller: root.controller
         outputName: root.outputName
 
-        // Tangent placement is latched before resident/open becomes true.
-        // Disable the generic allocator's placement Behaviors: the only popup
-        // motion here is the edge-normal reveal/retract fraction below.
-        animatePlacementChanges: false
+        // Tangent ownership is reset while hidden before every kind latch, so
+        // peer-induced pyramid reflow may animate without ever interpolating
+        // between two different generic popup anchors.
+        animatePlacementChanges: true
         animatePresentation: false
         placementCanResize: false
         stableContentSize: true

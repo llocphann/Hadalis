@@ -14,12 +14,14 @@ assert "function finishRetract(): void" in p
 assert "if (desired === root.activeKind)" in p
 assert "root.beginRetract()" in p
 assert "root.latch(desired)" in p
-assert "animatePlacementChanges: false" in p
+assert "body.resetPresentationOwner()" in p
+assert "animatePlacementChanges: true" in p
 assert "animatePresentation: false" in p
 assert "placementCanResize: false" in p
 assert "externalProgress: root.revealProgress" in p
 assert 'stackPolicy: "pyramid"' in p
 assert "semanticOpenOverride:" in p
+assert "function resetPresentationOwner(): void" in host
 assert "Presentation.joinedEdge(root.activeKind" in p
 assert "AbyssPopupTransitionCoordinator" not in p
 assert "pyramidStack" not in p

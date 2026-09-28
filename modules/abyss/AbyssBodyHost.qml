@@ -189,6 +189,13 @@ Item {
         root.pyramidLastFullRecord=
             PyramidMotion.cloneRecord(root.pyramidRestingRecord)
     }
+    function resetPresentationOwner(): void {
+        // Stable hosts may be reused by a different semantic popup owner.
+        // Clear the previous allocator snapshot while the old owner is hidden so
+        // the next owner snaps to its own tangent anchor before reveal starts.
+        root.retainedPlacement=null
+        root.resetPyramidMotion()
+    }
     function syncPyramidEntryOrigin(): void {
         if (!root.pyramidMotionEnabled || !root.semanticOpen
                 || root.pyramidClosing || !root.visualPlacement

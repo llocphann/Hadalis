@@ -463,6 +463,9 @@ Scope {
                     }
 
                     identity: "styledPopup" + index
+                    stackPolicy: "pyramid"
+                    semanticOpenOverride:
+                        hostedPopup?.liquidSemanticVisible ?? false
                     readonly property var configuredPresentation:
                         window.presentation(presentationKind)
                     readonly property string configuredJoinedEdge:
@@ -504,7 +507,10 @@ Scope {
                             : anchorBounds.y+anchorBounds.height/2)-span/2)
                     obstacles: window.sideObstacles
 
-                    onPopupEntryChanged: retainedPlacement = null
+                    onPopupEntryChanged: {
+                        retainedPlacement = null
+                        resetPyramidMotion()
+                    }
                     onCloseRequested: hostedPopup?.dismissPresentation()
                     Component.onCompleted:
                         liquid.registerPopupHost(index,styledPopupHost)

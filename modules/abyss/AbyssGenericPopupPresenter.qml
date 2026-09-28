@@ -9,7 +9,8 @@ import "looks/AbyssPresentation.js" as Presentation
 // Different popup kinds never mutate one live body's tangent geometry. A kind
 // switch retracts the current owner completely, then latches the next kind,
 // Edge, tangent anchor and optional adjacent-Edge join before reveal begins.
-// This intentionally has no pyramid/group placement behavior.
+// Kind switching stays serialized. Pyramid is only an output-level placement/
+ // presentation policy when this owner coexists with mature StyledPopups.
 Item {
     id: root
 
@@ -159,6 +160,10 @@ Item {
         animatePresentation: false
         placementCanResize: false
         stableContentSize: true
+        stackPolicy: "pyramid"
+        semanticOpenOverride:
+            root.activeKind.length > 0
+            && root.desiredKind === root.activeKind
 
         edge: Presentation.edge(root.activePosition,
             root.activeFallbackEdge)

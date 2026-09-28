@@ -18,6 +18,8 @@ assert "animatePlacementChanges: false" in p
 assert "animatePresentation: false" in p
 assert "placementCanResize: false" in p
 assert "externalProgress: root.revealProgress" in p
+assert 'stackPolicy: "pyramid"' in p
+assert "semanticOpenOverride:" in p
 assert "Presentation.joinedEdge(root.activeKind" in p
 assert "AbyssPopupTransitionCoordinator" not in p
 assert "pyramidStack" not in p

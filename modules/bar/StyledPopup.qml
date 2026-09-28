@@ -28,6 +28,7 @@ LazyLoader {
     readonly property var _liquidController: embeddedHost ? null : _liquidAnchor?.liquidController ?? null
     property var _hostedController: null
     property bool _liquidDismissed: false
+    property bool _liquidSemanticHold: false
     readonly property bool presentationActive: embeddedHost ? embeddedHost.visible
         : _liquidController ? _anchorReady && _liquidController.presented
             && (requestedVisible || _lingerVisible) : active
@@ -42,6 +43,7 @@ LazyLoader {
     }
     function dismissPresentation(): void {
         _liquidDismissed = true
+        _liquidSemanticHold = false
         _bodyHovered = false; _contentHovered = false
         _lingerVisible = false
         offsetScale = 1
@@ -183,6 +185,10 @@ LazyLoader {
                 && (root.hoverTarget.containsMouse ?? root.hoverTarget.buttonHovered ?? false))
             || root.popupHovered))
     readonly property bool requestedVisible: !root._liquidDismissed && root._rawVisibleRequest
+    // Abyss semantic ownership includes only the 90 ms compositor hand-off
+    // grace, never the visual retract tail.
+    readonly property bool liquidSemanticVisible:
+        root.requestedVisible || root._liquidSemanticHold
     on_RawVisibleRequestChanged: if (!root._rawVisibleRequest) root._liquidDismissed = false
     property bool _lingerVisible: false
     // Match Caelestia's panel wrappers: one normalized offsetScale drives the
@@ -230,11 +236,13 @@ LazyLoader {
         }
         root._bodyHovered = false
         root._contentHovered = false
+        root._liquidSemanticHold = false
         root._lingerVisible = false
         root.offsetScale = 1
     }
     onHoverTargetChanged: {
         root._liquidDismissed = false
+        root._liquidSemanticHold = false
         root._bodyHovered = false
         root._contentHovered = false
         root._syncBarAutoHideLease()
@@ -253,6 +261,7 @@ LazyLoader {
     function _syncRequestedVisibility(): void {
         if (root.requestedVisible) {
             const alreadyResident = root._lingerVisible
+            root._liquidSemanticHold = false
             hoverTransferTimer.stop()
             retractTimer.stop()
             root._lingerVisible = true
@@ -282,6 +291,7 @@ LazyLoader {
         // shared seam. Give that hand-off a short grace period so a transient
         // all-false hover state cannot start a retract/reopen oscillation.
         if (root.hoverActivates) {
+            root._liquidSemanticHold = true
             hoverTransferTimer.restart()
             return
         }
@@ -320,6 +330,7 @@ LazyLoader {
         interval: 90
         repeat: false
         onTriggered: {
+            root._liquidSemanticHold = false
             if (!root.requestedVisible)
                 root._beginRetract()
         }

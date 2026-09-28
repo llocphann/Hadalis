@@ -7,6 +7,8 @@ QtObject {
     id: root
     property string outputName: ""
     property var participants: ({})
+    readonly property AbyssPyramidCoordinator pyramidCoordinator:
+        AbyssPyramidCoordinator { controller: root }
     property var moduleRecords: []
     property int presentationOrder: 0
     function nextPresentationOrder(): int { return ++presentationOrder }

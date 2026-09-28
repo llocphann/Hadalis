@@ -3325,3 +3325,115 @@ Where the answer is no, defer or demand-gate the side effect while keeping the s
 
 No runtime implementation is authorized by this handoff.
 
+## 27. Audit round 13 — Settings interaction-signal feedback writes (2026-09-29)
+
+This round is documentation/research only. No runtime source was changed.
+
+The round follows the broad static stop rule: it records one newly isolated cross-cutting source of Config churn that directly amplifies the already-known global `Config.revision` / `configChanged` fan-out. It does not reopen unrelated static archaeology.
+
+### 27.1 Settings property-change handlers can write Config for programmatic state changes — ADAPT / P1 strong lossless candidate
+
+Hadalis already contains the right interaction-only pattern in several places, but it is not used consistently.
+
+Representative Classic Bar code currently does:
+
+```qml
+ConfigSpinBox {
+    value: Config.options?.bar?.height ?? 40
+    onValueChanged: Config.setNestedValue("bar.height", value)
+}
+
+SettingsSwitch {
+    checked: Config.options?.bar?.borderless ?? true
+    onCheckedChanged: Config.setNestedValue("bar.borderless", checked)
+}
+```
+
+Representative Waffle Bar code does the same with `WSettingsSwitch` and `WSettingsSpinBox`.
+
+This matters because QML property-change handlers are not user-action signals. A binding update, initialization/clamping/normalization, or another programmatic assignment can emit the property change and run the Config write path.
+
+The repository already demonstrates the safer contract:
+
+- `ConfigSwitch.qml` exposes `toggledByUser(bool checked)` and emits it only from its click path;
+- direct `StyledSpinBox` consumers in Desktop Widgets already use Qt Quick Controls' `onValueModified`, which is interaction-only;
+- `WSettingsSlider.qml` already exposes a `moved()` signal from the underlying slider interaction.
+
+However:
+
+- file-level search finds the `ConfigSwitch` + `onCheckedChanged` + `Config.setNestedValue` pattern across at least eight Classic Settings files;
+- the analogous `WSettingsSwitch` pattern appears across at least thirteen Waffle Settings files;
+- `ConfigSpinBox` + `onValueChanged` + Config writes co-occur across at least nineteen Classic Settings files;
+- `WSettingsSpinBox` + `onValueChanged` + Config writes co-occur across at least eleven Waffle Settings files.
+
+These are file-level coverage counts, not a claim that every matching handler is semantically wrong. Some guarded handlers intentionally react to programmatic state and must be reviewed individually.
+
+The amplification is larger than disk I/O alone. `Config.setNestedValue()` currently performs, synchronously for every call:
+
+1. nested adapter/mirror mutation;
+2. `fileWriteTimer.restart()`;
+3. global `_bumpRevision()`;
+4. global `configChanged()`.
+
+The 50 ms file-write debounce can coalesce physical writes, but it does **not** coalesce the revision bump or `configChanged` fan-out. Therefore a Settings page that writes because a bound control merely synchronized its state can trigger the global invalidation paths documented in §25.7–25.9 even when no user setting actually changed.
+
+This also explains why fixing the source event is preferable to optimizing each downstream consumer first.
+
+**Lossless direction:**
+
+- Classic `SettingsSwitch` / `ConfigSwitch`: migrate persistence handlers from `onCheckedChanged` to the existing `onToggledByUser` where persistence is intended only for user interaction.
+- Classic `ConfigSpinBox`: forward the underlying `SpinBox.valueModified()` as an explicit wrapper signal, then migrate persistence handlers from `onValueChanged` to that interaction signal where appropriate.
+- Waffle `WSettingsSwitch` and `WSettingsSpinBox`: add explicit user-modified signals emitted only by their click/increment/decrement interaction paths, then migrate persistence handlers.
+- Waffle sliders: prefer the already-existing `moved()` contract over `onValueChanged` for persistence.
+- Preserve guarded/property-change handlers where programmatic changes are intentionally part of the feature contract.
+- Do **not** globally replace every `on*Changed` mechanically.
+
+Qt's own QML/Qt Quick guidance recommends explicit interaction signals over value-change signals for backend writes because value-change handlers can fire from automatic/programmatic changes and create event cascades. Qt Quick Controls `SpinBox.valueModified()` specifically exists for touch/mouse/wheel/key user modification.
+
+### 27.2 Central same-value suppression is secondary, not the first fix — INVESTIGATE / P2
+
+`Config.setNestedValue()` currently bumps revision and emits `configChanged` even when a caller supplies a value equal to the current value.
+
+A central no-op guard could catch residual duplicate writes, but it is a broader semantic change than fixing the Settings interaction source. Some call sites may currently (intentionally or accidentally) use a same-value write as a refresh/notification pulse.
+
+Therefore:
+
+1. first migrate clearly user-owned controls to interaction-only signals;
+2. instrument Config call counts and global revision/configChanged counts while opening Settings pages and editing controls;
+3. only then audit whether a primitive/safely-comparable same-value fast path can be introduced without breaking refresh semantics.
+
+Do not use JSON stringify/deep comparison on every Config write as a supposed optimization; that can merely exchange binding fan-out for serialization cost.
+
+### 27.3 Measurement acceptance for this candidate
+
+Add a focused Settings trace before implementation and repeat it after the interaction-signal migration:
+
+- open Classic Settings Bar/Interface/Background pages without changing anything;
+- open the equivalent Waffle Settings pages without changing anything;
+- count `Config.setNestedValue(s)`, revision increments and `configChanged` emissions;
+- then modify one spinbox, switch and slider deliberately and confirm exactly the intended persistence events occur;
+- verify the saved config bytes and visible Settings state are identical to baseline after the same user actions;
+- include a page containing guarded handlers (Themes/Battery/Ai) to ensure intentional programmatic synchronization is not removed.
+
+**Expected result for a successful lossless patch:** opening/synchronizing a Settings page should not itself create unrelated Config persistence/invalidation traffic; deliberate user edits should still persist immediately with the existing 50 ms disk-write coalescing behavior.
+
+### 27.4 Priority interaction with rounds 11–12
+
+Promote this candidate into the first Config-focused measurement batch, ahead of redesigning `getNestedValue()` revisions.
+
+Reason: it attacks avoidable invalidation at the source and can reduce all of these simultaneously:
+
+- global `Config.revision` reevaluation;
+- `Config.configChanged` consumers such as MPRIS/Background/Workspaces;
+- file-write timer restarts;
+- Settings feedback loops.
+
+Revised Config order:
+
+1. **P1 — measure and migrate Settings persistence to interaction-only signals where semantics are user-owned;**
+2. **P1 — profile remaining global `getNestedValue()` revision fan-out after that noise is removed;**
+3. **P1/P2 — narrow expensive `configChanged` consumers such as MPRIS/Background if still material;**
+4. **P2 — consider central same-value suppression only after call-site semantics are audited.**
+
+No runtime implementation is authorized by this handoff.
+

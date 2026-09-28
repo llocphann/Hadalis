@@ -14,7 +14,10 @@ Item {
     property string icon: "info"
     property bool isError: false
     property int duration: 3000
-    property string source: "system" // "quickshell" or "niri"
+    property string source: "system" // "reload", "error", or another system source
+    // Successful reload toasts are informational and self-dismiss through the
+    // existing progress timer. Errors retain explicit dismissal/copy actions.
+    readonly property bool showDismissButton: root.source !== "reload"
     property color accentColor: Appearance.colors.colPrimary
     // Connected hosts provide the outer iRiS plate/shadow. Keep this component
     // as the interactive/content layer so reload toasts can become one attached block.
@@ -130,8 +133,10 @@ Item {
 
             }
 
-            // Close button
+            // Close button. Reload-success toasts intentionally rely on the
+            // existing timeout/progress contract instead of an extra X affordance.
             RippleButton {
+                visible: root.showDismissButton
                 implicitWidth: 28
                 implicitHeight: 28
                 buttonRadius: Appearance.rounding.small

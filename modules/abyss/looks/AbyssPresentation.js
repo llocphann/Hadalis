@@ -37,3 +37,17 @@ function save(positions, kind, outputName, values) {
     if (values) result.push(Object.assign({},values,{kind:kind,outputName:outputName}));
     return result;
 }
+
+function nearbyEdge(edge, along, span, width, height) {
+    var horizontal=edge==="top" || edge==="bottom";
+    var length=horizontal ? width : height;
+    var first=Math.max(0,Number(along)||0);
+    var last=Math.max(0,length-first-Math.max(0,Number(span)||0));
+    if (Math.min(first,last)>160) return "";
+    return horizontal ? (first<=last ? "left" : "right")
+        : (first<=last ? "top" : "bottom");
+}
+function joinedEdge(kind, position, edge, along, span, width, height) {
+    if (!canJoin(kind) || position?.joinCorner!==true) return "";
+    return nearbyEdge(edge,along,span,width,height);
+}

@@ -43,7 +43,9 @@ Item {
     property alias previewKind:previewPositions.kind
     readonly property var previewPosition: Presentation.resolve(draftPositions,previewKind,outputOnly ? outputName : "")
     property alias previewHost:previewBody
-    readonly property string previewNearbyCorner: Placement.adjacentEdge({edge:previewBody.edge,along:previewBody.along,span:previewBody.span},width,height)
+    readonly property string previewNearbyCorner:
+        Presentation.nearbyEdge(previewBody.edge,previewBody.along,
+            previewBody.span,width,height)
     property real lastImpulse: 0
     property var inputRegions: []
     readonly property string nearbyCorner: Placement.adjacentEdge(moduleLayer.layoutRecords.find(p=>p.id===selectedId),width,height)
@@ -345,7 +347,8 @@ Item {
         open:root.visible && root.editingPopups
         contentKind:root.previewKind;source:"content/AbyssLayoutPreview.qml"
         edge:Presentation.edge(root.previewPosition,root.moduleLayer.edge)
-        joinedEdge:Presentation.canJoin(root.previewKind) && root.previewPosition.joinCorner===true ? root.previewNearbyCorner : ""
+        joinedEdge:Presentation.joinedEdge(root.previewKind,
+            root.previewPosition,edge,along,span,root.width,root.height)
         edgeInsets:Placement.clearanceInsets(root.edgeInsets,root.moduleLayer.deformations,edge,along,span)
         span:(["top","bottom"].includes(edge) ? contentItem.item?.desiredWidth ?? 390 : contentItem.item?.desiredHeight ?? 120)+padding*2
         depth:(["top","bottom"].includes(edge) ? contentItem.item?.desiredHeight ?? 120 : contentItem.item?.desiredWidth ?? 390)+padding*2

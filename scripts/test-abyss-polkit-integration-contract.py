@@ -6,7 +6,9 @@ per=(r/"modules/abyss/AbyssPerimeter.qml").read_text()
 legacy=(r/"modules/polkit/Polkit.qml").read_text()
 confirm=(r/"modules/abyss/AbyssConfirmationPresenter.qml").read_text()
 
-assert 'active: Config.options?.panelFamily !== "abyss"' in legacy
+assert "PolkitService.available && PolkitService.active" in legacy
+assert 'Config.options?.panelFamily !== "abyss"' in legacy
+assert '!(Config.options?.enabledPanels ?? []).includes("abyssPerimeter")' in legacy
 
 assert "id: promptFallbackAnchor" in per
 assert 'property var liquidController: liquid' in per

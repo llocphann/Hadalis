@@ -2262,3 +2262,150 @@ On the maintainer machine, capture the startup evidence bundle first. The report
 
 Until that report exists, another broad static sweep would add lower-confidence work than the already documented candidates.
 
+---
+
+## 23. Audit round 9 — post-round-8 delta and Abyss CPU-side lossless candidates (2026-09-28)
+
+### Snapshot
+
+- Hadalis head at this checkpoint: `3ad44f2b3036ed5d1b434b1cafc8e98537de87b5`
+- Previous runtime-readiness checkpoint: `96e08140d33f666314c99b88ee18dfe22dca97d9`
+- Delta: 93 commits.
+- The delta is concentrated in Abyss popup/perimeter/editor/layout work plus focused Dashboard/Dock/UI refinements and regression contracts.
+- This round intentionally does **not** reopen the broad static archaeology stopped in §20–22. It audits only the new runtime delta and CPU-side work that the earlier shader-focused pass did not classify.
+
+The existing pending candidates remain current unless superseded below:
+
+- startup T+0..T+8 runtime evidence
+- WindowPreview eager/lazy/hybrid experiment
+- Equalizer fixed-rate repaint / compact-sidebar CAVA demand
+- notification-history scaling
+- Favicon process churn
+- Abyss fragment/GPU cost
+
+### 23.1 Wave mass recomputation runs while Abyss waves are disabled — ADAPT / P1 low-risk lossless candidate
+
+Current default configuration has:
+
+- `abyss.waves.enabled = false`
+- `abyss.quality = "balanced"`, so `AbyssWaveController.sampleCount = 256`
+
+Current `modules/abyss/AbyssWaveController.qml` behavior:
+
+- `Component.onCompleted: reset()` always creates the simulation.
+- `onRecordsChanged: if (simulation) Wave.setMass(simulation,records)` runs whenever body records change.
+- `Wave.setMass()` clears the whole mass array, then for every active record iterates the full sample array and evaluates the Gaussian mass contribution.
+- `integrationAllowed` is false when waves/audio integration is disabled, but it does not currently gate `onRecordsChanged`.
+
+Current `AbyssBodyHost` reveal/retract changes `record.progress` across the presentation animation, so ordinary popup/sidebar/body motion can repeatedly change `AbyssSurfaceController.records` even when the wave solver is not running.
+
+That means the default waves-off path can still pay repeated JavaScript work whose result cannot affect the rendered wave field.
+
+**Lossless optimization direction:**
+
+1. Do not recompute solver mass while `integrationAllowed === false`.
+2. Mark mass state dirty instead.
+3. Refresh mass synchronously when integration becomes allowed and before the first impulse/spectrum step can consume it.
+4. Preserve the exact current `Wave.setMass()` calculation and record values when waves are enabled.
+
+This is a stronger candidate than another generic static cleanup because disabled-wave sessions have no wave output whose fidelity could change. Acceptance still needs a QML-profiler comparison during repeated Abyss body open/close with waves disabled and enabled.
+
+Do not remove the simulation or change the wave model in this optimization; the target is only unnecessary recomputation while there is no consumer.
+
+### 23.2 Abyss record packing and 40 shader-uniform bindings can multiply one geometry change into repeated JS allocation — INVESTIGATE / P1
+
+This is CPU/QML-side work distinct from the existing §13.5 / §22.6 fragment-shader candidate.
+
+Current `modules/abyss/AbyssSurfaceController.qml` publishes:
+
+- `records: moduleRecords.concat(Object.keys(participants).map(... Object.assign(...)))`
+- `inputBounds` through another full participant map/filter
+- `bodyPlacements` through a participant map/filter into the allocator
+
+The hot path is `records`: a live body reveal/retract changes its geometry repeatedly, which invalidates the aggregate list and rebuilds/clones participant record objects.
+
+Current `modules/abyss/looks/AbyssField.qml` then exposes forty independent bindings:
+
+- `rect0` through `rect39`
+- each calls `root.packed(index)`
+- each `packed()` constructs a new `Qt.vector4d(...)`
+
+Because every `rectN` depends on `root.records`, one records-array change can re-run all forty packing bindings even when only a small number of records are active.
+
+Qt's QML performance guidance explicitly treats frequently reevaluated complex bindings and JavaScript allocation as profile targets. This path therefore deserves CPU/QML-profiler measurement in addition to the already-planned GPU/frame-time shader measurement.
+
+**Lossless optimization directions to test, not implement blindly:**
+
+- avoid cloning inactive/zero-area participant records on every geometry frame;
+- keep slot order/capacity stable while updating only changed packed values;
+- avoid rebuilding all forty vector values when one record changes, if QML/ShaderEffect binding semantics allow a stable packed representation;
+- preserve byte-equivalent numeric uniform values, record ordering, `capacity = 40`, and all current connected geometry.
+
+Do **not** collapse this into the fragment early-rejection task. One is QML/JS/uniform-update cost; the other is per-pixel GPU cost.
+
+### 23.3 New generic Abyss popup hosting is not an eager-content regression — CLOSED / current lifecycle is sound
+
+The new generic popup path was checked specifically because the post-round-8 delta added several popup components.
+
+Verified:
+
+- `AbyssGenericPopupPresenter` owns one semantic popup body per output and retracts before switching kind.
+- `AbyssBodyHost` only activates its content Loader when `residentContent || open || progress > 0.001` and deferred panels are ready.
+- `AbyssPopupContent` uses one Loader whose `sourceComponent` selects only the active semantic popup kind.
+- Utilities internally retain only the current SwipeView page and immediate neighbours.
+- New launcher/dock-menu/network popup components do not introduce an unconditional background timer or process loop.
+
+Therefore there is no reason to replace the current popup host with another loader layer merely for performance. Keep the existing lifecycle as a regression guard.
+
+### 23.4 Abyss editor deep-copy and relocation work is interaction-scoped — CLOSED unless profiling says otherwise
+
+`AbyssEdgeEditor.qml` performs JSON deep copies when entering/resetting edit state and uses a 90 ms debounce timer for toolbar relocation while editing.
+
+The drag path also updates draft placement and periodically emits liquid impulses, but this work exists only while the editor is visible and the user is actively manipulating layout.
+
+No always-idle lossless optimization was found here. Do not complicate the editor state model to remove one-shot JSON copies without profiler evidence.
+
+### 23.5 Dashboard/Dock delta did not add a new unconditional hot loop — CLOSED / retain existing guards
+
+The large Dashboard/Dock changes in the 93-commit delta were checked for new fixed-rate timers, eager heavy loaders and always-on rendering.
+
+Findings:
+
+- Dashboard widget content remains behind per-card Loaders.
+- When Dashboard is hosted by Abyss, `AbyssBodyHost` releases non-resident content after close/retraction.
+- Dock rebuild work is already debounced; its drag timers are gesture-scoped.
+- New utility buttons are individually Loader-gated by configured utility presence.
+- No new unconditional `Canvas.requestPaint()` loop comparable to the existing Equalizer candidate was introduced.
+
+The existing Dashboard/Dock lifecycle optimizations should remain regression guards rather than new rewrite targets.
+
+### 23.6 Revised lossless research priority after the post-round-8 delta
+
+The current order is:
+
+1. **Measure and, if confirmed, gate waves-off `Wave.setMass()` recomputation** — smallest new lossless candidate with a clear no-consumer state.
+2. **Profile Abyss QML record/uniform churn together with the existing GPU matrix** — separate CPU/QML and GPU numbers.
+3. **Collect startup T+0..T+8 evidence** before further service materialization changes.
+4. **Run the existing Equalizer/CAVA scenarios.**
+5. **Measure notification-history scaling and cached-Favicon process churn.**
+6. **Run WindowPreview policy A/B only after an experiment selector/reversible comparison mechanism exists.**
+
+Static work should remain delta-driven. Do not resume a blind full-tree search after every UI commit; re-audit newly added/changed runtime primitives and use profiler/runtime evidence to promote candidates.
+
+### Next concrete task
+
+For Abyss specifically, the next evidence bundle should compare repeated popup/body open-close cycles on the same current SHA with:
+
+- waves disabled (current default)
+- waves enabled, balanced quality
+
+Capture at least:
+
+- QML/JavaScript time in `AbyssSurfaceController.records`, `AbyssField.packed()` and `Wave.setMass()`
+- binding reevaluation counts for `rect0..rect39`
+- frame time during reveal/retract
+- JavaScript allocation/GC activity if available
+- the number of active records during the trace
+
+If the waves-disabled trace confirms repeated `Wave.setMass()` cost, that becomes the first implementation candidate. The implementation must preserve current enabled-wave numerics and visual output exactly.
+

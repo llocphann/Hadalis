@@ -18,6 +18,7 @@ function request(id,edge,order,depth=200,along=300,span=420,options={}) {
  const padding=options.padding ?? 14;
  const record=panel(1200,900,edgeInsets,edge,along,span,depth,1,padding,[],true);
  return {id,open:true,order,priority:options.priority ?? 0,padding,
+   stackPolicy:options.stackPolicy ?? "",
    minSpan:Math.min(record.span,options.minSpan ?? 220),
    minDepth:Math.min(record.targetDepth,options.minDepth ?? 120),record};
 }
@@ -63,6 +64,33 @@ for(const edge of ['top','bottom','left','right']) {
  assert(Math.abs((fading.along+fading.span/2)-center(requests[0].record))<1e-6,
      'reveal frames retain the same anchor');
 }
+
+// Pairwise "area if same anchor, legacy otherwise" is non-transitive when a
+// remote request sits between two pyramid peers by activation order. Lock the
+// two-phase ordering: outsiders keep their legacy slots, while same-anchor
+// pyramid members deterministically reorder those slots by resting area.
+const pyramidLarge=request('pyramidLarge','top',1,260,300,500,{stackPolicy:'pyramid'});
+const pyramidSmall=request('pyramidSmall','top',3,140,360,380,{stackPolicy:'pyramid'});
+const remote=request('remote','top',2,180,20,300,{stackPolicy:'pyramid'});
+const expectedOrder=['pyramidLarge','remote','pyramidSmall'];
+const permutations=[
+ [pyramidLarge,pyramidSmall,remote],
+ [pyramidLarge,remote,pyramidSmall],
+ [pyramidSmall,pyramidLarge,remote],
+ [pyramidSmall,remote,pyramidLarge],
+ [remote,pyramidLarge,pyramidSmall],
+ [remote,pyramidSmall,pyramidLarge]
+];
+for(const permutation of permutations)
+ assert.deepEqual(_orderedRequests(permutation).map(request=>request.id),expectedOrder,
+     'pyramid ordering is deterministic and preserves outsider legacy slots');
+
+const pyramidPair=[pyramidLarge,pyramidSmall];
+let pyramidPacked=arrange(pyramidPair,1200,900,edgeInsets);
+assert.equal(pyramidPacked.pyramidLarge.inward,0,
+    'larger same-anchor popup owns the physical Edge tier');
+assert(pyramidPacked.pyramidSmall.inward>0,
+    'smaller same-anchor popup stacks inward');
 
 const crowded=[
  request('settings','bottom',1,760,80,1040,{minSpan:520,minDepth:240}),

@@ -115,23 +115,64 @@ function _requestedArea(request) {
     return Math.max(0,_number(record.span,0))
         * Math.max(0,_number(record.targetDepth,record.depth || 0));
 }
+function _legacyCompare(a,b) {
+    return (b.priority || 0)-(a.priority || 0)
+        || (b.order || 0)-(a.order || 0)
+        || String(a.id).localeCompare(String(b.id));
+}
+function _orderedRequests(requests) {
+    // First establish the old globally-transitive order. Pyramid grouping is
+    // then applied only inside the slots already occupied by each same-anchor
+    // component. This preserves every outsider's relative position while
+    // avoiding the previous pairwise comparator cycle:
+    // large(A)<small(B), B<remote(C), C<A.
+    var ordered=Array.from(requests || []).filter(function(request) {
+        return request && request.open && request.record;
+    }).sort(_legacyCompare);
+    var parent=ordered.map(function(_,index) { return index; });
+    function find(index) {
+        while (parent[index] !== index) {
+            parent[index]=parent[parent[index]];
+            index=parent[index];
+        }
+        return index;
+    }
+    function join(first,second) {
+        var a=find(first), b=find(second);
+        if (a !== b) parent[b]=a;
+    }
+    for (var i=0;i<ordered.length;i++) {
+        for (var j=i+1;j<ordered.length;j++) {
+            if (_samePyramidAnchor(ordered[i],ordered[j]))
+                join(i,j);
+        }
+    }
+    var groups={};
+    for (var index=0;index<ordered.length;index++) {
+        var key=String(find(index));
+        if (!groups[key]) groups[key]=[];
+        groups[key].push(index);
+    }
+    Object.keys(groups).forEach(function(key) {
+        var slots=groups[key];
+        if (slots.length < 2) return;
+        var members=slots.map(function(index) { return ordered[index]; });
+        // All members of this component are pyramid peers connected by the
+        // same <=2 px anchor relation. Larger resting area owns the earlier
+        // (more Edge-direct) slot; equal areas keep the legacy tie-breaks.
+        members.sort(function(a,b) {
+            var areaDelta=_requestedArea(b)-_requestedArea(a);
+            return Math.abs(areaDelta)>.5 ? areaDelta : _legacyCompare(a,b);
+        });
+        for (var n=0;n<slots.length;n++)
+            ordered[slots[n]]=members[n];
+    });
+    return ordered;
+}
 function arrange(requests, width, height, insets, gap) {
     gap = gap === undefined ? 24 : Math.max(0, gap);
     var result = {}, accepted = [];
-    var ordered = Array.from(requests || []).filter(function(request) {
-        return request && request.open && request.record;
-    });
-    ordered.sort(function(a,b) {
-        // Pyramid is a resting-layout policy only: at one physical anchor the
-        // largest popup owns the Edge tier and smaller peers stack inward.
-        if (_samePyramidAnchor(a,b)) {
-            var areaDelta=_requestedArea(b)-_requestedArea(a);
-            if (Math.abs(areaDelta)>.5) return areaDelta;
-        }
-        return (b.priority || 0)-(a.priority || 0)
-            || (b.order || 0)-(a.order || 0)
-            || String(a.id).localeCompare(String(b.id));
-    });
+    var ordered = _orderedRequests(requests);
     ordered.forEach(function(request) {
         var record = request.record;
         var fullSpan = Math.max(0,_number(record.span,0));

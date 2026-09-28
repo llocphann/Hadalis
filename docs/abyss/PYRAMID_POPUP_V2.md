@@ -103,3 +103,10 @@ If the popup closes again before the reverse completes, phase flips back to `clo
 Pyramid interpolation now animates `record.depth` with the same normalized reveal scalar as `surface` and `content`. In the normal `Geometry.placedPanel()` path, `depth` is the current Edge-normal reach while `targetDepth` is the resting maximum; Pyramid snapshots must preserve that distinction.
 
 The collapsed origin reconstructs its current depth from the invariant `surfaceCross = ownerExtent + currentDepth`. Therefore the lowest tier has depth 0 at the physical Edge, while a higher tier's collapsed depth reaches exactly to the lower popup boundary. This matters beyond painting: obstacle and layout consumers read `record.depth`. Keeping the old full depth during a visual retract made those consumers behave as if the popup were fully open until the final frame, producing premature/late reflow around animated popups.
+
+
+## Deterministic resting-order grouping
+
+The static allocator no longer mixes Pyramid area ordering and legacy priority/order in one pairwise sort comparator. That comparator could be non-transitive when two same-anchor pyramid peers had a third, different-anchor request between them: A could sort before B by area, B before C by activation order, and C before A by activation order. A non-transitive comparator makes the resting tier order engine/input-order dependent, which is unacceptable as an animation target.
+
+The allocator now performs two deterministic stages. First it computes the unchanged legacy global order. Then each connected same-anchor Pyramid component reorders only the slots already occupied by that component, largest resting area first. Requests at other anchors never move slots because of Pyramid policy. This keeps the resting-layout/animation boundary stable and prevents apparent animation jumps caused by an unstable target order rather than by the motion layer itself.

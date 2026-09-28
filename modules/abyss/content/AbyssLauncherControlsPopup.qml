@@ -49,7 +49,6 @@ ColumnLayout {
                     required property var modelData
                     Layout.fillWidth: true
                     implicitHeight: 38
-                    checkable: true
                     checked: AbyssStyle.quality === modelData.value
                     text: Translation.tr(modelData.label)
                     glyph: modelData.icon
@@ -98,7 +97,6 @@ ColumnLayout {
                     required property var modelData
                     Layout.fillWidth: true
                     implicitHeight: 38
-                    checkable: true
                     checked: (Config.options?.abyss?.waves?.preset ?? "balanced")
                         === modelData.value
                     text: Translation.tr(modelData.label)

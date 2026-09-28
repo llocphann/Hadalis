@@ -445,7 +445,7 @@ Item {
                     outputSelectionEnabled:false
                     outputName:root.outputOnly ? root.outputName : ""
                     nearbyEdge:root.previewNearbyCorner
-                    allowedKinds:["clock","resources","battery","media","weather","wifi","utilities",
+                    allowedKinds:["clock","resources","battery","media","weather","wifi","utilities","launcher",
                         "quickNotes","notificationCenter","notifications",
                         "volume","brightness","mic","mediaOsd","keyboardLayout"]
                     onPositionsEdited:(positions,kind,outputName,values)=>

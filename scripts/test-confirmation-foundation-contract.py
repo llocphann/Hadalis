@@ -22,6 +22,16 @@ assert 'kind === "tray"' not in registry  # priority policy stays pure/testable
 assert "menuEntry" not in registry
 assert "Quit" not in registry
 
+# Implicit ownership never relies on human-facing labels.
+assert "source.appName" not in registry
+tray_registration=tray.split("Component.onCompleted:",1)[1].split("Component.onDestruction:",1)[0]
+bar_registration=bar.split("registerAnchor",1)[1].split("], 250)",1)[0]
+dock_registration=dock.split("registerAnchor",1)[1].split("], 200)",1)[0]
+assert "root.item?.title" not in tray_registration
+assert "root.item?.tooltipTitle" not in tray_registration
+assert "root.desktopEntry?.name" not in bar_registration
+assert "root.desktopEntry?.name" not in dock_registration
+
 # Every visible app surface registers its live Item; tray outranks bar then dock.
 assert 'registerAnchor(\n        root, "tray"' in tray
 assert 'registerAnchor(root, "bar"' in bar

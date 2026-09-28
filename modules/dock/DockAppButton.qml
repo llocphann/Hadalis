@@ -127,8 +127,7 @@ DockButton {
                 root.appToplevel?.originalAppId,
                 root.appToplevel?.appId,
                 root.desktopEntry?.id,
-                root.desktopEntry?.startupClass,
-                root.desktopEntry?.name
+                root.desktopEntry?.startupClass
             ], 200)
         }
     }

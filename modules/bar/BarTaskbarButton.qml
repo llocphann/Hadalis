@@ -101,8 +101,7 @@ RippleButton {
                 root.appEntry?.originalAppId,
                 root.appEntry?.appId,
                 root.desktopEntry?.id,
-                root.desktopEntry?.startupClass,
-                root.desktopEntry?.name
+                root.desktopEntry?.startupClass
             ], 250)
         }
     }

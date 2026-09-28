@@ -62,13 +62,15 @@ Singleton {
     function _sourceAliases(source): var {
         if (!source)
             return []
+        // Only stable machine identities participate in implicit source
+        // resolution. Human-facing names/titles are descriptive, localizable
+        // and may collide; unresolved requests must use the safe fallback.
         return [
             source.appId,
             source.sourceAppId,
             source.sourceApp,
             source.desktopId,
-            source.desktopEntry,
-            source.appName
+            source.desktopEntry
         ].filter(value => String(value ?? "").trim().length > 0)
     }
 

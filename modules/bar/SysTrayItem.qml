@@ -37,9 +37,9 @@ MouseArea {
 
     Component.onCompleted: PopupAnchorRegistry.registerAnchor(
         root, "tray", () => [
-            root.item?.id,
-            root.item?.title,
-            root.item?.tooltipTitle
+            // StatusNotifier id is application identity. Title/tooltip are
+            // descriptive/localizable and intentionally excluded from routing.
+            root.item?.id
         ], 300)
     Component.onDestruction: PopupAnchorRegistry.unregisterAnchor(root)
 

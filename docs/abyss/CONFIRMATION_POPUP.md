@@ -1,6 +1,6 @@
 # Abyss confirmation and authentication popup architecture
 
-Status: Phase A source audit complete. Foundation/runtime integration is intentionally split into later commits. Live desktop acceptance is **not** implied by this document.
+Status: Phases A-D are implemented at the source/contract level on `dev`. Phase E live-desktop acceptance is still pending. Nothing in this document should be read as proof that compositor/runtime acceptance has completed.
 
 ## Goal
 
@@ -84,16 +84,66 @@ Security contract:
 
 If a trustworthy source-app hint becomes available, Polkit can use the same anchor resolver. The current `AuthFlow` does not by itself provide a dependable requesting desktop-app ID, so the default for ordinary Polkit requests is top-center rather than guessing from the human-readable message.
 
-## Planned implementation boundaries
+## Implementation status
 
-Phase B introduces a runtime-only request queue and a live popup-anchor registry. The registry stores Item references and identity providers, never secrets. Tray registration outranks Dock registration. Resolution is snapshotted when a request becomes active so a new request cannot inherit another popup's geometry.
+### Phase B — foundation
 
-Phase C rehosts the existing Hadalis `closeConfirm` path through an Abyss confirmation `StyledPopup`. Accept/Cancel invoke the existing real callbacks. Waffle keeps its own renderer. App-native confirmation interception is not claimed.
+Implemented:
 
-Phase D rehosts the existing Polkit `AuthFlow` through a focused Abyss `StyledPopup`, preserving Enter/Escape, retry/error, busy state, identities and Details metadata. The old fullscreen Polkit renderer remains only as a non-Abyss compatibility path.
+- `ConfirmationService` owns runtime-only confirmation requests and callback closures; it does not serialize request state through Config, GlobalStates or generic IPC.
+- `PopupAnchorRegistry` resolves only live Items that already belong to an Abyss connected surface.
+- Implicit matching uses stable machine identities only. Human-facing app names, tray titles and tooltips are deliberately excluded from routing.
+- Precedence is explicit source Item, then System Tray, then Bar taskbar, then Dock, then top-center fallback.
+- Source removal cancels the attached request instead of switching anchors mid-flight.
+- The active request is retained until its visual retract tail is released, so queued requests cannot inherit the previous geometry.
+- If `abyssPerimeter` is disabled, the previous standalone confirmation/Polkit renderers remain available as a fail-safe rather than leaving an invisible request.
+
+### Phase C — normal confirmation
+
+Implemented for the Hadalis-owned `closeConfirm` backend:
+
+- the request is presented through a focused `StyledPopup`;
+- source app IDs can attach the popup to a matching Tray/Bar/Dock anchor;
+- unresolved sources use the output top-center anchor;
+- the real close callback still executes the existing Niri close/minimize path;
+- cancel, close/reopen, long content and long action labels use the same Abyss primitives and popup geometry.
+
+This does **not** claim generic interception of application-native confirmations. ChatGPT Quit remains blocked on a trustworthy backend/native bridge that can expose the application's real confirmation semantics and suppress the original dialog without bypassing or duplicating it.
+
+### Phase D — Polkit
+
+Implemented on the existing Quickshell `PolkitAgent/AuthFlow` backend:
+
+- no second authorization queue is created; Quickshell remains queue authority;
+- Enter/Escape, Cancel, Authenticate, identities, Details, failure messages and multi-turn prompts are preserved;
+- pending state remains non-interactive until `AuthFlow` actually requires a response;
+- the response field is cleared before handing the response to `AuthFlow.submit`;
+- response text is not stored in Config, GlobalStates, the generic confirmation service, logs or persisted state;
+- ordinary Polkit requests use top-center because `AuthFlow` does not expose a dependable requester app ID;
+- a future trusted source hint can use the same anchor resolver without changing the authentication backend.
+
+### Phase E — runtime acceptance
+
+A synthetic Wayland/Quickshell harness now exists at `scripts/test-abyss-confirmation-runtime.sh`. When run in a real Wayland session with Quickshell available, it exercises real `StyledPopup`/Abyss popup slots and real confirmation callbacks for:
+
+- Top/Bottom/Left/Right source attachment;
+- Tray-over-Dock identity precedence and Dock-only fallback;
+- top-center fallback when no source resolves;
+- long content width capping;
+- source removal without teleport;
+- coexistence with another popup and survival while that peer retracts.
+
+The script intentionally skips when Quickshell/Wayland is unavailable. A source-only pass or a skipped runtime harness is **not** runtime completion.
 
 ## Acceptance status
 
-Source/contract tests may establish routing, anchor precedence, focus, action callbacks, queue behavior and the absence of secret persistence. They do **not** establish live compositor acceptance.
+Source/contract coverage now exists for request ownership, conservative anchor resolution, popup/Pyramid reuse, fail-safe fallback renderers, Join Edge inheritance, action callbacks, queue ownership, Polkit focus/security state and multi-turn retry behavior.
 
-The following remain live-desktop checks after implementation: tray attachment (including ChatGPT only once a trustworthy backend exists), Dock-only attachment, top-center fallback, all four Edges, Join Edge, concurrent/retracting Pyramid neighbors, close/cancel/reopen, source removal, long content/button labels, password focus, wrong-password retry, Polkit cancel, queued requests and real authorization completion.
+Still requiring live desktop acceptance:
+
+- the synthetic confirmation runtime harness on the target desktop/compositor;
+- real Polkit password focus, wrong-password retry, Cancel, queued requests and successful authorization;
+- multi-monitor/focus changes and source disappearance in the actual shell;
+- ChatGPT Quit or any other application-native confirmation only after a reliable native/backend interception path exists.
+
+Do not mark the feature `runtime complete` until those live checks are recorded.

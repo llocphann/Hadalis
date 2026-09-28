@@ -34,11 +34,22 @@ Item {
         GlobalStates.mediaControlsOpen = false
         GlobalStates.abyssPopupKind = "dockAppMenu"
     }
+    function closeAppMenu(): void {
+        if (GlobalStates.abyssPopupKind !== "dockAppMenu"
+                || GlobalStates.abyssPopupTargetOutput !== root.outputName)
+            return
+        GlobalStates.abyssDockMenuModel = []
+        GlobalStates.abyssDockMenuOwnerId = ""
+        GlobalStates.abyssDockMenuTriggerHovered = false
+        GlobalStates.abyssPopupKind = ""
+    }
     function updateAppMenuHover(ownerId, hovered): void {
         if (String(ownerId ?? "") !== GlobalStates.abyssDockMenuOwnerId)
             return
         GlobalStates.abyssDockMenuTriggerHovered = hovered
     }
+    onEdgeChanged: root.closeAppMenu()
+    Component.onDestruction: root.closeAppMenu()
     function react(position, strength): void {
         if (!participant?.controller) return
         const point = root.mapToItem(participant, position.x, position.y)

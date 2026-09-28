@@ -518,8 +518,10 @@ Scope {
                     && Geometry.targets(window.outputName,Config.options?.dock?.screenList ?? [],Quickshell.screens.map(s => s.name))
                     && !window.editorOpen && !settings.open && !dashboardBody.open && !controls.open
                     && !aux.open && !clipboardBody.open && !utility.open
-                    && !liquid.participantOverlapsRect("popup", requestedRecord.surface, 10)
-                    && !liquid.hasPopupOverlapRect(requestedRecord.surface, 10)
+                    && (GlobalStates.abyssPopupKind === "dockAppMenu"
+                        || !liquid.participantOverlapsRect("popup", requestedRecord.surface, 10))
+                    && (GlobalStates.abyssPopupKind === "dockAppMenu"
+                        || !liquid.hasPopupOverlapRect(requestedRecord.surface, 10))
                     && (((Config.options?.dock?.pinnedOnStartup ?? false) && !(Config.options?.dock?.hoverToReveal ?? false)) || window.dockHovered
                         || (contentItem.item?.requestDockShow ?? false)
                         || ((Config.options?.dock?.showOnDesktop ?? true) && !ToplevelManager.activeToplevel?.activated))

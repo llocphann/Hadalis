@@ -121,6 +121,11 @@ DockButton {
         }
     }
 
+    Component.onDestruction: {
+        if (root.abyssStyle && root.appListRoot)
+            root.appListRoot.setAbyssContextMenuHover(root, false)
+    }
+
     // Determine focused window index for smart indicator.
     // toplevels is already sorted by layout (thanks to CompositorService.sortedToplevels in DockApps)
     // so we just need to find the active toplevel index.

@@ -30,14 +30,22 @@ Item {
     property string layoutMessage: ""
     signal requestEventsDialog(var event)
 
-    readonly property int gridSize: Math.max(8,
-        Number(Config.options?.dashboard?.canvas?.gridSize ?? 24))
+    readonly property int gridSize: Math.max(8, Number(
+        root.editMode && root._draftGridSize !== null
+            ? root._draftGridSize
+            : (Config.options?.dashboard?.canvas?.gridSize ?? 24)))
     readonly property bool snapEnabled:
-        Config.options?.dashboard?.canvas?.snap ?? true
+        root.editMode && root._draftSnap !== null
+            ? root._draftSnap
+            : (Config.options?.dashboard?.canvas?.snap ?? true)
     readonly property bool autoAdjustSizeEnabled:
-        Config.options?.dashboard?.canvas?.autoAdjustSize ?? true
+        root.editMode && root._draftAutoAdjustSize !== null
+            ? root._draftAutoAdjustSize
+            : (Config.options?.dashboard?.canvas?.autoAdjustSize ?? true)
     readonly property string gridStyle:
-        Config.options?.dashboard?.canvas?.gridStyle ?? "dots"
+        root.editMode && root._draftGridStyle !== null
+            ? root._draftGridStyle
+            : (Config.options?.dashboard?.canvas?.gridStyle ?? "dots")
 
     readonly property var _catalog: ({
         welcome:       { icon: "waving_hand",       label: Translation.tr("Welcome") },
@@ -95,6 +103,10 @@ Item {
     property var _draftEntries: null
     property real _draftWorkspaceWidth: 0
     property real _draftWorkspaceHeight: 0
+    property var _draftGridSize: null
+    property var _draftSnap: null
+    property var _draftAutoAdjustSize: null
+    property var _draftGridStyle: null
     readonly property real _workspaceReferenceWidth:
         root.editMode && root._draftEntries !== null
             ? root._draftWorkspaceWidth
@@ -146,11 +158,22 @@ Item {
     function _captureEditDraft() {
         if (root._draftEntries !== null)
             return
-        root._draftEntries = root._cloneEntries(root._entriesForWrite())
+        // Capture the literal saved entries, not the responsive projection.
+        // Pressing Done without making an edit must be an identity operation.
+        root._draftEntries = root._cloneEntries(
+            Config.options?.dashboard?.canvas?.widgets ?? [])
         root._draftWorkspaceWidth = Number(
             Config.options?.dashboard?.canvas?.workspaceWidth ?? 0)
         root._draftWorkspaceHeight = Number(
             Config.options?.dashboard?.canvas?.workspaceHeight ?? 0)
+        root._draftGridSize = Number(
+            Config.options?.dashboard?.canvas?.gridSize ?? 24)
+        root._draftSnap =
+            Config.options?.dashboard?.canvas?.snap ?? true
+        root._draftAutoAdjustSize =
+            Config.options?.dashboard?.canvas?.autoAdjustSize ?? true
+        root._draftGridStyle =
+            Config.options?.dashboard?.canvas?.gridStyle ?? "dots"
     }
 
     function beginEditMode() {
@@ -172,6 +195,11 @@ Item {
             updates["dashboard.canvas.workspaceHeight"] =
                 root._draftWorkspaceHeight
         }
+        updates["dashboard.canvas.gridSize"] = root._draftGridSize
+        updates["dashboard.canvas.snap"] = root._draftSnap
+        updates["dashboard.canvas.autoAdjustSize"] =
+            root._draftAutoAdjustSize
+        updates["dashboard.canvas.gridStyle"] = root._draftGridStyle
         Config.setNestedValues(updates)
         root.editMode = false
     }
@@ -1488,19 +1516,41 @@ Item {
         }
     }
 
+    function toggleSnap() {
+        if (root.editMode)
+            root._draftSnap = !root.snapEnabled
+        else
+            Config.setNestedValue("dashboard.canvas.snap", !root.snapEnabled)
+    }
+
+    function toggleAutoAdjustSize() {
+        if (root.editMode)
+            root._draftAutoAdjustSize = !root.autoAdjustSizeEnabled
+        else
+            Config.setNestedValue("dashboard.canvas.autoAdjustSize",
+                !root.autoAdjustSizeEnabled)
+    }
+
     function _cycleGridSize() {
         const sizes = [16, 24, 32, 48, 64]
         const current = root.gridSize
         let index = sizes.indexOf(current)
         index = index < 0 ? 0 : (index + 1) % sizes.length
-        Config.setNestedValue("dashboard.canvas.gridSize", sizes[index])
+        const next = sizes[index]
+        if (root.editMode)
+            root._draftGridSize = next
+        else
+            Config.setNestedValue("dashboard.canvas.gridSize", next)
     }
 
     function _cycleGridStyle() {
         const styles = ["dots", "lines", "cross"]
         const current = styles.indexOf(root.gridStyle)
-        Config.setNestedValue("dashboard.canvas.gridStyle",
-            styles[(current < 0 ? 0 : current + 1) % styles.length])
+        const next = styles[(current < 0 ? 0 : current + 1) % styles.length]
+        if (root.editMode)
+            root._draftGridStyle = next
+        else
+            Config.setNestedValue("dashboard.canvas.gridStyle", next)
     }
 
     onEditModeChanged: {
@@ -1515,6 +1565,10 @@ Item {
         root._draftEntries = null
         root._draftWorkspaceWidth = 0
         root._draftWorkspaceHeight = 0
+        root._draftGridSize = null
+        root._draftSnap = null
+        root._draftAutoAdjustSize = null
+        root._draftGridStyle = null
     }
     onPresentationActiveChanged:
         if (!presentationActive) root.cancelEditMode()

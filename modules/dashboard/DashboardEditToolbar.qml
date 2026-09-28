@@ -76,9 +76,10 @@ Rectangle {
                         ? Translation.tr("Snap to grid: on")
                         : Translation.tr("Snap to grid: off")
                     toggled: root.canvasController?.snapEnabled ?? false
-                    onClicked: Config.setNestedValue(
-                        "dashboard.canvas.snap",
-                        !(root.canvasController?.snapEnabled ?? true))
+                    onClicked: {
+                        if (root.canvasController)
+                            root.canvasController.toggleSnap()
+                    }
                 }
 
                 EditToolButton {
@@ -89,9 +90,10 @@ Rectangle {
                         : Translation.tr("Auto-adjust affected module sizes: off")
                     toggled:
                         root.canvasController?.autoAdjustSizeEnabled ?? true
-                    onClicked: Config.setNestedValue(
-                        "dashboard.canvas.autoAdjustSize",
-                        !(root.canvasController?.autoAdjustSizeEnabled ?? true))
+                    onClicked: {
+                        if (root.canvasController)
+                            root.canvasController.toggleAutoAdjustSize()
+                    }
                 }
 
                 EditToolButton {

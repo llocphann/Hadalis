@@ -14,6 +14,13 @@ required_canvas = [
     "function cancelEditMode()",
     "if (root.editMode && root._draftEntries !== null)",
     "root._draftEntries = root._cloneEntries(entries)",
+    "Config.options?.dashboard?.canvas?.widgets ?? []",
+    "property var _draftGridSize: null",
+    "property var _draftSnap: null",
+    "property var _draftAutoAdjustSize: null",
+    "property var _draftGridStyle: null",
+    "function toggleSnap()",
+    "function toggleAutoAdjustSize()",
     "function fitAllWidgets()",
     "Added and fitted all Dashboard modules",
     "onPresentationActiveChanged:",
@@ -28,6 +35,10 @@ assert "dashboardCanvas.editMode = !dashboardCanvas.editMode" not in content
 
 assert "Add all modules and fit them automatically" in toolbar
 assert "root.canvasController.fitAllWidgets()" in toolbar
+assert "root.canvasController.toggleSnap()" in toolbar
+assert "root.canvasController.toggleAutoAdjustSize()" in toolbar
+assert 'Config.setNestedValue(\n                        "dashboard.canvas.snap"' not in toolbar
+assert 'Config.setNestedValue(\n                        "dashboard.canvas.autoAdjustSize"' not in toolbar
 
 # Layout writes during edit must terminate at the draft before reaching Config.
 write_start = canvas.index("function _writeEntries(entries)")

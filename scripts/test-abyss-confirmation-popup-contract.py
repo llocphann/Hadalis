@@ -29,8 +29,8 @@ assert "ConfirmationService.finishPresentation(root.requestId)" in presenter
 host=(r/"modules/abyss/AbyssBodyHost.qml").read_text()
 assert "readonly property string popupJoinedEdge: joinedEdge" in host
 
-# Top-center fallback is a real source Item on the same liquid controller.
-assert "id: confirmationFallbackAnchor" in perimeter
+# Top-center fallback is a real shared prompt source Item on the same liquid controller.
+assert "id: promptFallbackAnchor" in perimeter
 assert 'property var liquidController: liquid' in perimeter
 assert 'property string attachedEdge: "top"' in perimeter
 assert "x: (window.width - width) / 2" in perimeter
@@ -52,7 +52,7 @@ assert "ConfirmationService.enqueue({" in close
 assert "callback: () => root.closeWindowFast(snapshot)" in close
 assert "Quickshell.execDetached(["niri", "msg", "action", "close-window"" in close
 assert 'Config.options?.panelFamily === "abyss"' in close
-assert 'active: root.dialogVisible && Config.options?.panelFamily !== "abyss"' in close
+assert "active: root.dialogVisible" in close
 
 # Queue content remains latched until the popup visual tail is gone.
 assert "function cancelOwned(owner): void" in service

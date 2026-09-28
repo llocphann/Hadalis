@@ -39,6 +39,8 @@ Item {
         const factor = channel === "module" ? (Math.abs(strength)<0.5 ? parameters.hover : parameters.press)
             : (parameters[channel] ?? 1)
         Wave.impulse(simulation,edge,along,span,strength*factor*AbyssStyle.motionIntensity,mass)
+        if(channel === "open" || channel === "close")
+            Wave.travel(simulation,edge,along,span,strength*factor*AbyssStyle.motionIntensity,mass)
         idleDisturbance = channel === "idle"
         lastStep = Date.now()
         mode = simulation.mode
@@ -58,12 +60,16 @@ Item {
         lastStep=Date.now();mode=simulation.mode
     }
     onAudioAllowedChanged: if(!audioAllowed) clearSpectrum()
+    onMotionAllowedChanged: if(!motionAllowed && simulation) Wave.clearTravel(simulation)
     onIntegrationAllowedChanged: if (!integrationAllowed) reset()
     onOutputWidthChanged: reset()
     onOutputHeightChanged: reset()
     onSampleCountChanged: reset()
     onParametersChanged: {
-        if (simulation) simulation.parameters = parameters
+        if (simulation) {
+            simulation.parameters = parameters
+            if(!parameters.popupTravel) Wave.clearTravel(simulation)
+        }
         configurationChanged()
     }
     onRecordsChanged: if (simulation) Wave.setMass(simulation,records)

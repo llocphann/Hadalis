@@ -28,6 +28,7 @@ function parameters(options) {
     Object.keys(base).forEach(function(key) { result[key] = options?.preset === "custom" ? bounded(options[key],base[key],key === "amplitude" ? 4 : 1) : base[key]; });
     ["hover","press","open","close","drag"].forEach(function(key) { result[key] = unit(options?.[key],1); });
     result.idle = options?.idle === true;
+    result.popupTravel = options?.popupTravel !== false;
     result.strength = bodyStrength(options);
     return result;
 }
@@ -38,15 +39,25 @@ function arc(edge, along, width, height) {
     return along;
 }
 function create(count, width, height, options) {
-    return {count:count,width:width,height:height,length:Math.max(1,2*(width+height)),
+    var length=Math.max(1,2*(width+height)),corners=[0,width,width+height,2*width+height];
+    return {count:count,width:width,height:height,length:length,
         displacement:Array(count).fill(0),velocity:Array(count).fill(0),mass:Array(count).fill(1),
         spectrumTargets:Array(count).fill(0),hasSpectrum:false,
+        traveling:[],travelTargets:Array(count).fill(0),hasTravelTargets:false,
+        // Geometry is immutable until this output resets. Corner classification
+        // therefore belongs to initialization, not every solver substep.
+        cornerSamples:Array.from({length:count},function(_,i) { return nearCorner(i*length/count,corners,length,length/count); }),
         acceleration:Array(count).fill(0),
         parameters:options,mode:"SLEEPING",quiet:0,age:0,steps:0};
 }
 function circularDistance(a,b,length) {
     var distance=Math.abs(a-b)%length;
     return Math.min(distance,length-distance);
+}
+function nearCorner(location, corners, length, dx) {
+    for(var i=0;i<corners.length;i++)
+        if(circularDistance(location,corners[i],length)<dx*1.5) return true;
+    return false;
 }
 function setMass(state, records) {
     state.mass.fill(1);
@@ -70,6 +81,50 @@ function impulse(state, edge, along, span, strength, mass) {
         state.velocity[i]=Math.max(-2000,Math.min(2000,state.velocity[i]+amount*Math.exp(-d*d*2)/Math.sqrt(state.mass[i])));
     }
     state.mode="ACTIVE";state.age=0;state.quiet=0;
+}
+// Two bounded moving excitations drive the same spring string. Their signed
+// targets add, so concurrent/opening/closing waves can reinforce or cancel.
+function travel(state, edge, along, span, strength, mass) {
+    if (!state.parameters.popupTravel || !Number.isFinite(strength) || !strength
+            || !Number.isFinite(along) || !Number.isFinite(span)) return false;
+    var p=state.parameters,center=arc(edge,along,state.width,state.height);
+    var width=Math.max(state.length/state.count*1.5,Math.min(state.width,state.height)*.04+span*.16);
+    var amplitude=heightLimit(state)*Math.max(-4,Math.min(4,strength))*1.8*Math.sqrt(Math.max(1,Math.min(4,Number.isFinite(mass) ? mass : 1)));
+    var distance=state.length/2*(.2+.8*p.propagation),speed=320+1280*p.speed;
+    state.traveling=state.traveling.slice(-14).concat([-1,1].map(function(direction) {
+        return {origin:center,center:center,direction:direction,traveled:0,distance:distance,speed:speed,width:width,amplitude:amplitude};
+    }));
+    state.mode="ACTIVE";state.age=0;state.quiet=0;
+    return true;
+}
+function clearTravel(state) {
+    state.traveling=[];state.travelTargets.fill(0);state.hasTravelTargets=false;
+}
+function advanceTravel(state, elapsed) {
+    if(!state.traveling.length && !state.hasTravelTargets) return;
+    state.travelTargets.fill(0);
+    state.hasTravelTargets=false;
+    var dx=state.length/state.count,p=state.parameters,kept=0;
+    for(var packetIndex=0;packetIndex<state.traveling.length;packetIndex++) {
+        var packet=state.traveling[packetIndex];
+        packet.traveled+=packet.speed*elapsed;
+        if(packet.traveled>=packet.distance) continue;
+        state.traveling[kept++]=packet;state.hasTravelTargets=true;
+        packet.center=((packet.origin+packet.direction*packet.traveled)%state.length+state.length)%state.length;
+        var fade=Math.min(1,(packet.distance-packet.traveled)/Math.max(packet.width*4,packet.distance*.18));
+        var center=Math.round(packet.center/dx),radius=Math.min(Math.ceil(packet.width*2.5/dx),Math.floor(state.count/4));
+        // Evaluate only the compact packet's support, rather than every sample
+        // for every popup. Scratch targets and acceleration arrays are reused.
+        for(var offset=-radius;offset<=radius;offset++) {
+            var i=(center+offset+state.count)%state.count;
+            var d=((i*dx-packet.center+state.length*1.5)%state.length-state.length/2)/packet.width;
+            var wake=d+packet.direction*1.45;
+            var shape=Math.exp(-d*d*2)-.45*Math.exp(-wake*wake*2);
+            var corner=state.cornerSamples[i];
+            state.travelTargets[i]+=packet.amplitude*fade*shape*(corner ? .15+.85*p.corner : 1);
+        }
+    }
+    state.traveling.length=kept;
 }
 // Feed a bounded, smooth rest shape into the same spring field. Constant audio
 // can settle to a static wave; changing CAVA frames wake it without an idle clock.
@@ -107,19 +162,19 @@ function advance(state, elapsed) {
     var parts=Math.ceil(Math.max(0,Math.min(.05,elapsed))*Math.max(120,2.5*speed/dx));
     var dt=Math.max(0,Math.min(.05,elapsed))/Math.max(1,parts);
     var limit=heightLimit(state);
-    var corners=[0,state.width,state.width+state.height,2*state.width+state.height];
     for(var step=0;step<parts;step++) {
+        advanceTravel(state,dt);
         var acceleration=state.acceleration;
         for(var i=0;i<state.count;i++) {
             var left=(i+state.count-1)%state.count,right=(i+1)%state.count;
-            var location=i*dx;
-            var atCorner=corners.some(function(c) { return circularDistance(location,c,state.length)<dx*1.5; });
+            var atCorner=state.cornerSamples[i];
             var transfer=atCorner ? .15+.85*p.corner : 1;
             var lap=state.displacement[left]+state.displacement[right]-2*state.displacement[i];
             var viscous=state.velocity[left]+state.velocity[right]-2*state.velocity[i];
             var spring=(18+62*p.tension)*(.4+.6*p.rebound);
             var damping=1.2+7*p.decay+3*(1-p.propagation)+(atCorner?(1-p.corner)*2:0);
             acceleration[i]=(speed*speed/(dx*dx)*lap*transfer+spring*(state.spectrumTargets[i]-state.displacement[i])
+                +(60+120*p.tension)*state.travelTargets[i]
                 +p.viscosity*900/(dx*dx)*viscous)/state.mass[i]-damping*state.velocity[i];
         }
         for(var j=0;j<state.count;j++) {
@@ -133,7 +188,7 @@ function advance(state, elapsed) {
         state.steps++;
     }
     state.age+=elapsed;
-    var quiet=(state.hasSpectrum || state.displacement.every(function(v) { return Math.abs(v)<.025; }))
+    var quiet=state.traveling.length===0 && (state.hasSpectrum || state.displacement.every(function(v) { return Math.abs(v)<.025; }))
         && state.velocity.every(function(v) { return Math.abs(v)<.12; });
     state.quiet=quiet ? state.quiet+1 : 0;
     if(state.quiet>=8) {

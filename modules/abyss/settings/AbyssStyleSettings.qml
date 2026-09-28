@@ -170,6 +170,13 @@ ColumnLayout {
                 }
             }
             AbyssWavePreview {}
+            ConfigSwitch {
+                text:"Traveling popup waves";autoToggle:false
+                description:"Opening and closing a panel sends waves in both directions along the Screen Edges. They share wave size, speed, propagation and strength."
+                visible:(Config.options?.abyss?.waves?.preset ?? "balanced") === "custom"
+                checked:Config.options?.abyss?.waves?.popupTravel ?? true
+                onToggledByUser:checked=>Config.setNestedValue("abyss.waves.popupTravel",checked)
+            }
             WindowDialogSlider {
                 text:"Surface wave strength";Layout.fillWidth:true;from:0;to:4;stepSize:.01
                 visible:(Config.options?.abyss?.waves?.preset ?? "balanced") === "custom"

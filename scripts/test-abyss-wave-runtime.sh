@@ -109,6 +109,26 @@ ShellRoot {
                 Config.setNestedValue("performance.reduceAnimations",false)
                 waves.presented=false
                 if(!root.check(!spectrum.wanted && !waves.running && waves.simulation.displacement.every(v=>v===0),"hidden output releases spectrum and restores rest")) return
+                spectrum.playing=false;audio.audioSignalActive=false
+                Config.setNestedValue("abyss.waves.enabled",true)
+                Config.setNestedValue("abyss.waves.preset","deep")
+                waves.presented=true
+                waves.impulse("top",210,100,.6,1,"open")
+                if(!root.check(waves.running && waves.simulation.traveling.length===2,"popup emergence emits two traveling waves")) return
+            }
+            if(root.step === 27) {
+                if(!root.check(waves.simulation.traveling.every(p=>p.traveled>0) && waves.simulation.displacement.some(v=>Math.abs(v)>1),"popup waves move along the same physical field")) return
+                root.capture("traveling")
+                waves.impulse("top",210,100,-.4,1,"close")
+                if(!root.check(waves.simulation.traveling.length===4,"popup absorption adds interacting waves")) return
+            }
+            if(root.step === 29) {
+                Config.setNestedValue("performance.reduceAnimations",true)
+                if(!root.check(!waves.running && waves.simulation.traveling.length===0,"reduced motion clears traveling waves")) return
+                root.restingRevision=waves.revision;root.capture("travelReduced")
+            }
+            if(root.step === 31) {
+                if(!root.check(root.captured===8 && waves.revision===root.restingRevision,"travel captures complete and reduced output stays asleep")) return
                 console.info("WAVE_RUNTIME_PASS");Qt.quit()
             }
             root.step++
@@ -119,7 +139,7 @@ QML
 if ! env -u QS_CONFIG_PATH -u QS_CONFIG_NAME -u QS_MANIFEST QT_QPA_PLATFORM=offscreen \
     QSG_RHI_BACKEND=opengl QT_QUICK_BACKEND=rhi ABYSS_WAVE_OUTPUT="$wave_test_root" \
     XDG_CONFIG_HOME="$wave_test_root/config" XDG_STATE_HOME="$wave_test_root/state" \
-    XDG_CACHE_HOME="$wave_test_root/cache" timeout 8s qs -p "$wave_test_root" --no-color \
+    XDG_CACHE_HOME="$wave_test_root/cache" timeout 12s qs -p "$wave_test_root" --no-color \
     > "$wave_test_root/runtime.log" 2>&1; then
     cat "$wave_test_root/runtime.log"; exit 1
 fi
@@ -139,5 +159,7 @@ assert ImageChops.difference(rest,reduced).getbbox() is None, 'resting silhouett
 assert ImageChops.difference(rest,Image.open(root/'audio.png').convert('RGB')).crop((0,4,420,80)).getbbox(), 'spectrum must move the actual field, without a second spectrum painter'
 assert ImageChops.difference(rest,Image.open(root/'paused.png').convert('RGB')).getbbox() is None, 'paused audio restores the exact resting field'
 assert ImageChops.difference(rest,Image.open(root/'audioReduced.png').convert('RGB')).getbbox() is None, 'reduced motion cancels audio deformation'
+assert ImageChops.difference(rest,Image.open(root/'traveling.png').convert('RGB')).crop((330,4,420,240)).getbbox(), 'popup waves must visibly reach a neighboring Screen Edge'
+assert ImageChops.difference(rest,Image.open(root/'travelReduced.png').convert('RGB')).getbbox() is None, 'reduced motion cancels traveling deformation exactly'
 print('PASS: production GPU wave texture deforms silhouette, restores rest and stops idle/reduced/hidden updates')
 PY

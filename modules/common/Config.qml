@@ -505,6 +505,7 @@ Singleton {
                 }
                 property JsonObject waves: JsonObject {
                     property real strength: -1
+                    property bool popupTravel: true
                     property bool enabled: false
                     property string preset: "balanced"
                     property real amplitude: 0.6

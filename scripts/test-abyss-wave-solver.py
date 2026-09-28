@@ -52,6 +52,41 @@ for(const preset of Object.keys(presets)) {
 assert(peaks[1]>peaks[0]*2 && peaks[2]>peaks[1]*1.5 && peaks[3]>peaks[2]*1.3,'presets have distinct measured wave heights');
 const custom=parameters({preset:'custom',amplitude:9,decay:-1});
 assert.equal(custom.amplitude,4);assert.equal(custom.decay,0);
+const travelParameters=parameters({preset:'deep'});
+let touring=create(256,1280,720,travelParameters),peaksByEdge=[0,0,0,0];
+assert(travel(touring,'top',640,400,1,1));
+assert.equal(touring.traveling.length,2,'a popup emits in both directions');
+advance(touring,.05);
+assert(touring.traveling[0].center<640 && touring.traveling[1].center>640,'packets depart in opposite directions');
+for(let frame=0;frame<1800;frame++) {
+    advance(touring,1/120);
+    touring.displacement.forEach((v,i)=>{
+        const location=i*touring.length/touring.count;
+        const edge=location<1280 ? 0 : location<2000 ? 1 : location<3280 ? 2 : 3;
+        peaksByEdge[edge]=Math.max(peaksByEdge[edge],Math.abs(v));
+        assert(Number.isFinite(v) && Math.abs(v)<=heightLimit(touring)+.001);
+    });
+}
+assert(peaksByEdge.every(peak=>peak>2),'popup waves visibly reach all four Screen Edges');
+assert.equal(touring.mode,'SLEEPING');assert.equal(touring.traveling.length,0);
+assert(touring.travelTargets.every(v=>v===0),'expired packets release their drive targets');
+const sleepingSteps=touring.steps;advance(touring,.05);assert.equal(touring.steps,sleepingSteps);
+const canceling=create(256,1280,720,travelParameters);
+travel(canceling,'top',640,400,.1,1);travel(canceling,'top',640,400,-.1,1);
+for(let frame=0;frame<80;frame++) advance(canceling,1/120);
+assert(canceling.displacement.every(v=>Math.abs(v)<1e-9),'opposite signed waves interfere in the same physical string');
+const single=create(256,1280,720,travelParameters),reinforced=create(256,1280,720,travelParameters);
+travel(single,'top',640,400,.1,1);travel(reinforced,'top',640,400,.1,1);travel(reinforced,'top',640,400,.1,1);
+for(let frame=0;frame<80;frame++) { advance(single,1/120);advance(reinforced,1/120); }
+assert(Math.max(...reinforced.displacement.map(Math.abs))>Math.max(...single.displacement.map(Math.abs))*1.9,'same signed waves reinforce each other');
+for(let i=0;i<40;i++) travel(touring,'bottom',640,400,4,6);
+assert.equal(touring.traveling.length,16,'popup storms keep a fixed packet budget');
+clearTravel(touring);assert.equal(touring.traveling.length,0);
+assert(!travel(create(128,1280,720,parameters({popupTravel:false})),'top',640,400,1,1),'travel option disables emission');
+assert(!travel(touring,'top',Infinity,400,1,1),'malformed coordinates cannot poison the solver');
+const malformedMass=create(128,1280,720,travelParameters);
+travel(malformedMass,'top',640,400,1,'invalid');advance(malformedMass,.05);
+assert(malformedMass.displacement.every(Number.isFinite),'malformed mass falls back to a finite popup weight');
 s=create(256,1920,1200,p);
 const raw=[20,70,40,95,30,50,80,10],rawBefore=JSON.stringify(raw);
 assert(spectrum(s,['top'],raw,100,.8));

@@ -12,7 +12,10 @@ import qs.modules.abyss.looks
 // Rehost the mature popup contents, including Events, ThinkFan and Equalizer.
 FocusScope {
     id: root
-    property string kind: "media"
+    // The host supplies the semantic kind after Loader construction. Blank is
+    // deliberately neutral: Media must never be an implicit construction or
+    // unknown-kind fallback because that produces a one-frame Media flash.
+    property string kind: ""
     property string outputName: ""
     property var participant: null
     // Wi-Fi, Bluetooth and Utilities share one hover/focus lease. This keeps
@@ -71,7 +74,9 @@ FocusScope {
             : root.kind === "launcher" ? launcher
             : root.kind === "dockAppMenu" ? dockAppMenu
             : ["wifi","bluetooth"].includes(root.kind) ? network
-            : root.kind === "audio" ? audio : media
+            : root.kind === "audio" ? audio
+            : root.kind === "media" ? media
+            : null
     }
     Component { id: calendar; ClockCalendarPopup { embeddedHost: root } }
     Component { id: battery; BatteryPopup { embeddedHost: root } }

@@ -159,11 +159,22 @@ Scope {
                 Region { x: clipboardBody.inputBounds.x; y: clipboardBody.inputBounds.y; width: window.presented && field.ready ? clipboardBody.inputBounds.width : 0; height: clipboardBody.inputBounds.height }
             }
             function closeGenericPopup(expectedKind = ""): void {
-                // Hover-owned generic surfaces (Wi-Fi/Bluetooth/Utilities) must
-                // never dismiss a newer mature StyledPopup. A stale idle timer
-                // may only close the generic popup it originally owned.
+                // Media shares this physical host but owns a separate semantic
+                // state. Never compare a Media close request against
+                // abyssPopupKind; doing so leaves stale Media state underneath
+                // another generic popup.
+                const expected = String(expectedKind ?? "")
+                if (expected === "media") {
+                    if (GlobalStates.mediaControlsOpen)
+                        GlobalStates.mediaControlsOpen = false
+                    return
+                }
+
+                // Hover-owned generic surfaces (Wi-Fi/Bluetooth/Utilities/etc.)
+                // must never dismiss a newer mature StyledPopup. A stale idle
+                // timer may only close the generic popup it originally owned.
                 const current = String(GlobalStates.abyssPopupKind ?? "")
-                if (expectedKind && current !== expectedKind)
+                if (expected && current !== expected)
                     return
                 if (current === "dockAppMenu") {
                     GlobalStates.abyssDockMenuModel = []
@@ -237,8 +248,16 @@ Scope {
                         GlobalStates.abyssPopupTargetOutput = window.outputName
                         GlobalStates.abyssPopupAlong = along
                         GlobalStates.abyssPopupEdge = edge
-                        if (kind === "media") GlobalStates.mediaControlsOpen = true
-                        else GlobalStates.abyssPopupKind = kind
+                        if (kind === "media") {
+                            GlobalStates.abyssPopupKind = ""
+                            GlobalStates.mediaControlsOpen = true
+                        } else {
+                            // One semantic owner per shared host. Do not leave a
+                            // hidden Media request waiting underneath a generic
+                            // popup and resurfacing when that popup closes.
+                            GlobalStates.mediaControlsOpen = false
+                            GlobalStates.abyssPopupKind = kind
+                        }
                     }
                 }
                 onPopupHoveredRequested: (kind,edge,along) => {
@@ -250,6 +269,7 @@ Scope {
                     GlobalStates.abyssPopupTargetOutput = window.outputName
                     GlobalStates.abyssPopupAlong = along
                     GlobalStates.abyssPopupEdge = edge
+                    GlobalStates.mediaControlsOpen = false
                     GlobalStates.abyssPopupKind = kind
                 }
                 onPopupHoverStateChanged: (kind,edge,along,hovered) => {
@@ -417,7 +437,21 @@ Scope {
                 stableContentSize: true
                 pyramidStack: true
                 obstacles: window.sideObstacles
-                contentKind: GlobalStates.abyssPopupKind || "media"
+                readonly property string requestedContentKind:
+                    GlobalStates.abyssPopupKind.length > 0
+                        ? GlobalStates.abyssPopupKind
+                        : (GlobalStates.mediaControlsOpen ? "media" : "")
+                property string latchedContentKind: ""
+                function syncContentKind(): void {
+                    if (requestedContentKind.length > 0)
+                        latchedContentKind = requestedContentKind
+                }
+                Component.onCompleted: syncContentKind()
+                onRequestedContentKindChanged: syncContentKind()
+                // Keep the last real owner through the visual retract tail.
+                // Clearing semantic state must never mutate the still-visible
+                // tail into Media (or any other popup).
+                contentKind: latchedContentKind
                 property bool triggerHovered:
                     contentKind === "dockAppMenu"
                         ? GlobalStates.abyssDockMenuTriggerHovered

@@ -50,9 +50,13 @@ ShellRoot {
                 if(root.captures!==3) return
                 if(Math.abs(AbyssStyle.contentLayer.a-.45)>.01) { console.error("MATERIAL_FAIL","live content tint",AbyssStyle.contentLayer.a,root.captures);root.finished=true;return }
             }
-            if(root.step===10) Config.setNestedValue("abyss.quality","performance")
+            if(root.step===10) Config.setNestedValues({"abyss.quality":"performance",
+                "abyss.surface.opacity":0,"abyss.content.opacity":1,
+                "abyss.effects.blur.enabled":false,"abyss.effects.refraction.enabled":false})
             if(root.step===11) {
-                if(AbyssStyle.contentBlurRadius!==0 || field.wantsWallpaper) { console.error("MATERIAL_FAIL","performance quality must release wallpaper effects");root.finished=true;return }
+                if(AbyssStyle.surfaceOpacity!==0 || AbyssStyle.surface.a>.01) { console.error("MATERIAL_FAIL","Screen Edge opacity must allow a fully wallpaper-facing clear state");root.finished=true;return }
+                if(AbyssStyle.contentOpacity!==1) { console.error("MATERIAL_FAIL","clear Screen Edge must not force panel content transparent");root.finished=true;return }
+                if(AbyssStyle.contentBlurRadius!==0 || field.wantsWallpaper) { console.error("MATERIAL_FAIL","performance quality must release wallpaper effects when blur/refraction are off");root.finished=true;return }
                 console.info("MATERIAL_PASS");root.finished=true
             }
             root.step++
@@ -76,5 +80,5 @@ assert opaque.getpixel(body)[3]>=253 and abs(opaque.getpixel(edge)[3]-217)<=3,'o
 diff=ImageChops.difference(clear.crop((135,185,280,260)),blurred.crop((135,185,280,260)))
 assert sum(sum(pixel[:3]) for pixel in diff.getdata())>500,'body blur changes the sampled wallpaper'
 assert clear.getchannel('A').tobytes()==blurred.getchannel('A').tobytes(),'blur preserves silhouette and alpha'
-print('PASS: GPU body opacity/blur, independent Edge alpha, live card tint and performance effect release')
+print('PASS: GPU body opacity/blur, independent Edge alpha, zero-alpha wallpaper reveal, live card tint and performance effect release')
 PY

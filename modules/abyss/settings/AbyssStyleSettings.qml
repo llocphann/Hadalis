@@ -105,7 +105,7 @@ ColumnLayout {
                 checked:(Config.options?.abyss?.surface?.opacity ?? .78)<.999
                 onToggledByUser:checked=>Config.setNestedValue("abyss.surface.opacity",checked ? .78 : 1)
             }
-            Percent { text:"Surface opacity";configKey:"abyss.surface.opacity";fallback:.78;minimum:.35 }
+            Percent { text:"Surface opacity";configKey:"abyss.surface.opacity";fallback:.78;minimum:0 }
             Percent { text:"Screen Edge depth";configKey:"abyss.perimeter.thickness";fallback:16;minimum:10;maximum:40 }
             Percent { text:"Curvature";configKey:"abyss.perimeter.radius";fallback:34;minimum:12;maximum:64 }
             Percent { text:"Fusion softness";configKey:"abyss.surface.softness";fallback:24;minimum:4;maximum:48 }
@@ -132,7 +132,7 @@ ColumnLayout {
                 onMoved:Config.setNestedValue("abyss.content.blurRadius",value)
             }
             Percent { text:"Content card opacity";configKey:"abyss.content.cardOpacity";fallback:.9 }
-            SettingsNote { text:"Popup, Dashboard, Sidebar, IPC and Settings backgrounds share this material. Blur samples the wallpaper in the existing field pass; content cards add a separate tint." }
+            SettingsNote { text:"Screen Edge opacity can reach 0% so wallpaper-facing hot corners can be fully clear. Popup, Dashboard, Sidebar, IPC and Settings backgrounds keep their own content opacity. Blur samples the output wallpaper in the existing field pass; content cards add a separate tint." }
             ConfigSwitch {
                 text:"Refraction (Quality)";autoToggle:false
                 checked:Config.options?.abyss?.effects?.refraction?.enabled ?? false

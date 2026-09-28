@@ -8,8 +8,10 @@ Item {
     property string outputName: ""
     property real renderScale: 1
     readonly property bool wantsWallpaper: AbyssStyle.blurRadius > 0 || AbyssStyle.contentBlurRadius > 0 || AbyssStyle.refractionStrength > 0
-    readonly property string wallpaperPath: wantsWallpaper ? Wallpapers.currentMainWallpaperPath(outputName) : ""
-    readonly property bool usableWallpaper: wallpaperPath.length > 0 && !/\.(gif|mp4|webm|mkv|avi)$/i.test(wallpaperPath)
+    // Reuse the stable wallpaper-backdrop resolver. It is output-aware and gives
+    // Image a safe still URL for video wallpapers instead of dropping to gray.
+    readonly property string wallpaperUrl: wantsWallpaper
+        ? WallpaperListener.wallpaperUrlForScreen(root.Window.window?.screen ?? null) : ""
     readonly property bool wallpaperReady: wallpaperImage.status === Image.Ready
     property var records: []
     property var waveTexture: null
@@ -37,7 +39,7 @@ Item {
         id: wallpaperImage
         visible: false
         asynchronous: true
-        source: root.usableWallpaper ? root.wallpaperPath : ""
+        source: root.wallpaperUrl
         sourceSize.width: Math.min(2048,Math.ceil(root.width*root.renderScale))
         smooth: true
     }

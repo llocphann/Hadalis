@@ -10,6 +10,7 @@ waffle=(r/"modules/waffle/polkit/WPolkitContent.qml").read_text()
 assert "PolkitAgent {" in impl
 assert "property int requestSerial: 0" in impl
 assert "root.requestSerial += 1" in impl
+assert "root.interactionAvailable = root.flow?.isResponseRequired ?? false" in impl
 assert "root.flow.submit(response)" in impl
 assert "cancelAuthenticationRequest()" in impl
 assert "property var queue" not in impl

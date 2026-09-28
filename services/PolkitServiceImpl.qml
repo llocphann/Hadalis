@@ -63,7 +63,10 @@ Scope {
         id: polkitAgent
         onAuthenticationRequestStarted: {
             root.requestSerial += 1
-            root.interactionAvailable = true
+            // The request exists before PAM necessarily asks for input.
+            // Stay in pending state until AuthFlow actually requires a
+            // response; fingerprint/other non-text conversations remain busy.
+            root.interactionAvailable = root.flow?.isResponseRequired ?? false
         }
     }
 }

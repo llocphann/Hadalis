@@ -41,6 +41,12 @@ Item {
     readonly property real mass: Math.max(1,span*depth/90000)
     property bool initialized: false
     property bool open: false
+    // Phase-1 lifecycle split. These names are intentionally independent even
+    // though visualResident still mirrors the existing reveal tail for now.
+    readonly property bool semanticOpen: root.open
+    readonly property bool visualResident:
+        root.semanticOpen || root.progress > 0.001
+    readonly property bool acceptsInput: root.presented
     property int activationOrder: 0
     property int placementPriority: identity === "dialog" ? 2 : ["utility","edgeEditor"].includes(identity) ? 1 : identity === "dock" ? -1 : 0
     readonly property var placement: controller?.bodyPlacements?.[identity] ?? null
@@ -95,20 +101,30 @@ Item {
     readonly property Item contentItem: content
     readonly property bool ready: embeddedItem !== null || content.status === Loader.Ready
     readonly property Item contentParent: contentFrame
-    readonly property rect inputBounds: presented && ready
+    readonly property rect inputBounds: acceptsInput && ready
         ? Qt.rect(contentFrame.x,contentFrame.y,contentFrame.width,contentFrame.height) : Qt.rect(0,0,0,0)
     signal closeRequested()
     AbyssParticipant {
+        id: participant
         identity: root.identity
         controller: root.controller
         geometry: root.record
-        placementRequest: ({id:root.identity,open:root.open,order:root.activationOrder,
+        placementRequest: ({id:root.identity,open:root.semanticOpen,order:root.activationOrder,
             priority:root.placementPriority,padding:root.padding,
             minSpan:root.minimumSpan,minDepth:root.minimumDepth,
             pyramidStack:root.pyramidStack,
             record:root.requestedRecord})
         inputBounds: root.inputBounds
         mass: root.mass
+    }
+    function syncTransitionSnapshot(): void {
+        const coordinator=root.controller?.transitionCoordinator
+        if (!coordinator) return
+        coordinator.observeSemantic(root.identity,root.semanticOpen,
+            participant.placementRequest,root.placement,root.record)
+        if (root.semanticOpen)
+            coordinator.capture(root.identity,participant.placementRequest,
+                root.placement,root.record)
     }
     function react(opening): void {
         if (controller) controller.impulse(edge,along+span/2,span,(opening ? 0.85 : -0.65)*waveInfluence,mass,opening ? "open" : "close")
@@ -117,13 +133,20 @@ Item {
     onPlacementChanged: {
         if (placement?.visible !== false)
             retainedPlacement = placement
+        if (initialized && semanticOpen)
+            syncTransitionSnapshot()
     }
-    onOpenChanged: if (initialized) { markOpened();react(open) }
+    onOpenChanged: if (initialized) {
+        syncTransitionSnapshot()
+        markOpened()
+        react(open)
+    }
     onEmbeddedItemChanged: if (initialized) markOpened()
     onContentKindChanged: if (initialized) markOpened()
     onControllerChanged: if (initialized) markOpened()
     Component.onCompleted: {
         initialized = true
+        syncTransitionSnapshot()
         markOpened()
         if (open) Qt.callLater(() => { if (root.open) root.react(true) })
     }
@@ -176,7 +199,7 @@ Item {
         clip: true
         visible: root.placementVisible || root.progress > 0.001
         opacity: Math.min(1,root.progress*1.5)
-        enabled: root.presented
+        enabled: root.acceptsInput
     }
     Loader {
         id: content
@@ -189,12 +212,12 @@ Item {
         // A space-constrained body retains drafts/focus state while hidden. It
         // unloads only after a semantic close and completion of the reveal.
         active: !root.embeddedItem
-            && (root.residentContent || root.open || root.progress > 0.001)
+            && (root.residentContent || root.visualResident)
             && GlobalStates.deferredPanelsReady
         source: root.source
         clip: true
         opacity: 1
-        enabled: root.presented
+        enabled: root.acceptsInput
         onLoaded: {
             if (item.participant !== undefined) item.participant = root
             if (item.outputName !== undefined) item.outputName = Qt.binding(() => root.outputName)

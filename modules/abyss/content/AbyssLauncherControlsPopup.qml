@@ -8,7 +8,7 @@ import "../looks/AbyssWave.js" as Wave
 
 ColumnLayout {
     id: root
-    implicitWidth: 410
+    implicitWidth: 330
     implicitHeight: content.implicitHeight
     spacing: 12
 
@@ -24,18 +24,38 @@ ColumnLayout {
         Config.setNestedValues(updates)
     }
 
+    component SectionHeading: RowLayout {
+        required property string heading
+        required property string icon
+        Layout.fillWidth: true
+        spacing: 7
+
+        MaterialSymbol {
+            text: parent.icon
+            iconSize: 18
+            color: AbyssStyle.accent
+            Layout.alignment: Qt.AlignVCenter
+        }
+        AbyssLabel {
+            Layout.fillWidth: true
+            text: parent.heading
+            font.bold: true
+            color: AbyssStyle.textColor
+            Layout.alignment: Qt.AlignVCenter
+        }
+    }
+
     ColumnLayout {
         id: content
         Layout.fillWidth: true
         spacing: 10
 
-        AbyssLabel {
-            text: Translation.tr("Surface Performance")
-            font.bold: true
-            color: AbyssStyle.textColor
+        SectionHeading {
+            heading: Translation.tr("Wave Mode")
+            icon: "tune"
         }
 
-        RowLayout {
+        ColumnLayout {
             Layout.fillWidth: true
             spacing: 6
 
@@ -48,7 +68,9 @@ ColumnLayout {
                 delegate: AbyssButton {
                     required property var modelData
                     Layout.fillWidth: true
+                    Layout.minimumWidth: 180
                     implicitHeight: 38
+                    compact: false
                     checked: AbyssStyle.quality === modelData.value
                     text: Translation.tr(modelData.label)
                     glyph: modelData.icon
@@ -64,20 +86,9 @@ ColumnLayout {
             color: Qt.alpha(AbyssStyle.accent, .16)
         }
 
-        RowLayout {
-            Layout.fillWidth: true
-
-            AbyssLabel {
-                Layout.fillWidth: true
-                text: Translation.tr("Wave Preset")
-                font.bold: true
-                color: AbyssStyle.textColor
-            }
-            MaterialSymbol {
-                text: "waves"
-                color: AbyssStyle.accent
-                iconSize: Appearance.font.pixelSize.normal
-            }
+        SectionHeading {
+            heading: Translation.tr("Wave Preset")
+            icon: "waves"
         }
 
         GridLayout {
@@ -96,7 +107,9 @@ ColumnLayout {
                 delegate: AbyssButton {
                     required property var modelData
                     Layout.fillWidth: true
+                    Layout.minimumWidth: 110
                     implicitHeight: 38
+                    compact: false
                     checked: (Config.options?.abyss?.waves?.preset ?? "balanced")
                         === modelData.value
                     text: Translation.tr(modelData.label)

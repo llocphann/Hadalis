@@ -18,15 +18,27 @@ assert "hostedPopup?.liquidPresentationKind" in perimeter
 assert "popupJoinedEdge: placement?.joinCorner" in bar
 assert "hostedPopup?._liquidAnchor?.popupJoinedEdge" in perimeter
 
-assert 'label: "Surface Performance"' in content
-assert 'label: "Wave Preset"' in content
-assert "component SectionHeading: RowLayout" in content
+# Launcher must use the same mature visible-content path as Battery and the
+# embedded Wi-Fi/Bluetooth dialogs. Do not route labels through the retired
+# SelectionGroupButton/AbyssButton experiments.
+assert 'text: Translation.tr("Surface Performance")' in content
+assert 'text: Translation.tr("Wave Preset")' in content
+assert "component ChoiceRow: DialogListItem" in content
+assert "contentItem: RowLayout {" in content
 assert "MaterialSymbol {" in content
 assert "StyledText {" in content
-assert "SelectionGroupButton {" in content
-assert "buttonText:" in content
-assert "buttonIcon:" in content
+assert "text: choice.buttonText" in content
+assert 'text: "check"' in content
+assert "SelectionGroupButton" not in content
 assert "AbyssButton" not in content
+assert "import qs.services" in content
+
+# Mature StyledPopup consumers report stable implicit geometry from one visual
+# wrapper before Abyss reparents the content into its output-local host.
+assert content.lstrip().startswith("import QtQuick")
+assert "Item {\n    id: root" in content
+assert "implicitHeight: contentColumn.implicitHeight" in content
+assert "width: parent ? parent.width : implicitWidth" in content
 assert 'Config.setNestedValue("abyss.quality", value)' in content
 assert 'updates["abyss.waves." + key]' in content
 

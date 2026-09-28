@@ -4,6 +4,7 @@ import qs.services
 import qs.modules.common
 import qs.modules.common.widgets
 import qs.modules.common.functions
+import qs.modules.abyss.looks
 
 Rectangle {
     id: root
@@ -11,8 +12,11 @@ Rectangle {
     required property var canvasController
     readonly property bool editing: root.canvasController?.editMode ?? false
     readonly property var hiddenIds: root.canvasController?.hiddenIds ?? []
+    readonly property bool abyssMode:
+        (Config.options?.panelFamily ?? "abyss") === "abyss"
 
-    readonly property real horizontalPadding: 7
+    readonly property real horizontalPadding: root.abyssMode
+        ? Math.max(10, AbyssStyle.contentPadding * 0.55) : 7
     readonly property real sectionGap: 8
     readonly property real availableModulesNaturalWidth:
         root.hiddenIds.length > 0 ? availableModulesRow.implicitWidth : 0
@@ -29,11 +33,15 @@ Rectangle {
     radius: Appearance.rounding.large
     topLeftRadius: radius
     topRightRadius: radius
-    bottomLeftRadius: 0
-    bottomRightRadius: 0
-    color: Appearance.colors.colLayer0
-    border.width: 0
-    border.color: "transparent"
+    bottomLeftRadius: root.abyssMode ? radius : 0
+    bottomRightRadius: root.abyssMode ? radius : 0
+    color: root.abyssMode
+        ? Qt.alpha(AbyssStyle.surfaceDeep,
+            Math.max(0.72, AbyssStyle.contentOpacity))
+        : Appearance.colors.colLayer0
+    border.width: root.abyssMode ? 1 : 0
+    border.color: root.abyssMode
+        ? Qt.alpha(AbyssStyle.accent, 0.22) : "transparent"
     clip: true
 
     ColumnLayout {
@@ -54,7 +62,8 @@ Rectangle {
                         : Translation.tr("Edit widgets"))
             font.pixelSize: Appearance.font.pixelSize.small
             font.weight: Font.DemiBold
-            color: Appearance.colors.colOnLayer0
+            color: root.abyssMode
+                ? AbyssStyle.textColor : Appearance.colors.colOnLayer0
             elide: Text.ElideRight
         }
 
@@ -165,7 +174,12 @@ Rectangle {
                             implicitHeight: 28
                             implicitWidth: addRow.implicitWidth + 14
                             buttonRadius: Appearance.rounding.full
-                            colBackground: Appearance.colors.colLayer1
+                            colBackground: root.abyssMode
+                                ? Qt.alpha(AbyssStyle.accent, 0.10)
+                                : Appearance.colors.colLayer1
+                            colBackgroundHover: root.abyssMode
+                                ? Qt.alpha(AbyssStyle.accent, 0.18)
+                                : Appearance.colors.colLayer2
                             focusPolicy: Qt.StrongFocus
                             onClicked: {
                                 if (root.canvasController)
@@ -181,18 +195,24 @@ Rectangle {
                                     text: root.canvasController?._icon(
                                         String(modelData)) ?? "widgets"
                                     iconSize: Appearance.font.pixelSize.small
-                                    color: Appearance.colors.colOnLayer1
+                                    color: root.abyssMode
+                                        ? AbyssStyle.textColor
+                                        : Appearance.colors.colOnLayer1
                                 }
                                 StyledText {
                                     text: root.canvasController?._label(
                                         String(modelData)) ?? String(modelData)
                                     font.pixelSize: Appearance.font.pixelSize.smallest
-                                    color: Appearance.colors.colOnLayer1
+                                    color: root.abyssMode
+                                        ? AbyssStyle.textColor
+                                        : Appearance.colors.colOnLayer1
                                 }
                                 MaterialSymbol {
                                     text: "add"
                                     iconSize: Appearance.font.pixelSize.small
-                                    color: Appearance.colors.colPrimary
+                                    color: root.abyssMode
+                                        ? AbyssStyle.accent
+                                        : Appearance.colors.colPrimary
                                 }
                             }
                         }
@@ -212,11 +232,20 @@ Rectangle {
         focusPolicy: Qt.StrongFocus
         buttonText: tool.tooltipText
         buttonRadius: Appearance.rounding.full
-        colBackground: Appearance.colors.colLayer1
-        colBackgroundHover: Appearance.colors.colLayer2
-        colBackgroundToggled: Appearance.colors.colPrimaryContainer
-        colBackgroundToggledHover: Appearance.colors.colPrimaryContainer
-        colRippleToggled: Appearance.colors.colPrimary
+        colBackground: root.abyssMode
+            ? Qt.alpha(AbyssStyle.accent, 0.10)
+            : Appearance.colors.colLayer1
+        colBackgroundHover: root.abyssMode
+            ? Qt.alpha(AbyssStyle.accent, 0.18)
+            : Appearance.colors.colLayer2
+        colBackgroundToggled: root.abyssMode
+            ? Qt.alpha(AbyssStyle.accent, 0.28)
+            : Appearance.colors.colPrimaryContainer
+        colBackgroundToggledHover: root.abyssMode
+            ? Qt.alpha(AbyssStyle.accent, 0.34)
+            : Appearance.colors.colPrimaryContainer
+        colRippleToggled: root.abyssMode
+            ? AbyssStyle.accent : Appearance.colors.colPrimary
 
         contentItem: Item {
             Rectangle {
@@ -226,18 +255,24 @@ Rectangle {
                 color: "transparent"
                 border.width: tool.visualFocus ? 2 : (tool.toggled ? 1 : 0)
                 border.color: tool.visualFocus
-                    ? Appearance.colors.colPrimary
+                    ? (root.abyssMode
+                        ? AbyssStyle.accent : Appearance.colors.colPrimary)
                     : ColorUtils.applyAlpha(
-                        Appearance.colors.colPrimary, 0.72)
+                        root.abyssMode
+                            ? AbyssStyle.accent
+                            : Appearance.colors.colPrimary, 0.72)
             }
 
             MaterialSymbol {
                 id: toolIcon
                 anchors.centerIn: parent
                 iconSize: Appearance.font.pixelSize.normal
-                color: tool.toggled
-                    ? Appearance.colors.colOnPrimaryContainer
-                    : Appearance.colors.colOnLayer1
+                color: root.abyssMode
+                    ? (tool.toggled
+                        ? AbyssStyle.accent : AbyssStyle.textColor)
+                    : (tool.toggled
+                        ? Appearance.colors.colOnPrimaryContainer
+                        : Appearance.colors.colOnLayer1)
             }
         }
 

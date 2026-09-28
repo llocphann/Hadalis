@@ -362,6 +362,76 @@ Item {
         }
     }
 
+    function _smartAllLayoutEntries(): var {
+        const cw = Math.max(1, canvas.width)
+        const ch = Math.max(1, canvas.height)
+        const gap = root.collisionGap
+
+        // The all-widget Dashboard is most useful as three semantic lanes:
+        // status/notes, planning/activity, and large media/weather. This gives
+        // large content room immediately instead of merely packing minima.
+        const laneIds = [
+            ["welcome","clock","system","github","notes"],
+            ["notifications","agenda","todo","calendar"],
+            ["media","weather"]
+        ]
+        const laneWeights = [
+            [0.10,0.08,0.30,0.10,0.42],
+            [0.20,0.08,0.25,0.47],
+            [0.68,0.32]
+        ]
+        const laneMinWidths = [260, 300, 320]
+        const usableWidth = cw - gap * 2
+        const minimumWidth = laneMinWidths.reduce((sum, value) => sum + value, 0)
+        if (usableWidth < minimumWidth || ch < 560)
+            return null
+
+        const extraWidth = usableWidth - minimumWidth
+        const widthShares = [0.20, 0.32, 0.48]
+        const laneWidths = laneMinWidths.map((value, index) =>
+            value + extraWidth * widthShares[index])
+
+        function stackLane(ids, weights, x, width): var {
+            const minimums = ids.map(id => root._minimumSize(id).height)
+            const minimumHeight = minimums.reduce((sum, value) => sum + value, 0)
+                + gap * Math.max(0, ids.length - 1)
+            if (minimumHeight > ch)
+                return null
+            const weightTotal = weights.reduce((sum, value) => sum + value, 0)
+            const extraHeight = ch - minimumHeight
+            const result = []
+            let y = 0
+            for (let index = 0; index < ids.length; ++index) {
+                const id = ids[index]
+                const height = minimums[index]
+                    + extraHeight * (weights[index] / weightTotal)
+                result.push({
+                    id: id,
+                    x: x / cw,
+                    y: y / ch,
+                    w: width / cw,
+                    h: height / ch,
+                    visible: true
+                })
+                y += height + gap
+            }
+            return result
+        }
+
+        const result = []
+        let x = 0
+        for (let lane = 0; lane < laneIds.length; ++lane) {
+            const entries = stackLane(
+                laneIds[lane], laneWeights[lane], x, laneWidths[lane])
+            if (!entries)
+                return null
+            for (let i = 0; i < entries.length; ++i)
+                result.push(entries[i])
+            x += laneWidths[lane] + gap
+        }
+        return result
+    }
+
     function fitAllWidgets() {
         root.layoutMessage = ""
         root.finishInteraction(false)
@@ -375,7 +445,8 @@ Item {
                 existingById[id] = stored[i]
         }
 
-        const canonical = root._allIds.map(id =>
+        const smartEntries = root._smartAllLayoutEntries()
+        const canonical = smartEntries ?? root._allIds.map(id =>
             Object.assign({}, root._defaultEntry(id),
                 existingById[id] ?? {}, { id: id, visible: true }))
         const minimums = ({})
@@ -442,7 +513,9 @@ Item {
         root._writeEntries(fitted.concat(extras))
         root.selectedId = ""
         root.layoutMessage = Translation.tr(
-            "Added and fitted all Dashboard modules")
+            smartEntries
+                ? "Added and smart-arranged all Dashboard modules"
+                : "Added and fitted all Dashboard modules")
     }
 
     function _minimumSize(id) {

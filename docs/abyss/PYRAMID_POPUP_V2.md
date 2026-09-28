@@ -64,3 +64,10 @@ Before Pyramid v2 can be called runtime-complete, test:
 - immediate input/focus revocation while the visual tail remains.
 
 No acceptance item above is implied by source contracts alone.
+
+
+## Entry arming
+
+A newly opened pyramid tier must resolve its collapse origin before the first reveal frame. The host therefore computes the entry origin from the allocator's final `placement` / full record synchronously when that placement becomes available. It does **not** wait for the animated `visualPlacement` reflow and does not queue another `Qt.callLater` hop.
+
+This removes a subtle ordering race: both generic and mature StyledPopup owners already delay reveal by one event-loop turn, but the previous Pyramid host delayed origin resolution by an additional turn. Under load, reveal could therefore begin from the physical Screen Edge for a frame before switching to the lower-popup boundary. The current contract arms the correct same-anchor origin during the allocator update itself; close snapshots still use the current visual state so mid-reflow close/reopen remains reversible.

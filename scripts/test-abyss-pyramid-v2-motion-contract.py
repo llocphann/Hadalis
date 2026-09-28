@@ -36,6 +36,10 @@ assert "property var pyramidLastPlacement: null" in host
 assert "property var pyramidLastFullRecord: null" in host
 assert "const closingPlacement=root.pyramidLastPlacement" in host
 assert "const closingRecord=root.pyramidLastFullRecord" in host
+assert "readonly property var pyramidAllocatorPlacement:" in host
+assert "readonly property var pyramidAllocatorRecord:" in host
+assert "root.pyramidAllocatorPlacement,root.pyramidAllocatorRecord" in host
+assert "Qt.callLater(root.syncPyramidEntryOrigin)" not in host
 assert "Geometry.joinCorner(" in host
 assert "rawPresentationRecord,joinedEdge" in host
 assert "result.along=_number(to.along,0)" in motion

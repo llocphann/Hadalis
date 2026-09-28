@@ -129,6 +129,19 @@ Item {
     readonly property bool pyramidPresentationActive:
         root.pyramidMotionEnabled
         && (root.semanticOpen || root.pyramidClosing || root.progress > 0.001)
+    // Entry animation is armed from the allocator's final target, not from
+    // visualPlacement while its peer-reflow Behavior may still be in flight.
+    // This closes the one-event-loop race where reveal could start from the
+    // physical Edge before the lower popup origin had been resolved.
+    readonly property var pyramidAllocatorPlacement:
+        root.semanticOpen && root.placement?.visible !== false
+            ? root.placement : null
+    readonly property var pyramidAllocatorRecord:
+        root.pyramidAllocatorPlacement
+            ? Geometry.placedPanel(width,height,edgeInsets,edge,along,span,
+                depth,1,padding,obstacles,largeSurface,
+                root.pyramidAllocatorPlacement)
+            : null
     readonly property var pyramidFullRecord:
         root.pyramidClosing && root.pyramidLatchedFullRecord
             ? root.pyramidLatchedFullRecord
@@ -198,12 +211,12 @@ Item {
     }
     function syncPyramidEntryOrigin(): void {
         if (!root.pyramidMotionEnabled || !root.semanticOpen
-                || root.pyramidClosing || !root.visualPlacement
-                || !root.pyramidRestingRecord)
+                || root.pyramidClosing || !root.pyramidAllocatorPlacement
+                || !root.pyramidAllocatorRecord)
             return
         const origin=root.pyramidCoordinator?.entryOrigin(
             root.identity,participant.placementRequest,
-            root.visualPlacement,root.pyramidRestingRecord)
+            root.pyramidAllocatorPlacement,root.pyramidAllocatorRecord)
         if (origin)
             root.pyramidOriginRecord=origin
     }
@@ -219,7 +232,7 @@ Item {
                 root.pyramidLatchedFullRecord=null
                 return
             }
-            Qt.callLater(root.syncPyramidEntryOrigin)
+            root.syncPyramidEntryOrigin()
             return
         }
         const closingPlacement=root.pyramidLastPlacement
@@ -243,9 +256,12 @@ Item {
         if (initialized && semanticOpen && pyramidMotionEnabled
                 && !pyramidClosing) {
             root.capturePyramidRestingState()
-            Qt.callLater(root.syncPyramidEntryOrigin)
+            root.syncPyramidEntryOrigin()
         }
     }
+    onPyramidAllocatorRecordChanged: if (initialized
+            && semanticOpen && !pyramidClosing)
+        root.syncPyramidEntryOrigin()
     onPyramidRestingRecordChanged: if (initialized)
         root.capturePyramidRestingState()
     onVisualPlacementChanged: if (initialized)
@@ -273,7 +289,7 @@ Item {
         markOpened()
         if (semanticOpen) {
             root.capturePyramidRestingState()
-            Qt.callLater(root.syncPyramidEntryOrigin)
+            root.syncPyramidEntryOrigin()
         }
         if (open) Qt.callLater(() => { if (root.open) root.react(true) })
     }

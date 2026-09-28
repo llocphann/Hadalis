@@ -333,7 +333,13 @@ Item {
             }
             AbyssSlider { from: .6; to: 1.8; value: root.selected?.customSize ? root.selected.size : Placement.edgeSize(root.draftOptions,root.selected?.edge ?? root.editingEdge); enabled: root.selected?.customSize ?? false; Layout.fillWidth:true; onMoved: root.change("size",value) }
         }
-        AbyssLabel { text: root.editingPopups ? "Drag the preview to any Edge. Its controls are disabled while positioning. Done saves; Cancel discards position changes."
-            : "Drag to move or reorder. Aligned modules form groups on their edge. Hold Shift to bypass snapping. Enter saves; Escape cancels."; color: AbyssStyle.textColorMuted;Layout.fillWidth:true;wrapMode:Text.WordWrap }
+        AbyssLabel {
+            text: root.editingPopups
+                ? "Drag preview · Enter save · Esc cancel"
+                : "Drag to move/reorder · Shift free · Enter save · Esc cancel"
+            color: AbyssStyle.textColorMuted
+            Layout.fillWidth: true
+            wrapMode: Text.WordWrap
+        }
     }
 }

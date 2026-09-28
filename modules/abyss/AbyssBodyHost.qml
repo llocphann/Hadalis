@@ -13,6 +13,10 @@ Item {
     required property string edge
     property string joinedEdge: ""
     readonly property string attachedEdge: edge
+    // StyledPopup walks to the nearest liquid ancestor and consumes this
+    // optional adjacent-Edge hint. Expose the host join so prompts attached
+    // to Dock/other nested participants keep the same corner relationship.
+    readonly property string popupJoinedEdge: joinedEdge
     property string outputName: ""
     property string identity: ""
     property var controller: null

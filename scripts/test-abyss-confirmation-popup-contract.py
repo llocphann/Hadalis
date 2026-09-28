@@ -25,6 +25,10 @@ assert "function finishIfReleased(): void" in presenter
 assert "onRequestVisibleChanged" in presenter
 assert "ConfirmationService.finishPresentation(root.requestId)" in presenter
 
+# Nested source anchors (notably Dock apps) inherit their host Join Edge.
+host=(r/"modules/abyss/AbyssBodyHost.qml").read_text()
+assert "readonly property string popupJoinedEdge: joinedEdge" in host
+
 # Top-center fallback is a real source Item on the same liquid controller.
 assert "id: confirmationFallbackAnchor" in perimeter
 assert 'property var liquidController: liquid' in perimeter

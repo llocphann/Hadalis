@@ -367,71 +367,149 @@ Item {
         const ch = Math.max(1, canvas.height)
         const gap = root.collisionGap
 
-        // The all-widget Dashboard is most useful as three semantic lanes:
-        // status/notes, planning/activity, and large media/weather. This gives
-        // large content room immediately instead of merely packing minima.
-        const laneIds = [
-            ["welcome","clock","system","github","notes"],
-            ["notifications","agenda","todo","calendar"],
-            ["media","weather"]
+        // Content-aware targets: compact status cards should stay compact,
+        // planning widgets need reading room, and rich visual surfaces benefit
+        // from substantially more area. Do not inflate every card merely to
+        // consume the canvas.
+        const lanes = [
+            {
+                ids:["welcome","clock","system","github","notes"],
+                preferredWidth:320, maxWidth:370,
+                preferredHeights:{
+                    welcome:105,clock:110,system:210,github:105,notes:235
+                },
+                maxHeights:{
+                    welcome:125,clock:130,system:245,github:125,notes:310
+                },
+                growPriority:["notes","system","welcome","clock","github"]
+            },
+            {
+                ids:["notifications","agenda","todo","calendar"],
+                preferredWidth:420, maxWidth:510,
+                preferredHeights:{
+                    notifications:165,agenda:95,todo:190,calendar:270
+                },
+                maxHeights:{
+                    notifications:215,agenda:125,todo:245,calendar:335
+                },
+                growPriority:["calendar","todo","notifications","agenda"]
+            },
+            {
+                ids:["media","weather"],
+                preferredWidth:520, maxWidth:640,
+                preferredHeights:{media:455,weather:245},
+                maxHeights:{media:540,weather:315},
+                growPriority:["media","weather"]
+            }
         ]
-        const laneWeights = [
-            [0.10,0.08,0.30,0.10,0.42],
-            [0.20,0.08,0.25,0.47],
-            [0.68,0.32]
-        ]
-        const laneMinWidths = [260, 300, 320]
-        const usableWidth = cw - gap * 2
-        const minimumWidth = laneMinWidths.reduce((sum, value) => sum + value, 0)
-        if (usableWidth < minimumWidth || ch < 560)
+
+        const minLaneWidths = lanes.map(lane => {
+            let width = 0
+            for (const id of lane.ids)
+                width = Math.max(width,root._minimumSize(id).width)
+            return width
+        })
+        const availableWidth = cw-gap*(lanes.length-1)
+        const minTotalWidth = minLaneWidths.reduce((sum,value)=>sum+value,0)
+        if (availableWidth < minTotalWidth)
             return null
 
-        const extraWidth = usableWidth - minimumWidth
-        const widthShares = [0.20, 0.32, 0.48]
-        const laneWidths = laneMinWidths.map((value, index) =>
-            value + extraWidth * widthShares[index])
+        const widths = lanes.map((lane,index) =>
+            Math.max(minLaneWidths[index],lane.preferredWidth))
+        let usedWidth = widths.reduce((sum,value)=>sum+value,0)
 
-        function stackLane(ids, weights, x, width): var {
-            const minimums = ids.map(id => root._minimumSize(id).height)
-            const minimumHeight = minimums.reduce((sum, value) => sum + value, 0)
-                + gap * Math.max(0, ids.length - 1)
-            if (minimumHeight > ch)
+        if (usedWidth > availableWidth) {
+            let deficit = usedWidth-availableWidth
+            for (let pass=0; pass<2 && deficit>0.5; ++pass) {
+                for (let index=0; index<widths.length && deficit>0.5; ++index) {
+                    const room = Math.max(0,widths[index]-minLaneWidths[index])
+                    if (room<=0) continue
+                    const take = Math.min(room,deficit/(widths.length-index))
+                    widths[index]-=take
+                    deficit-=take
+                }
+            }
+            usedWidth = widths.reduce((sum,value)=>sum+value,0)
+        } else {
+            let extra = availableWidth-usedWidth
+            // Rich media first, then planning, then compact status. Each lane
+            // stops at a content-derived maximum instead of stretching forever.
+            const growOrder=[2,1,0]
+            for (const index of growOrder) {
+                const room=Math.max(0,lanes[index].maxWidth-widths[index])
+                const add=Math.min(room,extra)
+                widths[index]+=add
+                extra-=add
+                if (extra<=0) break
+            }
+            usedWidth = widths.reduce((sum,value)=>sum+value,0)
+        }
+
+        function laneEntries(lane,x,width): var {
+            const heights = ({})
+            let minimumTotal = gap*Math.max(0,lane.ids.length-1)
+            let preferredTotal = minimumTotal
+            for (const id of lane.ids) {
+                const minH=root._minimumSize(id).height
+                heights[id]=Math.max(minH,lane.preferredHeights[id] ?? minH)
+                minimumTotal+=minH
+                preferredTotal+=heights[id]
+            }
+            if (minimumTotal>ch)
                 return null
-            const weightTotal = weights.reduce((sum, value) => sum + value, 0)
-            const extraHeight = ch - minimumHeight
-            const result = []
-            let y = 0
-            for (let index = 0; index < ids.length; ++index) {
-                const id = ids[index]
-                const height = minimums[index]
-                    + extraHeight * (weights[index] / weightTotal)
+
+            if (preferredTotal>ch) {
+                let deficit=preferredTotal-ch
+                for (let pass=0; pass<2 && deficit>0.5; ++pass) {
+                    for (const id of lane.growPriority.slice().reverse()) {
+                        const minH=root._minimumSize(id).height
+                        const room=Math.max(0,heights[id]-minH)
+                        const take=Math.min(room,deficit)
+                        heights[id]-=take
+                        deficit-=take
+                        if(deficit<=0) break
+                    }
+                }
+            } else {
+                let extra=ch-preferredTotal
+                for (const id of lane.growPriority) {
+                    const cap=Math.max(heights[id],
+                        lane.maxHeights[id] ?? heights[id])
+                    const add=Math.min(Math.max(0,cap-heights[id]),extra)
+                    heights[id]+=add
+                    extra-=add
+                    if(extra<=0) break
+                }
+            }
+
+            const used = lane.ids.reduce((sum,id)=>sum+heights[id],0)
+                + gap*Math.max(0,lane.ids.length-1)
+            // Preserve breathing room on tall dashboards instead of enlarging
+            // compact cards beyond what their content can use.
+            let y=Math.max(0,Math.min(24,(ch-used)/2))
+            const result=[]
+            for (const id of lane.ids) {
                 result.push({
-                    id: id,
-                    x: x / cw,
-                    y: y / ch,
-                    w: width / cw,
-                    h: height / ch,
-                    visible: true
+                    id:id,
+                    x:x/cw,y:y/ch,w:width/cw,h:heights[id]/ch,
+                    visible:true
                 })
-                y += height + gap
+                y+=heights[id]+gap
             }
             return result
         }
 
-        const result = []
-        let x = 0
-        for (let lane = 0; lane < laneIds.length; ++lane) {
-            const entries = stackLane(
-                laneIds[lane], laneWeights[lane], x, laneWidths[lane])
-            if (!entries)
-                return null
-            for (let i = 0; i < entries.length; ++i)
-                result.push(entries[i])
-            x += laneWidths[lane] + gap
+        const occupiedWidth=usedWidth+gap*(lanes.length-1)
+        let x=Math.max(0,(cw-occupiedWidth)/2)
+        const result=[]
+        for (let index=0; index<lanes.length; ++index) {
+            const entries=laneEntries(lanes[index],x,widths[index])
+            if(!entries) return null
+            for(const entry of entries) result.push(entry)
+            x+=widths[index]+gap
         }
         return result
     }
-
     function fitAllWidgets() {
         root.layoutMessage = ""
         root.finishInteraction(false)

@@ -410,6 +410,10 @@ Scope {
                 span: (Geometry.horizontal(edge) ? (contentItem.item?.desiredWidth ?? 390) : (contentItem.item?.desiredHeight ?? 300))+padding*2
                 depth: (Geometry.horizontal(edge) ? (contentItem.item?.desiredHeight ?? 300) : (contentItem.item?.desiredWidth ?? 390))+padding*2
                 largeSurface: depth > (Geometry.horizontal(edge) ? window.height : window.width)*.42
+                // The Dock owns the physical Edge. Its application menu is an
+                // attached child and therefore allocates after the Dock, inward
+                // into the workspace instead of underneath/below the Dock.
+                placementPriority: contentKind === "dockAppMenu" ? -2 : 0
                 stableContentSize: true
                 pyramidStack: true
                 obstacles: window.sideObstacles

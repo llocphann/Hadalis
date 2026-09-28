@@ -57,21 +57,28 @@ ColumnLayout {
                 Component {
                     id: actionComponent
                     RippleButton {
-                        implicitHeight: 38
-                        implicitWidth: Math.max(210, actionRow.implicitWidth + 22)
-                        buttonRadius: Math.min(16, height / 2)
+                        implicitHeight: 32
+                        implicitWidth: Math.max(230, actionRow.implicitWidth + 24)
+                        horizontalPadding: 0
+                        buttonRadius: Math.max(10,
+                            Appearance.rounding.large - 3)
+                        colBackground: "transparent"
+                        colBackgroundHover:
+                            Qt.alpha(AbyssStyle.accent, .12)
+                        colRipple:
+                            Qt.alpha(AbyssStyle.accent, .22)
                         onClicked: root.invoke(rowLoader.modelData)
 
                         contentItem: RowLayout {
                             id: actionRow
                             anchors.fill: parent
-                            anchors.leftMargin: 10
-                            anchors.rightMargin: 10
-                            spacing: 9
+                            anchors.leftMargin: 8
+                            anchors.rightMargin: 8
+                            spacing: 6
 
                             Loader {
-                                Layout.preferredWidth: 20
-                                Layout.preferredHeight: 20
+                                Layout.preferredWidth: 16
+                                Layout.preferredHeight: 16
                                 active: String(rowLoader.modelData?.iconName ?? "").length > 0
                                 sourceComponent: rowLoader.modelData?.monochromeIcon === true
                                     ? materialIcon : appIcon
@@ -80,7 +87,7 @@ ColumnLayout {
                                     id: materialIcon
                                     MaterialSymbol {
                                         text: rowLoader.modelData?.iconName ?? ""
-                                        iconSize: 18
+                                        iconSize: 16
                                         color: AbyssStyle.textColor
                                     }
                                 }
@@ -90,7 +97,7 @@ ColumnLayout {
                                         source: Quickshell.iconPath(
                                             rowLoader.modelData?.iconName ?? "",
                                             "application-x-executable")
-                                        implicitSize: 18
+                                        implicitSize: 16
                                     }
                                 }
                             }

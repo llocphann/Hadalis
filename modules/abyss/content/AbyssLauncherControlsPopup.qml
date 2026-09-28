@@ -8,7 +8,7 @@ import "../looks/AbyssWave.js" as Wave
 
 ColumnLayout {
     id: root
-    implicitWidth: 360
+    implicitWidth: 410
     implicitHeight: content.implicitHeight
     spacing: 12
 
@@ -45,12 +45,15 @@ ColumnLayout {
                     {label:"Balanced",value:"balanced",icon:"balance"},
                     {label:"Quality",value:"quality",icon:"auto_awesome"}
                 ]
-                delegate: SelectionGroupButton {
+                delegate: AbyssButton {
                     required property var modelData
                     Layout.fillWidth: true
-                    buttonText: Translation.tr(modelData.label)
-                    buttonIcon: modelData.icon
-                    toggled: AbyssStyle.quality === modelData.value
+                    implicitHeight: 38
+                    checkable: true
+                    checked: AbyssStyle.quality === modelData.value
+                    text: Translation.tr(modelData.label)
+                    glyph: modelData.icon
+                    description: text
                     onClicked: root.applyQuality(modelData.value)
                 }
             }
@@ -91,13 +94,16 @@ ColumnLayout {
                     {label:"Fluid",value:"fluid",icon:"water"},
                     {label:"Deep",value:"deep",icon:"tsunami"}
                 ]
-                delegate: SelectionGroupButton {
+                delegate: AbyssButton {
                     required property var modelData
                     Layout.fillWidth: true
-                    buttonText: Translation.tr(modelData.label)
-                    buttonIcon: modelData.icon
-                    toggled: (Config.options?.abyss?.waves?.preset ?? "balanced")
+                    implicitHeight: 38
+                    checkable: true
+                    checked: (Config.options?.abyss?.waves?.preset ?? "balanced")
                         === modelData.value
+                    text: Translation.tr(modelData.label)
+                    glyph: modelData.icon
+                    description: text
                     onClicked: root.applyWavePreset(modelData.value)
                 }
             }

@@ -1,6 +1,6 @@
 var edges = ["top","right","bottom","left"];
 var osds = ["volume","brightness","mic","mediaOsd","keyboardLayout","voiceSearch"];
-var cornerJoinKinds = ["osd","quickNotes","notificationCenter","notifications","wifi"].concat(osds);
+var cornerJoinKinds = ["osd","quickNotes","notificationCenter","notifications","wifi","launcher"].concat(osds);
 function key(kind) {
     if (kind==="calendar") return "clock";
     // Wi-Fi and Bluetooth are the same System Tray connectivity surface.
@@ -10,7 +10,7 @@ function key(kind) {
 function canJoin(kind) { return cornerJoinKinds.indexOf(key(kind)) >= 0; }
 function resolve(positions, kind, outputName) {
     kind=key(kind);
-    var fallback=osds.indexOf(kind)>=0 ? "osd" : ["clock","resources","battery","media","weather","workspaces","tray","audio","wifi","utilities"].indexOf(kind)>=0 ? "popup" : "";
+    var fallback=osds.indexOf(kind)>=0 ? "osd" : ["clock","resources","battery","media","weather","workspaces","tray","audio","wifi","utilities","launcher","dockAppMenu"].indexOf(kind)>=0 ? "popup" : "";
     var list=Array.from(positions || []).filter(function(p) { return p && typeof p==="object"; });
     return list.find(function(p) { return key(p.kind)===kind && p.outputName===outputName; })
         || list.find(function(p) { return key(p.kind)===kind && !p.outputName; })

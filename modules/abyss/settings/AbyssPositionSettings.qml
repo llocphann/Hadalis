@@ -16,6 +16,7 @@ ColumnLayout {
     property var positions: Config.options?.abyss?.positions ?? []
     property bool commitImmediately: true
     property bool outputSelectionEnabled: true
+    property bool compactVertical: false
     property var allowedKinds: []
     property string nearbyEdge: ""
     signal positionsEdited(var positions,string kind,string outputName,var values)
@@ -34,7 +35,11 @@ ColumnLayout {
     readonly property Region outputRegion: Region { item:outputChoice.popup.contentItem;width:outputChoice.popup.visible ? outputChoice.popup.contentItem.width : 0 }
     readonly property Region edgeRegion: Region { item:edgeChoice.popup.contentItem;width:edgeChoice.popup.visible ? edgeChoice.popup.contentItem.width : 0 }
     readonly property Region alignmentRegion: Region { item:alignmentChoice.popup.contentItem;width:alignmentChoice.popup.visible ? alignmentChoice.popup.contentItem.width : 0 }
-    RowLayout {
+    GridLayout {
+        Layout.fillWidth:true
+        columns:root.compactVertical ? 1 : 2
+        rowSpacing:6
+        columnSpacing:6
         StyledComboBox {
             id:kindChoice
             Layout.fillWidth:true
@@ -68,7 +73,11 @@ ColumnLayout {
             onActivated:root.outputName=currentValue
         }
     }
-    RowLayout {
+    GridLayout {
+        Layout.fillWidth:true
+        columns:root.compactVertical ? 1 : 3
+        rowSpacing:6
+        columnSpacing:6
         StyledComboBox {
             id:edgeChoice
             Layout.fillWidth:true
@@ -88,7 +97,10 @@ ColumnLayout {
             onActivated:root.change("alignment",currentValue)
         }
         RippleButton {
-            buttonText:"Reset position";implicitWidth:140;implicitHeight:38
+            buttonText:"Reset position"
+            implicitWidth:140
+            implicitHeight:38
+            Layout.fillWidth:root.compactVertical
             onClicked:root.apply(null)
         }
     }

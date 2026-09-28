@@ -1,0 +1,52 @@
+{
+  "codeHead": "2d31f06b9857a2afdc66ace0af797e132860c754",
+  "canonical": "NOT RUN; no PASS inherited from earlier SHA",
+  "waveSourceCommit": "184b8336d",
+  "edgeSourceCommit": "3486b5d51",
+  "popupImportFix": "134b0115a",
+  "clipboardFix": "45e0d6654",
+  "focusedChecks": [
+    {
+      "command": "python3 scripts/test-abyss-wave-solver.py",
+      "result": "PASS",
+      "scope": "production signed physics and render-only crest/whitewater projection"
+    },
+    {
+      "command": "bash scripts/test-abyss-wave-runtime.sh",
+      "result": "PASS",
+      "scope": "offscreen OpenGL production shader/sleep/effects lifecycle; balanced capture variant retained"
+    },
+    {
+      "command": "python3 scripts/test-abyss-module-layout.py",
+      "result": "PASS",
+      "scope": "all-Edge thickness, inheritance/local expansion and output profiles"
+    },
+    {
+      "command": "bash scripts/test-abyss-editor-runtime.sh",
+      "result": "PASS after MonitorVisibilityConfig registration",
+      "scope": "private Niri; actual QML draft/Cancel/Done/size/preview bindings, no physical-pointer acceptance"
+    },
+    {
+      "command": "bash scripts/test-abyss-clipboard-lifecycle.sh",
+      "result": "PASS",
+      "scope": "private Niri; real Perimeter instrumented only with inspection aliases; Dashboard initially closed/open"
+    },
+    {
+      "command": "bash scripts/test-abyss-network-popups.sh",
+      "result": "PASS",
+      "scope": "private Niri; actual embedded title visibility/bounds/alpha, tray signal route, vertical viewport, dismissal/migration; no radio/pairing action"
+    }
+  ],
+  "limits": [
+    "No owner-desktop pointer/recording acceptance",
+    "No preset/whitewater design approval",
+    "No comparable CPU/GPU/frame profiling",
+    "No hardware/multi-output qualification"
+  ],
+  "initialFailures": [
+    "Offscreen Editor: No PanelWindow backend loaded (harness limitation)",
+    "Private Editor: MonitorVisibilityConfig is not a type (fixed by 134b0115a)",
+    "Old network test rejected deliberate hoverRequest routing via stale handler spelling (replaced with runtime signal checks)",
+    "Network vertical test mixed compositor window dimensions with fixed 960x720 controller (fixed logical viewport in 2d31f06b9; initial failure retained)"
+  ]
+}

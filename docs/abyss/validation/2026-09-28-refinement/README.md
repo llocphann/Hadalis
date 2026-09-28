@@ -1,0 +1,9 @@
+# Abyss refinement checkpoint — 2026-09-28
+
+Source checkpoint: `2d31f06b9857a2afdc66ace0af797e132860c754`. **NOT COMPLETE; canonical validator not run.** Focused checks are listed in `checks.json`; they do not certify the entire repo or the owner's desktop.
+
+Wave captures and the full balanced GPU probe log exercise the production Field/Wave code through `184b8336d` with isolated defaults and offscreen OpenGL. The rounded positive profile was inspected; default QA colors/empty wallpaper differ from the owner's theme. These are after-only images, not a before/after performance comparison or whitewater design approval.
+
+Private Niri checks use an owned nested compositor, isolated config/state/cache and inspection aliases only. Clipboard is tested with Dashboard initially closed and open; it retains Clipboard content during retraction and releases it afterward. The network check verifies visible titles with positive bounds/alpha and mature embedded forms, routing, dismissal, migration and vertical containment. `network-before-viewport.log` retains the failed fixture before correcting its logical viewport; runtime behavior was not changed to satisfy that assertion. Editor passes after fixing the missing exported MonitorVisibilityConfig; its successful console result is recorded in checks.json, while the old transient test directories were cleaned by the scripts. No real association/pairing, display-mode, brightness or night-light writes were tested.
+
+Next: owner-session hover into Wi-Fi/Bluetooth content, repeated Clipboard open/close recordings, four Edge slider pointer/save/cancel/input-mask checks, ocean preset/audio/crossing/foam videos and comparable resource measurements. IPC corner joins and Niri Reloaded remain unimplemented. Keep all broader README requirements open until accepted.

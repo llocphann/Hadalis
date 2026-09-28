@@ -117,6 +117,12 @@ Singleton {
     property string abyssEditorTargetOutput: ""
     function startAbyssEditing(outputName): void {
         if (Config.options?.panelFamily !== "abyss" || root.screenLocked) return
+        // The Abyss live Edge editor is a mutually-exclusive desktop editing
+        // mode. Clear stale generic shell-layout/widget editor state first so
+        // every entrypoint (Settings header, desktop context menu, IPC) lands
+        // in the same editor instead of toggling or stacking two edit modes.
+        root.setShellLayoutEditMode(false)
+        root.setWidgetEditMode(false)
         root.abyssEditorTargetOutput = root.resolveOutputName(String(outputName ?? ""),[])
         root.sessionOpen = false
         root.cheatsheetOpen = false

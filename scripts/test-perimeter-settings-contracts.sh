@@ -6,6 +6,7 @@ settings="$root/modules/settings/ShellLayoutConfig.qml"
 registry="$root/modules/settings/SettingsPageRegistryData.qml"
 background="$root/modules/background/Background.qml"
 overlay="$root/modules/settings/SettingsOverlay.qml"
+global_states="$root/GlobalStates.qml"
 
 fail() {
     printf 'FAIL: perimeter settings retirement contract: %s\n' "$1" >&2
@@ -16,6 +17,7 @@ fail() {
 [[ -f "$registry" ]] || fail 'missing modules/settings/SettingsPageRegistryData.qml'
 [[ -f "$background" ]] || fail 'missing modules/background/Background.qml'
 [[ -f "$overlay" ]] || fail 'missing modules/settings/SettingsOverlay.qml'
+[[ -f "$global_states" ]] || fail 'missing GlobalStates.qml'
 
 grep -Fq 'component: "modules/settings/ShellLayoutConfig.qml"' "$registry" \
     || fail 'Shell Layout page is no longer routed through the settings registry'
@@ -36,6 +38,10 @@ grep -Fq 'ShellEditSession.enter(bgRoot.screenName)' "$background" \
 if grep -Fq 'ShellEditSession.toggle()' "$background"; then
     fail 'desktop context menu still uses family-ambiguous ShellEditSession.toggle'
 fi
+grep -Fq 'root.setShellLayoutEditMode(false)' "$global_states" \
+    || fail 'Abyss editor entry does not clear stale generic shell-layout edit mode'
+grep -Fq 'root.setWidgetEditMode(false)' "$global_states" \
+    || fail 'Abyss editor entry does not clear stale desktop widget edit mode'
 
 for retired in \
     'Connected Perimeter' \

@@ -41,6 +41,19 @@ Item {
     readonly property real mass: Math.max(1,span*depth/90000)
     property bool initialized: false
     property bool open: false
+    // Pyramid v2 keeps semantic/input ownership separate from visual residency.
+    // Non-popup bodies leave this undefined and retain the original open contract.
+    property var semanticOpenOverride: undefined
+    readonly property bool semanticOpen:
+        semanticOpenOverride === undefined
+            ? root.open : Boolean(semanticOpenOverride)
+    readonly property bool visualResident:
+        root.open || root.progress > 0.001
+    readonly property bool acceptsInput:
+        root.semanticOpen && root.placementVisible
+    // Presentation policy only. The allocator remains a deterministic resting
+    // layout producer; animation state is owned outside AbyssBodyPlacement.
+    property string stackPolicy: ""
     property int activationOrder: 0
     property int placementPriority: identity === "dialog" ? 2 : ["utility","edgeEditor"].includes(identity) ? 1 : identity === "dock" ? -1 : 0
     readonly property var placement: controller?.bodyPlacements?.[identity] ?? null
@@ -93,16 +106,17 @@ Item {
     readonly property Item contentItem: content
     readonly property bool ready: embeddedItem !== null || content.status === Loader.Ready
     readonly property Item contentParent: contentFrame
-    readonly property rect inputBounds: presented && ready
+    readonly property rect inputBounds: acceptsInput && ready
         ? Qt.rect(contentFrame.x,contentFrame.y,contentFrame.width,contentFrame.height) : Qt.rect(0,0,0,0)
     signal closeRequested()
     AbyssParticipant {
         identity: root.identity
         controller: root.controller
         geometry: root.record
-        placementRequest: ({id:root.identity,open:root.open,order:root.activationOrder,
+        placementRequest: ({id:root.identity,open:root.semanticOpen,order:root.activationOrder,
             priority:root.placementPriority,padding:root.padding,
             minSpan:root.minimumSpan,minDepth:root.minimumDepth,
+            stackPolicy:root.stackPolicy,
             record:root.requestedRecord})
         inputBounds: root.inputBounds
         mass: root.mass
@@ -173,7 +187,7 @@ Item {
         clip: true
         visible: root.placementVisible || root.progress > 0.001
         opacity: Math.min(1,root.progress*1.5)
-        enabled: root.presented
+        enabled: root.acceptsInput
     }
     Loader {
         id: content
@@ -186,12 +200,12 @@ Item {
         // A space-constrained body retains drafts/focus state while hidden. It
         // unloads only after a semantic close and completion of the reveal.
         active: !root.embeddedItem
-            && (root.residentContent || root.open || root.progress > 0.001)
+            && (root.residentContent || root.visualResident)
             && GlobalStates.deferredPanelsReady
         source: root.source
         clip: true
         opacity: 1
-        enabled: root.presented
+        enabled: root.acceptsInput
         onLoaded: {
             if (item.participant !== undefined) item.participant = root
             if (item.outputName !== undefined) item.outputName = Qt.binding(() => root.outputName)

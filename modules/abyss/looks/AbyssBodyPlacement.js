@@ -99,6 +99,22 @@ function _tiers(request, span, depth, accepted, gap, width, height, insets) {
         return list.findIndex(function(other) { return Math.abs(other-value) < .5; }) === index;
     }).sort(function(a,b) { return a-b; });
 }
+function _anchorCenter(request) {
+    return _number(request?.record?.along,0)
+        + _number(request?.record?.span,0)/2;
+}
+function _samePyramidAnchor(a,b) {
+    return a?.stackPolicy === "pyramid"
+        && b?.stackPolicy === "pyramid"
+        && a?.record?.edge === b?.record?.edge
+        && Math.abs(_anchorCenter(a)-_anchorCenter(b)) <= 2;
+}
+function _requestedArea(request) {
+    var record=request?.record;
+    if (!record) return 0;
+    return Math.max(0,_number(record.span,0))
+        * Math.max(0,_number(record.targetDepth,record.depth || 0));
+}
 function arrange(requests, width, height, insets, gap) {
     gap = gap === undefined ? 24 : Math.max(0, gap);
     var result = {}, accepted = [];
@@ -106,6 +122,12 @@ function arrange(requests, width, height, insets, gap) {
         return request && request.open && request.record;
     });
     ordered.sort(function(a,b) {
+        // Pyramid is a resting-layout policy only: at one physical anchor the
+        // largest popup owns the Edge tier and smaller peers stack inward.
+        if (_samePyramidAnchor(a,b)) {
+            var areaDelta=_requestedArea(b)-_requestedArea(a);
+            if (Math.abs(areaDelta)>.5) return areaDelta;
+        }
         return (b.priority || 0)-(a.priority || 0)
             || (b.order || 0)-(a.order || 0)
             || String(a.id).localeCompare(String(b.id));

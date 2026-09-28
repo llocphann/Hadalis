@@ -53,12 +53,12 @@ Item {
     property string source: ""
     property string contentKind: ""
     // External presenters such as StyledPopup own their own reveal fraction.
-    // Availability still wins: when the allocator evicts a host, progress
-    // animates to zero even if the feature itself remains semantically open.
+    // Keep that motion independent from allocator availability: otherwise the
+    // host's Behavior would re-animate every incoming reveal frame.
     property real externalProgress: -1
-    property real progress: presented
-        ? (externalProgress >= 0 ? Math.max(0,Math.min(1,externalProgress)) : 1)
-        : 0
+    property real availabilityProgress: presented ? 1 : 0
+    property real progress: (externalProgress >= 0
+        ? Math.max(0,Math.min(1,externalProgress)) : 1) * availabilityProgress
     readonly property var requestedRecord: Geometry.panel(width,height,edgeInsets,edge,along,span,depth,1,padding,[],largeSurface)
     readonly property var record: Geometry.joinCorner(Geometry.placedPanel(width,height,edgeInsets,edge,along,span,depth,progress,padding,obstacles,largeSurface,effectivePlacement),joinedEdge,width,height,edgeInsets)
     readonly property var targetRecord: Geometry.placedPanel(width,height,edgeInsets,edge,along,span,depth,1,padding,obstacles,largeSurface,layoutPlacement)
@@ -97,18 +97,22 @@ Item {
         if (open) Qt.callLater(() => { if (root.open) root.react(true) })
     }
     Keys.onEscapePressed: root.closeRequested()
-    Behavior on progress {
-        id: deformation
+    Behavior on availabilityProgress {
+        id: availabilityMotion
         enabled: root.animatePresentation && AbyssStyle.motionEnabled
         SequentialAnimation {
             NumberAnimation {
-                to: deformation.targetValue > 0 ? deformation.targetValue+AbyssStyle.motionOvershoot : 0
-                duration: Math.round(AbyssStyle.motionNormal*(1+Math.min(0.5,Math.sqrt(root.mass)*0.1)))
+                to: availabilityMotion.targetValue > 0
+                    ? availabilityMotion.targetValue+AbyssStyle.motionOvershoot : 0
+                duration: Math.round(AbyssStyle.motionNormal
+                    *(1+Math.min(0.5,Math.sqrt(root.mass)*0.1)))
                 easing.type: root.presented ? Easing.OutCubic : Easing.InCubic
             }
             NumberAnimation {
-                to: deformation.targetValue
-                duration: root.presented && AbyssStyle.motionOvershoot > 0 ? Math.round(AbyssStyle.motionSettle*(1+Math.min(0.5,Math.sqrt(root.mass)*0.1))) : 0
+                to: availabilityMotion.targetValue
+                duration: root.presented && AbyssStyle.motionOvershoot > 0
+                    ? Math.round(AbyssStyle.motionSettle
+                        *(1+Math.min(0.5,Math.sqrt(root.mass)*0.1))) : 0
                 easing.type: Easing.OutCubic
             }
         }

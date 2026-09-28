@@ -39,7 +39,11 @@ Scope {
     Connections {
         target: root.flow
         function onAuthenticationFailed() {
-            root.interactionAvailable = true
+            // Quickshell starts a fresh authentication conversation after a
+            // failure. Do not enable the field until that new conversation is
+            // actually asking for a response.
+            root.interactionAvailable =
+                root.flow?.isResponseRequired ?? false
         }
         function onIsResponseRequiredChanged() {
             if (root.flow?.isResponseRequired ?? false)

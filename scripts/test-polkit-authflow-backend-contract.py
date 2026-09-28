@@ -15,6 +15,9 @@ assert "root.flow.submit(response)" in impl
 assert "cancelAuthenticationRequest()" in impl
 assert "property var queue" not in impl
 assert "onAuthenticationFailed" in impl
+failed_handler=impl.split("function onAuthenticationFailed()",1)[1].split("function onIsResponseRequiredChanged()",1)[0]
+assert "root.flow?.isResponseRequired ?? false" in failed_handler
+assert "root.interactionAvailable = true" not in failed_handler
 assert "onIsResponseRequiredChanged" in impl
 assert "onInputPromptChanged" in impl
 

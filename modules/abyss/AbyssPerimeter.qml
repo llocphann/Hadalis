@@ -248,7 +248,7 @@ Scope {
                     GlobalStates.abyssPopupKind = kind
                 }
                 onPopupHoverStateChanged: (kind,edge,along,hovered) => {
-                    if (!["wifi","bluetooth","utilities"].includes(kind))
+                    if (!["wifi","bluetooth","utilities","launcher"].includes(kind))
                         return
                     if (hovered) {
                         window.transientPopupHoverKind = kind

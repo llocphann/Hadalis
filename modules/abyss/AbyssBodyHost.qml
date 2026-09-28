@@ -44,38 +44,14 @@ Item {
     property int activationOrder: 0
     property int placementPriority: identity === "dialog" ? 2 : ["utility","edgeEditor"].includes(identity) ? 1 : identity === "dock" ? -1 : 0
     readonly property var placement: controller?.bodyPlacements?.[identity] ?? null
-    readonly property bool placementAvailable:
-        placement !== null && placement !== undefined
-    // A just-opened body may not have an allocator result until the next QML
-    // binding turn. Null therefore means "use base anchor", not "evicted".
-    // Only an explicit placement.visible === false is allocator eviction.
-    readonly property bool placementVisible:
-        !placementAvailable || placement.visible !== false
+    readonly property bool placementVisible: placement?.visible !== false
     // A temporarily evicted body retracts using its last valid geometry, keeps
     // its loaded feature/draft, and can reopen in place when space returns.
     property var retainedPlacement: null
-    property real pyramidCloseInward: 0
     readonly property var layoutPlacement: placementVisible
         ? placement : (retainedPlacement ?? placement)
-    // Semantic close removes the request from the allocator immediately. Keep
-    // the last valid tier until reveal progress reaches zero; Geometry then
-    // multiplies inward by progress so a pyramid child retreats through the
-    // tier below and finally into its physical Screen Edge.
-    readonly property var effectivePlacement: {
-        // Semantic close is different from allocator eviction. A stacked body
-        // closes into the directly underlying same-anchor body first. Only the
-        // bottom body has closeInward=0 and therefore retracts to Screen Edge.
-        if (!root.open && root.progress > 0.001 && retainedPlacement)
-            return Object.assign({}, retainedPlacement, {
-                closeInward: root.pyramidCloseInward
-            })
-        if (placementAvailable && placement.visible !== false)
-            return placement
-        if (placementAvailable && placement.visible === false
-                && root.progress > 0.001)
-            return retainedPlacement ?? placement
-        return placement
-    }
+    readonly property var effectivePlacement: placementVisible
+        ? placement : (progress > 0.001 ? retainedPlacement : placement)
     // Keep allocator truth discrete, but interpolate its visible geometry. The
     // first placement snaps into place; later peer-induced tier/size changes
     // slide/reflow from the current frame and naturally reverse mid-flight.
@@ -139,21 +115,10 @@ Item {
     }
     function markOpened(): void { if (open && controller?.nextPresentationOrder) activationOrder=controller.nextPresentationOrder() }
     onPlacementChanged: {
-        if (placementAvailable && placement.visible !== false)
+        if (placement?.visible !== false)
             retainedPlacement = placement
     }
-    onOpenChanged: if (initialized) {
-        if (!open) {
-            pyramidCloseInward = controller?.pyramidCloseTarget
-                ? controller.pyramidCloseTarget(identity,
-                    retainedPlacement, requestedRecord)
-                : 0
-        } else {
-            pyramidCloseInward = 0
-        }
-        markOpened()
-        react(open)
-    }
+    onOpenChanged: if (initialized) { markOpened();react(open) }
     onEmbeddedItemChanged: if (initialized) markOpened()
     onContentKindChanged: if (initialized) markOpened()
     onControllerChanged: if (initialized) markOpened()

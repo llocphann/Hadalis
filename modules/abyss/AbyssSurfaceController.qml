@@ -184,48 +184,6 @@ QtObject {
         }
         return false
     }
-    function pyramidCloseTarget(identity, closingPlacement, closingRecord): real {
-        if (!closingPlacement || !closingRecord)
-            return 0
-        const currentInward = Number(closingPlacement.inward ?? 0)
-        if (!(currentInward > 0))
-            return 0
-        const edge = String(closingRecord.edge ?? "")
-        const center = Number(closingRecord.along ?? 0)
-            + Number(closingRecord.span ?? 0) / 2
-        let nearest = null
-        let nearestInward = -1
-
-        for (const key of Object.keys(participants)) {
-            if (key === identity)
-                continue
-            const request = participants[key]?.placementRequest
-            if (!(request?.open ?? false) || !(request?.pyramidStack ?? false))
-                continue
-            const record = request.record
-            if (!record || String(record.edge ?? "") !== edge)
-                continue
-            const peerCenter = Number(record.along ?? 0)
-                + Number(record.span ?? 0) / 2
-            if (Math.abs(peerCenter - center) > 2)
-                continue
-            const peer = bodyPlacements[key]
-            if (!peer || peer.visible === false)
-                continue
-            const inward = Number(peer.inward ?? 0)
-            if (inward >= currentInward - .5 || inward <= nearestInward)
-                continue
-            nearest = peer
-            nearestInward = inward
-        }
-
-        if (!nearest)
-            return 0
-        // Close at the workspace-facing boundary of the popup directly below.
-        // The closing body's own reveal then collapses into that boundary.
-        return Math.max(0, Math.min(currentInward,
-            Number(nearest.inward ?? 0) + Number(nearest.depth ?? 0)))
-    }
     function hasPopupOnEdge(edge): bool {
         return popupEntries.some(entry => (entry.popup?.presentationActive ?? false)
             && entry.popup?._attachmentEdge === edge)

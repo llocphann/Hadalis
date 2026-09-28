@@ -56,14 +56,7 @@ function placedPanel(width,height,insets,edge,along,span,depth,progress,padding,
     var placedDepth = Number.isFinite(Number(placement.depth)) ? Number(placement.depth) : depth;
     var base = panel(width,height,insets,edge,placedAlong,placedSpan,placedDepth,
         progress,padding,[],largeSurface);
-    var p = clamp(progress,0,1.035);
-    var inward = Number.isFinite(Number(placement.inward))
-        ? Number(placement.inward) : 0;
-    var closeInward = Number.isFinite(Number(placement.closeInward))
-        ? clamp(Number(placement.closeInward),0,Math.max(0,inward)) : 0;
-    // A stacked popup retracts into the workspace-facing boundary of the
-    // popup below it. The bottom popup has closeInward=0 and retracts to Edge.
-    var offset = closeInward + (inward-closeInward)*p;
+    var p = clamp(progress,0,1.035), offset = placement.inward*p;
     if (horizontal(edge)) {
         base.content.y += edge === "top" ? offset : -offset;
         if (edge === "bottom") base.surface.y -= offset;
@@ -74,9 +67,8 @@ function placedPanel(width,height,insets,edge,along,span,depth,progress,padding,
         base.surface.width += offset;
     }
     base.depth += offset;
-    base.targetDepth += inward;
-    if (p <= .0001 || !placement.visible)
-        base.surface = {x:0,y:0,width:0,height:0};
+    base.targetDepth += placement.inward;
+    if (!placement.visible) base.surface = {x:0,y:0,width:0,height:0};
     return base;
 }
 function roundedDistance(x, y, rect, radius) {

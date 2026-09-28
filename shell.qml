@@ -51,6 +51,7 @@ ShellRoot {
     property var _windowPreviewService
     property var _weatherService
     property var _voiceSearchService
+    property var _cavaThemeService
     // Screen Time must exist for the whole enabled session so the Material
     // notification-center Activity tab has history before it is first opened.
     // Waffle keeps the existing explicit Screen Time opt-in.
@@ -79,6 +80,10 @@ ShellRoot {
             return
         if (Config.options?.bar?.weather?.enable ?? false)
             root._weatherService = Weather
+        // CavaTheme also owns the optional cover-art -> external CAVA config
+        // side effect, so keep it resident when that feature is explicitly enabled.
+        if (Config.options?.appearance?.wallpaperTheming?.enableCava ?? false)
+            root._cavaThemeService = CavaTheme
     }
 
     function _ensureLateFeatureServices(): void {

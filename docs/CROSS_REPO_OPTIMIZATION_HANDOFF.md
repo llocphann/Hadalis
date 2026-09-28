@@ -2409,3 +2409,273 @@ Capture at least:
 
 If the waves-disabled trace confirms repeated `Wave.setMass()` cost, that becomes the first implementation candidate. The implementation must preserve current enabled-wave numerics and visual output exactly.
 
+---
+
+## 24. Audit round 10 — Pyramid v2 foundation, startup fan-out and lossless hot-path refinement (2026-09-28)
+
+### Snapshot
+
+- Hadalis head reconciled immediately before this checkpoint: `faec121b6b83ead6b3455fa96ff0a03d88b5a166`
+- Previous optimization-note commit: `cdf6c587aec4a78468c72917d0aa3f33492d50cd`
+- Runtime delta since the prior audit: two Abyss Pyramid v2 foundation commits, affecting `AbyssBodyHost.qml`, `AbyssBodyPlacement.js`, a new `AbyssPyramidMotion.js`, launcher-control sizing and focused tests.
+- This round also re-opened startup work ownership and two long-session/process-churn candidates where §22–23 had evidence gaps.
+- No runtime/source implementation was changed during this research round. Only this handoff is updated.
+
+### 24.1 Pyramid v2 motion helper currently has zero live runtime cost — CLOSED for current HEAD / future design guard
+
+The new `modules/abyss/looks/AbyssPyramidMotion.js` contains:
+
+- placement/record cloning helpers
+- collapsed-record construction
+- record/rect interpolation helpers
+
+At current HEAD, no live runtime component imports or calls this helper. The accompanying contract test only establishes the allocator/presentation ownership boundary.
+
+Therefore:
+
+- do **not** count Pyramid v2 helper allocation as a current performance regression;
+- do **not** optimize the helper before it has a consumer;
+- when Pyramid v2 presentation wiring lands, profile the first runtime call site before accepting a per-frame binding.
+
+Important future guard: `cloneRect()`, `cloneRecord()`, `interpolateRect()` and `interpolateRecord()` all allocate fresh JavaScript objects. Calling them from a binding driven directly by animation progress would create main-thread JS allocation and binding work every frame.
+
+Qt's QML performance guidance explicitly warns that animation-dependent bindings are reevaluated as their dependencies change and recommends avoiding complex JavaScript work during animations. The QML profiler can separately expose Binding, JavaScript, memory-allocation and animation activity.
+
+Reference:
+
+- https://doc.qt.io/qt-6/qtquick-performance.html
+- https://doc.qt.io/qtcreator/creator-qml-performance-monitor.html
+
+### 24.2 Abyss reveal has a multi-stage per-frame allocation cascade — REFINED P1 profiling target
+
+§23.2 identified `AbyssSurfaceController.records` and `AbyssField.rect0..rect39`. The upstream source chain is now clearer.
+
+For a normal `AbyssBodyHost` reveal/retract:
+
+1. `availabilityProgress` is animated.
+2. `progress` changes from that animation.
+3. `record` reevaluates:
+   - `Geometry.placedPanel(... progress ...)`
+   - `Geometry.panel()` constructs new `content` and `surface` objects plus the returned record object.
+   - `Geometry.joinCorner()` may clone the surface/record again.
+4. `AbyssParticipant.geometry` changes.
+5. `AbyssSurfaceController.records` rebuilds the aggregate list and clones participant geometry with `Object.assign(...)`.
+6. `AbyssField` sees `records` change; `rect0..rect39` all depend on that property and each `packed()` call constructs a `Qt.vector4d`.
+7. With the current waves-off bug from §23.1, `AbyssWaveController.onRecordsChanged` can additionally run `Wave.setMass()`, iterating the 256-sample mass array for active records even though integration is disabled.
+
+The allocator is **not** the main per-frame problem: `placementRequest.record` uses `requestedRecord` at full progress, so ordinary reveal progress does not intentionally animate allocator truth. Keep that separation.
+
+This creates a concrete CPU/QML profile target:
+
+- per-host `Geometry.panel/placedPanel/joinCorner` JavaScript time
+- `AbyssSurfaceController.records` binding time/allocation
+- `rect0..rect39` reevaluation count
+- `Wave.setMass()` time with waves disabled/enabled
+- JS heap allocation/GC during repeated reveal/retract
+
+Lossless work should attack redundant propagation/allocation, not change geometry numerics, record ordering or the single-field visual model.
+
+### 24.3 Tier-0 MemoryPressure prime may block on `/proc/self/maps` — INVESTIGATE / startup P1-low
+
+Earlier rounds correctly classified `MemoryPressureService` as a sparse 5-minute in-process monitor rather than a shell polling problem. One startup detail was missed.
+
+Current startup ownership:
+
+- `shell.qml` force-instantiates `MemoryPressureService` at Tier 0 to keep the `memory` IPC target available.
+- `MemoryPressureService.Component.onCompleted` uses `Qt.callLater()` to perform an immediate first `_checkMemoryPressure()`.
+- the FileView for `/proc/self/maps` uses `blockLoading: true`.
+- `_checkMemoryPressure()` calls `reload()`, then immediately `text()`, then splits and scans the full maps text for `JSGCHeap`.
+
+Quickshell documents that a `FileView.text()` call with `blockLoading: true` can block the UI thread if the content is not loaded yet and explicitly warns about stutter from blocking reads after shell windows begin loading.
+
+Reference:
+
+- https://quickshell.org/docs/v0.3.0/types/Quickshell.Io/FileView/
+
+This is not yet proven material because preload may often finish first and the scan is sparse. It should nevertheless be added to the startup trace.
+
+Lossless directions to evaluate if it appears in the profile:
+
+- keep the lightweight IPC owner alive but defer the first automatic scan until after shell entry/deferred startup;
+- make an IPC `stats` request trigger an immediate scan if no sample exists yet;
+- or process the preload asynchronously on `loaded` rather than forcing an immediate blocking read.
+
+Do not reduce the 5-minute monitoring semantics or warning threshold merely to improve startup.
+
+### 24.4 External theming creates a concrete T+0.6s process fan-out overlapping Tier 3 — P0 BENCHMARK / ADAPT only after trace
+
+The previous startup checklist named WindowPreview, updates, font sync, Weather and ConflictKiller, but did not explicitly include the external theme reconciliation wave.
+
+Current default startup behavior:
+
+- `shell.qml` calls `ThemeService.applyCurrentTheme()` via `Qt.callLater()` once Config is ready.
+- Config schema default is `appearance.theme = "auto"`.
+- auto theme calls `MaterialThemeLoader.reapplyTheme()`.
+- with external application enabled in the main shell, it also calls `MaterialThemeLoader.requestExternalApply()`.
+- `delayedExternalApply` fires after **600 ms** and runs `scripts/colors/applycolor.sh`.
+- `ThemeService` separately launches `system24_palette.sh` when Vesktop theming is enabled; that option defaults to true.
+
+The default `applycolor.sh` target set currently enables approximately seven module processes before installation-specific early exits:
+
+- terminals
+- GTK/KDE
+- editors
+- Zed
+- Chromium
+- SDDM
+- Pear Desktop
+
+`applycolor.sh` deliberately caps module parallelism to 2–4 jobs and uses nice/ionice, but this still creates a real process/CPU/I/O wave.
+
+Timing matters:
+
+- shell-entry delay is ~200 ms when animations are enabled;
+- Tier 3 starts 500 ms after shell entry, around the same ~T+700 ms window;
+- external theming is scheduled for ~T+600 ms from its request.
+
+Therefore the external theme fan-out can overlap directly with Tier 3 service materialization and WindowPreview work.
+
+This is a **measurement candidate**, not permission to skip theme reconciliation. Reasserting persisted theme state after external edits/upgrades is an intentional behavior.
+
+The next startup trace must identify:
+
+- `applycolor.sh`
+- each theming-module child
+- `system24_palette.sh` / its Go or Python generator
+- their CPU/PSS/process lifetime relative to Tier 3
+- whether cold-start variance changes when external theming inputs are already up to date
+
+Potential lossless directions after evidence:
+
+- stagger/reorder the reconciliation wave so it no longer competes with first-interaction services while still running once per session;
+- consolidate redundant startup helper processes;
+- add proven per-target no-op detection without removing reconciliation semantics.
+
+### 24.5 Icon/font desktop reconciliation belongs in the same startup evidence bundle — REFINED, not a separate blind rewrite
+
+Two adjacent startup paths should be measured together with §24.4.
+
+#### IconThemeService
+
+Fresh defaults persist `appearance.iconTheme = "WhiteSur-dark"`. `IconThemeService.ensureInitialized()` therefore does not merely read the current desktop theme; it reasserts the saved theme on startup:
+
+1. runs `gsettings set org.gnome.desktop.interface icon-theme ...`;
+2. on the production Rust backend, launches `native-dispatch desktop-icons`;
+3. the Rust helper reads KDE/Qt5/Qt6/GTK3/GTK4 config files and atomically writes only files whose content actually differs.
+
+Important correction: the native helper already compares `updated != base`, so this is **not** five unconditional file rewrites. Remaining cost is process creation, config reads/parsing and any genuinely required writes.
+
+Treat as INVESTIGATE, because reasserting the configured theme after external changes is a real product contract.
+
+#### FontSyncService
+
+This candidate is already documented, but its timing belongs in the same trace:
+
+- default `syncWithSystem = true`;
+- service materializes only when enabled;
+- it waits 500 ms, then runs `sync-system-fonts.sh`;
+- that helper may invoke gsettings, Python and kwriteconfig6 while taking the shared app-theme lock.
+
+Do not optimize icon, font and palette reconciliation independently before seeing whether their overlap is the actual startup problem.
+
+### 24.6 Notification history write cost is main-thread serialization, not blocking FileView I/O — REFINED P1 long-session candidate
+
+Current notification persistence does:
+
+`notifFileView.setText(stringifyList(root.list))`
+
+on every notification ingress and individual discard.
+
+`stringifyList()` performs:
+
+1. `list.map(notifToJSON)`
+2. `.filter(...)`
+3. `JSON.stringify(..., null, 2)`
+
+over the entire retained history.
+
+Quickshell `FileView.setText()` uses non-blocking writes unless `blockWrites` is enabled; this FileView does not enable `blockWrites`. Therefore the clearly synchronous portion is the construction of the full JSON string on the QML/JS thread before `setText()` is called.
+
+Reference:
+
+- https://quickshell.org/docs/v0.3.0/types/Quickshell.Io/FileView/
+- https://doc.qt.io/qt-6/qtquick-performance.html
+
+This strengthens the existing history-scaling hypothesis:
+
+- ingress/discard CPU grows with total retained history;
+- every write allocates a new mapped array plus serialized string;
+- pretty-printing increases serialized bytes and formatting work;
+- no history cap means the cost grows over a long session.
+
+Lossless directions, in increasing complexity:
+
+1. measure compact vs pretty JSON for this internal state file;
+2. preserve full retention but avoid remapping unchanged QObject entries when possible;
+3. if still material, move serialization/journaling off the interaction-critical QML path while preserving atomic/durable semantics.
+
+Do not introduce a retention cap under the label “lossless”; a cap changes user-visible history semantics.
+
+### 24.7 Favicon cache hits still spawn a shell process per component — ADAPT / P1-low to P2, now a stronger lossless candidate
+
+Current `modules/common/widgets/Favicon.qml` creates one `Process` per component and starts it in `Component.onCompleted`.
+
+The command is:
+
+`bash -c '[ -f cache/domain.ico ] || curl ...'`
+
+So a disk-cache hit avoids `curl`, but still pays:
+
+- QML Process object creation
+- one Bash process start/exit
+- shell parsing and filesystem stat
+
+for every Favicon delegate instance.
+
+Live consumers include search/clipboard URL rows, AI annotation sources and wallpaper/source UI. Recreating delegates can therefore create repeated shell churn even with a fully warm favicon cache.
+
+This is one of the clearest lossless process candidates because cache-hit output is already known and no network work is required.
+
+Research direction:
+
+- use a shared/in-process favicon resolver/cache state so a known warm domain can publish its local URL without creating a process;
+- reserve the downloader process/network request for a cache miss;
+- keep failed-download cleanup and stale/corrupt-cache handling explicit.
+
+Acceptance should count child-process launches while repeatedly creating the same cached URL delegates. The expected steady-state cache-hit target is zero shell/curl children.
+
+### 24.8 False positives closed in this round
+
+Several suspicious-looking static hits were checked and should **not** enter the backlog:
+
+- `SystemInfo.qml` has a 1 ms Timer, but it is `repeat: false`; it is startup deferral, not 1 kHz polling.
+- `Network.qml` uses a persistent `nmcli monitor` subscriber plus debounced state reads; the 30s timer is only a rescan timeout, not periodic polling.
+- `Directories.qml` already consolidated the old many-process cleanup/bootstrap into one ordered shell invocation.
+- production Rust desktop-icon sync already avoids rewriting unchanged INI files.
+- Pyramid v2's new motion helper is not imported at current HEAD.
+
+Keep these as regression knowledge so future static greps do not reopen them.
+
+### 24.9 Revised evidence order
+
+The highest-value next measurements are now:
+
+1. **Startup T+0..T+8 process/CPU/PSS trace**, explicitly including:
+   - Material/applycolor fan-out
+   - system24/Vesktop generation
+   - IconTheme reconciliation
+   - MemoryPressure initial maps scan
+   - Tier 3 WindowPreview/VoiceSearch/GameMode work
+   - Tier 4 FontSync/Autostart/ShellUpdates construction
+   - ConflictKiller
+2. **Abyss reveal CPU/QML profile**:
+   - `Geometry.placedPanel/joinCorner`
+   - controller aggregate `records`
+   - `rect0..rect39`
+   - waves-off `Wave.setMass()`
+3. **Notification history scaling** with small/medium/large retained histories.
+4. **Warm-cache Favicon delegate churn** with child-process counting.
+5. Existing Equalizer/CAVA and WindowPreview policy experiments.
+
+Do not implement any of these from static evidence alone except where the maintainer separately authorizes code changes. This handoff remains research-only.
+

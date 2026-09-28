@@ -16,3 +16,5 @@ AbyssControlContent 1.0 AbyssControlContent.qml
 AbyssOverviewContent 1.0 AbyssOverviewContent.qml
 AbyssUtilityContent 1.0 AbyssUtilityContent.qml
 AbyssUtilitiesPopup 1.0 AbyssUtilitiesPopup.qml
+
+AbyssLauncherControlsPopup 1.0 AbyssLauncherControlsPopup.qml

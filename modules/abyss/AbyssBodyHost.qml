@@ -46,8 +46,11 @@ Item {
     readonly property var placement: controller?.bodyPlacements?.[identity] ?? null
     readonly property bool placementAvailable:
         placement !== null && placement !== undefined
+    // A just-opened body may not have an allocator result until the next QML
+    // binding turn. Null therefore means "use base anchor", not "evicted".
+    // Only an explicit placement.visible === false is allocator eviction.
     readonly property bool placementVisible:
-        placementAvailable && placement.visible !== false
+        !placementAvailable || placement.visible !== false
     // A temporarily evicted body retracts using its last valid geometry, keeps
     // its loaded feature/draft, and can reopen in place when space returns.
     property var retainedPlacement: null
@@ -57,9 +60,16 @@ Item {
     // the last valid tier until reveal progress reaches zero; Geometry then
     // multiplies inward by progress so a pyramid child retreats through the
     // tier below and finally into its physical Screen Edge.
-    readonly property var effectivePlacement: placementVisible
-        ? placement
-        : (progress > 0.001 ? (retainedPlacement ?? placement) : placement)
+    readonly property var effectivePlacement: {
+        if (placementAvailable && placement.visible !== false)
+            return placement
+        if (!root.open && root.progress > 0.001)
+            return retainedPlacement ?? placement
+        if (placementAvailable && placement.visible === false
+                && root.progress > 0.001)
+            return retainedPlacement ?? placement
+        return placement
+    }
     // Keep allocator truth discrete, but interpolate its visible geometry. The
     // first placement snaps into place; later peer-induced tier/size changes
     // slide/reflow from the current frame and naturally reverse mid-flight.

@@ -1934,6 +1934,7 @@ Singleton {
                 property bool hoverToReveal: false
                 property bool showOnDesktop: true
                 property bool showBackground: true
+                property bool showDashboardButton: true
                 property bool minimizeUnfocused: false
                 property bool enableBlurGlass: true
                 property bool separatePinnedFromRunning: true

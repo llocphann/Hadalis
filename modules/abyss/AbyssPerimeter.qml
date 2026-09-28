@@ -409,7 +409,7 @@ Scope {
                 pyramidStack: true
                 obstacles: window.sideObstacles
                 contentKind: GlobalStates.abyssPopupKind || "media"
-                property bool triggerHovered: ["wifi","bluetooth","utilities"].includes(contentKind)
+                property bool triggerHovered: ["wifi","bluetooth","utilities","launcher"].includes(contentKind)
                     && window.transientPopupHoverKind === contentKind
                 source: "content/AbyssPopupContent.qml"
                 onCloseRequested: window.closeGenericPopup(popup.contentKind)

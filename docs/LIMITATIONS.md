@@ -138,7 +138,7 @@ ii is built for **Niri**. Some features were inherited from the original Hyprlan
 ### Backdrop & Wallpaper
 
 - **Separate configs**: Material ii and Waffle have independent backdrop/wallpaper settings. If you enable both families, each manages its own background layer.
-- **Niri layer rules required**: The backdrop uses Niri's `place-within-backdrop` layer rule. Abyss intentionally reuses the historical `quickshell:iiBackdrop` namespace so stable/upgraded Niri configs keep working; Waffle uses `quickshell:wBackdrop`. If wallpaper is replaced by a solid color in Niri Overview/hot corners, verify those layer rules are present and that the family backdrop is enabled.
+- **Niri layer rules required**: The backdrop uses Niri's `place-within-backdrop` layer rule. Abyss intentionally reuses the historical `quickshell:iiBackdrop` namespace so stable/upgraded Niri configs keep working; Waffle uses `quickshell:wBackdrop`. Required migration 052 repairs missing rules on existing installs. If wallpaper is still replaced by a solid color in Niri Overview/hot corners afterward, verify the family backdrop is enabled and inspect the active Niri config for a conflicting custom layer rule.
 - **Migration is automatic**: Switching between families auto-migrates your `enabledPanels` config. You shouldn't need to touch it manually.
 
 ---

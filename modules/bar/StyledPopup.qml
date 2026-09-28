@@ -396,7 +396,10 @@ LazyLoader {
         color: Qt.rgba(0, 0, 0, 1/255)
         exclusiveZone: 0
         exclusionMode: ExclusionMode.Ignore
-        WlrLayershell.layer: root.outsideClickBackdropBelowPopup
+        // The output field is already Overlay while hosting this content. A
+        // separately mapped Overlay catcher could cover its valid input and
+        // dismiss an inside click before a tab or button ever receives it.
+        WlrLayershell.layer: root._liquidController !== null || root.outsideClickBackdropBelowPopup
             ? WlrLayer.Top : WlrLayer.Overlay
         WlrLayershell.namespace: "quickshell:popup-catcher"
         anchors { top: true; bottom: true; left: true; right: true }

@@ -17,6 +17,7 @@ cat > "$popup_test_root/shell.qml" <<'QML'
 //@ pragma ShellId hadalis-abyss-styled-popup-test
 import QtQuick
 import Quickshell
+import Quickshell.Wayland
 import qs.modules.common
 import qs.modules.bar
 import qs.modules.abyss
@@ -54,7 +55,7 @@ ShellRoot {
             }
         }
     }
-    ClockCalendarPopup { id: popup;hoverTarget:anchor;hoverActivates:false;alternativeVisibleCondition:false }
+    ClockCalendarPopup { id: popup;hoverTarget:anchor;hoverActivates:false;alternativeVisibleCondition:false;closeOnOutsideClick:true }
     Timer {
         interval:350;running:!root.finished;repeat:true
         onTriggered: {
@@ -62,6 +63,7 @@ ShellRoot {
             if(root.step===0) popup.alternativeVisibleCondition=true
             else if(root.step===1) {
                 if(!root.check(first.activePopup===popup && popup.presentationActive && !popup.active,"mature popup uses field without native popup")) return
+                if(!root.check(popup._clickOutsideBackdropObject.visible && popup._clickOutsideBackdropObject.WlrLayershell.layer===WlrLayer.Top,"outside-click catcher stays below the Overlay field")) return
                 if(!root.check(popup._attachmentEdge==="right" && popup.presentationWindow===window,"actual module edge and window own presentation")) return
                 if(!root.check(popup.contentItem.parent===body.contentParent && body.inputBounds.width>0,"mature content rehosted with local input")) return
                 if(!root.check(body.record.joinedEdge==="top" && body.record.surface.y===-50,"module preference joins adjacent physical Edge")) return

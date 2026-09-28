@@ -77,7 +77,7 @@ def main() -> None:
     check("visible: root._anchorReady && root.requestedVisible && root.closeOnOutsideClick" in popup
           and "screen: root._anchorScreen" in popup
           and "property bool outsideClickBackdropBelowPopup: false" in popup
-          and "WlrLayershell.layer: root.outsideClickBackdropBelowPopup" in popup,
+          and "WlrLayershell.layer: root._liquidController !== null || root.outsideClickBackdropBelowPopup" in popup,
           "Outside-click catcher must follow semantic visibility, source-screen ownership, and popup-safe stacking")
 
     check("hoverActivates: true" in media

@@ -1953,3 +1953,156 @@ Move to runtime measurement on a current descendant:
 5. capture GPU/frame-time baseline for Abyss only after the current visual refinement work stabilizes
 
 Choose one implementation batch from measured evidence. Do not combine startup, Equalizer, notification-history, favicon and Abyss changes in one patch.
+
+
+---
+
+## 21. Audit round 7 — migrations, setup, packaging and non-QML cross-repo deltas (2026-09-28)
+
+### Snapshot
+
+- Hadalis head before this checkpoint: `33fa5695e66fe1967ce254d9d8134f3a67585313`
+- iNiR comparison head: `bbd304b3ba1662ff0f41a2898b1b1b91cf02f071`
+
+This pass compared repository areas outside the main QML/service runtime:
+
+- migration inventories
+- distro setup/dependency installers
+- systemd/session environment policy
+- runtime payload/install contracts
+- Nix packaging
+- upstream-only helper scripts that might represent a missing performance pattern
+
+### 21.1 Setup/install precompiled-package optimization is already incorporated — SUPERSEDED
+
+Relevant historical iNiR optimization:
+
+- `f14c004cbc` — `perf(setup): use official repo packages instead of AUR compilation`
+
+Current Hadalis Arch installer already:
+
+- prefers official repo `quickshell`
+- installs official `niri`, `cliphist`, `gum`, `xwayland-satellite` and related runtime packages
+- detects/replaces conflicting `quickshell-git` / `quickshell-bin`
+- resolves PKGBUILD dependency arrays through `pacman -T`
+- installs only missing dependencies rather than blindly reinstalling every dependency
+- falls back to the AUR helper only for dependencies not available through pacman
+
+Do not reopen the old AUR-compilation optimization as a port task.
+
+### 21.2 Runtime payload policy is not behind upstream; source filtering remains the packaging gap — RECONFIRMED P2
+
+iNiR has a dedicated `scripts/test-runtime-payload.py` suite.
+
+Hadalis does not have that exact filename, but equivalent delivery-boundary coverage is distributed across:
+
+- `scripts/test-local-distribution.sh`
+- `scripts/test-runtime-orphan-cleanup.sh`
+- `scripts/test-update-lifecycle.sh`
+- `scripts/test-packaging-contract.sh`
+- `scripts/test-nix-module-contract.sh`
+
+Current Hadalis tests validate canonical payload manifests, excluded tooling, make-install behavior, update/orphan cleanup and installed paths.
+
+Therefore the remaining packaging optimization is still the previously recorded one:
+
+- adapt `nix/runtime-source-filter.nix`-style derivation input filtering to Hadalis' existing runtime manifests
+
+Do not replace Hadalis' stronger runtime-payload implementation merely to match upstream test/file layout.
+
+### 21.3 Upstream USB snapshot helper is not a Hadalis optimization gap — NOT APPLICABLE
+
+iNiR has `scripts/devices/usb-snapshot.py`, which reads sysfs once to classify connected USB devices.
+
+Current Hadalis does not expose the corresponding USB-device announcement/model feature that would otherwise require repeated `lsusb`/shell probing.
+
+There is no hot Hadalis USB polling path to replace with this helper.
+
+Do not port feature-specific helpers without their consumer/use case.
+
+### 21.4 Visualizer app-filter migration is not portable as-is — NOT APPLICABLE
+
+iNiR migration 041 changes a specific `appearance.cava.allowedApps` allowlist into `blockedApps` exclusion semantics.
+
+Current Hadalis has no matching `allowedApps` / `blockedApps` CAVA config contract.
+
+This is a feature-semantics migration, not a generic CAVA performance optimization.
+
+### 21.5 SDDM backend ownership divergence found during the audit — CORRECTNESS, NOT PERFORMANCE
+
+This is intentionally recorded outside the optimization priority list because it is a correctness/portability issue discovered while comparing migrations.
+
+Current Hadalis `scripts/sddm/install-pixel-sddm.sh` still writes a high-priority drop-in containing:
+
+```ini
+[General]
+DisplayServer=x11
+InputMethod=
+
+[Theme]
+Current=ii-pixel
+```
+
+Current iNiR prerelease changed the installer to write only:
+
+```ini
+[Theme]
+Current=ii-pixel
+```
+
+and ships:
+
+- `039-sddm-preserve-greeter-backend.sh`
+
+The upstream rationale is that a theme installer should not override the distro/user's SDDM greeter backend. Forcing X11 can break systems whose installed SDDM provider is Wayland and where Xorg is absent.
+
+Hadalis also lacks an equivalent migration that removes its historical `DisplayServer=x11` / empty `InputMethod` keys.
+
+**Action:** track this as a separate correctness fix, not as an optimization win. If adopted, update both the installer and existing-user migration path, and test Arch plus any supported non-Arch SDDM provider configuration.
+
+### 21.6 Niri session-environment helper remains an architecture idea, not a direct port — RECONFIRMED
+
+iNiR's `scripts/lib/niri-session-env.sh` resolves the authoritative Niri service PID and exactly one matching Niri/Wayland socket.
+
+Hadalis still has broader recovery/session-environment logic because it supports Niri, Hyprland, manual launch and XWayland reconstruction.
+
+Keep the previous classification:
+
+- do not wholesale replace Hadalis session setup with the Niri-only upstream path
+- a future Niri-specific fast path may consult `niri.service` first
+- preserve fallback/recovery behavior unless startup/reliability measurements prove it redundant
+
+### 21.7 Non-QML static coverage conclusion
+
+The remaining upstream-only scripts are predominantly feature-specific:
+
+- mascot packs
+- OCR/translation helpers
+- Japanese dictionary/study tooling
+- anime/media wrappers
+- iRiS-specific visual tests
+
+They do not represent missing generic performance primitives for current Hadalis.
+
+After this pass, the only still-open generic packaging/runtime ideas from unread non-QML areas are already in the handoff:
+
+- Nix derivation source filtering
+- measured Niri session-environment simplification
+- runtime measurement of startup/process churn
+
+The SDDM item above is important but belongs to correctness work, not the optimization scorecard.
+
+### Next step
+
+Static cross-repo coverage is now sufficient to stop broad archaeology.
+
+Use runtime evidence to select the next optimization batch. The highest-value measurement order remains:
+
+1. startup T+0..T+8 process/CPU/PSS timeline
+2. WindowPreview eager/lazy/hybrid A/B
+3. Equalizer/compact-sidebar CAVA CPU
+4. notification-history scaling
+5. favicon delegate process churn
+6. Abyss GPU/frame time after visual stabilization
+
+Do not add new static candidates unless a runtime trace, regression or concrete subsystem change points to them.

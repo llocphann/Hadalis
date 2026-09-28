@@ -29,6 +29,18 @@ Item {
     // 760×620 maximum for every utility.
     implicitWidth: pageWidths[Math.max(0, Math.min(currentPage, pageWidths.length - 1))]
     implicitHeight: pageHeights[Math.max(0, Math.min(currentPage, pageHeights.length - 1))]
+
+    // SwipeView already slides the page contents; animate the connected body's
+    // envelope with the same spatial rhythm so tab changes do not snap/grow.
+    Behavior on implicitWidth {
+        enabled: AbyssStyle.motionEnabled
+        NumberAnimation { duration: AbyssStyle.motionNormal; easing.type: Easing.OutCubic }
+    }
+    Behavior on implicitHeight {
+        enabled: AbyssStyle.motionEnabled
+        NumberAnimation { duration: AbyssStyle.motionNormal; easing.type: Easing.OutCubic }
+    }
+
     focus: true
     signal closeRequested()
 

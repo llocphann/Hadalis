@@ -6,6 +6,20 @@ layout="$repo_root/modules/abyss/looks/AbyssLayout.js"
 quick_actions="$repo_root/modules/bar/UtilButtons.qml"
 module="$repo_root/modules/abyss/bar/AbyssBarModule.qml"
 migration="$repo_root/sdata/migrations/055-retire-abyss-utilities-module.sh"
+utility_popup="$repo_root/modules/abyss/content/AbyssUtilitiesPopup.qml"
+monitor_config="$repo_root/modules/settings/MonitorVisibilityConfig.qml"
+settings_section="$repo_root/modules/common/widgets/SettingsCardSection.qml"
+
+for token in 'Behavior on implicitWidth' 'Behavior on implicitHeight'; do
+    grep -Fq "$token" "$utility_popup" \
+        || { printf 'FAIL: Utilities popup size motion missing: %s\n' "$token" >&2; exit 1; }
+done
+grep -Fq 'readonly property bool arrangementChromeVisible: !embeddedArrangementOnly' "$monitor_config" \
+    || { printf 'FAIL: embedded Monitor Arrangement chrome gate missing\n' >&2; exit 1; }
+grep -Fq 'showHeader: root.arrangementChromeVisible' "$monitor_config" \
+    || { printf 'FAIL: embedded Monitor Arrangement still exposes its drop-down header\n' >&2; exit 1; }
+grep -Fq 'property bool showHeader: true' "$settings_section" \
+    || { printf 'FAIL: reusable Settings section cannot suppress embedded header chrome\n' >&2; exit 1; }
 
 grep -Fq '"utilities"' "$layout" && {
     printf 'FAIL: Utilities remains a standalone Abyss Edge module\n' >&2

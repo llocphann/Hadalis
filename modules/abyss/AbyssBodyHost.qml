@@ -19,6 +19,11 @@ Item {
     property Item embeddedItem: null
     property bool animatePresentation: true
     property bool stableContentSize: false
+    // Allocator changes (another popup/body entering, leaving, or reflowing)
+    // should travel to their new tier instead of snapping the shared field to a
+    // larger silhouette in one frame. Editor/Dock geometry stays immediate.
+    property bool animatePlacementChanges:
+        identity !== "dock" && identity !== "edgeEditor" && identity !== "editorPreview"
     property bool largeSurface: false
     // Keep Dock/icon geometry fixed, but let panel content reflow before any
     // lower-priority body is evicted. These are panel dimensions including
@@ -43,6 +48,25 @@ Item {
         ? placement : (retainedPlacement ?? placement)
     readonly property var effectivePlacement: placementVisible
         ? placement : (progress > 0.001 ? retainedPlacement : placement)
+    // Keep allocator truth discrete, but interpolate its visible geometry. The
+    // first placement snaps into place; later peer-induced tier/size changes
+    // slide/reflow from the current frame and naturally reverse mid-flight.
+    readonly property bool placementMotionReady: retainedPlacement !== null
+    property real visualPlacementAlong: Number.isFinite(Number(effectivePlacement?.along))
+        ? Number(effectivePlacement.along) : along
+    property real visualPlacementSpan: Number.isFinite(Number(effectivePlacement?.span))
+        ? Number(effectivePlacement.span) : span
+    property real visualPlacementDepth: Number.isFinite(Number(effectivePlacement?.depth))
+        ? Number(effectivePlacement.depth) : depth
+    property real visualPlacementInward: Number.isFinite(Number(effectivePlacement?.inward))
+        ? Number(effectivePlacement.inward) : 0
+    readonly property var visualPlacement: effectivePlacement
+        ? Object.assign({},effectivePlacement,{
+            along:visualPlacementAlong,
+            span:visualPlacementSpan,
+            depth:visualPlacementDepth,
+            inward:visualPlacementInward
+        }) : null
     readonly property bool presented: open && placementVisible
     property real along: 0
     property real span: 380
@@ -60,7 +84,7 @@ Item {
     property real progress: (externalProgress >= 0
         ? Math.max(0,Math.min(1,externalProgress)) : 1) * availabilityProgress
     readonly property var requestedRecord: Geometry.panel(width,height,edgeInsets,edge,along,span,depth,1,padding,[],largeSurface)
-    readonly property var record: Geometry.joinCorner(Geometry.placedPanel(width,height,edgeInsets,edge,along,span,depth,progress,padding,obstacles,largeSurface,effectivePlacement),joinedEdge,width,height,edgeInsets)
+    readonly property var record: Geometry.joinCorner(Geometry.placedPanel(width,height,edgeInsets,edge,along,span,depth,progress,padding,obstacles,largeSurface,visualPlacement),joinedEdge,width,height,edgeInsets)
     readonly property var targetRecord: Geometry.placedPanel(width,height,edgeInsets,edge,along,span,depth,1,padding,obstacles,largeSurface,layoutPlacement)
     readonly property Item contentItem: content
     readonly property bool ready: embeddedItem !== null || content.status === Loader.Ready
@@ -97,6 +121,26 @@ Item {
         if (open) Qt.callLater(() => { if (root.open) root.react(true) })
     }
     Keys.onEscapePressed: root.closeRequested()
+    Behavior on visualPlacementAlong {
+        enabled: root.animatePlacementChanges && root.placementMotionReady
+            && AbyssStyle.motionEnabled
+        NumberAnimation { duration: AbyssStyle.motionNormal; easing.type: Easing.OutCubic }
+    }
+    Behavior on visualPlacementSpan {
+        enabled: root.animatePlacementChanges && root.placementMotionReady
+            && AbyssStyle.motionEnabled
+        NumberAnimation { duration: AbyssStyle.motionNormal; easing.type: Easing.OutCubic }
+    }
+    Behavior on visualPlacementDepth {
+        enabled: root.animatePlacementChanges && root.placementMotionReady
+            && AbyssStyle.motionEnabled
+        NumberAnimation { duration: AbyssStyle.motionNormal; easing.type: Easing.OutCubic }
+    }
+    Behavior on visualPlacementInward {
+        enabled: root.animatePlacementChanges && root.placementMotionReady
+            && AbyssStyle.motionEnabled
+        NumberAnimation { duration: AbyssStyle.motionNormal; easing.type: Easing.OutCubic }
+    }
     Behavior on availabilityProgress {
         id: availabilityMotion
         enabled: root.animatePresentation && AbyssStyle.motionEnabled

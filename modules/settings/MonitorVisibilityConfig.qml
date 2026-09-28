@@ -12,6 +12,7 @@ ContentPage {
     settingsPageName: Translation.tr("Monitors")
     property bool embeddedArrangementOnly: false
     embedded: embeddedArrangementOnly
+    readonly property bool arrangementChromeVisible: !embeddedArrangementOnly
 
     property string activeSection: "outputs"
 
@@ -1186,11 +1187,15 @@ ContentPage {
         settingsTaskSection: "outputs"
         visible: (root.embeddedArrangementOnly || root.activeSection === "outputs") && CompositorService.isNiri
         expanded: true
+        collapsible: root.arrangementChromeVisible
+        showHeader: root.arrangementChromeVisible
+        enableSettingsSearch: root.arrangementChromeVisible
         icon: "screen_rotation_alt"
         title: Translation.tr("Monitor arrangement")
 
         SettingsGroup {
             NoticeBox {
+                visible: root.arrangementChromeVisible
                 Layout.fillWidth: true
                 materialIcon: "drag_pan"
                 text: root.embeddedArrangementOnly

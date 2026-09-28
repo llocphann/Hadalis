@@ -3,6 +3,15 @@
 # output field without dismissing/recreating each other.
 set -euo pipefail
 repo_root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
+body_host="$repo_root/modules/abyss/AbyssBodyHost.qml"
+for token in \
+    'readonly property var visualPlacement:' \
+    'Behavior on visualPlacementInward' \
+    'Behavior on visualPlacementSpan' \
+    'largeSurface,visualPlacement)'; do
+    grep -Fq "$token" "$body_host" \
+        || { printf 'FAIL: connected popup placement motion missing: %s\n' "$token" >&2; exit 1; }
+done
 if ! command -v qs >/dev/null || [[ -z "${WAYLAND_DISPLAY:-}" ]]; then
     printf 'SKIP: Abyss multi StyledPopup (Quickshell/Wayland unavailable)\n'
     exit 0

@@ -24,6 +24,7 @@ Item {
     }
     readonly property bool vertical: edge === "left" || edge === "right"
     signal popupRequested(string kind, string edge, real along)
+    signal popupHoveredRequested(string kind, string edge, real along)
     signal interaction(string edge, real along, real span, real strength)
     readonly property var zones: Geometry.barZones(
         (root.vertical ? Config.options?.bar?.verticalLayout : Config.options?.bar?.layout) ?? {},
@@ -77,6 +78,7 @@ Item {
             width: geometry?.content.width ?? 0; height: geometry?.content.height ?? 0
             onInteraction: strength => { if (geometry) root.interaction(geometry.edge,geometry.along+geometry.span/2,geometry.span,strength*geometry.influence) }
             onRequest: kind => { if (geometry) root.popupRequested(kind,geometry.edge,geometry.along+geometry.span/2) }
+            onHoverRequest: kind => { if (geometry) root.popupHoveredRequested(kind,geometry.edge,geometry.along+geometry.span/2) }
         }
     }
 }

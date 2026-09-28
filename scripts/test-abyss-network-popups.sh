@@ -5,8 +5,7 @@ repo_root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
 layout="$repo_root/modules/abyss/looks/AbyssLayout.js"
 module="$repo_root/modules/abyss/bar/AbyssBarModule.qml"
 tray="$repo_root/modules/bar/SysTray.qml"
-tray_item="$repo_root/modules/bar/SysTrayItem.qml"
-tray_service="$repo_root/services/TrayService.qml"
+status_indicators="$repo_root/modules/bar/BarStatusIndicators.qml"
 migration="$repo_root/sdata/migrations/053-retire-abyss-connectivity-modules.sh"
 
 for token in '"wifi"' '"bluetooth"'; do
@@ -17,9 +16,9 @@ for token in '"wifi"' '"bluetooth"'; do
 done
 grep -Fq 'onHoverPopupRequested: kind => root.request(kind)' "$module"     || { printf 'FAIL: Abyss System Tray does not route connectivity hover into connected popup\n' >&2; exit 1; }
 grep -Fq 'signal hoverPopupRequested(string kind)' "$tray"     || { printf 'FAIL: shared System Tray hover popup signal missing\n' >&2; exit 1; }
-grep -Fq 'TrayService.connectivityKind(root.item)' "$tray_item"     || { printf 'FAIL: tray item does not classify connectivity icons\n' >&2; exit 1; }
-grep -Fq 'root.hoverPopupRequested(root.abyssConnectivityKind)' "$tray_item"     || { printf 'FAIL: tray item does not request connectivity popup on Abyss hover\n' >&2; exit 1; }
-grep -Fq 'function connectivityKind(item): string' "$tray_service"     || { printf 'FAIL: centralized connectivity tray classifier missing\n' >&2; exit 1; }
+grep -Fq 'onHoverPopupRequested: kind => root.hoverPopupRequested(kind)' "$tray"     || { printf 'FAIL: System Tray status icons do not forward connectivity hover\n' >&2; exit 1; }
+grep -Fq 'root.scheduleConnectivityPopup("wifi", hovered)' "$status_indicators"     || { printf 'FAIL: Wi-Fi status icon does not schedule the connected popup\n' >&2; exit 1; }
+grep -Fq 'root.scheduleConnectivityPopup("bluetooth", hovered)' "$status_indicators"     || { printf 'FAIL: Bluetooth status icon does not schedule the connected popup\n' >&2; exit 1; }
 grep -Fq 'MIGRATION_ID="053-retire-abyss-connectivity-modules"' "$migration"     || { printf 'FAIL: retired connectivity module migration missing\n' >&2; exit 1; }
 
 migration_tmp="$(mktemp -d)"
@@ -86,7 +85,7 @@ ShellRoot {
         }
         AbyssBarModule {
             id: trayModule; width: 160; height: 32; outputName: "network-test"; kind: "tray"
-            onRequest: kind=> { if(["wifi","bluetooth"].includes(kind)) root.requests++ }
+            onHoverRequest: kind=> { if(["wifi","bluetooth"].includes(kind)) root.requests++ }
         }
     }
     Timer {
@@ -132,4 +131,4 @@ if [[ "$status" != 124 ]] || ! rg -q 'NETWORK_POPUP_PASS' "$network_test_root/ru
         || rg -q 'NETWORK_POPUP_FAIL|ReferenceError:|TypeError:|Binding loop|Unable to assign|is not a type' "$network_test_root/runtime.log"; then
     cat "$network_test_root/runtime.log"; exit 1
 fi
-printf 'PASS: Wi-Fi/Bluetooth forms, System Tray hover routing, retired Edge modules, migration, vertical placement and input release\n'
+printf 'PASS: Wi-Fi/Bluetooth forms, built-in System Tray status-icon hover routing, retired Edge modules, migration, vertical placement and input release\n'

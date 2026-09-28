@@ -193,10 +193,6 @@ Item {
                             Layout.fillWidth: root.vertical
                             onMenuClosed: (qsWindow) => root.releaseFocus(qsWindow);
                             onMenuOpened: (qsWindow) => root.setExtraWindowAndGrabFocus(qsWindow);
-                            onHoverPopupRequested: kind => {
-                                root.closeOverflowMenu()
-                                root.hoverPopupRequested(kind)
-                            }
                         }
                     }
                 }
@@ -218,7 +214,6 @@ Item {
                 onMenuOpened: (qsWindow) => {
                     root.setExtraWindowAndGrabFocus(qsWindow);
                 }
-                onHoverPopupRequested: kind => root.hoverPopupRequested(kind)
             }
         }
 
@@ -233,6 +228,7 @@ Item {
         BarStatusIndicators {
             vertical: root.vertical
             Layout.alignment: Qt.AlignVCenter | Qt.AlignHCenter
+            onHoverPopupRequested: kind => root.hoverPopupRequested(kind)
         }
     }
 }

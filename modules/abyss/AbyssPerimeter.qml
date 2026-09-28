@@ -211,6 +211,17 @@ Scope {
                         else GlobalStates.abyssPopupKind = kind
                     }
                 }
+                onPopupHoveredRequested: (kind,edge,along) => {
+                    const same = GlobalStates.abyssPopupKind === kind
+                        && GlobalStates.abyssPopupTargetOutput === window.outputName
+                    if (same)
+                        return
+                    window.closePopup()
+                    GlobalStates.abyssPopupTargetOutput = window.outputName
+                    GlobalStates.abyssPopupAlong = along
+                    GlobalStates.abyssPopupEdge = edge
+                    GlobalStates.abyssPopupKind = kind
+                }
             }
             Item {
                 id: revealTrigger

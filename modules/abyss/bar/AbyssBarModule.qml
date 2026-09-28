@@ -33,6 +33,7 @@ Item {
     readonly property bool hovered: hoverTracker.hovered
     signal interaction(real strength)
     signal request(string kind)
+    signal hoverRequest(string kind)
     HoverHandler { id: hoverTracker; onHoveredChanged: root.interaction(hovered ? .35 : -.15) }
     PointHandler { acceptedButtons: Qt.LeftButton | Qt.RightButton | Qt.MiddleButton; onActiveChanged: root.interaction(active ? 1 : -.3) }
     Loader {
@@ -76,7 +77,7 @@ Item {
             vertical: root.vertical
             showSeparator: false
             showOverflowMenu: true
-            onHoverPopupRequested: kind => root.request(kind)
+            onHoverPopupRequested: kind => root.hoverRequest(kind)
         }
     }
     Component { id: utilities; Shared.UtilButtons { vertical: root.vertical; compactRequested: root.compact } }

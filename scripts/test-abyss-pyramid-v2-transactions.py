@@ -53,6 +53,10 @@ def main() -> None:
     assert "identity,request,false" in coord
     assert "root._lowerPeer(identity,request,placement)" in coord
     assert "root._rebuildFrozen()" in coord
+    assert 'phase:"closing"' in coord
+    assert 'root._setPhase(identity,"reopening")' in coord
+    assert 'root._setPhase(identity,"closing")' in coord
+    assert "function finishReopen(identity): void" in coord
     assert "const liveRecord=" in coord
     assert "liveRecord ?? closing.fullRecord" in coord
     assert "root._number(liveRecord.progress,1) <= .001" in coord
@@ -94,9 +98,18 @@ def main() -> None:
     closing_tail_progress = 0.001
     assert closing_tail_progress <= 0.001
 
-    # Reopening one close while another same-anchor close is still active must
-    # keep the reopened identity frozen by the remaining transaction. This is
-    # the ordering distinction between cancel/reopen and a true finished close.
+    # Reopen reverses the same transaction and preserves its own frozen group.
+    # A second close flips phase back without replacing O/F snapshots.
+    phase = "closing"
+    frozen = {"bottom", "middle"}
+    phase = "reopening"
+    assert frozen == {"bottom", "middle"}
+    phase = "closing"
+    assert frozen == {"bottom", "middle"}
+
+    # Once reopen reaches 1 its own transaction can finish. If another
+    # same-anchor close remains, finishReopen preserves this identity in that
+    # peer's frozen map until the remaining tail ends.
     remaining_close_freeze = {"bottom"}
     reopened_identity = "middle"
     remaining_close_freeze.add(reopened_identity)

@@ -21,6 +21,11 @@ assert "root.pyramidClosing=true" in host
 close_arm=host.index("root.pyramidClosing=true")
 immediate=host.index("root.finishPyramidCloseIfDone()", close_arm)
 assert immediate > close_arm
-assert "onProgressChanged: root.finishPyramidCloseIfDone()" in host
+assert "function finishPyramidReopenIfDone(): void" in host
+assert "root.progress < 0.999" in host
+assert "root.pyramidCoordinator?.finishReopen(root.identity)" in host
+assert "onProgressChanged: {" in host
+assert "root.finishPyramidCloseIfDone()" in host
+assert "root.finishPyramidReopenIfDone()" in host
 
 print("Pyramid Popup v2 zero-motion close cleanup contract: ok")

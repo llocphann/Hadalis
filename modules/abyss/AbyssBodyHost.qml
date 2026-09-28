@@ -73,6 +73,7 @@ Item {
         && root.externalProgress >= 0
         && root.pyramidCoordinator !== null
     property bool pyramidClosing: false
+    property bool pyramidReopening: false
     property var pyramidOriginRecord: null
     property var pyramidLatchedFullRecord: null
     // Last semantic-open resting state is the close snapshot authority. A QML
@@ -128,7 +129,8 @@ Item {
         obstacles,largeSurface,visualPlacement)
     readonly property bool pyramidPresentationActive:
         root.pyramidMotionEnabled
-        && (root.semanticOpen || root.pyramidClosing || root.progress > 0.001)
+        && (root.semanticOpen || root.pyramidClosing
+            || root.pyramidReopening || root.progress > 0.001)
     // Entry animation is armed from the allocator's final target, not from
     // visualPlacement while its peer-reflow Behavior may still be in flight.
     // This closes the one-event-loop race where reveal could start from the
@@ -143,7 +145,8 @@ Item {
                 root.pyramidAllocatorPlacement)
             : null
     readonly property var pyramidFullRecord:
-        root.pyramidClosing && root.pyramidLatchedFullRecord
+        (root.pyramidClosing || root.pyramidReopening)
+                && root.pyramidLatchedFullRecord
             ? root.pyramidLatchedFullRecord
             : (!root.semanticOpen && root.pyramidLastFullRecord
                 ? root.pyramidLastFullRecord : root.pyramidRestingRecord)
@@ -188,6 +191,7 @@ Item {
     function resetPyramidMotion(): void {
         root.pyramidCoordinator?.resetIdentity(root.identity)
         root.pyramidClosing=false
+        root.pyramidReopening=false
         root.pyramidOriginRecord=null
         root.pyramidLatchedFullRecord=null
         root.pyramidLastPlacement=null
@@ -195,6 +199,7 @@ Item {
     }
     function capturePyramidRestingState(): void {
         if (!root.pyramidMotionEnabled || !root.semanticOpen
+                || root.pyramidClosing || root.pyramidReopening
                 || !root.visualPlacement || !root.pyramidRestingRecord)
             return
         root.pyramidLastPlacement=
@@ -211,7 +216,8 @@ Item {
     }
     function syncPyramidEntryOrigin(): void {
         if (!root.pyramidMotionEnabled || !root.semanticOpen
-                || root.pyramidClosing || !root.pyramidAllocatorPlacement
+                || root.pyramidClosing || root.pyramidReopening
+                || !root.pyramidAllocatorPlacement
                 || !root.pyramidAllocatorRecord)
             return
         // Once reveal has actually started, the origin is part of that visual
@@ -230,14 +236,25 @@ Item {
             return
         if (root.semanticOpen) {
             if (root.pyramidClosing) {
-                // Reopen uses the same origin and the present reveal scalar,
-                // so the animation reverses from its current frame.
-                root.pyramidCoordinator?.cancelClose(root.identity)
+                // Reopen is a phase reversal of this exact visual transaction.
+                // Keep O/F snapshots and the same-anchor freeze until progress
+                // returns to 1, even if allocator targets changed meanwhile.
+                root.pyramidCoordinator?.beginReopen(root.identity)
                 root.pyramidClosing=false
-                root.pyramidLatchedFullRecord=null
+                root.pyramidReopening=true
+                root.finishPyramidReopenIfDone()
                 return
             }
             root.syncPyramidEntryOrigin()
+            return
+        }
+        if (root.pyramidReopening) {
+            // A second close during reversal flips phase only. The same O/F
+            // snapshots remain authoritative, so no visible path can jump.
+            root.pyramidCoordinator?.resumeClose(root.identity)
+            root.pyramidReopening=false
+            root.pyramidClosing=true
+            root.finishPyramidCloseIfDone()
             return
         }
         const closingPlacement=root.pyramidLastPlacement
@@ -269,17 +286,27 @@ Item {
         root.pyramidLatchedFullRecord=null
         root.pyramidOriginRecord=null
     }
+    function finishPyramidReopenIfDone(): void {
+        if (!root.initialized || !root.pyramidReopening
+                || !root.semanticOpen || root.progress < 0.999)
+            return
+        root.pyramidCoordinator?.finishReopen(root.identity)
+        root.pyramidReopening=false
+        root.pyramidLatchedFullRecord=null
+        root.pyramidOriginRecord=null
+        root.capturePyramidRestingState()
+    }
     onPlacementChanged: {
         if (placement?.visible !== false)
             retainedPlacement = placement
         if (initialized && semanticOpen && pyramidMotionEnabled
-                && !pyramidClosing) {
+                && !pyramidClosing && !pyramidReopening) {
             root.capturePyramidRestingState()
             root.syncPyramidEntryOrigin()
         }
     }
     onPyramidAllocatorRecordChanged: if (initialized
-            && semanticOpen && !pyramidClosing)
+            && semanticOpen && !pyramidClosing && !pyramidReopening)
         root.syncPyramidEntryOrigin()
     onPyramidRestingRecordChanged: if (initialized)
         root.capturePyramidRestingState()
@@ -287,7 +314,10 @@ Item {
         root.capturePyramidRestingState()
     onSemanticOpenChanged: if (initialized)
         root.syncPyramidSemanticState()
-    onProgressChanged: root.finishPyramidCloseIfDone()
+    onProgressChanged: {
+        root.finishPyramidCloseIfDone()
+        root.finishPyramidReopenIfDone()
+    }
     onOpenChanged: if (initialized) { markOpened();react(open) }
     onEmbeddedItemChanged: if (initialized) markOpened()
     onContentKindChanged: if (initialized) markOpened()

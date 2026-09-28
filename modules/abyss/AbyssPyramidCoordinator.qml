@@ -40,8 +40,10 @@ QtObject {
             return null
         const placement=participant.visualPlacement
             ?? root.controller?.bodyPlacements?.[identity] ?? null
-        const record=participant.restingRecord
-            ?? participant.geometry ?? null
+        // Published geometry is the current visible boundary during
+        // overlapping opens/reversals; restingRecord is the fallback.
+        const record=participant.geometry
+            ?? participant.restingRecord ?? null
         if (!placement || placement.visible === false || !record)
             return null
         return {
@@ -68,6 +70,11 @@ QtObject {
             for (const key of Object.keys(root.closings)) {
                 if (String(key) === String(identity)) continue
                 const closing=root.closings[key]
+                // A reopening transaction is semantically open and therefore
+                // already represented by the participant candidates above.
+                if (root.controller?.participants?.[key]
+                        ?.placementRequest?.open === true)
+                    continue
                 if (!root._sameAnchorDescriptor(
                         wanted,closing?.descriptor))
                     continue
@@ -157,6 +164,7 @@ QtObject {
         const lower=root._lowerPeer(identity,request,placement)
         const next=Object.assign({},root.closings)
         next[identity]={
+            phase:"closing",
             descriptor:descriptor,
             placement:Motion.clonePlacement(placement),
             fullRecord:Motion.cloneRecord(fullRecord),
@@ -167,6 +175,22 @@ QtObject {
         root.closings=next
         root._rebuildFrozen()
         return Motion.cloneRecord(next[identity].originRecord)
+    }
+    function _setPhase(identity, phase): void {
+        identity=String(identity ?? "")
+        const current=root.closings[identity]
+        if (!identity || !current || current.phase === phase)
+            return
+        const next=Object.assign({},root.closings)
+        next[identity]=Object.assign({},current,{phase:String(phase)})
+        root.closings=next
+        root.revision += 1
+    }
+    function beginReopen(identity): void {
+        root._setPhase(identity,"reopening")
+    }
+    function resumeClose(identity): void {
+        root._setPhase(identity,"closing")
     }
     function cancelClose(identity, preserveForPeers = true): void {
         identity=String(identity ?? "")
@@ -200,9 +224,12 @@ QtObject {
         root._rebuildFrozen()
     }
     function finishClose(identity): void {
-        // A finished popup is gone; only a canceled close/reopen needs to stay
-        // frozen by another overlapping transaction.
+        // A finished popup is gone; only a completed reopen may need to remain
+        // frozen by another overlapping same-anchor transaction.
         root.cancelClose(identity,false)
+    }
+    function finishReopen(identity): void {
+        root.cancelClose(identity,true)
     }
     function resetIdentity(identity): void {
         identity=String(identity ?? "")

@@ -26,6 +26,9 @@ assert "Math.abs(root._number(a.anchorCenter)" in coord
 assert "frozen[peer.identity]" in coord
 assert "function cancelClose(identity): void" in coord
 assert "function finishClose(identity): void" in coord
+assert "function beginReopen(identity): void" in coord
+assert "function resumeClose(identity): void" in coord
+assert "function finishReopen(identity): void" in coord
 assert "function resetIdentity(identity): void" in coord
 
 # Presentation records use snapshot interpolation, then Join Edge is applied.
@@ -43,9 +46,17 @@ assert "Qt.callLater(root.syncPyramidEntryOrigin)" not in host
 assert "root.pyramidOriginRecord && root.progress > 0.001" in host
 assert "function finishPyramidCloseIfDone(): void" in host
 assert "root.finishPyramidCloseIfDone()" in host
-assert "onProgressChanged: root.finishPyramidCloseIfDone()" in host
+assert "function finishPyramidReopenIfDone(): void" in host
+assert "root.finishPyramidReopenIfDone()" in host
+assert "onProgressChanged: {" in host
 assert "const liveRecord=" in coord
 assert "liveRecord ?? closing.fullRecord" in coord
+assert "property bool pyramidReopening: false" in host
+assert "root.pyramidCoordinator?.beginReopen(root.identity)" in host
+assert "root.pyramidCoordinator?.resumeClose(root.identity)" in host
+assert "root.pyramidCoordinator?.finishReopen(root.identity)" in host
+assert "participant.geometry" in coord
+assert "participant.restingRecord" in coord
 assert "Geometry.joinCorner(" in host
 assert "rawPresentationRecord,joinedEdge" in host
 assert "result.along=_number(to.along,0)" in motion

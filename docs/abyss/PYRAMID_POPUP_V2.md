@@ -87,3 +87,12 @@ These rules are presentation-only and do not change allocator ordering or restin
 ## Reduced / disabled motion
 
 Close cleanup cannot depend only on a future `progressChanged` callback. A popup owner may jump its reveal scalar directly to zero when motion is disabled, and that progress update can occur before Pyramid semantic-close bookkeeping arms the transaction. After `beginClose`, the host therefore evaluates the same completion predicate synchronously. If progress is already at or below 0.001, the closing transaction is finished immediately and its group freeze is released. The normal `onProgressChanged` path calls the same helper for animated closes.
+
+
+## Reversal transaction
+
+Reopen during a retract stays inside the same Pyramid visual transaction until reveal reaches 1. The coordinator changes phase from `closing` to `reopening` but keeps the popup's placement snapshot, collapsed origin, full record and same-anchor survivor freeze intact. The existing owner `revealProgress` simply reverses direction.
+
+Cancelling the transaction at semantic reopen would be geometrically unsafe if another popup changed allocator targets during the retract: a partially revealed surface could suddenly receive a different full target even though its scalar reversed smoothly. Keeping the transaction frozen guarantees that the reverse follows exactly the same `O <-> F` path. At progress 1 the coordinator releases this transaction; ordinary placement Behaviors may then reflow to any newer resting layout.
+
+If the popup closes again before the reverse completes, phase flips back to `closing` with the same snapshot. No new origin, no second clock and no content scale/fade are introduced. Reduced/disabled motion uses the same symmetric finish predicates, so a scalar that has already jumped to 0 or 1 cannot leave a frozen transaction behind.

@@ -1820,3 +1820,136 @@ Continue with:
 - common Canvas/Shape widgets for hidden infinite animation/repaint
 - script entrypoints invoked by user interactions rather than setup/theme one-shots
 - then switch from static audit to runtime measurement, because the remaining static candidates are increasingly workload-dependent.
+
+
+---
+
+## 20. Audit round 6 — Canvas/Shape closure, delegate process churn and static-coverage stop rule (2026-09-28)
+
+### Snapshot
+
+- Hadalis head reconciled before this checkpoint: `c52e5c4bf063d59978ee1641b3f7026d73bd0f66`
+- iNiR comparison head remains: `bbd304b3ba1662ff0f41a2898b1b1b91cf02f071`
+
+Concurrent work between the previous audit snapshots and this checkpoint was reconciled before writing this section. It included Abyss refinement plus the already-recorded startup/clipboard optimization work; those changes are not reclassified here.
+
+### 20.1 Common Canvas/Shape sweep found no new high-priority hidden repaint loop — CLOSED / ALREADY
+
+The remaining Canvas/Shape-heavy common widgets were checked for:
+
+- fixed-rate repaint timers
+- infinite animations
+- ancestor/window visibility gating
+- CAVA-driven repaint cadence
+- repaint on property changes versus repaint every frame
+
+Verified examples:
+
+- `WavyLine.qml` paints the waveform once and animates the cached Canvas texture in X. Its infinite animation is gated by `root.animate`, item visibility, window visibility and nonzero geometry.
+- `CavaWavyLine.qml` repaints only on CAVA point changes while visible.
+- `StatusRings.qml` repaints only when progress/color values change.
+- `WeatherPopupContent.qml` updates its local clock every 30 seconds only while the popup has visible geometry.
+- `DotGridCanvas`, `Graph`, `ShapeCanvas` and connected-surface Canvas helpers are property/event driven rather than timer driven.
+- `SineCookie.qml` constructs `FrameAnimation` only when `constantlyRotate && WidgetPowerManager.widgetsActive`. The current Cookie clock path performs its normal face rotation outside that component and does not accidentally start a second always-on SineCookie frame loop.
+
+The Equalizer fixed 33 ms Canvas timer from §19.2 remains the meaningful repaint candidate. Do not create a broad “replace Canvas” task from this sweep.
+
+### 20.2 Favicon delegates spawn a shell process even on disk-cache hits — SHARED DEBT / P1-low to P2
+
+`modules/common/widgets/Favicon.qml` is currently byte-identical between Hadalis and iNiR prerelease.
+
+Every Favicon instance does this on `Component.onCompleted`:
+
+1. constructs a `Process`
+2. starts `/usr/bin/bash -c`
+3. checks `[ -f <cached favicon> ]`
+4. only if missing, invokes curl
+
+Therefore the persistent disk cache avoids network traffic but **does not avoid process creation**.
+
+Favicon is instantiated from delegate-heavy/user-churn paths including:
+
+- Overview/Search URL results
+- Clipboard URL entries
+- AI citation/source buttons
+- media/browser metadata paths
+- Wallhaven/plugins surfaces
+
+A recycled/recreated delegate for an already-cached domain can still pay a shell-process launch merely to prove that the file exists.
+
+This is not yet a P0 issue. Measure it under workloads with many URL-bearing clipboard/search/AI items.
+
+Preferred design direction if the process count is material:
+
+- centralize favicon resolution/download ownership in a bounded singleton/service, or
+- maintain an in-memory known-good/known-missing domain state for the shell session, backed by the existing disk cache,
+- coalesce concurrent requests for the same domain,
+- keep failed-download retry semantics bounded so a bad domain does not become a permanent poisoned cache entry.
+
+Do not replace the current `curl -f --remove-on-error` correctness fix with a simpler downloader that caches HTML error pages.
+
+Secondary micro-cost:
+
+- every Favicon also enables an `OpacityMask` layer.
+- the images are small, so do not optimize this before process churn is measured.
+
+### 20.3 Large dashboard/sidebar/background follow-up did not reveal another unconditional hot loop — CLOSED
+
+Additional large visual paths were structurally checked after round 5.
+
+Verified:
+
+- Dashboard card content uses visibility-driven Loaders rather than a new periodic worker.
+- Screen Time and weather detail refresh through service/event paths rather than a local high-frequency loop.
+- Sidebar media position refresh is gated by sidebar-open + window-visible + actively-playing.
+- Quick Wallpaper scans when its sidebar content is constructed/opened; thumbnail delegates use bounded decode sizes and their mask layer is gated by the open sidebar.
+- CAVA consumers remain presentation/playback/power gated.
+- lock/notification/OSD paths retain their existing bounded residency behavior already recorded in earlier rounds.
+
+No new higher-priority visual lifecycle leak was found here.
+
+### 20.4 Long-session debt review remains valid; notification history is the strongest static candidate
+
+The previous classifications were rechecked rather than duplicated:
+
+- notification history remains unbounded and serializes/rewrites the full JSON history on ingress/removal
+- LatexRenderer keeps expression/path registries for the shell lifetime and leaves rendered SVG output for reuse
+- MPRIS grace entries are tiny but stale names are not explicitly pruned
+- Rust MPD artwork/folder lookup maps have no explicit eviction but are naturally tied to visited music folders/art keys
+
+Of these, notification history has the clearest scaling behavior because growth increases:
+
+- live QML wrapper count
+- group rebuild work
+- JSON serialization work
+- persistence write size
+
+If runtime long-session testing shows meaningful growth, prefer a user-visible history cap plus debounced/coalesced persistence rather than only optimizing the JSON loop.
+
+### 20.5 Static-audit stop rule
+
+After rounds 1–6, every major runtime subsystem has now been either:
+
+- read in depth,
+- structurally classified for timers/processes/cache/lifetime, or
+- compared against the relevant upstream perf/fix history.
+
+Continuing a blind line-by-line sweep has diminishing value. Remaining candidates are increasingly workload dependent.
+
+From this checkpoint, static reading should be triggered by runtime evidence or by a concrete subsystem change.
+
+### Revised next task
+
+Move to runtime measurement on a current descendant:
+
+1. capture T+0..T+8 process/CPU/PSS timeline after the adopted startup gating
+2. record exactly which deferred services/processes appear at T+0.5/T+1.5/T+3/T+5
+3. benchmark WindowPreview eager prewarm versus lazy/hybrid policy
+4. capture idle/open-panel CPU for:
+   - Equalizer open and silent
+   - compact sidebar open with Media section outside/inside viewport
+   - notification history at small and large history sizes
+   - URL-heavy clipboard/search list to count favicon helper process launches
+5. capture GPU/frame-time baseline for Abyss only after the current visual refinement work stabilizes
+
+Choose one implementation batch from measured evidence. Do not combine startup, Equalizer, notification-history, favicon and Abyss changes in one patch.

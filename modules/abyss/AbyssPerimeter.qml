@@ -319,6 +319,30 @@ Scope {
                 edgeInsets: window.nativeInsets
                 moduleRecords: bar.visible ? bar.deformations : []
             }
+
+            // Non-painted anchor for confirmations that have no live app source.
+            // It enters the exact same StyledPopup -> popup-slot -> Pyramid path
+            // as attached prompts, but resolves to the output's top center.
+            Item {
+                id: confirmationFallbackAnchor
+                x: (window.width - width) / 2
+                y: 0
+                width: Math.max(2, AbyssStyle.perimeterThickness)
+                height: Math.max(2, AbyssStyle.perimeterThickness)
+                visible: window.presented && field.ready
+                enabled: visible
+                property var liquidController: liquid
+                property string attachedEdge: "top"
+                property string popupJoinedEdge: ""
+            }
+
+            AbyssConfirmationPresenter {
+                id: confirmationPresenter
+                outputName: window.outputName
+                fallbackAnchor: confirmationFallbackAnchor
+                presentationEnabled: window.presented && field.ready
+            }
+
             readonly property var sideObstacles: [leftPanel,rightPanel].filter(body => body.progress > 0.001).map(body => body.record)
             AbyssSpectrumController {
                 waves:liquid.waves

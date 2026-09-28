@@ -164,6 +164,17 @@ Singleton {
         root._activate(request)
     }
 
+    function cancelOwned(owner): void {
+        const key = String(owner ?? "")
+        if (!key)
+            return
+        root.queue = root.queue.filter(request =>
+            String(request?.owner ?? "") !== key)
+        if (root.requestVisible
+                && String(root.currentRequest?.owner ?? "") === key)
+            root.cancel()
+    }
+
     Connections {
         target: PopupAnchorRegistry
         function onAnchorRemoved(item): void {

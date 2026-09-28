@@ -1,0 +1,57 @@
+#!/usr/bin/env python3
+from pathlib import Path
+
+r=Path(__file__).resolve().parents[1]
+presenter=(r/"modules/abyss/AbyssConfirmationPresenter.qml").read_text()
+content=(r/"modules/abyss/content/AbyssConfirmationContent.qml").read_text()
+perimeter=(r/"modules/abyss/AbyssPerimeter.qml").read_text()
+close=(r/"modules/closeConfirm/CloseConfirm.qml").read_text()
+service=(r/"services/ConfirmationService.qml").read_text()
+
+# Confirmation is a mature StyledPopup, not a detached dialog/window.
+assert "StyledPopup {" in presenter
+assert 'liquidPresentationKind: "confirmation"' in presenter
+assert "keyboardFocus: true" in presenter
+assert "exclusiveKeyboardFocus: true" in presenter
+assert "closeOnOutsideClick: false" in presenter
+assert "PanelWindow" not in presenter
+assert "WindowDialog" not in presenter
+
+# Attached source loss cancels/retracts instead of teleporting to fallback.
+assert "root.hadResolvedAnchor" in presenter
+assert "? ConfirmationService.resolvedAnchor" in presenter
+assert ": root.fallbackAnchor" in presenter
+assert "finishPresentation(root.requestId)" in presenter
+
+# Top-center fallback is a real source Item on the same liquid controller.
+assert "id: confirmationFallbackAnchor" in perimeter
+assert 'property var liquidController: liquid' in perimeter
+assert 'property string attachedEdge: "top"' in perimeter
+assert "x: (window.width - width) / 2" in perimeter
+assert "AbyssConfirmationPresenter {" in perimeter
+
+# Reuse Abyss primitives/content-fit; no confirmation-only fade/scale animation.
+for primitive in ("AbyssLabel", "AbyssButton", "AbyssSeparator"):
+    assert primitive in content
+assert "minContentWidth" in content and "maxContentWidth" in content
+assert "Text.WordWrap" in content
+assert "Flow {" in content
+for forbidden in ("NumberAnimation", "ScaleAnimator", "OpacityAnimator"):
+    assert forbidden not in content
+    assert forbidden not in presenter
+
+# Existing closeConfirm backend provides the real action callback.
+assert 'owner: "closeConfirm"' in close
+assert "ConfirmationService.enqueue({" in close
+assert "callback: () => root.closeWindowFast(snapshot)" in close
+assert "Quickshell.execDetached(["niri", "msg", "action", "close-window"" in close
+assert 'Config.options?.panelFamily === "abyss"' in close
+assert 'active: root.dialogVisible && Config.options?.panelFamily !== "abyss"' in close
+
+# Queue content remains latched until the popup visual tail is gone.
+assert "function cancelOwned(owner): void" in service
+assert "function finishPresentation(requestId): void" in service
+assert "root.currentRequest = null" in service
+assert "Qt.callLater(root._activateNext)" in service
+
+print("Abyss confirmation popup contract: ok")

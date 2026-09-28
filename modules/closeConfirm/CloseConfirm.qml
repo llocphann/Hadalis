@@ -43,13 +43,47 @@ Scope {
     }
 
     function processWindow(win): void {
-        if (root.confirmEnabled) {
-            root.targetWindow = win;
-            root.dialogScreen = GlobalStates.focusedScreen;
-            root.dialogVisible = true;
-        } else {
+        if (!root.confirmEnabled) {
             root.closeWindowFast(win);
+            return;
         }
+
+        const abyssAvailable = Config.options?.panelFamily === "abyss"
+            && (Config.options?.enabledPanels ?? []).includes("abyssPerimeter")
+        if (abyssAvailable) {
+            const snapshot = Object.assign({}, win)
+            const appId = String(snapshot?.app_id ?? "")
+            const title = String(snapshot?.title ?? "")
+            const appName = title || appId || Translation.tr("Unknown")
+            ConfirmationService.enqueue({
+                owner: "closeConfirm",
+                appId: appId,
+                appName: appName,
+                outputName: String(GlobalStates.focusedScreen?.name ?? ""),
+                title: Translation.tr("Close this window?"),
+                message: appName,
+                actions: [
+                    {
+                        id: "cancel",
+                        label: Translation.tr("Cancel"),
+                        role: "cancel",
+                        isCancel: true
+                    },
+                    {
+                        id: "close",
+                        label: Translation.tr("Close"),
+                        role: "default",
+                        isDefault: true,
+                        callback: () => root.closeWindowFast(snapshot)
+                    }
+                ]
+            })
+            return
+        }
+
+        root.targetWindow = win;
+        root.dialogScreen = GlobalStates.focusedScreen;
+        root.dialogVisible = true;
     }
 
     function _acceptTrigger(): bool {
@@ -86,6 +120,7 @@ Scope {
         }
 
         function close(): void {
+            ConfirmationService.cancelOwned("closeConfirm")
             root.dialogVisible = false;
             root.targetWindow = null;
             root.dialogScreen = null;
@@ -121,7 +156,9 @@ Scope {
 
     // Dialog UI
     Loader {
-        active: root.dialogVisible
+        // Abyss confirmations are rehosted by AbyssPerimeter. This standalone
+        // path remains for Waffle/compatibility only.
+        active: root.dialogVisible && Config.options?.panelFamily !== "abyss"
 
         sourceComponent: PanelWindow {
             screen: root.dialogScreen ?? GlobalStates.focusedScreen

@@ -110,8 +110,8 @@ Scope {
             exclusionMode: ExclusionMode.Ignore
             exclusiveZone: 0
             WlrLayershell.namespace: "hadalis:abyss-perimeter"
-            WlrLayershell.layer: GlobalStates.settingsNativeDialogOpen ? WlrLayer.Bottom : PolkitService.active ? WlrLayer.Top : (window.editorOpen || utility.open || liquid.popupsOpen || toastBody.open || dialogBody.open || settings.open || dashboardBody.open || controls.open || (window.fullscreenCovered && window.presented)) ? WlrLayer.Overlay : WlrLayer.Top
-            WlrLayershell.keyboardFocus: !window.presented || !field.ready || GlobalStates.regionSelectorOpen || GlobalStates.settingsNativeDialogOpen || PolkitService.active || window.overviewDragging
+            WlrLayershell.layer: GlobalStates.settingsNativeDialogOpen ? WlrLayer.Bottom : (window.editorOpen || utility.open || liquid.popupsOpen || toastBody.open || dialogBody.open || settings.open || dashboardBody.open || controls.open || (window.fullscreenCovered && window.presented)) ? WlrLayer.Overlay : WlrLayer.Top
+            WlrLayershell.keyboardFocus: !window.presented || !field.ready || GlobalStates.regionSelectorOpen || GlobalStates.settingsNativeDialogOpen || window.overviewDragging
                 ? WlrKeyboardFocus.None
                 : (window.editorOpen || (utility.presented && utility.ready) || liquid.popupExclusiveFocus || (popup.presented && (popup.contentItem.item?.keyboardFocus ?? false)) || (dialogBody.presented && dialogBody.ready) || (aux.presented && aux.ready) || (clipboardBody.presented && clipboardBody.ready) || (settings.presented && settings.ready) || (dashboardBody.presented && dashboardBody.ready) || (controls.presented && controls.ready)) ? WlrKeyboardFocus.Exclusive
                 : (liquid.popupOnDemandFocus || (leftPanel.presented && leftPanel.ready) || (rightPanel.presented && rightPanel.ready) || (popup.presented && popup.ready) || (notification.presented && notification.ready && notification.contentKind === "center"))
@@ -320,11 +320,11 @@ Scope {
                 moduleRecords: bar.visible ? bar.deformations : []
             }
 
-            // Non-painted anchor for confirmations that have no live app source.
+            // Non-painted anchor for confirmation/Polkit prompts with no live app source.
             // It enters the exact same StyledPopup -> popup-slot -> Pyramid path
             // as attached prompts, but resolves to the output's top center.
             Item {
-                id: confirmationFallbackAnchor
+                id: promptFallbackAnchor
                 x: (window.width - width) / 2
                 y: 0
                 width: Math.max(2, AbyssStyle.perimeterThickness)
@@ -339,7 +339,14 @@ Scope {
             AbyssConfirmationPresenter {
                 id: confirmationPresenter
                 outputName: window.outputName
-                fallbackAnchor: confirmationFallbackAnchor
+                fallbackAnchor: promptFallbackAnchor
+                presentationEnabled: window.presented && field.ready
+            }
+
+            AbyssPolkitPresenter {
+                id: polkitPresenter
+                outputName: window.outputName
+                fallbackAnchor: promptFallbackAnchor
                 presentationEnabled: window.presented && field.ready
             }
 

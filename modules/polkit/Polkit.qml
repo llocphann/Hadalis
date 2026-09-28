@@ -11,8 +11,10 @@ Scope {
     id: root
     
     Loader {
-        // Only activate if Polkit module is available AND there's an active auth request
-        active: PolkitService.available && PolkitService.active
+        // Abyss presents the real AuthFlow through its connected popup field.
+        // Keep this fullscreen renderer only for non-Abyss compatibility.
+        active: Config.options?.panelFamily !== "abyss"
+            && PolkitService.available && PolkitService.active
         sourceComponent: Variants {
             model: Quickshell.screens
             delegate: PanelWindow {

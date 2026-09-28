@@ -40,6 +40,7 @@ Item {
             root.presentationEnabled
             && root.ownsRequest
             && ConfirmationService.requestVisible
+            && !PolkitService.active
         liquidPresentationKind: "confirmation"
         popupBackgroundMargin: 0
         closeOnOutsideClick: false

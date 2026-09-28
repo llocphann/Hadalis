@@ -4028,3 +4028,202 @@ If runtime implementation is later authorized, preserve this order:
 Do not start with a Rust rewrite. The current source contains cheaper, behavior-preserving eliminations before algorithm/language replacement becomes necessary.
 
 No runtime implementation is authorized by this handoff.
+
+## 31. Audit round 17 — Hyprland IPC fan-out and fuzzy-search cache lifetime (2026-09-29)
+
+This round is documentation/research only. No runtime/source implementation is authorized.
+
+### Snapshot
+
+- Hadalis `dev` at the start of this round: `926005f6a5efc5fa3c58820c601cb089f7e8d3a8`.
+- Delta from the previous handoff commit `d497cc7108622108bd0ee987709e2f8ad9c40be6` is one documentation-only commit touching only this handoff.
+- Runtime/source therefore remained unchanged while the findings below were verified.
+
+### 31.1 HyprlandData refreshes five independent IPC snapshots for every raw Hyprland event — CONFIRMED / P1
+
+`services/HyprlandData.qml` connects to `Hyprland.rawEvent` and unconditionally calls `updateAll()`.
+
+One `updateAll()` requests:
+
+1. `hyprctl clients -j`
+2. `hyprctl monitors -j`
+3. `hyprctl layers -j`
+4. `hyprctl workspaces -j`
+5. `hyprctl activeworkspace -j`
+
+Hadalis has already improved this over iNiR by serializing each query type and keeping only one queued rerun while that query is in flight, but that only bounds overlap. It does not remove semantically unrelated queries.
+
+Hyprland's event socket distinguishes focused-window, workspace, monitor, layer, fullscreen, config and other event classes. A normal focus/window event therefore does not semantically require refreshing every one of the five snapshots.
+
+This is a process-count optimization candidate, not a request to weaken event correctness.
+
+### 31.2 The explicit `workspaces -j` snapshot currently has no repository consumer — CONFIRMED lossless elimination candidate / P1
+
+The `HyprlandData` properties populated by `getWorkspaces` are:
+
+- `workspaces`
+- `workspaceIds`
+- `workspaceById`
+
+Repository-wide consumer tracing found no external reads of these properties. Their references are confined to `services/HyprlandData.qml` itself.
+
+At the same time, the shell already imports and uses Quickshell's native Hyprland workspace model elsewhere (`Hyprland.workspaces`, `HyprlandMonitor.activeWorkspace`, etc.).
+
+Therefore the current `hyprctl workspaces -j` process contributes no observable Hadalis result at this snapshot.
+
+Exact acceptance requirement before any authorized removal:
+
+- repository search remains consumer-free;
+- no IPC/reflection contract exposes these fields externally;
+- Hyprland overview/workspace/lock regression tests remain identical.
+
+Operation-count effect inside the current HyprlandData event wave: **5 -> 4 child queries (20% fewer)** before considering any other candidate below.
+
+### 31.3 `activeworkspace -j` duplicates already-live Quickshell Hyprland state for its only current consumers — HIGH CONFIDENCE / P1
+
+`HyprlandData.activeWorkspace` currently has only two repository consumers:
+
+- `modules/bar/ActiveWindow.qml`
+- `modules/lock/Lock.qml`
+
+The data they need is already exposed by Quickshell:
+
+- `Hyprland.focusedMonitor`
+- `Hyprland.focusedWorkspace`
+- `HyprlandMonitor.activeWorkspace`
+
+The bar only needs to know whether the focused monitor matches the bar's monitor and which workspace is active. The lock path needs the active workspace id when selecting floating windows.
+
+Quickshell's documented Hyprland model exposes those values directly and the repository already relies on the same native monitor/workspace objects in Overview, Workspaces, Background, Region Selector and focused-screen routing.
+
+Lossless direction:
+
+- migrate those two consumers to the live native Hyprland objects;
+- then retire the separate `hyprctl activeworkspace -j` snapshot.
+
+Do not remove the process before verifying lock-time focus semantics and multi-monitor behavior.
+
+Combined with §31.2, the steady event wave can become **5 -> 3 queries (40% fewer)**.
+
+### 31.4 `layers -j` has one narrow consumer and is currently refreshed while that UI is absent — HIGH CONFIDENCE / P1
+
+Repository-wide tracing found one external consumer of `HyprlandData.layers`:
+
+- `modules/regionSelector/RegionSelection.qml`
+
+The region selector uses the layer snapshot to exclude/target top layer surfaces.
+
+No other normal bar/background/overview/sidebar path consumes `layers`, yet `HyprlandData.updateAll()` currently runs `hyprctl layers -j` on every raw Hyprland event for the entire session.
+
+Lossless direction:
+
+- make layer snapshot ownership consumer-aware;
+- refresh when a region-selector consumer becomes active;
+- while active, refresh only for layer/monitor/config events that can change the needed geometry;
+- keep the last snapshot or clear it after the consumer is gone according to measured memory needs.
+
+With the selector closed, combining §§31.2–31.4 reduces the current HyprlandData event wave from **5 queries to 2 (60% fewer child processes)** without yet touching the required clients snapshot or monitor raw metadata.
+
+This percentage is an operation-count reduction for this service only, not a claim about total shell CPU.
+
+### 31.5 `monitors -j` should not refresh on every event; most monitor state already exists natively — HIGH CONFIDENCE, needs compatibility matrix / P1
+
+The explicit monitor JSON is used mainly by:
+
+- `ActiveWindow.qml`
+- `OverviewWidget.qml`
+
+`ActiveWindow` only needs active-workspace/focus information that is already available on `HyprlandMonitor`.
+
+`OverviewWidget` additionally consumes raw monitor fields such as `transform` and `reserved`, so the monitor query cannot simply be deleted from static evidence alone.
+
+However Quickshell's `HyprlandMonitor` already exposes dedicated reactive properties for:
+
+- id/name
+- x/y
+- width/height
+- scale
+- focused
+- activeWorkspace
+
+and exposes `lastIpcObject` plus `Hyprland.refreshMonitors()` for raw fields without dedicated properties.
+
+Therefore the current policy — launching a separate `hyprctl monitors -j` after every window/focus/workspace/layer event — is broader than the actual semantic invalidation set.
+
+Lossless directions to benchmark:
+
+1. refresh monitor raw metadata only on monitor/layout/config/layer changes;
+2. refresh on Overview presentation if raw `reserved/transform` freshness is required;
+3. preferably reuse Quickshell's native monitor refresh/model rather than maintaining a second independent monitor snapshot when parity tests permit it.
+
+If this query can be removed from ordinary window/focus events, the normal closed-region-selector wave becomes **5 -> 1 query (80% fewer)**, leaving only the raw client snapshot.
+
+Do not claim the 80% path as implementation-safe until Overview transform/reserved behavior is tested across rotated outputs, reserved areas, monitor hotplug and config reload.
+
+### 31.6 `clients -j` remains the required snapshot for now — DO NOT REMOVE from this round
+
+Unlike workspaces/activeWorkspace, `HyprlandData.windowList` has many consumers and uses raw Hyprland fields including geometry/floating/workspace/pid/focus-history data.
+
+Quickshell's native Hyprland toplevel model now exposes many dedicated fields plus `lastIpcObject`, so a future migration may be possible, but this round does not prove full parity for all consumers.
+
+Keep `hyprctl clients -j` as the conservative remaining query until a field-by-field contract matrix proves otherwise.
+
+### 31.7 Event-specific invalidation is the broader lossless architecture candidate — HIGH CONFIDENCE / needs runtime count
+
+Hyprland's event stream provides distinct event names for workspace, focused monitor, active window, fullscreen, monitor add/remove, window open/close/move, layer open/close, config reload and other changes.
+
+Current Hadalis treats all of them as invalidating all five snapshots.
+
+A safer optimization order than adding a generic debounce is:
+
+1. remove snapshots with no consumer (§31.2);
+2. replace duplicated native state (§31.3);
+3. demand-gate specialist snapshots (§31.4);
+4. map remaining query families to the events that can actually invalidate them;
+5. retain a conservative full refresh for unknown/future event names if compatibility requires it.
+
+This keeps eventual data freshness explicit and avoids trading correctness for an arbitrary timer window.
+
+Runtime benchmark target:
+
+- count `hyprctl clients/monitors/layers/workspaces/activeworkspace` children during 60 seconds of normal focus/workspace/window activity;
+- repeat with Overview closed/open and Region Selector closed/open;
+- record event names alongside query starts;
+- verify output state after monitor hotplug, layer changes, window moves, fullscreen changes and config reload.
+
+### 31.8 Fuzzysort search-query cache grows for the shell lifetime and the wrapper exposes no cleanup — CONFIRMED structure / P2 memory, needs benchmark
+
+`modules/common/functions/fuzzysort.js` has two module-global Maps:
+
+- `preparedCache`
+- `preparedSearchCache`
+
+Entries up to 999 characters are inserted without a capacity/TTL policy.
+
+The library does contain `cleanup()`, but `modules/common/functions/Fuzzy.qml` exposes only:
+
+- `go()`
+- `prepare()`
+
+so current QML consumers cannot call the cleanup function.
+
+The stronger concern is `preparedSearchCache`: every distinct fuzzy query string is retained for the life of the QML JS library. Current user-input paths include AppSearch, Cliphist, Emojis, AI suggestions and Anime/provider suggestions.
+
+This is deterministic cached preparation, so eviction is semantically lossless: an evicted query is simply prepared again if reused.
+
+Preferred direction only if memory profiling shows material growth:
+
+- put a small bounded/LRU policy on prepared search strings, or
+- expose a controlled cleanup/invalidation hook tied to search-session/dataset lifecycle.
+
+Do not blindly clear target preparation on every keystroke; the cache exists to avoid repeated preparation work.
+
+### 31.9 False-positive closure: ImageDownloaderProcess is not a shared media-download bottleneck
+
+`modules/common/utils/ImageDownloaderProcess.qml` looked like a possible shared artwork/download dedup target because it validates images with ImageMagick.
+
+Current repository tracing shows its actual runtime consumer is the floating-image overlay path. Media artwork uses the separate `MediaArtworkResolver` pipeline already covered in §13.8 and §§25.5–25.6.
+
+Therefore do **not** create a repo-wide media dedup task around `ImageDownloaderProcess` from its generic name alone.
+
+No runtime implementation is authorized by this handoff.

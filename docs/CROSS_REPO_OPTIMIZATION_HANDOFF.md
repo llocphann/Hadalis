@@ -1332,3 +1332,116 @@ Preferred next step:
 5. update this handoff with before/after evidence and the new exact Hadalis SHA
 
 Avoid bundling multiple optimization classes into one patch.
+
+
+---
+
+## 17. First adopted cross-repo fix — clipboard text payload preservation (2026-09-28)
+
+### Status: ADOPTED / STATICALLY VERIFIED
+
+Hadalis adapted iNiR's no-synthetic-newline clipboard watcher fix at the correct boundary: `wl-paste`.
+
+Relevant upstream reference:
+
+- iNiR migration `042-cliphist-no-synthetic-newline.sh`
+
+Hadalis implementation commits:
+
+- `2c22d37e3abe5a16696980364e74764503dae5ba` — default Niri startup watcher
+- `d88dd9606a56fee183eb101b7ef89c582cc0c3a6` — monolithic/legacy Niri fallback
+- `ec1e50b345f2f1dc4627860a4a5ae16c96fece20` — migration 051 canonical watcher updated
+- `a436b0f9abc28b11ffe76687d85f2a70e08941aa` — autostart documentation
+- `beac1348f1dc02481811de83df32175d9b99cbdc` — new migration 054
+- `70514f92bd4781d9f53a2fa1bb55714fc8f52206` — regression contract expansion
+- `c2aa9eae6307ee5cb57d54aedca57c0da6073fe3` — migration 054 executable mode
+
+The current `dev` head at the last pre-handoff reconciliation was `283f4431412d7ec55d42a45988e9dd5ccccbecff`, which contains the clipboard patch. The intervening commits after `c2aa9eae` were documentation-only connectivity-ownership updates.
+
+### What changed
+
+Canonical text watcher is now:
+
+`exec wl-paste --no-newline --type text --watch ~/.config/quickshell/inir/scripts/native-dispatch clipboard-store`
+
+Updated together:
+
+- `defaults/niri/config.d/50-startup.kdl`
+- `dots/.config/niri/config.kdl`
+- `sdata/migrations/051-cliphist-single-watchers.sh`
+- `docs/AUTOSTART.md`
+
+New migration:
+
+- `sdata/migrations/054-cliphist-no-synthetic-newline.sh`
+
+Migration 054:
+
+- upgrades already-migrated users whose watcher was installed before this fix
+- checks both split Niri startup config and the legacy monolithic fallback
+- ignores commented/disabled watcher lines
+- accepts active `--type text` and `--type text/plain` forms
+- inserts `--no-newline` only at the `wl-paste` boundary
+- records session impact because the existing long-running watcher keeps its old argv until the next login
+- is executable (`100755`)
+
+### Native/fallback contract
+
+No Rust or Python clipboard payload transformation was changed.
+
+Specifically, this fix intentionally does **not** trim data inside:
+
+- Rust clipboard-store path under `native/inir-native`
+- `scripts/clipboard-store.py`
+
+Both paths should continue to preserve the payload they receive. The synthetic byte is prevented where it is introduced by `wl-paste`.
+
+### Regression coverage
+
+`scripts/test-clipboard-watcher-contract.py` now covers:
+
+- canonical default watcher
+- canonical legacy/dots watcher
+- migration 051 duplicate cleanup still producing exactly one text + one image watcher
+- migration 054 upgrade from the old text watcher
+- migration 054 on the monolithic fallback
+- deliberately disabled clipboard history remaining disabled
+
+The canonical maintainer validator automatically discovers every tracked `test-*.py` through its regression glob, so this test is part of the normal CI lane even though its filename is not hard-coded in `validate-maintainer-local.sh`.
+
+Verification completed in this audit session:
+
+- refetched all affected files from `dev`
+- confirmed the old canonical command is absent from default and legacy configs
+- confirmed the new command is present in default, legacy and migration 051
+- confirmed migration 054 metadata/session-impact contract
+- confirmed migration 054 mode is `100755`
+- reviewed the expanded Python regression source for structural/syntax consistency
+
+CI note:
+
+- runs directly attached to the clipboard commits were cancelled by newer rapid pushes because CI uses `cancel-in-progress: true`
+- a later CI run on a descendant containing this patch was also superseded while validation was executing
+- therefore this handoff does **not** claim a completed runtime CI pass yet
+
+Classification remains **ADOPTED / STATICALLY VERIFIED** until a non-cancelled canonical validator run completes on a descendant containing the patch.
+
+### User/session impact
+
+Existing sessions keep the old `wl-paste` process arguments until Niri starts the watcher again.
+
+After migration 054 applies, log out and back in before judging duplicate/newline behavior.
+
+Existing cliphist entries are intentionally left untouched.
+
+### Priority update
+
+Remove the clipboard no-newline item from P1 pending work.
+
+Next evidence-driven optimization remains:
+
+1. startup process/CPU/PSS baseline
+2. WindowPreview eager-vs-lazy/hybrid prewarm experiment
+3. capability-aware Tier 3/4 materialization based on those measurements
+
+Do not bundle these three into one patch.

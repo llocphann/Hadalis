@@ -10,7 +10,10 @@ import qs.modules.abyss.looks
 
 ColumnLayout {
     id: root
-    implicitWidth: Math.max(210, menuColumn.implicitWidth)
+    // Match the mature Bar context-menu sizing rule: the popup follows the
+    // widest action instead of reserving a Dock-wide fixed width. The 140 px
+    // floor only keeps very short labels comfortably clickable.
+    implicitWidth: menuColumn.implicitWidth
     implicitHeight: menuColumn.implicitHeight
     spacing: 0
 
@@ -58,7 +61,8 @@ ColumnLayout {
                     id: actionComponent
                     RippleButton {
                         implicitHeight: 32
-                        implicitWidth: Math.max(230, actionRow.implicitWidth + 24)
+                        implicitWidth: Math.max(
+                            140, actionRow.implicitWidth + 20)
                         horizontalPadding: 0
                         buttonRadius: Math.max(10,
                             Appearance.rounding.large - 3)

@@ -17,4 +17,10 @@ assert 'root.kind === "dockAppMenu" ? dockAppMenu' in popup
 assert 'contentKind === "dockAppMenu"' in per
 assert "property var abyssDockMenuModel: []" in gs
 assert "GlobalStates.abyssDockMenuModel" in menu
-print("Abyss Dock menu + stable axis extent contract: ok")
+# Dock application menus follow their longest visible action instead of
+# reserving the historical 210/230 px fixed body width.
+assert "implicitWidth: menuColumn.implicitWidth" in menu
+assert "140, actionRow.implicitWidth + 20" in menu
+assert "Math.max(210" not in menu
+assert "Math.max(230" not in menu
+print("Abyss Dock menu + stable axis extent + content-fit width contract: ok")

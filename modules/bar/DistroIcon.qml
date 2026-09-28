@@ -82,7 +82,10 @@ Item {
     HoverHandler { id: statusHover }
 
     StyledToolTip {
-        visible: root.abyssMode && statusHover.hovered
+        useParentHover: false
+        externalHoverState: statusHover.hovered
+        extraVisibleCondition: root.abyssMode && statusHover.hovered
+        visible: root.abyssMode
         delay: 250
         text: Translation.tr("Surface Performance: %1\nWave Preset: %2")
             .arg(AbyssStyle.quality)

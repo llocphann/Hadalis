@@ -350,9 +350,17 @@ Item {
         root._interaction = null
         root.selectedId = ""
         if (root.editMode) {
-            root._draftEntries = root._cloneEntries(root.defaultEntries())
-            root._draftWorkspaceWidth = 0
-            root._draftWorkspaceHeight = 0
+            // Reset means "back to the last Done state" during an edit
+            // transaction. Once Done commits a layout, that layout becomes the
+            // next edit session's baseline/default rather than jumping back to
+            // the factory geometry.
+            const committed = Config.options?.dashboard?.canvas?.widgets ?? []
+            root._draftEntries = root._cloneEntries(
+                committed.length > 0 ? committed : root.defaultEntries())
+            root._draftWorkspaceWidth = Number(
+                Config.options?.dashboard?.canvas?.workspaceWidth ?? 0)
+            root._draftWorkspaceHeight = Number(
+                Config.options?.dashboard?.canvas?.workspaceHeight ?? 0)
         } else {
             Config.setNestedValues({
                 "dashboard.canvas.widgets":root.defaultEntries(),

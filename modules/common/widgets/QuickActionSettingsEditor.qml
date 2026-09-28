@@ -28,7 +28,7 @@ ColumnLayout {
     property int dropIndex: -1
     readonly property bool dragging: dragInfo !== null
 
-    function label(id): string {
+    function actionLabel(id): string {
         const labels = {
             screenSnip:"Screenshot",screenRecord:"Screen record",
             colorPicker:"Color picker",notepad:"Notepad",
@@ -38,6 +38,17 @@ ColumnLayout {
             utilities:"Utilities"
         }
         return Translation.tr(labels[id] ?? id)
+    }
+    function actionIcon(id): string {
+        const icons = {
+            screenSnip:"screenshot_region",screenRecord:"screen_record",
+            colorPicker:"colorize",notepad:"edit_note",
+            keyboard:"keyboard",keyboardLayout:"language",
+            mic:"mic",screenCast:"cast",
+            darkMode:"dark_mode",performance:"speed",
+            utilities:"tune"
+        }
+        return icons[id] ?? "widgets"
     }
     function configuredVisible(id): bool {
         switch (id) {
@@ -93,8 +104,9 @@ ColumnLayout {
         model: root.actionOrder
         delegate: Item {
             id: slot
-            required property string modelData
+            required property var modelData
             required property int index
+            readonly property string actionId: String(modelData ?? "")
             Layout.fillWidth: true
             implicitHeight: root.rowHeight
             clip: false
@@ -103,14 +115,14 @@ ColumnLayout {
                 anchors.fill: parent
                 enabled: root.dragging
                 onEntered: drag => {
-                    if(drag.source && drag.source.actionId!==slot.modelData)
+                    if(drag.source && drag.source.actionId!==slot.actionId)
                         root.dropIndex=slot.index
                 }
             }
 
             Rectangle {
                 id: row
-                property string actionId: slot.modelData
+                property string actionId: slot.actionId
                 width: slot.width
                 height: root.rowHeight
                 x: 0
@@ -151,7 +163,7 @@ ColumnLayout {
                             drag.minimumY: -slot.index*(root.rowHeight+root.spacing)
                             drag.maximumY: (root.actionOrder.length-slot.index-1)*(root.rowHeight+root.spacing)
                             onPressed: {
-                                root.dragInfo={id:slot.modelData,index:slot.index}
+                                root.dragInfo={id:slot.actionId,index:slot.index}
                                 root.dropIndex=slot.index
                             }
                             onReleased: {
@@ -167,10 +179,17 @@ ColumnLayout {
                         }
                     }
 
+                    MaterialSymbol {
+                        text: root.actionIcon(slot.actionId)
+                        iconSize: Appearance.font.pixelSize.normal
+                        color: Appearance.colors.colOnLayer1
+                    }
+
                     StyledText {
                         Layout.fillWidth: true
-                        text: root.label(slot.modelData)
-                        color: Appearance.colors.colOnSurface
+                        text: root.actionLabel(slot.actionId)
+                        color: Appearance.colors.colOnLayer1
+                        font.pixelSize: Appearance.font.pixelSize.small
                         elide: Text.ElideRight
                     }
 
@@ -178,16 +197,16 @@ ColumnLayout {
                         implicitWidth: 30
                         implicitHeight: 30
                         buttonRadius: Appearance.rounding.full
-                        onClicked: root.toggleVisible(slot.modelData)
+                        onClicked: root.toggleVisible(slot.actionId)
                         contentItem: MaterialSymbol {
                             anchors.centerIn: parent
-                            text: root.configuredVisible(slot.modelData) ? "visibility" : "visibility_off"
+                            text: root.configuredVisible(slot.actionId) ? "visibility" : "visibility_off"
                             iconSize: Appearance.font.pixelSize.normal
-                            color: root.configuredVisible(slot.modelData)
+                            color: root.configuredVisible(slot.actionId)
                                 ? Appearance.colors.colPrimary : Appearance.colors.colSubtext
                         }
                         StyledToolTip {
-                            text: root.configuredVisible(slot.modelData)
+                            text: root.configuredVisible(slot.actionId)
                                 ? Translation.tr("Hide Quick Action") : Translation.tr("Show Quick Action")
                         }
                     }

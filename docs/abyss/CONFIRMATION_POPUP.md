@@ -43,6 +43,16 @@ Quickshell exposes tray menu entries with presentation/action fields such as tex
 
 The useful part for this project is the **live tray anchor** itself. A request that already has trustworthy backend semantics can resolve its source app to that anchor and let `StyledPopup` inherit the correct output and attachment Edge.
 
+### Native dispatch / desktop portal audit
+
+The current `scripts/native-dispatch` surface routes keyboard/input helpers, Niri configuration, clipboard filtering, MPD/lyrics, theme generation and desktop-icon synchronization. It exposes no dialog interception, transient-window action bridge, portal request broker or generic app-confirmation transport.
+
+The Niri portal configuration delegates portal implementations to GNOME/GTK, including `org.freedesktop.impl.portal.Access = gtk`. Hadalis is therefore not currently the portal backend that owns those confirmation semantics. Rehosting portal confirmations would require an explicit portal/backend integration rather than observing a GTK dialog after it appears.
+
+Likewise, the shared System Tray menu renderer ultimately sends `QsMenuEntry.triggered()` for a selected menu row. The menu entry surface contains presentation state such as text/icon/enabled/check/children, but the repository has no additional action-role or confirmation-response channel layered on top of it.
+
+These findings reinforce the safe boundary: current native-dispatch, portal and tray-menu paths can provide identity/anchor context or invoke an existing menu action, but they cannot generically replace an application's subsequent native confirmation while preserving its original semantics.
+
 ### Dock
 
 Abyss Dock app buttons are real Items under the Dock's `AbyssBodyHost`. They already carry application identity and are valid fallback source anchors when no matching visible tray item exists.

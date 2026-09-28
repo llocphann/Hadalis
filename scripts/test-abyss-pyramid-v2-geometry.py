@@ -142,7 +142,15 @@ def records(edge: str) -> tuple[dict, dict, dict]:
             "content": content_rect,
         }
 
-    return make(lower_s, lower_c, 220), make(middle_s, middle_c, 160), make(upper_s, upper_c, 120)
+    # Geometry.placedPanel().depth is the current reach from the physical
+    # owner boundary, so inward tiers include their offset. These synthetic
+    # surfaces all use the same 60 px owner extent:
+    # surfaceCross = ownerExtent + currentDepth.
+    return (
+        make(lower_s, lower_c, 220),
+        make(middle_s, middle_c, 414),
+        make(upper_s, upper_c, 582),
+    )
 
 
 def assert_tangent_unchanged(edge: str, origin: dict, full: dict) -> None:
@@ -175,8 +183,10 @@ def main() -> None:
         # interpolated surface. The lowest collapsed tier reaches only the
         # physical owner strip, so its current depth is exactly zero.
         assert base_origin["depth"] == 0
-        assert 0 <= middle_origin["depth"] < middle["depth"]
-        assert 0 <= upper_origin["depth"] < upper["depth"]
+        assert middle_origin["depth"] == lower["depth"]
+        assert upper_origin["depth"] == middle["depth"]
+        assert middle_origin["depth"] < middle["depth"]
+        assert upper_origin["depth"] < upper["depth"]
 
         if edge == "top":
             assert middle_origin["surface"]["y"] + middle_origin["surface"]["height"] == lower["surface"]["y"] + lower["surface"]["height"]

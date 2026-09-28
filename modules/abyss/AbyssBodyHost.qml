@@ -20,6 +20,14 @@ Item {
     property bool animatePresentation: true
     property bool stableContentSize: false
     property bool largeSurface: false
+    // Keep Dock/icon geometry fixed, but let panel content reflow before any
+    // lower-priority body is evicted. These are panel dimensions including
+    // padding; hosts may raise them for feature-specific readability.
+    property bool placementCanResize: identity !== "dock"
+    property real minimumSpan: Math.min(span, placementCanResize
+        ? (largeSurface ? 520 : 220) : span)
+    property real minimumDepth: Math.min(depth, placementCanResize
+        ? (largeSurface ? 360 : 120) : depth)
     readonly property real waveInfluence: Wave.bodyStrength(Config.options?.abyss?.waves)
     readonly property real mass: Math.max(1,span*depth/90000)
     property bool initialized: false
@@ -28,6 +36,13 @@ Item {
     property int placementPriority: identity === "dialog" ? 2 : ["utility","edgeEditor"].includes(identity) ? 1 : identity === "dock" ? -1 : 0
     readonly property var placement: controller?.bodyPlacements?.[identity] ?? null
     readonly property bool placementVisible: placement?.visible !== false
+    // A temporarily evicted body retracts using its last valid geometry, keeps
+    // its loaded feature/draft, and can reopen in place when space returns.
+    property var retainedPlacement: null
+    readonly property var layoutPlacement: placementVisible
+        ? placement : (retainedPlacement ?? placement)
+    readonly property var effectivePlacement: placementVisible
+        ? placement : (progress > 0.001 ? retainedPlacement : placement)
     readonly property bool presented: open && placementVisible
     property real along: 0
     property real span: 380
@@ -39,8 +54,8 @@ Item {
     property string contentKind: ""
     property real progress: presented ? 1 : 0
     readonly property var requestedRecord: Geometry.panel(width,height,edgeInsets,edge,along,span,depth,1,padding,[],largeSurface)
-    readonly property var record: Geometry.joinCorner(Geometry.placedPanel(width,height,edgeInsets,edge,along,span,depth,progress,padding,obstacles,largeSurface,placement),joinedEdge,width,height,edgeInsets)
-    readonly property var targetRecord: Geometry.placedPanel(width,height,edgeInsets,edge,along,span,depth,1,padding,obstacles,largeSurface,placement)
+    readonly property var record: Geometry.joinCorner(Geometry.placedPanel(width,height,edgeInsets,edge,along,span,depth,progress,padding,obstacles,largeSurface,effectivePlacement),joinedEdge,width,height,edgeInsets)
+    readonly property var targetRecord: Geometry.placedPanel(width,height,edgeInsets,edge,along,span,depth,1,padding,obstacles,largeSurface,layoutPlacement)
     readonly property Item contentItem: content
     readonly property bool ready: embeddedItem !== null || content.status === Loader.Ready
     readonly property Item contentParent: contentFrame
@@ -52,7 +67,8 @@ Item {
         controller: root.controller
         geometry: root.record
         placementRequest: ({id:root.identity,open:root.open,order:root.activationOrder,
-            priority:root.placementPriority,
+            priority:root.placementPriority,padding:root.padding,
+            minSpan:root.minimumSpan,minDepth:root.minimumDepth,
             record:root.requestedRecord})
         inputBounds: root.inputBounds
         mass: root.mass
@@ -61,6 +77,10 @@ Item {
         if (controller) controller.impulse(edge,along+span/2,span,(opening ? 0.85 : -0.65)*waveInfluence,mass,opening ? "open" : "close")
     }
     function markOpened(): void { if (open && controller?.nextPresentationOrder) activationOrder=controller.nextPresentationOrder() }
+    onPlacementChanged: {
+        if (placement?.visible !== false)
+            retainedPlacement = placement
+    }
     onOpenChanged: if (initialized) { markOpened();react(open) }
     onEmbeddedItemChanged: if (initialized) markOpened()
     onContentKindChanged: if (initialized) markOpened()
@@ -93,7 +113,7 @@ Item {
         width: root.placementVisible ? root.record.content.width : root.targetRecord.content.width
         height: root.placementVisible ? root.record.content.height : root.targetRecord.content.height
         clip: true
-        visible: root.placementVisible
+        visible: root.placementVisible || root.progress > 0.001
         opacity: Math.min(1,root.progress*1.5)
         enabled: root.presented
     }

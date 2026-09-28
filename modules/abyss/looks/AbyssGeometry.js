@@ -48,11 +48,14 @@ function panel(width, height, insets, edge, along, span, depth, progress, paddin
 // record reaches through the inner tier to the physical Edge.
 function placedPanel(width,height,insets,edge,along,span,depth,progress,padding,obstacles,largeSurface,placement) {
     if (!placement) return panel(width,height,insets,edge,along,span,depth,progress,padding,obstacles,largeSurface);
-    var base = panel(width,height,insets,edge,along,span,depth,progress,padding,[],largeSurface);
-    var shift = placement.along-base.along;
-    if (horizontal(edge)) { base.content.x += shift;base.surface.x += shift; }
-    else { base.content.y += shift;base.surface.y += shift; }
-    base.along = placement.along;
+    // Placement may reflow a body, but its allocator preserves the physical
+    // anchor center. Build the actual panel at that size instead of shifting a
+    // full-size record after the fact; content/input/field then share geometry.
+    var placedAlong = Number.isFinite(Number(placement.along)) ? Number(placement.along) : along;
+    var placedSpan = Number.isFinite(Number(placement.span)) ? Number(placement.span) : span;
+    var placedDepth = Number.isFinite(Number(placement.depth)) ? Number(placement.depth) : depth;
+    var base = panel(width,height,insets,edge,placedAlong,placedSpan,placedDepth,
+        progress,padding,[],largeSurface);
     var p = clamp(progress,0,1.035), offset = placement.inward*p;
     if (horizontal(edge)) {
         base.content.y += edge === "top" ? offset : -offset;

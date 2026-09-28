@@ -2022,6 +2022,15 @@ Singleton {
                 }
                 property JsonObject antiFlashbang: JsonObject {
                     property bool enable: false
+                    property bool darkOnly: true
+                    property real threshold: 0.30
+                    property real strength: 0.90
+                    property real minMultiplier: 0.12
+                    property int sampleInterval: 500
+                    property real sampleScale: 0.10
+                    property int windowDelay: 30
+                    property int workspaceDelay: 180
+                    property int responseMs: 80
                 }
             }
 

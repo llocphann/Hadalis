@@ -4,6 +4,7 @@ pragma ComponentBehavior: Bound
 // From https://github.com/caelestia-dots/shell with modifications.
 // License: GPLv3
 
+import qs
 import qs.modules.common
 import qs.modules.common.functions
 import qs.services
@@ -12,6 +13,7 @@ import Quickshell.Io
 import Quickshell.Hyprland
 import QtQuick
 import "brightnessPolicy.js" as BrightnessPolicy
+import "antiFlashbangPolicy.js" as AntiFlashbangPolicy
 
 /**
  * For managing brightness of monitors. Supports both brightnessctl and ddcutil.
@@ -28,6 +30,11 @@ Singleton {
     // last >0 level per screen.name; survives monitor recreation after dpms
     property var lastValidBrightness: ({})
     property bool asleep: false
+    readonly property bool antiFlashbangActive: Config.ready
+        && (Config.options?.light?.antiFlashbang?.enable ?? false)
+        && !root.asleep && !GlobalStates.screenLocked
+        && (!(Config.options?.light?.antiFlashbang?.darkOnly ?? true) || Appearance.m3colors.darkmode)
+        && (CompositorService.isNiri || CompositorService.isHyprland)
 
     // Reconcile against the live screen list rather than binding to
     // Quickshell.screens: createObject() parents each monitor to root, so a
@@ -294,7 +301,7 @@ Singleton {
         property int rawMaxBrightness: 100
         property real brightness
         property real brightnessMultiplier: 1.0
-        property real multipliedBrightness: Math.max(0, Math.min(1, brightness * ((Config.options?.light?.antiFlashbang?.enable ?? false) ? brightnessMultiplier : 1)))
+        property real multipliedBrightness: Math.max(0, Math.min(1, brightness * (root.antiFlashbangActive ? brightnessMultiplier : 1)))
         property bool ready: false
         property bool animateChanges: !monitor.isDdc
         property bool writePending: false
@@ -307,7 +314,8 @@ Singleton {
         Behavior on multipliedBrightness {
             enabled: monitor.animateChanges
             NumberAnimation {
-                duration: 200
+                duration: root.antiFlashbangActive
+                    ? AntiFlashbangPolicy.bounded(Config.options?.light?.antiFlashbang?.responseMs, 80, 40, 500) : 200
                 easing.type: Easing.BezierSpline
                 easing.bezierCurve: Appearance.animationCurves.expressiveEffects
             }
@@ -484,7 +492,7 @@ Singleton {
         }
 
         function setBrightnessMultiplier(value: real): void {
-            monitor.brightnessMultiplier = value;
+            monitor.brightnessMultiplier = AntiFlashbangPolicy.bounded(value, 1, .05, 1);
         }
 
         Component.onCompleted: {
@@ -502,75 +510,48 @@ Singleton {
         BrightnessMonitor {}
     }
 
-    // Anti-flashbang
-    property int workspaceAnimationDelay: 500
-    property int contentSwitchDelay: 30
-    property string screenshotDir: "/tmp/quickshell/brightness/antiflashbang"
-    function brightnessMultiplierForLightness(x: real): real {
-        // I hand picked some values and fitted an exponential curve for this
-        // 6.600135 + 216.360356 * e^(-0.0811129189x)
-        // Division by 100 is to normalize to [0, 1]
-        return (6.600135 + 216.360356 * Math.pow(Math.E, -0.0811129189 * x)) / 100.0;
-    }
+    // Samples also follow content changes inside the same focused application.
     Variants {
         model: Quickshell.screens
         Scope {
             id: screenScope
             required property var modelData
-            property string screenName: modelData.name
-            property string screenshotPath: `${root.screenshotDir}/screenshot-${screenName}.png`
+            readonly property bool samplingEnabled: root.antiFlashbangActive
+            readonly property real targetMultiplier: sampler.consecutiveFailures > 2 ? 1 : AntiFlashbangPolicy.multiplier(sampler.lastLightness, {
+                threshold: Config.options?.light?.antiFlashbang?.threshold,
+                strength: Config.options?.light?.antiFlashbang?.strength,
+                minMultiplier: Config.options?.light?.antiFlashbang?.minMultiplier
+            })
+            onSamplingEnabledChanged: root.getMonitorForScreen(modelData)?.setBrightnessMultiplier(1)
+            onTargetMultiplierChanged: {
+                if (samplingEnabled && Number.isFinite(sampler.lastLightness))
+                    root.getMonitorForScreen(modelData)?.setBrightnessMultiplier(targetMultiplier)
+            }
+            AntiFlashbangSampler {
+                id: sampler
+                active: screenScope.samplingEnabled
+                outputName: screenScope.modelData.name
+                sampleInterval: Config.options?.light?.antiFlashbang?.sampleInterval ?? 500
+                sampleScale: Config.options?.light?.antiFlashbang?.sampleScale ?? .10
+            }
             Connections {
-                enabled: (Config.options?.light?.antiFlashbang?.enable ?? false) && Appearance.m3colors.darkmode && CompositorService.isHyprland
+                enabled: screenScope.samplingEnabled && CompositorService.isHyprland
                 target: CompositorService.isHyprland ? Hyprland : null
                 function onRawEvent(event) {
-                    if (["activewindowv2", "windowtitlev2"].includes(event.name)) {
-                        screenshotTimer.interval = root.contentSwitchDelay;
-                        screenshotTimer.restart();
-                    } else if (["workspacev2"].includes(event.name)) {
-                        screenshotTimer.interval = root.workspaceAnimationDelay;
-                        screenshotTimer.restart();
-                    }
+                    if (["activewindowv2", "windowtitlev2"].includes(event.name))
+                        sampler.request(Config.options?.light?.antiFlashbang?.windowDelay ?? 30)
+                    else if (event.name === "workspacev2")
+                        sampler.request(Config.options?.light?.antiFlashbang?.workspaceDelay ?? 180)
                 }
             }
-
-            // Niri support for anti-flashbang
             Connections {
-                enabled: (Config.options?.light?.antiFlashbang?.enable ?? false) && Appearance.m3colors.darkmode && CompositorService.isNiri
+                enabled: screenScope.samplingEnabled && CompositorService.isNiri
                 target: CompositorService.isNiri ? NiriService : null
                 function onActiveWindowChanged() {
-                    screenshotTimer.interval = root.contentSwitchDelay;
-                    screenshotTimer.restart();
+                    sampler.request(Config.options?.light?.antiFlashbang?.windowDelay ?? 30)
                 }
                 function onFocusedWorkspaceIdChanged() {
-                    screenshotTimer.interval = root.workspaceAnimationDelay;
-                    screenshotTimer.restart();
-                }
-            }
-
-            Timer {
-                id: screenshotTimer
-                interval: 700 // This is what I have for a Hyprland ws anim
-                onTriggered: {
-                    screenshotProc.running = false;
-                    screenshotProc.running = true;
-                }
-            }
-
-            Process {
-                id: screenshotProc
-                command: ["/usr/bin/bash", "-c", 
-                    `/usr/bin/mkdir -p '${StringUtils.shellSingleQuoteEscape(root.screenshotDir)}'`
-                    + ` && /usr/bin/grim -o '${StringUtils.shellSingleQuoteEscape(screenScope.screenName)}' -`
-                    + ` | /usr/bin/magick png:- -colorspace Gray -format "%[fx:mean*100]" info:`
-                ]
-                stdout: StdioCollector {
-                    id: lightnessCollector
-                    onStreamFinished: {
-                        // No cleanup needed - we pipe directly to magick without saving file
-                        const lightness = lightnessCollector.text
-                        const newMultiplier = root.brightnessMultiplierForLightness(parseFloat(lightness))
-                        Brightness.getMonitorForScreen(screenScope.modelData).setBrightnessMultiplier(newMultiplier)
-                    }
+                    sampler.request(Config.options?.light?.antiFlashbang?.workspaceDelay ?? 180)
                 }
             }
         }

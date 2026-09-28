@@ -1117,7 +1117,16 @@
     },
     "light": {
         "antiFlashbang": {
-            "enable": false
+            "enable": false,
+            "darkOnly": true,
+            "threshold": 0.30,
+            "strength": 0.90,
+            "minMultiplier": 0.12,
+            "sampleInterval": 500,
+            "sampleScale": 0.10,
+            "windowDelay": 30,
+            "workspaceDelay": 180,
+            "responseMs": 80
         },
         "night": {
             "automatic": false,

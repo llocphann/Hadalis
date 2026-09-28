@@ -50,7 +50,7 @@ for forbidden in ("NumberAnimation", "ScaleAnimator", "OpacityAnimator"):
 assert 'owner: "closeConfirm"' in close
 assert "ConfirmationService.enqueue({" in close
 assert "callback: () => root.closeWindowFast(snapshot)" in close
-assert "Quickshell.execDetached(["niri", "msg", "action", "close-window"" in close
+assert 'Quickshell.execDetached(["niri", "msg", "action", "close-window"' in close
 assert 'Config.options?.panelFamily === "abyss"' in close
 assert "active: root.dialogVisible" in close
 

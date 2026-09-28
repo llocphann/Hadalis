@@ -14,7 +14,7 @@ const positions=[{kind:'popup',edge:'bottom',alignment:'center'},
 assert.equal(resolve(positions,'calendar','A').edge,'right','per-output kind wins');
 assert.equal(resolve(positions,'calendar','B').edge,'left','global kind beats category');
 assert.equal(resolve(positions,'weather','A').edge,'bottom','bar popup inherits category');
-for(const kind of ['wifi','bluetooth']) assert.equal(resolve(positions,kind,'A').edge,'bottom','network popups inherit the common popup position');
+for(const kind of ['wifi','bluetooth','utilities']) assert.equal(resolve(positions,kind,'A').edge,'bottom','connected popups inherit the common popup position');
 assert.equal(resolve(positions,'volume','A').edge,'top','IPC indicator inherits OSD category');
 assert.equal(resolve(positions,'volume','B').position,.25);
 assert.equal(resolve(positions,'mediaOsd','A').edge,'top','media OSD stays separate from media popup');

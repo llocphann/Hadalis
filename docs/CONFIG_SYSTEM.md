@@ -200,9 +200,12 @@ meaning does not change when the roles swap physical edges.
 
 Desktop widgets keep their original free/zone editor and independent
 `widgetEditMode`. Persistent layer-shell surfaces use the separate Shell Layout
-editor and move between advertised edge slots. Enter it from the desktop
-context menu, Settings -> Shell Layout, or `inir shellLayout open`. Its own
-layer-shell HUD stays above the edited panels and does not reuse the widget
+editor and move between advertised edge slots. For Abyss, the desktop context
+menu's **Edit shell layout** action intentionally enters the same output-local
+live Abyss Edge editor as the Settings header's **Edit Abyss layout** button.
+Other families continue through the shared Shell Layout controller from the
+desktop context menu, Settings -> Shell Layout, or `inir shellLayout open`.
+The editor HUD stays above the edited panels and does not reuse the widget
 canvas or toolbar. Drag any highlighted surface toward a screen edge: legal
 edges light up as full strips, a chip follows the pointer with the drop
 result, and releasing on a strip commits the move. Dropping a surface on an

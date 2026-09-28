@@ -1625,3 +1625,198 @@ Further value is now much higher from runtime measurement than from continuing a
    - Abyss shader optimization after the current Abyss visual work stabilizes
 
 Do not combine these optimization classes in one patch.
+
+
+---
+
+## 19. Audit round 5 — large visual modules and script hot-path review (2026-09-28)
+
+### Snapshot
+
+- Hadalis head before this checkpoint: `8a5dca1add43bf9c57a8b34e37cd71f785149e6d`
+- iNiR comparison head: `bbd304b3ba1662ff0f41a2898b1b1b91cf02f071`
+
+This pass moved beyond singleton/service inventory into the largest visual modules and the scripts they invoke. The focus was not file size by itself, but whether hidden/resident QML can keep decoders, CAVA consumers, Canvas repaint loops or helper processes alive.
+
+### 19.1 WallpaperSkewView eagerly analyzes the entire uncached folder — INVESTIGATE / P1
+
+Current `modules/wallpaperSelector/WallpaperSkewView.qml` loads a persistent color DB and immediately calls `_analyzeUncachedColors()`.
+
+That function:
+
+- scans every non-directory entry in the current wallpaper folder
+- skips videos but queues every uncached image/GIF
+- runs ImageMagick `convert ... -resize 1x1 -colorspace HSL`
+- batches 20 files into one shell process, then immediately runs the next batch until the queue is empty
+- is triggered on cache load/failure, component completion, folder changes and count changes
+
+This happens even when the user never selects color sorting or a color filter.
+
+Current iNiR prerelease has the same eager behavior, so this is a **shared debt**, not an upstream port gap.
+
+Potential adaptation:
+
+1. load the existing color cache immediately
+2. only analyze missing colors when color sort/filter is requested
+3. optionally precompute a small visible/current neighbourhood during idle instead of the whole folder
+4. stop/clear queued work when the view is destroyed or switches folder
+5. benchmark large folders before deciding whether background idle prefill is worthwhile
+
+Correctness issue discovered at the same boundary:
+
+- the color DB is keyed by `fileName`, not normalized full path/content identity
+- two folders containing the same filename can reuse the wrong color metadata
+- replacing an image in place with the same filename can leave stale color metadata
+
+If this path is changed, use a stable path-aware key and consider mtime/content invalidation. Do not add a second unbounded cache.
+
+### 19.2 Equalizer Canvas has redundant fixed-rate repaint demand — ADAPT / P1-low-risk
+
+`modules/mediaControls/EqualizerPanel.qml` already has event-driven repaint sources:
+
+- CAVA `pointsChanged`
+- CAVA normalization-ceiling changes
+- DSP band changes
+- width/height/visibility changes
+- band-drag preview changes
+- preset sweep animation property changes
+- lightning/highlight animation property changes
+
+Despite that, the analyzer Canvas also contains:
+
+`Timer { interval: 33; running: root.active && analyzerCanvas.visible; repeat: true; onTriggered: analyzerCanvas.requestPaint() }`
+
+The shared CAVA service is configured around 30 FPS and emits `pointsChanged` only when frame values actually change. Therefore the fixed timer:
+
+- duplicates repaint requests while spectrum frames are changing
+- forces Canvas repaint wakeups even when CAVA is producing stable/silent values
+- redraws the response curve even when no DSP/animation property changed
+
+This Equalizer implementation is Hadalis-specific; current upstream Equalizer uses a different module structure and does not provide a directly portable fix.
+
+Safe experiment:
+
+1. remove the fixed 33ms repaint timer
+2. retain all existing event-driven `requestPaint()` paths
+3. verify spectrum motion at configured CAVA framerates
+4. verify silence/paused audio settles without stale graphics
+5. verify band drag, preset sweep and lightning animations still repaint smoothly
+6. measure render-thread/CPU while the Equalizer is open
+
+### 19.3 Compact sidebar can keep Equalizer/CAVA demand alive for the whole open panel — INVESTIGATE / P1
+
+The compact right sidebar instantiates the Media section as part of its Controls content and currently binds:
+
+`EqualizerPanel.active: root.panelVisible`
+
+Consequences:
+
+- opening the compact right sidebar registers an EqualizerService consumer even if the user is not looking at the Media row
+- `CavaProcess.active` follows `EqualizerPanel.active`, so the shared CAVA process can be kept alive for the whole sidebar-open lifetime
+- the Canvas timer itself is visibility-gated, but service/CAVA demand is broader than the actual media viewport
+
+Do not blindly bind this to QML `visible`: a Flickable child can remain `visible === true` while outside the viewport.
+
+Possible fix requires a real presentation/viewport demand signal, or a narrower Loader around the Equalizer section. Measure whether opening Compact sidebar alone starts CAVA before changing the layout.
+
+### 19.4 CustomImageWidget pauses media but retains decoder/source while power-suspended — INVESTIGATE / P1 memory/GPU
+
+`CustomImageWidget` already does several things correctly:
+
+- rotation timer stops when `powerActive=false`
+- GIF `playing` is gated by power/visibility/animations
+- video playback pauses under power suspension
+- stale transition slot sources are cleared
+- static images use bounded decode size and `cache:false`
+- Hadalis improved upstream by constructing `MediaPlayer` only for slots that actually own video
+
+However, when `WidgetPowerManager` suspends a widget for GameMode/fullscreen/output-disabled state:
+
+- `AnimatedImage.source` remains assigned
+- video `MediaPlayer` Loader remains active because it is keyed only to `slot.isVideo && sourcePath.length > 0`
+- the decoder is paused but retained
+
+`WidgetPowerManager` explicitly exists to pause expensive desktop-widget operations while the desktop is covered. This makes decoder release a valid memory/GPU experiment.
+
+Do not clear media merely because the user manually pauses it; manual pause still displays the widget.
+
+A safe design would distinguish:
+
+- **user pause while desktop visible**: retain decoded frame/source
+- **power suspension because desktop is covered/output disabled**: release heavy decoder/source, then reconstruct on resume
+
+For video, consider retaining a cheap representative frame if resume/first-frame black flash becomes visible. Benchmark reopen latency and decoder memory before adopting.
+
+### 19.5 Config write path is a profile target, not yet a bug — INVESTIGATE / P2
+
+`modules/common/Config.qml` is startup-critical and correctly coalesces writes with a 50ms debounce.
+
+Static review found no polling loop, but every write can still involve:
+
+- custom-widget data cloning through JSON stringify/parse
+- full mirror JSON serialization
+- adapter write/reload coordination
+- a config-wide `revision` / `configChanged` fan-out
+
+This may become noticeable when:
+
+- config is large
+- custom desktop-widget data is large
+- a Settings slider emits writes repeatedly while dragged
+
+Current evidence is insufficient to change the global debounce or write semantics.
+
+Before modifying Config:
+
+- measure serialized config size
+- measure write duration and UI frame time while dragging representative sliders
+- count `configChanged` fan-out
+- test external file edits and write-flight recovery
+
+Do not trade correctness/external-edit preservation for a speculative micro-optimization.
+
+### 19.6 Script hot-path review — Python fallback is not the main issue
+
+The large script inventory was checked for frequently invoked production paths.
+
+Verified:
+
+- Equalizer apply helper launches Python only on committed slider release/preset apply, not on every slider movement.
+- `least_busy_region.py` / OpenCV runs only for explicit auto-placement or opt-in position color adaptation; it is not a periodic background loop.
+- LocalMusic production state follows the Rust MPD subscription path; Python polling remains fallback.
+- theme generation continues to route through the Rust native dispatcher; Python theme generation is fallback.
+- large color/editor/SDDM generators are one-shot theme/setup work, not idle shell loops.
+
+Therefore keep the native policy from §9: do not rewrite one-shot Python helpers into Rust unless profiling shows a user-visible hot path.
+
+### 19.7 Visual module sweep — no new leak in several large surfaces
+
+The following large paths were checked and did not reveal a new higher-priority lifecycle issue:
+
+- YtMusic view: infinite sync rotation is gated by sync state + left-sidebar open; ListViews reuse items.
+- Wallpaper coverflow/gallery: view Loader is destroyed after close grace; image decode sizes are bounded.
+- AbstractBackgroundWidget: expensive placement/color helpers are debounce/on-demand, not repeating background work.
+- RegionSelection: screenshot image source is cleared with visibility and `cache:false`; heavy mask exists only while the overlay is active.
+- CompactMediaPlayer: artwork effects are gated by sidebar open/visibility.
+- SystemMonitorWidget: resource demand follows widget power/visibility.
+- CAVA common widgets: shared-process lease architecture remains the correct baseline.
+
+### Revised priority additions
+
+Add to P1 investigation queue:
+
+1. WallpaperSkew demand-driven/path-safe color analysis
+2. Equalizer event-driven Canvas repaint
+3. Compact sidebar Equalizer/CAVA presentation demand
+4. CustomImageWidget decoder release under widget power suspension
+
+These should come **after** the current P0 startup baseline unless a profiler immediately identifies one as dominant.
+
+### Next coverage target
+
+Continue with:
+
+- remaining large wallpaper/dashboard/sidebar visual files
+- common Canvas/Shape widgets for hidden infinite animation/repaint
+- script entrypoints invoked by user interactions rather than setup/theme one-shots
+- then switch from static audit to runtime measurement, because the remaining static candidates are increasingly workload-dependent.

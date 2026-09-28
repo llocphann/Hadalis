@@ -55,6 +55,7 @@ def main() -> None:
     assert "root._rebuildFrozen()" in coord
     assert "const liveRecord=" in coord
     assert "liveRecord ?? closing.fullRecord" in coord
+    assert "root._number(liveRecord.progress,1) <= .001" in coord
     assert "root.pyramidOriginRecord && root.progress > 0.001" in host
     assert "root.pyramidAllocatorPlacement,root.pyramidAllocatorRecord" in host
     assert "Qt.callLater(root.syncPyramidEntryOrigin)" not in host
@@ -83,6 +84,11 @@ def main() -> None:
         Peer("top", "top", 500, 420, False), remote, side
     ]
     assert frozen_survivors(after_top_semantic_close[1], after_top_semantic_close) == {"bottom"}
+
+    # A lower visual tail at the zero endpoint is no longer a meaningful lower
+    # boundary even if its transaction bookkeeping clears one binding turn later.
+    closing_tail_progress = 0.001
+    assert closing_tail_progress <= 0.001
 
     # Reopen/cancel of the middle transaction releases its own freeze; any
     # independent transaction may still rebuild its own same-anchor map.

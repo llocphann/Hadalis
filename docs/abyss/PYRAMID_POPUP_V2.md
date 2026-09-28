@@ -79,5 +79,6 @@ Two additional motion invariants are enforced:
 
 - **Entry origin is latched once reveal begins.** While progress is still at zero, allocator updates may re-arm the origin so the popup starts from the correct lower tier. Once progress is above the reveal threshold, peer reflow may change the final resting target but cannot rewrite the already-visible origin. This avoids a mid-flight discontinuity.
 - **A lower popup that is already closing contributes its current visual boundary.** When another popup starts an overlapping open/close transaction, the coordinator samples the lower host's currently published geometry instead of using its old full resting record. The new transaction therefore meets the surface that is actually visible on that frame. The original full snapshot remains only as a fallback after the host stops publishing.
+- **An exhausted lower tail is absent immediately.** If that live closing record has already reached the same 0.001 reveal threshold used by the host to finish the close, the coordinator ignores it even if transaction bookkeeping survives for the remainder of the current QML binding turn. A new popup therefore cannot collapse toward an invisible stale lower tier.
 
 These rules are presentation-only and do not change allocator ordering or resting geometry.

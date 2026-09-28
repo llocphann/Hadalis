@@ -76,6 +76,12 @@ QtObject {
                 // resting depth. Keep the full snapshot only as a fallback.
                 const liveRecord=
                     root.controller?.participants?.[key]?.geometry ?? null
+                // A closing tail whose reveal reached zero is visually gone.
+                // It may remain in closings for the rest of this binding turn,
+                // but must not become a lower boundary for a new transaction.
+                if (liveRecord
+                        && root._number(liveRecord.progress,1) <= .001)
+                    continue
                 result.push({
                     identity:String(key),
                     descriptor:closing.descriptor,

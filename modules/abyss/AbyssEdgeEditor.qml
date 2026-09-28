@@ -24,6 +24,7 @@ Item {
     property string selectedId: ""
     property real gap: 8
     property var edgeSizes: ({top:1,right:1,bottom:1,left:1})
+    property var edgeThicknesses: ({top:-1,right:-1,bottom:-1,left:-1})
     property real moduleScale: 1
     property var singleModuleExpansion: ({top:"edge",right:"edge",bottom:"edge",left:"edge"})
     property string editingEdge: "top"
@@ -41,7 +42,7 @@ Item {
     readonly property string nearbyCorner: Placement.adjacentEdge(moduleLayer.layoutRecords.find(p=>p.id===selectedId),width,height)
     readonly property var selected: draft.find(p => p.id === selectedId)
     readonly property var draftOptions: Object.assign({},Config.options?.abyss?.modules,{gap:gap,edgeSizes:edgeSizes,size:moduleScale,
-        singleModuleExpansion:singleModuleExpansion,edgeThickness:AbyssStyle.perimeterThickness})
+        singleModuleExpansion:singleModuleExpansion,edgeThicknesses:edgeThicknesses,edgeThickness:AbyssStyle.perimeterThickness})
     function refreshHandles(): void { handles = draft.map(p => p.id) }
     function begin(): void {
         draft = JSON.parse(JSON.stringify(Placement.resolve(Config.options?.abyss?.modules,outputName,
@@ -49,6 +50,7 @@ Item {
         const options = Placement.optionsForOutput(Config.options?.abyss?.modules,outputName)
         gap = options.gap
         edgeSizes = Object.assign({top:1,right:1,bottom:1,left:1},options.edgeSizes)
+        edgeThicknesses = Object.assign({top:-1,right:-1,bottom:-1,left:-1},options.edgeThicknesses)
         moduleScale = options.size
         singleModuleExpansion = Object.assign({top:"edge",right:"edge",bottom:"edge",left:"edge"},options.singleModuleExpansion)
         editingEdge = moduleLayer.edge
@@ -61,7 +63,7 @@ Item {
     }
     function finish(save): void {
         if (save) {
-            const writes=Placement.saveProfile(Config.options?.abyss?.modules,outputName,draft,gap,outputOnly,edgeSizes,singleModuleExpansion,moduleScale)
+            const writes=Placement.saveProfile(Config.options?.abyss?.modules,outputName,draft,gap,outputOnly,edgeSizes,singleModuleExpansion,moduleScale,edgeThicknesses)
             let positions=Config.options?.abyss?.positions ?? []
             positionEdits.forEach(edit=>positions=Presentation.save(positions,edit.kind,edit.outputName,edit.values))
             if(positionEdits.length) writes["abyss.positions"]=positions
@@ -75,6 +77,7 @@ Item {
         gap = 8
         edgeSizes = {top:1,right:1,bottom:1,left:1}
         moduleScale = 1
+        edgeThicknesses = {top:-1,right:-1,bottom:-1,left:-1}
         singleModuleExpansion = {top:"edge",right:"edge",bottom:"edge",left:"edge"}
         guides = []
         selectedId = ""
@@ -268,6 +271,19 @@ Item {
             AbyssLabel { text: "Shared size" }
             AbyssSlider { from:.6;to:1.8;value:Placement.edgeSize(root.draftOptions,root.editingEdge);Layout.fillWidth:true;onMoved:root.edgeSizes=Object.assign({},root.edgeSizes,{[root.editingEdge]:value}) }
             AbyssCheckBox { text:"Snap to guides";checked:root.snapEnabled;onToggled:root.snapEnabled=checked }
+        }
+        RowLayout {
+            visible:!root.editingPopups
+            AbyssLabel { text:"Edge thickness" }
+            AbyssSlider {
+                unit:"px";from:10;to:40;stepSize:1;Layout.fillWidth:true
+                value:Placement.edgeThickness(root.draftOptions,root.editingEdge)
+                onMoved:root.edgeThicknesses=Object.assign({},root.edgeThicknesses,{[root.editingEdge]:value})
+            }
+            AbyssButton {
+                text:"Inherit surface";enabled:(root.edgeThicknesses[root.editingEdge] ?? -1)>=0
+                onClicked:root.edgeThicknesses=Object.assign({},root.edgeThicknesses,{[root.editingEdge]:-1})
+            }
         }
         RowLayout {
             visible:!root.editingPopups

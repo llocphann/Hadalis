@@ -61,11 +61,17 @@ function optionsForOutput(options, outputName) {
     return Object.assign({},options,{gap:profile?.gap ?? options?.gap ?? 8,
         size:bounded(profile?.size ?? options?.size,1,.6,1.8),
         edgeSizes:Object.assign({},options?.edgeSizes,profile?.edgeSizes),
+        edgeThicknesses:Object.assign({},options?.edgeThicknesses,profile?.edgeThicknesses),
         singleModuleExpansion:Object.assign({},options?.singleModuleExpansion,profile?.singleModuleExpansion)});
 }
 function edgeSize(options, edge) { return bounded(options?.edgeSizes?.[edge],1,.6,1.8); }
+function edgeThickness(options, edge, fallback) {
+    var inherited=bounded(fallback ?? options?.edgeThickness,16,10,40);
+    var value=options?.edgeThicknesses?.[edge];
+    return Number.isFinite(Number(value)) && Number(value)>=0 ? bounded(value,inherited,10,40) : inherited;
+}
 function moduleSize(placement, options) {
-    return (placement.customSize ? placement.size : edgeSize(options,placement.edge)*bounded(options?.edgeThickness,16,10,40)/16)*bounded(options?.size,1,.6,1.8);
+    return (placement.customSize ? placement.size : edgeSize(options,placement.edge)*edgeThickness(options,placement.edge)/16)*bounded(options?.size,1,.6,1.8);
 }
 function project(x, y, width, height) {
     var distances = [y,width-x,height-y,x];
@@ -108,23 +114,25 @@ function snapMove(placements, id, x, y, width, height, options, fontScale) {
     return {placements:moved,guides:Math.abs(actual.along+actual.span/2-target.center)<1
         ? [{horizontal:horizontal,along:target.line,label:target.label}] : []};
 }
-function saveProfile(options, outputName, placements, gap, outputOnly, edgeSizes, singleModuleExpansion, size) {
+function saveProfile(options, outputName, placements, gap, outputOnly, edgeSizes, singleModuleExpansion, size, edgeThicknesses) {
     var normalized = normalize(placements,"top");
     var profiles = Array.from(options?.outputLayouts || []);
     var current = optionsForOutput(options,outputName);
     var expansion = Object.assign({},singleModuleExpansion ?? current.singleModuleExpansion);
     var scale = bounded(size ?? current.size,1,.6,1.8);
+    var thicknesses = Object.assign({},edgeThicknesses ?? current.edgeThicknesses);
     if (outputOnly) {
         var existing = profiles.find(function(p) { return p.outputName===outputName; });
         profiles = profiles.filter(function(p) { return p.outputName!==outputName; });
         profiles.push(Object.assign({},existing,{outputName:outputName,placements:normalized,gap:bounded(gap,8,0,32),
-            edgeSizes:Object.assign({},edgeSizes ?? current.edgeSizes),singleModuleExpansion:expansion,size:scale}));
+            edgeSizes:Object.assign({},edgeSizes ?? current.edgeSizes),singleModuleExpansion:expansion,size:scale,edgeThicknesses:thicknesses}));
         return {"abyss.modules.outputLayouts":profiles};
     }
     return {"abyss.modules.configured":true,"abyss.modules.placements":normalized,
         "abyss.modules.gap":bounded(gap,8,0,32),"abyss.modules.outputLayouts":profiles.filter(function(p) { return p.outputName!==outputName; }),
         "abyss.modules.edgeSizes":Object.assign({},edgeSizes ?? options?.edgeSizes),
-        "abyss.modules.singleModuleExpansion":expansion,"abyss.modules.size":scale};
+        "abyss.modules.singleModuleExpansion":expansion,"abyss.modules.size":scale,
+        "abyss.modules.edgeThicknesses":thicknesses};
 }
 function stripDepth(placements, edge, options, fontScale) {
     return placements.filter(function(p) { return p.enabled && p.edge===edge; }).reduce(function(depth,p) {
@@ -132,14 +140,15 @@ function stripDepth(placements, edge, options, fontScale) {
     },48);
 }
 function edgeInsetsForModules(placements, options, fontScale, thickness, minimum, reservation) {
-    var insets = {top:thickness,right:thickness,bottom:thickness,left:thickness};
+    var insets = {};
     ["top","right","bottom","left"].forEach(function(edge) {
+        insets[edge]=edgeThickness(options,edge,thickness);
         var enabled = placements.filter(function(p) { return p.enabled && p.edge===edge; });
         if (!enabled.length) return;
         // Wayland reserves a whole edge. Local paint still reserves enough room
         // for its module so application windows cannot obscure that foreground.
         if (reservation || enabled.length!==1 || options?.singleModuleExpansion?.[edge]!=="local")
-            insets[edge] = Math.max(minimum,stripDepth(placements,edge,options,fontScale));
+            insets[edge] = Math.max(insets[edge],minimum,stripDepth(placements,edge,options,fontScale));
     });
     return insets;
 }

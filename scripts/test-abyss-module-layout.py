@@ -14,6 +14,24 @@ for (const edge of ['top','right','bottom','left']) {
  assert.equal(moduleSize(shared,{edgeThickness:Infinity}),1,'invalid thickness is bounded');
 }
 
+for (const edge of ['top','right','bottom','left']) {
+ const opts={edgeThickness:16,edgeThicknesses:{[edge]:32}}, other=['top','right','bottom','left'].find(e=>e!==edge);
+ assert.equal(edgeThickness(opts,edge),32);assert.equal(edgeThickness(opts,other),16,'other physical Edges are unchanged');
+ assert.equal(edgeInsetsForModules([],opts,1,16,48,false)[edge],32,'empty Edge has selected pixel thickness');
+ assert.equal(moduleSize({edge,customSize:false},opts),2,'inherited module size follows selected physical Edge');
+ assert.equal(moduleSize({edge,size:1.3,customSize:true},opts),1.3,'custom override remains independent');
+ assert.equal(edgeThickness({edgeThickness:24,edgeThicknesses:{[edge]:-1}},edge),24,'inherit sentinel follows Surface thickness');
+ assert.equal(edgeThickness({edgeThicknesses:{[edge]:Infinity}},edge),16,'invalid override degrades safely');
+ const placements=normalize([{kind:'clock',edge}],edge);
+ assert.equal(edgeInsetsForModules(placements,{...opts,singleModuleExpansion:{[edge]:'local'}},1,16,48,false)[edge],32,'local module retains chosen resting thickness');
+}
+const thicknessProfile={edgeThicknesses:{top:20},outputLayouts:[{outputName:'B',placements:[],edgeThicknesses:{left:28}}]};
+const thicknessSaved=saveProfile(thicknessProfile,'A',[],8,true,undefined,undefined,undefined,{right:32});
+assert.deepEqual(thicknessSaved['abyss.modules.outputLayouts'][0].edgeThicknesses,{left:28},'Done preserves another output thickness');
+const thicknessA=optionsForOutput({...thicknessProfile,outputLayouts:thicknessSaved['abyss.modules.outputLayouts']},'A');
+assert.equal(edgeThickness(thicknessA,'right'),32);assert.equal(edgeThickness(thicknessA,'top'),20,'profile overrides merge with global thickness');
+assert.equal(saveProfile(thicknessProfile,'A',[],8,false,undefined,undefined,undefined,{bottom:30})['abyss.modules.edgeThicknesses'].bottom,30,'global Done stores physical Edge thickness');
+
 assert(!catalog.includes('leftSidebarButton') && !catalog.includes('rightSidebarButton'));
 assert(!catalog.includes('wifi') && !catalog.includes('bluetooth'),'connectivity lives in System Tray, not duplicate Edge modules');
 assert.deepEqual(normalize([{id:'old-left',kind:'leftSidebarButton'},{id:'old-wifi',kind:'wifi'},{id:'clock',kind:'clock'},{id:'old-bt',kind:'bluetooth'},{id:'old-right',kind:'rightSidebarButton'}],'top').map(p=>p.id),['clock']);

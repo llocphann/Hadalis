@@ -540,6 +540,12 @@ Singleton {
                         property string bottom: "edge"
                         property string left: "edge"
                     }
+                    property JsonObject edgeThicknesses: JsonObject {
+                        property real top: -1
+                        property real right: -1
+                        property real bottom: -1
+                        property real left: -1
+                    }
                     property JsonObject edgeSizes: JsonObject {
                         property real top: 1
                         property real right: 1

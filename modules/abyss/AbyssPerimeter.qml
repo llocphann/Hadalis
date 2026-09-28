@@ -55,14 +55,14 @@ Scope {
             && Geometry.targets(name, Config.options?.bar?.screenList ?? [], Quickshell.screens.map(s => s.name))
     }
     function outputInsets(name, reservation = false) {
-        const result = Geometry.insets(AbyssStyle.perimeterThickness,root.barEdge,AbyssStyle.perimeterThickness,false)
+        const options=Object.assign({},ModuleLayout.optionsForOutput(Config.options?.abyss?.modules,name),{edgeThickness:AbyssStyle.perimeterThickness})
+        const result = ModuleLayout.edgeInsetsForModules([],options,Appearance.fontSizeScale,AbyssStyle.perimeterThickness,AbyssStyle.barThickness,false)
         if (!root.barOnOutput(name) || (reservation && (Config.options?.bar?.autoHide?.enable ?? false))) return result
         const screen = Quickshell.screens.find(s => s.name === name)
         const vertical = !Geometry.horizontal(root.barEdge)
         const zones = Geometry.barZones((vertical ? Config.options?.bar?.verticalLayout : Config.options?.bar?.layout) ?? {},vertical,Config.options?.bar?.modules ?? {})
         const placements = ModuleLayout.resolve(Config.options?.abyss?.modules,name,ModuleLayout.seed(zones,root.barEdge,screen?.width ?? 1920,screen?.height ?? 1080))
-        return ModuleLayout.edgeInsetsForModules(placements,Object.assign({},ModuleLayout.optionsForOutput(Config.options?.abyss?.modules,name),
-            {edgeThickness:AbyssStyle.perimeterThickness}),Appearance.fontSizeScale,AbyssStyle.perimeterThickness,AbyssStyle.barThickness,reservation)
+        return ModuleLayout.edgeInsetsForModules(placements,options,Appearance.fontSizeScale,AbyssStyle.perimeterThickness,AbyssStyle.barThickness,reservation)
     }
     Connections {
         target: Quickshell
@@ -244,7 +244,7 @@ Scope {
                 NumberAnimation { duration: AbyssStyle.motionNormal; easing.type: Easing.OutCubic }
             }
             readonly property var nativeInsets: {
-                const result = Geometry.insets(AbyssStyle.perimeterThickness,root.barEdge,AbyssStyle.perimeterThickness,false)
+                const result = ModuleLayout.edgeInsetsForModules([],bar.layoutOptions,Appearance.fontSizeScale,AbyssStyle.perimeterThickness,AbyssStyle.barThickness,false)
                 return bar.visible ? ModuleLayout.edgeInsetsForModules(bar.placements,bar.layoutOptions,Appearance.fontSizeScale,
                     AbyssStyle.perimeterThickness,AbyssStyle.barThickness,false) : result
             }

@@ -1445,3 +1445,183 @@ Next evidence-driven optimization remains:
 3. capability-aware Tier 3/4 materialization based on those measurements
 
 Do not bundle these three into one patch.
+
+
+---
+
+## 18. Audit round 4 — upstream archaeology, service coverage and concurrent startup adoption (2026-09-28)
+
+### Snapshot
+
+- Hadalis head reconciled before this update: `4203be378b1a9e7b9fbcc80b5ca047130d5c98cc`
+- iNiR comparison head remains: `bbd304b3ba1662ff0f41a2898b1b1b91cf02f071`
+
+Concurrent work after the round-3 snapshot was reconciled before this update. The intervening Abyss work is focused on IPC indicator geometry/editor behavior and does not invalidate the service/runtime conclusions below.
+
+### 18.1 Capability-aware deferred service materialization has started landing — ADOPTED / STATIC CONTRACT PRESENT
+
+The P0 consumer-matrix work from §15.1 has already produced a first implementation batch on `dev`:
+
+- `243776e9b3f06e9ab1fec8a581a14225e99ea6bd` — `perf(startup): gate optional deferred services`
+- `ed731e901a5583d5a69949d89390c21ac76850cf` — `test(startup): guard deferred service materialization`
+- `f87ddf96de9afc79f6cd7a583abd8ced91f80df8` — `fix(startup): preserve enabled CAVA theme lifecycle`
+- `30887f08ab1caa3bdfbf1ef786ab92dee65fa0b2` — `test(startup): guard enabled CAVA theme lifecycle`
+
+Current behavior:
+
+- `Weather` is shell-forced only when the weather feature is enabled.
+- `CalendarSync` is shell-forced only when external sync is enabled.
+- `FontSyncService` preserves its startup reconciliation when `syncWithSystem` is enabled, but is not materialized for users who disable that feature.
+- `CavaTheme` is not globally forced for ordinary palette consumers, but remains resident when the explicit external CAVA wallpaper-theming side effect is enabled.
+- `Todo` and `Notepad` are no longer force-read/watched by Tier 4; their real consumers instantiate them.
+- `GameMode`, `WindowPreviewService`, `VoiceSearch`, `ShellUpdates` and `Autostart` remain eager for the previously documented policy/IPC/latency reasons.
+- config changes re-run the feature ensure helpers so enabling a feature after startup still materializes its service.
+
+Regression guard:
+
+- `scripts/test-deferred-service-materialization-contract.py`
+
+Important validation status:
+
+- Nix package workflow is green on the current descendant `4ca071d729...` that contains this patch.
+- the current descendant has failing canonical static/regression, packaging-contract and documentation-contract workflows.
+- this audit could identify the failing workflow steps but not retrieve their complete Actions logs through the connector, so it does **not** attribute those failures to the startup patch.
+- therefore classify this batch as **ADOPTED / STATIC CONTRACT PRESENT / FULL GREEN CI PENDING**, not fully validated.
+
+Do not reimplement this batch. The remaining P0 question is measurement: whether further materialization changes or startup staggering produce a real before/after win.
+
+### 18.2 Startup work should now be measured as a timeline, not optimized from timer names — P0 BENCHMARK
+
+The new feature gating removes some unconditional singleton construction, but enabled services still intentionally cluster work in the first seconds.
+
+The next startup experiment should record T+0..T+8 with:
+
+- process start/exit timeline
+- CPU and PSS samples
+- WindowPreview capture/predecode count
+- `checkupdates`
+- font synchronization
+- Weather network/geolocation work
+- ShellUpdates git work
+- ConflictKiller probe
+- native backend daemon/subscription state
+
+The audit found several timers that looked suspicious by static search but are actually one-shot timeouts, debounce timers or sparse safety checks. Do not optimize by interval value alone.
+
+Examples already classified as low/no concern:
+
+- `Brightness`: 5s/30s helper timeouts, not permanent polling.
+- `KeyboardIndicators`: event-driven evdev/FileView path; periodic LED discovery is fallback and backs off.
+- `TlpSettingsService` and `TlpRuntimeCapabilities`: 30-minute safety refresh after the feature is materialized.
+- `PowerProfilePersistence`: 30-minute tlp-pd ownership safety probe plus event-driven stale re-probe.
+- `ThinkFanService`: intentional profile-follow service, 30s active / 5-minute idle safety cadence.
+- `MemoryPressureService`: 5-minute in-process `/proc/self/maps` read; no shell/grep subprocess.
+- `LocalMusic`: Rust MPD subscription is primary; fallback status poll is 30s when closed and 900ms only while the sidebar is open.
+
+### 18.3 ShellExec transient service optimization is intentionally NOT portable to Hadalis — DO NOT PORT
+
+Relevant iNiR optimization:
+
+- `51a5fb01eabe` — `perf(processes): detach launched apps from shell service`
+
+That upstream commit changed app launch from `systemd-run --scope` to a transient service with `Type=exec`.
+
+Hadalis **did adopt that commit historically**, then intentionally reverted the launch model:
+
+- `bd27609c299c` — `fix(launcher): run apps in a transient scope instead of a service`
+
+Reason recorded in Hadalis history:
+
+- launchers such as Zed/VS Code can fork the real process and let the initial launcher exit
+- a transient service can treat that first process exit as unit completion and kill the remaining cgroup
+- a scope remains alive as long as processes remain in it
+
+Later Hadalis commits also added live session/input-method/environment reconstruction around this scope launch path.
+
+Therefore:
+
+- do not re-port upstream `Type=exec` merely for process accounting
+- if shell-cgroup helper retention is measured as a real problem, solve it without regressing fork-and-exit launchers
+- any alternative must test at least VS Code/Zed/Electron, Steam/Wine/X11, native Wayland and working-directory launches
+
+This is a concrete example where the newer upstream perf shape is not automatically correct for Hadalis.
+
+### 18.4 Recent upstream perf commits rechecked — mostly already incorporated/superseded
+
+The following upstream optimizations were explicitly compared against current Hadalis and are already present or superseded:
+
+- `6997f63d6ae4` — frozen video backdrop uses cached representative frame and releases FFmpeg when animation is disabled.
+- `d223b485762c` — AI message QObjects are destroyed on remove/clear.
+- `8e64f872c03a` — Hotspot/WARP 5s status polling runs only while the relevant quick-toggle panel is visible.
+- `4c57f0f6578f` — no per-stripe `Behavior on color` remains in `ZzzDiagonalPattern`.
+- `a001976bd948` — `SidebarHost` has bounded idle content residency/unload.
+- `224df59789ef` / `93d8dc5db833` / `81c36be2e38b` — inactive panel/visual branches are bounded or unloaded, no-visual AltSwitcher routing exists, and icon caches are bounded.
+- the QSG atlas reduction to 1024×1024 is already applied in the launcher.
+- `6f62221556a4` — Control Panel heavy sections already use asynchronous Loader incubation.
+- `c6da2a5312a1`, `841f7ffdebeb`, `9a1b509e5207` — Settings page incubation, loading overlay and page LRU infrastructure are already present.
+- AI/YT Music current-state review did not reveal a new unbounded transient-QObject leak; YT Music caps recent/liked/search collections and AI destroys replaced/cleared message/model objects.
+
+Do not reopen these as port tasks unless a new regression is reproduced.
+
+### 18.5 Settings gap is now narrowed to section-level adoption, not infrastructure — P1
+
+The Settings infrastructure itself is current.
+
+The remaining opportunity is to apply short-residency asynchronous section loading to measured heavy pages that still instantiate all section trees and merely hide inactive ones.
+
+Keep the rollout rule from §13.4:
+
+1. pick one page with a measured construction/RSS cost
+2. preserve static search/deep-link/focus contracts
+3. use short residency to avoid back/forward churn
+4. benchmark before/after
+5. only then expand to additional pages
+
+Do not add another page-cache layer; `SettingsPageHost` already owns that concern.
+
+### 18.6 Additional long-session cache review — low-priority local hygiene
+
+No new P0 leak was found, but two small Hadalis-local growth patterns are worth recording:
+
+- `Wallpapers.videoFirstFrames` and `_knownThumbnailOutputs` are string maps that can grow with the number of distinct video wallpapers/thumbnails touched during a session.
+  - this is bounded naturally by the user's wallpaper library/use, not by time
+  - values are small path strings, not decoded image QObjects
+  - classify **P2 / measure only for very large wallpaper libraries**
+- TLP Settings/Runtime capability singletons continue sparse 30-minute safety refreshes after first materialization.
+  - classify **intentional low-frequency consistency behavior**
+  - do not add unload complexity without evidence
+
+The earlier higher-value local long-session debts remain:
+
+- notification history growth
+- LatexRenderer in-memory registries
+- MPRIS grace-map cleanup
+- MPD artwork/folder cache measurement
+
+### 18.7 Coverage conclusion after round 4
+
+At this point the audit has read or structurally classified every major runtime subsystem and the remaining large service files have been sampled specifically for:
+
+- repeating timers
+- subprocess lifetime
+- file watchers
+- network requests
+- cache growth
+- QObject creation/destruction
+- feature/visibility demand gating
+- native Rust vs Python fallback ownership
+
+Further value is now much higher from runtime measurement than from continuing a blind line-count sweep.
+
+### Revised next task
+
+1. obtain a green canonical validation baseline on a descendant containing the startup/clipboard patches, or identify the unrelated failing contract first
+2. capture the T+0..T+8 startup process/CPU/PSS timeline
+3. benchmark WindowPreview eager vs lazy/hybrid prewarm
+4. choose one measured implementation batch:
+   - WindowPreview policy
+   - one Settings section-residency pilot
+   - reactive GameMode/Niri correctness batch
+   - Abyss shader optimization after the current Abyss visual work stabilizes
+
+Do not combine these optimization classes in one patch.

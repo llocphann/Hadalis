@@ -6,16 +6,12 @@ import qs.modules.common
 import qs.modules.common.widgets
 import "../looks/AbyssWave.js" as Wave
 
-// Launcher follows the same visible-content primitives already proven by
-// BatteryPopup and the embedded Wi-Fi/Bluetooth dialogs:
-//   header: MaterialSymbol + StyledText
-//   selectable row: DialogListItem + direct MaterialSymbol/StyledText content
-//
-// Keep a visual wrapper around the layout, matching other mature StyledPopup
-// consumers that report stable implicit geometry before Abyss rehosts them.
+// Compact Launcher controls use the existing SelectionGroupButton reveal
+// contract: every option always keeps its icon, while only the selected
+// mode/preset exposes its label.
 Item {
     id: root
-    implicitWidth: 360
+    implicitWidth: 260
     implicitHeight: contentColumn.implicitHeight
     width: parent ? parent.width : implicitWidth
     height: parent ? parent.height : implicitHeight
@@ -33,57 +29,35 @@ Item {
         Config.setNestedValues(updates)
     }
 
-    component ChoiceRow: DialogListItem {
+    component CompactChoice: SelectionGroupButton {
         id: choice
+        required property string labelText
         required property string iconName
         required property bool selected
 
-        Layout.fillWidth: true
-        active: selected
-        pointingHandCursor: true
-        implicitHeight: Math.max(44, contentItem.implicitHeight + verticalPadding * 2)
-
-        contentItem: RowLayout {
-            spacing: 10
-
-            MaterialSymbol {
-                Layout.alignment: Qt.AlignVCenter
-                text: choice.iconName
-                iconSize: Appearance.font.pixelSize.larger
-                color: Appearance.colors.colOnSurfaceVariant
-            }
-
-            StyledText {
-                Layout.fillWidth: true
-                Layout.alignment: Qt.AlignVCenter
-                text: choice.buttonText
-                color: Appearance.colors.colOnSurfaceVariant
-                elide: Text.ElideRight
-                maximumLineCount: 1
-            }
-
-            MaterialSymbol {
-                Layout.alignment: Qt.AlignVCenter
-                visible: choice.selected
-                text: "check"
-                iconSize: Appearance.font.pixelSize.large
-                color: Appearance.colors.colOnSurfaceVariant
-            }
-        }
+        text: labelText
+        buttonIcon: iconName
+        buttonText: selected ? labelText : ""
+        toggled: selected
+        implicitHeight: 34
+        horizontalPadding: 9
+        verticalPadding: 5
+        maxTextWidth: 110
     }
 
     ColumnLayout {
         id: contentColumn
         width: parent.width
-        spacing: 8
+        spacing: 6
 
         Row {
             spacing: 5
+            Layout.alignment: Qt.AlignHCenter
 
             MaterialSymbol {
                 anchors.verticalCenter: parent.verticalCenter
                 text: "speed"
-                iconSize: Appearance.font.pixelSize.large
+                iconSize: Appearance.font.pixelSize.normal
                 color: Appearance.colors.colOnSurfaceVariant
             }
 
@@ -92,15 +66,15 @@ Item {
                 text: Translation.tr("Surface Performance")
                 font {
                     weight: Font.Medium
-                    pixelSize: Appearance.font.pixelSize.normal
+                    pixelSize: Appearance.font.pixelSize.small
                 }
                 color: Appearance.colors.colOnSurfaceVariant
             }
         }
 
-        ColumnLayout {
-            Layout.fillWidth: true
-            spacing: 4
+        RowLayout {
+            Layout.alignment: Qt.AlignHCenter
+            spacing: 5
 
             Repeater {
                 model: [
@@ -109,9 +83,9 @@ Item {
                     {label:"Quality", value:"quality", icon:"auto_awesome"}
                 ]
 
-                delegate: ChoiceRow {
+                delegate: CompactChoice {
                     required property var modelData
-                    buttonText: Translation.tr(modelData.label)
+                    labelText: Translation.tr(modelData.label)
                     iconName: modelData.icon
                     selected: Config.options?.abyss?.quality === modelData.value
                     onClicked: root.applyQuality(modelData.value)
@@ -125,11 +99,12 @@ Item {
 
         Row {
             spacing: 5
+            Layout.alignment: Qt.AlignHCenter
 
             MaterialSymbol {
                 anchors.verticalCenter: parent.verticalCenter
                 text: "waves"
-                iconSize: Appearance.font.pixelSize.large
+                iconSize: Appearance.font.pixelSize.normal
                 color: Appearance.colors.colOnSurfaceVariant
             }
 
@@ -138,15 +113,15 @@ Item {
                 text: Translation.tr("Wave Preset")
                 font {
                     weight: Font.Medium
-                    pixelSize: Appearance.font.pixelSize.normal
+                    pixelSize: Appearance.font.pixelSize.small
                 }
                 color: Appearance.colors.colOnSurfaceVariant
             }
         }
 
-        ColumnLayout {
-            Layout.fillWidth: true
-            spacing: 4
+        RowLayout {
+            Layout.alignment: Qt.AlignHCenter
+            spacing: 5
 
             Repeater {
                 model: [
@@ -156,9 +131,9 @@ Item {
                     {label:"Deep", value:"deep", icon:"tsunami"}
                 ]
 
-                delegate: ChoiceRow {
+                delegate: CompactChoice {
                     required property var modelData
-                    buttonText: Translation.tr(modelData.label)
+                    labelText: Translation.tr(modelData.label)
                     iconName: modelData.icon
                     selected: (Config.options?.abyss?.waves?.preset ?? "balanced")
                         === modelData.value

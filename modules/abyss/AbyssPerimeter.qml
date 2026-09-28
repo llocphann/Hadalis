@@ -406,6 +406,7 @@ Scope {
                 depth: (Geometry.horizontal(edge) ? (contentItem.item?.desiredHeight ?? 300) : (contentItem.item?.desiredWidth ?? 390))+padding*2
                 largeSurface: depth > (Geometry.horizontal(edge) ? window.height : window.width)*.42
                 stableContentSize: true
+                pyramidStack: true
                 obstacles: window.sideObstacles
                 contentKind: GlobalStates.abyssPopupKind || "media"
                 property bool triggerHovered: ["wifi","bluetooth","utilities"].includes(contentKind)
@@ -463,6 +464,7 @@ Scope {
                         : (embeddedItem?.implicitWidth ?? 1))+padding*2
                     largeSurface: depth
                         > (Geometry.horizontal(edge) ? window.height : window.width)*.42
+                    pyramidStack: true
                     readonly property rect anchorBounds:
                         hostedPopup?._anchorRect(window.width,window.height)
                             ?? Qt.rect(0,0,0,0)

@@ -25,15 +25,30 @@ Item {
     function show(kind: string, autoHide = true): void {
         if (!configured || !initialized) return
         if (kind === "media" && (!(Config.options?.osd?.mediaEnabled ?? true) || !MprisController.activePlayer)) return
-        const hoveredOutput = kind === "media" && GlobalStates.abyssOsdKind === "media" ? GlobalStates.abyssOsdHoverOutput : ""
-        hide()
+        const compact=["volume","brightness","mic","keyboardLayout"]
+        const compactKind=compact.includes(kind)
+        const hoveredOutput = kind === "media" && GlobalStates.abyssOsdKind === "media"
+            ? GlobalStates.abyssOsdHoverOutput : ""
+
+        timeout.stop()
         syncing = true
+        GlobalStates.abyssOsdMessage = ""
         GlobalStates.abyssOsdKind = kind
-        GlobalStates.osdVolumeOpen = kind === "volume" || kind === "voiceSearch"
-        GlobalStates.osdBrightnessOpen = kind === "brightness"
-        GlobalStates.osdMicOpen = kind === "mic"
-        GlobalStates.osdMediaOpen = kind === "media"
-        GlobalStates.osdKeyboardLayoutOpen = kind === "keyboardLayout"
+        if (compactKind) {
+            // Compact IPC indicators may coexist. Keep already-active compact
+            // peers so the shared OSD body can lay them out side-by-side.
+            GlobalStates.osdMediaOpen = false
+            if (kind === "volume") GlobalStates.osdVolumeOpen = true
+            if (kind === "brightness") GlobalStates.osdBrightnessOpen = true
+            if (kind === "mic") GlobalStates.osdMicOpen = true
+            if (kind === "keyboardLayout") GlobalStates.osdKeyboardLayoutOpen = true
+        } else {
+            GlobalStates.osdVolumeOpen = kind === "voiceSearch"
+            GlobalStates.osdBrightnessOpen = false
+            GlobalStates.osdMicOpen = false
+            GlobalStates.osdMediaOpen = kind === "media"
+            GlobalStates.osdKeyboardLayoutOpen = false
+        }
         GlobalStates.abyssOsdHoverOutput = hoveredOutput
         syncing = false
         if (autoHide && !hoveredOutput) timeout.restart()

@@ -80,6 +80,8 @@ Item {
     property var obstacles: []
     property string source: ""
     property string contentKind: ""
+    // Only popup bodies opt into size-ordered same-anchor stacking.
+    property bool pyramidStack: false
     // External presenters such as StyledPopup own their own reveal fraction.
     // Keep that motion independent from allocator availability: otherwise the
     // host's Behavior would re-animate every incoming reveal frame.
@@ -103,6 +105,7 @@ Item {
         placementRequest: ({id:root.identity,open:root.open,order:root.activationOrder,
             priority:root.placementPriority,padding:root.padding,
             minSpan:root.minimumSpan,minDepth:root.minimumDepth,
+            pyramidStack:root.pyramidStack,
             record:root.requestedRecord})
         inputBounds: root.inputBounds
         mass: root.mass

@@ -23,12 +23,25 @@ Singleton {
         }
     }
 
+    function _liquidAnchorFor(item): var {
+        for (let ancestor = item; ancestor; ancestor = ancestor.parent) {
+            if (ancestor.liquidController)
+                return ancestor
+        }
+        return null
+    }
+
     function _validItem(item): bool {
         const window = root._windowFor(item)
+        // Registered sources are usable only when they already belong to an
+        // Abyss connected surface. This prevents a still-visible Waffle/shared
+        // tray instance from resolving and making StyledPopup fall back to a
+        // detached native popup window.
         return item !== null && item !== undefined
             && item.visible && item.enabled
             && Number(item.width ?? 0) > 0
             && Number(item.height ?? 0) > 0
+            && root._liquidAnchorFor(item) !== null
             && window !== null
             && window.screen !== null
             && window.screen !== undefined

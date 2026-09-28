@@ -43,14 +43,17 @@ def main() -> None:
     ):
         assert required in SHELL, f"required eager deferred service missing: {required}"
 
-    # CavaTheme has no independent startup obligation: visualizer consumers
-    # materialize the singleton when they first read its palette.
-    assert "root._cavaThemeService = CavaTheme" not in SHELL
-    assert "property var _cavaThemeService" not in SHELL
+    # CavaTheme is consumer-lazy when ordinary shell visualizers need only its
+    # palette, but the explicit external CAVA theming feature owns a track-change
+    # side effect and must keep the singleton resident while enabled.
+    assert "Config.options?.appearance?.wallpaperTheming?.enableCava ?? false" in deferred
+    assert "root._cavaThemeService = CavaTheme" in deferred
+    assert "property var _cavaThemeService" in SHELL
 
     # The feature-gated services must have exactly one explicit shell assignment,
     # all inside the helper functions above.
     assert SHELL.count("root._weatherService = Weather") == 1
+    assert SHELL.count("root._cavaThemeService = CavaTheme") == 1
     assert SHELL.count("root._calendarSyncService = CalendarSync") == 1
     assert SHELL.count("root._fontSyncService = FontSyncService") == 1
 

@@ -5105,3 +5105,318 @@ Add these to the existing benchmark queue:
 4. Continue existing MediaArtworkResolver cold-miss and warm-cache process tests from §§25.5–25.6; current source still has no shared in-flight request owner.
 
 No runtime implementation is authorized by this handoff.
+
+## 35. Audit round 21 — prompt multi-output reactivity and Config fan-out refinement (2026-09-29)
+
+This round is documentation/research only. No runtime/source implementation is authorized.
+
+### Snapshot and runtime delta
+
+- Hadalis `dev` at round close: `71dd854524a0d909fbb09401e1ac856ca8a4b324`.
+- Since the previous research handoff `bd3d73fcb792e30b9b937372b451929266597510`, runtime work has concentrated on the new Abyss confirmation/Polkit popup path and associated anchor/auth-flow correctness.
+- The existing OpenCV, Hyprland, Themes, World Clock, MPRIS and Config hot paths audited below were re-read against current `dev`.
+- No runtime/source implementation is authorized by this section.
+
+The strict rule remains: preserving visible output is not enough. A candidate is only called lossless when it also preserves public service contracts, ordering, refresh/freshness behavior, authentication semantics and extension-visible state.
+
+### 35.1 Confirmation prompt payload is propagated into one full content tree per output although only one output can present — CONFIRMED hidden-work duplication / P2 multi-monitor
+
+`AbyssPerimeter.qml` creates one `AbyssConfirmationPresenter` inside every output-local PanelWindow.
+
+Each presenter correctly computes a single-output ownership condition:
+
+`ConfirmationService.targetOutputName === root.outputName`
+
+and only the owner can make its StyledPopup visible.
+
+However every presenter still binds:
+
+`request: ConfirmationService.currentRequest`
+
+and passes that same request to its eagerly-created `AbyssConfirmationContent`.
+
+Therefore one confirmation request is observed by every output's content tree even though only one of those trees is eligible to present.
+
+The content work includes:
+
+- title/message/details/action derived properties;
+- three top-level `TextMetrics`;
+- one action `Repeater`;
+- one additional `TextMetrics` per action delegate;
+- `onRequestChanged` state reset plus a queued `forceActiveFocus()`.
+
+For `S` outputs, request-specific QML work therefore scales approximately O(S) while visible presentation remains O(1).
+
+Lossless direction:
+
+- retain one presenter per output and retain the current ownership/anchor/popup contract;
+- propagate request-specific model work only into the current owner;
+- non-owner presenters remain structurally present but hold a neutral request/model state;
+- if ownership can change before presentation, synchronously materialize the current request into the new owner before it becomes visible.
+
+Acceptance:
+
+- same output/anchor selection;
+- same request id and action order;
+- same width/height/text metrics on the owner;
+- same focus and Escape/Enter behavior;
+- no intermediate popup on a non-owner output.
+
+Expected impact is an operation-count reduction from O(S) prompt-content updates to O(1). No shell-wide percentage is claimed.
+
+### 35.2 New Abyss Polkit presenter repeats a larger live-model/focus pipeline on every output — CONFIRMED hidden-work duplication / P1-P2 multi-monitor
+
+The new `AbyssPolkitPresenter.qml` follows the same one-presenter-per-output architecture.
+
+Only:
+
+`PolkitService.targetOutputName === root.outputName`
+
+may present the authentication UI.
+
+Nevertheless every output currently owns:
+
+- a reactive `liveModel` object containing the complete Polkit presentation state;
+- a `latchedModel`;
+- `onLiveModelChanged: captureLiveModel()`;
+- `Object.assign({}, root.liveModel)` while Polkit is active;
+- a full `AbyssPolkitContent` tree.
+
+The content tree also independently connects to `PolkitService` for:
+
+- request serial changes;
+- interaction-availability changes;
+- active-state changes;
+
+and performs response clearing/refocus behavior.
+
+As a PAM/Polkit conversation advances, every output therefore rebuilds/copies the presentation model and runs hidden content-side reactive handlers, although only one output owns the authentication popup.
+
+Lossless direction:
+
+- keep the Polkit backend, `AuthFlow`, identity selection, request serial, cancellation and response submission completely unchanged;
+- only the owning output latches the live presentation model and runs request-specific content handlers;
+- non-owner presenter instances may remain resident for anchor/output readiness but must not mirror the live authentication model;
+- preserve the current owner-side latch after `PolkitService.active` drops so close/retract animation still displays the final model until the popup is actually released.
+
+For `S` outputs, request-state propagation/copying can change from O(S) to O(1).
+
+This is a QML/reactivity optimization only. Do not move authentication state out of `PolkitServiceImpl` or change the AuthFlow conversation.
+
+### 35.3 Prompt content residency itself is a separate, weaker candidate — NEEDS BENCHMARK / P2 memory
+
+`StyledPopup` lazily owns its native presentation surface, but its `default property Item contentItem` is supplied as a direct QML child.
+
+Therefore the new Confirmation and Polkit presenters eagerly instantiate their content trees once per output even when there is no prompt.
+
+A Loader could reduce dormant prompt-content residency from O(S) trees toward zero/one, but this is **not yet strict-lossless** because first-request construction may alter:
+
+- first-open latency;
+- focus timing;
+- TextMetrics readiness;
+- the exact frame at which popup geometry becomes available.
+
+Keep owner-only live-model/request propagation (§§35.1–35.2) separate from lazy content construction. The former is statically safer; the latter needs first-open latency and focus parity measurement.
+
+### 35.4 Config global invalidation is larger than the earlier search count, but direct-binding replacement is NOT proven lossless — REFINED INVESTIGATE / P1
+
+§25.7 recorded at least 41 files / 88 returned search occurrences using `Config.getNestedValue(...)`.
+
+A current-`dev` manual audit of only 28 runtime QML files now verifies at least **153 fixed-literal call sites**.
+
+The first 15 desktop-widget files alone account for 129 calls:
+
+- clock/Cookie-clock family: 45;
+- BatteryWidget: 7;
+- VisualizerWidget: 23;
+- CalendarUpcomingWidget: 5;
+- SystemMonitorWidget: 11;
+- JapaneseTypographyWidget: 38.
+
+Thirteen additional media/settings/recorder files add at least 24 fixed-schema reads.
+
+These are a lower bound, not a whole-repository count.
+
+The important correction is that fixed schema does **not** automatically mean a direct `Config.options....` binding is equivalent.
+
+Current `Config._applyNestedKey()` walks JsonObjects through JavaScript bracket notation and writes:
+
+`obj[lastKey] = convertedValue`.
+
+The repository itself documents why `Config.revision` exists: nested writes through this path have not always generated the narrow QML property notifications required for reliable live bindings. The changelog and `Appearance.qml` both preserve explicit revision dependencies for this reason.
+
+Therefore:
+
+- do not globally replace `Config.getNestedValue()` with direct typed-property reads;
+- do not remove global `Config.revision`;
+- do not assume typed JsonAdapter schema proves notification parity.
+
+The valid architecture target is still **scoped/path-aware invalidation with a global compatibility fallback**:
+
+1. preserve public `Config.revision` and `configChanged()`;
+2. preserve dynamic/custom-widget paths on the current global fallback;
+3. provide a narrow revision/subtree invalidation mechanism for internal call sites whose dependency set is known;
+4. ensure `setNestedValue`, `setNestedValues`, external file reload, migrations and adapter reconstruction all update the same scoped revision contract;
+5. migrate call sites only after focused binding tests prove that the exact key/subtree remains reactive.
+
+This finding strengthens the scale of the problem while narrowing the safe solution.
+
+### 35.5 AbstractBackgroundWidget shows why scoped revisions are preferable to deleting revision dependencies — REFINED / P1
+
+Every live desktop widget inherits `AbstractBackgroundWidget`.
+
+Its `desktopPersistentZ` currently depends on:
+
+- `Config.revision`;
+- `Config.getNestedValue("background.widgets.layerOrder", ...)`, which itself already depends on `Config.revision`.
+
+Thus every unrelated config revision can make every live desktop widget recalculate its persistent stacking lookup, although its logical Config input is only `background.widgets.layerOrder`.
+
+A dedicated layer-order/subtree revision can preserve exact behavior while avoiding unrelated wakeups.
+
+By contrast, `overlappingLayerCount` also reads `Config.revision` before scanning sibling geometry. That broad dependency may currently be compensating for geometry/lifecycle changes that the binding cannot otherwise observe.
+
+Do **not** remove the latter dependency unless Background/WidgetCanvas first exposes a dedicated overlap/layout generation that changes on every relevant widget:
+
+- add/remove;
+- geometry move/resize;
+- persistent layer-order change;
+- output-layout change.
+
+This distinction is the model for future Config work: narrow only dependencies whose full invalidation set is known.
+
+### 35.6 MPRIS Config handler contains one statically dead O(P) scan, but the whole rebuild trigger must remain — CONFIRMED small lossless candidate / P2
+
+Current `MprisController` handles every `Config.configChanged` by:
+
+1. `_updateMpvCache()`;
+2. `_rebuildPlayerList()`.
+
+A full dependency audit shows only three Config reads in this service:
+
+- `media.filterDuplicatePlayers`;
+- `sidebar.ytmusic.enable`;
+- `osd.mediaEnabled` for feedback only.
+
+It is tempting to suppress the whole rebuild when the first two keys did not change. Under the strict-lossless rule, **do not do that**.
+
+`_filterYtMusicDuplicates()` compares live player title/position/length/URL. An unrelated Config event can currently cause that dynamic grouping to be reevaluated at that moment. Removing that trigger changes refresh timing even if it is accidental.
+
+The narrower confirmed waste is `_updateMpvCache()`.
+
+That function only scans `Mpris.players.values` and derives two booleans from player DBus names:
+
+- whether an `mpv.instance...` player exists;
+- whether the base `org.mpris.MediaPlayer2.mpv` player exists.
+
+Those values depend on **player membership/name**, not Config, playback position, Plasma capability or YtMusic metadata.
+
+Player construction/destruction paths already call `_updateMpvCache()`.
+
+Therefore the extra calls from:
+
+- every Config change;
+- `hasPlasmaIntegrationChanged`;
+- `YtMusic.mpvPlayerChanged`;
+
+are redundant with respect to the cache's own input.
+
+Lossless direction:
+
+- retain every current `_rebuildPlayerList()` trigger;
+- retain membership-triggered `_updateMpvCache()`;
+- remove only cache scans caused by events that cannot change MPRIS DBus-name membership.
+
+For `P` live players and `K` unrelated Config changes, this removes roughly O(K*P) immediate scans plus the same number of fresh two-field cache-object allocations. This is a small CPU/allocation win, not a process-count win.
+
+### 35.7 Themes hidden-tab polling cannot be gated away by visibility alone under strict lossless semantics — CORRECTION / keep §34.5 High confidence
+
+Static consumer tracing confirms `savedThemePresets` is only rendered by the Colors section.
+
+However the current two-second poll continues while Type/Motion/Advanced is active, which means an external theme-file edit can be preloaded before the user switches back to Colors.
+
+Simply stopping the poll on hidden tabs would make the first Colors frame potentially show stale saved-theme state until a new subprocess finishes.
+
+Therefore tab visibility alone is **not** sufficient for a strict-lossless implementation.
+
+The safe direction remains §34.5:
+
+- event-driven directory/file watching with ordering/atomic-replace parity; or
+- another design that guarantees refreshed state before Colors is presented.
+
+The already-confirmed per-theme `basename` process removal (§34.4) is unaffected.
+
+### 35.8 World Clock preview must retain the global Config-trigger refresh unless time freshness is replaced equivalently — CORRECTION
+
+`InterfaceConfig.qml` World Clock preview derives its subprocess command from:
+
+- configured timezone list;
+- 12/24-hour format.
+
+But its `onConfigChanged` handler also refreshes the **current wall-clock value** immediately.
+
+An unrelated Config change can therefore advance preview time before the next 20-second periodic tick.
+
+Signature-gating that handler only on timezone/format keys would change the timing/freshness contract.
+
+Do not remove the current Config-trigger refresh merely because unrelated keys do not affect the command template.
+
+The confirmed optimization remains §34.1:
+
+- preserve every current trigger;
+- preserve timezone order and displayed values;
+- batch all timezone formatting into one Bash process using builtins instead of one external `date` child per zone.
+
+### 35.9 MediaArtworkResolver in-flight sharing remains High confidence, not Confirmed under the strict byte-equivalence rule
+
+Current source confirms separate resolver instances can target the same hashed cache path and independently start HTTP downloads into separate temp files before atomically replacing the final cache file.
+
+That is real duplicate network/process work.
+
+However two simultaneous requests to a dynamic HTTP origin are not mathematically guaranteed to return identical bytes. A shared in-flight owner would force peers to consume the first response, changing a race-edge behavior that exists today.
+
+Similarly, the local-file path validates the source and later validates it again before copy; merging the two stages changes the filesystem mutation race window.
+
+Therefore:
+
+- keep remote shared in-flight dedup at High confidence / needs cache-contract definition;
+- keep local validate+copy fusion at High confidence;
+- do not promote either to strict Confirmed merely from duplicate-process evidence.
+
+Warm-cache process avoidance from §25.5 remains a separate candidate.
+
+### 35.10 Notification-history serialization remains a benchmark/contract candidate, not a Confirmed cache rewrite
+
+Current notification persistence still maps/filters/pretty-serializes the full retained history on relevant writes.
+
+The synchronous O(N) JS/allocation cost is real.
+
+But a per-notification serialized cache is not automatically equivalent because notification QObjects may mutate after ingress; the current later serialization observes their then-current fields.
+
+Likewise pretty -> compact JSON changes the persisted byte representation even if parsing results match.
+
+Under the exact-lossless rule:
+
+- measure this path;
+- do not introduce a retention cap;
+- do not cache serialized notification state unless mutation invalidation is complete;
+- do not change persistence representation without an explicit contract decision.
+
+### 35.11 Round-21 priority update
+
+Newly promoted/strongest safe work from this round:
+
+1. **Confirmation owner-only request/content propagation** — Confirmed multi-output hidden-work elimination.
+2. **Polkit owner-only presentation-model/content reactivity** — Confirmed multi-output hidden-work elimination; preserve AuthFlow and owner latch semantics.
+3. **MPRIS `_updateMpvCache()` membership-only refresh** — Confirmed small CPU/allocation cleanup.
+4. **Config scoped invalidation** — stronger scale evidence (>=153 fixed call sites in a partial audit), but still Investigate because global revision covers real notification gaps.
+
+Corrections that must prevent accidental non-lossless implementation:
+
+- do not replace fixed `getNestedValue` calls with direct bindings wholesale;
+- do not stop saved-theme polling solely based on hidden task-tab visibility;
+- do not signature-gate World Clock's current Config refresh without preserving time freshness;
+- do not suppress the whole MPRIS rebuild on unrelated Config changes;
+- do not call MediaArtwork remote in-flight dedup byte-equivalent until the cache contract explicitly permits one response to represent concurrent requests.
+
+No runtime implementation is authorized by this handoff.

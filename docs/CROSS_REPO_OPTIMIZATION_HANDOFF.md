@@ -4860,3 +4860,248 @@ The safe order is now:
 7. Do **not** narrow `HyprlandData` refresh/query families based only on checked-in core consumers.
 
 No runtime implementation is authorized by this handoff.
+
+## 34. Audit round 20 — Settings world-clock child fan-out and saved-theme polling (2026-09-29)
+
+This round is documentation/research only. No runtime/source implementation is authorized.
+
+### Snapshot
+
+- Hadalis `dev` at round start: `cfa920d8b2e74afd1d5e8154da0425b160c62cfa`.
+- No runtime/source delta preceded this round; HEAD was the round-19 documentation commit.
+- Hyprland compatibility conclusions from §33 remain unchanged. This round intentionally moved away from risky Hyprland feature elimination and looked for exact subprocess duplication elsewhere.
+
+### 34.1 World Clock Settings preview spawns one external `date` child per configured timezone — CONFIRMED / P1-settings process churn
+
+`modules/settings/InterfaceConfig.qml` contains a live preview for the sidebar World Clock.
+
+While the Widgets settings section is active and the World Clock subsection is visible:
+
+- a repeating timer runs every **20 seconds**;
+- `triggeredOnStart: true`;
+- every Config change while that section is active also calls `refreshLiveTimes()`.
+
+For `N` configured timezone rows, `refreshLiveTimes()` builds one Bash command containing `N` command substitutions of this shape:
+
+`$(TZ='<zone>' date '+<time-format>|%:z')`
+
+Therefore one refresh currently creates approximately:
+
+- 1 Bash process;
+- N external `date` processes.
+
+Child-process count per refresh is **N + 1**.
+
+Hadalis already contains a behaviorally stronger precedent in `modules/sidebarLeft/widgets/WorldClockWidget.qml`:
+
+- timezone names are passed as argv, not interpolated into shell source;
+- one Bash process loops over all zones;
+- Bash builtin `printf '%(...)T'` obtains timezone-aware time/offset data;
+- the widget explicitly uses this to avoid one `date` child per timezone.
+
+Lossless-shaped direction for the Settings preview:
+
+1. preserve the current 20-second timer and current Config-triggered refreshes initially;
+2. preserve configured timezone order;
+3. keep one Bash process;
+4. obtain every zone's time and `%z` offset through Bash builtin `printf %T`;
+5. convert the offset to the current `%:z` display shape without external per-zone commands.
+
+Static operation impact:
+
+- N+1 child processes -> 1 per preview refresh;
+- removes exactly N process creations per refresh;
+- for four configured zones: **5 -> 1**, or **80% fewer child processes for that refresh**.
+
+This percentage is process-count reduction for this narrow operation only, not a whole-shell CPU estimate.
+
+Do not narrow the current refresh triggers merely to save work until UI freshness semantics are separately proven.
+
+### 34.2 Sidebar World Clock itself is already batched, but seconds mode still creates one Bash process per second — NEEDS PARITY / P2 conditional
+
+`modules/sidebarLeft/widgets/WorldClockWidget.qml` is already much better than the Settings preview:
+
+- all timezones share one Bash process per refresh;
+- no per-zone `date` children exist;
+- refresh is gated by `GlobalStates.sidebarLeftOpen`.
+
+Its timer cadence is:
+
+- `showSeconds == true`: every 1 second;
+- otherwise: every 30 seconds.
+
+Thus seconds mode creates up to **60 Bash processes per minute while Sidebar Left is open**, while normal minute-resolution mode creates roughly two per minute.
+
+A fully in-process timezone renderer could eliminate this remaining process churn, but it is **not yet proven lossless**:
+
+- current output uses libc/Bash `strftime` formatting;
+- timezone/DST boundaries must match exactly;
+- date/day-of-year/day-delta behavior must remain identical;
+- 12/24-hour text and locale-sensitive date formatting must retain existing output.
+
+Do not replace it with offset caching alone: a cached offset can be stale across a DST transition.
+
+Keep this as a parity/benchmark target, not an authorized implementation candidate.
+
+### 34.3 Themes page runs saved-theme subprocess polling every two seconds across all task tabs — CONFIRMED / P1 hidden process churn
+
+`modules/settings/ThemesConfig.qml` owns `savedThemesProcess`.
+
+Its current command is effectively:
+
+- 1 login Bash;
+- for each `*.json` saved theme:
+  - 1 external `basename`;
+  - 1 external `jq`.
+
+For `N` saved themes, one inventory refresh therefore creates approximately:
+
+**1 + 2N child processes.**
+
+The refresh timer is:
+
+- interval: 2000 ms;
+- repeat: true;
+- `triggeredOnStart: true`;
+- `running: root.visible && customThemeEditorSection.expanded`.
+
+The important residency fact is that `customThemeEditorSection.expanded` is statically `true`, while the section itself is only visible for `activeSection === "advanced"`.
+
+Therefore, whenever the **Themes page itself is visible**, this 2-second process poll remains active not only in Advanced but also while the user is on:
+
+- Colors;
+- Type;
+- Motion.
+
+Saved presets are displayed on the Colors tab, so simply gating polling to Advanced would not preserve current behavior. On Type/Motion, however, the same inventory work is still performed even though saved-theme UI is not visible.
+
+Static process rate:
+
+- refreshes: about 30 per minute while the Themes page remains visible;
+- child creations: about `30 * (1 + 2N)` per minute.
+
+Examples:
+
+- N=0: ~30 Bash children/minute;
+- N=4: ~270 children/minute;
+- N=10: ~630 children/minute.
+
+These are operation counts derived from source cadence, not CPU-time estimates.
+
+### 34.4 Per-theme `basename` in ThemesConfig is independently removable without changing refresh policy — CONFIRMED small sub-candidate
+
+Within the existing Bash `for f in .../*.json` loop, the theme name is derived by launching:
+
+`/usr/bin/basename "$f" .json`
+
+The loop already owns the full path in shell variable `f`.
+
+Shell parameter expansion can derive the basename and remove the known `.json` suffix without changing:
+
+- file enumeration;
+- loop ordering;
+- `jq` behavior;
+- invalid-JSON handling;
+- timer cadence;
+- saved-theme object shape.
+
+Therefore the narrow process-count reduction is:
+
+**1 + 2N -> 1 + N** per poll,
+
+removing exactly one external process per saved theme while preserving the current `jq`-per-file parser behavior.
+
+This is useful even if the larger polling architecture is not changed.
+
+### 34.5 Saved-theme polling has an event-driven lossless architecture available in the existing stack — HIGH CONFIDENCE / needs ordering + atomic-replace parity
+
+Hadalis already ships and uses `Qt.labs.folderlistmodel` in production paths such as Wallpapers and GlobalActions.
+
+Qt's current FolderListModel implementation confirms:
+
+- it uses `QFileSystemWatcher` when available;
+- it exposes `fileName`, `filePath`, `fileBaseName`, `fileModified`, etc.;
+- directory updates can emit model `dataChanged`;
+- additions/removals update the model.
+
+Hadalis' `FileView` already provides `watchChanges: true` for file-content changes.
+
+Therefore a lossless-shaped replacement for the 2-second process poll is available without inventing a new daemon:
+
+- FolderListModel owns the `*.json` directory membership;
+- one watched FileView per current theme file owns content changes;
+- QML `JSON.parse` can preserve the current skip-invalid-file behavior;
+- add/remove/replace/edit events rebuild only affected saved-theme state;
+- idle steady state creates **zero periodic saved-theme scan processes**.
+
+Why this remains High confidence rather than Confirmed implementation:
+
+- current Bash glob order must be compared against the chosen model/order so preset ordering is pixel-equivalent;
+- atomic-save/rename behavior must be tested;
+- invalid JSON followed by later repair must recover identically;
+- an externally edited file must become visible at least as reliably as the current <=2 s poll.
+
+If those parity tests pass, the steady-state process reduction for this path is essentially:
+
+**~30 * (1 + 2N) child creations per visible Themes-page minute -> 0 periodic scan children.**
+
+Event-triggered work still occurs when the directory/files actually change.
+
+### 34.6 CustomThemeEditor performs a second saved-theme inventory when Advanced is materialized — HIGH CONFIDENCE / P2 duplication
+
+`ThemesConfig.qml` and `CustomThemeEditor.qml` independently enumerate the same directory:
+
+`\${Directories.shellConfig}/themes`.
+
+When the user switches to Advanced:
+
+- the `CustomThemeEditor` Loader becomes active;
+- `Component.onCompleted` starts `mkdir -p`;
+- after that it calls `loadThemesList()`;
+- its separate inventory command is:
+  - Bash;
+  - `ls`;
+  - `xargs`;
+  - one `basename` per theme under the current `xargs -I` contract.
+
+At the same time, the page-level `ThemesConfig` 2-second saved-theme poll continues.
+
+The editor only needs the theme names for its chips, while ThemesConfig already materializes names plus parsed theme contents.
+
+Lossless architecture:
+
+- one saved-theme inventory owner should feed both the Colors preset list and Advanced editor name list;
+- save/delete/external changes invalidate that one owner;
+- preserve current filename ordering and invalid-file semantics required by each consumer.
+
+Even without centralization, the editor's list pipeline can retain the existing `ls` ordering while removing `xargs + one basename process per file` through shell builtins, reducing its one-shot enumeration process fan-out.
+
+### 34.7 System Monitor search false positive closed
+
+A broad timer/process search surfaced `modules/sidebarRight/sysmon/SysMonWidget.qml` as if it still contained a 2-second network subprocess.
+
+Current `dev` does not.
+
+It now uses:
+
+`ResourceUsageMonitor { network: true; active: GlobalStates.sidebarRightOpen }`
+
+and consumes `ResourceUsage.networkRxBytesPerSec/networkTxBytesPerSec`.
+
+Do not reopen a `SysMonWidget` per-2-second-process optimization task from stale search snippets.
+
+### 34.8 Revised next measurement order
+
+Add these to the existing benchmark queue:
+
+1. Themes page, 0/4/10 saved themes:
+   - process starts/minute on Colors, Type, Motion and Advanced;
+   - confirm the static `30 * (1 + 2N)` model.
+2. World Clock Settings with 1/4/10 configured zones:
+   - child process count per 20-second tick and per unrelated Config change.
+3. Sidebar World Clock with seconds on/off:
+   - process starts/minute while sidebar is open;
+   - compare against an in-process timezone prototype only after exact DST/format parity tests.
+4. Continue existing MediaArtworkResolver cold-miss and warm-cache process tests from §§25.5–25.6; current source still has no shared in-flight request owner.
+
+No runtime implementation is authorized by this handoff.

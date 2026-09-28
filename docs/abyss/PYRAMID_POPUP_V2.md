@@ -1,6 +1,6 @@
 # Pyramid Popup v2 — motion architecture
 
-Status: source implementation checkpoint. Owner-runtime visual acceptance is still required.
+Status: source implementation through `0f5c56d177304889d9ae159646fa301bf571c9f7`. Owner-runtime visual acceptance is still required.
 
 ## Why the earlier animation failed
 

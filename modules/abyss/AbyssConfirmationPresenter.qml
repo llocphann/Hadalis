@@ -32,6 +32,20 @@ Item {
             ? ConfirmationService.resolvedAnchor
             : root.fallbackAnchor
 
+    function finishIfReleased(): void {
+        if (!popup.presentationActive
+                && root.ownsRequest
+                && !ConfirmationService.requestVisible)
+            ConfirmationService.finishPresentation(root.requestId)
+    }
+
+    Connections {
+        target: ConfirmationService
+        function onRequestVisibleChanged(): void {
+            root.finishIfReleased()
+        }
+    }
+
     StyledPopup {
         id: popup
         hoverTarget: root.presentationAnchor
@@ -49,12 +63,7 @@ Item {
 
         onRequestClose: ConfirmationService.cancel()
 
-        onPresentationActiveChanged: {
-            if (!presentationActive
-                    && root.ownsRequest
-                    && !ConfirmationService.requestVisible)
-                ConfirmationService.finishPresentation(root.requestId)
-        }
+        onPresentationActiveChanged: root.finishIfReleased()
 
         AbyssConfirmationContent {
             request: root.request

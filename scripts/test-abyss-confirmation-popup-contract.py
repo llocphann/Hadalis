@@ -21,7 +21,9 @@ assert "WindowDialog" not in presenter
 assert "root.hadResolvedAnchor" in presenter
 assert "? ConfirmationService.resolvedAnchor" in presenter
 assert ": root.fallbackAnchor" in presenter
-assert "finishPresentation(root.requestId)" in presenter
+assert "function finishIfReleased(): void" in presenter
+assert "onRequestVisibleChanged" in presenter
+assert "ConfirmationService.finishPresentation(root.requestId)" in presenter
 
 # Top-center fallback is a real source Item on the same liquid controller.
 assert "id: confirmationFallbackAnchor" in perimeter

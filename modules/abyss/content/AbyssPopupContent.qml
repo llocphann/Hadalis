@@ -26,6 +26,7 @@ Item {
         anchors.fill: parent
         sourceComponent: root.kind === "clock" ? calendar : root.kind === "battery" ? battery
             : root.kind === "resources" ? resources : root.kind === "weather" ? weather
+            : ["wifi","bluetooth"].includes(root.kind) ? network
             : root.kind === "audio" ? audio : media
     }
     Component { id: calendar; ClockCalendarPopup { embeddedHost: root } }
@@ -33,6 +34,7 @@ Item {
     Component { id: resources; ResourcesPopup { embeddedHost: root } }
     Component { id: weather; WeatherPopupContent { compact: (root.participant?.width ?? 1920)<compactBreakpoint } }
     Component { id: media; BarMediaPopup { onCloseRequested: root.closeRequested() } }
+    Component { id: network; AbyssNetworkPopup { kind: root.kind; onCloseRequested: root.closeRequested() } }
     Component {
         id: audio
         ColumnLayout {

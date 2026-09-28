@@ -250,7 +250,7 @@ Item {
             id:previewPositions;visible:root.editingPopups;kind:"volume"
             commitImmediately:false;positions:root.draftPositions
             outputSelectionEnabled:false;outputName:root.outputOnly ? root.outputName : ""
-            allowedKinds:["clock","resources","battery","media","weather","volume","brightness","mic","mediaOsd","keyboardLayout"]
+            allowedKinds:["clock","resources","battery","media","weather","wifi","bluetooth","volume","brightness","mic","mediaOsd","keyboardLayout"]
             onPositionsEdited:(positions,kind,outputName,values)=>root.editPosition(positions,kind,outputName,values)
         }
         RowLayout {

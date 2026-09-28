@@ -325,6 +325,8 @@ Scope {
                 padding: 14
                 span: (Geometry.horizontal(edge) ? (contentItem.item?.desiredWidth ?? 390) : (contentItem.item?.desiredHeight ?? 300))+padding*2
                 depth: (Geometry.horizontal(edge) ? (contentItem.item?.desiredHeight ?? 300) : (contentItem.item?.desiredWidth ?? 390))+padding*2
+                largeSurface: depth > (Geometry.horizontal(edge) ? window.height : window.width)*.42
+                stableContentSize: true
                 obstacles: window.sideObstacles
                 contentKind: GlobalStates.abyssPopupKind || "media"
                 source: "content/AbyssPopupContent.qml"

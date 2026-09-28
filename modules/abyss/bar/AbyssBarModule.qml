@@ -7,6 +7,7 @@ import qs.modules.common
 import qs.modules.common.widgets
 import qs.modules.bar as Shared
 import qs.modules.bar.weather
+import qs.modules.abyss.looks
 import qs.modules.verticalBar as Vertical
 
 // Mature feature controls, with popup ownership discovered from this ancestor.
@@ -47,6 +48,7 @@ Item {
             : root.kind === "workspaces" ? workspaces : root.kind === "distroIcon" ? distro
             : root.kind === "activeWindow" ? activeWindow : root.kind === "tray" ? tray
             : root.kind === "utilButtons" ? utilities
+            : ["wifi","bluetooth"].includes(root.kind) ? network
             : root.kind === "timer" ? timer
             : root.kind === "shellUpdate" ? update : root.kind === "weather" ? weather : taskbar
     }
@@ -70,6 +72,15 @@ Item {
     Component { id: activeWindow; Shared.ActiveWindow {} }
     Component { id: tray; Shared.SysTray { vertical: root.vertical; showSeparator: false; showOverflowMenu: true } }
     Component { id: utilities; Shared.UtilButtons { vertical: root.vertical; compactRequested: root.compact } }
+    Component {
+        id: network
+        AbyssButton {
+            compact: true
+            glyph: root.kind === "wifi" ? Network.materialSymbol : BluetoothStatus.activeIcon
+            description: root.kind === "wifi" ? "Wi-Fi connections" : "Bluetooth devices"
+            onClicked: root.request(root.kind)
+        }
+    }
     Component { id: timer; Shared.TimerIndicator { vertical: root.vertical } }
     Component { id: update; Shared.ShellUpdateIndicator { vertical: root.vertical } }
     Component { id: weather; WeatherBar { vertical: root.vertical } }

@@ -1,11 +1,11 @@
 // Persist normalized positions; derive pixel geometry independently per output.
 var catalog = ["distroIcon","activeWindow","resources","media",
     "workspaces","clock","utilButtons","battery","tray",
-    "timer","shellUpdate","weather","taskbar"];
+    "timer","shellUpdate","weather","taskbar","wifi","bluetooth"];
 var labels = {distroIcon:"Launcher",activeWindow:"Active window",
     resources:"System resources",media:"Media",workspaces:"Workspaces",clock:"Clock",
     utilButtons:"Quick actions",battery:"Battery",tray:"System tray",
-    timer:"Timer",shellUpdate:"Updates",weather:"Weather",taskbar:"Taskbar"};
+    timer:"Timer",shellUpdate:"Updates",weather:"Weather",taskbar:"Taskbar",wifi:"Wi-Fi",bluetooth:"Bluetooth"};
 function label(kind) { return labels[kind] || kind; }
 function bounded(value, fallback, low, high) {
     var number = Number(value);

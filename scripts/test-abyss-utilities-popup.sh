@@ -14,10 +14,18 @@ perimeter="$repo_root/modules/abyss/AbyssPerimeter.qml"
 
 for token in \
     'signal utilitiesHoverChanged(bool hovered)' \
-    'Component.onDestruction: root.utilitiesHoverChanged(false)'; do
+    'Component.onDestruction: root.utilitiesHoverChanged(false)' \
+    'onButtonHoveredChanged: root.utilitiesHoverChanged(buttonHovered)'; do
     grep -Fq "$token" "$quick_actions" \
         || { printf 'FAIL: Utilities trigger hover contract missing: %s\n' "$token" >&2; exit 1; }
 done
+grep -Fq 'onButtonHoveredChanged: root.utilitiesHoverChanged(buttonHovered)' "$quick_actions" \
+    || { printf 'FAIL: Utilities trigger does not reuse RippleButton hover state\n' >&2; exit 1; }
+if sed -n '/id: utilitiesButton/,/MaterialSymbol {/p' "$quick_actions" | grep -Fq 'HoverHandler {'; then
+    printf 'FAIL: Utilities trigger inserts a PointerHandler into CircleUtilButton Item-only content\n' >&2
+    exit 1
+fi
+
 for token in \
     'onUtilitiesHoverChanged: hovered =>' \
     'root.hoverRequest("utilities")'; do

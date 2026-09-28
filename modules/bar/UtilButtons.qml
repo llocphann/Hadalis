@@ -476,9 +476,10 @@ Item {
                 Accessible.name: Translation.tr("Open utilities")
                 onClicked: root.utilitiesRequested()
                 Component.onDestruction: root.utilitiesHoverChanged(false)
-                HoverHandler {
-                    onHoveredChanged: root.utilitiesHoverChanged(hovered)
-                }
+                // RippleButton already exposes buttonHovered from its internal
+                // MouseArea. Reuse that signal instead of inserting a
+                // PointerHandler into CircleUtilButton's Item-only default property.
+                onButtonHoveredChanged: root.utilitiesHoverChanged(buttonHovered)
                 MaterialSymbol {
                     horizontalAlignment: Qt.AlignHCenter
                     fill: 0

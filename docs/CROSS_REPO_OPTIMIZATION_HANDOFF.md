@@ -4493,3 +4493,370 @@ Highest-confidence no-behavior-change targets now split into two classes:
 Do not trade freshness, ordering, tie behavior, XWayland coverage or raw-field parity for a lower process count.
 
 No runtime implementation is authorized by this handoff.
+
+## 33. Audit round 19 — Hyprland compatibility boundary and process-free transport candidates (2026-09-29)
+
+This round is documentation/research only. No runtime/source implementation is authorized.
+
+### Snapshot and source-delta note
+
+- Hadalis `dev` at round start: `5f4940a3c487c1b7c81e56456907af5126372042`.
+- Since research handoff commit `ed0d91ac645172c15631f6d9c2abed2013109223`, one runtime commit landed:
+  - `refactor(abyss): reflow pyramid survivors during close`
+- That runtime commit is Abyss/pyramid-specific and does not modify the Hyprland service files audited below.
+- Nevertheless, all conclusions in this round were re-read against current `dev`, not assumed from the previous snapshot.
+
+The stricter rule for this round is:
+
+> A core-repository search returning zero consumers is **not** sufficient proof that a `qs.services` property is unused.
+
+Lossless means preserving observable behavior for core modules **and user-loaded shell extensions/custom widgets**.
+
+### 33.1 Critical correction: `HyprlandData` is an extension-visible service boundary — CONFIRMED
+
+`services/HyprlandData.qml` is registered in `services/qmldir`.
+
+Hadalis documentation explicitly treats services as stability boundaries, and the custom-widget SDK states that:
+
+- custom widgets run inside the same QML engine as the shell;
+- widgets may `import qs.services`;
+- service singletons expose reactive properties directly.
+
+`services/CustomWidgets.qml` also scaffolds user widgets with `import qs.services`.
+
+Therefore a user-installed widget can legally reference `HyprlandData` properties even if no checked-in core QML file references that exact property.
+
+For strict lossless work, treat the currently exposed `HyprlandData` surface as compatibility-sensitive:
+
+- `windowList`
+- `addresses`
+- `windowByAddress`
+- `workspaces`
+- `workspaceIds`
+- `workspaceById`
+- `activeWorkspace`
+- `monitors`
+- `layers`
+- `biggestWindowForWorkspace()`
+
+Preserve property names, value shape, ordering where observable, update/freshness behavior and error-state behavior unless an explicit breaking API change is separately authorized.
+
+### 33.2 Supersede earlier “unused property/query removal” classifications
+
+The following earlier conclusions are **not implementation-safe under the strict lossless requirement** and are superseded by this section:
+
+- §31.2: “`workspaces -j` has no repository consumer, therefore eliminate it.”
+- §31.3: retiring the `activeWorkspace` snapshot by removing its public state.
+- §31.4: demand-gating `layers -j` solely because Region Selector is the only checked-in core consumer.
+- §31.5: demand-gating monitor data solely from checked-in core consumers.
+- §31.7: narrowing refresh events in a way that changes the observable freshness cadence of existing `HyprlandData` properties.
+- §32.5: deleting public `HyprlandData.addresses` because the checked-in Overview binding is otherwise dead.
+
+These remain useful evidence about **core usage**, but not proof that the public service work can be removed.
+
+Safe optimization must keep the public service result equivalent.
+
+### 33.3 No Hyprland subsystem cleanup candidate: real consumers remain — CONFIRMED closure
+
+A fresh repository-wide inventory confirms active consumers for Hyprland-specific functionality including:
+
+- `HyprlandKeybinds`:
+  - cheatsheet;
+  - settings shortcut page.
+- `HyprlandXkb`:
+  - keyboard indicators;
+  - bar/vertical-bar indicator;
+  - ii and Waffle lock surfaces.
+- `HyprlandFocusGrab`:
+  - compositor-aware popup/sidebar focus handling.
+- native `Hyprland.focusedMonitor`, `monitorFor()`, `workspaces`, `toplevels`:
+  - Background;
+  - Overview;
+  - Workspaces;
+  - taskbar previews;
+  - wallpaper selectors;
+  - media/focused-screen routing;
+  - brightness;
+  - session screen;
+  - screen corners.
+- Hyprland dispatch/keyword behavior:
+  - workspace navigation;
+  - reload;
+  - screen zoom;
+  - lock pseudotile/blur workaround;
+  - DPMS;
+  - cursor warp handling;
+  - lock refocus hack.
+
+Do **not** remove or disable these paths as “legacy Hyprland code.” They implement current features.
+
+### 33.4 Stronger lossless architecture: preserve all five HyprlandData queries but remove external `hyprctl` process creation — HIGH CONFIDENCE, needs live parity
+
+The previous rounds focused on eliminating whole query families. Under the extension-compatibility constraint, a safer architecture is to preserve the exact query set and refresh cadence and optimize only the transport.
+
+Current `HyprlandData.updateAll()` issues:
+
+- `hyprctl clients -j`
+- `hyprctl monitors -j`
+- `hyprctl layers -j`
+- `hyprctl workspaces -j`
+- `hyprctl activeworkspace -j`
+
+Hyprland's request socket protocol is what `hyprctl` itself uses. Upstream `hyprctl` opens `.socket.sock`, writes the request string and reads the reply until the server closes the connection.
+
+Equivalent JSON request strings are:
+
+- `j/clients`
+- `j/monitors`
+- `j/layers`
+- `j/workspaces`
+- `j/activeworkspace`
+
+Quickshell exposes:
+
+- `Hyprland.requestSocketPath`;
+- the generic `Quickshell.Io.Socket` Unix-socket type.
+
+Lossless transport candidate:
+
+1. preserve `updateAll()` on the same raw-event cadence initially;
+2. preserve one-in-flight + queued-rerun behavior for each query family;
+3. send the exact request strings to `Hyprland.requestSocketPath`;
+4. parse the raw JSON reply exactly as current collectors do;
+5. preserve public arrays/objects and their ordering;
+6. preserve current parse/failure fallback values;
+7. add a timeout equivalent to `hyprctl`'s current 5-second receive timeout.
+
+Potential effect:
+
+- compositor IPC requests: **still 5** per full refresh wave;
+- external `hyprctl` child processes from this service: **5 -> 0** per full wave.
+
+This is deliberately a process-spawn optimization, not an IPC-query elimination claim.
+
+Compatibility gate:
+
+Hadalis packaging does not currently pin an explicit minimum Quickshell API version in the audited package metadata. Before implementation, verify that every supported Quickshell package/version exposes `Hyprland.requestSocketPath` and the required `Socket` semantics, or retain the current `hyprctl` path as a compatibility fallback.
+
+### 33.5 Quickshell object models are NOT yet a lossless replacement for raw public HyprlandData arrays
+
+Upstream Quickshell source confirms:
+
+- `Hyprland.refreshToplevels()` sends `j/clients`;
+- `Hyprland.refreshWorkspaces()` sends `j/workspaces`;
+- `Hyprland.refreshMonitors()` sends `j/monitors`;
+- each object's `lastIpcObject` contains the raw JSON object returned by the compositor.
+
+However, Quickshell stores those objects in its own object models.
+
+Important ordering issue:
+
+- the raw `j/clients` response is an array;
+- `HyprlandData.windowList` currently exposes that parsed response array directly;
+- `Hyprland.toplevels` is an object model with object lifecycle/insertion semantics, not a documented mirror of every future `j/clients` response-array order;
+- Quickshell explicitly sorts the workspace object model by id.
+
+Therefore reconstructing public `HyprlandData.windowList/workspaces` from Quickshell model iteration is **not proven lossless**, even if each `lastIpcObject` has identical fields.
+
+Keep this route at “needs parity/contract proof.” Do not use it merely to save a subprocess.
+
+### 33.6 Quickshell Socket completion semantics require a runtime test before transport migration
+
+Quickshell's `Socket` is suitable for Unix-domain requests, but its implementation differs from `Process + StdioCollector` in an important detail:
+
+- `Socket` feeds received chunks into its parser on `readyRead`;
+- on socket disconnect it clears the DataStream buffer;
+- it does not call `DataStreamParser.streamEnded()` in the same way a Process stdout stream ends.
+
+A `StdioCollector` with default `waitForEnd: true` therefore cannot simply be transplanted and expected to emit the same `streamFinished` contract.
+
+A safe implementation would need to prove:
+
+- complete reply collection across partial reads;
+- completion detection on server disconnect;
+- no lost final bytes;
+- timeout/error handling;
+- no stale reply from an older request after a rerun is queued.
+
+This keeps §33.4 at **High confidence / needs live parity**, not Confirmed implementation.
+
+### 33.7 Preserve public properties while eliminating repeated derived traversals — CONFIRMED architectural direction
+
+The extension boundary does **not** invalidate the pure-QML derived-index optimization from §32 if public properties remain unchanged.
+
+On every successful client snapshot, current code already traverses `windowList` to build `windowByAddress`, then separately maps it to build `addresses`.
+
+One single snapshot pass can preserve those exact public results while also deriving private indexes:
+
+- `windowByAddress`;
+- `addresses` in original `windowList` order;
+- biggest window per workspace;
+- per-monitor min/max non-negative workspace id;
+- per-monitor occupied workspace ids/count;
+- first raw record with `focusHistoryID === 0`.
+
+Then:
+
+- keep `biggestWindowForWorkspace(id)` as the same public function but make it an O(1) lookup;
+- Background can consume private per-monitor derived state instead of per-output `filter().sort()`;
+- ScreenTime can consume the precomputed focused raw record instead of rescanning every poll.
+
+Lossless invariants:
+
+- do not reorder `windowList`;
+- preserve `addresses` order;
+- preserve `windowByAddress` key/value shape;
+- biggest-window tie remains strict `>`, so equal-area windows retain “first in snapshot wins” behavior;
+- no public field disappears.
+
+### 33.8 Animated screen zoom can spawn one `hyprctl` process per animation update — HIGH CONFIDENCE / P1 burst candidate
+
+`GlobalStates.qml` currently has:
+
+- `screenZoom` with a `Behavior on screenZoom`;
+- the behavior is a `NumberAnimation`;
+- every `onScreenZoomChanged` executes:
+  `hyprctl keyword cursor:zoom_factor <value>`.
+
+The default fast animation preset is around 200 ms before user speed/profile scaling.
+
+Therefore one logical zoom step can produce multiple intermediate `screenZoom` values, and each property update can launch a separate detached `hyprctl` process.
+
+Do **not** debounce to only the final zoom value: that would remove compositor-side intermediate zoom updates and alter the visible animation.
+
+Strict-lossless direction:
+
+- keep every animated `screenZoom` update;
+- keep the same numeric values and animation;
+- replace only the child-process transport for `keyword cursor:zoom_factor ...` with an in-process request-socket path;
+- preserve request ordering.
+
+Expected benefit is concentrated but potentially large during zoom transitions: **O(animation updates) child-process spawns -> 0 child processes**, while the same number of compositor keyword updates remain.
+
+Needs runtime trace to count actual starts per zoom action and verify request ordering.
+
+### 33.9 HyprlandXkb must remain; two transport/file-read optimizations are lossless-shaped — HIGH CONFIDENCE / P2
+
+`services/deferred/HyprlandXkb.qml` is actively consumed by lock screens and keyboard indicators.
+
+Do not remove it or suppress its current event logic.
+
+Two narrower candidates:
+
+**A. devices query transport**
+
+Current startup/config-refresh route uses:
+
+`hyprctl -j devices`
+
+The equivalent raw request is `j/devices`.
+
+A direct request-socket transport can preserve:
+
+- exact JSON response;
+- main-keyboard selection;
+- `layoutCodes`;
+- `currentLayoutName`;
+- existing `configreloaded -> next activelayout` refresh timing.
+
+This removes one external `hyprctl` process per devices refresh, not the refresh itself.
+
+**B. `base.lst` lookup**
+
+For a previously unseen layout description, `getLayoutProc` launches:
+
+`cat /usr/share/X11/xkb/rules/base.lst`
+
+and then performs all matching in QML.
+
+An in-process `FileView` read/reload at the same trigger can remove the `cat` child while preserving the exact matching algorithm and cache behavior.
+
+To remain lossless, do not replace it with a permanently stale one-time preload; package updates to `base.lst` during a shell session must retain equivalent visibility when a new lookup occurs.
+
+### 33.10 HyprlandKeybinds parser can skip work only when its exact input file is unchanged — HIGH CONFIDENCE / P2
+
+`services/deferred/HyprlandKeybinds.qml` is actively consumed by:
+
+- Cheatsheet;
+- Settings > Shortcuts.
+
+On every Hyprland `configreloaded`, it launches two parser processes:
+
+- default keybind file;
+- user keybind file.
+
+`scripts/hyprland/get_keybinds.py` is deterministic with respect to the file passed via `--path`:
+
+- it reads that file;
+- sourcing is explicitly unsupported;
+- the resulting JSON is derived from that content.
+
+Lossless candidate:
+
+- maintain an exact content fingerprint/snapshot for each of the two input files;
+- on `configreloaded`, rerun the parser only for files whose exact content changed since the last successful parse;
+- keep current parser/output behavior for changed files.
+
+Thus an unrelated Hyprland config reload can become:
+
+- **2 -> 0 parser launches** if neither keybind file changed;
+- **2 -> 1** if exactly one changed;
+- still **2** if both changed.
+
+Do not substitute a time debounce or assume that “config reload” means keybind files are unchanged.
+
+### 33.11 Hyprsunset state probe has a redundant shell wrapper — CONFIRMED small candidate / P3
+
+`services/Hyprsunset.qml` probes Hyprland night-light state with:
+
+`/usr/bin/bash -c "hyprctl hyprsunset temperature"`.
+
+Elsewhere the shell already invokes `hyprctl` directly through Quickshell `Process`, proving executable resolution through the Process API is an established repo pattern.
+
+The bash layer performs no expansion, pipeline, redirection or sequencing needed by this command.
+
+Lossless direction:
+
+- keep the same `hyprctl hyprsunset temperature` command, stdout checks, exit-code handling and 5-second timeout;
+- eliminate only the intermediate bash process.
+
+Per probe, process chain becomes approximately:
+
+- current: QProcess -> bash -> hyprctl;
+- candidate: QProcess -> hyprctl.
+
+Do not alter the owned/external hyprsunset lifecycle logic.
+
+### 33.12 Lock Hyprland commands are functional, not dead work
+
+`modules/lock/Lock.qml` still intentionally uses Hyprland-specific operations for:
+
+- `dwindle:pseudotile`;
+- window pseudo/floating restoration;
+- exact position restore;
+- `addreserved` blur workaround;
+- delayed special-workspace refocus after unlock.
+
+These commands must remain semantically intact.
+
+A future request-socket transport could remove `hyprctl` child creation for individual `keyword` commands while keeping the command itself, but the delayed unlock batch should **not** be rewritten merely for process count:
+
+- it has an explicit 200 ms delay;
+- two dispatches are intentionally ordered;
+- changing its execution mechanism risks lock/focus behavior.
+
+Keep the unlock hack unchanged unless a dedicated behavior trace proves parity.
+
+### 33.13 Lossless Hyprland priority after this correction
+
+The safe order is now:
+
+1. **Preserve every existing Hyprland feature and `HyprlandData` public property.**
+2. Eliminate repeated pure-QML traversals while keeping public arrays/functions byte/shape/order-equivalent.
+3. Replace high-frequency `hyprctl` child creation with exact request-socket transport only after Socket completion/version parity is proven.
+4. Prioritize animated screen zoom because it can create a child per animation update.
+5. Apply content-identity gating to deterministic keybind parsing.
+6. Remove trivial subprocess wrappers such as `bash -c` around a single `hyprctl` invocation.
+7. Do **not** narrow `HyprlandData` refresh/query families based only on checked-in core consumers.
+
+No runtime implementation is authorized by this handoff.

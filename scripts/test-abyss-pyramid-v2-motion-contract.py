@@ -24,7 +24,7 @@ assert "Math.abs(root._number(a.anchorCenter)" in coord
 
 # Closing freezes only its same-anchor peer group; finish/cancel releases it.
 assert "frozen[peer.identity]" in coord
-assert "function cancelClose(identity): void" in coord
+assert "function cancelClose(identity, preserveForPeers = true): void" in coord
 assert "function finishClose(identity): void" in coord
 assert "function beginReopen(identity): void" in coord
 assert "function resumeClose(identity): void" in coord

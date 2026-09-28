@@ -636,3 +636,434 @@ Before changing code, produce a table of every forced Tier 0/3/4 singleton with:
 - current startup/idle cost
 
 Then change only the highest-cost service(s), one batch at a time, and benchmark.
+
+
+---
+
+## 12. Audit round 2 — unread-area coverage expansion (2026-09-28)
+
+### Snapshot
+
+- Hadalis ref audited during this round: `llocphann/Hadalis@dev`
+- Hadalis head reconciled before this handoff update: `9aa1de046befd75f7b05f19e342ae60e28623480`
+- iNiR comparison ref: `snowarch/iNiR@prerelease`
+- iNiR head: `bbd304b3ba1662ff0f41a2898b1b1b91cf02f071`
+
+Hadalis advanced repeatedly while this audit was running. The intervening commits were reconciled before updating this document. They primarily touched Abyss popup/focus/corner/wallpaper behavior plus related tests and documentation. The optimization conclusions below were checked against the current `dev` tree rather than the older handoff base.
+
+### Coverage added in this round
+
+This pass expanded the previous audit across areas that had not been read deeply enough:
+
+- remaining common/core services and deferred services
+- production native Rust workspace:
+  - `inir-native`
+  - `inir-inputd`
+  - `inir-mpdd`
+  - `inir-theme`
+- Python fallback daemons and `scripts/native-dispatch`
+- large Settings pages and section residency patterns
+- shader sources, especially Abyss full-screen composition
+- launcher/systemd/session environment lifecycle
+- Nix packaging and runtime-payload policy
+- migration differences after the common historical migration set
+- clipboard watcher contracts
+- cache/lifetime patterns
+- notification, recorder, EasyEffects, thumbnail and sidebar lifecycle paths
+- current iNiR perf/fix history relevant to these subsystems
+
+The full repository is still too large to claim that every source file was read line-by-line. The audit method is now coverage-driven: every major runtime subsystem has been inventoried, and hot-path candidates are read in depth before classification.
+
+---
+
+## 13. Newly verified findings
+
+### 13.1 Window preview eager prewarming is a real startup/runtime tradeoff — INVESTIGATE / likely P0 experiment
+
+Hadalis currently force-instantiates `WindowPreviewService` in Tier 3 and the service immediately calls `_startPrewarming()`.
+
+That path:
+
+- initializes preview storage
+- observes the current Niri window set
+- queues screenshot capture for newly observed windows before Overview/TaskView/hover is opened
+- pre-decodes captured/session-cached images into a bounded warm cache
+
+This behavior is deliberate and covered by Hadalis tests such as the eager/incremental preview contract. It was added to remove first-hover latency.
+
+Current iNiR prerelease has moved in the opposite direction:
+
+- `WindowPreviewService` initializes only when a consumer requests previews
+- window changes mark metadata dirty but do not automatically start screenshot work
+- the service is also skipped for iRiS by family-aware Tier 3 loading
+
+This is not a safe one-line port because Hadalis intentionally values instant first presentation.
+
+**Required experiment:** compare three policies on the same session/window count:
+
+1. current eager Tier-3 prewarm
+2. pure consumer-lazy initialization
+3. hybrid delayed/idle prewarm only when preview-capable surfaces are enabled
+
+Measure:
+
+- boot phase timing
+- CPU/I/O and child processes during T+500ms to T+5s
+- clipboard churn during preview capture
+- time-to-first-preview for dock/taskbar/overview
+- RSS/PSS including the bounded decoded-image cache
+
+Do not remove eager prewarming without preserving a measured first-preview UX budget.
+
+### 13.2 Tier 3/4 service consumer matrix is now partially classified
+
+Current forced services and preliminary ownership:
+
+| Service | IPC owner | Background work when instantiated | Current classification |
+|---|---|---|---|
+| `GameMode` | `gamemode` | fullscreen state + Niri animation policy | **KEEP forced for now**; global policy/IPC owner |
+| `WindowPreviewService` | none | eager screenshot/predecode lifecycle | **INVESTIGATE P0** |
+| `Weather` | none | delayed location + network fetch when enabled | **ADAPT candidate**; feature/consumer-aware |
+| `VoiceSearch` | `voiceSearch` | mostly idle until invoked | **KEEP unless IPC router split is justified** |
+| `CavaTheme` | none | cover-art theme work only when configured | **ADAPT candidate**; do not force while feature disabled |
+| `ShellUpdates` | `shellUpdate` | repo/update timers and git checks when enabled | **KEEP unless lightweight IPC router is introduced** |
+| `Autostart` | `autostart` | startup-file load/watch | **KEEP unless lightweight IPC router is introduced** |
+| `CalendarSync` | none | cache load; periodic network work only if enabled | **ADAPT candidate**; instantiate only for enabled sync or active consumer |
+| `FontSyncService` | none | debounced GTK/KDE sync; initial sync when enabled | **ADAPT candidate**; feature-gate on system-font sync |
+
+Important details:
+
+- `Weather`, `CavaTheme`, `CalendarSync` and `FontSyncService` do not need permanent IPC ownership.
+- `CalendarSync` is disabled by default but is still force-materialized in Tier 4.
+- `CavaTheme` is force-materialized even when wallpaper/Cava theming is disabled.
+- `Weather` is enabled by default, so any change must preserve expected background refresh semantics.
+- `VoiceSearch`, `GameMode`, `ShellUpdates` and `Autostart` own IPC targets; simply removing their forced instantiation can break CLI/keybind calls.
+
+Next P0 implementation planning should finish this matrix with exact family/feature consumers and measured costs before editing `shell.qml`.
+
+### 13.3 Reactive GameMode can remove fallback polling, but only with the NiriService prerequisite — ADAPT
+
+iNiR commit:
+
+- `3893d68da5` — `fix(game-mode): keep fullscreen state reactive`
+
+Upstream now exposes:
+
+- `NiriService.liveWindows` = pending window snapshot while UI batching is still outstanding
+- GameMode fullscreen state derived directly from this reactive list
+- no debounced `_autoActive` cache
+- no periodic GameMode fallback timer
+
+Hadalis still has the older debounced/polled path.
+
+However, current Hadalis `NiriService` also lacks later correctness fixes from iNiR:
+
+- full `WindowsChanged` snapshots do not update `_latestFocusedWindowId`
+- a newly opened/changed window with `is_focused === true` does not update that focus ID
+- several workspace map updates compare object keys from `for ... in` (strings) directly against numeric Niri IDs
+
+Relevant iNiR follow-up:
+
+- `a2d96ba5ac` — `fix(niri): notice every fullscreen on a workspace`
+
+Therefore the safe adaptation is a single batch:
+
+1. add `liveWindows`
+2. port the focus freshness semantics
+3. fix string-vs-numeric workspace-key comparisons where applicable
+4. switch GameMode fullscreen reads to `liveWindows`
+5. remove the debounce/fallback polling only after regression tests pass
+
+Required tests:
+
+- fullscreen enter/exit without focus change
+- fullscreen window opened already focused
+- multi-monitor active workspaces
+- window moved between workspaces while fullscreen
+- GameMode notification/visualizer suppression
+- family surfaces hiding/showing correctly
+
+### 13.4 Settings section residency is a broader gap than the first audit showed — ADAPT / P1
+
+Hadalis already has strong page-level LRU behavior in `SettingsPageHost`, and `DesktopWidgetsConfig.qml` has a local asynchronous short-residency `LazySection`.
+
+However, comparison with iNiR prerelease shows that most other large Settings pages still instantiate all section trees in Hadalis and only toggle `visible`.
+
+Examples where iNiR uses `SettingsTaskLoader` but Hadalis currently does not include:
+
+- `QuickConfig.qml`
+- `InterfaceConfig.qml`
+- `ServicesConfig.qml`
+- `ThemesConfig.qml`
+- `MonitorVisibilityConfig.qml`
+- `AiConfig.qml`
+- `ModulesConfig.qml`
+- `ToolsConfig.qml`
+- `SidebarsConfig.qml`
+- `WaffleConfig.qml`
+- `AdvancedConfig.qml`
+- `AutostartConfig.qml`
+- `DashboardConfig.qml`
+- `EffectsConfig.qml`
+- `BackgroundConfig.qml`
+- parts of `DesktopWidgetsConfig.qml`
+
+The largest Hadalis pages are very large even before embedded child pages:
+
+- `DesktopWidgetsConfig.qml` ~252 KB
+- `NiriConfig.qml` ~134 KB
+- `BackgroundConfig.qml` ~127 KB
+- `QuickConfig.qml` ~112 KB
+- `InterfaceConfig.qml` ~110 KB
+- `ServicesConfig.qml` ~105 KB
+- `ThemesConfig.qml` ~86 KB
+
+Already adopted/superseded pieces must remain:
+
+- page-level `SettingsPageHost` LRU
+- `NiriConfig` active-section refresh
+- `BackgroundConfig` monitor-preview gating
+- `DesktopWidgetsConfig` short-residency loader
+- asynchronous Control Panel sections
+- batched `SettingsSearchRegistry` entry flush
+
+Pilot section residency on one heavy page first, then measure page open latency, RSS and deep-link/search correctness. Do not mass-convert all pages in one patch.
+
+### 13.5 Abyss full-screen field shader has a concrete fragment-cost target — INVESTIGATE / high-value P1
+
+`AbyssPerimeter.qml` mounts one full-output `AbyssField` per screen and `AbyssField.qml` fills the whole PanelWindow.
+
+Current `AbyssField.frag`:
+
+- evaluates the perimeter/hole field
+- samples the wave texture four times
+- evaluates up to 40 body records through SDF `roundedBox`/smooth fuse logic
+- only after all of that does it reject fragments with `if (d > 24.0)`
+
+Thus large interior workspace regions can still pay most of the expensive field evaluation before becoming transparent.
+
+Relevant upstream idea:
+
+- `064c18b4da5279d261d2a3dcc3710c9eb61f0a55` — `perf(organic): reduce screen edge fragment cost`
+
+Do **not** copy the Organic shader. Adapt the technique:
+
+- cheap spatial reachability/AABB rejection before expensive SDF work
+- skip records whose expanded bounds cannot affect the current fragment
+- avoid corner-distance math outside corner regions
+- keep derivatives valid by not placing derivative evaluation behind unsafe divergent control flow
+
+Abyss has different semantics: full-screen perimeter, animated wave displacement, body welds, wallpaper refraction and up to 40 records.
+
+Required evidence before/after:
+
+- GPU utilization/frame time with 0, typical and worst-case body counts
+- 1080p/1440p/4K
+- fractional scaling
+- multi-monitor
+- static and animated wave states
+- pixel-diff/visual seam checks around welds, corners, shadow/glow and refraction
+
+### 13.6 Clipboard text watcher is missing upstream's no-newline fix — ADAPT / P1 correctness + churn reduction
+
+iNiR migration:
+
+- `042-cliphist-no-synthetic-newline.sh`
+
+adds `wl-paste --no-newline` to the text-history watcher.
+
+Hadalis migration `051-cliphist-single-watchers.sh` correctly deduplicates watcher ownership and routes text through `native-dispatch clipboard-store`, but the canonical command is currently:
+
+`wl-paste --type text --watch ...`
+
+without `--no-newline`.
+
+This matters because both Hadalis implementations intentionally preserve non-HTML plain text byte-for-byte:
+
+- Rust: `native/inir-native/src/clipboard.rs`
+- Python fallback: `scripts/clipboard-store.py`
+
+Therefore a newline synthesized by `wl-paste` is not removed later. Re-selecting a history item can accumulate payload differences and defeat cliphist deduplication.
+
+Adaptation should update together:
+
+- default Niri startup config
+- legacy dots fallback if still supported
+- migration after 051
+- `scripts/test-clipboard-watcher-contract.py`
+- any documentation showing canonical watcher commands
+
+Do not trim arbitrary copied user text inside Rust/Python. The correct boundary is the watcher option, preserving the existing byte-for-byte payload contract.
+
+### 13.7 Window-preview clipboard pollution migration from upstream is superseded — ALREADY / SUPERSEDED
+
+iNiR migration 038 routes preview screenshots through a preview-aware clipboard filter.
+
+Hadalis already has a more specific capture lifecycle in `scripts/capture-windows.sh`:
+
+- saves the user's clipboard
+- hashes generated preview files
+- deletes only cliphist entries whose decoded bytes match generated previews
+- preserves unrelated user copies made during capture
+- restores the prior clipboard only if Niri still owns it with one of the generated screenshots
+- bounds the capture lifecycle with timeout
+- atomically publishes preview PNGs
+
+Do not replace this with the simpler upstream migration.
+
+### 13.8 Media artwork resolver cache remains a valid small optimization candidate — INVESTIGATE
+
+iNiR has `modules/common/MediaArtworkCache.qml`:
+
+- 64-entry bounded singleton
+- remembers `metadataKey -> {base, source}`
+- lets a newly created `MediaArtworkResolver` immediately adopt the last published source instead of repeating file/process resolution behind a placeholder
+
+iNiR's current `MediaArtworkResolver.qml` integrates this cache. Hadalis' resolver does not.
+
+Hadalis currently instantiates `MediaArtworkResolver` from multiple independent surfaces/services, including media controls, bar media, player base, YtMusic card and CavaTheme.
+
+Potential benefit:
+
+- fewer repeated file existence/MIME/stability checks
+- less transient placeholder flashing when the same track appears in a newly created surface
+
+Keep it **INVESTIGATE** until process counts/latency show repeated resolver work. If adopted, retain the bounded 64-entry lifecycle and Hadalis' existing cache-busting correctness.
+
+### 13.9 Production native backends are mostly event-driven — ALREADY / good architecture
+
+The Rust workspace was read for polling/lifetime behavior.
+
+Verified:
+
+- `inir-inputd` uses evdev blocking reads plus inotify for hotplug rather than a 5-second device-rescan loop.
+- Python input daemons still contain 5-second refresh loops, but they are fallback paths selected only when Rust is unavailable/forced off.
+- `inir-mpdd` uses MPD `idle` subscriptions rather than frequent polling.
+- the persistent daemon binds lifetime to the shell through parent-death handling.
+- Niri helper operations are request-driven.
+- theme generation is request-driven.
+
+Do not spend production optimization effort on Python polling unless fallback parity itself is the task.
+
+One native cache to profile later:
+
+- `inir-mpdd::ArtLookup` keeps folder and artwork-key HashMaps for daemon lifetime.
+- growth is naturally related to visited library folders/albums but there is no explicit eviction/invalidation policy.
+
+Classification: **INVESTIGATE only if long-session MPD daemon memory grows with library churn.**
+
+### 13.10 RecorderStatus and EasyEffects polling are already stronger than old upstream perf patches — ALREADY / SUPERSEDED
+
+`RecorderStatus.qml` now:
+
+- uses 15s idle polling by default / 30s in low-power mode
+- switches to 1s only under explicit fast UI demand
+- uses 1s active polling while recording
+- uses bounded quick checks after a start/stop action
+
+This is stronger than the old iNiR 5s idle polling optimization.
+
+`services/deferred/EasyEffects.qml` now:
+
+- probes with direct `pgrep -x easyeffects`
+- uses demand-aware cadence
+- polls slowly when only background active-state verification is needed
+
+Do not re-port older perf commits for either subsystem.
+
+### 13.11 Thumbnail and clipboard model work are already optimized — ALREADY / SUPERSEDED
+
+Verified current Hadalis:
+
+- `ThumbnailImage.qml` no longer spawns one magick/ffmpeg process per delegate; it uses Wallpapers' serialized thumbnail queue.
+- already-loaded thumbnails skip regeneration paths.
+- ii and Waffle clipboard models update only while their panel is open.
+- `Cliphist.qml` caches prepared search/filter data by revision and caps loaded entries.
+- unchanged cliphist list reads do not emit a false `entriesChanged`.
+
+Keep these as regression guards.
+
+### 13.12 Nix source filtering remains valid, but runtime-payload code should not be replaced — ADAPT / P2
+
+The previous P2 conclusion is confirmed.
+
+iNiR filters the shell derivation input with `nix/runtime-source-filter.nix`.
+
+Hadalis still uses:
+
+`src = lib.cleanSource ../.;`
+
+for the shell derivation, while native Rust is built separately from `../native`.
+
+However, Hadalis' `sdata/lib/runtime-payload.py` has diverged in useful ways and is not behind upstream. It includes additional installed-tree cleanup and symlink safety logic.
+
+Adapt only the Nix **source filter**, driven by Hadalis' existing runtime manifests/policy. Do not replace the runtime payload implementation.
+
+### 13.13 Niri-owned session environment lifecycle is interesting but not portable wholesale — INVESTIGATE / DO NOT PORT wholesale
+
+iNiR prerelease now starts the service explicitly after `niri.service` and treats Niri/systemd as the authority for:
+
+- `WAYLAND_DISPLAY`
+- `NIRI_SOCKET`
+- `DISPLAY`
+
+It no longer manufactures those compositor-owned values by scanning runtime/X sockets.
+
+Hadalis still has:
+
+- `wait_for_wayland_socket`
+- Wayland socket discovery
+- `niri.wayland-*.sock` discovery
+- X socket discovery
+- systemd environment repair/export logic
+
+Upstream's model is architecturally cleaner for a Niri-only shell, but Hadalis intentionally supports both Niri and Hyprland and its Nix module can wire either compositor.
+
+Classification:
+
+- **DO NOT PORT** the Niri-only service unit wholesale.
+- **INVESTIGATE** whether the Niri branch can use authoritative `niri.service` environment resolution first and reserve socket probing only for manual/recovery/Hyprland paths.
+- measure startup complexity/reliability before calling this a performance optimization.
+
+---
+
+## 14. Revised priority after audit round 2
+
+### P0 experiments
+
+1. Finish exact Tier 3/4 consumer matrix and benchmark forced-service cost.
+2. Benchmark WindowPreview eager prewarming versus lazy/hybrid policy.
+3. Only then change `shell.qml` service materialization.
+
+### P1 candidates
+
+1. Reactive GameMode + complete NiriService freshness/focus prerequisite batch.
+2. Settings section residency pilot on one large page, then staged rollout.
+3. Abyss fragment early-rejection/AABB optimization after GPU baseline.
+4. Clipboard `wl-paste --no-newline` watcher contract.
+5. Media artwork bounded handoff cache if resolver profiling justifies it.
+6. Continue cache audit, with MPD ArtLookup as a low-priority long-session measurement target.
+
+### P2
+
+1. Nix derivation source filter using Hadalis runtime manifests.
+2. Niri-specific session-environment simplification only if reliability/startup measurements justify it.
+
+### Updated next concrete task
+
+Before implementation, produce two baselines on current `dev`:
+
+1. **Tier 3/4 startup baseline**
+   - child processes from T+0 to T+5s
+   - CPU/PSS at T+0.5s, T+1.5s and settled idle
+   - whether WindowPreview capture starts and how many windows it captures
+   - Weather/Calendar/FontSync/ShellUpdates background actions
+
+2. **Abyss GPU baseline**
+   - idle perimeter with no open bodies
+   - typical bar+dock
+   - one large body
+   - many simultaneous records
+   - same scenarios at multiple output resolutions/scales
+
+Use those baselines to choose the first code patch rather than modifying several subsystems at once.

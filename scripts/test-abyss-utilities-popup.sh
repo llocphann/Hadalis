@@ -22,7 +22,7 @@ migration_tmp="$(mktemp -d)"
 trap 'rm -rf -- "$migration_tmp"' EXIT
 mkdir -p "$migration_tmp/inir"
 cat > "$migration_tmp/inir/config.json" <<'JSON'
-{"abyss":{"modules":{"placements":[{"id":"utilities","kind":"utilities"},{"id":"quick","kind":"utilButtons"}],"outputLayouts":[{"outputName":"A","placements":[{"id":"u-a","kind":"utilities"},{"id":"clock","kind":"clock"}]}]}}}
+{"abyss":{"modules":{"placements":[{"id":"utilities","kind":"utilities"},{"id":"quick","kind":"utilButtons"}],"outputLayouts":[{"outputName":"A","placements":[{"id":"u-a","kind":"utilities"},{"id":"clock","kind":"clock"}]},{"outputName":"B","placements":[{"id":"u-b","kind":"utilities"}]}]}}}
 JSON
 (
     export XDG_CONFIG_HOME="$migration_tmp"
@@ -30,10 +30,13 @@ JSON
     migration_check || { printf 'FAIL: Utilities migration did not detect retired module\n' >&2; exit 1; }
     migration_apply || { printf 'FAIL: Utilities migration apply failed\n' >&2; exit 1; }
     migration_check && { printf 'FAIL: Utilities migration is not idempotent\n' >&2; exit 1; }
-    jq -e '(.abyss.modules.placements | map(.kind)) == ["utilButtons"]
-        and (.abyss.modules.outputLayouts[0].placements | map(.kind)) == ["clock"]' \
-        "$XDG_CONFIG_HOME/inir/config.json" >/dev/null \
-        || { printf 'FAIL: Utilities migration removed/preserved wrong placements\n' >&2; exit 1; }
+    jq -e '
+        (.abyss.modules.placements | map(.kind)) == ["utilButtons"]
+        and ((.abyss.modules.outputLayouts[0].placements | map(.kind) | sort) == ["clock","utilButtons"])
+        and (.abyss.modules.outputLayouts[1].placements | map(.kind)) == ["utilButtons"]
+        and (.abyss.modules.outputLayouts[0].placements[] | select(.kind=="utilButtons") | .id) == "utilButtons"
+    ' "$XDG_CONFIG_HOME/inir/config.json" >/dev/null \
+        || { printf 'FAIL: Utilities migration did not preserve/insert Quick Actions correctly\n' >&2; exit 1; }
 )
 
 if ! command -v qs >/dev/null || [[ -z "${WAYLAND_DISPLAY:-}" ]]; then

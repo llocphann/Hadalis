@@ -213,25 +213,33 @@ ColumnLayout {
         title:"Modules";icon:"widgets";settingsTaskSection:"modules"
         visible:root.activeSection==="modules"
         SettingsGroup {
-            Repeater {
-                model: FamilyPolicy.abyssPanels.filter(id => id.startsWith("abyss"))
-                SettingsSwitch {
-                    required property string modelData
-                    autoToggle: false
-                    buttonIcon: "water"
-                    text: modelData.replace(/^abyss/,"").replace(/([a-z])([A-Z])/g,"$1 $2")
-                    checked: (Config.options?.enabledPanels ?? []).includes(modelData)
-                    onToggledByUser: checked => {
-                        const panels = (Config.options?.enabledPanels ?? []).filter(id => id !== modelData)
-                        if (checked) panels.push(modelData)
-                        Config.setNestedValue("enabledPanels",panels)
+            GridLayout {
+                id: moduleToggleGrid
+                Layout.fillWidth: true
+                columns: width >= 980 ? 3 : (width >= 620 ? 2 : 1)
+                rowSpacing: 4
+                columnSpacing: 10
+
+                Repeater {
+                    model: FamilyPolicy.abyssPanels.filter(id => id.startsWith("abyss"))
+                    SettingsSwitch {
+                        required property string modelData
+                        Layout.fillWidth: true
+                        autoToggle: false
+                        buttonIcon: "water"
+                        text: modelData.replace(/^abyss/,"").replace(/([a-z])([A-Z])/g,"$1 $2")
+                        checked: (Config.options?.enabledPanels ?? []).includes(modelData)
+                        onToggledByUser: checked => {
+                            const panels = (Config.options?.enabledPanels ?? []).filter(id => id !== modelData)
+                            if (checked) panels.push(modelData)
+                            Config.setNestedValue("enabledPanels",panels)
+                        }
                     }
                 }
             }
             SettingsNote { text:"Place modules on any edge with Live Editor. Their media, resource, clock, tray and workspace settings remain shared." }
             SettingsNote { text:"Modules inherit their Edge size. Enable Custom size in Live Editor to override one module. Per-output sizes, snapping guides and start/center/end groups are available there." }
             AbyssOutputSelector { configPath:"bar.screenList";title:"Module outputs" }
-            RippleButton { buttonText:"Module functionality settings";implicitHeight:36;Layout.fillWidth:true;onClicked:root.activeSection="bar" }
         }
     }
     SettingsCardSection {

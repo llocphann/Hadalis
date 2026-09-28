@@ -96,10 +96,6 @@ ColumnLayout {
         root.dropIndex=-1
     }
 
-    SettingsNote {
-        text: Translation.tr("Drag the dotted handle to reorder. Use the eye to choose which Quick Action icons are shown.")
-    }
-
     Repeater {
         model: root.actionOrder
         delegate: Item {
@@ -180,6 +176,7 @@ ColumnLayout {
                     }
 
                     MaterialSymbol {
+                        Layout.alignment: Qt.AlignVCenter
                         text: root.actionIcon(slot.actionId)
                         iconSize: Appearance.font.pixelSize.normal
                         color: Appearance.colors.colOnLayer1
@@ -187,6 +184,10 @@ ColumnLayout {
 
                     StyledText {
                         Layout.fillWidth: true
+                        Layout.minimumWidth: 150
+                        Layout.alignment: Qt.AlignVCenter
+                        visible: true
+                        opacity: 1
                         text: root.actionLabel(slot.actionId)
                         color: Appearance.colors.colOnLayer1
                         font.pixelSize: Appearance.font.pixelSize.small

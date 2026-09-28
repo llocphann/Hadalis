@@ -1067,3 +1067,268 @@ Before implementation, produce two baselines on current `dev`:
    - same scenarios at multiple output resolutions/scales
 
 Use those baselines to choose the first code patch rather than modifying several subsystems at once.
+
+
+---
+
+## 15. Audit round 3 — service lifetime, cache growth and family-capability matrix (2026-09-28)
+
+### Snapshot
+
+- Hadalis audited/refetched head: `7ff6eff1d6bc5f3f17911dd78754cabbc59db2d0`
+- iNiR comparison head: `bbd304b3ba1662ff0f41a2898b1b1b91cf02f071`
+
+Concurrent Hadalis work since the previous audit milestone was reconciled before this update. The new commits retire standalone Abyss Wi-Fi/Bluetooth modules in favor of shared system-tray popups and fix the desktop context-menu route into the Abyss layout editor. Those changes do not invalidate the optimization findings below.
+
+### 15.1 Tier 3/4 materialization must be capability-aware, not family-name-aware — REFINED P0
+
+The previous audit correctly identified iNiR's family-aware deferred loading as a useful pattern, but a direct `family !== "iris"` port remains unsafe.
+
+New consumer tracing shows:
+
+- `WindowPreviewService`
+  - direct consumers exist in ii/shared bar+dock, Waffle taskview/taskbar/alt-switcher and Overview.
+  - Abyss has no direct import, but `AbyssBarModule.qml` reuses `Shared.BarTaskbar`, so Abyss can indirectly require preview support when the taskbar module is placed.
+  - current Hadalis intentionally eager-prewarms captures; this is a latency-vs-startup tradeoff, not a dead service.
+- `Weather`
+  - used by ii/shared bar, Waffle, background widgets, dashboard/sidebar/lock surfaces.
+  - Abyss indirectly uses it through `WeatherBar` in `AbyssBarModule.qml`.
+  - enabled by default and intentionally starts location/weather work after a 3-second internal delay.
+- `VoiceSearch`
+  - owns the `voiceSearch` IPC target and feeds OSD/AI/quick-toggle surfaces.
+  - removing forced materialization without a router can break external invocation.
+- `CavaTheme`
+  - owns no IPC.
+  - cover-art resolver and quantizer are already internally feature-gated.
+  - default color source is theme, so the forced singleton mostly creates reactive palette state until a visualizer consumes it.
+  - good candidate for consumer-driven materialization.
+- `CalendarSync`
+  - owns no IPC.
+  - external sync is disabled by default.
+  - UI consumers naturally instantiate it when calendar/agenda surfaces are used.
+  - good candidate for feature/consumer-driven materialization.
+- `FontSyncService`
+  - owns no IPC, but `syncWithSystem` defaults to true and the service deliberately reconciles GTK/KDE fonts on each shell start.
+  - safe optimization is to skip construction only when system-font sync is disabled; do not lazily defer the enabled path until Settings is opened.
+- `ShellUpdates`
+  - owns `shellUpdate` IPC.
+  - performs update-resume recovery after shell restart and periodic background checks/notifications.
+  - keep materialized unless a lightweight IPC/background router is introduced for a measured reason.
+- `Autostart`
+  - owns `autostart` IPC.
+  - watches the Niri startup file for external edits and reflects them into Settings.
+  - it is Niri-specific semantically; possible future optimization is to avoid materializing it on non-Niri sessions, but do not simply remove it from Tier 4.
+- `GameMode`
+  - owns `gamemode` IPC and global rendering/notification policy.
+  - keep forced until the reactive Niri/GameMode batch from §13.3 is implemented and validated.
+
+**Implementation rule:** introduce feature/capability predicates (weather enabled, taskbar/preview surfaces enabled, calendar sync enabled, font sync enabled, compositor type) rather than hard-coded ii/Waffle/Abyss exclusions.
+
+### 15.2 Startup contention is now a measurable aggregate hypothesis — BENCHMARK P0
+
+Several services are individually deferred correctly but their internal work still clusters during the first few seconds:
+
+- `WindowPreviewService`: Tier 3 at ~T+500ms, may immediately begin capture/predecode.
+- `ConflictKiller`: delayed conflict probe at ~1.5s after Config readiness.
+- system `Updates`: commonly materialized by normal UI and schedules its first `checkupdates` at +1.5s.
+- `FontSyncService`: Tier 4 construction followed by a 500ms sync debounce when enabled.
+- `Weather`: Tier 3 construction followed by its own 3s startup delay when enabled.
+- `ShellUpdates`: Tier 4 construction followed by a 5s update-check delay.
+
+No single timer is obviously wrong. The risk is cumulative process, filesystem and network contention during startup.
+
+Extend the Tier 3/4 baseline to record a process timeline from T+0 to T+8s, including:
+
+- preview capture helpers
+- `checkupdates`
+- font-sync helper
+- weather curl/geocoder calls
+- shell update git processes
+- conflict probe
+
+Only stagger or conditionally suppress work when the timeline shows real overlap/cost.
+
+### 15.3 Session/lock/Waffle hidden-surface concerns were mostly false positives — CLOSED / ALREADY
+
+A visual scan initially suggested several hidden trees might remain resident, but the outer family loaders change the conclusion.
+
+Verified:
+
+- ii/Waffle `SessionScreen` is wrapped in an outer `OnDemandPanelLoader`; the whole component is released after close grace.
+- Waffle notification center is also wrapped in an outer `OnDemandPanelLoader`; critical-dot infinite animations therefore do not remain a permanent idle cost after the center closes.
+- ii/Waffle lock surfaces are created only while `GlobalStates.screenLocked`.
+- lock wallpaper images use `cache: false`; animated/video playback is gated by lock visibility/state.
+- Cheatsheet destroys at the outer on-demand boundary when closed. It does instantiate both of its two pages while open, but that is an in-panel cost, not an idle-session leak.
+- notification popups use 450ms residency grace and destroy after popup history leaves the popup list.
+
+Do not optimize these by adding another nested unload layer unless profiling proves an in-use cost.
+
+### 15.4 Shared CAVA architecture is already stronger than the upstream historical perf patches — SUPERSEDED
+
+Hadalis now has one shared `CavaService`:
+
+- consumers hold `ServiceLease` subscriptions
+- one CAVA subprocess serves all visualizers
+- teardown is debounced by 800ms
+- bar spectrum rendering uses scene-graph primitives rather than a hot Canvas path
+- main consumers gate leases by panel visibility, playback, widget power state and/or effects state
+
+Checked consumers include:
+
+- lock media
+- Control Panel media
+- Media Controls
+- sidebar media/YT Music
+- local music
+- bar spectrum
+- background visualizer/media widgets
+
+No unconditional idle CAVA subscriber was found in this pass.
+
+Classification: **ALREADY / SUPERSEDED**. Preserve lifecycle tests as regression guards.
+
+### 15.5 Niri and desktop-widget power optimizations are already incorporated and extended — SUPERSEDED
+
+Relevant historical iNiR ideas are already present in Hadalis:
+
+- noncritical Niri events are skipped during GameMode while preserving the extra event types needed for fullscreen correctness
+- Niri window-list publishing is throttled with a normal/GameMode cadence
+- window ordering has a separate signal to avoid rebuilds on title-only churn
+- WidgetPowerManager exists and is output-aware
+- WidgetSurface releases blur/FBO work when hidden or power-suspended
+- SineCookie/rotating widget animation respects widget power state
+
+Do not re-port older commits such as `d85e23a4b7` or `a69031cb4f` wholesale.
+
+### 15.6 LatexRenderer has an unbounded in-session result registry — LOCAL CACHE DEBT / P2, raise if reproduced
+
+`services/deferred/LatexRenderer.qml` keeps:
+
+- `processedHashes`
+- `processedExpressions`
+- `renderedImagePaths`
+
+for every unique expression rendered in the session.
+
+Successful entries are never evicted. The generated SVGs are hash-addressed under the LaTeX output directory and this service has no cleanup policy.
+
+The service is deferred, so this is not a startup problem. It becomes relevant for long AI/chat sessions with many unique formulas.
+
+Upstream currently has the same basic unbounded design, so this is **not a port gap**.
+
+Preferred fix if profiling/reproduction justifies it:
+
+- bounded LRU for in-memory registries
+- retain completed disk cache independently from in-memory residency
+- never evict an in-flight hash
+- avoid reintroducing duplicate render races
+- add a long-session test with many unique formulas
+
+### 15.7 Notification history is unbounded and rewrites the whole JSON history — LOCAL LONG-SESSION DEBT / P1-P2
+
+`Notifications.qml` correctly destroys popup timers and discarded notification QObjects, but the persisted history list has no count/age cap.
+
+For every received notification:
+
+- a wrapper QObject is appended to `root.list`
+- the entire list is serialized
+- the full JSON file is rewritten
+
+Timed-out popups remain in history by design.
+
+Consequences in very long sessions or noisy environments:
+
+- resident QObject count grows with history
+- grouping/search work grows with history
+- each persistence write becomes larger
+- startup reload grows with the persisted file
+
+Current iNiR prerelease has the same debt, so this is also **not an upstream port candidate**.
+
+If addressed, prefer a configurable bounded history policy (count and/or age) that:
+
+- never drops active popup state unexpectedly
+- destroys evicted Notif/timer objects
+- preserves critical/unread semantics as defined by product behavior
+- compacts persisted JSON in the same transaction
+- has migration/backward compatibility for existing history files
+
+### 15.8 MPRIS player grace map is tiny but unbounded — P2 cache hygiene
+
+`MprisController._playerGrace` stores `dbusName -> timestamp` entries to bridge metadata gaps during track transitions.
+
+No removal was found when a player disappears.
+
+The retained value is tiny, so this is not a current hot-path issue. Long-running browser/media sessions with many unique MPRIS instance names can still grow the map indefinitely.
+
+Low-risk future cleanup:
+
+- delete the player's grace entry on delegate destruction/player removal
+- optionally prune timestamps older than the grace window during rebuild
+
+Do not prioritize ahead of startup, Settings, Abyss shader or notification-history work.
+
+### 15.9 Small-service audit: mostly event-driven / one-shot — CLOSED
+
+This pass also checked smaller singleton/deferred services.
+
+Verified:
+
+- `BluetoothStatus`: Quickshell Bluetooth signals; no polling process.
+- `DeviceStatePersistence`: event-driven state tracking; restore timers are one-shot timeouts.
+- `TaskbarApps`: short debounce on compositor/AppSearch changes, not a repeating poller.
+- `AppCatalog`: 5s timer is a one-shot refresh after install/remove operations, not a permanent 5s poll.
+- `DankSocket`: exponential reconnect timer only while a requested socket connection is down.
+- `SessionWarnings`: process checks only when `refresh()` is requested.
+- `KeyringStorage`, `SongRec`, `Ydotool`: demand-driven.
+- `Updates`: upstream also polls system package updates periodically; Hadalis improves startup by using `checkupdates` itself as the availability probe instead of spawning a separate `which` helper.
+- `KeyboardIndicators`: prefers event-driven evdev/file watches; LED discovery polling is fallback discovery and backs off when stable.
+- `Brightness`: the 5s/30s timers observed in the file are helper timeouts, not permanent polling loops.
+
+No new P0 issue was found in this group.
+
+---
+
+## 16. Revised priority after audit round 3
+
+### P0
+
+1. Capture a real T+0..T+8 startup process/CPU/PSS timeline.
+2. Benchmark eager WindowPreview prewarm vs consumer-lazy vs hybrid idle-prewarm.
+3. Use the measurements to implement capability-aware Tier 3/4 materialization.
+4. Keep GameMode, IPC owners and enabled startup-reconciliation services resident until equivalent semantics are proven.
+
+### P1
+
+1. Reactive GameMode + Niri freshness/focus prerequisite batch.
+2. Settings section-residency pilot and staged rollout.
+3. Abyss field shader early rejection / record AABB skip.
+4. Clipboard watcher `wl-paste --no-newline`.
+5. Bound notification history if long-session reproduction confirms growth is material.
+6. Media artwork resolver handoff cache only if resolver profiling shows repeated work.
+
+### P2
+
+1. Nix source filtering.
+2. LatexRenderer bounded in-memory registry.
+3. MPRIS grace-map cleanup.
+4. MPD artwork/folder-cache long-session profiling.
+5. Niri-specific session-environment simplification only after reliability measurements.
+
+### Next concrete task
+
+The audit is now broad enough to stop expanding by file count and move to evidence-driven implementation.
+
+Preferred next step:
+
+1. run the startup baseline on current `dev`
+2. choose **one** of:
+   - WindowPreview prewarm policy
+   - capability-aware Tier 3/4 materialization
+   - Settings section residency
+   - Abyss shader early rejection
+3. implement one batch
+4. run its focused regression tests
+5. update this handoff with before/after evidence and the new exact Hadalis SHA
+
+Avoid bundling multiple optimization classes into one patch.

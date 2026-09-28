@@ -393,8 +393,7 @@ for token in (
     "cornerPanelWindow.isBottomLeft",
     'Config.options?.quickNotes?.monitorMode ?? "all"',
     'outputName === (GlobalStates.primaryScreen?.name ?? "")',
-    "&& !cornerPanelWindow.shouldShowOrbitHotCorner",
-    "&& !cornerPanelWindow.orbitConflictsWithNiriOverview",
+    "&& !cornerPanelWindow.niriOverviewOwnsCorner",
     "&& !cornerPanelWindow.quickNotesInteractionBlocked",
     "GlobalStates.controlPanelOpen",
     "GlobalStates.dashboardOpen",
@@ -415,17 +414,18 @@ for token in (
 ):
     require(corners, token, "bottom-left Quick Notes corner contract missing")
 
-# Orbit remains authoritative if the user deliberately assigns it to this
-# corner; otherwise Quick Notes owns bottom-left before legacy sidebar opening.
+# Orbit is retired. The compositor's real Niri overview hot corner still owns
+# its physical corner before Quick Notes or the legacy Sidebar trigger.
 quick_start = corners.index("readonly property bool shouldShowQuickNotesCorner:")
 sidebar_start = corners.index("readonly property bool shouldShowSidebarCornerOpen:")
 if not quick_start < sidebar_start:
     fail("Quick Notes priority must be resolved before legacy sidebar corner-open")
 quick_block = corners[quick_start:sidebar_start]
-require(quick_block, "!cornerPanelWindow.shouldShowOrbitHotCorner",
-        "Orbit hot corner must retain priority over Quick Notes")
-require(quick_block, "!cornerPanelWindow.orbitConflictsWithNiriOverview",
-        "native Niri hot corners must retain priority over Quick Notes")
+require(quick_block, "!cornerPanelWindow.niriOverviewOwnsCorner",
+        "native Niri overview hot corners must retain priority over Quick Notes")
+for retired in ("shouldShowOrbitHotCorner", "GlobalStates.openOrbit(",
+                "Config.options?.orbit", 'overviewMode !== "orbit"'):
+    forbid(corners, retired, "retired Orbit hot-corner runtime must stay absent")
 
 schema_match = re.search(
     r"property JsonObject quickNotes: JsonObject \{([\s\S]*?)\n\s*\}",

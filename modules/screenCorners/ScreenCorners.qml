@@ -84,18 +84,12 @@ Scope {
         readonly property bool cornerOpenMatchesPosition: cornerOpenAtBottom === cornerPanelWindow.isBottom
         readonly property bool shouldShowCornerOpen: cornerOpenEnabled
             && cornerOpenMatchesPosition && !fullscreen
-        readonly property string orbitCorner: Config.options?.orbit?.hotCorner ?? "topRight"
         readonly property string cornerName: cornerPanelWindow.corner
         readonly property string outputName: cornerPanelWindow.screen?.name ?? ""
-        readonly property bool orbitConflictsWithNiriOverview: CompositorService.isNiri
+        // Orbit was retired from the live graph. Only the compositor's real
+        // overview hot corner keeps priority over shell corner interactions.
+        readonly property bool niriOverviewOwnsCorner: CompositorService.isNiri
             && NiriService.isOverviewHotCornerActive(outputName, cornerName)
-        readonly property bool shouldShowOrbitHotCorner: CompositorService.isNiri
-            && (Config.options?.panelFamily ?? "ii") !== "waffle"
-            && (Config.options?.orbit?.enable ?? true)
-            && (Config.options?.orbit?.hotCornerEnable ?? true)
-            && cornerName === orbitCorner
-            && !orbitConflictsWithNiriOverview
-            && !fullscreen
         readonly property bool cornerPopupInteractionBlocked:
             GlobalStates.screenLocked
             || GlobalStates.bootGreetingOpen
@@ -180,8 +174,7 @@ Scope {
             && (screenCorners.quickNotesEditorOutput.length === 0
                 || screenCorners.quickNotesEditorOutput === outputName)
             && cornerPanelWindow.isBottomLeft
-            && !cornerPanelWindow.shouldShowOrbitHotCorner
-            && !cornerPanelWindow.orbitConflictsWithNiriOverview
+            && !cornerPanelWindow.niriOverviewOwnsCorner
             && !cornerPanelWindow.quickNotesInteractionBlocked
             && !fullscreen
 
@@ -250,8 +243,7 @@ Scope {
             && (Config.options?.notificationCenter?.hoverEnable ?? true)
             && cornerPanelWindow.notificationCenterTargetsOutput()
             && cornerPanelWindow.isBottomRight
-            && !cornerPanelWindow.shouldShowOrbitHotCorner
-            && !cornerPanelWindow.orbitConflictsWithNiriOverview
+            && !cornerPanelWindow.niriOverviewOwnsCorner
             && !cornerPanelWindow.notificationCenterInteractionBlocked
             && (!GlobalStates.notificationCenterExplicitOpen
                 || cornerPanelWindow.notificationCenterExplicitForOutput)
@@ -284,18 +276,17 @@ Scope {
         // sidebar trigger. This lets bottom-left become Quick Notes without
         // deleting the old corner-open compatibility settings.
         readonly property bool shouldShowSidebarCornerOpen: shouldShowCornerOpen
-            && !shouldShowOrbitHotCorner
+            && !niriOverviewOwnsCorner
             && !shouldShowQuickNotesCorner
             && !notificationCenterHostNeeded
 
         visible: (!fullscreen && (shouldShowSidebarCornerOpen
-            || shouldShowOrbitHotCorner || shouldShowQuickNotesCorner))
+            || shouldShowQuickNotesCorner))
             || notificationCenterHostNeeded
 
         exclusionMode: ExclusionMode.Ignore
         mask: Region {
-            item: orbitHotCornerLoader.active ? orbitHotCornerLoader
-                : quickNotesCornerLoader.active ? quickNotesCornerLoader
+            item: quickNotesCornerLoader.active ? quickNotesCornerLoader
                 : (cornerPanelWindow.shouldShowNotificationCenterCorner
                     && notificationCenterCornerLoader.active)
                     ? notificationCenterCornerLoader
@@ -327,12 +318,6 @@ Scope {
             // Size for corner open interaction area
             readonly property int cornerOpenWidth: Config.options?.sidebar?.cornerOpen?.cornerRegionWidth ?? 20
             readonly property int cornerOpenHeight: Config.options?.sidebar?.cornerOpen?.cornerRegionHeight ?? 20
-            readonly property int orbitHotCornerSize: Math.max(4, Math.min(40,
-                Config.options?.orbit?.hotCornerSize ?? 12))
-            readonly property int orbitHotCornerActivationDistance: Math.max(1, Math.min(32,
-                Config.options?.orbit?.hotCornerActivationDistance ?? 2))
-            readonly property int orbitHotCornerHitSize: Math.max(
-                orbitHotCornerSize, orbitHotCornerActivationDistance)
             readonly property int quickNotesCornerSize: Math.max(4, Math.min(48,
                 Config.options?.quickNotes?.cornerSize ?? 14))
             readonly property int notificationCenterCornerSize: Math.max(4, Math.min(48,
@@ -340,77 +325,14 @@ Scope {
 
             implicitWidth: Math.max(0,
                 cornerPanelWindow.shouldShowSidebarCornerOpen ? cornerOpenWidth : 0,
-                cornerPanelWindow.shouldShowOrbitHotCorner ? orbitHotCornerHitSize : 0,
                 cornerPanelWindow.shouldShowQuickNotesCorner ? quickNotesCornerSize : 0,
                 cornerPanelWindow.notificationCenterHostNeeded
                     ? notificationCenterCornerSize : 0)
             implicitHeight: Math.max(0,
                 cornerPanelWindow.shouldShowSidebarCornerOpen ? cornerOpenHeight : 0,
-                cornerPanelWindow.shouldShowOrbitHotCorner ? orbitHotCornerHitSize : 0,
                 cornerPanelWindow.shouldShowQuickNotesCorner ? quickNotesCornerSize : 0,
                 cornerPanelWindow.notificationCenterHostNeeded
                     ? notificationCenterCornerSize : 0)
-
-            Loader {
-                id: orbitHotCornerLoader
-                active: cornerPanelWindow.shouldShowOrbitHotCorner
-                anchors {
-                    top: cornerPanelWindow.isTop ? parent.top : undefined
-                    bottom: cornerPanelWindow.isBottom ? parent.bottom : undefined
-                    left: cornerPanelWindow.isLeft ? parent.left : undefined
-                    right: cornerPanelWindow.isRight ? parent.right : undefined
-                }
-
-                sourceComponent: MouseArea {
-                    id: orbitHotCornerArea
-                    implicitWidth: cornerWidget.orbitHotCornerHitSize
-                    implicitHeight: cornerWidget.orbitHotCornerHitSize
-                    hoverEnabled: true
-                    property bool armed: true
-                    property bool atCorner: false
-
-                    function triggerOrbit(): void {
-                        if (!armed || !atCorner)
-                            return
-                        armed = false
-                        orbitDwellTimer.stop()
-                        GlobalStates.openOrbit(cornerPanelWindow.screen?.name ?? "")
-                    }
-
-                    onPositionChanged: mouse => {
-                        const distance = cornerWidget.orbitHotCornerActivationDistance
-                        const atX = cornerPanelWindow.isRight
-                            ? mouse.x >= width - distance : mouse.x <= distance
-                        const atY = cornerPanelWindow.isTop
-                            ? mouse.y <= distance : mouse.y >= height - distance
-                        atCorner = atX && atY
-                        if (!atCorner) {
-                            armed = true
-                            orbitDwellTimer.stop()
-                            return
-                        }
-                        if (!armed)
-                            return
-                        const dwell = Config.options?.orbit?.hotCornerDwellMs ?? 0
-                        if (dwell <= 0)
-                            triggerOrbit()
-                        else if (!orbitDwellTimer.running)
-                            orbitDwellTimer.restart()
-                    }
-                    onExited: {
-                        atCorner = false
-                        orbitDwellTimer.stop()
-                        if (!GlobalStates.overviewOpen || GlobalStates.overviewMode !== "orbit")
-                            armed = true
-                    }
-
-                    Timer {
-                        id: orbitDwellTimer
-                        interval: Math.max(1, Config.options?.orbit?.hotCornerDwellMs ?? 0)
-                        onTriggered: orbitHotCornerArea.triggerOrbit()
-                    }
-                }
-            }
 
             // Bottom-left Quick Notes uses a dwell-gated synthetic
             // containsMouse property. StyledPopup can therefore keep its normal

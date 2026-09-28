@@ -2153,13 +2153,15 @@ def main() -> None:
     for token in (
         "GlobalStates.toggleSidebarLeft",
         "GlobalStates.toggleSidebarRight",
-        "GlobalStates.openOrbit(",
+        "NiriService.isOverviewHotCornerActive",
         "Brightness.getMonitorForScreen",
         "Audio.incrementVolume()",
         "Audio.decrementVolume()",
     ):
         require(screen_corners, token, "screenCorners/ScreenCorners.qml")
-    for token in ("RoundCorner", "fakeScreenRounding", "showFakeRounding", "roundingSize"):
+    for token in ("RoundCorner", "fakeScreenRounding", "showFakeRounding", "roundingSize",
+                  "GlobalStates.openOrbit(", "shouldShowOrbitHotCorner",
+                  "Config.options?.orbit"):
         forbid(screen_corners, token, "screenCorners/ScreenCorners.qml")
 
     # CompactSidebarRightContent is selected by SidebarHost when sidebar.layout

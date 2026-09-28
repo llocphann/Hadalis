@@ -79,7 +79,7 @@ bind "Mod+Space" { spawn "inir" "overview" "toggle"; }
 
 ### taskview
 
-Compatibility entry point for task navigation. On Waffle it opens the Waffle Task View; on ii/Niri it routes to Orbit.
+Compatibility entry point for task navigation. On Waffle it opens the Waffle Task View; on Abyss and legacy ii it opens the normal Overview in task-view mode.
 
 | Function | Description |
 |----------|-------------|

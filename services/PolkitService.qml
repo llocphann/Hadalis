@@ -4,6 +4,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import Quickshell
 import Quickshell.Io
+import qs
 import qs.modules.common
 
 /**
@@ -25,6 +26,30 @@ Singleton {
     property bool active: impl?.active ?? false
     property var flow: impl?.flow ?? null
     property bool interactionAvailable: impl?.interactionAvailable ?? false
+    property int requestSerial: impl?.requestSerial ?? 0
+
+    readonly property string actionId: String(flow?.actionId ?? "")
+    readonly property string iconName: String(flow?.iconName ?? "")
+    readonly property bool responseVisible: flow?.responseVisible ?? false
+    readonly property bool responseRequired: flow?.isResponseRequired ?? false
+    readonly property bool failed: flow?.failed ?? false
+    readonly property string supplementaryMessage:
+        String(flow?.supplementaryMessage ?? "").trim()
+    readonly property bool supplementaryIsError:
+        flow?.supplementaryIsError ?? false
+    readonly property var identities: flow?.identities ?? []
+    readonly property var selectedIdentity: flow?.selectedIdentity ?? null
+    readonly property bool canSubmit:
+        root.active && root.interactionAvailable && root.responseRequired
+    readonly property bool busy:
+        root.active && !root.interactionAvailable
+        && !(flow?.isCompleted ?? false)
+
+    property string targetOutputName: ""
+    property var resolvedAnchor: null
+    property string resolvedAnchorKind: ""
+    property bool hadResolvedAnchor: false
+    property var _nextSourceHint: null
 
     readonly property string rawMessage: String(flow?.message ?? "").trim()
     readonly property bool batteryChargeLimitRequest: rawMessage.includes("battery-charge-limit")
@@ -45,7 +70,58 @@ Singleton {
     readonly property string actionLabel: batteryChargeLimitRequest
         ? Translation.tr("Charge limit")
         : Translation.tr("Authentication")
-    
+
+    function identityLabelFor(identity): string {
+        if (!identity)
+            return ""
+        for (const key of ["displayName", "name", "user", "username", "id"]) {
+            const value = String(identity?.[key] ?? "").trim()
+            if (value.length > 0)
+                return value
+        }
+        const fallback = String(identity ?? "").trim()
+        return fallback.startsWith("QVariant(") ? "" : fallback
+    }
+
+    readonly property string identityLabel:
+        root.identityLabelFor(root.selectedIdentity)
+    readonly property string detailsText: {
+        const lines = []
+        if (root.actionId.length > 0)
+            lines.push(Translation.tr("Action") + ": " + root.actionId)
+        if (root.identityLabel.length > 0)
+            lines.push(Translation.tr("Identity") + ": " + root.identityLabel)
+        return lines.join("\n")
+    }
+
+    // Optional trusted internal hint for a future backend/native bridge. Current
+    // AuthFlow does not expose a requester app id, so ordinary requests leave
+    // this unset and intentionally use top-center fallback.
+    function hintSource(appId, anchorItem = null): void {
+        root._nextSourceHint = {
+            appId: String(appId ?? ""),
+            anchorItem: anchorItem
+        }
+    }
+
+    function _latchPresentation(): void {
+        const hint = root._nextSourceHint
+        root._nextSourceHint = null
+        const resolved = hint ? PopupAnchorRegistry.resolve(hint) : null
+        root.resolvedAnchor = resolved?.item ?? null
+        root.resolvedAnchorKind = String(resolved?.kind ?? "")
+        root.hadResolvedAnchor = root.resolvedAnchor !== null
+        const resolvedOutput = String(resolved?.outputName ?? "")
+        root.targetOutputName = resolvedOutput.length > 0
+            ? resolvedOutput
+            : GlobalStates.resolveOutputName("", [])
+    }
+
+    onRequestSerialChanged: {
+        if (root.requestSerial > 0)
+            root._latchPresentation()
+    }
+
     // Whether the Polkit module is available
     readonly property bool available: impl !== null
     
@@ -53,8 +129,35 @@ Singleton {
         if (impl) impl.cancel()
     }
     
-    function submit(text: string): void {
-        if (impl) impl.submit(text)
+    function submit(response: string): void {
+        if (impl) impl.submit(response)
+    }
+
+    function selectNextIdentity(): void {
+        if (!impl || !root.flow)
+            return
+        const count = Number(root.identities?.length ?? 0)
+        if (count <= 1)
+            return
+        let current = -1
+        for (let index = 0; index < count; ++index) {
+            if (root.identities[index] === root.selectedIdentity) {
+                current = index
+                break
+            }
+        }
+        impl.selectIdentity(root.identities[(current + 1) % count])
+    }
+
+    Connections {
+        target: PopupAnchorRegistry
+        function onAnchorRemoved(item): void {
+            if (root.active && root.hadResolvedAnchor
+                    && root.resolvedAnchor === item) {
+                root.resolvedAnchor = null
+                root.cancel()
+            }
+        }
     }
     
     // Private: actual implementation loaded dynamically

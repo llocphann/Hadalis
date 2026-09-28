@@ -12,6 +12,7 @@ Scope {
     property alias active: polkitAgent.isActive
     property alias flow: polkitAgent.flow
     property bool interactionAvailable: false
+    property int requestSerial: 0
 
     function cancel() {
         if (!root.flow)
@@ -20,24 +21,43 @@ Scope {
         root.interactionAvailable = false
     }
 
-    function submit(string) {
-        if (!root.flow)
+    function submit(response) {
+        if (!root.flow || !(root.flow.isResponseRequired ?? false))
             return
-        root.flow.submit(string)
+        // Never retain or log an authentication response.
         root.interactionAvailable = false
+        root.flow.submit(response)
+    }
+
+    function selectIdentity(identity) {
+        if (!root.flow || !identity)
+            return
+        root.interactionAvailable = false
+        root.flow.selectedIdentity = identity
     }
 
     Connections {
         target: root.flow
         function onAuthenticationFailed() {
-            root.interactionAvailable = true;
+            root.interactionAvailable = true
+        }
+        function onIsResponseRequiredChanged() {
+            if (root.flow?.isResponseRequired ?? false)
+                root.interactionAvailable = true
+        }
+        function onAuthenticationSucceeded() {
+            root.interactionAvailable = false
+        }
+        function onAuthenticationRequestCancelled() {
+            root.interactionAvailable = false
         }
     }
 
     PolkitAgent {
         id: polkitAgent
         onAuthenticationRequestStarted: {
-            root.interactionAvailable = true;
+            root.requestSerial += 1
+            root.interactionAvailable = true
         }
     }
 }

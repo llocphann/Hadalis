@@ -22,6 +22,12 @@ Rectangle {
         }
     }
 
+    function submitResponse(): void {
+        const response = inputField.text
+        inputField.text = ""
+        PolkitService.submit(response)
+    }
+
     StyledImage {
         anchors.fill: parent
         source: Config.options?.background?.wallpaperPath ?? ""
@@ -158,7 +164,7 @@ Rectangle {
                                 enabled: PolkitService.interactionAvailable
                                 placeholderText: PolkitService.cleanPrompt
                                 echoMode: root.usePasswordChars ? TextInput.Password : TextInput.Normal
-                                onAccepted: PolkitService.submit(inputField.text)
+                                onAccepted: root.submitResponse()
 
                                 Keys.onPressed: event => {
                                     if (event.key === Qt.Key_Escape) {
@@ -216,7 +222,7 @@ Rectangle {
                                 icon.name: "checkmark"
                                 forceShowIcon: true
                                 checked: true
-                                onClicked: PolkitService.submit(inputField.text)
+                                onClicked: root.submitResponse()
                             }
                         }
                     }

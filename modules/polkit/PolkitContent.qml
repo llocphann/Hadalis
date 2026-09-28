@@ -22,7 +22,9 @@ Item {
     }
 
     function submit(): void {
-        PolkitService.submit(inputField.text)
+        const response = inputField.text
+        inputField.text = ""
+        PolkitService.submit(response)
     }
 
     Connections {

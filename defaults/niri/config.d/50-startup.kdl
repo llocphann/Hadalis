@@ -23,7 +23,7 @@ spawn-at-startup "inir" "input-method" "start"
 // for text/plain instead would drop those entries entirely.
 // Niri owns each long-running watcher directly; do not background them inside bash.
 // Access via iNiR's clipboard overlay (Mod+V).
-spawn-at-startup "bash" "-c" "exec wl-paste --type text --watch ~/.config/quickshell/inir/scripts/native-dispatch clipboard-store"
+spawn-at-startup "bash" "-c" "exec wl-paste --no-newline --type text --watch ~/.config/quickshell/inir/scripts/native-dispatch clipboard-store"
 spawn-at-startup "bash" "-c" "exec wl-paste --type image --watch cliphist store"
 
 // Polkit authentication agent — needed for GUI sudo prompts (software install,

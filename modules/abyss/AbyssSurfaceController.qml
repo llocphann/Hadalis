@@ -7,20 +7,12 @@ QtObject {
     id: root
     property string outputName: ""
     property var participants: ({})
-    property QtObject transitionCoordinator: AbyssPopupTransitionCoordinator {
-        controller: root
-    }
     property var moduleRecords: []
     property int presentationOrder: 0
     function nextPresentationOrder(): int { return ++presentationOrder }
     readonly property var bodyPlacements: BodyPlacement.arrange(Object.keys(participants)
         .map(key => participants[key]?.placementRequest).filter(request => request !== null && request !== undefined),
         outputWidth,outputHeight,edgeInsets)
-    onBodyPlacementsChanged:
-        transitionCoordinator.syncResting(bodyPlacements,participants)
-    onParticipantsChanged:
-        Qt.callLater(() =>
-            transitionCoordinator.syncResting(bodyPlacements,participants))
     property real outputWidth: 1920
     property real outputHeight: 1080
     property bool presented: true

@@ -41,16 +41,6 @@ Item {
     readonly property real mass: Math.max(1,span*depth/90000)
     property bool initialized: false
     property bool open: false
-    // Mature StyledPopup keeps visual open/linger separate from its semantic
-    // request. Generic Abyss bodies leave this undefined and use open directly.
-    property var semanticOpenOverride: undefined
-    readonly property bool semanticOpen:
-        semanticOpenOverride === undefined
-            ? root.open : Boolean(semanticOpenOverride)
-    readonly property bool visualResident:
-        root.open || root.progress > 0.001
-    readonly property bool acceptsInput:
-        root.semanticOpen && root.placementVisible
     property int activationOrder: 0
     property int placementPriority: identity === "dialog" ? 2 : ["utility","edgeEditor"].includes(identity) ? 1 : identity === "dock" ? -1 : 0
     readonly property var placement: controller?.bodyPlacements?.[identity] ?? null
@@ -66,22 +56,6 @@ Item {
     // first placement snaps into place; later peer-induced tier/size changes
     // slide/reflow from the current frame and naturally reverse mid-flight.
     readonly property bool placementMotionReady: retainedPlacement !== null
-    readonly property bool coordinatedPyramidMotion:
-        root.pyramidStack
-            && (root.controller?.transitionCoordinator?.motionEnabled ?? false)
-    property var pyramidPlacementFrom: null
-    property var pyramidPlacementTo: null
-    property int pyramidPlacementGeneration: -1
-    readonly property var pyramidVisualPlacement: {
-        if (!root.coordinatedPyramidMotion)
-            return null
-        const coordinator=root.controller?.transitionCoordinator
-        const target=coordinator?.targetFor(root.identity) ?? root.effectivePlacement
-        if (!root.pyramidPlacementFrom || !root.pyramidPlacementTo)
-            return target
-        return coordinator.interpolatePlacement(root.pyramidPlacementFrom,
-            root.pyramidPlacementTo,coordinator.transactionProgress)
-    }
     property real visualPlacementAlong: Number.isFinite(Number(effectivePlacement?.along))
         ? Number(effectivePlacement.along) : along
     property real visualPlacementSpan: Number.isFinite(Number(effectivePlacement?.span))
@@ -97,10 +71,6 @@ Item {
             depth:visualPlacementDepth,
             inward:visualPlacementInward
         }) : null
-    readonly property var presentationPlacement:
-        root.coordinatedPyramidMotion
-            ? (root.pyramidVisualPlacement ?? root.visualPlacement)
-            : root.visualPlacement
     readonly property bool presented: open && placementVisible
     property real along: 0
     property real span: 380
@@ -110,8 +80,6 @@ Item {
     property var obstacles: []
     property string source: ""
     property string contentKind: ""
-    // Only popup bodies opt into size-ordered same-anchor stacking.
-    property bool pyramidStack: false
     // External presenters such as StyledPopup own their own reveal fraction.
     // Keep that motion independent from allocator availability: otherwise the
     // host's Behavior would re-animate every incoming reveal frame.
@@ -120,112 +88,61 @@ Item {
     property real progress: (externalProgress >= 0
         ? Math.max(0,Math.min(1,externalProgress)) : 1) * availabilityProgress
     readonly property var requestedRecord: Geometry.panel(width,height,edgeInsets,edge,along,span,depth,1,padding,[],largeSurface)
-    readonly property var record: Geometry.joinCorner(Geometry.placedPanel(width,height,edgeInsets,edge,along,span,depth,progress,padding,obstacles,largeSurface,presentationPlacement),joinedEdge,width,height,edgeInsets)
-    readonly property var targetRecord: Geometry.placedPanel(width,height,edgeInsets,edge,along,span,depth,1,padding,obstacles,largeSurface,
-        root.coordinatedPyramidMotion
-            ? (root.controller?.transitionCoordinator?.targetFor(root.identity)
-                ?? root.layoutPlacement)
-            : root.layoutPlacement)
+    readonly property var record: Geometry.joinCorner(Geometry.placedPanel(width,height,edgeInsets,edge,along,span,depth,progress,padding,obstacles,largeSurface,visualPlacement),joinedEdge,width,height,edgeInsets)
+    readonly property var targetRecord: Geometry.placedPanel(width,height,edgeInsets,edge,along,span,depth,1,padding,obstacles,largeSurface,layoutPlacement)
     readonly property Item contentItem: content
     readonly property bool ready: embeddedItem !== null || content.status === Loader.Ready
     readonly property Item contentParent: contentFrame
-    readonly property rect inputBounds: acceptsInput && ready
+    readonly property rect inputBounds: presented && ready
         ? Qt.rect(contentFrame.x,contentFrame.y,contentFrame.width,contentFrame.height) : Qt.rect(0,0,0,0)
     signal closeRequested()
     AbyssParticipant {
-        id: participant
         identity: root.identity
         controller: root.controller
         geometry: root.record
-        placementRequest: ({id:root.identity,open:root.semanticOpen,order:root.activationOrder,
+        placementRequest: ({id:root.identity,open:root.open,order:root.activationOrder,
             priority:root.placementPriority,padding:root.padding,
             minSpan:root.minimumSpan,minDepth:root.minimumDepth,
-            pyramidStack:root.pyramidStack,
             record:root.requestedRecord})
         inputBounds: root.inputBounds
         mass: root.mass
-    }
-    function acceptPyramidTransaction(): void {
-        if (!root.coordinatedPyramidMotion)
-            return
-        const coordinator=root.controller?.transitionCoordinator
-        const target=coordinator?.targetFor(root.identity)
-        if (!target)
-            return
-        const current=root.pyramidVisualPlacement
-            ?? root.presentationPlacement
-            ?? root.effectivePlacement
-            ?? target
-        root.pyramidPlacementFrom=coordinator.clonePlacement(current)
-        root.pyramidPlacementTo=coordinator.clonePlacement(target)
-        root.pyramidPlacementGeneration=coordinator.transactionGeneration
-    }
-    function syncTransitionSnapshot(): void {
-        const coordinator=root.controller?.transitionCoordinator
-        if (!coordinator) return
-        coordinator.observeSemantic(root.identity,root.semanticOpen,
-            participant.placementRequest,root.placement,root.record)
-        if (root.semanticOpen)
-            coordinator.capture(root.identity,participant.placementRequest,
-                root.placement,root.record)
     }
     function react(opening): void {
         if (controller) controller.impulse(edge,along+span/2,span,(opening ? 0.85 : -0.65)*waveInfluence,mass,opening ? "open" : "close")
     }
     function markOpened(): void { if (open && controller?.nextPresentationOrder) activationOrder=controller.nextPresentationOrder() }
-    Connections {
-        target: root.controller?.transitionCoordinator ?? null
-        function onTransactionGenerationChanged(): void {
-            root.acceptPyramidTransaction()
-        }
-    }
     onPlacementChanged: {
         if (placement?.visible !== false)
             retainedPlacement = placement
-        if (initialized && semanticOpen)
-            syncTransitionSnapshot()
     }
-    onSemanticOpenChanged: if (initialized)
-        syncTransitionSnapshot()
-    onOpenChanged: if (initialized) {
-        markOpened()
-        react(open)
-    }
-    onProgressChanged: {
-        if (!initialized || semanticOpen || progress > 0.001)
-            return
-        root.controller?.transitionCoordinator?.finishClosing(
-            root.identity,root.controller?.bodyPlacements,
-            root.controller?.participants)
-    }
+    onOpenChanged: if (initialized) { markOpened();react(open) }
     onEmbeddedItemChanged: if (initialized) markOpened()
     onContentKindChanged: if (initialized) markOpened()
     onControllerChanged: if (initialized) markOpened()
     Component.onCompleted: {
         initialized = true
-        syncTransitionSnapshot()
         markOpened()
         if (open) Qt.callLater(() => { if (root.open) root.react(true) })
     }
     Keys.onEscapePressed: root.closeRequested()
     Behavior on visualPlacementAlong {
         enabled: root.animatePlacementChanges && root.placementMotionReady
-            && !root.coordinatedPyramidMotion && AbyssStyle.motionEnabled
+            && AbyssStyle.motionEnabled
         NumberAnimation { duration: AbyssStyle.motionNormal; easing.type: Easing.OutCubic }
     }
     Behavior on visualPlacementSpan {
         enabled: root.animatePlacementChanges && root.placementMotionReady
-            && !root.coordinatedPyramidMotion && AbyssStyle.motionEnabled
+            && AbyssStyle.motionEnabled
         NumberAnimation { duration: AbyssStyle.motionNormal; easing.type: Easing.OutCubic }
     }
     Behavior on visualPlacementDepth {
         enabled: root.animatePlacementChanges && root.placementMotionReady
-            && !root.coordinatedPyramidMotion && AbyssStyle.motionEnabled
+            && AbyssStyle.motionEnabled
         NumberAnimation { duration: AbyssStyle.motionNormal; easing.type: Easing.OutCubic }
     }
     Behavior on visualPlacementInward {
         enabled: root.animatePlacementChanges && root.placementMotionReady
-            && !root.coordinatedPyramidMotion && AbyssStyle.motionEnabled
+            && AbyssStyle.motionEnabled
         NumberAnimation { duration: AbyssStyle.motionNormal; easing.type: Easing.OutCubic }
     }
     Behavior on availabilityProgress {
@@ -256,7 +173,7 @@ Item {
         clip: true
         visible: root.placementVisible || root.progress > 0.001
         opacity: Math.min(1,root.progress*1.5)
-        enabled: root.acceptsInput
+        enabled: root.presented
     }
     Loader {
         id: content
@@ -269,12 +186,12 @@ Item {
         // A space-constrained body retains drafts/focus state while hidden. It
         // unloads only after a semantic close and completion of the reveal.
         active: !root.embeddedItem
-            && (root.residentContent || root.visualResident)
+            && (root.residentContent || root.open || root.progress > 0.001)
             && GlobalStates.deferredPanelsReady
         source: root.source
         clip: true
         opacity: 1
-        enabled: root.acceptsInput
+        enabled: root.presented
         onLoaded: {
             if (item.participant !== undefined) item.participant = root
             if (item.outputName !== undefined) item.outputName = Qt.binding(() => root.outputName)

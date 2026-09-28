@@ -188,6 +188,7 @@ Scope {
                 controller: liquid
                 edgeInsets: window.nativeInsets
             }
+            property string connectivityHoverKind: ""
             AbyssBar {
                 id: bar
                 outputName: window.outputName
@@ -222,6 +223,16 @@ Scope {
                     GlobalStates.abyssPopupAlong = along
                     GlobalStates.abyssPopupEdge = edge
                     GlobalStates.abyssPopupKind = kind
+                }
+                onPopupHoverStateChanged: (kind,edge,along,hovered) => {
+                    if (!["wifi","bluetooth"].includes(kind))
+                        return
+                    if (hovered) {
+                        window.connectivityHoverKind = kind
+                        return
+                    }
+                    if (window.connectivityHoverKind === kind)
+                        window.connectivityHoverKind = ""
                 }
             }
             Item {
@@ -370,6 +381,8 @@ Scope {
                 stableContentSize: true
                 obstacles: window.sideObstacles
                 contentKind: GlobalStates.abyssPopupKind || "media"
+                property bool triggerHovered: ["wifi","bluetooth"].includes(contentKind)
+                    && window.connectivityHoverKind === contentKind
                 source: "content/AbyssPopupContent.qml"
                 onCloseRequested: window.closePopup()
             }

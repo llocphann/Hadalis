@@ -36,7 +36,14 @@ Item {
     Component { id: weather; WeatherPopupContent { compact: (root.participant?.width ?? 1920)<compactBreakpoint } }
     Component { id: media; BarMediaPopup { onCloseRequested: root.closeRequested() } }
     Component { id: utilities; AbyssUtilitiesPopup { outputName: root.outputName; onCloseRequested: root.closeRequested() } }
-    Component { id: network; AbyssNetworkPopup { kind: root.kind; onCloseRequested: root.closeRequested() } }
+    Component {
+        id: network
+        AbyssNetworkPopup {
+            kind: root.kind
+            triggerHovered: root.participant?.triggerHovered ?? false
+            onCloseRequested: root.closeRequested()
+        }
+    }
     Component {
         id: audio
         ColumnLayout {

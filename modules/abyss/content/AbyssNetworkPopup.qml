@@ -14,6 +14,7 @@ FocusScope {
     id: root
     property string kind: "wifi"
     property bool autoDismissOnIdle: true
+    property bool triggerHovered: false
     property int idleDismissDelay: 650
     implicitWidth: 380
     implicitHeight: 500
@@ -25,7 +26,7 @@ FocusScope {
             idleDismiss.stop()
             return
         }
-        if (popupHover.hovered || root.activeFocus)
+        if (root.triggerHovered || popupHover.hovered || root.activeFocus)
             idleDismiss.stop()
         else
             idleDismiss.restart()
@@ -41,6 +42,7 @@ FocusScope {
 
     Component.onCompleted: Qt.callLater(refreshIdleDismiss)
     onEnabledChanged: refreshIdleDismiss()
+    onTriggerHoveredChanged: refreshIdleDismiss()
     onActiveFocusChanged: refreshIdleDismiss()
 
     HoverHandler {
@@ -54,7 +56,7 @@ FocusScope {
         repeat: false
         onTriggered: {
             if (root.autoDismissOnIdle && root.enabled
-                    && !popupHover.hovered && !root.activeFocus)
+                    && !root.triggerHovered && !popupHover.hovered && !root.activeFocus)
                 root.closeRequested()
         }
     }

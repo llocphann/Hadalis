@@ -10,6 +10,7 @@ Item {
     property color contentColor: Appearance.colors.colOnLayer0
     property string pendingConnectivityKind: ""
     signal hoverPopupRequested(string kind)
+    signal connectivityHoverChanged(string kind, bool hovered)
     implicitWidth: indicators.implicitWidth
     implicitHeight: indicators.implicitHeight
 
@@ -25,6 +26,7 @@ Item {
     }
 
     function scheduleConnectivityPopup(kind: string, hovered: bool): void {
+        root.connectivityHoverChanged(kind, hovered)
         if (!hovered) {
             if (root.pendingConnectivityKind === kind) {
                 root.pendingConnectivityKind = ""

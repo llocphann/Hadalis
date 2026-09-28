@@ -17,6 +17,12 @@ done
 grep -Fq 'MIGRATION_ID="053-retire-abyss-connectivity-modules"' "$migration"     || { printf 'FAIL: retired connectivity module migration missing\n' >&2; exit 1; }
 grep -Fq 'property bool autoDismissOnIdle: true' "$repo_root/modules/abyss/content/AbyssNetworkPopup.qml" \
     || { printf 'FAIL: network popup idle-dismiss contract missing\n' >&2; exit 1; }
+grep -Fq 'property bool triggerHovered: false' "$repo_root/modules/abyss/content/AbyssNetworkPopup.qml" \
+    || { printf 'FAIL: network popup cannot retain while the tray trigger is hovered\n' >&2; exit 1; }
+grep -Fq 'signal connectivityHoverChanged(string kind, bool hovered)' "$repo_root/modules/bar/BarStatusIndicators.qml" \
+    || { printf 'FAIL: connectivity trigger hover state is not exported\n' >&2; exit 1; }
+grep -Fq 'triggerHovered: root.participant?.triggerHovered ?? false' "$repo_root/modules/abyss/content/AbyssPopupContent.qml" \
+    || { printf 'FAIL: popup host hover state is not bound into network content\n' >&2; exit 1; }
 grep -Fq 'showEmbeddedFooter: false' "$repo_root/modules/abyss/content/AbyssNetworkPopup.qml" \
     || { printf 'FAIL: System Tray network popup still exposes mature footer actions\n' >&2; exit 1; }
 grep -Fq 'glyph: "settings"' "$repo_root/modules/abyss/content/AbyssNetworkPopup.qml" \

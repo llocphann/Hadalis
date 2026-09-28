@@ -25,6 +25,7 @@ Item {
     readonly property bool vertical: edge === "left" || edge === "right"
     signal popupRequested(string kind, string edge, real along)
     signal popupHoveredRequested(string kind, string edge, real along)
+    signal popupHoverStateChanged(string kind, string edge, real along, bool hovered)
     signal interaction(string edge, real along, real span, real strength)
     readonly property var zones: Geometry.barZones(
         (root.vertical ? Config.options?.bar?.verticalLayout : Config.options?.bar?.layout) ?? {},
@@ -79,6 +80,10 @@ Item {
             onInteraction: strength => { if (geometry) root.interaction(geometry.edge,geometry.along+geometry.span/2,geometry.span,strength*geometry.influence) }
             onRequest: kind => { if (geometry) root.popupRequested(kind,geometry.edge,geometry.along+geometry.span/2) }
             onHoverRequest: kind => { if (geometry) root.popupHoveredRequested(kind,geometry.edge,geometry.along+geometry.span/2) }
+            onHoverState: (kind, hovered) => {
+                if (geometry)
+                    root.popupHoverStateChanged(kind,geometry.edge,geometry.along+geometry.span/2,hovered)
+            }
         }
     }
 }

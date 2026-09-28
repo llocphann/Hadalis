@@ -34,6 +34,7 @@ Item {
     signal interaction(real strength)
     signal request(string kind)
     signal hoverRequest(string kind)
+    signal hoverState(string kind, bool hovered)
     HoverHandler { id: hoverTracker; onHoveredChanged: root.interaction(hovered ? .35 : -.15) }
     PointHandler { acceptedButtons: Qt.LeftButton | Qt.RightButton | Qt.MiddleButton; onActiveChanged: root.interaction(active ? 1 : -.3) }
     Loader {
@@ -77,6 +78,8 @@ Item {
             showSeparator: false
             showOverflowMenu: true
             onHoverPopupRequested: kind => root.hoverRequest(kind)
+            onConnectivityHoverChanged: (kind, hovered) =>
+                root.hoverState(kind, hovered)
         }
     }
     Component {

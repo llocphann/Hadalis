@@ -47,6 +47,7 @@ Item {
     // Abyss consumes this and opens its connected Wi-Fi/Bluetooth body at the
     // System Tray module anchor. Other families ignore it.
     signal hoverPopupRequested(string kind)
+    signal connectivityHoverChanged(string kind, bool hovered)
 
     property bool smartTray: Config.options.bar.tray.filterPassive
     
@@ -229,6 +230,8 @@ Item {
             vertical: root.vertical
             Layout.alignment: Qt.AlignVCenter | Qt.AlignHCenter
             onHoverPopupRequested: kind => root.hoverPopupRequested(kind)
+            onConnectivityHoverChanged: (kind, hovered) =>
+                root.connectivityHoverChanged(kind, hovered)
         }
     }
 }

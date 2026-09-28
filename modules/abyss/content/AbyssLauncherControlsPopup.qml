@@ -67,42 +67,15 @@ ColumnLayout {
             ]
 
             delegate: SelectionGroupButton {
-                id: qualityChoice
                 required property var modelData
                 Layout.fillWidth: true
                 implicitHeight: 38
                 buttonText: Translation.tr(modelData.label)
                 buttonIcon: modelData.icon
+                leftAlignContent: true
+                maxTextWidth: 260
                 toggled: Config.options?.abyss?.quality === modelData.value
                 onClicked: root.applyQuality(modelData.value)
-
-                // BatteryPopup and the Wi-Fi/Bluetooth dialog rows render their
-                // semantic label directly in the visible content row. Keep the
-                // same proven path here instead of depending on the generic
-                // SelectionGroupButton text-reveal wrapper.
-                contentItem: RowLayout {
-                    spacing: 10
-
-                    MaterialSymbol {
-                        Layout.alignment: Qt.AlignVCenter
-                        text: qualityChoice.buttonIcon
-                        iconSize: Appearance.font.pixelSize.larger
-                        color: qualityChoice.toggled
-                            ? Appearance.colors.colOnPrimary
-                            : Appearance.colors.colOnSurfaceVariant
-                    }
-
-                    StyledText {
-                        Layout.fillWidth: true
-                        Layout.alignment: Qt.AlignVCenter
-                        text: qualityChoice.buttonText
-                        elide: Text.ElideRight
-                        maximumLineCount: 1
-                        color: qualityChoice.toggled
-                            ? Appearance.colors.colOnPrimary
-                            : Appearance.colors.colOnSurfaceVariant
-                    }
-                }
             }
         }
     }
@@ -133,40 +106,17 @@ ColumnLayout {
             ]
 
             delegate: SelectionGroupButton {
-                id: waveChoice
                 required property var modelData
                 Layout.fillWidth: true
                 Layout.minimumWidth: 165
                 implicitHeight: 38
                 buttonText: Translation.tr(modelData.label)
                 buttonIcon: modelData.icon
+                leftAlignContent: true
+                maxTextWidth: 110
                 toggled: (Config.options?.abyss?.waves?.preset ?? "balanced")
                     === modelData.value
                 onClicked: root.applyWavePreset(modelData.value)
-
-                contentItem: RowLayout {
-                    spacing: 10
-
-                    MaterialSymbol {
-                        Layout.alignment: Qt.AlignVCenter
-                        text: waveChoice.buttonIcon
-                        iconSize: Appearance.font.pixelSize.larger
-                        color: waveChoice.toggled
-                            ? Appearance.colors.colOnPrimary
-                            : Appearance.colors.colOnSurfaceVariant
-                    }
-
-                    StyledText {
-                        Layout.fillWidth: true
-                        Layout.alignment: Qt.AlignVCenter
-                        text: waveChoice.buttonText
-                        elide: Text.ElideRight
-                        maximumLineCount: 1
-                        color: waveChoice.toggled
-                            ? Appearance.colors.colOnPrimary
-                            : Appearance.colors.colOnSurfaceVariant
-                    }
-                }
             }
         }
     }

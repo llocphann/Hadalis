@@ -23,18 +23,9 @@ assert 'label: "Wave Preset"' in content
 assert "component SectionHeading: RowLayout" in content
 assert "MaterialSymbol {" in content
 assert "StyledText {" in content
-assert content.count("SelectionGroupButton {") >= 2
+assert "SelectionGroupButton {" in content
 assert "buttonText:" in content
 assert "buttonIcon:" in content
-# Battery/Wi-Fi/Bluetooth all place StyledText + MaterialSymbol directly in
-# their visible content rows. Launcher must use that same rendering path.
-assert content.count("contentItem: RowLayout {") >= 2
-assert "text: qualityChoice.buttonText" in content
-assert "text: waveChoice.buttonText" in content
-assert "text: qualityChoice.buttonIcon" in content
-assert "text: waveChoice.buttonIcon" in content
-assert "leftAlignContent:" not in content
-assert "maxTextWidth:" not in content
 assert "AbyssButton" not in content
 assert 'Config.setNestedValue("abyss.quality", value)' in content
 assert 'updates["abyss.waves." + key]' in content

@@ -66,6 +66,7 @@ ColumnLayout {
         StyledComboBox {
             id:outputChoice
             enabled:root.outputSelectionEnabled
+            visible: root.outputSelectionEnabled || !root.compactVertical
             Layout.fillWidth:true
             textRole:"label";valueRole:"value"
             model:[{label:"All outputs",value:""}].concat(Quickshell.screens.map(s => ({label:s.name,value:s.name})))
@@ -119,5 +120,9 @@ ColumnLayout {
         checked:root.position.joinCorner===true
         onToggled:root.change("joinCorner",checked)
     }
-    SettingsNote { text:"Positions follow the source unless overridden. Each popup or IPC indicator can use any Edge, globally or per output; content and input are clamped inside that output." }
+    SettingsNote {
+        text: root.compactVertical
+            ? "Override Edge and position for this output."
+            : "Positions follow the source unless overridden. Each popup or IPC indicator can use any Edge, globally or per output; content and input are clamped inside that output."
+    }
 }

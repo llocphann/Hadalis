@@ -281,14 +281,40 @@ Item {
         }
     }
     // Anchor hints paint only; the work area remains click-through in edit mode.
+    // The hint for the Edge that owns the editor must stay outside its body,
+    // otherwise it reads like part of the control surface.
     Repeater {
         model: ["top","right","bottom","left"]
         AbyssLabel {
             required property string modelData
+            readonly property var editorSurface: editorBody.record?.surface ?? null
+            readonly property bool editorEdge: modelData === root.toolbarEdge
             text: modelData.toUpperCase()
             opacity: .55
-            x: modelData === "left" ? 50 : modelData === "right" ? root.width-width-50 : (root.width-width)/2
-            y: modelData === "top" ? 64 : modelData === "bottom" ? root.height-220 : (root.height-height)/2
+            x: {
+                if (editorEdge && editorSurface) {
+                    if (modelData === "left")
+                        return Math.min(root.width-width-10,
+                            editorSurface.x+editorSurface.width+12)
+                    if (modelData === "right")
+                        return Math.max(10,editorSurface.x-width-12)
+                }
+                return modelData === "left" ? 50
+                    : modelData === "right" ? root.width-width-50
+                    : (root.width-width)/2
+            }
+            y: {
+                if (editorEdge && editorSurface) {
+                    if (modelData === "top")
+                        return Math.min(root.height-height-10,
+                            editorSurface.y+editorSurface.height+12)
+                    if (modelData === "bottom")
+                        return Math.max(10,editorSurface.y-height-12)
+                }
+                return modelData === "top" ? 64
+                    : modelData === "bottom" ? root.height-220
+                    : (root.height-height)/2
+            }
         }
     }
     AbyssBodyHost {
@@ -653,9 +679,13 @@ Item {
                 }
 
                 AbyssLabel {
-                    text:root.editingPopups
-                        ? "Drag preview · Enter save · Esc cancel"
-                        : "Drag to move/reorder · Shift free · Enter save · Esc cancel"
+                    text:root.toolbarOnHorizontalEdge
+                        ? (root.editingPopups
+                            ? "Drag preview · Enter save · Esc cancel"
+                            : "Drag to move/reorder · Shift free · Enter save · Esc cancel")
+                        : (root.editingPopups
+                            ? "Drag · Enter save · Esc cancel"
+                            : "Drag · Shift free · Enter save · Esc cancel")
                     color:AbyssStyle.textColorMuted
                     Layout.fillWidth:true
                     wrapMode:Text.WordWrap

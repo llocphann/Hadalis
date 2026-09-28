@@ -412,53 +412,41 @@ Scope {
                 source: "content/AbyssRightContent.qml"
                 onCloseRequested: GlobalStates.closeSidebarRight()
             }
-            AbyssBodyHost {
+            AbyssPopup {
                 id: popup
-                identity: "popup"
-                controller: liquid
                 anchors.fill: parent
-                edge: window.positionEdge(contentKind,GlobalStates.abyssPopupEdge || root.barEdge)
-                joinedEdge: window.presentation(contentKind).joinCorner===true
-                    ? ModuleLayout.adjacentEdge({edge:edge,along:along,span:span},window.width,window.height) : ""
+                controller: liquid
                 outputName: window.outputName
-                open: window.presented && field.ready && (Config.options?.enabledPanels ?? []).includes("abyssPopup")
-                    && (GlobalStates.abyssPopupKind.length > 0 || GlobalStates.mediaControlsOpen)
-                    && GlobalStates.resolveOutputName(GlobalStates.abyssPopupTargetOutput,[]) === window.outputName
-                edgeInsets: window.bodyInsets(edge,along,span)
-                along: window.positionAlong(contentKind,edge,span,GlobalStates.abyssPopupAlong-span/2)
-                padding: 14
-                span: (Geometry.horizontal(edge) ? (contentItem.item?.desiredWidth ?? 390) : (contentItem.item?.desiredHeight ?? 300))+padding*2
-                depth: (Geometry.horizontal(edge) ? (contentItem.item?.desiredHeight ?? 300) : (contentItem.item?.desiredWidth ?? 390))+padding*2
-                largeSurface: depth > (Geometry.horizontal(edge) ? window.height : window.width)*.42
-                // The Dock owns the physical Edge. Its application menu is an
-                // attached child and therefore allocates after the Dock, inward
-                // into the workspace instead of underneath/below the Dock.
-                placementPriority: contentKind === "dockAppMenu" ? -2 : 0
-                stableContentSize: true
-                pyramidStack: true
+                outputWidth: window.width
+                outputHeight: window.height
+
+                requestedKind: GlobalStates.abyssPopupKind.length > 0
+                    ? GlobalStates.abyssPopupKind
+                    : (GlobalStates.mediaControlsOpen ? "media" : "")
+                requestedOpen: window.presented && field.ready
+                    && (Config.options?.enabledPanels ?? []).includes("abyssPopup")
+                    && requestedKind.length > 0
+                    && GlobalStates.resolveOutputName(
+                        GlobalStates.abyssPopupTargetOutput, []) === window.outputName
+                requestedFallbackEdge: GlobalStates.abyssPopupEdge || root.barEdge
+                requestedAlongCenter: GlobalStates.abyssPopupAlong
+                hoverKind: window.transientPopupHoverKind
                 obstacles: window.sideObstacles
-                readonly property string requestedContentKind:
-                    GlobalStates.abyssPopupKind.length > 0
-                        ? GlobalStates.abyssPopupKind
-                        : (GlobalStates.mediaControlsOpen ? "media" : "")
-                property string latchedContentKind: ""
-                function syncContentKind(): void {
-                    if (requestedContentKind.length > 0)
-                        latchedContentKind = requestedContentKind
-                }
-                Component.onCompleted: syncContentKind()
-                onRequestedContentKindChanged: syncContentKind()
-                // Keep the last real owner through the visual retract tail.
-                // Clearing semantic state must never mutate the still-visible
-                // tail into Media (or any other popup).
-                contentKind: latchedContentKind
-                property bool triggerHovered:
-                    contentKind === "dockAppMenu"
-                        ? GlobalStates.abyssDockMenuTriggerHovered
-                        : ["wifi","bluetooth","utilities","launcher"].includes(contentKind)
-                            && window.transientPopupHoverKind === contentKind
-                source: "content/AbyssPopupContent.qml"
-                onCloseRequested: window.closeGenericPopup(popup.contentKind)
+
+                positionEdgeResolver: (kind, fallback) =>
+                    window.positionEdge(kind, fallback)
+                positionAlongResolver: (kind, edge, span, fallback) =>
+                    window.positionAlong(kind, edge, span, fallback)
+                bodyInsetsResolver: (edge, along, span) =>
+                    window.bodyInsets(edge, along, span)
+                joinedEdgeResolver: (kind, edge, along, span) =>
+                    window.presentation(kind).joinCorner === true
+                        ? ModuleLayout.adjacentEdge(
+                            {edge:edge, along:along, span:span},
+                            window.width, window.height)
+                        : ""
+
+                onCloseRequested: kind => window.closeGenericPopup(kind)
             }
             // Stable slots avoid destroying/recreating a mature popup's visual
             // content when another popup opens. The controller owns slot
@@ -559,7 +547,7 @@ Scope {
                     && !window.editorOpen && !settings.open && !dashboardBody.open && !controls.open
                     && !aux.open && !clipboardBody.open && !utility.open
                     && (GlobalStates.abyssPopupKind === "dockAppMenu"
-                        || !liquid.participantOverlapsRect("popup", requestedRecord.surface, 10))
+                        || !popup.overlapsRect(requestedRecord.surface, 10))
                     && (GlobalStates.abyssPopupKind === "dockAppMenu"
                         || !liquid.hasPopupOverlapRect(requestedRecord.surface, 10))
                     && (((Config.options?.dock?.pinnedOnStartup ?? false) && !(Config.options?.dock?.hoverToReveal ?? false)) || window.dockHovered

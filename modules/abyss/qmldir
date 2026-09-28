@@ -10,3 +10,4 @@ AbyssSpectrumController 1.0 AbyssSpectrumController.qml
 AbyssSidebarReveal 1.0 AbyssSidebarReveal.qml
 AbyssCorners 1.0 AbyssCorners.qml
 AbyssPopupTransitionCoordinator 1.0 AbyssPopupTransitionCoordinator.qml
+AbyssPopup 1.0 AbyssPopup.qml

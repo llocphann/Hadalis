@@ -80,7 +80,7 @@ async function submissionStarted(page, composer) {
   )) > 0;
 }
 
-async function waitForSubmissionStart(page, composer, timeoutMs = 2000) {
+async function waitForSubmissionStart(page, composer, timeoutMs = 1500) {
   const deadline = Date.now() + timeoutMs;
 
   while (Date.now() < deadline) {
@@ -90,6 +90,65 @@ async function waitForSubmissionStart(page, composer, timeoutMs = 2000) {
   }
 
   return submissionStarted(page, composer);
+}
+
+async function dispatchCdpEnter(page) {
+  const session = await page.context().newCDPSession(page);
+
+  try {
+    const event = {
+      key: "Enter",
+      code: "Enter",
+      windowsVirtualKeyCode: 13,
+      nativeVirtualKeyCode: 13
+    };
+
+    await session.send("Input.dispatchKeyEvent", {
+      type: "rawKeyDown",
+      ...event
+    });
+    await session.send("Input.dispatchKeyEvent", {
+      type: "keyUp",
+      ...event
+    });
+  } finally {
+    await session.detach();
+  }
+}
+
+async function dispatchSemanticClick(send) {
+  await send.evaluate(element => {
+    element.dispatchEvent(new PointerEvent("pointerdown", {
+      bubbles: true,
+      cancelable: true,
+      composed: true,
+      button: 0,
+      buttons: 1,
+      pointerId: 1,
+      pointerType: "mouse",
+      isPrimary: true
+    }));
+    element.dispatchEvent(new MouseEvent("mousedown", {
+      bubbles: true,
+      cancelable: true,
+      composed: true,
+      button: 0,
+      buttons: 1
+    }));
+    element.dispatchEvent(new MouseEvent("mouseup", {
+      bubbles: true,
+      cancelable: true,
+      composed: true,
+      button: 0,
+      buttons: 0
+    }));
+    element.dispatchEvent(new MouseEvent("click", {
+      bubbles: true,
+      cancelable: true,
+      composed: true,
+      button: 0
+    }));
+  });
 }
 
 export async function submitPrompt(page, prompt) {
@@ -106,20 +165,46 @@ export async function submitPrompt(page, prompt) {
   if (await send.isDisabled())
     throw new Error("Send is disabled after composer fill");
 
-  // ChatGPT Desktop's Send control can ignore HTMLElement.click() in some
-  // composer states. Enter is the app's normal submit gesture, so use it
-  // first and verify the application state changed before any fallback.
-  await composer.press("Enter");
+  // Keep the action deterministic and coordinate-free. Start with the
+  // normal editor gesture while explicitly restoring focus after fill().
+  await composer.focus();
+  await page.keyboard.press("Enter");
 
   if (await waitForSubmissionStart(page, composer))
     return;
 
-  // Fallback stays semantic: the locator is verified above, and force only
-  // bypasses transient pointer hit-testing. Never use screen coordinates.
-  await send.click({ force: true });
+  // Playwright key synthesis can be ignored by Electron/Chromium in some
+  // embedded-editor states. Dispatch the Enter key through the underlying
+  // Chromium DevTools protocol next; this does not depend on OS focus.
+  await composer.focus();
+  await dispatchCdpEnter(page);
 
-  if (!(await waitForSubmissionStart(page, composer)))
-    throw new Error("prompt did not submit after Enter or Send fallback");
+  if (await waitForSubmissionStart(page, composer))
+    return;
+
+  // Then exercise the semantic Send control through a full event sequence.
+  // This still avoids screen coordinates and pointer hit-testing.
+  await dispatchSemanticClick(send);
+
+  if (await waitForSubmissionStart(page, composer))
+    return;
+
+  // Final DOM fallback for builds where the button's native click path is
+  // wired differently from delegated pointer handlers.
+  await send.evaluate(element => element.click());
+
+  if (await waitForSubmissionStart(page, composer))
+    return;
+
+  const diagnostic = await page.evaluate(() => ({
+    activeTag: document.activeElement?.tagName ?? null,
+    activeRole: document.activeElement?.getAttribute?.("role") ?? null,
+    activeAriaLabel: document.activeElement?.getAttribute?.("aria-label") ?? null
+  }));
+
+  throw new Error(
+    `prompt did not submit after keyboard, CDP Enter, or semantic Send actions: ${JSON.stringify(diagnostic)}`
+  );
 }
 
 export async function waitForCompletion(page, timeoutMs = 600000) {

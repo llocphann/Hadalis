@@ -1,5 +1,7 @@
 #!/usr/bin/env node
 
+import fs from "node:fs";
+
 import {
   connectDesktop,
   extractLoopResponse,
@@ -8,6 +10,14 @@ import {
   submitPrompt,
   waitForCompletion
 } from "./desktop_driver.mjs";
+
+function writeJson(payload) {
+  fs.writeSync(1, JSON.stringify(payload) + "\n");
+}
+
+function writeError(error) {
+  fs.writeSync(2, (error?.stack ?? String(error)) + "\n");
+}
 
 async function readStdin() {
   const chunks = [];
@@ -21,20 +31,20 @@ async function main() {
   let { page } = await connectDesktop();
 
   if (command === "observe") {
-    console.log(JSON.stringify(await observeDesktop(page)));
+    writeJson(await observeDesktop(page));
     return;
   }
 
   if (command === "new-chat") {
     page = await openHadalisNewChat(page);
-    console.log(JSON.stringify(await observeDesktop(page)));
+    writeJson(await observeDesktop(page));
     return;
   }
 
   if (command === "await-current") {
     try {
       const response = await extractLoopResponse(page, { allowMarkerOnly: true });
-      console.log(JSON.stringify({
+      writeJson({
         generation: { attachedToCompleted: true },
         response
       }));
@@ -43,7 +53,7 @@ async function main() {
 
     const generation = await waitForCompletion(page);
     const response = await extractLoopResponse(page, { allowMarkerOnly: true });
-    console.log(JSON.stringify({ generation, response }));
+    writeJson({ generation, response });
     return;
   }
 
@@ -63,14 +73,17 @@ async function main() {
     );
     const response = await extractLoopResponse(page, { allowMarkerOnly: true });
 
-    console.log(JSON.stringify({ generation, response }));
+    writeJson({ generation, response });
     return;
   }
 
   throw new Error(`unknown command: ${command}`);
 }
 
-main().catch(error => {
-  console.error(error?.stack ?? String(error));
-  process.exitCode = 1;
-});
+main().then(
+  () => process.exit(0),
+  error => {
+    writeError(error);
+    process.exit(1);
+  }
+);

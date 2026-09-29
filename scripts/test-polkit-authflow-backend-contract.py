@@ -50,8 +50,18 @@ assert "console.log(response" not in svc
 assert "console.log(response" not in impl
 
 for old in (material, waffle):
+    assert "function clearResponse(): void" in old
+    assert "function cancelAuthentication(): void" in old
+    cancel=old.split("function cancelAuthentication(): void",1)[1].split("}",1)[0]
+    assert "root.clearResponse()" in cancel
+    assert "PolkitService.cancel()" in cancel
+    assert cancel.index("root.clearResponse()") < cancel.index("PolkitService.cancel()")
     assert "const response = inputField.text" in old
     assert old.index('inputField.text = ""') < old.index("PolkitService.submit(response)")
     assert "PolkitService.submit(inputField.text)" not in old
+    assert "inputMethodHints: Qt.ImhSensitiveData | Qt.ImhNoPredictiveText" in old
+    assert "onRequestSerialChanged" in old
+    assert "onActiveChanged" in old
+    assert "Component.onDestruction: root.clearResponse()" in old
 
 print("Polkit AuthFlow backend/security contract: ok")

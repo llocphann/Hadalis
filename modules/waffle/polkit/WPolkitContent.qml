@@ -17,9 +17,18 @@ Rectangle {
 
     Keys.onPressed: event => {
         if (event.key === Qt.Key_Escape) {
-            PolkitService.cancel()
+            root.cancelAuthentication()
             event.accepted = true
         }
+    }
+
+    function clearResponse(): void {
+        inputField.text = ""
+    }
+
+    function cancelAuthentication(): void {
+        root.clearResponse()
+        PolkitService.cancel()
     }
 
     function submitResponse(): void {
@@ -164,6 +173,7 @@ Rectangle {
                                 enabled: PolkitService.interactionAvailable
                                 placeholderText: PolkitService.cleanPrompt
                                 echoMode: root.usePasswordChars ? TextInput.Password : TextInput.Normal
+                                inputMethodHints: Qt.ImhSensitiveData | Qt.ImhNoPredictiveText
                                 onAccepted: root.submitResponse()
 
                                 Keys.onPressed: event => {
@@ -177,13 +187,22 @@ Rectangle {
 
                                 Connections {
                                     target: PolkitService
+                                    function onRequestSerialChanged(): void {
+                                        root.clearResponse()
+                                    }
                                     function onInteractionAvailableChanged(): void {
                                         if (!PolkitService.interactionAvailable)
                                             return
-                                        inputField.text = ""
+                                        root.clearResponse()
                                         inputField.forceActiveFocus()
                                     }
+                                    function onActiveChanged(): void {
+                                        if (!PolkitService.active)
+                                            root.clearResponse()
+                                    }
                                 }
+
+                                Component.onDestruction: root.clearResponse()
                             }
                         }
                     }
@@ -211,7 +230,7 @@ Rectangle {
                                 text: Translation.tr("Cancel")
                                 icon.name: "dismiss"
                                 forceShowIcon: true
-                                onClicked: PolkitService.cancel()
+                                onClicked: root.cancelAuthentication()
                             }
 
                             WButton {

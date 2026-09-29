@@ -33,7 +33,7 @@ async function main() {
 
   if (command === "await-current") {
     try {
-      const response = await extractLoopResponse(page);
+      const response = await extractLoopResponse(page, { allowMarkerOnly: true });
       console.log(JSON.stringify({
         generation: { attachedToCompleted: true },
         response

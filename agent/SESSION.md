@@ -8,13 +8,13 @@ A production-safety change now starts new autonomous sessions with `rotate-send`
 
 Interactive testing confirmed the GitHub rich-mention picker path can select GitHub, append the prompt body, and submit. The production desktop driver now converts the tracked first-line connector marker into that rich mention instead of filling the markdown literal into the composer. Rotation also follows the renderer that owns the newly created chat.
 
-The 005 and 006 live runs visibly completed in ChatGPT with the correct current dev HEAD and HADALIS_LOOP:DONE, but the worker did not publish a result. The remaining race was that completion observation started after submit and could miss both the transient Stop control and a very fast marker transition. The driver now snapshots loop-marker and response-action counts before submit, carries that baseline into completion observation, and accepts a stable post-submit advance once the composer is clear and no Stop control is present. A lock-safe `--reset-state` runtime path plus installer `--reset-session-state` option is ready for the first service rollout.
+The 005, 006, and 007 live runs visibly completed in ChatGPT with the correct current dev HEAD and HADALIS_LOOP:DONE, but the worker still did not publish a result. The 007 evidence showed the response itself was correct while the completion detector remained too coupled to composer/toolbar state. The driver now uses the autonomous protocol directly: snapshot loop-marker count before submit, then complete when that count increases and no Stop control is active, with a short stability confirmation. The live test wait is bounded to 90 seconds. A lock-safe `--reset-state` runtime path plus installer `--reset-session-state` option is ready for the first service rollout.
 
-Pending mechanical evidence: `JOB-DESKTOP-LIVE-ACCEPT-007`.
+Pending mechanical evidence: `JOB-DESKTOP-LIVE-ACCEPT-008`.
 
 Resume procedure:
 1. Fetch current `dev` HEAD.
-2. Read `automation/results/JOB-DESKTOP-LIVE-ACCEPT-007.json` if present.
+2. Read `automation/results/JOB-DESKTOP-LIVE-ACCEPT-008.json` if present.
 3. If absent, wait for the deterministic local worker; do not invent the result.
 4. If it failed, inspect exact stdout/stderr and fix forward on current `dev`.
 5. If it passed, install the user services from the maintainer's persistent local checkout, not from an ephemeral worker clone.

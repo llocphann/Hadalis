@@ -69,6 +69,7 @@ assert "readonly property bool resolvedAnchorUsable:" in service
 assert "PopupAnchorRegistry.isUsable(root.resolvedAnchor)" in service
 assert "onResolvedAnchorUsableChanged" in service
 assert "function _resolveAction(action, force = false): void" in service
+assert "function _cancelLifecycle(request): void" in service
 assert "function cancel(force = false): void" in service
 assert "function cancelOwned(owner): void" in service
 owned=service.split("function cancelOwned(owner): void",1)[1].split("onResolvedAnchorUsableChanged",1)[0]

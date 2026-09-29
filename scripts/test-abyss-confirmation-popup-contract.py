@@ -53,7 +53,12 @@ assert "function _actionUsable(action): bool" in service
 assert "if (!force && !root._actionUsable(action))" in service
 assert "root._actionUsable(action)" in service
 assert "function cancelAction(): var" in service
-assert "if (!force && !root._actionUsable(cancelAction))" in service
+assert "function _cancelLifecycle(request): void" in service
+assert 'root.requestResolved(Number(request._requestId ?? 0), "cancel")' in service
+assert "root._invoke(request.onCancel)" in service
+force_branch=service.split("function cancel(force = false): void",1)[1].split("// Presenter calls",1)[0]
+assert "if (force)" in force_branch
+assert "root._cancelLifecycle(request)" in force_branch
 for forbidden in ("NumberAnimation", "ScaleAnimator", "OpacityAnimator"):
     assert forbidden not in content
     assert forbidden not in presenter

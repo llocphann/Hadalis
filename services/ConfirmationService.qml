@@ -131,6 +131,22 @@ Singleton {
         })
     }
 
+    function _cancelLifecycle(request): void {
+        if (!request || !root.requestVisible || root.resolving)
+            return
+        // Source/owner teardown is not a user choosing a button. In particular,
+        // never execute a disabled/hidden cancel action callback just because a
+        // source vanished. Only request-level cancellation hooks observe it.
+        root.resolving = true
+        root.requestVisible = false
+        root.requestResolved(Number(request._requestId ?? 0), "cancel")
+        root._invoke(request.onCancel)
+        root._invoke(() => {
+            if (typeof request.onResolved === "function")
+                request.onResolved("cancel")
+        })
+    }
+
     function resolve(actionId): void {
         if (!root.currentRequest || !root.requestVisible || root.resolving)
             return
@@ -172,23 +188,20 @@ Singleton {
     function cancel(force = false): void {
         if (!root.currentRequest || !root.requestVisible || root.resolving)
             return
-        const cancelAction = root.cancelAction()
-        if (cancelAction) {
-            if (!force && !root._actionUsable(cancelAction))
-                return
-            root._resolveAction(cancelAction, force)
+        const request = root.currentRequest
+        if (force) {
+            root._cancelLifecycle(request)
             return
         }
 
-        const request = root.currentRequest
-        root.resolving = true
-        root.requestVisible = false
-        root.requestResolved(Number(request._requestId ?? 0), "cancel")
-        root._invoke(request.onCancel)
-        root._invoke(() => {
-            if (typeof request.onResolved === "function")
-                request.onResolved("cancel")
-        })
+        const cancelAction = root.cancelAction()
+        if (cancelAction) {
+            if (!root._actionUsable(cancelAction))
+                return
+            root._resolveAction(cancelAction, false)
+            return
+        }
+        root._cancelLifecycle(request)
     }
 
     // Presenter calls this only after StyledPopup has released its visual tail.

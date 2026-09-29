@@ -27,6 +27,10 @@ DESKTOP_TIMEOUT_SECONDS = float(
     os.environ.get("HADALIS_DESKTOP_TIMEOUT_SECONDS", "720")
 )
 
+CONTINUOUS_RESEARCH = os.environ.get(
+    "HADALIS_CONTINUOUS_RESEARCH", "0"
+).strip().lower() in {"1", "true", "yes", "on"}
+
 
 def state_root() -> Path:
     base = Path(
@@ -165,8 +169,18 @@ def resolve_directive(
 
 def process_response(
     response_text: str,
+    *,
+    continuous_research: bool = CONTINUOUS_RESEARCH,
 ) -> tuple[bool, str | None, str | None]:
     state, action, job_id = resolve_directive(response_text)
+
+    if action is BridgeAction.STOP and continuous_research:
+        # In continuous research mode, DONE means only that the current turn
+        # has no more work. Keep the service alive and ask ChatGPT for the next
+        # research step instead of terminating the autonomous loop.
+        save_state(BridgeState.READY)
+        return False, "send", CONTINUATION_PROMPT
+
     save_state(state, job_id)
 
     if action is BridgeAction.STOP:
@@ -226,6 +240,9 @@ def bootstrap_payload() -> dict[str, Any] | None:
     state, job_id = previous
 
     if state is BridgeState.DONE:
+        if CONTINUOUS_RESEARCH:
+            save_state(BridgeState.READY)
+            return desktop("rotate-send", initial_prompt())
         return None
 
     if state is BridgeState.CONNECTOR_BLOCKED:

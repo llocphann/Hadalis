@@ -18,7 +18,7 @@ Item {
         PolkitService.targetOutputName.length > 0
         && PolkitService.targetOutputName === root.outputName
     readonly property bool ownsPresentation:
-        PolkitService.presentationMatchesActive
+        root.ownsOutput && PolkitService.presentationMatchesActive
     readonly property Item presentationAnchor:
         !root.ownsOutput ? null
         : PolkitService.hadResolvedAnchor

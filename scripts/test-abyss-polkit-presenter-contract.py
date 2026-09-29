@@ -42,7 +42,10 @@ assert "root.hadResolvedAnchor" in service
 assert "root.finishPresentation(true)" in service
 assert 'root.targetOutputName = GlobalStates.resolveOutputName("", [])' in service
 assert "root.ownsPresentation" in presenter
+assert "root.ownsOutput && PolkitService.presentationMatchesActive" in presenter
 assert "onOwnsPresentationChanged" in presenter
+capture=presenter.split("function captureLiveModel(): void",1)[1].split("}",1)[0]
+assert "root.ownsPresentation" in capture
 assert 'function hintSource(appId, anchorItem = null, outputName = ""): void' in service
 assert "readonly property int sourceHintLifetimeMs: 3000" in service
 assert "id: sourceHintExpiry" in service

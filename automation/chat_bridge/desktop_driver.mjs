@@ -1,3 +1,5 @@
+import { spawnSync } from "node:child_process";
+
 const PLAYWRIGHT = process.env.HADALIS_PLAYWRIGHT_MODULE ?? "file:///usr/lib/chatgpt/resources/cua_node/lib/node_modules/playwright-core/index.mjs";
 const { chromium } = await import(PLAYWRIGHT);
 
@@ -69,12 +71,7 @@ export async function openHadalisNewChat(page) {
   throw new Error("new chat did not become ready");
 }
 
-async function submissionStarted(page, composer) {
-  try {
-    if ((await composer.innerText()).trim() === "")
-      return true;
-  } catch {}
-
+async function submissionStarted(page) {
   return (await visibleCount(
     page.getByRole("button", { name: /stop/i })
   )) > 0;
@@ -84,12 +81,12 @@ async function waitForSubmissionStart(page, composer, timeoutMs = 1500) {
   const deadline = Date.now() + timeoutMs;
 
   while (Date.now() < deadline) {
-    if (await submissionStarted(page, composer))
+    if (await submissionStarted(page))
       return true;
     await sleep(100);
   }
 
-  return submissionStarted(page, composer);
+  return submissionStarted(page);
 }
 
 async function dispatchCdpEnter(page) {
@@ -151,6 +148,138 @@ async function dispatchSemanticClick(send) {
   });
 }
 
+function runNative(argv, timeout = 3000) {
+  const result = spawnSync(argv[0], argv.slice(1), {
+    encoding: "utf8",
+    timeout,
+    env: process.env
+  });
+
+  return {
+    argv,
+    status: result.status,
+    signal: result.signal,
+    stdout: (result.stdout ?? "").trim().slice(0, 2000),
+    stderr: (result.stderr ?? "").trim().slice(0, 2000),
+    error: result.error ? String(result.error) : null
+  };
+}
+
+async function dispatchNativeWaylandEnter() {
+  const windowsResult = runNative(["niri", "msg", "--json", "windows"]);
+  if (windowsResult.status !== 0) {
+    return {
+      ok: false,
+      stage: "niri-windows",
+      windowsResult
+    };
+  }
+
+  let windows;
+  try {
+    windows = JSON.parse(windowsResult.stdout);
+  } catch (error) {
+    return {
+      ok: false,
+      stage: "parse-windows",
+      error: String(error),
+      windowsResult
+    };
+  }
+
+  if (!Array.isArray(windows)) {
+    return {
+      ok: false,
+      stage: "windows-shape",
+      windowsResult
+    };
+  }
+
+  const candidates = windows.filter(window => {
+    const haystack = [
+      window?.app_id,
+      window?.title
+    ]
+      .filter(value => typeof value === "string")
+      .join(" ")
+      .toLowerCase();
+
+    return haystack.includes("chatgpt");
+  });
+
+  const target =
+    candidates.find(window =>
+      typeof window?.title === "string" &&
+      window.title.toLowerCase().includes("hadalis cloud")
+    ) ??
+    candidates.find(window => window?.is_focused === true) ??
+    (candidates.length === 1 ? candidates[0] : null);
+
+  if (!target || target.id == null) {
+    return {
+      ok: false,
+      stage: "select-window",
+      candidates: candidates.map(window => ({
+        id: window?.id ?? null,
+        app_id: window?.app_id ?? null,
+        title: window?.title ?? null,
+        is_focused: window?.is_focused ?? null
+      }))
+    };
+  }
+
+  const focusResult = runNative([
+    "niri",
+    "msg",
+    "action",
+    "focus-window",
+    "--id",
+    String(target.id)
+  ]);
+
+  if (focusResult.status !== 0) {
+    return {
+      ok: false,
+      stage: "focus-window",
+      target,
+      focusResult
+    };
+  }
+
+  await sleep(250);
+
+  let keyResult = runNative([
+    "wtype",
+    "-P",
+    "Return",
+    "-p",
+    "Return"
+  ]);
+
+  if (keyResult.status !== 0) {
+    keyResult = runNative([
+      "wtype",
+      "-k",
+      "Return"
+    ]);
+  }
+
+  await sleep(250);
+
+  return {
+    ok: keyResult.status === 0,
+    stage: "wtype",
+    target: {
+      id: target.id,
+      app_id: target.app_id ?? null,
+      title: target.title ?? null,
+      is_focused: target.is_focused ?? null
+    },
+    focusResult,
+    keyResult
+  };
+}
+
 export async function submitPrompt(page, prompt) {
   await verifyProject(page);
   const composer = await resolveComposer(page);
@@ -196,6 +325,15 @@ export async function submitPrompt(page, prompt) {
   if (await waitForSubmissionStart(page, composer))
     return;
 
+  // Last-resort platform input: focus the real ChatGPT window through niri
+  // by stable window id, then inject a real Wayland Return key with wtype.
+  // This is still coordinate-free and is only reached after all CDP/DOM
+  // submission paths have been verified ineffective.
+  const nativeWayland = await dispatchNativeWaylandEnter();
+
+  if (nativeWayland.ok && await waitForSubmissionStart(page, composer, 2500))
+    return;
+
   const diagnostic = await page.evaluate(() => ({
     activeTag: document.activeElement?.tagName ?? null,
     activeRole: document.activeElement?.getAttribute?.("role") ?? null,
@@ -203,7 +341,7 @@ export async function submitPrompt(page, prompt) {
   }));
 
   throw new Error(
-    `prompt did not submit after keyboard, CDP Enter, or semantic Send actions: ${JSON.stringify(diagnostic)}`
+    `prompt did not submit after keyboard, CDP Enter, semantic Send, or native Wayland Return: ${JSON.stringify({ diagnostic, nativeWayland })}`
   );
 }
 

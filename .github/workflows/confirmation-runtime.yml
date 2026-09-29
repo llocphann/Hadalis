@@ -58,6 +58,8 @@ jobs:
               chmod 700 "$XDG_RUNTIME_DIR"
               export WAYLAND_DISPLAY=wayland-hadalis-confirmation
               export QT_QPA_PLATFORM=wayland
+              export QT_QUICK_BACKEND=software
+              export QSG_RENDER_LOOP=basic
               export LIBGL_ALWAYS_SOFTWARE=1
 
               weston                 --backend=headless-backend.so                 --socket="$WAYLAND_DISPLAY"                 --idle-time=0                 --log="$RUNNER_TEMP/weston-confirmation.log" &

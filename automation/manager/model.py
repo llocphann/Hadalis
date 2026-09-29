@@ -13,6 +13,10 @@ DEFAULT_ID = "strict-lossless-research"
 MODES = {"manual", "continuous", "interval", "duration", "iterations"}
 LIMIT_ACTIONS = {"stop", "pause", "rotate"}
 MAX_PROFILES = 64
+CUSTOM_CONTINUATION_PROMPT = (GITHUB_MENTION + "\n\nContinue the objective of this automation profile in the current chat. "
+                              "Fetch the current dev HEAD, use the GitHub connector, and finish with one HADALIS_LOOP directive.\n")
+CUSTOM_ROTATION_PROMPT = (GITHUB_MENTION + "\n\nResume this automation profile in a fresh Hadalis Cloud chat. "
+                          "Use the profile objective below and current repository state.\n")
 
 # The settings page advertises these as pending until a semantic Desktop action
 # exists. Storing preferences does not imply that a chat is archived or deleted.
@@ -116,8 +120,8 @@ def validate_profile(raw: object, *, defaults: dict | None = None) -> dict:
             raise ValueError(f"invalid {key}")
     if profile["mode"] == "iterations" and profile["iteration_limit"] < 1:
         raise ValueError("iterations mode needs an iteration limit")
-    if profile["id"] == DEFAULT_ID and not profile["requires_github"]:
-        raise ValueError("the Hadalis research profile requires GitHub")
+    if not profile["requires_github"]:
+        raise ValueError("Hadalis repository automations require GitHub")
     if profile["delete_completed"] and profile["archive_completed"]:
         raise ValueError("archive and delete are mutually exclusive")
     return profile
@@ -136,6 +140,8 @@ def normalize_config(raw: object) -> tuple[dict, list[str]]:
     for key in maintenance:
         if type(incoming.get(key)) is bool:
             maintenance[key] = incoming[key]
+    if maintenance["archive_completed"] and maintenance["delete_completed"]:
+        maintenance["delete_completed"] = False
     profiles = []
     issues = []
     seen = set()
@@ -178,6 +184,9 @@ def new_profile(name: str, *, copy: dict | None = None) -> dict:
     source = deepcopy(copy if copy is not None else default_profile())
     source.update({"id": "profile-" + uuid.uuid4().hex[:16], "name": name,
                    "enabled": False, "mode": "manual", "delete_completed": False})
+    if copy is None:
+        source["continuation_prompt"] = CUSTOM_CONTINUATION_PROMPT
+        source["rotation_prompt"] = CUSTOM_ROTATION_PROMPT
     return validate_profile(source)
 
 
@@ -202,6 +211,11 @@ def effective_prompt(profile: dict, kind: str) -> str:
     body = prompt
     if body.lstrip().startswith(GITHUB_MENTION):
         body = body.lstrip()[len(GITHUB_MENTION):].lstrip("\r\n")
+    if kind == "rotation":
+        objective = profile["prompt"].lstrip()
+        if objective.startswith(GITHUB_MENTION):
+            objective = objective[len(GITHUB_MENTION):].lstrip("\r\n")
+        body += "\n\nProfile objective:\n" + objective
     return GITHUB_MENTION + "\n\n" + SAFETY_PREAMBLE + "\n" + body
 
 
@@ -209,9 +223,11 @@ def limit_decision(profile: dict, runtime: dict, now: int) -> str | None:
     """Evaluate only counters observed by this controller at turn boundaries."""
     started = runtime.get("started_at_unix") or now
     elapsed = max(0, now - started)
-    if profile["mode"] == "iterations" and runtime.get("iterations", 0) >= profile["iteration_limit"]:
+    run_iterations = runtime.get("iterations", 0) - runtime.get("run_start_iterations", 0)
+    run_prompts = runtime.get("prompts_sent", 0) - runtime.get("run_start_prompts", 0)
+    if profile["iteration_limit"] and run_iterations >= profile["iteration_limit"]:
         return "stop"
-    if profile["prompt_limit"] and runtime.get("prompts_sent", 0) >= profile["prompt_limit"]:
+    if profile["prompt_limit"] and run_prompts >= profile["prompt_limit"]:
         return "stop"
     if profile["mode"] == "duration" and elapsed >= profile["duration_seconds"]:
         return profile["duration_action"]

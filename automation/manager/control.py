@@ -4,7 +4,9 @@ import json
 import subprocess
 import time
 
-from .model import MAX_PROFILES, MAINTENANCE_DEFAULTS, new_profile, update_profile
+from .model import (CUSTOM_CONTINUATION_PROMPT, CUSTOM_ROTATION_PROMPT,
+                    DEFAULT_ID, MAX_PROFILES, MAINTENANCE_DEFAULTS, PROFILE_DEFAULTS,
+                    default_prompt, new_profile, update_profile)
 from .store import change, change_state, event, profile_state, read_snapshot
 
 UNITS = {
@@ -146,6 +148,24 @@ def set_profile(profile_id: str, field: str, value_json: str, confirm_delete: bo
     return {"ok": True}
 
 
+def reset_prompt(profile_id: str, field: str) -> dict:
+    defaults = {"prompt": default_prompt(),
+                "continuation_prompt": PROFILE_DEFAULTS["continuation_prompt"] if profile_id == DEFAULT_ID else CUSTOM_CONTINUATION_PROMPT,
+                "rotation_prompt": PROFILE_DEFAULTS["rotation_prompt"] if profile_id == DEFAULT_ID else CUSTOM_ROTATION_PROMPT}
+    if field not in defaults:
+        raise ValueError("prompt field not allowlisted")
+
+    def mutate(config: dict, state: dict):
+        for index, profile in enumerate(config["profiles"]):
+            if profile["id"] == profile_id:
+                config["profiles"][index] = update_profile(profile, {field: defaults[field]})
+                event(state, profile_id, "prompt_reset", field)
+                return
+        raise ValueError("profile not found")
+    change(mutate)
+    return {"ok": True, "reload_draft": True}
+
+
 def set_maintenance(field: str, value_json: str, confirm_delete: bool = False) -> dict:
     if field not in MAINTENANCE_DEFAULTS:
         raise ValueError("maintenance field not allowlisted")
@@ -156,6 +176,10 @@ def set_maintenance(field: str, value_json: str, confirm_delete: bool = False) -
         raise ValueError("delete requires explicit confirmation")
 
     def mutate(config: dict, state: dict):
+        if value and field in {"archive_completed", "delete_completed"}:
+            other = "delete_completed" if field == "archive_completed" else "archive_completed"
+            if config["maintenance"][other]:
+                raise ValueError("archive and delete are mutually exclusive")
         config["maintenance"][field] = value
         event(state, None, "maintenance_updated", field)
     change(mutate)

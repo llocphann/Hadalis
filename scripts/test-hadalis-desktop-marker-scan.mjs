@@ -3,6 +3,7 @@
 import assert from "node:assert/strict";
 import {
   markerAfterBaseline,
+  requireIdleComposer,
   scanLoopMarkerTokens
 } from "../automation/chat_bridge/desktop_driver.mjs";
 
@@ -69,5 +70,24 @@ assert.throws(
   ], 4),
   /expected exactly one post-submit/
 );
+
+function guardedPage({ stop = false, text = "" } = {}) {
+  const locator = (count, value = "") => ({
+    count: async () => count,
+    nth: () => ({ isVisible: async () => true }),
+    innerText: async () => value
+  });
+  return {
+    getByRole: (role, options) => {
+      if (role === "textbox") return locator(1, text);
+      if (role === "button" && String(options.name) === "/stop/i") return locator(stop ? 1 : 0);
+      return locator(1);
+    }
+  };
+}
+
+await assert.rejects(requireIdleComposer(guardedPage({ stop: true })), /generation is active/);
+await assert.rejects(requireIdleComposer(guardedPage({ text: "draft" })), /non-empty/);
+await requireIdleComposer(guardedPage());
 
 console.log("PASS: desktop loop-marker token scanner");

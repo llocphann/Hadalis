@@ -71,6 +71,27 @@ def main() -> None:
             assert state["profiles"][second]["pending"] is not None
             control.profile_action("stop", second)
             assert store.read_snapshot()[1]["owner_id"] == second
+
+    with tempfile.TemporaryDirectory() as tmp:
+        with patch.dict(os.environ, {"XDG_CONFIG_HOME": tmp + "/config", "XDG_STATE_HOME": tmp + "/state"}):
+            commands = []
+            def uncertain(command, *args, prompt=None):
+                commands.append(command)
+                if command == "new-chat": return {}
+                if command == "managed-baseline": return {"responseActionCount": 0}
+                if command == "managed-submit": raise RuntimeError("connection lost after send")
+                if command == "managed-poll": return {"completed": False}
+                raise AssertionError(command)
+            base = int(time.time())
+            with patch.object(daemon, "desktop_command", side_effect=uncertain):
+                daemon.tick(base)
+                daemon.tick(base + 2)
+                daemon.tick(base + 4)
+            state = store.read_snapshot()[1]
+            assert state["owner_id"] == "strict-lossless-research"
+            assert state["profiles"]["strict-lossless-research"]["pending"] is not None
+            assert commands.count("managed-submit") == 1
+            assert commands.count("managed-poll") == 2
     print("PASS: one ChatGPT transport owner, safe pause/stop, queued profile")
 
 

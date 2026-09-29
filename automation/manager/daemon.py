@@ -11,7 +11,7 @@ import time
 
 from automation.chat_bridge.protocol import DirectiveKind, parse_loop_directive
 from automation.manager.model import choose_profile, effective_prompt, limit_decision
-from automation.manager.store import change_state, event, read_snapshot, state_dir
+from automation.manager.store import change_state, event, read_snapshot, state_dir, state_path
 
 ROOT = Path(__file__).resolve().parents[2]
 DESKTOP_CLI = ROOT / "automation/chat_bridge/desktop_cli.mjs"
@@ -77,6 +77,7 @@ def _claim(config: dict, state: dict, now: int) -> str | None:
         item["chat_started_at_unix"] = None
         item["chat_iterations"] = 0
         item["run_start_iterations"] = item["iterations"]
+        item["run_start_prompts"] = item["prompts_sent"]
         item["request"] = "initial"
         item["last_run_at_unix"] = now
         item["next_run_at_unix"] = None
@@ -105,6 +106,10 @@ def _new_chat(owner: str, now: int, *, kind: str) -> None:
 
     def record(_config: dict, state: dict):
         item = state["profiles"][owner]
+        if item["request"] == "restart":
+            item["started_at_unix"] = now
+            item["run_start_iterations"] = item["iterations"]
+            item["run_start_prompts"] = item["prompts_sent"]
         item["chat_started_at_unix"] = now
         item["chat_iterations"] = 0
         item["request"] = kind
@@ -160,6 +165,7 @@ def _submission_uncertain(state: dict, owner: str, now: int, exc: Exception) -> 
     item = state["profiles"][owner]
     item["status"] = "transport_unavailable"
     item["last_error"] = str(exc)[:500]
+    item["failures"] += 1
     item["last_activity_at_unix"] = now
     event(state, owner, "submission_uncertain", item["last_error"])
 
@@ -187,6 +193,7 @@ def _poll(config: dict, state: dict, owner: str, now: int) -> None:
         def failed(current_config: dict, current: dict):
             current_item = current["profiles"][owner]
             current_item["poll_errors"] += 1
+            current_item["failures"] += 1
             delay = min(_profile(current_config, owner)["retry_delay_seconds"]
                         * (2 ** min(current_item["poll_errors"] - 1, 4)), 3600)
             current_item["pending"]["poll_after_unix"] = now + delay
@@ -273,7 +280,7 @@ def _wait_result(config: dict, state: dict, owner: str, now: int) -> None:
     try:
         payload = job_result(job_id)
     except Exception as exc:
-        change_state(lambda _config, current: _job_poll_error(current, owner, exc))
+        change_state(lambda current_config, current: _job_poll_error(current_config, current, owner, now, exc))
         return
     if payload is None:
         change_state(lambda _config, current: current["profiles"][owner].update(
@@ -293,13 +300,15 @@ def _wait_result(config: dict, state: dict, owner: str, now: int) -> None:
     change_state(ready)
 
 
-def _job_poll_error(state: dict, owner: str, exc: Exception) -> None:
+def _job_poll_error(config: dict, state: dict, owner: str, now: int, exc: Exception) -> None:
     item = state["profiles"][owner]
     item["job_poll_errors"] += 1
-    item["next_job_poll_at_unix"] = int(time.time()) + min(10 * 2 ** min(item["job_poll_errors"], 5), 300)
+    item["failures"] += 1
+    item["next_job_poll_at_unix"] = now + min(
+        _profile(config, owner)["retry_delay_seconds"] * 2 ** min(item["job_poll_errors"], 4), 3600)
     item["last_error"] = str(exc)[:500]
     item["status"] = "transport_unavailable"
-    if item["job_poll_errors"] > 3:
+    if item["job_poll_errors"] > _profile(config, owner)["max_failures"]:
         item["desired"] = "paused"
     event(state, owner, "result_poll_failure", item["last_error"])
 
@@ -332,6 +341,7 @@ def tick(now: int | None = None) -> None:
         def failed(_config: dict, current: dict):
             current_item = current["profiles"][owner]
             current_item["last_error"] = str(exc)[:500]
+            current_item["failures"] += 1
             current_item["status"] = "transport_unavailable"
             current_item["desired"] = "paused"
             event(current, owner, "transport_failure", current_item["last_error"])
@@ -341,6 +351,7 @@ def tick(now: int | None = None) -> None:
 def main() -> int:
     parser = argparse.ArgumentParser(description="Single-owner Hadalis automation scheduler")
     parser.add_argument("--once", action="store_true", help="perform one deterministic scheduler tick")
+    parser.add_argument("--reset-state", action="store_true", help="clear bridge session state while holding the transport lock")
     args = parser.parse_args()
     lock_path = state_dir() / "chat-bridge.lock"
     lock_path.parent.mkdir(parents=True, exist_ok=True)
@@ -349,6 +360,10 @@ def main() -> int:
             fcntl.flock(handle, fcntl.LOCK_EX | fcntl.LOCK_NB)
         except BlockingIOError as exc:
             raise SystemExit("another Hadalis chat bridge owns the ChatGPT transport") from exc
+        if args.reset_state:
+            state_path().unlink(missing_ok=True)
+            (state_dir() / "chat-bridge.json").unlink(missing_ok=True)
+            return 0
         while True:
             tick()
             if args.once:

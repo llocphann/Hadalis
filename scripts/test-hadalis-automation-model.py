@@ -7,6 +7,7 @@ import os
 from pathlib import Path
 import sys
 import tempfile
+from types import SimpleNamespace
 from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
@@ -43,7 +44,7 @@ def main() -> None:
     malformed, issues = model.normalize_config({"profiles": [older["profiles"][0], {"id": "bad/id"}]})
     assert len(malformed["profiles"]) == 1 and len(issues) == 1
     expect_error(lambda: model.update_profile(initial, {"delete_completed": True}), "confirmation")
-    expect_error(lambda: model.update_profile(initial, {"requires_github": False}), "requires GitHub")
+    expect_error(lambda: model.update_profile(initial, {"requires_github": False}), "require GitHub")
     expect_error(lambda: model.update_profile(initial, {"mode": "iterations"}), "iteration limit")
 
     run = {"started_at_unix": 100, "chat_started_at_unix": 150,
@@ -66,6 +67,22 @@ def main() -> None:
     state["owner_id"] = initial["id"]
     assert model.choose_profile(config, state, 210) == initial["id"]
 
+    def systemctl(argv, **_kwargs):
+        unit = argv[3]
+        if unit == "hadalis-chat-bridge.service":
+            value = "LoadState=loaded\nActiveState=failed\nSubState=failed\nResult=exit-code\nExecMainStatus=75\n"
+        elif unit == "hadalis-worker.service":
+            value = "LoadState=loaded\nActiveState=inactive\nSubState=dead\nResult=success\nExecMainStatus=0\n"
+        else:
+            value = "LoadState=loaded\nActiveState=active\nSubState=running\nResult=success\nExecMainStatus=0\n"
+        return SimpleNamespace(returncode=0, stdout=value, stderr="")
+    with patch.object(control.subprocess, "run", side_effect=systemctl):
+        services = control.service_states()
+        assert services["bridge"]["state"] == "blocked"
+        assert services["worker"]["state"] == "inactive"
+        assert services["chatgpt"]["state"] == "active"
+    expect_error(lambda: control.control_service("reload-or-arbitrary", "bridge"), "allowlisted")
+
     with tempfile.TemporaryDirectory() as tmp:
         with patch.dict(os.environ, {"XDG_CONFIG_HOME": tmp + "/config", "XDG_STATE_HOME": tmp + "/state"}):
             config, runtime, _ = store.read_snapshot()
@@ -86,8 +103,11 @@ def main() -> None:
             control.profile_action("resume", pid)
             control.profile_action("stop", pid)
             expect_error(lambda: control.set_maintenance("delete_completed", "true"), "confirmation")
+            control.set_maintenance("archive_completed", "false")
             control.set_maintenance("delete_completed", "true", confirm_delete=True)
             assert store.read_snapshot()[0]["maintenance"]["delete_completed"] is True
+            assert control.reset_prompt(pid, "continuation_prompt")["reload_draft"]
+            assert next(p for p in store.read_snapshot()[0]["profiles"] if p["id"] == pid)["continuation_prompt"] == model.CUSTOM_CONTINUATION_PROMPT
             control.remove_profile(pid)
             assert pid not in store.read_snapshot()[1]["profiles"]
             assert len(store.read_snapshot()[1]["events"]) <= store.EVENT_LIMIT

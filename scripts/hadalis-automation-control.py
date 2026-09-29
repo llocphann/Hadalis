@@ -29,6 +29,8 @@ def main(argv: list[str]) -> dict:
         if len(args) == 4 and args[3] != "confirm-delete":
             raise ValueError("invalid confirmation")
         return control.set_profile(args[0], args[1], args[2], len(args) == 4)
+    if operation == "profile-reset-prompt" and len(args) == 2:
+        return control.reset_prompt(args[0], args[1])
     if operation == "maintenance-set" and len(args) in {2, 3}:
         if len(args) == 3 and args[2] != "confirm-delete":
             raise ValueError("invalid confirmation")

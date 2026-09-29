@@ -172,9 +172,12 @@ jobs:
               export QSG_RENDER_LOOP=basic
               export LIBGL_ALWAYS_SOFTWARE=1
 
+              # Niri's nested backend needs an EGL-capable parent Wayland
+              # compositor. Force Mesa software GL here; the direct Quickshell
+              # lane above remains Qt Quick software-rendered.
               weston \
                 --backend=headless-backend.so \
-                --renderer=pixman \
+                --renderer=gl \
                 --socket="$outer_display" \
                 --idle-time=0 \
                 --log="$RUNNER_TEMP/weston-niri-confirmation.log" &

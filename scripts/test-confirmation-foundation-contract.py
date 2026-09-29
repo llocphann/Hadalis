@@ -64,6 +64,12 @@ assert "function _resolveAction(action, force = false): void" in service
 assert "function cancel(force = false): void" in service
 assert "root.cancel(true)" in service
 assert "onAnchorRemoved(item)" in service
+assert "function _outputExists(outputName): bool" in service
+assert "function _reconcileOutputTopology(): void" in service
+assert "target: Quickshell" in service
+assert "function onScreensChanged(): void" in service
+assert "Qt.callLater(root._reconcileOutputTopology)" in service
+assert "root.currentRequest = Object.assign({}, root.currentRequest" in service
 
 # Generic confirmation state contains no authentication response/secret fields.
 for forbidden in ("password", "secret", "responseText", "credential"):

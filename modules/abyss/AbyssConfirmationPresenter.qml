@@ -46,6 +46,13 @@ Item {
         }
     }
 
+    Component.onDestruction: {
+        // Output hotplug/family teardown can destroy the owning presenter after
+        // semantic close but before StyledPopup emits its final tail signal.
+        if (root.ownsRequest && !ConfirmationService.requestVisible)
+            ConfirmationService.finishPresentation(root.requestId)
+    }
+
     StyledPopup {
         id: popup
         hoverTarget: root.presentationAnchor

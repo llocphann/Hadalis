@@ -219,6 +219,45 @@ Singleton {
             root.cancel(true)
     }
 
+    function _outputExists(outputName): bool {
+        const wanted = String(outputName ?? "")
+        return wanted.length > 0
+            && (Quickshell.screens ?? []).some(screen =>
+                String(screen?.name ?? "") === wanted)
+    }
+
+    function _reconcileOutputTopology(): void {
+        if (!root.requestVisible || !root.currentRequest)
+            return
+        if (root._outputExists(root.targetOutputName))
+            return
+
+        // A real attached source disappearing with its output is source loss:
+        // cancel rather than teleporting the request to a different app anchor.
+        if (root.currentRequest?._hadResolvedAnchor === true) {
+            root.cancel(true)
+            return
+        }
+
+        // A top-center fallback has no source geometry to preserve. If its
+        // output is hot-unplugged, keep the same request/callback ownership and
+        // move only that fallback presentation to a remaining valid output.
+        const replacement = GlobalStates.resolveOutputName(
+            String(root.currentRequest?.outputName ?? ""), [])
+        if (!replacement || replacement === root.targetOutputName)
+            return
+        root.currentRequest = Object.assign({}, root.currentRequest, {
+            _resolvedOutput: replacement
+        })
+    }
+
+    Connections {
+        target: Quickshell
+        function onScreensChanged(): void {
+            Qt.callLater(root._reconcileOutputTopology)
+        }
+    }
+
     Connections {
         target: PopupAnchorRegistry
         function onAnchorRemoved(item): void {

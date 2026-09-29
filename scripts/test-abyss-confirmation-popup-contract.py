@@ -23,6 +23,8 @@ assert "? ConfirmationService.resolvedAnchor" in presenter
 assert ": root.fallbackAnchor" in presenter
 assert "function finishIfReleased(): void" in presenter
 assert "onRequestVisibleChanged" in presenter
+assert "Component.onDestruction:" in presenter
+assert "root.ownsRequest && !ConfirmationService.requestVisible" in presenter
 assert "ConfirmationService.finishPresentation(root.requestId)" in presenter
 
 # Nested source anchors (notably Dock apps) inherit their host Join Edge.

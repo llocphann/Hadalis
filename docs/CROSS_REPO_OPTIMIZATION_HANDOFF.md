@@ -14048,3 +14048,200 @@ Closed / architecture / non-lossless findings:
 
 No source/runtime implementation is authorized by this handoff.
 
+---
+
+## 55. Round 41 — Bar utility derivation, AI model partition and mic-state duplication (2026-09-30)
+
+### 55.1 Bar UtilButtons recomputes the same active utility set/index for every delegate — CONFIRMED / P1-P2
+
+Path:
+
+- `modules/bar/UtilButtons.qml`.
+
+The default utility order has 11 ids.
+
+Current derivation is split across:
+
+- `visibleUtilityCount`, which filters the full order through
+  `utilityActive(id)`;
+- each Loader's `active` binding, which calls `utilityActive(id)` again;
+- `utilityIndex(id)`, which filters the **full utility order again** through
+  `utilityActive(candidate)`, allocates that filtered array, then calls
+  `.indexOf(id)`;
+- every utility delegate has one selected-axis layout binding that calls
+  `utilityIndex()` (row in vertical mode or column in horizontal mode).
+
+The source contains 11 utility delegates and 22 row/column textual
+`utilityIndex()` call sites; because the ternary selects only one axis at a
+time, one index calculation per delegate is active for a given orientation.
+
+A full-shaped reevaluation can therefore perform roughly:
+
+- 11 `utilityActive()` calls for the count;
+- 11 direct Loader-active calls;
+- 11 x 11 `utilityActive()` calls inside the 11 index filters;
+
+or about **143 utilityActive evaluations**, plus 11 temporary filtered arrays,
+to derive one 11-item layout.
+
+Exact-safe direction:
+
+1. build one reactive `utilityLayout` snapshot from the existing
+   `utilityOrder`;
+2. traverse ids in the exact current order;
+3. call the existing `utilityActive(id)` once per id;
+4. store the enabled boolean and, for enabled ids, the current compact index;
+5. expose count from the same snapshot;
+6. make Loader-active and row/column index bindings read that snapshot.
+
+Preserved behavior:
+
+- the existing `utilityActive()` rules and all config/service dependencies;
+- configured utility order;
+- disabled-item omission;
+- compact indices of enabled items;
+- inactive/unknown index fallback to 0;
+- vertical/horizontal placement;
+- no public component API change is required.
+
+Worst-shaped utility predicate work becomes approximately:
+
+**143 -> 11**
+
+for the current 11-item order, about **92.3% fewer predicate evaluations**,
+while eliminating the per-delegate filtered-array allocations.
+
+Do not replace the predicate rules themselves in this optimization; centralize
+only the repeated derivation.
+
+### 55.2 UtilButtons owns one completely unused mic-in-use binding — CONFIRMED / P3
+
+Path:
+
+- `modules/bar/UtilButtons.qml`.
+
+The mic Loader declares:
+
+`readonly property bool micInUse: Privacy.micActive || (Audio?.micBeingAccessed ?? false)`
+
+but no expression in that Loader references `micInUse`.
+
+The Loader's `active` state calls `root.utilityActive("mic")`, and the actual
+button separately declares its own `isInUse` binding.
+
+Therefore the Loader-level `micInUse` property contributes no visual,
+accessibility, action or layout value.
+
+Removing only that unused property is strict-lossless and also removes one
+otherwise-live dependency on both mic-state properties.
+
+Status: **CONFIRMED / P3**. It is small and composes with §55.1.
+
+### 55.3 AI computes runnable and locked model lists with two complementary full scans — CONFIRMED / P1-P2
+
+Path:
+
+- `services/Ai.qml`.
+
+Current properties are:
+
+`runnableModelList = modelList.filter(id => modelCanRun(models[id]))`
+
+and:
+
+`lockedModelList = modelList.filter(id => !modelCanRun(models[id]))`.
+
+`modelCanRun()` is pure in the current source: it checks policy/local status
+and, when needed, keyring/public-credential state.
+
+The two lists are exact complements over the same ordered `modelList`.
+
+A single reactive partition pass can therefore:
+
+1. iterate `modelList` once in its existing order;
+2. resolve `model = models[id]`;
+3. call `modelCanRun(model)` once;
+4. append the id to either runnable or locked;
+5. publish the two arrays from that partition.
+
+Preserved behavior:
+
+- `modelList` order inside each result;
+- every id appears in exactly one of the same two lists as today;
+- policy and keyring dependencies remain reactive;
+- public `runnableModelList` / `lockedModelList` APIs remain arrays;
+- repository search found no `onRunnableModelListChanged` or
+  `onLockedModelListChanged` side-effect handler.
+
+For M models:
+
+- model-list visits: **2M -> M**;
+- `modelCanRun()` calls: **2M -> M**;
+- approximately **50% fewer** model eligibility evaluations.
+
+This becomes more valuable as live provider catalogs increase model count.
+
+### 55.4 Privacy and Audio independently scan the exact same PipeWire links for microphone use — HIGH CONFIDENCE / signal-parity required
+
+Paths:
+
+- `services/Privacy.qml`;
+- `services/Audio.qml`;
+- `modules/bar/UtilButtons.qml`;
+- `modules/waffle/bar/SystemButton.qml`.
+
+`Privacy.micActive` and `Audio.micBeingAccessed` currently contain the exact
+same `Pipewire.links.values.some(...)` predicate.
+
+The checked-in consumers then OR those two equivalent booleans together.
+
+Steady-state value duplication is therefore clear: when both singletons are
+instantiated, the same PipeWire link list can be scanned twice for the same
+answer, and Bar consumers can read both results repeatedly.
+
+However this round does **not** promote a shared property/alias as absolute
+lossless yet.
+
+Reason: §49.11 established the stricter rule that QML reactive publication and
+signal timing count as behavior. Replacing two independently bound properties
+with one upstream binding/alias can change dependency and changed-signal
+ordering even when steady-state booleans are identical.
+
+Required parity before promotion:
+
+1. mic stream appears;
+2. mic stream disappears;
+3. unrelated PipeWire link insert/remove;
+4. source/target object becomes temporarily null during PipeWire churn;
+5. Bar and Waffle indicators change on the same frame as today;
+6. no consumer relies on `Privacy.micActiveChanged` timing;
+7. extension/public singleton compatibility remains intact.
+
+Status:
+
+**HIGH CONFIDENCE / benchmark + signal-parity test**, not yet Confirmed.
+
+Do not delete the public `Privacy` singleton merely because checked-in
+consumers are currently narrow.
+
+### 55.5 Round-41 conclusion
+
+New strict-lossless candidates:
+
+1. one reactive Bar utility-layout snapshot instead of repeated full
+   `utilityActive/filter/indexOf` derivation (§55.1, **CONFIRMED / P1-P2**);
+2. remove the unused Loader-level mic-in-use binding (§55.2,
+   **CONFIRMED / P3**);
+3. partition AI model ids into runnable/locked in one pass (§55.3,
+   **CONFIRMED / P1-P2**).
+
+Not yet promoted:
+
+4. centralize the duplicate Privacy/Audio PipeWire mic-use scan only after
+   reactive signal/frame parity is proven (§55.4).
+
+The Audio four-way node partition remains closed as a blind optimization under
+§49.11; Round 41 does not reopen it.
+
+No runtime/source implementation is authorized by this handoff.
+

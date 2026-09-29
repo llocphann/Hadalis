@@ -42,11 +42,28 @@ assert "drag.axis: Drag.XAndYAxis" in ripple
 assert "Drag to reorder" not in settings
 assert "enableDragReorder" not in apps
 assert "enableDragReorder" not in settings
-assert "function movePinnedApp(fromIndex: int, delta: int): void" in settings
+assert "function commitPinnedDrop(): void" in settings
 assert 'Config.setNestedValue("dock.pinnedApps", values)' in settings
-assert 'title: Translation.tr("Pinned app order")' in settings
-assert 'text: "arrow_upward"' in settings
-assert 'text: "arrow_downward"' in settings
+assert 'title: Translation.tr("Pinned apps")' in settings
+assert 'text: "drag_indicator"' in settings
+assert 'Drag.keys: ["inir-dock-pinned-app"]' in settings
+assert "root.togglePinnedVisibility(pinnedSlot.appId)" in settings
+assert "root.removePinnedApp(pinnedSlot.appId)" in settings
+assert "function filteredAddApps(): var" in settings
+assert 'placeholderText: Translation.tr("Search applications...")' in settings
+assert "root.addPinnedApp(" in settings
+assert "hiddenPinnedApps" in settings
+assert "hiddenPinnedIds" in apps
+assert "visiblePinnedApps" in apps
+assert "function onHiddenPinnedAppsChanged()" in apps
+position = [
+    '{ displayName: Translation.tr("Left"), icon: "arrow_back", value: "left" }',
+    '{ displayName: Translation.tr("Top"), icon: "arrow_upward", value: "top" }',
+    '{ displayName: Translation.tr("Bottom"), icon: "arrow_downward", value: "bottom" }',
+    '{ displayName: Translation.tr("Right"), icon: "arrow_forward", value: "right" }',
+]
+assert all(token in settings for token in position)
+assert settings.index(position[0]) < settings.index(position[1]) < settings.index(position[2]) < settings.index(position[3])
 assert "const pinnedOrder = new Map()" in apps
 assert "if (aPinned && bPinned)" in apps
 assert "return aPinned ? -1 : 1" in apps
@@ -66,4 +83,6 @@ assert 'Config.setNestedValue("dock.hoverPreview"' not in settings
 assert 'Config.setNestedValue("dock.hoverPreviewDelay"' not in settings
 assert "DockPreview 1.0" not in qmldir
 assert "DockWindowPreview 1.0" not in qmldir
+assert 'Accessible.name: Translation.tr("Move earlier")' not in settings
+assert 'Accessible.name: Translation.tr("Move later")' not in settings
 print("dock popup/orientation/dashboard-toggle/settings-order contract: ok")

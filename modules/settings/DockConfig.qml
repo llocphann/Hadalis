@@ -15,15 +15,28 @@ ContentPage {
         if (Quickshell.env("QS_DEBUG") === "1") console.log(...args);
     }
 
-    function movePinnedApp(fromIndex: int, delta: int): void {
-        const values = [...(Config.options?.dock?.pinnedApps ?? [])]
-        const toIndex = fromIndex + delta
-        if (fromIndex < 0 || fromIndex >= values.length
-                || toIndex < 0 || toIndex >= values.length)
+    property var pinnedDragInfo: null
+    property int pinnedDropIndex: -1
+    readonly property bool pinnedDragging: pinnedDragInfo !== null
+
+    function commitPinnedDrop(): void {
+        if (!root.pinnedDragInfo || root.pinnedDropIndex < 0) {
+            root.pinnedDragInfo = null
+            root.pinnedDropIndex = -1
             return
-        const moved = values.splice(fromIndex, 1)[0]
-        values.splice(toIndex, 0, moved)
-        Config.setNestedValue("dock.pinnedApps", values)
+        }
+        const values = [...(Config.options?.dock?.pinnedApps ?? [])]
+        const fromIndex = root.pinnedDragInfo.index
+        const toIndex = root.pinnedDropIndex
+        if (fromIndex >= 0 && fromIndex < values.length
+                && toIndex >= 0 && toIndex < values.length
+                && fromIndex !== toIndex) {
+            const moved = values.splice(fromIndex, 1)[0]
+            values.splice(toIndex, 0, moved)
+            Config.setNestedValue("dock.pinnedApps", values)
+        }
+        root.pinnedDragInfo = null
+        root.pinnedDropIndex = -1
     }
 
     function pinnedAppLabel(appId: string): string {
@@ -37,6 +50,72 @@ ContentPage {
         if (resolved.startsWith("/") || resolved.startsWith("file://"))
             return resolved.startsWith("file://") ? resolved : `file://${resolved}`
         return Quickshell.iconPath(resolved, "application-x-executable")
+    }
+
+    function isPinnedVisible(appId: string): bool {
+        const lowerId = String(appId ?? "").toLowerCase()
+        const hidden = Config.options?.dock?.hiddenPinnedApps ?? []
+        return !hidden.some(id => String(id ?? "").toLowerCase() === lowerId)
+    }
+
+    function togglePinnedVisibility(appId: string): void {
+        const lowerId = String(appId ?? "").toLowerCase()
+        if (!lowerId) return
+        const hidden = [...(Config.options?.dock?.hiddenPinnedApps ?? [])]
+        const index = hidden.findIndex(id => String(id ?? "").toLowerCase() === lowerId)
+        if (index >= 0) hidden.splice(index, 1)
+        else hidden.push(lowerId)
+        Config.setNestedValue("dock.hiddenPinnedApps", hidden)
+    }
+
+    function removePinnedApp(appId: string): void {
+        const lowerId = String(appId ?? "").toLowerCase()
+        if (!lowerId) return
+        const pinned = [...(Config.options?.dock?.pinnedApps ?? [])]
+            .filter(id => String(id ?? "").toLowerCase() !== lowerId)
+        const hidden = [...(Config.options?.dock?.hiddenPinnedApps ?? [])]
+            .filter(id => String(id ?? "").toLowerCase() !== lowerId)
+        Config.setNestedValues({
+            "dock.pinnedApps": pinned,
+            "dock.hiddenPinnedApps": hidden
+        })
+    }
+
+    function addPinnedApp(appId: string): void {
+        const id = String(appId ?? "").trim()
+        if (!id) return
+        const lowerId = id.toLowerCase()
+        const pinned = [...(Config.options?.dock?.pinnedApps ?? [])]
+        if (!pinned.some(existing => String(existing ?? "").toLowerCase() === lowerId))
+            pinned.push(id)
+        const hidden = [...(Config.options?.dock?.hiddenPinnedApps ?? [])]
+            .filter(existing => String(existing ?? "").toLowerCase() !== lowerId)
+        Config.setNestedValues({
+            "dock.pinnedApps": pinned,
+            "dock.hiddenPinnedApps": hidden
+        })
+    }
+
+    function filteredAddApps(): var {
+        const query = pinnedAppSearchField.text.toLowerCase().trim()
+        const pinned = new Set((Config.options?.dock?.pinnedApps ?? [])
+            .map(id => String(id ?? "").toLowerCase()))
+        const result = []
+        for (const app of (AppSearch.list ?? [])) {
+            const id = String(app?.id ?? "").trim()
+            if (!id || pinned.has(id.toLowerCase())) continue
+            const haystack = [
+                app?.name ?? "",
+                app?.genericName ?? "",
+                app?.comment ?? "",
+                id
+            ].join(" ").toLowerCase()
+            if (query && !haystack.includes(query)) continue
+            result.push(app)
+        }
+        result.sort((a, b) => String(a?.name ?? a?.id ?? "")
+            .localeCompare(String(b?.name ?? b?.id ?? "")))
+        return result
     }
 
     settingsPageIndex: embedded ? 2 : 22
@@ -79,8 +158,8 @@ ContentPage {
                             Config.setNestedValue('dock.position', newValue);
                         }
                         options: [
-                            { displayName: Translation.tr("Top"), icon: "arrow_upward", value: "top" },
                             { displayName: Translation.tr("Left"), icon: "arrow_back", value: "left" },
+                            { displayName: Translation.tr("Top"), icon: "arrow_upward", value: "top" },
                             { displayName: Translation.tr("Bottom"), icon: "arrow_downward", value: "bottom" },
                             { displayName: Translation.tr("Right"), icon: "arrow_forward", value: "right" }
                         ]
@@ -179,11 +258,11 @@ ContentPage {
             }
 
             ContentSubsection {
-                title: Translation.tr("Pinned app order")
+                title: Translation.tr("Pinned apps")
 
                 StyledText {
                     Layout.fillWidth: true
-                    text: Translation.tr("Pinned apps follow this order in the Dock. Running-only apps keep their open order.")
+                    text: Translation.tr("Drag pinned apps to reorder. Hide an app without losing its position, or remove it from the Dock.")
                     color: Appearance.colors.colSubtext
                     font.pixelSize: Appearance.font.pixelSize.smaller
                     wrapMode: Text.WordWrap
@@ -191,86 +270,282 @@ ContentPage {
 
                 ColumnLayout {
                     Layout.fillWidth: true
-                    spacing: 4
+                    spacing: 6
 
                     Repeater {
                         model: Config.options?.dock?.pinnedApps ?? []
 
-                        delegate: Rectangle {
-                            id: pinnedAppDelegate
+                        delegate: Item {
+                            id: pinnedSlot
                             required property var modelData
                             required property int index
-
+                            readonly property string appId: String(modelData ?? "")
                             Layout.fillWidth: true
-                            implicitHeight: 44
-                            radius: Appearance.rounding.small
-                            color: Appearance.colors.colLayer1Base
-                            border.width: 1
-                            border.color: Appearance.colors.colLayer0Border
+                            implicitHeight: 42
+                            clip: false
 
-                            RowLayout {
+                            DropArea {
                                 anchors.fill: parent
-                                anchors.leftMargin: 8
-                                anchors.rightMargin: 6
-                                spacing: 8
-
-                                IconImage {
-                                    Layout.preferredWidth: 28
-                                    Layout.preferredHeight: 28
-                                    source: root.pinnedAppIcon(String(pinnedAppDelegate.modelData))
+                                keys: ["inir-dock-pinned-app"]
+                                enabled: root.pinnedDragging
+                                onEntered: drag => {
+                                    if (drag.source && drag.source.appId !== pinnedSlot.appId)
+                                        root.pinnedDropIndex = pinnedSlot.index
                                 }
+                            }
 
-                                ColumnLayout {
+                            Rectangle {
+                                id: pinnedRow
+                                property string appId: pinnedSlot.appId
+                                width: pinnedSlot.width
+                                height: 42
+                                x: 0
+                                y: 0
+                                z: pinnedHandle.drag.active ? 100 : 1
+                                radius: Appearance.rounding.small
+                                color: pinnedHandle.containsMouse || pinnedHandle.drag.active
+                                    ? Appearance.colors.colLayer1Hover
+                                    : Appearance.colors.colLayer1
+                                border.width: root.pinnedDragging
+                                    && root.pinnedDropIndex === pinnedSlot.index ? 1 : 0
+                                border.color: Appearance.colors.colPrimary
+                                opacity: root.isPinnedVisible(pinnedSlot.appId) ? 1 : 0.62
+
+                                Drag.active: pinnedHandle.drag.active
+                                Drag.source: pinnedRow
+                                Drag.keys: ["inir-dock-pinned-app"]
+                                Drag.hotSpot.x: width / 2
+                                Drag.hotSpot.y: height / 2
+
+                                RowLayout {
+                                    anchors.fill: parent
+                                    anchors.leftMargin: 8
+                                    anchors.rightMargin: 6
+                                    spacing: 8
+
+                                    Item {
+                                        Layout.preferredWidth: 28
+                                        Layout.preferredHeight: 28
+
+                                        MaterialSymbol {
+                                            anchors.centerIn: parent
+                                            text: "drag_indicator"
+                                            iconSize: Appearance.font.pixelSize.normal
+                                            color: Appearance.colors.colSubtext
+                                        }
+
+                                        MouseArea {
+                                            id: pinnedHandle
+                                            anchors.fill: parent
+                                            hoverEnabled: true
+                                            cursorShape: drag.active
+                                                ? Qt.ClosedHandCursor : Qt.OpenHandCursor
+                                            drag.target: pinnedRow
+                                            drag.axis: Drag.YAxis
+                                            drag.minimumY: -pinnedSlot.index * 48
+                                            drag.maximumY: ((Config.options?.dock?.pinnedApps?.length ?? 0)
+                                                - pinnedSlot.index - 1) * 48
+                                            onPressed: {
+                                                root.pinnedDragInfo = {
+                                                    id: pinnedSlot.appId,
+                                                    index: pinnedSlot.index
+                                                }
+                                                root.pinnedDropIndex = pinnedSlot.index
+                                            }
+                                            onReleased: {
+                                                pinnedRow.Drag.drop()
+                                                root.commitPinnedDrop()
+                                                pinnedRow.y = 0
+                                            }
+                                            onCanceled: {
+                                                root.pinnedDragInfo = null
+                                                root.pinnedDropIndex = -1
+                                                pinnedRow.y = 0
+                                            }
+                                        }
+                                    }
+
+                                    IconImage {
+                                        Layout.preferredWidth: 26
+                                        Layout.preferredHeight: 26
+                                        source: root.pinnedAppIcon(pinnedSlot.appId)
+                                    }
+
+                                    ColumnLayout {
+                                        Layout.fillWidth: true
+                                        Layout.minimumWidth: 0
+                                        spacing: 0
+
+                                        StyledText {
+                                            Layout.fillWidth: true
+                                            text: root.pinnedAppLabel(pinnedSlot.appId)
+                                            color: Appearance.colors.colOnLayer1
+                                            font.pixelSize: Appearance.font.pixelSize.small
+                                            font.weight: Font.Medium
+                                            elide: Text.ElideRight
+                                        }
+                                        StyledText {
+                                            Layout.fillWidth: true
+                                            text: pinnedSlot.appId
+                                            color: Appearance.colors.colSubtext
+                                            font.pixelSize: Appearance.font.pixelSize.smaller
+                                            elide: Text.ElideRight
+                                        }
+                                    }
+
+                                    RippleButton {
+                                        implicitWidth: 30
+                                        implicitHeight: 30
+                                        buttonRadius: Appearance.rounding.full
+                                        Accessible.name: root.isPinnedVisible(pinnedSlot.appId)
+                                            ? Translation.tr("Hide from Dock")
+                                            : Translation.tr("Show in Dock")
+                                        onClicked: root.togglePinnedVisibility(pinnedSlot.appId)
+                                        contentItem: MaterialSymbol {
+                                            anchors.centerIn: parent
+                                            text: root.isPinnedVisible(pinnedSlot.appId)
+                                                ? "visibility" : "visibility_off"
+                                            iconSize: Appearance.font.pixelSize.normal
+                                            color: root.isPinnedVisible(pinnedSlot.appId)
+                                                ? Appearance.colors.colPrimary
+                                                : Appearance.colors.colSubtext
+                                        }
+                                        StyledToolTip {
+                                            text: root.isPinnedVisible(pinnedSlot.appId)
+                                                ? Translation.tr("Hide from Dock")
+                                                : Translation.tr("Show in Dock")
+                                        }
+                                    }
+
+                                    RippleButton {
+                                        implicitWidth: 30
+                                        implicitHeight: 30
+                                        buttonRadius: Appearance.rounding.full
+                                        Accessible.name: Translation.tr("Remove from Dock")
+                                        onClicked: root.removePinnedApp(pinnedSlot.appId)
+                                        contentItem: MaterialSymbol {
+                                            anchors.centerIn: parent
+                                            text: "remove_circle"
+                                            iconSize: Appearance.font.pixelSize.normal
+                                            color: Appearance.colors.colSubtext
+                                        }
+                                        StyledToolTip { text: Translation.tr("Remove from Dock") }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                ContentSubsectionLabel {
+                    text: Translation.tr("Add applications")
+                }
+
+                MaterialTextField {
+                    id: pinnedAppSearchField
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: 36
+                    placeholderText: Translation.tr("Search applications...")
+                    font.pixelSize: Appearance.font.pixelSize.small
+                }
+
+                ListView {
+                    id: pinnedAppSearchList
+                    Layout.fillWidth: true
+                    implicitHeight: Math.min(184, Math.max(44, contentHeight))
+                    clip: true
+                    model: root.filteredAddApps()
+                    boundsBehavior: Flickable.StopAtBounds
+                    spacing: 2
+
+                    PagePlaceholder {
+                        shown: pinnedAppSearchList.count === 0
+                        icon: "search_off"
+                        title: Translation.tr("No matching apps")
+                        description: Translation.tr("Try a different search term.")
+                        anchors.fill: parent
+                    }
+
+                    delegate: Item {
+                        id: addAppDelegate
+                        required property var modelData
+                        required property int index
+                        width: pinnedAppSearchList.width
+                        height: 42
+
+                        Rectangle {
+                            anchors.fill: parent
+                            radius: Appearance.rounding.small
+                            color: addAppHover.hovered
+                                ? Appearance.colors.colLayer1Hover : "transparent"
+                        }
+                        HoverHandler { id: addAppHover }
+
+                        RowLayout {
+                            anchors.fill: parent
+                            anchors.leftMargin: 8
+                            anchors.rightMargin: 6
+                            spacing: 8
+
+                            Item {
+                                Layout.preferredWidth: 26
+                                Layout.preferredHeight: 26
+
+                                Image {
+                                    id: addAppIcon
+                                    anchors.fill: parent
+                                    source: AppSearch.getIconSource(
+                                        addAppDelegate.modelData?.icon ?? "",
+                                        addAppDelegate.modelData?.name ?? "")
+                                    sourceSize.width: 52
+                                    sourceSize.height: 52
+                                    fillMode: Image.PreserveAspectFit
+                                }
+                                MaterialSymbol {
+                                    anchors.centerIn: parent
+                                    visible: addAppIcon.status !== Image.Ready
+                                    text: "apps"
+                                    iconSize: Appearance.font.pixelSize.normal
+                                    color: Appearance.colors.colOnLayer1
+                                }
+                            }
+
+                            ColumnLayout {
+                                Layout.fillWidth: true
+                                Layout.minimumWidth: 0
+                                spacing: 0
+
+                                StyledText {
                                     Layout.fillWidth: true
-                                    spacing: 0
-
-                                    StyledText {
-                                        Layout.fillWidth: true
-                                        text: root.pinnedAppLabel(String(pinnedAppDelegate.modelData))
-                                        color: Appearance.colors.colOnLayer1
-                                        elide: Text.ElideRight
-                                    }
-                                    StyledText {
-                                        Layout.fillWidth: true
-                                        text: String(pinnedAppDelegate.modelData)
-                                        color: Appearance.colors.colSubtext
-                                        font.pixelSize: Appearance.font.pixelSize.smaller
-                                        elide: Text.ElideRight
-                                    }
+                                    text: addAppDelegate.modelData?.name
+                                        ?? addAppDelegate.modelData?.id ?? ""
+                                    font.pixelSize: Appearance.font.pixelSize.small
+                                    color: Appearance.colors.colOnLayer1
+                                    elide: Text.ElideRight
                                 }
-
-                                RippleButton {
-                                    Layout.preferredWidth: 34
-                                    Layout.preferredHeight: 34
-                                    enabled: pinnedAppDelegate.index > 0
-                                    pointingHandCursor: enabled
-                                    Accessible.name: Translation.tr("Move earlier")
-                                    onClicked: root.movePinnedApp(pinnedAppDelegate.index, -1)
-                                    contentItem: MaterialSymbol {
-                                        anchors.centerIn: parent
-                                        text: "arrow_upward"
-                                        iconSize: 18
-                                        color: Appearance.colors.colOnLayer1
-                                    }
-                                    StyledToolTip { text: Translation.tr("Move earlier") }
+                                StyledText {
+                                    Layout.fillWidth: true
+                                    text: String(addAppDelegate.modelData?.id ?? "")
+                                    font.pixelSize: Appearance.font.pixelSize.smaller
+                                    color: Appearance.colors.colSubtext
+                                    elide: Text.ElideRight
                                 }
+                            }
 
-                                RippleButton {
-                                    Layout.preferredWidth: 34
-                                    Layout.preferredHeight: 34
-                                    enabled: pinnedAppDelegate.index
-                                        < (Config.options?.dock?.pinnedApps?.length ?? 0) - 1
-                                    pointingHandCursor: enabled
-                                    Accessible.name: Translation.tr("Move later")
-                                    onClicked: root.movePinnedApp(pinnedAppDelegate.index, 1)
-                                    contentItem: MaterialSymbol {
-                                        anchors.centerIn: parent
-                                        text: "arrow_downward"
-                                        iconSize: 18
-                                        color: Appearance.colors.colOnLayer1
-                                    }
-                                    StyledToolTip { text: Translation.tr("Move later") }
+                            RippleButton {
+                                implicitWidth: 30
+                                implicitHeight: 30
+                                buttonRadius: Appearance.rounding.full
+                                Accessible.name: Translation.tr("Add to Dock")
+                                onClicked: root.addPinnedApp(
+                                    String(addAppDelegate.modelData?.id ?? ""))
+                                contentItem: MaterialSymbol {
+                                    anchors.centerIn: parent
+                                    text: "add"
+                                    iconSize: Appearance.font.pixelSize.normal
+                                    color: Appearance.colors.colPrimary
                                 }
+                                StyledToolTip { text: Translation.tr("Add to Dock") }
                             }
                         }
                     }

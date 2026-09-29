@@ -126,6 +126,11 @@ Item {
 
     function _doRebuildDockItems() {
         const pinnedApps = Config.options?.dock?.pinnedApps ?? [];
+        const pinnedIds = new Set(pinnedApps.map(id => String(id ?? "").toLowerCase()));
+        const hiddenPinnedIds = new Set((Config.options?.dock?.hiddenPinnedApps ?? [])
+            .map(id => String(id ?? "").toLowerCase()));
+        const visiblePinnedApps = pinnedApps.filter(appId =>
+            !hiddenPinnedIds.has(String(appId ?? "").toLowerCase()));
         const ignoredRegexes = _getIgnoredRegexes();
         const separatePinnedFromRunning = root.separatePinnedFromRunning;
 
@@ -159,6 +164,9 @@ Item {
             const effectiveId = AppSearch.resolveWindowIdentity(toplevel);
             const lowerAppId = effectiveId.toLowerCase();
 
+            if (pinnedIds.has(lowerAppId) && hiddenPinnedIds.has(lowerAppId))
+                continue;
+
             if (ignoredRegexes.some(re => re.test(effectiveId))) {
                 continue;
             }
@@ -185,7 +193,7 @@ Item {
         let order = 0;
 
         if (!separatePinnedFromRunning) {
-            for (const appId of pinnedApps) {
+            for (const appId of visiblePinnedApps) {
                 const lowerAppId = appId.toLowerCase();
                 const runningEntry = runningAppsMap.get(lowerAppId);
                 if (!runningEntry && !AppSearch.lookupDesktopEntry(appId))
@@ -229,7 +237,7 @@ Item {
                 });
             }
         } else {
-            for (const appId of pinnedApps) {
+            for (const appId of visiblePinnedApps) {
                 const lowerAppId = appId.toLowerCase();
                 if (!runningAppsMap.has(lowerAppId)) {
                     if (!AppSearch.lookupDesktopEntry(appId))
@@ -269,8 +277,8 @@ Item {
                 });
             }
             const pinnedOrder = new Map()
-            for (let i = 0; i < pinnedApps.length; i++)
-                pinnedOrder.set(pinnedApps[i].toLowerCase(), i)
+            for (let i = 0; i < visiblePinnedApps.length; i++)
+                pinnedOrder.set(visiblePinnedApps[i].toLowerCase(), i)
 
             sortedRunningApps.sort((a, b) => {
                 const aPinned = pinnedOrder.has(a.lowerAppId)
@@ -288,7 +296,7 @@ Item {
                     uniqueId: "app-" + lowerAppId,
                     appId: lowerAppId,
                     toplevels: entry.toplevels,
-                    pinned: pinnedApps.some(p => p.toLowerCase() === lowerAppId),
+                    pinned: pinnedIds.has(lowerAppId),
                     originalAppId: entry.appId,
                     section: "running",
                     order: order++
@@ -325,6 +333,9 @@ Item {
         target: Config.options?.dock
         enabled: root.enabled
         function onPinnedAppsChanged() {
+            root.rebuildDockItems()
+        }
+        function onHiddenPinnedAppsChanged() {
             root.rebuildDockItems()
         }
         function onIgnoredAppRegexesChanged() {

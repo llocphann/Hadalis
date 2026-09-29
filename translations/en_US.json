@@ -5445,5 +5445,11 @@
   "Pinned app order": "Pinned app order",
   "Pinned apps follow this order in the Dock. Running-only apps keep their open order.": "Pinned apps follow this order in the Dock. Running-only apps keep their open order.",
   "Move earlier": "Move earlier",
-  "Move later": "Move later"
+  "Move later": "Move later",
+  "Drag pinned apps to reorder. Hide an app without losing its position, or remove it from the Dock.": "Drag pinned apps to reorder. Hide an app without losing its position, or remove it from the Dock.",
+  "Hide from Dock": "Hide from Dock",
+  "Show in Dock": "Show in Dock",
+  "Remove from Dock": "Remove from Dock",
+  "Add applications": "Add applications",
+  "Add to Dock": "Add to Dock"
 }

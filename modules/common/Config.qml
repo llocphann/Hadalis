@@ -1940,6 +1940,7 @@ Singleton {
                 property bool separatePinnedFromRunning: true
                 property bool notificationBadge: true
                 property list<string> pinnedApps: ["org.gnome.Nautilus", "firefox", "kitty"]
+                property list<string> hiddenPinnedApps: []
                 property list<string> ignoredAppRegexes: []
                 property list<string> screenList: []
                 property bool smartIndicator: true

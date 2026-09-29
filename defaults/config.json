@@ -1038,6 +1038,7 @@
             "firefox",
             "kitty"
         ],
+        "hiddenPinnedApps": [],
         "pinnedOnStartup": true,
         "screenList": [],
         "showBackground": true,

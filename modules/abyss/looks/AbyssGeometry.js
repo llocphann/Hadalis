@@ -11,7 +11,7 @@ function targets(name, list, connected) {
     if (!list || !list.length) return true;
     return list.indexOf(name) >= 0 || !connected.some(function(n) { return list.indexOf(n) >= 0; });
 }
-function panel(width, height, insets, edge, along, span, depth, progress, padding, obstacles, largeSurface, depthLimitRatio, tangentFlush) {
+function panel(width, height, insets, edge, along, span, depth, progress, padding, obstacles, largeSurface) {
     var h = horizontal(edge);
     var first = h ? insets.left : insets.top;
     var last = h ? width - insets.right : height - insets.bottom;
@@ -28,22 +28,10 @@ function panel(width, height, insets, edge, along, span, depth, progress, paddin
     first = clamp(first,firstBound,lastBound);
     last = Math.max(first,Math.min(last,lastBound));
     var p = clamp(padding, 0, Math.max(0, (last-first)/8));
-    // Elastic Fill may grow an outer body to the inner perimeter boundary.
-    // Content keeps its normal padding; only the panel's tangent safety margin
-    // is relaxed while the fill (or its return animation) is active.
-    var tangentMargin=tangentFlush === true ? 0 : p;
-    span = clamp(span, 0, Math.max(0, last-first-2*tangentMargin));
-    along = clamp(along, first+tangentMargin,
-        Math.max(first+tangentMargin,last-tangentMargin-span));
-    // Ordinary bodies cannot close the workspace opening. Elastic Fill is the
-    // one bounded exception: its post-allocation placement may borrow only the
-    // vacancy already defined by another visible related body.
-    var defaultDepthRatio=largeSurface ? 0.92 : 0.42;
-    var effectiveDepthRatio=Number.isFinite(Number(depthLimitRatio))
-        ? clamp(depthLimitRatio,0,1) : defaultDepthRatio;
-    depth = clamp(depth, 0,
-        (h ? height-insets.top-insets.bottom
-            : width-insets.left-insets.right)*effectiveDepthRatio);
+    span = clamp(span, 0, Math.max(0, last-first-2*p));
+    along = clamp(along, first+p, Math.max(first+p, last-p-span));
+    // Opposing panels can never close the workspace opening.
+    depth = clamp(depth, 0, (h ? height-insets.top-insets.bottom : width-insets.left-insets.right)*(largeSurface ? 0.92 : 0.42));
     var d = depth * clamp(progress, 0, 1.035);
     var x = h ? along : edge === "left" ? insets.left : width-insets.right-d;
     var y = h ? edge === "top" ? insets.top : height-insets.bottom-d : along;
@@ -66,11 +54,8 @@ function placedPanel(width,height,insets,edge,along,span,depth,progress,padding,
     var placedAlong = Number.isFinite(Number(placement.along)) ? Number(placement.along) : along;
     var placedSpan = Number.isFinite(Number(placement.span)) ? Number(placement.span) : span;
     var placedDepth = Number.isFinite(Number(placement.depth)) ? Number(placement.depth) : depth;
-    var elasticLimits=placement.elasticFilled === true
-        || placement.elasticLimits === true;
-    var depthLimit=elasticLimits ? 1 : undefined;
     var base = panel(width,height,insets,edge,placedAlong,placedSpan,placedDepth,
-        progress,padding,[],largeSurface,depthLimit,elasticLimits);
+        progress,padding,[],largeSurface);
     var p = clamp(progress,0,1.035), offset = placement.inward*p;
     if (horizontal(edge)) {
         base.content.y += edge === "top" ? offset : -offset;

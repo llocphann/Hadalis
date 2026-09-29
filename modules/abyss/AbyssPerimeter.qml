@@ -443,11 +443,6 @@ Scope {
                 anchors.fill: parent
                 edge: window.positionEdge(identity,ShellLayoutController.sidebarAssignments().featureSidebar)
                 outputName: window.outputName
-                elasticFillGroup: edge === "left"
-                    ? "quickNotesSidebar"
-                    : (edge === "right" ? "notificationsSidebar" : "")
-                elasticFillHovered: elasticFillGroup.length > 0
-                    && (leftReveal.edgeHovered || leftPanel.contentHovered)
                 open: window.presented && field.ready && (Config.options?.enabledPanels ?? []).includes("abyssSidebarLeft")
                     && GlobalStates.sidebarLeftOpen && GlobalStates.sidebarLeftPresentationOutput === window.outputName
 
@@ -469,11 +464,6 @@ Scope {
                 anchors.fill: parent
                 edge: window.positionEdge(identity,ShellLayoutController.sidebarAssignments().systemSidebar)
                 outputName: window.outputName
-                elasticFillGroup: edge === "left"
-                    ? "quickNotesSidebar"
-                    : (edge === "right" ? "notificationsSidebar" : "")
-                elasticFillHovered: elasticFillGroup.length > 0
-                    && (rightReveal.edgeHovered || rightPanel.contentHovered)
                 open: window.presented && field.ready && (Config.options?.enabledPanels ?? []).includes("abyssSidebarRight")
                     && GlobalStates.sidebarRightOpen && GlobalStates.sidebarRightPresentationOutput === window.outputName
 
@@ -556,21 +546,6 @@ Scope {
                     edge: window.positionEdge(presentationKind,
                         hostedPopup?._attachmentEdge ?? root.barEdge)
                     outputName: window.outputName
-                    readonly property string elasticNearbyEdge:
-                        Presentation.nearbyEdge(edge,along,span,
-                            window.width,window.height)
-                    elasticFillGroup:
-                        (presentationKind === "quickNotes"
-                            && elasticNearbyEdge === "left")
-                                ? "quickNotesSidebar"
-                        : (presentationKind === "notificationCenter"
-                            && elasticNearbyEdge === "right")
-                                ? "notificationsSidebar"
-                        : ""
-                    elasticFillHovered: elasticFillGroup.length > 0
-                        && (styledPopupHost.contentHovered
-                            || (hostedPopup?.popupHovered ?? false)
-                            || (hostedPopup?.hoverTarget?.containsMouse ?? false))
                     open: window.popupFieldPresented && field.ready
                         && (hostedPopup?.presentationActive ?? false)
                         && ((hostedPopup?.requestedVisible ?? false)
@@ -600,7 +575,6 @@ Scope {
 
                     onPopupEntryChanged: {
                         retainedPlacement = null
-                        elasticFillOrder = 0
                         resetPyramidMotion()
                     }
                     onCloseRequested: hostedPopup?.dismissPresentation()

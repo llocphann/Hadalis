@@ -23,9 +23,6 @@ function clonePlacement(placement) {
         span:Math.max(0,_number(placement.span,0)),
         depth:Math.max(0,_number(placement.depth,0)),
         shrunk:placement.shrunk === true,
-        elasticFilled:placement.elasticFilled === true,
-        elasticLimits:placement.elasticLimits === true,
-        elasticDirection:String(placement.elasticDirection ?? ""),
         content:cloneRect(placement.content)
     };
 }

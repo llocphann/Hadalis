@@ -6,8 +6,6 @@ on:
       - '.github/workflows/confirmation-runtime.yml'
       - 'scripts/test-abyss-confirmation-runtime.sh'
       - 'scripts/test-abyss-confirmation-multi-output-runtime.sh'
-      - 'scripts/test-abyss-elastic-fill.py'
-      - 'scripts/test-abyss-elastic-fill.sh'
       - 'scripts/test-abyss-polkit-runtime.sh'
       - 'scripts/run-abyss-polkit-runtime-session.sh'
       - 'scripts/test-abyss-confirmation-popup-contract.py'
@@ -35,8 +33,6 @@ on:
       - '.github/workflows/confirmation-runtime.yml'
       - 'scripts/test-abyss-confirmation-runtime.sh'
       - 'scripts/test-abyss-confirmation-multi-output-runtime.sh'
-      - 'scripts/test-abyss-elastic-fill.py'
-      - 'scripts/test-abyss-elastic-fill.sh'
       - 'scripts/test-abyss-polkit-runtime.sh'
       - 'scripts/run-abyss-polkit-runtime-session.sh'
       - 'scripts/test-abyss-confirmation-popup-contract.py'
@@ -87,8 +83,6 @@ jobs:
           python3 scripts/test-abyss-polkit-integration-contract.py
           python3 scripts/test-abyss-prompt-fallback-contract.py
           python3 scripts/test-abyss-critical-prompt-fullscreen-contract.py
-          python3 scripts/test-abyss-elastic-fill.py
-          bash -n scripts/test-abyss-elastic-fill.sh
           bash -n scripts/test-abyss-polkit-runtime.sh
           bash -n scripts/run-abyss-polkit-runtime-session.sh
 
@@ -303,7 +297,6 @@ jobs:
               fi
 
               bash scripts/test-abyss-confirmation-runtime.sh
-              bash scripts/test-abyss-elastic-fill.sh
             '
 
       - name: Show Weston log on failure
@@ -560,7 +553,6 @@ jobs:
               fi
 
               bash scripts/test-abyss-confirmation-runtime.sh
-              bash scripts/test-abyss-elastic-fill.sh
             '
 
       - name: Show nested Niri logs on failure

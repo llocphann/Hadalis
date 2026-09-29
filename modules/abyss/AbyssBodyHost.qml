@@ -67,11 +67,6 @@ Item {
     // Same-Edge popup intervals that overlap or come within this many logical
     // pixels participate in one visual neighborhood.
     property real stackProximity: 24
-    // Elastic Fill is transient presentation metadata. Related bodies share a
-    // group; only the most recently hovered member borrows the group's vacancy.
-    property string elasticFillGroup: ""
-    property bool elasticFillHovered: false
-    property int elasticFillOrder: 0
     property int activationOrder: 0
     property int placementPriority: identity === "dialog" ? 2 : ["utility","edgeEditor"].includes(identity) ? 1 : identity === "dock" ? -1 : 0
     readonly property var placement: controller?.bodyPlacements?.[identity] ?? null
@@ -115,27 +110,12 @@ Item {
         ? Number(coordinatedPlacement.depth) : depth
     property real visualPlacementInward: Number.isFinite(Number(coordinatedPlacement?.inward))
         ? Number(coordinatedPlacement.inward) : 0
-    // Hover loss restores allocator truth immediately, but span/depth still
-    // animate back to that base placement. Keep only the relaxed geometry
-    // limits alive for the same placement-motion duration so the body cannot
-    // snap through its normal clamp halfway through the return.
-    property real elasticLimitProgress:
-        (coordinatedPlacement?.elasticFilled === true
-            || coordinatedPlacement?.elasticLimits === true) ? 1 : 0
     readonly property var visualPlacement: coordinatedPlacement
         ? Object.assign({},coordinatedPlacement,{
             along:visualPlacementAlong,
             span:visualPlacementSpan,
             depth:visualPlacementDepth,
-            inward:visualPlacementInward,
-            elasticFilled:
-                coordinatedPlacement?.elasticFilled === true,
-            elasticLimits:
-                coordinatedPlacement?.elasticFilled === true
-                || coordinatedPlacement?.elasticLimits === true
-                || elasticLimitProgress > 0.001,
-            elasticDirection:
-                coordinatedPlacement?.elasticDirection ?? ""
+            inward:visualPlacementInward
         }) : null
     readonly property bool presented: open && placementVisible
     property real along: 0
@@ -198,7 +178,6 @@ Item {
     readonly property Item contentItem: content
     readonly property bool ready: embeddedItem !== null || content.status === Loader.Ready
     readonly property Item contentParent: contentCanvas
-    readonly property bool contentHovered: contentHover.hovered
     readonly property rect inputBounds: acceptsInput && ready
         ? Qt.rect(contentFrame.x,contentFrame.y,contentFrame.width,contentFrame.height) : Qt.rect(0,0,0,0)
     signal closeRequested()
@@ -215,9 +194,6 @@ Item {
             allowInward:root.placementCanStackInward,
             stackPolicy:root.stackPolicy,
             stackProximity:root.stackProximity,
-            elasticFillGroup:root.elasticFillGroup,
-            elasticFillHovered:root.elasticFillHovered,
-            elasticFillOrder:root.elasticFillOrder,
             record:root.requestedRecord})
         inputBounds: root.inputBounds
         mass: root.mass
@@ -226,12 +202,6 @@ Item {
         if (controller) controller.impulse(edge,along+span/2,span,(opening ? 0.85 : -0.65)*waveInfluence,mass,opening ? "open" : "close")
     }
     function markOpened(): void { if (open && controller?.nextPresentationOrder) activationOrder=controller.nextPresentationOrder() }
-    function markElasticFillInteraction(): void {
-        if (root.elasticFillHovered && root.elasticFillGroup.length > 0
-                && root.controller?.nextElasticFillInteractionOrder)
-            root.elasticFillOrder =
-                root.controller.nextElasticFillInteractionOrder()
-    }
     function resetPyramidMotion(): void {
         root.pyramidCoordinator?.resetIdentity(root.identity)
         root.pyramidClosing=false
@@ -256,7 +226,6 @@ Item {
         // Clear the previous allocator snapshot while the old owner is hidden so
         // the next owner snaps to its own tangent anchor before reveal starts.
         root.retainedPlacement=null
-        root.elasticFillOrder=0
         root.resetPyramidMotion()
     }
     function syncPyramidEntryOrigin(): void {
@@ -364,21 +333,15 @@ Item {
         root.finishPyramidReopenIfDone()
     }
     onOpenChanged: if (initialized) { markOpened();react(open) }
-    onElasticFillHoveredChanged: if (initialized)
-        root.markElasticFillInteraction()
-    onElasticFillGroupChanged: if (initialized)
-        root.markElasticFillInteraction()
     onEmbeddedItemChanged: if (initialized) markOpened()
     onContentKindChanged: if (initialized) markOpened()
     onControllerChanged: if (initialized) {
         root.resetPyramidMotion()
         markOpened()
-        root.markElasticFillInteraction()
     }
     Component.onCompleted: {
         initialized = true
         markOpened()
-        root.markElasticFillInteraction()
         if (semanticOpen) {
             root.capturePyramidRestingState()
             root.syncPyramidEntryOrigin()
@@ -414,15 +377,6 @@ Item {
         }
     }
     Behavior on visualPlacementInward {
-        enabled: root.animatePlacementChanges && root.placementMotionReady
-            && AbyssStyle.motionEnabled
-        NumberAnimation {
-            duration: AbyssStyle.motionNormal
-            easing.type: root.pyramidMotionEnabled
-                ? Easing.InOutCubic : Easing.OutCubic
-        }
-    }
-    Behavior on elasticLimitProgress {
         enabled: root.animatePlacementChanges && root.placementMotionReady
             && AbyssStyle.motionEnabled
         NumberAnimation {
@@ -471,13 +425,6 @@ Item {
         opacity: root.pyramidPresentationActive
             ? 1 : Math.min(1,root.progress*1.5)
         enabled: root.acceptsInput
-
-        HoverHandler {
-            id: contentHover
-            enabled: root.acceptsInput
-            acceptedDevices:
-                PointerDevice.Mouse | PointerDevice.TouchPad
-        }
 
         Item {
             id: contentCanvas

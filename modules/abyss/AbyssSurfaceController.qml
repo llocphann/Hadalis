@@ -1,7 +1,6 @@
 import QtQuick
 import Quickshell
 import "looks/AbyssBodyPlacement.js" as BodyPlacement
-import "looks/AbyssElasticFill.js" as ElasticFill
 
 // One controller per output. Content and input are not inferred from pixels.
 QtObject {
@@ -13,19 +12,9 @@ QtObject {
     property var moduleRecords: []
     property int presentationOrder: 0
     function nextPresentationOrder(): int { return ++presentationOrder }
-    property int elasticFillInteractionOrder: 0
-    function nextElasticFillInteractionOrder(): int {
-        return ++elasticFillInteractionOrder
-    }
-    readonly property var placementRequests: Object.keys(participants)
-        .map(key => participants[key]?.placementRequest)
-        .filter(request => request !== null && request !== undefined)
-    // Keep the deterministic allocator as base truth. Elastic Fill is a
-    // hover-only post-pass and never mutates the allocator's placements.
-    readonly property var baseBodyPlacements: BodyPlacement.arrange(
-        placementRequests,outputWidth,outputHeight,edgeInsets)
-    readonly property var bodyPlacements: ElasticFill.resolve(
-        placementRequests,baseBodyPlacements,24)
+    readonly property var bodyPlacements: BodyPlacement.arrange(Object.keys(participants)
+        .map(key => participants[key]?.placementRequest).filter(request => request !== null && request !== undefined),
+        outputWidth,outputHeight,edgeInsets)
     property real outputWidth: 1920
     property real outputHeight: 1080
     property bool presented: true

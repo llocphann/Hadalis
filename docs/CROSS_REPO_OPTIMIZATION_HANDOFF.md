@@ -10058,3 +10058,645 @@ Round-31 clipboard correctness prerequisites (§44.1 / §45.6) remain above all
 pure performance work in implementation priority.
 
 No runtime/source implementation is authorized by this handoff.
+
+---
+
+## 47. Round 33 — ii taskbar cache correctness, Bar collection costs and Settings search preparation (2026-09-30)
+
+### Snapshot / concurrent reconciliation
+
+Round 33 began after the Round-32 docs commit
+\`88be345a44b917440bcb30c8f76895e9e85e82d9\`.
+
+The branch moved several times while this audit was in progress:
+
+- \`ea8c93466db0d8ccdf9b8a1ae67e9f7fb0e5b630\`
+  — \`fix(abyss): auto-expand newest semantic surface\`;
+- \`7d787fbf97da3dd5992fa9a41978643131da2994\`
+  — \`revert(abyss): retire prompt and vacancy experiments\`;
+- \`828fe8e2ad36edffe014e688a999604bd76a935c\`
+  — \`docs(abyss): mark retired experiments historical\`.
+
+The retirement commit is broad and was explicitly reconciled before this
+write. It removes the experimental Confirmation/prompt/vacancy runtime and also
+removes the corresponding prompt-anchor registration lines from
+\`BarTaskbarButton.qml\` and \`DockAppButton.qml\`.
+
+It does **not** remove or materially change:
+
+- \`BarTaskbar.qml\` model derivation;
+- \`DockApps.qml\` model derivation;
+- the existing Dock SystemTray association in \`DockAppButton.qml\`;
+- \`SettingsSearchRegistry.qml\`;
+- the Niri matching/filtering functions audited below.
+
+The follow-up handoff edit only marks retired Abyss findings historical.
+
+All overlapping target files plus \`AGENTS.md\` were re-read from exact HEAD
+\`828fe8e2...\` before this docs-only write. Retired Abyss findings are not
+reopened by this round.
+
+### 47.1 Bar/Dock ignore-regex cache skips all built-in system filters on a default-empty first run — CONFIRMED correctness bug / prerequisite
+
+Paths:
+
+- \`modules/bar/BarTaskbar.qml\`;
+- \`modules/dock/DockApps.qml\`;
+- \`services/TaskbarApps.qml\` as the working Waffle comparison;
+- \`modules/common/Config.qml\`.
+
+Both ii taskbar implementations initialize:
+
+\`_cachedIgnoredRegexes = []\`
+
+and:
+
+\`_lastIgnoredRegexStrings = []\`.
+
+Their cache refresh condition is:
+
+\`JSON.stringify(ignoredRegexStrings) !== JSON.stringify(_lastIgnoredRegexStrings)\`.
+
+The shipped/default config is:
+
+\`ignoredAppRegexes: []\`.
+
+Therefore the first normal call evaluates:
+
+\`JSON.stringify([]) === JSON.stringify([])\`
+
+and does **not** enter the compile block.
+
+The five built-in patterns inside that block are consequently absent from the
+cache:
+
+- \`^$\`;
+- \`^portal$\`;
+- \`^x-run-dialog$\`;
+- \`^kdialog$\`;
+- \`^org.freedesktop.impl.portal.*\`.
+
+The empty-app case is independently rejected by other Bar/Dock checks, but the
+portal/dialog patterns are not.
+
+The cache becomes correct only after the configured user list changes to a
+different value at least once. If it later changes back to empty, that
+transition also compiles the system patterns because the previous cached string
+list is then nonempty.
+
+This is a long-standing bug; historical BarTaskbar source back to the original
+cached implementation has the same empty/empty initialization.
+
+Waffle's \`TaskbarApps.computeApps()\` does not have this bug because it
+concatenates and compiles the five system patterns on every rebuild.
+
+Strict correction:
+
+- add an explicit cache-initialized flag, or use an impossible initial sentinel;
+- first \`_getIgnoredRegexes()\` call must compile the system patterns even when
+  the user list is empty;
+- subsequent calls may reuse the cache only after one successful initialization.
+
+This correctness prerequisite should be fixed before measuring the regex-cache
+micro-optimizations below, because a benchmark of the current default path is
+currently benchmarking a cache that is missing intended work.
+
+Required tests:
+
+1. fresh/default \`ignoredAppRegexes=[]\`: portal, x-run-dialog, kdialog and
+   freedesktop portal IDs are excluded on the **first** model build;
+2. nonempty user list: user + system patterns are both active;
+3. nonempty -> empty transition: system patterns remain active;
+4. Bar and Dock produce the same system-ignore result;
+5. Waffle behavior remains unchanged.
+
+### 47.2 One invalid configured app regex can abort ii Bar/Dock model rebuilds; Waffle already degrades safely — CONFIRMED robustness gap
+
+Paths:
+
+- \`modules/bar/BarTaskbar.qml\`;
+- \`modules/dock/DockApps.qml\`;
+- \`services/TaskbarApps.qml\`.
+
+Bar and Dock compile with:
+
+\`allIgnored.map(pattern => new RegExp(pattern, "i"))\`
+
+without a per-pattern exception guard.
+
+\`ignoredAppRegexes\` is typed as \`list<string>\`, but no repository-side regex
+syntax validator was found for the configured strings.
+
+A malformed expression therefore throws during \`_getIgnoredRegexes()\` and can
+abort the current taskbar/Dock rebuild.
+
+Waffle already defines the safer intended family behavior in
+\`TaskbarApps._compileRegexes()\`:
+
+- compile each pattern independently;
+- catch invalid patterns;
+- log the invalid pattern;
+- continue with all valid patterns.
+
+This is not a performance optimization by itself, but it is a correctness
+prerequisite for making the ii regex cache robust.
+
+When fixing §47.1, align Bar/Dock invalid-pattern handling with Waffle rather
+than caching a failed whole-list compilation.
+
+Required parity cases:
+
+- one invalid user pattern between two valid patterns;
+- system patterns still active;
+- valid user patterns still active;
+- invalid pattern does not empty/freeze the model;
+- changing the invalid list to a valid list rebuilds normally.
+
+### 47.3 BarTaskbar pinned-order sorting repeatedly rescans the entire pinned list inside its comparator — CONFIRMED / P1-P2 when Bar taskbar is enabled
+
+Path:
+
+- \`modules/bar/BarTaskbar.qml\`.
+
+The shipped Bar taskbar module is disabled by default, so this is a conditional
+hot path rather than default-session work.
+
+When \`separatePinnedFromRunning\` is enabled, the current running-app sort calls:
+
+- \`pinnedApps.findIndex(...)\` for A;
+- \`pinnedApps.findIndex(...)\` for B;
+
+inside every comparator invocation.
+
+After sorting, every running app again calls:
+
+\`pinnedApps.some(...)\`
+
+to populate its \`pinned\` field.
+
+For:
+
+- P configured pinned IDs;
+- R running app groups;
+
+the pinned-order part is approximately:
+
+- O(P) per comparator side across O(R log R) comparisons;
+- plus another O(R x P) membership pass.
+
+Exact-safe direction:
+
+1. build one \`lowercase appId -> first pinned index\` Map in original config
+   order;
+2. insert only when the lowercase key is absent, because current
+   \`findIndex()\` uses the **first** matching occurrence when config contains
+   duplicates/case variants;
+3. comparator reads the Map in O(1);
+4. the later \`pinned\` field uses \`map.has(lowerAppId)\`.
+
+This preserves:
+
+- first configured duplicate wins for pinned ordering;
+- pinned apps precede unpinned running apps;
+- unpinned alphabetical order;
+- all existing case-insensitive matching.
+
+The pinned-order component changes from roughly:
+
+\`O(R log R x P + R x P)\`
+
+to:
+
+\`O(P + R log R)\`.
+
+Do not replace the final running-app sort itself; its alphabetical and
+configured-pin ordering is visible behavior.
+
+### 47.4 BarTaskbar and DockApps repeat Map membership + lookup for every accepted toplevel — CONFIRMED / P2
+
+Paths:
+
+- \`modules/bar/BarTaskbar.qml\`;
+- \`modules/dock/DockApps.qml\`.
+
+Both ii model builders currently use the same pattern:
+
+1. \`runningAppsMap.has(lowerAppId)\`;
+2. maybe \`set(...)\`;
+3. \`runningAppsMap.get(lowerAppId).toplevels.push(...)\`.
+
+Round 30 §44.4 already identified this in Waffle \`TaskbarApps\`; the same
+reduction applies independently to the ii Bar and Dock implementations.
+
+Exact-safe form:
+
+- \`entry = runningAppsMap.get(lowerAppId)\`;
+- if absent, create/store the exact current record and keep it in \`entry\`;
+- append through that local record.
+
+Map insertion order is unchanged because creation still occurs at the first
+accepted toplevel for each lowercase app ID.
+
+Effect:
+
+- one Map probe removed per accepted running toplevel;
+- no ordering, identity, pin or ghost-filter semantics change.
+
+This can co-land with the larger Dock §37.5 / Waffle §44.4 collection work but
+does not depend on those changes.
+
+### 47.5 Horizontal Bar overflow trimming has three avoidable collection allocations/passes — CONFIRMED / P2
+
+Path:
+
+- \`modules/bar/BarTaskbar.qml\`.
+
+This path runs only when the horizontal taskbar model is wider than its granted
+slot.
+
+Three local reductions are exact-safe.
+
+#### A. Focused/rest partition
+
+When \`keep.length >= maxFit\`, current code runs:
+
+- \`keep.filter(focused)\`;
+- \`keep.filter(not focused)\`;
+- \`focused.concat(rest).slice(...)\`.
+
+One loop can append to \`focused\` or \`rest\` while preserving the exact source
+order of both partitions, then keep the same concat/slice selection.
+
+Visits over \`keep\` change from **2K -> K** before the same selection.
+
+#### B. Original-order Map construction
+
+Current code creates:
+
+\`new Map(items.map((it, i) => [it.uniqueId, i]))\`.
+
+A direct loop that calls \`orderOf.set(uniqueId, i)\` removes the temporary
+N-element pair array.
+
+If duplicate \`uniqueId\` values ever occur, repeated \`set()\` preserves the
+current \`Map(items.map(...))\` behavior: the **last** index wins.
+
+#### C. Final separator filter is currently unreachable work
+
+The first partition loop explicitly executes:
+
+\`if (it.section === "separator") continue\`.
+
+Therefore neither \`keep\` nor \`droppable\` can contain a separator, and every
+possible \`result\` is assembled exclusively from those two arrays.
+
+The final:
+
+\`result.filter(...separator...)\`
+
+can consequently never remove an element on the current overflow path.
+
+Removing it preserves the exact existing behavior, including the perhaps
+surprising current rule that **all separators disappear whenever horizontal
+overflow trimming activates**.
+
+Do not “fix” that presentation rule inside a performance patch; that would be a
+separate UI behavior change.
+
+### 47.6 Bar/Dock regex-cache comparison serializes two string lists on every model rebuild — CONFIRMED after §47.1 / P2
+
+Paths:
+
+- \`modules/bar/BarTaskbar.qml\`;
+- \`modules/dock/DockApps.qml\`.
+
+After the initialization bug is corrected, the cache-change check still performs:
+
+- \`JSON.stringify(currentList)\`;
+- \`JSON.stringify(previousList)\`;
+
+on every model rebuild.
+
+The config schema is a typed \`list<string>\`.
+
+An exact sequence comparison can instead:
+
+1. compare lengths;
+2. compare each string at the same index;
+3. stop on the first difference.
+
+Order and duplicates remain significant exactly as they are under JSON array
+serialization.
+
+This removes two serialization strings/JSON traversals from every unchanged
+model rebuild.
+
+Keep this below §47.1: simply optimizing the current comparison without fixing
+first-call initialization would make the broken default behavior faster.
+
+### 47.7 Dock tray association creates avoidable temporary arrays and nested callbacks for every candidate tray item — CONFIRMED local reduction / P2
+
+Path:
+
+- \`modules/dock/DockAppButton.qml\`.
+
+The Confirmation retirement removed only the retired prompt-anchor registration
+from this component. The existing \`appTrayItem\` association remains active.
+
+For every Dock app delegate, the binding currently:
+
+1. creates a four-element identity array;
+2. \`map()\` normalizes all four values;
+3. \`filter()\` removes low-entropy values;
+4. scans \`SystemTray.items.values.find(...)\`;
+5. for every tray candidate, creates a one-element \`trayKeys\` array;
+6. filters that array;
+7. runs nested \`trayKeys.some(... appKeys.some(...))\`.
+
+The tray side has exactly one identity source:
+
+\`item.id\`.
+
+Therefore the inner one-element array/filter/some structure is unnecessary.
+
+Exact-safe local direction:
+
+- build \`appKeys\` with one explicit loop, preserving current source order and
+  duplicates;
+- for each tray item compute one scalar normalized tray key;
+- reject it immediately when length < 3;
+- loop the prepared app keys and retain the exact current match rule:
+  - equality, or
+  - minimum entropy >= 5 and either suffix direction;
+- stop on the first matching tray item, preserving \`find()\` first-item
+  precedence.
+
+This removes the per-candidate tray array/filter/some allocations without
+changing which SNI item wins.
+
+A second-stage shared normalized-tray snapshot could avoid re-normalizing the
+same SNI ID independently in every Dock delegate/output, but keep that
+**HIGH CONFIDENCE / demand-gated** rather than bundling it into the local patch:
+eagerly moving tray preparation into an always-live singleton could create work
+when Dock is absent.
+
+### 47.8 SettingsSearchRegistry lowercases and joins immutable entry metadata again for every typed query — CONFIRMED / P1-P2 while Settings search is active
+
+Path:
+
+- \`modules/common/widgets/SettingsSearchRegistry.qml\`.
+
+\`registerOption()\` creates each entry with:
+
+- page index/name;
+- section;
+- label;
+- description;
+- keywords.
+
+Repository audit found no metadata-update path afterward:
+
+- entries are registered;
+- later they are removed/compacted;
+- no code mutates \`entry.label\`, \`entry.description\`, page/section or
+  keywords in place.
+
+The current search loop nevertheless recomputes for every active entry on every
+query:
+
+- label lowercase;
+- description lowercase;
+- page-name lowercase;
+- section lowercase;
+- keyword \`join(" ")\` + lowercase.
+
+This is repeated on each typed search update and is shared by ii/Waffle settings
+surfaces through \`SettingsSearchRegistry.buildResults()\`.
+
+Exact-safe direction:
+
+- keep the public entry object shape unchanged;
+- create a **private** prepared record keyed by entry ID at registration time,
+  containing the five normalized search strings plus the already-derived
+  section-group display string;
+- remove that private record when the entry is unregistered/compacted/cleared;
+- \`buildResults()\` reads the prepared strings but continues using the original
+  entry for public result fields and control ownership.
+
+Because current metadata is already frozen at registration, this changes only
+when the string transformations happen, not what they contain.
+
+For E live registered controls, each query removes approximately:
+
+- four lowercase transformations;
+- one keyword join;
+- one additional keyword lowercase;
+
+per entry before scoring.
+
+The scoring loop, matched-term behavior, highlighting and final ordering remain
+unchanged.
+
+### 47.9 Settings auto-keyword de-duplication is quadratic per registered control — CONFIRMED / P3
+
+Path:
+
+- \`modules/common/widgets/SettingsSearchRegistry.qml\`.
+
+\`_generateKeywords()\` currently de-duplicates words with:
+
+\`unique.indexOf(word) === -1\`.
+
+For W generated words this is O(W²) worst-shaped membership work.
+
+A local Set can preserve exact output order:
+
+- if unseen, add to Set and append to \`unique\`;
+- otherwise skip.
+
+The returned keyword array remains first-occurrence ordered exactly as today.
+
+Registration is much colder than per-keystroke search, so this is P3 and should
+normally co-land with §47.8 rather than receive a standalone patch.
+
+### 47.10 Replacing SettingsSearchRegistry's full result sort with a custom top-50 selector is CLOSED under strict-lossless parity
+
+Path:
+
+- \`modules/common/widgets/SettingsSearchRegistry.qml\`.
+
+After scoring, current code sorts every match by:
+
+1. descending score;
+2. ascending page index;
+3. comparator returns zero when both are equal;
+
+then returns \`slice(0, 50)\`.
+
+A heap/incremental top-50 implementation is attractive when many controls match,
+but it must decide which entries survive at the 50-item boundary when score and
+page index tie.
+
+As established in §45.5/§46.3, QV4's populated JS Array sort is not stable.
+A custom top-K structure would therefore impose a deterministic tie rule that
+the current algorithm does not promise.
+
+Status:
+
+- **CLOSED** as an absolute-lossless standalone optimization;
+- §47.8's prepared immutable search strings and §47.9's registration Set remain
+  safe and independent.
+
+### 47.11 Sharing BarTaskbar's output-independent model derivation is plausible, but publication timing keeps it HIGH CONFIDENCE rather than confirmed
+
+Paths:
+
+- \`modules/bar/BarTaskbar.qml\`;
+- \`modules/bar/BarContent.qml\`;
+- \`modules/verticalBar/VerticalBarContent.qml\`.
+
+Horizontal/vertical BarTaskbar instances are output-local UI objects, but
+\`_doRebuildDockItems()\` itself does not use:
+
+- screen/output identity;
+- bar position;
+- orientation;
+- local width/height;
+- preview state.
+
+Its model inputs are global:
+
+- compositor/toplevel state;
+- pinned/ignored config;
+- app-identity rules;
+- focused app.
+
+Only \`visibleDockItems\` is genuinely local because it depends on the granted
+horizontal width; vertical presentation also owns its local scrolling/height.
+
+Thus multiple live BarTaskbar instances can repeat the same global model
+derivation before doing local presentation.
+
+A strict architecture should **not** simply replace every instance timer with a
+new singleton publication, because current instances each use their own 80 ms
+debounce and \`_dockItemsEqual()\` publication guard. Centralizing publication
+can alter initial-load/event timing.
+
+Safer research direction:
+
+- preserve each instance's existing timer and local \`dockItems\` publication;
+- share only a pure/prepared global derivation snapshot, or use an exact-input
+  memo that the local timer queries;
+- leave overflow trimming, preview state and rendering local.
+
+This is most useful on multi-output setups and only when the Bar taskbar module
+is enabled. The shipped default is \`bar.modules.taskbar = false\`.
+
+Promote only after a multi-output fixture proves:
+
+- identical first-load timing;
+- identical focus/pin/config update timing;
+- identical local overflow behavior;
+- no stale model on reveal/hotplug.
+
+### 47.12 Hidden BarTaskbar sorting demand remains a parity experiment, not a confirmed optimization
+
+Paths:
+
+- \`modules/bar/BarTaskbar.qml\`;
+- Bar host visibility/auto-hide paths;
+- \`services/CompositorService.qml\`.
+
+Current BarTaskbar acquires one sorting-consumer lease on construction and holds
+it until destruction.
+
+Historical commits:
+
+- \`3100fe6f57c35a233775b7b5efed0f49421378f4\`
+  added \`presentationActive\` model gating;
+- \`ff2bf88d3284200cb5524daea3a0cdadb2110af2\`
+  released sorting demand while hidden;
+- both were later removed by the broad
+  \`5835279535d286bc14be551a2a5aae43c09b51e1\`
+  post-Rust-baseline restore.
+
+That broad restore is not evidence that the optimization itself was wrong, but
+the current source no longer has a presentation-lifetime contract that can be
+reapplied mechanically.
+
+A lossless design must preserve first-reveal freshness through Bar auto-hide,
+fullscreen/minimal transitions and animation tails.
+
+Keep this **NEEDS PARITY / P2 conditional**:
+
+- taskbar is disabled by default;
+- if reintroduced, use synchronous/current-state refresh before reveal and keep
+  sorting demand through any visible transition tail;
+- prove no stale first frame before releasing hidden demand.
+
+Do not resurrect the historical patch verbatim.
+
+### 47.13 \`filterCurrentWorkspace()\` matching optimization has no checked-in runtime consumer today — CLOSED as a current performance target
+
+Paths:
+
+- \`services/NiriService.qml\`;
+- \`services/CompositorService.qml\`.
+
+The function contains another copy of the Niri-window/foreign-toplevel matching
+loop plus a temporary \`windows.filter(...workspace...)\`.
+
+The same app-ID bucketing from §46.2 would be valid if this API became hot.
+
+However repository search found no checked-in runtime caller of:
+
+- \`NiriService.filterCurrentWorkspace(...)\`;
+- \`CompositorService.filterCurrentWorkspace(...)\`.
+
+The methods remain exported service API, so removing them is not justified, but
+optimizing their internal loops produces no demonstrated current shell saving.
+
+Status:
+
+- **CLOSED** as a present runtime optimization target;
+- if a future caller appears, reuse the tested matching primitive from §46.2
+  rather than maintaining a third independent matcher.
+
+### 47.14 Round-33 regression / priority update
+
+**New correctness prerequisites:**
+
+1. initialize Bar/Dock ignore-regex caches correctly on the default empty user
+   list (§47.1);
+2. make invalid user regexes degrade safely instead of aborting ii model rebuilds
+   (§47.2).
+
+These join, but do not outrank, the capture-helper correctness prerequisites in
+§44.1 and §45.6.
+
+**Confirmed lossless local reductions:**
+
+3. Bar pinned-order first-index Map (§47.3);
+4. one Map lookup per accepted ii running toplevel (§47.4);
+5. Bar horizontal-overflow pass/allocation removal (§47.5);
+6. elementwise Bar/Dock regex-cache comparison after correct initialization
+   (§47.6);
+7. Dock tray-association local loop preparation (§47.7);
+8. prepared immutable Settings-search fields (§47.8);
+9. Set-backed Settings auto-keyword uniqueness (§47.9).
+
+**High confidence / parity first:**
+
+10. shared output-independent BarTaskbar model derivation (§47.11);
+11. hidden BarTaskbar sorting-demand release (§47.12);
+12. shared/demand-gated normalized tray snapshot beyond §47.7.
+
+**Closed under current strict-lossless/runtime scope:**
+
+13. custom Settings top-50 selection that invents a tie contract (§47.10);
+14. optimizing currently unused \`filterCurrentWorkspace()\` matching (§47.13).
+
+Round-32 Niri/Hyprland sorter findings remain valid after the concurrent Abyss
+retirement.
+
+No runtime/source implementation is authorized by this handoff.

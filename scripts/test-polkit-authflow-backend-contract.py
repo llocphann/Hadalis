@@ -24,12 +24,15 @@ assert "onInputPromptChanged" in impl
 # Source disappearance may arrive through two lifecycle signals, but the real
 # AuthFlow cancellation must be emitted once per authentication request.
 assert "property bool _sourceLossCancelIssued: false" in svc
+assert "property int resolvedAnchorRequestSerial: 0" in svc
+assert "root.resolvedAnchorRequestSerial = root.requestSerial" in svc
 assert "function _cancelActiveForSourceLoss(): void" in svc
 assert "function _cancelForSourceLoss(): void" in svc
 assert "root._sourceLossCancelIssued = true" in svc
 assert "root._sourceLossCancelIssued = false" in svc
 assert "root._cancelForSourceLoss()" in svc
 source_loss=svc.split("function _cancelForSourceLoss(): void",1)[1].split("onResolvedAnchorUsableChanged",1)[0]
+assert "root.resolvedAnchorRequestSerial !== root.requestSerial" in source_loss
 assert "root._activeHintResolvedOnce" in source_loss
 assert "root.abyssPresentationSuppressed" in source_loss
 assert 'Config.options?.panelFamily !== "abyss"' in source_loss

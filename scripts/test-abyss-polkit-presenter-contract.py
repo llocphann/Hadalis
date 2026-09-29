@@ -94,6 +94,11 @@ assert "root._activeHintResolvedOnce" in start_handler
 assert "root.resolvedAnchor === null" in start_handler
 assert "root._cancelActiveForSourceLoss()" in start_handler
 assert "root._activeHintResolvedOnce = true" in start_handler
+assert "property int resolvedAnchorRequestSerial: 0" in service
+latch_handler=service.split("function _latchPresentation(hint = null): void",1)[1].split("Timer {",1)[0]
+assert "root.resolvedAnchorRequestSerial = root.requestSerial" in latch_handler
+source_loss_handler=service.split("function _cancelForSourceLoss(): void",1)[1].split("onResolvedAnchorUsableChanged",1)[0]
+assert "root.resolvedAnchorRequestSerial !== root.requestSerial" in source_loss_handler
 assert "function _latchPresentation(hint = null): void" in service
 assert "onTriggered: root._nextSourceHint = null" in service
 assert "const requestedOutput = GlobalStates.resolveOutputName(" in service

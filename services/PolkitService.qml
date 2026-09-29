@@ -76,6 +76,10 @@ Singleton {
     property var resolvedAnchor: null
     property string resolvedAnchorKind: ""
     property bool hadResolvedAnchor: false
+    // The resolved Item may remain latched while the previous popup retracts.
+    // Track which AuthFlow serial owns that source so its teardown can never
+    // cancel a synchronously activated queued request.
+    property int resolvedAnchorRequestSerial: 0
     property var _nextSourceHint: null
     property var _pendingPresentationHint: null
     // Source context belongs to the AuthFlow request, not one visual popup
@@ -174,6 +178,7 @@ Singleton {
         root.resolvedAnchor = resolved?.item ?? null
         root.resolvedAnchorKind = String(resolved?.kind ?? "")
         root.hadResolvedAnchor = root.resolvedAnchor !== null
+        root.resolvedAnchorRequestSerial = root.requestSerial
         const resolvedOutput = String(resolved?.outputName ?? "")
         root.targetOutputName = resolvedOutput.length > 0
             ? resolvedOutput
@@ -355,6 +360,7 @@ Singleton {
         root._activePresentationHint = null
         root._activeHintResolvedOnce = false
         root._pendingPresentationHint = null
+        root.resolvedAnchorRequestSerial = 0
         // Outside an active Abyss presenter there is no retract tail to retain.
         // Clearing here prevents an auth request that completed while locked or
         // after a family switch from resurfacing as stale presentation state.
@@ -406,6 +412,11 @@ Singleton {
         // even after visual failover. Family/perimeter teardown and screen lock
         // are renderer lifecycle changes, not application-source loss.
         if (!root.active || root._sourceLossCancelIssued)
+            return
+        // A queued successor can become the active AuthFlow synchronously while
+        // the predecessor's popup still retracts on its old anchor. Ignore
+        // source lifecycle signals from that stale visual tail.
+        if (root.resolvedAnchorRequestSerial !== root.requestSerial)
             return
         if (!(root.hadResolvedAnchor || root._activeHintResolvedOnce))
             return

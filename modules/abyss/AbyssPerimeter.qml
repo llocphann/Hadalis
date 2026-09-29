@@ -123,8 +123,14 @@ Scope {
             exclusionMode: ExclusionMode.Ignore
             exclusiveZone: 0
             WlrLayershell.namespace: "hadalis:abyss-perimeter"
-            WlrLayershell.layer: GlobalStates.settingsNativeDialogOpen ? WlrLayer.Bottom : (window.criticalPromptOwned || window.editorOpen || utility.open || liquid.popupsOpen || toastBody.open || dialogBody.open || settings.open || dashboardBody.open || controls.open || (window.fullscreenCovered && window.presented)) ? WlrLayer.Overlay : WlrLayer.Top
-            WlrLayershell.keyboardFocus: !window.popupFieldPresented || !field.ready || GlobalStates.regionSelectorOpen || GlobalStates.settingsNativeDialogOpen || window.overviewDragging
+            // Native settings dialogs normally make the shell yield to Bottom,
+            // but an owned confirmation/auth prompt must remain reachable above
+            // the dialog that caused it. This is especially important for
+            // Polkit requests initiated from settings.
+            WlrLayershell.layer: window.criticalPromptOwned ? WlrLayer.Overlay
+                : GlobalStates.settingsNativeDialogOpen ? WlrLayer.Bottom
+                : (window.editorOpen || utility.open || liquid.popupsOpen || toastBody.open || dialogBody.open || settings.open || dashboardBody.open || controls.open || (window.fullscreenCovered && window.presented)) ? WlrLayer.Overlay : WlrLayer.Top
+            WlrLayershell.keyboardFocus: !window.popupFieldPresented || !field.ready || GlobalStates.regionSelectorOpen || (GlobalStates.settingsNativeDialogOpen && !window.criticalPromptOwned) || window.overviewDragging
                 ? WlrKeyboardFocus.None
                 : (window.editorOpen || (utility.presented && utility.ready) || liquid.popupExclusiveFocus || (popup.presented && (popup.contentItem.item?.keyboardFocus ?? false)) || (dialogBody.presented && dialogBody.ready) || (aux.presented && aux.ready) || (clipboardBody.presented && clipboardBody.ready) || (settings.presented && settings.ready) || (dashboardBody.presented && dashboardBody.ready) || (controls.presented && controls.ready)) ? WlrKeyboardFocus.Exclusive
                 : (liquid.popupOnDemandFocus || (leftPanel.presented && leftPanel.ready) || (rightPanel.presented && rightPanel.ready) || (popup.presented && popup.ready) || (notification.presented && notification.ready && notification.contentKind === "center"))

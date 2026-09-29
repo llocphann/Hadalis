@@ -26,6 +26,9 @@ assert "visible: window.popupFieldPresented" in per
 assert per.count("presentationEnabled: window.popupFieldPresented && field.ready") == 2
 assert "open: window.popupFieldPresented && field.ready" in per
 assert "WlrLayershell.keyboardFocus: !window.popupFieldPresented" in per
+assert "WlrLayershell.layer: window.criticalPromptOwned ? WlrLayer.Overlay" in per
+assert "GlobalStates.settingsNativeDialogOpen ? WlrLayer.Bottom" in per
+assert "(GlobalStates.settingsNativeDialogOpen && !window.criticalPromptOwned)" in per
 for i in range(4):
     assert f"width: window.popupFieldPresented && field.ready ? (liquid.popupInputBounds[{i}]?.width ?? 0) : 0" in per
 assert "visible: window.presented && field.ready && (window.editorOpen || root.barOnOutput(window.outputName))" in per

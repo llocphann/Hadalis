@@ -5681,3 +5681,451 @@ Closed/avoid:
 6. no generic lazy-loading of all StyledPopup content.
 
 No runtime implementation is authorized by this handoff.
+
+## 37. Audit round 23 — notification aggregation, per-output Dock/Tray derivation, and focused-window scan dedup (2026-09-29)
+
+This round is research/documentation only. No runtime/source implementation is authorized.
+
+### Snapshot
+
+- Hadalis `dev` at round close before this documentation update: `b4d1296f8a77da5bf9a15309f86f5aa78c17cf0d`.
+- Commits after §36 were re-audited first. They affect CloseConfirm / Abyss Polkit/confirmation lifecycle and do not modify the Notification, Dock, SysTray, NiriService, or color-module paths classified below.
+
+Strict lossless rule remains unchanged: preserve publication order, list order, focus freshness, per-output historical ordering, visual phase, and failure/race behavior.
+
+### 37.1 Notifications group rebuild currently traverses history 3N + P times; one-pass construction can preserve exact output — CONFIRMED / P1
+
+Path:
+
+- `services/Notifications.qml`
+
+Every debounced `_updateGroups()` currently does:
+
+1. `root.list.filter(...popup...)` -> **N** visits;
+2. `root.list.forEach(...latestTime...)` -> **N** visits;
+3. `_groupsForListOptimized(root.list)` -> **N** visits;
+4. `_groupsForListOptimized(root.popupList)` -> **P** visits, where P is popup/unread notifications.
+
+Then it sorts all-app and popup-app group keys.
+
+The four traversals can be constructed in one loop over `root.list`:
+
+- append popup notifications to a local `newPopupList`;
+- update `newLatestTime[appName]`;
+- create/append the all-history group in first-seen order;
+- create/append the popup group only when `notif.popup`;
+- update `hasCritical`;
+- keep popup-group `time` synchronized with the latest all-history time for that app, including later non-popup records.
+
+This preserves current semantics:
+
+- `popupList` order remains the original history order filtered by `popup`;
+- all-group insertion order remains first appearance in `root.list`;
+- popup-group insertion order remains first popup appearance;
+- notification order inside each group is unchanged;
+- group `time` remains the latest time for the app across **all** history, not only popup records;
+- critical flags remain identical;
+- final app-name sorting remains unchanged.
+
+To preserve observable QML publication order, build all local structures first, then assign root properties in the same current sequence:
+
+1. `popupList`;
+2. `latestTimeForApp`;
+3. all-group cache;
+4. popup-group cache;
+5. all app-name list;
+6. popup app-name list.
+
+QML/JS execution is single event-loop work here, so the source list cannot interleave a mutation in the middle of the local loop.
+
+Traversal effect for this grouping step:
+
+- current: **3N + P** element visits before group-key sorts;
+- candidate: **N** history visits, with the existing group-key sorts retained.
+
+For `0 <= P <= N`, that is approximately **66.7% to 75% fewer list-element visits** in the grouping phase.
+
+This is not a whole-shell CPU percentage.
+
+### 37.2 Dock notification badges repeatedly scan every popup app group — CONFIRMED index candidate / P1-P2
+
+Paths:
+
+- `services/Notifications.qml`;
+- `modules/dock/DockAppButton.qml`.
+
+`Notifications.countForApp(identifiers)` currently:
+
+1. normalizes the requested identifiers;
+2. iterates every key in `popupGroupsByAppName`;
+3. normalizes each group app name;
+4. returns the first group whose normalized name matches any requested key.
+
+The only runtime consumer found is `DockAppButton.notificationCount`.
+
+Therefore every Dock button, on every output, can repeat the same popup-group scan when notification grouping changes.
+
+Lossless direction:
+
+while §37.1 constructs popup groups, also build an index keyed by normalized app name containing:
+
+- the current first-match group count;
+- the group's original enumeration/order rank.
+
+For `countForApp(keys)`:
+
+- normalize the requested keys as today;
+- look up candidates directly;
+- choose the candidate with the **lowest original group order**.
+
+The order field matters. The current function loops groups on the outside and identifiers on the inside, so identifier-array order must not replace group-order precedence.
+
+For normalized-name collisions, first-write-wins in the index preserves the current first matching group.
+
+To preserve reactive timing, `countForApp()` can continue to read `popupGroupsByAppName` as its QML dependency while using the already-prepared index for the lookup; publish the new index before publishing the new popup-group cache.
+
+Workload:
+
+- current per button: O(G) group scan plus repeated normalization;
+- candidate per button: O(K), where the current Dock consumer supplies about two identifiers;
+- index construction: O(G) once per notification-group rebuild.
+
+With D Dock buttons on M outputs, the repeated badge portion moves from roughly O(M x D x G) to O(G + M x D x K).
+
+### 37.3 ii SysTray repeats identical global filtering independently on every output — CONFIRMED shared-derived-state candidate / P1-P2
+
+Paths:
+
+- `modules/bar/SysTray.qml`;
+- `modules/bar/Bar.qml`;
+- `modules/verticalBar/VerticalBar.qml`;
+- `services/TrayService.qml`.
+
+Every `SysTray` instance derives from the same singleton `SystemTray.items.values`:
+
+1. `fcitxItems` -> full filter;
+2. `itemsInUserList` -> full filter;
+3. `itemsNotInUserList` -> full filter;
+4. then `pinnedItems/unpinnedItems` are composed from those arrays.
+
+Horizontal and vertical Bar surfaces are instantiated per eligible screen, so this work scales with the number of live `SysTray` instances.
+
+None of those three filters uses screen/output state.
+
+Strict-lossless direction:
+
+compute the **ii Bar-specific** tray lists once in shared service state and let every SysTray instance consume the same ordered arrays.
+
+Preserve exactly:
+
+- `Config.options.bar.tray.*` rather than Waffle's separate `Config.options.tray.*`;
+- Fcitx always-visible handling;
+- the Spotify passive-status exception;
+- `filterPassive`;
+- `invertPinnedItems`;
+- original `SystemTray.items.values` order.
+
+Do **not** simply reuse current `TrayService.pinnedItems/unpinnedItems`: that service currently follows the Waffle/global `tray.*` configuration and does not have identical filtering semantics.
+
+For M live ii SysTray instances:
+
+- current filter passes per invalidation: **3M**;
+- shared derived state: **3**.
+
+Reduction in this filter subwork is `1 - 1/M`:
+- 2 outputs: 50%;
+- 3 outputs: 66.7%.
+
+No backend D-Bus subscription is removed; this is exactly the local shared-signal work distinguished in §36.5.
+
+### 37.4 DockApps repeats the same expensive toplevel grouping on every Dock output — HIGH CONFIDENCE lossless subwork, keep local historical order
+
+Paths:
+
+- `modules/dock/Dock.qml`;
+- `modules/dock/DockApps.qml`;
+- `services/CompositorService.qml`.
+
+`Dock.qml` creates Dock surfaces per eligible screen. Each surface has one enabled `DockApps` instance for its current orientation.
+
+Each enabled instance owns an 80 ms rebuild debounce and, on rebuild, independently performs the same global-source work:
+
+- choose `CompositorService.sortedToplevels` / ToplevelManager fallback;
+- build the Hyprland live-toplevel cross-check count map when required;
+- iterate all selected toplevels;
+- call `AppSearch.resolveWindowIdentity(toplevel)`;
+- apply the same ignored-app regexes;
+- build `runningAppsMap` grouped by normalized app identity.
+
+These inputs are not output-specific.
+
+`CompositorService.sortedToplevels` itself is already shared and lease/refcounted. Multiple Dock `acquireSortingConsumer()` calls do **not** create one sorting pipeline per output. Do not optimize the lease mechanism as if it were duplicate sorting.
+
+The output-local semantic that must remain local is:
+
+`_runningAppOrder`.
+
+It preserves first-seen running-app history inside each DockApps instance. A monitor created later can therefore have a different historical order from an older Dock.
+
+Strict-lossless architecture:
+
+1. share only the output-independent toplevel validation/identity/grouping snapshot;
+2. preserve each DockApps instance's own `_runningAppOrder`;
+3. perform pinned/separator/local-order composition per output as today;
+4. preserve the existing 80 ms publication/debounce contract unless a separate parity test proves otherwise.
+
+For M Dock outputs, the expensive global toplevel grouping pass can move from M copies to one shared pass; the local O(app-count) composition remains per output.
+
+This is a stronger direction than making the entire Dock model global, which would silently erase existing per-output order history.
+
+### 37.5 DockApps has three exact-safe local algorithmic reductions — CONFIRMED / P2
+
+Within `_doRebuildDockItems()`:
+
+#### A. Running-order extension
+
+Current:
+
+- filter old `_runningAppOrder`;
+- for every current app, call `runningOrder.includes(lowerAppId)`.
+
+Worst-case membership work is O(A²).
+
+Exact-safe replacement:
+
+- build a `Set` from the filtered `runningOrder`;
+- append only unseen map keys while updating the Set.
+
+Order is identical because iteration and append order do not change.
+
+Target: O(A).
+
+#### B. Sort rank lookup
+
+Current running-app sort comparator repeatedly calls:
+
+`root._runningAppOrder.indexOf(appId)`.
+
+All current running IDs have already been inserted into that order and are unique, so there are no equal-rank ties to preserve.
+
+Exact-safe replacement:
+
+- build `orderIndex = Map(appId -> rank)` once;
+- comparator reads two O(1) ranks.
+
+This changes worst-case rank lookup from repeated O(A) scans inside O(A log A) comparisons to one O(A) index build plus O(A log A) sorting.
+
+#### C. Pinned membership
+
+In the `separatePinnedFromRunning` branch every running app evaluates:
+
+`pinnedApps.some(p => p.toLowerCase() === lowerAppId)`.
+
+Exact-safe replacement:
+
+- build `pinnedLowerSet` once from `pinnedApps`;
+- use `has(lowerAppId)`.
+
+This changes that subwork from O(A x P) repeated lowercasing/membership to O(P + A).
+
+These are small-list optimizations, so no whole-shell percentage is claimed, but they multiply with the per-output duplication in §37.4.
+
+### 37.6 BarTaskbarButton and DockAppButton scan an app's toplevels twice for the active app — CONFIRMED / P2
+
+Paths:
+
+- `modules/bar/BarTaskbarButton.qml`;
+- `modules/dock/DockAppButton.qml`.
+
+Both components implement the same pattern:
+
+- `appIsActive`: scan `toplevels` until `_toplevelIsActive()`;
+- `focusedWindowIndex`: if active and more than one window, scan `toplevels` again to find the same record.
+
+Exact-safe direction:
+
+derive one `activeToplevelIndex`:
+
+- first matching index, or -1;
+- `appIsActive = activeToplevelIndex >= 0`;
+- `focusedWindowIndex = activeToplevelIndex >= 0 ? activeToplevelIndex : 0`.
+
+This preserves:
+
+- first-match behavior;
+- single-window index 0;
+- inactive index 0;
+- all current Niri/Hyprland active-window matching logic.
+
+For an active multi-window app, matching scans fall from about **2T -> T**.
+
+### 37.7 Niri focused-window lookup is repeated across many visual instances — CONFIRMED shared-derived-state candidate / P1-P2
+
+Paths include:
+
+- `services/NiriService.qml`;
+- `services/GameMode.qml`;
+- `modules/bar/ActiveWindow.qml`;
+- `modules/bar/BarTaskbarButton.qml`;
+- `modules/dock/DockAppButton.qml`;
+- `modules/waffle/taskview/WindowThumbnail.qml`.
+
+Several consumers independently run the equivalent of:
+
+`NiriService.windows.find(window => window.is_focused)`.
+
+The most expensive multiplication is Bar/Dock buttons: the same global Niri window list can be scanned once per app button per output.
+
+NiriService already normalizes focus flags in `_normalizeWindowFocus()` before publishing the batched `windows` array.
+
+Lossless shared-state direction:
+
+expose two derived values in NiriService:
+
+1. a **list-authoritative** value equivalent to:
+   `windows.find(w => w.is_focused) ?? null`;
+2. a **list-first fallback** value equivalent to:
+   `focusedWindowFromList ?? activeWindow`.
+
+Then migrate consumers according to their existing semantics:
+
+- ActiveWindow and Waffle WindowThumbnail use list-authoritative;
+- BarTaskbarButton, DockAppButton and GameMode use list-first fallback;
+- ScreenTime must **not** be mechanically migrated because its current order is `activeWindow ?? windows.find(...)`;
+- workspace-local `find(is_focused)` calls must remain local because they operate on a subset, not the global list.
+
+This preserves the reason the current UI reads `windows` first: a focus flag carried by a fresh WindowsChanged/layout batch must win over a stale `activeWindow` fallback.
+
+The shared derived binding performs the global list scan once per `windows` publication instead of once per consumer instance.
+
+### 37.8 Dock/Bar preview shimmer can remain logically running while its popup is hidden — CONFIRMED structure, NEEDS BENCHMARK / not strict-lossless to stop blindly
+
+Paths:
+
+- `modules/dock/DockWindowPreview.qml`;
+- `modules/bar/BarTaskbarWindowPreview.qml`.
+
+Both preview delegates contain:
+
+- a shimmer background visible while the preview Image is not Ready;
+- `SequentialAnimation on x`;
+- `loops: Animation.Infinite`;
+- `running: shimmerBg.visible`.
+
+The running condition does not include Dock popup visibility or StyledPopup presentation state.
+
+Both preview systems retain delegates after close in at least some paths, so a not-yet-ready thumbnail can leave an infinite animation logically running after the popup is hidden.
+
+Qt's Animation contract states that `Animation.Infinite` continues until explicitly stopped. A hidden QQuickWindow stops rendering, but that does not rewrite the QML animation's `running` condition.
+
+Reference:
+- https://doc.qt.io/qt-6/qml-qtquick-animation.html
+
+Do **not** yet gate this as a Confirmed lossless implementation.
+
+Why:
+
+- the current animation advances while hidden;
+- stopping/pausing it changes shimmer phase if the user reopens before the image becomes Ready;
+- that is a visible pixel difference on reopen.
+
+Required benchmark/parity experiment:
+
+- force a slow/missing preview Image;
+- close while shimmer is active;
+- measure GUI/render wakeups while closed;
+- reopen at 100 ms / 1 s / 5 s;
+- compare first visible shimmer phase and Image transition.
+
+Waffle TaskView already gates its comparable shimmer with `GlobalStates.waffleTaskViewOpen`, but that precedent does not by itself prove phase parity for ii/Dock.
+
+### 37.9 Cava cover mode executes the same cover-color extraction twice in one generation — HIGH CONFIDENCE duplicate, not yet strict-lossless under source races
+
+Path:
+
+- `scripts/colors/modules/90-cava.sh`.
+
+For `colorSource=cover`, `generate_managed_block()` calls:
+
+`refresh_cover_colors "$gradient_count"`
+
+before the mode switch.
+
+It then enters `build_gradient_cover()`, whose first operation is again:
+
+`refresh_cover_colors "$count" || true`.
+
+No gradient consumes the first extraction result between those two calls.
+
+Each refresh can:
+
+- find the current cover art;
+- launch `extract_cover_colors.py`;
+- rewrite/remove the cover-color cache.
+
+Under a stable cover source, the extraction process count for this step is plainly **2 -> 1**.
+
+Do not classify the direct deletion as strict-lossless yet because media artwork can change during the first extraction. The current second call intentionally/accidentally samples later in time; a single earlier sample can therefore choose a different track cover.
+
+The correct next step is to define the generation's cover-source identity/freshness contract first. Only then can the duplicate be collapsed without changing which cover wins during a track transition.
+
+### 37.10 Terminal palette module launches 16 jq processes against one generated palette — HIGH CONFIDENCE process candidate; concurrency contract required
+
+Path:
+
+- `scripts/colors/modules/10-terminals.sh`.
+
+`apply_term_sequences()` loops `i=0..15` and for every iteration launches:
+
+`jq -r --arg k "term$i" '.[$k] // empty' "$TERMINAL_FILE"`.
+
+Thus one terminal OSC application currently launches **16 jq processes** against `terminal.json`.
+
+One jq invocation can emit all 16 ordered values, reducing this local parser process count:
+
+- **16 -> 1**;
+- **93.75% fewer jq children** for that step.
+
+However this is not yet strict-lossless in the repository's current concurrency model.
+
+`terminal.json` is atomically replaced by `switchwall.sh`, while external theming is launched separately/detached by MaterialThemeLoader. There is no applycolor-wide generation lock proving the palette cannot be replaced during those 16 reads.
+
+Current behavior can therefore observe a mixed old/new palette during a concurrent theme generation. A one-shot read would instead observe one snapshot.
+
+The one-shot behavior is cleaner, but under the user's strict lossless rule it is a semantics change until theming-generation ownership/snapshot identity is specified.
+
+Do not implement this batching in isolation. Pair it with a generation snapshot/serialization contract first.
+
+### 37.11 Waffle Notification Center critical pulse suspicion is CLOSED
+
+Critical Waffle notification-center delegates have infinite pulse animations keyed to critical state rather than the global open flag.
+
+However `ShellWafflePanelsImpl.OnDemandPanelLoader` unloads `WaffleNotificationCenter` after the default 250 ms close grace.
+
+Therefore this is not a steady-state hidden animation tree.
+
+Do not create a notification-center residency optimization from this observation.
+
+### 37.12 Round-23 lossless priority update
+
+New strongest Confirmed directions:
+
+1. one-pass Notification aggregation (§37.1);
+2. indexed Dock notification counts preserving group-order semantics (§37.2);
+3. shared ii SysTray derived lists across outputs (§37.3);
+4. shared output-independent Dock toplevel grouping while retaining local `_runningAppOrder` (§37.4);
+5. DockApps Set/Map algorithmic cleanup (§37.5);
+6. one active-toplevel scan per Bar/Dock app button (§37.6);
+7. shared Niri focused-window derived state (§37.7).
+
+Measurement/parity only:
+
+8. hidden preview shimmer (§37.8);
+9. duplicate Cava cover extraction (§37.9);
+10. 16 -> 1 terminal palette jq batching (§37.10).
+
+Closed:
+
+11. Waffle Notification Center hidden critical-pulse suspicion (§37.11).
+
+No runtime/source implementation is authorized by this handoff.

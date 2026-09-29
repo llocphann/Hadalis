@@ -1,5 +1,7 @@
 #!/usr/bin/env node
 
+import fs from "node:fs";
+
 import {
   connectDesktop,
   extractLoopResponse,
@@ -19,6 +21,14 @@ After that check, finish your response with exactly one loop marker:
 
 HADALIS_LOOP:DONE
 `;
+
+function writeJson(payload) {
+  fs.writeSync(1, JSON.stringify(payload) + "\n");
+}
+
+function writeError(error) {
+  fs.writeSync(2, (error?.stack ?? String(error)) + "\n");
+}
 
 async function main() {
   let { page } = await connectDesktop();
@@ -43,14 +53,17 @@ async function main() {
     );
   }
 
-  console.log(JSON.stringify({
+  writeJson({
     passed: true,
     generation,
     marker: markers[0]
-  }));
+  });
 }
 
-main().catch(error => {
-  console.error(error?.stack ?? String(error));
-  process.exitCode = 1;
-});
+main().then(
+  () => process.exit(0),
+  error => {
+    writeError(error);
+    process.exit(1);
+  }
+);

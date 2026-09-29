@@ -57,6 +57,9 @@ assert "id: revealModeToggles" in settings
 assert "id: dockSecondaryToggles" in settings
 assert 'text: Translation.tr("Drag to reorder · eye hides · minus removes.")' in settings
 assert "id: addApplicationsToggle" in settings
+assert "Layout.topMargin: 8" in settings
+assert "Layout.leftMargin: 8" in settings
+assert "Layout.rightMargin: 6" in settings
 assert "id: addApplicationsPanel" in settings
 assert "implicitHeight: root.addApplicationsOpen" in settings
 assert 'text: root.addApplicationsOpen ? "close" : "add"' in settings

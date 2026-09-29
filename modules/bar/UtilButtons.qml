@@ -425,7 +425,7 @@ Item {
                         horizontalAlignment: Qt.AlignHCenter
                         fill: screenCastButton.isCasting ? 1 : 0
                         animateFill: true
-                        text: "visibility"
+                        text: "cast"
                         iconSize: Math.round(Appearance.font.pixelSize.large * Appearance.sizes.barModuleScale)
                         color: screenCastButton.isCasting
                             ? root.dangerIconColor
@@ -542,7 +542,7 @@ Item {
                 MaterialSymbol {
                     horizontalAlignment: Qt.AlignHCenter
                     fill: 0
-                    text: "display_settings"
+                    text: "tune"
                     iconSize: Math.round(Appearance.font.pixelSize.large * Appearance.sizes.barModuleScale)
                     color: root.neutralIconColor
                 }

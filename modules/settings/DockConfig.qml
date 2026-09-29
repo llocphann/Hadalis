@@ -448,6 +448,9 @@ ContentPage {
 
                 RowLayout {
                     Layout.fillWidth: true
+                    Layout.topMargin: 8
+                    Layout.leftMargin: 8
+                    Layout.rightMargin: 6
                     spacing: 8
 
                     StyledText {

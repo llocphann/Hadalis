@@ -6,6 +6,7 @@ on:
       - '.github/workflows/confirmation-runtime.yml'
       - 'scripts/test-abyss-confirmation-runtime.sh'
       - 'scripts/test-abyss-confirmation-multi-output-runtime.sh'
+      - 'scripts/test-abyss-polkit-runtime.sh'
       - 'scripts/test-abyss-confirmation-popup-contract.py'
       - 'scripts/test-confirmation-foundation-contract.py'
       - 'scripts/test-confirmation-anchor-policy.sh'
@@ -31,6 +32,7 @@ on:
       - '.github/workflows/confirmation-runtime.yml'
       - 'scripts/test-abyss-confirmation-runtime.sh'
       - 'scripts/test-abyss-confirmation-multi-output-runtime.sh'
+      - 'scripts/test-abyss-polkit-runtime.sh'
       - 'scripts/test-abyss-confirmation-popup-contract.py'
       - 'scripts/test-confirmation-foundation-contract.py'
       - 'scripts/test-confirmation-anchor-policy.sh'
@@ -79,6 +81,132 @@ jobs:
           python3 scripts/test-abyss-polkit-integration-contract.py
           python3 scripts/test-abyss-prompt-fallback-contract.py
           python3 scripts/test-abyss-critical-prompt-fullscreen-contract.py
+
+  real-polkit:
+    needs: source-contracts
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Install Nix
+        uses: cachix/install-nix-action@v31.11.1
+
+      - name: Run real Polkit/AuthFlow harness in a logind session
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y policykit-1 systemd-container
+
+          nix shell \
+            nixpkgs#quickshell \
+            nixpkgs#weston \
+            nixpkgs#ripgrep \
+            nixpkgs#coreutils \
+            --command bash -lc '
+              set -euo pipefail
+              ci_user=hadalis-polkit-ci
+              ci_token=Hadalis-CI-Auth-Only-2026
+              work="$(mktemp -d /tmp/hadalis-polkit-ci.XXXXXX)"
+              policy=/usr/share/polkit-1/actions/org.hadalis.ci.policy
+              status_file="$work/status"
+              qs_path="$(command -v qs)"
+              weston_path="$(command -v weston)"
+
+              cleanup() {
+                sudo rm -f "$policy"
+                sudo systemctl restart polkit.service 2>/dev/null || true
+                sudo userdel -r "$ci_user" 2>/dev/null || true
+                sudo rm -rf -- "$work"
+              }
+              trap cleanup EXIT
+
+              sudo useradd -m -s /bin/bash "$ci_user"
+              printf "%s:%s\n" "$ci_user" "$ci_token" | sudo chpasswd
+
+              sudo tee "$policy" >/dev/null <<EOF
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE policyconfig PUBLIC
+ "-//freedesktop//DTD PolicyKit Policy Configuration 1.0//EN"
+ "http://www.freedesktop.org/standards/PolicyKit/1/policyconfig.dtd">
+<policyconfig>
+  <vendor>Hadalis CI</vendor>
+  <action id="org.hadalis.ci.authenticate">
+    <description>Authenticate the disposable Hadalis CI identity</description>
+    <message>Authentication required for the Hadalis Polkit runtime test</message>
+    <defaults>
+      <allow_any>auth_self</allow_any>
+      <allow_inactive>auth_self</allow_inactive>
+      <allow_active>auth_self</allow_active>
+    </defaults>
+  </action>
+</policyconfig>
+EOF
+              sudo systemctl restart polkit.service
+              sudo systemctl start systemd-machined.service
+
+              cp -a . "$work/repo"
+              cat > "$work/session.sh" <<EOF
+#!/bin/bash
+set -euo pipefail
+export XDG_RUNTIME_DIR="/run/user/\$(id -u)"
+export WAYLAND_DISPLAY=wayland-hadalis-polkit
+export QT_QPA_PLATFORM=wayland
+export QT_QUICK_BACKEND=software
+export QSG_RENDER_LOOP=basic
+export LIBGL_ALWAYS_SOFTWARE=1
+export HADALIS_POLKIT_CI_TOKEN="$ci_token"
+
+"$weston_path" \
+  --backend=headless-backend.so \
+  --socket="\$WAYLAND_DISPLAY" \
+  --idle-time=0 \
+  --log="$work/weston.log" &
+weston_pid=\$!
+
+cleanup_session() {
+  kill "\$weston_pid" 2>/dev/null || true
+  wait "\$weston_pid" 2>/dev/null || true
+}
+trap cleanup_session EXIT
+
+for _ in \$(seq 1 100); do
+  [[ -S "\$XDG_RUNTIME_DIR/\$WAYLAND_DISPLAY" ]] && break
+  kill -0 "\$weston_pid" 2>/dev/null || {
+    cat "$work/weston.log" || true
+    printf "FAIL\n" > "$status_file"
+    exit 1
+  }
+  sleep 0.1
+done
+[[ -S "\$XDG_RUNTIME_DIR/\$WAYLAND_DISPLAY" ]] || {
+  cat "$work/weston.log" || true
+  printf "FAIL\n" > "$status_file"
+  exit 1
+}
+
+cd "$work/repo"
+if PATH="$(dirname "$qs_path"):$(dirname "$weston_path"):\$PATH" \
+    bash scripts/test-abyss-polkit-runtime.sh; then
+  printf "PASS\n" > "$status_file"
+else
+  printf "FAIL\n" > "$status_file"
+  exit 1
+fi
+EOF
+              sudo chown -R "$ci_user:$ci_user" "$work"
+              sudo chmod 0755 "$work/session.sh"
+
+              # machinectl shell creates the real logind session required by
+              # PolkitAgent; a plain CI subprocess has no session subject.
+              sudo machinectl shell "$ci_user@.host" \
+                /bin/bash "$work/session.sh" || true
+
+              test -f "$status_file"
+              grep -Fxq PASS "$status_file"
+            '
 
   headless-wayland:
     needs: source-contracts

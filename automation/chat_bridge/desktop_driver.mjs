@@ -8,6 +8,8 @@ const MAIN_URL = "app://-/index.html";
 const COMPOSER = /^(Ask ChatGPT|New chat in Hadalis Cloud)$/;
 const PROJECT = /^(Project: Hadalis Cloud|Change project: Hadalis Cloud)$/;
 const GITHUB_MENTION = "[@GitHub](plugin://github@openai-curated-remote)";
+const LOOP_MARKER = /^HADALIS_LOOP:(?:WAIT_RESULT|CONTINUE|ROTATE|DONE|CONNECTOR_BLOCKED)(?:[ \\t]+[A-Za-z0-9._/-]+)?[ \\t]*$/m;
+const RESPONSE_ACTION = /regenerate|retry|try again|copy/i;
 
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 
@@ -460,56 +462,104 @@ export async function submitPrompt(page, prompt) {
   );
 }
 
+async function loopMarkerCount(page) {
+  return visibleCount(page.getByText(LOOP_MARKER));
+}
+
 export async function waitForCompletion(page, timeoutMs = 600000) {
   const deadline = Date.now() + timeoutMs;
+  const baselineMarkerCount = await loopMarkerCount(page);
   let sawStop = false;
   let sawClear = false;
 
   while (Date.now() < deadline) {
     const stop = await visibleCount(page.getByRole("button", { name: /stop/i }));
-    const regen = await visibleCount(page.getByRole("button", { name: /regenerate response/i }));
+    const responseAction = await visibleCount(page.getByRole("button", { name: RESPONSE_ACTION }));
+    const markerCount = await loopMarkerCount(page);
     const composer = await resolveComposer(page);
     const empty = (await composer.innerText()).trim() === "";
 
     sawStop ||= stop > 0;
     sawClear ||= empty;
 
-    if (sawStop && sawClear && stop === 0 && regen > 0) {
+    const markerAdvanced = markerCount > baselineMarkerCount;
+    const hasCompletionSignal = responseAction > 0 || markerAdvanced;
+
+    if (sawStop && sawClear && stop === 0 && hasCompletionSignal) {
       await sleep(900);
+
       const stop2 = await visibleCount(page.getByRole("button", { name: /stop/i }));
-      const regen2 = await visibleCount(page.getByRole("button", { name: /regenerate response/i }));
-      if (stop2 === 0 && regen2 > 0)
-        return { sawStop, sawClear, completed: true };
+      const responseAction2 = await visibleCount(page.getByRole("button", { name: RESPONSE_ACTION }));
+      const markerCount2 = await loopMarkerCount(page);
+      const markerAdvanced2 = markerCount2 > baselineMarkerCount;
+
+      if (stop2 === 0 && (responseAction2 > 0 || markerAdvanced2)) {
+        return {
+          sawStop,
+          sawClear,
+          completed: true,
+          baselineMarkerCount,
+          markerCount: markerCount2,
+          completionSignal: markerAdvanced2 ? "loop-marker" : "response-action"
+        };
+      }
     }
+
     await sleep(250);
   }
+
   throw new Error("generation completion timeout");
 }
 
-const LOOP_MARKER =
-  /^HADALIS_LOOP:(?:WAIT_RESULT|CONTINUE|ROTATE|DONE|CONNECTOR_BLOCKED)(?:[ \\t]+[A-Za-z0-9._/-]+)?[ \\t]*$/m;
-
-export async function extractLoopResponse(page) {
-  const regenerate = page.getByRole("button", { name: /regenerate response/i });
-  const count = await regenerate.count();
-  if (count < 1) throw new Error("Regenerate response control is unavailable");
-
+async function extractNearResponseAction(page) {
+  const actions = page.getByRole("button", { name: RESPONSE_ACTION });
+  const count = await actions.count();
   const source = LOOP_MARKER.source;
-  const result = await regenerate.last().evaluate((button, markerSource) => {
-    const marker = new RegExp(markerSource, "m");
-    let node = button;
-    for (let depth = 0; depth < 10 && node; depth += 1) {
-      const text = (node.innerText ?? "").trim();
-      if (text && marker.test(text))
-        return { depth, text };
-      node = node.parentElement;
-    }
-    return null;
-  }, source);
 
-  if (!result)
-    throw new Error("No HADALIS_LOOP marker found near completed assistant response");
-  return result;
+  for (let index = count - 1; index >= 0; index -= 1) {
+    const action = actions.nth(index);
+
+    try {
+      if (!(await action.isVisible()))
+        continue;
+
+      const result = await action.evaluate((button, markerSource) => {
+        const marker = new RegExp(markerSource, "m");
+        let node = button;
+
+        for (let depth = 0; depth < 12 && node; depth += 1) {
+          const text = (node.innerText ?? "").trim();
+          if (text && marker.test(text))
+            return { depth, text };
+          node = node.parentElement;
+        }
+
+        return null;
+      }, source);
+
+      if (result)
+        return result;
+    } catch {}
+  }
+
+  return null;
+}
+
+export async function extractLoopResponse(page, { allowMarkerOnly = false } = {}) {
+  const anchored = await extractNearResponseAction(page);
+  if (anchored)
+    return anchored;
+
+  if (allowMarkerOnly) {
+    const markers = await visibleItems(page.getByText(LOOP_MARKER));
+    if (markers.length) {
+      const text = (await markers[markers.length - 1].innerText()).trim();
+      if (LOOP_MARKER.test(text))
+        return { depth: 0, text, markerOnly: true };
+    }
+  }
+
+  throw new Error("No completed assistant HADALIS_LOOP response found");
 }
 
 export async function observeDesktop(page) {

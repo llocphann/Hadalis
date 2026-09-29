@@ -18,6 +18,8 @@ assert "root._liquidAnchorFor(item) !== null" in registry
 assert "function resolve(source): var" in registry
 assert "source.anchorItem" in registry
 assert "AnchorPolicy.matchScore(candidate, alias)" in registry
+assert "const requestedOutput = String(source?.outputName ?? \"\")" in registry
+assert "AnchorPolicy.placementScore(" in registry
 assert 'kind === "tray"' not in registry  # priority policy stays pure/testable
 assert "menuEntry" not in registry
 assert "Quit" not in registry

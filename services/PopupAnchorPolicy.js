@@ -30,3 +30,15 @@ function kindPriority(kind) {
         return 200;
     return 0;
 }
+
+function placementScore(priority, identityScore, requestedOutput, candidateOutput) {
+    var requested = String(requestedOutput == null ? "" : requestedOutput);
+    var candidate = String(candidateOutput == null ? "" : candidateOutput);
+    var sameOutput = requested.length > 0 && candidate === requested ? 1 : 0;
+    // Output affinity outranks surface kind only when the caller supplied a
+    // concrete source/output context. This prevents mirrored Tray/Bar/Dock
+    // anchors on another monitor from stealing a prompt from the source screen.
+    return sameOutput * 1000000000
+        + Math.max(0, Number(priority) || 0) * 10000
+        + Math.max(0, Number(identityScore) || 0);
+}

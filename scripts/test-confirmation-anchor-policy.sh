@@ -13,5 +13,14 @@ assert(ctx.matchScore("com.discordapp.Discord","discord")>0);
 assert.equal(ctx.kindPriority("tray"),300);
 assert(ctx.kindPriority("tray")>ctx.kindPriority("bar"));
 assert(ctx.kindPriority("bar")>ctx.kindPriority("dock"));
-console.log("confirmation popup anchor identity policy: ok");
+assert(ctx.placementScore(300,1000,"","DP-1")
+    > ctx.placementScore(200,1000,"","DP-1"),
+    "without source output, surface-kind precedence stays tray > dock");
+assert(ctx.placementScore(200,1000,"DP-2","DP-2")
+    > ctx.placementScore(300,1000,"DP-2","DP-1"),
+    "same-output dock beats a mirrored tray on another output");
+assert(ctx.placementScore(300,1000,"DP-2","DP-2")
+    > ctx.placementScore(200,1000,"DP-2","DP-2"),
+    "same-output surface-kind precedence still applies");
+console.log("confirmation popup anchor identity/output policy: ok");
 NODE

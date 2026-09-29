@@ -118,6 +118,7 @@ Singleton {
         if (wanted.length === 0)
             return null
 
+        const requestedOutput = String(source?.outputName ?? "")
         let best = null
         let bestScore = 0
         for (const entry of root.entries) {
@@ -131,16 +132,18 @@ Singleton {
             }
             if (identityScore <= 0)
                 continue
-            const total = Number(entry.priority ?? 0) * 10000
-                + identityScore
+            const window = root._windowFor(entry.item)
+            const outputName = String(window?.screen?.name ?? "")
+            const total = AnchorPolicy.placementScore(
+                Number(entry.priority ?? 0), identityScore,
+                requestedOutput, outputName)
             if (total <= bestScore)
                 continue
-            const window = root._windowFor(entry.item)
             bestScore = total
             best = {
                 item: entry.item,
                 kind: entry.kind,
-                outputName: String(window?.screen?.name ?? ""),
+                outputName: outputName,
                 score: total
             }
         }

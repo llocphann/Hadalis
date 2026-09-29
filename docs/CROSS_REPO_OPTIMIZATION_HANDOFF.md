@@ -16862,3 +16862,179 @@ No numeric reduction above is an end-to-end Hadalis speedup. Values are local
 source-derived operation/allocation reductions only.
 
 No runtime/source implementation is authorized by this handoff.
+
+---
+
+## 63. Round 49 — autocomplete, task models and local collection compaction (2026-09-30)
+
+### Snapshot / concurrency safety
+
+This docs-only round continues from §62. Exact parent: `bac7d7d54015ce486136e1571b19711efe005d80`.
+
+Concurrent movement was accepted only when compare proved a clean fast-forward
+limited to audited `agent/*`, `automation/*`, or Hadalis automation
+test/install paths. The branch is checked again before the non-forced ref
+update. No runtime/QML/native implementation is authorized.
+
+### 63.1 AiChat specialized autocomplete can parse prefix state once per keystroke — CONFIRMED / P1-P2 interaction
+
+Path: `modules/sidebarLeft/AiChat.qml`.
+
+The `model`, `prompt`, `save`, `load` and `tool` branches recompute
+`messageInputField.text.trim().split(" ").length == 1` inside every result
+callback. Keep branch/`suggestionQuery`/`Fuzzy.go` ordering, then compute that
+same invariant once immediately before row construction.
+
+For R fuzzy results, trim/split work is **R -> 1**.
+
+The model branch also maps every fuzzy result to row-or-null and then filters
+nulls for missing `Ai.models[model.target]`. Append only resolved rows directly
+to one final array in source order. This removes one R-element row/null array
+and the second filter traversal without changing surviving rows/order.
+
+### 63.2 Three command-suggestion UIs can collect matching rows directly — CONFIRMED / P2 per-keystroke
+
+Paths:
+
+- `modules/sidebarLeft/AiChat.qml`;
+- `modules/sidebarLeft/Anime.qml`;
+- `modules/sidebarLeft/WallhavenView.qml`.
+
+Each uses
+`allCommands.filter(cmd => cmd.name.startsWith(query)).map(cmd => row)`.
+`allCommands` is a local JS array and every passing command maps to one row.
+
+One ordered loop can apply the identical predicate and append the identical row.
+The filtered command array is **1 -> 0**, and the second traversal is folded
+into the source pass. No persistent command/query cache is introduced.
+
+### 63.3 TodoWidget can clone only tasks that survive each tab predicate — CONFIRMED / P1-P2 sidebar interaction
+
+Path: `modules/sidebarRight/todo/TodoWidget.qml`.
+
+Both tabs currently clone every `Todo.list` item with `originalIndex`, then
+filter clones by `done`.
+
+Source proof:
+
+- `InternalTodoBackend` normalizes tasks into object literals;
+- both Obsidian backends publish task arrays from JSON helper payloads.
+
+Therefore these are plain data records, not live QML objects whose skipped
+`Object.assign` getter reads carry reactive dependencies.
+
+Each tab can scan source order, evaluate the same done predicate, and clone only
+passing rows while retaining the **source index** as `originalIndex`.
+
+Across the two independently-derived tabs, shallow task clones are roughly
+**2N -> N**. Ordering, mutation targeting, indices and row isolation are
+unchanged.
+
+### 63.4 OverlayContent can skip its map/null/filter staging array — CONFIRMED / P2 overlay interaction
+
+Paths:
+
+- `modules/ii/overlay/OverlayContent.qml`;
+- `modules/ii/overlay/OverlayContext.qml`.
+
+Current ScriptModel values map each open identifier through
+`availableWidgets.find(...)`, then filter null/undefined.
+
+`availableWidgets` is a readonly literal list of plain descriptor objects.
+Keep the same per-identifier `find` call, preserving first-match and
+short-circuit behavior, and append only non-null results to one final array.
+
+Removed: one mapped descriptor/null array and the O(open) filter traversal.
+Open order, duplicates, missing-widget suppression and descriptor identity are
+unchanged. No persistent Map is required.
+
+### 63.5 Both recording Settings families can build audio-source options in one array — CONFIRMED / P2 Settings interaction
+
+Paths:
+
+- `modules/settings/ToolsConfig.qml`;
+- `modules/waffle/settings/pages/WInterfacePage.qml`.
+
+Both duplicate system-audio and microphone helpers that currently create an
+Auto row, `filter` detected sources, `map` option objects, then `concat`
+before `ensureOption(...)`.
+
+Start with the same Auto row, scan sources once, apply the exact current
+`.monitor` predicate and push the identical option object only for passing
+sources. Keep `ensureOption` at the same point.
+
+Per helper: filtered array **1 -> 0**, mapped staging array **1 -> 0**, concat
+result/full-prefix copy **1 -> 0**. Keep the two helpers independent rather than
+adding shared cached partition state.
+
+### 63.6 TlpSettingsService can reuse already-fresh arrays while preserving filter/map phases — CONFIRMED / P2 Settings path
+
+Path: `services/TlpSettingsService.qml`.
+
+The schema is loaded by `JSON.parse`; local groups are plain JS objects.
+
+For `settingsForCategory()`, `root._array(...)` already returns a fresh
+`Array.from` result. Stable-compact that array in place with the exact
+`settingAvailable` predicate, then retain the existing adaptation map. This
+preserves the current phase rule that all availability checks finish before
+adaptation and removes one filtered-settings array.
+
+For `groupsForCategory()`, keep the complete existing final map over
+`orderedIds`, then stable-compact that fresh mapped array in place with the
+same `group.settings.length > 0` predicate. This removes one filter-result
+array while preserving group/query/clone/order semantics.
+
+### 63.7 Themes favorite-first sorting can use invocation-local Set membership — CONFIRMED / P2 theme search/filter interaction
+
+Path: `modules/settings/ThemesConfig.qml`.
+
+`filteredPresets` calls `favorites.includes(a.id)` and
+`favorites.includes(b.id)` inside every sort comparator invocation.
+The schema defines `favoriteThemes` as `list<string>`.
+
+Build one invocation-local Set and use `has(id)` in the unchanged comparator.
+Array `includes` and Set membership use SameValueZero for this contract, and
+the comparator still returns the same favorite-rank difference, preserving
+equal-rank tie behavior.
+
+Cost shape changes from repeated linear favorite-list scans inside O(N log N)
+comparator work to one O(F) Set construction plus constant membership checks.
+No persistent favorite cache is introduced.
+
+### 63.8 Stale-search closures — ALREADY / CLOSED
+
+Exact current source shows that:
+
+- `services/deferred/Emojis.qml` sloppy unlimited scoring already
+  direct-collects passing records;
+- `services/deferred/Cliphist.qml` already does the same;
+- `modules/sidebarRight/sysmon/SysMonWidget.qml` no longer parses
+  `/proc/net/dev` itself and uses `ResourceUsageMonitor`, consistent with
+  §34.7.
+
+Do not reopen those stale search snippets.
+
+### 63.9 Round-49 conclusion
+
+New strict-lossless groups:
+
+1. AiChat invariant prefix parsing + resolved-model collection (§63.1,
+   **CONFIRMED / P1-P2 interaction**);
+2. direct command suggestions across AiChat/Anime/Wallhaven (§63.2,
+   **CONFIRMED / P2**);
+3. Todo clone-only-matching models (§63.3,
+   **CONFIRMED / P1-P2 sidebar interaction**);
+4. Overlay one-array widget model (§63.4, **CONFIRMED / P2**);
+5. recording audio-source direct construction in both Settings families
+   (§63.5, **CONFIRMED / P2**);
+6. TLP fresh-array compaction (§63.6, **CONFIRMED / P2**);
+7. Themes favorite-membership Set (§63.7, **CONFIRMED / P2 interaction**).
+
+Old Emoji/Cliphist scoring and SysMon parsing snippets are closed as stale
+(§63.8).
+
+No numeric reduction above is an end-to-end Hadalis speedup; all values are
+local source-derived operation/allocation reductions.
+
+No runtime/source implementation is authorized by this handoff.
+

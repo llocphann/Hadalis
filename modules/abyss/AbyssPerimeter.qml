@@ -566,6 +566,8 @@ Scope {
                 residentContent: true
                 property real cachedSpan: 220
                 readonly property real measuredSpan: contentItem.item?.desiredSpan ?? cachedSpan
+                readonly property bool attachedPopupHold:
+                    liquid.hasPopupAnchoredTo(dock)
                 onMeasuredSpanChanged: if(contentItem.item && measuredSpan>0) cachedSpan=measuredSpan
                 identity: "dock"
                 controller: liquid
@@ -578,10 +580,13 @@ Scope {
                     && !window.editorOpen && !settings.open && !dashboardBody.open && !controls.open
                     && !aux.open && !clipboardBody.open && !utility.open
                     && (GlobalStates.abyssPopupKind === "dockAppMenu"
+                        || attachedPopupHold
                         || !liquid.participantOverlapsRect("popup", requestedRecord.surface, 10))
                     && (GlobalStates.abyssPopupKind === "dockAppMenu"
+                        || attachedPopupHold
                         || !liquid.hasPopupOverlapRect(requestedRecord.surface, 10))
                     && (((Config.options?.dock?.pinnedOnStartup ?? false) && !(Config.options?.dock?.hoverToReveal ?? false)) || window.dockHovered
+                        || attachedPopupHold
                         || (contentItem.item?.requestDockShow ?? false)
                         || ((Config.options?.dock?.showOnDesktop ?? true) && !ToplevelManager.activeToplevel?.activated))
                 edgeInsets: window.bodyInsets(edge,along,span)

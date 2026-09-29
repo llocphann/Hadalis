@@ -186,6 +186,13 @@ QtObject {
         }
         return false
     }
+    function hasPopupAnchoredTo(anchor): bool {
+        if (!anchor)
+            return false
+        return popupEntries.some(entry =>
+            (entry.popup?.presentationActive ?? false)
+            && entry.popup?._liquidAnchor === anchor)
+    }
     function hasPopupOnEdge(edge): bool {
         return popupEntries.some(entry => (entry.popup?.presentationActive ?? false)
             && entry.popup?._attachmentEdge === edge)

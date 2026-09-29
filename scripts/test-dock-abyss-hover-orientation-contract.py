@@ -9,6 +9,7 @@ abyss=(r/"modules/abyss/content/AbyssDockContent.qml").read_text()
 dock=(r/"modules/dock/Dock.qml").read_text()
 settings=(r/"modules/settings/DockConfig.qml").read_text()
 ripple=(r/"modules/common/widgets/RippleButton.qml").read_text()
+qmldir=(r/"modules/dock/qmldir").read_text()
 assert "signal closeAllContextMenus(var exceptOwner)" in apps
 assert "function refreshAxisLayout(): void" in apps
 assert "listView.forceLayout()" in apps
@@ -48,4 +49,20 @@ assert "Long-press and drag dock icons" not in settings
 assert "Drag dock icons to reorder pinned and running apps" in settings
 assert "property int pointerDragAxis: Drag.XAndYAxis" in ripple
 assert "drag.axis: root.pointerDragAxis" in ripple
-print("dock hover/style/orientation/dashboard-toggle/drag contract: ok")
+
+# Dock hover is now one app-popup interaction. Legacy Dock window-preview
+# surfaces and their Settings controls must stay retired.
+assert "root.showContextMenu(true)" in btn
+assert "hoverPreviewRequested" not in btn
+assert "hoverPreviewDismissed" not in btn
+assert "Config.options?.dock?.hoverPreview" not in btn
+assert "DockPreview {" not in apps
+assert "showPreviewPopup" not in apps
+assert "dockPreviewPopup" not in apps
+assert 'Translation.tr("Window preview")' not in settings
+assert 'Translation.tr("Show preview on hover")' not in settings
+assert 'Config.setNestedValue("dock.hoverPreview"' not in settings
+assert 'Config.setNestedValue("dock.hoverPreviewDelay"' not in settings
+assert "DockPreview 1.0" not in qmldir
+assert "DockWindowPreview 1.0" not in qmldir
+print("dock popup/orientation/dashboard-toggle/drag contract: ok")

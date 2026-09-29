@@ -102,22 +102,16 @@ DockButton {
         ])
     }
 
-    // Hover preview signals
-    signal hoverPreviewRequested()
-    signal hoverPreviewDismissed()
-
-    // Timer for hover delay before showing preview
+    // Dock hover has one semantic result: the app popup/context menu.
+    // Bar/Workspace preview surfaces remain independent WindowPreviewService users.
     Timer {
         id: hoverDelayTimer
-        interval: Config.options?.dock?.hoverPreviewDelay ?? 400
+        interval: 400
         onTriggered: {
-            if(root.abyssStyle) {
-                if(root.buttonHovered && !root.down && !root.pointerDragActive && !root.appListRoot?.dragActive) root.showContextMenu(true)
-                return
-            }
-            if (root.hasWindows && root.buttonHovered) {
-                root.hoverPreviewRequested()
-            }
+            if (root.buttonHovered && !root.down
+                    && !root.pointerDragActive
+                    && !root.appListRoot?.dragActive)
+                root.showContextMenu(true)
         }
     }
 
@@ -273,44 +267,26 @@ DockButton {
         }
     }
 
-    // Use RippleButton's built-in buttonHovered instead of separate MouseArea
+    // Use RippleButton's built-in hover state. Pinned-only and running apps
+    // expose the same popup behavior.
     onButtonHoveredChanged: {
-        if(root.abyssStyle) {
-            if(buttonHovered && !root.isSeparator) {
-                hoverDelayTimer.restart()
-                if(root.appListRoot) {
-                    root.appListRoot.lastHoveredButton=root
-                    root.appListRoot.buttonHovered=true
+        if (buttonHovered && !root.isSeparator) {
+            hoverDelayTimer.restart()
+            if (root.appListRoot) {
+                root.appListRoot.lastHoveredButton = root
+                root.appListRoot.buttonHovered = true
+                if (root.abyssStyle)
                     root.appListRoot.setAbyssContextMenuHover(root, true)
-                }
-            } else {
-                hoverDelayTimer.stop()
-                if(root.appListRoot) {
-                    root.appListRoot.setAbyssContextMenuHover(root, false)
-                    if(root.appListRoot.lastHoveredButton===root)
-                        root.appListRoot.buttonHovered=false
-                }
             }
             return
         }
-        if (toplevels.length > 0) {
-            if (buttonHovered) {
-                appListRoot.lastHoveredButton = root
-                appListRoot.buttonHovered = true
-                // Start hover timer for preview
-                if (Config.options?.dock?.hoverPreview !== false) {
-                    hoverDelayTimer.restart()
-                }
-            } else {
-                if (appListRoot.lastHoveredButton === root) {
-                    appListRoot.buttonHovered = false
-                }
-                hoverDelayTimer.stop()
-                // Don't dismiss preview here - let the popup's timer handle it
-                // This allows mouse to move from button to popup without closing
-            }
-        } else {
-            hoverDelayTimer.stop()
+
+        hoverDelayTimer.stop()
+        if (root.appListRoot) {
+            if (root.abyssStyle)
+                root.appListRoot.setAbyssContextMenuHover(root, false)
+            if (root.appListRoot.lastHoveredButton === root)
+                root.appListRoot.buttonHovered = false
         }
     }
 
@@ -424,7 +400,6 @@ DockButton {
     function showContextMenu(fromHover): void {
         root.hoverContextOpen=fromHover===true
         const snapshot = root.buildContextMenuModel()
-        root.hoverPreviewDismissed()
         hoverDelayTimer.stop()
 
         // Abyss owns one connected popup field. Rehost Dock menus there instead

@@ -29,7 +29,7 @@ Item {
     property Item lastHoveredButton
     property bool buttonHovered: false
     property bool contextMenuOpen: false
-    property bool requestDockShow: dockPreviewPopup.visible || contextMenuOpen || dragActive
+    property bool requestDockShow: contextMenuOpen || dragActive
     property var abyssMenuPresenter: null
     property var abyssMenuHoverPresenter: null
     property var abyssMenuDismissPresenter: null
@@ -37,11 +37,6 @@ Item {
     signal closeAllContextMenus(var exceptOwner)
 
     property bool _suppressNextClick: false
-
-    function showPreviewPopup(appEntry: var, button: Item): void {
-        if (Config.options?.dock?.hoverPreview === false) return
-        dockPreviewPopup.show(appEntry, button)
-    }
 
     readonly property real axisExtent: {
         const values = root.dockItems ?? []
@@ -118,7 +113,6 @@ Item {
     function startDrag(index: int, appId: string, globalX: real, globalY: real): void {
         if (!dragEnabled) return
 
-        dockPreviewPopup.close()
         closeAllContextMenus()
         if (root.abyssMenuDismissPresenter)
             root.abyssMenuDismissPresenter()
@@ -558,7 +552,6 @@ Item {
     }
 
     function refreshAxisLayout(): void {
-        dockPreviewPopup.close()
         root.closeAllContextMenus(null)
         root.cancelDrag()
         root.rebuildDockItems()
@@ -811,21 +804,7 @@ Item {
                 onYChanged: dockDelegate._syncDragProxy()
             }
 
-            onHoverPreviewRequested: {
-                if (!root.dragActive) {
-                    root.showPreviewPopup(appToplevel, this)
-                }
-            }
-            onHoverPreviewDismissed: {
-                dockPreviewPopup.close()
-            }
         }
     }
 
-    DockPreview {
-        id: dockPreviewPopup
-        dockHovered: root.buttonHovered
-        dockPosition: root.dockPosition
-        anchor.window: root.parentWindow
-    }
 }

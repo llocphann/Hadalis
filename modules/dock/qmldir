@@ -3,6 +3,4 @@ DockAppButton 1.0 DockAppButton.qml
 DockApps 1.0 DockApps.qml
 DockButton 1.0 DockButton.qml
 DockContextMenu 1.0 DockContextMenu.qml
-DockPreview 1.0 DockPreview.qml
 Dock 1.0 Dock.qml
-DockWindowPreview 1.0 DockWindowPreview.qml

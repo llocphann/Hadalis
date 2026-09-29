@@ -264,50 +264,6 @@ ContentPage {
                 }
             }
 
-            ContentSubsection {
-                title: Translation.tr("Window preview")
-
-                SettingsSwitch {
-                    buttonIcon: "preview"
-                    text: Translation.tr("Show preview on hover")
-                    checked: Config.options.dock.hoverPreview !== false
-                    onCheckedChanged: {
-                        Config.setNestedValue("dock.hoverPreview", checked);
-                    }
-                    StyledToolTip {
-                        text: Translation.tr("Display a live preview of windows when hovering over dock icons")
-                    }
-                }
-
-                ConfigSpinBox {
-                    icon: "timer"
-                    text: Translation.tr("Hover delay (ms)")
-                    value: Config.options.dock.hoverPreviewDelay ?? 400
-                    from: 0
-                    to: 1000
-                    stepSize: 50
-                    enabled: Config.options.dock.hoverPreview !== false
-                    onValueChanged: {
-                        Config.setNestedValue("dock.hoverPreviewDelay", value);
-                    }
-                    StyledToolTip {
-                        text: Translation.tr("Time to wait before showing window preview")
-                    }
-                }
-
-                SettingsSwitch {
-                    buttonIcon: "keep"
-                    text: Translation.tr("Keep preview on click")
-                    enabled: Config.options.dock.hoverPreview !== false
-                    checked: Config.options?.dock?.keepPreviewOnClick ?? false
-                    onCheckedChanged: {
-                        Config.setNestedValue("dock.keepPreviewOnClick", checked)
-                    }
-                    StyledToolTip {
-                        text: Translation.tr("Keeps the preview open while you click through windows.")
-                    }
-                }
-            }
         }
     }
 

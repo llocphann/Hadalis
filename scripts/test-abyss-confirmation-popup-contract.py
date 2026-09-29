@@ -82,6 +82,11 @@ assert "snapshot._observedInWindowList = true" in close
 assert "property int _windowListRevision: 0" in close
 assert "function _cancelIfTargetGone(): void" in close
 gone=close.split("function _cancelIfTargetGone(): void",1)[1].split("Connections {",1)[0]
+assert "root._standaloneTransferredRequestId <= 0" in gone
+assert "root._windowListRevision > root._standaloneTargetRevision" in gone
+assert "root.targetWindow?._observedInWindowList === true" in gone
+assert "root._clearStandaloneState()" in gone
+assert "{ _observedInWindowList: true }" in gone
 assert "root._standaloneTransferredRequestId === requestId" in gone
 assert "!ConfirmationService.requestVisible && !transferred" in gone
 assert "if (!observed && root._windowListRevision <= requestRevision)" in gone
@@ -112,6 +117,7 @@ assert "readonly property bool abyssConfigured:" in close
 assert "function _abyssPresenterAvailableFor(outputName): bool" in close
 assert "AbyssPromptHostRegistry.hasOutput" in close
 assert "property int _standaloneTransferredRequestId: 0" in close
+assert "property int _standaloneTargetRevision: 0" in close
 assert "function _showStandaloneForRequest(request): void" in close
 show_transfer=close.split("function _showStandaloneForRequest(request): void",1)[1].split("function _clearStandaloneState",1)[0]
 assert "ConfirmationService.beginPresentationHandoff(requestId)" in show_transfer
@@ -151,6 +157,7 @@ process=close.split("function processWindow(win): void",1)[1].split("function _c
 assert "ConfirmationService.enqueue({" in process
 assert "root._abyssPresenterAvailableFor(outputName)" not in process
 assert "if (root.dialogVisible)" in process
+assert "root._standaloneTargetRevision = root._windowListRevision;" in process
 assert "root.targetWindow = snapshot;" in process
 assert "active: root.dialogVisible" in close
 

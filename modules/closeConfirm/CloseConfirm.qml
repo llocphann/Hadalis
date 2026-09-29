@@ -17,6 +17,7 @@ Scope {
     // its ConfirmationService slot until the standalone dialog resolves. This
     // preserves one-at-a-time queue semantics across renderer handoff.
     property int _standaloneTransferredRequestId: 0
+    property int _standaloneTargetRevision: 0
 
     // Debounce to prevent double-trigger
     property bool _busy: false
@@ -54,6 +55,8 @@ Scope {
             title: String(request?.appName ?? "")
         })
         root._standaloneTransferredRequestId = requestId
+        root._standaloneTargetRevision =
+            Number(request?.sourceWindowRevision ?? root._windowListRevision)
         root.targetWindow = snapshot
         root.dialogScreen = root._screenForOutput(
             ConfirmationService.targetOutputName)
@@ -65,6 +68,7 @@ Scope {
         root.targetWindow = null
         root.dialogScreen = null
         root._standaloneTransferredRequestId = 0
+        root._standaloneTargetRevision = 0
     }
 
     function _releaseAbyssRequestIfUnavailable(): void {
@@ -250,12 +254,40 @@ Scope {
         // overwrite a visible/transferred target with a later close trigger.
         if (root.dialogVisible)
             return
+        root._standaloneTargetRevision = root._windowListRevision;
         root.targetWindow = snapshot;
         root.dialogScreen = root._screenForOutput(outputName);
         root.dialogVisible = true;
     }
 
     function _cancelIfTargetGone(): void {
+        // Legacy/non-Abyss fallback has no ConfirmationService request object.
+        // Still dismiss it once a newer authoritative Niri window snapshot says
+        // the captured target is gone, while preserving the triggerWindow race
+        // guard for snapshots that have not been observed yet.
+        if (root.dialogVisible
+                && root._standaloneTransferredRequestId <= 0) {
+            const directId = Number(root.targetWindow?.id ?? 0)
+            if (directId > 0 && NiriService.windowListReady) {
+                const observed =
+                    root.targetWindow?._observedInWindowList === true
+                const revisionAdvanced =
+                    root._windowListRevision > root._standaloneTargetRevision
+                if (observed || revisionAdvanced) {
+                    const live = (NiriService.windows ?? []).find(candidate =>
+                        Number(candidate?.id ?? 0) === directId)
+                    if (!live) {
+                        root._clearStandaloneState()
+                        return
+                    }
+                    if (!observed)
+                        root.targetWindow = Object.assign(
+                            {}, root.targetWindow,
+                            { _observedInWindowList: true })
+                }
+            }
+        }
+
         const request = ConfirmationService.currentRequest
         if (String(request?.owner ?? "") !== "closeConfirm")
             return

@@ -412,6 +412,17 @@ async function populatePrompt(page, composer, prompt) {
 export async function submitPrompt(page, prompt) {
   await verifyProject(page);
   const composer = await resolveComposer(page);
+
+  const stopBefore = await visibleCount(
+    page.getByRole("button", { name: /stop/i })
+  );
+  if (stopBefore > 0)
+    throw new Error("refusing to submit while ChatGPT generation is active");
+
+  const composerBefore = (await composer.innerText()).trim();
+  if (composerBefore)
+    throw new Error("refusing to overwrite a non-empty ChatGPT composer");
+
   await populatePrompt(page, composer, prompt);
 
   const send = page.getByRole("button", { name: "Send" });
@@ -503,6 +514,7 @@ export async function waitForCompletion(
   completionBaseline = null
 ) {
   const deadline = Date.now() + timeoutMs;
+  const hasSubmitBaseline = completionBaseline?.markerCount != null;
   const baselineMarkerCount =
     completionBaseline?.markerCount ?? await loopMarkerCount(page);
   const baselineResponseActionCount =
@@ -514,27 +526,41 @@ export async function waitForCompletion(
     const responseActionCount = await visibleCount(
       page.getByRole("button", { name: RESPONSE_ACTION })
     );
+    const stopCount = await visibleCount(
+      page.getByRole("button", { name: /stop/i })
+    );
 
     const markerAdvanced = markerCount > baselineMarkerCount;
     const responseActionAdvanced =
       responseActionCount > baselineResponseActionCount;
 
-    // Completion is a stable post-submit UI advance. Prefer the protocol
-    // marker delta, but accept a new assistant response-action toolbar when
-    // the renderer collapses duplicate marker text in body.innerText.
-    if (markerAdvanced || responseActionAdvanced) {
+    // For a prompt we just submitted, only a NEW protocol marker can complete
+    // the turn. Response-toolbar changes are not sufficient because they may
+    // belong to an older assistant response and can cause the next prompt to
+    // be pasted while the current generation is still running.
+    const completionAdvanced = hasSubmitBaseline
+      ? markerAdvanced
+      : (markerAdvanced || responseActionAdvanced);
+
+    if (completionAdvanced && stopCount === 0) {
       await sleep(900);
 
       const markerCount2 = await loopMarkerCount(page);
       const responseActionCount2 = await visibleCount(
         page.getByRole("button", { name: RESPONSE_ACTION })
       );
+      const stopCount2 = await visibleCount(
+        page.getByRole("button", { name: /stop/i })
+      );
 
       const markerAdvanced2 = markerCount2 > baselineMarkerCount;
       const responseActionAdvanced2 =
         responseActionCount2 > baselineResponseActionCount;
+      const completionAdvanced2 = hasSubmitBaseline
+        ? markerAdvanced2
+        : (markerAdvanced2 || responseActionAdvanced2);
 
-      if (markerAdvanced2 || responseActionAdvanced2) {
+      if (completionAdvanced2 && stopCount2 === 0) {
         return {
           completed: true,
           baselineMarkerCount,
@@ -608,6 +634,8 @@ export async function extractLoopResponse(
         extractionSignal: "post-submit-marker-delta"
       };
     }
+
+    throw new Error("No post-submit HADALIS_LOOP marker found");
   }
 
   const anchored = await extractNearResponseAction(page);

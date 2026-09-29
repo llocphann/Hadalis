@@ -314,7 +314,10 @@ Bar.StyledPopup {
                 Loader {
                     id: timerViewLoader
                     anchors.fill: parent
+                    // Do not construct Pomodoro/Countdown/Stopwatch on a Notes hover.
+                    // Timer state is service-owned, so the UI can stay cold until selected.
                     active: root.presentationActive
+                        && root.selectedMainTab === 1
                     visible: root.selectedMainTab === 1
                     sourceComponent: PomodoroWidget {
                         compactMode: true

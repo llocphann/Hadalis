@@ -68,6 +68,17 @@ component_pos = popup.find("sourceComponent: QuickNotesView {")
 if loader_pos < 0 or component_pos < 0 or loader_pos > component_pos:
     fail("Quick Notes view must be instantiated lazily through its Loader")
 
+timer_loader_pos = popup.find("id: timerViewLoader")
+timer_component_pos = popup.find("sourceComponent: PomodoroWidget {", timer_loader_pos)
+if timer_loader_pos < 0 or timer_component_pos < 0 or timer_loader_pos > timer_component_pos:
+    fail("Timers must be instantiated through the Quick Notes timer Loader")
+timer_loader = popup[timer_loader_pos:timer_component_pos]
+require(
+    timer_loader,
+    "active: root.presentationActive\n                        && root.selectedMainTab === 1",
+    "Quick Notes hover must not materialize the timer subtree before Timers is selected",
+)
+
 for token in (
     "import QtQuick.Controls",
     "Bar.StyledPopup {",

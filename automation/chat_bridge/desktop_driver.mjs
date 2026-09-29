@@ -1,6 +1,7 @@
-import { chromium } from "file:///usr/lib/chatgpt/resources/cua_node/lib/node_modules/playwright-core/index.mjs";
+const PLAYWRIGHT = process.env.HADALIS_PLAYWRIGHT_MODULE ?? "file:///usr/lib/chatgpt/resources/cua_node/lib/node_modules/playwright-core/index.mjs";
+const { chromium } = await import(PLAYWRIGHT);
 
-const CDP = "http://127.0.0.1:9222";
+const CDP = process.env.HADALIS_CHATGPT_CDP_URL ?? "http://127.0.0.1:9222";
 const MAIN_URL = "app://-/index.html";
 const COMPOSER = /^(Ask ChatGPT|New chat in Hadalis Cloud)$/;
 const PROJECT = /^(Project: Hadalis Cloud|Change project: Hadalis Cloud)$/;
@@ -102,6 +103,45 @@ export async function waitForCompletion(page, timeoutMs = 600000) {
     await sleep(250);
   }
   throw new Error("generation completion timeout");
+}
+
+const LOOP_MARKER =
+  /^HADALIS_LOOP:(?:WAIT_RESULT|CONTINUE|ROTATE|DONE|CONNECTOR_BLOCKED)(?:[ \\t]+[A-Za-z0-9._/-]+)?[ \\t]*$/m;
+
+export async function extractLoopResponse(page) {
+  const regenerate = page.getByRole("button", { name: /regenerate response/i });
+  const count = await regenerate.count();
+  if (count < 1) throw new Error("Regenerate response control is unavailable");
+
+  const source = LOOP_MARKER.source;
+  const result = await regenerate.last().evaluate((button, markerSource) => {
+    const marker = new RegExp(markerSource, "m");
+    let node = button;
+    for (let depth = 0; depth < 10 && node; depth += 1) {
+      const text = (node.innerText ?? "").trim();
+      if (text && marker.test(text))
+        return { depth, text };
+      node = node.parentElement;
+    }
+    return null;
+  }, source);
+
+  if (!result)
+    throw new Error("No HADALIS_LOOP marker found near completed assistant response");
+  return result;
+}
+
+export async function observeDesktop(page) {
+  const composer = page.getByRole("textbox", { name: COMPOSER });
+  const send = page.getByRole("button", { name: "Send" });
+  return {
+    title: await page.title(),
+    url: page.url(),
+    composerVisible: await visibleCount(composer),
+    projectGuardVisible: await visibleCount(page.getByRole("button", { name: PROJECT })),
+    sendVisible: await visibleCount(send),
+    sendDisabled: (await send.count()) === 1 ? await send.isDisabled() : null
+  };
 }
 
 export async function connectDesktop() {

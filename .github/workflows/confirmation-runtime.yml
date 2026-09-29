@@ -151,20 +151,39 @@ jobs:
               cp -a . "$work/repo"
               sudo chown -R "$ci_user:$ci_user" "$work"
 
-              # machinectl shell creates the real logind session required by
-              # PolkitAgent; a plain CI subprocess has no session subject.
-              timeout 90s sudo machinectl shell "$ci_user@.host" \
-                /usr/bin/env \
-                "PATH=$PATH" \
-                "HADALIS_POLKIT_CI_TOKEN=$ci_token" \
-                "HADALIS_POLKIT_CI_REPO=$work/repo" \
-                "HADALIS_POLKIT_CI_STATUS_FILE=$status_file" \
-                "HADALIS_POLKIT_CI_WESTON_LOG=$work/weston.log" \
-                /bin/bash "$work/repo/scripts/run-abyss-polkit-runtime-session.sh" \
-                || true
+              # Create a real PAM/logind session for the disposable user.
+              # systemd-run + PAMName=login is the documented service-style
+              # session path; unlike machinectl shell on GitHub's host image it
+              # gives us an observable process exit status and session unit.
+              session_unit=hadalis-polkit-ci-runtime
+              set +e
+              timeout 90s sudo systemd-run \
+                --unit="$session_unit" \
+                --collect \
+                --wait \
+                --pipe \
+                --uid="$ci_user" \
+                --property=PAMName=login \
+                --setenv=XDG_SESSION_TYPE=wayland \
+                --setenv="PATH=$PATH" \
+                --setenv="HADALIS_POLKIT_CI_TOKEN=$ci_token" \
+                --setenv="HADALIS_POLKIT_CI_REPO=$work/repo" \
+                --setenv="HADALIS_POLKIT_CI_STATUS_FILE=$status_file" \
+                --setenv="HADALIS_POLKIT_CI_WESTON_LOG=$work/weston.log" \
+                /bin/bash "$work/repo/scripts/run-abyss-polkit-runtime-session.sh"
+              session_status=$?
+              set -e
 
-              test -f "$status_file"
-              grep -Fxq PASS "$status_file"
+              if [[ "$session_status" -ne 0 ]] \
+                  || [[ ! -f "$status_file" ]] \
+                  || ! grep -Fxq PASS "$status_file"; then
+                printf "real-polkit session status=%s\n" "$session_status" >&2
+                sudo loginctl list-sessions --no-legend 2>/dev/null || true
+                sudo journalctl -u "$session_unit" --no-pager -n 200 2>/dev/null || true
+                cat "$work/weston.log" 2>/dev/null || true
+                [[ -f "$status_file" ]] && cat "$status_file" >&2 || true
+                exit 1
+              fi
             '
 
   headless-wayland:

@@ -32,7 +32,7 @@ async function main() {
       return;
     }
 
-    if (command === "send" || command === "rotate-send") {
+    if (command === "await-current") {\n      const generation = await waitForCompletion(page);\n      const response = await extractLoopResponse(page);\n      console.log(JSON.stringify({ generation, response }));\n      return;\n    }\n\n    if (command === "send" || command === "rotate-send") {
       if (command === "rotate-send")
         await openHadalisNewChat(page);
 

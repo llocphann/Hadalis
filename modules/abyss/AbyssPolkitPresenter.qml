@@ -70,7 +70,12 @@ Item {
 
         onRequestClose: PolkitService.cancel()
         onPresentationActiveChanged: {
-            if (!presentationActive && PolkitService.presentationRetained) {
+            // Output hotplug can retarget fallback ownership while the removed
+            // output's popup is still retracting. Only the presenter that still
+            // owns the latched output may release global presentation state.
+            if (!presentationActive
+                    && PolkitService.presentationRetained
+                    && root.ownsOutput) {
                 root.latchedModel = ({})
                 PolkitService.finishPresentation()
             }

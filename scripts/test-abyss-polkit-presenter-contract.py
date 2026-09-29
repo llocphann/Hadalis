@@ -13,6 +13,8 @@ assert "PanelWindow" not in presenter and "WindowDialog" not in presenter
 assert "latchedModel" in presenter
 assert "PolkitService.hadResolvedAnchor" in presenter
 assert "PolkitService.finishPresentation()" in presenter
+active_handler=presenter.split("onPresentationActiveChanged:",1)[1].split("Component.onDestruction:",1)[0]
+assert "root.ownsOutput" in active_handler
 assert "Component.onDestruction:" in presenter
 
 service=(r/"services/PolkitService.qml").read_text()

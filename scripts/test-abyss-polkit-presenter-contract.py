@@ -52,7 +52,13 @@ assert "root.ownsOutput && PolkitService.presentationMatchesActive" in presenter
 assert "onOwnsPresentationChanged" in presenter
 capture=presenter.split("function captureLiveModel(): void",1)[1].split("}",1)[0]
 assert "root.ownsPresentation" in capture
-assert 'function hintSource(appId, anchorItem = null, outputName = ""): void' in service
+assert 'function hintSource(appId, anchorItem = null, outputName = ""): bool' in service
+hint_handler=service.split('function hintSource(appId, anchorItem = null, outputName = ""): bool',1)[1].split("function _takeSourceHint",1)[0]
+assert "root.active" in hint_handler
+assert "root._nextSourceHint !== null" in hint_handler
+assert "root._pendingPresentationHint !== null" in hint_handler
+assert "return false" in hint_handler
+assert "return true" in hint_handler
 assert "readonly property int sourceHintLifetimeMs: 3000" in service
 assert "id: sourceHintExpiry" in service
 assert "sourceHintExpiry.restart()" in service

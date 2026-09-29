@@ -123,13 +123,21 @@ Singleton {
         root._nextSourceHint = null
     }
 
-    function hintSource(appId, anchorItem = null, outputName = ""): void {
+    function hintSource(appId, anchorItem = null, outputName = ""): bool {
+        // AuthFlow does not expose a caller token/cookie that a UI hint can
+        // bind to. Never accept/overwrite hints while another flow is active:
+        // queued Polkit requests could otherwise inherit the wrong app anchor.
+        // A rejected hint safely leaves that request on top-center fallback.
+        if (root.active || root._nextSourceHint !== null
+                || root._pendingPresentationHint !== null)
+            return false
         root._nextSourceHint = {
             appId: String(appId ?? ""),
             anchorItem: anchorItem,
             outputName: String(outputName ?? "")
         }
         sourceHintExpiry.restart()
+        return true
     }
 
     function _takeSourceHint(): var {

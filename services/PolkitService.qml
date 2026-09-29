@@ -184,7 +184,6 @@ Singleton {
         // anchor/output. finishPresentation() starts the new visual request.
         if (root.abyssPresenterAvailable
                 && root.presentationRetained
-                && root.presentationSerial > 0
                 && root.presentationSerial !== root.requestSerial) {
             root.presentationSerial = 0
             return

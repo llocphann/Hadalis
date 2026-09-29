@@ -30,6 +30,10 @@ destruction=presenter.split("Component.onDestruction:",1)[1]
 assert "root.ownsOutput" in destruction
 assert "root.presentationRetained = false" in service
 assert "root.presentationSerial = 0" in service
+serial_gate=service.split("onRequestSerialChanged:",1)[1].split("function finishPresentation",1)[0]
+assert "root.presentationRetained" in serial_gate
+assert "root.presentationSerial !== root.requestSerial" in serial_gate
+assert "root.presentationSerial > 0" not in serial_gate
 assert "root.abyssPresenterAvailable" in service
 assert "onAbyssPresenterAvailableChanged" in service
 assert "function _outputExists(outputName): bool" in service

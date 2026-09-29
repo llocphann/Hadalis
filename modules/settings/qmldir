@@ -26,4 +26,5 @@ SettingsNavEditPane 1.0 SettingsNavEditPane.qml
 SettingsChromeEditFrame 1.0 SettingsChromeEditFrame.qml
 SettingsNativeDialogGuard 1.0 SettingsNativeDialogGuard.qml
 FcitxInputSettings 1.0 FcitxInputSettings.qml
+AutomationConfig 1.0 AutomationConfig.qml
 MonitorVisibilityConfig 1.0 MonitorVisibilityConfig.qml

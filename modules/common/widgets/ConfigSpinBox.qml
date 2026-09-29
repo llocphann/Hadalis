@@ -13,6 +13,7 @@ RowLayout {
     property alias stepSize: spinBoxWidget.stepSize
     property alias from: spinBoxWidget.from
     property alias to: spinBoxWidget.to
+    signal valueModified(int value)
     // Expose hover state for tooltips and other helpers
     property alias hovered: spinBoxWidget.hovered
     // Integración con buscador global de Settings
@@ -123,5 +124,6 @@ RowLayout {
         Layout.fillWidth: false
         Accessible.name: root.text
         Accessible.description: root.description
+        onValueModified: root.valueModified(value)
     }
 }

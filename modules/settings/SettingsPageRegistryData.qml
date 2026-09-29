@@ -266,7 +266,8 @@ Singleton {
         {key:"_retired-31",name:"",icon:"settings",component:"modules/settings/InterfaceConfig.qml",devNavigationHidden:true},
         {key:"abyss-waves",name:"Waves & Audio",icon:"waves",desc:"Waves, spectrum and interaction",component:"modules/settings/AbyssWavesConfig.qml"},
         {key:"abyss-popups",name:"Popups",icon:"chat_bubble",desc:"Popup and indicator placement",component:"modules/settings/AbyssPopupsConfig.qml"},
-        {key:"abyss-modules",name:"Modules",icon:"widgets",desc:"Edge modules and behavior",component:"modules/settings/AbyssModulesConfig.qml"}
+        {key:"abyss-modules",name:"Modules",icon:"widgets",desc:"Edge modules and behavior",component:"modules/settings/AbyssModulesConfig.qml"},
+        {key:"automation",name:Translation.tr("Automation"),icon:"smart_toy",desc:Translation.tr("ChatGPT sessions and service health"),component:"modules/settings/AutomationConfig.qml"}
     ]
 
     // v7 information architecture: navigation reflects the user's intent,
@@ -278,7 +279,7 @@ Singleton {
         { label: Translation.tr("Appearance"), pages: [4, 3, 25, 8] },
         { label: Translation.tr("Desktop & Layout"), pages: Config.options?.panelFamily === "abyss" ? [15,5,14,29,10,11] : [15,26,2,22,23,5,16,14,29,10,11] },
         { label: Translation.tr("System"), pages: [1, 12, 17] },
-        { label: Translation.tr("Features & Services"), pages: [24, 7, 6] },
+        { label: Translation.tr("Features & Services"), pages: Config.options?.panelFamily === "abyss" ? [24, 7, 6, 35] : [24, 7, 6] },
         { label: Translation.tr("Advanced & Help"), pages: [20, 9, 13] }
     ]
 
@@ -305,6 +306,13 @@ Singleton {
             return _staticSearchIndex
 
         _staticSearchIndex = [
+        {
+            pageIndex: 35, pageName: root.pages[35].name,
+            section: Translation.tr("Automation"),
+            label: Translation.tr("Automation profiles and service health"),
+            description: Translation.tr("Manage autonomous ChatGPT sessions, schedules and recovery"),
+            keywords: ["automation", "chatgpt", "research", "profile", "schedule", "bridge", "worker", "archive", "history"]
+        },
         {
             pageIndex: 7, pageName: root.pages[7].name,
             section: Translation.tr("To-do & Quick Notes"),

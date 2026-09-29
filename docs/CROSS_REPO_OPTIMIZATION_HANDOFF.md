@@ -6191,7 +6191,7 @@ Verified current consumers include:
 - `modules/dock/DockApps.qml`;
 - `modules/bar/BarTaskbar.qml`;
 - `modules/bar/BarTaskbarPreview.qml`;
-- `modules/dock/DockWindowPreview.qml`;
+- the former DockWindowPreview component;
 - `modules/altSwitcher/AltSwitcher.qml`;
 - `modules/altSwitcher/AltSwitcherNoVisual.qml`;
 - `modules/waffle/taskview/WaffleTaskViewContent.qml`.

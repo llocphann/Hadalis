@@ -4,6 +4,8 @@ from pathlib import Path
 r=Path(__file__).resolve().parents[1]
 close=(r/"modules/closeConfirm/CloseConfirm.qml").read_text()
 polkit=(r/"modules/polkit/Polkit.qml").read_text()
+critical=(r/"modules/abyss/critical/ShellAbyssCriticalPanels.qml").read_text()
+deferred=(r/"modules/abyss/ShellAbyssPanelsImpl.qml").read_text()
 
 # closeConfirm only sets dialogVisible on its non-connected fallback path. The
 # renderer must therefore remain available even when the selected family is
@@ -20,5 +22,8 @@ assert 'active: root.dialogVisible && Config.options?.panelFamily !== "abyss"' n
 assert "PolkitService.available && PolkitService.active" in polkit
 assert 'Config.options?.panelFamily !== "abyss"' in polkit
 assert '!(Config.options?.enabledPanels ?? []).includes("abyssPerimeter")' in polkit
+assert 'source: "../../polkit/Polkit.qml"' in critical
+assert 'Config.options?.modules?.polkit ?? true' in critical
+assert 'source: "../polkit/Polkit.qml"' not in deferred
 
 print("Abyss prompt renderer fallback contract: ok")

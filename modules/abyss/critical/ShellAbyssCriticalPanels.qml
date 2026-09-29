@@ -13,6 +13,15 @@ Item {
         active: Config.ready && (Config.options?.enabledPanels ?? []).includes("abyssPerimeter")
         source: "../AbyssPerimeter.qml"
     }
+
+    // Authentication is security-critical and cannot depend on the deferred
+    // abyssPolkit presentation toggle. Keep the legacy real-AuthFlow renderer
+    // available here as the fail-safe when the connected perimeter is disabled.
+    // Its own Loader remains dormant while AbyssPerimeter owns presentation.
+    LazyLoader {
+        active: Config.ready && (Config.options?.modules?.polkit ?? true)
+        source: "../../polkit/Polkit.qml"
+    }
     LazyLoader {
         active: root.abyssBackgroundEnabled
         source: "../../background/Background.qml"

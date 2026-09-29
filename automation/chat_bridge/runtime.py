@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import argparse
+import fcntl
 import json
 import os
 from pathlib import Path
@@ -19,6 +20,7 @@ from automation.chat_bridge.protocol import (
 
 ROOT = Path(__file__).resolve().parents[2]
 DESKTOP_CLI = ROOT / "automation" / "chat_bridge" / "desktop_cli.mjs"
+INITIAL_PROMPT_FILE = ROOT / "automation" / "chat_bridge" / "INITIAL_PROMPT.md"
 RESULTS_DIR = "automation/results"
 POLL_SECONDS = float(os.environ.get("HADALIS_RESULT_POLL_SECONDS", "10"))
 DESKTOP_TIMEOUT_SECONDS = float(
@@ -26,16 +28,24 @@ DESKTOP_TIMEOUT_SECONDS = float(
 )
 
 
-def state_path() -> Path:
+def state_root() -> Path:
     base = Path(
         os.environ.get(
             "XDG_STATE_HOME",
             str(Path.home() / ".local" / "state"),
         )
     )
-    path = base / "hadalis-automation" / "chat-bridge.json"
-    path.parent.mkdir(parents=True, exist_ok=True)
+    path = base / "hadalis-automation"
+    path.mkdir(parents=True, exist_ok=True)
     return path
+
+
+def state_path() -> Path:
+    return state_root() / "chat-bridge.json"
+
+
+def lock_path() -> Path:
+    return state_root() / "chat-bridge.lock"
 
 
 def save_state(state: BridgeState, job_id: str | None = None) -> None:
@@ -50,7 +60,30 @@ def save_state(state: BridgeState, job_id: str | None = None) -> None:
     tmp.replace(path)
 
 
-def run(argv: list[str], *, input_text: str | None = None, timeout: float | None = None) -> subprocess.CompletedProcess[str]:
+def load_state() -> tuple[BridgeState, str | None] | None:
+    path = state_path()
+    if not path.exists():
+        return None
+
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+        state = BridgeState(payload["state"])
+        job_id = payload.get("job_id")
+    except (OSError, KeyError, TypeError, ValueError, json.JSONDecodeError) as exc:
+        raise RuntimeError(f"invalid bridge state file: {path}") from exc
+
+    if job_id is not None and not isinstance(job_id, str):
+        raise RuntimeError(f"invalid bridge job id in state file: {path}")
+
+    return state, job_id
+
+
+def run(
+    argv: list[str],
+    *,
+    input_text: str | None = None,
+    timeout: float | None = None,
+) -> subprocess.CompletedProcess[str]:
     return subprocess.run(
         argv,
         cwd=ROOT,
@@ -114,13 +147,17 @@ def wait_for_result(job_id: str) -> None:
         time.sleep(POLL_SECONDS)
 
 
-def resolve_directive(response_text: str) -> tuple[BridgeState, BridgeAction, str | None]:
+def resolve_directive(
+    response_text: str,
+) -> tuple[BridgeState, BridgeAction, str | None]:
     directive = parse_loop_directive(response_text)
     outcome = transition(BridgeState.READY, directive)
     return outcome.state, outcome.action, outcome.job_id
 
 
-def process_response(response_text: str) -> tuple[bool, str | None, str | None]:
+def process_response(
+    response_text: str,
+) -> tuple[bool, str | None, str | None]:
     state, action, job_id = resolve_directive(response_text)
     save_state(state, job_id)
 
@@ -129,7 +166,8 @@ def process_response(response_text: str) -> tuple[bool, str | None, str | None]:
 
     if action is BridgeAction.WAIT_CONNECTOR:
         print(
-            "GitHub connector is blocked. Reconnect it, then restart hadalis-chat-bridge.",
+            "GitHub connector is blocked. Reconnect it, then restart "
+            "hadalis-chat-bridge.service.",
             file=sys.stderr,
         )
         raise SystemExit(75)
@@ -158,23 +196,37 @@ def attach_until_marker() -> dict[str, Any]:
             time.sleep(2)
 
 
-def main() -> int:
-    parser = argparse.ArgumentParser(
-        description="Deterministic Hadalis ChatGPT Desktop loop controller"
-    )
-    parser.add_argument(
-        "--initial-prompt-file",
-        type=Path,
-        help="Send this prompt first instead of attaching to the current ChatGPT turn.",
-    )
-    args = parser.parse_args()
+def initial_prompt(path: Path = INITIAL_PROMPT_FILE) -> str:
+    prompt = path.read_text(encoding="utf-8")
+    if not prompt.strip():
+        raise RuntimeError(f"initial prompt is empty: {path}")
+    return prompt
 
-    if args.initial_prompt_file is None:
-        payload = attach_until_marker()
-    else:
-        prompt = args.initial_prompt_file.read_text(encoding="utf-8")
-        payload = desktop("send", prompt)
 
+def bootstrap_payload() -> dict[str, Any] | None:
+    previous = load_state()
+
+    if previous is None:
+        save_state(BridgeState.READY)
+        return desktop("send", initial_prompt())
+
+    state, job_id = previous
+
+    if state is BridgeState.DONE:
+        return None
+
+    if state is BridgeState.CONNECTOR_BLOCKED:
+        save_state(BridgeState.READY)
+        return desktop("send", CONTINUATION_PROMPT)
+
+    if state is BridgeState.WAIT_LOCAL and job_id is not None:
+        wait_for_result(job_id)
+        return desktop("send", CONTINUATION_PROMPT)
+
+    return attach_until_marker()
+
+
+def run_loop(payload: dict[str, Any]) -> int:
     while True:
         response_text = extract_response_text(payload)
         done, command, prompt = process_response(response_text)
@@ -185,6 +237,49 @@ def main() -> int:
         assert command is not None
         assert prompt is not None
         payload = desktop(command, prompt)
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(
+        description="Deterministic Hadalis ChatGPT Desktop loop controller"
+    )
+    parser.add_argument(
+        "--initial-prompt-file",
+        type=Path,
+        help="Explicitly start a new autonomous session with this prompt.",
+    )
+    parser.add_argument(
+        "--bootstrap",
+        action="store_true",
+        help=(
+            "Start the tracked initial prompt only when no session state exists; "
+            "otherwise resume deterministically."
+        ),
+    )
+    args = parser.parse_args()
+
+    with lock_path().open("w") as lock:
+        try:
+            fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError as exc:
+            raise SystemExit(
+                "another hadalis-chat-bridge instance is already running"
+            ) from exc
+
+        if args.initial_prompt_file is not None:
+            save_state(BridgeState.READY)
+            payload = desktop(
+                "send",
+                initial_prompt(args.initial_prompt_file),
+            )
+        elif args.bootstrap:
+            payload = bootstrap_payload()
+            if payload is None:
+                return 0
+        else:
+            payload = attach_until_marker()
+
+        return run_loop(payload)
 
 
 if __name__ == "__main__":

@@ -89,7 +89,10 @@ assert "function _cancelLifecycle(request): void" in service
 assert "function cancel(force = false): void" in service
 assert "function cancelOwned(owner): void" in service
 owned=service.split("function cancelOwned(owner): void",1)[1].split("onResolvedAnchorUsableChanged",1)[0]
+assert "const ownsCurrent =" in owned
 assert "root.cancel(true)" in owned
+assert "root._presentationReleaseHoldRequestId" in owned
+assert "root.releasePresentationHold(root.currentRequestId)" in owned
 assert "onAnchorRemoved(item)" in service
 assert "function _outputExists(outputName): bool" in service
 assert "function _reconcileOutputTopology(): void" in service

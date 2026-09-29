@@ -279,11 +279,23 @@ Singleton {
             return
         root.queue = root.queue.filter(request =>
             String(request?.owner ?? "") !== key)
-        if (root.requestVisible
-                && String(root.currentRequest?.owner ?? "") === key)
+
+        const ownsCurrent =
+            String(root.currentRequest?.owner ?? "") === key
+        if (!ownsCurrent)
+            return
+        if (root.requestVisible) {
             // Owner teardown is lifecycle cancellation, not a user choosing a
             // disabled UI action. It must always release the owned request.
             root.cancel(true)
+            return
+        }
+        if (root._presentationReleaseHoldRequestId
+                === root.currentRequestId)
+            // If the handoff owner itself disappears after semantic close,
+            // release its gate; the visual-tail gate still prevents early queue
+            // activation when a StyledPopup was actually presented.
+            root.releasePresentationHold(root.currentRequestId)
     }
 
     onResolvedAnchorUsableChanged: {

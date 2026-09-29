@@ -6129,3 +6129,270 @@ Closed:
 11. Waffle Notification Center hidden critical-pulse suspicion (§37.11).
 
 No runtime/source implementation is authorized by this handoff.
+
+## 38. Round 24 — window/app identity duplicated derivation
+
+Research baseline for this round was repeatedly re-fetched from `dev`; the
+final pre-write HEAD was `e367881ad35adad26d0ed9c4cd2142035f09b276`.
+
+Runtime commits that landed during the round touched Abyss/Polkit/confirmation
+presentation and contracts, not AppSearch/taskbar/preview identity paths. Those
+changed-file sets were checked before continuing this round.
+
+### 38.1 Empty app-identity rules still serialize on every resolution — CONFIRMED / P1
+
+Paths:
+
+- `services/AppSearch.qml`;
+- `modules/common/Config.qml`;
+- `defaults/config.json`.
+
+`windows.appIdentityRules` is empty by default.
+
+Today every non-empty window app id still enters:
+
+`AppSearch._parseIdentityRules()`
+
+which executes:
+
+`JSON.stringify(Config.options?.windows?.appIdentityRules ?? [])`
+
+before discovering that the cached key is still `"[]"`.
+
+This means the normal/default no-rules configuration pays one rules-array
+serialization for every `resolveWindowIdentity()` call across Dock, Bar,
+AltSwitcher, previews, TaskView and Waffle taskbar derivation.
+
+Exact-safe direction:
+
+1. read the current rules sequence;
+2. if its length is zero, preserve the exact current internal state:
+   - `_identityRules = []` on the transition to empty;
+   - `_identityRulesKey = "[]"`;
+3. on steady-state empty rules, return the already-empty parsed list without
+   calling `JSON.stringify()`;
+4. keep the existing non-empty path unchanged.
+
+This preserves the observable result, first-match contract, malformed-rule
+handling and the existing private key value.
+
+For the default no-rules state, rules serialization for this substep is:
+
+- **1 per identity resolution -> 0**;
+- **100% fewer `JSON.stringify` calls** for this identity-rules subwork.
+
+No whole-shell percentage is claimed.
+
+### 38.2 Repeated regex identity resolution can be memoized by exact semantic signature — CONFIRMED / P1
+
+Verified current consumers include:
+
+- `services/TaskbarApps.qml`;
+- `modules/dock/DockApps.qml`;
+- `modules/bar/BarTaskbar.qml`;
+- `modules/bar/BarTaskbarPreview.qml`;
+- `modules/dock/DockWindowPreview.qml`;
+- `modules/altSwitcher/AltSwitcher.qml`;
+- `modules/altSwitcher/AltSwitcherNoVisual.qml`;
+- `modules/waffle/taskview/WaffleTaskViewContent.qml`.
+
+For non-empty identity rules, `resolveWindowIdentity()` is a pure function of:
+
+- reported `appId` / `app_id`;
+- window `title`;
+- the serialized identity-rules key.
+
+The compiled regexes use only the case-insensitive `i` flag, not stateful
+`g` / `y` flags.
+
+Therefore a bounded memo keyed by the exact tuple:
+
+`(reportedAppId, title, _identityRulesKey)`
+
+can preserve the current result exactly.
+
+Lossless requirements:
+
+- still call the existing rules parser/key check before a memo hit, so in-place
+  rules changes that the current `JSON.stringify` detects remain detectable;
+- include title, so title-driven PWA remaps cannot go stale;
+- include the exact serialized rules key;
+- bound the cache because browser/media titles can generate many signatures;
+- eviction may affect performance only, never output;
+- keep the empty-rules fast path separate.
+
+For C repeated calls for one semantic window signature under one rules key,
+regex traversal changes from about:
+
+`C x R -> R`
+
+plus C bounded-map lookups.
+
+For the regex-traversal component alone:
+
+- 2 repeated consumers: ~50% fewer repeated traversals;
+- 3: ~66.7%;
+- 4: ~75%.
+
+This matters because Dock/Bar can repeat the same derivation per output,
+AltSwitcher prewarms identities, and TaskView search can re-resolve the same
+synthetic window records across query changes.
+
+### 38.3 Internal synchronous window passes can snapshot parsed rules once — CONFIRMED / P1
+
+Several internal paths resolve identity inside one synchronous loop/filter over
+a known compositor-owned window array, including:
+
+- DockApps rebuild;
+- BarTaskbar rebuild;
+- Waffle `TaskbarApps.computeApps()`;
+- visual AltSwitcher snapshot build;
+- no-visual AltSwitcher snapshot build;
+- Bar taskbar preview app refresh;
+- Waffle TaskView cache refresh.
+
+There is no event-loop yield between elements in these loops. External config
+changes therefore cannot interleave between element 1 and element N of the same
+pass.
+
+A private/internal batch resolver can safely:
+
+1. parse/snapshot current rules once at the start of a non-empty pass;
+2. apply the same first-match regex logic to every window in that pass;
+3. return the same per-window strings and ordering as today's repeated calls.
+
+For N windows with non-empty rules, rules-key serialization in that pass drops:
+
+`N -> 1`
+
+or `(N - 1) / N` fewer serializations for that subwork.
+
+Do not expose this as a semantic replacement for arbitrary extension-provided
+iterables without defining their mutation/reentrancy contract. The Confirmed
+scope is the repository's current synchronous internal compositor-window
+passes.
+
+This composes with §38.2: snapshot rules once for a pass, then memo exact window
+signatures across repeated consumers/passes.
+
+### 38.4 `guessIcon()` repeats the same heuristic desktop lookup after a synchronous miss — CONFIRMED / P2
+
+Path:
+
+- `services/AppSearch.qml`.
+
+Current `guessIcon(str)` first executes:
+
+`DesktopEntries.heuristicLookup(str)`.
+
+If that returns null, it then calls:
+
+`lookupDesktopEntry(str)`.
+
+But `lookupDesktopEntry()` starts by executing the same
+`DesktopEntries.heuristicLookup(appId)` again before trying AppSearch's
+reverse maps and token-overlap fallback.
+
+There is no asynchronous boundary between the first miss and the second
+heuristic call.
+
+Exact-safe direction:
+
+- factor the post-heuristic reverse-map/token logic into an internal fallback
+  helper;
+- `lookupDesktopEntry()` keeps its public behavior: heuristic first, then the
+  fallback helper;
+- `guessIcon()`, after its already-observed heuristic miss, calls only that
+  fallback helper.
+
+Do **not** naively replace the two current branches with a single
+`lookupDesktopEntry()` return: the current code treats a heuristic entry with
+an empty icon differently from a reverse-map entry whose icon is empty.
+Preserve those truthiness/null semantics.
+
+On the heuristic-miss branch this changes built-in heuristic lookups:
+
+- **2 -> 1**;
+- **50% fewer `DesktopEntries.heuristicLookup()` calls** for that branch.
+
+### 38.5 Global `lookupDesktopEntry()` memo is HIGH CONFIDENCE, not yet Confirmed because of QML binding dependencies
+
+`lookupDesktopEntry(appId)` is otherwise an attractive memo target:
+
+- same app ids are requested repeatedly by Dock, Bar, Waffle taskbar,
+  AltSwitcher, previews, ScreenTime, desktop items and MPRIS;
+- the expensive fallback can normalize strings and scan tokenized reverse maps;
+- AppSearch already has a 500 ms DesktopEntries rebuild epoch.
+
+However a function-level memo can change QML dependency tracking.
+
+A binding that currently misses the heuristic path may read
+`_startupClassMap`, `_execBasenameMap` and/or `_desktopIdStemMap`.
+A future cache hit that returns before those property reads can drop the
+binding dependency, so a later desktop-entry rebuild might no longer
+re-evaluate that consumer at the same time.
+
+Therefore do not call this strict-lossless yet.
+
+Required parity contract before promotion:
+
+1. desktop entry added while shell is running;
+2. desktop entry removed;
+3. startup class / executable / desktop-id fallback match changes;
+4. positive and negative cached lookups;
+5. QML property bindings using `lookupDesktopEntry()`;
+6. preserve the current 500 ms reverse-map publication timing;
+7. immediate procedural lookups after `DesktopEntries.applications.values`
+   changes must not become staler than today.
+
+A safe implementation may need an explicit reactive epoch read on every cache
+hit, but adding or moving that epoch also needs timing parity tests.
+
+### 38.6 Do not collapse raw app id, effective identity and compositor class into one global identity — CLOSED architecture shortcut
+
+Priority 1 initially suggested sharing one app/window identity result everywhere.
+The current pixel/behavior contract has observable differences:
+
+- `DockWindowPreview.qml` resolves
+  `AppSearch.resolveWindowIdentity(root.toplevel)` before icon lookup;
+- `BarTaskbarWindowPreview.qml` uses the raw
+  `root.toplevel?.appId`;
+- Waffle bar `tasks/WindowPreview.qml` also guesses from raw
+  `toplevel.appId`;
+- `OverviewWindow.qml` resolves its icon from Hyprland
+  `windowData.class`.
+
+With an `appIdentityRules` remap, forcing all of those surfaces onto one
+"effective app id" can change icon/pixel output.
+
+Do not implement a single destructive normalized identity field.
+
+A lossless shared snapshot, if introduced later, must expose distinct fields
+such as:
+
+- raw compositor app id/class;
+- effective grouping/display identity;
+- normalized lowercase grouping key;
+
+and each existing consumer must keep selecting the semantic field it uses
+today.
+
+### 38.7 Round-24 priority update
+
+New Confirmed directions:
+
+1. zero-serialization empty identity-rules fast path (§38.1);
+2. exact-signature bounded identity-rule memo (§38.2);
+3. one parsed-rules snapshot per synchronous internal window pass (§38.3);
+4. eliminate the duplicate heuristic lookup inside `guessIcon()` (§38.4).
+
+Needs binding/parity proof:
+
+5. cross-consumer `lookupDesktopEntry()` memo (§38.5).
+
+Closed unsafe shortcut:
+
+6. one universal normalized identity for all preview/overview surfaces (§38.6).
+
+No runtime/source implementation is authorized by this handoff.
+

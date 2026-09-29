@@ -14244,4 +14244,487 @@ The Audio four-way node partition remains closed as a blind optimization under
 §49.11; Round 41 does not reopen it.
 
 No runtime/source implementation is authorized by this handoff.
+---
 
+## 56. Round 42 — collection/allocation cleanup, new confirmation-path audit and upstream re-check (2026-09-30)
+
+### Snapshot / concurrency safety
+
+Research began from dev at bff6e035586e40076631fe193fd1f582969cc475.
+
+Before this round was written, dev advanced first by 10 commits to
+a53b71905d02cf6c177ef7313a58e03bebfa4eb8, then by another 8 commits to
+3852876957f6987e200d0dfcc676369c70a5c38b.
+
+Both compares were clean fast-forwards from the research snapshot. The first
+delta changed the automation bridge, confirmation/popup ownership and a small
+set of Abyss/Bar/Dock files. The second delta was automation/agent work plus one
+PopupAnchorRegistry update. Neither delta touched these candidate source paths:
+services/AppCatalog.qml, services/ScreenTime.qml,
+services/MprisController.qml, services/RecorderStatus.qml,
+services/ai/OpenAiApiStrategy.qml, services/Brightness.qml or
+services/ai/AiProviderCatalog.qml.
+
+The first delta did add services/ConfirmationService.qml, so that new service
+was audited on the new HEAD rather than ignored. The second delta did not modify
+it. Sections 56.8 and 56.9 are findings from that concurrent source.
+
+No runtime/source implementation is authorized by this round.
+
+### 56.1 AppCatalog can fuse category + text filtering only when both are active — CONFIRMED / P2 while SoftwareView search is active
+
+Path:
+
+- services/AppCatalog.qml.
+
+Current filteredCatalog keeps an important zero-filter fast path: with category
+"all" and an empty search query it returns root.catalog itself.
+
+When both a non-all category and a non-empty query are active, however, it
+currently executes two consecutive filters:
+
+1. filter the full catalog by category, producing an intermediate category
+   array;
+2. filter that intermediate array by name/description/tags.
+
+An exact-safe specialization is to fuse only that two-condition case into one
+filter whose category check short-circuits before the existing text predicate.
+The one-condition and zero-condition cases should remain unchanged.
+
+Proof of losslessness:
+
+- the catalog is loaded from JSON into plain records;
+- output order remains source catalog order;
+- an app failing the category test is still never evaluated by the text test;
+- every app passing category sees the exact same name/description/tag
+  predicate;
+- the no-filter path still returns the original root.catalog reference;
+- the existing read of root.installedPackages must remain even though its local
+  value is not otherwise used, because it intentionally keeps the binding
+  dependent on installed-state publication;
+- no sort/tie/publication/action behavior changes.
+
+Exact local saving when both filters are active:
+
+- filter loops: 2 -> 1 outer traversal;
+- intermediate category-result array: 1 -> 0;
+- category predicate evaluations remain N;
+- text predicate evaluations remain C, where C is the category-matching count.
+
+This is an allocation/traversal win, not a claim of a fixed percentage for the
+whole shell.
+
+### 56.2 ScreenTime history merge can trim each raw section once and skip the filter array — CONFIRMED / P2 on history load
+
+Path:
+
+- services/ScreenTime.qml, _mergeDays().
+
+Current code splits on "---DELIM---", filters with repeated trim calls, then
+calls trim() again on every retained section immediately before JSON.parse().
+
+An exact-safe loop is:
+
+1. keep the same delimiter and split order;
+2. trim each raw section once;
+3. continue for the same empty-string and "{}" cases;
+4. JSON.parse the already-trimmed string inside the same per-section try/catch;
+5. keep all existing merge order, AppSearch fallback lookup and hourly
+   accumulation logic untouched.
+
+Proof of losslessness:
+
+- trim is a pure string operation;
+- the skip predicates are identical after trimming;
+- retained JSON text is byte-for-byte the same string currently passed to
+  JSON.parse after the extra trim;
+- malformed JSON is still ignored by the same per-section catch;
+- section processing order and all accumulation order remain unchanged.
+
+Exact local saving:
+
+- retained-section filter result array: 1 -> 0;
+- for a normal non-empty, non-"{}" section, trim calls: 3 -> 1;
+- for "{}" sections, trim calls: 2 -> 1;
+- split-array creation remains unchanged.
+
+The 3 -> 1 trim reduction is local to qualifying history sections and must not
+be converted into an end-to-end Hadalis percentage without measurement.
+
+### 56.3 MPRIS duplicate filtering performs a guaranteed-redundant final falsy filter — CONFIRMED / P2
+
+Path:
+
+- services/MprisController.qml, _filterYtMusicDuplicates().
+
+The classification loop currently pushes every input value into either
+ytMusic or nonYtMusic. _isYtMusicRelated() immediately returns false for a
+falsy player, so every falsy value can only enter nonYtMusic.
+
+Later the function builds the concatenated player list and filters it again only
+for truthiness.
+
+Exact-safe direction:
+
+- add the same falsy guard at the top of the existing classification loop;
+- do not append a falsy player to either bucket;
+- keep all YtMusic classification/preference logic unchanged;
+- form allPlayers directly from the two already-clean buckets, without the
+  trailing truthiness filter.
+
+Proof of losslessness:
+
+- _isYtMusicRelated() has no side effect before its existing !player return;
+- falsy values never enter ytMusic today;
+- the final allPlayers sequence for every truthy player is unchanged;
+- YtMusic-first ordering and non-YtMusic relative order are unchanged;
+- duplicate grouping, title/position/URL matching and cover-art choice remain
+  untouched;
+- no preference .find() rewrite is included here.
+
+Exact local saving per dedupe rebuild:
+
+- one full allPlayers truthiness scan -> 0;
+- one filter result array allocation -> 0.
+
+This path is rebuilt on player lifecycle/state/metadata changes, so it has
+better frequency than the one-shot setup candidates in this round.
+
+### 56.4 RecorderStatus can derive fastDemandCount while rebuilding the owner snapshot — CONFIRMED / P3
+
+Path:
+
+- services/RecorderStatus.qml, setFastStatusDemand().
+
+The function already rebuilds a new owner object from current owners whose
+value is exactly true. After publishing that new object it currently performs a
+second Object.keys(next).length solely to compute fastDemandCount.
+
+Count the copied true owners during the existing rebuild instead, then adjust
+that local count for the requested add/remove.
+
+Important parity requirements:
+
+- keep the current early return when alreadyActive === active;
+- continue dropping any non-true stray values during a real rebuild;
+- for activation, increment only after adding the requested owner;
+- for deactivation, the requested owner is known true, so copy it, delete it
+  exactly as today, and decrement the local count;
+- publish root._fastDemandOwners first and root.fastDemandCount second, in the
+  current order;
+- do not replace the count with old fastDemandCount +/- 1 because that would
+  lose the current self-healing behavior if the private map/count ever became
+  inconsistent.
+
+Exact local saving for every actual ownership change:
+
+- second Object.keys(next) temporary key array: 1 -> 0;
+- second full next-object key traversal: K -> 0.
+
+The first current-owner traversal remains because it performs the snapshot
+rebuild itself.
+
+### 56.5 OpenAI streamed tool-call flush can preserve first-key semantics without materializing Object.keys — CONFIRMED / P3
+
+Path:
+
+- services/ai/OpenAiApiStrategy.qml, flushPendingToolCall().
+
+Current code allocates all pending keys with Object.keys(pendingToolCalls), then
+consumes only the first key before clearing pendingToolCalls.
+
+An exact-safe replacement is to obtain the first own enumerable key with an
+allocation-free enumeration loop, guarded with
+Object.prototype.hasOwnProperty.call(...), and break immediately.
+
+Why this is strict-lossless for the current ordinary object:
+
+- pendingToolCalls is initialized and reset to {};
+- tool-call indexes are written as ordinary enumerable own properties;
+- ordinary own-property enumeration preserves the same integer-key-first then
+  string-key order used by Object.keys;
+- inherited enumerable properties are explicitly ignored by the own-property
+  guard;
+- empty input still returns {};
+- multi-index input still flushes only the same first key and then resets the
+  whole pending object, preserving the current first-call behavior rather than
+  "fixing" it.
+
+Exact local saving per flush boundary:
+
+- full keys array allocation: 1 -> 0;
+- for non-empty input, key enumeration can stop after the first own key instead
+  of materializing all K keys.
+
+This is analogous to the already-confirmed Niri event first-key cleanup in
+§54.3, but it is a separate source path and publication contract.
+
+### 56.6 Brightness monitor reconciliation can use retained-object membership instead of repeated next.includes scans — CONFIRMED / P3 topology path
+
+Path:
+
+- services/Brightness.qml, _syncMonitors().
+
+After constructing next, the current cleanup loops prev and runs next.includes(m)
+for every previous monitor before destroying disconnected objects.
+
+Build an invocation-local Set of the monitor objects retained in next and use
+retained.has(m) during the existing prev-order destruction loop.
+
+Proof of losslessness:
+
+- membership is object identity in both Array.includes and Set.has;
+- duplicate references in next, if malformed screen naming ever produces them,
+  still have the same boolean membership result;
+- root.monitors publication stays before destruction;
+- prev iteration/destruction order remains unchanged;
+- creation/reuse matching and existing.screen reassignment are untouched;
+- no monitor lifecycle timing is otherwise moved.
+
+For P previous monitors and N next monitors, the membership portion changes
+from up to P x N identity comparisons to N Set inserts plus P membership
+lookups.
+
+Monitor counts are usually small, so this is deliberately P3 and no
+end-to-end percentage is claimed.
+
+### 56.7 Brightness DDC block parsing can avoid map(trim) plus two independent find scans — CONFIRMED / P3 probe path
+
+Path:
+
+- services/Brightness.qml, ddcProc stdout SplitParser.
+
+For each ddcutil display block the current parser:
+
+1. splits on newline;
+2. maps trim over all lines, creating a second line array;
+3. finds the first "Monitor:" line;
+4. independently finds the first "I2C bus:" line.
+
+A single loop over the split lines can trim each visited line once, retain the
+first line for each exact prefix, and stop after both have been found.
+
+Proof of losslessness:
+
+- the same first matching Monitor and I2C lines are selected;
+- whitespace normalization is the same trim();
+- malformed-block warning behavior remains the same if either field is absent;
+- subsequent model/bus parsing, numeric validation, _ddcNext append order and
+  ddcMonitors publication are untouched;
+- lines after both required records currently have no semantic use.
+
+Exact local saving per parsed display block:
+
+- trimmed-lines map result array: 1 -> 0;
+- two prefix-search traversals -> one combined traversal;
+- each visited line is trimmed once.
+
+This is demand/topology probe work, not a permanent polling-hot-path claim.
+
+### 56.8 ConfirmationService default selection can retain first-default / first-fallback in one pass — CONFIRMED / P3
+
+Path:
+
+- services/ConfirmationService.qml, newly added in the concurrent delta.
+
+defaultActionId() currently performs two finds:
+
+1. first usable action marked isDefault or role "default";
+2. first usable action that is not a cancel action.
+
+One pass can retain the first usable non-cancel fallback while scanning and
+return immediately on the first usable preferred action.
+
+Proof of losslessness:
+
+- normalized actions are plain snapshots created by Object.assign in
+  _normalizeActions();
+- _actionUsable() remains unchanged;
+- preferred priority remains absolute over fallback priority;
+- first preferred action in list order still wins;
+- if no preferred action exists, the first usable non-cancel action in list
+  order still wins;
+- empty/no-usable input still returns "";
+- no queue state, callback execution or publication timing moves.
+
+Worst-case action visits when no preferred action exists:
+
+- up to 2A -> A.
+
+Confirmation action lists are intentionally small, hence P3 despite the clean
+proof.
+
+### 56.9 ConfirmationService duplicate action-ID normalization can use a Set — CONFIRMED / P3
+
+Path:
+
+- services/ConfirmationService.qml, _normalizeActions().
+
+The newly-added normalizer stores used IDs in an array and executes
+usedIds.includes(id) inside the duplicate-suffix loop.
+
+All IDs have already been converted to strings, so a Set can preserve the
+exact same membership contract:
+
+- requested non-empty ID remains the base;
+- empty ID still becomes action-<index>;
+- duplicate suffix sequence still starts at 2 and advances until unused;
+- first action keeps the unsuffixed ID;
+- output action order and labels are unchanged.
+
+For A actions, membership lookup changes from a growing linear scan to Set
+membership. The worst-shaped unique-ID bookkeeping changes from quadratic
+comparison growth to linear inserts/lookups, while duplicate suffix iterations
+themselves remain exactly as required by the existing naming contract.
+
+Status: CONFIRMED / P3 because action lists are normally tiny.
+
+### 56.10 AiProviderCatalog count bindings can count directly instead of materializing throwaway arrays — CONFIRMED / P2 allocation cleanup
+
+Path:
+
+- services/ai/AiProviderCatalog.qml.
+
+Four public numeric bindings currently materialize arrays only to take length:
+
+- freeModelCount uses models.filter(...).length;
+- localModelCount uses models.filter(...).length;
+- healthyProviderCount uses Object.values(providerStates).filter(...).length;
+- browseableProviderCount uses
+  Object.values(providerStates).filter(...).length.
+
+Do not centralize these four properties into one shared reactive stats object in
+this optimization; that could change dependency/signal publication structure.
+
+Instead, keep each existing public binding independent and count matches with a
+local loop.
+
+Proof of losslessness:
+
+- each property still depends directly on the same root models or
+  providerStates property;
+- predicates are identical;
+- counts are order-independent;
+- models are normalized catalog records;
+- providerStates is replaced with a fresh plain object by _setProviderState(),
+  so a guarded own-key loop observes the same published snapshot;
+- each public property remains an int with its own existing changed signal;
+- no model/provider list ordering or catalog publication changes.
+
+Exact local saving across one reevaluation of all four counters:
+
+- free/local filter-result arrays: 2 -> 0;
+- healthy/browseable Object.values arrays: 2 -> 0;
+- healthy/browseable filter-result arrays: 2 -> 0;
+- total throwaway arrays across the four counters: 6 -> 0.
+
+The model/provider scans remain; combining those scans is a separate reactive
+signal-parity question and is intentionally not claimed here.
+
+### 56.11 Piri raw-window / batched-action performance work does not create a new strict-lossless Hadalis process-spawn win — ALREADY / CLOSED
+
+External evidence inspected:
+
+- Asthestarsfalll/piri commit
+  591049763c2803b758d047872e155c96a9615284.
+
+That change includes two relevant ideas:
+
+1. keep raw Niri windows to avoid repeated workspace-name remapping;
+2. send multiple related Niri actions over one socket/blocking task.
+
+For current Hadalis:
+
+- NiriService already keeps/publishes the Niri window snapshot itself rather
+  than rebuilding a workspace-name projection for every consumer;
+- NiriService.send() already writes actions to a resident requestSocket;
+- normal shell actions therefore do not spawn niri msg per action.
+
+So piri's action batching is not transferable as a process-spawn elimination.
+Bundling multiple Hadalis requests could also change compositor request/event
+interleaving and observable timing.
+
+Status:
+
+- raw-window idea: ALREADY / architecture evidence;
+- blanket action batching: CLOSED for strict-lossless without a narrower
+  request-sequence proof.
+
+### 56.12 Latest iNiR LiveLayer/sourceSize work is already covered; do not duplicate Round 38 — SUPERSEDED
+
+Re-checked upstream commits:
+
+- 7433eb355cff8c5f55ba910d31c294f4f91479b6 — moving continuous content to a
+  small surface;
+- 714653592dde75aef1d072c23ba507603acace2a — decode wallpaper at draw size.
+
+The handoff already covers these exactly:
+
+- §52.1: LiveLayer is a real compositor-damage optimization but needs
+  visual/stacking/compositor parity and benchmark;
+- §52.2: output-sized static wallpaper decode is already present in Hadalis.
+
+No new optimization is counted here.
+
+### 56.13 Wallhaven Commons map fusion is deliberately closed under malformed-response strictness
+
+Path:
+
+- services/Wallhaven.qml, Commons response mapping.
+
+The expression that first maps page keys to page objects and then maps page
+objects to normalized image records looks like an obvious intermediate-array
+removal.
+
+However the second callback currently contains a fallback that references key,
+even though key belongs to the first callback and is not in scope there.
+
+A natural fused rewrite would bring the real page key into scope and therefore
+change malformed-response/error behavior when pageid is absent. That would be a
+correctness fix as well as an allocation change.
+
+Because strict-lossless includes malformed/fallback/error behavior, this round
+does not count or authorize that fusion.
+
+Status: CLOSED as a strict-lossless optimization until the correctness contract
+is handled separately.
+
+### 56.14 Round-42 conclusion
+
+New strict-lossless findings:
+
+1. AppCatalog category + text filter fusion only for the two-filter case
+   (§56.1, CONFIRMED / P2);
+2. ScreenTime one-trim-per-section history merge without the filter array
+   (§56.2, CONFIRMED / P2);
+3. remove MPRIS's guaranteed-redundant final falsy-player filter
+   (§56.3, CONFIRMED / P2);
+4. derive RecorderStatus fastDemandCount during the existing owner rebuild
+   (§56.4, CONFIRMED / P3);
+5. flush the first pending OpenAI tool-call key without Object.keys allocation
+   (§56.5, CONFIRMED / P3);
+6. use retained-monitor identity membership for Brightness reconciliation
+   (§56.6, CONFIRMED / P3);
+7. parse each DDC display block in one trimmed-line pass (§56.7,
+   CONFIRMED / P3);
+8. select ConfirmationService preferred/fallback default action in one pass
+   (§56.8, CONFIRMED / P3);
+9. use Set membership for ConfirmationService action-ID normalization
+   (§56.9, CONFIRMED / P3);
+10. count AiProviderCatalog model/provider states without throwaway arrays
+    (§56.10, CONFIRMED / P2).
+
+Not counted as new optimizations:
+
+11. piri raw-window/action-batching ideas are already present or do not map to a
+    strict-lossless process-spawn win (§56.11);
+12. latest iNiR LiveLayer/sourceSize work is already covered by §52
+    (§56.12);
+13. the tempting Wallhaven Commons two-map fusion is closed because the natural
+    rewrite would also change malformed fallback/error behavior (§56.13).
+
+No percentage above is an end-to-end Hadalis speedup. Every numeric reduction
+is a source-proven local operation/allocation count unless explicitly stated
+otherwise.
+
+No runtime/source implementation is authorized by this handoff.

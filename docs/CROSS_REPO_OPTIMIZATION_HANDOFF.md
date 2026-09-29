@@ -7542,3 +7542,787 @@ Do not replace NiriService's own handlers that deliberately inspect
 
 No runtime/source implementation is authorized by this handoff.
 
+## 41. Round 27 — Niri snapshot hot paths, Task View indexing and stream matching
+
+The final pre-write runtime baseline was
+`fd01e20c9a805f51bdd7ca245ccce363dd4bf682`.
+
+`dev` moved during this round, but every concurrent delta was audited before
+continuing. The commits after the initial Round-27 baseline touched
+CloseConfirm/Polkit and their tests only; none changed NiriService, Task View,
+Overview, MPRIS, Session, AppSearch or the workspace/background paths described
+below.
+
+Current defaults matter for priority:
+
+- `panelFamily` is `"abyss"`;
+- the legacy/ii QuickLaunch widget is disabled by default
+  (`sidebar.widgets.launch=false`);
+- Bar workspace app icons are disabled by default
+  (`bar.workspaces.showAppIcons=false`, `shown=5`);
+- `compositor.autoExpandSingleTilingWindow=false`.
+
+Do not present conditional ii/Waffle costs below as stock-Abyss idle costs.
+
+### 41.1 Niri WindowLayoutsChanged performs C linear ID searches — CONFIRMED / P1
+
+Path:
+
+- `services/NiriService.qml`.
+
+`handleWindowLayoutsChanged()` clones the current window list, then for every
+layout change performs:
+
+`updatedWindows.findIndex(w => w.id === windowId)`.
+
+For N windows and C changed layouts this is approximately:
+
+`C x N`
+
+ID comparisons in the miss/worst path.
+
+Exact-safe direction:
+
+1. clone the list exactly as today;
+2. build `windowId -> first index` once from that cloned list;
+3. apply each layout change through the index;
+4. preserve existing list order and `scheduleWindowsUpdate()` timing.
+
+Complexity becomes:
+
+`N + C`.
+
+When C ~= N, this changes a quadratic-shaped lookup phase from about `N²` to
+about `2N`.
+
+If defensive duplicate IDs are considered, store only the first index so the
+map matches current `findIndex()` semantics.
+
+### 41.2 Niri WindowClosed scans the same list twice — CONFIRMED / P1
+
+Path:
+
+- `services/NiriService.qml`.
+
+Current close handling:
+
+1. `find()` the closing window to capture `workspace_id`;
+2. `filter()` the same list to remove the window.
+
+That is close to **2N -> N** list visits.
+
+A single pass can:
+
+- capture the first matching window/workspace;
+- append every nonmatching window to the replacement list.
+
+This preserves the current publication order and still removes every duplicate
+ID defensively if one somehow exists.
+
+Local reduction: approximately **50% fewer window-list visits** in this phase.
+
+### 41.3 Focus normalization allocates an N-element throwaway array on the common no-change path — CONFIRMED / P1
+
+Path:
+
+- `services/NiriService.qml`.
+
+`_normalizeWindowFocus()` currently uses `windowList.map(...)` unconditionally
+after a focused-window id has been observed.
+
+If every `is_focused` flag is already correct, the function ultimately returns
+the original `windowList`, but the full mapped array was already allocated and
+filled.
+
+Use lazy copy-on-first-mismatch:
+
+- scan the original array;
+- if no flag differs, return the original list with **zero replacement-array
+  allocation**;
+- on the first mismatch, allocate/copy once and clone only windows whose focus
+  flag must change.
+
+This preserves the existing important identity contract: unchanged input still
+returns the original array.
+
+On no-change calls the temporary N-element array allocation changes from:
+
+**1 -> 0**.
+
+### 41.4 Positional fast path before `_windowOrderDiffers()` builds an ID map — HIGH CONFIDENCE / benchmark
+
+Path:
+
+- `services/NiriService.qml`.
+
+For equal-length lists, `_windowOrderDiffers()` currently always builds a
+`Map(window.id -> previousWindow)`, even when every window remains in the same
+position and only title/focus/non-order fields changed.
+
+A safe fast path can compare the two arrays positionally first:
+
+- if ids are equal at each position, compare the existing order-relevant fields
+  directly and return;
+- only if a positional id differs, fall back to the current map-based algorithm.
+
+This preserves the exact reorder definition and avoids the map allocation for
+the common same-order case.
+
+Keep this benchmark-gated because the savings depend on actual Niri event mix.
+
+### 41.5 Single-window auto-expand only needs 0 / 1 / >1 matches — CONFIRMED / P2 conditional
+
+Path:
+
+- `services/NiriService.qml`.
+
+`_applySingleWindowPolicy()` currently filters the full window list into an
+array of tiling windows for a workspace.
+
+Its decisions require only:
+
+- zero matching tiling windows;
+- exactly one matching window and that object;
+- more than one matching window.
+
+A streaming scan can retain the first match and stop on the second, eliminating
+the filtered-array allocation and potentially stopping early.
+
+The feature is disabled by default, so this is conditional/P2 rather than a
+stock idle-path priority.
+
+### 41.6 Centralize the focused window from the published Niri window snapshot — CONFIRMED / P1
+
+Paths:
+
+- `services/NiriService.qml`;
+- `modules/dock/DockAppButton.qml`;
+- `modules/bar/BarTaskbarButton.qml`;
+- Waffle Task View consumers.
+
+Every published Niri window batch already contains `is_focused`.
+
+NiriService itself calculates the focused object once when publishing the batch,
+but every Dock button and every Bar taskbar button independently executes:
+
+`NiriService.windows.find(window => window.is_focused)`.
+
+Do not replace those bindings with the imperative `activeWindow` property
+blindly, because publication order between `windows` and `activeWindow`
+notifications is part of first-frame freshness.
+
+Exact-safe direction:
+
+- expose one readonly derived property whose binding directly reads the
+  published `windows` array and performs the same `find(is_focused)`;
+- all consumers read that derived value.
+
+A QML readonly binding is invalidated by `windows` itself, so it retains the
+same-snapshot semantic while centralizing the scan.
+
+For D Dock delegates and B Bar delegates, repeated focused-window scanning can
+drop from roughly:
+
+`(D + B) x N`
+
+to one shared `N` scan plus O(1) reads.
+
+Waffle Task View (§41.10) can reuse the same result.
+
+### 41.7 Add a demand-scoped active-workspace/workspaces-by-output derivation — HIGH CONFIDENCE / P2
+
+Paths include:
+
+- `modules/background/Background.qml`;
+- `modules/waffle/background/WaffleBackground.qml`;
+- `services/WidgetPowerManager.qml`;
+- `modules/bar/Workspaces.qml`;
+- `modules/overview/Overview.qml`;
+- `modules/overview/OverviewNiriWidget.qml`.
+
+Multiple consumers independently convert/filter the same Niri workspace map to
+answer:
+
+- active workspace for output X;
+- all workspaces for output X.
+
+NiriService publishes a fresh `workspaces` map when workspace state changes, so
+an on-demand cache can key by the exact map reference and output name.
+
+Prefer demand-scoped lookup over an eagerly rebuilt global structure so a family
+that never asks for the data does not pay unnecessary work.
+
+Any helper called from a QML binding must still read the published
+`root.workspaces` property before returning a memoized answer, so the binding
+retains the proper dependency.
+
+### 41.8 `allWorkspaces` is already sorted; Overview sorts filtered subsets again — CONFIRMED / P1 when Task View/Overview is active
+
+Paths:
+
+- `services/NiriService.qml`;
+- `modules/overview/OverviewNiriWidget.qml`;
+- `modules/overview/Overview.qml`.
+
+All three assignments to `NiriService.allWorkspaces` explicitly sort by
+`workspace.idx`.
+
+JavaScript `filter()` preserves source order.
+
+Therefore these are redundant:
+
+- `OverviewNiriWidget.workspacesForOutput.filter(...).sort(idx)`;
+- Niri Left key handler in `Overview.qml`;
+- Niri Right key handler in `Overview.qml`.
+
+Removing the secondary sort preserves ordering exactly.
+
+This is relevant to the current default Abyss family: `AbyssOverviewContent`
+loads `OverviewNiriWidget` for Niri Task View.
+
+### 41.9 Waffle Task View refresh scans all windows once per workspace — CONFIRMED / P1 when Waffle Task View is used
+
+Path:
+
+- `modules/waffle/taskview/WaffleTaskViewContent.qml`.
+
+`refreshCache()` loops W workspaces and for each one runs:
+
+`NiriService.windows.filter(window => window.workspace_id === ws.id)`.
+
+Membership work is therefore approximately:
+
+`W x N`.
+
+Build `workspace_id -> windows[]` once in a single N-window pass, then sort each
+bucket with the current X-position comparator.
+
+Grouping preserves source order within each bucket, and the same subsequent
+sort preserves current presentation ordering.
+
+Membership scanning becomes:
+
+`N`.
+
+For five workspaces, this is roughly **5N -> N**, or **80% fewer membership
+visits**.
+
+### 41.10 Every Waffle WindowThumbnail independently scans for the same focused window — CONFIRMED / P1
+
+Path:
+
+- `modules/waffle/taskview/WindowThumbnail.qml`.
+
+Every thumbnail evaluates:
+
+`NiriService.windows.find(w => w.is_focused)`
+
+only to obtain the same focused window id.
+
+With I visible/cached window thumbnails this repeats the same global lookup I
+times.
+
+Use the shared published focused-window derivation from §41.6 or pass one
+focused id from the parent.
+
+Worst-shaped comparison work changes from approximately:
+
+`I x N -> N + I O(1) reads`.
+
+If I=N, the repeated-scan shape falls from N² toward N.
+
+### 41.11 Waffle Task View repeatedly derives per-slot counts/emptiness from the same cached item list — CONFIRMED / P1
+
+Path:
+
+- `modules/waffle/taskview/WaffleTaskViewContent.qml`.
+
+For cached items I and workspaces W, current bindings include:
+
+- `previewCounts`: W full `filter()` passes;
+- each workspace `isEmpty`: W `some()` passes;
+- `isLastEmpty`: up to one extra `some()`;
+- bottom-dot `windowCount`: W more `filter()` passes;
+- `getWindowsInSlot()`: another filter whenever keyboard navigation asks.
+
+Persistent derivation is therefore on the order of roughly:
+
+`(3W + 1) x I`
+
+item visits before interaction-specific calls.
+
+Build once per `cachedWindowItems` publication:
+
+- `itemsBySlot`;
+- `countBySlot`;
+- optionally `itemByWindowId`.
+
+Then count/empty/window-list reads are O(1).
+
+Drag preview semantics can remain exact. Current logic removes
+`draggingWindowId` from every slot count and adds one to the target slot.
+Starting from base counts, subtract one from the dragged item's actual slot if
+present, then add one to the target.
+
+### 41.12 Waffle Task View resolves an already-resolved app identity a second time — CONFIRMED correctness bug
+
+Path:
+
+- `modules/waffle/taskview/WaffleTaskViewContent.qml`.
+
+During `refreshCache()`, the cached window stores:
+
+`app_id: AppSearch.resolveWindowIdentity(rawWindow)`.
+
+Later search filtering calls:
+
+`AppSearch.resolveWindowIdentity(w.window)`
+
+on that already-remapped cached object.
+
+Identity rules are first-match rules, not declared idempotent transformations.
+With rules such as:
+
+- raw `foo -> bar`;
+- `bar -> baz`;
+
+the display cache stores `bar`, while search can remap the cached record again
+to `baz`.
+
+Search/display identity can therefore diverge.
+
+Fix contract:
+
+- resolve raw compositor identity exactly once when building the Task View
+  snapshot;
+- search the cached effective identity directly.
+
+This also removes unnecessary rule parsing/regex work per search item.
+
+### 41.13 Precompute Task View lowercase search fields once per cache refresh — CONFIRMED / P1
+
+Path:
+
+- `modules/waffle/taskview/WaffleTaskViewContent.qml`.
+
+Every typed search character currently lowercases both:
+
+- cached window title;
+- app identity;
+
+for every cached item.
+
+Those strings are already snapshot data.
+
+Store lowercase search fields when `refreshCache()` builds the record.
+
+For a K-character query over I items, candidate-side lowercasing changes from
+roughly:
+
+`2 x K x I -> 2 x I`.
+
+At K=5 this is about **80% less candidate-side lowercase work**.
+
+Combine this with §41.12 so the cached app field is the single effective
+identity.
+
+### 41.14 Waffle Task View count-only cache invalidation misses meaningful count-preserving updates — CONFIRMED correctness prerequisite
+
+Path:
+
+- `modules/waffle/taskview/WaffleTaskViewContent.qml`.
+
+While Task View is open, `onWindowsChanged` refreshes the snapshot only when:
+
+`NiriService.windows.length !== cachedWindowItems.length`.
+
+A count-preserving update can change:
+
+- title;
+- app id / effective identity;
+- workspace ownership;
+- layout/tile size;
+- scrolling position.
+
+The cached search text, workspace slot and geometry may therefore remain stale.
+
+There is also no general workspace-state connection that refreshes this cache.
+
+Do **not** simply refresh on every `windowsChanged`: the current code
+deliberately avoids focus-only rebuild churn.
+
+Required design is a meaningful Task-View structural/content revision or
+signature that distinguishes:
+
+- focus-only state that can update cheaply;
+- identity/title/layout/workspace changes that require rebuilding snapshot data.
+
+Fix this correctness/freshness contract before relying on more aggressive
+Task-View caches.
+
+### 41.15 Waffle WindowThumbnail resolves the same icon path twice — CONFIRMED / P1
+
+Path:
+
+- `modules/waffle/taskview/WindowThumbnail.qml`.
+
+Both the title-bar icon and large fallback icon use the exact expression:
+
+`Quickshell.iconPath(windowData.app_id, "application-x-executable")`.
+
+Their paint/decode sizes differ, but the source path is identical.
+
+Share one readonly icon-source property:
+
+- theme path resolutions: **2 -> 1**;
+- **50% fewer** source resolutions per thumbnail reevaluation.
+
+### 41.16 Waffle Task View move-window CLI has an exact persistent-socket action available — HIGH CONFIDENCE / transport parity required
+
+Paths:
+
+- `modules/waffle/taskview/WaffleTaskViewContent.qml`;
+- `services/NiriService.qml`.
+
+Both `moveWindowToWorkspace()` and `moveWindowToNewWorkspace()` spawn:
+
+`niri msg action move-window-to-workspace --window-id ... --focus false ...`.
+
+NiriService already exposes `moveWindowToWorkspace(windowId, workspaceIndex,
+focus)` with the same:
+
+- explicit window id;
+- workspace Index reference;
+- `focus:false`;
+
+through the persistent request socket.
+
+Normal connected-path child-process count can therefore change:
+
+**1 -> 0 per drag move**.
+
+Keep this HIGH CONFIDENCE rather than absolute Confirmed because transient
+transport semantics differ: an independently spawned CLI may connect during a
+moment when NiriService's persistent request socket is disconnected. Add
+connected/reconnect parity tests before replacing the CLI.
+
+The existing post-action refresh timers must remain unchanged.
+
+### 41.17 Waffle Task View `executeNiriAction()` is not current runtime cost — CLOSED
+
+Paths:
+
+- `modules/waffle/taskview/WaffleTaskViewContent.qml`;
+- `modules/waffle/taskview/WindowThumbnail.qml`.
+
+The parent owns an `executeNiriAction()` path that would spawn two Niri
+processes.
+
+Current `WindowThumbnail.qml` declares the `niriAction` signal but never
+emits it.
+
+Do not count these processes in runtime savings.
+
+Dead signal/handler/function removal is a separate API/extension-surface cleanup
+question.
+
+### 41.18 Overview delegates linearly search `windowItems` by id — CONFIRMED / P1, including default Abyss Task View
+
+Paths:
+
+- `modules/overview/OverviewNiriWidget.qml`;
+- `modules/overview/NiriOverviewModel.js`;
+- `modules/abyss/content/AbyssOverviewContent.qml`.
+
+The ScriptModel intentionally exposes primitive compositor window IDs so
+delegate identity remains stable.
+
+Each delegate then calls:
+
+`findWindowRecord(records, windowId)`
+
+whose implementation is:
+
+`records.find(record => record.id === windowId)`.
+
+For N records in model order, total comparisons are approximately:
+
+`N(N+1)/2`.
+
+Preserve the primitive-ID model but build `recordById` once per
+`windowItems` publication.
+
+Examples by rough primitive-operation count:
+
+- N=10: ~55 linear comparisons becomes ~10 inserts + 10 O(1) reads;
+- N=20: ~210 comparisons becomes ~20 inserts + 20 reads, about **81% less**
+  by this simple operation count.
+
+This path matters for current default Abyss because Abyss Task View embeds
+`OverviewNiriWidget`.
+
+### 41.19 Overview maps the same window-item list to IDs up to three times — CONFIRMED / P1
+
+Path:
+
+- `modules/overview/OverviewNiriWidget.qml`.
+
+The exact mapping:
+
+`windowItems.map(record => record.id)`
+
+is performed for:
+
+- warm Overview previews;
+- refresh/capture visible previews;
+- `ScriptModel.values`.
+
+Expose one readonly `windowIds` snapshot derived from `windowItems`.
+
+Normal preview-warm path:
+
+- ID-list mappings: **3 -> 1**;
+- **66.7% fewer** full-list mappings.
+
+Branches without warm still commonly become **2 -> 1**.
+
+### 41.20 MPRIS stream scoring normalizes the same node identities three times per player/node pair — CONFIRMED / P1
+
+Path:
+
+- `services/MprisController.qml`.
+
+`_streamMatchScore()` has up to:
+
+- 3 player identity values;
+- 11 node identity values.
+
+For each player value, every node value reruns:
+
+- `_volumeKey()`;
+- `_volumeTokens()`.
+
+Thus the same 11 node values can be normalized three times inside one
+synchronous pair comparison.
+
+Prepare node `{key,tokens}` values once for the call:
+
+- node-side candidate normalizations: **33 -> 11**;
+- **66.7% fewer**.
+
+The match score, thresholds, token overlap and state bonus remain unchanged.
+
+### 41.21 Prepare the invariant side once across MPRIS player/node matching loops — CONFIRMED / P1
+
+Path:
+
+- `services/MprisController.qml`.
+
+`playerForStreamNode(node)` compares one node against P displayed players.
+
+After §41.20's per-pair cleanup, the same prepared node identities can be reused
+for every player in that one synchronous function call.
+
+Rough node-side normalization count:
+
+- current-shaped: up to `33 x P`;
+- prepared once: `11`.
+
+Examples:
+
+- P=2: ~66 -> 11, about **83.3% fewer** node-side normalizations;
+- P=3: ~99 -> 11, about **88.9% fewer**.
+
+The inverse `streamNodeForPlayer(player)` can similarly prepare player-side
+identity/title data once before scanning M PipeWire nodes.
+
+Keep this per-call. A cross-event memo would need metadata/player epochs and is
+not required for these savings.
+
+### 41.22 `mixerAppNodes` filters then loops the same PipeWire node list — CONFIRMED / P1
+
+Path:
+
+- `services/MprisController.qml`.
+
+Current derivation:
+
+1. `Audio.outputAppNodes.filter(_streamIsBound)`;
+2. loop the filtered array to deduplicate by app key and choose the more-audible
+   representative.
+
+Fold the bound test into the existing dedupe loop.
+
+Node visits:
+
+- **2N -> N**;
+- about **50% fewer** passes;
+- temporary filtered array removed.
+
+Preserve first-seen key order and existing `_streamIsMoreAudible()` tie logic.
+
+The current `pw-dump` metadata refresh is event-driven through a 120 ms
+debounce, not a periodic hidden poll. Do not claim process savings there without
+proving Quickshell PipeWire properties are metadata-equivalent.
+
+### 41.23 Session hibernate monitor-off duplicates compositor action transport — HIGH CONFIDENCE / transport parity required
+
+Paths:
+
+- `modules/common/functions/Session.qml`;
+- `services/CompositorService.qml`;
+- `services/NiriService.qml`.
+
+The hibernate monitor-off timer currently spawns:
+
+- Niri: one `niri msg action power-off-monitors` process;
+- Hyprland: one `hyprctl dispatch dpms off` process.
+
+CompositorService already exposes `powerOffMonitors()`:
+
+- Niri -> persistent Niri request socket;
+- Hyprland -> `Hyprland.dispatch("dpms off")`.
+
+Normal connected-path process count can therefore change:
+
+**1 child process -> 0**.
+
+Keep this HIGH CONFIDENCE because the Niri CLI can create a new connection
+during a transient persistent-socket outage. Test disconnected/reconnecting
+behavior before calling the transport swap absolute-lossless.
+
+The analogous commands embedded into `swayidle` in `services/Idle.qml` are
+not directly replaceable this way: those callbacks run in the external
+swayidle process, outside QML.
+
+### 41.24 GameMode animation reload transport is CLOSED for strict-lossless substitution
+
+Path:
+
+- `services/GameMode.qml`.
+
+The animation mutation helper executes:
+
+1. sed mutation;
+2. `niri msg action reload-config`;
+
+inside one shell process.
+
+The Process exit code therefore reflects the final Niri reload command.
+
+Replacing only the reload command with `NiriService.send()` would change:
+
+- error observability;
+- process exit status;
+- rerun/failure timing.
+
+Do not count this as a confirmed child-process elimination. It requires an
+explicit error-contract redesign.
+
+### 41.25 QuickLaunch repeated running-state scans are conditional, not stock-default — HIGH CONFIDENCE / P2
+
+Path:
+
+- `modules/sidebarLeft/widgets/QuickLaunch.qml`.
+
+When enabled, each shortcut independently scans every Niri window and lowercases
+app-id/title candidates.
+
+The configured shortcut list defaults to four entries, so a full miss can repeat
+window normalization/scanning four times.
+
+A per-window-snapshot prepared lowercase identity list can turn candidate-side
+lowercasing from roughly:
+
+`2 x 4 x N -> 2 x N`;
+
+about **75% less candidate-side lowercasing** for four shortcuts.
+
+Scope carefully:
+
+- current default family is Abyss;
+- `sidebar.widgets.launch=false` by default.
+
+This is not a stock-default idle hotspot.
+
+### 41.26 Bar workspace app-icon window filtering is also conditional — HIGH CONFIDENCE / P2
+
+Path:
+
+- `modules/bar/Workspaces.qml`.
+
+Occupancy state is already efficiently built with a one-pass Set.
+
+When per-workspace app icons are enabled, each workspace button independently
+filters all Niri windows for its workspace.
+
+A one-pass `windowsByWorkspaceId` index can reduce membership scanning from:
+
+`W x N -> N`.
+
+The current default has `showAppIcons=false`, so do not count this as default
+shell savings without runtime evidence that hidden bindings still evaluate.
+
+### 41.27 Test coverage required before implementation
+
+Existing regression coverage protects some presentation/resource contracts:
+
+- Task View shimmer stops while closed;
+- preview/wallpaper decode sizes remain bounded;
+- GameMode polling minimum and state persistence remain guarded.
+
+It does **not** currently test:
+
+- Waffle Task View identity-rule idempotence/search consistency;
+- count-preserving Task View title/layout/workspace refresh;
+- per-slot Task View counts during drag;
+- Overview `recordById` parity;
+- Niri WindowLayoutsChanged multi-change parity;
+- focused-window shared-snapshot publication;
+- MPRIS stream-match score parity.
+
+Any implementation round touching these paths should add focused fixtures before
+or with the optimization.
+
+### 41.28 Round-27 priority update
+
+**Correctness prerequisites:**
+
+1. stop double-resolving effective identity in Waffle Task View (§41.12);
+2. repair Task View count-only cache invalidation (§41.14).
+
+**Confirmed, high-value local optimizations:**
+
+3. Niri WindowLayoutsChanged id->index pass (§41.1);
+4. Niri WindowClosed one-pass removal (§41.2);
+5. no-change focus-normalization allocation elimination (§41.3);
+6. shared published focused-window derivation (§41.6);
+7. remove redundant Overview workspace sorts (§41.8);
+8. Waffle Task View windows-by-workspace grouping (§41.9);
+9. Waffle shared focused id (§41.10);
+10. Waffle per-slot item/count index (§41.11);
+11. precomputed Waffle search fields (§41.13);
+12. Waffle shared thumbnail icon source (§41.15);
+13. Overview recordById map (§41.18);
+14. Overview shared windowIds (§41.19);
+15. MPRIS prepared stream-match identities (§41.20-41.21);
+16. MPRIS mixer one-pass filtering/dedup (§41.22).
+
+**Conditional / parity / benchmark:**
+
+17. Niri positional order fast path (§41.4);
+18. single-window-policy early stop (§41.5);
+19. active-workspace/workspaces-by-output demand memo (§41.7);
+20. Waffle move-window persistent socket (§41.16);
+21. Session monitor-off compositor transport (§41.23);
+22. QuickLaunch prepared running-state input (§41.25);
+23. Bar workspace windows-by-workspace index (§41.26).
+
+**Closed as current runtime savings:**
+
+24. dead Waffle `executeNiriAction()` process path (§41.17);
+25. direct GameMode reload socket substitution under the current error contract
+    (§41.24).
+
+No runtime/source implementation is authorized by this handoff.
+

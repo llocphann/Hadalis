@@ -32,6 +32,7 @@ Item {
     property bool requestDockShow: dockPreviewPopup.visible || contextMenuOpen || dragActive
     property var abyssMenuPresenter: null
     property var abyssMenuHoverPresenter: null
+    property var abyssMenuDismissPresenter: null
 
     signal closeAllContextMenus(var exceptOwner)
 
@@ -119,6 +120,8 @@ Item {
 
         dockPreviewPopup.close()
         closeAllContextMenus()
+        if (root.abyssMenuDismissPresenter)
+            root.abyssMenuDismissPresenter()
 
         dragIndex = index
         dragAppId = appId
@@ -726,64 +729,54 @@ Item {
                 }
             }
 
-            property real _pressMouseX: 0
-            property real _pressMouseY: 0
-            property bool _hasPressPos: false
-            property bool _dragGestureStarted: false
+            // Reorder owns a real Qt pointer grab instead of depending on
+            // RippleButton's MouseArea move callback. Once the movement
+            // threshold is crossed, DragHandler can take the grab from the
+            // button; a normal release commits, while a stolen/canceled grab
+            // rolls back without synthesizing a click.
+            DragHandler {
+                id: reorderDrag
+                enabled: root.dragEnabled && !dockDelegate.isSeparator
+                target: null
+                acceptedButtons: Qt.LeftButton
+                dragThreshold: root.dragThreshold
+                xAxis.enabled: !root.vertical
+                yAxis.enabled: root.vertical
+                property real originX: 0
+                property real originY: 0
 
-            downAction: event => {
-                if (!root.dragEnabled || dockDelegate.isSeparator) return
-                _dragGestureStarted = false
-                _pressMouseX = event.x
-                _pressMouseY = event.y
-                _hasPressPos = true
-            }
-
-            moveAction: (event) => {
-                if (!dockDelegate.down || !_hasPressPos) return
-
-                const dx = event.x - _pressMouseX
-                const dy = event.y - _pressMouseY
-                const dist2 = dx * dx + dy * dy
-
-                // A normal press-and-drag must work immediately after crossing
-                // the movement threshold. The old 180 ms prime window canceled
-                // itself when users moved naturally, leaving no way to reorder.
-                if (!root.dragActive
-                        && dist2 > root.dragThreshold * root.dragThreshold) {
-                    _dragGestureStarted = true
-                    const listPos = dockDelegate.mapToItem(listView, _pressMouseX, _pressMouseY)
-                    const appId = dockDelegate.appToplevel?.originalAppId
-                        ?? dockDelegate.appToplevel?.appId ?? ""
-                    root.startDrag(dockDelegate.index, appId, listPos.x, listPos.y)
-                }
-
-                if (root.dragActive && root.dragIndex === dockDelegate.index) {
-                    const listPos = dockDelegate.mapToItem(listView, event.x, event.y)
-                    root.updateDrag(listPos.x, listPos.y)
-                }
-            }
-
-            releaseAction: () => {
-                _hasPressPos = false
-                if (dockDelegate._dragGestureStarted) {
-                    if (root.dragActive && root.dragIndex === dockDelegate.index) {
-                        root.endDrag()
+                onGrabChanged: (transition, point) => {
+                    if (transition === PointerDevice.GrabExclusive) {
+                        const listPos = dockDelegate.mapToItem(
+                            listView, point.position.x, point.position.y)
+                        reorderDrag.originX = listPos.x
+                        reorderDrag.originY = listPos.y
+                        const appId = dockDelegate.appToplevel?.originalAppId
+                            ?? dockDelegate.appToplevel?.appId ?? ""
+                        root.startDrag(dockDelegate.index, appId,
+                            listPos.x, listPos.y)
+                        return
                     }
-                    root._suppressNextClick = true
-                    Qt.callLater(() => {
-                        if (root._suppressNextClick)
-                            root._suppressNextClick = false
-                    })
-                    dockDelegate._dragGestureStarted = false
+                    if (transition === PointerDevice.UngrabExclusive) {
+                        if (root.dragActive
+                                && root.dragIndex === dockDelegate.index)
+                            root.endDrag()
+                        return
+                    }
+                    if (transition === PointerDevice.CancelGrabExclusive
+                            && root.dragActive
+                            && root.dragIndex === dockDelegate.index)
+                        root.cancelDrag()
                 }
-            }
 
-            cancelAction: () => {
-                _hasPressPos = false
-                if (root.dragActive && root.dragIndex === dockDelegate.index)
-                    root.cancelDrag()
-                dockDelegate._dragGestureStarted = false
+                onActiveTranslationChanged: {
+                    if (!active || !root.dragActive
+                            || root.dragIndex !== dockDelegate.index)
+                        return
+                    root.updateDrag(
+                        reorderDrag.originX + activeTranslation.x,
+                        reorderDrag.originY + activeTranslation.y)
+                }
             }
 
             onHoverPreviewRequested: {

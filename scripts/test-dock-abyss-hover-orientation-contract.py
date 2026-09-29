@@ -19,17 +19,25 @@ assert "showDashboardButton" in abyss
 assert dock.count("showDashboardButton") >= 2
 assert "Show Dashboard icon" in settings
 
-# Reordering must follow the normal pointer gesture: crossing the movement
-# threshold starts drag immediately. A time-gated prime makes natural
-# press-and-move gestures permanently cancel themselves before drag begins.
-assert "property bool _dragGestureStarted: false" in apps
-assert "&& dist2 > root.dragThreshold * root.dragThreshold" in apps
-assert "root.startDrag(dockDelegate.index, appId, listPos.x, listPos.y)" in apps
-assert "root.updateDrag(listPos.x, listPos.y)" in apps
-assert "cancelAction: () => {" in apps
-assert "root.cancelDrag()" in apps
+# Reordering must use a real pointer grab. Relying on RippleButton's MouseArea
+# movement stream proved fragile once the canonical Dock is rehosted in Abyss.
+assert "id: reorderDrag" in apps
+assert "target: null" in apps
+assert "acceptedButtons: Qt.LeftButton" in apps
+assert "dragThreshold: root.dragThreshold" in apps
+assert "xAxis.enabled: !root.vertical" in apps
+assert "yAxis.enabled: root.vertical" in apps
+assert "transition === PointerDevice.GrabExclusive" in apps
+assert "transition === PointerDevice.UngrabExclusive" in apps
+assert "transition === PointerDevice.CancelGrabExclusive" in apps
+assert "root.startDrag(dockDelegate.index, appId," in apps
+assert "root.updateDrag(" in apps
 assert "root.endDrag()" in apps
-assert "root._suppressNextClick = true" in apps
+assert "root.cancelDrag()" in apps
+assert "property var abyssMenuDismissPresenter: null" in apps
+assert "root.abyssMenuDismissPresenter()" in apps
+assert "abyssMenuDismissPresenter: () => root.closeAppMenu()" in abyss
+assert "_dragGestureStarted" not in apps
 assert "_dockPrimeTimer" not in apps
 assert "_dragPrimed" not in apps
 assert "_longPressTriggered" not in apps

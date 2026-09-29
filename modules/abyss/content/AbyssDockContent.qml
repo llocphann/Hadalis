@@ -75,6 +75,7 @@ Item {
                 root.openAppMenu(model, x, y, ownerId)
             abyssMenuHoverPresenter: (ownerId, hovered) =>
                 root.updateAppMenuHover(ownerId, hovered)
+            abyssMenuDismissPresenter: () => root.closeAppMenu()
             dockPosition: root.edge
             parentWindow: root.QsWindow.window
             Layout.preferredHeight: root.vertical ? implicitHeight : 50

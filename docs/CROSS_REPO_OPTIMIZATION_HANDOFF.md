@@ -17217,3 +17217,234 @@ No numeric reduction above is an end-to-end Hadalis speedup; all values are
 local source-derived operation/allocation reductions.
 
 No runtime/source implementation is authorized by this handoff.
+
+
+## 65. Round 51 — pointer-hot Dashboard geometry and bounded clipboard/render staging (2026-09-30)
+
+This round was researched from and revalidated against current `dev` HEAD
+`51e331d52b40ff3ca8b19eebb4477c087e811a4e` (Round 50). No intervening
+commit existed immediately before this documentation write.
+
+The handoff was searched before promotion for `DashboardCanvas.qml`,
+`_smartAlignMove`, `_smartAlignResize`, `ClipboardPanel.qml`,
+`navigateMode`, `LiquidOrbitalField.qml`, `traceClosed` and the relevant
+reverse-array shapes. Existing generic reverse-scan findings such as §58.2 and
+§60.1 concern different ownership/data-flow contracts and are not counted here.
+
+### 65.1 Dashboard smart alignment can remove per-neighbour anchor arrays and fuse corner-resize axis scans — CONFIRMED / P1 interaction-hot
+
+Path:
+
+- `modules/dashboard/DashboardCanvas.qml`.
+
+`updateInteraction()` calls:
+
+- `_smartAlignMove()` on every drag pointer update;
+- `_smartAlignResize()` on every resize pointer update.
+
+The interaction baseline is captured by `_snapshotVisibleRects()` as plain
+numeric rectangle objects before direct manipulation begins.
+
+#### Move path
+
+`_smartAlignMove()` currently allocates:
+
+- one three-element `activeXs` array;
+- one three-element `activeYs` array;
+- for every neighbour, one three-element `otherXs` array;
+- for every neighbour, one three-element `otherYs` array.
+
+Those arrays exist only to execute the fixed 3x3 anchor comparisons.
+
+Strict-safe direction:
+
+- keep the same neighbour traversal;
+- compare the three active anchors and three neighbour anchors as scalar values;
+- preserve the **exact current comparison order**:
+  active left/center/right outer order, neighbour left/center/right inner order;
+- retain the strict `distance < best.distance` replacement rule so equal-distance
+  ties continue to select the same earliest comparison;
+- retain the later equal-spacing and diagonal passes exactly as separate passes.
+
+The final point matters. The diagonal guide uses `fitted` **after**
+equal-spacing can modify `fitted.x` / `fitted.y`. Therefore fusing the
+equal-spacing and diagonal passes would change the geometry basis and is **not**
+authorized by this finding.
+
+For O neighbours, the move path removes **2 + 2O short anchor arrays per pointer
+update** while retaining the same comparison count and all three neighbour
+passes.
+
+#### Resize path
+
+`_smartAlignResize()` currently:
+
+- for west/east edges, scans all O neighbours and allocates a two-element
+  horizontal target array per neighbour;
+- for north/south edges, independently scans all O neighbours and allocates a
+  two-element vertical target array per neighbour.
+
+For a corner resize both branches run, so the same neighbour list is traversed
+twice.
+
+Strict-safe direction:
+
+- derive the same two horizontal and/or vertical target scalars directly;
+- for a corner edge, visit each neighbour once and evaluate the horizontal pair
+  and vertical pair independently;
+- preserve each axis' target order and strict `distance < best.distance` tie
+  rule;
+- keep guide creation, min-size clamping, `_fitRectToCanvas()`,
+  `_smartSnapAxes`, downstream feasible-layout resolution and preview
+  publication in their current order.
+
+The rectangle snapshots are plain numeric data, so interleaving the independent
+X/Y comparisons per neighbour does not reorder QML property getters, callbacks
+or side effects.
+
+For corner resize:
+
+- neighbour visits: **2O -> O**;
+- target arrays: up to **2O -> 0**.
+
+For one-axis resize the visit count remains O, but its O target arrays are still
+removed.
+
+No persistent geometry cache is introduced.
+
+### 65.2 Clipboard navigate-search can remember the first matching row while building the ListModel — CONFIRMED / P1-P2 search interaction
+
+Path:
+
+- `modules/clipboard/ClipboardPanel.qml`.
+
+The ii Clipboard panel debounces search by 70 ms. In
+`hasSearch && navigateMode`, `updateFilteredModel()`:
+
+1. clears the model;
+2. appends all pinned rows in pin order, marking `isMatch`;
+3. appends all clipboard rows in history order, marking `isMatch`;
+4. counts matches;
+5. publishes `totalCount` and `matchCount`;
+6. when at least one match exists, scans `filteredClipboardModel` again with
+   `get(i).isMatch` until the first match, then focuses/centres that row.
+
+The service caps clipboard history at 400 entries; pins precede history rows.
+
+Strict-safe direction:
+
+- keep all current hit predicates and append calls unchanged;
+- maintain one local output-row index while rows are appended;
+- the first time a row with `hit === true` is about to be appended in navigate
+  mode, record that row index;
+- continue building the full model and counting every match exactly as today;
+- keep `totalCount` then `matchCount` publication in the same order;
+- call the same `currentIndex` assignment and
+  `positionViewAtIndex(..., ListView.Center)` using the recorded index.
+
+This preserves:
+
+- pin-before-history order;
+- every row object and `isMatch` value;
+- all match predicates and their evaluation order;
+- duplicate entries/pins;
+- full-model publication before focus/scroll;
+- match count;
+- first-match precedence.
+
+It removes the post-build ListModel lookup pass. With P pins and N history
+entries, that pass changes from up to **P + N `ListModel.get()` calls -> 0**
+per debounced navigate-search rebuild.
+
+Waffle Clipboard does not have this navigate-mode second scan and is therefore
+not included in this finding.
+
+### 65.3 LiquidOrbitalField Canvas fallback can trace reverse contours without clone+reverse arrays — CONFIRMED / P1-P2 conditional per-frame
+
+Path:
+
+- `modules/bar/weather/LiquidOrbitalField.qml`.
+
+The shader is the preferred backend. While the shader is unavailable, compiling
+or has failed, the threaded Canvas fallback repaints from `FrameAnimation`.
+
+Every fallback frame constructs dense point arrays and then performs three
+reverse contour calls:
+
+- `inner.slice().reverse()` for the main body;
+- `sheetInner.slice().reverse()` for sheet 0;
+- `sheetInner.slice().reverse()` for sheet 1.
+
+The clones exist only to feed `traceClosed()` in reverse point order; the
+original arrays are not mutated.
+
+Strict-safe direction:
+
+- retain the existing dense point construction and all draw-call order;
+- extend the tracing helper (or add a reverse helper) so reverse mode indexes
+  the original point array from `count - 1` down to zero;
+- for every logical trace index, map the current `p0/p1/p2/p3` cyclic
+  Catmull-Rom-to-Bezier neighbours to the exact indices they would have in the
+  reversed clone;
+- keep the same `moveTo`, `bezierCurveTo`, close/fill operations and
+  floating-point arithmetic on point coordinates;
+- do not call `reverse()` on the original arrays.
+
+Because `inner` and both `sheetInner` arrays are freshly built, dense arrays
+of plain `{x,y}` records within the same `onPaint` invocation, reverse-index
+reads have no getter, reactive or mutation-order difference from reading a
+`slice().reverse()` clone.
+
+For sample count S, this removes per fallback frame:
+
+- **3 arrays of S point references**;
+- three S-element clone copies;
+- three reverse relocation passes.
+
+It does not change `liquidSample()` count, Canvas path complexity, shader
+behavior, frame cadence or rendered geometry.
+
+Status is conditional only because normal systems that reach
+`ShaderEffect.Compiled` stop using the Canvas renderer; when fallback is
+active, this is genuinely per-frame.
+
+### 65.4 Cheatsheet conflict lookup persistent indexing is not promoted — CLOSED under current strict reactive contract
+
+Paths:
+
+- `modules/settings/CheatsheetConfig.qml`;
+- `services/deferred/NiriKeybinds.qml`.
+
+The add/edit key-combination fields currently use a first-match
+`NiriKeybinds.allBinds.find(...)` on text changes.
+
+A persistent `key_combo -> bind` index would reduce repeated scans, but it
+would add retained state and change the QML dependency/publication graph between
+the field binding and `allBinds`. Under the current strict standard, equal
+steady-state text is insufficient proof for changed-signal/dependency parity.
+
+Building a new local Map on every keystroke is O(N) like the existing first
+match and adds allocation, so it is not a useful strict local optimization.
+
+Do not reopen this static hit as a confirmed optimization unless an imperative
+index publication design proves exact `allBinds` replacement/change ordering
+or profiling establishes a reason to accept a different architecture contract.
+
+### 65.5 Round-51 conclusion
+
+New strict-lossless groups:
+
+1. Dashboard pointer-hot smart-alignment allocation reduction plus corner-resize
+   scan fusion (§65.1, **CONFIRMED / P1 interaction-hot**);
+2. Clipboard navigate-search first-match tracking (§65.2,
+   **CONFIRMED / P1-P2 search interaction**);
+3. Liquid weather Canvas fallback reverse-contour tracing without clone/reverse
+   staging (§65.3, **CONFIRMED / P1-P2 conditional per-frame**).
+
+Cheatsheet persistent conflict indexing is explicitly closed under the current
+reactive contract (§65.4) rather than counted.
+
+No numeric reduction above is an end-to-end Hadalis speedup; all values are
+local source-derived operation/allocation reductions.
+
+No runtime/source implementation is authorized by this handoff.

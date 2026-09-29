@@ -98,14 +98,25 @@ assert 'Config.options?.panelFamily === "abyss"' in close
 assert "readonly property bool abyssConfigured:" in close
 assert "function _abyssPresenterAvailableFor(outputName): bool" in close
 assert "AbyssPromptHostRegistry.hasOutput" in close
+assert "property int _standaloneTransferredRequestId: 0" in close
 assert "function _showStandaloneForRequest(request): void" in close
+assert "root._standaloneTransferredRequestId = requestId" in close
 assert "root.dialogVisible = true" in close
+assert "function _finishStandaloneTransfer(): void" in close
+finish_transfer=close.split("function _finishStandaloneTransfer(): void",1)[1].split("function _releaseAbyssRequestIfUnavailable",1)[0]
+assert "root._standaloneTransferredRequestId = 0" in finish_transfer
+assert "ConfirmationService.finishPresentation(requestId)" in finish_transfer
 assert "function _releaseAbyssRequestIfUnavailable(): void" in close
 release=close.split("function _releaseAbyssRequestIfUnavailable(): void",1)[1].split("onAbyssConfiguredChanged",1)[0]
 assert "ConfirmationService.requestVisible" in release
 assert "root._showStandaloneForRequest(request)" in release
-assert 'ConfirmationService.cancelOwned("closeConfirm")' in close
-assert "ConfirmationService.finishPresentation(" in close
+assert "root._standaloneTransferredRequestId === requestId" in release
+assert 'ConfirmationService.cancelOwned("closeConfirm")' in release
+assert "return" in release
+assert "ConfirmationService.finishPresentation(requestId)" in release
+for handler in ("function confirmClose(): void", "function cancel(): void"):
+    block=close.split(handler,1)[1].split("\n    }",1)[0]
+    assert "root._finishStandaloneTransfer()" in block
 assert "onAbyssConfiguredChanged:" in close
 assert "target: AbyssPromptHostRegistry" in close
 assert "function onEntriesChanged(): void" in close

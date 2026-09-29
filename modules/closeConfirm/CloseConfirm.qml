@@ -13,6 +13,10 @@ Scope {
     property var targetWindow: null
     property var dialogScreen: null
     property bool dialogVisible: false
+    // When a connected request fails over to the standalone renderer, retain
+    // its ConfirmationService slot until the standalone dialog resolves. This
+    // preserves one-at-a-time queue semantics across renderer handoff.
+    property int _standaloneTransferredRequestId: 0
 
     // Debounce to prevent double-trigger
     property bool _busy: false
@@ -36,7 +40,8 @@ Scope {
 
     function _showStandaloneForRequest(request): void {
         const windowId = Number(request?.sourceWindowId ?? 0)
-        if (windowId <= 0)
+        const requestId = Number(request?._requestId ?? 0)
+        if (windowId <= 0 || requestId <= 0)
             return
 
         const cached = (NiriService.windows ?? []).find(candidate =>
@@ -46,15 +51,26 @@ Scope {
             app_id: String(request?.appId ?? ""),
             title: String(request?.appName ?? "")
         })
+        root._standaloneTransferredRequestId = requestId
         root.targetWindow = snapshot
         root.dialogScreen = root._screenForOutput(
             ConfirmationService.targetOutputName)
         root.dialogVisible = true
     }
 
+    function _finishStandaloneTransfer(): void {
+        const requestId = root._standaloneTransferredRequestId
+        root._standaloneTransferredRequestId = 0
+        if (requestId > 0)
+            ConfirmationService.finishPresentation(requestId)
+    }
+
     function _releaseAbyssRequestIfUnavailable(): void {
         const request = ConfirmationService.currentRequest
         if (String(request?.owner ?? "") !== "closeConfirm")
+            return
+        const requestId = Number(request?._requestId ?? 0)
+        if (root._standaloneTransferredRequestId === requestId)
             return
         if (root._abyssPresenterAvailableFor(
                 ConfirmationService.targetOutputName))
@@ -62,14 +78,22 @@ Scope {
 
         // Preserve the user-visible confirmation if its connected renderer
         // disappears or a queued request activates on an output with no live
-        // prompt host. End only the Abyss transaction, then continue through
-        // the existing standalone renderer with the same window identity.
-        if (ConfirmationService.requestVisible)
+        // prompt host. Revoke only the connected semantic request; keep its
+        // latched queue slot until the standalone dialog resolves so a queued
+        // successor cannot appear concurrently.
+        if (ConfirmationService.requestVisible) {
             root._showStandaloneForRequest(request)
-        ConfirmationService.cancelOwned("closeConfirm")
+            if (root._standaloneTransferredRequestId === requestId) {
+                ConfirmationService.cancelOwned("closeConfirm")
+                return
+            }
+        }
+
+        // No standalone handoff exists (for example the request had already
+        // resolved and only its visual retract tail remained). Release that tail
+        // so the service queue can advance.
         if (!ConfirmationService.requestVisible)
-            ConfirmationService.finishPresentation(
-                Number(request?._requestId ?? 0))
+            ConfirmationService.finishPresentation(requestId)
     }
 
     onAbyssConfiguredChanged:
@@ -287,6 +311,7 @@ Scope {
             root.dialogVisible = false;
             root.targetWindow = null;
             root.dialogScreen = null;
+            root._finishStandaloneTransfer()
         }
     }
 
@@ -309,12 +334,14 @@ Scope {
         dialogVisible = false;
         targetWindow = null;
         dialogScreen = null;
+        root._finishStandaloneTransfer()
     }
 
     function cancel(): void {
         dialogVisible = false;
         targetWindow = null;
         dialogScreen = null;
+        root._finishStandaloneTransfer()
     }
 
     // Dialog UI

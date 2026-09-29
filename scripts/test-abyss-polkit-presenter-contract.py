@@ -76,9 +76,17 @@ assert "id: sourceHintExpiry" in service
 assert "sourceHintExpiry.restart()" in service
 assert "function _takeSourceHint(): var" in service
 assert "property var _pendingPresentationHint: null" in service
+assert "property var _activePresentationHint: null" in service
+assert "property bool _activeHintResolvedOnce: false" in service
 assert "root._pendingPresentationHint = root._takeSourceHint()" in service
-assert "const hint = root._pendingPresentationHint" in service
+assert "root._activePresentationHint = root._pendingPresentationHint" in service
+assert "root._activeHintResolvedOnce = false" in service
+assert "const hint = root._activePresentationHint" in service
 assert "root._pendingPresentationHint = null" in service
+assert "root._activeHintResolvedOnce" in start_handler
+assert "root.resolvedAnchor === null" in start_handler
+assert "root._cancelForSourceLoss()" in start_handler
+assert "root._activeHintResolvedOnce = true" in start_handler
 assert "function _latchPresentation(hint = null): void" in service
 assert "onTriggered: root._nextSourceHint = null" in service
 assert "const requestedOutput = GlobalStates.resolveOutputName(" in service

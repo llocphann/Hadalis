@@ -78,6 +78,10 @@ Singleton {
     property bool hadResolvedAnchor: false
     property var _nextSourceHint: null
     property var _pendingPresentationHint: null
+    // Source context belongs to the AuthFlow request, not one visual popup
+    // residency. Preserve it across lock/failover/reopen of the same flow.
+    property var _activePresentationHint: null
+    property bool _activeHintResolvedOnce: false
     property bool _sourceLossCancelIssued: false
     readonly property int sourceHintLifetimeMs: 3000
     readonly property bool resolvedAnchorUsable:
@@ -189,9 +193,20 @@ Singleton {
         // Resolve output/anchor before making the retained presentation
         // visible. In fullscreen this prevents one frame from reusing the
         // previous authentication request's output ownership.
-        const hint = root._pendingPresentationHint
+        const hint = root._activePresentationHint
         root._pendingPresentationHint = null
         root._latchPresentation(hint)
+        if (root._activeHintResolvedOnce
+                && hint !== null
+                && root.resolvedAnchor === null) {
+            // This same AuthFlow previously owned a trusted live source. If that
+            // source vanished while the visual presenter was suppressed, do not
+            // reopen the password prompt at fallback geometry.
+            root._cancelForSourceLoss()
+            return
+        }
+        if (root.resolvedAnchor !== null)
+            root._activeHintResolvedOnce = true
         if (!root._abyssHostAvailableFor(root.targetOutputName)) {
             // The configured perimeter may have failed to instantiate, or the
             // target output may be between hotplug lifecycles. Leave AuthFlow
@@ -213,6 +228,8 @@ Singleton {
         // replaces this slot with its own hint (or null), so source identity
         // can never leak across authentication requests.
         root._pendingPresentationHint = root._takeSourceHint()
+        root._activePresentationHint = root._pendingPresentationHint
+        root._activeHintResolvedOnce = false
         // PolkitAgent starts the next queued AuthFlow synchronously. When the
         // previous Abyss popup is still visually resident, revoke semantic
         // ownership first and let that popup finish its retract on the old
@@ -332,6 +349,9 @@ Singleton {
     onActiveChanged: {
         if (root.active)
             return
+        root._activePresentationHint = null
+        root._activeHintResolvedOnce = false
+        root._pendingPresentationHint = null
         // Outside an active Abyss presenter there is no retract tail to retain.
         // Clearing here prevents an auth request that completed while locked or
         // after a family switch from resurfacing as stale presentation state.

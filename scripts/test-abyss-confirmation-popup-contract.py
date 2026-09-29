@@ -42,6 +42,13 @@ for primitive in ("AbyssLabel", "AbyssButton", "AbyssSeparator"):
 assert "minContentWidth" in content and "maxContentWidth" in content
 assert "Text.WordWrap" in content
 assert "Flow {" in content
+assert "visible: modelData?.visible !== false" in content
+assert "enabled: modelData?.enabled !== false" in content
+assert "function _actionUsable(action): bool" in service
+assert "if (!root._actionUsable(action))" in service
+assert "root._actionUsable(action)" in service
+assert "function cancelAction(): var" in service
+assert "if (!root._actionUsable(cancelAction))" in service
 for forbidden in ("NumberAnimation", "ScaleAnimator", "OpacityAnimator"):
     assert forbidden not in content
     assert forbidden not in presenter

@@ -85,6 +85,12 @@ Singleton {
         Qt.callLater(() => callback())
     }
 
+    function _actionUsable(action): bool {
+        return action !== null && action !== undefined
+            && action.enabled !== false
+            && action.visible !== false
+    }
+
     function resolve(actionId): void {
         if (!root.currentRequest || !root.requestVisible || root.resolving)
             return
@@ -92,7 +98,7 @@ Singleton {
         const actions = root.currentRequest.actions ?? []
         const action = actions.find(candidate =>
             String(candidate?.id ?? "") === wanted)
-        if (!action)
+        if (!root._actionUsable(action))
             return
 
         const request = root.currentRequest
@@ -109,17 +115,23 @@ Singleton {
     function defaultActionId(): string {
         const actions = root.currentRequest?.actions ?? []
         const preferred = actions.find(action =>
-            action?.isDefault === true || action?.role === "default")
+            root._actionUsable(action)
+            && (action?.isDefault === true || action?.role === "default"))
         const fallback = actions.find(action =>
-            action?.isCancel !== true && action?.role !== "cancel")
+            root._actionUsable(action)
+            && action?.isCancel !== true && action?.role !== "cancel")
         return String(preferred?.id ?? fallback?.id ?? "")
     }
 
-    function cancelActionId(): string {
+    function cancelAction(): var {
         const actions = root.currentRequest?.actions ?? []
-        const cancel = actions.find(action =>
-            action?.isCancel === true || action?.role === "cancel")
-        return String(cancel?.id ?? "")
+        return actions.find(action =>
+            action?.isCancel === true || action?.role === "cancel") ?? null
+    }
+
+    function cancelActionId(): string {
+        const cancel = root.cancelAction()
+        return root._actionUsable(cancel) ? String(cancel?.id ?? "") : ""
     }
 
     function acceptDefault(): void {
@@ -131,9 +143,11 @@ Singleton {
     function cancel(): void {
         if (!root.currentRequest || !root.requestVisible || root.resolving)
             return
-        const id = root.cancelActionId()
-        if (id.length > 0) {
-            root.resolve(id)
+        const cancelAction = root.cancelAction()
+        if (cancelAction) {
+            if (!root._actionUsable(cancelAction))
+                return
+            root.resolve(String(cancelAction.id ?? ""))
             return
         }
 

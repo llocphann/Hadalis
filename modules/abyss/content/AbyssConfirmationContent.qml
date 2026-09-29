@@ -142,6 +142,8 @@ FocusScope {
                             font: actionButton.font
                         }
 
+                        visible: modelData?.visible !== false
+                        enabled: modelData?.enabled !== false
                         text: String(modelData?.label ?? "")
                         glyph: String(modelData?.glyph ?? "")
                         width: Math.min(180,

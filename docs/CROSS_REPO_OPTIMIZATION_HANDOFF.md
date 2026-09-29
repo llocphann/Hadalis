@@ -5164,50 +5164,17 @@ Acceptance:
 
 Expected impact is an operation-count reduction from O(S) prompt-content updates to O(1). No shell-wide percentage is claimed.
 
-### 35.2 New Abyss Polkit presenter repeats a larger live-model/focus pipeline on every output — CONFIRMED hidden-work duplication / P1-P2 multi-monitor
+### 35.2 Abyss Polkit presenter optimization — CLOSED / SUPERSEDED
 
-The new `AbyssPolkitPresenter.qml` follows the same one-presenter-per-output architecture.
+The Abyss Polkit integration described by the earlier Round-21 audit has been reverted from current `dev`. Polkit is back on its legacy renderer/service path and is outside the active Abyss Confirmation optimization scope.
 
-Only:
-
-`PolkitService.targetOutputName === root.outputName`
-
-may present the authentication UI.
-
-Nevertheless every output currently owns:
-
-- a reactive `liveModel` object containing the complete Polkit presentation state;
-- a `latchedModel`;
-- `onLiveModelChanged: captureLiveModel()`;
-- `Object.assign({}, root.liveModel)` while Polkit is active;
-- a full `AbyssPolkitContent` tree.
-
-The content tree also independently connects to `PolkitService` for:
-
-- request serial changes;
-- interaction-availability changes;
-- active-state changes;
-
-and performs response clearing/refocus behavior.
-
-As a PAM/Polkit conversation advances, every output therefore rebuilds/copies the presentation model and runs hidden content-side reactive handlers, although only one output owns the authentication popup.
-
-Lossless direction:
-
-- keep the Polkit backend, `AuthFlow`, identity selection, request serial, cancellation and response submission completely unchanged;
-- only the owning output latches the live presentation model and runs request-specific content handlers;
-- non-owner presenter instances may remain resident for anchor/output readiness but must not mirror the live authentication model;
-- preserve the current owner-side latch after `PolkitService.active` drops so close/retract animation still displays the final model until the popup is actually released.
-
-For `S` outputs, request-state propagation/copying can change from O(S) to O(1).
-
-This is a QML/reactivity optimization only. Do not move authentication state out of `PolkitServiceImpl` or change the AuthFlow conversation.
+The former multi-output presenter/model findings in this subsection therefore no longer describe the live tree. Do not reintroduce Abyss-specific Polkit presenters, source anchoring, prompt-host routing, or AuthFlow presentation changes as an optimization.
 
 ### 35.3 Prompt content residency itself is a separate, weaker candidate — NEEDS BENCHMARK / P2 memory
 
 `StyledPopup` lazily owns its native presentation surface, but its `default property Item contentItem` is supplied as a direct QML child.
 
-Therefore the new Confirmation and Polkit presenters eagerly instantiate their content trees once per output even when there is no prompt.
+Therefore the Confirmation presenter eagerly instantiates its content tree once per output even when there is no prompt.
 
 A Loader could reduce dormant prompt-content residency from O(S) trees toward zero/one, but this is **not yet strict-lossless** because first-request construction may alter:
 
@@ -5216,7 +5183,7 @@ A Loader could reduce dormant prompt-content residency from O(S) trees toward ze
 - TextMetrics readiness;
 - the exact frame at which popup geometry becomes available.
 
-Keep owner-only live-model/request propagation (§§35.1–35.2) separate from lazy content construction. The former is statically safer; the latter needs first-open latency and focus parity measurement.
+Keep owner-only Confirmation request propagation (§35.1) separate from lazy content construction. The former is statically safer; the latter needs first-open latency and focus parity measurement.
 
 ### 35.4 Config global invalidation is larger than the earlier search count, but direct-binding replacement is NOT proven lossless — REFINED INVESTIGATE / P1
 
@@ -5407,7 +5374,7 @@ Under the exact-lossless rule:
 Newly promoted/strongest safe work from this round:
 
 1. **Confirmation owner-only request/content propagation** — Confirmed multi-output hidden-work elimination.
-2. **Polkit owner-only presentation-model/content reactivity** — Confirmed multi-output hidden-work elimination; preserve AuthFlow and owner latch semantics.
+2. **Retired Abyss Polkit optimization** — Closed after the Polkit integration revert; do not implement against the legacy path.
 3. **MPRIS `_updateMpvCache()` membership-only refresh** — Confirmed small CPU/allocation cleanup.
 4. **Config scoped invalidation** — stronger scale evidence (>=153 fixed call sites in a partial audit), but still Investigate because global revision covers real notification gaps.
 

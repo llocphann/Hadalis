@@ -37,7 +37,7 @@ assert "readonly property string popupJoinedEdge: joinedEdge" in host
 assert 'hostedPopup?._liquidAnchor?.popupJoinedEdge ?? ""' in perimeter
 
 # Top-center fallback is a real shared prompt source Item on the same liquid controller.
-assert "id: promptFallbackAnchor" in perimeter
+assert "id: confirmationFallbackAnchor" in perimeter
 assert 'property var liquidController: liquid' in perimeter
 assert 'property string attachedEdge: "top"' in perimeter
 assert "x: (window.width - width) / 2" in perimeter

@@ -239,6 +239,10 @@ Scope {
             return
         }
 
+        // The legacy renderer has one modal slot and no semantic queue. Never
+        // overwrite a visible/transferred target with a later close trigger.
+        if (root.dialogVisible)
+            return
         root.targetWindow = snapshot;
         root.dialogScreen = root._screenForOutput(outputName);
         root.dialogVisible = true;

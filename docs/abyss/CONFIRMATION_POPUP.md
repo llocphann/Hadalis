@@ -1,10 +1,10 @@
-# Abyss confirmation and authentication popup architecture
+# Abyss confirmation popup architecture
 
-Status: Phases A-D are complete at the source/contract level on `dev`. Phase E now has automated runtime acceptance for the synthetic confirmation path on real Quickshell under headless Weston, on two distinct virtual Wayland outputs, and inside a nested Niri compositor using software Mesa/EGL. Physical output hotplug/focus behavior and real Polkit authorization flows still require a target machine; application-native dialogs additionally require a trustworthy native/backend response channel.
+Status: Confirmation source/contracts and automated synthetic Wayland acceptance are complete on `dev`; physical monitor hotplug/focus acceptance remains target-hardware work. Polkit has been restored to its legacy path and is outside this document's implementation scope.
 
 ## Goal
 
-Confirmation and authentication prompts should use the existing Abyss connected-surface field instead of introducing another detached dialog renderer. Placement is source-owned when Hadalis can resolve a live Bar/System Tray/Dock anchor; otherwise the request uses a top-center fallback on the target output.
+Confirmation prompts use the existing Abyss connected-surface field instead of introducing another detached dialog renderer. Placement is source-owned when Hadalis can resolve a live Bar/System Tray/Dock anchor; otherwise the request uses a top-center fallback on the target output.
 
 The intended flow is:
 
@@ -79,22 +79,9 @@ No Pyramid architecture change is required. A `StyledPopup` rehosted by `AbyssSu
 
 A confirmation presenter should therefore be an ordinary focused `StyledPopup`, not a new window type.
 
-## Polkit feasibility and security
+## Scope boundary
 
-Hadalis already owns a real Polkit authentication agent through Quickshell's optional `Quickshell.Services.Polkit` module. `PolkitAgent` supplies an `AuthFlow`; Hadalis currently calls the real `submit(...)` and `cancelAuthenticationRequest()` operations. This is a reliable backend and is suitable for Abyss rehosting.
-
-The flow can provide the authentication message, action ID, selected/available identities, prompt visibility, failure/completion state, icon, and supplementary/error message. Quickshell's Polkit agent queues incoming authorization requests; Hadalis should present the active flow rather than invent a second authorization queue.
-
-Security contract:
-
-- password/secret text stays only in the focused field long enough to call `AuthFlow.submit`;
-- clear the field immediately after submission and on cancel/failure/new flow;
-- never place secret text in `GlobalStates`, Config, a generic confirmation model, debug output, IPC payloads, or persisted state;
-- keep action/message/identity metadata separate from the response string;
-- disabling/bypassing Polkit authentication is out of scope;
-- QML/JavaScript cannot guarantee cryptographic memory zeroization of immutable strings, so the implementation can minimize lifetime but must not claim stronger erasure.
-
-If a trustworthy source-app hint becomes available, Polkit can use the same anchor resolver. The current `AuthFlow` does not by itself provide a dependable requesting desktop-app ID, so the default for ordinary Polkit requests is top-center rather than guessing from the human-readable message.
+Polkit remains on the legacy renderer/service path that existed before this Confirmation project. This document does not define Polkit routing, source anchoring, password handling, failover, or Abyss presentation behavior.
 
 ## Implementation status
 
@@ -115,8 +102,8 @@ Implemented:
 - Renderer handoff can add a second semantic release gate on top of the visual-tail gate. A transferred request is hidden from the connected presenter without being semantically resolved; the standalone fail-safe later resolves/cancels that same `ConfirmationService` request, so `requestResolved` and the original action callback reflect the user's real choice. The queue slot remains held until both the old `StyledPopup` tail and the standalone semantic resolution are complete.
 - Owner teardown uses forced lifecycle cancellation, so a disabled/hidden user cancel action cannot strand an owned request when its renderer disappears.
 - Generic action semantics preserve enabled/visible state. Enter selects only a usable default/non-cancel action, user cancel does not invoke a disabled/hidden cancel action, and empty/duplicate action IDs are normalized so one visible button cannot resolve a different callback.
-- `AbyssPromptHostRegistry` tracks concrete per-output prompt hosts only after their Abyss field has presented a usable frame. Configuration alone, or a mapped perimeter whose field/shader is not ready, never counts as a usable confirmation/authentication renderer.
-- If `abyssPerimeter` is disabled or no frame-ready prompt host exists, the previous standalone confirmation/Polkit renderers remain available as a fail-safe rather than creating an invisible request.
+- `AbyssPromptHostRegistry` tracks concrete per-output prompt hosts only after their Abyss field has presented a usable frame. Configuration alone, or a mapped perimeter whose field/shader is not ready, never counts as a usable confirmation renderer.
+- If `abyssPerimeter` is disabled or no frame-ready prompt host exists, the previous standalone confirmation renderer remain available as a fail-safe rather than creating an invisible request.
 
 ### Phase C — normal confirmation
 
@@ -137,28 +124,7 @@ Implemented for the Hadalis-owned `closeConfirm` backend:
 
 This does **not** claim generic interception of application-native confirmations. ChatGPT Quit remains blocked on a trustworthy backend/native bridge that can expose the application's real confirmation semantics and suppress the original dialog without bypassing or duplicating it.
 
-### Phase D — Polkit
-
-Implemented on the existing Quickshell `PolkitAgent/AuthFlow` backend:
-
-- no second authorization queue is created; Quickshell remains queue authority;
-- Hadalis now lets Polkit perform the authoritative session-scoped agent registration instead of suppressing its agent from machine-global process-name guesses; this avoids false negatives when another user's/session's agent process exists;
-- Enter/Escape, Cancel, Authenticate, identities, Details, failure messages and multi-turn prompts are preserved;
-- pending state remains non-interactive until `AuthFlow` actually requires a response;
-- the response field is cleared before handing the response to `AuthFlow.submit`, and is also cleared before switching authentication identity so a response cannot survive into the replacement PAM conversation;
-- response text is not stored in Config, GlobalStates, the generic confirmation service, logs or persisted state;
-- ordinary Polkit requests use top-center because `AuthFlow` does not expose a dependable requester app ID;
-- Quickshell remains the authentication queue authority, while Abyss separately serializes only visual ownership: if the next AuthFlow starts synchronously, the previous popup keeps its latched model/anchor through retract before the successor latches its own output;
-- source-loss cancellation is deduplicated so overlapping live-anchor and registry-removal signals cannot call the real AuthFlow cancel path twice;
-- top-center Polkit fallback retargets to a remaining output after hotplug; an old output's retract callback cannot release presentation state now owned by the new output, and a trusted attached source disappearing with its output cancels the real AuthFlow instead of teleporting;
-- the active critical prompt stays on the Overlay layer and keeps keyboard-focus eligibility even when a native settings dialog has made ordinary shell surfaces yield;
-- Polkit prompt strings used by the Abyss renderer are registered in the English translation catalog;
-- the legacy real-AuthFlow renderer is loaded from the Abyss critical host rather than the deferred `abyssPolkit` subtree, and it becomes active whenever the target output has no live connected prompt host; top-center Abyss presentation can therefore fail over without hiding an active authentication request;
-- a future trusted source hint can use the same anchor resolver without changing the authentication backend, but hints are rejected while another AuthFlow/hint is already pending because current AuthFlow metadata provides no caller token that could safely bind a later hint to a queued request;
-- trusted Polkit source hints can carry an output hint and receive the same same-output affinity as normal confirmations;
-- if a trusted Polkit source disappears or becomes non-presented while authentication is active, the real AuthFlow is cancelled rather than moving the password prompt to another anchor.
-
-### Phase E — runtime acceptance
+### Phase D — runtime acceptance
 
 A synthetic Wayland/Quickshell harness now exists at `scripts/test-abyss-confirmation-runtime.sh`. When run in a real Wayland session with Quickshell available, it exercises real `StyledPopup`/Abyss popup slots and real confirmation callbacks for:
 
@@ -178,16 +144,15 @@ A synthetic Wayland/Quickshell harness now exists at `scripts/test-abyss-confirm
 
 The script intentionally skips when Quickshell/Wayland is unavailable during ordinary local/static validation. The dedicated `.github/workflows/confirmation-runtime.yml` lane removes that ambiguity. Its runtime chain now validates: real Quickshell on headless Weston; a nested Weston compositor exposing two distinct Wayland outputs with layer-shell carriers bound to their real `ShellScreen`s; and the same single-output harness inside nested Niri on an Xvfb software-EGL parent. Source contracts, headless Wayland, two-output Wayland and nested-Niri jobs have all completed successfully on `dev`, including same-output Tray/Dock affinity, requested-output fallback, renderer-handoff and queue-gating cases.
 
-This establishes automated Quickshell acceptance for source/output routing across two virtual Wayland outputs and automated Niri acceptance for the synthetic confirmation presenter. It is still not equivalent to physical monitor hotplug/focus changes or a real Polkit password exchange.
+This establishes automated Quickshell acceptance for source/output routing across two virtual Wayland outputs and automated Niri acceptance for the synthetic confirmation presenter. It is still not equivalent to physical monitor hotplug/focus changes on target hardware.
 
 ## Acceptance status
 
-Source/contract coverage is complete for the currently trustworthy backends: request ownership, conservative identity/output anchor resolution, ambiguous-source fallback, live-source validity, Dock/Bar source hold, popup/Pyramid reuse, frame-ready prompt-host detection, fail-safe renderer handoff with preserved action semantics, two-gate visual/semantic queue release, fullscreen/native-dialog critical-prompt visibility, Join Edge inheritance, action availability/ID/callback safety, queue/reopen ownership, same-window close deduplication, stale-window rejection, output-hotplug policy, and Polkit focus/security, source-hint scoping, failover, queued-presentation and multi-turn retry behavior.
+Source/contract coverage is complete for the currently trustworthy backends: request ownership, conservative identity/output anchor resolution, ambiguous-source fallback, live-source validity, Dock/Bar source hold, popup/Pyramid reuse, frame-ready prompt-host detection, fail-safe renderer handoff with preserved action semantics, two-gate visual/semantic queue release, fullscreen/native-dialog critical-prompt visibility, Join Edge inheritance, action availability/ID/callback safety, queue/reopen ownership, same-window close deduplication, stale-window rejection, output-hotplug policy.
 
 Automated confirmation runtime acceptance is now recorded on real Quickshell + headless Wayland, a two-output nested-Weston topology, and the same single-output harness inside nested Niri. Still requiring physical/system acceptance:
 
 - physical monitor focus/output-hotplug behavior on target hardware (two-output routing itself is covered virtually);
-- real Polkit password focus, wrong-password retry, Cancel, queued requests and successful authorization against the target system authentication stack;
 - lock/unlock interaction with the actual login/lock stack;
 - ChatGPT Quit or any other application-native confirmation only after a reliable native/backend interception path exists.
 

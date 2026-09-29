@@ -47,7 +47,7 @@ async function main() {
       writeJson({
         generation: { attachedToCompleted: true },
         response
-      }));
+      });
       return;
     } catch {}
 

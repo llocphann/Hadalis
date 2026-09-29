@@ -13,6 +13,14 @@ assert "PanelWindow" not in presenter and "WindowDialog" not in presenter
 assert "latchedModel" in presenter
 assert "PolkitService.hadResolvedAnchor" in presenter
 
+service=(r/"services/PolkitService.qml").read_text()
+assert 'function hintSource(appId, anchorItem = null, outputName = ""): void' in service
+assert "const requestedOutput = GlobalStates.resolveOutputName(" in service
+assert "PopupAnchorRegistry.resolve(sourceContext)" in service
+assert "readonly property bool resolvedAnchorUsable:" in service
+assert "PopupAnchorRegistry.isUsable(root.resolvedAnchor)" in service
+assert "onResolvedAnchorUsableChanged" in service
+
 assert "const response = inputField.text" in content
 assert content.index('inputField.text = ""') < content.index("PolkitService.submit(response)")
 assert "inputMethodHints: Qt.ImhSensitiveData" in content

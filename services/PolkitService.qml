@@ -50,6 +50,9 @@ Singleton {
     property string resolvedAnchorKind: ""
     property bool hadResolvedAnchor: false
     property var _nextSourceHint: null
+    readonly property bool resolvedAnchorUsable:
+        !root.hadResolvedAnchor
+            || PopupAnchorRegistry.isUsable(root.resolvedAnchor)
 
     readonly property string rawMessage: String(flow?.message ?? "").trim()
     readonly property bool batteryChargeLimitRequest: rawMessage.includes("battery-charge-limit")
@@ -97,24 +100,31 @@ Singleton {
     // Optional trusted internal hint for a future backend/native bridge. Current
     // AuthFlow does not expose a requester app id, so ordinary requests leave
     // this unset and intentionally use top-center fallback.
-    function hintSource(appId, anchorItem = null): void {
+    function hintSource(appId, anchorItem = null, outputName = ""): void {
         root._nextSourceHint = {
             appId: String(appId ?? ""),
-            anchorItem: anchorItem
+            anchorItem: anchorItem,
+            outputName: String(outputName ?? "")
         }
     }
 
     function _latchPresentation(): void {
         const hint = root._nextSourceHint
         root._nextSourceHint = null
-        const resolved = hint ? PopupAnchorRegistry.resolve(hint) : null
+        const requestedOutput = GlobalStates.resolveOutputName(
+            String(hint?.outputName ?? ""), [])
+        const sourceContext = hint
+            ? Object.assign({}, hint, { outputName: requestedOutput })
+            : null
+        const resolved = sourceContext
+            ? PopupAnchorRegistry.resolve(sourceContext) : null
         root.resolvedAnchor = resolved?.item ?? null
         root.resolvedAnchorKind = String(resolved?.kind ?? "")
         root.hadResolvedAnchor = root.resolvedAnchor !== null
         const resolvedOutput = String(resolved?.outputName ?? "")
         root.targetOutputName = resolvedOutput.length > 0
             ? resolvedOutput
-            : GlobalStates.resolveOutputName("", [])
+            : requestedOutput
     }
 
     onRequestSerialChanged: {
@@ -147,6 +157,14 @@ Singleton {
             }
         }
         impl.selectIdentity(root.identities[(current + 1) % count])
+    }
+
+    onResolvedAnchorUsableChanged: {
+        if (root.active && root.hadResolvedAnchor
+                && !root.resolvedAnchorUsable) {
+            root.resolvedAnchor = null
+            root.cancel()
+        }
     }
 
     Connections {

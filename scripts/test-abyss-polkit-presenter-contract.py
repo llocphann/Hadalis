@@ -83,6 +83,12 @@ assert "&& !(root.model?.busy ?? false)" in content
 assert "!root.interactionAvailable || root.busy" in service
 assert "detailsOpen" in content
 assert "AbyssSearchField" in content
+catalog=(r/"translations/en_US.json").read_text()
+for key in (
+    "Authentication required", "Authentication failed. Try again.",
+    "Authenticating…", "Authenticate", "Identity", "Switch", "Hide details"
+):
+    assert f'"{key}":' in catalog
 for forbidden in ("ConfirmationService", "GlobalStates", "Config.", "console."):
     assert forbidden not in content
 for forbidden in ("NumberAnimation", "ScaleAnimator", "OpacityAnimator"):

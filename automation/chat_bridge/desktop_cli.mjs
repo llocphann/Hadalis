@@ -32,6 +32,15 @@ async function main() {
   }
 
   if (command === "await-current") {
+    try {
+      const response = await extractLoopResponse(page);
+      console.log(JSON.stringify({
+        generation: { attachedToCompleted: true },
+        response
+      }));
+      return;
+    } catch {}
+
     const generation = await waitForCompletion(page);
     const response = await extractLoopResponse(page);
     console.log(JSON.stringify({ generation, response }));

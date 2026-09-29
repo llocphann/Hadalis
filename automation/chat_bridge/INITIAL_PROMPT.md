@@ -7,6 +7,7 @@ Branch: dev
 
 GitHub is the authoritative source of truth.
 ChatGPT is the ONLY reasoning agent. Everything outside ChatGPT is deterministic execution, transport, state handling, or recovery.
+Do NOT switch to Work mode and do NOT hand off to Work mode. Stay in this ChatGPT conversation and use the GitHub connector plus deterministic local jobs only.
 
 ## Mandatory startup on every turn
 

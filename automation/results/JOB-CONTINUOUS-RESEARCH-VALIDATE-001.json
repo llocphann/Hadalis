@@ -1,0 +1,42 @@
+{
+  "actions": [
+    {
+      "argv": [
+        "python3",
+        "-m",
+        "py_compile",
+        "automation/chat_bridge/runtime.py",
+        "automation/chat_bridge/protocol.py",
+        "scripts/install-hadalis-automation.py"
+      ],
+      "cwd": ".",
+      "exit_code": 0,
+      "index": 0,
+      "stderr": "",
+      "stderr_truncated": false,
+      "stdout": "",
+      "stdout_truncated": false,
+      "timed_out": false
+    },
+    {
+      "argv": [
+        "python3",
+        "scripts/test-hadalis-chat-bridge.py"
+      ],
+      "cwd": ".",
+      "exit_code": 1,
+      "index": 1,
+      "stderr": "Traceback (most recent call last):\n  File \"/home/llocphann/.local/state/hadalis-automation/worker/runs/JOB-CONTINUOUS-RESEARCH-VALIDATE-001-u_4hvc17/scripts/test-hadalis-chat-bridge.py\", line 119, in <module>\n    main()\n    ~~~~^^\n  File \"/home/llocphann/.local/state/hadalis-automation/worker/runs/JOB-CONTINUOUS-RESEARCH-VALIDATE-001-u_4hvc17/scripts/test-hadalis-chat-bridge.py\", line 50, in main\n    assert \"HADALIS_LOOP:CONNECTOR_BLOCKED GITHUB\" in CONTINUATION_PROMPT\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nAssertionError\n",
+      "stderr_truncated": false,
+      "stdout": "",
+      "stdout_truncated": false,
+      "timed_out": false
+    }
+  ],
+  "base_sha": "f23a9a6fdfebf6d74bb9ea4c22301376d4c32f7b",
+  "finished_at_unix": 1790721156,
+  "job": "JOB-CONTINUOUS-RESEARCH-VALIDATE-001",
+  "job_commit": "8e2987f2f92eb7ef1d6a2ed91876a946ceb03998",
+  "started_at_unix": 1790721155,
+  "status": "failed"
+}

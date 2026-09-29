@@ -221,7 +221,9 @@ Singleton {
             String(request?.owner ?? "") !== key)
         if (root.requestVisible
                 && String(root.currentRequest?.owner ?? "") === key)
-            root.cancel()
+            // Owner teardown is lifecycle cancellation, not a user choosing a
+            // disabled UI action. It must always release the owned request.
+            root.cancel(true)
     }
 
     onResolvedAnchorUsableChanged: {

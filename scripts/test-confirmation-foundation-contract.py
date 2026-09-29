@@ -66,7 +66,9 @@ assert "PopupAnchorRegistry.isUsable(root.resolvedAnchor)" in service
 assert "onResolvedAnchorUsableChanged" in service
 assert "function _resolveAction(action, force = false): void" in service
 assert "function cancel(force = false): void" in service
-assert "root.cancel(true)" in service
+assert "function cancelOwned(owner): void" in service
+owned=service.split("function cancelOwned(owner): void",1)[1].split("onResolvedAnchorUsableChanged",1)[0]
+assert "root.cancel(true)" in owned
 assert "onAnchorRemoved(item)" in service
 assert "function _outputExists(outputName): bool" in service
 assert "function _reconcileOutputTopology(): void" in service

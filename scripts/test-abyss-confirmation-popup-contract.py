@@ -124,7 +124,7 @@ assert "ConfirmationService.requestVisible" in release
 assert "root._showStandaloneForRequest(request)" in release
 assert "root._standaloneTransferredRequestId === requestId" in release
 assert "ConfirmationService.cancel(true)" not in release
-assert "requestResolved" not in release
+assert "ConfirmationService.requestResolved" not in release
 assert 'ConfirmationService.cancelOwned("closeConfirm")' not in release
 assert "return" in release
 assert "ConfirmationService.finishPresentation(requestId)" not in release

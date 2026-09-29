@@ -27,7 +27,10 @@ assert "function _showStandaloneForRequest(request): void" in close
 assert "cached ?? {" in close
 assert "root._standaloneTransferredRequestId = requestId" in close
 assert "root.dialogVisible = true" in close
-assert "function _finishStandaloneTransfer(): void" in close
+assert "function _clearStandaloneState(): void" in close
+assert "ConfirmationService.beginPresentationHandoff(requestId)" in close
+assert "ConfirmationService.resolvePresentationHandoff(" in close
+assert "ConfirmationService.cancelPresentationHandoff(" in close
 assert "target: AbyssPromptHostRegistry" in close
 assert "active: root.dialogVisible" in close
 assert 'active: root.dialogVisible && Config.options?.panelFamily !== "abyss"' not in close

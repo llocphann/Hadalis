@@ -255,6 +255,17 @@ Singleton {
         }
     }
 
+    onAbyssPresentationSuppressedChanged: {
+        if (root.abyssPresentationSuppressed || !root.active
+                || !root._activeHintResolvedOnce)
+            return
+        // A trusted source may disappear while lock suppresses all prompt
+        // rendering. Revalidate the exact latched Item on unlock rather than
+        // reopening at stale geometry or silently switching app instances.
+        if (!PopupAnchorRegistry.isUsable(root.resolvedAnchor))
+            root._cancelActiveForSourceLoss()
+    }
+
     onAbyssPresenterAvailableChanged: {
         if (!root.active)
             return

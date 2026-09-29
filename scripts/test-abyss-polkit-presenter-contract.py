@@ -43,6 +43,11 @@ assert "readonly property bool abyssConfigured:" in service
 assert "root.abyssPresenterAvailable" in service
 assert "AbyssPromptHostRegistry.hasOutput(root.targetOutputName)" in service
 assert "function _abyssHostAvailableFor(outputName): bool" in service
+assert "onAbyssPresentationSuppressedChanged" in service
+unlock_handler=service.split("onAbyssPresentationSuppressedChanged:",1)[1].split("onAbyssPresenterAvailableChanged:",1)[0]
+assert "root._activeHintResolvedOnce" in unlock_handler
+assert "PopupAnchorRegistry.isUsable(root.resolvedAnchor)" in unlock_handler
+assert "root._cancelActiveForSourceLoss()" in unlock_handler
 assert "onAbyssPresenterAvailableChanged" in service
 availability_handler=service.split("onAbyssPresenterAvailableChanged:",1)[1].split("Connections {",1)[0]
 assert "root.abyssPresentationSuppressed" in availability_handler

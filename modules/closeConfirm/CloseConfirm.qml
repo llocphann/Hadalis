@@ -103,6 +103,22 @@ Scope {
         }
     }
 
+    function _sameCloseWindowRequest(request, windowId): bool {
+        return String(request?.owner ?? "") === "closeConfirm"
+            && Number(request?.sourceWindowId ?? 0) === Number(windowId ?? 0)
+    }
+
+    function _hasPendingAbyssRequest(windowId): bool {
+        const id = Number(windowId ?? 0)
+        if (id <= 0)
+            return false
+        if (root._sameCloseWindowRequest(
+                ConfirmationService.currentRequest, id))
+            return true
+        return (ConfirmationService.queue ?? []).some(request =>
+            root._sameCloseWindowRequest(request, id))
+    }
+
     function processWindow(win): void {
         const snapshot = root._snapshotWindow(win)
         if (!root.confirmEnabled) {
@@ -112,12 +128,18 @@ Scope {
 
         const outputName = root._outputNameForWindow(snapshot)
         if (root.abyssPresenterAvailable) {
+            const windowId = Number(snapshot?.id ?? 0)
+            // Repeated close binds for the same window must not create a second
+            // prompt/callback transaction while the first is visible, queued,
+            // or still retracting. Different windows may still queue normally.
+            if (root._hasPendingAbyssRequest(windowId))
+                return
             const appId = String(snapshot?.app_id ?? "")
             const title = String(snapshot?.title ?? "")
             const appName = title || appId || Translation.tr("Unknown")
             ConfirmationService.enqueue({
                 owner: "closeConfirm",
-                sourceWindowId: Number(snapshot?.id ?? 0),
+                sourceWindowId: windowId,
                 sourceWindowObserved:
                     snapshot?._observedInWindowList === true,
                 sourceWindowRevision: root._windowListRevision,

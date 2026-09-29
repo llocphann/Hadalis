@@ -59,7 +59,12 @@ for forbidden in ("NumberAnimation", "ScaleAnimator", "OpacityAnimator"):
 # Existing closeConfirm backend provides the real action callback.
 assert 'owner: "closeConfirm"' in close
 assert "ConfirmationService.enqueue({" in close
-assert "sourceWindowId: Number(snapshot?.id ?? 0)" in close
+assert "sourceWindowId: windowId" in close
+assert "function _sameCloseWindowRequest(request, windowId): bool" in close
+assert "function _hasPendingAbyssRequest(windowId): bool" in close
+assert "ConfirmationService.currentRequest" in close
+assert "(ConfirmationService.queue ?? []).some" in close
+assert "if (root._hasPendingAbyssRequest(windowId))" in close
 assert "sourceWindowObserved:" in close
 assert "sourceWindowRevision: root._windowListRevision" in close
 assert "snapshot._observedInWindowList = true" in close

@@ -11,6 +11,11 @@ const GITHUB_MENTION = "[@GitHub](plugin://github@openai-curated-remote)";
 const LOOP_MARKER = /^HADALIS_LOOP:(?:WAIT_RESULT|CONTINUE|ROTATE|DONE|CONNECTOR_BLOCKED)(?:[ \\t]+[A-Za-z0-9._/-]+)?[ \\t]*$/m;
 const RESPONSE_ACTION = /regenerate|retry|try again|copy/i;
 
+export function scanLoopMarkerTokens(text) {
+  const token = /HADALIS_LOOP:(?:CONTINUE|ROTATE|DONE)\b|HADALIS_LOOP:WAIT_RESULT[ \\t]+JOB-[A-Za-z0-9._-]+|HADALIS_LOOP:CONNECTOR_BLOCKED[ \\t]+GITHUB\b/g;
+  return Array.from(String(text).matchAll(token), match => match[0].trim());
+}
+
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 
 async function visibleCount(locator) {
@@ -469,17 +474,13 @@ export async function submitPrompt(page, prompt) {
   );
 }
 
-async function loopMarkerLines(page) {
+async function loopMarkerTokens(page) {
   const bodyText = await page.locator("body").innerText();
-
-  return bodyText
-    .split(/\r?\n/)
-    .map(line => line.trim())
-    .filter(line => LOOP_MARKER.test(line));
+  return scanLoopMarkerTokens(bodyText);
 }
 
 async function loopMarkerCount(page) {
-  return (await loopMarkerLines(page)).length;
+  return (await loopMarkerTokens(page)).length;
 }
 
 export async function waitForCompletion(
@@ -540,8 +541,6 @@ export async function waitForCompletion(
 async function extractNearResponseAction(page) {
   const actions = page.getByRole("button", { name: RESPONSE_ACTION });
   const count = await actions.count();
-  const source = LOOP_MARKER.source;
-
   for (let index = count - 1; index >= 0; index -= 1) {
     const action = actions.nth(index);
 
@@ -549,25 +548,26 @@ async function extractNearResponseAction(page) {
       if (!(await action.isVisible()))
         continue;
 
-      const result = await action.evaluate((button, markerSource) => {
-        const marker = new RegExp(markerSource, "m");
+      const result = await action.evaluate((button) => {
+        const token = /HADALIS_LOOP:(?:CONTINUE|ROTATE|DONE)\b|HADALIS_LOOP:WAIT_RESULT[ \\t]+JOB-[A-Za-z0-9._-]+|HADALIS_LOOP:CONNECTOR_BLOCKED[ \\t]+GITHUB\b/g;
         let node = button;
 
         for (let depth = 0; depth < 12 && node; depth += 1) {
           const text = (node.innerText ?? "").trim();
-          const markers = text
-            .split(/\r?\n/)
-            .map(line => line.trim())
-            .filter(line => marker.test(line));
+          const markers = Array.from(text.matchAll(token), match => match[0].trim());
 
           if (markers.length)
-            return { depth, text: markers[markers.length - 1] };
+            return {
+              depth,
+              text: markers[markers.length - 1],
+              markerCount: markers.length
+            };
 
           node = node.parentElement;
         }
 
         return null;
-      }, source);
+      });
 
       if (result)
         return result;
@@ -583,9 +583,15 @@ export async function extractLoopResponse(page, { allowMarkerOnly = false } = {}
     return anchored;
 
   if (allowMarkerOnly) {
-    const markers = await loopMarkerLines(page);
-    if (markers.length)
-      return { depth: 0, text: markers[markers.length - 1], markerOnly: true };
+    const markers = await loopMarkerTokens(page);
+    if (markers.length) {
+      return {
+        depth: 0,
+        text: markers[markers.length - 1],
+        markerOnly: true,
+        markerCount: markers.length
+      };
+    }
   }
 
   throw new Error("No completed assistant HADALIS_LOOP response found");

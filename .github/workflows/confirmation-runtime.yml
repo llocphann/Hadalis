@@ -157,6 +157,13 @@ jobs:
             nixpkgs#quickshell \
             nixpkgs#niri \
             nixpkgs#xorg.xorgserver \
+            nixpkgs#xorg.libX11 \
+            nixpkgs#xorg.libXcursor \
+            nixpkgs#xorg.libXfixes \
+            nixpkgs#xorg.libXi \
+            nixpkgs#xorg.libXrandr \
+            nixpkgs#xorg.libXrender \
+            nixpkgs#libxkbcommon \
             nixpkgs#mesa \
             nixpkgs#ripgrep \
             nixpkgs#coreutils \
@@ -168,6 +175,23 @@ jobs:
               chmod 700 "$XDG_RUNTIME_DIR"
               export DISPLAY=:99
               export WINIT_UNIX_BACKEND=x11
+              # winit dlopens its optional X11 backend libraries by SONAME.
+              # Nix does not expose those dlopen-only libraries through the
+              # executable RPATH, so make the exact store lib dirs visible.
+              x11_lib_path=""
+              for attr in \
+                xorg.libX11 \
+                xorg.libXcursor \
+                xorg.libXfixes \
+                xorg.libXi \
+                xorg.libXrandr \
+                xorg.libXrender \
+                libxkbcommon
+              do
+                store_path="$(nix eval --raw "nixpkgs#${attr}.outPath")"
+                x11_lib_path="${x11_lib_path:+$x11_lib_path:}$store_path/lib"
+              done
+              export LD_LIBRARY_PATH="$x11_lib_path${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
               export LIBGL_ALWAYS_SOFTWARE=1
               export QT_QPA_PLATFORM=wayland
               export QT_QUICK_BACKEND=software

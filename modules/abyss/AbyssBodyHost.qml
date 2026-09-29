@@ -67,6 +67,11 @@ Item {
     // Same-Edge popup intervals that overlap or come within this many logical
     // pixels participate in one visual neighborhood.
     property real stackProximity: 24
+    // Elastic Fill is transient presentation metadata. Related bodies share a
+    // group; only the most recently hovered member borrows the group's vacancy.
+    property string elasticFillGroup: ""
+    property bool elasticFillHovered: false
+    property int elasticFillOrder: 0
     property int activationOrder: 0
     property int placementPriority: identity === "dialog" ? 2 : ["utility","edgeEditor"].includes(identity) ? 1 : identity === "dock" ? -1 : 0
     readonly property var placement: controller?.bodyPlacements?.[identity] ?? null
@@ -115,7 +120,14 @@ Item {
             along:visualPlacementAlong,
             span:visualPlacementSpan,
             depth:visualPlacementDepth,
-            inward:visualPlacementInward
+            inward:visualPlacementInward,
+            // Keep the temporary full-depth allowance alive while an Elastic
+            // Fill depth animates back to its base requested depth.
+            elasticFilled: coordinatedPlacement?.elasticFilled === true
+                || visualPlacementDepth
+                    > (requestedRecord?.targetDepth ?? depth)+0.5,
+            elasticDirection:
+                coordinatedPlacement?.elasticDirection ?? ""
         }) : null
     readonly property bool presented: open && placementVisible
     property real along: 0
@@ -194,6 +206,9 @@ Item {
             allowInward:root.placementCanStackInward,
             stackPolicy:root.stackPolicy,
             stackProximity:root.stackProximity,
+            elasticFillGroup:root.elasticFillGroup,
+            elasticFillHovered:root.elasticFillHovered,
+            elasticFillOrder:root.elasticFillOrder,
             record:root.requestedRecord})
         inputBounds: root.inputBounds
         mass: root.mass
@@ -202,6 +217,12 @@ Item {
         if (controller) controller.impulse(edge,along+span/2,span,(opening ? 0.85 : -0.65)*waveInfluence,mass,opening ? "open" : "close")
     }
     function markOpened(): void { if (open && controller?.nextPresentationOrder) activationOrder=controller.nextPresentationOrder() }
+    function markElasticFillInteraction(): void {
+        if (root.elasticFillHovered && root.elasticFillGroup.length > 0
+                && root.controller?.nextElasticFillInteractionOrder)
+            root.elasticFillOrder =
+                root.controller.nextElasticFillInteractionOrder()
+    }
     function resetPyramidMotion(): void {
         root.pyramidCoordinator?.resetIdentity(root.identity)
         root.pyramidClosing=false
@@ -226,6 +247,7 @@ Item {
         // Clear the previous allocator snapshot while the old owner is hidden so
         // the next owner snaps to its own tangent anchor before reveal starts.
         root.retainedPlacement=null
+        root.elasticFillOrder=0
         root.resetPyramidMotion()
     }
     function syncPyramidEntryOrigin(): void {
@@ -333,15 +355,21 @@ Item {
         root.finishPyramidReopenIfDone()
     }
     onOpenChanged: if (initialized) { markOpened();react(open) }
+    onElasticFillHoveredChanged: if (initialized)
+        root.markElasticFillInteraction()
+    onElasticFillGroupChanged: if (initialized)
+        root.markElasticFillInteraction()
     onEmbeddedItemChanged: if (initialized) markOpened()
     onContentKindChanged: if (initialized) markOpened()
     onControllerChanged: if (initialized) {
         root.resetPyramidMotion()
         markOpened()
+        root.markElasticFillInteraction()
     }
     Component.onCompleted: {
         initialized = true
         markOpened()
+        root.markElasticFillInteraction()
         if (semanticOpen) {
             root.capturePyramidRestingState()
             root.syncPyramidEntryOrigin()

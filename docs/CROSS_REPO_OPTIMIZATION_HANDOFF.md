@@ -15714,3 +15714,342 @@ No numeric reduction above is an end-to-end Hadalis speedup. All counts are
 local operation/allocation reductions derived from current source.
 
 No runtime/source implementation is authorized by this handoff.
+---
+
+## 59. Round 45 — calendar presentation, request-build pipelines and reactive array cleanup (2026-09-30)
+
+### Snapshot / concurrency safety
+
+Research continued from Round-44 docs commit
+`6fd7042767dc88f13c3e0e0e27f1ea40386b6aa5`.
+
+During this round `dev` advanced through multiple clean fast-forwards to exact
+write parent `b7896b671791ba67ef8d38df458ce8e24af2191f`. All concurrent changed
+files audited since Round 44 are under `agent/*`, `automation/*`, or live
+transport/test paths. None touches the runtime sources below or this handoff.
+
+Six attempted docs writes were stopped by exact-parent guards before blob/commit
+creation as concurrent automation advanced the branch. No stale ref update or
+force push was attempted.
+
+No runtime/QML/native implementation is authorized by this round.
+
+### 59.1 Sidebar month-calendar cells resolve the same Date three times — CONFIRMED / P1 visible calendar
+
+Path: `modules/sidebarRight/calendar/CalendarWidget.qml`.
+
+`monthCells` already resolves `date = _getDateForCell(...)`, but
+`getEventCountForDay()` and `getSourceColorsForDay()` each resolve the same
+cell Date again.
+
+Keep both existing helpers as compatibility wrappers with their current
+`_eventsTrigger` / `_externalTrigger` reads. Add private date-based
+count/color helpers and let `monthCells`, which already touches both triggers,
+pass its existing Date.
+
+Events/CalendarSync copy the incoming Date and do not mutate it. Count then color
+call order remains unchanged.
+
+Full 6x7 grid:
+
+- cell Date resolutions/constructions: up to **126 -> 42**;
+- event scans remain separate work owned by §49.3/§49.4.
+
+### 59.2 Waffle Calendar can assemble merged event arrays directly — CONFIRMED / P1-P2 visible calendar
+
+Path: `modules/waffle/notificationCenter/CalendarWidget.qml`.
+
+Selected-day path maps local events to fresh clones, then concatenates that array
+with external references.
+
+Strict-safe direction:
+
+1. call local Events first;
+2. allocate the final array;
+3. append the exact same `Object.assign` clones in source order;
+4. only then call CalendarSync;
+5. append external references unchanged;
+6. retain the exact comparator.
+
+This removes the mapped array and concat-copy stage.
+
+For each of three upcoming days, current code creates local and external mapped
+clone arrays, then a concatenated `dayEvents` array. Build the required
+`dayEvents` directly: locals first, external call/clones second, then exact
+current sort.
+
+Retain all three days, `events.push(...dayEvents)`, and final
+`slice(0, 5)`. Early-stop could skip service/property/error work and is not
+needed.
+
+Per day:
+
+- local mapped result: **1 -> 0**;
+- external mapped result: **1 -> 0**;
+- concat-copy stage: removed.
+
+Do not combine this with eager timestamp caching: all-day comparisons can return
+before timestamp fields are read, so property-read timing remains a separate
+parity question.
+
+### 59.3 AbyssPerimeter obstacle derivation can use one result buffer — CONFIRMED / P1-P2 multi-output reactive path
+
+Path: `modules/abyss/AbyssPerimeter.qml`.
+
+`sideObstacles` currently uses
+`[leftPanel,rightPanel].filter(progress).map(record)`.
+
+A strict one-result loop reads both progress values first, then records for
+passing bodies in left/right order, matching filter-then-map phase order.
+
+Arrays per evaluation: **3 -> 1**.
+
+Dock obstacles chain two `concat()` calls with singleton/empty arrays.
+Preserve evaluation order: capture side obstacles; evaluate notification
+condition/record; copy once and append it; then evaluate popup condition/record
+and append it.
+
+Maximum combination arrays after sideObstacles: **4 -> 1**.
+
+Notification non-center obstacles similarly become one side-array copy plus an
+optional popup append: up to **2 -> 1** arrays. Center mode must return `[]`
+before reading side/popup state.
+
+Obstacle order, record identity, thresholds and allocator semantics remain
+unchanged.
+
+### 59.4 AI message history lookup/filter can use one ordered pass — CONFIRMED / P1-P2 per request
+
+Path: `services/Ai.qml`.
+
+Current:
+
+`messageIDs.map(id => messageByID[id]).filter(message => ...)`.
+
+`messageByID` is a plain JS map and values are `AiMessageData` QtObjects;
+`role` and `requestFailed` are ordinary scalar properties. This is
+imperative request construction, not a reactive binding.
+
+Allocate only the filtered result and loop IDs once, applying the same predicate
+and appending the same references in the same order.
+
+Do **not** add a null guard: current code throws when a missing mapping is
+dereferenced, so corruption must not be silently skipped.
+
+For M IDs:
+
+- M-element intermediate array: **1 -> 0**;
+- visits: **2M -> M**.
+
+### 59.5 AI Content-Type header pipeline is statically constant — CONFIRMED / P2-P3 per request
+
+Path: `services/Ai.qml`.
+
+`requestHeaders` contains only `"Content-Type": "application/json"`.
+Whole-file exact-source search found no mutation/use before
+`Object.entries -> filter -> map -> join`. Authorization is built separately.
+
+The result is always:
+
+`-H 'Content-Type: application/json'`.
+
+Use that byte-identical string and leave auth, endpoint, quoting and curl order
+unchanged.
+
+Removed per request:
+
+- header object;
+- Object.entries array;
+- filter array;
+- map array;
+- collection traversal/join.
+
+### 59.6 GlobalStates connected-output names can compact the fresh map result in place — CONFIRMED / P2 broad presentation path
+
+Path: `GlobalStates.qml`.
+
+`connectedOutputNames()` currently maps screens to string names, filters
+empties, then when allowlisted filters again.
+
+Keep the initial `Quickshell.screens.map(...)` exactly. Stable-compact that
+fresh JS array in place. Only afterward perform the same allowlist test and,
+when needed, build one enabled array with the same ordered
+`allowedOutputs.includes(name)`.
+
+Allocations:
+
+- no allowlist: **2 -> 1** arrays;
+- allowlist: **3 -> 2** arrays.
+
+Do not alter requested/focused/primary short-circuit selection in this patch;
+its conditional reads belong to reactive dependency timing.
+
+### 59.7 Audio PwObjectTracker can publish the same nodes from one fresh array — CONFIRMED / P2
+
+Path: `services/Audio.qml`.
+
+Current:
+
+`[rawSink,sink,source].concat(outputAppNodes).concat(inputAppNodes).filter(node => node)`.
+
+Keep independent public `outputAppNodes` / `inputAppNodes` properties
+unchanged.
+
+Strict-safe local construction reads base nodes, appends all output refs, then
+all input refs, then stable-compacts falsy values in that same fresh array.
+
+Order, duplicates, truthiness and public AppNode signals remain unchanged.
+
+Fresh arrays: **4 -> 1**.
+
+### 59.8 Overview empty-output fallback can reuse one Object.keys result — CONFIRMED / P3
+
+Path: `modules/overview/OverviewNiriWidget.qml`.
+
+Empty-output fallback currently calls `Object.keys(outputs)` once for length
+and again for the first key.
+
+Keep the direct nonempty-output path. On fallback, compute one keys array and
+return `keys.length > 0 ? outputs[keys[0]] : outputs[outputName]`.
+
+The empty-map result remains the current `outputs[""]` result.
+
+Fallback key arrays/enumerations: **2 -> 1**.
+
+### 59.9 Confirmation acceptDefault can resolve the already-selected action — CONFIRMED / P3
+
+Path: `services/ConfirmationService.qml`.
+
+After §56.8 one-pass default selection, `acceptDefault()` still obtains the
+default ID and `resolve(id)` scans actions again.
+
+Every enqueued request passes through `_normalizeActions()`, which guarantees
+unique action IDs by suffixing collisions.
+
+Factor a private selector returning the same selected action object, keep public
+`defaultActionId()` as a string wrapper, and have `acceptDefault()` pass the
+object directly to existing `_resolveAction(action, false)`.
+
+`_resolveAction` preserves request/usability/empty-ID guards and callback /
+publication ordering. Public `resolve(id)` remains unchanged.
+
+Second action-list scan: up to **A -> 0**.
+
+### 59.10 CustomThemeEditor quick adjustments can fuse key filtering into the color-transform loop — CONFIRMED / P1-P2 slider interaction
+
+Path: `modules/settings/CustomThemeEditor.qml`.
+
+The three Saturation/Brightness/Temperature sliders restart a 50 ms debounce.
+Each `applyQuickAdjustments()` currently:
+
+1. `Object.keys(originalColors)`;
+2. filters keys to `m3*` values that are strings beginning with `#`;
+3. loops the filtered key array;
+4. reads `originalColors[key]` again for each retained key;
+5. computes/publishes the same Config update map.
+
+`originalColors` is created once for the interaction with
+`JSON.parse(JSON.stringify(customTheme))`: a plain JSON snapshot, not a live
+QML object with getter side effects.
+
+Strict-safe direction:
+
+- retain `Object.keys(originalColors)` to preserve exact own-key order;
+- loop those keys once;
+- read `const original = originalColors[key]`;
+- apply the exact current key/type/hash predicate;
+- for passing keys, run the unchanged Qt.color/HSL transform and append the same
+  update key/value;
+- keep `Config.setNestedValues(updates)` and `applyToShell()` even for an
+  empty update map, preserving current call behavior.
+
+Per debounced slider application:
+
+- filtered key array: **1 -> 0**;
+- key visits for qualifying colors: **2 passes -> 1**;
+- qualifying `originalColors[key]` reads: **2 -> 1**.
+
+This is interaction-scoped but can run repeatedly while dragging, so it ranks
+above one-shot Settings cleanup.
+
+### 59.11 Noctalia one-minute Screen Time checkpoint is not a strict-lossless Hadalis port — CLOSED / ARCHITECTURE EVIDENCE
+
+Fresh upstream:
+
+- `noctalia-dev/noctalia@7a9b4e271958aae2aecfa0c4cd3b46e95d331425`
+  — `perf(screen-time): checkpoint once a minute instead of every five seconds`
+  (2026-09-29).
+
+Hadalis has a different contract:
+
+- persistence is separately throttled to 30 seconds;
+- Niri focus is event-driven plus a 30-second heartbeat;
+- Hyprland's ~5-second poll also observes focused-app state;
+- ticks publish session/today data;
+- `elapsed > 60` is special-cased.
+
+One-minute ticks would change attribution/publication/durability timing.
+
+Status: **CLOSED direct port / ARCHITECTURE EVIDENCE**.
+
+### 59.12 Network O(N²) search hit is stale — ALREADY / regression guard
+
+A repository search index surfaced the old
+`oldNetworks.filter(!wifiNetworks.find(...))` shape.
+
+Exact current `services/Network.qml` already uses `existingByKey` Map,
+`nextKeys` Set, reverse stale-row removal and keyed reuse/create.
+
+Do not reopen it from stale search snippets; this is consistent with §50.1.
+
+### 59.13 Incremental screenshot annotation is already substantially present — ALREADY / regression architecture
+
+Fresh screenshot/capture upstream work was compared with
+`RegionSelection.qml` and `AnnotationEditor.qml`.
+
+Hadalis annotation already separates committed history from the hot pointer
+path:
+
+- committed strokes are Shape delegates;
+- only current in-progress stroke is in `liveCanvas`;
+- `Canvas.Threaded` is used;
+- pointer moves request only that live Canvas;
+- point insertion is distance-throttled by `minPointStep`.
+
+There is no static evidence for a direct new incremental-raster port. Further
+dirty-rect/frame coalescing requires runtime profile and visual-latency parity.
+
+### 59.14 Round-45 conclusion
+
+New strict-lossless groups:
+
+1. Sidebar cell Date reuse (§59.1, **CONFIRMED / P1**);
+2. Waffle Calendar direct event-array assembly (§59.2,
+   **CONFIRMED / P1-P2**);
+3. Abyss obstacle-array construction (§59.3,
+   **CONFIRMED / P1-P2**);
+4. AI history one-pass filtering (§59.4,
+   **CONFIRMED / P1-P2**);
+5. constant AI Content-Type header (§59.5,
+   **CONFIRMED / P2-P3**);
+6. GlobalStates connected-output compaction (§59.6,
+   **CONFIRMED / P2**);
+7. Audio PwObjectTracker one-buffer construction (§59.7,
+   **CONFIRMED / P2**);
+8. Overview one-key-array fallback (§59.8, **CONFIRMED / P3**);
+9. Confirmation default accept without second ID scan (§59.9,
+   **CONFIRMED / P3**);
+10. CustomThemeEditor quick-adjustment key-loop fusion (§59.10,
+    **CONFIRMED / P1-P2 interaction**).
+
+Closed/not promoted:
+
+11. eager Waffle timestamp caching remains a property-read parity question;
+12. Noctalia minute Screen Time cadence is not direct-lossless (§59.11);
+13. old Network quadratic reconciliation is already fixed (§59.12);
+14. incremental annotation architecture is already present (§59.13).
+
+No number above is an end-to-end Hadalis speedup. Numeric reductions are local
+source-derived operation/allocation counts only.
+
+No runtime/source implementation is authorized by this handoff.

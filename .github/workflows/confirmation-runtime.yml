@@ -87,7 +87,7 @@ jobs:
                 exit 1
               fi
 
-              dbus-run-session -- bash scripts/test-abyss-confirmation-runtime.sh
+              bash scripts/test-abyss-confirmation-runtime.sh
             '
 
       - name: Show Weston log on failure

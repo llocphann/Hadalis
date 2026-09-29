@@ -30,6 +30,18 @@ Singleton {
     // UI residency is separate from AuthFlow activity so Abyss can finish the
     // same slide-under retract after the backend has completed/cancelled.
     property bool presentationRetained: false
+    // The serial currently allowed to own the Abyss presenter. Quickshell may
+    // activate the next queued AuthFlow synchronously as the previous one
+    // completes; keeping this separate prevents content/anchor teleport.
+    property int presentationSerial: 0
+    readonly property bool presentationMatchesActive:
+        root.presentationRetained
+        && root.presentationSerial > 0
+        && root.presentationSerial === root.requestSerial
+    readonly property bool abyssPresenterAvailable:
+        Config.options?.panelFamily === "abyss"
+        && (Config.options?.enabledPanels ?? []).includes("abyssPerimeter")
+        && !GlobalStates.screenLocked
 
     readonly property string actionId: String(flow?.actionId ?? "")
     readonly property string iconName: String(flow?.iconName ?? "")
@@ -151,20 +163,57 @@ Singleton {
         onTriggered: root._nextSourceHint = null
     }
 
+    function _startPresentationForCurrentRequest(): void {
+        if (!root.active || root.requestSerial <= 0)
+            return
+        // Resolve output/anchor before making the retained presentation
+        // visible. In fullscreen this prevents one frame from reusing the
+        // previous authentication request's output ownership.
+        root._latchPresentation()
+        root.presentationSerial = root.requestSerial
+        root.presentationRetained = true
+    }
+
     onRequestSerialChanged: {
-        if (root.requestSerial > 0) {
-            root._sourceLossCancelIssued = false
-            // Resolve output/anchor before making the retained presentation
-            // visible. In fullscreen this prevents one frame from reusing the
-            // previous authentication request's output ownership.
-            root._latchPresentation()
-            root.presentationRetained = true
+        if (root.requestSerial <= 0)
+            return
+        root._sourceLossCancelIssued = false
+        // PolkitAgent starts the next queued AuthFlow synchronously. When the
+        // previous Abyss popup is still visually resident, revoke semantic
+        // ownership first and let that popup finish its retract on the old
+        // anchor/output. finishPresentation() starts the new visual request.
+        if (root.abyssPresenterAvailable
+                && root.presentationRetained
+                && root.presentationSerial > 0
+                && root.presentationSerial !== root.requestSerial) {
+            root.presentationSerial = 0
+            return
         }
+        root._startPresentationForCurrentRequest()
     }
 
     function finishPresentation(): void {
-        if (!root.active)
-            root.presentationRetained = false
+        if (!root.presentationRetained)
+            return
+        root.presentationRetained = false
+        root.presentationSerial = 0
+        if (root.active && root.requestSerial > 0
+                && root.abyssPresenterAvailable) {
+            Qt.callLater(() => {
+                if (root.active && !root.presentationRetained
+                        && root.abyssPresenterAvailable)
+                    root._startPresentationForCurrentRequest()
+            })
+        }
+    }
+
+    onAbyssPresenterAvailableChanged: {
+        // If Abyss becomes available in the middle of a real AuthFlow, latch
+        // that live request. When it becomes unavailable, the legacy renderer
+        // owns visibility and no new Abyss presentation is started here.
+        if (root.abyssPresenterAvailable && root.active
+                && !root.presentationRetained)
+            root._startPresentationForCurrentRequest()
     }
 
     onActiveChanged: {
@@ -173,12 +222,10 @@ Singleton {
         // Outside an active Abyss presenter there is no retract tail to retain.
         // Clearing here prevents an auth request that completed while locked or
         // after a family switch from resurfacing as stale presentation state.
-        const abyssPresenterAvailable =
-            Config.options?.panelFamily === "abyss"
-            && (Config.options?.enabledPanels ?? []).includes("abyssPerimeter")
-            && !GlobalStates.screenLocked
-        if (!abyssPresenterAvailable)
+        if (!root.abyssPresenterAvailable) {
             root.presentationRetained = false
+            root.presentationSerial = 0
+        }
     }
 
     // Whether the Polkit module is available
@@ -215,6 +262,7 @@ Singleton {
         // binding and registry removal. AuthFlow cancellation is a backend
         // action, so issue it exactly once for this authentication request.
         if (!root.active || !root.hadResolvedAnchor
+                || !root.presentationMatchesActive
                 || root._sourceLossCancelIssued)
             return
         root._sourceLossCancelIssued = true

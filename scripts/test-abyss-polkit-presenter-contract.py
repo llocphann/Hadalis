@@ -17,9 +17,19 @@ assert "Component.onDestruction:" in presenter
 
 service=(r/"services/PolkitService.qml").read_text()
 assert "property bool presentationRetained: false" in service
+assert "property int presentationSerial: 0" in service
+assert "readonly property bool presentationMatchesActive:" in service
+assert "root.presentationSerial === root.requestSerial" in service
+assert "function _startPresentationForCurrentRequest(): void" in service
+assert "root.presentationSerial = root.requestSerial" in service
 assert "root.presentationRetained = true" in service
 assert "function finishPresentation(): void" in service
 assert "root.presentationRetained = false" in service
+assert "root.presentationSerial = 0" in service
+assert "root.abyssPresenterAvailable" in service
+assert "onAbyssPresenterAvailableChanged" in service
+assert "root.ownsPresentation" in presenter
+assert "onOwnsPresentationChanged" in presenter
 assert 'function hintSource(appId, anchorItem = null, outputName = ""): void' in service
 assert "readonly property int sourceHintLifetimeMs: 3000" in service
 assert "id: sourceHintExpiry" in service

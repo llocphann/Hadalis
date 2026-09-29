@@ -28,6 +28,7 @@ assert "function _cancelForSourceLoss(): void" in svc
 assert "root._sourceLossCancelIssued = true" in svc
 assert "root._sourceLossCancelIssued = false" in svc
 assert "root._cancelForSourceLoss()" in svc
+assert "!root.presentationMatchesActive" in svc
 
 for token in ("actionId", "responseVisible", "responseRequired", "failed",
               "supplementaryMessage", "identities", "identityLabel",

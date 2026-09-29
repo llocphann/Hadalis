@@ -17,6 +17,8 @@ Item {
     readonly property bool ownsOutput:
         PolkitService.targetOutputName.length > 0
         && PolkitService.targetOutputName === root.outputName
+    readonly property bool ownsPresentation:
+        PolkitService.presentationMatchesActive
     readonly property Item presentationAnchor:
         !root.ownsOutput ? null
         : PolkitService.hadResolvedAnchor
@@ -44,11 +46,12 @@ Item {
     property var latchedModel: ({})
 
     function captureLiveModel(): void {
-        if (PolkitService.active)
+        if (PolkitService.active && root.ownsPresentation)
             root.latchedModel = Object.assign({}, root.liveModel)
     }
 
     onLiveModelChanged: root.captureLiveModel()
+    onOwnsPresentationChanged: if (root.ownsPresentation) root.captureLiveModel()
     Component.onCompleted: root.captureLiveModel()
 
     StyledPopup {
@@ -57,6 +60,7 @@ Item {
         hoverActivates: false
         alternativeVisibleCondition:
             root.presentationEnabled && root.ownsOutput
+            && root.ownsPresentation
             && PolkitService.available && PolkitService.active
         liquidPresentationKind: "polkit"
         popupBackgroundMargin: 0
@@ -66,14 +70,16 @@ Item {
 
         onRequestClose: PolkitService.cancel()
         onPresentationActiveChanged: {
-            if (!presentationActive && !PolkitService.active) {
+            if (!presentationActive && PolkitService.presentationRetained) {
                 root.latchedModel = ({})
                 PolkitService.finishPresentation()
             }
         }
 
         Component.onDestruction: {
-            if (!PolkitService.active)
+            // Once the renderer is gone there is no visual tail left to retain.
+            // The real AuthFlow remains owned by PolkitService/PolkitAgent.
+            if (PolkitService.presentationRetained)
                 PolkitService.finishPresentation()
         }
 

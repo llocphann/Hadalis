@@ -9009,3 +9009,247 @@ Do not create separate micro patches first. The value is to avoid multiple indep
 9. further static replacement of the readiness `sleep` loop (§43.8).
 
 Round-28 confirmed helper/process reductions remain valid. No runtime/source implementation is authorized by this handoff.
+
+---
+
+## 44. Round 30 — capture-helper stale-hash correctness and Waffle taskbar local reductions (2026-09-29)
+
+### Snapshot / concurrent reconciliation
+
+- Current `dev` HEAD immediately before this docs-only write: `95d5729e0678767f0c87f73514a519b5a8b27ebe` (`fix(abyss): use rendered body hover for vacancy borrowing`).
+- Since Round 29 (`48353bc52624d9625672c19f1fa06bd5be39b0a7`), concurrent work did two relevant things:
+  - `d7d7f0c1f58e3884633bca32496a64e299f5f857` updated this handoff to close the obsolete Abyss-Polkit optimization after the Polkit revert;
+  - `95d5729e0678767f0c87f73514a519b5a8b27ebe` changed Abyss vacancy-hover ownership/runtime tests.
+- Neither concurrent commit changes `scripts/capture-windows.sh`, Waffle taskbar files, `TaskbarApps.qml`, WindowPreviewService, or NiriService.
+- The Round-29 WindowPreview findings remain present in the reconciled handoff.
+
+### 44.1 Failed refreshes can put a stale old PNG hash into the current capture's cleanup set — CONFIRMED correctness bug / prerequisite
+
+Path:
+
+- `scripts/capture-windows.sh`.
+
+The helper intentionally preserves an old good preview when a refresh fails:
+
+- each worker writes a `.part.png`;
+- only a successful nonempty temp file is atomically renamed over `window-<id>.png`;
+- on failure the temp file is removed while the prior `window-<id>.png` remains;
+- `capture_failed` records the failed worker and the helper exits nonzero.
+
+That publication rule is correct.
+
+The later clipboard-cleanup hash set, however, does **not** use current-run success. After all workers finish it does:
+
+`for id in "${windows_to_capture[@]}"; ... if [[ -s "$path" ]]; then sha256sum "$path" ...`
+
+So if ID X fails to refresh but an older `window-X.png` already exists, the old file is still nonempty and its digest enters `preview_hashes` as though the current invocation generated it.
+
+This violates the helper's own cleanup contract:
+
+- the cleanup comment says it deletes only cliphist entries whose bytes match a **generated preview**;
+- the final restore comment says a newer user copy must win;
+- the stale-file comment near the final exit already recognizes that an old PNG must not make a failed refresh look successful.
+
+Current exit/publication logic protects the QML cache revision, but it does not protect clipboard classification.
+
+Concrete failure case:
+
+1. old `window-X.png` with digest H exists from an earlier successful capture;
+2. current refresh of X fails, so the old PNG is intentionally retained;
+3. during the current capture window the user copies image bytes whose digest is H;
+4. `preview_hashes` incorrectly includes H from the old PNG;
+5. the new user cliphist entry can be deleted as if it were screenshot pollution;
+6. if the user's current clipboard still contains H, the final hash check can restore the pre-capture clipboard over that newer user intent.
+
+This is possible even when **no** current X screenshot was successfully published.
+
+Strict-safe correction direction:
+
+- track the IDs that successfully completed the current invocation's atomic rename;
+- build `preview_hashes` only from those current-success IDs;
+- keep old preview files for failed IDs exactly as today;
+- preserve partial-batch success, `PREVIEW_READY` timing/order, the two cleanup passes, clipboard timing and the final nonzero batch exit.
+
+The already-emitted `PREVIEW_READY` event uses the same semantic success boundary, but shell-side cleanup should keep its own reliable current-success bookkeeping rather than infer success from file existence.
+
+Required fake-binary regression cases:
+
+- stale old PNG + failed refresh + user copies identical bytes => user cliphist entry survives and current clipboard is not restored over it;
+- one successful ID + one failed ID with an old PNG => only the successful current PNG hash is eligible for cleanup;
+- all-success batch => existing cleanup/restore behavior remains unchanged;
+- failed refresh still leaves the old PNG intact and still exits nonzero.
+
+Round-28 §42.11's hash-Set optimization should operate on this corrected **current-success** hash set. Removing `cut` (§42.9) may co-land but does not by itself fix the membership bug.
+
+### 44.2 Waffle `Tasks.qml` partitions the same app list with two full filter passes — CONFIRMED / P2
+
+Path:
+
+- `modules/waffle/bar/tasks/Tasks.qml`.
+
+Current bindings independently evaluate:
+
+`TaskbarApps.apps.filter(app => app.pinned && app.toplevels.length === 0)`
+
+and:
+
+`TaskbarApps.apps.filter(app => app.toplevels.length > 0)`.
+
+For `K` taskbar app records this performs two full source traversals and allocates both output arrays separately.
+
+Exact-safe direction:
+
+- derive one shared partition from one read of `TaskbarApps.apps`;
+- in one loop append to `running` when `toplevels.length > 0`, otherwise append to `pinned` only when `app.pinned` is true;
+- expose the two arrays from that shared partition.
+
+This preserves current semantics exactly:
+
+- pinned-only apps remain in the first Repeater;
+- any app with live toplevels remains in the running Repeater even when also pinned;
+- the synthetic separator remains excluded from both;
+- relative order inside each group remains source order.
+
+Local source-list visits: **`2K -> K`**.
+
+### 44.3 Waffle `TaskAppButton` scans for the focused toplevel repeatedly — CONFIRMED / P2
+
+Path:
+
+- `modules/waffle/bar/tasks/TaskAppButton.qml`.
+
+The same semantic value is currently rediscovered several times:
+
+- `active` runs `appEntry.toplevels.some(t => t.activated)`;
+- when active with multiple windows, `focusedWindowIndex` runs `find(t => t.activated === true)`;
+- the Niri click path runs another `find(t => t.activated)` before minimizing the active window.
+
+Strict-safe direction:
+
+- keep one reactive `focusedToplevel` derived with the same first-activated-window rule;
+- derive `active` from whether that value exists;
+- reuse it in `focusedWindowIndex` and the click path.
+
+For an active multi-window app this removes at least one full/partial toplevel scan from ordinary indicator evaluation, and removes another lookup on the focused-app click path.
+
+This is independent of §40.21's Niri `windowForId` index. §40.21 still removes the inner `NiriService.windows.find(id)` work used to obtain layout columns.
+
+Regression parity:
+
+- zero/one/multiple visible windows;
+- no activated window;
+- activated window at first/middle/last position;
+- Niri minimize-on-click still targets the same exact active ID;
+- indicator index/order unchanged.
+
+### 44.4 `TaskbarApps.computeApps()` double-probes the Map and rematerializes every final record — CONFIRMED / P1-P2
+
+Path:
+
+- `services/TaskbarApps.qml`.
+
+Two local costs are coupled in the current aggregation.
+
+#### A. Running-app Map probe
+
+For every accepted source toplevel:
+
+`if (!map.has(lowerAppId)) map.set(...)`
+
+is followed by:
+
+`map.get(lowerAppId).toplevels.push(toplevel)`.
+
+Existing keys therefore perform `has + get`; new keys perform `has + set + get`.
+
+Exact-safe direction:
+
+- perform one `get(lowerAppId)`;
+- if absent, create/store the record once;
+- append through the local record reference.
+
+This removes one Map lookup for every accepted running toplevel.
+
+#### B. Final Map -> array rematerialization
+
+After all grouping is complete, the function does a second pass across the whole Map and creates a new public object for every entry solely to add `appId`:
+
+`{ appId: key, toplevels: value.toplevels, pinned: value.pinned }`.
+
+Instead, create the final-shape record at first insertion:
+
+`{ appId, toplevels, pinned }`
+
+store that same record in the Map, and push it once into an ordered `values` array at first insertion.
+
+Because JavaScript Map iteration order is first-insertion order, pushing at the same first-insertion sites preserves the exact current output order:
+
+- resolved pins first;
+- optional `SEPARATOR` at its current position;
+- newly encountered running identities after that;
+- later windows only mutate the already-owned `toplevels` array.
+
+Local effect for `K` final app records:
+
+- final Map traversal: **`K -> 0`**;
+- final wrapper-object allocations: **`K -> 0`** (the grouping record itself becomes the returned record);
+- plus one Map membership lookup removed per accepted running toplevel.
+
+`scripts/test-taskbar-app-model-contract.py` already locks the important pin/case/filter/order/authoritative-Niri behavior and is the natural regression base for this change.
+
+### 44.5 Waffle preview `findNiriWindow()` fallback is defensive on the normal taskbar path, not a primary hot path — ALREADY / CLOSED as standalone optimization
+
+Paths:
+
+- `services/TaskbarApps.qml`;
+- `services/CompositorService.qml`;
+- `services/NiriService.qml`;
+- `modules/waffle/bar/tasks/TaskPreview.qml`;
+- `modules/waffle/bar/tasks/WindowPreview.qml`.
+
+On Niri, `TaskbarApps.computeApps()` intentionally consumes only `CompositorService.sortedToplevels`.
+
+`CompositorService.sortedToplevels` is produced through `NiriService.sortToplevels(...)`, and the enriched object created by NiriService contains the exact `niriWindowId` / `niriWorkspaceId`. Unmatched foreign-toplevel handles are deliberately dropped as stale/ghost handles.
+
+Therefore normal Waffle taskbar app entries already carry `niriWindowId`; the later `findNiriWindow()` calls in TaskPreview/WindowPreview are fallback/defensive compatibility paths rather than the normal source of identity.
+
+Do not create a standalone patch whose only purpose is deleting that fallback. The meaningful hot-path wins are:
+
+- Round 29 §43.3: stop after the first valid identity instead of resolving every app window;
+- Round 29/26 shared published-window index work where real repeated ID lookups remain.
+
+### 44.6 Deferring the initial clipboard snapshot until after live-ID validation is attractive but not strict-lossless yet — NEEDS PARITY
+
+Path:
+
+- `scripts/capture-windows.sh`.
+
+The helper currently saves the clipboard before querying/validating live Niri window IDs. As a result, requests that later discover no usable windows can still pay initial `wl-paste -l` plus a MIME paste even though no screenshot will run.
+
+Moving the clipboard snapshot after `windows_to_capture` validation would remove that work on no-window/all-missing requests.
+
+However this changes the time boundary at which the user's clipboard is sampled for a real capture. A user copy racing with the Niri window query can therefore change which selection is later restored.
+
+Under the absolute-lossless rule, do **not** promote this as a static reorder optimization without a race contract/fixture defining the intended saved-selection boundary.
+
+### 44.7 Round-30 priority update
+
+**Correctness prerequisite:**
+
+1. restrict helper cleanup hashes to PNGs successfully generated by the current invocation (§44.1).
+
+**Confirmed lossless local reductions:**
+
+2. one-pass Waffle pinned/running partition (§44.2);
+3. shared focused toplevel in Waffle `TaskAppButton` (§44.3);
+4. single-probe + direct final-record construction in `TaskbarApps.computeApps()` (§44.4).
+
+**Closed / already explained:**
+
+5. deleting Waffle `findNiriWindow()` fallback as a standalone optimization (§44.5).
+
+**Parity required:**
+
+6. moving the initial clipboard snapshot later to avoid work on no-op requests (§44.6).
+
+Round-28/29 confirmed WindowPreview/helper reductions remain valid after the concurrent Abyss/Polkit handoff updates. No runtime/source implementation is authorized by this handoff.

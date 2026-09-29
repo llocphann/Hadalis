@@ -86,7 +86,9 @@ assert "root._standaloneTransferredRequestId === requestId" in gone
 assert "!ConfirmationService.requestVisible && !transferred" in gone
 assert "if (!observed && root._windowListRevision <= requestRevision)" in gone
 assert "if (transferred)" in gone
-assert "ConfirmationService.cancelPresentationHandoff(requestId, true)" in gone
+assert "ConfirmationService.cancelPresentationHandoff(" in gone
+assert "requestId, true" in gone
+assert "if (!ConfirmationService.cancelPresentationHandoff(" in gone
 assert "root._clearStandaloneState()" in gone
 assert "ConfirmationService.cancel()" in gone
 assert "root._windowListRevision += 1" in close
@@ -129,10 +131,12 @@ assert "ConfirmationService.finishPresentation(requestId)" in release
 confirm_block=close.split("function confirmClose(): void",1)[1].split("function cancel(): void",1)[0]
 assert 'ConfirmationService.resolvePresentationHandoff(' in confirm_block
 assert 'requestId, "close"' in confirm_block
+assert "if (!ConfirmationService.resolvePresentationHandoff(" in confirm_block
 assert "closeWindowFast(targetWindow)" in confirm_block
 cancel_block=close.split("function cancel(): void",1)[1].split("// Dialog UI",1)[0]
 assert "ConfirmationService.cancelPresentationHandoff(" in cancel_block
 assert "requestId, false" in cancel_block
+assert "&& !ConfirmationService.cancelPresentationHandoff(" in cancel_block
 assert "onAbyssConfiguredChanged:" in close
 assert "target: AbyssPromptHostRegistry" in close
 assert "function onEntriesChanged(): void" in close

@@ -271,8 +271,11 @@ Scope {
         if (transferred) {
             // The standalone handoff is still the same semantic request. If its
             // captured window vanished, lifecycle-cancel that request without
-            // pretending the user clicked its cancel action.
-            ConfirmationService.cancelPresentationHandoff(requestId, true)
+            // pretending the user clicked its cancel action. Keep the renderer
+            // visible if cancellation could not acquire the transaction.
+            if (!ConfirmationService.cancelPresentationHandoff(
+                    requestId, true))
+                return
             root._clearStandaloneState()
             return
         }
@@ -350,9 +353,12 @@ Scope {
         const requestId = root._standaloneTransferredRequestId
         if (requestId > 0) {
             // Execute the original queued callback through ConfirmationService;
-            // do not bypass it with a second direct close path.
-            ConfirmationService.resolvePresentationHandoff(
-                requestId, "close")
+            // do not bypass it with a second direct close path. If ownership
+            // changed unexpectedly, leave the dialog intact rather than close
+            // a window outside the semantic transaction.
+            if (!ConfirmationService.resolvePresentationHandoff(
+                    requestId, "close"))
+                return
             root._clearStandaloneState()
             return
         }
@@ -363,9 +369,10 @@ Scope {
 
     function cancel(): void {
         const requestId = root._standaloneTransferredRequestId
-        if (requestId > 0)
-            ConfirmationService.cancelPresentationHandoff(
-                requestId, false)
+        if (requestId > 0
+                && !ConfirmationService.cancelPresentationHandoff(
+                    requestId, false))
+            return
         root._clearStandaloneState()
     }
 

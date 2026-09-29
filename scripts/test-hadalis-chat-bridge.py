@@ -39,7 +39,7 @@ def main() -> None:
     assert prompt_has_required_github_mention(ROTATION_BOOTSTRAP_PROMPT)
     assert CONTINUATION_PROMPT.splitlines()[0] == GITHUB_MENTION
     assert ROTATION_BOOTSTRAP_PROMPT.splitlines()[0] == GITHUB_MENTION
-    assert "fetch the current dev HEAD" in CONTINUATION_PROMPT
+    assert "fetch the current dev head" in CONTINUATION_PROMPT.casefold()
     assert "HADALIS_LOOP:CONNECTOR_BLOCKED GITHUB" in CONTINUATION_PROMPT
 
     wait = parse_loop_directive("notes\nHADALIS_LOOP:WAIT_RESULT JOB-000127\n")

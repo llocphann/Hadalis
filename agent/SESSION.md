@@ -1,38 +1,44 @@
 # Autonomous session checkpoint
 
-Desktop feasibility is complete: submit, generation start, generation completion, and response detection all passed.
+Hadalis automation is now configured for continuous strict-lossless optimization research rather than a one-shot autonomous objective.
 
-Focused automation validation `JOB-AUTOMATION-VALIDATE-002` passed every action. Canonical validation `JOB-MAINTAINER-VALIDATE-001` completed but the repository remains non-green because of 33 unrelated product/regression failures; the three Hadalis automation regression tests passed inside that run.
+## Why the old behavior stopped
 
-A production-safety change now starts new autonomous sessions with `rotate-send`, which creates a fresh chat inside Hadalis Cloud before sending the initial prompt. Continuations remain in the current chat; explicit rotation also uses `rotate-send`.
+The previous bootstrap prompt allowed ChatGPT to emit `HADALIS_LOOP:DONE` when the current objective/round was complete. The bridge correctly treats DONE as terminal, so the service ran once and then exited successfully.
 
-Interactive testing confirmed the GitHub rich-mention picker path can select GitHub, append the prompt body, and submit. The production desktop driver now converts the tracked first-line connector marker into that rich mention instead of filling the markdown literal into the composer. Rotation also follows the renderer that owns the newly created chat.
+## New continuous research behavior
 
-The 005 through 008 live runs visibly completed in ChatGPT with the correct current dev HEAD and HADALIS_LOOP:DONE, while the local worker action remained alive. The uploaded original successful submit probe explicitly called `process.exit(0)` after writing its result; the production CLI/live test had instead relied on Node exiting naturally while a Playwright CDP websocket remained attached. The CLI and live acceptance now write JSON synchronously with `fs.writeSync` and explicitly exit after success/error, without calling `browser.close()` and therefore without closing ChatGPT Desktop. Marker-delta completion remains the protocol signal. A lock-safe `--reset-state` runtime path plus installer `--reset-session-state` option is ready for the first service rollout.
+- `automation/chat_bridge/INITIAL_PROMPT.md` now defines the strict-lossless research objective dynamically from current `dev` and the newest `docs/CROSS_REPO_OPTIMIZATION_HANDOFF.md` state.
+- It is research-only unless the maintainer explicitly authorizes implementation.
+- Research findings go to `docs/CROSS_REPO_OPTIMIZATION_HANDOFF.md`.
+- Completing a research round must lead to CONTINUE, not DONE.
+- ROTATE is used before context rollover after persisting a durable research checkpoint.
+- local jobs remain deterministic and may only execute explicit argv arrays.
+- continuation and rotation prompts remain in the same strict-lossless research mode.
+- the bridge service receives `HADALIS_CONTINUOUS_RESEARCH=1`.
+- in that mode, even an accidental DONE is converted into another continuation instead of terminating the research service.
+- if a previous persisted state is DONE and the service restarts in continuous mode, it opens a fresh research chat and resumes.
 
-Live transport acceptance `JOB-DESKTOP-LIVE-ACCEPT-013` passed every action and published its result to `dev`. Transport acceptance is closed.
+## Validation
 
-Resume procedure:
-1. Fetch current `dev` HEAD in the maintainer's persistent checkout.
-2. Install the user services with a fresh deterministic bridge session:
-   `python3 scripts/install-hadalis-automation.py --reset-session-state --enable-now`
-3. Confirm `hadalis-chatgpt.service`, `hadalis-worker.service`, and `hadalis-chat-bridge.service` are active.
-4. Confirm the first autonomous bootstrap creates a fresh Hadalis Cloud chat, uses the GitHub connector, fetches current `dev` HEAD, and advances by loop markers without the user typing "continue".
+`JOB-CONTINUOUS-RESEARCH-VALIDATE-001` exposed one stale test expectation in the new continuation prompt.
 
-Live acceptance 009 did publish a result, but it failed before any ChatGPT interaction: `node --check automation/chat_bridge/desktop_cli.mjs` caught an extra `)` introduced while switching to synchronous `fs.writeSync` output. The syntax defect is fixed; 010 reruns the same four checks and live acceptance.
+That prompt was corrected to retain the exact connector-blocked directive.
 
-Live acceptance 012 exited and published normally, confirming the CDP-process hang is fixed. Its only failure was `No completed assistant HADALIS_LOOP response found` after completion had already been detected. Root cause: the renderer can flatten marker text together with response toolbar/neighbor text, while extraction required a full-line marker match. The driver now scans protocol marker tokens independent of UI line boundaries, chooses the last marker near the newest response action with a body-level fallback, and a static regression test covers merged UI suffix text plus duplicate prompt/assistant markers. Acceptance 013 validates this path before the next service rollout step.
+`JOB-CONTINUOUS-RESEARCH-VALIDATE-002` then passed every action:
+- runtime/protocol/installer Python compile;
+- `scripts/test-hadalis-chat-bridge.py`;
+- desktop driver syntax;
+- desktop CLI syntax.
 
-The one-shot worker now prints a concise terminal outcome such as `Hadalis worker: JOB-... -> passed; result published to origin/dev`, fixing the confusing silent-return behavior observed after acceptance 013.
+The latest optimization-research commit observed during setup was Round 49. This is only a checkpoint observation; every autonomous research turn must fetch current `dev`, determine the newest handoff round itself, and audit intervening commits.
 
-The first `--enable-now` rollout failed before service startup because the generated user units used `WorkingDirectory="..."`. `systemd-analyze verify` treats those quotes as part of the path for this directive, making it non-absolute and causing `Unit hadalis-chatgpt.service has a bad unit file setting`. The installer now writes the absolute working directory without literal quotes, quotes complete `Environment=NAME=VALUE` tokens, and verifies all three units with `systemd-analyze --user verify` before any enable/start attempt. Retry the installer from the persistent checkout after fast-forwarding `dev`.
+## Maintainer activation
 
-The corrected systemd rollout has now been observed locally in its intended terminal state: `hadalis-chatgpt.service` and `hadalis-worker.service` are active; `hadalis-chat-bridge.service` is inactive/dead with `Result=success`, `ExecMainCode=1` (normal process exit), `ExecMainStatus=0`, and persisted bridge state `done`. This confirms that an inactive bridge after DONE is expected lifecycle behavior, not a failed service.
+From the persistent checkout:
+1. fast-forward `dev`;
+2. reinstall with `python3 scripts/install-hadalis-automation.py --reset-session-state --enable-now`;
+3. after startup, do not type `continue` into ChatGPT;
+4. stop the continuous research loop explicitly with `systemctl --user stop hadalis-chat-bridge.service` when desired.
 
-One final service-mode end-to-end gate remains before declaring the autonomous loop fully validated: reset bridge state, restart only the bridge service, and require the next fresh ChatGPT bootstrap to create one fresh harmless local job with a new `JOB-SERVICE-E2E-*` id and current dev HEAD, emit `HADALIS_LOOP:WAIT_RESULT JOB-...`, let the already-running worker service publish the result, receive the bridge's automatic continuation with no user message, inspect that result, and terminate with `HADALIS_LOOP:DONE`. This specifically validates the WAIT_RESULT -> worker -> result -> automatic continuation path under installed services.
-
-The first service-mode E2E attempt was a false positive. Deterministic timing evidence shows the bridge exited at 05:13:31 with persisted state `done`, while `JOB-SERVICE-E2E-001` only started at 05:13:54 and finished/published at 05:13:55. The bridge therefore could not have waited for or consumed that result. The bug was in response extraction: bootstrap prompts themselves contain protocol marker examples, so the generic extractor could return a marker from the submitted prompt instead of the newly generated assistant marker.
-
-The send/rotate-send path now uses the pre-submit protocol-marker count as an extraction baseline and accepts exactly one marker added after that baseline. This makes the initial prompt's embedded CONTINUE/ROTATE/DONE/CONNECTOR_BLOCKED examples inert for response parsing. The pure marker-baseline regression plus `JOB-SERVICE-E2E-FIX-VALIDATE-001` passed all four actions (driver syntax, CLI syntax, marker scanner/baseline selection, chat-bridge protocol/state tests).
-
-The service-mode E2E gate must be rerun after the persistent checkout fast-forwards to this fix. Acceptance requires ordering evidence: WAIT_RESULT first, exact job result published next, automatic continuation after that result, and final persisted DONE only after the result timestamp.
+The expected steady behavior is repeated research/commit/CONTINUE or ROTATE cycles. The bridge should no longer become inactive merely because a research round finishes.

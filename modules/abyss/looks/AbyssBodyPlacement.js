@@ -79,6 +79,7 @@ function _tiers(request, span, depth, accepted, gap, width, height, insets) {
     var horizontal = edge === "top" || edge === "bottom";
     var reverse = edge === "bottom" || edge === "right";
     var tiers = [0];
+    if (request.allowInward === false) return tiers;
     accepted.forEach(function(other) {
         var baseAlongStart = horizontal ? base.x : base.y;
         var baseAlongEnd = baseAlongStart+(horizontal ? base.width : base.height);

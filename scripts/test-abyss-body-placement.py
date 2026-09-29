@@ -4,6 +4,12 @@ from pathlib import Path
 import subprocess
 
 root = Path(__file__).resolve().parents[1]
+host_source = (root / "modules/abyss/AbyssBodyHost.qml").read_text()
+if 'property bool placementCanStackInward: identity !== "dock"' not in host_source:
+    raise SystemExit("FAIL: Dock must opt out of inward allocator stacking")
+if "allowInward:root.placementCanStackInward" not in host_source:
+    raise SystemExit("FAIL: AbyssBodyHost must publish inward-stacking policy to the allocator")
+
 program = (root / "modules/abyss/looks/AbyssGeometry.js").read_text() + "\n" + (
     root / "modules/abyss/looks/AbyssBodyPlacement.js"
 ).read_text() + r"""
@@ -18,6 +24,7 @@ function request(id,edge,order,depth=200,along=300,span=420,options={}) {
  const padding=options.padding ?? 14;
  const record=panel(1200,900,edgeInsets,edge,along,span,depth,1,padding,[],true);
  return {id,open:true,order,priority:options.priority ?? 0,padding,
+   allowInward:options.allowInward ?? true,
    stackPolicy:options.stackPolicy ?? "",
    stackProximity:options.stackProximity ?? 24,
    minSpan:Math.min(record.span,options.minSpan ?? 220),
@@ -132,7 +139,27 @@ packed=arrange(mixed,1200,900,edgeInsets);
 assert(packed.left.visible && packed.left.inward===0 && !packed.left.shrunk,
     'modal/high-priority body retains its direct anchor and requested size');
 
+// Dock is edge-locked: it may yield by retracting, but it must never become
+// a floating inner-tier panel when a higher-priority surface owns its space.
+const dock=request('dock','bottom',1,96,390,420,{
+ priority:-1,minSpan:420,minDepth:96,allowInward:false
+});
+const blocker=request('dockBlocker','bottom',2,180,320,560,{
+ minSpan:560,minDepth:180
+});
+packed=arrange([dock,blocker],1200,900,edgeInsets);
+assert(blocker.open && packed.dock.evicted && !packed.dock.visible,
+    'edge-locked Dock retracts when its physical Edge slot is unavailable');
+assert.equal(packed.dock.inward,0,
+    'edge-locked Dock is never reassigned to an inward tier');
+blocker.open=false;
+packed=arrange([dock,blocker],1200,900,edgeInsets);
+assert(packed.dock.visible && !packed.dock.evicted,
+    'edge-locked Dock restores automatically when the conflict clears');
+assert.equal(packed.dock.inward,0,
+    'restored Dock returns to the physical Edge');
+
 assert.deepEqual(arrange([],1200,900,edgeInsets),{});
-console.log('PASS: anchors retained, inward partitioning, readable reflow, eviction/restoration and exact geometry');
+console.log('PASS: anchors retained, inward partitioning, readable reflow, edge-locked Dock eviction/restoration and exact geometry');
 """
 raise SystemExit(subprocess.run(["node","-e",program],cwd=root).returncode)

@@ -37,6 +37,10 @@ Item {
     // Keep Dock/icon geometry fixed, but let panel content reflow before any
     // lower-priority body is evicted. These are panel dimensions including
     // padding; hosts may raise them for feature-specific readability.
+    // Dock is a physical-edge affordance. If another higher-priority surface
+    // makes that edge slot unavailable, retract it instead of turning it into
+    // a floating inner-tier panel.
+    property bool placementCanStackInward: identity !== "dock"
     property bool placementCanResize: identity !== "dock"
     property real minimumSpan: Math.min(span, placementCanResize
         ? (largeSurface ? 520 : 220) : span)
@@ -187,6 +191,7 @@ Item {
         placementRequest: ({id:root.identity,open:root.semanticOpen,order:root.activationOrder,
             priority:root.placementPriority,padding:root.padding,
             minSpan:root.minimumSpan,minDepth:root.minimumDepth,
+            allowInward:root.placementCanStackInward,
             stackPolicy:root.stackPolicy,
             stackProximity:root.stackProximity,
             record:root.requestedRecord})

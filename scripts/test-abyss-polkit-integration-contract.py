@@ -11,6 +11,11 @@ confirm=(r/"modules/abyss/AbyssConfirmationPresenter.qml").read_text()
 assert "PolkitService.available && PolkitService.active" in legacy
 assert "!PolkitService.abyssPresentationSuppressed" in legacy
 assert "!PolkitService.abyssPresenterAvailable" in legacy
+assert "readonly property var presentationScreens:" in legacy
+assert 'Config.options?.panelFamily !== "abyss"' in legacy
+assert "PolkitService.targetOutputName" in legacy
+assert "String(screen?.name ?? \"\") === target" in legacy
+assert "model: root.presentationScreens" in legacy
 assert 'Config.options?.panelFamily !== "abyss"' not in legacy
 assert '!(Config.options?.enabledPanels ?? []).includes("abyssPerimeter")' not in legacy
 assert 'source: "../../polkit/Polkit.qml"' in critical

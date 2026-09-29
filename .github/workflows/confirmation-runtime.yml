@@ -165,6 +165,8 @@ jobs:
             nixpkgs#xorg.libXrender \
             nixpkgs#libxkbcommon \
             nixpkgs#mesa \
+            nixpkgs#mesa-demos \
+            nixpkgs#libglvnd \
             nixpkgs#ripgrep \
             nixpkgs#coreutils \
             --command bash -lc '
@@ -191,8 +193,17 @@ jobs:
                 store_path="$(nix eval --raw "nixpkgs#${attr}.outPath")"
                 x11_lib_path="${x11_lib_path:+$x11_lib_path:}$store_path/lib"
               done
-              export LD_LIBRARY_PATH="$x11_lib_path${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+              mesa_path="$(nix eval --raw nixpkgs#mesa.outPath)"
+              glvnd_path="$(nix eval --raw nixpkgs#libglvnd.outPath)"
+              export LD_LIBRARY_PATH="$mesa_path/lib:$glvnd_path/lib:$x11_lib_path${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
               export LIBGL_ALWAYS_SOFTWARE=1
+              export LIBGL_DRIVERS_PATH="$mesa_path/lib/dri"
+              export __EGL_VENDOR_LIBRARY_DIRS="$mesa_path/share/glvnd/egl_vendor.d"
+              export MESA_LOADER_DRIVER_OVERRIDE=llvmpipe
+              export GALLIUM_DRIVER=llvmpipe
+              export EGL_PLATFORM=x11
+              export EGL_LOG_LEVEL=debug
+              export LIBGL_DEBUG=verbose
               export QT_QPA_PLATFORM=wayland
               export QT_QUICK_BACKEND=software
               export QSG_RENDER_LOOP=basic
@@ -228,6 +239,11 @@ jobs:
                 cat "$RUNNER_TEMP/xvfb-niri-confirmation.log" || true
                 exit 1
               }
+
+              # Keep this diagnostic non-fatal: Niri below is the acceptance
+              # boundary, while eglinfo makes the CI graphics environment
+              # actionable if Smithay cannot create its GLES renderer.
+              eglinfo --display x11                 >"$RUNNER_TEMP/eglinfo-niri-confirmation.log" 2>&1 || true
 
               : > "$niri_config"
               niri --config "$niri_config" \
@@ -270,4 +286,5 @@ jobs:
         shell: bash
         run: |
           cat "$RUNNER_TEMP/xvfb-niri-confirmation.log" 2>/dev/null || true
+          cat "$RUNNER_TEMP/eglinfo-niri-confirmation.log" 2>/dev/null || true
           cat "$RUNNER_TEMP/niri-confirmation.log" 2>/dev/null || true

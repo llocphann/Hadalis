@@ -13737,3 +13737,310 @@ New work learned from the `awesome-niri` ecosystem:
     (§53.10).
 
 No source/runtime implementation is authorized by this handoff.
+
+---
+
+## 54. Round 40 — Niri event classification and newer shell lifecycle cross-checks (2026-09-30)
+
+### Snapshot / scope
+
+Round 40 source inspection started from
+\`37cb85f10648b5d3fcbfb1e4869e856312b07250\`
+(\`docs(perf): audit awesome-niri optimization sources\`).
+
+The exact-parent guard caught two concurrent automation-only commits before this
+handoff write:
+
+- \`6a0829db12aaf213fb05634cd6d8c5863558a282\` —
+  \`automation: add deterministic chat bridge protocol\`;
+- \`d0c21c4bf1b0da2039d80500ffe489310e9701f6\` —
+  \`automation: add ChatGPT desktop CDP driver\`.
+
+Their changed files are confined to \`automation/*\` and
+\`scripts/test-hadalis-chat-bridge.py\`. They do not touch NiriService,
+AppSearch, popup/surface code, Bluetooth UI, external-IPC launcher paths or this
+handoff. The findings below were reconciled unchanged against
+\`d0c21c4...\`.
+
+This remains **strict-lossless research only**. No runtime/source implementation
+is authorized by this round.
+
+New upstream references inspected include current \`nirimap\`,
+\`waybar-niri-windows\`, \`piri\`, \`vibepanel\`, \`ashell\`, \`Glimpse\`,
+and DMS PR #3081. The tempting workspace-sort removal remains closed by §46.3
+and is not reopened here.
+
+### 54.1 Focus-only Niri events can skip the generic order-diff pass entirely — CONFIRMED / P1
+
+Path: \`services/NiriService.qml\`.
+
+\`handleWindowFocusChanged()\` currently calls
+\`scheduleWindowsUpdate(currentList)\`, and that generic scheduler runs
+\`_windowOrderDiffers(previousWindows, normalizedWindows)\` unless an already
+true dirty flag short-circuits the JavaScript \`||\`.
+
+For a focus event, the only field \`_normalizeWindowFocus()\` can change is
+\`is_focused\`. The current order-diff predicate does not inspect that field.
+It inspects only list length/membership, \`app_id\`, \`workspace_id\`,
+\`is_floating\`, and scrolling-layout column/row.
+
+Therefore a \`WindowFocusChanged\` event cannot turn a previously-false
+\`_windowOrderDirty\` true.
+
+Exact-safe rule:
+
+- preserve an already-true \`_windowOrderDirty\` from an earlier event in the
+  same batch;
+- normalize focus exactly as today;
+- skip the new generic order-diff for this focus-only update.
+
+This is stronger than §41.4's positional fast path: §41.4 can avoid the
+temporary ID Map but still compares N windows. The focus-specific rule removes
+the entire order-diff pass.
+
+When the prior dirty flag is false, removed work is up to N Map inserts, N Map
+lookups and N order-field comparison sets per focus event.
+
+\`nirimap\` and \`waybar-niri-windows\` also model focus as a dedicated state
+mutation rather than a layout/membership mutation. That is supporting evidence;
+the lossless proof comes from Hadalis' own current diff predicate.
+
+Required parity cases include focus A->B, focus->null, missing focused id,
+title-only pending update then focus, order-changing pending update then focus,
+focus followed by another order-changing event before publish, GameMode's
+200 ms batch interval, and identical \`windowOrderChanged\` emission behavior.
+
+### 54.2 The published-batch \`activeWindow\` lookup can be fused into the final sorted projection — CONFIRMED / P1-P2
+
+Path: \`services/NiriService.qml\`.
+
+Every dirty-batch publish currently:
+
+1. calls \`sortWindowsByLayout(_pendingWindows)\`;
+2. builds and sorts the enriched records;
+3. maps every enriched record back to the final ordered window array;
+4. assigns \`windows = nextWindows\`;
+5. scans that array again with
+   \`nextWindows.find(window => window.is_focused)\`;
+6. assigns \`activeWindow\`.
+
+The final projection in step 3 already visits every window in exactly the final
+sorted order used by the later \`.find()\`.
+
+A private snapshot helper can therefore return the same ordered array while
+capturing only the first focused window during that existing projection.
+
+Keep the public \`sortWindowsByLayout()\` array-returning contract unchanged:
+the output-refresh path also calls it and currently does not republish
+\`activeWindow\`.
+
+The timer can assign \`windows\` first and \`activeWindow\` second exactly as
+today, preserving the current notification order and first-focused semantics.
+
+Local reduction per published dirty batch:
+
+- extra post-sort focused-window visits: **N -> 0**.
+
+This is separate from §41.6, which centralizes repeated consumer scans of the
+already-published snapshot.
+
+### 54.3 Niri event dispatch allocates an Object.keys array only to read one enum key — CONFIRMED / P3
+
+Path: \`services/NiriService.qml\`.
+
+Every parsed event begins with:
+
+\`const eventType = Object.keys(event)[0]\`.
+
+The object came directly from \`JSON.parse()\`; Niri's externally tagged event
+enum supplies one variant key. A first-own-enumerable-key loop can preserve the
+same property enumeration order and first-key behavior without allocating the
+temporary keys array.
+
+Do not replace it with a dispatch scheme that changes malformed multi-key
+precedence; preserve "first enumerable own key wins".
+
+Local reduction:
+
+- temporary keys arrays: **1 -> 0 per Niri event**.
+
+This is intentionally P3: exact and event-hot, but much smaller than the
+N-window work in §54.1-§54.2.
+
+### 54.4 GameMode rebuilds the same critical-event array for every Niri event — CONFIRMED / P2 conditional
+
+Path: \`services/NiriService.qml\`.
+
+While \`GameMode.active\`, every Niri event constructs the same 13-string
+\`criticalEvents\` array and then calls \`.includes(eventType)\`.
+
+An allocation-free helper/switch can return the exact same boolean for the same
+string literals, removing both the per-event array allocation and linear
+membership walk without retaining a mutable cache.
+
+Keep the whitelist exactly unchanged. In particular \`WindowsChanged\` and
+\`WindowLayoutsChanged\` must remain critical because the current code
+documents that GameMode fullscreen-exit detection needs their size updates.
+
+Status: **CONFIRMED / P2 conditional** because this cost exists only in
+GameMode.
+
+### 54.5 DMS supplies a real latency measurement for the direct Quickshell IPC candidate — EVIDENCE UPGRADE, still HIGH CONFIDENCE / benchmark
+
+This strengthens §53.1; it does not turn the Hadalis candidate into a guaranteed
+percentage.
+
+DMS PR #3081, merged as
+\`c3fd526698e0bf04db7160389aaf83a911745abe\`, reports a local
+\`spotlight toggle\` benchmark:
+
+- old \`qs ipc call\`: approximately **336 ms ± 130 ms**;
+- direct Quickshell Unix socket: approximately **210.5 ms ± 88.7 ms**.
+
+That is about **37.4% lower mean latency** in DMS' measured setup.
+
+DMS commit \`dce1095f8daeb60f30862e05305f94f88c39f1f7\` separately
+documents roughly 15 ms of CLI startup cost from one Go dependency
+initialization, further supporting that short IPC commands can be dominated by
+launcher/helper startup overhead.
+
+Do not transfer 37.4% to Hadalis. DMS runs the socket client inside its compiled
+Go CLI; Hadalis enters through Bash and the proposed fast path would normally
+spawn the smaller \`native/inir-native\` helper. Bash/config/PID/helper startup
+still remains.
+
+Therefore §53.1 stays **HIGH CONFIDENCE / P1 benchmark + compatibility guard**.
+The upstream number raises benchmark priority; it is not a Hadalis estimate.
+
+### 54.6 nirimap's queue drain/coalescing is not a generic strict-lossless port for Hadalis — CLOSED as a blanket optimization
+
+\`nirimap\` commit
+\`ce28bf670693e7db7c407f7e95b6be4397dca91d\` drains its complete
+pending IPC queue each UI tick, keeps only the latest repeated
+\`WindowChanged\` per window, and lets a full-state snapshot supersede older
+queued updates.
+
+That is valid for nirimap's own state/publication contract, but Hadalis event
+handlers can perform per-event work before the 50/200 ms window publish:
+
+- MRU focus updates;
+- workspace \`active_window_id\` maintenance;
+- single-window-policy scheduling;
+- \`_windowOrderDirty\` accumulation;
+- pending-window state read by internal actions before publication.
+
+Dropping or moving arbitrary intermediate events can therefore alter timing or
+state even if the final published \`windows\` array matches.
+
+A future narrow coalescer for one proven side-effect-free subtype may be studied
+with explicit interleaving tests. There is no generic strict-lossless
+"coalesce Niri events" task.
+
+Status: **CLOSED as a generic port**.
+
+### 54.7 vibepanel's popover surface-height freeze does not apply to the current connected Waffle BarPopup path — CLOSED for that path
+
+\`vibepanel\` commit
+\`7c5c806a75b3664cd78dbdbd12b7f76f7d03ba83\` freezes a
+layer-shell popover's native height while a revealer animates, avoiding a
+native surface resize every frame.
+
+Current \`modules/waffle/bar/BarPopup.qml\` has a different contract:
+
+- its \`PanelWindow\` is anchored top/bottom/left/right and covers the output;
+- open/close animates \`revealProgress\`, not native window height;
+- connected geometry, reveal clipping and the input mask animate inside that
+  fixed output-sized surface.
+
+So the current connected BarPopup does not contain the per-frame native
+height-resize pattern vibepanel removed. Do not add a second freeze abstraction
+there.
+
+This conclusion is scoped to connected Waffle BarPopup. Detached tooltip,
+context-menu or other popup surfaces should be profiled separately before a
+broader claim.
+
+Status: **CLOSED for current Waffle BarPopup**.
+
+### 54.8 ashell's off-UI-thread icon-index warmup is architecture evidence, not a direct QML port — SUPERSEDED / ARCHITECTURE
+
+\`ashell\` commit
+\`c863d5eb298d77d577a5a697fbb73f910e4207d6\` warms native
+filesystem icon/desktop indexes on a blocking worker only when an icon consumer
+is active.
+
+Hadalis' analogous work is at another layer:
+
+- \`AppSearch.qml\` consumes Quickshell \`DesktopEntries\` QML objects;
+- its reverse maps are built in QML by \`_rebuildCache()\`;
+- moving those QML-object reads to a worker is not a local thread-safe
+  substitution;
+- publication timing/binding constraints are already documented in §38.5 and
+  §40.14;
+- local normalization/preparation reductions already exist in §40.1-§40.3.
+
+Do not create a generic "move AppSearch cache build to worker thread" task from
+ashell. A native catalog/index service would be an architecture change requiring
+profile evidence after the existing local AppSearch work.
+
+Status: **SUPERSEDED / ARCHITECTURE**.
+
+### 54.9 Glimpse exposes a Bluetooth discovery ownership bug class in Hadalis, but fixing it is not a lossless optimization — OUT OF STRICT-LOSSLESS SCOPE
+
+\`Glimpse\` commit
+\`45475432682217a3de0344c91d8a00598aaf97cf\` changed Bluetooth
+discovery to claim-based ownership: BlueZ Start/Stop occurs only on transitions
+between zero and one-or-more active claims.
+
+The comparison uncovered a current Hadalis lifecycle issue:
+
+- Waffle \`BluetoothControl.qml\` sets global
+  \`Bluetooth.defaultAdapter.discovering\` on construction/destruction;
+- both right-sidebar variants set the same global property when their Bluetooth
+  dialog opens/closes;
+- unexpectedly, Waffle \`NightLightControl.qml\` imports
+  \`Quickshell.Bluetooth\` and also starts/stops Bluetooth discovery on its own
+  lifecycle despite being an eye-protection page.
+
+Discovery ownership is therefore not centralized. One surface can stop scanning
+while another logical owner still wants it, and Night Light can trigger
+unrelated Bluetooth scanning.
+
+A claim/refcount service and removal of the Night Light side effect are
+plausible correctness fixes, but both alter current externally observable
+Bluetooth behavior. They must not be counted or implemented as strict-lossless
+performance work.
+
+Status: **OUT OF STRICT-LOSSLESS SCOPE — correctness/lifecycle follow-up only**.
+
+### 54.10 Round-40 conclusion
+
+New strict-lossless findings:
+
+1. skip the complete generic window-order diff for focus-only Niri events
+   (§54.1, **CONFIRMED / P1**);
+2. capture \`activeWindow\` during the existing final sorted projection
+   (§54.2, **CONFIRMED / P1-P2**);
+3. remove the per-event \`Object.keys(event)\` temporary array
+   (§54.3, **CONFIRMED / P3**);
+4. remove the per-event constant GameMode critical-event array/membership scan
+   (§54.4, **CONFIRMED / P2 conditional**).
+
+Evidence upgrade:
+
+5. DMS reports about **37.4% lower mean latency** for its direct Quickshell IPC
+   benchmark, strengthening Hadalis' guarded §53.1 benchmark priority without
+   implying the same percentage (§54.5).
+
+Closed / architecture / non-lossless findings:
+
+6. no generic nirimap event coalescing (§54.6);
+7. no vibepanel height-freeze layer for the already output-sized connected
+   Waffle BarPopup (§54.7);
+8. no worker-thread port of QML \`DesktopEntries\` cache construction merely
+   from ashell's native-index design (§54.8);
+9. Bluetooth discovery ownership/Night Light side effects require correctness
+   review but are excluded from strict-lossless optimization (§54.9).
+
+No source/runtime implementation is authorized by this handoff.
+

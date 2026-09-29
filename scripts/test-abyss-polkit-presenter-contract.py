@@ -41,6 +41,9 @@ assert "Qt.Key_Return" in content and "Qt.Key_Enter" in content
 assert "onInteractionAvailableChanged" in content
 assert "Authentication failed. Try again." in content
 assert "selectNextIdentity()" in content
+switch_handler=content.split('glyph: "switch_account"',1)[1].split("}",1)[0]
+assert "root.clearResponse()" in switch_handler
+assert switch_handler.index("root.clearResponse()") < switch_handler.index("PolkitService.selectNextIdentity()")
 assert "enabled: PolkitService.interactionAvailable" in content
 assert "&& !(root.model?.busy ?? false)" in content
 assert "!root.interactionAvailable || root.busy" in service

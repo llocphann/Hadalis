@@ -157,7 +157,12 @@ FocusScope {
                     && !(root.model?.busy ?? false)
                 text: Translation.tr("Switch")
                 glyph: "switch_account"
-                onClicked: PolkitService.selectNextIdentity()
+                onClicked: {
+                    // A response typed for one identity must not survive into
+                    // the replacement PAM conversation.
+                    root.clearResponse()
+                    PolkitService.selectNextIdentity()
+                }
             }
         }
 

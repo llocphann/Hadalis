@@ -21,9 +21,9 @@ HADALIS_LOOP:DONE
 `;
 
 async function main() {
-  const { page } = await connectDesktop();
+  let { page } = await connectDesktop();
 
-  await openHadalisNewChat(page);
+  page = await openHadalisNewChat(page);
   await submitPrompt(page, prompt);
   const generation = await waitForCompletion(page);
   const response = await extractLoopResponse(page);

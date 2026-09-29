@@ -70,7 +70,7 @@ After=graphical-session.target
 
 [Service]
 Type=simple
-WorkingDirectory={quote(ROOT)}
+WorkingDirectory={ROOT}
 ExecStart={quote(python)} -m automation.chat_bridge.desktop_host
 {environment("PYTHONUNBUFFERED", "1")}
 {environment("HADALIS_CHATGPT_BIN", chatgpt)}
@@ -91,7 +91,7 @@ Description=Hadalis deterministic local worker
 
 [Service]
 Type=simple
-WorkingDirectory={quote(ROOT)}
+WorkingDirectory={ROOT}
 ExecStart={quote(python)} {quote(ROOT / "automation" / "worker" / "daemon.py")}
 {environment("PYTHONUNBUFFERED", "1")}
 Restart=on-failure
@@ -112,7 +112,7 @@ PartOf=graphical-session.target
 
 [Service]
 Type=simple
-WorkingDirectory={quote(ROOT)}
+WorkingDirectory={ROOT}
 ExecStart={quote(python)} -m automation.chat_bridge.runtime --bootstrap
 {environment("PYTHONUNBUFFERED", "1")}
 {environment("HADALIS_CHATGPT_CDP_URL", "http://127.0.0.1:9222")}

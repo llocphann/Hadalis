@@ -127,9 +127,26 @@ jobs:
               rg_path="$(command -v rg)"
               timeout_path="$(command -v timeout)"
               tool_path="$(dirname "$qs_path"):$(dirname "$weston_path"):$(dirname "$rg_path"):$(dirname "$timeout_path")"
+              helper_link=/run/wrappers/bin/polkit-agent-helper-1
+              helper_target=""
+              for candidate in \
+                /usr/lib/polkit-1/polkit-agent-helper-1 \
+                /usr/libexec/polkit-agent-helper-1
+              do
+                if [[ -x "$candidate" ]]; then
+                  helper_target="$candidate"
+                  break
+                fi
+              done
+              [[ -n "$helper_target" ]] || {
+                printf "host polkit-agent-helper-1 was not found\n" >&2
+                exit 1
+              }
 
               cleanup() {
                 sudo rm -f "$policy"
+                sudo rm -f "$helper_link" 2>/dev/null || true
+                sudo rmdir /run/wrappers/bin /run/wrappers 2>/dev/null || true
                 sudo systemctl restart polkit.service 2>/dev/null || true
                 sudo userdel -r "$ci_user" 2>/dev/null || true
                 sudo rm -rf -- "$work"
@@ -155,6 +172,12 @@ jobs:
                 "  </action>" \
                 "</policyconfig>" \
                 | sudo tee "$policy" >/dev/null
+
+              # nixpkgs' libpolkit-agent is built for the NixOS helper path.
+              # On the Ubuntu runner, bridge that CI-only absolute path to the
+              # host setuid helper instead of replacing authentication semantics.
+              sudo install -d -m 0755 /run/wrappers/bin
+              sudo ln -sfn "$helper_target" "$helper_link"
 
               sudo systemctl restart polkit.service
               sudo systemctl start systemd-machined.service

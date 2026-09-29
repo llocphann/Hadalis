@@ -71,7 +71,10 @@ async function main() {
       600000,
       completionBaseline
     );
-    const response = await extractLoopResponse(page, { allowMarkerOnly: true });
+    const response = await extractLoopResponse(page, {
+      allowMarkerOnly: true,
+      baselineMarkerCount: completionBaseline.markerCount
+    });
 
     writeJson({ generation, response });
     return;

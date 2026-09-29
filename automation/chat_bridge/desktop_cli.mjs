@@ -55,8 +55,12 @@ async function main() {
     if (!prompt.trim())
       throw new Error("stdin prompt is empty");
 
-    await submitPrompt(page, prompt);
-    const generation = await waitForCompletion(page);
+    const completionBaseline = await submitPrompt(page, prompt);
+    const generation = await waitForCompletion(
+      page,
+      600000,
+      completionBaseline
+    );
     const response = await extractLoopResponse(page, { allowMarkerOnly: true });
 
     console.log(JSON.stringify({ generation, response }));

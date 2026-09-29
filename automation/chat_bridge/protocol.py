@@ -17,6 +17,7 @@ Repository: {REPOSITORY}
 Branch: {BRANCH}
 
 GitHub is the authoritative source of truth.
+Do NOT switch to Work mode and do NOT hand off to Work mode. Stay in this ChatGPT conversation and use the GitHub connector plus deterministic local jobs only.
 
 At the start of this turn:
 1. Explicitly use the GitHub connector and verify access to {REPOSITORY}.
@@ -53,6 +54,8 @@ Resume continuous Hadalis strict-lossless optimization research.
 
 Repository: {REPOSITORY}
 Branch: {BRANCH}
+
+Do NOT switch to Work mode and do NOT hand off to Work mode. Stay in this ChatGPT conversation and use the GitHub connector plus deterministic local jobs only.
 
 First verify GitHub connector access and fetch the CURRENT {BRANCH} HEAD.
 Then read:

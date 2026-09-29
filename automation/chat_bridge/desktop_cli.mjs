@@ -42,7 +42,7 @@ async function main() {
     } catch {}
 
     const generation = await waitForCompletion(page);
-    const response = await extractLoopResponse(page);
+    const response = await extractLoopResponse(page, { allowMarkerOnly: true });
     console.log(JSON.stringify({ generation, response }));
     return;
   }
@@ -57,7 +57,7 @@ async function main() {
 
     await submitPrompt(page, prompt);
     const generation = await waitForCompletion(page);
-    const response = await extractLoopResponse(page);
+    const response = await extractLoopResponse(page, { allowMarkerOnly: true });
 
     console.log(JSON.stringify({ generation, response }));
     return;

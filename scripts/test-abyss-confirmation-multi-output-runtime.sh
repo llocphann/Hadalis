@@ -41,7 +41,10 @@ ShellRoot {
     property bool finished: false
     property int phase: 0
     property int preconditionTicks: 0
-    readonly property var screens: Quickshell.screens ?? []
+    // Quickshell.screens is a QML list property. Materialize it as a JS array
+    // before indexing/iterating so the runtime harness observes both outputs
+    // consistently across Qt/Quickshell versions.
+    readonly property var screens: [...Quickshell.screens]
     readonly property string outputOne:
         String(root.screens.length > 0 ? root.screens[0]?.name ?? "" : "")
     readonly property string outputTwo:

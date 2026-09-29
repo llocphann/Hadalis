@@ -12,6 +12,19 @@ Item {
     // Timer-to-Bar pin keeps its original meaning outside Quick Notes.
     property bool showPinButton: true
     property int currentTab: Persistent.states?.timer?.tab ?? 0
+    // Materialize only the visible timer face on first entry. Once a face has
+    // been visited, keep it resident for this widget instance so transient UI
+    // state (for example Pomodoro settings) survives mode switches.
+    property bool pomodoroMaterialized: false
+    property bool countdownMaterialized: false
+    property bool stopwatchMaterialized: false
+
+    function ensureCurrentPage(): void {
+        if (root.currentTab === 0) root.pomodoroMaterialized = true
+        else if (root.currentTab === 1) root.countdownMaterialized = true
+        else if (root.currentTab === 2) root.stopwatchMaterialized = true
+    }
+
     property var tabButtonList: [
         {"name": Translation.tr("Pomodoro"), "icon": "search_activity"},
         {"name": Translation.tr("Timer"), "icon": "hourglass_empty"},
@@ -19,9 +32,12 @@ Item {
     ]
 
     onCurrentTabChanged: {
+        root.ensureCurrentPage()
         if (Persistent?.states?.timer)
             Persistent.states.timer.tab = root.currentTab
     }
+
+    Component.onCompleted: root.ensureCurrentPage()
 
     // Style tokens
     readonly property color colText: Appearance.angelEverywhere ? Appearance.angel.colText
@@ -121,17 +137,26 @@ Item {
             clip: true
             currentIndex: root.currentTab
 
-            PomodoroTimer {
-                compactMode: root.compactMode
-                centerMode: root.centerMode
+            Loader {
+                active: root.pomodoroMaterialized
+                sourceComponent: PomodoroTimer {
+                    compactMode: root.compactMode
+                    centerMode: root.centerMode
+                }
             }
-            CountdownTimer {
-                compactMode: root.compactMode
-                centerMode: root.centerMode
+            Loader {
+                active: root.countdownMaterialized
+                sourceComponent: CountdownTimer {
+                    compactMode: root.compactMode
+                    centerMode: root.centerMode
+                }
             }
-            Stopwatch {
-                compactMode: root.compactMode
-                centerMode: root.centerMode
+            Loader {
+                active: root.stopwatchMaterialized
+                sourceComponent: Stopwatch {
+                    compactMode: root.compactMode
+                    centerMode: root.centerMode
+                }
             }
         }
     }

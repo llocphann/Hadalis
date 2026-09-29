@@ -68,6 +68,24 @@ for token in (
 ):
     require(countdown, token, "Countdown segmented runway presentation missing")
 
+# Timer mode pages are lazy: the first Timers reveal constructs only the
+# currently selected face, then visited faces stay resident for this widget
+# instance so local presentation state is not discarded on mode switches.
+for token in (
+    "property bool pomodoroMaterialized: false",
+    "property bool countdownMaterialized: false",
+    "property bool stopwatchMaterialized: false",
+    "function ensureCurrentPage(): void",
+    "Component.onCompleted: root.ensureCurrentPage()",
+    "active: root.pomodoroMaterialized",
+    "active: root.countdownMaterialized",
+    "active: root.stopwatchMaterialized",
+    "sourceComponent: PomodoroTimer {",
+    "sourceComponent: CountdownTimer {",
+    "sourceComponent: Stopwatch {",
+):
+    require(widget, token, "Timer mode pages must materialize lazily and remain resident after first use")
+
 # Timer mode tabs should fit inside the existing corner popup without making
 # the popup resize or letting long labels cross into adjacent pills.
 for token in (

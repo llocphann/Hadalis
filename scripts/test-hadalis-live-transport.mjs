@@ -26,7 +26,7 @@ async function main() {
   page = await openHadalisNewChat(page);
   await submitPrompt(page, prompt);
   const generation = await waitForCompletion(page);
-  const response = await extractLoopResponse(page);
+  const response = await extractLoopResponse(page, { allowMarkerOnly: true });
 
   const markers = response.text
     .split(/\r?\n/)

@@ -23,7 +23,7 @@ assert "const liquidAnchor = root._liquidAnchorFor(item)" in registry
 assert "root._treeVisibleAndEnabled(item)" in registry
 assert "root._liquidAnchorPresented(liquidAnchor)" in registry
 assert "function resolve(source): var" in registry
-assert "source.anchorItem" in registry
+assert "source?.anchorItem" in registry
 assert "AnchorPolicy.matchScore(candidate, alias)" in registry
 assert "const requestedOutput = String(source?.outputName ?? \"\")" in registry
 assert "AnchorPolicy.placementScore(" in registry

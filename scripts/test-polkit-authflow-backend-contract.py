@@ -25,8 +25,9 @@ for token in ("actionId", "responseVisible", "responseRequired", "failed",
               "supplementaryMessage", "identities", "identityLabel",
               "detailsText", "busy", "canSubmit"):
     assert token in svc
-assert "PopupAnchorRegistry.resolve(hint)" in svc
-assert 'GlobalStates.resolveOutputName("", [])' in svc
+assert "PopupAnchorRegistry.resolve(sourceContext)" in svc
+assert "const requestedOutput = GlobalStates.resolveOutputName(" in svc
+assert "String(hint?.outputName ?? \"\")" in svc
 assert "function selectNextIdentity()" in svc
 assert "console.log(response" not in svc
 assert "console.log(response" not in impl

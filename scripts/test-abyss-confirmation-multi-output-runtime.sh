@@ -40,6 +40,7 @@ ShellRoot {
 
     property bool finished: false
     property int phase: 0
+    property int preconditionTicks: 0
     readonly property var screens: Quickshell.screens ?? []
     readonly property string outputOne:
         String(root.screens.length > 0 ? root.screens[0]?.name ?? "" : "")
@@ -182,9 +183,23 @@ ShellRoot {
         running: !root.finished
 
         onTriggered: {
-            if (!Config.ready || root.outputOne.length === 0
-                    || root.outputTwo.length === 0)
+            root.preconditionTicks += 1
+            if (!Config.ready || root.screens.length < 2
+                    || root.outputOne.length === 0
+                    || root.outputTwo.length === 0) {
+                if (root.preconditionTicks >= 12) {
+                    const names = []
+                    for (const screen of root.screens)
+                        names.push(String(screen?.name ?? ""))
+                    root.check(false,
+                        "runtime preconditions unavailable: Config.ready="
+                        + Config.ready + " screens=" + root.screens.length
+                        + " names=" + JSON.stringify(names)
+                        + " outputOne=" + root.outputOne
+                        + " outputTwo=" + root.outputTwo)
+                }
                 return
+            }
 
             if (root.phase === 0) {
                 if (!root.check(root.screens.length >= 2

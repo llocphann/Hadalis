@@ -70,7 +70,11 @@ Item {
 
         onRequestClose: ConfirmationService.cancel()
 
-        onPresentationActiveChanged: root.finishIfReleased()
+        onPresentationActiveChanged: {
+            if (popup.presentationActive && root.ownsRequest)
+                ConfirmationService.markPresentationStarted(root.requestId)
+            root.finishIfReleased()
+        }
 
         AbyssConfirmationContent {
             request: root.request

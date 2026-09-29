@@ -43,6 +43,8 @@ Scope {
         const requestId = Number(request?._requestId ?? 0)
         if (windowId <= 0 || requestId <= 0)
             return
+        if (!ConfirmationService.holdPresentationRelease(requestId))
+            return
 
         const cached = (NiriService.windows ?? []).find(candidate =>
             Number(candidate?.id ?? 0) === windowId)
@@ -62,7 +64,7 @@ Scope {
         const requestId = root._standaloneTransferredRequestId
         root._standaloneTransferredRequestId = 0
         if (requestId > 0)
-            ConfirmationService.finishPresentation(requestId)
+            ConfirmationService.releasePresentationHold(requestId)
     }
 
     function _releaseAbyssRequestIfUnavailable(): void {

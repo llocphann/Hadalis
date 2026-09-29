@@ -26,6 +26,8 @@ assert "onRequestVisibleChanged" in presenter
 assert "Component.onDestruction:" in presenter
 assert "root.ownsRequest && !ConfirmationService.requestVisible" in presenter
 assert "ConfirmationService.finishPresentation(root.requestId)" in presenter
+active_change=presenter.split("onPresentationActiveChanged:",1)[1].split("AbyssConfirmationContent",1)[0]
+assert "ConfirmationService.markPresentationStarted(root.requestId)" in active_change
 
 # Nested source anchors (notably Dock apps) inherit their host Join Edge.
 host=(r/"modules/abyss/AbyssBodyHost.qml").read_text()
@@ -106,12 +108,14 @@ assert "function _abyssPresenterAvailableFor(outputName): bool" in close
 assert "AbyssPromptHostRegistry.hasOutput" in close
 assert "property int _standaloneTransferredRequestId: 0" in close
 assert "function _showStandaloneForRequest(request): void" in close
-assert "root._standaloneTransferredRequestId = requestId" in close
+show_transfer=close.split("function _showStandaloneForRequest(request): void",1)[1].split("function _finishStandaloneTransfer",1)[0]
+assert "ConfirmationService.holdPresentationRelease(requestId)" in show_transfer
+assert "root._standaloneTransferredRequestId = requestId" in show_transfer
 assert "root.dialogVisible = true" in close
 assert "function _finishStandaloneTransfer(): void" in close
 finish_transfer=close.split("function _finishStandaloneTransfer(): void",1)[1].split("function _releaseAbyssRequestIfUnavailable",1)[0]
 assert "root._standaloneTransferredRequestId = 0" in finish_transfer
-assert "ConfirmationService.finishPresentation(requestId)" in finish_transfer
+assert "ConfirmationService.releasePresentationHold(requestId)" in finish_transfer
 assert "function _releaseAbyssRequestIfUnavailable(): void" in close
 release=close.split("function _releaseAbyssRequestIfUnavailable(): void",1)[1].split("onAbyssConfiguredChanged",1)[0]
 assert "ConfirmationService.requestVisible" in release

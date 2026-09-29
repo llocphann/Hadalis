@@ -15,6 +15,12 @@ Singleton {
     property bool resolving: false
     property var queue: []
     property int _nextRequestId: 0
+    // Some renderers can hand a request to another UI while the old StyledPopup
+    // is still retracting. Queue release then needs two gates: visual release
+    // from the presenter and semantic release from the handoff owner.
+    property int _presentationStartedRequestId: 0
+    property int _presentationReleaseHoldRequestId: 0
+    property bool _presentationReleaseObservedWhileHeld: false
 
     readonly property bool active: root.currentRequest !== null
     readonly property int currentRequestId:
@@ -92,6 +98,9 @@ Singleton {
             _hadResolvedAnchor: resolved?.item !== null
                 && resolved?.item !== undefined
         })
+        root._presentationStartedRequestId = 0
+        root._presentationReleaseHoldRequestId = 0
+        root._presentationReleaseObservedWhileHeld = false
         root.resolving = false
         root.requestVisible = true
         root.requestActivated(root.currentRequestId)
@@ -204,14 +213,52 @@ Singleton {
         root._cancelLifecycle(request)
     }
 
+    function markPresentationStarted(requestId): void {
+        const id = Number(requestId)
+        if (!root.currentRequest || id !== root.currentRequestId
+                || !root.requestVisible)
+            return
+        root._presentationStartedRequestId = id
+    }
+
+    function holdPresentationRelease(requestId): bool {
+        const id = Number(requestId)
+        if (!root.currentRequest || id !== root.currentRequestId)
+            return false
+        root._presentationReleaseHoldRequestId = id
+        root._presentationReleaseObservedWhileHeld = false
+        return true
+    }
+
+    function releasePresentationHold(requestId): void {
+        const id = Number(requestId)
+        if (id <= 0 || root._presentationReleaseHoldRequestId !== id)
+            return
+        const visualAlreadyReleased =
+            root._presentationReleaseObservedWhileHeld
+            || root._presentationStartedRequestId !== id
+        root._presentationReleaseHoldRequestId = 0
+        root._presentationReleaseObservedWhileHeld = false
+        if (visualAlreadyReleased)
+            root.finishPresentation(id)
+    }
+
     // Presenter calls this only after StyledPopup has released its visual tail.
     // Keeping currentRequest alive until then prevents content/anchor teleport
-    // while Pyramid is still retracting.
+    // while Pyramid is still retracting. A renderer handoff may add a second
+    // semantic release gate without weakening that visual-tail guarantee.
     function finishPresentation(requestId): void {
         if (!root.currentRequest || root.requestVisible)
             return
-        if (Number(requestId) !== root.currentRequestId)
+        const id = Number(requestId)
+        if (id !== root.currentRequestId)
             return
+        if (root._presentationReleaseHoldRequestId === id) {
+            root._presentationReleaseObservedWhileHeld = true
+            return
+        }
+        root._presentationStartedRequestId = 0
+        root._presentationReleaseObservedWhileHeld = false
         root.currentRequest = null
         root.resolving = false
         Qt.callLater(root._activateNext)

@@ -61,8 +61,20 @@ assert 'const requestedId = String(action?.id ?? "").trim()' in service
 assert "while (usedIds.includes(id))" in service
 assert 'id = baseId + "-" + suffix++' in service
 assert "property bool requestVisible: false" in service
+assert "property int _presentationStartedRequestId: 0" in service
+assert "property int _presentationReleaseHoldRequestId: 0" in service
+assert "property bool _presentationReleaseObservedWhileHeld: false" in service
+assert "function markPresentationStarted(requestId): void" in service
+assert "function holdPresentationRelease(requestId): bool" in service
+assert "function releasePresentationHold(requestId): void" in service
 assert "function finishPresentation(requestId): void" in service
 assert "if (!root.currentRequest || root.requestVisible)" in service
+finish=service.split("function finishPresentation(requestId): void",1)[1].split("function _activateNext",1)[0]
+assert "root._presentationReleaseHoldRequestId === id" in finish
+assert "root._presentationReleaseObservedWhileHeld = true" in finish
+release_hold=service.split("function releasePresentationHold(requestId): void",1)[1].split("// Presenter calls",1)[0]
+assert "root._presentationStartedRequestId !== id" in release_hold
+assert "root.finishPresentation(id)" in release_hold
 assert "Qt.callLater(root._activateNext)" in service
 assert "const requestedOutput = GlobalStates.resolveOutputName(" in service
 assert "const sourceContext = Object.assign({}, request" in service

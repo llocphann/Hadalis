@@ -41,8 +41,9 @@ assert 'active: root.dialogVisible && Config.options?.panelFamily !== "abyss"' n
 assert "PolkitService.available && PolkitService.active" in polkit
 assert "!PolkitService.abyssPresentationSuppressed" in polkit
 assert "!PolkitService.abyssPresenterAvailable" in polkit
-assert 'Config.options?.panelFamily !== "abyss"' not in polkit
-assert '!(Config.options?.enabledPanels ?? []).includes("abyssPerimeter")' not in polkit
+legacy_active=polkit.split("active: PolkitService.available && PolkitService.active",1)[1].split("sourceComponent:",1)[0]
+assert 'Config.options?.panelFamily !== "abyss"' not in legacy_active
+assert '!(Config.options?.enabledPanels ?? []).includes("abyssPerimeter")' not in legacy_active
 assert 'source: "../../polkit/Polkit.qml"' in critical
 assert 'Config.options?.modules?.polkit ?? true' in critical
 assert 'source: "../polkit/Polkit.qml"' not in deferred

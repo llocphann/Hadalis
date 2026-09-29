@@ -158,7 +158,6 @@ jobs:
           nix shell \
             nixpkgs#quickshell \
             nixpkgs#weston \
-            nixpkgs#xorg.xorgserver \
             nixpkgs#ripgrep \
             nixpkgs#coreutils \
             --command bash -lc '
@@ -166,63 +165,79 @@ jobs:
               runtime_dir="$(mktemp -d)"
               export XDG_RUNTIME_DIR="$runtime_dir"
               chmod 700 "$XDG_RUNTIME_DIR"
-              export DISPLAY=:98
-              export WAYLAND_DISPLAY=wayland-hadalis-confirmation-multi
-              export QT_QPA_PLATFORM=wayland
-              export QT_QUICK_BACKEND=software
-              export QSG_RENDER_LOOP=basic
-              export LIBGL_ALWAYS_SOFTWARE=1
 
-              Xvfb "$DISPLAY" \
-                -screen 0 1600x700x24 \
-                -nolisten tcp \
-                >"$RUNNER_TEMP/xvfb-confirmation-multi.log" 2>&1 &
-              xvfb_pid=$!
-              weston_pid=""
+              parent_display=wayland-hadalis-confirmation-parent
+              child_display=wayland-hadalis-confirmation-multi
+              parent_pid=""
+              child_pid=""
 
               cleanup() {
-                if [[ -n "$weston_pid" ]]; then
-                  kill "$weston_pid" 2>/dev/null || true
-                  wait "$weston_pid" 2>/dev/null || true
+                if [[ -n "$child_pid" ]]; then
+                  kill "$child_pid" 2>/dev/null || true
+                  wait "$child_pid" 2>/dev/null || true
                 fi
-                kill "$xvfb_pid" 2>/dev/null || true
-                wait "$xvfb_pid" 2>/dev/null || true
+                if [[ -n "$parent_pid" ]]; then
+                  kill "$parent_pid" 2>/dev/null || true
+                  wait "$parent_pid" 2>/dev/null || true
+                fi
                 rm -rf -- "$runtime_dir"
               }
               trap cleanup EXIT
 
-              for _ in $(seq 1 100); do
-                [[ -S /tmp/.X11-unix/X98 ]] && break
-                kill -0 "$xvfb_pid" 2>/dev/null || {
-                  cat "$RUNNER_TEMP/xvfb-confirmation-multi.log" || true
+              # Use a headless parent and Weston's Wayland backend for the
+              # multi-output compositor. The Wayland backend explicitly models
+              # --output-count as distinct outputs and avoids X11/XRandR
+              # discovery differences in Qt/Quickshell.
+              weston \
+                --backend=headless-backend.so \
+                --socket="$parent_display" \
+                --idle-time=0 \
+                --log="$RUNNER_TEMP/weston-confirmation-parent.log" &
+              parent_pid=$!
+
+              for _ in $(seq 1 120); do
+                [[ -S "$XDG_RUNTIME_DIR/$parent_display" ]] && break
+                kill -0 "$parent_pid" 2>/dev/null || {
+                  cat "$RUNNER_TEMP/weston-confirmation-parent.log" || true
                   exit 1
                 }
                 sleep 0.1
               done
+              [[ -S "$XDG_RUNTIME_DIR/$parent_display" ]] || {
+                cat "$RUNNER_TEMP/weston-confirmation-parent.log" || true
+                exit 1
+              }
 
-              weston \
-                --backend=x11-backend.so \
+              WAYLAND_DISPLAY="$parent_display" weston \
+                --backend=wayland-backend.so \
+                --display="$parent_display" \
                 --renderer=pixman \
-                --socket="$WAYLAND_DISPLAY" \
+                --socket="$child_display" \
                 --output-count=2 \
                 --width=720 \
                 --height=520 \
                 --idle-time=0 \
                 --log="$RUNNER_TEMP/weston-confirmation-multi.log" &
-              weston_pid=$!
+              child_pid=$!
 
               for _ in $(seq 1 120); do
-                [[ -S "$XDG_RUNTIME_DIR/$WAYLAND_DISPLAY" ]] && break
-                kill -0 "$weston_pid" 2>/dev/null || {
+                [[ -S "$XDG_RUNTIME_DIR/$child_display" ]] && break
+                kill -0 "$child_pid" 2>/dev/null || {
                   cat "$RUNNER_TEMP/weston-confirmation-multi.log" || true
                   exit 1
                 }
                 sleep 0.1
               done
-              if [[ ! -S "$XDG_RUNTIME_DIR/$WAYLAND_DISPLAY" ]]; then
+              [[ -S "$XDG_RUNTIME_DIR/$child_display" ]] || {
                 cat "$RUNNER_TEMP/weston-confirmation-multi.log" || true
                 exit 1
-              fi
+              }
+
+              export WAYLAND_DISPLAY="$child_display"
+              export QT_QPA_PLATFORM=wayland
+              export QT_QUICK_BACKEND=software
+              export QSG_RENDER_LOOP=basic
+              export LIBGL_ALWAYS_SOFTWARE=1
 
               bash scripts/test-abyss-confirmation-multi-output-runtime.sh
             '
@@ -231,7 +246,7 @@ jobs:
         if: failure()
         shell: bash
         run: |
-          cat "$RUNNER_TEMP/xvfb-confirmation-multi.log" 2>/dev/null || true
+          cat "$RUNNER_TEMP/weston-confirmation-parent.log" 2>/dev/null || true
           cat "$RUNNER_TEMP/weston-confirmation-multi.log" 2>/dev/null || true
 
   nested-niri:

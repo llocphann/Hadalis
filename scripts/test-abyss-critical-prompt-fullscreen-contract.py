@@ -37,8 +37,9 @@ assert "open: window.presented && field.ready && GlobalStates.shellEntryReady" i
 # Polkit retains only presentation lifetime after AuthFlow stops, allowing the
 # same StyledPopup retract tail while the fullscreen popup field remains alive.
 assert "property bool presentationRetained: false" in polkit
-assert "function finishPresentation(): void" in polkit
-serial_handler=polkit.split("onRequestSerialChanged:",1)[1].split("// Whether the Polkit module is available",1)[0]
-assert serial_handler.index("root._latchPresentation()") < serial_handler.index("root.presentationRetained = true")
+assert "function finishPresentation(restartIfActive = true): void" in polkit
+start_handler=polkit.split("function _startPresentationForCurrentRequest(): void",1)[1].split("onRequestSerialChanged:",1)[0]
+assert start_handler.index("root._latchPresentation()") < start_handler.index("root.presentationSerial = root.requestSerial")
+assert start_handler.index("root.presentationSerial = root.requestSerial") < start_handler.index("root.presentationRetained = true")
 
 print("Abyss critical prompt fullscreen contract: ok")

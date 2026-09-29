@@ -146,57 +146,51 @@ ShellRoot {
                 const baseNotes=controller.baseBodyPlacements.styledPopup0
                 if (!root.check(baseFeature?.visible && baseNotes?.visible,
                         "production allocator must place both semantic members")) return
-                if (!root.check(!controller.bodyPlacements.leftPanel?.vacancyBorrowed
-                        && !controller.bodyPlacements.styledPopup0?.vacancyBorrowed,
-                        "no body hover must preserve exact base allocation")) return
                 root.featureBase=Object.assign({},baseFeature)
                 root.notesBase=Object.assign({},baseNotes)
-                root.featureHover=true
-            } else if (root.step === 3) {
-                if (!root.check(controller.bodyPlacements.leftPanel?.vacancyBorrowed === true,
-                        "feature sidebar body hover must borrow available vacancy")) return
-                if (!root.check(controller.bodyPlacements.styledPopup0?.vacancyBorrowed !== true,
-                        "only one semantic member may borrow")) return
+                if (!root.check(controller.bodyPlacements.leftPanel?.vacancyBorrowed === true
+                        && controller.bodyPlacements.styledPopup0?.vacancyBorrowed !== true,
+                        "coexisting semantic pair must auto-expand the logical sidebar")) return
                 if (!root.check(feature.inputBounds.width > 0 && feature.inputBounds.height > 0
                         && root.near(feature.inputBounds.x,feature.record.content.x)
                         && root.near(feature.inputBounds.y,feature.record.content.y)
                         && root.near(feature.inputBounds.width,feature.record.content.width)
                         && root.near(feature.inputBounds.height,feature.record.content.height),
-                        "visible record and input geometry must share one truth")) return
+                        "auto-expanded record and input geometry must share one truth")) return
                 root.notesHover=true
-            } else if (root.step === 4) {
+            } else if (root.step === 3) {
                 if (!root.check(controller.bodyPlacements.styledPopup0?.vacancyBorrowed === true
                         && controller.bodyPlacements.leftPanel?.vacancyBorrowed !== true,
-                        "newer popup body hover must deterministically take ownership")) return
-                root.featureHover=false
+                        "popup body hover must temporarily override automatic ownership")) return
                 root.notesHover=false
-            } else if (root.step === 5) {
-                if (!root.check(root.samePlacement(controller.bodyPlacements.leftPanel,root.featureBase)
-                        && root.samePlacement(controller.bodyPlacements.styledPopup0,root.notesBase),
-                        "hover loss must restore exact base allocator targets")) return
-                if (!root.check(root.samePlacement(feature.visualPlacement,root.featureBase)
-                        && root.samePlacement(notes.visualPlacement,root.notesBase),
-                        "existing placement motion must finish at exact base geometry")) return
-
+            } else if (root.step === 4) {
+                if (!root.check(controller.bodyPlacements.leftPanel?.vacancyBorrowed === true
+                        && controller.bodyPlacements.styledPopup0?.vacancyBorrowed !== true,
+                        "hover loss must return to automatic sidebar ownership")) return
                 Config.setNestedValues({
                     "sidebar.shellLayout.feature.slot":"right",
                     "sidebar.shellLayout.system.slot":"left"
                 })
                 Config.flushWrites()
-            } else if (root.step === 6) {
+            } else if (root.step === 5) {
                 if (!root.check(ShellLayoutController.sidebarAssignments().featureSidebar === "right"
                         && feature.edge === "right"
                         && feature.vacancyRole === "featureSidebar",
                         "physical sidebar swap must not change logical identity")) return
-                root.featureHover=true
-            } else if (root.step === 7) {
                 if (!root.check(controller.bodyPlacements.leftPanel?.vacancyBorrowed === true,
-                        "swapped logical feature sidebar must still pair with Quick Notes")) return
-                root.featureHover=false
-            } else if (root.step === 8) {
-                if (!root.check(!controller.bodyPlacements.leftPanel?.vacancyBorrowed
-                        && !controller.bodyPlacements.styledPopup0?.vacancyBorrowed,
-                        "final hover release must leave no hidden persistent expansion")) return
+                        "swapped logical feature sidebar must still auto-borrow")) return
+                root.notesOpen=false
+            } else if (root.step === 6) {
+                const currentFeatureBase=controller.baseBodyPlacements.leftPanel
+                if (!root.check(controller.bodyPlacements.leftPanel?.vacancyBorrowed !== true
+                        && controller.bodyPlacements.styledPopup0?.vacancyBorrowed !== true,
+                        "closing the semantic peer must disable automatic borrowing")) return
+                if (!root.check(root.samePlacement(controller.bodyPlacements.leftPanel,currentFeatureBase),
+                        "peer close must restore exact current base allocator target")) return
+            } else if (root.step === 7) {
+                const currentFeatureBase=controller.baseBodyPlacements.leftPanel
+                if (!root.check(root.samePlacement(feature.visualPlacement,currentFeatureBase),
+                        "existing placement motion must settle at exact base geometry")) return
                 console.info("ABYSS_VACANCY_RUNTIME_PASS")
                 root.finished=true
                 Qt.quit()
@@ -204,6 +198,7 @@ ShellRoot {
             root.step++
         }
     }
+
 }
 QML
 
@@ -218,4 +213,4 @@ if ! rg -q 'ABYSS_VACANCY_RUNTIME_PASS' "$test_root/runtime.log"         || rg -
     cat "$test_root/runtime.log"
     exit 1
 fi
-printf 'PASS: production semantic roles, real host/controller geometry, hover arbitration, restore and physical sidebar swap\n'
+printf 'PASS: automatic semantic borrowing, final-body hover override, exact restore and physical sidebar swap\n'

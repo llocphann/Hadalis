@@ -1,6 +1,7 @@
 // Temporary vacancy borrowing for semantically related Abyss surfaces.
-// The base allocator remains authoritative; this post-pass may only enlarge the
-// most recently body-hovered semantic member into currently free output space.
+// The base allocator remains authoritative; this post-pass may only enlarge one
+// semantically paired member into currently free output space. A logical sidebar
+// borrows automatically when eligible; final-body hover temporarily overrides it.
 var _vacancyPartners = {
     featureSidebar: "quickNotes",
     quickNotes: "featureSidebar",
@@ -191,18 +192,6 @@ function _vacancyMemberForRole(role, metadata, requestById, placements) {
     var meta=candidates[0], id=String(meta.id);
     return {id:id,meta:meta,request:requestById[id],placement:placements[id]};
 }
-function _vacancyOwner(first, second) {
-    var hovered=[first,second].filter(function(member) {
-        return member?.meta?.hovered === true;
-    });
-    if (!hovered.length) return null;
-    hovered.sort(function(a,b) {
-        return _vacancyNumber(b.meta?.hoverOrder,0)-_vacancyNumber(a.meta?.hoverOrder,0)
-            || _vacancyNumber(b.request?.order,0)-_vacancyNumber(a.request?.order,0)
-            || String(a.id).localeCompare(String(b.id));
-    });
-    return hovered[0];
-}
 function _vacancyBestCandidate(owner, peer, placements, width, height, insets, gap) {
     var panel=_vacancyPanelRect(owner.request,owner.placement,width,height,insets);
     var peerPanel=_vacancyPanelRect(peer.request,peer.placement,width,height,insets);
@@ -262,44 +251,82 @@ function resolve(requests, metadata, placements, width, height, insets, gap) {
         if (request?.id !== undefined && request?.id !== null)
             requestById[String(request.id)]=request;
     });
+
+    // Build geometry-eligible choices for both members of each semantic pair.
+    // Automatic ownership prefers the logical sidebar; if it has no safe
+    // vacancy the popup may borrow instead. Hover can override either choice.
     var transactions=[];
     ["featureSidebar","systemSidebar"].forEach(function(role) {
         var peerRole=_vacancyPartners[role];
-        var first=_vacancyMemberForRole(role,metadata,requestById,placements);
-        var second=_vacancyMemberForRole(peerRole,metadata,requestById,placements);
-        if (!first || !second) return;
-        var owner=_vacancyOwner(first,second);
-        if (!owner) return;
-        transactions.push({
-            owner:owner,
-            peer:owner.id === first.id ? second : first,
-            hoverOrder:_vacancyNumber(owner.meta?.hoverOrder,0),
-            requestOrder:_vacancyNumber(owner.request?.order,0)
+        var sidebar=_vacancyMemberForRole(role,metadata,requestById,placements);
+        var popup=_vacancyMemberForRole(peerRole,metadata,requestById,placements);
+        if (!sidebar || !popup) return;
+        var pairOrder=Math.max(
+            _vacancyNumber(sidebar.request?.order,0),
+            _vacancyNumber(popup.request?.order,0));
+        [
+            {owner:sidebar,peer:popup,autoPriority:1},
+            {owner:popup,peer:sidebar,autoPriority:0}
+        ].forEach(function(choice) {
+            var candidate=_vacancyBestCandidate(choice.owner,choice.peer,
+                placements,width,height,insets,gap);
+            if (!candidate) return;
+            transactions.push({
+                pairRole:role,
+                owner:choice.owner,
+                peer:choice.peer,
+                candidate:candidate,
+                hovered:choice.owner.meta?.hovered === true,
+                hoverOrder:_vacancyNumber(choice.owner.meta?.hoverOrder,0),
+                requestOrder:_vacancyNumber(choice.owner.request?.order,0),
+                pairOrder:pairOrder,
+                autoPriority:choice.autoPriority
+            });
         });
     });
     if (!transactions.length) return placements;
 
-    // Geometry eligibility is part of arbitration. A newer hovered surface with
-    // no real vacancy must not suppress an older hovered peer that can safely
-    // borrow, while only one eligible borrower may win on an output.
-    transactions=transactions.map(function(transaction) {
-        return Object.assign({},transaction,{
-            candidate:_vacancyBestCandidate(transaction.owner,transaction.peer,
-                placements,width,height,insets,gap)
+    var hoveredTransactions=transactions.filter(function(transaction) {
+        return transaction.hovered;
+    });
+    if (hoveredTransactions.length) {
+        // A real final-body hover is a temporary explicit override. Geometry
+        // eligibility is already known, so an impossible hover cannot suppress
+        // another pair's valid automatic borrower.
+        transactions=hoveredTransactions;
+        transactions.sort(function(a,b) {
+            return b.hoverOrder-a.hoverOrder
+                || b.requestOrder-a.requestOrder
+                || String(a.owner.id).localeCompare(String(b.owner.id));
         });
-    }).filter(function(transaction) {
-        return transaction.candidate !== null;
-    });
-    if (!transactions.length) return placements;
-    transactions.sort(function(a,b) {
-        return b.hoverOrder-a.hoverOrder
-            || b.requestOrder-a.requestOrder
-            || String(a.owner.id).localeCompare(String(b.owner.id));
-    });
+    } else {
+        // No hover: select one automatic owner per semantic pair. Prefer the
+        // logical sidebar when both members can grow, otherwise use the only
+        // eligible member. Across pairs, the most recently activated pair wins.
+        var automaticByPair={};
+        transactions.forEach(function(transaction) {
+            var current=automaticByPair[transaction.pairRole];
+            if (!current
+                    || transaction.autoPriority > current.autoPriority
+                    || (transaction.autoPriority === current.autoPriority
+                        && transaction.requestOrder > current.requestOrder)
+                    || (transaction.autoPriority === current.autoPriority
+                        && transaction.requestOrder === current.requestOrder
+                        && String(transaction.owner.id)
+                            .localeCompare(String(current.owner.id)) < 0))
+                automaticByPair[transaction.pairRole]=transaction;
+        });
+        transactions=Object.keys(automaticByPair)
+            .map(function(role) { return automaticByPair[role]; });
+        transactions.sort(function(a,b) {
+            return b.pairOrder-a.pairOrder
+                || b.requestOrder-a.requestOrder
+                || String(a.owner.id).localeCompare(String(b.owner.id));
+        });
+    }
 
-    // One output owns one temporary borrower at a time. A brief overlap between
-    // hover leases therefore cannot make both members (or both semantic pairs)
-    // grow simultaneously.
+    // One output owns one temporary borrower at a time. Automatic expansion and
+    // hover override therefore never make multiple semantic surfaces swell.
     var transaction=transactions[0];
     var candidate=transaction.candidate;
     var result=Object.assign({},placements);

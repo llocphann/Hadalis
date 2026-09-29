@@ -95,6 +95,12 @@ Scope {
             id: window
             required property var modelData
             readonly property string outputName: modelData?.name ?? ""
+
+            Component.onCompleted:
+                AbyssPromptHostRegistry.registerHost(window, window.outputName)
+            Component.onDestruction:
+                AbyssPromptHostRegistry.unregisterHost(window)
+
             function presentation(kind) { return Presentation.resolve(Config.options?.abyss?.positions,kind,outputName) }
             function positionEdge(kind,fallback) { return Presentation.edge(presentation(kind),fallback) }
             function positionAlong(kind,edge,span,fallback) { return Presentation.along(presentation(kind),edge,span,width,height,fallback,nativeInsets) }

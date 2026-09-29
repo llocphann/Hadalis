@@ -29,6 +29,7 @@ pragma ComponentBehavior: Bound
 
 import QtQuick
 import Quickshell
+import Quickshell.Wayland
 import qs
 import qs.services
 import qs.modules.common
@@ -116,12 +117,29 @@ ShellRoot {
                         readonly property var dockRef: dockAnchor
                         readonly property var fallbackRef: fallbackAnchor
 
-                        FloatingWindow {
+                        // Use the same layer-shell ownership model as the real
+                        // Abyss perimeter. An xdg-toplevel FloatingWindow cannot
+                        // choose its Wayland output; Weston was therefore placing
+                        // both test carriers on wayland0 and invalidating the
+                        // multi-output routing assertion.
+                        PanelWindow {
                             id: window
                             visible: true
                             screen: surface.modelData
-                            implicitWidth: 720
-                            implicitHeight: 520
+                            color: "transparent"
+                            exclusionMode: ExclusionMode.Ignore
+                            exclusiveZone: 0
+                            anchors {
+                                top: true
+                                bottom: true
+                                left: true
+                                right: true
+                            }
+                            WlrLayershell.namespace:
+                                "hadalis:confirmation-multi-output-"
+                                + surface.outputName
+                            WlrLayershell.layer: WlrLayer.Overlay
+                            WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
 
                             Item {
                                 id: scene
@@ -284,7 +302,13 @@ ShellRoot {
                             ?? {}).length
                     + " twoHosts="
                         + Object.keys(root.surfaces[1]?.controllerRef?.popupHosts
-                            ?? {}).length)
+                            ?? {}).length
+                    + " oneAnchorOutput="
+                        + String(root.surfaces[0]?.trayRef?.QsWindow?.window
+                            ?.screen?.name ?? "")
+                    + " twoAnchorOutput="
+                        + String(root.surfaces[1]?.dockRef?.QsWindow?.window
+                            ?.screen?.name ?? ""))
                 return
             }
             if (!Config.ready || root.surfaces.length < 2) {
@@ -333,7 +357,11 @@ ShellRoot {
                         || Object.keys(one.controllerRef.popupHosts ?? {}).length
                             < one.controllerRef.popupCapacity
                         || Object.keys(two.controllerRef.popupHosts ?? {}).length
-                            < two.controllerRef.popupCapacity)
+                            < two.controllerRef.popupCapacity
+                        || String(one.trayRef?.QsWindow?.window?.screen?.name ?? "")
+                            !== one.outputName
+                        || String(two.dockRef?.QsWindow?.window?.screen?.name ?? "")
+                            !== two.outputName)
                     return
                 Config.setNestedValue("panelFamily", "abyss")
                 PopupAnchorRegistry.registerAnchor(

@@ -39,7 +39,7 @@ assert "open: window.presented && field.ready && GlobalStates.shellEntryReady" i
 assert "property bool presentationRetained: false" in polkit
 assert "function finishPresentation(restartIfActive = true): void" in polkit
 start_handler=polkit.split("function _startPresentationForCurrentRequest(): void",1)[1].split("onRequestSerialChanged:",1)[0]
-assert start_handler.index("root._latchPresentation()") < start_handler.index("root.presentationSerial = root.requestSerial")
+assert start_handler.index("root._latchPresentation(hint)") < start_handler.index("root.presentationSerial = root.requestSerial")
 assert start_handler.index("root.presentationSerial = root.requestSerial") < start_handler.index("root.presentationRetained = true")
 
 print("Abyss critical prompt fullscreen contract: ok")

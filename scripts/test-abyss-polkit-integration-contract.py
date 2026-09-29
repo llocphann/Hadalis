@@ -9,6 +9,7 @@ deferred=(r/"modules/abyss/ShellAbyssPanelsImpl.qml").read_text()
 confirm=(r/"modules/abyss/AbyssConfirmationPresenter.qml").read_text()
 
 assert "PolkitService.available && PolkitService.active" in legacy
+assert "!PolkitService.abyssPresentationSuppressed" in legacy
 assert "!PolkitService.abyssPresenterAvailable" in legacy
 assert 'Config.options?.panelFamily !== "abyss"' not in legacy
 assert '!(Config.options?.enabledPanels ?? []).includes("abyssPerimeter")' not in legacy

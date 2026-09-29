@@ -26,6 +26,7 @@ assert 'active: root.dialogVisible && Config.options?.panelFamily !== "abyss"' n
 # existing real AuthFlow renderer remains available rather than silently
 # swallowing an authentication request.
 assert "PolkitService.available && PolkitService.active" in polkit
+assert "!PolkitService.abyssPresentationSuppressed" in polkit
 assert "!PolkitService.abyssPresenterAvailable" in polkit
 assert 'Config.options?.panelFamily !== "abyss"' not in polkit
 assert '!(Config.options?.enabledPanels ?? []).includes("abyssPerimeter")' not in polkit

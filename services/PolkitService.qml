@@ -38,10 +38,13 @@ Singleton {
         root.presentationRetained
         && root.presentationSerial > 0
         && root.presentationSerial === root.requestSerial
+    readonly property bool abyssPresentationSuppressed:
+        Config.options?.panelFamily === "abyss"
+        && GlobalStates.screenLocked
     readonly property bool abyssConfigured:
         Config.options?.panelFamily === "abyss"
         && (Config.options?.enabledPanels ?? []).includes("abyssPerimeter")
-        && !GlobalStates.screenLocked
+        && !root.abyssPresentationSuppressed
     readonly property bool abyssPresenterAvailable:
         root.abyssConfigured
         && root.targetOutputName.length > 0

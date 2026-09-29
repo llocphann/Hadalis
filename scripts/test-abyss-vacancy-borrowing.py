@@ -6,6 +6,8 @@ ROOT = Path(__file__).resolve().parents[1]
 def read(p): return (ROOT / p).read_text(encoding="utf-8")
 perimeter=read("modules/abyss/AbyssPerimeter.qml")
 controller=read("modules/abyss/AbyssSurfaceController.qml")
+corners=read("modules/abyss/AbyssCorners.qml")
+notification_popup=read("modules/notificationCenter/NotificationCenterPopup.qml")
 host=read("modules/abyss/AbyssBodyHost.qml")
 participant=read("modules/abyss/AbyssParticipant.qml")
 geometry=read("modules/abyss/looks/AbyssGeometry.js")
@@ -17,6 +19,11 @@ for token in ('property string vacancyRole: ""','id: vacancyBodyHover',
               'vacancyRole: root.vacancyRole'):
     assert token in host + participant, token
 assert 'VacancyBorrowing.resolve(' in controller
+assert 'hovered:participants[key]?.vacancyHovered' not in controller
+assert '&& quickNotesEditorOutput.length === 0' not in corners
+assert 'keyboardAllowed:root.quickNotesEditorOutput.length === 0' in corners
+assert 'property bool keyboardAllowed: true' in notification_popup
+assert '!root.presentationActive || !root.keyboardAllowed' in notification_popup
 
 program=geometry+"\n"+resolver+r"""
 const assert=require("node:assert/strict");
@@ -36,35 +43,44 @@ const center=m("styledPopup1","notificationCenter","top",34,{visible:true,along:
 
 // Exact live failure: four surfaces on two sides keep both independent automatic owners.
 let r=run([feature,notes,system,center]);
-assert.deepEqual(borrowers(r.out),["leftPanel","styledPopup1"]);
-assert(!collide(r.out.leftPanel.content,r.out.styledPopup1.content));
-// Both pairs are side-by-side with vertical overlap: borrowing must stay on
-// the horizontal axis and must not turn either owner into a full-height panel.
-assert.equal(r.out.leftPanel.vacancyDirection,"right");
-assert.equal(r.out.styledPopup1.vacancyDirection,"right");
-assert.equal(r.out.leftPanel.content.height,feature.placement.content.height);
-assert.equal(r.out.styledPopup1.content.height,center.placement.content.height);
-assert(r.out.leftPanel.content.width>feature.placement.content.width);
-assert(r.out.styledPopup1.content.width>center.placement.content.width);
-
-// Hover affects only its own semantic pair when the other pair is independent.
-notes.meta.hovered=true;notes.meta.hoverOrder=100;
-r=run([feature,notes,system,center]);
 assert.deepEqual(borrowers(r.out),["styledPopup0","styledPopup1"]);
 assert(!collide(r.out.styledPopup0.content,r.out.styledPopup1.content));
+// Notification Center is inward of its right sidebar in this fixture, so the
+// literal-gap path must not turn it into a full-height panel.
 assert.equal(r.out.styledPopup1.vacancyDirection,"right");
 assert.equal(r.out.styledPopup1.content.height,center.placement.content.height);
-notes.meta.hovered=false;
+assert(r.out.styledPopup1.content.width>center.placement.content.width);
+
+// Hover metadata cannot alter geometry or restart ownership.
+const automaticLeft=JSON.stringify(r.out.styledPopup0);
+notes.meta.hovered=true;notes.meta.hoverOrder=100;
+feature.meta.hovered=true;feature.meta.hoverOrder=101;
+r=run([feature,notes,system,center]);
+assert.deepEqual(borrowers(r.out),["styledPopup0","styledPopup1"]);
+assert.equal(JSON.stringify(r.out.styledPopup0),automaticLeft);
+notes.meta.hovered=false;feature.meta.hovered=false;
 
 // Closing one peer collapses only that pair.
 center.request.open=false;
 r=run([feature,notes,system,center]);
-assert.deepEqual(borrowers(r.out),["leftPanel"]);
+assert.deepEqual(borrowers(r.out),["styledPopup0"]);
 center.request.open=true;
 
 // Intended automatic owner per pair.
-assert.deepEqual(borrowers(run([feature,notes]).out),["leftPanel"]);
+assert.deepEqual(borrowers(run([feature,notes]).out),["styledPopup0"]);
 assert.deepEqual(borrowers(run([system,center]).out),["styledPopup1"]);
+
+// Video regression: Quick Notes stays Edge-direct while the later sidebar
+// is reflowed inward. It must fill the exposed outer strip immediately, with
+// no hover event, and stop at the sidebar's tangent envelope.
+const videoNotes=m("videoNotes","quickNotes","left",41,{visible:true,along:600,inward:0,span:360,depth:420,content:{x:30,y:614,width:392,height:332}});
+const videoSidebar=m("videoSidebar","featureSidebar","left",42,{visible:true,along:210,inward:450,span:720,depth:450,content:{x:480,y:224,width:422,height:692}});
+r=run([videoNotes,videoSidebar]);
+assert.deepEqual(borrowers(r.out),["videoNotes"]);
+assert.equal(r.out.videoNotes.vacancyDirection,"top");
+assert(r.out.videoNotes.content.y < videoNotes.placement.content.y);
+assert.equal(r.out.videoNotes.content.width,videoNotes.placement.content.width);
+assert(r.out.videoNotes.content.y >= videoSidebar.placement.content.y-.01);
 
 // No vacancy is strict identity no-op.
 const blocked=m("styledPopup0","quickNotes","left",99,{visible:true,along:70,inward:20,span:780,depth:394,content:{x:50,y:84,width:360,height:752}});

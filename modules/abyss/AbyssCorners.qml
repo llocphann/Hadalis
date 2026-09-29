@@ -44,9 +44,9 @@ Item {
             || quickNotesEditorOutput === outputName)
         && !root.niriOverviewOwnsCorner("bottomLeft")
     readonly property bool centerAvailable: presentationEnabled && !blocked
-        // Match mature ScreenCorners: while Quick Notes owns an editor lease,
-        // Notification Center must not map another keyboard-capable corner.
-        && quickNotesEditorOutput.length === 0
+        // Quick Notes may own the keyboard while Notification Center remains a
+        // pointer-only surface. Do not hide the whole popup just because the
+        // notes editor has focus; keyboard arbitration is handled below.
         && (Config.options?.notificationCenter?.enable ?? true)
         && (Config.options?.enabledPanels ?? []).includes("abyssNotificationCenter")
         && targets(Config.options?.notificationCenter?.screenList ?? [])
@@ -101,6 +101,7 @@ Item {
         anchorItem:centerAnchor;outputName:root.outputName
         cornerAttachmentThickness:root.attachmentThickness
         hoverAllowed:root.centerAvailable
+        keyboardAllowed:root.quickNotesEditorOutput.length === 0
     }
     onNotesAvailableChanged: {
         if (!notesAvailable && notesPopup.presentationActive) {

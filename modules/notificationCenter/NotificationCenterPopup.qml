@@ -17,6 +17,10 @@ Bar.StyledPopup {
     required property Item anchorItem
     required property string outputName
     property bool hoverAllowed: true
+    // The popup may coexist with Quick Notes while its editor owns the output
+    // keyboard. Only search/focus acquisition is deferred; pointer content
+    // remains visible and interactive.
+    property bool keyboardAllowed: true
     property bool entryBridgeHeld: false
     property bool exitGraceHeld: false
     property bool keyboardInteraction: false
@@ -87,7 +91,7 @@ Bar.StyledPopup {
     popupBackgroundMargin: 0
 
     function enterKeyboardMode(): void {
-        if (!root.presentationActive)
+        if (!root.presentationActive || !root.keyboardAllowed)
             return
         if (!GlobalStates.openNotificationCenter(root.outputName))
             return
@@ -101,6 +105,13 @@ Bar.StyledPopup {
     onSelectedTabChanged: {
         if (root.selectedTab === 1 && root.keyboardInteraction)
             root.keyboardInteraction = false
+    }
+    onKeyboardAllowedChanged: {
+        if (root.keyboardAllowed || !root.keyboardInteraction)
+            return
+        root.keyboardInteraction = false
+        if (contentLoader.item)
+            contentLoader.item.clearSearchFocus()
     }
 
     // StyledPopup's default property accepts only QQuickItem. Keep the

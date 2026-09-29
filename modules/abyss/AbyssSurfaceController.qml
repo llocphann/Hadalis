@@ -20,12 +20,12 @@ QtObject {
     readonly property var placementRequests: Object.keys(participants)
         .map(key => participants[key]?.placementRequest)
         .filter(request => request !== null && request !== undefined)
+    // Hover is intentionally absent: vacancy geometry is automatic and must
+    // not churn when the pointer crosses a body that is itself moving.
     readonly property var vacancyParticipants: Object.keys(participants)
         .map(key => ({
             id:key,
-            role:String(participants[key]?.vacancyRole ?? ""),
-            hovered:participants[key]?.vacancyHovered ?? false,
-            hoverOrder:Number(participants[key]?.vacancyHoverOrder ?? 0)
+            role:String(participants[key]?.vacancyRole ?? "")
         }))
     readonly property var baseBodyPlacements: BodyPlacement.arrange(
         placementRequests,outputWidth,outputHeight,edgeInsets)

@@ -2,7 +2,7 @@
 // The base allocator remains authoritative; this post-pass may only enlarge
 // already-visible content into geometry proven free on this output.
 var _vacancyPairs = [
-    {role:"featureSidebar", peer:"quickNotes", automatic:"featureSidebar"},
+    {role:"featureSidebar", peer:"quickNotes", automatic:"quickNotes"},
     {role:"systemSidebar", peer:"notificationCenter", automatic:"notificationCenter"}
 ];
 
@@ -91,6 +91,26 @@ function _vacancyTowardPeer(owner,peer,direction) {
     return peer.x >= ownerRight-.01
         ? Math.max(0,peer.x-ownerRight) : 0;
 }
+function _vacancyEnvelopeExtent(owner,peer,direction) {
+    // When the owner is still Edge-direct and its peer was pushed inward by
+    // the base allocator, the real vacancy is the remainder of the owner's
+    // outer strip. Grow only as far as the peer's tangent envelope; blockers
+    // and safe bounds still cap the result below.
+    if (direction === "top") {
+        if (_vacancyCenter(peer,"y") >= _vacancyCenter(owner,"y")-.01) return 0;
+        return Math.max(0,owner.y-peer.y);
+    }
+    if (direction === "bottom") {
+        if (_vacancyCenter(peer,"y") <= _vacancyCenter(owner,"y")+.01) return 0;
+        return Math.max(0,peer.y+peer.height-(owner.y+owner.height));
+    }
+    if (direction === "left") {
+        if (_vacancyCenter(peer,"x") >= _vacancyCenter(owner,"x")-.01) return 0;
+        return Math.max(0,owner.x-peer.x);
+    }
+    if (_vacancyCenter(peer,"x") <= _vacancyCenter(owner,"x")+.01) return 0;
+    return Math.max(0,peer.x+peer.width-(owner.x+owner.width));
+}
 function _vacancySafeExtent(panel,bounds,direction) {
     if (direction === "top") return Math.max(0,panel.y-bounds.top);
     if (direction === "bottom") return Math.max(0,bounds.bottom-(panel.y+panel.height));
@@ -171,11 +191,21 @@ function _vacancyBestCandidate(owner,peer,placements,width,height,insets,gap) {
     var peerContent=_vacancyRect(peer.placement.content);
     var bounds=_vacancySafeBounds(owner.request,width,height,insets);
     var edge=String(owner.request?.record?.edge ?? "");
+    var peerEdge=String(peer.request?.record?.edge ?? "");
+    var ownerInward=Math.max(0,_vacancyNumber(owner.placement?.inward,0));
+    var peerInward=Math.max(0,_vacancyNumber(peer.placement?.inward,0));
+    // Same-edge coexistence can push one member inward. If this owner stayed
+    // on the physical Edge while its semantic peer moved inward, fill the
+    // newly exposed outer strip along the peer envelope. Otherwise use only
+    // literal rectangle separation, avoiding the old full-height detour.
+    var fillOuterStrip=edge === peerEdge && ownerInward+.5 < peerInward;
     var dirs=["top","bottom","left","right"], best=null;
     for (var i=0;i<dirs.length;i++) {
         var dir=dirs[i];
         if (!_vacancyDirectionAllowed(edge,dir)) continue;
-        var peerGap=_vacancyTowardPeer(content,peerContent,dir);
+        var peerGap=fillOuterStrip
+            ? _vacancyEnvelopeExtent(content,peerContent,dir)
+            : _vacancyTowardPeer(content,peerContent,dir);
         if (peerGap < .5) continue;
         var max=Math.min(peerGap,_vacancySafeExtent(panel,bounds,dir));
         if (max < .5) continue;
@@ -234,26 +264,19 @@ function resolve(requests,metadata,placements,width,height,insets,gap) {
             var candidate=_vacancyBestCandidate(owner,peer,placements,width,height,insets,gap);
             return candidate ? {
                 owner:owner,peer:peer,candidate:candidate,
-                hovered:owner.meta?.hovered === true,
-                hoverOrder:_vacancyNumber(owner.meta?.hoverOrder,0),
                 requestOrder:_vacancyNumber(owner.request?.order,0)
             } : null;
         }).filter(function(x) { return x !== null; });
         if (!choices.length) return;
 
-        var hovered=choices.filter(function(x) { return x.hovered; });
-        hovered.sort(function(a,b) {
-            return b.hoverOrder-a.hoverOrder || b.requestOrder-a.requestOrder
-                || String(a.owner.id).localeCompare(String(b.owner.id));
-        });
-
+        // Geometry ownership is automatic and stable. Pointer hover is not an
+        // allocator input: entering a moving body must never switch owners,
+        // restart placement animation, or be required to obtain the vacancy.
         var ordered=[];
-        if (hovered.length) {
-            ordered=hovered.slice();
-        } else {
-            var preferred=choices.find(function(x) { return x.owner.role === pair.automatic; });
-            if (preferred) ordered.push(preferred);
-        }
+        var preferred=choices.find(function(x) {
+            return x.owner.role === pair.automatic;
+        });
+        if (preferred) ordered.push(preferred);
         choices.slice().sort(function(a,b) {
             return b.requestOrder-a.requestOrder || b.candidate.gain-a.candidate.gain
                 || String(a.owner.id).localeCompare(String(b.owner.id));
@@ -263,8 +286,6 @@ function resolve(requests,metadata,placements,width,height,insets,gap) {
 
         plans.push({
             pairRole:pair.role,choices:ordered,
-            hasHover:hovered.length > 0,
-            hoverOrder:hovered.length ? hovered[0].hoverOrder : 0,
             pairOrder:Math.max(_vacancyNumber(first.request?.order,0),
                 _vacancyNumber(second.request?.order,0))
         });
@@ -274,8 +295,7 @@ function resolve(requests,metadata,placements,width,height,insets,gap) {
     // Priority matters only when expanded rectangles compete. Independent pairs
     // remain expanded together.
     plans.sort(function(a,b) {
-        return Number(b.hasHover)-Number(a.hasHover)
-            || b.hoverOrder-a.hoverOrder || b.pairOrder-a.pairOrder
+        return b.pairOrder-a.pairOrder
             || String(a.pairRole).localeCompare(String(b.pairRole));
     });
 

@@ -17448,3 +17448,178 @@ No numeric reduction above is an end-to-end Hadalis speedup; all values are
 local source-derived operation/allocation reductions.
 
 No runtime/source implementation is authorized by this handoff.
+
+
+## 66. Round 52 — wallpaper navigation duplicate work and color-sort lookup locality (2026-09-30)
+
+This round continued immediately after Round 51. Before documentation, `dev`
+advanced from the Round-51 commit
+`9062b9ba329f04ef6ffe8656996e690f28115b84` to
+`1816942a3868af612cf819ff798996dbc47aa82b`.
+
+The two intervening commits were audited with a direct compare. Their net tree
+delta is limited to the automation manager and its scripts/tests; they do not
+touch runtime QML, wallpaper services or this handoff. The candidate source
+files were then re-fetched from current `dev`.
+
+The handoff was searched before promotion for
+`WallpaperCoverflowGallery.qml`, `_prefetchAroundIndex`,
+`ensureThumbnailForPath`, `WallpaperSkewView.qml`,
+`_rebuildIndexMaps`, the color-sort comparator and related ownership.
+Historical Skew color-analysis work (§19.1/§39.9) concerns process/decode
+policy, not the comparator lookup work below.
+
+### 66.1 Coverflow navigation executes the same thumbnail prefetch window twice — CONFIRMED / P1-P2 navigation interaction
+
+Paths:
+
+- `modules/wallpaperSelector/WallpaperCoverflowGallery.qml`;
+- `services/Wallpapers.qml`.
+
+For a real index change, `_goToIndex()` currently:
+
+1. assigns `currentIndex = bounded`;
+2. the QML `onCurrentIndexChanged` handler immediately calls
+   `_prefetchAroundIndex(currentIndex)`;
+3. control returns to `_goToIndex()`, which calls the same
+   `_prefetchAroundIndex(currentIndex)` again;
+4. the focus pulse is then restarted when animations are enabled.
+
+The prefetch radius is 4 in preview mode and 8 normally, so one prefetch visits
+up to 9 or 17 model positions respectively. Each surviving position performs:
+
+- directory-role lookup;
+- path-role lookup;
+- path normalization/validation in `ensureThumbnailForPath()`;
+- expected-thumbnail-path derivation;
+- key construction and pending-key check.
+
+The first call synchronously marks a new request in
+`Wallpapers._singleThumbPending` before enqueueing/starting the process. That
+pending key is cleared only from the asynchronous Process exit path. Therefore
+the immediate second call cannot enqueue a duplicate thumbnail job: for every
+key just requested by the first pass it reaches the pending guard and returns.
+Keys already pending before navigation are rejected by both passes identically.
+
+Strict-lossless direction:
+
+- retain `onCurrentIndexChanged: _prefetchAroundIndex(currentIndex)` as the
+  sole index-change prefetch owner;
+- remove only the explicit duplicate call inside `_goToIndex()`;
+- keep the index assignment, keyboard-guide state change and focus-pulse call in
+  their existing logical order;
+- keep `updateThumbnails()` prefetching intact, because size changes and
+  explicit thumbnail refresh are a separate trigger.
+
+Parity details:
+
+- the same index-change signal still owns the first prefetch in the same event
+  loop turn;
+- prefetch center/radius/order are unchanged;
+- directory/empty-path suppression is unchanged;
+- request key, queue order, process command and thumbnail publication are
+  unchanged;
+- no callback/process exit can interleave between the two current synchronous
+  passes, so removing the second pass does not remove a possible enqueue;
+- animation configuration/duration and signal ordering are unchanged.
+
+For a normal full-radius interior navigation, prefetch model-position visits are
+**34 -> 17**. For preview mode they are **18 -> 9**. This is a local duplicate
+work reduction; actual file/process work was already deduplicated by
+`_singleThumbPending`.
+
+### 66.2 Skew color sorting can lazily memoize comparator metadata within one rebuild — CONFIRMED strict-lossless / P1-P2 when color sort is active
+
+Path:
+
+- `modules/wallpaperSelector/WallpaperSkewView.qml`,
+  `_rebuildIndexMaps()`.
+
+After filtering, color sort currently runs this work on every comparator call:
+
+1. `folderModel.get(a, "fileName")`;
+2. `folderModel.get(b, "fileName")`;
+3. hue lookup for A;
+4. hue lookup for B;
+5. if both normalized hue buckets tie, saturation lookup for B then A.
+
+The same model index is therefore re-read many times across an O(N log N)
+sort. The color database is loaded through `JSON.parse` and updated with plain
+data records; it has no accessor/callback semantics.
+
+A strict-safe invocation-local direction is to use lazy metadata caches scoped
+only to this one `_rebuildIndexMaps()` color sort:
+
+- cache file name by model index only on the first comparator encounter;
+- cache hue only when the current comparator reaches its hue-read point;
+- cache saturation only when the current comparator reaches the existing
+  equal-bucket branch;
+- keep comparator evaluation order exactly:
+  filename A, filename B, hue A, hue B, then (only on a tie) saturation B,
+  saturation A;
+- keep the existing hue normalization and numeric subtraction unchanged;
+- discard all caches when `_rebuildIndexMaps()` returns.
+
+Why this remains within the strict contract:
+
+- `_rebuildIndexMaps()` is invoked imperatively from filter/sort/folder/color
+  update paths, not as a QML binding expression whose dependency capture would
+  be narrowed by memoization;
+- `FolderListModel.get()` role reads are side-effect-free observations of the
+  same model during the synchronous sort; model change events cannot interleave
+  inside that JavaScript sort call;
+- the color cache contains plain JSON-derived records, so repeated field reads
+  have no getter side effects;
+- lazy population means empty/singleton arrays do not gain reads that
+  `Array.sort()` currently skips;
+- saturation is still unread for non-tied hue buckets;
+- comparator return values, source references, stable/tie ordering and final
+  integer `_imageIndexMap` publication are unchanged;
+- no persistent CPU-for-resident-memory cache is introduced.
+
+For C comparator calls over M distinct compared entries:
+
+- `fileName` QML role reads change from **2C -> at most M**;
+- hue metadata reads change from **2C -> at most M**;
+- saturation reads change from twice every tied-bucket comparison to at most
+  once per entry that actually participates in a tied-bucket comparison.
+
+The tradeoff is temporary O(M) lookup state for the duration of the rebuild,
+not retained shell memory. No end-to-end percentage is claimed; the benefit
+grows with wallpaper-folder size and is limited to color-sort rebuilds.
+
+### 66.3 Similar-looking debounce restart in WallpaperLauncherList is not promoted — CLOSED under exact timing semantics
+
+Path:
+
+- `modules/wallpaperLauncher/WallpaperLauncherList.qml`.
+
+`syncCurrentIndexAndPreview()` restarts `previewDebounce` after
+`syncCurrentIndex()`, while a changed index also triggers
+`onCurrentIndexChanged: previewDebounce.restart()`.
+
+Unlike §66.1, the second operation here is not a pure pending-key rejection: a
+second Timer restart changes the debounce deadline. Removing one restart can
+therefore change when a static/animated wallpaper preview begins, even if only
+slightly.
+
+Because preview timing is observable and animated previews intentionally use a
+different 500 ms debounce, this is **CLOSED** for strict-lossless optimization.
+Do not treat generic duplicate-restart greps as no-op work.
+
+### 66.4 Round-52 conclusion
+
+New strict-lossless groups:
+
+1. remove Coverflow's duplicate index-change thumbnail prefetch pass (§66.1,
+   **CONFIRMED / P1-P2 interaction**);
+2. use only invocation-local lazy metadata reuse for Skew color sort (§66.2,
+   **CONFIRMED strict-lossless / P1-P2 when active**).
+
+The superficially similar WallpaperLauncher duplicate debounce restart is
+explicitly closed because it changes an observable timer deadline (§66.3).
+
+No numeric reduction above is an end-to-end Hadalis speedup; all values are
+local source-derived operation/read reductions.
+
+No runtime/source implementation is authorized by this handoff.

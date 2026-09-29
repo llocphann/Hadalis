@@ -21,11 +21,13 @@ assert "WindowDialog" not in presenter
 assert "root.hadResolvedAnchor" in presenter
 assert "? ConfirmationService.resolvedAnchor" in presenter
 assert ": root.fallbackAnchor" in presenter
+assert "function scheduleFinish(requestId): void" in presenter
+assert "Qt.callLater(() => ConfirmationService.finishPresentation(id))" in presenter
 assert "function finishIfReleased(): void" in presenter
+assert "root.scheduleFinish(root.requestId)" in presenter
 assert "onRequestVisibleChanged" in presenter
 assert "Component.onDestruction:" in presenter
 assert "root.ownsRequest && !ConfirmationService.requestVisible" in presenter
-assert "ConfirmationService.finishPresentation(root.requestId)" in presenter
 active_change=presenter.split("onPresentationActiveChanged:",1)[1].split("AbyssConfirmationContent",1)[0]
 assert "ConfirmationService.markPresentationStarted(root.requestId)" in active_change
 

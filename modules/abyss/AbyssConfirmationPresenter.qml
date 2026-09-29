@@ -32,11 +32,21 @@ Item {
             ? ConfirmationService.resolvedAnchor
             : root.fallbackAnchor
 
+    function scheduleFinish(requestId): void {
+        const id = Number(requestId)
+        if (id <= 0)
+            return
+        // Let all bindings/registry handlers for this QML turn settle before
+        // releasing queue ownership. A renderer failover can establish its
+        // semantic hold in that same turn without racing the retract callback.
+        Qt.callLater(() => ConfirmationService.finishPresentation(id))
+    }
+
     function finishIfReleased(): void {
         if (!popup.presentationActive
                 && root.ownsRequest
                 && !ConfirmationService.requestVisible)
-            ConfirmationService.finishPresentation(root.requestId)
+            root.scheduleFinish(root.requestId)
     }
 
     Connections {
@@ -50,7 +60,7 @@ Item {
         // Output hotplug/family teardown can destroy the owning presenter after
         // semantic close but before StyledPopup emits its final tail signal.
         if (root.ownsRequest && !ConfirmationService.requestVisible)
-            ConfirmationService.finishPresentation(root.requestId)
+            root.scheduleFinish(root.requestId)
     }
 
     StyledPopup {

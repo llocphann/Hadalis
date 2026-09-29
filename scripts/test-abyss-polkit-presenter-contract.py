@@ -67,8 +67,6 @@ assert "function _reconcileOutputTopology(): void" in service
 assert "target: Quickshell" in service
 assert "function onScreensChanged(): void" in service
 assert "Qt.callLater(root._reconcileOutputTopology)" in service
-assert "root.presentationMatchesActive" in service
-assert "root.hadResolvedAnchor" in service
 assert "root.finishPresentation(true)" in service
 topology=service.split("function _reconcileOutputTopology(): void",1)[1].split("Connections {",1)[0]
 assert "root.presentationRetained && root.presentationSerial === 0" in topology

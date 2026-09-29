@@ -15263,3 +15263,454 @@ No number above is an end-to-end Hadalis speedup. Numeric reductions are local
 source-derived operation/allocation counts only.
 
 No runtime/source implementation is authorized by this handoff.
+---
+
+## 58. Round 44 — Abyss aggregate pipelines, popup-anchor resolution and Niri focus micro-path (2026-09-30)
+
+### Snapshot / concurrent reconciliation
+
+Research continued from Round-43 commit
+`57165ab09be6530d670a5e073b1f50c37fe76b26`.
+
+Before this write, dev advanced one commit to
+`88a01eaf7d09cc2f82c47cad292038560b6f9fe2`.
+
+The delta is a single automation result file
+(`automation/results/JOB-MAINTAINER-VALIDATE-001.json`). It does not touch
+runtime source or this handoff, so all findings below remain based on the same
+audited source.
+
+No runtime/source implementation is authorized by this round.
+
+### 58.1 AbyssSurfaceController aggregate array pipelines have a strict one-pass specialization — PROMOTED from §23.2 to CONFIRMED / P1-P2
+
+Paths:
+
+- `modules/abyss/AbyssSurfaceController.qml`;
+- participant contract checked in
+  `modules/abyss/AbyssParticipant.qml` and
+  `modules/abyss/AbyssBodyHost.qml`.
+
+Section §23.2 correctly identified aggregate record/input allocation as a hot
+profile target but intentionally left broad stable-slot/incremental-model ideas
+at INVESTIGATE.
+
+A narrower local specialization is now provable without changing that
+architecture.
+
+Current bindings include:
+
+`placementRequests`
+
+- `Object.keys(participants)`;
+- `.map(key => participants[key]?.placementRequest)`;
+- `.filter(request => request !== null && request !== undefined)`.
+
+`records`
+
+- `Object.keys(participants)`;
+- `.map(... Object.assign({}, geometry, {mass}) ...)`;
+- `.filter(rec => rec && rec.surface.width > 0 && rec.surface.height > 0)`;
+- `moduleRecords.concat(...)`.
+
+`inputBounds`
+
+- `Object.keys(participants)`;
+- `.map(key => participants[key]?.inputBounds)`;
+- `.filter(rect => rect && rect.width > 0 && rect.height > 0)`.
+
+The participant fields involved are ordinary QML properties:
+
+- `geometry`: var snapshot;
+- `placementRequest`: var snapshot;
+- `inputBounds`: rect;
+- `mass`: real.
+
+Strict-safe direction:
+
+1. keep `Object.keys(participants)` as the authoritative enumeration list so
+   key ordering is byte-for-byte the same as today;
+2. allocate exactly the required public result array;
+3. iterate keys once and append only values passing the existing predicate;
+4. for `records`, initialize the result as a shallow copy of
+   `moduleRecords`, then append participant records;
+5. preserve the current `Object.assign({}, geometry, {mass})` clone **before**
+   applying the current nonzero-surface predicate, so clone/getter behavior for
+   zero-area geometry is not silently changed.
+
+This does **not** introduce shared derived state, stable slots, mutation-in-place
+of published arrays or incremental participant publication.
+
+Proof:
+
+- the same Object.keys order is retained;
+- the same participant property values are read synchronously;
+- result element object identity is unchanged where current code passes through
+  placement/input objects;
+- participant record clones remain fresh objects with the same mass override;
+- module records remain first, in the same order;
+- filtering predicates and record ordering are unchanged;
+- each readonly binding still publishes one fresh JS result array per
+  reevaluation, preserving its existing changed-signal shape.
+
+Exact local array/pass saving per reevaluation:
+
+`placementRequests`:
+
+- keys + map-result + filter-result arrays -> keys + final-result arrays;
+- participant value passes: **2 -> 1**.
+
+`inputBounds`:
+
+- keys + map-result + filter-result arrays -> keys + final-result arrays;
+- participant value passes: **2 -> 1**.
+
+`records`:
+
+- keys + map-result + filter-result + concat-result arrays -> keys +
+  final-result arrays;
+- participant record passes: **2 -> 1**;
+- `Object.assign` record clone count is deliberately unchanged.
+
+Because `records` and `inputBounds` can react during connected-body
+geometry/reveal changes, this is the strict-lossless implementation subset of
+the broader §23.2 P1 profile target.
+
+Do not treat this promotion as authorization for the still-unproven stable-slot
+or selective ShaderEffect-uniform architecture changes in §23.2.
+
+### 58.2 Abyss popup-slot derived state has three allocation/iteration reductions with exact order parity — CONFIRMED / P2
+
+Path:
+
+- `modules/abyss/AbyssSurfaceController.qml`.
+
+The controller supports at most four simultaneous popup slots, but several
+derived bindings reevaluate with popup geometry/focus state.
+
+#### A. popupInputBounds map/filter fusion
+
+Current:
+
+- `popupSlots.map(...inputBounds-or-null...).filter(validRect)`.
+
+A single indexed loop can append only the same valid rects.
+
+Preserved:
+
+- slot-index order;
+- rect object/value identity;
+- `rect.width > 0 && rect.height > 0` predicate;
+- one fresh published result array.
+
+Saving:
+
+- intermediate mapped array: **1 -> 0**;
+- slot traversals: **2 -> 1**.
+
+#### B. popupFocusOwner does not need slice().reverse()
+
+Current binding clones `popupEntries`, reverses the clone, then scans newest to
+oldest.
+
+Iterating `popupEntries` by index from `length - 1` to 0 visits the exact
+same entries in the exact same priority order without mutating the source.
+
+Saving per reevaluation:
+
+- reverse-scan clone: **1 array -> 0**;
+- reverse relocation/swaps -> 0.
+
+All keyboard-focus predicates, slot lookup and input-bounds tests stay
+unchanged.
+
+#### C. dismissPopups can preserve its mutation-safe snapshot without reversing it
+
+`dismissPopups()` currently does:
+
+`activePopups.slice().reverse().forEach(...dismiss...)`.
+
+The `slice()` snapshot is **load-bearing** because dismissing a popup can
+synchronously change controller popup state. Do not remove it.
+
+The strict-safe reduction is only:
+
+- keep `const popups = activePopups.slice()`;
+- iterate that snapshot from the last index down to zero;
+- invoke the same `dismissPresentation()`.
+
+This preserves the current newest-to-oldest snapshot semantics while removing
+the in-place reverse pass and callback dispatch.
+
+Status for the group: **CONFIRMED / P2**. Capacity is small, but
+`popupFocusOwner` / input-bounds derivation can participate in active popup
+geometry/focus reevaluation.
+
+### 58.3 PopupAnchorRegistry can reuse per-entry item context and per-controller active hover-target snapshots within one resolve() — CONFIRMED / P1-P2 for implicit confirmation resolution
+
+Path:
+
+- `services/PopupAnchorRegistry.qml`.
+
+Current implicit `resolve(source)` does, for each registered entry:
+
+1. `_validItem(item)`, which resolves both its QsWindow and liquid ancestor;
+2. if valid, `_activeSourcePopup(item)`, which walks the ancestor chain again
+   to recover the same liquid controller and scans that controller's
+   `popupEntries`;
+3. after a positive identity match, `_windowFor(item)` is called again to
+   obtain output name.
+
+Many Bar/Dock/Tray anchors on one output share one
+`AbyssSurfaceController`, while `popupEntries` has a maximum capacity of
+four.
+
+Exact-safe direction:
+
+- keep public `isUsable(item)` / `_validItem(item)` behavior unchanged;
+- add a private resolve-only context helper that performs the same validity
+  checks in the same order but also returns the already-resolved `window` and
+  `liquidAnchor/controller`;
+- reuse that context rather than repeating the ancestor/window lookups;
+- create an invocation-local Map keyed by liquid controller;
+- the first time a controller is encountered, scan its current
+  `popupEntries` once and build a Set of `hoverTarget` items whose popup has
+  `presentationActive === true`;
+- later entries sharing that controller use `activeTargets.has(item)`;
+- discard both Map/Sets when `resolve()` returns.
+
+Why strict-lossless:
+
+- `resolve()` is synchronous and does not yield to the event loop;
+- it does not itself mutate popup presentation state;
+- controller popup entries and QML parent/window references are therefore one
+  logical snapshot for the call;
+- resolve only needs the boolean fact that an active popup has
+  `hoverTarget === item`; duplicate popup entries do not change Set
+  membership;
+- entry iteration order, identity scoring, output scoring, ambiguity handling
+  and selected result remain unchanged;
+- no persistent cache/invalidation lifecycle is introduced.
+
+For E valid registered items sharing a controller with P popup entries:
+
+- repeated popup-entry scans: up to **E x P -> P + E Set.has()**;
+- liquid-ancestor resolution for valid entries: **2 -> 1 per entry**;
+- matched-entry QsWindow resolution: **2 -> 1**.
+
+This is intentionally invocation-local; do not resurrect the generic persistent
+registry indexing/pruning approach retired in §36.4.
+
+### 58.4 PopupAnchorPolicy can normalize each captured source candidate once; alias-provider hoisting is not yet strict by API contract — CONFIRMED partial / P2 + HIGH CONFIDENCE remainder
+
+Paths:
+
+- `services/PopupAnchorRegistry.qml`;
+- `services/PopupAnchorPolicy.js`.
+
+`_sourceAliases(source)` captures up to five raw source identity values into
+the `wanted` array before entry matching.
+
+Inside nested matching, every pair currently calls:
+
+`AnchorPolicy.matchScore(candidate, alias)`
+
+and `matchScore()` normalizes **both** arguments each time:
+
+- String conversion;
+- trim;
+- lower-case;
+- optional `.desktop` removal;
+- regex removal of non-alphanumeric characters.
+
+The captured `candidate` primitive cannot change during the synchronous
+resolve call.
+
+Therefore source-side normalization can be hoisted exactly once per wanted
+candidate and an exact scoring helper can accept a pre-normalized left side
+while continuing to normalize the alias at the current call site.
+
+Proof:
+
+- `normalize()` is pure and deterministic;
+- raw wanted values are already captured before entry iteration;
+- equality, entropy length and suffix-match arithmetic use the exact same
+  normalized string;
+- scoring/ties/ordering are unchanged;
+- no alias-provider invocation count changes.
+
+Source-side candidate normalization therefore changes from once per candidate /
+entry / alias pair to **once per source candidate per resolve()**.
+
+Status: **CONFIRMED / P2** for this partial hoist.
+
+A more tempting optimization is to move:
+
+`const aliases = root._aliases(entry)`
+
+outside the source-candidate loop.
+
+All current checked-in providers are simple arrow functions that only read live
+QML fields:
+
+- BarTaskbarButton: originalAppId/appId/desktopEntry id/startupClass;
+- DockAppButton: the same four identity fields;
+- SysTrayItem: tray item id.
+
+For current providers, one snapshot per entry would produce the same values
+within one synchronous resolve call and would remove repeated provider arrays.
+
+However `registerAnchor()` accepts an arbitrary `aliasProvider` function and
+the service currently does **not** declare provider purity or invocation-count
+semantics. Extension/custom callers could theoretically supply a stateful or
+throw-once provider.
+
+Under the strict extension/lifecycle rule, do not change provider invocation
+count until the registry contract explicitly guarantees a pure snapshot
+provider or all external registration surfaces are proven closed.
+
+Status for provider hoisting: **HIGH CONFIDENCE / provider-purity contract
+required**, not counted as CONFIRMED.
+
+### 58.5 Niri MRU focus update can prepend directly instead of relocating the completed array with unshift — CONFIRMED / P2 focus hot path
+
+Path:
+
+- `services/NiriService.qml`, `handleWindowFocusChanged()`.
+
+Current MRU maintenance:
+
+1. allocate `newOrder = []`;
+2. scan old MRU ids and push every id not equal to the newly focused id;
+3. `newOrder.unshift(focusedWindowId)`.
+
+The final unshift relocates every retained element one position to the right.
+
+Exact-safe direction:
+
+- initialize `newOrder = [focusedWindowId]`;
+- scan the old MRU list in the same order;
+- append every id not equal to `focusedWindowId`.
+
+Parity:
+
+- newly focused id remains first;
+- all prior occurrences of that id are still removed;
+- all other ids retain the same relative order;
+- if the id was not previously present, it is still inserted once at front;
+- assignment to `mruWindowIds` occurs at the same point in the focus handler;
+- no event coalescing or MRU publication cadence changes.
+
+For R retained previous ids:
+
+- final `unshift` relocation of R elements -> 0;
+- MRU scan count and one result-array allocation remain unchanged.
+
+Focus changes are event-hot, so this small operation composes with the larger
+Niri focus-path findings.
+
+### 58.6 Capture the focused window during the existing focus-normalization pass — CONFIRMED stronger specialization of §§41.3/54.1, not a separate backlog count
+
+Path:
+
+- `services/NiriService.qml`, `handleWindowFocusChanged()`,
+  `_normalizeWindowFocus()`.
+
+Current focus handler:
+
+1. records `_latestFocusedWindowId`;
+2. calls `scheduleWindowsUpdate(currentList)`, whose normalization logic walks
+   the window list;
+3. then runs a second:
+   `currentList.find(window => window.id === focusedWindowId)`
+   to obtain the same focused window for workspace `active_window_id`
+   maintenance.
+
+Existing findings already establish:
+
+- §41.3: avoid the throwaway normalization array when focus state is already
+  correct;
+- §54.1: a focus-only event must preserve any pre-existing
+  `_windowOrderDirty === true` but can skip the generic order-diff pass.
+
+When implementing that focus-specific normalization path, retain the original
+window whose id matches `focusedWindowId` while the pass is already visiting
+it, and feed that reference to the existing workspace update code.
+
+The workspace update only needs `workspace_id`; focus normalization does not
+change that field.
+
+Exact additional saving:
+
+- post-normalization focused-window linear scan: up to **N -> 0**.
+
+No additional persistent index/cache is required.
+
+This is a **stronger implementation specialization** of the existing
+focus-event backlog, not a new independently counted optimization. The
+focus-specific implementation should preserve:
+
+- prior dirty-order state;
+- normalized window objects/publication;
+- MRU update timing;
+- workspace `active_window_id` publication timing;
+- window update timer cadence.
+
+### 58.7 Waves-disabled mass recomputation remains a strong candidate but is not promoted without enable-transition ordering proof — STATUS UNCHANGED
+
+Paths rechecked:
+
+- `modules/abyss/AbyssWaveController.qml`;
+- §23.1.
+
+Current source still has:
+
+- `Component.onCompleted: reset()`;
+- `onRecordsChanged: if (simulation) Wave.setMass(simulation, records)`;
+- `integrationAllowed = motionAllowed || audioAllowed`;
+- `onIntegrationAllowedChanged: if (!integrationAllowed) reset()`.
+
+Thus the old observation remains true: waves/audio disabled sessions can
+recompute mass on record churn even though no integration step consumes it.
+
+The proposed dirty-mass deferral still looks valuable, but strict parity
+requires proving that when integration becomes enabled, mass is refreshed before
+any ticker/impulse/spectrum consumer can observe stale mass under QML signal /
+binding ordering.
+
+Do not promote merely because the disabled state has no visual wave.
+
+Status remains **ADAPT / P1 candidate requiring transition-order fixture**.
+
+### 58.8 Round-44 conclusion
+
+New or newly-promoted strict-lossless groups:
+
+1. one-pass Abyss participant aggregate pipelines for placementRequests,
+   records and inputBounds (§58.1, **PROMOTED / CONFIRMED P1-P2**);
+2. popup-slot input/focus/dismiss local allocation reductions (§58.2,
+   **CONFIRMED / P2**);
+3. resolve-local PopupAnchor item-context reuse and per-controller active-target
+   Set (§58.3, **CONFIRMED / P1-P2**);
+4. normalize captured PopupAnchor source candidates once per request (§58.4,
+   **CONFIRMED / P2 partial**);
+5. prepend Niri MRU focus order without unshift relocation (§58.5,
+   **CONFIRMED / P2**).
+
+Backlog/evidence refinement, not counted new:
+
+6. capture the focused window during the existing focus-specific normalization
+   pass, strengthening §§41.3/54.1 (§58.6, **CONFIRMED stronger
+   specialization**).
+
+Not promoted:
+
+7. hoisting arbitrary PopupAnchor aliasProvider calls needs an explicit purity
+   contract (§58.4);
+8. waves-disabled mass deferral still needs enabled-transition ordering proof
+   (§58.7).
+
+No numeric reduction above is an end-to-end Hadalis speedup. All counts are
+local operation/allocation reductions derived from current source.
+
+No runtime/source implementation is authorized by this handoff.

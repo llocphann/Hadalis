@@ -27,6 +27,10 @@ assert "source?.anchorItem" in registry
 assert "AnchorPolicy.matchScore(candidate, alias)" in registry
 assert "const requestedOutput = String(source?.outputName ?? \"\")" in registry
 assert "AnchorPolicy.placementScore(" in registry
+assert "let ambiguousBest = false" in registry
+assert "if (total === bestScore)" in registry
+assert "ambiguousBest = true" in registry
+assert "return ambiguousBest ? null : best" in registry
 assert 'kind === "tray"' not in registry  # priority policy stays pure/testable
 assert "menuEntry" not in registry
 assert "Quit" not in registry

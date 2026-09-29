@@ -148,6 +148,7 @@ Singleton {
         const requestedOutput = String(source?.outputName ?? "")
         let best = null
         let bestScore = 0
+        let ambiguousBest = false
         for (const entry of root.entries) {
             if (!root._validItem(entry?.item))
                 continue
@@ -164,9 +165,18 @@ Singleton {
             const total = AnchorPolicy.placementScore(
                 Number(entry.priority ?? 0), identityScore,
                 requestedOutput, outputName)
-            if (total <= bestScore)
+            if (total < bestScore)
                 continue
+            if (total === bestScore) {
+                // Equal-strength candidates on the same output/kind are not a
+                // trustworthy source. Registration order must never decide
+                // which app instance receives a semantic confirmation.
+                if (best && best.item !== entry.item)
+                    ambiguousBest = true
+                continue
+            }
             bestScore = total
+            ambiguousBest = false
             best = {
                 item: entry.item,
                 kind: entry.kind,
@@ -174,6 +184,6 @@ Singleton {
                 score: total
             }
         }
-        return best
+        return ambiguousBest ? null : best
     }
 }

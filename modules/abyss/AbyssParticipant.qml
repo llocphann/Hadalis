@@ -9,6 +9,10 @@ QtObject {
     // snapshots only; the allocator still consumes placementRequest alone.
     property var restingRecord: null
     property var visualPlacement: null
+    // Post-allocation metadata only; never part of placementRequest.
+    property string vacancyRole: ""
+    property bool vacancyHovered: false
+    property int vacancyHoverOrder: 0
     property var placementRequest: null
     property rect inputBounds: Qt.rect(0,0,0,0)
     property real mass: 1

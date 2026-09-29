@@ -383,6 +383,7 @@ Scope {
                 anchors.fill: parent
                 edge: window.positionEdge(identity,ShellLayoutController.sidebarAssignments().featureSidebar)
                 outputName: window.outputName
+                vacancyRole: "featureSidebar"
                 open: window.presented && field.ready && (Config.options?.enabledPanels ?? []).includes("abyssSidebarLeft")
                     && GlobalStates.sidebarLeftOpen && GlobalStates.sidebarLeftPresentationOutput === window.outputName
 
@@ -404,6 +405,7 @@ Scope {
                 anchors.fill: parent
                 edge: window.positionEdge(identity,ShellLayoutController.sidebarAssignments().systemSidebar)
                 outputName: window.outputName
+                vacancyRole: "systemSidebar"
                 open: window.presented && field.ready && (Config.options?.enabledPanels ?? []).includes("abyssSidebarRight")
                     && GlobalStates.sidebarRightOpen && GlobalStates.sidebarRightPresentationOutput === window.outputName
 
@@ -486,6 +488,10 @@ Scope {
                     edge: window.positionEdge(presentationKind,
                         hostedPopup?._attachmentEdge ?? root.barEdge)
                     outputName: window.outputName
+                    vacancyRole: presentationKind === "quickNotes"
+                        ? "quickNotes"
+                        : (presentationKind === "notificationCenter"
+                            ? "notificationCenter" : "")
                     open: window.presented && field.ready
                         && (hostedPopup?.presentationActive ?? false)
                         && ((hostedPopup?.requestedVisible ?? false)

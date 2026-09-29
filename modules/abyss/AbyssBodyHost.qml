@@ -17,6 +17,11 @@ Item {
     property string identity: ""
     property var controller: null
     readonly property var liquidController: controller
+    // Presentation-only semantic metadata for vacancy borrowing.
+    property string vacancyRole: ""
+    property bool vacancyHovered: root.vacancyRole.length > 0
+        && vacancyBodyHover.hovered
+    property int vacancyHoverOrder: 0
     property Item embeddedItem: null
     property bool animatePresentation: true
     property bool stableContentSize: false
@@ -184,6 +189,9 @@ Item {
         geometry: root.record
         restingRecord: root.pyramidRestingRecord
         visualPlacement: root.visualPlacement
+        vacancyRole: root.vacancyRole
+        vacancyHovered: root.vacancyHovered
+        vacancyHoverOrder: root.vacancyHoverOrder
         placementRequest: ({id:root.identity,open:root.semanticOpen,order:root.activationOrder,
             priority:root.placementPriority,padding:root.padding,
             minSpan:root.minimumSpan,minDepth:root.minimumDepth,
@@ -198,6 +206,14 @@ Item {
         if (controller) controller.impulse(edge,along+span/2,span,(opening ? 0.85 : -0.65)*waveInfluence,mass,opening ? "open" : "close")
     }
     function markOpened(): void { if (open && controller?.nextPresentationOrder) activationOrder=controller.nextPresentationOrder() }
+    function refreshVacancyInteraction(): void {
+        if (!root.vacancyHovered || root.vacancyRole.length === 0) {
+            root.vacancyHoverOrder = 0
+            return
+        }
+        if (root.controller?.nextVacancyInteractionOrder)
+            root.vacancyHoverOrder = root.controller.nextVacancyInteractionOrder()
+    }
     function resetPyramidMotion(): void {
         root.pyramidCoordinator?.resetIdentity(root.identity)
         root.pyramidClosing=false
@@ -324,6 +340,8 @@ Item {
         root.capturePyramidRestingState()
     onSemanticOpenChanged: if (initialized)
         root.syncPyramidSemanticState()
+    onVacancyHoveredChanged: root.refreshVacancyInteraction()
+    onVacancyRoleChanged: root.refreshVacancyInteraction()
     onProgressChanged: {
         root.finishPyramidCloseIfDone()
         root.finishPyramidReopenIfDone()
@@ -334,10 +352,12 @@ Item {
     onControllerChanged: if (initialized) {
         root.resetPyramidMotion()
         markOpened()
+        root.refreshVacancyInteraction()
     }
     Component.onCompleted: {
         initialized = true
         markOpened()
+        root.refreshVacancyInteraction()
         if (semanticOpen) {
             root.capturePyramidRestingState()
             root.syncPyramidEntryOrigin()
@@ -421,6 +441,15 @@ Item {
         opacity: root.pyramidPresentationActive
             ? 1 : Math.min(1,root.progress*1.5)
         enabled: root.acceptsInput
+
+        // Actual rendered-body hover; source anchors/physical edges never grant
+        // vacancy ownership.
+        HoverHandler {
+            id: vacancyBodyHover
+            parent: contentFrame
+            enabled: root.vacancyRole.length > 0
+                && contentFrame.visible && contentFrame.enabled
+        }
 
         Item {
             id: contentCanvas

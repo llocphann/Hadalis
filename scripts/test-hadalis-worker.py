@@ -8,7 +8,7 @@ import tempfile
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from automation.worker.daemon import capture, safe_cwd, validate_job
+from automation.worker.daemon import clipped, safe_cwd, validate_job
 
 
 def expect_error(fn) -> None:
@@ -53,7 +53,7 @@ def main() -> None:
         assert safe_cwd(root, "inside") == (root / "inside").resolve()
         expect_error(lambda: safe_cwd(root, "../escape"))
 
-    text, truncated = capture("hello")
+    text, truncated = clipped("hello")
     assert text == "hello"
     assert truncated is False
 

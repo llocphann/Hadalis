@@ -70,6 +70,9 @@ Item {
     // Elastic Fill is transient presentation metadata. Related bodies share a
     // group; only the most recently hovered member borrows the group's vacancy.
     property string elasticFillGroup: ""
+    // The corner popup is the group's base-layout anchor. Sidebars are
+    // followers: they may fill vacancy, but never steal the direct Edge slot.
+    property bool elasticFillAnchor: false
     property bool elasticFillHovered: false
     property int elasticFillOrder: 0
     property int activationOrder: 0
@@ -115,17 +118,25 @@ Item {
         ? Number(coordinatedPlacement.depth) : depth
     property real visualPlacementInward: Number.isFinite(Number(coordinatedPlacement?.inward))
         ? Number(coordinatedPlacement.inward) : 0
+    // Hover loss restores allocator truth immediately, but span/depth still
+    // animate back to that base placement. Keep only the relaxed geometry
+    // limits alive for the same placement-motion duration so the body cannot
+    // snap through its normal clamp halfway through the return.
+    property real elasticLimitProgress:
+        (coordinatedPlacement?.elasticFilled === true
+            || coordinatedPlacement?.elasticLimits === true) ? 1 : 0
     readonly property var visualPlacement: coordinatedPlacement
         ? Object.assign({},coordinatedPlacement,{
             along:visualPlacementAlong,
             span:visualPlacementSpan,
             depth:visualPlacementDepth,
             inward:visualPlacementInward,
-            // Keep the temporary full-depth allowance alive while an Elastic
-            // Fill depth animates back to its base requested depth.
-            elasticFilled: coordinatedPlacement?.elasticFilled === true
-                || visualPlacementDepth
-                    > (requestedRecord?.targetDepth ?? depth)+0.5,
+            elasticFilled:
+                coordinatedPlacement?.elasticFilled === true,
+            elasticLimits:
+                coordinatedPlacement?.elasticFilled === true
+                || coordinatedPlacement?.elasticLimits === true
+                || elasticLimitProgress > 0.001,
             elasticDirection:
                 coordinatedPlacement?.elasticDirection ?? ""
         }) : null
@@ -207,6 +218,7 @@ Item {
             stackPolicy:root.stackPolicy,
             stackProximity:root.stackProximity,
             elasticFillGroup:root.elasticFillGroup,
+            elasticFillAnchor:root.elasticFillAnchor,
             elasticFillHovered:root.elasticFillHovered,
             elasticFillOrder:root.elasticFillOrder,
             record:root.requestedRecord})
@@ -405,6 +417,15 @@ Item {
         }
     }
     Behavior on visualPlacementInward {
+        enabled: root.animatePlacementChanges && root.placementMotionReady
+            && AbyssStyle.motionEnabled
+        NumberAnimation {
+            duration: AbyssStyle.motionNormal
+            easing.type: root.pyramidMotionEnabled
+                ? Easing.InOutCubic : Easing.OutCubic
+        }
+    }
+    Behavior on elasticLimitProgress {
         enabled: root.animatePlacementChanges && root.placementMotionReady
             && AbyssStyle.motionEnabled
         NumberAnimation {

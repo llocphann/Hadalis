@@ -72,6 +72,8 @@ assert "Geometry.joinCorner(" in host
 assert "rawPresentationRecord,joinedEdge" in host
 assert "result.along=_number(to.along,0)" in motion
 assert "result.span=Math.max(0,_number(to.span,0))" in motion
+assert "elasticFilled:placement.elasticFilled === true" in motion
+assert "elasticLimits:placement.elasticLimits === true" in motion
 
 # Content is slide-under clipped at fixed size: no pyramid fade/shrink.
 assert "id: contentCanvas" in host

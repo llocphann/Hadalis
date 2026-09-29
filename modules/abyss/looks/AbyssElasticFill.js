@@ -1,10 +1,10 @@
 // Elastic Fill: hover-owned vacancy borrowing for related Abyss bodies.
 //
-// This is deliberately separate from AbyssBodyPlacement. The base allocator
-// remains the sole authority for requested geometry, readable minima, stacking,
-// collision resolution and eviction. Elastic Fill receives those placements and
-// may temporarily enlarge one hovered member inside the bounding envelope of
-// its explicitly related peers.
+// Fill sizing stays separate from AbyssBodyPlacement. The base allocator remains
+// the authority for readable geometry, stacking, collision resolution and
+// eviction; it only honors the group's anchor-before-follower coexistence bit.
+// Elastic Fill receives those placements and may temporarily enlarge one hovered
+// member inside the bounding envelope of its explicitly related peer.
 //
 // It never persists geometry, never grows a lone surface, never expands through
 // the physical Screen Edge and never overlaps another visible body's content.
@@ -25,11 +25,41 @@ function _elasticRect(rect) {
 function _elasticArea(rect) {
     return Math.max(0,rect.width)*Math.max(0,rect.height);
 }
+function _elasticPanelRect(member) {
+    var request=member?.request ?? {};
+    var placement=member?.placement ?? {};
+    var content=_elasticRect(placement.content);
+    var edge=String(request?.record?.edge ?? "");
+    var horizontal=edge==="top" || edge==="bottom";
+    var padding=Math.max(0,_elasticNumber(request?.padding,0));
+    var alongPadding=Math.min(padding,
+        Math.max(0,_elasticNumber(placement.span,0))/2);
+    var crossPadding=Math.min(padding,
+        Math.max(0,_elasticNumber(placement.depth,0))/2);
+    return {
+        x:content.x-(horizontal ? alongPadding : crossPadding),
+        y:content.y-(horizontal ? crossPadding : alongPadding),
+        width:content.width+2*(horizontal ? alongPadding : crossPadding),
+        height:content.height+2*(horizontal ? crossPadding : alongPadding)
+    };
+}
+function _elasticDirections(owner,members) {
+    var anchors=members.filter(function(member) {
+        return member.request?.elasticFillAnchor === true;
+    });
+    if (anchors.length!==1) return [];
+    var edge=String(anchors[0].request?.record?.edge ?? "");
+    if (edge!=="top" && edge!=="bottom") return [];
+    var ownerIsAnchor=owner.request?.elasticFillAnchor === true;
+    if (edge==="bottom")
+        return [ownerIsAnchor ? "top" : "bottom"];
+    return [ownerIsAnchor ? "bottom" : "top"];
+}
 
 function _elasticEnvelope(members) {
     var left=Infinity,top=Infinity,right=-Infinity,bottom=-Infinity;
     for (var i=0;i<members.length;i++) {
-        var rect=_elasticRect(members[i].placement?.content);
+        var rect=_elasticPanelRect(members[i]);
         left=Math.min(left,rect.x);
         top=Math.min(top,rect.y);
         right=Math.max(right,rect.x+rect.width);
@@ -192,7 +222,11 @@ function resolve(requests,placements,gap) {
     var transactions=[];
     for (var key in groups) {
         var members=groups[key];
-        if (members.length<2) continue;
+        if (members.length<2
+                || members.filter(function(member) {
+                    return member.request?.elasticFillAnchor === true;
+                }).length!==1)
+            continue;
         var owner=_elasticOwner(members);
         if (!owner) continue;
         transactions.push({
@@ -214,13 +248,14 @@ function resolve(requests,placements,gap) {
 
     var result=placements;
     var changed=false;
-    var directions=["top","bottom","left","right"];
     for (var t=0;t<transactions.length;t++) {
         var transaction=transactions[t];
         var owner=transaction.owner;
         var base=owner.placement;
         var original=_elasticRect(base.content);
+        var originalPanel=_elasticPanelRect(owner);
         var envelope=_elasticEnvelope(transaction.members);
+        var directions=_elasticDirections(owner,transaction.members);
         var blockers=[];
         var source=changed ? result : placements;
 
@@ -240,7 +275,7 @@ function resolve(requests,placements,gap) {
                 continue;
 
             var maximum=_elasticMaximumDelta(
-                original,direction,envelope);
+                originalPanel,direction,envelope);
             // Avoid tiny hover-driven breathing that does not materially expose
             // more content. Twelve logical pixels remains below stock padding.
             if (maximum<12) continue;

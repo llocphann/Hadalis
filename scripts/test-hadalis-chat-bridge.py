@@ -14,7 +14,12 @@ from automation.chat_bridge.controller import (  # noqa: E402
     BridgeState,
     transition,
 )
-from automation.chat_bridge.runtime import clear_state, load_state, save_state  # noqa: E402
+from automation.chat_bridge.runtime import (  # noqa: E402
+    clear_state,
+    load_state,
+    process_response,
+    save_state,
+)
 from automation.chat_bridge.protocol import (  # noqa: E402
     CONTINUATION_PROMPT,
     GITHUB_MENTION,
@@ -40,6 +45,8 @@ def main() -> None:
     assert CONTINUATION_PROMPT.splitlines()[0] == GITHUB_MENTION
     assert ROTATION_BOOTSTRAP_PROMPT.splitlines()[0] == GITHUB_MENTION
     assert "fetch the current dev head" in CONTINUATION_PROMPT.casefold()
+    assert "strict-lossless optimization research" in CONTINUATION_PROMPT.casefold()
+    assert "do not stop after one round" in CONTINUATION_PROMPT.casefold()
     assert "HADALIS_LOOP:CONNECTOR_BLOCKED GITHUB" in CONTINUATION_PROMPT
 
     wait = parse_loop_directive("notes\nHADALIS_LOOP:WAIT_RESULT JOB-000127\n")
@@ -87,6 +94,16 @@ def main() -> None:
             assert load_state() == (BridgeState.WAIT_LOCAL, "JOB-000127")
             save_state(BridgeState.DONE)
             assert load_state() == (BridgeState.DONE, None)
+
+            done, command, prompt = process_response(
+                "HADALIS_LOOP:DONE",
+                continuous_research=True,
+            )
+            assert done is False
+            assert command == "send"
+            assert prompt == CONTINUATION_PROMPT
+            assert load_state() == (BridgeState.READY, None)
+
             clear_state()
             assert load_state() is None
     finally:

@@ -2,6 +2,7 @@ pragma Singleton
 pragma ComponentBehavior: Bound
 
 import QtQuick
+import Quickshell
 
 // Runtime readiness registry for concrete, frame-ready Abyss prompt hosts.
 // Configuration saying "abyssPerimeter" is enabled is not enough: a QML

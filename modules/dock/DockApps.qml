@@ -71,7 +71,6 @@ Item {
         root.abyssMenuHoverPresenter(ownerId, hovered)
     }
 
-    readonly property bool dragEnabled: Config.options?.dock?.enableDragReorder ?? true
     property bool dragActive: false
     property int dragIndex: -1
     property int dropTargetIndex: -1
@@ -111,8 +110,6 @@ Item {
     }
 
     function startDrag(index: int, appId: string, globalX: real, globalY: real): void {
-        if (!dragEnabled) return
-
         closeAllContextMenus()
         if (root.abyssMenuDismissPresenter)
             root.abyssMenuDismissPresenter()
@@ -730,8 +727,7 @@ Item {
             property real _dragPressListY: 0
             property bool _dockDragStarted: false
 
-            dragTarget: root.dragEnabled && !dockDelegate.isSeparator
-                ? reorderDragProxy : null
+            dragTarget: !dockDelegate.isSeparator ? reorderDragProxy : null
             pointerDragThreshold: root.dragThreshold
             pointerDragAxis: root.vertical ? Drag.YAxis : Drag.XAxis
 
@@ -746,7 +742,7 @@ Item {
             }
 
             downAction: event => {
-                if (!root.dragEnabled || dockDelegate.isSeparator)
+                if (dockDelegate.isSeparator)
                     return
                 reorderDragProxy.x = 0
                 reorderDragProxy.y = 0

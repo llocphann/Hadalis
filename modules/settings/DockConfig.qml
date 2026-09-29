@@ -153,16 +153,6 @@ ContentPage {
                 }
             }
 
-            SettingsSwitch {
-                buttonIcon: "drag_indicator"
-                text: Translation.tr("Drag to reorder")
-                checked: Config.options?.dock?.enableDragReorder ?? true
-                onCheckedChanged: Config.setNestedValue('dock.enableDragReorder', checked)
-                StyledToolTip {
-                    text: Translation.tr("Drag dock icons to reorder pinned and running apps")
-                }
-            }
-
             ContentSubsection {
                 title: Translation.tr("Appearance")
 

@@ -1948,7 +1948,6 @@ Singleton {
                 property bool hoverPreview: true
                 property int hoverPreviewDelay: 400
                 property bool keepPreviewOnClick: false
-                property bool enableDragReorder: true
             }
 
             property JsonObject controlPanel: JsonObject {

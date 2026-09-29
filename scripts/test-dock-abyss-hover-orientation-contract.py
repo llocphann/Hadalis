@@ -23,8 +23,7 @@ assert "Show Dashboard icon" in settings
 
 # Reordering is owned by RippleButton's one MouseArea. Its built-in drag
 # moves a proxy; the visible delegate follows that exact delta until drop.
-assert "dragTarget: root.dragEnabled && !dockDelegate.isSeparator" in apps
-assert "? reorderDragProxy : null" in apps
+assert "dragTarget: !dockDelegate.isSeparator ? reorderDragProxy : null" in apps
 assert "pointerDragThreshold: root.dragThreshold" in apps
 assert "pointerDragAxis: root.vertical ? Drag.YAxis : Drag.XAxis" in apps
 assert "onPointerDragActiveChanged:" in apps
@@ -46,7 +45,9 @@ assert "_dockPrimeTimer" not in apps
 assert "_dragPrimed" not in apps
 assert "_longPressTriggered" not in apps
 assert "Long-press and drag dock icons" not in settings
-assert "Drag dock icons to reorder pinned and running apps" in settings
+assert "Drag to reorder" not in settings
+assert "enableDragReorder" not in apps
+assert "enableDragReorder" not in settings
 assert "property int pointerDragAxis: Drag.XAndYAxis" in ripple
 assert "drag.axis: root.pointerDragAxis" in ripple
 

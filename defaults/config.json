@@ -1044,7 +1044,6 @@
         "showDashboardButton": true,
         "iconSize": 35,
         "separatePinnedFromRunning": true,
-        "enableDragReorder": true,
         "notificationBadge": true,
         "style": "panel"
     },

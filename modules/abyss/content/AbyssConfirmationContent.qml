@@ -20,6 +20,8 @@ FocusScope {
         String(root.request?.details ?? "")
     readonly property var actions:
         Array.isArray(root.request?.actions) ? root.request.actions : []
+    readonly property var visibleActions:
+        root.actions.filter(action => action?.visible !== false)
     property bool detailsOpen: false
 
     readonly property real desiredWidth: Math.max(minContentWidth,
@@ -117,12 +119,12 @@ FocusScope {
 
         AbyssSeparator {
             Layout.fillWidth: true
-            visible: root.actions.length > 0
+            visible: root.visibleActions.length > 0
         }
 
         Item {
             Layout.fillWidth: true
-            visible: root.actions.length > 0
+            visible: root.visibleActions.length > 0
             implicitHeight: actionFlow.childrenRect.height
 
             Flow {
@@ -132,7 +134,7 @@ FocusScope {
                 layoutDirection: Qt.RightToLeft
 
                 Repeater {
-                    model: root.actions
+                    model: root.visibleActions
 
                     delegate: AbyssButton {
                         id: actionButton

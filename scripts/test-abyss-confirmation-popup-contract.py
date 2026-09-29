@@ -49,6 +49,10 @@ for primitive in ("AbyssLabel", "AbyssButton", "AbyssSeparator"):
 assert "minContentWidth" in content and "maxContentWidth" in content
 assert "Text.WordWrap" in content
 assert "Flow {" in content
+assert "readonly property var visibleActions:" in content
+assert "root.actions.filter(action => action?.visible !== false)" in content
+assert "model: root.visibleActions" in content
+assert content.count("visible: root.visibleActions.length > 0") >= 2
 assert 'Translation.tr("Hide details")' in content
 assert 'Translation.tr("Details")' in content
 assert "visible: modelData?.visible !== false" in content

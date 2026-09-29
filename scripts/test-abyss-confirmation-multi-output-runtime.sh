@@ -165,6 +165,73 @@ ShellRoot {
                                     visible: true
                                     enabled: true
                                 }
+
+                                // Match the production/single-output Abyss
+                                // wiring: StyledPopup allocates a controller
+                                // slot, while AbyssBodyHost supplies the actual
+                                // connected-surface participant/content parent.
+                                Repeater {
+                                    model: controller.popupCapacity
+
+                                    delegate: AbyssBodyHost {
+                                        id: host
+                                        required property int index
+                                        readonly property var popupEntry:
+                                            controller.popupSlots[index] ?? null
+                                        readonly property var hostedPopup:
+                                            popupEntry?.popup ?? null
+                                        readonly property bool horizontalEdge:
+                                            edge === "top" || edge === "bottom"
+                                        readonly property rect anchorBounds:
+                                            hostedPopup?._anchorRect(
+                                                scene.width, scene.height)
+                                                ?? Qt.rect(0, 0, 0, 0)
+
+                                        anchors.fill: parent
+                                        identity: "styledPopup" + index
+                                        controller: controller
+                                        stackPolicy: "pyramid"
+                                        semanticOpenOverride:
+                                            hostedPopup?.liquidSemanticVisible ?? false
+                                        edge:
+                                            hostedPopup?._attachmentEdge ?? "top"
+                                        joinedEdge:
+                                            hostedPopup?._liquidAnchor?.popupJoinedEdge ?? ""
+                                        open:
+                                            hostedPopup?.presentationActive ?? false
+                                        externalProgress:
+                                            hostedPopup?.revealProgress ?? 0
+                                        embeddedItem:
+                                            hostedPopup?.contentItem ?? null
+                                        padding: 14
+                                        span: (horizontalEdge
+                                            ? (embeddedItem?.implicitWidth ?? 1)
+                                            : (embeddedItem?.implicitHeight ?? 1))
+                                            + padding * 2
+                                        depth: (horizontalEdge
+                                            ? (embeddedItem?.implicitHeight ?? 1)
+                                            : (embeddedItem?.implicitWidth ?? 1))
+                                            + padding * 2
+                                        along: (horizontalEdge
+                                            ? anchorBounds.x
+                                                + anchorBounds.width / 2
+                                            : anchorBounds.y
+                                                + anchorBounds.height / 2)
+                                            - span / 2
+                                        edgeInsets: controller.edgeInsets
+
+                                        onPopupEntryChanged: {
+                                            retainedPlacement = null
+                                            resetPyramidMotion()
+                                        }
+                                        Component.onCompleted:
+                                            controller.registerPopupHost(
+                                                index, host)
+                                        Component.onDestruction:
+                                            controller.unregisterPopupHost(
+                                                index, host)
+                                    }
+                                }
                             }
                         }
 
@@ -204,7 +271,20 @@ ShellRoot {
                     + " surfaces=" + root.surfaces.length
                     + " names=" + JSON.stringify(names)
                     + " active=" + ConfirmationService.active
-                    + " visible=" + ConfirmationService.requestVisible)
+                    + " visible=" + ConfirmationService.requestVisible
+                    + " target=" + ConfirmationService.targetOutputName
+                    + " resolvedKind="
+                        + ConfirmationService.resolvedAnchorKind
+                    + " onePopups="
+                        + (root.surfaces[0]?.controllerRef?.activePopups?.length ?? -1)
+                    + " twoPopups="
+                        + (root.surfaces[1]?.controllerRef?.activePopups?.length ?? -1)
+                    + " oneHosts="
+                        + Object.keys(root.surfaces[0]?.controllerRef?.popupHosts
+                            ?? {}).length
+                    + " twoHosts="
+                        + Object.keys(root.surfaces[1]?.controllerRef?.popupHosts
+                            ?? {}).length)
                 return
             }
             if (!Config.ready || root.surfaces.length < 2) {
@@ -249,7 +329,11 @@ ShellRoot {
 
             if (root.phase === 2) {
                 if (!one.controllerRef || !two.controllerRef
-                        || !one.trayRef || !two.dockRef)
+                        || !one.trayRef || !two.dockRef
+                        || Object.keys(one.controllerRef.popupHosts ?? {}).length
+                            < one.controllerRef.popupCapacity
+                        || Object.keys(two.controllerRef.popupHosts ?? {}).length
+                            < two.controllerRef.popupCapacity)
                     return
                 Config.setNestedValue("panelFamily", "abyss")
                 PopupAnchorRegistry.registerAnchor(

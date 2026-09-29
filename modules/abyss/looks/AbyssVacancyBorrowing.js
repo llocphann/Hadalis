@@ -1,7 +1,7 @@
 // Temporary vacancy borrowing for semantically related Abyss surfaces.
 // The base allocator remains authoritative; this post-pass may only enlarge one
-// semantically paired member into currently free output space. A logical sidebar
-// borrows automatically when eligible; final-body hover temporarily overrides it.
+// semantically paired member into currently free output space. Without hover the
+// most recently activated eligible member borrows; final-body hover overrides it.
 var _vacancyPartners = {
     featureSidebar: "quickNotes",
     quickNotes: "featureSidebar",
@@ -253,8 +253,8 @@ function resolve(requests, metadata, placements, width, height, insets, gap) {
     });
 
     // Build geometry-eligible choices for both members of each semantic pair.
-    // Automatic ownership prefers the logical sidebar; if it has no safe
-    // vacancy the popup may borrow instead. Hover can override either choice.
+    // Automatic ownership follows activation order, so the surface the user
+    // just opened receives available space without requiring a pointer hover.
     var transactions=[];
     ["featureSidebar","systemSidebar"].forEach(function(role) {
         var peerRole=_vacancyPartners[role];
@@ -265,8 +265,8 @@ function resolve(requests, metadata, placements, width, height, insets, gap) {
             _vacancyNumber(sidebar.request?.order,0),
             _vacancyNumber(popup.request?.order,0));
         [
-            {owner:sidebar,peer:popup,autoPriority:1},
-            {owner:popup,peer:sidebar,autoPriority:0}
+            {owner:sidebar,peer:popup},
+            {owner:popup,peer:sidebar}
         ].forEach(function(choice) {
             var candidate=_vacancyBestCandidate(choice.owner,choice.peer,
                 placements,width,height,insets,gap);
@@ -279,8 +279,7 @@ function resolve(requests, metadata, placements, width, height, insets, gap) {
                 hovered:choice.owner.meta?.hovered === true,
                 hoverOrder:_vacancyNumber(choice.owner.meta?.hoverOrder,0),
                 requestOrder:_vacancyNumber(choice.owner.request?.order,0),
-                pairOrder:pairOrder,
-                autoPriority:choice.autoPriority
+                pairOrder:pairOrder
             });
         });
     });
@@ -300,18 +299,19 @@ function resolve(requests, metadata, placements, width, height, insets, gap) {
                 || String(a.owner.id).localeCompare(String(b.owner.id));
         });
     } else {
-        // No hover: select one automatic owner per semantic pair. Prefer the
-        // logical sidebar when both members can grow, otherwise use the only
-        // eligible member. Across pairs, the most recently activated pair wins.
+        // No hover: the newest geometry-eligible member in each pair owns the
+        // vacancy. This matches the visible user action: opening Notification
+        // Center after Controls expands Notification Center immediately; opening
+        // a sidebar later reverses ownership without needing hover.
         var automaticByPair={};
         transactions.forEach(function(transaction) {
             var current=automaticByPair[transaction.pairRole];
             if (!current
-                    || transaction.autoPriority > current.autoPriority
-                    || (transaction.autoPriority === current.autoPriority
-                        && transaction.requestOrder > current.requestOrder)
-                    || (transaction.autoPriority === current.autoPriority
-                        && transaction.requestOrder === current.requestOrder
+                    || transaction.requestOrder > current.requestOrder
+                    || (transaction.requestOrder === current.requestOrder
+                        && transaction.candidate.gain > current.candidate.gain+.01)
+                    || (transaction.requestOrder === current.requestOrder
+                        && Math.abs(transaction.candidate.gain-current.candidate.gain) <= .01
                         && String(transaction.owner.id)
                             .localeCompare(String(current.owner.id)) < 0))
                 automaticByPair[transaction.pairRole]=transaction;

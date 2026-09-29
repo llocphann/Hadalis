@@ -148,25 +148,25 @@ ShellRoot {
                         "production allocator must place both semantic members")) return
                 root.featureBase=Object.assign({},baseFeature)
                 root.notesBase=Object.assign({},baseNotes)
-                if (!root.check(controller.bodyPlacements.leftPanel?.vacancyBorrowed === true
-                        && controller.bodyPlacements.styledPopup0?.vacancyBorrowed !== true,
-                        "coexisting semantic pair must auto-expand the logical sidebar")) return
-                if (!root.check(feature.inputBounds.width > 0 && feature.inputBounds.height > 0
-                        && root.near(feature.inputBounds.x,feature.record.content.x)
-                        && root.near(feature.inputBounds.y,feature.record.content.y)
-                        && root.near(feature.inputBounds.width,feature.record.content.width)
-                        && root.near(feature.inputBounds.height,feature.record.content.height),
-                        "auto-expanded record and input geometry must share one truth")) return
-                root.notesHover=true
-            } else if (root.step === 3) {
                 if (!root.check(controller.bodyPlacements.styledPopup0?.vacancyBorrowed === true
                         && controller.bodyPlacements.leftPanel?.vacancyBorrowed !== true,
-                        "popup body hover must temporarily override automatic ownership")) return
-                root.notesHover=false
-            } else if (root.step === 4) {
+                        "newer semantic popup must auto-expand without hover")) return
+                if (!root.check(notes.inputBounds.width > 0 && notes.inputBounds.height > 0
+                        && root.near(notes.inputBounds.x,notes.record.content.x)
+                        && root.near(notes.inputBounds.y,notes.record.content.y)
+                        && root.near(notes.inputBounds.width,notes.record.content.width)
+                        && root.near(notes.inputBounds.height,notes.record.content.height),
+                        "auto-expanded record and input geometry must share one truth")) return
+                root.featureHover=true
+            } else if (root.step === 3) {
                 if (!root.check(controller.bodyPlacements.leftPanel?.vacancyBorrowed === true
                         && controller.bodyPlacements.styledPopup0?.vacancyBorrowed !== true,
-                        "hover loss must return to automatic sidebar ownership")) return
+                        "older sidebar body hover must temporarily override automatic ownership")) return
+                root.featureHover=false
+            } else if (root.step === 4) {
+                if (!root.check(controller.bodyPlacements.styledPopup0?.vacancyBorrowed === true
+                        && controller.bodyPlacements.leftPanel?.vacancyBorrowed !== true,
+                        "hover loss must return to newest automatic owner")) return
                 Config.setNestedValues({
                     "sidebar.shellLayout.feature.slot":"right",
                     "sidebar.shellLayout.system.slot":"left"
@@ -177,8 +177,9 @@ ShellRoot {
                         && feature.edge === "right"
                         && feature.vacancyRole === "featureSidebar",
                         "physical sidebar swap must not change logical identity")) return
-                if (!root.check(controller.bodyPlacements.leftPanel?.vacancyBorrowed === true,
-                        "swapped logical feature sidebar must still auto-borrow")) return
+                if (!root.check(controller.bodyPlacements.styledPopup0?.vacancyBorrowed === true
+                        && controller.bodyPlacements.leftPanel?.vacancyBorrowed !== true,
+                        "physical sidebar swap must preserve newest-member automatic ownership")) return
                 root.notesOpen=false
             } else if (root.step === 6) {
                 const currentFeatureBase=controller.baseBodyPlacements.leftPanel

@@ -115,7 +115,8 @@ for token in (
     'featureSidebar: "quickNotes"',
     'systemSidebar: "notificationCenter"',
     '["featureSidebar","systemSidebar"]',
-    "Automatic ownership prefers the logical sidebar",
+    "most recently activated eligible member borrows",
+    "newest geometry-eligible member",
     "hoveredTransactions",
     "One output owns one temporary borrower at a time",
 ):
@@ -173,28 +174,26 @@ const notes=member("styledPopup0","quickNotes","bottom",2,{
     content:{x:44,y:600,width:390,height:270}
 });
 
-// Automatic mode: coexistence plus real vacancy is sufficient. The logical
-// sidebar is the stable default owner; no pointer hover is required.
+// Automatic mode: the newly opened eligible member wins. Quick Notes has a
+// newer activation order than the already-open feature sidebar.
 let run=resolveMembers([feature,notes]);
-assert(run.resolved.leftPanel.vacancyBorrowed);
-assert.equal(run.resolved.leftPanel.vacancyDirection,"bottom");
-assert(run.resolved.leftPanel.content.height>feature.placement.content.height);
-assert(!run.resolved.styledPopup0.vacancyBorrowed);
-assert(!collide(run.resolved.leftPanel.content,notes.placement.content));
-
-// Hover remains an explicit temporary override when the hovered member has
-// real geometry available.
-notes.meta.hovered=true; notes.meta.hoverOrder=11;
-run=resolveMembers([feature,notes]);
 assert(run.resolved.styledPopup0.vacancyBorrowed);
 assert.equal(run.resolved.styledPopup0.vacancyDirection,"top");
 assert(!run.resolved.leftPanel.vacancyBorrowed);
 assert(!collide(run.resolved.styledPopup0.content,feature.placement.content));
 
-let record=placedPanel(W,H,IN,notes.request.record.edge,
-    notes.request.record.along,notes.request.record.span,notes.request.record.targetDepth,
-    1,notes.request.padding,[],true,run.resolved.styledPopup0);
-sameRect(record.content,run.resolved.styledPopup0.content,"resolved record/content");
+// Hover remains an explicit temporary override even when that member is older.
+feature.meta.hovered=true; feature.meta.hoverOrder=11;
+run=resolveMembers([feature,notes]);
+assert(run.resolved.leftPanel.vacancyBorrowed);
+assert.equal(run.resolved.leftPanel.vacancyDirection,"bottom");
+assert(!run.resolved.styledPopup0.vacancyBorrowed);
+assert(!collide(run.resolved.leftPanel.content,notes.placement.content));
+
+let record=placedPanel(W,H,IN,feature.request.record.edge,
+    feature.request.record.along,feature.request.record.span,feature.request.record.targetDepth,
+    1,feature.request.padding,[],true,run.resolved.leftPanel);
+sameRect(record.content,run.resolved.leftPanel.content,"resolved record/content");
 
 // Overlapping hover leases still deterministically select only the newest.
 feature.meta.hovered=true; feature.meta.hoverOrder=12;
@@ -203,11 +202,11 @@ run=resolveMembers([feature,notes]);
 assert(run.resolved.styledPopup0.vacancyBorrowed);
 assert(!run.resolved.leftPanel.vacancyBorrowed);
 
-// Hover loss returns to automatic ownership rather than collapsing to base.
+// Hover loss returns to the newest automatic owner rather than collapsing.
 feature.meta.hovered=false; notes.meta.hovered=false;
 run=resolveMembers([feature,notes]);
-assert(run.resolved.leftPanel.vacancyBorrowed);
-assert(!run.resolved.styledPopup0.vacancyBorrowed);
+assert(run.resolved.styledPopup0.vacancyBorrowed);
+assert(!run.resolved.leftPanel.vacancyBorrowed);
 
 // Losing the semantic peer restores exact allocator truth and object identity.
 notes.request.open=false;
@@ -224,8 +223,8 @@ feature.placement={
     content:{x:740,y:150,width:430,height:580}
 };
 run=resolveMembers([feature,notes]);
-assert(run.resolved.leftPanel.vacancyBorrowed,
-    "swapped feature sidebar must keep automatic Quick Notes pairing");
+assert(run.resolved.styledPopup0.vacancyBorrowed,
+    "physical swap must not change newest-member automatic ownership");
 
 // Custom popup placement keeps the same semantic relationship.
 notes.request.record.edge="top";
@@ -239,8 +238,8 @@ feature.placement={
     content:{x:470,y:150,width:430,height:580}
 };
 run=resolveMembers([feature,notes]);
-assert(run.resolved.leftPanel.vacancyBorrowed,
-    "custom Quick Notes position lost automatic semantic pairing");
+assert(run.resolved.styledPopup0.vacancyBorrowed,
+    "custom Quick Notes position lost newest-member automatic ownership");
 
 // System sidebar follows the same automatic relationship with Notification Center.
 const system=member("rightPanel","systemSidebar","right",3,{
@@ -252,8 +251,9 @@ const center=member("styledPopup1","notificationCenter","bottom",4,{
     content:{x:766,y:600,width:390,height:270}
 });
 run=resolveMembers([system,center]);
-assert(run.resolved.rightPanel.vacancyBorrowed);
-assert(!run.resolved.styledPopup1.vacancyBorrowed);
+assert(run.resolved.styledPopup1.vacancyBorrowed,
+    "newly opened Notification Center must auto-expand without hover");
+assert(!run.resolved.rightPanel.vacancyBorrowed);
 
 // Two independent pairs still produce only one automatic borrower. The newer
 // active pair wins globally, while hover can explicitly override that choice.
@@ -275,8 +275,8 @@ const arbCenter=member("styledPopup1","notificationCenter","bottom",34,{
 });
 run=resolveMembers([arbFeature,arbNotes,arbSystem,arbCenter]);
 assert.equal(Object.values(run.resolved).filter(p=>p.vacancyBorrowed).length,1);
-assert(run.resolved.rightPanel.vacancyBorrowed,
-    "newer semantic pair must own automatic borrowing");
+assert(run.resolved.styledPopup1.vacancyBorrowed,
+    "newest eligible member of the newer pair must own automatic borrowing");
 
 arbFeature.meta.hovered=true;arbFeature.meta.hoverOrder=100;
 run=resolveMembers([arbFeature,arbNotes,arbSystem,arbCenter]);
@@ -285,9 +285,8 @@ assert(run.resolved.leftPanel.vacancyBorrowed,
     "eligible body hover must override automatic pair ownership");
 arbFeature.meta.hovered=false;
 
-// An unrelated visible body can make the preferred sidebar ineligible. The
-// semantic popup may then become the automatic fallback; blocker identity is
-// never treated as a pairing signal.
+// Unrelated visible bodies remain blockers only; semantic identity and
+// activation order still choose the automatic owner.
 notes.request.record.edge="bottom";
 notes.placement={
     visible:true,evicted:false,along:30,inward:0,span:418,depth:298,shrunk:false,
@@ -304,9 +303,9 @@ const blocker=member("unrelated","none","bottom",40,{
 });
 run=resolveMembers([feature,notes,blocker]);
 assert(!run.resolved.leftPanel.vacancyBorrowed,
-    "blocked preferred sidebar must not expand through unrelated content");
+    "older sidebar must not expand through unrelated content");
 assert(run.resolved.styledPopup0.vacancyBorrowed,
-    "eligible semantic peer should be the automatic fallback");
+    "newer eligible semantic popup should remain automatic owner");
 assert(!run.resolved.unrelated.vacancyBorrowed);
 
 // No directional vacancy remains a strict object-identity no-op.

@@ -37,7 +37,9 @@ ColumnLayout {
             darkMode:"Dark / light mode",performance:"Power profile",
             utilities:"Utilities"
         }
-        return Translation.tr(labels[id] ?? id)
+        const source = labels[id] ?? id
+        const translated = Translation.tr(source)
+        return String(translated ?? "").trim().length > 0 ? translated : source
     }
     function actionIcon(id): string {
         const icons = {
@@ -184,13 +186,14 @@ ColumnLayout {
 
                     StyledText {
                         Layout.fillWidth: true
-                        Layout.minimumWidth: 150
+                        Layout.minimumWidth: 120
                         Layout.alignment: Qt.AlignVCenter
                         visible: true
                         opacity: 1
                         text: root.actionLabel(slot.actionId)
                         color: Appearance.colors.colOnLayer1
                         font.pixelSize: Appearance.font.pixelSize.small
+                        font.weight: Font.Medium
                         elide: Text.ElideRight
                     }
 

@@ -5420,3 +5420,264 @@ Corrections that must prevent accidental non-lossless implementation:
 - do not call MediaArtwork remote in-flight dedup byte-equivalent until the cache contract explicitly permits one response to represent concurrent requests.
 
 No runtime implementation is authorized by this handoff.
+
+## 36. Audit round 22 — connected-preview hidden reactivity and registry/DBus false-positive closure (2026-09-29)
+
+This round is documentation/research only. No runtime/source implementation is authorized.
+
+### Snapshot
+
+- Hadalis `dev` at round close before this documentation update: `85d2470ae496b3c623177fdb68c522bd63961f1e`.
+- Runtime commits since §35 concentrated on Confirmation queue/reopen/live-anchor correctness and Abyss prompt presentation.
+- All preview/registry conclusions below were re-read against that current source rather than assumed from the earlier handoff snapshot.
+
+The strict lossless rule remains: hidden work may be removed only if the same state is synchronously reconstructed before it becomes observable and all opening/retract/freshness semantics are preserved.
+
+### 36.1 BarTaskbarPreview keeps compositor-model refresh listeners active after the popup is fully closed — CONFIRMED hidden reactive work / P1-P2
+
+`modules/bar/BarTaskbarPreview.qml` is a `StyledPopup`.
+
+Unlike the native popup surface, its direct visual `Item previewContent` is eagerly instantiated and remains alive while the popup surface is closed.
+
+Inside that retained content are four live listener groups:
+
+1. `ToplevelManager.toplevels.onValuesChanged` -> `_refreshPreviewToplevels()`;
+2. `CompositorService.onSortedToplevelsChanged` -> app preview refresh;
+3. Niri:
+   - `onWindowsChanged`;
+   - `onAllWorkspacesChanged`;
+4. Hyprland:
+   - `Hyprland.toplevels.onValuesChanged`.
+
+After an **app preview** has been used once, `appEntry` remains stored after close. Hidden refreshes can therefore execute `_refreshAppToplevels()`, which:
+
+- selects the current sorted/foreign-toplevel array;
+- filters the whole list;
+- runs `AppSearch.resolveWindowIdentity()` for candidates;
+- allocates a fresh result array;
+- may clone/update `appEntry`.
+
+After a **workspace preview** has been used once, `workspaceId` remains stored after close. Hidden refreshes can execute:
+
+- Niri: `NiriService.sortToplevels(...)` plus workspace filtering;
+- Hyprland: a full loop over `Hyprland.toplevels.values` and workspace/raw-object lookup.
+
+The component is instantiated in at least two independent Bar paths:
+
+- `modules/bar/BarTaskbar.qml` for app previews;
+- `modules/bar/Workspaces.qml` for compact workspace previews.
+
+Therefore a bar/output containing both modules can retain two independent closed preview listeners after those previews have been exercised.
+
+#### Strict-lossless direction
+
+Do **not** merely gate on `previewOpen`, and do not simply gate on `presentationActive`.
+
+A close has a visual retract tail, and there is also a small semantic-open -> surface-active transition.
+
+A safer contract is:
+
+1. immediately before semantic open, synchronously call the same current refresh function for the selected mode;
+2. enable compositor listeners while:
+   - `requestedVisible`, **or**
+   - `presentationActive`;
+3. keep them enabled through the entire retract tail;
+4. disable them only after the popup is fully closed/unpresented.
+
+This preserves:
+
+- latest state before first visible frame;
+- all events between semantic open and surface materialization;
+- live add/remove/move updates while visible;
+- close-on-last-window behavior;
+- current state through the reverse slide/retract tail.
+
+When fully closed, compositor events no longer need to rebuild a hidden preview model because the same authoritative snapshot is reconstructed synchronously on the next open.
+
+Expected effect:
+
+- fully-closed preview model scans: **event-driven O(N) -> 0**;
+- no compositor subscription/backend is removed;
+- no whole-shell CPU percentage is claimed until event-rate profiling is available.
+
+### 36.2 Retained Bar preview delegates keep thumbnail/Image/layer objects after close — HIGH CONFIDENCE memory candidate, needs repeat-open latency parity
+
+`BarTaskbarPreview.close()` currently only sets:
+
+`previewOpen = false`.
+
+It does **not** clear `previewToplevels`.
+
+Because the direct StyledPopup content tree is retained, the Repeater therefore keeps one `BarTaskbarWindowPreview` delegate per last-previewed window after the popup closes.
+
+Each delegate owns, among other objects:
+
+- application `IconImage`;
+- preview `Image`;
+- a thumbnail decode target of roughly 2x drawn size;
+- `layer.enabled: true`;
+- `OpacityMask`;
+- shimmer placeholder animation while the Image is not ready.
+
+This retained UI memory is separate from `WindowPreviewService`'s intentional global warm cache.
+
+The service explicitly owns an independent bounded cache:
+
+- max 12 warm decoded images;
+- 768x512 decode size;
+- documented at roughly 18 MiB raw pixel data;
+- explicit destroy/eviction/session cleanup.
+
+Therefore releasing Bar delegates would not require deleting the shared preview cache or recapturing screenshots.
+
+There is already a lifecycle precedent in:
+
+`modules/waffle/bar/tasks/TaskPreview.qml`
+
+which keeps preview content through close grace, then after 250 ms:
+
+- sets `contentResident = false`;
+- unloads its Loader;
+- clears `appEntry`.
+
+However applying the same policy to ii Bar is **not yet strict-lossless**:
+
+- currently a second hover can reuse already-instantiated delegates, Images and masks;
+- unloading them changes repeat-open construction/decode timing even when the PNG remains cached.
+
+Required benchmark:
+
+- first open;
+- immediate close/reopen;
+- reopen after 250 ms / 1 s / 5 s;
+- 1, 4, 10 preview windows;
+- CPU/GPU allocation and RSS/PSS;
+- time to fully painted preview.
+
+Keep this as a memory/retained-object experiment rather than a Confirmed implementation.
+
+### 36.3 BarWorkspaceOverview already has the correct presentation-lifetime ownership — CLOSED / no optimization needed
+
+`modules/bar/BarWorkspaceOverview.qml` is also a retained StyledPopup wrapper, but its expensive Overview renderer is correctly nested under:
+
+`Loader { active: root.presentationActive }`
+
+The comment and behavior explicitly preserve content through the reverse slide and unload it when presentation ends.
+
+Therefore the heavy:
+
+- `OverviewNiriWidget`;
+- `OverviewWidget`;
+
+do not remain materialized after the connected popup is fully closed.
+
+Do not create a generic “lazy all StyledPopup content” refactor based on the Bar preview finding. The existing Overview path demonstrates that lifecycle must be chosen per content contract.
+
+### 36.4 PopupAnchorRegistry does not currently justify a performance rewrite — CLOSED false positive / correctness-sensitive
+
+Current `PopupAnchorRegistry` remains a small runtime list resolved only when an attached prompt needs an anchor.
+
+The current source now also exposes:
+
+`isUsable(item)`
+
+and Confirmation continuously derives:
+
+`resolvedAnchorUsable`.
+
+If a previously resolved retained source becomes non-presented without being destroyed, Confirmation force-cancels the request rather than teleporting it to fallback.
+
+Core registration paths audited in this round also pair registration with destruction-time unregister.
+
+This makes two tempting “optimizations” unsafe:
+
+1. pruning every currently invalid/hidden registry entry;
+2. replacing the ordered list with a simpler keyed map.
+
+Why:
+
+- retained Abyss content is intentionally allowed to become temporarily non-presented and later reappear;
+- alias providers are dynamic functions;
+- output preference and kind priority participate in scoring;
+- equal-score behavior currently depends on stable registration/list order.
+
+The registry is request-scoped rather than a hot per-frame/event loop. Keep it unchanged unless profiling proves resolve cost material with unusually large extension-provided anchor sets.
+
+### 36.5 Broad “DBus fan-out per output” hypothesis is mostly CLOSED for current service models
+
+A repository sweep of:
+
+- SystemTray;
+- MPRIS;
+- Bluetooth;
+- network/service consumers;
+
+shows that many repeated QML imports/Connections are consumers of shared Quickshell/service models.
+
+Multiple Bar/output widgets therefore do **not** by themselves prove multiple backend D-Bus subscriptions.
+
+The valid optimization target is local repeated QML work on those shared signals, not a generic “centralize all D-Bus subscriptions” project.
+
+Examples already classified separately:
+
+- MPRIS redundant local cache scan (§35.6);
+- prompt per-output model propagation (§§35.1–35.2);
+- Bar preview hidden compositor-model refresh (§36.1).
+
+Only reopen backend-subscription consolidation when a concrete service is shown to create one independent bus watcher/proxy per visual instance.
+
+### 36.6 SysTray overflow content is eagerly resident, but unloading it is a latency/memory tradeoff — NEEDS BENCHMARK / P2
+
+`modules/bar/SysTray.qml` supplies its overflow `StyledPopup` with a direct `GridLayout` containing a Repeater over `unpinnedItems`.
+
+Thus the unpinned `SysTrayItem` delegate objects exist even when the overflow popup surface is closed.
+
+Those delegates retain:
+
+- icon/UI objects;
+- menu wiring;
+- PopupAnchorRegistry registrations;
+- item bindings.
+
+A Loader could release them when the overflow is fully closed, but this is not yet strict-lossless because current retained delegates make the first/repeated overflow open immediate and keep item/menu state warm.
+
+Before considering unloading, measure:
+
+- 0/5/20 unpinned tray items;
+- first-open and reopen latency;
+- resident QML object count and RSS;
+- menu-open behavior after reload;
+- tray item appearance/disappearance while overflow is closed.
+
+Do not disable the shared SystemTray backend itself.
+
+### 36.7 Bar media shows the same eager-content/prewarm tradeoff; do not classify it as dead work
+
+`BarMediaPopup` is retained StyledPopup content and creates PlayerControl trees for its visible players.
+
+PlayerControl correctly gates its 1-second position timer on actual presentation/window visibility, and EqualizerPanel is also presentation-gated.
+
+However MediaArtworkResolver remains active with track metadata while the popup is hidden, so artwork/cache state can be prepared before the user opens the surface.
+
+That hidden work overlaps the already-audited MediaArtworkResolver candidates (§§25.5–25.6, §35.9), but suppressing it solely because the popup is closed would change prewarm/first-open behavior.
+
+Do not create a new “disable media resolver while hidden” Confirmed item.
+
+### 36.8 Round-22 priority update
+
+New strongest item from this round:
+
+1. **BarTaskbarPreview closed-state compositor refresh gating with synchronous pre-open refresh** — CONFIRMED lossless direction.
+
+Measurement-only follow-ups:
+
+2. ii Bar preview delegate/Image release after visual tail;
+3. SysTray overflow delegate residency.
+
+Closed/avoid:
+
+4. no generic PopupAnchorRegistry pruning/index rewrite;
+5. no generic D-Bus centralization based only on multiple QML consumers;
+6. no generic lazy-loading of all StyledPopup content.
+
+No runtime implementation is authorized by this handoff.

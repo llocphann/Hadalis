@@ -27,6 +27,9 @@ Singleton {
     property var flow: impl?.flow ?? null
     property bool interactionAvailable: impl?.interactionAvailable ?? false
     property int requestSerial: impl?.requestSerial ?? 0
+    // UI residency is separate from AuthFlow activity so Abyss can finish the
+    // same slide-under retract after the backend has completed/cancelled.
+    property bool presentationRetained: false
 
     readonly property string actionId: String(flow?.actionId ?? "")
     readonly property string iconName: String(flow?.iconName ?? "")
@@ -148,8 +151,29 @@ Singleton {
     }
 
     onRequestSerialChanged: {
-        if (root.requestSerial > 0)
+        if (root.requestSerial > 0) {
+            root.presentationRetained = true
             root._latchPresentation()
+        }
+    }
+
+    function finishPresentation(): void {
+        if (!root.active)
+            root.presentationRetained = false
+    }
+
+    onActiveChanged: {
+        if (root.active)
+            return
+        // Outside an active Abyss presenter there is no retract tail to retain.
+        // Clearing here prevents an auth request that completed while locked or
+        // after a family switch from resurfacing as stale presentation state.
+        const abyssPresenterAvailable =
+            Config.options?.panelFamily === "abyss"
+            && (Config.options?.enabledPanels ?? []).includes("abyssPerimeter")
+            && !GlobalStates.screenLocked
+        if (!abyssPresenterAvailable)
+            root.presentationRetained = false
     }
 
     // Whether the Polkit module is available

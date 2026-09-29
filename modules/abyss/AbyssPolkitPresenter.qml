@@ -66,8 +66,15 @@ Item {
 
         onRequestClose: PolkitService.cancel()
         onPresentationActiveChanged: {
-            if (!presentationActive && !PolkitService.active)
+            if (!presentationActive && !PolkitService.active) {
                 root.latchedModel = ({})
+                PolkitService.finishPresentation()
+            }
+        }
+
+        Component.onDestruction: {
+            if (!PolkitService.active)
+                PolkitService.finishPresentation()
         }
 
         AbyssPolkitContent {

@@ -12,8 +12,14 @@ assert "exclusiveKeyboardFocus: true" in presenter
 assert "PanelWindow" not in presenter and "WindowDialog" not in presenter
 assert "latchedModel" in presenter
 assert "PolkitService.hadResolvedAnchor" in presenter
+assert "PolkitService.finishPresentation()" in presenter
+assert "Component.onDestruction:" in presenter
 
 service=(r/"services/PolkitService.qml").read_text()
+assert "property bool presentationRetained: false" in service
+assert "root.presentationRetained = true" in service
+assert "function finishPresentation(): void" in service
+assert "root.presentationRetained = false" in service
 assert 'function hintSource(appId, anchorItem = null, outputName = ""): void' in service
 assert "readonly property int sourceHintLifetimeMs: 3000" in service
 assert "id: sourceHintExpiry" in service

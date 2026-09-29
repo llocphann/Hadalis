@@ -6405,6 +6405,8 @@ presentation and related contracts, not the wallpaper thumbnail, WindowPreview,
 TLP or GameMode paths audited below. Those changed-file sets were checked before
 continuing.
 
+One additional concurrent commit, `4747ee62f0c0c501074b43af473fae806f3effee`, landed between the final pre-write fetch and the docs write. The docs commit therefore has that commit as its parent. Its changed-file set was audited immediately afterward and was limited to Confirmation/Abyss confirmation presentation + tests; it did not touch any Round-25 research path.
+
 ### 39.1 Wallpaper batch thumbnail scheduling has a split coordinator — CONFIRMED correctness blocker
 
 Paths:

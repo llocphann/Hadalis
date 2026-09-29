@@ -14,7 +14,7 @@ from automation.chat_bridge.controller import (  # noqa: E402
     BridgeState,
     transition,
 )
-from automation.chat_bridge.runtime import load_state, save_state  # noqa: E402
+from automation.chat_bridge.runtime import clear_state, load_state, save_state  # noqa: E402
 from automation.chat_bridge.protocol import (  # noqa: E402
     CONTINUATION_PROMPT,
     GITHUB_MENTION,
@@ -87,6 +87,8 @@ def main() -> None:
             assert load_state() == (BridgeState.WAIT_LOCAL, "JOB-000127")
             save_state(BridgeState.DONE)
             assert load_state() == (BridgeState.DONE, None)
+            clear_state()
+            assert load_state() is None
     finally:
         if old_state_home is None:
             os.environ.pop("XDG_STATE_HOME", None)

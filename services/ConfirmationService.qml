@@ -227,6 +227,11 @@ Singleton {
         const id = Number(requestId)
         if (!root.currentRequest || id !== root.currentRequestId)
             return false
+        // Re-acquiring the same gate must be idempotent. In particular, never
+        // erase an already-observed visual release or the semantic owner could
+        // wait forever for a second retract event that will never arrive.
+        if (root._presentationReleaseHoldRequestId === id)
+            return true
         root._presentationReleaseHoldRequestId = id
         root._presentationReleaseObservedWhileHeld = false
         return true

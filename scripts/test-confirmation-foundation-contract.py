@@ -67,6 +67,11 @@ assert "property bool _presentationReleaseObservedWhileHeld: false" in service
 assert "property int _presentationHandoffRequestId: 0" in service
 assert "function markPresentationStarted(requestId): void" in service
 assert "function holdPresentationRelease(requestId): bool" in service
+hold=service.split("function holdPresentationRelease(requestId): bool",1)[1].split("function releasePresentationHold",1)[0]
+assert "root._presentationReleaseHoldRequestId === id" in hold
+assert "return true" in hold
+assert "root._presentationReleaseObservedWhileHeld = false" in hold
+assert hold.index("root._presentationReleaseHoldRequestId === id") < hold.index("root._presentationReleaseObservedWhileHeld = false")
 assert "function releasePresentationHold(requestId): void" in service
 assert "function beginPresentationHandoff(requestId): bool" in service
 assert "function resolvePresentationHandoff(requestId, actionId): bool" in service

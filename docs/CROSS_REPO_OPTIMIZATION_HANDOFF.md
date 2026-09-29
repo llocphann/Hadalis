@@ -9543,3 +9543,515 @@ For the helper, extend the fake-binary matrix from §44.1 with the A -> B -> scr
 Round-30 Waffle taskbar reductions (§44.2-§44.4), Round-29 WindowPreview contract closures and the earlier published-window ID-index work remain valid.
 
 No runtime/source implementation is authorized by this handoff.
+
+---
+
+## 46. Round 32 — Niri enrichment cache, Hyprland sorter reductions and taskbar regex churn (2026-09-29)
+
+### Snapshot / concurrent reconciliation
+
+- Round 32 started from \`05957cbade951ab835db6f1ee44b9e5061e84c9e\`.
+- Before the docs write, \`dev\` advanced by one concurrent commit:
+  \`3728bef41e70ce3b7dc4745da82dfd553384362d\`
+  (\`feat(abyss): auto-borrow semantic vacancy\`).
+- That concurrent commit changes only:
+  - \`modules/abyss/looks/AbyssVacancyBorrowing.js\`;
+  - \`scripts/test-abyss-vacancy-borrowing-runtime.sh\`;
+  - \`scripts/test-abyss-vacancy-borrowing.py\`.
+- It does not touch \`NiriService.qml\`, \`CompositorService.qml\`,
+  \`TaskbarApps.qml\`, WindowPreview/capture code or this handoff.
+- Those target files were re-read from the new exact HEAD immediately before
+  this docs-only write.
+
+This round deliberately corrects one attractive but unsafe inference found
+during the audit: published \`NiriService.windows\` is usually spatially sorted,
+but a later \`WorkspacesChanged\` event can alter the workspace/output metadata
+used by the comparator without republishing the \`windows\` array. Therefore
+\`sortToplevels()\` cannot simply stop sorting and assume the published order is
+always current.
+
+### 46.1 Memoize Niri spatial window sorting by the exact published state references — CONFIRMED / P1 when sorting consumers are active
+
+Paths:
+
+- \`services/NiriService.qml\`;
+- \`services/CompositorService.qml\`;
+- \`modules/bar/BarTaskbarPreview.qml\`.
+
+\`NiriService.sortToplevels()\` currently begins every call with:
+
+\`sortWindowsByLayout(windows)\`.
+
+That helper performs:
+
+1. one N-element \`map()\` creating sort records;
+2. one N log N sort;
+3. one N-element \`map()\` back to the original window objects.
+
+The result depends only on the published references:
+
+- \`windows\`;
+- \`workspaces\`;
+- \`outputs\`.
+
+Round 26 §40.16 already audited the mutation contract for exactly these three
+containers:
+
+- window publications assign new arrays;
+- workspace updates assign new maps;
+- output updates assign new maps;
+- no in-place \`windows[i] =\`, \`workspaces[id] =\` or \`outputs[name] =\`
+  publication mutation was found.
+
+That makes a private on-demand memo exact-safe:
+
+- read the three published references on every call;
+- if all three are identical to the references used for the cached sort, reuse
+  the cached sorted window array;
+- otherwise recompute with the **existing**
+  \`sortWindowsByLayout()\`, then cache the result plus those exact references.
+
+This preserves the important \`WorkspacesChanged\` case that prevents the naïve
+optimization:
+
+- a workspace can change \`idx\` or output ownership while \`windows\` itself
+  remains the same array;
+- the new \`workspaces\` reference invalidates the memo and forces the required
+  re-sort.
+
+It also preserves output geometry changes through the \`outputs\` reference.
+
+The memo is private to the enrichment/order pipeline; do not change the public
+\`sortWindowsByLayout(windowList)\` API or return semantics.
+
+Local effect after the first request for one exact snapshot:
+
+- repeated sort-record maps: **2N -> 0**;
+- repeated N log N sort: **1 -> 0**;
+- subsequent same-snapshot callers receive O(1) cache lookup plus iteration of
+  the already sorted windows.
+
+This matters because the same snapshot can be requested by:
+
+- \`CompositorService.computeSortedToplevels()\`;
+- Bar workspace-preview refreshes that call \`NiriService.sortToplevels()\`
+  directly;
+- multiple event/listener paths coalescing around the same published state.
+
+The first request on a genuinely new \`windows/workspaces/outputs\` snapshot
+still performs the exact current sort.
+
+### 46.2 Niri toplevel matching scans candidates that can only score zero — CONFIRMED / P1
+
+Path:
+
+- \`services/NiriService.qml\`.
+
+After spatial ordering, \`sortToplevels()\` loops each Niri window and scans the
+full foreign-toplevel list until it finds the best unused match.
+
+\`matchToplevelToWindow()\` has an exact first guard:
+
+\`if (toplevel.appId !== niriWindow.app_id) return 0\`.
+
+So a candidate with another app ID can never beat any positive same-app match,
+and a window with no positive same-app candidate is rejected at the end anyway.
+
+Exact-safe direction:
+
+1. build \`appId -> ordered toplevel[]\` once from the input sequence;
+2. preserve the original toplevel order inside every bucket;
+3. for each already-spatially-ordered Niri window, scan only its exact app-ID
+   bucket;
+4. keep the existing \`usedToplevels\` rule;
+5. keep the existing score calculation and strict \`score > bestScore\` update;
+6. keep the early break on score 3;
+7. keep unmatched foreign handles dropped exactly as today.
+
+This preserves:
+
+- exact-title score 3 precedence;
+- substring score 2 precedence;
+- same-app score 1 fallback;
+- first-candidate tie behavior inside the original input order;
+- one-to-one toplevel usage;
+- ghost-handle rejection;
+- final spatial Niri window order.
+
+Candidate matching changes from worst-shaped approximately:
+
+\`N x T\`
+
+to:
+
+\`T + sum(T_app for each Niri window)\`.
+
+If windows/toplevels are evenly distributed across A app IDs, the comparison
+term approaches roughly \`N x T / A\` after the one T-item grouping pass.
+The all-windows-same-app worst case remains unchanged, which is correct.
+
+Required matching fixture:
+
+- multiple windows from the same app;
+- duplicate/similar titles;
+- exact score-3 match after an earlier score-1/2 candidate;
+- substring score-2 fallback;
+- score-1 fallback;
+- already-used candidate;
+- different-app candidates before/between same-app candidates;
+- unmatched stale foreign handle.
+
+### 46.3 Do not remove workspace re-sorts by merely preserving prior \`allWorkspaces\` order — CLOSED under strict-lossless parity
+
+Path:
+
+- \`services/NiriService.qml\`.
+
+\`handleWorkspaceActivated()\` and \`handleWorkspaceUrgencyChanged()\` rebuild:
+
+\`Object.values(updatedWorkspaces).sort((a, b) => a.idx - b.idx)\`.
+
+Because those events do not normally change \`idx\`, it is tempting to map over
+the previous \`allWorkspaces\` array and avoid the sort.
+
+That is **not** a static lossless substitution.
+
+Niri's \`workspace.idx\` is an index on an output, not a globally unique key.
+Multiple outputs can therefore have the same \`idx\`.
+
+The current comparator has no output/id tie-breaker, and QV4's populated JS
+Array sort uses its swap-based \`sortHelper\`, which is not stable.
+
+Therefore a same-\`idx\` cross-output tie can be permuted by the existing sort.
+Simply retaining the previous array order would impose a different tie contract.
+
+Status:
+
+- **CLOSED** as an unconditional lossless sort removal;
+- a future deterministic comparator can be a product/behavior cleanup, but it
+  would define new ordering semantics and must not be disguised as a no-op
+  optimization.
+
+This is distinct from §45.3, where \`restoreWorkspace()\` first filters to one
+specific output before relying on ascending workspace index order.
+
+### 46.4 Hyprland sorter builds a full snapshot, then traverses it again only to group it — CONFIRMED / P1-P2 on Hyprland
+
+Path:
+
+- \`services/CompositorService.qml\`.
+
+\`sortHyprlandToplevelsSafe()\` currently:
+
+1. loops H toplevels and builds \`snap\`;
+2. loops all H \`snap\` records again to group by monitor/workspace;
+3. for each record performs \`groups.has(key)\` and then \`groups.get(key)\`;
+4. loops the final Map again to create one wrapper group object per group.
+
+The group wrapper copies metadata from \`arr[0]\`, i.e. the **first** item seen
+for that key.
+
+All of this can be fused into the original source loop while preserving exact
+first-seen semantics:
+
+- compute the existing snapshot record exactly as today;
+- derive the same group key immediately;
+- do one \`groups.get(key)\`;
+- if absent, create the final-shape group record from this first item, store it
+  in the Map and append it once to \`groupList\`;
+- append the item to \`group.items\`.
+
+Preserved behavior:
+
+- first item still supplies group monitor/order metadata;
+- group insertion order is unchanged;
+- the later \`groupList.sort(...)\` comparator is unchanged;
+- every item still participates in the same per-group column/y/title/address
+  ordering.
+
+Local reductions for H live toplevels and G groups:
+
+- source/grouping traversals: **2H -> H**;
+- temporary \`snap\` array: removed;
+- one Map membership probe per item: removed (\`has + get -> get\`);
+- final Map traversal: **G -> 0**;
+- separate G wrapper allocations: removed because the stored group is already
+  the final group shape.
+
+### 46.5 Two additional Hyprland collection passes can be collapsed without changing ordering — CONFIRMED / P2
+
+Path:
+
+- \`services/CompositorService.qml\`.
+
+Two independent local reductions remain after §46.4.
+
+#### A. Finite X-coordinate preparation
+
+Current per-group code executes:
+
+\`arr.map(it => it.x).filter(x => Number.isFinite(x)).sort(...)\`.
+
+The sort itself is required.
+
+A single loop can append only finite \`it.x\` values to \`xs\`, then run the
+same numeric sort.
+
+Before the sort:
+
+- source traversals: **2K -> K** for a K-item group;
+- mapped intermediate array: removed.
+
+#### B. Final wayland result
+
+Current code:
+
+- appends every sorted snapshot record into \`ordered\`;
+- then returns
+  \`ordered.map(x => x.wayland).filter(w => w !== null && w !== undefined)\`.
+
+Null-wayland records must still participate in all grouping/column/sort logic,
+because removing them earlier can change the order of surviving records.
+
+But after each group has been sorted, the final emission can append only the
+non-null \`it.wayland\` value directly to the result array in that exact sorted
+order.
+
+This removes:
+
+- the intermediate all-record \`ordered\` array;
+- one full \`map\`;
+- one full \`filter\`.
+
+Presentation order and final membership remain identical.
+
+A further binary-search nearest-column implementation is mathematically
+possible because \`colCenters\` is sorted and the current strict \`<\`
+comparison gives equal-distance ties to the lower/earlier center. Keep that
+micro-optimization below the pass/allocation removals unless profiling shows
+many columns.
+
+### 46.6 Persistent missing Hyprland coordinates can form a self-sustaining refresh loop — CONFIRMED conditional correctness/performance debt
+
+Path:
+
+- \`services/CompositorService.qml\`.
+
+Current sequence for a toplevel with:
+
+- nonempty \`address\`;
+- no usable \`lastIpcObject.at\`;
+- no cached coordinate for that address;
+
+is:
+
+1. mark \`missingAnyPosition = true\`;
+2. mark \`hasNewWindow = true\`;
+3. assign sentinel coordinates;
+4. call \`scheduleRefresh()\`;
+5. 40 ms refresh timer runs \`Hyprland.refreshToplevels()\`;
+6. it clears \`_refreshScheduled\` and schedules another sort;
+7. if the refreshed toplevel still has no usable coordinates/cache entry, the
+   next sort repeats steps 1-6.
+
+There is no per-address or per-generation retry cap in the current source.
+
+Historical source also carried a \`_hasRefreshedOnce\` property, but it was only
+written, never read as a guard; its later removal did not create this loop.
+
+Therefore the algorithm has a confirmed unbounded retry shape **if** a live
+supported toplevel remains positionless across refreshes.
+
+Do not blindly restore the dead historical boolean.
+
+Strict correction requires a generation/identity-aware retry contract, for
+example:
+
+- at most one forced refresh for a given missing address within one underlying
+  Hyprland toplevel generation;
+- clear/rearm when real coordinates appear or when authoritative toplevel
+  membership changes in a way that represents a new candidate.
+
+Required runtime/fake-model cases:
+
+- transient new window: one refresh obtains coordinates;
+- position remains missing after refresh: no periodic 40/100 ms self-loop;
+- a later genuine Hyprland change rearms a refresh attempt;
+- multiple simultaneous new missing windows coalesce into the existing one
+  refresh timer;
+- sorting demand off still performs no refresh work.
+
+Do not claim stock-session CPU savings until runtime prevalence of persistent
+positionless toplevels is measured.
+
+### 46.7 Hyprland coordinate cache grows with historical addresses and has no prune path — CONFIRMED resident-state debt / fix needs lifecycle parity
+
+Path:
+
+- \`services/CompositorService.qml\`.
+
+Whenever a toplevel exposes valid coordinates and a nonempty address:
+
+\`_coordCache[addr] = { x: atX, y: atY }\`.
+
+Repository search and current source audit found:
+
+- reads from \`_coordCache[addr]\`;
+- writes for valid coordinates;
+- **no delete, clear or live-address prune path**.
+
+Thus retained cache cardinality follows the number of distinct addresses seen
+during the shell lifetime, not the number of currently live windows.
+
+The entry size is small, so this is not a top RSS target, but it is unbounded by
+current live state.
+
+A live-address prune is plausible, but keep the fix parity-gated because the
+cache intentionally bridges snapshots where one existing window temporarily
+lacks \`at\`. A prune policy must distinguish:
+
+- a genuinely closed address;
+- a transiently absent/refreshing representation;
+- a later address reuse/new window.
+
+This also matters to §46.6: a stale retained address can suppress
+\`hasNewWindow\` for a future same-address observation because a cache hit is
+treated as known coordinates.
+
+### 46.8 Waffle TaskbarApps recompiles five invariant system regexes on every model rebuild — CONFIRMED / P2
+
+Path:
+
+- \`services/TaskbarApps.qml\`.
+
+Every \`computeApps()\` creates:
+
+\`systemIgnored = ["^$", "^portal$", "^x-run-dialog$", "^kdialog$", "^org.freedesktop.impl.portal.*"]\`
+
+and then passes user patterns plus all five system patterns through:
+
+\`new RegExp(pattern, "i")\`.
+
+The five system expressions are immutable for the singleton lifetime.
+
+This differs from existing Bar/Dock taskbar implementations, which already keep
+an ignored-regex cache.
+
+Strict-safe minimal direction:
+
+- precompile **only the five fixed system regexes** once;
+- continue normalizing and compiling user-configured patterns on each
+  \`computeApps()\` exactly as today;
+- concatenate the user compiled results with the precompiled system list.
+
+Why not cache user patterns in the first lossless patch?
+
+\`TaskbarApps._compileRegexes()\` currently logs every invalid user regex on
+every rebuild. Caching user compilation would change that diagnostic cadence
+unless invalid-pattern warnings were explicitly replayed.
+
+With the default \`ignoredAppRegexes=[]\`:
+
+- regex constructions per \`computeApps()\`: **5 -> 0**.
+
+This path can rebuild on sorted-toplevel changes, ToplevelManager changes,
+AppSearch publication and dock config changes, so the fixed compile churn can
+repeat during ordinary Waffle window activity.
+
+### 46.9 Named sorting-consumer count can update by delta instead of rescanning the private registry — CONFIRMED / P3
+
+Path:
+
+- \`services/CompositorService.qml\`.
+
+\`setSortingConsumer(name, active)\` already computes:
+
+\`prev = !!root._sortingConsumers[name]\`
+
+and returns when \`prev === active\`.
+
+When the value really changes, it then writes the one key and loops every key in
+\`_sortingConsumers\` merely to recount active entries.
+
+Repository search found no other writer of the private registry or count.
+
+Therefore after the existing equality guard:
+
+- false -> true: increment \`_sortingConsumersCount\`;
+- true -> false: decrement it.
+
+This preserves:
+
+- the private registry values;
+- \`sortingActive\` truth;
+- zero-crossing behavior passed to \`_handleSortingDemandChanged()\`;
+- named consumer semantics.
+
+Count recomputation changes from O(C) over every historical named consumer to
+O(1).
+
+Current named-consumer cardinality is small, so this is a completeness/P3 item,
+not a priority ahead of the Niri/Hyprland sorter work.
+
+### 46.10 Regression requirements before implementation
+
+Niri enrichment needs a focused behavior harness. Existing tests prove taskbar
+aggregation and preview lifecycle contracts, but they do not lock the
+Niri-window/foreign-toplevel pairing algorithm.
+
+Add parity cases for:
+
+- §46.1 cache invalidation on independent changes to each of
+  \`windows/workspaces/outputs\`;
+- same exact snapshot reuses one sorted result;
+- workspace \`idx/output\` change with unchanged \`windows\` forces a new sort;
+- §46.2 score 3/2/1 matching and source-order ties;
+- no foreign toplevel is reused;
+- unmatched ghosts remain dropped.
+
+Hyprland sorter tests should lock:
+
+- group first-item metadata;
+- monitor/workspace group order;
+- column threshold behavior;
+- equal-distance column tie;
+- y-jitter/title/address ordering;
+- null-wayland items still influence sorting but are absent from final output;
+- transient vs persistent missing-coordinate refresh behavior;
+- coordinate-cache lifecycle/reuse.
+
+TaskbarApps should retain the existing invalid-user-regex warning behavior while
+proving fixed system regexes are not recompiled on repeated model rebuilds.
+
+### 46.11 Round-32 priority update
+
+**Correctness/performance prerequisite on the conditional Hyprland path:**
+
+1. bound the persistent missing-coordinate refresh cycle with an explicit
+   generation/identity contract (§46.6).
+
+**Confirmed lossless high-value reductions:**
+
+2. exact-snapshot memo for Niri spatial window sorting (§46.1);
+3. app-ID candidate buckets for Niri toplevel matching (§46.2);
+4. one-pass Hyprland snapshot/group construction (§46.4);
+5. Hyprland finite-X and final-result pass/allocation removal (§46.5).
+
+**Confirmed but lower priority:**
+
+6. precompile the five invariant Waffle taskbar system regexes (§46.8);
+7. O(1) named sorting-consumer count update (§46.9).
+
+**Confirmed debt / parity-gated remediation:**
+
+8. unbounded historical Hyprland coordinate cache (§46.7).
+
+**Closed under absolute-lossless scope:**
+
+9. simply retaining prior \`allWorkspaces\` order instead of the current
+   same-\`idx\` unstable sort (§46.3).
+
+Round-31 clipboard correctness prerequisites (§44.1 / §45.6) remain above all
+pure performance work in implementation priority.
+
+No runtime/source implementation is authorized by this handoff.

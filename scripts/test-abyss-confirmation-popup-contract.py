@@ -57,6 +57,12 @@ for forbidden in ("NumberAnimation", "ScaleAnimator", "OpacityAnimator"):
 # Existing closeConfirm backend provides the real action callback.
 assert 'owner: "closeConfirm"' in close
 assert "ConfirmationService.enqueue({" in close
+assert "sourceWindowId: Number(snapshot?.id ?? 0)" in close
+assert "function _cancelIfTargetGone(): void" in close
+assert "NiriService.windowListReady" in close
+assert "Number(candidate?.id ?? 0) === windowId" in close
+assert "function onWindowsChanged(): void" in close
+assert "function onRequestActivated(requestId): void" in close
 assert "function _snapshotWindow(win): var" in close
 assert "NiriService.windows ?? []" in close
 assert "function _outputNameForWindow(win): string" in close

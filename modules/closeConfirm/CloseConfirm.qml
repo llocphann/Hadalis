@@ -100,6 +100,7 @@ Scope {
             const appName = title || appId || Translation.tr("Unknown")
             ConfirmationService.enqueue({
                 owner: "closeConfirm",
+                sourceWindowId: Number(snapshot?.id ?? 0),
                 appId: appId,
                 appName: appName,
                 outputName: outputName,
@@ -127,6 +128,34 @@ Scope {
         root.targetWindow = snapshot;
         root.dialogScreen = root._screenForOutput(outputName);
         root.dialogVisible = true;
+    }
+
+    function _cancelIfTargetGone(): void {
+        const request = ConfirmationService.currentRequest
+        if (!ConfirmationService.requestVisible
+                || String(request?.owner ?? "") !== "closeConfirm")
+            return
+        const windowId = Number(request?.sourceWindowId ?? 0)
+        if (windowId <= 0 || !NiriService.windowListReady)
+            return
+        const stillExists = (NiriService.windows ?? []).some(candidate =>
+            Number(candidate?.id ?? 0) === windowId)
+        if (!stillExists)
+            ConfirmationService.cancel()
+    }
+
+    Connections {
+        target: NiriService
+        function onWindowsChanged(): void {
+            root._cancelIfTargetGone()
+        }
+    }
+
+    Connections {
+        target: ConfirmationService
+        function onRequestActivated(requestId): void {
+            root._cancelIfTargetGone()
+        }
     }
 
     function _acceptTrigger(): bool {

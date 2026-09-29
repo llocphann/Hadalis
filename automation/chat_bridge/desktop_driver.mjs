@@ -490,60 +490,36 @@ export async function waitForCompletion(
   const deadline = Date.now() + timeoutMs;
   const baselineMarkerCount =
     completionBaseline?.markerCount ?? await loopMarkerCount(page);
-  const baselineResponseActionCount =
-    completionBaseline?.responseActionCount ??
-    await visibleCount(page.getByRole("button", { name: RESPONSE_ACTION }));
 
   let sawStop = false;
-  let sawClear = false;
 
   while (Date.now() < deadline) {
     const stop = await visibleCount(page.getByRole("button", { name: /stop/i }));
-    const responseActionCount = await visibleCount(
-      page.getByRole("button", { name: RESPONSE_ACTION })
-    );
     const markerCount = await loopMarkerCount(page);
-    const composer = await resolveComposer(page);
-    const empty = (await composer.innerText()).trim() === "";
 
     sawStop ||= stop > 0;
-    sawClear ||= empty;
 
-    const markerAdvanced = markerCount > baselineMarkerCount;
-    const responseActionAdvanced =
-      responseActionCount > baselineResponseActionCount;
-
-    // Do not require observing Stop. Very fast responses can complete between
-    // the submit verification and the first completion sample.
-    if (
-      sawClear &&
-      stop === 0 &&
-      (markerAdvanced || responseActionAdvanced)
-    ) {
+    // Every autonomous Hadalis response is required to emit exactly one loop
+    // marker. A new marker relative to the pre-submit baseline is therefore
+    // the protocol-level completion signal. Do not depend on composer text or
+    // product-specific response toolbar labels.
+    if (markerCount > baselineMarkerCount && stop === 0) {
       await sleep(900);
 
       const stop2 = await visibleCount(page.getByRole("button", { name: /stop/i }));
-      const responseActionCount2 = await visibleCount(
-        page.getByRole("button", { name: RESPONSE_ACTION })
-      );
       const markerCount2 = await loopMarkerCount(page);
-      const markerAdvanced2 = markerCount2 > baselineMarkerCount;
-      const responseActionAdvanced2 =
-        responseActionCount2 > baselineResponseActionCount;
 
       if (
         stop2 === 0 &&
-        (markerAdvanced2 || responseActionAdvanced2)
+        markerCount2 >= markerCount &&
+        markerCount2 > baselineMarkerCount
       ) {
         return {
           sawStop,
-          sawClear,
           completed: true,
           baselineMarkerCount,
           markerCount: markerCount2,
-          baselineResponseActionCount,
-          responseActionCount: responseActionCount2,
-          completionSignal: markerAdvanced2 ? "loop-marker" : "response-action"
+          completionSignal: "loop-marker"
         };
       }
     }

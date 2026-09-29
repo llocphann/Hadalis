@@ -17038,3 +17038,182 @@ local source-derived operation/allocation reductions.
 
 No runtime/source implementation is authorized by this handoff.
 
+
+
+## 64. Round 50 — bounded result construction and local lookup indexing (2026-09-30)
+
+Research base for this round was re-fetched from `dev` immediately before the
+documentation write:
+
+- current audited `dev` HEAD: `b7af2105c02541994c6999578048ef38f1c511de`;
+- previous research commit: `621f94f98f27d57d413a724d9b8c1231da54856d`
+  (Round 49);
+- the 30 intervening commits were audited in two compare windows
+  (`621f94f..60872fc` and `60872fc..b7af2105`);
+- those intervening changes touch only `agent/`, `automation/` and related
+  automation test/install scripts, not runtime QML/native/services and not this
+  handoff.
+
+Before promotion, the handoff was searched for each path/shape below. Existing
+ownership such as GlobalActions §48.5, Notifications §48.10, Overview §41.8,
+CompositorService §46.4-§46.5, AI §48.12-§48.13/§55.3/§59.4-§59.5 and Network
+§50.1/§59.12 was not re-counted.
+
+### 64.1 World-clock timezone suggestions can stop exactly at the UI cap — CONFIRMED / P1-P2 Settings interaction
+
+Path:
+
+- `modules/settings/InterfaceConfig.qml`, `worldClockSection.filteredTimezones()`.
+
+The current catalog is a readonly literal array of **58** plain JS records.
+Every suggestion evaluation currently performs:
+
+`timezoneCatalog.filter(predicate).slice(0, 10)`
+
+where the predicate is:
+
+`!current.includes(e.tz) && e.tz.toLowerCase().includes(q)`.
+
+The UI can consume at most the first ten passing entries, but `filter()`
+continues across all 58 records and materializes every match before `slice()`
+allocates the capped result.
+
+Strict-lossless direction:
+
+1. keep the current `q` normalization and `current` read at the same point;
+2. allocate one fresh result array;
+3. scan `timezoneCatalog` in source order;
+4. keep the exact `current.includes(e.tz)` test rather than replacing the
+   Config QML sequence with a different membership representation;
+5. preserve the current short-circuit order, so `toLowerCase().includes(q)`
+   is read only after the entry is not already configured;
+6. append the same catalog object reference when it passes;
+7. stop immediately when result length reaches 10.
+
+Why the early exit is strict here, unlike a generic `filter().slice()`
+rewrite:
+
+- every catalog row is a literal plain JS object defined in this component;
+- the skipped suffix therefore has no getters/callbacks/QML property reads whose
+  evaluation is observable;
+- the reactive dependencies on input text, Config timezones and
+  `timezoneCatalog` are all captured before/during the same executed prefix;
+- `current.includes()` semantics, duplicate handling, source order and object
+  identity are unchanged;
+- the function still publishes a fresh array on every evaluation.
+
+With no configured timezone and a broad query that admits at least ten rows,
+predicate visits are **58 -> 10** (82.8% fewer for that local case). Other
+queries stop at the tenth actual match or still scan all 58 when fewer than ten
+match. The filter-result array and subsequent slice array become one bounded
+result array.
+
+### 64.2 AI catalog IPC can avoid the unbounded filtered-match array while preserving malformed-cache errors — CONFIRMED / P2
+
+Paths:
+
+- `services/Ai.qml`, IPC target `ai`, method `catalog(query)`;
+- `services/ai/AiProviderCatalog.qml`.
+
+Current code does:
+
+`AiProviderCatalog.models.filter(predicate).slice(0, 100)`
+
+and then maps those at-most-100 model references to the JSON response shape.
+
+A tempting optimization is to stop scanning after the hundredth match. That is
+**OUT OF STRICT-LOSSLESS** for the current malformed-state contract: cached
+catalog data is loaded from JSON without per-record validation, and for a
+nonempty query the current filter still reads
+`providerId/remoteId/displayName` on every later model. A malformed later
+record can therefore throw even after 100 valid matches; an early break could
+hide that error.
+
+There is still a strict local reduction:
+
+1. read the current models sequence and normalized query exactly as today;
+2. scan every model in the same order;
+3. evaluate the exact current predicate for every model, including the suffix
+   after 100 matches;
+4. append a matching model reference only while the result contains fewer than
+   100 entries;
+5. keep the existing response-object map and `JSON.stringify` unchanged.
+
+This preserves:
+
+- the full predicate/property-read and throw behavior for nonempty queries;
+- the empty-query behavior, where the predicate returns true without reading
+  model fields;
+- first-100 membership and order;
+- duplicate model records and reference identity;
+- mapping/serialization error behavior for records that actually enter the
+  response.
+
+For N catalog records and K matches, predicate work remains N by design, but
+temporary match storage changes from an array of K references plus a second
+up-to-100 slice array to one array bounded by **min(K, 100)**. This is
+particularly useful for broad/empty IPC catalog requests against large provider
+catalogs without weakening malformed-state parity.
+
+### 64.3 Theme Quick Access can resolve IDs through one first-wins local preset index — CONFIRMED / P2-P3 Settings interaction
+
+Paths:
+
+- `modules/settings/ThemesConfig.qml`, `quickAccessSection.quickAccessItems`;
+- `modules/common/ThemePresets.qml`;
+- `modules/common/Config.qml`.
+
+After constructing favorite IDs plus at most four non-favorite recent IDs, the
+current binding performs one full/partial:
+
+`ThemePresets.presets.find(p => p.id === ids[i])`
+
+for every ID.
+
+Current `ThemePresets.presets` is a readonly literal array of **49** plain
+preset records. Config defines both `recentThemes` and `favoriteThemes` as
+`list<string>`.
+
+Strict-lossless direction:
+
+- preserve the existing favorite/recent ID construction exactly;
+- if `ids.length === 0`, return the same fresh empty result without touching
+  preset membership work;
+- otherwise read `ThemePresets.presets` at the same phase and build one local
+  `Map` from preset ID to preset reference;
+- use **first-wins** insertion (`if (!map.has(id)) map.set(id, preset)`) so
+  future duplicate preset IDs retain the current `.find()` first-match
+  contract;
+- walk `ids` in its existing order, append the resolved reference when
+  present, and skip missing IDs exactly as today.
+
+For this string-only contract, strict equality used by the current
+`.find()` and Map membership cannot diverge on the configured IDs; order,
+duplicates in the requested ID list, missing-ID suppression and returned
+preset identity remain unchanged. No persistent cache or additional resident
+preset copy is introduced.
+
+Cost changes from up to O(I*P) preset-ID comparisons for I Quick Access IDs and
+P presets to O(P+I) local work. At the current P=49 this is modest for the
+usual small favorite list, but it prevents lookup cost from multiplying as
+favorites and the built-in preset catalog grow.
+
+### 64.4 Round-50 conclusion
+
+New strict-lossless groups:
+
+1. bounded World Clock timezone suggestion collection (§64.1,
+   **CONFIRMED / P1-P2 interaction**);
+2. bounded AI catalog IPC result storage while retaining full malformed-input
+   predicate scanning (§64.2, **CONFIRMED / P2**);
+3. first-wins local Theme Quick Access preset indexing (§64.3,
+   **CONFIRMED / P2-P3 interaction**).
+
+The superficially faster AI “break after 100 matches” variant is explicitly
+**OUT OF STRICT-LOSSLESS** and must not be substituted for §64.2 without adding
+and proving a stronger validated-model invariant first.
+
+No numeric reduction above is an end-to-end Hadalis speedup; all values are
+local source-derived operation/allocation reductions.
+
+No runtime/source implementation is authorized by this handoff.

@@ -85,7 +85,7 @@ assert "const hint = root._activePresentationHint" in service
 assert "root._pendingPresentationHint = null" in service
 assert "root._activeHintResolvedOnce" in start_handler
 assert "root.resolvedAnchor === null" in start_handler
-assert "root._cancelForSourceLoss()" in start_handler
+assert "root._cancelActiveForSourceLoss()" in start_handler
 assert "root._activeHintResolvedOnce = true" in start_handler
 assert "function _latchPresentation(hint = null): void" in service
 assert "onTriggered: root._nextSourceHint = null" in service

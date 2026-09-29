@@ -24,6 +24,7 @@ assert "onInputPromptChanged" in impl
 # Source disappearance may arrive through two lifecycle signals, but the real
 # AuthFlow cancellation must be emitted once per authentication request.
 assert "property bool _sourceLossCancelIssued: false" in svc
+assert "function _cancelActiveForSourceLoss(): void" in svc
 assert "function _cancelForSourceLoss(): void" in svc
 assert "root._sourceLossCancelIssued = true" in svc
 assert "root._sourceLossCancelIssued = false" in svc

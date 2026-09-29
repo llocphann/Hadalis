@@ -202,7 +202,7 @@ Singleton {
             // This same AuthFlow previously owned a trusted live source. If that
             // source vanished while the visual presenter was suppressed, do not
             // reopen the password prompt at fallback geometry.
-            root._cancelForSourceLoss()
+            root._cancelActiveForSourceLoss()
             return
         }
         if (root.resolvedAnchor !== null)
@@ -390,17 +390,21 @@ Singleton {
         impl.selectIdentity(root.identities[(current + 1) % count])
     }
 
-    function _cancelForSourceLoss(): void {
-        // Source invalidation can be observed both through the live usability
-        // binding and registry removal. AuthFlow cancellation is a backend
-        // action, so issue it exactly once for this authentication request.
-        if (!root.active || !root.hadResolvedAnchor
-                || !root.presentationMatchesActive
-                || root._sourceLossCancelIssued)
+    function _cancelActiveForSourceLoss(): void {
+        if (!root.active || root._sourceLossCancelIssued)
             return
         root._sourceLossCancelIssued = true
         root.resolvedAnchor = null
         root.cancel()
+    }
+
+    function _cancelForSourceLoss(): void {
+        // Source invalidation can be observed both through the live usability
+        // binding and registry removal. Ordinary live-item signals are only
+        // authoritative while this request owns the visible Abyss presenter.
+        if (!root.hadResolvedAnchor || !root.presentationMatchesActive)
+            return
+        root._cancelActiveForSourceLoss()
     }
 
     onResolvedAnchorUsableChanged: {

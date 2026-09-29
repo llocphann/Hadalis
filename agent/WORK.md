@@ -22,6 +22,7 @@ Bring the Hadalis autonomous development loop from feasibility to a validated fi
 
 ## Validation status
 
+- live acceptance 009 failed before opening ChatGPT because `desktop_cli.mjs` had a syntax error in the new synchronous JSON writer path; that syntax defect is fixed and 010 is the retry.
 Focused automation validation `JOB-AUTOMATION-VALIDATE-002` passed all six actions.
 
 Canonical maintainer validation `JOB-MAINTAINER-VALIDATE-001` ran successfully as a validator but returned FAIL because the repository currently has 33 product/regression failures outside the autonomous automation path. The automation-specific tests inside that canonical run all passed:
@@ -35,7 +36,7 @@ Do not describe the current repository SHA as canonically green.
 
 Pending local live transport acceptance:
 
-`JOB-DESKTOP-LIVE-ACCEPT-009`
+`JOB-DESKTOP-LIVE-ACCEPT-010`
 
 It performs a syntax check, then opens a fresh Hadalis Cloud chat through the production CDP driver, sends a fixed prompt containing the GitHub connector mention, verifies read access to `llocphann/Hadalis` and current `dev` HEAD through ChatGPT, waits for generation completion, and requires exactly:
 

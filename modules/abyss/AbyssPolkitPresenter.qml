@@ -68,7 +68,10 @@ Item {
         keyboardFocus: true
         exclusiveKeyboardFocus: true
 
-        onRequestClose: PolkitService.cancel()
+        onRequestClose: {
+            content.clearResponse()
+            PolkitService.cancel()
+        }
         onPresentationActiveChanged: {
             // Output hotplug can retarget fallback ownership while the removed
             // output's popup is still retracting. Only the presenter that still
@@ -92,6 +95,7 @@ Item {
         }
 
         AbyssPolkitContent {
+            id: content
             model: root.latchedModel
         }
     }

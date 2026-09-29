@@ -10,6 +10,11 @@ assert 'liquidPresentationKind: "polkit"' in presenter
 assert "keyboardFocus: true" in presenter
 assert "exclusiveKeyboardFocus: true" in presenter
 assert "PanelWindow" not in presenter and "WindowDialog" not in presenter
+request_close=presenter.split("onRequestClose:",1)[1].split("onPresentationActiveChanged:",1)[0]
+assert "content.clearResponse()" in request_close
+assert "PolkitService.cancel()" in request_close
+assert request_close.index("content.clearResponse()") < request_close.index("PolkitService.cancel()")
+assert "id: content" in presenter
 assert "latchedModel" in presenter
 assert "PolkitService.hadResolvedAnchor" in presenter
 assert "PolkitService.finishPresentation()" in presenter

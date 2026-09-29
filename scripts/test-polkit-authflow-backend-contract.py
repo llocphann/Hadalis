@@ -64,5 +64,13 @@ for old in (material, waffle):
     assert "onRequestSerialChanged" in old
     assert "onActiveChanged" in old
     assert "Component.onDestruction: root.clearResponse()" in old
+    # The focused field can consume Escape before the root-level handler.
+    # It must therefore route through the scrub-first cancel helper too.
+    assert "PolkitService.cancel()" in cancel
+    assert old.count("root.cancelAuthentication()") >= 2
+    for escape in old.split("Qt.Key_Escape")[1:]:
+        handler=escape.split("}",1)[0]
+        assert "root.cancelAuthentication()" in handler
+        assert "PolkitService.cancel()" not in handler
 
 print("Polkit AuthFlow backend/security contract: ok")

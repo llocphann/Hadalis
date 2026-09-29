@@ -178,7 +178,7 @@ Rectangle {
 
                                 Keys.onPressed: event => {
                                     if (event.key === Qt.Key_Escape) {
-                                        PolkitService.cancel()
+                                        root.cancelAuthentication()
                                         event.accepted = true
                                     }
                                 }

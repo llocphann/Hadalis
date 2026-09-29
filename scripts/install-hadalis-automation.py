@@ -116,6 +116,7 @@ WorkingDirectory={ROOT}
 ExecStart={quote(python)} -m automation.chat_bridge.runtime --bootstrap
 {environment("PYTHONUNBUFFERED", "1")}
 {environment("HADALIS_CHATGPT_CDP_URL", "http://127.0.0.1:9222")}
+{environment("HADALIS_CONTINUOUS_RESEARCH", "1")}
 Restart=on-failure
 RestartPreventExitStatus=75
 RestartSec=3

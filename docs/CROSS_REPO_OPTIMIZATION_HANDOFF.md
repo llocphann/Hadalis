@@ -283,7 +283,7 @@ This is a regression class, not a request to rewrite the current background stac
 
 **Status: ADAPT after profiling**
 
-iNiR prerelease has `modules/common/widgets/SettingsTaskLoader.qml`:
+iNiR prerelease has the former SettingsTaskLoader component:
 
 - heavy section is created only when requested
 - it stays resident briefly (~600 ms) after deselection to avoid rapid destroy/recreate thrash
@@ -309,7 +309,7 @@ Start with one measured page. Do not mass-convert every `SettingsGroup`.
 
 **Status: INVESTIGATE**
 
-iNiR prerelease adds `modules/common/MediaArtworkCache.qml`, a small bounded cache (64 entries) that remembers the last resolved artwork URL per track so a later-created player can show the same cover immediately without resolving again.
+iNiR prerelease adds a small bounded MediaArtworkCache component (64 entries) that remembers the last resolved artwork URL per track so a later-created player can show the same cover immediately without resolving again.
 
 Hadalis does not currently have this exact singleton.
 
@@ -913,7 +913,7 @@ Do not replace this with the simpler upstream migration.
 
 ### 13.8 Media artwork resolver cache remains a valid small optimization candidate — INVESTIGATE
 
-iNiR has `modules/common/MediaArtworkCache.qml`:
+iNiR has a MediaArtworkCache component:
 
 - 64-entry bounded singleton
 - remembers `metadataKey -> {base, source}`
@@ -6002,7 +6002,7 @@ The shared derived binding performs the global list scan once per `windows` publ
 
 Paths:
 
-- `modules/dock/DockWindowPreview.qml`;
+- the former DockWindowPreview component;
 - `modules/bar/BarTaskbarWindowPreview.qml`.
 
 Both preview delegates contain:
@@ -6353,7 +6353,7 @@ hit, but adding or moving that epoch also needs timing parity tests.
 Priority 1 initially suggested sharing one app/window identity result everywhere.
 The current pixel/behavior contract has observable differences:
 
-- `DockWindowPreview.qml` resolves
+- the former DockWindowPreview component resolves
   `AppSearch.resolveWindowIdentity(root.toplevel)` before icon lookup;
 - `BarTaskbarWindowPreview.qml` uses the raw
   `root.toplevel?.appId`;
@@ -6835,8 +6835,8 @@ During this round `dev` moved repeatedly. The changed-file sets were inspected
 before continuing. One concurrent series materially changed Dock hover
 architecture:
 
-- `modules/dock/DockPreview.qml` was removed;
-- `modules/dock/DockWindowPreview.qml` was removed;
+- the former DockPreview component was removed;
+- the former DockWindowPreview component was removed;
 - Dock hover now exposes the app context menu rather than the retired preview.
 
 Therefore no Round-26 recommendation relies on the deleted Dock preview files.

@@ -48,6 +48,14 @@ def lock_path() -> Path:
     return state_root() / "chat-bridge.lock"
 
 
+def clear_state() -> None:
+    path = state_path()
+    try:
+        path.unlink()
+    except FileNotFoundError:
+        pass
+
+
 def save_state(state: BridgeState, job_id: str | None = None) -> None:
     payload = {
         "state": state.value,
@@ -191,7 +199,12 @@ def attach_until_marker() -> dict[str, Any]:
         try:
             return desktop("await-current")
         except RuntimeError as exc:
-            if "No HADALIS_LOOP marker found near completed assistant response" not in str(exc):
+            message = str(exc)
+            retryable = (
+                "No completed assistant HADALIS_LOOP response found" in message
+                or "No HADALIS_LOOP marker found near completed assistant response" in message
+            )
+            if not retryable:
                 raise
             time.sleep(2)
 
@@ -256,6 +269,11 @@ def main() -> int:
             "otherwise resume deterministically."
         ),
     )
+    parser.add_argument(
+        "--reset-state",
+        action="store_true",
+        help="Delete persisted bridge session state and exit.",
+    )
     args = parser.parse_args()
 
     with lock_path().open("w") as lock:
@@ -266,10 +284,14 @@ def main() -> int:
                 "another hadalis-chat-bridge instance is already running"
             ) from exc
 
+        if args.reset_state:
+            clear_state()
+            return 0
+
         if args.initial_prompt_file is not None:
             save_state(BridgeState.READY)
             payload = desktop(
-                "send",
+                "rotate-send",
                 initial_prompt(args.initial_prompt_file),
             )
         elif args.bootstrap:

@@ -16,6 +16,20 @@ export function scanLoopMarkerTokens(text) {
   return Array.from(String(text).matchAll(token), match => match[0].trim());
 }
 
+export function markerAfterBaseline(markers, baselineMarkerCount) {
+  if (!Number.isInteger(baselineMarkerCount) || baselineMarkerCount < 0)
+    throw new Error("baselineMarkerCount must be a non-negative integer");
+
+  const fresh = markers.slice(baselineMarkerCount);
+  if (fresh.length === 0)
+    return null;
+  if (fresh.length !== 1)
+    throw new Error(
+      `expected exactly one post-submit HADALIS_LOOP marker, got ${fresh.length}: ${JSON.stringify(fresh)}`
+    );
+  return fresh[0];
+}
+
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 
 async function visibleCount(locator) {
@@ -577,7 +591,25 @@ async function extractNearResponseAction(page) {
   return null;
 }
 
-export async function extractLoopResponse(page, { allowMarkerOnly = false } = {}) {
+export async function extractLoopResponse(
+  page,
+  { allowMarkerOnly = false, baselineMarkerCount = null } = {}
+) {
+  if (baselineMarkerCount !== null) {
+    const markers = await loopMarkerTokens(page);
+    const fresh = markerAfterBaseline(markers, baselineMarkerCount);
+    if (fresh !== null) {
+      return {
+        depth: 0,
+        text: fresh,
+        markerOnly: true,
+        markerCount: markers.length,
+        baselineMarkerCount,
+        extractionSignal: "post-submit-marker-delta"
+      };
+    }
+  }
+
   const anchored = await extractNearResponseAction(page);
   if (anchored)
     return anchored;

@@ -8756,3 +8756,289 @@ Required shell-helper fixture with fake binaries:
 17. Fish trampoline, XDG cache-root mismatch and service-init helper ownership remain in §§25.4, 39.4 and 39.5 rather than being duplicated here.
 
 No runtime/source implementation is authorized by this handoff.
+
+---
+
+## 43. Round 29 — WindowPreview contract closure, non-Niri gating and validation debt (2026-09-29)
+
+### Snapshot / concurrent reconciliation
+
+- Current `dev` HEAD immediately before this docs-only write: `d550b3d03342974fcede6deb70687de935bf8802` (`docs(confirmation): make abyss popup scope explicit`).
+- Since the Round-28 docs commit `0346f37ad3d7302afc2175977b3f4e9f18da650b`, concurrent work has landed in Abyss geometry/tests and Confirmation/Polkit scope.
+- The reconciled changes do **not** touch WindowPreview, NiriService, clipboard capture, or the preview consumers audited below.
+- The optimization handoff itself remained unchanged through this concurrent work.
+- No Round-28 WindowPreview source finding was carried forward without re-reading current `dev`.
+
+### 43.1 WindowPreview consumer-identity regression test references a deliberately retired Dock file — CONFIRMED correctness prerequisite
+
+Paths/history:
+
+- `scripts/test-window-preview-consumer-identity.sh`;
+- `scripts/validate-maintainer-local.sh`;
+- retired `modules/dock/DockWindowPreview.qml`;
+- retirement commit `5bc76fe6f2678eb81750f2dfe9aa3641b422136b` — `refactor(dock): replace hover previews with app popups`.
+
+Current `dev` no longer contains `DockPreview.qml` or `DockWindowPreview.qml`. Their removal is intentional:
+
+- the retirement commit removes both files and their `qmldir` exports;
+- Dock hover now opens the app popup/context menu;
+- `scripts/test-dock-abyss-hover-orientation-contract.py` explicitly asserts the legacy Dock preview surfaces remain retired.
+
+`scripts/test-window-preview-consumer-identity.sh`, however, still starts its consumer list with:
+
+`modules/dock/DockWindowPreview.qml`
+
+and reads every entry with `fs.readFileSync(...)`.
+
+Therefore the tracked test fails on the removed file before it can validate the remaining live WindowPreview consumers.
+
+This is not an optional cleanup. `scripts/validate-maintainer-local.sh` enumerates every tracked `test-*.sh` and runs it as a shell regression, so the stale path breaks the maintainer validation suite.
+
+**Required before any WindowPreview implementation batch:** update the contract fixture to the current live consumer inventory while preserving the reactive cache-revision assertions for the remaining consumers.
+
+Do not restore Dock preview runtime merely to satisfy this test.
+
+### 43.2 Targeted app/workspace capture cannot reduce total screenshot work while preserving the current global-repair contract — CLOSED as strict-lossless breadth optimization
+
+Round 28 §42.5 left caller-level targeted capture open pending parity analysis. Current source plus current tests close that question.
+
+`captureForTaskView()` has two distinct contracts:
+
+- passing explicit IDs queues only those IDs;
+- passing no IDs sets `captureAllRequested`, so `_pendingRequestNeedsCapture()` and `_doCapture()` repair **every currently missing preview** in the authoritative Niri window set.
+
+The no-ID side effect is not accidental test noise. Current `scripts/test-window-preview-lifecycle.sh` explicitly requires:
+
+- `BarWorkspaceOverview` to call `WindowPreviewService.captureForTaskView()`;
+- Waffle `TaskPreview` to call `WindowPreviewService.captureForTaskView()`;
+
+with the stated purpose of preserving the shared capture lifecycle.
+
+Therefore changing app/workspace hover from no-ID to an app/workspace subset has only two possibilities:
+
+1. **drop global repair:** total screenshot work can fall, but a missing unrelated preview may stay missing until later demand, changing first-open behavior; or
+2. **keep global repair separately:** popup IDs can be prioritized, but the same missing unrelated previews are still captured, so total screenshot work does not fall and timing/order changes.
+
+Under the project's absolute lossless requirement, there is no strict-lossless `N -> A/W` total-work win here.
+
+Keep targeted capture only where the existing contract is already targeted (`OverviewNiriWidget.refreshForOverview(ids)` / task-view visible IDs), or revisit app/workspace targeting only as an explicit product/latency contract change.
+
+### 43.3 Waffle TaskPreview resolves all app window IDs but only consumes one Boolean — CONFIRMED local CPU reduction
+
+Path:
+
+- `modules/waffle/bar/tasks/TaskPreview.qml`.
+
+`captureAppPreviews()` currently:
+
+1. allocates `windowIds = []`;
+2. walks every app toplevel;
+3. reads `tl.niriWindowId` or falls back to `NiriService.findNiriWindow(tl)`;
+4. pushes every valid ID;
+5. consumes only `windowIds.length > 0`;
+6. then issues the no-ID/global capture request.
+
+Because §43.2 closes targeted caller capture under the current contract, the exact useful result of this loop is only: **does at least one valid Niri window identity exist?**
+
+Strict-safe direction:
+
+- stop at the first valid ID;
+- keep the same no-ID `captureForTaskView()` call;
+- do not allocate or populate an ID array.
+
+For `A` app toplevels:
+
+- common path becomes up to **`A -> 1`** identity checks when the first item is valid;
+- worst case remains `A` when no valid ID exists.
+
+When a toplevel lacks `niriWindowId`, the avoided checks are more valuable because `NiriService.findNiriWindow()` itself linearly scans the Niri window list.
+
+Also, the explicit `WindowPreviewService.initialize()` immediately before `captureForTaskView()` is redundant: `captureForTaskView()` already executes `if (!initialized) initialize()` before any session/capture decision.
+
+### 43.4 Non-Niri preview surfaces can defeat WindowPreviewService's intentional Niri-only initialization gate — CONFIRMED conditional process debt / P1
+
+Paths:
+
+- `shell.qml`;
+- `services/WindowPreviewService.qml`;
+- `modules/bar/BarTaskbarPreview.qml`;
+- `modules/bar/BarWorkspaceOverview.qml`;
+- `modules/waffle/bar/tasks/TaskPreview.qml`;
+- `modules/waffle/bar/tasks/WindowPreview.qml`.
+
+The intended service lifecycle is clear:
+
+- `shell.qml` materializes `WindowPreviewService` at deferred Tier 3 (~T+500 ms);
+- the singleton's `Component.onCompleted` calls `_startPrewarming()`;
+- `_startPrewarming()` immediately returns unless `CompositorService.isNiri`;
+- only Niri normally proceeds to `initialize()` and preview-cache/session helpers.
+
+Current consumers bypass that guard:
+
+- `BarTaskbarPreview.show()` calls `captureForTaskView()` unconditionally;
+- `BarTaskbarPreview.showWorkspace()` does the same even though it has a separate Hyprland model branch;
+- `BarWorkspaceOverview.showWorkspace()` calls it before choosing Niri `OverviewNiriWidget` versus Hyprland `OverviewWidget`;
+- Waffle parent `TaskPreview.captureAppPreviews()` correctly returns on non-Niri, but every `WindowPreview.qml` delegate still runs `Component.onCompleted: WindowPreviewService.initialize()` unconditionally.
+
+`captureForTaskView()` itself initializes the service when needed. On a normal non-Niri session `NiriService.socketPath` / `sessionKey` is empty, so initialization does:
+
+1. external `mkdir -p previewDir`;
+2. session-marker read;
+3. marker cannot qualify as the current Niri session because `sessionKey.length > 0` is false;
+4. `sessionResetProcess` runs external `find ... -delete`;
+5. no Niri screenshot can subsequently be useful.
+
+Thus first use of these non-Niri preview surfaces can pay at least the directory/reset helper work that the singleton's own Niri gate deliberately avoided.
+
+Strict-lossless-shaped direction:
+
+- guard Bar/BarWorkspace capture requests with `CompositorService.isNiri`;
+- remove Waffle delegate's explicit `initialize()`; Niri service creation already self-starts through `_startPrewarming()`, and the Niri parent capture path independently calls `captureForTaskView()` which initializes if needed;
+- retain all Hyprland live-preview/fallback presentation paths.
+
+Regression fixture before implementation:
+
+- fresh Hyprland session, preview cache directory absent/present;
+- hover Bar app preview, compact workspace preview, connected workspace Overview, and Waffle task preview;
+- assert WindowPreview `mkdir/find/capture` helpers never start;
+- assert Hyprland preview/fallback UI, focus, close and hover behavior is unchanged;
+- repeat on Niri and assert first-use cached/missing preview behavior remains identical.
+
+### 43.5 Exact current-live-ID publication index must be tied to `NiriService.windows`, not WindowPreview's observed/batch state — HIGH CONFIDENCE design closure
+
+Round 28 §42.4 correctly rejected a batch-start Set for this guard:
+
+`(NiriService.windows ?? []).some(window => window.id === windowId)`
+
+The source-of-truth constraint can now be stated precisely.
+
+`NiriService.windows` is the published authoritative snapshot. Its normal batched publication assigns:
+
+`windows = nextWindows`
+
+and `WindowPreviewService` separately keeps `observedWindowIds` only for prewarm/new-window bookkeeping.
+
+These are **not interchangeable**:
+
+- a batch-start requested-ID Set becomes stale if a window closes during capture;
+- `observedWindowIds` is explicitly cleared when `windowListReady` becomes false, while the current `.some(...)` guard tests the current `windows` property itself;
+- therefore using either would change close/disconnect race semantics.
+
+The correct shared direction is the already-open §40.21 idea: publish or lazily derive an ID-index/`windowForId` view from the exact current `NiriService.windows` snapshot and reuse that exact publication for:
+
+- `_publishCapturedPreview()` live membership;
+- `cleanupOrphans()` membership;
+- other ID lookups already identified in the Niri hot-path audit.
+
+This can turn the per-ready O(N) `.some(...)` check into O(1) **without creating a second independently maintained liveness truth**.
+
+Do not promote implementation until the following event-order fixture passes:
+
+- capture ID X;
+- publish a Niri window snapshot without X;
+- then deliver `PREVIEW_READY X`;
+- assert X is rejected;
+- separately exercise `windowListReady=false` without inventing semantics different from the existing `windows` snapshot.
+
+### 43.6 Current cliphist/bbolt semantics remove the normal-operation ID-reuse blocker for pass-2 hash reuse — blocker narrowed, still HIGH CONFIDENCE
+
+Round 28 §42.14 left a question: can one cliphist entry ID refer to different bytes between cleanup pass 1 and pass 2?
+
+Current upstream `sentriz/cliphist` master inspected at `daa99daef3ed37dc37013b1fae381fe626025a13` shows:
+
+- store first deduplicates old matching entries, then obtains a **new** key from Bolt `NextSequence()`, then writes payload/metadata under that new ID;
+- delete/deduplicate/wipe remove keys rather than reassigning another payload to an existing ID;
+- decode reads the payload directly by the extracted ID;
+- bbolt compaction preserves bucket sequence state, so normal compacting does not reset the ID counter.
+
+Therefore within a normal live cliphist database, an ID that survives from pass 1 to pass 2 represents the same stored payload; a newly stored entry receives a new ID.
+
+This removes the normal supported-operation reason to re-decode an unchanged surviving ID on pass 2.
+
+Why this remains **HIGH CONFIDENCE**, not strict CONFIRMED:
+
+- an out-of-band replacement/recreation of the cliphist database between the two cleanup passes can create a new database identity and potentially reuse low sequence values;
+- current capture code does not snapshot/verify database identity.
+
+If implementation wants absolute parity even under external DB replacement, key the reuse cache by both entry ID and stable database identity/generation, or re-decode when identity cannot be proven unchanged.
+
+Do **not** remove the two cleanup passes or their timing; this finding only narrows repeated decode/hash work within the existing correctness schedule.
+
+### 43.7 Core preview consumers no longer need `captureComplete` / `previewUpdated` handlers, but the exported service API blocks strict-lossless signal removal — CLOSED for compatibility
+
+Historical commit:
+
+- `4bfc4d0767ebae8461f590529324e9db6108c37d` — `fix(preview): bind all consumers to window identity and cache revision`.
+
+That commit intentionally moved canonical snapshot consumers from imperative `WindowPreviewService` signal handlers to reactive bindings on `previewCache`/window identity.
+
+Re-reading current `dev` confirms zero `onCaptureComplete` and zero `onPreviewUpdated` handlers in the live canonical consumers audited here:
+
+- Bar taskbar window preview;
+- Waffle task preview window;
+- Niri Overview;
+- Waffle Task View thumbnail;
+- ii AltSwitcher skew preview;
+- Waffle AltSwitcher skew preview.
+
+`WindowPreviewService` still declares/emits both signals, and `scripts/test-window-preview-lifecycle.sh` still guards `captureComplete()` as part of the service lifecycle.
+
+Do not remove or suppress the signals as a strict-lossless optimization:
+
+- `WindowPreviewService` is exported as `singleton WindowPreviewService 1.0` in `services/qmldir`;
+- user/plugin QML may legally depend on those signals even when checked-in canonical consumers no longer do.
+
+Keep the compatibility surface unless a versioned/deprecation policy explicitly permits API removal.
+
+### 43.8 Readiness `sleep 0.05` loop remains runtime-measurement-only — STATIC SEARCH CLOSED
+
+Round 28 §42.13 remains correctly classified.
+
+The helper uses external `sleep` because a static substitution does not provide a proven equivalent delay while preserving the same simple timeout/readiness semantics. Candidate substitutions either add another external dependency/process or alter the 50 ms polling / 2 s maximum readiness window.
+
+Historical preview fixes also show that Niri screenshot/clipboard side effects can settle after IPC return, so this wait is correctness-sensitive.
+
+Do not spend more static-audit time trying to syntactically replace `sleep`.
+
+Next evidence must be runtime:
+
+- retry histogram;
+- IPC-return -> nonempty PNG latency;
+- process count;
+- slow/failing compositor behavior.
+
+### 43.9 Shared published-window index also subsumes two smaller WindowPreview array allocations — FOLLOW-ON / do not split into separate patch
+
+Current `WindowPreviewService` independently creates ID collections in several places:
+
+- `_primeCachedPreviews()` maps the whole Niri window list to IDs before applying a maximum resident budget of 12;
+- `cleanupOrphans()` builds `new Set(windows.map(w => w.id))`.
+
+Both can consume the exact published-window ID/index representation from §43.5 once that architecture exists.
+
+Do not create separate micro patches first. The value is to avoid multiple independent ID derivations while preserving one liveness truth.
+
+### 43.10 Round-29 priority update
+
+**Correctness / validation prerequisite:**
+
+1. repair the stale consumer-identity regression fixture that still references retired `DockWindowPreview.qml` (§43.1).
+
+**Confirmed lossless local work:**
+
+2. stop Waffle TaskPreview identity search at the first valid ID and remove its redundant explicit `initialize()` (§43.3);
+3. preserve WindowPreviewService's Niri-only process lifecycle by gating non-Niri Bar/Workspace calls and removing per-Waffle-delegate explicit initialization (§43.4).
+
+**High-confidence shared architecture / parity:**
+
+4. reuse one exact `NiriService.windows` publication index for live-ID membership and existing ID lookup candidates (§43.5);
+5. pass-2 cliphist hash reuse is safe under normal upstream ID semantics, with only out-of-band DB replacement left to guard (§43.6);
+6. fold `_primeCachedPreviews()` / `cleanupOrphans()` ID derivation into that shared publication rather than separate micro patches (§43.9).
+
+**Closed under strict-lossless scope:**
+
+7. app/workspace targeted capture as a total screenshot-work optimization while the no-ID global-repair contract remains (§43.2);
+8. removing `captureComplete` / `previewUpdated` from the exported WindowPreviewService API (§43.7);
+9. further static replacement of the readiness `sleep` loop (§43.8).
+
+Round-28 confirmed helper/process reductions remain valid. No runtime/source implementation is authorized by this handoff.

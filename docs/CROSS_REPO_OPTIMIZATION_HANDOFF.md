@@ -13748,22 +13748,23 @@ Round 40 source inspection started from
 `37cb85f10648b5d3fcbfb1e4869e856312b07250`
 (`docs(perf): audit awesome-niri optimization sources`).
 
-The exact-parent guard caught two concurrent automation-only commits before the
-first docs write, and the post-write parent audit caught a third commit that
-landed while that write was in flight:
+The exact-parent and post-write guards observed these concurrent automation-only
+commits while Round 40 was being written:
 
 - `6a0829db12aaf213fb05634cd6d8c5863558a282` —
   `automation: add deterministic chat bridge protocol`;
 - `d0c21c4bf1b0da2039d80500ffe489310e9701f6` —
   `automation: add ChatGPT desktop CDP driver`;
 - `cd60998ee4a06740454346eda46c0a56ebfc1ccc` —
-  `automation: complete desktop response observation`.
+  `automation: complete desktop response observation`;
+- `45752e7fc7f99eb5e617ca67b50ff232ed62fb6f` —
+  `automation: add deterministic desktop bridge CLI`.
 
-All three changed-file sets are confined to `automation/*` and
-`scripts/test-hadalis-chat-bridge.py`. They do not touch NiriService,
-AppSearch, popup/surface code, Bluetooth UI, external-IPC launcher paths or this
-handoff. The findings below were reconciled unchanged against actual parent
-`cd60998...`.
+Every observed concurrent changed-file set through `45752e7...` is confined
+to `automation/*` and `scripts/test-hadalis-chat-bridge.py`. None touches
+NiriService, AppSearch, popup/surface code, Bluetooth UI, external-IPC launcher
+paths or the Round-40 findings. The research conclusions therefore remain
+unchanged after those delta audits.
 
 This remains **strict-lossless research only**. No runtime/source implementation
 is authorized by this round.

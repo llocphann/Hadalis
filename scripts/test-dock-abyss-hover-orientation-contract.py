@@ -21,35 +21,27 @@ assert "showDashboardButton" in abyss
 assert dock.count("showDashboardButton") >= 2
 assert "Show Dashboard icon" in settings
 
-# Reordering is owned by RippleButton's one MouseArea. Its built-in drag
-# moves a proxy; the visible delegate follows that exact delta until drop.
-assert "dragTarget: !dockDelegate.isSeparator ? reorderDragProxy : null" in apps
-assert "pointerDragThreshold: root.dragThreshold" in apps
-assert "pointerDragAxis: root.vertical ? Drag.YAxis : Drag.XAxis" in apps
-assert "onPointerDragActiveChanged:" in apps
-assert "property bool _dockDragStarted: false" in apps
-assert "dockDelegate._dragPressListX + reorderDragProxy.x" in apps
-assert "dockDelegate._dragPressListY + reorderDragProxy.y" in apps
-assert "property real _dragOffsetX: isBeingDragged ? reorderDragProxy.x : 0" in apps
-assert "property real _dragOffsetY: isBeingDragged ? reorderDragProxy.y : 0" in apps
-assert "root.startDrag(dockDelegate.index, appId," in apps
-assert "root.updateDrag(" in apps
-assert "root.endDrag()" in apps
-assert "root.cancelDrag()" in apps
-assert "root._suppressNextClick = true" in apps
-assert "property var abyssMenuDismissPresenter: null" in apps
-assert "root.abyssMenuDismissPresenter()" in apps
-assert "abyssMenuDismissPresenter: () => root.closeAppMenu()" in abyss
-assert "DragHandler {" not in apps
-assert "_dockPrimeTimer" not in apps
-assert "_dragPrimed" not in apps
-assert "_longPressTriggered" not in apps
-assert "Long-press and drag dock icons" not in settings
+# Dock icon ordering is configured in Settings. Runtime pointer-drag state was
+# retired so there is one ordering source of truth instead of competing paths.
+for token in (
+    "dragActive",
+    "startDrag(",
+    "updateDrag(",
+    "endDrag(",
+    "cancelDrag()",
+    "dropTargetIndex",
+    "reorderDragProxy",
+    "_dockDragStarted",
+    "insertionLine",
+    "abyssMenuDismissPresenter",
+    "_suppressNextClick",
+):
+    assert token not in apps
+assert "pointerDragAxis" not in ripple
+assert "drag.axis: Drag.XAndYAxis" in ripple
 assert "Drag to reorder" not in settings
 assert "enableDragReorder" not in apps
 assert "enableDragReorder" not in settings
-assert "property int pointerDragAxis: Drag.XAndYAxis" in ripple
-assert "drag.axis: root.pointerDragAxis" in ripple
 
 # Dock hover is now one app-popup interaction. Legacy Dock window-preview
 # surfaces and their Settings controls must stay retired.
@@ -66,4 +58,4 @@ assert 'Config.setNestedValue("dock.hoverPreview"' not in settings
 assert 'Config.setNestedValue("dock.hoverPreviewDelay"' not in settings
 assert "DockPreview 1.0" not in qmldir
 assert "DockWindowPreview 1.0" not in qmldir
-print("dock popup/orientation/dashboard-toggle/drag contract: ok")
+print("dock popup/orientation/dashboard-toggle/settings-order contract: ok")

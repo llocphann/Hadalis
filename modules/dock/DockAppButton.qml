@@ -350,11 +350,6 @@ DockButton {
     }
 
     onClicked: {
-        // Suppress the click that RippleButton fires after a drag-release
-        if (appListRoot?._suppressNextClick) {
-            appListRoot._suppressNextClick = false
-            return
-        }
         if (root.notificationCount > 0) {
             Notifications.markReadForApp([
                 appToplevel?.originalAppId ?? appToplevel?.appId,

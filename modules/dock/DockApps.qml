@@ -14,11 +14,6 @@ Item {
     id: root
     property bool _sortingConsumerAcquired: false
 
-    // Debug logging gated behind QS_DEBUG env var (project convention)
-    function _log(...args): void {
-        if (Quickshell.env("QS_DEBUG") === "1") console.log("[DockDrag]", ...args);
-    }
-
     property bool vertical: false
     property string dockPosition: "bottom"
     property var parentWindow: null
@@ -29,14 +24,11 @@ Item {
     property Item lastHoveredButton
     property bool buttonHovered: false
     property bool contextMenuOpen: false
-    property bool requestDockShow: contextMenuOpen || dragActive
+    property bool requestDockShow: contextMenuOpen
     property var abyssMenuPresenter: null
     property var abyssMenuHoverPresenter: null
-    property var abyssMenuDismissPresenter: null
 
     signal closeAllContextMenus(var exceptOwner)
-
-    property bool _suppressNextClick: false
 
     readonly property real axisExtent: {
         const values = root.dockItems ?? []
@@ -69,205 +61,6 @@ Item {
             ?? button.appToplevel?.originalAppId
             ?? button.appToplevel?.appId ?? "")
         root.abyssMenuHoverPresenter(ownerId, hovered)
-    }
-
-    property bool dragActive: false
-    property int dragIndex: -1
-    property int dropTargetIndex: -1
-    property string dragAppId: ""
-    property real dragStartX: 0
-    property real dragStartY: 0
-    property real dragCurrentX: 0
-    property real dragCurrentY: 0
-
-    property bool dropSettlingActive: false
-    property string dropSettleId: ""
-    property int dropSettleIndex: -1
-    property real dropSettleOffsetX: 0
-    property real dropSettleOffsetY: 0
-
-    readonly property real dragThreshold: 18
-
-    function getDragDisplacement(itemIndex: int): real {
-        if (!dragActive || dragIndex < 0 || dropTargetIndex < 0) return 0
-        if (itemIndex === dragIndex) return 0
-
-        const draggedItem = listView.itemAtIndex(dragIndex)
-        const step = draggedItem
-            ? (vertical ? draggedItem.height : draggedItem.width) + listView.spacing
-            : 50 + listView.spacing
-
-        if (dragIndex < dropTargetIndex) {
-            if (itemIndex > dragIndex && itemIndex <= dropTargetIndex) {
-                return -step
-            }
-        } else if (dragIndex > dropTargetIndex) {
-            if (itemIndex >= dropTargetIndex && itemIndex < dragIndex) {
-                return step
-            }
-        }
-        return 0
-    }
-
-    function startDrag(index: int, appId: string, globalX: real, globalY: real): void {
-        closeAllContextMenus()
-        if (root.abyssMenuDismissPresenter)
-            root.abyssMenuDismissPresenter()
-
-        dragIndex = index
-        dragAppId = appId
-        dragStartX = globalX
-        dragStartY = globalY
-        dragCurrentX = globalX
-        dragCurrentY = globalY
-        dropTargetIndex = index
-        dragActive = true
-        _log(`START index=${index} appId=${appId} pos=(${globalX.toFixed(0)},${globalY.toFixed(0)})`)
-    }
-
-    function updateDrag(globalX: real, globalY: real): void {
-        if (!dragActive || dragIndex < 0) return
-        dragCurrentX = globalX
-        dragCurrentY = globalY
-
-        const count = dockItems.length
-        if (count === 0) return
-
-        let bestIndex = dropTargetIndex
-        let bestDist = Infinity
-
-        for (let i = 0; i < count; i++) {
-            const item = listView.itemAtIndex(i)
-            if (!item) continue
-
-            const midX = item.x + item.width / 2
-            const midY = item.y + item.height / 2
-
-            const dist = vertical
-                ? Math.abs(globalY - midY)
-                : Math.abs(globalX - midX)
-
-            if (dist < bestDist) {
-                bestDist = dist
-                bestIndex = i
-            }
-        }
-
-        if (bestIndex >= 0 && bestIndex < count && dockItems[bestIndex].appId === "SEPARATOR") {
-            const movingForward = vertical ? (globalY > dragStartY) : (globalX > dragStartX)
-            if (movingForward && bestIndex + 1 < count) bestIndex++
-            else if (!movingForward && bestIndex - 1 >= 0) bestIndex--
-        }
-
-        if (dropTargetIndex !== bestIndex) {
-            _log(`UPDATE dropTarget=${bestIndex} (was ${dropTargetIndex})`)
-        }
-        dropTargetIndex = bestIndex
-    }
-
-    function endDrag(): void {
-        if (!dragActive) return
-
-        const draggedItem = dockItems[dragIndex]
-        dropSettleId = draggedItem?.uniqueId ?? dragAppId
-        dropSettleIndex = dragIndex
-        dropSettleOffsetX = 0
-        dropSettleOffsetY = 0
-        dropSettlingActive = true
-
-        _log(`END dragIndex=${dragIndex} dropTarget=${dropTargetIndex} reorder=${dragIndex !== dropTargetIndex}`)
-        if (dragIndex >= 0 && dropTargetIndex >= 0 && dragIndex !== dropTargetIndex) {
-            _applyReorder(dragIndex, dropTargetIndex)
-        }
-
-        _resetDragState(false)
-        dropSettleResetTimer.restart()
-    }
-
-    function cancelDrag(): void {
-        _resetDragState(true)
-    }
-
-    function _resetDragState(clearDropSettle = true): void {
-        dragActive = false
-        dragIndex = -1
-        dropTargetIndex = -1
-        dragAppId = ""
-        dragStartX = 0
-        dragStartY = 0
-        dragCurrentX = 0
-        dragCurrentY = 0
-        if (clearDropSettle) {
-            dropSettleResetTimer.stop()
-            dropSettlingActive = false
-            dropSettleId = ""
-            dropSettleIndex = -1
-            dropSettleOffsetX = 0
-            dropSettleOffsetY = 0
-        }
-    }
-
-    Timer {
-        id: dropSettleResetTimer
-        interval: 2
-        repeat: false
-        onTriggered: {
-            dropSettlingActive = false
-            dropSettleId = ""
-            dropSettleIndex = -1
-            dropSettleOffsetX = 0
-            dropSettleOffsetY = 0
-        }
-    }
-
-    function _applyReorder(fromIdx: int, toIdx: int): void {
-        const fromItem = dockItems[fromIdx]
-        const toItem = dockItems[toIdx]
-
-        if (!fromItem || !toItem) return
-
-        const fromAppId = fromItem.originalAppId ?? fromItem.appId
-        const toAppId = toItem.originalAppId ?? toItem.appId
-
-        if (toAppId === "SEPARATOR" || fromAppId === "SEPARATOR") return
-
-        const fromIsRunning = (fromItem.toplevels?.length ?? 0) > 0
-        const toIsRunning = (toItem.toplevels?.length ?? 0) > 0
-        let pinnedApps = [...(Config.options?.dock?.pinnedApps ?? [])]
-
-        const fromIsPinned = fromItem.pinned
-        const toIsPinned = toItem.pinned
-
-        if (fromIsRunning && toIsRunning
-                && (root.separatePinnedFromRunning || (!fromIsPinned && !toIsPinned))) {
-            const fromRunningId = fromAppId.toLowerCase()
-            const toRunningId = toAppId.toLowerCase()
-            const fromRunningIdx = _runningAppOrder.indexOf(fromRunningId)
-            const toRunningIdx = _runningAppOrder.indexOf(toRunningId)
-            if (fromRunningIdx >= 0 && toRunningIdx >= 0) {
-                const [moved] = _runningAppOrder.splice(fromRunningIdx, 1)
-                const insertIdx = toRunningIdx
-                _runningAppOrder.splice(insertIdx, 0, moved)
-                root.rebuildDockItems()
-            }
-            return
-        }
-
-        if (fromIsPinned && toIsPinned) {
-            const realFromIdx = pinnedApps.findIndex(p => p.toLowerCase() === fromAppId.toLowerCase())
-            const realToIdx = pinnedApps.findIndex(p => p.toLowerCase() === toAppId.toLowerCase())
-
-            if (realFromIdx >= 0 && realToIdx >= 0) {
-                const [moved] = pinnedApps.splice(realFromIdx, 1)
-                pinnedApps.splice(realToIdx, 0, moved)
-                Config.setNestedValue("dock.pinnedApps", pinnedApps)
-            }
-        } else if (!fromIsPinned && toIsPinned) {
-            const realToIdx = pinnedApps.findIndex(p => p.toLowerCase() === toAppId.toLowerCase())
-            const insertIdx = toIdx < fromIdx ? realToIdx : realToIdx + 1
-            pinnedApps.splice(insertIdx, 0, fromAppId)
-            Config.setNestedValue("dock.pinnedApps", pinnedApps)
-        }
     }
 
     property var dockItems: []
@@ -550,7 +343,6 @@ Item {
 
     function refreshAxisLayout(): void {
         root.closeAllContextMenus(null)
-        root.cancelDrag()
         root.rebuildDockItems()
         Qt.callLater(() => {
             listView.forceLayout()
@@ -594,7 +386,7 @@ Item {
             animation: NumberAnimation { duration: Appearance.animation.elementResize.duration; easing.type: Appearance.animation.elementResize.type; easing.bezierCurve: Appearance.animation.elementResize.bezierCurve }
         }
 
-        readonly property bool _animOk: Appearance.animationsEnabled && !root.dragActive
+        readonly property bool _animOk: Appearance.animationsEnabled
 
         add: Transition {
             enabled: listView._animOk
@@ -630,175 +422,6 @@ Item {
             bottomInset: 0
             leftInset: 0
             rightInset: 0
-
-            readonly property bool isBeingDragged: root.dragActive && root.dragIndex === index
-            readonly property bool isDropTarget: root.dragActive && root.dropTargetIndex === index && root.dragIndex !== index
-            readonly property bool isDropSettling: !isBeingDragged && root.dropSettleId !== "" && root.dropSettleId === appToplevel?.uniqueId
-            readonly property real dragDisplacement: root.getDragDisplacement(index)
-
-            property real _dragOffsetX: isBeingDragged ? reorderDragProxy.x : 0
-            property real _dragOffsetY: isBeingDragged ? reorderDragProxy.y : 0
-
-            transform: Translate {
-                id: dockDelegateTranslate
-                x: dockDelegate.isBeingDragged
-                    ? (root.vertical ? 0 : dockDelegate._dragOffsetX)
-                    : dockDelegate.isDropSettling
-                        ? (root.vertical ? 0 : root.dropSettleOffsetX)
-                        : (root.vertical ? 0 : dockDelegate.dragDisplacement)
-                y: dockDelegate.isBeingDragged
-                    ? (root.vertical ? dockDelegate._dragOffsetY : 0)
-                    : dockDelegate.isDropSettling
-                        ? (root.vertical ? root.dropSettleOffsetY : 0)
-                        : (root.vertical ? dockDelegate.dragDisplacement : 0)
-
-                Behavior on x {
-                    enabled: Appearance.animationsEnabled && !root.dropSettlingActive && !dockDelegate.isBeingDragged && !dockDelegate.isDropSettling
-                    NumberAnimation {
-                        duration: Appearance.animation.elementResize.duration
-                        easing.type: Appearance.animation.elementResize.type
-                        easing.bezierCurve: Appearance.animation.elementResize.bezierCurve
-                    }
-                }
-                Behavior on y {
-                    enabled: Appearance.animationsEnabled && !root.dropSettlingActive && !dockDelegate.isBeingDragged && !dockDelegate.isDropSettling
-                    NumberAnimation {
-                        duration: Appearance.animation.elementResize.duration
-                        easing.type: Appearance.animation.elementResize.type
-                        easing.bezierCurve: Appearance.animation.elementResize.bezierCurve
-                    }
-                }
-            }
-
-            z: isBeingDragged ? 100 : 0
-            scale: isBeingDragged ? 1.08 : (dockDelegate.appIsActive ? 1.05 : 1.0)
-
-            opacity: isBeingDragged ? 0.8
-                   : root.dragActive ? 0.85 : 1.0
-            Behavior on opacity {
-                enabled: Appearance.animationsEnabled
-                NumberAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve }
-            }
-
-            Rectangle {
-                id: insertionLine
-                visible: dockDelegate.isDropTarget && !dockDelegate.isSeparator
-                z: 50
-
-                readonly property bool forward: root.dragIndex >= 0
-                    && root.dragIndex < root.dropTargetIndex
-
-                width: root.vertical ? (parent.width * 0.55) : 3
-                height: root.vertical ? 3 : (parent.height * 0.55)
-                radius: 1.5
-
-                x: root.vertical
-                    ? (parent.width - width) / 2
-                    : (forward
-                        ? parent.width + (listView.spacing - width) / 2
-                        : -(listView.spacing + width) / 2)
-                y: root.vertical
-                    ? (forward
-                        ? parent.height + (listView.spacing - height) / 2
-                        : -(listView.spacing + height) / 2)
-                    : (parent.height - height) / 2
-
-                color: root.zzzStyle ? Appearance.zzz.tertiary
-                     : root.inirStyle ? Appearance.inir.colPrimary
-                     : Appearance.colors.colPrimary
-                Behavior on color {
-                    enabled: Appearance.animationsEnabled
-                    ColorAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve }
-                }
-
-                opacity: dockDelegate.isDropTarget ? 0.9 : 0
-
-                Behavior on opacity {
-                    enabled: Appearance.animationsEnabled
-                    NumberAnimation { duration: Appearance.animation.elementMoveFast.duration; easing.type: Appearance.animation.elementMoveFast.type; easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve }
-                }
-            }
-
-            // Use RippleButton's own MouseArea as the single gesture owner.
-            // Its built-in drag target moves this invisible proxy after the
-            // threshold; the visible delegate follows the exact same delta, so
-            // the app icon feels physically held by the pointer until release.
-            property real _dragPressListX: 0
-            property real _dragPressListY: 0
-            property bool _dockDragStarted: false
-
-            dragTarget: !dockDelegate.isSeparator ? reorderDragProxy : null
-            pointerDragThreshold: root.dragThreshold
-            pointerDragAxis: root.vertical ? Drag.YAxis : Drag.XAxis
-
-            function _syncDragProxy(): void {
-                if (!dockDelegate._dockDragStarted
-                        || !root.dragActive
-                        || root.dragIndex !== dockDelegate.index)
-                    return
-                root.updateDrag(
-                    dockDelegate._dragPressListX + reorderDragProxy.x,
-                    dockDelegate._dragPressListY + reorderDragProxy.y)
-            }
-
-            downAction: event => {
-                if (dockDelegate.isSeparator)
-                    return
-                reorderDragProxy.x = 0
-                reorderDragProxy.y = 0
-                dockDelegate._dockDragStarted = false
-                const listPos = dockDelegate.mapToItem(
-                    listView, event.x, event.y)
-                dockDelegate._dragPressListX = listPos.x
-                dockDelegate._dragPressListY = listPos.y
-            }
-
-            onPointerDragActiveChanged: {
-                if (!dockDelegate.pointerDragActive
-                        || dockDelegate._dockDragStarted
-                        || dockDelegate.isSeparator)
-                    return
-                dockDelegate._dockDragStarted = true
-                const appId = dockDelegate.appToplevel?.originalAppId
-                    ?? dockDelegate.appToplevel?.appId ?? ""
-                root.startDrag(dockDelegate.index, appId,
-                    dockDelegate._dragPressListX,
-                    dockDelegate._dragPressListY)
-                dockDelegate._syncDragProxy()
-            }
-
-            releaseAction: () => {
-                if (!dockDelegate._dockDragStarted)
-                    return
-                dockDelegate._syncDragProxy()
-                if (root.dragActive && root.dragIndex === dockDelegate.index)
-                    root.endDrag()
-                root._suppressNextClick = true
-                dockDelegate._dockDragStarted = false
-                reorderDragProxy.x = 0
-                reorderDragProxy.y = 0
-                Qt.callLater(() => {
-                    if (root._suppressNextClick)
-                        root._suppressNextClick = false
-                })
-            }
-
-            cancelAction: () => {
-                if (root.dragActive && root.dragIndex === dockDelegate.index)
-                    root.cancelDrag()
-                dockDelegate._dockDragStarted = false
-                reorderDragProxy.x = 0
-                reorderDragProxy.y = 0
-            }
-
-            Item {
-                id: reorderDragProxy
-                width: 1
-                height: 1
-                visible: false
-                onXChanged: dockDelegate._syncDragProxy()
-                onYChanged: dockDelegate._syncDragProxy()
-            }
 
         }
     }

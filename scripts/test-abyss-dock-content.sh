@@ -35,10 +35,6 @@ ShellRoot {
             if(root.step===0) {
                 if(!root.check(dock.appContent._sortingConsumerAcquired,"shared Dock sorting lease")) return
                 if(!root.check(dock.desiredSpan>=74,"content-sized Dock and launcher")) return
-                dock.appContent.startDrag(0,"test",20,20)
-                if(!root.check(dock.appContent.dragActive && dock.requestDockShow,"drag holds Dock visible")) return
-                dock.appContent.cancelDrag()
-                if(!root.check(!dock.appContent.dragActive,"cancel releases drag hold")) return
                 dock.edge="left";dock.width=50;dock.height=600
             } else {
                 if(!root.check(dock.appContent.vertical && dock.appContent.dockPosition==="left" && dock.desiredSpan>=74,"same Dock supports cross-edge placement")) return
@@ -57,4 +53,4 @@ if ! rg -q 'ABYSS_DOCK_CONTENT_PASS' "$popup_test_root/runtime.log" || rg -q 'AB
     cat "$popup_test_root/runtime.log"
     exit 1
 fi
-printf 'PASS: mature Dock sorting, drag hold/cancel and cross-edge presentation\n'
+printf 'PASS: mature Dock sorting and cross-edge presentation\n'

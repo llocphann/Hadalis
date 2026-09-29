@@ -8,7 +8,7 @@ import qs.modules.common.widgets
 import qs.modules.dock
 import "../looks/AbyssWave.js" as Wave
 
-// Keep the existing app model, menus, preview, launch and drag/reorder behavior.
+// Keep the existing app model, menus and launch behavior.
 // Only the surrounding shell is supplied by the output's field.
 Item {
     id: root
@@ -75,7 +75,6 @@ Item {
                 root.openAppMenu(model, x, y, ownerId)
             abyssMenuHoverPresenter: (ownerId, hovered) =>
                 root.updateAppMenuHover(ownerId, hovered)
-            abyssMenuDismissPresenter: () => root.closeAppMenu()
             dockPosition: root.edge
             parentWindow: root.QsWindow.window
             Layout.preferredHeight: root.vertical ? implicitHeight : 50

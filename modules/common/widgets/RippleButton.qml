@@ -38,7 +38,6 @@ Button {
     property var middleClickAction // When middle clicking
     property Item dragTarget: null
     property int pointerDragThreshold: 10
-    property int pointerDragAxis: Drag.XAndYAxis
     readonly property bool pointerDragActive: buttonMouseArea.drag.active
 
     property color colBackground: abyssStyle ? Qt.alpha(Appearance.colors.colPrimary,.14) : "transparent"
@@ -103,7 +102,7 @@ Button {
         cursorShape: root.pointingHandCursor ? Qt.PointingHandCursor : Qt.ArrowCursor
         acceptedButtons: Qt.LeftButton | Qt.RightButton | Qt.MiddleButton
         drag.target: root.dragTarget
-        drag.axis: root.pointerDragAxis
+        drag.axis: Drag.XAndYAxis
         drag.smoothed: false
         drag.threshold: root.pointerDragThreshold
         onPressed: (event) => {

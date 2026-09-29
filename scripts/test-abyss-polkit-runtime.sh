@@ -77,23 +77,17 @@ ShellRoot {
         proc.running = true
     }
 
-    PanelWindow {
+    // Weston headless intentionally does not expose wlr-layer-shell. Use a
+    // real Wayland xdg-toplevel with deterministic geometry here, exactly as the
+    // confirmation runtime harness does. The connected controller still proves
+    // exclusive-focus ownership; compositor layer-shell focus is covered by the
+    // nested-Niri confirmation lane rather than faked on an unsupported protocol.
+    FloatingWindow {
         id: window
         visible: true
-        screen: Quickshell.screens[0] ?? null
+        implicitWidth: 1200
+        implicitHeight: 900
         color: "transparent"
-        exclusionMode: ExclusionMode.Ignore
-        exclusiveZone: 0
-        anchors {
-            top: true
-            bottom: true
-            left: true
-            right: true
-        }
-        WlrLayershell.namespace: "hadalis:polkit-runtime-test"
-        WlrLayershell.layer: WlrLayer.Overlay
-        WlrLayershell.keyboardFocus: controller.popupExclusiveFocus
-            ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
 
         Item {
             id: scene
@@ -407,4 +401,4 @@ if [[ "$status" != 124 ]] \
     exit 1
 fi
 
-printf 'PASS: real Polkit wrong-response retry, success, cancel, queued AuthFlow serialization and Abyss focus/fallback presentation\n'
+printf 'PASS: real Polkit wrong-response retry, success, cancel, queued AuthFlow serialization and connected Abyss focus/fallback presentation\n'

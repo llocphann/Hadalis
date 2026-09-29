@@ -35,12 +35,12 @@ Do not describe the current repository SHA as canonically green.
 
 ## Current gate
 
-Pending local live transport acceptance:
+Live transport acceptance `JOB-DESKTOP-LIVE-ACCEPT-013` passed all five actions, including:
+- static loop-marker scanner regression;
+- production rich GitHub mention composition;
+- automatic submit;
+- current `dev` HEAD verification through the GitHub connector;
+- generation completion and exact `HADALIS_LOOP:DONE` extraction;
+- explicit Node/CDP process termination and worker result publication.
 
-`JOB-DESKTOP-LIVE-ACCEPT-013`
-
-It performs a syntax check, then opens a fresh Hadalis Cloud chat through the production CDP driver, sends a fixed prompt containing the GitHub connector mention, verifies read access to `llocphann/Hadalis` and current `dev` HEAD through ChatGPT, waits for generation completion, and requires exactly:
-
-`HADALIS_LOOP:DONE`
-
-After this passes, proceed to the one-time user-service installation and first real autonomous bootstrap session.
+The current gate is now the one-time user-service installation and first real autonomous bootstrap session. The one-shot worker also prints a concise terminal outcome after publishing its result.

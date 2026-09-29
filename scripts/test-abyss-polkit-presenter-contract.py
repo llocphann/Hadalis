@@ -23,7 +23,9 @@ assert "root.presentationSerial === root.requestSerial" in service
 assert "function _startPresentationForCurrentRequest(): void" in service
 assert "root.presentationSerial = root.requestSerial" in service
 assert "root.presentationRetained = true" in service
-assert "function finishPresentation(): void" in service
+assert "function finishPresentation(restartIfActive = true): void" in service
+assert "restartIfActive && root.active" in service
+assert "PolkitService.finishPresentation(false)" in presenter
 assert "root.presentationRetained = false" in service
 assert "root.presentationSerial = 0" in service
 assert "root.abyssPresenterAvailable" in service

@@ -192,12 +192,12 @@ Singleton {
         root._startPresentationForCurrentRequest()
     }
 
-    function finishPresentation(): void {
+    function finishPresentation(restartIfActive = true): void {
         if (!root.presentationRetained)
             return
         root.presentationRetained = false
         root.presentationSerial = 0
-        if (root.active && root.requestSerial > 0
+        if (restartIfActive && root.active && root.requestSerial > 0
                 && root.abyssPresenterAvailable) {
             Qt.callLater(() => {
                 if (root.active && !root.presentationRetained

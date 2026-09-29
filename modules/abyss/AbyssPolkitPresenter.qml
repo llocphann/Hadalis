@@ -80,7 +80,7 @@ Item {
             // Once the renderer is gone there is no visual tail left to retain.
             // The real AuthFlow remains owned by PolkitService/PolkitAgent.
             if (PolkitService.presentationRetained)
-                PolkitService.finishPresentation()
+                PolkitService.finishPresentation(false)
         }
 
         AbyssPolkitContent {

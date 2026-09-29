@@ -173,7 +173,7 @@ jobs:
                 "</policyconfig>" \
                 | sudo tee "$policy" >/dev/null
 
-              # nixpkgs' libpolkit-agent is built for the NixOS helper path.
+              # The nixpkgs libpolkit-agent build uses the NixOS helper path.
               # On the Ubuntu runner, bridge that CI-only absolute path to the
               # host setuid helper instead of replacing authentication semantics.
               sudo install -d -m 0755 /run/wrappers/bin

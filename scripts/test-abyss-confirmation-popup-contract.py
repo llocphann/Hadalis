@@ -28,6 +28,7 @@ assert "ConfirmationService.finishPresentation(root.requestId)" in presenter
 # Nested source anchors (notably Dock apps) inherit their host Join Edge.
 host=(r/"modules/abyss/AbyssBodyHost.qml").read_text()
 assert "readonly property string popupJoinedEdge: joinedEdge" in host
+assert 'hostedPopup?._liquidAnchor?.popupJoinedEdge ?? ""' in perimeter
 
 # Top-center fallback is a real shared prompt source Item on the same liquid controller.
 assert "id: promptFallbackAnchor" in perimeter

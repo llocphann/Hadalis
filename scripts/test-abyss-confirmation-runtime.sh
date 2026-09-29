@@ -262,6 +262,8 @@ ShellRoot {
                     semanticOpenOverride:
                         hostedPopup?.liquidSemanticVisible ?? false
                     edge: hostedPopup?._attachmentEdge ?? "top"
+                    joinedEdge:
+                        hostedPopup?._liquidAnchor?.popupJoinedEdge ?? ""
                     open: hostedPopup?.presentationActive ?? false
                     externalProgress: hostedPopup?.revealProgress ?? 0
                     embeddedItem: hostedPopup?.contentItem ?? null
@@ -324,6 +326,7 @@ ShellRoot {
                     trayAnchor, "tray", () => ["runtime.app"], 300)
                 PopupAnchorRegistry.registerAnchor(
                     dockAnchor, "dock", () => ["runtime.app"], 200)
+                sourceAnchor.popupJoinedEdge = "left"
                 root.requestDirect("top", true)
                 root.phase = 1
                 return
@@ -346,6 +349,12 @@ ShellRoot {
                         && popup.contentItem.implicitWidth <= 460,
                         "long confirmation content stays within content-fit width cap"))
                     return
+                const slot = controller._popupSlot(popup)
+                const host = controller.popupHosts[String(slot)] ?? null
+                if (!root.check(host?.joinedEdge === "left",
+                        "confirmation inherits source Join Edge"))
+                    return
+                sourceAnchor.popupJoinedEdge = ""
                 ConfirmationService.resolve("accept")
                 root.phase = 2
                 return
@@ -696,4 +705,4 @@ if [[ "$status" != 124 ]]         || ! rg -q 'ABYSS_CONFIRMATION_RUNTIME_PASS' "
     exit 1
 fi
 
-printf 'PASS: confirmation callbacks, content-fit, four-edge attachment, tray/dock routing, top-center fallback, source loss, peer reflow, queue/reopen, hidden-resident fallback and live-anchor invalidation\n'
+printf 'PASS: confirmation callbacks, content-fit, four-edge attachment, Join Edge inheritance, tray/dock routing, top-center fallback, source loss, peer reflow, queue/reopen, hidden-resident fallback and live-anchor invalidation\n'

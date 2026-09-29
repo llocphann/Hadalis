@@ -127,7 +127,7 @@ assert "ConfirmationService.cancel(true)" not in release
 assert "requestResolved" not in release
 assert 'ConfirmationService.cancelOwned("closeConfirm")' not in release
 assert "return" in release
-assert "ConfirmationService.finishPresentation(requestId)" in release
+assert "ConfirmationService.finishPresentation(requestId)" not in release
 confirm_block=close.split("function confirmClose(): void",1)[1].split("function cancel(): void",1)[0]
 assert 'ConfirmationService.resolvePresentationHandoff(' in confirm_block
 assert 'requestId, "close"' in confirm_block

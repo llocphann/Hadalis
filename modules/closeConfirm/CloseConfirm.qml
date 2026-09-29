@@ -87,11 +87,10 @@ Scope {
                 return
         }
 
-        // No standalone handoff exists (for example the request had already
-        // resolved and only its visual retract tail remained). Release that tail
-        // so the service queue can advance.
-        if (!ConfirmationService.requestVisible)
-            ConfirmationService.finishPresentation(requestId)
+        // If the request already resolved, only its owning presenter may
+        // release the visual tail. Component teardown and normal popup retract
+        // already call finishPresentation(); forcing it here could let a queued
+        // successor reuse geometry before the old tail is actually gone.
     }
 
     onAbyssConfiguredChanged:

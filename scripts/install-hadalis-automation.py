@@ -35,6 +35,14 @@ def main() -> int:
         action="store_true",
         help="also enable and start the installed services",
     )
+    parser.add_argument(
+        "--reset-session-state",
+        action="store_true",
+        help=(
+            "safely clear persisted bridge session state before service startup; "
+            "fails if another bridge instance currently holds the lock"
+        ),
+    )
     args = parser.parse_args()
 
     python = require_command("python3")
@@ -111,6 +119,18 @@ WantedBy=graphical-session.target
     )
 
     subprocess.run([systemctl, "--user", "daemon-reload"], check=True)
+
+    if args.reset_session_state:
+        subprocess.run(
+            [
+                python,
+                "-m",
+                "automation.chat_bridge.runtime",
+                "--reset-state",
+            ],
+            cwd=ROOT,
+            check=True,
+        )
 
     if args.enable_now:
         subprocess.run(

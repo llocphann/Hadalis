@@ -95,9 +95,13 @@ ShellRoot {
             Component.onCompleted: root.registerSurface(surface)
             Component.onDestruction: root.unregisterSurface(surface)
 
+            // The routing contract needs a real ShellScreen-bound QsWindow,
+            // not an exposed desktop toplevel. Keeping these carrier windows
+            // unmapped avoids compositor expose/frame waits from obscuring the
+            // multi-output identity test while preserving window.screen.
             FloatingWindow {
                 id: window
-                visible: true
+                visible: false
                 screen: surface.modelData
                 implicitWidth: 720
                 implicitHeight: 520

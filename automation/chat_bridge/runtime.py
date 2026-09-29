@@ -148,6 +148,16 @@ def process_response(response_text: str) -> tuple[bool, str | None, str | None]:
     raise AssertionError(f"unhandled bridge action: {action}")
 
 
+def attach_until_marker() -> dict[str, Any]:
+    while True:
+        try:
+            return desktop("await-current")
+        except RuntimeError as exc:
+            if "No HADALIS_LOOP marker found near completed assistant response" not in str(exc):
+                raise
+            time.sleep(2)
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(
         description="Deterministic Hadalis ChatGPT Desktop loop controller"
@@ -160,7 +170,7 @@ def main() -> int:
     args = parser.parse_args()
 
     if args.initial_prompt_file is None:
-        payload = desktop("await-current")
+        payload = attach_until_marker()
     else:
         prompt = args.initial_prompt_file.read_text(encoding="utf-8")
         payload = desktop("send", prompt)

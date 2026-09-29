@@ -50,6 +50,7 @@ Singleton {
     property string resolvedAnchorKind: ""
     property bool hadResolvedAnchor: false
     property var _nextSourceHint: null
+    readonly property int sourceHintLifetimeMs: 3000
     readonly property bool resolvedAnchorUsable:
         !root.hadResolvedAnchor
             || PopupAnchorRegistry.isUsable(root.resolvedAnchor)
@@ -100,17 +101,29 @@ Singleton {
     // Optional trusted internal hint for a future backend/native bridge. Current
     // AuthFlow does not expose a requester app id, so ordinary requests leave
     // this unset and intentionally use top-center fallback.
+    function _clearSourceHint(): void {
+        sourceHintExpiry.stop()
+        root._nextSourceHint = null
+    }
+
     function hintSource(appId, anchorItem = null, outputName = ""): void {
         root._nextSourceHint = {
             appId: String(appId ?? ""),
             anchorItem: anchorItem,
             outputName: String(outputName ?? "")
         }
+        sourceHintExpiry.restart()
+    }
+
+    function _takeSourceHint(): var {
+        sourceHintExpiry.stop()
+        const hint = root._nextSourceHint
+        root._nextSourceHint = null
+        return hint
     }
 
     function _latchPresentation(): void {
-        const hint = root._nextSourceHint
-        root._nextSourceHint = null
+        const hint = root._takeSourceHint()
         const requestedOutput = GlobalStates.resolveOutputName(
             String(hint?.outputName ?? ""), [])
         const sourceContext = hint
@@ -125,6 +138,13 @@ Singleton {
         root.targetOutputName = resolvedOutput.length > 0
             ? resolvedOutput
             : requestedOutput
+    }
+
+    Timer {
+        id: sourceHintExpiry
+        interval: root.sourceHintLifetimeMs
+        repeat: false
+        onTriggered: root._nextSourceHint = null
     }
 
     onRequestSerialChanged: {

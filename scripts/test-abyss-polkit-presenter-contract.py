@@ -15,6 +15,12 @@ assert "PolkitService.hadResolvedAnchor" in presenter
 
 service=(r/"services/PolkitService.qml").read_text()
 assert 'function hintSource(appId, anchorItem = null, outputName = ""): void' in service
+assert "readonly property int sourceHintLifetimeMs: 3000" in service
+assert "id: sourceHintExpiry" in service
+assert "sourceHintExpiry.restart()" in service
+assert "function _takeSourceHint(): var" in service
+assert "const hint = root._takeSourceHint()" in service
+assert "onTriggered: root._nextSourceHint = null" in service
 assert "const requestedOutput = GlobalStates.resolveOutputName(" in service
 assert "PopupAnchorRegistry.resolve(sourceContext)" in service
 assert "readonly property bool resolvedAnchorUsable:" in service

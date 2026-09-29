@@ -70,7 +70,7 @@ ShellRoot {
             "/bin/bash", "-c",
             "exec /usr/bin/pkcheck --action-id "
                 + actionId
-                + " --process $ --allow-user-interaction"
+                + " --process $$ --allow-user-interaction"
         ]
     }
 

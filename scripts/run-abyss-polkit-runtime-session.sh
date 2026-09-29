@@ -6,7 +6,12 @@ set -euo pipefail
 : "${HADALIS_POLKIT_CI_REPO:?missing repo path}"
 : "${HADALIS_POLKIT_CI_STATUS_FILE:?missing status file}"
 : "${HADALIS_POLKIT_CI_WESTON_LOG:?missing Weston log path}"
+: "${HADALIS_POLKIT_CI_TOOL_PATH:?missing Nix runtime tool path}"
 
+# PAM/systemd service activation intentionally starts with a conservative PATH.
+# Re-add only the Nix runtime tool directories resolved by the parent nix shell,
+# then normal system bins for pkcheck/bash and session utilities.
+export PATH="$HADALIS_POLKIT_CI_TOOL_PATH:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 export XDG_RUNTIME_DIR="/run/user/$(id -u)"
 export WAYLAND_DISPLAY=wayland-hadalis-polkit
 export QT_QPA_PLATFORM=wayland

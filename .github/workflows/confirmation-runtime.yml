@@ -122,6 +122,11 @@ jobs:
               work="$(mktemp -d /tmp/hadalis-polkit-ci.XXXXXX)"
               policy=/usr/share/polkit-1/actions/org.hadalis.ci.policy
               status_file="$work/status"
+              qs_path="$(command -v qs)"
+              weston_path="$(command -v weston)"
+              rg_path="$(command -v rg)"
+              timeout_path="$(command -v timeout)"
+              tool_path="$(dirname "$qs_path"):$(dirname "$weston_path"):$(dirname "$rg_path"):$(dirname "$timeout_path")"
 
               cleanup() {
                 sudo rm -f "$policy"
@@ -176,6 +181,7 @@ jobs:
                 --setenv="HADALIS_POLKIT_CI_REPO=$work/repo" \
                 --setenv="HADALIS_POLKIT_CI_STATUS_FILE=$status_file" \
                 --setenv="HADALIS_POLKIT_CI_WESTON_LOG=$work/weston.log" \
+                --setenv="HADALIS_POLKIT_CI_TOOL_PATH=$tool_path" \
                 /bin/bash "$work/repo/scripts/run-abyss-polkit-runtime-session.sh"
               session_status=$?
               set -e

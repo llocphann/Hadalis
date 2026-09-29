@@ -1,6 +1,6 @@
 # Abyss confirmation and authentication popup architecture
 
-Status: Phases A-D are implemented at the source/contract level on `dev`. Phase E live-desktop acceptance is still pending. Nothing in this document should be read as proof that compositor/runtime acceptance has completed.
+Status: Phases A-D are complete at the source/contract level on `dev`. Phase E live-desktop acceptance is still pending. The remaining blockers require a real Wayland/Quickshell desktop (and, for application-native dialogs, a trustworthy native/backend response channel); source-only checks must not be reported as compositor/runtime completion.
 
 ## Goal
 
@@ -109,9 +109,11 @@ Implemented:
 - Source removal cancels the attached request instead of switching anchors mid-flight. A source that remains registered but becomes non-presented is also treated as source loss; lifecycle cancellation is forced so a disabled/hidden UI cancel action cannot strand a request on stale geometry.
 - Retained-but-closed Abyss source trees are excluded from initial routing.
 - Requests resolve their output before implicit app-anchor lookup, so duplicated app surfaces prefer the source/request output while preserving Tray > Bar > Dock priority within that output.
+- Equal-strength implicit anchor ties are treated as ambiguous and fall back instead of using registration order to guess which app instance owns a semantic prompt.
 - If a top-center fallback output is hot-unplugged, the same request is retargeted to a remaining valid output. If the request had a real attached source on the removed output, it is cancelled instead of teleporting.
 - The active request is retained until its visual retract tail is released, so queued requests cannot inherit the previous geometry. Owning-presenter teardown also releases an already-closing request so output/family removal cannot strand the queue.
-- Generic action semantics preserve enabled/visible state. Enter selects only a usable default/non-cancel action, and user cancel does not invoke a disabled/hidden cancel action.
+- Owner teardown uses forced lifecycle cancellation, so a disabled/hidden user cancel action cannot strand an owned request when its renderer disappears.
+- Generic action semantics preserve enabled/visible state. Enter selects only a usable default/non-cancel action, user cancel does not invoke a disabled/hidden cancel action, and empty/duplicate action IDs are normalized so one visible button cannot resolve a different callback.
 - If `abyssPerimeter` is disabled, the previous standalone confirmation/Polkit renderers remain available as a fail-safe rather than leaving an invisible request.
 
 ### Phase C — normal confirmation
@@ -126,7 +128,8 @@ Implemented for the Hadalis-owned `closeConfirm` backend:
 - top-center fallback ownership survives output hotplug by moving only to a remaining valid output, while attached-source loss still cancels;
 - critical confirmation presentation keeps the popup field available over fullscreen and is not demoted beneath a native settings dialog;
 - the real close callback still executes the existing Niri close/minimize path;
-- cancel, close/reopen, long content and long action labels use the same Abyss primitives and popup geometry.
+- repeated close triggers for the same window are deduplicated across visible, queued and retracting ownership, while different windows may still queue normally;
+- cancel, close/reopen, long content and long action labels use the same Abyss primitives and popup geometry; Details/Hide details labels follow the translation catalog.
 
 This does **not** claim generic interception of application-native confirmations. ChatGPT Quit remains blocked on a trustworthy backend/native bridge that can expose the application's real confirmation semantics and suppress the original dialog without bypassing or duplicating it.
 
@@ -142,9 +145,10 @@ Implemented on the existing Quickshell `PolkitAgent/AuthFlow` backend:
 - ordinary Polkit requests use top-center because `AuthFlow` does not expose a dependable requester app ID;
 - Quickshell remains the authentication queue authority, while Abyss separately serializes only visual ownership: if the next AuthFlow starts synchronously, the previous popup keeps its latched model/anchor through retract before the successor latches its own output;
 - source-loss cancellation is deduplicated so overlapping live-anchor and registry-removal signals cannot call the real AuthFlow cancel path twice;
-- top-center Polkit fallback retargets to a remaining output after hotplug; a trusted attached source disappearing with its output cancels the real AuthFlow instead of teleporting;
+- top-center Polkit fallback retargets to a remaining output after hotplug; an old output's retract callback cannot release presentation state now owned by the new output, and a trusted attached source disappearing with its output cancels the real AuthFlow instead of teleporting;
 - the active critical prompt stays on the Overlay layer and keeps keyboard-focus eligibility even when a native settings dialog has made ordinary shell surfaces yield;
-- a future trusted source hint can use the same anchor resolver without changing the authentication backend;
+- Polkit prompt strings used by the Abyss renderer are registered in the English translation catalog;
+- a future trusted source hint can use the same anchor resolver without changing the authentication backend, but hints are rejected while another AuthFlow/hint is already pending because current AuthFlow metadata provides no caller token that could safely bind a later hint to a queued request;
 - trusted Polkit source hints can carry an output hint and receive the same same-output affinity as normal confirmations;
 - if a trusted Polkit source disappears or becomes non-presented while authentication is active, the real AuthFlow is cancelled rather than moving the password prompt to another anchor.
 
@@ -161,13 +165,15 @@ A synthetic Wayland/Quickshell harness now exists at `scripts/test-abyss-confirm
 - queued requests activating only after the predecessor's visual tail releases;
 - close/reopen on the same source;
 - retained-but-closed source rejection to top-center fallback;
-- a still-registered source becoming non-presented while open, which cancels rather than teleporting.
+- a still-registered source becoming non-presented while open, which cancels rather than teleporting;
+- equal-strength duplicate source anchors falling back rather than choosing registration order;
+- duplicate action IDs normalizing deterministically and invoking only the intended callback.
 
 The script intentionally skips when Quickshell/Wayland is unavailable. A source-only pass or a skipped runtime harness is **not** runtime completion.
 
 ## Acceptance status
 
-Source/contract coverage now exists for request ownership, conservative identity/output anchor resolution, live-source validity, Dock/Bar source hold, popup/Pyramid reuse, fail-safe fallback renderers, fullscreen/native-dialog critical-prompt visibility, Join Edge inheritance, action availability/callbacks, queue/reopen ownership, output-hotplug policy, and Polkit focus/security, queued-presentation and multi-turn retry behavior.
+Source/contract coverage is complete for the currently trustworthy backends: request ownership, conservative identity/output anchor resolution, ambiguous-source fallback, live-source validity, Dock/Bar source hold, popup/Pyramid reuse, fail-safe fallback renderers, fullscreen/native-dialog critical-prompt visibility, Join Edge inheritance, action availability/ID/callback safety, queue/reopen ownership, same-window close deduplication, output-hotplug policy, and Polkit focus/security, source-hint scoping, queued-presentation and multi-turn retry behavior.
 
 Still requiring live desktop acceptance:
 

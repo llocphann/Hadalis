@@ -7547,6 +7547,8 @@ No runtime/source implementation is authorized by this handoff.
 The final pre-write runtime baseline was
 `fd01e20c9a805f51bdd7ca245ccce363dd4bf682`.
 
+One additional concurrent commit, `6f7f706d6a905aac106c54fe4b21762dac24d6df`, landed between the final pre-write fetch and the docs write and therefore became the actual parent of the Round-27 handoff commit. Its changed-file set was audited immediately afterward and was limited to `modules/abyss/content/AbyssConfirmationContent.qml` plus its confirmation contract test; it did not touch any Round-27 research path.
+
 `dev` moved during this round, but every concurrent delta was audited before
 continuing. The commits after the initial Round-27 baseline touched
 CloseConfirm/Polkit and their tests only; none changed NiriService, Task View,

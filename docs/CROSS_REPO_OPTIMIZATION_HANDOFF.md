@@ -12916,3 +12916,326 @@ Earlier correctness prerequisites remain above pure performance work:
   (§47.1-§47.2).
 
 No runtime/source implementation is authorized by this handoff.
+
+
+---
+
+## 52. Round 38 — iNiR prerelease delta audit after `bbd304b3` (2026-09-30)
+
+### Snapshot / scope
+
+This round is a targeted cross-repo refresh after the upstream iNiR prerelease
+moved beyond the snapshot previously audited by this handoff.
+
+Previous upstream comparison SHA:
+
+`bbd304b3ba1662ff0f41a2898b1b1b91cf02f071`.
+
+Current upstream `snowarch/iNiR:prerelease` HEAD, refetched immediately before
+this write:
+
+`d851c1a71b5ebd6aeb5c8a8ec63736e1d39d52ec`
+— `docs(release): a plainer note on where iRiS stands`.
+
+GitHub reports 66 commits in the upstream delta.
+
+Hadalis `dev` remained stable throughout this audit at:
+
+`eb74adec6265f508b9c27819c4d2f637ca09353a`
+— `docs(perf): audit layout and utility reductions`.
+
+The audit inspected the new upstream performance/correctness work rather than
+blindly comparing file names. The most relevant new commits are:
+
+- `7433eb355cff8c5f55ba910d31c294f4f91479b6`
+  — `perf(common): moving content draws in a surface of its own`;
+- `ea7c9752b0d2181f303e4104e7153f59371e78b8`
+  — `perf(background): the Visualizer widget moves out of the desktop`;
+- `39f429b3361735f1935c9c9548ab87be5a5d6da3`
+  — `perf(iris): visualizers and pulses stop repainting the chassis`;
+- `714653592dde75aef1d072c23ba507603acace2a`
+  — `fix(background): the wallpaper is decoded at the size it is drawn`;
+- `2d1bc803a59e85a0d8817a483663cc0949e7ce26`
+  — `fix(theme): apps follow the shell's mode and material`;
+- `7de501d3ab6e401078632a731a3f646984ee17e3`
+  — `fix(widgets): deferred placement dies with the widget`.
+
+Important reconciliation: upstream video-playback proxy/transcode support
+(`Wallpapers.videoPlaybackPath()`) already existed at the previously audited
+`bbd304b3...` snapshot. It is therefore **not** a new Round-38 upstream
+finding and is not counted below.
+
+### 52.1 LiveLayer introduces a real compositor-damage optimization, but it is not strict-lossless by inspection — NEEDS VISUAL/COMPOSITOR PARITY + BENCHMARK / TRADEOFF
+
+Upstream paths:
+
+- `modules/common/widgets/LiveLayer.qml`;
+- background Visualizer changes from `ea7c9752...`;
+- iRiS visualizer/pulse changes from `39f429b3...`.
+
+Hadalis paths inspected:
+
+- `modules/background/Background.qml`;
+- `modules/background/widgets/visualizer/VisualizerWidget.qml`.
+
+The upstream idea is materially different from ordinary QML micro-optimization.
+
+A full-output layer surface that contains one continuously moving small child can
+cause the full host surface to be presented/damaged every frame. Upstream
+`LiveLayer` therefore:
+
+1. draws the moving content normally inside its host while the host itself is
+   moving/fading/restacking;
+2. waits for the host to become geometrically/compositionally calm;
+3. creates/uses a small input-inert `PanelWindow` over the same pixels;
+4. waits until that surface has produced a frame;
+5. switches drawing to the detached small surface;
+6. immediately returns drawing to the host if position, size, opacity, clipping,
+   effects, host epoch or eligibility changes.
+
+The content contract also has a `drawing` boolean so the hidden duplicate
+instance stops its own CAVA/timer/animation work.
+
+This is highly relevant to current Hadalis because the desktop
+`VisualizerWidget` is a child of the full-output Background and its
+`CavaSpectrum` continuously redraws while music is active.
+
+However this cannot be classified CONFIRMED under Hadalis' strict rules.
+
+Hadalis-specific parity blockers include:
+
+- desktop widgets have `desktopStackZ` and can overlap; a detached layer surface
+  can escape the original sibling z-order and appear above a widget that should
+  cover it;
+- WidgetSurface blur/masks/effects and transformed/opacity ancestors must remain
+  pixel-identical;
+- edit mode, shell-layout edit mode, lock state, parallax/opacity transitions and
+  family transitions can move or cover the widget;
+- fractional coordinates / DPI scaling can alter sampling when content moves
+  between scene-graph and layer-surface coordinates;
+- an additional `PanelWindow` plus a second component instance is retained while
+  eligible, so this is not automatically a free CPU-for-RAM trade;
+- the upstream implementation intentionally has a settle/handoff lifecycle, so
+  frame/publication/render timing needs explicit proof;
+- compositor benefit may differ across Niri/Hyprland and driver stacks.
+
+Status:
+
+**NEEDS VISUAL/COMPOSITOR PARITY + BENCHMARK / TRADEOFF**, not strict CONFIRMED.
+
+If investigated, start with **only the desktop Visualizer**, not a generic mass
+port.
+
+Required benchmark/parity bundle:
+
+- compositor/GPU and QSG render cost with the same Visualizer idle vs active;
+- one-output and multi-output;
+- Niri and Hyprland separately;
+- retained QML objects, mapped layer surfaces and PSS before/after;
+- exact pixel/z-order checks with overlapping higher/lower `desktopStackZ`
+  widgets;
+- edit drag/resize, free/zone placement, opacity animation, blur/effects,
+  screen lock, parallax and family transition;
+- no input region / keyboard focus changes;
+- no one-frame disappearance or duplicate drawing on detach/reattach;
+- CAVA process/subscriber count unchanged.
+
+The upstream iRiS pulse conversions are the same architectural idea, not a
+separate Hadalis finding. Hadalis has no iRiS family, so do not port those
+components merely because they exist upstream.
+
+### 52.2 Output-sized static wallpaper decode is a good upstream optimization but is already present in Hadalis — ALREADY / SUPERSEDED
+
+Upstream commit:
+
+`714653592dde75aef1d072c23ba507603acace2a`.
+
+The upstream change adds `Image.sourceSize` / crossfader source sizing so large
+static wallpaper files are decoded near their actual draw dimensions instead of
+at full file resolution.
+
+Current Hadalis already has this class of optimization:
+
+- main `Background.qml` `WallpaperCrossfader` decodes at screen dimensions x
+  monitor scale and explicitly avoids parallax-scale CPU upscaling;
+- `WaffleBackground.qml` already supplies screen-sized `sourceSize`;
+- ii and Waffle backdrops already supply bounded source sizes;
+- blurred backdrop paths go further and decode at half output dimensions while
+  blur is active.
+
+Therefore this new upstream commit does **not** create a new Hadalis backlog
+item. Preserve Hadalis' current fill/parallax/DPI semantics rather than copying
+upstream's exact sizing expression mechanically.
+
+Status: **ALREADY / SUPERSEDED by current Hadalis implementation**.
+
+### 52.3 ThemeService misses signature priming when instantiated after Config is already ready — CORRECTNESS PREREQUISITE / P0-P1 avoidable regeneration
+
+Upstream commit:
+
+`2d1bc803a59e85a0d8817a483663cc0949e7ce26`.
+
+The relevant upstream change factors signature initialization into
+`_primeLiveRegen()` and calls it from both:
+
+- `Config.onReadyChanged`;
+- `Component.onCompleted`.
+
+Current Hadalis only primes:
+
+- `_lastLiveRegenSignature`;
+- `_lastPanelFamily`
+
+inside `Config.onReadyChanged`.
+
+Its `Component.onCompleted` branch for an already-ready Config runs
+`normalizeGlobalStyle()` and restarts the schedule refresh, but **does not
+prime those two fields**.
+
+This matters because Hadalis shell startup explicitly handles the case where
+`Config.ready` was already true before the shell root was built: it
+`Qt.callLater()` calls `ThemeService.applyCurrentTheme()`. If ThemeService is
+first instantiated after readiness, its own `onReadyChanged` never fires.
+
+Then the first later `Config.onConfigChanged` can reach
+`_tryLiveRegenerateFromConfig()` with:
+
+- current nonempty `liveRegenSignature`;
+- stale initial `_lastLiveRegenSignature = ""`;
+- stale `_lastPanelFamily = ""`.
+
+For auto theme this can make an unrelated first Config change look like a
+live-theme delta and launch the expensive regeneration path.
+
+This is a correctness/lifecycle initialization bug with performance
+consequences. Preventing that phantom regeneration changes current observable
+side effects, so it is **not** labeled a strict-lossless optimization.
+
+Required fix contract:
+
+- when ThemeService is created with Config already ready, immediately prime the
+  exact current signature/family;
+- keep existing Config-ready behavior when readiness occurs later;
+- do not remove the intentional startup `applyCurrentTheme()` reconciliation;
+- a genuinely relevant signature change must still regenerate;
+- a family change must still force family-aware regeneration;
+- manual-theme and standalone-settings behavior must remain unchanged.
+
+Regression fixture:
+
+1. instantiate with `Config.ready=true`;
+2. record no theme regeneration from an unrelated Config mutation;
+3. mutate a field included in `liveRegenSignature` and verify one regeneration;
+4. change panel family and verify existing family-change behavior;
+5. repeat with Config becoming ready after ThemeService construction.
+
+This finding refines, but does not invalidate, §24.4: upstream still intentionally
+requests external theme application from `applyCurrentTheme()`; this is about
+preventing an additional phantom live regeneration, not deleting startup
+reconciliation.
+
+### 52.4 Deferred widget-placement callLater can outlive the widget — CORRECTNESS PREREQUISITE / lifecycle
+
+Upstream commit:
+
+`7de501d3ab6e401078632a731a3f646984ee17e3`.
+
+Current Hadalis
+`modules/background/widgets/AbstractBackgroundWidget.qml` still uses:
+
+- `Qt.callLater(root.applyPlacementFromConfig)` from `Component.onCompleted`;
+- the same `Qt.callLater(...)` from `onPlacementStrategyChanged`.
+
+Upstream replaced that with a zero-interval Timer owned by the widget and
+restarts the Timer from those paths. If the widget is destroyed before the
+deferred callback, the owned Timer disappears with it instead of retaining a
+callback into the dead widget context.
+
+This is a correctness prerequisite, especially around dynamic widget
+load/unload, output changes and edit/config transitions.
+
+It is **not** a pure strict-lossless performance optimization:
+
+- Timer restart may coalesce multiple pending requests that separate
+  `Qt.callLater` calls would have delivered;
+- exact event-loop timing needs parity review;
+- eliminating callbacks after destruction intentionally changes an erroneous
+  lifecycle behavior.
+
+Required fixture before adapting:
+
+- create then destroy a widget before the deferred placement turn;
+- multiple placement-strategy changes in one event-loop turn;
+- Config-ready-before/after component construction;
+- free vs zone placement;
+- leastBusy/mostBusy request count and final geometry;
+- no stale OpenCV placement helper launch after widget destruction.
+
+The existing §29.2 least-busy request serialization/dedup work remains a
+separate optimization problem; do not use this lifecycle fix as a substitute for
+its request-signature/in-flight correctness.
+
+### 52.5 The upstream video playback proxy is intentionally not re-counted and is outside strict-lossless anyway — PREVIOUS-UPSTREAM / TRADEOFF
+
+`Wallpapers.videoPlaybackPath()` and the tiered cached
+`video-playback-copy.sh` mechanism were already present at upstream
+`bbd304b3...`, so Round 38 does not count them as newly learned work.
+
+For completeness, it also does not satisfy this project's strict-lossless bar:
+
+- large videos may be transcoded to H.264 at a smaller resolution;
+- small consumer tiers may cap playback at 30 FPS;
+- source handoff/cache build timing changes;
+- encoded color/quality/frame timing can differ;
+- persistent disk/cache state is added.
+
+It may be a valid product-level CPU/GPU optimization under an explicit quality
+tradeoff, but it does not belong in the strict no-visual/no-animation-change
+batch.
+
+### 52.6 Round-38 upstream-delta conclusion
+
+For the **new** iNiR delta after `bbd304b3...`:
+
+**CONFIRMED strict-lossless new ports:**
+
+- none promoted from this upstream delta.
+
+That is intentional, not a failed audit. The strongest new upstream performance
+idea changes rendering surface topology and needs parity/tradeoff evidence.
+
+**ALREADY / no new Hadalis work:**
+
+1. bounded static wallpaper decode size (§52.2).
+
+**High-value candidate requiring evidence:**
+
+2. isolate continuously moving desktop Visualizer damage into a small surface
+   only if Hadalis-specific z-order/effects/compositor parity and RAM costs are
+   proven (§52.1).
+
+**New correctness prerequisites discovered from upstream:**
+
+3. prime ThemeService live-regeneration signature when constructed after
+   Config-ready (§52.3);
+4. replace destruction-unsafe deferred widget placement ownership after lifecycle
+   parity is defined (§52.4).
+
+**Explicitly excluded from new findings:**
+
+5. tiered video-playback proxy existed before the previous upstream snapshot and
+   is not strict-lossless (§52.5);
+6. iRiS-specific pulse/chassis work has no direct Hadalis family target and is
+   only evidence for the LiveLayer architecture;
+7. no upstream change in this delta authorizes altering animation cadence,
+   visual quality, stacking, event timing or cache residency under the strict
+   optimization contract.
+
+Earlier correctness prerequisites remain active and still outrank pure
+performance work:
+
+- capture-helper stale-preview hash / newer-user clipboard races (§44.1, §45.6);
+- Bar/Dock first-empty ignored-regex initialization and invalid-regex robustness
+  (§47.1-§47.2).
+
+No runtime/source implementation is authorized by this handoff.

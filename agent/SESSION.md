@@ -1,16 +1,18 @@
 # Autonomous session checkpoint
 
-The desktop feasibility probe has passed all four critical signals: submit worked, generation was detected, completion was detected, and the exact probe reply was observed.
+Desktop feasibility is complete: submit, generation start, generation completion, and response detection all passed.
 
-The implementation has progressed beyond probes. The repository now contains the chat bridge, deterministic worker, service installer, and CDP host supervisor. A safety fix removed `browser.close()` from the CDP CLI so attaching through Playwright cannot intentionally close the real ChatGPT Desktop instance, and generation completion now requires observing the Stop state before accepting the later Regenerate state.
+Focused automation validation `JOB-AUTOMATION-VALIDATE-002` passed every action. Canonical validation `JOB-MAINTAINER-VALIDATE-001` completed but the repository remains non-green because of 33 unrelated product/regression failures; the three Hadalis automation regression tests passed inside that run.
 
-Pending mechanical evidence: `JOB-AUTOMATION-VALIDATE-001`.
+A production-safety change now starts new autonomous sessions with `rotate-send`, which creates a fresh chat inside Hadalis Cloud before sending the initial prompt. Continuations remain in the current chat; explicit rotation also uses `rotate-send`.
+
+Pending mechanical evidence: `JOB-DESKTOP-LIVE-ACCEPT-001`.
 
 Resume procedure:
 1. Fetch current `dev` HEAD.
-2. Check for `automation/results/JOB-AUTOMATION-VALIDATE-001.json`.
-3. If absent, wait; do not invent validation results.
-4. If present, inspect every action exit code/stdout/stderr.
-5. Fix forward on current `dev` if needed.
-6. Queue the canonical `bash scripts/validate-maintainer-local.sh` run only after focused automation validation passes.
-7. Continue toward one live end-to-end autonomous session from the tracked initial prompt.
+2. Read `automation/results/JOB-DESKTOP-LIVE-ACCEPT-001.json` if present.
+3. If absent, wait for the deterministic local worker; do not invent the result.
+4. If it failed, inspect exact stdout/stderr and fix forward on current `dev`.
+5. If it passed, install the user services from the maintainer's persistent local checkout, not from an ephemeral worker clone.
+6. Start the worker, ChatGPT CDP host supervisor, and chat bridge.
+7. Confirm the first autonomous bootstrap creates a fresh Hadalis Cloud chat, uses the GitHub connector, fetches current `dev` HEAD, and advances by loop markers without the user typing "continue".

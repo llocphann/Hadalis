@@ -13,12 +13,28 @@ Bring the Hadalis autonomous development loop from feasibility to a validated fi
 - deterministic local execution worker;
 - user-service installer;
 - localhost-only ChatGPT CDP host supervisor;
-- regression tests for protocol/state, worker safety, and CDP host safety.
+- regression tests for protocol/state, worker safety, and CDP host safety;
+- first-use bootstrap now opens a fresh Hadalis Cloud chat instead of reusing an existing conversation.
+
+## Validation status
+
+Focused automation validation `JOB-AUTOMATION-VALIDATE-002` passed all six actions.
+
+Canonical maintainer validation `JOB-MAINTAINER-VALIDATE-001` ran successfully as a validator but returned FAIL because the repository currently has 33 product/regression failures outside the autonomous automation path. The automation-specific tests inside that canonical run all passed:
+- `scripts/test-hadalis-chat-bridge.py`
+- `scripts/test-hadalis-desktop-host.py`
+- `scripts/test-hadalis-worker.py`
+
+Do not describe the current repository SHA as canonically green.
 
 ## Current gate
 
-The repository contains pending local validation job:
+Pending local live transport acceptance:
 
-`JOB-AUTOMATION-VALIDATE-001`
+`JOB-DESKTOP-LIVE-ACCEPT-001`
 
-The next reasoning step after its result is published is to read `automation/results/JOB-AUTOMATION-VALIDATE-001.json`, fix any failures, then run the canonical maintainer validator through a new explicit worker job before the first live autonomous-loop acceptance run.
+It performs a syntax check, then opens a fresh Hadalis Cloud chat through the production CDP driver, sends a fixed prompt containing the GitHub connector mention, verifies read access to `llocphann/Hadalis` and current `dev` HEAD through ChatGPT, waits for generation completion, and requires exactly:
+
+`HADALIS_LOOP:DONE`
+
+After this passes, proceed to the one-time user-service installation and first real autonomous bootstrap session.

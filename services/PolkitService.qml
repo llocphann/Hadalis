@@ -322,28 +322,37 @@ Singleton {
         if (root._outputExists(root.targetOutputName))
             return
 
-        if (root.presentationMatchesActive) {
-            if (root.hadResolvedAnchor) {
-                // A trusted attached source vanished with its output. Preserve
-                // source-loss semantics and cancel the real AuthFlow.
-                root._cancelForSourceLoss()
-                return
-            }
-            // Top-center fallback has no source geometry to preserve. Move the
-            // same active AuthFlow to a remaining output after hot-unplug.
-            root.targetOutputName = GlobalStates.resolveOutputName("", [])
-            return
-        }
-
+        // A queued successor can already be the active AuthFlow while the
+        // predecessor's visual tail is retained with presentationSerial == 0.
+        // Release that stale tail first; the successor will latch its own output
+        // when finishPresentation() restarts presentation.
         if (root.presentationRetained && root.presentationSerial === 0) {
-            // A queued successor is waiting for the previous popup tail, but
-            // that tail's output no longer exists. Release it immediately and
-            // let finishPresentation() start the current AuthFlow presentation.
             root.finishPresentation(true)
             return
         }
 
-        if (!root.presentationRetained && root.abyssPresenterAvailable)
+        const currentTrustedSource =
+            root.resolvedAnchorRequestSerial === root.requestSerial
+            && (root.hadResolvedAnchor || root._activeHintResolvedOnce)
+        if (currentTrustedSource) {
+            // A trusted attached source vanished with its output. Preserve
+            // source-loss semantics and cancel the real AuthFlow even if the
+            // connected renderer had already failed over to legacy UI.
+            root._cancelForSourceLoss()
+            return
+        }
+
+        // Top-center/no-source presentation may safely retarget. Do this even
+        // while the legacy renderer owns visibility, otherwise targetOutputName
+        // can remain a removed output forever and a newly-ready Abyss host on a
+        // surviving output can never reacquire the live AuthFlow.
+        const replacement = GlobalStates.resolveOutputName("", [])
+        if (!replacement || replacement === root.targetOutputName)
+            return
+        root.targetOutputName = replacement
+
+        if (!root.presentationRetained
+                && root._abyssHostAvailableFor(replacement))
             root._startPresentationForCurrentRequest()
     }
 

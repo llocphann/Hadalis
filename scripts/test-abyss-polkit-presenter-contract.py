@@ -70,7 +70,14 @@ assert "Qt.callLater(root._reconcileOutputTopology)" in service
 assert "root.presentationMatchesActive" in service
 assert "root.hadResolvedAnchor" in service
 assert "root.finishPresentation(true)" in service
-assert 'root.targetOutputName = GlobalStates.resolveOutputName("", [])' in service
+topology=service.split("function _reconcileOutputTopology(): void",1)[1].split("Connections {",1)[0]
+assert "root.presentationRetained && root.presentationSerial === 0" in topology
+assert "const currentTrustedSource =" in topology
+assert "root.resolvedAnchorRequestSerial === root.requestSerial" in topology
+assert "root._cancelForSourceLoss()" in topology
+assert 'const replacement = GlobalStates.resolveOutputName("", [])' in topology
+assert "root.targetOutputName = replacement" in topology
+assert "root._abyssHostAvailableFor(replacement)" in topology
 assert "root.ownsPresentation" in presenter
 assert "root.ownsOutput && PolkitService.presentationMatchesActive" in presenter
 assert "onOwnsPresentationChanged" in presenter

@@ -93,7 +93,7 @@ export async function waitForCompletion(page, timeoutMs = 600000) {
     sawStop ||= stop > 0;
     sawClear ||= empty;
 
-    if (sawClear && stop === 0 && regen > 0) {
+    if (sawStop && sawClear && stop === 0 && regen > 0) {
       await sleep(900);
       const stop2 = await visibleCount(page.getByRole("button", { name: /stop/i }));
       const regen2 = await visibleCount(page.getByRole("button", { name: /regenerate response/i }));

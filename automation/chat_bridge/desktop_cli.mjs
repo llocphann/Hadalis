@@ -18,40 +18,43 @@ async function readStdin() {
 
 async function main() {
   const command = process.argv[2] ?? "observe";
-  const { browser, page } = await connectDesktop();
+  const { page } = await connectDesktop();
 
-  try {
-    if (command === "observe") {
-      console.log(JSON.stringify(await observeDesktop(page)));
-      return;
-    }
-
-    if (command === "new-chat") {
-      await openHadalisNewChat(page);
-      console.log(JSON.stringify(await observeDesktop(page)));
-      return;
-    }
-
-    if (command === "await-current") {\n      const generation = await waitForCompletion(page);\n      const response = await extractLoopResponse(page);\n      console.log(JSON.stringify({ generation, response }));\n      return;\n    }\n\n    if (command === "send" || command === "rotate-send") {
-      if (command === "rotate-send")
-        await openHadalisNewChat(page);
-
-      const prompt = await readStdin();
-      if (!prompt.trim())
-        throw new Error("stdin prompt is empty");
-
-      await submitPrompt(page, prompt);
-      const generation = await waitForCompletion(page);
-      const response = await extractLoopResponse(page);
-
-      console.log(JSON.stringify({ generation, response }));
-      return;
-    }
-
-    throw new Error(`unknown command: ${command}`);
-  } finally {
-    await browser.close();
+  if (command === "observe") {
+    console.log(JSON.stringify(await observeDesktop(page)));
+    return;
   }
+
+  if (command === "new-chat") {
+    await openHadalisNewChat(page);
+    console.log(JSON.stringify(await observeDesktop(page)));
+    return;
+  }
+
+  if (command === "await-current") {
+    const generation = await waitForCompletion(page);
+    const response = await extractLoopResponse(page);
+    console.log(JSON.stringify({ generation, response }));
+    return;
+  }
+
+  if (command === "send" || command === "rotate-send") {
+    if (command === "rotate-send")
+      await openHadalisNewChat(page);
+
+    const prompt = await readStdin();
+    if (!prompt.trim())
+      throw new Error("stdin prompt is empty");
+
+    await submitPrompt(page, prompt);
+    const generation = await waitForCompletion(page);
+    const response = await extractLoopResponse(page);
+
+    console.log(JSON.stringify({ generation, response }));
+    return;
+  }
+
+  throw new Error(`unknown command: ${command}`);
 }
 
 main().catch(error => {

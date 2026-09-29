@@ -144,7 +144,9 @@ Singleton {
     }
 
     function selectNextIdentity(): void {
-        if (!impl || !root.flow)
+        // Identity changes mutate the live AuthFlow. Keep them disabled while
+        // the backend is pending/busy; Cancel remains available separately.
+        if (!impl || !root.flow || !root.interactionAvailable || root.busy)
             return
         const count = Number(root.identities?.length ?? 0)
         if (count <= 1)

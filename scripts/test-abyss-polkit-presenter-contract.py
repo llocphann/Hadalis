@@ -29,6 +29,9 @@ assert "Qt.Key_Return" in content and "Qt.Key_Enter" in content
 assert "onInteractionAvailableChanged" in content
 assert "Authentication failed. Try again." in content
 assert "selectNextIdentity()" in content
+assert "enabled: PolkitService.interactionAvailable" in content
+assert "&& !(root.model?.busy ?? false)" in content
+assert "!root.interactionAvailable || root.busy" in service
 assert "detailsOpen" in content
 assert "AbyssSearchField" in content
 for forbidden in ("ConfirmationService", "GlobalStates", "Config.", "console."):

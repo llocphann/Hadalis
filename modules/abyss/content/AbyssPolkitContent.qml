@@ -153,6 +153,8 @@ FocusScope {
 
             AbyssButton {
                 visible: Number(root.model?.identityCount ?? 0) > 1
+                enabled: PolkitService.interactionAvailable
+                    && !(root.model?.busy ?? false)
                 text: Translation.tr("Switch")
                 glyph: "switch_account"
                 onClicked: PolkitService.selectNextIdentity()

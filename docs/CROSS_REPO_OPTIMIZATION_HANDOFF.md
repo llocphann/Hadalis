@@ -11319,3 +11319,651 @@ Round-33 Bar/Dock regex correctness prerequisites (§47.1 / §47.2) remain above
 all pure performance work.
 
 No runtime/source implementation is authorized by this handoff.
+
+---
+
+## 49. Round 35 — strict-lossless desktop placement, calendar query specialization and cold-path collection reductions (2026-09-30)
+
+### Snapshot / stricter acceptance rule
+
+Round 35 was audited against exact \`dev\` HEAD:
+
+\`6437275f73b9d611c442c1a0db3fa151271ebaea\`
+— \`docs(perf): audit search and catalog collection costs\`.
+
+No concurrent commit landed between the Round-35 opening refetch and the
+pre-write refetch.
+
+The owner explicitly re-stated that optimization must be **lossless**. For this
+round, a candidate is marked CONFIRMED only when source-level equivalence can
+preserve all of the following relevant contracts:
+
+- returned values and ordering;
+- duplicate/tie behavior;
+- visible UI/UX;
+- mutation and persistence timing;
+- process/IPC side effects;
+- QML reactive dependencies/change-signal behavior where those signals have
+  consumers;
+- failure/fallback semantics.
+
+Consequences:
+
+- no debounce/batching is promoted merely because it is faster;
+- no persistent cache is promoted merely because it saves CPU;
+- no sort replacement is promoted if tie behavior is not exact;
+- no shared reactive model is promoted if it can broaden change signals;
+- local ephemeral Set/Map use is allowed where membership semantics are exact
+  and no state survives the invocation/binding evaluation.
+
+Qt/QML supports the standard JavaScript \`Set\`/ \`Map\` built-ins. The ID/key
+cases below are strings, so replacing repeated \`Array.includes/indexOf\`
+membership with a local Set preserves equality semantics while retaining output
+order through the original result array.
+
+### 49.1 DesktopItems arrangePosition materializes/copies unrelated desktop items before occupancy checks — CONFIRMED / P1-P2 during drag/drop/reconcile
+
+Paths:
+
+- \`services/DesktopItems.qml\`;
+- \`modules/background/desktopItems/DesktopItemDelegate.qml\`;
+- \`modules/background/desktopItems/DesktopDropCoordinator.qml\`;
+- \`docs/DESKTOP_ITEMS.md\`.
+
+The documented placement contract is:
+
+- snap to the desktop-widget edit grid;
+- choose the nearest free cell;
+- skip occupied cells so icons do not overlap.
+
+Current \`arrangePosition()\` builds \`occupied\` as:
+
+1. \`listForOutput(output)\`;
+2. \`listForOutput()\` first calls \`listItems()\`;
+3. \`listItems()\` enumerates **every** desktop item and creates a shallow copy
+   with its ID;
+4. \`listForOutput()\` filters those copies by output;
+5. \`arrangePosition()\` filters that output list again to exclude the moving
+   item.
+
+The occupancy loop only reads:
+
+- item ID for exclusion;
+- item output;
+- item x/y.
+
+No consumer outside \`DesktopItems.qml\` currently calls \`listForOutput()\`, so
+its compatibility API can remain unchanged while \`arrangePosition()\` takes a
+strictly local direct path.
+
+Exact-safe direction:
+
+- enumerate \`Object.keys(root.items)\` once;
+- skip \`excludeItemId\` by key before any copy;
+- read the original record;
+- append only same-output records to the local \`occupied\` list, or perform the
+  same overlap checks directly against those records;
+- do not mutate any record.
+
+Because JavaScript execution here is synchronous, using the original record for
+read-only x/y checks cannot observe an intervening DesktopItems mutation that
+the shallow-copy version could have isolated.
+
+Preserved behavior:
+
+- other-output items remain ignored;
+- excluded moving item remains ignored;
+- same-output occupancy rectangle math is unchanged;
+- \`listItems()\` / \`listForOutput()\` public behavior remains unchanged;
+- nearest-cell ordering is untouched.
+
+Removed work for I total items and O same-output occupied items:
+
+- I shallow item-copy allocations;
+- one full filter pass over I copied records;
+- one second filter pass over O records.
+
+The remaining occupancy list can contain references rather than copies.
+
+### 49.2 DesktopItems has an exact zero-distance fast path before allocating/sorting the whole candidate grid — CONFIRMED / P1 common drag/drop case
+
+Path:
+
+- \`services/DesktopItems.qml\`.
+
+Current snapped placement always:
+
+1. enumerates every grid candidate;
+2. allocates \`{x,y,distance}\` for every candidate;
+3. sorts the full candidate array by:
+   - squared distance;
+   - then y;
+   - then x;
+4. checks candidates in that order until one is free.
+
+But when both \`anchorX\` and \`anchorY\` are actual grid coordinates generated
+by the existing loops, the anchor is the unique candidate with squared distance
+zero.
+
+Therefore, if that anchor cell is free, the current algorithm must return it
+first.
+
+Strict-safe fast path:
+
+1. build occupancy exactly as today / §49.1;
+2. verify the clamped anchor is actually representable by the candidate loops:
+   - \`anchorX % pitchX === 0\`;
+   - \`anchorY % pitchY === 0\`;
+3. if representable and \`isFree(anchorX, anchorY)\`, return it immediately;
+4. otherwise run the existing candidate generation, comparator, sort and scan
+   unchanged.
+
+The representability guard matters because clamping can produce \`maxX/maxY\`
+values that are not pitch multiples; such a clamped anchor is not necessarily
+present in the current candidate list.
+
+For the common free snapped cell, this changes:
+
+- G candidate-object allocations -> 0;
+- one G-element sort -> 0;
+- one occupancy check remains.
+
+Do **not** replace the occupied-anchor fallback with an unsorted full-grid
+minimum scan as part of this patch. Although value-equivalent algorithms exist,
+their cost shape differs and the existing explicit distance/y/x comparator is
+already a clear product contract.
+
+### 49.3 Calendar month cells allocate full event arrays for count/presence-only questions — CONFIRMED / P1 while calendar is visible
+
+Paths:
+
+- \`services/Events.qml\`;
+- \`services/CalendarSync.qml\`;
+- \`modules/sidebarRight/calendar/CalendarWidget.qml\`;
+- \`modules/waffle/notificationCenter/CalendarWidget.qml\`.
+
+Both calendar presentations repeatedly ask count/presence questions per visible
+day cell.
+
+Current count path:
+
+- \`Events.getEventsForDate(date).length\`;
+- \`CalendarSync.getEventsForDate(date).length\`.
+
+Current local-dot presence path additionally does:
+
+- \`Events.getEventsForDate(date)\`;
+- test \`.length > 0\`.
+
+Each service function currently filters its complete event list and allocates an
+array of matching event references even when the caller needs only an integer or
+boolean.
+
+Exact-safe specialization:
+
+- add \`Events.countEventsForDate(date)\` using the exact existing local-event
+  predicate;
+- add \`Events.hasEventsForDate(date)\` using the exact same predicate and stop
+  at the first match;
+- add \`CalendarSync.countEventsForDate(date)\` using the exact current external
+  predicate;
+- retain both existing \`getEventsForDate()\` functions for callers that
+  genuinely need ordered event objects.
+
+Important parity rules that must be copied verbatim, not reinterpreted:
+
+Local Events:
+
+- date source remains \`event.startDate || event.dateTime\`;
+- notified timed events remain excluded;
+- notified all-day events remain visible for their day.
+
+CalendarSync:
+
+- all-day start/end normalization remains local-midnight based;
+- RFC 5545 all-day \`DTEND\` remains exclusive;
+- missing/non-forward end keeps the current single-day fallback;
+- timed events retain the current local-date comparison.
+
+For N local events and E external events, each count-only day cell still visits
+the same records but allocates **zero match arrays**.
+
+For local color presence, \`hasEventsForDate()\` can stop at the first matching
+event instead of filtering all N records.
+
+This is deliberately narrower than a persistent date-index cache: no additional
+resident event index is introduced.
+
+### 49.4 CalendarSync source-color query can scan matching events directly instead of filter-then-scan — CONFIRMED / P1-P2
+
+Path:
+
+- \`services/CalendarSync.qml\`.
+
+\`getSourceColorsForDate(date)\` currently:
+
+1. calls \`getEventsForDate(date)\`, which scans all external events and
+   allocates a matching-event array;
+2. scans that array again;
+3. uses a local Set to deduplicate \`sourceId\`;
+4. appends \`sourceColor\` in first-matching-event order.
+
+Exact-safe direction:
+
+- factor the current “event occurs on target day” predicate into a private
+  helper, or reproduce it byte-for-byte in the source-color loop;
+- scan \`root.events\` once;
+- skip nonmatching events;
+- retain the existing local \`seen\` Set;
+- append the first color for each source ID in the same root.events order.
+
+Result ordering is identical because Array.filter preserves source order and the
+second current loop consumes that filtered order unchanged.
+
+Removed work:
+
+- the temporary day-events array;
+- the second traversal over the matching subset.
+
+The same private predicate can be shared by §49.3 count/list/color functions,
+but it must not change date parsing or all-day semantics.
+
+### 49.5 Notepad tab-ID normalization has quadratic duplicate membership with an exact Set replacement — CONFIRMED / P2 cold load/migration
+
+Path:
+
+- \`services/Notepad.qml\`.
+
+\`_normalizeTabs()\` currently keeps:
+
+\`const seenIds = []\`
+
+and uses \`seenIds.includes(id)\`:
+
+- once for each loaded valid tab;
+- repeatedly inside the generated-ID collision loop.
+
+For T valid tabs, duplicate membership is O(T²) worst-shaped.
+
+All IDs are normalized to strings before membership checks.
+
+Strict-safe direction:
+
+- replace only the membership structure with a local \`Set\`;
+- preserve the separate \`normalized\` output array;
+- on first occurrence:
+  - \`seenIds.add(id)\`;
+  - append the normalized tab;
+- for missing/duplicate IDs:
+  - keep calling the existing \`_allocateTabId()\`;
+  - repeat while \`seenIds.has(id)\`;
+  - then add/append.
+
+Preserved behavior:
+
+- invalid records are skipped in the same order;
+- first duplicate occurrence keeps its original ID;
+- later duplicates receive generated IDs;
+- generated-ID collision retry remains;
+- normalized tab order is unchanged;
+- \`_normalizedTabsNeedSave\` behavior is unchanged.
+
+This is the same lossless membership pattern already accepted for other ordered
+recovery paths, but applied to a previously unaudited service.
+
+### 49.6 FirstRunExperience can select the exact same wallpaper while streaming discovery instead of storing/copying/sorting all candidates — CONFIRMED / P3 cold first-run
+
+Path:
+
+- \`services/FirstRunExperience.qml\`.
+
+Current wallpaper discovery:
+
+- \`find\` emits image paths from one wallpaper directory with \`-maxdepth 1\`;
+- every path is stored in \`_candidates\`;
+- completion clones the full array;
+- default \`.sort()\` lexicographically sorts it;
+- it prefers the first path ending in \`/qs-niri.jpg\`;
+- otherwise it takes the lexicographically first path.
+
+Because discovery is limited to one directory, there can be only one filesystem
+entry with the exact basename \`qs-niri.jpg\`.
+
+The same selection can be computed while stdout is read:
+
+- \`preferredCandidate\`: remember the \`/qs-niri.jpg\` path if seen;
+- \`fallbackCandidate\`: remember the lexicographically smallest nonempty path;
+- completion chooses \`preferredCandidate || fallbackCandidate\`.
+
+Default JavaScript string sort and relational string comparison both use
+lexicographic UTF-16 code-unit ordering, so the fallback value is identical.
+Duplicate identical lines, if ever emitted, also cannot change the selected
+string value.
+
+This removes:
+
+- retention of all W candidate strings;
+- one W-element array copy;
+- O(W log W) default sort work.
+
+Failure/start behavior must remain exact:
+
+- reset both streaming candidates when the Process actually starts;
+- if Process start fails, completion still proceeds with no wallpaper and the
+  current welcome fallback;
+- do not change marker/welcome sequencing.
+
+### 49.7 Layout editors repeatedly concat zone arrays and use linear placed-membership for every available ID — CONFIRMED / P2-P3 edit-mode
+
+Paths:
+
+- \`modules/common/widgets/BarModuleOrderEditor.qml\`;
+- \`modules/dashboard/DashLayoutEditor.qml\`.
+
+Both editors have the same local pattern.
+
+Placed IDs:
+
+- start with \`[]\`;
+- repeatedly execute \`s = s.concat(zone)\` for each zone.
+
+Availability:
+
+- filter all known IDs;
+- call \`placed.indexOf(id)\` for each candidate.
+
+Strict-safe local direction:
+
+1. build \`placed\` once with nested loops / \`push\`, preserving zone order and
+   duplicate entries exactly;
+2. build an invocation-local \`Set(placed)\`;
+3. filter known IDs with \`placedSet.has(id)\`.
+
+Bar-specific contract:
+
+- \`spacer\` remains reusable and must bypass placed membership exactly as now.
+
+Dashboard-specific contract:
+
+- output \`availableIds\` remains in \`allIds\` order.
+
+No persistent index is introduced.
+
+For Z zones containing P total placed IDs and A known IDs:
+
+- repeated concat prefix copying is removed;
+- availability membership changes from O(A x P) to O(P + A).
+
+The current lists are modest, so this is not a top runtime priority, but it is
+fully lossless and useful while edit mode is active.
+
+### 49.8 AndroidQuickPanel duplicate/availability checks can use invocation-local Sets without changing toggle order — CONFIRMED / P3
+
+Path:
+
+- \`modules/sidebarRight/quickToggles/AndroidQuickPanel.qml\`.
+
+Two derived paths repeat linear membership:
+
+\`unusedToggles\`:
+
+- for every one of 19 available toggle types, calls
+  \`toggles.some(...type...)\`.
+
+\`toggleRowsForList()\`:
+
+- calls \`availableToggleTypes.indexOf(type)\`;
+- calls growing \`seenTypes.indexOf(type)\`;
+- appends first valid occurrence only.
+
+Exact-safe direction:
+
+- build a local Set of configured toggle types for \`unusedToggles\`;
+- build a local Set of the 19 valid types plus a local \`seenTypes\` Set in
+  \`toggleRowsForList()\`;
+- keep the original arrays/row construction for output ordering.
+
+Preserved behavior:
+
+- first configured duplicate wins;
+- invalid toggle types remain skipped;
+- row packing and clamped size are unchanged;
+- unused toggles remain in \`availableToggleTypes\` order.
+
+These Sets exist only during the binding/function evaluation.
+
+### 49.9 Waffle font search performs featured-font membership work even when search mode never consumes it — CONFIRMED with dependency-preservation rule / P2 per keystroke
+
+Path:
+
+- \`modules/waffle/settings/WSettingsFontSelector.qml\`.
+
+The ListView model currently does, in this order:
+
+1. lowercase search text;
+2. call \`Qt.fontFamilies()\`;
+3. compute \`featured = root.featuredFonts.filter(f => allFonts.indexOf(f) !== -1)\`;
+4. if search is nonempty, ignore \`featured\` and filter all fonts by search;
+5. only the empty-search branch uses \`featured\` to put preferred fonts first.
+
+Therefore every typed search recomputation performs up to five full
+\`allFonts.indexOf()\` scans that cannot affect the search result.
+
+Strict-lossless direction:
+
+- keep a local reference/read of \`root.featuredFonts\` before the branch so the
+  QML binding retains the same featured-font dependency;
+- when search is nonempty, perform only the existing all-font search filter;
+- compute \`featured\` only in the empty-search branch.
+
+The explicit dependency preservation matters because \`featuredFonts\` is an
+assignable component property and at least one caller binds it to Waffle theme
+font state.
+
+Do not cache \`Qt.fontFamilies()\` across queries under the strict-lossless
+scope: the current implementation asks Qt for a fresh family list on every model
+recomputation, and there is no equivalent invalidation contract in this
+component.
+
+### 49.10 GlobalStates screen-disconnect cleanup can avoid repeated connected-array membership with an invocation-local Set — CONFIRMED / P3 rare topology change
+
+Path:
+
+- \`GlobalStates.qml\`.
+
+On every \`Quickshell.screensChanged\`, current code:
+
+- maps all screens to a temporary connected-name array;
+- uses \`connected.includes(...)\` for notification-center hover ownership;
+- repeats \`connected.includes(...)\` for every Bar popup hover lease;
+- allocates \`Object.keys(nextLeases)\` and \`Object.keys(oldLeases)\` only to
+  determine whether an own lease was removed.
+
+Safe partial reduction:
+
+- build one invocation-local Set of connected screen-name strings while
+  retaining any array only if another consumer actually needs ordered names;
+- use \`Set.has\` for hover/lease membership;
+- keep the existing \`for...in\` lease traversal and current assignment timing.
+
+For the final “did own-lease count change?” test, be conservative:
+
+- either retain the current \`Object.keys\` comparison;
+- or replace it only with own-property counters that exactly mirror
+  \`Object.keys\` semantics.
+
+Do **not** use a generic “saw a rejected for-in property” boolean: inherited
+enumerable properties would make that subtly different from the current
+\`Object.keys\` count contract.
+
+This is P3 because monitor topology changes are rare, but the local Set itself
+is lossless.
+
+### 49.11 Naively collapsing Audio's four PipeWire filters into one shared reactive partition is NOT authorized as absolute-lossless — CLOSED pending signal parity
+
+Paths:
+
+- \`services/Audio.qml\`;
+- \`services/MprisController.qml\`.
+
+Current Audio publishes four independent reactive list properties:
+
+- output app streams;
+- input app streams;
+- output devices;
+- input devices.
+
+They each filter \`Pipewire.nodes.values\`.
+
+A one-pass shared partition looks attractive, but in QML changing the
+intermediate dependency graph can broaden which final list properties are
+re-evaluated/changed.
+
+That matters here because \`MprisController\` has:
+
+\`Connections { target: Audio; function onOutputAppNodesChanged() ... }\`
+
+and that handler can restart the PipeWire metadata refresh debounce, which can
+lead to \`pw-dump\` work.
+
+Therefore “same final array contents” is not sufficient proof.
+
+Status:
+
+- **CLOSED as a blind one-shared-partition optimization**;
+- a future two-partition or imperative publication design must prove exact
+  \`outputAppNodesChanged\` / \`inputAppNodesChanged\` signal parity under:
+  - node insert/remove;
+  - \`isSink\` changes;
+  - \`isStream\` changes;
+  - \`audio\` null/non-null changes;
+  - unrelated input-side changes;
+- no implementation should land solely on the basis of fewer filter passes.
+
+This is an example of the stricter Round-35 lossless rule: reactive side effects
+count as behavior.
+
+### 49.12 Full-grid “scan every cell and keep the best free candidate” is value-equivalent but not automatically a performance win — NEEDS BENCHMARK, not part of the confirmed patch set
+
+Path:
+
+- \`services/DesktopItems.qml\`.
+
+After §49.2, an occupied anchor still falls back to full candidate
+materialization/sort.
+
+A tempting alternative is:
+
+- scan every grid coordinate;
+- test occupancy immediately;
+- keep the best free candidate according to the exact
+  \`distance -> y -> x\` comparator.
+
+That can preserve the returned coordinate exactly.
+
+However its cost shape changes:
+
+Current fallback:
+
+- generate/sort all G candidates;
+- occupancy-test only until the first free candidate in sorted order.
+
+One-pass best-free scan:
+
+- removes sort/all candidate objects;
+- but occupancy-tests **every** grid coordinate.
+
+When the nearest few cells are occupied sparsely, either side can win depending
+on G and occupied count.
+
+Status:
+
+- **NEEDS BENCHMARK**, despite value parity;
+- §49.2's free-anchor fast path is confirmed independently and should land first.
+
+### 49.13 Round-35 regression requirements
+
+Before implementing the confirmed Round-35 batch, add focused parity coverage.
+
+DesktopItems:
+
+- snapping disabled returns the exact current clamp;
+- free grid-representable anchor returns the same anchor;
+- clamped non-grid anchor does not take the new fast path;
+- occupied anchor retains distance/y/x fallback order;
+- moving item exclusion remains exact;
+- items on another output never block;
+- same-output overlap rectangles remain unchanged.
+
+Calendar:
+
+- timed local notified event excluded from active day count;
+- notified all-day local event retained;
+- external all-day event with exclusive DTEND spans exactly the same dates;
+- missing/equal DTEND remains single-day;
+- source-color order follows first matching event order;
+- duplicate source IDs emit one color;
+- count/list/color predicates agree on the same fixture.
+
+Notepad:
+
+- first duplicate ID wins;
+- later duplicate gets generated ID;
+- whitespace-trimmed IDs still set save-needed;
+- generated-ID collision retries;
+- normalized output order unchanged.
+
+First run:
+
+- \`qs-niri.jpg\` always wins;
+- without it, lexicographically smallest path wins;
+- empty output;
+- Process start failure;
+- Process success with one/many paths.
+
+Layout/quick toggles:
+
+- duplicate IDs;
+- reusable Bar spacer;
+- invalid Android toggle types;
+- first Android duplicate wins;
+- row packing unchanged.
+
+Waffle font search:
+
+- empty search keeps featured-first order;
+- nonempty search result order unchanged;
+- changing bound \`featuredFonts\` while search is nonempty still causes the
+  model binding to retain its prior dependency/re-evaluation contract.
+
+### 49.14 Revised strict-lossless priority
+
+**Confirmed, no persistent cache and no intended observable behavior change:**
+
+1. DesktopItems direct same-output occupancy collection (§49.1);
+2. DesktopItems free-anchor zero-distance fast path (§49.2);
+3. Events/CalendarSync count/has specializations (§49.3);
+4. CalendarSync one-pass source colors (§49.4);
+5. Notepad duplicate-ID Set (§49.5);
+6. FirstRun streaming preferred/min fallback selection (§49.6);
+7. Bar/Dashboard layout-editor local push + Set membership (§49.7);
+8. AndroidQuickPanel local membership Sets (§49.8);
+9. Waffle font search branch-local featured work **with dependency preservation**
+   (§49.9);
+10. GlobalStates screen-disconnect local Set (§49.10).
+
+**Not authorized as lossless yet:**
+
+11. one shared Audio PipeWire partition (§49.11);
+12. full-grid best-free scan replacing DesktopItems sort (§49.12);
+13. persistent calendar date indexes;
+14. cached \`Qt.fontFamilies()\`;
+15. any debounce/coalescing of event/notepad persistence.
+
+Earlier correctness prerequisites remain above pure performance work:
+
+- capture-helper stale-preview hash / newer-user clipboard races (§44.1,
+  §45.6);
+- Bar/Dock first-run ignore-regex correctness (§47.1-§47.2).
+
+No runtime/source implementation is authorized by this handoff.

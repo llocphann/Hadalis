@@ -96,6 +96,7 @@ ContentPage {
         if (!root.selectedProfile) return
         nameEditor.text = root.selectedProfile.name
         descriptionEditor.text = root.selectedProfile.description
+        projectEditor.text = root.selectedProfile.project_name
         promptEditor.text = root.selectedProfile.prompt
         continuationEditor.text = root.selectedProfile.continuation_prompt
         rotationEditor.text = root.selectedProfile.rotation_prompt
@@ -343,12 +344,15 @@ ContentPage {
             SettingsNote { text: Translation.tr("GitHub is required for Hadalis repository automations. ChatGPT remains the only reasoning agent.") }
             MaterialTextField { id: nameEditor; Layout.fillWidth: true; placeholderText: Translation.tr("Profile name") }
             MaterialTextField { id: descriptionEditor; Layout.fillWidth: true; placeholderText: Translation.tr("Description (optional)") }
+            SettingsNote { text: Translation.tr("Exact ChatGPT Desktop project name. Stop this profile before changing its project.") }
+            MaterialTextField { id: projectEditor; Layout.fillWidth: true; placeholderText: Translation.tr("ChatGPT project") }
             Flow {
                 Layout.fillWidth: true
                 Layout.preferredHeight: childrenRect.height
                 spacing: 6
                 DialogButton { buttonText: Translation.tr("Save name"); enabled: !root.busy; onClicked: root.setProfile("name", nameEditor.text) }
                 DialogButton { buttonText: Translation.tr("Save description"); enabled: !root.busy; onClicked: root.setProfile("description", descriptionEditor.text) }
+                DialogButton { buttonText: Translation.tr("Save project"); enabled: !root.busy && root.snapshot?.runtime?.owner_id !== root.selectedProfileId; onClicked: root.setProfile("project_name", projectEditor.text) }
             }
             Flow {
                 Layout.fillWidth: true

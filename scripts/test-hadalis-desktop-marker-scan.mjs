@@ -71,7 +71,7 @@ assert.throws(
   /expected exactly one post-submit/
 );
 
-function guardedPage({ stop = false, text = "" } = {}) {
+function guardedPage({ stop = false, text = "", projectLabel = null } = {}) {
   const locator = (count, value = "") => ({
     count: async () => count,
     nth: () => ({ isVisible: async () => true }),
@@ -81,6 +81,10 @@ function guardedPage({ stop = false, text = "" } = {}) {
     getByRole: (role, options) => {
       if (role === "textbox") return locator(1, text);
       if (role === "button" && String(options.name) === "/stop/i") return locator(stop ? 1 : 0);
+      if (role === "button" && String(options.name).includes("Project:")) {
+        const label = projectLabel ?? `Project: ${process.env.HADALIS_CHATGPT_PROJECT ?? "Hadalis Cloud"}`;
+        return locator(options.name.test(label) ? 1 : 0);
+      }
       return locator(1);
     }
   };
@@ -88,6 +92,9 @@ function guardedPage({ stop = false, text = "" } = {}) {
 
 await assert.rejects(requireIdleComposer(guardedPage({ stop: true })), /generation is active/);
 await assert.rejects(requireIdleComposer(guardedPage({ text: "draft" })), /non-empty/);
+await assert.rejects(requireIdleComposer(guardedPage({ projectLabel: "Project: Wrong project" })), /project guard/);
+await assert.rejects(requireIdleComposer(guardedPage({ projectLabel: "Project: HadalisXLocal" })), /project guard/);
 await requireIdleComposer(guardedPage());
+await requireIdleComposer(guardedPage(), false);
 
 console.log("PASS: desktop loop-marker token scanner");

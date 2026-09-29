@@ -5,8 +5,12 @@ const { chromium } = await import(PLAYWRIGHT);
 
 const CDP = process.env.HADALIS_CHATGPT_CDP_URL ?? "http://127.0.0.1:9222";
 const MAIN_URL = "app://-/index.html";
-const COMPOSER = /^(Ask ChatGPT|New chat in Hadalis Cloud)$/;
-const PROJECT = /^(Project: Hadalis Cloud|Change project: Hadalis Cloud)$/;
+const PROJECT_NAME = process.env.HADALIS_CHATGPT_PROJECT ?? "Hadalis Cloud";
+if (!/^[A-Za-z0-9 ._-]{1,80}$/.test(PROJECT_NAME))
+  throw new Error("invalid configured ChatGPT project name");
+const escapedProject = PROJECT_NAME.replaceAll(".", "\\.");
+const COMPOSER = new RegExp(`^(Ask ChatGPT|Do anything|New chat in ${escapedProject})$`);
+const PROJECT = new RegExp(`^(Project:|Change project:) ${escapedProject}$`);
 const GITHUB_MENTION = "[@GitHub](plugin://github@openai-curated-remote)";
 const LOOP_MARKER = /^HADALIS_LOOP:(?:WAIT_RESULT|CONTINUE|ROTATE|DONE|CONNECTOR_BLOCKED)(?:[ \\t]+[A-Za-z0-9._/-]+)?[ \\t]*$/m;
 const RESPONSE_ACTION = /regenerate|retry|try again|copy/i;
@@ -62,8 +66,8 @@ async function findMainPage(browser) {
     for (const page of context.pages()) {
       if (page.url() !== MAIN_URL) continue;
       const composer = page.getByRole("textbox", { name: COMPOSER });
-      const newChat = page.getByRole("button", { name: "New chat in Hadalis Cloud" });
-      if ((await visibleCount(composer)) === 1 || (await visibleCount(newChat)) === 1)
+      const newChat = page.getByRole("button", { name: `Start new chat in ${PROJECT_NAME}` });
+      if ((await visibleCount(composer)) === 1 || (await visibleCount(newChat)) > 0)
         return page;
     }
   }
@@ -71,7 +75,7 @@ async function findMainPage(browser) {
 }
 
 async function verifyProject(page) {
-  await requireOne(page.getByRole("button", { name: PROJECT }), "Hadalis Cloud project guard");
+  await requireOne(page.getByRole("button", { name: PROJECT }), `${PROJECT_NAME} project guard`);
 }
 
 async function resolveComposer(page) {
@@ -79,9 +83,26 @@ async function resolveComposer(page) {
 }
 
 export async function openHadalisNewChat(page) {
-  await requireIdleComposer(page);
-  const button = page.getByRole("button", { name: "New chat in Hadalis Cloud" });
-  await semanticClick(button, "Hadalis Cloud new chat");
+  await requireIdleComposer(page, false);
+  let button = null;
+  for (const name of [`Start new chat in ${PROJECT_NAME}`, `New chat in ${PROJECT_NAME}`]) {
+    // Current Desktop presents both a labeled button and a second button
+    // whose accessible name comes from nested content. Prefer the exact
+    // aria-labeled project action; fail closed if it is not unique.
+    const exact = page.locator(`button[aria-label="${name}"]`);
+    if (await visibleCount(exact) === 1) {
+      button = exact;
+      break;
+    }
+    const visible = await visibleItems(page.getByRole("button", { name }));
+    if (visible.length === 1) {
+      button = visible[0];
+      break;
+    }
+  }
+  if (button === null)
+    throw new Error(`${PROJECT_NAME} new-chat control is unavailable or ambiguous`);
+  await semanticClick(button, `${PROJECT_NAME} new chat`);
 
   const browser = page.context().browser();
   const deadline = Date.now() + 15000;
@@ -99,8 +120,8 @@ export async function openHadalisNewChat(page) {
   throw new Error("new chat did not become ready");
 }
 
-export async function requireIdleComposer(page) {
-  await verifyProject(page);
+export async function requireIdleComposer(page, requireProject = true) {
+  if (requireProject) await verifyProject(page);
   const composer = await resolveComposer(page);
   if ((await visibleCount(page.getByRole("button", { name: /stop/i }))) > 0)
     throw new Error("refusing to rotate while ChatGPT generation is active");

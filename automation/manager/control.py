@@ -132,6 +132,8 @@ def set_profile(profile_id: str, field: str, value_json: str, confirm_delete: bo
     def mutate(config: dict, state: dict):
         for index, profile in enumerate(config["profiles"]):
             if profile["id"] == profile_id:
+                if field == "project_name" and state["owner_id"] == profile_id:
+                    raise ValueError("stop the active profile before changing its project")
                 config["profiles"][index] = update_profile(
                     profile, {field: value}, confirm_delete=confirm_delete)
                 item = state["profiles"][profile_id]

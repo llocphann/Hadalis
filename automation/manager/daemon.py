@@ -19,10 +19,15 @@ RESULTS = "automation/results"
 POLL_SECONDS = 2
 
 
-def desktop_command(command: str, *args: str, prompt: str | None = None) -> dict:
+def desktop_command(command: str, *args: str, prompt: str | None = None,
+                    project_name: str | None = None) -> dict:
+    environment = os.environ.copy()
+    if project_name is not None:
+        environment["HADALIS_CHATGPT_PROJECT"] = project_name
     result = subprocess.run(
         ["node", str(DESKTOP_CLI), command, *args], cwd=ROOT,
-        input=prompt, capture_output=True, text=True, timeout=40, check=False,
+        input=prompt, env=environment, capture_output=True, text=True,
+        timeout=40, check=False,
     )
     if result.returncode:
         raise RuntimeError((result.stderr or result.stdout).strip()[:600])
@@ -99,10 +104,10 @@ def _stop_or_pause(config: dict, state: dict, owner: str, now: int) -> bool:
     return False
 
 
-def _new_chat(owner: str, now: int, *, kind: str) -> None:
+def _new_chat(owner: str, now: int, *, kind: str, project_name: str) -> None:
     # The desktop driver checks the old composer/generation before opening a
     # new chat. A failed guard cannot displace the current owner's session.
-    desktop_command("new-chat")
+    desktop_command("new-chat", project_name=project_name)
 
     def record(_config: dict, state: dict):
         item = state["profiles"][owner]
@@ -121,12 +126,15 @@ def _new_chat(owner: str, now: int, *, kind: str) -> None:
 def _submit(config: dict, state: dict, owner: str, now: int) -> None:
     item = state["profiles"][owner]
     kind = item.get("request") or "continuation"
+    profile = _profile(config, owner)
     if kind in {"initial", "rotation", "restart", "new"}:
-        _new_chat(owner, now, kind="rotation" if kind == "rotation" else "initial")
+        _new_chat(owner, now, kind="rotation" if kind == "rotation" else "initial",
+                  project_name=profile["project_name"])
         config, state, _ = read_snapshot()
         item = state["profiles"][owner]
         kind = item["request"]
-    baseline = desktop_command("managed-baseline")
+        profile = _profile(config, owner)
+    baseline = desktop_command("managed-baseline", project_name=profile["project_name"])
     count = baseline.get("responseActionCount")
     if type(count) is not int or count < 0:
         raise RuntimeError("desktop baseline is invalid")
@@ -141,10 +149,10 @@ def _submit(config: dict, state: dict, owner: str, now: int) -> None:
         current_item["last_activity_at_unix"] = now
         event(current, owner, "prompt_prepared", kind)
     change_state(prepare)
-    profile = _profile(config, owner)
     prompt = effective_prompt(profile, kind)
     try:
-        desktop_command("managed-submit", str(count), prompt=prompt)
+        desktop_command("managed-submit", str(count), prompt=prompt,
+                        project_name=profile["project_name"])
     except Exception as exc:
         # The submission may have reached ChatGPT before the transport failed.
         # Keep the pending baseline and poll for a fresh response; never resend.
@@ -178,7 +186,8 @@ def _poll(config: dict, state: dict, owner: str, now: int) -> None:
     if item["poll_errors"] > _profile(config, owner)["max_poll_errors"]:
         return  # Needs explicit resume; owner and pending baseline stay intact.
     try:
-        result = desktop_command("managed-poll", str(pending["response_action_count"]))
+        result = desktop_command("managed-poll", str(pending["response_action_count"]),
+                                 project_name=_profile(config, owner)["project_name"])
         if not result.get("completed"):
             def waiting(_config: dict, current: dict):
                 current_item = current["profiles"][owner]

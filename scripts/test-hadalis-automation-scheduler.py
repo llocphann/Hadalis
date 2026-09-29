@@ -21,8 +21,9 @@ def main() -> None:
             replies = ["HADALIS_LOOP:CONTINUE", "HADALIS_LOOP:CONTINUE",
                        "HADALIS_LOOP:CONTINUE"]
 
-            def desktop(command, *args, prompt=None):
+            def desktop(command, *args, prompt=None, project_name=None):
                 calls.append((command, args, prompt))
+                assert project_name == "Hadalis Cloud"
                 if command == "new-chat":
                     return {"composerVisible": 1}
                 if command == "managed-baseline":
@@ -75,8 +76,9 @@ def main() -> None:
     with tempfile.TemporaryDirectory() as tmp:
         with patch.dict(os.environ, {"XDG_CONFIG_HOME": tmp + "/config", "XDG_STATE_HOME": tmp + "/state"}):
             commands = []
-            def uncertain(command, *args, prompt=None):
+            def uncertain(command, *args, prompt=None, project_name=None):
                 commands.append(command)
+                assert project_name == "Hadalis Cloud"
                 if command == "new-chat": return {}
                 if command == "managed-baseline": return {"responseActionCount": 0}
                 if command == "managed-submit": raise RuntimeError("connection lost after send")

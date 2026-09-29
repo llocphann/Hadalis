@@ -37,6 +37,8 @@ def main() -> None:
     assert wrapped.endswith(custom["prompt"])
     assert custom["prompt"].endswith("  \n")
     assert custom["id"] != initial["id"] and not custom["enabled"]
+    assert custom["project_name"] == "Hadalis Cloud"
+    assert "Profile objective:" in model.effective_prompt(custom, "rotation")
 
     older = {"profiles": [{"id": custom["id"], "name": "Older", "prompt": custom["prompt"]}]}
     loaded, issues = model.normalize_config(older)
@@ -45,6 +47,7 @@ def main() -> None:
     assert len(malformed["profiles"]) == 1 and len(issues) == 1
     expect_error(lambda: model.update_profile(initial, {"delete_completed": True}), "confirmation")
     expect_error(lambda: model.update_profile(initial, {"requires_github": False}), "require GitHub")
+    expect_error(lambda: model.update_profile(initial, {"project_name": "Wrong; project"}), "project name")
     expect_error(lambda: model.update_profile(initial, {"mode": "iterations"}), "iteration limit")
 
     run = {"started_at_unix": 100, "chat_started_at_unix": 150,
@@ -93,11 +96,18 @@ def main() -> None:
             control.set_profile(pid, "mode", json.dumps("interval"))
             control.set_profile(pid, "interval_seconds", "120")
             control.set_profile(pid, "prompt", json.dumps(custom["prompt"]))
+            control.set_profile(pid, "project_name", json.dumps("Hadalis Local"))
             control.profile_action("start", pid)
             config, runtime, _ = store.read_snapshot()
             edited = next(p for p in config["profiles"] if p["id"] == pid)
             assert edited["prompt"] == custom["prompt"]
+            assert edited["project_name"] == "Hadalis Local"
             assert runtime["profiles"][pid]["desired"] == "run"
+            store.change_state(lambda _config, state: state.__setitem__("owner_id", pid))
+            expect_error(lambda: control.set_profile(pid, "project_name", json.dumps("Another Project")),
+                         "stop the active profile")
+            assert next(p for p in store.read_snapshot()[0]["profiles"] if p["id"] == pid)["project_name"] == "Hadalis Local"
+            store.change_state(lambda _config, state: state.__setitem__("owner_id", None))
             control.profile_action("pause", pid)
             assert store.read_snapshot()[1]["profiles"][pid]["desired"] == "paused"
             control.profile_action("resume", pid)

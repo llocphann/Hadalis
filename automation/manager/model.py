@@ -15,7 +15,7 @@ LIMIT_ACTIONS = {"stop", "pause", "rotate"}
 MAX_PROFILES = 64
 CUSTOM_CONTINUATION_PROMPT = (GITHUB_MENTION + "\n\nContinue the objective of this automation profile in the current chat. "
                               "Fetch the current dev HEAD, use the GitHub connector, and finish with one HADALIS_LOOP directive.\n")
-CUSTOM_ROTATION_PROMPT = (GITHUB_MENTION + "\n\nResume this automation profile in a fresh Hadalis Cloud chat. "
+CUSTOM_ROTATION_PROMPT = (GITHUB_MENTION + "\n\nResume this automation profile in a fresh chat in its configured project. "
                           "Use the profile objective below and current repository state.\n")
 
 # The settings page advertises these as pending until a semantic Desktop action
@@ -31,6 +31,7 @@ MAINTENANCE_DEFAULTS = {
 
 PROFILE_DEFAULTS = {
     "description": "",
+    "project_name": "Hadalis Cloud",
     "enabled": False,
     "requires_github": True,
     "mode": "manual",
@@ -105,6 +106,9 @@ def validate_profile(raw: object, *, defaults: dict | None = None) -> dict:
     profile["description"] = _string(profile["description"], "description", allow_empty=True)
     if len(profile["description"]) > 1000:
         raise ValueError("description too long")
+    profile["project_name"] = _string(profile["project_name"], "project_name")
+    if len(profile["project_name"]) > 80 or any(ch not in "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 ._-" for ch in profile["project_name"]):
+        raise ValueError("project name must use letters, numbers, spaces, dots, hyphens or underscores")
     for key in ("enabled", "requires_github", "archive_completed", "delete_completed"):
         if type(profile[key]) is not bool:
             raise ValueError(f"invalid {key}")

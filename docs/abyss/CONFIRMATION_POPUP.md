@@ -1,6 +1,6 @@
 # Abyss confirmation and authentication popup architecture
 
-Status: Phases A-D are complete at the source/contract level on `dev`. Phase E now has automated runtime acceptance for the synthetic confirmation path on real Quickshell under a headless Weston Wayland compositor. Target-desktop acceptance is still pending for Niri/multi-monitor and real Polkit authorization flows; application-native dialogs additionally require a trustworthy native/backend response channel.
+Status: Phases A-D are complete at the source/contract level on `dev`. Phase E now has automated runtime acceptance for the synthetic confirmation path both on real Quickshell under headless Weston and inside a nested Niri compositor using software Mesa/EGL. Physical multi-monitor/hotplug acceptance and real Polkit authorization flows still require a target machine; application-native dialogs additionally require a trustworthy native/backend response channel.
 
 ## Goal
 
@@ -175,19 +175,19 @@ A synthetic Wayland/Quickshell harness now exists at `scripts/test-abyss-confirm
 - duplicate action IDs normalizing deterministically and invoking only the intended callback;
 - renderer-handoff action semantics and queue gating: presentation transfer emits no fake cancel resolution; resolving the standalone handoff invokes exactly the original action callback/resolution, and its queued successor cannot activate until the old popup tail plus semantic handoff completion have both released ownership.
 
-The script intentionally skips when Quickshell/Wayland is unavailable during ordinary local/static validation. The dedicated `.github/workflows/confirmation-runtime.yml` lane removes that ambiguity: it starts Weston headless, provides a real Wayland socket, runs real Quickshell with software Qt Quick rendering, and executes this harness without the skip path. The lane has completed successfully on `dev`, including the renderer-handoff/queue-gating cases above.
+The script intentionally skips when Quickshell/Wayland is unavailable during ordinary local/static validation. The dedicated `.github/workflows/confirmation-runtime.yml` lane removes that ambiguity. Its first runtime job starts Weston headless and executes the harness with real Quickshell. Its second runtime job starts Niri on an Xvfb software-EGL parent, discovers Niri's real nested Wayland socket, and executes the same harness inside that compositor. Source contracts, headless Wayland and nested-Niri jobs have all completed successfully on `dev`, including the renderer-handoff/queue-gating cases above.
 
-This establishes real headless Wayland/Quickshell runtime acceptance for the synthetic confirmation presenter. It is not equivalent to target-desktop acceptance on Niri, real multi-monitor hardware, or a real Polkit password exchange.
+This establishes automated Niri/Quickshell acceptance for the synthetic confirmation presenter on a single virtual output. It is still not equivalent to physical multi-monitor/hotplug hardware or a real Polkit password exchange.
 
 ## Acceptance status
 
 Source/contract coverage is complete for the currently trustworthy backends: request ownership, conservative identity/output anchor resolution, ambiguous-source fallback, live-source validity, Dock/Bar source hold, popup/Pyramid reuse, frame-ready prompt-host detection, fail-safe renderer handoff with preserved action semantics, two-gate visual/semantic queue release, fullscreen/native-dialog critical-prompt visibility, Join Edge inheritance, action availability/ID/callback safety, queue/reopen ownership, same-window close deduplication, stale-window rejection, output-hotplug policy, and Polkit focus/security, source-hint scoping, failover, queued-presentation and multi-turn retry behavior.
 
-Automated confirmation runtime acceptance is now recorded on real Quickshell + headless Wayland. Still requiring target-environment acceptance:
+Automated confirmation runtime acceptance is now recorded on real Quickshell + headless Wayland and on the same harness inside nested Niri. Still requiring physical/system acceptance:
 
-- the same confirmation harness/behaviors on the target Niri desktop, especially real multi-monitor/focus/hotplug;
-- real Polkit password focus, wrong-password retry, Cancel, queued requests and successful authorization against the system authentication stack;
-- source disappearance and lock/unlock behavior in the actual shell session;
+- real multi-monitor/focus/output-hotplug behavior on target hardware (the nested-Niri lane currently has one virtual output);
+- real Polkit password focus, wrong-password retry, Cancel, queued requests and successful authorization against the target system authentication stack;
+- lock/unlock interaction with the actual login/lock stack;
 - ChatGPT Quit or any other application-native confirmation only after a reliable native/backend interception path exists.
 
 Do not mark the entire feature `production runtime complete` until those target-environment checks are recorded.

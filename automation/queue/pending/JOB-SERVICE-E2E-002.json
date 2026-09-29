@@ -1,0 +1,16 @@
+{
+  "id": "JOB-SERVICE-E2E-002",
+  "base_sha": "4a7d31528977d2d3d4db70cbbfc4658de4cc1314",
+  "actions": [
+    {
+      "exec": {
+        "argv": [
+          "python3",
+          "scripts/test-hadalis-chat-bridge.py"
+        ],
+        "cwd": ".",
+        "timeout_seconds": 300
+      }
+    }
+  ]
+}

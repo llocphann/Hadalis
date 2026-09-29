@@ -65,6 +65,7 @@ Singleton {
     property string resolvedAnchorKind: ""
     property bool hadResolvedAnchor: false
     property var _nextSourceHint: null
+    property var _pendingPresentationHint: null
     property bool _sourceLossCancelIssued: false
     readonly property int sourceHintLifetimeMs: 3000
     readonly property bool resolvedAnchorUsable:
@@ -138,8 +139,7 @@ Singleton {
         return hint
     }
 
-    function _latchPresentation(): void {
-        const hint = root._takeSourceHint()
+    function _latchPresentation(hint = null): void {
         const requestedOutput = GlobalStates.resolveOutputName(
             String(hint?.outputName ?? ""), [])
         const sourceContext = hint
@@ -169,7 +169,9 @@ Singleton {
         // Resolve output/anchor before making the retained presentation
         // visible. In fullscreen this prevents one frame from reusing the
         // previous authentication request's output ownership.
-        root._latchPresentation()
+        const hint = root._pendingPresentationHint
+        root._pendingPresentationHint = null
+        root._latchPresentation(hint)
         root.presentationSerial = root.requestSerial
         root.presentationRetained = true
     }
@@ -178,6 +180,11 @@ Singleton {
         if (root.requestSerial <= 0)
             return
         root._sourceLossCancelIssued = false
+        // Consume the one-shot hint at AuthFlow start even if presentation is
+        // still blocked by the previous visual tail. A later queued request
+        // replaces this slot with its own hint (or null), so source identity
+        // can never leak across authentication requests.
+        root._pendingPresentationHint = root._takeSourceHint()
         // PolkitAgent starts the next queued AuthFlow synchronously. When the
         // previous Abyss popup is still visually resident, revoke semantic
         // ownership first and let that popup finish its retract on the old

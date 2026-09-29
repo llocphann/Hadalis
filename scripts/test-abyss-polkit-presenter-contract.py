@@ -55,7 +55,11 @@ assert "readonly property int sourceHintLifetimeMs: 3000" in service
 assert "id: sourceHintExpiry" in service
 assert "sourceHintExpiry.restart()" in service
 assert "function _takeSourceHint(): var" in service
-assert "const hint = root._takeSourceHint()" in service
+assert "property var _pendingPresentationHint: null" in service
+assert "root._pendingPresentationHint = root._takeSourceHint()" in service
+assert "const hint = root._pendingPresentationHint" in service
+assert "root._pendingPresentationHint = null" in service
+assert "function _latchPresentation(hint = null): void" in service
 assert "onTriggered: root._nextSourceHint = null" in service
 assert "const requestedOutput = GlobalStates.resolveOutputName(" in service
 assert "PopupAnchorRegistry.resolve(sourceContext)" in service

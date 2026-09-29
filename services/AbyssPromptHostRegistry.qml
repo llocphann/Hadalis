@@ -17,11 +17,14 @@ Singleton {
     function registerHost(item, outputName): void {
         if (!item)
             return
-        root.unregisterHost(item)
         const name = String(outputName ?? "")
         if (!name)
             return
-        const next = root.entries.slice()
+        const existing = root.entries.find(entry => entry?.item === item)
+        if (existing && String(existing?.outputName ?? "") === name)
+            return
+
+        const next = root.entries.filter(entry => entry?.item !== item)
         next.push({ item: item, outputName: name })
         root.entries = next
     }

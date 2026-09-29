@@ -36,6 +36,8 @@ assert 'source: "../polkit/Polkit.qml"' not in deferred
 # Renderer availability is runtime-observed, not inferred only from config.
 assert "singleton AbyssPromptHostRegistry 1.0 AbyssPromptHostRegistry.qml" in qmdir
 assert "function registerHost(item, outputName): void" in host_registry
+assert "const existing = root.entries.find" in host_registry
+assert 'String(existing?.outputName ?? "") === name' in host_registry
 assert "function unregisterHost(item): void" in host_registry
 assert "function hasOutput(outputName): bool" in host_registry
 assert "function syncPromptHostRegistration(): void" in perimeter

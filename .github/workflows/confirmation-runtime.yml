@@ -155,8 +155,9 @@ jobs:
           set -euo pipefail
           nix shell \
             nixpkgs#quickshell \
-            nixpkgs#weston \
             nixpkgs#niri \
+            nixpkgs#xorg.xorgserver \
+            nixpkgs#mesa \
             nixpkgs#ripgrep \
             nixpkgs#coreutils \
             --command bash -lc '
@@ -165,23 +166,19 @@ jobs:
               niri_config="$(mktemp)"
               export XDG_RUNTIME_DIR="$runtime_dir"
               chmod 700 "$XDG_RUNTIME_DIR"
-              outer_display=wayland-hadalis-outer
-              export WAYLAND_DISPLAY="$outer_display"
+              export DISPLAY=:99
+              export WINIT_UNIX_BACKEND=x11
+              export LIBGL_ALWAYS_SOFTWARE=1
               export QT_QPA_PLATFORM=wayland
               export QT_QUICK_BACKEND=software
               export QSG_RENDER_LOOP=basic
-              export LIBGL_ALWAYS_SOFTWARE=1
+              unset WAYLAND_DISPLAY || true
 
-              # The Niri nested backend needs an EGL-capable parent Wayland
-              # compositor. Force Mesa software GL here; the direct Quickshell
-              # lane above remains Qt Quick software-rendered.
-              weston \
-                --backend=headless-backend.so \
-                --renderer=gl \
-                --socket="$outer_display" \
-                --idle-time=0 \
-                --log="$RUNNER_TEMP/weston-niri-confirmation.log" &
-              weston_pid=$!
+              Xvfb "$DISPLAY" \
+                -screen 0 1280x720x24 \
+                -nolisten tcp \
+                >"$RUNNER_TEMP/xvfb-niri-confirmation.log" 2>&1 &
+              xvfb_pid=$!
               niri_pid=""
 
               cleanup() {
@@ -189,22 +186,22 @@ jobs:
                   kill "$niri_pid" 2>/dev/null || true
                   wait "$niri_pid" 2>/dev/null || true
                 fi
-                kill "$weston_pid" 2>/dev/null || true
-                wait "$weston_pid" 2>/dev/null || true
+                kill "$xvfb_pid" 2>/dev/null || true
+                wait "$xvfb_pid" 2>/dev/null || true
                 rm -rf -- "$runtime_dir" "$niri_config"
               }
               trap cleanup EXIT
 
               for _ in $(seq 1 100); do
-                [[ -S "$XDG_RUNTIME_DIR/$outer_display" ]] && break
-                kill -0 "$weston_pid" 2>/dev/null || {
-                  cat "$RUNNER_TEMP/weston-niri-confirmation.log" || true
+                [[ -S /tmp/.X11-unix/X99 ]] && break
+                kill -0 "$xvfb_pid" 2>/dev/null || {
+                  cat "$RUNNER_TEMP/xvfb-niri-confirmation.log" || true
                   exit 1
                 }
                 sleep 0.1
               done
-              [[ -S "$XDG_RUNTIME_DIR/$outer_display" ]] || {
-                cat "$RUNNER_TEMP/weston-niri-confirmation.log" || true
+              [[ -S /tmp/.X11-unix/X99 ]] || {
+                cat "$RUNNER_TEMP/xvfb-niri-confirmation.log" || true
                 exit 1
               }
 
@@ -217,8 +214,7 @@ jobs:
               for _ in $(seq 1 150); do
                 nested_display="$(
                   find "$XDG_RUNTIME_DIR" -maxdepth 1 -type s \
-                    -name "wayland-*" ! -name "$outer_display" \
-                    -printf "%f\\n" | head -n1
+                    -name "wayland-*" -printf "%f\\n" | head -n1
                 )"
                 [[ -n "$nested_display" ]] && break
                 if ! kill -0 "$niri_pid" 2>/dev/null; then
@@ -245,9 +241,9 @@ jobs:
               bash scripts/test-abyss-confirmation-runtime.sh
             '
 
-      - name: Show compositor logs on failure
+      - name: Show nested Niri logs on failure
         if: failure()
         shell: bash
         run: |
-          cat "$RUNNER_TEMP/weston-niri-confirmation.log" 2>/dev/null || true
+          cat "$RUNNER_TEMP/xvfb-niri-confirmation.log" 2>/dev/null || true
           cat "$RUNNER_TEMP/niri-confirmation.log" 2>/dev/null || true

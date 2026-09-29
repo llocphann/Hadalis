@@ -37,7 +37,8 @@ Use exactly one loop directive:
 - WAIT_RESULT only for one explicit deterministic local job;
 - CONTINUE when research can proceed now;
 - ROTATE before context rollover after persisting the exact research checkpoint;
-- CONNECTOR_BLOCKED GITHUB if the connector is unavailable.
+- if the connector is unavailable, emit exactly:
+  HADALIS_LOOP:CONNECTOR_BLOCKED GITHUB
 
 The DONE directive is reserved only for an explicit user request to stop/disable continuous research. Do not use DONE just because a round finished or no obvious candidate was found.
 

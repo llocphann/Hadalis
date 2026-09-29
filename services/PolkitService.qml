@@ -154,8 +154,11 @@ Singleton {
     onRequestSerialChanged: {
         if (root.requestSerial > 0) {
             root._sourceLossCancelIssued = false
-            root.presentationRetained = true
+            // Resolve output/anchor before making the retained presentation
+            // visible. In fullscreen this prevents one frame from reusing the
+            // previous authentication request's output ownership.
             root._latchPresentation()
+            root.presentationRetained = true
         }
     }
 

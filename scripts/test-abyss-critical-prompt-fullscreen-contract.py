@@ -35,5 +35,7 @@ assert "open: window.presented && field.ready && GlobalStates.shellEntryReady" i
 # same StyledPopup retract tail while the fullscreen popup field remains alive.
 assert "property bool presentationRetained: false" in polkit
 assert "function finishPresentation(): void" in polkit
+serial_handler=polkit.split("onRequestSerialChanged:",1)[1].split("// Whether the Polkit module is available",1)[0]
+assert serial_handler.index("root._latchPresentation()") < serial_handler.index("root.presentationRetained = true")
 
 print("Abyss critical prompt fullscreen contract: ok")

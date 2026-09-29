@@ -34,10 +34,25 @@ Singleton {
 
     function _normalizeActions(actions): var {
         const source = Array.isArray(actions) ? actions : []
-        return source.map((action, index) => Object.assign({}, action ?? {}, {
-            id: String(action?.id ?? ("action-" + index)),
-            label: String(action?.label ?? action?.id ?? ("Action " + (index + 1)))
-        }))
+        const usedIds = []
+        return source.map((action, index) => {
+            const requestedId = String(action?.id ?? "").trim()
+            const baseId = requestedId.length > 0
+                ? requestedId : ("action-" + index)
+            let id = baseId
+            let suffix = 2
+            while (usedIds.includes(id))
+                id = baseId + "-" + suffix++
+            usedIds.push(id)
+            return Object.assign({}, action ?? {}, {
+                // Button IDs are transaction selectors. Empty/duplicate IDs
+                // would otherwise make a visible button resolve another
+                // action's callback, so normalize only that ambiguous case.
+                id: id,
+                label: String(action?.label ?? action?.id
+                    ?? ("Action " + (index + 1)))
+            })
+        })
     }
 
     function enqueue(request): int {

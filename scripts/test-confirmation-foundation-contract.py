@@ -48,6 +48,10 @@ assert 'registerAnchor(root, "dock"' in dock
 
 # Queue ownership is semantic/visual-tail safe.
 assert "property var currentRequest: null" in service
+assert "const usedIds = []" in service
+assert 'const requestedId = String(action?.id ?? "").trim()' in service
+assert "while (usedIds.includes(id))" in service
+assert 'id = baseId + "-" + suffix++' in service
 assert "property bool requestVisible: false" in service
 assert "function finishPresentation(requestId): void" in service
 assert "if (!root.currentRequest || root.requestVisible)" in service

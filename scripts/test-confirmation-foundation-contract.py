@@ -45,6 +45,9 @@ assert "property bool requestVisible: false" in service
 assert "function finishPresentation(requestId): void" in service
 assert "if (!root.currentRequest || root.requestVisible)" in service
 assert "Qt.callLater(root._activateNext)" in service
+assert "const requestedOutput = GlobalStates.resolveOutputName(" in service
+assert "const sourceContext = Object.assign({}, request" in service
+assert "PopupAnchorRegistry.resolve(sourceContext)" in service
 assert "_resolvedAnchor: resolved?.item ?? null" in service
 assert "_resolvedOutput:" in service
 assert "onAnchorRemoved(item)" in service

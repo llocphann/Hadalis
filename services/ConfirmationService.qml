@@ -56,11 +56,17 @@ Singleton {
     function _activate(request): void {
         if (!request)
             return
-        const resolved = PopupAnchorRegistry.resolve(request)
-        const requestedOutput = String(request.outputName ?? "")
+        // Resolve the requested/focused output before source lookup so mirrored
+        // app anchors can prefer the source screen instead of registration order.
+        const requestedOutput = GlobalStates.resolveOutputName(
+            String(request.outputName ?? ""), [])
+        const sourceContext = Object.assign({}, request, {
+            outputName: requestedOutput
+        })
+        const resolved = PopupAnchorRegistry.resolve(sourceContext)
         const output = String(resolved?.outputName ?? "").length > 0
             ? String(resolved.outputName)
-            : GlobalStates.resolveOutputName(requestedOutput, [])
+            : requestedOutput
         root.currentRequest = Object.assign({}, request, {
             _resolvedAnchor: resolved?.item ?? null,
             _resolvedAnchorKind: String(resolved?.kind ?? ""),

@@ -92,6 +92,9 @@ class ProtocolError(ValueError):
     pass
 
 
+_JOB_ID_RE = re.compile(r"^JOB-[A-Za-z0-9._-]+$")
+
+
 _MARKER_RE = re.compile(
     r"^HADALIS_LOOP:(WAIT_RESULT|CONTINUE|ROTATE|DONE|CONNECTOR_BLOCKED)"
     r"(?:[ \t]+([A-Za-z0-9._/-]+))?[ \t]*$"
@@ -112,8 +115,8 @@ def parse_loop_directive(response_text: str) -> LoopDirective:
         argument = match.group(2)
 
         if kind is DirectiveKind.WAIT_RESULT:
-            if not argument:
-                raise ProtocolError("WAIT_RESULT requires a job id")
+            if not argument or _JOB_ID_RE.fullmatch(argument) is None:
+                raise ProtocolError("WAIT_RESULT requires a safe JOB-* id")
         elif kind is DirectiveKind.CONNECTOR_BLOCKED:
             if argument != "GITHUB":
                 raise ProtocolError("CONNECTOR_BLOCKED requires GITHUB")

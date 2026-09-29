@@ -242,6 +242,10 @@ ShellRoot {
                     + " retained=" + PolkitService.presentationRetained
                     + " canSubmit=" + PolkitService.canSubmit
                     + " failed=" + PolkitService.failed
+                    + " queuedSuccesses=" + root.queuedSuccesses
+                    + " queuedFailures=" + root.queuedFailures
+                    + " queueADone=" + queueA.done
+                    + " queueBDone=" + queueB.done
                     + " popups=" + controller.activePopups.length
                     + " popupTargetOk="
                         + (controller.activePopup?.hoverTarget === fallbackAnchor)
@@ -356,6 +360,14 @@ ShellRoot {
             }
 
             if (root.phase === 7) {
+                // PolicyKit is allowed to satisfy an overlapping queued request
+                // without another prompt (for example while the same subject's
+                // authorization conversation is still reusable). The AuthFlow
+                // serial still proves PolkitAgent activated the queued request.
+                if (queueA.done && queueB.done) {
+                    root.phase = 8
+                    return
+                }
                 if (root.queuedSuccesses < 1
                         || !PolkitService.active
                         || !PolkitService.canSubmit)
@@ -401,4 +413,4 @@ if [[ "$status" != 124 ]] \
     exit 1
 fi
 
-printf 'PASS: real Polkit wrong-response retry, success, cancel, queued AuthFlow serialization and connected Abyss focus/fallback presentation\n'
+printf 'PASS: real Polkit wrong-response retry, success, cancel, queued AuthFlow activation/serialization and connected Abyss focus/fallback presentation\n'

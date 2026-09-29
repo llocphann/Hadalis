@@ -46,7 +46,8 @@ FocusScope {
     }
     TextMetrics {
         id: detailsButtonMetrics
-        text: root.detailsOpen ? "Hide details" : "Details"
+        text: root.detailsOpen
+            ? Translation.tr("Hide details") : Translation.tr("Details")
         font.family: AbyssStyle.fontFamily
         font.pixelSize: AbyssStyle.fontSize
     }
@@ -100,7 +101,8 @@ FocusScope {
         AbyssButton {
             id: detailsButton
             visible: root.detailsText.length > 0
-            text: root.detailsOpen ? "Hide details" : "Details"
+            text: root.detailsOpen
+                ? Translation.tr("Hide details") : Translation.tr("Details")
             glyph: root.detailsOpen ? "expand_less" : "expand_more"
             onClicked: root.detailsOpen = !root.detailsOpen
         }

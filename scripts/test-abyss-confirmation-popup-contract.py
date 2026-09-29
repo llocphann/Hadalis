@@ -45,6 +45,8 @@ for primitive in ("AbyssLabel", "AbyssButton", "AbyssSeparator"):
 assert "minContentWidth" in content and "maxContentWidth" in content
 assert "Text.WordWrap" in content
 assert "Flow {" in content
+assert 'Translation.tr("Hide details")' in content
+assert 'Translation.tr("Details")' in content
 assert "visible: modelData?.visible !== false" in content
 assert "enabled: modelData?.enabled !== false" in content
 assert "function _actionUsable(action): bool" in service

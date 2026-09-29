@@ -261,9 +261,14 @@ ShellRoot {
                 Config.setNestedValue("panelFamily", "abyss")
                 if (!PolkitService.available || !PolkitService.registered)
                     return
+                // Before an AuthFlow starts, PolkitService has no target output
+                // yet, so abyssPresenterAvailable is intentionally false. Check
+                // the concrete frame-ready host here; the service-level
+                // availability is asserted after the AuthFlow latches output.
                 if (!root.check(
-                        PolkitService.abyssPresenterAvailable,
-                        "live Abyss prompt host is available to real Polkit"))
+                        PolkitService.abyssConfigured
+                        && AbyssPromptHostRegistry.hasOutput(root.outputName),
+                        "live Abyss prompt host is ready for real Polkit"))
                     return
                 root.start(firstAuth)
                 root.phase = 1
@@ -274,6 +279,10 @@ ShellRoot {
                 if (!PolkitService.active || !PolkitService.canSubmit
                         || !PolkitService.presentationMatchesActive
                         || controller.activePopups.length < 1)
+                    return
+                if (!root.check(
+                        PolkitService.abyssPresenterAvailable,
+                        "active AuthFlow owns a live Abyss prompt host"))
                     return
                 if (!root.check(
                         PolkitService.resolvedAnchor === null

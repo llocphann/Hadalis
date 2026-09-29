@@ -142,6 +142,7 @@ This does **not** claim generic interception of application-native confirmations
 Implemented on the existing Quickshell `PolkitAgent/AuthFlow` backend:
 
 - no second authorization queue is created; Quickshell remains queue authority;
+- Hadalis now lets Polkit perform the authoritative session-scoped agent registration instead of suppressing its agent from machine-global process-name guesses; this avoids false negatives when another user's/session's agent process exists;
 - Enter/Escape, Cancel, Authenticate, identities, Details, failure messages and multi-turn prompts are preserved;
 - pending state remains non-interactive until `AuthFlow` actually requires a response;
 - the response field is cleared before handing the response to `AuthFlow.submit`, and is also cleared before switching authentication identity so a response cannot survive into the replacement PAM conversation;

@@ -16053,3 +16053,360 @@ No number above is an end-to-end Hadalis speedup. Numeric reductions are local
 source-derived operation/allocation counts only.
 
 No runtime/source implementation is authorized by this handoff.
+---
+
+## 60. Round 46 — bounded notification models, overview search and interaction hot paths (2026-09-30)
+
+### Snapshot / concurrency safety
+
+Research continued after Round-45 docs commit
+`f9d72ba16e2cd7df32506c2a5330422cc294f716`.
+
+The first exact Round-46 runtime baseline was
+`8f4f0209700e45b5e32335ad93d536768ea01317`. Concurrent work continued
+throughout the audit. Every delta reconciled before this write was a clean
+fast-forward and remained confined to `agent/*`, `automation/*`, or
+Hadalis automation/live-transport test/install scripts. None touched the runtime
+sources below or this handoff.
+
+Several attempted writes were rejected by exact-parent guards before any
+blob/commit creation as concurrent automation advanced `dev`. The final write
+uses the then-current HEAD as its explicit parent and rechecks the branch before
+the ref update.
+
+No runtime/QML/native implementation is authorized by this round.
+
+### 60.1 NotificationGroup collapsed model construction can be O(1) in group size — CONFIRMED / P1-P2
+
+Path: `modules/common/widgets/NotificationGroup.qml`.
+
+Current:
+
+`expanded ? notifications.slice().reverse()
+          : notifications.slice().reverse().slice(0, 2)`.
+
+Notification groups are ordinary JS arrays of notification-object references.
+
+Collapsed mode only needs the two newest entries, but currently copies and
+reverses all N references first.
+
+Strict-safe direction:
+
+- collapsed: create the final array from `notifications[N-1]` and, when
+  present, `notifications[N-2]`;
+- expanded: create the final array by reverse-index appends;
+- never mutate `root.notifications`.
+
+Collapsed local work:
+
+- full-group clone/reverse: **O(N) -> O(min(N, 2))**;
+- full-size temporary reversed array: **1 -> 0**.
+
+Expanded mode stays O(N) but removes the separate reverse-relocation phase.
+Fresh ScriptModel array identity, newest-first ordering, delegate indices and
+notification references remain unchanged.
+
+### 60.2 PhysicalKeyboardFeedback can publish one fresh array per real key transition — CONFIRMED / P1-P2 conditional
+
+Path: `modules/onScreenKeyboard/PhysicalKeyboardFeedback.qml`.
+
+Current press uses `current.concat([keycode])`.
+Current release uses
+`current.slice(0, index).concat(current.slice(index + 1))`.
+
+`pressedKeycodes` is an internally maintained dense array of numeric evdev
+codes; duplicate/missing-event guards already run first.
+
+Strict-safe direction:
+
+- press: clone once, `push(keycode)`, publish;
+- release: clone once, `splice(index, 1)`, publish.
+
+Fresh arrays:
+
+- press: **2 -> 1**;
+- release: **3 -> 1**.
+
+Key order, duplicate suppression, no-op paths and changed-signal timing remain
+unchanged.
+
+### 60.3 Overview Search Clipboard/Emoji truthiness filters are redundant — CONFIRMED / P2
+
+Path: `modules/overview/SearchWidget.qml`.
+
+This is distinct from `services/deferred/LauncherSearch.qml` and does not
+duplicate §57.3.
+
+Clipboard and Emoji prefixed branches both execute:
+
+`fuzzyQuery(...).map(entry => ({...})).filter(Boolean)`.
+
+Both map callbacks always return an object.
+
+Publish the map result directly.
+
+Per evaluation:
+
+- truthiness pass: **N -> 0**;
+- filter-result array: **1 -> 0**.
+
+Result objects, ordering and fresh `cachedResults` publication are identical.
+
+### 60.4 Overview Search action matching/result composition can collect directly — CONFIRMED / P1-P2
+
+Path: `modules/overview/SearchWidget.qml`.
+
+Default search currently:
+
+1. maps every action to result-or-null;
+2. filters nulls;
+3. optionally pushes one explicit math/shell/web result;
+4. concatenates app results;
+5. concatenates action results;
+6. appends remaining default rows.
+
+Strict-safe direction:
+
+- iterate actions once in current order, using the same action-string and prefix
+  predicates, and append only matches;
+- preserve the current point at which action objects are built;
+- append app results and action results directly into the unpublished local
+  `result`;
+- retain all current leading/trailing special/default-row rules.
+
+Final ordering stays:
+
+explicit special -> apps -> actions -> remaining defaults.
+
+Removed:
+
+- action map/null array: **1 -> 0**;
+- map/filter second traversal;
+- two concat result arrays/full-prefix copies: **2 -> 0**.
+
+### 60.5 Background fullscreen-workspace derivation can remove nested result arrays without narrowing QML dependencies — CONFIRMED / P1-P2 Hyprland path
+
+Path: `modules/background/Background.qml`.
+
+`activeWorkspaceWithFullscreen` currently uses an outer
+`workspacesForMonitor.filter(...)[0]` and an inner
+`workspace.toplevels.values.filter(fullscreen)[0]`.
+
+A simple nested `find()/some()` is not strict enough because early exits could
+stop observing later fullscreen properties and narrow the binding dependency
+set.
+
+Strict-safe loop:
+
+- visit every workspace;
+- visit every toplevel of every workspace and read every existing fullscreen
+  property;
+- retain only a scalar `hasFullscreen` instead of an inner array;
+- read `workspace.active` only when `hasFullscreen`, matching the existing
+  `&&` short circuit;
+- remember the first matching workspace but continue later visits.
+
+Output and reactive read breadth remain identical.
+
+Removed:
+
+- outer filtered workspace array: **1 -> 0**;
+- inner fullscreen result arrays: **up to W -> 0**.
+
+Traversal count is intentionally unchanged.
+
+### 60.6 AppSearch launch preparation has two strict local reductions — CONFIRMED / P1-P2 per launch
+
+Path: `services/AppSearch.qml`.
+
+#### A. Compact the fresh Array.from result in place
+
+Both `launchEntry()` and `launchDesktopAction()` use:
+
+`Array.from(commandLike).map(arg => String(arg ?? "")).filter(arg => arg.length > 0)`.
+
+Keep `Array.from` because command input may be QML-list-like. It returns a
+fresh JS array, which can be normalized and stable-compacted in place.
+
+Preserve exactly:
+
+- `String(arg ?? "")`;
+- empty-string removal;
+- argument order;
+- fresh final command array.
+
+Removed:
+
+- map-result array: **1 -> 0**;
+- filter-result array: **1 -> 0**.
+
+#### B. Inspect Ventoy frontend flags only for Ventoy
+
+Ordinary `launchEntry()` currently always evaluates:
+
+`command.slice(1).some(arg =>
+    /^--(gtk[234]|qt[456])$/.test(arg.toLowerCase()))`.
+
+That result is consumed only by
+`isVentoyGui && !hasVentoyFrontend`.
+
+For non-Ventoy apps the scan cannot affect behavior.
+
+Strict-safe direction:
+
+- only if `isVentoyGui`, scan indices 1..N-1 with the exact same predicate;
+- do not allocate `command.slice(1)`.
+
+Normal non-Ventoy launch:
+
+- tail copy: **1 -> 0**;
+- frontend checks: **N-1 -> 0**.
+
+Ventoy keeps identical first-match behavior while also dropping the tail copy.
+Privileged-launch and `--qt5` behavior remain unchanged.
+
+### 60.7 Wallpapers Niri workspace range needs only one min/max pass — CONFIRMED / P2 user-action path
+
+Path: `services/Wallpapers.qml`, `detectNiriWorkspaceRange()`.
+
+Current code collects every matching `ws.idx`, sorts numerically, and returns
+only first/last.
+
+Current upstream Niri IPC schema was checked:
+`Workspace.idx` is `u8` and is explicitly the workspace index on its
+monitor. There is no string/NaN ordering case hidden by the numeric sort.
+
+Strict-safe direction:
+
+- keep the same workspace-map traversal and output-name predicate;
+- update scalar min/max for matching workspaces;
+- zero matches still return `null`;
+- otherwise return the same `{first, last}`.
+
+For K target-output workspaces:
+
+- K-element temporary array: **1 -> 0**;
+- numeric sort: **K log K -> 0**.
+
+This is distinct from §32.9's external IPC-query reduction.
+
+### 60.8 WindowPreview warm-LRU touch can append to the filtered final array — CONFIRMED / P2
+
+Path: `services/WindowPreviewService.qml`,
+`_touchOverviewWarmImage()`.
+
+Current:
+
+`overviewWarmOrder =
+    overviewWarmOrder.filter(id => id !== windowId).concat([windowId])`.
+
+The filter is required because it removes every previous occurrence while
+preserving all other relative order.
+
+Strict-safe direction:
+
+- keep the filter as the final fresh array;
+- `next.push(windowId)`;
+- publish `next`;
+- retain the existing capacity/eviction loop.
+
+Per touch:
+
+- singleton concat argument array: **1 -> 0**;
+- concat result/full retained-prefix copy: **1 -> 0**.
+
+LRU order, fresh-array publication and eviction semantics remain identical.
+
+### 60.9 ChatHistoryPanel can derive identical ordered names with one initial pass — CONFIRMED / P2
+
+Path: `modules/sidebarLeft/aiChat/ChatHistoryPanel.qml`.
+
+Current `chatNames`:
+
+1. maps all saved paths to basenames;
+2. filters `lastSession`;
+3. sorts and reverses;
+4. separately runs `names.includes("lastSession")`;
+5. conditionally creates a singleton prefix;
+6. concatenates prefix + rest.
+
+Strict-safe direction:
+
+- iterate `Ai.savedChats` once;
+- derive basename with the exact existing expression;
+- remember whether `lastSession` occurred;
+- append all other names to `rest`;
+- retain `rest.sort().reverse()` exactly;
+- if present, `rest.unshift("lastSession")`.
+
+Do not add malformed-path guards.
+
+Final semantics stay:
+
+- at most one `lastSession`, always first;
+- duplicate ordinary chat names preserved;
+- same default-JS descending lexical order.
+
+Removed:
+
+- all-names intermediate array: **1 -> 0**;
+- separate includes pass: **N -> 0**;
+- singleton prefix + concat-result arrays: **up to 2 -> 0**.
+
+### 60.10 DMS ripple-mask VRAM rewrite is not a direct strict-lossless Hadalis port — NEEDS BENCHMARK / VISUAL TRADEOFF
+
+Upstream:
+
+- `AvengeMedia/DankMaterialShell@13ef1efa7b32adaacdcf091320859811474dcee8`.
+
+DMS replaced a ripple offscreen masking path and reported substantial NVIDIA
+VRAM savings.
+
+Hadalis `RippleButton.qml` also has an `OpacityMask`, but:
+
+`layer.enabled: ripple.opacity > 0`.
+
+So Hadalis does not retain that offscreen layer for every idle button; it is
+transient during an active ripple.
+
+The upstream change also accepts a possible rounded-edge smoothness difference.
+A direct mask-to-clip change therefore is not inspection-proven strict-lossless.
+
+Status:
+
+- no mechanical port;
+- profile transient FBO/VRAM cost under click-heavy UI if needed;
+- require visual/pixel parity before promotion.
+
+### 60.11 Round-46 conclusion
+
+New strict-lossless groups:
+
+1. NotificationGroup bounded reverse model (§60.1,
+   **CONFIRMED / P1-P2**);
+2. PhysicalKeyboardFeedback one-array state transitions (§60.2,
+   **CONFIRMED / P1-P2 conditional**);
+3. Overview Search Clipboard/Emoji filter removal (§60.3,
+   **CONFIRMED / P2**);
+4. Overview Search direct action/result collection (§60.4,
+   **CONFIRMED / P1-P2**);
+5. Background fullscreen derivation without nested result arrays (§60.5,
+   **CONFIRMED / P1-P2**);
+6. AppSearch command compaction + Ventoy-only argument scan (§60.6,
+   **CONFIRMED / P1-P2**);
+7. Wallpapers one-pass Niri workspace range (§60.7,
+   **CONFIRMED / P2**);
+8. WindowPreview warm-LRU filter+push (§60.8,
+   **CONFIRMED / P2**);
+9. ChatHistoryPanel one-pass name derivation (§60.9,
+   **CONFIRMED / P2**).
+
+Not promoted:
+
+10. DMS ripple-mask rewrite remains a measured VRAM/visual-parity experiment
+    (§60.10).
+
+No number above is an end-to-end Hadalis speedup. Numeric reductions are local
+source-derived operation/allocation counts only.
+
+No runtime/source implementation is authorized by this handoff.

@@ -153,7 +153,7 @@ jobs:
 
               # Create a real PAM/logind session for the disposable user.
               # systemd-run + PAMName=login is the documented service-style
-              # session path; unlike machinectl shell on GitHub's host image it
+              # session path; unlike machinectl shell on the GitHub host image it
               # gives us an observable process exit status and session unit.
               session_unit=hadalis-polkit-ci-runtime
               set +e

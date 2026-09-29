@@ -6826,3 +6826,719 @@ For valid animations, benchmark total decode CPU/read bytes before and after.
 
 No runtime/source implementation is authorized by this handoff.
 
+## 40. Round 26 — icon resolution, stream identity and fullscreen derivation
+
+The final pre-write runtime baseline was
+`0219a2ff0337ff03ed05f6044f5c08e1cdf23b4a`.
+
+During this round `dev` moved repeatedly. The changed-file sets were inspected
+before continuing. One concurrent series materially changed Dock hover
+architecture:
+
+- `modules/dock/DockPreview.qml` was removed;
+- `modules/dock/DockWindowPreview.qml` was removed;
+- Dock hover now exposes the app context menu rather than the retired preview.
+
+Therefore no Round-26 recommendation relies on the deleted Dock preview files.
+The surviving DockAppButton identity/icon path was re-audited after that source
+change. Later concurrent changes were limited to CloseConfirm/Polkit/Abyss
+confirmation presentation and did not touch the Round-26 paths below.
+
+### 40.1 Deduplicate repeated icon-name candidates inside one `guessIcon()` call — CONFIRMED / P1
+
+Path:
+
+- `services/AppSearch.qml`.
+
+After desktop-entry and substitution handling, `guessIcon(str)` checks these
+icon-theme candidates in order:
+
+1. the original string;
+2. lowercased string;
+3. reverse-domain tail;
+4. lowercased reverse-domain tail;
+5. kebab-normalized string;
+6. underscore-to-kebab string;
+7. reverse-domain prefix guesses;
+8. later fuzzy-result icon candidates.
+
+For common simple lowercase ids without spaces/dots/underscores, the first six
+values are identical. A miss such as a simple `"firefox"`-shaped key can
+therefore call `iconExists()` six times for the same string. Each
+`iconExists()` resolves the icon through `Quickshell.iconPath()`.
+
+Exact-safe direction:
+
+- keep the current candidate order;
+- keep a synchronous local `Set` of icon names already tested;
+- skip only exact duplicate strings in the same call;
+- do not memoize across calls.
+
+Local reduction for a simple lowercase miss:
+
+- icon existence/theme-resolution probes: **6 -> 1**;
+- **83.3% fewer** probes across that normalization block.
+
+A mixed-case simple id generally collapses to two unique names rather than six,
+or about **66.7% fewer** probes in that block.
+
+This is independent of Round 24's confirmed duplicate
+`heuristicLookup()` miss.
+
+### 40.2 `lookupDesktopEntry()` repeats exact same map probes — CONFIRMED / P1
+
+Path:
+
+- `services/AppSearch.qml`.
+
+The direct stage currently probes:
+
+`startup[lowered] -> exec[lowered] -> id[lowered] -> exec[kebab] -> id[kebab]`.
+
+When the id contains no whitespace, `kebab === lowered`. On a miss, the exact
+same exec/id keys are therefore read twice:
+
+- current direct-stage map reads: **5**;
+- unique exact key+map reads: **3**;
+- local reduction: **40%**.
+
+The aggressive-normalization stage has the same class of duplication:
+
+- `joinedNoSuffix === joined` when no removable suffix exists;
+- `reversedNoSuffix === reversed` in the same case;
+- `segClean === seg` for ordinary segments, causing exec/id/startup probes for
+  that exact key to repeat.
+
+Lossless rule:
+
+- dedupe only an **exact key + exact map** probe;
+- preserve the existing precedence between startup/exec/desktop-id maps;
+- preserve the current candidate ordering between distinct normalized keys.
+
+### 40.3 Precompute tokenized reverse-map keys for hard desktop-entry fallback — HIGH CONFIDENCE / benchmark
+
+Path:
+
+- `services/AppSearch.qml`.
+
+The last-resort token-overlap fallback re-runs regex replacement, trim and split
+for every key in:
+
+- `_desktopIdStemMap`;
+- `_startupClassMap`.
+
+Those key strings change only when AppSearch rebuilds its reverse maps.
+
+A revision-scoped prepared array can retain each key's token list and associated
+entry, while preserving:
+
+- desktop-id map scan before startup-class map scan;
+- current `score > bestScore` tie behavior;
+- current 0.5 threshold.
+
+This removes **100% of repeated candidate-key regex/split allocations** from
+steady-state hard lookups; query-token construction remains.
+
+Benchmark memory before promoting to implementation because the prepared token
+arrays trade a bounded amount of resident memory for fewer allocations/CPU.
+
+### 40.4 Bar taskbar window preview performs one redundant desktop-entry traversal — CONFIRMED / P1
+
+Path:
+
+- `modules/bar/BarTaskbarWindowPreview.qml`.
+
+Current icon binding:
+
+1. `lookupDesktopEntry(appId)`;
+2. if no declared icon, `guessIcon(appId)`;
+3. `guessIcon()` itself performs desktop-entry resolution.
+
+The local `de` object is not otherwise used in this component.
+
+Using `AppSearch.guessIcon(appId)` directly preserves the same icon selection
+order because `guessIcon()` already prefers the desktop entry's declared icon
+before substitutions/theme guesses.
+
+On a true desktop-entry miss:
+
+- full desktop-entry fallback traversals: **2 -> 1**;
+- local reduction: **50%**.
+
+Round 26 originally found the same pattern in DockWindowPreview, but that file
+was concurrently removed before this handoff was written. Do not reintroduce
+that obsolete finding.
+
+### 40.5 Waffle window preview resolves the same app icon twice — CONFIRMED / P1
+
+Path:
+
+- `modules/waffle/bar/tasks/WindowPreview.qml`.
+
+The same delegate uses:
+
+`AppSearch.guessIcon(root.toplevel.appId)`
+
+for both:
+
+- the 16 px header app icon;
+- the 64 px fallback icon shown while/no window preview is available.
+
+Both are icon **name** resolution for the same toplevel; requested paint size is
+handled by the downstream icon component.
+
+A root/delegate readonly resolved icon name shared by both consumers gives:
+
+- `guessIcon()` calls: **2 -> 1**;
+- **50% fewer** icon-name resolutions per binding reevaluation.
+
+### 40.6 Waffle taskbar already owns the desktop entry but resolves it again for the icon — CONFIRMED / P1
+
+Path:
+
+- `modules/waffle/bar/tasks/TaskAppButton.qml`.
+
+The component already keeps:
+
+`desktopEntry: AppSearch.lookupDesktopEntry(appEntry.appId)`
+
+for launch, actions, menu and tooltip behavior.
+
+Its icon still uses:
+
+`AppSearch.guessIcon(appEntry.appId)`.
+
+Exact-safe direction:
+
+`desktopEntry?.icon || AppSearch.guessIcon(appEntry.appId)`.
+
+When the resolved desktop entry has an icon, the common hit path changes from:
+
+- desktop-entry resolution for the property;
+- another desktop-entry/heuristic resolution inside `guessIcon()`;
+
+to reusing the entry already required by the component.
+
+That common branch is approximately **2 -> 1 desktop/heuristic resolutions**
+(**50% fewer**). Missing-icon behavior keeps the existing `guessIcon()`
+fallback unchanged.
+
+### 40.7 Autostart delegates call the complete icon resolver twice with identical arguments — CONFIRMED / P1
+
+Paths:
+
+- `modules/settings/AutostartConfig.qml`;
+- `modules/waffle/settings/pages/WAutostartPage.qml`.
+
+Each app delegate calls the exact same expression twice:
+
+`AppSearch.getIconSource(modelData.icon, modelData.name)`
+
+for:
+
+- the `Image.source`;
+- fallback-icon visibility.
+
+A delegate-level readonly resolved-source property preserves all existing QML
+dependencies and fallback behavior while changing:
+
+- complete icon-resolution calls: **2 -> 1**;
+- local reduction: **50%**.
+
+Do not combine this performance change with fallback-visibility redesign.
+
+### 40.8 Re-resolving a candidate after `iconExists()` is a real duplicate, but needs an internal resolver contract — HIGH CONFIDENCE
+
+Paths:
+
+- `services/AppSearch.qml`;
+- `modules/waffle/actionCenter/volumeControl/VolumeEntry.qml`;
+- `services/MprisController.qml`;
+- `modules/waffle/looks/WIcons.qml`.
+
+`iconExists(name)` already calls `Quickshell.iconPath(name, true)`.
+
+A successful normalized branch in `guessIcon()` can therefore:
+
+1. resolve the theme path inside `iconExists()`;
+2. return only the icon name;
+3. make `getIconSource()` resolve the same name again.
+
+`VolumeEntry` can add another explicit `AppSearch.iconExists(guessed)`
+before calling `Quickshell.iconPath(guessed, "")`, giving up to three theme
+resolutions for one successful candidate path.
+
+Do not change public `guessIcon()` semantics from icon-name to source-path.
+A safer design would add a private/internal resolver that can return both
+`{name, source/existence result}` so callers that need a final source can reuse
+the lookup while name-only APIs remain unchanged.
+
+Theme changes are live before shell restart, so any cross-call cache must include
+theme invalidation; per-call reuse is substantially safer.
+
+### 40.9 MPRIS stream desktop-entry resolution retries the exact binary hint — CONFIRMED / P1
+
+Path:
+
+- `services/MprisController.qml`.
+
+`streamDesktopEntry(node)` first tries a non-generic
+`application.process.binary`.
+
+If that misses, the later id list is:
+
+`[application.id, binary, application.name]`
+
+and therefore tries the same cleaned binary again.
+
+Each `_desktopEntryForHint()` miss can:
+
+1. call `AppSearch.lookupDesktopEntry()`;
+2. scan all `DesktopEntries.applications.values`;
+3. normalize and score up to five fields per entry.
+
+A local ordered set of already-attempted cleaned hints removes the exact repeat
+without changing precedence.
+
+For the duplicated binary miss:
+
+- full hint fallback scans: **2 -> 1**;
+- **50% fewer** scans for that hint.
+
+### 40.10 Stream display-name resolution repeats player matching and desktop-entry hints — CONFIRMED duplicate work
+
+Path:
+
+- `services/MprisController.qml`.
+
+`streamDesktopEntry(node)` calls `playerForStreamNode(node)`.
+
+When no desktop entry is returned, `streamDisplayName(node)` calls
+`playerForStreamNode(node)` again.
+
+That player scan is non-trivial: for each displayed MPRIS player,
+`_streamMatchScore()` compares three player identities against up to eleven
+node identities and repeatedly performs key/token normalization.
+
+A shared per-call resolver carrying the already-computed player changes the
+player-match pass:
+
+- **2 -> 1**;
+- **50% fewer** player scans on this miss path.
+
+There is a second duplicate layer: when a player existed but its
+`player.desktopEntry` / `player.identity` hints failed in
+`streamDesktopEntry()`, `playerDisplayName()` may immediately try the same
+two desktop-entry hints again.
+
+Preserve the current matching threshold and browser-name special cases; share
+resolved intermediates rather than replacing heuristics.
+
+### 40.11 Volume mixer delegates repeat the whole stream presentation resolver — CONFIRMED / P1
+
+Paths:
+
+- `modules/sidebarRight/volumeMixer/VolumeMixerEntry.qml`;
+- `modules/ii/sidebarRight/volumeMixer/VolumeMixerEntry.qml`.
+
+The first delegate invokes stream identity through:
+
+- icon -> `streamIconName(node)` -> `streamDesktopEntry(node)`;
+- visible label -> `streamDisplayName(node)` -> `streamDesktopEntry(node)`;
+- accessible label -> `streamDisplayName(node)` again.
+
+That can produce **3 desktop-entry presentation passes per delegate**.
+
+The ii variant performs icon + display-name resolution, i.e. **2 passes**.
+
+A reactive per-delegate presentation snapshot can reduce:
+
+- first variant: **3 -> 1**, about **66.7% fewer** stream-entry resolution passes;
+- ii variant: **2 -> 1**, **50% fewer**.
+
+A minimal first step is to share only `streamDisplayName(node)` between text and
+Accessibility in the first variant.
+
+Because PipeWire node properties and MPRIS metadata are reactive, add a binding
+parity test before centralizing the full `{entry,player,name,icon}` snapshot.
+
+### 40.12 Precompute immutable desktop-entry scoring metadata inside MPRIS — HIGH CONFIDENCE / P1 benchmark
+
+Path:
+
+- `services/MprisController.qml`.
+
+When direct AppSearch lookup misses, `_desktopEntryForHint()` scans the full
+desktop-entry collection. For every candidate entry it repeatedly normalizes up
+to:
+
+- id;
+- name;
+- generic name;
+- StartupWMClass;
+- command basename/path.
+
+These candidate-side strings are invariant until DesktopEntries changes.
+
+One `streamDesktopEntry()` can attempt roughly six hints on a full miss.
+Without prepared candidate metadata, the candidate-side normalization budget can
+approach:
+
+`6 x D x 5`.
+
+With metadata prepared once per DesktopEntries publication:
+
+`1 x D x 5`
+
+for the invariant candidate side, or up to about **83.3% fewer candidate
+normalization operations** across a six-hint full miss.
+
+Important freshness constraint:
+
+**do not reuse `AppSearch._cachedList` for this.**
+
+AppSearch deliberately publishes its rebuild after a 500 ms debounce, while
+MPRIS currently reads `DesktopEntries.applications.values` directly. Reusing
+the AppSearch list would introduce a new stale window. MPRIS needs an immediate
+DesktopEntries-aware epoch/index if this optimization is implemented.
+
+### 40.13 AltSwitcher icon caches can remain stale after live DesktopEntries changes — CONFIRMED freshness bug
+
+Paths:
+
+- `modules/altSwitcher/AltSwitcher.qml`;
+- `modules/waffle/altSwitcher/WaffleAltSwitcher.qml`;
+- `services/AppSearch.qml`.
+
+Both visual switchers keep a bounded icon cache keyed by:
+
+`appId || appName || title`
+
+and store `AppSearch.getIconSource(key)`.
+
+Neither cache has a DesktopEntries/AppSearch invalidation hook.
+
+The visual ii switcher is kept resident by its family-level LazyLoader while ii
+visual mode is active. The Waffle visual switcher is likewise kept resident
+while its visual mode loader is active.
+
+Thus a desktop entry/icon installed or changed after a cache entry is warm can
+leave the old icon source resident for the rest of that component lifetime.
+
+Icon-theme setters generally queue a shell restart, but live DesktopEntries
+changes do not.
+
+Fix direction:
+
+- expose a coherent AppSearch desktop-entry publication epoch;
+- clear only the switcher's icon source cache when that epoch changes;
+- retain the existing 100-entry bounded/LRU behavior.
+
+### 40.14 AppSearch's current `_cacheRevision` is not a safe external publication barrier — CONFIRMED design constraint
+
+Path:
+
+- `services/AppSearch.qml`.
+
+Current rebuild order is:
+
+1. publish new cached list/name arrays;
+2. increment `_cacheRevision`;
+3. build the new startup/exec/desktop-id reverse maps;
+4. publish those maps.
+
+An external cache that reacts immediately to
+`_cacheRevisionChanged`, clears itself and resolves an icon can therefore see:
+
+- the new list revision;
+- the old reverse maps.
+
+The existing revision is sufficient for AppSearch's internal lazy fuzzy arrays,
+but it should not be treated as a coherent external desktop-entry epoch.
+
+If Round 26/27 adds icon-cache invalidation, either:
+
+- move a dedicated publication revision increment to after all reverse maps are
+  assigned; or
+- introduce a separate `desktopEntryRevision` at the end of the rebuild.
+
+Existing `scripts/test-appsearch-binding-cache.sh` tests lazy fuzzy-cache reuse
+and deferred QML publication only. It does not cover coherent external cache
+invalidation.
+
+### 40.15 Merge GameMode global any/visible fullscreen derivation into one pass — CONFIRMED / P1
+
+Path:
+
+- `services/GameMode.qml`.
+
+Current global derivation performs two separate scans of the same Niri window
+snapshot:
+
+- `checkAnyFullscreenWindow()`;
+- `hasVisibleFullscreenWindow`.
+
+Both call `isWindowFullscreen()`.
+
+A single snapshot result `{ any, visible }` can preserve the exact distinction:
+
+- `any`: fullscreen on any workspace;
+- `visible`: fullscreen on an active workspace.
+
+It can stop once both values are true.
+
+Local reductions:
+
+- no fullscreen: **2N -> N** fullscreen checks = **50% fewer**;
+- first fullscreen is active at position k: **2k -> k** = **50% fewer**;
+- background fullscreen before active fullscreen: current is approximately
+  `i + j`, shared pass needs only the later active result `j`, never more.
+
+Keep Hyprland/non-Niri public behavior unchanged.
+
+### 40.16 Memoize per-output fullscreen result on demand by Niri snapshot identity — CONFIRMED / P1 for ii/Waffle surfaces
+
+Paths:
+
+- `services/GameMode.qml`;
+- `services/NiriService.qml`;
+- current callers in ScreenEdges, ScreenCorners, Background, WaffleBackground,
+  SidebarHost and WidgetPowerManager.
+
+`hasFullscreenOnOutput(outputName)` currently scans the Niri window list on
+every caller evaluation.
+
+NiriService was audited for mutation semantics:
+
+- window publications assign new arrays;
+- workspace changes assign new maps;
+- output changes assign new maps;
+- `sortWindowsByLayout()` returns a new array;
+- no in-place `windows[i] =`, `workspaces[id] =` or `outputs[name] =`
+  mutation was found for these published state containers.
+
+Therefore an on-demand memo can key one generation by the exact references:
+
+- `windows`;
+- `workspaces`;
+- `outputs`;
+- compositor/Niri mode;
+
+then cache `outputName -> bool`.
+
+This keeps the first call on a new snapshot exactly as expensive/fresh as today
+and makes repeated same-output queries O(1). It avoids the possible regression
+of eagerly computing every output for families such as Abyss that do not
+currently use this API.
+
+Concrete ii example:
+
+`ScreenEdges.qml` creates four ReservationWindows per output, and each has the
+same `GameMode.hasFullscreenOnOutput(outputName)` binding.
+
+For that cluster alone:
+
+- current: roughly **4N** window scans;
+- on-demand memo: **N** for the first caller + three O(1) lookups;
+- **75% fewer full-window scans**.
+
+Other same-output callers can reuse the same result.
+
+### 40.17 Preserve GameMode fallback timing while skipping deterministic repeated scans — HIGH CONFIDENCE / parity required
+
+Paths:
+
+- `services/GameMode.qml`;
+- `services/NiriService.qml`.
+
+Round 25 rejected simply replacing the 10-second fallback timer with new event
+handlers because that changes activation/deactivation timing.
+
+A narrower design can retain the current phase:
+
+1. keep `fallbackTimer` and its configured interval unchanged;
+2. keep the timer scheduling the 300 ms `checkDebounce` exactly as today;
+3. maintain a revision covering all fullscreen inputs
+   (windows, workspaces, outputs, active-window/focus relevant publication,
+   autoDetect/compositor state);
+4. at the debounce trigger, compare that input revision with the revision last
+   actually processed;
+5. run `_doCheckFullscreen()` only if the input revision changed.
+
+Do **not** skip starting the debounce at the 10-second timer itself. An input
+event may arrive during that 300 ms window; current code would observe the new
+state at the scheduled trigger.
+
+Once Niri state is stable, this can reduce fallback-induced full-window scans
+from up to **360 per hour -> 0 per hour**, while retaining the timer and debounce
+wakeups/timing.
+
+Parity matrix must include:
+
+- workspace-only activation change;
+- output hotplug/layout change;
+- F11/layout update with unchanged focus;
+- autoDetect toggle;
+- compositor initialization;
+- input change arriving during the fallback's 300 ms debounce window.
+
+### 40.18 WidgetPowerManager computes the same pure pause decision twice — CONFIRMED / P1
+
+Paths:
+
+- `services/WidgetPowerManager.qml`;
+- `modules/background/widgets/AbstractBackgroundWidget.qml`.
+
+Global properties currently evaluate:
+
+- `widgetsActive = !shouldPauseForOutput("")`;
+- `reducedMode = shouldPauseForOutput("")`.
+
+A shared readonly `globalPaused` result gives:
+
+- **2 -> 1** full decisions;
+- **50% fewer** global decision evaluations.
+
+Every AbstractBackgroundWidget repeats the same pattern per output:
+
+- `powerActive = widgetsActiveForOutput(outputName)`;
+- `powerReduced = reducedModeForOutput(outputName)`.
+
+Those wrappers are direct inverses around the same pure
+`shouldPauseForOutput()`.
+
+A widget-local `powerPaused` binding with:
+
+- `powerActive = !powerPaused`;
+- `powerReduced = powerPaused`;
+
+changes per-widget full decisions from:
+
+- **2 -> 1**;
+- **50% fewer**.
+
+The decision function has no side effects, so this does not depend on a
+cross-event cache.
+
+### 40.19 WidgetPowerManager also checks output eligibility twice on the allowed path — CONFIRMED / P2
+
+Path:
+
+- `services/WidgetPowerManager.qml`.
+
+For a non-empty allowed output, `shouldPauseForOutput()` first calls
+`DesktopWidgetLayout.outputAllowed(scopedOutput)` for its early-return guard.
+
+Then `_triggersForOutput()` computes `outputDisabled` by calling the same
+function again.
+
+Preserve the current early return so disabled outputs do not pay fullscreen or
+window-presence work, but pass the already-computed eligibility into the
+internal trigger builder.
+
+Allowed path:
+
+- `outputAllowed()` calls: **2 -> 1**;
+- **50% fewer**.
+
+### 40.20 Conditional window-presence memo for widget power saving — HIGH CONFIDENCE / P2
+
+Path:
+
+- `services/WidgetPowerManager.qml`.
+
+When `pauseWhenWindowsPresent=true`,
+`_hasWindowsOnActiveWorkspace(outputName)`:
+
+- enumerates/filter active workspaces;
+- scans windows;
+- for each window may search the active-workspace collection.
+
+After §40.18 removes the same-widget double evaluation, multiple widgets on the
+same output can still repeat that work.
+
+An on-demand memo keyed by the published `windows/workspaces` references and
+output name can share the answer across widgets.
+
+Default `pauseWhenWindowsPresent` is false, so this is conditional/P2 rather
+than a default-path priority.
+
+Keep its semantics separate from Background dynamic opacity: Background counts
+any window on the active workspace, while WidgetPowerManager intentionally
+filters minimized windows.
+
+### 40.21 Lazy `windowForId` map for published Niri snapshots — HIGH CONFIDENCE / P2
+
+Paths:
+
+- `services/NiriService.qml`;
+- `modules/waffle/bar/tasks/TaskAppButton.qml`;
+- `services/MinimizedWindows.qml`.
+
+No published window-id index currently exists.
+
+Two consumers show repeated linear lookup patterns:
+
+**Waffle taskbar**
+
+For an app with A toplevels,
+`TaskAppButton.focusedWindowIndex` performs
+`NiriService.windows.find(id)` inside the A-item loop:
+
+- current complexity approximately `A x N`;
+- lazy per-snapshot id map: `N + A`.
+
+For A=2 and large N, this approaches ~50% fewer comparisons; A=5 approaches
+~80%.
+
+**MinimizedWindows**
+
+`stashWorkspaceForOutput()` loops M minimized ids and calls
+`liveWindows.find(id)` for each:
+
+- current: `M x N`;
+- lazy map: `N + M`.
+
+Use a demand-built map keyed by the published windows-array reference so a
+session with no id lookups does not pay the map build.
+
+Do not replace NiriService's own handlers that deliberately inspect
+`_pendingWindows`; the helper is for consumers of the published snapshot.
+
+### 40.22 Round-26 priority update
+
+**Confirmed, local, lowest-risk:**
+
+1. AppSearch per-call duplicate icon candidate suppression (§40.1);
+2. AppSearch exact map-probe suppression (§40.2);
+3. Bar preview redundant lookup removal (§40.4);
+4. Waffle WindowPreview shared icon name (§40.5);
+5. Waffle TaskAppButton desktop-entry icon reuse (§40.6);
+6. Autostart per-delegate resolved icon source (§40.7);
+7. MPRIS exact duplicate hint suppression (§40.9);
+8. GameMode global any/visible one-pass derivation (§40.15);
+9. GameMode on-demand per-output snapshot memo (§40.16);
+10. WidgetPower duplicate pause-decision and outputAllowed suppression (§40.18-40.19).
+
+**Confirmed duplicate work but implementation needs a reactive snapshot contract:**
+
+11. MPRIS stream display/player intermediate sharing (§40.10);
+12. VolumeMixer per-delegate stream presentation sharing (§40.11);
+13. AltSwitcher DesktopEntries-driven icon cache invalidation (§40.13-40.14).
+
+**High confidence / benchmark or parity required:**
+
+14. AppSearch prepared token-overlap keys (§40.3);
+15. reuse resolved icon-path existence within a call (§40.8);
+16. MPRIS prepared desktop-entry scoring metadata (§40.12);
+17. GameMode stable-revision fallback scan suppression (§40.17);
+18. WidgetPower window-presence memo (§40.20);
+19. lazy Niri published-window id map (§40.21).
+
+**Closed by concurrent architecture change:**
+
+20. any DockWindowPreview-specific optimization from the early Round-26 audit;
+    that runtime was removed before this handoff was committed.
+
+No runtime/source implementation is authorized by this handoff.
+

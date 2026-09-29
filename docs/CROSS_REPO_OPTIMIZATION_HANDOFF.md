@@ -16410,3 +16410,252 @@ No number above is an end-to-end Hadalis speedup. Numeric reductions are local
 source-derived operation/allocation counts only.
 
 No runtime/source implementation is authorized by this handoff.
+---
+
+## 61. Round 47 — pin mutations, AppSearch scoring and monitor-arrangement collection cleanup (2026-09-30)
+
+### Snapshot / concurrency safety
+
+This round continued immediately after Round-46 docs commit
+`113013b8f83e835a4509a9b7c2c39698ab7fd49e`.
+
+Any branch movement after that commit is accepted only when an in-transaction
+compare proves the delta is a clean fast-forward limited to the already-audited
+`agent/*`, `automation/*`, or Hadalis automation/live-transport test/install
+paths. Runtime or handoff changes abort the write.
+
+No runtime/QML/native implementation is authorized by this round.
+
+### 61.1 TaskbarApps and TrayService toggle paths can decide/remove/append in one pass — CONFIRMED / P2 interaction
+
+Paths:
+
+- `services/TaskbarApps.qml`;
+- `services/TrayService.qml`.
+
+#### TaskbarApps.togglePin()
+
+Current taskbar mutation starts from
+`root._stringArray(Config.options?.dock?.pinnedApps)`, so `pinned` is already
+a fresh normalized JS array.
+
+It then:
+
+1. scans with `some(id => id.toLowerCase() === key)`;
+2. if found, scans again with `filter(... !== key)`;
+3. otherwise copies again with `concat([normalized])`.
+
+Strict-safe direction:
+
+- allocate `next = []`;
+- visit every normalized pinned ID once;
+- compute the same lowercase comparison;
+- remember whether any match occurred;
+- append only nonmatching IDs;
+- if no match occurred, append `normalized`;
+- call the same `Config.setNestedValue` once.
+
+Important duplicate semantics are preserved:
+
+- the existence test remains case-insensitive;
+- when pinned, **all** case-insensitive duplicates are removed, matching current
+  `filter`;
+- when unpinned, existing order is preserved and the normalized app ID is
+  appended once.
+
+Unpin comparison work changes from up to roughly **2N -> N**.
+The pin branch removes the concat copy/result allocation.
+
+#### TrayService.togglePin()
+
+Current toggle:
+
+1. scans `_pinnedItems.includes(itemId)`;
+2. calls `unpin()` or `pin()`;
+3. those helpers reread/copy and, respectively, filter or run another
+   `includes()`.
+
+For the toggle API specifically, a single ordered pass over the current pinned
+snapshot can:
+
+- retain all nonmatching exact IDs;
+- remember whether an exact match existed;
+- remove all exact duplicates when found;
+- append `itemId` when not found;
+- publish one final array through the same Config path.
+
+Keep public `pin()` and `unpin()` behavior unchanged for their direct callers.
+
+This removes the duplicate membership pass and reduces the toggle to one
+collection build while preserving exact-ID semantics.
+
+### 61.2 AppSearch sloppy/unlimited scoring can skip the full pre-filter score array — CONFIRMED / P1 search interaction
+
+Path:
+
+- `services/AppSearch.qml`, `fuzzyQuery()`.
+
+The bounded sloppy-search branch is already optimized with incremental top-K
+insertion.
+
+The **unlimited** sloppy branch still does:
+
+1. `_cachedList.map(...)` to create a score record for every app;
+2. `.filter(item => item.score > scoreThreshold)`;
+3. sort retained score records;
+4. decorate the sorted entries.
+
+Overview Search calls `AppSearch.fuzzyQuery(appQuery)` without a limit, so this
+is a real debounced search path rather than a dormant compatibility branch.
+
+Strict-safe direction:
+
+- allocate only `results = []`;
+- iterate every cached app/name pair in the same order;
+- compute Levenshtein score and the same startsWith/word/contains boosts;
+- clamp score exactly as today;
+- append `{entry, score}` only when it passes the current strict
+  `score > scoreThreshold` predicate;
+- retain the exact current descending score sort and final decoration pass.
+
+The current filter preserves source order before sort; ordered pushes preserve
+the same sort input, including tie order presented to QV4's existing comparator.
+
+For N cached apps:
+
+- full N-element pre-filter score array: **1 -> 0**;
+- separate filter traversal: **N -> 0**;
+- score computations remain exactly N.
+
+No top-K behavior, threshold, scoring or final sort is changed.
+
+### 61.3 CalendarSync updateSource can capture the first matching index while cloning — CONFIRMED / P2 Settings action
+
+Path:
+
+- `services/CalendarSync.qml`.
+
+Current `updateSource(sourceId, updates)`:
+
+1. clones every source with
+   `root.sources.map(source => Object.assign({}, source))`;
+2. scans the cloned array again with
+   `findIndex(s => s.id === sourceId)`;
+3. replaces the first matching clone and publishes the full cloned source list.
+
+The full clone is important and should remain: it preserves the current
+snapshot/publication behavior.
+
+Strict-safe direction:
+
+- during that same mandatory map, create the clone first;
+- if no earlier match has been recorded and
+  `clone.id === sourceId`, retain that index;
+- return every clone exactly as today;
+- after the complete clone pass, apply `updates` to the retained first index
+  and publish exactly as current source does.
+
+This preserves:
+
+- all source objects being cloned before Config publication;
+- first-duplicate-ID wins;
+- no Config write when no ID matches;
+- clone order and update merge semantics.
+
+For S sources:
+
+- second `findIndex` scan: **up to S -> 0**.
+
+### 61.4 MonitorVisibilityConfig can reduce two repeated name-enumeration patterns without introducing shared cache state — CONFIRMED / P1-P2 while monitor arrangement is active
+
+Path:
+
+- `modules/settings/MonitorVisibilityConfig.qml`.
+
+#### A. connectedScreenNames(): Set membership with ordered array output
+
+Current function visits `Quickshell.screens`, normalizes every screen name with
+`String(...)`, then suppresses duplicates using growing
+`names.includes(name)`.
+
+For S distinct connected names this has quadratic-shaped membership comparisons.
+
+Because every candidate is already converted to a string, `Array.includes`
+and `Set.has` have the same relevant SameValueZero membership behavior.
+
+Strict-safe direction:
+
+- keep the ordered `names` result;
+- add an invocation-local `seen` Set;
+- on every nonempty name, append only if `!seen.has(name)`, then add it.
+
+First-seen order and duplicate suppression remain identical.
+
+Membership changes from worst-shaped **O(S²) -> O(S)**.
+
+#### B. niriOutputNames(): reuse and compact the already-created key array
+
+Current function first executes:
+
+`Object.keys(monitorLayoutSnapshot).length > 0`
+
+to choose between staged layout and live Niri outputs.
+
+It then executes:
+
+`Object.keys(source).filter(validOutput).sort(existingComparator)`.
+
+When the staged snapshot is active, the same object's keys are enumerated
+twice. In both staged/live cases, `filter()` also allocates a second names
+array.
+
+Strict-safe direction:
+
+- retain `snapshotKeys = Object.keys(monitorLayoutSnapshot)`;
+- choose the same source from `snapshotKeys.length`;
+- if staged source is selected, reuse `snapshotKeys`; otherwise create the one
+  live-source key array;
+- stable-compact that fresh key array in place with the exact current
+  `logical !== undefined || width !== undefined` predicate;
+- run the exact existing geometry comparator on the compacted array.
+
+No persistent output cache/property is introduced; every call still observes
+the current staged/live state.
+
+Fresh arrays per call:
+
+- staged snapshot: **3 -> 1** for key/filter collection stages;
+- live fallback: **3 -> 2**.
+
+This matters beyond page initialization because `niriOutputNames()` is called
+from monitor-overlap/touch/candidate calculations and several drag-related
+bindings while the arrangement UI is active.
+
+### 61.5 Round-47 conclusion
+
+New strict-lossless groups:
+
+1. Taskbar/Tray one-pass toggle-pin mutation (§61.1,
+   **CONFIRMED / P2 interaction**);
+2. AppSearch sloppy/unlimited direct score collection (§61.2,
+   **CONFIRMED / P1 search interaction**);
+3. CalendarSync updateSource index capture during mandatory clone (§61.3,
+   **CONFIRMED / P2**);
+4. MonitorVisibility connected/output-name collection reductions (§61.4,
+   **CONFIRMED / P1-P2 arrangement path**).
+
+Rejected as new findings during this sweep:
+
+- MinimizedWindows temporary collections already belong to §45.1-§45.4;
+- Dock running-order Set/Map cleanup already belongs to §37.5;
+- Dashboard available-ID Set membership already belongs to §49.7;
+- AiProviderCatalog repeated concat already belongs to §48.11;
+- Keyring argument reduction has only two fixed properties and is not worth
+  promoting over the hotter paths above;
+- Session `map(pid).forEach` is a logout-only micro and remains below the
+  research priority threshold.
+
+No number above is an end-to-end Hadalis speedup. Numeric reductions are local
+source-derived operation/allocation counts only.
+
+No runtime/source implementation is authorized by this handoff.

@@ -17623,3 +17623,231 @@ No numeric reduction above is an end-to-end Hadalis speedup; all values are
 local source-derived operation/read reductions.
 
 No runtime/source implementation is authorized by this handoff.
+
+
+## 67. Round 53 — compact-calendar range batching and LocalMusic interaction paths (2026-09-30)
+
+This round was researched and revalidated against current `dev` HEAD
+`14c2e30db6bb5f48471e19fc3a5d08a0984f0d40` (Round 52). No intervening
+commit existed immediately before this documentation write.
+
+Before promotion, the handoff was searched for
+`CompactSidebarRightContent.qml`, `CalendarSync.getEventsForDate`,
+`upcomingEvents`, `LocalMusicView.qml`, `resolveSelectedTracks`,
+`selectedFolderPaths` and `applyRangeSelection`. Existing calendar ownership
+in §49.3-§49.4 and §57.7 is narrower/different: count/presence/source-color
+single-day queries and timestamp reuse inside the service's own upcoming sort.
+Those findings do not cover the 14-day full-object Compact consumer below.
+
+### 67.1 Compact Upcoming can derive fourteen CalendarSync day buckets from one source pass — CONFIRMED / P1-P2 while Compact calendar is active
+
+Paths:
+
+- `modules/sidebarRight/CompactSidebarRightContent.qml`;
+- `services/CalendarSync.qml`.
+
+The Compact Upcoming binding currently builds its external-event portion by
+calling:
+
+`CalendarSync.getEventsForDate(d)`
+
+once for each of the next **14** local calendar days.
+
+Each service call independently filters the complete `CalendarSync.events`
+array. For every external event, each call reparses date state:
+
+- timed event: one `Date(event.startDate)`;
+- all-day event: normalized start plus end Date;
+- then a fresh matching-event array is returned for that day.
+
+The caller then traverses each day array in day-major order, applies its own
+`evtTime >= now || (e.allDay && evtTime >= startDay)` rule, clones passing
+rows, merges local events and sorts.
+
+A direct substitution with `CalendarSync.getUpcomingEvents(14)` is **not**
+lossless and must not be used:
+
+- its horizon differs from the Compact caller's exact today..today+13 date
+  buckets;
+- its timed-event cutoff is range-based rather than the per-day membership
+  contract;
+- most importantly, the Compact code intentionally/observably emits a multi-day
+  all-day event once for **each** overlapping day bucket before the final sort.
+
+Strict-safe direction:
+
+1. preserve the exact fourteen target dates produced from `startDay` with the
+   current local-time `setDate()` semantics;
+2. add a private/batch CalendarSync query that creates fourteen fresh buckets;
+3. read the current `root.events` snapshot once and traverse events in source
+   order;
+4. for a timed event, parse/normalize its start day once and append the original
+   event reference to the matching target bucket, if any;
+5. for an all-day event, parse/normalize start/end once, then apply the exact
+   current per-target predicate:
+   - non-forward/missing end uses the same single-day fallback;
+   - forward `DTEND` stays exclusive;
+6. append to each matching bucket in source order;
+7. in Compact, keep the existing outer day loop and existing per-event
+   `evtTime` filter/clone logic unchanged.
+
+Why the final `ext` sequence remains identical:
+
+- each bucket contains exactly the same references that fourteen independent
+  `filter()` calls would have returned;
+- bucket order is target-day order;
+- within each bucket, source-event order is unchanged;
+- multi-day all-day events still appear in every overlapping bucket;
+- the Compact post-filter still rejects the same already-started all-day rows;
+- all public row clones, local/external merge order, final comparator and
+  publication remain unchanged.
+
+CalendarSync events come from ICS parser output or JSON cache load, so they are
+plain data objects rather than getter-bearing QML objects. The binding still
+captures the same `CalendarSync.events` dependency; no persistent date index
+is introduced.
+
+For E external events:
+
+- complete source-array predicate traversals: **14E -> E**;
+- timed start-Date constructions in the service query: **14 per event -> 1**;
+- all-day start/end Date constructions: **up to 28 per event -> 2**;
+- target-day numeric overlap checks remain bounded by fourteen for an all-day
+  span, which is required to preserve per-day duplication.
+
+The caller's later Date construction, cloning and final sort are deliberately
+left unchanged.
+
+### 67.2 LocalMusic search can remove two four-element staging arrays per track — CONFIRMED / P1-P2 per keystroke
+
+Paths:
+
+- `modules/sidebarLeft/LocalMusicView.qml`;
+- `services/LocalMusic.qml`.
+
+For every nonempty search query, `filteredTracks` currently evaluates every
+library track with:
+
+`[title, artist, album, folder].map(String/lowercase).join(" ")`.
+
+That creates, per track:
+
+1. a four-element raw-field array;
+2. a four-element normalized-string map result;
+3. then the joined haystack string.
+
+`LocalMusic.libraryTracks` is published from the native MPD snapshot after
+`JSON.parse()`, so library rows and their fields are plain JSON data. No
+getter/callback/reactive-object semantics are hidden inside the four fields.
+
+Strict-safe one-result-array direction:
+
+- retain the empty-query fast path that returns `LocalMusic.libraryTracks`
+  itself;
+- for a nonempty query, allocate one fresh result array;
+- for each track, first read raw `title`, `artist`, `album`, `folder`
+  in that exact order, matching the current array-literal property-read phase;
+- then String-convert/lowercase those four captured values in the same order;
+- concatenate them with the same three literal spaces;
+- apply the same `haystack.includes(root.query)` predicate;
+- append the original track reference only on a match.
+
+This preserves:
+
+- source traversal and result order;
+- original-reference identity;
+- fresh-array publication for nonempty search;
+- empty-query alias behavior;
+- exact nullish-to-empty String conversion;
+- field read and conversion order, including malformed JSON scalar/object/array
+  values.
+
+For N library tracks per query update:
+
+- four-element raw arrays: **N -> 0**;
+- four-element mapped arrays: **N -> 0**;
+- the final matched-track array remains exactly one, as today.
+
+No retained lowercase library cache is introduced.
+
+### 67.3 LocalMusic Shift-range selection can replace growing string-array membership scans with local Sets — CONFIRMED / P2 large-range interaction
+
+Path:
+
+- `modules/sidebarLeft/LocalMusicView.qml`,
+  `applyRangeSelection()`.
+
+The current Shift-range path clones the existing selected-track and
+selected-folder arrays, then walks the sliced visible entry range.
+
+For every candidate it currently checks duplicate membership with growing:
+
+- `folders.includes(path)`;
+- `tracks.includes(key)`.
+
+Both values are strings produced by `normalizedFolder()` / `trackKey()`.
+As the selected range grows, repeated membership becomes quadratic in the
+worst-shaped interaction.
+
+Strict-safe direction:
+
+1. keep the existing `root.songEntries.slice(from, to + 1)` exactly, so
+   current range slicing and malformed index behavior are not reinterpreted;
+2. keep the current cloned `tracks` and `folders` output arrays;
+3. construct invocation-local Sets from those clones;
+4. for each folder/track row, compute the same path/key in the same branch;
+5. replace only `.includes(value)` with `Set.has(value)`;
+6. when a new value is accepted, push to the existing output array **and** add
+   it to the matching Set;
+7. publish `selectedTrackKeys` then `selectedFolderPaths` in the same order
+   as today.
+
+Parity:
+
+- Array `includes` and Set membership are both SameValueZero; for the actual
+  string keys/paths they are identical;
+- existing duplicates in malformed/preexisting selection arrays are not
+  removed, because the output arrays start as unchanged clones;
+- new duplicates are suppressed at the same first encounter;
+- range entry order and final selection-array order are unchanged;
+- unknown entry types remain ignored;
+- no persistent selection index is retained.
+
+For a range of R entries with S preexisting selected strings, the growing
+membership component changes from worst-shaped roughly
+**O(R x (S + R)) -> O(S + R)** local Set construction/lookups while retaining
+the same public arrays.
+
+### 67.4 Nearby attractive hits intentionally not promoted
+
+Two static shapes were checked and closed for this strict round:
+
+- `services/ObsidianTodoBackend.qml` performs `_taskById()` before queuing a
+  mutation and again after the asynchronous capability probe. The second scan
+  is a deliberate stale-reference revalidation across an async boundary; fusing
+  or caching it can authorize a task that disappeared while the probe ran.
+- `modules/wallpaperSelector/WallpaperCoverflowView.qml` independently scans
+  its FolderListModel for `imageCount` and `folderCount`. Sharing one
+  intermediate reactive partition can alter changed-signal/dependency
+  publication, while deriving one as `totalCount - otherCount` changes
+  malformed non-boolean `fileIsDir` behavior. Do not promote that apparent
+  two-scan duplicate without a stronger typed-role/signal contract.
+
+### 67.5 Round-53 conclusion
+
+New strict-lossless groups:
+
+1. one-pass external CalendarSync range bucketing for Compact Upcoming (§67.1,
+   **CONFIRMED / P1-P2 while active**);
+2. allocation-light LocalMusic library search (§67.2,
+   **CONFIRMED / P1-P2 per keystroke**);
+3. Set-backed LocalMusic Shift-range duplicate membership (§67.3,
+   **CONFIRMED / P2 large-range interaction**).
+
+Obsidian async task revalidation and CoverflowView shared type-count derivation
+are explicitly closed rather than counted (§67.4).
+
+No numeric reduction above is an end-to-end Hadalis speedup; all values are
+local source-derived operation/allocation reductions.
+
+No runtime/source implementation is authorized by this handoff.

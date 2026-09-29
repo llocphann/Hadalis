@@ -47,6 +47,8 @@ def main() -> None:
     assert "fetch the current dev head" in CONTINUATION_PROMPT.casefold()
     assert "strict-lossless optimization research" in CONTINUATION_PROMPT.casefold()
     assert "do not stop after one round" in CONTINUATION_PROMPT.casefold()
+    assert "do not switch to work mode" in CONTINUATION_PROMPT.casefold()
+    assert "do not switch to work mode" in ROTATION_BOOTSTRAP_PROMPT.casefold()
     assert "HADALIS_LOOP:CONNECTOR_BLOCKED GITHUB" in CONTINUATION_PROMPT
 
     wait = parse_loop_directive("notes\nHADALIS_LOOP:WAIT_RESULT JOB-000127\n")

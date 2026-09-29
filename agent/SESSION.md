@@ -6,11 +6,13 @@ Focused automation validation `JOB-AUTOMATION-VALIDATE-002` passed every action.
 
 A production-safety change now starts new autonomous sessions with `rotate-send`, which creates a fresh chat inside Hadalis Cloud before sending the initial prompt. Continuations remain in the current chat; explicit rotation also uses `rotate-send`.
 
-Pending mechanical evidence: `JOB-DESKTOP-LIVE-ACCEPT-001`.
+Interactive testing confirmed the GitHub rich-mention picker path can select GitHub, append the prompt body, and submit. The production desktop driver now converts the tracked first-line connector marker into that rich mention instead of filling the markdown literal into the composer. Rotation also follows the renderer that owns the newly created chat.
+
+Pending mechanical evidence: `JOB-DESKTOP-LIVE-ACCEPT-005`.
 
 Resume procedure:
 1. Fetch current `dev` HEAD.
-2. Read `automation/results/JOB-DESKTOP-LIVE-ACCEPT-001.json` if present.
+2. Read `automation/results/JOB-DESKTOP-LIVE-ACCEPT-005.json` if present.
 3. If absent, wait for the deterministic local worker; do not invent the result.
 4. If it failed, inspect exact stdout/stderr and fix forward on current `dev`.
 5. If it passed, install the user services from the maintainer's persistent local checkout, not from an ephemeral worker clone.

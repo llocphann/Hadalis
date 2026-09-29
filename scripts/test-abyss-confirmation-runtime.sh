@@ -42,6 +42,7 @@ ShellRoot {
     property bool finished: false
     property int acceptedCallbacks: 0
     property bool showPeer: false
+    property bool showRelatedPeer: false
     property var confirmationPopup: null
     property int queuedFirstId: 0
     property int queuedSecondId: 0
@@ -302,6 +303,21 @@ ShellRoot {
         Item {
             implicitWidth: 270
             implicitHeight: 120
+        }
+    }
+
+    // Model the source-owned tray menu/hover popup that may already be open
+    // when the application backend raises a confirmation from the same icon.
+    StyledPopup {
+        id: relatedPeerPopup
+        hoverTarget: trayAnchor
+        hoverActivates: false
+        alternativeVisibleCondition: root.showRelatedPeer
+        closeOnOutsideClick: false
+
+        Item {
+            implicitWidth: 250
+            implicitHeight: 100
         }
     }
 
@@ -689,6 +705,61 @@ ShellRoot {
                         "registered source becoming non-presented cancels without teleport"))
                     return
                 PopupAnchorRegistry.unregisterAnchor(hiddenResidentAnchor)
+                PopupAnchorRegistry.registerAnchor(
+                    trayAnchor, "tray", () => ["runtime.app"], 300)
+                root.showRelatedPeer = true
+                root.phase = 30
+                return
+            }
+
+            if (root.phase === 30) {
+                if (!relatedPeerPopup.presentationActive
+                        || controller.activePopups.length < 1)
+                    return
+                root.requestApp(
+                    "runtime.app", "Confirmation beside related tray popup")
+                root.phase = 31
+                return
+            }
+
+            if (root.phase === 31) {
+                if (!ConfirmationService.requestVisible
+                        || controller.activePopups.length < 2)
+                    return
+                const confirmation = controller.activePopup
+                if (!root.check(
+                        ConfirmationService.resolvedAnchor === trayAnchor
+                        && relatedPeerPopup.hoverTarget === trayAnchor
+                        && confirmation.hoverTarget === trayAnchor,
+                        "related popup and confirmation keep the same tray source anchor"))
+                    return
+                if (!root.check(
+                        relatedPeerPopup._attachmentEdge
+                            === confirmation._attachmentEdge,
+                        "related popup and confirmation keep the same source Edge"))
+                    return
+                root.confirmationPopup = confirmation
+                root.showRelatedPeer = false
+                root.phase = 32
+                return
+            }
+
+            if (root.phase === 32) {
+                if (!root.check(
+                        ConfirmationService.requestVisible
+                        && root.confirmationPopup?.presentationActive,
+                        "confirmation survives related source-popup retract/reflow"))
+                    return
+                ConfirmationService.cancel()
+                root.phase = 33
+                return
+            }
+
+            if (root.phase === 33) {
+                if (ConfirmationService.active
+                        || relatedPeerPopup.presentationActive)
+                    return
+                PopupAnchorRegistry.unregisterAnchor(trayAnchor)
                 console.info("ABYSS_CONFIRMATION_RUNTIME_PASS")
                 root.finished = true
             }
@@ -705,4 +776,4 @@ if [[ "$status" != 124 ]]         || ! rg -q 'ABYSS_CONFIRMATION_RUNTIME_PASS' "
     exit 1
 fi
 
-printf 'PASS: confirmation callbacks, content-fit, four-edge attachment, Join Edge inheritance, tray/dock routing, top-center fallback, source loss, peer reflow, queue/reopen, hidden-resident fallback and live-anchor invalidation\n'
+printf 'PASS: confirmation callbacks, content-fit, four-edge attachment, Join Edge inheritance, tray/dock routing, top-center fallback, source loss, peer reflow, same-source related-popup reflow, queue/reopen, hidden-resident fallback and live-anchor invalidation\n'

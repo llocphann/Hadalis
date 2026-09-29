@@ -11967,3 +11967,350 @@ Earlier correctness prerequisites remain above pure performance work:
 - Bar/Dock first-run ignore-regex correctness (§47.1-§47.2).
 
 No runtime/source implementation is authorized by this handoff.
+
+
+---
+
+## 50. Round 36 — strict-lossless service parsing, planner and invocation-local reductions (2026-09-30)
+
+### Snapshot / concurrent reconciliation
+
+Round 36 opened on `dev` HEAD `b8c2937990ddb9996852cda9716b5816dea6f674`
+(`docs(perf): audit strict-lossless local reductions`).
+
+Before this write, `dev` advanced to
+`f24e7cbd52f00617a107527b9a321414f8116995`
+(`fix(abyss): borrow only across real peer gaps`). That concurrent commit changes
+only `modules/abyss/looks/AbyssVacancyBorrowing.js` and
+`scripts/test-abyss-vacancy-borrowing.py`; it does not touch this round's
+candidate cluster. The handoff and every source path below were re-read at exact
+`f24e7cbd52f00617a107527b9a321414f8116995` before this update.
+
+Round-35's strict rule remains in force: CONFIRMED requires identical observable
+output/order/identity where relevant, side effects, publication/event timing,
+failure/persistence behavior and malformed-input behavior, with no persistent
+CPU-for-resident-memory cache.
+
+### 50.1 Network can parse and group one nmcli scan in one pass — CONFIRMED / P1-P2 interactive refresh
+
+Paths:
+
+- `services/Network.qml`;
+- current Wi-Fi consumers under sidebarRight, Waffle action center and Abyss.
+
+`getNetworks` currently:
+
+1. trims/splits stdout;
+2. maps every line to a network object;
+3. filters empty SSIDs;
+4. traverses the full `allNetworks` array again to group by SSID;
+5. reconciles the selected rows with existing `WifiAccessPoint` QObjects.
+
+The grouping rule is deterministic: first valid SSID fixes Map insertion
+position; active replaces inactive; two inactive rows replace only on strictly
+stronger signal; an existing active blocks later inactive rows; equal inactive
+strength keeps the earlier row.
+
+Exact-safe direction:
+
+- preserve the exact current split and escaped-colon parser;
+- parse each line once and reject the same falsy/empty SSIDs immediately;
+- apply the same grouping rule directly to `networkMap`;
+- only retain a parsed object when that row becomes the selected representative;
+- leave `existingByKey`, `nextKeys`, reverse stale-row removal, QObject
+  update/create order and destruction timing unchanged.
+
+`Map.set(existingKey, replacement)` does not move an existing key, so
+`Array.from(networkMap.values())` preserves current SSID order.
+
+This remains O(L), but removes the full `allNetworks` array, one complete pass,
+and allocations for duplicate rows that never win. No nmcli/debounce/rescan/
+publication/failure timing changes are authorized here.
+
+Regression parity: empty/malformed output, escaped-colon BSSID, duplicate SSIDs
+(active/inactive, stronger/equal signal), exact SSID order and exact QObject
+reuse/removal behavior.
+
+### 50.2 Autostart Settings sort can memoize the pure on/off predicate lazily per invocation — CONFIRMED / P1
+
+Paths:
+
+- `services/Autostart.qml`;
+- `modules/settings/AutostartConfig.qml`;
+- `modules/waffle/settings/pages/WAutostartPage.qml`.
+
+Both Settings pages filter `AppSearch.list`, then sort the survivors. Every
+comparator call executes `Autostart.isAppOn(a)` and `isAppOn(b)`.
+`isAppOn` can linearly scan managed entries and then external spawn lines, so
+the same app may rescan identical state many times during one sort.
+
+Strict-safe direction:
+
+- create an invocation-local `Map` inside `getFilteredApps()`;
+- use a **lazy** helper from the comparator: on first encounter of that exact app
+  object call `Autostart.isAppOn(app)`, cache the bool, then reuse it;
+- keep enabled-first comparison and the existing
+  `(name || "").localeCompare(...)` expression unchanged.
+
+The cache must be lazy. For empty/single-result arrays current `sort()` need not
+run its comparator, so eager precomputation could broaden QML dependency reads.
+For compared apps the current code already reads the same state; memoization only
+removes repeated reads in that synchronous invocation.
+
+Use object identity as the key, not desktop ID, so duplicate IDs represented by
+distinct objects are not conflated. No state survives evaluation. Approximate
+predicate work changes from O(C x (E+X)) comparator scans to at most
+O(A x (E+X)) for A surviving apps.
+
+This is independent of §40.7's already-recorded duplicate icon resolution.
+
+### 50.3 Autostart parser can reuse its original line array — CONFIRMED / P2-P3 reload/edit path
+
+Path: `services/Autostart.qml`.
+
+`_applyParsed(content)` already creates `lines = content.split("\n")`, but
+then reconstructs `managedText` by slice/join and splits it again, and later
+constructs `head + "\n" + tail` and splits again to find external spawn rows.
+
+Exact-safe direction:
+
+- retain the exact first-begin / first-end marker discovery;
+- keep constructing `_head` and `_tail` exactly as today for writeback;
+- parse managed lines directly from original indices
+  `beginIdx + 1 .. endIdx - 1`;
+- parse external lines directly before `beginIdx` and after `endIdx`;
+- when the marker pair is invalid/absent, parse all original lines as external.
+
+The current synthetic newline between head/tail can only introduce blank rows,
+which `_spawnTokens()` ignores, so external row objects/order/raw strings remain
+the same. Preserve duplicate/reversed-marker semantics; do not reinterpret
+malformed files while optimizing.
+
+Fixtures: no markers, normal/empty section, duplicate markers, end-before-begin,
+decorative invalid lines, enabled/commented spawn rows, and byte-equivalent
+head/tail writeback. No FileView/write/mkdir/durability timing change.
+
+### 50.4 DisplayModePlan has repeated normalization and avoidable collection chains — CONFIRMED / P2
+
+Paths:
+
+- `services/DisplayModePlan.js`;
+- `services/DisplayMode.qml`.
+
+This planner had no previous handoff finding.
+
+`normalizedNames()` currently does
+`Array.from(...).map(String...).filter(...)`. Keep `Array.from(names || [])`
+so iterable/array-like behavior is unchanged, then stringify/filter/append in one
+indexed loop. Critically, retain the current plain-object `seen = {}` semantics;
+do not silently alter malformed/prototype-looking key behavior in a performance
+patch.
+
+`activeNames()` can keep `Object.keys`, append only logical outputs to one
+array, then run the exact same default `.sort()`. No sort replacement is
+authorized.
+
+`plan()` normalizes names, then calls `primary()` which normalizes them again,
+then calls `orderedActions()` which normalizes names and already-validated
+targets again. `restore()` has the same repeated-normalization shape.
+
+Exact-safe architecture:
+
+- keep exported `primary()` and `orderedActions()` arbitrary-input contracts;
+- add internal helpers for already-normalized names/validated unique targets;
+- use them only from `plan()` / `restore()`;
+- construct action objects in two ordered loops: enabled targets first, then
+  remaining connected names;
+- an invocation-local Set is safe only after names are normalized to strings.
+
+Preserve every error string, enabled-action order, disabled connected-name order,
+duplicate/empty normalization and default sort behavior. This removes repeated
+passes plus filter/map/concat intermediate arrays without touching process timing.
+
+### 50.5 DisplayMode.normalizeSelections can remove two filtered arrays and repeated membership scans — CONFIRMED / P2
+
+Path: `services/DisplayMode.qml`.
+
+`connectedOutputs` is already a normalized unique string array. Current
+`normalizeSelections()` creates `secondaryNames` and `mirrorTargets` via
+filters, then repeatedly calls `includes()`.
+
+Exact-safe direction:
+
+- build one invocation-local `Set(names)`;
+- validate existing selections with `Set.has`;
+- replace `secondaryNames[0]` with
+  `names.find(name => name !== primaryOutput)`;
+- replace `mirrorTargets[0]` with
+  `names.find(name => name !== mirrorSource)`;
+- retain explicit source/target exclusions, assignment order and the current
+  `stopMirror()` position.
+
+The same local principle may be used in `setMirrorSource()` only while preserving
+its first-non-source fallback and assignment sequence. No shared reactive state is
+introduced.
+
+### 50.6 PackageSearch installed mode can avoid parse-then-clone — CONFIRMED / P2 interactive removal search
+
+Paths:
+
+- `services/deferred/PackageSearch.qml`;
+- `modules/overview/ActionModeView.qml`.
+
+Installed search currently parses to one array, then maps every row through
+`Object.assign({}, pkg, { installed: true })`. The first parsed objects are
+invocation-local and never published.
+
+Exact-safe direction: give the private parser a defaulted `forceInstalled=false`
+mode (or equivalent private helper). Keep one-argument behavior exact; forced
+mode creates each result with `installed: true` directly and publishes that
+same ordered result array.
+
+Preserve malformed-line handling, indented-description consumption, all fields,
+field/property values and normal-search installed-marker behavior.
+
+The installed-marker expression also tests both `/\[installed\]/i` and
+`/\[Installed\]/i`; the latter is strictly redundant because the former is
+already case-insensitive.
+
+For R installed results, this removes one R-element mapped array and R object
+copies. Debounce/request-generation/timeout/publication timing stays untouched.
+
+### 50.7 TrayService pin membership can use local Sets — CONFIRMED / P2 tray/config changes
+
+Path: `services/TrayService.qml`.
+
+Both `itemsInUserList` and `itemsNotInUserList` traverse
+`SystemTray.items.values` and call `_pinnedItems.includes(i.id)` for each valid
+non-Fcitx item.
+
+Within each binding evaluation, build an invocation-local Set from the same pins
+and use `has(i.id)`. Array `includes` and Set membership both use SameValueZero,
+so duplicate/non-string pin behavior is preserved. Keep the source traversal,
+Fcitx handling, passive filtering and output arrays unchanged.
+
+Membership changes from O(N x P) to O(P + N) per evaluation. Do not turn this
+into a retained pin index merely to avoid the second small local Set, and do not
+combine the three reactive tray partitions; earlier §37.3 covers separate ii
+per-output tray derivation work.
+
+### 50.8 Tray smart activation can normalize problematic-app patterns once per operation — CONFIRMED / P3 click path
+
+Path: `services/TrayService.qml`.
+
+After the same problematic-app record is selected, smart activation/toggle scans
+toplevels. Each toplevel appId/title is lowercased, then `matchesApp()`
+lowercases those strings again and lowercases every static pattern for each
+field/toplevel.
+
+Strict-safe local direction:
+
+- keep public `matchesApp()` unchanged;
+- once per smart click, build the selected record's ordered lowercased pattern
+  array;
+- lowercase each toplevel appId/title once and scan that local pattern array;
+- preserve first matching toplevel precedence and all focus/launch fallbacks.
+
+No persistent normalized pattern cache is needed. Pattern normalization falls
+from roughly O(W x P) repetitions to O(P) for that operation.
+
+### 50.9 BluetoothStatus count-only binding does not need a filtered device array — CONFIRMED / P2-P3 event-driven
+
+Path: `services/BluetoothStatus.qml`.
+
+Current `activeDeviceCount` is
+`devices.values.filter(device => device.connected).length`.
+
+A direct count over the same device sequence returns the same zero for no
+adapter, reads the same `connected` values in order and removes the temporary
+connected-device array.
+
+Do not merge `firstActiveDevice` and count into one shared reactive snapshot in
+this strict patch; changing QML dependencies/change signals needs separate proof.
+
+### 50.10 Updates can count checkupdates lines without split allocation — CONFIRMED / P3
+
+Path: `services/Updates.qml`.
+
+After the same `.trim()`, current nonempty stdout count is
+`t.split("\n").length`, exactly `1 + number of "\n" code units`.
+An indexed newline count therefore preserves empty, single-line, LF, CRLF and
+interior-blank-line behavior while removing the split array. Process/package
+manager work dominates, so priority remains P3.
+
+### 50.11 DisplayMode queue cursor is not promoted under strict signal parity — HIGH CONFIDENCE / NEEDS PARITY
+
+Path: `services/DisplayMode.qml`.
+
+`_runNextAction()` currently advances with `_queue = _queue.slice(1)`. A
+cursor could preserve command order while removing repeated shrinking arrays,
+but each current assignment also emits `_queueChanged`. No runtime consumer was
+identified in this cluster, yet QML publication/signal behavior remains
+observable until proven otherwise.
+
+Status: **HIGH CONFIDENCE / NEEDS QML SIGNAL PARITY**, not CONFIRMED. Promote only
+after proving no `_queueChanged` consumer and identical action/rollback/failure/
+completion sequence and timing.
+
+### 50.12 Audited no-go boundaries
+
+This cluster also re-read nearby service code and intentionally did not promote:
+
+- persistent Wi-Fi SSID/index caches;
+- changes to Network debounce, nmcli monitor/rescan or process sequence;
+- shared Bluetooth first/count reactive snapshots without signal parity;
+- shared Tray partitions solely to reduce three filters;
+- persistent Tray pin/pattern caches;
+- Autostart write batching/debounce;
+- PackageSearch debounce/generation/timeout changes;
+- DisplayMode action batching/parallelism.
+
+`Translation.qml`, `Zettelkasten.qml` and `InternalTodoBackend.qml` were
+also checked; their dominant work is already demand-driven/single-pass or bound
+to persistence/helper semantics, so no practical strict-lossless finding was
+promoted from them.
+
+### 50.13 Round-36 regression requirements
+
+Before implementation:
+
+- Network: empty/malformed rows, escaped colon, all duplicate-SSID precedence
+  combinations, exact order and QObject reuse/destruction.
+- Autostart sort: 0/1/many results, managed/external combinations, duplicate IDs
+  as distinct objects, equal names/ties, exact identity/order.
+- Autostart parse: absent/valid/duplicate/reversed markers, invalid rows,
+  enabled/commented directives, exact outside-section writeback.
+- DisplayMode: empty/duplicate/falsy/prototype-looking names, all modes/errors,
+  rollback/disconnect, exact action order and selection fallback.
+- PackageSearch: normal/forced-installed parsing, casing, AUR metadata,
+  descriptions, malformed/blank rows, exact result values/order.
+- Tray/Bluetooth/Updates: duplicate/non-string pins, Fcitx/passive behavior,
+  first toplevel match, adapter/device edge cases, and empty/LF/CRLF/blank-line
+  update output.
+
+### 50.14 Revised strict-lossless priority
+
+**New CONFIRMED, no persistent cache/tradeoff:**
+
+1. Network one-pass parse + SSID grouping (§50.1);
+2. lazy invocation-local Autostart sort memo (§50.2);
+3. Autostart original-line parser reuse (§50.3);
+4. DisplayModePlan pass/intermediate-array reductions (§50.4);
+5. DisplayMode selection local Set/first-match reductions (§50.5);
+6. PackageSearch forced-installed direct parse (§50.6);
+7. TrayService local pin Sets (§50.7);
+8. TrayService per-operation normalized patterns (§50.8);
+9. Bluetooth direct connected count (§50.9);
+10. Updates direct newline count (§50.10).
+
+**Not promoted:** DisplayMode queue cursor pending QML signal parity (§50.11),
+persistent indexes/caches, shared reactive partitions that can broaden signals,
+and any persistence/debounce/process-timing change.
+
+Earlier correctness prerequisites remain above pure performance work:
+
+- capture-helper stale-preview hash / newer-user clipboard races (§44.1, §45.6);
+- Bar/Dock first-empty ignored-regex initialization and invalid-regex robustness
+  (§47.1-§47.2).
+
+No runtime/source implementation is authorized by this handoff.

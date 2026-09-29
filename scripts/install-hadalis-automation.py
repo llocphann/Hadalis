@@ -55,8 +55,13 @@ After=graphical-session.target
 
 [Service]
 Type=simple
-ExecStart={quote(chatgpt)} --remote-debugging-address=127.0.0.1 --remote-debugging-port=9222
+WorkingDirectory={quote(ROOT)}
+ExecStart={quote(python)} -m automation.chat_bridge.desktop_host
+Environment=PYTHONUNBUFFERED=1
+Environment=HADALIS_CHATGPT_BIN={quote(chatgpt)}
+Environment=HADALIS_CHATGPT_CDP_URL=http://127.0.0.1:9222
 Restart=on-failure
+RestartPreventExitStatus=76
 RestartSec=3
 
 [Install]
@@ -93,7 +98,7 @@ PartOf=graphical-session.target
 [Service]
 Type=simple
 WorkingDirectory={quote(ROOT)}
-ExecStart={quote(python)} -m automation.chat_bridge.runtime
+ExecStart={quote(python)} -m automation.chat_bridge.runtime --bootstrap
 Environment=PYTHONUNBUFFERED=1
 Environment=HADALIS_CHATGPT_CDP_URL=http://127.0.0.1:9222
 Restart=on-failure

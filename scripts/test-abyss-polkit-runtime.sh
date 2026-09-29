@@ -248,7 +248,11 @@ ShellRoot {
                     + " retained=" + PolkitService.presentationRetained
                     + " canSubmit=" + PolkitService.canSubmit
                     + " failed=" + PolkitService.failed
-                    + " popups=" + controller.activePopups.length)
+                    + " popups=" + controller.activePopups.length
+                    + " popupTargetOk="
+                        + (controller.activePopup?.hoverTarget === fallbackAnchor)
+                    + " exclusiveFocus=" + controller.popupExclusiveFocus
+                    + " focusOwner=" + (controller.popupFocusOwner !== null))
                 return
             }
 
@@ -289,11 +293,16 @@ ShellRoot {
                         && PolkitService.targetOutputName === root.outputName,
                         "ordinary real AuthFlow uses requested-output top-center fallback"))
                     return
-                if (!root.check(
-                        controller.activePopup?.hoverTarget === fallbackAnchor
-                        && controller.popupExclusiveFocus,
-                        "real Polkit popup owns fallback geometry and exclusive focus"))
+
+                // Popup registration precedes the first body placement/input-
+                // bounds update by one or more QML turns. Focus ownership is
+                // intentionally geometry-gated in AbyssSurfaceController, so
+                // wait for the connected body to become focus-eligible instead
+                // of treating that normal registration/layout gap as failure.
+                if (controller.activePopup?.hoverTarget !== fallbackAnchor
+                        || !controller.popupExclusiveFocus)
                     return
+
                 root.firstSerial = PolkitService.requestSerial
                 PolkitService.submit("wrong-hadalis-ci-token")
                 root.phase = 2

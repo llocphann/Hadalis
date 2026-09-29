@@ -96,8 +96,13 @@ Scope {
             required property var modelData
             readonly property string outputName: modelData?.name ?? ""
 
-            Component.onCompleted:
-                AbyssPromptHostRegistry.registerHost(window, window.outputName)
+            function syncPromptHostRegistration(): void {
+                if (field.ready)
+                    AbyssPromptHostRegistry.registerHost(window, window.outputName)
+                else
+                    AbyssPromptHostRegistry.unregisterHost(window)
+            }
+            Component.onCompleted: window.syncPromptHostRegistration()
             Component.onDestruction:
                 AbyssPromptHostRegistry.unregisterHost(window)
 
@@ -866,6 +871,7 @@ Scope {
                 edgeInsets: window.nativeInsets
                 records: liquid.records
                 waveTexture: liquid.waves.texture
+                onReadyChanged: window.syncPromptHostRegistration()
             }
         }
     }

@@ -38,7 +38,10 @@ assert "singleton AbyssPromptHostRegistry 1.0 AbyssPromptHostRegistry.qml" in qm
 assert "function registerHost(item, outputName): void" in host_registry
 assert "function unregisterHost(item): void" in host_registry
 assert "function hasOutput(outputName): bool" in host_registry
+assert "function syncPromptHostRegistration(): void" in perimeter
+assert "if (field.ready)" in perimeter
 assert "AbyssPromptHostRegistry.registerHost(window, window.outputName)" in perimeter
 assert "AbyssPromptHostRegistry.unregisterHost(window)" in perimeter
+assert "onReadyChanged: window.syncPromptHostRegistration()" in perimeter
 
 print("Abyss prompt renderer fallback contract: ok")

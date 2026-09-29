@@ -3,9 +3,10 @@ pragma ComponentBehavior: Bound
 
 import QtQuick
 
-// Runtime readiness registry for the concrete Abyss prompt hosts. Configuration
-// saying "abyssPerimeter" is enabled is not enough: a QML load/type failure must
-// not make confirmation/authentication believe a renderer exists.
+// Runtime readiness registry for concrete, frame-ready Abyss prompt hosts.
+// Configuration saying "abyssPerimeter" is enabled is not enough: a QML
+// load/type/shader failure must not make confirmation/authentication believe a
+// renderer exists.
 Singleton {
     id: root
 

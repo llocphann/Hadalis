@@ -22,6 +22,7 @@ Bring the Hadalis autonomous development loop from feasibility to a validated fi
 
 ## Validation status
 
+- first service rollout exposed a systemd unit syntax bug: `WorkingDirectory=` was emitted with literal quotes, so systemd treated the value as non-absolute and rejected `hadalis-chatgpt.service` as a bad unit. The installer now emits raw absolute `WorkingDirectory=` paths, quotes complete `Environment=NAME=VALUE` assignments, and runs `systemd-analyze --user verify` before enabling services.
 - live acceptance 012 proved completion and worker publication are fixed; its remaining failure was response extraction because the UI can flatten the marker together with toolbar/neighbor text, so exact line matching returned no assistant marker. The driver now token-scans protocol markers independent of UI line boundaries, and a static regression covers merged UI text plus prompt/assistant duplicate occurrences.
 - live acceptance 009 failed before opening ChatGPT because `desktop_cli.mjs` had a syntax error in the new synchronous JSON writer path; that syntax defect is fixed and 010 is the retry.
 Focused automation validation `JOB-AUTOMATION-VALIDATE-002` passed all six actions.
@@ -43,4 +44,4 @@ Live transport acceptance `JOB-DESKTOP-LIVE-ACCEPT-013` passed all five actions,
 - generation completion and exact `HADALIS_LOOP:DONE` extraction;
 - explicit Node/CDP process termination and worker result publication.
 
-The current gate is now the one-time user-service installation and first real autonomous bootstrap session. The one-shot worker also prints a concise terminal outcome after publishing its result.
+The current gate is retrying the one-time user-service installation with the corrected systemd unit syntax, then validating all three services and the first real autonomous bootstrap session. The one-shot worker also prints a concise terminal outcome after publishing its result.

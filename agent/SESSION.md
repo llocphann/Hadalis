@@ -42,3 +42,5 @@ From the persistent checkout:
 4. stop the continuous research loop explicitly with `systemctl --user stop hadalis-chat-bridge.service` when desired.
 
 The expected steady behavior is repeated research/commit/CONTINUE or ROTATE cycles. The bridge should no longer become inactive merely because a research round finishes.
+
+A prompt-overlap bug was found after enabling continuous research: completion could be inferred from an old response toolbar/marker, allowing the bridge to send the next continuation while the current assistant turn was still running. The desktop driver now refuses submission when generation is active or the composer is already non-empty; submitted turns require a new protocol marker relative to the pre-submit baseline; and baseline-aware extraction throws instead of falling back to an older marker. Autonomous initial/continuation/rotation prompts also explicitly prohibit switching or handing off to Work mode. `JOB-AUTONOMOUS-PROMPT-GUARD-001` passed all five validation actions.

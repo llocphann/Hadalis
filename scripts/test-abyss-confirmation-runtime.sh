@@ -49,6 +49,8 @@ ShellRoot {
     property int reopenedId: 0
     property int duplicateFirstCallbacks: 0
     property int duplicateSecondCallbacks: 0
+    property int lifecycleCancelActionCallbacks: 0
+    property int lifecycleOnCancelCallbacks: 0
     readonly property string outputName:
         String(window.screen?.name ?? "")
 
@@ -153,6 +155,35 @@ ShellRoot {
                     role: "default",
                     isDefault: true,
                     callback: () => root.duplicateSecondCallbacks += 1
+                }
+            ]
+        })
+    }
+
+    function requestLifecycleCancellation(): int {
+        sourceAnchor.visible = true
+        return ConfirmationService.enqueue({
+            owner: "runtime-test",
+            anchorItem: sourceAnchor,
+            anchorKind: "direct",
+            outputName: root.outputName,
+            title: "Lifecycle cancellation",
+            message: "Source loss must not click a disabled cancel action.",
+            onCancel: () => root.lifecycleOnCancelCallbacks += 1,
+            actions: [
+                {
+                    id: "cancel",
+                    label: "Cancel",
+                    role: "cancel",
+                    isCancel: true,
+                    enabled: false,
+                    callback: () => root.lifecycleCancelActionCallbacks += 1
+                },
+                {
+                    id: "accept",
+                    label: "Accept",
+                    role: "default",
+                    isDefault: true
                 }
             ]
         })
@@ -856,6 +887,32 @@ ShellRoot {
                         && root.duplicateSecondCallbacks === 1,
                         "normalized default action invokes only its own callback"))
                     return
+                root.requestLifecycleCancellation()
+                root.phase = 38
+                return
+            }
+
+            if (root.phase === 38) {
+                if (!ConfirmationService.requestVisible)
+                    return
+                if (!root.check(
+                        ConfirmationService.resolvedAnchor === sourceAnchor,
+                        "lifecycle cancellation request owns direct source"))
+                    return
+                sourceAnchor.visible = false
+                root.phase = 39
+                return
+            }
+
+            if (root.phase === 39) {
+                if (ConfirmationService.active)
+                    return
+                if (!root.check(
+                        root.lifecycleCancelActionCallbacks === 0
+                        && root.lifecycleOnCancelCallbacks === 1,
+                        "source loss cancels request without invoking disabled action callback"))
+                    return
+                sourceAnchor.visible = true
                 console.info("ABYSS_CONFIRMATION_RUNTIME_PASS")
                 root.finished = true
             }
@@ -872,4 +929,4 @@ if [[ "$status" != 124 ]]         || ! rg -q 'ABYSS_CONFIRMATION_RUNTIME_PASS' "
     exit 1
 fi
 
-printf 'PASS: confirmation callbacks, content-fit, four-edge attachment, Join Edge inheritance, tray/dock routing, ambiguous-source fallback, normalized action IDs, top-center fallback, source loss, peer reflow, same-source related-popup reflow, queue/reopen, hidden-resident fallback and live-anchor invalidation\n'
+printf 'PASS: confirmation callbacks, content-fit, four-edge attachment, Join Edge inheritance, tray/dock routing, ambiguous-source fallback, normalized action IDs, lifecycle cancellation semantics, top-center fallback, source loss, peer reflow, same-source related-popup reflow, queue/reopen, hidden-resident fallback and live-anchor invalidation\n'

@@ -2,7 +2,9 @@
 from __future__ import annotations
 
 from pathlib import Path
+import os
 import sys
+import tempfile
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
@@ -12,6 +14,7 @@ from automation.chat_bridge.controller import (  # noqa: E402
     BridgeState,
     transition,
 )
+from automation.chat_bridge.runtime import load_state, save_state  # noqa: E402
 from automation.chat_bridge.protocol import (  # noqa: E402
     CONTINUATION_PROMPT,
     GITHUB_MENTION,
@@ -75,7 +78,22 @@ def main() -> None:
     else:
         raise AssertionError("DONE must remain terminal")
 
-    print("PASS: Hadalis chat-bridge protocol and deterministic transitions")
+    old_state_home = os.environ.get("XDG_STATE_HOME")
+    try:
+        with tempfile.TemporaryDirectory() as tmp:
+            os.environ["XDG_STATE_HOME"] = tmp
+            assert load_state() is None
+            save_state(BridgeState.WAIT_LOCAL, "JOB-000127")
+            assert load_state() == (BridgeState.WAIT_LOCAL, "JOB-000127")
+            save_state(BridgeState.DONE)
+            assert load_state() == (BridgeState.DONE, None)
+    finally:
+        if old_state_home is None:
+            os.environ.pop("XDG_STATE_HOME", None)
+        else:
+            os.environ["XDG_STATE_HOME"] = old_state_home
+
+    print("PASS: Hadalis chat-bridge protocol, state, and deterministic transitions")
 
 
 if __name__ == "__main__":

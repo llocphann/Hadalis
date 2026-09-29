@@ -16,6 +16,7 @@ Scope {
 
     // Debounce to prevent double-trigger
     property bool _busy: false
+    property int _windowListRevision: 0
     Timer {
         id: debounce
         interval: 200
@@ -38,6 +39,7 @@ Scope {
             Number(candidate?.id ?? 0) === id)
         if (!cached)
             return snapshot
+        snapshot._observedInWindowList = true
         if (!String(snapshot?.app_id ?? "").length)
             snapshot.app_id = cached.app_id
         if (!String(snapshot?.title ?? "").length)
@@ -101,6 +103,9 @@ Scope {
             ConfirmationService.enqueue({
                 owner: "closeConfirm",
                 sourceWindowId: Number(snapshot?.id ?? 0),
+                sourceWindowObserved:
+                    snapshot?._observedInWindowList === true,
+                sourceWindowRevision: root._windowListRevision,
                 appId: appId,
                 appName: appName,
                 outputName: outputName,
@@ -138,6 +143,14 @@ Scope {
         const windowId = Number(request?.sourceWindowId ?? 0)
         if (windowId <= 0 || !NiriService.windowListReady)
             return
+        // A triggerWindow snapshot can be newer than NiriService's batched
+        // cache. Do not reject a valid fresh window merely because that cache
+        // has not observed it yet. Once the ID was observed, or a newer
+        // authoritative windows snapshot arrived after enqueue, absence is real.
+        const observed = request?.sourceWindowObserved === true
+        const requestRevision = Number(request?.sourceWindowRevision ?? 0)
+        if (!observed && root._windowListRevision <= requestRevision)
+            return
         const stillExists = (NiriService.windows ?? []).some(candidate =>
             Number(candidate?.id ?? 0) === windowId)
         if (!stillExists)
@@ -147,6 +160,7 @@ Scope {
     Connections {
         target: NiriService
         function onWindowsChanged(): void {
+            root._windowListRevision += 1
             root._cancelIfTargetGone()
         }
     }

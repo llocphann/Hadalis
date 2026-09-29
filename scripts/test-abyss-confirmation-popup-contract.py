@@ -58,7 +58,13 @@ for forbidden in ("NumberAnimation", "ScaleAnimator", "OpacityAnimator"):
 assert 'owner: "closeConfirm"' in close
 assert "ConfirmationService.enqueue({" in close
 assert "sourceWindowId: Number(snapshot?.id ?? 0)" in close
+assert "sourceWindowObserved:" in close
+assert "sourceWindowRevision: root._windowListRevision" in close
+assert "snapshot._observedInWindowList = true" in close
+assert "property int _windowListRevision: 0" in close
 assert "function _cancelIfTargetGone(): void" in close
+assert "if (!observed && root._windowListRevision <= requestRevision)" in close
+assert "root._windowListRevision += 1" in close
 assert "NiriService.windowListReady" in close
 assert "Number(candidate?.id ?? 0) === windowId" in close
 assert "function onWindowsChanged(): void" in close

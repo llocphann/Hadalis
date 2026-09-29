@@ -113,6 +113,14 @@ assert "inputMethodHints: Qt.ImhSensitiveData" in content
 assert "Qt.Key_Escape" in content
 assert "Qt.Key_Return" in content and "Qt.Key_Enter" in content
 assert "onInteractionAvailableChanged" in content
+assert "onPresentationMatchesActiveChanged" in content
+assert "onAbyssPresenterAvailableChanged" in content
+assert "onAbyssPresentationSuppressedChanged" in content
+presentation_loss=content.split("Connections {",1)[1].split("Component.onCompleted",1)[0]
+assert "if (!PolkitService.presentationMatchesActive)" in presentation_loss
+assert "if (!PolkitService.abyssPresenterAvailable)" in presentation_loss
+assert "if (PolkitService.abyssPresentationSuppressed)" in presentation_loss
+assert presentation_loss.count("root.clearResponse()") >= 6
 assert "Authentication failed. Try again." in content
 assert "selectNextIdentity()" in content
 switch_handler=content.split('glyph: "switch_account"',1)[1].split("}",1)[0]

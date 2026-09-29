@@ -104,6 +104,18 @@ FocusScope {
             if (!PolkitService.active)
                 root.clearResponse()
         }
+        function onPresentationMatchesActiveChanged(): void {
+            if (!PolkitService.presentationMatchesActive)
+                root.clearResponse()
+        }
+        function onAbyssPresenterAvailableChanged(): void {
+            if (!PolkitService.abyssPresenterAvailable)
+                root.clearResponse()
+        }
+        function onAbyssPresentationSuppressedChanged(): void {
+            if (PolkitService.abyssPresentationSuppressed)
+                root.clearResponse()
+        }
     }
 
     Component.onCompleted: root.refocusResponse()

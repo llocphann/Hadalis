@@ -170,7 +170,7 @@ jobs:
                 "      <allow_active>auth_self</allow_active>" \
                 "    </defaults>" \
                 "  </action>" \
-                "  <action id=\"org.hadalis.ci.authenticate.queue-a\">" \
+                "  <action id=\"org.hadalis.ci.authenticate.queuea\">" \
                 "    <description>Authenticate queued Hadalis CI request A</description>" \
                 "    <message>Authentication required for queued Hadalis request A</message>" \
                 "    <defaults>" \
@@ -179,7 +179,7 @@ jobs:
                 "      <allow_active>auth_self</allow_active>" \
                 "    </defaults>" \
                 "  </action>" \
-                "  <action id=\"org.hadalis.ci.authenticate.queue-b\">" \
+                "  <action id=\"org.hadalis.ci.authenticate.queueb\">" \
                 "    <description>Authenticate queued Hadalis CI request B</description>" \
                 "    <message>Authentication required for queued Hadalis request B</message>" \
                 "    <defaults>" \
@@ -198,6 +198,16 @@ jobs:
               sudo ln -sfn "$helper_target" "$helper_link"
 
               sudo systemctl restart polkit.service
+              # Prove PolicyKit accepted every temporary action before entering
+              # the session. A malformed policy should fail here with a direct
+              # diagnostic instead of looking like a missing AuthFlow later.
+              for action_id in \
+                org.hadalis.ci.authenticate \
+                org.hadalis.ci.authenticate.queuea \
+                org.hadalis.ci.authenticate.queueb
+              do
+                pkaction --action-id "$action_id" --verbose >/dev/null
+              done
               sudo systemctl start systemd-machined.service
 
               cp -a . "$work/repo"

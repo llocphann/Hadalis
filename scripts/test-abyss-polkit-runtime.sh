@@ -244,6 +244,8 @@ ShellRoot {
                     + " retained=" + PolkitService.presentationRetained
                     + " canSubmit=" + PolkitService.canSubmit
                     + " failed=" + PolkitService.failed
+                    + " firstAuthDone=" + firstAuth.done
+                    + " firstAuthResult=" + firstAuth.result
                     + " queuedSuccesses=" + root.queuedSuccesses
                     + " queuedFailures=" + root.queuedFailures
                     + " queueADone=" + queueA.done
@@ -280,6 +282,12 @@ ShellRoot {
             }
 
             if (root.phase === 1) {
+                if (firstAuth.done && !PolkitService.active) {
+                    root.check(false,
+                        "initial pkcheck exited before AuthFlow result="
+                        + firstAuth.result)
+                    return
+                }
                 if (!PolkitService.active || !PolkitService.canSubmit
                         || !PolkitService.presentationMatchesActive
                         || controller.activePopups.length < 1)
@@ -351,8 +359,8 @@ ShellRoot {
                 // concurrent checks for the exact same action/subject. That
                 // makes this a deterministic test of PolkitAgent queue
                 // activation rather than authorization-cache behavior.
-                root.start(queueA, "org.hadalis.ci.authenticate.queue-a")
-                root.start(queueB, "org.hadalis.ci.authenticate.queue-b")
+                root.start(queueA, "org.hadalis.ci.authenticate.queuea")
+                root.start(queueB, "org.hadalis.ci.authenticate.queueb")
                 root.phase = 6
                 return
             }

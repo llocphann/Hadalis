@@ -137,8 +137,8 @@ assert "if (root.abyssConfigured)" in close
 process=close.split("function processWindow(win): void",1)[1].split("function _cancelIfTargetGone",1)[0]
 assert "ConfirmationService.enqueue({" in process
 assert "root._abyssPresenterAvailableFor(outputName)" not in process
-legacy_branch=process.split("if (root.abyssConfigured)",1)[1].rsplit("return",1)[1]
-assert "if (root.dialogVisible)" in legacy_branch
+assert "if (root.dialogVisible)" in process
+assert "root.targetWindow = snapshot;" in process
 assert "active: root.dialogVisible" in close
 
 # Queue content remains latched until the popup visual tail is gone.

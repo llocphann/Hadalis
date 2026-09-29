@@ -8328,3 +8328,431 @@ or with the optimization.
 
 No runtime/source implementation is authorized by this handoff.
 
+---
+
+## 42. Round 28 — WindowPreview capture breadth and helper process cost (2026-09-29)
+
+### Snapshot / concurrent reconciliation
+
+- Current `dev` HEAD immediately before this docs-only write: `a4ac98bb164b67adf3d8777744921dfccf341f9c` (`feat(abyss): borrow semantic perimeter vacancy on hover`).
+- Relative to the Round-28 research baseline `2340742c78266379ba1c1ba833d77786a898358b`, current `dev` is 62 commits ahead.
+- The last concurrent commit `a4ac98bb164b67adf3d8777744921dfccf341f9c` changes only Abyss vacancy-borrowing runtime/tests. It does **not** touch `services/WindowPreviewService.qml`, `scripts/capture-windows.sh`, `scripts/capture-windows.fish`, or the preview consumers audited below.
+- The broader concurrent changed-file set since the Round-28 baseline also does not touch this WindowPreview/capture subsystem, so the source proofs below remain current.
+- `modules/dock/DockApps.qml` did change earlier in the concurrent range. The running-order membership and rank-lookup findings already recorded in §37.5 still exist; pinned membership is now already represented by `pinnedIds` / `hiddenPinnedIds` Sets. Do not reopen the Round-28 Dock A1/A2/A3 notes as new findings.
+- Existing WindowPreview findings are not duplicated here: Fish->Bash trampoline (§25.4), XDG cache-root mismatch (§39.4), and initialization helper-process reduction (§39.5) remain authoritative.
+
+### 42.1 `_observeWindowSet()` traverses the same Niri snapshot about three times — CONFIRMED / P1
+
+Path:
+
+- `services/WindowPreviewService.qml`.
+
+Current publication path:
+
+1. `map(window => window.id)` over `NiriService.windows`;
+2. `filter()` invalid IDs;
+3. build `previousIds`;
+4. `filter()` the valid ID array again to derive newly observed IDs.
+
+The two output arrays have distinct purposes and must be preserved:
+
+- `observedWindowIds` keeps all current valid IDs in compositor order;
+- `newIds` keeps only IDs absent from the previous publication, in that same order.
+
+One loop over the current window snapshot can validate each ID once, append it to `ids`, and append it to `newIds` only when the previous-ID Set does not contain it.
+
+Local work:
+
+- list traversal: about **`3N -> N`**, roughly **66.7% fewer visits**;
+- no change to `cleanupTimer.restart()`, cached-preview warmup, `captureForTaskView(newIds)`, ordering, or invalid-ID filtering.
+
+Regression coverage should include invalid IDs, duplicate IDs, authoritative empty publication, and new-window ordering.
+
+### 42.2 Capture-all pending check builds an unnecessary ID array — CONFIRMED / P2
+
+Path:
+
+- `services/WindowPreviewService.qml::_pendingRequestNeedsCapture()`.
+
+When `captureAllRequested` is true, current code:
+
+1. maps every live window to an ID array;
+2. loops that array until a missing preview is found.
+
+The same early-return semantics are obtained by looping `NiriService.windows` directly and testing `previewCache[window.id]`.
+
+Local work on the all-windows branch:
+
+- **`2N -> N`** visits;
+- removes one N-element temporary array;
+- preserves the exact first missing-cache early exit.
+
+### 42.3 Selective `_doCapture()` can select and test cache policy in one pass — CONFIRMED / P1
+
+Path:
+
+- `services/WindowPreviewService.qml::_doCapture()`.
+
+Selective mode currently:
+
+1. filters all `N` windows into a selected array of `M` records;
+2. loops those `M` records again to apply forced-ID / `needsCapture()` policy.
+
+A single loop can keep the same `requestedIds` / `forcedIds` Sets and append a window ID only when:
+
+- it belongs to the selective request; and
+- it is forced or the cache needs capture.
+
+Because iteration still follows the authoritative `NiriService.windows` order, capture ordering remains identical.
+
+Local work:
+
+- selective mode: **`N + M -> N`** visits;
+- removes the temporary selected-window array;
+- maximum list-visit reduction approaches **50%** when most windows are selected.
+
+The all-windows branch is already one effective pass for cache selection and does not need a separate optimization.
+
+### 42.4 Per-preview publication has O(B^2) requested/published bookkeeping — CONFIRMED core; live-ID index needs parity
+
+Path:
+
+- `services/WindowPreviewService.qml::_publishCapturedPreview()`.
+
+For each `PREVIEW_READY <id>` in a batch of `B`, current code performs:
+
+- `idsToCapture.includes(id)`;
+- `publishedIds.includes(id)`;
+- `publishedIds = publishedIds.concat([id])`.
+
+Across a full batch, the two membership scans plus growing-array copies are O(B^2)-shaped.
+
+Exact-safe core direction:
+
+- keep `idsToCapture` as the ordered batch array used by clean-exit recovery;
+- additionally build one requested-ID Set when the batch starts;
+- keep one published-ID Set for duplicate rejection;
+- if an ordered `publishedIds` array is still useful for tests/debugging, append with `push()` instead of `concat()`.
+
+This changes requested/published bookkeeping from O(B^2) to O(B) while preserving:
+
+- duplicate `PREVIEW_READY` rejection;
+- unrequested-ID rejection;
+- clean-exit replay ordering;
+- per-window immediate publication timing.
+
+The remaining live-window guard is separate:
+
+`(NiriService.windows ?? []).some(window => window.id === windowId)`
+
+That is O(N) per ready record and intentionally prevents publishing a PNG for a window that closed during capture. Replacing it with O(1) membership is **HIGH CONFIDENCE**, but only if the Set is an exact current-publication index, not a batch-start snapshot.
+
+Required race fixture before that part is promoted:
+
+- start capture for ID X;
+- remove X from the published Niri window snapshot;
+- then deliver `PREVIEW_READY X`;
+- assert no cache revision / `previewUpdated(X)` occurs.
+
+Existing eager-capture tests already cover duplicate, unrequested, stale-batch, old-session and buffered-at-exit records; the close-between-capture-and-ready race is the missing case.
+
+### 42.5 App hover previews have a real targeted set, but global first-open parity blocks CONFIRMED — HIGH CONFIDENCE / P1 when recovery capture is needed
+
+Paths:
+
+- `modules/waffle/bar/tasks/TaskPreview.qml`;
+- `modules/waffle/bar/tasks/WindowPreview.qml`;
+- `modules/bar/BarTaskbarPreview.qml`;
+- `modules/bar/BarTaskbarWindowPreview.qml`;
+- `services/WindowPreviewService.qml`.
+
+Waffle is the clearest source proof:
+
+- `TaskPreview.captureAppPreviews()` computes `windowIds` for exactly the app's current toplevels using `niriWindowId` with `NiriService.findNiriWindow()` fallback;
+- it checks `windowIds.length > 0`;
+- then discards the list and calls `captureForTaskView()` with no IDs;
+- `WindowPreview.qml` resolves and reads preview URLs by the same Niri window identity.
+
+Bar app/workspace preview similarly renders only `previewToplevels`, while both `show()` and `showWorkspace()` currently issue a no-ID capture request.
+
+Surface-local capture breadth could therefore change from:
+
+- app preview: **`N -> A`** windows, where `A` is that app's visible preview set;
+- workspace hover: **`N -> W`** windows, where `W` is the hovered workspace preview set.
+
+However `captureForTaskView()` with no IDs has an additional shell-wide side effect: during the 100 ms debounce it opportunistically repairs **any** missing preview in the current Niri snapshot. Passing only the popup IDs can leave an unrelated missing preview uncaptured until its own later demand, changing first-open latency for another surface after an earlier prewarm/capture failure.
+
+Therefore this is **not strict-lossless yet** under the project requirement, even though the current popup itself has an exact subset.
+
+Parity options to research before implementation:
+
+1. preserve the global repair/prewarm request separately while allowing the user-triggered popup batch to be targeted; or
+2. prove by regression/runtime evidence that the global repair side effect is already guaranteed independently before these callers run.
+
+Do not claim shell-wide savings from `N -> A/W`; it is conditional on there being missing/stale work at hover time.
+
+### 42.6 AltSwitcher and full Waffle Task View do not gain capture-breadth savings from targeted IDs — CLOSED as a breadth optimization
+
+Paths:
+
+- `modules/altSwitcher/AltSwitcher.qml`;
+- `modules/waffle/altSwitcher/WaffleAltSwitcher.qml`;
+- `modules/waffle/taskview/WaffleTaskViewContent.qml`.
+
+Both AltSwitcher skew implementations build their item snapshot from the complete current `NiriService.windows` set. Passing that snapshot's IDs would normally request the same breadth as no-ID capture, while freezing the request to an earlier snapshot can change the 100 ms debounce race.
+
+Waffle Task View likewise builds its full cached workspace/window model before calling the no-ID capture path. Its high-value work remains the Round-27 grouping/indexing and invalidation fixes, not a nominal targeted-capture conversion.
+
+Do not spend an implementation round replacing these calls merely to pass an ID array.
+
+`OverviewNiriWidget` is already the good pattern: it derives the visible `windowItems` list and calls targeted `refreshForOverview(ids)` / `captureForTaskView(ids)`.
+
+### 42.7 `refreshForOverview()` re-bounds an already bounded list — CONFIRMED / P2 micro
+
+Paths:
+
+- `services/WindowPreviewService.qml`;
+- `services/WindowPreviewPolicy.js`.
+
+`refreshForOverview(windowIds)` first calls:
+
+`PreviewPolicy.boundedWindowIds(windowIds, overviewWarmLimit)`
+
+then passes that already validated/deduplicated result to `warmForOverview(ids)`, which calls `boundedWindowIds()` again.
+
+Because `overviewWarmLimit` is 12, this is deliberately only a micro candidate. A private helper accepting already bounded IDs can remove the second validation pass while keeping the public `warmForOverview()` defensive contract unchanged.
+
+Local work: second pass **`K -> 0`**, with `K <= 12`.
+
+### 42.8 Capture helper can skip `mkdir -p` when its directory already exists — CONFIRMED local process reduction
+
+Path:
+
+- `scripts/capture-windows.sh`.
+
+The helper currently runs external:
+
+`mkdir -p "$preview_dir"`
+
+on every invocation.
+
+Strict-safe guard:
+
+`[[ -d "$preview_dir" ]] || mkdir -p "$preview_dir"`
+
+keeps standalone/missing-directory recovery and error behavior while making the normal existing-directory path use only the Bash builtin test.
+
+Local normal-path process count:
+
+- **`1 child process -> 0`** for this directory check.
+
+This is independent of the broader service-init helper reduction in §39.5. The cache-root correctness bug in §39.4 remains a prerequisite for treating service/helper directory ownership as unified; do not use this micro optimization to paper over that mismatch.
+
+### 42.9 SHA-256 parsing launches one unnecessary `cut` per hash — CONFIRMED
+
+Path:
+
+- `scripts/capture-windows.sh`.
+
+Current generated-preview, decoded-entry and current-clipboard hashes use:
+
+`sha256sum <file> | cut -d' ' -f1`
+
+GNU `sha256sum` already places the digest in the first field. Capturing the command output and extracting the prefix in Bash preserves the digest while removing `cut`.
+
+Let:
+
+- `H` = successfully generated preview files hashed after capture;
+- `E` = successfully decoded cliphist entries hashed across cleanup passes;
+- `C` = 0 or 1 current clipboard image hash.
+
+Local external-process reduction:
+
+- `cut` processes: **`H + E + C -> 0`**.
+
+Tests must preserve `set -euo pipefail` failure propagation from `sha256sum`; do not replace the pipeline with parsing that accidentally turns a hash failure into success.
+
+### 42.10 MIME and first-entry selection use avoidable `grep` / `head` helpers — CONFIRMED
+
+Path:
+
+- `scripts/capture-windows.sh`.
+
+Current `select_clipboard_mime()` obtains one `wl-paste -l` snapshot, then performs exact-line `grep -Fqx` probes in this order:
+
+1. `text/plain;charset=utf-8`;
+2. `text/plain`;
+3. `UTF8_STRING`;
+4. `image/png`;
+5. otherwise first MIME line via `head -1`.
+
+Later, clipboard-restore safety performs another fresh `wl-paste -l | grep -Fqx image/png` check. That second list read must remain fresh because clipboard ownership may have changed during capture.
+
+Pure Bash line parsing can preserve exact full-line matching, preference order, empty-list behavior and first-line fallback while removing:
+
+- between **2 and 6 external `grep`/`head` processes per capture**, depending on the initial MIME match;
+- the associated pipeline forks for builtin `printf`.
+
+Separately, `before_id` uses:
+
+`cliphist list | head -1`
+
+A Bash `read` from the same `cliphist list` stream preserves first-entry/empty-history semantics and removes another **1 `head` process per capture**.
+
+Do not reduce the number/timing of `wl-paste` snapshots in this change.
+
+### 42.11 Clipboard cleanup repeats hash scans and forks builtin `printf` pipelines — CONFIRMED core
+
+Path:
+
+- `scripts/capture-windows.sh`.
+
+Two independent exact-safe reductions exist inside the required two-pass cleanup.
+
+#### A. Preview-hash membership
+
+`hash_matches_preview()` currently loops all `H` generated preview hashes for every successfully decoded history entry and again for the current clipboard hash.
+
+Because equality is exact SHA-256 string equality, an associative hash Set built once preserves membership semantics.
+
+Worst-case comparisons:
+
+- **`(E + C) x H -> H + E + C`**.
+
+Duplicate preview hashes may collapse in the Set without changing membership truth.
+
+#### B. Feeding cliphist entries
+
+Current decode/delete calls use:
+
+`printf '%s\n' "$entry" | cliphist decode`
+
+and, for matched preview entries:
+
+`printf '%s\n' "$entry" | cliphist delete`.
+
+`printf` is a Bash builtin but a pipeline places that segment in its own process. A here-string / equivalent direct stdin feed can supply the same line plus newline without the producer pipeline process.
+
+Let `D` be decode attempts and `M` be matched preview deletions.
+
+Local fork reduction:
+
+- producer-side shell pipeline processes: **`D + M -> 0`**;
+- the actual `cliphist decode/delete` processes remain unchanged.
+
+Required fixture: an entry containing spaces, tabs and shell metacharacters must decode/delete byte-identically; no `eval` or word splitting is acceptable.
+
+### 42.12 Requested-ID validation in the Bash helper is R x N — CONFIRMED
+
+Path:
+
+- `scripts/capture-windows.sh`.
+
+After querying live Niri window IDs, selective mode validates every requested ID by linearly scanning the full live-ID array.
+
+For `R` requested IDs and `N` live windows:
+
+- current worst case: **`R x N`** string comparisons;
+- build one associative live-ID Set and retain the existing requested-ID loop: **`N + R`** membership work.
+
+Preserve exact current semantics:
+
+- requested order;
+- duplicate requested IDs;
+- string equality (for example a noncanonical `001` must not silently become live ID `1`);
+- per-ID missing-window stderr;
+- `requested_missing` exit behavior.
+
+Do not remove the Niri live-window query merely because screenshot IPC would later fail: that would change early validation, diagnostics and timing.
+
+### 42.13 Screenshot readiness polling may spawn up to 40 `sleep` children per preview — NEEDS BENCHMARK / PARITY
+
+Path:
+
+- `scripts/capture-windows.sh`.
+
+After `niri msg action screenshot-window` returns, each capture worker polls the temp PNG up to 40 times:
+
+- test `[[ -s "$tmp" ]]`;
+- otherwise `sleep 0.05`.
+
+The file test is builtin, but `sleep` is an external process. Therefore one preview can launch **0..40 sleep children** before the 2-second readiness bound is reached.
+
+This may be the largest helper-process hot spot when Niri returns before the PNG is ready, but the wait exists for a documented race and `PREVIEW_READY` timing is user-visible.
+
+Before changing it, measure:
+
+- retry-count histogram per preview;
+- Niri IPC-return -> nonempty-file latency;
+- process count under 1/2 concurrent captures;
+- failed/slow compositor behavior.
+
+Any replacement must preserve the same maximum readiness window, atomic rename, partial-batch failure propagation and earliest-safe `PREVIEW_READY` publication. No static rewrite is authorized yet.
+
+### 42.14 Second clipboard-cleanup pass can repeat decode/hash work for surviving user entries — HIGH CONFIDENCE / parity required
+
+Path:
+
+- `scripts/capture-windows.sh`.
+
+The two passes and their 0.5 s / 0.3 s timing are correctness behavior: historical fixes added them to catch late screenshot clipboard entries. Do not remove or merge the passes.
+
+A non-preview user entry newer than `before_id` can survive pass 1, then be decoded and hashed again in pass 2. Caching `entry_id -> content hash` could avoid that repeated work for unchanged IDs.
+
+Do not promote this until the cliphist ID immutability/reuse contract is proven. If an ID could refer to changed bytes between passes, reusing the old hash would change the rule 'delete only bytes that match one of our generated previews'.
+
+### 42.15 Round-28 regression matrix before implementation
+
+Extend the existing WindowPreview tests rather than weakening their current lifecycle guards.
+
+Required QML/service fixtures:
+
+- `_observeWindowSet()` valid/invalid/duplicate/order parity;
+- capture-all pending check parity;
+- selective `_doCapture()` order and forced-ID parity;
+- duplicate/unrequested/stale-session `PREVIEW_READY` behavior after Set-backed bookkeeping;
+- **window closes after capture start but before `PREVIEW_READY` => never publish**;
+- new window arriving during a batch remains queued for the next batch;
+- targeted app-preview tests must prove the popup receives all of its visible IDs.
+
+Required shell-helper fixture with fake binaries:
+
+- missing/existing/unwritable preview directory;
+- current MIME preference order and empty list;
+- first cliphist entry / empty history;
+- hash success/failure under `set -euo pipefail`;
+- requested live/missing IDs including duplicate and noncanonical numeric strings;
+- cliphist decode/delete stdin bytes;
+- user clipboard entry survives both cleanup passes;
+- generated preview entry is deleted;
+- helper exit code and `PREVIEW_READY` order remain unchanged.
+
+### 42.16 Round-28 priority update
+
+**Confirmed local reductions:**
+
+1. one-pass `_observeWindowSet()` (§42.1);
+2. direct all-window pending-cache check (§42.2);
+3. one-pass selective capture selection (§42.3);
+4. Set-backed requested/published batch bookkeeping (§42.4 core);
+5. remove double Overview ID bounding (§42.7);
+6. existing-directory `mkdir` guard (§42.8);
+7. remove per-hash `cut` (§42.9);
+8. Bash-native MIME/first-entry parsing (§42.10);
+9. preview-hash Set + direct cliphist stdin feed (§42.11);
+10. requested-ID live Set (§42.12).
+
+**Parity / benchmark:**
+
+11. exact current-live-ID index for publication (§42.4 live guard);
+12. app/workspace hover targeted capture without losing global repair/first-open behavior (§42.5);
+13. replace or reduce per-preview readiness `sleep` processes (§42.13);
+14. reuse pass-1 cliphist decode hashes only after ID immutability proof (§42.14).
+
+**Closed / already handled:**
+
+15. AltSwitcher / full Waffle Task View targeted-ID conversion as a breadth optimization (§42.6);
+16. Overview visible-window targeting is already present;
+17. Fish trampoline, XDG cache-root mismatch and service-init helper ownership remain in §§25.4, 39.4 and 39.5 rather than being duplicated here.
+
+No runtime/source implementation is authorized by this handoff.

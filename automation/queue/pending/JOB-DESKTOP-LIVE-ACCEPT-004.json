@@ -1,0 +1,27 @@
+{
+  "id": "JOB-DESKTOP-LIVE-ACCEPT-004",
+  "base_sha": "4827ef59038da8b24534e3932ec326c1baaf2be9",
+  "actions": [
+    {
+      "exec": {
+        "argv": [
+          "node",
+          "--check",
+          "automation/chat_bridge/desktop_driver.mjs"
+        ],
+        "cwd": ".",
+        "timeout_seconds": 120
+      }
+    },
+    {
+      "exec": {
+        "argv": [
+          "node",
+          "scripts/test-hadalis-live-transport.mjs"
+        ],
+        "cwd": ".",
+        "timeout_seconds": 300
+      }
+    }
+  ]
+}

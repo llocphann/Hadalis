@@ -13239,3 +13239,501 @@ performance work:
   (§47.1-§47.2).
 
 No runtime/source implementation is authorized by this handoff.
+
+
+---
+
+## 53. Round 39 — `awesome-niri` ecosystem source audit (2026-09-30)
+
+### Snapshot / source selection
+
+This round treats `niri-wm/awesome-niri` as a **source index**, not as
+optimization evidence by itself.
+
+Index snapshot:
+
+`niri-wm/awesome-niri:main`
+`946bc74bb8606bbe2958a0b1722ed90693a6f231`
+— `add wl-freeze to "Window and Workspace Management"`.
+
+The highest-value runtime sources selected from that index were:
+
+- `AvengeMedia/DankMaterialShell:master`
+  `2fb0cfee604ac4955da1933e2e4c49a405df55bd`;
+- current Noctalia repository `noctalia-dev/noctalia:main`
+  `1f39c3d14d9a71460980af570aeda2b39d090bea`;
+- `imiric/qml-niri:main`
+  `93e603901bed2c4465d5675ae43fd52b7f7c4adf`;
+- `Antiz96/oniri:main`
+  `82e45605eeed896f6f0fa82a3e4fbf4123fe5769`;
+- smaller event-stream utilities:
+  `druskus20/eww-niri-workspaces`,
+  `Kirottu/system76-scheduler-niri`, and
+  `ews/noctalia-niri-ribbon`.
+
+The `awesome-niri` Noctalia link still points at the historical
+`Ly-sec/Noctalia` location. The current repository was resolved before
+auditing; do not assume every curated-list URL is current.
+
+For the direct-Quickshell-IPC finding below, the private wire contract was also
+checked against current Quickshell mirror master:
+
+`quickshell-mirror/quickshell:master`
+`41651d7dcd62a9400eb6f4f8a8580efe00901efb`.
+
+Hadalis baseline remained stable throughout this audit at:
+
+`fb57e0bd31c849421a553b806d1212746db5ecee`
+— `docs(perf): audit latest iNiR optimization delta`.
+
+No runtime/source implementation is authorized by this round.
+
+### 53.1 DMS bypasses the heavy `qs ipc call` child through Quickshell's Unix socket — HIGH CONFIDENCE / P1 interactive-latency benchmark + compatibility guard
+
+Primary source:
+
+DMS commit
+`c3fd526698e0bf04db7160389aaf83a911745abe`
+— `perf(ipc): call Quickshell directly (#3081)`.
+
+Current DMS implementation:
+
+- `core/internal/qsipc/client.go`;
+- `core/cmd/dms/shell.go`;
+- `scripts/benchmark-ipc.sh`.
+
+DMS sends Quickshell's StringCall wire message directly to:
+
+`${XDG_RUNTIME_DIR}/quickshell/by-pid/<pid>/ipc.sock`
+
+instead of launching:
+
+`qs ... ipc call <target> <function> ...`
+
+for every normal CLI action.
+
+Its important safety shape is not "replace qs and hope":
+
+1. identify the exact running shell PID;
+2. attempt the direct socket call;
+3. decode Quickshell's indexed response;
+4. on **any** direct-call failure, fall back to the normal `qs ipc call`
+   implementation.
+
+DMS also ships a benchmark that first checks direct-vs-`qs` output equality
+before timing the two paths.
+
+The current Quickshell source still matches the relevant DMS assumptions:
+
+- StringCall remains a distinct IPC command;
+- the response alternatives remain ordered as:
+  no-current-generation, target-not-found, entry-not-found,
+  argument-parse-failed, completed;
+- completed responses carry void/non-void state plus the returned string;
+- the runtime instance directory still has the `by-pid/<pid>` path.
+
+#### Why this is relevant to Hadalis
+
+Current `scripts/inir` uses the heavy child path for both:
+
+- generic `inir ipc <target> <function> ...`;
+- every registry-backed `inir <target> <function> ...` command through
+  `run_ipc_target_command()`.
+
+After instance/config resolution and startup handling, both common paths execute:
+
+`"$qs_bin" -p "$config_dir" ipc call ...`
+
+and retry with another `qs` invocation after the existing startup grace if
+the first call fails.
+
+This path is used by frequent shell/keybind commands, so process startup and
+Qt initialization can be part of interaction latency even though the actual
+QML handler is already resident.
+
+Hadalis also already has a natural implementation host:
+
+`native/inir-native`
+
+is a small Rust one-shot helper with an existing subcommand framework. A
+`qs-ipc-call` primitive could therefore be benchmarked without introducing
+another daemon.
+
+Important correction versus DMS:
+
+**Hadalis cannot copy DMS's "zero additional child" result literally.**
+
+DMS's CLI is already a compiled Go process, so the socket client runs inside
+the existing CLI process. Hadalis' `inir` is Bash. If Bash invokes
+`inir-native qs-ipc-call`, the heavy Qt `qs` child is replaced by a much
+smaller native child, but a child process still exists.
+
+The expected win to test is therefore:
+
+- lower child startup latency;
+- lower transient RSS/PSS;
+- less Qt/plugin initialization work;
+
+not automatically "one fewer process".
+
+#### Strict-safe experiment shape
+
+Do **not** rewrite the launcher or remove its current instance/startup logic.
+
+A safe experiment is:
+
+1. keep current `resolve_config_dir()`,
+   `ensure_running_instance_for_ipc()`, registry validation and startup grace;
+2. use direct IPC only when the **exact** shell PID/socket for the selected
+   config can be identified unambiguously;
+3. let a small native helper implement Qt-compatible UTF-16 QString
+   serialization and StringCall response decoding;
+4. on socket missing, timeout, protocol mismatch, generation-not-ready,
+   target/function/argument error, ambiguous instance or any other failure,
+   execute the current `qs ipc call` path unchanged;
+5. keep metadata/show/dev-audit paths on `qs` unless separately proven;
+6. do not remove `qs` as a dependency merely because the fast path exists.
+
+Required parity cases:
+
+- void-return and string-return functions;
+- empty, ASCII, Unicode and non-BMP arguments;
+- zero/multiple arguments;
+- missing target/function;
+- argument count/type mismatch;
+- shell hot reload / no current generation;
+- handler deferred during startup;
+- one shell instance and multiple Quickshell instances/configs;
+- stale PID/socket;
+- shell stopped;
+- direct helper absent;
+- stdout, stderr and exit-code behavior at the public `inir` boundary.
+
+Required benchmark:
+
+- current `qs ipc call` vs native direct path;
+- warm shell, repeated keybind-sized calls;
+- wall time distribution, child lifetime and peak transient PSS/RSS;
+- no measurable shell-side CPU/memory regression;
+- fallback path excluded from claimed fast-path savings but tested separately.
+
+Classification:
+
+**HIGH CONFIDENCE / P1 interactive-latency benchmark + compatibility guard**.
+
+It is not promoted to CONFIRMED strict-lossless yet because the protocol is an
+internal Quickshell wire contract and Hadalis' Bash launcher architecture is
+different from DMS's compiled CLI.
+
+### 53.2 DMS lazy QtMultimedia construction is already present in Hadalis' main video crossfader — ALREADY
+
+DMS perf commit:
+
+`3630b46ee32e268b3a05790cc49ac6179209d064`
+— `perf(shell): cut idle RAM by a lot`.
+
+One of its explicit changes is to avoid constructing QtMultimedia players at
+shell startup when no multimedia feature needs them.
+
+This initially looked like a direct Hadalis candidate because
+`Background.qml` constructs `VideoCrossfader` even while a static wallpaper
+is active.
+
+Full-source reconciliation closes that gap.
+
+Current Hadalis `modules/common/widgets/VideoCrossfader.qml` already has:
+
+- `readonly property bool _decoderActive: root.source !== ""`;
+- `playerALoader.active: root._decoderActive`;
+- `playerBLoader.active: root._decoderActive`;
+- the two `MediaPlayer` objects inside those Loaders.
+
+The source comment explicitly records that MediaPlayer construction has
+measurable startup/teardown cost and that the visual shell stays resident while
+decoder pipelines exist only for requested video.
+
+Therefore static wallpaper does **not** retain the two decoder objects merely
+because the crossfader component exists.
+
+Status: **ALREADY**.
+
+Do not create another "lazy VideoCrossfader" task.
+
+### 53.3 DMS lazy modal residency is also already the shape of CloseConfirm — ALREADY for the audited confirmation path
+
+The same DMS perf commit converts multiple always-resident modals to
+`LazyLoader` instances.
+
+Current Hadalis confirmation ownership already follows the equivalent split:
+
+- `CloseConfirm.qml` keeps the lightweight IPC/lifecycle `Scope` resident;
+- the fullscreen keyboard-exclusive `PanelWindow` is under
+  `Loader { active: root.dialogVisible }`;
+- family-specific confirmation content is created only inside that visible
+  window.
+
+This is especially important because CloseConfirm must keep its IPC owner alive
+even while no prompt is visible.
+
+Status for this audited path: **ALREADY**.
+
+This does not authorize a generic "lazy every modal" rewrite. Existing handoff
+guidance against blind generic popup lazy-loading still applies.
+
+### 53.4 DMS allocator tuning may reduce idle memory, but is explicitly a memory/allocator-policy experiment — CONDITIONAL BENCHMARK / TRADEOFF
+
+The DMS shell-launch environment sets, when the user has not already supplied
+one:
+
+`MALLOC_CONF=thp:never,narenas:4,dirty_decay_ms:3000`
+
+and describes the goal as reducing Quickshell idle memory / jemalloc extent and
+arena overhead.
+
+Hadalis currently sets no `MALLOC_CONF`.
+
+However this cannot be promoted as strict-lossless from source inspection:
+
+- it changes allocator arena/reclamation/THP behavior;
+- memory reduction can trade against allocation/reuse latency or CPU;
+- it only matters when the running `qs` actually uses jemalloc;
+- Hadalis supports different Quickshell builds.
+
+In particular, Hadalis' custom WebEngine Quickshell build scripts explicitly
+compile with:
+
+`-DUSE_JEMALLOC=OFF`
+
+so the DMS variable is ineffective for that build. Other distro/system
+Quickshell packages may differ; dependency presence alone does not prove the
+running binary uses jemalloc.
+
+Safe experiment:
+
+1. detect the allocator used by the **actual running qs process** first
+   (binary linkage or process maps);
+2. benchmark stock allocator settings vs the DMS policy only on jemalloc builds;
+3. record idle and post-interaction PSS/RSS over time;
+4. record shell CPU, allocation-heavy interaction latency and frame times;
+5. exercise Settings, Overview/Task View, wallpaper changes, notification bursts,
+   large launcher searches and repeated open/close cycles;
+6. preserve a user-supplied `MALLOC_CONF`;
+7. do not inject the setting on non-jemalloc builds.
+
+Status:
+
+**CONDITIONAL BENCHMARK / TRADEOFF**, not a strict-lossless default.
+
+### 53.5 DMS's old redundant wallpaper-FBO pattern does not match current Hadalis — CLOSED / NOT APPLICABLE
+
+DMS's same idle-RAM commit removed unconditional/manual
+`currentWallpaper.layer.enabled` / `nextWallpaper.layer.enabled` toggling
+around wallpaper transitions, eliminating redundant offscreen framebuffer
+ownership in that implementation.
+
+Current Hadalis `WallpaperCrossfader.qml` is materially different.
+
+Its two wallpaper Image layers are enabled only when all of these are true:
+
+- a transition is active;
+- effects are enabled;
+- transition type is `blurFade`;
+- that Image is the outgoing slot.
+
+The attached `MultiEffect` then performs the actual blur.
+
+The ordinary crossfade/slide/wipe/etc. transitions do not retain those Image
+layers.
+
+Removing this conditional layer would remove the blur effect rather than merely
+drop a redundant FBO.
+
+Status: **CLOSED / NOT APPLICABLE**.
+
+### 53.6 Noctalia confirms one Niri event-stream owner + internal fan-out; Hadalis already has this architecture — ALREADY
+
+Current Noctalia's native Niri runtime owns one event-stream socket and fans
+parsed events to its backend handlers. It keeps canonical workspace/window/output
+state and uses a separate request path for actions.
+
+The smaller `eww-niri-workspaces` and `system76-scheduler-niri` utilities
+also keep one long-lived Niri event stream and mutate local state from events
+instead of polling compositor snapshots continuously.
+
+Current Hadalis already has the equivalent top-level transport architecture:
+
+- one `eventStreamSocket` subscribed to `"EventStream"`;
+- one resident `requestSocket` for typed Niri actions;
+- `handleNiriEvent()` fans events into canonical shell state.
+
+Do not create a generic "persistent Niri event socket" task.
+
+Existing narrower Niri findings remain valid, especially §40.21 and §41.1-§41.7.
+
+Status: **ALREADY**.
+
+### 53.7 qml-niri demonstrates role-level/stable-object publication, but migrating Hadalis to it is an architecture change — NEEDS PROFILE / ARCHITECTURE, not a strict-lossless port
+
+`qml-niri` provides a useful contrast to Hadalis' JavaScript-array publication
+model.
+
+Its native `WindowModel` is a `QAbstractListModel` of stable `Window`
+objects:
+
+- an existing `WindowOpenedOrChanged` mutates the existing object in place;
+- only changed roles are emitted through targeted `dataChanged()`;
+- a close removes one row;
+- urgency/layout changes notify only the affected row/roles;
+- full `WindowsChanged` remains an authoritative model reset;
+- held QML window handles remain valid across ordinary updates.
+
+Current Hadalis intentionally batches Niri window updates, but publication is
+still:
+
+`windows = nextWindows`
+
+with a new JS array snapshot. Every binding depending on
+`NiriService.windows` is therefore invalidated on each published batch even
+when only one window title/focus/layout field changed.
+
+This suggests a possible long-term direction if profiling shows QML invalidation
+fan-out remains dominant **after** the confirmed local Round-27 optimizations.
+
+It is not a strict-lossless port by inspection.
+
+A stable model migration can change:
+
+- object identity;
+- `windowsChanged` notification semantics and ordering;
+- atomic-snapshot behavior;
+- consumer use of JS `.find/.filter/.map`;
+- first-frame publication timing;
+- sorting/reorder behavior;
+- API shape for every Bar/Dock/Overview/Task View/background consumer;
+- dependency/build/runtime surface if implemented as a native QML plugin.
+
+Priority rule:
+
+Implement/measure the narrower §41 Niri list/index/allocation reductions before
+considering a canonical-model rewrite. If those remove the measured hot path,
+do not add this architecture.
+
+Status:
+
+**NEEDS PROFILE / ARCHITECTURE**, not a current strict-lossless optimization.
+
+### 53.8 Noctalia's incremental state maps reinforce existing Hadalis candidates rather than creating new ones — SUPERSEDED BY EXISTING BACKLOG
+
+Noctalia maintains native maps such as:
+
+- workspace id -> workspace state;
+- window id -> window state;
+- workspace id -> output.
+
+It avoids recomputing occupancy when an event only changes unrelated layout
+fields and resolves several lookups directly from canonical maps.
+
+Those ideas are already represented more narrowly in the current Hadalis
+research backlog:
+
+- lazy/published window id map (§40.21);
+- WindowLayoutsChanged id->index pass (§41.1);
+- focused-window centralization (§41.6);
+- demand-scoped active-workspace/workspaces-by-output derivation (§41.7);
+- Task View workspace/window grouping (§41.9 and later).
+
+Do not add parallel "copy Noctalia maps" tasks.
+
+Status: **SUPERSEDED BY EXISTING BACKLOG**.
+
+### 53.9 oniri's persistent workspace->window membership map is not preferable to the current strict-safe Hadalis candidate — CLOSED under current defaults
+
+`oniri` implements essentially the same optional behavior as Hadalis'
+`compositor.autoExpandSingleTilingWindow`: react when a workspace reaches
+0/1/>1 tiling windows.
+
+It maintains a persistent:
+
+`workspace -> Vec<window_id>`
+
+map incrementally from Niri events, making count decisions cheap.
+
+For Hadalis that is not automatically the better optimization:
+
+- the feature is disabled by default;
+- the new retained index creates another state/invalidation contract;
+- window moves require old/new workspace correctness;
+- layout/floating changes and event ordering must stay synchronized;
+- the existing §41.5 candidate needs no persistent state: scan until the second
+  matching tiling window, then stop.
+
+Under the strict no-hidden-tradeoff rule, keep §41.5 as the preferred first
+optimization.
+
+Status: **CLOSED as a new persistent-cache task under current defaults**.
+
+### 53.10 `noctalia-niri-ribbon` is a useful negative example: event-driven wakeup with snapshot refetch is still process-heavy — DO NOT PORT
+
+The ribbon helper starts one:
+
+`niri msg -j event-stream`
+
+process, but on each relevant event its recalculation calls
+`get_niri_state()`, which launches three more commands:
+
+- `niri msg -j windows`;
+- `niri msg -j workspaces`;
+- `niri msg -j outputs`.
+
+Therefore it uses events only as invalidation signals, then refetches full
+snapshots through subprocesses.
+
+Hadalis' resident `NiriService` is already architecturally better for live
+shell state.
+
+This negative example reinforces two existing rules:
+
+- consume authoritative event payloads/state when available;
+- do not add compositor-query subprocesses merely because an event says
+  "something changed".
+
+Status: **DO NOT PORT**.
+
+### 53.11 Round-39 conclusion
+
+New work learned from the `awesome-niri` ecosystem:
+
+**High-value new candidate:**
+
+1. benchmark a direct Quickshell StringCall fast path for external
+   `inir <target> <function>` / `inir ipc` calls, using the existing
+   `inir-native` helper and retaining current `qs` behavior as the universal
+   fallback (§53.1).
+
+**Conditional resource experiment:**
+
+2. jemalloc policy benchmark only on builds proven to use jemalloc; do not make
+   it a default without memory + CPU/latency/frame-time evidence (§53.4).
+
+**Already present in Hadalis:**
+
+3. lazy QtMultimedia decoder construction in `VideoCrossfader` (§53.2);
+4. lazy visual ownership for CloseConfirm (§53.3);
+5. one Niri event-stream owner plus a resident action socket (§53.6).
+
+**Architecture/reference only:**
+
+6. stable native role-level Niri models from `qml-niri` (§53.7);
+7. Noctalia incremental canonical maps (§53.8).
+
+**Closed / not applicable / negative examples:**
+
+8. DMS redundant wallpaper FBO removal does not match Hadalis' effect-required
+   conditional layers (§53.5);
+9. oniri's persistent workspace-window count cache is not justified for the
+   default-disabled feature before the stateless §41.5 optimization (§53.9);
+10. event-triggered triple `niri msg` snapshot refetch in
+    `noctalia-niri-ribbon` is specifically a pattern Hadalis should avoid
+    (§53.10).
+
+No source/runtime implementation is authorized by this handoff.

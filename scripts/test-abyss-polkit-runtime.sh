@@ -49,6 +49,7 @@ ShellRoot {
     property int ticks: 0
     property bool finished: false
     property int firstSerial: 0
+    property int queueFirstSerial: 0
     property int cancelExitCode: -999
     property int queuedSuccesses: 0
     property int queuedFailures: 0
@@ -241,6 +242,7 @@ ShellRoot {
                     + " registered=" + PolkitService.registered
                     + " active=" + PolkitService.active
                     + " serial=" + PolkitService.requestSerial
+                    + " queueFirstSerial=" + root.queueFirstSerial
                     + " retained=" + PolkitService.presentationRetained
                     + " canSubmit=" + PolkitService.canSubmit
                     + " failed=" + PolkitService.failed
@@ -355,12 +357,11 @@ ShellRoot {
                 if (!root.check(root.cancelExitCode !== 0,
                         "Cancel aborts the real PolicyKit authorization"))
                     return
-                // Distinct actions prevent PolicyKit from coalescing two
-                // concurrent checks for the exact same action/subject. That
-                // makes this a deterministic test of PolkitAgent queue
-                // activation rather than authorization-cache behavior.
+                // Start A first and wait until its AuthFlow is definitely active.
+                // B is then started while A owns the agent, making queue
+                // membership deterministic instead of depending on two process
+                // launches racing each other.
                 root.start(queueA, "org.hadalis.ci.authenticate.queuea")
-                root.start(queueB, "org.hadalis.ci.authenticate.queueb")
                 root.phase = 6
                 return
             }
@@ -368,15 +369,19 @@ ShellRoot {
             if (root.phase === 6) {
                 if (!PolkitService.active || !PolkitService.canSubmit)
                     return
-                PolkitService.submit(root.token)
+                root.queueFirstSerial = PolkitService.requestSerial
+                root.start(queueB, "org.hadalis.ci.authenticate.queueb")
                 root.phase = 7
                 return
             }
 
             if (root.phase === 7) {
-                if (root.queuedSuccesses < 1
-                        || !PolkitService.active
-                        || !PolkitService.canSubmit)
+                if (!queueB.running)
+                    return
+                if (!root.check(
+                        PolkitService.active
+                        && PolkitService.requestSerial === root.queueFirstSerial,
+                        "second PolicyKit request waits behind the active AuthFlow"))
                     return
                 PolkitService.submit(root.token)
                 root.phase = 8
@@ -384,6 +389,20 @@ ShellRoot {
             }
 
             if (root.phase === 8) {
+                if (root.queuedSuccesses < 1)
+                    return
+                if (PolkitService.active) {
+                    if (!PolkitService.canSubmit
+                            || PolkitService.requestSerial
+                                <= root.queueFirstSerial)
+                        return
+                    PolkitService.submit(root.token)
+                }
+                root.phase = 9
+                return
+            }
+
+            if (root.phase === 9) {
                 if (!queueA.done || !queueB.done || PolkitService.active)
                     return
                 if (!root.check(
@@ -392,11 +411,13 @@ ShellRoot {
                         "two real PolicyKit requests serialize and both authorize"))
                     return
                 if (!root.check(
-                        PolkitService.requestSerial >= root.firstSerial + 3,
-                        "Quickshell PolkitAgent remained queue authority"))
+                        PolkitService.requestSerial
+                            >= root.queueFirstSerial + 1,
+                        "Quickshell PolkitAgent activated the queued successor"))
                     return
                 console.info("ABYSS_POLKIT_RUNTIME_PASS")
                 root.finished = true
+
             }
         }
     }

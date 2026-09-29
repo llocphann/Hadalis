@@ -398,6 +398,13 @@ export async function submitPrompt(page, prompt) {
   const send = page.getByRole("button", { name: "Send" });
   await requireOne(send, "Send");
 
+  const completionBaseline = {
+    markerCount: await loopMarkerCount(page),
+    responseActionCount: await visibleCount(
+      page.getByRole("button", { name: RESPONSE_ACTION })
+    )
+  };
+
   // Match the known-good feasibility probe exactly: after fill(), allow
   // ChatGPT's React/composer state to settle, then activate the semantic
   // Send control through HTMLElement.click() before trying any key path.
@@ -409,7 +416,7 @@ export async function submitPrompt(page, prompt) {
   await send.evaluate(element => element.click());
 
   if (await waitForSubmissionStart(page, composer, 2500))
-    return;
+    return completionBaseline;
 
   // Keep the action deterministic and coordinate-free. Start with the
   // normal editor gesture while explicitly restoring focus after fill().
@@ -417,7 +424,7 @@ export async function submitPrompt(page, prompt) {
   await page.keyboard.press("Enter");
 
   if (await waitForSubmissionStart(page, composer))
-    return;
+    return completionBaseline;
 
   // Playwright key synthesis can be ignored by Electron/Chromium in some
   // embedded-editor states. Dispatch the Enter key through the underlying
@@ -426,21 +433,21 @@ export async function submitPrompt(page, prompt) {
   await dispatchCdpEnter(page);
 
   if (await waitForSubmissionStart(page, composer))
-    return;
+    return completionBaseline;
 
   // Then exercise the semantic Send control through a full event sequence.
   // This still avoids screen coordinates and pointer hit-testing.
   await dispatchSemanticClick(send);
 
   if (await waitForSubmissionStart(page, composer))
-    return;
+    return completionBaseline;
 
   // Final DOM fallback for builds where the button's native click path is
   // wired differently from delegated pointer handlers.
   await send.evaluate(element => element.click());
 
   if (await waitForSubmissionStart(page, composer))
-    return;
+    return completionBaseline;
 
   // Last-resort platform input: focus the real ChatGPT window through niri
   // by stable window id, then inject a real Wayland Return key with wtype.
@@ -449,7 +456,7 @@ export async function submitPrompt(page, prompt) {
   const nativeWayland = await dispatchNativeWaylandEnter();
 
   if (nativeWayland.ok && await waitForSubmissionStart(page, composer, 2500))
-    return;
+    return completionBaseline;
 
   const diagnostic = await page.evaluate(() => ({
     activeTag: document.activeElement?.tagName ?? null,
@@ -462,19 +469,39 @@ export async function submitPrompt(page, prompt) {
   );
 }
 
-async function loopMarkerCount(page) {
-  return visibleCount(page.getByText(LOOP_MARKER));
+async function loopMarkerLines(page) {
+  const bodyText = await page.locator("body").innerText();
+
+  return bodyText
+    .split(/\r?\n/)
+    .map(line => line.trim())
+    .filter(line => LOOP_MARKER.test(line));
 }
 
-export async function waitForCompletion(page, timeoutMs = 600000) {
+async function loopMarkerCount(page) {
+  return (await loopMarkerLines(page)).length;
+}
+
+export async function waitForCompletion(
+  page,
+  timeoutMs = 600000,
+  completionBaseline = null
+) {
   const deadline = Date.now() + timeoutMs;
-  const baselineMarkerCount = await loopMarkerCount(page);
+  const baselineMarkerCount =
+    completionBaseline?.markerCount ?? await loopMarkerCount(page);
+  const baselineResponseActionCount =
+    completionBaseline?.responseActionCount ??
+    await visibleCount(page.getByRole("button", { name: RESPONSE_ACTION }));
+
   let sawStop = false;
   let sawClear = false;
 
   while (Date.now() < deadline) {
     const stop = await visibleCount(page.getByRole("button", { name: /stop/i }));
-    const responseAction = await visibleCount(page.getByRole("button", { name: RESPONSE_ACTION }));
+    const responseActionCount = await visibleCount(
+      page.getByRole("button", { name: RESPONSE_ACTION })
+    );
     const markerCount = await loopMarkerCount(page);
     const composer = await resolveComposer(page);
     const empty = (await composer.innerText()).trim() === "";
@@ -483,23 +510,39 @@ export async function waitForCompletion(page, timeoutMs = 600000) {
     sawClear ||= empty;
 
     const markerAdvanced = markerCount > baselineMarkerCount;
-    const hasCompletionSignal = responseAction > 0 || markerAdvanced;
+    const responseActionAdvanced =
+      responseActionCount > baselineResponseActionCount;
 
-    if (sawStop && sawClear && stop === 0 && hasCompletionSignal) {
+    // Do not require observing Stop. Very fast responses can complete between
+    // the submit verification and the first completion sample.
+    if (
+      sawClear &&
+      stop === 0 &&
+      (markerAdvanced || responseActionAdvanced)
+    ) {
       await sleep(900);
 
       const stop2 = await visibleCount(page.getByRole("button", { name: /stop/i }));
-      const responseAction2 = await visibleCount(page.getByRole("button", { name: RESPONSE_ACTION }));
+      const responseActionCount2 = await visibleCount(
+        page.getByRole("button", { name: RESPONSE_ACTION })
+      );
       const markerCount2 = await loopMarkerCount(page);
       const markerAdvanced2 = markerCount2 > baselineMarkerCount;
+      const responseActionAdvanced2 =
+        responseActionCount2 > baselineResponseActionCount;
 
-      if (stop2 === 0 && (responseAction2 > 0 || markerAdvanced2)) {
+      if (
+        stop2 === 0 &&
+        (markerAdvanced2 || responseActionAdvanced2)
+      ) {
         return {
           sawStop,
           sawClear,
           completed: true,
           baselineMarkerCount,
           markerCount: markerCount2,
+          baselineResponseActionCount,
+          responseActionCount: responseActionCount2,
           completionSignal: markerAdvanced2 ? "loop-marker" : "response-action"
         };
       }
@@ -551,12 +594,9 @@ export async function extractLoopResponse(page, { allowMarkerOnly = false } = {}
     return anchored;
 
   if (allowMarkerOnly) {
-    const markers = await visibleItems(page.getByText(LOOP_MARKER));
-    if (markers.length) {
-      const text = (await markers[markers.length - 1].innerText()).trim();
-      if (LOOP_MARKER.test(text))
-        return { depth: 0, text, markerOnly: true };
-    }
+    const markers = await loopMarkerLines(page);
+    if (markers.length)
+      return { depth: 0, text: markers[markers.length - 1], markerOnly: true };
   }
 
   throw new Error("No completed assistant HADALIS_LOOP response found");

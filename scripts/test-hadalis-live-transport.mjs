@@ -27,7 +27,7 @@ async function main() {
   const completionBaseline = await submitPrompt(page, prompt);
   const generation = await waitForCompletion(
     page,
-    600000,
+    90000,
     completionBaseline
   );
   const response = await extractLoopResponse(page, { allowMarkerOnly: true });

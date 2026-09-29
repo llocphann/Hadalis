@@ -40,7 +40,10 @@ async function main() {
     90000,
     completionBaseline
   );
-  const response = await extractLoopResponse(page, { allowMarkerOnly: true });
+  const response = await extractLoopResponse(page, {
+    allowMarkerOnly: true,
+    baselineMarkerCount: completionBaseline.markerCount
+  });
 
   const markers = response.text
     .split(/\r?\n/)

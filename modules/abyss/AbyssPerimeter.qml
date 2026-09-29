@@ -438,8 +438,7 @@ Scope {
                 outputName: window.outputName
                 // Pair by logical sidebar role; the physical slot may be swapped.
                 vacancyRole: "featureSidebar"
-                // Only hover over the final rendered body may borrow vacancy.
-                vacancyHovered: leftReveal.bodyHovered
+                // Hover ownership comes from AbyssBodyHost's final contentFrame.
                 open: window.presented && field.ready && (Config.options?.enabledPanels ?? []).includes("abyssSidebarLeft")
                     && GlobalStates.sidebarLeftOpen && GlobalStates.sidebarLeftPresentationOutput === window.outputName
 
@@ -462,7 +461,7 @@ Scope {
                 edge: window.positionEdge(identity,ShellLayoutController.sidebarAssignments().systemSidebar)
                 outputName: window.outputName
                 vacancyRole: "systemSidebar"
-                vacancyHovered: rightReveal.bodyHovered
+                // Hover ownership comes from AbyssBodyHost's final contentFrame.
                 open: window.presented && field.ready && (Config.options?.enabledPanels ?? []).includes("abyssSidebarRight")
                     && GlobalStates.sidebarRightOpen && GlobalStates.sidebarRightPresentationOutput === window.outputName
 
@@ -551,10 +550,9 @@ Scope {
                         ? "quickNotes"
                         : (presentationKind === "notificationCenter"
                             ? "notificationCenter" : "")
-                    // The rehosted content HoverHandler below is the pointer
-                    // truth for the body that is actually rendered in this field.
-                    vacancyHovered: vacancyRole.length > 0
-                        && (hostedPopup?._contentHovered ?? false)
+                    // Borrowing hover is measured by this host's final
+                    // contentFrame. The rehosted HoverHandler below remains the
+                    // StyledPopup lifetime hand-off, not the borrowing authority.
                     open: window.popupFieldPresented && field.ready
                         && (hostedPopup?.presentationActive ?? false)
                         && ((hostedPopup?.requestedVisible ?? false)

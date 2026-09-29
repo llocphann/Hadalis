@@ -24,7 +24,11 @@ Item {
     // Logical pairing and hover ownership are presentation metadata only. They
     // never enter placementRequest, so the resting allocator/order stays exact.
     property string vacancyRole: ""
-    property bool vacancyHovered: false
+    // Borrowing follows the final clipped body itself. Production hosts do not
+    // proxy hover through source anchors or sidebar reveal helpers. The binding
+    // remains writable so isolated allocator/runtime harnesses can drive it.
+    property bool vacancyHovered: root.vacancyRole.length > 0
+        && vacancyBodyHover.hovered
     property int vacancyHoverOrder: 0
     property Item embeddedItem: null
     property bool animatePresentation: true
@@ -446,6 +450,15 @@ Item {
         opacity: root.pyramidPresentationActive
             ? 1 : Math.min(1,root.progress*1.5)
         enabled: root.acceptsInput
+
+        // This is the actual final rendered/input-clipped body. Vacancy borrowing
+        // must follow this hover truth, not an anchor, source popup or reveal proxy.
+        HoverHandler {
+            id: vacancyBodyHover
+            parent: contentFrame
+            enabled: root.vacancyRole.length > 0
+                && contentFrame.visible && contentFrame.enabled
+        }
 
         Item {
             id: contentCanvas

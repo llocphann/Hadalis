@@ -4,10 +4,18 @@
 set -euo pipefail
 repo_root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
 perimeter="$repo_root/modules/abyss/AbyssPerimeter.qml"
+body_host="$repo_root/modules/abyss/AbyssBodyHost.qml"
 
-for token in     'vacancyRole: "featureSidebar"'     'vacancyHovered: leftReveal.bodyHovered'     'vacancyRole: "systemSidebar"'     'vacancyHovered: rightReveal.bodyHovered'     'presentationKind === "quickNotes"'     'presentationKind === "notificationCenter"'     'hostedPopup?._contentHovered ?? false'; do
+for token in     'vacancyRole: "featureSidebar"'     'vacancyRole: "systemSidebar"'     'presentationKind === "quickNotes"'     'presentationKind === "notificationCenter"'; do
     grep -Fq "$token" "$perimeter"         || { printf 'FAIL: production vacancy wiring missing: %s\n' "$token" >&2; exit 1; }
 done
+for token in     'property bool vacancyHovered: root.vacancyRole.length > 0'     'id: vacancyBodyHover'     'parent: contentFrame'     'enabled: root.vacancyRole.length > 0'; do
+    grep -Fq "$token" "$body_host"         || { printf 'FAIL: final-body vacancy hover wiring missing: %s\n' "$token" >&2; exit 1; }
+done
+if grep -Fq 'vacancyHovered:' "$perimeter"; then
+    printf 'FAIL: production perimeter overrides final-body vacancy hover\n' >&2
+    exit 1
+fi
 
 if ! command -v qs >/dev/null || [[ -z "${WAYLAND_DISPLAY:-}" ]]; then
     printf 'SKIP: Abyss vacancy borrowing runtime (Quickshell/Wayland unavailable)\n'

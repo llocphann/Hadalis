@@ -50,13 +50,11 @@ styled_hosts = section(perimeter, "id: styledPopupHosts", "property bool dockHov
 
 for token in (
     'vacancyRole: "featureSidebar"',
-    "vacancyHovered: leftReveal.bodyHovered",
     'ShellLayoutController.currentState("featureSidebar",window.outputName)',
 ):
     require(left_panel, token, "feature sidebar production vacancy wiring missing")
 for token in (
     'vacancyRole: "systemSidebar"',
-    "vacancyHovered: rightReveal.bodyHovered",
     'ShellLayoutController.currentState("systemSidebar",window.outputName)',
 ):
     require(right_panel, token, "system sidebar production vacancy wiring missing")
@@ -65,10 +63,18 @@ for token in (
     '? "quickNotes"',
     'presentationKind === "notificationCenter"',
     '? "notificationCenter" : ""',
-    "vacancyHovered: vacancyRole.length > 0",
-    "hostedPopup?._contentHovered ?? false",
 ):
     require(styled_hosts, token, "rehosted popup semantic/body-hover wiring missing")
+
+# Borrowing hover must be owned by the final rendered BodyHost body. Production
+# sections must not override it with source-anchor/reveal proxy state.
+for production_section, label in (
+    (left_panel, "feature sidebar"),
+    (right_panel, "system sidebar"),
+    (styled_hosts, "styled popup"),
+):
+    if "vacancyHovered:" in production_section:
+        raise SystemExit(f"FAIL: {label} overrides final-body vacancy hover")
 
 # Tabs/sections remain content state below the stable logical hosts.
 for token in ("property string selectedTabId:", "id: swipeView", "music", "translator", "tools"):
@@ -84,7 +90,10 @@ for token in (
 # The allocator request remains free of temporary semantics.
 for token in (
     'property string vacancyRole: ""',
-    "property bool vacancyHovered: false",
+    "property bool vacancyHovered: root.vacancyRole.length > 0",
+    "id: vacancyBodyHover",
+    "parent: contentFrame",
+    "enabled: root.vacancyRole.length > 0",
     "property int vacancyHoverOrder: 0",
     "vacancyRole: root.vacancyRole",
     "vacancyHovered: root.vacancyHovered",

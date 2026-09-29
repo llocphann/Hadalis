@@ -51,6 +51,8 @@ ShellRoot {
     property int duplicateSecondCallbacks: 0
     property int lifecycleCancelActionCallbacks: 0
     property int lifecycleOnCancelCallbacks: 0
+    property int handoffFirstId: 0
+    property int handoffSecondId: 0
     readonly property string outputName:
         String(window.screen?.name ?? "")
 
@@ -913,6 +915,67 @@ ShellRoot {
                         "source loss cancels request without invoking disabled action callback"))
                     return
                 sourceAnchor.visible = true
+                root.handoffFirstId = root.requestApp(
+                    "handoff.runtime.app", "Fallback handoff first")
+                root.handoffSecondId = root.requestApp(
+                    "handoff.runtime.app", "Fallback handoff second")
+                root.phase = 40
+                return
+            }
+
+            if (root.phase === 40) {
+                if (!ConfirmationService.requestVisible
+                        || ConfirmationService.currentRequestId
+                            !== root.handoffFirstId
+                        || controller.activePopups.length < 1
+                        || !controller.activePopup.presentationActive)
+                    return
+                if (!root.check(
+                        ConfirmationService.holdPresentationRelease(
+                            root.handoffFirstId),
+                        "renderer handoff can acquire semantic release hold"))
+                    return
+                ConfirmationService.cancel(true)
+                root.phase = 41
+                return
+            }
+
+            if (root.phase === 41) {
+                if (ConfirmationService.requestVisible
+                        || !ConfirmationService
+                            ._presentationReleaseObservedWhileHeld)
+                    return
+                if (!root.check(
+                        ConfirmationService.currentRequestId
+                            === root.handoffFirstId
+                        && ConfirmationService.queue.length === 1
+                        && ConfirmationService.queue[0]?._requestId
+                            === root.handoffSecondId,
+                        "visual tail release cannot advance queue while handoff owns semantic hold"))
+                    return
+                ConfirmationService.releasePresentationHold(
+                    root.handoffFirstId)
+                root.phase = 42
+                return
+            }
+
+            if (root.phase === 42) {
+                if (!ConfirmationService.requestVisible
+                        || ConfirmationService.currentRequestId
+                            !== root.handoffSecondId)
+                    return
+                if (!root.check(
+                        ConfirmationService.queue.length === 0,
+                        "queued successor activates only after handoff semantic release"))
+                    return
+                ConfirmationService.cancel()
+                root.phase = 43
+                return
+            }
+
+            if (root.phase === 43) {
+                if (ConfirmationService.active)
+                    return
                 console.info("ABYSS_CONFIRMATION_RUNTIME_PASS")
                 root.finished = true
             }
@@ -929,4 +992,4 @@ if [[ "$status" != 124 ]]         || ! rg -q 'ABYSS_CONFIRMATION_RUNTIME_PASS' "
     exit 1
 fi
 
-printf 'PASS: confirmation callbacks, content-fit, four-edge attachment, Join Edge inheritance, tray/dock routing, ambiguous-source fallback, normalized action IDs, lifecycle cancellation semantics, top-center fallback, source loss, peer reflow, same-source related-popup reflow, queue/reopen, hidden-resident fallback and live-anchor invalidation\n'
+printf 'PASS: confirmation callbacks, content-fit, four-edge attachment, Join Edge inheritance, tray/dock routing, ambiguous-source fallback, normalized action IDs, lifecycle cancellation semantics, renderer-handoff queue gating, top-center fallback, source loss, peer reflow, same-source related-popup reflow, queue/reopen, hidden-resident fallback and live-anchor invalidation\n'

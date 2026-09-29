@@ -32,6 +32,15 @@ assert "root.presentationRetained = false" in service
 assert "root.presentationSerial = 0" in service
 assert "root.abyssPresenterAvailable" in service
 assert "onAbyssPresenterAvailableChanged" in service
+assert "function _outputExists(outputName): bool" in service
+assert "function _reconcileOutputTopology(): void" in service
+assert "target: Quickshell" in service
+assert "function onScreensChanged(): void" in service
+assert "Qt.callLater(root._reconcileOutputTopology)" in service
+assert "root.presentationMatchesActive" in service
+assert "root.hadResolvedAnchor" in service
+assert "root.finishPresentation(true)" in service
+assert 'root.targetOutputName = GlobalStates.resolveOutputName("", [])' in service
 assert "root.ownsPresentation" in presenter
 assert "onOwnsPresentationChanged" in presenter
 assert 'function hintSource(appId, anchorItem = null, outputName = ""): void' in service

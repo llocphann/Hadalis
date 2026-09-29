@@ -216,6 +216,51 @@ Singleton {
             root._startPresentationForCurrentRequest()
     }
 
+    function _outputExists(outputName): bool {
+        const wanted = String(outputName ?? "")
+        return wanted.length > 0
+            && (Quickshell.screens ?? []).some(screen =>
+                String(screen?.name ?? "") === wanted)
+    }
+
+    function _reconcileOutputTopology(): void {
+        if (!root.active)
+            return
+        if (root._outputExists(root.targetOutputName))
+            return
+
+        if (root.presentationMatchesActive) {
+            if (root.hadResolvedAnchor) {
+                // A trusted attached source vanished with its output. Preserve
+                // source-loss semantics and cancel the real AuthFlow.
+                root._cancelForSourceLoss()
+                return
+            }
+            // Top-center fallback has no source geometry to preserve. Move the
+            // same active AuthFlow to a remaining output after hot-unplug.
+            root.targetOutputName = GlobalStates.resolveOutputName("", [])
+            return
+        }
+
+        if (root.presentationRetained && root.presentationSerial === 0) {
+            // A queued successor is waiting for the previous popup tail, but
+            // that tail's output no longer exists. Release it immediately and
+            // let finishPresentation() start the current AuthFlow presentation.
+            root.finishPresentation(true)
+            return
+        }
+
+        if (!root.presentationRetained && root.abyssPresenterAvailable)
+            root._startPresentationForCurrentRequest()
+    }
+
+    Connections {
+        target: Quickshell
+        function onScreensChanged(): void {
+            Qt.callLater(root._reconcileOutputTopology)
+        }
+    }
+
     onActiveChanged: {
         if (root.active)
             return

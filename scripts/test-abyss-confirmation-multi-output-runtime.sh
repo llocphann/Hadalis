@@ -17,8 +17,16 @@ test_root="$(mktemp -d)"
 cleanup() { rm -rf -- "$test_root"; }
 trap cleanup EXIT
 
-mkdir -p "$test_root/config/hadalis" "$test_root/state" "$test_root/cache"
-cat > "$test_root/config/hadalis/shell.qml" <<'QML'
+for entry in modules services GlobalStates.qml qmldir assets scripts defaults translations; do
+    ln -s "$repo_root/$entry" "$test_root/$entry"
+done
+mkdir -p "$test_root/config/illogical-impulse" "$test_root/state" "$test_root/cache"
+cp "$repo_root/defaults/config.json" "$test_root/config/illogical-impulse/config.json"
+
+cat > "$test_root/shell.qml" <<'QML'
+//@ pragma ShellId hadalis-abyss-confirmation-multi-output-runtime-test
+pragma ComponentBehavior: Bound
+
 import QtQuick
 import Quickshell
 import qs

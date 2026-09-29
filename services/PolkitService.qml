@@ -53,6 +53,7 @@ Singleton {
     property string resolvedAnchorKind: ""
     property bool hadResolvedAnchor: false
     property var _nextSourceHint: null
+    property bool _sourceLossCancelIssued: false
     readonly property int sourceHintLifetimeMs: 3000
     readonly property bool resolvedAnchorUsable:
         !root.hadResolvedAnchor
@@ -152,6 +153,7 @@ Singleton {
 
     onRequestSerialChanged: {
         if (root.requestSerial > 0) {
+            root._sourceLossCancelIssued = false
             root.presentationRetained = true
             root._latchPresentation()
         }
@@ -205,22 +207,28 @@ Singleton {
         impl.selectIdentity(root.identities[(current + 1) % count])
     }
 
+    function _cancelForSourceLoss(): void {
+        // Source invalidation can be observed both through the live usability
+        // binding and registry removal. AuthFlow cancellation is a backend
+        // action, so issue it exactly once for this authentication request.
+        if (!root.active || !root.hadResolvedAnchor
+                || root._sourceLossCancelIssued)
+            return
+        root._sourceLossCancelIssued = true
+        root.resolvedAnchor = null
+        root.cancel()
+    }
+
     onResolvedAnchorUsableChanged: {
-        if (root.active && root.hadResolvedAnchor
-                && !root.resolvedAnchorUsable) {
-            root.resolvedAnchor = null
-            root.cancel()
-        }
+        if (!root.resolvedAnchorUsable)
+            root._cancelForSourceLoss()
     }
 
     Connections {
         target: PopupAnchorRegistry
         function onAnchorRemoved(item): void {
-            if (root.active && root.hadResolvedAnchor
-                    && root.resolvedAnchor === item) {
-                root.resolvedAnchor = null
-                root.cancel()
-            }
+            if (root.resolvedAnchor === item)
+                root._cancelForSourceLoss()
         }
     }
     

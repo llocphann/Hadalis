@@ -26,6 +26,8 @@ assert "root.presentationRetained = true" in service
 assert "function finishPresentation(restartIfActive = true): void" in service
 assert "restartIfActive && root.active" in service
 assert "PolkitService.finishPresentation(false)" in presenter
+destruction=presenter.split("Component.onDestruction:",1)[1]
+assert "root.ownsOutput" in destruction
 assert "root.presentationRetained = false" in service
 assert "root.presentationSerial = 0" in service
 assert "root.abyssPresenterAvailable" in service

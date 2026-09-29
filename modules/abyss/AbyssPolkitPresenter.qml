@@ -79,7 +79,10 @@ Item {
         Component.onDestruction: {
             // Once the renderer is gone there is no visual tail left to retain.
             // The real AuthFlow remains owned by PolkitService/PolkitAgent.
-            if (PolkitService.presentationRetained)
+            // There is one presenter per output. A non-owning output can be
+            // hot-unplugged independently and must not clear another output's
+            // active authentication presentation.
+            if (PolkitService.presentationRetained && root.ownsOutput)
                 PolkitService.finishPresentation(false)
         }
 

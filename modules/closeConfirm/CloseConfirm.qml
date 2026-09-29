@@ -103,6 +103,21 @@ Scope {
         }
     }
 
+    Connections {
+        target: Quickshell
+        function onScreensChanged(): void {
+            if (!root.dialogVisible)
+                return
+            // Standalone failover is intentionally outside the connected field,
+            // so keep its fullscreen host on a live output after hotplug too.
+            // _screenForOutput() falls back to the currently focused screen if
+            // the request's original output no longer exists.
+            const requested = root._standaloneTransferredRequestId > 0
+                ? ConfirmationService.targetOutputName : ""
+            root.dialogScreen = root._screenForOutput(requested)
+        }
+    }
+
     function _snapshotWindow(win): var {
         const snapshot = Object.assign({}, win ?? {})
         const id = Number(snapshot?.id ?? 0)

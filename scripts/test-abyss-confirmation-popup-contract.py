@@ -140,6 +140,12 @@ assert "&& !ConfirmationService.cancelPresentationHandoff(" in cancel_block
 assert "onAbyssConfiguredChanged:" in close
 assert "target: AbyssPromptHostRegistry" in close
 assert "function onEntriesChanged(): void" in close
+assert "target: Quickshell" in close
+screens=close.split("target: Quickshell",1)[1].split("function _snapshotWindow",1)[0]
+assert "function onScreensChanged(): void" in screens
+assert "root.dialogVisible" in screens
+assert "ConfirmationService.targetOutputName" in screens
+assert "root.dialogScreen = root._screenForOutput(requested)" in screens
 assert "if (root.abyssConfigured)" in close
 process=close.split("function processWindow(win): void",1)[1].split("function _cancelIfTargetGone",1)[0]
 assert "ConfirmationService.enqueue({" in process

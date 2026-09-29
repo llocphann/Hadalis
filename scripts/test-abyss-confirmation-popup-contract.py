@@ -78,6 +78,12 @@ assert "root.dialogScreen = root._screenForOutput(outputName)" in close
 assert "callback: () => root.closeWindowFast(snapshot)" in close
 assert 'Quickshell.execDetached(["niri", "msg", "action", "close-window"' in close
 assert 'Config.options?.panelFamily === "abyss"' in close
+assert "readonly property bool abyssPresenterAvailable:" in close
+assert "function _releaseAbyssRequestIfUnavailable(): void" in close
+assert 'ConfirmationService.cancelOwned("closeConfirm")' in close
+assert "ConfirmationService.finishPresentation(" in close
+assert "onAbyssPresenterAvailableChanged:" in close
+assert "if (root.abyssPresenterAvailable)" in close
 assert "active: root.dialogVisible" in close
 
 # Queue content remains latched until the popup visual tail is gone.

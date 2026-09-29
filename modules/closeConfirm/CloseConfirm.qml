@@ -25,6 +25,23 @@ Scope {
 
     // Config state
     readonly property bool confirmEnabled: Config.options?.closeConfirm?.enabled ?? false
+    readonly property bool abyssPresenterAvailable:
+        Config.options?.panelFamily === "abyss"
+        && (Config.options?.enabledPanels ?? []).includes("abyssPerimeter")
+
+    function _releaseAbyssRequestIfUnavailable(): void {
+        if (root.abyssPresenterAvailable)
+            return
+        ConfirmationService.cancelOwned("closeConfirm")
+        const request = ConfirmationService.currentRequest
+        if (String(request?.owner ?? "") === "closeConfirm"
+                && !ConfirmationService.requestVisible)
+            ConfirmationService.finishPresentation(
+                Number(request?._requestId ?? 0))
+    }
+
+    onAbyssPresenterAvailableChanged:
+        root._releaseAbyssRequestIfUnavailable()
 
     function _snapshotWindow(win): var {
         const snapshot = Object.assign({}, win ?? {})
@@ -94,9 +111,7 @@ Scope {
         }
 
         const outputName = root._outputNameForWindow(snapshot)
-        const abyssAvailable = Config.options?.panelFamily === "abyss"
-            && (Config.options?.enabledPanels ?? []).includes("abyssPerimeter")
-        if (abyssAvailable) {
+        if (root.abyssPresenterAvailable) {
             const appId = String(snapshot?.app_id ?? "")
             const title = String(snapshot?.title ?? "")
             const appName = title || appId || Translation.tr("Unknown")

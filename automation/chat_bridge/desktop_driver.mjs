@@ -548,8 +548,14 @@ async function extractNearResponseAction(page) {
 
         for (let depth = 0; depth < 12 && node; depth += 1) {
           const text = (node.innerText ?? "").trim();
-          if (text && marker.test(text))
-            return { depth, text };
+          const markers = text
+            .split(/\r?\n/)
+            .map(line => line.trim())
+            .filter(line => marker.test(line));
+
+          if (markers.length)
+            return { depth, text: markers[markers.length - 1] };
+
           node = node.parentElement;
         }
 

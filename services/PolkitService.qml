@@ -3,7 +3,6 @@ pragma ComponentBehavior: Bound
 
 import QtQuick
 import Quickshell
-import Quickshell.Io
 import qs
 import qs.modules.common
 
@@ -379,8 +378,10 @@ Singleton {
         }
     }
 
-    // Whether the Polkit module is available
+    // Module availability and registration are distinct: the module can exist
+    // while Polkit rejects this session because another agent owns the subject.
     readonly property bool available: impl !== null
+    readonly property bool registered: impl?.agent?.isRegistered ?? false
     
     function cancel(): void {
         if (impl) impl.cancel()
@@ -474,53 +475,16 @@ Singleton {
     }
     
     Component.onCompleted: {
-        if (Quickshell.env("QS_DISABLE_POLKIT") === "1") {
+        if (Quickshell.env("QS_DISABLE_POLKIT") === "1")
             return
-        }
-        if (!(Config.options?.modules?.polkit ?? true)) {
+        if (!(Config.options?.modules?.polkit ?? true))
             return
-        }
 
-        // If another authentication agent already exists, registering will fail and spam warnings.
-        // Best-effort detection: if we can see a known agent process, skip our agent.
-        polkitAgentCheck.running = true
+        // Registration with Polkit is the authoritative, session-scoped
+        // ownership check. Process-name probing is global to the machine and
+        // can suppress Hadalis because an agent exists in another user/session
+        // or because a stale process remains.
+        root._loadImpl()
     }
 
-    Process {
-        id: polkitAgentCheck
-        running: false
-        property bool startObserved: false
-
-        // Note: pidof returns 0 if ANY process exists. A nonzero exit means no known agent.
-        command: [
-            "/usr/bin/pidof",
-            "polkit-gnome-authentication-agent-1",
-            "lxqt-policykit-agent",
-            "polkit-kde-authentication-agent-1",
-            "mate-polkit"
-        ]
-
-        onRunningChanged: {
-            if (polkitAgentCheck.running) {
-                polkitAgentCheck.startObserved = false
-                return
-            }
-            if (polkitAgentCheck.startObserved)
-                return
-
-            // FailedToStart does not emit exited; lack of pidof must not disable
-            // Hadalis' own authentication agent.
-            root._loadImpl()
-        }
-
-        onStarted: polkitAgentCheck.startObserved = true
-
-        onExited: (exitCode, exitStatus) => {
-            if (exitCode === 0) {
-                // Another agent exists; avoid the Quickshell polkit listener warning.
-                return
-            }
-            root._loadImpl()
-        }
-    }
 }

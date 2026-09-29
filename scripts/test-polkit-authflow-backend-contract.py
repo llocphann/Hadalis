@@ -9,6 +9,10 @@ waffle=(r/"modules/waffle/polkit/WPolkitContent.qml").read_text()
 
 assert "PolkitAgent {" in impl
 assert "property int requestSerial: 0" in impl
+assert "readonly property bool registered: impl?.agent?.isRegistered ?? false" in svc
+assert "polkitAgentCheck" not in svc
+assert '"/usr/bin/pidof"' not in svc
+assert "import Quickshell.Io" not in svc
 assert "root.requestSerial += 1" in impl
 assert "root.interactionAvailable = root.flow?.isResponseRequired ?? false" in impl
 assert "root.flow.submit(response)" in impl

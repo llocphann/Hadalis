@@ -49,6 +49,7 @@ Scope {
             && GlobalStates.barOpen
             && (!(Config.options?.bar?.autoHide?.enable ?? false)
                 || root.revealedBars[name]
+                || GlobalStates.barPopupHoverHeld(name)
                 || (GlobalStates.superDown && (Config.options?.bar?.autoHide?.showWhenPressingSuper ?? true))
                 || ((GlobalStates.abyssPopupKind.length > 0 || GlobalStates.mediaControlsOpen)
                     && GlobalStates.resolveOutputName(GlobalStates.abyssPopupTargetOutput,[]) === name))
@@ -296,7 +297,12 @@ Scope {
             }
             Timer {
                 id: barClose; interval: 220; repeat: false
-                onTriggered: if (!barHover.hovered && !revealHover.hovered && !popup.open && !liquid.popupsOpen) root.setBarRevealed(window.outputName,false)
+                // Hover state is transient; popup ownership has its own leases.
+                // Clearing revealedBars while a popup is open lets the lease
+                // release hide the Bar immediately after the popup retracts,
+                // instead of leaving the Bar stuck open until another hover.
+                onTriggered: if (!barHover.hovered && !revealHover.hovered)
+                    root.setBarRevealed(window.outputName,false)
             }
             property real barProgress: root.barOnOutput(window.outputName) ? 1 : 0
             Behavior on barProgress {

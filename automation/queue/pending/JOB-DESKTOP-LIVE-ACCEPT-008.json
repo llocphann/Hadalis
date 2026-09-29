@@ -1,0 +1,49 @@
+{
+  "id": "JOB-DESKTOP-LIVE-ACCEPT-008",
+  "base_sha": "7e911a75da87e84641a989f2654b21546ffba971",
+  "actions": [
+    {
+      "exec": {
+        "argv": [
+          "node",
+          "--check",
+          "automation/chat_bridge/desktop_driver.mjs"
+        ],
+        "cwd": ".",
+        "timeout_seconds": 120
+      }
+    },
+    {
+      "exec": {
+        "argv": [
+          "node",
+          "--check",
+          "automation/chat_bridge/desktop_cli.mjs"
+        ],
+        "cwd": ".",
+        "timeout_seconds": 120
+      }
+    },
+    {
+      "exec": {
+        "argv": [
+          "node",
+          "--check",
+          "scripts/test-hadalis-live-transport.mjs"
+        ],
+        "cwd": ".",
+        "timeout_seconds": 120
+      }
+    },
+    {
+      "exec": {
+        "argv": [
+          "node",
+          "scripts/test-hadalis-live-transport.mjs"
+        ],
+        "cwd": ".",
+        "timeout_seconds": 150
+      }
+    }
+  ]
+}

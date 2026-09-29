@@ -184,7 +184,7 @@ jobs:
               }
               trap cleanup EXIT
 
-              # Use a headless parent and Weston's Wayland backend for the
+              # Use a headless parent and the Weston Wayland backend for the
               # multi-output compositor. The Wayland backend explicitly models
               # --output-count as distinct outputs and avoids X11/XRandR
               # discovery differences in Qt/Quickshell.

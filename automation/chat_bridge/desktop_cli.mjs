@@ -18,7 +18,7 @@ async function readStdin() {
 
 async function main() {
   const command = process.argv[2] ?? "observe";
-  const { page } = await connectDesktop();
+  let { page } = await connectDesktop();
 
   if (command === "observe") {
     console.log(JSON.stringify(await observeDesktop(page)));
@@ -26,7 +26,7 @@ async function main() {
   }
 
   if (command === "new-chat") {
-    await openHadalisNewChat(page);
+    page = await openHadalisNewChat(page);
     console.log(JSON.stringify(await observeDesktop(page)));
     return;
   }
@@ -49,7 +49,7 @@ async function main() {
 
   if (command === "send" || command === "rotate-send") {
     if (command === "rotate-send")
-      await openHadalisNewChat(page);
+      page = await openHadalisNewChat(page);
 
     const prompt = await readStdin();
     if (!prompt.trim())

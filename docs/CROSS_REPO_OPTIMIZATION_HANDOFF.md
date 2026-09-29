@@ -16659,3 +16659,206 @@ No number above is an end-to-end Hadalis speedup. Numeric reductions are local
 source-derived operation/allocation counts only.
 
 No runtime/source implementation is authorized by this handoff.
+---
+
+## 62. Round 48 — shared launch normalization and hidden debug-argument work (2026-09-30)
+
+### Snapshot / concurrency safety
+
+This round continues from Round-47 docs commit
+56d2a0264c60dda18093cbf7c34237eea86505f1.
+
+Any concurrent branch movement is accepted only after an in-transaction
+fast-forward compare proves it is limited to the already-audited agent,
+automation, or Hadalis live-transport test/install paths. Runtime or handoff
+changes abort the write.
+
+No runtime/QML/native implementation is authorized by this round.
+
+### 62.1 ShellExec can normalize the fresh Array.from result in place — CONFIRMED / P1-P2 broad launch path
+
+Path:
+
+- modules/common/functions/ShellExec.qml, execDetachedArgs().
+
+Current shared launch helper starts with:
+
+Array.from(args ?? [])
+  .map(arg => String(arg ?? ""))
+  .filter(arg => arg.length > 0)
+
+Keeping Array.from is important because callers may pass QML list-like values,
+not only native JS arrays.
+
+But the result of Array.from is already a fresh JS array.
+
+Strict-safe direction:
+
+- retain that exact Array.from conversion;
+- walk the fresh array with read/write indices;
+- compute String(arg ?? "") exactly once;
+- keep only strings with length > 0;
+- truncate the same array to retained length;
+- keep the existing empty-command early return and all systemd/environment
+  launch logic untouched.
+
+Per call:
+
+- map-result array: **1 -> 0**;
+- filter-result array: **1 -> 0**;
+- normalization/filter order and final argv order are unchanged.
+
+This is the shared-helper analogue of §60.6's AppSearch-local command cleanup
+and reaches every ShellExec.execDetachedArgs() caller.
+
+### 62.2 YtMusic computes JSON strings that its logger can never consume — CONFIRMED / P2
+
+Path:
+
+- services/YtMusic.qml.
+
+YtMusic's logger is a single-parameter function:
+
+function _log(msg) { if (root.verbose) console.log(msg) }
+
+Two browser-detection paths nevertheless pass extra arguments including
+JSON.stringify(root.detectedBrowsers).
+
+JavaScript evaluates all call arguments before invoking the function, so the
+browser list is serialized even though _log(msg) discards that value both when
+verbose is false and when verbose is true.
+
+Strict-safe direction:
+
+- remove the ignored extra arguments from those two calls;
+- retain the first string argument exactly.
+
+Observable log output is byte-identical because only that first string has ever
+been printed by this logger.
+
+Removed:
+
+- up to two full JSON.stringify(detectedBrowsers) operations per auto-connect
+  detection lifecycle.
+
+### 62.3 Debug-disabled callers should not materialize key arrays / JSON strings before _log() — CONFIRMED / P2
+
+Paths:
+
+- services/MaterialThemeLoader.qml;
+- services/WindowPreviewService.qml;
+- modules/settings/SidebarsConfig.qml.
+
+These files use a variadic logger whose body checks:
+
+Quickshell.env("QS_DEBUG") === "1"
+
+before printing.
+
+However JavaScript evaluates call arguments before entering _log().
+
+Current examples therefore perform work even with QS_DEBUG disabled:
+
+- MaterialThemeLoader: Object.keys(json).length before the applying-color log;
+- WindowPreviewService: Object.keys(previewCache).length after cache scan;
+- SidebarsConfig: several JSON.stringify(current) calls during right-sidebar
+  widget mutation.
+
+Strict-safe direction:
+
+- guard only these expensive diagnostic-value constructions with the exact same
+  QS_DEBUG condition, or move construction into a helper evaluated only after
+  that condition passes;
+- retain current diagnostic content and evaluation point when debug is enabled;
+- leave non-diagnostic state work untouched.
+
+With debug disabled:
+
+- theme JSON key enumeration/allocation: **1 -> 0** per apply;
+- preview-cache key enumeration/allocation: **1 -> 0** per scan completion;
+- sidebar widget-array JSON serialization: **up to several -> 0** per mutation.
+
+Debug-enabled output remains unchanged.
+
+### 62.4 SidebarsConfig setWidget can resolve membership/index once — CONFIRMED / P2 Settings interaction
+
+Path:
+
+- modules/settings/SidebarsConfig.qml.
+
+setWidget(widgetId, active) first copies the configured right-sidebar widget
+array.
+
+Current remove path then does:
+
+1. current.includes(widgetId);
+2. current.indexOf(widgetId);
+3. splice(index, 1).
+
+Both membership operations use exact equality and search the same unchanged
+local snapshot.
+
+Strict-safe direction:
+
+- compute const index = current.indexOf(widgetId) once;
+- add when active && index === -1;
+- remove with splice(index, 1) when !active && index !== -1;
+- retain the same no-change branch and Config publication.
+
+Remove interaction:
+
+- linear membership scans: **up to 2 -> 1**.
+
+Add semantics, first-match removal and final ordering are unchanged.
+
+### 62.5 TlpService allowed-limit normalization can filter and round in one pass — CONFIRMED / P2 detect/refresh path
+
+Path:
+
+- services/TlpService.qml.
+
+When detector JSON is applied, current source computes:
+
+data.allowedLimits
+  .filter(value => typeof value === "number" && isFinite(value))
+  .map(value => Math.round(value))
+
+Strict-safe direction:
+
+- allocate one result array;
+- iterate source values in order;
+- apply the exact current type + finite predicate;
+- append Math.round(value) only for passing values;
+- assign that final array exactly where current source does.
+
+Preserved:
+
+- non-array input still publishes [];
+- invalid/nonfinite values are excluded;
+- valid values retain source order and duplicates;
+- rounding behavior is unchanged.
+
+For L supplied limits:
+
+- filtered intermediate array: **1 -> 0**;
+- second traversal over retained values is folded into the first pass.
+
+### 62.6 Round-48 conclusion
+
+New strict-lossless groups:
+
+1. ShellExec fresh-array argument compaction (§62.1,
+   **CONFIRMED / P1-P2 broad launch path**);
+2. YtMusic ignored extra debug arguments (§62.2,
+   **CONFIRMED / P2**);
+3. lazy construction of expensive debug-only arguments (§62.3,
+   **CONFIRMED / P2**);
+4. Sidebars right-widget one-index mutation (§62.4,
+   **CONFIRMED / P2 interaction**);
+5. TLP allowed-limit filter/round fusion (§62.5,
+   **CONFIRMED / P2**).
+
+No numeric reduction above is an end-to-end Hadalis speedup. Values are local
+source-derived operation/allocation reductions only.
+
+No runtime/source implementation is authorized by this handoff.

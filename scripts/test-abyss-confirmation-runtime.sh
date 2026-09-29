@@ -47,6 +47,8 @@ ShellRoot {
     property int queuedFirstId: 0
     property int queuedSecondId: 0
     property int reopenedId: 0
+    property int duplicateFirstCallbacks: 0
+    property int duplicateSecondCallbacks: 0
     readonly property string outputName:
         String(window.screen?.name ?? "")
 
@@ -133,6 +135,29 @@ ShellRoot {
         })
     }
 
+    function requestDuplicateActions(): int {
+        return ConfirmationService.enqueue({
+            owner: "runtime-test",
+            outputName: root.outputName,
+            title: "Duplicate action IDs",
+            message: "Only the intended default callback may run.",
+            actions: [
+                {
+                    id: "same",
+                    label: "First",
+                    callback: () => root.duplicateFirstCallbacks += 1
+                },
+                {
+                    id: "same",
+                    label: "Second",
+                    role: "default",
+                    isDefault: true,
+                    callback: () => root.duplicateSecondCallbacks += 1
+                }
+            ]
+        })
+    }
+
     AbyssSurfaceController {
         id: controller
         outputName: root.outputName
@@ -173,6 +198,19 @@ ShellRoot {
                 property string attachedEdge: "top"
                 property string popupJoinedEdge: ""
                 x: 680
+                y: 0
+                width: 36
+                height: 36
+                visible: true
+                enabled: true
+            }
+
+            MouseArea {
+                id: ambiguousTrayAnchor
+                property var liquidController: controller
+                property string attachedEdge: "top"
+                property string popupJoinedEdge: ""
+                x: 740
                 y: 0
                 width: 36
                 height: 36
@@ -760,6 +798,64 @@ ShellRoot {
                         || relatedPeerPopup.presentationActive)
                     return
                 PopupAnchorRegistry.unregisterAnchor(trayAnchor)
+                PopupAnchorRegistry.registerAnchor(
+                    trayAnchor, "tray", () => ["ambiguous.runtime.app"], 300)
+                PopupAnchorRegistry.registerAnchor(
+                    ambiguousTrayAnchor, "tray",
+                    () => ["ambiguous.runtime.app"], 300)
+                root.requestApp(
+                    "ambiguous.runtime.app", "Ambiguous source fallback")
+                root.phase = 34
+                return
+            }
+
+            if (root.phase === 34) {
+                if (!ConfirmationService.requestVisible
+                        || controller.activePopups.length < 1)
+                    return
+                if (!root.check(
+                        ConfirmationService.resolvedAnchor === null
+                        && controller.activePopup.hoverTarget === fallbackAnchor,
+                        "equal-strength app anchors fall back instead of choosing registration order"))
+                    return
+                ConfirmationService.cancel()
+                root.phase = 35
+                return
+            }
+
+            if (root.phase === 35) {
+                if (ConfirmationService.active)
+                    return
+                PopupAnchorRegistry.unregisterAnchor(trayAnchor)
+                PopupAnchorRegistry.unregisterAnchor(ambiguousTrayAnchor)
+                root.requestDuplicateActions()
+                root.phase = 36
+                return
+            }
+
+            if (root.phase === 36) {
+                if (!ConfirmationService.requestVisible)
+                    return
+                const actions = ConfirmationService.currentRequest?.actions ?? []
+                if (!root.check(
+                        actions.length === 2
+                        && actions[0]?.id === "same"
+                        && actions[1]?.id === "same-2",
+                        "duplicate semantic action IDs normalize deterministically"))
+                    return
+                ConfirmationService.acceptDefault()
+                root.phase = 37
+                return
+            }
+
+            if (root.phase === 37) {
+                if (ConfirmationService.active)
+                    return
+                if (!root.check(
+                        root.duplicateFirstCallbacks === 0
+                        && root.duplicateSecondCallbacks === 1,
+                        "normalized default action invokes only its own callback"))
+                    return
                 console.info("ABYSS_CONFIRMATION_RUNTIME_PASS")
                 root.finished = true
             }
@@ -776,4 +872,4 @@ if [[ "$status" != 124 ]]         || ! rg -q 'ABYSS_CONFIRMATION_RUNTIME_PASS' "
     exit 1
 fi
 
-printf 'PASS: confirmation callbacks, content-fit, four-edge attachment, Join Edge inheritance, tray/dock routing, top-center fallback, source loss, peer reflow, same-source related-popup reflow, queue/reopen, hidden-resident fallback and live-anchor invalidation\n'
+printf 'PASS: confirmation callbacks, content-fit, four-edge attachment, Join Edge inheritance, tray/dock routing, ambiguous-source fallback, normalized action IDs, top-center fallback, source loss, peer reflow, same-source related-popup reflow, queue/reopen, hidden-resident fallback and live-anchor invalidation\n'

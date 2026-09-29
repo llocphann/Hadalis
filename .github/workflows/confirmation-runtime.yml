@@ -5,12 +5,23 @@ on:
     paths:
       - '.github/workflows/confirmation-runtime.yml'
       - 'scripts/test-abyss-confirmation-runtime.sh'
+      - 'scripts/test-abyss-confirmation-popup-contract.py'
+      - 'scripts/test-confirmation-foundation-contract.py'
+      - 'scripts/test-confirmation-anchor-policy.sh'
+      - 'scripts/test-polkit-authflow-backend-contract.py'
+      - 'scripts/test-abyss-polkit-presenter-contract.py'
+      - 'scripts/test-abyss-polkit-integration-contract.py'
+      - 'scripts/test-abyss-prompt-fallback-contract.py'
+      - 'scripts/test-abyss-critical-prompt-fullscreen-contract.py'
       - 'services/ConfirmationService.qml'
       - 'services/PopupAnchorRegistry.qml'
       - 'services/PopupAnchorPolicy.js'
       - 'services/AbyssPromptHostRegistry.qml'
       - 'modules/abyss/**'
       - 'modules/bar/StyledPopup.qml'
+      - 'modules/closeConfirm/**'
+      - 'modules/polkit/**'
+      - 'modules/waffle/polkit/**'
       - 'GlobalStates.qml'
       - 'defaults/**'
       - 'translations/**'
@@ -18,12 +29,23 @@ on:
     paths:
       - '.github/workflows/confirmation-runtime.yml'
       - 'scripts/test-abyss-confirmation-runtime.sh'
+      - 'scripts/test-abyss-confirmation-popup-contract.py'
+      - 'scripts/test-confirmation-foundation-contract.py'
+      - 'scripts/test-confirmation-anchor-policy.sh'
+      - 'scripts/test-polkit-authflow-backend-contract.py'
+      - 'scripts/test-abyss-polkit-presenter-contract.py'
+      - 'scripts/test-abyss-polkit-integration-contract.py'
+      - 'scripts/test-abyss-prompt-fallback-contract.py'
+      - 'scripts/test-abyss-critical-prompt-fullscreen-contract.py'
       - 'services/ConfirmationService.qml'
       - 'services/PopupAnchorRegistry.qml'
       - 'services/PopupAnchorPolicy.js'
       - 'services/AbyssPromptHostRegistry.qml'
       - 'modules/abyss/**'
       - 'modules/bar/StyledPopup.qml'
+      - 'modules/closeConfirm/**'
+      - 'modules/polkit/**'
+      - 'modules/waffle/polkit/**'
       - 'GlobalStates.qml'
       - 'defaults/**'
       - 'translations/**'
@@ -37,7 +59,27 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  source-contracts:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Run confirmation and Polkit contracts
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 scripts/test-confirmation-foundation-contract.py
+          bash scripts/test-confirmation-anchor-policy.sh
+          python3 scripts/test-abyss-confirmation-popup-contract.py
+          python3 scripts/test-polkit-authflow-backend-contract.py
+          python3 scripts/test-abyss-polkit-presenter-contract.py
+          python3 scripts/test-abyss-polkit-integration-contract.py
+          python3 scripts/test-abyss-prompt-fallback-contract.py
+          python3 scripts/test-abyss-critical-prompt-fullscreen-contract.py
+
   headless-wayland:
+    needs: source-contracts
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:

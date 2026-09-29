@@ -22,7 +22,7 @@ Item {
     }
 
     function clearResponse(): void {
-        inputField.text = ""
+        inputField.clear()
     }
 
     function cancelAuthentication(): void {
@@ -32,7 +32,7 @@ Item {
 
     function submit(): void {
         const response = inputField.text
-        inputField.text = ""
+        inputField.clear()
         PolkitService.submit(response)
     }
 

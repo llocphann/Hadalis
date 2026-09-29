@@ -55,7 +55,7 @@ FocusScope {
     }
 
     function clearResponse(): void {
-        inputField.text = ""
+        inputField.clear()
     }
 
     function submitResponse(): void {
@@ -64,7 +64,7 @@ FocusScope {
         // One local variable for the synchronous backend call; clear the field
         // first so the UI never retains the response during pending state.
         const response = inputField.text
-        inputField.text = ""
+        inputField.clear()
         PolkitService.submit(response)
     }
 

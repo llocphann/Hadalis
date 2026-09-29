@@ -108,7 +108,8 @@ assert "PopupAnchorRegistry.isUsable(root.resolvedAnchor)" in service
 assert "onResolvedAnchorUsableChanged" in service
 
 assert "const response = inputField.text" in content
-assert content.index('inputField.text = ""') < content.index("PolkitService.submit(response)")
+assert "inputField.clear()" in content
+assert content.index("inputField.clear()") < content.index("PolkitService.submit(response)")
 assert "inputMethodHints: Qt.ImhSensitiveData" in content
 assert "Qt.Key_Escape" in content
 assert "Qt.Key_Return" in content and "Qt.Key_Enter" in content

@@ -57,7 +57,8 @@ for old in (material, waffle):
     assert "PolkitService.cancel()" in cancel
     assert cancel.index("root.clearResponse()") < cancel.index("PolkitService.cancel()")
     assert "const response = inputField.text" in old
-    assert old.index('inputField.text = ""') < old.index("PolkitService.submit(response)")
+    assert "inputField.clear()" in old
+    assert old.index("inputField.clear()") < old.index("PolkitService.submit(response)")
     assert "PolkitService.submit(inputField.text)" not in old
     assert "inputMethodHints: Qt.ImhSensitiveData | Qt.ImhNoPredictiveText" in old
     assert "onRequestSerialChanged" in old

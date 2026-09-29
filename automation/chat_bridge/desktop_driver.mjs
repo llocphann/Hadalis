@@ -71,7 +71,12 @@ export async function openHadalisNewChat(page) {
   throw new Error("new chat did not become ready");
 }
 
-async function submissionStarted(page) {
+async function submissionStarted(page, composer) {
+  try {
+    if ((await composer.innerText()).trim() === "")
+      return true;
+  } catch {}
+
   return (await visibleCount(
     page.getByRole("button", { name: /stop/i })
   )) > 0;
@@ -81,12 +86,12 @@ async function waitForSubmissionStart(page, composer, timeoutMs = 1500) {
   const deadline = Date.now() + timeoutMs;
 
   while (Date.now() < deadline) {
-    if (await submissionStarted(page))
+    if (await submissionStarted(page, composer))
       return true;
     await sleep(100);
   }
 
-  return submissionStarted(page);
+  return submissionStarted(page, composer);
 }
 
 async function dispatchCdpEnter(page) {
@@ -291,8 +296,18 @@ export async function submitPrompt(page, prompt) {
   const send = page.getByRole("button", { name: "Send" });
   await requireOne(send, "Send");
 
+  // Match the known-good feasibility probe exactly: after fill(), allow
+  // ChatGPT's React/composer state to settle, then activate the semantic
+  // Send control through HTMLElement.click() before trying any key path.
+  await page.waitForTimeout(300);
+
   if (await send.isDisabled())
-    throw new Error("Send is disabled after composer fill");
+    throw new Error("Send is disabled after composer settle");
+
+  await send.evaluate(element => element.click());
+
+  if (await waitForSubmissionStart(page, composer, 2500))
+    return;
 
   // Keep the action deterministic and coordinate-free. Start with the
   // normal editor gesture while explicitly restoring focus after fill().

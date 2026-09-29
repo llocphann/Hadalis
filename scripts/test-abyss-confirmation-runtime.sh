@@ -650,6 +650,35 @@ ShellRoot {
             if (root.phase === 27) {
                 if (ConfirmationService.active)
                     return
+                // A source can remain registered while its resident host stops
+                // being presented. The active request must reject instead of
+                // hanging on stale geometry or teleporting to fallback.
+                hiddenResidentHost.visualResident = true
+                root.requestApp(
+                    "hidden.runtime.app", "Source will disappear")
+                root.phase = 28
+                return
+            }
+
+            if (root.phase === 28) {
+                if (!ConfirmationService.requestVisible)
+                    return
+                if (!root.check(
+                        ConfirmationService.resolvedAnchor
+                            === hiddenResidentAnchor,
+                        "presented resident source resolves while live"))
+                    return
+                hiddenResidentHost.visualResident = false
+                root.phase = 29
+                return
+            }
+
+            if (root.phase === 29) {
+                if (ConfirmationService.active)
+                    return
+                if (!root.check(!ConfirmationService.requestVisible,
+                        "registered source becoming non-presented cancels without teleport"))
+                    return
                 PopupAnchorRegistry.unregisterAnchor(hiddenResidentAnchor)
                 console.info("ABYSS_CONFIRMATION_RUNTIME_PASS")
                 root.finished = true
@@ -667,4 +696,4 @@ if [[ "$status" != 124 ]]         || ! rg -q 'ABYSS_CONFIRMATION_RUNTIME_PASS' "
     exit 1
 fi
 
-printf 'PASS: confirmation callbacks, content-fit, four-edge attachment, tray/dock routing, top-center fallback, source loss, peer reflow, queue/reopen and hidden-resident fallback\n'
+printf 'PASS: confirmation callbacks, content-fit, four-edge attachment, tray/dock routing, top-center fallback, source loss, peer reflow, queue/reopen, hidden-resident fallback and live-anchor invalidation\n'

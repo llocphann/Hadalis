@@ -25,6 +25,9 @@ Singleton {
         root.currentRequest?._resolvedAnchor ?? null
     readonly property string resolvedAnchorKind:
         String(root.currentRequest?._resolvedAnchorKind ?? "")
+    readonly property bool resolvedAnchorUsable:
+        root.currentRequest?._hadResolvedAnchor !== true
+            || PopupAnchorRegistry.isUsable(root.resolvedAnchor)
 
     signal requestActivated(int requestId)
     signal requestResolved(int requestId, string actionId)
@@ -91,16 +94,17 @@ Singleton {
             && action.visible !== false
     }
 
-    function resolve(actionId): void {
+    function _resolveAction(action, force = false): void {
         if (!root.currentRequest || !root.requestVisible || root.resolving)
             return
-        const wanted = String(actionId ?? "")
-        const actions = root.currentRequest.actions ?? []
-        const action = actions.find(candidate =>
-            String(candidate?.id ?? "") === wanted)
-        if (!root._actionUsable(action))
+        if (!force && !root._actionUsable(action))
+            return
+        if (action === null || action === undefined)
             return
 
+        const wanted = String(action?.id ?? "")
+        if (!wanted)
+            return
         const request = root.currentRequest
         root.resolving = true
         root.requestVisible = false
@@ -110,6 +114,16 @@ Singleton {
             if (typeof request.onResolved === "function")
                 request.onResolved(wanted)
         })
+    }
+
+    function resolve(actionId): void {
+        if (!root.currentRequest || !root.requestVisible || root.resolving)
+            return
+        const wanted = String(actionId ?? "")
+        const actions = root.currentRequest.actions ?? []
+        const action = actions.find(candidate =>
+            String(candidate?.id ?? "") === wanted)
+        root._resolveAction(action, false)
     }
 
     function defaultActionId(): string {
@@ -140,14 +154,14 @@ Singleton {
             root.resolve(id)
     }
 
-    function cancel(): void {
+    function cancel(force = false): void {
         if (!root.currentRequest || !root.requestVisible || root.resolving)
             return
         const cancelAction = root.cancelAction()
         if (cancelAction) {
-            if (!root._actionUsable(cancelAction))
+            if (!force && !root._actionUsable(cancelAction))
                 return
-            root.resolve(String(cancelAction.id ?? ""))
+            root._resolveAction(cancelAction, force)
             return
         }
 
@@ -195,15 +209,26 @@ Singleton {
             root.cancel()
     }
 
+    onResolvedAnchorUsableChanged: {
+        // A retained source Item can become non-presented without being
+        // destroyed/unregistered (notably an auto-hidden host). Treat that as
+        // source loss and reject in place rather than teleporting to fallback.
+        if (root.requestVisible
+                && root.currentRequest?._hadResolvedAnchor === true
+                && !root.resolvedAnchorUsable)
+            root.cancel(true)
+    }
+
     Connections {
         target: PopupAnchorRegistry
         function onAnchorRemoved(item): void {
             // An attached prompt must not jump to top-center while visible.
-            // Cancel the owned request; a future queued request resolves anew.
+            // Source loss is lifecycle-forced so a disabled/hidden cancel action
+            // cannot strand the request on an anchor that no longer exists.
             if (root.requestVisible
                     && root.currentRequest?._hadResolvedAnchor === true
                     && root.currentRequest?._resolvedAnchor === item)
-                root.cancel()
+                root.cancel(true)
         }
     }
 }

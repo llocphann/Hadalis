@@ -14,6 +14,8 @@ assert "singleton PopupAnchorRegistry 1.0 PopupAnchorRegistry.qml" in qmdir
 
 # Source placement is identity/Item based; no action-label interception.
 assert "function _liquidAnchorFor(item): var" in registry
+assert "function isUsable(item): bool" in registry
+assert "return root._validItem(item)" in registry
 assert "function _treeVisibleAndEnabled(item): bool" in registry
 assert "function _liquidAnchorPresented(anchor): bool" in registry
 assert "anchor.visualResident !== undefined" in registry
@@ -55,8 +57,13 @@ assert "const sourceContext = Object.assign({}, request" in service
 assert "PopupAnchorRegistry.resolve(sourceContext)" in service
 assert "_resolvedAnchor: resolved?.item ?? null" in service
 assert "_resolvedOutput:" in service
+assert "readonly property bool resolvedAnchorUsable:" in service
+assert "PopupAnchorRegistry.isUsable(root.resolvedAnchor)" in service
+assert "onResolvedAnchorUsableChanged" in service
+assert "function _resolveAction(action, force = false): void" in service
+assert "function cancel(force = false): void" in service
+assert "root.cancel(true)" in service
 assert "onAnchorRemoved(item)" in service
-assert "root.cancel()" in service
 
 # Generic confirmation state contains no authentication response/secret fields.
 for forbidden in ("password", "secret", "responseText", "credential"):

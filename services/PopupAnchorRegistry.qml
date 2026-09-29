@@ -53,6 +53,10 @@ Singleton {
         return anchor.visible !== false && anchor.enabled !== false
     }
 
+    function isUsable(item): bool {
+        return root._validItem(item)
+    }
+
     function _validItem(item): bool {
         const window = root._windowFor(item)
         const liquidAnchor = root._liquidAnchorFor(item)

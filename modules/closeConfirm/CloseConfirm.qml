@@ -25,6 +25,48 @@ Scope {
     // Config state
     readonly property bool confirmEnabled: Config.options?.closeConfirm?.enabled ?? false
 
+    function _snapshotWindow(win): var {
+        const snapshot = Object.assign({}, win ?? {})
+        const id = Number(snapshot?.id ?? 0)
+        if (id <= 0)
+            return snapshot
+
+        // triggerWindow() deliberately receives only the race-safe ID/app ID
+        // captured by the keybind helper. Presentation metadata may be enriched
+        // from Niri's cache as long as it still describes that exact ID.
+        const cached = (NiriService.windows ?? []).find(candidate =>
+            Number(candidate?.id ?? 0) === id)
+        if (!cached)
+            return snapshot
+        if (!String(snapshot?.app_id ?? "").length)
+            snapshot.app_id = cached.app_id
+        if (!String(snapshot?.title ?? "").length)
+            snapshot.title = cached.title
+        if (snapshot.workspace_id === undefined
+                || snapshot.workspace_id === null)
+            snapshot.workspace_id = cached.workspace_id
+        return snapshot
+    }
+
+    function _outputNameForWindow(win): string {
+        const workspace = NiriService.workspaces?.[win?.workspace_id] ?? null
+        const workspaceOutput = String(workspace?.output ?? "")
+        if (workspaceOutput.length > 0)
+            return workspaceOutput
+        return String(GlobalStates.focusedScreen?.name ?? "")
+    }
+
+    function _screenForOutput(outputName): var {
+        const name = String(outputName ?? "")
+        if (name.length > 0) {
+            const screen = Quickshell.screens.find(candidate =>
+                String(candidate?.name ?? "") === name)
+            if (screen)
+                return screen
+        }
+        return GlobalStates.focusedScreen
+    }
+
     // Fallback: get focused window directly from niri when activeWindow is stale
     Process {
         id: focusedWindowProc
@@ -43,15 +85,16 @@ Scope {
     }
 
     function processWindow(win): void {
+        const snapshot = root._snapshotWindow(win)
         if (!root.confirmEnabled) {
-            root.closeWindowFast(win);
+            root.closeWindowFast(snapshot);
             return;
         }
 
+        const outputName = root._outputNameForWindow(snapshot)
         const abyssAvailable = Config.options?.panelFamily === "abyss"
             && (Config.options?.enabledPanels ?? []).includes("abyssPerimeter")
         if (abyssAvailable) {
-            const snapshot = Object.assign({}, win)
             const appId = String(snapshot?.app_id ?? "")
             const title = String(snapshot?.title ?? "")
             const appName = title || appId || Translation.tr("Unknown")
@@ -59,7 +102,7 @@ Scope {
                 owner: "closeConfirm",
                 appId: appId,
                 appName: appName,
-                outputName: String(GlobalStates.focusedScreen?.name ?? ""),
+                outputName: outputName,
                 title: Translation.tr("Close this window?"),
                 message: appName,
                 actions: [
@@ -81,8 +124,8 @@ Scope {
             return
         }
 
-        root.targetWindow = win;
-        root.dialogScreen = GlobalStates.focusedScreen;
+        root.targetWindow = snapshot;
+        root.dialogScreen = root._screenForOutput(outputName);
         root.dialogVisible = true;
     }
 

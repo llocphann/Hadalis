@@ -49,6 +49,12 @@ for forbidden in ("NumberAnimation", "ScaleAnimator", "OpacityAnimator"):
 # Existing closeConfirm backend provides the real action callback.
 assert 'owner: "closeConfirm"' in close
 assert "ConfirmationService.enqueue({" in close
+assert "function _snapshotWindow(win): var" in close
+assert "NiriService.windows ?? []" in close
+assert "function _outputNameForWindow(win): string" in close
+assert "NiriService.workspaces?.[win?.workspace_id]" in close
+assert "outputName: outputName" in close
+assert "root.dialogScreen = root._screenForOutput(outputName)" in close
 assert "callback: () => root.closeWindowFast(snapshot)" in close
 assert 'Quickshell.execDetached(["niri", "msg", "action", "close-window"' in close
 assert 'Config.options?.panelFamily === "abyss"' in close

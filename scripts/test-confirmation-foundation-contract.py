@@ -64,9 +64,25 @@ assert "property bool requestVisible: false" in service
 assert "property int _presentationStartedRequestId: 0" in service
 assert "property int _presentationReleaseHoldRequestId: 0" in service
 assert "property bool _presentationReleaseObservedWhileHeld: false" in service
+assert "property int _presentationHandoffRequestId: 0" in service
 assert "function markPresentationStarted(requestId): void" in service
 assert "function holdPresentationRelease(requestId): bool" in service
 assert "function releasePresentationHold(requestId): void" in service
+assert "function beginPresentationHandoff(requestId): bool" in service
+assert "function resolvePresentationHandoff(requestId, actionId): bool" in service
+assert "function cancelPresentationHandoff(requestId, lifecycle = false): bool" in service
+handoff=service.split("function beginPresentationHandoff(requestId): bool",1)[1].split("function resolvePresentationHandoff",1)[0]
+assert "root.holdPresentationRelease(id)" in handoff
+assert "root._presentationHandoffRequestId = id" in handoff
+assert "root.requestVisible = false" in handoff
+resolve_handoff=service.split("function resolvePresentationHandoff(requestId, actionId): bool",1)[1].split("function cancelPresentationHandoff",1)[0]
+assert "root.requestResolved(id, wanted)" in resolve_handoff
+assert "root._invoke(action.callback)" in resolve_handoff
+assert "root.releasePresentationHold(id)" in resolve_handoff
+cancel_handoff=service.split("function cancelPresentationHandoff(requestId, lifecycle = false): bool",1)[1].split("// Presenter calls",1)[0]
+assert "root._invoke(cancelAction.callback)" in cancel_handoff
+assert "root._invoke(request.onCancel)" in cancel_handoff
+assert "root.releasePresentationHold(id)" in cancel_handoff
 assert "function finishPresentation(requestId): void" in service
 assert "if (!root.currentRequest || root.requestVisible)" in service
 finish=service.split("function finishPresentation(requestId): void",1)[1].split("function _activateNext",1)[0]
@@ -90,6 +106,8 @@ assert "function cancel(force = false): void" in service
 assert "function cancelOwned(owner): void" in service
 owned=service.split("function cancelOwned(owner): void",1)[1].split("onResolvedAnchorUsableChanged",1)[0]
 assert "const ownsCurrent =" in owned
+assert "root._presentationHandoffRequestId === root.currentRequestId" in owned
+assert "root.cancelPresentationHandoff(root.currentRequestId, true)" in owned
 assert "root.cancel(true)" in owned
 assert "root._presentationReleaseHoldRequestId" in owned
 assert "root.releasePresentationHold(root.currentRequestId)" in owned

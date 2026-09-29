@@ -21,6 +21,7 @@ Singleton {
     property int _presentationStartedRequestId: 0
     property int _presentationReleaseHoldRequestId: 0
     property bool _presentationReleaseObservedWhileHeld: false
+    property int _presentationHandoffRequestId: 0
 
     readonly property bool active: root.currentRequest !== null
     readonly property int currentRequestId:
@@ -101,6 +102,7 @@ Singleton {
         root._presentationStartedRequestId = 0
         root._presentationReleaseHoldRequestId = 0
         root._presentationReleaseObservedWhileHeld = false
+        root._presentationHandoffRequestId = 0
         root.resolving = false
         root.requestVisible = true
         root.requestActivated(root.currentRequestId)
@@ -243,6 +245,93 @@ Singleton {
             root.finishPresentation(id)
     }
 
+    function beginPresentationHandoff(requestId): bool {
+        const id = Number(requestId)
+        if (!root.currentRequest || id !== root.currentRequestId
+                || !root.requestVisible || root.resolving)
+            return false
+        if (!root.holdPresentationRelease(id))
+            return false
+
+        // Install the release gate before hiding the connected renderer. Its
+        // requestVisible change can synchronously make StyledPopup report a
+        // released tail, which must not advance the queue before handoff UI
+        // resolves the same semantic request.
+        root._presentationHandoffRequestId = id
+        root.requestVisible = false
+        return true
+    }
+
+    function resolvePresentationHandoff(requestId, actionId): bool {
+        const id = Number(requestId)
+        if (!root.currentRequest
+                || id !== root.currentRequestId
+                || root._presentationHandoffRequestId !== id
+                || root.requestVisible || root.resolving)
+            return false
+
+        const wanted = String(actionId ?? "")
+        const actions = root.currentRequest.actions ?? []
+        const action = actions.find(candidate =>
+            String(candidate?.id ?? "") === wanted)
+        if (!root._actionUsable(action))
+            return false
+
+        const request = root.currentRequest
+        root.resolving = true
+        root.requestResolved(id, wanted)
+        root._invoke(action.callback)
+        root._invoke(() => {
+            if (typeof request.onResolved === "function")
+                request.onResolved(wanted)
+        })
+        root._presentationHandoffRequestId = 0
+        root.releasePresentationHold(id)
+        return true
+    }
+
+    function cancelPresentationHandoff(requestId, lifecycle = false): bool {
+        const id = Number(requestId)
+        if (!root.currentRequest
+                || id !== root.currentRequestId
+                || root._presentationHandoffRequestId !== id
+                || root.requestVisible || root.resolving)
+            return false
+
+        const request = root.currentRequest
+        if (!lifecycle) {
+            const cancelAction = root.cancelAction()
+            if (cancelAction) {
+                if (!root._actionUsable(cancelAction))
+                    return false
+                const wanted = String(cancelAction?.id ?? "cancel")
+                root.resolving = true
+                root.requestResolved(id, wanted)
+                root._invoke(cancelAction.callback)
+                root._invoke(() => {
+                    if (typeof request.onResolved === "function")
+                        request.onResolved(wanted)
+                })
+                root._presentationHandoffRequestId = 0
+                root.releasePresentationHold(id)
+                return true
+            }
+        }
+
+        // Lifecycle teardown must not pretend that a disabled/hidden cancel
+        // button was clicked. Only request-level cancellation hooks observe it.
+        root.resolving = true
+        root.requestResolved(id, "cancel")
+        root._invoke(request.onCancel)
+        root._invoke(() => {
+            if (typeof request.onResolved === "function")
+                request.onResolved("cancel")
+        })
+        root._presentationHandoffRequestId = 0
+        root.releasePresentationHold(id)
+        return true
+    }
+
     // Presenter calls this only after StyledPopup has released its visual tail.
     // Keeping currentRequest alive until then prevents content/anchor teleport
     // while Pyramid is still retracting. A renderer handoff may add a second
@@ -259,6 +348,7 @@ Singleton {
         }
         root._presentationStartedRequestId = 0
         root._presentationReleaseObservedWhileHeld = false
+        root._presentationHandoffRequestId = 0
         root.currentRequest = null
         root.resolving = false
         Qt.callLater(root._activateNext)
@@ -284,6 +374,10 @@ Singleton {
             String(root.currentRequest?.owner ?? "") === key
         if (!ownsCurrent)
             return
+        if (root._presentationHandoffRequestId === root.currentRequestId) {
+            root.cancelPresentationHandoff(root.currentRequestId, true)
+            return
+        }
         if (root.requestVisible) {
             // Owner teardown is lifecycle cancellation, not a user choosing a
             // disabled UI action. It must always release the owned request.

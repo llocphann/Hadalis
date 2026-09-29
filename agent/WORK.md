@@ -44,4 +44,8 @@ Live transport acceptance `JOB-DESKTOP-LIVE-ACCEPT-013` passed all five actions,
 - generation completion and exact `HADALIS_LOOP:DONE` extraction;
 - explicit Node/CDP process termination and worker result publication.
 
-The current gate is retrying the one-time user-service installation with the corrected systemd unit syntax, then validating all three services and the first real autonomous bootstrap session. The one-shot worker also prints a concise terminal outcome after publishing its result.
+The corrected user-service rollout is now locally validated: `hadalis-chatgpt.service` and `hadalis-worker.service` remain active, while `hadalis-chat-bridge.service` exits cleanly with systemd Result=success / ExecMainStatus=0 and persisted bridge state `done`. The inactive/dead bridge state is therefore the expected terminal lifecycle after HADALIS_LOOP:DONE, not a service failure.
+
+The final gate is one service-mode end-to-end WAIT_RESULT round trip. On the next fresh bridge bootstrap, the ChatGPT reasoning turn must create exactly one fresh deterministic local smoke job (use a new JOB-SERVICE-E2E-* id, current dev HEAD as base_sha, argv arrays only, and a harmless repository validation such as Python/Node syntax or the focused automation regression), finish with HADALIS_LOOP:WAIT_RESULT for that job, allow the continuously running worker service to publish the result, receive the bridge's automatic continuation without user input, inspect the result, and finish with HADALIS_LOOP:DONE. Do not treat transport-only acceptance as sufficient for this gate.
+
+The one-shot worker also prints a concise terminal outcome after publishing its result.

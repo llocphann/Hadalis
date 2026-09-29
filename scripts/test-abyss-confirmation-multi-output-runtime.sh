@@ -177,6 +177,7 @@ ShellRoot {
                 }
             }
         }
+    }
 
     Timer {
         interval: 260

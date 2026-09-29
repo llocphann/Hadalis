@@ -14,7 +14,12 @@ assert "singleton PopupAnchorRegistry 1.0 PopupAnchorRegistry.qml" in qmdir
 
 # Source placement is identity/Item based; no action-label interception.
 assert "function _liquidAnchorFor(item): var" in registry
-assert "root._liquidAnchorFor(item) !== null" in registry
+assert "function _treeVisibleAndEnabled(item): bool" in registry
+assert "function _liquidAnchorPresented(anchor): bool" in registry
+assert "anchor.visualResident !== undefined" in registry
+assert "const liquidAnchor = root._liquidAnchorFor(item)" in registry
+assert "root._treeVisibleAndEnabled(item)" in registry
+assert "root._liquidAnchorPresented(liquidAnchor)" in registry
 assert "function resolve(source): var" in registry
 assert "source.anchorItem" in registry
 assert "AnchorPolicy.matchScore(candidate, alias)" in registry

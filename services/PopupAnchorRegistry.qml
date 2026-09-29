@@ -31,17 +31,40 @@ Singleton {
         return null
     }
 
+    function _treeVisibleAndEnabled(item): bool {
+        for (let ancestor = item; ancestor; ancestor = ancestor.parent) {
+            if (ancestor.visible === false || ancestor.enabled === false)
+                return false
+        }
+        return true
+    }
+
+    function _liquidAnchorPresented(anchor): bool {
+        if (!anchor)
+            return false
+        // AbyssBodyHost can deliberately retain its loaded content while closed.
+        // Such resident Items must not count as on-screen app anchors. During a
+        // real retract visualResident remains true until the tail reaches zero,
+        // so opening a prompt never races a still-visible source animation.
+        if (anchor.visualResident !== undefined
+                && anchor.visualResident !== null
+                && !Boolean(anchor.visualResident))
+            return false
+        return anchor.visible !== false && anchor.enabled !== false
+    }
+
     function _validItem(item): bool {
         const window = root._windowFor(item)
+        const liquidAnchor = root._liquidAnchorFor(item)
         // Registered sources are usable only when they already belong to an
-        // Abyss connected surface. This prevents a still-visible Waffle/shared
-        // tray instance from resolving and making StyledPopup fall back to a
-        // detached native popup window.
+        // actually presented Abyss connected surface. A retained/closed Dock
+        // tree, hidden parent, or shared non-Abyss item must fall back rather
+        // than receiving a prompt at stale geometry.
         return item !== null && item !== undefined
-            && item.visible && item.enabled
+            && root._treeVisibleAndEnabled(item)
             && Number(item.width ?? 0) > 0
             && Number(item.height ?? 0) > 0
-            && root._liquidAnchorFor(item) !== null
+            && root._liquidAnchorPresented(liquidAnchor)
             && window !== null
             && window.screen !== null
             && window.screen !== undefined

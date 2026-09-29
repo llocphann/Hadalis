@@ -57,7 +57,9 @@ These findings reinforce the safe boundary: current native-dispatch, portal and 
 
 Abyss Dock app buttons are real Items under the Dock's `AbyssBodyHost`. They already carry application identity and are valid fallback source anchors when no matching visible tray item exists.
 
-Resolver precedence should therefore be explicit source Item, then live System Tray/Bar source, then Dock, then the top-center output fallback. Matching should remain conservative and identity-based; UI label matching must not become an action interceptor.
+Resolver precedence is explicit source Item, then live System Tray/Bar source, then Dock, then the top-center output fallback. When the same app identity is visible on more than one output, source/output affinity is evaluated before surface-kind priority so a remote Tray icon cannot steal a request from a same-output Bar/Dock anchor. Matching remains conservative and identity-based; UI label matching must not become an action interceptor.
+
+Abyss Dock content is resident even while the Dock is visually closed. The resolver therefore rejects retained-but-not-presented Dock items. Conversely, once an attached popup legitimately opens from a live Dock app, the Dock is held open through the popup/retract lifecycle so its source icon does not disappear underneath the confirmation merely because pointer hover ended.
 
 ### Top-center fallback
 
@@ -104,8 +106,11 @@ Implemented:
 - `PopupAnchorRegistry` resolves only live Items that already belong to an Abyss connected surface.
 - Implicit matching uses stable machine identities only. Human-facing app names, tray titles and tooltips are deliberately excluded from routing.
 - Precedence is explicit source Item, then System Tray, then Bar taskbar, then Dock, then top-center fallback.
-- Source removal cancels the attached request instead of switching anchors mid-flight.
+- Source removal cancels the attached request instead of switching anchors mid-flight. A source that remains registered but becomes non-presented is also treated as source loss; lifecycle cancellation is forced so a disabled/hidden UI cancel action cannot strand a request on stale geometry.
+- Retained-but-closed Abyss source trees are excluded from initial routing.
+- Requests resolve their output before implicit app-anchor lookup, so duplicated app surfaces prefer the source/request output while preserving Tray > Bar > Dock priority within that output.
 - The active request is retained until its visual retract tail is released, so queued requests cannot inherit the previous geometry.
+- Generic action semantics preserve enabled/visible state. Enter selects only a usable default/non-cancel action, and user cancel does not invoke a disabled/hidden cancel action.
 - If `abyssPerimeter` is disabled, the previous standalone confirmation/Polkit renderers remain available as a fail-safe rather than leaving an invisible request.
 
 ### Phase C — normal confirmation
@@ -114,7 +119,9 @@ Implemented for the Hadalis-owned `closeConfirm` backend:
 
 - the request is presented through a focused `StyledPopup`;
 - source app IDs can attach the popup to a matching Tray/Bar/Dock anchor;
-- unresolved sources use the output top-center anchor;
+- same-app anchors on multiple outputs prefer the request/window output;
+- a Dock source remains presented while its attached confirmation is active/retracting;
+- unresolved or retained-but-closed sources use the output top-center anchor;
 - the real close callback still executes the existing Niri close/minimize path;
 - cancel, close/reopen, long content and long action labels use the same Abyss primitives and popup geometry.
 
@@ -130,7 +137,9 @@ Implemented on the existing Quickshell `PolkitAgent/AuthFlow` backend:
 - the response field is cleared before handing the response to `AuthFlow.submit`;
 - response text is not stored in Config, GlobalStates, the generic confirmation service, logs or persisted state;
 - ordinary Polkit requests use top-center because `AuthFlow` does not expose a dependable requester app ID;
-- a future trusted source hint can use the same anchor resolver without changing the authentication backend.
+- a future trusted source hint can use the same anchor resolver without changing the authentication backend;
+- trusted Polkit source hints can carry an output hint and receive the same same-output affinity as normal confirmations;
+- if a trusted Polkit source disappears or becomes non-presented while authentication is active, the real AuthFlow is cancelled rather than moving the password prompt to another anchor.
 
 ### Phase E — runtime acceptance
 
@@ -141,13 +150,17 @@ A synthetic Wayland/Quickshell harness now exists at `scripts/test-abyss-confirm
 - top-center fallback when no source resolves;
 - long content width capping;
 - source removal without teleport;
-- coexistence with another popup and survival while that peer retracts.
+- coexistence with another popup and survival while that peer retracts;
+- queued requests activating only after the predecessor's visual tail releases;
+- close/reopen on the same source;
+- retained-but-closed source rejection to top-center fallback;
+- a still-registered source becoming non-presented while open, which cancels rather than teleporting.
 
 The script intentionally skips when Quickshell/Wayland is unavailable. A source-only pass or a skipped runtime harness is **not** runtime completion.
 
 ## Acceptance status
 
-Source/contract coverage now exists for request ownership, conservative anchor resolution, popup/Pyramid reuse, fail-safe fallback renderers, Join Edge inheritance, action callbacks, queue ownership, Polkit focus/security state and multi-turn retry behavior.
+Source/contract coverage now exists for request ownership, conservative identity/output anchor resolution, live-source validity, Dock source hold, popup/Pyramid reuse, fail-safe fallback renderers, Join Edge inheritance, action availability/callbacks, queue/reopen ownership, Polkit focus/security state and multi-turn retry behavior.
 
 Still requiring live desktop acceptance:
 

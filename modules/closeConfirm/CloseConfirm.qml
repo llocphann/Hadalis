@@ -43,7 +43,7 @@ Scope {
         const requestId = Number(request?._requestId ?? 0)
         if (windowId <= 0 || requestId <= 0)
             return
-        if (!ConfirmationService.holdPresentationRelease(requestId))
+        if (!ConfirmationService.beginPresentationHandoff(requestId))
             return
 
         const cached = (NiriService.windows ?? []).find(candidate =>
@@ -60,11 +60,11 @@ Scope {
         root.dialogVisible = true
     }
 
-    function _finishStandaloneTransfer(): void {
-        const requestId = root._standaloneTransferredRequestId
+    function _clearStandaloneState(): void {
+        root.dialogVisible = false
+        root.targetWindow = null
+        root.dialogScreen = null
         root._standaloneTransferredRequestId = 0
-        if (requestId > 0)
-            ConfirmationService.releasePresentationHold(requestId)
     }
 
     function _releaseAbyssRequestIfUnavailable(): void {
@@ -78,20 +78,13 @@ Scope {
                 ConfirmationService.targetOutputName))
             return
 
-        // Preserve the user-visible confirmation if its connected renderer
-        // disappears or a queued request activates on an output with no live
-        // prompt host. Revoke only the connected semantic request; keep its
-        // latched queue slot until the standalone dialog resolves so a queued
-        // successor cannot appear concurrently.
+        // Preserve the exact semantic request while moving only its renderer.
+        // beginPresentationHandoff() hides the connected popup behind a release
+        // gate without emitting requestResolved or invoking a cancel callback.
         if (ConfirmationService.requestVisible) {
             root._showStandaloneForRequest(request)
-            if (root._standaloneTransferredRequestId === requestId) {
-                // This is a renderer handoff, not owner teardown. Cancel only
-                // the current semantic request so queued close confirmations
-                // remain serialized behind the standalone dialog.
-                ConfirmationService.cancel(true)
+            if (root._standaloneTransferredRequestId === requestId)
                 return
-            }
         }
 
         // No standalone handoff exists (for example the request had already
@@ -277,12 +270,10 @@ Scope {
 
         if (transferred) {
             // The standalone handoff is still the same semantic request. If its
-            // captured window vanished, dismiss it and release the retained queue
-            // slot rather than offering a stale close action.
-            root.dialogVisible = false
-            root.targetWindow = null
-            root.dialogScreen = null
-            root._finishStandaloneTransfer()
+            // captured window vanished, lifecycle-cancel that request without
+            // pretending the user clicked its cancel action.
+            ConfirmationService.cancelPresentationHandoff(requestId, true)
+            root._clearStandaloneState()
             return
         }
         ConfirmationService.cancel()
@@ -339,10 +330,7 @@ Scope {
 
         function close(): void {
             ConfirmationService.cancelOwned("closeConfirm")
-            root.dialogVisible = false;
-            root.targetWindow = null;
-            root.dialogScreen = null;
-            root._finishStandaloneTransfer()
+            root._clearStandaloneState()
         }
     }
 
@@ -359,20 +347,26 @@ Scope {
     }
 
     function confirmClose(): void {
-        if (targetWindow) {
-            closeWindowFast(targetWindow);
+        const requestId = root._standaloneTransferredRequestId
+        if (requestId > 0) {
+            // Execute the original queued callback through ConfirmationService;
+            // do not bypass it with a second direct close path.
+            ConfirmationService.resolvePresentationHandoff(
+                requestId, "close")
+            root._clearStandaloneState()
+            return
         }
-        dialogVisible = false;
-        targetWindow = null;
-        dialogScreen = null;
-        root._finishStandaloneTransfer()
+        if (targetWindow)
+            closeWindowFast(targetWindow)
+        root._clearStandaloneState()
     }
 
     function cancel(): void {
-        dialogVisible = false;
-        targetWindow = null;
-        dialogScreen = null;
-        root._finishStandaloneTransfer()
+        const requestId = root._standaloneTransferredRequestId
+        if (requestId > 0)
+            ConfirmationService.cancelPresentationHandoff(
+                requestId, false)
+        root._clearStandaloneState()
     }
 
     // Dialog UI

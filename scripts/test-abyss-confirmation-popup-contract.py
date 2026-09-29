@@ -86,7 +86,8 @@ assert "root._standaloneTransferredRequestId === requestId" in gone
 assert "!ConfirmationService.requestVisible && !transferred" in gone
 assert "if (!observed && root._windowListRevision <= requestRevision)" in gone
 assert "if (transferred)" in gone
-assert "root._finishStandaloneTransfer()" in gone
+assert "ConfirmationService.cancelPresentationHandoff(requestId, true)" in gone
+assert "root._clearStandaloneState()" in gone
 assert "ConfirmationService.cancel()" in gone
 assert "root._windowListRevision += 1" in close
 assert "NiriService.windowListReady" in close
@@ -110,26 +111,28 @@ assert "function _abyssPresenterAvailableFor(outputName): bool" in close
 assert "AbyssPromptHostRegistry.hasOutput" in close
 assert "property int _standaloneTransferredRequestId: 0" in close
 assert "function _showStandaloneForRequest(request): void" in close
-show_transfer=close.split("function _showStandaloneForRequest(request): void",1)[1].split("function _finishStandaloneTransfer",1)[0]
-assert "ConfirmationService.holdPresentationRelease(requestId)" in show_transfer
+show_transfer=close.split("function _showStandaloneForRequest(request): void",1)[1].split("function _clearStandaloneState",1)[0]
+assert "ConfirmationService.beginPresentationHandoff(requestId)" in show_transfer
 assert "root._standaloneTransferredRequestId = requestId" in show_transfer
 assert "root.dialogVisible = true" in close
-assert "function _finishStandaloneTransfer(): void" in close
-finish_transfer=close.split("function _finishStandaloneTransfer(): void",1)[1].split("function _releaseAbyssRequestIfUnavailable",1)[0]
-assert "root._standaloneTransferredRequestId = 0" in finish_transfer
-assert "ConfirmationService.releasePresentationHold(requestId)" in finish_transfer
+assert "function _clearStandaloneState(): void" in close
 assert "function _releaseAbyssRequestIfUnavailable(): void" in close
 release=close.split("function _releaseAbyssRequestIfUnavailable(): void",1)[1].split("onAbyssConfiguredChanged",1)[0]
 assert "ConfirmationService.requestVisible" in release
 assert "root._showStandaloneForRequest(request)" in release
 assert "root._standaloneTransferredRequestId === requestId" in release
-assert "ConfirmationService.cancel(true)" in release
+assert "ConfirmationService.cancel(true)" not in release
+assert "requestResolved" not in release
 assert 'ConfirmationService.cancelOwned("closeConfirm")' not in release
 assert "return" in release
 assert "ConfirmationService.finishPresentation(requestId)" in release
-for handler in ("function confirmClose(): void", "function cancel(): void"):
-    block=close.split(handler,1)[1].split("\n    }",1)[0]
-    assert "root._finishStandaloneTransfer()" in block
+confirm_block=close.split("function confirmClose(): void",1)[1].split("function cancel(): void",1)[0]
+assert 'ConfirmationService.resolvePresentationHandoff(' in confirm_block
+assert 'requestId, "close"' in confirm_block
+assert "closeWindowFast(targetWindow)" in confirm_block
+cancel_block=close.split("function cancel(): void",1)[1].split("// Dialog UI",1)[0]
+assert "ConfirmationService.cancelPresentationHandoff(" in cancel_block
+assert "requestId, false" in cancel_block
 assert "onAbyssConfiguredChanged:" in close
 assert "target: AbyssPromptHostRegistry" in close
 assert "function onEntriesChanged(): void" in close

@@ -18,4 +18,21 @@ assert "AbyssStyle.surfaceDeep" in menu and "AbyssStyle.accent" in menu
 assert "showDashboardButton" in abyss
 assert dock.count("showDashboardButton") >= 2
 assert "Show Dashboard icon" in settings
-print("dock hover/style/orientation/dashboard-toggle contract: ok")
+
+# Reordering must follow the normal pointer gesture: crossing the movement
+# threshold starts drag immediately. A time-gated prime makes natural
+# press-and-move gestures permanently cancel themselves before drag begins.
+assert "property bool _dragGestureStarted: false" in apps
+assert "&& dist2 > root.dragThreshold * root.dragThreshold" in apps
+assert "root.startDrag(dockDelegate.index, appId, listPos.x, listPos.y)" in apps
+assert "root.updateDrag(listPos.x, listPos.y)" in apps
+assert "cancelAction: () => {" in apps
+assert "root.cancelDrag()" in apps
+assert "root.endDrag()" in apps
+assert "root._suppressNextClick = true" in apps
+assert "_dockPrimeTimer" not in apps
+assert "_dragPrimed" not in apps
+assert "_longPressTriggered" not in apps
+assert "Long-press and drag dock icons" not in settings
+assert "Drag dock icons to reorder pinned and running apps" in settings
+print("dock hover/style/orientation/dashboard-toggle/drag contract: ok")

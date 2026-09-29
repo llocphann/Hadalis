@@ -729,37 +729,29 @@ Item {
             property real _pressMouseX: 0
             property real _pressMouseY: 0
             property bool _hasPressPos: false
-            property bool _dragPrimed: false
-            property bool _longPressTriggered: false
+            property bool _dragGestureStarted: false
 
             downAction: event => {
                 if (!root.dragEnabled || dockDelegate.isSeparator) return
-                _longPressTriggered = false
-                _dragPrimed = false
+                _dragGestureStarted = false
                 _pressMouseX = event.x
                 _pressMouseY = event.y
                 _hasPressPos = true
-                _dockPrimeTimer.restart()
             }
 
             moveAction: (event) => {
-                if (!dockDelegate.down) return
-                if (!_hasPressPos) return
+                if (!dockDelegate.down || !_hasPressPos) return
 
                 const dx = event.x - _pressMouseX
                 const dy = event.y - _pressMouseY
                 const dist2 = dx * dx + dy * dy
 
-                if (_dockPrimeTimer.running && !_dragPrimed) {
-                    if (dist2 > root.dragThreshold * root.dragThreshold) {
-                        _dockPrimeTimer.stop()
-                    }
-                    return
-                }
-
-                if (_dragPrimed && !root.dragActive
+                // A normal press-and-drag must work immediately after crossing
+                // the movement threshold. The old 180 ms prime window canceled
+                // itself when users moved naturally, leaving no way to reorder.
+                if (!root.dragActive
                         && dist2 > root.dragThreshold * root.dragThreshold) {
-                    _longPressTriggered = true
+                    _dragGestureStarted = true
                     const listPos = dockDelegate.mapToItem(listView, _pressMouseX, _pressMouseY)
                     const appId = dockDelegate.appToplevel?.originalAppId
                         ?? dockDelegate.appToplevel?.appId ?? ""
@@ -773,9 +765,8 @@ Item {
             }
 
             releaseAction: () => {
-                _dockPrimeTimer.stop()
-                _dragPrimed = false
-                if (dockDelegate._longPressTriggered) {
+                _hasPressPos = false
+                if (dockDelegate._dragGestureStarted) {
                     if (root.dragActive && root.dragIndex === dockDelegate.index) {
                         root.endDrag()
                     }
@@ -784,16 +775,15 @@ Item {
                         if (root._suppressNextClick)
                             root._suppressNextClick = false
                     })
-                    dockDelegate._longPressTriggered = false
+                    dockDelegate._dragGestureStarted = false
                 }
             }
 
-            Timer {
-                id: _dockPrimeTimer
-                interval: 180
-                onTriggered: {
-                    dockDelegate._dragPrimed = true
-                }
+            cancelAction: () => {
+                _hasPressPos = false
+                if (root.dragActive && root.dragIndex === dockDelegate.index)
+                    root.cancelDrag()
+                dockDelegate._dragGestureStarted = false
             }
 
             onHoverPreviewRequested: {

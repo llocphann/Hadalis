@@ -159,7 +159,7 @@ ContentPage {
                 checked: Config.options?.dock?.enableDragReorder ?? true
                 onCheckedChanged: Config.setNestedValue('dock.enableDragReorder', checked)
                 StyledToolTip {
-                    text: Translation.tr("Long-press and drag dock icons to reorder pinned apps")
+                    text: Translation.tr("Drag dock icons to reorder pinned and running apps")
                 }
             }
 

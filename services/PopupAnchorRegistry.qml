@@ -130,8 +130,15 @@ Singleton {
     }
 
     function resolve(source): var {
+        const directSupplied = source?.anchorItem !== null
+            && source?.anchorItem !== undefined
         const direct = source?.anchorItem ?? null
-        if (root._validItem(direct)) {
+        if (directSupplied) {
+            if (!root._validItem(direct))
+                // An explicit Item is authoritative source-instance context.
+                // If it vanished before activation, do not silently attach the
+                // request to a different instance that merely shares appId.
+                return null
             const window = root._windowFor(direct)
             return {
                 item: direct,

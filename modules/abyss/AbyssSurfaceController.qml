@@ -1,7 +1,6 @@
 import QtQuick
 import Quickshell
 import "looks/AbyssBodyPlacement.js" as BodyPlacement
-import "looks/AbyssVacancyBorrowing.js" as VacancyBorrowing
 
 // One controller per output. Content and input are not inferred from pixels.
 QtObject {
@@ -13,28 +12,9 @@ QtObject {
     property var moduleRecords: []
     property int presentationOrder: 0
     function nextPresentationOrder(): int { return ++presentationOrder }
-    property int vacancyInteractionOrder: 0
-    function nextVacancyInteractionOrder(): int {
-        return ++vacancyInteractionOrder
-    }
-    readonly property var placementRequests: Object.keys(participants)
-        .map(key => participants[key]?.placementRequest)
-        .filter(request => request !== null && request !== undefined)
-    readonly property var vacancyParticipants: Object.keys(participants)
-        .map(key => ({
-            id:key,
-            role:String(participants[key]?.vacancyRole ?? ""),
-            hovered:participants[key]?.vacancyHovered ?? false,
-            hoverOrder:Number(participants[key]?.vacancyHoverOrder ?? 0)
-        }))
-    // AbyssBodyPlacement remains the sole resting allocator. Vacancy borrowing
-    // is a presentation-only post-pass and returns this object unchanged when
-    // semantic pairing, final-body hover or safe geometry does not qualify.
-    readonly property var baseBodyPlacements: BodyPlacement.arrange(
-        placementRequests,outputWidth,outputHeight,edgeInsets)
-    readonly property var bodyPlacements: VacancyBorrowing.resolve(
-        placementRequests,vacancyParticipants,baseBodyPlacements,
-        outputWidth,outputHeight,edgeInsets,24)
+    readonly property var bodyPlacements: BodyPlacement.arrange(Object.keys(participants)
+        .map(key => participants[key]?.placementRequest).filter(request => request !== null && request !== undefined),
+        outputWidth,outputHeight,edgeInsets)
     property real outputWidth: 1920
     property real outputHeight: 1080
     property bool presented: true

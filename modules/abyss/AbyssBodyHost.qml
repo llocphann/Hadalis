@@ -13,23 +13,10 @@ Item {
     required property string edge
     property string joinedEdge: ""
     readonly property string attachedEdge: edge
-    // StyledPopup walks to the nearest liquid ancestor and consumes this
-    // optional adjacent-Edge hint. Expose the host join so prompts attached
-    // to Dock/other nested participants keep the same corner relationship.
-    readonly property string popupJoinedEdge: joinedEdge
     property string outputName: ""
     property string identity: ""
     property var controller: null
     readonly property var liquidController: controller
-    // Logical pairing and hover ownership are presentation metadata only. They
-    // never enter placementRequest, so the resting allocator/order stays exact.
-    property string vacancyRole: ""
-    // Borrowing follows the final clipped body itself. Production hosts do not
-    // proxy hover through source anchors or sidebar reveal helpers. The binding
-    // remains writable so isolated allocator/runtime harnesses can drive it.
-    property bool vacancyHovered: root.vacancyRole.length > 0
-        && vacancyBodyHover.hovered
-    property int vacancyHoverOrder: 0
     property Item embeddedItem: null
     property bool animatePresentation: true
     property bool stableContentSize: false
@@ -197,9 +184,6 @@ Item {
         geometry: root.record
         restingRecord: root.pyramidRestingRecord
         visualPlacement: root.visualPlacement
-        vacancyRole: root.vacancyRole
-        vacancyHovered: root.vacancyHovered
-        vacancyHoverOrder: root.vacancyHoverOrder
         placementRequest: ({id:root.identity,open:root.semanticOpen,order:root.activationOrder,
             priority:root.placementPriority,padding:root.padding,
             minSpan:root.minimumSpan,minDepth:root.minimumDepth,
@@ -214,15 +198,6 @@ Item {
         if (controller) controller.impulse(edge,along+span/2,span,(opening ? 0.85 : -0.65)*waveInfluence,mass,opening ? "open" : "close")
     }
     function markOpened(): void { if (open && controller?.nextPresentationOrder) activationOrder=controller.nextPresentationOrder() }
-    function refreshVacancyInteraction(): void {
-        if (!root.vacancyHovered || root.vacancyRole.length === 0) {
-            root.vacancyHoverOrder = 0
-            return
-        }
-        if (root.controller?.nextVacancyInteractionOrder)
-            root.vacancyHoverOrder =
-                root.controller.nextVacancyInteractionOrder()
-    }
     function resetPyramidMotion(): void {
         root.pyramidCoordinator?.resetIdentity(root.identity)
         root.pyramidClosing=false
@@ -349,8 +324,6 @@ Item {
         root.capturePyramidRestingState()
     onSemanticOpenChanged: if (initialized)
         root.syncPyramidSemanticState()
-    onVacancyHoveredChanged: root.refreshVacancyInteraction()
-    onVacancyRoleChanged: root.refreshVacancyInteraction()
     onProgressChanged: {
         root.finishPyramidCloseIfDone()
         root.finishPyramidReopenIfDone()
@@ -361,12 +334,10 @@ Item {
     onControllerChanged: if (initialized) {
         root.resetPyramidMotion()
         markOpened()
-        root.refreshVacancyInteraction()
     }
     Component.onCompleted: {
         initialized = true
         markOpened()
-        root.refreshVacancyInteraction()
         if (semanticOpen) {
             root.capturePyramidRestingState()
             root.syncPyramidEntryOrigin()
@@ -450,15 +421,6 @@ Item {
         opacity: root.pyramidPresentationActive
             ? 1 : Math.min(1,root.progress*1.5)
         enabled: root.acceptsInput
-
-        // This is the actual final rendered/input-clipped body. Vacancy borrowing
-        // must follow this hover truth, not an anchor, source popup or reveal proxy.
-        HoverHandler {
-            id: vacancyBodyHover
-            parent: contentFrame
-            enabled: root.vacancyRole.length > 0
-                && contentFrame.visible && contentFrame.enabled
-        }
 
         Item {
             id: contentCanvas

@@ -95,34 +95,13 @@ Scope {
             id: window
             required property var modelData
             readonly property string outputName: modelData?.name ?? ""
-
-            function syncPromptHostRegistration(): void {
-                if (field.ready)
-                    AbyssPromptHostRegistry.registerHost(window, window.outputName)
-                else
-                    AbyssPromptHostRegistry.unregisterHost(window)
-            }
-            Component.onCompleted: window.syncPromptHostRegistration()
-            Component.onDestruction:
-                AbyssPromptHostRegistry.unregisterHost(window)
-
             function presentation(kind) { return Presentation.resolve(Config.options?.abyss?.positions,kind,outputName) }
             function positionEdge(kind,fallback) { return Presentation.edge(presentation(kind),fallback) }
             function positionAlong(kind,edge,span,fallback) { return Presentation.along(presentation(kind),edge,span,width,height,fallback,nativeInsets) }
             function bodyInsets(edge,along,span) { return ModuleLayout.clearanceInsets(nativeInsets,bar.visible ? bar.deformations : [],edge,along,span) }
             readonly property bool fullscreenCovered: GameMode.hasFullscreenOnOutput(outputName)
-            // Ordinary shell surfaces respect the fullscreen visibility policy.
-            // Confirmation is a critical modal workflow: keep only the shared
-            // popup field available on its owning output so fullscreen clients
-            // cannot make a semantic confirmation request invisible.
             readonly property bool presented: !GlobalStates.screenLocked
                 && (!fullscreenCovered || (Config.options?.abyss?.perimeter?.visibleInFullscreen ?? false))
-            readonly property bool criticalPromptOwned:
-                ConfirmationService.active
-                && ConfirmationService.targetOutputName === outputName
-            readonly property bool popupFieldPresented:
-                !GlobalStates.screenLocked
-                && (window.presented || window.criticalPromptOwned)
             readonly property bool editorOpen: GlobalStates.abyssEditing && GlobalStates.abyssEditorTargetOutput === outputName
             onPresentedChanged: if (!presented && editorOpen) GlobalStates.abyssEditing = false
             screen: modelData
@@ -132,15 +111,8 @@ Scope {
             exclusionMode: ExclusionMode.Ignore
             exclusiveZone: 0
             WlrLayershell.namespace: "hadalis:abyss-perimeter"
-            // Native settings dialogs normally make the shell yield to Bottom,
-            // but an owned confirmation must remain reachable above that dialog.
-            // Legacy Polkit stays a separate Overlay renderer and suppresses
-            // Abyss keyboard focus while it is active.
-            WlrLayershell.layer: window.criticalPromptOwned ? WlrLayer.Overlay
-                : GlobalStates.settingsNativeDialogOpen ? WlrLayer.Bottom
-                : PolkitService.active ? WlrLayer.Top
-                : (window.editorOpen || utility.open || liquid.popupsOpen || toastBody.open || dialogBody.open || settings.open || dashboardBody.open || controls.open || (window.fullscreenCovered && window.presented)) ? WlrLayer.Overlay : WlrLayer.Top
-            WlrLayershell.keyboardFocus: !window.popupFieldPresented || !field.ready || GlobalStates.regionSelectorOpen || (GlobalStates.settingsNativeDialogOpen && !window.criticalPromptOwned) || PolkitService.active || window.overviewDragging
+            WlrLayershell.layer: GlobalStates.settingsNativeDialogOpen ? WlrLayer.Bottom : PolkitService.active ? WlrLayer.Top : (window.editorOpen || utility.open || liquid.popupsOpen || toastBody.open || dialogBody.open || settings.open || dashboardBody.open || controls.open || (window.fullscreenCovered && window.presented)) ? WlrLayer.Overlay : WlrLayer.Top
+            WlrLayershell.keyboardFocus: !window.presented || !field.ready || GlobalStates.regionSelectorOpen || GlobalStates.settingsNativeDialogOpen || PolkitService.active || window.overviewDragging
                 ? WlrKeyboardFocus.None
                 : (window.editorOpen || (utility.presented && utility.ready) || liquid.popupExclusiveFocus || (popup.presented && (popup.contentItem.item?.keyboardFocus ?? false)) || (dialogBody.presented && dialogBody.ready) || (aux.presented && aux.ready) || (clipboardBody.presented && clipboardBody.ready) || (settings.presented && settings.ready) || (dashboardBody.presented && dashboardBody.ready) || (controls.presented && controls.ready)) ? WlrKeyboardFocus.Exclusive
                 : (liquid.popupOnDemandFocus || (leftPanel.presented && leftPanel.ready) || (rightPanel.presented && rightPanel.ready) || (popup.presented && popup.ready) || (notification.presented && notification.ready && notification.contentKind === "center"))
@@ -169,10 +141,10 @@ Scope {
                 Region { x: rightReveal.x; y: rightReveal.y; width: rightReveal.available ? rightReveal.width : 0; height: rightReveal.height }
                 Region { x: leftPanel.inputBounds.x; y: leftPanel.inputBounds.y; width: window.presented && field.ready ? leftPanel.inputBounds.width : 0; height: leftPanel.inputBounds.height }
                 Region { x: rightPanel.inputBounds.x; y: rightPanel.inputBounds.y; width: window.presented && field.ready ? rightPanel.inputBounds.width : 0; height: rightPanel.inputBounds.height }
-                Region { x: liquid.popupInputBounds[0]?.x ?? 0; y: liquid.popupInputBounds[0]?.y ?? 0; width: window.popupFieldPresented && field.ready ? (liquid.popupInputBounds[0]?.width ?? 0) : 0; height: liquid.popupInputBounds[0]?.height ?? 0 }
-                Region { x: liquid.popupInputBounds[1]?.x ?? 0; y: liquid.popupInputBounds[1]?.y ?? 0; width: window.popupFieldPresented && field.ready ? (liquid.popupInputBounds[1]?.width ?? 0) : 0; height: liquid.popupInputBounds[1]?.height ?? 0 }
-                Region { x: liquid.popupInputBounds[2]?.x ?? 0; y: liquid.popupInputBounds[2]?.y ?? 0; width: window.popupFieldPresented && field.ready ? (liquid.popupInputBounds[2]?.width ?? 0) : 0; height: liquid.popupInputBounds[2]?.height ?? 0 }
-                Region { x: liquid.popupInputBounds[3]?.x ?? 0; y: liquid.popupInputBounds[3]?.y ?? 0; width: window.popupFieldPresented && field.ready ? (liquid.popupInputBounds[3]?.width ?? 0) : 0; height: liquid.popupInputBounds[3]?.height ?? 0 }
+                Region { x: liquid.popupInputBounds[0]?.x ?? 0; y: liquid.popupInputBounds[0]?.y ?? 0; width: window.presented && field.ready ? (liquid.popupInputBounds[0]?.width ?? 0) : 0; height: liquid.popupInputBounds[0]?.height ?? 0 }
+                Region { x: liquid.popupInputBounds[1]?.x ?? 0; y: liquid.popupInputBounds[1]?.y ?? 0; width: window.presented && field.ready ? (liquid.popupInputBounds[1]?.width ?? 0) : 0; height: liquid.popupInputBounds[1]?.height ?? 0 }
+                Region { x: liquid.popupInputBounds[2]?.x ?? 0; y: liquid.popupInputBounds[2]?.y ?? 0; width: window.presented && field.ready ? (liquid.popupInputBounds[2]?.width ?? 0) : 0; height: liquid.popupInputBounds[2]?.height ?? 0 }
+                Region { x: liquid.popupInputBounds[3]?.x ?? 0; y: liquid.popupInputBounds[3]?.y ?? 0; width: window.presented && field.ready ? (liquid.popupInputBounds[3]?.width ?? 0) : 0; height: liquid.popupInputBounds[3]?.height ?? 0 }
                 Region { x: popup.inputBounds.x; y: popup.inputBounds.y; width: window.presented && field.ready ? popup.inputBounds.width : 0; height: popup.inputBounds.height }
                 Region { x: dock.inputBounds.x; y: dock.inputBounds.y; width: window.presented && field.ready ? dock.inputBounds.width : 0; height: dock.inputBounds.height }
                 Region { item:corners.notesAvailable ? corners.notesAnchor : emptyInput }
@@ -347,37 +319,12 @@ Scope {
                 outputName: window.outputName
                 outputWidth: window.width
                 outputHeight: window.height
-                presented: window.popupFieldPresented
+                presented: window.presented
                 presentationItem: field
                 dialogHost: dialogBody
                 edgeInsets: window.nativeInsets
                 moduleRecords: bar.visible ? bar.deformations : []
             }
-
-            // Non-painted anchor for confirmations that have no live app source.
-            // It enters the exact same StyledPopup -> popup-slot -> Pyramid path
-            // as attached prompts, but resolves to the output's top center.
-            Item {
-                id: confirmationFallbackAnchor
-                x: (window.width - width) / 2
-                y: 0
-                width: Math.max(2, AbyssStyle.perimeterThickness)
-                height: Math.max(2, AbyssStyle.perimeterThickness)
-                visible: window.popupFieldPresented && field.ready
-                enabled: visible
-                property var liquidController: liquid
-                property string attachedEdge: "top"
-                property string popupJoinedEdge: ""
-            }
-
-            AbyssConfirmationPresenter {
-                id: confirmationPresenter
-                outputName: window.outputName
-                fallbackAnchor: confirmationFallbackAnchor
-                presentationEnabled: window.popupFieldPresented && field.ready
-            }
-
-
             readonly property var sideObstacles: [leftPanel,rightPanel].filter(body => body.progress > 0.001).map(body => body.record)
             AbyssSpectrumController {
                 waves:liquid.waves
@@ -436,9 +383,6 @@ Scope {
                 anchors.fill: parent
                 edge: window.positionEdge(identity,ShellLayoutController.sidebarAssignments().featureSidebar)
                 outputName: window.outputName
-                // Pair by logical sidebar role; the physical slot may be swapped.
-                vacancyRole: "featureSidebar"
-                // Hover ownership comes from AbyssBodyHost's final contentFrame.
                 open: window.presented && field.ready && (Config.options?.enabledPanels ?? []).includes("abyssSidebarLeft")
                     && GlobalStates.sidebarLeftOpen && GlobalStates.sidebarLeftPresentationOutput === window.outputName
 
@@ -460,8 +404,6 @@ Scope {
                 anchors.fill: parent
                 edge: window.positionEdge(identity,ShellLayoutController.sidebarAssignments().systemSidebar)
                 outputName: window.outputName
-                vacancyRole: "systemSidebar"
-                // Hover ownership comes from AbyssBodyHost's final contentFrame.
                 open: window.presented && field.ready && (Config.options?.enabledPanels ?? []).includes("abyssSidebarRight")
                     && GlobalStates.sidebarRightOpen && GlobalStates.sidebarRightPresentationOutput === window.outputName
 
@@ -544,16 +486,7 @@ Scope {
                     edge: window.positionEdge(presentationKind,
                         hostedPopup?._attachmentEdge ?? root.barEdge)
                     outputName: window.outputName
-                    // Stable popup semantics come from the source anchor kind,
-                    // never from the reusable styledPopup slot or nearby Edge.
-                    vacancyRole: presentationKind === "quickNotes"
-                        ? "quickNotes"
-                        : (presentationKind === "notificationCenter"
-                            ? "notificationCenter" : "")
-                    // Borrowing hover is measured by this host's final
-                    // contentFrame. The rehosted HoverHandler below remains the
-                    // StyledPopup lifetime hand-off, not the borrowing authority.
-                    open: window.popupFieldPresented && field.ready
+                    open: window.presented && field.ready
                         && (hostedPopup?.presentationActive ?? false)
                         && ((hostedPopup?.requestedVisible ?? false)
                             || ((hostedPopup?.hoverActivates ?? false)
@@ -874,11 +807,10 @@ Scope {
                 renderScale: window.modelData?.devicePixelRatio ?? 1
                 z: -1
                 anchors.fill: parent
-                visible: window.popupFieldPresented
+                visible: window.presented
                 edgeInsets: window.nativeInsets
                 records: liquid.records
                 waveTexture: liquid.waves.texture
-                onReadyChanged: window.syncPromptHostRegistration()
             }
         }
     }

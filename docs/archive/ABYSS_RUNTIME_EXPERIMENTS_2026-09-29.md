@@ -1,3 +1,75 @@
+# Archived Abyss runtime experiments — 2026-09-29
+
+> **Status: RETIRED FROM RUNTIME**
+>
+> These experiments were removed from the active Hadalis/Abyss runtime after live use did not deliver the intended behavior, despite source contracts and synthetic Wayland checks passing. This document is historical reference only and must not be treated as an active runtime contract.
+
+## Retired scope
+
+### Confirmation-in-Abyss
+- Runtime request/anchor foundation.
+- Abyss confirmation presenter/content.
+- Prompt-host registry, output routing, fallback/handoff logic.
+- Bar, tray and Dock anchor registration used by that routing.
+- Dedicated Confirmation source/runtime/Wayland CI harnesses.
+
+### Polkit-in-Abyss
+- The Abyss-specific Polkit presenter/routing experiment had already been reverted.
+- Legacy Polkit remains the supported runtime path.
+- Historical source remains available in Git.
+
+### Elastic Fill / semantic vacancy borrowing
+- Hover Elastic Fill experimentation.
+- Semantic vacancy borrowing and automatic borrowing.
+- Vacancy geometry/controller hooks and dedicated runtime/contracts.
+- Active runtime is restored to the pre-experiment allocator behavior.
+
+## Preserved unrelated fixes
+
+The retirement intentionally keeps:
+- Dock physical-edge locking from `5710497e7631`.
+- Attached-popup Dock hold from `c52e0cf839b4`.
+- Bar auto-hide popup lease behavior from `6350ba770f4a`.
+- Concurrent Dock/settings/performance work unrelated to these experiments.
+
+## Historical commit map
+
+### Confirmation / prompt routing
+- `c82776b0aa86` — runtime request and anchor foundation.
+- `0957ba29f596` — rehost close confirmations in the popup field.
+- Subsequent `confirmation`, `close-confirm`, prompt-host and Confirmation CI commits refined the experiment.
+- `c7c2d9423050` — restored legacy Polkit and isolated Confirmation before final retirement.
+
+### Polkit-in-Abyss
+- `5bc3bbac237f` — expose AuthFlow prompt semantics.
+- `36803f838fe3` — add Abyss Polkit presenter.
+- `8bb2b7afe069` — wire Polkit into connected popup field.
+- `c7c2d9423050` — retire the Abyss-specific Polkit runtime path.
+
+### Elastic Fill / vacancy borrowing
+- `f907a07daf59` — initial hover Elastic Fill.
+- `ad9eddbb940c`, `09305eb8f31d`, `4ff1e2dbbc67` — Elastic Fill revisions.
+- `badd86b23fbc` — remove the Elastic Fill experiment.
+- `a4ac98bb164b` — semantic perimeter vacancy borrowing.
+- `a03a17c091e8`, `95d5729e0678`, `3728bef41e70`, `ea8c93466db0` — vacancy/hover/automatic-borrow follow-ups.
+- Latest archived experiment commit message: **fix(abyss): auto-expand newest semantic surface**.
+
+## Reintroduction rule
+
+Do not copy individual retired files back into active runtime. If this area is revisited:
+1. reproduce the live failure first;
+2. define a physical Wayland acceptance case before coding;
+3. reintroduce one mechanism at a time;
+4. require live behavior to pass before adding synthetic CI claims.
+
+Git history is the source of truth for the retired implementation.
+
+---
+
+## Retired Confirmation design notes
+
+The section below preserves the final active Confirmation design document for future reference.
+
 # Abyss confirmation popup architecture
 
 Status: Confirmation source/contracts and automated synthetic Wayland acceptance are complete on `dev`; physical monitor hotplug/focus acceptance remains target-hardware work. Polkit has been restored to its legacy path and is outside this document's implementation scope.
@@ -157,3 +229,4 @@ Automated confirmation runtime acceptance is now recorded on real Quickshell + h
 - ChatGPT Quit or any other application-native confirmation only after a reliable native/backend interception path exists.
 
 Do not mark the entire feature `production runtime complete` until those target-environment checks are recorded.
+

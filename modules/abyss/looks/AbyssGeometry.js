@@ -44,32 +44,90 @@ function panel(width, height, insets, edge, along, span, depth, progress, paddin
     if (d <= 0) surface = {x:0,y:0,width:0,height:0};
     return {edge:edge, content:content, surface:surface, depth:d, targetDepth:depth, progress:clamp(progress,0,1.035), span:span, along:along};
 }
-// Keep each body's readable contents at its requested size while its one union
+// Keep each body's readable contents at its resolved size while its one union
 // record reaches through the inner tier to the physical Edge.
 function placedPanel(width,height,insets,edge,along,span,depth,progress,padding,obstacles,largeSurface,placement) {
     if (!placement) return panel(width,height,insets,edge,along,span,depth,progress,padding,obstacles,largeSurface);
-    // Placement may reflow a body, but its allocator preserves the physical
-    // anchor center. Build the actual panel at that size instead of shifting a
-    // full-size record after the fact; content/input/field then share geometry.
-    var placedAlong = Number.isFinite(Number(placement.along)) ? Number(placement.along) : along;
-    var placedSpan = Number.isFinite(Number(placement.span)) ? Number(placement.span) : span;
-    var placedDepth = Number.isFinite(Number(placement.depth)) ? Number(placement.depth) : depth;
-    var base = panel(width,height,insets,edge,placedAlong,placedSpan,placedDepth,
-        progress,padding,[],largeSurface);
-    var p = clamp(progress,0,1.035), offset = placement.inward*p;
-    if (horizontal(edge)) {
-        base.content.y += edge === "top" ? offset : -offset;
-        if (edge === "bottom") base.surface.y -= offset;
-        base.surface.height += offset;
-    } else {
-        base.content.x += edge === "left" ? offset : -offset;
-        if (edge === "right") base.surface.x -= offset;
-        base.surface.width += offset;
-    }
-    base.depth += offset;
-    base.targetDepth += placement.inward;
-    if (!placement.visible) base.surface = {x:0,y:0,width:0,height:0};
-    return base;
+
+    // A resolved placement has already passed the allocator (and any temporary
+    // vacancy post-pass). Trust that placement up to the output's hard safe
+    // bounds instead of reapplying panel()'s normal 42/92% resting-depth cap.
+    // Base allocator placements are already capped by their requested record, so
+    // this is byte-for-byte equivalent while borrowing is inactive and lets the
+    // existing placement Behavior restore a borrowed depth without a clamp snap.
+    var h=horizontal(edge);
+    var first=h ? insets.left : insets.top;
+    var last=h ? width-insets.right : height-insets.bottom;
+    var pad=clamp(padding,0,Math.max(0,(last-first)/8));
+    var placedAlong=Number.isFinite(Number(placement.along))
+        ? Number(placement.along) : along;
+    var placedSpan=Number.isFinite(Number(placement.span))
+        ? Number(placement.span) : span;
+    var placedDepth=Number.isFinite(Number(placement.depth))
+        ? Number(placement.depth) : depth;
+    var placedInward=Number.isFinite(Number(placement.inward))
+        ? Math.max(0,Number(placement.inward)) : 0;
+
+    placedSpan=clamp(placedSpan,0,Math.max(0,last-first-2*pad));
+    placedAlong=clamp(placedAlong,first+pad,
+        Math.max(first+pad,last-pad-placedSpan));
+
+    var crossExtent=Math.max(0,h
+        ? height-insets.top-insets.bottom
+        : width-insets.left-insets.right);
+    placedInward=clamp(placedInward,0,crossExtent);
+    placedDepth=clamp(placedDepth,0,
+        Math.max(0,crossExtent-placedInward));
+
+    var reveal=clamp(progress,0,1.035);
+    var currentDepth=placedDepth*reveal;
+    var offset=placedInward*reveal;
+    var x=h ? placedAlong
+        : edge === "left"
+            ? insets.left+offset
+            : width-insets.right-currentDepth-offset;
+    var y=h
+        ? edge === "top"
+            ? insets.top+offset
+            : height-insets.bottom-currentDepth-offset
+        : placedAlong;
+    var crossPad=Math.min(pad,currentDepth/2);
+    var content={
+        x:x+(h ? pad : crossPad),
+        y:y+(h ? crossPad : pad),
+        width:Math.max(0,h
+            ? placedSpan-2*pad
+            : currentDepth-2*crossPad),
+        height:Math.max(0,h
+            ? currentDepth-2*crossPad
+            : placedSpan-2*pad)
+    };
+    var reach=currentDepth+offset;
+    var surface=h
+        ? {
+            x:placedAlong,
+            y:edge === "top" ? -50 : y,
+            width:placedSpan,
+            height:reach+insets[edge]+50
+        }
+        : {
+            x:edge === "left" ? -50 : x,
+            y:placedAlong,
+            width:reach+insets[edge]+50,
+            height:placedSpan
+        };
+    if (reach <= 0 || placement.visible === false)
+        surface={x:0,y:0,width:0,height:0};
+    return {
+        edge:edge,
+        content:content,
+        surface:surface,
+        depth:reach,
+        targetDepth:placedDepth+placedInward,
+        progress:reveal,
+        span:placedSpan,
+        along:placedAlong
+    };
 }
 function roundedDistance(x, y, rect, radius) {
     var r = Math.min(radius, rect.width/2, rect.height/2);

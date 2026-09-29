@@ -9,6 +9,12 @@ QtObject {
     // snapshots only; the allocator still consumes placementRequest alone.
     property var restingRecord: null
     property var visualPlacement: null
+    // Presentation-only semantic metadata. The base allocator intentionally
+    // consumes placementRequest alone; vacancy borrowing reads these fields
+    // after allocation so physical Edge geometry never defines pairing.
+    property string vacancyRole: ""
+    property bool vacancyHovered: false
+    property int vacancyHoverOrder: 0
     property var placementRequest: null
     property rect inputBounds: Qt.rect(0,0,0,0)
     property real mass: 1

@@ -35,6 +35,9 @@ The runtime also enforces continuous-research mode: an accidental DONE is conver
 
 ## Automation status
 
+- autonomous prompts now explicitly forbid switching/handing off to Work mode; they must remain in the current ChatGPT conversation and use the GitHub connector plus deterministic local jobs.
+- prompt submission now refuses to write into a non-empty composer or while a Stop/generation control is active. For submitted turns, completion requires a new post-submit HADALIS_LOOP marker and baseline-aware extraction no longer falls back to an older marker. This prevents a continuation prompt from being pasted into the composer while the previous response is still generating.
+- `JOB-AUTONOMOUS-PROMPT-GUARD-001` passed Python compile, chat-bridge protocol/state tests, desktop driver/CLI syntax, and marker-scanner regression.
 The desktop transport, rich GitHub mention path, completion detection, marker extraction, deterministic worker, and systemd rollout have been validated. The bridge/worker service path is installed.
 
 Continuous-research changes are covered by `JOB-CONTINUOUS-RESEARCH-VALIDATE-002`, which passed:

@@ -41,14 +41,7 @@ ShellRoot {
     property bool finished: false
     property int phase: 0
     property int preconditionTicks: 0
-    // Quickshell.screens is a QML list property. Materialize it as a JS array
-    // before indexing/iterating so the runtime harness observes both outputs
-    // consistently across Qt/Quickshell versions.
-    readonly property var screens: [...Quickshell.screens]
-    readonly property string outputOne:
-        String(root.screens.length > 0 ? root.screens[0]?.name ?? "" : "")
-    readonly property string outputTwo:
-        String(root.screens.length > 1 ? root.screens[1]?.name ?? "" : "")
+    property var surfaces: []
 
     function check(ok, message): bool {
         if (ok)
@@ -56,6 +49,21 @@ ShellRoot {
         console.error("ABYSS_CONFIRMATION_MULTI_OUTPUT_FAIL", message)
         root.finished = true
         return false
+    }
+
+    function registerSurface(surface): void {
+        if (!surface)
+            return
+        const next = root.surfaces.filter(candidate => candidate !== surface)
+        next.push(surface)
+        next.sort((left, right) =>
+            String(left?.outputName ?? "").localeCompare(
+                String(right?.outputName ?? "")))
+        root.surfaces = next
+    }
+
+    function unregisterSurface(surface): void {
+        root.surfaces = root.surfaces.filter(candidate => candidate !== surface)
     }
 
     function request(appId, outputName, title): int {
@@ -72,112 +80,88 @@ ShellRoot {
         })
     }
 
-    FloatingWindow {
-        id: windowOne
-        visible: true
-        screen: root.screens.length > 0 ? root.screens[0] : null
-        implicitWidth: 720
-        implicitHeight: 520
+    Variants {
+        model: Quickshell.screens
 
-        Item {
-            id: sceneOne
-            anchors.fill: parent
+        delegate: Scope {
+            id: surface
+            required property ShellScreen modelData
+            readonly property string outputName: String(modelData?.name ?? "")
+            readonly property var controllerRef: controller
+            readonly property var trayRef: trayAnchor
+            readonly property var dockRef: dockAnchor
+            readonly property var fallbackRef: fallbackAnchor
 
-            Item {
-                id: trayOne
-                property var liquidController: controllerOne
-                property string attachedEdge: "top"
-                property string popupJoinedEdge: ""
-                x: 80
-                y: 0
-                width: 40
-                height: 40
+            Component.onCompleted: root.registerSurface(surface)
+            Component.onDestruction: root.unregisterSurface(surface)
+
+            FloatingWindow {
+                id: window
                 visible: true
-                enabled: true
+                screen: surface.modelData
+                implicitWidth: 720
+                implicitHeight: 520
+
+                Item {
+                    id: scene
+                    anchors.fill: parent
+
+                    Item {
+                        id: trayAnchor
+                        property var liquidController: controller
+                        property string attachedEdge: "top"
+                        property string popupJoinedEdge: ""
+                        x: 80
+                        y: 0
+                        width: 40
+                        height: 40
+                        visible: true
+                        enabled: true
+                    }
+
+                    Item {
+                        id: dockAnchor
+                        property var liquidController: controller
+                        property string attachedEdge: "bottom"
+                        property string popupJoinedEdge: ""
+                        x: 120
+                        y: scene.height - height
+                        width: 40
+                        height: 40
+                        visible: true
+                        enabled: true
+                    }
+
+                    Item {
+                        id: fallbackAnchor
+                        property var liquidController: controller
+                        property string attachedEdge: "top"
+                        property string popupJoinedEdge: ""
+                        x: (scene.width - width) / 2
+                        y: 0
+                        width: 1
+                        height: 1
+                        visible: true
+                        enabled: true
+                    }
+                }
             }
 
-            Item {
-                id: fallbackOne
-                property var liquidController: controllerOne
-                property string attachedEdge: "top"
-                property string popupJoinedEdge: ""
-                x: (sceneOne.width - width) / 2
-                y: 0
-                width: 1
-                height: 1
-                visible: true
-                enabled: true
-            }
-        }
-    }
-
-    AbyssSurfaceController {
-        id: controllerOne
-        outputName: root.outputOne
-        presentationItem: sceneOne
-        outputWidth: sceneOne.width
-        outputHeight: sceneOne.height
-        edgeInsets: ({ left: 12, top: 12, right: 12, bottom: 12 })
-    }
-
-    FloatingWindow {
-        id: windowTwo
-        visible: true
-        screen: root.screens.length > 1 ? root.screens[1] : null
-        implicitWidth: 720
-        implicitHeight: 520
-
-        Item {
-            id: sceneTwo
-            anchors.fill: parent
-
-            Item {
-                id: dockTwo
-                property var liquidController: controllerTwo
-                property string attachedEdge: "bottom"
-                property string popupJoinedEdge: ""
-                x: 120
-                y: sceneTwo.height - height
-                width: 40
-                height: 40
-                visible: true
-                enabled: true
+            AbyssSurfaceController {
+                id: controller
+                outputName: surface.outputName
+                presentationItem: scene
+                outputWidth: scene.width
+                outputHeight: scene.height
+                edgeInsets: ({ left: 12, top: 12, right: 12, bottom: 12 })
             }
 
-            Item {
-                id: fallbackTwo
-                property var liquidController: controllerTwo
-                property string attachedEdge: "top"
-                property string popupJoinedEdge: ""
-                x: (sceneTwo.width - width) / 2
-                y: 0
-                width: 1
-                height: 1
-                visible: true
-                enabled: true
+            AbyssConfirmationPresenter {
+                outputName: surface.outputName
+                fallbackAnchor: fallbackAnchor
+                presentationEnabled: true
             }
         }
-    }
-
-    AbyssSurfaceController {
-        id: controllerTwo
-        outputName: root.outputTwo
-        presentationItem: sceneTwo
-        outputWidth: sceneTwo.width
-        outputHeight: sceneTwo.height
-        edgeInsets: ({ left: 12, top: 12, right: 12, bottom: 12 })
-    }
-
-    AbyssConfirmationPresenter {
-        outputName: root.outputOne
-        fallbackAnchor: fallbackOne
-        presentationEnabled: true
-    }
-
-    AbyssConfirmationPresenter {
-        outputName: root.outputTwo
-        fallbackAnchor: fallbackTwo
-        presentationEnabled: true
     }
 
     Timer {
@@ -187,35 +171,36 @@ ShellRoot {
 
         onTriggered: {
             root.preconditionTicks += 1
-            if (!Config.ready || root.screens.length < 2
-                    || root.outputOne.length === 0
-                    || root.outputTwo.length === 0) {
+            if (!Config.ready || root.surfaces.length < 2) {
                 if (root.preconditionTicks >= 12) {
-                    const names = []
-                    for (const screen of root.screens)
-                        names.push(String(screen?.name ?? ""))
+                    const names = root.surfaces.map(surface =>
+                        String(surface?.outputName ?? ""))
                     root.check(false,
                         "runtime preconditions unavailable: Config.ready="
-                        + Config.ready + " screens=" + root.screens.length
-                        + " names=" + JSON.stringify(names)
-                        + " outputOne=" + root.outputOne
-                        + " outputTwo=" + root.outputTwo)
+                        + Config.ready + " surfaces=" + root.surfaces.length
+                        + " names=" + JSON.stringify(names))
                 }
                 return
             }
 
+            const one = root.surfaces[0]
+            const two = root.surfaces[1]
+            if (!one || !two
+                    || !one.outputName || !two.outputName
+                    || one.outputName === two.outputName) {
+                root.check(false,
+                    "Wayland compositor must expose two distinct outputs")
+                return
+            }
+
             if (root.phase === 0) {
-                if (!root.check(root.screens.length >= 2
-                        && root.outputOne !== root.outputTwo,
-                        "Wayland compositor must expose two distinct outputs"))
-                    return
                 Config.setNestedValue("panelFamily", "abyss")
                 PopupAnchorRegistry.registerAnchor(
-                    trayOne, "tray", () => ["multi.runtime.app"], 300)
+                    one.trayRef, "tray", () => ["multi.runtime.app"], 300)
                 PopupAnchorRegistry.registerAnchor(
-                    dockTwo, "dock", () => ["multi.runtime.app"], 200)
+                    two.dockRef, "dock", () => ["multi.runtime.app"], 200)
                 root.request(
-                    "multi.runtime.app", root.outputTwo,
+                    "multi.runtime.app", two.outputName,
                     "Prefer same-output Dock over remote Tray")
                 root.phase = 1
                 return
@@ -223,16 +208,16 @@ ShellRoot {
 
             if (root.phase === 1) {
                 if (!ConfirmationService.requestVisible
-                        || controllerTwo.activePopups.length < 1)
+                        || two.controllerRef.activePopups.length < 1)
                     return
                 if (!root.check(
-                        ConfirmationService.targetOutputName === root.outputTwo
-                        && ConfirmationService.resolvedAnchor === dockTwo,
+                        ConfirmationService.targetOutputName === two.outputName
+                        && ConfirmationService.resolvedAnchor === two.dockRef,
                         "same-output affinity outranks a higher-priority remote surface"))
                     return
                 if (!root.check(
-                        controllerTwo.activePopup?.hoverTarget === dockTwo
-                        && controllerOne.activePopups.length === 0,
+                        two.controllerRef.activePopup?.hoverTarget === two.dockRef
+                        && one.controllerRef.activePopups.length === 0,
                         "connected popup is presented only on requested output"))
                     return
                 ConfirmationService.cancel()
@@ -244,7 +229,7 @@ ShellRoot {
                 if (ConfirmationService.active)
                     return
                 root.request(
-                    "multi.runtime.app", root.outputOne,
+                    "multi.runtime.app", one.outputName,
                     "Prefer local Tray on first output")
                 root.phase = 3
                 return
@@ -252,11 +237,11 @@ ShellRoot {
 
             if (root.phase === 3) {
                 if (!ConfirmationService.requestVisible
-                        || controllerOne.activePopups.length < 1)
+                        || one.controllerRef.activePopups.length < 1)
                     return
                 if (!root.check(
-                        ConfirmationService.targetOutputName === root.outputOne
-                        && ConfirmationService.resolvedAnchor === trayOne,
+                        ConfirmationService.targetOutputName === one.outputName
+                        && ConfirmationService.resolvedAnchor === one.trayRef,
                         "first-output request resolves its local Tray source"))
                     return
                 ConfirmationService.cancel()
@@ -267,22 +252,22 @@ ShellRoot {
             if (root.phase === 4) {
                 if (ConfirmationService.active)
                     return
-                PopupAnchorRegistry.unregisterAnchor(trayOne)
-                PopupAnchorRegistry.unregisterAnchor(dockTwo)
-                root.request("", root.outputTwo, "Second-output fallback")
+                PopupAnchorRegistry.unregisterAnchor(one.trayRef)
+                PopupAnchorRegistry.unregisterAnchor(two.dockRef)
+                root.request("", two.outputName, "Second-output fallback")
                 root.phase = 5
                 return
             }
 
             if (root.phase === 5) {
                 if (!ConfirmationService.requestVisible
-                        || controllerTwo.activePopups.length < 1)
+                        || two.controllerRef.activePopups.length < 1)
                     return
                 if (!root.check(
-                        ConfirmationService.targetOutputName === root.outputTwo
+                        ConfirmationService.targetOutputName === two.outputName
                         && ConfirmationService.resolvedAnchor === null
-                        && controllerTwo.activePopup?.hoverTarget === fallbackTwo
-                        && controllerOne.activePopups.length === 0,
+                        && two.controllerRef.activePopup?.hoverTarget === two.fallbackRef
+                        && one.controllerRef.activePopups.length === 0,
                         "unresolved request uses top-center fallback on requested output"))
                     return
                 ConfirmationService.cancel()
@@ -300,7 +285,6 @@ ShellRoot {
     }
 }
 QML
-
 status=0
 env -u QS_CONFIG_PATH -u QS_CONFIG_NAME -u QS_MANIFEST \
     QT_QPA_PLATFORM=wayland \

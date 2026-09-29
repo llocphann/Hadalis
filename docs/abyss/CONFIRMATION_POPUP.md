@@ -112,10 +112,11 @@ Implemented:
 - Equal-strength implicit anchor ties are treated as ambiguous and fall back instead of using registration order to guess which app instance owns a semantic prompt.
 - If a top-center fallback output is hot-unplugged, the same request is retargeted to a remaining valid output. If the request had a real attached source on the removed output, it is cancelled instead of teleporting.
 - The active request is retained until its visual retract tail is released, so queued requests cannot inherit the previous geometry. Owning-presenter teardown also releases an already-closing request so output/family removal cannot strand the queue.
+- Renderer handoff can add a second semantic release gate on top of the visual-tail gate. A close confirmation transferred to the standalone fail-safe therefore keeps its queue slot until both the old `StyledPopup` tail is released and the standalone dialog has resolved; neither side can advance the successor early.
 - Owner teardown uses forced lifecycle cancellation, so a disabled/hidden user cancel action cannot strand an owned request when its renderer disappears.
 - Generic action semantics preserve enabled/visible state. Enter selects only a usable default/non-cancel action, user cancel does not invoke a disabled/hidden cancel action, and empty/duplicate action IDs are normalized so one visible button cannot resolve a different callback.
-- `AbyssPromptHostRegistry` tracks the concrete per-output Abyss prompt hosts that actually instantiated. Confirmation routing requires a live host on the target output instead of trusting configuration alone, so a missing/failed perimeter falls back to the standalone renderer rather than creating an invisible request.
-- If `abyssPerimeter` is disabled or no live prompt host exists, the previous standalone confirmation/Polkit renderers remain available as a fail-safe.
+- `AbyssPromptHostRegistry` tracks concrete per-output prompt hosts only after their Abyss field has presented a usable frame. Configuration alone, or a mapped perimeter whose field/shader is not ready, never counts as a usable confirmation/authentication renderer.
+- If `abyssPerimeter` is disabled or no frame-ready prompt host exists, the previous standalone confirmation/Polkit renderers remain available as a fail-safe rather than creating an invisible request.
 
 ### Phase C — normal confirmation
 
@@ -130,7 +131,8 @@ Implemented for the Hadalis-owned `closeConfirm` backend:
 - critical confirmation presentation keeps the popup field available over fullscreen and is not demoted beneath a native settings dialog;
 - the real close callback still executes the existing Niri close/minimize path;
 - repeated close triggers for the same window are deduplicated across visible, queued and retracting ownership, while different windows may still queue normally;
-- a connected close request is created only when the target output has a registered live Abyss prompt host; configuration without a real host uses the existing standalone dialog instead;
+- all Abyss-family close confirmations enter the same semantic queue even when the connected host is temporarily unavailable; activation either uses the live connected host or transfers that exact request to the standalone renderer without dropping queued successors;
+- renderer loss during an already-visible prompt transfers the same captured window identity to standalone, while the old connected tail and the new standalone dialog jointly gate queue release; stale transferred prompts are dismissed if their captured Niri window disappears;
 - cancel, close/reopen, long content and long action labels use the same Abyss primitives and popup geometry; Details/Hide details labels follow the translation catalog.
 
 This does **not** claim generic interception of application-native confirmations. ChatGPT Quit remains blocked on a trustworthy backend/native bridge that can expose the application's real confirmation semantics and suppress the original dialog without bypassing or duplicating it.
@@ -170,13 +172,14 @@ A synthetic Wayland/Quickshell harness now exists at `scripts/test-abyss-confirm
 - retained-but-closed source rejection to top-center fallback;
 - a still-registered source becoming non-presented while open, which cancels rather than teleporting;
 - equal-strength duplicate source anchors falling back rather than choosing registration order;
-- duplicate action IDs normalizing deterministically and invoking only the intended callback.
+- duplicate action IDs normalizing deterministically and invoking only the intended callback;
+- renderer-handoff queue gating: a semantically transferred request cannot activate its queued successor until the old popup tail and the handoff owner have both released it.
 
 The script intentionally skips when Quickshell/Wayland is unavailable. A source-only pass or a skipped runtime harness is **not** runtime completion.
 
 ## Acceptance status
 
-Source/contract coverage is complete for the currently trustworthy backends: request ownership, conservative identity/output anchor resolution, ambiguous-source fallback, live-source validity, Dock/Bar source hold, popup/Pyramid reuse, live prompt-host readiness, fail-safe fallback renderers, fullscreen/native-dialog critical-prompt visibility, Join Edge inheritance, action availability/ID/callback safety, queue/reopen ownership, same-window close deduplication, output-hotplug policy, and Polkit focus/security, source-hint scoping, failover, queued-presentation and multi-turn retry behavior.
+Source/contract coverage is complete for the currently trustworthy backends: request ownership, conservative identity/output anchor resolution, ambiguous-source fallback, live-source validity, Dock/Bar source hold, popup/Pyramid reuse, frame-ready prompt-host detection, fail-safe renderer handoff, two-gate visual/semantic queue release, fullscreen/native-dialog critical-prompt visibility, Join Edge inheritance, action availability/ID/callback safety, queue/reopen ownership, same-window close deduplication, stale-window rejection, output-hotplug policy, and Polkit focus/security, source-hint scoping, failover, queued-presentation and multi-turn retry behavior.
 
 Still requiring live desktop acceptance:
 

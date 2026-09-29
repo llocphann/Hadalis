@@ -170,6 +170,24 @@ jobs:
                 "      <allow_active>auth_self</allow_active>" \
                 "    </defaults>" \
                 "  </action>" \
+                "  <action id=\"org.hadalis.ci.authenticate.queue-a\">" \
+                "    <description>Authenticate queued Hadalis CI request A</description>" \
+                "    <message>Authentication required for queued Hadalis request A</message>" \
+                "    <defaults>" \
+                "      <allow_any>auth_self</allow_any>" \
+                "      <allow_inactive>auth_self</allow_inactive>" \
+                "      <allow_active>auth_self</allow_active>" \
+                "    </defaults>" \
+                "  </action>" \
+                "  <action id=\"org.hadalis.ci.authenticate.queue-b\">" \
+                "    <description>Authenticate queued Hadalis CI request B</description>" \
+                "    <message>Authentication required for queued Hadalis request B</message>" \
+                "    <defaults>" \
+                "      <allow_any>auth_self</allow_any>" \
+                "      <allow_inactive>auth_self</allow_inactive>" \
+                "      <allow_active>auth_self</allow_active>" \
+                "    </defaults>" \
+                "  </action>" \
                 "</policyconfig>" \
                 | sudo tee "$policy" >/dev/null
 

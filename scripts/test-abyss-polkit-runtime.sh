@@ -65,15 +65,17 @@ ShellRoot {
         return false
     }
 
-    function authCommand(): var {
+    function authCommand(actionId = "org.hadalis.ci.authenticate"): var {
         return [
             "/bin/bash", "-c",
-            "exec /usr/bin/pkcheck --action-id org.hadalis.ci.authenticate --process $$ --allow-user-interaction"
+            "exec /usr/bin/pkcheck --action-id "
+                + actionId
+                + " --process $ --allow-user-interaction"
         ]
     }
 
-    function start(proc): void {
-        proc.command = root.authCommand()
+    function start(proc, actionId = "org.hadalis.ci.authenticate"): void {
+        proc.command = root.authCommand(actionId)
         proc.running = true
     }
 
@@ -345,8 +347,12 @@ ShellRoot {
                 if (!root.check(root.cancelExitCode !== 0,
                         "Cancel aborts the real PolicyKit authorization"))
                     return
-                root.start(queueA)
-                root.start(queueB)
+                // Distinct actions prevent PolicyKit from coalescing two
+                // concurrent checks for the exact same action/subject. That
+                // makes this a deterministic test of PolkitAgent queue
+                // activation rather than authorization-cache behavior.
+                root.start(queueA, "org.hadalis.ci.authenticate.queue-a")
+                root.start(queueB, "org.hadalis.ci.authenticate.queue-b")
                 root.phase = 6
                 return
             }
@@ -360,14 +366,6 @@ ShellRoot {
             }
 
             if (root.phase === 7) {
-                // PolicyKit is allowed to satisfy an overlapping queued request
-                // without another prompt (for example while the same subject's
-                // authorization conversation is still reusable). The AuthFlow
-                // serial still proves PolkitAgent activated the queued request.
-                if (queueA.done && queueB.done) {
-                    root.phase = 8
-                    return
-                }
                 if (root.queuedSuccesses < 1
                         || !PolkitService.active
                         || !PolkitService.canSubmit)

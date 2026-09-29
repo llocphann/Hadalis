@@ -79,6 +79,7 @@ async function resolveComposer(page) {
 }
 
 export async function openHadalisNewChat(page) {
+  await requireIdleComposer(page);
   const button = page.getByRole("button", { name: "New chat in Hadalis Cloud" });
   await semanticClick(button, "Hadalis Cloud new chat");
 
@@ -96,6 +97,16 @@ export async function openHadalisNewChat(page) {
   }
 
   throw new Error("new chat did not become ready");
+}
+
+export async function requireIdleComposer(page) {
+  await verifyProject(page);
+  const composer = await resolveComposer(page);
+  if ((await visibleCount(page.getByRole("button", { name: /stop/i }))) > 0)
+    throw new Error("refusing to rotate while ChatGPT generation is active");
+  if ((await composer.innerText()).trim())
+    throw new Error("refusing to rotate with a non-empty ChatGPT composer");
+  return composer;
 }
 
 async function submissionStarted(page, composer) {
@@ -410,18 +421,7 @@ async function populatePrompt(page, composer, prompt) {
 }
 
 export async function submitPrompt(page, prompt) {
-  await verifyProject(page);
-  const composer = await resolveComposer(page);
-
-  const stopBefore = await visibleCount(
-    page.getByRole("button", { name: /stop/i })
-  );
-  if (stopBefore > 0)
-    throw new Error("refusing to submit while ChatGPT generation is active");
-
-  const composerBefore = (await composer.innerText()).trim();
-  if (composerBefore)
-    throw new Error("refusing to overwrite a non-empty ChatGPT composer");
+  const composer = await requireIdleComposer(page);
 
   await populatePrompt(page, composer, prompt);
 
@@ -506,6 +506,36 @@ async function loopMarkerTokens(page) {
 
 async function loopMarkerCount(page) {
   return (await loopMarkerTokens(page)).length;
+}
+
+export async function managedBaseline(page) {
+  await requireIdleComposer(page);
+  return {
+    markerCount: await loopMarkerCount(page),
+    responseActionCount: await visibleCount(
+      page.getByRole("button", { name: RESPONSE_ACTION })
+    )
+  };
+}
+
+export async function managedPoll(page, baseline) {
+  if (!Number.isInteger(baseline?.responseActionCount) ||
+      baseline.responseActionCount < 0)
+    throw new Error("invalid managed completion baseline");
+  const actions = page.getByRole("button", { name: RESPONSE_ACTION });
+  const count = await visibleCount(actions);
+  const stops = await visibleCount(page.getByRole("button", { name: /stop/i }));
+  if (count <= baseline.responseActionCount || stops !== 0)
+    return { completed: false, responseActionCount: count, generationActive: stops > 0 };
+  await sleep(900);
+  const secondCount = await visibleCount(actions);
+  const secondStops = await visibleCount(page.getByRole("button", { name: /stop/i }));
+  if (secondCount <= baseline.responseActionCount || secondStops !== 0)
+    return { completed: false, responseActionCount: secondCount, generationActive: secondStops > 0 };
+  const response = await extractNearResponseAction(page);
+  if (!response || response.markerCount !== 1)
+    throw new Error("new assistant response has no unique HADALIS_LOOP marker");
+  return { completed: true, response };
 }
 
 export async function waitForCompletion(

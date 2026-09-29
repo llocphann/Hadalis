@@ -86,6 +86,11 @@ def profile_action(action: str, profile_id: str) -> dict:
             item["desired"] = "run"
             item["status"] = "scheduled" if state["owner_id"] != profile_id else "continuing"
             item["next_run_at_unix"] = int(time.time())
+            if action == "resume":
+                item["poll_errors"] = 0
+                item["job_poll_errors"] = 0
+                if item["pending"] is not None:
+                    item["pending"]["poll_after_unix"] = int(time.time())
             if action == "restart":
                 item["request"] = "restart"
             elif action == "start" and state["owner_id"] != profile_id:

@@ -5,6 +5,8 @@ import fs from "node:fs";
 import {
   connectDesktop,
   extractLoopResponse,
+  managedBaseline,
+  managedPoll,
   observeDesktop,
   openHadalisNewChat,
   submitPrompt,
@@ -38,6 +40,32 @@ async function main() {
   if (command === "new-chat") {
     page = await openHadalisNewChat(page);
     writeJson(await observeDesktop(page));
+    return;
+  }
+
+  if (command === "managed-baseline") {
+    writeJson(await managedBaseline(page));
+    return;
+  }
+
+  if (command === "managed-submit") {
+    const expected = Number(process.argv[3]);
+    if (!Number.isInteger(expected) || expected < 0)
+      throw new Error("managed-submit requires a non-negative response baseline");
+    const before = await managedBaseline(page);
+    if (before.responseActionCount !== expected)
+      throw new Error("response baseline changed before submission");
+    const prompt = await readStdin();
+    if (!prompt.trim())
+      throw new Error("stdin prompt is empty");
+    const receipt = await submitPrompt(page, prompt);
+    writeJson({ submitted: true, receipt });
+    return;
+  }
+
+  if (command === "managed-poll") {
+    const expected = Number(process.argv[3]);
+    writeJson(await managedPoll(page, { responseActionCount: expected }));
     return;
   }
 

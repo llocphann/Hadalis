@@ -63,6 +63,8 @@ def profile_state() -> dict:
         "desired": "stopped", "status": "idle", "loop_state": "",
         "iterations": 0, "chat_iterations": 0, "prompts_sent": 0,
         "failures": 0, "poll_errors": 0, "job_id": None,
+        "last_job_id": None, "last_result": "", "run_start_iterations": 0,
+        "job_poll_errors": 0, "next_job_poll_at_unix": None,
         "started_at_unix": None, "chat_started_at_unix": None,
         "last_run_at_unix": None, "next_run_at_unix": None,
         "last_activity_at_unix": None, "last_success": "", "last_error": "",

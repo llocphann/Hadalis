@@ -71,20 +71,25 @@ function _vacancyDirectionAllowed(edge,direction) {
     return true;
 }
 function _vacancyTowardPeer(owner,peer,direction) {
-    if (direction === "top") {
-        if (_vacancyCenter(peer,"y") >= _vacancyCenter(owner,"y")-.01) return 0;
-        return Math.max(0,owner.y-peer.y);
-    }
-    if (direction === "bottom") {
-        if (_vacancyCenter(peer,"y") <= _vacancyCenter(owner,"y")+.01) return 0;
-        return Math.max(0,peer.y+peer.height-(owner.y+owner.height));
-    }
-    if (direction === "left") {
-        if (_vacancyCenter(peer,"x") >= _vacancyCenter(owner,"x")-.01) return 0;
-        return Math.max(0,owner.x-peer.x);
-    }
-    if (_vacancyCenter(peer,"x") <= _vacancyCenter(owner,"x")+.01) return 0;
-    return Math.max(0,peer.x+peer.width-(owner.x+owner.width));
+    // A direction is eligible only when the two final content rectangles are
+    // actually separated on that axis. Center-to-center heuristics are wrong
+    // for side-by-side panels whose vertical centers differ: they can turn a
+    // narrow horizontal vacancy into a near-full-height expansion.
+    var ownerRight=owner.x+owner.width;
+    var ownerBottom=owner.y+owner.height;
+    var peerRight=peer.x+peer.width;
+    var peerBottom=peer.y+peer.height;
+    if (direction === "top")
+        return peerBottom <= owner.y+.01
+            ? Math.max(0,owner.y-peerBottom) : 0;
+    if (direction === "bottom")
+        return peer.y >= ownerBottom-.01
+            ? Math.max(0,peer.y-ownerBottom) : 0;
+    if (direction === "left")
+        return peerRight <= owner.x+.01
+            ? Math.max(0,owner.x-peerRight) : 0;
+    return peer.x >= ownerRight-.01
+        ? Math.max(0,peer.x-ownerRight) : 0;
 }
 function _vacancySafeExtent(panel,bounds,direction) {
     if (direction === "top") return Math.max(0,panel.y-bounds.top);
@@ -162,16 +167,17 @@ function _vacancyMemberForRole(role,metadata,requestById,placements) {
 }
 function _vacancyBestCandidate(owner,peer,placements,width,height,insets,gap) {
     var panel=_vacancyPanelRect(owner.request,owner.placement,width,height,insets);
-    var peerPanel=_vacancyPanelRect(peer.request,peer.placement,width,height,insets);
     var content=_vacancyRect(owner.placement.content);
+    var peerContent=_vacancyRect(peer.placement.content);
     var bounds=_vacancySafeBounds(owner.request,width,height,insets);
     var edge=String(owner.request?.record?.edge ?? "");
     var dirs=["top","bottom","left","right"], best=null;
     for (var i=0;i<dirs.length;i++) {
         var dir=dirs[i];
         if (!_vacancyDirectionAllowed(edge,dir)) continue;
-        var max=Math.min(_vacancyTowardPeer(panel,peerPanel,dir),
-            _vacancySafeExtent(panel,bounds,dir));
+        var peerGap=_vacancyTowardPeer(content,peerContent,dir);
+        if (peerGap < .5) continue;
+        var max=Math.min(peerGap,_vacancySafeExtent(panel,bounds,dir));
         if (max < .5) continue;
         for (var id in placements) {
             if (String(id) === String(owner.id)) continue;
@@ -192,8 +198,14 @@ function _vacancyBestCandidate(owner,peer,placements,width,height,insets,gap) {
         }
         if (collision) continue;
         var gain=max*((dir === "top" || dir === "bottom") ? content.width : content.height);
-        if (!best || gain > best.gain+.01)
-            best={direction:dir,delta:max,content:grown,gain:gain};
+        // The vacancy between semantic peers is their nearest separated side.
+        // For diagonal layouts, prefer that nearest side; only use area gain as
+        // a tie-breaker. This prevents a long vertical detour from winning over
+        // the small horizontal gap visibly connecting two side-by-side panels.
+        if (!best || peerGap < best.peerGap-.01
+                || (Math.abs(peerGap-best.peerGap) <= .01
+                    && gain > best.gain+.01))
+            best={direction:dir,delta:max,content:grown,gain:gain,peerGap:peerGap};
     }
     return best;
 }

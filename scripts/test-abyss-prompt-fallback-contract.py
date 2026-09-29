@@ -26,8 +26,9 @@ assert 'active: root.dialogVisible && Config.options?.panelFamily !== "abyss"' n
 # existing real AuthFlow renderer remains available rather than silently
 # swallowing an authentication request.
 assert "PolkitService.available && PolkitService.active" in polkit
-assert 'Config.options?.panelFamily !== "abyss"' in polkit
-assert '!(Config.options?.enabledPanels ?? []).includes("abyssPerimeter")' in polkit
+assert "!PolkitService.abyssPresenterAvailable" in polkit
+assert 'Config.options?.panelFamily !== "abyss"' not in polkit
+assert '!(Config.options?.enabledPanels ?? []).includes("abyssPerimeter")' not in polkit
 assert 'source: "../../polkit/Polkit.qml"' in critical
 assert 'Config.options?.modules?.polkit ?? true' in critical
 assert 'source: "../polkit/Polkit.qml"' not in deferred

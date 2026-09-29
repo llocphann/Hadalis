@@ -15,8 +15,7 @@ Scope {
         // If the perimeter is disabled, retain the existing renderer instead of
         // owning a Polkit request with no visible authentication surface.
         active: PolkitService.available && PolkitService.active
-            && (Config.options?.panelFamily !== "abyss"
-                || !(Config.options?.enabledPanels ?? []).includes("abyssPerimeter"))
+            && !PolkitService.abyssPresenterAvailable
         sourceComponent: Variants {
             model: Quickshell.screens
             delegate: PanelWindow {

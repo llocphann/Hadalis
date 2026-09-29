@@ -38,10 +38,19 @@ Singleton {
         root.presentationRetained
         && root.presentationSerial > 0
         && root.presentationSerial === root.requestSerial
-    readonly property bool abyssPresenterAvailable:
+    readonly property bool abyssConfigured:
         Config.options?.panelFamily === "abyss"
         && (Config.options?.enabledPanels ?? []).includes("abyssPerimeter")
         && !GlobalStates.screenLocked
+    readonly property bool abyssPresenterAvailable:
+        root.abyssConfigured
+        && root.targetOutputName.length > 0
+        && AbyssPromptHostRegistry.hasOutput(root.targetOutputName)
+
+    function _abyssHostAvailableFor(outputName): bool {
+        return root.abyssConfigured
+            && AbyssPromptHostRegistry.hasOutput(String(outputName ?? ""))
+    }
 
     readonly property string actionId: String(flow?.actionId ?? "")
     readonly property string iconName: String(flow?.iconName ?? "")
@@ -180,6 +189,14 @@ Singleton {
         const hint = root._pendingPresentationHint
         root._pendingPresentationHint = null
         root._latchPresentation(hint)
+        if (!root._abyssHostAvailableFor(root.targetOutputName)) {
+            // The configured perimeter may have failed to instantiate, or the
+            // target output may be between hotplug lifecycles. Leave AuthFlow
+            // active and let the critical legacy renderer own visibility.
+            root.presentationSerial = 0
+            root.presentationRetained = false
+            return
+        }
         root.presentationSerial = root.requestSerial
         root.presentationRetained = true
     }
@@ -197,8 +214,7 @@ Singleton {
         // previous Abyss popup is still visually resident, revoke semantic
         // ownership first and let that popup finish its retract on the old
         // anchor/output. finishPresentation() starts the new visual request.
-        if (root.abyssPresenterAvailable
-                && root.presentationRetained
+        if (root.presentationRetained
                 && root.presentationSerial !== root.requestSerial) {
             root.presentationSerial = 0
             return
@@ -211,23 +227,53 @@ Singleton {
             return
         root.presentationRetained = false
         root.presentationSerial = 0
-        if (restartIfActive && root.active && root.requestSerial > 0
-                && root.abyssPresenterAvailable) {
+        if (restartIfActive && root.active && root.requestSerial > 0) {
             Qt.callLater(() => {
-                if (root.active && !root.presentationRetained
-                        && root.abyssPresenterAvailable)
+                if (root.active && !root.presentationRetained)
                     root._startPresentationForCurrentRequest()
             })
         }
     }
 
     onAbyssPresenterAvailableChanged: {
-        // If Abyss becomes available in the middle of a real AuthFlow, latch
-        // that live request. When it becomes unavailable, the legacy renderer
-        // owns visibility and no new Abyss presentation is started here.
-        if (root.abyssPresenterAvailable && root.active
-                && !root.presentationRetained)
-            root._startPresentationForCurrentRequest()
+        if (!root.active)
+            return
+        if (root.abyssPresenterAvailable) {
+            if (!root.presentationRetained)
+                root._startPresentationForCurrentRequest()
+            return
+        }
+
+        // A live host can disappear even while config still says perimeter is
+        // enabled (QML failure, family teardown, output hotplug). Never leave a
+        // real AuthFlow hidden behind that optimistic configuration state.
+        if (root.presentationRetained) {
+            if (root.hadResolvedAnchor)
+                root._cancelForSourceLoss()
+            else
+                root.finishPresentation(false)
+        }
+    }
+
+    Connections {
+        target: AbyssPromptHostRegistry
+        function onEntriesChanged(): void {
+            // hasOutput() is a function, so explicitly retrigger reconciliation
+            // when the registry mutates instead of relying on binding discovery.
+            if (!root.active)
+                return
+            if (root._abyssHostAvailableFor(root.targetOutputName)) {
+                if (!root.presentationRetained)
+                    root._startPresentationForCurrentRequest()
+                return
+            }
+            if (root.presentationRetained) {
+                if (root.hadResolvedAnchor)
+                    root._cancelForSourceLoss()
+                else
+                    root.finishPresentation(false)
+            }
+        }
     }
 
     function _outputExists(outputName): bool {

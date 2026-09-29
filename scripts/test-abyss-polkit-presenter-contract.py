@@ -25,6 +25,9 @@ assert "root.presentationSerial === root.requestSerial" in service
 assert "function _startPresentationForCurrentRequest(): void" in service
 assert "root.presentationSerial = root.requestSerial" in service
 assert "root.presentationRetained = true" in service
+start_handler=service.split("function _startPresentationForCurrentRequest(): void",1)[1].split("onRequestSerialChanged:",1)[0]
+assert "if (!root._abyssHostAvailableFor(root.targetOutputName))" in start_handler
+assert "root.presentationRetained = false" in start_handler
 assert "function finishPresentation(restartIfActive = true): void" in service
 assert "restartIfActive && root.active" in service
 assert "PolkitService.finishPresentation(false)" in presenter
@@ -36,8 +39,13 @@ serial_gate=service.split("onRequestSerialChanged:",1)[1].split("function finish
 assert "root.presentationRetained" in serial_gate
 assert "root.presentationSerial !== root.requestSerial" in serial_gate
 assert "root.presentationSerial > 0" not in serial_gate
+assert "readonly property bool abyssConfigured:" in service
 assert "root.abyssPresenterAvailable" in service
+assert "AbyssPromptHostRegistry.hasOutput(root.targetOutputName)" in service
+assert "function _abyssHostAvailableFor(outputName): bool" in service
 assert "onAbyssPresenterAvailableChanged" in service
+assert "target: AbyssPromptHostRegistry" in service
+assert "function onEntriesChanged(): void" in service
 assert "function _outputExists(outputName): bool" in service
 assert "function _reconcileOutputTopology(): void" in service
 assert "target: Quickshell" in service

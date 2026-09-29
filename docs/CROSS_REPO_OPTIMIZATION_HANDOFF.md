@@ -6395,4 +6395,432 @@ Closed unsafe shortcut:
 6. one universal normalized identity for all preview/overview surfaces (§38.6).
 
 No runtime/source implementation is authorized by this handoff.
+## 39. Round 25 — thumbnail coordinator, cache-root parity, preview residency and hidden polling
+
+Research baseline was repeatedly re-fetched from `dev`. The final pre-write
+runtime baseline was `4a19fee978be43bd1385832c5f9c2db802ee9935`.
+
+Concurrent commits during this round touched CloseConfirm/Polkit/Abyss prompt
+presentation and related contracts, not the wallpaper thumbnail, WindowPreview,
+TLP or GameMode paths audited below. Those changed-file sets were checked before
+continuing.
+
+### 39.1 Wallpaper batch thumbnail scheduling has a split coordinator — CONFIRMED correctness blocker
+
+Paths:
+
+- `services/Wallpapers.qml`;
+- `modules/common/widgets/ThumbnailImage.qml`;
+- current batch callers in Settings, WallpaperSelector, Coverflow and
+  WallpaperLauncher.
+
+The current batch state is not one state machine:
+
+- `thumbnailGenerationRunning` is only `thumbgenProc.running`;
+- the Python primary process can fall back to `thumbgenFallbackProc`;
+- the fallback is not included in the public busy flag;
+- single-thumbnail work has its own queue/process;
+- `thumbgenDebounce` only checks the primary process.
+
+This creates several concrete races.
+
+**Busy request loss**
+
+`generateThumbnail()` updates `_pendingThumbnailSize` and
+`_pendingThumbnailDir`, then restarts the 300 ms debounce.
+
+When the debounce fires during a primary batch it executes:
+
+`if (thumbgenProc.running) return`
+
+and no primary/fallback exit path re-arms that pending request. A folder or size
+request arriving while the primary is busy can therefore be dropped entirely.
+
+This is reachable through normal UI paths: folder changes, selector/coverflow
+size changes, background Settings pages and explicit library refresh all call
+`generateThumbnail()`.
+
+**Fallback is not busy**
+
+While `thumbgenFallbackProc` is running,
+`thumbnailGenerationRunning === false`.
+
+Consequences include:
+
+- `ThumbnailImage._ensureThumbnail()` may start serial single-thumbnail jobs
+  against outputs the fallback is already generating;
+- WallpaperSelector progress/ready state can report the batch as stopped;
+- WallpaperLauncher `loading` can become false while fallback work is active.
+
+**Fallback borrows mutable primary metadata**
+
+`thumbgenFallbackProc` has no directory/size snapshot of its own. Its exit
+handler emits:
+
+`thumbnailGenerated(thumbgenProc.directory)`.
+
+Because a new primary can start while the fallback is running, the mutable
+`thumbgenProc.directory` may already describe a later request. The fallback can
+therefore finish directory A but emit directory B.
+
+Required coordinator contract before further thumbnail optimization:
+
+1. define one batch-busy state covering primary **and** fallback;
+2. snapshot directory + size onto the active job, including the fallback;
+3. retain/coalesce a pending batch request while busy and drain it after the
+   active primary/fallback chain completes;
+4. make the public `thumbnailGenerationRunning` reflect that coordinator state;
+5. prevent single-thumbnail work from duplicating an active fallback batch;
+6. add a two-directory failure test: primary A -> fallback A, request B while A
+   is active, assert A emits A and B is replayed afterward rather than dropped.
+
+This is primarily a correctness prerequisite, not a percentage optimization.
+
+### 39.2 Single-thumbnail exit code 1 aliases success and tool failure — CONFIRMED correctness/resource bug
+
+Path:
+
+- `services/Wallpapers.qml`.
+
+The serial single-thumbnail shell command intentionally uses:
+
+- exit 0: output already existed;
+- exit 1: `magick` / `ffmpeg` generated the output successfully.
+
+But the external tools' ordinary failure exit can also be 1. The wrapper does
+not remap tool failure to a distinct code.
+
+The QML exit handler currently treats:
+
+- exit 0 or 1 as a valid thumbnail and calls `rememberThumbnail()`;
+- exit 1 as newly generated and emits `thumbnailGeneratedFile()`.
+
+A real ImageMagick/ffmpeg failure with code 1 can therefore be published as a
+successful thumbnail even when the output file does not exist.
+
+For `ThumbnailImage`, this can become repeated churn:
+
+1. false-success signal triggers reload;
+2. known-output lookup supplies the missing path;
+3. `Image.Error` forgets it;
+4. the file test misses;
+5. generation is enqueued again.
+
+Exact-safe repair direction:
+
+- preserve 0 for cache hit if desired;
+- wrap the tool in an explicit `if tool; then ...; else ...; fi` so generated
+  success and tool failure are mapped to different shell exit codes;
+- only remember/emit on the two true-success states;
+- always clear the pending key and drain the queue on failure.
+
+Required test: a fake generator that exits 1 without creating the output must
+never be remembered or emitted as generated.
+
+### 39.3 Freedesktop thumbnail cache root is split under custom XDG cache — CONFIRMED correctness bug
+
+Paths:
+
+- `modules/common/widgets/ThumbnailImage.qml`;
+- `services/Wallpapers.qml`;
+- `scripts/thumbnails/thumbgen.py`;
+- `scripts/thumbnails/generate-thumbnails-magick.sh`.
+
+The code claims these implementations calculate the same thumbnail path, but
+they do not under a custom XDG cache root.
+
+`ThumbnailImage.thumbnailPath` uses:
+
+`Directories.genericCache + "/thumbnails/..."`
+
+while:
+
+- `Wallpapers.getExpectedThumbnailPath()` hard-codes
+  `$HOME/.cache/thumbnails`;
+- `thumbgen.py` uses `~/.cache/thumbnails`;
+- the Magick fallback uses `$HOME/.cache/thumbnails`.
+
+Therefore when `XDG_CACHE_HOME != $HOME/.cache` the visual consumer checks one
+path while all current producers/resolvers can write another.
+
+This can amplify into repeated generation: a generated-file signal arrives, but
+`ThumbnailImage` still cannot find the file at its XDG-aware path.
+
+Lossless repair contract:
+
+1. choose one authoritative cache root;
+2. QML and every helper must receive/use that exact root;
+3. preserve the current Freedesktop URI encoding + md5 + size-directory layout;
+4. test with a temporary `HOME` and a different temporary
+   `XDG_CACHE_HOME`, including a non-ASCII filename;
+5. assert batch Python, Magick fallback, single-thumbnail generation and
+   `ThumbnailImage` all resolve the identical output path.
+
+Prefer passing the authoritative root to helpers rather than independently
+reconstructing it in four places.
+
+### 39.4 Window preview cache has the same XDG split — CONFIRMED correctness bug
+
+Paths:
+
+- `services/WindowPreviewService.qml`;
+- `scripts/capture-windows.sh`;
+- `scripts/capture-windows.fish`.
+
+The QML service uses:
+
+`Directories.genericCache + "/inir/window-previews"`.
+
+The Bash capture helper instead uses:
+
+`$HOME/.cache/inir/window-previews`.
+
+The fish entry point merely execs the Bash helper, so both launch paths share
+the mismatch.
+
+Under a custom `XDG_CACHE_HOME`, the helper can successfully write and print
+`PREVIEW_READY <id>` in the HOME cache while
+`WindowPreviewService._publishCapturedPreview()` records a URL beneath the XDG
+cache root. The published preview path may therefore not exist.
+
+Required repair:
+
+- pass the service's exact `previewDir` to the capture helper, preferably via
+  one explicit environment value/argument;
+- keep a fallback only for supported standalone helper invocation;
+- add an XDG contract test that runs with
+  `XDG_CACHE_HOME != $HOME/.cache` and verifies the file reported by the
+  helper is exactly the file published by the service.
+
+This should be fixed before making deeper WindowPreview cache optimizations.
+
+### 39.5 WindowPreview init can likely remove one helper process per initialization — HIGH CONFIDENCE, failure-contract test required
+
+Path:
+
+- `services/WindowPreviewService.qml`.
+
+Current initialization always runs:
+
+1. `mkdir -p previewDir`;
+2. read the session marker;
+3. then either:
+   - `ls -1 previewDir` for the same session, or
+   - `find previewDir ... -delete` for a new/missing session.
+
+Thus the normal pre-capture initialization uses two process-backed helpers:
+
+- warm same-session: `mkdir + ls`;
+- cold/new-session: `mkdir + find`.
+
+A narrower design can read the session marker first:
+
+- if the marker is valid, its existence already proves the parent directory
+  exists, so proceed directly to the scan;
+- if the marker is missing/mismatched, let the reset helper create the
+  directory and clear old PNGs in one process.
+
+Local process count becomes:
+
+- warm: **2 -> 1**;
+- cold/new session: **2 -> 1**.
+
+Do not mark implementation Confirmed yet because current tests explicitly guard
+the standalone directory-helper startup-failure path. Before changing it, inject
+and compare:
+
+- missing directory;
+- permission-denied directory;
+- helper fails to start;
+- session marker load failure;
+- reset failure;
+- subsequent capture request queued during initialization.
+
+The XDG cache-root bug in §39.4 should be fixed first so this test exercises the
+real authoritative directory.
+
+### 39.6 Removing or releasing WindowPreview's decoded Overview warm cache is CLOSED under the current contract
+
+Paths:
+
+- `services/WindowPreviewService.qml`;
+- `modules/overview/OverviewNiriWidget.qml`;
+- `scripts/test-window-preview-lifecycle.sh`.
+
+The service deliberately keeps up to 12 parentless decoded Images at
+768 x 512 and Overview uses the same decode dimensions.
+
+The lifecycle contract explicitly requires:
+
+`WindowPreviewService.warmForOverview(windowItems.map(record => record.id))`
+
+so decoded previews survive popup teardown and the next Overview presentation
+can reuse the Qt image cache.
+
+Therefore both tempting memory reductions are **not lossless** today:
+
+- do not lazy-create decoded warm Images only after the first Overview open;
+- do not clear them merely because Overview closes.
+
+Either changes first-open/reopen decode latency and is directly contrary to the
+current regression guard.
+
+The nominal upper bound documented in source is about 18 MiB of decoded pixel
+data (12 x 768 x 512 x 4). Reducing the limit/size is a benchmark/product tradeoff,
+not an absolute-lossless optimization.
+
+### 39.7 TLP hidden safety polling has real process cost, but demand-gating is not yet strict-lossless — HIGH CONFIDENCE / freshness parity required
+
+Paths:
+
+- `services/TlpRuntimeCapabilities.qml`;
+- `services/TlpSettingsService.qml`;
+- `modules/settings/TlpPowerSettings.qml`;
+- `modules/waffle/settings/pages/WTlpPage.qml`;
+- `modules/settings/GeneralConfig.qml`.
+
+Both TLP presentation variants already demand-refresh capabilities/settings when
+they become visible.
+
+However the singleton services retain 30-minute safety timers after first
+materialization:
+
+- runtime capability tick starts one GPU shell probe and one RDW shell probe;
+- settings tick starts one config-status helper.
+
+That is at least **3 top-level process launches per 30 minutes**, or:
+
+- **6 per hour**;
+- **144 per 24 hours**
+
+after both singletons have been materialized, excluding subprocesses launched
+inside the GPU/RDW shell probes.
+
+The hidden static `TlpPowerSettings` subtree in `GeneralConfig` can
+materialize these services even when the System page is currently on Audio.
+
+The repository already has a suitable lifecycle primitive,
+`modules/common/widgets/ServiceLease.qml`, with symmetric release on both
+visibility changes and component destruction.
+
+Nevertheless, simply gating the 30-minute timers on visible UI is **not**
+strict-lossless under this project's freshness rule.
+
+Counterexample:
+
+1. TLP page becomes hidden for longer than 30 minutes;
+2. firmware/TLP/runtime capability changes externally;
+3. current code may have a fresh snapshot from the background safety tick;
+4. a demand-gated version refreshes only when the page becomes visible;
+5. because refresh is asynchronous, the first visible frame can briefly show
+   an older snapshot.
+
+Thus keep this as a parity/benchmark candidate. Promotion requires an explicit
+first-visible freshness contract, not just proof that the page calls
+`refresh()` on open.
+
+### 39.8 GameMode 10-second fallback rereads cached Niri state; event-complete replacement is attractive but not strict-lossless yet
+
+Paths:
+
+- `services/GameMode.qml`;
+- `services/NiriService.qml`.
+
+GameMode's fallback timer does not query the compositor. It merely schedules
+`_doCheckFullscreen()`, which rereads `NiriService.windows/workspaces/outputs`.
+
+NiriService already republishes those inputs on its event stream:
+
+- window list/layout changes are batched then assigned to `windows`;
+- workspace updates assign a new `workspaces` map;
+- output updates assign a new `outputs` map.
+
+GameMode currently listens to only:
+
+- `activeWindowChanged`;
+- `windowsChanged`.
+
+It does not listen to workspace/output changes even though
+`isWindowFullscreen()` and `hasVisibleFullscreenWindow` depend on them.
+
+So a fully event-complete implementation is plausible and the 10-second scan is
+not a true self-healing compositor poll.
+
+However replacing the timer with workspace/output handlers changes timing.
+Today stale `_autoActive` can be cleared on the next periodic phase, anywhere
+from roughly 0 to 10 seconds later. An event handler would generally clear it
+after the 300 ms debounce.
+
+That timing difference is outside absolute-lossless scope.
+
+Safe next experiments:
+
+- add instrumentation for which fallback ticks actually change
+  `_autoActive/_focusedIsFullscreen`;
+- test workspace-only fullscreen enter/leave, output hotplug and transient
+  WindowLayoutsChanged-before-workspace ordering;
+- only then decide whether to retain the timer as sparse safety, guard proven
+  no-op states, or replace it with event-complete derivation.
+
+The default interval is 10 seconds, so a normal Niri session currently schedules
+up to 360 fallback checks per hour. Do not claim all are removable until the
+timing contract is resolved.
+
+### 39.9 Skew wallpaper color analysis decodes every frame of animated images although only the first result is consumed — HIGH CONFIDENCE, malformed-file parity required
+
+Path:
+
+- `modules/wallpaperSelector/WallpaperSkewView.qml`.
+
+The color analyzer skips videos but invokes ImageMagick on image paths without a
+frame selector:
+
+`convert <path> -resize 1x1! -colorspace HSL -format ... info:`
+
+For animated GIF/WebP/other multi-frame images this can decode/process multiple
+frames.
+
+The parser, however, ultimately consumes only the first three numeric fields for
+a filename. Extra frame output does not contribute to the stored hue/saturation
+bucket.
+
+That makes a first-frame selector such as `[0]` a strong CPU/I/O candidate,
+consistent with the thumbnail generator's existing first-frame treatment.
+
+Do not call it strict-lossless yet. A partially corrupt animation whose first
+frame is valid but a later frame fails can have different command exit/output
+behavior when only frame 0 is decoded.
+
+Required parity set:
+
+- valid single-frame image;
+- valid animated GIF;
+- valid animated WebP if supported by installed ImageMagick;
+- truncated/corrupt later frame;
+- filenames with shell-sensitive and non-ASCII characters.
+
+For valid animations, benchmark total decode CPU/read bytes before and after.
+
+### 39.10 Round-25 priority update
+
+**Correctness blockers to fix before deeper thumbnail/preview optimization:**
+
+1. unify thumbnail primary/fallback/pending coordinator state (§39.1);
+2. separate single-thumbnail generated-success from tool failure (§39.2);
+3. unify Freedesktop thumbnail cache root under custom XDG (§39.3);
+4. unify WindowPreview service/helper cache root under custom XDG (§39.4).
+
+**Performance candidates requiring parity/failure proof:**
+
+5. WindowPreview initialization helper **2 -> 1** (§39.5);
+6. TLP hidden safety polling demand/freshness design (§39.7);
+7. GameMode event-complete fallback redesign (§39.8);
+8. Skew animated-image first-frame color analysis (§39.9).
+
+**Closed under the current lossless contract:**
+
+9. dropping/lazying the resident decoded WindowPreview Overview warm cache
+   (§39.6).
+
+No runtime/source implementation is authorized by this handoff.
 

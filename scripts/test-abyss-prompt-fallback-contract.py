@@ -18,6 +18,10 @@ assert 'Config.options?.panelFamily === "abyss"' in close
 assert 'includes("abyssPerimeter")' in close
 assert "function _abyssPresenterAvailableFor(outputName): bool" in close
 assert "AbyssPromptHostRegistry.hasOutput" in close
+process=close.split("function processWindow(win): void",1)[1].split("function _cancelIfTargetGone",1)[0]
+assert "if (root.abyssConfigured)" in process
+assert "ConfirmationService.enqueue({" in process
+assert "root._abyssPresenterAvailableFor(outputName)" not in process
 assert "property int _standaloneTransferredRequestId: 0" in close
 assert "function _showStandaloneForRequest(request): void" in close
 assert "cached ?? {" in close

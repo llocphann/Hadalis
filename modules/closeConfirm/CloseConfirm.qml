@@ -193,11 +193,15 @@ Scope {
         }
 
         const outputName = root._outputNameForWindow(snapshot)
-        if (root._abyssPresenterAvailableFor(outputName)) {
+        if (root.abyssConfigured) {
             const windowId = Number(snapshot?.id ?? 0)
+            // All Abyss-family close confirmations enter one semantic queue,
+            // even when the connected host is temporarily unavailable. The
+            // activation handler hands such requests to the standalone renderer
+            // without letting them overlap a connected/queued successor.
             // Repeated close binds for the same window must not create a second
             // prompt/callback transaction while the first is visible, queued,
-            // or still retracting. Different windows may still queue normally.
+            // transferred to standalone, or still retracting.
             if (root._hasPendingAbyssRequest(windowId))
                 return
             const appId = String(snapshot?.app_id ?? "")

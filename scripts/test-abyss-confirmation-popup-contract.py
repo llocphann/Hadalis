@@ -121,7 +121,10 @@ for handler in ("function confirmClose(): void", "function cancel(): void"):
 assert "onAbyssConfiguredChanged:" in close
 assert "target: AbyssPromptHostRegistry" in close
 assert "function onEntriesChanged(): void" in close
-assert "if (root._abyssPresenterAvailableFor(outputName))" in close
+assert "if (root.abyssConfigured)" in close
+process=close.split("function processWindow(win): void",1)[1].split("function _cancelIfTargetGone",1)[0]
+assert "ConfirmationService.enqueue({" in process
+assert "root._abyssPresenterAvailableFor(outputName)" not in process
 assert "active: root.dialogVisible" in close
 
 # Queue content remains latched until the popup visual tail is gone.

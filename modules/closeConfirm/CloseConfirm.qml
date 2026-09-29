@@ -244,9 +244,15 @@ Scope {
 
     function _cancelIfTargetGone(): void {
         const request = ConfirmationService.currentRequest
-        if (!ConfirmationService.requestVisible
-                || String(request?.owner ?? "") !== "closeConfirm")
+        if (String(request?.owner ?? "") !== "closeConfirm")
             return
+        const requestId = Number(request?._requestId ?? 0)
+        const transferred =
+            root._standaloneTransferredRequestId > 0
+            && root._standaloneTransferredRequestId === requestId
+        if (!ConfirmationService.requestVisible && !transferred)
+            return
+
         const windowId = Number(request?.sourceWindowId ?? 0)
         if (windowId <= 0 || !NiriService.windowListReady)
             return
@@ -260,8 +266,20 @@ Scope {
             return
         const stillExists = (NiriService.windows ?? []).some(candidate =>
             Number(candidate?.id ?? 0) === windowId)
-        if (!stillExists)
-            ConfirmationService.cancel()
+        if (stillExists)
+            return
+
+        if (transferred) {
+            // The standalone handoff is still the same semantic request. If its
+            // captured window vanished, dismiss it and release the retained queue
+            // slot rather than offering a stale close action.
+            root.dialogVisible = false
+            root.targetWindow = null
+            root.dialogScreen = null
+            root._finishStandaloneTransfer()
+            return
+        }
+        ConfirmationService.cancel()
     }
 
     Connections {

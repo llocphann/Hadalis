@@ -77,7 +77,13 @@ assert "sourceWindowRevision: root._windowListRevision" in close
 assert "snapshot._observedInWindowList = true" in close
 assert "property int _windowListRevision: 0" in close
 assert "function _cancelIfTargetGone(): void" in close
-assert "if (!observed && root._windowListRevision <= requestRevision)" in close
+gone=close.split("function _cancelIfTargetGone(): void",1)[1].split("Connections {",1)[0]
+assert "root._standaloneTransferredRequestId === requestId" in gone
+assert "!ConfirmationService.requestVisible && !transferred" in gone
+assert "if (!observed && root._windowListRevision <= requestRevision)" in gone
+assert "if (transferred)" in gone
+assert "root._finishStandaloneTransfer()" in gone
+assert "ConfirmationService.cancel()" in gone
 assert "root._windowListRevision += 1" in close
 assert "NiriService.windowListReady" in close
 assert "Number(candidate?.id ?? 0) === windowId" in close

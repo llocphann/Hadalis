@@ -153,7 +153,7 @@ jobs:
 
               # machinectl shell creates the real logind session required by
               # PolkitAgent; a plain CI subprocess has no session subject.
-              sudo machinectl shell "$ci_user@.host" \
+              timeout 90s sudo machinectl shell "$ci_user@.host" \
                 /usr/bin/env \
                 "PATH=$PATH" \
                 "HADALIS_POLKIT_CI_TOKEN=$ci_token" \

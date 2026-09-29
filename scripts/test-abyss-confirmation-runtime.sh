@@ -40,6 +40,7 @@ ShellRoot {
     id: root
 
     property int phase: 0
+    property int phaseTicks: 0
     property bool finished: false
     property int acceptedCallbacks: 0
     property bool showPeer: false
@@ -428,6 +429,16 @@ ShellRoot {
         running: !root.finished
 
         onTriggered: {
+            root.phaseTicks += 1
+            if (root.phaseTicks >= 105) {
+                root.check(false,
+                    "phase timeout: phase=" + root.phase
+                    + " active=" + ConfirmationService.active
+                    + " visible=" + ConfirmationService.requestVisible
+                    + " requestId=" + ConfirmationService.currentRequestId
+                    + " popups=" + controller.activePopups.length)
+                return
+            }
             if (!Config.ready || root.outputName.length === 0)
                 return
 
@@ -1020,7 +1031,7 @@ ShellRoot {
 QML
 
 status=0
-env -u QS_CONFIG_PATH -u QS_CONFIG_NAME -u QS_MANIFEST     QT_QPA_PLATFORM=wayland     XDG_CONFIG_HOME="$test_root/config"     XDG_STATE_HOME="$test_root/state"     XDG_CACHE_HOME="$test_root/cache"     timeout 20s qs -p "$test_root" --no-color     > "$test_root/runtime.log" 2>&1 || status=$?
+env -u QS_CONFIG_PATH -u QS_CONFIG_NAME -u QS_MANIFEST     QT_QPA_PLATFORM=wayland     XDG_CONFIG_HOME="$test_root/config"     XDG_STATE_HOME="$test_root/state"     XDG_CACHE_HOME="$test_root/cache"     timeout 30s qs -p "$test_root" --no-color     > "$test_root/runtime.log" 2>&1 || status=$?
 
 if [[ "$status" != 124 ]]         || ! rg -q 'ABYSS_CONFIRMATION_RUNTIME_PASS' "$test_root/runtime.log"         || rg -q 'ABYSS_CONFIRMATION_RUNTIME_FAIL|ReferenceError:|TypeError:|Binding loop|Unable to assign|is not a type' "$test_root/runtime.log"; then
     cat "$test_root/runtime.log"

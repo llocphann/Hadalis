@@ -208,7 +208,7 @@ def bootstrap_payload() -> dict[str, Any] | None:
 
     if previous is None:
         save_state(BridgeState.READY)
-        return desktop("send", initial_prompt())
+        return desktop("rotate-send", initial_prompt())
 
     state, job_id = previous
 

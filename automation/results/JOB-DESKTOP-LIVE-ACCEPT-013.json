@@ -1,0 +1,83 @@
+{
+  "actions": [
+    {
+      "argv": [
+        "node",
+        "--check",
+        "automation/chat_bridge/desktop_driver.mjs"
+      ],
+      "cwd": ".",
+      "exit_code": 0,
+      "index": 0,
+      "stderr": "",
+      "stderr_truncated": false,
+      "stdout": "",
+      "stdout_truncated": false,
+      "timed_out": false
+    },
+    {
+      "argv": [
+        "node",
+        "--check",
+        "automation/chat_bridge/desktop_cli.mjs"
+      ],
+      "cwd": ".",
+      "exit_code": 0,
+      "index": 1,
+      "stderr": "",
+      "stderr_truncated": false,
+      "stdout": "",
+      "stdout_truncated": false,
+      "timed_out": false
+    },
+    {
+      "argv": [
+        "node",
+        "--check",
+        "scripts/test-hadalis-live-transport.mjs"
+      ],
+      "cwd": ".",
+      "exit_code": 0,
+      "index": 2,
+      "stderr": "",
+      "stderr_truncated": false,
+      "stdout": "",
+      "stdout_truncated": false,
+      "timed_out": false
+    },
+    {
+      "argv": [
+        "node",
+        "scripts/test-hadalis-desktop-marker-scan.mjs"
+      ],
+      "cwd": ".",
+      "exit_code": 0,
+      "index": 3,
+      "stderr": "",
+      "stderr_truncated": false,
+      "stdout": "PASS: desktop loop-marker token scanner\n",
+      "stdout_truncated": false,
+      "timed_out": false
+    },
+    {
+      "argv": [
+        "node",
+        "scripts/test-hadalis-live-transport.mjs"
+      ],
+      "cwd": ".",
+      "exit_code": 0,
+      "index": 4,
+      "stderr": "",
+      "stderr_truncated": false,
+      "stdout": "{\"passed\":true,\"generation\":{\"completed\":true,\"baselineMarkerCount\":9,\"markerCount\":10,\"baselineResponseActionCount\":19,\"responseActionCount\":15,\"completionSignal\":\"loop-marker\"},\"marker\":\"HADALIS_LOOP:DONE\"}\n",
+      "stdout_truncated": false,
+      "timed_out": false
+    }
+  ],
+  "base_sha": "d7d700ed4932a0c1b62007fe7a900cc1a39e0f6f",
+  "finished_at_unix": 1790719204,
+  "job": "JOB-DESKTOP-LIVE-ACCEPT-013",
+  "job_commit": "0e5e8e85395c5d6f273d76bb15584af064638da0",
+  "started_at_unix": 1790719170,
+  "status": "passed"
+}

@@ -63,6 +63,7 @@ def main() -> None:
 
     expect_protocol_error("")
     expect_protocol_error("HADALIS_LOOP:WAIT_RESULT")
+    expect_protocol_error("HADALIS_LOOP:WAIT_RESULT ../../escape")
     expect_protocol_error("HADALIS_LOOP:CONTINUE unexpected")
     expect_protocol_error("HADALIS_LOOP:CONNECTOR_BLOCKED OTHER")
     expect_protocol_error("HADALIS_LOOP:CONTINUE\nHADALIS_LOOP:DONE")

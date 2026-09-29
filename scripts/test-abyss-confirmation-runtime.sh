@@ -53,6 +53,8 @@ ShellRoot {
     property int lifecycleOnCancelCallbacks: 0
     property int handoffFirstId: 0
     property int handoffSecondId: 0
+    property int handoffAcceptCallbacks: 0
+    property string handoffResolvedAction: ""
     readonly property string outputName:
         String(window.screen?.name ?? "")
 
@@ -157,6 +159,27 @@ ShellRoot {
                     role: "default",
                     isDefault: true,
                     callback: () => root.duplicateSecondCallbacks += 1
+                }
+            ]
+        })
+    }
+
+    function requestHandoffFirst(): int {
+        return ConfirmationService.enqueue({
+            owner: "runtime-test",
+            appId: "handoff.runtime.app",
+            outputName: root.outputName,
+            title: "Fallback handoff first",
+            message: "Renderer transfer must preserve the original action.",
+            onResolved: actionId => root.handoffResolvedAction = actionId,
+            actions: [
+                { id: "cancel", label: "Cancel", role: "cancel", isCancel: true },
+                {
+                    id: "accept",
+                    label: "Accept",
+                    role: "default",
+                    isDefault: true,
+                    callback: () => root.handoffAcceptCallbacks += 1
                 }
             ]
         })
@@ -915,8 +938,7 @@ ShellRoot {
                         "source loss cancels request without invoking disabled action callback"))
                     return
                 sourceAnchor.visible = true
-                root.handoffFirstId = root.requestApp(
-                    "handoff.runtime.app", "Fallback handoff first")
+                root.handoffFirstId = root.requestHandoffFirst()
                 root.handoffSecondId = root.requestApp(
                     "handoff.runtime.app", "Fallback handoff second")
                 root.phase = 40
@@ -931,11 +953,15 @@ ShellRoot {
                         || !controller.activePopup.presentationActive)
                     return
                 if (!root.check(
-                        ConfirmationService.holdPresentationRelease(
+                        ConfirmationService.beginPresentationHandoff(
                             root.handoffFirstId),
-                        "renderer handoff can acquire semantic release hold"))
+                        "renderer handoff can transfer presentation without resolving semantics"))
                     return
-                ConfirmationService.cancel(true)
+                if (!root.check(
+                        root.handoffResolvedAction === ""
+                        && root.handoffAcceptCallbacks === 0,
+                        "presentation handoff does not emit a fake cancel/accept resolution"))
+                    return
                 root.phase = 41
                 return
             }
@@ -953,8 +979,11 @@ ShellRoot {
                             === root.handoffSecondId,
                         "visual tail release cannot advance queue while handoff owns semantic hold"))
                     return
-                ConfirmationService.releasePresentationHold(
-                    root.handoffFirstId)
+                if (!root.check(
+                        ConfirmationService.resolvePresentationHandoff(
+                            root.handoffFirstId, "accept"),
+                        "standalone handoff resolves the original queued action"))
+                    return
                 root.phase = 42
                 return
             }
@@ -967,6 +996,11 @@ ShellRoot {
                 if (!root.check(
                         ConfirmationService.queue.length === 0,
                         "queued successor activates only after handoff semantic release"))
+                    return
+                if (!root.check(
+                        root.handoffResolvedAction === "accept"
+                        && root.handoffAcceptCallbacks === 1,
+                        "renderer handoff preserves the original action callback and resolution"))
                     return
                 ConfirmationService.cancel()
                 root.phase = 43
@@ -992,4 +1026,4 @@ if [[ "$status" != 124 ]]         || ! rg -q 'ABYSS_CONFIRMATION_RUNTIME_PASS' "
     exit 1
 fi
 
-printf 'PASS: confirmation callbacks, content-fit, four-edge attachment, Join Edge inheritance, tray/dock routing, ambiguous-source fallback, normalized action IDs, lifecycle cancellation semantics, renderer-handoff queue gating, top-center fallback, source loss, peer reflow, same-source related-popup reflow, queue/reopen, hidden-resident fallback and live-anchor invalidation\n'
+printf 'PASS: confirmation callbacks, content-fit, four-edge attachment, Join Edge inheritance, tray/dock routing, ambiguous-source fallback, normalized action IDs, lifecycle cancellation semantics, renderer-handoff action semantics/queue gating, top-center fallback, source loss, peer reflow, same-source related-popup reflow, queue/reopen, hidden-resident fallback and live-anchor invalidation\n'

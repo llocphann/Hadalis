@@ -57,6 +57,19 @@ Singleton {
         return root._validItem(item)
     }
 
+    function _activeSourcePopup(item): var {
+        const liquidAnchor = root._liquidAnchorFor(item)
+        const controller = liquidAnchor?.liquidController ?? null
+        const entries = controller?.popupEntries ?? []
+        for (const entry of entries) {
+            const popup = entry?.popup ?? null
+            if (popup?.presentationActive === true
+                    && popup?.hoverTarget === item)
+                return popup
+        }
+        return null
+    }
+
     function _validItem(item): bool {
         const window = root._windowFor(item)
         const liquidAnchor = root._liquidAnchorFor(item)
@@ -158,6 +171,12 @@ Singleton {
         let ambiguousBest = false
         for (const entry of root.entries) {
             if (!root._validItem(entry?.item))
+                continue
+            // Implicit app matching is used only when that exact app source
+            // currently owns a visible hover/popup. Otherwise Confirmation
+            // falls back to the centered Screen Edge like Volume/Brightness.
+            // Explicit anchorItem requests remain authoritative above.
+            if (root._activeSourcePopup(entry.item) === null)
                 continue
             let identityScore = 0
             for (const candidate of wanted) {

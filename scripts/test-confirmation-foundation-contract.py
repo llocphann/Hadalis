@@ -16,6 +16,11 @@ assert "singleton PopupAnchorRegistry 1.0 PopupAnchorRegistry.qml" in qmdir
 assert "function _liquidAnchorFor(item): var" in registry
 assert "function isUsable(item): bool" in registry
 assert "return root._validItem(item)" in registry
+assert "function _activeSourcePopup(item): var" in registry
+assert "controller?.popupEntries ?? []" in registry
+assert "popup?.presentationActive === true" in registry
+assert "popup?.hoverTarget === item" in registry
+assert "root._activeSourcePopup(entry.item) === null" in registry
 assert "function _treeVisibleAndEnabled(item): bool" in registry
 assert "function _liquidAnchorPresented(anchor): bool" in registry
 assert "anchor.visualResident !== undefined" in registry

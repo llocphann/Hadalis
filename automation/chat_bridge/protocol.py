@@ -11,67 +11,69 @@ BRANCH = "dev"
 CONTINUATION_PROMPT = f"""\
 {GITHUB_MENTION}
 
-Continue Hadalis autonomously.
+Continue Hadalis strict-lossless optimization research autonomously.
 
-GitHub repository:
-- repo: {REPOSITORY}
-- branch: {BRANCH}
+Repository: {REPOSITORY}
+Branch: {BRANCH}
 
-GitHub is the authoritative remote source of truth.
+GitHub is the authoritative source of truth.
 
 At the start of this turn:
-1. Use the GitHub connector explicitly.
-2. Verify that the connector is available and can access {REPOSITORY}.
-3. Fetch the current {BRANCH} HEAD. Do not rely on a HEAD remembered from a previous turn.
-4. Read the current repository state required for the next reasoning step.
-5. Read the newest local execution result if one exists.
-6. Continue from agent/WORK.md and agent/SESSION.md when those files exist.
+1. Explicitly use the GitHub connector and verify access to {REPOSITORY}.
+2. Fetch the CURRENT {BRANCH} HEAD; never rely on a remembered SHA.
+3. Read AGENTS.md and the newest tail of docs/CROSS_REPO_OPTIMIZATION_HANDOFF.md.
+4. Read the newest local execution result when this turn follows WAIT_RESULT.
+5. Audit intervening commits since the newest research checkpoint.
+6. Search the handoff before promoting any candidate.
+7. Continue the next highest-value STRICT-LOSSLESS optimization research step.
 
-ChatGPT is the ONLY reasoning agent.
-The local worker must only execute explicit deterministic jobs.
+Research only unless the user explicitly authorizes implementation.
+Do not modify runtime/product code.
+Only docs/CROSS_REPO_OPTIMIZATION_HANDOFF.md may be updated for research findings.
+
+Do not stop after one round. If a round is complete, re-fetch HEAD and continue into the next unexplored area.
+
+Use exactly one loop directive:
+- WAIT_RESULT only for one explicit deterministic local job;
+- CONTINUE when research can proceed now;
+- ROTATE before context rollover after persisting the exact research checkpoint;
+- CONNECTOR_BLOCKED GITHUB if the connector is unavailable.
+
+The DONE directive is reserved only for an explicit user request to stop/disable continuous research. Do not use DONE just because a round finished or no obvious candidate was found.
 
 Do not ask the user to type "continue".
-Perform the next reasoning step now.
-
-If the GitHub connector is unavailable, expired, disconnected, or lacks access:
-- do not substitute web search,
-- do not guess repository state,
-- do not continue development from stale repository context,
-- emit exactly:
-
-HADALIS_LOOP:CONNECTOR_BLOCKED GITHUB
+Perform the next research step now.
 """
 
 ROTATION_BOOTSTRAP_PROMPT = f"""\
 {GITHUB_MENTION}
 
-Continue the autonomous Hadalis development session.
+Resume continuous Hadalis strict-lossless optimization research.
 
-Repository:
-{REPOSITORY}
-Branch:
-{BRANCH}
+Repository: {REPOSITORY}
+Branch: {BRANCH}
 
-The repository is the durable source of truth.
-
-First verify GitHub connector access and fetch the current {BRANCH} HEAD.
-
-Then read, when present:
+First verify GitHub connector access and fetch the CURRENT {BRANCH} HEAD.
+Then read:
 1. AGENTS.md
-2. agent/README.md
-3. agent/CONTEXT.md
-4. agent/WORK.md
-5. agent/SESSION.md
+2. docs/CROSS_REPO_OPTIMIZATION_HANDOFF.md, especially its newest tail
+3. the newest research commit and all intervening commits
 
-Resume exactly from the recorded checkpoint.
+Resume exactly from the durable handoff checkpoint.
+Research only unless the user explicitly authorized implementation.
+Do not modify runtime/product code.
+Search the handoff for duplicate/already/superseded/closed findings before promotion.
 
-ChatGPT is the ONLY reasoning agent.
-Do not ask the user to continue.
+Continue automatically across research rounds. Use CONTINUE for more research, WAIT_RESULT for one deterministic local job, and ROTATE again before context rollover.
+The DONE directive is reserved only for an explicit user request to stop/disable continuous research.
 
-If GitHub connector access is unavailable, do not use stale repo state and emit:
-
+If GitHub connector access is unavailable, emit exactly:
 HADALIS_LOOP:CONNECTOR_BLOCKED GITHUB
+
+Do not ask the user to continue.
+Perform the next research step now.
 """
+
 
 
 class DirectiveKind(str, Enum):

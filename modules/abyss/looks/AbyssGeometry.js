@@ -76,8 +76,12 @@ function placedPanel(width,height,insets,edge,along,span,depth,progress,padding,
         ? height-insets.top-insets.bottom
         : width-insets.left-insets.right);
     placedInward=clamp(placedInward,0,crossExtent);
-    placedDepth=clamp(placedDepth,0,
-        Math.max(0,crossExtent-placedInward));
+    // Content/input safety is enforced by the allocator/resolver. Do not
+    // subtract inward from the panel depth here: legacy resting placements may
+    // legitimately carry their padding beyond the inner safe-content bound,
+    // and doing so changes inactive geometry. Depth itself still cannot exceed
+    // one full output cross-axis.
+    placedDepth=clamp(placedDepth,0,crossExtent);
 
     var reveal=clamp(progress,0,1.035);
     var currentDepth=placedDepth*reveal;

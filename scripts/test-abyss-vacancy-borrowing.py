@@ -314,6 +314,23 @@ for(const p of Object.values(run.resolved)) {
     assert(p.content.y+p.content.height<=480.25-IN.bottom+.01);
 }
 
+// P: inactive/resting geometry must remain exact even for a large surface on
+// a deep inward tier. This is a legacy allocator shape where panel padding may
+// extend beyond the inner content-safe cross bound while content/input remains
+// safely inside the viewport.
+const legacyInward={
+    visible:true,evicted:false,along:216,inward:718.75,
+    span:520.5,depth:132.44,shrunk:true,
+    content:{x:224.5,y:766.75,width:503.5,height:115.44}
+};
+const legacyRecord=placedPanel(1200,900,
+    {left:11.5,right:17.25,top:39.5,bottom:13.75},
+    "top",216,520.5,150.5,1,8.5,[],true,legacyInward);
+sameRect(legacyRecord.content,legacyInward.content,
+    "inactive large-surface inward geometry");
+approx(legacyRecord.targetDepth,851.19,
+    "inactive large-surface target depth");
+
 // M: output locality is structural: a controller passes only its own participant set.
 feature.meta.hovered=true;feature.meta.hoverOrder=70;
 let firstOutput=resolveMembers([feature,notes]);

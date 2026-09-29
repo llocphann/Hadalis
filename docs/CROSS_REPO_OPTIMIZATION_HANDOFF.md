@@ -5108,6 +5108,8 @@ No runtime implementation is authorized by this handoff.
 
 ## 35. Audit round 21 — prompt multi-output reactivity and Config fan-out refinement (2026-09-29)
 
+> **Historical / retired runtime:** the Abyss Confirmation, prompt-anchor, Polkit-in-Abyss and semantic-vacancy experiments discussed in the prompt-related subsections below were removed from active runtime by `7d787fbf97da3dd5992fa9a41978643131da2994`. Preserve these findings only as historical research; see [the retired-experiments archive](archive/ABYSS_RUNTIME_EXPERIMENTS_2026-09-29.md).
+
 This round is documentation/research only. No runtime/source implementation is authorized.
 
 ### Snapshot and runtime delta
@@ -5121,7 +5123,7 @@ The strict rule remains: preserving visible output is not enough. A candidate is
 
 ### 35.1 Confirmation prompt payload is propagated into one full content tree per output although only one output can present — CONFIRMED hidden-work duplication / P2 multi-monitor
 
-`AbyssPerimeter.qml` creates one `AbyssConfirmationPresenter` inside every output-local PanelWindow.
+At the time of this audit, `AbyssPerimeter.qml` created one retired Abyss Confirmation presenter inside every output-local PanelWindow.
 
 Each presenter correctly computes a single-output ownership condition:
 
@@ -5540,11 +5542,11 @@ do not remain materialized after the connected popup is fully closed.
 
 Do not create a generic “lazy all StyledPopup content” refactor based on the Bar preview finding. The existing Overview path demonstrates that lifecycle must be chosen per content contract.
 
-### 36.4 PopupAnchorRegistry does not currently justify a performance rewrite — CLOSED false positive / correctness-sensitive
+### 36.4 PopupAnchorRegistry performance finding — RETIRED / HISTORICAL
 
-Current `PopupAnchorRegistry` remains a small runtime list resolved only when an attached prompt needs an anchor.
+The PopupAnchorRegistry experiment was removed from active runtime with the Confirmation retirement. The analysis below records why a generic pruning/index rewrite was not justified while that experiment existed; it is not an active optimization target.
 
-The current source now also exposes:
+At the time, the source also exposed:
 
 `isUsable(item)`
 
@@ -5603,7 +5605,6 @@ Those delegates retain:
 
 - icon/UI objects;
 - menu wiring;
-- PopupAnchorRegistry registrations;
 - item bindings.
 
 A Loader could release them when the overflow is fully closed, but this is not yet strict-lossless because current retained delegates make the first/repeated overflow open immediate and keep item/menu state warm.
@@ -5643,7 +5644,7 @@ Measurement-only follow-ups:
 
 Closed/avoid:
 
-4. no generic PopupAnchorRegistry pruning/index rewrite;
+4. PopupAnchorRegistry pruning/index work is retired with the Confirmation experiment;
 5. no generic D-Bus centralization based only on multiple QML consumers;
 6. no generic lazy-loading of all StyledPopup content.
 
@@ -7514,7 +7515,7 @@ No runtime/source implementation is authorized by this handoff.
 The final pre-write runtime baseline was
 `fd01e20c9a805f51bdd7ca245ccce363dd4bf682`.
 
-One additional concurrent commit, `6f7f706d6a905aac106c54fe4b21762dac24d6df`, landed between the final pre-write fetch and the docs write and therefore became the actual parent of the Round-27 handoff commit. Its changed-file set was audited immediately afterward and was limited to `modules/abyss/content/AbyssConfirmationContent.qml` plus its confirmation contract test; it did not touch any Round-27 research path.
+One additional concurrent commit, `6f7f706d6a905aac106c54fe4b21762dac24d6df`, landed between the final pre-write fetch and the docs write and therefore became the actual parent of the Round-27 handoff commit. Its changed-file set was audited immediately afterward and was limited to the now-retired Abyss confirmation content component plus its confirmation contract test; it did not touch any Round-27 research path.
 
 `dev` moved during this round, but every concurrent delta was audited before
 continuing. The commits after the initial Round-27 baseline touched
@@ -9020,7 +9021,8 @@ Round-28 confirmed helper/process reductions remain valid. No runtime/source imp
 - Since Round 29 (`48353bc52624d9625672c19f1fa06bd5be39b0a7`), concurrent work did two relevant things:
   - `d7d7f0c1f58e3884633bca32496a64e299f5f857` updated this handoff to close the obsolete Abyss-Polkit optimization after the Polkit revert;
   - `95d5729e0678767f0c87f73514a519b5a8b27ebe` changed Abyss vacancy-hover ownership/runtime tests.
-- Neither concurrent commit changes `scripts/capture-windows.sh`, Waffle taskbar files, `TaskbarApps.qml`, WindowPreviewService, or NiriService.
+- Neither concurrent commit changed `scripts/capture-windows.sh`, Waffle taskbar files, `TaskbarApps.qml`, WindowPreviewService, or NiriService.
+- The Abyss vacancy-hover runtime mentioned here was later retired by `7d787fbf97da3dd5992fa9a41978643131da2994`; keep this snapshot note only as historical context.
 - The Round-29 WindowPreview findings remain present in the reconciled handoff.
 
 ### 44.1 Failed refreshes can put a stale old PNG hash into the current capture's cleanup set — CONFIRMED correctness bug / prerequisite
@@ -9560,6 +9562,7 @@ No runtime/source implementation is authorized by this handoff.
   - \`scripts/test-abyss-vacancy-borrowing.py\`.
 - It does not touch \`NiriService.qml\`, \`CompositorService.qml\`,
   \`TaskbarApps.qml\`, WindowPreview/capture code or this handoff.
+- The vacancy-borrowing runtime in that concurrent commit was later retired by `7d787fbf97da3dd5992fa9a41978643131da2994`; the commit remains relevant only as historical audit context.
 - Those target files were re-read from the new exact HEAD immediately before
   this docs-only write.
 

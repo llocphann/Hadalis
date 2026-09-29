@@ -646,8 +646,8 @@ Item {
             readonly property bool isDropSettling: !isBeingDragged && root.dropSettleId !== "" && root.dropSettleId === appToplevel?.uniqueId
             readonly property real dragDisplacement: root.getDragDisplacement(index)
 
-            property real _dragOffsetX: isBeingDragged ? (root.dragCurrentX - root.dragStartX) : 0
-            property real _dragOffsetY: isBeingDragged ? (root.dragCurrentY - root.dragStartY) : 0
+            property real _dragOffsetX: isBeingDragged ? reorderDragProxy.x : 0
+            property real _dragOffsetY: isBeingDragged ? reorderDragProxy.y : 0
 
             transform: Translate {
                 id: dockDelegateTranslate
@@ -729,54 +729,86 @@ Item {
                 }
             }
 
-            // Reorder owns a real Qt pointer grab instead of depending on
-            // RippleButton's MouseArea move callback. Once the movement
-            // threshold is crossed, DragHandler can take the grab from the
-            // button; a normal release commits, while a stolen/canceled grab
-            // rolls back without synthesizing a click.
-            DragHandler {
-                id: reorderDrag
-                enabled: root.dragEnabled && !dockDelegate.isSeparator
-                target: null
-                acceptedButtons: Qt.LeftButton
-                dragThreshold: root.dragThreshold
-                xAxis.enabled: !root.vertical
-                yAxis.enabled: root.vertical
-                property real originX: 0
-                property real originY: 0
+            // Use RippleButton's own MouseArea as the single gesture owner.
+            // Its built-in drag target moves this invisible proxy after the
+            // threshold; the visible delegate follows the exact same delta, so
+            // the app icon feels physically held by the pointer until release.
+            property real _dragPressListX: 0
+            property real _dragPressListY: 0
+            property bool _dockDragStarted: false
 
-                onGrabChanged: (transition, point) => {
-                    if (transition === PointerDevice.GrabExclusive) {
-                        const listPos = dockDelegate.mapToItem(
-                            listView, point.position.x, point.position.y)
-                        reorderDrag.originX = listPos.x
-                        reorderDrag.originY = listPos.y
-                        const appId = dockDelegate.appToplevel?.originalAppId
-                            ?? dockDelegate.appToplevel?.appId ?? ""
-                        root.startDrag(dockDelegate.index, appId,
-                            listPos.x, listPos.y)
-                        return
-                    }
-                    if (transition === PointerDevice.UngrabExclusive) {
-                        if (root.dragActive
-                                && root.dragIndex === dockDelegate.index)
-                            root.endDrag()
-                        return
-                    }
-                    if (transition === PointerDevice.CancelGrabExclusive
-                            && root.dragActive
-                            && root.dragIndex === dockDelegate.index)
-                        root.cancelDrag()
-                }
+            dragTarget: root.dragEnabled && !dockDelegate.isSeparator
+                ? reorderDragProxy : null
+            pointerDragThreshold: root.dragThreshold
+            pointerDragAxis: root.vertical ? Drag.YAxis : Drag.XAxis
 
-                onActiveTranslationChanged: {
-                    if (!active || !root.dragActive
-                            || root.dragIndex !== dockDelegate.index)
-                        return
-                    root.updateDrag(
-                        reorderDrag.originX + activeTranslation.x,
-                        reorderDrag.originY + activeTranslation.y)
-                }
+            function _syncDragProxy(): void {
+                if (!dockDelegate._dockDragStarted
+                        || !root.dragActive
+                        || root.dragIndex !== dockDelegate.index)
+                    return
+                root.updateDrag(
+                    dockDelegate._dragPressListX + reorderDragProxy.x,
+                    dockDelegate._dragPressListY + reorderDragProxy.y)
+            }
+
+            downAction: event => {
+                if (!root.dragEnabled || dockDelegate.isSeparator)
+                    return
+                reorderDragProxy.x = 0
+                reorderDragProxy.y = 0
+                dockDelegate._dockDragStarted = false
+                const listPos = dockDelegate.mapToItem(
+                    listView, event.x, event.y)
+                dockDelegate._dragPressListX = listPos.x
+                dockDelegate._dragPressListY = listPos.y
+            }
+
+            onPointerDragActiveChanged: {
+                if (!dockDelegate.pointerDragActive
+                        || dockDelegate._dockDragStarted
+                        || dockDelegate.isSeparator)
+                    return
+                dockDelegate._dockDragStarted = true
+                const appId = dockDelegate.appToplevel?.originalAppId
+                    ?? dockDelegate.appToplevel?.appId ?? ""
+                root.startDrag(dockDelegate.index, appId,
+                    dockDelegate._dragPressListX,
+                    dockDelegate._dragPressListY)
+                dockDelegate._syncDragProxy()
+            }
+
+            releaseAction: () => {
+                if (!dockDelegate._dockDragStarted)
+                    return
+                dockDelegate._syncDragProxy()
+                if (root.dragActive && root.dragIndex === dockDelegate.index)
+                    root.endDrag()
+                root._suppressNextClick = true
+                dockDelegate._dockDragStarted = false
+                reorderDragProxy.x = 0
+                reorderDragProxy.y = 0
+                Qt.callLater(() => {
+                    if (root._suppressNextClick)
+                        root._suppressNextClick = false
+                })
+            }
+
+            cancelAction: () => {
+                if (root.dragActive && root.dragIndex === dockDelegate.index)
+                    root.cancelDrag()
+                dockDelegate._dockDragStarted = false
+                reorderDragProxy.x = 0
+                reorderDragProxy.y = 0
+            }
+
+            Item {
+                id: reorderDragProxy
+                width: 1
+                height: 1
+                visible: false
+                onXChanged: dockDelegate._syncDragProxy()
+                onYChanged: dockDelegate._syncDragProxy()
             }
 
             onHoverPreviewRequested: {

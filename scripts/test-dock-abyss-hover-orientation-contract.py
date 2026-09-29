@@ -8,6 +8,7 @@ menu=(r/"modules/dock/DockContextMenu.qml").read_text()
 abyss=(r/"modules/abyss/content/AbyssDockContent.qml").read_text()
 dock=(r/"modules/dock/Dock.qml").read_text()
 settings=(r/"modules/settings/DockConfig.qml").read_text()
+ripple=(r/"modules/common/widgets/RippleButton.qml").read_text()
 assert "signal closeAllContextMenus(var exceptOwner)" in apps
 assert "function refreshAxisLayout(): void" in apps
 assert "listView.forceLayout()" in apps
@@ -19,28 +20,32 @@ assert "showDashboardButton" in abyss
 assert dock.count("showDashboardButton") >= 2
 assert "Show Dashboard icon" in settings
 
-# Reordering must use a real pointer grab. Relying on RippleButton's MouseArea
-# movement stream proved fragile once the canonical Dock is rehosted in Abyss.
-assert "id: reorderDrag" in apps
-assert "target: null" in apps
-assert "acceptedButtons: Qt.LeftButton" in apps
-assert "dragThreshold: root.dragThreshold" in apps
-assert "xAxis.enabled: !root.vertical" in apps
-assert "yAxis.enabled: root.vertical" in apps
-assert "transition === PointerDevice.GrabExclusive" in apps
-assert "transition === PointerDevice.UngrabExclusive" in apps
-assert "transition === PointerDevice.CancelGrabExclusive" in apps
+# Reordering is owned by RippleButton's one MouseArea. Its built-in drag
+# moves a proxy; the visible delegate follows that exact delta until drop.
+assert "dragTarget: root.dragEnabled && !dockDelegate.isSeparator" in apps
+assert "? reorderDragProxy : null" in apps
+assert "pointerDragThreshold: root.dragThreshold" in apps
+assert "pointerDragAxis: root.vertical ? Drag.YAxis : Drag.XAxis" in apps
+assert "onPointerDragActiveChanged:" in apps
+assert "property bool _dockDragStarted: false" in apps
+assert "dockDelegate._dragPressListX + reorderDragProxy.x" in apps
+assert "dockDelegate._dragPressListY + reorderDragProxy.y" in apps
+assert "property real _dragOffsetX: isBeingDragged ? reorderDragProxy.x : 0" in apps
+assert "property real _dragOffsetY: isBeingDragged ? reorderDragProxy.y : 0" in apps
 assert "root.startDrag(dockDelegate.index, appId," in apps
 assert "root.updateDrag(" in apps
 assert "root.endDrag()" in apps
 assert "root.cancelDrag()" in apps
+assert "root._suppressNextClick = true" in apps
 assert "property var abyssMenuDismissPresenter: null" in apps
 assert "root.abyssMenuDismissPresenter()" in apps
 assert "abyssMenuDismissPresenter: () => root.closeAppMenu()" in abyss
-assert "_dragGestureStarted" not in apps
+assert "DragHandler {" not in apps
 assert "_dockPrimeTimer" not in apps
 assert "_dragPrimed" not in apps
 assert "_longPressTriggered" not in apps
 assert "Long-press and drag dock icons" not in settings
 assert "Drag dock icons to reorder pinned and running apps" in settings
+assert "property int pointerDragAxis: Drag.XAndYAxis" in ripple
+assert "drag.axis: root.pointerDragAxis" in ripple
 print("dock hover/style/orientation/dashboard-toggle/drag contract: ok")

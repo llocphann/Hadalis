@@ -1,0 +1,85 @@
+{
+  "actions": [
+    {
+      "argv": [
+        "python3",
+        "-m",
+        "py_compile",
+        "automation/chat_bridge/runtime.py",
+        "automation/chat_bridge/protocol.py"
+      ],
+      "cwd": ".",
+      "exit_code": 0,
+      "index": 0,
+      "stderr": "",
+      "stderr_truncated": false,
+      "stdout": "",
+      "stdout_truncated": false,
+      "timed_out": false
+    },
+    {
+      "argv": [
+        "python3",
+        "scripts/test-hadalis-chat-bridge.py"
+      ],
+      "cwd": ".",
+      "exit_code": 0,
+      "index": 1,
+      "stderr": "",
+      "stderr_truncated": false,
+      "stdout": "PASS: Hadalis chat-bridge protocol, state, and deterministic transitions\n",
+      "stdout_truncated": false,
+      "timed_out": false
+    },
+    {
+      "argv": [
+        "node",
+        "--check",
+        "automation/chat_bridge/desktop_driver.mjs"
+      ],
+      "cwd": ".",
+      "exit_code": 0,
+      "index": 2,
+      "stderr": "",
+      "stderr_truncated": false,
+      "stdout": "",
+      "stdout_truncated": false,
+      "timed_out": false
+    },
+    {
+      "argv": [
+        "node",
+        "--check",
+        "automation/chat_bridge/desktop_cli.mjs"
+      ],
+      "cwd": ".",
+      "exit_code": 0,
+      "index": 3,
+      "stderr": "",
+      "stderr_truncated": false,
+      "stdout": "",
+      "stdout_truncated": false,
+      "timed_out": false
+    },
+    {
+      "argv": [
+        "node",
+        "scripts/test-hadalis-desktop-marker-scan.mjs"
+      ],
+      "cwd": ".",
+      "exit_code": 0,
+      "index": 4,
+      "stderr": "",
+      "stderr_truncated": false,
+      "stdout": "PASS: desktop loop-marker token scanner\n",
+      "stdout_truncated": false,
+      "timed_out": false
+    }
+  ],
+  "base_sha": "59b22ba8de153b8fa3f80b2b719b6f9c5d82302a",
+  "finished_at_unix": 1790721649,
+  "job": "JOB-AUTONOMOUS-PROMPT-GUARD-001",
+  "job_commit": "9069e105853a0078c96c4950da9b57be2e7f0739",
+  "started_at_unix": 1790721647,
+  "status": "passed"
+}

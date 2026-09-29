@@ -17,6 +17,7 @@ Bring the Hadalis autonomous development loop from feasibility to a validated fi
 - first-use bootstrap now opens a fresh Hadalis Cloud chat instead of reusing an existing conversation;
 - autonomous prompts whose first line is the GitHub connector marker are composed through the ChatGPT rich-mention picker, then the remaining prompt body is inserted without replacing the token;
 - completion detection snapshots loop-marker count before submit and treats a stable post-submit marker-count increase with no active Stop control as the protocol completion signal; it does not depend on composer clearing or response-toolbar labels;
+- desktop CLI/live acceptance explicitly terminate their Node process after synchronously writing the result, so the open CDP websocket cannot keep the worker action alive after ChatGPT has already completed.
 - the installer supports a lock-safe fresh bridge-session reset before first service startup.
 
 ## Validation status
@@ -34,7 +35,7 @@ Do not describe the current repository SHA as canonically green.
 
 Pending local live transport acceptance:
 
-`JOB-DESKTOP-LIVE-ACCEPT-008`
+`JOB-DESKTOP-LIVE-ACCEPT-009`
 
 It performs a syntax check, then opens a fresh Hadalis Cloud chat through the production CDP driver, sends a fixed prompt containing the GitHub connector mention, verifies read access to `llocphann/Hadalis` and current `dev` HEAD through ChatGPT, waits for generation completion, and requires exactly:
 

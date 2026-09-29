@@ -21,6 +21,13 @@ def quote(value: str | Path) -> str:
     return '"' + text.replace("\\", "\\\\").replace('"', '\\"') + '"'
 
 
+def environment(name: str, value: str | Path) -> str:
+    # systemd Environment= parses shell-like words, not shell assignments.
+    # Quote the complete NAME=VALUE token; quoting only the RHS can be
+    # rejected as an invalid environment assignment on current systemd.
+    return f"Environment={quote(f'{name}={value}')}"
+
+
 def write_unit(path: Path, content: str) -> None:
     path.write_text(content.rstrip() + "\n", encoding="utf-8")
     print(f"wrote {path}")
@@ -65,9 +72,9 @@ After=graphical-session.target
 Type=simple
 WorkingDirectory={quote(ROOT)}
 ExecStart={quote(python)} -m automation.chat_bridge.desktop_host
-Environment=PYTHONUNBUFFERED=1
-Environment=HADALIS_CHATGPT_BIN={quote(chatgpt)}
-Environment=HADALIS_CHATGPT_CDP_URL=http://127.0.0.1:9222
+{environment("PYTHONUNBUFFERED", "1")}
+{environment("HADALIS_CHATGPT_BIN", chatgpt)}
+{environment("HADALIS_CHATGPT_CDP_URL", "http://127.0.0.1:9222")}
 Restart=on-failure
 RestartPreventExitStatus=76
 RestartSec=3
@@ -86,7 +93,7 @@ Description=Hadalis deterministic local worker
 Type=simple
 WorkingDirectory={quote(ROOT)}
 ExecStart={quote(python)} {quote(ROOT / "automation" / "worker" / "daemon.py")}
-Environment=PYTHONUNBUFFERED=1
+{environment("PYTHONUNBUFFERED", "1")}
 Restart=on-failure
 RestartSec=3
 
@@ -107,8 +114,8 @@ PartOf=graphical-session.target
 Type=simple
 WorkingDirectory={quote(ROOT)}
 ExecStart={quote(python)} -m automation.chat_bridge.runtime --bootstrap
-Environment=PYTHONUNBUFFERED=1
-Environment=HADALIS_CHATGPT_CDP_URL=http://127.0.0.1:9222
+{environment("PYTHONUNBUFFERED", "1")}
+{environment("HADALIS_CHATGPT_CDP_URL", "http://127.0.0.1:9222")}
 Restart=on-failure
 RestartPreventExitStatus=75
 RestartSec=3
@@ -119,6 +126,20 @@ WantedBy=graphical-session.target
     )
 
     subprocess.run([systemctl, "--user", "daemon-reload"], check=True)
+
+    systemd_analyze = shutil.which("systemd-analyze")
+    if systemd_analyze is not None:
+        subprocess.run(
+            [
+                systemd_analyze,
+                "--user",
+                "verify",
+                str(units / "hadalis-chatgpt.service"),
+                str(units / "hadalis-worker.service"),
+                str(units / "hadalis-chat-bridge.service"),
+            ],
+            check=True,
+        )
 
     if args.reset_session_state:
         subprocess.run(

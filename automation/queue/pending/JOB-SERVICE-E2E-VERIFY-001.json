@@ -1,0 +1,17 @@
+{
+  "id": "JOB-SERVICE-E2E-VERIFY-001",
+  "base_sha": "37e68aa59ac7b02966637d62ad9e456e492c1794",
+  "actions": [
+    {
+      "exec": {
+        "argv": [
+          "python3",
+          "-c",
+          "import json, pathlib, subprocess\ndef run(argv):\n    p=subprocess.run(argv,text=True,capture_output=True,check=False)\n    return {'argv':argv,'exit_code':p.returncode,'stdout':p.stdout,'stderr':p.stderr}\nstate=pathlib.Path.home()/'.local/state/hadalis-automation/chat-bridge.json'\nout={\n  'bridge':run(['systemctl','--user','show','hadalis-chat-bridge.service','--no-pager','--property=ActiveState','--property=SubState','--property=Result','--property=ExecMainCode','--property=ExecMainStatus','--property=ExecMainStartTimestamp','--property=ExecMainExitTimestamp']),\n  'worker':run(['systemctl','--user','show','hadalis-worker.service','--no-pager','--property=ActiveState','--property=SubState','--property=Result']),\n  'chatgpt':run(['systemctl','--user','show','hadalis-chatgpt.service','--no-pager','--property=ActiveState','--property=SubState','--property=Result']),\n  'state_exists':state.exists(),\n  'state_text':state.read_text() if state.exists() else None,\n  'journal':run(['journalctl','--user','-u','hadalis-chat-bridge.service','-n','40','--no-pager','-o','short-iso'])\n}\nprint(json.dumps(out,indent=2,sort_keys=True))"
+        ],
+        "cwd": ".",
+        "timeout_seconds": 120
+      }
+    }
+  ]
+}

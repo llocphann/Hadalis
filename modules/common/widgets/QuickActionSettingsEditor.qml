@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Layouts
 import qs
+import qs.services
 import qs.modules.common
 
 ColumnLayout {
@@ -24,6 +25,15 @@ ColumnLayout {
             if (!result.includes(id)) result.push(id)
         return result
     }
+    readonly property var activeActions: {
+        void Config.revision
+        return root.actionOrder.filter(id => root.configuredVisible(id))
+    }
+    readonly property var unusedActions: {
+        void Config.revision
+        return root.actionOrder.filter(id => !root.configuredVisible(id))
+    }
+
     property var dragInfo: null
     property int dropIndex: -1
     readonly property bool dragging: dragInfo !== null
@@ -41,6 +51,7 @@ ColumnLayout {
         const translated = Translation.tr(source)
         return String(translated ?? "").trim().length > 0 ? translated : source
     }
+
     function actionIcon(id): string {
         const icons = {
             screenSnip:"screenshot_region",screenRecord:"screen_record",
@@ -52,6 +63,7 @@ ColumnLayout {
         }
         return icons[id] ?? "widgets"
     }
+
     function configuredVisible(id): bool {
         switch (id) {
         case "screenSnip": return Config.options?.bar?.utilButtons?.showScreenSnip ?? true
@@ -68,6 +80,7 @@ ColumnLayout {
         default: return true
         }
     }
+
     function visibilityPath(id): string {
         const keys = {
             screenSnip:"showScreenSnip",screenRecord:"showScreenRecord",
@@ -79,27 +92,105 @@ ColumnLayout {
         }
         return "bar.utilButtons."+(keys[id] ?? "")
     }
-    function toggleVisible(id): void {
-        const path=root.visibilityPath(id)
-        if(!path.endsWith(".")) Config.setNestedValue(path,!root.configuredVisible(id))
+
+    function setActionVisible(id, visible): void {
+        const path = root.visibilityPath(id)
+        if (!path.endsWith("."))
+            Config.setNestedValue(path, visible)
     }
+
+    function removeAction(id): void {
+        root.setActionVisible(id, false)
+    }
+
+    function addAction(id): void {
+        if (root.configuredVisible(id))
+            return
+        const next = root.activeActions.filter(actionId => actionId !== id)
+            .concat([id], root.unusedActions.filter(actionId => actionId !== id))
+        Config.setNestedValue("bar.utilButtons.order", next)
+        root.setActionVisible(id, true)
+    }
+
     function commitDrop(): void {
-        if(!root.dragInfo || root.dropIndex<0){root.dragInfo=null;root.dropIndex=-1;return}
-        const next=root.actionOrder.slice()
-        const from=root.dragInfo.index
-        const to=root.dropIndex
-        if(from>=0 && from<next.length && to>=0 && to<next.length && from!==to){
-            const moved=next[from]
-            next.splice(from,1)
-            next.splice(to,0,moved)
-            Config.setNestedValue("bar.utilButtons.order",next)
+        if (!root.dragInfo || root.dropIndex < 0) {
+            root.dragInfo = null
+            root.dropIndex = -1
+            return
         }
-        root.dragInfo=null
-        root.dropIndex=-1
+        const active = root.activeActions.slice()
+        const from = root.dragInfo.index
+        const to = root.dropIndex
+        if (from >= 0 && from < active.length && to >= 0 && to < active.length && from !== to) {
+            const moved = active.splice(from, 1)[0]
+            active.splice(to, 0, moved)
+            Config.setNestedValue("bar.utilButtons.order", active.concat(root.unusedActions))
+        }
+        root.dragInfo = null
+        root.dropIndex = -1
+    }
+
+    Rectangle {
+        Layout.fillWidth: true
+        implicitHeight: root.unusedActions.length > 0 ? 42 : 0
+        visible: root.unusedActions.length > 0
+        radius: Appearance.rounding.small
+        color: Appearance.colors.colLayer1
+        border.width: 1
+        border.color: Appearance.colors.colLayer0Border
+
+        RowLayout {
+            anchors.fill: parent
+            anchors.leftMargin: 8
+            anchors.rightMargin: 6
+            spacing: 6
+
+            StyledText {
+                text: Translation.tr("Unused")
+                color: Appearance.colors.colSubtext
+                font.pixelSize: Appearance.font.pixelSize.smaller
+                font.weight: Font.Medium
+            }
+
+            ListView {
+                Layout.fillWidth: true
+                Layout.preferredHeight: 34
+                orientation: ListView.Horizontal
+                spacing: 4
+                clip: true
+                model: root.unusedActions
+
+                delegate: RippleButton {
+                    id: unusedActionButton
+                    required property var modelData
+                    required property int index
+                    readonly property string actionId: String(modelData ?? "")
+                    width: 32
+                    height: 32
+                    buttonRadius: Appearance.rounding.full
+                    Accessible.name: Translation.tr("Add to Quick Actions")
+                        + ": " + root.actionLabel(actionId)
+                    onClicked: root.addAction(actionId)
+
+                    contentItem: MaterialSymbol {
+                        anchors.centerIn: parent
+                        text: root.actionIcon(unusedActionButton.actionId)
+                        iconSize: Appearance.font.pixelSize.normal
+                        color: Appearance.colors.colOnLayer1
+                    }
+
+                    StyledToolTip {
+                        text: Translation.tr("Add to Quick Actions")
+                            + " · " + root.actionLabel(unusedActionButton.actionId)
+                    }
+                }
+            }
+        }
     }
 
     Repeater {
-        model: root.actionOrder
+        model: root.activeActions
+
         delegate: Item {
             id: slot
             required property var modelData
@@ -113,8 +204,8 @@ ColumnLayout {
                 anchors.fill: parent
                 enabled: root.dragging
                 onEntered: drag => {
-                    if(drag.source && drag.source.actionId!==slot.actionId)
-                        root.dropIndex=slot.index
+                    if (drag.source && drag.source.actionId !== slot.actionId)
+                        root.dropIndex = slot.index
                 }
             }
 
@@ -129,12 +220,12 @@ ColumnLayout {
                 radius: Appearance.rounding.small
                 color: handle.containsMouse || handle.drag.active
                     ? Appearance.colors.colLayer1Hover : Appearance.colors.colLayer1
-                border.width: root.dropIndex===slot.index && root.dragging ? 1 : 0
+                border.width: root.dropIndex === slot.index && root.dragging ? 1 : 0
                 border.color: Appearance.colors.colPrimary
                 Drag.active: handle.drag.active
                 Drag.source: row
-                Drag.hotSpot.x: width/2
-                Drag.hotSpot.y: height/2
+                Drag.hotSpot.x: width / 2
+                Drag.hotSpot.y: height / 2
 
                 RowLayout {
                     anchors.fill: parent
@@ -145,12 +236,14 @@ ColumnLayout {
                     Item {
                         implicitWidth: 28
                         implicitHeight: 28
+
                         MaterialSymbol {
                             anchors.centerIn: parent
                             text: "drag_indicator"
                             iconSize: Appearance.font.pixelSize.normal
                             color: Appearance.colors.colSubtext
                         }
+
                         MouseArea {
                             id: handle
                             anchors.fill: parent
@@ -158,21 +251,22 @@ ColumnLayout {
                             cursorShape: drag.active ? Qt.ClosedHandCursor : Qt.OpenHandCursor
                             drag.target: row
                             drag.axis: Drag.YAxis
-                            drag.minimumY: -slot.index*(root.rowHeight+root.spacing)
-                            drag.maximumY: (root.actionOrder.length-slot.index-1)*(root.rowHeight+root.spacing)
+                            drag.minimumY: -slot.index * (root.rowHeight + root.spacing)
+                            drag.maximumY: (root.activeActions.length - slot.index - 1)
+                                * (root.rowHeight + root.spacing)
                             onPressed: {
-                                root.dragInfo={id:slot.actionId,index:slot.index}
-                                root.dropIndex=slot.index
+                                root.dragInfo = {id: slot.actionId, index: slot.index}
+                                root.dropIndex = slot.index
                             }
                             onReleased: {
                                 row.Drag.drop()
                                 root.commitDrop()
-                                row.y=0
+                                row.y = 0
                             }
                             onCanceled: {
-                                root.dragInfo=null
-                                root.dropIndex=-1
-                                row.y=0
+                                root.dragInfo = null
+                                root.dropIndex = -1
+                                row.y = 0
                             }
                         }
                     }
@@ -188,8 +282,6 @@ ColumnLayout {
                         Layout.fillWidth: true
                         Layout.minimumWidth: 120
                         Layout.alignment: Qt.AlignVCenter
-                        visible: true
-                        opacity: 1
                         text: root.actionLabel(slot.actionId)
                         color: Appearance.colors.colOnLayer1
                         font.pixelSize: Appearance.font.pixelSize.small
@@ -201,17 +293,18 @@ ColumnLayout {
                         implicitWidth: 30
                         implicitHeight: 30
                         buttonRadius: Appearance.rounding.full
-                        onClicked: root.toggleVisible(slot.actionId)
+                        Accessible.name: Translation.tr("Remove from Quick Actions")
+                        onClicked: root.removeAction(slot.actionId)
+
                         contentItem: MaterialSymbol {
                             anchors.centerIn: parent
-                            text: root.configuredVisible(slot.actionId) ? "visibility" : "visibility_off"
+                            text: "remove_circle"
                             iconSize: Appearance.font.pixelSize.normal
-                            color: root.configuredVisible(slot.actionId)
-                                ? Appearance.colors.colPrimary : Appearance.colors.colSubtext
+                            color: Appearance.colors.colSubtext
                         }
+
                         StyledToolTip {
-                            text: root.configuredVisible(slot.actionId)
-                                ? Translation.tr("Hide Quick Action") : Translation.tr("Show Quick Action")
+                            text: Translation.tr("Remove from Quick Actions")
                         }
                     }
                 }

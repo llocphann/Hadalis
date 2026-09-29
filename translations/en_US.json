@@ -5452,5 +5452,8 @@
   "Remove from Dock": "Remove from Dock",
   "Add applications": "Add applications",
   "Add to Dock": "Add to Dock",
-  "Dark / light mode": "Dark / light mode"
+  "Dark / light mode": "Dark / light mode",
+  "Unused": "Unused",
+  "Add to Quick Actions": "Add to Quick Actions",
+  "Remove from Quick Actions": "Remove from Quick Actions"
 }

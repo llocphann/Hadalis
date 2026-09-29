@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
-"""Elastic Fill coexistence, hover ownership, geometry and animation contracts."""
+"""Elastic Fill production wiring and user-visible vacancy borrowing contract."""
 from pathlib import Path
 import subprocess
+
 ROOT=Path(__file__).resolve().parents[1]
 geometry=(ROOT/"modules/abyss/looks/AbyssGeometry.js").read_text()
 placement=(ROOT/"modules/abyss/looks/AbyssBodyPlacement.js").read_text()
@@ -11,27 +12,161 @@ presentation=(ROOT/"modules/abyss/looks/AbyssPresentation.js").read_text()
 host=(ROOT/"modules/abyss/AbyssBodyHost.qml").read_text()
 controller=(ROOT/"modules/abyss/AbyssSurfaceController.qml").read_text()
 perimeter=(ROOT/"modules/abyss/AbyssPerimeter.qml").read_text()
-for token in ('import "looks/AbyssElasticFill.js" as ElasticFill',"readonly property var baseBodyPlacements: BodyPlacement.arrange(","readonly property var bodyPlacements: ElasticFill.resolve(","function nextElasticFillInteractionOrder(): int"): assert token in controller
-for token in ('property bool elasticFillAnchor: false',"elasticFillAnchor:root.elasticFillAnchor","property real elasticLimitProgress:","Behavior on elasticLimitProgress","elasticLimits:"): assert token in host
-assert perimeter.count('elasticFillGroup: edge === "left"')==2
-for token in ("Presentation.nearbyEdge(edge,along,span,",'elasticNearbyEdge === "left"','elasticNearbyEdge === "right"',"elasticFillAnchor: elasticFillGroup.length > 0"): assert token in perimeter
-for token in ("elasticFillAnchor","var delayed=members.filter(","ordered.splice(lastAnchor+1+d,0,delayed[d])"): assert token in placement
-for token in ("function _elasticPanelRect(member)","function _elasticDirections(owner,members)","var originalPanel=_elasticPanelRect(owner)"): assert token in elastic
-assert "Config." not in elastic and "placement.elasticLimits === true" in geometry and "tangentFlush" in geometry
+quick=(ROOT/"modules/screenCorners/QuickNotesPopup.qml").read_text()
+center=(ROOT/"modules/notificationCenter/NotificationCenterPopup.qml").read_text()
+
+for token in (
+    'import "looks/AbyssElasticFill.js" as ElasticFill',
+    "readonly property var baseBodyPlacements: BodyPlacement.arrange(",
+    "readonly property var bodyPlacements: ElasticFill.resolve(",
+    "function nextElasticFillInteractionOrder(): int",
+):
+    assert token in controller, token
+
+for token in (
+    'property string elasticFillGroup: ""',
+    "property bool elasticFillHovered: false",
+    "readonly property bool contentHovered: contentHover.hovered",
+    "id: contentHover",
+    "elasticFillGroup:root.elasticFillGroup",
+    "elasticFillHovered:root.elasticFillHovered",
+    "elasticFillOrder:root.elasticFillOrder",
+    "property real elasticLimitProgress:",
+    "Behavior on elasticLimitProgress",
+):
+    assert token in host, token
+
+assert "elasticFillAnchor" not in host
+assert "elasticFillAnchor" not in placement
+assert "elasticFillAnchor" not in elastic
+assert "elasticFillAnchor" not in perimeter
+assert "anchor-before-follower" not in elastic
+
+for token in (
+    'elasticFillGroup: edge === "left"',
+    "(leftReveal.edgeHovered || leftPanel.contentHovered)",
+    "(rightReveal.edgeHovered || rightPanel.contentHovered)",
+    "styledPopupHost.contentHovered",
+    "Presentation.nearbyEdge(edge,along,span,",
+    'elasticNearbyEdge === "left"',
+    'elasticNearbyEdge === "right"',
+):
+    assert token in perimeter, token
+
+assert 'liquidPresentationKind: "quickNotes"' in quick
+assert 'liquidPresentationKind: "notificationCenter"' in center
+assert "function _elasticPanelRect(member)" in elastic
+assert "function _elasticDirections(owner,members)" in elastic
+assert 'return ["bottom"]' in elastic and 'return ["top"]' in elastic
+assert "placement.elasticLimits === true" in geometry
 assert "elasticLimits:placement.elasticLimits === true" in motion
+
 program=geometry+"\n"+placement+"\n"+elastic+"\n"+motion+r"""
 const assert=require('node:assert/strict');
-function overlap(a,b,g=0){return a.x<b.x+b.width+g&&a.x+a.width+g>b.x&&a.y<b.y+b.height+g&&a.y+a.height+g>b.y}
+const W=1200,H=900,ins={left:16,right:16,top:16,bottom:16};
+
 function close(a,b,t=.15){return Math.abs(a-b)<t}
-function req(w,h,ins,id,e,o,s,d,a,p,g,an,hov,ho,l=false,st=""){const r=panel(w,h,ins,e,a,s,d,1,p,[],l);return{id,open:true,order:o,priority:0,padding:p,allowInward:true,stackPolicy:st,stackProximity:24,minSpan:Math.min(r.span,l?520:220),minDepth:Math.min(r.targetDepth,l?360:120),elasticFillGroup:g,elasticFillAnchor:an,elasticFillHovered:hov,elasticFillOrder:ho,record:r}}
-let active=0,noSlack=0,tails=0;
-for(const [w,h] of [[640,360],[768,480],[1024,600],[1280,720],[1366,768],[1600,900],[1920,1080],[2560,1440],[3440,1440]]){const ins={left:16,top:48,right:16,bottom:16},ss=Math.min(h-ins.top-ins.bottom-72,Math.max(320,h*.7));for(const se of ["left","right"])for(const pe of ["top","bottom"]){const q=se==="left",g=q?"quickNotesSidebar":"notificationsSidebar",pd=q?Math.min(300,h*.8):Math.min(560,h*.8),l=pd>h*.42,ps=Math.min(420,w-60),pa=q?-220:w-ps+220;for(const [so,po] of [[1,2],[3,2],[10,1]])for(const own of ["side","popup"]){const s=req(w,h,ins,"side",se,so,ss,Math.min(460,w*.8),(h-ss)/2,20,g,false,own==="side",own==="side"?20:10,false),p=req(w,h,ins,"popup",pe,po,ps,pd,pa,14,g,true,own==="popup",own==="popup"?20:10,l,"pyramid"),b=arrange([s,p],w,h,ins);assert(b.side?.visible&&b.popup?.visible);assert.equal(b.popup.inward,0);assert(b.side.inward>0);const f=resolve([s,p],b,24),ow=f[own];if(ow.elasticFilled!==true){noSlack++;continue}const ex=pe==="bottom"?(own==="popup"?"top":"bottom"):(own==="popup"?"bottom":"top");assert.equal(ow.elasticDirection,ex);assert(!overlap(f.side.content,f.popup.content,23.9));const sp=_elasticPanelRect({request:s,placement:b.side}),pp=_elasticPanelRect({request:p,placement:b.popup}),op=_elasticPanelRect({request:own==="side"?s:p,placement:ow});if(own==="side")assert(ex==="bottom"?close(op.y+op.height,pp.y+pp.height):close(op.y,pp.y));else assert(ex==="top"?close(op.y,sp.y):close(op.y+op.height,sp.y+sp.height));for(const [id,rq] of [["side",s],["popup",p]]){const pl=f[id],rr=placedPanel(w,h,ins,rq.record.edge,rq.record.along,rq.record.span,rq.record.targetDepth,1,rq.padding,[],id==="popup"?l:false,pl);assert(close(rr.content.x,pl.content.x)&&close(rr.content.y,pl.content.y)&&close(rr.content.width,pl.content.width)&&close(rr.content.height,pl.content.height));const t=Object.assign({},pl,{elasticFilled:false,elasticLimits:true}),tr=placedPanel(w,h,ins,rq.record.edge,rq.record.along,rq.record.span,rq.record.targetDepth,1,rq.padding,[],id==="popup"?l:false,t);assert(close(tr.content.x,pl.content.x)&&close(tr.content.y,pl.content.y)&&close(tr.content.width,pl.content.width)&&close(tr.content.height,pl.content.height));if(pl.elasticFilled===true)tails++}s.elasticFillHovered=false;p.elasticFillHovered=false;assert.equal(resolve([s,p],b,24),b);active++}}}
-assert(active>150&&tails>0);
-{const w=1920,h=1080,ins={left:16,top:48,right:16,bottom:16},g="quickNotesSidebar",s=req(w,h,ins,"side","left",10,756,460,162,20,"g",false,false,0,false),q=req(w,h,ins,"quick","bottom",5,420,300,-203,14,"g",true,false,0,false,"pyramid"),x=req(w,h,ins,"generic","bottom",7,600,500,50,14,"",false,false,0,true,"pyramid"),r=req(w,h,ins,"remote","top",6,250,180,20,14,"",false,false,0,false);assert.deepEqual(_orderedRequests([s,x,r,q]).map(v=>v.id),["generic","remote","quick","side"])}
-{const c=clonePlacement({visible:true,along:1,inward:2,span:3,depth:4,content:{x:1,y:2,width:3,height:4},elasticFilled:false,elasticLimits:true,elasticDirection:"top"});assert.equal(c.elasticLimits,true);assert.equal(c.elasticDirection,"top")}
-console.log("Elastic Fill refined contract",{active,noSlack,tails});
+function overlap(a,b,g=0){
+    return a.x<b.x+b.width+g && a.x+a.width+g>b.x
+        && a.y<b.y+b.height+g && a.y+a.height+g>b.y;
+}
+function request(id,edge,order,depth,along,span,group,hovered,hoverOrder,
+        large=false) {
+    const padding=14;
+    const record=panel(W,H,ins,edge,along,span,depth,1,padding,[],large);
+    return {
+        id,open:true,order,priority:0,padding,
+        allowInward:true,stackPolicy:"",stackProximity:24,
+        minSpan:Math.min(record.span,220),
+        minDepth:Math.min(record.targetDepth,120),
+        elasticFillGroup:group,
+        elasticFillHovered:hovered,
+        elasticFillOrder:hoverOrder,
+        record
+    };
+}
+function outer(request,placement){
+    return _elasticPanelRect({request,placement});
+}
+
+// User case A: Quick Notes exists first, Sidebar is the later hover.
+// Do not reorder the base composition. Sidebar grows down through only the
+// vacant vertical band created beside Quick Notes.
+let notes=request("notes","bottom",1,320,500,420,
+    "quickNotesSidebar",false,1,false);
+let left=request("left","left",2,420,90,560,
+    "quickNotesSidebar",true,2,true);
+assert.deepEqual(_orderedRequests([notes,left]).map(x=>x.id),["left","notes"]);
+let base=arrange([notes,left],W,H,ins);
+let snapshot=JSON.stringify(base);
+let filled=resolve([notes,left],base,24);
+assert.equal(JSON.stringify(base),snapshot);
+assert.equal(filled.left.elasticDirection,"bottom");
+assert.equal(filled.notes.elasticFilled,undefined);
+assert(filled.left.span>base.left.span);
+assert(close(outer(left,filled.left).y+outer(left,filled.left).height,
+    outer(notes,base.notes).y+outer(notes,base.notes).height));
+assert(!overlap(filled.left.content,filled.notes.content,23.9));
+
+// User case B: Sidebar exists first, Quick Notes is the later hover.
+// Base order remains the normal activation order; Quick Notes grows upward.
+left=request("left","left",1,420,90,560,
+    "quickNotesSidebar",false,1,true);
+notes=request("notes","bottom",2,320,500,420,
+    "quickNotesSidebar",true,3,false);
+assert.deepEqual(_orderedRequests([left,notes]).map(x=>x.id),["notes","left"]);
+base=arrange([left,notes],W,H,ins);
+filled=resolve([left,notes],base,24);
+assert.equal(filled.notes.elasticDirection,"top");
+assert.equal(filled.left.elasticFilled,undefined);
+assert(filled.notes.depth>base.notes.depth);
+assert(close(outer(notes,filled.notes).y,outer(left,base.left).y));
+assert(!overlap(filled.left.content,filled.notes.content,23.9));
+
+// The expanded placement must render exactly, and the relaxed limit must live
+// through the return tail even after semantic Elastic Fill ownership is gone.
+let rendered=placedPanel(W,H,ins,notes.record.edge,notes.record.along,
+    notes.record.span,notes.record.targetDepth,1,notes.padding,[],false,
+    filled.notes);
+assert(close(rendered.content.y,filled.notes.content.y));
+assert(close(rendered.content.height,filled.notes.content.height));
+let tail=Object.assign({},filled.notes,{elasticFilled:false,elasticLimits:true});
+let tailRecord=placedPanel(W,H,ins,notes.record.edge,notes.record.along,
+    notes.record.span,notes.record.targetDepth,1,notes.padding,[],false,tail);
+assert(close(tailRecord.content.y,filled.notes.content.y));
+assert(close(tailRecord.content.height,filled.notes.content.height));
+
+// Right-side mirror: Notifications/Activity and Sidebar Right use the same
+// geometry-driven direction selection.
+let center=request("center","bottom",1,500,280,420,
+    "notificationsSidebar",false,1,true);
+let right=request("right","right",2,420,90,560,
+    "notificationsSidebar",true,4,true);
+base=arrange([center,right],W,H,ins);
+filled=resolve([center,right],base,24);
+assert.equal(filled.right.elasticDirection,"bottom");
+assert(!overlap(filled.right.content,filled.center.content,23.9));
+
+// Latest hover wins only during a short overlap; hover loss is an exact no-op.
+right.elasticFillHovered=true; right.elasticFillOrder=5;
+center.elasticFillHovered=true; center.elasticFillOrder=6;
+base=arrange([right,center],W,H,ins);
+filled=resolve([right,center],base,24);
+assert.equal(filled.center.elasticFilled,true);
+assert.equal(filled.right.elasticFilled,undefined);
+right.elasticFillHovered=false;
+center.elasticFillHovered=false;
+assert.equal(resolve([right,center],base,24),base);
+
+console.log("Elastic Fill user scenarios: ok");
 """
 subprocess.run(["node","-e",program],cwd=ROOT,check=True)
-spatial=presentation+r"""const assert=require('node:assert/strict');assert.equal(nearbyEdge("bottom",-203,420,1920,1080),"left");assert.equal(nearbyEdge("top",1703,420,1920,1080),"right");assert.equal(nearbyEdge("bottom",750,420,1920,1080),"");"""
+
+spatial=presentation+r"""
+const assert=require('node:assert/strict');
+assert.equal(nearbyEdge("bottom",-203,420,1920,1080),"left");
+assert.equal(nearbyEdge("top",1703,420,1920,1080),"right");
+assert.equal(nearbyEdge("bottom",750,420,1920,1080),"");
+"""
 subprocess.run(["node","-e",spatial],cwd=ROOT,check=True)
-print("ok - Elastic Fill order, envelope, spatial scope and motion tail")
+print("ok - Elastic Fill preserves base order and fills the hovered vacancy")

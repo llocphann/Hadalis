@@ -14,6 +14,7 @@ import qs.services
 Bar.StyledPopup {
     id: root
 
+    liquidPresentationKind: "notificationCenter"
     required property Item anchorItem
     required property string outputName
     property bool hoverAllowed: true

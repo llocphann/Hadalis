@@ -447,7 +447,7 @@ Scope {
                     ? "quickNotesSidebar"
                     : (edge === "right" ? "notificationsSidebar" : "")
                 elasticFillHovered: elasticFillGroup.length > 0
-                    && leftReveal.hovered
+                    && (leftReveal.edgeHovered || leftPanel.contentHovered)
                 open: window.presented && field.ready && (Config.options?.enabledPanels ?? []).includes("abyssSidebarLeft")
                     && GlobalStates.sidebarLeftOpen && GlobalStates.sidebarLeftPresentationOutput === window.outputName
 
@@ -473,7 +473,7 @@ Scope {
                     ? "quickNotesSidebar"
                     : (edge === "right" ? "notificationsSidebar" : "")
                 elasticFillHovered: elasticFillGroup.length > 0
-                    && rightReveal.hovered
+                    && (rightReveal.edgeHovered || rightPanel.contentHovered)
                 open: window.presented && field.ready && (Config.options?.enabledPanels ?? []).includes("abyssSidebarRight")
                     && GlobalStates.sidebarRightOpen && GlobalStates.sidebarRightPresentationOutput === window.outputName
 
@@ -567,9 +567,9 @@ Scope {
                             && elasticNearbyEdge === "right")
                                 ? "notificationsSidebar"
                         : ""
-                    elasticFillAnchor: elasticFillGroup.length > 0
                     elasticFillHovered: elasticFillGroup.length > 0
-                        && ((hostedPopup?.popupHovered ?? false)
+                        && (styledPopupHost.contentHovered
+                            || (hostedPopup?.popupHovered ?? false)
                             || (hostedPopup?.hoverTarget?.containsMouse ?? false))
                     open: window.popupFieldPresented && field.ready
                         && (hostedPopup?.presentationActive ?? false)

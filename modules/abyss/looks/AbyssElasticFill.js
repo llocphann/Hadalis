@@ -1,10 +1,10 @@
 // Elastic Fill: hover-owned vacancy borrowing for related Abyss bodies.
 //
-// Fill sizing stays separate from AbyssBodyPlacement. The base allocator remains
-// the authority for readable geometry, stacking, collision resolution and
-// eviction; it only honors the group's anchor-before-follower coexistence bit.
-// Elastic Fill receives those placements and may temporarily enlarge one hovered
-// member inside the bounding envelope of its explicitly related peer.
+// This is deliberately separate from AbyssBodyPlacement. The base allocator
+// remains the sole authority for requested geometry, readable minima, activation
+// order, stacking, collision resolution and eviction. Elastic Fill receives the
+// resulting composition and may temporarily enlarge only the currently hovered
+// member into the vertical vacancy already created by its related peer.
 //
 // It never persists geometry, never grows a lone surface, never expands through
 // the physical Screen Edge and never overlaps another visible body's content.
@@ -44,18 +44,40 @@ function _elasticPanelRect(member) {
     };
 }
 function _elasticDirections(owner,members) {
-    var anchors=members.filter(function(member) {
-        return member.request?.elasticFillAnchor === true;
+    // The examples this mechanism serves are orthogonal perimeter pairs:
+    // Sidebar + a corner popup. Preserve their allocator positions and grow
+    // only vertically toward the peer's occupied band. This makes the visible
+    // result follow the real composition instead of a hard-coded popup role.
+    var ownerPanel=_elasticPanelRect(owner);
+    var ownerCenter=ownerPanel.y+ownerPanel.height/2;
+    var peers=members.filter(function(member) {
+        return member!==owner;
     });
-    if (anchors.length!==1) return [];
-    var edge=String(anchors[0].request?.record?.edge ?? "");
-    if (edge!=="top" && edge!=="bottom") return [];
-    var ownerIsAnchor=owner.request?.elasticFillAnchor === true;
-    if (edge==="bottom")
-        return [ownerIsAnchor ? "top" : "bottom"];
-    return [ownerIsAnchor ? "bottom" : "top"];
-}
+    if (!peers.length) return [];
 
+    var peerTop=Infinity,peerBottom=-Infinity;
+    var weightedCenter=0,totalArea=0;
+    peers.forEach(function(member) {
+        var rect=_elasticPanelRect(member);
+        var area=Math.max(1,_elasticArea(rect));
+        peerTop=Math.min(peerTop,rect.y);
+        peerBottom=Math.max(peerBottom,rect.y+rect.height);
+        weightedCenter+=(rect.y+rect.height/2)*area;
+        totalArea+=area;
+    });
+
+    var peerCenter=totalArea>0
+        ? weightedCenter/totalArea : (peerTop+peerBottom)/2;
+    if (peerCenter>ownerCenter+.5) return ["bottom"];
+    if (peerCenter<ownerCenter-.5) return ["top"];
+
+    var upward=Math.max(0,ownerPanel.y-peerTop);
+    var downward=Math.max(0,
+        peerBottom-(ownerPanel.y+ownerPanel.height));
+    if (downward>upward+.5) return ["bottom"];
+    if (upward>downward+.5) return ["top"];
+    return [];
+}
 function _elasticEnvelope(members) {
     var left=Infinity,top=Infinity,right=-Infinity,bottom=-Infinity;
     for (var i=0;i<members.length;i++) {
@@ -222,11 +244,7 @@ function resolve(requests,placements,gap) {
     var transactions=[];
     for (var key in groups) {
         var members=groups[key];
-        if (members.length<2
-                || members.filter(function(member) {
-                    return member.request?.elasticFillAnchor === true;
-                }).length!==1)
-            continue;
+        if (members.length<2) continue;
         var owner=_elasticOwner(members);
         if (!owner) continue;
         transactions.push({

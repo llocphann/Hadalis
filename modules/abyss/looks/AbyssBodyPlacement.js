@@ -196,45 +196,6 @@ function _orderedRequests(requests) {
         for (var n=0;n<slots.length;n++)
             ordered[slots[n]]=members[n];
     });
-    // Elastic Fill needs a stable coexistence base before its visual post-pass:
-    // a corner anchor must be allocated before its related sidebar regardless
-    // of which one opened last. Delay only followers that currently precede an
-    // anchor, preserving every non-follower's already-resolved Pyramid/legacy
-    // relative order.
-    var elasticGroups={};
-    ordered.forEach(function(request) {
-        var key=String(request?.elasticFillGroup ?? "");
-        if (!key) return;
-        if (!elasticGroups[key]) elasticGroups[key]=[];
-        elasticGroups[key].push(request);
-    });
-    Object.keys(elasticGroups).sort().forEach(function(key) {
-        var members=elasticGroups[key];
-        if (members.length<2) return;
-        var anchors=members.filter(function(request) {
-            return request?.elasticFillAnchor === true;
-        });
-        if (!anchors.length || anchors.length===members.length) return;
-        var lastAnchor=-1;
-        anchors.forEach(function(request) {
-            lastAnchor=Math.max(lastAnchor,ordered.indexOf(request));
-        });
-        var delayed=members.filter(function(request) {
-            return request?.elasticFillAnchor !== true
-                && ordered.indexOf(request)<lastAnchor;
-        });
-        if (!delayed.length) return;
-        delayed.forEach(function(request) {
-            var index=ordered.indexOf(request);
-            if (index>=0) ordered.splice(index,1);
-        });
-        lastAnchor=-1;
-        anchors.forEach(function(request) {
-            lastAnchor=Math.max(lastAnchor,ordered.indexOf(request));
-        });
-        for (var d=0;d<delayed.length;d++)
-            ordered.splice(lastAnchor+1+d,0,delayed[d]);
-    });
     return ordered;
 }
 function arrange(requests, width, height, insets, gap) {

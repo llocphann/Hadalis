@@ -19,6 +19,7 @@ import qs.services
 Bar.StyledPopup {
     id: root
 
+    liquidPresentationKind: "quickNotes"
     required property Item anchorItem
     property bool editorFocused: false
     property bool entryBridgeHeld: false

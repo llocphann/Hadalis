@@ -70,9 +70,6 @@ Item {
     // Elastic Fill is transient presentation metadata. Related bodies share a
     // group; only the most recently hovered member borrows the group's vacancy.
     property string elasticFillGroup: ""
-    // The corner popup is the group's base-layout anchor. Sidebars are
-    // followers: they may fill vacancy, but never steal the direct Edge slot.
-    property bool elasticFillAnchor: false
     property bool elasticFillHovered: false
     property int elasticFillOrder: 0
     property int activationOrder: 0
@@ -201,6 +198,7 @@ Item {
     readonly property Item contentItem: content
     readonly property bool ready: embeddedItem !== null || content.status === Loader.Ready
     readonly property Item contentParent: contentCanvas
+    readonly property bool contentHovered: contentHover.hovered
     readonly property rect inputBounds: acceptsInput && ready
         ? Qt.rect(contentFrame.x,contentFrame.y,contentFrame.width,contentFrame.height) : Qt.rect(0,0,0,0)
     signal closeRequested()
@@ -218,7 +216,6 @@ Item {
             stackPolicy:root.stackPolicy,
             stackProximity:root.stackProximity,
             elasticFillGroup:root.elasticFillGroup,
-            elasticFillAnchor:root.elasticFillAnchor,
             elasticFillHovered:root.elasticFillHovered,
             elasticFillOrder:root.elasticFillOrder,
             record:root.requestedRecord})
@@ -474,6 +471,13 @@ Item {
         opacity: root.pyramidPresentationActive
             ? 1 : Math.min(1,root.progress*1.5)
         enabled: root.acceptsInput
+
+        HoverHandler {
+            id: contentHover
+            enabled: root.acceptsInput
+            acceptedDevices:
+                PointerDevice.Mouse | PointerDevice.TouchPad
+        }
 
         Item {
             id: contentCanvas

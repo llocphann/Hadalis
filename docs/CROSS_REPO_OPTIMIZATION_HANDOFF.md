@@ -10700,3 +10700,622 @@ Round-32 Niri/Hyprland sorter findings remain valid after the concurrent Abyss
 retirement.
 
 No runtime/source implementation is authorized by this handoff.
+
+---
+
+## 48. Round 34 — Settings static-search work, action search, app-list derivation and AI catalog collections (2026-09-30)
+
+### Snapshot / scope
+
+Round 34 started its source audit on:
+
+`d24482584e1ec69cd83b94738d3b08661d936793`
+— `docs(perf): audit taskbar caches and settings search`.
+
+The exact-parent guard caught one concurrent commit before any Round-34 commit
+was created:
+
+`df76b95905c82b0fcfb924affff5d6bd480c58ad`
+— `feat(abyss): restore independent semantic vacancy borrowing`.
+
+That commit changes only Abyss runtime/geometry plus its focused regression
+test. It does not touch Settings/search, GlobalActions, Notifications, All Apps,
+AI catalog paths or this handoff. The Round-34 source conclusions were therefore
+reconciled unchanged, and the docs tree was rebuilt on exact parent
+`df76b959...`.
+This round intentionally does **not** repeat:
+
+- notification grouping/index findings from §37.1-§37.2;
+- dynamic control search preparation from §47.8-§47.9;
+- AppSearch fuzzy-query work already covered in §40;
+- taskbar work from §47.
+
+The new focus is the still-independent static Settings index, search-loop local
+work, GlobalActions, All Apps derivation and AI catalog collection passes.
+
+External contract checks used only where repository source depends on
+Quickshell semantics:
+
+- Quickshell \`DesktopEntries.applications\` is documented as containing
+  Application entries that are not Hidden or NoDisplay;
+- Quickshell \`Notification.appName\`, \`summary\` and \`body\` are documented
+  readonly;
+- QML property bindings are reactive and re-evaluate when dependencies change.
+
+Those checks support classification below; no runtime/source implementation is
+performed in this round.
+
+### 48.1 SettingsPageRegistry rebuilds/reroutes a 213-entry static index for every search recomputation — CONFIRMED / P1
+
+Paths:
+
+- \`modules/settings/SettingsPageRegistry.qml\`;
+- \`modules/settings/SettingsPageRegistryData.qml\`;
+- \`settings.qml\`;
+- \`modules/settings/SettingsOverlay.qml\`;
+- \`modules/settings/SettingsFocus.qml\`.
+
+The current generated static Settings index contains **213 entries**.
+
+Every call to \`SettingsPageRegistry.searchIndex()\` currently:
+
+1. calls \`Data.searchIndex()\`;
+2. filters retired feature pages;
+3. maps every surviving entry;
+4. calls \`FamilyPolicy.settingsRoute(...)\` for each entry;
+5. allocates a replacement object for every redirected route.
+
+Repository search found exactly three checked-in callers, all search surfaces:
+
+- \`settings.qml\`;
+- \`SettingsOverlay.qml\`;
+- \`SettingsFocus.qml\`.
+
+None mutates the returned index entries.
+
+The routing inputs are not query text. They are effectively generation-level
+Settings state:
+
+- the Data static index / translation generation;
+- \`Config.options?.panelFamily\`;
+- \`root.abyssFamily\`;
+- retired-page policy.
+
+Therefore the routed index can be a reactive/cached SettingsPageRegistry
+property that is rebuilt only when one of those actual inputs changes.
+
+\`searchIndex()\` can remain as the compatibility API and return that current
+prepared routed array.
+
+This removes, from every ordinary query recomputation:
+
+- one traversal/filter over ~213 static rows;
+- one map traversal over the surviving rows;
+- ~213 family-route calls;
+- redirected wrapper allocations.
+
+The query-specific scoring loop remains exactly where it is.
+
+Required invalidation cases:
+
+- translation/index regeneration;
+- ii -> Waffle -> Abyss family transitions;
+- Abyss-family changes;
+- retired-page policy remains excluded;
+- redirected Bar/Abyss routes keep the exact current page/section/label.
+
+This is separate from §47.8, which prepares dynamically registered live
+controls rather than the static section index.
+
+### 48.2 Main Settings and SettingsOverlay rescan the page registry for WaffleConfig on every query even though isPageApplicable already encodes the same family rule — CONFIRMED / P1-P2
+
+Paths:
+
+- \`settings.qml\`;
+- \`modules/settings/SettingsOverlay.qml\`;
+- \`modules/settings/SettingsPageRegistry.qml\`;
+- \`modules/settings/SettingsPageRegistryData.qml\`.
+
+Both main Settings and the overlay define a local
+\`getWaffleSettingsPageIndex()\` that linearly scans their page list looking for:
+
+\`modules/settings/WaffleConfig.qml\`.
+
+The generated page list places that page at zero-based index **11**.
+
+But \`SettingsPageRegistry.isPageApplicable(index)\` already has the canonical
+family policy:
+
+- classic/ii excludes page 11;
+- Waffle allows page 11 and excludes the classic-only pages;
+- Abyss excludes page 11 and its own incompatible page set.
+
+Both search implementations already call \`isPageApplicable()\` before their
+extra Waffle-page test.
+
+Therefore the later logic:
+
+- scanning all pages to rediscover the Waffle index;
+- computing \`isWaffleActive\`;
+- rejecting \`entry.pageIndex === wafflePageIndex\` again;
+- filtering dynamic widget results by the same Waffle page again;
+
+is redundant under the current canonical applicability contract.
+
+Strict-safe direction:
+
+- keep \`SettingsPageRegistry.isPageApplicable()\` as the single family gate;
+- remove the local Waffle page scan and duplicate Waffle-only exclusions from
+  these two search implementations;
+- do not hard-code page 11 into the callers.
+
+This removes one page-list scan per query plus duplicate family checks/filtering,
+and reduces the chance that search policy drifts from navigation policy later.
+
+Regression matrix:
+
+- classic: WaffleConfig absent;
+- Waffle: WaffleConfig searchable;
+- Abyss: WaffleConfig absent;
+- Easy Mode still applies its existing \`essential\` filter after family
+  applicability;
+- dynamic widget results obey the same family policy.
+
+### 48.3 Static Settings scorers repeat identical indexOf work for the same field/term — CONFIRMED / P1-P2
+
+Paths:
+
+- \`settings.qml\`;
+- \`modules/settings/SettingsOverlay.qml\`;
+- \`modules/settings/SettingsFocus.qml\`;
+- \`modules/waffle/settings/WSettingsContent.qml\`.
+
+This is independent of §48.1.
+
+For one term, main Settings and the overlay currently use repeated expressions
+such as:
+
+- \`label.indexOf(term)\` in the match predicate;
+- \`label.indexOf(term)\` again for prefix score;
+- \`label.indexOf(term)\` again for contains score;
+- \`kw.indexOf(term)\` in match/scoring paths;
+- \`section.indexOf(term)\` in match/scoring paths.
+
+Waffle repeats the same shape across its **192-entry** static index.
+
+\`SettingsFocus\` builds one haystack but still recomputes the label index for
+its label-specific bonus.
+
+Exact-safe local direction:
+
+- compute each field's index at most once per term;
+- preserve the existing short-circuit shape so fields not needed for matching
+  are not eagerly searched;
+- reuse the cached integer for score decisions.
+
+For main Settings/overlay, an efficient exact order is:
+
+1. compute label/keyword/section indices because scoring needs them even after a
+   match;
+2. only if all three miss, probe description/page as needed to establish
+   whether the term matches at all;
+3. apply the unchanged score constants using the saved indices.
+
+This reduces repeated string scans without storing any persistent normalized
+cache.
+
+Do **not** combine fields into one permanent haystack in the lossless patch;
+field-specific prefix/position scores must remain exact.
+
+### 48.4 Persistent lowercase copies for every static Settings row are a CPU-memory tradeoff, so keep them out of the strict no-tradeoff set
+
+Paths:
+
+- same static Settings search surfaces as §48.3.
+
+It is mechanically possible to pre-store lowercase label/description/page/
+section/keywords for all 213 ii rows and all 192 Waffle rows.
+
+That would remove per-query lowercase/join work, similar to the already
+documented dynamic-control preparation in §47.8.
+
+However it also deliberately retains duplicate normalized strings for the
+lifetime of the Settings surface/registry.
+
+Qt's own performance guidance explicitly treats this class of caching as a
+memory-vs-processing tradeoff.
+
+Status for this round:
+
+- **NEEDS BENCHMARK / excluded from the strict no-tradeoff implementation set**;
+- §48.1 cached routing and §48.3 one-query local index reuse do not require that
+  persistent string cache.
+
+This distinction keeps the handoff aligned with the owner's requirement to
+prefer optimizations that do not buy CPU by simply retaining more resident
+data.
+
+### 48.5 GlobalActions fuzzyQuery repeats query tokenization per action and allocates score records for guaranteed misses — CONFIRMED / P1-P2 during action search
+
+Path:
+
+- \`services/GlobalActions.qml\`.
+
+The file currently contains **59 literal built-in action IDs**, plus optional
+user-script actions.
+
+For every nonempty query, \`fuzzyQuery()\` currently:
+
+1. \`map()\`s every action;
+2. lowercases action fields;
+3. inside that per-action callback executes
+   \`q.split(/\\s+/)\`;
+4. for multiword queries allocates
+   \`words.filter(...)\`;
+5. returns \`{ action, score }\` even when score is zero;
+6. filters zero-score records afterward;
+7. sorts matches;
+8. maps sorted records back to actions.
+
+The query word list is invariant across all actions.
+
+Strict-safe no-persistent-cache direction:
+
+- split \`q\` once before the action loop;
+- use one ordinary loop over \`allActions\`;
+- keep the exact current field normalization and scoring;
+- for multiword scoring, count matching words with a loop rather than
+  allocating \`words.filter(...)\`;
+- append a \`{action, score}\` record only when \`score > 0\`;
+- keep the exact current score sort;
+- return actions in that sorted order.
+
+For A actions and W query words this removes:
+
+- **A -> 1** query-token array constructions;
+- up to A temporary word-filter arrays;
+- score-record allocation for every zero-score action;
+- the full post-map zero-score filter pass.
+
+No persistent normalized-action cache is required.
+
+A persistent lowercase action index is possible, but like §48.4 it retains
+duplicate strings and should remain benchmark/tradeoff-gated rather than being
+bundled into this lossless local reduction.
+
+### 48.6 Waffle All Apps maintains a full flattened app array only to launch its first element — CONFIRMED / P2
+
+Path:
+
+- \`modules/waffle/startMenu/AllAppsContent.qml\`.
+
+\`groupedApps\` already contains every filtered/sorted app in exact display
+order, partitioned by first letter.
+
+A second bound property \`flatApps\` then traverses every group and every app to
+reconstruct the same global order.
+
+Repository search found only one consumer of \`flatApps\`:
+
+\`activateFirst()\`.
+
+That function uses only:
+
+\`flatApps[0]\`.
+
+The exact same first app is:
+
+\`groupedApps[0]?.apps[0]\`.
+
+Therefore \`flatApps\` can be removed entirely and \`activateFirst()\` can read
+the first app of the first group directly.
+
+This removes one complete app-reference flatten traversal and one persistent
+derived array every time \`groupedApps\` changes, while preserving:
+
+- first-result activation;
+- display grouping;
+- search filtering;
+- sort order;
+- letter navigation.
+
+No new cache or data structure is introduced.
+
+### 48.7 Reusing one pre-sorted Waffle All Apps list across queries is NOT yet a strict-lossless substitution — CLOSED / parity reason
+
+Path:
+
+- \`modules/waffle/startMenu/AllAppsContent.qml\`.
+
+The current algorithm:
+
+1. filters the current DesktopEntries sequence for the current query;
+2. sorts that filtered subset by \`entry.name.localeCompare(...)\`;
+3. groups the resulting order.
+
+It is tempting to sort the full app list once and only filter it for each query.
+
+For names where \`localeCompare()\` returns zero, however, this changes which
+array length/content is presented to QV4's sort implementation.
+
+Earlier rounds already established that the current QV4 populated-array sort
+must not be assumed stable for strict parity.
+
+Status:
+
+- **CLOSED** as an unconditional lossless sort removal;
+- keep the current subset sort unless a deterministic tie contract is
+  intentionally introduced as product behavior.
+
+The upstream Quickshell contract does confirm that
+\`DesktopEntries.applications\` already excludes Hidden/NoDisplay entries, so
+the local \`!entry.noDisplay\` predicate is semantically redundant under the
+supported upstream API. Removing the entire filter pass still also relies on
+the ObjectModel-values non-null contract and changes array identity, so keep
+that separate from the confirmed §48.6 reduction.
+
+### 48.8 OverviewAllAppsGrid computes both presentation-mode derivations from every app-list update — CONFIRMED / P2
+
+Path:
+
+- \`modules/overview/OverviewAllAppsGrid.qml\`.
+
+The component has two independent reactive derived properties:
+
+- \`groupedApps\` for minimal/alphabetical mode;
+- \`categorizedApps\` for folder/category mode.
+
+Both depend on the same \`appList\`.
+
+Only one is consumed for presentation at a time:
+
+- the minimal Repeater reads \`groupedApps\` only when mode is not \`folder\`;
+- the folder Repeater reads \`categorizedApps\` only when mode is \`folder\`;
+- the empty-state check also selects only the active one.
+
+Strict-safe direction:
+
+- make each derivation return an empty/inert result immediately when its mode is
+  inactive;
+- include \`mode\` as a dependency so switching modes synchronously computes the
+  newly active derivation;
+- keep the current grouping/category algorithms and model shapes unchanged.
+
+This avoids maintaining the inactive presentation model on app-list changes.
+
+Folder categorization can also be reduced from nested folder/category scans to
+a precomputed priority map, but that introduces another retained index. Keep
+that below the no-new-cache mode gate unless profiling shows category rebuilds
+are material.
+
+### 48.9 Notification history search repeats case normalization, but caching it is a deliberate resident-memory tradeoff — NEEDS BENCHMARK / excluded from strict set
+
+Paths:
+
+- \`services/Notifications.qml\`;
+- \`modules/common/widgets/NotificationListView.qml\`;
+- \`modules/waffle/notificationCenter/NotificationPaneContent.qml\`.
+
+\`Notifications.appNamesMatching(query)\` is used by both ii/common and Waffle
+history search.
+
+For each nonempty query it currently lowercases:
+
+- every candidate app-name key;
+- notification summary;
+- notification body;
+
+until a group matches.
+
+Quickshell documents incoming \`Notification.appName\`, \`summary\` and \`body\`
+as readonly. Persisted historical notification wrappers are also created from
+static saved values in Hadalis.
+
+Therefore cached lowercase search fields are correctness-plausible.
+
+But retaining lowercase copies of potentially long notification bodies is a
+direct resident-memory-for-CPU exchange.
+
+Status:
+
+- **NEEDS BENCHMARK / excluded from the strict no-tradeoff set**;
+- do not add body/summary lowercase copies merely because the search loop is
+  easy to optimize;
+- if history-search profiling later proves material, measure notification
+  history size and retained-string cost first.
+
+This does not affect §37.1-§37.2 notification grouping/count indexes, which
+remain confirmed and independent.
+
+### 48.10 Notification persistence serialization has a safe local pass reduction — CONFIRMED / P3
+
+Path:
+
+- \`services/Notifications.qml\`.
+
+\`stringifyList(list)\` currently executes:
+
+\`list.map(notifToJSON).filter(x => x !== null)\`
+
+before \`JSON.stringify()\`.
+
+A single loop can:
+
+- skip null notification objects;
+- call \`notifToJSON()\` once for each surviving object;
+- append non-null JSON records in the same source order;
+- stringify the resulting record array exactly as today.
+
+This changes the pre-stringify collection work from two list traversals plus a
+mapped intermediate array to one traversal.
+
+The file write and JSON serialization still dominate, so this is P3.
+
+The same shape exists during lazy history load:
+
+- map saved rows to created notification objects;
+- filter failed/null creations;
+- then traverse the resulting list again to find \`maxId\`.
+
+Creation and \`maxId\` tracking can be fused into one loop while preserving
+saved-row order and null-create handling.
+
+Do not debounce/coalesce notification file writes under the strict-lossless
+scope: that changes persistence/durability timing and is a separate tradeoff.
+
+### 48.11 AiProviderCatalog repeatedly recopies the merged prefix while combining provider catalogs — CONFIRMED / P2
+
+Path:
+
+- \`services/ai/AiProviderCatalog.qml\`.
+
+\`_publishModels()\` currently does:
+
+\`merged = merged.concat(providerModels)\`
+
+once per provider key.
+
+\`concat()\` creates a new array, so each iteration recopies the already merged
+prefix before adding the next provider's models.
+
+The current preset catalog contains 11 providers; the number of live model rows
+can be much larger than provider count.
+
+Exact-safe direction:
+
+- keep one \`merged=[]\`;
+- for each provider key in the exact current \`Object.keys()\` order, append that
+  provider's model references with a normal inner loop;
+- keep the current final comparator/sort unchanged.
+
+This preserves:
+
+- provider enumeration order before sort;
+- model reference identity;
+- the exact final sort input sequence;
+- the exact final sort itself.
+
+It removes all intermediate concatenated arrays and repeated prefix copying.
+
+Do not use one giant \`push(...providerModels)\` as the required implementation;
+an ordinary inner loop avoids JavaScript argument-count limits for unexpectedly
+large catalogs.
+
+### 48.12 Ai._syncExtraModels creates two full temporary arrays before the Set it actually needs — CONFIRMED / P2
+
+Path:
+
+- \`services/Ai.qml\`.
+
+Current code computes live provider membership as:
+
+\`[...new Set(models.map(model => model.providerId).filter(id => id && id.length > 0))].sort()\`.
+
+A single loop can populate the same Set directly from
+\`AiProviderCatalog.models\`, then materialize/sort the unique IDs once.
+
+Preserved semantics:
+
+- empty IDs excluded;
+- duplicate provider IDs collapsed;
+- final lexical sort unchanged;
+- the JSON signature remains byte-equivalent for the same provider set.
+
+Removed work:
+
+- one full \`map\` result array;
+- one full \`filter\` result array;
+- their callback/allocation churn.
+
+This path can run on broad config saves as well as catalog membership changes,
+so the reduction is more useful than a one-time initialization micro.
+
+### 48.13 Ai._syncCatalogModels can use invocation-local provider/loaded-ID indexes without retaining new cache state — CONFIRMED / P2
+
+Path:
+
+- \`services/Ai.qml\`;
+- \`modules/common/AiProviderPresets.qml\`;
+- \`services/ai/AiProviderCatalog.qml\`.
+
+For every live catalog model, \`_syncCatalogModels()\` currently calls:
+
+\`AiProviderCatalog.providerById(entry.providerId)\`.
+
+That function linearly scans the provider preset list with \`.find()\`.
+
+The same model loop also tests:
+
+\`root._loadedCatalogModelIds.includes(id)\`
+
+when a model ID already exists.
+
+The loaded-ID array grows during the same invocation.
+
+No persistent cache is needed to remove these scans.
+
+Exact-safe invocation-local direction:
+
+1. build one \`providerId -> provider\` Map from the current provider list before
+   the model loop;
+2. build one local Set tracking IDs appended to
+   \`_loadedCatalogModelIds\` during this invocation;
+3. use the Map for provider lookup;
+4. use the Set for the existing “already loaded by this catalog sync” test;
+5. continue publishing the existing \`_loadedCatalogModelIds\` array in the same
+   order for cleanup/compatibility.
+
+For P providers and M catalog models, provider lookup changes from roughly:
+
+\`M x P -> P + M\`.
+
+The growing loaded-ID membership check changes from O(M) per relevant collision
+to O(1), while preserving the distinction between:
+
+- a pre-existing non-catalog model ID, which must still block replacement;
+- an ID already loaded by this same catalog sync, which follows the current
+  duplicate handling path.
+
+Required fixture:
+
+- duplicate catalog IDs;
+- collision with an existing non-catalog/custom model;
+- multiple providers;
+- policy-2 local-only filtering;
+- exact \`_loadedCatalogModelIds\` order unchanged.
+
+### 48.14 Round-34 priority update
+
+**Confirmed no-persistent-cache / no-behavior-tradeoff reductions:**
+
+1. cache/reactively publish the 213-row routed static Settings index instead of
+   rerouting it per query (§48.1);
+2. remove duplicate Waffle page scans/gates after canonical
+   \`isPageApplicable()\` (§48.2);
+3. reuse per-term \`indexOf\` results in all static Settings scorers (§48.3);
+4. GlobalActions one-tokenization / one-pass score collection (§48.5);
+5. remove Waffle All Apps \`flatApps\` derivation (§48.6);
+6. gate Overview All Apps derivation to the active presentation mode (§48.8);
+7. one-pass notification serialization/history-load collection (§48.10);
+8. one-buffer AI catalog merge (§48.11);
+9. one-loop live-provider Set construction (§48.12);
+10. invocation-local provider/loaded-ID indexes during catalog sync (§48.13).
+
+**Explicitly excluded from the strict no-tradeoff set unless benchmark evidence
+justifies retained memory:**
+
+11. persistent lowercase copies for the 213/192 static Settings rows (§48.4);
+12. persistent lowercase notification body/summary search copies (§48.9);
+13. persistent normalized GlobalActions search strings beyond the local
+    §48.5 reduction.
+
+**Closed under strict parity:**
+
+14. pre-sorting the full Waffle All Apps catalog and filtering that order instead
+    of sorting each filtered subset (§48.7).
+
+The Round-31 capture-helper correctness prerequisites (§44.1 / §45.6) and
+Round-33 Bar/Dock regex correctness prerequisites (§47.1 / §47.2) remain above
+all pure performance work.
+
+No runtime/source implementation is authorized by this handoff.

@@ -87,86 +87,96 @@ ShellRoot {
             id: surface
             required property ShellScreen modelData
             readonly property string outputName: String(modelData?.name ?? "")
-            readonly property var controllerRef: controller
-            readonly property var trayRef: trayAnchor
-            readonly property var dockRef: dockAnchor
-            readonly property var fallbackRef: fallbackAnchor
+            property bool carrierActive: false
+            readonly property var controllerRef: carrier.item?.controllerRef ?? null
+            readonly property var trayRef: carrier.item?.trayRef ?? null
+            readonly property var dockRef: carrier.item?.dockRef ?? null
+            readonly property var fallbackRef: carrier.item?.fallbackRef ?? null
 
             Component.onCompleted: root.registerSurface(surface)
             Component.onDestruction: root.unregisterSurface(surface)
 
-            // The routing contract needs a real ShellScreen-bound QsWindow,
-            // not an exposed desktop toplevel. Keeping these carrier windows
-            // unmapped avoids compositor expose/frame waits from obscuring the
-            // multi-output identity test while preserving window.screen.
-            FloatingWindow {
-                id: window
-                visible: false
-                screen: surface.modelData
-                implicitWidth: 720
-                implicitHeight: 520
+            Loader {
+                id: carrier
+                active: surface.carrierActive
+                sourceComponent: Component {
+                    Scope {
+                        id: carrierRoot
+                        readonly property var controllerRef: controller
+                        readonly property var trayRef: trayAnchor
+                        readonly property var dockRef: dockAnchor
+                        readonly property var fallbackRef: fallbackAnchor
 
-                Item {
-                    id: scene
-                    anchors.fill: parent
+                        FloatingWindow {
+                            id: window
+                            visible: true
+                            screen: surface.modelData
+                            implicitWidth: 720
+                            implicitHeight: 520
 
-                    Item {
-                        id: trayAnchor
-                        property var liquidController: controller
-                        property string attachedEdge: "top"
-                        property string popupJoinedEdge: ""
-                        x: 80
-                        y: 0
-                        width: 40
-                        height: 40
-                        visible: true
-                        enabled: true
-                    }
+                            Item {
+                                id: scene
+                                anchors.fill: parent
 
-                    Item {
-                        id: dockAnchor
-                        property var liquidController: controller
-                        property string attachedEdge: "bottom"
-                        property string popupJoinedEdge: ""
-                        x: 120
-                        y: scene.height - height
-                        width: 40
-                        height: 40
-                        visible: true
-                        enabled: true
-                    }
+                                Item {
+                                    id: trayAnchor
+                                    property var liquidController: controller
+                                    property string attachedEdge: "top"
+                                    property string popupJoinedEdge: ""
+                                    x: 80
+                                    y: 0
+                                    width: 40
+                                    height: 40
+                                    visible: true
+                                    enabled: true
+                                }
 
-                    Item {
-                        id: fallbackAnchor
-                        property var liquidController: controller
-                        property string attachedEdge: "top"
-                        property string popupJoinedEdge: ""
-                        x: (scene.width - width) / 2
-                        y: 0
-                        width: 1
-                        height: 1
-                        visible: true
-                        enabled: true
+                                Item {
+                                    id: dockAnchor
+                                    property var liquidController: controller
+                                    property string attachedEdge: "bottom"
+                                    property string popupJoinedEdge: ""
+                                    x: 120
+                                    y: scene.height - height
+                                    width: 40
+                                    height: 40
+                                    visible: true
+                                    enabled: true
+                                }
+
+                                Item {
+                                    id: fallbackAnchor
+                                    property var liquidController: controller
+                                    property string attachedEdge: "top"
+                                    property string popupJoinedEdge: ""
+                                    x: (scene.width - width) / 2
+                                    y: 0
+                                    width: 1
+                                    height: 1
+                                    visible: true
+                                    enabled: true
+                                }
+                            }
+                        }
+
+                        AbyssSurfaceController {
+                            id: controller
+                            outputName: surface.outputName
+                            presentationItem: scene
+                            outputWidth: scene.width
+                            outputHeight: scene.height
+                            edgeInsets: ({ left: 12, top: 12, right: 12, bottom: 12 })
+                        }
+
+                        AbyssConfirmationPresenter {
+                            outputName: surface.outputName
+                            fallbackAnchor: fallbackAnchor
+                            presentationEnabled: true
+                        }
                     }
                 }
             }
-
-            AbyssSurfaceController {
-                id: controller
-                outputName: surface.outputName
-                presentationItem: scene
-                outputWidth: scene.width
-                outputHeight: scene.height
-                edgeInsets: ({ left: 12, top: 12, right: 12, bottom: 12 })
-            }
-
-            AbyssConfirmationPresenter {
-                outputName: surface.outputName
-                fallbackAnchor: fallbackAnchor
-                presentationEnabled: true
-            }
         }
-    }
 
     Timer {
         interval: 260
@@ -198,6 +208,25 @@ ShellRoot {
             }
 
             if (root.phase === 0) {
+                // Delay platform-window creation until Quickshell has entered
+                // the event loop and enumerated both ShellScreen objects.
+                one.carrierActive = true
+                root.phase = 1
+                return
+            }
+
+            if (root.phase === 1) {
+                if (!one.controllerRef)
+                    return
+                two.carrierActive = true
+                root.phase = 2
+                return
+            }
+
+            if (root.phase === 2) {
+                if (!one.controllerRef || !two.controllerRef
+                        || !one.trayRef || !two.dockRef)
+                    return
                 Config.setNestedValue("panelFamily", "abyss")
                 PopupAnchorRegistry.registerAnchor(
                     one.trayRef, "tray", () => ["multi.runtime.app"], 300)
@@ -206,11 +235,11 @@ ShellRoot {
                 root.request(
                     "multi.runtime.app", two.outputName,
                     "Prefer same-output Dock over remote Tray")
-                root.phase = 1
+                root.phase = 3
                 return
             }
 
-            if (root.phase === 1) {
+            if (root.phase === 3) {
                 if (!ConfirmationService.requestVisible
                         || two.controllerRef.activePopups.length < 1)
                     return
@@ -225,21 +254,21 @@ ShellRoot {
                         "connected popup is presented only on requested output"))
                     return
                 ConfirmationService.cancel()
-                root.phase = 2
+                root.phase = 4
                 return
             }
 
-            if (root.phase === 2) {
+            if (root.phase === 4) {
                 if (ConfirmationService.active)
                     return
                 root.request(
                     "multi.runtime.app", one.outputName,
                     "Prefer local Tray on first output")
-                root.phase = 3
+                root.phase = 5
                 return
             }
 
-            if (root.phase === 3) {
+            if (root.phase === 5) {
                 if (!ConfirmationService.requestVisible
                         || one.controllerRef.activePopups.length < 1)
                     return
@@ -249,21 +278,21 @@ ShellRoot {
                         "first-output request resolves its local Tray source"))
                     return
                 ConfirmationService.cancel()
-                root.phase = 4
+                root.phase = 6
                 return
             }
 
-            if (root.phase === 4) {
+            if (root.phase === 6) {
                 if (ConfirmationService.active)
                     return
                 PopupAnchorRegistry.unregisterAnchor(one.trayRef)
                 PopupAnchorRegistry.unregisterAnchor(two.dockRef)
                 root.request("", two.outputName, "Second-output fallback")
-                root.phase = 5
+                root.phase = 7
                 return
             }
 
-            if (root.phase === 5) {
+            if (root.phase === 7) {
                 if (!ConfirmationService.requestVisible
                         || two.controllerRef.activePopups.length < 1)
                     return
@@ -275,11 +304,11 @@ ShellRoot {
                         "unresolved request uses top-center fallback on requested output"))
                     return
                 ConfirmationService.cancel()
-                root.phase = 6
+                root.phase = 8
                 return
             }
 
-            if (root.phase === 6) {
+            if (root.phase === 8) {
                 if (ConfirmationService.active)
                     return
                 console.info("ABYSS_CONFIRMATION_MULTI_OUTPUT_PASS")

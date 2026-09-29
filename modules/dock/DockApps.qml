@@ -268,9 +268,19 @@ Item {
                     entry: entry
                 });
             }
+            const pinnedOrder = new Map()
+            for (let i = 0; i < pinnedApps.length; i++)
+                pinnedOrder.set(pinnedApps[i].toLowerCase(), i)
+
             sortedRunningApps.sort((a, b) => {
+                const aPinned = pinnedOrder.has(a.lowerAppId)
+                const bPinned = pinnedOrder.has(b.lowerAppId)
+                if (aPinned && bPinned)
+                    return pinnedOrder.get(a.lowerAppId) - pinnedOrder.get(b.lowerAppId)
+                if (aPinned !== bPinned)
+                    return aPinned ? -1 : 1
                 return root._runningAppOrder.indexOf(a.lowerAppId)
-                    - root._runningAppOrder.indexOf(b.lowerAppId);
+                    - root._runningAppOrder.indexOf(b.lowerAppId)
             });
 
             for (const {lowerAppId, entry} of sortedRunningApps) {

@@ -5441,5 +5441,9 @@
   "Shell processes": "Shell processes",
   "helpers": "helpers",
   "%1 modules need more space": "%1 modules need more space",
-  "Not enough space for %1. Hide another module or enlarge Dashboard.": "Not enough space for %1. Hide another module or enlarge Dashboard."
+  "Not enough space for %1. Hide another module or enlarge Dashboard.": "Not enough space for %1. Hide another module or enlarge Dashboard.",
+  "Pinned app order": "Pinned app order",
+  "Pinned apps follow this order in the Dock. Running-only apps keep their open order.": "Pinned apps follow this order in the Dock. Running-only apps keep their open order.",
+  "Move earlier": "Move earlier",
+  "Move later": "Move later"
 }

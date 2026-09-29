@@ -42,6 +42,14 @@ assert "drag.axis: Drag.XAndYAxis" in ripple
 assert "Drag to reorder" not in settings
 assert "enableDragReorder" not in apps
 assert "enableDragReorder" not in settings
+assert "function movePinnedApp(fromIndex: int, delta: int): void" in settings
+assert 'Config.setNestedValue("dock.pinnedApps", values)' in settings
+assert 'title: Translation.tr("Pinned app order")' in settings
+assert 'text: "arrow_upward"' in settings
+assert 'text: "arrow_downward"' in settings
+assert "const pinnedOrder = new Map()" in apps
+assert "if (aPinned && bPinned)" in apps
+assert "return aPinned ? -1 : 1" in apps
 
 # Dock hover is now one app-popup interaction. Legacy Dock window-preview
 # surfaces and their Settings controls must stay retired.

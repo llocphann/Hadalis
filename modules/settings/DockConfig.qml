@@ -3,6 +3,7 @@ import QtQuick.Layouts
 import QtQuick.Controls
 import Quickshell
 import Quickshell.Io
+import Quickshell.Widgets
 import qs.services
 import qs.modules.common
 import qs.modules.common.widgets
@@ -12,6 +13,30 @@ ContentPage {
 
     function _log(...args): void {
         if (Quickshell.env("QS_DEBUG") === "1") console.log(...args);
+    }
+
+    function movePinnedApp(fromIndex: int, delta: int): void {
+        const values = [...(Config.options?.dock?.pinnedApps ?? [])]
+        const toIndex = fromIndex + delta
+        if (fromIndex < 0 || fromIndex >= values.length
+                || toIndex < 0 || toIndex >= values.length)
+            return
+        const moved = values.splice(fromIndex, 1)[0]
+        values.splice(toIndex, 0, moved)
+        Config.setNestedValue("dock.pinnedApps", values)
+    }
+
+    function pinnedAppLabel(appId: string): string {
+        return AppSearch.lookupDesktopEntry(appId)?.name ?? appId
+    }
+
+    function pinnedAppIcon(appId: string): string {
+        const entry = AppSearch.lookupDesktopEntry(appId)
+        const icon = entry?.icon || AppSearch.guessIcon(appId)
+        const resolved = IconThemeService.smartIconName(icon, appId)
+        if (resolved.startsWith("/") || resolved.startsWith("file://"))
+            return resolved.startsWith("file://") ? resolved : `file://${resolved}`
+        return Quickshell.iconPath(resolved, "application-x-executable")
     }
 
     settingsPageIndex: embedded ? 2 : 22
@@ -150,6 +175,105 @@ ContentPage {
                 onCheckedChanged: Config.setNestedValue('dock.notificationBadge', checked)
                 StyledToolTip {
                     text: Translation.tr("Show the number of pending notifications on each app icon")
+                }
+            }
+
+            ContentSubsection {
+                title: Translation.tr("Pinned app order")
+
+                StyledText {
+                    Layout.fillWidth: true
+                    text: Translation.tr("Pinned apps follow this order in the Dock. Running-only apps keep their open order.")
+                    color: Appearance.colors.colSubtext
+                    font.pixelSize: Appearance.font.pixelSize.smaller
+                    wrapMode: Text.WordWrap
+                }
+
+                ColumnLayout {
+                    Layout.fillWidth: true
+                    spacing: 4
+
+                    Repeater {
+                        model: Config.options?.dock?.pinnedApps ?? []
+
+                        delegate: Rectangle {
+                            id: pinnedAppDelegate
+                            required property var modelData
+                            required property int index
+
+                            Layout.fillWidth: true
+                            implicitHeight: 44
+                            radius: Appearance.rounding.small
+                            color: Appearance.colors.colLayer1Base
+                            border.width: 1
+                            border.color: Appearance.colors.colLayer0Border
+
+                            RowLayout {
+                                anchors.fill: parent
+                                anchors.leftMargin: 8
+                                anchors.rightMargin: 6
+                                spacing: 8
+
+                                IconImage {
+                                    Layout.preferredWidth: 28
+                                    Layout.preferredHeight: 28
+                                    source: root.pinnedAppIcon(String(pinnedAppDelegate.modelData))
+                                }
+
+                                ColumnLayout {
+                                    Layout.fillWidth: true
+                                    spacing: 0
+
+                                    StyledText {
+                                        Layout.fillWidth: true
+                                        text: root.pinnedAppLabel(String(pinnedAppDelegate.modelData))
+                                        color: Appearance.colors.colOnLayer1
+                                        elide: Text.ElideRight
+                                    }
+                                    StyledText {
+                                        Layout.fillWidth: true
+                                        text: String(pinnedAppDelegate.modelData)
+                                        color: Appearance.colors.colSubtext
+                                        font.pixelSize: Appearance.font.pixelSize.smaller
+                                        elide: Text.ElideRight
+                                    }
+                                }
+
+                                RippleButton {
+                                    Layout.preferredWidth: 34
+                                    Layout.preferredHeight: 34
+                                    enabled: pinnedAppDelegate.index > 0
+                                    pointingHandCursor: enabled
+                                    Accessible.name: Translation.tr("Move earlier")
+                                    onClicked: root.movePinnedApp(pinnedAppDelegate.index, -1)
+                                    contentItem: MaterialSymbol {
+                                        anchors.centerIn: parent
+                                        text: "arrow_upward"
+                                        iconSize: 18
+                                        color: Appearance.colors.colOnLayer1
+                                    }
+                                    StyledToolTip { text: Translation.tr("Move earlier") }
+                                }
+
+                                RippleButton {
+                                    Layout.preferredWidth: 34
+                                    Layout.preferredHeight: 34
+                                    enabled: pinnedAppDelegate.index
+                                        < (Config.options?.dock?.pinnedApps?.length ?? 0) - 1
+                                    pointingHandCursor: enabled
+                                    Accessible.name: Translation.tr("Move later")
+                                    onClicked: root.movePinnedApp(pinnedAppDelegate.index, 1)
+                                    contentItem: MaterialSymbol {
+                                        anchors.centerIn: parent
+                                        text: "arrow_downward"
+                                        iconSize: 18
+                                        color: Appearance.colors.colOnLayer1
+                                    }
+                                    StyledToolTip { text: Translation.tr("Move later") }
+                                }
+                            }
+                        }
+                    }
                 }
             }
 

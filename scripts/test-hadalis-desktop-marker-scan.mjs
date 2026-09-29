@@ -1,7 +1,10 @@
 #!/usr/bin/env node
 
 import assert from "node:assert/strict";
-import { scanLoopMarkerTokens } from "../automation/chat_bridge/desktop_driver.mjs";
+import {
+  markerAfterBaseline,
+  scanLoopMarkerTokens
+} from "../automation/chat_bridge/desktop_driver.mjs";
 
 assert.deepEqual(
   scanLoopMarkerTokens("HADALIS_LOOP:DONE"),
@@ -38,6 +41,33 @@ assert.deepEqual(
 assert.deepEqual(
   scanLoopMarkerTokens("nothing relevant here"),
   []
+);
+
+
+const bootstrapMarkers = [
+  "HADALIS_LOOP:CONTINUE",
+  "HADALIS_LOOP:ROTATE",
+  "HADALIS_LOOP:DONE",
+  "HADALIS_LOOP:CONNECTOR_BLOCKED GITHUB",
+  "HADALIS_LOOP:WAIT_RESULT JOB-SERVICE-E2E-001"
+];
+
+assert.equal(
+  markerAfterBaseline(bootstrapMarkers, 4),
+  "HADALIS_LOOP:WAIT_RESULT JOB-SERVICE-E2E-001"
+);
+
+assert.equal(
+  markerAfterBaseline(bootstrapMarkers.slice(0, 4), 4),
+  null
+);
+
+assert.throws(
+  () => markerAfterBaseline([
+    ...bootstrapMarkers,
+    "HADALIS_LOOP:DONE"
+  ], 4),
+  /expected exactly one post-submit/
 );
 
 console.log("PASS: desktop loop-marker token scanner");

@@ -354,11 +354,11 @@ ContentPage {
                 Layout.fillWidth: true
                 Layout.preferredHeight: childrenRect.height
                 spacing: 6
-                DialogButton { buttonText: Translation.tr("Start"); enabled: !root.busy && root.selectedProfile?.enabled; onClicked: root.runAction(["profile-action", "start", root.selectedProfileId]) }
+                DialogButton { buttonText: Translation.tr("Start"); enabled: !root.busy && (root.selectedProfile?.enabled ?? false); onClicked: root.runAction(["profile-action", "start", root.selectedProfileId]) }
                 DialogButton { buttonText: Translation.tr("Pause"); enabled: !root.busy && root.selectedState?.desired === "run"; onClicked: root.runAction(["profile-action", "pause", root.selectedProfileId]) }
                 DialogButton { buttonText: Translation.tr("Resume"); enabled: !root.busy && root.selectedState?.desired === "paused"; onClicked: root.runAction(["profile-action", "resume", root.selectedProfileId]) }
                 DialogButton { buttonText: Translation.tr("Stop"); enabled: !root.busy; onClicked: root.runAction(["profile-action", "stop", root.selectedProfileId]) }
-                DialogButton { buttonText: Translation.tr("Restart"); enabled: !root.busy && root.selectedProfile?.enabled; onClicked: root.runAction(["profile-action", "restart", root.selectedProfileId]) }
+                DialogButton { buttonText: Translation.tr("Restart"); enabled: !root.busy && (root.selectedProfile?.enabled ?? false); onClicked: root.runAction(["profile-action", "restart", root.selectedProfileId]) }
                 DialogButton { buttonText: Translation.tr("Remove"); enabled: !root.busy && root.selectedProfileId !== "strict-lossless-research" && root.snapshot?.runtime?.owner_id !== root.selectedProfileId; onClicked: root.confirmRemoval() }
             }
         }

@@ -27,6 +27,7 @@ function request(id,edge,order,depth=200,along=300,span=420,options={}) {
    allowInward:options.allowInward ?? true,
    stackPolicy:options.stackPolicy ?? "",
    stackProximity:options.stackProximity ?? 24,
+   preferInward:options.preferInward ?? false,
    minSpan:Math.min(record.span,options.minSpan ?? 220),
    minDepth:Math.min(record.targetDepth,options.minDepth ?? 120),record};
 }
@@ -99,6 +100,16 @@ assert.equal(pyramidPacked.pyramidLarge.inward,0,
     'larger same-neighborhood popup owns the physical Edge tier');
 assert(pyramidPacked.pyramidSmall.inward>0,
     'overlapping different-anchor popup stacks inward');
+
+const sourceHover=request('sourceHover','top',1,150,440,320,{stackPolicy:'pyramid'});
+const confirmation=request('confirmation','top',2,260,430,360,{
+ stackPolicy:'pyramid',preferInward:true
+});
+const confirmationPacked=arrange([sourceHover,confirmation],1200,900,edgeInsets);
+assert.equal(confirmationPacked.sourceHover.inward,0,
+    'source hover remains closest to the physical Edge');
+assert(confirmationPacked.confirmation.inward>0,
+    'confirmation takes the next inward tier below its source hover');
 
 const crowded=[
  request('settings','bottom',1,760,80,1040,{minSpan:520,minDepth:240}),

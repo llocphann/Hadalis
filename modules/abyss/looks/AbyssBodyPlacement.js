@@ -190,6 +190,11 @@ function _orderedRequests(requests) {
         // same overlap/proximity relation. Larger resting area owns the earlier
         // (more Edge-direct) slot; equal areas keep the legacy tie-breaks.
         members.sort(function(a,b) {
+            // Confirmation follows an already-visible source/hover popup inward
+            // instead of taking over its physical Edge tier.
+            var inwardDelta=(a.preferInward === true ? 1 : 0)
+                -(b.preferInward === true ? 1 : 0);
+            if (inwardDelta !== 0) return inwardDelta;
             var areaDelta=_requestedArea(b)-_requestedArea(a);
             return Math.abs(areaDelta)>.5 ? areaDelta : _legacyCompare(a,b);
         });

@@ -95,6 +95,17 @@ Scope {
             id: window
             required property var modelData
             readonly property string outputName: modelData?.name ?? ""
+
+            function syncPromptHostRegistration(): void {
+                if (field.ready)
+                    AbyssPromptHostRegistry.registerHost(window, window.outputName)
+                else
+                    AbyssPromptHostRegistry.unregisterHost(window)
+            }
+            Component.onCompleted: window.syncPromptHostRegistration()
+            Component.onDestruction:
+                AbyssPromptHostRegistry.unregisterHost(window)
+
             function presentation(kind) { return Presentation.resolve(Config.options?.abyss?.positions,kind,outputName) }
             function positionEdge(kind,fallback) { return Presentation.edge(presentation(kind),fallback) }
             function positionAlong(kind,edge,span,fallback) { return Presentation.along(presentation(kind),edge,span,width,height,fallback,nativeInsets) }
@@ -102,6 +113,12 @@ Scope {
             readonly property bool fullscreenCovered: GameMode.hasFullscreenOnOutput(outputName)
             readonly property bool presented: !GlobalStates.screenLocked
                 && (!fullscreenCovered || (Config.options?.abyss?.perimeter?.visibleInFullscreen ?? false))
+            readonly property bool criticalPromptOwned:
+                ConfirmationService.active
+                && ConfirmationService.targetOutputName === outputName
+            readonly property bool popupFieldPresented:
+                !GlobalStates.screenLocked
+                && (window.presented || window.criticalPromptOwned)
             readonly property bool editorOpen: GlobalStates.abyssEditing && GlobalStates.abyssEditorTargetOutput === outputName
             onPresentedChanged: if (!presented && editorOpen) GlobalStates.abyssEditing = false
             screen: modelData
@@ -111,8 +128,11 @@ Scope {
             exclusionMode: ExclusionMode.Ignore
             exclusiveZone: 0
             WlrLayershell.namespace: "hadalis:abyss-perimeter"
-            WlrLayershell.layer: GlobalStates.settingsNativeDialogOpen ? WlrLayer.Bottom : PolkitService.active ? WlrLayer.Top : (window.editorOpen || utility.open || liquid.popupsOpen || toastBody.open || dialogBody.open || settings.open || dashboardBody.open || controls.open || (window.fullscreenCovered && window.presented)) ? WlrLayer.Overlay : WlrLayer.Top
-            WlrLayershell.keyboardFocus: !window.presented || !field.ready || GlobalStates.regionSelectorOpen || GlobalStates.settingsNativeDialogOpen || PolkitService.active || window.overviewDragging
+            WlrLayershell.layer: window.criticalPromptOwned ? WlrLayer.Overlay
+                : GlobalStates.settingsNativeDialogOpen ? WlrLayer.Bottom
+                : PolkitService.active ? WlrLayer.Top
+                : (window.editorOpen || utility.open || liquid.popupsOpen || toastBody.open || dialogBody.open || settings.open || dashboardBody.open || controls.open || (window.fullscreenCovered && window.presented)) ? WlrLayer.Overlay : WlrLayer.Top
+            WlrLayershell.keyboardFocus: !window.popupFieldPresented || !field.ready || GlobalStates.regionSelectorOpen || (GlobalStates.settingsNativeDialogOpen && !window.criticalPromptOwned) || PolkitService.active || window.overviewDragging
                 ? WlrKeyboardFocus.None
                 : (window.editorOpen || (utility.presented && utility.ready) || liquid.popupExclusiveFocus || (popup.presented && (popup.contentItem.item?.keyboardFocus ?? false)) || (dialogBody.presented && dialogBody.ready) || (aux.presented && aux.ready) || (clipboardBody.presented && clipboardBody.ready) || (settings.presented && settings.ready) || (dashboardBody.presented && dashboardBody.ready) || (controls.presented && controls.ready)) ? WlrKeyboardFocus.Exclusive
                 : (liquid.popupOnDemandFocus || (leftPanel.presented && leftPanel.ready) || (rightPanel.presented && rightPanel.ready) || (popup.presented && popup.ready) || (notification.presented && notification.ready && notification.contentKind === "center"))
@@ -141,10 +161,10 @@ Scope {
                 Region { x: rightReveal.x; y: rightReveal.y; width: rightReveal.available ? rightReveal.width : 0; height: rightReveal.height }
                 Region { x: leftPanel.inputBounds.x; y: leftPanel.inputBounds.y; width: window.presented && field.ready ? leftPanel.inputBounds.width : 0; height: leftPanel.inputBounds.height }
                 Region { x: rightPanel.inputBounds.x; y: rightPanel.inputBounds.y; width: window.presented && field.ready ? rightPanel.inputBounds.width : 0; height: rightPanel.inputBounds.height }
-                Region { x: liquid.popupInputBounds[0]?.x ?? 0; y: liquid.popupInputBounds[0]?.y ?? 0; width: window.presented && field.ready ? (liquid.popupInputBounds[0]?.width ?? 0) : 0; height: liquid.popupInputBounds[0]?.height ?? 0 }
-                Region { x: liquid.popupInputBounds[1]?.x ?? 0; y: liquid.popupInputBounds[1]?.y ?? 0; width: window.presented && field.ready ? (liquid.popupInputBounds[1]?.width ?? 0) : 0; height: liquid.popupInputBounds[1]?.height ?? 0 }
-                Region { x: liquid.popupInputBounds[2]?.x ?? 0; y: liquid.popupInputBounds[2]?.y ?? 0; width: window.presented && field.ready ? (liquid.popupInputBounds[2]?.width ?? 0) : 0; height: liquid.popupInputBounds[2]?.height ?? 0 }
-                Region { x: liquid.popupInputBounds[3]?.x ?? 0; y: liquid.popupInputBounds[3]?.y ?? 0; width: window.presented && field.ready ? (liquid.popupInputBounds[3]?.width ?? 0) : 0; height: liquid.popupInputBounds[3]?.height ?? 0 }
+                Region { x: liquid.popupInputBounds[0]?.x ?? 0; y: liquid.popupInputBounds[0]?.y ?? 0; width: window.popupFieldPresented && field.ready ? (liquid.popupInputBounds[0]?.width ?? 0) : 0; height: liquid.popupInputBounds[0]?.height ?? 0 }
+                Region { x: liquid.popupInputBounds[1]?.x ?? 0; y: liquid.popupInputBounds[1]?.y ?? 0; width: window.popupFieldPresented && field.ready ? (liquid.popupInputBounds[1]?.width ?? 0) : 0; height: liquid.popupInputBounds[1]?.height ?? 0 }
+                Region { x: liquid.popupInputBounds[2]?.x ?? 0; y: liquid.popupInputBounds[2]?.y ?? 0; width: window.popupFieldPresented && field.ready ? (liquid.popupInputBounds[2]?.width ?? 0) : 0; height: liquid.popupInputBounds[2]?.height ?? 0 }
+                Region { x: liquid.popupInputBounds[3]?.x ?? 0; y: liquid.popupInputBounds[3]?.y ?? 0; width: window.popupFieldPresented && field.ready ? (liquid.popupInputBounds[3]?.width ?? 0) : 0; height: liquid.popupInputBounds[3]?.height ?? 0 }
                 Region { x: popup.inputBounds.x; y: popup.inputBounds.y; width: window.presented && field.ready ? popup.inputBounds.width : 0; height: popup.inputBounds.height }
                 Region { x: dock.inputBounds.x; y: dock.inputBounds.y; width: window.presented && field.ready ? dock.inputBounds.width : 0; height: dock.inputBounds.height }
                 Region { item:corners.notesAvailable ? corners.notesAnchor : emptyInput }
@@ -319,12 +339,39 @@ Scope {
                 outputName: window.outputName
                 outputWidth: window.width
                 outputHeight: window.height
-                presented: window.presented
+                presented: window.popupFieldPresented
                 presentationItem: field
                 dialogHost: dialogBody
                 edgeInsets: window.nativeInsets
                 moduleRecords: bar.visible ? bar.deformations : []
             }
+            // No live app source: use the same configured Edge as Volume/
+            // Brightness OSD, centered along that Screen Edge.
+            readonly property string confirmationFallbackEdge:
+                window.positionEdge("volume", root.barEdge)
+            Item {
+                id: confirmationFallbackAnchor
+                readonly property real anchorSize: Math.max(2, AbyssStyle.perimeterThickness)
+                width: anchorSize
+                height: anchorSize
+                x: window.confirmationFallbackEdge === "left" ? 0
+                    : window.confirmationFallbackEdge === "right" ? window.width - width
+                    : (window.width - width) / 2
+                y: window.confirmationFallbackEdge === "top" ? 0
+                    : window.confirmationFallbackEdge === "bottom" ? window.height - height
+                    : (window.height - height) / 2
+                visible: window.popupFieldPresented && field.ready
+                enabled: visible
+                property var liquidController: liquid
+                property string attachedEdge: window.confirmationFallbackEdge
+                property string popupJoinedEdge: ""
+            }
+            AbyssConfirmationPresenter {
+                outputName: window.outputName
+                fallbackAnchor: confirmationFallbackAnchor
+                presentationEnabled: window.popupFieldPresented && field.ready
+            }
+
             readonly property var sideObstacles: [leftPanel,rightPanel].filter(body => body.progress > 0.001).map(body => body.record)
             AbyssSpectrumController {
                 waves:liquid.waves
@@ -488,11 +535,12 @@ Scope {
                     edge: window.positionEdge(presentationKind,
                         hostedPopup?._attachmentEdge ?? root.barEdge)
                     outputName: window.outputName
+                    placementPreferInward: presentationKind === "confirmation"
                     vacancyRole: presentationKind === "quickNotes"
                         ? "quickNotes"
                         : (presentationKind === "notificationCenter"
                             ? "notificationCenter" : "")
-                    open: window.presented && field.ready
+                    open: window.popupFieldPresented && field.ready
                         && (hostedPopup?.presentationActive ?? false)
                         && ((hostedPopup?.requestedVisible ?? false)
                             || ((hostedPopup?.hoverActivates ?? false)
@@ -813,10 +861,11 @@ Scope {
                 renderScale: window.modelData?.devicePixelRatio ?? 1
                 z: -1
                 anchors.fill: parent
-                visible: window.presented
+                visible: window.popupFieldPresented
                 edgeInsets: window.nativeInsets
                 records: liquid.records
                 waveTexture: liquid.waves.texture
+                onReadyChanged: window.syncPromptHostRegistration()
             }
         }
     }

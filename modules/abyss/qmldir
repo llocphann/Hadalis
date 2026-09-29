@@ -10,4 +10,5 @@ AbyssSpectrumController 1.0 AbyssSpectrumController.qml
 AbyssSidebarReveal 1.0 AbyssSidebarReveal.qml
 AbyssCorners 1.0 AbyssCorners.qml
 AbyssGenericPopupPresenter 1.0 AbyssGenericPopupPresenter.qml
+AbyssConfirmationPresenter 1.0 AbyssConfirmationPresenter.qml
 AbyssPyramidCoordinator 1.0 AbyssPyramidCoordinator.qml

@@ -95,6 +95,18 @@ RippleButton {
     property var desktopEntry: isSeparator ? null : AppSearch.lookupDesktopEntry(appEntry?.originalAppId ?? appEntry?.appId ?? "")
     property int lastFocused: -1
 
+    Component.onCompleted: {
+        if (root.abyssStyle && !root.isSeparator) {
+            PopupAnchorRegistry.registerAnchor(root, "bar", () => [
+                root.appEntry?.originalAppId,
+                root.appEntry?.appId,
+                root.desktopEntry?.id,
+                root.desktopEntry?.startupClass
+            ], 250)
+        }
+    }
+    Component.onDestruction: PopupAnchorRegistry.unregisterAnchor(root)
+
     // Focused window index for smart indicator
     property int focusedWindowIndex: {
         if (!appIsActive || toplevels.length <= 1) return 0

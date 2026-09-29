@@ -15,6 +15,7 @@ launcher_path="$script_dir/inir"
 focused_window_json=$(niri msg -j focused-window 2>/dev/null)
 focused_id=$(printf '%s' "$focused_window_json" | grep -o '"id":[0-9]*' | grep -o '[0-9]*')
 focused_app_id=$(printf '%s' "$focused_window_json" | grep -o '"app_id":"[^"]*"' | sed 's/"app_id":"\([^"]*\)"/\1/')
+focused_workspace_id=$(printf '%s' "$focused_window_json" | grep -o '"workspace_id":[0-9]*' | grep -o '[0-9]*')
 
 close_focused() {
     if [ "${focused_app_id,,}" = "spotify" ]; then
@@ -41,7 +42,11 @@ fi
 # QS is running — pass the snapshot through IPC so confirmation and fast-close
 # use the same window that was focused when the keybind fired.
 if [ -n "$focused_id" ]; then
-    ipc_args=(closeConfirm triggerWindow "$focused_id" "$focused_app_id")
+    if [ -n "$focused_workspace_id" ]; then
+        ipc_args=(closeConfirm triggerWindowContext "$focused_id" "$focused_app_id" "$focused_workspace_id")
+    else
+        ipc_args=(closeConfirm triggerWindow "$focused_id" "$focused_app_id")
+    fi
 else
     ipc_args=(closeConfirm trigger)
 fi

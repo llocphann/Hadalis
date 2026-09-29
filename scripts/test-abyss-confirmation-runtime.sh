@@ -43,6 +43,9 @@ ShellRoot {
     property int acceptedCallbacks: 0
     property bool showPeer: false
     property var confirmationPopup: null
+    property int queuedFirstId: 0
+    property int queuedSecondId: 0
+    property int reopenedId: 0
     readonly property string outputName:
         String(window.screen?.name ?? "")
 
@@ -115,6 +118,20 @@ ShellRoot {
         })
     }
 
+    function requestApp(appId, title): int {
+        return ConfirmationService.enqueue({
+            owner: "runtime-test",
+            appId: appId,
+            outputName: root.outputName,
+            title: title,
+            message: "Runtime queued/reopen confirmation request.",
+            actions: [
+                { id: "cancel", label: "Cancel", role: "cancel", isCancel: true },
+                { id: "accept", label: "Accept", role: "default", isDefault: true }
+            ]
+        })
+    }
+
     AbyssSurfaceController {
         id: controller
         outputName: root.outputName
@@ -173,6 +190,28 @@ ShellRoot {
                 height: 44
                 visible: true
                 enabled: true
+            }
+
+            // Model a resident AbyssBodyHost whose loaded child still exists
+            // after the source surface has fully closed. It must never resolve.
+            Item {
+                id: hiddenResidentHost
+                property var liquidController: controller
+                property string attachedEdge: "bottom"
+                property bool visualResident: false
+                x: 760
+                y: scene.height-height
+                width: 44
+                height: 44
+                visible: true
+                enabled: true
+
+                MouseArea {
+                    id: hiddenResidentAnchor
+                    anchors.fill: parent
+                    visible: true
+                    enabled: true
+                }
             }
 
             MouseArea {
@@ -514,8 +553,104 @@ ShellRoot {
             if (root.phase === 20) {
                 if (ConfirmationService.active || peerPopup.presentationActive)
                     return
+                PopupAnchorRegistry.registerAnchor(
+                    trayAnchor, "tray", () => ["runtime.app"], 300)
+                root.queuedFirstId =
+                    root.requestApp("runtime.app", "Queued first")
+                root.queuedSecondId =
+                    root.requestApp("runtime.app", "Queued second")
+                if (!root.check(
+                        ConfirmationService.currentRequestId
+                            === root.queuedFirstId
+                        && ConfirmationService.queue.length === 1,
+                        "second confirmation queues behind the active request"))
+                    return
+                root.phase = 21
+                return
+            }
+
+            if (root.phase === 21) {
+                if (!ConfirmationService.requestVisible
+                        || ConfirmationService.currentRequestId
+                            !== root.queuedFirstId)
+                    return
+                ConfirmationService.cancel()
+                root.phase = 22
+                return
+            }
+
+            if (root.phase === 22) {
+                if (!ConfirmationService.requestVisible
+                        || ConfirmationService.currentRequestId
+                            !== root.queuedSecondId)
+                    return
+                if (!root.check(ConfirmationService.queue.length === 0,
+                        "queued confirmation activates after predecessor release"))
+                    return
+                if (!root.check(
+                        ConfirmationService.resolvedAnchor === trayAnchor,
+                        "queued request resolves its own live source anchor"))
+                    return
+                ConfirmationService.cancel()
+                root.phase = 23
+                return
+            }
+
+            if (root.phase === 23) {
+                if (ConfirmationService.active)
+                    return
+                root.reopenedId =
+                    root.requestApp("runtime.app", "Reopened confirmation")
+                root.phase = 24
+                return
+            }
+
+            if (root.phase === 24) {
+                if (!ConfirmationService.requestVisible
+                        || ConfirmationService.currentRequestId
+                            !== root.reopenedId)
+                    return
+                if (!root.check(
+                        ConfirmationService.resolvedAnchor === trayAnchor,
+                        "closed confirmation can reopen on the same source"))
+                    return
+                ConfirmationService.cancel()
+                root.phase = 25
+                return
+            }
+
+            if (root.phase === 25) {
+                if (ConfirmationService.active)
+                    return
                 PopupAnchorRegistry.unregisterAnchor(trayAnchor)
                 PopupAnchorRegistry.unregisterAnchor(dockAnchor)
+                PopupAnchorRegistry.registerAnchor(
+                    hiddenResidentAnchor, "dock",
+                    () => ["hidden.runtime.app"], 200)
+                root.requestApp(
+                    "hidden.runtime.app", "Hidden resident source")
+                root.phase = 26
+                return
+            }
+
+            if (root.phase === 26) {
+                if (!ConfirmationService.requestVisible
+                        || controller.activePopups.length < 1)
+                    return
+                if (!root.check(
+                        ConfirmationService.resolvedAnchor === null
+                        && controller.activePopup.hoverTarget === fallbackAnchor,
+                        "closed resident source is ignored for top-center fallback"))
+                    return
+                ConfirmationService.cancel()
+                root.phase = 27
+                return
+            }
+
+            if (root.phase === 27) {
+                if (ConfirmationService.active)
+                    return
+                PopupAnchorRegistry.unregisterAnchor(hiddenResidentAnchor)
                 console.info("ABYSS_CONFIRMATION_RUNTIME_PASS")
                 root.finished = true
             }
@@ -532,4 +667,4 @@ if [[ "$status" != 124 ]]         || ! rg -q 'ABYSS_CONFIRMATION_RUNTIME_PASS' "
     exit 1
 fi
 
-printf 'PASS: confirmation callbacks, content-fit, four-edge attachment, tray/dock routing, top-center fallback, source loss and concurrent popup survival\n'
+printf 'PASS: confirmation callbacks, content-fit, four-edge attachment, tray/dock routing, top-center fallback, source loss, peer reflow, queue/reopen and hidden-resident fallback\n'

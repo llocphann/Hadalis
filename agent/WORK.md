@@ -2,51 +2,49 @@
 
 ## Objective
 
-Bring the Hadalis autonomous development loop from feasibility to a validated first end-to-end local run while preserving the rule that ChatGPT is the only reasoning agent.
+Run Hadalis strict-lossless optimization research continuously and autonomously.
 
-## Current implementation
+ChatGPT is the only reasoning agent. Local components are deterministic transport/execution only.
 
-- deterministic loop-marker protocol and state transitions;
-- mandatory GitHub connector mention in automatic prompts;
-- ChatGPT Desktop CDP driver and CLI;
-- crash-safe bridge runtime with persisted local state and singleton locking;
-- deterministic local execution worker;
-- user-service installer;
-- localhost-only ChatGPT CDP host supervisor;
-- regression tests for protocol/state, worker safety, and CDP host safety;
-- first-use bootstrap now opens a fresh Hadalis Cloud chat instead of reusing an existing conversation;
-- autonomous prompts whose first line is the GitHub connector marker are composed through the ChatGPT rich-mention picker, then the remaining prompt body is inserted without replacing the token;
-- completion detection snapshots loop-marker count before submit and treats a stable post-submit marker-count increase with no active Stop control as the protocol completion signal; it does not depend on composer clearing or response-toolbar labels;
-- desktop CLI/live acceptance explicitly terminate their Node process after synchronously writing the result, so the open CDP websocket cannot keep the worker action alive after ChatGPT has already completed.
-- the installer supports a lock-safe fresh bridge-session reset before first service startup.
+## Research contract
 
-## Validation status
+- Repository: `llocphann/Hadalis`
+- Branch: `dev`
+- GitHub is the authoritative source of truth.
+- Research only unless the maintainer explicitly authorizes implementation.
+- Do not modify runtime QML/native/service/product code as part of optimization research.
+- Proven research findings are recorded in `docs/CROSS_REPO_OPTIMIZATION_HANDOFF.md`.
+- Re-fetch current `dev` HEAD every turn and before every write.
+- Read the newest handoff tail and audit intervening commits.
+- Search the handoff before promoting candidates to avoid duplicates, ALREADY, CLOSED, or SUPERSEDED findings.
+- Apply the strict-lossless standard conservatively; only classify CONFIRMED after parity is proven.
+- Prefer material hot-path, per-frame/reactive, interaction-hot, asymptotic, allocation/copy, process-spawn, parsing, publication, main-thread, and memory/GPU opportunities.
+- Do not fabricate whole-Hadalis speedup percentages.
 
-- first service-mode E2E attempt exposed a false-positive terminal DONE: the bridge exited successfully at 05:13:31 with persisted state `done`, but `JOB-SERVICE-E2E-001` did not execute/publish until 05:13:54–05:13:55. Therefore the bridge could not have consumed that result. Root cause: response extraction could choose a protocol marker already present in the submitted bootstrap prompt, which itself documents CONTINUE/ROTATE/DONE/CONNECTOR_BLOCKED markers. The send path now carries the pre-submit marker baseline into extraction and requires exactly one new post-submit marker; static baseline-selection tests and `JOB-SERVICE-E2E-FIX-VALIDATE-001` both pass.
-- first service rollout exposed a systemd unit syntax bug: `WorkingDirectory=` was emitted with literal quotes, so systemd treated the value as non-absolute and rejected `hadalis-chatgpt.service` as a bad unit. The installer now emits raw absolute `WorkingDirectory=` paths, quotes complete `Environment=NAME=VALUE` assignments, and runs `systemd-analyze --user verify` before enabling services.
-- live acceptance 012 proved completion and worker publication are fixed; its remaining failure was response extraction because the UI can flatten the marker together with toolbar/neighbor text, so exact line matching returned no assistant marker. The driver now token-scans protocol markers independent of UI line boundaries, and a static regression covers merged UI text plus prompt/assistant duplicate occurrences.
-- live acceptance 009 failed before opening ChatGPT because `desktop_cli.mjs` had a syntax error in the new synchronous JSON writer path; that syntax defect is fixed and 010 is the retry.
-Focused automation validation `JOB-AUTOMATION-VALIDATE-002` passed all six actions.
+## Continuous loop policy
 
-Canonical maintainer validation `JOB-MAINTAINER-VALIDATE-001` ran successfully as a validator but returned FAIL because the repository currently has 33 product/regression failures outside the autonomous automation path. The automation-specific tests inside that canonical run all passed:
-- `scripts/test-hadalis-chat-bridge.py`
-- `scripts/test-hadalis-desktop-host.py`
-- `scripts/test-hadalis-worker.py`
+The research service must not stop after one round.
 
-Do not describe the current repository SHA as canonically green.
+- `HADALIS_LOOP:CONTINUE`: continue the next research step immediately.
+- `HADALIS_LOOP:WAIT_RESULT JOB-...`: wait for one deterministic local validation job, then continue automatically.
+- `HADALIS_LOOP:ROTATE`: persist the research checkpoint to the handoff and resume in a fresh chat before context rollover.
+- `HADALIS_LOOP:CONNECTOR_BLOCKED GITHUB`: stop only because the GitHub connector is unavailable.
+- `HADALIS_LOOP:DONE`: reserved for an explicit maintainer request to stop/disable continuous research. Completing a round is not DONE.
 
-## Current gate
+The runtime also enforces continuous-research mode: an accidental DONE is converted into another continuation rather than terminating the bridge.
 
-Live transport acceptance `JOB-DESKTOP-LIVE-ACCEPT-013` passed all five actions, including:
-- static loop-marker scanner regression;
-- production rich GitHub mention composition;
-- automatic submit;
-- current `dev` HEAD verification through the GitHub connector;
-- generation completion and exact `HADALIS_LOOP:DONE` extraction;
-- explicit Node/CDP process termination and worker result publication.
+## Automation status
 
-The corrected user-service rollout is now locally validated: `hadalis-chatgpt.service` and `hadalis-worker.service` remain active, while `hadalis-chat-bridge.service` exits cleanly with systemd Result=success / ExecMainStatus=0 and persisted bridge state `done`. The inactive/dead bridge state is therefore the expected terminal lifecycle after HADALIS_LOOP:DONE, not a service failure.
+The desktop transport, rich GitHub mention path, completion detection, marker extraction, deterministic worker, and systemd rollout have been validated. The bridge/worker service path is installed.
 
-The final gate remains one service-mode end-to-end WAIT_RESULT round trip, now using the baseline-aware response extractor. On the next fresh bridge bootstrap after the maintainer fast-forwards the persistent checkout, the ChatGPT reasoning turn must create exactly one new deterministic local smoke job (use a fresh JOB-SERVICE-E2E-* id, current dev HEAD as base_sha, argv arrays only, and a harmless repository validation), finish with HADALIS_LOOP:WAIT_RESULT for that job, remain in WAIT_LOCAL until that exact result exists, receive the bridge's automatic continuation without user input, inspect the result, and only then finish with HADALIS_LOOP:DONE. A DONE timestamp earlier than the job result timestamp is a failure, not acceptance.
+Continuous-research changes are covered by `JOB-CONTINUOUS-RESEARCH-VALIDATE-002`, which passed:
+- Python compile checks for runtime/protocol/installer;
+- chat-bridge protocol/state regression;
+- desktop driver syntax;
+- desktop CLI syntax.
 
-The one-shot worker also prints a concise terminal outcome after publishing its result.
+The latest optimization handoff commit observed while configuring this mode was Round 49, but autonomous turns must discover the current research baseline from the repository instead of relying on that observation.
+
+## Next step
+
+Fast-forward the maintainer checkout, reinstall/reset the user services so the bridge receives `HADALIS_CONTINUOUS_RESEARCH=1`, and start a fresh autonomous research session. From then on, research should continue across rounds without the maintainer typing `continue`.

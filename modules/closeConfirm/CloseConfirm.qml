@@ -377,6 +377,17 @@ Scope {
             });
         }
 
+        function triggerWindowContext(windowId: int, appId: string,
+                workspaceId: int): void {
+            if (windowId <= 0 || !root._acceptTrigger())
+                return;
+            root.processWindow({
+                id: windowId,
+                app_id: appId,
+                workspace_id: workspaceId
+            });
+        }
+
         function close(): void {
             ConfirmationService.cancelOwned("closeConfirm")
             root._clearStandaloneState()

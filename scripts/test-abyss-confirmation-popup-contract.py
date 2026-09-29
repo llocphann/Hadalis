@@ -110,6 +110,12 @@ assert "root._cancelIfTargetGone()" in activated
 assert "root._releaseAbyssRequestIfUnavailable()" in activated
 assert "function _snapshotWindow(win): var" in close
 assert "NiriService.windows ?? []" in close
+assert "function triggerWindowContext(windowId: int, appId: string," in close
+assert "workspace_id: workspaceId" in close
+close_script=(r/"scripts/close-window.sh").read_text()
+assert "focused_workspace_id=" in close_script
+assert 'closeConfirm triggerWindowContext "$focused_id" "$focused_app_id" "$focused_workspace_id"' in close_script
+assert 'closeConfirm triggerWindow "$focused_id" "$focused_app_id"' in close_script
 assert "function _outputNameForWindow(win): string" in close
 assert "NiriService.workspaces?.[win?.workspace_id]" in close
 assert "outputName: outputName" in close

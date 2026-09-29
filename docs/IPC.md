@@ -252,6 +252,7 @@ Close window confirmation dialog. Shows a prompt before closing the focused wind
 |----------|-------------|
 | `trigger` | Show close confirmation for focused window |
 | `triggerWindow <windowId> <appId>` | Close or confirm the exact window captured by `inir close-window` |
+| `triggerWindowContext <windowId> <appId> <workspaceId>` | Same exact-window request with the captured Niri workspace, used internally to preserve source-output placement |
 | `close` | Dismiss the dialog without closing |
 
 ```kdl

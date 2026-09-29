@@ -51,6 +51,18 @@ assert "root.togglePinnedVisibility(pinnedSlot.appId)" in settings
 assert "root.removePinnedApp(pinnedSlot.appId)" in settings
 assert "function filteredAddApps(): var" in settings
 assert 'placeholderText: Translation.tr("Search applications...")' in settings
+assert "property bool addApplicationsOpen: false" in settings
+assert "id: dockPrimaryToggles" in settings
+assert "id: revealModeToggles" in settings
+assert "id: dockSecondaryToggles" in settings
+assert 'text: Translation.tr("Drag to reorder · eye hides · minus removes.")' in settings
+assert "id: addApplicationsToggle" in settings
+assert "id: addApplicationsPanel" in settings
+assert "implicitHeight: root.addApplicationsOpen" in settings
+assert 'text: root.addApplicationsOpen ? "close" : "add"' in settings
+assert "model: root.addApplicationsOpen ? root.filteredAddApps() : []" in settings
+assert "Behavior on implicitHeight" in settings
+assert "Behavior on opacity" in settings
 assert "root.addPinnedApp(" in settings
 assert "hiddenPinnedApps" in settings
 assert "hiddenPinnedIds" in apps

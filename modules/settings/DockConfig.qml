@@ -122,6 +122,7 @@ ContentPage {
     settingsPageName: Translation.tr("Dock")
 
     property bool isIiActive: Config.options?.panelFamily !== "waffle"
+    property bool addApplicationsOpen: false
 
     SettingsCardSection {
         visible: root.isIiActive
@@ -130,15 +131,36 @@ ContentPage {
         title: Translation.tr("Dock")
 
         SettingsGroup {
-            SettingsSwitch {
-                buttonIcon: "check"
-                text: Translation.tr("Enable")
-                checked: Config.options.dock.enable
-                onCheckedChanged: {
-                    Config.setNestedValue("dock.enable", checked);
+            ConfigRow {
+                id: dockPrimaryToggles
+                uniform: true
+
+                SettingsSwitch {
+                    buttonIcon: "check"
+                    text: Translation.tr("Enable")
+                    checked: Config.options.dock.enable
+                    onCheckedChanged: Config.setNestedValue("dock.enable", checked)
+                    StyledToolTip { text: Translation.tr("Show the application dock") }
                 }
-                StyledToolTip {
-                    text: Translation.tr("Show the application dock")
+
+                SettingsSwitch {
+                    buttonIcon: "dashboard"
+                    text: Translation.tr("Show Dashboard icon")
+                    checked: Config.options?.dock?.showDashboardButton ?? true
+                    onCheckedChanged: Config.setNestedValue("dock.showDashboardButton", checked)
+                    StyledToolTip {
+                        text: Translation.tr("Show the Dashboard / Overview launcher button in the Dock")
+                    }
+                }
+
+                SettingsSwitch {
+                    buttonIcon: "colors"
+                    text: Translation.tr("Tint app icons")
+                    checked: Config.options.dock.monochromeIcons
+                    onCheckedChanged: Config.setNestedValue("dock.monochromeIcons", checked)
+                    StyledToolTip {
+                        text: Translation.tr("Apply accent color tint to dock app icons")
+                    }
                 }
             }
 
@@ -179,81 +201,68 @@ ContentPage {
                             { displayName: Translation.tr("Empty workspace"), icon: "desktop_windows", value: false }
                         ]
                     }
-                    SettingsSwitch {
-                        buttonIcon: "desktop_windows"
-                        text: Translation.tr("Show on desktop")
-                        enabled: !(Config.options?.dock?.hoverToReveal ?? true)
-                        checked: Config.options?.dock?.showOnDesktop ?? true
-                        onCheckedChanged: Config.setNestedValue('dock.showOnDesktop', checked)
-                        StyledToolTip {
-                            text: Translation.tr("Show dock when no window is focused (Empty workspace mode only)")
+                    ConfigRow {
+                        id: revealModeToggles
+                        uniform: true
+
+                        SettingsSwitch {
+                            buttonIcon: "desktop_windows"
+                            text: Translation.tr("Show on desktop")
+                            enabled: !(Config.options?.dock?.hoverToReveal ?? true)
+                            checked: Config.options?.dock?.showOnDesktop ?? true
+                            onCheckedChanged: Config.setNestedValue("dock.showOnDesktop", checked)
+                            StyledToolTip {
+                                text: Translation.tr("Show dock when no window is focused (Empty workspace mode only)")
+                            }
+                        }
+
+                        SettingsSwitch {
+                            buttonIcon: "keep"
+                            text: Translation.tr("Pinned on startup")
+                            enabled: !(Config.options?.dock?.hoverToReveal ?? true)
+                            checked: Config.options.dock.pinnedOnStartup
+                            onCheckedChanged: Config.setNestedValue("dock.pinnedOnStartup", checked)
+                            StyledToolTip {
+                                text: Translation.tr("Keep dock visible at all times (Empty workspace mode only)")
+                            }
                         }
                     }
-                    SettingsSwitch {
-                        buttonIcon: "keep"
-                        text: Translation.tr("Pinned on startup")
-                        enabled: !(Config.options?.dock?.hoverToReveal ?? true)
-                        checked: Config.options.dock.pinnedOnStartup
-                        onCheckedChanged: {
-                            Config.setNestedValue("dock.pinnedOnStartup", checked);
-                        }
-                        StyledToolTip {
-                            text: Translation.tr("Keep dock visible at all times (Empty workspace mode only)")
-                        }
+                }
+            }
+
+            ConfigRow {
+                id: dockSecondaryToggles
+                uniform: true
+
+                SettingsSwitch {
+                    buttonIcon: "widgets"
+                    visible: Config.options?.panelFamily !== "abyss"
+                    text: Translation.tr("Show dock background")
+                    checked: Config.options.dock.showBackground
+                    onCheckedChanged: Config.setNestedValue("dock.showBackground", checked)
+                    StyledToolTip {
+                        text: Translation.tr("Show a background behind the dock")
                     }
                 }
-            }
 
-            SettingsSwitch {
-                buttonIcon: "dashboard"
-                text: Translation.tr("Show Dashboard icon")
-                checked: Config.options?.dock?.showDashboardButton ?? true
-                onCheckedChanged:
-                    Config.setNestedValue("dock.showDashboardButton", checked)
-                StyledToolTip {
-                    text: Translation.tr("Show the Dashboard / Overview launcher button in the Dock")
+                SettingsSwitch {
+                    buttonIcon: "splitscreen"
+                    text: Translation.tr("Separate pinned from running")
+                    checked: Config.options?.dock?.separatePinnedFromRunning ?? true
+                    onCheckedChanged: Config.setNestedValue("dock.separatePinnedFromRunning", checked)
+                    StyledToolTip {
+                        text: Translation.tr("Show pinned-only apps on the left, running apps on the right with a separator")
+                    }
                 }
-            }
 
-            SettingsSwitch {
-                buttonIcon: "colors"
-                text: Translation.tr("Tint app icons")
-                checked: Config.options.dock.monochromeIcons
-                onCheckedChanged: {
-                    Config.setNestedValue("dock.monochromeIcons", checked);
-                }
-                StyledToolTip {
-                    text: Translation.tr("Apply accent color tint to dock app icons")
-                }
-            }
-            SettingsSwitch {
-                buttonIcon: "widgets"
-                visible: Config.options?.panelFamily !== "abyss"
-                text: Translation.tr("Show dock background")
-                checked: Config.options.dock.showBackground
-                onCheckedChanged: Config.setNestedValue("dock.showBackground", checked)
-                StyledToolTip {
-                    text: Translation.tr("Show a background behind the dock")
-                }
-            }
-
-            SettingsSwitch {
-                buttonIcon: "splitscreen"
-                text: Translation.tr("Separate pinned from running")
-                checked: Config.options?.dock?.separatePinnedFromRunning ?? true
-                onCheckedChanged: Config.setNestedValue('dock.separatePinnedFromRunning', checked)
-                StyledToolTip {
-                    text: Translation.tr("Show pinned-only apps on the left, running apps on the right with a separator")
-                }
-            }
-
-            SettingsSwitch {
-                buttonIcon: "notifications"
-                text: Translation.tr("Notification badges")
-                checked: Config.options?.dock?.notificationBadge ?? true
-                onCheckedChanged: Config.setNestedValue('dock.notificationBadge', checked)
-                StyledToolTip {
-                    text: Translation.tr("Show the number of pending notifications on each app icon")
+                SettingsSwitch {
+                    buttonIcon: "notifications"
+                    text: Translation.tr("Notification badges")
+                    checked: Config.options?.dock?.notificationBadge ?? true
+                    onCheckedChanged: Config.setNestedValue("dock.notificationBadge", checked)
+                    StyledToolTip {
+                        text: Translation.tr("Show the number of pending notifications on each app icon")
+                    }
                 }
             }
 
@@ -262,7 +271,7 @@ ContentPage {
 
                 StyledText {
                     Layout.fillWidth: true
-                    text: Translation.tr("Drag pinned apps to reorder. Hide an app without losing its position, or remove it from the Dock.")
+                    text: Translation.tr("Drag to reorder · eye hides · minus removes.")
                     color: Appearance.colors.colSubtext
                     font.pixelSize: Appearance.font.pixelSize.smaller
                     wrapMode: Text.WordWrap
@@ -437,115 +446,189 @@ ContentPage {
                     }
                 }
 
-                ContentSubsectionLabel {
-                    text: Translation.tr("Add applications")
-                }
-
-                MaterialTextField {
-                    id: pinnedAppSearchField
+                RowLayout {
                     Layout.fillWidth: true
-                    Layout.preferredHeight: 36
-                    placeholderText: Translation.tr("Search applications...")
-                    font.pixelSize: Appearance.font.pixelSize.small
-                }
+                    spacing: 8
 
-                ListView {
-                    id: pinnedAppSearchList
-                    Layout.fillWidth: true
-                    implicitHeight: Math.min(184, Math.max(44, contentHeight))
-                    clip: true
-                    model: root.filteredAddApps()
-                    boundsBehavior: Flickable.StopAtBounds
-                    spacing: 2
-
-                    PagePlaceholder {
-                        shown: pinnedAppSearchList.count === 0
-                        icon: "search_off"
-                        title: Translation.tr("No matching apps")
-                        description: Translation.tr("Try a different search term.")
-                        anchors.fill: parent
+                    StyledText {
+                        Layout.fillWidth: true
+                        text: Translation.tr("Add applications")
+                        color: Appearance.colors.colOnLayer1
+                        font.pixelSize: Appearance.font.pixelSize.small
+                        font.weight: Font.Medium
                     }
 
-                    delegate: Item {
-                        id: addAppDelegate
-                        required property var modelData
-                        required property int index
-                        width: pinnedAppSearchList.width
-                        height: 42
-
-                        Rectangle {
-                            anchors.fill: parent
-                            radius: Appearance.rounding.small
-                            color: addAppHover.hovered
-                                ? Appearance.colors.colLayer1Hover : "transparent"
+                    RippleButton {
+                        id: addApplicationsToggle
+                        implicitWidth: 30
+                        implicitHeight: 30
+                        buttonRadius: Appearance.rounding.full
+                        Accessible.name: root.addApplicationsOpen
+                            ? Translation.tr("Close application picker")
+                            : Translation.tr("Add applications")
+                        onClicked: {
+                            root.addApplicationsOpen = !root.addApplicationsOpen
+                            if (root.addApplicationsOpen)
+                                Qt.callLater(() => pinnedAppSearchField.forceActiveFocus())
+                            else
+                                pinnedAppSearchField.text = ""
                         }
-                        HoverHandler { id: addAppHover }
 
-                        RowLayout {
-                            anchors.fill: parent
-                            anchors.leftMargin: 8
-                            anchors.rightMargin: 6
-                            spacing: 8
+                        contentItem: MaterialSymbol {
+                            anchors.centerIn: parent
+                            text: root.addApplicationsOpen ? "close" : "add"
+                            iconSize: Appearance.font.pixelSize.normal
+                            color: root.addApplicationsOpen
+                                ? Appearance.colors.colOnLayer1
+                                : Appearance.colors.colPrimary
+                        }
 
-                            Item {
-                                Layout.preferredWidth: 26
-                                Layout.preferredHeight: 26
+                        StyledToolTip {
+                            text: root.addApplicationsOpen
+                                ? Translation.tr("Close application picker")
+                                : Translation.tr("Add applications")
+                        }
+                    }
+                }
 
-                                Image {
-                                    id: addAppIcon
+                Item {
+                    id: addApplicationsPanel
+                    Layout.fillWidth: true
+                    implicitHeight: root.addApplicationsOpen
+                        ? addApplicationsContent.implicitHeight : 0
+                    opacity: root.addApplicationsOpen ? 1 : 0
+                    clip: true
+                    enabled: root.addApplicationsOpen
+
+                    Behavior on implicitHeight {
+                        enabled: Appearance.animationsEnabled
+                        NumberAnimation {
+                            duration: Appearance.animation.elementResize.duration
+                            easing.type: Easing.OutCubic
+                        }
+                    }
+                    Behavior on opacity {
+                        enabled: Appearance.animationsEnabled
+                        NumberAnimation {
+                            duration: Appearance.animation.elementMoveFast.duration
+                            easing.type: Easing.OutCubic
+                        }
+                    }
+
+                    ColumnLayout {
+                        id: addApplicationsContent
+                        width: parent.width
+                        spacing: 4
+
+                        MaterialTextField {
+                            id: pinnedAppSearchField
+                            Layout.fillWidth: true
+                            Layout.preferredHeight: 36
+                            placeholderText: Translation.tr("Search applications...")
+                            font.pixelSize: Appearance.font.pixelSize.small
+                        }
+
+                        ListView {
+                            id: pinnedAppSearchList
+                            Layout.fillWidth: true
+                            implicitHeight: Math.min(184, Math.max(44, contentHeight))
+                            clip: true
+                            model: root.addApplicationsOpen ? root.filteredAddApps() : []
+                            boundsBehavior: Flickable.StopAtBounds
+                            spacing: 2
+
+                            PagePlaceholder {
+                                shown: pinnedAppSearchList.count === 0
+                                icon: "search_off"
+                                title: Translation.tr("No matching apps")
+                                description: Translation.tr("Try a different search term.")
+                                anchors.fill: parent
+                            }
+
+                            delegate: Item {
+                                id: addAppDelegate
+                                required property var modelData
+                                required property int index
+                                width: pinnedAppSearchList.width
+                                height: 42
+
+                                Rectangle {
                                     anchors.fill: parent
-                                    source: AppSearch.getIconSource(
-                                        addAppDelegate.modelData?.icon ?? "",
-                                        addAppDelegate.modelData?.name ?? "")
-                                    sourceSize.width: 52
-                                    sourceSize.height: 52
-                                    fillMode: Image.PreserveAspectFit
+                                    radius: Appearance.rounding.small
+                                    color: addAppHover.hovered
+                                        ? Appearance.colors.colLayer1Hover : "transparent"
                                 }
-                                MaterialSymbol {
-                                    anchors.centerIn: parent
-                                    visible: addAppIcon.status !== Image.Ready
-                                    text: "apps"
-                                    iconSize: Appearance.font.pixelSize.normal
-                                    color: Appearance.colors.colOnLayer1
-                                }
-                            }
+                                HoverHandler { id: addAppHover }
 
-                            ColumnLayout {
-                                Layout.fillWidth: true
-                                Layout.minimumWidth: 0
-                                spacing: 0
+                                RowLayout {
+                                    anchors.fill: parent
+                                    anchors.leftMargin: 8
+                                    anchors.rightMargin: 6
+                                    spacing: 8
 
-                                StyledText {
-                                    Layout.fillWidth: true
-                                    text: addAppDelegate.modelData?.name
-                                        ?? addAppDelegate.modelData?.id ?? ""
-                                    font.pixelSize: Appearance.font.pixelSize.small
-                                    color: Appearance.colors.colOnLayer1
-                                    elide: Text.ElideRight
-                                }
-                                StyledText {
-                                    Layout.fillWidth: true
-                                    text: String(addAppDelegate.modelData?.id ?? "")
-                                    font.pixelSize: Appearance.font.pixelSize.smaller
-                                    color: Appearance.colors.colSubtext
-                                    elide: Text.ElideRight
-                                }
-                            }
+                                    Item {
+                                        Layout.preferredWidth: 26
+                                        Layout.preferredHeight: 26
 
-                            RippleButton {
-                                implicitWidth: 30
-                                implicitHeight: 30
-                                buttonRadius: Appearance.rounding.full
-                                Accessible.name: Translation.tr("Add to Dock")
-                                onClicked: root.addPinnedApp(
-                                    String(addAppDelegate.modelData?.id ?? ""))
-                                contentItem: MaterialSymbol {
-                                    anchors.centerIn: parent
-                                    text: "add"
-                                    iconSize: Appearance.font.pixelSize.normal
-                                    color: Appearance.colors.colPrimary
+                                        Image {
+                                            id: addAppIcon
+                                            anchors.fill: parent
+                                            source: AppSearch.getIconSource(
+                                                addAppDelegate.modelData?.icon ?? "",
+                                                addAppDelegate.modelData?.name ?? "")
+                                            sourceSize.width: 52
+                                            sourceSize.height: 52
+                                            fillMode: Image.PreserveAspectFit
+                                        }
+                                        MaterialSymbol {
+                                            anchors.centerIn: parent
+                                            visible: addAppIcon.status !== Image.Ready
+                                            text: "apps"
+                                            iconSize: Appearance.font.pixelSize.normal
+                                            color: Appearance.colors.colOnLayer1
+                                        }
+                                    }
+
+                                    ColumnLayout {
+                                        Layout.fillWidth: true
+                                        Layout.minimumWidth: 0
+                                        spacing: 0
+
+                                        StyledText {
+                                            Layout.fillWidth: true
+                                            text: addAppDelegate.modelData?.name
+                                                ?? addAppDelegate.modelData?.id ?? ""
+                                            font.pixelSize: Appearance.font.pixelSize.small
+                                            color: Appearance.colors.colOnLayer1
+                                            elide: Text.ElideRight
+                                        }
+                                        StyledText {
+                                            Layout.fillWidth: true
+                                            text: String(addAppDelegate.modelData?.id ?? "")
+                                            font.pixelSize: Appearance.font.pixelSize.smaller
+                                            color: Appearance.colors.colSubtext
+                                            elide: Text.ElideRight
+                                        }
+                                    }
+
+                                    RippleButton {
+                                        implicitWidth: 30
+                                        implicitHeight: 30
+                                        buttonRadius: Appearance.rounding.full
+                                        Accessible.name: Translation.tr("Add to Dock")
+                                        onClicked: root.addPinnedApp(
+                                            String(addAppDelegate.modelData?.id ?? ""))
+                                        contentItem: MaterialSymbol {
+                                            anchors.centerIn: parent
+                                            text: "add"
+                                            iconSize: Appearance.font.pixelSize.normal
+                                            color: Appearance.colors.colPrimary
+                                        }
+                                        StyledToolTip {
+                                            text: Translation.tr("Add to Dock")
+                                        }
+                                    }
                                 }
-                                StyledToolTip { text: Translation.tr("Add to Dock") }
                             }
                         }
                     }

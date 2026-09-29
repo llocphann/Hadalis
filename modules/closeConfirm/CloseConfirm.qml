@@ -25,23 +25,37 @@ Scope {
 
     // Config state
     readonly property bool confirmEnabled: Config.options?.closeConfirm?.enabled ?? false
-    readonly property bool abyssPresenterAvailable:
+    readonly property bool abyssConfigured:
         Config.options?.panelFamily === "abyss"
         && (Config.options?.enabledPanels ?? []).includes("abyssPerimeter")
 
+    function _abyssPresenterAvailableFor(outputName): bool {
+        return root.abyssConfigured
+            && AbyssPromptHostRegistry.hasOutput(String(outputName ?? ""))
+    }
+
     function _releaseAbyssRequestIfUnavailable(): void {
-        if (root.abyssPresenterAvailable)
+        const request = ConfirmationService.currentRequest
+        if (String(request?.owner ?? "") !== "closeConfirm")
+            return
+        if (root._abyssPresenterAvailableFor(
+                ConfirmationService.targetOutputName))
             return
         ConfirmationService.cancelOwned("closeConfirm")
-        const request = ConfirmationService.currentRequest
-        if (String(request?.owner ?? "") === "closeConfirm"
-                && !ConfirmationService.requestVisible)
+        if (!ConfirmationService.requestVisible)
             ConfirmationService.finishPresentation(
                 Number(request?._requestId ?? 0))
     }
 
-    onAbyssPresenterAvailableChanged:
+    onAbyssConfiguredChanged:
         root._releaseAbyssRequestIfUnavailable()
+
+    Connections {
+        target: AbyssPromptHostRegistry
+        function onEntriesChanged(): void {
+            root._releaseAbyssRequestIfUnavailable()
+        }
+    }
 
     function _snapshotWindow(win): var {
         const snapshot = Object.assign({}, win ?? {})
@@ -127,7 +141,7 @@ Scope {
         }
 
         const outputName = root._outputNameForWindow(snapshot)
-        if (root.abyssPresenterAvailable) {
+        if (root._abyssPresenterAvailableFor(outputName)) {
             const windowId = Number(snapshot?.id ?? 0)
             // Repeated close binds for the same window must not create a second
             // prompt/callback transaction while the first is visible, queued,

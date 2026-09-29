@@ -41,6 +41,7 @@ ShellRoot {
     property bool finished: false
     property int phase: 0
     property int preconditionTicks: 0
+    property int phaseTicks: 0
     property var surfaces: []
 
     function check(ok, message): bool {
@@ -93,7 +94,15 @@ ShellRoot {
             readonly property var dockRef: carrier.item?.dockRef ?? null
             readonly property var fallbackRef: carrier.item?.fallbackRef ?? null
 
-            Component.onCompleted: root.registerSurface(surface)
+            Component.onCompleted: {
+                root.registerSurface(surface)
+                // Quickshell's runtime can remain idle when the shell has no
+                // mapped platform window. Bootstrap exactly one carrier during
+                // component construction so the Timer/event loop can drive the
+                // staged creation of the second output surface.
+                if (root.surfaces.length === 1)
+                    surface.carrierActive = true
+            }
             Component.onDestruction: root.unregisterSurface(surface)
 
             Loader {
@@ -186,6 +195,18 @@ ShellRoot {
 
         onTriggered: {
             root.preconditionTicks += 1
+            root.phaseTicks += 1
+            if (root.phaseTicks >= 24) {
+                const names = root.surfaces.map(surface =>
+                    String(surface?.outputName ?? ""))
+                root.check(false,
+                    "phase timeout: phase=" + root.phase
+                    + " surfaces=" + root.surfaces.length
+                    + " names=" + JSON.stringify(names)
+                    + " active=" + ConfirmationService.active
+                    + " visible=" + ConfirmationService.requestVisible)
+                return
+            }
             if (!Config.ready || root.surfaces.length < 2) {
                 if (root.preconditionTicks >= 12) {
                     const names = root.surfaces.map(surface =>
@@ -212,6 +233,7 @@ ShellRoot {
                 // Delay platform-window creation until Quickshell has entered
                 // the event loop and enumerated both ShellScreen objects.
                 one.carrierActive = true
+                root.phaseTicks = 0
                 root.phase = 1
                 return
             }
@@ -220,6 +242,7 @@ ShellRoot {
                 if (!one.controllerRef)
                     return
                 two.carrierActive = true
+                root.phaseTicks = 0
                 root.phase = 2
                 return
             }
@@ -236,6 +259,7 @@ ShellRoot {
                 root.request(
                     "multi.runtime.app", two.outputName,
                     "Prefer same-output Dock over remote Tray")
+                root.phaseTicks = 0
                 root.phase = 3
                 return
             }
@@ -255,6 +279,7 @@ ShellRoot {
                         "connected popup is presented only on requested output"))
                     return
                 ConfirmationService.cancel()
+                root.phaseTicks = 0
                 root.phase = 4
                 return
             }
@@ -265,6 +290,7 @@ ShellRoot {
                 root.request(
                     "multi.runtime.app", one.outputName,
                     "Prefer local Tray on first output")
+                root.phaseTicks = 0
                 root.phase = 5
                 return
             }
@@ -279,6 +305,7 @@ ShellRoot {
                         "first-output request resolves its local Tray source"))
                     return
                 ConfirmationService.cancel()
+                root.phaseTicks = 0
                 root.phase = 6
                 return
             }
@@ -289,6 +316,7 @@ ShellRoot {
                 PopupAnchorRegistry.unregisterAnchor(one.trayRef)
                 PopupAnchorRegistry.unregisterAnchor(two.dockRef)
                 root.request("", two.outputName, "Second-output fallback")
+                root.phaseTicks = 0
                 root.phase = 7
                 return
             }
@@ -305,6 +333,7 @@ ShellRoot {
                         "unresolved request uses top-center fallback on requested output"))
                     return
                 ConfirmationService.cancel()
+                root.phaseTicks = 0
                 root.phase = 8
                 return
             }

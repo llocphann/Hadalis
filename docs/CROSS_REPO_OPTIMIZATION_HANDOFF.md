@@ -9253,3 +9253,293 @@ Under the absolute-lossless rule, do **not** promote this as a static reorder op
 6. moving the initial clipboard snapshot later to avoid work on no-op requests (§44.6).
 
 Round-28/29 confirmed WindowPreview/helper reductions remain valid after the concurrent Abyss/Polkit handoff updates. No runtime/source implementation is authorized by this handoff.
+
+---
+
+## 45. Round 31 — MinimizedWindows query specialization, taskbar sort parity and clipboard race closure (2026-09-29)
+
+### Snapshot / concurrent reconciliation
+
+- Current \`dev\` HEAD immediately before this docs-only write: \`5120b7bd7c588c6fe3e52618cd74df1fdd74dcdf\` (\`docs(perf): audit capture hashes and waffle taskbar\`).
+- The branch is identical to the Round-30 handoff commit; there is no concurrent delta to reconcile in this round.
+- Runtime/source remained research-only. This round audits \`services/MinimizedWindows.qml\`, Waffle \`TaskAppButton.qml\`, \`scripts/capture-windows.sh\`, and the exact Niri/Qt invariants needed to distinguish safe reductions from parity-changing ones.
+- Round-26 §40.21 remains the owner of the proposed lazy published-\`windows\` ID index. The MinimizedWindows findings below intentionally do not duplicate its \`M x N -> N + M\` live-window lookup claim.
+
+### 45.1 Persistent stash recovery uses quadratic duplicate membership — CONFIRMED / P2 startup-recovery
+
+Path:
+
+- \`services/MinimizedWindows.qml\`.
+
+\`recoverPersistentState()\` already builds a \`Set\` for live Niri IDs, but duplicate suppression for restored stash IDs still uses the growing array:
+
+\`ids.includes(id)\`.
+
+For P valid persisted entries, all-distinct or late-duplicate input can therefore perform approximately:
+
+\`1 + 2 + ... + (P - 1)\`
+
+array comparisons, i.e. an O(P²)-shaped duplicate-check phase.
+
+Exact-safe direction:
+
+- retain the current ordered \`ids\` array as the public/persisted order;
+- add a local \`seenIds\` Set used only for duplicate membership;
+- after JSON parse and live-ID validation, reject an ID if \`seenIds.has(id)\`;
+- otherwise add it to the Set, assign the restored record and append the ID exactly once.
+
+This preserves the current important semantics:
+
+- invalid JSON is skipped;
+- non-live IDs are skipped;
+- the **first** persisted occurrence of a duplicate ID wins;
+- restored ID order is unchanged;
+- the same record is persisted again after recovery.
+
+Duplicate membership changes from O(P²) worst-shaped array scanning to O(P) Set operations.
+
+This is a startup/recovery optimization rather than a steady-state shell hotspot, so P2 is appropriate.
+
+### 45.2 Count/latest MinimizedWindows queries materialize full filtered arrays unnecessarily — CONFIRMED / P2
+
+Path:
+
+- \`services/MinimizedWindows.qml\`.
+
+The general-purpose helpers \`getMinimizedForApp()\` and \`getMinimizedForOutput()\` are useful when a caller genuinely needs every matching ID.
+
+Three current callers need less information:
+
+1. \`countMinimizedForApp(appId)\` calls \`getMinimizedForApp(appId).length\`;
+2. \`restoreLatestForApp(appId)\` materializes all matches, then reads the last one;
+3. \`restoreLatestForOutput(outputName)\` materializes all matches, then reads the last one.
+
+Exact-safe specialization:
+
+- **count:** scan \`minimizedIds\` once and increment for the exact existing predicate;
+- **latest app:** scan \`minimizedIds\` from the end and stop at the first ID whose stored \`appId.toLowerCase().includes(pattern)\` predicate matches;
+- **latest output:** scan from the end and stop at the first stored \`originalOutput\` exact match.
+
+A reverse scan returns exactly the same element as \`filter(...)[length - 1]\` because \`filter()\` preserves source order.
+
+Benefits:
+
+- \`countMinimizedForApp\`: one O(M) scan remains, but the temporary matching-ID array disappears;
+- both latest helpers: matching-array allocation disappears and common cases can stop before scanning all M minimized IDs;
+- Waffle \`TaskAppButton\` calls \`countMinimizedForApp\` per app button, so this also removes one temporary array per button reevaluation without changing the indicator count.
+
+Keep \`getMinimizedForApp()\` itself because \`restoreApp()\` legitimately needs the complete ordered match set.
+
+### 45.3 \`restoreWorkspace()\` filters and sorts a subset that NiriService already publishes in index order — CONFIRMED / P2
+
+Paths:
+
+- \`services/MinimizedWindows.qml\`;
+- \`services/NiriService.qml\`.
+
+Every current publication of \`NiriService.allWorkspaces\` explicitly sorts by ascending \`workspace.idx\`.
+
+\`restoreWorkspace(info, true)\` then:
+
+1. checks exact \`originalWorkspaceId\`;
+2. filters \`allWorkspaces\` to the original output;
+3. sorts that subset by ascending \`idx\` again;
+4. looks for exact original \`idx\`;
+5. otherwise reduces to the nearest \`idx\`, updating only on a **strictly** smaller distance.
+
+Because \`filter()\` preserves source order, the secondary ascending sort is redundant.
+
+A stronger one-pass implementation can preserve the full fallback contract:
+
+- scan the already ordered \`allWorkspaces\` once;
+- ignore other outputs;
+- immediately return an exact \`idx\` match;
+- otherwise keep the first candidate and replace it only when absolute distance is strictly smaller.
+
+The current strict-closer rule means equal-distance ties keep the earlier item. Since the filtered source is already ascending, that is the lower-\`idx\` candidate; the one-pass scan preserves the same tie.
+
+Local work changes from roughly:
+
+- O(W) filtering + O(K log K) sorting + another K lookup/reduce,
+- to one O(W) scan,
+
+while removing the filtered array and sort allocation entirely.
+
+The separate exact-\`originalWorkspaceId\` check must remain first.
+
+### 45.4 \`stashWorkspaceForOutput()\` can avoid two temporary collections, but the max-index selection is HIGH CONFIDENCE rather than absolute-confirmed — HIGH CONFIDENCE / P2
+
+Path:
+
+- \`services/MinimizedWindows.qml\`.
+
+Two independent collection-building steps exist.
+
+#### A. Existing minimized workspace lookup
+
+Current code starts with:
+
+\`for (const id of getMinimizedForOutput(output))\`
+
+which first allocates the full filtered ID list and then iterates it in the same \`minimizedIds\` order.
+
+The same behavior can be obtained by iterating \`minimizedIds\` directly and applying the exact \`originalOutput\` predicate inline.
+
+This removes one temporary ID array while preserving first-match order.
+
+When §40.21's shared published-window ID index exists, the per-ID \`liveWindows.find(...)\` can then use that index without changing this ordering contract.
+
+#### B. Empty workspace selection
+
+After building the occupied-workspace Set, current code does:
+
+- filter \`allWorkspaces\` to matching-output, unoccupied workspaces;
+- sort descending by \`idx\`;
+- return the first entry.
+
+Under normal Niri semantics, workspace \`idx\` is a positional index on its output, so a single pass retaining the greatest \`idx\` selects the same workspace and removes:
+
+- one filtered array;
+- one O(K log K) sort.
+
+Keep this **HIGH CONFIDENCE** rather than absolute-confirmed because QV4's normal JavaScript Array \`sort()\` is not stable. A malformed snapshot containing duplicate same-output \`idx\` values could therefore give the current descending sort a tie order that a simple first-max scan would not be required to reproduce.
+
+Do not trade away that defensive parity merely to claim a confirmed micro-optimization. A fixture that establishes unique \`idx\` per output (or intentionally defines duplicate tie behavior) is enough to promote this direction.
+
+### 45.5 Replacing Waffle focused-window sorting with O(A) rank counting is CLOSED under strict-lossless parity
+
+Path:
+
+- \`modules/waffle/bar/tasks/TaskAppButton.qml\`.
+
+After §40.21 removes repeated global window-ID scans and §44.3 shares the focused toplevel, one apparent remaining optimization is to avoid:
+
+\`windowPositions.sort((a, b) => a.col - b.col)\`
+
+and compute the focused window's rank in one pass.
+
+That is **not** a static lossless substitution.
+
+Qt's QV4 JavaScript Array implementation was checked directly in upstream \`qtdeclarative\`:
+
+- a normal populated JS Array enters \`ArrayData::sort()\`;
+- \`ArrayData::sort()\` calls QV4's custom \`sortHelper\`;
+- \`sortHelper\` is a swap-based quicksort helper, not a stable sort.
+
+Equal-column comparisons return zero, so the current result does not promise original-index ordering for ties.
+
+Equal columns are not purely theoretical here:
+
+- multiple windows can share a layout column;
+- windows with no usable layout position all receive the same sentinel \`999999\`.
+
+Therefore an O(A) rank formula that introduces deterministic original-index tie ordering can change which indicator slot is considered focused.
+
+Status:
+
+- **CLOSED** as an absolute-lossless standalone optimization;
+- §40.21's published-window ID index remains valid and independent;
+- §44.3's shared \`focusedToplevel\` remains valid and independent;
+- only revisit the sort itself if product behavior explicitly defines a deterministic tie contract and regression tests lock it.
+
+### 45.6 A user copy between the saved snapshot and the first screenshot can still be overwritten by an older clipboard — CONFIRMED correctness bug / supersedes §44.6
+
+Path:
+
+- \`scripts/capture-windows.sh\`.
+
+Round 30 §44.6 treated moving the initial clipboard snapshot after live-ID validation as a timing-sensitive optimization.
+
+History and the full race show a stronger result: there is a current correctness gap in the explicit **newer user intent wins** contract.
+
+Current order is:
+
+1. save one clipboard representation;
+2. query Niri windows;
+3. validate requested IDs;
+4. capture cliphist \`before_id\`;
+5. run screenshot-window actions, each of which changes the clipboard;
+6. if the final clipboard hash matches a generated preview, restore the saved clipboard.
+
+Concrete race:
+
+1. clipboard initially contains user value **A**;
+2. helper saves A;
+3. during Niri preflight, before the first screenshot, the user copies newer value **B**;
+4. a screenshot later replaces the live clipboard with preview bytes **S**;
+5. final clipboard hash matches a preview;
+6. helper restores saved A.
+
+The newer B may remain in cliphist, but the **current selection** has still been rolled back from B to older A.
+
+That contradicts the intent documented when hash-based cleanup/restore was introduced:
+
+- user copies made during capture must survive;
+- if the user copied something else while capture ran, that newer intent wins.
+
+So §44.6 should be read as **SUPERSEDED**:
+
+- moving the saved snapshot after the no-window/request validation is directionally correct, removes unnecessary initial \`wl-paste -l\` / MIME paste work for no-op requests, and narrows this race window;
+- but that reorder alone does **not** fully solve the race, because a user can still copy between the later snapshot and the first screenshot.
+
+A strict fix needs a selection-generation/ownership contract that can distinguish:
+
+- the selection value the helper intentionally displaced;
+- a newer user selection created after capture began;
+- Niri's screenshot selections.
+
+Do not solve this by restoring “the latest cliphist entry” blindly; cliphist ingestion is asynchronous and the helper already has explicit two-pass timing because screenshot entries can arrive late.
+
+Required fake-binary race fixture:
+
+- start with current clipboard A;
+- after the helper's saved read but before the first screenshot, mutate fake user clipboard to B;
+- screenshot action changes it to S;
+- final expected current clipboard is B, not A;
+- B's history entry must also survive cleanup.
+
+This correctness race is separate from §44.1's stale-old-preview hash bug. Both must be covered.
+
+### 45.7 Regression requirements before MinimizedWindows implementation
+
+There is no focused MinimizedWindows runtime contract test today.
+
+A new harness should lock at least:
+
+- persistent recovery rejects dead IDs and malformed JSON;
+- duplicate persisted IDs keep the first record and first occurrence order;
+- \`countMinimizedForApp\` preserves the current lowercase-substring predicate exactly;
+- app/output “latest” helpers return the same result as current filter-then-last behavior;
+- restore-to-original prefers exact workspace ID before index fallback;
+- exact original \`idx\` wins;
+- nearest-index fallback keeps the current equal-distance tie behavior;
+- stash reuses the first already-minimized live workspace for the output before searching for an empty one;
+- occupied workspaces are excluded;
+- highest available output-local workspace index is selected only after the tie/uniqueness contract is locked.
+
+For the helper, extend the fake-binary matrix from §44.1 with the A -> B -> screenshot clipboard race from §45.6.
+
+### 45.8 Round-31 priority update
+
+**Correctness prerequisites:**
+
+1. fix the stale-old-PNG hash membership bug from §44.1;
+2. close the newer-user-clipboard race from §45.6 rather than treating snapshot timing as a performance-only concern.
+
+**Confirmed lossless local reductions:**
+
+3. \`recoverPersistentState()\` duplicate membership Set (§45.1);
+4. specialized count/latest MinimizedWindows scans without filtered-array materialization (§45.2);
+5. one-pass \`restoreWorkspace()\` nearest/exact selection (§45.3).
+
+**High confidence / parity fixture first:**
+
+6. one-pass max-index stash workspace selection after eliminating the safe filtered-ID allocation (§45.4).
+
+**Closed under absolute-lossless scope:**
+
+7. replacing \`TaskAppButton\`'s current JS sort with a deterministic O(A) rank formula (§45.5).
+
+Round-30 Waffle taskbar reductions (§44.2-§44.4), Round-29 WindowPreview contract closures and the earlier published-window ID-index work remain valid.
+
+No runtime/source implementation is authorized by this handoff.

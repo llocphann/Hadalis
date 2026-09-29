@@ -84,7 +84,10 @@ Scope {
         if (ConfirmationService.requestVisible) {
             root._showStandaloneForRequest(request)
             if (root._standaloneTransferredRequestId === requestId) {
-                ConfirmationService.cancelOwned("closeConfirm")
+                // This is a renderer handoff, not owner teardown. Cancel only
+                // the current semantic request so queued close confirmations
+                // remain serialized behind the standalone dialog.
+                ConfirmationService.cancel(true)
                 return
             }
         }

@@ -111,7 +111,8 @@ release=close.split("function _releaseAbyssRequestIfUnavailable(): void",1)[1].s
 assert "ConfirmationService.requestVisible" in release
 assert "root._showStandaloneForRequest(request)" in release
 assert "root._standaloneTransferredRequestId === requestId" in release
-assert 'ConfirmationService.cancelOwned("closeConfirm")' in release
+assert "ConfirmationService.cancel(true)" in release
+assert 'ConfirmationService.cancelOwned("closeConfirm")' not in release
 assert "return" in release
 assert "ConfirmationService.finishPresentation(requestId)" in release
 for handler in ("function confirmClose(): void", "function cancel(): void"):

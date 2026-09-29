@@ -137,3 +137,114 @@ jobs:
       - name: Show Weston log on failure
         if: failure()
         run: cat "$RUNNER_TEMP/weston-confirmation.log" 2>/dev/null || true
+
+  nested-niri:
+    needs: headless-wayland
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Install Nix
+        uses: cachix/install-nix-action@v31.11.1
+
+      - name: Run confirmation harness inside nested Niri
+        shell: bash
+        run: |
+          set -euo pipefail
+          nix shell \
+            nixpkgs#quickshell \
+            nixpkgs#weston \
+            nixpkgs#niri \
+            nixpkgs#ripgrep \
+            nixpkgs#coreutils \
+            --command bash -lc '
+              set -euo pipefail
+              runtime_dir="$(mktemp -d)"
+              niri_config="$(mktemp)"
+              export XDG_RUNTIME_DIR="$runtime_dir"
+              chmod 700 "$XDG_RUNTIME_DIR"
+              outer_display=wayland-hadalis-outer
+              export WAYLAND_DISPLAY="$outer_display"
+              export QT_QPA_PLATFORM=wayland
+              export QT_QUICK_BACKEND=software
+              export QSG_RENDER_LOOP=basic
+              export LIBGL_ALWAYS_SOFTWARE=1
+
+              weston \
+                --backend=headless-backend.so \
+                --renderer=pixman \
+                --socket="$outer_display" \
+                --idle-time=0 \
+                --log="$RUNNER_TEMP/weston-niri-confirmation.log" &
+              weston_pid=$!
+              niri_pid=""
+
+              cleanup() {
+                if [[ -n "$niri_pid" ]]; then
+                  kill "$niri_pid" 2>/dev/null || true
+                  wait "$niri_pid" 2>/dev/null || true
+                fi
+                kill "$weston_pid" 2>/dev/null || true
+                wait "$weston_pid" 2>/dev/null || true
+                rm -rf -- "$runtime_dir" "$niri_config"
+              }
+              trap cleanup EXIT
+
+              for _ in $(seq 1 100); do
+                [[ -S "$XDG_RUNTIME_DIR/$outer_display" ]] && break
+                kill -0 "$weston_pid" 2>/dev/null || {
+                  cat "$RUNNER_TEMP/weston-niri-confirmation.log" || true
+                  exit 1
+                }
+                sleep 0.1
+              done
+              [[ -S "$XDG_RUNTIME_DIR/$outer_display" ]] || {
+                cat "$RUNNER_TEMP/weston-niri-confirmation.log" || true
+                exit 1
+              }
+
+              : > "$niri_config"
+              niri --config "$niri_config" \
+                >"$RUNNER_TEMP/niri-confirmation.log" 2>&1 &
+              niri_pid=$!
+
+              nested_display=""
+              for _ in $(seq 1 150); do
+                nested_display="$(
+                  find "$XDG_RUNTIME_DIR" -maxdepth 1 -type s \
+                    -name "wayland-*" ! -name "$outer_display" \
+                    -printf "%f\\n" | head -n1
+                )"
+                [[ -n "$nested_display" ]] && break
+                if ! kill -0 "$niri_pid" 2>/dev/null; then
+                  cat "$RUNNER_TEMP/niri-confirmation.log" || true
+                  exit 1
+                fi
+                sleep 0.1
+              done
+              if [[ -z "$nested_display" ]]; then
+                cat "$RUNNER_TEMP/niri-confirmation.log" || true
+                echo "Nested Niri Wayland socket did not become ready" >&2
+                exit 1
+              fi
+
+              export WAYLAND_DISPLAY="$nested_display"
+              niri_socket="$(
+                find "$XDG_RUNTIME_DIR" -maxdepth 1 -type s \
+                  -name "niri.${nested_display}.*.sock" -print | head -n1
+              )"
+              if [[ -n "$niri_socket" ]]; then
+                export NIRI_SOCKET="$niri_socket"
+              fi
+
+              bash scripts/test-abyss-confirmation-runtime.sh
+            '
+
+      - name: Show compositor logs on failure
+        if: failure()
+        shell: bash
+        run: |
+          cat "$RUNNER_TEMP/weston-niri-confirmation.log" 2>/dev/null || true
+          cat "$RUNNER_TEMP/niri-confirmation.log" 2>/dev/null || true

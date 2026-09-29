@@ -1,0 +1,27 @@
+{
+  "id": "JOB-GITHUB-MENTION-SUBMIT-001",
+  "base_sha": "270d6f13de24382825efc39ec94a11c2e0a8b7e8",
+  "actions": [
+    {
+      "exec": {
+        "argv": [
+          "node",
+          "--check",
+          "scripts/test-hadalis-github-mention-submit.mjs"
+        ],
+        "cwd": ".",
+        "timeout_seconds": 120
+      }
+    },
+    {
+      "exec": {
+        "argv": [
+          "node",
+          "scripts/test-hadalis-github-mention-submit.mjs"
+        ],
+        "cwd": ".",
+        "timeout_seconds": 90
+      }
+    }
+  ]
+}

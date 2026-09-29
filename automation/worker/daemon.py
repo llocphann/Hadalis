@@ -274,7 +274,7 @@ def publish(job_id: str, payload: dict[str, Any]) -> None:
     raise RuntimeError(f"failed to publish {job_id} result")
 
 
-def process_one() -> bool:
+def process_one() -> tuple[str, str] | None:
     fetch_dev()
     for path in pending_paths():
         job_id = Path(path).stem
@@ -296,8 +296,8 @@ def process_one() -> bool:
                 "error": f"{type(exc).__name__}: {exc}",
             }
         publish(job_id, payload)
-        return True
-    return False
+        return job_id, str(payload.get("status", "unknown"))
+    return None
 
 
 def main() -> int:
@@ -308,10 +308,18 @@ def main() -> int:
     with lock_path.open("w") as lock:
         fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
         while True:
-            worked = process_one()
+            outcome = process_one()
             if args.once:
+                if outcome is None:
+                    print("Hadalis worker: no pending jobs")
+                else:
+                    job_id, status = outcome
+                    print(
+                        f"Hadalis worker: {job_id} -> {status}; "
+                        f"result published to origin/dev"
+                    )
                 return 0
-            if not worked:
+            if outcome is None:
                 time.sleep(POLL)
 
 

@@ -112,16 +112,14 @@ Scope {
             function bodyInsets(edge,along,span) { return ModuleLayout.clearanceInsets(nativeInsets,bar.visible ? bar.deformations : [],edge,along,span) }
             readonly property bool fullscreenCovered: GameMode.hasFullscreenOnOutput(outputName)
             // Ordinary shell surfaces respect the fullscreen visibility policy.
-            // Confirmation/Polkit are critical modal workflows: keep only the
-            // shared popup field available for their owned output so a fullscreen
-            // client cannot make an authorization/confirmation request invisible.
+            // Confirmation is a critical modal workflow: keep only the shared
+            // popup field available on its owning output so fullscreen clients
+            // cannot make a semantic confirmation request invisible.
             readonly property bool presented: !GlobalStates.screenLocked
                 && (!fullscreenCovered || (Config.options?.abyss?.perimeter?.visibleInFullscreen ?? false))
             readonly property bool criticalPromptOwned:
-                (ConfirmationService.active
-                    && ConfirmationService.targetOutputName === outputName)
-                || (PolkitService.presentationRetained
-                    && PolkitService.targetOutputName === outputName)
+                ConfirmationService.active
+                && ConfirmationService.targetOutputName === outputName
             readonly property bool popupFieldPresented:
                 !GlobalStates.screenLocked
                 && (window.presented || window.criticalPromptOwned)
@@ -135,13 +133,14 @@ Scope {
             exclusiveZone: 0
             WlrLayershell.namespace: "hadalis:abyss-perimeter"
             // Native settings dialogs normally make the shell yield to Bottom,
-            // but an owned confirmation/auth prompt must remain reachable above
-            // the dialog that caused it. This is especially important for
-            // Polkit requests initiated from settings.
+            // but an owned confirmation must remain reachable above that dialog.
+            // Legacy Polkit stays a separate Overlay renderer and suppresses
+            // Abyss keyboard focus while it is active.
             WlrLayershell.layer: window.criticalPromptOwned ? WlrLayer.Overlay
                 : GlobalStates.settingsNativeDialogOpen ? WlrLayer.Bottom
+                : PolkitService.active ? WlrLayer.Top
                 : (window.editorOpen || utility.open || liquid.popupsOpen || toastBody.open || dialogBody.open || settings.open || dashboardBody.open || controls.open || (window.fullscreenCovered && window.presented)) ? WlrLayer.Overlay : WlrLayer.Top
-            WlrLayershell.keyboardFocus: !window.popupFieldPresented || !field.ready || GlobalStates.regionSelectorOpen || (GlobalStates.settingsNativeDialogOpen && !window.criticalPromptOwned) || window.overviewDragging
+            WlrLayershell.keyboardFocus: !window.popupFieldPresented || !field.ready || GlobalStates.regionSelectorOpen || (GlobalStates.settingsNativeDialogOpen && !window.criticalPromptOwned) || PolkitService.active || window.overviewDragging
                 ? WlrKeyboardFocus.None
                 : (window.editorOpen || (utility.presented && utility.ready) || liquid.popupExclusiveFocus || (popup.presented && (popup.contentItem.item?.keyboardFocus ?? false)) || (dialogBody.presented && dialogBody.ready) || (aux.presented && aux.ready) || (clipboardBody.presented && clipboardBody.ready) || (settings.presented && settings.ready) || (dashboardBody.presented && dashboardBody.ready) || (controls.presented && controls.ready)) ? WlrKeyboardFocus.Exclusive
                 : (liquid.popupOnDemandFocus || (leftPanel.presented && leftPanel.ready) || (rightPanel.presented && rightPanel.ready) || (popup.presented && popup.ready) || (notification.presented && notification.ready && notification.contentKind === "center"))
@@ -355,11 +354,11 @@ Scope {
                 moduleRecords: bar.visible ? bar.deformations : []
             }
 
-            // Non-painted anchor for confirmation/Polkit prompts with no live app source.
+            // Non-painted anchor for confirmations that have no live app source.
             // It enters the exact same StyledPopup -> popup-slot -> Pyramid path
             // as attached prompts, but resolves to the output's top center.
             Item {
-                id: promptFallbackAnchor
+                id: confirmationFallbackAnchor
                 x: (window.width - width) / 2
                 y: 0
                 width: Math.max(2, AbyssStyle.perimeterThickness)
@@ -374,16 +373,10 @@ Scope {
             AbyssConfirmationPresenter {
                 id: confirmationPresenter
                 outputName: window.outputName
-                fallbackAnchor: promptFallbackAnchor
+                fallbackAnchor: confirmationFallbackAnchor
                 presentationEnabled: window.popupFieldPresented && field.ready
             }
 
-            AbyssPolkitPresenter {
-                id: polkitPresenter
-                outputName: window.outputName
-                fallbackAnchor: promptFallbackAnchor
-                presentationEnabled: window.popupFieldPresented && field.ready
-            }
 
             readonly property var sideObstacles: [leftPanel,rightPanel].filter(body => body.progress > 0.001).map(body => body.record)
             AbyssSpectrumController {

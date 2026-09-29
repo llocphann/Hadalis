@@ -18,6 +18,10 @@ Item {
         active: Config.ready && (Config.options?.enabledPanels ?? []).includes("abyssLock")
         source: "../lock/Lock.qml"
     }
+    LazyLoader {
+        active: Config.ready && (Config.options?.enabledPanels ?? []).includes("abyssPolkit")
+        source: "../polkit/Polkit.qml"
+    }
     DemandPanel { identifier: "iiOverlay"; open: GlobalStates.overlayOpen || OverlayContext.hasPinnedWidgets || OverlayContext.nativeDialogOpen; source: "../ii/overlay/Overlay.qml" }
     DemandPanel { identifier: "iiRegionSelector"; open: GlobalStates.regionSelectorOpen; source: "../regionSelector/RegionSelector.qml" }
     DemandPanel { identifier: "iiTilingOverlay"; open: GlobalStates.tilingOverlayPickerOpen || GlobalStates.tilingOverlayOsdOpen; source: "../tilingOverlay/TilingOverlay.qml" }

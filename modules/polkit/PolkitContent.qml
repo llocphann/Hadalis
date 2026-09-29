@@ -16,44 +16,24 @@ Item {
 
     Keys.onPressed: event => {
         if (event.key === Qt.Key_Escape) {
-            root.cancelAuthentication()
+            PolkitService.cancel()
             event.accepted = true
         }
     }
 
-    function clearResponse(): void {
-        inputField.clear()
-    }
-
-    function cancelAuthentication(): void {
-        root.clearResponse()
-        PolkitService.cancel()
-    }
-
     function submit(): void {
-        const response = inputField.text
-        inputField.clear()
-        PolkitService.submit(response)
+        PolkitService.submit(inputField.text)
     }
 
     Connections {
         target: PolkitService
-        function onRequestSerialChanged(): void {
-            root.clearResponse()
-        }
         function onInteractionAvailableChanged(): void {
             if (!PolkitService.interactionAvailable)
                 return
-            root.clearResponse()
+            inputField.text = ""
             inputField.forceActiveFocus()
         }
-        function onActiveChanged(): void {
-            if (!PolkitService.active)
-                root.clearResponse()
-        }
     }
-
-    Component.onDestruction: root.clearResponse()
 
     Rectangle {
         anchors.fill: parent
@@ -158,12 +138,11 @@ Item {
             enabled: PolkitService.interactionAvailable
             placeholderText: PolkitService.cleanPrompt
             echoMode: root.usePasswordChars ? TextInput.Password : TextInput.Normal
-            inputMethodHints: Qt.ImhSensitiveData | Qt.ImhNoPredictiveText
             onAccepted: root.submit()
 
             Keys.onPressed: event => {
                 if (event.key === Qt.Key_Escape) {
-                    root.cancelAuthentication()
+                    PolkitService.cancel()
                     event.accepted = true
                 }
             }
@@ -176,7 +155,7 @@ Item {
 
             DialogButton {
                 buttonText: Translation.tr("Cancel")
-                onClicked: root.cancelAuthentication()
+                onClicked: PolkitService.cancel()
             }
 
             DialogButton {

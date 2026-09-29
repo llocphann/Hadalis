@@ -69,14 +69,57 @@ export async function openHadalisNewChat(page) {
   throw new Error("new chat did not become ready");
 }
 
+async function submissionStarted(page, composer) {
+  try {
+    if ((await composer.innerText()).trim() === "")
+      return true;
+  } catch {}
+
+  return (await visibleCount(
+    page.getByRole("button", { name: /stop/i })
+  )) > 0;
+}
+
+async function waitForSubmissionStart(page, composer, timeoutMs = 2000) {
+  const deadline = Date.now() + timeoutMs;
+
+  while (Date.now() < deadline) {
+    if (await submissionStarted(page, composer))
+      return true;
+    await sleep(100);
+  }
+
+  return submissionStarted(page, composer);
+}
+
 export async function submitPrompt(page, prompt) {
   await verifyProject(page);
   const composer = await resolveComposer(page);
   await composer.fill(prompt);
+
   if ((await composer.innerText()).trim() !== prompt.trim())
     throw new Error("composer text mismatch");
+
   const send = page.getByRole("button", { name: "Send" });
-  await semanticClick(send, "Send");
+  await requireOne(send, "Send");
+
+  if (await send.isDisabled())
+    throw new Error("Send is disabled after composer fill");
+
+  // ChatGPT Desktop's Send control can ignore HTMLElement.click() in some
+  // composer states. Enter is the app's normal submit gesture, so use it
+  // first and verify the application state changed before any fallback.
+  await composer.press("Enter");
+
+  if (await waitForSubmissionStart(page, composer))
+    return;
+
+  // Fallback stays semantic: the locator is verified above, and force only
+  // bypasses transient pointer hit-testing. Never use screen coordinates.
+  await send.click({ force: true });
+
+  if (!(await waitForSubmissionStart(page, composer)))
+    throw new Error("prompt did not submit after Enter or Send fallback");
 }
 
 export async function waitForCompletion(page, timeoutMs = 600000) {

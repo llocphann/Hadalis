@@ -12314,3 +12314,605 @@ Earlier correctness prerequisites remain above pure performance work:
   (§47.1-§47.2).
 
 No runtime/source implementation is authorized by this handoff.
+
+
+---
+
+## 51. Round 37 — strict-lossless layout, clock and utility collection reductions (2026-09-30)
+
+### Snapshot / concurrent reconciliation
+
+Round 37 opened on exact `dev` HEAD:
+
+`4504362a13058cf04c0e8c955015d9ff62cd237b`
+— `docs(perf): audit service and planner reductions`.
+
+During the audit, `dev` advanced by one concurrent runtime commit to:
+
+`ba776dce819a08f137b882e48f642fdb6a3da1c0`
+— `fix(abyss): stabilize automatic paired vacancy`.
+
+That commit changes only:
+
+- `modules/abyss/AbyssCorners.qml`;
+- `modules/abyss/AbyssSurfaceController.qml`;
+- `modules/abyss/looks/AbyssVacancyBorrowing.js`;
+- `modules/notificationCenter/NotificationCenterPopup.qml`;
+- `scripts/test-abyss-vacancy-borrowing.py`.
+
+It does not touch this round's candidate cluster. The handoff and all source
+paths used below were re-read at exact
+`ba776dce819a08f137b882e48f642fdb6a3da1c0` before this docs update.
+
+Round-35/36 strictness remains unchanged: CONFIRMED means identical observable
+results, order, relevant identity, QML/publication behavior, process/event
+sequence, persistence/failure behavior and malformed-input behavior. No
+persistent CPU-for-RAM cache is promoted merely because it is faster.
+
+### 51.1 ShellLayoutController internal reads serialize/parse static descriptors unnecessarily — CONFIRMED / P1-P2 layout/edit paths
+
+Paths:
+
+- `services/ShellLayoutController.qml`;
+- `services/ShellEditSession.qml`;
+- `modules/common/widgets/ShellLayoutEditorWindow.qml`;
+- `modules/settings/ShellLayoutConfig.qml`.
+
+`ShellLayoutController.descriptor(surfaceId)` intentionally returns a deep
+clone:
+
+`JSON.parse(JSON.stringify(found))`.
+
+That public isolation contract should remain unchanged: external callers can
+receive a mutable descriptor copy without being able to corrupt the controller's
+private descriptor table.
+
+However, five controller-internal paths call the same public cloning API only to
+read descriptor fields:
+
+- `currentState()`;
+- `legalSlots()`;
+- `validatePlacement()`;
+- `setProperty()`;
+- `resetSurface()`.
+
+The descriptor table is a private readonly static array of JSON-safe records, and
+repository search found no external access to `_descriptors`.
+
+Strict-safe direction:
+
+- add a private `_descriptorRef(surfaceId)` returning the same first matching
+  private record without cloning;
+- keep public `descriptor()` exactly clone-returning;
+- use the private reference only in controller-internal read-only code;
+- for `legalSlots()`, return `desc.slots.slice()` so the caller still receives
+  a fresh ordered array and cannot mutate the static descriptor.
+
+This removes repeated JSON stringify/parse work from live state/validation paths
+without changing the public identity/ownership contract.
+
+Required parity includes all five surfaces, unknown IDs, inactive families,
+invalid slots and mutation of values returned by public `descriptor()` /
+`legalSlots()`.
+
+### 51.2 ShellLayoutController clones fresh unescaped result objects before returning them — CONFIRMED / P2 edit mutations
+
+Path: `services/ShellLayoutController.qml`.
+
+Two mutation paths deep-clone objects that were just created locally and have
+not escaped:
+
+- `moveSurface()` clones its fresh `validation` before setting
+  `changed=true` and appending `persisted=true`;
+- sidebar/dock `resetSurface()` clones the fresh object returned by its own
+  `moveSurface()` call before appending `reset=true`.
+
+Strict-safe direction:
+
+- mutate those local result objects directly;
+- do not change any early return;
+- keep Config writes and `Config.flushWrites()` in the exact current order;
+- assign the same fields in the same sequence.
+
+The current `changed` key already exists, so reassigning it does not alter
+property order. `persisted` and `reset` remain appended at the same points as
+today. No external alias exists before the return.
+
+This removes full JSON stringify/parse cycles from successful placement/reset
+operations.
+
+### 51.3 surfacesForFamily can fuse filter -> deep-clone map without changing clone isolation — CONFIRMED / P2 edit-mode
+
+Path: `services/ShellLayoutController.qml`.
+
+Current `surfacesForFamily()`:
+
+1. filters all private descriptors by family;
+2. allocates the filtered reference array;
+3. maps that array through the existing deep clone.
+
+The descriptors are private static JSON-safe data and the clone is pure.
+
+Exact-safe direction:
+
+- iterate `_descriptors` once in source order;
+- for each matching descriptor append `root._clone(item)`;
+- retain one fresh deep clone per returned descriptor.
+
+Output order, duplicate behavior, returned identity/isolation and active-family
+fallback remain exact. The filtered intermediate array disappears.
+
+### 51.4 ShellLayoutController output fallback membership can use a local Set after the same early returns — CONFIRMED / P3 topology/layout calculation
+
+Path: `services/ShellLayoutController.qml`.
+
+`_outputEnabled(configuredOutputs, outputName)` currently:
+
+1. returns true for non-array/empty config;
+2. returns true when the requested output is explicitly listed;
+3. only then maps connected screen names;
+4. evaluates
+   `!configuredOutputs.some(name => currentNames.includes(name))`.
+
+The final membership shape is O(C x S) for configured names C and connected
+screens S.
+
+Strict-safe direction:
+
+- preserve both early returns **before reading `Quickshell.screens`**, so QML
+  dependency reads are not broadened;
+- after those returns, build one invocation-local
+  `Set(currentNames)`;
+- retain `configuredOutputs.some(name => connectedSet.has(name))`.
+
+Array `includes` and Set membership both use SameValueZero. Retaining
+`some()` also preserves sparse-array visitation semantics. No state is cached
+between calls.
+
+This is P3 because monitor lists are normally small, but it is an exact local
+asymptotic reduction.
+
+### 51.5 ShellEditSession diagnostic snapshot computes each interaction mode twice — CONFIRMED / P2-P3 IPC/edit diagnostics
+
+Path: `services/ShellEditSession.qml`.
+
+`_interactionSnapshot()` currently writes, per surface:
+
+- `mode: root.interactionMode(surfaceId)`;
+- `blocksNormalActions: root.blocksNormalActions(surfaceId)`.
+
+But `blocksNormalActions()` immediately calls
+`interactionMode(surfaceId)` again.
+
+This is an imperative synchronous IPC-status path, so no event can interleave
+between the two computations.
+
+Exact-safe direction:
+
+- compute `mode` once per surface;
+- store the same mode;
+- derive `blocksNormalActions` with the exact existing set of mode string
+  comparisons;
+- keep public `blocksNormalActions()` unchanged for all other callers.
+
+This changes interaction-mode/descriptor resolution from 2 -> 1 per diagnostic
+surface while preserving the exact serialized status object.
+
+### 51.6 WorldClock normalization and label helpers have exact one-pass/string-scan reductions — CONFIRMED / P2-P3
+
+Path: `services/WorldClock.qml`.
+
+Three independent local reductions are strict-safe.
+
+**Configured timezones**
+
+Current array input uses:
+
+`configured.map(String+trim).filter(nonempty)`.
+
+Because Config arrays are JSON-derived, a single indexed loop can perform the
+same String/nullish conversion and trim once, appending nonempty values in the
+same order. Non-array fallback to `defaultTimezones` remains unchanged.
+
+**Timezone labels**
+
+`labelFor()` splits the complete timezone string only to read the first and
+last slash-separated components.
+
+An exact `indexOf("/")` + `lastIndexOf("/")` + `slice()` implementation
+preserves:
+
+- no-slash names;
+- multiple slashes;
+- leading/trailing slashes;
+- the same first component as region;
+- the same last component as city;
+- underscore replacement.
+
+**Offset output**
+
+`offsetProc.onExited` currently calls
+`offsetCollector.text.trim()` twice before optionally splitting it.
+
+Read/trim once into a local string, then preserve the same empty/nonempty branch
+and `/\r?\n/` split.
+
+No timezone cache or retained normalized copy is introduced.
+
+### 51.7 WorldClock.entries constructs the same city Date twice per timezone per minute — CONFIRMED / P2 visible widget
+
+Path: `services/WorldClock.qml`.
+
+Each `entries` row currently calls:
+
+- `timeStringFor(i)` -> `cityDate(i)` -> one `new Date`;
+- `isDaytimeFor(i)` -> `cityDate(i)` -> a second `new Date`.
+
+Both use the same `root.now` and offset during one synchronous binding
+evaluation.
+
+Strict-safe direction:
+
+- construct one city Date per row;
+- use private date-based helpers for the existing time-string and daytime logic;
+- retain public `timeStringFor(index)` and `isDaytimeFor(index)` wrappers
+  unchanged;
+- derive the displayed city-name prefix with exact first-`" ("` index/slice
+  semantics instead of `labelFor(tz).split(" (")[0]`.
+
+This changes Date allocations from 2 -> 1 per timezone for each `entries`
+recomputation while preserving 12/24-hour text, AM/PM casing, minute value,
+offset text and 06:00/18:00 daytime boundaries.
+
+No offset caching beyond the existing service state is added.
+
+### 51.8 LocalMusic MPD changed-event subsystem handling can avoid map + includes scans — CONFIRMED / P2 event path
+
+Path: `services/LocalMusic.qml`.
+
+For a native MPD `changed` event, current code:
+
+1. converts every subsystem to String with `.map()`;
+2. tests `.includes("database")`;
+3. if necessary tests `.includes("stored_playlist")`.
+
+The event came from JSON parsing, so subsystem values are JSON values.
+
+Exact-safe direction:
+
+- scan the original subsystem array once;
+- String-convert **every** element in source order, even after a matching value
+  has been seen;
+- accumulate booleans for database/stored_playlist;
+- only after the complete scan perform the same rescan-timer branch.
+
+Not early-breaking matters: current `.map()` converts every element before any
+membership branch, so a strict replacement must preserve that evaluation shape.
+
+The temporary normalized array and one/two membership scans disappear; event
+type, payload application and fallback refresh timing remain unchanged.
+
+### 51.9 YtMusic quick-connect browser ordering can use a local Set — CONFIRMED / P3 user action
+
+Path: `services/YtMusic.qml`.
+
+On first quick-connect attempt, `_tryNextBrowser()` builds a deduplicated browser
+list with growing `browsers.includes(b)`.
+
+The source is a typed `list<string>`.
+
+Strict-safe direction:
+
+- keep the existing test that the default browser is actually detected;
+- if selected, append it first and add it to a local Set;
+- traverse `detectedBrowsers` in the same order and append only first
+  occurrences using `Set.has`.
+
+This preserves default-first preference and first-occurrence ordering while
+changing growing duplicate membership from O(B²) to O(B).
+
+No persistent browser index is introduced.
+
+### 51.10 Bounded recent/liked arrays create a second array only to truncate a fresh local array — CONFIRMED / P3
+
+Paths:
+
+- `services/YtMusic.qml`;
+- `services/ThemeService.qml`.
+
+Examples:
+
+- YtMusic recent searches: filter -> unshift -> optional
+  `slice(0, maxRecentSearches)`;
+- YtMusic liked songs: spread copy -> unshift -> optional
+  `slice(0, maxLikedSongs)`;
+- recent themes: filter -> unshift -> optional `slice(0, 4)`.
+
+In every case the array being truncated is a fresh invocation-local ordinary
+array that has not escaped.
+
+Under the existing `if (length > cap)` guard, assigning the local array's
+`length = cap` preserves the exact prefix, order and final published identity
+semantics while removing the second copied array.
+
+For YtMusic recent-search duplicate removal, the query lowercase value can also
+be computed once before the existing filter; `query` is the already-trimmed
+string passed internally by `search()`.
+
+Do not change persistence call order or cap values.
+
+### 51.11 Emoji data loading can replace slice -> filter -> map with one exact loop — CONFIRMED / P3 load/reload
+
+Path: `services/deferred/Emojis.qml`.
+
+After locating the data marker, current `updateEmojis()` executes:
+
+`lines.slice(dataIndex + 1).filter(line => line.trim() !== "").map(line => line.trim())`.
+
+`lines` came directly from String `split("\n")`, so every entry is a primitive
+string.
+
+Exact-safe direction:
+
+- iterate from `dataIndex + 1`;
+- trim each line once;
+- append nonempty trimmed strings in the same order.
+
+Missing-marker warning behavior and the previous list-retention behavior on that
+failure path remain unchanged.
+
+This removes the sliced array, filtered array and duplicate trim on surviving
+rows. Do not add retained lowercase emoji copies under strict no-tradeoff rules.
+
+### 51.12 Weather forward-geocode scoring reallocates the same city-type list for every candidate — CONFIRMED / P3 network completion
+
+Path: `services/Weather.qml`.
+
+Nominatim lookup currently requests at most five results. Inside the result loop
+it recreates:
+
+`["city","town","village","municipality","hamlet","suburb","county","administrative"]`
+
+for every candidate only to test `includes(type)`.
+
+Move that immutable list outside the loop as an invocation-local constant (or
+use an exact direct comparison chain). Keep:
+
+- result iteration order;
+- current score weights;
+- `score > bestScore`, not `>=`, so first equal-score result continues to win;
+- all fallback/error/network behavior.
+
+The saving is small because the server limit is five, but it is fully lossless.
+
+### 51.13 AppLauncher network-settings fallback can build the exact same shell chain in one pass — CONFIRMED / P3 click path
+
+Path: `services/AppLauncher.qml`.
+
+`launchNetworkSettings()` currently:
+
+1. repeatedly computes `command.split(" ")[0]`;
+2. filters fallback commands by executable;
+3. concatenates configured command + fallbacks;
+4. filters empty commands;
+5. maps every command to a shell fragment;
+6. joins with `" || "`.
+
+Exact-safe direction:
+
+- compute configured command's first-space token once;
+- append its shell fragment only when the command is nonempty;
+- iterate static fallbacks in current order;
+- compute each fallback token once;
+- skip exactly those whose token equals the configured command token;
+- append the exact existing fragment text;
+- join with the same delimiter and call `ShellExec.execCmd()` once.
+
+Do not alter command tokenization from literal `split(" ")`, quoting, fallback
+order or shell selection in this performance patch.
+
+### 51.14 ShellUpdates progress/status parsing can avoid repeated full split arrays — CONFIRMED / P2-P3 while updating
+
+Path: `services/ShellUpdates.qml`.
+
+The 2-second update progress path and resume/watchdog readers repeatedly parse
+markers of the form:
+
+`progress:STEP:TOTAL:MESSAGE`
+
+with `split(":")` and then reconstruct MESSAGE with
+`slice(3).join(":")`.
+
+Exact-safe direction:
+
+- locate the first/second/third colon with `indexOf`;
+- slice STEP and TOTAL from the same boundaries;
+- MESSAGE is the substring after the third colon, preserving every later colon;
+- in the live progress reader, keep the current requirement equivalent to
+  `parts.length >= 4`: if a third colon does not exist, do not update fields;
+- preserve `parseInt(...) || 0`;
+- preserve the resume reader's looser missing-field defaults;
+- for failed markers, if optimized, preserve exactly
+  `split(":")[1] || "unknown"`.
+
+No polling cadence, child-process count, watchdog restart timing or publication
+timing changes.
+
+### 51.15 ShellUpdates local-modification result parsing can fuse split + filter — CONFIRMED / P3 detail fetch
+
+Path: `services/ShellUpdates.qml`.
+
+After `.trim()`, nonempty local-modification stdout currently uses:
+
+`raw.split("\n").filter(l => l.length > 0)`.
+
+A single loop over the split lines can append the same nonempty strings in the
+same order and remove the filtered intermediate array. CR characters, if any,
+remain untouched exactly as today because the delimiter remains `"\n"`.
+
+The manifest checksum process and detail-fetch sequence remain unchanged.
+
+### 51.16 IconThemeService path-name extraction and exclusions allocate avoidable per-line arrays — CONFIRMED / P3 cold enumeration
+
+Path: `services/IconThemeService.qml`.
+
+For every directory emitted by `find`, current code:
+
+- splits the full path by `"/"` only to take the last component;
+- creates an exclusion-array literal and calls
+  `includes(name)`.
+
+Exact-safe direction:
+
+- derive basename with `lastIndexOf("/")` + `slice()`;
+- keep the same empty-name rejection;
+- replace the four-name exclusion literal with exact string comparisons;
+- keep the separate `cursors` rejection;
+- append accepted names in the same discovery order.
+
+The existing completion behavior remains untouched:
+
+`Array.from(new Set(themes)).sort()`.
+
+Therefore duplicate removal and final default lexical ordering are unchanged.
+
+### 51.17 Gowall theme enumeration copy growth is not strict-lossless if publication is batched — CLOSED under current contract
+
+Path: `services/deferred/GowallService.qml`.
+
+`listThemesProc` currently publishes each discovered nonempty theme line
+immediately as:
+
+`root.availableThemes = [...root.availableThemes, theme]`.
+
+This repeatedly copies the growing prefix and can become O(N²) allocation work.
+
+Accumulating privately and assigning once on process exit would be cheaper, but
+it would also change:
+
+- the number/timing of `availableThemesChanged` emissions;
+- when bound Settings consumers can observe partial discovery results.
+
+That violates this audit's event/publication-timing rule.
+
+Status:
+
+- **CLOSED as a blind batch-publication optimization**;
+- only reopen if the product contract is explicitly changed or exact
+  signal/publication parity can be retained by another mechanism.
+
+### 51.18 LocalMusic playQueue filter + URI map is not promoted because fusing changes read timing — NEEDS PARITY
+
+Path: `services/LocalMusic.qml`.
+
+`playQueue()` first filters valid track objects, publishes/uses that ordered
+`valid` array to update playback state, and only later maps those tracks to URI
+strings for the queued native request.
+
+A fused pass that stores both the valid track and URI looks cheaper, but it
+moves the second `track.uri ?? track.path` property read earlier — before
+`activeQueue`, current track and related state assignments that currently
+occur between filter and map.
+
+For normal plain snapshot objects the values are expected to be identical, but
+strict malformed/reactive-object behavior is not proven.
+
+Status: **NEEDS PARITY**, not CONFIRMED. Keep the current two-stage read timing
+unless a plain-immutable track contract is established.
+
+### 51.19 ShellUpdates resume-helper subprocess cleanup remains compatibility-sensitive — NEEDS COMPATIBILITY, not strict set
+
+Path: `services/ShellUpdates.qml`.
+
+The startup resume probe invokes external `date`, `printf`, `cut`, `stat`
+and `cat` inside one Bash script. Some of these can be replaced with Bash
+builtins/parameter expansion.
+
+That may reduce children, but missing-tool/failure behavior would differ from
+today. Under the strict rule, this is not automatically lossless.
+
+Keep it outside the confirmed batch until runtime dependency assumptions and
+failure-path fixtures explicitly cover missing/failed helper commands.
+
+### 51.20 Round-37 regression requirements
+
+Before implementing the confirmed Round-37 batch:
+
+Shell layout/edit:
+
+- public descriptor remains a fresh deep clone;
+- mutating returned descriptor/legalSlots cannot alter static descriptors;
+- currentState/validation/legalSlots JSON exact for every surface/family;
+- move/reset success, no-change and failure paths;
+- exact Config mutation and flush ordering;
+- `_outputEnabled` with empty/non-array lists, explicit target hit, target miss,
+  connected/disconnected configured outputs, duplicates and sparse arrays;
+- diagnostic interaction snapshot exact under normal/selected/lifted/preview/
+  confirmation states.
+
+WorldClock:
+
+- no slash, multiple slash, leading/trailing slash and underscore labels;
+- non-array/empty/mixed configured timezone input;
+- empty/nonempty offset output;
+- exact entries in 12h/24h formats, AM/PM casing, offset/day-boundary fixtures;
+- Date/DST boundary corpus proving one-date reuse produces the same row.
+
+LocalMusic/YtMusic:
+
+- changed events with no/non-array subsystems;
+- database/stored_playlist at first/middle/last position and no match;
+- duplicate/default browser ordering;
+- recent/liked arrays at cap, cap+1 and duplicate cases;
+- persistence calls remain in the same order.
+
+Utilities:
+
+- emoji missing marker, blanks, whitespace-only rows and trailing newline;
+- Weather equal-score fixture proving first tie still wins;
+- AppLauncher exact generated shell strings for empty/configured/fallback-same-bin
+  cases and commands containing arguments;
+- ShellUpdates malformed/partial/extra-colon progress and failed markers;
+- IconTheme paths with normal/trailing slash, ignored names and duplicate final
+  sort behavior.
+
+### 51.21 Revised strict-lossless priority after Round 37
+
+**New CONFIRMED, no persistent cache/tradeoff:**
+
+1. private read-only descriptor refs while preserving public clone isolation
+   (§51.1);
+2. remove deep clones of fresh local layout mutation results (§51.2);
+3. fuse surfacesForFamily filter + clone (§51.3);
+4. preserve early returns then use local connected-output Set (§51.4);
+5. reuse one ShellEdit interaction-mode result per snapshot surface (§51.5);
+6. WorldClock normalization/string-scan reductions (§51.6);
+7. WorldClock one Date per entries row (§51.7);
+8. LocalMusic one-pass subsystem classification (§51.8);
+9. YtMusic local browser Set (§51.9);
+10. local in-place truncation of fresh bounded arrays (§51.10);
+11. one-pass emoji data extraction (§51.11);
+12. Weather invocation-local city-type list (§51.12);
+13. AppLauncher one-pass fallback command construction (§51.13);
+14. ShellUpdates delimiter-index status parsing (§51.14);
+15. ShellUpdates split/filter fusion for local modifications (§51.15);
+16. IconTheme path/exclusion per-line reductions (§51.16).
+
+**Not promoted:**
+
+17. Gowall one-shot publication because it changes observable publication timing
+    (§51.17);
+18. LocalMusic playQueue filter/map fusion pending property-read timing parity
+    (§51.18);
+19. ShellUpdates helper-child elimination pending failure/compatibility proof
+    (§51.19);
+20. any persistent label/theme/browser/layout index introduced only to exchange
+    resident memory for CPU.
+
+Earlier correctness prerequisites remain above pure performance work:
+
+- capture-helper stale-preview hash / newer-user clipboard races (§44.1, §45.6);
+- Bar/Dock first-empty ignored-regex initialization and invalid-regex robustness
+  (§47.1-§47.2).
+
+No runtime/source implementation is authorized by this handoff.

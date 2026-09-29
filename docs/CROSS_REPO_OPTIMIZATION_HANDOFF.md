@@ -14728,3 +14728,538 @@ is a source-proven local operation/allocation count unless explicitly stated
 otherwise.
 
 No runtime/source implementation is authorized by this handoff.
+---
+
+## 57. Round 43 — launcher/search hot paths, local Niri derivation and reintroduced Confirmation audit (2026-09-30)
+
+### Snapshot / concurrent reconciliation
+
+This round started from dev at
+`a664517ef70f0d4711724c450490546139558902`.
+
+Before write, dev advanced first to
+`9d2de679b8db89e39a397829e2913b8565f73ad6` and then to
+`a106b27940f8e89a59b89caefcfa9fb7e62f19be`.
+
+Both compares are clean fast-forwards. The concurrent delta contains only
+automation queue/result records plus a chat-bridge test adjustment. It does not
+touch any source path audited below or this handoff. Candidate source
+conclusions were therefore reconciled unchanged against the new exact parent.
+
+No runtime/source implementation is authorized by this round.
+
+### 57.1 WidgetPowerManager can derive active workspace membership without two temporary arrays or nested linear membership — CONFIRMED / P2 conditional
+
+Path:
+
+- `services/WidgetPowerManager.qml`, `_hasWindowsOnActiveWorkspace()`.
+
+Current function-local work is:
+
+1. `Object.values(NiriService.workspaces)` -> one array of all workspace objects;
+2. `.filter(...is_active/output...)` -> a second array;
+3. for every candidate non-minimized window, run
+   `activeWorkspaces.some(workspace => workspace.id === window.workspace_id)`.
+
+This is distinct from §40.20, which proposes memoizing the complete answer
+across callers/snapshots. This section is a narrower single-call reduction and
+adds no persistent cache.
+
+Exact-safe direction:
+
+- enumerate the current workspace snapshot once;
+- retain active/output-matching workspace ids in a local `Set`;
+- preserve the false return when that Set is empty;
+- scan windows in current order with the exact minimized predicate;
+- replace nested workspace `.some()` with `activeIds.has(window.workspace_id)`;
+- retain existing compositor guards and try/catch;
+- use an own-property guard so enumeration matches `Object.values()`.
+
+Proof:
+
+- result is only a boolean;
+- active-workspace order is unobservable;
+- duplicate workspace ids have the same membership truth value;
+- the window scan and first-success return remain in the same order;
+- no service property, signal or persistent cache is introduced.
+
+For W workspaces, A active/matching workspaces and N windows:
+
+- temporary workspace arrays: **2 -> 0**;
+- nested membership comparisons: up to **N x A -> N Set.has()** after W workspace visits.
+
+This matters only when
+`background.widgets.powerSaving.pauseWhenWindowsPresent=true`, so priority is
+conditional.
+
+### 57.2 GameMode fullscreen queries have two exact local lookup/allocation reductions — CONFIRMED / P2-P3
+
+Path:
+
+- `services/GameMode.qml`.
+
+These refine the current per-call path and compose with the older §40.16 memo
+candidate.
+
+#### A. Reuse the workspace already resolved by hasFullscreenOnOutput() — CONFIRMED / P2
+
+`hasFullscreenOnOutput()` resolves
+`NiriService.workspaces?.[w.workspace_id]` to test active/output membership.
+For a candidate that passes, it calls `isWindowFullscreen(w)`. On the
+size-based fallback path, that function resolves the same workspace key again.
+
+Strict-safe direction:
+
+- keep public `isWindowFullscreen(window)` as the compatibility wrapper;
+- use a private helper that can receive an already-resolved workspace;
+- preserve early returns for null/non-Niri, explicit `is_fullscreen`, and
+  missing `window_size`;
+- from `hasFullscreenOnOutput()`, pass the workspace already read;
+- all other callers use the wrapper exactly as today.
+
+One duplicate workspace-map lookup disappears for each candidate that reaches
+the geometry fallback after active/output filtering.
+
+#### B. Single-output fallback does not need Object.values() — CONFIRMED / P3 conditional
+
+When workspace -> output resolution is temporarily missing,
+`isWindowFullscreen()` materializes
+`Object.values(NiriService.outputs ?? {})` solely to accept the value when
+there is exactly one output.
+
+An own-property loop can retain the first output and stop at the second.
+
+Parity:
+
+- zero outputs -> no fallback;
+- exactly one -> same sole output;
+- two or more -> no fallback;
+- logical-size comparison and 2px tolerance remain unchanged.
+
+Local saving on this race path:
+
+- output-values array: **1 -> 0**;
+- enumeration can stop at the second output.
+
+### 57.3 LauncherSearch clipboard and emoji branches perform guaranteed-redundant truthiness filters — CONFIRMED / P2 during prefixed search
+
+Path:
+
+- `services/deferred/LauncherSearch.qml`.
+
+Both Clipboard and Emoji prefix branches:
+
+1. request at most 24 source entries;
+2. map every entry to a result object;
+3. call `.filter(Boolean)`.
+
+Neither map callback has a falsy return path.
+
+Therefore the filter cannot remove an item.
+
+Strict-safe change:
+
+- return the mapped array directly;
+- keep source limits, result fields, closures, icons/types and ordering unchanged.
+
+Per prefixed query:
+
+- one full truthiness pass over up to 24 results -> 0;
+- one filtered-array allocation -> 0.
+
+### 57.4 LauncherSearch action results can be collected directly into the unpublished result array — CONFIRMED / P1-P2 during launcher search
+
+Path:
+
+- `services/deferred/LauncherSearch.qml`.
+
+Current ordinary-query action work:
+
+1. `root.allActions.map(...)` returns a result object or null for every action;
+2. `.filter(Boolean)` allocates the matching subset;
+3. `result = result.concat(actionResults)` allocates/copies another array.
+
+The local `result` has not yet been published.
+
+Exact-safe direction:
+
+- iterate `root.allActions` once in current order;
+- compute the same `actionStr`;
+- skip on the same two prefix predicates;
+- construct the same result object only for matches;
+- push it directly into local `result`.
+
+Proof:
+
+- action evaluation and matching order are unchanged;
+- closure creation still occurs only for matches;
+- existing app/math/shell/web results stay before action results;
+- no intermediate local mutation is externally published.
+
+For A actions and M matches:
+
+- A-element map array: **1 -> 0**;
+- M-element filtered array: **1 -> 0**;
+- subsequent concat result copy: **1 -> 0**;
+- predicate visits remain A.
+
+This is separate from §48.5, which optimizes the scorer inside
+`GlobalActions.fuzzyQuery()`.
+
+### 57.5 TaskbarApps string-sequence normalization can eliminate the second result array without changing Array.from semantics — CONFIRMED / P3
+
+Path:
+
+- `services/TaskbarApps.qml`, `_stringArray()`.
+
+Current code intentionally supports Config's QML sequence with:
+
+`Array.from(value, normalize).filter(nonempty)`.
+
+Do not replace Array.from with assumptions about QML iterator behavior.
+
+Strict-safe reduction:
+
+1. keep the current `Array.from(value, item => String(...).trim())`;
+2. compact that fresh JS Array stably in place with a read/write cursor using
+   the same `item.length > 0` predicate;
+3. set the final length and return the same array.
+
+This preserves Array.from sequence semantics, normalized values and order.
+
+Exact saving:
+
+- second filter result array: **1 -> 0**;
+- normalization array and second predicate traversal remain.
+
+The helper is used for pinned apps and ignored regex strings on taskbar rebuilds,
+plus pin mutation.
+
+### 57.6 Cliphist superpaste can stop after the requested prefix and build reverse commands without clone/reverse/map — CONFIRMED / P2 action path
+
+Paths:
+
+- `services/deferred/Cliphist.qml`;
+- checked-in caller: `services/GlobalActions.qml`.
+
+Current `superpaste(count, isImage)`:
+
+1. filters the full clipboard history (service cap: 400);
+2. slices the first `count` matches;
+3. clones the bounded array with spread;
+4. reverses the clone;
+5. maps it to command strings.
+
+`entryIsImage()` is pure string/regex classification.
+
+The checked-in GlobalActions caller passes a non-negative integer parsed from
+decimal digits.
+
+Strict-safe contract:
+
+- for the normal non-negative-integer path, scan source entries in order and
+  stop when `count` matches have been collected;
+- `count === 0` yields the same empty command list without running a pure
+  classifier;
+- for unsupported direct-call count shapes (negative/non-integer), retain the
+  current filter/slice compatibility path;
+- build command strings by iterating the selected entries from last to first and
+  pushing them, rather than clone + reverse + map;
+- do not mutate selected entries.
+
+Preserved behavior:
+
+- same first K matches;
+- same reverse execution order;
+- same `wlCopyCommand()`, delay and paste-key strings;
+- same one detached Bash process.
+
+Normal-path saving:
+
+- full-history filter result becomes a bounded K-entry collection;
+- K-entry slice array -> 0;
+- K-entry reverse clone -> 0;
+- image mode can stop at the K-th match instead of classifying the remainder.
+
+### 57.7 Events and CalendarSync upcoming sorts can reuse start timestamps parsed during the same invocation — CONFIRMED / P2
+
+Paths:
+
+- `services/Events.qml`, `getUpcomingEvents()`;
+- `services/CalendarSync.qml`, `getUpcomingEvents()`.
+
+Both functions parse each event's start date during filtering, then sort retained
+event references with comparators that create two new Date objects per
+comparison.
+
+Exact-safe direction:
+
+- keep returned arrays as the original event references;
+- during current filtering/collection, save the exact raw start timestamp number
+  in an invocation-local Map keyed by event object;
+- sort retained events using
+  `startTimes.get(a) - startTimes.get(b)`.
+
+CalendarSync parity detail:
+
+- its all-day filter mutates local `start` to midnight;
+- the current sort parses raw `event.startDate`;
+- therefore capture raw `start.getTime()` before the midnight mutation.
+
+Parity:
+
+- filter predicates/membership unchanged;
+- comparator numeric values unchanged;
+- equal timestamps still return 0;
+- invalid timestamps still produce NaN subtraction;
+- same Array.sort receives the same event sequence, preserving existing
+  tie/stability behavior.
+
+For C comparator calls:
+
+- comparator Date constructions: **2C -> 0**;
+- one invocation-local timestamp Map is added and discarded before return.
+
+### 57.8 Wallpaper search wildcard construction can remove filter/map intermediate arrays — CONFIRMED / P2-P3 while searching
+
+Path:
+
+- `services/Wallpapers.qml`, `FolderListModelWithHistory.nameFilters`.
+
+Ordinary search currently computes:
+
+`query.split(" ").filter(nonempty).map(segment => "*" + segment + "*").join("")`.
+
+Strict-safe direction:
+
+- keep current `trim().toLowerCase()`;
+- keep valid `.ext` shortcut unchanged;
+- keep literal-space splitting semantics exactly; do not change to `/\s+/`;
+- iterate the split segments once and append `*segment*` only for nonempty
+  segments;
+- retain final `root.extensions.map(...)`, which is the required output list.
+
+Per reevaluation:
+
+- nonempty filter array: **1 -> 0**;
+- wildcard map array: **1 -> 0**;
+- split array and final extension-output array remain.
+
+Generated glob strings are identical.
+
+### 57.9 ConfirmationService queue advance can copy only the retained tail instead of slice-all + shift — CONFIRMED / P3
+
+Path:
+
+- `services/ConfirmationService.qml`, `_activateNext()`.
+
+Current:
+
+1. clone whole dense queue with `slice()`;
+2. `shift()` first request, relocating remaining elements;
+3. publish tail;
+4. activate removed request.
+
+The queue is internally constructed through append/filter snapshots and is
+dense.
+
+Exact-safe direction:
+
+- `request = root.queue[0]`;
+- `next = root.queue.slice(1)`;
+- publish `root.queue = next`;
+- call `root._activate(request)` in the same order.
+
+Preserved:
+
+- same first request;
+- same tail references/order;
+- one new queue array publication;
+- queue publication remains before activation;
+- no cursor or persistent representation change.
+
+For queue length Q, work changes from copying Q then relocating Q-1 to copying
+only the retained Q-1 elements.
+
+### 57.10 Abyss target-screen checks can avoid repeated Quickshell.screens name-array materialization — CONFIRMED / P1-P2 multi-output/reactive path
+
+Paths:
+
+- `modules/abyss/AbyssPerimeter.qml`;
+- pure policy `modules/abyss/looks/AbyssGeometry.js::targets()`.
+
+AbyssPerimeter has **eight textual** calls shaped as:
+
+`Geometry.targets(name, screenList, Quickshell.screens.map(s => s.name))`.
+
+They gate Bar, sidebar reveal, Dock, notifications, OSD and Reservation state.
+Reservation is instantiated for four edges per screen, so its one textual site
+has multiple live instances per output.
+
+Current `Geometry.targets()` means:
+
+- empty target list -> true;
+- explicitly listed current output -> true;
+- otherwise true only when no connected output appears in the configured list.
+
+The connected-name array is used only for this membership test.
+
+Exact-safe direction:
+
+- use a pure helper that accepts/reads the live screen sequence directly;
+- preserve the first two short-circuits;
+- only when connected-screen testing is needed, loop screens and perform the same
+  configured-list `indexOf(screen.name)`;
+- stop on the first configured connected screen;
+- do not introduce a cached/shared screen-name property.
+
+The empty-list case may also short-circuit before touching screens. Today the
+third argument `Quickshell.screens.map(...)` is evaluated before
+`Geometry.targets()` can return true. Removing that irrelevant dependency
+cannot change the true result; when screenList later becomes nonempty, its Config
+dependency triggers reevaluation and the live screen sequence is read then.
+
+Per target check:
+
+- S-entry name array: **1 -> 0**;
+- S map callbacks: **S -> 0**;
+- the subsequent `.some()` callback is replaced by the same direct loop;
+- empty configured lists skip screen enumeration entirely.
+
+### 57.11 Historical §35.1 Confirmation multi-output duplication is live again, but blanket optimization needs the strengthened lifecycle rule — REACTIVATED / HIGH CONFIDENCE, not counted new
+
+Current paths:
+
+- `modules/abyss/AbyssPerimeter.qml`;
+- `modules/abyss/AbyssConfirmationPresenter.qml`;
+- `modules/abyss/content/AbyssConfirmationContent.qml`;
+- `modules/bar/StyledPopup.qml`.
+
+The Round-21 observation was marked historical when an earlier Confirmation
+experiment was removed. Current runtime has reintroduced the same shape:
+
+- one presenter exists inside every output-local Abyss PanelWindow;
+- every presenter binds `ConfirmationService.currentRequest`;
+- only target-output presenter owns/presents the request;
+- StyledPopup lazily creates its detached native PanelWindow, but its default
+  `contentItem` is a direct QML child;
+- `AbyssConfirmationContent` is therefore eagerly instantiated per output and
+  every tree observes request changes;
+- content owns TextMetrics, visible-action derivation/delegates,
+  `Component.onCompleted: forceActiveFocus()`, and `onRequestChanged`
+  state/focus work.
+
+Thus the duplication observation is active again.
+
+However the current strict contract includes lifecycle/focus semantics. A
+blanket Loader or owner-only request substitution can change hidden child
+creation/destruction and `forceActiveFocus()` timing.
+
+Therefore:
+
+- reactivate §35.1 as an active target/evidence item;
+- do not count it as a new optimization;
+- do not restore its old blanket implementation direction as CONFIRMED without
+  lifecycle/focus fixtures;
+- a narrower future patch may preserve request/onRequestChanged behavior on all
+  trees while suppressing only proven-pure non-owner work.
+
+Status: **REACTIVATED / HIGH CONFIDENCE — lifecycle/focus parity required**.
+
+The old §35.3 dormant-content Loader idea is also live again but remains a
+benchmark/lifecycle candidate.
+
+### 57.12 Noctalia native Settings paint-subtree culling is architecture evidence, not a direct Quickshell port — SUPERSEDED / ARCHITECTURE
+
+Upstream inspected:
+
+- `noctalia-dev/noctalia@9cb4073448b75cb21cf74a13e1674662e8e04d13`
+  — `perf(settings): cull scroll view subtrees and avoid excessive rebuild`.
+
+It adds a native renderer `paintContained` contract for off-clip node culling
+and narrows native Settings rebuild scopes.
+
+Hadalis does not own that renderer/node API. Its relevant layer is QML object
+residency and binding/process ownership.
+
+Existing handoff already has:
+
+- page-level SettingsPageHost LRU/asynchronous incubation (§3.6);
+- section-level residency gap (§13.4 / §18.5);
+- Settings search/index reductions (§48).
+
+Do not invent a QML `paintContained` port or second page-cache layer.
+
+Status: **SUPERSEDED / ARCHITECTURE evidence** for existing section-residency
+work.
+
+### 57.13 Noctalia removal of 5-second DDC polling does not map to current Hadalis; noverify/readback changes are not strict-lossless — CLOSED / ALREADY
+
+Upstream inspected:
+
+- `noctalia-dev/noctalia@246284bff47f8d57b013b8335f8d521247f790de`
+  — `perf(ddcutil): remove constant polling, only fetch on shell startup and
+  display_tab open + bring back some of the optimizations from v4`.
+
+Current Hadalis has no equivalent repeating DDC refresh:
+
+- detection runs on monitor-list changes;
+- DDC monitor initialization runs on creation/bus change;
+- 30s timer is one-shot process timeout;
+- 800ms DDC timer is one-shot wake/restore retry;
+- writes are coalesced by one-shot 300ms set timer.
+
+So timer removal is **ALREADY / NOT APPLICABLE**.
+
+The upstream commit also adds `--noverify` and removes post-write readback.
+Those alter verification/failure/observed-state semantics and are not
+strict-lossless speedups.
+
+Status:
+
+- polling removal: **ALREADY / CLOSED**;
+- noverify/readback removal: **OUT OF STRICT-LOSSLESS SCOPE** unless product
+  behavior is intentionally changed.
+
+### 57.14 Round-43 conclusion
+
+New strict-lossless candidate groups:
+
+1. WidgetPowerManager local active-workspace Set (§57.1,
+   **CONFIRMED / P2 conditional**);
+2. GameMode workspace reuse + allocation-free single-output fallback (§57.2,
+   **CONFIRMED / P2-P3**);
+3. redundant LauncherSearch Clipboard/Emoji truthiness filters (§57.3,
+   **CONFIRMED / P2**);
+4. direct one-pass LauncherSearch action-result collection (§57.4,
+   **CONFIRMED / P1-P2**);
+5. in-place TaskbarApps normalized-list compaction (§57.5,
+   **CONFIRMED / P3**);
+6. bounded Cliphist superpaste selection + reverse command construction (§57.6,
+   **CONFIRMED / P2**);
+7. upcoming-event start timestamp reuse across sort comparisons (§57.7,
+   **CONFIRMED / P2**);
+8. wallpaper wildcard segment fusion (§57.8,
+   **CONFIRMED / P2-P3**);
+9. Confirmation queue tail copy without slice-all + shift (§57.9,
+   **CONFIRMED / P3**);
+10. allocation-free Abyss connected-screen target gating (§57.10,
+    **CONFIRMED / P1-P2 multi-output**).
+
+Reactivated but not counted new:
+
+11. historical Confirmation per-output request/content duplication is live
+    again, but blanket suppression/loading requires lifecycle/focus parity
+    (§57.11).
+
+External evidence/closures:
+
+12. Noctalia native Settings paint culling is architecture evidence for existing
+    Hadalis section-residency work (§57.12);
+13. Noctalia DDC polling removal does not match current Hadalis, and noverify /
+    readback removal changes behavior (§57.13).
+
+No number above is an end-to-end Hadalis speedup. Numeric reductions are local
+source-derived operation/allocation counts only.
+
+No runtime/source implementation is authorized by this handoff.

@@ -7,6 +7,7 @@ const CDP = process.env.HADALIS_CHATGPT_CDP_URL ?? "http://127.0.0.1:9222";
 const MAIN_URL = "app://-/index.html";
 const COMPOSER = /^(Ask ChatGPT|New chat in Hadalis Cloud)$/;
 const PROJECT = /^(Project: Hadalis Cloud|Change project: Hadalis Cloud)$/;
+const GITHUB_MENTION = "[@GitHub](plugin://github@openai-curated-remote)";
 
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 
@@ -59,15 +60,20 @@ async function resolveComposer(page) {
 export async function openHadalisNewChat(page) {
   const button = page.getByRole("button", { name: "New chat in Hadalis Cloud" });
   await semanticClick(button, "Hadalis Cloud new chat");
+
+  const browser = page.context().browser();
   const deadline = Date.now() + 15000;
+
   while (Date.now() < deadline) {
     try {
-      await resolveComposer(page);
-      await verifyProject(page);
-      return;
+      const resolved = browser ? await findMainPage(browser) : page;
+      await resolveComposer(resolved);
+      await verifyProject(resolved);
+      return resolved;
     } catch {}
     await sleep(250);
   }
+
   throw new Error("new chat did not become ready");
 }
 
@@ -285,13 +291,107 @@ async function dispatchNativeWaylandEnter() {
   };
 }
 
+async function visibleItems(locator) {
+  const items = [];
+  const count = await locator.count();
+
+  for (let index = 0; index < count; index += 1) {
+    const item = locator.nth(index);
+    try {
+      if (await item.isVisible())
+        items.push(item);
+    } catch {}
+  }
+
+  return items;
+}
+
+function splitGitHubMentionPrompt(prompt) {
+  const lines = prompt.split(/\r?\n/);
+  const index = lines.findIndex(line => line.trim());
+
+  if (index < 0 || lines[index].trim() !== GITHUB_MENTION)
+    return null;
+
+  return lines.slice(index + 1).join("\n");
+}
+
+async function selectGitHubMention(page, composer) {
+  await composer.fill("");
+  await composer.focus();
+  await page.keyboard.insertText("@");
+  await sleep(700);
+
+  const roleLocators = [
+    page.getByRole("option", { name: /GitHub/i }),
+    page.getByRole("menuitem", { name: /GitHub/i }),
+    page.getByRole("menuitemradio", { name: /GitHub/i }),
+    page.getByRole("button", { name: /GitHub/i })
+  ];
+
+  for (const locator of roleLocators) {
+    const candidates = await visibleItems(locator);
+    if (!candidates.length) continue;
+
+    await candidates[0].evaluate(element => element.click());
+    await sleep(500);
+    return "role-click";
+  }
+
+  const exactText = page.getByText(/^GitHub$/i);
+  for (const item of await visibleItems(exactText)) {
+    const clickable = item.locator(
+      'xpath=ancestor-or-self::*[@role="option" or @role="menuitem" or @role="menuitemradio" or self::button][1]'
+    );
+
+    if ((await clickable.count()) === 1) {
+      await clickable.evaluate(element => element.click());
+      await sleep(500);
+      return "text-ancestor-click";
+    }
+  }
+
+  await page.keyboard.insertText("GitHub");
+  await sleep(500);
+  await page.keyboard.press("ArrowDown");
+  await page.keyboard.press("Enter");
+  await sleep(500);
+  return "keyboard-picker";
+}
+
+async function populatePrompt(page, composer, prompt) {
+  const rest = splitGitHubMentionPrompt(prompt);
+
+  if (rest === null) {
+    await composer.fill(prompt);
+    if ((await composer.innerText()).trim() !== prompt.trim())
+      throw new Error("composer text mismatch");
+    return { githubMention: false };
+  }
+
+  const method = await selectGitHubMention(page, composer);
+  await composer.focus();
+  await page.keyboard.insertText(rest);
+
+  const composerText = (await composer.innerText()).trim();
+  const firstBodyLine = rest
+    .split(/\r?\n/)
+    .map(line => line.trim())
+    .find(Boolean);
+
+  if (!composerText.toLowerCase().includes("github"))
+    throw new Error("GitHub rich mention is missing after selection");
+
+  if (firstBodyLine && !composerText.includes(firstBodyLine))
+    throw new Error("prompt body is missing after GitHub mention selection");
+
+  return { githubMention: true, method };
+}
+
 export async function submitPrompt(page, prompt) {
   await verifyProject(page);
   const composer = await resolveComposer(page);
-  await composer.fill(prompt);
-
-  if ((await composer.innerText()).trim() !== prompt.trim())
-    throw new Error("composer text mismatch");
+  await populatePrompt(page, composer, prompt);
 
   const send = page.getByRole("button", { name: "Send" });
   await requireOne(send, "Send");

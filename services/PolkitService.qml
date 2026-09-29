@@ -241,6 +241,11 @@ Singleton {
     onAbyssPresenterAvailableChanged: {
         if (!root.active)
             return
+        // Locking intentionally suppresses the authentication UI without
+        // converting that temporary privacy boundary into source loss. Keep an
+        // existing retained Abyss presentation intact so unlock can resume it.
+        if (root.abyssPresentationSuppressed)
+            return
         if (root.abyssPresenterAvailable) {
             if (!root.presentationRetained)
                 root._startPresentationForCurrentRequest()
@@ -263,7 +268,7 @@ Singleton {
         function onEntriesChanged(): void {
             // hasOutput() is a function, so explicitly retrigger reconciliation
             // when the registry mutates instead of relying on binding discovery.
-            if (!root.active)
+            if (!root.active || root.abyssPresentationSuppressed)
                 return
             if (root._abyssHostAvailableFor(root.targetOutputName)) {
                 if (!root.presentationRetained)

@@ -44,6 +44,10 @@ assert "root.abyssPresenterAvailable" in service
 assert "AbyssPromptHostRegistry.hasOutput(root.targetOutputName)" in service
 assert "function _abyssHostAvailableFor(outputName): bool" in service
 assert "onAbyssPresenterAvailableChanged" in service
+availability_handler=service.split("onAbyssPresenterAvailableChanged:",1)[1].split("Connections {",1)[0]
+assert "root.abyssPresentationSuppressed" in availability_handler
+registry_handler=service.split("target: AbyssPromptHostRegistry",1)[1].split("function _outputExists",1)[0]
+assert "root.abyssPresentationSuppressed" in registry_handler
 assert "target: AbyssPromptHostRegistry" in service
 assert "function onEntriesChanged(): void" in service
 assert "function _outputExists(outputName): bool" in service

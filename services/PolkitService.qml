@@ -272,12 +272,8 @@ Singleton {
         // A live host can disappear even while config still says perimeter is
         // enabled (QML failure, family teardown, output hotplug). Never leave a
         // real AuthFlow hidden behind that optimistic configuration state.
-        if (root.presentationRetained) {
-            if (root.hadResolvedAnchor)
-                root._cancelForSourceLoss()
-            else
-                root.finishPresentation(false)
-        }
+        if (root.presentationRetained)
+            root.finishPresentation(false)
     }
 
     Connections {
@@ -292,12 +288,8 @@ Singleton {
                     root._startPresentationForCurrentRequest()
                 return
             }
-            if (root.presentationRetained) {
-                if (root.hadResolvedAnchor)
-                    root._cancelForSourceLoss()
-                else
-                    root.finishPresentation(false)
-            }
+            if (root.presentationRetained)
+                root.finishPresentation(false)
         }
     }
 
@@ -399,10 +391,16 @@ Singleton {
     }
 
     function _cancelForSourceLoss(): void {
-        // Source invalidation can be observed both through the live usability
-        // binding and registry removal. Ordinary live-item signals are only
-        // authoritative while this request owns the visible Abyss presenter.
-        if (!root.hadResolvedAnchor || !root.presentationMatchesActive)
+        // Source invalidation remains authoritative for the active AuthFlow
+        // even after visual failover. Family/perimeter teardown and screen lock
+        // are renderer lifecycle changes, not application-source loss.
+        if (!root.active || root._sourceLossCancelIssued)
+            return
+        if (!(root.hadResolvedAnchor || root._activeHintResolvedOnce))
+            return
+        if (root.abyssPresentationSuppressed
+                || Config.options?.panelFamily !== "abyss"
+                || !(Config.options?.enabledPanels ?? []).includes("abyssPerimeter"))
             return
         root._cancelActiveForSourceLoss()
     }

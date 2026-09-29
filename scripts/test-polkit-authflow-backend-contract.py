@@ -29,7 +29,11 @@ assert "function _cancelForSourceLoss(): void" in svc
 assert "root._sourceLossCancelIssued = true" in svc
 assert "root._sourceLossCancelIssued = false" in svc
 assert "root._cancelForSourceLoss()" in svc
-assert "!root.presentationMatchesActive" in svc
+source_loss=svc.split("function _cancelForSourceLoss(): void",1)[1].split("onResolvedAnchorUsableChanged",1)[0]
+assert "root._activeHintResolvedOnce" in source_loss
+assert "root.abyssPresentationSuppressed" in source_loss
+assert 'Config.options?.panelFamily !== "abyss"' in source_loss
+assert 'includes("abyssPerimeter")' in source_loss
 
 for token in ("actionId", "responseVisible", "responseRequired", "failed",
               "supplementaryMessage", "identities", "identityLabel",

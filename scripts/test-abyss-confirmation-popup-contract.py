@@ -83,6 +83,9 @@ assert "NiriService.windowListReady" in close
 assert "Number(candidate?.id ?? 0) === windowId" in close
 assert "function onWindowsChanged(): void" in close
 assert "function onRequestActivated(requestId): void" in close
+activated=close.split("function onRequestActivated(requestId): void",1)[1].split("}",1)[0]
+assert "root._cancelIfTargetGone()" in activated
+assert "root._releaseAbyssRequestIfUnavailable()" in activated
 assert "function _snapshotWindow(win): var" in close
 assert "NiriService.windows ?? []" in close
 assert "function _outputNameForWindow(win): string" in close
@@ -95,7 +98,12 @@ assert 'Config.options?.panelFamily === "abyss"' in close
 assert "readonly property bool abyssConfigured:" in close
 assert "function _abyssPresenterAvailableFor(outputName): bool" in close
 assert "AbyssPromptHostRegistry.hasOutput" in close
+assert "function _showStandaloneForRequest(request): void" in close
+assert "root.dialogVisible = true" in close
 assert "function _releaseAbyssRequestIfUnavailable(): void" in close
+release=close.split("function _releaseAbyssRequestIfUnavailable(): void",1)[1].split("onAbyssConfiguredChanged",1)[0]
+assert "ConfirmationService.requestVisible" in release
+assert "root._showStandaloneForRequest(request)" in release
 assert 'ConfirmationService.cancelOwned("closeConfirm")' in close
 assert "ConfirmationService.finishPresentation(" in close
 assert "onAbyssConfiguredChanged:" in close

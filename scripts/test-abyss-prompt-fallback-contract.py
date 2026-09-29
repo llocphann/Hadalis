@@ -18,6 +18,9 @@ assert 'Config.options?.panelFamily === "abyss"' in close
 assert 'includes("abyssPerimeter")' in close
 assert "function _abyssPresenterAvailableFor(outputName): bool" in close
 assert "AbyssPromptHostRegistry.hasOutput" in close
+assert "function _showStandaloneForRequest(request): void" in close
+assert "cached ?? {" in close
+assert "root.dialogVisible = true" in close
 assert "target: AbyssPromptHostRegistry" in close
 assert "active: root.dialogVisible" in close
 assert 'active: root.dialogVisible && Config.options?.panelFamily !== "abyss"' not in close

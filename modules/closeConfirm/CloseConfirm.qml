@@ -34,6 +34,24 @@ Scope {
             && AbyssPromptHostRegistry.hasOutput(String(outputName ?? ""))
     }
 
+    function _showStandaloneForRequest(request): void {
+        const windowId = Number(request?.sourceWindowId ?? 0)
+        if (windowId <= 0)
+            return
+
+        const cached = (NiriService.windows ?? []).find(candidate =>
+            Number(candidate?.id ?? 0) === windowId)
+        const snapshot = root._snapshotWindow(cached ?? {
+            id: windowId,
+            app_id: String(request?.appId ?? ""),
+            title: String(request?.appName ?? "")
+        })
+        root.targetWindow = snapshot
+        root.dialogScreen = root._screenForOutput(
+            ConfirmationService.targetOutputName)
+        root.dialogVisible = true
+    }
+
     function _releaseAbyssRequestIfUnavailable(): void {
         const request = ConfirmationService.currentRequest
         if (String(request?.owner ?? "") !== "closeConfirm")
@@ -41,6 +59,13 @@ Scope {
         if (root._abyssPresenterAvailableFor(
                 ConfirmationService.targetOutputName))
             return
+
+        // Preserve the user-visible confirmation if its connected renderer
+        // disappears or a queued request activates on an output with no live
+        // prompt host. End only the Abyss transaction, then continue through
+        // the existing standalone renderer with the same window identity.
+        if (ConfirmationService.requestVisible)
+            root._showStandaloneForRequest(request)
         ConfirmationService.cancelOwned("closeConfirm")
         if (!ConfirmationService.requestVisible)
             ConfirmationService.finishPresentation(
@@ -220,6 +245,7 @@ Scope {
         target: ConfirmationService
         function onRequestActivated(requestId): void {
             root._cancelIfTargetGone()
+            root._releaseAbyssRequestIfUnavailable()
         }
     }
 

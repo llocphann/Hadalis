@@ -93,6 +93,7 @@ def profile_action(action: str, profile_id: str) -> dict:
                 item["job_poll_errors"] = 0
                 if item["pending"] is not None:
                     item["pending"]["poll_after_unix"] = int(time.time())
+                    item["pending"]["stream_retry_attempts"] = 0
             if action == "restart":
                 item["request"] = "restart"
             elif action == "start" and state["owner_id"] != profile_id:

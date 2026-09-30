@@ -6,6 +6,7 @@ import {
   markerAfterBaseline,
   openHadalisNewChat,
   requireIdleComposer,
+  retryFailedStream,
   scanLoopMarkerTokens
 } from "../automation/chat_bridge/desktop_driver.mjs";
 
@@ -115,6 +116,89 @@ await assert.rejects(
   /project guard/
 );
 assert.equal((await managedPoll(guardedPage(), { responseActionCount: 1 })).completed, false);
+
+function responsePage({ failed = false, assistantMarker = false, previousMarker = false } = {}) {
+  let retryClicks = 0;
+  const button = {
+    tagName: "BUTTON",
+    innerText: failed ? "Retry" : "",
+    getAttribute: name => name === "aria-label" ? failed ? null : "Copy" : null,
+    click: () => { retryClicks += 1; }
+  };
+  const response = {
+    tagName: "DIV",
+    innerText: failed ? "Error in message stream\nRetry" :
+      assistantMarker ? "ChatGPT said:\nHADALIS_LOOP:CONTINUE" : "ChatGPT said:\nPartial reply"
+  };
+  const conversation = {
+    tagName: "DIV",
+    innerText: `${response.innerText}\nYou said:\nHADALIS_LOOP:CONNECTOR_BLOCKED GITHUB`
+  };
+  button.parentElement = response;
+  response.parentElement = conversation;
+  const item = {
+    count: async () => 1,
+    nth: () => item,
+    isVisible: async () => true,
+    isDisabled: async () => false,
+    getAttribute: async name => button.getAttribute(name),
+    innerText: async () => button.innerText,
+    evaluate: async (callback, arg) => callback(button, arg)
+  };
+  const priorButton = {
+    tagName: "BUTTON", innerText: "", getAttribute: () => "Copy",
+    parentElement: { tagName: "DIV", innerText: "ChatGPT said:\nHADALIS_LOOP:CONTINUE" }
+  };
+  const priorItem = {
+    count: async () => 1,
+    isVisible: async () => true,
+    getAttribute: async name => priorButton.getAttribute(name),
+    innerText: async () => "",
+    evaluate: async (callback, arg) => callback(priorButton, arg)
+  };
+  const actionItems = previousMarker ? [priorItem, item] : [item];
+  const actions = { count: async () => actionItems.length, nth: index => actionItems[index] };
+  const empty = { count: async () => 0, nth: () => { throw new Error("no item"); } };
+  return {
+    page: {
+      getByRole: (role, options) => {
+        const name = String(options.name);
+        if (role !== "button") return empty;
+        if (name.includes("Project:")) return item;
+        if (name === "/stop/i") return empty;
+        if (name === "/regenerate|copy/i" && failed) return empty;
+        return actions;
+      }
+    },
+    retryClicks: () => retryClicks
+  };
+}
+
+const failedResponse = responsePage({ failed: true });
+assert.deepEqual(
+  await managedPoll(failedResponse.page, { responseActionCount: 0 }),
+  { completed: false, streamError: true, responseActionCount: 1 }
+);
+assert.deepEqual(
+  await retryFailedStream(failedResponse.page, { responseActionCount: 0 }),
+  { retryTriggered: true }
+);
+assert.equal(failedResponse.retryClicks(), 1);
+const markerOnlyInPrompt = responsePage();
+await assert.rejects(
+  managedPoll(markerOnlyInPrompt.page, { responseActionCount: 0 }),
+  /no unique HADALIS_LOOP marker/
+);
+const completedResponse = responsePage({ assistantMarker: true });
+assert.equal(
+  (await managedPoll(completedResponse.page, { responseActionCount: 0 })).response.text,
+  "HADALIS_LOOP:CONTINUE"
+);
+const previousCompleted = responsePage({ previousMarker: true });
+await assert.rejects(
+  managedPoll(previousCompleted.page, { responseActionCount: 1 }),
+  /no unique HADALIS_LOOP marker/
+);
 
 function delayedNewChat({ busyPrevious = false, missingPreviousComposer = false,
                           blankPrevious = false, sameProjectPrevious = false } = {}) {

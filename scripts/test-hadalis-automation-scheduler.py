@@ -97,6 +97,54 @@ def main() -> None:
             assert commands.count("managed-submit") == 1
             assert commands.count("managed-poll") == 2
 
+    for retry_succeeds in (True, False):
+        with tempfile.TemporaryDirectory() as tmp:
+            with patch.dict(os.environ, {"XDG_CONFIG_HOME": tmp + "/config", "XDG_STATE_HOME": tmp + "/state"}):
+                commands = []
+
+                def failed_stream(command, *args, prompt=None, project_name=None):
+                    commands.append(command)
+                    assert project_name == "Hadalis Cloud"
+                    if command == "new-chat": return {}
+                    if command == "managed-baseline": return {"responseActionCount": 0}
+                    if command == "managed-submit": return {"submitted": True}
+                    if command == "managed-retry": return {"retryTriggered": True}
+                    if command == "managed-poll" and commands.count("managed-poll") == 1:
+                        return {"completed": False, "streamError": True}
+                    if command == "managed-poll" and retry_succeeds:
+                        return {"completed": True, "response": {"text": "HADALIS_LOOP:CONTINUE"}}
+                    if command == "managed-poll":
+                        return {"completed": False, "streamError": True}
+                    raise AssertionError(command)
+
+                base = int(time.time())
+                with patch.object(daemon, "desktop_command", side_effect=failed_stream):
+                    daemon.tick(base)
+                    daemon.tick(base + 2)
+                    item = store.read_snapshot()[1]["profiles"]["strict-lossless-research"]
+                    assert item["pending"]["stream_retry_attempts"] == 1
+                    assert item["prompts_sent"] == 1
+                    assert commands.count("managed-retry") == 1
+                    daemon.tick(base + 4)
+                    assert commands.count("managed-poll") == 1
+                    daemon.tick(base + 32)
+                    state = store.read_snapshot()[1]
+                    item = state["profiles"]["strict-lossless-research"]
+                    if retry_succeeds:
+                        assert item["iterations"] == 1 and item["pending"] is None
+                        assert item["desired"] == "run"
+                    else:
+                        assert item["iterations"] == 0 and item["pending"] is not None
+                        assert item["desired"] == "paused" and item["status"] == "stream_failed"
+                        daemon.tick(base + 33)
+                        assert commands.count("managed-poll") == 2
+                        with patch.object(control.time, "time", return_value=base + 34):
+                            control.profile_action("resume", "strict-lossless-research")
+                        resumed = store.read_snapshot()[1]["profiles"]["strict-lossless-research"]
+                        assert resumed["pending"]["stream_retry_attempts"] == 0
+                    assert commands.count("managed-submit") == 1
+                    assert commands.count("managed-retry") == 1
+
     with patch.object(daemon.subprocess, "run", return_value=SimpleNamespace(
             returncode=1, stderr="HADALIS_DESKTOP_BUSY: generation active\n", stdout="")):
         try:

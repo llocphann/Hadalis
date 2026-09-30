@@ -14,6 +14,7 @@ const PROJECT = new RegExp(`^(Project:|Change project:) ${escapedProject}$`);
 const GITHUB_MENTION = "[@GitHub](plugin://github@openai-curated-remote)";
 const LOOP_MARKER = /^HADALIS_LOOP:(?:WAIT_RESULT|CONTINUE|ROTATE|DONE|CONNECTOR_BLOCKED)(?:[ \\t]+[A-Za-z0-9._/-]+)?[ \\t]*$/m;
 const RESPONSE_ACTION = /regenerate|retry|try again|copy/i;
+const STREAM_ERROR = /error in message stream|there was an error generating a response/i;
 
 export function scanLoopMarkerTokens(text) {
   const token = /HADALIS_LOOP:(?:CONTINUE|ROTATE|DONE)\b|HADALIS_LOOP:WAIT_RESULT[ \\t]+JOB-[A-Za-z0-9._-]+|HADALIS_LOOP:CONNECTOR_BLOCKED[ \\t]+GITHUB\b/g;
@@ -591,6 +592,37 @@ export async function managedBaseline(page) {
   };
 }
 
+async function failedStreamAction(page, baseline) {
+  const actions = await visibleItems(page.getByRole("button", { name: RESPONSE_ACTION }));
+  for (const action of actions.slice(baseline.responseActionCount).reverse()) {
+    const isFailedStream = await action.evaluate((button, source) => {
+      const label = (button.getAttribute("aria-label") ?? button.innerText ?? "").trim();
+      if (!/^(retry|try again)$/i.test(label)) return false;
+      let node = button;
+      for (let depth = 0; depth < 8 && node && node.tagName !== "BODY";
+           depth += 1, node = node.parentElement) {
+        if (new RegExp(source, "i").test(node.innerText ?? "")) return true;
+      }
+      return false;
+    }, STREAM_ERROR.source);
+    if (isFailedStream) return action;
+  }
+  return null;
+}
+
+export async function retryFailedStream(page, baseline) {
+  if (!Number.isInteger(baseline?.responseActionCount) ||
+      baseline.responseActionCount < 0)
+    throw new Error("invalid managed completion baseline");
+  await verifyProject(page);
+  if (await visibleCount(page.getByRole("button", { name: /stop/i })) !== 0)
+    throw new Error("ChatGPT generation is still active; cannot retry failed stream");
+  const action = await failedStreamAction(page, baseline);
+  if (!action) throw new Error("current failed stream Retry control is unavailable");
+  await semanticClick(action, "failed stream Retry");
+  return { retryTriggered: true };
+}
+
 export async function managedPoll(page, baseline) {
   if (!Number.isInteger(baseline?.responseActionCount) ||
       baseline.responseActionCount < 0)
@@ -609,7 +641,9 @@ export async function managedPoll(page, baseline) {
   const secondStops = await visibleCount(page.getByRole("button", { name: /stop/i }));
   if (secondCount <= baseline.responseActionCount || secondStops !== 0)
     return { completed: false, responseActionCount: secondCount, generationActive: secondStops > 0 };
-  const response = await extractNearResponseAction(page);
+  if (await failedStreamAction(page, baseline))
+    return { completed: false, streamError: true, responseActionCount: secondCount };
+  const response = await extractNearResponseAction(page, baseline.responseActionCount);
   await verifyProject(page);
   if (!response || response.markerCount !== 1)
     throw new Error("new assistant response has no unique HADALIS_LOOP marker");
@@ -686,22 +720,29 @@ export async function waitForCompletion(
   throw new Error("generation completion timeout");
 }
 
-async function extractNearResponseAction(page) {
-  const actions = page.getByRole("button", { name: RESPONSE_ACTION });
-  const count = await actions.count();
-  for (let index = count - 1; index >= 0; index -= 1) {
-    const action = actions.nth(index);
+async function extractNearResponseAction(page, baselineActionCount = 0) {
+  // Retry belongs to a failed response, not to a completed assistant turn.
+  const actions = await visibleItems(page.getByRole("button", { name: RESPONSE_ACTION }));
+  for (let index = actions.length - 1; index >= baselineActionCount; index -= 1) {
+    const action = actions[index];
 
     try {
-      if (!(await action.isVisible()))
+      if (/^(retry|try again)$/i.test((await action.getAttribute("aria-label") ??
+                                      await action.innerText()).trim()))
         continue;
 
       const result = await action.evaluate((button) => {
         const token = /HADALIS_LOOP:(?:CONTINUE|ROTATE|DONE)\b|HADALIS_LOOP:WAIT_RESULT[ \\t]+JOB-[A-Za-z0-9._-]+|HADALIS_LOOP:CONNECTOR_BLOCKED[ \\t]+GITHUB\b/g;
         let node = button;
 
-        for (let depth = 0; depth < 12 && node; depth += 1) {
+        for (let depth = 0; depth < 12 && node && node.tagName !== "BODY";
+             depth += 1) {
           const text = (node.innerText ?? "").trim();
+          // Reaching the user turn can pick up the protocol example from the
+          // prompt itself. Only a marker inside the assistant turn is valid.
+          if (/(^|\n)You said:/m.test(text) ||
+              /error in message stream|there was an error generating a response/i.test(text))
+            return null;
           const markers = Array.from(text.matchAll(token), match => match[0].trim());
 
           if (markers.length)

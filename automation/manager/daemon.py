@@ -207,11 +207,35 @@ def _poll(config: dict, state: dict, owner: str, now: int) -> None:
     pending = item["pending"]
     if pending is None or now < pending.get("poll_after_unix", 0):
         return
+    if item["desired"] == "paused" and item["status"] == "stream_failed":
+        return  # Keep the failed turn for an explicit recovery action.
     if item["poll_errors"] > _profile(config, owner)["max_poll_errors"]:
         return  # Needs explicit resume; owner and pending baseline stay intact.
     try:
         result = desktop_command("managed-poll", str(pending["response_action_count"]),
                                  project_name=_profile(config, owner)["project_name"])
+        if result.get("streamError"):
+            if pending.get("stream_retry_attempts", 0) >= 1:
+                def exhausted(_config: dict, current: dict):
+                    current_item = current["profiles"][owner]
+                    current_item["desired"] = "paused"
+                    current_item["status"] = "stream_failed"
+                    current_item["last_error"] = "ChatGPT response stream failed after Retry"
+                    current_item["pending"]["poll_after_unix"] = now + 3600
+                    event(current, owner, "stream_retry_exhausted", current_item["last_error"])
+                change_state(exhausted)
+                return
+            def preparing_retry(_config: dict, current: dict):
+                current_item = current["profiles"][owner]
+                current_item["pending"]["stream_retry_attempts"] = 1
+                current_item["pending"]["poll_after_unix"] = now + max(
+                    POLL_SECONDS, _profile(_config, owner)["retry_delay_seconds"])
+                current_item["status"] = "retrying_stream"
+                event(current, owner, "stream_retry_started")
+            change_state(preparing_retry)
+            desktop_command("managed-retry", str(pending["response_action_count"]),
+                            project_name=_profile(config, owner)["project_name"])
+            return
         if not result.get("completed"):
             def waiting(_config: dict, current: dict):
                 current_item = current["profiles"][owner]

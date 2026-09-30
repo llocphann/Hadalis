@@ -9,6 +9,7 @@ import {
   managedPoll,
   observeDesktop,
   openHadalisNewChat,
+  retryFailedStream,
   submitPrompt,
   waitForCompletion
 } from "./desktop_driver.mjs";
@@ -72,6 +73,12 @@ async function main() {
   if (command === "managed-poll") {
     const expected = Number(process.argv[3]);
     writeJson(await managedPoll(page, { responseActionCount: expected }));
+    return;
+  }
+
+  if (command === "managed-retry") {
+    const expected = Number(process.argv[3]);
+    writeJson(await retryFailedStream(page, { responseActionCount: expected }));
     return;
   }
 

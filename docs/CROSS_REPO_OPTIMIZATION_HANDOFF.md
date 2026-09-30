@@ -20957,3 +20957,173 @@ The scoped source audit is documented; canonical repair on a new SHA and live
 owner acceptance remain open in `to-do/cloud-bot/OPTIMIZATION.md`.
 Continue the general research program from current dev without treating this
 scoped milestone as release-ready.
+
+
+## 86. Round 72 — Timer/Notepad/Todo closure and Quick Notes copy-list derivation audit (2026-09-30)
+
+### Snapshot, delta and ownership
+
+- Authoritative `dev` at round start and immediately before this write:
+  `629ae1616157a3281a5a68554ce16740e79d19b9`.
+- Latest canonical handoff checkpoint before this round is Round 71 (§85) at
+  `b895362d7b881beb3f64dc91685190c409c65442`.
+- Three commits followed that checkpoint:
+  - `a08ee4f74fb5423e87fd6a6d85d811e03630aae4`: Abyss audit/handoff/task
+    documentation only;
+  - `010f7fab4efd677f8dd3ffea8f523924fa38e1e3`: automation profile lifecycle;
+  - `629ae1616157a3281a5a68554ce16740e79d19b9`: automation desktop autostart
+    transport compatibility.
+- Their changed-file set does not touch TimerService, Todo, Notepad, Quick Notes
+  or this round's runtime candidate path.
+- `AGENTS.md`, `to-do/README.md`, Cloud/Local Bot routing and
+  `to-do/cloud-bot/OPTIMIZATION.md` were re-read first.
+- Existing ownership was searched before promotion:
+  - §3.4 already owns the shared TimerService second clock;
+  - §26.9 closes high-frequency timer persistence concerns;
+  - §49.5 owns Notepad duplicate-ID Set normalization;
+  - §50.12 records the prior Zettelkasten/InternalTodoBackend no-finding audit;
+  - §63.3 owns TodoWidget clone-only-matching task derivation.
+  No prior item owns the Quick Notes copy-button position derivation below.
+
+### 86.1 TimerService remains already-optimized at the cadence/persistence boundary
+
+Path:
+
+- `services/TimerService.qml`.
+
+Current source still matches the established architecture:
+
+- Pomodoro and Countdown share one `SystemClock.Seconds`;
+- Stopwatch keeps its intentional 33 ms cadence because the public value is
+  expressed in 10 ms ticks;
+- Persistent fields change on state transitions/laps rather than on every
+  Stopwatch tick;
+- Persistent writes remain separately debounced/asynchronous.
+
+Several superficially attractive local changes are not strict-lossless.
+
+For example, `refreshPomodoro()` calls the wall clock more than once. Reusing
+one `Date.now()`-derived second would make the transition test and subsequent
+remaining-time calculation observe one timestamp instead of potentially two
+different seconds. That changes boundary behavior if a second rolls between the
+reads.
+
+Status: **ALREADY / CLOSED for a source-local clock-read fusion**. Preserve the
+existing time-read sequence unless the timer contract itself is intentionally
+changed and tested.
+
+### 86.2 Notepad and Todo secondary-action audit does not justify a new strict group
+
+Paths:
+
+- `services/Notepad.qml`;
+- `services/Todo.qml`.
+
+Notepad already:
+
+- coalesces mutations while one FileView save is in flight;
+- avoids entering the save-in-flight state when serialized bytes already equal
+  FileView state;
+- preserves fresh array/object publication for tab edits;
+- retains the §49.5 exact Set opportunity in `_normalizeTabs()`.
+
+Adding equality guards to `setTabText()`, `setTabTitle()` or
+`switchTab()` is not automatically strict-lossless: today those entry points
+can still perform fresh tab-array publication or a persistence reconciliation
+attempt even when the apparent user value is unchanged.
+
+Todo's internal-ID operations scan the current internal list only when the
+internal backend is active. A persistent id->index cache would trade CPU for
+resident state and would require exact invalidation across internal/Obsidian
+ownership transitions. The direct scans are not promoted without evidence.
+
+Status: **no new group**.
+
+### 86.3 Quick Notes copy-button derivation can direct-collect the same positioned entries — CONFIRMED / P1-P2 interactive
+
+Path:
+
+- `modules/ii/overlay/notes/NotesContent.qml`,
+  `updateCopylistPositions()`.
+
+The parser stores bullet metadata in `parsedCopylistLines`. Cursor movement,
+selection changes and layout changes then recompute only the visible copy-button
+records.
+
+Current derivation:
+
+1. `parsedCopylistLines.map(line => ... entry-or-null ...)`;
+2. `.filter(entry => entry !== null)`;
+3. assign the filtered fresh array to `copyListEntries`.
+
+The map callback:
+
+- checks whether selection/caret intersects the source line;
+- calls `positionToRectangle()` for start/end only when still eligible;
+- rejects non-finite geometry;
+- returns one plain positioned record or `null`.
+
+The filter callback has no side effects and reads only the map result value.
+
+Strict-safe direction:
+
+- allocate one fresh local result array;
+- traverse source entries in the same ascending index order;
+- execute the exact current map callback body for each visited source element;
+- append only non-null results;
+- publish that one final fresh array once at the same function boundary.
+
+A reduce/forEach-style implementation can preserve sparse-array behavior if
+desired: both current `map()` and `filter()` skip absent source slots. The
+normal service-owned `parsedCopylistLines` array is dense, but no dense-only
+assumption is needed.
+
+Strict-lossless proof:
+
+- all source line reads occur in the same order;
+- the selection-intersection guard remains before any geometry lookup;
+- `positionToRectangle(line.start)` remains before the end-position lookup;
+- fallback `endRect = startRect`, line-bottom and height arithmetic are
+  unchanged;
+- if a source getter/geometry call throws, the new result array remains local
+  and unpublished, exactly as the current mapped intermediate never reaches
+  `copyListEntries`;
+- the removed filter predicate has no callback side effect and can never change
+  source state;
+- final entry order, duplicates, object contents and fresh publication identity
+  are unchanged;
+- no file save, debounce, focus, selection, rendering or clipboard timing moves.
+
+For P parsed bullet lines:
+
+- intermediate mapped entry/null array: **1 -> 0**;
+- second full filter traversal: **P -> 0**;
+- final positioned-entry array remains exactly one fresh array.
+
+This path is interaction-relevant:
+
+- cursor movement and selection changes schedule the 100 ms position refresh;
+- text/height/content-height/width changes can request an immediate refresh;
+- each refresh may call TextEdit geometry mapping for every eligible bullet
+  line.
+
+This is a local allocation/traversal reduction, not an end-to-end shell speedup.
+
+### 86.4 Round-72 conclusion / next checkpoint
+
+New strict-lossless optimization groups: **one** (§86.3,
+**CONFIRMED / P1-P2 interactive**).
+
+Explicit closures:
+
+- Timer wall-clock read fusion is not lossless (§86.1);
+- no new Notepad/Todo persistence/index group is promoted (§86.2).
+
+No runtime/product/native/script code was modified. Only this research handoff
+is updated and no deterministic local job was required.
+
+Next audit should re-fetch current `dev`, reconcile concurrent commits, then
+move outside Quick Notes. Prefer another under-covered recurring interaction
+path with private derivation work, such as notification/activity secondary
+models, calendar/agenda interaction not already owned by §§49/57/69, or
+file/process-backed media/search secondary controls.

@@ -23416,3 +23416,178 @@ or event-driven service whose cost scales with records/events and whose
 existing handoff ownership is sparse. `Events.qml`, `Notepad.qml`,
 `ThemeService.qml`, or a secondary Frontend↔Backend path are reasonable next
 targets after duplicate-ownership search.
+
+## 99. Round 85 — Events file-load validation/max-ID fusion audit (2026-09-30)
+
+### Snapshot and ownership reconciliation
+
+- Authoritative `dev` at round start and immediately before this write:
+  `d33b597b56d9229cf631547c21c40cbd4bdb04c1`
+  (`docs(research): audit InnerTube process lifetime`).
+- The only delta after Round 83 is the Round-84 handoff documentation commit;
+  no runtime/product source changed.
+- Exact current `Events.qml`, `Notepad.qml` and `ThemeService.qml` were
+  re-read after the refetch.
+- Existing ownership was searched before promotion:
+  - §49.3 owns count/presence-only calendar queries;
+  - §57.7 owns reuse of upcoming-event start timestamps during sorting;
+  - §49.5 owns Notepad duplicate-ID membership;
+  - §86.2 closes new Notepad persistence/index work under the current strict
+    publication/durability contract;
+  - §52.3 owns ThemeService signature-priming correctness/performance fallout.
+- No prior item owns the Events JSON-load validation + max-ID two-pass shape
+  below.
+
+### 99.1 Events JSON load can validate rows and track max ID in one ordered pass — CONFIRMED / P2 cold load + external file reload
+
+Path:
+
+- `services/Events.qml`, `eventsFileView.onLoaded`.
+
+Current successful nonempty load does:
+
+```qml
+const data = JSON.parse(fileContents)
+const events = Array.isArray(data?.events)
+    ? data.events.filter(event =>
+        event && typeof event === "object" && !Array.isArray(event))
+    : []
+
+let maxId = 0
+for (const event of events) {
+    const id = Number(event.id)
+    if (Number.isInteger(id) && id > maxId)
+        maxId = id
+}
+```
+
+It then publishes `events` once as `root.list` and derives `nextId` from the
+stored value versus `maxId`.
+
+For a source array of N rows with V valid object rows, the current path performs:
+
+- N validation predicate evaluations;
+- allocation of one fresh V-element `events` array;
+- then V additional loop iterations solely to read IDs and compute `maxId`.
+
+Strict-safe direction:
+
+1. keep the exact `Array.isArray(data?.events)` branch;
+2. allocate the same fresh local `events = []`;
+3. iterate the JSON-parsed source array once in source order;
+4. preserve the exact validity predicate:
+   `event && typeof event === "object" && !Array.isArray(event)`;
+5. for each valid event:
+   - push the original event object reference into `events`;
+   - immediately run the existing
+     `Number(event.id) -> Number.isInteger -> id > maxId` logic;
+6. keep stored-`nextId` conversion/comparison and all publications unchanged.
+
+Strict-lossless proof:
+
+- **input provenance:** `data` comes directly from `JSON.parse(fileContents)`.
+  JSON cannot produce getters, proxies, accessors or executable property reads;
+  valid event rows are ordinary JSON objects/arrays/scalars.
+- **validation semantics:** each source element receives the same truthiness,
+  `typeof` and `Array.isArray` checks in the same source order.
+- **valid-row order:** every accepted object is pushed exactly once in original
+  order, matching `Array.prototype.filter`.
+- **identity:** `root.list` still receives a fresh array containing the same
+  original parsed event object references; no event clone is introduced.
+- **ID conversion:** `Number(event.id)`, integer validation and strict
+  `id > maxId` comparison are unchanged.
+- **malformed rows:** null, arrays, scalars and other rejected rows remain absent
+  from the published list and contribute nothing to max-ID tracking.
+- **missing/non-array `events`:** still yields a fresh empty array and
+  `maxId = 0`.
+- **duplicate/negative/noninteger IDs:** comparison behavior is unchanged.
+- **stored next ID:** `Number(data?.nextId)` is still evaluated after event
+  validation and uses the same `storedNextId > maxId` rule.
+- **error behavior:** JSON parse exceptions still enter the same catch path.
+  Converting IDs while iterating valid rows cannot introduce a new side-effect
+  ordering hazard because the rows are JSON data, not arbitrary JS objects.
+- **publication/signals:** `root.list`, `root.nextId` and `root.ready`
+  remain assigned once in the same order after the complete local pass.
+- **filesystem/watch lifecycle:** FileView reload/watch behavior, the
+  `_saving` guard and queued-save handling are untouched.
+
+Local source-derived reduction:
+
+- validation/ID traversals: **N + V -> N** iterations;
+- fresh published event array: unchanged, one V-element array;
+- event-object allocations: unchanged;
+- filesystem reads/writes: unchanged;
+- notifications/signals: unchanged.
+
+This is especially useful for imported or long-lived event stores and for
+external file reloads, while remaining smaller than calendar-visible query
+work already owned by §49.3/§57.7.
+
+Classification:
+**CONFIRMED / P2 cold load + watched-file reload**.
+
+### 99.2 Events persistence coalescing is intentionally not changed
+
+The audit also rechecked the tempting recurrence/save path:
+
+- `checkDueEvents()` may mark multiple rows in one minute;
+- recurring due events can call `createNextRecurrence()`;
+- `addEvent()` itself requests a save;
+- `checkDueEvents()` also requests a final save when notification flags
+  changed;
+- `saveToFile()` already uses `_saving` / `_saveQueued` to serialize and
+  retain a later requested persistence pass.
+
+Further batching/removing save requests would change durability timing,
+FileView self-write/load ordering and potentially intermediate persistence
+state. That is excluded under strict-lossless.
+
+Status:
+**CLOSED for save-timing/coalescing changes**.
+
+### 99.3 Notepad and ThemeService were rechecked; existing ownership remains sufficient
+
+**Notepad**
+
+Current source still matches §86.2:
+
+- fresh tab-array publication is deliberate for edits;
+- persistence already avoids rewriting unchanged serialized bytes where its
+  existing save path permits;
+- mutation/save calls cannot be skipped solely from equal visible values without
+  changing publication or reconciliation semantics;
+- §49.5 remains the valid duplicate-ID Set optimization.
+
+No new group.
+
+**ThemeService**
+
+The current interesting avoidable-work issue remains §52.3's lifecycle
+prerequisite: when first materialized after `Config.ready`, signature priming
+can be missed and a later unrelated config change can look like a real theme
+delta.
+
+That is a correctness/lifecycle issue with performance side effects, not a new
+strict-lossless optimization.
+
+No new group.
+
+### 99.4 Round-85 conclusion / next checkpoint
+
+New strict-lossless optimization groups: **one**:
+
+- Events JSON validation + max-ID fusion
+  (§99.1, **CONFIRMED / P2 cold load + file reload**).
+
+Explicit closure:
+
+- no new Events persistence/save coalescing (§99.2).
+
+No runtime/product/native/script code was modified and no deterministic local
+job was required.
+
+Next audit should re-fetch current `dev`, reconcile concurrent commits and
+rotate away from Events/Notepad/ThemeService. Prefer another record-scaled
+parser/model or request-completion path with sparse ownership. Weather network
+normalization, AI provider/model catalog secondary paths, or another file-backed
+service can be considered only after handoff duplicate search.

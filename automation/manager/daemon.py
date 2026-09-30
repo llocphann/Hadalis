@@ -263,7 +263,8 @@ def _submit(config: dict, state: dict, profile_id: str, now: int) -> None:
             return False
         # This intent consumes the command durably, even if its ACK is lost.
         # A later explicit Restart has its own sequence and survives the ACK.
-        current.update(pending=pending, request="continuation", status="thinking", status_detail="", last_activity_at_unix=now)
+        current.update(pending=pending, request="continuation", status="thinking", status_detail="",
+                       poll_errors=0, last_error="", last_activity_at_unix=now)
         if new_chat:
             current.update(session={"conversation_id":None, "project_id":project_id},
                 active_project_name=profile["project_name"], chat_started_at_unix=now, chat_iterations=0)
@@ -510,7 +511,8 @@ def _wait_result(config: dict, state: dict, profile_id: str, now: int) -> None:
         restart = current["request"] == "restart"
         current.update(last_job_id=current["job_id"],last_result=str(payload.get("status","unknown")),job_id=None,
                        next_job_poll_at_unix=None,job_poll_errors=0,
-                       request="restart" if restart else "continuation",status="rotating" if restart else "continuing")
+                       last_error="",status_detail="",request="restart" if restart else "continuation",
+                       status="rotating" if restart else "continuing")
         ids=[a["evidence_id"] for a in summary["actions"] if a.get("evidence_id")]
         current["job_evidence"]=(current["job_evidence"]+ids)[-128:]
         current["job_summary"]=summary

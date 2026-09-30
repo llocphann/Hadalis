@@ -35,6 +35,15 @@ def chat_result(payload):
     result=public_result(payload)
     fields={"check","exit_code","error_codes","unit","active","dirty_count","load","disk_free_bytes","available"}
     for source,target in zip(payload.get("actions",[]),result["actions"]):
+        if source.get("kind") == "exec" and source.get("exit_code") != 0:
+            # Existing private receipts also benefit. Classify bounded text
+            # locally; only fixed codes cross to the reasoning agent.
+            from automation.worker.diagnostics import error_codes, MAX_BYTES
+            text = "".join(source.get(k, "")[:MAX_BYTES] for k in ("stdout", "stderr")
+                           if isinstance(source.get(k, ""), str))
+            codes = error_codes(text)
+            if codes:
+                target["observations"] = [{"check":"exec", "exit_code":source.get("exit_code"), "error_codes":codes}]
         if source.get("safe_observations"):
             target["observations"]=[{k:v for k,v in item.items() if k in fields}
                                     for item in source["safe_observations"][:48]]

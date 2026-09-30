@@ -80,6 +80,15 @@ assert.equal(operationErrorCode({message:"PRIVATE_CANARY auth body"}), "DESKTOP_
             assert store.read_snapshot()[1]["profiles"][a]["prompts_sent"] == 1
             # The other two profiles can now submit independent next steps.
             assert t.count("submit") == 5
+    with environment():
+        pid=profile("Recovered");t=Transport()
+        store.change_state(lambda c,s:s["profiles"][pid].update(poll_errors=4,last_error="DESKTOP_RATE_LIMITED"))
+        with patch.object(daemon,"native_command",side_effect=t):
+            daemon.tick(100)
+            item=store.read_snapshot()[1]["profiles"][pid]
+            assert item["poll_errors"] == 0 and item["last_error"] == ""
+            t.down=True;daemon.tick(102)
+            assert t.pending(pid)["poll_after_unix"] == 132
     print("PASS: bounded two-profile API cadence, private rate-limit codes, durable shared cooldown, local job/cache progress and no prompt replay")
 
 

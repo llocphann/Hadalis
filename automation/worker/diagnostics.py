@@ -15,7 +15,7 @@ from automation.worker.privacy import redact, scrub, SECRET_KEY
 CHECKS = {"services", "processes", "journal", "git", "resources", "hardware",
           "config", "runtime", "screenshot", "crashes"}
 UNITS = {"hadalis-chatgpt.service", "hadalis-worker.service", "hadalis-chat-bridge.service",
-         "hadalis-privilege.service", "quickshell.service", "quickshell@inir.service"}
+         "hadalis-privilege.service", "inir.service", "quickshell.service", "quickshell@inir.service"}
 MAX_BYTES = 65536
 
 
@@ -52,11 +52,16 @@ def config_path(relative):
 def error_codes(text):
     patterns = {"qml_syntax": r"SyntaxError|Expected token|Unexpected token",
                 "qml_import": r'module .{0,100} is not installed|Type .{0,100} unavailable',
+                "qml_import_version": r"Library import requires a version",
                 "qml_reference": r"ReferenceError|Cannot assign|Unable to assign",
                 "process_crash": r"segmentation fault|core dumped|SIGSEGV",
                 "resource_pressure": r"out of memory|oom-kill|No space left",
                 "permission": r"Permission denied|Access denied",
-                "network": r"Connection refused|timed out|Could not resolve"}
+                "network": r"Connection refused|timed out|Could not resolve",
+                "command_unavailable": r"command not found|No such file or directory|diagnostic command unavailable",
+                "compile_error": r"could not compile|error\[E[0-9]{4}\]",
+                "test_failure": r"test result: FAILED|AssertionError|assertion .{0,100} failed",
+                "lockfile_outdated": r"cannot update the lock file.{0,512}because --locked"}
     return [name for name, pattern in patterns.items() if re.search(pattern, text, re.I)]
 
 

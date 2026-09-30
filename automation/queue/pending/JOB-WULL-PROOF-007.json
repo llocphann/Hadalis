@@ -1,0 +1,20 @@
+{
+  "id": "JOB-WULL-PROOF-007",
+  "profile_id": "profile-918f783d49cd45cd",
+  "base_sha": "822a19f1086a967a75e1e939c3a540eb0e4cb473",
+  "actions": [
+    {
+      "exec": {
+        "argv": ["bash", "-lc", "command -v qs >/dev/null 2>&1 || exit 61; timeout 8s qs -n -p modules/abyss/companion/AbyssCompanionProof.qml >/dev/null 2>/dev/null; rc=$?; [ \"$rc\" -eq 124 ] && exit 0; exit \"$rc\""],
+        "cwd": ".",
+        "timeout_seconds": 15
+      }
+    },
+    {
+      "diagnostics": {
+        "checks": ["services", "processes", "runtime", "screenshot"],
+        "lines": 40
+      }
+    }
+  ]
+}

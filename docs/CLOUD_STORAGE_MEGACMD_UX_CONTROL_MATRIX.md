@@ -1,5 +1,7 @@
 # Cloud Storage — Detailed control, option and wizard matrix (research round 4)
 
+> **Backend linkage round 5:** The controls below must be wired only through the typed lifecycle in [CLOUD_STORAGE_MEGACMD_FRONTEND_BACKEND_CONTRACT.md](CLOUD_STORAGE_MEGACMD_FRONTEND_BACKEND_CONTRACT.md): QML view → deferred CloudStorageService → Rust operation → vendor → authoritative readback. No control constructs raw MEGAcmd args or treats helper exit as mutation success.
+
 **Design proposal only; all controls are unimplemented.** Hadalis `dev` reference `ba1f6cda9b30f787777fb7d333fe90fcbe039ad8`. [Read the component/layout/keyboard policy](CLOUD_STORAGE_MEGACMD_UX_COMPONENTS.md), [full feature design](CLOUD_STORAGE_MEGACMD_FULL_DESIGN.md), [vendor source safety findings](CLOUD_STORAGE_MEGACMD_SOURCE_AUDIT.md) and [cross-client SDK constraints](CLOUD_STORAGE_MEGACMD_PROTOCOL_DECISIONS.md). Every enabled mutation requires installed-version capability probing and unique validated target identity. An unverified button must show disabled + reason, never a speculative CLI fallback.
 
 **Gate abbreviations:** D = binary present/explicit owner Connect; A = vendor reachable/signed in; V = installed-version syntax/output verified; I = unique item/path/permissions and local/remote sync ownership checked; C = source/destination and consequences reviewed/confirmed. A task's gate is **minimum**; security restrictions from previous source audit still apply.

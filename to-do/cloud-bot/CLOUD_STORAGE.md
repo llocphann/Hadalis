@@ -1,5 +1,7 @@
 # Cloud Storage — MEGAcmd ↔ Rust ↔ QML research
 
+> **Research round 5:** [Frontend/backend stability contract](../../docs/CLOUD_STORAGE_MEGACMD_FRONTEND_BACKEND_CONTRACT.md) defines the concrete QML deferred-service ↔ typed Rust ↔ MEGAcmd boundary, request/generation guards, no-replay writes and post-action reconciliation.
+
 > **UX research round 4:** [Shared component/layout rules](../../docs/CLOUD_STORAGE_MEGACMD_UX_COMPONENTS.md) and [per-section control/wizard choices](../../docs/CLOUD_STORAGE_MEGACMD_UX_CONTROL_MATRIX.md) define practical button, combo, context menu, status-chip and dialog details. No code or live MEGA commands.
 
 > **Research round 3:** [Protocol, SDK feasibility, Desktop IPC and data-loss decisions](../../docs/CLOUD_STORAGE_MEGACMD_PROTOCOL_DECISIONS.md) refines both the [full design](../../docs/CLOUD_STORAGE_MEGACMD_FULL_DESIGN.md) and [source audit](../../docs/CLOUD_STORAGE_MEGACMD_SOURCE_AUDIT.md). Remote and local sync overlap **both matter**; ordinary CLI-based Drive mutations are not automatically safe.
@@ -68,3 +70,16 @@ The autonomous Local Bot must not contact a real MEGA account, initiate a sync o
 - [ ] Validate responsive breakpoints and every menu/dialog at 100/125/150/200% font scale in standalone, Abyss overlay, SettingsFocus and Waffle after implementation approval.
 - [ ] Confirm a safe host local-file/folder picker before exposing Browse; no such Cloud-specific picker is assumed from the current audit.
 - [ ] Verify every dynamic remote chooser, button enabled rule and dropdown option against installed-version sanitized fixtures before any write action is enabled.
+
+### Round-5 frontend/backend contract research
+- [x] Audit Hadalis native JSON patterns (`inir-mpdd` request IDs/no-replay tests), QML stale-request handling (Lyrics), lifecycle generations/consumer leases (Equalizer/ResourceUsage) and Rust-default dispatch behavior.
+- [x] Select dormant deferred `CloudStorageService.qml` as frontend state/mutation owner; page view must not directly own risky mutation Process lifetime.
+- [x] Specify one-shot Rust `inir-mega request` with JSON stdin and exactly one bounded JSON stdout envelope; no raw-command API and no automatic Python fallback for mutations.
+- [x] Specify request ID + connection generation + account fingerprint stale-response rejection and coalesced per-domain reads.
+- [x] Specify serialized mutation phases, backend fresh preconditions, high-risk prepare/review digest/execute and authoritative post-action readback.
+- [x] Specify no-replay crash/restart journal design and read-only recovery path; unknown writes disable further mutation until reconciled.
+- [x] Map every visible control domain to typed backend operations and stable normalized models/errors.
+- [x] Define fake-vendor, QML service, crash recovery, packaging and route contract tests before any real account test.
+- [ ] Decide private crash-journal target identifiers/retention after privacy review; never persist secrets or raw vendor output.
+- [ ] Measure and set operation deadlines/output caps/poll rates using fake and disposable installed-version fixtures.
+- [ ] Validate each operation's authoritative reconciliation query against the owner's installed MEGAcmd version before enabling writes.

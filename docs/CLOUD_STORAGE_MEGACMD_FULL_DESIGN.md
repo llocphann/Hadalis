@@ -1,5 +1,7 @@
 # Hadalis Cloud Storage — detailed MEGAcmd → Rust → QML design
 
+> **Frontend/backend contract research round 5 (2026-09-30):** [CLOUD_STORAGE_MEGACMD_FRONTEND_BACKEND_CONTRACT.md](CLOUD_STORAGE_MEGACMD_FRONTEND_BACKEND_CONTRACT.md) now defines the deferred QML service, one-shot Rust stdin/stdout protocol, request/generation rules, read coalescing, mutation state machine, stale-precondition review digest, no-replay crash recovery, normalized models and the exact frontend→backend operation map. It supersedes any implication that individual QML controls should construct MEGAcmd commands directly. Research only.
+
 > **UX research round 4 (2026-09-30):** The detailed [buttons, dropdowns, dialogs and responsive Settings system](CLOUD_STORAGE_MEGACMD_UX_COMPONENTS.md) plus [exact control options and per-section wizard matrix](CLOUD_STORAGE_MEGACMD_UX_CONTROL_MATRIX.md) refine this functional blueprint. All remain *research only*, not implemented.
 
 > **Round 3 follow-up (2026-09-30):** Before implementing the 76-command design, read the [protocol, cross-client and SDK decision study](CLOUD_STORAGE_MEGACMD_PROTOCOL_DECISIONS.md). It adds verified MEGA Desktop extension IPC (limited, private—not a supported management API), **remote-folder overlap** and SDK no-lock caveats, a confirmed silent-overwrite hazard in `mega-mv`, and definitive evidence that `mega-login email` cannot safely read a piped password in noninteractive mode. This is documentation research only.

@@ -51,11 +51,44 @@ def _write(path: Path, payload: dict) -> None:
             stream.flush()
             os.fsync(stream.fileno())
         os.replace(name, path)
+        _sync_directory(path.parent)
     finally:
         try:
             os.unlink(name)
         except FileNotFoundError:
             pass
+
+
+def _sync_directory(path: Path) -> None:
+    fd = os.open(path, os.O_RDONLY | os.O_DIRECTORY)
+    try:
+        os.fsync(fd)
+    finally:
+        os.close(fd)
+
+
+def _recover_transaction() -> None:
+    """Finish a committed config/state pair after a process or machine crash.
+
+    The journal is the commit point. All readers take manager.lock before
+    recovery, so they never observe half a profile removal or migration.
+    Keep the existing JSON files as the supported configuration interface.
+    """
+    journal = state_dir() / "transaction.json"
+    if not journal.exists():
+        return
+    payload = _read(journal, {})
+    if set(payload) != {"config", "state"}:
+        raise ValueError("invalid automation transaction; recovery copy retained")
+    _write(config_path(), payload["config"])
+    _write(state_path(), payload["state"])
+    journal.unlink()
+    _sync_directory(journal.parent)
+
+
+def _commit_documents(config: dict, state: dict) -> None:
+    _write(state_dir() / "transaction.json", {"config": config, "state": state})
+    _recover_transaction()
 
 
 def profile_state() -> dict:
@@ -73,6 +106,9 @@ def profile_state() -> dict:
         "active_project_name": "",
         "command_seq": 0, "park_requested": False, "parked_pending": False,
         "remove_requested": False,
+        # Durable identity; never derived from whichever chat is visible.
+        "session": None, "checkpoint": None, "response_message_id": None,
+        "recovery": None,
     }
 
 
@@ -169,6 +205,7 @@ def locked_document():
     lock.parent.mkdir(parents=True, exist_ok=True)
     with lock.open("a+") as handle:
         fcntl.flock(handle, fcntl.LOCK_EX)
+        _recover_transaction()
         raw_config = _read(config_path(), default_config())
         config, issues = normalize_config(raw_config)
         raw_state = _read(state_path(), default_state(config))
@@ -186,8 +223,7 @@ def change(mutator: Callable[[dict, dict], object]) -> object:
         if issues:
             raise ValueError("invalid profiles need repair before editing: " + "; ".join(issues))
         result = mutator(config, state)
-        _write(config_path(), config)
-        _write(state_path(), state)
+        _commit_documents(config, state)
         return result
 
 

@@ -19604,3 +19604,159 @@ rotate away from LauncherSearch to another under-covered interaction-hot
 frontend/backend boundary. A good next target is Waffle/ii notification-center
 secondary actions and their service/model mutation paths, while checking the
 handoff first for existing notification ownership.
+
+
+## 78. Round 64 — notification-center secondary-action/full-link strictness audit (2026-09-30)
+
+### Snapshot, delta and duplicate ownership
+
+- Authoritative `dev` at round start and immediately before this documentation
+  write: `a62bbae1a73ba2051ee387ee6c632a2db5e20552` (Round 63).
+- `dev` is identical to the Round-63 research commit; there are no intervening
+  commits to reconcile.
+- This round continued the Frontend ↔ Backend audit through:
+  - `modules/waffle/notificationCenter/NotificationPaneContent.qml`;
+  - `modules/waffle/notificationCenter/WNotificationGroup.qml`;
+  - `modules/waffle/notificationCenter/WSingleNotification.qml`;
+  - `modules/common/widgets/NotificationListView.qml`;
+  - `modules/common/widgets/NotificationGroup.qml`;
+  - `modules/common/widgets/NotificationItem.qml`;
+  - `modules/dock/DockAppButton.qml`;
+  - `services/Notifications.qml`.
+- Duplicate-ownership search was performed before promotion. Existing owners
+  remain:
+  - §37.1 — one-pass notification aggregation;
+  - §37.2 — indexed Dock notification counts;
+  - §37.11 — Waffle hidden critical-pulse suspicion CLOSED by outer loader
+    lifecycle;
+  - §48.9 — history-search lowercase caching is a resident-memory benchmark
+    tradeoff;
+  - §48.10 — notification persistence/history-load pass reductions;
+  - §60.1 — common `NotificationGroup.qml` collapsed model O(N) -> O(1).
+  None is counted again.
+
+### 78.1 Secondary-control linkage verified
+
+Current Waffle history controls reach the intended service paths:
+
+- DND header toggle -> `Notifications.silent` ->
+  `onSilentChanged` -> `Config.setNestedValue("notifications.silent", ...)`;
+- DND banner “Turn off” uses the same persisted property path;
+- Clear all -> `Notifications.discardAllNotifications()` -> timer destruction,
+  wrapper destruction, history publication/persistence, server dismissals and
+  `discardAll` signal;
+- per-group middle-click/swipe/header dismiss ->
+  `WNotificationGroup.dismissAll()` -> one deferred
+  `Notifications.discardNotification(id)` per captured notification;
+- per-notification dismiss preserves its animation/deferred-discard path;
+- notification action button -> `Notifications.attemptInvokeAction()` ->
+  tracked server notification -> action callback -> optional focus/launch for
+  view-like actions -> `discardNotification()`;
+- Dock primary app activation with an unread badge ->
+  `Notifications.markReadForApp()` before launch/focus cycling.
+
+The common ii/shared notification path reaches the same service for dismiss and
+notification actions, while retaining its family-specific presentation/copy UI.
+No missing backend link was found in these audited controls.
+
+### 78.2 Directly cancelling the currently iterated wrapper inside markReadForApp is OUT OF STRICT-LOSSLESS
+
+Path:
+
+- `services/Notifications.qml`, `markReadForApp()` / `cancelTimeout()`.
+
+A tempting optimization is to replace:
+
+`cancelTimeout(notif.notificationId)`
+
+with direct stop/destroy/null operations on the already-held `notif.timer`.
+That would remove a `root.list.findIndex(...)` for every matching unread
+notification.
+
+It is **not** strict-lossless for the repository's malformed/duplicate-state
+contract.
+
+`Notif.notificationId` is a typed `int`, and the service intentionally
+offsets live server IDs above persisted history to avoid normal collisions.
+However persisted history is external JSON and the loader does not deduplicate
+rows. If two wrappers carry the same ID, the current `cancelTimeout(id)`
+always finds and mutates the **first** wrapper with that ID. The wrapper currently
+being visited by `markReadForApp()` may be a later duplicate.
+
+Directly mutating the current object would therefore change:
+
+- which timer is stopped/destroyed;
+- which timer property is nulled;
+- subsequent timeout behavior for malformed duplicate history.
+
+An invocation-local first-ID index can reproduce first-match semantics because
+IDs are typed integers, but maintaining that index adds work for nonmatching
+notifications and has not been shown to be a net win for the common one-match
+case. No optimization is promoted without a workload/benefit oracle.
+
+Status: **OUT OF STRICT-LOSSLESS for direct-object substitution**;
+index-preserving alternative **BENCHMARK** only.
+
+### 78.3 Reusing attemptInvokeAction's tracked notification for discard is not proven safe
+
+Path:
+
+- `services/Notifications.qml`, `attemptInvokeAction()` and
+  `discardNotification()`.
+
+`attemptInvokeAction()` currently finds the tracked server notification once,
+invokes the selected action, optionally performs focus/launch handling, and then
+calls `discardNotification(id)`. The discard function performs a **fresh**
+`notifServer.trackedNotifications.values.findIndex(...)` before dismissing the
+server-side object.
+
+Reusing the first lookup would remove one tracked-list scan per action click,
+but the action callback is an external notification-server callback. Static
+source does not prove that `action.invoke()` cannot synchronously alter,
+replace or dismiss the tracked notification collection before
+`discardNotification()` runs.
+
+The current second lookup therefore observes post-callback state. Reusing a
+pre-callback index/object can change:
+
+- which tracked object is dismissed after mutation/reordering;
+- whether a now-removed notification is dismissed again;
+- callback/re-entrancy ordering through `onNotificationChanged`;
+- `_discardingIds` behavior and emitted discard sequence.
+
+Status: **CONDITIONAL / callback-order oracle required**, not counted.
+
+### 78.4 Waffle body-processing cache is a CPU-for-memory tradeoff, not a strict promotion
+
+Path:
+
+- `modules/waffle/notificationCenter/WSingleNotification.qml`;
+- `modules/common/functions/NotificationUtils.qml`.
+
+Waffle's body text recomputes
+`NotificationUtils.processNotificationBody(body, appName)` when the binding is
+reevaluated by expand/collapse state. The helper itself is deterministic over
+its two string inputs: Chromium-name detection, optional first-section removal,
+and image-tag newline insertion.
+
+Hoisting the processed string to a retained QML property would avoid repeated
+processing across expand/collapse, but it also retains another potentially long
+body-derived string beside the Text item's own rendered text. That is the same
+kind of resident-memory-for-CPU tradeoff already treated conservatively in
+§48.9.
+
+Status: **BENCHMARK / not in strict no-tradeoff set**.
+
+### 78.5 Round-64 conclusion / next checkpoint
+
+New strict-lossless optimization groups: **zero**.
+
+This round instead closes/restricts three tempting notification changes so they
+are not rediscovered and miscounted later. No runtime/source/native/script
+implementation was modified; only this handoff is updated.
+
+Next audit should re-fetch current `dev`, reconcile any concurrent work, then
+rotate to an under-covered Frontend ↔ Backend interaction path outside
+Notifications. Prefer a subsystem with production process/IPC cost such as
+Bluetooth/network secondary controls or power/TLP, and search existing handoff
+ownership before promoting any candidate.

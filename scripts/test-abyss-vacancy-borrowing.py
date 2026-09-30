@@ -11,6 +11,9 @@ notification_popup=read("modules/notificationCenter/NotificationCenterPopup.qml"
 window_dialog=read("modules/common/widgets/WindowDialog.qml")
 wifi_dialog=read("modules/sidebarRight/wifiNetworks/WifiDialog.qml")
 bluetooth_dialog=read("modules/sidebarRight/bluetoothDevices/BluetoothDialog.qml")
+dialog_list_item=read("modules/common/widgets/DialogListItem.qml")
+wifi_item=read("modules/sidebarRight/wifiNetworks/WifiNetworkItem.qml")
+bluetooth_item=read("modules/sidebarRight/bluetoothDevices/BluetoothDeviceItem.qml")
 host=read("modules/abyss/AbyssBodyHost.qml")
 participant=read("modules/abyss/AbyssParticipant.qml")
 geometry=read("modules/abyss/looks/AbyssGeometry.js")
@@ -33,6 +36,16 @@ assert 'liquidVacancyRole: "connectivityDialog"' in bluetooth_dialog
 assert 'liquid.activeDialog?.liquidVacancyRole' in perimeter
 assert 'peer:"connectivityDialog"' in resolver
 assert 'parallelEnvelope:true' in resolver
+assert 'property real adaptiveMinimumHeight: 0' in dialog_list_item
+assert 'Math.max(contentItem.implicitHeight + verticalPadding * 2,' in dialog_list_item
+assert 'enabled: adaptiveMinimumHeight <= 0' in dialog_list_item
+for source, list_id in ((wifi_dialog, 'wifiList'), (bluetooth_dialog, 'deviceList')):
+    assert 'readonly property real adaptiveDelegateHeight:' in source
+    assert 'root.effectiveEmbedded' in source
+    assert 'Math.min(96, usable /' in source
+    assert f'adaptiveMinimumHeight: {list_id}.adaptiveDelegateHeight' in source
+assert 'visible: root.adaptiveMinimumHeight > 0' in wifi_item
+assert 'visible: root.adaptiveMinimumHeight > 0' in bluetooth_item
 
 program=geometry+"\n"+resolver+r"""
 const assert=require("node:assert/strict");

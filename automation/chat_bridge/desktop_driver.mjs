@@ -435,22 +435,26 @@ function splitGitHubMentionPrompt(prompt) {
   return lines.slice(index + 1).join("\n");
 }
 
-async function selectGitHubMention(page, composer) {
+export async function selectGitHubMention(page, composer) {
   await composer.fill("");
   await composer.focus();
   await page.keyboard.insertText("@");
   await sleep(700);
 
+  // Other plugins mention GitHub in their descriptions (e.g. Code Review).
+  // Match the entry's leading name instead of any word in its description.
+  const pickerName = /^GitHub(?:\s|$)/i;
   const roleLocators = [
-    page.getByRole("option", { name: /GitHub/i }),
-    page.getByRole("menuitem", { name: /GitHub/i }),
-    page.getByRole("menuitemradio", { name: /GitHub/i }),
-    page.getByRole("button", { name: /GitHub/i })
+    page.getByRole("option", { name: pickerName }),
+    page.getByRole("menuitem", { name: pickerName }),
+    page.getByRole("menuitemradio", { name: pickerName }),
+    page.getByRole("button", { name: pickerName })
   ];
 
   for (const locator of roleLocators) {
     const candidates = await visibleItems(locator);
     if (!candidates.length) continue;
+    if (candidates.length !== 1) throw new Error("GitHub mention picker is ambiguous");
 
     await candidates[0].evaluate(element => element.click());
     await sleep(500);
@@ -498,7 +502,10 @@ async function populatePrompt(page, composer, prompt) {
     .map(line => line.trim())
     .find(Boolean);
 
-  if (!composerText.toLowerCase().includes("github"))
+  const richMention = await composer.evaluate(element => element.querySelectorAll(
+    '[app-mention-name="github"], [data-prompt-link-href="plugin://github@openai-curated-remote"]'
+  ).length === 1);
+  if (!richMention)
     throw new Error("GitHub rich mention is missing after selection");
 
   if (firstBodyLine && !composerText.includes(firstBodyLine))

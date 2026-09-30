@@ -8,7 +8,8 @@ import {
   openHadalisNewChat,
   requireIdleComposer,
   retryFailedStream,
-  scanLoopMarkerTokens
+  scanLoopMarkerTokens,
+  selectGitHubMention
 } from "../automation/chat_bridge/desktop_driver.mjs";
 
 assert.deepEqual(
@@ -47,6 +48,26 @@ assert.deepEqual(
   scanLoopMarkerTokens("nothing relevant here"),
   []
 );
+
+const pickedPlugins = [];
+const pluginNames = [
+  "Code Review\nReview and manage GitHub pull requests",
+  "GitHub\nTriage PRs, issues, CI, and publish flows"
+];
+await selectGitHubMention({
+  keyboard: { insertText: async () => {} },
+  getByRole: (role, { name }) => {
+    const matches = role === "button" ? pluginNames.filter(label => name.test(label)) : [];
+    return {
+      count: async () => matches.length,
+      nth: index => ({
+        isVisible: async () => true,
+        evaluate: async callback => callback({ click: () => pickedPlugins.push(matches[index]) })
+      })
+    };
+  }
+}, { fill: async () => {}, focus: async () => {} });
+assert.deepEqual(pickedPlugins, [pluginNames[1]]);
 
 
 const bootstrapMarkers = [

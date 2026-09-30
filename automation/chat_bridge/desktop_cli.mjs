@@ -5,7 +5,6 @@ import fs from "node:fs";
 import {
   connectDesktop,
   extractLoopResponse,
-  handoverCheck,
   managedBaseline,
   managedPoll,
   observeDesktop,
@@ -38,11 +37,6 @@ async function main() {
 
   if (command === "observe") {
     writeJson(await observeDesktop(page));
-    return;
-  }
-
-  if (command === "handover-check") {
-    writeJson(await handoverCheck(page));
     return;
   }
 

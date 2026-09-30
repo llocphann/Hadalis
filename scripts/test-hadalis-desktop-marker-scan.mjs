@@ -2,7 +2,6 @@
 
 import assert from "node:assert/strict";
 import {
-  handoverCheck,
   managedPoll,
   markerAfterBaseline,
   openHadalisNewChat,
@@ -112,33 +111,6 @@ await assert.rejects(
 await requireIdleComposer(guardedPage());
 await requireIdleComposer(guardedPage({ text: "\n", domText: "" }));
 await requireIdleComposer(guardedPage(), false);
-
-function handoverPage({ projectVisible = false, stop = false, draft = "" } = {}) {
-  const item = {
-    isVisible: async () => true,
-    evaluate: async callback => callback({ textContent: draft })
-  };
-  const locator = count => ({ count: async () => count, nth: () => item });
-  return {
-    getByRole: (role, options) => {
-      if (role === "textbox") return locator(1);
-      if (role === "button" && String(options.name) === "/stop/i")
-        return locator(stop ? 1 : 0);
-      if (role === "button" && String(options.name).includes("Project:"))
-        return locator(projectVisible ? 1 : 0);
-      return locator(0);
-    }
-  };
-}
-
-assert.deepEqual(
-  await handoverCheck(handoverPage()),
-  { projectGuardVisible: 0, generationActive: false,
-    composerReady: true, draftPresent: false }
-);
-assert.equal((await handoverCheck(handoverPage({ projectVisible: true }))).projectGuardVisible, 1);
-assert.equal((await handoverCheck(handoverPage({ stop: true }))).generationActive, true);
-assert.equal((await handoverCheck(handoverPage({ draft: "unsent" }))).draftPresent, true);
 await assert.rejects(
   managedPoll(guardedPage({ projectLabel: "Project: Wrong project" }), { responseActionCount: 1 }),
   /project guard/

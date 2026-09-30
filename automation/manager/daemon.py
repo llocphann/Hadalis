@@ -441,7 +441,12 @@ def job_result(job_id: str) -> dict | None:
     with (state_dir()/"git-observe.lock").open("a+") as lock:
         try:fcntl.flock(lock, fcntl.LOCK_EX|fcntl.LOCK_NB)
         except BlockingIOError:return None
-        fetched = subprocess.run(["git","fetch","origin","dev"],cwd=ROOT,capture_output=True,text=True,timeout=30)
+        from .credentials import git_options,git_env
+        _,snapshot,_=read_snapshot()
+        owner=next((pid for pid,item in snapshot["profiles"].items() if item.get("job_id")==job_id),None)
+        remote=subprocess.run(["git","remote","get-url","origin"],cwd=ROOT,capture_output=True,text=True,timeout=5)
+        options=git_options(owner,remote.stdout.strip()) if owner else []
+        fetched = subprocess.run(["git",*options,"fetch","origin","dev"],cwd=ROOT,capture_output=True,text=True,timeout=30,env=git_env())
         if fetched.returncode: raise RuntimeError("Cannot fetch dev for job result; observation will retry")
         shown = subprocess.run(["git","show",f"origin/dev:{RESULTS}/{job_id}.json"],cwd=ROOT,capture_output=True,text=True,timeout=15)
     if shown.returncode: return None

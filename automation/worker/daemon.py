@@ -61,8 +61,14 @@ def state_root() -> Path:
     return path
 
 
-def fetch_dev() -> None:
-    result = git("fetch", "origin", "dev")
+def fetch_dev(profile_id=None) -> None:
+    from automation.manager.credentials import git_options, git_env, status
+    if profile_id is None:
+        # Discovery reads the common authoritative repository; job publication
+        # always uses its explicit owning profile's credential.
+        profile_id=next((pid for pid,saved in status()["github"].items() if saved),None)
+    options=git_options(profile_id,remote_url()) if profile_id else []
+    result = run(["git",*options,"fetch","origin","dev"],env=git_env()) if options else git("fetch", "origin", "dev")
     if result.returncode != 0:
         raise RuntimeError(f"git fetch failed: {result.stderr.strip()}")
 
@@ -272,7 +278,7 @@ def publish(job_id: str, payload: dict[str, Any]) -> None:
     publish_dir=state_root()/"publish";publish_dir.mkdir(exist_ok=True,mode=0o700)
     with (state_root()/"publish.lock").open("a+") as lock:
         fcntl.flock(lock,fcntl.LOCK_EX)
-        fetch_dev()
+        fetch_dev(payload.get("profile_id"))
         if result_exists(job_id):return
         head=git("rev-parse","origin/dev").stdout.strip()
         if not SHA_RE.fullmatch(head):raise RuntimeError("publication HEAD unavailable")
@@ -289,10 +295,14 @@ def publish(job_id: str, payload: dict[str, Any]) -> None:
                 if result.returncode:raise RuntimeError("publication commit failed")
             # Refetch immediately before the remote ref update. A race is a
             # publication retry on fresh dev, never a reset or execution retry.
-            fetch_dev()
+            fetch_dev(payload.get("profile_id"))
             push_remote=os.environ.get("HADALIS_WORKER_PUSH_REMOTE") or remote
             if urlparse(push_remote).password:raise ValueError("credentials cannot appear in push argv")
-            pushed=run(["git","push",push_remote,"HEAD:dev"],cwd=checkout,timeout=45)
+            from automation.manager.credentials import git_options,git_env,repository,has_token
+            owner=payload.get("profile_id")
+            if has_token(owner) and repository(remote):
+                push_remote="https://github.com/"+repository(remote)+".git"
+            pushed=run(["git",*git_options(owner,push_remote),"push",push_remote,"HEAD:dev"],cwd=checkout,timeout=45,env=git_env())
             if pushed.returncode:raise RuntimeError("result publication failed; private receipt retained")
         finally:shutil.rmtree(checkout,ignore_errors=True)
 

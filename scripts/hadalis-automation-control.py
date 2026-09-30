@@ -8,7 +8,7 @@ import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from automation.manager import control, diagnostics, store  # noqa: E402
+from automation.manager import control, credentials, diagnostics, store  # noqa: E402
 
 
 def main(argv: list[str]) -> dict:
@@ -17,6 +17,11 @@ def main(argv: list[str]) -> dict:
             raise ValueError("status takes no arguments")
         return control.status()
     operation, *args = argv
+    if operation == "github-token-save" and len(args) == 1:
+        # Secret input is private stdin, never argv, JSON config or Activity.
+        return credentials.save(args[0], sys.stdin.read(513))
+    if operation == "github-token-clear" and len(args) == 1:
+        return credentials.clear(args[0])
     if operation == "service" and len(args) == 2:
         return control.control_service(args[0], args[1])
     if operation == "profile-action" and len(args) == 2:

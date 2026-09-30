@@ -120,7 +120,9 @@ def status() -> dict:
     pool_path=state_dir()/"worker/pool.json"
     try:pool=json.loads(pool_path.read_text()) if pool_path.exists() else {}
     except (OSError,ValueError):pool={"last_error":"Worker status receipt unreadable"}
+    from .credentials import status as credential_status
     return {"ok": True, "config": config, "runtime": state, "issues": issues,
+            "credentials":credential_status(),
             "services": services,"worker_pool":pool,
             "scheduler_problem": _scheduler_problem(services, state, int(time.time())),
             "capabilities": {

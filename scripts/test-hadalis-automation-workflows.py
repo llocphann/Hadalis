@@ -40,11 +40,14 @@ def main():
         with patch.object(daemon,"native_command",side_effect=t):daemon.tick(100)
         original=t.pending(pid)
         def native(op,**data):
-            if op=="poll":return {"completed":False,"submitted":True,"terminal_failed":True,"conversation_id":original["conversation_id"]}
+            if op=="poll":return {"completed":False,"submitted":True,"terminal_failed":True,"conversation_id":original["conversation_id"],"terminal_failure_source":"conversation_stream_status","server_stream_status":"FAILURE"}
             return t(op,**data)
         with patch.object(daemon,"native_command",side_effect=native):
             daemon.tick(102);item=store.read_snapshot()[1]["profiles"][pid]
             assert item["pending"] is None and item["request"]=="recovery"
+            assert item["failed_turn"]["source"]=="conversation_stream_status"
+            receipt=json.loads((store.state_dir()/"failed-turns"/pid/(original["user_message_id"]+".json")).read_text())
+            assert receipt["server_stream_status"]=="FAILURE" and receipt["pending"]["user_message_id"]==original["user_message_id"]
             daemon.tick(132)
             assert t.pending(pid)["user_message_id"]!=original["user_message_id"]
             assert t.pending(pid)["conversation_id"]!=original["conversation_id"]

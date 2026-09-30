@@ -89,6 +89,7 @@ export function installedContract() {
       throw new Error("unsupported Desktop stream contract");
     return { shared: sharedNames[0], initial: initialNames[0], api: apiImport,
       stream: exported(initial, atom[1]),
+      serverStreamStatus: initial.includes("/conversation/{conversation_id}/stream_status"),
       fingerprint: crypto.createHash("sha256").update(initial).update(shared).digest("hex") };
   } finally { archive.close(); }
 }
@@ -128,16 +129,78 @@ export async function connectNative() {
     const transport = node.store.get(definition.resolve(node, chain));
     if (typeof transport?.prepareCompletionStream !== "function" ||
         typeof transport?.startCompletionStream !== "function") throw new Error("unsupported Desktop transport");
-    window.__hadalisNative = { api, transport, fingerprint: contract.fingerprint };
+    window.__hadalisNative = { api, transport, fingerprint: contract.fingerprint,
+      serverStreamStatus: contract.serverStreamStatus };
     window.__hadalisReceipts ??= new Map();
   }, contract);
   return { page, browser, contract };
 }
 
-export async function nativeRead(page, path, query = {}) {
-  return page.evaluate(async ({path, query}) => window.__hadalisNative.api.safeGet(path, {
-    signal: AbortSignal.timeout(25000), parameters: { query }
-  }), { path, query });
+export async function nativeRead(page, path, query = {}, projectId = null) {
+  // Only projects use this header. Older/custom GPT gizmo identities keep
+  // ordinary conversation reads and cannot inject arbitrary header content.
+  projectId = typeof projectId === "string" && /^g-p-[0-9a-f]{32}$/i.test(projectId) ? projectId : null;
+  return page.evaluate(async ({path, query, projectId}) => window.__hadalisNative.api.safeGet(path, {
+    signal: AbortSignal.timeout(25000), parameters: { query },
+    ...(projectId ? {additionalHeaders:{"chatgpt-project-id":projectId}} : {})
+  }), { path, query, projectId });
+}
+
+export async function nativeStreamStatus(page, pending) {
+  if (!UUID.test(pending.user_message_id) || !UUID.test(pending.conversation_id))
+    throw new Error("invalid stream observation identity");
+  return page.evaluate(pending => {
+    const receipt = window.__hadalisReceipts?.get(pending.user_message_id);
+    if (!receipt) return {found:false};
+    if (receipt.conversation_id && receipt.conversation_id !== pending.conversation_id)
+      throw new Error("stream observation identity mismatch");
+    const status = {found:true};
+    for (const key of ["dispatched", "accepted", "streamError", "streamComplete", "resumed"])
+      status[key] = receipt[key] === true;
+    for (const key of ["dispatched_at_ms", "completed_at_ms"])
+      if (Number.isSafeInteger(receipt[key]) && receipt[key] >= 0) status[key] = receipt[key];
+    return status;
+  }, pending);
+}
+
+export async function nativeServerStreamStatus(page, conversationId) {
+  if (!UUID.test(conversationId)) throw new Error("invalid server stream identity");
+  return page.evaluate(async conversationId => {
+    const native = window.__hadalisNative;
+    if (!native.serverStreamStatus) return "UNAVAILABLE";
+    try {
+      const value = await native.api.safeGet("/conversation/{conversation_id}/stream_status", {
+        signal: AbortSignal.timeout(25000), parameters:{path:{conversation_id:conversationId}}
+      });
+      return ["IS_STREAMING", "COMPLETE", "FAILURE", "UNAVAILABLE"].includes(value?.status)
+        ? value.status : "UNAVAILABLE";
+    } catch (error) {
+      if (error?.responseStatus === 404 || error?.status === 404 || error?.statusCode === 404)
+        return "UNAVAILABLE";
+      throw error;
+    }
+  }, conversationId);
+}
+
+export async function pollNativeTurn(page, pending) {
+  const path = `/conversation/${pending.conversation_id}`;
+  const conversation = await nativeRead(page, path, {}, pending.project_id);
+  const result = projectTurn(conversation, pending);
+  if (result.completed || !result.submitted || result.superseded || result.terminal_failed) return result;
+  const local = await nativeStreamStatus(page, pending);
+  const aged = Number.isFinite(pending.prepared_at_unix) &&
+    Date.now()/1000 - pending.prepared_at_unix >= 300;
+  if (!local.streamError && !local.streamComplete && !result.streamError && !aged) return result;
+  const status = await nativeServerStreamStatus(page, pending.conversation_id);
+  if (status !== "FAILURE") return {...result, server_stream_status:status};
+  // Status is conversation-scoped. Bracket it with exact-turn reads so a later
+  // human submission or a persisted final response cannot fail the wrong turn.
+  const latest = await nativeRead(page, path, {}, pending.project_id);
+  const verified = projectTurn(latest, pending);
+  if (verified.completed || verified.superseded || !verified.submitted) return verified;
+  if (latest.current_node !== conversation.current_node) return verified;
+  return {...verified, terminal_failed:true, server_stream_status:status,
+    terminal_failure_source:"conversation_stream_status"};
 }
 
 export async function resolveProject(page, name) {
@@ -236,7 +299,7 @@ export async function discoverSubmission(page, pending) {
   // Limit history scans per reconciliation; no guessing by title or UI.
   const recent = (list.items ?? []).filter(c => Number(c.create_time) >= pending.prepared_at_unix - 120).slice(0, 12);
   for (const item of recent) {
-    const conversation = await nativeRead(page, `/conversation/${item.id}`);
+    const conversation = await nativeRead(page, `/conversation/${item.id}`, {}, pending.project_id);
     if (Object.values(conversation.mapping ?? {}).some(n => n.message?.id === pending.user_message_id || n.id === pending.user_message_id))
       return {conversation_id: item.id};
   }

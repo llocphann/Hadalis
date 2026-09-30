@@ -254,7 +254,7 @@ def _submit(config: dict, state: dict, profile_id: str, now: int) -> None:
     project_id = session.get("project_id") if session else native_command("project", name=profile["project_name"])["project_id"]
     parent = str(uuid.uuid4())
     if session:
-        cursor = native_command("cursor", conversation_id=session["conversation_id"])
+        cursor = native_command("cursor", conversation_id=session["conversation_id"], project_id=project_id)
         if cursor["current_node"] != item["response_message_id"]:
             def changed(c, s):
                 current = s["profiles"].get(profile_id)
@@ -393,13 +393,15 @@ def _poll(config: dict, state: dict, profile_id: str, now: int) -> None:
                 # The server has proved that generation ended. Archive this
                 # turn and ask the reasoning agent for a distinct recovery step.
                 failed_path=state_dir()/"failed-turns"/profile_id/(pending["user_message_id"]+".json")
-                _write(failed_path,{"pending":pending,"at_unix":now,"evidence":"server terminal failure"})
+                source = "conversation_stream_status" if result.get("terminal_failure_source") == "conversation_stream_status" else "terminal_assistant_status"
+                _write(failed_path,{"pending":pending,"at_unix":now,"evidence":"server terminal failure",
+                    "source":source,"server_stream_status":"FAILURE" if source == "conversation_stream_status" else None})
                 def failed_generation(c,s):
                     current=s["profiles"].get(profile_id)
                     if not _same_pending(current,pending):return
                     if not current["pending"].get("counted"):current["prompts_sent"]+=1
                     current["failures"]+=1
-                    current["failed_turn"]={"conversation_id":result["conversation_id"],"user_message_id":pending["user_message_id"],"observed_at_unix":now,"error_code":"server_terminal_failed"}
+                    current["failed_turn"]={"conversation_id":result["conversation_id"],"user_message_id":pending["user_message_id"],"observed_at_unix":now,"error_code":"server_terminal_failed","source":source}
                     current.update(pending=None,generation_recoveries=current["generation_recoveries"]+1,request="recovery",status="recovering_generation",next_run_at_unix=now+30)
                     if current["generation_recoveries"]>3:current.update(desired="paused",status="recovery_required")
                     event(s,profile_id,"generation_terminal_failed","Distinct evidence/reconciliation step scheduled; original prompt never replayed")

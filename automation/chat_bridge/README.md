@@ -18,4 +18,17 @@ HADALIS_LOOP:CONNECTOR_BLOCKED GITHUB
 
 The Python protocol validates the marker. Streaming text, tool steps, user prompts and replies from another user turn cannot complete a receipt. The scheduler saves submission intent before IPC and completion before continuation. An ambiguous send only permits observation of its original message ID. Read-only stream reattachment does not create a user message or a new generation. A server-proven terminal failure can schedule a distinct reconciliation step; it never replays uncertain effects. Project/conversation IDs survive Desktop restarts and reboot. Independent profiles progress through a bounded scheduler and resource-specific leases.
 
+The read-only `stream_status` diagnostic observes only the exact managed
+message's in-memory receipt flags and timestamps, without another HTTP request.
+It excludes prompts and raw error text. A client stream error or close alone is
+not evidence that server generation ended, so it cannot authorize a resend.
+When a stream fails or a turn is older than five minutes, polling can query the
+installed Desktop's server stream-status capability. Only explicit `FAILURE`,
+bracketed by matching original-turn history reads, can prove a missing-assistant
+generation failed. A later user turn, changed branch, unavailable endpoint,
+rate limit or `COMPLETE` without a final response keeps observation pending.
+History and cursor reads bind the durable project's request header, as the
+installed Desktop history loader does, rather than inheriting the selected UI
+project. Legacy sessions without a project ID retain ordinary conversation reads.
+
 See automation/manager/README.md and docs/AUTOMATION_ARCHITECTURE.md for migration, checkpoint, recovery, evidence and acceptance contracts. Run `node scripts/test-hadalis-native-session.mjs` for message projection behavior; `HADALIS_TEST_INSTALLED_DESKTOP=1` also probes the installed adapter contract. Real acceptance is opt-in and never changes production profiles.

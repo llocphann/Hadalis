@@ -1,4 +1,4 @@
-import {connectNative, nativeRead, resolveProject, nativeSubmit, nativeResume, discoverSubmission, projectTurn} from "./native_adapter.mjs";
+import {connectNative, nativeRead, nativeStreamStatus, nativeServerStreamStatus, pollNativeTurn, resolveProject, nativeSubmit, nativeResume, discoverSubmission} from "./native_adapter.mjs";
 import {operationErrorCode} from "./native_errors.mjs";
 
 let browser;
@@ -24,9 +24,11 @@ try {
     }
     return {ready:true};
   },input.requires_github);
-  else if (input.op === "read") result = await nativeRead(page, `/conversation/${input.conversation_id}`);
+  else if (input.op === "read") result = await nativeRead(page, `/conversation/${input.conversation_id}`, {}, input.project_id);
+  else if (input.op === "stream_status") result = await nativeStreamStatus(page, input.pending);
+  else if (input.op === "server_stream_status") result = {status:await nativeServerStreamStatus(page, input.pending.conversation_id)};
   else if (input.op === "cursor") {
-    const c = await nativeRead(page, `/conversation/${input.conversation_id}`);
+    const c = await nativeRead(page, `/conversation/${input.conversation_id}`, {}, input.project_id);
     result = {conversation_id: c.conversation_id, current_node: c.current_node, model: c.default_model_slug};
   }
   else if (input.op === "submit") result = await nativeSubmit(page, input);
@@ -35,14 +37,14 @@ try {
     let pending = {...input.pending};
     if (!pending.conversation_id) Object.assign(pending, await discoverSubmission(page, pending));
     if (!pending.conversation_id) result = {completed: false, submitted: false, uncertain: true};
-    else result = {...projectTurn(await nativeRead(page, `/conversation/${pending.conversation_id}`), pending),
+    else result = {...await pollNativeTurn(page, pending),
       conversation_id: pending.conversation_id};
   } else if (input.op === "adopt") {
     const projectId = await resolveProject(page, input.project_name);
     const list = await nativeRead(page, `/gizmos/${projectId}/conversations`, {limit: 40, owned_only: true});
     const matches = [];
     for (const c of (list.items ?? []).slice(0, 12)) {
-      const history = await nativeRead(page, `/conversation/${c.id}`);
+      const history = await nativeRead(page, `/conversation/${c.id}`, {}, projectId);
       for (const n of Object.values(history.mapping ?? {})) {
         const m = n.message;
         if (m?.author?.role === "user" && Math.abs(m.create_time - input.prepared_at_unix) <= 90 &&

@@ -22327,3 +22327,275 @@ current ownership gaps, especially a persistent/deferred helper or
 Frontend↔Backend path whose cost scales with requests, files, outputs or retained
 state. Avoid reopening the dense Config/Niri/CAVA/Audio clusters unless new
 source evidence changes an existing conclusion.
+
+## 95. Round 81 — CalendarSync ICS recurrence allocation + full-link audit (2026-09-30)
+
+### Snapshot, delta and duplicate-ownership audit
+
+- Authoritative `dev` at round start and immediately before this documentation
+  write: `d46f370af8e0adf0769dea1e8d7008304cdae080` (`docs(research): audit FontSync process fan-out`).
+- There are no intervening commits after Round 80; the Round-79 -> Round-80
+  delta is documentation-only.
+- `AGENTS.md`, `to-do/README.md`, Cloud/Local Bot routing and the newest
+  handoff tail were re-read.
+- Existing CalendarSync ownership was searched before promotion. Nearby work is
+  already owned by:
+  - §49.3 count/has date-query specialization;
+  - §49.4 one-pass source-color query;
+  - §57.7 upcoming-sort timestamp reuse;
+  - §61.3 source-update index capture;
+  - §67.1/§68.3 multi-day bucket batching and coverage expansion.
+- No existing handoff item owns `services/calendar_ics.js`,
+  `_expandRecurrence()`, `_advanceDate()` or its per-occurrence Date
+  allocation pattern.
+
+### 95.1 Recurrence expansion can remove one Date clone per iteration and one transient end-Date per processed occurrence — CONFIRMED / P1-P2 periodic ICS parsing
+
+Path:
+
+- `services/calendar_ics.js`, `_expandRecurrence()`.
+
+Current recurrence loop:
+
+1. starts from a local `current = new Date(startDate)`;
+2. for every loop iteration calls
+   `current = _advanceDate(current, freq)`;
+3. `_advanceDate()` immediately clones the input with
+   `const next = new Date(date)`, then mutates that fresh clone with the
+   frequency-specific Date setter;
+4. after UNTIL/horizon checks, constructs
+   `occurrenceEnd = new Date(current.getTime() + duration)`;
+5. compares that Date to the fixed `now` Date to skip past occurrences;
+6. for each retained occurrence constructs the exact same end instant a second
+   time with
+   `new Date(current.getTime() + duration).toISOString()`.
+
+All state involved in those two avoidable allocation classes is invocation-local:
+
+- `current` is not published and has no alias outside `_expandRecurrence()`;
+- `startDate`, `endDate`, `now` and `horizon` are local Date objects;
+- parser output is published only after the expansion result has been built;
+- the existing exported/internal `_advanceDate()` helper can remain unchanged
+  for any hypothetical direct caller.
+
+Strict-safe direction:
+
+1. keep `_advanceDate()` itself unchanged;
+2. inside `_expandRecurrence()`, advance the local `current` object in place
+   using the exact same setter/getter pair for `daily`, `weekly`,
+   `monthly` and `yearly`;
+3. preserve `count++`, UNTIL comparison, horizon comparison and their ordering;
+4. compute
+   `currentTime = current.getTime()` once after those bounds;
+5. compute
+   `occurrenceEndTime = currentTime + duration`;
+6. compare that number with the fixed `now.getTime()` value instead of
+   allocating a Date solely for relational comparison;
+7. only for an occurrence that is actually emitted, construct the single Date
+   still required to produce the exact ISO end string:
+   `new Date(occurrenceEndTime).toISOString()`.
+
+Let:
+
+- `I` = recurrence loop iterations executed before COUNT/UNTIL/horizon stop;
+- `P` = iterations that pass UNTIL/horizon and reach the past-event test;
+- `R` = occurrences actually emitted into `results`.
+
+Current dynamic Date allocations inside the loop are:
+
+- `I` clones in `_advanceDate()`;
+- `P` `occurrenceEnd` objects;
+- `R` second end-Date objects for `toISOString()`;
+
+for **`I + P + R` loop Date allocations**.
+
+The strict-safe direction needs only the `R` Date objects required to format
+retained end timestamps.
+
+Local source-derived reduction:
+
+- loop Date allocations: **`I + P + R -> R`**;
+- removed allocations: **`I + P` per recurring event expansion**;
+- `current.getTime()` for an emitted occurrence: **2 -> 1**;
+- no change to the number of emitted event objects or output strings.
+
+This matters more than a scalar micro-optimization because one source fetch can
+contain many recurring events and each event can iterate repeatedly until
+COUNT, UNTIL or the 90-day horizon terminates expansion.
+
+Strict-lossless proof:
+
+- **daily/weekly/monthly/yearly stepping:** mutating the private `current` Date
+  with the same Date setters yields the same next timestamp as cloning it first
+  and applying those setters; no older `current` identity is retained or read
+  after assignment in the current code;
+- **DST/month-end/year-end behavior:** the exact local-time Date setters remain
+  unchanged, so JavaScript Date normalization and DST behavior are unchanged;
+- **ordering/ties:** iteration count, stop checks, push order and recurrence UID
+  suffixes remain unchanged;
+- **COUNT/UNTIL/horizon:** all comparisons stay at the same point relative to
+  `count++` and before the past-event test;
+- **past-event test:** Date relational comparison is numeric time-value
+  comparison; comparing the already-computed end timestamp number to
+  `now.getTime()` preserves the same result, including `NaN` comparison
+  behavior;
+- **malformed/invalid dates:** a non-finite end timestamp still reaches
+  `new Date(...).toISOString()` on the same emitted path and therefore throws
+  where the current second Date conversion throws; CalendarSync's surrounding
+  parser try/catch retains the same source-level parse-error behavior;
+- **base event/output identity:** each emitted event remains the same
+  `Object.assign({}, baseEvent, {...})` fresh object;
+- **callback/signal behavior:** no QML property, signal, callback or cache
+  publication occurs inside this local date arithmetic;
+- **fresh arrays:** `results` remains the same fresh array with identical
+  element order and object count;
+- **process/IPC/network behavior:** curl sequencing, source status publication,
+  cache writes, errors and fetch signals are untouched.
+
+Classification: **CONFIRMED / P1-P2 periodic ICS parsing**.
+
+### 95.2 CalendarSync fetch-staging concat is real copy amplification but is not strict-lossless under current QML publication semantics — CONDITIONAL / not counted
+
+Path:
+
+- `services/CalendarSync.qml`, per-source success path.
+
+After every successful source parse the service currently does:
+
+`root._fetchedEvents = root._fetchedEvents.concat(parsed)`.
+
+Because `parseICS()` builds a dense plain array using `events.push(...)`, this
+creates a new accumulated array after every source. With source sizes
+`n1..nS`, total array-element placements scale as the cumulative sums rather
+than one append per event.
+
+However `_fetchedEvents` is a QML `property var`, not a lexical/private JS
+variable. Every concat assignment currently publishes a fresh array and can
+emit its generated property-change signal. Replacing it with in-place
+`push()` would change:
+
+- fresh-array identity after each source;
+- `_fetchedEventsChanged` notification behavior;
+- what any current/future QML/plugin observer could read at those boundaries.
+
+The repository has no current external consumer, but the strict-lossless
+contract explicitly preserves property publication and observable signal
+semantics. Therefore the tempting `concat -> push` optimization is
+**CONDITIONAL / not promoted** unless this staging property is first made an
+explicit non-observable implementation detail under a separately accepted
+contract.
+
+### 95.3 CalendarSync Frontend ↔ Backend contract trace
+
+Current linkage was traced across both Settings families and visible calendar
+consumers:
+
+`Settings controls`
+→ `Config.setNestedValue(calendar.externalSync.*)`
+→ feature-gated `CalendarSync` materialization
+→ source filtering / sequential fetch state
+→ one `curl` process per enabled source
+→ raw ICS accumulation
+→ `calendar_ics.js::parseICS()`
+→ recurrence expansion / normalized event objects
+→ per-source status updates
+→ final `events` publication
+→ `eventsUpdated()` / `fetchFinished()`
+→ Sidebar/Dashboard/Waffle calendar/event consumers
+→ cache JSON persistence.
+
+Verified interaction/lifecycle points:
+
+- Material/ii Settings enable switch writes the exact boolean config field.
+- Both Material and native Waffle Settings refresh-interval controls write the
+  same `calendar.externalSync.refreshMinutes` machine value.
+- Timer cadence is derived from the normalized positive rounded minutes value.
+- Add Source in Material Settings requires non-empty trimmed name and URL and
+  calls `CalendarSync.addSource()`.
+- Per-source enable toggles call `toggleSource()`; disabling immediately
+  removes that source's currently published events and enabling schedules a
+  refresh.
+- Remove calls `removeSource()`, persists the source-list mutation and removes
+  that source's published events.
+- Full fetches are serialized: one curl child at a time.
+- A source-list change during a fetch sets `_sourcesRefreshPending`; the old
+  partial result is not published as a successful new full snapshot and a new
+  fetch is scheduled.
+- Disabling external sync stops the active fetch process, clears published
+  external events and emits the expected update/finished state.
+- Empty responses, curl failures and parser exceptions are surfaced into
+  `sourceStatuses`/error signaling rather than presented as success.
+- Final events publication occurs only after the current source sequence
+  completes.
+- Calendar consumers react through `eventsUpdated()`-driven trigger
+  properties before rerunning their existing date-query paths.
+
+No parser optimization above changes any of those boundaries.
+
+### 95.4 Correctness prerequisite: native Waffle Settings cannot manage calendar source URLs — separate from optimization
+
+Paths:
+
+- `modules/settings/ServicesConfig.qml`;
+- `modules/waffle/settings/pages/WGeneralPage.qml`;
+- `waffleSettings.qml`;
+- `defaults/config.json`;
+- `services/CalendarSync.qml`.
+
+Material Settings exposes:
+
+- add source;
+- choose source color;
+- per-source enable/disable;
+- remove source;
+- source error status.
+
+Native Waffle `WGeneralPage` currently exposes only:
+
+- external-sync enable;
+- refresh interval;
+- upcoming-event display options.
+
+Repository search finds no Waffle-native caller of
+`CalendarSync.addSource()`, `removeSource()` or `toggleSource()`.
+
+This matters because:
+
+- `waffles.settings.useMaterialStyle` defaults to **false**;
+- when Waffle family uses that default, Settings routes to
+  `waffleSettings.qml` / `WGeneralPage`, not Material
+  `ServicesConfig.qml`.
+
+Therefore a Waffle-default user can enable external sync but cannot add/manage
+ICS source URLs from the native Waffle Settings surface unless sources were
+already configured elsewhere.
+
+Classification: **correctness/product-contract prerequisite; not a performance
+finding and not counted**.
+
+Any future fix must preserve the same CalendarSync backend keys and operations
+rather than implementing a second source-management backend.
+
+### 95.5 Round-81 conclusion / next checkpoint
+
+New strict-lossless optimization groups: **one**:
+
+- Calendar ICS recurrence Date-allocation reduction
+  (§95.1, **CONFIRMED / P1-P2 periodic parsing**).
+
+Not counted:
+
+- fetch-staging concat mutation (§95.2, **CONDITIONAL** because QML fresh-array
+  publication is observable);
+- native Waffle calendar-source management gap (§95.4, correctness prerequisite).
+
+No runtime/product/native/script code was modified and no deterministic local
+job was required.
+
+Next audit should re-fetch current `dev`, reconcile concurrent commits and
+rotate outside CalendarSync query/UI work, which already has dense ownership.
+Prefer another under-covered persistent/deferred process or filesystem boundary
+with request-scaled work. AppCatalog package-state probing, Autostart
+file/reconciliation behavior, ShellUpdates update-status transport, or another
+service with a concrete production cost are reasonable next areas, subject to
+duplicate-ownership search first.

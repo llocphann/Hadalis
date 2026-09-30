@@ -23739,3 +23739,206 @@ rotate away from Waffle Task View/tray/Overview ownership. Prefer another
 frequently-reactive UI collection whose exact result is private to one binding
 or one request, or a parser completion path whose intermediate arrays have not
 already been claimed.
+
+## 101. Round 87 — QuickWallpaper ctime/path parse audit + Round-86 concurrent-commit reconciliation (2026-09-30)
+
+### 101.0 Snapshot correction and concurrent automation reconciliation
+
+- Authoritative `dev` immediately before this write:
+  `e76b89ce8b858ad238c49609dd41a77cef937814`
+  (`docs(research): audit WMenu width allocation`).
+- A branch compare from Round-85 checkpoint
+  `476a0224ed34ecbcfec430031b513afb9d6da7b4`
+  to Round-86 commit proves that one concurrent implementation commit landed
+  **between** the Round-85 checkpoint and the Round-86 documentation commit:
+  `7f01f6e6c57f65c9ba9d095205bd07febf1b52fa`
+  (`fix(automation): commit profile and runtime state atomically`).
+- Therefore Round 86's sentence saying no runtime/product commit intervened was
+  temporally inaccurate. This section is the canonical correction.
+- The concurrent commit touches only:
+  - `automation/manager/store.py`;
+  - `docs/AUTOMATION_ARCHITECTURE.md`;
+  - `scripts/test-hadalis-automation-storage.py`;
+  - `to-do/cloud-bot/AUTOMATION.md`.
+- It does **not** touch `WMenu.qml`, `WMenuItem.qml`,
+  QuickWallpaper, Niri/Tray/TaskView code or any Round-86 proof input.
+  Therefore §100.1 remains valid.
+
+The automation delta was audited before continuing optimization research.
+
+Its storage contract intentionally adds:
+
+- parent-directory fsync after every atomic replacement;
+- a private `transaction.json` journal as the config/state pair commit point;
+- recovery under `manager.lock` before normal manager reads;
+- durable session/checkpoint/response/recovery identity fields;
+- crash-injection tests around config, state and journal-cleanup boundaries.
+
+Do **not** optimize away these extra writes/fsyncs merely because they increase
+normal-path I/O. They are new crash-consistency semantics, not redundant work.
+Any future automation optimization must preserve the exact transaction/recovery
+contract and the “never resend an ambiguous prompt” architecture.
+
+No automation optimization group is counted in this round.
+
+### 101.1 QuickWallpaper can parse each find row once before sort instead of splitting/parsing inside every comparator call — CONFIRMED / P2 sidebar-open wallpaper scan
+
+Path:
+
+- `modules/sidebarLeft/widgets/QuickWallpaper.qml`.
+
+Current scan command is one direct `find` process:
+
+```
+find <wallpapersPath> -maxdepth 1 -type f (...) -printf "%C@\t%p\n"
+```
+
+The process runs:
+
+- once when the QuickWallpaper component completes;
+- again whenever Sidebar Left transitions open.
+
+Current stdout normalization:
+
+```qml
+const lines = data.trim().split("\n").filter(l => l.length > 0)
+
+lines.sort((a, b) => {
+    const timeA = parseFloat(a.split("\t")[0])
+    const timeB = parseFloat(b.split("\t")[0])
+    return timeB - timeA
+})
+
+root.wallpapersList =
+    lines.map(l => l.split("\t")[1]).filter(p => p && p.length > 0)
+```
+
+For N nonempty rows and C comparator invocations, the current path performs:
+
+- **2C** full tab-splits during sorting;
+- **2C** `parseFloat()` calls during sorting;
+- **N** additional tab-splits during final path mapping;
+- one N-element mapped path staging array before final filtering.
+
+Because comparison count grows with sorting work, repeated parsing scales with
+the sort rather than only with the number of rows.
+
+Strict-safe direction:
+
+1. keep the existing
+   `data.trim().split("\n").filter(l => l.length > 0)`
+   expression unchanged;
+2. before sorting, walk that fresh unpublished `lines` array once and replace
+   each string slot with one local record containing:
+   - the same numeric ctime that
+     `parseFloat(line.split("\t")[0])` would return;
+   - the exact value that
+     `line.split("\t")[1]` would return;
+3. derive both fields with index scans/slices rather than `split("\t")`;
+4. sort those records with the exact comparator
+   `b.time - a.time`;
+5. after sorting, build one fresh final path array by appending only records
+   whose cached path satisfies the same
+   `p && p.length > 0` predicate;
+6. assign `root.wallpapersList` once, exactly where it is assigned today.
+
+Exact second-field extraction matters. The current parser does **not** mean
+“everything after the first tab”. To preserve malformed/path edge behavior:
+
+- no tab:
+  - ctime token = whole line;
+  - path = `undefined`;
+- one tab:
+  - ctime token = text before the tab;
+  - path = all remaining text;
+- two or more tabs:
+  - path = only the substring between the first and second tab;
+  - all later tab-separated content is ignored by current `split()[1]`;
+- leading/consecutive/trailing tabs preserve the same empty-string fields.
+
+An index-based equivalent can therefore use the first and, if present, second
+tab positions to reproduce exactly those two split fields without allocating a
+split array.
+
+Strict-lossless proof:
+
+- **process lifecycle:** the direct `find` command, argv, stdout stream,
+  process count, cancellation and scan triggers are unchanged;
+- **line normalization:** `trim()`, newline split and nonempty-row filtering
+  remain byte-for-byte the same operations and ordering;
+- **ctime conversion:** each immutable stdout row produces the exact same first
+  tab field and runs the same `parseFloat` conversion;
+- **sort comparator values:** every comparison receives the same
+  `timeB - timeA` numeric result as current code. Caching only removes repeated
+  pure parsing of immutable strings;
+- **NaN/ties:** malformed ctime rows produce the same `NaN`; equal/tied
+  timestamps return the same zero comparator result. Initial row order and the
+  runtime's sort implementation are unchanged;
+- **path semantics:** cached path reproduces exactly `split("\t")[1]`,
+  including undefined/empty/multiple-tab cases;
+- **path filtering:** the same truthy + positive-length predicate runs after
+  sorting;
+- **publication:** `wallpapersList` still receives one fresh array, once,
+  after the complete scan/sort;
+- **visible ordering/random selection:** the same path strings in the same order
+  are published, so ListView order and random-index behavior are unchanged;
+- **QML dependencies:** all optimized work is local processing of Process stdout;
+  no Config/service/QObject property-read count is changed.
+
+Local source-derived reduction for N rows and C sort comparisons:
+
+- tab-split arrays: **2C + N -> 0**;
+- `parseFloat` calls: **2C -> N**;
+- N-element final mapped-path staging array: **1 -> 0**;
+- final published path array: unchanged, one;
+- `find` processes: unchanged;
+- filesystem enumeration: unchanged.
+
+The candidate introduces one small local record per nonempty row to cache ctime
+and path, but removes comparator-proportional split arrays and repeated numeric
+parsing. For larger wallpaper directories, that is a materially better
+allocation/CPU shape than reparsing both operands on every sort comparison.
+
+Classification:
+**CONFIRMED / P2 sidebar-open wallpaper scan**.
+
+### 101.2 QuickWallpaper scan cadence and source command are intentionally unchanged
+
+Nearby alternatives were considered and rejected for this strict round:
+
+- do not suppress the Sidebar-open rescan: that changes filesystem freshness;
+- do not replace direct `find` with a retained directory cache without a
+  file-watch/staleness contract;
+- do not change ctime to mtime;
+- do not fix tab/newline-containing filenames while claiming a pure
+  optimization, because that changes currently observable malformed-path
+  behavior;
+- do not rewrite the scan in Rust merely to remove one demand-driven `find`
+  process. The current material source-proven cost is repeated JS comparator
+  parsing, and the same-language local fix removes it without a new deployment
+  surface.
+
+Rust classification:
+**RUST NOT JUSTIFIED** for this path at current evidence.
+
+### 101.3 Round-87 conclusion / next checkpoint
+
+New strict-lossless optimization groups: **one**:
+
+- QuickWallpaper one-time ctime/path row decoration before sort
+  (§101.1, **CONFIRMED / P2 sidebar-open scan**).
+
+Concurrent reconciliation:
+
+- automation commit `7f01f6e...` is preserved;
+- its durability/fsync/journal semantics are not classified as redundant work;
+- Round-86 WMenu finding remains valid.
+
+No runtime/product/native/script code was modified and no deterministic local
+job was required.
+
+Next audit should re-fetch current `dev`, reconcile any new commits, then
+rotate away from QuickWallpaper. Prefer another reactive parser/model path whose
+intermediate work scales with list size and is private to one binding/request.
+Avoid already-owned Overview/TaskView/Tray/Weather/AI/Wallhaven clusters unless
+new source evidence changes their current classification.

@@ -22842,3 +22842,324 @@ rotate away from AppCatalog. Prefer another under-covered production helper,
 persistent daemon, file-backed service or Frontend↔Backend boundary whose work
 scales with records/files/processes. Avoid ShellUpdates/Autostart/CalendarSync
 query paths unless new evidence changes their existing ownership.
+
+## 97. Round 83 — Markdown Todo helper allocation and native-runtime audit (2026-09-30)
+
+### Snapshot, ownership and production-path boundary
+
+- Authoritative `dev` at round start and immediately before this documentation
+  write: `f58895d13131f9be3bf63a575ec08a852945884d`
+  (`docs(research): audit AppCatalog installed parsing`).
+- No runtime/product commit intervened after Round 82.
+- Existing handoff ownership was searched for
+  `DailyNoteTodoBackend.qml`, `ObsidianTodoBackend.qml`,
+  `obsidian_daily_todo.py`, `obsidian_todo.py`,
+  `obsidian_tasks.py`, `_find_task()` and native Todo/Rust ownership.
+- Existing nearby ownership is narrower:
+  - §67.4 preserves ObsidianTodoBackend's second QML-side task lookup across the
+    asynchronous capability boundary because it is stale-reference
+    revalidation;
+  - Round 56 already checked DailyNoteTodoBackend's QML lookup and found no
+    duplicated local reconciliation scan.
+- No prior item owns the Python helper's internal `_find_task()` list
+  materialization or a native implementation of the Markdown Todo helpers.
+- The default Todo backend remains internal. The helper paths below are
+  production-capable but apply when the Obsidian/Markdown backend is explicitly
+  selected or staged during setup/migration; do not describe them as default
+  startup cost.
+
+Current normal Markdown linkage:
+
+`Todo UI / Todo facade`
+→ `DailyNoteTodoBackend`
+→ one-shot `/usr/bin/python3 scripts/todo/obsidian_daily_todo.py`
+→ imported `obsidian_todo.py` core
+→ canonical Markdown read / SHA preconditions / task parse
+→ optional atomic filesystem mutation
+→ compact JSON stdout
+→ QML source-key validation
+→ `list`, metadata and readiness publication
+→ Todo consumers.
+
+Legacy managed-note linkage is similar through
+`ObsidianTodoBackend -> obsidian_todo.py`. Tasks-aware rich mutation adds
+`obsidian_tasks.py -> already-running Obsidian CLI` after capability and
+process-safety checks.
+
+### 97.1 Helper task lookup can preserve full parse/error traversal without materializing two task-reference lists — CONFIRMED / P2 toggle/delete
+
+Paths:
+
+- `scripts/todo/obsidian_todo.py`, `_find_task()`;
+- `scripts/todo/obsidian_daily_todo.py`, `_find_task()`.
+
+Both helpers currently use the same structural pattern:
+
+```python
+matches = [task for task in _tasks(...) if task["id"] == task_id]
+if len(matches) != 1:
+    raise ...("conflict", "task reference is stale or ambiguous")
+return matches[0]
+```
+
+That performs two separate list materializations before a toggle/delete can use
+one task:
+
+1. `_tasks(...)` constructs a list containing every parsed task dictionary in
+   the managed section / configured daily heading;
+2. the list comprehension constructs a second list containing matching task
+   dictionary references.
+
+A tempting early-exit implementation at the second match is **not** selected
+for this strict finding. The current implementation parses the complete section
+before checking ambiguity, so stopping early could suppress a later parse/error
+side effect if future parser behavior becomes stricter.
+
+Exact-safe direction:
+
+- keep the same section traversal from first relevant line through the same end
+  boundary;
+- call the exact current per-line task parser in the exact current order;
+- for DailyNote, keep the exact group-heading state transition before each
+  `_task_from_line()` call;
+- maintain only:
+  - `first_match = None`;
+  - `match_count = 0`;
+- whenever a parsed task has the requested ID, increment the count and retain
+  the first matching task object;
+- **do not stop early**;
+- after the full traversal, return the retained first object only when
+  `match_count == 1`; otherwise raise the exact existing conflict code/message.
+
+Strict-lossless proof:
+
+- **line/property-read order:** every line is still visited in source order and
+  passed through the same parsing helpers;
+- **daily grouping:** heading/group updates occur in the same order and affect
+  the same following task lines;
+- **malformed input/error behavior:** no early exit is introduced, so any parser
+  exception reachable after an earlier matching ID is still reachable;
+- **duplicate/ambiguous IDs:** zero, one and multiple matching IDs produce the
+  same result/error; first-match identity is retained only for the one-match
+  case;
+- **task object shape:** the returned object is still the exact dictionary
+  produced by the existing per-line parser, including private `_index` and
+  `_match` fields required by mutation;
+- **hash/ID semantics:** source line, raw-line hash and truncated ID generation
+  are unchanged;
+- **mutation ordering:** document/SHA precondition checks remain before lookup,
+  and atomic write/re-scan remains after lookup;
+- **stdout/exit behavior:** CLI JSON, TodoError code/message and process exit
+  codes remain unchanged;
+- **filesystem/publication:** no file or QML publication behavior changes.
+
+For N parsed task rows and M matching IDs:
+
+- task dictionaries constructed: unchanged, N;
+- full `_tasks` result-list slots: **N -> 0**;
+- `matches` list slots: **M -> 0**;
+- section traversal/predicate count: unchanged;
+- final returned object/error: unchanged.
+
+This is intentionally narrower than rewriting task parsing around ID-only
+fields; the latter could change parser/error behavior.
+
+Classification: **CONFIRMED / P2 toggle/delete interaction**.
+
+### 97.2 One-shot Markdown Todo helpers have a material native benchmark case, but not a confirmed Rust migration — RUST BENCHMARK REQUIRED
+
+Paths:
+
+- `services/DailyNoteTodoBackend.qml`;
+- `services/ObsidianTodoBackend.qml`;
+- `scripts/todo/obsidian_daily_todo.py`;
+- `scripts/todo/obsidian_todo.py`;
+- `native/inir-native`;
+- `scripts/native-dispatch`;
+- Nix/Arch native-backend packaging.
+
+Current language/runtime ownership:
+
+- normal Markdown daily scan: one new Python interpreter;
+- normal Markdown add/toggle/delete: one new Python interpreter per mutation;
+- daily helper imports the shared `obsidian_todo.py` module on every process
+  invocation;
+- legacy managed-note scan/mutation directly starts the shared Python helper;
+- helpers are one-shot and do not remain resident;
+- normal daily/basic helpers do not spawn additional children internally;
+- successful mutations already return a fresh scan payload, so there is no
+  unconditional second Python process merely to re-read the just-written note.
+
+Therefore the native opportunity is **not** a process-count reduction:
+one Python helper process would become one native helper process. The potential
+benefit is removal of interpreter/module startup plus lower parser/allocation
+overhead for request/file-change-triggered scans and interactions. That benefit
+is architectural expectation until measured.
+
+Why this is a legitimate benchmark candidate:
+
+- helper invocation sits directly behind user-visible Todo mutations;
+- active Markdown-note mode also scans on initial activation and debounced
+  canonical file changes;
+- daily helper loads its own parser plus the shared core module on every
+  one-shot invocation;
+- parsing includes Markdown line/fence handling, regex matching, SHA-256,
+  JSON serialization and filesystem metadata work;
+- the repository already ships `inir-native` on both Nix and Arch paths, so a
+  Todo subcommand could extend an existing installed binary rather than require
+  a fifth native executable.
+
+Why same-language/persistent-worker changes are not preferred first:
+
+- a persistent Python worker would add resident interpreter memory and a new
+  lifecycle/reconnect protocol;
+- keeping parsed note state across operations conflicts with the current
+  filesystem-canonical model and external-editor conflict detection;
+- mutation and scan cannot simply be coalesced further: the current mutation
+  already returns the fresh post-write payload;
+- cross-request caching of document hashes/parsed rows risks weakening the
+  exact read-before-write/revalidation semantics.
+
+Native compatibility surface is substantial. Any Rust implementation must
+preserve at least:
+
+- current CLI command names and argv validation;
+- success JSON schema and machine keys;
+- UTF-8 JSON encoding with non-ASCII content preserved;
+- exit code **0** on success, **2** for domain/TodoError failures and **3** for
+  unexpected internal failures;
+- exact domain error codes/messages relied on by QML;
+- vault-relative path normalization and symlink/escape rejection;
+- filesystem-root rejection;
+- UTF-8 BOM behavior;
+- LF/CRLF/CR detection and final-newline semantics;
+- fenced-code exclusion and blockquote-aware Markdown parsing;
+- exact checkbox/list-marker/status recognition;
+- task ID derivation from note path, physical source line and SHA-256 raw-line
+  digest, including the 24-character truncation;
+- all-day/daily-note path and heading resolution semantics;
+- expected-document / expected-section / expected-internal SHA preconditions;
+- stale/ambiguous task rejection;
+- rich-task refusal on the basic managed-note path;
+- file mode preservation;
+- same-directory temporary-file creation;
+- file-content revalidation immediately before replacement;
+- file fsync, atomic replace and parent-directory fsync behavior;
+- migration-backup naming, collision verification and source revalidation;
+- stdout-only compact JSON result behavior;
+- no unexpected stderr contract changes;
+- QML 5s/8s/11s process watchdog cancellation behavior;
+- no stale result application after source/vault/note changes.
+
+Important native-runtime gap:
+
+- current `inir-native` generic error path exits **1**;
+- Todo's Python CLI distinguishes expected domain errors (**2**) from internal
+  failures (**3**).
+
+A Todo native subcommand would therefore need an outcome/exit-code design akin
+to the existing native Niri command path rather than using the generic
+`anyhow` error exit unchanged.
+
+Packaging implications:
+
+- no new binary is inherently required because Nix and Arch already install
+  `inir-native`;
+- the Cargo lock/dependency surface may still grow for exact SHA-256/filesystem
+  functionality and must be reviewed;
+- Python fallback should remain until parity corpus and performance comparison
+  justify changing production ownership;
+- QML currently invokes `/usr/bin/python3` directly, so routing through native
+  dispatch/fallback would itself require parity tests for start-failure and
+  cancellation behavior.
+
+Required benchmark:
+
+- cold and warm process wall time for scan on small/medium/large representative
+  Markdown notes;
+- CPU time and peak RSS/PSS;
+- add/toggle/delete latency including fsync;
+- bytes read/written and syscall count where practical;
+- repeated external-file-change scan workload;
+- Python current path versus a parity-complete native one-shot path.
+
+Rust classification:
+**RUST BENCHMARK REQUIRED**, not `RUST CONFIRMED BENEFICIAL`.
+
+No fixed percentage is claimed.
+
+### 97.3 Tasks-aware Obsidian bridge should not be folded into the Rust recommendation from source shape alone — RUST NOT JUSTIFIED
+
+Path:
+
+- `scripts/todo/obsidian_tasks.py`.
+
+The rich Tasks bridge has a different dominant contract:
+
+- scans `/proc` identities to prove an Obsidian desktop is already running;
+- detects registered CLI path;
+- serializes access with a timed `flock`;
+- invokes the external Obsidian CLI for capability/eval/mutation operations;
+- owns CLI stdout/stderr parsing, timeout mapping and safety policy.
+
+Moving this orchestration to Rust would still leave the Obsidian CLI process
+and its application/plugin work as the dominant external boundary, while
+greatly increasing parity surface around process detection, locks, Flatpak
+identity, subprocess timeout/error mapping and eval output.
+
+Do not bundle `obsidian_tasks.py` into a broad “rewrite Todo in Rust” task.
+
+Classification: **RUST NOT JUSTIFIED at current source evidence**.
+Revisit only if measurements show Python orchestration itself is material
+relative to the external CLI.
+
+### 97.4 Frontend ↔ Backend lifecycle verification
+
+The audited mutation path preserves important lifecycle behavior:
+
+- Todo facade resolves backend ownership before dispatch;
+- QML rejects not-ready/busy/stale task operations before starting helpers where
+  applicable;
+- DailyNote captures a source key at process launch and rejects stale results
+  after configuration/date changes;
+- managed-note backend separately captures vault/note identity for scan,
+  capability and mutation;
+- file watchers debounce external edits;
+- domain conflicts queue/retrigger authoritative refresh instead of presenting
+  mutation success;
+- expected hashes protect against external editor races;
+- mutation helpers atomically replace only after final content revalidation;
+- successful mutations return fresh canonical scan payloads;
+- rich Tasks fallback occurs only after live capability state proves it is
+  available;
+- the second QML task lookup after capability probing remains intentionally
+  untouched because §67.4 owns it as stale-reference revalidation.
+
+No finding above changes watcher cadence, helper count, cancellation, conflict
+resolution or publication ordering.
+
+### 97.5 Round-83 conclusion / next checkpoint
+
+New strict-lossless optimization groups: **one**:
+
+- allocation-light full-traversal helper task lookup
+  (§97.1, **CONFIRMED / P2 interaction**).
+
+New language/runtime classification:
+
+- daily/basic Markdown one-shot native replacement:
+  **RUST BENCHMARK REQUIRED** (§97.2);
+- Tasks/Obsidian-CLI bridge:
+  **RUST NOT JUSTIFIED** (§97.3).
+
+No runtime/product/native/script code was modified and no local deterministic
+job is submitted yet. A useful native benchmark requires a parity-complete
+candidate implementation or harness; timing only the existing Python path would
+not establish migration benefit.
+
+Next audit should re-fetch current `dev`, reconcile concurrent commits and
+rotate away from Todo. Prefer an under-covered persistent daemon/event stream,
+filesystem-backed service, or secondary Frontend↔Backend feature with
+production-scale work. Continue to avoid already-owned Config/Niri/Calendar/
+Autostart/ShellUpdates clusters unless new source evidence changes their
+classification.

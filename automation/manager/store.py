@@ -72,6 +72,7 @@ def profile_state() -> dict:
         "pending": None, "request": None, "status_detail": "",
         "active_project_name": "",
         "command_seq": 0, "park_requested": False, "parked_pending": False,
+        "remove_requested": False,
     }
 
 
@@ -152,6 +153,14 @@ def event(state: dict, profile_id: str | None, kind: str, detail: str = "") -> N
         "at_unix": int(time.time()), "profile_id": profile_id,
         "kind": kind[:64], "detail": detail[:4000],
     }])[-EVENT_LIMIT:]
+
+
+def archive_removed_profile(profile: dict, item: dict) -> Path:
+    """Keep a private recovery copy before confirmed removal of a live run."""
+    path = state_dir() / "removed-profiles" / f"{time.time_ns()}.json"
+    _write(path, {"profile": profile, "runtime": item,
+                  "removed_at_unix": int(time.time())})
+    return path
 
 
 @contextmanager

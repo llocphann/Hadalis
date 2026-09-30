@@ -97,8 +97,8 @@ def main() -> None:
                        for e in runtime["events"])
 
             with patch.object(control, "service_states", return_value=service_snapshot()):
-                error(lambda: control.remove_profile("strict-lossless-research"),
-                      "built-in profile")
+                control.remove_profile("strict-lossless-research")
+            assert "strict-lossless-research" not in store.read_snapshot()[1]["profiles"]
 
             store.change_state(lambda _config, state: store.event(
                 state, None, "detailed_error", "E" * 2200))
@@ -113,6 +113,11 @@ def main() -> None:
         assert module.main(["logs"]) == {"ok": True, "text": "sample"}
     with patch.object(module.diagnostics, "export_report", return_value="/tmp/sample"):
         assert module.main(["logs-export"]) == {"ok": True, "path": "/tmp/sample"}
+    with patch.object(module.control, "remove_profile", return_value={"ok": True}) as remove:
+        module.main(["profile-remove", "active", "confirm-unresolved"])
+        remove.assert_called_once_with("active", True)
+    error(lambda: module.main(["profile-remove", "active", "not-confirmed"]),
+          "invalid removal confirmation")
 
     print("PASS: inline removal, stale lease guard, private diagnostics, and copy/export contracts")
 

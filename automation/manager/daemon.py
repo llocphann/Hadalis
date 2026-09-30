@@ -11,7 +11,8 @@ import time
 
 from automation.chat_bridge.protocol import DirectiveKind, parse_loop_directive
 from automation.manager.model import choose_profile, effective_prompt, limit_decision
-from automation.manager.store import change_state, event, read_snapshot, state_dir, state_path
+from automation.manager.store import (archive_removed_profile, change, change_state,
+                                      event, read_snapshot, state_dir, state_path)
 
 ROOT = Path(__file__).resolve().parents[2]
 DESKTOP_CLI = ROOT / "automation/chat_bridge/desktop_cli.mjs"
@@ -295,7 +296,8 @@ def _poll(config: dict, state: dict, owner: str, now: int) -> None:
             current_item["pending"]["poll_after_unix"] = now + delay
             current_item["last_error"] = str(exc)[:2000]
             current_item["status"] = "transport_unavailable"
-            if current_item["poll_errors"] > _profile(current_config, owner)["max_poll_errors"]:
+            if (current_item["desired"] == "run" and
+                    current_item["poll_errors"] > _profile(current_config, owner)["max_poll_errors"]):
                 current_item["desired"] = "paused"
             event(current, owner, "stream_poll_failure", current_item["last_error"])
         change_state(failed)
@@ -498,6 +500,34 @@ def _handle_park_request(config: dict, state: dict, owner: str, now: int) -> boo
     return True
 
 
+def _handle_removals(config: dict, state: dict) -> bool:
+    ids = [p["id"] for p in config["profiles"]
+           if state["profiles"][p["id"]].get("remove_requested")]
+    if not ids:
+        return False
+
+    def remove(current_config: dict, current: dict):
+        for profile_id in ids:
+            item = current["profiles"].get(profile_id)
+            if not item or not item.get("remove_requested"):
+                continue
+            profile = _profile(current_config, profile_id)
+            # Archive first: a failed write must leave ownership and pending
+            # state intact. This operation never navigates or cancels a chat.
+            path = archive_removed_profile(profile, item)
+            current_config["profiles"] = [p for p in current_config["profiles"]
+                                          if p["id"] != profile_id]
+            current["profiles"].pop(profile_id)
+            if current["owner_id"] == profile_id:
+                current["owner_id"] = None
+            if current.get("requested_profile_id") == profile_id:
+                current["requested_profile_id"] = None
+            event(current, profile_id, "removed",
+                  f"ChatGPT history retained; recovery copy: {path}")
+    change(remove)
+    return True
+
+
 def _heartbeat(state: dict, now: int) -> None:
     state["manager_heartbeat_at_unix"] = now
     state["command_ack_seq"] = state["command_seq"]
@@ -550,6 +580,8 @@ def tick(now: int | None = None) -> None:
     if issues:
         change_state(lambda _config, current: _configuration_problem(current, issues))
         return  # Do not execute malformed profiles.
+    if _handle_removals(config, state):
+        return
     owner = state["owner_id"]
     if owner is not None and state["profiles"][owner].get("park_requested"):
         _handle_park_request(config, state, owner, now)

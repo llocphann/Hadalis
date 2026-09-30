@@ -22,6 +22,7 @@ ContentPage {
     property bool reloadDraftOnce: false
     property string errorText: ""
     property string pendingRemoveId: ""
+    property bool pendingRemoveUnresolved: false
     property string pendingParkOwnerId: ""
     property string pendingCleanupScope: ""
     property string pendingCleanupField: ""
@@ -87,6 +88,7 @@ ContentPage {
 
     function cancelConfirmation(): void {
         root.pendingRemoveId = ""
+        root.pendingRemoveUnresolved = false
         root.pendingParkOwnerId = ""
         root.pendingCleanupScope = ""
         root.pendingCleanupField = ""
@@ -102,22 +104,25 @@ ContentPage {
             root.setProfile(field, true, true)
     }
 
-    function confirmRemoval(): void {
-        const id = root.selectedProfileId
+    function confirmRemoval(profileId = root.selectedProfileId): void {
+        const id = profileId
         if (!id || root.busy) return
-        if (root.snapshot?.runtime?.owner_id === id
-            && (root.selectedState?.desired !== "stopped" || root.selectedState?.pending !== null)) {
-            root.errorText = Translation.tr("Stop the profile and finish its current response before removing it.")
-            return
-        }
+        root.selectedProfileId = id
+        const item = root.snapshot?.runtime?.profiles?.[id]
+        root.pendingRemoveUnresolved = root.snapshot?.runtime?.owner_id === id
+            || (!!item?.pending && !item?.parked_pending)
         root.pendingRemoveId = id
     }
 
     function applyRemoval(): void {
         const id = root.pendingRemoveId
+        const unresolved = root.pendingRemoveUnresolved
         root.cancelConfirmation()
-        if (id && id === root.selectedProfileId)
-            root.runAction(["profile-remove", id])
+        if (id && id === root.selectedProfileId) {
+            const args = ["profile-remove", id]
+            if (unresolved) args.push("confirm-unresolved")
+            root.runAction(args)
+        }
     }
 
     function confirmParkBlockedOwner(): void {
@@ -415,6 +420,7 @@ ContentPage {
                         StyledText { Layout.fillWidth: true; text: root.statusLabel(profileRow.run.parked_pending ? profileRow.run.status : (profileRow.modelData.enabled ? profileRow.run.status : "disabled")); font.pixelSize: Appearance.font.pixelSize.smaller; color: Appearance.colors.colSubtext }
                     }
                     DialogButton { buttonText: Translation.tr("Edit"); onClicked: root.selectedProfileId = profileRow.modelData.id }
+                    DialogButton { buttonText: Translation.tr("Remove"); enabled: !root.busy; onClicked: root.confirmRemoval(profileRow.modelData.id) }
                 }
             }
             Flow {
@@ -473,7 +479,7 @@ ContentPage {
             SettingsNote {
                 visible: root.snapshot?.runtime?.owner_id === root.selectedProfileId
                     && root.selectedState?.desired !== "stopped"
-                text: Translation.tr("Stop this profile first. Wait for its current response to finish.")
+                text: Translation.tr("Stop waits for the current response. Remove stops tracking this profile and keeps ChatGPT history.")
             }
             SettingsNote {
                 visible: !!root.selectedState?.status_detail
@@ -515,7 +521,9 @@ ContentPage {
             SettingsNote {
                 visible: root.pendingRemoveId === root.selectedProfileId
                 warning: true
-                text: root.selectedState?.parked_pending
+                text: root.pendingRemoveUnresolved
+                    ? Translation.tr("Remove this profile and stop tracking its current response? A private recovery copy is saved. ChatGPT history stays.")
+                    : root.selectedState?.parked_pending
                     ? Translation.tr("Remove this profile and parked recovery state? ChatGPT history stays.")
                     : Translation.tr("Remove this profile? ChatGPT history stays.")
             }

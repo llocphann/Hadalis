@@ -1,13 +1,14 @@
 from __future__ import annotations
 
 import json
+import fcntl
 import subprocess
 import time
 
 from .model import (CUSTOM_CONTINUATION_PROMPT, CUSTOM_ROTATION_PROMPT,
                     DEFAULT_ID, MAX_PROFILES, MAINTENANCE_DEFAULTS, PROFILE_DEFAULTS,
                     default_prompt, new_profile, update_profile)
-from .store import change, change_state, event, profile_state, read_snapshot
+from .store import change, change_state, event, profile_state, read_snapshot, state_dir
 
 UNITS = {
     "chatgpt": "hadalis-chatgpt.service",
@@ -199,6 +200,8 @@ def profile_action(action: str, profile_id: str) -> dict:
         if profile is None:
             raise ValueError("profile not found")
         item = state["profiles"][profile_id]
+        if item.get("remove_requested"):
+            raise ValueError("this profile is being removed; wait for the scheduler")
         if action in {"start", "resume", "restart"} and item.get("parked_pending"):
             raise ValueError(
                 "this profile has a parked unresolved response; reconcile its original "
@@ -422,7 +425,36 @@ def set_maintenance(field: str, value_json: str, confirm_delete: bool = False) -
     return {"ok": True}
 
 
-def remove_profile(profile_id: str) -> dict:
+def remove_profile(profile_id: str, confirmed_unresolved: bool = False) -> dict:
+    if confirmed_unresolved:
+        # Only the single transport owner processes live removal between
+        # ticks. Never delete a profile while its Desktop command is in flight.
+        def request(config: dict, state: dict):
+            if profile_id not in state["profiles"]:
+                raise ValueError("profile not found")
+            item = state["profiles"][profile_id]
+            profile = next(p for p in config["profiles"] if p["id"] == profile_id)
+            profile["enabled"] = False
+            item["desired"] = "stopped"
+            item["remove_requested"] = True
+            item["status_detail"] = "Removal queued; a private recovery copy will be saved. ChatGPT history stays."
+            if state.get("requested_profile_id") == profile_id:
+                state["requested_profile_id"] = None
+            event(state, profile_id, "removal_requested",
+                  "Explicit confirmation to stop tracking and remove; ChatGPT history retained")
+        change(request)
+        # A stopped/failed bridge has no consumer. Process only this local
+        # removal under the same transport lock, without starting ChatGPT.
+        with (state_dir() / "chat-bridge.lock").open("a+") as handle:
+            try:
+                fcntl.flock(handle, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            except BlockingIOError:
+                return {"ok": True}
+            from .daemon import _handle_removals
+            config, state, _issues = read_snapshot()
+            _handle_removals(config, state)
+        return {"ok": True}
+
     # If a dead scheduler stranded ownership, a fully stopped profile without
     # an in-flight ChatGPT response can release that stale lease safely.
     # Never discard a pending (possibly submitted) prompt.

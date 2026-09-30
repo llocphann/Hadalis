@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 import json
+import fcntl
 import os
 from pathlib import Path
 import sys
+import stat
 import tempfile
 import time
 from unittest.mock import patch
@@ -131,7 +133,105 @@ def main() -> None:
                        "parked recovery metadata discarded" in e["detail"]
                        for e in runtime["events"])
 
-    print("PASS: original profile project staging, deletion, and parked cleanup")
+    # Explicit removal also works with a lost Desktop endpoint. The running
+    # scheduler finishes its current command before releasing the old owner.
+    # A private copy preserves the unresolved baseline; no Desktop operation
+    # is used to remove the local profile.
+    for scheduler_running in (True, False):
+        with tempfile.TemporaryDirectory() as tmp:
+            with patch.dict(os.environ, {"XDG_CONFIG_HOME": tmp + "/config",
+                                         "XDG_STATE_HOME": tmp + "/state"}):
+                old = model.DEFAULT_ID
+                new = control.create_profile("Replacement")["profile_id"]
+                control.set_profile(new, "enabled", "true")
+                now = int(time.time())
+                baseline = {"response_action_count": 3, "kind": "continuation",
+                            "prepared_at_unix": now - 30, "counted": True}
+                def stranded(_config, state):
+                    state["owner_id"] = old
+                    state["requested_profile_id"] = new
+                    state["profiles"][old].update({"desired": "stopped",
+                        "status": "transport_unavailable", "pending": baseline,
+                        "active_project_name": "Original Project"})
+                    state["profiles"][new].update({"desired": "run",
+                        "status": "waiting_owner", "next_run_at_unix": now})
+                store.change_state(stranded)
+                # Ordinary removal still protects a potentially submitted turn.
+                try:
+                    control.remove_profile(old)
+                except ValueError:
+                    pass
+                else:
+                    raise AssertionError("unresolved removal needs explicit confirmation")
+
+                with (store.state_dir() / "chat-bridge.lock").open("a+") as lock:
+                    if scheduler_running:
+                        fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                    with patch.object(daemon, "desktop_command") as desktop:
+                        control.remove_profile(old, confirmed_unresolved=True)
+                        if scheduler_running:
+                            config, runtime, _ = store.read_snapshot()
+                            assert runtime["owner_id"] == old
+                            assert runtime["profiles"][old]["remove_requested"]
+                            try:
+                                control.profile_action("start", old)
+                            except ValueError as exc:
+                                assert "being removed" in str(exc)
+                            else:
+                                raise AssertionError("removed run must not resume")
+
+                            # Archive failures cannot lose the old pending turn.
+                            with patch.object(daemon, "archive_removed_profile",
+                                              side_effect=OSError("disk full")):
+                                try:
+                                    daemon.tick(now)
+                                except OSError:
+                                    pass
+                                else:
+                                    raise AssertionError("archive failure must be visible")
+                            assert store.read_snapshot()[1]["owner_id"] == old
+                            daemon.tick(now + 1)
+                        desktop.assert_not_called()
+
+                config, runtime, _ = store.read_snapshot()
+                assert runtime["owner_id"] is None
+                assert old not in runtime["profiles"]
+                assert runtime["requested_profile_id"] == new
+                assert runtime["profiles"][new]["desired"] == "run"
+                copies = list((store.state_dir() / "removed-profiles").glob("*.json"))
+                assert len(copies) == 1
+                assert stat.S_IMODE(copies[0].stat().st_mode) == 0o600
+                saved = json.loads(copies[0].read_text())
+                assert saved["profile"]["id"] == old
+                assert saved["runtime"]["pending"] == baseline
+                assert saved["runtime"]["active_project_name"] == "Original Project"
+                commands = []
+                def desktop(command, *args, **kwargs):
+                    commands.append(command)
+                    return {"responseActionCount": 0} if command == "managed-baseline" else {}
+                with patch.object(daemon, "desktop_command", side_effect=desktop):
+                    daemon.tick(now + 2)
+                assert store.read_snapshot()[1]["owner_id"] == new
+                assert commands == ["new-chat", "managed-baseline", "managed-submit"]
+
+    # Polling errors must not undo an explicit Stop (which blocked parking).
+    with tempfile.TemporaryDirectory() as tmp:
+        with patch.dict(os.environ, {"XDG_CONFIG_HOME": tmp + "/config",
+                                     "XDG_STATE_HOME": tmp + "/state"}):
+            old = model.DEFAULT_ID
+            def stopped(config, state):
+                state["owner_id"] = old
+                state["profiles"][old].update({"desired": "stopped",
+                    "pending": {"response_action_count": 1},
+                    "poll_errors": config["profiles"][0]["max_poll_errors"]})
+            store.change_state(stopped)
+            config, runtime, _ = store.read_snapshot()
+            with patch.object(daemon, "desktop_command", side_effect=RuntimeError("CDP unavailable")):
+                daemon._poll(config, runtime, old, int(time.time()))
+            assert store.read_snapshot()[1]["profiles"][old]["desired"] == "stopped"
+            assert store.read_snapshot()[1]["profiles"][old]["poll_errors"] > config["profiles"][0]["max_poll_errors"]
+
+    print("PASS: original profile lifecycle, confirmed unresolved removal, private recovery and safe handover")
 
 
 if __name__ == "__main__":

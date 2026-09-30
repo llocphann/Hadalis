@@ -35,8 +35,10 @@ def main(argv: list[str]) -> dict:
         if len(args) == 3 and args[2] != "confirm-delete":
             raise ValueError("invalid confirmation")
         return control.set_maintenance(args[0], args[1], len(args) == 3)
-    if operation == "profile-remove" and len(args) == 1:
-        return control.remove_profile(args[0])
+    if operation == "profile-remove" and len(args) in {1, 2}:
+        if len(args) == 2 and args[1] != "confirm-unresolved":
+            raise ValueError("invalid removal confirmation")
+        return control.remove_profile(args[0], len(args) == 2)
     if operation == "profile-park-unresolved" and len(args) == 1:
         return control.request_park_unresolved(args[0])
     if operation == "logs" and not args:

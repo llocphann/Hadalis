@@ -25119,3 +25119,190 @@ Next audit should re-fetch current dev, reconcile concurrent commits and move
 outside RegionSelector. Prefer another record-scaled private data path. Avoid
 reopening known Settings search, Niri/Hyprland snapshot, Weather, AI, Tray and
 wallpaper-parser owners unless a source-distinct operation is proven.
+
+## 109. Round 95 — deterministic worker indeterminate-result receipt parse audit (2026-09-30)
+
+### Snapshot and ownership reconciliation
+
+- Authoritative `dev` at round start and immediately before this write:
+  `1531ef94e66af3396faa23a61a55e06823999ced`
+  (`docs(research): audit RegionSelector circle bounds`).
+- No intervening commit exists after Round 94.
+- `AGENTS.md`, active Cloud/Local Bot routing and the deterministic worker
+  contract were re-read.
+- Exact current files audited:
+  - `automation/worker/daemon.py`;
+  - `automation/worker/runner.py`;
+  - `automation/worker/child.py`;
+  - `automation/worker/process.py`;
+  - `automation/manager/store.py`;
+  - `automation/worker/README.md`.
+- Existing handoff ownership was searched for action receipts, action JSON,
+  partial/indeterminate reconstruction, duplicate JSON parsing and worker
+  recovery. §103 owns manager profile lookup, while older automation findings
+  own bounded event-list copies; neither owns the worker receipt parse below.
+
+### 109.1 Indeterminate-result reconstruction reads and JSON-parses every finished action receipt twice — CONFIRMED / P3 recovery/error path
+
+Path:
+
+- `automation/worker/daemon.py`, `execute(data, commit)`.
+
+After the outer `runner.py` invocation returns, the normal completed path is:
+
+1. if `action_root/result.json` exists, read/parse it once and return it;
+2. otherwise reconstruct a conservative partial result from durable per-action
+   receipts.
+
+Current fallback:
+
+```python
+partial = [
+    json.loads(p.read_text())["result"]
+    for p in sorted(action_root.glob("action-*.json"))
+    if json.loads(p.read_text()).get("phase") == "finished"
+]
+```
+
+For A action-receipt files, of which F are `phase == "finished"`, this performs:
+
+- A file reads + JSON parses for the predicate;
+- another F file reads + JSON parses for result extraction.
+
+Thus fallback cost is **A + F reads/parses**, although each finished receipt is
+already one immutable durable snapshot at this point.
+
+Strict-safe direction:
+
+```python
+partial = []
+for path in sorted(action_root.glob("action-*.json")):
+    action_receipt = json.loads(path.read_text())
+    if action_receipt.get("phase") == "finished":
+        partial.append(action_receipt["result"])
+```
+
+The important constraints are one read/parse per path, unchanged sorted path
+order, and `["result"]` access only after the exact phase test.
+
+Why one snapshot is sufficient under the worker's own durability contract:
+
+- `runner.py` owns per-action phase progression:
+  `dispatching -> executing -> finished`;
+- `child.py` performs the pre-exec `executing` write and then
+  `os.execvpe()`; it performs no later write;
+- `bounded_run()` always waits/reaps or kills the process group before it
+  returns;
+- only after that inner action process is settled does `runner.py` atomically
+  replace the receipt with `phase="finished"`;
+- a pre-existing finished action is replayed from its durable result and is not
+  rewritten;
+- the parent `daemon.execute()` reaches this fallback only after the outer
+  `runner.py` process has itself returned/been cleaned up;
+- receipt writes use `automation.manager.store._write()`: same-directory temp
+  file, mode 0600, file fsync, `os.replace()`, then parent-directory fsync;
+- the worker contract declares raw action evidence private under a 0700 state
+  root with 0600 files. Concurrent external mutation is not a supported ledger
+  interface.
+
+Strict-lossless proof:
+
+- **path discovery/order:** `sorted(action_root.glob("action-*.json"))`
+  remains exactly unchanged;
+- **non-finished entries:** still parse once, test phase, and do not touch
+  `result`;
+- **finished entries:** still require `receipt["result"]`; a malformed
+  finished receipt lacking that key still raises `KeyError`;
+- **invalid JSON/read failure:** still fails on the first attempted parse/read
+  of that path before later paths are processed;
+- **result identity/content:** the appended Python result object is decoded from
+  the exact same durable JSON bytes that supplied the phase check;
+- **partial ordering:** unchanged file-name order;
+- **indeterminate envelope:** job/base/profile/status/recovery/input hash and
+  timestamps are untouched;
+- **execution:** no action is retried or skipped differently;
+- **durability:** no receipt writes, fsyncs, tombstones or cleanup rules change;
+- **cancellation/process lifetime:** no process boundary changes.
+
+Local source-derived reduction in the fallback:
+
+- action-receipt file reads: **A + F -> A**;
+- JSON decodes: **A + F -> A**;
+- final result objects appended: unchanged, F;
+- filesystem writes/fsyncs: unchanged.
+
+This is intentionally classified P3 because the ordinary successful runner path
+returns `result.json` and never executes this reconstruction. The reduction
+matters only when a runner result is missing and the worker must preserve
+finished evidence in an indeterminate/cancel/error recovery result.
+
+Classification:
+**CONFIRMED / P3 recovery-error path**.
+
+### 109.2 The one-second publication-ready receipt scan is more material but not strict-lossless from a source-local rewrite
+
+Path:
+
+- `automation/worker/daemon.py`, resident worker main loop.
+
+Whenever no publication is actively running, the daemon currently globs every
+job receipt and parses each JSON document to find the first receipt whose:
+
+- `result` exists;
+- phase is not `published`;
+- publish backoff deadline has elapsed.
+
+Because stable job IDs remain durable execution tombstones, receipt count can
+grow over the installation lifetime. This makes the scan a potentially more
+important long-term filesystem/JSON cost than §109.1.
+
+However replacing it with an in-memory ready queue is not automatically
+strict-lossless:
+
+- startup must rediscover finished unpublished receipts;
+- failed publication mutates phase/backoff and must re-enter eligibility later;
+- worker threads finish jobs concurrently;
+- legacy/recovery paths can create finished receipts;
+- current selection uses filesystem glob iteration order, not an explicit FIFO
+  or lexical priority;
+- private durable receipts are the recovery source of truth after daemon crash.
+
+Reducing scan cadence changes publication latency; retained in-memory indexing
+changes crash/recovery and selection semantics unless all mutation paths and
+restart reconstruction are explicitly modeled.
+
+Classification:
+**ARCHITECTURE / profiling + concurrency/recovery oracle required; not counted**.
+
+### 109.3 Nearby startup orphan-recovery reads are deliberately not folded without PID-race proof
+
+`cleanup(startup=True)` reads action receipts and process identities while
+terminating orphan groups. There are apparent repeated reads of Linux boot ID
+and process identity around `is_same_process()`.
+
+Those reads participate in PID-reuse/race protection. Hoisting/caching them
+without a dedicated process-race oracle could change behavior if a PID exits or
+is reused between checks.
+
+Status:
+**CLOSED for source-only micro-fusion**.
+
+### 109.4 Round-95 conclusion / next checkpoint
+
+New strict-lossless optimization groups: **one**:
+
+- parse each private action receipt once when reconstructing an indeterminate
+  result (§109.1, **CONFIRMED / P3 recovery-error path**).
+
+Not counted:
+
+- persistent publication-ready receipt indexing (§109.2);
+- startup orphan/PID identity read fusion (§109.3).
+
+No runtime/product/native/script code was modified and no deterministic local
+job was required.
+
+Next audit should re-fetch current `dev`, reconcile concurrent commits and
+rotate away from the worker recovery path. Prefer another production
+record-scaled parser/model or a steady-state automation operation only when its
+durability/concurrency contract can be preserved exactly.

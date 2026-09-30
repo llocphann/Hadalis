@@ -21731,3 +21731,112 @@ outside Brightness/Anti-flashbang. Prefer another event-driven persistence or
 collection path with a source-local strict reduction, such as
 DeviceStatePersistence secondary state handling, RecorderStatus ownership, or a
 less-covered deferred service.
+
+
+## 91. Round 77 — deferred News RSS parse audit (2026-09-30)
+
+### Snapshot and ownership reconciliation
+
+- Authoritative `dev` at round start and immediately before this write:
+  `40259790bdf705df9ba33ec9f0807e472133ff9e` (Round 76).
+- No intervening commit exists after Round 76.
+- Deferred small-service ownership was rechecked:
+  - §15.9 already closes `SessionWarnings`, `SongRec`,
+    `DeviceStatePersistence` and similar demand/event-driven services as
+    non-polling concerns;
+  - §56.4 already owns the current `RecorderStatus.fastDemandCount`
+    extra traversal.
+- `NewsService` had no prior optimization owner in the handoff.
+- Current consumers were traced:
+  - `modules/sidebarLeft/news/NewsView.qml`;
+  - `modules/background/widgets/newsTicker/NewsTickerWidget.qml`.
+- Both consumers call the same service `fetch()/refresh()` path. XHR generation
+  guards prevent stale responses from publishing over newer requests.
+
+### 91.1 Compile the four fixed RSS tag regexes once per response parse — CONFIRMED / P2 response-interaction parse
+
+Path:
+
+- `services/deferred/NewsService.qml`, `_parseRss()` / `_tag()`.
+
+The service accepts at most 30 RSS `<item>` blocks.
+
+For every accepted candidate block, current parsing calls `_tag()` four
+times:
+
+- `title`;
+- `link`;
+- `pubDate`;
+- `source`.
+
+Each `_tag(block, name)` constructs:
+
+`new RegExp(`<${name}[^>]*>([\\s\\S]*?)</${name}>`)`.
+
+Therefore a full 30-item response can construct up to:
+
+- **120 RegExp objects/compilations per parse**,
+
+before CDATA trimming, entity decoding and final item validation.
+
+Strict-safe direction:
+
+1. at the beginning of `_parseRss()`, construct exactly four non-global regex
+   instances using the same pattern text for the four constant tag names;
+2. use a private helper that accepts `block` + regex, or inline the same
+   `block.match(regex)`;
+3. keep the existing CDATA replacement and `.trim()` byte-for-byte;
+4. keep title/link/pubDate/source lookup order unchanged for every item.
+
+Why reuse is lossless here:
+
+- all four patterns are constant for the complete parse invocation;
+- none carries the `g` or `y` flag, so successful/failed
+  `String.match()` calls do not advance shared `lastIndex` state;
+- every item is still scanned independently;
+- tag matching still accepts the same attributes through `[^>]*`;
+- first matching tag remains the winner;
+- missing tags still return `""`;
+- CDATA stripping, whitespace trimming and HTML entity replacement are
+  unchanged;
+- title is still decoded before link/pubDate/source reads occur;
+- source-based trailing-title stripping remains after all four tag reads;
+- invalid title/link rows are skipped in the same order;
+- 30-item cap and source ordering are unchanged;
+- malformed RSS behavior remains the same regex/match path;
+- no cache/XHR/request-generation/publication timing is moved.
+
+For I scanned item blocks, where `0 <= I <= 30`:
+
+- tag RegExp constructions: **4I -> 4**.
+
+At I=30:
+
+- **120 -> 4**, removing 116 transient regex constructions.
+
+The network request itself can dominate wall latency; this claim is only about
+main-thread response parsing after the response arrives.
+
+### 91.2 Locale/city string staging is intentionally not split into extra findings
+
+Nearby code separately splits:
+
+- `Qt.locale().name` for language/country;
+- Weather location name for its first comma-separated city segment.
+
+Those are small, low-frequency derivations compared with the 30-item RSS parse.
+They are not counted as separate optimization findings merely to increase the
+round total.
+
+### 91.3 Round-77 conclusion / next checkpoint
+
+New strict-lossless optimization groups: **one** (§91.1,
+**CONFIRMED / P2 response-interaction parse**).
+
+No runtime/product/native/script code was modified. Only this handoff was
+updated; no local deterministic job was required.
+
+Next audit should re-fetch current `dev`, reconcile concurrent work and move
+outside News. Prefer another less-covered collection/process path such as
+CustomWidgets discovery, Wallpaper/Theme metadata, Updates parsing, or a
+deferred helper where interpreted/native ownership still needs classification.

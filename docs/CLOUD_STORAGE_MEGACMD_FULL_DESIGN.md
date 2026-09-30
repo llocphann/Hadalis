@@ -1,5 +1,7 @@
 # Hadalis Cloud Storage — detailed MEGAcmd → Rust → QML design
 
+> **Last-mile reliability research round 6 (2026-09-30):** [CLOUD_STORAGE_MEGACMD_LAST_MILE_EDGE_CASE_AUDIT.md](CLOUD_STORAGE_MEGACMD_LAST_MILE_EDGE_CASE_AUDIT.md) audits the smallest process, environment, ID, Unicode, multi-Settings, suspend, journal, clipboard/privacy and upgrade races that can otherwise undermine the larger design. Treat its must-not-ship checklist as part of implementation acceptance.
+
 > **Frontend/backend contract research round 5 (2026-09-30):** [CLOUD_STORAGE_MEGACMD_FRONTEND_BACKEND_CONTRACT.md](CLOUD_STORAGE_MEGACMD_FRONTEND_BACKEND_CONTRACT.md) now defines the deferred QML service, one-shot Rust stdin/stdout protocol, request/generation rules, read coalescing, mutation state machine, stale-precondition review digest, no-replay crash recovery, normalized models and the exact frontend→backend operation map. It supersedes any implication that individual QML controls should construct MEGAcmd commands directly. Research only.
 
 > **UX research round 4 (2026-09-30):** The detailed [buttons, dropdowns, dialogs and responsive Settings system](CLOUD_STORAGE_MEGACMD_UX_COMPONENTS.md) plus [exact control options and per-section wizard matrix](CLOUD_STORAGE_MEGACMD_UX_CONTROL_MATRIX.md) refine this functional blueprint. All remain *research only*, not implemented.

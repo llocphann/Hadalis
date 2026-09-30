@@ -1,5 +1,7 @@
 # Cloud Storage — MEGAcmd ↔ Rust ↔ QML research
 
+> **Research round 6:** [Last-mile edge-case audit](../../docs/CLOUD_STORAGE_MEGACMD_LAST_MILE_EDGE_CASE_AUDIT.md) covers cross-process locking, MEGAcmd environment/backend identity, interactive-prompt traps, strict Unicode/64-bit IDs, suspend/recovery, clipboard/notification privacy and package-upgrade races.
+
 > **Research round 5:** [Frontend/backend stability contract](../../docs/CLOUD_STORAGE_MEGACMD_FRONTEND_BACKEND_CONTRACT.md) defines the concrete QML deferred-service ↔ typed Rust ↔ MEGAcmd boundary, request/generation guards, no-replay writes and post-action reconciliation.
 
 > **UX research round 4:** [Shared component/layout rules](../../docs/CLOUD_STORAGE_MEGACMD_UX_COMPONENTS.md) and [per-section control/wizard choices](../../docs/CLOUD_STORAGE_MEGACMD_UX_CONTROL_MATRIX.md) define practical button, combo, context menu, status-chip and dialog details. No code or live MEGA commands.
@@ -83,3 +85,20 @@ The autonomous Local Bot must not contact a real MEGA account, initiate a sync o
 - [ ] Decide private crash-journal target identifiers/retention after privacy review; never persist secrets or raw vendor output.
 - [ ] Measure and set operation deadlines/output caps/poll rates using fake and disposable installed-version fixtures.
 - [ ] Validate each operation's authoritative reconciliation query against the owner's installed MEGAcmd version before enabling writes.
+
+### Round-6 last-mile edge-case research
+- [x] Prove standalone Settings is a separate QML process; require Rust/OS mutation lock in addition to per-process CloudStorageService serialization.
+- [x] Audit MEGAcmd HOME/config/socket and server PATH startup identity; reject hidden no-HOME fallback and mixed backend epochs.
+- [x] Audit dangerous inherited MEGAcmd environment overrides and define owned-child sanitization without blindly discarding proxy/UTF-8 user environment.
+- [x] Verify `mega-version` is a post-Connect server/network operation, not static package detection.
+- [x] Verify scriptable `mega-*` can request confirmation/string input from stdin; require null child stdin, non-interactive command paths and bounded unexpected-prompt failure.
+- [x] Identify first-public-export copyright confirmation and specify explicit Hadalis terms review rather than hidden vendor prompt.
+- [x] Add account/public-folder/signed-out session-kind model and privacy-safe account epoch requirements.
+- [x] Require all opaque/64-bit handles, IDs and tags as JSON strings; strict UTF-8 identity with no lossy/normalized mutation keys.
+- [x] Extend overlap safety across sync, backup, FUSE, download destinations and inbound-share recovery semantics.
+- [x] Specify concurrent stdout/stderr draining, child reaping, suspend-aware deadlines and shell-crash helper/journal behavior.
+- [x] Audit Hadalis clipboard history and persistent notifications; keep MEGA links/paths/account metadata out of automatic clipboard/toast/log flows.
+- [x] Specify private journal permissions/atomic durability, stable-ID frontend selection and backend-epoch invalidation across upgrades.
+- [ ] Validate the full round-6 fake-harness matrix before any live account/write implementation.
+- [ ] Decide exact Linux lock/state paths and privacy-preserving cross-restart account identifier after implementation-time filesystem/permission tests.
+- [ ] Capture installed MEGAcmd public-folder/account, unexpected-prompt, locale and package-upgrade fixtures on a disposable owner-approved environment.

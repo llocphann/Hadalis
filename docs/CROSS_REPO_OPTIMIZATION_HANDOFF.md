@@ -19152,3 +19152,283 @@ Next audit should re-fetch current `dev`, reconcile concurrent commits, then
 continue into a distinct interaction path such as Waffle Start Menu result
 composition or another unowned reactive surface rather than padding this round
 with scalar WaveVisualizer micro-optimizations.
+
+## 76. Round 62 — Waffle Start Menu recommendation bound and navigation contract audit (2026-09-30)
+
+### Snapshot, concurrent delta and ownership audit
+
+- Authoritative `dev` immediately before this documentation write:
+  `0737b9a5854a6b486785bcf3d93e12907a1c99c6`
+  (`docs(research): freeze Cloud Storage implementation readiness`).
+- Latest preceding optimization-research commit:
+  `46b05ff6a14014f2654be3b6483d903c511271d3` (Round 61).
+- Four commits are present after Round 61. Their delta is confined to Automation
+  profile lifecycle/test work and Cloud Storage research/to-do documentation;
+  it does not modify the Waffle Start Menu, LauncherSearch/AppSearch,
+  Niri/Compositor services, ShellExec or this handoff before the present write.
+- `AGENTS.md`, `to-do/README.md`, `to-do/cloud-bot/README.md` and
+  `to-do/local-bot/README.md` were re-read and the Cloud Bot / deterministic
+  Local Bot boundary remains unchanged.
+- Current exact-`dev` Waffle Start Menu composition was traced through
+  `WaffleStartMenu.qml`, `StartMenuContent.qml`,
+  `StartMenuContext.qml`, `SearchBar.qml`, `SearchPageContent.qml`,
+  `SearchResults.qml`, `WSearchResultButton.qml`,
+  `StartPageContent.qml` and `AllAppsContent.qml`, plus
+  `services/deferred/LauncherSearch.qml`, `services/AppSearch.qml`,
+  `services/NiriService.qml`, `services/CompositorService.qml` and
+  `modules/common/functions/ShellExec.qml`.
+- Duplicate-ownership search found the nearby existing owners:
+  - §48.6 owns removal of Waffle All Apps' full `flatApps` derivation;
+  - §48.7 closes unconditional reuse of one pre-sorted All Apps list;
+  - §§57.3-57.4 own LauncherSearch's redundant prefixed-result filter and
+    action map/filter/concat staging;
+  - §60.6 and §61.2 own AppSearch launch-array and unlimited sloppy-score
+    reductions;
+  - §62.1 owns only ShellExec's `Array.from(...).map(...).filter(...)`
+    argument staging;
+  - §18.3 explicitly closes replacing Hadalis' transient scope with the
+    upstream transient-service model.
+  No prior item owns `StartPageContent.getRecentApps()`, the Waffle
+  SearchResults raw/composed index boundary, or ShellExec's display/session
+  launch-trampoline utility work.
+
+### 76.1 Stop the Recommended-window scan immediately after the fourth unique app — CONFIRMED / P2 Start Menu open-reactive path
+
+Path:
+
+- `modules/waffle/startMenu/StartPageContent.qml`,
+  `getRecentApps()`.
+
+The Recommended model currently walks the complete published Niri window list:
+
+1. read `w.app_id`;
+2. require a nonempty ID;
+3. test `seen.has(appId)`;
+4. require `recent.length < 4`;
+5. on acceptance, add to the Set, resolve the desktop entry and append the
+   displayed record.
+
+After the fourth unique nonempty app has already been appended, every remaining
+window still executes steps 1-3. The final `recent.length < 4` test is false,
+so none of those tail windows can change the result and no further desktop-entry
+lookup is performed.
+
+Strict-safe direction:
+
+- keep selection of
+  `CompositorService.isNiri ? (NiriService.windows ?? []) : []` unchanged;
+- at the beginning of each loop iteration, break only when
+  `recent.length >= 4`;
+- before that boundary keep the exact current app-id read, truthiness test,
+  Set membership, Set insertion, `DesktopEntries.heuristicLookup()`,
+  name fallback, object construction and source order;
+- keep a fresh `seen` Set, fresh `recent` array and fresh result objects on
+  every binding evaluation.
+
+Reactive/property-read proof:
+
+- Niri event lines are parsed with `JSON.parse()` into plain JS data.
+- Window events flow through `scheduleWindowsUpdate()`; the batching timer
+  publishes the complete `NiriService.windows` array after
+  `sortWindowsByLayout()`.
+- The individual window records consumed here are therefore plain snapshot
+  objects rather than QML QObject properties with independent NOTIFY
+  dependencies. The binding dependency that schedules this derivation is the
+  published `NiriService.windows` property itself.
+- The removed tail reads cannot add a later result after the cap and invoke no
+  callback, signal, process, desktop-entry lookup or mutation.
+
+Strict-contract cases:
+
+- non-Niri and empty-window cases still return `[]`;
+- fewer than four unique nonempty app IDs still traverse the complete list and
+  produce the same result;
+- duplicates retain the current Set / SameValueZero behavior and first
+  occurrence order;
+- empty/missing `app_id` values retain the current skip behavior;
+- at four or more unique IDs, the same first four IDs in the same already
+  published Niri sort order are returned;
+- desktop-entry lookup count and order for those accepted four are unchanged;
+- no rendered record, animation, click target, focus, publication identity or
+  callback order changes.
+
+For W published windows, if K is the loop position immediately after accepting
+the fourth unique nonempty app:
+
+- loop iterations / `app_id` reads: **W -> K**;
+- Set membership checks after K: **W-K -> 0**;
+- if fewer than four unique IDs exist, work remains unchanged.
+
+This is a bounded interaction-path reduction, not an end-to-end shell
+percentage.
+
+Frontend ↔ Backend linkage was followed through the complete affected path:
+
+`Niri event socket`
+→ `JSON.parse / NiriService event handler`
+→ batched `scheduleWindowsUpdate()`
+→ sorted `NiriService.windows` publication
+→ `StartPageContent.getRecentApps()`
+→ Recommended Repeater / `RecButton`
+→ `DesktopEntries.heuristicLookup(appId)`
+→ `AppSearch.launchEntry()`
+→ `ShellExec.execDetachedArgs()`
+→ Bash environment reconstruction
+→ `systemd-run --user --scope` or direct-exec fallback.
+
+The proposed early exit changes only the derived Recommended list scan; launch,
+environment, process, working-directory, fallback, lifecycle and cancellation
+semantics are untouched.
+
+### 76.2 Waffle search navigation bounds against raw provider results rather than the displayed model — CORRECTNESS PREREQUISITE / HIGH CONFIDENCE, NOT an optimization
+
+Paths:
+
+- `modules/waffle/startMenu/StartMenuContent.qml`;
+- `modules/waffle/startMenu/SearchResults.qml`;
+- `services/deferred/LauncherSearch.qml`.
+
+The Down-key handler currently computes its maximum index from:
+
+`LauncherSearch.results.length - 1`.
+
+The ListView does not display that raw collection directly. Its local model:
+
+- limits each category to `maxResultsPerCategory: 4`;
+- globally limits the result set to `resultLimit: 20`;
+- skips later entries after either cap;
+- publishes cloned/decorated entries with section-category metadata.
+
+Consequently the raw provider count can be larger than the visible model
+count. App search alone can request up to 32 entries before Waffle's per-category
+cap is applied, and other provider/fallback results may also be present.
+Repeated Down navigation can therefore request a context index that has no
+corresponding entry in the composed model.
+
+The execution side uses the composed ListView:
+
+- `currentIndex: root.context.currentIndex`;
+- preview reads `resultList.model[resultList.currentIndex] ?? null`;
+- Enter routes through `resultList.currentItem?.execute()`.
+
+This is a collection-boundary correctness mismatch, not a performance factor,
+so it is **not counted** as an optimization.
+
+Do not patch it from static reasoning alone. Required deterministic oracle /
+event-order check:
+
+- raw counts smaller/equal/larger than the composed count;
+- one category exceeding four items;
+- multiple categories hitting the global 20-item cap;
+- model shrink while the current index is nonzero;
+- empty model;
+- Up/Down, category selection and Enter;
+- exact ListView invalid-index normalization;
+- `onModelChanged -> focusFirstItem()` ordering;
+- highlight animation and preview synchronization.
+
+A future correction should bound selection against the actual composed model
+(or an exactly shared count) while preserving model-change reset, keyboard
+ordering, category selection and accepted/currentItem behavior. No runtime
+change is authorized by this finding.
+
+### 76.3 Broad ShellExec launch trampoline still deserves process-cost measurement; prefer same-language removal first — HIGH CONFIDENCE lead / RUST BENCHMARK REQUIRED
+
+Paths:
+
+- `modules/common/functions/ShellExec.qml`, `execDetachedArgs()`;
+- `services/AppSearch.qml`, `launchEntry()`;
+- existing native runtime:
+  `native/inir-native/src/main.rs` and packaging/install paths.
+
+The Start Menu launch trace reaches the shared ShellExec trampoline for ordinary
+desktop applications. Every such invocation currently starts Bash and rebuilds
+the live application-facing environment before execing the transient scope or
+target process. The trampoline also performs small external utility chains that
+are avoidable in ordinary Bash itself. Examples include:
+
+- DISPLAY number parsing through `printf | cut | sed`;
+- socket-owner comparison through `stat` plus `id -u`;
+- X11 fallback basename stripping through `basename | sed`;
+- Wayland fallback basename through `basename`.
+
+A narrowly scoped same-language direction is to use Bash parameter expansion
+for the string transforms and Bash's effective-UID value instead of spawning
+the corresponding parsing/UID utilities, while retaining the required
+filesystem `stat` ownership check and the current transient-scope design.
+
+This is not yet CONFIRMED. Exact parity must cover malformed DISPLAY values,
+PATH/utility failure behavior, unusual socket names, ownership checks, missing
+runtime directories, manager-environment merge order, stdout/stderr behavior
+and direct-exec fallback. A deterministic old-vs-new shell oracle is required
+before promotion.
+
+#### Native Rust evaluation
+
+This is a real production interaction path, so a native alternative was also
+evaluated rather than dismissed merely because the current implementation is
+shell.
+
+Current ownership:
+
+- the repository already builds and ships the Rust `inir-native` binary on
+  packaged/source-installed production paths;
+- its current CLI owns clipboard, desktop-config and Niri helper operations,
+  but no launch/environment subcommand exists;
+- adding a launch subcommand would therefore avoid a new packaged binary, but
+  it would still require a new QML/native dispatch and explicit fallback
+  contract.
+
+Potential native benefit is architectural, not measured: it could remove the
+per-launch Bash interpreter and several utility subprocesses and perform socket,
+UID and environment normalization in-process.
+
+However Rust must preserve the entire existing compatibility surface:
+
+- argv and empty-argument behavior;
+- application-facing environment restoration/unsetting;
+- the one-second systemd-manager environment timeout/fallback;
+- PATH merge order;
+- DISPLAY/X11 socket and Wayland socket validation;
+- working-directory behavior;
+- `systemd-run --user --quiet --collect --same-dir --scope` semantics,
+  description and direct-exec fallback;
+- fork-and-exit launcher survival required by §18.3;
+- stdout/stderr, exit, signal and cancellation behavior;
+- terminal, privileged-GUI and desktop-entry launch callers;
+- package/source/Nix path resolution and fallback availability.
+
+Because the cheaper same-language change may eliminate a material share of the
+avoidable subprocess work, native migration is classified
+**RUST BENCHMARK REQUIRED**, not a confirmed migration recommendation.
+Benchmark the current shell trampoline, a parity-proven shell-only utility
+reduction, and only then a native `inir-native` launch path if the remaining
+interpreter/process overhead is still material.
+
+No Rust performance percentage is claimed.
+
+### 76.4 Round-62 conclusion / next checkpoint
+
+New strict-lossless optimization group: **one** (§76.1,
+**CONFIRMED / P2 Start Menu open-reactive path**).
+
+Separately:
+
+- §76.2 records one Waffle Search correctness prerequisite and does **not**
+  increment the optimization count;
+- §76.3 records a distinct launch-helper process lead and a
+  **RUST BENCHMARK REQUIRED** evaluation, but neither is counted as confirmed
+  until parity/measurement evidence exists;
+- §48.6/§48.7 All Apps ownership, §§57.3-57.4 LauncherSearch ownership and
+  §§60.6/61.2/62.1 AppSearch/ShellExec ownership were not counted again.
+
+No product/runtime/native/script files were edited and no local deterministic
+job was submitted in this round.
+
+Next audit should re-fetch current `dev`, reconcile concurrent commits, then
+continue the Waffle Start Menu full-link boundary through result actions,
+category selection and secondary controls, or rotate to another unowned
+interaction-hot subsystem. If ShellExec becomes the next measurement target,
+dispatch one narrowly scoped SHA-pinned deterministic parity/benchmark job
+rather than bundling unrelated launch experiments.
+

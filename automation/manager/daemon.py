@@ -73,6 +73,14 @@ def migrate_runtime(config: dict, state: dict) -> None:
         _write(backup, {"config": config, "state": state, "at_unix": int(time.time())})
     old_owner = state.get("owner_id")
     for profile_id, item in state["profiles"].items():
+        profile=next((p for p in config["profiles"] if p["id"]==profile_id),None)
+        actions=[e["kind"] for e in state["events"] if e.get("profile_id")==profile_id and e.get("kind") in {"start","resume","restart","pause","stop"}]
+        if profile and profile["enabled"] and item["desired"]=="paused" and item["pending"] and actions and actions[-1] in {"start","resume","restart"} and profile["max_poll_errors"]>0 and item["poll_errors"]>=profile["max_poll_errors"] and item["last_error"]:
+            # v1 automatically overwrote the maintainer's last Resume when DOM
+            # polling failed. Recover only with that explicit command evidence;
+            # a later user Pause/Stop always wins.
+            item["desired"]="run"
+            event(state,profile_id,"legacy_error_pause_recovered","Restored last explicit run command; original pending message will only be observed")
         item["run_active"] = bool(profile_id == old_owner or item["pending"] or item["job_id"])
         if item["pending"] and not item["pending"].get("user_message_id"):
             item["recovery"] = {"kind": "legacy_identity", "next_at_unix": 0}
@@ -498,8 +506,8 @@ def tick(now: int | None = None, executor: ThreadPoolExecutor | None = None) -> 
             except Exception as exc:
                 _observe_failure(pid,now,exc)
             del _INFLIGHT[pid]
-    config,state,_ = read_snapshot()
-    _handle_removals(config,state,protected=_INFLIGHT)
+    config,state,issues = read_snapshot()
+    if not issues:_handle_removals(config,state,protected=_INFLIGHT)
     config,state,_ = read_snapshot()
     due = []
     for p in config["profiles"]:

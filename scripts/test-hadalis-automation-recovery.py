@@ -54,6 +54,17 @@ def main():
             assert item['status']=='completed' and item['iterations']==1
             assert t.count('poll')==0 and t.count('submit')==1
             daemon.tick(104);assert store.read_snapshot()[1]['profiles'][pid]['iterations']==1
-    print('PASS: ambiguous submission, automatic backoff/recovery, safe v1 migration, fsynced response receipt')
+    for last_action,expected in (("resume","run"),("pause","paused"),("stop","paused")):
+        with environment():
+            pid=profile('Paused v1');t=Transport()
+            def paused(c,s):
+                s.update(engine_version=1,owner_id=pid)
+                s['profiles'][pid].update(desired='paused',poll_errors=4,last_error='v1 DOM timeout',pending={'prepared_at_unix':100,'kind':'initial','counted':True})
+                store.event(s,pid,last_action)
+            store.change_state(paused)
+            with patch.object(daemon,'native_command',side_effect=RuntimeError('legacy identity unresolved')):daemon.tick(102)
+            assert store.read_snapshot()[1]['profiles'][pid]['desired']==expected
+            assert t.count('submit')==0
+    print('PASS: ambiguous submission, automatic backoff/recovery, safe v1 migration including evidenced automatic error pause, explicit Pause/Stop precedence, fsynced response receipt')
 
 if __name__=='__main__':main()

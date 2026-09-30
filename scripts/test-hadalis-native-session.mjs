@@ -24,6 +24,8 @@ assert.equal(projectTurn(c,p).terminal_failed,false);
 c.mapping.b={id:"b",parent:"a",message:message("b","user","finished_successfully",true,"next")};
 c.mapping.z={id:"z",parent:"b",message:message("z","assistant","finished_successfully",true,"HADALIS_LOOP:DONE")};c.current_node="z";
 assert.equal(projectTurn(c,p).completed,false); // Never consume the next user's reply.
+assert.equal(projectTurn(c,p).superseded,true);
+assert.equal(projectTurn(c,p).successor_user_message_id,"b");
 assert.equal(projectTurn(c,{...p,user_message_id:"b"}).response.message_id,"z");
 if (process.env.HADALIS_TEST_INSTALLED_DESKTOP === "1") assert.ok(installedContract().api);
 console.log("PASS: conversation identity, final message receipt, no cross-turn completion");

@@ -37,6 +37,8 @@ export function projectTurn(conversation, pending) {
   if (!final) {
     const lastAssistant=turn.findLast(m=>m.author?.role === "assistant");
     return { completed: false, submitted: true,
+      superseded: nextUser >= 0,
+      ...(nextUser >= 0 ? {successor_user_message_id: messages[nextUser].id} : {}),
       streamError: turn.some(m => ["failed", "error", "cancelled"].includes(m.status)),
       terminal_failed: !!lastAssistant && ["failed","error","cancelled"].includes(lastAssistant.status) && lastAssistant.end_turn === true };
   }

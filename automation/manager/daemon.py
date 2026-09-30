@@ -312,6 +312,24 @@ def _poll(config: dict, state: dict, profile_id: str, now: int) -> None:
         else:
             result = native_command("poll", pending=pending)
         if not result.get("completed"):
+            if result.get("superseded"):
+                # A user advanced this managed conversation before its final
+                # response. Reattaching the conversation's current stream could
+                # follow that different turn. Retain the original receipt and
+                # isolate the conflict; ordinary navigation never reaches here.
+                def superseded(c,s):
+                    current=s["profiles"].get(profile_id)
+                    if not _same_pending(current,pending):return
+                    prior=current.get("recovery") or {}
+                    successor=result.get("successor_user_message_id")
+                    if prior.get("kind")!="session_superseded" or prior.get("successor_user_message_id")!=successor:
+                        event(s,profile_id,"session_changed","Later user turn observed; original submission retained")
+                    if current["desired"]=="run":current["desired"]="paused"
+                    current.update(status="session_changed",poll_errors=0,
+                        last_error="A later user message superseded the managed turn; original receipt retained",
+                        recovery={"kind":"session_superseded","successor_user_message_id":successor})
+                    current["pending"]["poll_after_unix"]=now+60
+                change_state(superseded);return
             if result.get("terminal_failed"):
                 # The server has proved that generation ended. Archive this
                 # turn and ask the reasoning agent for a distinct recovery step.

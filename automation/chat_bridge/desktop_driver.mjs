@@ -77,7 +77,12 @@ async function findMainPage(browser) {
 }
 
 async function verifyProject(page) {
-  await requireOne(page.getByRole("button", { name: PROJECT }), `${PROJECT_NAME} project guard`);
+  const guard = page.getByRole("button", { name: PROJECT });
+  if ((await guard.count()) !== 1 || (await visibleCount(guard)) !== 1) {
+    const error = new Error(`${PROJECT_NAME} project guard is not visible; waiting for target chat`);
+    error.code = "HADALIS_DESKTOP_VIEW_CHANGED";
+    throw error;
+  }
 }
 
 async function resolveComposer(page) {

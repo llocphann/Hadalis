@@ -99,8 +99,14 @@ await assert.rejects(
 );
 await assert.rejects(requireIdleComposer(guardedPage({ text: "draft" })), /non-empty/);
 await assert.rejects(requireIdleComposer(guardedPage({ text: "  " })), /non-empty/);
-await assert.rejects(requireIdleComposer(guardedPage({ projectLabel: "Project: Wrong project" })), /project guard/);
-await assert.rejects(requireIdleComposer(guardedPage({ projectLabel: "Project: HadalisXLocal" })), /project guard/);
+await assert.rejects(
+  requireIdleComposer(guardedPage({ projectLabel: "Project: Wrong project" })),
+  error => error.code === "HADALIS_DESKTOP_VIEW_CHANGED" && /project guard/.test(error.message)
+);
+await assert.rejects(
+  requireIdleComposer(guardedPage({ projectLabel: "Project: HadalisXLocal" })),
+  error => error.code === "HADALIS_DESKTOP_VIEW_CHANGED"
+);
 await requireIdleComposer(guardedPage());
 await requireIdleComposer(guardedPage({ text: "\n", domText: "" }));
 await requireIdleComposer(guardedPage(), false);

@@ -18,7 +18,7 @@ function writeJson(payload) {
 }
 
 function writeError(error) {
-  const detail = error?.code === "HADALIS_DESKTOP_BUSY"
+  const detail = ["HADALIS_DESKTOP_BUSY", "HADALIS_DESKTOP_VIEW_CHANGED"].includes(error?.code)
     ? `${error.code}: ${error.message}` : (error?.stack ?? String(error));
   fs.writeSync(2, detail + "\n");
 }

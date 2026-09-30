@@ -106,6 +106,15 @@ def main() -> None:
         else:
             raise AssertionError("expected a typed busy condition")
 
+    with patch.object(daemon.subprocess, "run", return_value=SimpleNamespace(
+            returncode=1, stderr="HADALIS_DESKTOP_VIEW_CHANGED: another chat selected\n", stdout="")):
+        try:
+            daemon.desktop_command("managed-poll", "0")
+        except daemon.DesktopViewChanged as exc:
+            assert str(exc) == "another chat selected"
+        else:
+            raise AssertionError("expected a typed view-change condition")
+
     with tempfile.TemporaryDirectory() as tmp:
         with patch.dict(os.environ, {"XDG_CONFIG_HOME": tmp + "/config", "XDG_STATE_HOME": tmp + "/state"}):
             commands = []
@@ -173,6 +182,46 @@ def main() -> None:
                 item = store.read_snapshot()[1]["profiles"]["strict-lossless-research"]
                 assert item["pending"] is not None and item["prompts_sent"] == 1
                 assert commands.count("managed-submit") == 2
+
+    with tempfile.TemporaryDirectory() as tmp:
+        with patch.dict(os.environ, {"XDG_CONFIG_HOME": tmp + "/config", "XDG_STATE_HOME": tmp + "/state"}):
+            commands = []
+
+            def moved_view(command, *args, prompt=None, project_name=None):
+                commands.append(command)
+                assert project_name == "Hadalis Cloud"
+                if command == "new-chat":
+                    return {}
+                if command == "managed-baseline":
+                    return {"responseActionCount": 0}
+                if command == "managed-submit":
+                    return {"submitted": True}
+                if command == "managed-poll" and commands.count("managed-poll") == 1:
+                    raise daemon.DesktopViewChanged("target project is not selected")
+                if command == "managed-poll":
+                    return {"completed": False}
+                raise AssertionError(command)
+
+            base = int(time.time())
+            with patch.object(daemon, "desktop_command", side_effect=moved_view):
+                daemon.tick(base)
+                daemon.tick(base + 2)
+                state = store.read_snapshot()[1]
+                item = state["profiles"]["strict-lossless-research"]
+                assert item["desired"] == "run" and item["status"] == "waiting_desktop"
+                assert item["pending"] is not None and item["pending"]["counted"]
+                assert item["pending"]["poll_after_unix"] == base + 32
+                assert item["failures"] == 0 and item["poll_errors"] == 0
+                assert sum(event["kind"] == "desktop_view_changed" for event in state["events"]) == 1
+                daemon.tick(base + 4)
+                assert commands.count("managed-poll") == 1
+                store.change_state(lambda _config, current: current["profiles"]["strict-lossless-research"].update(
+                    {"poll_errors": 1, "last_error": "earlier transient error"}))
+                daemon.tick(base + 32)
+                item = store.read_snapshot()[1]["profiles"]["strict-lossless-research"]
+                assert item["status"] == "thinking" and item["pending"] is not None
+                assert item["poll_errors"] == 0 and item["last_error"] == ""
+                assert item["prompts_sent"] == 1 and commands.count("managed-submit") == 1
     print("PASS: one ChatGPT owner, busy wait, safe pause/stop, queued profile")
 
 

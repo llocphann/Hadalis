@@ -23,6 +23,10 @@ class DesktopBusy(RuntimeError):
     """The current owned ChatGPT chat has not finished generating."""
 
 
+class DesktopViewChanged(RuntimeError):
+    """Desktop is showing a different chat; the pending response is untouched."""
+
+
 def desktop_command(command: str, *args: str, prompt: str | None = None,
                     project_name: str | None = None) -> dict:
     environment = os.environ.copy()
@@ -37,6 +41,8 @@ def desktop_command(command: str, *args: str, prompt: str | None = None,
         detail = (result.stderr or result.stdout).strip()[:600]
         if detail.startswith("HADALIS_DESKTOP_BUSY: "):
             raise DesktopBusy(detail.removeprefix("HADALIS_DESKTOP_BUSY: "))
+        if detail.startswith("HADALIS_DESKTOP_VIEW_CHANGED: "):
+            raise DesktopViewChanged(detail.removeprefix("HADALIS_DESKTOP_VIEW_CHANGED: "))
         raise RuntimeError(detail)
     try:
         payload = json.loads(result.stdout)
@@ -165,7 +171,7 @@ def _submit(config: dict, state: dict, owner: str, now: int) -> None:
     try:
         desktop_command("managed-submit", str(count), prompt=prompt,
                         project_name=profile["project_name"])
-    except DesktopBusy:
+    except (DesktopBusy, DesktopViewChanged):
         # The Desktop CLI raises this only before filling or sending. Remove
         # the pre-send baseline so the scheduler can safely retry later.
         change_state(lambda _config, current: current["profiles"][owner].update(
@@ -210,12 +216,25 @@ def _poll(config: dict, state: dict, owner: str, now: int) -> None:
             def waiting(_config: dict, current: dict):
                 current_item = current["profiles"][owner]
                 current_item["pending"]["poll_after_unix"] = now + POLL_SECONDS
+                current_item["poll_errors"] = 0
+                current_item["last_error"] = ""
                 if current_item["desired"] == "run":
                     current_item["status"] = "thinking"
             change_state(waiting)
             return
         response = result.get("response", {})
         directive = parse_loop_directive(response.get("text", ""))
+    except DesktopViewChanged as exc:
+        def view_changed(current_config: dict, current: dict):
+            current_item = current["profiles"][owner]
+            if current_item["status"] != "waiting_desktop":
+                event(current, owner, "desktop_view_changed", str(exc))
+            current_item["pending"]["poll_after_unix"] = now + min(
+                _profile(current_config, owner)["retry_delay_seconds"], 60)
+            current_item["last_error"] = str(exc)[:500]
+            current_item["status"] = "waiting_desktop"
+        change_state(view_changed)
+        return
     except Exception as exc:
         def failed(current_config: dict, current: dict):
             current_item = current["profiles"][owner]
@@ -366,11 +385,12 @@ def tick(now: int | None = None) -> None:
         return
     try:
         _submit(config, state, owner, now)
-    except DesktopBusy as exc:
+    except (DesktopBusy, DesktopViewChanged) as exc:
         def waiting(current_config: dict, current: dict):
             current_item = current["profiles"][owner]
             if current_item["status"] != "waiting_desktop":
-                event(current, owner, "desktop_busy", str(exc))
+                event(current, owner, "desktop_view_changed" if isinstance(exc, DesktopViewChanged)
+                      else "desktop_busy", str(exc))
             current_item["last_error"] = str(exc)[:500]
             current_item["status"] = "waiting_desktop"
             current_item["next_run_at_unix"] = now + min(

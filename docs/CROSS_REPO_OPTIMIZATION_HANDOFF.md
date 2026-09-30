@@ -24942,3 +24942,180 @@ Next audit should re-fetch current dev, reconcile concurrent commits and
 continue outside JapaneseTypography. Prefer a record-scaled private model or
 parser completion path; fixed-size settings literals/counts should remain below
 higher-cardinality paths unless no stronger candidate remains.
+
+## 108. Round 94 — RegionSelector circle-bounds allocation + RegionFunctions closure audit (2026-09-30)
+
+### Snapshot and concurrent reconciliation
+
+- Authoritative dev immediately before this write:
+  5029704fec4a5aa1a6c9f37f3ea96ca9dcff495c
+  (Merge remote-tracking branch 'origin/dev' into dev).
+- Compared from the Round-93 checkpoint
+  063ae8aea27607fda52e878a366df811f46b560e.
+- The intervening runtime delta is confined to automation manager/worker
+  privilege/deployment files and their tests. It does not touch
+  RegionSelection.qml, RegionFunctions.qml, CircleSelectionDetails.qml or any
+  source used by this proof.
+- Existing handoff ownership was searched for RegionSelection, circle dragging,
+  dragPoints.map, min/max point bounds, RegionFunctions overlap filtering and
+  image-region filtering.
+- Existing RegionSelector ownership covers Hyprland layer-query lifecycle and
+  screenshot annotation architecture, but not the release-time point-bound
+  derivation below.
+
+### 108.1 Circle selection can reuse one X-coordinate array and one Y-coordinate array across min/max calls — CONFIRMED / P1-P2 circle-drag release
+
+Path:
+
+- modules/regionSelector/RegionSelection.qml,
+  MouseArea.onReleased circle branch.
+
+Current release-time bounds derivation is:
+
+    const dragPoints = root.points.length > 0
+        ? root.points
+        : [{ x: mouseArea.mouseX, y: mouseArea.mouseY }]
+
+    const maxX = Math.max(...dragPoints.map(p => p.x))
+    const minX = Math.min(...dragPoints.map(p => p.x))
+    const maxY = Math.max(...dragPoints.map(p => p.y))
+    const minY = Math.min(...dragPoints.map(p => p.y))
+
+For P captured drag points this allocates four P-element coordinate arrays and
+reads each point's x twice and y twice.
+
+A strict-safe direction is deliberately narrower than a scalar one-pass bounds
+loop:
+
+1. keep the exact dragPoints selection/fallback;
+2. build xValues = dragPoints.map(p => p.x);
+3. call Math.max(...xValues), then Math.min(...xValues), in that order;
+4. only after both X extrema are complete, build
+   yValues = dragPoints.map(p => p.y);
+5. call Math.max(...yValues), then Math.min(...yValues), in that order;
+6. keep the same regionX/Y/Width/Height assignments and padding arithmetic.
+
+Why this preserves more behavior than a scalar loop:
+
+- the same four Math.max/Math.min spread calls remain;
+- each call receives the same number of arguments in the same order;
+- the engine's spread/argument-count failure behavior therefore remains part of
+  the contract for very long drags;
+- X extrema are still completely resolved before any Y coordinate is read.
+
+Strict-lossless proof:
+
+- root.points is declared property list<point>; its elements are QML point
+  value types, not user-provided getter/proxy objects. The fallback is a plain
+  local {x,y} record.
+- No callback or event-loop boundary occurs between the current first and
+  second X maps, or between the current first and second Y maps. Reusing the
+  already-read scalar coordinates cannot expose a mutation window.
+- Source point order is unchanged.
+- Math.max and Math.min are still invoked with the exact coordinate sequences,
+  preserving NaN, Infinity and signed-zero behavior.
+- If the first X Math.max spread fails, Y values are still never read, matching
+  current control flow.
+- Padding Config reads remain before the dragPoints/coordinate work and are not
+  moved.
+- regionX, regionY, regionWidth and regionHeight assignments remain in the same
+  order and use the same extrema.
+- root.snip() still executes at the same point after those assignments.
+- Point capture cadence and PathPolyline rendering are untouched.
+
+For P points:
+
+- P-element coordinate arrays: 4 -> 2;
+- coordinate-array element stores: 4P -> 2P;
+- point.x reads: 2P -> P;
+- point.y reads: 2P -> P;
+- Math max/min calls and spread argument counts: unchanged, four calls;
+- output bounds: unchanged.
+
+This is interaction-local and scales with drag duration/pointer-event count. It
+does not claim a whole-shell percentage.
+
+Classification:
+CONFIRMED / P1-P2 circle-drag release.
+
+### 108.2 RegionFunctions pairwise overlap work is not promoted under the generic helper contract
+
+Paths:
+
+- modules/regionSelector/RegionFunctions.qml;
+- modules/regionSelector/RegionSelection.qml.
+
+Current RegionSelection provenance is favorable for optimization:
+
+- Niri windowRegions are newly-created plain JS geometry records;
+- Hyprland windowRegions are mapped into newly-created plain JS geometry
+  records;
+- layerRegions are newly-created plain JS records;
+- image detector output enters through JSON.parse() before
+  filterImageRegions().
+
+However RegionFunctions itself exposes generic functions accepting caller
+arrays/records, and filterOverlappingImageRegions() has nontrivial removal
+semantics:
+
+- it continues comparing regionA to later regionB records even after regionA
+  itself has been marked removed;
+- those later comparisons can remove additional j records;
+- breaking the inner loop after removed.add(i) therefore changes the final
+  survivor set.
+
+Nearby geometry caching is also not counted:
+
+- intersectionOverUnion() reads at/size and computes its own areas;
+- on overlapping pairs filterOverlappingImageRegions() then separately reads
+  size again for its area tie/removal rule;
+- folding these computations together would change property-read count/order
+  for generic external callers unless the helper API is explicitly narrowed to
+  plain immutable records;
+- using the IoU helper's internal area directly is not malformed-equivalent in
+  all coercion cases to the later size[0] * size[1] expression.
+
+Status:
+CLOSED / no new strict-lossless RegionFunctions factor from source shape alone.
+
+### 108.3 Welcome wallpaper parser is the same algorithmic owner as §101.1, not a new finding
+
+Path:
+
+- welcome.qml, onboarding wallpaperScanProc stdout parser.
+
+The onboarding picker still uses the same shape documented in §101.1:
+
+- newline split/filter;
+- ctime reparsed with split + parseFloat inside every sort comparison;
+- path reparsed with split after sorting.
+
+The §101.1 row-decoration/index-scan direction applies mechanically here with
+the same malformed tab-field constraints.
+
+This is a separate call site but not a distinct optimization idea, and it runs
+only in onboarding.
+
+Status:
+ALREADY / owner expansion of §101.1; not recounted.
+
+### 108.4 Round-94 conclusion / next checkpoint
+
+New strict-lossless optimization groups: one:
+
+- reuse X and Y coordinate arrays across the existing circle-selection extrema
+  calls (§108.1, CONFIRMED / P1-P2 interaction).
+
+Closed/not counted:
+
+- RegionFunctions pairwise geometry rewrites (§108.2);
+- welcome.qml wallpaper parser as a duplicate owner expansion of §101.1
+  (§108.3).
+
+No runtime/product/native/script code was modified and no deterministic local
+job was required.
+
+Next audit should re-fetch current dev, reconcile concurrent commits and move
+outside RegionSelector. Prefer another record-scaled private data path. Avoid
+reopening known Settings search, Niri/Hyprland snapshot, Weather, AI, Tray and
+wallpaper-parser owners unless a source-distinct operation is proven.

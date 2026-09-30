@@ -20821,3 +20821,139 @@ to another under-covered interaction/runtime path rather than reopening
 VoiceSearch. Suitable next areas include timer/quick-note persistence,
 file-backed Notepad/Todo secondary actions, or another Settings/service boundary
 with measurable repeated parsing/allocation.
+
+
+## 85. Round 71 — maintainer-scoped Abyss strict-lossless audit and implementation consolidation (2026-09-30)
+
+### Snapshot and authorization
+
+- Current `dev` before this documentation write:
+  `b895362d7b881beb3f64dc91685190c409c65442`.
+- The maintainer explicitly authorized deep Abyss Panel Style audit and runtime
+  implementation only after strict-lossless proof. The wider continuous
+  optimization program remains research only.
+- The complete note was reconciled through Round 70 (§84), including concurrent
+  documentation additions. At `bacf362b5f38ba350b40398fe0a4ebb62fd3c28b`
+  it contains 20,823 lines, 113,128 whitespace-delimited words and 604 numbered
+  subsection headings. Literal CONFIRMED/HIGH CONFIDENCE heading counts are
+  255/47, **not deduplicated, current implementation-ready totals**.
+- Runtime implementation at
+  `ba5ae690dc59648a9bb7bddb1341b01aadf83e11` remains byte-identical in
+  current production paths. Later concurrent changes concern research and
+  automation; they are preserved.
+- Detailed architecture matrix and 18-field findings:
+  [Abyss strict-lossless audit](abyss/STRICT_LOSSLESS_OPTIMIZATION_AUDIT_2026-09-30.md).
+
+### 85.1 Coverage and current architecture reconciliation
+
+The direct Abyss source scope is 60 QML/JS/fragment files, 7,974 lines.
+The audit traces input/hover/IPC → participant/controller → placement and vacancy
+→ Pyramid transactions/motion → service/model publication → geometry and input
+bounds → ordered field records → render and pixels.
+
+The detailed matrix covers bar/corners, generic and Sidebar dialogs,
+notifications/activity/toasts, Quick Notes/To-do/Timers, Wi-Fi/Bluetooth,
+media/volume/brightness/other OSD, both Sidebars, Dock-attached menus,
+Dashboard/Overview, clipboard/launcher, utilities, session/settings,
+confirmation/Polkit/lock, Edge Editor, outputs and family transitions.
+Shared backends were inspected at relevant consumer/publication/lifecycle
+boundaries; this is not exhaustive hardware or arbitrary extension execution.
+
+Historical standalone Abyss confirmation/PopupAnchorRegistry recommendations
+are SUPERSEDED/not applicable to current ownership. Current clipboard two-step
+confirmation, mature dialogs and shared authorization prompts remain their
+actual paths. No second popup system, style redesign, animation change, effect
+disable or baseline behavior correction was introduced.
+
+### 85.2 Two existing groups implemented after native parity proof — no new finding count
+
+**§23.2/§58.1 — controller aggregate arrays: CONFIRMED, refined implementation.**
+
+`AbyssSurfaceController.placementRequests/inputBounds/records` retain the complete
+original map phase and then compact only its fresh unpublished dense result.
+The predicate phase remains after all participant reads. `records` retains
+moduleRecords concat-receiver evaluation order, repeated geometry reads,
+Object.assign cloning, mass and final concat. No shared scratch buffers or
+publication identity changes.
+
+Local source-array counts per evaluation:
+
+- placement requests: 3 → 2 (**33.3%**);
+- input bounds: 3 → 2 (**33.3%**);
+- records: 4 → 3 (**25%**).
+
+The earlier aggressive scan-fusion direction is not credited: visits remain two
+phases to preserve read/error/dependency order.
+
+**§75.1 — private decorative-wave smoothing: CONFIRMED, implemented.**
+
+`WaveVisualizer.processedBars` carries old left/current/right values while
+overwriting its unpublished normalized array. Exact stencil arithmetic,
+boundary repetition, coercion sequence, output identity and delegate Behaviors
+are retained. Active array count is 1+P → 1: **66.7% at default P=2**, 75% at
+P=3; no smoothing arithmetic/pass removal is claimed.
+
+The actual Abyss consumer is Sidebar Left LocalMusicView → CavaProcess →
+PlayerControl → WaveVisualizer while enabled/visible/playing. BarMediaPopup and
+DashMedia disable this decorative layer; their own EQ/Canvas rendering must not
+be credited. The 33 ms Date.now-driven EQ repaint remains observable.
+
+Clean proposal evidence at `ef9de70329bf3f31a2d06b8b5596aecee5444f37`:
+[native QV4 result](../automation/results/JOB-abyss-lossless-proposal-20260930.json),
+**30,065 cases + 11 reactive steps**. Coverage includes Object.is numeric parity,
+read/error ordering, fresh publication, QObject dependencies and NOTIFY counts.
+The default regression extracts actual current production declarations.
+
+### 85.3 Held hypotheses and separate correctness prerequisites
+
+- §72.1 is restricted to **HIGH CONFIDENCE** until the current native sort/tie
+  winner, duplicate IDs, Unicode compare-zero and read/error order are proven.
+- §72.2 remains **HIGH CONFIDENCE**: real-number monotonicity does not prove
+  finite-overflow/rounding/tolerance or repeated getter parity. Keep the second
+  collision phase pending a native adversarial oracle.
+- Perimeter obstacle staging and collapsed notification prefix reductions
+  (§§59.3/60.1) need native reactive/sparse-array/publication proof.
+- GPU uniform pruning/union changes require same-GPU pixel and frame-time
+  oracles; preserve 40-record ordering, derivatives, material output and DPR.
+- Hidden residency, mass gating, backend/query reuse and guarded Dashboard
+  specializations retain their detailed conditional/malformed/lifecycle proof
+  requirements. No applied savings are credited.
+
+The readonly OSD preview/fixture assignment, Dock menu contract mismatch and
+Vacancy/Pyramid regression issues are separate correctness prerequisites.
+Several affected source/test bodies are unchanged from the pre-change snapshot;
+not every failed check has been causally attributed. No stale assertion is made
+green by changing product behavior, and no bugfix is counted as a performance
+factor.
+
+### 85.4 Validation incident, acceptance and quantification boundary
+
+Runtime job SHA: `ba5ae690dc59648a9bb7bddb1341b01aadf83e11`.
+The observed completed canonical summary reports **267 checks, 233 passed,
+33 failed**, with two skip entries. Actual-production allocation parity was
+observed PASS. Full acceptance is **HOLD / NOT_COMPLETE**.
+
+A manual worker invocation accidentally overlapped the existing daemon and
+initially shared its external log. The manual copy was interrupted. Background
+result publication then failed; service restarts retriggered the consumed job,
+including after the interrupted session. The active duplicate was stopped.
+Original action stdout/stderr/exit status/timestamps were not recovered.
+
+[Explicit failed recovery record](../automation/results/JOB-abyss-lossless-runtime-20260930.json)
+at `b895362d7b881beb3f64dc91685190c409c65442` is deliberately identified
+as manual and unqualified. It preserves the observed summary and consumes the
+job identifier to prevent another replay; it is **not clean canonical evidence**.
+The worker service was restored after verifying that record on remote dev.
+Transport/restart handling is a separate automation correctness prerequisite.
+Future validation requires a new SHA/job, never relabeling this result green.
+
+No qualified before/after CPU/GPU/latency/FPS/RSS/PSS/VRAM measurements were
+collected. Source-local array ratios are non-additive and do not imply resident
+memory or whole-Abyss speed percentages. HIGH CONFIDENCE proposals contribute
+zero credited delivered savings until proof and implementation are complete.
+
+New optimization groups: **zero**; two existing groups implemented and qualified.
+The scoped source audit is documented; canonical repair on a new SHA and live
+owner acceptance remain open in `to-do/cloud-bot/OPTIMIZATION.md`.
+Continue the general research program from current dev without treating this
+scoped milestone as release-ready.

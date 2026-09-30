@@ -18359,3 +18359,180 @@ No numeric reduction above is an end-to-end Hadalis speedup; all values are
 local source-derived comparison/allocation counts.
 
 No runtime/source implementation is authorized by this handoff.
+
+
+## 70. Round 56 — keyboard LED state fusion and Anime schedule collection (2026-09-30)
+
+This round continued from Round-55 docs commit
+`9a7ef4efd32d44ef2163e8c608165a096b235c6a`. Current `dev` was unchanged
+immediately before this documentation write.
+
+The handoff was searched for `KeyboardIndicators.qml`,
+`_hasKnownState`, `_recomputeLockState`, `AnimeService.qml`,
+schedule filtering, Booru/Awww ownership and the nearby service areas audited
+below. Existing KeyboardIndicators handoff notes classify its lifecycle/fallback
+polling, but do not own the per-event state-scan reduction below. No existing
+AnimeService optimization item was found.
+
+### 70.1 KeyboardIndicators can compute known-state and any-on state in one internal pass — CONFIRMED / P2 lock-state event path
+
+Path:
+
+- `services/KeyboardIndicators.qml`.
+
+In the non-evdev LED-file fallback, every lock-file state update eventually
+calls `_recomputeLockState(kind, allowPopup)`.
+
+Current logic uses the same `paths` and plain state map twice:
+
+1. when `paths.length > 0`,
+   `_hasKnownState(paths, states)` scans with `.some()` until the first
+   non-null/non-undefined state;
+2. if at least one state is known, a second
+   `paths.some(path => states[path] === true)` starts again from the first
+   path and searches for an enabled LED.
+
+The state containers are internal plain JS objects:
+
+- `_setLockPaths()` rebuilds them as object literals;
+- `_setLockState()` / `_clearLockState()` publish fresh
+  `Object.assign(...)` objects;
+- the path arrays are sorted string paths derived from the service's own LED
+  discovery.
+
+`_recomputeLockState()` is an imperative callback, not a QML binding.
+
+Strict-safe direction:
+
+- keep the public/private helper `_hasKnownState()` unchanged so no method
+  surface disappears;
+- inside `_recomputeLockState()`, replace only its two internal scans with one
+  ordered loop;
+- maintain two scalars:
+  - whether any non-null/non-undefined value has been observed;
+  - whether any value is exactly `true`;
+- stop immediately on the first exact `true`, because that simultaneously
+  proves that a known state exists;
+- if the complete nonempty path list contains no known value, retain the same
+  early return;
+- keep every downstream CapsLock/NumLock reliability assignment, popup
+  decision and `allowPopup` ordering unchanged.
+
+Important edge parity:
+
+- empty path list still produces `nextValue=false` and reaches the current
+  empty-path NumLock reset branch;
+- all-null/undefined state maps still return without publishing a lock change;
+- known-false plus later unknown values still scans to the end and publishes
+  false exactly as today;
+- duplicate paths, if present, are read in the same order;
+- no QML dependency capture changes because this is imperative state handling.
+
+For P paths, state-map reads change from a worst-shaped **up to 2P -> at most
+P** per recomputation. Cases that already return after one all-unknown pass
+remain P -> P.
+
+No discovery cadence, FileView ownership or evdev path is changed.
+
+### 70.2 AnimeService schedule filtering can normalize matching GraphQL rows directly into the final array — CONFIRMED / P2 network completion
+
+Path:
+
+- `services/deferred/AnimeService.qml`,
+  schedule GraphQL completion.
+
+After a successful GraphQL response, the schedule path currently executes:
+
+1. `(data.Page?.media ?? []).filter(...)`;
+2. for every row with `nextAiringEpisode`, constructs an airing Date and maps
+   weekday number through a seven-string literal;
+3. retains rows whose airing weekday equals `targetDay`;
+4. `filtered.map(anime => root._normalizeAnime(anime))`;
+5. publishes that normalized array into both the target-day cache and
+   `root.schedule`.
+
+The GraphQL response arrives through JSON parsing, so media/anime records are
+plain JSON data rather than QML objects/getter-bearing values.
+
+Strict-safe normal-array direction:
+
+- allocate only the final normalized array;
+- traverse media in source order once;
+- keep the same `!anime.nextAiringEpisode` short-circuit;
+- construct the same Date only for rows that pass that guard;
+- derive the same lowercase weekday string and compare to the same
+  `targetDay`;
+- call `_normalizeAnime()` only for rows whose predicate passes, exactly as
+  today;
+- append normalized rows in source order;
+- publish the same final array reference to
+  `_scheduleCache[targetDay]` and then `root.schedule`;
+- retain `_updateCache(cacheKey)` in the same position.
+
+The seven-element weekday lookup can also be represented without constructing
+a new literal array for each predicate call (for example an exact numeric
+switch), while retaining the same seven strings and Date `getDay()`
+semantics.
+
+Malformed-container parity must be preserved. Current code expects the
+nullish-defaulted media value to expose Array `filter()`; a truthy non-array
+helper response can therefore throw. A strict implementation should keep the
+current filter/map compatibility/error path for non-arrays and use the fused
+collector only when the media value is an actual array.
+
+For L media rows and V matching rows:
+
+- filtered intermediate arrays: **1 -> 0**;
+- media/reference traversals before publication: **L + V -> L**;
+- `_normalizeAnime()` calls remain exactly V;
+- result membership/order and cache/publication sequence are unchanged.
+
+### 70.3 Booru/Awww service sweep did not produce another material strict item
+
+Paths audited:
+
+- `services/Booru.qml`;
+- `services/Wallhaven.qml`;
+- `services/AwwwBackend.qml`;
+- `services/deferred/InnerTube.qml`;
+- `services/DailyNoteTodoBackend.qml`;
+- `services/ThinkFanService.qml`.
+
+Items intentionally **not promoted**:
+
+- Booru waifu.im request building has a small `filter().forEach()` tag staging
+  array, but user tag lists are short and removing it is a P3 request-builder
+  micro-optimization.
+- waifu.im image mapping also creates a tag-name array before `join(" ")`;
+  replacing Array.join with incremental string concatenation is not an
+  unconditional performance win.
+- Booru/Wallhaven delayed QObject destruction filters references into a fresh
+  snapshot before `Qt.callLater`. Reusing the originally published array
+  would require proving that no holder mutates that array before deferred
+  destruction; the allocation alone is not worth weakening snapshot semantics.
+- Awww's output/signature arrays directly encode deterministic multi-output
+  state and are not redundant staging.
+- InnerTube's JSONL `StreamCollector` intentionally publishes the accumulated
+  buffer reference and then replaces its internal buffer; cloning/fusing that
+  lifecycle would change reference/publication semantics.
+- DailyNoteTodoBackend's task lookup occurs once per toggle/delete before the
+  helper's document-hash conflict check; there is no duplicated reconciliation
+  scan to eliminate.
+- ThinkFan's dominant work remains the previously documented lifecycle/process
+  policy rather than local collection churn.
+
+### 70.4 Round-56 conclusion
+
+New strict-lossless groups:
+
+1. one-pass KeyboardIndicators known/on state classification (§70.1,
+   **CONFIRMED / P2 event path**);
+2. direct Anime schedule predicate + normalization collection (§70.2,
+   **CONFIRMED / P2 network completion**).
+
+No lower-value Booru/Awww/InnerTube/DailyNote micro-hit is counted (§70.3).
+
+No numeric reduction above is an end-to-end Hadalis speedup; all values are
+local source-derived reads/traversals/allocations.
+
+No runtime/source implementation is authorized by this handoff.

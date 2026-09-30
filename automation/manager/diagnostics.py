@@ -72,14 +72,11 @@ def report() -> str:
             f" substate={service.get('detail', '')}"
             f" result={service.get('result', '')}"
             f" exec_main_status={service.get('exec_main_status', '')}"
-            f" working_dir={service.get('working_directory', '')}"
-            f" exec_start={service.get('exec_start', '')}"
         )
     lines.extend([
         "",
         "SCHEDULER",
         f"  owner_id: {state.get('owner_id') or 'none'}",
-        f"  requested_profile_id: {state.get('requested_profile_id') or 'none'}",
         f"  last_heartbeat: {_date(state.get('manager_heartbeat_at_unix'))}",
         f"  heartbeat_age_seconds: "
         f"{max(0, now - state['manager_heartbeat_at_unix']) if type(state.get('manager_heartbeat_at_unix')) is int else 'unknown'}",
@@ -101,7 +98,6 @@ def report() -> str:
             f"job_poll_errors={item['job_poll_errors']}",
             f"    last_activity={_date(item['last_activity_at_unix'])} "
             f"next_run={_date(item['next_run_at_unix'])}",
-            f"    status_detail: {_indent(item.get('status_detail'))}",
             f"    last_error: {_indent(item.get('last_error'))}",
         ])
     lines.extend(["", "RECENT ACTIVITY (newest first)"])

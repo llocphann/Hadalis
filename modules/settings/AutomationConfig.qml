@@ -137,7 +137,6 @@ ContentPage {
             unavailable: "Unavailable", thinking: "Thinking", waiting_result: "Waiting for local result",
             waiting_desktop: "Waiting for ChatGPT",
             continuing: "Continuing", restart_queued: "Restart queued",
-            waiting_owner: "Waiting for previous profile",
             scheduler_unavailable: "Scheduler unavailable",
             invalid_configuration: "Invalid configuration",
             rotating: "Rotating chat", paused: "Paused",
@@ -151,7 +150,7 @@ ContentPage {
     function statusColor(value): color {
         if (["active", "running", "continuing"].includes(value)) return Appearance.colors.colPrimary
         if (["failed", "connector_blocked", "blocked", "transport_unavailable", "scheduler_unavailable", "invalid_configuration"].includes(value)) return Appearance.colors.colTertiary
-        if (["starting", "stopping", "thinking", "waiting_result", "waiting_desktop", "waiting_owner", "rotating", "restart_queued", "pausing"].includes(value)) return Appearance.colors.colSecondary
+        if (["starting", "stopping", "thinking", "waiting_result", "waiting_desktop", "rotating", "restart_queued", "pausing"].includes(value)) return Appearance.colors.colSecondary
         return Appearance.colors.colSubtext
     }
 
@@ -445,10 +444,6 @@ ContentPage {
                 text: Translation.tr("Stop this profile first. Wait for its current response to finish.")
             }
             SettingsNote {
-                visible: !!root.selectedState?.status_detail
-                text: root.selectedState?.status_detail ?? ""
-            }
-            SettingsNote {
                 visible: root.pendingRemoveId === root.selectedProfileId
                 warning: true
                 text: Translation.tr("Remove this profile? ChatGPT conversation history will be kept.")
@@ -641,13 +636,6 @@ ContentPage {
         title: Translation.tr("Current run")
         SettingsGroup {
             StyledText { text: Translation.tr("Status: %1").arg(root.statusLabel(root.selectedState?.status ?? "idle")); color: Appearance.colors.colOnSurface }
-            StyledText {
-                visible: !!root.selectedState?.status_detail
-                Layout.fillWidth: true
-                text: root.selectedState?.status_detail ?? ""
-                wrapMode: Text.WordWrap
-                color: Appearance.colors.colSecondary
-            }
             StyledText { text: Translation.tr("Loop: %1 · Job: %2").arg(root.selectedState?.loop_state || "—").arg(root.selectedState?.job_id || root.selectedState?.last_job_id || "—"); color: Appearance.colors.colOnSurface }
             StyledText { text: Translation.tr("Elapsed: %1 · Iterations: %2 · Prompts: %3").arg(root.elapsed(root.selectedState?.started_at_unix)).arg(root.selectedState?.iterations ?? 0).arg(root.selectedState?.prompts_sent ?? 0); color: Appearance.colors.colOnSurface }
             StyledText { text: Translation.tr("Polling errors: %1 · Last result: %2").arg(root.selectedState?.poll_errors ?? 0).arg(root.selectedState?.last_result || "—"); color: Appearance.colors.colOnSurface }

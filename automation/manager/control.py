@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import json
-from pathlib import Path
 import subprocess
 import time
 
@@ -18,24 +17,6 @@ UNITS = {
 SERVICE_ACTIONS = {"start", "stop", "restart"}
 PROFILE_ACTIONS = {"start", "pause", "resume", "stop", "restart"}
 HEARTBEAT_STALE_SECONDS = 180
-DISPATCH_ACK_SECONDS = 12
-ROOT = Path(__file__).resolve().parents[2]
-
-
-def _runtime_unit_problem(services: dict) -> str:
-    """Detect an active but stale systemd unit from another repo checkout."""
-    bridge = services["bridge"]
-    working_dir = bridge.get("working_directory")
-    if working_dir and Path(working_dir).resolve() != ROOT:
-        return (f"Chat bridge uses old checkout {working_dir}; current checkout is {ROOT}. "
-                "Reinstall its user units from this checkout with "
-                "python3 scripts/install-hadalis-automation.py --enable-now")
-    entry = bridge.get("exec_start") or ""
-    if entry and "automation.manager.daemon" not in entry:
-        return ("Installed chat bridge does not run automation.manager.daemon. "
-                "Reinstall user units with python3 scripts/install-hadalis-automation.py --enable-now")
-    return ""
-
 
 
 def _ensure_runtime_services() -> None:
@@ -65,9 +46,6 @@ def _ensure_runtime_services() -> None:
                 (result.stderr or result.stdout).strip()[:350]
             )
     actual = service_states()
-    mismatch = _runtime_unit_problem(actual)
-    if mismatch:
-        raise RuntimeError(mismatch)
     inactive = [f'{UNITS[key]} ({actual[key]["state"]})'
                 for key in required if actual[key]["state"] != "active"]
     if inactive:
@@ -82,17 +60,13 @@ def control_unit_name(key: str) -> str:
 
 
 def _scheduler_problem(services: dict, state: dict, now: int) -> str:
-    mismatch = _runtime_unit_problem(services)
-    if mismatch:
-        return mismatch
     bridge = services["bridge"]
     if bridge["state"] != "active":
         detail = bridge.get("result") or bridge.get("detail") or "not running"
         return f'Chat bridge is {bridge["state"]} ({detail}); start the Automation services'
     heartbeat = state.get("manager_heartbeat_at_unix")
     if type(heartbeat) is int and now - heartbeat > HEARTBEAT_STALE_SECONDS:
-        return (f"Chat bridge scheduler heartbeat is older than {HEARTBEAT_STALE_SECONDS}s; "
-                "inspect its user journal")
+        return f"Chat bridge scheduler has not ticked for {now - heartbeat}s; inspect its user journal"
     for key in ("chatgpt", "worker"):
         service = services[key]
         if service["state"] != "active":
@@ -113,7 +87,7 @@ def service_states() -> dict:
         try:
             output = subprocess.run(
                 ["systemctl", "--user", "show", unit,
-                 "--property=LoadState,ActiveState,SubState,Result,ExecMainStatus,WorkingDirectory,ExecStart"],
+                 "--property=LoadState,ActiveState,SubState,Result,ExecMainStatus"],
                 capture_output=True, text=True, timeout=4, check=False,
             )
             values = dict(line.split("=", 1) for line in output.stdout.splitlines() if "=" in line)
@@ -132,14 +106,11 @@ def service_states() -> dict:
                 state = "failed"
             result[key] = {"unit": unit, "state": state,
                            "detail": values.get("SubState", ""), "result": outcome,
-                           "exec_main_status": values.get("ExecMainStatus", ""),
-                           "working_directory": values.get("WorkingDirectory", ""),
-                           "exec_start": values.get("ExecStart", "")}
+                           "exec_main_status": values.get("ExecMainStatus", "")}
         except (OSError, subprocess.TimeoutExpired):
             result[key] = {"unit": unit, "state": "unavailable",
                            "detail": "systemd user manager unavailable", "result": "",
-                           "exec_main_status": "", "working_directory": "",
-                           "exec_start": ""}
+                           "exec_main_status": ""}
     return result
 
 
@@ -186,45 +157,6 @@ def control_service(action: str, key: str) -> dict:
     return {"ok": True}
 
 
-def _await_dispatch(profile_id: str) -> None:
-    """A healthy unit is not proof that its scheduler has consumed Start."""
-    deadline = time.monotonic() + DISPATCH_ACK_SECONDS
-    last_reason = ""
-    while time.monotonic() < deadline:
-        _config, runtime, issues = read_snapshot()
-        item = runtime["profiles"].get(profile_id)
-        if item is None:
-            raise RuntimeError("profile disappeared during dispatch")
-        if issues:
-            raise RuntimeError("Automation config invalid: " + "; ".join(issues)[:1000])
-        now = int(time.time())
-        heartbeat = runtime.get("manager_heartbeat_at_unix")
-        fresh = type(heartbeat) is int and 0 <= now - heartbeat <= 15
-        owner = runtime["owner_id"]
-        if item["status"] == "invalid_configuration":
-            raise RuntimeError(item["last_error"])
-        if fresh and owner == profile_id and item["status"] != "scheduler_unavailable":
-            # A restart can legitimately wait for its existing in-flight
-            # response. Ownership + scheduler heartbeat is its receipt.
-            return
-        if fresh and owner not in (None, profile_id) and item["status"] == "waiting_owner":
-            # Another owner is still completing its current response safely.
-            return
-        if not fresh:
-            last_reason = "no fresh scheduler heartbeat"
-        elif owner is None:
-            last_reason = "scheduler is alive but did not claim the due profile"
-        else:
-            last_reason = f"profile is queued behind owner {owner}"
-        time.sleep(0.25)
-    raise RuntimeError(
-        "Start was saved but was not dispatched: " + (last_reason or "no scheduler acknowledgement")
-        + "; inspect Automation Activity and hadalis-chat-bridge.service journal. "
-        "If the bridge still runs code from before this update, restart it "
-        "after its current response is safely finished."
-    )
-
-
 def profile_action(action: str, profile_id: str) -> dict:
     if action not in PROFILE_ACTIONS:
         raise ValueError("profile action not allowlisted")
@@ -253,30 +185,6 @@ def profile_action(action: str, profile_id: str) -> dict:
                       (item["pending"] is not None or item["job_id"])):
                 item["status"] = "scheduled"
             item["next_run_at_unix"] = int(time.time())
-            item["status_detail"] = ""
-            if state["owner_id"] != profile_id:
-                state["requested_profile_id"] = profile_id
-                previous_id = state["owner_id"]
-                if previous_id:
-                    prior = state["profiles"][previous_id]
-                    if prior["desired"] != "stopped":
-                        prior["desired"] = "stopped"
-                        if not (prior["pending"] is not None and prior["status"] in {
-                                "stream_failed", "transport_unavailable", "waiting_desktop"}):
-                            prior["status"] = "stopping"
-                        prior["status_detail"] = "Yielding ChatGPT transport to " + profile["name"]
-                        event(state, previous_id, "takeover_requested",
-                              f"Explicit Start for {profile['name']}; finish current response first")
-                    item["status"] = "waiting_owner"
-                    item["status_detail"] = (
-                        f"Waiting for {previous_id} to release its ChatGPT chat "
-                        "after its current response finishes."
-                        + (" The prior session has an unresolved response; inspect Activity "
-                           "and recover it before this profile can run."
-                           if prior["pending"] is not None and prior["status"] in {
-                               "stream_failed", "transport_unavailable", "waiting_desktop"}
-                           else ""))
-                    event(state, profile_id, "waiting_owner", item["status_detail"])
             if action == "resume":
                 item["poll_errors"] = 0
                 item["job_poll_errors"] = 0
@@ -289,9 +197,6 @@ def profile_action(action: str, profile_id: str) -> dict:
                 item["request"] = "new"
         else:
             item["desired"] = "paused" if action == "pause" else "stopped"
-            item["status_detail"] = ""
-            if state.get("requested_profile_id") == profile_id:
-                state["requested_profile_id"] = None
             item["status"] = "pausing" if state["owner_id"] == profile_id else (
                 "paused" if action == "pause" else "idle")
             if state["owner_id"] != profile_id:
@@ -302,13 +207,11 @@ def profile_action(action: str, profile_id: str) -> dict:
     if action in {"start", "resume", "restart"}:
         try:
             _ensure_runtime_services()
-            _await_dispatch(profile_id)
         except RuntimeError as exc:
             def startup_failed(_config: dict, state: dict):
                 item = state["profiles"][profile_id]
                 item["status"] = "scheduler_unavailable"
                 item["last_error"] = str(exc)[:2000]
-                item["status_detail"] = ""
                 item["last_activity_at_unix"] = int(time.time())
                 event(state, profile_id, "start_failed", item["last_error"])
             change_state(startup_failed)
@@ -421,8 +324,6 @@ def remove_profile(profile_id: str) -> dict:
             state["owner_id"] = None
             event(state, profile_id, "stale_owner_released")
         config["profiles"] = [item for item in config["profiles"] if item["id"] != profile_id]
-        if state.get("requested_profile_id") == profile_id:
-            state["requested_profile_id"] = None
         state["profiles"].pop(profile_id)
         event(state, profile_id, "removed", "ChatGPT history retained")
     change(mutate)

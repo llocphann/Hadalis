@@ -18536,3 +18536,174 @@ No numeric reduction above is an end-to-end Hadalis speedup; all values are
 local source-derived reads/traversals/allocations.
 
 No runtime/source implementation is authorized by this handoff.
+
+
+## 71. Round 57 — Equalizer band-commit allocation and TLP token parsing (2026-09-30)
+
+This round continued from Round-56 docs commit
+`066c4cd79c121314c620bb2a626cf7d3ade61057`. Current `dev` was unchanged
+immediately before this documentation write.
+
+The handoff was searched before promotion for
+`services/deferred/EqualizerService.qml`, `_normalizeGains`,
+`setDspBandGain`, `TlpRuntimeCapabilities.qml`, `_tokens` and the
+surrounding lifecycle findings. Existing Equalizer/CAVA work covers service
+demand/render ownership; it does not own the local band-commit allocation below.
+Existing TLP work covers 30-minute safety-process freshness, not token parsing.
+
+### 71.1 Equalizer single-band commit can normalize the already-required private clone in place — CONFIRMED / P2 interactive commit path
+
+Path:
+
+- `services/deferred/EqualizerService.qml`.
+
+`setDspBandGain(index, gain)` currently:
+
+1. converts/validates index and gain;
+2. requires `dspControlAvailable`;
+3. clones the ten-element `_dspGains` array with `.slice()`;
+4. writes the requested clamped band into that fresh clone;
+5. passes the clone to `_applyState(next, "Custom")`;
+6. `_applyState()` calls `_normalizeGains(next)`, which allocates a second
+   ten-element array while repeating Number/isFinite/clamp over every element;
+7. that second array becomes `_pendingGains` and feeds the process command.
+
+The first clone is required for isolation: directly mutating `_dspGains` before
+a successful backend apply would change live/public state.
+
+The second clone is not required if normalization mutates **only that fresh,
+unpublished first clone**.
+
+Strict-safe design:
+
+- keep the existing public `_applyState(gains, presetName)` contract unchanged,
+  including argument behavior for extension callers;
+- add a private/common dispatcher whose normalizer is selected by the caller,
+  or a distinct private path used only by `setDspBandGain()`;
+- run all current backend guards in the exact same order and at the exact same
+  phase as `_applyState()`;
+- for the single-band path, normalize the local clone in place:
+  - preserve the exact length check;
+  - read elements in the same index order;
+  - perform the same `Number()`;
+  - fail on the same first non-finite value;
+  - write the same min/max clamp result back to that local clone;
+- only after successful normalization run the existing preset-label validation,
+  `_pendingGains` assignment, error clear, command construction and Process
+  start in the same order;
+- generic `_applyState()` callers, including shared preset-curve literals,
+  must continue using the existing copy-producing normalizer and must never be
+  mutated in place.
+
+Why failure semantics remain exact:
+
+- partial in-place normalization on an invalid band affects only the fresh local
+  `next` clone, which has not been published or stored anywhere;
+- the same `invalid-dsp-state` branch occurs after the same backend guards and
+  before label publication/process work;
+- `setDspBandGain()` already validates the newly requested scalar, but the
+  full ten-element validation must still run so malformed externally modified
+  state fails exactly as today.
+
+Do **not** remove the second normalization on successful `applyProc` exit:
+
+`_normalizeGains(root._pendingGains)`
+
+creates the fresh array assigned to `_dspGains` and also protects final
+publication from any mutation of pending state. That publication boundary is
+not part of this finding.
+
+Per accepted/rejected single-band commit reaching `_applyState`:
+
+- ten-element local arrays before Process start: **2 -> 1**;
+- Number/isFinite/clamp count and order remain unchanged;
+- process command, signal/publication sequence and backend calls remain
+  unchanged.
+
+### 71.2 TlpRuntimeCapabilities token parsing can avoid filter-after-whitespace-split — CONFIRMED / P3 capability refresh
+
+Path:
+
+- `services/TlpRuntimeCapabilities.qml`, `_tokens()`.
+
+Current helper:
+
+`String(...).replace(/[\[\]]/g, "").trim().split(/\s+/).filter(nonempty)`.
+
+After `.trim()`:
+
+- a nonempty string split by `/\s+/` cannot contain empty tokens;
+- the only special case is an empty trimmed string, whose split result is
+  `[""]` and whose filter result is `[]`.
+
+Strict-safe direction:
+
+1. perform the same String conversion;
+2. perform the same bracket removal;
+3. perform the same trim;
+4. if the cleaned string is empty, return one fresh empty array;
+5. otherwise return `cleaned.split(/\s+/)` directly.
+
+Parity:
+
+- token text/order is identical;
+- bracket removal and whitespace semantics are unchanged;
+- empty/whitespace/bracket-only input still returns a fresh `[]`;
+- String-conversion exceptions/side effects occur at the same point;
+- no token callback had side effects beyond the guaranteed
+  `token.length > 0` predicate.
+
+The helper is used by sysfs capability reads such as governors and mem-sleep
+modes. It is a cold/safety-refresh path, so priority remains P3.
+
+For a nonempty input with T tokens:
+
+- split array + filtered array: **2 -> 1**;
+- token traversal after split: **T -> 0**.
+
+### 71.3 Nearby service audit did not justify broader changes
+
+Also audited during this round:
+
+- `services/deferred/CavaService.qml`;
+- `services/ai/GeminiApiStrategy.qml`;
+- `services/VoiceSearch.qml`;
+- `services/CustomWidgets.qml`;
+- `services/DesktopWidgetLayout.qml`;
+- `services/Hyprsunset.qml`;
+- `services/deferred/GowallService.qml`;
+- `services/IconThemeService.qml`;
+- `services/MaterialThemeLoader.qml`.
+
+No new factor is counted from them:
+
+- Cava frame publication is already one-pass for peak/sum/change and the shared
+  process/lifecycle architecture is already owned.
+- Gemini request/annotation maps are final API/output data rather than staging
+  arrays.
+- service/custom-widget boundaries remain extension-visible, so apparently dead
+  public derivations cannot be removed based only on core-repo consumers.
+- DesktopWidgetLayout broad invalidation belongs to the existing scoped Config
+  invalidation research rather than a new local optimization.
+- Hyprsunset's redundant shell wrapper is already owned by §33.11.
+- Gowall incremental theme publication is intentionally closed under current
+  signal timing.
+- IconTheme and MaterialThemeLoader local work is already owned by §51.16 and
+  §62.3 respectively.
+
+### 71.4 Round-57 conclusion
+
+New strict-lossless groups:
+
+1. normalize Equalizer's already-required single-band private clone in place
+   while keeping the generic/public apply contract unchanged (§71.1,
+   **CONFIRMED / P2 interactive**);
+2. direct nonempty TLP token split with explicit empty-string handling (§71.2,
+   **CONFIRMED / P3**).
+
+No broader service/publication/lifecycle change is counted (§71.3).
+
+No numeric reduction above is an end-to-end Hadalis speedup; all values are
+local source-derived allocation/traversal counts.
+
+No runtime/source implementation is authorized by this handoff.

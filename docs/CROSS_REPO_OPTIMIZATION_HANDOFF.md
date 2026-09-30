@@ -19004,3 +19004,151 @@ The guard is important to the CONFIRMED classification: an unguarded rewrite of 
 - Round 59's DashboardCanvas responsive active-only pair scan remains HIGH CONFIDENCE pending malformed-state oracle (§73.2); the projection's X-axis proof does not resolve it.
 
 **New CONFIRMED group: one** (§74.1, explicitly guarded numeric/plain-snapshot path). No runtime/product files edited and no local job submitted. Next research should re-fetch current dev and diversify beyond Dashboard into a distinct render or user-interaction hot path.
+
+
+## 75. Round 61 — WaveVisualizer per-frame smoothing allocation research (2026-09-30)
+
+### Snapshot, concurrent delta and ownership audit
+
+- Authoritative `dev` immediately before this documentation write:
+  `dedd7f65851edd5ab323accff0056a02200471e4`.
+- Latest preceding optimization-research commit:
+  `4ee5ca6be90cd5b40cbac789ff9d0e048b4bcd16` (Round 60).
+- The branch is 20 commits ahead of Round 60. The intervening delta was audited
+  directly. It is concentrated in Automation/runtime recovery, Cloud Storage
+  research, to-do consolidation and the reverted/removed Abyss confirmation
+  experiment; it does not modify `modules/common/widgets/WaveVisualizer.qml`,
+  `modules/common/widgets/CavaProcess.qml` or
+  `services/deferred/CavaService.qml`.
+- `AGENTS.md` and `to-do/README.md` were re-read from current `dev`.
+- Current exact-`dev` `WaveVisualizer.qml`, `CavaProcess.qml`,
+  `CavaService.qml`, `PlayerControl.qml` and the media-visualizer lifecycle
+  contract were inspected.
+- The full handoff was searched before promotion. There is no prior
+  `WaveVisualizer` / `processedBars` owner. §73.3 concerns
+  `CavaSpectrum.qml`'s already-retained scratch arrays and rolling-sum
+  smoother; §20.1 only closes generic hidden Canvas repaint-loop work. Neither
+  owns the distinct array-allocation path below.
+
+### 75.1 Smooth each WaveVisualizer frame in place with an old-value sliding window — CONFIRMED / P2 active CAVA render path
+
+Path:
+
+- `modules/common/widgets/WaveVisualizer.qml`,
+  readonly `processedBars` binding.
+
+After the raw/interpolated bar values have been written into the fresh local
+`out` array, current smoothing executes up to three neighbour passes. Every
+pass allocates another `new Array(count)`, fills it from the previous complete
+pass, then replaces `out` with that new array:
+
+```text
+raw out -> next0 -> next1 -> next2
+```
+
+Only the final array is published as `processedBars`. The earlier arrays are
+invocation-local and become garbage immediately.
+
+Each pass can produce the identical sequence in the existing `out` array by
+carrying the three **pre-write** values needed by the stencil:
+
+1. before overwriting index `i`, retain the old previous/current/following
+   values;
+2. evaluate the unchanged expression
+   `prev * 0.25 + curr * 0.5 + following * 0.25`;
+3. write that result to `out[i]`;
+4. advance the saved old-value window, reading `out[i + 1]` before that future
+   element is overwritten;
+5. for the final element, use the same old current value as `following`, just
+   as today's `i < count - 1 ? out[i + 1] : out[i]` branch does;
+6. repeat the same ordered in-place pass for each configured smoothing pass.
+
+This is not the unsafe form of in-place neighbour smoothing that rereads an
+already-smoothed left neighbour: the left input is the saved **old** value from
+the previous index, so each output uses exactly the three values that the
+current separate destination array would read.
+
+Strict-lossless checks:
+
+- **Property-read order / QML dependencies:** keep all reads through
+  `count`, `live`, `points`, `source.length`, `maxVisualizerValue` and
+  `smoothing` in their current positions. The replacement smoothing loop reads
+  only invocation-local primitive numeric array entries, so no binding
+  dependency is removed or added.
+- **Short-circuit behavior:** the current `!live`, missing/empty-points and
+  smoothing-pass-count routes remain unchanged. `activeBars` already bounds
+  `count` to 4..64, so the smoothing loop never introduces an empty-array
+  special case.
+- **QML sequence conversion / malformed samples:** all source reads,
+  `Number(source[idx]) || 0`, interpolation, thresholding, clamping and
+  normalization remain byte-for-byte conceptually before smoothing. NaN,
+  Infinity and malformed source-value handling therefore reaches smoothing as
+  the same primitive bar values.
+- **Pass-count malformed values:** `smoothing` is a typed QML `int`; preserve
+  the existing `Math.min(3, Math.max(0, Math.round(...)))` expression exactly.
+- **Duplicate/order semantics:** every index is visited in the same ascending
+  order on every pass. There is no deduplication, Set/Map conversion,
+  SameValueZero/strict-equality substitution, sorting or tie behavior.
+- **Arithmetic parity:** the three multiplications and two additions for each
+  output remain in the exact current left-to-right expression order. No
+  reassociation, rolling-average approximation or changed boundary weight is
+  allowed.
+- **Callback/signal/error ordering:** smoothing currently invokes no external
+  callback and accesses only the local plain numeric array. With `count`
+  bounded to 4..64, the proposed loop adds no language-level RangeError path.
+  The source-side coercions that can affect malformed inputs remain before this
+  loop and unchanged.
+- **Fresh-array publication:** the initial `out = new Array(count).fill(0.0)`
+  remains freshly allocated on every binding evaluation and is not exposed
+  until the binding returns. Mutating that unpublished local array during
+  smoothing therefore preserves the public fresh-array identity contract:
+  every `processedBars` reevaluation still publishes one newly created array,
+  and no previously published array is ever mutated.
+- **Rendered/animation behavior:** every final bar level is bit-for-bit derived
+  by the same stencil expression from the same previous-pass values, so
+  delegate heights, opacity targets, 75 ms Behaviors, bar ordering and timing
+  are unchanged.
+
+For P smoothing passes and B active bars:
+
+- intermediate B-element smoothing arrays: **P -> 0**;
+- total B-element arrays created by `processedBars`: **1 + P -> 1**;
+- default `smoothing: 2`: **3 -> 1 arrays per reevaluation**, or **66.7% fewer
+  B-element JS array allocations**;
+- capped `smoothing: 3`: **4 -> 1**, or **75% fewer**;
+- smoothing arithmetic and element writes remain `P * B`; this finding is an
+  allocation/GC reduction, not an arithmetic complexity reduction.
+
+The shared CAVA service can publish changed frames at its configured active
+framerate (default 30 fps, allowed higher by configuration), and multiple
+presented consumers may independently evaluate this binding. Therefore removing
+the short-lived arrays is on a real active-render path, but no fixed
+allocations/second or whole-Hadalis performance percentage is claimed because
+actual publication cadence and active consumer count are runtime-dependent.
+
+No runtime/source implementation is authorized by this handoff, and no local
+job was required for this source-level equivalence proof.
+
+### 75.2 Nearby ideas deliberately not promoted
+
+- Precomputing the interpolation/`Math.pow`/`Math.sin` geometry across CAVA
+  frames could remove more arithmetic, but a retained cache would introduce
+  additional lifecycle/publication/dependency questions. It is not needed for
+  §75.1 and is not promoted without a separate proof.
+- Delegate `edgeFactor` also exists in the bar delegate, but that QML binding
+  depends only on `index` / `activeBars`; it does not automatically rerun at
+  CAVA frame cadence. Counting it as duplicate per-frame work would be
+  incorrect.
+- Waffle Task View grouping/count/search ideas encountered in the adjacent sweep
+  are already owned by §§41.9-41.16 and were not counted again.
+
+### 75.3 Round-61 conclusion / next checkpoint
+
+New strict-lossless group: **one** (§75.1, CONFIRMED / P2 active CAVA render
+allocation path).
+
+No product/runtime files were edited and no local validation job was submitted.
+Next audit should re-fetch current `dev`, reconcile concurrent commits, then
+continue into a distinct interaction path such as Waffle Start Menu result
+composition or another unowned reactive surface rather than padding this round
+with scalar WaveVisualizer micro-optimizations.

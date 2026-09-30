@@ -2,6 +2,8 @@
 
 > **Implementation authorization (2026-10-01):** maintainer authorized design and source implementation on `dev`. Historical “research only” statements below describe the evidence state when written and no longer prohibit QML/Rust/source work for this task. Live account/data actions remain gated to an explicitly permitted disposable environment.
 
+> **Milestone I1 — Fake PTY harness qualified (2026-10-01):** `JOB-MEGACMD-F1-PTY-010` passed `cargo test -p inir-mega` and `cargo check -p inir-mega` for base source `6d7be8f9129cfb6a78fb971dcca08b12646051ae` (job commit `aae52d00ec8218a35cee7da5b91da2b46c2b9f2f`). Synthetic PTY tests cover password→MFA→success, unknown-prompt fail-closed, secret non-echo, and bounded silent-vendor timeout. This qualifies only the fake transport harness; real MEGAcmd authentication, installed-version prompts/capabilities, and account/data actions remain disabled/unqualified.
+
 > **Milestone I0 — Phase 0 substrate started:** gap audit at `e5cbf7f5dcf763d89194f8913def51f501e7c8b8` found no existing `inir-mega`, `CloudStorageService.qml`, or `CloudStorageConfig.qml`. The implementation delta is in [CLOUD_STORAGE_MEGACMD_IMPLEMENTATION.md](../../docs/CLOUD_STORAGE_MEGACMD_IMPLEMENTATION.md). Phase 0 adds the Rust workspace member, typed stdin/stdout protocol, fail-closed auth/MFA prompt classifier, and secret non-echo tests. Real vendor dispatch remains disabled until the fake PTY harness is qualified.
 
 

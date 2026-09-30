@@ -48,7 +48,8 @@ def main() -> None:
 
                 second = control.create_profile("Second profile")["profile_id"]
                 control.set_profile(second, "enabled", "true")
-                control.profile_action("start", second)
+                with patch.object(control, "_ensure_runtime_services"):
+                    control.profile_action("start", second)
                 daemon.tick(base + 2)
                 assert store.read_snapshot()[1]["owner_id"] == default
                 assert store.read_snapshot()[1]["profiles"][default]["iterations"] == 1
@@ -139,7 +140,8 @@ def main() -> None:
                         daemon.tick(base + 33)
                         assert commands.count("managed-poll") == 2
                         with patch.object(control.time, "time", return_value=base + 34):
-                            control.profile_action("resume", "strict-lossless-research")
+                            with patch.object(control, "_ensure_runtime_services"):
+                                control.profile_action("resume", "strict-lossless-research")
                         resumed = store.read_snapshot()[1]["profiles"]["strict-lossless-research"]
                         assert resumed["pending"]["stream_retry_attempts"] == 0
                     assert commands.count("managed-submit") == 1

@@ -108,7 +108,10 @@ ContentPage {
             stopping: "Stopping", failed: "Failed", blocked: "Blocked",
             unavailable: "Unavailable", thinking: "Thinking", waiting_result: "Waiting for local result",
             waiting_desktop: "Waiting for ChatGPT",
-            continuing: "Continuing", rotating: "Rotating chat", paused: "Paused",
+            continuing: "Continuing", restart_queued: "Restart queued",
+            scheduler_unavailable: "Scheduler unavailable",
+            invalid_configuration: "Invalid configuration",
+            rotating: "Rotating chat", paused: "Paused",
             pausing: "Pausing", scheduled: "Scheduled", idle: "Idle", completed: "Completed",
             connector_blocked: "GitHub connector blocked", transport_unavailable: "Transport unavailable",
             disabled: "Disabled", running: "Running"
@@ -118,8 +121,8 @@ ContentPage {
 
     function statusColor(value): color {
         if (["active", "running", "continuing"].includes(value)) return Appearance.colors.colPrimary
-        if (["failed", "connector_blocked", "blocked", "transport_unavailable"].includes(value)) return Appearance.colors.colTertiary
-        if (["starting", "stopping", "thinking", "waiting_result", "waiting_desktop", "rotating", "pausing"].includes(value)) return Appearance.colors.colSecondary
+        if (["failed", "connector_blocked", "blocked", "transport_unavailable", "scheduler_unavailable", "invalid_configuration"].includes(value)) return Appearance.colors.colTertiary
+        if (["starting", "stopping", "thinking", "waiting_result", "waiting_desktop", "rotating", "restart_queued", "pausing"].includes(value)) return Appearance.colors.colSecondary
         return Appearance.colors.colSubtext
     }
 
@@ -470,7 +473,7 @@ ContentPage {
                 color: Appearance.colors.colOnSurface
             }
             Repeater {
-                model: (root.snapshot?.runtime?.events ?? []).filter(e => e.profile_id === root.selectedProfileId).slice().reverse()
+                model: (root.snapshot?.runtime?.events ?? []).filter(e => e.profile_id === root.selectedProfileId || e.profile_id === null).slice().reverse()
                 delegate: RowLayout {
                     required property var modelData
                     Layout.fillWidth: true

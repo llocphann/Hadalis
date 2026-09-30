@@ -16,6 +16,61 @@ UNITS = {
 }
 SERVICE_ACTIONS = {"start", "stop", "restart"}
 PROFILE_ACTIONS = {"start", "pause", "resume", "stop", "restart"}
+HEARTBEAT_STALE_SECONDS = 180
+
+
+def _ensure_runtime_services() -> None:
+    """Start the consumer of a profile command, not only its desired state."""
+    current = service_states()
+    required = ("chatgpt", "worker", "bridge")
+    unavailable = [UNITS[key] for key in required
+                   if current[key]["state"] == "unavailable"]
+    if unavailable:
+        raise RuntimeError(
+            "Automation units unavailable: " + ", ".join(unavailable) +
+            "; run python3 scripts/install-hadalis-automation.py --enable-now"
+        )
+    for key in required:
+        if current[key]["state"] == "active":
+            continue
+        try:
+            result = subprocess.run(
+                ["systemctl", "--user", "start", UNITS[key]],
+                capture_output=True, text=True, timeout=20, check=False,
+            )
+        except (OSError, subprocess.TimeoutExpired) as exc:
+            raise RuntimeError(f"could not start {UNITS[key]}: {exc}") from exc
+        if result.returncode:
+            raise RuntimeError(
+                f"could not start {UNITS[key]}: " +
+                (result.stderr or result.stdout).strip()[:350]
+            )
+    actual = service_states()
+    inactive = [f'{UNITS[key]} ({actual[key]["state"]})'
+                for key in required if actual[key]["state"] != "active"]
+    if inactive:
+        raise RuntimeError(
+            "Automation did not become active: " + ", ".join(inactive) +
+            "; inspect journalctl --user -u hadalis-chat-bridge.service"
+        )
+
+
+def _scheduler_problem(services: dict, state: dict, now: int) -> str:
+    bridge = services["bridge"]
+    if bridge["state"] != "active":
+        detail = bridge.get("result") or bridge.get("detail") or "not running"
+        return f'Chat bridge is {bridge["state"]} ({detail}); start the Automation services'
+    heartbeat = state.get("manager_heartbeat_at_unix")
+    if type(heartbeat) is int and now - heartbeat > HEARTBEAT_STALE_SECONDS:
+        return f"Chat bridge scheduler has not ticked for {now - heartbeat}s; inspect its user journal"
+    if heartbeat is None:
+        due = [item.get("next_run_at_unix") for item in state["profiles"].values()
+               if item.get("desired") == "run" and type(item.get("next_run_at_unix")) is int]
+        if due and now - min(due) > HEARTBEAT_STALE_SECONDS:
+            return "Chat bridge is active but has never reported a scheduler tick"
+    return ""
+
+
 
 
 def service_states() -> dict:
@@ -51,8 +106,26 @@ def service_states() -> dict:
 
 def status() -> dict:
     config, state, issues = read_snapshot()
+    services = service_states()
+    problem = _scheduler_problem(services, state, int(time.time()))
+    if problem and any(item["desired"] == "run" and
+                       (item["status"] != "scheduler_unavailable" or
+                        item["last_error"] != problem)
+                       for item in state["profiles"].values()):
+        def mark_unavailable(_config: dict, runtime: dict):
+            for profile_id, item in runtime["profiles"].items():
+                if item["desired"] != "run":
+                    continue
+                if item["status"] == "scheduler_unavailable" and item["last_error"] == problem:
+                    continue
+                item["status"] = "scheduler_unavailable"
+                item["last_error"] = problem[:500]
+                item["last_activity_at_unix"] = int(time.time())
+                event(runtime, profile_id, "scheduler_unavailable", problem)
+        change_state(mark_unavailable)
+        config, state, issues = read_snapshot()
     return {"ok": True, "config": config, "runtime": state, "issues": issues,
-            "services": service_states(), "capabilities": {
+            "services": services, "capabilities": {
                 "archive_chat": False, "delete_chat": False,
                 "stuck_generation_recovery": False, "composer_recovery": False,
                 "stream_poll_recovery": True, "transport_retry": False,
@@ -66,7 +139,10 @@ def control_service(action: str, key: str) -> dict:
     result = subprocess.run(["systemctl", "--user", action, UNITS[key]],
                             capture_output=True, text=True, timeout=20, check=False)
     if result.returncode != 0:
-        raise RuntimeError((result.stderr or result.stdout).strip()[:500])
+        detail = (result.stderr or result.stdout).strip()[:500]
+        change_state(lambda _config, state: event(
+            state, None, "service_action_failed", f"{action} {UNITS[key]}: {detail}"))
+        raise RuntimeError(detail)
     change_state(lambda _config, state: event(state, None, "service_" + action, UNITS[key]))
     return {"ok": True}
 
@@ -86,7 +162,18 @@ def profile_action(action: str, profile_id: str) -> dict:
             raise ValueError("profile is not paused")
         if action in {"start", "resume", "restart"}:
             item["desired"] = "run"
-            item["status"] = "scheduled" if state["owner_id"] != profile_id else "continuing"
+            # A button click is not a scheduler tick; never falsely claim
+            # that a previously owned profile is actively continuing.
+            if action == "restart":
+                item["status"] = "restart_queued" if item["pending"] else "scheduled"
+                if item["job_id"] and item["pending"] is None:
+                    event(state, profile_id, "job_wait_abandoned", item["job_id"])
+                    item["job_id"] = None
+                    item["next_job_poll_at_unix"] = None
+                    item["job_poll_errors"] = 0
+            elif not (state["owner_id"] == profile_id and
+                      (item["pending"] is not None or item["job_id"])):
+                item["status"] = "scheduled"
             item["next_run_at_unix"] = int(time.time())
             if action == "resume":
                 item["poll_errors"] = 0
@@ -107,6 +194,18 @@ def profile_action(action: str, profile_id: str) -> dict:
         event(state, profile_id, action)
 
     change_state(mutate)
+    if action in {"start", "resume", "restart"}:
+        try:
+            _ensure_runtime_services()
+        except RuntimeError as exc:
+            def startup_failed(_config: dict, state: dict):
+                item = state["profiles"][profile_id]
+                item["status"] = "scheduler_unavailable"
+                item["last_error"] = str(exc)[:500]
+                item["last_activity_at_unix"] = int(time.time())
+                event(state, profile_id, "start_failed", item["last_error"])
+            change_state(startup_failed)
+            raise
     return {"ok": True}
 
 

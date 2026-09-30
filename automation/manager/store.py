@@ -98,7 +98,8 @@ def default_state(config: dict) -> dict:
                 "desired": "paused", "status": "error",
                 "last_error": "Legacy bridge state is unreadable",
             })
-    return {"version": 1, "owner_id": None, "profiles": profiles, "events": []}
+    return {"version": 1, "owner_id": None, "manager_heartbeat_at_unix": None,
+            "profiles": profiles, "events": []}
 
 
 def normalize_state(raw: dict, config: dict) -> dict:
@@ -121,7 +122,11 @@ def normalize_state(raw: dict, config: dict) -> dict:
     if not isinstance(events, list):
         events = []
     events = [event for event in events[-EVENT_LIMIT:] if isinstance(event, dict)]
-    return {"version": 1, "owner_id": owner, "profiles": profiles, "events": events}
+    heartbeat = raw.get("manager_heartbeat_at_unix")
+    if type(heartbeat) is not int or heartbeat < 0:
+        heartbeat = None
+    return {"version": 1, "owner_id": owner, "manager_heartbeat_at_unix": heartbeat,
+            "profiles": profiles, "events": events}
 
 
 def event(state: dict, profile_id: str | None, kind: str, detail: str = "") -> None:

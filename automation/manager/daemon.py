@@ -290,7 +290,7 @@ def _poll(config: dict, state: dict, owner: str, now: int) -> None:
         current_item["last_success"] = directive.kind.value
         current_item["loop_state"] = directive.kind.value.lower()
         event(current, owner, "response", directive.kind.value)
-        if directive.kind is DirectiveKind.WAIT_RESULT:
+        if directive.kind is DirectiveKind.WAIT_RESULT and current_item["request"] != "restart":
             current_item["job_id"] = directive.argument
             current_item["next_job_poll_at_unix"] = now
             current_item["status"] = "waiting_result"
@@ -383,11 +383,50 @@ def _job_poll_error(config: dict, state: dict, owner: str, now: int, exc: Except
     event(state, owner, "result_poll_failure", item["last_error"])
 
 
+def _heartbeat(state: dict, now: int) -> None:
+    state["manager_heartbeat_at_unix"] = now
+    for profile_id, item in state["profiles"].items():
+        if item["desired"] == "run" and item["status"] == "scheduler_unavailable":
+            item["status"] = "scheduled"
+            item["last_error"] = ""
+            event(state, profile_id, "scheduler_recovered")
+
+
+def _configuration_problem(state: dict, issues: list[str]) -> None:
+    detail = ("Invalid Automation configuration: " + "; ".join(issues))[:500]
+    for profile_id, item in state["profiles"].items():
+        if item["desired"] != "run":
+            continue
+        if item["status"] != "invalid_configuration" or item["last_error"] != detail:
+            item["status"] = "invalid_configuration"
+            item["last_error"] = detail
+            item["last_activity_at_unix"] = int(time.time())
+            event(state, profile_id, "invalid_configuration", detail)
+
+
+def _fatal_scheduler_error(state: dict, exc: Exception) -> None:
+    detail = (type(exc).__name__ + ": " + str(exc))[:500]
+    owner = state["owner_id"]
+    if owner and owner in state["profiles"]:
+        item = state["profiles"][owner]
+        item["status"] = "scheduler_unavailable"
+        item["last_error"] = detail
+        item["last_activity_at_unix"] = int(time.time())
+    event(state, owner, "scheduler_crashed", detail)
+
+
 def tick(now: int | None = None) -> None:
     now = int(time.time()) if now is None else now
     config, state, issues = read_snapshot()
+    if (state.get("manager_heartbeat_at_unix") is None or
+            now - state["manager_heartbeat_at_unix"] >= 10 or
+            any(item["status"] == "scheduler_unavailable"
+                for item in state["profiles"].values())):
+        change_state(lambda _config, current: _heartbeat(current, now))
+        config, state, issues = read_snapshot()
     if issues:
-        return  # Invalid/stale definitions require repair; do not guess.
+        change_state(lambda _config, current: _configuration_problem(current, issues))
+        return  # Do not execute malformed profiles.
     owner = state["owner_id"]
     if owner is None:
         owner = change_state(lambda c, s: _claim(c, s, now))
@@ -448,7 +487,15 @@ def main() -> int:
             (state_dir() / "chat-bridge.json").unlink(missing_ok=True)
             return 0
         while True:
-            tick()
+            try:
+                tick()
+            except Exception as exc:
+                # Preserve fatal errors in Activity before systemd restarts us.
+                try:
+                    change_state(lambda _config, state: _fatal_scheduler_error(state, exc))
+                except Exception as record_error:
+                    print(f"could not record scheduler failure: {record_error}", file=sys.stderr)
+                raise
             if args.once:
                 return 0
             time.sleep(POLL_SECONDS)

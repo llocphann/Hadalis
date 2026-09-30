@@ -19997,3 +19997,159 @@ outside TLP group presentation. Prefer another under-covered production
 process/lifecycle path such as Battery/TlpService charge-care materialization,
 PowerProfilePersistence startup ownership, or ThinkFan, while searching this
 handoff first for existing ownership.
+
+
+## 80. Round 66 — charge-care / power-profile / ThinkFan lifecycle strictness audit (2026-09-30)
+
+### Snapshot and ownership reconciliation
+
+- Authoritative `dev` at round start and immediately before this write:
+  `59b44531d9e229228ca819d12b212654a3ca7204` (Round 65).
+- No intervening commit exists after Round 65.
+- The current sources re-read for this continuation include
+  `services/Battery.qml`, `services/TlpService.qml`,
+  `services/PowerProfilePersistence.qml`, `services/ThinkFanService.qml`
+  and the shell ownership path.
+- Existing handoff ownership was searched first:
+  - §26.4 owns default-disabled ThinkFan startup materialization;
+  - §26.5 owns Battery -> TlpService charge-limit startup materialization;
+  - §26.7 owns PowerProfilePersistence startup `tlp-pd` ownership probing;
+  - §62.5 owns TlpService allowed-limit normalization.
+  None is counted again below.
+
+### 80.1 Battery -> TlpService charge-limit gating remains live but is not source-proven strict-lossless
+
+Paths:
+
+- `services/Battery.qml`;
+- `services/TlpService.qml`.
+
+The §26.5 premise is still exactly present on current HEAD:
+
+- ordinary Battery telemetry comes from UPower;
+- Battery also directly re-exports the full charge-limit state from
+  `TlpService`;
+- `TlpService.Component.onCompleted` immediately runs
+  `/usr/libexec/inir-battery-charge-limit --status`.
+
+Therefore default Battery materialization can still pull the helper into a
+session where charge care is disabled.
+
+The core UI consumers suggest a demand gate is architecturally attractive, but
+strict-lossless promotion is intentionally withheld. `Battery` and
+`TlpService` are public singleton APIs: delaying the detector changes when
+these externally readable properties become known:
+
+- availability/support/adjustability;
+- current/managed limit state;
+- backend/reason;
+- allowed/range/fixed-limit metadata.
+
+A core-only consumer audit cannot prove that extension/plugin-visible state,
+IPC-adjacent consumers or future loaded QML do not observe the current eager
+transition.
+
+Status: §26.5 remains **ADAPT / P1**, not upgraded to CONFIRMED. A strict design
+needs an explicit capability/status freshness contract or a compatibility owner
+that preserves eager observable state while removing only redundant process
+work.
+
+### 80.2 PowerProfilePersistence startup ownership probe cannot be skipped merely because there is no restore candidate
+
+Path:
+
+- `services/PowerProfilePersistence.qml`.
+
+§26.7 proposed conditioning the startup `tlp-pd` probe when
+`preferredProfile` is empty or restore is disabled.
+
+Current source proves a second responsibility for that same ownership result.
+After startup, `PowerProfiles.onProfileChanged` uses
+`_tlpProbeDone / _tlpPdManaged / _lastTlpProbeAt` to decide whether a changed
+profile:
+
+- may be persisted to `powerProfiles.preferredProfile`;
+- must be held in `_pendingProfile` while ownership is rechecked;
+- or must be discarded because `tlp-pd` owns automatic profile selection.
+
+Therefore the startup probe is not solely a restore prerequisite.
+
+Counterexample to simple gating:
+
+1. shell starts with no valid preferred profile;
+2. simple gating skips ownership discovery;
+3. `tlp-pd` is actually active/enabled;
+4. a power-profile change arrives before any later explicit probe;
+5. the current implementation would already know managed ownership, while a
+   gated implementation can enter a different pending/persistence path.
+
+That changes persistence/recovery semantics, which strict-lossless explicitly
+protects.
+
+Status: §26.7 remains **STATE-MACHINE / PARITY REQUIRED**. Do not promote a
+"no preferred profile -> no startup probe" shortcut without an oracle covering
+managed/unmanaged service state, startup profile events, later profile events,
+stale ownership, probe failure/timeout and Config-ready ordering.
+
+### 80.3 ThinkFan default-disabled startup helper remains a live process lead, but eager status is observable service state
+
+Path:
+
+- `services/ThinkFanService.qml`.
+
+§26.4 is also still live:
+
+- `Component.onCompleted: root.refresh()` unconditionally starts
+  `/usr/libexec/inir-thinkfan --status`;
+- the repeating status timer is already gated to
+  `profileFanControlEnabled || active || busy`;
+- PowerProfiles/Config follow handlers already return immediately while profile
+  fan control is disabled.
+
+So after startup, the disabled-default path is already sparse; the avoidable
+cost candidate is primarily the initial helper launch.
+
+However `refresh()` does more than prepare profile following. It publishes
+service-visible capability/status:
+
+- helper/service availability;
+- managed/firmware profile;
+- direct fan-level capability;
+- fan RPM/level;
+- config path/reason;
+- state freshness timestamp.
+
+Suppressing the initial refresh when the feature switch is false changes when
+those public properties become populated for any consumer that reads
+ThinkFanService without first issuing an explicit demand refresh.
+
+The existing five-second `_profileFollowArmed` timer also cannot simply be
+made conditional on the feature switch: today a feature enabled after that
+five-second boundary can react immediately to the next Config/profile event;
+starting the arm delay only at enable time changes user-visible application
+timing.
+
+Status: §26.4 remains **ADAPT / P1 process-lifecycle candidate**, not
+CONFIRMED. Demand gating needs a consumer/status freshness contract and must
+preserve enabled-later behavior.
+
+### 80.4 Round-66 conclusion / next checkpoint
+
+New strict-lossless optimization groups: **zero**.
+
+This round strengthens three existing ownership boundaries so future research
+does not misclassify lifecycle/process suppression as proven lossless:
+
+- Battery/TlpService eager charge-care status remains observable (§80.1);
+- `tlp-pd` ownership also controls persistence, not only startup restore
+  (§80.2);
+- ThinkFan's initial detector publishes independent status/capability state and
+  its delayed follow-arm timing matters (§80.3).
+
+No runtime/product/native/script file was edited and no local job was required.
+
+Next audit should re-fetch current `dev`, reconcile concurrent work, and move
+to a distinct under-covered production path rather than repeatedly reopening
+these lifecycle gates. Prefer Audio/settings-only catalog process work or
+another file-backed/service interaction where a strict local operation
+reduction can be proven without changing state freshness.

@@ -22074,3 +22074,256 @@ Next audit should re-fetch current `dev`, reconcile concurrent work and keep
 diversifying low-ownership services. Prefer AwwwBackend, DankSocket, Booru
 response/normalization, Idle/privacy state, or another event-driven path whose
 cost scales materially with outputs/events rather than one tiny scalar parse.
+
+## 94. Round 80 — FontSync process/runtime and native consolidation audit (2026-09-30)
+
+### Snapshot, linkage and ownership reconciliation
+
+- Authoritative source `dev` immediately before this documentation write:
+  `d661073c039d435d6a1aa03c38ad406231d30c5e` (Round 79).
+- `dev` was re-fetched immediately before the write and still matched that SHA;
+  there were no intervening commits after Round 79.
+- `AGENTS.md`, `to-do/README.md`, the Cloud/Local Bot routing READMEs and the
+  newest handoff tail were re-read before this round.
+- The Round-79 suggested AwwwBackend/DankSocket/Booru/Idle/privacy areas were
+  checked first:
+  - §70.3 already owns or closes the current Booru/Awww local micro-candidates;
+  - §§54.3-54.4 already own Niri event-key/GameMode-array allocation;
+  - §55.4 already owns the duplicate Privacy/Audio microphone PipeWire scan;
+  - Idle/DankSocket are event/reconnect-driven and no new materially useful
+    strict-lossless reduction was found.
+- Under-covered service sweeps also checked WallpaperListener,
+  DeviceStatePersistence, ConflictKiller, CavaTheme, PluginsTab and
+  FontSyncService.
+  - WallpaperListener's broad `Config.configChanged` refresh is already
+    architectural debt under §25; its remaining repeated path classification is
+    too small to pad the finding count without profiling.
+  - DeviceStatePersistence microphone re-mute on input-device change is a
+    privacy/recovery behavior, not safe redundant work.
+  - ConflictKiller is now one delayed shell scan of `/proc/*/comm`, not the
+    older multiple-probe shape surfaced by stale code-search indexing.
+  - CAVA's duplicate cover extraction is already owned by §37.9.
+  - PluginsTab's 30-second Python rescan looked material in isolation, but the
+    entire web-app/plugin tab is disabled at current `dev`, so it is not a
+    current production-path optimization.
+- Existing FontSync ownership was searched explicitly for
+  `FontSyncService`, `sync-system-fonts.sh`, `kwriteconfig6`,
+  `font-name`, `monospace-font-name` and the native `desktop-icons`
+  backend. §24.5 already says FontSync contributes to startup reconciliation
+  and should be measured with the startup process wave, but it does **not**
+  quantify or own the per-sync child-process fan-out below.
+
+### 94.1 FontSync performs a multi-process desktop reconciliation for one logical font commit — HIGH CONFIDENCE / P1 startup + P2 interaction; RUST BENCHMARK REQUIRED
+
+Paths:
+
+- `services/FontSyncService.qml`;
+- `scripts/colors/sync-system-fonts.sh`;
+- `modules/settings/ThemesConfig.qml`;
+- `modules/settings/ModulesConfig.qml`;
+- `modules/waffle/settings/pages/WInterfacePage.qml`;
+- `modules/common/StylePresets.qml`;
+- `modules/common/Config.qml`;
+- `shell.qml`;
+- existing native scaffolding:
+  `native/inir-native/src/desktop.rs`,
+  `native/inir-native/src/main.rs`,
+  `scripts/native-dispatch`.
+
+Current Frontend → Backend contract:
+
+1. Typography controls/presets write keys such as
+   `appearance.typography.mainFont`,
+   `appearance.typography.monospaceFont` and
+   `appearance.typography.sizeScale` through `Config.setNestedValue()`.
+2. When `appearance.typography.syncWithSystem` is enabled (default: true),
+   `shell.qml` materializes `FontSyncService` in the late-feature phase.
+3. `FontSyncService` derives `mainFont`, `monoFont` and
+   `fontSize = round(11 * sizeScale)`. Changes are debounced for 500 ms.
+   Startup also deliberately schedules one reconciliation so externally edited
+   GTK/KDE state is restored to the configured Hadalis value.
+4. A sync launches `scripts/colors/sync-system-fonts.sh MAIN MONO SIZE`.
+   While a previous sync is running, `_rerunAfterExit` preserves a later
+   requested sync instead of overlapping helpers.
+5. The helper acquires the shared app-theme lock
+   `$XDG_STATE_HOME/quickshell/user/generated/app-theme.lock` with a bounded
+   15-second `flock` wait.
+6. It then applies the same logical font state through multiple system/config
+   surfaces:
+   - two sequential `gsettings set` calls for GNOME interface main and
+     monospace fonts;
+   - one Python/configparser process that conditionally updates existing GTK3,
+     GTK4 and xsettingsd files with atomic same-directory replacements and
+     unchanged-content suppression;
+   - four sequential `kwriteconfig6` calls against `kdeglobals`
+     (`font`, `menuFont`, `toolBarFont`, then `fixed`).
+7. The shell helper accumulates failures in `status` but deliberately
+   continues later surfaces, then exits 0/1. FontSyncService reports timeout,
+   success or failure and, if required, schedules the preserved rerun.
+8. A 30-second QML watchdog can stop the helper. Therefore child ownership and
+   cancellation behavior are part of the compatibility surface.
+
+Source-derived process fan-out for a fully equipped system:
+
+- QML-launched Bash helper: **1 process**;
+- `dirname` used to form the lock directory: **1 child**;
+- `mkdir -p`: **1 child**;
+- `flock`: **1 child**;
+- GNOME `gsettings set`: **2 children**;
+- Python/configparser file updater: **1 child**;
+- KDE `kwriteconfig6`: **4 children**.
+
+That is **1 helper + up to 10 children = 11 process launches/PIDs involved per
+logical sync**, before counting no extra processes inside the external tools
+themselves. The four KDE children alone are a proven **4 launches for four keys
+in the same `kdeglobals` file**.
+
+This cost is not a high-frequency background poll. It is relevant because:
+
+- it occurs once on every enabled shell startup by contract;
+- it also occurs after user font/scale changes once the 500 ms debounce settles;
+- a change arriving during an active sync can intentionally cause one more full
+  reconciliation after exit;
+- it overlaps the broader startup helper wave already identified in §24.4-§24.5.
+
+Do **not** claim a whole-shell percentage from this source count.
+
+#### Same-language/process-lifecycle check before Rust
+
+Several cheaper ideas were evaluated first.
+
+- Removing the external `dirname` by using the already-known generated-state
+  parent path is a strict local process cleanup candidate, but one child per
+  sparse sync is too small to promote as a standalone factor.
+- Replacing four `kwriteconfig6` invocations with ad-hoc Bash text editing is
+  **not** acceptable: KConfig parsing/formatting/locking behavior is part of the
+  desktop compatibility surface.
+- Folding the KDE writes into the existing Python process would reduce process
+  count, but it would replace `kwriteconfig6` semantics with configparser/text
+  semantics and therefore is not strict-lossless without a KDE parity oracle.
+- Keeping all external writers but merely rewriting the GTK/xsettings Python
+  body in Rust swaps one interpreter child for one native child; by itself that
+  does not remove the dominant multi-process fan-out.
+
+Therefore the serious architecture candidate is a **single native
+`inir-native desktop sync-fonts` orchestration**, not a language rewrite for
+its own sake. It can reuse the repository's existing native desktop-config
+infrastructure only after the compatibility gaps below are resolved.
+
+#### Why the existing Rust icon writer is evidence, not drop-in parity
+
+`native/inir-native/src/desktop.rs` already proves that Hadalis can:
+
+- resolve XDG/HOME config locations natively;
+- edit INI-like sections/keys;
+- create same-directory temporary files;
+- replace files atomically;
+- skip unchanged writes.
+
+However current icon-sync behavior is **not** byte/semantic parity with
+`sync-system-fonts.sh`:
+
+- the font helper only edits GTK/xsettings files that already exist;
+- its Python updater preserves the existing file mode on replacement;
+- its regex rules are line-oriented and do not require the key to be inside a
+  parsed INI section;
+- KDE is currently delegated to `kwriteconfig6`, whose exact parsing,
+  formatting, lock and observer behavior must not be assumed equivalent to the
+  native `set_ini_key()`;
+- GNOME values are currently written through the `gsettings` command, which
+  provides GSettings schema/backend semantics rather than raw config-file
+  writes;
+- current partial failures continue later sinks and collapse to final exit code
+  1; a native all-or-nothing transaction would therefore change behavior.
+
+The current native `atomic_write()` also does not itself prove the font
+helper's file-mode parity. Do not reuse it blindly.
+
+#### Strict-lossless compatibility surface / required oracle
+
+A native candidate must preserve at minimum:
+
+- QML 500 ms debounce and `_rerunAfterExit` ordering;
+- enabled/startup reconciliation semantics;
+- argv validation and positive integer font size contract;
+- XDG/HOME path resolution;
+- shared app-theme lock path and **15-second** acquisition timeout;
+- serialization against the color/theme pipeline;
+- GNOME main-font then monospace-font application order;
+- behavior when `gsettings` is missing;
+- GTK3, GTK4 and xsettingsd existing-file-only behavior;
+- exact line replacement/append behavior for malformed or sectionless files;
+- unchanged-file no-write behavior;
+- file mode, ownership and atomic replacement semantics;
+- four KDE key values and their current order;
+- behavior when `kwriteconfig6` is missing;
+- partial-failure continuation and final exit status;
+- stdout/stderr observability;
+- QML **30-second** timeout behavior;
+- cancellation/termination behavior while blocked on the lock or while a sink
+  update is active;
+- a later queued font change winning after the current sync exits.
+
+Required parity corpus:
+
+1. missing/empty GTK and xsettings files;
+2. valid files with keys present/absent;
+3. duplicate keys, comments, CRLF, no trailing newline and malformed content;
+4. unusual but valid font names (spaces, punctuation, Unicode);
+5. existing file permission modes;
+6. missing `gsettings` / missing `kwriteconfig6`;
+7. injected failure on each individual sink while later sinks remain runnable;
+8. lock contention resolving before and after the 15-second boundary;
+9. service cancellation during lock wait, gsettings phase, file-write phase and
+   KDE phase;
+10. two config changes where the second lands while the first sync is active.
+
+Benchmark current Bash helper against any parity implementation for:
+
+- total process launches;
+- wall and CPU time;
+- startup overlap at the existing late-feature timing;
+- peak PSS/RSS of helper children;
+- filesystem opens/reads/writes/renames;
+- unchanged-state reconciliation versus genuinely changed files.
+
+Rust classification: **RUST BENCHMARK REQUIRED**.
+
+There is a material reason to evaluate native consolidation because the current
+logical operation fans out to up to eleven process launches and an existing
+Rust desktop-config backend already ships. It is **not** yet
+`RUST CONFIRMED BENEFICIAL` because exact GSettings/KConfig/file/cancellation
+parity and measured startup impact have not been demonstrated.
+
+### 94.2 Nearby paths deliberately not promoted
+
+- WallpaperListener's media-type helper calls can be fused internally, but with
+  normal monitor counts the savings are small and §25 already owns the broader
+  Config invalidation problem. No count is added without profile evidence.
+- ConflictKiller's one delayed `/proc/*/comm` shell scan is sparse; replacing
+  one interpreter process with one native process is not justified by source
+  shape alone. **RUST NOT JUSTIFIED at current evidence**.
+- Disabled PluginsTab Python rescanning is not a current production path.
+- CavaTheme/Booru/Awww/DankSocket/Privacy candidates encountered in this round
+  are already owned, conditional, or too small as described above.
+
+### 94.3 Round-80 conclusion / next checkpoint
+
+New confirmed strict-lossless optimization groups: **zero**.
+
+New materially grounded language/runtime candidate:
+
+- FontSync desktop reconciliation process consolidation:
+  **HIGH CONFIDENCE process-cost lead / RUST BENCHMARK REQUIRED** (§94.1).
+
+No runtime/product/native/script behavior was modified. No local deterministic
+job is submitted yet because a benchmark of the current helper alone cannot
+prove the proposed native compatibility surface; the next useful job belongs
+after a deterministic parity harness design exists.
+
+Next audit should re-fetch current `dev`, reconcile concurrent commits, and
+rotate away from FontSync. Prefer another production event/process boundary with
+current ownership gaps, especially a persistent/deferred helper or
+Frontend↔Backend path whose cost scales with requests, files, outputs or retained
+state. Avoid reopening the dense Config/Niri/CAVA/Audio clusters unless new
+source evidence changes an existing conclusion.

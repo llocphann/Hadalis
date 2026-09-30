@@ -13,6 +13,10 @@ try {
   let result;
   if (input.op === "project") result = {project_id: await resolveProject(page, input.name)};
   else if (input.op === "read") result = await nativeRead(page, `/conversation/${input.conversation_id}`);
+  else if (input.op === "cursor") {
+    const c = await nativeRead(page, `/conversation/${input.conversation_id}`);
+    result = {conversation_id: c.conversation_id, current_node: c.current_node, model: c.default_model_slug};
+  }
   else if (input.op === "submit") result = await nativeSubmit(page, input);
   else if (input.op === "poll") {
     let pending = {...input.pending};

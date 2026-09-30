@@ -22,12 +22,12 @@ def services(**overrides):
 
 def main() -> None:
     initial = services(chatgpt="inactive", worker="inactive", bridge="inactive")
-    with patch.object(control, "service_states", side_effect=[initial, services()]):
+    with patch.object(control, "service_states", return_value=initial):
         with patch.object(control.subprocess, "run",
                           return_value=SimpleNamespace(returncode=0, stdout="", stderr="")) as run:
             control._ensure_runtime_services()
             assert [call.args[0][-1] for call in run.call_args_list] == [
-                control.UNITS["chatgpt"], control.UNITS["worker"], control.UNITS["bridge"]]
+                control.UNITS["worker"], control.UNITS["bridge"], control.UNITS["chatgpt"]]
 
     with patch.object(control, "service_states",
                       return_value=services(bridge="unavailable")):

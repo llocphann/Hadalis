@@ -48,7 +48,11 @@ def main() -> None:
     empty, issues = model.normalize_config({"profiles": []})
     assert empty["profiles"] == [] and not issues
     expect_error(lambda: model.update_profile(initial, {"delete_completed": True}), "confirmation")
-    expect_error(lambda: model.update_profile(initial, {"requires_github": False}), "require GitHub")
+    generic = model.update_profile(initial, {"requires_github": False})
+    generic["id"] = "general-workflow"
+    assert not model.effective_prompt(generic, "continuation").startswith(model.GITHUB_MENTION)
+    fresh = model.new_profile("General objective")
+    assert fresh["prompt"] == model.GENERIC_PROMPT and fresh["stop_on_done"]
     expect_error(lambda: model.update_profile(initial, {"project_name": "Wrong; project"}), "project name")
     expect_error(lambda: model.update_profile(initial, {"mode": "iterations"}), "iteration limit")
 

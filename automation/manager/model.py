@@ -13,10 +13,9 @@ DEFAULT_ID = "strict-lossless-research"
 MODES = {"manual", "continuous", "interval", "duration", "iterations"}
 LIMIT_ACTIONS = {"stop", "pause", "rotate"}
 MAX_PROFILES = 64
-CUSTOM_CONTINUATION_PROMPT = (GITHUB_MENTION + "\n\nContinue the objective of this automation profile in the current chat. "
-                              "Fetch the current dev HEAD, use the GitHub connector, and finish with one HADALIS_LOOP directive.\n")
-CUSTOM_ROTATION_PROMPT = (GITHUB_MENTION + "\n\nResume this automation profile in a fresh chat in its configured project. "
-                          "Use the profile objective below and current repository state.\n")
+GENERIC_PROMPT = "Carry out this profile's objective step by step. Set the objective here before starting.\n"
+CUSTOM_CONTINUATION_PROMPT = "Continue this profile's objective from its latest checkpoint and local evidence. Finish with one HADALIS_LOOP directive.\n"
+CUSTOM_ROTATION_PROMPT = "Resume this profile's objective from its durable checkpoint in this fresh managed conversation.\n"
 
 # The settings page advertises these as pending until a semantic Desktop action
 # exists. Storing preferences does not imply that a chat is archived or deleted.
@@ -34,6 +33,7 @@ PROFILE_DEFAULTS = {
     "project_name": "Hadalis Cloud",
     "enabled": False,
     "requires_github": True,
+    "stop_on_done": False,  # Preserve v1 continuous-loop semantics on import.
     "mode": "manual",
     "interval_seconds": 3600,
     "duration_seconds": 3600,
@@ -109,7 +109,7 @@ def validate_profile(raw: object, *, defaults: dict | None = None) -> dict:
     profile["project_name"] = _string(profile["project_name"], "project_name")
     if len(profile["project_name"]) > 80 or any(ch not in "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 ._-" for ch in profile["project_name"]):
         raise ValueError("project name must use letters, numbers, spaces, dots, hyphens or underscores")
-    for key in ("enabled", "requires_github", "archive_completed", "delete_completed"):
+    for key in ("enabled", "requires_github", "stop_on_done", "archive_completed", "delete_completed"):
         if type(profile[key]) is not bool:
             raise ValueError(f"invalid {key}")
     for key in ("prompt", "continuation_prompt", "rotation_prompt"):
@@ -124,8 +124,6 @@ def validate_profile(raw: object, *, defaults: dict | None = None) -> dict:
             raise ValueError(f"invalid {key}")
     if profile["mode"] == "iterations" and profile["iteration_limit"] < 1:
         raise ValueError("iterations mode needs an iteration limit")
-    if not profile["requires_github"]:
-        raise ValueError("Hadalis repository automations require GitHub")
     if profile["delete_completed"] and profile["archive_completed"]:
         raise ValueError("archive and delete are mutually exclusive")
     return profile
@@ -189,17 +187,24 @@ def new_profile(name: str, *, copy: dict | None = None) -> dict:
     source.update({"id": "profile-" + uuid.uuid4().hex[:16], "name": name,
                    "enabled": False, "mode": "manual", "delete_completed": False})
     if copy is None:
+        source["prompt"] = GENERIC_PROMPT
+        source["stop_on_done"] = True
         source["continuation_prompt"] = CUSTOM_CONTINUATION_PROMPT
         source["rotation_prompt"] = CUSTOM_ROTATION_PROMPT
     return validate_profile(source)
 
 
-SAFETY_PREAMBLE = """GitHub is the authoritative source of truth for llocphann/Hadalis dev.
-ChatGPT is the only reasoning agent. Local services are deterministic transport and execution only.
+SAFETY_PREAMBLE = """ChatGPT is the only reasoning agent. Local services are deterministic transport and execution only.
 Stay in this ChatGPT conversation. Do not switch to Work mode or hand off to Work mode.
-Explicitly use the GitHub connector, verify repository access, and fetch the current dev HEAD before every research turn.
 Use only HADALIS_LOOP:CONTINUE, WAIT_RESULT JOB-..., ROTATE, DONE, or CONNECTOR_BLOCKED GITHUB as the final directive.
-If the GitHub connector is unavailable, emit HADALIS_LOOP:CONNECTOR_BLOCKED GITHUB and stop.
+Work through the objective: observe, gather evidence, diagnose, change, test, inspect, recover and iterate as needed.
+For debugging, collect bounded diagnostics before drawing conclusions. Cite evidence IDs, source SHA, timestamps and exit status for each conclusion. Do not infer a failure cause from symptoms alone.
+Dispatch explicit SHA-pinned jobs using automation/queue/pending. Workers can collect diagnostics while Quickshell is down. Raw logs/config/screenshots remain private locally; only bounded sanitized observations and provenance may be shared with this managed chat, never raw machine data in Git results.
+Use WAIT_RESULT to await a job, then inspect its result and evidence before deciding the next step. Privileged actions use the typed allowlist broker, a clear reason and system authentication; never put passwords or credentials in a prompt, config, job, argv or log.
+Before ROTATE, optionally emit one HADALIS_CHECKPOINT:{"phase":"...","summary":"...","next":"...","evidence_ids":[]} line. Preserve checkpoints for long tasks, testing and recovery.
+"""
+REPOSITORY_PREAMBLE = """GitHub is the authoritative source of truth for llocphann/Hadalis dev.
+Explicitly use the GitHub connector, verify repository access and fetch current dev before each repository audit or write. Read AGENTS.md. If unavailable, emit HADALIS_LOOP:CONNECTOR_BLOCKED GITHUB and stop.
 """
 
 
@@ -220,7 +225,8 @@ def effective_prompt(profile: dict, kind: str) -> str:
         if objective.startswith(GITHUB_MENTION):
             objective = objective[len(GITHUB_MENTION):].lstrip("\r\n")
         body += "\n\nProfile objective:\n" + objective
-    return GITHUB_MENTION + "\n\n" + SAFETY_PREAMBLE + "\n" + body
+    prefix = GITHUB_MENTION + "\n\n" + REPOSITORY_PREAMBLE if profile["requires_github"] else ""
+    return prefix + SAFETY_PREAMBLE + "\n" + body
 
 
 def limit_decision(profile: dict, runtime: dict, now: int) -> str | None:

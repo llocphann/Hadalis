@@ -108,7 +108,7 @@ def profile_state() -> dict:
         "remove_requested": False,
         # Durable identity; never derived from whichever chat is visible.
         "session": None, "checkpoint": None, "response_message_id": None,
-        "recovery": None,
+        "recovery": None, "run_active": False,
     }
 
 
@@ -138,6 +138,7 @@ def default_state(config: dict) -> dict:
                 "last_error": "Legacy bridge state is unreadable",
             })
     return {"version": 1, "owner_id": None, "requested_profile_id": None,
+            "engine_version": 1,
             "command_seq": 0, "command_ack_seq": 0,
             "manager_heartbeat_at_unix": None,
             "profiles": profiles, "events": []}
@@ -180,6 +181,7 @@ def normalize_state(raw: dict, config: dict) -> dict:
     if type(heartbeat) is not int or heartbeat < 0:
         heartbeat = None
     return {"version": 1, "owner_id": owner, "requested_profile_id": requested,
+            "engine_version": raw.get("engine_version", 1),
             "command_seq": command_seq, "command_ack_seq": command_ack_seq,
             "manager_heartbeat_at_unix": heartbeat, "profiles": profiles, "events": events}
 

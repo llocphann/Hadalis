@@ -9,7 +9,9 @@ use std::os::unix::process::CommandExt;
 #[cfg(unix)]
 use std::path::Path;
 #[cfg(unix)]
-use std::process::{Command, Stdio};
+use std::process::{Child, Command, Stdio};
+#[cfg(unix)]
+use std::time::{Duration, Instant};
 
 #[cfg(unix)]
 use anyhow::{Context, Result, bail};
@@ -67,6 +69,14 @@ pub(crate) struct FakeAuthResult {
 }
 
 #[cfg(unix)]
+fn stop_child(child: &mut Child) {
+    if child.try_wait().ok().flatten().is_none() {
+        let _ = child.kill();
+    }
+    let _ = child.wait();
+}
+
+#[cfg(unix)]
 pub(crate) fn run_fake_auth_dialog(
     program: &Path,
     password: &str,
@@ -106,8 +116,29 @@ pub(crate) fn run_fake_auth_dialog(
     let mut state = AuthState::AwaitPassword;
     let mut transcript = String::new();
     let mut pending = Vec::new();
+    let deadline = Instant::now() + Duration::from_secs(2);
 
     loop {
+        if Instant::now() >= deadline {
+            stop_child(&mut child);
+            bail!("fake auth vendor deadline exceeded");
+        }
+        let remaining = deadline.saturating_duration_since(Instant::now());
+        let timeout_ms = remaining.as_millis().min(100).max(1) as i32;
+        let mut pollfd = libc::pollfd {
+            fd: master,
+            events: libc::POLLIN,
+            revents: 0,
+        };
+        let poll_rc = unsafe { libc::poll(&mut pollfd, 1, timeout_ms) };
+        if poll_rc < 0 {
+            stop_child(&mut child);
+            return Err(std::io::Error::last_os_error()).context("poll fake auth PTY");
+        }
+        if poll_rc == 0 {
+            continue;
+        }
+
         let mut byte = [0_u8; 1];
         match reader.read(&mut byte) {
             Ok(0) => break,
@@ -131,7 +162,7 @@ pub(crate) fn run_fake_auth_dialog(
                         writer.flush()?;
                     }
                     terminal @ (AuthStep::Complete | AuthStep::Failed | AuthStep::RejectUnexpected) => {
-                        let _ = child.wait();
+                        stop_child(&mut child);
                         return Ok(FakeAuthResult { terminal, transcript });
                     }
                 }
@@ -149,4 +180,61 @@ pub(crate) fn run_fake_auth_dialog(
         terminal: AuthStep::RejectUnexpected,
         transcript,
     })
+}
+
+
+#[cfg(all(test, unix))]
+mod tests {
+    use super::*;
+    use std::fs;
+    use std::os::unix::fs::PermissionsExt;
+
+    fn fake_vendor(script: &str) -> std::path::PathBuf {
+        let root = std::env::temp_dir().join(format!(
+            "inir-mega-pty-{}-{}",
+            std::process::id(),
+            Instant::now().elapsed().as_nanos()
+        ));
+        fs::create_dir_all(&root).unwrap();
+        let path = root.join("fake-vendor");
+        fs::write(&path, script).unwrap();
+        let mut permissions = fs::metadata(&path).unwrap().permissions();
+        permissions.set_mode(0o700);
+        fs::set_permissions(&path, permissions).unwrap();
+        path
+    }
+
+    #[test]
+    fn pty_password_mfa_flow_is_qualified_without_echoing_secrets() {
+        let vendor = fake_vendor(
+            "#!/bin/sh\nprintf 'Password:'\nIFS= read -r password\nprintf 'Multi-factor authentication code:'\nIFS= read -r mfa\nprintf 'Login successful\\n'\n",
+        );
+        let result = run_fake_auth_dialog(&vendor, "fixture-password-never-log", "123456").unwrap();
+        assert_eq!(result.terminal, AuthStep::Complete);
+        assert!(!result.transcript.contains("fixture-password-never-log"));
+        assert!(!result.transcript.contains("123456"));
+        let _ = fs::remove_dir_all(vendor.parent().unwrap());
+    }
+
+    #[test]
+    fn pty_unknown_prompt_fails_closed_without_hanging() {
+        let vendor = fake_vendor("#!/bin/sh\nprintf 'Enter account recovery key:'\nsleep 30\n");
+        let started = Instant::now();
+        let result = run_fake_auth_dialog(&vendor, "fixture-password-never-log", "123456").unwrap();
+        assert_eq!(result.terminal, AuthStep::RejectUnexpected);
+        assert!(started.elapsed() < Duration::from_secs(5));
+        assert!(!result.transcript.contains("fixture-password-never-log"));
+        assert!(!result.transcript.contains("123456"));
+        let _ = fs::remove_dir_all(vendor.parent().unwrap());
+    }
+
+    #[test]
+    fn pty_silent_vendor_is_bounded() {
+        let vendor = fake_vendor("#!/bin/sh\nsleep 30\n");
+        let started = Instant::now();
+        let error = run_fake_auth_dialog(&vendor, "fixture-password-never-log", "123456").unwrap_err();
+        assert!(started.elapsed() < Duration::from_secs(5));
+        assert!(error.to_string().contains("deadline exceeded"));
+        let _ = fs::remove_dir_all(vendor.parent().unwrap());
+    }
 }

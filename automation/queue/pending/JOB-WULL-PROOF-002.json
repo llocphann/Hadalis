@@ -1,0 +1,41 @@
+{
+  "id": "JOB-WULL-PROOF-002",
+  "profile_id": "profile-918f783d49cd45cd",
+  "base_sha": "9d34c9de97564afde0be7a3141b3febeae5adbaf",
+  "actions": [
+    {
+      "exec": {
+        "argv": [
+          "bash",
+          "-lc",
+          "command -v quickshell >/dev/null 2>&1 || command -v qs >/dev/null 2>&1"
+        ],
+        "cwd": ".",
+        "timeout_seconds": 15
+      }
+    },
+    {
+      "exec": {
+        "argv": [
+          "bash",
+          "-lc",
+          "! grep -REn '(\\.png|\\.gif|\\.webp|\\.apng|\\.mp4|manifest\\.json|mascot)' modules/abyss/companion"
+        ],
+        "cwd": ".",
+        "timeout_seconds": 30
+      }
+    },
+    {
+      "diagnostics": {
+        "checks": [
+          "services",
+          "processes",
+          "git",
+          "runtime",
+          "screenshot"
+        ],
+        "lines": 60
+      }
+    }
+  ]
+}

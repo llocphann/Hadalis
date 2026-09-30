@@ -2,7 +2,7 @@
 
 Status: **deferred research / future migration plan only**. This note does not authorize a runtime cutover by itself.
 
-Research baseline: initial audit at `bea23fc621f0c13d951140c293d546566f141349`; second-pass boundary audit through `00086e6097f23a35fdd13fcbca5df2beed2dc74f` on 2026-09-30. Re-fetch the current `dev` HEAD and re-audit every referenced file before implementation because Automation is still changing.
+Research baseline: initial audit at `bea23fc621f0c13d951140c293d546566f141349`; boundary/compatibility research continued through `4a7938afc5fc3d035b7c2d579b2e43249ca1857c` on 2026-10-01. Re-fetch the current `dev` HEAD and re-audit every referenced file before implementation because Automation is still changing.
 
 Related contract: [`docs/AUTOMATION_ARCHITECTURE.md`](../../docs/AUTOMATION_ARCHITECTURE.md).
 
@@ -167,10 +167,10 @@ The current `bounded_run(..., execution_receipt=path)` already has the ideal cut
 
 1. Python validates the job/cwd, builds `session_env`, verifies Rust capability and selects the backend **before** writing `dispatching`.
 2. Python writes the current action `dispatching` intent plus private backend/protocol metadata.
-3. `bounded_run` starts either the existing Python child wrapper or `inir-automation-exec` with the expected parent PID, action receipt path and target argv. Existing stdout/stderr pipes, environment and `start_new_session=True` remain unchanged.
+3. `bounded_run` starts either the existing Python child wrapper or `inir-automation-exec` with the expected parent PID, action receipt path and target argv. Existing stdout/stderr pipes, environment and `start_new_session=True` remain unchanged. The parent immediately fsyncs the spawned wrapper PID into the action receipt **without advancing the phase beyond `dispatching`**; this preserves crash-gap identity while distinguishing “wrapper exists” from “target may have executed”.
 4. Rust records the original parent PID, arms `PR_SET_PDEATHSIG(SIGKILL)`, verifies that the parent did not change and returns exit 125 without executing the target if that guard fails.
-5. Rust reads the existing action intent, updates it to `executing` with the same process-identity schema, writes it mode 0600 through temp-file + file fsync + atomic rename + directory fsync, and **must not exec the target if this durable write fails**.
-6. Rust then uses Unix exec semantics so the wrapper PID/process group becomes the target PID/process group. Python `bounded_run` continues to drain/hash/bound stdout/stderr, enforce timeout/cancellation, kill the group and observe the real target exit status exactly as it does today.
+5. Rust reads the existing action intent, verifies the expected `dispatching` phase/index/kind plus the parent/runner and already-recorded wrapper identity, then updates the receipt to `executing`. It writes mode 0600 through a same-directory exclusive temporary file + file fsync + atomic rename + directory fsync, and **must not exec the target if identity capture or this durable write fails**.
+6. Rust then performs Python-compatible PATH search and `execve` semantics so the wrapper PID/process group becomes the target PID/process group. Python `bounded_run` continues to drain/hash/bound stdout/stderr, enforce timeout/cancellation, kill the group and observe the real target exit status exactly as it does today.
 7. Python `runner.py` keeps the current UTF-8 replacement, secret redaction, `command_sha256`, evidence/source/timestamp fields and final `finished` receipt.
 
 This P0a path creates no durable raw-output artifact, introduces no result IPC protocol, does not duplicate privacy logic and does not add an extra resident supervisor while the command runs.
@@ -418,11 +418,12 @@ The manager is also still receiving correctness/concurrency changes on current `
 Add these to the P0/P1 qualification matrix:
 
 - Python runner receives SIGTERM while the Rust helper is supervising a live target;
-- Rust supervisor receives SIGTERM and must terminate the target process group before exiting;
-- Rust supervisor is SIGKILLed after the child wrote `executing`;
-- target completes but the result pipe breaks before Python writes `finished`;
-- target emits invalid UTF-8 and embedded NUL bytes;
-- helper JSON/base64 result reaches its maximum derived transport size;
+- wrapper is spawned and parent PID is durably recorded while action phase is still `dispatching`, then the runner is killed before the wrapper arms `PDEATHSIG`;
+- wrapper arms `PDEATHSIG` but is killed before it writes `executing`;
+- wrapper writes `executing` but `execve` fails;
+- target completes but Python crashes before it writes `finished`;
+- target argv contains NUL or an unpaired-surrogate value that cannot be represented consistently at the OS/Rust boundary;
+- target executable is an executable text file without a valid binary/shebang header (must preserve Python `execvpe` failure semantics, not silently invoke a shell);
 - Rust capability mismatch is detected before `dispatching`;
 - a stale/mismatched helper is discovered only after an existing Rust `dispatching` receipt (must not fall back);
 - legacy Python `command_sha256` remains identical for non-ASCII argv;
@@ -494,6 +495,148 @@ Do **not** add Automation execution to the existing `scripts/native-dispatch` fa
 
 P0a can select the child wrapper directly in Python before dispatch. P1 should likewise use an Automation-specific, explicit backend selection. If a convenience backend-switch command is added later, it should operate only at safe idle/reconciled boundaries.
 
+## Fourth-pass last-mile findings
+
+### Preserve the two crash-gap identity checkpoints
+
+Current `exec` actions already write process identity twice:
+
+1. the Python parent `on_spawn()` records the just-created wrapper PID immediately after `Popen`;
+2. `child.py` arms `PR_SET_PDEATHSIG`, verifies the expected parent, then fsyncs the same PID again immediately before target `exec`.
+
+That duplication is useful. The first write gives recovery a PID during the tiny pre-`prctl` spawn gap; the second proves that the child reached the guarded pre-exec boundary.
+
+Before P0a, refine the phase semantics rather than removing a checkpoint:
+
+- initial receipt: `phase=dispatching`, no child PID;
+- parent spawn receipt: still `phase=dispatching`, now with the wrapper `process` identity;
+- child/Rust pre-exec receipt: `phase=executing`, same process identity;
+- Python finalizer: `phase=finished`.
+
+The existing runner already treats any pre-existing non-`finished` action as ambiguous and refuses to replay it, so keeping the parent checkpoint in `dispatching` does not weaken no-replay behavior. Startup cleanup also reads the saved `process` identity independently of the action phase.
+
+This distinction improves capability/error handling: a Rust wrapper that starts but rejects an incompatible protocol can exit before `executing`, allowing Python to finalize a deterministic failed action if the runner remains alive. A runner crash in the same gap remains conservatively indeterminate.
+
+### Do not use Rust `CommandExt::exec()` blindly
+
+The current Python wrapper calls `os.execvpe`. CPython searches `PATH` itself and attempts `execve` on candidates. Rust `std::os::unix::process::CommandExt::exec()` uses `execvp`.
+
+That difference matters: POSIX/`execvp` can invoke a shell when an executable file returns `ENOEXEC`, while the current CPython `execvpe` path does not add that shell fallback. Using `CommandExt::exec()` directly could therefore execute a plain text file that the Python worker currently reports as a failure.
+
+P0a should implement the existing semantics explicitly with `execve`:
+
+- if `argv[0]` contains a slash, attempt it directly;
+- otherwise search the inherited `PATH`;
+- when `PATH` is absent, preserve Python's Unix default `/bin:/usr/bin`;
+- preserve empty PATH components as the current directory;
+- continue search on `ENOENT`/`ENOTDIR`;
+- remember the first other error while continuing the search, matching CPython's selection behavior;
+- never add an implicit `/bin/sh` fallback;
+- after the durable `executing` receipt, an exec failure is a normal failed action: emit a bounded private diagnostic and exit nonzero, never switch backend.
+
+The wrapper should parse target arguments as OS strings/bytes rather than forcing UTF-8 through Clap `String` fields. The environment is already finalized by Python and should be inherited byte-for-byte.
+
+### Tighten malformed argv before migration
+
+The current job validator bounds argument count/length but does not explicitly reject embedded NUL or surrogate-only Unicode values. Those values can fail later at the process boundary after an action receipt has already been created.
+
+Before backend A/B qualification, make malformed OS argv a pre-dispatch validation failure in Python. This is not a Rust optimization; it removes a backend-dependent ambiguity before the migration.
+
+### Receipt update contract for Rust
+
+The Rust wrapper should not deserialize the action receipt into a closed struct and reserialize only known fields. Python may add private metadata over time. Use an extensible JSON object, validate the required fields, update only the owned keys and preserve unknown keys.
+
+Minimum validation before the Rust `executing` transition:
+
+- receipt is an object and currently `phase=dispatching`;
+- `kind=exec` and action `index` matches the wrapper invocation;
+- stored runner identity matches the expected live parent;
+- parent-spawn `process.pid` matches the wrapper's own PID if already present;
+- wrapper can read a non-null identity for itself.
+
+Process identity parsing must retain current semantics exactly:
+
+- split `/proc/<pid>/stat` at the **last** closing parenthesis so unusual process names do not shift fields;
+- start-time field remains serialized as string `start_ticks`;
+- `boot_id` is trimmed text;
+- failure to capture the wrapper's own identity must fail closed before target exec.
+
+Atomic write parity:
+
+- create the temporary file in the receipt's directory with exclusive creation and mode 0600;
+- write the complete JSON plus newline;
+- fsync the file;
+- atomically rename over the receipt;
+- fsync the containing directory;
+- best-effort remove an unused temporary file on failure.
+
+Formatting/key order does not need byte parity because action receipts are read semantically and are not content-hashed; durability and preserved fields do.
+
+### Linux exec/PDEATHSIG caveats are not fixed by Rust
+
+For ordinary targets, the pre-exec wrapper's parent-death setting survives `execve`. Linux clears it when executing set-user-ID, set-group-ID or file-capability binaries, and caught signal handlers are reset to defaults across exec. This is already a limitation of the Python child path, not a Rust regression.
+
+Therefore:
+
+- do not claim that P0a provides hostile-descendant or arbitrary privileged-binary containment;
+- keep process-group cancellation as the stated contract;
+- keep the worker service cgroup and `NoNewPrivileges=yes` as independent safety layers;
+- if stronger per-action containment is desired later, design it separately (for example a dedicated scope/cgroup or retained native supervisor) and benchmark it as P0b rather than smuggling it into P0a.
+
+### Binary discovery must stay source/runtime local
+
+Automation code is copied as part of the runtime payload, and source/package installs place native binaries under the same runtime root. Use one Automation-specific resolver shared by P0/P1:
+
+1. optional explicit test/staging override such as `HADALIS_AUTOMATION_NATIVE_BIN_DIR`;
+2. `ROOT/native/bin` for installed/runtime copies;
+3. `ROOT/native/target/release` for a source checkout build.
+
+Do not fall back to `PATH` and do not borrow `INIR_NATIVE_BIN_DIR`; either can bind Automation to a stale helper from a different runtime/source identity.
+
+The Rust backend remains opt-in during staging. If `rust` is explicitly selected and the local binary is missing/incompatible, fail before dispatch instead of silently selecting an unrelated helper.
+
+A non-mutating `--capabilities` response should include component name, protocol version and package version. Pass the expected protocol again on the actual wrapper invocation so a binary replaced between probe and spawn can still fail before target execution. Exact Git SHA can be diagnostic metadata but should not be the compatibility gate.
+
+### Packaging matrix is wider than `install-runtime.sh`
+
+Adding the Rust Automation binaries requires updating every explicit native-binary enumeration, not only Cargo:
+
+- `native/scripts/install-runtime.sh`;
+- `nix/package.nix`;
+- `distro/arch/inir-shell/PKGBUILD`;
+- `distro/arch/inir-shell-git/PKGBUILD`;
+- Makefile install/prefix assertions;
+- `scripts/test-make-install-lifecycle.sh`;
+- `scripts/test-native-production-contract.sh`;
+- native/runtime documentation that states the binary set.
+
+`setup` and source install already call `install-runtime.sh`, so they inherit its binary list. Package recipes do not: they copy named binaries manually and need explicit changes.
+
+Keep Automation binaries out of the generic `scripts/native-dispatch` fallback contract even though they share the same `native/bin` directory.
+
+### CI and acceptance gates
+
+The current native workflow triggers primarily on `native/**` and selected native scripts. P0/P1 also change Python boundary files such as `runner.py`, `process.py`, `privilege.py` and the Automation installer. Future Rust parity CI must trigger when either side of that boundary changes.
+
+Recommended qualification split:
+
+- native workflow: Rust fmt/clippy/unit tests plus Python-vs-Rust exec/broker parity fixtures;
+- Automation Python tests: selector, receipt, rollback and protocol behavior;
+- packaging tests: prove every supported install mode contains the expected helper;
+- canonical maintainer validator: still required on the exact cutover SHA;
+- live/native privilege/reboot checks: reported separately when actually exercised.
+
+The canonical validator automatically runs tracked `test-*.py` regressions, but it does not currently build the Rust workspace as part of its normal host preflight. Do not label a validator PASS alone as Rust execution qualification.
+
+### Current measurements make manager Rust even lower priority
+
+The accepted Automation architecture note now records a 60-second sample where the scheduler's main Python process was about 13 MiB PSS and 0.22% of one CPU core, while the whole scheduler service including short-lived Node/CDP clients was about 99.5 MiB and 15.33% of one core.
+
+That sample is not a general benchmark, but it is evidence against prioritizing a manager-language rewrite: the observed transport/client work dominated the Python scheduler itself. P3 should stay deferred unless new profiling identifies the manager process as a real bottleneck.
+
+For P1, benchmark idle broker RSS/CPU and mocked same-user request overhead separately from real `sudo`/polkit/`systemctl` latency. The latter is expected to be dominated by external authentication/service work; the main justification for Rust broker migration remains typed boundary/reliability, not a promised user-visible speedup.
+
+
 ## P1 privilege-broker migration refinement
 
 P1 can remain incremental: keep the Python `request()` client in `runner.py` and replace only the long-lived broker server after a compatibility-preparation step.
@@ -510,6 +653,7 @@ Rust should not try to imitate Python JSON whitespace/Unicode escaping implicitl
 
 ```json
 {
+  "protocol": 2,
   "key": "JOB-...:0",
   "spec_json": "<json.dumps(spec, sort_keys=True)>"
 }
@@ -519,7 +663,7 @@ The server hashes the UTF-8 bytes of `spec_json`, parses that same string into t
 
 Migration order:
 
-1. teach the Python broker to accept both legacy `{"key","spec"}` and v2 `{"key","spec_json"}`, while the client still sends v1;
+1. teach the Python broker to accept both legacy `{"key","spec"}` and v2 `{"protocol":2,"key","spec_json"}`, while the client still sends v1;
 2. validate/restart that Python broker;
 3. switch the Python client to v2 and prove legacy receipt replay;
 4. only then introduce the Rust broker speaking v2 (optionally retaining v1 parsing during the transition).

@@ -24081,3 +24081,175 @@ Next audit should re-fetch current `dev`, reconcile concurrent commits, and
 continue outside Dashboard GitHub. Prefer another private list-normalization or
 response parser with meaningful record count; avoid dense Settings/Niri/Tray
 ownership unless a source-distinct operation is proven.
+
+## 103. Round 89 — Automation scheduler profile-lookup audit (2026-09-30)
+
+### Snapshot, intervening automation delta and ownership check
+
+- Latest preceding optimization checkpoint:
+  `d588157fc9c96086990eaa8a424bacb665b73c6f`
+  (Round 88, Dashboard GitHub parser).
+- Authoritative `dev` immediately before this write:
+  `bb007beb4a3dfbc12e1f38d8855f4b1ef8510b06`
+  (`feat(automation): isolate durable workflow schedulers per profile`).
+- Exactly one commit intervened after Round 88.
+- That commit changes the automation architecture from one transport owner to
+  independently progressing durable profile sessions and touches:
+  - `automation/manager/daemon.py`;
+  - `automation/manager/control.py`;
+  - `automation/manager/model.py`;
+  - `automation/manager/store.py`;
+  - native Desktop adapter CLI glue and automation tests.
+- The current durable transaction/recovery contract from the preceding
+  automation work remains authoritative. Parent-directory fsync, journals,
+  response receipts, independent session identity, stale-response protection
+  and per-profile polling are not treated as redundant work.
+- Existing optimization ownership was searched for
+  `automation/manager/daemon.py`, `_profile()`, `_claim()`, profile lookup
+  and scheduler heartbeat. §68.1 owns bounded automation event-list copies but
+  does not own the lookup pattern below.
+- PowerProfile/TLP paths considered immediately before this audit are already
+  extensively owned/closed by §80 and are not counted again.
+
+### 103.1 Scheduler claim loop can pass the profile object it already owns instead of rescanning the profile list — CONFIRMED / P2 steady automation daemon
+
+Paths:
+
+- `automation/manager/daemon.py`;
+- `automation/manager/model.py` for `MAX_PROFILES = 64`.
+
+Current heartbeat preparation:
+
+```python
+def prepare(c, s):
+    migrate_runtime(c, s)
+    _heartbeat(s, now)
+    for p in c["profiles"]:
+        _claim(c, s, now, p["id"])
+```
+
+Current `_claim()` immediately resolves that same profile again:
+
+```python
+def _claim(config, state, now, profile_id):
+    item, profile = state["profiles"][profile_id], _profile(config, profile_id)
+```
+
+and `_profile()` is:
+
+```python
+return next(p for p in config["profiles"] if p["id"] == profile_id)
+```
+
+The caller therefore already holds the exact profile object that
+`_profile()` is about to search for.
+
+For P normalized profiles in stable list order, the claim pass performs:
+
+- P outer-loop iterations;
+- P generator allocations for `_profile()`;
+- profile-ID visits/comparisons of:
+  `1 + 2 + ... + P = P(P+1)/2`.
+
+At the configured maximum `P = 64`, that is **2,080 profile-row visits per
+scheduler tick** solely to rediscover objects already held by the caller.
+The daemon ticks every `POLL_SECONDS = 2`, so the source-derived upper-bound
+shape is **62,400 redundant profile-row visits per minute** while the manager
+is resident with 64 profiles.
+
+Strict-safe direction:
+
+- change only the private claim helper boundary so the existing loop passes
+  `p` directly, e.g. `_claim(state, now, p)`, or equivalent;
+- derive `profile_id = profile["id"]` inside the helper if desired;
+- keep the same outer profile order and call count;
+- keep all state reads/writes, due-time checks, events and claim publications
+  unchanged.
+
+Strict-lossless proof:
+
+- **same object:** `p` comes from the exact
+  `c["profiles"]` list that `_profile(c, p["id"])` scans.
+- **unique IDs:** `normalize_config()` rejects duplicate IDs before the
+  normalized config reaches the manager, so the lookup cannot intentionally
+  select a different same-ID profile.
+- **validated shape:** normalized profiles always contain validated `id`
+  fields; removing the generator does not hide a malformed earlier profile
+  access that is part of the accepted runtime contract.
+- **no config mutation:** `_claim()` mutates runtime state only. It does not
+  reorder, replace or edit `config["profiles"]`.
+- **same snapshot:** the direct reference is passed within the same synchronous
+  `change_state(prepare)` critical section. No lock boundary, file reread,
+  thread handoff or concurrent control mutation is inserted or removed.
+- **property-read semantics:** profile dictionaries are normalized plain Python
+  dicts, not lazy/proxy objects; eliminated earlier-ID reads have no callback
+  or side effect.
+- **claim ordering:** profiles are still evaluated once each in list order.
+- **state/event ordering:** `run_active`, `status`, start counters,
+  `last_run_at_unix`, `next_run_at_unix`, request selection and
+  `event(..., "started")` remain in the same helper sequence.
+- **durability/recovery:** the surrounding `change_state()`, lock, atomic
+  state write, transaction recovery and heartbeat/command acknowledgement
+  behavior are untouched.
+- **concurrency:** no scheduler thread count, inflight map, due selection or
+  per-profile independent-session behavior changes.
+
+Local source-derived reduction per heartbeat claim pass:
+
+- linear profile-search generator objects: **P -> 0**;
+- profile-row lookup visits: **P(P+1)/2 -> 0**;
+- outer claim evaluations: unchanged, P;
+- state dictionary lookups: unchanged;
+- state writes/fsyncs: unchanged;
+- scheduler cadence: unchanged.
+
+Classification:
+**CONFIRMED / P2 steady automation daemon**.
+
+### 103.2 Do not collapse heartbeat/read/write cycles without a concurrency oracle
+
+The same audit checked the larger-looking manager I/O shape:
+
+- heartbeat ticks every two seconds;
+- `read_snapshot()` and `change_state()` each take the manager lock and
+  recover/normalize durable documents;
+- later reads intentionally observe mutations made by completed futures,
+  control clients and removal handling;
+- heartbeat and command acknowledgement are externally observed by
+  `_await_dispatch()`;
+- recent automation commits strengthened atomic config/state commits,
+  recovery journaling and independent session state.
+
+Removing a snapshot read, coalescing heartbeat writes, caching config across
+ticks or widening one lock across the scheduler would alter at least one of:
+
+- concurrent control visibility;
+- acknowledgement timing;
+- recovery entry points;
+- lock duration;
+- durable heartbeat freshness;
+- profile-removal timing.
+
+Those directions are therefore **not strict-lossless from source inspection
+alone**.
+
+Status:
+**ARCHITECTURE / concurrency oracle required; not counted**.
+
+### 103.3 Round-89 conclusion / next checkpoint
+
+New strict-lossless optimization groups: **one**:
+
+- pass the already-owned normalized profile directly into the scheduler claim
+  helper (§103.1, **CONFIRMED / P2 steady daemon**).
+
+Intervening automation commit `bb007beb4` was audited before
+promotion. No durability, recovery, scheduler cadence, Desktop transport,
+profile concurrency or runtime/product code was changed.
+
+No deterministic local job was required.
+
+Next audit should re-fetch current `dev`, reconcile any concurrent commits,
+then rotate away from automation scheduler internals. Prefer another
+record-scaled parser/model or private reactive collection not already owned by
+Dashboard/Weather/AI/Tray/Niri research.

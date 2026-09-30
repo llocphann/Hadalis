@@ -170,7 +170,8 @@ ContentPage {
             pausing: "Pausing", scheduled: "Scheduled", idle: "Idle", completed: "Completed",
             connector_blocked: "GitHub connector blocked", transport_unavailable: "Transport unavailable",
             disabled: "Disabled", running: "Running",
-            submission_uncertain: "Verifying submission", stream_failed: "Recovering response",
+            submission_uncertain: "Verifying submission", stream_failed: "Response interrupted",
+            response_unavailable: "Response unavailable", transport_rate_limited: "Rate limited",
             recovering_generation: "Recovering workflow", recovery_required: "Recovery needs review",
             session_changed: "Managed chat changed", session_conflict: "Managed chat conflict", evidence_required: "Evidence needs review"
         }
@@ -179,7 +180,7 @@ ContentPage {
 
     function statusColor(value): color {
         if (["active", "running", "continuing"].includes(value)) return Appearance.colors.colPrimary
-        if (["failed", "connector_blocked", "blocked", "transport_unavailable", "scheduler_unavailable", "invalid_configuration", "parked_unresolved"].includes(value)) return Appearance.colors.colTertiary
+        if (["failed", "connector_blocked", "blocked", "transport_unavailable", "transport_rate_limited", "stream_failed", "response_unavailable", "scheduler_unavailable", "invalid_configuration", "parked_unresolved"].includes(value)) return Appearance.colors.colTertiary
         if (["starting", "stopping", "thinking", "waiting_result", "waiting_desktop", "waiting_owner", "recovering_pending", "rotating", "restart_queued", "pausing"].includes(value)) return Appearance.colors.colSecondary
         return Appearance.colors.colSubtext
     }

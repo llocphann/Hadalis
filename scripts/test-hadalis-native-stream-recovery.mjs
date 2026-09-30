@@ -15,9 +15,9 @@ const finished={conversation_id:chat,current_node:"final",mapping:{...history.ma
   final:{id:"final",parent:user,message:message("final","assistant")}}};
 const previousWindow=globalThis.window;
 
-async function observe({status="FAILURE",latest=history,receipt=true,aged=false,serverError=null,capability=true}={}) {
+async function observe({status="FAILURE",latest=history,receipt=true,receiptState={streamError:true},aged=false,serverError=null,capability=true}={}) {
   const calls=[];let reads=0;
-  globalThis.window={__hadalisReceipts:new Map(receipt?[[user,{conversation_id:chat,streamError:true}]]:[]),
+  globalThis.window={__hadalisReceipts:new Map(receipt?[[user,{conversation_id:chat,...receiptState}]]:[]),
     __hadalisNative:{serverStreamStatus:capability,api:{safeGet:async(path,options)=>{
       calls.push(path);
       if (path===`/conversation/${chat}`) {
@@ -45,7 +45,18 @@ try {
     const {result}=await observe({status});
     assert.equal(result.completed,false);
     assert.equal(result.terminal_failed,false);
+    assert.equal(result.client_stream_error,true);
+    assert.equal(result.client_stream_complete,false);
+    assert.equal(result.streamError,false); // Client error cannot become server failure evidence.
   }
+  const closedAfterRestart=await observe({status:"COMPLETE",receipt:false,aged:true});
+  assert.equal(closedAfterRestart.result.server_stream_status,"COMPLETE");
+  assert.equal(closedAfterRestart.result.client_stream_error,false);
+  assert.equal(closedAfterRestart.result.terminal_failed,false);
+  const clientClosed=await observe({status:"UNAVAILABLE",receiptState:{streamComplete:true}});
+  assert.equal(clientClosed.result.client_stream_complete,true);
+  assert.equal(clientClosed.result.client_stream_error,false);
+  assert.equal(clientClosed.result.terminal_failed,false);
   const superseded=await observe({latest:next});
   assert.equal(superseded.result.superseded,true);
   assert.equal(superseded.result.terminal_failed,false);

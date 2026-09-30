@@ -188,11 +188,15 @@ export async function pollNativeTurn(page, pending) {
   const result = projectTurn(conversation, pending);
   if (result.completed || !result.submitted || result.superseded || result.terminal_failed) return result;
   const local = await nativeStreamStatus(page, pending);
+  // A disconnected client is observation evidence, never proof that server
+  // generation failed. Preserve it even when the server has no final message.
+  const observed = {...result, client_stream_error:local.streamError === true,
+    client_stream_complete:local.streamComplete === true};
   const aged = Number.isFinite(pending.prepared_at_unix) &&
     Date.now()/1000 - pending.prepared_at_unix >= 300;
-  if (!local.streamError && !local.streamComplete && !result.streamError && !aged) return result;
+  if (!local.streamError && !local.streamComplete && !result.streamError && !aged) return observed;
   const status = await nativeServerStreamStatus(page, pending.conversation_id);
-  if (status !== "FAILURE") return {...result, server_stream_status:status};
+  if (status !== "FAILURE") return {...observed, server_stream_status:status};
   // Status is conversation-scoped. Bracket it with exact-turn reads so a later
   // human submission or a persisted final response cannot fail the wrong turn.
   const latest = await nativeRead(page, path, {}, pending.project_id);

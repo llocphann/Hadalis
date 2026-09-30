@@ -354,6 +354,23 @@ def _reports(text, evidence_ids):
     return reports
 
 
+def _response_observation(result: dict, now: int) -> tuple[dict, str]:
+    server = result.get("server_stream_status")
+    if not isinstance(server, str) or server not in {"IS_STREAMING", "COMPLETE", "FAILURE", "UNAVAILABLE"}:
+        server = None
+    client_error = result.get("client_stream_error") is True
+    client_complete = result.get("client_stream_complete") is True
+    status, detail = "thinking", ""
+    if result.get("uncertain"):
+        status, detail = "submission_uncertain", "Observing the original message; no prompt resend"
+    elif server == "COMPLETE" or (client_complete and server != "IS_STREAMING"):
+        status, detail = "response_unavailable", "Response not available yet. Original turn retained."
+    elif server != "IS_STREAMING" and (client_error or result.get("streamError")):
+        status, detail = "stream_failed", "Stream interrupted. Original turn retained."
+    return {"at_unix": now, "status": status, "server_stream_status": server,
+            "client_stream_error": client_error, "client_stream_complete": client_complete}, detail
+
+
 def _poll(config: dict, state: dict, profile_id: str, now: int) -> None:
     item = state["profiles"][profile_id]
     pending = item["pending"]
@@ -424,13 +441,20 @@ def _poll(config: dict, state: dict, profile_id: str, now: int) -> None:
                 if result.get("conversation_id"):
                     current["pending"]["conversation_id"] = result["conversation_id"]
                     current["session"]["conversation_id"] = result["conversation_id"]
+                observation, detail = _response_observation(result, now)
                 age = max(0, now - pending["prepared_at_unix"])
                 cadence = min(120, CHAT_POLL_SECONDS * (2 if age >= 300 else 1))
-                current["pending"]["poll_after_unix"] = now + max(cadence, 30 if result.get("uncertain") or result.get("streamError") else 0)
+                current["pending"]["poll_after_unix"] = now + max(cadence, 30 if observation["status"] != "thinking" else 0)
+                previous = current["pending"].get("observation") or {}
+                if observation["status"] in {"response_unavailable", "stream_failed"} and previous.get("status") != observation["status"]:
+                    event(s, profile_id, "response_observation", observation["status"])
+                # Fixed metadata survives scheduler/Desktop restarts. Do not
+                # store raw transport errors or manufacture a terminal receipt.
+                current["pending"]["observation"] = observation
                 current["poll_errors"] = 0
                 current["last_error"] = ""
-                current["status"] = "submission_uncertain" if result.get("uncertain") else "stream_failed" if result.get("streamError") else "thinking"
-                current["status_detail"] = "Observing the original message; no prompt resend" if result.get("uncertain") else ""
+                current["status"] = observation["status"]
+                current["status_detail"] = detail
             change_state(waiting)
             return
         response = result["response"]

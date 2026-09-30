@@ -17,6 +17,7 @@ Maintainer-authorized implementation, 2026-09-30. Target contract and audit:
 - [x] Consumed malformed Wull job retained byte-for-byte as archived evidence, with its original terminal result and digest; no action replay or job-ID reuse. Job authoring requires JSON serialization/validation before publication.
 - [x] Worker discovery recovery clears its own stale health warning while retaining independent job metadata failures and private exception boundaries.
 - [x] A failed stream with only its user prompt can recover from explicit server FAILURE. Matching history reads bracket the server status and preserve a later user turn; client errors, ambiguous branches, rate limits and COMPLETE without a final message cannot authorize replay.
+- [x] Client stream interruptions and COMPLETE without a final response remain visible as distinct observation states instead of false Thinking. Fixed per-turn evidence survives restart/rate-limit retries; independent profiles continue and an eventual original response is consumed once.
 - [ ] Future/deferred: migrate the Linux/process-sensitive Automation execution substrate to Rust only after parity and benchmark gates in [`AUTOMATION_RUST_MIGRATION.md`](AUTOMATION_RUST_MIGRATION.md).
 
 Keep uncertain existing submissions and consumed job results. Do not reset
@@ -29,9 +30,8 @@ bounded logs and repairs/reconciles errors while respecting later user Stop/Paus
 Existing profile descriptions remain compatible in config; only their editor
 is removed. Tokens authenticate local Git, not the ChatGPT GitHub connector.
 
-Focused Automation regressions pass. The latest completed whole-repository
-validation remains **FAIL**: 246 pass, 33 fail, 2 skip at `bb6370c12`.
-32 failures match the inherited baseline; the additional malformed consumed
-Wull job has now been archived. Revalidate the exact current commit before
-claiming canonical acceptance. See the architecture note for native acceptance
-and untested environment boundaries.
+Focused Automation regressions pass. Previous whole-repository validation
+remains **FAIL**: 250 pass, 32 fail, 2 skip at `c589ddf41`; its failures match
+the inherited baseline. Revalidate the exact current commit before claiming
+canonical acceptance. See the architecture note for native acceptance and
+untested environment boundaries.

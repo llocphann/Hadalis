@@ -285,6 +285,11 @@ def profile_action(action: str, profile_id: str) -> dict:
                 state["requested_profile_id"] = None
             item["status"] = "pausing" if state["owner_id"] == profile_id else (
                 "paused" if action == "pause" else "idle")
+            if action == "stop" and item["pending"] is not None:
+                # Stop must be able to finish an old turn after the endpoint
+                # returns, even when polling previously exhausted its retries.
+                item["poll_errors"] = 0
+                item["pending"]["poll_after_unix"] = now
             if state["owner_id"] != profile_id:
                 item["request"] = None
         event(state, profile_id, action)

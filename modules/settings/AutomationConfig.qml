@@ -423,6 +423,23 @@ ContentPage {
                     DialogButton { buttonText: Translation.tr("Remove"); enabled: !root.busy; onClicked: root.confirmRemoval(profileRow.modelData.id) }
                 }
             }
+            SettingsNote {
+                visible: !!root.pendingRemoveId && root.pendingRemoveId === root.selectedProfileId
+                warning: true
+                text: root.pendingRemoveUnresolved
+                    ? Translation.tr("Remove this profile and stop tracking its current response? A private recovery copy is saved. ChatGPT history stays.")
+                    : root.selectedState?.parked_pending
+                    ? Translation.tr("Remove this profile and parked recovery state? ChatGPT history stays.")
+                    : Translation.tr("Remove this profile? ChatGPT history stays.")
+            }
+            Flow {
+                visible: !!root.pendingRemoveId && root.pendingRemoveId === root.selectedProfileId
+                Layout.fillWidth: true
+                Layout.preferredHeight: childrenRect.height
+                spacing: 6
+                DialogButton { buttonText: Translation.tr("Cancel"); onClicked: root.cancelConfirmation() }
+                DialogButton { buttonText: Translation.tr("Confirm remove"); enabled: !root.busy; onClicked: root.applyRemoval() }
+            }
             Flow {
                 Layout.fillWidth: true
                 Layout.preferredHeight: childrenRect.height
@@ -517,23 +534,6 @@ ContentPage {
                     enabled: !root.busy
                     onClicked: root.applyParkBlockedOwner()
                 }
-            }
-            SettingsNote {
-                visible: root.pendingRemoveId === root.selectedProfileId
-                warning: true
-                text: root.pendingRemoveUnresolved
-                    ? Translation.tr("Remove this profile and stop tracking its current response? A private recovery copy is saved. ChatGPT history stays.")
-                    : root.selectedState?.parked_pending
-                    ? Translation.tr("Remove this profile and parked recovery state? ChatGPT history stays.")
-                    : Translation.tr("Remove this profile? ChatGPT history stays.")
-            }
-            Flow {
-                visible: root.pendingRemoveId === root.selectedProfileId
-                Layout.fillWidth: true
-                Layout.preferredHeight: childrenRect.height
-                spacing: 6
-                DialogButton { buttonText: Translation.tr("Cancel"); onClicked: root.cancelConfirmation() }
-                DialogButton { buttonText: Translation.tr("Confirm remove"); enabled: !root.busy; onClicked: root.applyRemoval() }
             }
         }
 

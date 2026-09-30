@@ -231,6 +231,21 @@ def main() -> None:
             assert store.read_snapshot()[1]["profiles"][old]["desired"] == "stopped"
             assert store.read_snapshot()[1]["profiles"][old]["poll_errors"] > config["profiles"][0]["max_poll_errors"]
 
+            # After connectivity returns, Stop itself can consume the old
+            # completion and release ownership without enabling or resending.
+            control.set_profile(old, "enabled", "false")
+            control.profile_action("stop", old)
+            runtime = store.read_snapshot()[1]
+            assert runtime["profiles"][old]["poll_errors"] == 0
+            assert runtime["profiles"][old]["pending"]["response_action_count"] == 1
+            with patch.object(daemon, "desktop_command", return_value={
+                    "completed": True, "response": {"text": "HADALIS_LOOP:CONTINUE"}}) as poll:
+                daemon.tick(int(time.time()))
+            assert poll.call_args.args == ("managed-poll", "1")
+            assert poll.call_count == 1
+            assert store.read_snapshot()[1]["owner_id"] is None
+            assert store.read_snapshot()[1]["profiles"][old]["pending"] is None
+
     print("PASS: original profile lifecycle, confirmed unresolved removal, private recovery and safe handover")
 
 

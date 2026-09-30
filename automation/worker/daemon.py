@@ -151,6 +151,12 @@ def validate_job(path: str, raw: str) -> dict[str, Any]:
         elif kind=="diagnostics":
             from automation.worker.diagnostics import validate
             validate(spec)
+        elif kind=="privileged":
+            from automation.worker.privilege import validate
+            validate(spec)
+        elif kind=="shell_deploy":
+            from automation.worker.deployment import validate
+            validate(spec)
         else:raise ValueError("action kind not allowlisted")
     return data
 
@@ -245,7 +251,7 @@ def execute(data: dict[str, Any], commit: str) -> dict[str, Any]:
         def spawned(identity):
             receipt["runner"]=identity;save_receipt(job_id,receipt)
         result=bounded_run([sys.executable,str(Path(__file__).with_name("runner.py")),str(action_root/"spec.json")],
-            cwd=ROOT,timeout=min(32*MAX_TIMEOUT,sum(a.get("exec",{}).get("timeout_seconds",60) for a in data["actions"])+60),
+            cwd=ROOT,timeout=min(32*MAX_TIMEOUT,sum(a.get("exec",{}).get("timeout_seconds",1860 if "shell_deploy" in a else 60) for a in data["actions"])+60),
             capture=4096,on_spawn=spawned,
             cancelled=lambda:(state_root()/"cancellations"/job_id).exists())
         output=action_root/"result.json"

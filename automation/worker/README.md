@@ -75,6 +75,27 @@ Git results use a strict metadata allowlist, not heuristic log redaction.
 The managed chat can receive structured error codes and status metrics with
 provenance; it must cite the evidence supporting each debugging conclusion.
 
+Administrator steps are typed, never arbitrary root argv:
+`{"privileged":{"operation":"system-service-status","unit":"example.service","reason":"Inspect the observed service failure"}}`.
+`system-service-restart` is also supported. The separate broker defaults to an
+empty unit allowlist. Set `units` and `authentication` (`sudo-cache` or `polkit`)
+in private `~/.config/hadalis/automation-privilege.json`. Authenticate with the
+OS agent or an existing sudo cache. No password is accepted by Settings, jobs,
+IPC, configuration or logs. The root command is a fixed systemctl operation
+with an elevated timeout; restarts submit a systemd transaction without waiting
+indefinitely. A durable private audit deduplicates each job/action key. An
+uncertain broker outcome requires evidence reconciliation, not automatic retry.
+
+Risky shell changes use `shell_deploy` with `family` (`inir` or `waffle`), up to
+64 relative QML/JS/JSON `files`, and a `reason`. A bounded staging copy runs the
+canonical validator and syntax checks before file replacement. Deployment
+requires a running known-good shell, private backups, a durable apply journal
+and 30 seconds of crash observation. The backend restores an interrupted apply
+after a runner crash/reboot. Concurrent target changes are retained as a
+recovery conflict. A failed canonical check prevents deployment. Recovery can
+start one named user shell service per family; it never depends on QML staying
+alive. This path validates startup/crash behavior, not complete desktop UX.
+
 ## Safety boundaries
 
 - No hard reset, clean, force push, or shared-history rebase.

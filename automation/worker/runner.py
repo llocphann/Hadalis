@@ -87,7 +87,7 @@ def execute_spec(spec: dict) -> dict:
             status=result.get("status","failed")
         elif kind=="shell_deploy":
             from automation.worker.deployment import deploy
-            result=deploy(body,workspace,job["id"])
+            result=deploy(body,workspace,f"{job['id']}-{index}")
             result.update(index=index,kind=kind)
             status=result.get("status","failed")
         else:raise ValueError("unknown action kind")

@@ -449,6 +449,12 @@ def main() -> int:
             state_path().unlink(missing_ok=True);return 0
         with ThreadPoolExecutor(max_workers=CONCURRENCY) as pool:
             while True:
+                from automation.worker.deployment import recover
+                try:recover()
+                except (OSError,ValueError,KeyError):
+                    # Quarantine malformed deployment recovery without stopping
+                    # independent chat/job observation. Keep the journal intact.
+                    change_state(lambda c,s:event(s,None,"deployment_recovery_failed","Private rollback journal needs inspection"))
                 tick(executor=None if args.once else pool)
                 if args.once:return 0
                 time.sleep(POLL_SECONDS)

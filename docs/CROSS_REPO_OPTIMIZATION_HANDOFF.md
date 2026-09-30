@@ -23942,3 +23942,142 @@ rotate away from QuickWallpaper. Prefer another reactive parser/model path whose
 intermediate work scales with list size and is private to one binding/request.
 Avoid already-owned Overview/TaskView/Tray/Weather/AI/Wallhaven clusters unless
 new source evidence changes their current classification.
+
+## 102. Round 88 — Dashboard GitHub contribution parser audit (2026-09-30)
+
+### Snapshot and duplicate-ownership audit
+
+- Authoritative `dev` at round start and immediately before this write:
+  `f5038d1851c49ca0ff0dc9baf9513165119bdbd1`
+  (`docs(research): audit QuickWallpaper parsing`).
+- The Round-87 commit is the only delta after Round 86; no new runtime/product
+  commit intervened.
+- Existing handoff ownership was searched for `DashGithub.qml`,
+  `recentDays`, contribution parsing and the 26-week heatmap build.
+- The only existing DashGithub ownership is lifecycle/residency (§28.4):
+  refresh only while visible with a one-hour cache. It does not own the
+  response-parser collection shape below.
+
+### 102.1 DashGithub can accumulate contribution total and final week arrays in one pass without per-week slice arrays — CONFIRMED / P2-P3 network completion
+
+Path:
+
+- `modules/dashboard/DashGithub.qml`, successful XHR completion.
+
+Current response path:
+
+```qml
+const data = JSON.parse(xhr.responseText)
+const days = data?.contributions ?? []
+const recentDays = days.slice(Math.max(0, days.length - 26 * 7))
+
+root.total = recentDays.reduce(
+    (acc, d) => acc + (d.count ?? 0), 0)
+
+const wk = []
+for (let i = 0; i < recentDays.length; i += 7) {
+    wk.push(recentDays.slice(i, i + 7).map(d => d.level ?? 0))
+}
+root.weeks = wk
+```
+
+The Dashboard intentionally keeps the latest 26 weeks. The current parser then
+walks that same local `recentDays` array twice:
+
+1. one full reduction to sum `count`;
+2. another full traversal while chunking levels into weeks.
+
+The second phase additionally creates one temporary `slice(i, i + 7)` array
+per week before `map()` creates the week array that is actually retained.
+
+Strict-safe direction:
+
+1. keep `JSON.parse`, `data?.contributions ?? []` and the exact
+   `recentDays = days.slice(...)` expression unchanged;
+2. use one local traversal over `recentDays`;
+3. accumulate `total += d.count ?? 0`;
+4. append `d.level ?? 0` directly into the current final week array;
+5. after every seven rows, push that final week array into `wk` and start the
+   next one;
+6. retain a shorter final week when the input length is not divisible by seven;
+7. after the local traversal, assign:
+   - `root.total = total`;
+   - then `root.weeks = wk`;
+   in the same publication order as current source;
+8. keep `_lastFetch` assignment and `heatmap.requestPaint()` after both
+   publications exactly as today.
+
+Strict-lossless proof:
+
+- **input provenance:** `recentDays` is produced by `JSON.parse()` output
+  followed by `slice()`; its rows are plain JSON values, not getters,
+  proxies or QObjects.
+- **26-week window:** the existing `days.slice(Math.max(...))` call remains
+  untouched, preserving generic/malformed `days` behavior and fresh-array
+  semantics.
+- **count semantics:** every retained row still contributes
+  `d.count ?? 0` exactly once.
+- **level semantics:** every retained row still contributes
+  `d.level ?? 0` exactly once and in source order.
+- **malformed null row:** the candidate evaluates `d.count` first for each
+  row; the first null row therefore still throws from the same count access
+  before publication, entering the existing catch path.
+- **plain scalar rows:** JavaScript property access still yields the same
+  undefined/default values.
+- **week boundaries:** rows 0-6, 7-13, ... are grouped exactly as
+  `slice(i, i + 7).map(...)`; a partial last group remains partial.
+- **week identity:** each published week remains its own fresh array.
+- **root signal order:** `root.total` is still assigned before
+  `root.weeks`; neither local accumulator is observable before assignment.
+- **error/publication boundary:** if local parsing throws, neither new value is
+  published; the existing catch/log path remains authoritative.
+- **fetch lifecycle:** visibility gate, one-hour cache, XHR status handling,
+  username reset, `_lastFetch` and paint request are unchanged.
+- **rendering:** Canvas receives the same nested numeric arrays and therefore
+  the same 26-column/7-row levels and colors.
+
+Let R be `recentDays.length` (normally at most 182) and
+W = `ceil(R / 7)`.
+
+Local source-derived reduction:
+
+- logical row traversals after `recentDays` creation: **2R -> R**;
+- temporary per-week slice arrays: **W -> 0**;
+- copied row references into those temporary slices: **R -> 0**;
+- final week arrays: unchanged, W;
+- contribution count/level property reads: unchanged, R each;
+- network requests and XHR work: unchanged.
+
+The request itself dominates wall latency; this finding concerns only
+main-thread response normalization after data arrives.
+
+Classification:
+**CONFIRMED / P2-P3 network completion**.
+
+### 102.2 Do not remove the recentDays slice under the strict malformed-input contract
+
+Because `data?.contributions` is not explicitly type-checked before
+`days.slice(...)`, changing directly to indexed reads from `days` would
+silently narrow the generic behavior of the current code for non-array values
+that happen to expose `length`/`slice` semantics.
+
+The 26-week slice also defines a fresh local window before publication.
+
+Therefore this round intentionally leaves that slice in place. Any later
+schema-hardening/type-validation change is a correctness contract change, not
+part of this optimization.
+
+### 102.3 Round-88 conclusion / next checkpoint
+
+New strict-lossless optimization groups: **one**:
+
+- DashGithub one-pass total + final week construction
+  (§102.1, **CONFIRMED / P2-P3 response parse**).
+
+No runtime/product/native/script code was modified and no deterministic local
+job was required.
+
+Next audit should re-fetch current `dev`, reconcile concurrent commits, and
+continue outside Dashboard GitHub. Prefer another private list-normalization or
+response parser with meaningful record count; avoid dense Settings/Niri/Tray
+ownership unless a source-distinct operation is proven.
